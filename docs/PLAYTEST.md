@@ -20,7 +20,7 @@ Every battle ends with a `[summary]` block — that alone answers most questions
 
 Every log line looks like `2026.09.30 20:15:02.117 [tag] message`. The tags: `[load]`
 `[compat]` `[config]` `[mcm]` `[mission]` `[summary]` `[damage]` `[speed]` `[athletics]`
-`[hud]` `[error]` `[log]`. Search the file for a tag to follow one area.
+`[stepback]` `[hud]` `[error]` `[log]`. Search the file for a tag to follow one area.
 
 ---
 
@@ -39,9 +39,9 @@ features (damage randomness, section 2, is already active in every fight).
     — proves the dev copy is the one running
   - `[load] game: v1.4.8.…` and `[load] modules (N): …` (every enabled module, in load order)
   - `[compat] Realistic Battle Mod (RBM) not enabled - good`
-  - `[mcm] settings page registered at main menu (attempt 1): MCM 5.…, page "Trax Combat Enhancements", 38 settings in 8 groups, …, Default preset = the mod's defaults (defaults.json); group "Defaults": buttons "Revert all to defaults" and "Save current values as a defaults file".`
+  - `[mcm] settings page registered at main menu (attempt 1): MCM 5.…, page "Trax Combat Enhancements", 45 settings in 9 groups, …, Default preset = the mod's defaults (defaults.json); group "Defaults": buttons "Revert all to defaults" and "Save current values as a defaults file".`
     (`at retry (attempt N)` is fine too — MCM was just slow to wake)
-  - `[config] defaults: defaults.json (embedded in TraxCombat.Core.dll), 38 keys for 38 settings - every default read from it`
+  - `[config] defaults: defaults.json (embedded in TraxCombat.Core.dll), 45 keys for 45 settings - every default read from it`
     — any `defaults.json PROBLEM:` line under it → tell Claude (that setting runs on a fallback).
 
 **1b. The mod loads — WITHOUT MCM.** Quit, disable *Mod Configuration Menu v5* in the launcher
@@ -54,17 +54,17 @@ features (damage randomness, section 2, is already active in every fight).
 **1c. The config file, with explanations.** Open
 `Documents\Mount and Blade II Bannerlord\Configs\TraxCombatEnhancements\config.json`.
 - You see: a header saying where the file lives, how edits apply and how to get the defaults
-  back (delete a key's line, delete the file, or MCM's *Revert all to defaults*), then 8
-  sections (Master switch, Damage randomness, Athletics, Tired fighters, Regeneration, Bars - you
-  and your target, Bars - your squads, Advanced) and above EVERY key a `//` explanation in
+  back (delete a key's line, delete the file, or MCM's *Revert all to defaults*), then 9
+  sections (Master switch, Damage randomness, Athletics, Tired fighters, Tired fighters step
+  back, Regeneration, Bars - you and your target, Bars - your squads, Advanced) and above EVERY key a `//` explanation in
   plain words ending `(default …, range … to …)`. The defaults are the ones in the mod's
   `defaults.json` (section 5).
 - Log, first run only: `[config] first run: created config.json with every default and a plain-words explanation beside each value`
-- Log, every start: `[config] settings in effect (38, version 0):` followed by 38 lines like
+- Log, every start: `[config] settings in effect (45, version 0):` followed by 45 lines like
   `[config]   DamageRandomPercent = 50` — a value you changed shows `(default 50)` after it.
 
 **1d. The MCM page.** Main menu → Options → Mod Options → *Trax Combat Enhancements*.
-- You see: the same 8 groups, 38 settings — *Master switch* (Mod enabled) on top — checkboxes
+- You see: the same 9 groups, 45 settings — *Master switch* (Mod enabled) on top — checkboxes
   for the on/off ones, sliders for the numbers (the slider ends are the ranges from the file),
   and at the bottom a *Defaults* group with two buttons, *Revert all to defaults* and *Save
   current values as a defaults file* (section 5). Hovering a setting shows its explanation and
@@ -466,8 +466,9 @@ What proves what:
 ## 4. The master switch — the same battle with and without the mod
 
 *Mod enabled* (`ModEnabled`, MCM → *Master switch*, the first key of config.json) turns the
-WHOLE mod off, live: no damage rolls, no Athletics costs, no refill, no slow attacks (and,
-once they exist, no bars and no step-backs). The log keeps recording, so two battles can be
+WHOLE mod off, live: no damage rolls, no Athletics costs, no refill, no slow attacks, no
+step-backs (anyone stepping back walks back to his formation at once; and, once they exist,
+no bars). The log keeps recording, so two battles can be
 laid side by side. Switched back on, everyone starts with a full Athletics bar.
 
 **4a. A/B — one custom battle ON, the same one OFF.** Custom battle, the same two armies and
@@ -494,6 +495,7 @@ Escape → Options → Mod Options → *Mod enabled* off → Done → fight ~20 
 - Log (the next frame of the battle):
   - `[mission] mod switched OFF (ModEnabled) at 42.3 s - vanilla from now on: no damage rolls (hits are recorded unrolled), no Athletics costs, refill or slow attacks (penalties lifted), no bars`
   - `[athletics] the whole mod (ModEnabled) switched OFF mid-mission: N fighters back to full, M speed penalties lifted (applied over the next ticks)`
+  - if anyone was stepping back (section 6): `[stepback] the whole mod (ModEnabled) switched OFF mid-mission at 42.3 s: N fighters stepping back released to their formations at once`
   - on again: `[mission] mod switched ON (ModEnabled) at 64.0 s - everything back on: …` and
     `[athletics] the whole mod (ModEnabled) switched ON mid-mission: everyone starts full`
   - verbose: hits while off `[damage] not rolled - mod OFF (ModEnabled): melee on a person: …, 34`
@@ -509,7 +511,7 @@ Every default the mod ships lives in ONE file, `defaults.json` in the repo, buil
 mod. The first-run config.json, MCM's Reset and *Revert all to defaults* all use it.
 
 **5a. The defaults loaded.** Any start.
-- Log: `[config] defaults: defaults.json (embedded in TraxCombat.Core.dll), 38 keys for 38 settings - every default read from it`
+- Log: `[config] defaults: defaults.json (embedded in TraxCombat.Core.dll), 45 keys for 45 settings - every default read from it`
   (no `defaults.json PROBLEM:` lines).
 
 **5b. Revert all to defaults — mid-battle.** In a battle, change two or three settings in MCM
@@ -522,7 +524,7 @@ then Escape → Mod Options → *Defaults* → **Revert all to defaults**.
   - `[mcm] "Revert all to defaults" pressed`
   - one line per setting that moved: `[config] DamageRandomPercent: 20 → 50 (source: defaults)`
   - `[config] wrote config.json (reverted to defaults): every value as it is in effect now`
-  - `[config] reverted all 38 settings to their defaults (defaults.json (embedded in TraxCombat.Core.dll)): 2 changed, applied live`
+  - `[config] reverted all 45 settings to their defaults (defaults.json (embedded in TraxCombat.Core.dll)): 2 changed, applied live`
   - then, on the next frame, the features' own lines (e.g. `[speed] speed settings now: when empty attacks at 20%, …`).
 - config.json now holds every default (a hand edit waiting in it is overwritten too — the
   revert means "everything"). MCM's Cancel does not undo a revert.
@@ -546,5 +548,104 @@ deploy, then:
   defaults* both put it at 40;
 - delete just that key's line from config.json → at the next battle start it comes back as 40
   (`[config] not in the file, default used: DamageRandomPercent`).
+
+---
+
+## 6. Step back — tired fighters fall back, fresh ones take the blows
+
+After a melee swing, an AI fighter on foot who is below full strength may step back: about
+2 m straight away from the man he fights, facing him, at a walk, no swings (guard up), for up to
+1.5 s — then his formation takes him back. Chance = 100% × (1 − f): never at full strength,
+half the time halfway down, after every swing when empty. Never you, never riders, never after
+a shot or a throw. Field battles only (not tournaments, arena, duels, naval battles), not in a
+shield wall, square or circle, not on ladders, siege engines or wall edges. MCM group *Tired
+fighters step back*. How it is done (and why): AI_NOTES "Step 5d" — the engine's own scripted
+movement, the way vanilla sends a soldier to pick up arrows mid-battle.
+
+**6a. See it.** Custom battle, infantry against infantry (e.g. 60 v 60, no archers, a flat
+map). Let the lines meet (Charge, or hold and let them come), and after about a minute of
+fighting watch the front line from close by (or from the side with the free camera).
+- You see: a man who has swung a few times backs off a step or two, still facing the enemy,
+  shield up, and walks back into the line a moment later; the men beside him keep fighting.
+  It happens more and more as the fight wears on.
+- Log:
+  - `[stepback] mission start: ON - after a melee swing an AI fighter on foot steps back with chance 100% x (1 - f) (0 at full strength), 2.0 m straight away from his enemy for up to 1.5 s, only with the enemy within 4.0 m, no swings while stepping back, at most 50 at once - read live; technique: a scripted step - …`
+  - first tick: `[stepback] this mission allows step backs while it is in battle mode (now: …)`
+  - the FIRST step back, in full (always logged):
+    `[stepback] first step back this mission: <name> at 63.2 s (f 0.40, Athletics 20.0 of 50, chance 60%, swing ended at 63.1 s) - from (x, y, z) to (x, y, z) (2.00 m straight away from <enemy>, 1.4 m off; asked to face him: 123°); facing before: 12° off his enemy; formation 1 Infantry (Charge, Line, charging); scripted flags none → GoToPosition|NoAttack|… (GoToPosition set: the engine took it)`
+  - and its end:
+    `[stepback] first step back ended (time up) after 1.5 s: now at (…), moved 1.30 m (0.70 m from the spot), facing his enemy (15° off, 2.6 m from him); mid-step facing his enemy (20° off), moving away (0.90 m/s away); hits taken 1 (blocked 1), swings 0; released: scripted movement off, flags now … - his formation takes him back`
+  - with VerboseLogging: every `[stepback] step back: …`, `step back ended (…): …` and
+    `step back not started: … - <reason>`.
+
+**6b. Force it.** MCM → *Tired fighters step back* → *Chance when empty (%)* 100 (the default),
+and *Athletics* → *Smallest bar (points)* (`AthleticsPoolFloor`) 10 — recruits are then empty
+after one or two blows (or raise *Cost per blow*). Fight.
+- You see: most tired men step back after every swing — the front line "breathes" back and
+  forth, but keeps its shape.
+- Summary: the `empty (f 0)` row of the rolls line near `chance avg 100%, dice yes … (100%)`,
+  `most at once` near the cap.
+
+**6c. Turn it off mid-battle.** While men are stepping back: Escape → Mod Options → *Tired
+fighters step back* off → Done → fight on → back on.
+- You see: anyone stepping back walks straight back into his formation; nobody steps back any
+  more. Back on: they start again from their next swing.
+- Log: `[config] StepBackEnabled: true → false (source: MCM)`, then on the next frame
+  `[stepback] settings now: OFF (StepBackEnabled)` and
+  `[stepback] StepBackEnabled switched OFF mid-mission at 88.0 s: N fighters stepping back released to their formations at once`;
+  back on: `[stepback] StepBackEnabled switched ON mid-mission: tired fighters step back again from their next swing`.
+- The same with *Athletics* off (`AthleticsEnabled switched OFF …`) and the master switch (4b).
+- Any other step-back setting changed mid-battle: `[stepback] settings now: ON - …` with the new numbers.
+
+**6d. Where it must NOT happen** — look, and read the summary's `not rolled` / `not started`:
+- you (`not rolled: you N`), riders (`riders N`), archers shooting (a shot is no swing: never rolled);
+- a formation in *Shield wall*, *Square* or *Circle* (`not started … shield wall/square/circle N`);
+- a formation ordered to retreat (`formation retreating`), routing men (`routing`);
+- sieges: men on ladders, in siege towers, at siege engines (`busy (the game's own check: …)`);
+  on the walls a step that would go over the edge or down stairs (`spot not level (wall edge,
+  stairs)`, `no straight way back (wall, fence, gap)`, `spot off the navmesh`);
+- tournaments and arena fights: `[stepback] this mission is a tournament or arena fight (…) - no step backs here (vanilla AI)`;
+  naval battles: `… is a naval battle (moving decks) …`; both count as
+  `not a field battle (tournament, arena, duel, naval, deployment, ending) N`.
+- Note: a hideout boss fights you in battle mode — a tired boss may step back from you. Say if
+  that feels wrong.
+
+**6e. The summary** — 8 lines, `[summary] step back …`:
+```
+step back - technique: a scripted step - …; settings at the end: ON - …
+step back rolls after AI melee swings on foot, by f (the chance must be 0% at full strength and rise as f falls): peak (f 1) 900 swings, chance avg 0%, dice yes 0 (0%) | f 0.5-1 700 swings, chance avg 27%, dice yes 190 (27%) | f below 0.5 400 swings, chance avg 70%, dice yes 280 (70%) | empty (f 0) 150 swings, chance avg 100%, dice yes 150 (100%); not rolled: you 40, riders 30, not a field battle (…) 0
+step back starts: dice yes 620 → started 480 (holding a line 200, charging 270, no formation 10), most at once 35; not started 140 (…reasons…)
+step back ends: 480 - completed (time up) 430, cut short 50 (left the field 30, formation order changed 15, …)
+step back moves: avg 1.20 m of 2.00 asked (min …, max …, reached the spot … of 480), lasted avg 1.40 s (n 480)
+step back facing (THE risk: a turned back) - at the start: facing his enemy … | mid-step (… sampled): facing his enemy …, side-on …, back turned …; moving away …, … | at the end (…): …
+step back guard: hits taken while stepping back N - blocked B (P%), landed … | everyone else on foot: … hits, blocked … (Q%) | swings started while stepping back 0 (0 expected: StepBackHoldAttacks is on)
+step back release check: N released through the engine - scripted movement still on right after 0 (must be 0), our flags (NoAttack, DoNotRun) cleared by hand 0 | at mission end: K were mid-step (released then), overdue (past their time) 0 (must be 0), scripted movement still on after that release 0 (must be 0)
+```
+- The **rolls** line proves the chance: the `peak (f 1)` row is ALWAYS `chance avg 0%, dice yes 0`,
+  and the rows below rise (about 100% × (1 − f)).
+- *holding a line* vs *charging* says where they happened (a formation holding its place, or a
+  charge melee).
+
+**What counts as broken** — tell Claude and send the log:
+1. **Men turn their backs** to walk away (THE risk — the engine decides how a scripted man
+   faces). Proof: the `facing` line's **mid-step** part — `back turned` should be near 0,
+   `facing his enemy` the big number, `moving away` most of the motion; the first step back's
+   `mid-step facing his enemy (N° off)`. If backs turn: set *Chance when empty* to 0 (or the
+   step back off) and tell Claude — the fallback is "hang back" (tired men hold their spot
+   instead of pressing, through the AI's own behaviour values; no scripted movement).
+2. **Men get stuck** (standing behind the line and never coming back, or frozen): the
+   `release check` line — every `(must be 0)` number must be 0; the first step back's
+   `released: scripted movement off`. Anything else → tell Claude.
+3. **Formations fall apart** (the line loses its shape, men drift away): fight the same battle
+   with the step back off and compare; `most at once` shows how many were out at the same time —
+   lower *Most at once* (`StepBackMaxAtOnce`, 50) to 10-20 if the line gets too loose.
+4. **They drop their guard**: the `guard` line — `blocked B (P%)` while stepping back well below
+   everyone else's `(Q%)` means the step (with no swings) costs them their guard → try *No
+   swings while stepping back* off (`StepBackHoldAttacks`) and compare.
+5. `swings started while stepping back` well above 0 with *No swings…* on: the engine ignores
+   our NoAttack flag.
+6. `not started … engine did not take the scripted position N` large: the engine refuses the call.
+7. `step back moves: avg X m` — a tired man walks slowly, so 0.8-1.5 m of 2 is normal; about 0
+   means nobody actually moves.
 
 (steps below are added as the features land)

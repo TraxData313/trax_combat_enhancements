@@ -9,7 +9,8 @@ Bannerlord* v1.4.8 that makes fights a bit more fun: every landed hit rolls ±50
 and every fighter has an **Athletics** bar — his stamina, as big as his Athletics skill —
 that blows drain and rest refills. The top quarter of his own bar is full strength; below
 it his damage upside, swing speed and run speed fall, down to slow attacks when empty;
-wounds cap the bar. Heroes and party leaders pay less per blow (and big-skill heroes have
+wounds cap the bar; tired AI fighters step back out of the press after a swing (step 5d).
+Heroes and party leaders pay less per blow (and big-skill heroes have
 big bars), so the game leans hero-centred. The Athletics bar
 is shown for the player, the fighter they look at, and — averaged with a ± spread — above the
 player's own formations and in the orders menu. Words: the pool/bar/points are "Athletics",
@@ -104,7 +105,7 @@ die at any moment (tokens run out) and the next one loses nothing.
   everything at once when the build is finished, so the log must let us troubleshoot any
   feature WITHOUT a second run. One rolling log file (`trax_combat.log`, ~2 MB trim) beside
   the config file, timestamped lines tagged by area (`[config]`, `[mcm]`, `[mission]`,
-  `[damage]`, `[athletics]`, `[speed]`, `[hud]`, `[error]`). Always logged: mod/game version
+  `[damage]`, `[athletics]`, `[speed]`, `[stepback]`, `[hud]`, `[error]`). Always logged: mod/game version
   at load, every parameter value on load and on change, each mission start/end (type,
   scene, agent counts), which behaviors/views attached, and every caught exception with its
   stack. Per-battle SUMMARY at mission end (damage rolls: count, min/avg/max factor;
@@ -130,7 +131,7 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
   ParamDef.cs                 one setting: key, type, range, group, label, plain-words
                               description, apply timing (Live / NextBattle); Normalize, Format;
                               its Default comes from defaults.json (DefaultsFile), never code
-  SettingsSchema.cs           EVERY setting of DESIGN's table, in file + MCM order, 8 groups
+  SettingsSchema.cs           EVERY setting of DESIGN's table (45), in file + MCM order, 9 groups
                               ("Master switch" first) — the one place a setting is declared
                               (a test parses DESIGN.md: keys + types); NO default values
   DefaultsFile.cs             defaults.json: the embedded copy → ParamDef.Default (fail safe:
@@ -168,6 +169,15 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               RegenRateMultiplier by effort, SpeedUpdateNeeded (0.05 step), PeakBin)
                               + Charge / ApplyHealth / Regen / Read; BlowKind, BlowOutcome,
                               RegenOutcome, AthleticsReading (HUD snapshot incl. f, usable pool)
+  StepBack.cs                 DESIGN §2 step back pure (step 5d): StepBackRules (live; Enabled =
+                              ModEnabled && AthleticsEnabled && StepBackEnabled, Describe),
+                              StepBackMath (Chance = max × (1 − f), Roll, AwayFrom = the spot,
+                              Radians = the game's facing convention, FacingCosine/Bin,
+                              SpeedAway/MotionBin, LevelEnough, TimeUp read live; plumbing
+                              MaxHeightStep 1 m, MaxStartsPerTick 20), StepBackNotRolled /
+                              StepBackRefusal / StepBackEnd (every reason the summary names)
+  StepBackStats.cs            per-mission step-back counters + the 8 [summary] lines (rolls by
+                              f bin, starts, ends by reason, moves, facing, guard, release checks)
   SpreadStats.cs              MeanStd (Welford, population std), FormationAthleticsStats (squad
                               mean ± std, band, mean f, at full strength), IntervalStats
                               (histogram median), SpeedVerdict, BinnedIntervals (attack timings by
@@ -205,7 +215,8 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
   Models/SpeedPenalty.cs      the penalties on AgentDrivenProperties: attack (swing, thrust/draw,
                               reload), run (MaxSpeedMultiplier), horse (MountSpeed) - nothing
                               else + Snapshot for the log
-  Missions/AthleticsLogic.cs  MissionLogic in every SP mission (partial): lifecycle, start/end
+  Missions/AthleticsLogic.cs  MissionLogic in every SP mission (partial - with .Engine, .Api,
+                              .Log, .StepBack): lifecycle, start/end
                               lines ("mod ON/OFF"), master-switch toggles ([mission] line each),
                               damage stats reset (AfterStart), the [summary] block
   Missions/AthleticsLogic.Engine.cs  the Athletics engine: per-agent state (by Agent.Index +
@@ -221,13 +232,28 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               TryGetFormationStats(formation) (incl. mean f), FormationStatsVersion,
                               IsRunning
   Missions/AthleticsLogic.Log.cs  [athletics]/[speed] lines (verbose buckets) + summary feed
+                              (releases every step back before the summary, then its lines)
+  Missions/AthleticsLogic.StepBack.cs  step 5d bookkeeping: the roll at every counted swing's
+                              END (EndRelease), the queue started from the tick (never in an
+                              engine callback), the cap, time read live, every release path
+                              (time, order/arrangement/formation change, detach, player, mount,
+                              rout, switch-off = all at once, mission end; left the field = no
+                              engine call; handed over to a game job = never disabled), the
+                              guard count (OnMeleeHit), [stepback] lines, the first one in full
+  Missions/StepBackBody.cs    IStepBackBody = the ENGINE side of the step back behind one seam
+                              (the smoke plays it); GameStepBackBody: mission kind (battle mode,
+                              no tournament/arena by behaviour NAME, no naval), vanilla's gate
+                              CanBeAssignedForScriptedMovement, orders, target, navmesh checks,
+                              SetScriptedPositionAndDirection / DisableScriptedMovement, flag
+                              checks; StepBackState / Plan / Snapshot / Release
   Missions/TrackedAgent.cs    one fighter's record: Core Fighter + detection, f-bin, fresh top
-                              speed and slowed-horse fields
-tests/TraxCombat.Core.Tests/  net8.0 xUnit (207) — schema vs DESIGN.md (keys + types),
+                              speed and slowed-horse fields, his StepBackState (null until needed)
+tests/TraxCombat.Core.Tests/  net8.0 xUnit (226) — schema vs DESIGN.md (keys + types),
                               defaults.json (DefaultsFileTests), master switch, settings, config
                               file, merge rule, rate limiter, damage roll/rules/dice/stats/upside,
                               Athletics v2 rules (pool, f, cap, curves, effort regen, DESIGN's
-                              blow counts), mean/std, interval + binned checks, Athletics summary. They
+                              blow counts), mean/std, interval + binned checks, Athletics summary,
+                              step back (chance by f, dice, spot, facing, stats, summary). They
                               run on DESIGN's INITIAL values (DesignTable.cs: a module
                               initializer), so tuning defaults.json never breaks them. Keep green.
 module/SubModule.xml          release manifest (Id TraxCombatEnhancements, v0.1.0); GUI/Prefabs
@@ -243,9 +269,12 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               Athletics (Program.Athletics.cs: the real stat decorator, damage
                               decorator and AthleticsLogic on uninitialized Agent objects - the
                               curves blow by blow, DESIGN's blow counts, the health cap, the
-                              upside by f, horses), the master switch,
+                              upside by f, horses), the step back (Program.StepBack.cs: the real
+                              logic's bookkeeping with a stand-in IStepBackBody - rolls by f,
+                              queue, cap, live time, every release path, logs, summary), the
+                              master switch (step backs released too),
                               defaults read from the embedded defaults.json, the MCM page built
-                              by MCM's real builder and its two buttons clicked (33 checks; the
+                              by MCM's real builder and its two buttons clicked (34 checks; the
                               config checks work for any tuned default);
                               TRAX_SMOKE_KEEP=1 keeps its temp folder + log to read
 tools/DefaultsTool/           defaults.json upkeep: refresh (rewrite comments/order, keep every

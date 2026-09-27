@@ -98,19 +98,40 @@ regen.)
   lower, so keeping up with a walking formation is harder work for him.)
 - **Cavalry**: riders use the very same pool (their Athletics skill). Riding never drains
   it; only blows do. The horse has no Athletics of its own.
-- **Tired fighters step back** (step 5d, planned; `StepBackEnabled`, on): after each MELEE
-  swing an AI fighter on foot may step back, facing its enemy with its guard up. Chance =
-  `StepBackMaxChancePercent` (100) × (1 − f): 0% in the peak zone, 50% halfway down to 0,
-  every swing at 0. Back `StepBackDistance` (2 m) for up to `StepBackSeconds` (1.5 s), then
-  the formation takes it again. Never the player, never riders, never after ranged attacks.
-  The point: the tired fall back and the fresh step in. If the game's AI fights this,
-  step 5d reports and proposes the nearest thing that works.
+- **Tired fighters step back** (built in step 5d - the literal rule; `StepBackEnabled`, on):
+  when a MELEE swing ends, an AI fighter on foot may step back, facing its enemy with its guard
+  up. Chance = `StepBackMaxChancePercent` (100) × (1 − f), f after the swing's cost: 0% in the
+  peak zone (no roll at all), 50% halfway down to 0, every swing at 0. He walks
+  `StepBackDistance` (2 m) straight away from the enemy he fights, facing him, making no swings
+  (`StepBackHoldAttacks`), for `StepBackSeconds` (1.5 s, read live) - a tired man walks slowly,
+  so he may not get all the way - then his formation takes him back. Never the player, never
+  riders, never after ranged attacks, kicks or bashes. The point: the tired fall back and the
+  fresh take the blows.
+  - **How**: the engine's own scripted movement (`SetScriptedPositionAndDirection`, released by
+    `DisableScriptedMovement`) - how vanilla sends a soldier out of his formation to pick up
+    arrows mid-battle. The formation keeps his place and takes him back. Research, the
+    alternatives weighed (RBM's formation patch, the AI's behaviour values) and the fallback:
+    AI_NOTES "Step 5d".
+  - **Only where it is safe** (Claude's calls, Anton can overturn): field battles only - not
+    tournaments, arena fights, duels or naval battles; not while the formation stands in a
+    shield wall, square or circle (they exist to hold) or is ordered to retreat; not for men the
+    game is using (ladders, siege towers and engines, picking something up, routing); only with
+    the enemy he fights within `StepBackEnemyRange` (4 m); only to a level spot on the navmesh
+    with a straight way back (no wall edges, stairs, fences); at most `StepBackMaxAtOnce` (50) at
+    once on the whole field.
+  - **Always ends**: his time is up; he falls or leaves; his formation gets a new order or
+    arrangement; he mounts, routs, changes formation, or the player takes him; the battle ends;
+    or the step back (Athletics, the whole mod) is switched off - then everyone stepping back
+    walks back at once.
+  - If the playtest shows men turning their backs, the nearest thing that works is "hang back":
+    tired men hold their place instead of pressing, through the AI's own behaviour values - no
+    scripted movement (AI_NOTES "Step 5d").
 
 ## 2b. Athletics v2 (folded into §2)
 
 Anton's additions of 2026-09-27 were written here while step 5 built the first version; step
 5c built them and folded them into §2, which is now the one current spec. The step-back rule
-(step 5d) is §2's last bullet.
+(built in step 5d) is §2's last bullet.
 
 ## 2c. Defaults file (built in step 5b)
 
@@ -324,6 +345,12 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
 9. **Shield damage is not randomized** by default; horse-charge bumps follow the melee
    toggle; fall damage and hits on objects never roll.
 10. **RBM is declared incompatible** (Anton confirmed, 2026-09-27) — see §5.
+11. **Step backs happen in field battles only** (step 5d, Claude's call): not in tournaments,
+    arena fights, duels or naval battles (nobody there to step in; moving decks), not from a
+    shield wall, square or circle, and the roll comes when the swing ENDS ("after each swing"),
+    so the swing always completes first. Two numbers the spec did not have became settings:
+    `StepBackEnemyRange` (only with the enemy close) and `StepBackMaxAtOnce` (a cap, so a whole
+    front line never steps back together); `StepBackHoldAttacks` makes "guard up" a switch.
 
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance`, `TargetBarLingerSeconds`, `FormationBarsAlways`,

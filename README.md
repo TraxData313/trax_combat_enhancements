@@ -17,6 +17,9 @@ every fight a little less predictable and a lot more about who is still fresh.
   standing or walking, twice that running flat out. Heroes pay less per blow, party leaders
   less again, and a hero's big Athletics skill means a big bar — the battle leans on its
   heroes.
+- **Tired men step back** — after a swing, a tired AI soldier on foot may step back out of the
+  press, facing his enemy with his guard up, and rejoin his line a moment later: the more
+  tired, the more often. The fresh take the blows.
 - **See it** — your own Athletics bar, the bar of whoever you're looking at, and your
   squads' average Athletics (± spread) floating above them and in the orders menu.
 - **A master switch** — turn the whole mod off mid-battle and the fight is pure vanilla, so

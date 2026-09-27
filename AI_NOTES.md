@@ -683,6 +683,91 @@ formation; the player takes him over; he mounts; he routs; the game hands him a 
 (object, ladder queue - then we drop our record WITHOUT disabling, so we never cancel the game's
 job); an exception in our code for him (release attempted).
 
+**Built (DONE 2026-09-27)** - file map in CLAUDE.md "Layout"
+- Settings (45, group "Tired fighters step back" after "Tired fighters"): `StepBackEnabled`,
+  `StepBackMaxChancePercent` 100, `StepBackDistance` 2.0, `StepBackSeconds` 1.5 (the four
+  planned rows) + `StepBackEnemyRange` 4.0, `StepBackHoldAttacks` true, `StepBackMaxAtOnce` 50.
+- Core `StepBack.cs` (rules, math, reasons), `StepBackStats.cs` (+ summary) - 19 tests (226).
+- Module `AthleticsLogic.StepBack.cs` (bookkeeping, logs), `StepBackBody.cs` (the engine side
+  behind `IStepBackBody`); hooks: `EndRelease` (the roll), `StartRelease` (swings while
+  stepping), `TickAthletics` end (`TickStepBacks`, every tick whatever the switches), `Untrack`
+  (left the field), `OnMeleeHit` top (the guard count), `WriteAthleticsSummary` start
+  (`CloseStepBacks`) and end (the 8 lines), first tick (`NoteStepBackMission`).
+- Smoke: `Program.StepBack.cs` (a new step, 34 steps) + the master-switch step releases a
+  running step back. deploy.ps1 green (guard OK, smoke OK, installed).
+
+**Decisions**
+- **The roll comes at the swing's END** (the falling edge out of ReleaseMelee; the poll or a hit
+  callback sees it) - "after each melee swing", and the swing always completes. f = after that
+  swing's cost. f 1 → chance 0 → no dice drawn, but the roll is COUNTED (the peak row of the
+  summary must read 0%). Player / riders / non-battle missions are "not rolled", counted apart,
+  so the f rows hold only men who could step back.
+- **Queue, then the tick**: a yes is queued (`StepBackState.Pending`) and started by
+  `TickStepBacks` at the end of the same or next tick - never inside an engine callback (the
+  step-5 rule for `UpdateAgentProperties`, kept for scripted movement too).
+- **Our own timer, not vanilla's** `SetScriptedPositionAndDirectionTimed`: its timer would
+  later cancel a scripted job the game gave the man meanwhile. Time is read LIVE
+  (`StepBackMath.TimeUp`), so a shorter StepBackSeconds applies to running ones.
+- **The game's reasons before "time up"** in the same tick (`Check` first): a man handed to a
+  game job is never disabled over it.
+- **Hand-over vs detach**: ladder queue / using an object / moving to one = the game's own
+  scripted job → record dropped, NOT disabled. Detached without such a job → released (a
+  scripted frame nobody tracks would never end).
+- **Flags**: we pass `DoNotRun` (+ `NoAttack`); `OurFlags` = those (+ `ConsiderRotation`, which a
+  direction adds) that were not set before. After `DisableScriptedMovement` any of them still
+  set is cleared by hand and counted (`our flags … cleared by hand`) - expected 0 (item pickup
+  proves the engine drops them with the frame).
+- **Engine did not take it** (GoToPosition not set right after the call) → disabled again at
+  once and counted `engine did not take the scripted position`.
+- **Mission kind** once per mission by behaviour TYPE NAME ("Tournament", "Arena" - no SandBox
+  reference), naval by `IsNavalBattle / IsNavalRaidBattle`; live: `Mode == Battle`,
+  `!MissionEnded`, `!IsTeleportingAgents` (a scripted man would be TELEPORTED then).
+- **Mission end**: `CloseStepBacks` at the start of the Athletics summary releases everyone
+  through the engine (agents still live at `OnEndMissionInternal`); the teardown fallback only
+  drops records. After it no new step back can start (`_stepClosed`).
+- **"In formation vs loose"** = the formation's movement state at the start: holding (Hold /
+  StandGround) vs charging (Charge) vs no formation.
+- **Plumbing constants** (not gameplay numbers, like steps 5/5c's): `MaxHeightStep` 1 m,
+  `MaxStartsPerTick` 20, facing bins at cos ±0.5 (60° / 120°), moving at 0.2 m/s, "reached" at
+  0.35 m, the mid-step sample at half the time, "overdue" = time + 1 s.
+- Hideout boss fights run in battle mode: a tired boss may step back from the player (not
+  excluded; PLAYTEST 6d asks Anton).
+
+**Gotchas**
+- The smoke's fake agents have no native side: everything the step back asks the ENGINE is in
+  `IStepBackBody`; the logic itself reads only managed members (`IsMainAgent`, `MountAgent` =
+  `_cachedMountAgent`, `Name`). The smoke mounts a fake rider by writing `_cachedMountAgent` with
+  IL (never reflection on an Agent - the static initializer).
+- `GameStepBackBody.MissionAllows(null)` is false, so the older smoke steps (no Mission) never
+  roll - their "not a field battle" count is the proof.
+- A summary CLOSES the step back for the logic (`_stepClosed`); the smoke's master-switch step
+  reopens it by reflection after the summary step.
+- `SetScriptedPositionAndDirection`'s managed wrapper drops the native bool result - the
+  GoToPosition flag right after the call is the only "taken" signal.
+
+**UNVERIFIED - only the game can tell (PLAYTEST §6; the line that settles each)**
+1. A scripted man keeps FACING his enemy while he backs up (THE risk) →
+   `[summary] step back facing … mid-step (N sampled): facing his enemy X (…%), side-on …, back turned Z`
+   (Z near 0) and the first one's `mid-step facing his enemy (N° off), moving away (… m/s away)`.
+2. The engine takes the scripted position on a formation man mid-melee →
+   `first step back this mission: … (GoToPosition set: the engine took it)`; summary
+   `not started … engine did not take the scripted position` absent or small.
+3. The formation takes him back after `DisableScriptedMovement`, nothing lingers →
+   `release check: … still on right after 0 (must be 0), our flags … cleared by hand 0 | … overdue 0 … 0`.
+4. He keeps his guard (blocks) while scripted with NoAttack →
+   `guard: hits taken while stepping back N - blocked B (P%) … everyone else on foot … (Q%)`, P not far below Q.
+5. NoAttack holds his swings → `swings started while stepping back 0`.
+6. He actually moves (walk speed, tired run curve) → `moves: avg X m of 2.00 asked` (0.8-1.5 expected).
+7. The navmesh checks (height, straight way) are right on walls and stairs → siege summary
+   `spot not level`, `no straight way back`, and nobody seen stepping off a wall.
+8. Tournament / arena behaviour names → `[stepback] this mission is a tournament or arena fight (<TypeName>) …`.
+9. `CanBeAssignedForScriptedMovement` keeps ladders / siege engines / pickups out → `busy (…) N` in sieges.
+10. Formations keep their shape with 50 at once → Anton's eyes + `most at once`.
+- **If 1 fails** (backs turned): the fallback is behaviour values - `agent.SetAIBehaviorValues`
+  (Melee kind) toward vanilla's DefensiveArrangementMove curve (4, 5, 0, 20, 0) scaled by f,
+  restored by `agent.RefreshBehaviorValues(movementOrder, arrangement)`; the same roll, queue,
+  timer and release paths (only `IStepBackBody` changes: a `BehaviourStepBackBody`).
+
 ## Steps 6-9 — the Athletics READ API (from steps 5, 5c)
 
 Static, allocation-free, main thread (call from a view's `OnMissionScreenTick`), in

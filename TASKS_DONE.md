@@ -222,3 +222,50 @@
   UNVERIFIED in game: skill read, the engine honouring mid-curve attack speeds, MaxSpeedMultiplier
   / MountSpeed live, the cap at the hit, effort units / walk ratio, horse-charge rider f,
   recompute cost at 1000 agents - each with its summary line in AI_NOTES. (2026.09.27 16.40.48)
+- [x] **Step 5d — tired fighters step back.** The LITERAL spec, built on the engine's own
+  scripted movement. RESEARCH (AI_NOTES "Step 5d"): the formation frame (rewritten every agent
+  tick via `ParallelUpdateFormationMovement` → `SetFormationFrameEnabled`) and the scripted frame
+  (`SetScriptedPosition[AndDirection]` → GoToPosition, until `DisableScriptedMovement`) are
+  separate native states - the formation never overrides a scripted step and takes the man back
+  when it ends; vanilla scripts formation men mid-battle itself (item pickup with NoAttack,
+  ladder queues); `CanBeAssignedForScriptedMovement` is vanilla's own gate (detached, ladder,
+  object, running away, already scripted) and vanilla systems check it, so nothing takes our man
+  mid-step. Weighed: RBM's BackStep (decompiled: Harmony on `Formation.GetOrderPositionOfUnit` -
+  needs Harmony, patches formation code), behaviour values (clean but "hang back", not a step -
+  kept as THE fallback if backs turn), `SetMaximumSpeedLimit` (overwritten every tick), rank swap
+  `SwitchUnitLocations` (rebuilds the unit list), vanilla's unused timed helper (its timer could
+  cancel a later game job - our own timer instead). BUILT: when a counted melee swing ENDS, an
+  AI fighter on foot in a field battle rolls `StepBackMaxChancePercent` × (1 − f) (f after the
+  swing's cost; f 1 = 0%, no dice); a yes is queued and started from the tick (never in an engine
+  callback): `SetScriptedPositionAndDirection` to the spot `StepBackDistance` straight away from
+  his target, facing him, DoNotRun + NoAttack (`StepBackHoldAttacks`); released after
+  `StepBackSeconds` (read live). SAFETY: player, riders, non-battle modes, tournaments/arena (by
+  behaviour NAME), naval, teleporting, mission ending never roll; the tick refuses busy men
+  (vanilla's gate), routing, shield wall/square/circle, retreat orders, no enemy within
+  `StepBackEnemyRange`, a spot off the navmesh / >1 m height step / no straight way,
+  `StepBackMaxAtOnce`, >20 starts a tick, the engine not taking it (then disabled at once).
+  RELEASED on every path: time, order/arrangement/formation change, detach, player, mount, rout,
+  switch-off (ModEnabled/AthleticsEnabled/StepBackEnabled: everyone at once, next tick), mission
+  end (through the engine before the summary); left the field = no engine call; handed over to
+  a game job (object, ladder queue) = never disabled; the game's reasons checked before "time
+  up"; leftover flags of ours cleared by hand and counted. +7 settings (45, new group "Tired
+  fighters step back"; the 4 planned rows + `StepBackEnemyRange` 4, `StepBackHoldAttacks`,
+  `StepBackMaxAtOnce` 50), defaults.json refreshed, DESIGN §2 bullet = what was built +
+  interpretation 11. SELF-VERIFYING LOGS: `[stepback]` mission start (rules + technique), mission
+  kind, settings / on-off changes, the FIRST step back in full (f, chance, from → spot, enemy,
+  facing before, formation + order, flags before → after; its end: moved, to the spot, mid-step
+  and end facing, motion, hits blocked/landed, swings, flags after release), verbose per
+  start/end/refusal; 8 `[summary]` lines - rolls by f band (peak row must be 0%), starts
+  (holding / charging / no formation, most at once) + refusals by reason, ends (completed vs cut
+  short by reason), moves (m, s), FACING at start / mid-step / end + motion, the GUARD (blocked %
+  while stepping vs everyone else, swings while stepping), release checks (still scripted after
+  release, overdue, at mission end - all must be 0). Core `StepBack.cs` + `StepBackStats.cs`, 19
+  tests (207 → 226); module `AthleticsLogic.StepBack.cs` + `StepBackBody.cs` (IStepBackBody seam);
+  OfflineSmoke 33 → 34 steps (the real bookkeeping with a stand-in engine side: rolls by f, queue,
+  cap, live time, every release path, logs, summary; the master-switch step releases a running
+  one). Build 0 warnings, tests green, AssemblyGuard OK, smoke OK, deployed. PLAYTEST §6 "Step
+  back" (see it, force it, switch it off, where it must not happen, the summary, what counts as
+  broken + the lines); CLAUDE Layout. UNVERIFIED in game: facing while scripted (THE risk), the
+  engine taking it mid-melee, nothing lingering after release, the guard and NoAttack, real
+  distance, navmesh checks on walls, tournament names, formations' shape at 50 at once - each
+  with its summary line in AI_NOTES. (2026.09.27 17.15.26)

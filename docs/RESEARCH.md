@@ -755,6 +755,34 @@ switch can flip mid-battle. Hand edits of `config.json`: re-read in
 
 ---
 
+## L. Moving one AI man back (step 5d addendum, verified in source 2026-09-27)
+
+Full notes, the alternatives and the choice: AI_NOTES "Step 5d".
+
+- **Two native frames.** The formation frame is rewritten every agent tick
+  (`Agent.TickParallel` → `HumanAIComponent.ParallelUpdateFormationMovement` →
+  `Agent.TrySetFormationFrame` / `SetFormationFrameEnabled`, plus `AdjustSpeedLimit` →
+  `SetMaximumSpeedLimit` every tick). The scripted frame is `Agent.SetScriptedPosition(ref
+  WorldPosition, addHumanLikeDelay, AIScriptedFrameFlags)` / `SetScriptedPositionAndDirection(…,
+  radians, …)`; it sets `AIScriptedFrameFlags.GoToPosition` and lasts until
+  `DisableScriptedMovement()`. Formation code never writes it.
+- **Vanilla scripts formation men mid-battle**: item pickup (`HumanAIComponent.ItemPickupTick` →
+  `MoveToUsableGameObject`, flag `NoAttack`; done → `StopUsingGameObject` → `DisableScriptedMovement`),
+  `LadderQueueManager`, hideout duel spectators. Unused timed helper:
+  `HumanAIComponent.SetScriptedPositionAndDirectionTimed(pos, radians, seconds)`.
+- **Vanilla's gate**: `Agent.CanBeAssignedForScriptedMovement()` (active, AI, not detached, not
+  running away, no GoToPosition, not using / moving to an object, not in a ladder queue) - item
+  pickup, banner bearers, `UsableMachine.AddAgent`, `StrategicArea.AddAgent` check it.
+- Flags: GoToPosition 1, NoAttack 2, ConsiderRotation 4, NeverSlowDown 8, DoNotRun 0x10.
+  Facing: `Vec2.RotationInRadians` = atan2(−x, y). Navmesh: `WorldPosition.SetVec2` +
+  `GetNavMeshZ()` (NaN off the navmesh), `Agent.CanMoveDirectlyToPosition(in Vec2)` (native).
+- Tournaments and arena fights run in `MissionMode.Battle` (their controllers set it) - told
+  apart by their behaviours. `Mission.IsTeleportingAgents` makes a scripted position a teleport.
+- **UNVERIFIED** (PLAYTEST §6): whether a scripted man keeps facing his enemy and blocking while he
+  backs up; the step-5d summary measures both.
+
+---
+
 ## UNVERIFIED — to check in the named step
 
 | # | What | Step |
@@ -769,3 +797,4 @@ switch can flip mid-battle. Hand edits of `config.json`: re-read in
 | 8 | Bar placement vs vanilla hero bar across resolutions / UI scale | 6 |
 | 9 | Compatibility with RBM (Harmony combat patches) | 10 |
 | 10 | Multi-projectile weapons firing `OnAgentShootMissile` more than once per release | 5 |
+| 11 | A scripted man keeps facing his enemy and his guard while he steps back (§L) | 5d |
