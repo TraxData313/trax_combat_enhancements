@@ -2,7 +2,7 @@ BUILD ORDER (one step at a time — [~] = in flight, see CLAUDE.md "manager prot
 - [x] 1. Repo, docs, design spec, public GitHub
 - [x] 2. Research: verify every hook against the 1.4.8 game → docs/RESEARCH.md (no code) (see AI_NOTES)
 - [x] 3. Scaffold: solution, Core + tests, module, config file with instructions, MCM (optional), logging, deploy — loads in game, does nothing yet
-- [ ] 4. Damage randomness ±50% — first playable
+- [~] 4. Damage randomness ±50% — first playable
 - [ ] 5. Endurance core: blow costs, hero/leader multipliers, regen, 20% speed when empty
 - [ ] 6. Player endurance bar (RBM posture style)
 - [ ] 7. Bar for the NPC I look at (toggle)
@@ -12,12 +12,11 @@ BUILD ORDER (one step at a time — [~] = in flight, see CLAUDE.md "manager prot
 - [ ] 11. Steam packaging — upload only on Anton's yes
 
 PLAYTEST (Anton, all at once at the end — script in docs/PLAYTEST.md):
-- [ ] Play with RBM disabled (it has its own stamina/posture)
+- [ ] Play with RBM disabled — declared NOT compatible (Anton, 2026-09-27; the mod warns if it sees it)
 
 BUGS:
 
 NOT DECIDED (defaults in place, Anton can flip):
 - [ ] Hero multiplier: 0.75 (default now) or 0.5? (see DESIGN interpretations)
 - [ ] Kicks / shield bashes cost endurance? (free now)
-- [ ] You wrote "RCM" — did you mean RBM (Realistic Battle Mod)? Its posture bar is the style reference now
 - [ ] Endurance in tournaments / arena too? (on for now)
