@@ -9,7 +9,7 @@ BUILD ORDER (one step at a time — [~] = in flight, see CLAUDE.md "manager prot
 - [x] 5d. Tired AI fighters step back after melee swings — fresh ones take their place (DESIGN §2)
 - [x] 6. Player Athletics bar (RBM posture style) — number, 75% peak marker, green/blue/yellow/orange/red
 - [x] 5e. Attack speed = the whole attack RATE (wind-up + swing + recovery + AI pause): 0.5 → one attack per 2 s instead of 1 s (DESIGN §2) — right after 6
-- [ ] 9. Orders menu: strip under the formation cards (below the arrows) — Athletics ± spread + health (no UIExtenderEx) — kept by Anton: "some vision of the state of the troops"
+- [~] 9. Orders menu: strip under the formation cards (below the arrows) — Athletics ± spread + health (no UIExtenderEx) — kept by Anton: "some vision of the state of the troops"
 - [ ] 10. Self-review + polish pass (Anton's playtest comes after, all at once) — hide the settings of the LATER features from MCM/config so no switch does nothing
 - [ ] 11. Steam packaging — upload only on Anton's yes
 
