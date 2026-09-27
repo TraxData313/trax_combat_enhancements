@@ -246,6 +246,10 @@ air (misses cost too), counting — click as fast as you can.
    work at once.
 4. **Bow or javelins**: shoot; the next arrow is nocked as usual, but the draw waits until the bar
    is full (held, it draws the moment it fills). A bow you are already drawing is never cancelled.
+5. **Only your own hands (step 17)**, if they come up: man a ballista or a mangonel right after a tired
+   swing - it fires at the first click (the pause holds your weapon, not a machine); switch to RTS
+   Camera's free camera while the bar refills - the bar is full at once: while the AI drives your hero
+   he has no pause (REVIEW R25 - "For Anton"), and no "the input gate did not stop it" line comes of it.
 - Log (always; the first of each in full, the rest rate-limited):
   - `[athletics] YOU: attack pressed at … s during your own attack (no chained blow below the peak line) - swallowed: the engine never saw it (no wind-up); the Attack recovery bar flashes; keep it held and the attack starts the moment the pause ends`
     and `[athletics] YOU: attack pressed early at … s with 0.62 s of your pause left - swallowed, bar flashed`
@@ -864,10 +868,15 @@ header names the technique: `==== scene …, mod ON, AI holds: Input (the AI's o
   did not); `AI attacks that started while … held him anyway` about 0; `holds that overlapped a step back`
   > 0 in any battle with step backs (the timer survived them). With RTS Camera the callback is `already on`
   for everyone; without it we turn it on and off per man (`turned on / off` counts).
+  Reading `never called us during` (step 17, REVIEW R28): judge it by the RATIO - a handful against hundreds
+  of holds by input, with `calls while held` at tens a second per held man, is not a dead hook (a man knocked
+  down through a short hold may not be asked for input); most holds never called, with calls near 0, is.
 - Once per battle: the first held man and the first step back in full (D1's lines) - the input bits
   before → after, the vector written, the calls; `melee hits taken while held H (blocked B)`.
-- **Stop and tell Claude**: `[rate] WARNING: … the engine never called our input hook …`, or `[error]`
-  lines at the site `hold.input-hook` (the component's own swallowed errors).
+- **Stop and tell Claude**: `[rate] WARNING: … the engine never called our input hook …` together with
+  the summary's `never called` count being a large share of the holds (the warning alone fires on the first
+  one - see the ratio rule above), or `[error]` lines at the site `hold.input-hook` (the component's own
+  swallowed errors).
   Must NOT happen (the `not rolled` / `not started` reasons): you, riders, archers shooting; *Shield
   wall*, *Square*, *Circle*; retreating or routing; ladders, siege towers and engines (`busy (the game's
   own check: …)`); a wall's edge or stairs (`spot not level`, `no straight way back`, `spot off the navmesh`);

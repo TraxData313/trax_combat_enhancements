@@ -140,8 +140,9 @@ defaults.json                 THE ONE TRUTH for every default value (DESIGN §2c
                               its value, its explanation + range as // lines. Anton tunes it and
                               pushes; embedded in TraxCombat.Core.dll at build. After a schema
                               wording/range/order change: dotnet run --project tools/DefaultsTool -- refresh
-docs/REVIEW.md                step 10a's code review: every finding (R1-R24) with its severity, place,
-                              scenario and status (fixed in which commit / not a bug / deferred / For Anton)
+docs/REVIEW.md                the code reviews: step 10a (R1-R24) and step 17's second one over steps 12-16
+                              (R25-R36) - every finding with its severity, place, scenario and status (fixed
+                              in which commit / not a bug / deferred / For Anton)
 docs/PLAYTEST.md              THE script of Anton's one playtest session (step 10b: one ordered run,
                               parts A-G, ~2 h; appendix L1-L8 = every log line and summary block)
 src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-tested:
@@ -367,7 +368,8 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               engine call; handed over to a game job = never disabled), the
                               guard count (OnMeleeHit), [stepback] lines, the first one in full;
                               step 16: the body by technique at the START (StepBackBackpedal), the
-                              backpedal's wish on / off (on EVERY path), Steer every tick (the vector,
+                              backpedal's wish on / off (on EVERY path; step 17: one the game takes over
+                              is still released - our callback off, R27), Steer every tick (the vector,
                               arrived, edge ahead), every-0.25 s samples (the first's written into its
                               end line), a hold running then marked overlapped, the switch logged
   Missions/StepBackBody.cs    IStepBackBody = the ENGINE side of the step back behind one seam
@@ -414,7 +416,10 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               AttackMask while held), swallowed presses, the flash, hold-to-attack,
                               missed attacks, releases (switched off, not you, mission end), the tick's
                               safety net, TryGetPlayerRecovery (the recovery bar's read), [athletics]
-                              YOU lines; SmokePlayer (the smoke's stand-in for Mission.MainAgent)
+                              YOU lines; SmokePlayer (the smoke's stand-in for Mission.MainAgent); step 17:
+                              only YOUR hands - YouDrive (no pause while the AI drives your hero - RTS Camera's
+                              free camera - R25; SmokePlayerAiControlled), a game object in use (a siege engine
+                              fires on your attack bits) never held (R26)
   Missions/PlayerAttackGate.cs  step 13: a MissionLogic added then moved to INDEX 0 of
                               Mission.MissionBehaviors (SubModule, OnMissionBehaviorInitialize) - it
                               pre-ticks right after MissionMainAgentController wrote the input

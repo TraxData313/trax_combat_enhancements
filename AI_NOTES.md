@@ -2139,3 +2139,35 @@ of 0.3 s or more with no call from the engine = "never called".
 9. RTS Camera beside it (Anton runs it) → L6b `the callback already on for N of them` = all hooked men; volley /
    defensive hold unaffected (his eyes); `the player or a non-AI agent passed untouched` counts the men he took over.
 10. Cost → `Athletics tick cost` against a step-15 log of the same size.
+
+## Step 17 — review (DONE 2026-09-28)
+
+The second fresh-eyes review, over steps 12-16. The findings are `docs/REVIEW.md` R25-R36 (0 blockers, 0 majors,
+4 minors - 3 fixed, 1 deferred - 1 For Anton, 8 not a bug). The lessons worth keeping:
+
+- **"The player" is two facts: Mission.MainAgent AND your hands on him.** RTS Camera's free camera sets
+  `MainAgent.Controller = AI` (its `Utility.AIControlMainAgent`) - the agent is still `IsMainAgent`, but the
+  controller writes no input. Anything that acts through the player's INPUT must also ask `!IsAIControlled`
+  (a pointer read, safe in a hit callback) - else it starts states it cannot enforce, and the checks that prove
+  it works turn into false alarms (R25). Everything that acts on the AI's input refuses `IsMainAgent`, so an
+  AI-driven hero falls between the two (For Anton).
+- **Attack bits are not only attacks.** `RangedSiegeWeapon.OnTick` fires on its pilot's `MovementFlags &
+  AttackMask` (R26). Before clearing or rewriting any input bit, grep the decompile for every READER of that bit
+  (`MovementControlFlag.Attack`, `AttackMask`, the raw 960 / 0x3C0) - one grep found the only other reader.
+- **A release that "does nothing in the engine" is still a release of OUR state.** "Handed over to the game's job =
+  never release" was written for the scripted walk (its frame is the game's now); the backpedal inherited the rule,
+  but its release only stops our own input and our own callback flag, so skipping it leaked the flag (R27). When a
+  new technique reuses an old end rule, re-ask what each technique's release actually touches.
+- **A "must be 0" count needs its denominator next to it.** A single-event warning ("the engine never called our
+  hook") can be a stunned man, not a dead hook; the reading rule is the ratio against all holds plus the calls per
+  second (R28, PLAYTEST L6b). Write new diagnostics as "N of M" from the start.
+- **Mutation-check every smoke check you add.** Reverting the three fixes made 11 checks fail (and reproduced R25's
+  false alarm as `started anyway 2, early 2`) - that is what makes the check worth keeping. A new smoke section can
+  also shift later sections' state (here: extra swings drained the stand-in player into another f band) - reset what
+  you spent (`ResetFull`) before handing over.
+- **Checked and fine, so nobody re-derives them** (REVIEW R29-R36): the player's hold cannot outlive its attack; the
+  gate's move to index 0 is safe (`OnMissionBehaviorInitialize` runs while `AfterStart` enumerates SUBMODULES; the
+  only writer of `MovementFlags` is `MissionMainAgentController`); the component is added only between
+  `OnMissionTick` and the async agent tick; `DefendDown` is only ever a replaced attack wish; the backpedal ends on
+  `StepBackSeconds` whatever else happens; R1 stays closed; the refill curve's closed forms re-derived; no per-tick
+  allocation in the new paths.
