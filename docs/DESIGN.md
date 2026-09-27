@@ -83,6 +83,11 @@ regen.)
   - **Attack speed** = S + (1 − S) × f, S = `ExhaustedAttackSpeedPercent` (20%): melee swings
     and thrusts, bow draw, crossbow reload, throws. Full speed in the peak zone, 20% at 0 —
     a straight line, no cliff. **Exhausted** means E = 0 (for logs and bars).
+    **What "attack speed" means (Anton, 2026-09-27): the RATE of attacking, the whole cycle
+    — ready/wind-up, swing, recovery, and for the AI the pause before its next attack — not
+    only the swing animation.** At a multiplier of 0.5 a fighter who attacked once a second
+    attacks once every two seconds. The combat itself slows down. The summary measures the
+    real interval between attacks and compares it with this target (step 5e).
   - **Run speed on foot** = M + (1 − M) × f, M = `MinMoveSpeedMultiplier` (0.3). Tired men
     slow down, so fresher men overtake them. Horses keep their speed (Anton's pick):
     `MountMinSpeedMultiplier` (1.0 = unaffected; lower it to let a tired rider's horse slow on
