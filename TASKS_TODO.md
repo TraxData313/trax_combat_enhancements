@@ -15,8 +15,8 @@ BUILD ORDER (one step at a time — [~] = in flight, see CLAUDE.md "manager prot
 - [x] 11. Steam packaging — upload only on Anton's yes (package ready — upload waits for Anton's yes after the playtest)
 - [x] 12. Playtest fixes, round 1 (see BUGS) — bar outside battles, MCM stops cleanly; exit hang not ours (see AI_NOTES)
 - [x] 13. PAUSE ONLY (Anton's playtest call): no slow-mo, a no-attack timer after each attack (you + AI), countdown "1.3 s" by the bar, bar flashes if you swing too early (DESIGN §2) — + "Attack recovery" bar ABOVE the Athletics bar: empties on attack, refills over the pause, secs inside, flashes on an early press (Anton, 2026-09-27) — built: your attack button waits (hold it = attack when full), AI waits guard up (melee, ranged, riders); AI "decide less" now off; your Athletics row moved down to make room (see AI_NOTES)
-- [ ] 14. GO (Anton, night of 2026-09-27: "make them slow down to 70% speed") — run-speed floor 0.3 → 0.7 · refill faster when low, slower when full: straight line, rate near full = 50% of rate near empty (slider; 100 = the flat refill he played), empty→full still 60 s at a walk — after 15
-- [ ] 16. Step back that WORKS: men back off FACING the enemy, guard up (the path step 15 recommends — public API first; no new hard dependency; if nothing clean exists, the best non-Harmony fallback, e.g. "hang back" AI values) + the attack timer survives a step back (see BUGS) — overnight, no questions (Anton)
+- [~] 14. GO (Anton, night of 2026-09-27: "make them slow down to 70% speed") — run-speed floor 0.3 → 0.7 · refill faster when low, slower when full: straight line, rate near full = 50% of rate near empty (slider; 100 = the flat refill he played), empty→full still 60 s at a walk — after 15
+- [ ] 16. Step back that WORKS + the GUARD REALLY UP (BATTLE_PACING lever #2 = a spec bug fix: DESIGN says blocking is never held): a per-man AgentComponent on OnAIInputSet clears only the attack bits during the timer (replaces NoAttack, which also killed their blocking), walks the step back BACKWARDS facing the enemy via the AI's own input, and keeps the timer through a step back (see BUGS) — overnight, no questions (Anton); the other levers wait for Anton's pick
 - [x] 15. Research (no code): how RBM makes battles longer and more tactical, WITHOUT its unit overhaul — a menu of levers (+ our own ideas) for Anton to pick; 80v80 infantry ended in 4–5 min (Anton, 2026-09-27); + how RBM steps a man back FACING his enemy (ours turn their backs — see BUGS)
 
 PLAYTEST (Anton, all at once at the end — script in docs/PLAYTEST.md):
@@ -30,6 +30,7 @@ LATER (moved off the build order by Anton, 2026-09-27 — designs kept in DESIGN
 - [ ] 8. Squad bars above my formations: average ± 1 std + average health
 
 BUGS:
+- [ ] Tired AI men are DEFENCELESS (step 15's find, log 23:00): while the attack timer holds them (engine NoAttack) they block 2–13%, while stepping back 4–6%, vs 33–45% for everyone — 41% of landed melee hits struck men in those states → step 16
 - [ ] Step back turns their backs (Anton saw it twice; log 22:48 + 23:00 confirms): 100% face the enemy at the start, ~80% back turned mid-step, only ~0.6 m of 2 m moved, block 5% vs 33–45% — the scripted "go to" walk turns them around → step 16 (after 15's research + 14)
 - [ ] Empty AI attacks too fast (log: f 0 cycle 2.2 s vs target 8.5–9.3 s): at empty the step back fires every swing and a started step back DROPS the pace hold (R1's rule) — so after 1.5 s he swings again → step 16: the timer must survive a step back
 
