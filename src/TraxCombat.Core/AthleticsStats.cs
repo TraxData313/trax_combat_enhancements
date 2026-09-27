@@ -376,6 +376,7 @@ namespace TraxCombat.Core
                     var st = formations[i].Value;
                     f.Append(i == 0 ? " " : " | ").Append(formations[i].Key).Append(' ').Append(st.Describe());
                     if (!double.IsNaN(st.MeanPeakShare)) f.Append(" f avg ").Append(N2(st.MeanPeakShare)).Append(", ").Append(st.InPeak).Append(" at full strength");
+                    if (!double.IsNaN(st.MeanHealth)) f.Append(", health avg ").Append(Math.Round(st.MeanHealth * 100).ToString("0", CultureInfo.InvariantCulture)).Append('%');
                 }
                 lines.Add(f.ToString());
             }
