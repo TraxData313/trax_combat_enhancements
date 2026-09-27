@@ -42,3 +42,39 @@
   not installed — RBM is (its posture/stamina bars are the style reference; playtest with RBM
   off). 13 design implications + 7 proposed parameters await Anton at the top of RESEARCH;
   AI_NOTES steps 3–9 hold the build pointers. (2026.09.27 13.36.27)
+- [x] **Step 3 — scaffold.** The mod loads and does nothing yet — on purpose: every later
+  feature plugs into a frame that is already proven. Core (netstandard2.0, no game refs):
+  `SettingsSchema` declares all 32 DESIGN settings once (range, MCM group, plain-words
+  description, all Live) and everything — file, MCM page, log, tests — walks it;
+  `TraxSettings.Shared` is the one live object read AT USE TIME (typed property per key,
+  `Set(key, value, source)` → `[config] X: old → new (source: …)`, `Version`, `Changed`);
+  `ConfigFile` writes config.json with a header and a `//` explanation + default/range above
+  every key and reads it tolerantly (comments, trailing commas, any casing, "0,75"); the
+  FILE-REWRITE RULE (`ConfigMerge`): at every write the disk file is re-read — MCM wins only
+  for the keys it changed since the last write (`EditTracker`, so moved-and-back or Cancel
+  never counts), the disk wins for the rest, so a hand edit made while the game runs is never
+  lost; unknown keys are carried along, a broken file is backed up first. 53 xUnit tests, one
+  parsing DESIGN.md's table so doc and code cannot drift. Module (net472,
+  `TraxCombatEnhancements.dll`): config.json + `trax_combat.log` in
+  `Configs\TraxCombatEnhancements\` via `EngineFilePaths.ConfigsPath`; file created on first
+  run, re-read at startup, every game start/load and every mission start; the log is tagged,
+  2 MB-trimmed, verbose lines only with `VerboseLogging` and rate-limited, errors with stack
+  (rate-limited, red in-game line); MCM page via the FLUENT builder, `ProxyRef` per setting
+  (live), format "none", Done → file. Two findings corrected RESEARCH §H: a lambda with an
+  MCM-typed parameter compiles to a cached static FIELD typed on MCM — the very load trap
+  (proven with a probe DLL; McmBridge passes `Action<object>` instance methods instead), and
+  MCM's "default" preset must stay because MCM.UI's Reset buttons apply it — we fill it with
+  DESIGN's defaults before `BuildAsGlobal` (first value wins). Both model DECORATORS
+  registered in `OnGameStart` as pure pass-throughs (every abstract AND virtual member
+  forwarded) + the tournament `SetAILevelMultiplier` fix via a compiled private-field read;
+  `EnduranceLogic` in every SP mission logs start/first tick/deployment and a `[summary]`
+  block (agents built/removed/left, errors). RBM → `[compat]` + one yellow message (manager's
+  f7dc70c). Tools: AssemblyGuard (MCM, Harmony, ButterLib, UIExtenderEx, NavalDLC,
+  CustomBattle = hard fail; 0 errors, 0 warnings); OfflineSmoke — 16 checks on the real DLL
+  with the game's DLLs on .NET Framework, no game: GetTypes() with MCM refused, every config
+  flow, the tournament fix, then the MCM page built by MCM 5.12.3's own builder (32 settings,
+  types, ranges, hints, groups), live sliders, Reset, Done; `deploy.ps1` runs build → guard →
+  smoke → install as `TraxCombatEnhancements.Dev` (deployed; game was not running).
+  UNVERIFIED in game (AI_NOTES Step 3): launcher load with/without MCM, MCM timing and
+  mid-battle menu, decorators' base models, summary on every ending. PLAYTEST §1 has the lines
+  that prove each. (2026.09.27 14.13.58)
