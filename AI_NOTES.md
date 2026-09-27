@@ -905,7 +905,127 @@ defaults 205 / 12 / 62 / 54 = under the hero bar's fill). 52 settings.
 - Hide/show reasons: every `[hud] player bar: layer removed at … - <reason>`; the summary's
   `removed Nx (…)`, `hidden: …`.
 
-## Step 7 — Looked-at NPC bar
+## Step 5e — Attack rate: the whole cycle follows m (research 2026-09-27)
+
+Anton (DESIGN §2, "Attack speed"): the RATE of attacking, not the swing animation - at m 0.5 a
+fighter who attacked once a second attacks once every two seconds. m = S + (1 − S) × f is step
+5c's attack multiplier (`TrackedAgent.SpeedMultiplier`), already applied by the stat decorator.
+
+**The attack cycle on action channel 1** (v1.4.8 `Modules\Native\ModuleData\action_types.xml` +
+`Agent.ActionCodeType`)
+- Melee: `ReadyMelee` (19, stage AttackReady - the wind-up, then the blow held ready) →
+  `ReleaseMelee` (20, AttackRelease - the swing AND its follow-through; a hit on flesh stays in it)
+  → [`BlockedMelee` (22): `act_blocked_*` / `act_quick_blocked_*`, the attacker's recoil when his
+  blow is blocked or parried; `ParriedMelee` (21) is only the couched-lance / braced-spear
+  "parried" actions] → anything else (idle, guard, defend, flinch) = the PAUSE → the next ready. A
+  chained blow goes Release → Ready directly (`act_ready_continue_*`; native
+  `percentage_to_quick_ready_chance_for_continued_action` 0.85).
+- Ranged: `ReadyRanged` (15 - the draw, then the hold / aim) → `ReleaseRanged` (16) /
+  `ReleaseThrowing` (17) → `Reload` (18: bow `act_reload_bow_*` = nocking the next arrow,
+  crossbow `act_reload_crossbow*` mid + last phase, javelins / stones taking the next one) → pause
+  → the next ready.
+
+**Which property drives which phase** (the engine reads driven properties natively - its formula
+is not visible; this is what the managed code and the data show)
+- `SwingSpeedMultiplier` (66) / `ThrustOrRangedReadySpeedMultiplier` (67): attack animation
+  speed of swings / of thrusts, bow draws and throws. Sandbox: 0.93 + the weapon-skill effect +
+  perks (SwiftStrike …), assigned with `=` every recompute. Natively combined with the weapon's
+  own speed and the global `ready_speed_multiplier` 2.2 / `release_speed_multiplier` 1.2
+  (native_parameters.xml) → they scale the READY (wind-up) and the RELEASE (swing incl. its
+  follow-through). Recovery after a flesh hit is still the release (the native on-hit slow-down,
+  `on_weapon_hit_slow_down_factor_swing` 0.6 then `…_speed_regain_acceleration` 4.8, acts on top).
+- `ReloadSpeed` (69): reload (the CrossbowReloadSpeed skill effect; set for every weapon, 0.93
+  base) → the Reload phase. For bow nocking UNVERIFIED - the phase lines measure it.
+- `BipedalRangedReadySpeedMultiplier` (95, 0.6) / `BipedalRangedReloadSpeedMultiplier` (96,
+  0.95): global managed parameters copied onto every agent, an extra on-foot factor - left alone
+  (scaling them too could square the penalty; RESEARCH §C, unchanged).
+- `HandlingMultiplier` (68): weapon HANDLING (perks Athletics.Fury "weapon handling while on
+  foot", WrappedHandles, StrongGrip, Counterweight) - how fast the weapon moves between stances,
+  the DEFENCE side (native `defend_speed_multiplier` 3.2). RBM's stamina scales it (its tired men
+  block slower); we do NOT - Anton: blocking is never slowed. `OffhandWeaponDefendSpeedMultiplier`
+  (97, shields) likewise untouched.
+- The block / parry recoil (`BlockedMelee`): its speed is native (`added_animation_duration_for_
+  blocked_attacks` 0.095 s is added to it); no driven property is visibly tied to it → probably
+  NOT scaled. The phase lines measure it ("recoil after a block").
+- No driven property sets the time BETWEEN attacks: that is the AI's decision (below) - or, for
+  the player, his fingers.
+
+**Per-agent action speed - NOT safe, not built**
+- `Agent.SetCurrentActionSpeed(channel, speed)` → native `IMBAgent.SetCurrentActionSpeed`: an
+  ABSOLUTE playback speed for the current action, and there is no getter (IMBAgent exposes the
+  current action's type, stage, direction, priority, progress and weight - not its speed). We
+  could only OVERWRITE what the engine chose (weapon speed × skill × perks × ready/release
+  multipliers), never multiply it.
+- Vanilla calls it only on usage animations the managed code started itself
+  (`SiegeWeaponMovementComponent` every tick, `Ballista` reload) - never on a combat action.
+  Combat actions are started and paced by the native combat system, which rewrites a release's
+  speed every frame after an impact (the slow-down / regain above) - an override would be
+  overwritten or fight it. `SetActionChannel`'s speed argument only exists for actions WE start.
+- `SetCurrentActionProgress` (winding the progress back every tick) would drag the weapon's
+  collision sweep backwards - hit detection at risk.
+- The next lever IF the playtest shows the block recoil at fresh speed for tired men: read the
+  recoil's native speed from its progress rate, then `SetCurrentActionSpeed(1, m × that)` on the
+  rising edge into BlockedMelee only - an experiment behind a switch.
+
+**The AI's pause** - `AgentStatCalculateModel.SetAiRelatedProperties`, called by every stat
+model's UpdateHumanStats (Sandbox ~1107, CustomBattle ~345), assigns every Ai* value with `=` on
+every recompute (so our scaling after the base never compounds). `num` = AI level from the melee
+skill (× the tournament multiplier), `num2` = from the wielded weapon's skill.
+- `AIAttackOnDecideChance` (36) = clamp(0.1 × (0.16 easy | 0.48) × (3 − Defensiveness), 0.05, 1)
+  = 0.05-0.144: the chance to ATTACK at a combat decision. Vanilla lowers it itself for defensive
+  orders (Formation → `Agent.Defensiveness` setter → UpdateAgentProperties;
+  `Formation.IsDefenseRelatedAIDrivenComponent` groups it with the defence values) - the engine's
+  own "attack less often" knob. → × m (no 0.05 floor: m 0.2 must mean five times rarer).
+- `AIAttackOnParryChance` (8) = 0.08 − 0.02 × Defensiveness: the chance to strike back right after
+  a parry - a riposte is an attack. → × m.
+- `AiShootFreq` (3) = 0.3 + 0.7 × num2: how readily the AI looses. → × m.
+- `AiWaitBeforeShootFactor` (4) = 1 − 0.5 × num2 (0 for units in a formation with an
+  AmmoSupplyLogic - siege defenders: `Formation.AddUnit` → `ResetAiWaitBeforeShootFactor`): the
+  aim before the shot. → ÷ m (0 stays 0).
+- Left alone: `AIDecideOnAttackChance` (10) = 0.5 × Defensiveness (rises with defensiveness - the
+  chance to react to the ENEMY's attack: defence); `AIHoldingReadyMaxDuration` (50) /
+  `…VariationPercentage` (51) (how long a readied blow may be held, 0.25 → 0 s with the AI level;
+  RBM sets 1 s) - a longer hold keeps the weapon up and the guard down = worse defence, and the
+  pause belongs BEFORE the ready, guard up; `AiAttackCalculationMaxTimeFactor`,
+  `AiDecideOnAttack*`, `AISetNoAttackTimerAfterBeing*Ability`, `AiAttackOnParryTiming`, `AiKick`,
+  `AiTryChamberAttackOnDecide` (signed timing offsets and "ability" values, higher = a smarter AI -
+  scaling them changes the AI's skill, not its rhythm); every defence value.
+- Their exact native use is UNVERIFIED → the phase lines measure the AI's pause and aim by f.
+
+**A hold with the guard up - NoAttack**
+- `Agent.AIScriptedFrameFlags.NoAttack` (2) set with `SetScriptedFlags(GetScriptedFlags() |
+  NoAttack)` WITHOUT a scripted position is vanilla's own "do not attack" (`Agent.UseGameObject`
+  does exactly this for objects that lock the user's frame). Step 5d: NoAttack is an extra flag;
+  the combat AI keeps its target and (5d UNVERIFIED #4) its guard.
+- So a tired AI fighter can be held from attacking for a measured time after his swing, guard up
+  - the one lever that sets the pause exactly, however the native AI uses the chances above.
+- The flag word is SHARED (step back, item pickup, siege objects): set NoAttack only on a man with
+  neither GoToPosition nor NoAttack already; clear it only while no scripted frame, game object or
+  ladder queue is on him - otherwise wait until there is none (never cancel the game's job, never
+  leave ours behind). `IsUsingGameObject` / `IsInLadderQueue` / `IsMainAgent` are managed;
+  `IsAIControlled` and the flags are native (a seam for the smoke, like 5d's IStepBackBody).
+
+**The player** has no AI: his cycle is the ready (he cannot release before
+`min_ready_anim_weight_for_quick_attack` 0.95 of the wind-up) + the release (+ a block recoil) +
+his own pause. The first two follow the animation properties - hammering the attack button while
+tired gives the slowed rate IF the engine honours them (5c UNVERIFIED #2). The "you" lines settle
+it; his pause is his.
+
+**Choice**
+1. T1 (steps 5 / 5c, unchanged): swing, thrust/draw, reload × m - wind-up, swing, reload.
+2. T2 `AttackRateAiDecisions` (on, A/B switch): attack and riposte chances × m, shooting chance
+   × m, the wait before a shot ÷ m - in the same decorator pass, re-applied by the same
+   recomputes; switching it re-applies to every tired fighter (budgeted).
+3. T3 `AttackRatePaceHold` (on, A/B switch): after each MELEE swing of a tired AI fighter on foot,
+   NoAttack until his next release can come no sooner than his fresh cycle ÷ m after this one
+   (fresh cycle = his own release-to-release while m was 1, else the mission's AI average). Melee
+   only - a hold across a reload is another animal; ranged gets T1 + T2 and the lines tell whether
+   that is enough.
+4. Not built: per-agent action speed, AIHoldingReady (defence), Bipedal* (squaring).
+5. Measured, per f band, melee / ranged × AI / you: every phase, the cycle, m, the target (the
+   band's fresh cycle ÷ m) and measured ÷ target with a verdict word; the pace holds; the guard
+   by f (tired men must not block less). These supersede step 5c's "attack speed check" lines.
+
 
 - `TargetAthleticsView : TraxHudView` - the recipe above (Step 6, "A new view"). Own raycast
   `Mission.RayCastForClosestAgent` from `MissionScreen.CombatCamera` every `HudRefreshSeconds`
