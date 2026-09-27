@@ -23,7 +23,8 @@ namespace TraxCombat.Missions
     ///             with an ON one (DESIGN §4).
     /// The Athletics engine (DESIGN §2, step 5) lives in AthleticsLogic.Engine.cs (tracking,
     /// blow detection, regen, the speed penalty, hot swap), its read API for the HUD steps 6-9 in
-    /// AthleticsLogic.Api.cs, its log lines and summary in AthleticsLogic.Log.cs.
+    /// AthleticsLogic.Api.cs, its log lines and summary in AthleticsLogic.Log.cs, the HUD views'
+    /// attach (first tick) and their [summary] lines in AthleticsLogic.Hud.cs (step 6).
     ///
     /// Every hook is wrapped: an exception is logged as [error] with its stack and swallowed -
     /// the mission carries on as vanilla (no cost, no penalty).
@@ -101,6 +102,15 @@ namespace TraxCombat.Missions
                 catch (Exception e)
                 {
                     TraxLog.Error("mission.OnMissionTick", e);
+                }
+                try
+                {
+                    // Steps 6-9: the HUD views join the mission screen now (not earlier - RESEARCH §G).
+                    AttachHud();
+                }
+                catch (Exception e)
+                {
+                    Failed("hud.attach", e);
                 }
             }
             try
@@ -282,6 +292,16 @@ namespace TraxCombat.Missions
             catch (Exception e)
             {
                 Failed("athletics.summary", e);
+            }
+            // The HUD (step 6 on): per view - time on screen, layer builds and why they went,
+            // colours shown, errors. The screen finalized the views before this runs.
+            try
+            {
+                WriteHudSummary();
+            }
+            catch (Exception e)
+            {
+                Failed("hud.summary", e);
             }
             TraxLog.Info("summary", "errors logged during this mission: " + (TraxLog.ErrorCount - _errorsAtStart));
             TraxLog.FlushSuppressedCounts();

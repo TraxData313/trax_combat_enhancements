@@ -1,0 +1,75 @@
+<Prefab>
+  <!--
+    Trax Combat Enhancements - YOUR ATHLETICS BAR (step 6, DESIGN §3.1).
+    Bottom right, under the vanilla health bar: the word "Athletics" (red "Exhausted" when empty),
+    the number "132 / 180", and a slim bar. Inside the bar, bottom to top:
+      the dark red wounded part (the whole inside; the reachable part covers it up to @Usable),
+      the reachable empty part, the coloured fill (@Fill, @FillColor), and the white peak marker
+      at @PeakLine over the bar's full height.
+    Data: Hud\PlayerAthleticsVM.cs. Every @binding's VM property has EXACTLY the widget property's
+    type (float / Color / bool / string) - Gauntlet converts only strings (AI_NOTES "Step 6").
+    Native sprites and brushes only (BlankWhiteSquare_9, AgentHUD.Interaction.Text). Sizes and
+    places are bound from the settings (PlayerBar*), in UI pixels of the 1080p layout - the game's
+    UI scale multiplies them like every vanilla widget. FillBarWidget draws a share of its own
+    width, so the fills need no pixel maths. A passive overlay: no widget takes mouse events.
+    The offline smoke parses this file: every element a widget type of the game, every attribute
+    a real property, every brush / sprite a vanilla one, every @binding typed like the VM.
+  -->
+  <Window>
+    <Widget Id="TraxPlayerAthletics" WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" DoNotAcceptEvents="true" DoNotPassEventsToChildren="true">
+      <Children>
+
+        <ListPanel Id="Row" WidthSizePolicy="CoverChildren" HeightSizePolicy="CoverChildren" HorizontalAlignment="Right" VerticalAlignment="Bottom" MarginRight="@OffsetRight" MarginBottom="@OffsetBottom" StackLayout.LayoutMethod="HorizontalLeftToRight" IsVisible="@IsShown" DoNotAcceptEvents="true">
+          <Children>
+
+            <TextWidget Id="Label" WidthSizePolicy="CoverChildren" HeightSizePolicy="CoverChildren" VerticalAlignment="Center" MarginRight="6" Brush="AgentHUD.Interaction.Text" Brush.FontSize="18" Brush.FontColor="@LabelColor" Text="@LabelText" DoNotAcceptEvents="true" />
+
+            <TextWidget Id="Number" WidthSizePolicy="CoverChildren" HeightSizePolicy="CoverChildren" VerticalAlignment="Center" MarginRight="8" Brush="AgentHUD.Interaction.Text" Brush.FontSize="20" Brush.FontColor="@NumberColor" Text="@NumberText" DoNotAcceptEvents="true" />
+
+            <!-- the bar: its thin frame is this widget's own colour (red while exhausted) -->
+            <Widget Id="Bar" WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="@BarWidth" SuggestedHeight="@BarHeight" VerticalAlignment="Center" Sprite="BlankWhiteSquare_9" Color="@FrameColor" DoNotAcceptEvents="true">
+              <Children>
+
+                <!-- inside the 1-px frame; its own colour is the WOUNDED part (health caps the bar) -->
+                <Widget Id="Inside" WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" MarginLeft="1" MarginRight="1" MarginTop="1" MarginBottom="1" Sprite="BlankWhiteSquare_9" Color="#4A1C1CFF" DoNotAcceptEvents="true">
+                  <Children>
+
+                    <!-- the reachable part: dark grey up to the health cap -->
+                    <FillBarWidget Id="UsableBar" WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" FillWidget="UsableFill" MaxAmountAsFloat="1" InitialAmountAsFloat="@Usable" DoNotAcceptEvents="true">
+                      <Children>
+                        <Widget Id="UsableFill" WidthSizePolicy="Fixed" HeightSizePolicy="StretchToParent" HorizontalAlignment="Left" Sprite="BlankWhiteSquare_9" Color="#141414F0" DoNotAcceptEvents="true" />
+                      </Children>
+                    </FillBarWidget>
+
+                    <!-- the Athletics left, coloured by f -->
+                    <FillBarWidget Id="AthleticsBar" WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" FillWidget="AthleticsFill" MaxAmountAsFloat="1" InitialAmountAsFloat="@Fill" DoNotAcceptEvents="true">
+                      <Children>
+                        <Widget Id="AthleticsFill" WidthSizePolicy="Fixed" HeightSizePolicy="StretchToParent" HorizontalAlignment="Left" Sprite="BlankWhiteSquare_9" Color="@FillColor" DoNotAcceptEvents="true" />
+                      </Children>
+                    </FillBarWidget>
+
+                  </Children>
+                </Widget>
+
+                <!-- the peak line (AthleticsPeakPercent of the FULL pool): an invisible span of that
+                     share of the bar, with a 2-px white marker on its right end, the bar's full height -->
+                <FillBarWidget Id="PeakBar" WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" MarginLeft="1" MarginRight="1" FillWidget="PeakSpan" MaxAmountAsFloat="1" InitialAmountAsFloat="@PeakLine" DoNotAcceptEvents="true">
+                  <Children>
+                    <Widget Id="PeakSpan" WidthSizePolicy="Fixed" HeightSizePolicy="StretchToParent" HorizontalAlignment="Left" DoNotAcceptEvents="true">
+                      <Children>
+                        <Widget Id="PeakMarker" WidthSizePolicy="Fixed" HeightSizePolicy="StretchToParent" SuggestedWidth="2" HorizontalAlignment="Right" PositionXOffset="1" Sprite="BlankWhiteSquare_9" Color="#F2F2F2FF" DoNotAcceptEvents="true" />
+                      </Children>
+                    </Widget>
+                  </Children>
+                </FillBarWidget>
+
+              </Children>
+            </Widget>
+
+          </Children>
+        </ListPanel>
+
+      </Children>
+    </Widget>
+  </Window>
+</Prefab>

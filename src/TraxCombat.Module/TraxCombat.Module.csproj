@@ -90,6 +90,11 @@
       <HintPath>$(GameFolder)\bin\Win64_Shipping_Client\TaleWorlds.Engine.GauntletUI.dll</HintPath>
       <Private>false</Private>
     </Reference>
+    <!-- WidgetFactory.IsCustomType: is our prefab known to the game (step 6)? -->
+    <Reference Include="TaleWorlds.GauntletUI.PrefabSystem">
+      <HintPath>$(GameFolder)\bin\Win64_Shipping_Client\TaleWorlds.GauntletUI.PrefabSystem.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
     <!-- Lives under Modules\Native, not the main bin: MissionView, MissionScreen. -->
     <Reference Include="TaleWorlds.MountAndBlade.View">
       <HintPath>$(GameFolder)\Modules\Native\bin\Win64_Shipping_Client\TaleWorlds.MountAndBlade.View.dll</HintPath>

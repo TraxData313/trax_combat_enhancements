@@ -78,8 +78,13 @@ namespace TraxCombat.Tools
             Step("Athletics: the [summary] Athletics block", AthleticsSummary);
             // The step back (step 5d) - the real logic's bookkeeping with a stand-in for the engine side.
             Step("step back: rolled at every AI swing's end by f (0% at full strength, 100% empty), started from the tick, timed live, capped, refused by the safety checks, released on every path (time, order, hand-over untouched, left the field, switched off, mission end), logged and summarised", StepBackThroughTheLogic);
-            Step("master switch: ModEnabled off is vanilla at once - damage unrolled but recorded, penalties lifted, no costs, every step back released; on = everyone full", MasterSwitchIsVanillaLive);
+            Step("master switch: ModEnabled off is vanilla at once - damage unrolled but recorded, penalties lifted, no costs, every step back released, the Athletics bar gone; on = everyone full, the bar back", MasterSwitchIsVanillaLive);
             Step("Athletics: a failure is logged once per site, counted, and reported in the summary", AthleticsFailSafe);
+            // The HUD (step 6) - the prefab against the game's own types and files, the real view and
+            // ViewModel driven by made-up frames with a stand-in layer.
+            Step("HUD prefab: well-formed; every element a widget type of the game, every attribute a real property with a valid value, only vanilla brushes and sprites, every @binding typed exactly like its ViewModel property, every ViewModel property drawn", HudPrefabIsValid);
+            Step("HUD player bar: through the real view - hidden outside fights, built in battle with you on the field, number / fill / colours green → blue → yellow → orange → red / peak marker / wounded part / Exhausted pushed and logged, refreshed every HudRefreshSeconds (live), layout live, removed and rebuilt with its reason (Hide battle UI, ShowPlayerBar, AthleticsEnabled, photo mode, no player, not a fight, ModEnabled), stealth/tournament/duel are fights, suspended, paused, mission end, the [summary] hud lines", HudPlayerBarThroughTheView);
+            Step("HUD fail safe: an exception, a movie that does not load, a failure with the bar up or a view never attached - the view is disabled for the mission, its layer removed, [error] logged, nothing thrown", HudFailSafe);
             Step("MCM still not loaded after phase 1", () => Check(!McmLoaded(), "MCMv5 got loaded during phase 1"));
 
             // Phase 2 - a player WITH MCM.

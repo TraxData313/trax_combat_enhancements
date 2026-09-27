@@ -122,7 +122,7 @@ namespace TraxCombat
                 if (mission == null || GameNetwork.IsMultiplayer) return;
                 ConfigStore.Reload("mission start");
                 mission.AddMissionBehavior(new AthleticsLogic());
-                TraxLog.Info("mission", "attached: AthleticsLogic (views arrive with steps 6-9)");
+                TraxLog.Info("mission", "attached: AthleticsLogic (its HUD views join the mission screen on its first tick - [hud] attached: lines)");
             }
             catch (Exception e)
             {

@@ -610,6 +610,9 @@ namespace TraxCombat.Tools
             Check(a.Blows == blows + 1 && a.Fraction < 1, "mod back on: a swing was not charged");
             Check(Enumerable.Range(0, 50).Select(_ => Hit()).Distinct().Count() > 5, "mod back on: damage does not roll");
             Check(AthleticsStats.DescribeRules(AthleticsRules.From(S)).StartsWith("ON - pool = the Athletics skill"), "mod back on: rules not ON");
+
+            // --- the HUD (step 6): the Athletics bar goes the moment the switch goes, and comes back
+            HudFollowsTheMasterSwitch(a.Agent);
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
