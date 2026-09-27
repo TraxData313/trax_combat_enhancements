@@ -32,6 +32,7 @@ namespace TraxCombat.Missions
 
         // ---- lifted, but a game job was on him: our NoAttack comes off once he is free
         public bool Waiting;
+        public double WaitingSince;
         public double NextCheck;
 
         /// <summary>When his last hold ended (−1 = none since his last ready) - the next ready's delay after it is measured.</summary>
@@ -54,8 +55,9 @@ namespace TraxCombat.Missions
         bool Start(TrackedAgent st, PaceState ps, out PaceRefusal refusal);
 
         /// <summary>Lifts our NoAttack if he is free of game jobs; else reports <see cref="PaceRelease.Waiting"/>
-        /// and leaves every flag alone.</summary>
-        PaceRelease Release(TrackedAgent st, PaceState ps);
+        /// and leaves every flag alone. <paramref name="evenUnderAFrame"/>: a plain scripted frame (no
+        /// object, ladder or walk to an object) has lasted long enough - lift it under that frame too.</summary>
+        PaceRelease Release(TrackedAgent st, PaceState ps, bool evenUnderAFrame);
 
         /// <summary>A running hold must end now, before its time: the player took him, he mounted.
         /// Managed reads only - it runs every tick for every held man.</summary>
@@ -67,8 +69,10 @@ namespace TraxCombat.Missions
     /// with no scripted position - vanilla's own "do not attack" (Agent.UseGameObject). The flag word
     /// is shared with the step back, item pickup and siege objects, so NoAttack is set only on a man
     /// with neither GoToPosition nor NoAttack already and no game object / ladder / detachment, and
-    /// lifted only while none of those is on him. Main thread (the logic's tick), never inside an
-    /// engine callback.
+    /// lifted only while no object, ladder or walk to an object is on him (their NoAttack may be their
+    /// own) - and no scripted frame, unless that frame has lasted
+    /// <see cref="AttackRateMath.WaitingMaxSecondsUnderAFrame"/> (a job that may want its man to
+    /// fight). Main thread (the logic's tick), never inside an engine callback.
     /// </summary>
     internal sealed class GamePaceBody : IPaceBody
     {
@@ -96,15 +100,17 @@ namespace TraxCombat.Missions
             return (after & NoAttack) != 0;
         }
 
-        public PaceRelease Release(TrackedAgent st, PaceState ps)
+        public PaceRelease Release(TrackedAgent st, PaceState ps, bool evenUnderAFrame)
         {
             var a = st.Agent;
             if (!a.IsActive()) return PaceRelease.Gone;
             int flags = (int)a.GetScriptedFlags();
             if ((flags & NoAttack) == 0) return PaceRelease.ClearedByGame;
-            // a game job on him (a scripted frame - the step back's too -, an object, a ladder, a
-            // detachment): its NoAttack may be its own - never lift it under the job; wait
-            if ((flags & GoToPosition) != 0 || GameJob(a)) return PaceRelease.Waiting;
+            // a game job on him: an object, a ladder, a walk to an object - their NoAttack may be
+            // their own: never lift it under them, wait. A plain scripted frame (the step back's too)
+            // likewise - until it has lasted long enough to be a job that wants him to fight.
+            if (a.IsUsingGameObject || a.IsInLadderQueue || a.AIMoveToGameObjectIsEnabled()) return PaceRelease.Waiting;
+            if ((flags & GoToPosition) != 0 && !evenUnderAFrame) return PaceRelease.Waiting;
             a.SetScriptedFlags((Agent.AIScriptedFrameFlags)(flags & ~NoAttack));
             ps.FlagsAfter = (int)a.GetScriptedFlags();
             return PaceRelease.ClearedByUs;

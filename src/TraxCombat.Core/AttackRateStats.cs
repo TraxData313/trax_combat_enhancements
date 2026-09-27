@@ -58,6 +58,10 @@ namespace TraxCombat.Core
         /// <summary>Holds that ended while a game job was on him and were cleared once he was free.</summary>
         public int ClearedAfterWaiting;
 
+        /// <summary>…of them lifted under a plain scripted frame that lasted beyond
+        /// <see cref="AttackRateMath.WaitingMaxSecondsUnderAFrame"/>.</summary>
+        public int ClearedUnderAFrame;
+
         /// <summary>Holds still running when the mission ended.</summary>
         public int HeldAtMissionEnd;
 
@@ -267,7 +271,8 @@ namespace TraxCombat.Core
                       + " (must be about 0 - NoAttack holds swings), switched off " + Ended(PaceEnd.SwitchedOff) + ", left the field " + Ended(PaceEnd.LeftField)
                       + ", mission end " + Ended(PaceEnd.MissionEnd) + ", you took him " + Ended(PaceEnd.PlayerControl) + ", mounted " + Ended(PaceEnd.Mounted)
                       + ", error " + Ended(PaceEnd.Error) + " | NoAttack cleared by us " + Released(PaceRelease.ClearedByUs) + ", already cleared by the game "
-                      + Released(PaceRelease.ClearedByGame) + ", a game job on him at the end (left alone, cleared once free: " + ClearedAfterWaiting + ") "
+                      + Released(PaceRelease.ClearedByGame) + ", a game job on him at the end (left alone, cleared once free: " + ClearedAfterWaiting
+                      + ", of them under a long scripted frame: " + ClearedUnderAFrame + ") "
                       + Released(PaceRelease.Waiting) + ", still held at mission end " + HeldAtMissionEnd + " | the next ready came avg "
                       + (_nextReady.Count > 0 ? N2(_nextReady.Mean) + " s after a hold ended (n " + _nextReady.Count + ") - near 0 = the hold set his rhythm" : "n/a (no ready after a hold)"));
 

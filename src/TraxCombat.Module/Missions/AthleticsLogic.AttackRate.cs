@@ -494,7 +494,7 @@ namespace TraxCombat.Missions
             {
                 Failed("rate.pace-start", e);
                 // whatever the engine got, take it back (a NoAttack nobody tracks would never end)
-                try { PaceBody.Release(st, ps); } catch { /* already failing - logged above */ }
+                try { PaceBody.Release(st, ps, evenUnderAFrame: false); } catch { /* already failing - logged above */ }
                 RefuseHold(st, ps, PaceRefusal.Error);
                 return;
             }
@@ -552,15 +552,21 @@ namespace TraxCombat.Missions
         /// <see cref="AttackRateMath.WaitingCheckSeconds"/>) and never touches the job's flags.</summary>
         private void Lift(TrackedAgent st, PaceState ps, double now, bool native, bool waitingPass)
         {
-            var rel = native && !st.Removed ? PaceBody.Release(st, ps) : PaceRelease.Gone;
+            bool longFrame = waitingPass && ps.Waiting && now - ps.WaitingSince >= AttackRateMath.WaitingMaxSecondsUnderAFrame;
+            var rel = native && !st.Removed ? PaceBody.Release(st, ps, longFrame) : PaceRelease.Gone;
             if (!waitingPass) _rateStats.AddRelease(rel);
             if (rel == PaceRelease.Waiting)
             {
+                if (!ps.Waiting) ps.WaitingSince = now;
                 ps.Waiting = true;
                 ps.NextCheck = now + AttackRateMath.WaitingCheckSeconds;
                 return;
             }
-            if (waitingPass && rel == PaceRelease.ClearedByUs) _rateStats.ClearedAfterWaiting++;
+            if (waitingPass && rel == PaceRelease.ClearedByUs)
+            {
+                _rateStats.ClearedAfterWaiting++;
+                if (longFrame) _rateStats.ClearedUnderAFrame++;
+            }
             ps.Waiting = false;
             _paceHeld.Remove(st);
         }

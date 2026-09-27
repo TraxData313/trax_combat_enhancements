@@ -237,7 +237,7 @@ public class AttackRateTests
         Assert.Contains(lines, l => l.StartsWith("attack rate - pace hold, not held: at full strength 1, not needed (his swing and next ready already fill the target) 1,", StringComparison.Ordinal)
                                     && l.Contains("| not started by the tick: busy with a game job (scripted, an object, a ladder, detached, mounted) 1,"));
         Assert.Contains(lines, l => l.StartsWith("attack rate - pace hold ends: time up 1, a swing started anyway 1 (must be about 0 - NoAttack holds swings),", StringComparison.Ordinal)
-                                    && l.Contains("| NoAttack cleared by us 1, already cleared by the game 0, a game job on him at the end (left alone, cleared once free: 1) 1, still held at mission end 0")
+                                    && l.Contains("| NoAttack cleared by us 1, already cleared by the game 0, a game job on him at the end (left alone, cleared once free: 1, of them under a long scripted frame: 0) 1, still held at mission end 0")
                                     && l.EndsWith("| the next ready came avg 0.30 s after a hold ended (n 2) - near 0 = the hold set his rhythm", StringComparison.Ordinal));
         Assert.Contains("attack rate - guard by f (melee hits on fighters on foot that were blocked or parried; blocking is never slowed - tired men must not block less): peak (f 1) 40% (n 10) | f 0.5-1 n/a (n 0) | f below 0.5 n/a (n 0) | empty (f 0) 50% (n 4) | while held by the pace hold 50% (n 4)", lines);
     }

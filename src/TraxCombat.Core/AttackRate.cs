@@ -211,6 +211,11 @@ namespace TraxCombat.Core
         /// <summary>A hold waiting for a game job to end is re-checked this often (seconds).</summary>
         public const double WaitingCheckSeconds = 0.25;
 
+        /// <summary>Under a plain scripted frame (no object, no ladder, no walk to an object) our NoAttack
+        /// is lifted anyway after this long: such a job (a strategic area, a duel set-up, a swim)
+        /// may want its man to fight - the step back's 1.5 s frame ends before it (plumbing).</summary>
+        public const double WaitingMaxSecondsUnderAFrame = 3.0;
+
         /// <summary>m kept inside 0.01..1 (an animation must run; nothing may divide by 0).</summary>
         public static float SafeM(float m) => float.IsNaN(m) ? 1f : Math.Max(0.01f, Math.Min(1f, m));
 

@@ -29,6 +29,7 @@ namespace TraxCombat.Tools
             public bool Take = true;
             public PaceRefusal? NextRefusal;
             public int WaitingReleases;
+            public bool UnderAPlainFrame;
             public readonly List<int> Started = new List<int>();
             public readonly List<int> Released = new List<int>();
             public readonly Dictionary<int, PaceEnd> EndFor = new Dictionary<int, PaceEnd>();
@@ -49,9 +50,12 @@ namespace TraxCombat.Tools
                 return true;
             }
 
-            public PaceRelease Release(TrackedAgent st, PaceState ps)
+            public bool LastEvenUnderAFrame;
+
+            public PaceRelease Release(TrackedAgent st, PaceState ps, bool evenUnderAFrame)
             {
-                if (WaitingReleases > 0)
+                LastEvenUnderAFrame = evenUnderAFrame;
+                if (WaitingReleases > 0 && !(evenUnderAFrame && UnderAPlainFrame))
                 {
                     WaitingReleases--;
                     return PaceRelease.Waiting;
@@ -249,8 +253,29 @@ namespace TraxCombat.Tools
                 b.TickPace(until + 0.3);                     // re-checked: still busy
                 Check(y.Pace.Waiting, "B: stopped waiting while the job ran");
                 b.TickPace(until + 0.6);                     // free: cleared
-                Check(!y.Pace.Waiting && sb.ClearedAfterWaiting == 1, "B: NoAttack not cleared once the game job ended");
+                Check(!y.Pace.Waiting && sb.ClearedAfterWaiting == 1 && !body.LastEvenUnderAFrame, "B: NoAttack not cleared once the game job ended");
                 t = until + 0.6;
+
+                // a long plain scripted frame (a job that may want him to fight): lifted after 3 s anyway
+                Attack(b, y, ref t, pause: 0);
+                b.ObserveAction(y, ActReadyMeleeCode, t, in r);
+                t += 2;
+                b.ObserveAction(y, ActRelease, t, in r);
+                t += 2.5;
+                b.ObserveAction(y, ActIdle, t, in r);
+                b.TickPace(t);
+                Check(y.Pace.Active, "B: no hold (long frame check)");
+                body.WaitingReleases = 1000;
+                body.UnderAPlainFrame = true;
+                until = y.Pace.Until;
+                b.TickPace(until);                           // a frame on him: wait
+                for (double wait = 0.25; wait < 2.9; wait += 0.25) b.TickPace(until + wait);
+                Check(y.Pace.Waiting && sb.ClearedUnderAFrame == 0, "B: lifted under a frame before 3 s");
+                b.TickPace(until + 3.05);
+                Check(!y.Pace.Waiting && sb.ClearedUnderAFrame == 1 && body.LastEvenUnderAFrame, "B: our NoAttack outlived a 3 s scripted frame");
+                body.WaitingReleases = 0;
+                body.UnderAPlainFrame = false;
+                t = until + 3.05;
 
                 // the player takes him / he mounts: ended at once
                 Attack(b, y, ref t, pause: 0);                // (ends with the hold lifted by time)
@@ -345,7 +370,7 @@ namespace TraxCombat.Tools
                 LogHas("[summary] attack rate - pace hold, not held: at full strength ");
                 LogHas("[summary] attack rate - pace hold ends: time up ");
                 LogHas(", a swing started anyway 1 (must be about 0 - NoAttack holds swings), switched off 1, left the field 1, mission end 1, you took him 0, mounted 1, error 0");
-                LogHas("a game job on him at the end (left alone, cleared once free: 1) 1, still held at mission end 1");
+                LogHas("a game job on him at the end (left alone, cleared once free: 2, of them under a long scripted frame: 1) 2, still held at mission end 1");
                 LogHas("[summary] attack rate - guard by f (melee hits on fighters on foot that were blocked or parried; blocking is never slowed - tired men must not block less): ");
                 _ = rr;
                 _ = w;

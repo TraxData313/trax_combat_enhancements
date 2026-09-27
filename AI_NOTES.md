@@ -1057,7 +1057,8 @@ it; his pause is his.
   applied, off live, never on horses, never a defence value); `Program.AttackRate.cs` - A: the
   animations alone read "too fast" (about 75% when empty); B: with the hold the empty band is 100%
   on target; every hold path with `FakePaceBody` (time up, a swing slipping through, a game job
-  waited out, mounted, left the field, switched off, mission end), refusals, riders, chained blows,
+  waited out, a long plain frame lifted after 3 s, mounted, left the field, switched off, mission
+  end), refusals, riders, chained blows,
   no reference, the T2 switch re-applied, the summary; the first-slowed line through the real
   decorator; the master switch lifts a running hold; the step-back smoke's cycles are left out.
   deploy.ps1 green (guard OK, smoke OK, installed).
@@ -1092,10 +1093,15 @@ it; his pause is his.
   hit callback) and started by `TickPace` in the same or the next tick; a swing while held is
   flagged there and lifted by the tick.
 - **Flag hygiene**: `GamePaceBody.Start` refuses a man with GoToPosition, NoAttack, a game object,
-  a ladder queue, a detachment or a horse; `Release` lifts OUR NoAttack only while none of those is
-  on him - else it waits (re-checked every 0.25 s) and clears it once he is free (a vanilla job
-  that set NoAttack itself is over by then - clearing a leftover is harmless). Left the field =
-  no engine call; mission end = lifted through the engine before the summary.
+  a ladder queue, a detachment or a horse; `Release` lifts OUR NoAttack only while no object, ladder
+  queue or walk to an object is on him (their NoAttack may be their own) - else it waits
+  (re-checked every 0.25 s) and clears it once he is free (a vanilla job that set NoAttack itself
+  is over by then - clearing a leftover is harmless). Under a PLAIN scripted frame it waits at most
+  `WaitingMaxSecondsUnderAFrame` 3 s, then lifts it anyway (counted "under a long scripted frame"):
+  whether the native keeps our flag through a new frame is unseen, and such jobs (strategic areas,
+  duel set-ups, swimming) may want the man to fight; the step back's 1.5 s frame ends before
+  that. A detachment alone is not waited on (it owns no NoAttack). Left the field = no engine call;
+  mission end = lifted through the engine before the summary.
 - **T2 values**: no 0.05 floor on the attack chance (vanilla clamps its own formula there) - m
   0.2 must mean five times rarer. The riposte chance is an attack decision → × m.
   `AiWaitBeforeShootFactor` 0 (siege defenders) stays 0.
@@ -1104,7 +1110,8 @@ it; his pause is his.
 - **First slowed**: the first `ApplyFighterSpeed` of the mission with m below 1 snapshots every
   touched value before and after `UpdateAgentProperties` and checks each against its factor.
 - **No new gameplay numbers** besides the two switches: 0.98 progress, 0.1 s, 4 s / 12 s, 5
-  samples, 100 starts a tick, 0.25 s, ±15% are plumbing / log constants (documented here).
+  samples, 100 starts a tick, 0.25 s, 3 s under a frame, ±15% are plumbing / log constants
+  (documented here).
 
 **Gotchas**
 - Python / sed on markdown is against the house rule (CLAUDE.md) - PLAYTEST was edited by a
