@@ -102,6 +102,8 @@ namespace TraxCombat.Core
 
         // ------------------------------------------------------------------ counting
 
+        /// <summary>One charged blow; <paramref name="points"/> = what it really drained (0 for a swing
+        /// on an empty pool).</summary>
         public void AddCharge(BlowKind kind, bool mounted, double points)
         {
             _charged[(int)kind]++;
@@ -199,19 +201,7 @@ namespace TraxCombat.Core
         public List<string> SummaryLines(in EnduranceRules r, Func<int, string> actionName, IList<KeyValuePair<string, FormationEnduranceStats>> formations)
         {
             var lines = new List<string>();
-            var soldier = new Fighter();
-            var hero = new Fighter { IsHero = true };
-            var leader = new Fighter { IsHero = true, IsLeader = true };
-            lines.Add(r.Enabled
-                ? "endurance settings at the end: ON - pool " + N0(EnduranceMath.PoolPoints(in r, soldier))
-                  + ", cost per blow " + N1(EnduranceMath.BlowCostPoints(in r, soldier))
-                  + " / hero " + N1(EnduranceMath.BlowCostPoints(in r, hero))
-                  + " / party leader " + N1(EnduranceMath.BlowCostPoints(in r, leader))
-                  + ", misses cost: " + (r.CostOnMiss ? "yes" : "no (landed blows only)")
-                  + ", exhausted attacks at " + r.ExhaustedAttackSpeedPercent + "% (recover above " + r.ExhaustedRecoverPercent + "%)"
-                  + ", refill after " + N1(r.RegenDelaySeconds) + " s rest: full in " + N0(r.FullRegenSecondsStanding) + " s standing / "
-                  + N0(r.FullRegenSecondsMoving) + " s moving (above " + N1(r.MovingSpeedThreshold) + " m/s)"
-                : "endurance settings at the end: OFF (EnduranceEnabled) - everyone full, no penalty");
+            lines.Add("endurance settings at the end: " + DescribeRules(in r));
 
             lines.Add("endurance blows charged: " + ChargedTotal
                 + " (melee swings " + Charged(BlowKind.Melee) + ", shots/throws " + Charged(BlowKind.Ranged)
@@ -321,6 +311,24 @@ namespace TraxCombat.Core
                 }
             }
             return lines;
+        }
+
+        /// <summary><c>ON - pool 100, cost per blow 10.0 / hero 7.5 / party leader 5.6, …</c> or <c>OFF …</c> -
+        /// the settings sentence of the mission-start line and the summary.</summary>
+        public static string DescribeRules(in EnduranceRules r)
+        {
+            if (!r.Enabled) return "OFF (EnduranceEnabled) - everyone full, no penalty";
+            var soldier = new Fighter();
+            var hero = new Fighter { IsHero = true };
+            var leader = new Fighter { IsHero = true, IsLeader = true };
+            return "ON - pool " + N0(EnduranceMath.PoolPoints(in r, soldier))
+                + ", cost per blow " + N1(EnduranceMath.BlowCostPoints(in r, soldier))
+                + " / hero " + N1(EnduranceMath.BlowCostPoints(in r, hero))
+                + " / party leader " + N1(EnduranceMath.BlowCostPoints(in r, leader))
+                + ", misses cost: " + (r.CostOnMiss ? "yes" : "no (landed blows only)")
+                + ", exhausted attacks at " + r.ExhaustedAttackSpeedPercent + "% (recover above " + r.ExhaustedRecoverPercent + "%)"
+                + ", refill after " + N1(r.RegenDelaySeconds) + " s rest: full in " + N0(r.FullRegenSecondsStanding) + " s standing / "
+                + N0(r.FullRegenSecondsMoving) + " s moving (above " + N1(r.MovingSpeedThreshold) + " m/s)";
         }
 
         private static string Speed(MeanStd s) => s.Count == 0 ? "n/a" : "avg " + N2(s.Mean) + " m/s (n " + s.Count + ")";

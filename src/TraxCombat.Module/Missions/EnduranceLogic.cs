@@ -8,21 +8,22 @@ namespace TraxCombat.Missions
 {
     /// <summary>
     /// The mod's per-mission brain, attached to EVERY singleplayer mission in
-    /// SubModule.OnMissionBehaviorInitialize (cheap: it only acts on attacks). Lives and dies
-    /// with the mission, so the mod adds nothing to the campaign save (save-safe).
+    /// SubModule.OnMissionBehaviorInitialize (cheap when nobody fights). Lives and dies with the
+    /// mission, so the mod adds nothing to the campaign save (save-safe).
     ///
-    /// Step 3: a stub that proves the lifecycle and gives the log its frame -
+    /// This file: the lifecycle and the log frame -
     ///   [mission] start: scene, mode, battle kind, combat type, game type (AfterStart)
     ///   [mission] first tick / deployment finished: agents on the field
     ///   [summary] block at the end (OnEndMissionInternal - fires for every ending, victory,
     ///             defeat, retreat or leaving, with the agents still present; RESEARCH §K)
-    /// Step 5 grows it into the endurance engine (per-agent state by Agent.Index, blow
-    /// detection, regen, exhaustion); steps 4-5 add their lines to the summary.
+    /// The endurance engine (DESIGN §2, step 5) lives in EnduranceLogic.Engine.cs (tracking,
+    /// blow detection, regen, the speed penalty, hot swap), its read API for the HUD steps 6-9 in
+    /// EnduranceLogic.Api.cs, its log lines and summary in EnduranceLogic.Log.cs.
     ///
     /// Every hook is wrapped: an exception is logged as [error] with its stack and swallowed -
-    /// the mission carries on as vanilla.
+    /// the mission carries on as vanilla (no cost, no penalty).
     /// </summary>
-    public sealed class EnduranceLogic : MissionLogic
+    public sealed partial class EnduranceLogic : MissionLogic
     {
         private int _built;
         private int _builtHumans;
@@ -65,19 +66,40 @@ namespace TraxCombat.Missions
             {
                 TraxLog.Error("damage.mission-start", e);
             }
+            try
+            {
+                // Feature 2: become the running endurance logic (the stat decorator and the HUD
+                // find us through it), log the rules in effect and which stat model is on top.
+                StartEndurance();
+            }
+            catch (Exception e)
+            {
+                Failed("endurance.mission-start", e);
+            }
         }
 
         public override void OnMissionTick(float dt)
         {
-            if (_firstTickDone) return;
+            if (!_firstTickDone)
+            {
+                try
+                {
+                    _firstTickDone = true;
+                    TraxLog.Info("mission", "first tick: " + Mission.Agents.Count + " agents active, mode " + Mission.Mode);
+                    SweepAgents();
+                }
+                catch (Exception e)
+                {
+                    TraxLog.Error("mission.OnMissionTick", e);
+                }
+            }
             try
             {
-                _firstTickDone = true;
-                TraxLog.Info("mission", "first tick: " + Mission.Agents.Count + " agents active, mode " + Mission.Mode);
+                TickEndurance(dt);
             }
             catch (Exception e)
             {
-                TraxLog.Error("mission.OnMissionTick", e);
+                Failed("endurance.tick", e);
             }
         }
 
@@ -86,6 +108,7 @@ namespace TraxCombat.Missions
             try
             {
                 TraxLog.Info("mission", "deployment finished: " + Mission.Agents.Count + " agents active, mode " + Mission.Mode);
+                SampleSpeeds("deployment finished");
             }
             catch (Exception e)
             {
@@ -113,6 +136,14 @@ namespace TraxCombat.Missions
             {
                 TraxLog.Error("mission.OnAgentBuild", e);
             }
+            try
+            {
+                if (agent != null && agent.IsHuman) Track(agent);
+            }
+            catch (Exception e)
+            {
+                Failed("endurance.agent-build", e);
+            }
         }
 
         public override void OnAgentRemoved(Agent affectedAgent, Agent affectorAgent, AgentState agentState, KillingBlow blow)
@@ -132,6 +163,14 @@ namespace TraxCombat.Missions
             {
                 TraxLog.Error("mission.OnAgentRemoved", e);
             }
+            try
+            {
+                if (affectedAgent != null && affectedAgent.IsHuman) Untrack(affectedAgent);
+            }
+            catch (Exception e)
+            {
+                Failed("endurance.agent-removed", e);
+            }
         }
 
         public override void OnEndMissionInternal()
@@ -146,12 +185,14 @@ namespace TraxCombat.Missions
             }
         }
 
-        /// <summary>Fallback: a mission torn down without OnEndMissionInternal still gets its summary.</summary>
+        /// <summary>Fallback: a mission torn down without OnEndMissionInternal still gets its summary.
+        /// Also the moment we stop being the running endurance logic.</summary>
         public override void OnRemoveBehavior()
         {
             try
             {
                 WriteSummary("behaviour removed");
+                StopEndurance();
                 base.OnRemoveBehavior();
             }
             catch (Exception e)
@@ -208,8 +249,16 @@ namespace TraxCombat.Missions
             {
                 TraxLog.Error("damage.summary", e);
             }
-            // Step 5 adds here: endurance (blows charged, exhaustions entered/left, heroes' lowest
-            // endurance, formation averages).
+            // Feature 2 (step 5): blows, detection cross-checks, exhaustions, heroes and leaders,
+            // the player, formations, regen, the attack-speed measurement, cost. Own try too.
+            try
+            {
+                WriteEnduranceSummary();
+            }
+            catch (Exception e)
+            {
+                Failed("endurance.summary", e);
+            }
             TraxLog.Info("summary", "errors logged during this mission: " + (TraxLog.ErrorCount - _errorsAtStart));
             TraxLog.FlushSuppressedCounts();
             TraxLog.Info("summary", "==== end of summary ====");

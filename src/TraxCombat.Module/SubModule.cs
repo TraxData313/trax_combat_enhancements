@@ -168,7 +168,7 @@ namespace TraxCombat
                     var stats = new TraxAgentStatModel(statModels);
                     starter.AddModel<AgentStatCalculateModel>(stats);
                     TraxLog.Info("speed", "agent stat model decorator registered over " + stats.BaseModelName
-                        + " (pass-through until step 5); tournament AI-level fix "
+                        + " - scales swing / thrust-and-draw / reload speed by each fighter's endurance multiplier; tournament AI-level fix "
                         + (TraxAgentStatModel.AiLevelFixAvailable ? "active over " + statModels.Count + " base model(s)" : "UNAVAILABLE (field not found)"));
                 }
                 else

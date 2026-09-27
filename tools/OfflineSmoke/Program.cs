@@ -66,6 +66,14 @@ namespace TraxCombat.Tools
             Step("damage: a bug in the roll keeps the game's value and logs ONE [error] per mission", DamageFailSafe);
             Step("damage: verbose roll/skip lines and the [summary] damage block", DamageLogAndSummary);
             Step("damage: a roll off the main thread is detected and reported", DamageOffMainThread);
+            // Endurance (step 5) - the real speed penalty, stat decorator and endurance logic, fed
+            // uninitialized Agent objects (no native side).
+            Step("endurance: the speed penalty scales swing, thrust/draw and reload on the game's AgentDrivenProperties - nothing else", SpeedPenaltyScalesOnlyTheThree);
+            Step("endurance: the stat decorator applies each fighter's multiplier on every recompute, never compounds, lifts it when off", DecoratorAppliesEachFightersMultiplier);
+            Step("endurance: swings through the real logic - 10 empty a soldier, 18 a party leader; kicks, bashes, ranged releases free", BlowsThroughTheLogic);
+            Step("endurance: mid-battle settings - speed percent re-targets the exhausted, a pool change reads live, switching off refills and lifts", EnduranceHotSwap);
+            Step("endurance: the [summary] endurance block", EnduranceSummary);
+            Step("endurance: a failure is logged once per site, counted, and reported in the summary", EnduranceFailSafe);
             Step("MCM still not loaded after phase 1", () => Check(!McmLoaded(), "MCMv5 got loaded during phase 1"));
 
             // Phase 2 - a player WITH MCM.

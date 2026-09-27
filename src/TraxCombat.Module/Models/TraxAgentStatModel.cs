@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Reflection.Emit;
 using TaleWorlds.Core;
 using TaleWorlds.MountAndBlade;
+using TraxCombat.Missions;
 
 namespace TraxCombat.Models
 {
@@ -13,10 +14,11 @@ namespace TraxCombat.Models
     /// <see cref="AgentStatCalculateModel"/> was registered before us (Sandbox's, CustomBattle's,
     /// War Sails' naval one). Never a Default*/Sandbox* subclass (CLAUDE.md).
     ///
-    /// Step 3: a pure pass-through. EVERY abstract AND virtual member forwards to BaseModel -
-    /// a virtual left un-overridden would run the abstract class's default body instead of
-    /// the sandbox logic (GetEffectiveMaxHealth, GetEffectiveSkill, …; RESEARCH §C). Step 5
-    /// scales the attack-speed properties in <see cref="UpdateAgentStats"/> for exhausted agents.
+    /// EVERY abstract AND virtual member forwards to BaseModel - a virtual left un-overridden
+    /// would run the abstract class's default body instead of the sandbox logic
+    /// (GetEffectiveMaxHealth, GetEffectiveSkill, …; RESEARCH §C). The one change (step 5):
+    /// <see cref="UpdateAgentStats"/> scales the attack-speed properties by the agent's endurance
+    /// multiplier (<see cref="SpeedPenalty"/>).
     ///
     /// THE TOURNAMENT FIX (RESEARCH §C): TournamentBehavior raises the AI level each round with
     /// <c>MissionGameModels.Current.AgentStatCalculateModel.SetAILevelMultiplier(x)</c> - a
@@ -98,12 +100,32 @@ namespace TraxCombat.Models
             BaseModel.InitializeAgentStats(agent, spawnEquipment, agentDrivenProperties, agentBuildData);
         }
 
-        /// <summary>Step 5 scales SwingSpeedMultiplier, ThrustOrRangedReadySpeedMultiplier and
-        /// ReloadSpeed here, after the base model, for exhausted agents.</summary>
+        /// <summary>
+        /// Every recompute of an agent's properties passes here (spawn, weapon switch, mount, and the
+        /// ones <see cref="EnduranceLogic"/> asks for on an exhaustion change). The base model first
+        /// (outside our try - its exceptions are the game's own), then the attack-speed penalty: the
+        /// agent's CURRENT multiplier from the endurance logic (a float per fighter, 1 = none; the
+        /// cliff of DESIGN §2 today, a curve after step 5c), read at this moment - so any recompute
+        /// the game does on its own keeps the penalty. Our exception → the base values stand
+        /// (no penalty), counted, the first per mission logged.
+        /// </summary>
         public override void UpdateAgentStats(Agent agent, AgentDrivenProperties agentDrivenProperties)
         {
             SyncAiLevel();
             BaseModel.UpdateAgentStats(agent, agentDrivenProperties);
+            try
+            {
+                float factor = EnduranceLogic.SpeedMultiplierFor(agent);
+                if (factor != 1f)
+                {
+                    SpeedPenalty.Scale(agentDrivenProperties, factor);
+                    EnduranceLogic.NoteDecoratorScaled();
+                }
+            }
+            catch (Exception e)
+            {
+                EnduranceLogic.Failed("speed.decorator", e);
+            }
         }
 
         public override float GetDifficultyModifier() => BaseModel.GetDifficultyModifier();

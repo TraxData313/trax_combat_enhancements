@@ -36,6 +36,10 @@ namespace TraxCombat
         private static readonly RateLimiter VerboseLimiter = new RateLimiter(40, 20);
         private static readonly RateLimiter ErrorLimiter = new RateLimiter(3, 0.1);
 
+        // Always-on but rate-limited lines (the player's own exhaustion, party leaders at spawn):
+        // a burst of 30 per bucket, then one a second.
+        private static readonly RateLimiter NoticeLimiter = new RateLimiter(30, 1);
+
         private static long _approxBytes = -1;
         private static int _errorCount;
         private static int _errorNoticePending;
@@ -61,6 +65,15 @@ namespace TraxCombat
         {
             if (!VerboseOn) return;
             if (!VerboseLimiter.TryPass(bucket, Now, out int dropped)) return;
+            Write(tag, dropped > 0 ? message + " (+" + dropped + " similar lines suppressed)" : message);
+        }
+
+        /// <summary>A line written whether or not VerboseLogging is on, but rate-limited in its own
+        /// <paramref name="bucket"/> - for events that matter to every playtest yet could repeat
+        /// (the player's exhaustion, each party leader at spawn in a huge battle).</summary>
+        public static void Limited(string tag, string message, string bucket)
+        {
+            if (!NoticeLimiter.TryPass(bucket, Now, out int dropped)) return;
             Write(tag, dropped > 0 ? message + " (+" + dropped + " similar lines suppressed)" : message);
         }
 
@@ -101,6 +114,8 @@ namespace TraxCombat
         {
             foreach (var pair in VerboseLimiter.DrainSuppressed())
                 Write("log", pair.Value + " more verbose [" + pair.Key + "] lines were suppressed by the rate limit");
+            foreach (var pair in NoticeLimiter.DrainSuppressed())
+                Write("log", pair.Value + " more [" + pair.Key + "] lines were suppressed by the rate limit");
             foreach (var pair in ErrorLimiter.DrainSuppressed())
                 Write("log", pair.Value + " more [error] reports from " + pair.Key + " were suppressed by the rate limit");
         }
