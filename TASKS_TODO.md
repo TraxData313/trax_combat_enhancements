@@ -14,7 +14,8 @@ BUILD ORDER (one step at a time — [~] = in flight, see CLAUDE.md "manager prot
 - [x] 10b. Polish: hide the LATER features' settings (no switch that does nothing), settings/config readability, docs + PLAYTEST script as one clean run (Anton's playtest comes after, all at once)
 - [x] 11. Steam packaging — upload only on Anton's yes (package ready — upload waits for Anton's yes after the playtest)
 - [x] 12. Playtest fixes, round 1 (see BUGS) — bar outside battles, MCM stops cleanly; exit hang not ours (see AI_NOTES)
-- [~] 13. PAUSE ONLY (Anton's playtest call): no slow-mo, a no-attack timer after each attack (you + AI), countdown "1.3 s" by the bar, bar flashes if you swing too early (DESIGN §2)
+- [~] 13. PAUSE ONLY (Anton's playtest call): no slow-mo, a no-attack timer after each attack (you + AI), countdown "1.3 s" by the bar, bar flashes if you swing too early (DESIGN §2) — + "Attack recovery" bar ABOVE the Athletics bar: empties on attack, refills over the pause, secs inside, flashes on an early press (Anton, 2026-09-27)
+- [ ] 14. Refill faster when low, slower when full: straight line, rate near full = 50% of rate near empty (slider), empty→full still 60 s at a walk · run-speed floor 0.3 → 0.7 (Anton: "too slow, unrealistic")
 
 PLAYTEST (Anton, all at once at the end — script in docs/PLAYTEST.md):
 - [ ] Play with RBM disabled — declared NOT compatible (Anton, 2026-09-27; the mod warns if it sees it)
