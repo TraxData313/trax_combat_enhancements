@@ -354,3 +354,49 @@
   5e #1-9): the engine honours the animation multipliers through ready and release; the native AI
   follows the four values; NoAttack holds swings in open melee with the guard kept; the recoil is
   unscaled (the known gap); the ready's progress reaches full. (2026.09.27 18.38.42)
+- [x] **Step 9 — orders-menu strip.** Anton: "leave the strip under the orders cards - some vision
+  of the state of the troops"; "below the arrows remaining, the Athletics state and the average
+  health". RESEARCH (AI_NOTES "Step 9", RESEARCH §G addendum; generated OrderBar and RTS Camera
+  Command System 5.3.38 decompiled beside the others): the "generated code" cards ARE real widgets,
+  and reading them needs no patch - `MissionScreen.FindLayer<GauntletLayer>("MissionOrder")` →
+  `UIContext.Root`; each slot holds two `OrderTroopItemBrushWidget`s (highlight + card; the transfer
+  popup's stand alone - the filter); 16 cards in vanilla (keyboard columns TroopItem0-3 left / 4-7
+  right, gamepad row), 8 with RTS Camera (one layout, columns bottom to top, clickable, the order
+  icon always shown); slot k = FormationClass k (RefreshTroopItemBindings), and the card's public
+  CurrentMemberCount (units minus the player, updated on OnUnitCountChanged) confirms it every
+  frame; GlobalPosition / Size are screen pixels and our Scaled* bindings take pixels; vanilla's
+  order icons hang 20 px under a card; at 1080p the bottom card leaves 24 px; the HUD font has ±
+  but no ♥. TECHNIQUE (why): read the live cards - exact at any resolution / UI scale / layout and
+  under RTS Camera's reversed columns - rather than copying the prefab maths, which RTS Camera
+  already breaks. BUILT: `OrderStripView` (+ `OrderStripVM`, `Hud/OrderCards.cs` seams, prefab
+  `TraxOrderStrip.xml`): while the menu is open, a card-wide cell under each drawn card - "72% ± 8"
+  left and "HP 81%" right beside the game's icons, under them a 4-px bar (mean share of the men's
+  own pools, coloured by their mean f with the player bar's bands, a translucent ± k·σ band via a
+  FillBarWidget ChangeWidget, the peak tick); placed every frame, lifted if it would leave the
+  screen; the player left out of the squad stats (as the cards) and health added to them. FALLBACK:
+  a compact panel at the top centre (same numbers and bar per formation) for the rest of an open
+  when no cards / not whole sets of 8 / two sets drawn / none drawn in 0.5 s / a card disagreeing
+  for 1 s, or `OrderStripUnderCards` off; the next open tries the cards again. Settings 54 → 63:
+  `ShowFormationHealth` (moved up from Planned), `OrderStripUnderCards`, `OrderStripTextSize` 13 /
+  `TextOffset` 1 / `BarOffset` 20 / `BarHeight` 4 / `SideMargin` 2, `OrderPanelOffsetTop` 80 /
+  `Width` 300; `ShowFormationSpread` / `FormationSpreadStdDevs` drive the band and the "± N".
+  TraxHudView: `OnLayerFrame`, `QuietConditionToggles` (open/close verbose after the first build),
+  `ViewConditionWhen`, `AddSummaryLines`; `HudFrame.OrderMenuOpen`; `HudStats.ConditionName`.
+  GOTCHA: a widget's own @bindings resolve against its own DataSource and a list sets none - the
+  first prefab hid the strip's visibility on the list; fixed, and the smoke's prefab walker (now
+  generic: DataSource lists into ItemTemplates) fails such a binding (proved by breaking it). LOGS:
+  `[hud] attached: orders strip …`; the first placement per mission (technique, cards with pixels
+  and counts `(= formation)`, cells); `the cards changed` (rate-limited); every FALLBACK with its
+  reason; `values at … (open #N, …)` once per open (verbose: each refresh); summary `hud: orders
+  strip - opened Nx: under the cards in …, the compact panel in …; technique; card layouts seen;
+  cells placed (lifted); card changes; short mismatches; re-scans; values pushed; fallbacks by
+  reason`, and "health avg" in the Athletics formations line. Core `OrderStrip.cs` + 14 tests (274
+  → 288); OfflineSmoke 39 → 42 steps (prefab, the real view with stand-in cards: vanilla / UI scale
+  4/3 / gamepad row / RTS set / lift / live switches / every fallback / quiet reopen / summary;
+  fail safe; the master switch removes the strip). Build 0 warnings, tests green, AssemblyGuard OK,
+  smoke OK, deployed (TraxOrderStrip.xml installed). Docs: DESIGN §3.4 as built + interpretation 14,
+  PLAYTEST 8 (8a-8g, what counts as broken), AI_NOTES, RESEARCH #18-20, CLAUDE Layout, README.
+  UNVERIFIED in game: the live cards report the expected pixels and the cells land under them
+  (`first placement under the cards … cards drawn … cells …`), RTS Camera's 8 cards match
+  (`8 cards in 1 set`), the item-template lists and the ChangeWidget band draw, the numbers fit
+  beside the icons, War Sails' naval cards. (2026.09.27 19.24.27)
