@@ -108,6 +108,8 @@ namespace TraxCombat.Tools
 
             // Phase 2 - a player WITH MCM.
             _allowMcm = true;
+            Step("MCM's DLL loaded by another mod, MCM's module not enabled (step 12): one line, no page, no attempt, no retry", McmModuleNotEnabled);
+            Step("MCM's module on but MCM never ready (step 12): no try before the main menu, the first + " + McmPlan.MaxRetries + " retries, then one line and silence", McmNeverReadyIsCapped);
             Step("MCM present: the settings page builds through MCM's real fluent builder", McmPageBuilds);
             Step("MCM page: every setting, right type, range, hint, group", McmPageMatchesSchema);
             Step("MCM sliders write the live settings at once (hot swap)", McmSlidersAreLive);
@@ -457,6 +459,63 @@ namespace TraxCombat.Tools
 
         // ------------------------------------------------------------------ phase 2 (MCM present)
 
+        /// <summary>The bridge as a fresh game start finds it, with this enabled-module list (null = unknown).</summary>
+        private static void ResetMcmBridge(string[]? modules)
+        {
+            SetStatic(typeof(McmBridge), "_done", false);
+            SetStatic(typeof(McmBridge), "_waiting", false);
+            SetStatic(typeof(McmBridge), "_attempts", 0);
+            SetStatic(typeof(McmBridge), "_notReady", 0);
+            SetStatic(typeof(McmBridge), "_nextTryAt", 0.0);
+            McmBridge.UseModuleList(modules);
+        }
+
+        /// <summary>Step 12 (Anton's log 21:08): another mod carries an MCMv5 DLL, MCM's own module is
+        /// off - one line, no page, no attempt, no retry.</summary>
+        private static void McmModuleNotEnabled()
+        {
+            Assembly.LoadFrom(Path.Combine(_mcmBin, "MCMv5.dll"));
+            Check(McmLoaded(), "precondition: MCMv5 not loaded");
+            ResetMcmBridge(new[] { "Bannerlord.Harmony", "Bannerlord.ButterLib", "Bannerlord.UIExtenderEx", "Native", "ImmersiveAI.Dev", "TraxCombatEnhancements.Dev" });
+            McmBridge.TryRegister("main menu");
+            Check(!McmBridge.IsRegistered, "a page with MCM's module off");
+            LogHas("[mcm] MCM's module is not enabled - no settings page; config.json only. (An MCM 5.");
+            McmBridge.TryRegister("game start");
+            for (int i = 0; i < 5; i++)
+            {
+                SetStatic(typeof(McmBridge), "_nextTryAt", 0.0);
+                McmBridge.Tick();
+            }
+            Check(Occurrences(LogText, "MCM's module is not enabled") == 1, "the 'module not enabled' line should be logged once");
+            Check((int)GetStatic(typeof(McmBridge), "_attempts")! == 0, "the bridge tried MCM with its module off");
+            Check(Occurrences(LogText, "not ready yet") == 0, "a 'not ready' retry with MCM's module off");
+        }
+
+        /// <summary>Step 12: MCM's module on but MCM never ready (its services never built - here: no
+        /// main-menu hook of MCM ran) - no attempt before the main menu, the first + MaxRetries retries,
+        /// then one line and silence.</summary>
+        private static void McmNeverReadyIsCapped()
+        {
+            ResetMcmBridge(new[] { "Bannerlord.Harmony", McmPlan.ModuleId, "Native", "TraxCombatEnhancements.Dev" });
+            McmBridge.Tick();
+            Check((int)GetStatic(typeof(McmBridge), "_attempts")! == 0, "the tick tried MCM before the main menu");
+            McmBridge.TryRegister("main menu");
+            LogHas(" is loaded but not ready yet at main menu - retrying every 1 s, at most " + McmPlan.MaxRetries + " times.");
+            for (int i = 0; i < 3 * McmPlan.MaxRetries; i++)
+            {
+                SetStatic(typeof(McmBridge), "_nextTryAt", 0.0); // a second passed
+                McmBridge.Tick();
+            }
+            int attempts = (int)GetStatic(typeof(McmBridge), "_attempts")!;
+            Check(attempts == McmPlan.MaxRetries + 1, "attempts " + attempts + ", expected the first + " + McmPlan.MaxRetries + " retries");
+            Check(!McmBridge.IsRegistered, "a page without MCM's services");
+            LogHas(" never became ready - gave up after " + (McmPlan.MaxRetries + 1) + " attempts (the first + " + McmPlan.MaxRetries
+                   + " retries, one a second) - no settings page; config.json only.");
+            McmBridge.TryRegister("game start");
+            Check(Occurrences(LogText, "not ready yet") == 1 && Occurrences(LogText, "never became ready") == 1
+                  && (int)GetStatic(typeof(McmBridge), "_attempts")! == attempts, "the bridge kept going after it gave up");
+        }
+
         private static void McmPageBuilds()
         {
             // Precondition for the Reset check: a non-default value is live while the page is
@@ -464,7 +523,7 @@ namespace TraxCombat.Tools
             Check(TraxSettings.Shared.DamageRandomPercent != (int)SettingsSchema.DamageRandomPercent.Default, "precondition: expected a non-default value before the build");
             Assembly.LoadFrom(Path.Combine(_mcmBin, "MCMv5.dll"));
             McmHarness.InstallServices();
-            SetStatic(typeof(McmBridge), "_done", false); // phase 1 stood it down
+            ResetMcmBridge(null); // phase 1 and the step-12 checks stood it down; the module list unknown = just try
             McmBridge.TryRegister("smoke with MCM");
             Check(McmBridge.IsRegistered, "page not registered with MCM present");
             LogHas("[mcm] settings page registered at smoke with MCM (attempt 1): MCM 5.");

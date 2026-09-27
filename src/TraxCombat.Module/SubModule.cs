@@ -24,7 +24,8 @@ namespace TraxCombat
     ///   main menu (OnBeforeInitialModuleScreenSetAsRoot) - MCM page registered (if MCM is there);
     ///                              the one RBM-incompatibility message (DESIGN §5), if RBM is on;
     ///                              the one "two copies enabled" message (step 11), if another stood down.
-    ///   OnApplicationTick        - MCM registration retry (1/s until ready); the in-game error notice.
+    ///   OnApplicationTick        - MCM registration retry after a "not ready" at the main menu (1/s,
+    ///                              at most McmPlan.MaxRetries - step 12); the in-game error notice.
     ///   OnGameStart              - config.json re-read (hand edits); the two model DECORATORS
     ///                              registered (damage, agent stats) - one registration covers
     ///                              campaign, custom battle and naval custom battle (RESEARCH §A).
@@ -239,6 +240,7 @@ namespace TraxCombat
                 TraxLog.Error("load.modules", e);
             }
             TraxLog.Info("load", "modules (" + modules.Length + "): " + string.Join(", ", modules));
+            McmBridge.UseModuleList(modules); // step 12: MCM's module off = no page, no retries
             var rbm = modules.Where(m => string.Equals(m, "RBM", StringComparison.OrdinalIgnoreCase)
                                          || m.StartsWith("RBM_", StringComparison.OrdinalIgnoreCase)).ToList();
             _rbmEnabled = rbm.Count > 0;

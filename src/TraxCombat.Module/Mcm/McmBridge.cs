@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
@@ -46,6 +47,14 @@ namespace TraxCombat.Mcm
     /// the new values: every SettingsPropertyVM listens to the settings object's PropertyChanged
     /// and re-reads its value on any name but SAVE_TRIGGERED - so <see cref="RefreshPage"/> raises
     /// one. The revert is not in MCM's undo stack: Cancel does not undo it (the hint says so).
+    ///
+    /// When it tries (step 12, Core <see cref="McmPlan"/> - Anton's playtest: another mod carried an
+    /// MCMv5 DLL with MCM's module off, and the bridge retried "not ready" every second all session):
+    /// the first attempt is the main-menu hook (or the first game start) - MCM builds its services in
+    /// its own main-menu hook, so earlier tries cannot succeed; no attempt at all when the module list
+    /// (<see cref="UseModuleList"/>, from the load) says MCM's module is off - one line; after a "not
+    /// ready" the tick retries once a second, at most <see cref="McmPlan.MaxRetries"/> times - then one
+    /// line and silence. The mod runs on config.json in every one of these cases.
     /// </summary>
     internal static class McmBridge
     {
@@ -54,7 +63,6 @@ namespace TraxCombat.Mcm
         private const string McmAssemblyName = "MCMv5";
         /// <summary>MCM's own id for the preset its Reset buttons apply (BaseSettings.DefaultPresetId).</summary>
         private const string DefaultPresetId = "default";
-        private const double RetrySeconds = 1.0;
 
         /// <summary>The buttons' group (not a schema group - no settings): after every settings group
         /// but Advanced, which stays last (step 10b). MCM's group order is 2 × the schema's
@@ -77,18 +85,28 @@ namespace TraxCombat.Mcm
         private static readonly Stopwatch Clock = Stopwatch.StartNew();
         private static bool _done;
         private static int _attempts;
+        private static int _notReady;
+        private static bool _waiting;
         private static double _nextTryAt;
+
+        /// <summary>The enabled modules at load (null = not known - then the bridge just tries).</summary>
+        private static IReadOnlyCollection<string>? _modules;
 
         /// <summary>The built FluentGlobalSettings - deliberately typed object (see the class doc).</summary>
         private static object? _settings;
 
         public static bool IsRegistered => _settings != null;
 
+        /// <summary>The enabled module ids, read once at load (<c>Utilities.GetModulesNames</c>) - MCM's
+        /// own module missing from it means MCM never runs (step 12).</summary>
+        public static void UseModuleList(IReadOnlyCollection<string>? modules) => _modules = modules;
+
         /// <summary>
-        /// Registers the page if MCM is loaded and ready. Call from OnBeforeInitialModuleScreenSetAsRoot
-        /// and OnGameStart; <see cref="Tick"/> retries while MCM is loaded but not ready yet
-        /// (its builder factory returns null until its services are up). Without MCM: logs that
-        /// once and never tries again. Any exception: logged, and the mod runs on the file.
+        /// Registers the page if MCM is loaded, its module enabled, and MCM ready. Call from
+        /// OnBeforeInitialModuleScreenSetAsRoot and OnGameStart; after a "not ready" (its builder
+        /// factory returns null until its services are up) <see cref="Tick"/> retries once a second, at
+        /// most <see cref="McmPlan.MaxRetries"/> times. Without MCM, or with its module off: one line,
+        /// never again. Any exception: logged, and the mod runs on the file.
         /// </summary>
         public static void TryRegister(string when)
         {
@@ -96,46 +114,69 @@ namespace TraxCombat.Mcm
             try
             {
                 var mcm = FindMcm();
-                if (mcm == null)
+                switch (McmPlan.Decide(mcm != null, McmPlan.ModuleEnabled(_modules)))
                 {
-                    _done = true;
-                    TraxLog.Info("mcm", "MCM (Mod Configuration Menu) is not loaded - no settings page; the mod runs on config.json alone. That is fine.");
-                    return;
+                    case McmVerdict.NotLoaded:
+                        Stop();
+                        TraxLog.Info("mcm", "MCM (Mod Configuration Menu) is not loaded - no settings page; the mod runs on config.json alone. That is fine.");
+                        return;
+                    case McmVerdict.ModuleNotEnabled:
+                        Stop();
+                        TraxLog.Info("mcm", McmPlan.ModuleNotEnabledLine(Version(mcm)));
+                        return;
                 }
 
                 _attempts++;
                 if (Build())
                 {
-                    _done = true;
+                    Stop();
                     TraxLog.Info("mcm", "settings page registered at " + when + " (attempt " + _attempts + "): MCM "
-                        + mcm.GetName().Version + ", page \"" + DisplayName + "\", " + SettingsSchema.All.Count
+                        + Version(mcm) + ", page \"" + DisplayName + "\", " + SettingsSchema.All.Count
                         + " settings in " + SettingsSchema.Groups.Count + " groups, format \"none\" (config.json is the only store), "
                         + "Default preset = the mod's defaults (defaults.json); group \"" + DefaultsGroupTitle + "\": buttons \""
                         + RevertButtonName + "\" and \"" + ExportButtonName + "\".");
+                    return;
                 }
-                else if (_attempts == 1)
+
+                _notReady++;
+                if (McmPlan.GiveUp(_notReady))
                 {
-                    TraxLog.Info("mcm", "MCM " + mcm.GetName().Version + " is loaded but not ready yet at " + when + " - retrying every " + RetrySeconds + " s.");
+                    Stop();
+                    TraxLog.Info("mcm", McmPlan.GiveUpLine(Version(mcm), _attempts));
+                    return;
                 }
+                _waiting = true;
+                _nextTryAt = Clock.Elapsed.TotalSeconds + McmPlan.RetrySeconds;
+                if (_notReady == 1) TraxLog.Info("mcm", McmPlan.NotReadyLine(Version(mcm), when));
             }
             catch (Exception e)
             {
-                _done = true;
+                Stop();
                 _settings = null;
                 TraxLog.Error("mcm.register", e);
                 TraxLog.Info("mcm", "the settings page could not be built - the mod runs on config.json alone.");
             }
         }
 
-        /// <summary>Cheap retry, from OnApplicationTick: one attempt per second until done.</summary>
+        /// <summary>Cheap retry, from OnApplicationTick: only after an attempt found MCM not ready (never
+        /// before the main menu - see the class doc), one a second, until done or given up.</summary>
         public static void Tick()
         {
-            if (_done) return;
+            if (_done || !_waiting) return;
             double now = Clock.Elapsed.TotalSeconds;
             if (now < _nextTryAt) return;
-            _nextTryAt = now + RetrySeconds;
+            _nextTryAt = now + McmPlan.RetrySeconds;
             TryRegister("retry");
         }
+
+        /// <summary>No more attempts, ever (this session).</summary>
+        private static void Stop()
+        {
+            _done = true;
+            _waiting = false;
+        }
+
+        private static string Version(Assembly? mcm) => mcm?.GetName().Version?.ToString() ?? "?";
 
         private static Assembly? FindMcm() =>
             AppDomain.CurrentDomain.GetAssemblies()
