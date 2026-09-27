@@ -20,6 +20,11 @@ every fight a little less predictable and a lot more about who is still fresh.
 Every number is adjustable — in the Mod Configuration Menu if you have it, or in a plain
 config file with an explanation beside each value. Full spec: [docs/DESIGN.md](docs/DESIGN.md).
 
+## Compatibility
+
+**Not compatible with RBM (Realistic Battle Mod)** — it brings its own posture and stamina
+systems. Use one or the other.
+
 ## License
 
 Public domain ([Unlicense](LICENSE)).

@@ -58,8 +58,8 @@ drains by attacking, and the only penalty is slow attacks when empty.
 All toggles, all on by default.
 
 1. **Player bar** (`ShowPlayerBar`): the player's endurance near the vanilla health bar,
-   in the spirit of RBM's posture bar (Anton said "RCM"; the installed mod with the posture
-   bar is RBM, Realistic Battle Mod — style reference only).
+   in the spirit of RBM's posture bar (RBM = Realistic Battle Mod, confirmed by Anton —
+   style reference only).
 2. **Looked-at NPC** (`ShowTargetBar`): a small bar for the fighter the player is aiming at
    / looking at, within `TargetBarMaxDistance`; it lingers `TargetBarLingerSeconds` after
    the aim leaves so it does not flicker. Aiming at a horse shows its rider.
@@ -89,6 +89,16 @@ Every parameter lives in two places that stay in sync:
 mid-battle. Nothing ever needs a game restart; if some parameter can only apply from the
 next battle, its description says so. Hand edits to the file are picked up at the next
 battle start.
+
+## 5. Compatibility
+
+- **RBM (Realistic Battle Mod) is NOT compatible** (Anton, 2026-09-27): it has its own
+  posture and stamina and patches the same combat. The Steam page says so plainly. If RBM
+  is enabled, the mod logs `[compat]` and shows ONE message at the main menu / campaign
+  start ("Trax Combat Enhancements is not compatible with Realistic Battle Mod — disable
+  one of them"). It does not refuse to run.
+- Other combat mods that change damage or attack speed may stack with ours; the log's
+  per-battle summary is the tool to see it.
 
 ## Parameters
 
@@ -149,8 +159,7 @@ New parameters discovered while building go into this table in the same commit.
    when it lands; siege engines are free.
 9. **Shield damage is not randomized** by default; horse-charge bumps follow the melee
    toggle; fall damage and hits on objects never roll.
-10. **Play with RBM disabled** — it has its own posture and stamina; two stamina systems at
-    once would be confusing and untestable.
+10. **RBM is declared incompatible** (Anton confirmed, 2026-09-27) — see §5.
 
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`,
 `TargetBarMaxDistance`, `TargetBarLingerSeconds`, `FormationBarsAlways`,
