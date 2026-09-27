@@ -1,0 +1,15 @@
+bin/
+obj/
+*.user
+.vs/
+.idea/
+TestResults/
+
+dist/
+
+# Local Claude Code settings
+.claude/settings.local.json
+
+# Droppings of TaleWorlds' Workshop uploader when run from the repo root
+steam_appid.txt
+steam_workshop_uploader.txt
