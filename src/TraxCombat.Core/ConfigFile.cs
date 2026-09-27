@@ -84,8 +84,9 @@ namespace TraxCombat.Core
     {
         /// <summary>The format stamp written into every file. Bump it (and migrate in
         /// <see cref="Migrate"/>) when a later version must change the meaning of an existing key or
-        /// push a new default into files that already carry the old one. 2 = step 13 (PAUSE ONLY).</summary>
-        public const int FormatVersion = 2;
+        /// push a new default into files that already carry the old one. 2 = step 13 (PAUSE ONLY),
+        /// 3 = step 14 (the run-speed floor 0.3 → 0.7).</summary>
+        public const int FormatVersion = 3;
 
         /// <summary>The meta key holding <see cref="FormatVersion"/> - not a setting.</summary>
         public const string VersionKey = "ConfigVersion";
@@ -312,6 +313,9 @@ namespace TraxCombat.Core
         /// Format 2 (step 13, PAUSE ONLY): <c>AttackRateAiDecisions</c> true → the new default (off: on
         /// top of the no-attack timer it double-counts); <c>PlayerBarOffsetBottom</c> 54 → the new default
         /// (30: the Attack recovery bar sits above your bar, both under the vanilla health bar).
+        /// Format 3 (step 14, Anton after his 240v240): <c>MinMoveSpeedMultiplier</c> 0.3 → the new default
+        /// (0.7: an empty man runs at 70% of his pace - 0.3 was "too slow, unrealistic"). A format-1 file
+        /// gets both steps.
         /// </summary>
         public static List<string> Migrate(ConfigReadResult read)
         {
@@ -323,6 +327,11 @@ namespace TraxCombat.Core
                     "step 13: the no-attack timer carries the slow-down - the AI-decision scaling on top of it double-counts", from);
                 MoveOldDefault(read, SettingsSchema.PlayerBarOffsetBottom, 54,
                     "step 13: the Attack recovery bar sits above your bar, so the pair moved down under the vanilla health bar", from);
+            }
+            if (from < 3)
+            {
+                MoveOldDefault(read, SettingsSchema.MinMoveSpeedMultiplier, 0.3,
+                    "step 14: an empty man runs at 70% of his pace - 0.3 was too slow", from);
             }
             return read.Migrated;
         }

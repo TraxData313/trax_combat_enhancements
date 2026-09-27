@@ -150,7 +150,7 @@
   // line down to empty it falls in a straight line, so fresh men overtake tired ones. 1.0 =
   // tired men run as fast as fresh ones.
   // (range 0.1 to 1.0)
-  "MinMoveSpeedMultiplier": 0.3,
+  "MinMoveSpeedMultiplier": 0.7,
 
   // Top speed of a horse whose rider's bar is empty, times its normal top speed, on the same
   // straight line. 1.0 = horses never slow down, however tired the rider.

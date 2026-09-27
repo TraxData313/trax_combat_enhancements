@@ -9,7 +9,7 @@ public class AthleticsTests
 {
     /// <summary>DESIGN's initial values, as a player without a config file has them.</summary>
     private static AthleticsRules Defaults(bool enabled = true, int floor = 50, float perSkill = 1.0f, int peak = 75, bool healthCaps = true,
-        float cost = 10, bool costOnMiss = true, float hero = 0.75f, float leader = 0.75f, int speed = 20, float run = 0.3f, float mount = 1.0f,
+        float cost = 10, bool costOnMiss = true, float hero = 0.75f, float leader = 0.75f, int speed = 20, float run = 0.7f, float mount = 1.0f,
         bool damageFollows = true, float delayBlows = 2, float blowTime = 1.5f, float standing = 60, float atFullRun = 0.5f, float walk = 0.4f,
         bool modEnabled = true)
         => new(enabled, floor, perSkill, peak, healthCaps, cost, costOnMiss, hero, leader, speed, run, mount, damageFollows,
@@ -45,7 +45,7 @@ public class AthleticsTests
         Assert.True(r.HealthCaps);
         Assert.Equal(10f, r.CostPerBlow);
         Assert.Equal(20, r.ExhaustedAttackSpeedPercent);
-        Assert.Equal(0.3f, r.MinMoveSpeedMultiplier, 5);
+        Assert.Equal(0.7f, r.MinMoveSpeedMultiplier, 5);
         Assert.Equal(1.0f, r.MountMinSpeedMultiplier, 5);
         Assert.False(r.MountsSlow);
         Assert.True(r.DamageBonusFollows);
@@ -245,11 +245,11 @@ public class AthleticsTests
         var f = Troop(100);
         Assert.Equal(1f, AthleticsMath.RunSpeedMultiplier(r, f));
         AthleticsMath.Charge(f, Defaults(cost: 62.5f), 1);                     // f 0.5
-        Assert.Equal(0.65f, AthleticsMath.RunSpeedMultiplier(r, f), 5);        // 0.3 + 0.7 × 0.5
+        Assert.Equal(0.85f, AthleticsMath.RunSpeedMultiplier(r, f), 5);        // 0.7 + 0.3 × 0.5
         Assert.Equal(1f, AthleticsMath.MountSpeedMultiplier(r, f));            // MountMinSpeedMultiplier 1: never
         Assert.Equal(0.75f, AthleticsMath.MountSpeedMultiplier(Defaults(mount: 0.5f), f), 5); // 0.5 + 0.5 × 0.5
         AthleticsMath.Charge(f, Defaults(cost: 100), 2);                       // empty
-        Assert.Equal(0.3f, AthleticsMath.RunSpeedMultiplier(r, f), 5);
+        Assert.Equal(0.7f, AthleticsMath.RunSpeedMultiplier(r, f), 5);
         Assert.Equal(0.5f, AthleticsMath.MountSpeedMultiplier(Defaults(mount: 0.5f), f), 5);
         Assert.Equal(1f, AthleticsMath.RunSpeedMultiplier(Defaults(modEnabled: false), f));
         Assert.Equal(1f, AthleticsMath.MountSpeedMultiplier(Defaults(mount: 0.5f, enabled: false), f));

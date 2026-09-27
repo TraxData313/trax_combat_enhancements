@@ -137,8 +137,10 @@ regen.)
       target with a verdict word (on target within ±15%, too fast, too slow); your timer (presses
       swallowed, the held button firing, releases); the AI's holds; whether tired men block as
       often as fresh ones.
-  - **Run speed on foot** = M + (1 − M) × f, M = `MinMoveSpeedMultiplier` (0.3). Tired men
-    slow down, so fresher men overtake them. Horses keep their speed (Anton's pick):
+  - **Run speed on foot** = M + (1 − M) × f, M = `MinMoveSpeedMultiplier` (0.7 - an empty man
+    runs at 70% of his pace; step 14, Anton after his 240v240: "make them slow down to 70% speed",
+    the 0.3 of steps 5c-13 was "too slow, unrealistic"). Tired men slow down, so fresher men
+    overtake them. Horses keep their speed (Anton's pick):
     `MountMinSpeedMultiplier` (1.0 = unaffected; lower it to let a tired rider's horse slow on
     the same curve).
 - **Regeneration** starts after `RegenDelayBlowTimes` (2) × `BlowTimeSeconds` (1.5 s) with no
@@ -448,7 +450,7 @@ says (§2c).
 | `AttackRatePaceHold` | true | Step 13: the AI's no-attack timer - after each attack (melee and ranged, on foot and mounted) a tired AI fighter may not start another for D × (1/m − 1), guard up (NoAttack; A/B switch). |
 | `AttackRateAiDecisions` | false | Tired AI fighters also decide to attack (and riposte) less often, loose less readily and aim longer - × / ÷ their attack speed (A/B switch). Off since step 13: on top of the timer it double-counts (the log read 128% / 172% too slow). |
 | `AttackAnimationMinPercent` | 100 | Step 13: the attack animations (swing, thrust / draw / throw, reload) play at max(m, this %) - 100 = always full speed (the whole slow-down is the timer); lower brings a little slow-mo back. |
-| `MinMoveSpeedMultiplier` | 0.3 | Top speed on foot at 0 Athletics. |
+| `MinMoveSpeedMultiplier` | 0.7 | Top speed on foot at 0 Athletics (0.3 until step 14 - Anton: "too slow, unrealistic"). |
 | `MountMinSpeedMultiplier` | 1.0 | Horse top speed at the rider's 0 Athletics (1.0 = horses never slow). |
 | `DamageBonusFollowsAthletics` | true | The damage upside shrinks with the attacker's Athletics below the peak. |
 | `StepBackEnabled` | true | Tired AI fighters on foot step back after melee swings (§2). Off mid-battle: everyone stepping back returns to his formation at once. |

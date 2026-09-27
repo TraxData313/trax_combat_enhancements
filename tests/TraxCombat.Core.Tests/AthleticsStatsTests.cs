@@ -16,7 +16,7 @@ public class AthleticsStatsTests
     {
         var lines = Lines(new AthleticsStats());
         Assert.Equal("Athletics settings at the end: ON - pool = the Athletics skill x1.00, at least 50; full strength at 75% of the pool and above; "
-            + "cost per blow 10.0 / hero 7.5 / party leader 5.6 points, misses cost: yes; when empty: attacks at 20%, run x0.30, horses x1.00 (never slowed); "
+            + "cost per blow 10.0 / hero 7.5 / party leader 5.6 points, misses cost: yes; when empty: attacks at 20%, run x0.70, horses x1.00 (never slowed); "
             + "damage upside follows Athletics: yes; wounds cap the pool: yes; refill after 3.0 s rest: empty to full in 60 s at a walk or slower "
             + "(up to 0.40 of top speed), x0.50 at a full run", lines[0]);
         Assert.Contains("Athletics pools (the Athletics skill, settings at the end): no fighters tracked", lines);

@@ -31,8 +31,8 @@ public class ConfigFileTests
         Assert.Equal(0, read.Values["AttackRateAiDecisions"]);
         Assert.Equal(SettingsSchema.PlayerBarOffsetBottom.Default, read.Values["PlayerBarOffsetBottom"]);
         Assert.Equal(40, read.Values["DamageRandomPercent"]);   // anything else is left alone
-        Assert.Contains(notes, n => n.StartsWith("AttackRateAiDecisions: true → false (format 1 → 2, the old default; step 13:", StringComparison.Ordinal));
-        Assert.Contains(notes, n => n.StartsWith("PlayerBarOffsetBottom: 54 → 30 (format 1 → 2, the old default;", StringComparison.Ordinal));
+        Assert.Contains(notes, n => n.StartsWith("AttackRateAiDecisions: true → false (format 1 → 3, the old default; step 13:", StringComparison.Ordinal));
+        Assert.Contains(notes, n => n.StartsWith("PlayerBarOffsetBottom: 54 → 30 (format 1 → 3, the old default;", StringComparison.Ordinal));
         Assert.Equal(2, ConfigFile.Migrate(read).Count);         // idempotent: nothing new the second time
 
         // a value the player chose himself (not the old default) stays
@@ -40,16 +40,49 @@ public class ConfigFileTests
         Assert.Empty(ConfigFile.Migrate(own));
         Assert.Equal(70, own.Values["PlayerBarOffsetBottom"]);
 
-        // a format-2 file (written by this version) and a hand-made file with no stamp are never migrated
-        var now = ConfigFile.Read("{ \"ConfigVersion\": 2, \"AttackRateAiDecisions\": true, \"PlayerBarOffsetBottom\": 54 }");
-        Assert.Empty(ConfigFile.Migrate(now));
-        Assert.Equal(1, now.Values["AttackRateAiDecisions"]);
+        // a format-2 file is past step 13's migration, and a hand-made file with no stamp is never migrated
+        var two = ConfigFile.Read("{ \"ConfigVersion\": 2, \"AttackRateAiDecisions\": true, \"PlayerBarOffsetBottom\": 54 }");
+        Assert.Empty(ConfigFile.Migrate(two));
+        Assert.Equal(1, two.Values["AttackRateAiDecisions"]);
         var hand = ConfigFile.Read("{ \"AttackRateAiDecisions\": true }");
         Assert.Empty(ConfigFile.Migrate(hand));
 
         // a file that did not parse: nothing
         Assert.Empty(ConfigFile.Migrate(ConfigFile.Read("{ nope")));
-        Assert.Equal(2, ConfigFile.FormatVersion);
+        Assert.Equal(3, ConfigFile.FormatVersion);
+    }
+
+    [Fact]
+    public void A_format_2_file_carrying_the_old_run_speed_floor_gets_the_new_one_once_and_nothing_else_moves()
+    {
+        // Anton's config.json after step 13: format 2, MinMoveSpeedMultiplier still 0.3 (never touched)
+        string old = "{ \"ConfigVersion\": 2, \"MinMoveSpeedMultiplier\": 0.3, \"AttackRateAiDecisions\": true, \"PlayerBarOffsetBottom\": 54, "
+                     + "\"MountMinSpeedMultiplier\": 0.3, \"FullRegenSecondsStanding\": 60.0, \"DamageRandomPercent\": 40 }";
+        var read = ConfigFile.Read(old);
+        var notes = ConfigFile.Migrate(read);
+        Assert.Single(notes);
+        Assert.StartsWith("MinMoveSpeedMultiplier: 0.3 → " + SettingsSchema.MinMoveSpeedMultiplier.Format(SettingsSchema.MinMoveSpeedMultiplier.Default)
+                          + " (format 2 → 3, the old default; step 14:", notes[0], StringComparison.Ordinal);
+        Assert.Equal(0.7, read.Values["MinMoveSpeedMultiplier"], 9);   // DESIGN's value (the tests run on DESIGN's table)
+        Assert.Equal(1, read.Values["AttackRateAiDecisions"]);          // format 2 is past step 13: left alone
+        Assert.Equal(54, read.Values["PlayerBarOffsetBottom"]);
+        Assert.Equal(0.3, read.Values["MountMinSpeedMultiplier"], 9);   // another key holding 0.3: never touched
+        Assert.Equal(40, read.Values["DamageRandomPercent"]);
+        Assert.Single(ConfigFile.Migrate(read));                         // idempotent
+
+        // his own choice (not the old default) stays; a format-3 file is never migrated
+        var own = ConfigFile.Read("{ \"ConfigVersion\": 2, \"MinMoveSpeedMultiplier\": 0.5 }");
+        Assert.Empty(ConfigFile.Migrate(own));
+        Assert.Equal(0.5, own.Values["MinMoveSpeedMultiplier"], 9);
+        var now = ConfigFile.Read("{ \"ConfigVersion\": 3, \"MinMoveSpeedMultiplier\": 0.3 }");
+        Assert.Empty(ConfigFile.Migrate(now));
+        Assert.Equal(0.3, now.Values["MinMoveSpeedMultiplier"], 9);
+
+        // a format-1 file gets both steps
+        var one = ConfigFile.Read("{ \"ConfigVersion\": 1, \"MinMoveSpeedMultiplier\": 0.3, \"AttackRateAiDecisions\": true }");
+        Assert.Equal(2, ConfigFile.Migrate(one).Count);
+        Assert.Equal(0.7, one.Values["MinMoveSpeedMultiplier"], 9);
+        Assert.Equal(0, one.Values["AttackRateAiDecisions"]);
     }
 
     [Fact]

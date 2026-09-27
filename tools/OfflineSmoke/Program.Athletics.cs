@@ -156,7 +156,7 @@ namespace TraxCombat.Tools
             S.Set(SettingsSchema.AttackRatePaceHold, true, SettingSources.File);
             S.Set(SettingsSchema.AttackRatePlayerTimer, true, SettingSources.File);
             S.Set(SettingsSchema.AttackAnimationMinPercent, 100, SettingSources.File); // step 13: full-speed animations
-            S.Set(SettingsSchema.MinMoveSpeedMultiplier, 0.3, SettingSources.File);
+            S.Set(SettingsSchema.MinMoveSpeedMultiplier, 0.7, SettingSources.File);
             S.Set(SettingsSchema.MountMinSpeedMultiplier, 1.0, SettingSources.File);
             S.Set(SettingsSchema.DamageBonusFollowsAthletics, true, SettingSources.File);
             S.Set(SettingsSchema.RegenDelayBlowTimes, 2, SettingSources.File);
@@ -341,15 +341,15 @@ namespace TraxCombat.Tools
             Check(Near(st.Fraction, 0.8) && st.SpeedMultiplier == 1f && st.RunSpeedMultiplier == 1f, "blow 1 of 50: " + st.Fraction + ", x" + st.SpeedMultiplier);
             LogHas("[athletics] blow melee (on foot): (agent 3) - cost 10.0, 50.0 → 40.0 of 50 (f 1.00 → 1.00)");
             Swing(st, ref t);
-            Check(Near(st.SpeedMultiplier, 0.84f) && Near(st.RunSpeedMultiplier, 0.86f), "blow 2 (f 0.8): attacks x" + st.SpeedMultiplier + ", run x" + st.RunSpeedMultiplier);
+            Check(Near(st.SpeedMultiplier, 0.84f) && Near(st.RunSpeedMultiplier, 0.94f), "blow 2 (f 0.8): attacks x" + st.SpeedMultiplier + ", run x" + st.RunSpeedMultiplier);
             LogHas("40.0 → 30.0 of 50 (f 1.00 → 0.80) - below full strength");
             Swing(st, ref t);
-            Check(Near(st.SpeedMultiplier, 0.2f + 0.8f * (20f / 37.5f)) && Near(st.RunSpeedMultiplier, 0.3f + 0.7f * (20f / 37.5f)), "blow 3 (f 0.53): x" + st.SpeedMultiplier);
+            Check(Near(st.SpeedMultiplier, 0.2f + 0.8f * (20f / 37.5f)) && Near(st.RunSpeedMultiplier, 0.7f + 0.3f * (20f / 37.5f)), "blow 3 (f 0.53): x" + st.SpeedMultiplier);
             Swing(st, ref t);
             Check(!st.Exhausted && Near(st.SpeedMultiplier, 0.2f + 0.8f * (10f / 37.5f)), "blow 4 (f 0.27): x" + st.SpeedMultiplier);
             Swing(st, ref t);
-            Check(st.Exhausted && st.Fraction == 0 && st.SpeedMultiplier == 0.2f && Near(st.RunSpeedMultiplier, 0.3f) && st.Blows == 5,
-                "5 blows did not empty a recruit exactly at x0.20 / run x0.30: " + st.Fraction + ", x" + st.SpeedMultiplier + ", run x" + st.RunSpeedMultiplier);
+            Check(st.Exhausted && st.Fraction == 0 && st.SpeedMultiplier == 0.2f && Near(st.RunSpeedMultiplier, 0.7f) && st.Blows == 5,
+                "5 blows did not empty a recruit exactly at x0.20 / run x0.70: " + st.Fraction + ", x" + st.SpeedMultiplier + ", run x" + st.RunSpeedMultiplier);
             LogHas("10.0 → 0.0 of 50 (f 0.27 → 0.00) - EXHAUSTED");
             LogHas("[athletics] exhausted: (agent 3) at ");
             for (int i = 0; i < 4; i++) Swing(st, ref t); // empty swings: 5x as long
@@ -415,7 +415,7 @@ namespace TraxCombat.Tools
             Check(Near(w.Fraction, 0.5) && Near(w.Health, 0.5) && stats.HealthCuts == 1 && Near(stats.HealthCutMaxPoints, 25.0),
                 "50% health did not cap the bar at 25 of 50: " + w.Fraction + ", cuts " + stats.HealthCuts);
             LogHas("[athletics] health cap: (agent 7) at 50% health - Athletics 50.0 → 25.0 of 50 (f 0.67)");
-            Check(Near(w.SpeedMultiplier, 0.2f + 0.8f * (0.5f / 0.75f)) && Near(w.RunSpeedMultiplier, 0.3f + 0.7f * (0.5f / 0.75f)) && w.SpeedDirty,
+            Check(Near(w.SpeedMultiplier, 0.2f + 0.8f * (0.5f / 0.75f)) && Near(w.RunSpeedMultiplier, 0.7f + 0.3f * (0.5f / 0.75f)) && w.SpeedDirty,
                 "the cut did not slow him on the curve: x" + w.SpeedMultiplier + ", run x" + w.RunSpeedMultiplier);
             Check(AthleticsLogic.TryGetReading(c, out var capped) && Near(capped.UsablePool, 25) && Near(capped.Points, 25) && Near(capped.PeakShare, 0.5 / 0.75)
                   && !capped.InPeakZone && Near(capped.PeakFraction, 0.75), "the read API does not show the cap");
@@ -501,15 +501,15 @@ namespace TraxCombat.Tools
             S.Set(SettingsSchema.ExhaustedAttackSpeedPercent, 50, SettingSources.Mcm);
             _logic!.ApplySettingsChange(S);
             Check(Near(a.SpeedMultiplier, 0.5f) && Near(lead.SpeedMultiplier, 0.5f), "ExhaustedAttackSpeedPercent 50 did not re-target the empty");
-            LogHas("[speed] speed settings now: when empty attacks at 50%, run x0.30, horses x1.00; full strength at 75% of the pool - ");
+            LogHas("[speed] speed settings now: when empty attacks at 50%, run x0.70, horses x1.00; full strength at 75% of the pool - ");
             LogHas(" fighters get new speeds over the next ticks (at most 50 recomputes a tick)");
             S.Set(SettingsSchema.MinMoveSpeedMultiplier, 0.5, SettingSources.Mcm);
             _logic.ApplySettingsChange(S);
             Check(Near(a.RunSpeedMultiplier, 0.5f), "MinMoveSpeedMultiplier 0.5 did not re-target the run speed: x" + a.RunSpeedMultiplier);
             S.Set(SettingsSchema.ExhaustedAttackSpeedPercent, 20, SettingSources.Mcm);
-            S.Set(SettingsSchema.MinMoveSpeedMultiplier, 0.3, SettingSources.Mcm);
+            S.Set(SettingsSchema.MinMoveSpeedMultiplier, 0.7, SettingSources.Mcm);
             _logic.ApplySettingsChange(S);
-            Check(Near(a.SpeedMultiplier, 0.2f) && Near(a.RunSpeedMultiplier, 0.3f), "back to 20% / x0.3 did not re-target");
+            Check(Near(a.SpeedMultiplier, 0.2f) && Near(a.RunSpeedMultiplier, 0.7f), "back to 20% / x0.7 did not re-target");
 
             S.Set(SettingsSchema.AthleticsPeakPercent, 20, SettingSources.Mcm); // the wounded man (20%) is now at full strength
             _logic.ApplySettingsChange(S);
@@ -539,7 +539,7 @@ namespace TraxCombat.Tools
             _logic.ApplySettingsChange(S);
 
             Check(AthleticsLogic.TryGetReading(a.Agent, out var read) && read.Enabled && read.Exhausted && read.Points == 0 && read.PeakShare == 0
-                  && Near(read.SpeedMultiplier, 0.2f) && Near(read.RunSpeedMultiplier, 0.3f), "the read API does not report the empty fighter");
+                  && Near(read.SpeedMultiplier, 0.2f) && Near(read.RunSpeedMultiplier, 0.7f), "the read API does not report the empty fighter");
             Check(AthleticsLogic.TryGetPeakShare(a.Agent, out double fa) && fa == 0 && !AthleticsLogic.TryGetPeakShare(FakeAgent(3), out _),
                 "TryGetPeakShare wrong for the empty fighter or a stranger with his index");
             Check(!AthleticsLogic.TryGetReading(FakeAgent(3), out _), "the read API answered for an untracked agent with a reused index");
@@ -630,12 +630,12 @@ namespace TraxCombat.Tools
             var a = FirstTracked(3);
             double t = 500;
             for (int i = 0; i < 5; i++) Swing(a, ref t);
-            Check(a.Exhausted && Near(a.SpeedMultiplier, 0.2f) && Near(a.RunSpeedMultiplier, 0.3f), "precondition: fighter 3 not empty");
+            Check(a.Exhausted && Near(a.SpeedMultiplier, 0.2f) && Near(a.RunSpeedMultiplier, 0.7f), "precondition: fighter 3 not empty");
             _logic.TickStepBacks(t);
             Check(_logic.SteppingNow == 1, "precondition: fighter 3 is not stepping back");
             var p = a.Agent.AgentDrivenProperties;
             _statTop!.UpdateAgentStats(a.Agent, p);
-            Check(Near(p.SwingSpeedMultiplier, 1.05f) && Near(p.MaxSpeedMultiplier, 0.24f), "precondition: no run penalty on the empty fighter, or his animations slowed (step 13: full speed)");
+            Check(Near(p.SwingSpeedMultiplier, 1.05f) && Near(p.MaxSpeedMultiplier, 0.56f), "precondition: no run penalty on the empty fighter (0.8 x the floor 0.7), or his animations slowed (step 13: full speed)");
 
             // step 5e: a pace hold running on another tired fighter (f 0.27 - no step back at these dice)
             typeof(AthleticsLogic).GetField("_paceClosed", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(_logic, false);
