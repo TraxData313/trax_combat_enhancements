@@ -1545,3 +1545,100 @@ start and the logic lives per mission.
 2. That the uploader accepts the dist folder, the PNG preview and the UI tag (the siblings' uploads
    proved the folder shape, a JPG preview and the Utility tag).
 3. How the Workshop page renders `STEAM-DESCRIPTION.bbcode` (h1, lists, the ± and × characters).
+
+## Step 12 — playtest fixes, round 1 (DONE 2026-09-27)
+
+Anton's first playtest session (`trax_combat.log`, 20:58-21:14, three game starts) found two bugs;
+a third report (the exit hang) is not ours - notes below, no code.
+
+**Fix 1 - the player bar outside battles.**
+- Why there was no bar: the training field (scene `training_field_2`, StoryMode) runs in
+  `MissionMode.StartUp` (Conversation while he talks to the trainer); HudGate allowed Battle / Duel /
+  Tournament / Stealth only → `[hud] player bar: not shown at 0.1 s - not a fight (mission mode) - mode
+  StartUp`, although Athletics ran there (37 blows charged, 15 hits rolled - the 21:06 summary).
+- Which missions run in which mode (v1.4.8 SandBox, its `SetMissionMode((MissionMode)N)` calls):
+  StartUp (0) = town centre, houses and indoor scenes, arena PRACTICE, the alley handler, a stealth
+  zone's exit; Conversation (1) = conversations, the arena master; Battle (2) = town fights
+  (`MissionFightHandler`), alley fights, the hideout ambush, combat-with-dialogue, tournaments' fight
+  controllers; Stealth (4) = hideouts, prison break, sabotage; Tournament (7); CutScene (9) = the
+  hideout boss intro. The training field: StartUp (the log).
+- THE RULE (Core `HudGate`, pure, tested): fight modes as before. A view with the OUTSIDE-A-BATTLE rule
+  (`HudOutside`; the player bar only - the orders strip keeps the fights-only gate) also shows in the
+  WALK-ABOUT mode (StartUp only; Conversation, Barter, Deployment, Replay, CutScene and Benchmark are
+  menus or films), with the player on the field and his Athletics tracked, while `weapon drawn ||
+  below full || grace`. Check order: ModOff, AthleticsOff, ToggleOff (ShowPlayerBar), HideBattleUI,
+  PhotoMode; then outside a fight: no rule or not the walk-about mode → NotFightMode;
+  ShowPlayerBarOutsideBattles off → OutsideBattlesOff; NoPlayer; NotTracked; OutsideIdle. `HudShow`
+  says why it IS up (fight / weapon drawn / refilling / grace) for the log.
+- Decisions (written down as the brief asked):
+  - **"A weapon drawn" = anything wielded in either hand** (`HudFrame.HandsFull`:
+    `GetPrimaryWieldedItemIndex() != None || GetOffhandWieldedItemIndex() != None` - the game's own
+    hands-empty test, Agent.cs's swimming check; two reads from the agent's native memory, no
+    allocation). A shield alone counts (he is ready to fight). **Fists only = not drawn** - fists are
+    no item, both hands read `EquipmentIndex.None`, so it IS distinguishable. A torch or a banner in
+    hand would count too - accepted.
+  - **"Below full" = below the top he can REFILL to** (`AthleticsReading.BelowFull`: fraction < usable
+    fraction − 1e-6), not below the whole pool - else a wounded player's bar would never leave in town.
+  - **A 1 s grace** (`HudGate.OutsideLingerSeconds`, a documented plumbing constant, not a setting): a
+    weapon switch sheathes one and draws the other, both hands empty for a moment; without it the
+    layer (a movie load) would be torn down and rebuilt at every switch. It only KEEPS a shown bar
+    (`Lingers(shownNow, …)`), never brings one back.
+  - Mode changes follow on the next frame: a town fight (Battle) ending with empty hands and a full bar
+    → gone; a conversation → gone, back after it if the weapon is still in hand.
+- Setting `ShowPlayerBarOutsideBattles` (true, live; group "Your Athletics bar", label "Your bar outside
+  battles too") - 59 settings.
+- Log: builds / removals outside a fight in their OWN rate bucket `hud-outside` (a burst of 30, then 1/s
+  - a town walk never eats the battle lines' `hud-layer` budget), each with its reason: `layer created
+  at … (mode StartUp, outside a battle: a weapon drawn, was hidden: …)`, `layer removed at … - outside a
+  battle: no weapon drawn and your Athletics full`; a changed reason while up (the weapon put away while
+  it refills) verbose only (`hud-outside-why`); the attach line tells the rule; the summary's clause
+  `outside a battle: shown Nx (weapon drawn N, refilling N), on screen N s` (`HudStats.HasOutsideRule`).
+- Cost: in fights nothing new (the outside facts are read only outside a fight); outside one, two
+  pointer reads and one `TryGetReading` per frame, no allocation.
+
+**Fix 2 - MCM's retry loop.**
+- The 21:08 session: `Bannerlord.MBOptionScreen` NOT in the module list, yet `[mcm] MCM 5.12.2.0 is
+  loaded but not ready yet at retry - retrying every 1 s.` and never registered - another enabled mod
+  ships an MCMv5 DLL in its own bin (5.12.2, while the Workshop MCM is 5.12.3; which mod was not
+  identified - the log lists modules, not assemblies). MCM's services are built only by its own
+  module's SubModule (`MCMSubModule.OnBeforeInitialModuleScreenSetAsRoot` →
+  `GenericServiceProvider.GlobalServiceProvider = ….Build()`, 5.12.3 decompile), so without the
+  module `BaseSettingsBuilder.Create` returns null forever.
+- Learned on the way: those services are built at MCM's MAIN-MENU hook, the same frame as ours. The old
+  tick retried from the very first application tick, so the pre-menu attempts were always doomed (every
+  session registered at "main menu (attempt 3)").
+- Now (Core `McmPlan` + `McmBridge`): the module list of the load line → `McmBridge.UseModuleList`; no
+  DLL → the old "not loaded" line; DLL loaded but MCM's module off → ONE line "MCM's module is not
+  enabled - no settings page; config.json only. (…)" and no attempt; the first attempt at the main menu
+  (or the first game start); after "not ready" the tick retries 1/s up to `McmPlan.MaxRetries` (30 - a
+  documented CONSTANT, not a parameter: no player tunes it; MCM is ready at worst one retry after the
+  main menu when our module loads before MCM's), then ONE "never became ready - gave up after 31
+  attempts" line and silence. An unknown module list (read failed; the smoke) = just try, capped.
+
+**Exit hang (no code) - Anton: the game hangs on "shutting down" in Steam after exit.**
+- Our side is finished by then: session 1 logged `[load] unloaded (game closing)` at 21:06:04.694, 4 s
+  after the last mission's summary (21:06:00.152); session 3 the same (21:14:10.629, 4 s after 21:14:06).
+  Session 2 (21:08, the one without MCM's module) has NO unload line: its last line is the game start
+  at 21:08:18 (no mission ran), the next is session 3's load at 21:11:48 - that game ended without the
+  loader's unload call (killed, or a crash). Worth asking Anton which session hung.
+- Verified 2026-09-27 (grep of `src`): no `Thread`, `ThreadPool`, `Task`, `async` / `await`, `Timer`,
+  `Process`, `BackgroundWorker` or `Parallel` anywhere. The only threading: short `lock`s around
+  in-memory counters and the log writer, `Interlocked`, one `[ThreadStatic]` Random; the `Stopwatch`es
+  are clocks with no callbacks. The mod owns nothing that could outlive the game.
+- `OnSubModuleUnloaded` cannot block: it writes one line (the log's `Gate` lock - held per line by
+  whoever writes; no thread of ours exists, an engine callback holds it for one line) and
+  `TraxLog.Release()` disposes the one FileStream (AutoFlush - already flushed) inside try/catch.
+  Nothing waits on anything.
+- So the hang comes after our unload. Suspects: another mod's helper process or foreground thread
+  (ImmersiveAI.Dev spawns helper processes), or the game's own `Watchdog.exe`. **Diagnosis**: next time
+  it hangs, inspect the process tree WHILE it hangs (Task Manager → Details with the "Parent" view, or
+  Process Explorer, or `Get-CimInstance Win32_Process | Where-Object ParentProcessId -eq <pid of
+  Bannerlord.exe>`): which child of Bannerlord.exe - or which process holding it - is still alive. The
+  BUGS line stays open until then.
+
+**UNVERIFIED - only the game can tell (PLAYTEST F6, A1, A4)**
+1. `HandsFull` in game: sheathed = None in both hands; a drawn sword / shield / bow = not None; a weapon
+   switch's empty moment shorter than the 1 s grace (else the `hud-outside` lines show a blink).
+2. Towns track the player like the training field did (`[athletics] YOU: …` in the mission's lines).
+3. With MCM's module enabled: `registered at main menu (attempt 1)` (or `retry (attempt 2)`).
+4. With MCM's module off and a carried DLL: the "module is not enabled" line once, no other `[mcm]` line.

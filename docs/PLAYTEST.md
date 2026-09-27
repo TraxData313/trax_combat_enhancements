@@ -1,7 +1,7 @@
 # Playtest — one session, start to finish
 
 Anton plays this ONCE, after the build is finished, and hands Claude the log. Seven parts in
-order, about **2 hours** (A 10 min, B 15, C 25, D 10, E 15, F 30, G 10; the optional bits add ~30). Each part says what to do, what you
+order, about **2 hours** (A 10 min, B 15, C 25, D 10, E 15, F 35, G 10; the optional bits add ~30). Each part says what to do, what you
 should see, what counts as broken, and the log lines that prove it. The full line reference —
 every summary block and what proves what — is the **appendix** at the end.
 
@@ -54,12 +54,15 @@ needs MCM refuses to start for every player without it.
     (the dev copy runs), `[load] module: TraxCombatEnhancements.Dev (the dev install - tools\deploy.ps1)`,
     `[load] game: v1.4.8.…`, `[load] modules (N): …`
   - `[compat] Realistic Battle Mod (RBM) not enabled - good`
-  - `[config] defaults: defaults.json (embedded in TraxCombat.Core.dll), 58 keys for 58 settings - every default read from it`
+  - `[config] defaults: defaults.json (embedded in TraxCombat.Core.dll), 59 keys for 59 settings - every default read from it`
   - `[config] first run: created config.json with every default and a plain-words explanation beside each value`
-  - `[config] settings in effect (58, version 0):` and 58 lines like `[config]   DamageRandomPercent = 50`
+  - `[config] settings in effect (59, version 0):` and 59 lines like `[config]   DamageRandomPercent = 50`
   - `[mcm] MCM (Mod Configuration Menu) is not loaded - no settings page; the mod runs on config.json alone. That is fine.`
+    — or, if another enabled mod carries MCM's DLL in its own folder (step 12, your 21:08 session):
+    `[mcm] MCM's module is not enabled - no settings page; config.json only. (An MCM 5.… DLL is loaded - another mod carries it - …)`
+    — one line, and no `[mcm]` line after it.
 - Broken: the game will not start or names the mod in an error; no `[load]` lines; any
-  `defaults.json PROBLEM:` line.
+  `defaults.json PROBLEM:` line; `[mcm] … not ready yet` with MCM's module off.
 
 **A2. The config file — and VerboseLogging on, by hand.** Alt-Tab, open `config.json`.
 - You see: a header (where the file lives, that edits apply at the next battle start, three ways back
@@ -83,9 +86,12 @@ end it (win or retreat).
 **A4. Now WITH MCM (and RTS Camera, as you usually play).** Quit. Enable *Mod Configuration Menu v5*
 (with Harmony, ButterLib, UIExtenderEx) and RTS Camera + Command System. Start.
 - You see: *"… loaded - settings in Mod Options."*
-- Log: `[mcm] settings page registered at main menu (attempt 1): MCM 5.…, page "Trax Combat Enhancements", 58 settings in 9 groups, format "none" (config.json is the only store), Default preset = the mod's defaults (defaults.json); group "Defaults": buttons "Revert all to defaults" and "Save current values as a defaults file".`
-  (`at retry (attempt N)` is fine — MCM was slow to wake); the settings dump shows
+- Log: `[mcm] settings page registered at main menu (attempt 1): MCM 5.…, page "Trax Combat Enhancements", 59 settings in 9 groups, format "none" (config.json is the only store), Default preset = the mod's defaults (defaults.json); group "Defaults": buttons "Revert all to defaults" and "Save current values as a defaults file".`
+  (`at retry (attempt 2)` is fine — MCM woke a moment after us; the first try is now always at the
+  main menu, where MCM builds its services — step 12); the settings dump shows
   `VerboseLogging = true (default false)`.
+- Broken: `[mcm] MCM … never became ready - gave up after 31 attempts …` with MCM enabled (the page
+  is missing — send the `[mcm]` lines); a `not ready yet` line with no `registered` or `gave up` after it.
 
 **A5. The MCM page.** Options → Mod Options → *Trax Combat Enhancements*.
 - You see: the same 9 groups — *Master switch* (Mod enabled) on top, *Advanced* at the bottom, and
@@ -315,10 +321,12 @@ line. You are not in the numbers (you have your own bar).
 
 Any custom battle with several formations (keep RTS Camera on, as since A4).
 
-**E1. The bar — when it shows and where.** It appears when the fight starts with you on the field;
-never during deployment, conversations, cutscenes, with *Hide Battle UI* (Options → Gameplay) or
-photo mode on, or once you are knocked out. Try: *Hide Battle UI* on and off; get knocked out (or
-watch the end of a battle); change the game's UI scale once; mount a horse.
+**E1. The bar — when it shows and where.** In a battle it appears when the fight starts with you on
+the field; never during deployment, conversations, cutscenes, with *Hide Battle UI* (Options →
+Gameplay) or photo mode on, or once you are knocked out. Outside a battle — the training field, a
+town — it shows while you hold a weapon or a shield, or while your Athletics refills (F6, step 12).
+Try: *Hide Battle UI* on and off; get knocked out (or watch the end of a battle); change the game's
+UI scale once; mount a horse.
 - You see: the row under the health bar (and the horse bar), not overlapping them, not cut off; it
   scales with the UI scale like the health bar; it goes and comes back with each switch.
 - Log: `[hud] attached: player bar (PlayerAthleticsView, movie TraxPlayerAthleticsBar, prefab installed) - …`;
@@ -359,7 +367,7 @@ clicks not working while the strip is up; `[hud] … DISABLED for the rest of th
 
 ---
 
-## F. Campaign — a field battle, a siege, a tournament (30 min)
+## F. Campaign — a field battle, a siege, a tournament, the training field (35 min)
 
 Load (or start) a campaign with a companion or two in your party.
 
@@ -390,9 +398,32 @@ Load (or start) a campaign with a companion or two in your party.
 **F4 (optional, +5 min). Arena practice** in a town — the cleanest attack-rate reading (no step backs
 there). Fight a recruit-level opponent with a shield and block his swings: his first 2 swings at the
 fresh rhythm, then each one later; empty, about one swing where he made five, guard up in between.
+Your bar is up the whole time (a weapon in hand).
 
 **F5 (optional, +10 min). A hideout.** The stealth phase costs Athletics too (the bar shows); the boss
 fights you in battle mode and may step back when tired — say if that feels wrong.
+
+**F6 (5 min). Your bar outside a battle — the training field, then a town** (step 12: your first
+playtest found no bar in the training field — it runs in the game's walk-about mode, not a battle
+mode). In the training field: walk about with empty hands, then take a weapon from a rack (or draw
+yours), swing at a dummy or spar with the trainer, put the weapon away; talk to the trainer. Then
+walk into a town with your weapon sheathed.
+- You see: no bar with empty hands and a full bar; the bar the moment a weapon (or a shield) is in
+  your hand; switching weapons does not make it blink; put away after a few swings, it stays while
+  the number climbs back and goes about a second after it is full; gone while you talk to the trainer
+  (back after the talk if you still hold the weapon); in town with the weapon sheathed, no bar.
+  *Your Athletics bar* → *Your bar outside battles too* off: no bar outside a battle at all (fights
+  unchanged).
+- Log: `[hud] player bar: not shown at … - outside a battle: no weapon drawn and your Athletics full`;
+  `[hud] player bar: layer created at … (mode StartUp, outside a battle: a weapon drawn, was hidden: …) - movie TraxPlayerAthleticsBar loaded OK (13 widgets)`;
+  `[hud] player bar: layer removed at … - outside a battle: no weapon drawn and your Athletics full`;
+  `… - not a fight (mission mode) - mode Conversation`; with the switch off
+  `… - outside a battle, and ShowPlayerBarOutsideBattles is off`; the summary's `hud: player bar` line
+  ends `outside a battle: shown Nx (weapon drawn N, refilling N), on screen N s; errors 0`.
+- Broken: no bar with a weapon in hand in the training field (send the `[hud]` lines); a bar during a
+  conversation or with empty hands and a full bar for more than a second; the bar blinking while you
+  switch weapons; `outside a battle, and this mission does not track your Athletics` in the training
+  field.
 
 ---
 
@@ -416,7 +447,7 @@ defaults file**.
   back to its default (N changed) - applied now; config.json saved."* (MCM's Cancel does not undo it.)
 - Log: `[mcm] "Revert all to defaults" pressed`, one `[config] <Key>: … → … (source: defaults)` per
   setting that moved, `[config] wrote config.json (reverted to defaults): every value as it is in effect now`,
-  `[config] reverted all 58 settings to their defaults (…): N changed, applied live`.
+  `[config] reverted all 59 settings to their defaults (…): N changed, applied live`.
 
 **G4 (optional, 1 min). The rewrite rule.** Hand-edit one value in config.json; then — before any
 battle — change a DIFFERENT value in MCM and press Done. The hand edit must still be in the file.
@@ -446,8 +477,11 @@ From `Documents\Mount and Blade II Bannerlord\Configs\TraxCombatEnhancements\` (
 
 - Load: `[load]` lines at every game start (A1), incl. `[load] module: <Id>` - which copy runs (dev or
   release); `[compat]` RBM or not; `[compat]` two copies enabled and the other stood down (A6 - only
-  when both are on); `[mcm]` registered or not (A1, A4); `[config] defaults: … 58 keys for 58 settings` (any `defaults.json PROBLEM:` under it →
-  that setting runs on a fallback — tell Claude); `[config] settings in effect (58, version N):` and
+  when both are on); `[mcm]` registered or not (A1, A4) — step 12: at most ONE `not ready yet` line,
+  followed by `registered at retry (attempt N)` or one `never became ready - gave up after 31 attempts …`;
+  with MCM's module off but its DLL carried by another mod, one `MCM's module is not enabled - no settings page; config.json only.`
+  and nothing more; `[config] defaults: … 59 keys for 59 settings` (any `defaults.json PROBLEM:` under it →
+  that setting runs on a fallback — tell Claude); `[config] settings in effect (59, version N):` and
   one line per setting (a changed one ends `(default …)`).
 - Every change: `[config] <Key>: <old> → <new> (source: MCM|file|defaults)` — dragging a slider logs
   each step; Cancel logs the way back.
@@ -626,6 +660,12 @@ known gap).
   `EXHAUSTED shown`; `wounded` (C3); `layer removed at … - <reason>` (`ShowPlayerBar off`, `AthleticsEnabled off`,
   `ModEnabled off (the master switch)`, `the game's Hide battle UI is on`, `photo mode`, `no player agent on the field`,
   `not a fight (mission mode) - mode Conversation`); verbose `~[hud] player bar: colour yellow → orange at …`.
+- Your bar outside a battle (F6, step 12 - its own rate bucket, so town walks never crowd out battle
+  lines): `layer created at … (mode StartUp, outside a battle: a weapon drawn | your Athletics refilling, was hidden: …)`;
+  `layer removed at … - outside a battle: no weapon drawn and your Athletics full` / `- outside a battle, and ShowPlayerBarOutsideBattles is off`
+  / `- not a fight (mission mode) - mode Conversation`; `not shown at … - outside a battle, and this mission does not track your Athletics`
+  (a mission without Athletics for you); verbose `~[hud] player bar: still shown at …, now outside a battle: your Athletics refilling (was: outside a battle: a weapon drawn)`.
+  The attach line ends `; outside a battle too while ShowPlayerBarOutsideBattles is on (on now): in the walk-about mode (StartUp - towns, villages, the training field) …`.
 - The strip: `layer created …` (later builds and removals by the menu closing go to the verbose log
   only), `first placement under the cards …` (the proof of the alignment: each cell's x = its card's x,
   its y = the card's y + height + 1 at UI scale 1), `values at … (open #N, …)` once per open,
@@ -641,6 +681,8 @@ known gap).
   [summary] hud: orders strip (movie TraxOrderStrip) - on screen 48.1 s of 340.2 s (14%); layer built 12x, removed 12x (orders menu closed 11, mission end 1); hidden: not a fight 20.1 s, orders menu closed 272.0 s; 480 refreshes; errors 0
   [summary] hud: orders strip - opened 12x: under the cards in 12, the compact panel in 0; technique: the live vanilla cards (layer MissionOrder: 16 cards); card layouts seen: 16 cards in 2 sets, set 1 drawn; cells placed 36 (lifted to the screen's edge 0), card changes 0, short mismatches 0 (under 1.0 s), card re-scans 0, values pushed 40; fallbacks: none
   ```
+  Outside a battle (a town, the training field) the player bar's line also ends
+  `outside a battle: shown 3x (weapon drawn 2, refilling 1), on screen 45.2 s; errors 0` (or `outside a battle: never shown`).
   Proves: *on screen* ≈ your time on the field in the fight; every *removed* has its reason; bar
   *refreshes* ≈ 10 a second on screen; the strip's *under the cards in* = *opened* and *fallbacks: none*;
   *short mismatches* small (a man fell between two updates); *errors 0*. A mission without a screen

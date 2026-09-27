@@ -236,11 +236,25 @@ counted (the cards count the men under his command; he has his own bar). Refresh
   `OrderStripBarOffset`, `OrderStripBarHeight`, `OrderStripSideMargin`), all live. The defaults
   make the cell 23 px deep, which fits the bottom card of a column at 1920 × 1080 exactly.
 
-Bars show only in fights (battle, duel, tournament and stealth modes — step 6 added stealth:
+Bars show in fights (battle, duel, tournament and stealth modes — step 6 added stealth:
 a stealth mission's fights cost Athletics too), with the player on the field, never while the
 game's "hide battle UI" or photo mode is on, and never while the master switch or Athletics is
 off. Every one of these is read live, every frame (a switch flipped mid-battle takes the bar
 away or brings it back at once).
+
+**Outside a battle — the player bar only (step 12, Anton's playtest: the training field showed no
+bar, because it runs in the game's walk-about mode, not a battle mode).** With
+`ShowPlayerBarOutsideBattles` on, the player bar also shows in the walk-about mode (the game's
+`StartUp`: the training field, towns, villages, a lord's hall, arena practice) — with the player on
+the field and his Athletics tracked — while he **holds a weapon or a shield** (anything wielded in
+either hand; fists only do not count) **or his Athletics is below full** (below the top it can
+refill to — a wound's cap counts as full), so it stays up while it refills; one second after both
+end it goes (a short grace, so a weapon switch — both hands empty for a moment — does not flicker
+it). Never in a conversation, barter, deployment, cutscene or replay. The orders-menu strip keeps
+the fights-only rule. The log names the reason at each appearance and removal outside a battle
+("outside a battle: a weapon drawn", "… no weapon drawn and your Athletics full"), and the
+summary's `hud:` line ends with "outside a battle: shown Nx (weapon drawn N, refilling N), on
+screen N s".
 
 **The player bar as built (step 6):** bottom right, one row under the vanilla health bar (and
 the horse bar), its right end lined up with the health bar's fill: the word *Athletics*, the

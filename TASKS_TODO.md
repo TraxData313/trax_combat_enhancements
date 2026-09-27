@@ -13,7 +13,7 @@ BUILD ORDER (one step at a time — [~] = in flight, see CLAUDE.md "manager prot
 - [x] 10a. Fresh-eyes code review: bugs, crash paths, stuck states, performance, gates — fix what is found
 - [x] 10b. Polish: hide the LATER features' settings (no switch that does nothing), settings/config readability, docs + PLAYTEST script as one clean run (Anton's playtest comes after, all at once)
 - [x] 11. Steam packaging — upload only on Anton's yes (package ready — upload waits for Anton's yes after the playtest)
-- [~] 12. Playtest fixes, round 1 (see BUGS)
+- [x] 12. Playtest fixes, round 1 (see BUGS) — bar outside battles, MCM stops cleanly; exit hang not ours (see AI_NOTES)
 
 PLAYTEST (Anton, all at once at the end — script in docs/PLAYTEST.md):
 - [ ] Play with RBM disabled — declared NOT compatible (Anton, 2026-09-27; the mod warns if it sees it)
@@ -26,9 +26,9 @@ LATER (moved off the build order by Anton, 2026-09-27 — designs kept in DESIGN
 - [ ] 8. Squad bars above my formations: average ± 1 std + average health
 
 BUGS:
-- [ ] No Athletics bar in the training field (Anton, 2026-09-27) — it runs in walk-around mode, the bar only showed in battle/duel/tournament/stealth; show it outside battles too when a weapon is drawn or the bar isn't full
-- [ ] MCM retried "not ready" every second all session when MCM wasn't enabled but another mod carried its DLL (log 21:08) — stop cleanly
-- [ ] Game hangs on "shutting down" in Steam after exit (Anton) — NOT our mod by its log (it logged "unloaded (game closing)" 4 s after the mission, it runs no threads); suspects: another mod's helper process/thread, the game's Watchdog.exe; next time it hangs, tell Claude while it hangs — the process tree shows who is still alive
+- [x] No Athletics bar in the training field (Anton, 2026-09-27) — it runs in walk-around mode, the bar only showed in battle/duel/tournament/stealth; show it outside battles too when a weapon is drawn or the bar isn't full — fixed in step 12: weapon or shield in hand, or refilling; new switch "Your bar outside battles too"
+- [x] MCM retried "not ready" every second all session when MCM wasn't enabled but another mod carried its DLL (log 21:08) — stop cleanly — fixed in step 12: MCM's module off = one line, no tries; retries capped at 30
+- [ ] Game hangs on "shutting down" in Steam after exit (Anton) — NOT our mod by its log (it logged "unloaded (game closing)" 4 s after the mission, it runs no threads); suspects: another mod's helper process/thread, the game's Watchdog.exe; next time it hangs, tell Claude while it hangs — the process tree shows who is still alive (see AI_NOTES step 12)
 
 NOT DECIDED (defaults in place, Anton can flip):
 - [ ] Hero multiplier: 0.75 (default now) or 0.5? (see DESIGN interpretations)

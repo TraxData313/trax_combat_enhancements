@@ -516,3 +516,31 @@
   upload; the test zip `dist\TraxCombatEnhancements_v0.1.0.zip` means a real v0.1.0 package needs
   -Force. Tests 302 → 312; build 0 warnings; smoke 45 steps OK; deployed. Commits 7c79099, ec93e4c,
   4a56f18 + this. (2026.09.27 20.50.39)
+- [x] **Step 12 — playtest fixes, round 1.** Anton's first playtest log (20:58-21:14) found two bugs.
+  (1) NO BAR IN THE TRAINING FIELD: it runs in the game's walk-about mode StartUp (Conversation while he
+  talks), HudGate allowed Battle/Duel/Tournament/Stealth only - though Athletics ran there (37 blows,
+  15 rolls). Now the PLAYER BAR has an outside-a-battle rule (Core HudGate + HudOutside, pure, tested;
+  the orders strip keeps the fights-only gate): in StartUp only (towns, villages, the training field,
+  arena practice - never Conversation/Barter/Deployment/CutScene/Replay), with the player on the field
+  and tracked, while he holds a weapon or a shield (anything wielded in either hand - the game's own
+  hands-empty test; fists only = no) OR his Athletics is below the top it can refill to
+  (AthleticsReading.BelowFull - a wound's cap counts as full), plus a 1 s grace (a documented plumbing
+  constant: a weapon switch empties both hands for a moment and would rebuild the layer). New setting
+  ShowPlayerBarOutsideBattles (true, live; 59 settings; schema, TraxSettings, defaults.json +
+  DefaultsTool refresh, DESIGN table + §3, MCM by the schema). New hide reasons OutsideBattlesOff /
+  NotTracked / OutsideIdle, HudShow (why it is up); every build and removal outside a fight logged with
+  its reason in its own rate bucket (hud-outside), the attach line tells the rule, the summary's hud:
+  line gains "outside a battle: shown Nx (weapon drawn N, refilling N), on screen N s". (2) MCM RETRY
+  LOOP: in the 21:08 session MCM's module was off but another mod carried an MCMv5 5.12.2 DLL, and the
+  bridge retried "not ready" every second all session. MCM builds its services only in its own
+  main-menu hook (5.12.3 decompile), so: Core McmPlan (tested) - the module list from the load line;
+  DLL but module off = ONE line "MCM's module is not enabled - no settings page; config.json only." and
+  no attempt; the first attempt at the main menu (the old pre-menu tick tries could never succeed);
+  retries 1/s capped at McmPlan.MaxRetries = 30 (a documented constant, not a knob), then one give-up
+  line. (3) EXIT HANG - no code, AI_NOTES "Step 12": we unload 4 s after the last mission and own no
+  thread/task/timer/process (grep-verified), OnSubModuleUnloaded cannot block; session 2 (21:08) has no
+  unload line at all; suspects another mod's helper process (ImmersiveAI.Dev) or Watchdog.exe;
+  diagnosis = the process tree while it hangs - BUGS line kept open. PLAYTEST: A1/A4 MCM lines, E1,
+  F4, new F6 (the training field and a town), L1/L7, 59 settings. Tests 312 → 323; build 0 warnings;
+  AssemblyGuard OK; smoke 45 → 48 steps OK (the new HUD step mutation-checked: without the rule 8
+  checks fail); deployed (the game had closed). Commits b211bb1, b20ba73 + this. (2026.09.27 21.35.29)

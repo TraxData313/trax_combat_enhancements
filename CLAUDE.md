@@ -143,7 +143,7 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
   ParamDef.cs                 one setting: key, type, range, group, label, plain-words
                               description, apply timing (Live / NextBattle); Normalize, Format;
                               its Default comes from defaults.json (DefaultsFile), never code
-  SettingsSchema.cs           EVERY setting of DESIGN's table (58), in file + MCM order, 9 groups
+  SettingsSchema.cs           EVERY setting of DESIGN's table (59), in file + MCM order, 9 groups
                               ("Master switch" first, "Advanced" last; step 10b's one vocabulary and
                               units in its header comment) — the one place a setting is declared
                               (a test parses DESIGN.md: keys + types); NO default values. The LATER
@@ -168,6 +168,10 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               [compat] [config] [mcm] [mission] [summary] [error] tags, CUT = the oldest
                               verbose (~) lines at one point in time; last resort: the oldest kept;
                               one note at the top; Utf8Bytes
+  McmPlan.cs                  step 12, when the MCM bridge tries and when it stops: ModuleEnabled (MCM's module
+                              Bannerlord.MBOptionScreen in the enabled list; unknown = try), Decide (no DLL →
+                              NotLoaded, DLL but module off → ModuleNotEnabled, one line), GiveUp after the first
+                              + MaxRetries (30, a documented constant) "not ready"s, the three [mcm] lines
   SingleCopy.cs               step 11, ONE copy runs: TryClaim(token) on an AppDomain data slot (the first
                               SubModule instance to ask runs, a later one is refused and counted - works
                               for one shared assembly and for two), Refused, CopiesIn (the release id
@@ -192,7 +196,8 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               floor + (1 − floor) × f, DamageUpside, BlowCostPoints in points,
                               RegenRateMultiplier by effort, SpeedUpdateNeeded (0.05 step), PeakBin)
                               + Charge / ApplyHealth / Regen / Read; BlowKind, BlowOutcome,
-                              RegenOutcome, AthleticsReading (HUD snapshot incl. f, usable pool)
+                              RegenOutcome, AthleticsReading (HUD snapshot incl. f, usable pool,
+                              BelowFull = below the top it can refill to - step 12)
   StepBack.cs                 DESIGN §2 step back pure (step 5d): StepBackRules (live; Enabled =
                               ModEnabled && AthleticsEnabled && StepBackEnabled, Describe),
                               StepBackMath (Chance = max × (1 − f), Roll, AwayFrom = the spot,
@@ -222,13 +227,18 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               rounded UP - 0 only when empty), the colours (#RRGGBBAA constants)
   HudGate.cs                  THE show/hide rule of every HUD view: HudHide (ModOff FIRST,
                               AthleticsOff, ToggleOff, HideBattleUI, PhotoMode, NotFightMode,
-                              NoPlayer, ViewCondition; + MissionEnd / Failed as removal reasons),
-                              HudGateInput, Decide, Describe / ShortName for the log
+                              OutsideBattlesOff, NoPlayer, NotTracked, OutsideIdle, ViewCondition; +
+                              MissionEnd / Failed as removal reasons), HudGateInput (+ HudOutside, step 12:
+                              the OUTSIDE-A-BATTLE rule of the player bar - walk-about mode, tracked, a
+                              weapon drawn or below full, the 1 s grace Lingers / OutsideLingerSeconds),
+                              Decide, ShowReason (HudShow: fight / weapon drawn / refilling / grace),
+                              Describe / ShortName for the log
   HudStats.cs                 one HUD view over one mission: time on screen, hidden by reason,
                               builds, removals by reason, refreshes, errors, disabled, movie
                               failure; for bars: time per colour, colour changes, empty, wounded
                               (lowest usable) + the [summary] "hud:" lines; ConditionName (the
-                              view's own condition in the summary - "orders menu closed")
+                              view's own condition in the summary - "orders menu closed"); step 12:
+                              outside a battle - builds by HudShow, seconds on screen, the clause
   OrderStrip.cs               step 9, the orders-menu strip pure: OrderCard / OrderCardFrame (the
                               vanilla cards read in one frame, pixels), StripFormation,
                               OrderStripMath (Match = the drawn set of 8 + slot k vs formation k by
@@ -247,7 +257,8 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               recomputes, walk vs run speeds, tick cost, errors)
 src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhancements.dll:
   SubModule.cs                entry point: load log (+ "module: <Id>" - which copy runs), config
-                              init/re-reads, MCM register/retry, the two model decorators
+                              init/re-reads, MCM register/retry (the module list handed to McmBridge -
+                              step 12), the two model decorators
                               (OnGameStart), AthleticsLogic per mission; step 11: claims SingleCopy
                               FIRST in OnSubModuleLoad - refused = _inert (an INSTANCE flag: one
                               assembly may serve both modules), every hook returns at once; the
@@ -265,6 +276,8 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               Release() at every mission end and at unload (step 10a)
   Mcm/McmBridge.cs            the MCM page — fluent builder, MCM types in METHOD BODIES ONLY,
                               no MCM-typed lambdas (read its class doc before touching it);
+                              step 12: first try at the main menu (MCM builds its services there), none
+                              with MCM's module off, retries 1/s capped by Core McmPlan;
                               group "Defaults": the Revert / Save-defaults-file BUTTONS
                               (ProxyRef<Action>, page refresh via PropertyChanged), just above
                               Advanced (MCM order = 2 x the schema's; MCM's UI sorts ascending)
@@ -347,14 +360,18 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               does not load disables the view for the mission (layer removed,
                               [error], "[hud] … DISABLED"); [hud] lines for build / removal / not
                               shown, each with its reason (QuietConditionToggles: a view's own
-                              condition coming and going → verbose after the first build); HudStats
+                              condition coming and going → verbose after the first build); HudStats;
+                              step 12: OutsideToggle / ReadOutside = a view's outside-a-battle rule (the
+                              grace clock; builds / removals outside a fight in the "hud-outside" bucket)
   Hud/HudLayer.cs             HudFrame (one frame as a view sees it; IsFightMode = Battle, Duel,
-                              Tournament, Stealth; OrderMenuOpen), IHudLayer (the engine seam), GauntletHudLayer
+                              Tournament, Stealth; step 12: IsWalkMode = StartUp, PlayerWeaponDrawn by
+                              HandsFull; OrderMenuOpen), IHudLayer (the engine seam), GauntletHudLayer
                               (vanilla's recipe: IsCustomType check, LoadMovie, AddLayer; release
                               the movie BEFORE RemoveLayer; a failed movie never goes on screen)
   Hud/PlayerAthleticsView.cs  step 6, DESIGN §3.1: the player's bar - TryGetReading(main) → BarMath
                               → the VM; logs the first values per layer and the FIRST time of each
-                              colour / empty / wound per battle (later colour changes verbose only)
+                              colour / empty / wound per battle (later colour changes verbose only);
+                              step 12: outside a battle too (ShowPlayerBarOutsideBattles, BelowFull)
   Hud/PlayerAthleticsVM.cs    its ViewModel - every property EXACTLY the bound widget property's
                               type (float / Color / bool / string: Gauntlet converts only strings);
                               change-checked setters; the number text rebuilt only when it changes
@@ -370,8 +387,9 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               / values lines, the [summary] strip line
   Hud/OrderStripVM.cs         its ViewModels: the root + 8 fixed OrderStripCellVM in one
                               MBBindingList, bound TWICE by the prefab (the cells, the panel rows)
-tests/TraxCombat.Core.Tests/  net8.0 xUnit (312) — schema vs DESIGN.md (keys + types), one copy
-                              runs (SingleCopyTests: claims on private slots, copies, texts),
+tests/TraxCombat.Core.Tests/  net8.0 xUnit (323) — schema vs DESIGN.md (keys + types), one copy
+                              runs (SingleCopyTests: claims on private slots, copies, texts), when
+                              MCM is tried and when it stops (McmPlanTests - step 12),
                               defaults.json (DefaultsFileTests), master switch, settings, config
                               file, merge rule, rate limiter (+ Peek), the log trim (LogTrimTests:
                               kept kinds, one cut point, stacks, notes, the last resort, bytes),
@@ -382,7 +400,9 @@ tests/TraxCombat.Core.Tests/  net8.0 xUnit (312) — schema vs DESIGN.md (keys +
                               verdicts, phases / cycles / holds / guard + summary),
                               step back (chance by f, dice, spot, facing, stats, summary), the bar
                               (bands by f on DESIGN's fighters, shares, numbers, colours), the HUD
-                              gate (order, master switch first) and HUD stats + summary, the
+                              gate (order, master switch first; step 12: outside a battle - the
+                              walk-about mode, weapon / refilling / grace, BelowFull) and HUD stats +
+                              summary, the
                               orders strip (matching card sets, cell placement at any scale and
                               the lift, texts, band, health in the squad stats, summary). They
                               run on DESIGN's INITIAL values (DesignTable.cs: a module
@@ -434,20 +454,23 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               property types, DataSource lists into their ItemTemplates, no @binding
                               on a list widget; the real PlayerAthleticsView driven by made-up
                               HudFrames with a FakeHudLayer - every hide reason, colours, wound,
-                              empty, refresh, summary; the fail safe), the orders strip
+                              empty, refresh, summary; step 12: outside a battle - the walk-about mode,
+                              a weapon drawn, the grace, refilling, menus, the switch; the fail safe),
+                              the orders strip
                               (Program.Strip.cs: the real OrderStripView with stand-in cards and
                               formations - layouts, UI scale, RTS Camera's set, the lift, values,
                               live switches, every fallback, quiet reopen, summary, fail safe),
                               defaults read from the embedded defaults.json, the MCM page built
                               by MCM's real builder (its group order: Master switch first, the
                               Defaults buttons above Advanced, Advanced last) and its two buttons
-                              clicked; step 10a: the log writer (readable while held, new path,
+                              clicked; step 12: MCM's DLL loaded with its module off (one line, no
+                              try) and MCM never ready (31 attempts, one give-up line); step 10a: the log writer (readable while held, new path,
                               release) and stale records forgotten; step 10b: the trim at a 1 MB cap
                               keeps a summary, a first-time line and an error with its stack through
                               2 MB of verbose lines, the ~ mark, VerboseWants loses no count; step
                               11 (Program.Copies.cs, LAST): two real SubModule instances - the second
                               stands down (no log line, model, mission, message), the first registers
-                              ONE decorator of each kind and reports once (45 steps; the config
+                              ONE decorator of each kind and reports once (48 steps; the config
                               checks work for any tuned default);
                               TRAX_SMOKE_KEEP=1 keeps its temp folder + log to read
 tools/DefaultsTool/           defaults.json upkeep: refresh (rewrite comments/order, keep every
