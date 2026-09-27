@@ -117,7 +117,7 @@ namespace TraxCombat.Core
 
         /// <summary>A short key for the summary's per-reason counts: "ShowPlayerBar off" → as is,
         /// others one or two words.</summary>
-        public static string ShortName(HudHide h, string toggleKey) => h switch
+        public static string ShortName(HudHide h, string toggleKey, string conditionName = "view condition") => h switch
         {
             HudHide.None => "shown",
             HudHide.ModOff => "ModEnabled off",
@@ -127,7 +127,7 @@ namespace TraxCombat.Core
             HudHide.PhotoMode => "photo mode",
             HudHide.NotFightMode => "not a fight",
             HudHide.NoPlayer => "no player agent",
-            HudHide.ViewCondition => "view condition",
+            HudHide.ViewCondition => conditionName,
             HudHide.MissionEnd => "mission end",
             _ => "error",
         };

@@ -288,6 +288,20 @@ public class OrderStripTests
     }
 
     [Fact]
+    public void The_hud_summary_names_the_strips_own_condition()
+    {
+        var hud = new HudStats("orders strip", "TraxOrderStrip", "ShowInOrderMenu") { ConditionName = "orders menu closed" };
+        hud.AddTick(1.0, HudHide.ViewCondition, false);
+        hud.LayerCreated();
+        hud.AddTick(2.0, HudHide.None, true);
+        hud.LayerRemoved(HudHide.ViewCondition);
+        var line = hud.SummaryLines()[0];
+        Assert.Contains("removed 1x (orders menu closed 1)", line);
+        Assert.Contains("hidden: orders menu closed 1.0 s", line);
+        Assert.Equal("view condition", HudGate.ShortName(HudHide.ViewCondition, "ShowPlayerBar"));
+    }
+
+    [Fact]
     public void The_summary_line_counts_opens_techniques_and_fallbacks()
     {
         var s = new OrderStripStats();
@@ -303,8 +317,10 @@ public class OrderStripTests
                      + "card layouts seen: 16 cards in 2 sets, set 1 drawn; cells placed 3 (lifted to the screen's edge 0), card changes 0, short mismatches 0 (under 1.0 s), "
                      + "card re-scans 0, values pushed 1; fallbacks: none", s.SummaryLine());
         s.NoteOpen();
+        s.NotePanelOpen();
         s.NoteFallback(StripFallback.Mismatch, "2 Archers's card counts 25 men, the formation has 20", 12.34);
         s.NoteOpen();
+        s.NotePanelOpen();
         s.NoteFallback(StripFallback.SwitchedOff, "OrderStripUnderCards off", 20);
         Assert.Equal(1, s.Fallbacks(StripFallback.Mismatch));
         Assert.EndsWith("; fallbacks 2 (OrderStripUnderCards off 1, a card disagreed with its formation 1) - the first at 12.3 s: 2 Archers's card counts 25 men, the formation has 20",

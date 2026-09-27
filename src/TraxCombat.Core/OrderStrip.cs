@@ -348,7 +348,7 @@ namespace TraxCombat.Core
         {
             unchecked
             {
-                int h = 17 + set;
+                int h = (17 + set) * 31 + frame.Count;
                 if (set < 0) return h;
                 for (int k = 0; k < CardsPerSet; k++)
                 {
@@ -432,7 +432,8 @@ namespace TraxCombat.Core
             _ => "none",
         };
 
-        internal static string Px(float v) => Math.Round(v).ToString("0", CultureInfo.InvariantCulture);
+        /// <summary>A pixel value as a whole number for the log.</summary>
+        public static string Px(float v) => Math.Round(v).ToString("0", CultureInfo.InvariantCulture);
 
         private static int Percent(double share) =>
             double.IsNaN(share) ? 0 : (int)Math.Round((share < 0 ? 0 : share > 1 ? 1 : share) * 100, MidpointRounding.AwayFromZero);
@@ -487,10 +488,13 @@ namespace TraxCombat.Core
 
         public void NoteRescan() => Rescans++;
 
-        /// <summary>One open fell back to the panel; the first one's text is kept for the summary.</summary>
+        /// <summary>An open showed the panel (once per open, whatever the number of fallbacks in it).</summary>
+        public void NotePanelOpen() => OpensPanel++;
+
+        /// <summary>A fallback to the panel (every one, with its reason); the first one's text is kept
+        /// for the summary.</summary>
         public void NoteFallback(StripFallback why, string text, double at)
         {
-            OpensPanel++;
             int i = (int)why;
             if (i > 0 && i < _fallbacks.Length) _fallbacks[i]++;
             if (FirstFallbackText == null)

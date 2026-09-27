@@ -39,6 +39,9 @@ namespace TraxCombat.Hud
         /// for the smoke's native-less agents).</summary>
         public bool PlayerActive;
 
+        /// <summary>Mission.IsOrderMenuOpen - the orders menu is open (step 9's strip shows then).</summary>
+        public bool OrderMenuOpen;
+
         /// <summary>The fight modes DESIGN §3 shows bars in: battle, duel, tournament - and stealth
         /// (a stealth mission's fights cost Athletics too; step 6's call).</summary>
         public static bool IsFightMode(int mode) =>

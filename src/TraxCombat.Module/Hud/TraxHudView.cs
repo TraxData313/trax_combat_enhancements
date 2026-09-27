@@ -101,8 +101,28 @@ namespace TraxCombat.Hud
         /// <summary>That condition's "not met" in plain words, for the log.</summary>
         protected virtual string ViewConditionText => "its own condition not met";
 
+        /// <summary>That condition met, for the attach line ("while the orders menu is open"); null = none.</summary>
+        protected virtual string? ViewConditionWhen => null;
+
+        /// <summary>True for a view whose own condition comes and goes all the time (the orders menu
+        /// opening and closing): only the FIRST build per mission is logged in full, later builds and
+        /// removals caused by that condition go to the verbose log (the stats still count them all).</summary>
+        protected virtual bool QuietConditionToggles => false;
+
         /// <summary>One frame with the layer on screen (per-frame stats; no allocation please).</summary>
         protected virtual void OnVisibleFrame(float dt)
+        {
+        }
+
+        /// <summary>One frame with the layer on screen, before the refresh check - for views that
+        /// follow something on screen every frame (step 9 places its cells under the vanilla cards).
+        /// No allocation please.</summary>
+        protected virtual void OnLayerFrame(in HudFrame f)
+        {
+        }
+
+        /// <summary>The view's own [summary] lines after the common ones (tag-less).</summary>
+        internal virtual void AddSummaryLines(System.Collections.Generic.List<string> lines)
         {
         }
 
@@ -114,7 +134,9 @@ namespace TraxCombat.Hud
         /// <summary>When the view shows, in words - the attach line of the log.</summary>
         internal string ShowsWhen =>
             "shown while ModEnabled, AthleticsEnabled and " + Toggle.Key + " are on, the game's Hide battle UI and photo mode are off, "
-            + "in a fight (battle, duel, tournament or stealth mode)" + (NeedsPlayer ? " and you are on the field" : string.Empty);
+            + "in a fight (battle, duel, tournament or stealth mode)"
+            + (NeedsPlayer ? (ViewConditionWhen != null ? ", you are on the field" : " and you are on the field") : string.Empty)
+            + (ViewConditionWhen != null ? " and " + ViewConditionWhen : string.Empty);
 
         // ------------------------------------------------------------------ the game's hooks
 
@@ -202,6 +224,7 @@ namespace TraxCombat.Hud
                 Mode = (int)m.Mode,
                 Player = main,
                 PlayerActive = main != null && main.IsActive(),
+                OrderMenuOpen = m.IsOrderMenuOpen,
             };
         }
 
@@ -235,7 +258,12 @@ namespace TraxCombat.Hud
             bool onScreen = _layerUp && !_suspended;
             Stats.AddTick(f.Dt, hide, onScreen);
             if (!_layerUp) return;
-            if (onScreen) OnVisibleFrame(f.Dt);
+            if (onScreen)
+            {
+                OnVisibleFrame(f.Dt);
+                OnLayerFrame(in f);
+                if (_disabled || !_layerUp) return;
+            }
             if (_firstPush || f.Now >= _nextRefresh || _nextRefresh - f.Now > 2.0)
             {
                 _nextRefresh = f.Now + Math.Max(0.02, s.HudRefreshSeconds);
@@ -281,9 +309,16 @@ namespace TraxCombat.Hud
             if (_suspended) _host.SetSuspended(true);
             _firstPush = true;
             _nextRefresh = f.Now;
+            if (QuietConditionToggles && Stats.LayersCreated > 1 && wasHiddenBy == HudHide.ViewCondition)
+            {
+                if (TraxLog.VerboseOn)
+                    TraxLog.Verbose("hud", ViewName + ": layer created at " + S1(f.Now) + " s (" + ViewConditionWhen + ", build #" + Stats.LayersCreated + ")", "hud-layer-quiet");
+                return;
+            }
             TraxLog.Limited("hud", ViewName + ": layer created at " + S1(f.Now) + " s (mode " + HudFrame.ModeName(f.Mode)
                 + (wasHiddenBy != HudHide.None ? ", was hidden: " + HudGate.Describe(wasHiddenBy, Toggle.Key, ViewConditionText) : string.Empty)
-                + ") - movie " + MovieName + " loaded OK (" + detail + ")", "hud-layer");
+                + ") - movie " + MovieName + " loaded OK (" + detail + ")"
+                + (QuietConditionToggles ? " - later builds and removals by \"" + ViewConditionText + "\" go to the verbose log only" : string.Empty), "hud-layer");
         }
 
         private void DestroyLayer(HudHide why, double now)
@@ -297,6 +332,11 @@ namespace TraxCombat.Hud
             {
                 FinalizeDataSource();
                 Stats.LayerRemoved(why);
+            }
+            if (QuietConditionToggles && why == HudHide.ViewCondition)
+            {
+                if (TraxLog.VerboseOn) TraxLog.Verbose("hud", ViewName + ": layer removed at " + S1(now) + " s - " + Why(why), "hud-layer-quiet");
+                return;
             }
             TraxLog.Limited("hud", ViewName + ": layer removed at " + S1(now) + " s - " + Why(why), "hud-layer");
         }

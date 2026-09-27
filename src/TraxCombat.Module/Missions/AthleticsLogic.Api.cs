@@ -19,8 +19,11 @@ namespace TraxCombat.Missions
     ///   <see cref="TryGetFormationStats"/>(f)   one of the PLAYER TEAM's formations: count, mean ±
     ///                                          standard deviation (points and fraction), the men's
     ///                                          average f and how many are at full strength,
-    ///                                          exhausted - refreshed every FormationStatsRefreshSeconds
-    ///                                          (live). False for another team's formation or an empty one.
+    ///                                          exhausted, their average health (step 9) - the men under
+    ///                                          the player's command: the player himself is left out,
+    ///                                          as the orders menu's cards leave him out - refreshed
+    ///                                          every FormationStatsRefreshSeconds (live). False for
+    ///                                          another team's formation or an empty one.
     ///   <see cref="FormationStatsVersion"/>     bumps at every refresh - redraw squad bars when it moves.
     /// </summary>
     public sealed partial class AthleticsLogic
@@ -28,6 +31,7 @@ namespace TraxCombat.Missions
         private readonly MeanStd[] _formationPoints = new MeanStd[(int)FormationClass.NumberOfAllFormations];
         private readonly MeanStd[] _formationFractions = new MeanStd[(int)FormationClass.NumberOfAllFormations];
         private readonly MeanStd[] _formationPeakShares = new MeanStd[(int)FormationClass.NumberOfAllFormations];
+        private readonly MeanStd[] _formationHealth = new MeanStd[(int)FormationClass.NumberOfAllFormations];
         private readonly int[] _formationExhausted = new int[(int)FormationClass.NumberOfAllFormations];
         private readonly int[] _formationInPeak = new int[(int)FormationClass.NumberOfAllFormations];
         private readonly FormationAthleticsStats[] _formationSnapshot = new FormationAthleticsStats[(int)FormationClass.NumberOfAllFormations];
@@ -82,7 +86,9 @@ namespace TraxCombat.Missions
         public static int FormationStatsVersion => _current?._formationVersion ?? 0;
 
         /// <summary>One O(N) pass over the tracked fighters of the player's team (from the tick,
-        /// every FormationStatsRefreshSeconds; and once for the summary).</summary>
+        /// every FormationStatsRefreshSeconds; and once for the summary). The player himself is left
+        /// out (he has his own bar; the orders menu's cards count the men under his command). Health
+        /// is read live (managed Health ÷ HealthLimit), whatever the switches.</summary>
         private void RefreshFormationStats(double now, in AthleticsRules r)
         {
             _formationRefreshedAt = now;
@@ -91,6 +97,7 @@ namespace TraxCombat.Missions
                 _formationPoints[k].Clear();
                 _formationFractions[k].Clear();
                 _formationPeakShares[k].Clear();
+                _formationHealth[k].Clear();
                 _formationExhausted[k] = 0;
                 _formationInPeak[k] = 0;
             }
@@ -101,7 +108,7 @@ namespace TraxCombat.Missions
                 {
                     var st = _dense[i];
                     var a = st.Agent;
-                    if (!ReferenceEquals(a.Team, team) || !a.IsActive()) continue;
+                    if (!ReferenceEquals(a.Team, team) || a.IsMainAgent || !a.IsActive()) continue;
                     var formation = a.Formation;
                     if (formation == null) continue;
                     int k = (int)formation.FormationIndex;
@@ -111,13 +118,14 @@ namespace TraxCombat.Missions
                     _formationFractions[k].Add(fraction);
                     double share = AthleticsMath.PeakShare(in r, st);
                     _formationPeakShares[k].Add(share);
+                    _formationHealth[k].Add(HealthOf(a));
                     if (share >= 1.0) _formationInPeak[k]++;
                     if (AthleticsMath.IsExhausted(in r, st)) _formationExhausted[k]++;
                 }
             }
             for (int k = 0; k < _formationSnapshot.Length; k++)
                 _formationSnapshot[k] = FormationAthleticsStats.From(in _formationPoints[k], in _formationFractions[k], in _formationPeakShares[k],
-                    _formationExhausted[k], _formationInPeak[k]);
+                    in _formationHealth[k], _formationExhausted[k], _formationInPeak[k]);
             _formationVersion++;
         }
     }

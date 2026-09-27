@@ -36,6 +36,10 @@ namespace TraxCombat.Core
         /// <summary>"ShowPlayerBar" - the view's own switch.</summary>
         public string ToggleKey { get; }
 
+        /// <summary>The summary's short name for the view's own condition not met ("orders menu
+        /// closed" for step 9's strip).</summary>
+        public string ConditionName { get; set; } = "view condition";
+
         /// <summary>Unpaused seconds the view was ticked (≈ the mission after the view attached).</summary>
         public double TickedSeconds { get; private set; }
 
@@ -224,7 +228,7 @@ namespace TraxCombat.Core
             {
                 if (_removedBy[i] == 0) continue;
                 if (sb.Length > 0) sb.Append(", ");
-                sb.Append(HudGate.ShortName((HudHide)i, ToggleKey)).Append(' ').Append(_removedBy[i]);
+                sb.Append(HudGate.ShortName((HudHide)i, ToggleKey, ConditionName)).Append(' ').Append(_removedBy[i]);
             }
             return sb.ToString();
         }
@@ -236,7 +240,7 @@ namespace TraxCombat.Core
             {
                 if (_hiddenSeconds[i] <= 0) continue;
                 if (sb.Length > 0) sb.Append(", ");
-                sb.Append(HudGate.ShortName((HudHide)i, ToggleKey)).Append(' ').Append(S1(_hiddenSeconds[i])).Append(" s");
+                sb.Append(HudGate.ShortName((HudHide)i, ToggleKey, ConditionName)).Append(' ').Append(S1(_hiddenSeconds[i])).Append(" s");
             }
             return sb.ToString();
         }

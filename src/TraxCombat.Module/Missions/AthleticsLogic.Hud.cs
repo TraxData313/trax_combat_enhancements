@@ -37,8 +37,11 @@ namespace TraxCombat.Missions
                 return;
             }
             AttachHudView(screen, new PlayerAthleticsView());
-            // step 7: AttachHudView(screen, new TargetAthleticsView());
-            // step 8/9: AttachHudView(screen, new FormationAthleticsView());
+            var strip = new OrderStripView();
+            strip.UseSources(new GauntletOrderCards(screen), new MissionStripFormations(Mission));
+            AttachHudView(screen, strip);
+            // step 7 (LATER): AttachHudView(screen, new TargetAthleticsView());
+            // step 8 (LATER): AttachHudView(screen, new FormationAthleticsView());
         }
 
         private MissionScreen? FindMissionScreen()
@@ -78,7 +81,9 @@ namespace TraxCombat.Missions
             {
                 try
                 {
-                    foreach (var line in view.Stats.SummaryLines()) TraxLog.Info("summary", line);
+                    var lines = view.Stats.SummaryLines();
+                    view.AddSummaryLines(lines);
+                    foreach (var line in lines) TraxLog.Info("summary", line);
                 }
                 catch (Exception e)
                 {

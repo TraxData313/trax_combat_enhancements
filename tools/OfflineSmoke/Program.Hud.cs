@@ -79,7 +79,7 @@ namespace TraxCombat.Tools
         }
 
         private static HudFrame Frame(double now, Agent? player, MissionMode mode = MissionMode.Battle, bool hideUi = false, bool photo = false,
-            bool paused = false, float dt = 0.05f) => new HudFrame
+            bool paused = false, float dt = 0.05f, bool orderMenu = false) => new HudFrame
             {
                 Dt = dt,
                 Now = now,
@@ -89,6 +89,7 @@ namespace TraxCombat.Tools
                 Mode = (int)mode,
                 Player = player,
                 PlayerActive = player != null,
+                OrderMenuOpen = orderMenu,
             };
 
         /// <summary>A nested class: Program's own static fields initialise before Main registers the
@@ -157,9 +158,19 @@ namespace TraxCombat.Tools
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        private static void HudPrefabIsValid()
+        private static void HudPrefabIsValid() => PrefabIsValid(PlayerAthleticsView.Movie, typeof(PlayerAthleticsVM), 10, 60);
+
+        /// <summary>
+        /// One of our prefabs against the game: well-formed, every element a widget type, every
+        /// attribute a real settable property with a valid value, only vanilla brushes and sprites,
+        /// every @binding typed exactly like its ViewModel property. A <c>DataSource="{X}"</c> switches
+        /// the ViewModel for the children: X an MBBindingList&lt;T&gt; → its &lt;ItemTemplate&gt; binds
+        /// against T; X a ViewModel → the children bind against it. At the end every public property of
+        /// every ViewModel met is drawn by something.
+        /// </summary>
+        private static void PrefabIsValid(string movie, Type rootVm, int minWidgets, int minAttributes)
         {
-            string path = RepoFile("module", "GUI", "Prefabs", PlayerAthleticsView.Movie + ".xml");
+            string path = RepoFile("module", "GUI", "Prefabs", movie + ".xml");
             if (!File.Exists(path))
             {
                 Failures.Add("prefab missing: " + path);
@@ -196,10 +207,9 @@ namespace TraxCombat.Tools
                 sprites.Add(n.InnerText.Trim());
             Check(brushes.Count > 100 && sprites.Count > 1000, "vanilla brushes / sprites not read: " + brushes.Count + " / " + sprites.Count);
 
-            var vm = typeof(PlayerAthleticsVM);
-            var bound = new HashSet<string>(StringComparer.Ordinal);
-            int widgets = 0, attributes = 0;
-            void Walk(XmlElement e)
+            var boundBy = new Dictionary<Type, HashSet<string>> { [rootVm] = new HashSet<string>(StringComparer.Ordinal) };
+            int widgets = 0, attributes = 0, templates = 0;
+            void Walk(XmlElement e, Type vm)
             {
                 widgets++;
                 if (!widgetTypes.TryGetValue(e.Name, out var type))
@@ -207,30 +217,75 @@ namespace TraxCombat.Tools
                     Failures.Add("<" + e.Name + "> is not a widget type of the game");
                     return;
                 }
+                var bound = boundBy[vm];
+                Type childVm = vm;
+                Type? itemVm = null;
                 foreach (XmlAttribute a in e.Attributes)
                 {
                     attributes++;
+                    if (a.Name == "DataSource")
+                    {
+                        // Not a widget property: GauntletView reads it. "{X}" names a property of the ViewModel.
+                        var m = Regex.Match(a.Value, "^\\{([A-Za-z0-9_]+)\\}$");
+                        var source = m.Success ? vm.GetProperty(m.Groups[1].Value, BindingFlags.Instance | BindingFlags.Public) : null;
+                        if (source == null)
+                        {
+                            Failures.Add("<" + e.Name + "> DataSource=\"" + a.Value + "\": " + vm.Name + " has no public property of that name");
+                            continue;
+                        }
+                        bound.Add(source.Name);
+                        var t = source.PropertyType;
+                        if (t.IsGenericType && t.GetGenericTypeDefinition().FullName == "TaleWorlds.Library.MBBindingList`1") itemVm = t.GetGenericArguments()[0];
+                        else if (t.FullName != null && IsViewModel(t)) childVm = t;
+                        else Failures.Add("<" + e.Name + "> DataSource {" + source.Name + "} is " + t.Name + " - neither an MBBindingList nor a ViewModel");
+                        continue;
+                    }
                     CheckAttribute(e, type, a.Name, a.Value, vm, brushes, sprites, bound);
                 }
+                if (childVm != vm && !boundBy.ContainsKey(childVm)) boundBy[childVm] = new HashSet<string>(StringComparer.Ordinal);
+                if (itemVm != null && !boundBy.ContainsKey(itemVm)) boundBy[itemVm] = new HashSet<string>(StringComparer.Ordinal);
                 foreach (XmlNode child in e.ChildNodes)
                 {
                     if (!(child is XmlElement ce)) continue;
-                    if (ce.Name != "Children")
+                    if (ce.Name == "Children")
                     {
-                        Failures.Add("<" + e.Name + "> holds <" + ce.Name + "> - only <Children> is expected");
-                        continue;
+                        foreach (XmlNode w in ce.ChildNodes)
+                            if (w is XmlElement we) Walk(we, childVm);
                     }
-                    foreach (XmlNode w in ce.ChildNodes)
-                        if (w is XmlElement we) Walk(we);
+                    else if (ce.Name == "ItemTemplate")
+                    {
+                        templates++;
+                        var items = ce.ChildNodes.OfType<XmlElement>().ToList();
+                        if (itemVm == null) Failures.Add("<" + e.Name + "> has an <ItemTemplate> but no DataSource list");
+                        else if (items.Count != 1) Failures.Add("<" + e.Name + ">'s <ItemTemplate> holds " + items.Count + " widgets - one is expected");
+                        else Walk(items[0], itemVm);
+                    }
+                    else
+                    {
+                        Failures.Add("<" + e.Name + "> holds <" + ce.Name + "> - only <Children> or <ItemTemplate> is expected");
+                    }
                 }
             }
-            Walk(root);
-            Check(widgets >= 10 && attributes >= 60, "the walk saw too little: " + widgets + " widgets, " + attributes + " attributes");
+            Walk(root, rootVm);
+            Check(widgets >= minWidgets && attributes >= minAttributes, movie + ": the walk saw too little: " + widgets + " widgets, " + attributes + " attributes");
 
-            // Every public property of the ViewModel is drawn by something (no dead data).
-            var vmProps = vm.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly).Select(p => p.Name).ToList();
-            foreach (var p in vmProps) Check(bound.Contains(p), "PlayerAthleticsVM." + p + " is bound by nothing in the prefab");
-            Console.WriteLine("        prefab: " + widgets + " widgets, " + attributes + " attributes, " + bound.Count + " bindings - all known to the game");
+            // Every public property of every ViewModel met is drawn by something (no dead data).
+            int bindings = 0;
+            foreach (var pair in boundBy)
+            {
+                bindings += pair.Value.Count;
+                foreach (var p in pair.Key.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly))
+                    Check(pair.Value.Contains(p.Name), pair.Key.Name + "." + p.Name + " is bound by nothing in " + movie);
+            }
+            Console.WriteLine("        prefab " + movie + ": " + widgets + " widgets, " + attributes + " attributes, " + bindings + " bindings over "
+                              + boundBy.Count + " ViewModel(s)" + (templates > 0 ? ", " + templates + " item templates" : string.Empty) + " - all known to the game");
+        }
+
+        private static bool IsViewModel(Type t)
+        {
+            for (var b = t; b != null; b = b.BaseType)
+                if (b.FullName == "TaleWorlds.Library.ViewModel") return true;
+            return false;
         }
 
         private static void CheckAttribute(XmlElement e, Type widgetType, string name, string value, Type vm, HashSet<string> brushes,
@@ -265,7 +320,7 @@ namespace TraxCombat.Tools
                 var source = vm.GetProperty(p, BindingFlags.Instance | BindingFlags.Public);
                 if (source == null || source.GetGetMethod() == null)
                 {
-                    Failures.Add(where + ": binds @" + p + " but PlayerAthleticsVM has no readable property " + p);
+                    Failures.Add(where + ": binds @" + p + " but " + vm.Name + " has no readable property " + p);
                     return;
                 }
                 // Gauntlet (WidgetExtensions.ConvertObject) converts only strings; anything else must match exactly.
@@ -516,6 +571,7 @@ namespace TraxCombat.Tools
             view.Tick(Frame(902, player));
             Check(layer.Up && layer.Created == 2, "mod back on: the Athletics bar did not come back");
             view.Finish(903);
+            StripFollowsTheMasterSwitch(player);
         }
 
         // ------------------------------------------------------------------ the fail safe

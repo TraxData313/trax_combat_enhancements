@@ -185,16 +185,10 @@ namespace TraxCombat.Missions
             _ => kind.ToString(),
         };
 
-        /// <summary>The game's group numbers and names (F1-F8 in the orders menu). FormationClass has
-        /// alias values (4 is also NumberOfDefaultFormations), so ToString() cannot be trusted.</summary>
-        private static readonly string[] FormationNames =
-        {
-            "1 Infantry", "2 Archers", "3 Cavalry", "4 Horse archers", "5 Skirmishers", "6 Heavy infantry",
-            "7 Light cavalry", "8 Heavy cavalry", "General", "Bodyguard",
-        };
-
-        private static string FormationName(int index) =>
-            index >= 0 && index < FormationNames.Length ? FormationNames[index] : "formation " + index;
+        /// <summary>The game's group numbers and names (F1-F8 in the orders menu; one table in Core,
+        /// shared with the orders-menu strip). FormationClass has alias values (4 is also
+        /// NumberOfDefaultFormations), so ToString() cannot be trusted.</summary>
+        private static string FormationName(int index) => OrderStripMath.FormationName(index);
 
         private static string[]? _actionNames;
 
