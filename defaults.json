@@ -221,6 +221,13 @@
   // (true or false)
   "ShowPlayerBar": true,
 
+  // Outside a battle - the training field, a town, a village - your bar shows while you hold a
+  // weapon or a shield, and stays while your Athletics refills; with empty hands and a full bar
+  // it goes. Never during a conversation, a barter or a cutscene. Off: your bar shows in fights
+  // only (battles, duels, tournaments, stealth).
+  // (true or false)
+  "ShowPlayerBarOutsideBattles": true,
+
   // The colours of your bar and of the orders-menu strip: green at or above the peak line, blue
   // just below it, and yellow once the Athletics left is at or below this percent of the peak
   // line. With the line at 75% of the bar, 75 turns it yellow from about 56% of the bar down.

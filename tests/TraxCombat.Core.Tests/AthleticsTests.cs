@@ -299,6 +299,24 @@ public class AthleticsTests
     }
 
     [Fact]
+    public void Below_full_means_below_the_top_it_can_refill_to()
+    {
+        // Step 12: outside a battle the player bar stays up while this is true.
+        var r = Defaults();
+        var f = Troop(100);
+        Assert.False(AthleticsMath.Read(r, f).BelowFull);                  // fresh
+        AthleticsMath.Charge(f, r, 1);
+        Assert.True(AthleticsMath.Read(r, f).BelowFull);                   // one blow: refilling
+        AthleticsMath.Regen(f, r, 100, 100, 0f, 5f);                        // a long rest: the refill stops at the top
+        Assert.False(AthleticsMath.Read(r, f).BelowFull);
+        AthleticsMath.ApplyHealth(f, r, 0.5);                               // a wound caps the bar at half...
+        Assert.False(AthleticsMath.Read(r, f).BelowFull);                  // ...and half is as full as it gets
+        AthleticsMath.Charge(f, r, 101);
+        Assert.True(AthleticsMath.Read(r, f).BelowFull);
+        Assert.False(AthleticsMath.Read(Defaults(enabled: false), f).BelowFull); // Athletics off: everyone reads full
+    }
+
+    [Fact]
     public void The_peak_line_stays_on_the_full_pool_so_a_badly_wounded_fighter_never_gets_full_strength()
     {
         var r = Defaults();

@@ -17,6 +17,7 @@ namespace TraxCombat.Core
         private readonly double[] _hiddenSeconds = new double[HudGate.ReasonCount];
         private readonly double[] _bandSeconds = new double[BarMath.BandCount];
         private readonly bool[] _bandSeen = new bool[BarMath.BandCount];
+        private readonly int[] _outsideShownBy = new int[HudGate.ShowCount];
         private int _lastBand = -1;
         private bool _exhaustedNow;
 
@@ -72,6 +73,19 @@ namespace TraxCombat.Core
 
         /// <summary>The lowest usable share shown (1 = never wounded).</summary>
         public double LowestUsable { get; private set; } = 1.0;
+
+        /// <summary>The view has step 12's outside-a-battle rule (the player bar) - the summary then
+        /// says how it did outside a battle.</summary>
+        public bool HasOutsideRule { get; set; }
+
+        /// <summary>Seconds on screen outside a battle (step 12).</summary>
+        public double OutsideVisibleSeconds { get; private set; }
+
+        /// <summary>Layers built outside a battle (step 12).</summary>
+        public int OutsideShown { get; private set; }
+
+        /// <summary>Layers built outside a battle for this reason.</summary>
+        public int OutsideShownBy(HudShow why) => _outsideShownBy[ShowIndex(why)];
 
         /// <summary>Layers removed for this reason.</summary>
         public int RemovedBy(HudHide why) => _removedBy[Index(why)];
@@ -141,6 +155,19 @@ namespace TraxCombat.Core
 
         public void AddRefresh() => Refreshes++;
 
+        /// <summary>One on-screen frame outside a battle (step 12).</summary>
+        public void AddOutsideVisible(double dt)
+        {
+            if (dt > 0) OutsideVisibleSeconds += dt;
+        }
+
+        /// <summary>A layer built outside a battle, and why (step 12).</summary>
+        public void NoteOutsideShown(HudShow why)
+        {
+            OutsideShown++;
+            _outsideShownBy[ShowIndex(why)]++;
+        }
+
         public void LayerCreated() => LayersCreated++;
 
         public void LayerRemoved(HudHide why)
@@ -191,6 +218,7 @@ namespace TraxCombat.Core
                 if (hidden.Length > 0) sb.Append("; hidden: ").Append(hidden);
                 sb.Append("; ").Append(Refreshes).Append(" refreshes");
             }
+            if (HasOutsideRule) AppendOutside(sb);
             sb.Append("; errors ").Append(Errors);
             if (FailedSite != null)
                 sb.Append(" - DISABLED at ").Append(S1(FailedAt)).Append(" s after an error in ").Append(FailedSite).Append(" (the battle went on without it)");
@@ -221,6 +249,27 @@ namespace TraxCombat.Core
             return lines;
         }
 
+        /// <summary>"; outside a battle: shown 3x (weapon drawn 2, refilling 1), on screen 45.2 s" - or "never shown".</summary>
+        private void AppendOutside(StringBuilder sb)
+        {
+            sb.Append("; outside a battle: ");
+            if (OutsideShown == 0)
+            {
+                sb.Append("never shown");
+                return;
+            }
+            sb.Append("shown ").Append(OutsideShown).Append("x (");
+            bool any = false;
+            for (int i = 1; i < _outsideShownBy.Length; i++)
+            {
+                if (_outsideShownBy[i] == 0) continue;
+                if (any) sb.Append(", ");
+                any = true;
+                sb.Append(HudGate.ShortName((HudShow)i)).Append(' ').Append(_outsideShownBy[i]);
+            }
+            sb.Append("), on screen ").Append(S1(OutsideVisibleSeconds)).Append(" s");
+        }
+
         private string RemovedBreakdown()
         {
             var sb = new StringBuilder();
@@ -249,6 +298,12 @@ namespace TraxCombat.Core
         {
             int i = (int)h;
             return i < 0 || i >= HudGate.ReasonCount ? HudGate.ReasonCount - 1 : i;
+        }
+
+        private static int ShowIndex(HudShow s)
+        {
+            int i = (int)s;
+            return i < 0 || i >= HudGate.ShowCount ? 0 : i;
         }
 
         private static string S1(double v) => v.ToString("0.0", CultureInfo.InvariantCulture);

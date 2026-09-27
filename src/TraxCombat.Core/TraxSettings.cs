@@ -237,6 +237,7 @@ namespace TraxCombat.Core
         public float WalkEffortFraction => GetFloat(SettingsSchema.WalkEffortFraction);
 
         public bool ShowPlayerBar => GetBool(SettingsSchema.ShowPlayerBar);
+        public bool ShowPlayerBarOutsideBattles => GetBool(SettingsSchema.ShowPlayerBarOutsideBattles);
         public int BarYellowBelowPercent => GetInt(SettingsSchema.BarYellowBelowPercent);
         public int BarOrangeBelowPercent => GetInt(SettingsSchema.BarOrangeBelowPercent);
         public int BarRedBelowPercent => GetInt(SettingsSchema.BarRedBelowPercent);

@@ -37,10 +37,24 @@ namespace TraxCombat.Hud
         public PlayerAthleticsView()
             : base("player bar", Movie, SettingsSchema.ShowPlayerBar)
         {
+            Stats.HasOutsideRule = true;
         }
 
         /// <summary>The live ViewModel (null while no layer is up) - the offline smoke reads it.</summary>
         internal PlayerAthleticsVM? CurrentViewModel => _vm;
+
+        /// <summary>Step 12 (Anton's playtest: no bar in the training field): outside a battle too,
+        /// while you hold a weapon or your Athletics refills (HudGate's outside-a-battle rule).</summary>
+        protected override ParamDef? OutsideToggle => SettingsSchema.ShowPlayerBarOutsideBattles;
+
+        /// <summary>Tracked in this mission, and below the top it can refill to.</summary>
+        protected override bool ReadOutside(in HudFrame f, out bool belowFull)
+        {
+            belowFull = false;
+            if (f.Player == null || !AthleticsLogic.TryGetReading(f.Player, out var r) || !r.Enabled) return false;
+            belowFull = r.BelowFull;
+            return true;
+        }
 
         protected override ViewModel CreateDataSource(in HudFrame f)
         {

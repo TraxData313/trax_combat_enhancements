@@ -197,6 +197,12 @@ namespace TraxCombat.Core
             "Your Athletics bar",
             "Your Athletics bar, bottom right under your health bar: the Athletics you have left and your whole bar (\"132 / 180\"), a white mark at the peak line, the fill in the colour of your strength (green at full strength, then blue, yellow, orange, red) and the part your wounds hold shown dark.");
 
+        // Step 12 (Anton's playtest: no bar in the training field - it runs in the game's walk-about
+        // mode, not a battle mode). HudGate's outside-a-battle rule; the orders strip stays fights-only.
+        public static readonly ParamDef ShowPlayerBarOutsideBattles = Bool("ShowPlayerBarOutsideBattles", PlayerBarGroup,
+            "Your bar outside battles too",
+            "Outside a battle - the training field, a town, a village - your bar shows while you hold a weapon or a shield, and stays while your Athletics refills; with empty hands and a full bar it goes. Never during a conversation, a barter or a cutscene. Off: your bar shows in fights only (battles, duels, tournaments, stealth).");
+
         // The looked-at fighter's bar (ShowTargetBar, TargetBarMaxDistance, TargetBarLingerSeconds) is
         // LATER (step 7): its settings left the schema in step 10b - no switch that does nothing
         // (review R21). DESIGN's "Planned parameters" keeps the rows.
@@ -324,7 +330,7 @@ namespace TraxCombat.Core
             StepBackHoldAttacks, StepBackMaxAtOnce,
             RegenDelayBlowTimes, BlowTimeSeconds, FullRegenSecondsStanding, RegenMultiplierAtFullRun,
             WalkEffortFraction,
-            ShowPlayerBar, BarYellowBelowPercent, BarOrangeBelowPercent, BarRedBelowPercent,
+            ShowPlayerBar, ShowPlayerBarOutsideBattles, BarYellowBelowPercent, BarOrangeBelowPercent, BarRedBelowPercent,
             ShowInOrderMenu, ShowFormationHealth, ShowFormationSpread, FormationSpreadStdDevs, OrderStripUnderCards,
             HudRefreshSeconds, PlayerBarWidth, PlayerBarHeight, PlayerBarOffsetRight, PlayerBarOffsetBottom,
             OrderStripTextSize, OrderStripTextOffset, OrderStripBarOffset, OrderStripBarHeight, OrderStripSideMargin,

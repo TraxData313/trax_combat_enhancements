@@ -79,7 +79,7 @@ namespace TraxCombat.Tools
         }
 
         private static HudFrame Frame(double now, Agent? player, MissionMode mode = MissionMode.Battle, bool hideUi = false, bool photo = false,
-            bool paused = false, float dt = 0.05f, bool orderMenu = false) => new HudFrame
+            bool paused = false, float dt = 0.05f, bool orderMenu = false, bool weapon = false) => new HudFrame
             {
                 Dt = dt,
                 Now = now,
@@ -90,6 +90,7 @@ namespace TraxCombat.Tools
                 Player = player,
                 PlayerActive = player != null,
                 OrderMenuOpen = orderMenu,
+                PlayerWeaponDrawn = weapon,
             };
 
         /// <summary>A nested class: Program's own static fields initialise before Main registers the
@@ -103,6 +104,7 @@ namespace TraxCombat.Tools
         private static void HudDefaults()
         {
             S.Set(SettingsSchema.ShowPlayerBar, true, SettingSources.File);
+            S.Set(SettingsSchema.ShowPlayerBarOutsideBattles, true, SettingSources.File);
             S.Set(SettingsSchema.HudRefreshSeconds, 0.1, SettingSources.File);
             S.Set(SettingsSchema.BarYellowBelowPercent, 75, SettingSources.File);
             S.Set(SettingsSchema.BarOrangeBelowPercent, 50, SettingSources.File);
@@ -576,6 +578,141 @@ namespace TraxCombat.Tools
             LogHas("[summary] hud: no views attached (the first tick never came)");
         }
 
+        /// <summary>
+        /// Step 12 (Anton's playtest: no bar in the training field - it runs in the game's walk-about
+        /// mode StartUp): the REAL player view outside a battle - hidden with empty hands and a full
+        /// bar, built with a weapon drawn, kept a moment through a weapon switch, kept while Athletics
+        /// refills, gone once full; never in a conversation or deployment; the switch, the player, an
+        /// untracked player, the master switch; fights unchanged; every build and removal logged with
+        /// its reason; the attach text; the [summary] outside-a-battle clause.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static void HudPlayerBarOutsideBattles()
+        {
+            var logic = HudLogic();
+            var player = FakeAgent(22);
+            var me = logic.Track(player)!;
+            me.AthleticsSkill = 100; // pool 100, 10 a blow
+            var view = new PlayerAthleticsView();
+            var layer = new FakeHudLayer();
+            view.UseLayer(layer);
+            HudFrame Walk(double now, bool weapon = false, MissionMode mode = MissionMode.StartUp) => Frame(now, player, mode, weapon: weapon);
+
+            Check(view.ShowsWhen.Contains("; outside a battle too while ShowPlayerBarOutsideBattles is on (on now): in the walk-about mode (StartUp")
+                  && view.ShowsWhen.Contains("while you hold a weapon or a shield or your Athletics is below full (then 1.0 s grace), never in a conversation"),
+                "the attach line does not tell the outside-a-battle rule: " + view.ShowsWhen);
+
+            // the training field: empty hands, a full bar - nothing on screen, and the log says why
+            view.Tick(Walk(0));
+            Check(!layer.Up && view.LastDecision == HudHide.OutsideIdle, "a bar outside a battle with empty hands and a full bar");
+            LogHas("[hud] player bar: not shown at 0.0 s - outside a battle: no weapon drawn and your Athletics full");
+
+            // a weapon drawn: built, with the reason
+            view.Tick(Walk(1, weapon: true));
+            Check(layer.Up && layer.Created == 1, "no bar with a weapon drawn outside a battle");
+            LogHas("[hud] player bar: layer created at 1.0 s (mode StartUp, outside a battle: a weapon drawn, was hidden: outside a battle: no weapon drawn and your Athletics full) - movie TraxPlayerAthleticsBar loaded OK");
+            Check(view.CurrentViewModel!.NumberText == "100 / 100", "the bar outside a battle shows " + view.CurrentViewModel!.NumberText);
+
+            // put away with a full bar: a 1 s grace, then gone
+            view.Tick(Walk(1.5));
+            view.Tick(Walk(1.9));
+            Check(layer.Up, "the grace did not keep the bar after the weapon went away");
+            view.Tick(Walk(2.1));
+            Check(!layer.Up && view.LastDecision == HudHide.OutsideIdle, "the bar stayed past the grace with empty hands and a full bar");
+            LogHas("[hud] player bar: layer removed at 2.1 s - outside a battle: no weapon drawn and your Athletics full");
+
+            // a weapon switch (both hands empty for a moment) does not rebuild the layer
+            view.Tick(Walk(3, weapon: true));
+            view.Tick(Walk(3.3));
+            view.Tick(Walk(3.6, weapon: true));
+            Check(layer.Created == 2 && layer.Up, "a weapon switch rebuilt the bar: " + layer.Created + " builds");
+
+            // swing at the training dummy, then put the weapon away: it stays while Athletics refills
+            double t = 4;
+            for (int i = 0; i < 3; i++)
+            {
+                Swing(me, ref t);
+                view.Tick(Walk(t, weapon: true));
+            }
+            Check(view.CurrentViewModel!.NumberText == "70 / 100", "three blows outside a battle: " + view.CurrentViewModel!.NumberText);
+            t += 0.5;
+            view.Tick(Walk(t));
+            t += 5;
+            view.Tick(Walk(t));
+            Check(layer.Up && layer.Created == 2, "the bar went while Athletics was still refilling");
+            AthleticsMath.Regen(me, Rules, t + 100, 100, 0f, 5f); // a long rest (on the fighter's own clock): full
+            Check(me.Fraction == 1.0, "precondition: the rest did not fill the bar");
+            view.Tick(Walk(t + 0.2));
+            Check(layer.Up, "the grace did not hold the bar the moment it filled");
+            t += 1.5;
+            view.Tick(Walk(t));
+            Check(!layer.Up && view.LastDecision == HudHide.OutsideIdle, "the full bar stayed with empty hands");
+            LogHas("[hud] player bar: layer removed at " + TraxHudView.S1(t) + " s - outside a battle: no weapon drawn and your Athletics full");
+
+            // wounded, with the bar at the wound's cap: that is as full as it gets - no bar
+            SetHealth(player, 60f, 100f);
+            logic.CheckHealth(me, Rules, t);
+            t += 1;
+            view.Tick(Walk(t));
+            Check(!layer.Up, "a wounded bar at its cap counted as refilling");
+            SetHealth(player, 100f, 100f);
+            logic.CheckHealth(me, Rules, t);
+            AthleticsMath.Regen(me, Rules, t + 300, 100, 0f, 5f); // healed and rested: full again
+
+            // a conversation (Training Master) or deployment: never, weapon or not
+            void Hidden(string reason, HudHide why, Func<double, HudFrame> hidden, Action? before = null, Action? after = null)
+            {
+                t += 1;
+                view.Tick(Walk(t, weapon: true));
+                Check(layer.Up, reason + ": precondition - the bar is not up");
+                t += 1;
+                before?.Invoke();
+                view.Tick(hidden(t));
+                Check(!layer.Up && view.LastDecision == why, reason + ": the bar stayed (" + view.LastDecision + ")");
+                LogHas("[hud] player bar: layer removed at " + TraxHudView.S1(t) + " s - " + reason);
+                after?.Invoke();
+            }
+            Hidden("not a fight (mission mode) - mode Conversation", HudHide.NotFightMode, now => Walk(now, weapon: true, mode: MissionMode.Conversation));
+            Hidden("not a fight (mission mode) - mode Barter", HudHide.NotFightMode, now => Walk(now, weapon: true, mode: MissionMode.Barter));
+            Hidden("not a fight (mission mode) - mode CutScene", HudHide.NotFightMode, now => Walk(now, weapon: true, mode: MissionMode.CutScene));
+            Hidden("not a fight (mission mode) - mode Deployment", HudHide.NotFightMode, now => Walk(now, weapon: true, mode: MissionMode.Deployment));
+            Hidden("outside a battle, and ShowPlayerBarOutsideBattles is off", HudHide.OutsideBattlesOff, now => Walk(now, weapon: true),
+                () => S.Set(SettingsSchema.ShowPlayerBarOutsideBattles, false, SettingSources.Mcm),
+                () => S.Set(SettingsSchema.ShowPlayerBarOutsideBattles, true, SettingSources.Mcm));
+            Hidden("no player agent on the field", HudHide.NoPlayer, now => Frame(now, null, MissionMode.StartUp, weapon: true));
+            Hidden("ModEnabled off (the master switch)", HudHide.ModOff, now => Walk(now, weapon: true),
+                () => S.Set(SettingsSchema.ModEnabled, false, SettingSources.Mcm), () => S.Set(SettingsSchema.ModEnabled, true, SettingSources.Mcm));
+
+            // a player this mission does not track: no bar outside a battle, and the log says so
+            var stranger = FakeAgent(23);
+            var other = new PlayerAthleticsView();
+            var otherLayer = new FakeHudLayer();
+            other.UseLayer(otherLayer);
+            other.Tick(Frame(t, stranger, MissionMode.StartUp, weapon: true));
+            Check(!otherLayer.Up && other.LastDecision == HudHide.NotTracked, "an untracked player got a bar outside a battle");
+            LogHas("[hud] player bar: not shown at " + TraxHudView.S1(t) + " s - outside a battle, and this mission does not track your Athletics");
+
+            // in a fight nothing changed: empty hands and a full bar still show it
+            t += 1;
+            view.Tick(Frame(t, player));
+            Check(layer.Up && view.LastDecision == HudHide.None, "a battle with empty hands hid the bar");
+            LogHas("[hud] player bar: layer created at " + TraxHudView.S1(t) + " s (mode Battle, was hidden: ModEnabled off (the master switch)) - movie");
+            // the battle ends (back to the walk-about mode) with empty hands and a full bar: gone
+            t += 1;
+            view.Tick(Walk(t));
+            Check(!layer.Up && view.LastDecision == HudHide.OutsideIdle, "the bar stayed after the battle with empty hands");
+
+            // the summary: how it did outside a battle
+            view.Finish(t + 1);
+            var line = view.Stats.SummaryLines()[0];
+            Check(line.Contains("; outside a battle: shown 9x (weapon drawn 9), on screen ") && line.Contains("outside a battle, no weapon, full"),
+                "the summary does not tell the outside-a-battle story: " + line);
+
+            // Leave things as a player would find them.
+            SetStatic(typeof(AthleticsLogic), "_current", null);
+            ConfigStore.Reload("after the outside-a-battle HUD smoke");
+        }
+
         /// <summary>Called from the master-switch step: the bar goes the moment ModEnabled goes off,
         /// comes back when it is on again (the master switch first - CLAUDE.md).</summary>
         [MethodImpl(MethodImplOptions.NoInlining)]
@@ -594,6 +731,14 @@ namespace TraxCombat.Tools
             S.Set(SettingsSchema.ModEnabled, true, SettingSources.Mcm);
             view.Tick(Frame(902, player));
             Check(layer.Up && layer.Created == 2, "mod back on: the Athletics bar did not come back");
+            // step 12: outside a battle too (the walk-about mode, a weapon drawn) - off = gone at once
+            view.Tick(Frame(902.5, player, MissionMode.StartUp, weapon: true));
+            Check(layer.Up && view.LastDecision == HudHide.None, "master switch: precondition - no bar outside a battle with a weapon drawn (" + view.LastDecision + ")");
+            S.Set(SettingsSchema.ModEnabled, false, SettingSources.Mcm);
+            view.Tick(Frame(902.6, player, MissionMode.StartUp, weapon: true));
+            Check(!layer.Up && view.LastDecision == HudHide.ModOff, "mod off: the Athletics bar stayed outside a battle");
+            LogHas("[hud] player bar: layer removed at 902.6 s - ModEnabled off (the master switch)");
+            S.Set(SettingsSchema.ModEnabled, true, SettingSources.Mcm);
             view.Finish(903);
             StripFollowsTheMasterSwitch(player);
         }

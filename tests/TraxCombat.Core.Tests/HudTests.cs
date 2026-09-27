@@ -63,9 +63,112 @@ public class HudTests
         }
     }
 
+    // ------------------------------------------------------------------ outside a battle (step 12)
+
+    /// <summary>The player bar outside a fight: walk-about mode, the player on the field and tracked,
+    /// ShowPlayerBarOutsideBattles on; the three wants off unless asked.</summary>
+    private static HudGateInput Outside(bool toggle = true, bool walk = true, bool tracked = true, bool weapon = false, bool belowFull = false,
+        bool lingering = false, bool player = true, bool mod = true, bool hideUi = false, bool viewToggle = true)
+        => new(mod, true, viewToggle, hideUi, false, false, true, player, true, new HudOutside(toggle, walk, tracked, weapon, belowFull, lingering));
+
+    [Fact]
+    public void Outside_a_battle_the_bar_shows_with_a_weapon_drawn_or_while_it_refills()
+    {
+        Assert.Equal(HudHide.None, HudGate.Decide(Outside(weapon: true)));
+        Assert.Equal(HudShow.WeaponDrawn, HudGate.ShowReason(Outside(weapon: true)));
+        Assert.Equal(HudHide.None, HudGate.Decide(Outside(belowFull: true)));
+        Assert.Equal(HudShow.Refilling, HudGate.ShowReason(Outside(belowFull: true)));
+        Assert.Equal(HudShow.WeaponDrawn, HudGate.ShowReason(Outside(weapon: true, belowFull: true)));   // the weapon names it first
+        Assert.Equal(HudShow.Lingering, HudGate.ShowReason(Outside(lingering: true)));
+        // empty hands, full bar, no grace: gone - and the log says why
+        Assert.Equal(HudHide.OutsideIdle, HudGate.Decide(Outside()));
+        Assert.Equal(HudShow.Hidden, HudGate.ShowReason(Outside()));
+        Assert.Equal("outside a battle: no weapon drawn and your Athletics full", HudGate.Describe(HudHide.OutsideIdle, "ShowPlayerBar"));
+    }
+
+    [Fact]
+    public void Outside_a_battle_it_hides_in_menus_without_the_player_untracked_or_switched_off()
+    {
+        // a conversation / barter / deployment / cutscene: not the walk-about mode - even with a weapon
+        Assert.Equal(HudHide.NotFightMode, HudGate.Decide(Outside(walk: false, weapon: true, belowFull: true)));
+        Assert.Equal(HudHide.OutsideBattlesOff, HudGate.Decide(Outside(toggle: false, weapon: true)));
+        Assert.Equal(HudHide.NoPlayer, HudGate.Decide(Outside(player: false, tracked: false, weapon: true)));
+        Assert.Equal(HudHide.NotTracked, HudGate.Decide(Outside(tracked: false, weapon: true)));
+        // the common gates still come first - the master switch before everything
+        Assert.Equal(HudHide.ModOff, HudGate.Decide(Outside(mod: false, weapon: true)));
+        Assert.Equal(HudHide.ToggleOff, HudGate.Decide(Outside(viewToggle: false, weapon: true)));
+        Assert.Equal(HudHide.HideBattleUI, HudGate.Decide(Outside(hideUi: true, weapon: true)));
+        Assert.Equal("outside a battle, and ShowPlayerBarOutsideBattles is off", HudGate.Describe(HudHide.OutsideBattlesOff, "ShowPlayerBar"));
+        Assert.True(HudGate.IsOutsideReason(HudHide.OutsideIdle) && HudGate.IsOutsideReason(HudHide.NotTracked)
+                    && HudGate.IsOutsideReason(HudHide.OutsideBattlesOff) && !HudGate.IsOutsideReason(HudHide.NotFightMode));
+    }
+
+    [Fact]
+    public void A_view_without_the_outside_rule_keeps_the_fights_only_gate()
+    {
+        // the orders strip (no HudOutside): outside a fight it is NotFightMode, whatever the player holds
+        Assert.Equal(HudHide.NotFightMode, HudGate.Decide(Input(fight: false)));
+        Assert.Equal(HudShow.Hidden, HudGate.ShowReason(Input(fight: false)));
+        // and in a fight nothing changed: shown, because it is a fight
+        Assert.Equal(HudShow.Fight, HudGate.ShowReason(Input()));
+    }
+
+    [Fact]
+    public void The_grace_keeps_a_shown_bar_for_a_moment_and_never_brings_one_back()
+    {
+        double g = HudGate.OutsideLingerSeconds;
+        Assert.True(HudGate.Lingers(true, 10.0, 10.0));
+        Assert.True(HudGate.Lingers(true, 10.0 + g * 0.9, 10.0));
+        Assert.False(HudGate.Lingers(true, 10.0 + g, 10.0));                  // over
+        Assert.False(HudGate.Lingers(false, 10.2, 10.0));                     // not up: no grace
+        Assert.False(HudGate.Lingers(true, 5.0, double.NegativeInfinity));    // never wanted
+        Assert.False(HudGate.Lingers(true, 9.0, 10.0));                       // time went back (a new mission): no grace
+    }
+
+    [Fact]
+    public void Every_show_reason_reads_in_plain_words()
+    {
+        Assert.Equal(HudGate.ShowCount, Enum.GetValues<HudShow>().Length);
+        foreach (var s in Enum.GetValues<HudShow>())
+        {
+            Assert.False(string.IsNullOrWhiteSpace(HudGate.Describe(s)));
+            Assert.False(string.IsNullOrWhiteSpace(HudGate.ShortName(s)));
+        }
+        Assert.Equal("outside a battle: a weapon drawn", HudGate.Describe(HudShow.WeaponDrawn));
+        Assert.Equal("outside a battle: your Athletics refilling", HudGate.Describe(HudShow.Refilling));
+    }
+
     // ------------------------------------------------------------------ the stats
 
     private static HudStats Stats() => new("player bar", "TraxPlayerAthleticsBar", "ShowPlayerBar");
+
+    [Fact]
+    public void Summary_says_how_the_bar_did_outside_a_battle()
+    {
+        var s = Stats();
+        s.HasOutsideRule = true;
+        s.AddTick(4, HudHide.OutsideIdle, false);
+        s.LayerCreated();
+        s.NoteOutsideShown(HudShow.WeaponDrawn);
+        s.AddTick(10, HudHide.None, true);
+        s.AddOutsideVisible(10);
+        s.LayerRemoved(HudHide.OutsideIdle);
+        s.LayerCreated();
+        s.NoteOutsideShown(HudShow.Refilling);
+        s.AddTick(2.5, HudHide.None, true);
+        s.AddOutsideVisible(2.5);
+        s.LayerRemoved(HudHide.NotFightMode);
+        s.AddTick(3, HudHide.NotFightMode, false);   // a conversation
+        Assert.Equal("hud: player bar (movie TraxPlayerAthleticsBar) - on screen 12.5 s of 19.5 s (64%); layer built 2x, removed 2x (not a fight 1, "
+                     + "outside a battle, no weapon, full 1); hidden: not a fight 3.0 s, outside a battle, no weapon, full 4.0 s; 0 refreshes; "
+                     + "outside a battle: shown 2x (weapon drawn 1, refilling 1), on screen 12.5 s; errors 0", s.SummaryLines()[0]);
+
+        var quiet = Stats();
+        quiet.HasOutsideRule = true;
+        quiet.AddTick(8, HudHide.OutsideIdle, false);
+        Assert.Equal("hud: player bar (movie TraxPlayerAthleticsBar) - never on screen (hidden: outside a battle, no weapon, full 8.0 s); "
+                     + "outside a battle: never shown; errors 0", Assert.Single(quiet.SummaryLines()));
+    }
 
     [Fact]
     public void Time_on_screen_and_hidden_by_reason()

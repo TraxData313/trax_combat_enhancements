@@ -413,6 +413,15 @@ namespace TraxCombat.Core
 
         /// <summary>The Athletics skill the pool came from (0 = unknown).</summary>
         public int AthleticsSkill { get; }
+
+        /// <summary>Below the top he can refill to (the usable pool - his wounds may hold the rest):
+        /// still refilling. Step 12: outside a battle the player bar stays up while this is true.
+        /// False while Athletics is off (everyone reads full).</summary>
+        public bool BelowFull => Enabled && Fraction < UsableFraction - FullTolerance;
+
+        /// <summary>How close to the usable top counts as full (a share of the pool; the refill stops
+        /// exactly at the top, so this only absorbs rounding).</summary>
+        public const double FullTolerance = 1e-6;
     }
 
     /// <summary>

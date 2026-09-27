@@ -35,6 +35,12 @@ namespace TraxCombat.Hud
     /// setting) to the base, implement <see cref="CreateDataSource"/> and <see cref="Refresh"/>;
     /// override <see cref="NeedsPlayer"/> / <see cref="ViewConditionMet"/> if it has other
     /// conditions; add one line to <c>AthleticsLogic.AttachHud</c>. AI_NOTES "Step 6" has the recipe.
+    ///
+    /// OUTSIDE A BATTLE (step 12): a view that returns its switch from <see cref="OutsideToggle"/> (the
+    /// player bar) also shows in the game's walk-about mode - while the player holds a weapon or his
+    /// Athletics is below full (<see cref="ReadOutside"/>), plus HudGate's short grace; every build and
+    /// removal outside a fight says why, in its own rate bucket ("hud-outside"), and the summary
+    /// counts it. Views without it (the orders strip) keep the fights-only gate.
     /// </summary>
     public abstract class TraxHudView : MissionView
     {
@@ -49,6 +55,8 @@ namespace TraxCombat.Hud
         private double _nextRefresh;
         private bool _firstPush;
         private int _mode;
+        private HudShow _show;
+        private double _lastWantedAt = double.NegativeInfinity;
 
         protected TraxHudView(string viewName, string movieName, ParamDef toggle)
         {
@@ -104,6 +112,19 @@ namespace TraxCombat.Hud
         /// <summary>That condition met, for the attach line ("while the orders menu is open"); null = none.</summary>
         protected virtual string? ViewConditionWhen => null;
 
+        /// <summary>Step 12: the switch of the view's outside-a-battle rule (the player bar:
+        /// ShowPlayerBarOutsideBattles); null = the view shows in fights only (the default).</summary>
+        protected virtual ParamDef? OutsideToggle => null;
+
+        /// <summary>Step 12, outside a fight in the walk-about mode with the player on the field: true
+        /// when this mission tracks his Athletics; <paramref name="belowFull"/> = below the top it can
+        /// refill to. Main thread, no allocation.</summary>
+        protected virtual bool ReadOutside(in HudFrame f, out bool belowFull)
+        {
+            belowFull = false;
+            return false;
+        }
+
         /// <summary>True for a view whose own condition comes and goes all the time (the orders menu
         /// opening and closing): only the FIRST build per mission is logged in full, later builds and
         /// removals caused by that condition go to the verbose log (the stats still count them all).</summary>
@@ -136,7 +157,13 @@ namespace TraxCombat.Hud
             "shown while ModEnabled, AthleticsEnabled and " + Toggle.Key + " are on, the game's Hide battle UI and photo mode are off, "
             + "in a fight (battle, duel, tournament or stealth mode)"
             + (NeedsPlayer ? (ViewConditionWhen != null ? ", you are on the field" : " and you are on the field") : string.Empty)
-            + (ViewConditionWhen != null ? " and " + ViewConditionWhen : string.Empty);
+            + (ViewConditionWhen != null ? " and " + ViewConditionWhen : string.Empty)
+            + (OutsideToggle != null
+                ? "; outside a battle too while " + OutsideToggle.Key + " is on (" + (TraxSettings.Shared.GetBool(OutsideToggle) ? "on" : "off")
+                  + " now): in the walk-about mode (StartUp - towns, villages, the training field) with you on the field and your Athletics tracked, "
+                  + "while you hold a weapon or a shield or your Athletics is below full (then " + S1(HudGate.OutsideLingerSeconds)
+                  + " s grace), never in a conversation, barter, deployment, cutscene or replay"
+                : string.Empty);
 
         // ------------------------------------------------------------------ the game's hooks
 
@@ -225,6 +252,7 @@ namespace TraxCombat.Hud
                 Player = main,
                 PlayerActive = main != null && main.IsActive(),
                 OrderMenuOpen = m.IsOrderMenuOpen,
+                PlayerWeaponDrawn = OutsideToggle != null && main != null && !HudFrame.IsFightMode((int)m.Mode) && HudFrame.HandsFull(main),
             };
         }
 
@@ -249,10 +277,16 @@ namespace TraxCombat.Hud
             if (f.Paused) return;
             _mode = f.Mode;
             var s = TraxSettings.Shared;
+            bool fight = HudFrame.IsFightMode(f.Mode);
+            bool hasPlayer = f.Player != null && f.PlayerActive;
+            var outside = fight ? default : ReadOutsideFacts(in f, s, hasPlayer);
             var input = new HudGateInput(s.ModEnabled, s.AthleticsEnabled, s.GetBool(Toggle), f.HideBattleUI, f.PhotoMode,
-                HudFrame.IsFightMode(f.Mode), NeedsPlayer, f.Player != null && f.PlayerActive, ViewConditionMet(in f));
+                fight, NeedsPlayer, hasPlayer, ViewConditionMet(in f), in outside);
             var hide = HudGate.Decide(in input);
-            if (!_decided || hide != _hide) Apply(hide, in f);
+            var show = HudGate.ShowReason(in input);
+            if (!_decided || hide != _hide) Apply(hide, show, in f);
+            else if (show != _show) ShowReasonChanged(show, in f);
+            _show = show;
             if (_disabled) return;
 
             bool onScreen = _layerUp && !_suspended;
@@ -260,6 +294,7 @@ namespace TraxCombat.Hud
             if (!_layerUp) return;
             if (onScreen)
             {
+                if (!fight) Stats.AddOutsideVisible(f.Dt);
                 OnVisibleFrame(f.Dt);
                 OnLayerFrame(in f);
                 if (_disabled || !_layerUp) return;
@@ -272,7 +307,33 @@ namespace TraxCombat.Hud
             }
         }
 
-        private void Apply(HudHide hide, in HudFrame f)
+        /// <summary>Step 12's facts for this frame (outside a fight only; default = no rule). The grace
+        /// clock (<see cref="_lastWantedAt"/>) moves only while the bar is wanted in the walk-about mode.</summary>
+        private HudOutside ReadOutsideFacts(in HudFrame f, TraxSettings s, bool hasPlayer)
+        {
+            var toggle = OutsideToggle;
+            if (toggle == null) return default;
+            bool walk = HudFrame.IsWalkMode(f.Mode);
+            bool belowFull = false;
+            bool tracked = walk && hasPlayer && ReadOutside(in f, out belowFull);
+            bool drawn = tracked && f.PlayerWeaponDrawn;
+            belowFull = tracked && belowFull;
+            if (drawn || belowFull) _lastWantedAt = f.Now;
+            bool lingering = tracked && HudGate.Lingers(_layerUp, f.Now, _lastWantedAt);
+            return new HudOutside(s.GetBool(toggle), walk, tracked, drawn, belowFull, lingering);
+        }
+
+        /// <summary>The bar stays up but for another reason (a weapon put away while Athletics refills,
+        /// then the grace) - verbose only; the builds and removals carry the log.</summary>
+        private void ShowReasonChanged(HudShow show, in HudFrame f)
+        {
+            if (!_layerUp || show == HudShow.Hidden || _show == HudShow.Hidden) return;
+            if (TraxLog.VerboseWants("hud-outside-why"))
+                TraxLog.Verbose("hud", ViewName + ": still shown at " + S1(f.Now) + " s, now " + HudGate.Describe(show)
+                    + " (was: " + HudGate.Describe(_show) + ")", "hud-outside-why");
+        }
+
+        private void Apply(HudHide hide, HudShow show, in HudFrame f)
         {
             var before = _hide;
             bool wasDecided = _decided;
@@ -280,12 +341,12 @@ namespace TraxCombat.Hud
             _decided = true;
             if (hide == HudHide.None)
             {
-                if (!_layerUp) CreateLayer(in f, wasDecided ? before : HudHide.None);
+                if (!_layerUp) CreateLayer(in f, wasDecided ? before : HudHide.None, show);
                 return;
             }
             if (_layerUp)
             {
-                DestroyLayer(hide, f.Now);
+                DestroyLayer(hide, f.Now, HudFrame.IsFightMode(f.Mode) ? "hud-layer" : "hud-outside");
                 return;
             }
             if (!wasDecided)
@@ -294,7 +355,7 @@ namespace TraxCombat.Hud
                 TraxLog.Verbose("hud", ViewName + ": still hidden at " + S1(f.Now) + " s, now because " + Why(hide), "hud-hidden");
         }
 
-        private void CreateLayer(in HudFrame f, HudHide wasHiddenBy)
+        private void CreateLayer(in HudFrame f, HudHide wasHiddenBy, HudShow show)
         {
             if (_host == null) throw new InvalidOperationException("no layer host - the view was not attached through AthleticsLogic");
             _dataSource = CreateDataSource(in f);
@@ -309,6 +370,8 @@ namespace TraxCombat.Hud
             if (_suspended) _host.SetSuspended(true);
             _firstPush = true;
             _nextRefresh = f.Now;
+            bool outside = show != HudShow.Fight;
+            if (outside) Stats.NoteOutsideShown(show);
             if (QuietConditionToggles && Stats.LayersCreated > 1 && wasHiddenBy == HudHide.ViewCondition)
             {
                 if (TraxLog.VerboseWants("hud-layer-quiet"))
@@ -316,12 +379,16 @@ namespace TraxCombat.Hud
                 return;
             }
             TraxLog.Limited("hud", ViewName + ": layer created at " + S1(f.Now) + " s (mode " + HudFrame.ModeName(f.Mode)
+                + (outside ? ", " + HudGate.Describe(show) : string.Empty)
                 + (wasHiddenBy != HudHide.None ? ", was hidden: " + HudGate.Describe(wasHiddenBy, Toggle.Key, ViewConditionText) : string.Empty)
                 + ") - movie " + MovieName + " loaded OK (" + detail + ")"
-                + (QuietConditionToggles ? " - later builds and removals by \"" + ViewConditionText + "\" go to the verbose log only" : string.Empty), "hud-layer");
+                + (QuietConditionToggles ? " - later builds and removals by \"" + ViewConditionText + "\" go to the verbose log only" : string.Empty),
+                outside ? "hud-outside" : "hud-layer");
         }
 
-        private void DestroyLayer(HudHide why, double now)
+        /// <summary>Takes the layer down and logs why - outside a fight (step 12) in its own rate bucket,
+        /// so a walk through town drawing and sheathing never eats the battle lines' budget.</summary>
+        private void DestroyLayer(HudHide why, double now, string bucket = "hud-layer")
         {
             _layerUp = false;
             try
@@ -338,7 +405,7 @@ namespace TraxCombat.Hud
                 if (TraxLog.VerboseWants("hud-layer-quiet")) TraxLog.Verbose("hud", ViewName + ": layer removed at " + S1(now) + " s - " + Why(why), "hud-layer-quiet");
                 return;
             }
-            TraxLog.Limited("hud", ViewName + ": layer removed at " + S1(now) + " s - " + Why(why), "hud-layer");
+            TraxLog.Limited("hud", ViewName + ": layer removed at " + S1(now) + " s - " + Why(why), bucket);
         }
 
         /// <summary>Mission over (the screen finalizes its views before the logic's summary runs).</summary>

@@ -42,10 +42,30 @@ namespace TraxCombat.Hud
         /// <summary>Mission.IsOrderMenuOpen - the orders menu is open (step 9's strip shows then).</summary>
         public bool OrderMenuOpen;
 
+        /// <summary>Step 12: the player holds a weapon or a shield - something wielded in either hand
+        /// (<see cref="HandsFull"/>); fists only = false. Read only outside a fight, for a view with the
+        /// outside-a-battle rule.</summary>
+        public bool PlayerWeaponDrawn;
+
         /// <summary>The fight modes DESIGN §3 shows bars in: battle, duel, tournament - and stealth
         /// (a stealth mission's fights cost Athletics too; step 6's call).</summary>
         public static bool IsFightMode(int mode) =>
             mode == (int)MissionMode.Battle || mode == (int)MissionMode.Duel || mode == (int)MissionMode.Tournament || mode == (int)MissionMode.Stealth;
+
+        /// <summary>Step 12: the mode the player walks about in outside a battle - the game's StartUp
+        /// (towns, villages, the training field, a lord's hall; Anton's training field ran in it). The
+        /// other non-fight modes are menus or films: Conversation, Barter, Deployment, Replay, CutScene,
+        /// Benchmark - no bar there.</summary>
+        public static bool IsWalkMode(int mode) => mode == (int)MissionMode.StartUp;
+
+        /// <summary>
+        /// Step 12's "a weapon drawn": something wielded in either hand - a weapon, a shield (or a
+        /// banner / torch). The game's own "hands empty" test (Agent.cs, the swimming check) - two
+        /// index reads from the agent's native memory, no allocation. Fists are no item: both hands
+        /// read <c>EquipmentIndex.None</c>, so fists only = not drawn.
+        /// </summary>
+        public static bool HandsFull(Agent agent) =>
+            agent.GetPrimaryWieldedItemIndex() != EquipmentIndex.None || agent.GetOffhandWieldedItemIndex() != EquipmentIndex.None;
 
         /// <summary>"Battle", "Deployment", … for the log (allocates - log lines only).</summary>
         public static string ModeName(int mode) => ((MissionMode)mode).ToString();
