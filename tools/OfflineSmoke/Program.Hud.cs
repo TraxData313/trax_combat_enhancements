@@ -217,40 +217,64 @@ namespace TraxCombat.Tools
                     Failures.Add("<" + e.Name + "> is not a widget type of the game");
                     return;
                 }
-                var bound = boundBy[vm];
-                Type childVm = vm;
+                // DataSource first: a widget's OWN @bindings and its children resolve against it
+                // (GauntletView.ViewModelPath appends it), and a LIST DataSource binds no property of
+                // its widget at all (GauntletView.RefreshBinding) - only its <ItemTemplate> items.
+                Type? ownVm = vm;
                 Type? itemVm = null;
+                var dataSource = e.GetAttributeNode("DataSource");
+                if (dataSource != null)
+                {
+                    var m = Regex.Match(dataSource.Value, "^\\{([A-Za-z0-9_]+)\\}$");
+                    var source = m.Success ? vm.GetProperty(m.Groups[1].Value, BindingFlags.Instance | BindingFlags.Public) : null;
+                    if (source == null)
+                    {
+                        Failures.Add("<" + e.Name + "> DataSource=\"" + dataSource.Value + "\": " + vm.Name + " has no public property of that name");
+                        return;
+                    }
+                    boundBy[vm].Add(source.Name);
+                    var t = source.PropertyType;
+                    if (t.IsGenericType && t.GetGenericTypeDefinition().FullName == "TaleWorlds.Library.MBBindingList`1")
+                    {
+                        itemVm = t.GetGenericArguments()[0];
+                        ownVm = null;
+                    }
+                    else if (IsViewModel(t))
+                    {
+                        ownVm = t;
+                    }
+                    else
+                    {
+                        Failures.Add("<" + e.Name + "> DataSource {" + source.Name + "} is " + t.Name + " - neither an MBBindingList nor a ViewModel");
+                        return;
+                    }
+                }
+                if (ownVm != null && !boundBy.ContainsKey(ownVm)) boundBy[ownVm] = new HashSet<string>(StringComparer.Ordinal);
+                if (itemVm != null && !boundBy.ContainsKey(itemVm)) boundBy[itemVm] = new HashSet<string>(StringComparer.Ordinal);
                 foreach (XmlAttribute a in e.Attributes)
                 {
                     attributes++;
-                    if (a.Name == "DataSource")
+                    if (a.Name == "DataSource") continue; // not a widget property: GauntletView reads it
+                    if (ownVm == null && a.Value.StartsWith("@", StringComparison.Ordinal))
                     {
-                        // Not a widget property: GauntletView reads it. "{X}" names a property of the ViewModel.
-                        var m = Regex.Match(a.Value, "^\\{([A-Za-z0-9_]+)\\}$");
-                        var source = m.Success ? vm.GetProperty(m.Groups[1].Value, BindingFlags.Instance | BindingFlags.Public) : null;
-                        if (source == null)
-                        {
-                            Failures.Add("<" + e.Name + "> DataSource=\"" + a.Value + "\": " + vm.Name + " has no public property of that name");
-                            continue;
-                        }
-                        bound.Add(source.Name);
-                        var t = source.PropertyType;
-                        if (t.IsGenericType && t.GetGenericTypeDefinition().FullName == "TaleWorlds.Library.MBBindingList`1") itemVm = t.GetGenericArguments()[0];
-                        else if (t.FullName != null && IsViewModel(t)) childVm = t;
-                        else Failures.Add("<" + e.Name + "> DataSource {" + source.Name + "} is " + t.Name + " - neither an MBBindingList nor a ViewModel");
+                        Failures.Add("<" + e.Name + (e.HasAttribute("Id") ? " Id=" + e.GetAttribute("Id") : string.Empty) + "> " + a.Name + "=\"" + a.Value
+                                     + "\" sits on a widget whose DataSource is a list - the game ignores it (move it to a widget around the list)");
                         continue;
                     }
-                    CheckAttribute(e, type, a.Name, a.Value, vm, brushes, sprites, bound);
+                    CheckAttribute(e, type, a.Name, a.Value, ownVm ?? vm, brushes, sprites, boundBy[ownVm ?? vm]);
                 }
-                if (childVm != vm && !boundBy.ContainsKey(childVm)) boundBy[childVm] = new HashSet<string>(StringComparer.Ordinal);
-                if (itemVm != null && !boundBy.ContainsKey(itemVm)) boundBy[itemVm] = new HashSet<string>(StringComparer.Ordinal);
                 foreach (XmlNode child in e.ChildNodes)
                 {
                     if (!(child is XmlElement ce)) continue;
                     if (ce.Name == "Children")
                     {
+                        if (ownVm == null)
+                        {
+                            Failures.Add("<" + e.Name + "> has fixed <Children> under a list DataSource - they would bind against the list");
+                            continue;
+                        }
                         foreach (XmlNode w in ce.ChildNodes)
-                            if (w is XmlElement we) Walk(we, childVm);
+                            if (w is XmlElement we) Walk(we, ownVm);
                     }
                     else if (ce.Name == "ItemTemplate")
                     {

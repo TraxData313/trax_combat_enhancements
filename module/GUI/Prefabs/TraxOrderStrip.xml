@@ -13,54 +13,60 @@
     (@PanelShown) - used when the cards cannot be matched or OrderStripUnderCards is off.
     Data: Hud\OrderStripVM.cs (the root) and OrderStripCellVM (each item of {Cells}). Every @binding's
     property has EXACTLY the widget property's type (float / int / Color / bool / string) - Gauntlet
-    converts only strings. Native sprites and brushes only. A passive overlay: no widget takes mouse
-    events (RTS Camera makes the cards clickable - nothing here may catch those clicks).
+    converts only strings. A widget's OWN @bindings resolve against its own DataSource, and a list
+    DataSource ignores them (GauntletView.RefreshBinding) - so the lists carry no @binding and their
+    visibility sits on the widget around them. Native sprites and brushes only. A passive overlay: no
+    widget takes mouse events (RTS Camera makes the cards clickable - nothing here may catch that).
     The offline smoke parses this file: widget types, attributes, brushes, sprites, bindings (the
-    item template against the item ViewModel), every ViewModel property drawn.
+    item templates against the item ViewModel), every ViewModel property drawn.
   -->
   <Window>
     <Widget Id="TraxOrderStrip" WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" DoNotAcceptEvents="true" DoNotPassEventsToChildren="true">
       <Children>
 
         <!-- THE STRIP: one cell per card slot (FormationClass 0..7), each placed on its card in pixels -->
-        <Widget Id="Cells" DataSource="{Cells}" WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" IsVisible="@StripShown" DoNotAcceptEvents="true">
-          <ItemTemplate>
-            <Widget Id="Cell" WidthSizePolicy="Fixed" HeightSizePolicy="CoverChildren" HorizontalAlignment="Left" VerticalAlignment="Top" ScaledSuggestedWidth="@CellWidth" ScaledPositionXOffset="@PositionX" ScaledPositionYOffset="@PositionY" IsVisible="@IsShown" DoNotAcceptEvents="true">
-              <Children>
-
-                <TextWidget Id="Athletics" WidthSizePolicy="CoverChildren" HeightSizePolicy="CoverChildren" HorizontalAlignment="Left" VerticalAlignment="Top" MarginLeft="@SideMargin" MarginTop="@TextMarginTop" Brush="AgentHUD.Interaction.Text" Brush.FontSize="@TextSize" Text="@AthleticsText" DoNotAcceptEvents="true" />
-
-                <TextWidget Id="Health" WidthSizePolicy="CoverChildren" HeightSizePolicy="CoverChildren" HorizontalAlignment="Right" VerticalAlignment="Top" MarginRight="@SideMargin" MarginTop="@TextMarginTop" Brush="AgentHUD.Interaction.Text" Brush.FontSize="@TextSize" Text="@HealthText" IsVisible="@HealthShown" DoNotAcceptEvents="true" />
-
-                <!-- the bar: dark ground, the mean fill, the ± band over it, the peak tick -->
-                <Widget Id="Bar" WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="@BarHeight" VerticalAlignment="Top" MarginTop="@BarMarginTop" MarginLeft="@SideMargin" MarginRight="@SideMargin" Sprite="BlankWhiteSquare_9" Color="#141414D0" DoNotAcceptEvents="true">
+        <Widget Id="Strip" WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" IsVisible="@StripShown" DoNotAcceptEvents="true">
+          <Children>
+            <Widget Id="Cells" DataSource="{Cells}" WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" DoNotAcceptEvents="true">
+              <ItemTemplate>
+                <Widget Id="Cell" WidthSizePolicy="Fixed" HeightSizePolicy="CoverChildren" HorizontalAlignment="Left" VerticalAlignment="Top" ScaledSuggestedWidth="@CellWidth" ScaledPositionXOffset="@PositionX" ScaledPositionYOffset="@PositionY" IsVisible="@IsShown" DoNotAcceptEvents="true">
                   <Children>
-                    <FillBarWidget Id="AthleticsBar" WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" FillWidget="AthleticsFill" MaxAmountAsFloat="1" InitialAmountAsFloat="@Fill" DoNotAcceptEvents="true">
+
+                    <TextWidget Id="Athletics" WidthSizePolicy="CoverChildren" HeightSizePolicy="CoverChildren" HorizontalAlignment="Left" VerticalAlignment="Top" MarginLeft="@SideMargin" MarginTop="@TextMarginTop" Brush="AgentHUD.Interaction.Text" Brush.FontSize="@TextSize" Text="@AthleticsText" DoNotAcceptEvents="true" />
+
+                    <TextWidget Id="Health" WidthSizePolicy="CoverChildren" HeightSizePolicy="CoverChildren" HorizontalAlignment="Right" VerticalAlignment="Top" MarginRight="@SideMargin" MarginTop="@TextMarginTop" Brush="AgentHUD.Interaction.Text" Brush.FontSize="@TextSize" Text="@HealthText" IsVisible="@HealthShown" DoNotAcceptEvents="true" />
+
+                    <!-- the bar: dark ground, the mean fill, the ± band over it, the peak tick -->
+                    <Widget Id="Bar" WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="@BarHeight" VerticalAlignment="Top" MarginTop="@BarMarginTop" MarginLeft="@SideMargin" MarginRight="@SideMargin" Sprite="BlankWhiteSquare_9" Color="#141414D0" DoNotAcceptEvents="true">
                       <Children>
-                        <Widget Id="AthleticsFill" WidthSizePolicy="Fixed" HeightSizePolicy="StretchToParent" HorizontalAlignment="Left" Sprite="BlankWhiteSquare_9" Color="@FillColor" DoNotAcceptEvents="true" />
-                      </Children>
-                    </FillBarWidget>
-                    <FillBarWidget Id="Spread" WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" FillWidget="SpreadLow" ChangeWidget="SpreadBand" CustomChangeColor="true" MaxAmountAsFloat="1" InitialAmountAsFloat="@BandLow" CurrentAmountAsFloat="@BandHigh" DoNotAcceptEvents="true">
-                      <Children>
-                        <Widget Id="SpreadLow" WidthSizePolicy="Fixed" HeightSizePolicy="StretchToParent" HorizontalAlignment="Left" DoNotAcceptEvents="true" />
-                        <Widget Id="SpreadBand" WidthSizePolicy="Fixed" HeightSizePolicy="StretchToParent" HorizontalAlignment="Left" Sprite="BlankWhiteSquare_9" Color="#FFFFFF5A" DoNotAcceptEvents="true" />
-                      </Children>
-                    </FillBarWidget>
-                    <FillBarWidget Id="PeakBar" WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" FillWidget="PeakSpan" MaxAmountAsFloat="1" InitialAmountAsFloat="@PeakLine" DoNotAcceptEvents="true">
-                      <Children>
-                        <Widget Id="PeakSpan" WidthSizePolicy="Fixed" HeightSizePolicy="StretchToParent" HorizontalAlignment="Left" DoNotAcceptEvents="true">
+                        <FillBarWidget Id="AthleticsBar" WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" FillWidget="AthleticsFill" MaxAmountAsFloat="1" InitialAmountAsFloat="@Fill" DoNotAcceptEvents="true">
                           <Children>
-                            <Widget Id="PeakMarker" WidthSizePolicy="Fixed" HeightSizePolicy="StretchToParent" SuggestedWidth="1" HorizontalAlignment="Right" Sprite="BlankWhiteSquare_9" Color="#F2F2F2C8" DoNotAcceptEvents="true" />
+                            <Widget Id="AthleticsFill" WidthSizePolicy="Fixed" HeightSizePolicy="StretchToParent" HorizontalAlignment="Left" Sprite="BlankWhiteSquare_9" Color="@FillColor" DoNotAcceptEvents="true" />
                           </Children>
-                        </Widget>
+                        </FillBarWidget>
+                        <FillBarWidget Id="Spread" WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" FillWidget="SpreadLow" ChangeWidget="SpreadBand" CustomChangeColor="true" MaxAmountAsFloat="1" InitialAmountAsFloat="@BandLow" CurrentAmountAsFloat="@BandHigh" DoNotAcceptEvents="true">
+                          <Children>
+                            <Widget Id="SpreadLow" WidthSizePolicy="Fixed" HeightSizePolicy="StretchToParent" HorizontalAlignment="Left" DoNotAcceptEvents="true" />
+                            <Widget Id="SpreadBand" WidthSizePolicy="Fixed" HeightSizePolicy="StretchToParent" HorizontalAlignment="Left" Sprite="BlankWhiteSquare_9" Color="#FFFFFF5A" DoNotAcceptEvents="true" />
+                          </Children>
+                        </FillBarWidget>
+                        <FillBarWidget Id="PeakBar" WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" FillWidget="PeakSpan" MaxAmountAsFloat="1" InitialAmountAsFloat="@PeakLine" DoNotAcceptEvents="true">
+                          <Children>
+                            <Widget Id="PeakSpan" WidthSizePolicy="Fixed" HeightSizePolicy="StretchToParent" HorizontalAlignment="Left" DoNotAcceptEvents="true">
+                              <Children>
+                                <Widget Id="PeakMarker" WidthSizePolicy="Fixed" HeightSizePolicy="StretchToParent" SuggestedWidth="1" HorizontalAlignment="Right" Sprite="BlankWhiteSquare_9" Color="#F2F2F2C8" DoNotAcceptEvents="true" />
+                              </Children>
+                            </Widget>
+                          </Children>
+                        </FillBarWidget>
                       </Children>
-                    </FillBarWidget>
+                    </Widget>
+
                   </Children>
                 </Widget>
-
-              </Children>
+              </ItemTemplate>
             </Widget>
-          </ItemTemplate>
+          </Children>
         </Widget>
 
         <!-- THE FALLBACK PANEL: top centre, one row per formation with men, in the cards' order -->
