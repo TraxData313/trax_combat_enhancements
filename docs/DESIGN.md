@@ -189,8 +189,21 @@ All toggles, all on by default.
    Numbers INSIDE vanilla's cards would need UIExtenderEx and risk clashing with RTS Camera
    Command System — not worth it (Claude's call 2026-09-27, see RESEARCH implication 1).
 
-Bars show only in fights (battle, duel, tournament modes) and never while the game's
-"hide battle UI" is on.
+Bars show only in fights (battle, duel, tournament and stealth modes — step 6 added stealth:
+a stealth mission's fights cost Athletics too), with the player on the field, never while the
+game's "hide battle UI" or photo mode is on, and never while the master switch or Athletics is
+off. Every one of these is read live, every frame (a switch flipped mid-battle takes the bar
+away or brings it back at once).
+
+**The player bar as built (step 6):** bottom right, one row under the vanilla health bar (and
+the horse bar), its right end lined up with the health bar's fill: the word *Athletics*, the
+number `current / pool` (current rounded UP, so it reads 0 only when truly empty), and a slim
+bar (`PlayerBarWidth` × `PlayerBarHeight`, placed by `PlayerBarOffsetRight` /
+`PlayerBarOffsetBottom` — UI pixels of the 1080p layout, the game's UI scale applies). Inside
+the bar: the fill in the colour of f, a white marker at the peak line, the part the wounds hold
+dark red-brown (from the usable share to the end — `HealthCapsAthletics`), the rest dark grey.
+Empty (E = 0): the word reads *Exhausted* and the word, the number and the bar's frame turn
+red. Refreshed every `HudRefreshSeconds`.
 
 **Additions (Anton, 2026-09-27):**
 - The player and target bars show the Athletics NUMBER (current / pool) and a marker at the
@@ -361,6 +374,13 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     so the swing always completes first. Two numbers the spec did not have became settings:
     `StepBackEnemyRange` (only with the enemy close) and `StepBackMaxAtOnce` (a cap, so a whole
     front line never steps back together); `StepBackHoldAttacks` makes "guard up" a switch.
+12. **The player bar's details** (step 6, Claude's calls): it sits UNDER the health bar (RBM's
+    place for its bars too), with a label *Athletics* so a new player knows what it is; the
+    colour thresholds apply in order of alarm (if they are set out of order, the most alarming
+    band that applies wins; an empty bar is always red); the colours themselves are fixed in the
+    code (MCM has no colour picker) - `BarMath` in Core, one place to change; empty = red text
+    and frame rather than a pulse (a pulse at a 0.1 s refresh would stutter); stealth missions
+    count as fights. The bar's size and place became four Advanced settings (`PlayerBar*`).
 
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance`, `TargetBarLingerSeconds`, `FormationBarsAlways`,

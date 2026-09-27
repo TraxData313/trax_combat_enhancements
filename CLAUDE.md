@@ -131,7 +131,7 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
   ParamDef.cs                 one setting: key, type, range, group, label, plain-words
                               description, apply timing (Live / NextBattle); Normalize, Format;
                               its Default comes from defaults.json (DefaultsFile), never code
-  SettingsSchema.cs           EVERY setting of DESIGN's table (45), in file + MCM order, 9 groups
+  SettingsSchema.cs           EVERY setting of DESIGN's table (52), in file + MCM order, 9 groups
                               ("Master switch" first) — the one place a setting is declared
                               (a test parses DESIGN.md: keys + types); NO default values
   DefaultsFile.cs             defaults.json: the embedded copy → ParamDef.Default (fail safe:
@@ -178,6 +178,20 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               StepBackRefusal / StepBackEnd (every reason the summary names)
   StepBackStats.cs            per-mission step-back counters + the 8 [summary] lines (rolls by
                               f bin, starts, ends by reason, moves, facing, guard, release checks)
+  AthleticsBar.cs             step 6 (the target bar of 7 reuses it): BarBand, BarRules (live
+                              Bar*BelowPercent), BarMath - Band (green at the peak line, blue just
+                              below, yellow/orange/red at or below their % of the line, the most
+                              alarming wins, empty always red), Fill / Usable / PeakLine (the
+                              shares the prefab's FillBarWidgets draw), DisplayNumbers ("132 / 180",
+                              rounded UP - 0 only when empty), the colours (#RRGGBBAA constants)
+  HudGate.cs                  THE show/hide rule of every HUD view: HudHide (ModOff FIRST,
+                              AthleticsOff, ToggleOff, HideBattleUI, PhotoMode, NotFightMode,
+                              NoPlayer, ViewCondition; + MissionEnd / Failed as removal reasons),
+                              HudGateInput, Decide, Describe / ShortName for the log
+  HudStats.cs                 one HUD view over one mission: time on screen, hidden by reason,
+                              builds, removals by reason, refreshes, errors, disabled, movie
+                              failure; for bars: time per colour, colour changes, empty, wounded
+                              (lowest usable) + the [summary] "hud:" lines
   SpreadStats.cs              MeanStd (Welford, population std), FormationAthleticsStats (squad
                               mean ± std, band, mean f, at full strength), IntervalStats
                               (histogram median), SpeedVerdict, BinnedIntervals (attack timings by
@@ -216,7 +230,7 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               reload), run (MaxSpeedMultiplier), horse (MountSpeed) - nothing
                               else + Snapshot for the log
   Missions/AthleticsLogic.cs  MissionLogic in every SP mission (partial - with .Engine, .Api,
-                              .Log, .StepBack): lifecycle, start/end
+                              .Log, .StepBack, .Hud): lifecycle, start/end
                               lines ("mod ON/OFF"), master-switch toggles ([mission] line each),
                               damage stats reset (AfterStart), the [summary] block
   Missions/AthleticsLogic.Engine.cs  the Athletics engine: per-agent state (by Agent.Index +
@@ -248,18 +262,46 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               checks; StepBackState / Plan / Snapshot / Release
   Missions/TrackedAgent.cs    one fighter's record: Core Fighter + detection, f-bin, fresh top
                               speed and slowed-horse fields, his StepBackState (null until needed)
-tests/TraxCombat.Core.Tests/  net8.0 xUnit (226) — schema vs DESIGN.md (keys + types),
+  Missions/AthleticsLogic.Hud.cs  step 6: AttachHud on the logic's FIRST TICK (the screen runs by
+                              then - RESEARCH §G) - each view via MissionScreen.AddMissionView with
+                              a GauntletHudLayer, "[hud] attached:" lines; WriteHudSummary (the
+                              [summary] hud: lines; the screen finalizes views before it). Steps
+                              7-9: one AttachHudView line each
+  Hud/TraxHudView.cs          THE BASE OF EVERY HUD VIEW (MissionView): one GauntletLayer + movie +
+                              VM that exists exactly while HudGate says so, read every frame
+                              (ReadFrame → Tick(in HudFrame) - the smoke drives Tick); refresh every
+                              HudRefreshSeconds; suspend/resume; Finish at mission end; every entry
+                              wrapped - an error or a movie that does not load disables the view for
+                              the mission (layer removed, [error], "[hud] … DISABLED"); [hud] lines
+                              for build / removal / not shown, each with its reason; HudStats
+  Hud/HudLayer.cs             HudFrame (one frame as a view sees it; IsFightMode = Battle, Duel,
+                              Tournament, Stealth), IHudLayer (the engine seam), GauntletHudLayer
+                              (vanilla's recipe: IsCustomType check, LoadMovie, AddLayer; release
+                              the movie BEFORE RemoveLayer; a failed movie never goes on screen)
+  Hud/PlayerAthleticsView.cs  step 6, DESIGN §3.1: the player's bar - TryGetReading(main) → BarMath
+                              → the VM; logs the first values per layer and the FIRST time of each
+                              colour / empty / wound per battle (later colour changes verbose only)
+  Hud/PlayerAthleticsVM.cs    its ViewModel - every property EXACTLY the bound widget property's
+                              type (float / Color / bool / string: Gauntlet converts only strings);
+                              change-checked setters; the number text rebuilt only when it changes
+tests/TraxCombat.Core.Tests/  net8.0 xUnit (264) — schema vs DESIGN.md (keys + types),
                               defaults.json (DefaultsFileTests), master switch, settings, config
                               file, merge rule, rate limiter, damage roll/rules/dice/stats/upside,
                               Athletics v2 rules (pool, f, cap, curves, effort regen, DESIGN's
                               blow counts), mean/std, interval + binned checks, Athletics summary,
-                              step back (chance by f, dice, spot, facing, stats, summary). They
+                              step back (chance by f, dice, spot, facing, stats, summary), the bar
+                              (bands by f on DESIGN's fighters, shares, numbers, colours), the HUD
+                              gate (order, master switch first) and HUD stats + summary. They
                               run on DESIGN's INITIAL values (DesignTable.cs: a module
                               initializer), so tuning defaults.json never breaks them. Keep green.
-module/SubModule.xml          release manifest (Id TraxCombatEnhancements, v0.1.0); GUI/Prefabs
-                              for the HUD movies arrive in step 6
+module/SubModule.xml          release manifest (Id TraxCombatEnhancements, v0.1.0)
+module/GUI/Prefabs/           the HUD movies - file name = movie name, `Trax…` (prefab names are
+                              global across modules): TraxPlayerAthleticsBar.xml (step 6: native
+                              sprite BlankWhiteSquare_9 + brush AgentHUD.Interaction.Text only;
+                              FillBarWidgets draw shares; no widget takes mouse events)
 tools/deploy.ps1              build → AssemblyGuard → OfflineSmoke → install as
-                              Modules\TraxCombatEnhancements.Dev "Trax Combat Enhancements (dev)"
+                              Modules\TraxCombatEnhancements.Dev "Trax Combat Enhancements (dev)",
+                              module\GUI copied beside bin (package.ps1 in step 11 must do the same)
 tools/AssemblyGuard/          soft-dependency guard (from the sibling): MCM, Harmony, ButterLib,
                               UIExtenderEx, NavalDLC, CustomBattle in any type surface = FAIL
 tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLLs, no game
@@ -272,9 +314,13 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               upside by f, horses), the step back (Program.StepBack.cs: the real
                               logic's bookkeeping with a stand-in IStepBackBody - rolls by f,
                               queue, cap, live time, every release path, logs, summary), the
-                              master switch (step backs released too),
-                              defaults read from the embedded defaults.json, the MCM page built
-                              by MCM's real builder and its two buttons clicked (34 checks; the
+                              master switch (step backs released, the bar removed too), the HUD
+                              (Program.Hud.cs: the prefab against the game's own widget types,
+                              properties, brushes, sprites and the VM's property types; the real
+                              PlayerAthleticsView driven by made-up HudFrames with a FakeHudLayer -
+                              every hide reason, colours, wound, empty, refresh, summary; the fail
+                              safe), defaults read from the embedded defaults.json, the MCM page built
+                              by MCM's real builder and its two buttons clicked (37 checks; the
                               config checks work for any tuned default);
                               TRAX_SMOKE_KEEP=1 keeps its temp folder + log to read
 tools/DefaultsTool/           defaults.json upkeep: refresh (rewrite comments/order, keep every

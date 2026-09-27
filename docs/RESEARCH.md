@@ -578,6 +578,58 @@ public sealed class TraxAgentStatModel : AgentStatCalculateModel   // decorator
   the hero bar at other resolutions / UI scales (step 6 tunes in game).
 - Rebuild on UI scale change: vanilla markers recompute each frame, so do we.
 
+**Step 6 addendum — binding, prefabs, layers (verified in source 2026-09-27; decompiled
+`TaleWorlds.GauntletUI.Data` and `.ExtraWidgets` beside the others)**
+
+- **Binding converts only strings.** `GauntletView` → `WidgetExtensions.SetWidgetAttribute`
+  (PrefabSystem) finds the widget property by reflection (a dotted name like `Brush.FontColor`
+  walks getters, only the last part needs a setter) and `ConvertObject` turns a STRING into a
+  Sprite, Brush, int or Color; anything else is handed over as it is. So a ViewModel property
+  must have exactly the widget property's type: `float` for `SuggestedWidth`, `Margin*`,
+  `PositionXOffset`, `ScaledPositionXOffset`, `AlphaFactor`, `InitialAmountAsFloat`;
+  `TaleWorlds.Library.Color` for `Color` and `Brush.FontColor`; `bool` for `IsVisible`. Vanilla
+  does each: `SingleplayerKillfeed.xml` `Color="@BackgroundColor"` (a Color property),
+  `GamepadCursor.xml` `ScaledPositionXOffset="@CursorPositionX"` (float - good news for
+  UNVERIFIED #7), many `Brush.FontColor="@…"` and `FillBarWidget InitialAmountAsFloat="@…"`; the
+  sibling ImmersiveAI binds `MarginTop="@…"` from a float. `ViewModel` has typed
+  `OnPropertyChangedWithValue` overloads (bool, int, float, uint, Color, double, Vec2, class) and
+  `GauntletView` listens to all of them; any property is bindable (`[DataSourceProperty]` optional).
+- **Unknown attribute names are silently ignored** (`GetObjectAndProperty` returns null): a typo
+  never errors in game. Static strings parse as int / float (invariant) / bool (`"true"`) /
+  string / enum / `#RRGGBBAA` Color / a Brush or Sprite by name / a Widget by child-Id path.
+- `BrushWidget.Brush` hands out a per-widget CLONE on first get: `Brush.FontColor` changes this
+  text only. Put `Brush="…"` before `Brush.FontSize` / `Brush.FontColor` in the XML.
+- **`FillBarWidget`** (ExtraWidgets): in `OnLateUpdate` sets its `FillWidget`'s
+  `ScaledSuggestedWidth` = clamp(Initial / Max, 0..1) × (its own width − the fill's margins) - a
+  share of the bar, no pixel maths, the UI scale for free. Late update is picked up by type
+  (`WidgetInfo.GotCustomLateUpdate`).
+- **Prefabs**: every enabled module's `GUI\Prefabs\*.xml` is registered at startup by FILE NAME
+  (`WidgetFactory.Initialize`; the same name in two modules asserts and the later wins - so ours
+  are all `Trax…`). `WidgetFactory.IsCustomType(name)` says whether ours is known.
+  `WidgetPrefab.LoadFrom` reads with `IgnoreComments` and takes `Prefab/Window`'s FIRST child as
+  the root. `GauntletLayer.LoadMovie` tries the generated-prefab context (null for a mod), then
+  `GauntletMovie.LoadMovie`; a missing prefab gives a movie with no `RootWidget`.
+- **Removing a layer**: `ReleaseMovie` first, then `ScreenBase.RemoveLayer` (→ `HandleFinalize` →
+  `ClearContext` releases every movie still held; `OnFinalize` asserts on a loaded one). A movie
+  that never loaded THROWS when released (`GauntletMovie.Release` → `_moviePrefab` null) - so a
+  failed layer must never be added to the screen.
+- **View hooks**: `OnMissionScreenTick` (vanilla skips `MBCommon.IsPaused` frames),
+  `OnMissionScreenFinalize` (mission end - before the logics' `OnEndMissionInternal`, so a view's
+  numbers are final when the summary runs), `SuspendView`/`ResumeView` → `OnSuspendView` /
+  `OnResumeView` (vanilla: `ScreenManager.SetSuspendLayer`), `MissionScreen.IsPhotoModeEnabled`.
+  `Mission.OnTick` ticks behaviours by index from the end, so `AddMissionView` inside a logic's
+  `OnMissionTick` is safe (the view ticks from the next frame).
+- **Hide Battle UI** = `BannerlordConfig.HideBattleUI`, an Options → Gameplay checkbox (SP only).
+- **Where the vanilla bars sit** (sprite sizes from `NativeSpriteData.xml`): hero frame
+  `health_bar_frame` 249 × 54 at right 40 / bottom 90, its fill 22 px in from each side (so the
+  fill spans 62..267 from the right); horse `horse_frame` 191 × 26 at right 80 / bottom 80; shield
+  191 × 26 above (bottom ≈ 128); the damage feed at right 315 / bottom 82. When the player steers a
+  ship (War Sails: `IsAgentStatusPrioritized` false) the block goes to its Passive state - 0.8 ×
+  size, 60 px lower. RBM's own bars sit at bottom 4-47, right 35 (below ours).
+- Mission modes (`TaleWorlds.Core.MissionMode`): StartUp, Conversation, Battle, Duel, Stealth,
+  Barter, Deployment, Tournament, Replay, CutScene, Benchmark - stealth missions exist in 1.4.8
+  (sneaking into a town) and the player can fight in them.
+
 ---
 
 ## H. Config file and MCM
@@ -793,8 +845,10 @@ Full notes, the alternatives and the choice: AI_NOTES "Step 5d".
 | 4 | Thread of hit callbacks (RNG is made thread-safe anyway) — step 4: main thread by the callbacks' `[MBCallback(null, false)]`; the log's first-roll line confirms in game | 4 |
 | 5 | Rider's own `MovementVelocity` (we use the mount's) | 5 |
 | 6 | MCM fluent + format `"none"` end to end; build-time `BaseSettingsBuilder.Create` non-null timing | 3 |
-| 7 | Binding `ScaledPositionXOffset` from a prefab vs a custom anchor widget | 8 |
-| 8 | Bar placement vs vanilla hero bar across resolutions / UI scale | 6 |
+| 7 | Binding `ScaledPositionXOffset` from a prefab vs a custom anchor widget (step 6: vanilla's GamepadCursor.xml binds it to a float - §G addendum; still to see in game) | 8 |
+| 8 | Bar placement vs vanilla hero bar across resolutions / UI scale (step 6 default: under the hero bar's fill, four live settings; PLAYTEST §7f) | 6 |
 | 9 | Compatibility with RBM (Harmony combat patches) | 10 |
 | 10 | Multi-projectile weapons firing `OnAgentShootMissile` more than once per release | 5 |
 | 11 | A scripted man keeps facing his enemy and his guard while he steps back (§L) | 5d |
+| 12 | Our prefab draws as the smoke-checked tree says: FillBarWidget fills, bound colours, `Brush.FontColor` on the texts, the ListPanel row (PLAYTEST §7a-7c) | 6 |
+| 13 | The player bar vs the vanilla bar's Passive state while steering a ship (War Sails: 60 px lower) (PLAYTEST §7f) | 6 |

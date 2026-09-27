@@ -817,54 +817,132 @@ AthleticsLogic.IsRunning
   way in 5c for four keys); the tests name whatever is left. `AthleticsRules` takes `modEnabled`
   as an optional last ctor argument (`From` passes it); `DamageRules` takes `modEnabled`, then
   `upsideFollowsAthletics`.
-- The HUD can be added from `AthleticsLogic`'s first tick (`MissionScreen.AddMissionView`) - the
-  first-tick branch is in `AthleticsLogic.OnMissionTick`.
+- The HUD views are attached by `AthleticsLogic`'s first tick (`AthleticsLogic.Hud.cs`,
+  `AttachHud`) - built in step 6, see below.
 
-## Step 6 — Player bar
+## Step 6 — Player bar (DONE 2026-09-27)
 
-- Read: `AthleticsLogic.TryGetReading(Agent.Main, out var r)` every `HudRefreshSeconds`. Since 5c:
-  number = `r.Points` / `r.Pool`, fill `r.Fraction`, peak marker at `r.PeakFraction`, colour from
-  `r.PeakShare` (f ≥ 1 green, below the line blue, then the Bar*BelowPercent thresholds on f),
-  the wounded part (from `r.UsableFraction` to 1) greyed.
-- `PlayerAthleticsView : MissionBattleUIBaseView` + own `GauntletLayer` + VM + prefab in
-  `module\GUI\Prefabs`. Added by `AthleticsLogic`'s first tick via
-  `MissionScreen.AddMissionView` (NOT in OnMissionBehaviorInitialize — §F/§G).
-- Layer created/destroyed in `OnMissionScreenTick` on `ModEnabled && ShowPlayerBar &&
-  !HideBattleUI && combat mode` (hot swap; the master switch first - step 5b). Place beside the vanilla hero bar (bottom-right, MarginBottom 90 /
-  MarginRight 40 in `AgentStatus.xml`); RBM's bars are the style reference (§G).
-- (from step 3) The Module already references `TaleWorlds.MountAndBlade.View`, `GauntletUI`,
-  `GauntletUI.Data`, `Engine.GauntletUI`, `ScreenSystem`, `InputSystem`; `deploy.ps1` copies
-  `module\GUI` into the dev module (folder does not exist yet — create `module\GUI\Prefabs`).
+**What shipped.** `PlayerAthleticsView` (Hud/) - bottom right under the vanilla health bar: the
+word *Athletics*, `current / pool`, a slim bar (fill coloured by f, white peak marker, the wounded
+part dark red-brown, the rest dark grey); empty → *Exhausted*, word / number / frame red.
+Prefab `module\GUI\Prefabs\TraxPlayerAthleticsBar.xml`, ViewModel `PlayerAthleticsVM`. 7 new
+settings: `Bar{Yellow,Orange,Red}BelowPercent` (group "Bars - you and your target"),
+`PlayerBar{Width,Height,OffsetRight,OffsetBottom}` (Advanced; UI pixels of the 1080p layout,
+defaults 205 / 12 / 62 / 54 = under the hero bar's fill). 52 settings.
+
+**The HUD plumbing - how steps 7-9 add a view.**
+- `TraxHudView : MissionView` (Hud/TraxHudView.cs) owns ONE `GauntletLayer` + ONE movie + ONE
+  ViewModel. Every frame (`OnMissionScreenTick` → `ReadFrame` → `Tick(in HudFrame)`) it asks
+  Core's `HudGate.Decide` - ModEnabled FIRST, AthleticsEnabled, the view's Show… setting, Hide
+  battle UI, photo mode, a fight mode (Battle/Duel/Tournament/Stealth), the player on the field
+  (`NeedsPlayer`), the view's own `ViewConditionMet` - and the layer exists exactly while the
+  answer is `HudHide.None`. Build / removal / "not shown at start" are logged with the reason
+  (`TraxLog.Limited`, bucket `hud-layer`); `HudStats` (Core) counts time on screen, hidden time by
+  reason, builds, removals by reason, refreshes, errors, and for bars the colours / empty / wound.
+- While up: `Refresh(in frame, first)` every `HudRefreshSeconds` (read live; the first push on a
+  new layer is flagged so the view can log it). Paused frames are skipped (vanilla does the same).
+  `SuspendView`/`ResumeView` suspend the layer. `OnMissionScreenFinalize` / `OnRemoveBehavior` →
+  `Finish` (layer removed, "mission end").
+- FAIL SAFE: every entry point wrapped; an exception → `AthleticsLogic.Failed("hud.<site>")`
+  ([error] + stack, first per site per mission) → `Disable`: layer removed, VM finalized, the view
+  dead for the mission, one `[hud] … DISABLED for the rest of this battle` line. A movie that does
+  not load (`IHudLayer.Create` false) is the same with the reason.
+- The engine side is behind `IHudLayer` (Hud/HudLayer.cs) - `GauntletHudLayer` for real, the
+  smoke's `FakeHudLayer` offline (the 5d IStepBackBody idea). `HudFrame` = what the view reads
+  from the game per frame (a struct; the smoke makes them up).
+- **A new view (step 7 example)**: `public sealed class TargetAthleticsView : TraxHudView` with
+  `base("target bar", "TraxTargetAthleticsBar", SettingsSchema.ShowTargetBar)`; implement
+  `CreateDataSource(in HudFrame)` (new VM, sized from settings) and `Refresh(in HudFrame, bool
+  first)` (read, push, log what is new; return false while nothing to show); override
+  `ViewConditionMet` ("someone targeted or lingering") + `ViewConditionText` ("nobody targeted");
+  `OnVisibleFrame(dt)` for per-frame bar stats (`Stats.AddBarTime`); `OnLayerGone` to drop the
+  VM. Prefab `module\GUI\Prefabs\TraxTargetAthleticsBar.xml` (file name = movie name, keep the
+  `Trax` prefix - names are global across modules). One line in `AthleticsLogic.AttachHud`. The
+  [summary] lines come for free (`WriteHudSummary` walks every attached view). Smoke: copy
+  `HudPrefabIsValid` for the new prefab (make the VM type a parameter) and drive the view with
+  `Frame(...)` + `FakeHudLayer`.
+- Bar maths / colours for 7 (the target bar reuses them): Core `BarMath.Band`, `Fill`, `Usable`,
+  `PeakLine`, `DisplayNumbers`, `ColorHex`; `PlayerAthleticsVM` is a template (copy, don't share -
+  each prefab binds its own VM's names).
+
+**Gauntlet binding findings (verified in source; RESEARCH §G "Step 6 addendum").**
+- Only STRINGS are converted by the binding (to Sprite / Brush / int / Color); everything else is
+  handed to the widget setter by reflection → a VM property's type must EQUAL the widget
+  property's: float for SuggestedWidth / Margin* / *Offset / InitialAmountAsFloat, `Color` for
+  Color and Brush.FontColor, bool for IsVisible, string for Text. A mismatch throws inside the
+  game's binding. The smoke checks every @binding's type.
+- Unknown attribute names are silently IGNORED by the game - a typo shows nothing and logs
+  nothing. The smoke resolves every attribute against the real widget types.
+- `FillBarWidget` draws a SHARE (Initial / Max of its own width) - use it for every fill instead
+  of binding pixel widths; the UI scale then applies by itself. A marker at a share = a
+  FillBarWidget whose (invisible) fill has a right-aligned child.
+- `Brush="…"` before `Brush.FontSize` / `Brush.FontColor` (BrushWidget clones its brush on first get).
+- Release the movie before `RemoveLayer`; never `AddLayer` a movie that did not load (releasing it
+  throws). `UIResourceManager.WidgetFactory.IsCustomType(movie)` = the prefab is installed.
+- Views added mid-mission get `OnMissionScreenInitialize` but NOT OnBehaviorInitialize / AfterStart
+  / EarlyStart - do setup lazily.
+
+**Gotchas met.**
+- OfflineSmoke: `Program`'s own static fields initialise before `Main` registers the assembly
+  resolver - a static field typed from a game DLL (a `Color`) kills the smoke at start. Keep such
+  statics in a nested class.
+- The smoke needs `TaleWorlds.DotNet` + `TaleWorlds.MountAndBlade.View` references once it
+  touches `HudFrame` / a `MissionView`.
+- The Module now also references `TaleWorlds.GauntletUI.PrefabSystem` (WidgetFactory).
+- `HudFrame` is public (it appears in protected members of the public view classes).
+
+**UNVERIFIED (PLAYTEST §7) + settling lines.**
+- The bar draws as the prefab says (RESEARCH #12): `[hud] player bar: layer created … movie
+  TraxPlayerAthleticsBar loaded OK (13 widgets)` + `first values pushed …` prove the data side; the
+  eye proves the drawing.
+- Placement at other resolutions / UI scales, riding (RESEARCH #8): the four `PlayerBar*` settings
+  move it live; Anton reports the numbers that look right → defaults.json.
+- War Sails steering (RESEARCH #13): the vanilla block drops 60 px (Passive state) - ours does not
+  follow; if it collides, bind `OffsetBottom` to a second value while `IsAgentStatusPrioritized`
+  is false (read it from the vanilla `MissionAgentStatusUIHandler` view's data source).
+- Colours by f: the `[hud] player bar: <COLOUR> for the first time this battle at … - f …` lines;
+  the summary's `colours on screen` line.
+- Hide/show reasons: every `[hud] player bar: layer removed at … - <reason>`; the summary's
+  `removed Nx (…)`, `hidden: …`.
 
 ## Step 7 — Looked-at NPC bar
 
-- `TargetAthleticsView`, same pattern. Own raycast `Mission.RayCastForClosestAgent` from
-  `MissionScreen.CombatCamera` every `HudRefreshSeconds`, mount → `RiderAgent`, linger.
-  Needs the proposed `TargetBarMaxDistance` / `TargetBarLingerSeconds` (implication 7).
+- `TargetAthleticsView : TraxHudView` - the recipe above (Step 6, "A new view"). Own raycast
+  `Mission.RayCastForClosestAgent` from `MissionScreen.CombatCamera` every `HudRefreshSeconds`
+  (inside `ViewConditionMet` or `Refresh` - the frame gives `Player`; read the camera via the
+  view's `MissionScreen`), mount → `RiderAgent`, linger `TargetBarLingerSeconds`, range
+  `TargetBarMaxDistance` (both already settings). RBM-style place: top centre. Colours, numbers,
+  wounded part, marker: `BarMath` exactly as the player bar.
 - Read: `AthleticsLogic.TryGetReading(target.IsMount ? target.RiderAgent : target, out var r)`.
-- Hidden while `ModEnabled` is off (the master switch first - step 5b).
+- Hidden while `ModEnabled` is off - the base does it (HudGate); the smoke's master-switch step
+  already covers the player bar - add the target view there too.
 
 ## Step 8 — Squad bars above formations
 
-- `FormationAthleticsView`: player formations = `PlayerTeam.FormationsIncludingEmpty`,
+- `FormationAthleticsView : TraxHudView` (`NeedsPlayer` - decide: can the player command while
+  down? probably keep true). Player formations = `PlayerTeam.FormationsIncludingEmpty`,
   `CountOfUnits > 0`, `PlayerOrderController.IsFormationSelectable`. Mean/std: already computed
   by step 5 - `AthleticsLogic.TryGetFormationStats(formation, out var f)`, redraw when
   `FormationStatsVersion` moves (band = `f.LowFraction(FormationSpreadStdDevs)` ..
   `f.HighFraction(…)`). Average HEALTH (DESIGN §3 additions) is not computed yet - add it to the
   same refresh pass (`RefreshFormationStats`) rather than a second loop. Position = `MBWindowManager.WorldToScreen(CombatCamera,
   CachedMedianPosition.GetGroundVec3() + (0,0,FormationBarHeight))`, hide when w < 0.
-  Anchor via bound `ScaledPosition*Offset` or an own `Widget` subclass (§G, UNVERIFIED #7).
-  Implication 8 (`FormationBarsAlways`). Hidden while `ModEnabled` is off (step 5b).
+  Anchor: bind `ScaledPositionXOffset`/`YOffset` (floats - vanilla's GamepadCursor.xml does it;
+  step 6 finding) before reaching for an own `Widget` subclass (§G, UNVERIFIED #7). A list VM
+  (`MBBindingList`) + `ItemTemplate` for one item per formation. `FormationBarsAlways` off →
+  `ViewConditionMet` = markers shown (key 5 held or `Mission.IsOrderMenuOpen`).
+- Colour squad bars by `f.MeanPeakShare` with `BarMath.Band`; fill `MeanFraction` (a FillBarWidget).
 
 ## Step 9 — Orders menu
 
 - Vanilla cards are generated code — cannot be extended without UIExtenderEx (§G).
   Default plan (implication 1): our own compact per-formation panel while
-  `Mission.IsOrderMenuOpen`, inside `FormationAthleticsView`. UIExtenderEx satellite only
+  `Mission.IsOrderMenuOpen`, inside `FormationAthleticsView` (or a view of its own whose
+  `ViewConditionMet` = the orders menu open). UIExtenderEx satellite only
   if Anton insists on numbers inside the cards (and then test with RTS Camera).
 - Numbers: `AthleticsLogic.TryGetFormationStats(formation, out var f)` → `f.Describe()`-style
   "72 ± 8" (use `f.MeanPoints` / `f.StdPoints` directly for the strip).
-- Hidden while `ModEnabled` is off (step 5b).
+- Hidden while `ModEnabled` is off (the base's HudGate).
 
 ## Step 10 — Balance + polish
 

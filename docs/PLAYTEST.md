@@ -39,9 +39,9 @@ features (damage randomness, section 2, is already active in every fight).
     — proves the dev copy is the one running
   - `[load] game: v1.4.8.…` and `[load] modules (N): …` (every enabled module, in load order)
   - `[compat] Realistic Battle Mod (RBM) not enabled - good`
-  - `[mcm] settings page registered at main menu (attempt 1): MCM 5.…, page "Trax Combat Enhancements", 45 settings in 9 groups, …, Default preset = the mod's defaults (defaults.json); group "Defaults": buttons "Revert all to defaults" and "Save current values as a defaults file".`
+  - `[mcm] settings page registered at main menu (attempt 1): MCM 5.…, page "Trax Combat Enhancements", 52 settings in 9 groups, …, Default preset = the mod's defaults (defaults.json); group "Defaults": buttons "Revert all to defaults" and "Save current values as a defaults file".`
     (`at retry (attempt N)` is fine too — MCM was just slow to wake)
-  - `[config] defaults: defaults.json (embedded in TraxCombat.Core.dll), 45 keys for 45 settings - every default read from it`
+  - `[config] defaults: defaults.json (embedded in TraxCombat.Core.dll), 52 keys for 52 settings - every default read from it`
     — any `defaults.json PROBLEM:` line under it → tell Claude (that setting runs on a fallback).
 
 **1b. The mod loads — WITHOUT MCM.** Quit, disable *Mod Configuration Menu v5* in the launcher
@@ -60,11 +60,11 @@ features (damage randomness, section 2, is already active in every fight).
   plain words ending `(default …, range … to …)`. The defaults are the ones in the mod's
   `defaults.json` (section 5).
 - Log, first run only: `[config] first run: created config.json with every default and a plain-words explanation beside each value`
-- Log, every start: `[config] settings in effect (45, version 0):` followed by 45 lines like
+- Log, every start: `[config] settings in effect (52, version 0):` followed by 52 lines like
   `[config]   DamageRandomPercent = 50` — a value you changed shows `(default 50)` after it.
 
 **1d. The MCM page.** Main menu → Options → Mod Options → *Trax Combat Enhancements*.
-- You see: the same 9 groups, 45 settings — *Master switch* (Mod enabled) on top — checkboxes
+- You see: the same 9 groups, 52 settings — *Master switch* (Mod enabled) on top — checkboxes
   for the on/off ones, sliders for the numbers (the slider ends are the ranges from the file),
   and at the bottom a *Defaults* group with two buttons, *Revert all to defaults* and *Save
   current values as a defaults file* (section 5). Hovering a setting shows its explanation and
@@ -96,7 +96,7 @@ Mod Options → move *Spread (± %)* from 50 to 40, press Done.
 **1g. Mission start and end, and the summary.** Fight any battle to the end (or retreat).
 - Log, at the start:
   - `[config] config.json re-read at mission start: …`
-  - `[mission] attached: AthleticsLogic (views arrive with steps 6-9)`
+  - `[mission] attached: AthleticsLogic (its HUD views join the mission screen on its first tick - [hud] attached: lines)` (section 7 has the `[hud]` lines)
   - `[mission] start: scene <scene id>, field battle, mode …, combat type Combat, game Campaign, agents so far …, mod ON`
   - `[mission] first tick: N agents active, …` and `[mission] deployment finished: N agents active, mode Battle`
 - Log, at the end — the `[summary]` block:
@@ -511,7 +511,7 @@ Every default the mod ships lives in ONE file, `defaults.json` in the repo, buil
 mod. The first-run config.json, MCM's Reset and *Revert all to defaults* all use it.
 
 **5a. The defaults loaded.** Any start.
-- Log: `[config] defaults: defaults.json (embedded in TraxCombat.Core.dll), 45 keys for 45 settings - every default read from it`
+- Log: `[config] defaults: defaults.json (embedded in TraxCombat.Core.dll), 52 keys for 52 settings - every default read from it`
   (no `defaults.json PROBLEM:` lines).
 
 **5b. Revert all to defaults — mid-battle.** In a battle, change two or three settings in MCM
@@ -524,7 +524,7 @@ then Escape → Mod Options → *Defaults* → **Revert all to defaults**.
   - `[mcm] "Revert all to defaults" pressed`
   - one line per setting that moved: `[config] DamageRandomPercent: 20 → 50 (source: defaults)`
   - `[config] wrote config.json (reverted to defaults): every value as it is in effect now`
-  - `[config] reverted all 45 settings to their defaults (defaults.json (embedded in TraxCombat.Core.dll)): 2 changed, applied live`
+  - `[config] reverted all 52 settings to their defaults (defaults.json (embedded in TraxCombat.Core.dll)): 2 changed, applied live`
   - then, on the next frame, the features' own lines (e.g. `[speed] speed settings now: when empty attacks at 20%, …`).
 - config.json now holds every default (a hand edit waiting in it is overwritten too — the
   revert means "everything"). MCM's Cancel does not undo a revert.
@@ -647,5 +647,127 @@ step back release check: N released through the engine - scripted movement still
 6. `not started … engine did not take the scripted position N` large: the engine refuses the call.
 7. `step back moves: avg X m` — a tired man walks slowly, so 0.8-1.5 m of 2 is normal; about 0
    means nobody actually moves.
+
+---
+
+## 7. Your Athletics bar
+
+The mod's first thing on screen (step 6). **Where:** bottom right, just under the vanilla
+health bar (and under the horse bar when you ride), its right end lined up with the health
+bar's fill. **What:** one row — the word *Athletics* (grey), the number `132 / 180` (Athletics
+left / your pool — your Athletics skill, at least 50), and a slim bar (205 × 12 UI pixels, as
+long as the inside of the health bar). Inside the bar:
+- the **fill** from the left, coloured by f (the share of the peak line you have left):
+  **green** at or above the line (full strength), **blue** just below it, **yellow** at or below
+  75% of the line (about 56% of the bar), **orange** at or below 50% (38%), **red** at or below
+  25% (19%);
+- a thin **white marker** at 75% of the bar — the peak line (`AthleticsPeakPercent`); at or
+  above it you fight at full strength;
+- when you are wounded, the right end of the bar is **dark red-brown** — the part your wounds
+  hold (at 62% health the last 38%). The fill never reaches into it; refill stops at its edge;
+- the rest, the part you can still refill, is **dark grey**;
+- **empty**: no fill, the word turns to *Exhausted*, and the word, the number and the bar's thin
+  frame turn **red**.
+
+A picture in words (fresh, then tired and wounded):
+```
+                                     [♥ ████████████ health ████████████ ]
+             Athletics  180 / 180   [██████████████████████████|███████]     all green, marker at 3/4
+             Athletics   71 / 180   [██████████░░░░░░░░░░░░░░░░|░▓▓▓▓▓▓]     yellow fill, grey, dark wounded end
+             Exhausted    0 / 180   [░░░░░░░░░░░░░░░░░░░░░░░░░░|░▓▓▓▓▓▓]     all red text and frame
+```
+The number is rounded UP: it reads 0 only when the bar is really empty. It updates 10 times a
+second (`HudRefreshSeconds`). The game's own UI scale makes the whole row bigger or smaller, as
+it does the health bar. The bar never takes the mouse (clicks go through it).
+
+When it shows: in a fight (battle, duel, tournament, and stealth missions — you pay Athletics
+there too), with you on the field, while *Mod enabled*, *Athletics* and *Your Athletics bar*
+(`ShowPlayerBar`) are on, and not while the game's *Hide Battle UI* (Options → Gameplay) or
+photo mode is on. Not during deployment, conversations or cutscenes; gone when you are knocked
+out or killed.
+
+**7a. See it.** Any battle (a custom battle is quickest). During deployment nothing; the moment
+the fight starts with you on the field, the row appears, green, the number at your pool.
+- Log:
+  - first tick: `[hud] attached: player bar (PlayerAthleticsView, movie TraxPlayerAthleticsBar, prefab installed) - shown while ModEnabled, AthleticsEnabled and ShowPlayerBar are on, the game's Hide battle UI and photo mode are off, in a fight (battle, duel, tournament or stealth mode) and you are on the field`
+  - during deployment (or a walk in town): `[hud] player bar: not shown at 0.0 s - not a fight (mission mode) - mode Deployment`
+  - the fight starts: `[hud] player bar: layer created at 31.2 s (mode Battle, was hidden: not a fight (mission mode)) - movie TraxPlayerAthleticsBar loaded OK (13 widgets)`
+  - `[hud] player bar: first values pushed at 31.2 s - 180 / 180, fill 1.00, usable 1.00, colour green (peak zone - full strength), f 1.00, peak marker at 75% of the bar; bar 205 x 12 px, 62 px from the right edge and 54 px from the bottom (UI pixels - the game's UI scale applies); colours: yellow at or below 75%, orange 50%, red 25% of the peak line (green at or above it, blue just below)`
+  - `[hud] player bar: GREEN for the first time this battle at 31.2 s - f 1.00, 180 / 180 (fill 1.00)`
+  - the number must match `[athletics] YOU: Athletics skill 180 → pool 180 …` (section 3).
+
+**7b. Swing till the colours change.** Swing at the air (every swing costs, landed or not —
+about 5.6 a swing for you as a party leader). To get there fast, raise *Cost per blow* to 30 for
+this test, or use a character with a low Athletics skill.
+- You see: the number drops at every swing, the fill shrinks; still green down to the marker,
+  then blue, yellow, orange, red; at 0 the row turns red and reads *Exhausted*. Stop swinging:
+  about 3 s later it refills, the colours climb back, green again past the marker.
+- Log — the FIRST time of each colour in a battle (always written):
+  - `[hud] player bar: BLUE for the first time this battle at 40.3 s - f 0.97, 131 / 180 (fill 0.73)`
+  - `[hud] player bar: YELLOW …`, `ORANGE …`, `RED …` (the f at each must fit: yellow ≤ 0.75,
+    orange ≤ 0.50, red ≤ 0.25; blue between 0.75 and 1)
+  - `[hud] player bar: EXHAUSTED shown at 58.9 s - 0 / 180: the label reads "Exhausted", label, number and frame red`
+  - with VerboseLogging, every later change: `[hud] player bar: colour yellow → orange at 71.4 s (f 0.49, 66 / 180)`
+
+**7c. Get wounded.** Take a few hits (a looter will do).
+- You see: at once the right end of the bar goes dark red-brown; the fill cannot pass into it
+  and refill stops at its edge. Below about 75% health the bar can never be green again, below
+  about 56% not even blue (the peak line stays at 75% of your FULL pool).
+- Log: `[hud] player bar: wounded at 44.0 s - the last 38% of the bar shown dark: usable 112 of 180 (health caps the bar); f can reach at most 0.83 now`
+- With *Wounds cap the bar* (`HealthCapsAthletics`) off: no dark part, whatever your health.
+
+**7d. Switch it off and on mid-battle.** Escape → Mod Options → *Bars - you and your target* →
+*Your Athletics bar* off → Done → back to the fight → on again. (The game is paused while the
+menu is open: the bar goes the moment you are back.)
+- Log: `[config] ShowPlayerBar: true → false (source: MCM)`, then
+  `[hud] player bar: layer removed at 90.4 s - ShowPlayerBar off`; back on:
+  `[hud] player bar: layer created at 101.0 s (mode Battle, was hidden: ShowPlayerBar off) - movie TraxPlayerAthleticsBar loaded OK (13 widgets)` and a new `first values pushed` line.
+- The same with the master switch *Mod enabled* (`… layer removed at … - ModEnabled off (the master switch)`)
+  and with *Athletics* off (`… - AthleticsEnabled off`). Back on, the bar is full (a fresh start).
+- Any Advanced layout setting changed mid-battle (*Your bar: length / thickness / from the right
+  edge / from the bottom edge*) moves the bar at its next refresh.
+
+**7e. Hide Battle UI, photo mode, death.**
+- Options → Gameplay → *Hide Battle UI* on: the bar goes with the rest of the HUD —
+  `[hud] player bar: layer removed at … - the game's Hide battle UI is on`; off: `layer created … (… was hidden: the game's Hide battle UI is on)`.
+- Photo mode (if you use it): `… layer removed at … - photo mode`.
+- Get knocked out: `… layer removed at … - no player agent on the field`.
+- A conversation or cutscene inside a mission: `… - not a fight (mission mode) - mode Conversation` (or `CutScene`).
+
+**7f. Where exactly — resolution, UI scale, riding.** Look at the bar at your resolution; change
+the game's UI scale once; mount a horse (the horse bar appears between the health bar and ours).
+- You see: the row under the health bar (and the horse bar), not overlapping either, not cut off
+  at the screen edge; it scales with the UI scale like the health bar.
+- If it sits wrong: move it live with the four Advanced settings (*Your bar: …*, UI pixels of the
+  1920 × 1080 layout) until it looks right, and tell Claude the four numbers — they become the
+  defaults. (This is the one thing no offline check can prove — RESEARCH UNVERIFIED #8.)
+- War Sails: while you steer a ship the vanilla hero bar shrinks and drops lower; say whether ours
+  then collides with it.
+
+**7g. The summary** — two `[summary] hud:` lines:
+```
+[summary] hud: player bar (movie TraxPlayerAthleticsBar) - on screen 312.4 s of 340.2 s (92%); layer built 2x, removed 2x (ShowPlayerBar off 1, mission end 1); hidden: ShowPlayerBar off 7.7 s, not a fight 20.1 s; 3120 refreshes; errors 0
+[summary] hud: player bar colours on screen - green 180.0 s (58%), blue 60.0 s (19%), yellow 40.0 s (13%), orange 20.0 s (6%), red 12.4 s (4%); 14 colour changes; exhausted shown 2x (8.2 s); wounded part shown 45.0 s (lowest usable 62% - the last 38% of the bar dark)
+```
+- *on screen … of …* ≈ the time you were on the field in the fight; every *removed* has its
+  reason; *refreshes* ≈ 10 a second on screen; *errors 0*.
+- A mission without a screen (rare) says `[summary] hud: no views attached (…)`.
+
+**What counts as broken** — tell Claude and send the log:
+1. **No bar at all** in a field battle with you on the field. Read the `[hud]` lines in order:
+   no `attached:` line → the view never joined (look for `[error] hud.attach`); `prefab NOT FOUND`
+   → the GUI folder did not install; `movie … FAILED to load` → the prefab is broken;
+   `layer created … loaded OK` but nothing visible → it is drawn off screen (7f) or invisible.
+2. **Wrong place or overlapping** the vanilla HUD at your resolution / UI scale (7f).
+3. **Colour does not match** the bar: green with the fill below the marker, blue above it, or a
+   colour against its `for the first time` line's f.
+4. **Number wrong**: not your pool (compare the `[athletics] YOU:` line), counts up while you
+   swing, or reads 0 with fill left.
+5. **Wounded part missing** after hits (with *Wounds cap the bar* on), or the fill running into it.
+6. **Stays on screen** in a conversation, a cutscene, deployment, with Hide Battle UI on, or after
+   you are knocked out; or does not come back when those end.
+7. Any `[error] hud.…` line, or `[hud] player bar: … DISABLED for the rest of this battle` (the
+   battle goes on without the bar — that is the fail safe working, but it is a bug).
+8. **The mouse snags** on the bar (e.g. clicking in the orders menu near it does nothing).
 
 (steps below are added as the features land)
