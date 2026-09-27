@@ -45,21 +45,89 @@ Questions:
   with `//` comments (the instructions beside each value)?
 - **I. Harmony** — is it needed at all after A–H? Prefer not.
 
+Answered in `docs/RESEARCH.md` (A–I, plus J hot swap and K logging, added mid-step at
+Anton's request). Verdict: no Harmony, no UIExtenderEx; 13 design implications for Anton at
+the top of RESEARCH.
+
 ## Step 3 — Scaffold
 
-(filled by step 2 / step 3)
+- Layout per CLAUDE.md. Module references (game `bin` + `Modules\Native\bin`):
+  TaleWorlds.Core/Library/Engine/MountAndBlade/CampaignSystem/ScreenSystem/GauntletUI/
+  Engine.GauntletUI/InputSystem, `TaleWorlds.MountAndBlade.View` (Native), Newtonsoft.Json
+  (game's 13.0.1, `Private=false`). MCMv5.dll via `McmBinFolder` (build only, not shipped).
+- SubModule.xml: copy the sibling's (`..\TrainingBattlesMod\module\SubModule.xml`): Native,
+  SandBoxCore, Sandbox, StoryMode LoadBeforeThis; `Bannerlord.MBOptionScreen` and `NavalDLC`
+  `LoadBeforeThis optional="true"`; add `CustomBattle` optional LoadBeforeThis.
+- Config: Core owns schema + defaults + a text writer that puts a `// plain words` line
+  above each key (Newtonsoft cannot write `//`; it READS them fine — tested). Module resolves
+  the folder via `EngineFilePaths.ConfigsPath` (RESEARCH §H). One shared config object +
+  `Version` counter + `Set(key, value, source)` that logs `[config] X: old → new`.
+- MCM: FLUENT builder in method bodies only, `ProxyRef<T>` per parameter, `SetFormat("none")`,
+  `WithoutDefaultPreset()` + own "Mod defaults" preset, save file on `"SAVE_TRIGGERED"`;
+  register from `OnBeforeInitialModuleScreenSetAsRoot`, retry from `OnApplicationTick`
+  (RESEARCH §H, §J). Bring over `tools/AssemblyGuard` and make MCMv5 a HARD fail.
+- Logging: `trax_combat.log` beside config, tags, 2 MB trim, rate limiter in Core (§K).
+- Register the two decorator models in `OnGameStart` already (pass-through), guarded by
+  `starter.Models.Any(m => m is T)` — proves the chain works before features land.
+- Attach `EnduranceLogic` in `OnMissionBehaviorInitialize` (SP only), log mission start/end.
+- Done = loads in game with and WITHOUT MCM; the log shows load, config values, mission
+  start/end; PLAYTEST.md §1 written.
 
 ## Step 4 — Damage randomness
 
+- `TraxDamageModel : AgentApplyDamageModel` (decorator): override
+  `ApplyGeneralDamageModifiers` only (last step after armor), forward ~30 other members to
+  `BaseModel`. Skip: not an agent collider, victim null, shield-blocked, fall damage.
+  Ranged = `cd.IsMissile`; mount victim = `ai.IsVictimAgentMount`; horse charge = melee.
+  Positive → never below 1 (game rounds). Thread-safe RNG. See RESEARCH §A.
+- Core: `DamageRoll` (factor draw, clamp) + roll statistics for the `[summary]`.
+- Implications 2–4 (knockdown follows the roll; shields; charge/fall) — confirm with Anton.
+
 ## Step 5 — Endurance core
+
+- `EnduranceLogic : MissionLogic`: per-agent state array by `Agent.Index` (reference-checked),
+  built in `OnAgentBuild`, dropped in `OnAgentRemoved`, first-tick sweep. RESEARCH §F.
+- Blow detection (§B): poll `GetCurrentActionType(1)` rising edge into `ReleaseMelee`;
+  `OnAgentShootMissile` (0.1 s dedupe); `CostOnMiss=false` → `OnMeleeHit` (first per swing) /
+  `OnMissileHit`; couched/braced landed hit = one blow. Kicks/bashes free.
+- Hero/leader flags cached at spawn (§E), cost computed live per blow.
+- Regen in Core; moving = `(MountAgent ?? agent).MovementVelocity` vs threshold (§D).
+- Speed (§C): `TraxAgentStatModel : AgentStatCalculateModel` decorator scales
+  `SwingSpeedMultiplier`, `ThrustOrRangedReadySpeedMultiplier`, `ReloadSpeed` when
+  exhausted; `agent.UpdateAgentProperties()` only on transitions and on config change.
+  Forward EVERY member; fix the tournament `SetAILevelMultiplier` swallow.
+- MUST measure in game: 0.2 really slows (engine clamp), bows/crossbows too, polling cost.
 
 ## Step 6 — Player bar
 
+- `PlayerEnduranceView : MissionBattleUIBaseView` + own `GauntletLayer` + VM + prefab in
+  `module\GUI\Prefabs`. Added by `EnduranceLogic`'s first tick via
+  `MissionScreen.AddMissionView` (NOT in OnMissionBehaviorInitialize — §F/§G).
+- Layer created/destroyed in `OnMissionScreenTick` on `ShowPlayerBar && !HideBattleUI &&
+  combat mode` (hot swap). Place beside the vanilla hero bar (bottom-right, MarginBottom 90 /
+  MarginRight 40 in `AgentStatus.xml`); RBM's bars are the style reference (§G).
+
 ## Step 7 — Looked-at NPC bar
+
+- `TargetEnduranceView`, same pattern. Own raycast `Mission.RayCastForClosestAgent` from
+  `MissionScreen.CombatCamera` every `HudRefreshSeconds`, mount → `RiderAgent`, linger.
+  Needs the proposed `TargetBarMaxDistance` / `TargetBarLingerSeconds` (implication 7).
 
 ## Step 8 — Squad bars above formations
 
+- `FormationEnduranceView`: player formations = `PlayerTeam.FormationsIncludingEmpty`,
+  `CountOfUnits > 0`, `PlayerOrderController.IsFormationSelectable`. Mean/std in one O(N)
+  pass over our state array (Core math). Position = `MBWindowManager.WorldToScreen(CombatCamera,
+  CachedMedianPosition.GetGroundVec3() + (0,0,FormationBarHeight))`, hide when w < 0.
+  Anchor via bound `ScaledPosition*Offset` or an own `Widget` subclass (§G, UNVERIFIED #7).
+  Implication 8 (`FormationBarsAlways`).
+
 ## Step 9 — Orders menu
+
+- Vanilla cards are generated code — cannot be extended without UIExtenderEx (§G).
+  Default plan (implication 1): our own compact per-formation panel while
+  `Mission.IsOrderMenuOpen`, inside `FormationEnduranceView`. UIExtenderEx satellite only
+  if Anton insists on numbers inside the cards (and then test with RTS Camera).
 
 ## Step 10 — Balance + polish
 

@@ -1,6 +1,6 @@
 BUILD ORDER (one step at a time — [~] = in flight, see CLAUDE.md "manager protocol"):
 - [x] 1. Repo, docs, design spec, public GitHub
-- [~] 2. Research: verify every hook against the 1.4.8 game → docs/RESEARCH.md (no code) (see AI_NOTES)
+- [x] 2. Research: verify every hook against the 1.4.8 game → docs/RESEARCH.md (no code) (see AI_NOTES)
 - [ ] 3. Scaffold: solution, Core + tests, module, config file with instructions, MCM (optional), deploy — loads in game, does nothing yet
 - [ ] 4. Damage randomness ±50% — first playable
 - [ ] 5. Endurance core: blow costs, hero/leader multipliers, regen, 20% speed when empty
