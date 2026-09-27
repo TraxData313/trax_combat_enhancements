@@ -107,6 +107,20 @@ regen.)
       you apart, every phase's average, the cycle, m, the target (the peak's cycle ÷ m) and
       measured ÷ target with a verdict word (on target within ±15%, too fast, too slow), the pace
       holds, and whether tired men block as often as fresh ones.
+  - **PAUSE ONLY — Anton's playtest call (2026-09-27), supersedes the animation technique
+    above (built in step 13).** In game the animation slow-down read as "slow-mo" and felt
+    strange. So: every attack animation (wind-up, swing, thrust, draw, throw, reload) plays at
+    FULL speed, always; the whole slow-down is a **no-attack timer** after each attack. After
+    an attack of duration D (measured, this attack's own wind-up + release), the fighter may
+    not start another attack for D × (1/m − 1) — so the rate is exactly × m (m 0.5: pause = D,
+    one attack every 2 s instead of 1 s; m 0.2 at empty: pause = 4 × D). Blocking, parrying,
+    moving are never held. Applies to the PLAYER (his attack input does nothing until the
+    timer runs out; holding the button starts the attack the moment it ends) and to the AI
+    (the pace hold, now melee AND ranged, carries the whole slow-down; the AI-decision scaling
+    stays an A/B switch, off if it double-counts). The player sees it: a **countdown**
+    ("1.3 s") beside his Athletics bar while the timer runs, and the **bar flashes** when he
+    tries to attack before it ends. A slider keeps a little slow-mo possible
+    (`AttackAnimationMinPercent`, default 100 = none) for anyone who wants it back.
   - **Run speed on foot** = M + (1 − M) × f, M = `MinMoveSpeedMultiplier` (0.3). Tired men
     slow down, so fresher men overtake them. Horses keep their speed (Anton's pick):
     `MountMinSpeedMultiplier` (1.0 = unaffected; lower it to let a tired rider's horse slow on
