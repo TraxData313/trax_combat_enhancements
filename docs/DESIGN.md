@@ -293,6 +293,9 @@ says (§2c).
 | `ShowTargetBar` | true | Bar for the fighter you look at. |
 | `TargetBarMaxDistance` | 30 | Metres — how far away a looked-at fighter still gets a bar. |
 | `TargetBarLingerSeconds` | 2 | Seconds the bar stays after your aim leaves the fighter. |
+| `BarYellowBelowPercent` | 75 | Bar turns yellow at or below this % of the peak line (blue just below the line, green above it). |
+| `BarOrangeBelowPercent` | 50 | Orange at or below this %. |
+| `BarRedBelowPercent` | 25 | Red at or below this % (an empty bar is always red). |
 | `ShowFormationBars` | true | Average bars above your formations. |
 | `FormationBarsAlways` | true | true: always shown. false: only while vanilla shows formation markers. |
 | `ShowFormationSpread` | true | ± spread band on the formation bars. |
@@ -300,6 +303,10 @@ says (§2c).
 | `FormationBarHeight` | 3.0 | Metres above the formation's centre for its bar. |
 | `ShowInOrderMenu` | true | Panel of formation averages ± spread while the orders menu is open. |
 | `HudRefreshSeconds` | 0.1 | (Advanced) How often the player and target bars update. |
+| `PlayerBarWidth` | 205 | (Advanced) Length of your bar in UI pixels of the 1920 × 1080 layout (the game's UI scale applies); 205 = the inside of the vanilla health bar. |
+| `PlayerBarHeight` | 12 | (Advanced) Thickness of your bar, UI pixels. |
+| `PlayerBarOffsetRight` | 62 | (Advanced) Screen's right edge → your bar's right end, UI pixels (62 = under the vanilla health bar). |
+| `PlayerBarOffsetBottom` | 54 | (Advanced) Screen's bottom edge → your bar's row (label, number, bar), UI pixels (54 = just under the health and horse bars). |
 | `FormationStatsRefreshSeconds` | 0.25 | (Advanced) How often formation averages and spreads are recomputed. |
 | `VerboseLogging` | false | Log every roll, blow and exhaustion (rate-limited) to `trax_combat.log`. Off = load, settings, mission start/end, per-battle summaries and errors only. |
 
@@ -310,13 +317,11 @@ New parameters discovered while building go into this table in the same commit.
 The step that builds each one moves its row into the Parameters table above (the schema
 test reads that table only) and removes any retired rows in the same commit. (Step 5d moved
 its four `StepBack*` rows up and added `StepBackEnemyRange`, `StepBackHoldAttacks`,
-`StepBackMaxAtOnce`.)
+`StepBackMaxAtOnce`; step 6 moved the three `Bar*BelowPercent` rows up and added the four
+`PlayerBar*` layout rows.)
 
 | Key | Default | Step | What it does |
 |---|---|---|---|
-| `BarYellowBelowPercent` | 75 | 6 | Bar turns yellow at or below this % of the peak line (blue just below the line, green above it). |
-| `BarOrangeBelowPercent` | 50 | 6 | Orange at or below this %. |
-| `BarRedBelowPercent` | 25 | 6 | Red at or below this %. |
 | `ShowFormationHealth` | true | 8 | Squad bars and the orders-menu strip also show average health. |
 
 Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics skill),

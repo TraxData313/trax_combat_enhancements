@@ -194,6 +194,20 @@ namespace TraxCombat.Core
             "Target bar linger (s)",
             "Seconds the target's bar stays after your aim leaves him, so it does not flicker.");
 
+        // The bar colours (DESIGN §3 additions, step 6) - thresholds on f, the share of the
+        // full-strength line left: green at or above the line, blue just below it, then these.
+        public static readonly ParamDef BarYellowBelowPercent = Int("BarYellowBelowPercent", 0, 100, PlayerBarsGroup,
+            "Yellow at or below (% of the line)",
+            "Colour of the Athletics bars: green at or above the full-strength line, blue just below it, and yellow once the Athletics left is at or below this percent of the line. With the line at 75% of the bar, 75 turns the bar yellow from about 56% of the bar down.");
+
+        public static readonly ParamDef BarOrangeBelowPercent = Int("BarOrangeBelowPercent", 0, 100, PlayerBarsGroup,
+            "Orange at or below (% of the line)",
+            "The Athletics bars turn orange once the Athletics left is at or below this percent of the full-strength line (50: half of the line, about 38% of the bar with the line at 75%).");
+
+        public static readonly ParamDef BarRedBelowPercent = Int("BarRedBelowPercent", 0, 100, PlayerBarsGroup,
+            "Red at or below (% of the line)",
+            "The Athletics bars turn red once the Athletics left is at or below this percent of the full-strength line (25: a quarter of the line, about 19% of the bar with the line at 75%). An empty bar is always red, and its number turns red too.");
+
         // ------------------------------------------------------------------ bars: your squads
 
         public static readonly ParamDef ShowFormationBars = Bool("ShowFormationBars", SquadBarsGroup,
@@ -226,6 +240,24 @@ namespace TraxCombat.Core
             "Bar refresh (s)",
             "How often your bar and the target's bar update, in seconds. Lower is smoother and costs a little more.");
 
+        // Where your bar sits (step 6) - UI pixels of the game's 1920 x 1080 reference layout; the
+        // game's own UI scale multiplies them, exactly as it does the vanilla health bar's.
+        public static readonly ParamDef PlayerBarWidth = Int("PlayerBarWidth", 40, 800, AdvancedGroup,
+            "Your bar: length (px)",
+            "Length of your Athletics bar, in the game's UI pixels (the 1920 x 1080 layout; the game's UI scale applies). 205 matches the inside of the vanilla health bar above it.");
+
+        public static readonly ParamDef PlayerBarHeight = Int("PlayerBarHeight", 2, 40, AdvancedGroup,
+            "Your bar: thickness (px)",
+            "Thickness of your Athletics bar, in the game's UI pixels.");
+
+        public static readonly ParamDef PlayerBarOffsetRight = Int("PlayerBarOffsetRight", 0, 1800, AdvancedGroup,
+            "Your bar: from the right edge (px)",
+            "Distance from the right edge of the screen to the right end of your Athletics bar, in the game's UI pixels. 62 lines it up under the vanilla health bar.");
+
+        public static readonly ParamDef PlayerBarOffsetBottom = Int("PlayerBarOffsetBottom", 0, 1000, AdvancedGroup,
+            "Your bar: from the bottom edge (px)",
+            "Distance from the bottom of the screen to your bar's row (the word Athletics, the number and the bar), in the game's UI pixels. 54 puts it just under the vanilla health and horse bars.");
+
         public static readonly ParamDef FormationStatsRefreshSeconds = Float("FormationStatsRefreshSeconds", 0.05, 2, AdvancedGroup,
             "Squad stats refresh (s)",
             "How often the squad averages and spreads are recomputed, in seconds.");
@@ -250,9 +282,11 @@ namespace TraxCombat.Core
             RegenDelayBlowTimes, BlowTimeSeconds, FullRegenSecondsStanding, RegenMultiplierAtFullRun,
             WalkEffortFraction,
             ShowPlayerBar, ShowTargetBar, TargetBarMaxDistance, TargetBarLingerSeconds,
+            BarYellowBelowPercent, BarOrangeBelowPercent, BarRedBelowPercent,
             ShowFormationBars, FormationBarsAlways, ShowFormationSpread, FormationSpreadStdDevs,
             FormationBarHeight, ShowInOrderMenu,
-            HudRefreshSeconds, FormationStatsRefreshSeconds, VerboseLogging,
+            HudRefreshSeconds, PlayerBarWidth, PlayerBarHeight, PlayerBarOffsetRight, PlayerBarOffsetBottom,
+            FormationStatsRefreshSeconds, VerboseLogging,
         };
 
         /// <summary>The groups in order.</summary>

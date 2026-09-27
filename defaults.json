@@ -213,6 +213,23 @@
   // (range 0.0 to 10.0)
   "TargetBarLingerSeconds": 2.0,
 
+  // Colour of the Athletics bars: green at or above the full-strength line, blue just below it,
+  // and yellow once the Athletics left is at or below this percent of the line. With the line
+  // at 75% of the bar, 75 turns the bar yellow from about 56% of the bar down.
+  // (range 0 to 100)
+  "BarYellowBelowPercent": 75,
+
+  // The Athletics bars turn orange once the Athletics left is at or below this percent of the
+  // full-strength line (50: half of the line, about 38% of the bar with the line at 75%).
+  // (range 0 to 100)
+  "BarOrangeBelowPercent": 50,
+
+  // The Athletics bars turn red once the Athletics left is at or below this percent of the
+  // full-strength line (25: a quarter of the line, about 19% of the bar with the line at 75%).
+  // An empty bar is always red, and its number turns red too.
+  // (range 0 to 100)
+  "BarRedBelowPercent": 25,
+
   // ==================== Bars - your squads ====================
   // Show the average Athletics of each of your formations in a bar floating above it.
   // (true or false)
@@ -247,6 +264,26 @@
   // little more.
   // (range 0.02 to 1.0)
   "HudRefreshSeconds": 0.1,
+
+  // Length of your Athletics bar, in the game's UI pixels (the 1920 x 1080 layout; the game's
+  // UI scale applies). 205 matches the inside of the vanilla health bar above it.
+  // (range 40 to 800)
+  "PlayerBarWidth": 205,
+
+  // Thickness of your Athletics bar, in the game's UI pixels.
+  // (range 2 to 40)
+  "PlayerBarHeight": 12,
+
+  // Distance from the right edge of the screen to the right end of your Athletics bar, in the
+  // game's UI pixels. 62 lines it up under the vanilla health bar.
+  // (range 0 to 1800)
+  "PlayerBarOffsetRight": 62,
+
+  // Distance from the bottom of the screen to your bar's row (the word Athletics, the number
+  // and the bar), in the game's UI pixels. 54 puts it just under the vanilla health and horse
+  // bars.
+  // (range 0 to 1000)
+  "PlayerBarOffsetBottom": 54,
 
   // How often the squad averages and spreads are recomputed, in seconds.
   // (range 0.05 to 2.0)
