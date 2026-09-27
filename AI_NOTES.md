@@ -1642,3 +1642,117 @@ a third report (the exit hang) is not ours - notes below, no code.
 2. Towns track the player like the training field did (`[athletics] YOU: …` in the mission's lines).
 3. With MCM's module enabled: `registered at main menu (attempt 1)` (or `retry (attempt 2)`).
 4. With MCM's module off and a carried DLL: the "module is not enabled" line once, no other `[mcm]` line.
+
+## Step 13 — PAUSE ONLY: a no-attack timer instead of slow-mo (research 2026-09-27, before coding)
+
+Anton's playtest call (2026-09-27): the attack slow-down "feels strange, I start swinging in slow-mo".
+His choice: animations at full speed; after each attack a **no-attack timer** of D × (1/m − 1) (D =
+the attack's own duration, m = S + (1 − S) × f when it ends), for him AND the AI; a countdown ("1.3 s")
+by his Athletics bar while it runs; the bar flashes when he tries to attack early. DESIGN §2 "PAUSE
+ONLY" is the spec.
+
+**What his log said about the old technique** (`trax_combat.log`, 21:06 / 21:14 / 21:26 summaries)
+- Melee AI at the peak: wind-up 0.32-0.39 s, swing 0.40-0.52 s, pause 0.49-0.83 s, cycle 1.3-1.8 s.
+  So D (wind-up + swing) ≈ 0.75-0.85 s and the AI's own gap between attacks G ≈ 0.6-1.0 s.
+- With the old pace hold (aimed at the fresh cycle ÷ m) plus AI decisions × m, the tired melee AI read
+  128% and 172% "too slow", its pause ×5-×10 - and **"the next ready came avg 1.5-2.6 s after a hold
+  ended"**: a NoAttack hold costs the AI a re-decision of its own after the flag lifts (at m 0.8-0.9 the
+  decision scaling alone would add only 10-25% to a 0.5-0.8 s pause). The old hold already delivered its
+  target; the decision scaling and that latency came on top - a double count.
+- Ranged AI (animations + decisions, no hold) read 102% on target: draw 1.25 + aim 0.97, loose 0.13,
+  reload 1.19, pause 0.5, cycle 3.6 s at the peak.
+
+**The player's attack input - where it is written and when the engine reads it (v1.4.8 source)**
+- `MissionMainAgentController` (MountAndBlade.View, a `[DefaultView]` MissionView) writes the player's
+  input in `OnPreMissionTick` → `ControlTick`: every frame `mainAgent.MovementFlags = 0`,
+  `EventControlFlags = 0`, then ORs in what is held. Attack (game key 9) held →
+  `MovementFlags |= AttackDirectionToMovementFlag(GetAttackDirection())` - one of `AttackLeft/Right/Up/Down`
+  (`MovementControlFlag.AttackMask` 0x3C0); block (key 10) → the `Defend*` bits (0x3C00 / 0x7C00); the
+  gamepad's alternative aiming ORs the attack bits too. **Kick (key 16) is `EventControlFlag.Kick`
+  (0x8000) - not an attack bit.** Only when `CombatActionsEnabled` (a game object may disable it - it
+  gates attack AND block alike, so it is no lever for us). `MovementFlags` is native (`IMBAgent.Get/
+  SetMovementFlags`): holding = the engine readies (wind-up, then the blow held), letting go = the
+  release, bits during a release = the next blow chained.
+- No engine flag stops only the player's attacks: `AIScriptedFrameFlags.NoAttack` is read by the AI's
+  decisions (the player's agent has no AI); `CombatActionsEnabled` also kills blocking.
+- **Tick order** (Mission.cs): the native `Mission.Tick` (`IMBMission.Tick`) calls the `OnPreTick`
+  callback FIRST - it waits for the previous frame's async agent tick, then runs every behaviour's
+  `OnPreMissionTick` **in reverse list order** (`for i = Count-1 .. 0`) - and then does its native work
+  (the agents' actions read their flags there, by the name and the order); after it the managed
+  `Mission.OnTick` runs `OnMissionTick` (reverse order again) and starts the async agent tick.
+  So clearing the bits in our `OnMissionTick` is too late (the native already started the wind-up), and
+  our `OnPreMissionTick` runs BEFORE the controller's: `SubModule.OnMissionBehaviorInitialize` is called in
+  `Mission.AfterStart` after every starting behaviour (logics, then views incl. the default views from
+  `MissionScreen.OnAddBehaviors`) is in the list, so `AddMissionBehavior` APPENDS us - last in the list,
+  first in the reverse loop, and the controller would overwrite whatever we cleared.
+- **The lever**: a tiny behaviour (`PlayerAttackGate`) added with the public `AddMissionBehavior` (sets
+  its Mission, joins MissionLogics, `OnCreated`) and then moved to index 0 of the public
+  `Mission.MissionBehaviors` list - still inside OnMissionBehaviorInitialize, before `AfterStart`'s
+  `foreach EarlyStart` enumerates it. Index 0 pre-ticks LAST, i.e. right after the controller wrote the
+  frame's input and before the native reads it. While the player's timer holds, it clears
+  `AttackMask` from `MovementFlags` (one native read + one write a frame, only while holding). The
+  defend bits stay (blocking always works); `EventControlFlags` stay (kick, jump, crouch, wield, sheath,
+  mount - all free). No Harmony, nothing patched. If the native read the flags later (in the async agent
+  tick) index 0 still works - nothing writes them between our pre-tick and then.
+- What the engine sees: attack bits never set during the hold → no wind-up at all (no half ready, no
+  stuck state - the same as the button not being pressed). The button still HELD when the hold ends →
+  the next pre-tick lets the bits through → the wind-up starts that very frame (hold-to-attack). A tap
+  during the hold is swallowed whole (the spec: "pressing attack during the timer does nothing").
+- Never clear the bits while the player is IN a ready: bits vanishing mid-ready is "button let go" = the
+  release. So the hold may only begin when no ready runs: at the start of a release (the swing / the
+  loose), never later.
+
+**Decisions (Claude's, 2026-09-27 - Anton can overturn any)**
+1. **D** = the attack's own duration: melee = its wind-up (the ready up to full wind-up - the held part
+   of a readied blow is NOT counted, a player may hold one for seconds) + its release (the swing with its
+   follow-through, up to the recoil or the pause). Ranged = draw (up to full) + loose + **the reload that
+   follows** (nocking, a crossbow's winding, taking the next javelin) - the animation technique scaled
+   ReloadSpeed too, and the reload is the bulk of a crossbow's effort (the AI archer's D ≈ 1.25 + 0.13 +
+   1.19 ≈ 2.6 s). The timer starts when the attack ENDS: melee at the release's end (a block recoil
+   plays inside the timer), ranged at the reload's end (or the loose's, if no reload follows).
+2. **m** = the exact curve value S + (1 − S) × f when the attack ends (not the 0.05-stepped value the
+   recomputes use). m ≥ 1 → no timer. A timer below **0.1 s** (`AttackTimerMath.MinTimerSeconds`, the old
+   `MinHoldSeconds` - plumbing) is not started: not worth a flag write for the AI, and for the player it
+   would swallow a chained blow just below the peak line for nothing he could see.
+3. **The player's hold starts at the release's START** - a click during his own swing would otherwise
+   queue a chained blow the engine starts before the timer exists (Release → Ready directly), and a
+   player hammering the button would never be held. It begins only when this attack's timer is sure to
+   be worth it: expected pause = (this attack's wind-up + his last measured rest of an attack of the
+   same kind: the release, plus the reload for ranged) × (1/m − 1) ≥ 0.1 s, m after this blow's charge.
+   At the attack's end the real timer replaces the estimate (below 0.1 s → the hold ends at once).
+4. **Presses**: a press = the attack bits' rising edge while the hold is on (a button already held when
+   the hold began is not a new press - it is hold-to-attack). Each is swallowed and counted; each flashes
+   the bar (FlashBarOnEarlyAttack) unless a flash is still running (two pulses, 0.12 s on / 0.08 s off -
+   a UI constant, like the bar's colours).
+5. **Kicks are never held** (a separate key and flag; free, DESIGN interpretation 8). **Bashes are held**
+   with every other use of the attack button: a shield bash is attack-while-blocking, and letting the
+   attack bits through while the block bits are set would let a normal ready start the moment the block
+   is dropped with the button still down. Still free of Athletics.
+6. **Ranged**: the reload is never held (it is automatic; stopping it would need animation control);
+   the next draw / aim / throw waits for the timer. A bow already drawn is never cancelled - the hold
+   only ever begins when a shot is loosed, so no bow is drawn when it starts; a draw pressed during the
+   timer does not begin, and a held button draws the moment it ends.
+7. **The AI**: the pace hold becomes the AI's timer - NoAttack from the attack's end for D × (1/m − 1),
+   **melee AND ranged, on foot AND mounted** (horse archers and lancers too: without the animation
+   technique a rider would otherwise attack at the full rate, however tired - a regression). The flag
+   hygiene stays (never over a game job, lifted only while free). The fresh-cycle reference, the
+   expected-ready arithmetic and the rider refusal go. Still `AttackRatePaceHold` (A/B).
+8. **`AttackRateAiDecisions` default → OFF** (the maths): the timer supplies D × (1/m − 1); the AI's own
+   gap G stays at its fresh length plus the NoAttack re-decision latency (1.5-2.6 s measured). With the
+   decisions on, G and that latency are also stretched × 1/m - both scale the SAME pause (the timer runs
+   inside the AI's own gap from the attack's end), which is what read "too slow" in the log. Kept as the
+   A/B switch. Anton's config.json carries `true` from the old default, so the config format goes to 2
+   and a format-1 file's `AttackRateAiDecisions: true` is migrated to `false` once, logged.
+9. **`AttackAnimationMinPercent`** (100): the stat decorator's animation multiplier is max(m, this/100) -
+   100 = never slowed; lower brings a little slow-mo back on top of the timer. Run speed, the horse, the
+   AI decisions: unchanged. Changing it mid-battle recomputes every tired fighter (budgeted).
+10. **`AttackRatePlayerTimer`** (on): the player's own timer is its own switch - an escape hatch in case
+    the input gate misbehaves in some mission; the AI's stays `AttackRatePaceHold`.
+11. **The countdown and the flash** live on the player bar (ShowAttackCountdown, FlashBarOnEarlyAttack):
+    the countdown ("1.3 s", tenths rounded UP so it never reads 0.0 while running) left of the word
+    Athletics, only while the timer runs (not during the swing itself); the flash = a white overlay on the
+    bar, updated every frame (OnLayerFrame), not at HudRefreshSeconds (a 0.1 s pulse would stutter).
+12. The target of the summary's verdict stays **the fresh cycle ÷ m** (DESIGN's "rate × m"); the
+    technique's own check is new: per band the timer asked vs the measured gap from the attack's end to
+    the next attack's start (must be ≥ the timer), attacks that started anyway (must be ~0), the latency
+    after the timer ended, and the animation multiplier asked and measured (×1.00 by default).
