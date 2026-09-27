@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -8,7 +9,9 @@ using TaleWorlds.Engine;
 using TaleWorlds.Library;
 using TaleWorlds.MountAndBlade;
 using TaleWorlds.MountAndBlade.ComponentInterfaces;
+using TraxCombat.Core;
 using TraxCombat.Mcm;
+using Path = System.IO.Path;
 using TraxCombat.Missions;
 using TraxCombat.Models;
 
@@ -19,13 +22,21 @@ namespace TraxCombat
     ///   OnSubModuleLoad          - [load] versions/modules/paths; config.json created or read;
     ///                              every setting logged.
     ///   main menu (OnBeforeInitialModuleScreenSetAsRoot) - MCM page registered (if MCM is there);
-    ///                              the one RBM-incompatibility message (DESIGN §5), if RBM is on.
+    ///                              the one RBM-incompatibility message (DESIGN §5), if RBM is on;
+    ///                              the one "two copies enabled" message (step 11), if another stood down.
     ///   OnApplicationTick        - MCM registration retry (1/s until ready); the in-game error notice.
     ///   OnGameStart              - config.json re-read (hand edits); the two model DECORATORS
     ///                              registered (damage, agent stats) - one registration covers
     ///                              campaign, custom battle and naval custom battle (RESEARCH §A).
     ///   OnMissionBehaviorInitialize - config.json re-read; AthleticsLogic attached (SP only).
     /// Every hook is wrapped: an exception is logged as [error] and the game carries on.
+    ///
+    /// ONE COPY RUNS (step 11, Core SingleCopy): with the dev and the release copy both enabled, the
+    /// first to load claims the process-wide slot in OnSubModuleLoad and runs; the other is refused and
+    /// every hook of it returns at once (<see cref="_inert"/>) - no log line, no config, no MCM page, no
+    /// models, no mission logic. The running copy reports it: one [compat] line + one message at the main
+    /// menu (or the first game start). An INSTANCE flag, not a static: with the same version both modules
+    /// share one assembly (the game's Assembly.LoadFrom), so the statics are shared too.
     /// </summary>
     public sealed class SubModule : MBSubModuleBase
     {
@@ -33,13 +44,25 @@ namespace TraxCombat
         private static double _lastNoticeAt = -1000;
         private static bool _rbmEnabled;
         private static bool _compatNoticeShown;
+        private static IReadOnlyList<string> _ourCopies = Array.Empty<string>();
+        private static string _selfId = "this copy";
+        private static bool _copiesReported;
         private bool _announced;
+
+        /// <summary>This instance is a second copy of the mod and stands down (step 11).</summary>
+        private bool _inert;
 
         protected override void OnSubModuleLoad()
         {
             base.OnSubModuleLoad();
             try
             {
+                // FIRST, before any file is touched: a second copy must not even write the log.
+                if (!SingleCopy.TryClaim(this))
+                {
+                    _inert = true;
+                    return;
+                }
                 LogLoad();
                 ConfigStore.Initialize();
             }
@@ -51,6 +74,11 @@ namespace TraxCombat
 
         protected override void OnSubModuleUnloaded()
         {
+            if (_inert)
+            {
+                base.OnSubModuleUnloaded();
+                return;
+            }
             try
             {
                 TraxLog.Info("load", "unloaded (game closing)");
@@ -66,6 +94,7 @@ namespace TraxCombat
         protected override void OnBeforeInitialModuleScreenSetAsRoot()
         {
             base.OnBeforeInitialModuleScreenSetAsRoot();
+            if (_inert) return;
             try
             {
                 McmBridge.TryRegister("main menu");
@@ -77,6 +106,7 @@ namespace TraxCombat
                         + (McmBridge.IsRegistered ? " - settings in Mod Options." : " - settings in config.json.")));
                 }
                 ShowCompatNoticeOnce("main menu");
+                ReportCopiesOnce("main menu");
             }
             catch (Exception e)
             {
@@ -87,6 +117,7 @@ namespace TraxCombat
         protected override void OnApplicationTick(float dt)
         {
             base.OnApplicationTick(dt);
+            if (_inert) return;
             try
             {
                 McmBridge.Tick();
@@ -101,12 +132,14 @@ namespace TraxCombat
         protected override void OnGameStart(Game game, IGameStarter gameStarterObject)
         {
             base.OnGameStart(game, gameStarterObject);
+            if (_inert) return;
             try
             {
                 TraxLog.Info("load", "game start: " + (game?.GameType?.GetType().Name ?? "unknown game type"));
                 ConfigStore.Reload("game start");
                 McmBridge.TryRegister("game start");
                 ShowCompatNoticeOnce("game start");
+                ReportCopiesOnce("game start");
                 RegisterModels(gameStarterObject);
             }
             catch (Exception e)
@@ -118,6 +151,7 @@ namespace TraxCombat
         public override void OnMissionBehaviorInitialize(Mission mission)
         {
             base.OnMissionBehaviorInitialize(mission);
+            if (_inert) return;
             try
             {
                 if (mission == null || GameNetwork.IsMultiplayer) return;
@@ -190,6 +224,8 @@ namespace TraxCombat
             var asm = typeof(SubModule).Assembly;
             TraxLog.Info("load", "==================== Trax Combat Enhancements " + ModVersion() + " ====================");
             TraxLog.Info("load", "dll: " + asm.Location + " (built " + Safe(() => File.GetLastWriteTime(asm.Location).ToString("yyyy.MM.dd HH:mm:ss")) + ")");
+            _selfId = SelfModuleId(asm.Location) ?? "this copy";
+            TraxLog.Info("load", "module: " + _selfId + (_selfId == SingleCopy.ReleaseId ? " (the release)" : _selfId.EndsWith(".Dev", StringComparison.OrdinalIgnoreCase) ? " (the dev install - tools\\deploy.ps1)" : ""));
             TraxLog.Info("load", "game: " + Safe(() => ApplicationVersion.FromParametersFile().ToString()));
             TraxLog.Info("load", "log: " + ModPaths.LogFilePath);
 
@@ -209,10 +245,43 @@ namespace TraxCombat
             TraxLog.Info("compat", _rbmEnabled
                 ? "Realistic Battle Mod is ENABLED (" + string.Join(", ", rbm) + ") - NOT compatible (DESIGN §5): it has its own posture and stamina and patches the same combat. The mod still runs; results with both on are not meaningful."
                 : "Realistic Battle Mod (RBM) not enabled - good");
-            int ours = modules.Count(m => m.StartsWith("TraxCombatEnhancements", StringComparison.OrdinalIgnoreCase));
-            if (ours > 1)
-                TraxLog.Info("load", "WARNING: more than one copy of this mod is enabled (" + string.Join(", ", modules.Where(m => m.StartsWith("TraxCombatEnhancements", StringComparison.OrdinalIgnoreCase)))
-                    + ") - enable only one.");
+            _ourCopies = SingleCopy.CopiesIn(modules);
+            var copiesLine = SingleCopy.LoadLine(_ourCopies, _selfId);
+            if (copiesLine != null) TraxLog.Info("compat", copiesLine);
+        }
+
+        /// <summary>Step 11: at most once per session (main menu, else the first game start), the
+        /// running copy says whether another copy of the mod stood down - one [compat] line and one
+        /// on-screen message. Nothing when this copy is alone.</summary>
+        private static void ReportCopiesOnce(string when)
+        {
+            if (_copiesReported) return;
+            int refused = SingleCopy.Refused();
+            var line = SingleCopy.ReportLine(_ourCopies, _selfId, refused);
+            if (line == null) return;
+            _copiesReported = true;
+            TraxLog.Info("compat", line + " (reported at " + when + ")");
+            var message = SingleCopy.Message(_ourCopies, _selfId, refused);
+            if (message != null) InformationManager.DisplayMessage(new InformationMessage(message, Colors.Yellow));
+        }
+
+        /// <summary>The Id in the SubModule.xml of the module this DLL was loaded from (the folder two
+        /// levels above bin\Win64_Shipping_Client) - a Workshop copy's folder is a number, so the folder
+        /// name alone would not say. Null when it cannot be read (e.g. the offline smoke's build folder).</summary>
+        internal static string? SelfModuleId(string dllPath)
+        {
+            try
+            {
+                var binDir = Path.GetDirectoryName(dllPath);
+                var moduleDir = Path.GetDirectoryName(Path.GetDirectoryName(binDir ?? string.Empty) ?? string.Empty);
+                if (string.IsNullOrEmpty(moduleDir)) return null;
+                var manifest = Path.Combine(moduleDir, "SubModule.xml");
+                return File.Exists(manifest) ? SingleCopy.IdFromManifest(File.ReadAllText(manifest)) : null;
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         /// <summary>DESIGN §5: if RBM is enabled, ONE on-screen message per session - at the main

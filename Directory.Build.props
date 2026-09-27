@@ -9,7 +9,16 @@
          Steam Workshop id 2859238197. Only method BODIES may name its types (CLAUDE.md, hard
          requirements) - tools\AssemblyGuard checks that on every deploy. -->
     <McmBinFolder>C:\Program Files (x86)\Steam\steamapps\workshop\content\261550\2859238197\bin\Win64_Shipping_Client</McmBinFolder>
+    <!-- THE MOD'S VERSION has one home: module\SubModule.xml's <Version value="vX.Y.Z" />, stamped ONCE
+         on release day (CLAUDE.md "Release"). Both DLLs take it from there (step 11), so the launcher,
+         the [load] line and the zip name can never disagree. -->
+    <TraxManifestText>$([System.IO.File]::ReadAllText('$(MSBuildThisFileDirectory)module\SubModule.xml'))</TraxManifestText>
+    <TraxModVersion>$([System.Text.RegularExpressions.Regex]::Match($(TraxManifestText), '(?&lt;=&lt;Version value="v?)[0-9]+\.[0-9]+\.[0-9]+').Value)</TraxModVersion>
   </PropertyGroup>
+
+  <Target Name="TraxCheckModVersion" BeforeTargets="BeforeBuild" Condition="'$(TraxModVersion)' == ''">
+    <Error Text="module\SubModule.xml has no &lt;Version value=&quot;vX.Y.Z&quot; /&gt; - the mod's version is read from there (Directory.Build.props)." />
+  </Target>
 
   <!-- Personal overrides (another game path, another MCM path). Git-ignored (*.user). -->
   <Import Project="$(MSBuildThisFileDirectory)Directory.Build.props.user"

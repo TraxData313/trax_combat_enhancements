@@ -4,7 +4,8 @@
     <TargetFramework>net472</TargetFramework>
     <RootNamespace>TraxCombat</RootNamespace>
     <AssemblyName>TraxCombatEnhancements</AssemblyName>
-    <Version>0.1.0</Version>
+    <!-- From module\SubModule.xml (Directory.Build.props) - bump it there, never here. -->
+    <Version>$(TraxModVersion)</Version>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
   </PropertyGroup>
 

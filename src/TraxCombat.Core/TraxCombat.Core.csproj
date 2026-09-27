@@ -8,7 +8,8 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <RootNamespace>TraxCombat.Core</RootNamespace>
     <AssemblyName>TraxCombat.Core</AssemblyName>
-    <Version>0.1.0</Version>
+    <!-- From module\SubModule.xml (Directory.Build.props) - bump it there, never here. -->
+    <Version>$(TraxModVersion)</Version>
   </PropertyGroup>
 
   <ItemGroup>

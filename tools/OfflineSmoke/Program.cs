@@ -114,6 +114,9 @@ namespace TraxCombat.Tools
             Step("MCM Done writes config.json", McmDoneWritesFile);
             Step("MCM buttons: \"Save current values as a defaults file\" writes a clean defaults.json beside config.json; \"Revert all to defaults\" is live, logged, rewrites config.json, refreshes the page", McmButtons);
 
+            // Step 11 - LAST (it claims the one-copy slot for good and runs a game start).
+            Step("two copies enabled (dev + release): the second SubModule stands down - no log line, no model, no mission logic, no message; the running one registers ONE decorator of each kind and reports the other once ([compat] + one message)", TwoCopiesOneRuns);
+
             Console.WriteLine();
             TraxLog.Release(); // the log handle (R6) - the temp folder can go
             if (Failures.Count == 0)
