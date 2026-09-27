@@ -68,6 +68,11 @@ Every parameter lives in two places that stay in sync:
 - the **Mod Configuration Menu (MCM)** when installed. MCM must stay OPTIONAL: without it the
   mod runs on the file alone (see CLAUDE.md, hard requirements).
 
+**Hot swap**: a change in MCM applies LIVE — the next hit, blow or HUD refresh uses it, even
+mid-battle. Nothing ever needs a game restart; if some parameter can only apply from the
+next battle, its description says so. Hand edits to the file are picked up at the next
+battle start.
+
 ## Parameters
 
 | Key | Default | What it does |

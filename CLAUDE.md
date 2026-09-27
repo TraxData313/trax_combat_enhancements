@@ -71,6 +71,16 @@ die at any moment (tokens run out) and the next one loses nothing.
   cannot carry what we need, Harmony is acceptable — say why in AI_NOTES.
 - **Performance**: battles have 500–1000 agents. No per-agent allocations per tick; poll
   what needs polling at a modest rate; UI updates throttled.
+- **Hot-swappable settings (Anton, 2026-09-27): changing ANY parameter in MCM must never
+  need a game restart.** Target: live — the next hit / blow / HUD refresh uses the new
+  value, even mid-battle (MCM opens from the Escape menu). Code reads parameters from the
+  one shared config object AT USE TIME, never copies them into fields at mission start;
+  anything that must be rebuilt (e.g. a HUD toggled on, an agent's cached speed penalty)
+  listens for a settings-changed event and rebuilds itself. Where live truly is not
+  possible, the fallback is "applies from the next battle" — never "restart the game" —
+  and that parameter's MCM hint and config-file comment say so. Hand edits of the config
+  file are re-read at every mission start (and on load), so they need no restart either.
+  Every change is logged (`[config] X: old → new (source: MCM|file)`).
 - **Save-safe**: the mod lives inside missions. It must add nothing to the campaign save, so
   it can be enabled or removed mid-campaign.
 - **Logging built for one big playtest at the end (Anton, 2026-09-27).** Anton tests
