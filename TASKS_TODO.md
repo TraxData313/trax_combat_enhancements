@@ -12,12 +12,13 @@ BUILD ORDER (one step at a time — [~] = in flight, see CLAUDE.md "manager prot
 - [x] 9. Orders menu: strip under the formation cards (below the arrows) — Athletics ± spread + health (no UIExtenderEx) — kept by Anton: "some vision of the state of the troops"
 - [x] 10a. Fresh-eyes code review: bugs, crash paths, stuck states, performance, gates — fix what is found
 - [x] 10b. Polish: hide the LATER features' settings (no switch that does nothing), settings/config readability, docs + PLAYTEST script as one clean run (Anton's playtest comes after, all at once)
-- [~] 11. Steam packaging — upload only on Anton's yes
+- [x] 11. Steam packaging — upload only on Anton's yes (package ready — upload waits for Anton's yes after the playtest)
 
 PLAYTEST (Anton, all at once at the end — script in docs/PLAYTEST.md):
 - [ ] Play with RBM disabled — declared NOT compatible (Anton, 2026-09-27; the mod warns if it sees it)
 - [ ] The same custom battle with the mod ON and OFF, compare the two summaries (PLAYTEST §4)
 - [ ] Tune defaults in game, "Save current values as a defaults file", hand it to Claude (PLAYTEST §5)
+- [ ] Anton: playtest, then say yes → first Workshop upload (tools/WORKSHOP-UPLOAD.md)
 
 LATER (moved off the build order by Anton, 2026-09-27 — designs kept in DESIGN §3 + AI_NOTES steps 7–9):
 - [ ] 7. Bar for the NPC I look at (toggle)
@@ -29,3 +30,4 @@ NOT DECIDED (defaults in place, Anton can flip):
 - [ ] Hero multiplier: 0.75 (default now) or 0.5? (see DESIGN interpretations)
 - [ ] Kicks / shield bashes cost Athletics? (free now)
 - [ ] Athletics in tournaments / arena too? (on for now)
+- [ ] First public version: v0.1.0 (now) or v1.0.0? (stamped once, in module/SubModule.xml)

@@ -342,6 +342,12 @@ of it, and a trim never loses the lines the playtest is read from (step 10b, rev
   one of them"). It does not refuse to run.
 - Other combat mods that change damage or attack speed may stack with ours; the log's
   per-battle summary is the tool to see it.
+- **One copy runs** (step 11): with two copies of this mod enabled at once (the dev install and
+  the Workshop release), the first to load runs and the other stands down in every hook (no log
+  line, config, MCM page, model or mission logic of its own) - otherwise both damage decorators
+  would roll every hit. The running copy logs `[compat]` and shows ONE message at the main menu.
+- **Save-safe**: nothing is added to the campaign save (no saveable types, no campaign
+  behaviours) - the mod can be added or removed mid-campaign.
 
 ## Parameters
 

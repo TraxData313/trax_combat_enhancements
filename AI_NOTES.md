@@ -1452,4 +1452,96 @@ section numbers (§1-§8, 3n, 8a…) that AI_NOTES / RESEARCH / TASKS_TODO still
 **UNVERIFIED (PLAYTEST).** The page's group order in game (A5 - verified in the decompile and by
 the smoke's Order check only); the trim's hitch in a real verbose battle (note the times).
 
-## Step 11 — Steam packaging
+## Step 11 — Steam packaging (DONE 2026-09-27 — package ready, NOT uploaded)
+
+**The release is one command + one uploader run away** (`tools/WORKSHOP-UPLOAD.md`); the upload
+waits for Anton's yes after his playtest. Nothing was uploaded, posted or published.
+
+**Built**
+- `tools/package.ps1` (ported from the sibling, stricter): manifest gate → build → unit tests →
+  AssemblyGuard on BOTH DLLs (hard; the sibling's MCM check was only a warning) → OfflineSmoke → DLL
+  version = manifest → `dist\TraxCombatEnhancements` from scratch → the file set checked against an
+  explicit list → `dist\TraxCombatEnhancements_vX.Y.Z.zip` → file list + sizes. v0.1.0: 7 files,
+  508,541 bytes (the two DLLs 172 + 215 KB, their pdbs ~50 KB each, two prefabs, SubModule.xml); zip
+  210,539 bytes. The build output also holds `Newtonsoft.Json.dll` (Core's package reference, copied
+  local) - the explicit list is what keeps it out.
+- **The zip is written with ZipArchive, not Compress-Archive**: Windows PowerShell 5.1's
+  Compress-Archive stores `\` in entry names, which non-Windows unzip tools turn into file names.
+  Entries: `TraxCombatEnhancements/…`, the module folder at the zip's root.
+- **The version has one home**: `Directory.Build.props` reads `module\SubModule.xml`'s
+  `<Version value="vX.Y.Z" />` with an MSBuild property function (`File.ReadAllText` + a
+  `Regex.Match(...).Value` lookbehind) into `TraxModVersion`; both csprojs set
+  `<Version>$(TraxModVersion)</Version>`; an empty match fails the build (`TraxCheckModVersion`).
+  So "bump the version once" is literally one edit, and the `[load]` line, the launcher and the zip
+  name agree. package.ps1 re-checks the built DLLs against the manifest anyway.
+- **Workshop kit**: `WorkshopCreate.xml` (Private, tags Utility / UI / Native / Singleplayer /
+  v1.4.8 - Bannerlord's Workshop has no "Gameplay" type; its Type tags are Graphical Enhancement,
+  Map Pack, Partial Conversion, Sound, Total Conversion, Troops, UI, Utility, Weapons and Armour,
+  read off the browse page 2026-09-27), `WorkshopUpdate.xml` (ITEM_ID placeholder),
+  `STEAM-DESCRIPTION.bbcode` (4282 bytes of Steam's 8000, tags balanced), the preview
+  `preview_thumbnail.html` → `.png` (1024², 648 KB; headless Edge `--headless=new --screenshot`; the
+  bar colours are AthleticsBar's constants; no game art). README: Requirements + Install. DESIGN §5:
+  one copy runs, save-safe. PLAYTEST: A1's `[load] module:` line, A6 (optional) = the release package
+  beside the dev copy.
+
+**The uploader, decompiled again** (`TaleWorlds.MountAndBlade.SteamWorkshop.exe`, v1.4.8, ilspycmd
+into the scratchpad) - the siblings' quirks hold, plus:
+- `LoadTasks` iterates `FirstChild.ChildNodes` and calls `LoadFrom` on whatever task it made - a
+  comment DIRECTLY under `<Tasks>` gives a null task → NullReferenceException → "Application crashed".
+  Comments are fine inside UpdateItem (skipped as XmlComment), GetItem (only `ItemId` is read) and Tags.
+- Start-up refuses without Steam running + logged in + **Steam Cloud enabled for the account AND for
+  the app** (`IsCloudEnabledForAccount` / `IsCloudEnabledForApp`).
+- `GetItemTask.DoJob` = `Convert.ToUInt64(ItemId)` BEFORE the update task runs: the `ITEM_ID`
+  placeholder fails safe (FormatException, nothing uploaded).
+- `UpdateItemTask`: title = `ModuleInfo.LoadWithFullPath(ModuleFolder).Name`; description, visibility,
+  tags, preview only when their node is present (tags REPLACE the list); change notes default
+  "Minor changes."; attribute values via XmlDocument, so `&#177;` / `&quot;` entities work.
+- `ExitProgram` always `Environment.Exit(0)` after a `Console.ReadKey()` - which throws without a
+  console: judge by the output ("Uploading done!", "Item created. Item ID is …").
+
+**The dev and the release copy together (the brief's item 2) - built.** Findings (v1.4.8 source):
+- `Module.LoadSubModules` loads each module's DLL with `AssemblyLoader.LoadFrom` →
+  `Assembly.LoadFrom`; on .NET Framework a second file with the SAME identity (both 0.1.0.0) returns
+  the FIRST assembly. `AddSubModule` then constructs a SECOND `SubModule` instance of it, and the
+  loader calls `OnSubModuleLoad` on every instance in module order, on the main thread. So with the
+  same version: one assembly, shared statics, two instances; with different versions: two assemblies.
+  Both ran every hook before: two `TraxDamageModel`s stacked (two rolls per hit) and two
+  `AthleticsLogic`s per mission (Athletics charged twice) - the smoke reproduces the double decorator
+  when the guard is removed.
+- `Core/SingleCopy`: the claim is an AppDomain data slot (`object[] { token, refused }`), shared by
+  one or two assemblies; the token is the SubModule INSTANCE, so two instances of one type are two
+  copies. The first to claim runs; a refused one sets the instance flag `_inert` and every hook
+  returns at once - it must not even write the log (with two assemblies it would open a second
+  writer on the file the running copy holds). The running copy logs `[compat] N copies of this mod
+  are enabled (…) - this one (…) loaded first and runs` at load and, at the main menu (else the first
+  game start), `[compat] 1 other copy … stood down` + ONE yellow message; `WARNING … none stood down`
+  if two ids are enabled but nobody was refused (an older build without the guard).
+- Which copy is "this one": `SubModule.xml`'s `<Id>` two folders above the DLL (a Workshop copy's
+  folder is its item NUMBER, so the folder name alone would not say). New `[load] module: <Id>
+  (the release | the dev install)` line - the playtest log now says which copy ran.
+- Duplicate prefabs (both copies ship `TraxPlayerAthleticsBar.xml`): `WidgetFactory` hits
+  `Debug.FailedAssert` ("This prefab has already been added") and keeps the LATER file;
+  `MBDebugManager.Assert` is empty in the game, so it is silent. Harmless at the same version; after
+  a prefab change the running DLL may get the other copy's prefab (the HUD fail safe would disable
+  the view with an `[error]`) - one more reason the message says to disable one.
+- No engine-managed (`DotNetObject` / `ManagedObject`) types in our DLL, so `Managed.AddTypes` sees
+  nothing twice.
+
+**Save-safe claim verified** (for the Steam page): no `SaveableTypeDefiner`, `[SaveableField]`,
+campaign behaviour, `SyncData` or Harmony anywhere in `src`; the models are registered per game
+start and the logic lives per mission.
+
+**Gotchas**
+- `-notmatch` does not fill `$Matches` - package.ps1 uses `-not (... -match ...)`.
+- Package AFTER the release commit: the informational version carries HEAD's hash
+  (`0.1.0+7c79099…` for the test package of this step).
+- A dist zip of the current version blocks the next package run (the sibling's release-rhythm guard);
+  the step-11 test package left `dist\TraxCombatEnhancements_v0.1.0.zip`, so the first real package
+  of v0.1.0 needs `-Force` (a bumped version does not).
+
+**UNVERIFIED (PLAYTEST A6 + the first upload)**
+1. The real launcher and loader with both copies enabled: one `[load]` block, the `[compat]` pair, one
+   message (the smoke drives two real SubModule instances, not the game's module loader).
+2. That the uploader accepts the dist folder, the PNG preview and the UI tag (the siblings' uploads
+   proved the folder shape, a JPG preview and the Utility tag).
+3. How the Workshop page renders `STEAM-DESCRIPTION.bbcode` (h1, lists, the ± and × characters).

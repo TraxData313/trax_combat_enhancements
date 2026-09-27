@@ -128,7 +128,9 @@ die at any moment (tokens run out) and the next one loses nothing.
 
 ```
 TraxCombatEnhancements.sln    Core + Module + tests (the tools build on their own)
-Directory.Build.props         C# 10, nullable, GameFolder, McmBinFolder; *.user override imported
+Directory.Build.props         C# 10, nullable, GameFolder, McmBinFolder; *.user override imported;
+                              TraxModVersion read from module\SubModule.xml <Version> (step 11) - both
+                              DLLs' <Version> is $(TraxModVersion); an empty one fails the build
 defaults.json                 THE ONE TRUTH for every default value (DESIGN §2c): every setting,
                               its value, its explanation + range as // lines. Anton tunes it and
                               pushes; embedded in TraxCombat.Core.dll at build. After a schema
@@ -166,6 +168,10 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               [compat] [config] [mcm] [mission] [summary] [error] tags, CUT = the oldest
                               verbose (~) lines at one point in time; last resort: the oldest kept;
                               one note at the top; Utf8Bytes
+  SingleCopy.cs               step 11, ONE copy runs: TryClaim(token) on an AppDomain data slot (the first
+                              SubModule instance to ask runs, a later one is refused and counted - works
+                              for one shared assembly and for two), Refused, CopiesIn (the release id
+                              and its dotted variants), IdFromManifest, the [compat] lines + the message
   RandomSource.cs             IRandomSource (injectable dice); ThreadSafeRandom ([ThreadStatic]
                               Random per thread, the game's); SeededRandom (tests, smoke)
   DamageRoll.cs               DESIGN §1 pure: HitFacts, DamageRules (live from TraxSettings),
@@ -240,8 +246,12 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               formations, health cap, regen by effort, run-speed checks by f,
                               recomputes, walk vs run speeds, tick cost, errors)
 src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhancements.dll:
-  SubModule.cs                entry point: load log, config init/re-reads, MCM register/retry,
-                              the two model decorators (OnGameStart), AthleticsLogic per mission
+  SubModule.cs                entry point: load log (+ "module: <Id>" - which copy runs), config
+                              init/re-reads, MCM register/retry, the two model decorators
+                              (OnGameStart), AthleticsLogic per mission; step 11: claims SingleCopy
+                              FIRST in OnSubModuleLoad - refused = _inert (an INSTANCE flag: one
+                              assembly may serve both modules), every hook returns at once; the
+                              running copy's ReportCopiesOnce ([compat] + one message, main menu)
   ModPaths.cs                 Configs\TraxCombatEnhancements\ via EngineFilePaths.ConfigsPath
   ConfigStore.cs              config.json ↔ TraxSettings.Shared: first run, re-read at game and
                               mission start, write after MCM Done by the rewrite rule, backups;
@@ -360,7 +370,8 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               / values lines, the [summary] strip line
   Hud/OrderStripVM.cs         its ViewModels: the root + 8 fixed OrderStripCellVM in one
                               MBBindingList, bound TWICE by the prefab (the cells, the panel rows)
-tests/TraxCombat.Core.Tests/  net8.0 xUnit (302) — schema vs DESIGN.md (keys + types),
+tests/TraxCombat.Core.Tests/  net8.0 xUnit (312) — schema vs DESIGN.md (keys + types), one copy
+                              runs (SingleCopyTests: claims on private slots, copies, texts),
                               defaults.json (DefaultsFileTests), master switch, settings, config
                               file, merge rule, rate limiter (+ Peek), the log trim (LogTrimTests:
                               kept kinds, one cut point, stacks, notes, the last resort, bytes),
@@ -376,7 +387,8 @@ tests/TraxCombat.Core.Tests/  net8.0 xUnit (302) — schema vs DESIGN.md (keys +
                               the lift, texts, band, health in the squad stats, summary). They
                               run on DESIGN's INITIAL values (DesignTable.cs: a module
                               initializer), so tuning defaults.json never breaks them. Keep green.
-module/SubModule.xml          release manifest (Id TraxCombatEnhancements, v0.1.0)
+module/SubModule.xml          release manifest (Id TraxCombatEnhancements, v0.1.0) - THE one home of the
+                              version (the DLLs read it at build; stamped once, on release day)
 module/GUI/Prefabs/           the HUD movies - file name = movie name, `Trax…` (prefab names are
                               global across modules): TraxPlayerAthleticsBar.xml (step 6: native
                               sprite BlankWhiteSquare_9 + brush AgentHUD.Interaction.Text only;
@@ -387,7 +399,19 @@ module/GUI/Prefabs/           the HUD movies - file name = movie name, `Trax…`
                               would resolve against the list)
 tools/deploy.ps1              build → AssemblyGuard → OfflineSmoke → install as
                               Modules\TraxCombatEnhancements.Dev "Trax Combat Enhancements (dev)",
-                              module\GUI copied beside bin (package.ps1 in step 11 must do the same)
+                              module\GUI copied beside bin
+tools/package.ps1             step 11, THE RELEASE: manifest gate (release Id + Name, vX.Y.Z) → build →
+                              unit tests → AssemblyGuard on both DLLs (hard) → OfflineSmoke → DLL version
+                              = manifest → dist\TraxCombatEnhancements from scratch (SubModule.xml, our 2
+                              DLLs + pdbs, GUI\Prefabs - checked against that list: never MCM, Newtonsoft
+                              or game DLLs) → dist\TraxCombatEnhancements_vX.Y.Z.zip (forward-slash
+                              entries; an existing one only with -Force) → file list + sizes. dist\ is
+                              git-ignored
+tools/WORKSHOP-UPLOAD.md      the release loop, step by step (first upload, updates) + the uploader's quirks
+tools/WorkshopCreate.xml      the FIRST upload (creates the item, Private, tags, preview) - run once
+tools/WorkshopUpdate.xml      every later upload - ITEM_ID placeholder until the first upload
+tools/STEAM-DESCRIPTION.bbcode  the Workshop page, pasted by hand (≤ 8000 bytes; 4282 now)
+tools/preview_thumbnail.html  the Workshop preview (source) → preview_thumbnail.png (1024², headless Edge)
 tools/AssemblyGuard/          soft-dependency guard (from the sibling): MCM, Harmony, ButterLib,
                               UIExtenderEx, NavalDLC, CustomBattle in any type surface = FAIL
 tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLLs, no game
@@ -420,12 +444,14 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               clicked; step 10a: the log writer (readable while held, new path,
                               release) and stale records forgotten; step 10b: the trim at a 1 MB cap
                               keeps a summary, a first-time line and an error with its stack through
-                              2 MB of verbose lines, the ~ mark, VerboseWants loses no count (44
-                              steps; the config checks work for any tuned default);
+                              2 MB of verbose lines, the ~ mark, VerboseWants loses no count; step
+                              11 (Program.Copies.cs, LAST): two real SubModule instances - the second
+                              stands down (no log line, model, mission, message), the first registers
+                              ONE decorator of each kind and reports once (45 steps; the config
+                              checks work for any tuned default);
                               TRAX_SMOKE_KEEP=1 keeps its temp folder + log to read
 tools/DefaultsTool/           defaults.json upkeep: refresh (rewrite comments/order, keep every
                               value) | check; --file <path> for an exported one
-tools/package.ps1             Steam release layout (step 11)
 ```
 
 ## Build & deploy
@@ -441,6 +467,18 @@ Game path and MCM path in `Directory.Build.props`; personal overrides in
 smoke test before it installs anything (`-SkipSmoke` only if the smoke cannot run on a
 machine). The deploy fails while the game runs (DLL lock) — say so and hand Anton the deploy
 line.
+
+## Release
+
+The whole loop is **`tools/WORKSHOP-UPLOAD.md`** — read it before any release. **Publishing is
+Anton's decision, after his playtest**: Claude never runs the uploader, and never posts or
+uploads anything, without his yes for that release. **The release rhythm** (the sibling's, Anton
+2026.07.28): fixes collect in `main`, versions do not — `module/SubModule.xml`'s `<Version>` (the
+version's only home) is stamped ONCE, on release day, and committed BEFORE
+`powershell -ExecutionPolicy Bypass -File tools\package.ps1` (the DLL carries the commit it was
+built from). Then the uploader with `tools\WorkshopCreate.xml` the first time (never again),
+`tools\WorkshopUpdate.xml` after. The dev and the release copy may both be enabled: the first
+to load runs, the other stands down (Core `SingleCopy`).
 
 **Editing text files: use the Edit/Write tools, never PowerShell `Get-Content`/`Set-Content`.**
 Windows PowerShell 5.1 reads BOM-less UTF-8 as ANSI and writes it back as mojibake (every

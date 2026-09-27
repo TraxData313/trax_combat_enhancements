@@ -467,3 +467,52 @@
   mid-fight (by design: the fresh take over); step-back chance 100% at empty may make the front
   "breathe" a lot. Tests 288 → 302 (LogTrim 11, Peek 3); build 0 warnings, AssemblyGuard OK, smoke
   44 steps OK, deployed. Commits 312a7ce, fb0164d, 72d94cb, b685f3c, 4f7452d + this. (2026.09.27 20.28.33)
+- [x] **Step 11 — Steam packaging.** The release is ONE command + one uploader run away, and NOTHING
+  was uploaded, posted or published: that is Anton's yes after his playtest. (1) `tools/package.ps1`
+  (the sibling's loop, stricter): manifest gate (release Id TraxCombatEnhancements + name "Trax
+  Combat Enhancements", vX.Y.Z) → build → unit tests → AssemblyGuard on BOTH DLLs, hard (MCM,
+  Harmony, ButterLib, UIExtenderEx, War Sails, CustomBattle) → OfflineSmoke → DLL version = manifest
+  → `dist\TraxCombatEnhancements` from scratch, checked against an explicit list (SubModule.xml, our
+  2 DLLs + pdbs for line numbers in players' [error] stacks, GUI\Prefabs - the build output's
+  Newtonsoft.Json.dll stays out) → `dist\TraxCombatEnhancements_v0.1.0.zip` (ZipArchive with `/`
+  entries - PS 5.1's Compress-Archive writes `\`; an existing zip only with -Force, the release-rhythm
+  guard) → file list + sizes: 7 files, 508,541 bytes; zip 210,539 bytes. (2) THE VERSION HAS ONE
+  HOME: Directory.Build.props reads SubModule.xml's `<Version>` into both DLLs (an empty one fails the
+  build), so "bump once" is one edit and the [load] line, launcher and zip agree. (3) DEV + RELEASE
+  TOGETHER - found real, fixed: the game's Assembly.LoadFrom hands a second module with the same
+  assembly identity the FIRST assembly and constructs a second SubModule instance, so both copies
+  registered their decorators (two damage rolls per hit) and attached AthleticsLogic twice. Core
+  `SingleCopy`: each SubModule claims an AppDomain data slot in OnSubModuleLoad (by INSTANCE - works
+  for one shared assembly and for two); a refused copy sets `_inert` and returns from every hook
+  before touching anything (not even the log, which the running copy holds open); the running copy
+  logs `[compat]` at load and at the main menu and shows ONE yellow message; `[load] module: <Id>`
+  (read from the SubModule.xml beside the DLL - a Workshop folder is a number) says which copy ran.
+  Duplicate prefabs are silent in the game (MBDebugManager.Assert is empty; the later file wins).
+  10 unit tests + smoke step 45 (two real SubModule instances: the second writes no line, registers
+  no model, attaches nothing, shows nothing; the first registers ONE decorator of each kind and
+  reports once) - mutation-checked: without the guard the smoke sees two damage decorators.
+  (4) Workshop kit: `WorkshopCreate.xml` (creates the item Private; tags Utility / UI / Native /
+  Singleplayer / v1.4.8 - Bannerlord has no "Gameplay" type; the PNG preview; a short pitch; "First
+  release."), `WorkshopUpdate.xml` (ITEM_ID placeholder - the uploader fails on it before uploading
+  anything), `WORKSHOP-UPLOAD.md` (the whole loop: playtest → version once, committed → package →
+  create → record the id → paste the page → subscribe and check `module: TraxCombatEnhancements
+  (the release)` → Public; updates; the preview; manual install; the uploader's quirks from a fresh
+  decompile - new: Steam Cloud must be on for the account and the app, a comment directly under
+  <Tasks> crashes it). (5) `STEAM-DESCRIPTION.bbcode`, for players: ±50% damage, the Athletics bar
+  (skill-sized, floor 50, 10 a blow, heroes and leaders ×0.75 each, full strength in the top quarter,
+  below it lucky hits / attack rate / run speed fall to one attack in five and a 30% run, wounds cap
+  it, a minute's rest refills), tired men step back, your bar, the orders-menu strip; every number in
+  MCM (optional) or config.json, live, master switch; NOT compatible with RBM; safe to add or remove
+  mid-campaign (verified: no saveable types, campaign behaviours or Harmony in src); v1.4.8; an
+  honest "first release" list (step backs, strip alignment, RTS Camera / War Sails, balance);
+  feedback via GitHub issues. 4282 bytes of Steam's 8000, tags balanced. (6) Preview:
+  `tools/preview_thumbnail.html` → `.png` (1024², 648 KB, headless Edge): the name over five
+  Athletics bars fresh → spent in the mod's own colours, peak line, a wounded one; an in-game
+  screenshot after the playtest would be better (noted). (7) README Requirements + Install, DESIGN §5
+  (one copy runs, save-safe), PLAYTEST A1 `[load] module:` + A6 optional (the release package beside
+  the dev copy - the only way to try the exact Workshop folder before uploading), CLAUDE layout +
+  "Release", AI_NOTES "Step 11". FOR ANTON: the playtest, then the yes; the first public version
+  (v0.1.0 or v1.0.0 - TASKS_TODO NOT DECIDED); paste the page and flip Public after the first
+  upload; the test zip `dist\TraxCombatEnhancements_v0.1.0.zip` means a real v0.1.0 package needs
+  -Force. Tests 302 → 312; build 0 warnings; smoke 45 steps OK; deployed. Commits 7c79099, ec93e4c,
+  4a56f18 + this. (2026.09.27 20.50.39)

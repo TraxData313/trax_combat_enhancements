@@ -3,8 +3,24 @@
 *(working title)* — a combat mod for **Mount & Blade II: Bannerlord** (v1.4.8) that makes
 every fight a little less predictable and a lot more about who is still fresh.
 
-**Status: in development.** Nothing to install yet — progress is tracked in
-[TASKS_TODO.md](TASKS_TODO.md) and [TASKS_DONE.md](TASKS_DONE.md).
+**Status: first release packaged, not published yet** — it goes on the Steam Workshop after its
+playtest. Progress is tracked in [TASKS_TODO.md](TASKS_TODO.md) and [TASKS_DONE.md](TASKS_DONE.md).
+
+**Requirements:** Mount & Blade II: Bannerlord **v1.4.8**, singleplayer. MCM (Mod Configuration
+Menu) is optional.
+
+## Install
+
+- **Steam Workshop** — once it is released: subscribe, then enable *Trax Combat Enhancements* in
+  the launcher. (The link goes here with the first upload.)
+- **Manual, meanwhile** — build the zip with `powershell -ExecutionPolicy Bypass -File tools\package.ps1`
+  (it lands in `dist\`), extract it into `<game>\Modules\` so it becomes
+  `Modules\TraxCombatEnhancements\`, and enable it in the launcher.
+- Keep only one copy: remove a manual install before subscribing (both carry the same module id).
+  If two copies do end up enabled (say the Workshop one and a dev build), the first to load runs,
+  the other stays out of the way, and the main menu says so.
+
+Releasing it: [tools/WORKSHOP-UPLOAD.md](tools/WORKSHOP-UPLOAD.md).
 
 ## What it does
 
@@ -42,6 +58,7 @@ save, so it can be added or removed mid-campaign. Full spec: [docs/DESIGN.md](do
 - Built to sit alongside **RTS Camera** (and its Command System's order menu) and **War Sails**
   (no step backs on deck) — to be confirmed in the first playtest.
 - MCM is optional.
+- Safe to add or remove mid-campaign: it lives inside battles and writes nothing to the save.
 
 ## License
 

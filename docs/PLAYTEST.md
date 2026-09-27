@@ -1,7 +1,7 @@
 # Playtest — one session, start to finish
 
 Anton plays this ONCE, after the build is finished, and hands Claude the log. Seven parts in
-order, about **2 hours** (A 10 min, B 15, C 25, D 10, E 15, F 30, G 10; the optional bits add ~25). Each part says what to do, what you
+order, about **2 hours** (A 10 min, B 15, C 25, D 10, E 15, F 30, G 10; the optional bits add ~30). Each part says what to do, what you
 should see, what counts as broken, and the log lines that prove it. The full line reference —
 every summary block and what proves what — is the **appendix** at the end.
 
@@ -51,7 +51,8 @@ needs MCM refuses to start for every player without it.
 - Log:
   - `[load] ==================== Trax Combat Enhancements 0.1.0+… ====================` (after the `+`:
     the git commit it was built from), `[load] dll: …\Modules\TraxCombatEnhancements.Dev\bin\Win64_Shipping_Client\TraxCombatEnhancements.dll (built …)`
-    (the dev copy runs), `[load] game: v1.4.8.…`, `[load] modules (N): …`
+    (the dev copy runs), `[load] module: TraxCombatEnhancements.Dev (the dev install - tools\deploy.ps1)`,
+    `[load] game: v1.4.8.…`, `[load] modules (N): …`
   - `[compat] Realistic Battle Mod (RBM) not enabled - good`
   - `[config] defaults: defaults.json (embedded in TraxCombat.Core.dll), 58 keys for 58 settings - every default read from it`
   - `[config] first run: created config.json with every default and a plain-words explanation beside each value`
@@ -94,6 +95,19 @@ end it (win or retreat).
   log* is ticked — read from the file.
 - Broken: a group missing or out of order; a label or hint that reads wrong; a slider that cannot
   reach its default.
+
+**A6 (optional, +5 min). The release package, beside the dev copy** (step 11). Run
+`powershell -ExecutionPolicy Bypass -File tools\package.ps1` (add `-Force` if it says the zip exists),
+copy the folder `dist\TraxCombatEnhancements` into the game's `Modules\`, enable BOTH *Trax Combat
+Enhancements* and *Trax Combat Enhancements (dev)* in the launcher, start, look at the main menu, quit.
+Then DELETE `Modules\TraxCombatEnhancements` again (the Workshop copy will carry the same id).
+- You see: the exact folder the Workshop gets starts cleanly; ONE yellow line *"Trax Combat
+  Enhancements: 2 copies are enabled (…) - only … runs. Disable one in the launcher."*
+- Log: `[load] module: …` names the copy that loaded first; `[compat] 2 copies of this mod are enabled (…) - this one (…) loaded first and runs; …`;
+  at the main menu `[compat] 1 other copy of this mod found this one (…) running and stood down: … (reported at main menu)`.
+  Only ONE `[load] ====…====` block — the other copy writes nothing.
+- Broken: two `[load]` blocks, or `[damage] damage model decorator registered` twice at a game start
+  (every hit would roll twice); `[compat] WARNING: 2 copies … but none stood down`.
 
 ---
 
@@ -430,8 +444,9 @@ From `Documents\Mount and Blade II Bannerlord\Configs\TraxCombatEnhancements\` (
 
 ### L1. Load, settings, MCM
 
-- Load: `[load]` lines at every game start (A1); `[compat]` RBM or not; `[mcm]` registered or not
-  (A1, A4); `[config] defaults: … 58 keys for 58 settings` (any `defaults.json PROBLEM:` under it →
+- Load: `[load]` lines at every game start (A1), incl. `[load] module: <Id>` - which copy runs (dev or
+  release); `[compat]` RBM or not; `[compat]` two copies enabled and the other stood down (A6 - only
+  when both are on); `[mcm]` registered or not (A1, A4); `[config] defaults: … 58 keys for 58 settings` (any `defaults.json PROBLEM:` under it →
   that setting runs on a fallback — tell Claude); `[config] settings in effect (58, version N):` and
   one line per setting (a changed one ends `(default …)`).
 - Every change: `[config] <Key>: <old> → <new> (source: MCM|file|defaults)` — dragging a slider logs
