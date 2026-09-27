@@ -1831,3 +1831,64 @@ NoAttack re-decision (1.5-2.6 s measured in step 12's log) sits on top; mild ban
 8. The recovery bar's place at 1080p and other UI scales (between the vanilla bars and our Athletics row,
    nothing overlapping) → the eye; the `first values pushed` line's numbers.
 9. The flash reads as "not yet" without being annoying (2 pulses, no restart while one runs) → Anton.
+
+## Step 15 — research: battle pacing (DONE 2026-09-27, no code)
+
+Anton: battles end fast; "a way to slow them down a bit for tactical decisions or hero units to become
+more powerful … like RBM but without the units overhaul"; "just let me see what is in there". **The
+whole write-up is `docs/BATTLE_PACING.md`** - the menu of 11 levers (length / feel / hero power / cost /
+risk / Harmony / conflicts), the recommended package, the baseline, RBM technique by technique (A1-A11),
+the step back (B), our levers (C), compatibility (D), UNVERIFIED list. Decompiles (outside the repo):
+`..\reference\RBM-decompiled\` (RBM v4.5.0.2, 6 DLLs), `..\reference\RTSCamera.CommandSystem-decompiled\`.
+
+**The five findings**
+1. **RBM's long battles come from formation-level AI plus its armour/damage rework**, nearly all hooked
+   with Harmony into formation internals: a charge that keeps slots and faces targets
+   (`OverrideFormationMovementComponent` on `HumanAIComponent.GetFormationFrame`, Charge → ChargeToTarget),
+   charging men who only want melee within ~2 m (`OverrideHumanAIComponent`: Melee 5.5 / 2 m 1 / 10 m 0.01
+   vs vanilla 8 / 7 m 4 / 20 m 1), per-man "frontline" micro (`Frontline.cs`), culture battle plans that
+   advance as formations until 75 m (`Tactics.cs`), and `ArmorMultiplier` 2 in its own damage formula.
+   Its per-man AI values (`AgentAi.OverrideSetAiRelatedProperties`) are NOT simply more defensive (a
+   skill-20 recruit blocks at 0.30 vs vanilla's 0.62). RBM has no rotation of tired men.
+2. **RBM's BackStep**: a prefix on `Formation.GetOrderPositionOfUnit` returns a spot 0-0.3 m behind the
+   man and locks his position there (`Agent.SetTargetPosition`, cleared at the next query), re-decided at
+   every formation-frame refresh (~0.5 s, `Agent._cachedAndFormationValuesUpdateTimer`), charge orders only,
+   formation frame switched off in a charge; no direction is set - the combat AI keeps him facing because
+   the target is never more than a shuffle away. **Ours turns** because `SetScriptedPositionAndDirection`
+   = `GoToPosition` navigation (item pickup, ladders): a navigating man faces his path and the direction
+   applies on arrival - 2 of 2159 arrived (inferred from the log; the native code is not visible).
+3. **The public fix**: `AgentComponent.OnAIInputSet(ref EventControlFlag, ref MovementControlFlag, ref Vec2
+   inputVector)` (public virtual; the engine calls it for agents with `Agent.SetHasOnAiInputSetCallback(true)`;
+   `inputVector` in the man's own frame) - write "backwards" for the step back (a backpedal facing what the
+   AI faces), clear only `AttackMask` and keep a defend bit up. RTS Camera Command System uses exactly this
+   (`CommandSystemAgentComponent`, `AgentAIInputHandler.OnAIInputSetForDefensiveHold`, `SetCancelAttack` =
+   clear AttackMask + DefendDown) and turns the callback on for EVERY agent - never switch it off. The same
+   hook can replace `NoAttack` in the AI timer, and with one component holding the attack bits until the
+   later of the pause and the step back ends, the pause survives a step back (BUGS "Empty AI attacks too
+   fast": 2.2 s cycles at empty vs 8.5-9.3 s; 976 pauses "not held: stepping back"). Fallbacks: RBM-style `SetTargetPosition` hops; a rank swap
+   (`Formation.SwitchUnitLocations`, public) for holding lines; the unused `Drag` scripted flag
+   (`SetDraggingMode`); 5d's hang-back behaviour values.
+4. **The log: tired men are defenceless**, and that is our biggest accelerant: blocked 2-13% while held by
+   the AI timer's `NoAttack`, 4-6% while stepping back (80% back turned mid-step, ~0.6 m of 2 m), vs
+   33-45% for everyone else; in the 240v240 **41%** of landed melee hits struck men in those two states;
+   Athletics empties within ~10 s of contact (your 207 infantry: f 0.22 at +10 s, 137 dead at +37 s). So
+   today more exhaustion = a SHORTER melee. (UNVERIFIED as cause: the held men's 2% could partly be who
+   gets held.)
+5. **The cheap sure levers are model-level**: a troop-only damage scale in `TraxDamageModel` (melee ∝ 1/k,
+   heroes exempt → heroes stand out), troop caution through the stat decorator (`AIAttackOnDecideChance` /
+   `AIAttackOnParryChance` × k - vanilla already does 3× by order via `Agent.Defensiveness`), a
+   `BattleMoraleModel` decorator (abstract, public), armour × k into
+   `StrikeMagnitudeCalculationModel.ComputeRawDamage`. Behaviour values (`agent.SetAIBehaviorValues`) and
+   rank swaps are public but only for HOLDING lines (a vanilla charge gives a man no slot) and must be
+   re-applied on every order change; giving charging men slots needs Harmony.
+
+**Recommended** (for Anton to pick): #2 the guard really up (fixes the step back and the AI timer's guard),
+#1 troop damage scale (start at 0.75), #3 troop caution as an A/B, then #4 rank rotation or #5 front ranks
+only for the tactical feel. Measure each with the existing summary lines (facing / moves / guard, damage,
+duration).
+
+**Compatibility notes for whoever builds it**: RTS Camera Command System patches `MovementOrder.GetSubstituteOrder`
+/ `GetPositionAux`, `Formation` spacing and tick, `ArrangementOrder`, `FacingOrder`,
+`HumanAIComponent.GetDesiredSpeedInFormation`, the order UI - NOT `GetOrderPositionOfUnit`,
+`GetDirectionOfUnit`, damage, stats or morale; its volley / defensive-hold modes rewrite AI input and set
+behaviour values on their own state changes (overlaps with #2 and #5).

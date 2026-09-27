@@ -594,3 +594,25 @@
   not running). Docs: DESIGN §2 (PAUSE ONLY folded in, the animations optional/legacy), §3 (the recovery
   bar), §4, interpretation 16, the table; PLAYTEST C1 / new C1b / C2 / C4-C7 / E1 / L1 / L5 / L7;
   CLAUDE layout; README. Commits 06ef514, d3f1dbe, 84e5ac0, 188510e + this. (2026.09.27 22.32.31)
+- [x] **Step 15 — research: battle pacing (no code).** Anton: battles end fast; he wants them slower for
+  tactics or stronger heroes, "like RBM but without the units overhaul", and "just let me see what is in
+  there". Wrote `docs/BATTLE_PACING.md`: the menu of 11 levers (length with confidence, tactical feel,
+  hero power, cost S/M/L, risk, Harmony, conflicts), a recommended package, the baseline from tonight's
+  log, RBM technique by technique, the step back, our levers, compatibility with our features and RTS
+  Camera Command System, the UNVERIFIED list. Decompiled RBM v4.5.0.2 (6 DLLs) and RTS Camera Command
+  System to `..\reference\` (outside the repo; nothing copied). Findings: RBM's length comes from
+  formation-level AI (a charge that keeps slots, charging men who want melee only within ~2 m, per-man
+  "frontline" micro, culture battle plans advancing as formations to 75 m) and its armour rework — almost
+  all Harmony into formation internals; its per-man AI values are not simply more defensive; no rotation.
+  RBM's BackStep = a 0-0.3 m position lock (`Agent.SetTargetPosition`) re-picked every ~0.5 s in a
+  charge, no direction set, so the combat AI keeps the man facing; ours turns because the scripted
+  `GoToPosition` is navigation (faces the path, the direction applies on arrival - 2 of 2159 arrived).
+  The public fix path: `AgentComponent.OnAIInputSet` (RTS Camera uses it) - write "backwards" into the
+  AI's local input vector, clear only the attack bits, keep the guard; the same hook can replace
+  `NoAttack` and keep the pause through a step back. The log: tired men are defenceless (blocked 2-13%
+  held by the AI timer, 4-6% stepping back, vs 33-45%), 41% of landed melee hits in the 240v240 struck
+  men in those states, Athletics empties within ~10 s of contact - so exhaustion currently shortens the
+  melee. Recommended: #2 the guard really up (+ the step back fixed, the pause kept), #1 a troop-only
+  damage scale (heroes exempt; start 0.75), #3 troop caution as an A/B, then #4 rank rotation or #5
+  front ranks only. AI_NOTES "Step 15"; TASKS_TODO 15 checked. No code, settings or defaults changed.
+  (2026.09.27 23.21.33)
