@@ -5,9 +5,9 @@ BUILD ORDER (one step at a time — [~] = in flight, see CLAUDE.md "manager prot
 - [x] 4. Damage randomness ±50% — first playable
 - [~] 5. Endurance core: blow costs, hero/leader multipliers, regen, 20% speed when empty
 - [ ] 5b. Rename Endurance → ATHLETICS everywhere (UI, keys, code, docs) + defaults.json — all defaults in one file I edit and push; MCM button reverts to it (DESIGN §2b, §2c)
-- [ ] 5c. Athletics v2: pool = Athletics skill (floor 50), 100-pt peak line, health caps the pool, damage upside + swing + run speed fall below the peak, regen by effort (DESIGN §2b)
+- [ ] 5c. Athletics v2: pool = Athletics skill (floor 50, a slider), 10 pts a blow, top 75–100% of the bar = full strength (green), health caps the pool, damage upside + swing + run speed fall below the peak, regen by effort (DESIGN §2b)
 - [ ] 5d. Tired AI fighters step back after melee swings — fresh ones take their place (DESIGN §2b)
-- [ ] 6. Player endurance bar (RBM posture style) — number, 100-pt marker, green/blue/yellow/orange/red
+- [ ] 6. Player Athletics bar (RBM posture style) — number, 75% peak marker, green/blue/yellow/orange/red
 - [ ] 7. Bar for the NPC I look at (toggle)
 - [ ] 8. Squad bars above my formations: average ± 1 std + average health
 - [ ] 9. Orders menu: strip under the formation cards (below the arrows) — endurance ± spread + health (no UIExtenderEx)

@@ -67,27 +67,39 @@ Step 5 builds §2 as written; step 5c then reshapes it as below and folds this s
   and so on). The rename is done in step 5b; "endurance" in this document means the same
   thing until then. TASKS_DONE history keeps its words.
 - **The pool IS the Athletics skill** (Anton's pick): pool = max(`AthleticsPoolFloor` (50),
-  `AthleticsPoolPerSkill` (1.0) × Athletics skill). Skill 180 → the bar tops at 180; anyone
-  under 50 still gets 50; a 300-skill hero gets 300. The bar's number matches the skill
-  screen. Riders too — Athletics, never Riding. Replaces the flat `MaxEndurance`. Changing
-  either number mid-battle keeps each fighter's fraction.
-- **The peak line** `AthleticsPeakPoints` (100, in POINTS, not a percent of the pool). At or
-  above it a fighter is at their peak: full damage upside, full swing speed, full run
-  speed, never steps back. Below it, each of those falls in a straight line with the points
-  left, down to its floor at 0. A 150-pool veteran stays at peak from 150 down to 100; a
-  50-pool recruit never reaches it.
+  `AthleticsPoolPerSkill` (1.0) × Athletics skill). Skill 180 → the bar tops at 180; a
+  300-skill hero gets 300. The bar's number matches the skill screen. Riders too —
+  Athletics, never Riding. Replaces the flat `MaxEndurance`. Changing either number
+  mid-battle keeps each fighter's fraction. The floor is Anton's experiment slider: real
+  troops (v1.4.8 data) have Athletics 20 (recruits), 40 (tier 2), 60 (elite cataphract),
+  130 (legionary), 170 (Fian champion) — without the floor a recruit would be empty after
+  two swings.
+- **Cost stays in points**: a blow costs `CostPerBlow` (10) points × the hero / leader
+  multipliers, whatever the pool. So a bigger Athletics pool = more blows = heroes stronger.
+- **The peak zone** — the top of every fighter's OWN bar (Anton, 2026-09-27, replacing the
+  earlier 100-point line as "too much"). At or above `AthleticsPeakPercent` (75) % of the
+  fighter's pool the bar is GREEN and the fighter is at full strength: full damage upside,
+  full swing speed, full run speed, never steps back. Below the line, each of those falls in
+  a straight line down to its floor at 0. With cost in points, bigger pools stay in the zone
+  longer — recruit (floor 50): 2 swings at full strength, 5 to empty; legionary (130): 4 and
+  13; Fian champion (170): 5 and 17; a 300-skill leader (cost 5.6): 14 and 53. A fresh
+  fighter always runs in and lands its first blows at full strength.
+  Below, `f = min(E / (AthleticsPeakPercent% × pool), 1)` — the share of the peak line left —
+  drives every curve; E = current Athletics points.
 - **Health caps the pool** (`HealthCapsAthletics`, on): the usable pool = pool × health
   left. Pool 100 at 75% health → 75; a fighter holding 80 drops to 75 at once, and regen
-  never fills above the cap.
-- **Damage upside follows endurance** (`DamageBonusFollowsAthletics`, on): the roll becomes
-  `[1 − p, 1 + p × min(E / peak, 1)]` with E = the attacker's endurance (the rider's for a
-  horse charge). At or above the peak +50%; at 50 points +25%; at 0 no upside at all — only
-  the −50% side. The downside never changes.
+  never fills above the cap. The peak line stays measured on the FULL pool, so a badly
+  wounded fighter can never climb back into full strength (at 50% health, f is at most
+  0.67) — wounds make you weaker, not only shorter-winded.
+- **Damage upside follows Athletics** (`DamageBonusFollowsAthletics`, on): the roll becomes
+  `[1 − p, 1 + p × f]` with f from the ATTACKER (the rider's for a horse charge). In the
+  peak zone +50%; halfway down to 0, +25%; at 0 no upside at all — only the −50% side. The
+  downside never changes.
 - **Swing speed is gradual** (Anton's pick, replaces the cliff): attack speed =
-  S + (1 − S) × min(E / peak, 1), S = `ExhaustedAttackSpeedPercent` (20%). Full speed at
-  the peak, 20% at 0. `ExhaustedRecoverPercent` retires. "Exhausted" still means E = 0 (for
-  logs and bars).
-- **Run speed follows endurance**: top speed on foot = M + (1 − M) × min(E / peak, 1),
+  S + (1 − S) × f, S = `ExhaustedAttackSpeedPercent` (20%). Full speed in the peak zone, 20%
+  at 0. `ExhaustedRecoverPercent` retires. "Exhausted" still means E = 0 (for logs and
+  bars).
+- **Run speed follows Athletics**: top speed on foot = M + (1 − M) × f,
   M = `MinMoveSpeedMultiplier` (0.3). Tired men slow down, so fresher men overtake them.
   Horses keep their speed (Anton's pick): `MountMinSpeedMultiplier` (1.0 = unaffected;
   lower it to let a tired rider's horse slow on the same curve).
@@ -99,7 +111,7 @@ Step 5 builds §2 as written; step 5c then reshapes it as below and folds this s
   and `MovingSpeedThreshold` retire.
 - **Tired fighters step back** (step 5d, `StepBackEnabled`, on): after each MELEE swing an
   AI fighter on foot may step back, facing its enemy with its guard up. Chance =
-  `StepBackMaxChancePercent` (100) × (1 − min(E / peak, 1)): 0% at the peak, 50% at half,
+  `StepBackMaxChancePercent` (100) × (1 − f): 0% in the peak zone, 50% halfway down to 0,
   every swing at 0. Back `StepBackDistance` (2 m) for up to `StepBackSeconds` (1.5 s), then
   the formation takes it again. Never the player, never riders, never after ranged attacks.
   The point: the tired fall back and the fresh step in. If the game's AI fights this,
@@ -138,9 +150,10 @@ Bars show only in fights (battle, duel, tournament modes) and never while the ga
 "hide battle UI" is on.
 
 **Additions (Anton, 2026-09-27):**
-- The player and target bars show the NUMBER and a marker at the peak line (100 points).
-  Fill colour by points: above the peak green; at or below the peak blue; at or below
-  `BarYellowBelowPercent` (75) % of the peak yellow; `BarOrangeBelowPercent` (50) orange;
+- The player and target bars show the Athletics NUMBER (current / pool) and a marker at the
+  peak line (`AthleticsPeakPercent`, 75% of the pool). Fill colour by f (the share of the
+  peak line left): in the peak zone green; below the line blue; f at or below
+  `BarYellowBelowPercent` (75) % yellow; `BarOrangeBelowPercent` (50) orange;
   `BarRedBelowPercent` (25) red.
 - Squads also show their AVERAGE HEALTH (`ShowFormationHealth`, on) — above the formation
   and in the orders menu.
@@ -229,9 +242,9 @@ test reads that table only) and removes the retired rows in the same commit.
 
 | Key | Default | Step | What it does |
 |---|---|---|---|
-| `AthleticsPoolFloor` | 50 | 5c | Smallest possible Athletics pool (for anyone with a low Athletics skill). Replaces `MaxEndurance`. |
+| `AthleticsPoolFloor` | 50 | 5c | Smallest possible Athletics pool (for anyone with a low Athletics skill; 0 = none). Replaces `MaxEndurance`. |
 | `AthleticsPoolPerSkill` | 1.0 | 5c | Pool per point of Athletics skill (1.0 → the bar tops at the skill). |
-| `AthleticsPeakPoints` | 100 | 5c | Athletics points at or above which a fighter is at their peak. |
+| `AthleticsPeakPercent` | 75 | 5c | At or above this % of their own pool a fighter is at full strength (green); below it they weaken in a straight line to 0. |
 | `HealthCapsAthletics` | true | 5c | Health left caps the usable pool. |
 | `DamageBonusFollowsAthletics` | true | 5c | The damage upside shrinks with the attacker's Athletics below the peak. |
 | `MinMoveSpeedMultiplier` | 0.3 | 5c | Top speed on foot at 0 endurance. |
@@ -242,7 +255,7 @@ test reads that table only) and removes the retired rows in the same commit.
 | `StepBackMaxChancePercent` | 100 | 5d | Chance to step back at 0 endurance (0 at the peak, straight line between). |
 | `StepBackDistance` | 2 | 5d | Metres a fighter steps back. |
 | `StepBackSeconds` | 1.5 | 5d | Longest a step back lasts before the formation takes over again. |
-| `BarYellowBelowPercent` | 75 | 6 | Bar turns yellow at or below this % of the peak. |
+| `BarYellowBelowPercent` | 75 | 6 | Bar turns yellow at or below this % of the peak line (blue just below the line, green above it). |
 | `BarOrangeBelowPercent` | 50 | 6 | Orange at or below this %. |
 | `BarRedBelowPercent` | 25 | 6 | Red at or below this %. |
 | `ShowFormationHealth` | true | 8 | Squad bars and the orders-menu strip also show average health. |
