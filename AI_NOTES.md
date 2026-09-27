@@ -1957,3 +1957,124 @@ full" with the small table) and interpretation 17 are the spec.
    MinMoveSpeedMultiplier: 0.3 → 0.7 …` then `rewrote config.json as format 3 …`, and the settings dump reads 0.7.
 2. The feel: 70% run at empty; the curve (fast back into the fight, slow to top off) → Anton; `refill from empty to
    the peak line` avg ≥ 40.7 s, close to it when men walked.
+
+## Step 16 — the guard really up + a step back that faces the enemy (research written before coding, 2026-09-27)
+
+Anton asleep, no questions (the manager's brief). Why: BATTLE_PACING.md lever #2 and section B, BUGS
+"defenceless", "backs turned", "empty AI attacks too fast". The 240v240 log: held men blocked 2%, stepping-back
+men 5%, everyone else 33%; 80% of step backs had the back turned mid-step, 0.59 m of 2 m moved, 2 of 2159
+arrived; at empty the step back fires every swing and a started step back dropped the hold (R1's rule), so the
+empty band read a 2.2 s cycle against 8.5 s.
+
+**Verified in the v1.4.8 source (`..\reference\game-decompiled\TaleWorlds.MountAndBlade\`)**
+- `AgentComponent` (public abstract): `protected readonly Agent Agent`, ctor `(Agent)`, `public virtual void
+  OnAIInputSet(ref Agent.EventControlFlag, ref Agent.MovementControlFlag, ref Vec2 inputVector)`; also OnTick,
+  OnTickParallel, OnAgentRemoved, OnComponentRemoved, OnFormationSet… all empty virtuals.
+- `Agent.OnAIInputSet` is an `[MBCallback(null, false)]` - the second argument is `isMultiThreadCallable`
+  (MBCallback.cs): **false = the engine calls it from the main thread only**. It loops `foreach (AgentComponent c in
+  _components) c.OnAIInputSet(ref …)` - so every component sees the input in the order it was ADDED, each one after
+  the edits of the ones before (the last writer wins). `_components` is an `MBList` = a `List<T>`: never add or remove
+  a component inside the callback (the foreach would throw).
+- `Agent.SetHasOnAiInputSetCallback(bool)` / `GetHasOnAiInputSetCallback()` - public, native flag per agent. Nothing
+  in the game turns it on (no vanilla component overrides OnAIInputSet) - without another mod it is off for everyone.
+- `Agent.AddComponent` just appends (and sets CommonAIComponent / HumanAIComponent for those types); `Initialize()`
+  is called only by `InitializeComponents` at the agent's build - a component added mid-battle is not initialized
+  (ours needs nothing). `RemoveComponent` calls `OnComponentRemoved`. A removed agent keeps its list (its components
+  get `OnAgentRemoved`).
+- **Tick order** (Mission.cs): `OnPreTick` waits for the async agent tick, then behaviours' `OnPreMissionTick`; the
+  native tick; `Mission.OnTick` runs every behaviour's `OnMissionTick` (our tick) and THEN starts
+  `TickAgentsAndTeamsAsync` (the components' OnTickParallel / OnTick). So while our `OnMissionTick` runs nobody
+  iterates an agent's component list: **adding a component from our tick is safe**.
+- `Agent.MovementControlFlag`: Forward 1, Backward 2, StrafeRight 4, StrafeLeft 8, TurnRight 0x10, TurnLeft 0x20,
+  AttackLeft 0x40 / Right 0x80 / Up 0x100 / Down 0x200 (`AttackMask` 0x3C0), DefendLeft 0x400 / Right 0x800 / Up 0x1000
+  / Down 0x2000, **DefendAuto 0x4000** (`DefendMask` 0x7C00, `DefendDirMask` 0x3C00), DefendBlock 0x8000, Action
+  0x10000. `EventControlFlag` (kick 0x8000, jump, wield, walk / run…) is separate - never touched.
+- `inputVector` is the movement in the man's OWN frame: the player controller writes `MovementInputVector =
+  (MovementAxisX, MovementAxisY)`, S = (0, −1) (MissionMainAgentController ~915). World ↔ local: `Agent.Frame`
+  (native `GetRotationFrame` - the body frame) `.rotation.TransformToLocal(v)` = (s·v, f·v) (Mat3.cs) - RTS Camera
+  does exactly this. `Agent.IsMainAgent` = `this == Mission.Current?.MainAgent` (managed); `IsAIControlled` reads the
+  native controller pointer.
+- Attack bits vanishing DURING a ready = the button let go = the RELEASE (step 13's finding for the player - the
+  same input path for the AI). So a hold must never clear the bits of a man already in a ready; to stop a ready
+  the way a player does, clear them AND press block - RTS Camera's `SetCancelAttack` = `&= ~AttackMask; |= DefendDown`.
+
+**RTS Camera Command System 5.3.x** (`..\reference\RTSCamera.CommandSystem-decompiled\`, which Anton runs)
+- `CommandSystemLogic.OnAgentCreated` → `agent.AddComponent(new CommandSystemAgentComponent(agent))` for EVERY agent;
+  its `Initialize()` (called at the build) → `SetHasOnAiInputSetCallback(true)`: with RTS Camera every agent already
+  has the callback on. It never turns it off (`UpdateHasOnAiInputSetCallback` only ever sets true).
+- Its `OnAIInputSet` → `AgentAIInputHandler`: (1) **defensive hold** - only for `agent.IsAIControlled`, a formation in
+  Circle / ShieldWall / Square and not charging: `SetAgentFlags(~AgentFlag.CanAttack)` and, with an enemy within 20 m,
+  it rewrites `inputVector` to walk him back to his slot without turning; (2) **volley** (ranged men with RTS's volley
+  mode on): sets / clears attack bits to draw and loose on command, `SetCancelAttack` to cancel.
+- **Coexistence, decided**: ours is added LATER (lazily, mid-battle) than RTS Camera's (at creation), so ours runs
+  after it and wins the frame. (1) Our step back refuses shield wall / square / circle (5d) - exactly the only
+  arrangements RTS's defensive hold acts in - so the two never move the same man; our timer there only clears attack
+  bits RTS has already disabled (CanAttack off) - both say "no attack". (2) A tired archer under RTS's volley: our
+  timer clears the bits it sets to draw - he waits out his pause, as NoAttack made him wait before (the pause is the
+  hard floor; RTS's own timers cancel the volley shot after 4-7.5 s). (3) A man the PLAYER commands directly (RTS
+  lets you take any soldier): `IsMainAgent` / not AI-controlled - our callback returns untouched, the step back ends
+  (`PlayerControl`), the hold ends (`MustEnd`), and nothing new starts on him. (4) **The callback flag**: we turn it on
+  for a man when we hook him; we turn it off again only when he is idle AND it was off before we turned it on AND no
+  other component on him overrides OnAIInputSet (checked by reflection, cached per type) - so RTS Camera's (or any
+  mod's) callback is never switched off.
+- Also seen: `AgentFlag.CanAttack` (RTS's defensive hold) - a third "no attack" lever. Not used (unknown guard
+  behaviour, and it is an agent flag others write); noted as a fallback.
+
+**The build (Claude's calls - Anton can overturn any)**
+1. **One component per man, added lazily** (`AiInputComponent`, Missions/AiInputHook.cs) at his first Input hold or
+   backpedal - from the tick, never inside a callback. At spawn would cost ~1000 objects and a callback for every
+   fresh man; lazily only tired men who are really held get one. It holds a plain state object (`AiInputState` on
+   `TrackedAgent`: hold / step-hold / backpedal flags + the local vector + counters) that the logic writes in its tick;
+   the callback's early-out is one bool. It stays on the agent for his life (removing it buys nothing); the callback
+   flag goes off when he is idle (the rule above).
+2. **The AI timer by input** (`AttackRatePaceByInput`, on): instead of NoAttack, the callback clears ONLY the attack
+   bits while the timer runs; defend bits, movement, the vector and every event flag stay his own. When he wanted to
+   attack and holds no guard of his own, he raises one (`AiHoldRaiseGuard`, on - `DefendDown`, RTS Camera's proven
+   cancel bit; with a shield it is the shield) - "waits guard up" made literal, and a ready that was somehow under way
+   is CANCELLED instead of released (in a ready the guard bit is set whatever the switch says). No flag hygiene needed
+   (nothing shared): no "waiting for a game job"; a man busy with a game job (object, ladder, detached, walking to an
+   object) is still refused, as before, so A/B arms hold the same men.
+3. **The step back by input** (`StepBackBackpedal`, on): the same roll, queue, cap, probe (the 5d safety gates: not
+   the player, riders, shield wall / square / circle, retreat, routing, busy, the enemy within range, the spot on the
+   navmesh, level, a straight clear way - for the WHOLE StepBackDistance) - then, instead of a scripted frame, the
+   callback writes a backwards input: the fixed world direction straight away from his enemy at the start (the line
+   the probe checked), turned into his own frame every tick from his current body frame (so he backs along the
+   checked line whichever way the AI turns him - facing his enemy he simply walks backwards), at full stick (1.0 -
+   like you holding S; the engine's backpedal speed and his tired run cap ride on it - plumbing, not a gameplay number).
+   It ends at StepBackDistance covered along the line ("arrived"), at StepBackSeconds, on every 5d path, or when the
+   ground 0.6 m further back stops being walkable (navmesh, height step, straight way - checked every 0.25 s:
+   "edge ahead" - so a man backing along a wall walk or a ditch edge stops). Attacks held meanwhile
+   (`StepBackHoldAttacks`) by the same bit rule. At its end we simply stop writing: his AI and formation take him back.
+   RBM's short `SetTargetPosition` hops were the alternative: a native position lock that fights an active formation
+   frame in a holding line (RBM uses it only in a charge, frame off) and still needs NoAttack for the attacks - the
+   input route is cleaner and is what RTS Camera already does to walk men without turning them.
+4. **The timer survives a step back**: R1's "a started step back drops the hold" is gone. Input timer: the hold starts
+   whatever the step back does; one component clears the attack bits while EITHER runs, so attacks resume at max(timer
+   end, step end). Legacy timer (NoAttack) under a SCRIPTED step (its frame owns the flag word): the hold is DEFERRED
+   and set the tick the step back ends if time is left (else "covered by the step back"); under a backpedal it just
+   starts. R1's original bug (a hold skipped for a step back that was then refused) cannot come back: the hold never
+   looks at a PENDING step back and is never skipped for a running one - the smoke checks a refused, a started and a
+   deferred case.
+5. **A/B**: two booleans, both on - `AttackRatePaceByInput` (the timer) and `StepBackBackpedal` (the step back), plus
+   `AiHoldRaiseGuard`; off = the step-13 / 5d techniques exactly (NoAttack, the scripted walk), with the new survival
+   rule. Read at each START (a running hold / step finishes on the technique it began with); every switch logged.
+   ModEnabled / AthleticsEnabled / AttackRatePaceHold / StepBackEnabled off release at once as before (the state
+   cleared → the callback writes nothing from the next frame; the callback itself also checks ModEnabled and
+   AthleticsEnabled first).
+6. **Measured** (the summary): the GUARD by state (held by the timer / stepping back / everyone else, and "everyone
+   else" split tired vs full strength); the input hook (men hooked, callback already on vs turned on by us, calls per
+   second per hooked man, attack bits cleared, guards raised, own guards kept, readies cancelled, backpedal frames,
+   holds during which the engine never called us - must be 0, component errors); facing every 0.25 s for every step
+   back and "back turned at any sample"; arrived / edge ahead; holds that overlapped a step back and attacks that
+   started before the later end; the technique in the summary header; the timer's floor D/m per band, and cycles
+   with a step back inside now COUNT in the verdict (the timer survives them) and are shown apart.
+7. **Expected, and why the verdict may still read "too fast"**: DESIGN's pause is D × (1/m − 1) - the attack part
+   runs at × m, the AI's own gap after an attack runs INSIDE the timer. The verdict's target is the fresh cycle ÷ m
+   (step 13 decision 12). NoAttack cost the AI a 1-3 s re-decision after it lifted, which happened to fill the gap;
+   the input hook has no such latency. So the check that the SPEC holds is the timer rows (gap ≥ asked, 0 early) and
+   the new "cycle vs the timer's floor D/m" ≥ ~100%; the verdict against fresh ÷ m is reported as before.
+
+**Plumbing constants** (documented, not settings): backpedal input 1.0; the ground check 0.6 m further back every
+0.25 s; the facing sample every 0.25 s; `DefendDown` as the raised guard; the callback-off rule.
+
+**UNVERIFIED - only the game can tell** (filled in with the lines that settle each once built - below)
