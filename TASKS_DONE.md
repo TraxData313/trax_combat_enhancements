@@ -78,3 +78,30 @@
   UNVERIFIED in game (AI_NOTES Step 3): launcher load with/without MCM, MCM timing and
   mid-battle menu, decorators' base models, summary on every ending. PLAYTEST §1 has the lines
   that prove each. (2026.09.27 14.13.58)
+- [x] **Step 4 — damage randomness.** Every landed hit now deals the game's damage × a fresh
+  factor drawn uniformly from [1 − p, 1 + p) (p = `DamageRandomPercent`, default 50). Core
+  (pure, tested): `DamageRoll` — the skip rules as one decision (object / no victim / fall /
+  a hit the game shows as 0, then master switch, spread 0, shield and mount toggles, melee and
+  ranged toggles — target and attack toggles combine), the game's own banker's rounding (0
+  stays 0, a positive hit never below 1); `ThreadSafeRandom` ([ThreadStatic] per-thread dice,
+  `IRandomSource` injectable); `DamageStats` — per-mission rolls by kind (melee / ranged /
+  mounts / shields), min/avg/max factor, damage before → after, a 10-slice dice histogram,
+  every skip by reason, errors per site, off-main-thread count, and the `[summary]` text. 39
+  new tests (92), incl. a 200k-roll distribution check. Module: `TraxDamageModel` overrides
+  ONLY `ApplyGeneralDamageModifiers` — BaseModel first (outside our try), then
+  `DamageRandomizer` rolls on its result with settings read live per hit (MCM mid-battle →
+  next hit); any exception in our part returns the game's value, the first per site per
+  mission is logged with its stack, the rest counted. Logs: `[damage] mission start` (settings
+  in effect), an always-on `first roll this mission` line naming the thread, verbose roll and
+  skip lines (skips in their own rate-limit bucket — new `TraxLog.Verbose(tag, msg, bucket)`),
+  and the `[summary]` damage block (EnduranceLogic resets at AfterStart). Thread question
+  closed from source: all hit callbacks are `[MBCallback(null, false)]` = main thread
+  (RESEARCH §A); the log proves it in game. OfflineSmoke +6 checks (22): the real decorator
+  over the game's `CustomAgentApplyDamageModel`, fed hits built with the game's public
+  `AttackCollisionData.GetAttackCollisionDataForDebugPurpose` — bounds, mean, all four kinds,
+  every skip, hot swap, fail safe, log + summary lines, off-thread detection
+  (`TRAX_SMOKE_KEEP=1` keeps its log). PLAYTEST §2 written (same blow different numbers,
+  shoot, horse + charge, shields, spread 0 and ranged off mid-battle, falls/objects, summary).
+  No new parameters, DESIGN unchanged. UNVERIFIED in game (AI_NOTES Step 4): the engine
+  calling the hook in every battle type, shield HP following the roll, object hits, name
+  wording. (2026.09.27 14.34.04)

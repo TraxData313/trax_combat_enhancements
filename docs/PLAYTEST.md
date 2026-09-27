@@ -24,8 +24,8 @@ Every log line looks like `2026.09.30 20:15:02.117 [tag] message`. The tags: `[l
 
 ## 1. Loading, config, MCM, log
 
-At this step the mod changes nothing in a fight — damage and attack speed are still vanilla.
-It only loads, keeps its settings, and writes the log. Check it before the features.
+This section checks the frame only — loading, settings, the log. Check it before the
+features (damage randomness, section 2, is already active in every fight).
 
 **1a. The mod loads — with MCM.** Enable MCM, start the game.
 - You see: at the main menu, a line *"Trax Combat Enhancements 0.1.0… loaded - settings in
@@ -99,8 +99,8 @@ Mod Options → move *Spread (± %)* from 50 to 40, press Done.
   - `[summary] ==== end of summary ====`
 - Every mission gets these lines — towns, taverns and arenas too (then "other mission").
 
-**1h. The two hooks are in place (vanilla behaviour, for now).** Once per game start/load:
-- `[damage] damage model decorator registered over SandBox.GameComponents.SandboxAgentApplyDamageModel (pass-through until step 4)`
+**1h. The two hooks are in place.** Once per game start/load:
+- `[damage] damage model decorator registered over SandBox.GameComponents.SandboxAgentApplyDamageModel - damage randomness rolls on its result (ApplyGeneralDamageModifiers)`
   — with War Sails on, over `NavalDLC.GameComponents.NavalAgentApplyDamageModel`; in a custom
   battle over `TaleWorlds.MountAndBlade.CustomAgentApplyDamageModel`.
 - `[speed] agent stat model decorator registered over … (pass-through until step 5); tournament AI-level fix active over N base model(s)`
@@ -114,5 +114,96 @@ Mod Options → move *Spread (± %)* from 50 to 40, press Done.
 - If RBM is enabled you see a yellow line *"Trax Combat Enhancements is not compatible with
   Realistic Battle Mod - disable one of them."* and the log says
   `[compat] Realistic Battle Mod is ENABLED (…) - NOT compatible…`. Test with RBM off.
+
+---
+
+## 2. Damage randomness
+
+Every hit that lands — yours, your troops', the enemy's — deals a fresh random share of its
+normal damage: by default anything from 50% to 150%. How it works: the game computes a hit's
+damage as usual (weapon, swing speed, skill, perks, armour), and just before it applies the
+number we multiply it by a dice roll. A hit the game makes 0 stays 0; a real hit never drops
+below 1. Knockdown, stagger and dismount are still the game's own rules, but they read the
+rolled number — a big roll knocks down more often.
+
+Set up once: `VerboseLogging` on (MCM → Advanced → *Verbose log*), and in the game's Options →
+Gameplay, *Report Damage* on (the default) so you see "Delivered N damage" for your hits.
+A **custom battle** against a weak side (looters, or a small recruit army) is the easiest
+ground for all of this.
+
+**2a. The hook is live.** Start the battle, let anyone land a hit.
+- Log, at the start:
+  `[damage] mission start: damage randomness ON, spread ±50% (a 50-damage hit lands for 25-75), melee on, ranged on, on mounts on, on shields off - read live on every hit`
+- Log, at the first hit anybody lands (always written, verbose or not):
+  `[damage] first roll this mission - on the main thread: melee on a person: Imperial Recruit → Looter, Pitchfork, 18 → 23 (x1.26)`
+  — proves the game calls our hook. "on the main thread" settles an open question; if it
+  says `NOT the main thread`, tell Claude (it is still safe, the dice are per thread).
+- In a custom battle the registration line says `… registered over TaleWorlds.MountAndBlade.CustomAgentApplyDamageModel …`.
+
+**2b. Same blow, different numbers.** Strike looters the same way ~10 times — e.g. overhead
+swings to the body, standing still, same weapon.
+- You see: "Delivered N cut damage." jumping around between near-identical hits (a
+  34-damage blow lands anywhere from 17 to 51). The combat detail often adds "Extra damage
+  from skills, perks and effects: N" or "Reduced damage …" — that is mostly our roll.
+- Log (verbose), one line per hit:
+  `[damage] melee on a person: <your name> (you) → Looter, <weapon>, 34 → 41 (x1.21)` —
+  game's number → the number you saw, and the factor, always between x0.50 and x1.50.
+
+**2c. Shoot.** Bow, crossbow or javelins at the enemy.
+- Log: `[damage] ranged on a person: <your name> (you) → Looter, <the arrows / bolts / javelin>, 27 → 19 (x0.70)`
+  (for a missile the "weapon" is the missile item).
+
+**2d. Hit a horse — and ride into people.** Strike or shoot an enemy's horse (not the rider),
+then charge infantry on horseback at speed.
+- You see: "Delivered N damage to mount." varying like the rest.
+- Log: `[damage] melee on a mount: <your name> (you) → horse <horse> of <rider>, <weapon>, 30 → 22 (x0.73)`
+- Charge bump (counts as melee): `[damage] horse charge on a person: horse <your horse> of <your name> (you) → Looter, charge bump, 12 → 15 (x1.25)`
+
+**2e. Hit a shield.** Strike (or shoot) an enemy who holds his shield up.
+- Default — shield damage is NOT rolled. Log:
+  `[damage] not rolled - shield blocks (DamageRandomOnShields off): melee on a shield: <your name> (you) → Looter, <weapon>, 18`
+- Optional: MCM → *Randomize shield damage* on, hit shields again →
+  `[damage] melee on a shield: … 18 → 24 (x1.33)`. The line proves the roll; the shield's hit
+  points are then cut inside the engine from that number (not checkable offline — a shield
+  breaking after fewer or more blows than usual confirms it). Turn it back off.
+
+**2f. Spread to 0 mid-battle.** Escape → Options → Mod Options → Trax Combat Enhancements →
+*Spread (± %)* → 0 → Done → back to the fight → the same blow a few times.
+- You see: the same blow now delivers the same number every time (vanilla).
+- Log: `[config] DamageRandomPercent: 50 → 0 (source: MCM)` (dragging logs each step), then
+  per hit `[damage] not rolled - spread 0 (DamageRandomPercent): melee on a person: …`.
+- Put it back to 50: the VERY NEXT hit rolls again (`[damage] melee on a person: … (x…)`).
+
+**2g. Ranged off mid-battle.** MCM → *Randomize ranged hits* off → shoot, then hit in melee.
+- Log: `[config] DamageRandomRanged: true → false (source: MCM)`; arrows
+  `[damage] not rolled - ranged (DamageRandomRanged off): ranged on a person: …`; melee hits
+  still roll. Turn it back on.
+- The other switches work the same way (optional): *Randomize melee hits* →
+  `not rolled - melee (DamageRandomMelee off)` (charge bumps too); *Randomize hits on horses* →
+  `not rolled - on mounts (DamageRandomOnMounts off)`; the master *Damage randomness* →
+  `not rolled - switched off (DamageRandomEnabled)`.
+
+**2h. Never rolled: falls and objects** (optional, in a siege). Jump off a wall; hit a gate
+or a siege engine with an axe.
+- Log: `[damage] not rolled - fall damage: fall on a person: … → <your name> (you), no weapon, 12`
+  and `[damage] not rolled - objects (doors, siege engines, ships): melee on an object: <your name> (you) → (object), <weapon>, 30`.
+
+**2i. The summary.** End the battle (win, lose or retreat). The `[summary]` block now has:
+```
+[summary] damage rolls: 812 hits (melee 650, ranged 120, mounts 40, shields 2); factor min 0.50 / avg 1.002 / max 1.50; damage 21934 → 22011 (+0.4%)
+[summary] damage by kind: melee 650 x0.50..1.50 avg 1.004 (17000 → 17100) | ranged 120 x0.50..1.49 avg 0.996 (… → …) | mounts … | shields …
+[summary] damage dice, 10 equal slices from the lowest to the highest possible roll (even = fair): 81 79 85 80 77 84 83 80 79 84
+[summary] damage not rolled: 37 hits - fall damage 3, spread 0 (DamageRandomPercent) 4, shield blocks (DamageRandomOnShields off) 30
+[summary] damage roll errors: none
+[summary] damage rolls ran on the main thread: all 812
+```
+- What proves what: **min ≥ 0.50 and max ≤ 1.50** → the bounds hold; **avg ≈ 1.00** and
+  damage before ≈ after → fair on average (a small fight wobbles a few percent); the **dice
+  slices** roughly even (clearer in a big battle); every switch you flipped shows up as its
+  own reason under **not rolled**; **errors: none**.
+- In a big battle expect `[log] N more verbose [damage] lines were suppressed by the rate limit`
+  — that is the flood guard, not a problem.
+- If `damage roll errors` is not "none": the game kept its own damage for those hits, the
+  first one per mission is an `[error] damage.roll: …` block with its stack above — send the log.
 
 (steps below are added as the features land)

@@ -145,20 +145,78 @@ EnduranceLogic stub); `module/SubModule.xml` v0.1.0; `tools/deploy.ps1` (build �
 8. `Utilities.GetModulesNames()` at OnSubModuleLoad (module list + RBM detection).
 9. `InformationManager.DisplayMessage` at the main menu (load line, RBM line, error line).
 
-## Step 4 — Damage randomness
+## Step 4 — Damage randomness (DONE 2026-09-27)
 
-- `TraxDamageModel : AgentApplyDamageModel` (decorator): override
-  `ApplyGeneralDamageModifiers` only (last step after armor), forward ~30 other members to
-  `BaseModel`. Skip: not an agent collider, victim null, shield-blocked, fall damage.
-  Ranged = `cd.IsMissile`; mount victim = `ai.IsVictimAgentMount`; horse charge = melee.
-  Positive → never below 1 (game rounds). Thread-safe RNG. See RESEARCH §A.
-- Core: `DamageRoll` (factor draw, clamp) + roll statistics for the `[summary]`.
-- Implications 2–4 (knockdown follows the roll; shields; charge/fall) — confirm with Anton.
-- (from step 3) `Models/TraxDamageModel.cs` exists and is registered (`SubModule.RegisterModels`)
-  — change only `ApplyGeneralDamageModifiers` (call BaseModel first, wrap the rest in try/catch
-  → `TraxLog.Error("damage.roll", e)`, return the base value on error). Settings via
-  `TraxSettings.Shared.*` per hit. Summary lines go in `EnduranceLogic.WriteSummary` (marked);
-  reset the accumulator at mission start (the damage model outlives missions).
+**Built** (file map in CLAUDE.md "Layout"): Core `RandomSource.cs` (IRandomSource,
+ThreadSafeRandom, SeededRandom), `DamageRoll.cs` (HitFacts, DamageRules, Decide, Factor,
+Apply, Roll, GameRound), `DamageStats.cs` (per-mission stats + summary text) + 39 tests (92
+total, incl. a 200k-roll distribution check: bounds, mean, flat histogram). Module
+`Models/DamageRandomizer.cs` + `TraxDamageModel.ApplyGeneralDamageModifiers` (the only
+non-forwarding member); `EnduranceLogic.AfterStart` → `DamageRandomizer.OnMissionStart()`,
+`WriteSummary` → `DamageRandomizer.WriteSummary()` (own try). `TraxLog.Verbose(tag, msg,
+bucket)` overload. OfflineSmoke +6 checks (22) in `Program.Damage.cs`. PLAYTEST §2.
+
+**The flow per hit** (main thread): `BaseModel.ApplyGeneralDamageModifiers` (outside our try —
+its exceptions are the game's own) → `HitFacts` from `cd.IsColliderAgent`,
+`ai.IsVictimAgentNull`, `cd.IsFallDamage`, `cd.AttackBlockedWithShield`, `cd.IsMissile`,
+`ai.IsVictimAgentMount`, `cd.IsHorseCharge` → `DamageRules.From(TraxSettings.Shared)` (live) →
+`Decide` → skip (counted, verbose line in bucket `damage-skip`) or `Roll` (counted, first roll
+per mission always logged with its thread, verbose line otherwise) → the game rounds our value.
+
+**Decisions**
+- **Skip order** (first match wins, each counted by reason): object (not an agent collider) →
+  no victim → fall → the game's value rounds to 0 → master switch → spread 0 → shield toggle →
+  mount toggle → melee/ranged toggle. Target toggles (shield, mount) and attack toggles
+  (melee/ranged) COMBINE: an arrow into a horse rolls only with Ranged AND OnMounts on.
+- **Category** for the stats is exclusive: shield → mount → ranged → melee. Horse charge =
+  melee (follows `DamageRandomMelee`). Kicks/bashes (`IsAlternativeAttack`) = melee, rolled.
+  Missile area damage and siege-engine shots at people = ranged (they are `IsMissile`).
+  Friendly fire rolls too (a landed strike); its verbose line says "friendly fire".
+- **Rounding rule, precisely**: the game does `(int)Math.Round(x)` (banker's: 0.5 → 0, 2.5 → 2).
+  "0 stays 0" = if the game's value would SHOW as 0 (x ≤ 0.5) we return it untouched; else
+  `max(1, x·f)`. Factor = 1 − p + 2p·u with u ∈ [0,1) → [1 − p, 1 + p); the top is never quite
+  reached (fine). p = 100 can draw ~0 → floor 1.
+- **Errors**: our part throws → the game's value; `DamageStats.AddError(site)` is true only the
+  first time per site per mission → that one goes to `TraxLog.Error` (stack + red in-game line),
+  the rest are counted in the summary ("damage roll errors: N (damage.roll N)"). Sites:
+  `damage.roll` (the hook), `damage.log` (building a log line — the roll still stands),
+  `damage.mission-start`, `damage.summary`.
+- **Thread**: verified from source — every hit callback is `[MBCallback(null, false)]`
+  (not multi-thread callable) → main thread (RESEARCH §A updated). Still: dice per thread,
+  stats under one uncontended lock, and every roll compares its thread with the one
+  `OnMissionStart` ran on → summary "ran on the main thread: all N" or "OFF the main thread".
+- **No new parameters.** The histogram's 10 slices and the verbose bucket name are log
+  plumbing, not gameplay numbers.
+- Implications 2–4 of RESEARCH (knockdown follows the roll; shields not rolled by default;
+  charge = melee, fall/objects never) are already in DESIGN §1 and Interpretation 9; the code
+  follows them. DESIGN unchanged in this step.
+
+**Gotchas**
+- `AttackCollisionData` has private fields; offline it is built with the game's public
+  `AttackCollisionData.GetAttackCollisionDataForDebugPurpose(...)` (IsHorseCharge =
+  ChargeVelocity > 0, IsFallDamage = FallSpeed > 0). `AttackInformation` has public fields —
+  `new AttackInformation { IsVictimAgentNull = …, IsVictimAgentMount = … }` works offline.
+  `CustomAgentApplyDamageModel.ApplyGeneralDamageModifiers` returns its input → a clean base
+  for offline checks (`model.Initialize(base)` sets BaseModel).
+- The verbose limiter is keyed by bucket: a flood in one bucket (the smoke's flood check)
+  empties it for ~2 s — the smoke sleeps 1 s before its verbose checks.
+- The game's combat log already shows "Extra damage from skills, perks and effects: N" /
+  "Reduced damage…" whenever `CalculateDamage` changes the value (`combatLog.ModifiedDamage`) —
+  our roll shows up there, mixed with perks.
+- `Agent.Name` allocates (TextObject.ToString) — only in the verbose/first-roll path.
+
+**UNVERIFIED — only the game can tell (PLAYTEST §2 has the lines)**
+1. The engine calls our `ApplyGeneralDamageModifiers` for every landed hit in campaign,
+   custom battle and naval battles (`[damage] first roll this mission` line).
+2. Hit callbacks on the main thread (source says so; the first-roll line proves it).
+3. Shield HP: the native `Agent.OnShieldDamaged(slot, inflictedDamage)` uses the collision's
+   (rolled) InflictedDamage — only matters with `DamageRandomOnShields` on.
+4. Object hits (gates, siege engines) really reach the model as `!IsColliderAgent` (counted as
+   "objects") — source says `GetAttackCollisionResults` runs for them with damage > 0.
+5. Names in the verbose line for the player, mounts (`horse X of Y`) and missiles (the missile
+   item) read well in game.
+6. Combined with other damage mods (only RBM is declared incompatible): the summary's before →
+   after is the tool.
 
 ## Step 5 — Endurance core
 
@@ -178,6 +236,16 @@ EnduranceLogic stub); `module/SubModule.xml` v0.1.0; `tools/deploy.ps1` (build �
   as the FIRST line of `InitializeAgentStats` / `UpdateAgentStats` (tournament fix), scale after
   `BaseModel.UpdateAgentStats`. `Missions/EnduranceLogic.cs` is attached to every SP mission and
   already counts agents built/removed for the summary — grow it, keep every hook wrapped.
+- (from step 4) Copy the damage pattern: pure rules + a thread-safe stats class with its own
+  `SummaryLines()` in Core (tested), a thin module class that feeds it, reset in
+  `EnduranceLogic.AfterStart`, written in `WriteSummary` in its own try (after the damage
+  block, at the marked spot). Per-mission "log the first error per site, count the rest":
+  `DamageStats.AddError(site)` — reuse the idea. Chatty lines: `TraxLog.Verbose("endurance",
+  msg, bucket)` — give each chatty kind (blow, regen tick, exhaustion) its own bucket so one
+  cannot starve the others. The damage model's hook runs INSIDE the hit (before
+  `OnMeleeHit`/`OnAgentHit`), so a landed-blow cost (`CostOnMiss=false`, couched lance) belongs
+  in the mission events, not in the damage model. Offline: `Program.Damage.cs`'s `Hit(...)`
+  shows how to build real hit structs without the game.
 
 ## Step 6 — Player bar
 

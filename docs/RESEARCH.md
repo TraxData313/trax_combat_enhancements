@@ -172,8 +172,12 @@ if (starter.Models.Any(m => m is AgentApplyDamageModel))
 
 - The `Models.Any` guard skips game types without a damage model (no null `BaseModel`).
 - "Never rounds below 1": the game does `MathF.Round(result)`, so return `Max(1f, d * f)`.
-- RNG: use a thread-safe generator (`[ThreadStatic] Random` in Core) — which thread the hit
-  callbacks run on is **UNVERIFIED** (engine callbacks).
+- RNG: use a thread-safe generator (`[ThreadStatic] Random` in Core). Thread (step 4, read
+  in source): `MeleeHitCallback`, `MissileHitCallback`, `MissileAreaDamageCallback`,
+  `ChargeDamageCallback`, `FallDamageCallback` are all `[MBCallback(null, false)]` —
+  `isMultiThreadCallable: false` (`MBCallback.cs`), unlike e.g. `OnFixedTick` /
+  `GetDefendCollisionResults` (`true`) — so damage runs on the **main thread**. The in-game
+  `[damage] first roll this mission - on the main thread` line confirms it (PLAYTEST §2a).
 - The combat log / "report damage" line shows the rolled number (`combatLog.ModifiedDamage`)
   — a free visual check.
 
@@ -706,7 +710,7 @@ switch can flip mid-battle. Hand edits of `config.json`: re-read in
 | 1 | Native clamp of a 0.2 `SwingSpeedMultiplier` / `ThrustOrRangedReadySpeedMultiplier` / `ReloadSpeed`; whether bows/crossbows also need the `Bipedal*` values | 5 |
 | 2 | Every mounted swing appears as `ReleaseMelee` on channel 1; fastest release duration (poll density) | 5 |
 | 3 | Cost of polling ~1000 agents per frame (measure; fallback `OnTickParallel`) | 5 |
-| 4 | Thread of hit callbacks (RNG is made thread-safe anyway) | 4 |
+| 4 | Thread of hit callbacks (RNG is made thread-safe anyway) — step 4: main thread by the callbacks' `[MBCallback(null, false)]`; the log's first-roll line confirms in game | 4 |
 | 5 | Rider's own `MovementVelocity` (we use the mount's) | 5 |
 | 6 | MCM fluent + format `"none"` end to end; build-time `BaseSettingsBuilder.Create` non-null timing | 3 |
 | 7 | Binding `ScaledPositionXOffset` from a prefab vs a custom anchor widget | 8 |

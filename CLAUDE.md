@@ -120,6 +120,14 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
   ConfigMerge.cs              THE FILE-REWRITE RULE (MCM wins for what it touched, the disk for
                               the rest) + EditTracker (what MCM changed since the last write)
   RateLimiter.cs              per-tag token bucket for chatty log lines, counts what it drops
+  RandomSource.cs             IRandomSource (injectable dice); ThreadSafeRandom ([ThreadStatic]
+                              Random per thread, the game's); SeededRandom (tests, smoke)
+  DamageRoll.cs               DESIGN §1 pure: HitFacts, DamageRules (live from TraxSettings),
+                              Decide = the skip rules, factor U[1-p,1+p), game rounding, 0 stays 0,
+                              positive never below 1; DamageCategory, DamageSkipReason
+  DamageStats.cs              per-mission roll stats (kinds, min/avg/max, before → after, dice
+                              histogram, skips by reason, errors per site, thread) + the
+                              [summary] text; thread-safe
 src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhancements.dll:
   SubModule.cs                entry point: load log, config init/re-reads, MCM register/retry,
                               the two model decorators (OnGameStart), EnduranceLogic per mission
@@ -130,13 +138,19 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               only when VerboseLogging), Error (stack, rate-limited, in-game notice)
   Mcm/McmBridge.cs            the MCM page — fluent builder, MCM types in METHOD BODIES ONLY,
                               no MCM-typed lambdas (read its class doc before touching it)
-  Models/TraxDamageModel.cs   AgentApplyDamageModel DECORATOR — pass-through until step 4
+  Models/TraxDamageModel.cs   AgentApplyDamageModel DECORATOR — forwards everything; overrides
+                              ApplyGeneralDamageModifiers only: BaseModel first, then the roll
+                              (our exceptions → the game's value)
+  Models/DamageRandomizer.cs  feature 1, game side: game structs → HitFacts → Decide → roll,
+                              stats, [damage] lines (mission start, first roll + thread,
+                              verbose roll/skip), the [summary] damage block
   Models/TraxAgentStatModel.cs AgentStatCalculateModel DECORATOR — pass-through until step 5,
                               + the tournament SetAILevelMultiplier fix
-  Missions/EnduranceLogic.cs  MissionLogic in every SP mission: start/end lines, [summary]
-                              block — grows into the endurance engine in step 5
-tests/TraxCombat.Core.Tests/  net8.0 xUnit (53) — schema vs DESIGN.md, settings, config file,
-                              merge rule, rate limiter. Keep green.
+  Missions/EnduranceLogic.cs  MissionLogic in every SP mission: start/end lines, damage stats
+                              reset (AfterStart), [summary] block — grows into the endurance
+                              engine in step 5
+tests/TraxCombat.Core.Tests/  net8.0 xUnit (92) — schema vs DESIGN.md, settings, config file,
+                              merge rule, rate limiter, damage roll/rules/dice/stats. Keep green.
 module/SubModule.xml          release manifest (Id TraxCombatEnhancements, v0.1.0); GUI/Prefabs
                               for the HUD movies arrive in step 6
 tools/deploy.ps1              build → AssemblyGuard → OfflineSmoke → install as
@@ -145,7 +159,10 @@ tools/AssemblyGuard/          soft-dependency guard (from the sibling): MCM, Har
                               UIExtenderEx, NavalDLC, CustomBattle in any type surface = FAIL
 tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLLs, no game
                               launched: types load without MCM, config flows, tournament fix,
-                              the MCM page built by MCM's real builder (16 checks)
+                              damage (Program.Damage.cs: the real decorator over the game's
+                              CustomAgentApplyDamageModel, fed the game's own hit structs),
+                              the MCM page built by MCM's real builder (22 checks);
+                              TRAX_SMOKE_KEEP=1 keeps its temp folder + log to read
 tools/package.ps1             Steam release layout (step 11)
 ```
 
