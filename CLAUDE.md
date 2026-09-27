@@ -100,6 +100,10 @@ Game path (and MCM path, if referenced) in `Directory.Build.props`; personal ove
 `Directory.Build.props.user` (git-ignored). The deploy fails while the game runs (DLL lock) —
 say so and hand Anton the deploy line.
 
+**Editing text files: use the Edit/Write tools, never PowerShell `Get-Content`/`Set-Content`.**
+Windows PowerShell 5.1 reads BOM-less UTF-8 as ANSI and writes it back as mojibake (every
+—, →, ± in these docs was mangled once, 2026-09-27).
+
 ## References
 
 - **Decompiled game, this exact version**: `..\reference\game-decompiled\` (CampaignSystem,
