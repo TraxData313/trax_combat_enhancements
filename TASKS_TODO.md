@@ -18,6 +18,7 @@ BUILD ORDER (one step at a time — [~] = in flight, see CLAUDE.md "manager prot
 - [x] 14. GO (Anton, night of 2026-09-27: "make them slow down to 70% speed") — run-speed floor 0.3 → 0.7 · refill faster when low, slower when full: straight line, rate near full = 50% of rate near empty (slider; 100 = the flat refill he played), empty→full still 60 s at a walk — after 15
 - [x] 16. Step back that WORKS + the GUARD REALLY UP (BATTLE_PACING lever #2 = a spec bug fix: DESIGN says blocking is never held): a per-man AgentComponent on OnAIInputSet clears only the attack bits during the timer (replaces NoAttack, which also killed their blocking), walks the step back BACKWARDS facing the enemy via the AI's own input, and keeps the timer through a step back (see BUGS) — overnight, no questions (Anton); the other levers wait for Anton's pick
 - [x] 15. Research (no code): how RBM makes battles longer and more tactical, WITHOUT its unit overhaul — a menu of levers (+ our own ideas) for Anton to pick; 80v80 infantry ended in 4–5 min (Anton, 2026-09-27); + how RBM steps a man back FACING his enemy (ours turn their backs — see BUGS)
+- [~] 17. Second fresh-eyes review: the ~4000 lines since step 10a's review (steps 12–16: player input timer, AI input component, backpedal, refill curve, migrations) — fix what is found, before Anton's morning playtest
 
 PLAYTEST (Anton, all at once at the end — script in docs/PLAYTEST.md):
 - [ ] Play with RBM disabled — declared NOT compatible (Anton, 2026-09-27; the mod warns if it sees it)
