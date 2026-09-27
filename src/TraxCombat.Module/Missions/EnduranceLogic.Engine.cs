@@ -416,6 +416,7 @@ namespace TraxCombat.Missions
                 if (!st.SpeedDirty)
                 {
                     _firstAfterLogged = true;
+                    _firstDone = true; // nothing to follow: no penalty was asked
                     TraxLog.Info("speed", "first exhaustion this mission: " + Name(st) + " at " + Sec(now) + " s - no speed change asked (x"
                         + F2(st.SpeedMultiplier) + ", ExhaustedAttackSpeedPercent " + r.ExhaustedAttackSpeedPercent + "); properties " + _firstBefore);
                 }

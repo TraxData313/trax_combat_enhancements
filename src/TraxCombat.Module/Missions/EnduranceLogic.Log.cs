@@ -48,7 +48,9 @@ namespace TraxCombat.Missions
             }
         }
 
-        internal void WriteEnduranceSummary()
+        /// <param name="agentsAlive">False on the teardown fallback: the agents' native side is gone,
+        /// so the formations come from the last tick's snapshot and nothing is sampled.</param>
+        internal void WriteEnduranceSummary(bool agentsAlive = true)
         {
             var r = EnduranceRules.From(TraxSettings.Shared);
 
@@ -85,15 +87,15 @@ namespace TraxCombat.Missions
             var formations = new List<KeyValuePair<string, FormationEnduranceStats>>();
             if (Mission != null)
             {
-                RefreshFormationStats(Mission.CurrentTime, in r);
+                if (agentsAlive) RefreshFormationStats(Mission.CurrentTime, in r);
                 for (int k = 0; k < _formationSnapshot.Length; k++)
                     if (_formationSnapshot[k].Count > 0)
                         formations.Add(new KeyValuePair<string, FormationEnduranceStats>(FormationName(k), _formationSnapshot[k]));
             }
 
-            if (Mission != null) SampleSpeeds("mission end");
+            if (Mission != null && agentsAlive) SampleSpeeds("mission end");
 
-            if (_firstExhausted != null && !_firstDone && !_firstExhausted.Removed)
+            if (_firstExhausted != null && !_firstDone && !_firstExhausted.Removed && agentsAlive)
             {
                 var now = SpeedPenalty.Snapshot.Take(_firstExhausted.Agent);
                 TraxLog.Info("speed", "first exhausted fighter (" + Name(_firstExhausted) + ") at mission end: "

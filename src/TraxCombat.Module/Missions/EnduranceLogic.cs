@@ -253,7 +253,9 @@ namespace TraxCombat.Missions
             // the player, formations, regen, the attack-speed measurement, cost. Own try too.
             try
             {
-                WriteEnduranceSummary();
+                // Only at the real mission end are the agents still alive (Mission.EndMissionInternal
+                // clears their native pointers right after); the fallback reads nothing from them.
+                WriteEnduranceSummary(agentsAlive: when == "mission end");
             }
             catch (Exception e)
             {
