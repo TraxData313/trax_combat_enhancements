@@ -3,7 +3,7 @@ BUILD ORDER (one step at a time — [~] = in flight, see CLAUDE.md "manager prot
 - [x] 2. Research: verify every hook against the 1.4.8 game → docs/RESEARCH.md (no code) (see AI_NOTES)
 - [x] 3. Scaffold: solution, Core + tests, module, config file with instructions, MCM (optional), logging, deploy — loads in game, does nothing yet
 - [x] 4. Damage randomness ±50% — first playable
-- [ ] 5. Endurance core: blow costs, hero/leader multipliers, regen, 20% speed when empty
+- [~] 5. Endurance core: blow costs, hero/leader multipliers, regen, 20% speed when empty
 - [ ] 6. Player endurance bar (RBM posture style)
 - [ ] 7. Bar for the NPC I look at (toggle)
 - [ ] 8. Squad bars above my formations: average ± 1 std
