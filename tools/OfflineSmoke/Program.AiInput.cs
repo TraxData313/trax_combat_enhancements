@@ -211,6 +211,26 @@ namespace TraxCombat.Tools
                 Check(!g.Input!.Active && inputStep.Released.Count == stepReleases && inputPace.Released.Count == paceReleases,
                     "E: leaving the field left a wish on, or called the engine on a removed man");
 
+                // ---- E2 (review R27, step 17): the game takes a backpedalling man over (a ladder, an object) - ended "handed
+                // over", and the input body's release still runs: a backpedal has nothing of the game's to cancel, and the
+                // engine's input callback we turned on must go off again (before, it stayed on until his next hold ended)
+                var ho = EmptyRecruit(408, ref t);
+                logic.TickStepBacks(t);
+                logic.TickPace(t);
+                Check(ho.StepBack!.Active && ho.StepBack.ByInput && ho.Pace != null && ho.Pace.Active, "E2: precondition - not backpedalling and held");
+                InputFrame(ho, MvForward);                          // the engine called us (no "never called")
+                var hoIn = ho.Input!;
+                int handedOver = steps.Ended(StepBackEnd.HandedOver);
+                inputStep.EndFor[408] = StepBackEnd.HandedOver;
+                logic.TickStepBacks(t + 0.1);
+                Check(!ho.StepBack.Active && steps.Ended(StepBackEnd.HandedOver) == handedOver + 1 && inputStep.Released.Contains(408)
+                      && !hoIn.Backpedal && hoIn.HoldAttacks,
+                    "E2 / R27: a backpedal handed over to the game was not released through the input body (the callback would stay on) - or it took the timer with it");
+                inputStep.EndFor.Clear();
+                t = ho.Pace!.Until;
+                logic.TickPace(t);
+                Check(!ho.Pace.Active && !hoIn.Active, "E2: his timer did not end after the hand-over");
+
                 // ---- F: a hold the engine never calls us during: counted and warned once
                 var h = Wounded(logic, 405, 40f, t);
                 AttackUntilHeld(logic, h, ref t);

@@ -203,7 +203,10 @@ namespace TraxCombat.Missions
                         if (!sb.MidSampled && now - sb.StartedAt >= 0.5 * sr.Seconds) SampleMid(st, sb);
                         continue;
                     }
-                    Finish(st, why, now, native: why != StepBackEnd.HandedOver && why != StepBackEnd.ClearedByGame && why != StepBackEnd.NotActive);
+                    // a scripted walk handed over to a game job is left alone (never cancel the game's frame); a BACKPEDAL has
+                    // nothing of the game's to cancel - its release only stops our input and turns the callback we turned on
+                    // off again (review R27: skipped here before, the callback stayed on for him until his next hold ended)
+                    Finish(st, why, now, native: why != StepBackEnd.NotActive && (sb.ByInput || (why != StepBackEnd.HandedOver && why != StepBackEnd.ClearedByGame)));
                 }
                 catch (Exception e)
                 {
