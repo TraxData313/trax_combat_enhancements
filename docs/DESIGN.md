@@ -16,9 +16,13 @@ final damage multiplied by a fresh random factor drawn uniformly from
 `[1 − p, 1 + p]`, `p = DamageRandomPercent / 100` (default 50%).
 A 50-damage hit lands for anything from 25 to 75, rolled anew on every hit.
 
-- Applies to hits on people and (toggle) on horses.
+- Applies to hits on people and (toggle) on horses. Horse-charge bumps count as melee.
+- NOT randomized: blows stopped by a shield (toggle `DamageRandomOnShields`, off), fall
+  damage (not a strike), hits on doors, siege engines and other objects.
 - A hit the game computes as 0 stays 0. A positive hit never rounds below 1.
-- Nothing else about the hit changes (knockdown, crush-through, stagger are the game's own).
+- Knockdown, stagger and dismount stay the game's own rules — but they read the final
+  (rolled) damage, so a high roll knocks down more often than a low one. Crush-through is
+  decided before damage and is unaffected.
 
 ## 2. Endurance
 
@@ -32,9 +36,14 @@ drains by attacking, and the only penalty is slow attacks when empty.
     × `PartyLeaderCostMultiplier` (0.75) on top → 0.75 × 0.75 × 10 = 5.6 per blow.
   - This is what makes the game hero-centred: the player's party leader lasts ~18 blows,
     a common soldier 10.
+- **What is a blow**: a melee swing or thrust, a shot, a throw. A couched lance or braced
+  spear hit has no swing, so it costs one blow when it LANDS. Kicks, shield bashes and
+  siege engines (ballista, onager) cost nothing.
 - **Exhausted**: at 0 endurance the fighter attacks at `ExhaustedAttackSpeedPercent` (20%)
-  of normal speed — melee swings and thrusts, bow draw, crossbow reload, throws. As soon as
-  endurance is back above 0, speed is normal again.
+  of normal speed — melee swings and thrusts, bow draw, crossbow reload, throws. Speed comes
+  back once endurance rises above `ExhaustedRecoverPercent` of the pool (0 = the moment it
+  is above 0, as asked).
+- **Changing `MaxEndurance` mid-battle** keeps each fighter's fraction (60% stays 60%).
 - **Regeneration**: starts after `RegenDelayBlowTimes` (2) × `BlowTimeSeconds` (1.5 s) with
   no attack. Then refills from 0 to full in:
   - `FullRegenSecondsStanding` (60 s) while standing still,
@@ -49,14 +58,22 @@ drains by attacking, and the only penalty is slow attacks when empty.
 All toggles, all on by default.
 
 1. **Player bar** (`ShowPlayerBar`): the player's endurance near the vanilla health bar,
-   in the spirit of RCM's posture bar.
+   in the spirit of RBM's posture bar (Anton said "RCM"; the installed mod with the posture
+   bar is RBM, Realistic Battle Mod — style reference only).
 2. **Looked-at NPC** (`ShowTargetBar`): a small bar for the fighter the player is aiming at
-   / looking at.
+   / looking at, within `TargetBarMaxDistance`; it lingers `TargetBarLingerSeconds` after
+   the aim leaves so it does not flicker. Aiming at a horse shows its rider.
 3. **Squad bars** (`ShowFormationBars`): above each of the PLAYER'S formations, a bar of the
    formation's average endurance, with a band of ± `FormationSpreadStdDevs` (1) standard
-   deviations (`ShowFormationSpread`).
-4. **Orders menu** (`ShowInOrderMenu`): the same average ± spread on each formation's card in
-   the orders / formation selection HUD.
+   deviations (`ShowFormationSpread`). `FormationBarsAlways` off = only while vanilla shows
+   its formation markers (marker key held or orders menu open).
+4. **Orders menu** (`ShowInOrderMenu`): while the orders menu is open, a compact panel of our
+   own lists each formation's average ± spread ("Infantry 72 ± 8") in the cards' order.
+   Numbers INSIDE vanilla's cards would need UIExtenderEx and risk clashing with RTS Camera
+   Command System — not worth it (Claude's call 2026-09-27, see RESEARCH implication 1).
+
+Bars show only in fights (battle, duel, tournament modes) and never while the game's
+"hide battle UI" is on.
 
 ## 4. Configuration
 
@@ -82,6 +99,7 @@ battle start.
 | `DamageRandomMelee` | true | Randomize melee hits. |
 | `DamageRandomRanged` | true | Randomize arrows, bolts and thrown weapons. |
 | `DamageRandomOnMounts` | true | Randomize hits that land on horses too. |
+| `DamageRandomOnShields` | false | Randomize the damage a shield takes when it blocks. |
 | `EnduranceEnabled` | true | Master switch for endurance. |
 | `MaxEndurance` | 100 | Size of the pool. |
 | `CostPerBlow` | 10 | Endurance one blow costs before multipliers. |
@@ -89,6 +107,7 @@ battle start.
 | `HeroCostMultiplier` | 0.75 | Cost multiplier for heroes. |
 | `PartyLeaderCostMultiplier` | 0.75 | Extra multiplier for a party's leading hero, on top of the hero one. |
 | `ExhaustedAttackSpeedPercent` | 20 | Attack speed at 0 endurance, percent of normal. |
+| `ExhaustedRecoverPercent` | 0 | Once exhausted, speed returns only above this % of the pool. 0 = as soon as it is above 0. |
 | `RegenDelayBlowTimes` | 2 | Idle blows before regeneration starts. |
 | `BlowTimeSeconds` | 1.5 | How long "one blow" is, for the delay above. |
 | `FullRegenSecondsStanding` | 60 | Seconds from empty to full while standing still. |
@@ -96,11 +115,16 @@ battle start.
 | `MovingSpeedThreshold` | 0.5 | Speed (m/s) above which a fighter counts as moving. |
 | `ShowPlayerBar` | true | Player endurance bar. |
 | `ShowTargetBar` | true | Bar for the fighter you look at. |
+| `TargetBarMaxDistance` | 30 | Metres — how far away a looked-at fighter still gets a bar. |
+| `TargetBarLingerSeconds` | 2 | Seconds the bar stays after your aim leaves the fighter. |
 | `ShowFormationBars` | true | Average bars above your formations. |
+| `FormationBarsAlways` | true | true: always shown. false: only while vanilla shows formation markers. |
 | `ShowFormationSpread` | true | ± spread band on the formation bars. |
 | `FormationSpreadStdDevs` | 1.0 | Band width in standard deviations. |
 | `FormationBarHeight` | 3.0 | Metres above the formation's centre for its bar. |
-| `ShowInOrderMenu` | true | Average ± spread on the orders-menu formation cards. |
+| `ShowInOrderMenu` | true | Panel of formation averages ± spread while the orders menu is open. |
+| `HudRefreshSeconds` | 0.1 | (Advanced) How often the player and target bars update. |
+| `FormationStatsRefreshSeconds` | 0.25 | (Advanced) How often formation averages and spreads are recomputed. |
 | `VerboseLogging` | false | Log every roll, blow and exhaustion (rate-limited) to `trax_combat.log`. Off = load, settings, mission start/end, per-battle summaries and errors only. |
 
 New parameters discovered while building go into this table in the same commit.
@@ -119,3 +143,17 @@ New parameters discovered while building go into this table in the same commit.
 5. **Exhaustion is a cliff at 0**, as asked — no gradual slowdown.
 6. **Applies in every combat mission** (field battles, sieges, hideouts, custom battles,
    tournaments and arena). Per-mission toggles only if playtest asks for them.
+7. **Custom battle has no parties**: there the "party leader" is the side's general, or —
+   when a side has none — every hero on that side.
+8. **Kicks and shield bashes are free**; a couched-lance / braced-spear hit costs one blow
+   when it lands; siege engines are free.
+9. **Shield damage is not randomized** by default; horse-charge bumps follow the melee
+   toggle; fall damage and hits on objects never roll.
+10. **Play with RBM disabled** — it has its own posture and stamina; two stamina systems at
+    once would be confusing and untestable.
+
+Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`,
+`TargetBarMaxDistance`, `TargetBarLingerSeconds`, `FormationBarsAlways`,
+`HudRefreshSeconds`, `FormationStatsRefreshSeconds` came out of step 2's research
+(`docs/RESEARCH.md`, "Design implications"), settled by Claude while Anton was away
+(2026-09-27) — every one is a default he can overturn.

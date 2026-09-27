@@ -1,22 +1,23 @@
 BUILD ORDER (one step at a time — [~] = in flight, see CLAUDE.md "manager protocol"):
 - [x] 1. Repo, docs, design spec, public GitHub
 - [x] 2. Research: verify every hook against the 1.4.8 game → docs/RESEARCH.md (no code) (see AI_NOTES)
-- [ ] 3. Scaffold: solution, Core + tests, module, config file with instructions, MCM (optional), deploy — loads in game, does nothing yet
+- [~] 3. Scaffold: solution, Core + tests, module, config file with instructions, MCM (optional), logging, deploy — loads in game, does nothing yet
 - [ ] 4. Damage randomness ±50% — first playable
 - [ ] 5. Endurance core: blow costs, hero/leader multipliers, regen, 20% speed when empty
-- [ ] 6. Player endurance bar (RCM posture style)
+- [ ] 6. Player endurance bar (RBM posture style)
 - [ ] 7. Bar for the NPC I look at (toggle)
 - [ ] 8. Squad bars above my formations: average ± 1 std
-- [ ] 9. Average ± spread in the orders / formation menu
-- [ ] 10. Balance + polish after playtest
-- [ ] 11. Steam packaging + Workshop upload
+- [ ] 9. Orders menu open → panel of formation averages ± spread (no UIExtenderEx)
+- [ ] 10. Self-review + polish pass (Anton's playtest comes after, all at once)
+- [ ] 11. Steam packaging — upload only on Anton's yes
 
-PLAYTEST:
+PLAYTEST (Anton, all at once at the end — script in docs/PLAYTEST.md):
+- [ ] Play with RBM disabled (it has its own stamina/posture)
 
 BUGS:
 
-NOT DECIDED:
+NOT DECIDED (defaults in place, Anton can flip):
 - [ ] Hero multiplier: 0.75 (default now) or 0.5? (see DESIGN interpretations)
-- [ ] Should blocking cost endurance too? (off for now — only blows)
+- [ ] Kicks / shield bashes cost endurance? (free now)
+- [ ] You wrote "RCM" — did you mean RBM (Realistic Battle Mod)? Its posture bar is the style reference now
 - [ ] Endurance in tournaments / arena too? (on for now)
-- [ ] Mod name for Steam (working title: Trax Combat Enhancements)

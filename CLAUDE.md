@@ -128,7 +128,9 @@ say so and hand Anton the deploy line.
 
 **Editing text files: use the Edit/Write tools, never PowerShell `Get-Content`/`Set-Content`.**
 Windows PowerShell 5.1 reads BOM-less UTF-8 as ANSI and writes it back as mojibake (every
-—, →, ± in these docs was mangled once, 2026-09-27).
+—, →, ± in these docs was mangled once, 2026-09-27). **Commit messages**: PowerShell 5.1
+splits a message containing double quotes into separate arguments — write it to a file and
+`git commit -F <file>`, or commit from the Bash tool with a heredoc.
 
 ## References
 
