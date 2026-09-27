@@ -70,7 +70,8 @@ namespace TraxCombat.Tools
 
                 // ---- the Core bits are the game's own; the component overrides the hook, vanilla's do not
                 Check((uint)Agent.MovementControlFlag.AttackMask == AiInputMath.AttackMask && (uint)Agent.MovementControlFlag.DefendMask == AiInputMath.DefendMask
-                      && (uint)Agent.MovementControlFlag.DefendDown == AiInputMath.DefendDown, "Core's input bits are not the game's MovementControlFlag values");
+                      && (uint)Agent.MovementControlFlag.DefendDown == AiInputMath.DefendDown && (uint)Agent.MovementControlFlag.MoveMask == (AiInputMath.MoveBits | 0x30),
+                    "Core's input bits are not the game's MovementControlFlag values");
                 Check(AiInputHook.OverridesInputSet(typeof(AiInputComponent)) && !AiInputHook.OverridesInputSet(typeof(HumanAIComponent))
                       && !AiInputHook.OverridesInputSet(typeof(CommonAIComponent)), "the override check is wrong (ours must override OnAIInputSet, vanilla's components do not)");
 
@@ -143,8 +144,8 @@ namespace TraxCombat.Tools
                 LogHas("[stepback] first step back this mission: (agent 401) at ");
                 LogHas("technique: a BACKPEDAL through his own input (our component added, the engine's input callback turned on by us; the line away from him (0.00, -1.00) in his own frame now (0.10, -0.99) - (0, -1) = straight back; his attacks held (only the attack bits out); scripted flags none (none of ours))");
                 float vx = 0f, vy = 1f;
-                Check(InputFrame(e, MvForward | MvAttackDown, ref vx, ref vy) == (MvForward | MvDefendDown) && Near(vx, 0.1) && Near(vy, -0.99),
-                    "B: while stepping back and held: the attack not out or the backwards vector not written");
+                Check(InputFrame(e, MvForward | MvAttackDown, ref vx, ref vy) == MvDefendDown && Near(vx, 0.1) && Near(vy, -0.99),
+                    "B: while stepping back and held: the attack not out, his Forward bit not out, or the backwards vector not written");
                 double started = t;
                 for (int i = 1; i <= 2; i++) logic.TickStepBacks(started + 0.25 * i);
                 Check(e.StepBack.Active && steps.Samples >= 1, "B: ended too early / never sampled");
@@ -153,7 +154,7 @@ namespace TraxCombat.Tools
                     "B: the backpedal did not arrive and stop (or it took the timer with it)");
                 LogHas("[stepback] first step back ended (arrived (StepBackDistance covered)) after 0.8 s: ");
                 LogHas("; the backpedal input stopped - nothing of ours left in the engine (scripted flags none); his own AI and formation take him back");
-                LogHas("the engine's first call: movement bits Forward|AttackDown → Forward|DefendDown, input vector (0.00, 1.00) → (0.10, -0.99); an attack wish while stepping back: Forward|AttackDown → Forward|DefendDown (the attack taken out, a guard raised)");
+                LogHas("the engine's first call: movement bits Forward|AttackDown → DefendDown, input vector (0.00, 1.00) → (0.10, -0.99); an attack wish while stepping back: Forward|AttackDown → DefendDown (the attack taken out, a guard raised)");
                 vx = 0f;
                 vy = 1f;
                 Check(InputFrame(e, MvAttackDown, ref vx, ref vy) == MvDefendDown && vx == 0f && vy == 1f, "B: after the step back the timer no longer held him - or the vector was still written");

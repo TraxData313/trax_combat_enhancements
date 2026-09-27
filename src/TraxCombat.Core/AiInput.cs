@@ -41,6 +41,14 @@ namespace TraxCombat.Core
         /// Command System cancels an AI attack with exactly "clear AttackMask, set DefendDown".</summary>
         public const uint DefendDown = 0x2000;
 
+        /// <summary><c>Forward | Backward | StrafeRight | StrafeLeft</c> - on foot the movement is the input VECTOR (the
+        /// player's controller never sets these for a man on foot); while backpedalling any of them the AI set is taken
+        /// out so nothing but the backwards vector moves him. The turn bits (mounts) are left alone.</summary>
+        public const uint MoveBits = 0xF;
+
+        /// <summary>A backpedalling man's movement flags: his own move bits out (the vector moves him), all else his.</summary>
+        public static uint Backpedal(uint flags) => flags & ~MoveBits;
+
         /// <summary>The backwards input written while stepping back: full stick, like a player holding S - the engine's
         /// own backpedal speed (and a tired man's lower top speed) decide how fast. Plumbing.</summary>
         public const double BackpedalInput = 1.0;

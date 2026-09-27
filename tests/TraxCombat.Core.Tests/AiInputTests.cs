@@ -60,6 +60,15 @@ public class AiInputTests
     }
 
     [Fact]
+    public void While_backpedalling_only_his_move_bits_go()
+    {
+        const uint Backward = 2, StrafeLeft = 8, TurnLeft = 0x20;
+        Assert.Equal(0xFu, AiInputMath.MoveBits);
+        Assert.Equal(TurnLeft | DefendLeft | Action, AiInputMath.Backpedal(Forward | Backward | StrafeRight | StrafeLeft | TurnLeft | DefendLeft | Action));
+        Assert.Equal(AttackDown, AiInputMath.Backpedal(AttackDown));   // the attack rule is HoldAttacks' job, not this
+    }
+
+    [Fact]
     public void Facing_his_enemy_the_backwards_input_is_straight_back()
     {
         // he stands facing north (forward (0, 1), side (1, 0)); his enemy is north, so "away" is south

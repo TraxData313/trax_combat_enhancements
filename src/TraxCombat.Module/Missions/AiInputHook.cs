@@ -270,31 +270,33 @@ namespace TraxCombat.Missions
         {
             uint before = flags;
             float bx = vx, by = vy;
+            var edit = InputEdit.None;
             if (s.HoldAttacks || s.StepHoldAttacks)
             {
                 int action = st.PrevAction;
                 bool inReady = action == ActReadyMelee || action == ActReadyRanged;
-                flags = AiInputMath.HoldAttacks(flags, raiseGuard, inReady, out var edit);
+                flags = AiInputMath.HoldAttacks(flags, raiseGuard, inReady, out edit);
                 if ((edit & InputEdit.AttackCleared) != 0)
                 {
                     s.AttackCleared++;
                     if ((edit & InputEdit.GuardRaised) != 0) s.GuardRaised++;
                     if ((edit & InputEdit.OwnGuardKept) != 0) s.OwnGuardKept++;
                     if ((edit & InputEdit.ReadyCancelled) != 0) s.ReadyCancelled++;
-                    if (s.Capture && !s.CapturedAttack)
-                    {
-                        s.CapturedAttack = true;
-                        s.AttackBefore = before;
-                        s.AttackAfter = flags;
-                        s.AttackEdit = edit;
-                    }
                 }
             }
             if (s.Backpedal)
             {
+                flags = AiInputMath.Backpedal(flags); // his own move bits out: only the backwards vector moves him
                 vx = s.BackX;
                 vy = s.BackY;
                 s.BackpedalFrames++;
+            }
+            if (s.Capture && !s.CapturedAttack && (edit & InputEdit.AttackCleared) != 0)
+            {
+                s.CapturedAttack = true;
+                s.AttackBefore = before;
+                s.AttackAfter = flags;
+                s.AttackEdit = edit;
             }
             if (s.Capture && !s.CapturedFirst)
             {
