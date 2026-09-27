@@ -10,32 +10,38 @@ every fight a little less predictable and a lot more about who is still fresh.
 
 - **Damage randomness** — every hit that lands, melee or ranged, rolls ±50% damage.
   A 50-damage blow lands for anywhere between 25 and 75.
-- **Athletics** — every fighter has an Athletics bar, his stamina, as big as his Athletics
-  skill (never under 50). Each blow costs 10 points. The top quarter of the bar is full
-  strength; below it his lucky hits, his attack rate and his run speed fade, down to one
-  attack where he used to make five when it is empty - slower swings and, for the AI, longer
-  pauses between them, guard up (blocking is never slowed). Wounds cap the bar. Rest to refill it: one minute
-  standing or walking, twice that running flat out. Heroes pay less per blow, party leaders
-  less again, and a hero's big Athletics skill means a big bar — the battle leans on its
-  heroes.
+- **Athletics** — every fighter has an Athletics bar, his stamina, as big as his **Athletics
+  skill** (never under 50). Each blow costs 10 points. The top quarter of the bar — above the
+  peak line — is full strength; below it his lucky hits, his attack rate and his run speed fade,
+  down to one attack where he used to make five when it is empty: slower swings and, for the AI,
+  longer pauses between them, guard up (blocking is never slowed). Wounds cap the bar. Rest to
+  refill it: one minute standing or walking, twice that running flat out. Heroes pay less per
+  blow, party leaders less again, and a hero's big Athletics skill means a big bar — the battle
+  leans on its heroes.
 - **Tired men step back** — after a swing, a tired AI soldier on foot may step back out of the
   press, facing his enemy with his guard up, and rejoin his line a moment later: the more
-  tired, the more often. The fresh take the blows.
-- **See it** — your own Athletics bar under your health bar (the number beside it, green at
-  full strength, then blue, yellow, orange and red as you tire, the part your wounds hold
-  shown dark), and in the orders menu a slim strip under each formation card: its men's
-  average Athletics ± spread ("72% ± 8") and their average health ("HP 81%"). It reads the
-  game's own cards, so it lines up at any resolution and with RTS Camera.
-- **A master switch** — turn the whole mod off mid-battle and the fight is pure vanilla, so
+  tired, the more often. The fresh take the blows. Field battles only.
+- **See it** — your own Athletics bar under your health bar: the number, a mark at the peak line,
+  green at full strength, then blue, yellow, orange and red as you tire, the part your wounds hold
+  shown dark. And in the orders menu, a slim strip under each formation card: its men's average
+  Athletics ± spread ("72% ± 8") and their average health ("HP 81%"). The strip reads the game's own
+  cards, so it lines up at any resolution and UI scale, and with RTS Camera's order menu.
+- **A master switch** — turn the whole mod off, even mid-battle, and the fight is pure vanilla, so
   you can play the same battle both ways and compare.
 
-Every number is adjustable — in the Mod Configuration Menu if you have it, or in a plain
-config file with an explanation beside each value. Full spec: [docs/DESIGN.md](docs/DESIGN.md).
+Every number is adjustable — in the **Mod Configuration Menu (MCM)** if you have it (optional:
+the mod runs without it), or in a plain config file with an explanation beside each value
+(`Documents\Mount and Blade II Bannerlord\Configs\TraxCombatEnhancements\config.json`). Changes
+in MCM apply at once, even mid-battle; nothing ever needs a restart. The mod adds nothing to your
+save, so it can be added or removed mid-campaign. Full spec: [docs/DESIGN.md](docs/DESIGN.md).
 
 ## Compatibility
 
-**Not compatible with RBM (Realistic Battle Mod)** — it brings its own posture and stamina
-systems. Use one or the other.
+- **Not compatible with RBM (Realistic Battle Mod)** — it brings its own posture and stamina
+  systems. Use one or the other; the mod warns you at the main menu if it sees RBM.
+- Built to sit alongside **RTS Camera** (and its Command System's order menu) and **War Sails**
+  (no step backs on deck) — to be confirmed in the first playtest.
+- MCM is optional.
 
 ## License
 

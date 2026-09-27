@@ -253,13 +253,13 @@ Empty (E = 0): the word reads *Exhausted* and the word, the number and the bar's
 red. Refreshed every `HudRefreshSeconds`.
 
 **Additions (Anton, 2026-09-27):**
-- The player and target bars show the Athletics NUMBER (current / pool) and a marker at the
-  peak line (`AthleticsPeakPercent`, 75% of the pool). Fill colour by f (the share of the
-  peak line left): in the peak zone green; below the line blue; f at or below
+- The player bar (and, LATER, the target bar) shows the Athletics NUMBER (current / pool) and a
+  marker at the peak line (`AthleticsPeakPercent`, 75% of the pool). Fill colour by f (the share
+  of the peak line left): in the peak zone green; below the line blue; f at or below
   `BarYellowBelowPercent` (75) % yellow; `BarOrangeBelowPercent` (50) orange;
-  `BarRedBelowPercent` (25) red.
-- Squads also show their AVERAGE HEALTH (`ShowFormationHealth`, on) — above the formation
-  and in the orders menu.
+  `BarRedBelowPercent` (25) red. The orders-menu strip uses the same colours.
+- Squads also show their AVERAGE HEALTH (`ShowFormationHealth`, on) — in the orders menu (built,
+  step 9) and, LATER (step 8), above the formation.
 - Orders menu: our strip sits directly UNDER the vanilla formation cards, one cell per card
   ("below the arrows remaining", Anton's words) — Athletics average ± spread and average
   health. Still no UIExtenderEx; if the cards' positions cannot be matched reliably, the
@@ -275,13 +275,24 @@ Every parameter lives in two places that stay in sync:
 - the **Mod Configuration Menu (MCM)** when installed. MCM must stay OPTIONAL: without it the
   mod runs on the file alone (see CLAUDE.md, hard requirements).
 
+**What the player reads** (step 10b): nine groups, the same in MCM and the file, in this order —
+*Master switch, Damage randomness, Athletics, Tired fighters, Tired fighters step back, Refill,
+Your Athletics bar, Orders menu strip, Advanced*; MCM shows its *Defaults* buttons (§2c) just above
+*Advanced*, which stays last. One vocabulary: the pool, the bar and its points are *Athletics*; the
+character-screen skill is *the Athletics skill*; the *peak line* is the white mark on the bar
+(`AthleticsPeakPercent`) — at or above it a fighter is at full strength; *empty* = 0 Athletics.
+Every label carries its unit — (points) (%) (x) (m) (s) (px) (MB). Every MCM hint ends
+"Applies at once, even mid-battle." and the default; the config file's header says a hand edit
+applies at the next battle start.
+
 **Master switch** (`ModEnabled`, Anton 2026-09-27, built in step 5b): one checkbox at the top
 of MCM (and the first key of the config file) turns the WHOLE mod off — live, even mid-battle —
 so the same battle can be fought with and without it and compared. Off: the damage roll hands
 back the game's own number; nobody pays Athletics, nobody refills; every speed penalty (attack,
 run, horse) is lifted at once (the stat decorator checks the switch itself, so even a recompute
-before the logic's next tick is vanilla - the AI's attack values included, 5e); the bars (steps 6–9) hide; tired fighters never step back (5d) and
-every pace hold is lifted at once (5e).
+before the logic's next tick is vanilla - the AI's attack values included, 5e); the player bar
+and the orders-menu strip (steps 6, 9) hide; tired fighters never step back (5d) and every pace
+hold is lifted at once (5e).
 Back on: everyone starts with a full Athletics bar — a fresh start, not a resume. The two model
 decorators stay registered (they cannot be removed mid-game) and pass everything through; the
 tournament AI-level fix, which only keeps vanilla behaviour intact, stays. **Logging stays on**:
@@ -483,8 +494,14 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     the bar under them; the fallback panel sits at the top centre; `OrderStripUnderCards` lets
     Anton force the panel if the strip ever looks wrong.
 
+15. **The log's trim and the LATER settings** (step 10b; review R7 - the manager's decision, R21):
+    a trim never cuts a non-verbose line (the `~` mark tells them apart), so turning
+    `VerboseLogging` on costs nothing the playtest reads, and the cap became `LogMaxMegabytes` (8);
+    the six settings of the two LATER features left the schema (no switch that does nothing) and
+    wait in "Planned parameters"; the Defaults buttons moved above Advanced.
+
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
-(retired in 5c), `TargetBarMaxDistance`, `TargetBarLingerSeconds`, `FormationBarsAlways`,
+(retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),
 `HudRefreshSeconds`, `FormationStatsRefreshSeconds` came out of step 2's research
 (`docs/RESEARCH.md`, "Design implications"), settled by Claude while Anton was away
 (2026-09-27) — every one is a default he can overturn.

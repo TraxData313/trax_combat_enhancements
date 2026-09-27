@@ -12,10 +12,12 @@ it his damage upside, attack RATE (the animations and, for the AI, the pause bet
 step 5e) and run speed fall, down to one attack in five when empty; wounds cap the bar; tired
 AI fighters step back out of the press after a swing (step 5d).
 Heroes and party leaders pay less per blow (and big-skill heroes have
-big bars), so the game leans hero-centred. The Athletics bar
-is shown for the player, the fighter they look at, and — averaged with a ± spread — above the
-player's own formations and in the orders menu. Words: the pool/bar/points are "Athletics",
-the character-screen skill is "the Athletics skill" (it used to be called "endurance").
+big bars), so the game leans hero-centred. The Athletics bar is shown for the player (step 6)
+and — averaged, with a ± spread and the men's health — in a strip under each formation card of
+the orders menu (step 9). The bar for the fighter you look at and squad bars above the
+formations are LATER (DESIGN §3; their settings wait in DESIGN's "Planned parameters"). Words:
+the pool/bar/points are "Athletics", the character-screen skill is "the Athletics skill" (it
+used to be called "endurance"), the "peak line" is the white mark at the top quarter of the bar.
 
 **The full spec is `docs/DESIGN.md`. Read it before any work.** Released on **Steam Workshop
 only** (no Nexus).
@@ -104,8 +106,10 @@ die at any moment (tokens run out) and the next one loses nothing.
   it can be enabled or removed mid-campaign.
 - **Logging built for one big playtest at the end (Anton, 2026-09-27).** Anton tests
   everything at once when the build is finished, so the log must let us troubleshoot any
-  feature WITHOUT a second run. One rolling log file (`trax_combat.log`, ~2 MB trim) beside
-  the config file, timestamped lines tagged by area (`[config]`, `[mcm]`, `[mission]`,
+  feature WITHOUT a second run. One rolling log file (`trax_combat.log`) beside the config
+  file, capped at `LogMaxMegabytes` (8); a trim cuts ONLY the oldest verbose lines (marked `~`
+  before the tag) and keeps every other line - summaries, first-time lines, settings, errors
+  (step 10b, Core `LogTrim`). Timestamped lines tagged by area (`[config]`, `[mcm]`, `[mission]`,
   `[damage]`, `[athletics]`, `[speed]`, `[rate]`, `[stepback]`, `[hud]`, `[error]`). Always logged: mod/game version
   at load, every parameter value on load and on change, each mission start/end (type,
   scene, agent counts), which behaviors/views attached, and every caught exception with its
@@ -113,7 +117,8 @@ die at any moment (tokens run out) and the next one loses nothing.
   Athletics: blows charged, exhaustions entered/left, heroes' lowest Athletics, formation
   averages). Chatty per-event lines (each roll, each blow, each regen tick) only when
   `VerboseLogging` is on — and even then rate-limited so a 1000-agent battle cannot flood
-  the file. Every game hook is wrapped in try/catch that logs `[error]` and fails SAFE (the
+  the file; a hot path asks `TraxLog.VerboseWants(bucket)` BEFORE building its line (R8). Every
+  game hook is wrapped in try/catch that logs `[error]` and fails SAFE (the
   vanilla behavior), so a bug in the mod never crashes a battle.
 - **docs/PLAYTEST.md grows with every step**: what Anton should try, what he should see, and
   which log lines prove it worked. It is the script for the final test session.
@@ -130,13 +135,17 @@ defaults.json                 THE ONE TRUTH for every default value (DESIGN §2c
                               wording/range/order change: dotnet run --project tools/DefaultsTool -- refresh
 docs/REVIEW.md                step 10a's code review: every finding (R1-R24) with its severity, place,
                               scenario and status (fixed in which commit / not a bug / deferred / For Anton)
+docs/PLAYTEST.md              THE script of Anton's one playtest session (step 10b: one ordered run,
+                              parts A-G, ~2 h; appendix L1-L8 = every log line and summary block)
 src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-tested:
   ParamDef.cs                 one setting: key, type, range, group, label, plain-words
                               description, apply timing (Live / NextBattle); Normalize, Format;
                               its Default comes from defaults.json (DefaultsFile), never code
-  SettingsSchema.cs           EVERY setting of DESIGN's table (63), in file + MCM order, 9 groups
-                              ("Master switch" first) — the one place a setting is declared
-                              (a test parses DESIGN.md: keys + types); NO default values
+  SettingsSchema.cs           EVERY setting of DESIGN's table (58), in file + MCM order, 9 groups
+                              ("Master switch" first, "Advanced" last; step 10b's one vocabulary and
+                              units in its header comment) — the one place a setting is declared
+                              (a test parses DESIGN.md: keys + types); NO default values. The LATER
+                              features' settings are NOT here (DESIGN "Planned parameters")
   DefaultsFile.cs             defaults.json: the embedded copy → ParamDef.Default (fail safe:
                               problems listed, never thrown), strict Check (keys both ways,
                               JSON types, ranges, comment layout), Write (the repo file and the
@@ -150,7 +159,13 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               tolerant reader (comments, trailing commas, casing, "0,75"), Apply
   ConfigMerge.cs              THE FILE-REWRITE RULE (MCM wins for what it touched, the disk for
                               the rest) + EditTracker (what MCM changed since the last write)
-  RateLimiter.cs              per-tag token bucket for chatty log lines, counts what it drops
+  RateLimiter.cs              per-tag token bucket for chatty log lines, counts what it drops;
+                              Peek (R8: ask before building a line - a "no" is counted as dropped)
+  LogTrim.cs                  step 10b, the log's trim rule (R7): entries (a stamped line + the
+                              unstamped lines under it), KEPT = every non-verbose line + the [load]
+                              [compat] [config] [mcm] [mission] [summary] [error] tags, CUT = the oldest
+                              verbose (~) lines at one point in time; last resort: the oldest kept;
+                              one note at the top; Utf8Bytes
   RandomSource.cs             IRandomSource (injectable dice); ThreadSafeRandom ([ThreadStatic]
                               Random per thread, the game's); SeededRandom (tests, smoke)
   DamageRoll.cs               DESIGN §1 pure: HitFacts, DamageRules (live from TraxSettings),
@@ -193,7 +208,7 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               counts (mixed, beyond the cap, cancelled, chained, a step back inside);
                               the pace holds; the guard by f; the AI-decision recomputes; the
                               [summary] "attack rate" lines (they replaced 5c's attack speed check)
-  AthleticsBar.cs             step 6 (the target bar of 7 reuses it): BarBand, BarRules (live
+  AthleticsBar.cs             step 6 (and the strip's colours; step 7's LATER target bar would reuse it): BarBand, BarRules (live
                               Bar*BelowPercent), BarMath - Band (green at the peak line, blue just
                               below, yellow/orange/red at or below their % of the line, the most
                               alarming wins, empty always red), Fill / Usable / PeakLine (the
@@ -231,15 +246,18 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
   ConfigStore.cs              config.json ↔ TraxSettings.Shared: first run, re-read at game and
                               mission start, write after MCM Done by the rewrite rule, backups;
                               the [config] defaults: line; RevertAllToDefaults, ExportDefaults
-  TraxLog.cs                  trax_combat.log: tagged lines, 2 MB trim, Verbose (rate-limited,
-                              only when VerboseLogging), Limited (always, rate-limited per bucket),
+  TraxLog.cs                  trax_combat.log: tagged lines, trimmed past LogMaxMegabytes (read live) to
+                              half by LogTrim (a failed trim retries after 1 MB), Verbose (rate-limited,
+                              only when VerboseLogging, written "~[tag]"), VerboseWants(bucket) (R8: the
+                              hot paths ask it before building a line), Limited (always, rate-limited per bucket),
                               Error (stack, rate-limited, in-game notice); ONE handle kept open
                               (AutoFlush, shared read/write/delete - read it with FileShare.ReadWrite),
                               Release() at every mission end and at unload (step 10a)
   Mcm/McmBridge.cs            the MCM page — fluent builder, MCM types in METHOD BODIES ONLY,
                               no MCM-typed lambdas (read its class doc before touching it);
                               group "Defaults": the Revert / Save-defaults-file BUTTONS
-                              (ProxyRef<Action>, page refresh via PropertyChanged)
+                              (ProxyRef<Action>, page refresh via PropertyChanged), just above
+                              Advanced (MCM order = 2 x the schema's; MCM's UI sorts ascending)
   Models/TraxDamageModel.cs   AgentApplyDamageModel DECORATOR — forwards everything; overrides
                               ApplyGeneralDamageModifiers only: BaseModel first, then the roll
                               (our exceptions → the game's value)
@@ -342,9 +360,11 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               / values lines, the [summary] strip line
   Hud/OrderStripVM.cs         its ViewModels: the root + 8 fixed OrderStripCellVM in one
                               MBBindingList, bound TWICE by the prefab (the cells, the panel rows)
-tests/TraxCombat.Core.Tests/  net8.0 xUnit (288) — schema vs DESIGN.md (keys + types),
+tests/TraxCombat.Core.Tests/  net8.0 xUnit (302) — schema vs DESIGN.md (keys + types),
                               defaults.json (DefaultsFileTests), master switch, settings, config
-                              file, merge rule, rate limiter, damage roll/rules/dice/stats/upside,
+                              file, merge rule, rate limiter (+ Peek), the log trim (LogTrimTests:
+                              kept kinds, one cut point, stacks, notes, the last resort, bytes),
+                              damage roll/rules/dice/stats/upside,
                               Athletics v2 rules (pool, f, cap, curves, effort regen, DESIGN's
                               blow counts), mean/std, the run-speed check, Athletics summary, the
                               attack rate (rules, AI values x / ÷ m, the hold's target, the cap,
@@ -395,10 +415,13 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               formations - layouts, UI scale, RTS Camera's set, the lift, values,
                               live switches, every fallback, quiet reopen, summary, fail safe),
                               defaults read from the embedded defaults.json, the MCM page built
-                              by MCM's real builder and its two buttons clicked; step 10a: the log
-                              writer (readable while held, new path, release, trim) and stale
-                              records forgotten (44 steps; the config checks work for any tuned
-                              default);
+                              by MCM's real builder (its group order: Master switch first, the
+                              Defaults buttons above Advanced, Advanced last) and its two buttons
+                              clicked; step 10a: the log writer (readable while held, new path,
+                              release) and stale records forgotten; step 10b: the trim at a 1 MB cap
+                              keeps a summary, a first-time line and an error with its stack through
+                              2 MB of verbose lines, the ~ mark, VerboseWants loses no count (44
+                              steps; the config checks work for any tuned default);
                               TRAX_SMOKE_KEEP=1 keeps its temp folder + log to read
 tools/DefaultsTool/           defaults.json upkeep: refresh (rewrite comments/order, keep every
                               value) | check; --file <path> for an exported one
