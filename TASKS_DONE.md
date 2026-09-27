@@ -544,3 +544,53 @@
   F4, new F6 (the training field and a town), L1/L7, 59 settings. Tests 312 → 323; build 0 warnings;
   AssemblyGuard OK; smoke 45 → 48 steps OK (the new HUD step mutation-checked: without the rule 8
   checks fail); deployed (the game had closed). Commits b211bb1, b20ba73 + this. (2026.09.27 21.35.29)
+
+- [x] **Step 13 — PAUSE ONLY (Anton's playtest call).** The animation slow-down read as "slow-mo"
+  ("I start swinging in slow-mo"), so every attack animation now plays at FULL speed and the whole
+  slow-down is a NO-ATTACK TIMER: an attack of duration D (wind-up up to full + release; ranged + the
+  reload after the loose, the timer from the reload's end) ending at m = S + (1 − S) × f leaves
+  D × (1/m − 1) in which no new attack may START (under 0.1 s: none). RESEARCH (AI_NOTES "Step 13",
+  RESEARCH §C addendum, written before coding): MissionMainAgentController writes the player's input
+  into MovementFlags in OnPreMissionTick; behaviours pre-tick in REVERSE list order and a mod's logic is
+  appended last (it would run before the controller), the native reads the flags right after the
+  pre-tick - so YOUR hold is a tiny PlayerAttackGate added then moved to index 0 of
+  Mission.MissionBehaviors: it pre-ticks right after the controller and clears only AttackMask while
+  the hold is on (no wind-up at all; a HELD button passes the frame the hold ends = hold-to-attack;
+  block bits, kicks (EventControlFlag.Kick), moving, weapon switches untouched; never during a ready -
+  bits vanishing mid-ready would release the blow; no Harmony, nothing patched). Your hold begins at
+  the release's START when its pause is sure to be ≥ 0.1 s (no chained blow past it), the countdown at
+  the attack's end; presses during it are swallowed and counted and flash the bar; shield bashes wait
+  (attack button while blocking), the reload is never held. THE AI: step 5e's pace hold became the AI
+  timer - NoAttack for D × (1/m − 1) after EVERY attack, melee AND ranged, on foot AND mounted (the
+  fresh-cycle reference, expected-ready maths and the rider refusal went). AttackRateAiDecisions
+  default → OFF: Anton's log (21:06/21:14/21:26) read the tired melee AI 128% / 172% "too slow" and
+  "the next ready came 1.5-2.6 s after a hold ended" - the hold already carried its target and the
+  decision scaling + NoAttack's re-decision stacked on it; kept as the A/B. New settings (59 → 66):
+  AttackRatePlayerTimer (your timer's switch - an escape hatch), AttackAnimationMinPercent (100 =
+  full speed; the old animations x max(m, min%) optional), and - per Anton's mid-step change via the
+  manager ("above that bar add a bar 'attack recovery' that empties when I attack and until it fills I
+  can't attack; inside it add the secs delay added"), replacing the planned countdown text -
+  ShowAttackRecoveryBar, FlashBarOnEarlyAttack, RecoveryBarWidth / Height / OffsetAbove: the Attack
+  recovery bar (AttackRecoveryView + VM + TraxAttackRecoveryBar.xml, native sprites / brushes) just
+  above the Athletics bar - empty at your attack, filling over the pause with "1.3 s" inside (tenths
+  rounded up), full otherwise, two white pulses on an early press; shown with the Athletics bar and
+  only while your timer is on. No room above the old row (vanilla horse bar 80 px, health frame 90 px
+  up) → the Athletics row moved 54 → 30 px, the recovery row takes 54. Config FORMAT 2: a format-1
+  config.json still holding the old defaults (AttackRateAiDecisions true, PlayerBarOffsetBottom 54) is
+  migrated once and logged (Anton's config holds both). Core: AttackTimer.cs (AttackTimerMath,
+  PlayerAttackTimer, AttackRecoveryReading), AttackRate / AttackRateStats reworked (animation asked per
+  band, the timer rows - D, m, asked vs the measured gap, after its end, early starts - your timer's
+  counters, the AI timer's kinds / mounted), ConfigFile.Migrate. Module: the phases build D and flag the
+  attack's end; AttackEnded (after the step-back roll) → yours or the AI's; AthleticsLogic.PlayerTimer.cs
+  (the gate's frame, releases on switch-off / not you / mission end, a tick safety net, the recovery
+  read, [athletics] YOU lines - the first pause / press / end / held-button fire in full, the rest
+  rate-limited); the stat decorator's animation floor; HUD views log in their own rate buckets now.
+  Logs self-verifying per f band, melee / ranged, AI / you: animations asked (×1.00), phases vs the
+  peak's, each timer vs the gap it left, attacks started inside a timer (must be 0), your swallowed
+  presses and held-button fires, timers released at mission end; the verdict's target stays fresh ÷ m.
+  Tests 323 → 333; build 0 warnings; smoke 48 → 51 steps (the attack rate rewritten: AI melee / ranged
+  / throw / riders, every lift path, YOUR timer through the real logic; the gate first in a stand-in
+  mission's list; the recovery prefab and view); deploy.ps1 green (guard OK, installed - the game was
+  not running). Docs: DESIGN §2 (PAUSE ONLY folded in, the animations optional/legacy), §3 (the recovery
+  bar), §4, interpretation 16, the table; PLAYTEST C1 / new C1b / C2 / C4-C7 / E1 / L1 / L5 / L7;
+  CLAUDE layout; README. Commits 06ef514, d3f1dbe, 84e5ac0, 188510e + this. (2026.09.27 22.32.31)
