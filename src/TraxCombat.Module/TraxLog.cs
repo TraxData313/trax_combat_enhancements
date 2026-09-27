@@ -20,6 +20,8 @@ namespace TraxCombat
     ///   [log] notes about the log itself (suppressed-line counts)
     /// Chatty per-event lines go through <see cref="Verbose"/>: only when VerboseLogging is on
     /// (read live) and rate-limited per tag, so a 1000-agent battle cannot flood the file.
+    /// One handle stays open between lines (AutoFlush: each line reaches the OS at once), shared
+    /// for reading, writing and deleting; <see cref="Release"/> closes it at every mission end.
     /// Best-effort by design: a failed write never costs gameplay, so everything swallows.
     /// Thread-safe (engine callbacks may run off the main thread).
     /// </summary>
@@ -43,6 +45,14 @@ namespace TraxCombat
         private static long _approxBytes = -1;
         private static int _errorCount;
         private static int _errorNoticePending;
+
+        // The open log (review 10a R6): one handle kept between lines, AutoFlush - every line reaches
+        // the OS at once (nothing lost if the game crashes right after), for ~7 µs a line instead of
+        // ~100 µs for an open / append / close per line on the main thread (measured, Documents, 2 MB
+        // file). Shared for reading, writing and deleting, so an editor can read the log while the
+        // game runs; released at every mission end (Release) and at unload, reopened by the next line.
+        private static StreamWriter? _writer;
+        private static string? _writerPath;
 
         private static double Now => Clock.Elapsed.TotalSeconds;
 
@@ -120,6 +130,13 @@ namespace TraxCombat
                 Write("log", pair.Value + " more [error] reports from " + pair.Key + " were suppressed by the rate limit");
         }
 
+        /// <summary>Closes the log file (the next line reopens it) - at every mission end and at unload,
+        /// so between battles nothing holds the file. Never throws.</summary>
+        public static void Release()
+        {
+            lock (Gate) CloseWriter();
+        }
+
         private static void Write(string tag, string message)
         {
             try
@@ -128,15 +145,18 @@ namespace TraxCombat
                     + " [" + tag + "] " + message + Environment.NewLine;
                 lock (Gate)
                 {
-                    string path = ModPaths.LogFilePath;
-                    if (_approxBytes < 0)
+                    try
                     {
-                        Directory.CreateDirectory(ModPaths.ConfigDir);
-                        _approxBytes = File.Exists(path) ? new FileInfo(path).Length : 0;
+                        string path = ModPaths.LogFilePath;
+                        var writer = _writer != null && string.Equals(path, _writerPath, StringComparison.Ordinal) ? _writer : OpenWriter(path);
+                        writer.Write(line);
+                        _approxBytes += Utf8NoBom.GetByteCount(line);
+                        if (_approxBytes > TrimAtBytes) Trim(path);
                     }
-                    File.AppendAllText(path, line, Utf8NoBom);
-                    _approxBytes += line.Length;
-                    if (_approxBytes > TrimAtBytes) Trim(path);
+                    catch
+                    {
+                        CloseWriter(); // a failed write drops the handle - the next line opens a fresh one
+                    }
                 }
             }
             catch
@@ -145,17 +165,59 @@ namespace TraxCombat
             }
         }
 
-        /// <summary>Keeps the newest half, cut at a line break so no half-line survives.</summary>
+        private static StreamWriter OpenWriter(string path)
+        {
+            CloseWriter();
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            var stream = new FileStream(path, FileMode.Append, FileAccess.Write, FileShare.ReadWrite | FileShare.Delete);
+            _approxBytes = stream.Length;
+            _writer = new StreamWriter(stream, Utf8NoBom) { AutoFlush = true };
+            _writerPath = path;
+            return _writer;
+        }
+
+        private static void CloseWriter()
+        {
+            var writer = _writer;
+            _writer = null;
+            _writerPath = null;
+            try
+            {
+                writer?.Dispose();
+            }
+            catch
+            {
+                // closing a broken handle - nothing to save
+            }
+        }
+
+        /// <summary>Keeps the newest half, cut at a line break so no half-line survives. The handle is
+        /// closed first (the next line reopens it).</summary>
         private static void Trim(string path)
         {
-            string text = File.ReadAllText(path, Utf8NoBom);
+            CloseWriter();
+            string text = ReadShared(path);
             int cut = text.IndexOf('\n', text.Length / 2);
-            if (cut < 0) return;
+            if (cut < 0)
+            {
+                // one giant line: nothing to cut at - start the size count again rather than
+                // re-reading the whole file at every following line
+                _approxBytes = 0;
+                return;
+            }
             string kept = DateTime.Now.ToString("yyyy.MM.dd HH:mm:ss.fff", CultureInfo.InvariantCulture)
                 + " [log] (older lines trimmed - the log keeps about the newest " + (TrimAtBytes / 2 / 1000) + " KB)"
                 + Environment.NewLine + text.Substring(cut + 1);
             File.WriteAllText(path, kept, Utf8NoBom);
-            _approxBytes = kept.Length;
+            _approxBytes = Utf8NoBom.GetByteCount(kept);
+        }
+
+        /// <summary>The whole file, read the way an editor would while another handle may write it.</summary>
+        private static string ReadShared(string path)
+        {
+            using (var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
+            using (var reader = new StreamReader(stream, Utf8NoBom))
+                return reader.ReadToEnd();
         }
     }
 }

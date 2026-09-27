@@ -306,6 +306,7 @@ namespace TraxCombat.Missions
             TraxLog.Info("summary", "errors logged during this mission: " + (TraxLog.ErrorCount - _errorsAtStart));
             TraxLog.FlushSuppressedCounts();
             TraxLog.Info("summary", "==== end of summary ====");
+            TraxLog.Release(); // between battles nothing holds the log file (the next line reopens it)
         }
 
         private static string Kind(Mission m)

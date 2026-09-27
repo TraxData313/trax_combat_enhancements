@@ -54,6 +54,7 @@ namespace TraxCombat
             try
             {
                 TraxLog.Info("load", "unloaded (game closing)");
+                TraxLog.Release();
             }
             catch
             {

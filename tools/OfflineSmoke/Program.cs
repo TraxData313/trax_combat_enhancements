@@ -30,8 +30,17 @@ namespace TraxCombat.Tools
         private static string ConfigPath => Path.Combine(_dir, ConfigFile.FileName);
 
         private static string LogText => File.Exists(Path.Combine(_dir, ConfigFile.LogFileName))
-            ? File.ReadAllText(Path.Combine(_dir, ConfigFile.LogFileName), Encoding.UTF8)
+            ? ReadShared(Path.Combine(_dir, ConfigFile.LogFileName))
             : string.Empty;
+
+        /// <summary>A file read the way an editor reads trax_combat.log while the game holds it open
+        /// for writing (review 10a R6: TraxLog keeps one handle, shared for reading and writing).</summary>
+        private static string ReadShared(string path)
+        {
+            using (var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
+            using (var reader = new StreamReader(stream, Encoding.UTF8))
+                return reader.ReadToEnd();
+        }
 
         private static int Main(string[] args)
         {
@@ -58,6 +67,7 @@ namespace TraxCombat.Tools
             Step("broken file: kept values, backed up before the next write", BrokenFile);
             Step("missing keys defaulted and added, unknown key kept and reported", MissingAndUnknownKeys);
             Step("log rate limit: a verbose flood is capped", VerboseFloodCapped);
+            Step("log file (review 10a R6): one handle kept open - readable meanwhile, follows a new path, released (the file can go, the next line makes a new one), trimmed to the newest half past 2 MB", LogWriterKeepsTheFileUsable);
             Step("tournament AI-level fix reads the private field and pushes it down the chain", TournamentAiLevelFix);
             // Damage randomness (step 4) - the real decorator over the game's own custom-battle
             // model, fed the game's own AttackCollisionData / AttackInformation structs.
@@ -103,6 +113,7 @@ namespace TraxCombat.Tools
             Step("MCM buttons: \"Save current values as a defaults file\" writes a clean defaults.json beside config.json; \"Revert all to defaults\" is live, logged, rewrites config.json, refreshes the page", McmButtons);
 
             Console.WriteLine();
+            TraxLog.Release(); // the log handle (R6) - the temp folder can go
             if (Failures.Count == 0)
             {
                 Console.WriteLine("OFFLINE SMOKE: all checks passed.");
@@ -331,6 +342,47 @@ namespace TraxCombat.Tools
             TraxLog.Verbose("damage", "must not appear");
             Check(!LogText.Contains("must not appear"), "verbose line written with VerboseLogging off");
             ConfigStore.Reload("after flood"); // file and memory in step again
+        }
+
+        /// <summary>Review 10a R6: TraxLog keeps ONE handle (AutoFlush) instead of an open / append / close
+        /// per line. The log must stay usable: readable while held, following a changed path, gone
+        /// cleanly after Release (the next line starts a new file), and still trimmed past 2 MB.</summary>
+        private static void LogWriterKeepsTheFileUsable()
+        {
+            TraxLog.Info("log", "smoke: a line while the handle is held");
+            LogHas("smoke: a line while the handle is held"); // read (shared) while TraxLog holds the file
+
+            string sub = Path.Combine(_dir, "log_writer");
+            Directory.CreateDirectory(sub);
+            string subLog = Path.Combine(sub, ConfigFile.LogFileName);
+            SetStatic(typeof(ModPaths), "_configDir", sub);
+            try
+            {
+                TraxLog.Info("log", "smoke: first line in the second folder");
+                Check(File.Exists(subLog) && ReadShared(subLog).Contains("smoke: first line in the second folder"), "the log did not follow the new path");
+                TraxLog.Release();
+                File.Delete(subLog);
+                Check(!File.Exists(subLog), "released, the log could not be deleted");
+                TraxLog.Info("log", "smoke: after the release");
+                string fresh = ReadShared(subLog);
+                Check(fresh.Contains("smoke: after the release") && !fresh.Contains("first line in the second folder"), "the next line did not start a new file");
+
+                string filler = new string('x', 1000);
+                for (int i = 0; i < 2100; i++) TraxLog.Info("log", "smoke filler " + i + " " + filler);
+                long size = new FileInfo(subLog).Length;
+                string text = ReadShared(subLog);
+                Check(size < TraxLog.TrimAtBytes && size > TraxLog.TrimAtBytes / 4, "the log was not trimmed to about its newest half: " + size + " bytes");
+                Check(text.Contains("[log] (older lines trimmed") && text.Contains("smoke filler 2099 ") && !text.Contains("smoke filler 5 "),
+                    "the trim did not keep the newest lines (with its note)");
+                Check(text.Split('\n').All(l => l.Length == 0 || l.StartsWith("20", StringComparison.Ordinal)), "the trim left a half line");
+            }
+            finally
+            {
+                TraxLog.Release();
+                SetStatic(typeof(ModPaths), "_configDir", _dir);
+            }
+            TraxLog.Info("log", "smoke: back in the main log");
+            LogHas("smoke: back in the main log");
         }
 
         /// <summary>TournamentBehavior calls SetAILevelMultiplier on the TOP stat model (us); the
