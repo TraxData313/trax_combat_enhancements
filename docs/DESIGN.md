@@ -152,6 +152,25 @@ regen.)
   restarts the delay. (0.4 because the game walks people at 1.8 m/s and their top speed on
   foot works out at about 4–5 m/s — RESEARCH §D. "Current" top speed: a tired man's top is
   lower, so keeping up with a walking formation is harder work for him.)
+  - **Faster when low, slower when full** (step 14, Anton: "recover faster when it's low and
+    slower as it is fuller by some modifier, not crazy, maybe half linear"). The rate is a straight
+    line in the fill x (Athletics ÷ the FULL pool): rate(x) = r0 × (1 − (1 − k) × x), k =
+    `RegenRateNearFullPercent` (50) / 100 - near full the bar refills at half its speed near empty.
+    r0 keeps `FullRegenSecondsStanding` meaning "empty to full at a walk or slower":
+    r0 = ln(1/k) / ((1 − k) × T) of the pool per second (k = 1 → 1/T, the flat refill of steps
+    5c-13). The effort multiplier above multiplies on top (a flat-out run still takes twice as
+    long), and the health cap still caps where it stops. At k 0.5, T 60 s, at a walk:
+
+    | From empty to | Flat (k 1) | Curve (k 0.5) |
+    |---|---|---|
+    | half the bar | 30 s | ~25 s |
+    | the peak line (75%) | 45 s | ~41 s |
+    | full | 60 s | 60 s |
+    | the last quarter alone (75% → full) | 15 s | ~19 s |
+
+    So the rate at empty is ×1.39 the flat rate, near full ×0.69. A tired man gets back to full
+    strength about 4 s sooner and tops off the last quarter about 4 s slower. The curve is on the
+    FULL pool, so a wounded man refilling to his cap (say 50%) refills on its fast part.
 - **Cavalry**: riders use the very same pool (their Athletics skill). Riding never drains
   it; only blows do. The horse has no Athletics of its own.
 - **Tired fighters step back** (built in step 5d - the literal rule; `StepBackEnabled`, on):
@@ -602,6 +621,17 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     (the gap it leaves, attacks inside it); your timer has its own switch
     (`AttackRatePlayerTimer`) as an escape hatch; the recovery bar hides with your timer off, the
     Athletics bar's row moved to 30 px to make room (format 2 moves an old 54).
+
+17. **The run-speed floor and the refill curve** (step 14, Claude's calls on Anton's two asks - AI_NOTES
+    "Step 14"): the floor 0.7 is a design change, so DESIGN's initial value moved with it, and config
+    format 3 moves a config.json still holding the old default 0.3 to 0.7 once, logged (a hand-set 0.3
+    cannot be told apart and moves too - the log line names it); "half linear" = the rate near full is
+    half the rate near empty (`RegenRateNearFullPercent` 50), a straight line in the fill between; the
+    fill is measured on the FULL pool (wounds do not change the rate at a given bar level);
+    `FullRegenSecondsStanding` keeps its meaning (empty to full), so the curve moves time from the top
+    of the bar to the bottom and never makes refilling longer overall; each regen step is integrated
+    exactly (the step length never changes the result, 100 is the old rule to the bit); the slider runs
+    10-100 (0 would never reach full, above 100 would refill slower when low).
 
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),

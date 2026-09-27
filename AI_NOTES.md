@@ -1892,3 +1892,68 @@ duration).
 `HumanAIComponent.GetDesiredSpeedInFormation`, the order UI - NOT `GetOrderPositionOfUnit`,
 `GetDirectionOfUnit`, damage, stats or morale; its volley / defensive-hold modes rewrite AI input and set
 behaviour values on their own state changes (overlaps with #2 and #5).
+
+## Step 14 — run-speed floor 0.7 + the refill curve (DONE 2026-09-27)
+
+Anton, night of 2026-09-27, asleep while it was built (no questions): after his 240v240 "make them slow down
+to 70% speed" (0.3 was "too slow, unrealistic"), and "recover faster when it's low and slower as it is
+fuller by some modifier, not crazy, maybe half linear". DESIGN §2 (run speed; "Faster when low, slower when
+full" with the small table) and interpretation 17 are the spec.
+
+**Built**
+- `MinMoveSpeedMultiplier` 0.3 → **0.7** (defaults.json AND DESIGN's initial value - a design change, as step
+  13 did). **Config format 3** (`ConfigFile.Migrate`): a format ≤ 2 file still holding the old default 0.3
+  gets 0.7 once - `[config] migrated config.json at …: MinMoveSpeedMultiplier: 0.3 → 0.7 (format 2 → 3, the
+  old default; step 14: …)` - and is rewritten as format 3 (ConfigStore, unchanged). Checked on the real DLL
+  against Anton's own config.json (read only): exactly that one note, `RegenRateNearFullPercent` missing
+  (added with its default), nothing else moves. A format-1 file gets step 13's two AND this.
+- **The refill curve**, new setting `RegenRateNearFullPercent` (Refill group, int 10-100, default 50; after
+  `FullRegenSecondsStanding`): rate(x) = r0 × (1 − (1 − k) x) × the effort multiplier, x = Fraction (share of
+  the FULL pool), k = % / 100, r0 = ln(1/k) / ((1 − k) T) so 0 → 1 at a walk takes T. Core `AthleticsMath`:
+  `RegenRateAtEmpty`, `RegenCurve`, `RefillFrom` (exact: x0 + (1 − a x0)(1 − e^(−a r0 m t)) / a, a = 1 − k),
+  `RefillSeconds` (ln((1 − a from) / (1 − a to)) / (a r0 m)); `Regen` uses them (the top reached: used =
+  RefillSeconds to the top), `RegenFractionPerSecond` = r0 × curve × effort. `AthleticsRules.RegenNearFullShare`
+  clamps k to 0.01..1.
+- Summary: the settings sentence ends `…, near full at 50% of the rate near empty (at a walk: half the bar in 25
+  s, the peak line in 41 s)`; the regen line ends `refill curve: near full x0.50 of near empty (…), x1.39 →
+  x0.69 of a flat refill` (its "at the full rate" became "at the walking rate (x1)" - "full" was ambiguous next
+  to a curve); NEW `Athletics refill from empty to the peak line (no blow between): N runs, avg X s (fastest,
+  slowest) - 40.7 s at a walk …` (`RegenOutcome.EmptyToPeakSeconds`: set on the step that crosses the line of
+  a refill run that began at 0, exact to the crossing). `YOU are back at full strength …` adds `- up from empty
+  in N s of refill (…)`; the refill line names the curve. The effort-tenths line is unchanged (it bins effort,
+  not fill - it reads right as it was).
+- Tests 333 → 351 (the migration; T for k 10-100 and several T; DESIGN's table 24.9 / 40.7 / 19.3; k = 100
+  bit-identical to step 5c's arithmetic over 3000 random steps with blows, wounds and efforts; boundaries;
+  monotonic; one 30 s step = 300 steps of 0.1 s; the empty-to-peak report and what it leaves out; the words).
+  Old tests that asserted flat numbers now either compute the curve's value or pin `nearFull: 100` where they
+  test other arithmetic (the delay straddle). Smoke: DESIGN's 0.7 and 50 set explicitly; the run checks moved
+  to 0.7 (+ 0.3 × f; an empty man's MaxSpeedMultiplier 0.8 × 0.7 = 0.56). deploy.ps1 green.
+
+**Decisions (Claude's - Anton can overturn any)**
+1. "Half linear" = the rate near full is HALF the rate near empty, a straight line in the fill between (k 0.5).
+   The rate at empty is ×1.39 the old flat rate, near full ×0.69: "not crazy".
+2. T keeps its meaning (empty → full at a walk), so the curve only moves time from the top of the bar to the
+   bottom: the peak line 45 → 40.7 s, the last quarter 15 → 19.3 s. A tired man is back in the fight sooner.
+3. The fill is on the FULL pool, not the usable one: a wound does not change the rate at a given bar level,
+   and a man refilling to a low cap refills on the fast part of the line.
+4. Exact integration per step, so the regen step (0.1 s, engine plumbing) never changes a refill time, and
+   100 reproduces the old rule to the bit (the flat branch is the old arithmetic, same operation order).
+5. The slider stops at 10: k → 0 never reaches full (r0 → ∞), above 100 would refill slower when low. Int
+   percent, like the other *Percent settings.
+6. The migration is the step-13 precedent: only a value equal to the old default moves (a hand-set 0.3 cannot
+   be told apart and moves too; the log line names it); no other value of his is touched. His file today is
+   format 2 with 0.3 → his next game start migrates it.
+
+**Side effects to know**
+- With the floor at 0.7 the run multiplier spans only 0.3, so it moves in fewer 0.05 recompute steps (~6 from
+  empty to the peak instead of ~14) - fewer `UpdateAgentProperties` calls, nothing else. The run speed check's
+  "follows the curve" still has signal: its f 0.5-1 / below 0.5 / empty rows ask ~0.92 / ~0.78 / 0.70 (< 0.97).
+- A near-empty man's top is now ≈ 0.7 × 4.5 ≈ 3.2 m/s, above a formation's 1.8 m/s walk: keeping up is effort
+  ~0.57, not a flat-out run (step 5c's note about x0.3 no longer applies) - he refills at ~x0.86 while walking
+  with his formation.
+
+**UNVERIFIED - only the game can tell (PLAYTEST A1, C1, C6, L1, L4)**
+1. The migration on Anton's real file at the next game start → `[config] migrated config.json at startup:
+   MinMoveSpeedMultiplier: 0.3 → 0.7 …` then `rewrote config.json as format 3 …`, and the settings dump reads 0.7.
+2. The feel: 70% run at empty; the curve (fast back into the fight, slow to top off) → Anton; `refill from empty to
+   the peak line` avg ≥ 40.7 s, close to it when men walked.

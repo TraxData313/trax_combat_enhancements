@@ -146,7 +146,7 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
   ParamDef.cs                 one setting: key, type, range, group, label, plain-words
                               description, apply timing (Live / NextBattle); Normalize, Format;
                               its Default comes from defaults.json (DefaultsFile), never code
-  SettingsSchema.cs           EVERY setting of DESIGN's table (66), in file + MCM order, 9 groups
+  SettingsSchema.cs           EVERY setting of DESIGN's table (67), in file + MCM order, 9 groups
                               ("Master switch" first, "Advanced" last; step 10b's one vocabulary and
                               units in its header comment) — the one place a setting is declared
                               (a test parses DESIGN.md: keys + types); NO default values. The LATER
@@ -162,8 +162,9 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
   ConfigFile.cs               config.json TEXT: commented writer (header incl. how to revert +
                               // above each key; AppendSettings shared with defaults.json),
                               tolerant reader (comments, trailing commas, casing, "0,75"), Apply;
-                              FormatVersion 2 + Migrate (step 13: a format-1 file's old defaults -
-                              AttackRateAiDecisions true, PlayerBarOffsetBottom 54 - get the new ones once)
+                              FormatVersion 3 + Migrate (step 13: a format-1 file's old defaults -
+                              AttackRateAiDecisions true, PlayerBarOffsetBottom 54 - get the new ones once;
+                              step 14: a format-2 file's MinMoveSpeedMultiplier 0.3 → 0.7 once)
   ConfigMerge.cs              THE FILE-REWRITE RULE (MCM wins for what it touched, the disk for
                               the rest) + EditTracker (what MCM changed since the last write)
   RateLimiter.cs              per-tag token bucket for chatty log lines, counts what it drops;
@@ -199,7 +200,9 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               per rule (PoolPoints = max(floor, per-skill × skill), UsableFraction
                               = the health cap, PeakShare = f, Attack/Run/MountSpeedMultiplier =
                               floor + (1 − floor) × f, DamageUpside, BlowCostPoints in points,
-                              RegenRateMultiplier by effort, SpeedUpdateNeeded (0.05 step), PeakBin)
+                              RegenRateMultiplier by effort, SpeedUpdateNeeded (0.05 step), PeakBin;
+                              step 14's refill curve: RegenCurve = 1 − (1 − k) x, RegenRateAtEmpty r0 =
+                              ln(1/k) / ((1 − k) T), RefillFrom / RefillSeconds - exact per step)
                               + Charge / ApplyHealth / Regen / Read; BlowKind, BlowOutcome,
                               RegenOutcome, AthleticsReading (HUD snapshot incl. f, usable pool,
                               BelowFull = below the top it can refill to - step 12)
@@ -268,7 +271,8 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
   AthleticsStats.cs           per-mission Athletics counters + the [summary] text (pools from the
                               skill, blows by kind, riders, detection cross-checks, free actions,
                               exhaustions + peak zone, fighter-time by f, heroes, player,
-                              formations, health cap, regen by effort, run-speed checks by f,
+                              formations, health cap, regen by effort and its curve, refills from
+                              empty to the peak line (step 14), run-speed checks by f,
                               recomputes, walk vs run speeds, tick cost, errors)
 src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhancements.dll:
   SubModule.cs                entry point: load log (+ "module: <Id>" - which copy runs), config
@@ -430,14 +434,15 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               / values lines, the [summary] strip line
   Hud/OrderStripVM.cs         its ViewModels: the root + 8 fixed OrderStripCellVM in one
                               MBBindingList, bound TWICE by the prefab (the cells, the panel rows)
-tests/TraxCombat.Core.Tests/  net8.0 xUnit (333) — schema vs DESIGN.md (keys + types), one copy
+tests/TraxCombat.Core.Tests/  net8.0 xUnit (351) — schema vs DESIGN.md (keys + types), one copy
                               runs (SingleCopyTests: claims on private slots, copies, texts), when
                               MCM is tried and when it stops (McmPlanTests - step 12),
                               defaults.json (DefaultsFileTests), master switch, settings, config
                               file, merge rule, rate limiter (+ Peek), the log trim (LogTrimTests:
                               kept kinds, one cut point, stacks, notes, the last resort, bytes),
                               damage roll/rules/dice/stats/upside,
-                              Athletics v2 rules (pool, f, cap, curves, effort regen, DESIGN's
+                              Athletics v2 rules (pool, f, cap, curves, effort regen, the refill curve
+                              - T for any k, 100 = the old rule to the bit, exact steps - DESIGN's
                               blow counts), mean/std, the run-speed check, Athletics summary, the
                               attack rate (rules, AI values x / ÷ m, the cap, verdicts, phases /
                               cycles / timers / holds / guard + summary), the timer (AttackTimerTests:
@@ -477,7 +482,7 @@ tools/package.ps1             step 11, THE RELEASE: manifest gate (release Id + 
 tools/WORKSHOP-UPLOAD.md      the release loop, step by step (first upload, updates) + the uploader's quirks
 tools/WorkshopCreate.xml      the FIRST upload (creates the item, Private, tags, preview) - run once
 tools/WorkshopUpdate.xml      every later upload - ITEM_ID placeholder until the first upload
-tools/STEAM-DESCRIPTION.bbcode  the Workshop page, pasted by hand (≤ 8000 bytes; 4282 now)
+tools/STEAM-DESCRIPTION.bbcode  the Workshop page, pasted by hand (≤ 8000 bytes; 4375 now)
 tools/preview_thumbnail.html  the Workshop preview (source) → preview_thumbnail.png (1024², headless Edge)
 tools/AssemblyGuard/          soft-dependency guard (from the sibling): MCM, Harmony, ButterLib,
                               UIExtenderEx, NavalDLC, CustomBattle in any type surface = FAIL
