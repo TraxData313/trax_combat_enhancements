@@ -616,3 +616,25 @@
   damage scale (heroes exempt; start 0.75), #3 troop caution as an A/B, then #4 rank rotation or #5
   front ranks only. AI_NOTES "Step 15"; TASKS_TODO 15 checked. No code, settings or defaults changed.
   (2026.09.27 23.21.33)
+- [x] **Step 14 — the run-speed floor 0.7 + the refill curve.** Anton after his 240v240 (asleep, no
+  questions): "make them slow down to 70% speed" (0.3 was "too slow, unrealistic") and "recover faster
+  when it's low and slower as it is fuller … not crazy, maybe half linear". (1) `MinMoveSpeedMultiplier`
+  0.3 → 0.7 in defaults.json and DESIGN's initial value (a design change, like step 13's); config format
+  3: a config.json of format ≤ 2 still holding the old default 0.3 gets 0.7 once, logged
+  `[config] migrated config.json …: MinMoveSpeedMultiplier: 0.3 → 0.7 (format 2 → 3, …)` and rewritten as
+  format 3 - dry-run on the real DLL against Anton's own file: that one value moves, the new key is added
+  with its default, nothing else of his changes. (2) New setting `RegenRateNearFullPercent` (Refill, 10-100,
+  50): the refill rate is a straight line in the fill x (share of the FULL pool), r0 × (1 − (1 − k) x) × the
+  effort multiplier, r0 = ln(1/k) / ((1 − k) T) so empty → full at a walk still takes
+  `FullRegenSecondsStanding`; 100 = the old flat rule to the bit. Each regen step is integrated exactly
+  (Core `RefillFrom` / `RefillSeconds`), so the 0.1 s step never changes a refill time; the health cap still
+  caps the target. At 50 / 60 s: half the bar ~25 s, the peak line ~41 s (was 45), the last quarter ~19 s
+  (was 15). Schema + player-words hint, TraxSettings, AthleticsRules, defaults.json (+ refresh), DESIGN row
+  + §2 text with the small table + interpretation 17, MCM by construction, live. Summary: the settings
+  sentence and the regen line state the curve, new line `Athletics refill from empty to the peak line (no
+  blow between): N runs, avg X s … - 40.7 s at a walk`, the YOU lines give the time up from empty. Tests
+  333 → 351 (the migration; T for several k and T; DESIGN's table; k 100 bit-identical over 3000 random
+  steps; boundaries; monotonic; step-length independence; the empty-to-peak report); build 0 warnings;
+  smoke (51 steps) on DESIGN's 0.7 / 50; deploy.ps1 green (guard OK, installed - the game was not
+  running). Docs: PLAYTEST A1 / C / C1 / C6 / L1 / L4, README, Steam page, CLAUDE layout, AI_NOTES
+  "Step 14". Commits 3127fee, 9d2cbab, f1bf966 + this. (2026.09.27 23.39.43)
