@@ -119,15 +119,37 @@ Step 5 builds §2 as written; step 5c then reshapes it as below and folds this s
   The point: the tired fall back and the fresh step in. If the game's AI fights this,
   step 5d reports and proposes the nearest thing that works.
 
-## 2c. Defaults file (step 5b)
+## 2c. Defaults file (built in step 5b)
 
-`defaults.json` at the repo root holds EVERY parameter's default, one per line, with the
-plain-words explanation above it — the one place Anton tunes defaults, then pushes. It is
-the single source of defaults: the build embeds and ships it; the first-run config file,
-MCM's Default preset and a **"Revert all to defaults"** button in MCM all read it. A second
-MCM button writes the CURRENT values as a defaults file in the config folder, so a good
-tuning found in game can be copied into the repo. The Default column of the Parameters
-table below is the INITIAL value; `defaults.json` wins.
+`defaults.json` at the repo root holds EVERY parameter's default, one key each, with the
+plain-words explanation above it — the one place Anton tunes defaults, then pushes. **It is
+the single truth for default values**: the build embeds it in `TraxCombat.Core.dll` and the
+settings schema reads each default from it while it is built (the schema declares types,
+ranges, groups and wording — no default values). So the first-run config file, a key missing
+from config.json, MCM's Default preset (its Reset buttons), the "Revert all to defaults"
+button and the "(default …)" in comments, MCM hints and the log all show the file's values.
+
+- **MCM, group "Defaults"**: **Revert all to defaults** puts every setting back to its
+  defaults.json value at once — live, even mid-battle; each change is logged
+  `(source: defaults)` and config.json is rewritten. **Save current values as a defaults
+  file** writes the values in play as `defaults.json`, comments and all, next to config.json
+  (the path is logged and shown on screen) — copy it over the repo's to make a tuning found in
+  game the new defaults.
+- **Without MCM**: delete a key's line in config.json (it takes its default at the next battle
+  start) or delete the file (everything does); the config file's header says so.
+- **The Parameters table's Default column is the INITIAL value** — what the setting started
+  with. It is NOT compared with the code or with defaults.json: Anton tunes defaults.json and
+  never has to edit this document for it. The table must still list exactly the schema's keys,
+  each with a value of the right type (the schema test).
+- **Checks** (DefaultsFileTests): every schema key is in defaults.json and nothing else; each
+  value has the right type (true/false, a whole number, a number) and lies inside its range;
+  the // lines are exactly what the mod writes; the build embedded that very file. When a
+  setting's wording, range or place changes, `dotnet run --project tools/DefaultsTool --
+  refresh` rewrites every comment and keeps every value. The unit tests run on this table's
+  INITIAL values, so a tuned default never breaks them; the offline smoke checks that the real
+  DLL read every default from the embedded file.
+- **A new setting**: its row in the table below, its schema entry, `"Key": value` anywhere in
+  defaults.json, then the refresh command puts it in place with its comments.
 
 ## 3. Showing Athletics
 
@@ -184,7 +206,7 @@ file on disk is re-read at that moment, MCM's value is written only for the sett
 changed, and every other setting keeps the value on disk (it takes effect at the next battle
 start). Unknown keys are kept in a "not recognised" section; a file that does not parse is
 saved as `config.json.broken-<time>` before a fresh one replaces it. MCM's Reset buttons
-restore the defaults of the table below. Ranges live in the schema
+(and "Revert all to defaults") restore the defaults from `defaults.json` (§2c). Ranges live in the schema
 (`src/TraxCombat.Core/SettingsSchema.cs`) and are printed beside each key in the file. The
 file also carries `ConfigVersion`, a format stamp — not a setting.
 
@@ -200,7 +222,10 @@ file also carries `ConfigVersion`, a format stamp — not a setting.
 
 ## Parameters
 
-| Key | Default | What it does |
+The Default column is the INITIAL value; the shipped default is whatever `defaults.json`
+says (§2c).
+
+| Key | Default (initial) | What it does |
 |---|---|---|
 | `DamageRandomEnabled` | true | Master switch for damage randomness. |
 | `DamageRandomPercent` | 50 | ± spread in percent. 50 → a 50-damage hit lands for 25–75. 0 = off. |

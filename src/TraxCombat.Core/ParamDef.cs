@@ -42,13 +42,15 @@ namespace TraxCombat.Core
     }
 
     /// <summary>
-    /// One setting of the mod: its key (the config-file key and the MCM property id), default,
-    /// range, group and the plain-words description shown beside it in the file and as the
-    /// MCM hint. Immutable; the live VALUE lives in <see cref="TraxSettings"/>.
+    /// One setting of the mod: its key (the config-file key and the MCM property id), range,
+    /// group and the plain-words description shown beside it in the file and as the MCM hint -
+    /// and its default, which comes from defaults.json (<see cref="DefaultsFile"/>, the one truth
+    /// for default values), never from code. Immutable; the live VALUE lives in
+    /// <see cref="TraxSettings"/>.
     /// </summary>
     public sealed class ParamDef
     {
-        internal ParamDef(int index, string key, ParamType type, double defaultValue, double min, double max,
+        internal ParamDef(int index, string key, ParamType type, double min, double max,
             ParamGroup group, string label, string description, ApplyTiming timing)
         {
             if (min > max) throw new ArgumentException(key + ": min > max");
@@ -61,9 +63,8 @@ namespace TraxCombat.Core
             Label = label;
             Description = description;
             Timing = timing;
-            Default = Normalize(defaultValue);
-            if (Math.Abs(Default - defaultValue) > 1e-9)
-                throw new ArgumentException(key + ": default " + defaultValue + " is outside its own range or precision");
+            // The one truth: the embedded defaults.json (a problem there is recorded, never thrown).
+            Default = DefaultsFile.DefaultFor(key, type, min, max);
         }
 
         /// <summary>Slot in <see cref="SettingsSchema.All"/> and in the settings value array.</summary>
@@ -74,6 +75,7 @@ namespace TraxCombat.Core
 
         public ParamType Type { get; }
 
+        /// <summary>The default - from defaults.json (see <see cref="DefaultsFile"/>).</summary>
         public double Default { get; }
 
         public double Min { get; }

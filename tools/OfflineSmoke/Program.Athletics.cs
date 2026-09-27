@@ -106,9 +106,25 @@ namespace TraxCombat.Tools
 
         private static bool Near(float a, float b) => Math.Abs(a - b) < 1e-4f;
 
+        /// <summary>DESIGN's initial numbers, set explicitly - the checks count blows with them
+        /// ("10 empty a soldier, 18 a party leader"), whatever Anton tunes in defaults.json.</summary>
         private static void AthleticsDefaults()
         {
             S.ResetToDefaults(SettingSources.Defaults);
+            S.Set(SettingsSchema.AthleticsEnabled, true, SettingSources.File);
+            S.Set(SettingsSchema.MaxAthletics, 100, SettingSources.File);
+            S.Set(SettingsSchema.CostPerBlow, 10, SettingSources.File);
+            S.Set(SettingsSchema.CostOnMiss, true, SettingSources.File);
+            S.Set(SettingsSchema.HeroCostMultiplier, 0.75, SettingSources.File);
+            S.Set(SettingsSchema.PartyLeaderCostMultiplier, 0.75, SettingSources.File);
+            S.Set(SettingsSchema.ExhaustedAttackSpeedPercent, 20, SettingSources.File);
+            S.Set(SettingsSchema.ExhaustedRecoverPercent, 0, SettingSources.File);
+            S.Set(SettingsSchema.RegenDelayBlowTimes, 2, SettingSources.File);
+            S.Set(SettingsSchema.BlowTimeSeconds, 1.5, SettingSources.File);
+            S.Set(SettingsSchema.FullRegenSecondsStanding, 60, SettingSources.File);
+            S.Set(SettingsSchema.FullRegenSecondsMoving, 120, SettingSources.File);
+            S.Set(SettingsSchema.MovingSpeedThreshold, 0.5, SettingSources.File);
+            S.Set(SettingsSchema.VerboseLogging, false, SettingSources.File);
         }
 
         // ------------------------------------------------------------------ checks

@@ -1,82 +1,73 @@
 using System.Globalization;
 using System.Reflection;
-using System.Text.RegularExpressions;
 using TraxCombat.Core;
 
 namespace TraxCombat.Core.Tests;
 
 /// <summary>
-/// The schema against docs/DESIGN.md's Parameters table - the contract. Any key added,
-/// dropped or re-defaulted on one side only fails here, so the doc and the code cannot drift.
+/// The schema against docs/DESIGN.md's Parameters table - the contract. Any key added or
+/// dropped on one side only, or a type that disagrees, fails here, so the doc and the code
+/// cannot drift. DESIGN's Default column is the INITIAL value (DESIGN §2c): the defaults the
+/// mod ships come from defaults.json (checked in DefaultsFileTests) and are NOT compared with
+/// DESIGN - Anton tunes defaults.json without touching DESIGN. The unit tests themselves run on
+/// DESIGN's values (TestDefaults), so a tuned default never breaks them.
 /// </summary>
 public class SchemaTests
 {
-    private static string RepoFile(string relative)
-    {
-        var dir = new DirectoryInfo(AppContext.BaseDirectory);
-        while (dir != null)
-        {
-            var candidate = Path.Combine(dir.FullName, relative);
-            if (File.Exists(candidate)) return candidate;
-            dir = dir.Parent;
-        }
-        throw new FileNotFoundException("Could not find " + relative + " above " + AppContext.BaseDirectory);
-    }
-
-    /// <summary>Key → default text, from the rows of DESIGN.md's "## Parameters" table.</summary>
-    private static Dictionary<string, string> DesignTable()
-    {
-        var lines = File.ReadAllLines(RepoFile(Path.Combine("docs", "DESIGN.md")));
-        var rows = new Dictionary<string, string>(StringComparer.Ordinal);
-        bool inSection = false;
-        var row = new Regex(@"^\|\s*`(?<key>[A-Za-z0-9]+)`\s*\|\s*(?<def>[^|]+?)\s*\|");
-        foreach (var line in lines)
-        {
-            if (line.StartsWith("## ")) inSection = line.Trim() == "## Parameters";
-            if (!inSection) continue;
-            var m = row.Match(line);
-            if (m.Success) rows.Add(m.Groups["key"].Value, m.Groups["def"].Value);
-        }
-        Assert.True(rows.Count > 0, "no parameter rows found in DESIGN.md");
-        return rows;
-    }
-
-    private static double ParseDesignDefault(string text) => text switch
-    {
-        "true" => 1,
-        "false" => 0,
-        _ => double.Parse(text, CultureInfo.InvariantCulture),
-    };
-
     [Fact]
-    public void Every_design_parameter_is_in_the_schema_with_the_same_default()
+    public void Every_design_parameter_is_in_the_schema_with_the_same_casing()
     {
-        foreach (var (key, defText) in DesignTable())
+        foreach (var key in DesignTable.Rows().Keys)
         {
             Assert.True(SettingsSchema.TryGet(key, out var p), key + " is in DESIGN.md but not in SettingsSchema");
             Assert.Equal(key, p.Key); // exact casing
-            Assert.True(Math.Abs(ParseDesignDefault(defText) - p.Default) < 1e-9,
-                key + ": DESIGN default " + defText + " vs schema " + p.Format(p.Default));
         }
     }
 
     [Fact]
     public void Every_schema_parameter_is_in_the_design_table()
     {
-        var design = DesignTable();
+        var design = DesignTable.Rows();
         foreach (var p in SettingsSchema.All)
             Assert.True(design.ContainsKey(p.Key), p.Key + " is in SettingsSchema but not in DESIGN.md's table");
         Assert.Equal(design.Count, SettingsSchema.All.Count);
     }
 
     [Fact]
-    public void Bool_parameters_match_bool_defaults_in_design()
+    public void Design_initial_values_have_the_schema_types()
     {
-        foreach (var (key, defText) in DesignTable())
+        foreach (var (key, text) in DesignTable.Rows())
         {
             SettingsSchema.TryGet(key, out var p);
-            bool designIsBool = defText is "true" or "false";
-            Assert.True(designIsBool == (p.Type == ParamType.Bool), key + " type does not match its DESIGN default " + defText);
+            bool isBool = text is "true" or "false";
+            bool isWhole = long.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out _);
+            bool isNumber = double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out _);
+            switch (p.Type)
+            {
+                case ParamType.Bool:
+                    Assert.True(isBool, key + " is a switch - DESIGN's value must be true or false, not " + text);
+                    break;
+                case ParamType.Int:
+                    Assert.True(isWhole, key + " is a whole number - DESIGN's value must be one, not " + text);
+                    break;
+                default:
+                    Assert.True(isNumber && !isBool, key + " is a number - DESIGN's value must be one, not " + text);
+                    break;
+            }
+        }
+    }
+
+    [Fact]
+    public void The_unit_tests_run_on_the_design_initial_values()
+    {
+        Assert.Equal(TestDefaults.SourceName, DefaultsFile.SourceName);
+        Assert.True(DefaultsFile.Problems.Count == 0, "DESIGN's Default column: " + string.Join("; ", DefaultsFile.Problems));
+        foreach (var (key, text) in DesignTable.Rows())
+        {
+            SettingsSchema.TryGet(key, out var p);
+            var token = DesignTable.ToToken(text);
+            double expected = token.Type == Newtonsoft.Json.Linq.JTokenType.Boolean ? ((bool)token ? 1 : 0) : (double)token;
+            Assert.True(Math.Abs(expected - p.Default) < 1e-9, key + ": test default " + p.Format(p.Default) + " vs DESIGN " + text);
         }
     }
 

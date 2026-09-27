@@ -52,6 +52,7 @@ namespace TraxCombat.Tools
             Step("paths point at the temp folder", RedirectPaths);
             Step("MCM absent: the bridge logs it once and stands down", McmAbsent);
             Step("first run: config.json created, every key explained", FirstRun);
+            Step("defaults: every default from the defaults.json embedded in the DLL, logged, in the first-run file", DefaultsFromTheEmbeddedFile);
             Step("MCM save keeps a hand edit made meanwhile (the rewrite rule)", HandEditSurvivesMcmSave);
             Step("mission-start re-read applies the hand edit", ReloadAppliesHandEdit);
             Step("broken file: kept values, backed up before the next write", BrokenFile);
@@ -200,6 +201,14 @@ namespace TraxCombat.Tools
             Check(Occurrences(LogText, "is not loaded") == 1, "the 'MCM absent' line should be logged once");
         }
 
+        // The config checks below work for ANY default in defaults.json (Anton tunes it): they
+        // read the default and pick hand-edit values that differ from it.
+        private static readonly ParamDef Pct = SettingsSchema.DamageRandomPercent;
+        private static int PctDefault => (int)Pct.Default;
+        private static int HandPct => PctDefault == 30 ? 35 : 30;
+        private static bool VerboseDefault => SettingsSchema.VerboseLogging.Default != 0;
+        private static string OnOff(bool b) => b ? "true" : "false";
+
         private static void FirstRun()
         {
             ConfigStore.Initialize();
@@ -212,31 +221,49 @@ namespace TraxCombat.Tools
             Check(Occurrences(text, "  // (default ") == SettingsSchema.All.Count, "not every key has its default/range comment");
             LogHas("[config] first run: created config.json");
             LogHas("[config] settings in effect (" + SettingsSchema.All.Count);
-            LogHas("[config]   DamageRandomPercent = 50");
-            LogHas("[config]   VerboseLogging = false");
+            LogHas("[config]   DamageRandomPercent = " + PctDefault);
+            LogHas("[config]   VerboseLogging = " + OnOff(VerboseDefault));
+        }
+
+        /// <summary>DESIGN 2c: the real DLL takes every default from the defaults.json embedded in
+        /// TraxCombat.Core.dll, logs it, and the first-run file carries exactly those values.</summary>
+        private static void DefaultsFromTheEmbeddedFile()
+        {
+            Check(DefaultsFile.Problems.Count == 0, "embedded defaults.json problems: " + string.Join("; ", DefaultsFile.Problems));
+            LogHas("[config] defaults: defaults.json (embedded in TraxCombat.Core.dll), " + SettingsSchema.All.Count
+                + " keys for " + SettingsSchema.All.Count + " settings - every default read from it");
+            var embedded = DefaultsFile.Check(DefaultsFile.ReadEmbeddedText());
+            Check(embedded.Ok, "the embedded defaults.json does not check clean: " + embedded.Describe());
+            var created = ConfigFile.Read(File.ReadAllText(ConfigPath, Encoding.UTF8));
+            foreach (var p in SettingsSchema.All)
+            {
+                if (!embedded.Values.TryGetValue(p.Key, out double v)) continue;
+                Check(Math.Abs(p.Default - v) < 1e-9, p.Key + ": schema default " + p.Format(p.Default) + " vs defaults.json " + p.Format(v));
+                Check(created.Values.TryGetValue(p.Key, out double c) && Math.Abs(c - v) < 1e-9, p.Key + ": first-run config.json does not hold the defaults.json value");
+            }
         }
 
         private static void HandEditSurvivesMcmSave()
         {
             // The player edits the file by hand while the game runs...
-            File.WriteAllText(ConfigPath, File.ReadAllText(ConfigPath).Replace("\"DamageRandomPercent\": 50", "\"DamageRandomPercent\": 30"));
+            File.WriteAllText(ConfigPath, File.ReadAllText(ConfigPath).Replace("\"DamageRandomPercent\": " + PctDefault, "\"DamageRandomPercent\": " + HandPct));
             // ...then flips another setting in MCM and presses Done.
-            TraxSettings.Shared.Set(SettingsSchema.VerboseLogging, true, SettingSources.Mcm);
-            LogHas("[config] VerboseLogging: false → true (source: MCM)");
+            TraxSettings.Shared.Set(SettingsSchema.VerboseLogging, !VerboseDefault, SettingSources.Mcm);
+            LogHas("[config] VerboseLogging: " + OnOff(VerboseDefault) + " → " + OnOff(!VerboseDefault) + " (source: MCM)");
             ConfigStore.SaveAfterMcm();
 
             var disk = ConfigFile.Read(File.ReadAllText(ConfigPath));
-            Check(disk.Values["DamageRandomPercent"] == 30, "the hand edit was lost by the MCM save");
-            Check(disk.Values["VerboseLogging"] == 1, "the MCM change was not written");
-            Check(TraxSettings.Shared.DamageRandomPercent == 50, "memory took the hand edit before the next battle");
-            LogHas("from MCM VerboseLogging; kept hand edit(s) from the file that apply at the next battle start: DamageRandomPercent = 30 (now 50)");
+            Check(disk.Values["DamageRandomPercent"] == HandPct, "the hand edit was lost by the MCM save");
+            Check(disk.Values["VerboseLogging"] == (VerboseDefault ? 0 : 1), "the MCM change was not written");
+            Check(TraxSettings.Shared.DamageRandomPercent == PctDefault, "memory took the hand edit before the next battle");
+            LogHas("from MCM VerboseLogging; kept hand edit(s) from the file that apply at the next battle start: DamageRandomPercent = " + HandPct + " (now " + PctDefault + ")");
         }
 
         private static void ReloadAppliesHandEdit()
         {
             ConfigStore.Reload("mission start");
-            Check(TraxSettings.Shared.DamageRandomPercent == 30, "hand edit not applied at mission start");
-            LogHas("[config] DamageRandomPercent: 50 → 30 (source: file)");
+            Check(TraxSettings.Shared.DamageRandomPercent == HandPct, "hand edit not applied at mission start");
+            LogHas("[config] DamageRandomPercent: " + PctDefault + " → " + HandPct + " (source: file)");
             LogHas("[config] config.json re-read at mission start: 1 change(s)");
             ConfigStore.Reload("mission start");
             LogHas("[config] config.json re-read at mission start: no changes");
@@ -255,21 +282,22 @@ namespace TraxCombat.Tools
             Check(Directory.GetFiles(_dir, ConfigFile.FileName + ".broken-*").Length == 1, "broken file not backed up");
             var disk = ConfigFile.Read(File.ReadAllText(ConfigPath));
             Check(disk.Ok && disk.Values.Count == SettingsSchema.All.Count, "fresh file after a broken one is not complete");
-            Check(disk.Values["ShowTargetBar"] == 0 && disk.Values["DamageRandomPercent"] == 30, "fresh file lost the values in effect");
+            Check(disk.Values["ShowTargetBar"] == 0 && disk.Values["DamageRandomPercent"] == HandPct, "fresh file lost the values in effect");
             LogHas("did not parse");
         }
 
         private static void MissingAndUnknownKeys()
         {
-            File.WriteAllText(ConfigPath, "{ \"damageRandomPercent\": 20, \"DamageRandomPercnt\": 5, \"ConfigVersion\": 1 }");
+            int odd = PctDefault == 20 ? 25 : 20; // must differ from the default (McmPageBuilds needs a non-default value)
+            File.WriteAllText(ConfigPath, "{ \"damageRandomPercent\": " + odd + ", \"DamageRandomPercnt\": 5, \"ConfigVersion\": 1 }");
             ConfigStore.Reload("game start");
-            Check(TraxSettings.Shared.DamageRandomPercent == 20, "value with odd key casing not applied");
-            Check(TraxSettings.Shared.ShowTargetBar, "missing key did not go back to its default");
-            Check(!TraxSettings.Shared.VerboseLogging, "missing key did not go back to its default (VerboseLogging)");
+            Check(TraxSettings.Shared.DamageRandomPercent == odd, "value with odd key casing not applied");
+            Check(TraxSettings.Shared.ShowTargetBar == (SettingsSchema.ShowTargetBar.Default != 0), "missing key did not go back to its default");
+            Check(TraxSettings.Shared.VerboseLogging == VerboseDefault, "missing key did not go back to its default (VerboseLogging)");
             LogHas("\"DamageRandomPercnt\" is not a setting of this version");
             LogHas("added " + (SettingsSchema.All.Count - 1) + " missing setting(s)");
             var disk = ConfigFile.Read(File.ReadAllText(ConfigPath));
-            Check(disk.Values.Count == SettingsSchema.All.Count && disk.Values["DamageRandomPercent"] == 20, "missing keys not written in");
+            Check(disk.Values.Count == SettingsSchema.All.Count && disk.Values["DamageRandomPercent"] == odd, "missing keys not written in");
             Check(disk.Unknown.Count == 1 && disk.Unknown[0].Key == "DamageRandomPercnt", "unknown key not carried along");
         }
 
@@ -397,9 +425,10 @@ namespace TraxCombat.Tools
                 var defs = MCM.Abstractions.BaseSettingsExtensions.GetAllSettingPropertyDefinitions(settings).ToDictionary(d => d.Id);
 
                 int oldPercent = TraxSettings.Shared.DamageRandomPercent;
-                defs["DamageRandomPercent"].PropertyReference.Value = 40;          // an int slider
-                Check(TraxSettings.Shared.DamageRandomPercent == 40, "int slider did not reach the live settings");
-                logHas("[config] DamageRandomPercent: " + oldPercent + " → 40 (source: MCM)");
+                int slid = oldPercent == 40 ? 45 : 40;
+                defs["DamageRandomPercent"].PropertyReference.Value = slid;        // an int slider
+                Check(TraxSettings.Shared.DamageRandomPercent == slid, "int slider did not reach the live settings");
+                logHas("[config] DamageRandomPercent: " + oldPercent + " → " + slid + " (source: MCM)");
 
                 defs["HeroCostMultiplier"].PropertyReference.Value = 0.5f;         // a float slider
                 Check(Math.Abs(TraxSettings.Shared.HeroCostMultiplier - 0.5f) < 1e-6, "float slider did not reach the live settings");
@@ -407,7 +436,7 @@ namespace TraxCombat.Tools
                 defs["ShowPlayerBar"].PropertyReference.Value = false;             // a checkbox
                 Check(!TraxSettings.Shared.ShowPlayerBar, "checkbox did not reach the live settings");
 
-                Check(Convert.ToInt32(defs["DamageRandomPercent"].PropertyReference.Value) == 40, "getter does not read back the live value");
+                Check(Convert.ToInt32(defs["DamageRandomPercent"].PropertyReference.Value) == slid, "getter does not read back the live value");
             }
 
             [MethodImpl(MethodImplOptions.NoInlining)]

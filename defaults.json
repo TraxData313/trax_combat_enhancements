@@ -1,0 +1,175 @@
+// Trax Combat Enhancements - DEFAULTS (defaults.json)
+//
+// The one place every setting's default lives. The build embeds this file in the mod: a first
+// run writes these values into config.json, a key missing from config.json falls back to them,
+// and MCM's Reset and "Revert all to defaults" restore them.
+//
+// To change a default: edit the value after the colon (true/false, or a number with a dot:
+// 0.75), save, build and deploy. Keep every key - the tests check each value's type and range.
+//
+// The // lines are written by the mod from its list of settings. When a setting's wording,
+// range or place changes in the code, rewrite them (every value is kept) from the repo root:
+//     dotnet run --project tools/DefaultsTool -- refresh
+//
+// The game never reads this file for a player's own values - those live in config.json in
+// Documents\Mount and Blade II Bannerlord\Configs\TraxCombatEnhancements\
+// MCM's "Save current values as a defaults file" writes the values in play as a file like this
+// one, next to config.json - copy it over the repo's defaults.json to make them the defaults.
+{
+  // ==================== Damage randomness ====================
+  // Master switch. On: every hit that lands deals a random share of its normal damage (see the
+  // spread). Off: damage is the game's own.
+  // (true or false)
+  "DamageRandomEnabled": true,
+
+  // How far a hit's damage may swing up or down, in percent. 50 means a 50-damage hit lands for
+  // anything from 25 to 75, rolled fresh on every hit. 0 turns the randomness off.
+  // (range 0 to 100)
+  "DamageRandomPercent": 50,
+
+  // Randomize hits by swords, axes, maces, spears and fists, and horse-charge bumps.
+  // (true or false)
+  "DamageRandomMelee": true,
+
+  // Randomize hits by arrows, bolts, sling stones and thrown weapons.
+  // (true or false)
+  "DamageRandomRanged": true,
+
+  // Also randomize hits that land on horses and other mounts.
+  // (true or false)
+  "DamageRandomOnMounts": true,
+
+  // Also randomize the damage a shield takes when it blocks a blow. Off: shields wear down at
+  // the game's usual pace.
+  // (true or false)
+  "DamageRandomOnShields": false,
+
+  // ==================== Athletics ====================
+  // On: every fighter has an Athletics bar - his stamina, named after the Athletics skill on
+  // the character screen (which will set its size) - that his attacks drain and rest refills;
+  // an empty bar means slow attacks. Off: no Athletics bar at all.
+  // (true or false)
+  "AthleticsEnabled": true,
+
+  // How many Athletics points a fresh fighter's bar holds. Changing it mid-battle keeps
+  // everyone's share: a fighter at 60% stays at 60%.
+  // (range 10 to 1000)
+  "MaxAthletics": 100,
+
+  // Athletics points one attack costs before the hero and leader discounts. With the defaults a
+  // common soldier gets 10 blows out of a full bar. 0 = attacks are free.
+  // (range 0.0 to 100.0)
+  "CostPerBlow": 10.0,
+
+  // On: every attack costs Athletics, landed or not. Off: only attacks that hit something (a
+  // body, a shield, a parrying weapon) cost.
+  // (true or false)
+  "CostOnMiss": true,
+
+  // Heroes (lords, companions and you) pay this share of the cost per blow. 0.75 = a quarter
+  // less than a common soldier.
+  // (range 0.0 to 2.0)
+  "HeroCostMultiplier": 0.75,
+
+  // The hero who leads the fighter's own party (you for your party, a lord for his) pays this
+  // share again, on top of the hero discount: 0.75 × 0.75 × 10 = about 5.6 per blow.
+  // (range 0.0 to 2.0)
+  "PartyLeaderCostMultiplier": 0.75,
+
+  // ==================== Exhaustion ====================
+  // Attack speed of a fighter whose Athletics is empty, in percent of normal: swings, thrusts,
+  // bow draw, crossbow reload, throws. 100 = no slowdown.
+  // (range 5 to 100)
+  "ExhaustedAttackSpeedPercent": 20,
+
+  // Once exhausted, normal speed returns only when Athletics climbs above this percent of the
+  // pool. 0 = the moment it is above empty.
+  // (range 0 to 90)
+  "ExhaustedRecoverPercent": 0,
+
+  // ==================== Regeneration ====================
+  // How long a fighter must go without attacking before his Athletics starts to refill, counted
+  // in blow lengths (see the next setting). 2 × 1.5 s = 3 seconds.
+  // (range 0.0 to 20.0)
+  "RegenDelayBlowTimes": 2.0,
+
+  // How many seconds one blow counts as, for the rest delay above.
+  // (range 0.1 to 10.0)
+  "BlowTimeSeconds": 1.5,
+
+  // Seconds to refill from empty to full while standing still.
+  // (range 1.0 to 600.0)
+  "FullRegenSecondsStanding": 60.0,
+
+  // Seconds to refill from empty to full while walking, running or riding.
+  // (range 1.0 to 1200.0)
+  "FullRegenSecondsMoving": 120.0,
+
+  // Speed in metres per second above which a fighter (or the horse he rides) counts as moving,
+  // for the refill time.
+  // (range 0.0 to 5.0)
+  "MovingSpeedThreshold": 0.5,
+
+  // ==================== Bars - you and your target ====================
+  // Show your own Athletics next to your health bar.
+  // (true or false)
+  "ShowPlayerBar": true,
+
+  // Show a small Athletics bar for the fighter you are looking or aiming at. Aiming at a horse
+  // shows its rider.
+  // (true or false)
+  "ShowTargetBar": true,
+
+  // How far away, in metres, a fighter you look at still gets a bar.
+  // (range 1.0 to 200.0)
+  "TargetBarMaxDistance": 30.0,
+
+  // Seconds the target's bar stays after your aim leaves him, so it does not flicker.
+  // (range 0.0 to 10.0)
+  "TargetBarLingerSeconds": 2.0,
+
+  // ==================== Bars - your squads ====================
+  // Show the average Athletics of each of your formations in a bar floating above it.
+  // (true or false)
+  "ShowFormationBars": true,
+
+  // On: the squad bars are always shown. Off: only while the game shows its own formation
+  // markers (marker key held or orders menu open).
+  // (true or false)
+  "FormationBarsAlways": true,
+
+  // Draw a band on each squad bar showing how far the men's Athletics spreads around the
+  // average.
+  // (true or false)
+  "ShowFormationSpread": true,
+
+  // Width of that band on each side of the average, in standard deviations. 1 = about two men
+  // in three fall inside it.
+  // (range 0.0 to 3.0)
+  "FormationSpreadStdDevs": 1.0,
+
+  // How high above the formation's centre its bar floats, in metres.
+  // (range 0.0 to 10.0)
+  "FormationBarHeight": 3.0,
+
+  // While the orders menu is open, list each formation's average Athletics and spread, for
+  // example "Infantry 72 ± 8".
+  // (true or false)
+  "ShowInOrderMenu": true,
+
+  // ==================== Advanced ====================
+  // How often your bar and the target's bar update, in seconds. Lower is smoother and costs a
+  // little more.
+  // (range 0.02 to 1.0)
+  "HudRefreshSeconds": 0.1,
+
+  // How often the squad averages and spreads are recomputed, in seconds.
+  // (range 0.05 to 2.0)
+  "FormationStatsRefreshSeconds": 0.25,
+
+  // Write every damage roll, blow and exhaustion to trax_combat.log (rate-limited, so a big
+  // battle cannot flood it). Off: only loading, settings, battle start and end, battle
+  // summaries and errors.
+  // (true or false)
+  "VerboseLogging": false
+}

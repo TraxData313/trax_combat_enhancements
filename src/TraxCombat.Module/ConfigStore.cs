@@ -52,6 +52,7 @@ namespace TraxCombat
 
                 string path = ModPaths.ConfigFilePath;
                 TraxLog.Info("config", "config file: " + path + (ModPaths.UsedFallback ? " (game path API unavailable - fallback path used)" : string.Empty));
+                LogDefaults();
                 _quiet = true; // the full dump below says it all; no per-key change lines on the first read
                 try
                 {
@@ -101,8 +102,12 @@ namespace TraxCombat
                     string path = ModPaths.ConfigFilePath;
                     if (!File.Exists(path))
                     {
+                        // No file = every key missing = every default (the header promises it).
+                        int before0 = Settings.Version;
+                        Settings.ResetToDefaults(SettingSources.Defaults);
                         WriteText(path, ConfigFile.Write(Settings.Snapshot()));
-                        TraxLog.Info("config", "config.json was missing at " + when + " - wrote a fresh one with the values in effect");
+                        TraxLog.Info("config", "config.json was missing at " + when + " - every setting back to its default ("
+                            + (Settings.Version - before0) + " changed), wrote a fresh file");
                         return;
                     }
                     int before = Settings.Version;
@@ -136,6 +141,26 @@ namespace TraxCombat
         }
 
         // ------------------------------------------------------------------ internals
+
+        /// <summary>Which defaults the schema took (the embedded defaults.json - DESIGN §2c) and
+        /// anything wrong with them (then the affected settings use the bottom of their range).</summary>
+        private static void LogDefaults()
+        {
+            try
+            {
+                var problems = DefaultsFile.Problems;
+                TraxLog.Info("config", "defaults: " + DefaultsFile.SourceName + ", " + DefaultsFile.KeysRead + " keys for "
+                    + SettingsSchema.All.Count + " settings" + (problems.Count == 0
+                        ? " - every default read from it"
+                        : " - " + problems.Count + " PROBLEM(S), the settings named below use a fallback (tell Claude):"));
+                foreach (var problem in problems)
+                    TraxLog.Info("config", "  defaults.json PROBLEM: " + problem);
+            }
+            catch (Exception e)
+            {
+                TraxLog.Error("config.defaults", e);
+            }
+        }
 
         private static void OnChanged(SettingChange c)
         {

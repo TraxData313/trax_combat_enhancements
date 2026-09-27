@@ -113,24 +113,7 @@ namespace TraxCombat.Core
             sb.Append("  // Format stamp of this file - leave it alone.").Append(Nl);
             sb.Append("  \"").Append(VersionKey).Append("\": ").Append(FormatVersion.ToString(CultureInfo.InvariantCulture));
 
-            foreach (var group in SettingsSchema.Groups)
-            {
-                sb.Append(',').Append(Nl).Append(Nl);
-                sb.Append("  // ==================== ").Append(group.Title).Append(" ====================");
-                bool first = true;
-                foreach (var p in SettingsSchema.InGroup(group))
-                {
-                    if (!first) sb.Append(',');
-                    sb.Append(Nl);
-                    if (!first) sb.Append(Nl);
-                    first = false;
-                    foreach (var line in Wrap(p.Description + (p.Timing == ApplyTiming.NextBattle ? " Applies from the next battle." : string.Empty), WrapAt - 5))
-                        sb.Append("  // ").Append(line).Append(Nl);
-                    sb.Append("  // (").Append(p.DefaultAndRangeText).Append(')').Append(Nl);
-                    double v = values != null && values.TryGetValue(p.Key, out var found) ? p.Normalize(found) : p.Default;
-                    sb.Append("  \"").Append(p.Key).Append("\": ").Append(p.Format(v));
-                }
-            }
+            AppendSettings(sb, values, p => p.DefaultAndRangeText, afterAnEntry: true);
 
             var extra = unknown?.ToList() ?? new List<KeyValuePair<string, string>>();
             if (extra.Count > 0)
@@ -149,6 +132,38 @@ namespace TraxCombat.Core
 
             sb.Append(Nl).Append('}').Append(Nl);
             return sb.ToString();
+        }
+
+        /// <summary>
+        /// Every setting of <see cref="SettingsSchema.All"/> in group order - a heading per group,
+        /// the plain-words description as // lines above each key, then "(<paramref name="tail"/>)"
+        /// and the key with its value (missing from <paramref name="values"/> → the default). Shared
+        /// by config.json and defaults.json (<see cref="DefaultsFile.Write"/>), so the two never
+        /// word a setting differently. <paramref name="afterAnEntry"/>: a key was already written
+        /// (the first group then starts with a comma).
+        /// </summary>
+        internal static void AppendSettings(StringBuilder sb, IReadOnlyDictionary<string, double>? values, Func<ParamDef, string> tail, bool afterAnEntry)
+        {
+            bool needComma = afterAnEntry;
+            foreach (var group in SettingsSchema.Groups)
+            {
+                if (needComma) sb.Append(',').Append(Nl).Append(Nl);
+                needComma = true;
+                sb.Append("  // ==================== ").Append(group.Title).Append(" ====================");
+                bool first = true;
+                foreach (var p in SettingsSchema.InGroup(group))
+                {
+                    if (!first) sb.Append(',');
+                    sb.Append(Nl);
+                    if (!first) sb.Append(Nl);
+                    first = false;
+                    foreach (var line in Wrap(p.Description + (p.Timing == ApplyTiming.NextBattle ? " Applies from the next battle." : string.Empty), WrapAt - 5))
+                        sb.Append("  // ").Append(line).Append(Nl);
+                    sb.Append("  // (").Append(tail(p)).Append(')').Append(Nl);
+                    double v = values != null && values.TryGetValue(p.Key, out var found) ? p.Normalize(found) : p.Default;
+                    sb.Append("  \"").Append(p.Key).Append("\": ").Append(p.Format(v));
+                }
+            }
         }
 
         private static void WriteHeader(StringBuilder sb)
@@ -170,7 +185,14 @@ namespace TraxCombat.Core
                 "  press Done. Your hand edits of other values are kept when MCM writes the file.",
                 "- A number outside its range is clamped into it; a key the mod does not know is ignored",
                 "  and reported in the log. Your own // comments are not kept when the file is rewritten.",
-                "- Delete this file to get every default back.",
+                "",
+                "Back to the defaults (the mod's defaults.json, built into it):",
+                "- one setting: delete its line (the key and its value) - it takes its default at the next",
+                "  battle start and is written back in;",
+                "- everything: delete this file - every setting takes its default at the next battle start",
+                "  (or game start) and a fresh file is written;",
+                "- with MCM: Mod Options > Trax Combat Enhancements > Defaults > \"Revert all to defaults\"",
+                "  (applies at once, even mid-battle, and rewrites this file).",
             };
             foreach (var line in header)
                 sb.Append("// ").Append(line).TrimEndSpaces().Append(Nl);

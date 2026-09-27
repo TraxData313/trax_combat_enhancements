@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- defaults.json upkeep (DESIGN 2c). "refresh" rewrites every // comment, group heading and the
+       key order from the schema and KEEPS EVERY VALUE; "check" only reports. The command to run
+       from the repo root is in DefaultsFile.RefreshCommand (the tests print it when the comments
+       drift). -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>DefaultsTool</AssemblyName>
+    <RootNamespace>TraxCombat.Tools</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\TraxCombat.Core\TraxCombat.Core.csproj" />
+  </ItemGroup>
+
+</Project>

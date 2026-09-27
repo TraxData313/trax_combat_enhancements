@@ -69,6 +69,10 @@ public class ConfigFileTests
         Assert.Contains("trax_combat.log", text);
         Assert.Contains("Mod Configuration Menu (MCM)", text);
         Assert.Contains("next battle start", text);
+        // How to get the defaults back, with and without MCM (DESIGN §2c, §4).
+        Assert.Contains("delete its line", text);
+        Assert.Contains("delete this file", text);
+        Assert.Contains("\"Revert all to defaults\"", text);
         Assert.DoesNotContain("  \r\n", text); // no trailing spaces
     }
 
