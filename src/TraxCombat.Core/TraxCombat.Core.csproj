@@ -12,6 +12,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- The tests may set a fighter's state directly (Fighter's setters are internal: only
+         EnduranceMath changes it in the game). -->
+    <InternalsVisibleTo Include="TraxCombat.Core.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- The exact version the game ships in bin\Win64_Shipping_Client (assembly version 13.0.0.0,
          like every 13.x). Compiled against, never shipped: the game's own copy is loaded. -->
     <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
