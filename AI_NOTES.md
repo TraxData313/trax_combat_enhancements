@@ -571,19 +571,117 @@ TASKS_TODO's 5d line cites it).
 9. The first-exhaustion check with previous multipliers → `[speed] first exhaustion this mission: …
    - the penalties are in the agent's properties`.
 
-## Step 5d — Tired fighters step back (pointers from 5c)
+## Step 5d — Tired fighters step back (research 2026-09-27)
 
-- f is everywhere: Core `AthleticsMath.PeakShare(in r, st)`, `AthleticsLogic.TryGetPeakShare(agent,
-  out f)`, `reading.PeakShare`. Chance = `StepBackMaxChancePercent` × (1 − f) - 0 in the peak zone.
-- The natural trigger is the melee release the engine already polls: `StartRelease` (rising edge
-  into ReleaseMelee, before/after the charge - use f AFTER the charge, the swing he just paid for)
-  or `EndRelease` (the swing's end). AI only (`!agent.IsPlayerControlled`), on foot
-  (`MountAgent == null`), melee only (never from `OnAgentShootMissile`).
-- The run curve already slows a tired man (x0.3 at 0): a step back is slow when he is empty.
-- Dice: Core `IRandomSource` (`ThreadSafeRandom.Shared`, `SeededRandom` for tests).
-- Master switch first: ModEnabled / AthleticsEnabled off → no step-back starts, a running one is
-  released at once; add it to the smoke's `MasterSwitchIsVanillaLive`. New keys (`StepBack*`):
-  DESIGN row + schema + TraxSettings + defaults.json + refresh (see Step 5b).
+Pointers from 5c (kept): f = `AthleticsMath.PeakShare(in r, st)` / `TryGetPeakShare`; chance =
+`StepBackMaxChancePercent` × (1 − f); the swing edges are `StartRelease` / `EndRelease` in the
+engine's poll; dice = Core `IRandomSource`; master switch first; new keys the step-5b way.
+
+**Research - how the game moves ONE AI man** (v1.4.8 decompile; RBM's `RBMAI.dll` decompiled to
+`..\reference\RBMAI-decompiled` for prior art)
+- Two separate native states. The FORMATION FRAME is rewritten every agent tick:
+  `Agent.TickParallel` → `HumanAIComponent.ParallelUpdateFormationMovement` → `GetFormationFrame`
+  (`Formation.GetOrderPositionOfUnit`) → `Agent.TrySetFormationFrame` → `SetFormationFrameEnabled`,
+  plus `AdjustSpeedLimit` → `SetMaximumSpeedLimit` (so a speed limit of ours would be overwritten
+  every tick). The SCRIPTED FRAME is `Agent.SetScriptedPosition(ref WorldPosition, addHumanLikeDelay,
+  AIScriptedFrameFlags)` / `SetScriptedPositionAndDirection(ref pos, radians, delay, flags)` →
+  native; it sets `AIScriptedFrameFlags.GoToPosition` (1) (the naval AI tests that bit right after
+  calling it) and lasts until `Agent.DisableScriptedMovement()`. The formation code never writes
+  the scripted frame, and nothing in vanilla calls DisableScriptedMovement on formation men
+  periodically (every caller listed: StopUsingGameObject, ladder/climbing detachments, ballista,
+  HumanAIComponent's own timer, sandbox behaviours). So a scripted step is NOT overridden by the
+  formation the next tick, and the formation frame (kept current underneath) takes the man back
+  the moment the scripted one is disabled.
+- Vanilla does exactly this to formation men MID-BATTLE: item pickup (`HumanAIComponent.ItemPickupTick`
+  → `MoveToUsableGameObject` → `SetScriptedPositionAndDirection(…, NoAttack)`; done →
+  `StopUsingGameObject` → `DisableScriptedMovement`), ladder queues (`LadderQueueManager`), duel
+  spectators (`HideoutMissionController`). `HumanAIComponent` even has an UNUSED timed variant,
+  `SetScriptedPositionAndDirectionTimed(pos, radians, seconds)` - its `OnTick` counts the seconds
+  down and calls `DisableScriptedMovement()` - the engine's own "stand there for N s" shape.
+- `NoAttack` (2) is an ADDITIONAL flag, so scripted men fight by default (the flag would be
+  pointless otherwise): the combat AI (target, defence) keeps running under a scripted frame.
+  Item pickup clears its NoAttack by `DisableScriptedMovement()` alone and those men attack again
+  afterwards → the additional flags belong to the scripted frame. (Flags set with
+  `SetScriptedFlags` directly - `UseGameObject`'s NoAttack, StandingPoint's `DisableScriptedFrameFlags`
+  - are cleared by hand; not our path.) `DoNotRun` (0x10) = walk (ScriptedMovementComponent).
+  `ConsiderRotation` (4) is what a direction adds (StandingPointForRangedArea clears it after use).
+- **Vanilla's own gate**: `Agent.CanBeAssignedForScriptedMovement()` = active, AI-controlled, NOT
+  detached from the formation (siege engines, ladders, towers, strategic areas, attack-entity
+  detachments), NOT running away, NO GoToPosition already, NOT using / moving to / defending a
+  game object, NOT in a ladder queue. Item pickup, banner bearers, UsableMachine.AddAgent and
+  StrategicArea.AddAgent all check it - so while OUR GoToPosition is set, they skip our man and
+  nothing vanilla takes him mid-step.
+- Facing: no managed evidence either way (the native AI decides). The combat AI keeps its target
+  under a scripted frame; `SetScriptedPositionAndDirection`'s direction (radians,
+  `Vec2.RotationInRadians` = atan2(−x, y)) sets the facing the frame asks for; `DoNotRun` keeps it
+  a walk. `SetLookAgent` is head-look for conversations and cinematics only (never battle AI) -
+  not used. **UNVERIFIED**: whether a man backing up under a scripted frame keeps facing his enemy
+  (and keeps blocking) - the logs measure it (below).
+- Navmesh: `Agent.CanMoveDirectlyToPosition(in Vec2)` (native; item pickup's own precondition)
+  says a straight walk to the spot is clear (walls, fences, parapets, narrow gaps).
+  `WorldPosition` from `agent.GetWorldPosition()` + `SetVec2` keeps the agent's navmesh face as the
+  start; `GetNavMeshZ()` is NaN off the navmesh and gives the height of the spot on the navmesh
+  → a wall edge (the spot resolves to the ground below) shows as a height step.
+- Mission kinds: tournament and arena fights run in `MissionMode.Battle` too
+  (TournamentFightMissionController, ArenaMasterCampaignBehavior) - they are told apart by their
+  mission behaviours (`TournamentBehavior`, `ArenaPracticeFightMissionController`), by type NAME
+  (no SandBox reference needed). Duels: `MissionMode.Duel`. Naval: `Mission.IsNavalBattle` /
+  `IsNavalRaidBattle` (moving decks; the naval AI component scripts swimming men itself).
+- Formation orders: `formation.GetReadonlyMovementOrderReference().OrderEnum` (Charge 2, Move 7,
+  Retreat 8, Stop 9, Advance 10, FallBack 11 …), `formation.ArrangementOrder.OrderEnum`
+  (Circle 0, Column 1, Line 2, Loose 3, Scatter 4, ShieldWall 5, Skein 6, Square 7).
+
+**Alternatives weighed**
+- **RBM's BackStep** (Realistic Battle Mod, `Frontline.cs`): a Harmony prefix on
+  `Formation.GetOrderPositionOfUnit` that returns a spot 0-0.3 m behind the man plus
+  `Agent.SetTargetPosition`, re-decided at every query, charge orders only, skipped when the spot
+  is occupied. Needs Harmony (this mod has none - RESEARCH §I) and patches formation code (RTS
+  Camera Command System patches it too); RBM is declared incompatible anyway. Not taken - but it
+  is proof that shoving front-line men back a little is playable.
+- **Behaviour values** (`agent.SetAIBehaviorValues(Melee, y1, x2, y2, x3, y3)` →
+  `HumanAIComponent.OverrideBehaviorParams`, pushed in `OnTickParallel`): piecewise weights by
+  distance; vanilla's `DefensiveArrangementMove` melee curve (4, 5, 0, 20, 0) is "fight only what
+  reaches you". Clean, supported, restored by the formation itself (`RefreshBehaviorValues` on
+  every order change; `OverrideBehaviorParams` marks the set Overriden so the next refresh wins).
+  But it is "hang back", not a visible step back. **The fallback if the playtest shows turned
+  backs** (the nearest thing that works).
+- `SetMaximumSpeedLimit` - overwritten by the formation every tick. No.
+- **Rank swap** `Formation.SwitchUnitLocations(a, b)` (vanilla: once, BannerBearerLogic) - the
+  literal "the fresh step in", but `LineFormation.SwitchUnitLocations` rebuilds the unit list
+  (`ReconstructUnitsFromUnits2D`), line-type arrangements only, meaningful only while holding. A
+  later idea, not per swing.
+- The vanilla TIMED helper: it would release the man even if our logic died - but its timer keeps
+  running if the game hands the man a new scripted job, and would then cancel THAT job. Our own
+  timer instead: the logic's tick never stops while the mission runs, and every exit path
+  releases (below).
+
+**Choice: the literal spec** - after a melee swing ENDS (the falling edge out of ReleaseMelee - the
+swing completes first; "after each melee swing"), roll `StepBackMaxChancePercent` × (1 − f); on a
+hit, from the NEXT TICK (never inside an engine hit callback): `SetScriptedPositionAndDirection` to
+the spot `StepBackDistance` straight away from the man's current target, facing the target,
+flags `DoNotRun` (+ `NoAttack` while `StepBackHoldAttacks`) - hold it `StepBackSeconds`, then
+`DisableScriptedMovement()` and the formation takes him again.
+
+**Safety - never starts** (each counted by reason in the summary): mod / Athletics / step-back
+off; f = 1 (chance 0 - no roll at all in the peak zone); the dice; the player (`IsMainAgent`), not
+AI-controlled; riding; anything but a melee swing (shots, throws, kicks, bashes, couched lances
+never reach the swing edge); not `MissionMode.Battle`, tournaments / arena, naval battles, the
+mission ending; `!CanBeAssignedForScriptedMovement()` (detached, on a ladder or in its queue, at a
+siege engine, using or walking to an object, running away, already scripted - incl. already
+stepping back); routing (`IsRetreating`); the formation in shield wall, square or circle (they
+exist to hold - Claude's call); the formation ordered to retreat; no target, a target that is not
+an active enemy, or farther than `StepBackEnemyRange`; the spot off the navmesh, more than 1 m
+higher or lower (a wall edge, stairs), or not reachable in a straight line; `StepBackMaxAtOnce`
+already stepping back; more than 20 starts in one tick (plumbing, like the recompute budget); no
+HumanAIComponent.
+
+**Always released**: time up; the man leaves the field (no engine call on a removed man); the
+mission ends (released through the engine before the summary; the teardown fallback only drops
+the records); settings off - ModEnabled, AthleticsEnabled or StepBackEnabled - releases EVERY man
+at once on the next tick; his formation's movement order or arrangement changes; he changes
+formation; the player takes him over; he mounts; he routs; the game hands him a job of its own
+(object, ladder queue - then we drop our record WITHOUT disabling, so we never cancel the game's
+job); an exception in our code for him (release attempted).
 
 ## Steps 6-9 — the Athletics READ API (from steps 5, 5c)
 
