@@ -130,6 +130,45 @@
   // (true or false)
   "DamageBonusFollowsAthletics": true,
 
+  // ==================== Tired fighters step back ====================
+  // On: after a melee swing, a tired AI fighter on foot may step back a little, facing his
+  // enemy with his guard up, then return to his place in the formation - so the tired fall back
+  // and the fresh take the blows. Never you, never riders, never after a shot or a throw. Off
+  // mid-battle: everyone stepping back returns to his formation at once.
+  // (true or false)
+  "StepBackEnabled": true,
+
+  // Chance, in percent, that a fighter with an empty Athletics bar steps back after a melee
+  // swing. It falls in a straight line to 0 at the full-strength line: halfway down, half this
+  // chance; at full strength never. 0 = nobody steps back.
+  // (range 0 to 100)
+  "StepBackMaxChancePercent": 100,
+
+  // How far back a fighter steps, in metres, straight away from the enemy he fights. A tired
+  // man walks slowly, so he may not get all the way before the time below runs out.
+  // (range 0.5 to 5.0)
+  "StepBackDistance": 2.0,
+
+  // How long a step back lasts at most, in seconds. Then his formation takes him again and he
+  // walks back to his place.
+  // (range 0.3 to 5.0)
+  "StepBackSeconds": 1.5,
+
+  // A fighter steps back only while the enemy he fights is at most this many metres away - with
+  // nobody close there is nothing to step back from.
+  // (range 1.0 to 20.0)
+  "StepBackEnemyRange": 4.0,
+
+  // On: a fighter stepping back does not attack - guard up only - until he is back with his
+  // formation. Off: he may still strike while he backs away.
+  // (true or false)
+  "StepBackHoldAttacks": true,
+
+  // At most this many fighters, on all sides together, step back at the same time. It keeps big
+  // battles cheap and stops a whole front line from stepping back together.
+  // (range 1 to 1000)
+  "StepBackMaxAtOnce": 50,
+
   // ==================== Regeneration ====================
   // How long a fighter must go without attacking before his Athletics starts to refill, counted
   // in blow lengths (see the next setting). 2 × 1.5 s = 3 seconds.

@@ -256,6 +256,13 @@ says (§2c).
 | `MinMoveSpeedMultiplier` | 0.3 | Top speed on foot at 0 Athletics. |
 | `MountMinSpeedMultiplier` | 1.0 | Horse top speed at the rider's 0 Athletics (1.0 = horses never slow). |
 | `DamageBonusFollowsAthletics` | true | The damage upside shrinks with the attacker's Athletics below the peak. |
+| `StepBackEnabled` | true | Tired AI fighters on foot step back after melee swings (§2). Off mid-battle: everyone stepping back returns to his formation at once. |
+| `StepBackMaxChancePercent` | 100 | Chance to step back at 0 Athletics (0 at the peak, straight line between). |
+| `StepBackDistance` | 2.0 | Metres a fighter steps back, straight away from his enemy. |
+| `StepBackSeconds` | 1.5 | Longest a step back lasts before the formation takes over again. |
+| `StepBackEnemyRange` | 4.0 | Steps back only while the enemy he fights is within this many metres. |
+| `StepBackHoldAttacks` | true | No swings while stepping back (guard up only). |
+| `StepBackMaxAtOnce` | 50 | Most fighters stepping back at the same time, all sides together. |
 | `RegenDelayBlowTimes` | 2 | Idle blows before regeneration starts. |
 | `BlowTimeSeconds` | 1.5 | How long "one blow" is, for the delay above. |
 | `FullRegenSecondsStanding` | 60 | Seconds from empty to full while standing still or walking. |
@@ -277,17 +284,15 @@ says (§2c).
 
 New parameters discovered while building go into this table in the same commit.
 
-## Planned parameters (§2 step-back, §3 additions — not in the schema yet)
+## Planned parameters (§3 additions — not in the schema yet)
 
 The step that builds each one moves its row into the Parameters table above (the schema
-test reads that table only) and removes any retired rows in the same commit.
+test reads that table only) and removes any retired rows in the same commit. (Step 5d moved
+its four `StepBack*` rows up and added `StepBackEnemyRange`, `StepBackHoldAttacks`,
+`StepBackMaxAtOnce`.)
 
 | Key | Default | Step | What it does |
 |---|---|---|---|
-| `StepBackEnabled` | true | 5d | Tired AI fighters on foot step back after melee swings. |
-| `StepBackMaxChancePercent` | 100 | 5d | Chance to step back at 0 Athletics (0 at the peak, straight line between). |
-| `StepBackDistance` | 2 | 5d | Metres a fighter steps back. |
-| `StepBackSeconds` | 1.5 | 5d | Longest a step back lasts before the formation takes over again. |
 | `BarYellowBelowPercent` | 75 | 6 | Bar turns yellow at or below this % of the peak line (blue just below the line, green above it). |
 | `BarOrangeBelowPercent` | 50 | 6 | Orange at or below this %. |
 | `BarRedBelowPercent` | 25 | 6 | Red at or below this %. |

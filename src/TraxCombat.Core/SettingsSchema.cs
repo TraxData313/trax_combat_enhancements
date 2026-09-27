@@ -28,10 +28,11 @@ namespace TraxCombat.Core
         public static readonly ParamGroup DamageGroup = new ParamGroup(1, "Damage randomness");
         public static readonly ParamGroup AthleticsGroup = new ParamGroup(2, "Athletics");
         public static readonly ParamGroup TiredGroup = new ParamGroup(3, "Tired fighters");
-        public static readonly ParamGroup RegenGroup = new ParamGroup(4, "Regeneration");
-        public static readonly ParamGroup PlayerBarsGroup = new ParamGroup(5, "Bars - you and your target");
-        public static readonly ParamGroup SquadBarsGroup = new ParamGroup(6, "Bars - your squads");
-        public static readonly ParamGroup AdvancedGroup = new ParamGroup(7, "Advanced");
+        public static readonly ParamGroup StepBackGroup = new ParamGroup(4, "Tired fighters step back");
+        public static readonly ParamGroup RegenGroup = new ParamGroup(5, "Regeneration");
+        public static readonly ParamGroup PlayerBarsGroup = new ParamGroup(6, "Bars - you and your target");
+        public static readonly ParamGroup SquadBarsGroup = new ParamGroup(7, "Bars - your squads");
+        public static readonly ParamGroup AdvancedGroup = new ParamGroup(8, "Advanced");
 
         // ------------------------------------------------------------------ master switch
 
@@ -122,6 +123,36 @@ namespace TraxCombat.Core
         public static readonly ParamDef DamageBonusFollowsAthletics = Bool("DamageBonusFollowsAthletics", TiredGroup,
             "Damage upside follows Athletics",
             "On: the lucky side of the damage roll shrinks as the attacker tires - at full strength a hit can land up to +50%, halfway down to empty up to +25%, empty never above normal. The unlucky side never changes. Off: every attacker gets the full roll.");
+
+        // ------------------------------------------------------------------ tired fighters step back (step 5d)
+
+        public static readonly ParamDef StepBackEnabled = Bool("StepBackEnabled", StepBackGroup,
+            "Tired fighters step back",
+            "On: after a melee swing, a tired AI fighter on foot may step back a little, facing his enemy with his guard up, then return to his place in the formation - so the tired fall back and the fresh take the blows. Never you, never riders, never after a shot or a throw. Off mid-battle: everyone stepping back returns to his formation at once.");
+
+        public static readonly ParamDef StepBackMaxChancePercent = Int("StepBackMaxChancePercent", 0, 100, StepBackGroup,
+            "Chance when empty (%)",
+            "Chance, in percent, that a fighter with an empty Athletics bar steps back after a melee swing. It falls in a straight line to 0 at the full-strength line: halfway down, half this chance; at full strength never. 0 = nobody steps back.");
+
+        public static readonly ParamDef StepBackDistance = Float("StepBackDistance", 0.5, 5, StepBackGroup,
+            "Step distance (m)",
+            "How far back a fighter steps, in metres, straight away from the enemy he fights. A tired man walks slowly, so he may not get all the way before the time below runs out.");
+
+        public static readonly ParamDef StepBackSeconds = Float("StepBackSeconds", 0.3, 5, StepBackGroup,
+            "Step time (s)",
+            "How long a step back lasts at most, in seconds. Then his formation takes him again and he walks back to his place.");
+
+        public static readonly ParamDef StepBackEnemyRange = Float("StepBackEnemyRange", 1, 20, StepBackGroup,
+            "Only with an enemy within (m)",
+            "A fighter steps back only while the enemy he fights is at most this many metres away - with nobody close there is nothing to step back from.");
+
+        public static readonly ParamDef StepBackHoldAttacks = Bool("StepBackHoldAttacks", StepBackGroup,
+            "No swings while stepping back",
+            "On: a fighter stepping back does not attack - guard up only - until he is back with his formation. Off: he may still strike while he backs away.");
+
+        public static readonly ParamDef StepBackMaxAtOnce = Int("StepBackMaxAtOnce", 1, 1000, StepBackGroup,
+            "Most at once (whole battle)",
+            "At most this many fighters, on all sides together, step back at the same time. It keeps big battles cheap and stops a whole front line from stepping back together.");
 
         // ------------------------------------------------------------------ regeneration
 
@@ -214,6 +245,8 @@ namespace TraxCombat.Core
             AthleticsEnabled, AthleticsPoolFloor, AthleticsPoolPerSkill, AthleticsPeakPercent, HealthCapsAthletics,
             CostPerBlow, CostOnMiss, HeroCostMultiplier, PartyLeaderCostMultiplier,
             ExhaustedAttackSpeedPercent, MinMoveSpeedMultiplier, MountMinSpeedMultiplier, DamageBonusFollowsAthletics,
+            StepBackEnabled, StepBackMaxChancePercent, StepBackDistance, StepBackSeconds, StepBackEnemyRange,
+            StepBackHoldAttacks, StepBackMaxAtOnce,
             RegenDelayBlowTimes, BlowTimeSeconds, FullRegenSecondsStanding, RegenMultiplierAtFullRun,
             WalkEffortFraction,
             ShowPlayerBar, ShowTargetBar, TargetBarMaxDistance, TargetBarLingerSeconds,
@@ -225,7 +258,7 @@ namespace TraxCombat.Core
         /// <summary>The groups in order.</summary>
         public static readonly IReadOnlyList<ParamGroup> Groups = new[]
         {
-            MasterGroup, DamageGroup, AthleticsGroup, TiredGroup, RegenGroup, PlayerBarsGroup, SquadBarsGroup, AdvancedGroup,
+            MasterGroup, DamageGroup, AthleticsGroup, TiredGroup, StepBackGroup, RegenGroup, PlayerBarsGroup, SquadBarsGroup, AdvancedGroup,
         };
 
         private static readonly Dictionary<string, ParamDef> ByKey = BuildIndex();

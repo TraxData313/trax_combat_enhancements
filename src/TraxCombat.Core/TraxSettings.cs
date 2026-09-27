@@ -220,6 +220,14 @@ namespace TraxCombat.Core
         public float MountMinSpeedMultiplier => GetFloat(SettingsSchema.MountMinSpeedMultiplier);
         public bool DamageBonusFollowsAthletics => GetBool(SettingsSchema.DamageBonusFollowsAthletics);
 
+        public bool StepBackEnabled => GetBool(SettingsSchema.StepBackEnabled);
+        public int StepBackMaxChancePercent => GetInt(SettingsSchema.StepBackMaxChancePercent);
+        public float StepBackDistance => GetFloat(SettingsSchema.StepBackDistance);
+        public float StepBackSeconds => GetFloat(SettingsSchema.StepBackSeconds);
+        public float StepBackEnemyRange => GetFloat(SettingsSchema.StepBackEnemyRange);
+        public bool StepBackHoldAttacks => GetBool(SettingsSchema.StepBackHoldAttacks);
+        public int StepBackMaxAtOnce => GetInt(SettingsSchema.StepBackMaxAtOnce);
+
         public float RegenDelayBlowTimes => GetFloat(SettingsSchema.RegenDelayBlowTimes);
         public float BlowTimeSeconds => GetFloat(SettingsSchema.BlowTimeSeconds);
         public float FullRegenSecondsStanding => GetFloat(SettingsSchema.FullRegenSecondsStanding);
