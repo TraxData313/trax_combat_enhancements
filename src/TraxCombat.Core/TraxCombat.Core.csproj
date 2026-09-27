@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Pure logic, no game references: the settings schema, the config-file text, the merge rule
+       for rewrites, the log rate limiter - and later the damage roll, endurance math and
+       formation statistics. Everything here is unit-tested in tests\TraxCombat.Core.Tests. -->
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <RootNamespace>TraxCombat.Core</RootNamespace>
+    <AssemblyName>TraxCombat.Core</AssemblyName>
+    <Version>0.1.0</Version>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The exact version the game ships in bin\Win64_Shipping_Client (assembly version 13.0.0.0,
+         like every 13.x). Compiled against, never shipped: the game's own copy is loaded. -->
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
+  </ItemGroup>
+
+</Project>

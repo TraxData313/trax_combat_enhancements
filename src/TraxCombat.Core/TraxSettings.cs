@@ -1,0 +1,237 @@
+using System;
+using System.Collections.Generic;
+using System.Threading;
+
+namespace TraxCombat.Core
+{
+    /// <summary>Who changed a setting - the "(source: …)" of every <c>[config]</c> log line.</summary>
+    public static class SettingSources
+    {
+        /// <summary>The in-game Mod Configuration Menu (a slider, a checkbox, Cancel, a preset).</summary>
+        public const string Mcm = "MCM";
+
+        /// <summary>config.json, read at game start, mission start or game load.</summary>
+        public const string File = "file";
+
+        /// <summary>Code resetting to the schema's defaults.</summary>
+        public const string Defaults = "defaults";
+    }
+
+    /// <summary>One changed value, as raised by <see cref="TraxSettings.Changed"/>.</summary>
+    public sealed class SettingChange
+    {
+        public SettingChange(ParamDef param, double oldValue, double newValue, string source, int version, bool clamped)
+        {
+            Param = param;
+            OldValue = oldValue;
+            NewValue = newValue;
+            Source = source;
+            Version = version;
+            Clamped = clamped;
+        }
+
+        public ParamDef Param { get; }
+
+        public double OldValue { get; }
+
+        public double NewValue { get; }
+
+        public string Source { get; }
+
+        /// <summary><see cref="TraxSettings.Version"/> right after this change.</summary>
+        public int Version { get; }
+
+        /// <summary>The requested value was outside the range and was clamped to NewValue.</summary>
+        public bool Clamped { get; }
+
+        /// <summary><c>DamageRandomPercent: 50 → 40 (source: MCM)</c> - the exact shape CLAUDE.md asks for.</summary>
+        public string ToLogText() =>
+            Param.Key + ": " + Param.Format(OldValue) + " → " + Param.Format(NewValue)
+            + " (source: " + Source + ")" + (Clamped ? " [clamped into " + Param.Format(Param.Min) + ".." + Param.Format(Param.Max) + "]" : string.Empty);
+
+        public override string ToString() => ToLogText();
+    }
+
+    /// <summary>What <see cref="TraxSettings.Set(string,double,string)"/> did.</summary>
+    public readonly struct SetResult
+    {
+        public SetResult(bool known, bool changed, bool clamped, double oldValue, double newValue)
+        {
+            Known = known;
+            Changed = changed;
+            Clamped = clamped;
+            OldValue = oldValue;
+            NewValue = newValue;
+        }
+
+        /// <summary>False: no such key - nothing happened.</summary>
+        public bool Known { get; }
+
+        public bool Changed { get; }
+
+        public bool Clamped { get; }
+
+        public double OldValue { get; }
+
+        public double NewValue { get; }
+    }
+
+    /// <summary>
+    /// THE live settings - one shared object (<see cref="Shared"/>) that every piece of the mod
+    /// reads AT USE TIME (the next hit, blow, HUD refresh), never copying a value into its own
+    /// field at mission start. That is what makes every setting hot-swappable: MCM's sliders
+    /// write here immediately, config.json is re-read here at every mission start.
+    ///
+    /// Reads are a field load and an array index - cheap enough for the per-hit path - and safe
+    /// from any thread (aligned doubles). Writes happen on the main thread (MCM UI, file load).
+    /// Anything that must REBUILD on a change (a HUD layer, an agent's cached speed) listens to
+    /// <see cref="Changed"/> or compares <see cref="Version"/>.
+    /// </summary>
+    public sealed class TraxSettings
+    {
+        /// <summary>The one instance the game uses. Tests build their own.</summary>
+        public static TraxSettings Shared { get; } = new TraxSettings();
+
+        private readonly double[] _values;
+        private int _version;
+
+        public TraxSettings()
+        {
+            _values = new double[SettingsSchema.All.Count];
+            for (int i = 0; i < _values.Length; i++)
+                _values[i] = SettingsSchema.All[i].Default;
+        }
+
+        /// <summary>Bumped on every real change (never on a no-op set). Poll it to notice
+        /// "something changed since I last looked" without subscribing.</summary>
+        public int Version => Volatile.Read(ref _version);
+
+        /// <summary>Raised after every real change, synchronously, on the setter's thread.
+        /// A throwing handler is isolated: the value is already set and the other handlers
+        /// still run.</summary>
+        public event Action<SettingChange>? Changed;
+
+        /// <summary>Raised when a Changed handler throws (the mod logs it as [error]).</summary>
+        public event Action<Exception>? HandlerFailed;
+
+        // ------------------------------------------------------------------ generic access
+
+        public double Get(ParamDef p) => _values[p.Index];
+
+        public bool GetBool(ParamDef p) => _values[p.Index] != 0;
+
+        public int GetInt(ParamDef p) => (int)_values[p.Index];
+
+        public float GetFloat(ParamDef p) => (float)_values[p.Index];
+
+        /// <summary>Sets a value by key, clamped and rounded to the setting's type, raising
+        /// <see cref="Changed"/> when it really changed. Unknown key → nothing happens,
+        /// <see cref="SetResult.Known"/> is false.</summary>
+        public SetResult Set(string key, double value, string source)
+        {
+            if (!SettingsSchema.TryGet(key, out var p))
+                return new SetResult(false, false, false, double.NaN, double.NaN);
+            return Set(p, value, source);
+        }
+
+        public SetResult Set(ParamDef p, bool value, string source) => Set(p, value ? 1.0 : 0.0, source);
+
+        public SetResult Set(ParamDef p, double value, string source)
+        {
+            double normalized = p.Normalize(value, out bool clamped, out _);
+            double old = _values[p.Index];
+            if (Math.Abs(old - normalized) < 1e-9)
+                return new SetResult(true, false, clamped, old, old);
+
+            _values[p.Index] = normalized;
+            int version = Interlocked.Increment(ref _version);
+            Raise(new SettingChange(p, old, normalized, source, version, clamped));
+            return new SetResult(true, true, clamped, old, normalized);
+        }
+
+        /// <summary>Every setting back to its default (each change raised and logged).</summary>
+        public void ResetToDefaults(string source)
+        {
+            foreach (var p in SettingsSchema.All)
+                Set(p, p.Default, source);
+        }
+
+        /// <summary>A copy of every value by key - for the file writer and the tests.</summary>
+        public Dictionary<string, double> Snapshot()
+        {
+            var map = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+            foreach (var p in SettingsSchema.All)
+                map[p.Key] = _values[p.Index];
+            return map;
+        }
+
+        /// <summary><c>DamageRandomPercent = 30 (default 50)</c> or <c>MaxEndurance = 100</c> -
+        /// the per-setting line of the load dump.</summary>
+        public string Describe(ParamDef p)
+        {
+            double v = _values[p.Index];
+            return p.Key + " = " + p.Format(v)
+                + (Math.Abs(v - p.Default) < 1e-9 ? string.Empty : " (default " + p.Format(p.Default) + ")");
+        }
+
+        private void Raise(SettingChange change)
+        {
+            var handlers = Changed;
+            if (handlers == null) return;
+            foreach (Action<SettingChange> handler in handlers.GetInvocationList())
+            {
+                try
+                {
+                    handler(change);
+                }
+                catch (Exception e)
+                {
+                    try { HandlerFailed?.Invoke(e); } catch { /* the reporter must not break the setter */ }
+                }
+            }
+        }
+
+        // ------------------------------------------------------------------ typed properties
+        // One per setting, same name as its key (a test checks the pairing). Read these AT USE
+        // TIME - e.g. TraxSettings.Shared.DamageRandomPercent inside the damage hook.
+
+        public bool DamageRandomEnabled => GetBool(SettingsSchema.DamageRandomEnabled);
+        public int DamageRandomPercent => GetInt(SettingsSchema.DamageRandomPercent);
+        public bool DamageRandomMelee => GetBool(SettingsSchema.DamageRandomMelee);
+        public bool DamageRandomRanged => GetBool(SettingsSchema.DamageRandomRanged);
+        public bool DamageRandomOnMounts => GetBool(SettingsSchema.DamageRandomOnMounts);
+        public bool DamageRandomOnShields => GetBool(SettingsSchema.DamageRandomOnShields);
+
+        public bool EnduranceEnabled => GetBool(SettingsSchema.EnduranceEnabled);
+        public int MaxEndurance => GetInt(SettingsSchema.MaxEndurance);
+        public float CostPerBlow => GetFloat(SettingsSchema.CostPerBlow);
+        public bool CostOnMiss => GetBool(SettingsSchema.CostOnMiss);
+        public float HeroCostMultiplier => GetFloat(SettingsSchema.HeroCostMultiplier);
+        public float PartyLeaderCostMultiplier => GetFloat(SettingsSchema.PartyLeaderCostMultiplier);
+
+        public int ExhaustedAttackSpeedPercent => GetInt(SettingsSchema.ExhaustedAttackSpeedPercent);
+        public int ExhaustedRecoverPercent => GetInt(SettingsSchema.ExhaustedRecoverPercent);
+
+        public float RegenDelayBlowTimes => GetFloat(SettingsSchema.RegenDelayBlowTimes);
+        public float BlowTimeSeconds => GetFloat(SettingsSchema.BlowTimeSeconds);
+        public float FullRegenSecondsStanding => GetFloat(SettingsSchema.FullRegenSecondsStanding);
+        public float FullRegenSecondsMoving => GetFloat(SettingsSchema.FullRegenSecondsMoving);
+        public float MovingSpeedThreshold => GetFloat(SettingsSchema.MovingSpeedThreshold);
+
+        public bool ShowPlayerBar => GetBool(SettingsSchema.ShowPlayerBar);
+        public bool ShowTargetBar => GetBool(SettingsSchema.ShowTargetBar);
+        public float TargetBarMaxDistance => GetFloat(SettingsSchema.TargetBarMaxDistance);
+        public float TargetBarLingerSeconds => GetFloat(SettingsSchema.TargetBarLingerSeconds);
+
+        public bool ShowFormationBars => GetBool(SettingsSchema.ShowFormationBars);
+        public bool FormationBarsAlways => GetBool(SettingsSchema.FormationBarsAlways);
+        public bool ShowFormationSpread => GetBool(SettingsSchema.ShowFormationSpread);
+        public float FormationSpreadStdDevs => GetFloat(SettingsSchema.FormationSpreadStdDevs);
+        public float FormationBarHeight => GetFloat(SettingsSchema.FormationBarHeight);
+        public bool ShowInOrderMenu => GetBool(SettingsSchema.ShowInOrderMenu);
+
+        public float HudRefreshSeconds => GetFloat(SettingsSchema.HudRefreshSeconds);
+        public float FormationStatsRefreshSeconds => GetFloat(SettingsSchema.FormationStatsRefreshSeconds);
+        public bool VerboseLogging => GetBool(SettingsSchema.VerboseLogging);
+    }
+}

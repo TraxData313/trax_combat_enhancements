@@ -1,0 +1,17 @@
+<Project>
+  <PropertyGroup>
+    <LangVersion>10.0</LangVersion>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <!-- Path to the Bannerlord installation; override in Directory.Build.props.user if yours differs -->
+    <GameFolder>C:\Program Files (x86)\Steam\steamapps\common\Mount &amp; Blade II Bannerlord</GameFolder>
+    <!-- Mod Configuration Menu (MCM v5), referenced but NOT shipped (its module provides it at runtime).
+         Steam Workshop id 2859238197. Only method BODIES may name its types (CLAUDE.md, hard
+         requirements) - tools\AssemblyGuard checks that on every deploy. -->
+    <McmBinFolder>C:\Program Files (x86)\Steam\steamapps\workshop\content\261550\2859238197\bin\Win64_Shipping_Client</McmBinFolder>
+  </PropertyGroup>
+
+  <!-- Personal overrides (another game path, another MCM path). Git-ignored (*.user). -->
+  <Import Project="$(MSBuildThisFileDirectory)Directory.Build.props.user"
+          Condition="Exists('$(MSBuildThisFileDirectory)Directory.Build.props.user')" />
+</Project>
