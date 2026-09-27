@@ -1,7 +1,9 @@
 # Playtest — one session, start to finish
 
 Anton plays this ONCE, after the build is finished, and hands Claude the log. Seven parts in
-order, about **2 hours** (A 10 min, B 15, C 25, D 10, E 15, F 35, G 10; the optional bits add ~30). Each part says what to do, what you
+order, about **2 hours 25** (A 10 min, B 15, C 25, D 35, E 15, F 35, G 10; the optional bits add ~30). **Short on
+time after step 16? D4 alone (the A/B of the new guard and backpedal, 20 min) answers the newest
+questions.** Each part says what to do, what you
 should see, what counts as broken, and the log lines that prove it. The full line reference —
 every summary block and what proves what — is the **appendix** at the end.
 
@@ -54,9 +56,9 @@ needs MCM refuses to start for every player without it.
     (the dev copy runs), `[load] module: TraxCombatEnhancements.Dev (the dev install - tools\deploy.ps1)`,
     `[load] game: v1.4.8.…`, `[load] modules (N): …`
   - `[compat] Realistic Battle Mod (RBM) not enabled - good`
-  - `[config] defaults: defaults.json (embedded in TraxCombat.Core.dll), 67 keys for 67 settings - every default read from it`
+  - `[config] defaults: defaults.json (embedded in TraxCombat.Core.dll), 70 keys for 70 settings - every default read from it`
   - `[config] first run: created config.json with every default and a plain-words explanation beside each value`
-  - `[config] settings in effect (67, version 0):` and 67 lines like `[config]   DamageRandomPercent = 50`
+  - `[config] settings in effect (70, version 0):` and 70 lines like `[config]   DamageRandomPercent = 50`
   - (If you kept your config.json from step 13 - YOUR file today, format 2 with the run floor 0.3 - instead:
     `[config] migrated config.json at startup: MinMoveSpeedMultiplier: 0.3 → 0.7 (format 2 → 3, the old default; step 14: an empty man runs at 70% of his pace - 0.3 was too slow)`,
     `[config] not in the file, default used: RegenRateNearFullPercent`,
@@ -94,7 +96,7 @@ end it (win or retreat).
 **A4. Now WITH MCM (and RTS Camera, as you usually play).** Quit. Enable *Mod Configuration Menu v5*
 (with Harmony, ButterLib, UIExtenderEx) and RTS Camera + Command System. Start.
 - You see: *"… loaded - settings in Mod Options."*
-- Log: `[mcm] settings page registered at main menu (attempt 1): MCM 5.…, page "Trax Combat Enhancements", 67 settings in 9 groups, format "none" (config.json is the only store), Default preset = the mod's defaults (defaults.json); group "Defaults": buttons "Revert all to defaults" and "Save current values as a defaults file".`
+- Log: `[mcm] settings page registered at main menu (attempt 1): MCM 5.…, page "Trax Combat Enhancements", 70 settings in 9 groups, format "none" (config.json is the only store), Default preset = the mod's defaults (defaults.json); group "Defaults": buttons "Revert all to defaults" and "Save current values as a defaults file".`
   (`at retry (attempt 2)` is fine — MCM woke a moment after us; the first try is now always at the
   main menu, where MCM builds its services — step 12); the settings dump shows
   `VerboseLogging = true (default false)`.
@@ -333,23 +335,35 @@ and which FELT right.
 
 ---
 
-## D. Tired men step back (10 min)
+## D. Tired men step back — and keep their guard up (35 min)
 
 After a melee swing, an AI fighter on foot below full strength may step back ~2 m straight away from
-the man he fights, facing him, guard up, no swings, for up to 1.5 s — then his formation takes him
-back. Chance = 100% × (1 − f): never at full strength, every swing at empty. Never you, never riders,
-never after a shot; field battles only; not from a shield wall, square or circle.
+the man he fights, facing him, guard up, no swings — until he has covered the 2 m or 1.5 s have passed
+— then his formation takes him back. Chance = 100% × (1 − f): never at full strength, every swing at
+empty. Never you, never riders, never after a shot; field battles only; not from a shield wall, square
+or circle. **Step 16** (the playtest of 2026-09-27 showed ~80% turning their backs and tired men blocking
+almost nothing): he now **walks backwards** (like you holding S), and a tired man waiting out his pause
+keeps his **guard really up** — both through the AI's own controls (one small component per held man,
+the hook RTS Camera uses too). His pause also survives a step back now. The old ways stay one switch
+away each for the A/B in D4: *Tired AI keep their guard up (new way)* and *Step back = walk backwards
+(new way)*.
 
 **D1. See it.** Custom battle, infantry against infantry (60 v 60, no archers, a flat map). Let the
 lines meet; after a minute watch the front from close by (or from the side).
-- You see: a man who has swung a few times backs off a step or two, still facing the enemy, shield
-  up, and walks back into the line a moment later; the men beside him keep fighting; it happens more
-  as the fight wears on; the line keeps its shape.
+- You see: a man who has swung a few times backs off a step or two **walking backwards, still facing
+  the enemy, shield up**, and walks back into the line a moment later; the men beside him keep fighting;
+  it happens more as the fight wears on; the line keeps its shape. Tired men who are not stepping back
+  stand with their **guard up** between their (rarer) attacks - shields raised, blocks - instead of
+  standing open.
 - Log:
-  - `[stepback] mission start: ON - after a melee swing an AI fighter on foot steps back with chance 100% x (1 - f) …`
-  - `[stepback] first step back this mission: <name> at 63.2 s (f 0.40, Athletics 20.0 of 50, chance 60%, …) - from (…) to (…) (2.00 m straight away from <enemy>, …); facing before: 12° off his enemy; formation 1 Infantry (…); scripted flags none → GoToPosition|NoAttack|… (GoToPosition set: the engine took it)`
-  - `[stepback] first step back ended (time up) after 1.5 s: … moved 1.30 m …; mid-step facing his enemy (20° off), moving away (…); hits taken 1 (blocked 1), swings 0; released: scripted movement off, …`
+  - `[stepback] mission start: ON - after a melee swing an AI fighter on foot steps back with chance 100% x (1 - f) … at most 50 at once; a backpedal (StepBackBackpedal on: a backwards input, facing his enemy, until the distance is covered) - read live; technique: a backpedal - …`
+  - `[stepback] first step back this mission: <name> at 63.2 s (f 0.40, …) - from (…) to (…) (2.00 m straight away from <enemy>, …); facing before: 12° off his enemy; formation 1 Infantry (…); technique: a BACKPEDAL through his own input (our component added, the engine's input callback …; the line away from him (…) in his own frame now (0.02, -1.00) - (0, -1) = straight back; his attacks held (only the attack bits out); scripted flags none (none of ours))`
+  - `[stepback] first step back ended (arrived (StepBackDistance covered)) after 1.1 s: now at (…), moved 2.00 m …, facing his enemy (8° off, 3.6 m from him); mid-step facing his enemy (…); every 0.25 s (metres back, facing): +0.3 s 0.45 m, 5° off, 1.60 m/s away | +0.5 s 0.90 m, 7° off, … | …; hits taken 1 (blocked 1), swings 0; the engine's first call: movement bits … → …, input vector (…) → (0.02, -1.00); …; calls so far N; the backpedal input stopped - nothing of ours left in the engine …`
+  - `[rate] first AI timer this mission: <name> at … - his melee attack (D 0.82 s …) … → no new attack for 1.30 s = D x (1/m - 1), until … s; technique: BY INPUT - our component added, …; only the attack bits are taken out of his own input while it runs, a guard raised when he wants to attack; …`
+    and `[rate] first AI timer ended at … - time up; the input hook: the engine's first call: movement bits … ; an attack wish while held: AttackDown → DefendDown (the attack taken out, a guard raised); calls so far N; melee hits taken while held H (blocked B); …`
   - verbose: `~[stepback] step back: …`, `~[stepback] step back ended (…): …`, `~[stepback] step back not started: … - <reason>`
+  - **A WARNING to stop for**: `[rate] WARNING: <name> was held by input for … s and the engine never called our input hook - …`
+    = the new way does nothing in this game: switch both new ways off (D4's run 2) and tell Claude.
 
 **D2. Force it.** *Athletics* → *Smallest bar (points)* 50 → 10 (recruits empty after two blows).
 - You see: most tired men step back after every swing — the front "breathes" back and forth but
@@ -360,12 +374,65 @@ lines meet; after a minute watch the front from close by (or from the side).
   on again, they start from their next swing.
 - Log: `[stepback] StepBackEnabled switched OFF mid-mission at …: N fighters stepping back released to their formations at once`.
 
-**Broken — tell Claude** (the summary's step-back lines, appendix L6, carry the proof):
-1. **Men turn their backs** to walk away — THE risk. Then set *Chance when empty (%)* to 0.
-2. **Men stuck** behind the line or frozen — every `(must be 0)` in the `release check` line must be 0.
+**D4. The A/B — the new ways against the old (step 16, ~20 min).** The same custom battle twice, as
+alike as you can make them: the same map, the same two armies (e.g. 120 v 120 infantry, tier 1-2, no
+archers - the battle where tired men mattered most), you as general, **charge and then leave the
+armies alone** (no orders after the charge - the two runs must differ only by the switches). Note
+the clock time at each start.
+1. **Run 1 - the new ways** (the defaults): MCM → *Tired fighters* → *Tired AI keep their guard up (new
+   way)* ON, *Held AI raise their guard* ON; *Tired fighters step back* → *Step back = walk backwards (new
+   way)* ON. Fight it out (or 5 minutes of melee).
+2. **Run 2 - the old ways** (steps 13-15): before the battle switch *Tired AI keep their guard up* OFF and
+   *Step back = walk backwards* OFF → Done. Fight the same battle the same way. Switch both back ON after.
+- **Look for** (run 1 against run 2):
+  - **Tired men raise their shields** between attacks - in run 2 they stood open while waiting.
+  - **The step back faces the enemy** - a short backwards shuffle, shield toward the enemy; in run 2
+    most turned round and walked off.
+  - **Fights last longer**: the melee (first contact → one side broken) takes longer in run 1; the
+    summary header's `after N s` and `people removed` give it, and the landed hits per man removed.
+  - Empty men attack rarely even when they step back (in run 2 they swung again ~1.5 s after each step).
+- **The lines that settle it** (each run's `[summary]` block; the header names the run:
+  `==== scene …, mod ON, AI holds: Input (the AI's own input: guard up, backpedal) ====` vs
+  `…, AI holds: Legacy (NoAttack + the scripted walk) ====`):
+  - `AI holds - GUARD (…): held by the timer X% (n), stepping back Y% (n) (…), everyone else Z% (n) - of
+    them tired … , at full strength … - gap to everyone else: held -a points, stepping back -b points`
+    → **run 1: X and Y close to Z (a gap of 10 points or less); run 2: far below** (the 240v240 read 2% and
+    5% against 33%).
+  - `step back facing (THE risk: a turned back) - … | mid-step (…): facing his enemy …, side-on …, back
+    turned … | … | every 0.25 s (N samples): …; step backs with the back turned at ANY sample K of M (P%)
+    (must be about 0)` → **run 1: back turned about 0, P% under 5%; run 2: ~80%.**
+  - `step back ends: N - completed (time up) …, arrived (StepBackDistance covered) A, cut short …` and
+    `step back moves: avg X m of 2.00 asked (…) … - about V m/s` → run 1: X near 2 or `arrived` a big share;
+    run 2: ~0.6 m, 2 arrivals in thousands.
+  - `attack rate, melee, AI, empty (f 0) - timer: … the timer's floor D/m avg F s - the cycle vs it: P% (n …),
+    with a step back inside Q%, without R% (at least ~100% = held as the spec asks)` → **run 1: P and Q at
+    100% or above** (in the old log the empty band's cycle was 2.2 s against a floor of ~4.3 s: ~50%). The
+    band line's `→ target … s: …% - too fast / on target` is the older yardstick (the fresh cycle ÷ m) -
+    report it, it may still read "too fast" (AI_NOTES "Step 16" #7 says why).
+  - `AI holds - the timer survives a step back: holds that overlapped a step back N (…) | AI attacks that
+    started while a hold or a step back held him anyway K (must be about 0)`.
+  - `AI holds - the input hook (…): M men hooked (…), the callback already on for C of them (…RTS Camera…)
+    …; calls while held … (about R a second per held man); the attack bits taken out in … calls (a guard
+    raised in …, his own guard kept in …, a ready cancelled in …), a backpedal written in … calls; …; holds /
+    backpedals the engine never called us during 0 / 0 (must be 0 …); errors 0`.
+  - `attack rate - AI timer ends: time up …, an attack started anyway K (must be about 0 - the hold stops
+    attacks) … | the next ready came avg T s after a hold ended … ` → run 1: K about 0; T well under
+    run 2's 1-3 s.
+- Tell Claude which run FELT better, and whether the backpedal looked natural (speed, distance).
+
+**Broken — tell Claude** (the summary's step-back lines, appendix L6 / L6b, carry the proof):
+1. **Men turn their backs** to walk away — THE risk. With the new way this should be gone; if not
+   (`back turned at ANY sample` high in run 1), set *Chance when empty (%)* to 0.
+2. **Men stuck** behind the line or frozen — every `(must be 0)` in the `release check` line must be 0;
+   with the new way a man frozen walking backwards = tell Claude the clock time.
 3. **Formations fall apart** — try *Most at once (whole battle)* 10–20 and say which felt right.
-4. **They drop their guard** while stepping back (the `guard` line) — try *No swings while stepping back* off.
+4. **They drop their guard** while stepping back or waiting (the `GUARD` line) — try *Held AI raise
+   their guard* off, and say which read better.
 5. `swings started while stepping back` above 0 with *No swings…* on.
+6. The `[rate] WARNING: … the engine never called our input hook` line, or `errors` above 0 in the hook's
+   line — switch both new ways off and tell Claude.
+7. Men walking backwards off a wall walk or into a ditch in a siege (F2) — the `edge ahead` ends should
+   stop that; tell Claude where.
 
 ---
 
@@ -542,7 +609,7 @@ defaults file**.
   back to its default (N changed) - applied now; config.json saved."* (MCM's Cancel does not undo it.)
 - Log: `[mcm] "Revert all to defaults" pressed`, one `[config] <Key>: … → … (source: defaults)` per
   setting that moved, `[config] wrote config.json (reverted to defaults): every value as it is in effect now`,
-  `[config] reverted all 67 settings to their defaults (…): N changed, applied live`.
+  `[config] reverted all 70 settings to their defaults (…): N changed, applied live`.
 
 **G4 (optional, 1 min). The rewrite rule.** Hand-edit one value in config.json; then — before any
 battle — change a DIFFERENT value in MCM and press Done. The hand edit must still be in the file.
@@ -576,8 +643,8 @@ From `Documents\Mount and Blade II Bannerlord\Configs\TraxCombatEnhancements\` (
   when both are on); `[mcm]` registered or not (A1, A4) — step 12: at most ONE `not ready yet` line,
   followed by `registered at retry (attempt N)` or one `never became ready - gave up after 31 attempts …`;
   with MCM's module off but its DLL carried by another mod, one `MCM's module is not enabled - no settings page; config.json only.`
-  and nothing more; `[config] defaults: … 67 keys for 67 settings` (any `defaults.json PROBLEM:` under it →
-  that setting runs on a fallback — tell Claude); `[config] settings in effect (67, version N):` and
+  and nothing more; `[config] defaults: … 70 keys for 70 settings` (any `defaults.json PROBLEM:` under it →
+  that setting runs on a fallback — tell Claude); `[config] settings in effect (70, version N):` and
   one line per setting (a changed one ends `(default …)`). An old config.json is migrated once: format 2
   (step 13's) `[config] migrated config.json at …: MinMoveSpeedMultiplier: 0.3 → 0.7 (format 2 → 3, the old default; step 14: …)`;
   format 1 (before step 13) also `AttackRateAiDecisions: true → false (format 1 → 3, the old default; …)`
@@ -699,11 +766,14 @@ A tired fighter's attack speed m sets **the pause after each attack**: an attack
 wind-up + release; ranged + the reload after the loose) is followed by D × (1/m − 1) with no new attack
 (under 0.1 s: none). **You** (*Your attacks wait out the pause*): the input gate swallows your attack
 presses until it ends; held, the attack starts when it does. **The AI** (*Tired AI wait out the pause*):
-NoAttack, guard up, melee and ranged, on foot and mounted. **The animations** play at full speed
+melee and ranged, on foot and mounted - since step 16 **by input** (*Tired AI keep their guard up (new
+way)*: only the attack bits taken out of his own controls, a guard raised when he wants to attack; the
+old NoAttack when off), and **the pause survives a step back**. **The animations** play at full speed
 (*Slowest attack animation (%)* 100); **the AI's decisions** (*Tired AI also decide to attack less*) are
 off by default. Blocking, parrying, kicks, moving and weapon switches are never held.
 - `[rate] attached: your attack gate FIRST in the behaviour list (0 of N; … right after MissionMainAgentController at K) - …` (mission start),
-  `[rate] mission start: ON - PAUSE ONLY: animations at full speed (AttackAnimationMinPercent 100); after each attack no new attack for D x (1/m - 1) (D = its wind-up + release, ranged + its reload): you (AttackRatePlayerTimer) on - …, AI (AttackRatePaceHold) on - NoAttack, melee and ranged, on foot and mounted; AI decisions (AttackRateAiDecisions) off; never held: blocking, parrying, moving, weapon switches, kicks - read live; …`
+  `[rate] mission start: ON - PAUSE ONLY: animations at full speed (AttackAnimationMinPercent 100); after each attack no new attack for D x (1/m - 1) (D = its wind-up + release, ranged + its reload): you (AttackRatePlayerTimer) on - …, AI (AttackRatePaceHold) on - by input (AttackRatePaceByInput on: only the attack bits taken out of his own input, his guard his own, raised when he wants to attack - AiHoldRaiseGuard on), melee and ranged, on foot and mounted; AI decisions (AttackRateAiDecisions) off; never held: blocking, parrying, moving, weapon switches, kicks - read live; …`
+  (the old way: `… AI (AttackRatePaceHold) on - NoAttack (AttackRatePaceByInput off: the engine's no-attack flag, step 13's technique), …`)
 - Once: `[rate] first slowed fighter this mission: …` (C2), `[rate] first AI timer this mission: …` and
   `[rate] first AI timer ended at … s after … s - time up; …`, `[rate] your attack gate holds for the first time: …`;
   yours: the `[athletics] YOU: first attack pause …`, `… first attack pause ended …`, `… attack pressed …`,
@@ -711,24 +781,25 @@ off by default. Blocking, parrying, kicks, moving and weapon switches are never 
 - Verbose: `~[rate] AI timer: …`, `~[rate] AI timer ended: …`, `~[rate] AI timer not started: …`.
 - Switches mid-battle: `[rate] AttackRatePaceHold switched OFF mid-mission at … s: N held fighters may attack again at once`,
   `[rate] the AI timer is ON again at …`, `[rate] AttackRatePlayerTimer switched OFF / ON …`, `[rate] AttackRateAiDecisions switched ON …`,
-  `[rate] AttackAnimationMinPercent now 50 at …`.
+  `[rate] AttackAnimationMinPercent now 50 at …`; step 16: `[rate] AttackRatePaceByInput switched OFF mid-mission at … s: new AI timers use NoAttack (the engine's flag); the N running now finish the way they began`,
+  `[rate] AiHoldRaiseGuard switched OFF mid-mission at … s: a held AI man who wants to attack only has the attack taken out (from the next frame)`.
 - Summary (numbers made up):
   ```
   [summary] attack rate, melee, AI, peak (f 1): animations asked x1.00 - wind-up 0.32 + held 0.08, swing 0.52 (clean, hit nothing 0.60), recoil after a block 0.40, pause 0.45 | cycle 1.40 s (n 900), m 1.00 - the fresh reference
   [summary] attack rate, melee, AI, f 0.5-1: animations asked x1.00 - wind-up 0.32 (x1.00) + …, swing 0.53 (x1.02) …, pause 1.60 (x3.56) | cycle 2.45 s (n 300), m 0.72 → target 1.94 s: 126% - too slow
   [summary] attack rate, melee, AI, f 0.5-1 - timer: 310 (D avg 0.84 s at m 0.72 → asked avg 0.33 s = D x (1/m - 1)); measured: the next attack began avg 1.55 s after the attack's end (n 290), 1.22 s after the timer ended; started before the timer ended: 0 (must be 0)
-  [summary] attack rate, melee, AI, empty (f 0): animations asked x1.00 - wind-up 0.32 (x1.00) + …, pause 4.60 (x10.2) | cycle 5.50 s (n 40), m 0.20 → target 7.00 s: 79% - too fast
-  [summary] attack rate, melee, AI, empty (f 0) - timer: 45 (D avg 0.84 s at m 0.20 → asked avg 3.36 s = D x (1/m - 1)); measured: … 4.40 s after the attack's end (n 40), 1.04 s after the timer ended; started before the timer ended: 0 (must be 0)
+  [summary] attack rate, melee, AI, empty (f 0): animations asked x1.00 - wind-up 0.32 (x1.00) + …, pause 4.60 (x10.2) | cycle 5.50 s (n 400; with a step back inside 5.80 s n 360, without 2.80 s n 40), m 0.20 → target 7.00 s: 79% - too fast
+  [summary] attack rate, melee, AI, empty (f 0) - timer: 450 (D avg 0.84 s at m 0.20 → asked avg 3.36 s = D x (1/m - 1)); measured: … 4.40 s after the attack's end (n 400), 1.04 s after the timer ended; started before the timer ended: 0 (must be 0); the timer's floor D/m avg 4.20 s - the cycle vs it: 131% (n 400), with a step back inside 138%, without 67% (at least ~100% = held as the spec asks)
   [summary] attack rate, melee, AI - verdict: OFF TARGET in 1 of 3 tired bands (…)
   [summary] attack rate, melee, you, empty (f 0): animations asked x1.00 - … | cycle 4.10 s (n 12), m 0.20 → target 4.75 s: 86% - on target
   [summary] attack rate, melee, you, empty (f 0) - timer: 14 (D avg 0.82 s at m 0.20 → asked avg 3.28 s …); measured: … 3.30 s after the attack's end (n 12), 0.02 s after the timer ended; started before the timer ended: 0 (must be 0)
   [summary] attack rate, ranged, AI, f below 0.5 - timer: 30 (D avg 2.60 s at m 0.45 → asked avg 3.18 s …); …; started before the timer ended: 0 (must be 0)
-  [summary] attack rate - left out: cycles whose two ends fell in different f bands …; longer than 4 s ÷ m …; readies that ended in no attack …; chained …; with a step back in them …
+  [summary] attack rate - left out: cycles whose two ends fell in different f bands …; longer than 4 s ÷ m …; readies that ended in no attack …; chained …; with a step back inside (COUNTED since step 16 - the AI timer survives the step back; each band shows them apart) …
   [summary] attack rate - your timer (AttackRatePlayerTimer on at the end): 40 timers (melee 34, ranged 6), avg asked 1.10 s, max 3.30 s; your presses swallowed: 6 during your own attack (no chained blow), 25 during the countdown - the recovery bar flashed 18x; the button held through the end 12x, your attack began avg 0.02 s after (n 12) - near 0 = hold-to-attack works; attacks that started while held anyway: 0 (must be 0 - the input gate missed them); holds begun at your swing's start 30 (ended with no countdown, below 0.1 s: 2); ended early: switched off 1, not you any more 0, mission end 0 (still running at the end, released: 0)
   [summary] attack rate - AI decisions (AttackRateAiDecisions off at the end): scaled in 0 recomputes - … (off by default since step 13: on top of the timer it double-counts)
-  [summary] attack rate - AI timer (AttackRatePaceHold on at the end; NoAttack after each attack of a tired AI fighter, melee and ranged, on foot and mounted): 900 holds (melee 800, ranged 100, mounted 60), avg 0.95 s, max 3.40 s at avg m 0.55; by f: …
-  [summary] attack rate - AI timer, not held: at full strength 2000, not needed (below 0.1 s) 150, the next attack already readied at the attack's end 60, the attack's length not measured 5, stepping back 200 | not started by the tick: …
-  [summary] attack rate - AI timer ends: time up 880, an attack started anyway 2 (must be about 0 - NoAttack holds attacks), … | … | the next ready came avg 1.20 s after a hold ended (n 700) - the AI's own re-decision after NoAttack lifts
+  [summary] attack rate - AI timer (AttackRatePaceHold on at the end; technique at the end: by input (AttackRatePaceByInput on: …); after each attack of a tired AI fighter, melee and ranged, on foot and mounted): 900 holds (by input 900, by NoAttack 0; melee 800, ranged 100, mounted 60), avg 0.95 s, max 3.40 s at avg m 0.55; by f: …
+  [summary] attack rate - AI timer, not held: at full strength 2000, not needed (below 0.1 s) 150, the next attack already readied at the attack's end 60, the attack's length not measured 5, covered by a scripted step back (a NoAttack hold waiting for the step to end whose time ran out first) 0 | not started by the tick: …
+  [summary] attack rate - AI timer ends: time up 880, an attack started anyway 2 (must be about 0 - the hold stops attacks), … | lifted by us 880, … | the next ready came avg 0.20 s after a hold ended (n 700) - the AI's own re-decision after the hold lifts (NoAttack cost 1-3 s; by input he readies at once if he still wants to)
   [summary] attack rate - guard by f (…): peak (f 1) 45% (n 900) | f 0.5-1 47% (n 400) | f below 0.5 46% (n 150) | empty (f 0) 44% (n 60) | while held by the AI timer 52% (n 90)
   ```
   Proves, in this order:
@@ -744,28 +815,59 @@ off by default. Blocking, parrying, kicks, moving and weapon switches are never 
      attacked as fast as you could. The AI's rows: its own gap after an attack does not shrink, so
      mild bands can read `too slow` (the NoAttack re-decision) and empty ones `too fast` (its own idle
      gap runs inside the timer) - that is the D-based timer as specified; C7 tells which feels right.
-  6. **Blocking untouched**: the `guard by f` rows within ~10 points of the peak row, `while held` not below it.
+     Step 16: each timer row's `the timer's floor D/m … the cycle vs it: P%` must be at least ~100% -
+     THE check that the pause as specified held (before step 16 the empty band read ~50%: a step back
+     dropped the pause); cycles with a step back inside now count (shown apart in the band line).
+  6. **Blocking untouched**: the `guard by f` rows within ~10 points of the peak row, `while held` not below it
+     (step 16's sharper version: L6b's GUARD line).
 
 ### L6. Step back
 
 - `[stepback] mission start: ON - …`; first tick `[stepback] this mission allows step backs while it is in battle mode (now: …)`
   — or `… is a tournament or arena fight (…) - no step backs here (vanilla AI)` / `… is a naval battle (moving decks) …`.
-- The first one in full and its end (D1); verbose every start, end and refusal; switches (D3, B3).
+- The first one in full and its end (D1 - step 16: every 0.25 s of it written into the end line, and the
+  input frames); verbose every start, end and refusal; switches (D3, B3; step 16:
+  `[stepback] StepBackBackpedal switched OFF mid-mission at … s: new step backs are scripted walk (…); the N running now finish the way they began`).
 - Summary — 8 lines:
   ```
-  step back - technique: a scripted step - …; settings at the end: ON - …
+  step back - technique: a backpedal - a backwards movement written into the AI's own input (…) …; settings at the end: ON - … (the old way: "a scripted step - …"; both: "MIXED this battle (StepBackBackpedal switched): …")
   step back rolls after AI melee swings on foot, by f (the chance must be 0% at full strength and rise as f falls): peak (f 1) 900 swings, chance avg 0%, dice yes 0 (0%) | f 0.5-1 700 swings, chance avg 27%, dice yes 190 (27%) | f below 0.5 … | empty (f 0) 150 swings, chance avg 100%, dice yes 150 (100%); not rolled: you 40, riders 30, not a field battle (…) 0
   step back starts: dice yes 620 → started 480 (holding a line 200, charging 270, no formation 10), most at once 35; not started 140 (…reasons…)
-  step back ends: 480 - completed (time up) 430, cut short 50 (left the field 30, formation order changed 15, …)
-  step back moves: avg 1.20 m of 2.00 asked (min …, max …, reached the spot … of 480), lasted avg 1.40 s (n 480)
-  step back facing (THE risk: a turned back) - at the start: facing his enemy … | mid-step (… sampled): facing his enemy …, side-on …, back turned …; moving away …, … | at the end (…): …
+  step back ends: 480 - completed (time up) 130, arrived (StepBackDistance covered) 300, cut short 50 (left the field 30, formation order changed 15, the ground ends behind him (edge ahead) 2, …)
+  step back moves: avg 1.80 m of 2.00 asked (min …, max …, reached the spot … of 480), lasted avg 1.20 s (n 480) - about 1.50 m/s
+  step back facing (THE risk: a turned back) - at the start: facing his enemy … | mid-step (… sampled): facing his enemy …, side-on …, back turned …; moving away …, … | at the end (…): … | every 0.25 s (N samples): facing his enemy …, side-on …, back turned …; step backs with the back turned at ANY sample K of M (P%) (must be about 0)
   step back guard: hits taken while stepping back N - blocked B (P%), landed … | everyone else on foot: … hits, blocked … (Q%) | swings started while stepping back 0 (0 expected: StepBackHoldAttacks is on)
-  step back release check: N released through the engine - scripted movement still on right after 0 (must be 0), our flags (NoAttack, DoNotRun) cleared by hand 0 | at mission end: K were mid-step (released then), overdue (past their time) 0 (must be 0), scripted movement still on after that release 0 (must be 0)
+  step back release check: N released through the engine - scripted movement still on right after 0 (must be 0), our flags (NoAttack, DoNotRun) cleared by hand 0; backpedals ended by stopping the input M (nothing of ours left in the engine) | at mission end: K were mid-step (released then), overdue (past their time) 0 (must be 0), scripted movement still on after that release 0 (must be 0)
   ```
   Proves: the `peak (f 1)` row ALWAYS `chance avg 0%, dice yes 0`, the rows below rising (≈ 100% × (1 − f));
-  **`facing`: `back turned` near 0**, `facing his enemy` the big number; **every `(must be 0)` is 0**;
-  `moves` 0.8–1.5 m of 2 is normal for a tired walker (about 0 = nobody moves); `guard` `P%` not well below
-  `Q%`; `not started … engine did not take the scripted position N` large → the engine refuses the call.
+  **`facing`: `back turned` near 0 - mid-step, at the end AND at ANY 0.25 s sample (P% under ~5%)**,
+  `facing his enemy` the big number; **every `(must be 0)` is 0**; `moves`: the backpedal should get most of the
+  2 m (`arrived` a big share; the old walk managed ~0.6 m); `guard` `P%` not well below `Q%`; `not started …
+  engine did not take the scripted position N` large → the engine refuses the call (old way only).
+
+### L6b. AI holds — the guard really up and the backpedal (step 16)
+
+The per-man input component behind both new ways, and the timer surviving a step back. The summary
+header names the technique: `==== scene …, mod ON, AI holds: Input (the AI's own input: guard up, backpedal) ====`
+(or `AI holds: Legacy (NoAttack + the scripted walk)`, `AI holds: the timer Input, the step back Legacy`,
+`AI holds: mixed (a switch changed mid-battle)`).
+- Summary — 4 lines (numbers made up):
+  ```
+  AI holds - technique: the AI timer by input (AttackRatePaceByInput on: …) - this battle 1500 holds by input, 0 by NoAttack; the step back backpedal (a backwards input, facing his enemy) - this battle 900 backpedals, 0 scripted walks
+  AI holds - GUARD (melee hits on AI fighters on foot that were blocked or parried; THE fix target: held and stepping back close to everyone else): held by the timer 31% (n 400), stepping back 28% (n 200) (of them also held by the timer 30% (n 150)), everyone else 35% (n 1200) - of them tired (below the peak line) 30% (n 700), at full strength 42% (n 500) - gap to everyone else: held -4 points, stepping back -7 points
+  AI holds - the input hook (AgentComponent.OnAIInputSet): 380 men hooked (a component each, added the first time he was held), the callback already on for 380 of them (another mod's component - RTS Camera Command System turns it on for every agent), turned on by us for 0, turned off again when idle 0 times; calls while held 90000 (about 30.0 a second per held man); the attack bits taken out in 12000 calls (a guard raised in 9000, his own guard kept in 2900, a ready cancelled in 100), a backpedal written in 25000 calls; the player or a non-AI agent passed untouched 0; holds / backpedals the engine never called us during 0 / 0 (must be 0 - else the hook is dead: switch the new ways off and tell Claude); errors 0
+  AI holds - the timer survives a step back: holds that overlapped a step back 850 (both ran at once, his attacks held until the later of the two ends); NoAttack holds deferred behind a scripted step back 0 (set when the step ended 0, covered by the step back 0) | AI attacks that started while a hold or a step back held him anyway 3 (must be about 0)
+  ```
+  Proves: **the GUARD line's gaps small (≤ ~10 points)** - the playtest before step 16 read held 2%,
+  stepping back 5%, everyone else 33%; the hook alive (`calls while held` well above 0, `never called us
+  during 0 / 0`, `errors 0`); `attack bits taken out` > 0 (the AI still wanted to attack while held - and
+  did not); `AI attacks that started while … held him anyway` about 0; `holds that overlapped a step back`
+  > 0 in any battle with step backs (the timer survived them). With RTS Camera the callback is `already on`
+  for everyone; without it we turn it on and off per man (`turned on / off` counts).
+- Once per battle: the first held man and the first step back in full (D1's lines) - the input bits
+  before → after, the vector written, the calls; `melee hits taken while held H (blocked B)`.
+- **Stop and tell Claude**: `[rate] WARNING: … the engine never called our input hook …`, or `[error]`
+  lines at the site `hold.input-hook` (the component's own swallowed errors).
   Must NOT happen (the `not rolled` / `not started` reasons): you, riders, archers shooting; *Shield
   wall*, *Square*, *Circle*; retreating or routing; ladders, siege towers and engines (`busy (the game's
   own check: …)`); a wall's edge or stairs (`spot not level`, `no straight way back`, `spot off the navmesh`);

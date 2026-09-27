@@ -9,6 +9,9 @@ fix anything, just let me see what is in there."
 So this is a **menu, not a build**. Nothing in the mod was changed. Every estimate says how sure it is;
 anything the game has to confirm is marked **UNVERIFIED**.
 
+**Since then: lever #2 was BUILT in step 16** (2026-09-28, section B's option 1 - the per-man input component;
+AI_NOTES "Step 16", DESIGN §2, PLAYTEST D4 = its A/B). The other levers still wait for Anton's pick.
+
 Sources: RBM v4.5.0.2 (Workshop 2859251492, `Id RBM`, 6 DLLs: RBM, RBMAI, RBMCombat, RBMCampaign,
 RBMConfig, RBMTournament), decompiled to `..\reference\RBM-decompiled\` (outside the repo, read only —
 no RBM code is copied here, only described); the v1.4.8 game in `..\reference\game-decompiled\`;

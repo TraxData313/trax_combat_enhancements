@@ -1958,7 +1958,7 @@ full" with the small table) and interpretation 17 are the spec.
 2. The feel: 70% run at empty; the curve (fast back into the fight, slow to top off) → Anton; `refill from empty to
    the peak line` avg ≥ 40.7 s, close to it when men walked.
 
-## Step 16 — the guard really up + a step back that faces the enemy (research written before coding, 2026-09-27)
+## Step 16 — the guard really up + a step back that faces the enemy (DONE 2026-09-28; the research below was written before coding)
 
 Anton asleep, no questions (the manager's brief). Why: BATTLE_PACING.md lever #2 and section B, BUGS
 "defenceless", "backs turned", "empty AI attacks too fast". The 240v240 log: held men blocked 2%, stepping-back
@@ -2075,6 +2075,67 @@ empty band read a 2.2 s cycle against 8.5 s.
    the new "cycle vs the timer's floor D/m" ≥ ~100%; the verdict against fresh ÷ m is reported as before.
 
 **Plumbing constants** (documented, not settings): backpedal input 1.0; the ground check 0.6 m further back every
-0.25 s; the facing sample every 0.25 s; `DefendDown` as the raised guard; the callback-off rule.
+0.25 s; the facing sample every 0.25 s; `DefendDown` as the raised guard; the callback-off rule; a hold or backpedal
+of 0.3 s or more with no call from the engine = "never called".
 
-**UNVERIFIED - only the game can tell** (filled in with the lines that settle each once built - below)
+**Built (DONE 2026-09-28)** - file map in CLAUDE.md "Layout"
+- Settings 67 → 70: `AttackRatePaceByInput`, `AiHoldRaiseGuard` (Tired fighters, after `AttackRatePaceHold`),
+  `StepBackBackpedal` (Tired fighters step back, after `StepBackEnabled`) - all true; schema, TraxSettings,
+  defaults.json + refresh, DESIGN's table. No config format bump: a file without them takes the defaults (the
+  "missing keys" path) - Anton's config.json gets them at his next start.
+- Core `AiInput.cs` (AiInputMath: HoldAttacks, Backpedal - his Forward/Backward/Strafe bits out while backpedalling,
+  since on foot the VECTOR moves a man and the player's controller never sets them - BackpedalVector, ToLocal,
+  Covered, Arrived, Direction, LaterEnd, DeferredStillWorth; InputEdit), `AiHoldStats.cs` (the 4 "AI holds" lines);
+  StepBack.cs (Backpedal, Arrived, EdgeAhead), StepBackStats (technique by counts, every-0.25 s facing, back turned
+  at ANY sample, arrived, m/s, input releases), AttackRate.cs (PaceByInput, RaiseGuard, PaceTechnique;
+  `PaceNotHeld.SteppingBack` → `CoveredByStepBack`), AttackRateStats (stepped-back cycles COUNTED and shown apart,
+  the timer floor D/m, holds by technique, wording without "NoAttack" where both apply). Tests 351 → 367.
+- Module `AiInputHook.cs` (AiInputState, AiInputComponent, AiInputHook), `AthleticsLogic.AiHolds.cs`;
+  `InputPaceBody` (PaceBody.cs), `InputStepBackBody` + `IStepBackBody.Steer` (StepBackBody.cs); the logic picks the
+  body by technique at each START (StepBackState / PaceState `.ByInput`); TickDeferred for NoAttack behind a
+  scripted walk; OnMeleeHit → HoldHitTaken; the summary header's technique (`HoldsHeader`).
+- Smoke 51 → 52 steps: `Program.AiInput.cs` (new); the old steps pinned to the old techniques in
+  AthleticsDefaults / StepBackDefaults; R1's smoke rewritten (refused = held, started = deferred then set,
+  covered = counted). deploy.ps1 green (build, AssemblyGuard, smoke, installed).
+
+**Decisions made while building** (on top of the 7 above)
+8. **One component, two wishes**: the timer's `HoldAttacks` and the step back's `StepHoldAttacks` are separate flags
+   in one state - the attacks stay out while EITHER is on, so "the later end" needs no arithmetic at runtime
+   (`AiInputMath.LaterEnd` documents it and the tests pin it).
+9. **A NoAttack hold still WAITING for a game job keeps its technique** when the next hold starts on the same man
+   (a switch to input meanwhile would otherwise orphan our NoAttack flag - a man who never attacks again).
+10. **In a ready the guard is ALWAYS pressed** (whatever `AiHoldRaiseGuard` says): clearing the bits alone would
+    release the blow. `AiHoldRaiseGuard` off only changes the case "he wants to START an attack".
+11. **The step back's `StepBackHoldAttacks` is taken at its start** (as 5d's was for the running scripted step).
+12. **The callback flag** is turned on in the tick when a man is hooked and off when both his wishes are gone,
+    only if we turned it on and no other component overrides `OnAIInputSet` (reflection, cached per type) - with
+    RTS Camera it is already on for everyone and never touched.
+13. **The summary header** carries the technique ("AI holds: Input / Legacy / the timer X, the step back Y /
+    mixed") from what the battle USED (else the settings at the end).
+14. **The verdict's population changed**: cycles with a step back inside count now (they did not since 5e) - the
+    timer survives them, so they are the attack rhythm; the band line shows both halves.
+
+**UNVERIFIED - only the game can tell (PLAYTEST D1, D4, L5, L6, L6b; the line that settles each)**
+1. The engine calls `OnAIInputSet` for a hooked man, often enough → L6b `the input hook: … calls while held N (about
+   R a second per held man)` with R well above 0, `holds / backpedals the engine never called us during 0 / 0`, no
+   `[rate] WARNING: … never called our input hook`.
+2. Clearing the attack bits stops the AI's attacks → `attack rate - AI timer ends: … an attack started anyway K`
+   and L6b `AI attacks that started while a hold or a step back held him anyway K`, both about 0.
+3. **THE fix: held men keep their guard** → L6b `GUARD: held by the timer X%, stepping back Y% … everyone else Z%`,
+   gaps within ~10 points (before: 2% / 5% / 33%). If X stays low: the D4 A/B with *Held AI raise their guard* off
+   tells whether DefendDown helps or hurts; then `AgentFlag.CanAttack` (RTS Camera's lever) is the next try.
+4. **The backpedal faces the enemy** → L6 `step backs with the back turned at ANY sample K of M (P%)` under ~5%,
+   mid-step `back turned` about 0 (before ~80%).
+5. The backpedal really moves him (speed, distance) → L6 `moves: avg X m of 2.00 …- about V m/s` and `arrived`;
+   the first step back's every-0.25 s samples. If V is tiny, the engine ignores a vector against its own
+   movement (then: RBM's `SetTargetPosition` hops).
+6. The edge check keeps men on walls and out of ditches → sieges: `the ground ends behind him (edge ahead) N`
+   and Anton's eyes (PLAYTEST F2).
+7. The pause survives a step back → L5 each timer row's `the timer's floor D/m … the cycle vs it: P%` ≥ ~100% (the
+   empty band read ~50% before), L6b `holds that overlapped a step back N` > 0; the verdict line (fresh ÷ m) may
+   still read "too fast" (decision 7).
+8. The AI re-decides at once after an input hold (no NoAttack latency) → L5 `the next ready came avg T s after a
+   hold ended` well under the old 1.5-2.6 s.
+9. RTS Camera beside it (Anton runs it) → L6b `the callback already on for N of them` = all hooked men; volley /
+   defensive hold unaffected (his eyes); `the player or a non-AI agent passed untouched` counts the men he took over.
+10. Cost → `Athletics tick cost` against a step-15 log of the same size.

@@ -112,8 +112,18 @@ regen.)
       (the pause only ever starts at a loose).
     - **The AI** (`AttackRatePaceHold`, on - the A/B switch of step 5e's "pace hold"): after each
       attack of a tired AI fighter — melee AND ranged, on foot AND mounted (horse archers and
-      lancers too) — the engine's own "no attack" flag (guard up) for the pause, set only on a
-      man with no game job on him, lifted only while he is free; never while he steps back.
+      lancers too) — no new attack for the pause, **guard really up** (step 16, BATTLE_PACING lever
+      #2 - AI_NOTES "Step 16"). How (`AttackRatePaceByInput`, on): a small per-man component sees the
+      AI's own input every time the AI decides it (the game's `AgentComponent.OnAIInputSet`, the hook
+      RTS Camera Command System uses too) and takes out ONLY the attack bits - his blocks, parries,
+      moves, kicks and weapon switches stay his own. When he wants to attack and holds no guard, he
+      raises one instead (`AiHoldRaiseGuard`, on - a block; with a shield, the shield); a ready that is
+      somehow under way is cancelled with a guard, never released. Never the player, never a man the
+      player commands (RTS Camera), never a man with a game job on him (ladder, siege engine, an object).
+      Off = step 13's technique, the engine's "no attack" flag - under which held men blocked only
+      2-13% (the playtest of 2026-09-27). **The pause survives a step back**: the attacks stay held
+      until the later of the pause's end and the step back's end (the old technique: its "no attack"
+      waits behind the scripted walk and goes on the moment it ends, if the pause is not over).
     - **The AI's decisions** (`AttackRateAiDecisions`, **off** since step 13 - an A/B switch):
       the AI's chance to attack, to riposte and to loose × m, its aim before a shot ÷ m. On top of
       the timer it double-counts (the playtest log read 128% / 172% "too slow"): the timer runs
@@ -136,7 +146,10 @@ regen.)
       inside a timer: must be 0), the cycle, m, the target (the peak's cycle ÷ m) and measured ÷
       target with a verdict word (on target within ±15%, too fast, too slow); your timer (presses
       swallowed, the held button firing, releases); the AI's holds; whether tired men block as
-      often as fresh ones.
+      often as fresh ones. Step 16: the GUARD by state (held by the pause / stepping back / everyone
+      else - the held and the stepping-back men must block close to everyone else), each band's cycle
+      against the timer's own floor D / m (the attack and its pause - at least ~100% = held as asked),
+      cycles with a step back inside counted and shown apart, and the input hook's own numbers.
   - **Run speed on foot** = M + (1 − M) × f, M = `MinMoveSpeedMultiplier` (0.7 - an empty man
     runs at 70% of his pace; step 14, Anton after his 240v240: "make them slow down to 70% speed",
     the 0.3 of steps 5c-13 was "too slow, unrealistic"). Tired men slow down, so fresher men
@@ -176,17 +189,27 @@ regen.)
 - **Tired fighters step back** (built in step 5d - the literal rule; `StepBackEnabled`, on):
   when a MELEE swing ends, an AI fighter on foot may step back, facing its enemy with its guard
   up. Chance = `StepBackMaxChancePercent` (100) × (1 − f), f after the swing's cost: 0% in the
-  peak zone (no roll at all), 50% halfway down to 0, every swing at 0. He walks
-  `StepBackDistance` (2 m) straight away from the enemy he fights, facing him, making no swings
-  (`StepBackHoldAttacks`), for `StepBackSeconds` (1.5 s, read live) - a tired man walks slowly,
-  so he may not get all the way - then his formation takes him back. Never the player, never
-  riders, never after ranged attacks, kicks or bashes. The point: the tired fall back and the
-  fresh take the blows.
-  - **How**: the engine's own scripted movement (`SetScriptedPositionAndDirection`, released by
-    `DisableScriptedMovement`) - how vanilla sends a soldier out of his formation to pick up
-    arrows mid-battle. The formation keeps his place and takes him back. Research, the
-    alternatives weighed (RBM's formation patch, the AI's behaviour values) and the fallback:
-    AI_NOTES "Step 5d".
+  peak zone (no roll at all), 50% halfway down to 0, every swing at 0. He walks BACKWARDS
+  `StepBackDistance` (2 m) straight away from the enemy he fights, facing him, guard up, making no
+  swings (`StepBackHoldAttacks`), until he has covered the distance or `StepBackSeconds` (1.5 s,
+  read live) run out - then his formation takes him back. Never the player, never riders, never
+  after ranged attacks, kicks or bashes. The point: the tired fall back and the fresh take the
+  blows.
+  - **How** (step 16, `StepBackBackpedal`, on - AI_NOTES "Step 16"): a backpedal through the AI's own
+    input - the same per-man component as the AI's pause writes a backwards movement into his
+    controls, like a player holding S, along the line straight away from his enemy (turned into his
+    own frame every tick, so he backs along the line the safety checks cleared whichever way his AI
+    turns him); his AI keeps facing his enemy and keeps its guard (only the attack bits are taken
+    out, and his own forward / sideways wishes, so only the backwards movement moves him). It stops
+    at the distance covered ("arrived"), at the time, or when the ground a little further back stops
+    being walkable ("edge ahead" - checked every 0.25 s: off the navmesh, a height step, no straight
+    way - so nobody backs off a wall walk or into a ditch). Then we simply stop writing: his own AI
+    and formation take him back.
+  - **The old way** (`StepBackBackpedal` off, steps 5d-15): the engine's scripted movement
+    (`SetScriptedPositionAndDirection`, released by `DisableScriptedMovement`) - how vanilla sends a
+    soldier to pick up arrows. It is navigation: a man walks facing his path, so ~80% turned their
+    backs mid-step and only 2 of 2159 arrived (the playtest of 2026-09-27; BATTLE_PACING §B).
+    Research, the alternatives weighed and the fallbacks: AI_NOTES "Step 5d" and "Step 16".
   - **Only where it is safe** (Claude's calls, Anton can overturn): field battles only - not
     tournaments, arena fights, duels or naval battles; not while the formation stands in a
     shield wall, square or circle (they exist to hold) or is ordered to retreat; not for men the
@@ -194,13 +217,17 @@ regen.)
     the enemy he fights within `StepBackEnemyRange` (4 m); only to a level spot on the navmesh
     with a straight way back (no wall edges, stairs, fences); at most `StepBackMaxAtOnce` (50) at
     once on the whole field.
-  - **Always ends**: his time is up; he falls or leaves; his formation gets a new order or
+  - **Always ends**: his time is up or (backpedal) the distance covered or the ground ending
+    behind him; he falls or leaves; his formation gets a new order or
     arrangement; he mounts, routs, changes formation, or the player takes him; the battle ends;
     or the step back (Athletics, the whole mod) is switched off - then everyone stepping back
     walks back at once.
-  - If the playtest shows men turning their backs, the nearest thing that works is "hang back":
-    tired men hold their place instead of pressing, through the AI's own behaviour values - no
-    scripted movement (AI_NOTES "Step 5d").
+  - **His pause survives it**: a step back never cancels the no-attack pause above - the attacks
+    stay held until the later of the two ends (step 16; until then a started step back dropped the
+    pause, so an empty man attacked again 1.5 s later).
+  - If the backpedal still shows men turning their backs, the next fallbacks are RBM's short
+    position-lock hops (`Agent.SetTargetPosition`) or "hang back" through the AI's behaviour values
+    (AI_NOTES "Step 5d", BATTLE_PACING §B).
 
 ## 2b. Athletics v2 (folded into §2)
 
@@ -635,6 +662,26 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     of the bar to the bottom and never makes refilling longer overall; each regen step is integrated
     exactly (the step length never changes the result, 100 is the old rule to the bit); the slider runs
     10-100 (0 would never reach full, above 100 would refill slower when low).
+
+18. **The guard really up and the backpedal** (step 16, Claude's calls on BATTLE_PACING lever #2 with Anton
+    asleep - AI_NOTES "Step 16"): one per-man input component does both the AI's pause and the step back,
+    added the first time a man is held (never at spawn, never for fresh men), so it costs nothing for men
+    who are never held; the engine's input callback is turned off again when he is idle - unless another
+    mod's component wants it (RTS Camera Command System turns it on for every agent; ours is added after
+    its, so ours writes last, and the two never move the same man: RTS's defensive hold acts only in shield
+    wall / square / circle, where nobody steps back). Only the attack bits are taken out; a held man who
+    wants to attack raises a guard (`DefendDown` - RTS Camera's own cancel; a switch, `AiHoldRaiseGuard`);
+    in a ready the guard is always pressed, because attack bits vanishing mid-ready would RELEASE the
+    blow. The backpedal is full stick (the engine's backpedal speed and the tired run cap decide how fast
+    - plumbing, not a number to tune) along the fixed line the safety probe cleared for the whole
+    distance, re-checked 0.6 m further back every 0.25 s. The pause survives a step back both ways round
+    (the later end frees the attacks); the old NoAttack technique cannot sit under our own scripted frame,
+    so its hold waits and is set the tick the walk ends. Both new ways are A/B switches (`AttackRatePaceByInput`,
+    `StepBackBackpedal`, on); a hold or a step already running finishes the way it began. Cycles with a step
+    back inside now COUNT in the attack-rate verdict (the pause survives them) and are shown apart. The
+    pause itself is still DESIGN's D × (1/m − 1): the AI's own gap after an attack runs inside it, so the
+    verdict against the fresh cycle ÷ m may read "too fast" where NoAttack's 1-3 s re-decision used to
+    fill the gap - the timer rows and the new "floor D/m" say whether the SPEC holds.
 
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),

@@ -38,7 +38,7 @@ Releasing it: [tools/WORKSHOP-UPLOAD.md](tools/WORKSHOP-UPLOAD.md).
   low, slower as it fills (half the bar in about 25 seconds). Heroes pay less per
   blow, party leaders less again, and a hero's big Athletics skill means a big bar — the battle
   leans on its heroes.
-- **Tired men step back** — after a swing, a tired AI soldier on foot may step back out of the
+- **Tired men step back** — after a swing, a tired AI soldier on foot may walk backwards out of the
   press, facing his enemy with his guard up, and rejoin his line a moment later: the more
   tired, the more often. The fresh take the blows. Field battles only.
 - **See it** — your own Athletics bar under your health bar: the number, a mark at the peak line,
