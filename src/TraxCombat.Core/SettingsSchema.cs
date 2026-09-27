@@ -112,6 +112,14 @@ namespace TraxCombat.Core
             "Attack speed when empty (%)",
             "Attack speed of a fighter whose Athletics is empty, in percent of normal: swings, thrusts, bow draw, crossbow reload, throws. Between the full-strength line and empty it falls in a straight line. 100 = attacks never slow down.");
 
+        public static readonly ParamDef AttackRateAiDecisions = Bool("AttackRateAiDecisions", TiredGroup,
+            "Tired AI attack less often",
+            "On: a tired AI fighter also decides to attack (and to strike back after a parry) less often, looses arrows less readily and aims longer before a shot - by the same factor as his attack speed - so his whole rhythm slows, not only the swing. Blocking is never touched. Off: only the animations slow down. Applies at once, even mid-battle.");
+
+        public static readonly ParamDef AttackRatePaceHold = Bool("AttackRatePaceHold", TiredGroup,
+            "Tired AI keep a slower pace",
+            "On: after each melee swing a tired AI fighter on foot holds his next attack, guard up, until his time between attacks has grown to his fresh rhythm divided by his attack speed - at 50% attack speed one attack every 2 seconds instead of every second. Never you, never riders. Off mid-battle: every held fighter may attack again at once.");
+
         public static readonly ParamDef MinMoveSpeedMultiplier = Float("MinMoveSpeedMultiplier", 0.1, 1, TiredGroup,
             "Run speed when empty (x)",
             "Top speed on foot of a fighter whose Athletics is empty, times his normal top speed. Between the full-strength line and empty it falls in a straight line, so fresh men overtake tired ones. 1.0 = tired men run as fast as fresh ones.");
@@ -276,7 +284,7 @@ namespace TraxCombat.Core
             DamageRandomOnMounts, DamageRandomOnShields,
             AthleticsEnabled, AthleticsPoolFloor, AthleticsPoolPerSkill, AthleticsPeakPercent, HealthCapsAthletics,
             CostPerBlow, CostOnMiss, HeroCostMultiplier, PartyLeaderCostMultiplier,
-            ExhaustedAttackSpeedPercent, MinMoveSpeedMultiplier, MountMinSpeedMultiplier, DamageBonusFollowsAthletics,
+            ExhaustedAttackSpeedPercent, AttackRateAiDecisions, AttackRatePaceHold, MinMoveSpeedMultiplier, MountMinSpeedMultiplier, DamageBonusFollowsAthletics,
             StepBackEnabled, StepBackMaxChancePercent, StepBackDistance, StepBackSeconds, StepBackEnemyRange,
             StepBackHoldAttacks, StepBackMaxAtOnce,
             RegenDelayBlowTimes, BlowTimeSeconds, FullRegenSecondsStanding, RegenMultiplierAtFullRun,

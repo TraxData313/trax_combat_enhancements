@@ -216,6 +216,8 @@ namespace TraxCombat.Core
         public float PartyLeaderCostMultiplier => GetFloat(SettingsSchema.PartyLeaderCostMultiplier);
 
         public int ExhaustedAttackSpeedPercent => GetInt(SettingsSchema.ExhaustedAttackSpeedPercent);
+        public bool AttackRateAiDecisions => GetBool(SettingsSchema.AttackRateAiDecisions);
+        public bool AttackRatePaceHold => GetBool(SettingsSchema.AttackRatePaceHold);
         public float MinMoveSpeedMultiplier => GetFloat(SettingsSchema.MinMoveSpeedMultiplier);
         public float MountMinSpeedMultiplier => GetFloat(SettingsSchema.MountMinSpeedMultiplier);
         public bool DamageBonusFollowsAthletics => GetBool(SettingsSchema.DamageBonusFollowsAthletics);

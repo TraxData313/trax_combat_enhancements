@@ -292,6 +292,8 @@ says (§2c).
 | `HeroCostMultiplier` | 0.75 | Cost multiplier for heroes. |
 | `PartyLeaderCostMultiplier` | 0.75 | Extra multiplier for a party's leading hero, on top of the hero one. |
 | `ExhaustedAttackSpeedPercent` | 20 | Attack speed at 0 Athletics, percent of normal (a straight line up to 100% at the peak line). |
+| `AttackRateAiDecisions` | true | Tired AI fighters also decide to attack (and riposte) less often, loose less readily and aim longer - × / ÷ their attack speed, so the AI's pause follows it (§2 attack rate; A/B switch). |
+| `AttackRatePaceHold` | true | After each melee swing a tired AI fighter on foot holds his next attack (guard up) until his cycle reaches his fresh cycle ÷ his attack speed (§2 attack rate; A/B switch). |
 | `MinMoveSpeedMultiplier` | 0.3 | Top speed on foot at 0 Athletics. |
 | `MountMinSpeedMultiplier` | 1.0 | Horse top speed at the rider's 0 Athletics (1.0 = horses never slow). |
 | `DamageBonusFollowsAthletics` | true | The damage upside shrinks with the attacker's Athletics below the peak. |

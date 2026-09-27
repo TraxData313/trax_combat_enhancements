@@ -113,6 +113,20 @@
   // (range 5 to 100)
   "ExhaustedAttackSpeedPercent": 20,
 
+  // On: a tired AI fighter also decides to attack (and to strike back after a parry) less
+  // often, looses arrows less readily and aims longer before a shot - by the same factor as his
+  // attack speed - so his whole rhythm slows, not only the swing. Blocking is never touched.
+  // Off: only the animations slow down. Applies at once, even mid-battle.
+  // (true or false)
+  "AttackRateAiDecisions": true,
+
+  // On: after each melee swing a tired AI fighter on foot holds his next attack, guard up,
+  // until his time between attacks has grown to his fresh rhythm divided by his attack speed -
+  // at 50% attack speed one attack every 2 seconds instead of every second. Never you, never
+  // riders. Off mid-battle: every held fighter may attack again at once.
+  // (true or false)
+  "AttackRatePaceHold": true,
+
   // Top speed on foot of a fighter whose Athletics is empty, times his normal top speed.
   // Between the full-strength line and empty it falls in a straight line, so fresh men overtake
   // tired ones. 1.0 = tired men run as fast as fresh ones.
