@@ -96,6 +96,7 @@ Every parameter lives in two places that stay in sync:
 | `FormationSpreadStdDevs` | 1.0 | Band width in standard deviations. |
 | `FormationBarHeight` | 3.0 | Metres above the formation's centre for its bar. |
 | `ShowInOrderMenu` | true | Average ± spread on the orders-menu formation cards. |
+| `VerboseLogging` | false | Log every roll, blow and exhaustion (rate-limited) to `trax_combat.log`. Off = load, settings, mission start/end, per-battle summaries and errors only. |
 
 New parameters discovered while building go into this table in the same commit.
 
@@ -108,7 +109,8 @@ New parameters discovered while building go into this table in the same commit.
    formula 0.75 × 0.75 × 10 settles it at 0.75. One number to change if 0.5 was meant.
 3. **"Party leader" = the hero leading the fighter's own party** — the player, and AI lords
    for their own parties. Stacks with the hero multiplier.
-4. **Blocking, running and riding cost nothing.** Only blows drain.
+4. **Blocking, running and riding cost nothing.** Only blows drain. (Blocking: confirmed by
+   Anton, 2026-09-27.)
 5. **Exhaustion is a cliff at 0**, as asked — no gradual slowdown.
 6. **Applies in every combat mission** (field battles, sieges, hideouts, custom battles,
    tournaments and arena). Per-mission toggles only if playtest asks for them.

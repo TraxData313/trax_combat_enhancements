@@ -73,6 +73,22 @@ die at any moment (tokens run out) and the next one loses nothing.
   what needs polling at a modest rate; UI updates throttled.
 - **Save-safe**: the mod lives inside missions. It must add nothing to the campaign save, so
   it can be enabled or removed mid-campaign.
+- **Logging built for one big playtest at the end (Anton, 2026-09-27).** Anton tests
+  everything at once when the build is finished, so the log must let us troubleshoot any
+  feature WITHOUT a second run. One rolling log file (`trax_combat.log`, ~2 MB trim) beside
+  the config file, timestamped lines tagged by area (`[config]`, `[mcm]`, `[mission]`,
+  `[damage]`, `[endurance]`, `[speed]`, `[hud]`, `[error]`). Always logged: mod/game version
+  at load, every parameter value on load and on change, each mission start/end (type,
+  scene, agent counts), which behaviors/views attached, and every caught exception with its
+  stack. Per-battle SUMMARY at mission end (damage rolls: count, min/avg/max factor;
+  endurance: blows charged, exhaustions entered/left, heroes' lowest endurance, formation
+  averages). Chatty per-event lines (each roll, each blow, each regen tick) only when
+  `VerboseLogging` is on — and even then rate-limited so a 1000-agent battle cannot flood
+  the file. Every game hook is wrapped in try/catch that logs `[error]` and fails SAFE (the
+  vanilla behavior), so a bug in the mod never crashes a battle.
+- **docs/PLAYTEST.md grows with every step**: what Anton should try, what he should see, and
+  which log lines prove it worked. It is the script for the final test session.
+- **Commit as each good piece lands** — not only at step end. Small, working commits.
 
 ## Layout (planned — make it true in step 3, then keep it true)
 
