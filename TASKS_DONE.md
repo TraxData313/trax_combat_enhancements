@@ -269,3 +269,46 @@
   engine taking it mid-melee, nothing lingering after release, the guard and NoAttack, real
   distance, navmesh checks on walls, tournament names, formations' shape at 50 at once - each
   with its summary line in AI_NOTES. (2026.09.27 17.15.26)
+- [x] **Step 6 — player Athletics bar.** The mod's first HUD: bottom right under the vanilla
+  health bar (right end on the hero bar's fill, below the horse bar - RBM's spot), one row: the
+  word *Athletics*, `current / pool` (rounded UP: 0 only when truly empty), a slim bar - fill
+  coloured by f (green at the peak line, blue just below, yellow / orange / red at or below
+  `Bar{Yellow,Orange,Red}BelowPercent` 75/50/25 % of the line; most alarming wins, empty always
+  red), a white marker at the peak line, the part the wounds hold dark red-brown, the rest dark
+  grey; empty = *Exhausted*, word / number / frame red (no pulse: a 0.1 s refresh would stutter).
+  REUSABLE PLUMBING for 7-9: `TraxHudView : MissionView` owns one GauntletLayer + movie + VM that
+  exists exactly while Core's `HudGate` says so, read every frame (ModEnabled FIRST, Athletics,
+  the view's Show switch, Hide Battle UI, photo mode, fight modes incl. stealth, the player on the
+  field, the view's own condition) - live hot swap both ways; refresh every `HudRefreshSeconds`;
+  suspend/resume; mission end; every entry wrapped - an error or a movie that does not load
+  disables the view for the mission, removes the layer, logs [error] (the battle goes on).
+  `IHudLayer` seam (`GauntletHudLayer` real: IsCustomType check, release the movie BEFORE
+  RemoveLayer, a failed movie never goes on screen; the smoke's stand-in offline). Attached by
+  `AthleticsLogic`'s first tick via `MissionScreen.AddMissionView` (`AthleticsLogic.Hud.cs`, one
+  line per view). WHY THE DESIGN: Gauntlet's binding converts only strings (verified in the
+  decompiled GauntletUI.Data/PrefabSystem), so every VM property has exactly the widget
+  property's type; unknown attributes are silently ignored, so the smoke resolves every one;
+  `FillBarWidget` draws shares, so no pixel maths and the UI scale applies by itself. Prefab
+  `module\GUI\Prefabs\TraxPlayerAthleticsBar.xml` (13 widgets, native `BlankWhiteSquare_9` +
+  `AgentHUD.Interaction.Text` only, no mouse events); deploy copies GUI (checked installed). +7
+  settings (52): the 3 colour rows moved up from "Planned", 4 Advanced `PlayerBar*` (205 × 12 at
+  62 / 54 UI px). Core `AthleticsBar.cs` (BarMath: band, shares, numbers, colours), `HudGate.cs`,
+  `HudStats.cs` + 38 tests (226 → 264: bands on DESIGN's recruit - green, green, blue, yellow,
+  orange, red - a wounded man never green, gate order, stats + summary text). SELF-VERIFYING
+  LOGS: `[hud] attached:` (prefab installed?), `layer created … (was hidden: <reason>) - movie …
+  loaded OK (N widgets)` / `FAILED to load`, `layer removed … - <reason>`, `not shown at … -
+  <reason>`, `first values pushed` (number, fill, usable, colour, f, marker, size, place,
+  thresholds), the FIRST time of each colour / EXHAUSTED / wounded per battle (verbose: every
+  later colour change), `DISABLED` lines; `[summary] hud:` on screen s of s, builds, removals by
+  reason, hidden time by reason, refreshes, errors + colours on screen (s and % per colour),
+  colour changes, exhausted shown, wounded time / lowest usable. OfflineSmoke 34 → 37 steps: the
+  prefab against the game's own widget types, properties, vanilla brushes/sprites and the VM's
+  types (every VM property drawn); the real view driven by made-up frames - deployment hidden,
+  built in battle, the five colours in order on 12 swings, wound, empty, refresh rate live, layout
+  live, removed + rebuilt for all 7 reasons, stealth/tournament/duel, suspend, pause, mission end,
+  summary via the logic; the fail safe (4 ways); the master-switch step removes the bar. Build 0
+  warnings, tests green, AssemblyGuard OK, smoke OK, deployed. PLAYTEST §7 "Your Athletics bar";
+  AI_NOTES step 6 (recipe for a new view, binding findings, gotchas); RESEARCH §G addendum +
+  UNVERIFIED 12-13; DESIGN §3 as built + interpretation 12; CLAUDE Layout; README. UNVERIFIED in
+  game: the drawing itself, placement at other resolutions / UI scales (4 live settings to tune),
+  the War Sails steering state (vanilla bar drops 60 px). (2026.09.27 17.52.28)
