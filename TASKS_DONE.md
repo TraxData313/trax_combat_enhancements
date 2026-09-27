@@ -667,3 +667,22 @@
   §2 + table + interpretation 18, PLAYTEST D (D4 = the A/B recipe) + L5 / L6 / new L6b, CLAUDE layout,
   AI_NOTES "Step 16" (decisions, UNVERIFIED with the lines), REVIEW R1 note, BATTLE_PACING, README, Steam page;
   TASKS_TODO 16 + three BUGS ticked. Commits a06e775, f0c2ea2, 21ea147, 64367fc + this. (2026.09.28 00.23.40)
+- [x] 17. Second fresh-eyes review of steps 12-16 (`git diff 3a797da..HEAD -- src`, ~4000 lines) before Anton's
+  morning playtest - docs/REVIEW.md R25-R36: 0 blockers, 0 majors, 4 minors (3 fixed, 1 deferred), 1 For Anton, 8
+  checked and not a bug; every engine assumption re-checked in the v1.4.8 decompile and RTS Camera 5.3.38. FIXED:
+  R25 - RTS Camera's free camera makes your hero AI-controlled while he stays MainAgent: his attacks started player
+  pauses the gate never enforced, so the AI's next attack read as "the input gate did not stop it (tell Claude)"
+  (the line PLAYTEST says must be 0) - now the pause is for YOUR hands only (`YouDrive`: none starts, a running one
+  ends as "not you", no gate-miss or "started early" count); R26 - `RangedSiegeWeapon` fires on its pilot's attack
+  bits, so a leftover pause swallowed a ballista's shots - the gate lets them through while you use a game object
+  (the pause keeps counting); R27 - a backpedal the game took over skipped its release and left our OnAIInputSet
+  callback on for that man - its release (sample, unhook) now runs on that path (the scripted walk's rule
+  unchanged). DEFERRED R28 (the "never called" warning can be a stunned man: PLAYTEST L6b now reads it by the
+  ratio). For Anton: your hero under the AI has no pause at all (leave it, or hold him like any AI man). Checked
+  fine: the player's hold cannot outlive its attack; the gate's move to index 0 (only MissionMainAgentController
+  writes MovementFlags); the component's lifecycle and RTS coexistence; DefendDown only ever replaces an attack
+  wish; the backpedal's edges and time limit; R1 stays closed; the refill curve and migration maths; no per-tick
+  allocation. Smoke extended (player timer: R25 / R26; AI holds E2: R27), mutation-checked (11 failures with the
+  fixes reverted); tests 367 unchanged (no Core fix); build 0 warnings; deploy.ps1 green (installed). Docs: REVIEW,
+  PLAYTEST C1b 5 + L6b, CLAUDE layout, AI_NOTES "Step 17 - review". Commits 61333b2, 1f099b3, 1935bea + this.
+  (2026.09.28 00.49.14)
