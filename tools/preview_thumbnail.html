@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<!--
+  The Steam Workshop preview image (1024 x 1024) - source. Rendered to tools\preview_thumbnail.png by
+  headless Edge; the command is in tools\WORKSHOP-UPLOAD.md, "The preview image". The bar colours are the mod's own (src\TraxCombat.Core\AthleticsBar.cs); the white mark on each bar
+  is the peak line (75%). No game art is used. An in-game screenshot after the playtest would be better.
+-->
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1024px; height: 1024px; overflow: hidden; background: #0e0b08; }
+  .canvas {
+    position: relative; width: 1024px; height: 1024px;
+    background:
+      radial-gradient(ellipse 80% 60% at 50% 42%, rgba(92, 70, 38, 0.38) 0%, rgba(14, 11, 8, 0) 70%),
+      repeating-linear-gradient(135deg, rgba(255,255,255,0.012) 0px, rgba(255,255,255,0.012) 2px, rgba(0,0,0,0) 2px, rgba(0,0,0,0) 9px),
+      linear-gradient(to bottom, #17120c 0%, #0e0b08 100%);
+    font-family: 'Palatino Linotype', 'Book Antiqua', Georgia, serif;
+  }
+  .frame {
+    position: absolute; inset: 22px;
+    border: 3px solid rgba(214, 178, 94, 0.85);
+    border-radius: 26px;
+    box-shadow: 0 0 0 1px rgba(0,0,0,0.6), inset 0 0 0 1px rgba(0,0,0,0.6), inset 0 0 80px rgba(0,0,0,0.5);
+  }
+  .title { position: absolute; top: 74px; left: 0; right: 0; text-align: center; }
+  .trax {
+    color: #d6b25e; font-size: 34px; letter-spacing: 22px; padding-left: 22px;
+    font-variant: small-caps; text-shadow: 0 2px 6px rgba(0,0,0,0.9);
+  }
+  h1 {
+    margin-top: 6px;
+    color: #e8c874; font-weight: 600; font-variant: small-caps; line-height: 0.98;
+    text-shadow: 0 3px 10px rgba(0,0,0,0.95), 0 0 45px rgba(232, 200, 116, 0.25);
+  }
+  h1 .big { display: block; font-size: 132px; letter-spacing: 6px; }
+  h1 .mid { display: block; font-size: 84px; letter-spacing: 4px; }
+
+  .panel {
+    position: absolute; left: 92px; right: 92px; top: 432px;
+    padding: 30px 34px 26px 34px;
+    background: rgba(8, 7, 6, 0.72);
+    border: 2px solid rgba(214, 178, 94, 0.45);
+    border-radius: 16px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.6);
+  }
+  .panel .head {
+    color: #bdbdbd; font-family: 'Segoe UI', Arial, sans-serif; font-size: 22px; letter-spacing: 6px;
+    text-transform: uppercase; margin-bottom: 18px; display: flex; justify-content: space-between;
+  }
+  .panel .head span:last-child { letter-spacing: 1px; text-transform: none; color: #8e8e8e; font-size: 20px; }
+  .row { display: flex; align-items: center; height: 58px; }
+  .label {
+    width: 128px; color: #d9cfb8; font-size: 27px; font-style: italic;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+  }
+  .bar {
+    position: relative; flex: 1; height: 34px;
+    background: rgba(40, 40, 40, 0.9);
+    border: 2px solid rgba(200, 200, 200, 0.70);
+    border-radius: 3px;
+  }
+  .fill { position: absolute; left: 0; top: 0; bottom: 0; }
+  .wound {
+    position: absolute; top: 0; bottom: 0; right: 0;
+    background: repeating-linear-gradient(135deg, rgba(10,10,10,0.95) 0px, rgba(10,10,10,0.95) 6px, rgba(60,20,18,0.95) 6px, rgba(60,20,18,0.95) 12px);
+  }
+  .peak { position: absolute; left: 75%; top: -8px; bottom: -8px; width: 4px; margin-left: -2px; background: #ffffff; box-shadow: 0 0 6px rgba(255,255,255,0.7); }
+  .num {
+    position: absolute; right: 10px; top: 0; bottom: 0; display: flex; align-items: center;
+    color: #ededed; font-family: 'Segoe UI', Arial, sans-serif; font-weight: 600; font-size: 21px;
+    text-shadow: 0 1px 3px rgba(0,0,0,1), 0 0 4px rgba(0,0,0,0.9);
+  }
+  .green { background: #5cb85c; } .blue { background: #4a90d9; } .yellow { background: #e8c93a; }
+  .orange { background: #ee8a2a; } .red { background: #d9392b; }
+
+  .tagline {
+    position: absolute; left: 0; right: 0; bottom: 118px; text-align: center;
+    color: #f0e4c8; font-size: 38px; font-style: italic; text-shadow: 0 2px 8px rgba(0,0,0,0.95);
+  }
+  .features {
+    position: absolute; left: 0; right: 0; bottom: 70px; text-align: center;
+    color: #cdb27a; font-size: 27px; font-variant: small-caps; letter-spacing: 2px;
+    text-shadow: 0 2px 6px rgba(0,0,0,0.95);
+  }
+  .features .dot { color: #8a7448; padding: 0 10px; }
+  .features .n { font-variant: normal; font-variant-numeric: lining-nums; font-size: 25px; letter-spacing: 1px; }
+</style>
+</head>
+<body>
+  <div class="canvas">
+    <div class="frame"></div>
+    <div class="title">
+      <div class="trax">Trax</div>
+      <h1><span class="big">Combat</span><span class="mid">Enhancements</span></h1>
+    </div>
+
+    <div class="panel">
+      <div class="head"><span>Athletics</span><span>the white mark = full strength</span></div>
+      <div class="row"><div class="label">fresh</div>
+        <div class="bar"><div class="fill green" style="width:100%"></div><div class="peak"></div><div class="num">180 / 180</div></div></div>
+      <div class="row"><div class="label">winded</div>
+        <div class="bar"><div class="fill blue" style="width:66%"></div><div class="peak"></div><div class="num">119 / 180</div></div></div>
+      <div class="row"><div class="label">tiring</div>
+        <div class="bar"><div class="fill yellow" style="width:46%"></div><div class="peak"></div><div class="num">83 / 180</div></div></div>
+      <div class="row"><div class="label">wounded</div>
+        <div class="bar"><div class="fill orange" style="width:28%"></div><div class="wound" style="width:30%"></div><div class="peak"></div><div class="num">50 / 180</div></div></div>
+      <div class="row"><div class="label">spent</div>
+        <div class="bar"><div class="fill red" style="width:7%"></div><div class="peak"></div><div class="num">12 / 180</div></div></div>
+    </div>
+
+    <div class="tagline">Every hit rolls. Every blow costs.</div>
+    <div class="features">
+      <span class="n">&plusmn;50%</span> damage <span class="dot">&middot;</span> stamina <span class="dot">&middot;</span> tired men step back <span class="dot">&middot;</span> squad strip
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,30 @@
+<Tasks>
+    <CreateItem/>
+    <UpdateItem>
+        <!-- FIRST Steam Workshop upload - it CREATES the item. Run it ONCE, only on Anton's yes after
+             his playtest (tools\WORKSHOP-UPLOAD.md). Steam open and logged in, then:
+               & "C:\Program Files (x86)\Steam\steamapps\common\Mount & Blade II Bannerlord\bin\Win64_Shipping_Client\TaleWorlds.MountAndBlade.SteamWorkshop.exe" "C:\Users\Trax\Documents\BannerlordMods\trax_combat_enhancements\tools\WorkshopCreate.xml"
+             Uploader quirks (decompiled again 2026-09-27, the same as the sibling mods found): the root
+             <Tasks> element must be the FIRST node of this file - an <?xml?> declaration above it makes
+             the tool parse ZERO tasks and exit as if successful, and a comment directly under <Tasks>
+             crashes it; comments are safe only HERE, inside UpdateItem (and inside GetItem / Tags).
+             The item TITLE is read from dist\TraxCombatEnhancements\SubModule.xml <Name>, not from this
+             file. Visibility Private (the sibling's practice): Anton pastes STEAM-DESCRIPTION.bbcode on
+             the page and flips it Public there. A double quote inside a Value must be written &quot;.
+             Success = "Item created. Item ID is <number>" and "Uploading done!" in the output - never
+             the exit code (the tool ends on a press-any-key read that crashes when run non-interactively).
+             Then record the number in WorkshopUpdate.xml and NEVER run this file again. -->
+        <ModuleFolder Value="C:\Users\Trax\Documents\BannerlordMods\trax_combat_enhancements\dist\TraxCombatEnhancements"/>
+        <ItemDescription Value="Every hit that lands rolls &#177;50% damage, and every fighter has an Athletics bar - his stamina, as big as his Athletics skill - that his blows drain and rest refills. Tired men hit softer, attack slower, run slower and step back out of the press; your own bar sits under your health bar, and the orders menu shows each formation's average. Every number adjustable (MCM optional). Not compatible with Realistic Battle Mod."/>
+        <Tags>
+            <Tag Value="Utility" />
+            <Tag Value="UI" />
+            <Tag Value="Native" />
+            <Tag Value="Singleplayer" />
+            <Tag Value="v1.4.8" />
+        </Tags>
+        <Image Value="C:\Users\Trax\Documents\BannerlordMods\trax_combat_enhancements\tools\preview_thumbnail.png"/>
+        <Visibility Value="Private"/>
+        <ChangeNotes Value="First release." />
+    </UpdateItem>
+</Tasks>

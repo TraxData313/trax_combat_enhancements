@@ -1,0 +1,29 @@
+<Tasks>
+    <GetItem>
+        <!-- UPDATING the existing Workshop item (every release after the first; tools\WORKSHOP-UPLOAD.md).
+             1. After the first upload: replace ITEM_ID below with the number from "Item created. Item ID
+                is <number>" (also the number in the item page's URL). While it still says ITEM_ID the
+                uploader stops with a FormatException before it touches the item - nothing is uploaded.
+             2. Each release: set ChangeNotes below (short, for players; a double quote = &quot;), run
+                tools\package.ps1, then, Steam open and logged in:
+                  & "C:\Program Files (x86)\Steam\steamapps\common\Mount & Blade II Bannerlord\bin\Win64_Shipping_Client\TaleWorlds.MountAndBlade.SteamWorkshop.exe" "C:\Users\Trax\Documents\BannerlordMods\trax_combat_enhancements\tools\WorkshopUpdate.xml"
+             Same quirks as WorkshopCreate.xml: <Tasks> is the file's first node, comments only inside
+             GetItem / UpdateItem / Tags, the title comes from SubModule.xml <Name>, success = "Uploading
+             done!" in the output (never the exit code). This file sets no description and no visibility,
+             so page edits made on Steam are never overwritten; it DOES replace the tags (keep the list,
+             bump the version tag when the game moves) and, only if an <Image Value="..."/> line is added,
+             the preview image. -->
+        <ItemId Value="ITEM_ID"/>
+    </GetItem>
+    <UpdateItem>
+        <ModuleFolder Value="C:\Users\Trax\Documents\BannerlordMods\trax_combat_enhancements\dist\TraxCombatEnhancements"/>
+        <ChangeNotes Value="vX.Y.Z - what changed, in a line or two." />
+        <Tags>
+            <Tag Value="Utility" />
+            <Tag Value="UI" />
+            <Tag Value="Native" />
+            <Tag Value="Singleplayer" />
+            <Tag Value="v1.4.8" />
+        </Tags>
+    </UpdateItem>
+</Tasks>
