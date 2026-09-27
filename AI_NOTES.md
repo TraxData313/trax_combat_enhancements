@@ -314,7 +314,8 @@ change), `TraxLog.Limited`. OfflineSmoke +6 checks (28) in `Program.Athletics.cs
 - .NET Framework (the game, the smoke) formats midpoints differently from .NET 8 (the tests):
   the smoke asserts text prefixes around such numbers.
 
-**For step 5c** (manager asked; verified in source, values UNVERIFIED in game)
+**For step 5c** (manager asked; verified in source, values UNVERIFIED in game) - DONE in step 5c,
+see its section (kept for the trail)
 - (Step 5b) Names are Athletics now; new keys go into defaults.json as well (see "Step 5b"); the
   run-speed and damage-upside levers must respect `r.Enabled` (= ModEnabled && AthleticsEnabled)
   and give back vanilla speed / damage when it is false.
@@ -455,7 +456,136 @@ and MCM.UI for 1.4.8 (`Bannerlord.MBOptionScreen.v1.4.8.dll`, decompiled for thi
 5. An OFF battle really plays as vanilla, no penalty left over (`[athletics] the whole mod
    (ModEnabled) switched OFF … penalties lifted` + the feel of it).
 
-## Steps 6-9 — the Athletics READ API (from step 5)
+## Step 5c — Athletics v2 (DONE 2026-09-27)
+
+DESIGN §2 is now the one current spec (§2b folded in; a one-line §2b pointer stays because
+TASKS_TODO's 5d line cites it).
+
+**Built** (file map in CLAUDE.md "Layout")
+- Settings (38): + `AthleticsPoolFloor` 50, `AthleticsPoolPerSkill` 1.0, `AthleticsPeakPercent` 75,
+  `HealthCapsAthletics`, `MinMoveSpeedMultiplier` 0.3, `MountMinSpeedMultiplier` 1.0,
+  `DamageBonusFollowsAthletics`, `RegenMultiplierAtFullRun` 0.5, `WalkEffortFraction` 0.4;
+  retired `MaxAthletics`, `FullRegenSecondsMoving`, `MovingSpeedThreshold`,
+  `ExhaustedRecoverPercent` (schema, TraxSettings, defaults.json + refresh, DESIGN table, MCM by
+  construction). Group "Exhaustion" → "Tired fighters"; MCM label "Attack speed when empty (%)".
+- Core: `AthleticsMath` v2 (PoolPoints, UsableFraction, PeakShare, Curve → Attack/Run/Mount
+  multipliers, DamageUpside, RegenRateMultiplier / IsWalking / Effort, ApplyHealth, PeakBin);
+  `DamageRoll.Upside` + `Factor(u, p, upside)`, `RollOutcome.Upside/Spread/Ceiling`;
+  `DamageStats` upside bins; `AthleticsStats` rewritten; `BinnedIntervals`, `RunSpeedCheck`;
+  `FormationAthleticsStats.MeanPeakShare/InPeak`.
+- Module: the engine (skill at spawn, health cap, three multipliers, mount table, recompute
+  budget, effort regen, run-speed sampling), `SpeedPenalty.ScaleRun/ScaleMount`, the stat
+  decorator's `SpeedFactorsFor`, the damage decorator's attacker f, `TryGetPeakShare`, new log lines.
+- Tests 154 → 207; OfflineSmoke 31 → 33 checks. PLAYTEST §3 rewritten; RESEARCH §C/§D addenda.
+
+**Decisions**
+- **Fractions and points (the bookkeeping)**: `Fighter.Fraction` = share of the FULL pool; the
+  pool is computed LIVE from the cached skill (`max(floor, per-skill × skill)`, never below 1).
+  So a pool-setting change keeps shares by construction, and a blow's POINT cost lands as
+  cost ÷ pool at that moment (a recruit's 10 = 20% of 50, a legionary's 10 = 7.7% of 130).
+  f = min(Fraction ÷ peak%, 1) does not even need the pool. The health cap is a ceiling on the
+  same fraction (health left, 0..1), so "the peak line stays on the full pool" holds by
+  construction. Lowest/points in the summary = fraction × the pool at the end.
+- **The change threshold**: `AthleticsMath.SpeedUpdateStep` = **0.05** per applied multiplier
+  (attack, run, horse; step 5 had 0.02 for the cliff) + any move to/from exactly 1 or onto/off
+  exactly the floor; a refill that reaches its top sets the speeds exactly. At most
+  `MaxRecomputesPerTick` = **50** `UpdateAgentProperties()` a tick (fighters + horses); the rest
+  wait a tick (`held a tick by the per-tick budget`). Estimate: a refill from empty to the peak
+  ≈ 16 recomputes per fighter; a blow below the peak ≈ 1 (small blows on big pools every 2-3).
+- **Walk/run evidence** (RESEARCH §D addendum): human walk limit 1.8 m/s (monsters.xml, the
+  formations' own walk gait = min `WalkSpeedCached`); run = native top speed, inferred ≈ 6.2
+  (`bipedal_speed_multiplier`) × MaxSpeedMultiplier (0.63-0.79 for typical troops) = 3.9-4.9 m/s
+  → walk/top 0.37-0.46, ~0.42. **`WalkEffortFraction` stays 0.4**: above it the rate falls in a
+  line, so 0.42 still refills at 98%. The summary's `walk vs run speeds` line measures it.
+- **Run lever = `MaxSpeedMultiplier` only**; `CombatMaxSpeedMultiplier` is a ≤ 1 share the base
+  clamps (scaling both would square the penalty in combat stance). **Horse lever = `MountSpeed`**
+  on the mount's own properties, via a mount table (horse index → rider record, reference-checked
+  with `SlowedMount`), so the decorator stays managed-only (offline-safe). `OnAgentMount/Dismount`
+  mark the rider; `ApplyMountSpeed` recomputes the old horse (back to 1) and the new one.
+- **The skill**: `agent.Character.GetSkillValue(DefaultSkills.Athletics)` at `Track` (heroes via
+  `HeroObject`), NOT the stat model's `GetEffectiveSkill` (captain perks etc. would make the bar
+  wobble with the formation). Exception or no character → 0 = the floor, counted "(not readable)".
+- **Health**: managed `Health ÷ HealthLimit` (limit ≤ 0 → full) at every hit (`OnAgentHit` - after
+  the health drop) and every regen step. Healing raises the cap, only regen refills. Athletics
+  (or the mod) back on = everyone full, the next regen step cuts to the cap (counted as cuts).
+  Health 0 is skipped: `OnAgentHit` fires for the killing blow BEFORE the death, and a whole bar
+  "cut" per kill would swamp the summary's biggest cut.
+- A slowed rider leaving the field: his horse leaves the mount table at once (the decorator
+  reads 1 for it) and is recomputed by the next tick (`ReleaseHorses`, within the budget) -
+  never `UpdateAgentProperties` inside `OnAgentRemoved`.
+- **Speeds are sampled every regen step** for fighters below their top (not only after the
+  delay): the run-speed check needs fighters that are fighting. Effort seconds count only while
+  refilling.
+- **Damage**: attacker f via `TryGetPeakShare` (f = 1 while Athletics or the mod is off); a mount
+  attacker → its `RiderAgent`; no tracked attacker → NaN → the full upside, own "no pool" bin.
+  `DamageRules.UpsideFollowsAthletics` (optional last ctor arg) = `DamageBonusFollowsAthletics`.
+  Every roll carries its ceiling 1 + p × upside; the summary counts rolls above it (must be 0).
+- **Binned attack checks**: an interval is classified by the f bin after the previous release's
+  charge (what governs it) vs before the next; a swing length by the bin after its own charge;
+  different bins = "mixed", left out. Verdict: the tiredest bin with ≥ 3 samples (empty, else
+  below 0.5) vs the peak (≥ 5): ≥ x1.5 slower when ≥ x1.5 asked = ARE slower.
+- **Run speed check**: per fighter a fresh top (`GetMaximumForwardUnlimitedSpeed` while his run
+  multiplier is 1, refreshed on every such sample); per f bin the mean engine top ÷ fresh, the
+  mean asked, speed ÷ fresh (p90 = the 0.05 slice's UPPER edge, max). "follows the curve" =
+  |engine − asked| ≤ 0.05 in every bin with ≥ 20 samples and asked < 0.97. Horses alike (the
+  mount's fresh top); with MountMin 1.0 the verdict is "unaffected, as asked".
+- **First-exhaustion proof**: with the curve the fighter is already slowed before his emptying
+  blow, so the "before" snapshot carries the previous multipliers; the check is new ÷ old per
+  value; "of his fresh values" = snapshot ÷ previous multipliers (`FirstFresh`).
+- Player lines (always, Limited, bucket athletics-player): YOU pool at the first tick, dropped
+  below full strength, exhausted, off empty, back at full strength, back to full / to the
+  wound's cap, wounded. Verbose buckets: athletics-pool, athletics-health (+ the step-5 ones).
+- A consequence of DESIGN's "effort = speed ÷ CURRENT top speed", kept as written: a near-empty
+  man's top (x0.3 ≈ 1.3 m/s) is below a formation's walk (1.8 m/s), so keeping up is a flat-out
+  run for him - half-rate regen until he has some speed back. DESIGN §2 says so.
+
+**Gotchas**
+- Float settings: 0.4f is 0.4000000059… - tests compare curve values to 6 decimals.
+- IntervalStats medians are bin CENTRES (x.x25 / x.x75): 2-decimal text is a rounding midpoint,
+  formatted differently on .NET 8 and .NET Framework - tests assert around them.
+  `RunSpeedCheck` p90 reports the slice's upper edge instead; 0.30 / 0.05 = 5.999… in doubles
+  (an epsilon in the binning).
+- Offline smoke: fake agents have no Character → skill 0 → the floor (50); health set through
+  `_health` and `<HealthLimit>k__BackingField` by IL; the mount table filled by reflection
+  (`RegisterMount`). `ApplyMountSpeed`, `RegenPass`, `SampleSpeeds` call native members - not
+  reachable offline.
+- Git Bash python edits of .cs files keep LF (autocrlf warnings only); markdown only via Edit/Write.
+
+**UNVERIFIED — only the game can tell (PLAYTEST §3; the line that settles each)**
+1. The skill read (heroes' real skill, troops' data) → `[athletics] YOU: Athletics skill N → pool …`
+   = the character screen; no `(not readable)`; summary `Athletics pools … whose skill could not be read` absent.
+2. The engine honours the attack curve at mid values, not only 0.2 → `attack speed check … by f`
+   rows with x ≈ asked and `- tired attacks ARE slower`.
+3. `MaxSpeedMultiplier` honoured live and `GetMaximumForwardUnlimitedSpeed()` follows it →
+   `run speed check, on foot … - the engine's top speed follows the curve`, `moving p90` falling.
+4. Horses: `MountSpeed` honoured, the mount table and OnAgentMount/Dismount → with MountMin 0.5
+   `[speed] first horse slowed this mission …` and the horses line "follows the curve"; at 1.0
+   `unaffected, as asked`.
+5. The cap at the hit (`OnAgentHit` after the health drop) → `[athletics] YOU are wounded … capped at …`,
+   summary `Athletics health cap: N cuts`.
+6. Effort units (MovementVelocity vs top speed) and the walk ratio → `walk vs run speeds … walk/top`
+   and `Athletics refill effort … seconds per tenth` (walking near 0.4, running near 1, little above 1).
+7. A horse charge reads the rider's f → verbose `[damage] horse charge on … (x…, attacker f …)`.
+8. Recompute cost with 1000 agents → `speed updates: N recomputes …, held a tick … M` and
+   `Athletics tick cost`.
+9. The first-exhaustion check with previous multipliers → `[speed] first exhaustion this mission: …
+   - the penalties are in the agent's properties`.
+
+## Step 5d — Tired fighters step back (pointers from 5c)
+
+- f is everywhere: Core `AthleticsMath.PeakShare(in r, st)`, `AthleticsLogic.TryGetPeakShare(agent,
+  out f)`, `reading.PeakShare`. Chance = `StepBackMaxChancePercent` × (1 − f) - 0 in the peak zone.
+- The natural trigger is the melee release the engine already polls: `StartRelease` (rising edge
+  into ReleaseMelee, before/after the charge - use f AFTER the charge, the swing he just paid for)
+  or `EndRelease` (the swing's end). AI only (`!agent.IsPlayerControlled`), on foot
+  (`MountAgent == null`), melee only (never from `OnAgentShootMissile`).
+- The run curve already slows a tired man (x0.3 at 0): a step back is slow when he is empty.
+- Dice: Core `IRandomSource` (`ThreadSafeRandom.Shared`, `SeededRandom` for tests).
+- Master switch first: ModEnabled / AthleticsEnabled off → no step-back starts, a running one is
+  released at once; add it to the smoke's `MasterSwitchIsVanillaLive`. New keys (`StepBack*`):
+  DESIGN row + schema + TraxSettings + defaults.json + refresh (see Step 5b).
+
+## Steps 6-9 — the Athletics READ API (from steps 5, 5c)
 
 Static, allocation-free, main thread (call from a view's `OnMissionScreenTick`), in
 `Missions/AthleticsLogic.Api.cs`. Every answer is a snapshot struct from Core - never hold our
@@ -464,17 +594,24 @@ records.
 ```csharp
 if (AthleticsLogic.TryGetReading(agent, out AthleticsReading r))   // false: a horse (pass RiderAgent),
 {                                                                  // untracked, or no mission running
-    r.Points; r.Pool; r.Fraction;   // points left, the fighter's pool, 0..1 (bar fill)
-    r.Exhausted; r.SpeedMultiplier; // exhausted now; the attack-speed factor applied (1 = none)
-    r.IsHero; r.IsLeader;
+    r.Points; r.Pool; r.Fraction;   // points left (E), his FULL pool (the bar's length), 0..1 (bar fill)
+    r.UsablePool; r.UsableFraction; // the health cap: grey the bar from UsableFraction to 1
+    r.PeakShare;                    // f = min(E / (peak% × pool), 1): THE colour input (1 = green;
+                                    // below the line blue; ≤ BarYellowBelowPercent% of the line yellow…)
+    r.PeakFraction; r.InPeakZone;   // where to draw the peak marker (0.75); f ≥ 1
+    r.Exhausted;                    // E = 0
+    r.SpeedMultiplier; r.RunSpeedMultiplier; r.MountSpeedMultiplier; // applied now (1 = none)
+    r.AthleticsSkill; r.IsHero; r.IsLeader;
     r.Enabled;                      // ModEnabled && AthleticsEnabled - off: reads full; the HUD must hide
 }
-if (AthleticsLogic.TryGetFormationStats(formation, out FormationAthleticsStats f)) // player team only
+AthleticsLogic.TryGetPeakShare(agent, out double f); // just f (false: not tracked)
+if (AthleticsLogic.TryGetFormationStats(formation, out FormationAthleticsStats s)) // player team only
 {
-    f.Count; f.Exhausted;
-    f.MeanPoints; f.StdPoints;       // "72 ± 8" (f.Describe() = "72 ± 8 (40 men, 2 exhausted)")
-    f.MeanFraction; f.StdFraction;   // bar fill
-    f.LowFraction(k); f.HighFraction(k); // the ± band, k = FormationSpreadStdDevs, clamped 0..1
+    s.Count; s.Exhausted; s.InPeak;  // men, empty, at full strength
+    s.MeanPoints; s.StdPoints;       // "72 ± 8" (s.Describe() = "72 ± 8 (40 men, 2 exhausted)")
+    s.MeanFraction; s.StdFraction;   // bar fill (shares - pools differ per man since 5c)
+    s.MeanPeakShare;                 // the men's average f - colour the squad bar by it
+    s.LowFraction(k); s.HighFraction(k); // the ± band, k = FormationSpreadStdDevs, clamped 0..1
 }
 AthleticsLogic.FormationStatsVersion  // bumps every FormationStatsRefreshSeconds - redraw on change
 AthleticsLogic.IsRunning
@@ -482,24 +619,30 @@ AthleticsLogic.IsRunning
 - Formation stats are recomputed by the logic's own tick (one O(N) pass over tracked fighters of
   `Mission.PlayerTeam`, bucketed by `(int)agent.Formation.FormationIndex`), so a view never loops
   agents itself. Enemy formations are not computed (ask if a step needs them).
-- Athletics v2 (5c) keeps this API; readings stay in points + fraction (pools become per fighter).
+- Since 5c pools differ per fighter: MeanPoints is an average of different-sized bars (the
+  "72 ± 8" text); bars should FILL by MeanFraction and COLOUR by MeanPeakShare (f), the player's
+  and target's bars by `r.Fraction` / `r.PeakShare`, with the peak marker at `r.PeakFraction`.
 - **Master switch first (step 5b, CLAUDE.md)**: every view / feature checks
   `TraxSettings.Shared.ModEnabled` BEFORE anything else, live, and hides / undoes what it shows
   when it is off (5d: no step-back starts, a running one is released to the formation at once;
   6-9: every bar and panel hidden); add that "off" behaviour to the smoke's
   `MasterSwitchIsVanillaLive` step.
-- **New parameters** (5c's `AthleticsPoolFloor` …, 6's bar colours, 8's `ShowFormationHealth`):
+- **New parameters** (5d's `StepBack*`, 6's bar colours, 8's `ShowFormationHealth`):
   DESIGN Parameters row (initial value) + schema entry (NO default) + TraxSettings property +
-  `"Key": value` in defaults.json + `dotnet run --project tools/DefaultsTool -- refresh`. Retiring
-  one (5c: `MaxAthletics`, `FullRegenSecondsMoving`, `MovingSpeedThreshold`,
-  `ExhaustedRecoverPercent`) = remove it from all of those; the tests name whatever is left.
-  The rules structs take `modEnabled` as an optional last ctor argument (`From` passes it).
+  `"Key": value` in defaults.json + `dotnet run --project tools/DefaultsTool -- refresh`; move the
+  row out of DESIGN's "Planned parameters". Retiring one = remove it from all of those (done that
+  way in 5c for four keys); the tests name whatever is left. `AthleticsRules` takes `modEnabled`
+  as an optional last ctor argument (`From` passes it); `DamageRules` takes `modEnabled`, then
+  `upsideFollowsAthletics`.
 - The HUD can be added from `AthleticsLogic`'s first tick (`MissionScreen.AddMissionView`) - the
   first-tick branch is in `AthleticsLogic.OnMissionTick`.
 
 ## Step 6 — Player bar
 
-- Read: `AthleticsLogic.TryGetReading(Agent.Main, out var r)` every `HudRefreshSeconds`.
+- Read: `AthleticsLogic.TryGetReading(Agent.Main, out var r)` every `HudRefreshSeconds`. Since 5c:
+  number = `r.Points` / `r.Pool`, fill `r.Fraction`, peak marker at `r.PeakFraction`, colour from
+  `r.PeakShare` (f ≥ 1 green, below the line blue, then the Bar*BelowPercent thresholds on f),
+  the wounded part (from `r.UsableFraction` to 1) greyed.
 - `PlayerAthleticsView : MissionBattleUIBaseView` + own `GauntletLayer` + VM + prefab in
   `module\GUI\Prefabs`. Added by `AthleticsLogic`'s first tick via
   `MissionScreen.AddMissionView` (NOT in OnMissionBehaviorInitialize — §F/§G).

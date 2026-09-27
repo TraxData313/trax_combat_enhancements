@@ -383,6 +383,10 @@ namespace TraxCombat.Tools
             S.Set(SettingsSchema.HealthCapsAthletics, true, SettingSources.Mcm);
             _logic.CheckHealth(w, Rules, 204);
             Check(Near(w.Fraction, 0.2) && stats.HealthCuts == 2 && Near(stats.HealthCutPoints, 40.0), "the cap back on did not cut to 20%: " + w.Fraction);
+            SetHealth(c, 0f, 100f); // the killing blow: he leaves the field - no "cut" in the stats
+            _logic.CheckHealth(w, Rules, 205);
+            Check(Near(w.Fraction, 0.2) && stats.HealthCuts == 2, "a killing blow was counted as a health-cap cut");
+            SetHealth(c, 20f, 100f);
             w.SpeedDirty = false;
         }
 

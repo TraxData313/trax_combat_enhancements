@@ -184,3 +184,41 @@
   battle feeling vanilla. `git grep -i endurance` now hits only TASKS_DONE history, RESEARCH's
   findings (+ its note), and the deliberate "it used to be called endurance" mentions (DESIGN
   §2b, CLAUDE.md, the done step 5 lines in TASKS_TODO / AI_NOTES). (2026.09.27 15.53.36)
+- [x] **Step 5c — Athletics v2.** Anton's additions built and DESIGN §2b folded into §2 (one
+  current spec; a one-line §2b pointer stays for the 5d task line). POOL = the Athletics SKILL:
+  max(`AthleticsPoolFloor` 50, `AthleticsPoolPerSkill` 1.0 × skill), never below 1, read once
+  at spawn from `Character.GetSkillValue(DefaultSkills.Athletics)` (heroes their real skill;
+  not the stat model's effective skill, so captain perks cannot wobble the bar), riders too.
+  COST stays in points (10 / 7.5 / 5.6) against each fighter's own pool; state stays a fraction
+  of the FULL pool, so pool-setting changes keep everyone's share and f = min(fraction ÷ peak%,
+  1) needs no pool. PEAK ZONE (`AthleticsPeakPercent` 75): recruit 2 blows at full strength / 5
+  to empty, legionary 4 / 13, Fian 5 / 17, a 300-skill leader 14 / 54 (DESIGN said 53 - it is
+  53⅓ blows' worth, fixed). HEALTH CAP (`HealthCapsAthletics`): managed Health ÷ HealthLimit at
+  every hit (`OnAgentHit`, after the drop; a killing blow is no cut) and every regen step; the
+  peak line stays on the full pool. CURVES from f: the damage roll [1 − p, 1 + p × f] from the ATTACKER (`TryGetPeakShare`;
+  a horse charge → the rider; untracked → full upside), attack speed S + (1 − S)f replacing the
+  cliff, run speed M + (1 − M)f through `MaxSpeedMultiplier` only (CombatMaxSpeedMultiplier is a
+  clamped share - scaling both would square it), horses via `MountSpeed` on the mount only when
+  `MountMinSpeedMultiplier` < 1, found through the logic's own horse table so the decorator never
+  calls native (every recompute from the tick, a released horse too). REGEN BY EFFORT: speed ÷ current top speed; ≤ `WalkEffortFraction` full rate,
+  then a line to × `RegenMultiplierAtFullRun` 0.5. Walk ratio: human walk 1.8 m/s (monsters.xml,
+  the formations' own walk gait), top inferred 6.2 × MaxSpeedMultiplier ≈ 3.9-4.9 m/s → walk/top
+  ≈ 0.42 → 0.4 kept (at 0.42 the rate is 98%); the summary measures it. RECOMPUTES: 0.05 step
+  per multiplier + exact end points + exact on reaching the top, ≤ 50 `UpdateAgentProperties` a
+  tick. Retired `MaxAthletics`, `FullRegenSecondsMoving`, `MovingSpeedThreshold`,
+  `ExhaustedRecoverPercent`; +9 settings (38; group "Tired fighters"); defaults.json refreshed.
+  SELF-VERIFYING LOGS: summary pools (min/avg/max, at the floor, you, leaders), exhaustions +
+  peak zone left/re-entered, fighter-time by f, health cap (cuts, biggest), regen by effort
+  (walk vs faster seconds, avg rate, seconds per effort tenth), attack-speed checks binned by f
+  with asked x and a verdict, run-speed checks by f (engine top ÷ fresh top vs asked, moving
+  p90/max; horses "unaffected" at 1.0), walk vs run speeds, recomputes (+ held by the budget),
+  damage upside by the attacker's f (+ rolls above their ceiling = 0); always-on YOU lines (pool,
+  below / back at full strength, exhausted, off empty, refilled, wounded); verbose pool at spawn,
+  health cuts, speed changes (fighters + horses). Tests 154 → 207 (every rule + DESIGN's blow
+  counts + damage upside + binned checks); OfflineSmoke 31 → 33 (curve blow by blow, health cap,
+  upside through the real damage decorator, horse table in the decorator); build 0 warnings,
+  AssemblyGuard OK, deployed. PLAYTEST §3 rewritten (troop table, what to try, the lines that
+  prove each); RESEARCH §C/§D addenda; CLAUDE Layout; AI_NOTES Step 5c + 5d/6-9 pointers.
+  UNVERIFIED in game: skill read, the engine honouring mid-curve attack speeds, MaxSpeedMultiplier
+  / MountSpeed live, the cap at the hit, effort units / walk ratio, horse-charge rider f,
+  recompute cost at 1000 agents - each with its summary line in AI_NOTES. (2026.09.27 16.40.48)

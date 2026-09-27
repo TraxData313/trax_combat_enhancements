@@ -83,6 +83,7 @@ namespace TraxCombat.Missions
         private int _count;
         private int _swept;
         private readonly System.Collections.Generic.List<TrackedAgent> _heroes = new System.Collections.Generic.List<TrackedAgent>();
+        private readonly System.Collections.Generic.List<Agent> _horsesToRelease = new System.Collections.Generic.List<Agent>();
         private readonly AthleticsStats _stats = new AthleticsStats();
 
         /// <summary>This mission's numbers (the offline smoke reads them).</summary>
@@ -270,22 +271,12 @@ namespace TraxCombat.Missions
             }
             if (st.SlowedMount != null)
             {
-                // his horse runs on at its own speed (recomputed now if it lives on)
+                // his horse runs on at its own speed: out of the table now (the decorator reads 1 for
+                // it from here on), recomputed by the next tick - never inside this engine callback
                 var horse = st.SlowedMount;
                 st.SlowedMount = null;
                 UnregisterMount(horse, st);
-                try
-                {
-                    if (horse.IsActive())
-                    {
-                        horse.UpdateAgentProperties();
-                        _stats.HorseRecomputes++;
-                    }
-                }
-                catch (Exception e)
-                {
-                    Failed("speed.horse-release", e);
-                }
+                _horsesToRelease.Add(horse);
             }
             RemoveFromLoop(st);
         }
@@ -367,6 +358,7 @@ namespace TraxCombat.Missions
 
             int polled = 0;
             int budget = MaxRecomputesPerTick;
+            if (_horsesToRelease.Count > 0) budget = ReleaseHorses(budget);
             for (int i = 0; i < _count; i++)
             {
                 var st = _dense[i];
@@ -686,6 +678,31 @@ namespace TraxCombat.Missions
             _firstBefore.Swing / Math.Max(0.01f, _firstPrevAttack), _firstBefore.Thrust / Math.Max(0.01f, _firstPrevAttack),
             _firstBefore.Reload / Math.Max(0.01f, _firstPrevAttack), _firstBefore.Run / Math.Max(0.01f, _firstPrevRun));
 
+        /// <summary>Horses whose slowed rider left the field: recompute them (back to their own speed)
+        /// from the tick, within the per-tick budget. Returns the budget left.</summary>
+        private int ReleaseHorses(int budget)
+        {
+            while (_horsesToRelease.Count > 0 && budget > 0)
+            {
+                var horse = _horsesToRelease[_horsesToRelease.Count - 1];
+                _horsesToRelease.RemoveAt(_horsesToRelease.Count - 1);
+                try
+                {
+                    if (horse.IsActive() && MountOwner(horse) == null)
+                    {
+                        horse.UpdateAgentProperties();
+                        _stats.HorseRecomputes++;
+                        budget--;
+                    }
+                }
+                catch (Exception e)
+                {
+                    Failed("speed.horse-release", e);
+                }
+            }
+            return budget;
+        }
+
         /// <summary>His horse(s): release the one we slowed if he left it (or its multiplier went back to
         /// 1), register and recompute the one he rides while its multiplier is below 1.</summary>
         private void ApplyMountSpeed(TrackedAgent st)
@@ -820,7 +837,9 @@ namespace TraxCombat.Missions
         /// logged, and re-targets his speeds. Internal: the offline smoke drives it.</summary>
         internal void CheckHealth(TrackedAgent st, in AthleticsRules r, double now)
         {
-            double cut = AthleticsMath.ApplyHealth(st, in r, HealthOf(st.Agent));
+            double health = HealthOf(st.Agent);
+            if (health <= 0) return; // the killing blow: he leaves the field, it is no "cut"
+            double cut = AthleticsMath.ApplyHealth(st, in r, health);
             if (cut <= 0) return;
             double pool = AthleticsMath.PoolPoints(in r, st);
             _stats.AddHealthCut(cut * pool);
