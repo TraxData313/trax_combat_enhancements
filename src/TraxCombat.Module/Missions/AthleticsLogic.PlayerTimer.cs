@@ -16,7 +16,9 @@ namespace TraxCombat.Missions
     /// ONLY the attack bits (AttackMask) while your hold is on. The hold begins at your release's START
     /// when its pause is sure to be worth it (a click during your own swing cannot chain a blow past it)
     /// and its countdown at the attack's end; the pure state is Core's <see cref="PlayerAttackTimer"/>.
-    /// Never while a ready runs (bits vanishing mid-ready = the release). Fail safe: an exception
+    /// Never while a ready runs (bits vanishing mid-ready = the release). Only YOUR hands (review R25/R26,
+    /// step 17): no pause while the AI drives your hero (RTS Camera's free camera - a running one ends), and a
+    /// siege engine you man fires on your attack bits - never held. Fail safe: an exception
     /// releases the hold (vanilla input) and logs [error].
     ///
     /// LOGS ([athletics] YOU …): the first pause in full (D, m, the pause, where the hold began), its end
@@ -47,6 +49,18 @@ namespace TraxCombat.Missions
         /// <summary>The smoke's stand-in for Mission.MainAgent (null offline, and always null in game).</summary>
         internal Agent? SmokePlayer { get; set; }
 
+        /// <summary>The smoke's stand-in for "the AI drives your hero" (its fake agents cannot answer IsAIControlled).</summary>
+        internal bool SmokePlayerAiControlled { get; set; }
+
+        /// <summary>
+        /// You drive this fighter with your own hands - not the AI. RTS Camera's free camera hands your hero to the AI
+        /// while he stays Mission.MainAgent: the controller writes no input then, so the gate has nothing to hold, and
+        /// a pause started for him would only fill the log with "started while held anyway" false alarms (review R25).
+        /// A pointer read (no engine call) - safe inside a hit callback.
+        /// </summary>
+        private bool YouDrive(TrackedAgent st) =>
+            SmokePlayer != null && ReferenceEquals(st.Agent, SmokePlayer) ? !SmokePlayerAiControlled : !st.Agent.IsAIControlled;
+
         /// <summary>Your timer's state (the offline smoke and the HUD read it).</summary>
         internal PlayerAttackTimer PlayerTimer => _playerTimer;
 
@@ -73,6 +87,11 @@ namespace TraxCombat.Missions
             try
             {
                 if (!AttackRateRules.From(TraxSettings.Shared).PlayerTimerOn) return;
+                if (!YouDrive(st))
+                {
+                    ReleasePlayerTimer(PlayerTimerEnd.NotYou, now); // the AI drives him (R25): no hold the gate could not keep
+                    return;
+                }
                 float m = AthleticsMath.AttackSpeedMultiplier(in r, st);
                 double rest = kind == AttackKind.Melee ? st.LastRestMelee : st.LastRestRanged;
                 double expected = AttackTimerMath.Pause(st.AttackDuration + Math.Max(0, rest), m);
@@ -96,6 +115,11 @@ namespace TraxCombat.Missions
             if (!rr.PlayerTimerOn)
             {
                 ReleasePlayerTimer(PlayerTimerEnd.SwitchedOff, now);
+                return;
+            }
+            if (!YouDrive(st))
+            {
+                ReleasePlayerTimer(PlayerTimerEnd.NotYou, now); // the AI drives him (R25): no countdown the gate could not keep
                 return;
             }
             if (IsAttackAction(next))
@@ -140,7 +164,11 @@ namespace TraxCombat.Missions
         /// bits); after a countdown that ended with the button held, how soon it came.</summary>
         private void PlayerAttackBegan(TrackedAgent st, double now)
         {
-            if (_playerTimer.Holding && ReferenceEquals(_playerTimerOwner, st))
+            if (_playerTimer.Holding && ReferenceEquals(_playerTimerOwner, st) && !YouDrive(st))
+            {
+                ReleasePlayerTimer(PlayerTimerEnd.NotYou, now); // the AI's attack, not one the gate missed (R25)
+            }
+            else if (_playerTimer.Holding && ReferenceEquals(_playerTimerOwner, st))
             {
                 _rateStats.PlayerStartedAnyway++;
                 TraxLog.Limited("athletics", "YOU: an attack began at " + Sec(now) + " s while your pause held (" + F2(_playerTimer.Remaining(now))
@@ -189,7 +217,14 @@ namespace TraxCombat.Missions
                     ReleasePlayerTimer(PlayerTimerEnd.SwitchedOff, now);
                     return;
                 }
-                if (!a.IsActive() || a.IsAIControlled) return; // not driven by the controller now
+                if (!a.IsActive()) return;
+                if (a.IsAIControlled)
+                {
+                    // RTS Camera's free camera: the AI drives your hero, the controller writes no input to hold - the
+                    // pause ends here (review R25; before, it ran on unenforced and the AI's next attack read as a gate miss)
+                    ReleasePlayerTimer(PlayerTimerEnd.NotYou, now);
+                    return;
+                }
                 if (IsReadyAction(st.PrevAction))
                 {
                     // a ready runs (the poll saw it): bits vanishing now would release his blow - let go
@@ -198,7 +233,9 @@ namespace TraxCombat.Missions
                 }
                 CheckGateOrderOnce(mission!);
                 uint flags = (uint)a.MovementFlags;
-                var f = GateFrame(st, now, (flags & AttackMaskBits) != 0);
+                // manning a siege engine: RangedSiegeWeapon fires on its pilot's attack bits - that click is the
+                // engine's shot, not your attack: let it through, your pause keeps counting (review R26)
+                var f = GateFrame(st, now, (flags & AttackMaskBits) != 0, a.IsUsingGameObject);
                 if (f.Clear) a.MovementFlags = (Agent.MovementControlFlag)(flags & ~AttackMaskBits);
             }
             catch (Exception e)
@@ -209,10 +246,12 @@ namespace TraxCombat.Missions
         }
 
         /// <summary>One frame's decision (managed - the offline smoke drives it): the countdown's end, a
-        /// new press swallowed (counted, logged, the flash), the answer "clear the bits".</summary>
-        internal PlayerGateFrame GateFrame(TrackedAgent st, double now, bool pressing)
+        /// new press swallowed (counted, logged, the flash), the answer "clear the bits".
+        /// <paramref name="usingObject"/>: he mans a game object (a siege engine fires on his attack bits) - his
+        /// bits are not his attack then: never cleared, never a swallowed press; the countdown runs on (R26).</summary>
+        internal PlayerGateFrame GateFrame(TrackedAgent st, double now, bool pressing, bool usingObject = false)
         {
-            var f = _playerTimer.Frame(now, pressing);
+            var f = _playerTimer.Frame(now, pressing && !usingObject);
             if (f.Ended) PlayerCountdownEnded(now, f.HeldAtEnd);
             if (!f.Swallowed) return f;
             if (f.InAttack) _rateStats.SwallowedInAttack++;
@@ -280,7 +319,7 @@ namespace TraxCombat.Missions
                 return;
             }
             var st = _playerTimerOwner;
-            if (st == null || st.Removed || !IsPlayer(st))
+            if (st == null || st.Removed || !IsPlayer(st) || !YouDrive(st))
             {
                 ReleasePlayerTimer(PlayerTimerEnd.NotYou, now);
                 return;
@@ -300,6 +339,9 @@ namespace TraxCombat.Missions
         {
             if (!_playerTimer.Release()) return;
             _rateStats.AddPlayerEnd(why);
+            // not you any more (another fighter, or the AI drives him - R25): the pause was never served, so the next
+            // attack's gap is no test of the gate ("started before the timer ended" must stay a gate-miss count)
+            if (why == PlayerTimerEnd.NotYou && _playerTimerOwner != null) _playerTimerOwner.TimerPending = false;
             TraxLog.Limited("athletics", "YOU: your attack pause released at " + Sec(now) + " s - " + (why == PlayerTimerEnd.SwitchedOff
                 ? "switched off (ModEnabled, AthleticsEnabled or AttackRatePlayerTimer): attack at once" : "you no longer control that fighter"), "athletics-timer");
         }

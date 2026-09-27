@@ -447,7 +447,7 @@ namespace TraxCombat.Tools
                 LogHas("[summary] attack rate, ranged, you, f 0.5-1 - timer: ");
                 LogHas("[summary] attack rate - your timer (AttackRatePlayerTimer on at the end): ");
                 LogHas("the button held through the end 1x, your attack began avg 0.01 s after (n 1) - near 0 = hold-to-attack works; attacks that started while held anyway: 1 (must be 0 - the input gate missed them)");
-                LogHas("ended early: switched off 2, not you any more 0, mission end 1 (still running at the end, released: 1)");
+                LogHas("ended early: switched off 2, not you any more 1, mission end 1 (still running at the end, released: 1)");
                 LogHas("[summary] attack rate - AI timer (AttackRatePaceHold on at the end; technique at the end: NoAttack (AttackRatePaceByInput off: the engine's no-attack flag, step 13's technique); after each attack of a tired AI fighter, melee and ranged, on foot and mounted): ");
                 LogHas("[summary] attack rate - AI timer, not held: at full strength 7, not needed (below 0.1 s) 3, the next attack already readied at the attack's end 1,");
                 LogHas("[summary] attack rate - AI timer ends: time up ");
@@ -608,6 +608,68 @@ namespace TraxCombat.Tools
             b.ApplySettingsChange(S);
             b.TickPace(t + 0.1);
             t += 0.2;
+
+            // review R26 (step 17): manning a siege engine - RangedSiegeWeapon fires on its pilot's attack bits; that
+            // click is the engine's shot, not your attack: never cleared, never a swallowed press, the pause runs on
+            SetHealth(me.Agent, 40f, 100f);
+            b.CheckHealth(me, Rules, t);
+            me.SpeedDirty = false;
+            b.ObserveAction(me, ActReadyMeleeCode, t, in r);
+            AthleticsLogic.ReadyFull(me, t + 0.32);
+            t += 0.4;
+            b.ObserveAction(me, ActRelease, t, in r);
+            t += 0.5;
+            b.ObserveAction(me, ActIdle, t, in r);
+            Check(timer.Running, "R26: no countdown before the siege engine");
+            int swallowedR26 = sb.SwallowedInTimer + sb.SwallowedInAttack, flashesR26 = sb.Flashes;
+            var fo = b.GateFrame(me, t + 0.05, true, usingObject: true);   // a click on the ballista
+            Check(!fo.Clear && !fo.Swallowed && timer.Running && sb.SwallowedInTimer + sb.SwallowedInAttack == swallowedR26 && sb.Flashes == flashesR26,
+                "R26: the gate held a siege engine's trigger (your attack bits on a machine you man)");
+            var foEnd = b.GateFrame(me, timer.TimerEnd, true, usingObject: true);
+            Check(foEnd.Ended && !foEnd.HeldAtEnd && !foEnd.Clear && !timer.Holding, "R26: your pause did not run out on time while you manned the engine");
+            t = timer.EndedAt + 0.1;
+
+            // review R25 (step 17): RTS Camera's free camera hands your hero to the AI (he stays Mission.MainAgent): a
+            // running pause ends at once, none starts while the AI drives him, and his attacks are no "gate misses"
+            b.ObserveAction(me, ActReadyMeleeCode, t, in r);
+            AthleticsLogic.ReadyFull(me, t + 0.32);
+            t += 0.4;
+            b.ObserveAction(me, ActRelease, t, in r);
+            t += 0.5;
+            b.ObserveAction(me, ActIdle, t, in r);
+            Check(timer.Running, "R25: no countdown before the AI took your hero");
+            int notYouR25 = sb.PlayerEnded(PlayerTimerEnd.NotYou), anywayR25 = sb.PlayerStartedAnyway, earlyR25 = sb.StartedEarly(AttackKind.Melee, true);
+            b.SmokePlayerAiControlled = true;
+            b.TickPlayerTimer(t + 0.02);
+            Check(!timer.Holding && sb.PlayerEnded(PlayerTimerEnd.NotYou) == notYouR25 + 1, "R25: your pause was not released when the AI took your hero");
+            t += 0.05;
+            for (int i = 0; i < 2; i++)                                       // the AI attacks with him, twice
+            {
+                b.ObserveAction(me, ActReadyMeleeCode, t, in r);
+                AthleticsLogic.ReadyFull(me, t + 0.32);
+                t += 0.4;
+                b.ObserveAction(me, ActRelease, t, in r);
+                Check(!timer.Holding, "R25: a hold began on an AI-driven hero");
+                t += 0.5;
+                b.ObserveAction(me, ActIdle, t, in r);
+                Check(!timer.Holding, "R25: a countdown started on an AI-driven hero (the gate cannot hold the AI's input)");
+                t += 0.1;
+            }
+            Check(sb.PlayerStartedAnyway == anywayR25 && sb.StartedEarly(AttackKind.Melee, true) == earlyR25 && sb.PlayerEnded(PlayerTimerEnd.NotYou) == notYouR25 + 1,
+                "R25: the AI's attacks with your hero read as gate misses: started anyway " + (sb.PlayerStartedAnyway - anywayR25) + ", early " + (sb.StartedEarly(AttackKind.Melee, true) - earlyR25));
+            b.SmokePlayerAiControlled = false;                                // back in your hands: held again
+            b.ObserveAction(me, ActReadyMeleeCode, t, in r);
+            AthleticsLogic.ReadyFull(me, t + 0.32);
+            t += 0.4;
+            b.ObserveAction(me, ActRelease, t, in r);
+            Check(timer.InAttack, "R25: back in your hands, your attack was not held again");
+            t += 0.5;
+            b.ObserveAction(me, ActIdle, t, in r);
+            Check(timer.Running, "R25: back in your hands, no countdown");
+            b.GateFrame(me, timer.TimerEnd, false);                           // it runs out, the button up
+            Check(!timer.Holding, "R25: the countdown did not end");
+            t = timer.EndedAt + 0.1;
+            me.ResetFull();                                                   // the checks below start from a full bar, as before R25 / R26
 
             // ranged: the hold from the loose, the countdown from the RELOAD's end (D = draw + loose + reload)
             SetHealth(me.Agent, 40f, 100f);
