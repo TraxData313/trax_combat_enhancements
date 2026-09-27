@@ -63,6 +63,27 @@ namespace TraxCombat.Core
             }
         }
 
+        /// <summary>
+        /// Would a line of <paramref name="tag"/> pass now? Asked BEFORE the line is built (review
+        /// R8: most verbose lines of a big battle are dropped - building them first was string work
+        /// for nothing). True reserves nothing: the <see cref="TryPass"/> that follows takes the
+        /// token (another thread may take it first - then that line is built and dropped, counted,
+        /// as before). False counts the line as suppressed, exactly as if it had been built and
+        /// dropped, so the "(+N similar lines suppressed)" notes stay exact.
+        /// </summary>
+        public bool Peek(string tag, double nowSeconds)
+        {
+            lock (_gate)
+            {
+                if (!_buckets.TryGetValue(tag, out var b)) return true; // a new bucket starts full
+                double elapsed = nowSeconds - b.LastTime;
+                double tokens = elapsed > 0 ? Math.Min(_burst, b.Tokens + elapsed * _perSecond) : b.Tokens;
+                if (tokens >= 1) return true;
+                b.Suppressed++;
+                return false;
+            }
+        }
+
         /// <summary>Lines of <paramref name="tag"/> dropped and not yet reported.</summary>
         public int PendingSuppressed(string tag)
         {

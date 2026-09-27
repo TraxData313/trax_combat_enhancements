@@ -5,6 +5,7 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Text.RegularExpressions;
 using TraxCombat.Core;
 using TraxCombat.Mcm;
 
@@ -337,17 +338,35 @@ namespace TraxCombat.Tools
             for (int i = 0; i < 5000; i++) TraxLog.Verbose("damage", "smoke roll " + i);
             int written = Occurrences(LogText, "[damage] smoke roll") - before;
             Check(written >= 40 && written < 200, "verbose flood not capped: " + written + " lines");
+            LogHas(" ~[damage] smoke roll "); // step 10b: a verbose line carries the mark the trim reads
             TraxLog.FlushSuppressedCounts();
             LogHas("more verbose [damage] lines were suppressed by the rate limit");
+
+            // Review R8 (step 10b): the hot paths ask VerboseWants(bucket) BEFORE building a line. A line
+            // never built is counted as suppressed exactly like one built and dropped.
+            const int asks = 5000;
+            for (int i = 0; i < asks; i++)
+                if (TraxLog.VerboseWants("smoke-peek")) TraxLog.Verbose("damage", "smoke peek " + i, "smoke-peek");
+            TraxLog.FlushSuppressedCounts();
+            string text = LogText;
+            var peekLines = text.Split('\n').Where(l => l.Contains("] smoke peek ")).ToList();
+            int reported = peekLines.Sum(l => { var m = Regex.Match(l, @"\(\+(\d+) similar lines suppressed\)"); return m.Success ? int.Parse(m.Groups[1].Value) : 0; });
+            var drained = Regex.Match(text, @"\[log\] (\d+) more verbose \[smoke-peek\] lines were suppressed");
+            int suppressed = reported + (drained.Success ? int.Parse(drained.Groups[1].Value) : 0);
+            Check(peekLines.Count >= 40 && peekLines.Count < 200, "VerboseWants did not cap the flood: " + peekLines.Count + " lines");
+            Check(peekLines.Count + suppressed == asks, "VerboseWants lost count: " + peekLines.Count + " written + " + suppressed + " suppressed != " + asks);
+
             TraxSettings.Shared.Set(SettingsSchema.VerboseLogging, false, SettingSources.File);
             TraxLog.Verbose("damage", "must not appear");
             Check(!LogText.Contains("must not appear"), "verbose line written with VerboseLogging off");
+            Check(!TraxLog.VerboseWants("smoke-off"), "VerboseWants said yes with VerboseLogging off");
             ConfigStore.Reload("after flood"); // file and memory in step again
         }
 
         /// <summary>Review 10a R6: TraxLog keeps ONE handle (AutoFlush) instead of an open / append / close
         /// per line. The log must stay usable: readable while held, following a changed path, gone
-        /// cleanly after Release (the next line starts a new file), and still trimmed past 2 MB.</summary>
+        /// cleanly after Release (the next line starts a new file), and trimmed past LogMaxMegabytes -
+        /// step 10b (R7): only the oldest VERBOSE lines go, every other line stays.</summary>
         private static void LogWriterKeepsTheFileUsable()
         {
             TraxLog.Info("log", "smoke: a line while the handle is held");
@@ -368,19 +387,34 @@ namespace TraxCombat.Tools
                 string fresh = ReadShared(subLog);
                 Check(fresh.Contains("smoke: after the release") && !fresh.Contains("first line in the second folder"), "the next line did not start a new file");
 
+                // Step 10b (R7): at a 1 MB cap, 2.1 MB of verbose lines around the lines the playtest is
+                // read from - a summary, a first-time line, an error with its stack.
+                TraxSettings.Shared.Set(SettingsSchema.LogMaxMegabytes, 1, SettingSources.File);
+                TraxSettings.Shared.Set(SettingsSchema.VerboseLogging, true, SettingSources.File);
+                Check(TraxLog.MaxBytes == 1024 * 1024, "LogMaxMegabytes not read live: " + TraxLog.MaxBytes);
+                TraxLog.Info("summary", "smoke: an early summary line");
+                TraxLog.Limited("hud", "smoke: an early first-time line", "smoke-first");
+                TraxLog.Error("smoke.trim", new InvalidOperationException("smoke: an early error"));
                 string filler = new string('x', 1000);
-                for (int i = 0; i < 2100; i++) TraxLog.Info("log", "smoke filler " + i + " " + filler);
+                for (int i = 0; i < 2100; i++) TraxLog.Verbose("damage", "smoke filler " + i + " " + filler, "smoke-filler-" + i); // own buckets: all pass
                 long size = new FileInfo(subLog).Length;
                 string text = ReadShared(subLog);
-                Check(size < TraxLog.TrimAtBytes && size > TraxLog.TrimAtBytes / 4, "the log was not trimmed to about its newest half: " + size + " bytes");
-                Check(text.Contains("[log] (older lines trimmed") && text.Contains("smoke filler 2099 ") && !text.Contains("smoke filler 5 "),
-                    "the trim did not keep the newest lines (with its note)");
-                Check(text.Split('\n').All(l => l.Length == 0 || l.StartsWith("20", StringComparison.Ordinal)), "the trim left a half line");
+                Check(size < TraxLog.MaxBytes && size > TraxLog.MaxBytes / 4, "the log was not trimmed to about half its limit: " + size + " bytes");
+                Check(text.Contains("[log] " + LogTrim.NoteStart) && text.Contains("smoke filler 2099 ") && !text.Contains("smoke filler 5 "),
+                    "the trim did not keep the newest verbose lines (with its note)");
+                Check(text.Contains("[summary] smoke: an early summary line") && text.Contains("[hud] smoke: an early first-time line")
+                    && text.Contains("[error] smoke.trim: System.InvalidOperationException: smoke: an early error") && text.Contains("    System.InvalidOperationException: smoke: an early error"),
+                    "the trim cut a line that must be kept (a summary, a first-time line, an error and its stack)");
+                Check(text.Contains("smoke: after the release"), "the trim cut a non-verbose line");
+                Check(text.Split('\n').All(l => l.Length == 0 || l.StartsWith("20", StringComparison.Ordinal) || l.StartsWith("    ", StringComparison.Ordinal)), "the trim left a half line");
             }
             finally
             {
                 TraxLog.Release();
                 SetStatic(typeof(ModPaths), "_configDir", _dir);
+                TraxSettings.Shared.Set(SettingsSchema.LogMaxMegabytes, SettingsSchema.LogMaxMegabytes.Default, SettingSources.File);
+                TraxSettings.Shared.Set(SettingsSchema.VerboseLogging, VerboseDefault, SettingSources.File);
+                ConfigStore.Reload("after the log trim"); // file and memory in step again
             }
             TraxLog.Info("log", "smoke: back in the main log");
             LogHas("smoke: back in the main log");

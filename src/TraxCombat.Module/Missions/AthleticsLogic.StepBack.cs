@@ -269,14 +269,14 @@ namespace TraxCombat.Missions
             _stepping.Add(st);
             _stepStats.AddStart(plan.MovementState, StepBackMath.FacingBin(plan.StartFacingCos), sr.Distance);
             if (sb.First) LogFirstStart(st, sb, in sr, now);
-            else if (TraxLog.VerboseOn) LogStart(st, sb, now);
+            else if (TraxLog.VerboseWants("stepback")) LogStart(st, sb, now);
         }
 
         private void Refuse(TrackedAgent st, StepBackState sb, StepBackRefusal why)
         {
             sb.Pending = false;
             _stepStats.AddRefused(why);
-            if (TraxLog.VerboseOn)
+            if (TraxLog.VerboseWants("stepback-refused"))
             {
                 TraxLog.Verbose("stepback", "step back not started: " + Name(st) + " (f " + F2(sb.PendingF) + ", chance " + P0(sb.PendingChance) + ") - "
                     + StepBackStats.RefusalText(why), "stepback-refused");
@@ -349,7 +349,7 @@ namespace TraxCombat.Missions
             }
             _stepStats.AddEnd(why, now - sb.StartedAt, moved, toSpot, endFacing);
             if (sb.First) LogFirstEnd(st, sb, why, now, in rel, moved, toSpot);
-            else if (TraxLog.VerboseOn) LogEnd(st, sb, why, now, moved, rel.End);
+            else if (TraxLog.VerboseWants("stepback")) LogEnd(st, sb, why, now, moved, rel.End);
             sb.Plan = default; // drop the references (enemy, formation)
         }
 

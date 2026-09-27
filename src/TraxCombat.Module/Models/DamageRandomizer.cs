@@ -81,7 +81,7 @@ namespace TraxCombat.Models
                 // comparison (the summary's "while the mod was OFF" line).
                 if (reason == DamageSkipReason.ModOff) Stats.AddVanilla(facts.Category, damage);
                 else Stats.AddSkip(reason);
-                if (TraxLog.VerboseOn) LogSkip(in ai, in cd, in facts, reason, damage);
+                if (TraxLog.VerboseWants("damage-skip")) LogSkip(in ai, in cd, in facts, reason, damage);
                 return damage;
             }
 
@@ -92,7 +92,7 @@ namespace TraxCombat.Models
             Stats.AddRoll(facts.Category, in roll, offMain, attackerF);
 
             bool first = Volatile.Read(ref _firstRollLogged) == 0 && Interlocked.CompareExchange(ref _firstRollLogged, 1, 0) == 0;
-            if (first || TraxLog.VerboseOn) LogRoll(in ai, in cd, in facts, in roll, first, thread, attackerF);
+            if (first || TraxLog.VerboseWants("damage")) LogRoll(in ai, in cd, in facts, in roll, first, thread, attackerF);
             return roll.After;
         }
 

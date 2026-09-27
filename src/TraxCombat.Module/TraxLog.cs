@@ -9,9 +9,12 @@ using TraxCombat.Core;
 namespace TraxCombat
 {
     /// <summary>
-    /// The mod's one rolling log: <c>trax_combat.log</c> beside config.json, trimmed to its
-    /// newest half once it tops ~2 MB. Built for ONE big playtest at the end (CLAUDE.md): every
-    /// line is timestamped and tagged by area so the file greps clean -
+    /// The mod's one rolling log: <c>trax_combat.log</c> beside config.json. Past LogMaxMegabytes
+    /// (read live) it is trimmed to about half by <see cref="LogTrim"/>: only the oldest VERBOSE
+    /// lines are cut - every other line (load, settings, mission, summaries, errors, first-time
+    /// lines) survives (step 10b, review R7). Built for ONE big playtest at the end (CLAUDE.md): every
+    /// line is timestamped and tagged by area so the file greps clean - verbose lines carry a
+    /// <c>~</c> before their tag (<c>~[damage]</c>) so the trim can tell them apart -
     ///   [load] versions, modules, paths      [config] every value on load, every change
     ///   [compat] RBM detected or not (DESIGN §5)
     ///   [mcm] the menu bridge                [mission] start / end / behaviours attached
@@ -27,7 +30,14 @@ namespace TraxCombat
     /// </summary>
     internal static class TraxLog
     {
-        public const long TrimAtBytes = 2_000_000;
+        private const long BytesPerMegabyte = 1024 * 1024;
+
+        /// <summary>After a failed trim (the file held by another program), how much more is written
+        /// before the next try - so a locked file is not re-read at every line.</summary>
+        private const long TrimRetryBytes = 1024 * 1024;
+
+        /// <summary>The size cap now: LogMaxMegabytes (read live, at least 1 MB).</summary>
+        public static long MaxBytes => Math.Max(1, TraxSettings.Shared.LogMaxMegabytes) * BytesPerMegabyte;
 
         private static readonly object Gate = new object();
         private static readonly Stopwatch Clock = Stopwatch.StartNew();
@@ -43,6 +53,7 @@ namespace TraxCombat
         private static readonly RateLimiter NoticeLimiter = new RateLimiter(30, 1);
 
         private static long _approxBytes = -1;
+        private static long _trimRetryAt;
         private static int _errorCount;
         private static int _errorNoticePending;
 
@@ -59,23 +70,34 @@ namespace TraxCombat
         /// <summary>Errors caught since the game started (the mission summary reports its share).</summary>
         public static int ErrorCount => Volatile.Read(ref _errorCount);
 
-        /// <summary>True when verbose lines would be written - check it BEFORE building a
-        /// verbose message string, so the per-hit path allocates nothing when it is off.</summary>
+        /// <summary>True when verbose lines would be written at all. On a hot path prefer
+        /// <see cref="VerboseWants"/>, which also asks the rate limit.</summary>
         public static bool VerboseOn => TraxSettings.Shared.VerboseLogging;
 
-        public static void Info(string tag, string message) => Write(tag, message);
+        /// <summary>
+        /// True when a verbose line of <paramref name="bucket"/> would be written NOW - ask it BEFORE
+        /// building the line, then pass the same bucket to <see cref="Verbose(string,string,string)"/>
+        /// (review R8: with VerboseLogging on most per-hit lines of a big battle are dropped by the rate
+        /// limit, and building them first was string work and garbage for nothing). False when
+        /// VerboseLogging is off (nothing counted), or when the bucket has no room - then the line
+        /// counts as suppressed exactly as if it had been built and dropped.
+        /// </summary>
+        public static bool VerboseWants(string bucket) => VerboseOn && VerboseLimiter.Peek(bucket, Now);
+
+        public static void Info(string tag, string message) => Write(tag, message, verbose: false);
 
         /// <summary>A chatty per-event line: dropped unless VerboseLogging is on, rate-limited per tag.</summary>
         public static void Verbose(string tag, string message) => Verbose(tag, message, tag);
 
         /// <summary>As <see cref="Verbose(string,string)"/>, but rate-limited in its own
         /// <paramref name="bucket"/> - e.g. "damage-skip", so skipped-hit lines never eat the
-        /// budget of the roll lines that share the [damage] tag.</summary>
+        /// budget of the roll lines that share the [damage] tag. Written with the verbose mark
+        /// (<c>~[tag]</c>): these are the only lines a trim cuts.</summary>
         public static void Verbose(string tag, string message, string bucket)
         {
             if (!VerboseOn) return;
             if (!VerboseLimiter.TryPass(bucket, Now, out int dropped)) return;
-            Write(tag, dropped > 0 ? message + " (+" + dropped + " similar lines suppressed)" : message);
+            Write(tag, dropped > 0 ? message + " (+" + dropped + " similar lines suppressed)" : message, verbose: true);
         }
 
         /// <summary>A line written whether or not VerboseLogging is on, but rate-limited in its own
@@ -84,7 +106,7 @@ namespace TraxCombat
         public static void Limited(string tag, string message, string bucket)
         {
             if (!NoticeLimiter.TryPass(bucket, Now, out int dropped)) return;
-            Write(tag, dropped > 0 ? message + " (+" + dropped + " similar lines suppressed)" : message);
+            Write(tag, dropped > 0 ? message + " (+" + dropped + " similar lines suppressed)" : message, verbose: false);
         }
 
         /// <summary>
@@ -105,7 +127,7 @@ namespace TraxCombat
                 if (dropped > 0) sb.Append(" (+").Append(dropped).Append(" more here since the last report, suppressed)");
                 foreach (var line in e.ToString().Split('\n'))
                     sb.Append(Environment.NewLine).Append("    ").Append(line.TrimEnd('\r'));
-                Write("error", sb.ToString());
+                Write("error", sb.ToString(), verbose: false);
             }
             catch
             {
@@ -123,11 +145,11 @@ namespace TraxCombat
         public static void FlushSuppressedCounts()
         {
             foreach (var pair in VerboseLimiter.DrainSuppressed())
-                Write("log", pair.Value + " more verbose [" + pair.Key + "] lines were suppressed by the rate limit");
+                Write("log", pair.Value + " more verbose [" + pair.Key + "] lines were suppressed by the rate limit", verbose: false);
             foreach (var pair in NoticeLimiter.DrainSuppressed())
-                Write("log", pair.Value + " more [" + pair.Key + "] lines were suppressed by the rate limit");
+                Write("log", pair.Value + " more [" + pair.Key + "] lines were suppressed by the rate limit", verbose: false);
             foreach (var pair in ErrorLimiter.DrainSuppressed())
-                Write("log", pair.Value + " more [error] reports from " + pair.Key + " were suppressed by the rate limit");
+                Write("log", pair.Value + " more [error] reports from " + pair.Key + " were suppressed by the rate limit", verbose: false);
         }
 
         /// <summary>Closes the log file (the next line reopens it) - at every mission end and at unload,
@@ -137,12 +159,13 @@ namespace TraxCombat
             lock (Gate) CloseWriter();
         }
 
-        private static void Write(string tag, string message)
+        private static string Stamp() => DateTime.Now.ToString("yyyy.MM.dd HH:mm:ss.fff", CultureInfo.InvariantCulture);
+
+        private static void Write(string tag, string message, bool verbose)
         {
             try
             {
-                string line = DateTime.Now.ToString("yyyy.MM.dd HH:mm:ss.fff", CultureInfo.InvariantCulture)
-                    + " [" + tag + "] " + message + Environment.NewLine;
+                string line = Stamp() + (verbose ? " " + LogTrim.VerboseMark + "[" : " [") + tag + "] " + message + Environment.NewLine;
                 lock (Gate)
                 {
                     try
@@ -151,7 +174,7 @@ namespace TraxCombat
                         var writer = _writer != null && string.Equals(path, _writerPath, StringComparison.Ordinal) ? _writer : OpenWriter(path);
                         writer.Write(line);
                         _approxBytes += Utf8NoBom.GetByteCount(line);
-                        if (_approxBytes > TrimAtBytes) Trim(path);
+                        if (_approxBytes > MaxBytes && _approxBytes >= _trimRetryAt) Trim(path);
                     }
                     catch
                     {
@@ -191,25 +214,27 @@ namespace TraxCombat
             }
         }
 
-        /// <summary>Keeps the newest half, cut at a line break so no half-line survives. The handle is
-        /// closed first (the next line reopens it).</summary>
+        /// <summary>Trims the file to about half of <see cref="MaxBytes"/> by <see cref="LogTrim"/>'s
+        /// rule: the oldest verbose lines go, every other line stays, whole entries only (an error's
+        /// stack goes with its line). The handle is closed first (the next line reopens it). A trim
+        /// that fails (another program holds the file) is retried only after another
+        /// <see cref="TrimRetryBytes"/>, not at every line.</summary>
         private static void Trim(string path)
         {
             CloseWriter();
-            string text = ReadShared(path);
-            int cut = text.IndexOf('\n', text.Length / 2);
-            if (cut < 0)
+            try
             {
-                // one giant line: nothing to cut at - start the size count again rather than
-                // re-reading the whole file at every following line
-                _approxBytes = 0;
-                return;
+                string text = ReadShared(path);
+                string kept = LogTrim.Apply(text, MaxBytes / 2, Stamp(), Environment.NewLine, out var result);
+                File.WriteAllText(path, kept, Utf8NoBom);
+                _approxBytes = result.BytesAfter;
+                _trimRetryAt = 0;
             }
-            string kept = DateTime.Now.ToString("yyyy.MM.dd HH:mm:ss.fff", CultureInfo.InvariantCulture)
-                + " [log] (older lines trimmed - the log keeps about the newest " + (TrimAtBytes / 2 / 1000) + " KB)"
-                + Environment.NewLine + text.Substring(cut + 1);
-            File.WriteAllText(path, kept, Utf8NoBom);
-            _approxBytes = Utf8NoBom.GetByteCount(kept);
+            catch
+            {
+                _trimRetryAt = _approxBytes + TrimRetryBytes;
+                throw;
+            }
         }
 
         /// <summary>The whole file, read the way an editor would while another handle may write it.</summary>

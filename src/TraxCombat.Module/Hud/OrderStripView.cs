@@ -213,7 +213,7 @@ namespace TraxCombat.Hud
                     return;
 
                 case StripAlignment.Mismatch:
-                    if (_mismatchSeconds <= 0 && TraxLog.VerboseOn)
+                    if (_mismatchSeconds <= 0 && TraxLog.VerboseWants("hud-strip-mismatch"))
                         TraxLog.Verbose("hud", ViewName + ": card and formation disagree at " + S1(f.Now) + " s - " + m.Describe() + " (waiting "
                             + S1(OrderStripMath.MismatchGraceSeconds) + " s before the panel takes over)", "hud-strip-mismatch");
                     _mismatchSeconds += f.Dt;
@@ -321,7 +321,7 @@ namespace TraxCombat.Hud
                 _fallbackLogged[i] = true;
                 TraxLog.Limited("hud", line, "hud-strip");
             }
-            else if (TraxLog.VerboseOn)
+            else if (TraxLog.VerboseWants("hud-strip-fallback"))
             {
                 TraxLog.Verbose("hud", line, "hud-strip-fallback");
             }
@@ -362,7 +362,7 @@ namespace TraxCombat.Hud
                 TraxLog.Limited("hud", ViewName + ": values at " + S1(f.Now) + " s (open #" + _openNo + ", " + ModeName() + "): " + DescribeValues(vm)
                     + " - ± is " + (spread ? F2(k) + " std" : "off (ShowFormationSpread)") + ", health " + (health ? "on" : "off (ShowFormationHealth)"), "hud-strip-values");
             }
-            else if (TraxLog.VerboseOn)
+            else if (TraxLog.VerboseWants("hud-strip-values"))
             {
                 TraxLog.Verbose("hud", ViewName + ": values at " + S1(f.Now) + " s: " + DescribeValues(vm), "hud-strip-values");
             }

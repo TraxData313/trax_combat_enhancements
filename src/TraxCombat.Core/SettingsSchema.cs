@@ -296,6 +296,11 @@ namespace TraxCombat.Core
             "Verbose log",
             "Write every damage roll, blow and exhaustion to trax_combat.log (rate-limited, so a big battle cannot flood it). Off: only loading, settings, battle start and end, battle summaries and errors.");
 
+        // Step 10b (review R7): the log's size cap, and what a trim keeps (LogTrim).
+        public static readonly ParamDef LogMaxMegabytes = Int("LogMaxMegabytes", 1, 100, AdvancedGroup,
+            "Log size limit (MB)",
+            "Largest size of the mod's log, trax_combat.log, in megabytes. Past it the oldest verbose lines are cut, down to about half the limit; every other line - loading, settings, battle start and end, first-time events, summaries, errors - is kept.");
+
         // ------------------------------------------------------------------ the list (keep LAST)
 
         /// <summary>Every setting, in file and MCM order. <c>All[i].Index == i</c>.</summary>
@@ -318,7 +323,7 @@ namespace TraxCombat.Core
             HudRefreshSeconds, PlayerBarWidth, PlayerBarHeight, PlayerBarOffsetRight, PlayerBarOffsetBottom,
             OrderStripTextSize, OrderStripTextOffset, OrderStripBarOffset, OrderStripBarHeight, OrderStripSideMargin,
             OrderPanelOffsetTop, OrderPanelWidth,
-            FormationStatsRefreshSeconds, VerboseLogging,
+            FormationStatsRefreshSeconds, VerboseLogging, LogMaxMegabytes,
         };
 
         /// <summary>The groups in order.</summary>

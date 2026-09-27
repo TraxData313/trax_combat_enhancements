@@ -80,4 +80,44 @@ public class RateLimiterTests
         Assert.Throws<ArgumentOutOfRangeException>(() => new RateLimiter(0, 1));
         Assert.Throws<ArgumentOutOfRangeException>(() => new RateLimiter(1, -1));
     }
+
+    // Review R8 (step 10b): the hot paths ask Peek before building a verbose line.
+
+    [Fact]
+    public void Peek_takes_no_token_while_there_is_room()
+    {
+        var r = new RateLimiter(burst: 2, perSecond: 0);
+        Assert.True(r.Peek("blow", 0)); // a new bucket starts full
+        Assert.True(r.Peek("blow", 0));
+        Assert.True(r.TryPass("blow", 0, out _));
+        Assert.True(r.Peek("blow", 0));
+        Assert.True(r.TryPass("blow", 0, out _));
+        Assert.Equal(0, r.PendingSuppressed("blow"));
+    }
+
+    [Fact]
+    public void Peek_without_room_counts_the_line_as_suppressed_like_a_dropped_one()
+    {
+        var r = new RateLimiter(burst: 1, perSecond: 1);
+        Assert.True(r.TryPass("blow", 0, out _));
+        Assert.False(r.Peek("blow", 0.1));   // not built: counted
+        Assert.False(r.TryPass("blow", 0.2, out _)); // built and dropped: counted the same way
+        Assert.Equal(2, r.PendingSuppressed("blow"));
+
+        // The next line that passes reports both, and Peek saw the refill coming.
+        Assert.True(r.Peek("blow", 1.1));
+        Assert.True(r.TryPass("blow", 1.1, out int suppressed));
+        Assert.Equal(2, suppressed);
+    }
+
+    [Fact]
+    public void Peek_does_not_move_the_refill_clock()
+    {
+        var r = new RateLimiter(burst: 1, perSecond: 1);
+        Assert.True(r.TryPass("x", 0, out _));
+        for (int i = 1; i <= 9; i++) Assert.False(r.Peek("x", i * 0.1));
+        // The token refilled over the whole second, peeks or not.
+        Assert.True(r.TryPass("x", 1.0, out int suppressed));
+        Assert.Equal(9, suppressed);
+    }
 }

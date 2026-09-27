@@ -326,5 +326,11 @@
   // battle cannot flood it). Off: only loading, settings, battle start and end, battle
   // summaries and errors.
   // (true or false)
-  "VerboseLogging": false
+  "VerboseLogging": false,
+
+  // Largest size of the mod's log, trax_combat.log, in megabytes. Past it the oldest verbose
+  // lines are cut, down to about half the limit; every other line - loading, settings, battle
+  // start and end, first-time events, summaries, errors - is kept.
+  // (range 1 to 100)
+  "LogMaxMegabytes": 8
 }

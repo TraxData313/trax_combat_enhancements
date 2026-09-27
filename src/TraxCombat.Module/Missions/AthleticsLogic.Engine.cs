@@ -253,7 +253,7 @@ namespace TraxCombat.Missions
             if (_count == _dense.Length) Array.Resize(ref _dense, _dense.Length * 2);
             st.DenseSlot = _count;
             _dense[_count++] = st;
-            if (TraxLog.VerboseOn && !st.IsHero && !st.IsLeader) LogPoolAtSpawn(st);
+            if (!st.IsHero && !st.IsLeader && TraxLog.VerboseWants("athletics-pool")) LogPoolAtSpawn(st);
             return st;
         }
 
@@ -372,7 +372,7 @@ namespace TraxCombat.Missions
                     + ", pays x" + F2(AthleticsMath.CostMultiplier(in r, st)) + " per blow (" + F1(AthleticsMath.BlowCostPoints(in r, st)) + " now)",
                     "athletics-leader");
             }
-            else if (TraxLog.VerboseOn)
+            else if (TraxLog.VerboseWants("athletics-hero"))
             {
                 TraxLog.Verbose("athletics", "hero: " + st.HeroName + pool + ", pays x" + F2(AthleticsMath.CostMultiplier(in r, st))
                     + " per blow (" + F1(AthleticsMath.BlowCostPoints(in r, st)) + " now)", "athletics-hero");
@@ -588,7 +588,7 @@ namespace TraxCombat.Missions
             var o = AthleticsMath.Charge(st, in r, now);
             if (!o.Charged) return;
             _stats.AddCharge(kind, mounted, o.Before - o.After); // what was really drained (a swing at 0 drains nothing)
-            if (TraxLog.VerboseOn) LogBlow(st, kind, in o, mounted);
+            if (TraxLog.VerboseWants("athletics-blow")) LogBlow(st, kind, in o, mounted);
             float prevAttack = st.SpeedMultiplier, prevRun = st.RunSpeedMultiplier;
             RetargetSpeed(st, in r);
             if (o.LeftPeak)
@@ -660,7 +660,7 @@ namespace TraxCombat.Missions
                     + ", no damage upside" + (r.DamageBonusFollows ? string.Empty : " (off: full upside)") + " until you rest (refill starts "
                     + F1(r.RegenDelaySeconds) + " s after your last blow)", "athletics-player");
             }
-            else if (TraxLog.VerboseOn)
+            else if (TraxLog.VerboseWants("athletics-exhaust"))
             {
                 TraxLog.Verbose("athletics", "exhausted: " + Name(st) + " at " + Sec(now) + " s after " + st.Blows + " blows - attacks x"
                     + F2(st.SpeedMultiplier) + ", run x" + F2(st.RunSpeedMultiplier), "athletics-exhaust");
@@ -723,7 +723,7 @@ namespace TraxCombat.Missions
                 TraxLog.Info("speed", "first exhausted fighter back at full strength: properties now " + restored + " (" + restored.RatioTo(FirstFresh)
                     + " of his fresh values - x1.00 expected unless his weapon or armour changed)");
             }
-            if (TraxLog.VerboseOn)
+            if (TraxLog.VerboseWants("speed-update"))
             {
                 TraxLog.Verbose("speed", Name(st) + ": attacks x" + F2(st.SpeedMultiplier) + ", run x" + F2(st.RunSpeedMultiplier)
                     + " (f " + F2(AthleticsMath.PeakShare(Rules, st)) + (st.Exhausted ? ", empty" : st.SpeedMultiplier == 1f ? ", full strength" : string.Empty) + ")",
@@ -801,7 +801,7 @@ namespace TraxCombat.Missions
                         TraxLog.Info("speed", "first horse slowed this mission: the horse of " + Name(st) + " - MountSpeed " + F3(before) + " → " + F3(after)
                             + " after UpdateAgentProperties (asked x" + F2(m) + " of its fresh speed; MountMinSpeedMultiplier " + F2(TraxSettings.Shared.MountMinSpeedMultiplier) + ")");
                     }
-                    if (TraxLog.VerboseOn)
+                    if (TraxLog.VerboseWants("speed-update"))
                         TraxLog.Verbose("speed", "horse of " + Name(st) + ": speed x" + F2(m), "speed-update");
                 }
             }
@@ -919,7 +919,7 @@ namespace TraxCombat.Missions
                     + (st.Health < r.PeakFraction ? "; full strength needs " + F0(pool * r.PeakFraction) + ", out of reach until healed" : string.Empty),
                     "athletics-player");
             }
-            else if (TraxLog.VerboseOn)
+            else if (TraxLog.VerboseWants("athletics-health"))
             {
                 TraxLog.Verbose("athletics", "health cap: " + Name(st) + " at " + P0(st.Health) + " health - Athletics " + F1((st.Fraction + cut) * pool)
                     + " → " + F1(st.Fraction * pool) + " of " + F0(pool) + " (f " + F2(f) + ")", "athletics-health");
@@ -1032,7 +1032,7 @@ namespace TraxCombat.Missions
                     + F0(AthleticsMath.PoolPoints(in r, st)) + " after " + Sec(o.ExhaustedSeconds) + " s at 0 - attacks and run speed now climb with your bar (full at "
                     + F0(AthleticsMath.PoolPoints(in r, st) * r.PeakFraction) + ")", "athletics-player");
             }
-            else if (TraxLog.VerboseOn)
+            else if (TraxLog.VerboseWants("athletics-exhaust"))
             {
                 TraxLog.Verbose("athletics", "off empty: " + Name(st) + " at " + Sec(now) + " s after " + Sec(o.ExhaustedSeconds) + " s at 0",
                     "athletics-exhaust");
@@ -1045,7 +1045,7 @@ namespace TraxCombat.Missions
             if (full) _stats.RefillsToFull++;
             else _stats.RefillsToHealthCap++;
             bool you = st.Agent.IsMainAgent;
-            if (!you && !TraxLog.VerboseOn) return;
+            if (!you && !TraxLog.VerboseWants("athletics-regen")) return;
             double pool = AthleticsMath.PoolPoints(in r, st);
             string text = (full ? " back to full at " : " refilled to the wound's cap (" + P0(o.Top) + ") at ") + Sec(now) + " s: "
                 + F0(o.EpisodeStartFraction * pool) + " → " + F0(o.Top * pool) + " of " + F0(pool) + " in " + Sec(o.EpisodeSeconds)
@@ -1342,7 +1342,7 @@ namespace TraxCombat.Missions
                         if (walk > 0f) _stats.HorseWalk.Add(walk);
                     }
                 }
-                if (TraxLog.VerboseOn)
+                if (TraxLog.VerboseWants("athletics-speeds"))
                     TraxLog.Verbose("athletics", "speeds sampled at " + when + ": on foot " + _stats.FootTop.Count + ", riders " + _stats.HorseTop.Count, "athletics-speeds");
             }
             catch (Exception e)

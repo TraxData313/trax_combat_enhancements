@@ -290,7 +290,7 @@ namespace TraxCombat.Hud
             }
             if (!wasDecided)
                 TraxLog.Limited("hud", ViewName + ": not shown at " + S1(f.Now) + " s - " + Why(hide), "hud-layer");
-            else if (TraxLog.VerboseOn)
+            else if (TraxLog.VerboseWants("hud-hidden"))
                 TraxLog.Verbose("hud", ViewName + ": still hidden at " + S1(f.Now) + " s, now because " + Why(hide), "hud-hidden");
         }
 
@@ -311,7 +311,7 @@ namespace TraxCombat.Hud
             _nextRefresh = f.Now;
             if (QuietConditionToggles && Stats.LayersCreated > 1 && wasHiddenBy == HudHide.ViewCondition)
             {
-                if (TraxLog.VerboseOn)
+                if (TraxLog.VerboseWants("hud-layer-quiet"))
                     TraxLog.Verbose("hud", ViewName + ": layer created at " + S1(f.Now) + " s (" + ViewConditionWhen + ", build #" + Stats.LayersCreated + ")", "hud-layer-quiet");
                 return;
             }
@@ -335,7 +335,7 @@ namespace TraxCombat.Hud
             }
             if (QuietConditionToggles && why == HudHide.ViewCondition)
             {
-                if (TraxLog.VerboseOn) TraxLog.Verbose("hud", ViewName + ": layer removed at " + S1(now) + " s - " + Why(why), "hud-layer-quiet");
+                if (TraxLog.VerboseWants("hud-layer-quiet")) TraxLog.Verbose("hud", ViewName + ": layer removed at " + S1(now) + " s - " + Why(why), "hud-layer-quiet");
                 return;
             }
             TraxLog.Limited("hud", ViewName + ": layer removed at " + S1(now) + " s - " + Why(why), "hud-layer");

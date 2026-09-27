@@ -306,6 +306,22 @@ saved as `config.json.broken-<time>` before a fresh one replaces it. MCM's Reset
 (`src/TraxCombat.Core/SettingsSchema.cs`) and are printed beside each key in the file. The
 file also carries `ConfigVersion`, a format stamp — not a setting.
 
+**The log** (`trax_combat.log`, beside config.json; one rolling file across game starts): every
+line is `yyyy.MM.dd HH:mm:ss.fff [tag] message`; a VERBOSE line (written only while
+`VerboseLogging` is on, rate-limited per kind) carries a `~` before its tag:
+`… ~[damage] melee on a person: …`. Past `LogMaxMegabytes` (8) the file is trimmed to about half
+of it, and a trim never loses the lines the playtest is read from (step 10b, review R7):
+- KEPT: every line that is not verbose — load, settings, MCM, mission start and end, every
+  feature's "mission start" / "first … this battle" / "YOU …" line, the `[summary]` blocks,
+  `[error]` with its stack, the `[log]` notes — and any `[load]` `[compat]` `[config]` `[mcm]`
+  `[mission]` `[summary]` `[error]` line even if written verbose;
+- CUT: the oldest verbose lines, at one point in time (a newer one is never cut while an older one
+  stays). The trim's note, `[log] (log trimmed at … : N older verbose lines cut, up to …)`, sits at
+  the top of the file.
+- Only if the kept lines ALONE pass half the limit (dozens of battles over several game starts)
+  do the oldest of them go too — the file stays bounded. Turning `VerboseLogging` on can never
+  cost a line the log would have had with it off.
+
 ## 5. Compatibility
 
 - **RBM (Realistic Battle Mod) is NOT compatible** (Anton, 2026-09-27): it has its own
@@ -380,6 +396,7 @@ says (§2c).
 | `OrderPanelWidth` | 300 | (Advanced) Width of the fallback panel, UI pixels. |
 | `FormationStatsRefreshSeconds` | 0.25 | (Advanced) How often formation averages and spreads are recomputed. |
 | `VerboseLogging` | false | Log every roll, blow and exhaustion (rate-limited) to `trax_combat.log`. Off = load, settings, mission start/end, per-battle summaries and errors only. |
+| `LogMaxMegabytes` | 8 | (Advanced) Size limit of `trax_combat.log`, MB. Past it a trim cuts the oldest VERBOSE lines, down to about half; every other line is kept (§4 "The log"). |
 
 New parameters discovered while building go into this table in the same commit.
 

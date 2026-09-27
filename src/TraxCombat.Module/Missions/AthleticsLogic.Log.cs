@@ -23,7 +23,8 @@ namespace TraxCombat.Missions
     ///            (athletics-regen), heroes at spawn (athletics-hero), health-cap cuts
     ///            (athletics-health), each speed recompute - fighters and horses (speed-update) -
     ///            each kind rate-limited in its own bucket so one cannot starve the others.
-    /// Strings are built only when the line will be written (VerboseOn checked first).
+    /// Strings are built only when the line will be written: each call site asks
+    /// TraxLog.VerboseWants(its bucket) first - VerboseLogging on AND room in the rate limit (review R8).
     /// </summary>
     public sealed partial class AthleticsLogic
     {

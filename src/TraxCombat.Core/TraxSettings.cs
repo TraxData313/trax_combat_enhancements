@@ -261,5 +261,6 @@ namespace TraxCombat.Core
         public int OrderPanelWidth => GetInt(SettingsSchema.OrderPanelWidth);
         public float FormationStatsRefreshSeconds => GetFloat(SettingsSchema.FormationStatsRefreshSeconds);
         public bool VerboseLogging => GetBool(SettingsSchema.VerboseLogging);
+        public int LogMaxMegabytes => GetInt(SettingsSchema.LogMaxMegabytes);
     }
 }

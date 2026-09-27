@@ -529,14 +529,14 @@ namespace TraxCombat.Missions
             if (!listed) _paceHeld.Add(st);
             _rateStats.AddHoldStart(ps.Bin, ps.Asked);
             if (ps.First) LogHold(st, ps, now, first: true);
-            else if (TraxLog.VerboseOn) LogHold(st, ps, now, first: false);
+            else if (TraxLog.VerboseWants("rate-hold")) LogHold(st, ps, now, first: false);
         }
 
         private void RefuseHold(TrackedAgent st, PaceState ps, PaceRefusal why)
         {
             ps.Pending = false;
             _rateStats.AddRefused(why);
-            if (TraxLog.VerboseOn)
+            if (TraxLog.VerboseWants("rate-hold"))
                 TraxLog.Verbose("rate", "pace hold not started: " + Name(st) + " (m " + F2(ps.Asked) + ") - " + why, "rate-hold");
         }
 
@@ -561,7 +561,7 @@ namespace TraxCombat.Missions
             ps.EndedAt = why == PaceEnd.TimeUp ? now : -1;
             Lift(st, ps, now, native, waitingPass: false);
             if (ps.First) LogHoldEnd(st, ps, why, now, held);
-            else if (TraxLog.VerboseOn)
+            else if (TraxLog.VerboseWants("rate-hold"))
                 TraxLog.Verbose("rate", "pace hold ended: " + Name(st) + " after " + F2(held) + " s - " + why, "rate-hold");
         }
 

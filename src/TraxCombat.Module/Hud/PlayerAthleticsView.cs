@@ -108,7 +108,7 @@ namespace TraxCombat.Hud
             if (firstOfColour)
                 TraxLog.Limited("hud", "player bar: " + BarMath.Name(band).ToUpperInvariant() + " for the first time this battle at " + S1(f.Now)
                     + " s - f " + F2(r.PeakShare) + ", " + shown + " / " + pool + " (fill " + F2(fill) + ")", "hud-band");
-            else if (_lastBand >= 0 && _lastBand != b && TraxLog.VerboseOn)
+            else if (_lastBand >= 0 && _lastBand != b && TraxLog.VerboseWants("hud-band"))
                 TraxLog.Verbose("hud", "player bar: colour " + BarMath.Name((BarBand)_lastBand) + " → " + BarMath.Name(band) + " at " + S1(f.Now)
                     + " s (f " + F2(r.PeakShare) + ", " + shown + " / " + pool + ")", "hud-band");
             _lastBand = b;
