@@ -52,8 +52,8 @@ public class HudTests
         Assert.Equal("ModEnabled off (the master switch)", HudGate.Describe(HudHide.ModOff, "ShowPlayerBar"));
         Assert.Equal("ShowPlayerBar off", HudGate.Describe(HudHide.ToggleOff, "ShowPlayerBar"));
         Assert.Equal("the game's Hide battle UI is on", HudGate.Describe(HudHide.HideBattleUI, "ShowPlayerBar"));
-        Assert.Equal("nobody targeted", HudGate.Describe(HudHide.ViewCondition, "ShowTargetBar", "nobody targeted"));
-        Assert.Equal("ShowTargetBar off", HudGate.ShortName(HudHide.ToggleOff, "ShowTargetBar"));
+        Assert.Equal("the orders menu is closed", HudGate.Describe(HudHide.ViewCondition, "ShowInOrderMenu", "the orders menu is closed"));
+        Assert.Equal("ShowInOrderMenu off", HudGate.ShortName(HudHide.ToggleOff, "ShowInOrderMenu"));
         Assert.Equal("Hide battle UI", HudGate.ShortName(HudHide.HideBattleUI, "x"));
         Assert.Equal(HudGate.ReasonCount, Enum.GetValues<HudHide>().Length);
         foreach (var h in Enum.GetValues<HudHide>())

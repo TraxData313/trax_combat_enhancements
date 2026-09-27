@@ -237,18 +237,12 @@ namespace TraxCombat.Core
         public float WalkEffortFraction => GetFloat(SettingsSchema.WalkEffortFraction);
 
         public bool ShowPlayerBar => GetBool(SettingsSchema.ShowPlayerBar);
-        public bool ShowTargetBar => GetBool(SettingsSchema.ShowTargetBar);
-        public float TargetBarMaxDistance => GetFloat(SettingsSchema.TargetBarMaxDistance);
-        public float TargetBarLingerSeconds => GetFloat(SettingsSchema.TargetBarLingerSeconds);
         public int BarYellowBelowPercent => GetInt(SettingsSchema.BarYellowBelowPercent);
         public int BarOrangeBelowPercent => GetInt(SettingsSchema.BarOrangeBelowPercent);
         public int BarRedBelowPercent => GetInt(SettingsSchema.BarRedBelowPercent);
 
-        public bool ShowFormationBars => GetBool(SettingsSchema.ShowFormationBars);
-        public bool FormationBarsAlways => GetBool(SettingsSchema.FormationBarsAlways);
         public bool ShowFormationSpread => GetBool(SettingsSchema.ShowFormationSpread);
         public float FormationSpreadStdDevs => GetFloat(SettingsSchema.FormationSpreadStdDevs);
-        public float FormationBarHeight => GetFloat(SettingsSchema.FormationBarHeight);
         public bool ShowInOrderMenu => GetBool(SettingsSchema.ShowInOrderMenu);
         public bool ShowFormationHealth => GetBool(SettingsSchema.ShowFormationHealth);
         public bool OrderStripUnderCards => GetBool(SettingsSchema.OrderStripUnderCards);

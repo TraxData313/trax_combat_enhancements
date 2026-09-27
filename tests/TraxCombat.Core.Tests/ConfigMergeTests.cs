@@ -80,15 +80,15 @@ public class ConfigMergeTests
     public void Written_plan_reads_back_to_the_same_values()
     {
         var memory = new TraxSettings();
-        memory.Set(SettingsSchema.ShowTargetBar, false, SettingSources.Mcm);
-        var plan = ConfigMerge.ForWrite(Disk("{ \"DamageRandomPercent\": 30, \"Old\": true }"), memory.Snapshot(), new[] { "ShowTargetBar" });
+        memory.Set(SettingsSchema.ShowFormationHealth, false, SettingSources.Mcm);
+        var plan = ConfigMerge.ForWrite(Disk("{ \"DamageRandomPercent\": 30, \"Old\": true }"), memory.Snapshot(), new[] { "ShowFormationHealth" });
 
         var reread = ConfigFile.Read(ConfigFile.Write(plan.Values, plan.Unknown));
 
         Assert.True(reread.Ok, reread.Error);
         Assert.Empty(reread.Missing);
         Assert.Equal(30, reread.Values["DamageRandomPercent"]);
-        Assert.Equal(0, reread.Values["ShowTargetBar"]);
+        Assert.Equal(0, reread.Values["ShowFormationHealth"]);
         Assert.Equal("Old", Assert.Single(reread.Unknown).Key);
     }
 }

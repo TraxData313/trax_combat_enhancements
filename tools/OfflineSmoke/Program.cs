@@ -306,12 +306,12 @@ namespace TraxCombat.Tools
             Check(TraxSettings.Shared.Version == version, "a broken file changed values");
             LogHas("[config] could not read config.json at mission start (line");
 
-            TraxSettings.Shared.Set(SettingsSchema.ShowTargetBar, false, SettingSources.Mcm);
+            TraxSettings.Shared.Set(SettingsSchema.ShowFormationHealth, false, SettingSources.Mcm);
             ConfigStore.SaveAfterMcm();
             Check(Directory.GetFiles(_dir, ConfigFile.FileName + ".broken-*").Length == 1, "broken file not backed up");
             var disk = ConfigFile.Read(File.ReadAllText(ConfigPath));
             Check(disk.Ok && disk.Values.Count == SettingsSchema.All.Count, "fresh file after a broken one is not complete");
-            Check(disk.Values["ShowTargetBar"] == 0 && disk.Values["DamageRandomPercent"] == HandPct, "fresh file lost the values in effect");
+            Check(disk.Values["ShowFormationHealth"] == 0 && disk.Values["DamageRandomPercent"] == HandPct, "fresh file lost the values in effect");
             LogHas("did not parse");
         }
 
@@ -321,7 +321,7 @@ namespace TraxCombat.Tools
             File.WriteAllText(ConfigPath, "{ \"damageRandomPercent\": " + odd + ", \"DamageRandomPercnt\": 5, \"ConfigVersion\": 1 }");
             ConfigStore.Reload("game start");
             Check(TraxSettings.Shared.DamageRandomPercent == odd, "value with odd key casing not applied");
-            Check(TraxSettings.Shared.ShowTargetBar == (SettingsSchema.ShowTargetBar.Default != 0), "missing key did not go back to its default");
+            Check(TraxSettings.Shared.ShowFormationHealth == (SettingsSchema.ShowFormationHealth.Default != 0), "missing key did not go back to its default");
             Check(TraxSettings.Shared.VerboseLogging == VerboseDefault, "missing key did not go back to its default (VerboseLogging)");
             LogHas("\"DamageRandomPercnt\" is not a setting of this version");
             LogHas("added " + (SettingsSchema.All.Count - 1) + " missing setting(s)");

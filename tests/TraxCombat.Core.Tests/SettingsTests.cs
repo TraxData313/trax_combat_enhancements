@@ -143,7 +143,7 @@ public class SettingsTests
     {
         var s = new TraxSettings();
         s.Set("DamageRandomPercent", 10, "test");
-        s.Set("ShowTargetBar", 0, "test");
+        s.Set("ShowFormationHealth", 0, "test");
         var seen = new List<SettingChange>();
         s.Changed += seen.Add;
 

@@ -16,7 +16,7 @@ namespace TraxCombat.Core
         /// <summary>AthleticsEnabled off - nothing to show.</summary>
         AthleticsOff = 2,
 
-        /// <summary>The view's own switch (ShowPlayerBar, ShowTargetBar, …) off.</summary>
+        /// <summary>The view's own switch (ShowPlayerBar, ShowInOrderMenu, …) off.</summary>
         ToggleOff = 3,
 
         /// <summary>The game's "hide battle UI" is on.</summary>

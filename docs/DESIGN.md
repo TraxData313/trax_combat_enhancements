@@ -191,18 +191,20 @@ button and the "(default …)" in comments, MCM hints and the log all show the f
 
 ## 3. Showing Athletics
 
-All toggles, all on by default.
+All toggles, all on by default. **Built: items 1 and 4. Items 2 and 3 are LATER** (Anton moved
+them off the build order, 2026-09-27): their designs stay here, their settings wait in "Planned
+parameters" below, and nothing of them is in the game, MCM or the config file.
 
 1. **Player bar** (`ShowPlayerBar`): the player's Athletics bar near the vanilla health bar,
    in the spirit of RBM's posture bar (RBM = Realistic Battle Mod, confirmed by Anton —
-   style reference only).
-2. **Looked-at NPC** (`ShowTargetBar`): a small bar for the fighter the player is aiming at
-   / looking at, within `TargetBarMaxDistance`; it lingers `TargetBarLingerSeconds` after
-   the aim leaves so it does not flicker. Aiming at a horse shows its rider.
-3. **Squad bars** (`ShowFormationBars`): above each of the PLAYER'S formations, a bar of the
-   formation's average Athletics, with a band of ± `FormationSpreadStdDevs` (1) standard
-   deviations (`ShowFormationSpread`). `FormationBarsAlways` off = only while vanilla shows
-   its formation markers (marker key held or orders menu open).
+   style reference only). Built in step 6.
+2. **LATER (step 7) — Looked-at NPC** (`ShowTargetBar`): a small bar for the fighter the player
+   is aiming at / looking at, within `TargetBarMaxDistance`; it lingers `TargetBarLingerSeconds`
+   after the aim leaves so it does not flicker. Aiming at a horse shows its rider.
+3. **LATER (step 8) — Squad bars** (`ShowFormationBars`): above each of the PLAYER'S formations,
+   a bar of the formation's average Athletics, with a band of ± `FormationSpreadStdDevs` (1)
+   standard deviations (`ShowFormationSpread`). `FormationBarsAlways` off = only while vanilla
+   shows its formation markers (marker key held or orders menu open).
 4. **Orders menu** (`ShowInOrderMenu`): while the orders menu is open, a strip directly UNDER
    each of vanilla's formation cards (built in step 9 — below). Numbers INSIDE vanilla's cards
    would need UIExtenderEx and risk clashing with RTS Camera Command System — not worth it
@@ -356,21 +358,15 @@ says (§2c).
 | `RegenMultiplierAtFullRun` | 0.5 | Regen rate at top speed, relative to standing or walking. |
 | `WalkEffortFraction` | 0.4 | Up to this share of top speed counts as walking (full regen). |
 | `ShowPlayerBar` | true | Player Athletics bar. |
-| `ShowTargetBar` | true | Bar for the fighter you look at. |
-| `TargetBarMaxDistance` | 30 | Metres — how far away a looked-at fighter still gets a bar. |
-| `TargetBarLingerSeconds` | 2 | Seconds the bar stays after your aim leaves the fighter. |
 | `BarYellowBelowPercent` | 75 | Bar turns yellow at or below this % of the peak line (blue just below the line, green above it). |
 | `BarOrangeBelowPercent` | 50 | Orange at or below this %. |
 | `BarRedBelowPercent` | 25 | Red at or below this % (an empty bar is always red). |
-| `ShowFormationBars` | true | Average bars above your formations. |
-| `FormationBarsAlways` | true | true: always shown. false: only while vanilla shows formation markers. |
-| `ShowFormationSpread` | true | ± spread band on the formation bars and in the orders-menu strip (off: the strip shows the average alone). |
+| `ShowFormationSpread` | true | ± spread in the orders-menu strip: the "± 8" and the lighter band (off: the strip shows the average alone). |
 | `FormationSpreadStdDevs` | 1.0 | Band width in standard deviations (the strip's "± 8" is this width). |
-| `FormationBarHeight` | 3.0 | Metres above the formation's centre for its bar. |
 | `ShowInOrderMenu` | true | The orders-menu strip: under each formation card, the men's average Athletics ± spread (bar + "72% ± 8"). |
-| `ShowFormationHealth` | true | Squad bars and the orders-menu strip also show average health ("HP 81%"). |
+| `ShowFormationHealth` | true | The orders-menu strip also shows average health ("HP 81%"). |
 | `OrderStripUnderCards` | true | true: the strip sits under the vanilla cards (read live) when they can be matched, else the compact panel. false: always the compact panel. |
-| `HudRefreshSeconds` | 0.1 | (Advanced) How often the player and target bars update. |
+| `HudRefreshSeconds` | 0.1 | (Advanced) How often the player bar and the orders-menu strip update. |
 | `PlayerBarWidth` | 205 | (Advanced) Length of your bar in UI pixels of the 1920 × 1080 layout (the game's UI scale applies); 205 = the inside of the vanilla health bar. |
 | `PlayerBarHeight` | 12 | (Advanced) Thickness of your bar, UI pixels. |
 | `PlayerBarOffsetRight` | 62 | (Advanced) Screen's right edge → your bar's right end, UI pixels (62 = under the vanilla health bar). |
@@ -396,7 +392,22 @@ its four `StepBack*` rows up and added `StepBackEnemyRange`, `StepBackHoldAttack
 `PlayerBar*` layout rows; step 9 moved `ShowFormationHealth` up and added `OrderStripUnderCards`,
 the five `OrderStrip*` and the two `OrderPanel*` rows.)
 
-None left.
+The two features Anton moved to LATER (2026-09-27, §3 items 2 and 3) keep their rows here. They
+were in the schema, MCM and the config file until step 10b took them out (review R21: no switch
+that does nothing). The step that builds a feature moves its rows back up (and into the schema,
+TraxSettings and defaults.json). The designs are §3 and AI_NOTES "Step 7" / "Step 8".
+
+| Key | Default (initial) | What it does | When |
+|---|---|---|---|
+| `ShowTargetBar` | true | Bar for the fighter you look at. | LATER (step 7) |
+| `TargetBarMaxDistance` | 30 | Metres — how far away a looked-at fighter still gets a bar. | LATER (step 7) |
+| `TargetBarLingerSeconds` | 2 | Seconds the bar stays after your aim leaves the fighter. | LATER (step 7) |
+| `ShowFormationBars` | true | Average bars above your formations. | LATER (step 8) |
+| `FormationBarsAlways` | true | true: always shown. false: only while vanilla shows formation markers. | LATER (step 8) |
+| `FormationBarHeight` | 3.0 | Metres above the formation's centre for its bar. | LATER (step 8) |
+
+`ShowFormationSpread`, `FormationSpreadStdDevs` and `ShowFormationHealth` stay in the table
+above: the orders-menu strip uses them now, and the squad bars will too.
 
 Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics skill),
 `FullRegenSecondsMoving` and `MovingSpeedThreshold` (→ regen by effort),

@@ -214,19 +214,6 @@
   // (true or false)
   "ShowPlayerBar": true,
 
-  // Show a small Athletics bar for the fighter you are looking or aiming at. Aiming at a horse
-  // shows its rider.
-  // (true or false)
-  "ShowTargetBar": true,
-
-  // How far away, in metres, a fighter you look at still gets a bar.
-  // (range 1.0 to 200.0)
-  "TargetBarMaxDistance": 30.0,
-
-  // Seconds the target's bar stays after your aim leaves him, so it does not flicker.
-  // (range 0.0 to 10.0)
-  "TargetBarLingerSeconds": 2.0,
-
   // Colour of the Athletics bars: green at or above the full-strength line, blue just below it,
   // and yellow once the Athletics left is at or below this percent of the line. With the line
   // at 75% of the bar, 75 turns the bar yellow from about 56% of the bar down.
@@ -245,18 +232,8 @@
   "BarRedBelowPercent": 25,
 
   // ==================== Bars - your squads ====================
-  // Show the average Athletics of each of your formations in a bar floating above it.
-  // (true or false)
-  "ShowFormationBars": true,
-
-  // On: the squad bars are always shown. Off: only while the game shows its own formation
-  // markers (marker key held or orders menu open).
-  // (true or false)
-  "FormationBarsAlways": true,
-
-  // Draw a band showing how far the men's Athletics spreads around the average - on each squad
-  // bar and in the orders-menu strip (off: the strip shows the average alone, without its "±
-  // 8").
+  // Show how far the men's Athletics spreads around the average in the orders-menu strip: the
+  // "± 8" after the number and a lighter band on its bar. Off: the average alone.
   // (true or false)
   "ShowFormationSpread": true,
 
@@ -265,17 +242,12 @@
   // (range 0.0 to 3.0)
   "FormationSpreadStdDevs": 1.0,
 
-  // How high above the formation's centre its bar floats, in metres.
-  // (range 0.0 to 10.0)
-  "FormationBarHeight": 3.0,
-
   // While the orders menu is open, show under each formation card its men's average Athletics ±
   // spread as a slim bar and numbers, for example "72% ± 8" (and their average health).
   // (true or false)
   "ShowInOrderMenu": true,
 
-  // The orders-menu strip (and the squad bars) also show the men's average health left, for
-  // example "HP 81%".
+  // The orders-menu strip also shows the men's average health left, for example "HP 81%".
   // (true or false)
   "ShowFormationHealth": true,
 
@@ -287,8 +259,8 @@
   "OrderStripUnderCards": true,
 
   // ==================== Advanced ====================
-  // How often your bar and the target's bar update, in seconds. Lower is smoother and costs a
-  // little more.
+  // How often your Athletics bar and the orders-menu strip update, in seconds. Lower is
+  // smoother and costs a little more.
   // (range 0.02 to 1.0)
   "HudRefreshSeconds": 0.1,
 

@@ -190,17 +190,9 @@ namespace TraxCombat.Core
             "Your Athletics bar",
             "Show your own Athletics next to your health bar.");
 
-        public static readonly ParamDef ShowTargetBar = Bool("ShowTargetBar", PlayerBarsGroup,
-            "Target's Athletics bar",
-            "Show a small Athletics bar for the fighter you are looking or aiming at. Aiming at a horse shows its rider.");
-
-        public static readonly ParamDef TargetBarMaxDistance = Float("TargetBarMaxDistance", 1, 200, PlayerBarsGroup,
-            "Target bar range (m)",
-            "How far away, in metres, a fighter you look at still gets a bar.");
-
-        public static readonly ParamDef TargetBarLingerSeconds = Float("TargetBarLingerSeconds", 0, 10, PlayerBarsGroup,
-            "Target bar linger (s)",
-            "Seconds the target's bar stays after your aim leaves him, so it does not flicker.");
+        // The looked-at fighter's bar (ShowTargetBar, TargetBarMaxDistance, TargetBarLingerSeconds) is
+        // LATER (step 7): its settings left the schema in step 10b - no switch that does nothing
+        // (review R21). DESIGN's "Planned parameters" keeps the rows.
 
         // The bar colours (DESIGN §3 additions, step 6) - thresholds on f, the share of the
         // full-strength line left: green at or above the line, blue just below it, then these.
@@ -218,25 +210,17 @@ namespace TraxCombat.Core
 
         // ------------------------------------------------------------------ bars: your squads
 
-        public static readonly ParamDef ShowFormationBars = Bool("ShowFormationBars", SquadBarsGroup,
-            "Squad bars",
-            "Show the average Athletics of each of your formations in a bar floating above it.");
-
-        public static readonly ParamDef FormationBarsAlways = Bool("FormationBarsAlways", SquadBarsGroup,
-            "Squad bars always",
-            "On: the squad bars are always shown. Off: only while the game shows its own formation markers (marker key held or orders menu open).");
+        // The squad bars floating above the formations (ShowFormationBars, FormationBarsAlways,
+        // FormationBarHeight) are LATER (step 8): their settings left the schema in step 10b (review
+        // R21). DESIGN's "Planned parameters" keeps the rows.
 
         public static readonly ParamDef ShowFormationSpread = Bool("ShowFormationSpread", SquadBarsGroup,
             "Show the spread",
-            "Draw a band showing how far the men's Athletics spreads around the average - on each squad bar and in the orders-menu strip (off: the strip shows the average alone, without its \"± 8\").");
+            "Show how far the men's Athletics spreads around the average in the orders-menu strip: the \"± 8\" after the number and a lighter band on its bar. Off: the average alone.");
 
         public static readonly ParamDef FormationSpreadStdDevs = Float("FormationSpreadStdDevs", 0, 3, SquadBarsGroup,
             "Spread band width (std devs)",
             "Width of that band on each side of the average, in standard deviations - the strip's \"± 8\" is this width in percent of the bar. 1 = about two men in three fall inside it.");
-
-        public static readonly ParamDef FormationBarHeight = Float("FormationBarHeight", 0, 10, SquadBarsGroup,
-            "Squad bar height (m)",
-            "How high above the formation's centre its bar floats, in metres.");
 
         public static readonly ParamDef ShowInOrderMenu = Bool("ShowInOrderMenu", SquadBarsGroup,
             "Orders menu strip",
@@ -244,7 +228,7 @@ namespace TraxCombat.Core
 
         public static readonly ParamDef ShowFormationHealth = Bool("ShowFormationHealth", SquadBarsGroup,
             "Show average health",
-            "The orders-menu strip (and the squad bars) also show the men's average health left, for example \"HP 81%\".");
+            "The orders-menu strip also shows the men's average health left, for example \"HP 81%\".");
 
         public static readonly ParamDef OrderStripUnderCards = Bool("OrderStripUnderCards", SquadBarsGroup,
             "Strip under the cards",
@@ -254,7 +238,7 @@ namespace TraxCombat.Core
 
         public static readonly ParamDef HudRefreshSeconds = Float("HudRefreshSeconds", 0.02, 1, AdvancedGroup,
             "Bar refresh (s)",
-            "How often your bar and the target's bar update, in seconds. Lower is smoother and costs a little more.");
+            "How often your Athletics bar and the orders-menu strip update, in seconds. Lower is smoother and costs a little more.");
 
         // Where your bar sits (step 6) - UI pixels of the game's 1920 x 1080 reference layout; the
         // game's own UI scale multiplies them, exactly as it does the vanilla health bar's.
@@ -327,10 +311,10 @@ namespace TraxCombat.Core
             StepBackHoldAttacks, StepBackMaxAtOnce,
             RegenDelayBlowTimes, BlowTimeSeconds, FullRegenSecondsStanding, RegenMultiplierAtFullRun,
             WalkEffortFraction,
-            ShowPlayerBar, ShowTargetBar, TargetBarMaxDistance, TargetBarLingerSeconds,
+            ShowPlayerBar,
             BarYellowBelowPercent, BarOrangeBelowPercent, BarRedBelowPercent,
-            ShowFormationBars, FormationBarsAlways, ShowFormationSpread, FormationSpreadStdDevs,
-            FormationBarHeight, ShowInOrderMenu, ShowFormationHealth, OrderStripUnderCards,
+            ShowFormationSpread, FormationSpreadStdDevs,
+            ShowInOrderMenu, ShowFormationHealth, OrderStripUnderCards,
             HudRefreshSeconds, PlayerBarWidth, PlayerBarHeight, PlayerBarOffsetRight, PlayerBarOffsetBottom,
             OrderStripTextSize, OrderStripTextOffset, OrderStripBarOffset, OrderStripBarHeight, OrderStripSideMargin,
             OrderPanelOffsetTop, OrderPanelWidth,
