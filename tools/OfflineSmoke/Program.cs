@@ -85,6 +85,7 @@ namespace TraxCombat.Tools
             Step("MCM sliders write the live settings at once (hot swap)", McmSlidersAreLive);
             Step("MCM Reset (the 'default' preset) restores DESIGN's defaults, not the values at build time", McmPresetRestoresDefaults);
             Step("MCM Done writes config.json", McmDoneWritesFile);
+            Step("MCM buttons: \"Save current values as a defaults file\" writes a clean defaults.json beside config.json; \"Revert all to defaults\" is live, logged, rewrites config.json, refreshes the page", McmButtons);
 
             Console.WriteLine();
             if (Failures.Count == 0)
@@ -369,6 +370,9 @@ namespace TraxCombat.Tools
 
         private static void McmPresetRestoresDefaults() => McmHarness.PresetRestoresDefaults(GetStatic(typeof(McmBridge), "_settings")!);
 
+        private static void McmButtons() =>
+            McmHarness.Buttons(GetStatic(typeof(McmBridge), "_settings")!, ConfigPath, _dir, LogHas);
+
         private static void McmDoneWritesFile()
         {
             McmHarness.PressDone(GetStatic(typeof(McmBridge), "_settings")!);
@@ -395,8 +399,19 @@ namespace TraxCombat.Tools
                 var settings = (MCM.Abstractions.Base.BaseSettings)settingsObject;
                 Check(settings.Id == McmBridge.SettingsId, "settings id " + settings.Id);
                 Check(settings.FormatType == "none", "format is " + settings.FormatType + ", not none");
-                var defs = MCM.Abstractions.BaseSettingsExtensions.GetAllSettingPropertyDefinitions(settings).ToList();
+                var all = MCM.Abstractions.BaseSettingsExtensions.GetAllSettingPropertyDefinitions(settings).ToList();
+                var defs = all.Where(d => d.SettingType != MCM.Abstractions.SettingType.Button).ToList();
                 Check(defs.Count == SettingsSchema.All.Count, "MCM page has " + defs.Count + " settings, schema " + SettingsSchema.All.Count);
+                // DESIGN 2c: the "Defaults" group with its two buttons, after every settings group.
+                var buttons = all.Where(d => d.SettingType == MCM.Abstractions.SettingType.Button).ToList();
+                Check(buttons.Count == 2, "MCM page has " + buttons.Count + " buttons, expected 2");
+                var revert = buttons.FirstOrDefault(b => b.Id == McmBridge.RevertButtonId);
+                var export = buttons.FirstOrDefault(b => b.Id == McmBridge.ExportButtonId);
+                Check(revert != null && revert.DisplayName == McmBridge.RevertButtonName && revert.Content == "Revert"
+                    && revert.GroupName == McmBridge.DefaultsGroupTitle && revert.HintText.Contains("defaults.json"), "the revert button is missing or wrong");
+                Check(export != null && export.DisplayName == McmBridge.ExportButtonName && export.Content == "Save"
+                    && export.GroupName == McmBridge.DefaultsGroupTitle && export.HintText.Contains("defaults.json"), "the export button is missing or wrong");
+                Check(buttons.All(b => b.PropertyReference.Value is Action), "a button does not hand MCM an Action to invoke");
                 foreach (var p in SettingsSchema.All)
                 {
                     var d = defs.FirstOrDefault(x => x.Id == p.Key);
@@ -451,6 +466,65 @@ namespace TraxCombat.Tools
                 MCM.Abstractions.SettingsUtils.OverrideValues(settings, reset.LoadPreset());
                 foreach (var p in SettingsSchema.All)
                     Check(Math.Abs(TraxSettings.Shared.Get(p) - p.Default) < 1e-6, "preset left " + p.Key + " at " + p.Format(TraxSettings.Shared.Get(p)));
+            }
+
+            /// <summary>Clicks a button the way MCM.UI does (SettingsPropertyVM.OnValueClick).</summary>
+            private static void Click(MCM.Abstractions.Base.BaseSettings settings, string id)
+            {
+                var def = MCM.Abstractions.BaseSettingsExtensions.GetAllSettingPropertyDefinitions(settings).First(d => d.Id == id);
+                if (def.PropertyReference.Value is Action action) action();
+                else Failures.Add("button " + id + " holds no Action");
+            }
+
+            [MethodImpl(MethodImplOptions.NoInlining)]
+            public static void Buttons(object settingsObject, string configPath, string dir, Action<string> logHas)
+            {
+                var settings = (MCM.Abstractions.Base.BaseSettings)settingsObject;
+                var defs = MCM.Abstractions.BaseSettingsExtensions.GetAllSettingPropertyDefinitions(settings).ToDictionary(d => d.Id);
+                var s = TraxSettings.Shared;
+
+                // A tuning found in game: two sliders moved away from the defaults.
+                int pct = (int)SettingsSchema.DamageRandomPercent.Default == 35 ? 45 : 35;
+                defs["DamageRandomPercent"].PropertyReference.Value = pct;
+                defs["ShowPlayerBar"].PropertyReference.Value = SettingsSchema.ShowPlayerBar.Default == 0;
+
+                // --- Save current values as a defaults file
+                Click(settings, McmBridge.ExportButtonId);
+                string exported = Path.Combine(dir, DefaultsFile.FileName);
+                Check(File.Exists(exported), "no defaults.json beside config.json after the export");
+                var check = DefaultsFile.Check(File.Exists(exported) ? File.ReadAllText(exported, Encoding.UTF8) : string.Empty);
+                Check(check.Ok, "the exported defaults.json does not check clean: " + check.Describe());
+                foreach (var p in SettingsSchema.All)
+                    Check(check.Values.TryGetValue(p.Key, out double v) && Math.Abs(v - s.Get(p)) < 1e-9, "export: " + p.Key + " is not the value in effect");
+                Check(s.DamageRandomPercent == pct, "the export changed a value");
+                logHas("[mcm] \"" + McmBridge.ExportButtonName + "\" pressed");
+                logHas("[config] saved the current values as a defaults file: " + exported + " - ");
+                logHas("DamageRandomPercent " + pct + " (built-in " + SettingsSchema.DamageRandomPercent.Format(SettingsSchema.DamageRandomPercent.Default) + ")");
+
+                // --- Revert all to defaults: beats MCM edits AND a hand edit waiting in config.json
+                var disk = ConfigFile.Read(File.ReadAllText(configPath, Encoding.UTF8));
+                double hero = SettingsSchema.HeroCostMultiplier.Default == 0.5 ? 0.6 : 0.5;
+                File.WriteAllText(configPath, ConfigFile.Write(new Dictionary<string, double>(disk.Values) { ["HeroCostMultiplier"] = hero }), Encoding.UTF8);
+                bool refreshed = false;
+                System.ComponentModel.PropertyChangedEventHandler onChanged = (o, e) => { if (e.PropertyName != "SAVE_TRIGGERED") refreshed = true; };
+                settings.PropertyChanged += onChanged;
+                Click(settings, McmBridge.RevertButtonId);
+                settings.PropertyChanged -= onChanged;
+
+                foreach (var p in SettingsSchema.All)
+                    Check(Math.Abs(s.Get(p) - p.Default) < 1e-9, "revert left " + p.Key + " at " + p.Format(s.Get(p)));
+                var after = ConfigFile.Read(File.ReadAllText(configPath, Encoding.UTF8));
+                foreach (var p in SettingsSchema.All)
+                    Check(after.Values.TryGetValue(p.Key, out double v) && Math.Abs(v - p.Default) < 1e-9, "revert: config.json holds " + p.Key + " = " + p.Format(v));
+                Check(refreshed, "the page was not told to re-read its values after the revert");
+                Check(Convert.ToInt32(defs["DamageRandomPercent"].PropertyReference.Value) == (int)SettingsSchema.DamageRandomPercent.Default, "the page reads a stale value");
+                logHas("[mcm] \"" + McmBridge.RevertButtonName + "\" pressed");
+                logHas("[config] DamageRandomPercent: " + pct + " → " + SettingsSchema.DamageRandomPercent.Format(SettingsSchema.DamageRandomPercent.Default) + " (source: defaults)");
+                logHas("[config] wrote config.json (reverted to defaults): every value as it is in effect now");
+                logHas("[config] reverted all " + SettingsSchema.All.Count + " settings to their defaults (defaults.json (embedded in TraxCombat.Core.dll)): ");
+
+                Click(settings, McmBridge.RevertButtonId); // nothing left to change
+                logHas("settings to their defaults (defaults.json (embedded in TraxCombat.Core.dll)): 0 changed, applied live");
             }
 
             [MethodImpl(MethodImplOptions.NoInlining)]

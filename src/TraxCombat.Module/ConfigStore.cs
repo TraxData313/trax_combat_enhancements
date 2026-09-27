@@ -124,6 +124,66 @@ namespace TraxCombat
             }
         }
 
+        /// <summary>
+        /// MCM's "Revert all to defaults" (DESIGN §2c): every setting back to its defaults.json
+        /// value, LIVE (each real change logged <c>[config] X: a → b (source: defaults)</c>), then
+        /// config.json rewritten from memory for EVERY key - the revert wins over MCM edits and
+        /// over hand edits waiting in the file alike. Returns how many settings changed (-1: failed).
+        /// </summary>
+        public static int RevertAllToDefaults()
+        {
+            lock (Gate)
+            {
+                try
+                {
+                    int before = Settings.Version;
+                    Settings.ResetToDefaults(SettingSources.Defaults);
+                    int changed = Settings.Version - before;
+                    WriteMerged("reverted to defaults", everyKeyFromMemory: true);
+                    TraxLog.Info("config", "reverted all " + SettingsSchema.All.Count + " settings to their defaults ("
+                        + DefaultsFile.SourceName + "): " + changed + " changed, applied live");
+                    return changed;
+                }
+                catch (Exception e)
+                {
+                    TraxLog.Error("config.revert", e);
+                    return -1;
+                }
+            }
+        }
+
+        /// <summary>
+        /// MCM's "Save current values as a defaults file" (DESIGN §2c): the values in effect written
+        /// as defaults.json - header, comments and layout exactly as the repo's file - next to
+        /// config.json, for Anton to copy over the repo's defaults.json. Logs the path and every
+        /// value that differs from the built-in defaults. Returns the path (null: failed).
+        /// </summary>
+        public static string? ExportDefaults()
+        {
+            lock (Gate)
+            {
+                try
+                {
+                    string path = Path.Combine(ModPaths.ConfigDir, DefaultsFile.FileName);
+                    WriteText(path, DefaultsFile.Write(Settings.Snapshot()));
+                    var differ = SettingsSchema.All.Where(p => Math.Abs(Settings.Get(p) - p.Default) > 1e-9).ToList();
+                    TraxLog.Info("config", "saved the current values as a defaults file: " + path + " - "
+                        + (differ.Count == 0
+                            ? "identical to the built-in defaults"
+                            : differ.Count + " differ from the built-in defaults: "
+                              + string.Join(", ", differ.Take(12).Select(p => p.Key + " " + p.Format(Settings.Get(p)) + " (built-in " + p.Format(p.Default) + ")"))
+                              + (differ.Count > 12 ? ", +" + (differ.Count - 12) + " more" : string.Empty))
+                        + ". Copy it over the repo's defaults.json to make these the defaults.");
+                    return path;
+                }
+                catch (Exception e)
+                {
+                    TraxLog.Error("config.export-defaults", e);
+                    return null;
+                }
+            }
+        }
+
         /// <summary>MCM's Done: write the file by the rewrite rule.</summary>
         public static void SaveAfterMcm()
         {
@@ -206,10 +266,12 @@ namespace TraxCombat
             return true;
         }
 
-        private static void WriteMerged(string reason)
+        /// <param name="everyKeyFromMemory">The revert: memory's value for every key (no hand edit
+        /// on disk survives it); otherwise the rewrite rule.</param>
+        private static void WriteMerged(string reason, bool everyKeyFromMemory = false)
         {
             string path = ModPaths.ConfigFilePath;
-            var changedInMcm = McmEdits.ChangedKeys(Settings);
+            var changedInMcm = everyKeyFromMemory ? SettingsSchema.All.Select(p => p.Key).ToList() : McmEdits.ChangedKeys(Settings);
             ConfigReadResult? disk = null;
             if (File.Exists(path))
             {
@@ -228,7 +290,8 @@ namespace TraxCombat
             McmEdits.Clear();
 
             TraxLog.Info("config", "wrote config.json (" + reason + "): "
-                + (changedInMcm.Count == 0 ? "no values changed in MCM" : "from MCM " + string.Join(", ", changedInMcm))
+                + (everyKeyFromMemory ? "every value as it is in effect now"
+                    : changedInMcm.Count == 0 ? "no values changed in MCM" : "from MCM " + string.Join(", ", changedInMcm))
                 + (plan.KeptFromDisk.Count == 0 ? string.Empty
                     : "; kept hand edit(s) from the file that apply at the next battle start: "
                       + string.Join(", ", plan.KeptFromDisk.Select(k => DescribeKept(k, plan.Values[k])))));

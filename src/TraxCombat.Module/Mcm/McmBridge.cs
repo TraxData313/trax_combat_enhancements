@@ -35,7 +35,17 @@ namespace TraxCombat.Mcm
     /// id "default" (MCM.UI SettingsVM.ResetSettings / ResetSettingsValue) - remove it and Reset
     /// silently does nothing. MCM's fluent builder fills that preset with the CURRENT values at
     /// BuildAsGlobal - but its preset builder keeps the FIRST value set per key, so we fill it
-    /// with DESIGN's defaults before building: Reset then really means "the mod's defaults".
+    /// with the mod's defaults (defaults.json, via ParamDef.Default) before building: Reset then
+    /// really means "the mod's defaults".
+    ///
+    /// The "Defaults" group (DESIGN §2c, step 5b): two BUTTONS, verified against MCMv5 5.12.3
+    /// (the Workshop DLL and its decompile): <c>ISettingsPropertyGroupBuilder.AddButton(id, name,
+    /// IRef, content, builder)</c>, the IRef a <c>ProxyRef&lt;Action&gt;</c> with a null setter -
+    /// MCM.UI's <c>SettingsPropertyVM.OnValueClick</c> invokes the Action it reads, and a preset or
+    /// Reset writing the button's value is ignored (no setter). After a revert the page must show
+    /// the new values: every SettingsPropertyVM listens to the settings object's PropertyChanged
+    /// and re-reads its value on any name but SAVE_TRIGGERED - so <see cref="RefreshPage"/> raises
+    /// one. The revert is not in MCM's undo stack: Cancel does not undo it (the hint says so).
     /// </summary>
     internal static class McmBridge
     {
@@ -45,6 +55,16 @@ namespace TraxCombat.Mcm
         /// <summary>MCM's own id for the preset its Reset buttons apply (BaseSettings.DefaultPresetId).</summary>
         private const string DefaultPresetId = "default";
         private const double RetrySeconds = 1.0;
+
+        /// <summary>The buttons' group, after every settings group (not a schema group - no settings).</summary>
+        public const string DefaultsGroupTitle = "Defaults";
+        public const string RevertButtonId = "TraxRevertAllToDefaults";
+        public const string RevertButtonName = "Revert all to defaults";
+        public const string ExportButtonId = "TraxSaveDefaultsFile";
+        public const string ExportButtonName = "Save current values as a defaults file";
+
+        /// <summary>What the page raises after a revert so MCM re-reads every value (anything but SAVE_TRIGGERED).</summary>
+        private const string RefreshEvent = "TRAX_VALUES_RESET";
 
         private static readonly Stopwatch Clock = Stopwatch.StartNew();
         private static bool _done;
@@ -82,7 +102,8 @@ namespace TraxCombat.Mcm
                     TraxLog.Info("mcm", "settings page registered at " + when + " (attempt " + _attempts + "): MCM "
                         + mcm.GetName().Version + ", page \"" + DisplayName + "\", " + SettingsSchema.All.Count
                         + " settings in " + SettingsSchema.Groups.Count + " groups, format \"none\" (config.json is the only store), "
-                        + "Default preset = the mod's defaults.");
+                        + "Default preset = the mod's defaults (defaults.json); group \"" + DefaultsGroupTitle + "\": buttons \""
+                        + RevertButtonName + "\" and \"" + ExportButtonName + "\".");
                 }
                 else if (_attempts == 1)
                 {
@@ -128,6 +149,7 @@ namespace TraxCombat.Mcm
 
             foreach (var group in SettingsSchema.Groups)
                 builder = builder.CreateGroup(group.Title, (Action<object>)new GroupFiller(group).Fill);
+            builder = builder.CreateGroup(DefaultsGroupTitle, (Action<object>)new DefaultsButtons().Fill);
 
             // Fills the EXISTING "default" preset (the name argument is ignored for it) before
             // BuildAsGlobal would fill it with the current values - first value per key wins.
@@ -155,6 +177,98 @@ namespace TraxCombat.Mcm
             {
                 TraxLog.Error("mcm.save", ex);
             }
+        }
+
+        // ------------------------------------------------------------------ the two buttons
+
+        /// <summary>"Revert all to defaults" clicked (main thread, MCM's UI): every setting back to
+        /// defaults.json, live; config.json rewritten; the page re-reads its values.</summary>
+        private static void RevertPressed()
+        {
+            try
+            {
+                TraxLog.Info("mcm", "\"" + RevertButtonName + "\" pressed");
+                int changed = ConfigStore.RevertAllToDefaults();
+                RefreshPage();
+                Notify(changed < 0
+                        ? "Trax Combat Enhancements: could not revert to the defaults - see trax_combat.log."
+                        : "Trax Combat Enhancements: every setting is back to its default (" + changed + " changed) - applied now; config.json saved.",
+                    changed < 0);
+            }
+            catch (Exception e)
+            {
+                TraxLog.Error("mcm.revert", e);
+            }
+        }
+
+        /// <summary>"Save current values as a defaults file" clicked: defaults.json beside config.json.</summary>
+        private static void ExportPressed()
+        {
+            try
+            {
+                TraxLog.Info("mcm", "\"" + ExportButtonName + "\" pressed");
+                string? path = ConfigStore.ExportDefaults();
+                Notify(path == null
+                        ? "Trax Combat Enhancements: could not save the defaults file - see trax_combat.log."
+                        : "Trax Combat Enhancements: current values saved as a defaults file: " + path,
+                    path == null);
+            }
+            catch (Exception e)
+            {
+                TraxLog.Error("mcm.export-defaults", e);
+            }
+        }
+
+        /// <summary>Every SettingsPropertyVM re-reads its value when the settings object raises
+        /// PropertyChanged with any name but SAVE_TRIGGERED (MCM.UI 5.12.3).</summary>
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static void RefreshPage()
+        {
+            if (_settings is MCM.Abstractions.Base.BaseSettings settings)
+                settings.OnPropertyChanged(RefreshEvent);
+        }
+
+        private static void Notify(string text, bool failed)
+        {
+            try
+            {
+                TaleWorlds.Library.InformationManager.DisplayMessage(new TaleWorlds.Library.InformationMessage(
+                    text, failed ? TaleWorlds.Library.Colors.Red : TaleWorlds.Library.Colors.Green));
+            }
+            catch (Exception e)
+            {
+                TraxLog.Error("mcm.notify", e);
+            }
+        }
+
+        /// <summary>The "Defaults" group: the two buttons. Each value is a ProxyRef&lt;Action&gt; whose
+        /// getter hands MCM the click handler (instance methods - no MCM-typed lambdas).</summary>
+        private sealed class DefaultsButtons
+        {
+            public void Fill(object groupBuilder)
+            {
+                var g = (MCM.Abstractions.FluentBuilder.ISettingsPropertyGroupBuilder)groupBuilder;
+                g.SetGroupOrder(SettingsSchema.Groups.Count);
+                g.AddButton(RevertButtonId, RevertButtonName, new MCM.Common.ProxyRef<Action>(RevertAction, null), "Revert",
+                    (Action<object>)ConfigureRevert);
+                g.AddButton(ExportButtonId, ExportButtonName, new MCM.Common.ProxyRef<Action>(ExportAction, null), "Save",
+                    (Action<object>)ConfigureExport);
+            }
+
+            private Action RevertAction() => RevertPressed;
+
+            private Action ExportAction() => ExportPressed;
+
+            public void ConfigureRevert(object b) =>
+                ((MCM.Abstractions.FluentBuilder.Models.ISettingsPropertyButtonBuilder)b).SetOrder(0).SetRequireRestart(false).SetHintText(
+                    "Puts EVERY setting back to its default - the values in the mod's defaults.json - at once, even mid-battle, "
+                    + "and rewrites config.json. Cancel does not undo it.");
+
+            public void ConfigureExport(object b) =>
+                ((MCM.Abstractions.FluentBuilder.Models.ISettingsPropertyButtonBuilder)b).SetOrder(1).SetRequireRestart(false).SetHintText(
+                    "Writes the values you are playing with as a defaults file (defaults.json, with every explanation) next to "
+                    + "config.json in " + ConfigFile.FolderForHumans + " - copy it over the mod's defaults.json to make them the "
+                    + "defaults. Changes nothing in the game.");
         }
 
         /// <summary>Fills one MCM group with its settings, in schema order.</summary>
