@@ -16,14 +16,14 @@ namespace TraxCombat.Missions
     ///   [mission] first tick / deployment finished: agents on the field
     ///   [summary] block at the end (OnEndMissionInternal - fires for every ending, victory,
     ///             defeat, retreat or leaving, with the agents still present; RESEARCH §K)
-    /// The endurance engine (DESIGN §2, step 5) lives in EnduranceLogic.Engine.cs (tracking,
+    /// The Athletics engine (DESIGN §2, step 5) lives in AthleticsLogic.Engine.cs (tracking,
     /// blow detection, regen, the speed penalty, hot swap), its read API for the HUD steps 6-9 in
-    /// EnduranceLogic.Api.cs, its log lines and summary in EnduranceLogic.Log.cs.
+    /// AthleticsLogic.Api.cs, its log lines and summary in AthleticsLogic.Log.cs.
     ///
     /// Every hook is wrapped: an exception is logged as [error] with its stack and swallowed -
     /// the mission carries on as vanilla (no cost, no penalty).
     /// </summary>
-    public sealed partial class EnduranceLogic : MissionLogic
+    public sealed partial class AthleticsLogic : MissionLogic
     {
         private int _built;
         private int _builtHumans;
@@ -68,13 +68,13 @@ namespace TraxCombat.Missions
             }
             try
             {
-                // Feature 2: become the running endurance logic (the stat decorator and the HUD
+                // Feature 2: become the running Athletics logic (the stat decorator and the HUD
                 // find us through it), log the rules in effect and which stat model is on top.
-                StartEndurance();
+                StartAthletics();
             }
             catch (Exception e)
             {
-                Failed("endurance.mission-start", e);
+                Failed("athletics.mission-start", e);
             }
         }
 
@@ -95,11 +95,11 @@ namespace TraxCombat.Missions
             }
             try
             {
-                TickEndurance(dt);
+                TickAthletics(dt);
             }
             catch (Exception e)
             {
-                Failed("endurance.tick", e);
+                Failed("athletics.tick", e);
             }
         }
 
@@ -142,7 +142,7 @@ namespace TraxCombat.Missions
             }
             catch (Exception e)
             {
-                Failed("endurance.agent-build", e);
+                Failed("athletics.agent-build", e);
             }
         }
 
@@ -169,7 +169,7 @@ namespace TraxCombat.Missions
             }
             catch (Exception e)
             {
-                Failed("endurance.agent-removed", e);
+                Failed("athletics.agent-removed", e);
             }
         }
 
@@ -186,13 +186,13 @@ namespace TraxCombat.Missions
         }
 
         /// <summary>Fallback: a mission torn down without OnEndMissionInternal still gets its summary.
-        /// Also the moment we stop being the running endurance logic.</summary>
+        /// Also the moment we stop being the running Athletics logic.</summary>
         public override void OnRemoveBehavior()
         {
             try
             {
                 WriteSummary("behaviour removed");
-                StopEndurance();
+                StopAthletics();
                 base.OnRemoveBehavior();
             }
             catch (Exception e)
@@ -255,11 +255,11 @@ namespace TraxCombat.Missions
             {
                 // Only at the real mission end are the agents still alive (Mission.EndMissionInternal
                 // clears their native pointers right after); the fallback reads nothing from them.
-                WriteEnduranceSummary(agentsAlive: when == "mission end");
+                WriteAthleticsSummary(agentsAlive: when == "mission end");
             }
             catch (Exception e)
             {
-                Failed("endurance.summary", e);
+                Failed("athletics.summary", e);
             }
             TraxLog.Info("summary", "errors logged during this mission: " + (TraxLog.ErrorCount - _errorsAtStart));
             TraxLog.FlushSuppressedCounts();

@@ -10,19 +10,19 @@ using TraxCombat.Models;
 namespace TraxCombat.Missions
 {
     /// <summary>
-    /// The endurance log lines (CLAUDE.md, logging - one playtest must prove every behaviour):
-    ///   always   [endurance] mission start (rules), leader rule, party leaders at spawn (limited),
+    /// The Athletics log lines (CLAUDE.md, logging - one playtest must prove every behaviour):
+    ///   always   [athletics] mission start (rules), leader rule, party leaders at spawn (limited),
     ///            first tick (fighters tracked), YOUR exhaustion / recovery / back-to-full (limited),
-    ///            EnduranceEnabled switched mid-mission; [speed] stat model on top, the FIRST
+    ///            AthleticsEnabled switched mid-mission; [speed] stat model on top, the FIRST
     ///            exhaustion's properties before → after → at recovery → restored (once per
     ///            mission), ExhaustedAttackSpeedPercent changed mid-mission; the [summary] block.
-    ///   verbose  per blow (bucket endurance-blow), everyone's exhaustion / recovery
-    ///            (endurance-exhaust), back to full (endurance-regen), heroes at spawn
-    ///            (endurance-hero), each speed recompute (speed-update) - each kind rate-limited in
+    ///   verbose  per blow (bucket athletics-blow), everyone's exhaustion / recovery
+    ///            (athletics-exhaust), back to full (athletics-regen), heroes at spawn
+    ///            (athletics-hero), each speed recompute (speed-update) - each kind rate-limited in
     ///            its own bucket so one cannot starve the others.
     /// Strings are built only when the line will be written (VerboseOn checked first).
     /// </summary>
-    public sealed partial class EnduranceLogic
+    public sealed partial class AthleticsLogic
     {
         private void LogBlow(TrackedAgent st, BlowKind kind, in BlowOutcome o, bool mounted)
         {
@@ -40,26 +40,26 @@ namespace TraxCombat.Missions
                 }
                 sb.Append(", ").Append(F1(o.Before)).Append(" → ").Append(F1(o.After)).Append(" of ").Append(F0(o.Pool));
                 if (o.EnteredExhaustion) sb.Append(" - EXHAUSTED");
-                TraxLog.Verbose("endurance", sb.ToString(), "endurance-blow");
+                TraxLog.Verbose("athletics", sb.ToString(), "athletics-blow");
             }
             catch (Exception e)
             {
-                Failed("endurance.log", e);
+                Failed("athletics.log", e);
             }
         }
 
         /// <param name="agentsAlive">False on the teardown fallback: the agents' native side is gone,
         /// so the formations come from the last tick's snapshot and nothing is sampled.</param>
-        internal void WriteEnduranceSummary(bool agentsAlive = true)
+        internal void WriteAthleticsSummary(bool agentsAlive = true)
         {
-            var r = EnduranceRules.From(TraxSettings.Shared);
+            var r = AthleticsRules.From(TraxSettings.Shared);
 
             // the lowest any hero reached (heroes' records outlive their removal from the loop)
             TrackedAgent? lowest = null;
             double lowestPoints = double.MaxValue;
             foreach (var h in _heroes)
             {
-                double p = h.LowestFraction * EnduranceMath.PoolPoints(in r, h);
+                double p = h.LowestFraction * AthleticsMath.PoolPoints(in r, h);
                 if (p < lowestPoints)
                 {
                     lowestPoints = p;
@@ -70,13 +70,13 @@ namespace TraxCombat.Missions
             {
                 _stats.LowestHeroName = Name(lowest);
                 _stats.LowestHeroPoints = lowestPoints;
-                _stats.LowestHeroPool = EnduranceMath.PoolPoints(in r, lowest);
+                _stats.LowestHeroPool = AthleticsMath.PoolPoints(in r, lowest);
             }
 
             TrackPlayer();
             if (_player != null)
             {
-                double pool = EnduranceMath.PoolPoints(in r, _player);
+                double pool = AthleticsMath.PoolPoints(in r, _player);
                 _stats.PlayerSeen = true;
                 _stats.PlayerBlows = _player.Blows;
                 _stats.PlayerExhaustions = _player.ExhaustionsEntered;
@@ -84,13 +84,13 @@ namespace TraxCombat.Missions
                 _stats.PlayerPool = pool;
             }
 
-            var formations = new List<KeyValuePair<string, FormationEnduranceStats>>();
+            var formations = new List<KeyValuePair<string, FormationAthleticsStats>>();
             if (Mission != null)
             {
                 if (agentsAlive) RefreshFormationStats(Mission.CurrentTime, in r);
                 for (int k = 0; k < _formationSnapshot.Length; k++)
                     if (_formationSnapshot[k].Count > 0)
-                        formations.Add(new KeyValuePair<string, FormationEnduranceStats>(FormationName(k), _formationSnapshot[k]));
+                        formations.Add(new KeyValuePair<string, FormationAthleticsStats>(FormationName(k), _formationSnapshot[k]));
             }
 
             if (Mission != null && agentsAlive) SampleSpeeds("mission end");
@@ -143,7 +143,7 @@ namespace TraxCombat.Missions
             {
                 if (_actionNames == null)
                 {
-                    var names = new string[EnduranceStats.ActionSlots];
+                    var names = new string[AthleticsStats.ActionSlots];
                     foreach (var f in typeof(Agent.ActionCodeType).GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static))
                     {
                         int v = Convert.ToInt32(f.GetValue(null), CultureInfo.InvariantCulture);

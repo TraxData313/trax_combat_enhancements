@@ -15,7 +15,7 @@ namespace TraxCombat
     ///   [load] versions, modules, paths      [config] every value on load, every change
     ///   [compat] RBM detected or not (DESIGN §5)
     ///   [mcm] the menu bridge                [mission] start / end / behaviours attached
-    ///   [summary] the per-battle block       [damage] [endurance] [speed] [hud] per feature
+    ///   [summary] the per-battle block       [damage] [athletics] [speed] [hud] per feature
     ///   [error] every caught exception, with its stack (rate-limited per place)
     ///   [log] notes about the log itself (suppressed-line counts)
     /// Chatty per-event lines go through <see cref="Verbose"/>: only when VerboseLogging is on

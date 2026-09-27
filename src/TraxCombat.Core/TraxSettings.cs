@@ -165,7 +165,7 @@ namespace TraxCombat.Core
             return map;
         }
 
-        /// <summary><c>DamageRandomPercent = 30 (default 50)</c> or <c>MaxEndurance = 100</c> -
+        /// <summary><c>DamageRandomPercent = 30 (default 50)</c> or <c>MaxAthletics = 100</c> -
         /// the per-setting line of the load dump.</summary>
         public string Describe(ParamDef p)
         {
@@ -202,8 +202,8 @@ namespace TraxCombat.Core
         public bool DamageRandomOnMounts => GetBool(SettingsSchema.DamageRandomOnMounts);
         public bool DamageRandomOnShields => GetBool(SettingsSchema.DamageRandomOnShields);
 
-        public bool EnduranceEnabled => GetBool(SettingsSchema.EnduranceEnabled);
-        public int MaxEndurance => GetInt(SettingsSchema.MaxEndurance);
+        public bool AthleticsEnabled => GetBool(SettingsSchema.AthleticsEnabled);
+        public int MaxAthletics => GetInt(SettingsSchema.MaxAthletics);
         public float CostPerBlow => GetFloat(SettingsSchema.CostPerBlow);
         public bool CostOnMiss => GetBool(SettingsSchema.CostOnMiss);
         public float HeroCostMultiplier => GetFloat(SettingsSchema.HeroCostMultiplier);

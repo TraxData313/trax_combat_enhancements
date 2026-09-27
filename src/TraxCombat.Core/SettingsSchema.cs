@@ -21,7 +21,7 @@ namespace TraxCombat.Core
         private static int _next;
 
         public static readonly ParamGroup DamageGroup = new ParamGroup(0, "Damage randomness");
-        public static readonly ParamGroup EnduranceGroup = new ParamGroup(1, "Endurance");
+        public static readonly ParamGroup AthleticsGroup = new ParamGroup(1, "Athletics");
         public static readonly ParamGroup ExhaustionGroup = new ParamGroup(2, "Exhaustion");
         public static readonly ParamGroup RegenGroup = new ParamGroup(3, "Regeneration");
         public static readonly ParamGroup PlayerBarsGroup = new ParamGroup(4, "Bars - you and your target");
@@ -54,29 +54,29 @@ namespace TraxCombat.Core
             "Randomize shield damage",
             "Also randomize the damage a shield takes when it blocks a blow. Off: shields wear down at the game's usual pace.");
 
-        // ------------------------------------------------------------------ endurance
+        // ------------------------------------------------------------------ Athletics
 
-        public static readonly ParamDef EnduranceEnabled = Bool("EnduranceEnabled", true, EnduranceGroup,
-            "Endurance",
-            "Master switch. On: every fighter has an endurance pool that his attacks drain and rest refills; an empty pool means slow attacks. Off: no endurance at all.");
+        public static readonly ParamDef AthleticsEnabled = Bool("AthleticsEnabled", true, AthleticsGroup,
+            "Athletics",
+            "On: every fighter has an Athletics bar - his stamina, named after the Athletics skill on the character screen (which will set its size) - that his attacks drain and rest refills; an empty bar means slow attacks. Off: no Athletics bar at all.");
 
-        public static readonly ParamDef MaxEndurance = Int("MaxEndurance", 100, 10, 1000, EnduranceGroup,
-            "Pool size",
-            "How much endurance a fresh fighter has. Changing it mid-battle keeps everyone's share: a fighter at 60% stays at 60%.");
+        public static readonly ParamDef MaxAthletics = Int("MaxAthletics", 100, 10, 1000, AthleticsGroup,
+            "Bar size (points)",
+            "How many Athletics points a fresh fighter's bar holds. Changing it mid-battle keeps everyone's share: a fighter at 60% stays at 60%.");
 
-        public static readonly ParamDef CostPerBlow = Float("CostPerBlow", 10, 0, 100, EnduranceGroup,
+        public static readonly ParamDef CostPerBlow = Float("CostPerBlow", 10, 0, 100, AthleticsGroup,
             "Cost per blow",
-            "Endurance one attack costs before the hero and leader discounts. With the defaults a common soldier gets 10 blows out of a full pool. 0 = attacks are free.");
+            "Athletics points one attack costs before the hero and leader discounts. With the defaults a common soldier gets 10 blows out of a full bar. 0 = attacks are free.");
 
-        public static readonly ParamDef CostOnMiss = Bool("CostOnMiss", true, EnduranceGroup,
+        public static readonly ParamDef CostOnMiss = Bool("CostOnMiss", true, AthleticsGroup,
             "Misses cost too",
-            "On: every attack costs endurance, landed or not. Off: only attacks that hit something (a body, a shield, a parrying weapon) cost.");
+            "On: every attack costs Athletics, landed or not. Off: only attacks that hit something (a body, a shield, a parrying weapon) cost.");
 
-        public static readonly ParamDef HeroCostMultiplier = Float("HeroCostMultiplier", 0.75, 0, 2, EnduranceGroup,
+        public static readonly ParamDef HeroCostMultiplier = Float("HeroCostMultiplier", 0.75, 0, 2, AthleticsGroup,
             "Hero cost multiplier",
             "Heroes (lords, companions and you) pay this share of the cost per blow. 0.75 = a quarter less than a common soldier.");
 
-        public static readonly ParamDef PartyLeaderCostMultiplier = Float("PartyLeaderCostMultiplier", 0.75, 0, 2, EnduranceGroup,
+        public static readonly ParamDef PartyLeaderCostMultiplier = Float("PartyLeaderCostMultiplier", 0.75, 0, 2, AthleticsGroup,
             "Party leader multiplier",
             "The hero who leads the fighter's own party (you for your party, a lord for his) pays this share again, on top of the hero discount: 0.75 × 0.75 × 10 = about 5.6 per blow.");
 
@@ -84,17 +84,17 @@ namespace TraxCombat.Core
 
         public static readonly ParamDef ExhaustedAttackSpeedPercent = Int("ExhaustedAttackSpeedPercent", 20, 5, 100, ExhaustionGroup,
             "Exhausted attack speed (%)",
-            "Attack speed of a fighter whose endurance is empty, in percent of normal: swings, thrusts, bow draw, crossbow reload, throws. 100 = no slowdown.");
+            "Attack speed of a fighter whose Athletics is empty, in percent of normal: swings, thrusts, bow draw, crossbow reload, throws. 100 = no slowdown.");
 
         public static readonly ParamDef ExhaustedRecoverPercent = Int("ExhaustedRecoverPercent", 0, 0, 90, ExhaustionGroup,
             "Recover above (%)",
-            "Once exhausted, normal speed returns only when endurance climbs above this percent of the pool. 0 = the moment it is above empty.");
+            "Once exhausted, normal speed returns only when Athletics climbs above this percent of the pool. 0 = the moment it is above empty.");
 
         // ------------------------------------------------------------------ regeneration
 
         public static readonly ParamDef RegenDelayBlowTimes = Float("RegenDelayBlowTimes", 2, 0, 20, RegenGroup,
             "Rest before refill (blows)",
-            "How long a fighter must go without attacking before his endurance starts to refill, counted in blow lengths (see the next setting). 2 × 1.5 s = 3 seconds.");
+            "How long a fighter must go without attacking before his Athletics starts to refill, counted in blow lengths (see the next setting). 2 × 1.5 s = 3 seconds.");
 
         public static readonly ParamDef BlowTimeSeconds = Float("BlowTimeSeconds", 1.5, 0.1, 10, RegenGroup,
             "Length of one blow (s)",
@@ -115,12 +115,12 @@ namespace TraxCombat.Core
         // ------------------------------------------------------------------ bars: you and your target
 
         public static readonly ParamDef ShowPlayerBar = Bool("ShowPlayerBar", true, PlayerBarsGroup,
-            "Your endurance bar",
-            "Show your own endurance next to your health bar.");
+            "Your Athletics bar",
+            "Show your own Athletics next to your health bar.");
 
         public static readonly ParamDef ShowTargetBar = Bool("ShowTargetBar", true, PlayerBarsGroup,
-            "Target's endurance bar",
-            "Show a small endurance bar for the fighter you are looking or aiming at. Aiming at a horse shows its rider.");
+            "Target's Athletics bar",
+            "Show a small Athletics bar for the fighter you are looking or aiming at. Aiming at a horse shows its rider.");
 
         public static readonly ParamDef TargetBarMaxDistance = Float("TargetBarMaxDistance", 30, 1, 200, PlayerBarsGroup,
             "Target bar range (m)",
@@ -134,7 +134,7 @@ namespace TraxCombat.Core
 
         public static readonly ParamDef ShowFormationBars = Bool("ShowFormationBars", true, SquadBarsGroup,
             "Squad bars",
-            "Show the average endurance of each of your formations in a bar floating above it.");
+            "Show the average Athletics of each of your formations in a bar floating above it.");
 
         public static readonly ParamDef FormationBarsAlways = Bool("FormationBarsAlways", true, SquadBarsGroup,
             "Squad bars always",
@@ -142,7 +142,7 @@ namespace TraxCombat.Core
 
         public static readonly ParamDef ShowFormationSpread = Bool("ShowFormationSpread", true, SquadBarsGroup,
             "Show the spread",
-            "Draw a band on each squad bar showing how far the men's endurance spreads around the average.");
+            "Draw a band on each squad bar showing how far the men's Athletics spreads around the average.");
 
         public static readonly ParamDef FormationSpreadStdDevs = Float("FormationSpreadStdDevs", 1.0, 0, 3, SquadBarsGroup,
             "Spread band width (std devs)",
@@ -154,7 +154,7 @@ namespace TraxCombat.Core
 
         public static readonly ParamDef ShowInOrderMenu = Bool("ShowInOrderMenu", true, SquadBarsGroup,
             "Orders menu panel",
-            "While the orders menu is open, list each formation's average endurance and spread, for example \"Infantry 72 ± 8\".");
+            "While the orders menu is open, list each formation's average Athletics and spread, for example \"Infantry 72 ± 8\".");
 
         // ------------------------------------------------------------------ advanced
 
@@ -177,7 +177,7 @@ namespace TraxCombat.Core
         {
             DamageRandomEnabled, DamageRandomPercent, DamageRandomMelee, DamageRandomRanged,
             DamageRandomOnMounts, DamageRandomOnShields,
-            EnduranceEnabled, MaxEndurance, CostPerBlow, CostOnMiss, HeroCostMultiplier,
+            AthleticsEnabled, MaxAthletics, CostPerBlow, CostOnMiss, HeroCostMultiplier,
             PartyLeaderCostMultiplier,
             ExhaustedAttackSpeedPercent, ExhaustedRecoverPercent,
             RegenDelayBlowTimes, BlowTimeSeconds, FullRegenSecondsStanding, FullRegenSecondsMoving,
@@ -191,7 +191,7 @@ namespace TraxCombat.Core
         /// <summary>The groups in order.</summary>
         public static readonly IReadOnlyList<ParamGroup> Groups = new[]
         {
-            DamageGroup, EnduranceGroup, ExhaustionGroup, RegenGroup, PlayerBarsGroup, SquadBarsGroup, AdvancedGroup,
+            DamageGroup, AthleticsGroup, ExhaustionGroup, RegenGroup, PlayerBarsGroup, SquadBarsGroup, AdvancedGroup,
         };
 
         private static readonly Dictionary<string, ParamDef> ByKey = BuildIndex();

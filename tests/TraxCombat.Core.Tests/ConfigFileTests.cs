@@ -96,10 +96,10 @@ public class ConfigFileTests
         Assert.Null(read.FileVersion);
 
         var s = new TraxSettings();
-        s.Set("MaxEndurance", 200, "test"); // not in the file → goes back to the default
+        s.Set("MaxAthletics", 200, "test"); // not in the file → goes back to the default
         ConfigFile.Apply(read, s);
         Assert.Equal(30, s.DamageRandomPercent);
-        Assert.Equal(100, s.MaxEndurance);
+        Assert.Equal(100, s.MaxAthletics);
     }
 
     [Fact]
@@ -146,21 +146,21 @@ public class ConfigFileTests
     [Fact]
     public void Out_of_range_is_clamped_and_fractions_of_whole_numbers_rounded()
     {
-        var read = ConfigFile.Read("{ \"DamageRandomPercent\": 500, \"MaxEndurance\": 99.6 }");
+        var read = ConfigFile.Read("{ \"DamageRandomPercent\": 500, \"MaxAthletics\": 99.6 }");
         Assert.Equal(100, read.Values["DamageRandomPercent"]);
-        Assert.Equal(100, read.Values["MaxEndurance"]);
+        Assert.Equal(100, read.Values["MaxAthletics"]);
         Assert.Contains(read.Issues, i => i.Key == "DamageRandomPercent" && i.Kind == ConfigIssueKind.Clamped);
-        Assert.Contains(read.Issues, i => i.Key == "MaxEndurance" && i.Kind == ConfigIssueKind.Rounded);
+        Assert.Contains(read.Issues, i => i.Key == "MaxAthletics" && i.Kind == ConfigIssueKind.Rounded);
     }
 
     [Fact]
     public void Strings_holding_values_are_accepted_including_a_decimal_comma()
     {
-        var read = ConfigFile.Read("{ \"HeroCostMultiplier\": \"0,5\", \"CostOnMiss\": \"off\", \"MaxEndurance\": \"150\" }");
+        var read = ConfigFile.Read("{ \"HeroCostMultiplier\": \"0,5\", \"CostOnMiss\": \"off\", \"MaxAthletics\": \"150\" }");
         Assert.Empty(read.Issues);
         Assert.Equal(0.5, read.Values["HeroCostMultiplier"]);
         Assert.Equal(0, read.Values["CostOnMiss"]);
-        Assert.Equal(150, read.Values["MaxEndurance"]);
+        Assert.Equal(150, read.Values["MaxAthletics"]);
     }
 
     [Fact]

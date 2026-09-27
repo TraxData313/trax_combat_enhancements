@@ -13,12 +13,12 @@ using TraxCombat.Models;
 namespace TraxCombat.Tools
 {
     /// <summary>
-    /// Offline checks for endurance (step 5) - the REAL module code on .NET Framework with the
+    /// Offline checks for Athletics (step 5) - the REAL module code on .NET Framework with the
     /// game's DLLs, no game:
     ///   * <see cref="SpeedPenalty"/> on the game's own <see cref="AgentDrivenProperties"/>;
     ///   * the REAL <see cref="TraxAgentStatModel"/> decorating a stand-in base model that, like
     ///     Sandbox's and CustomBattle's, assigns fresh attack-speed values on every recompute;
-    ///   * the REAL <see cref="EnduranceLogic"/>: swings fed through its action observer, charges,
+    ///   * the REAL <see cref="AthleticsLogic"/>: swings fed through its action observer, charges,
     ///     exhaustion, the speed target, hot swap, the read API, the summary, the error path.
     /// The agents are UNINITIALIZED <see cref="Agent"/> objects (no native side) with only their
     /// index and driven properties set - so nothing here may call a native member (IsActive,
@@ -32,7 +32,7 @@ namespace TraxCombat.Tools
         private const int ActReady = (int)Agent.ActionCodeType.ReadyMelee;
         private const int ActRelease = (int)Agent.ActionCodeType.ReleaseMelee;
 
-        private static EnduranceLogic? _logic;
+        private static AthleticsLogic? _logic;
         private static TraxAgentStatModel? _statTop;
         private static FreshStatsModel? _statBase;
 
@@ -106,7 +106,7 @@ namespace TraxCombat.Tools
 
         private static bool Near(float a, float b) => Math.Abs(a - b) < 1e-4f;
 
-        private static void EnduranceDefaults()
+        private static void AthleticsDefaults()
         {
             S.ResetToDefaults(SettingSources.Defaults);
         }
@@ -140,15 +140,15 @@ namespace TraxCombat.Tools
         [MethodImpl(MethodImplOptions.NoInlining)]
         private static void DecoratorAppliesEachFightersMultiplier()
         {
-            EnduranceDefaults();
+            AthleticsDefaults();
             _statBase = new FreshStatsModel();
             _statTop = new TraxAgentStatModel(new AgentStatCalculateModel[] { _statBase });
             _statTop.Initialize(_statBase);
-            _logic = new EnduranceLogic();
-            SetStatic(typeof(EnduranceLogic), "_current", _logic);
-            typeof(EnduranceLogic).GetMethod("StartEndurance", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(_logic, null);
-            LogHas("[endurance] mission start: ON - pool 100, cost per blow 10.0 / hero 7.5 / party leader 5.");
-            LogHas("[endurance] party-leader rule: no campaign (custom battle) - the side's general, or every hero of a side without one");
+            _logic = new AthleticsLogic();
+            SetStatic(typeof(AthleticsLogic), "_current", _logic);
+            typeof(AthleticsLogic).GetMethod("StartAthletics", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(_logic, null);
+            LogHas("[athletics] mission start: ON - pool 100, cost per blow 10.0 / hero 7.5 / party leader 5.");
+            LogHas("[athletics] party-leader rule: no campaign (custom battle) - the side's general, or every hero of a side without one");
 
             var a = FakeAgent(3);
             var st = _logic.Track(a)!;
@@ -169,10 +169,10 @@ namespace TraxCombat.Tools
             Check(Near(p.SwingSpeedMultiplier, 0.21f), "the penalty compounded over two recomputes: " + p.SwingSpeedMultiplier);
             Check(_statBase.Updates == 3, "the base model was not called on every recompute: " + _statBase.Updates);
 
-            S.Set(SettingsSchema.EnduranceEnabled, false, SettingSources.Mcm);
+            S.Set(SettingsSchema.AthleticsEnabled, false, SettingSources.Mcm);
             _statTop.UpdateAgentStats(a, p);
-            Check(Near(p.SwingSpeedMultiplier, 1.05f), "EnduranceEnabled off did not lift the penalty on a recompute");
-            S.Set(SettingsSchema.EnduranceEnabled, true, SettingSources.Mcm);
+            Check(Near(p.SwingSpeedMultiplier, 1.05f), "AthleticsEnabled off did not lift the penalty on a recompute");
+            S.Set(SettingsSchema.AthleticsEnabled, true, SettingSources.Mcm);
 
             var twin = FakeAgent(3); // same index, another agent (indices are reused)
             _statTop.UpdateAgentStats(twin, twin.AgentDrivenProperties);
@@ -181,10 +181,10 @@ namespace TraxCombat.Tools
             _statTop.UpdateAgentStats(stranger, stranger.AgentDrivenProperties);
             Check(Near(stranger.AgentDrivenProperties.SwingSpeedMultiplier, 1.05f), "an untracked agent got a penalty");
 
-            SetStatic(typeof(EnduranceLogic), "_current", null);
+            SetStatic(typeof(AthleticsLogic), "_current", null);
             _statTop.UpdateAgentStats(a, p);
             Check(Near(p.SwingSpeedMultiplier, 1.05f), "no mission running, yet a penalty was applied");
-            SetStatic(typeof(EnduranceLogic), "_current", _logic);
+            SetStatic(typeof(AthleticsLogic), "_current", _logic);
 
             Check(_logic.Stats.DecoratorScaled == 2, "decorator-applied count " + _logic.Stats.DecoratorScaled + ", expected 2");
             st.SpeedMultiplier = 1f;
@@ -192,7 +192,7 @@ namespace TraxCombat.Tools
 
         private static void Swing(TrackedAgent st, ref double t, double ready, double release, double rest)
         {
-            var r = EnduranceRules.From(S);
+            var r = AthleticsRules.From(S);
             _logic!.ObserveAction(st, ActReady, t, in r);
             t += ready;
             _logic.ObserveAction(st, ActRelease, t, in r);
@@ -215,7 +215,7 @@ namespace TraxCombat.Tools
 
             Swing(st, ref t, 0.5, 0.5, 0.3);
             Check(Math.Abs(st.Fraction - 0.9) < 1e-9, "one swing did not cost 10 of 100: " + st.Fraction);
-            LogHas("[endurance] blow melee (on foot): (agent 3) - cost 10.0, 100.0 → 90.0 of 100");
+            LogHas("[athletics] blow melee (on foot): (agent 3) - cost 10.0, 100.0 → 90.0 of 100");
             for (int i = 0; i < 8; i++) Swing(st, ref t, 0.5, 0.5, 0.3);
             Check(!st.Exhausted && Math.Abs(st.Fraction - 0.1) < 1e-9, "after 9 swings: " + st.Fraction + (st.Exhausted ? " exhausted" : ""));
             Swing(st, ref t, 0.5, 0.5, 0.3);
@@ -228,7 +228,7 @@ namespace TraxCombat.Tools
             Check(st.Blows == 14 && st.Exhausted && st.ExhaustionsEntered == 1, "exhausted swings: blows " + st.Blows + ", entries " + st.ExhaustionsEntered);
 
             // free: kicks, bashes; ranged releases are counted by the poll but charged by the shot event
-            var r = EnduranceRules.From(S);
+            var r = AthleticsRules.From(S);
             _logic.ObserveAction(st, (int)Agent.ActionCodeType.Kick, t, in r);
             _logic.ObserveAction(st, (int)Agent.ActionCodeType.WeaponBash, t + 0.5, in r);
             _logic.ObserveAction(st, (int)Agent.ActionCodeType.ReleaseRanged, t + 1.0, in r);
@@ -249,7 +249,7 @@ namespace TraxCombat.Tools
             lead.IsHero = true;
             lead.IsLeader = true;
             Swing(lead, ref t, 0.5, 0.5, 0.3);
-            LogHas("[endurance] blow melee (on foot): (agent 4) - cost 5.6 (x0.5");
+            LogHas("[athletics] blow melee (on foot): (agent 4) - cost 5.6 (x0.5");
             LogHas(": hero party leader), 100.0 → 94.4 of 100");
             for (int i = 0; i < 16; i++) Swing(lead, ref t, 0.5, 0.5, 0.3);
             Check(!lead.Exhausted, "a party leader was empty before his 18th blow");
@@ -258,7 +258,7 @@ namespace TraxCombat.Tools
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        private static void EnduranceHotSwap()
+        private static void AthleticsHotSwap()
         {
             var a = FirstTracked(3);
             var lead = FirstTracked(4);
@@ -271,65 +271,65 @@ namespace TraxCombat.Tools
             _logic.ApplySettingsChange(S);
             Check(Near(a.SpeedMultiplier, 0.2f), "back to 20% did not re-target");
 
-            Check(EnduranceLogic.TryGetReading(a.Agent, out var read) && read.Enabled && read.Exhausted && read.Points == 0 && Near(read.SpeedMultiplier, 0.2f),
+            Check(AthleticsLogic.TryGetReading(a.Agent, out var read) && read.Enabled && read.Exhausted && read.Points == 0 && Near(read.SpeedMultiplier, 0.2f),
                 "the read API does not report the exhausted fighter");
-            Check(!EnduranceLogic.TryGetReading(FakeAgent(3), out _), "the read API answered for an untracked agent with a reused index");
+            Check(!AthleticsLogic.TryGetReading(FakeAgent(3), out _), "the read API answered for an untracked agent with a reused index");
 
-            S.Set(SettingsSchema.MaxEndurance, 150, SettingSources.Mcm);
-            var r150 = EnduranceRules.From(S);
-            Check(Math.Abs(EnduranceMath.Points(r150, lead) - 0) < 1e-9 && EnduranceLogic.TryGetReading(lead.Agent, out var r2) && r2.Pool == 150,
+            S.Set(SettingsSchema.MaxAthletics, 150, SettingSources.Mcm);
+            var r150 = AthleticsRules.From(S);
+            Check(Math.Abs(AthleticsMath.Points(r150, lead) - 0) < 1e-9 && AthleticsLogic.TryGetReading(lead.Agent, out var r2) && r2.Pool == 150,
                 "a pool change did not reach the read API");
-            S.Set(SettingsSchema.MaxEndurance, 100, SettingSources.Mcm);
+            S.Set(SettingsSchema.MaxAthletics, 100, SettingSources.Mcm);
 
-            S.Set(SettingsSchema.EnduranceEnabled, false, SettingSources.Mcm);
+            S.Set(SettingsSchema.AthleticsEnabled, false, SettingSources.Mcm);
             _logic.ApplySettingsChange(S);
-            LogHas("[endurance] EnduranceEnabled switched OFF mid-mission: 2 fighters back to full, 2 attack-speed penalties lifted (applied on the next tick)");
+            LogHas("[athletics] AthleticsEnabled switched OFF mid-mission: 2 fighters back to full, 2 attack-speed penalties lifted (applied on the next tick)");
             Check(a.Fraction == 1 && !a.Exhausted && a.SpeedMultiplier == 1f && a.SpeedDirty, "switching off did not refill and lift the penalty");
-            Check(EnduranceLogic.TryGetReading(a.Agent, out var off) && !off.Enabled && off.Points == 100 && !off.Exhausted, "switched off, the read API is not full");
-            S.Set(SettingsSchema.EnduranceEnabled, true, SettingSources.Mcm);
+            Check(AthleticsLogic.TryGetReading(a.Agent, out var off) && !off.Enabled && off.Points == 100 && !off.Exhausted, "switched off, the read API is not full");
+            S.Set(SettingsSchema.AthleticsEnabled, true, SettingSources.Mcm);
             _logic.ApplySettingsChange(S);
-            LogHas("[endurance] EnduranceEnabled switched ON mid-mission: everyone starts full");
+            LogHas("[athletics] AthleticsEnabled switched ON mid-mission: everyone starts full");
         }
 
         private static TrackedAgent FirstTracked(int index)
         {
-            var byIndex = (TrackedAgent?[])typeof(EnduranceLogic).GetField("_byIndex", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(_logic);
+            var byIndex = (TrackedAgent?[])typeof(AthleticsLogic).GetField("_byIndex", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(_logic);
             return byIndex[index]!;
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        private static void EnduranceSummary()
+        private static void AthleticsSummary()
         {
-            _logic!.WriteEnduranceSummary();
-            LogHas("[summary] endurance settings at the end: ON - pool 100");
-            LogHas("[summary] endurance blows charged: 32 (melee swings 32, shots/throws 0, couched/braced hits 0, landed-only swings 0, landed-only shots 0) - by riders 0, on foot 32; endurance spent ");
-            LogHas("[summary] endurance detection: melee releases seen 32 (mounted 0)");
-            LogHas("[summary] endurance free (never charged): kicks 1, shield bashes 1,");
-            LogHas("[summary] endurance exhaustions: 2 entered, 0 left");
-            LogHas("[summary] endurance you: no player fighter this mission");
+            _logic!.WriteAthleticsSummary();
+            LogHas("[summary] Athletics settings at the end: ON - pool 100");
+            LogHas("[summary] Athletics blows charged: 32 (melee swings 32, shots/throws 0, couched/braced hits 0, landed-only swings 0, landed-only shots 0) - by riders 0, on foot 32; Athletics spent ");
+            LogHas("[summary] Athletics detection: melee releases seen 32 (mounted 0)");
+            LogHas("[summary] Athletics free (never charged): kicks 1, shield bashes 1,");
+            LogHas("[summary] Athletics exhaustions: 2 entered, 0 left");
+            LogHas("[summary] Athletics you: no player fighter this mission");
             LogHas("[summary] attack speed check, melee - time between swings: fresh median ");
             LogHas("- exhausted attacks ARE slower");
             LogHas("[summary] attack speed check, melee - swing length (swings that hit nothing): fresh median ");
             LogHas("[summary] attack speed check, ranged - time between shots: fresh no samples | exhausted no samples - not enough samples to judge");
             LogHas("[summary] speeds for step 5c: ");
-            LogHas("[summary] endurance errors: none");
+            LogHas("[summary] Athletics errors: none");
             LogHas("[speed] first exhausted fighter ((agent 3)) at mission end: recovered");
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        private static void EnduranceFailSafe()
+        private static void AthleticsFailSafe()
         {
-            int linesBefore = Occurrences(LogText, "[error] endurance.smoke: ");
-            for (int i = 0; i < 3; i++) EnduranceLogic.Failed("endurance.smoke", new InvalidOperationException("smoke: endurance failure"));
-            Check(Occurrences(LogText, "[error] endurance.smoke: ") - linesBefore == 1, "expected exactly one [error] endurance.smoke line");
+            int linesBefore = Occurrences(LogText, "[error] athletics.smoke: ");
+            for (int i = 0; i < 3; i++) AthleticsLogic.Failed("athletics.smoke", new InvalidOperationException("smoke: Athletics failure"));
+            Check(Occurrences(LogText, "[error] athletics.smoke: ") - linesBefore == 1, "expected exactly one [error] athletics.smoke line");
             Check(_logic!.Stats.Errors == 3, "errors counted: " + _logic.Stats.Errors);
-            Check(_logic.Stats.SummaryLines(EnduranceRules.From(S), c => c.ToString(), new System.Collections.Generic.List<System.Collections.Generic.KeyValuePair<string, FormationEnduranceStats>>())
-                .Contains("endurance errors: 3 (endurance.smoke 3) - each failed spot fell back to vanilla (no cost, no penalty); the first per place is logged as [error] with its stack"),
+            Check(_logic.Stats.SummaryLines(AthleticsRules.From(S), c => c.ToString(), new System.Collections.Generic.List<System.Collections.Generic.KeyValuePair<string, FormationAthleticsStats>>())
+                .Contains("Athletics errors: 3 (athletics.smoke 3) - each failed spot fell back to vanilla (no cost, no penalty); the first per place is logged as [error] with its stack"),
                 "the summary does not report the errors");
 
             // Leave things as a player would find them: no mission running, the file's values back.
-            SetStatic(typeof(EnduranceLogic), "_current", null);
-            ConfigStore.Reload("after the endurance smoke");
+            SetStatic(typeof(AthleticsLogic), "_current", null);
+            ConfigStore.Reload("after the Athletics smoke");
         }
     }
 }

@@ -2,19 +2,19 @@ using TraxCombat.Core;
 
 namespace TraxCombat.Core.Tests;
 
-public class EnduranceTests
+public class AthleticsTests
 {
     /// <summary>DESIGN's defaults, as a player without a config file has them.</summary>
-    private static EnduranceRules Defaults(bool enabled = true, int max = 100, float cost = 10, bool costOnMiss = true,
+    private static AthleticsRules Defaults(bool enabled = true, int max = 100, float cost = 10, bool costOnMiss = true,
         float hero = 0.75f, float leader = 0.75f, int speed = 20, int recover = 0, float delayBlows = 2, float blowTime = 1.5f,
         float standing = 60, float moving = 120, float threshold = 0.5f)
         => new(enabled, max, cost, costOnMiss, hero, leader, speed, recover, delayBlows, blowTime, standing, moving, threshold);
 
-    private static int BlowsToEmpty(Fighter f, EnduranceRules r)
+    private static int BlowsToEmpty(Fighter f, AthleticsRules r)
     {
         for (int i = 1; i <= 1000; i++)
         {
-            var o = EnduranceMath.Charge(f, r, i);
+            var o = AthleticsMath.Charge(f, r, i);
             if (o.EnteredExhaustion) return i;
         }
         return -1;
@@ -24,16 +24,16 @@ public class EnduranceTests
     public void Rules_read_the_live_settings()
     {
         var s = new TraxSettings();
-        var r = EnduranceRules.From(s);
+        var r = AthleticsRules.From(s);
         Assert.True(r.Enabled);
-        Assert.Equal(100, r.MaxEndurance);
+        Assert.Equal(100, r.MaxAthletics);
         Assert.Equal(10f, r.CostPerBlow);
         Assert.Equal(20, r.ExhaustedAttackSpeedPercent);
         Assert.Equal(3.0, r.RegenDelaySeconds, 6);
 
         s.Set(SettingsSchema.CostPerBlow, 20, SettingSources.Mcm);
-        s.Set(SettingsSchema.EnduranceEnabled, false, SettingSources.Mcm);
-        var after = EnduranceRules.From(s);
+        s.Set(SettingsSchema.AthleticsEnabled, false, SettingSources.Mcm);
+        var after = AthleticsRules.From(s);
         Assert.Equal(20f, after.CostPerBlow);
         Assert.False(after.Enabled);
     }
@@ -42,11 +42,11 @@ public class EnduranceTests
     public void Costs_are_10_for_a_soldier_7_5_for_a_hero_5_6_for_a_party_leader()
     {
         var r = Defaults();
-        Assert.Equal(10.0, EnduranceMath.BlowCostPoints(r, new Fighter()), 6);
-        Assert.Equal(7.5, EnduranceMath.BlowCostPoints(r, new Fighter { IsHero = true }), 6);
-        Assert.Equal(5.625, EnduranceMath.BlowCostPoints(r, new Fighter { IsHero = true, IsLeader = true }), 6);
+        Assert.Equal(10.0, AthleticsMath.BlowCostPoints(r, new Fighter()), 6);
+        Assert.Equal(7.5, AthleticsMath.BlowCostPoints(r, new Fighter { IsHero = true }), 6);
+        Assert.Equal(5.625, AthleticsMath.BlowCostPoints(r, new Fighter { IsHero = true, IsLeader = true }), 6);
         // a leader flag alone (custom battle general who is not a hero - defensive) still stacks one discount
-        Assert.Equal(7.5, EnduranceMath.BlowCostPoints(r, new Fighter { IsLeader = true }), 6);
+        Assert.Equal(7.5, AthleticsMath.BlowCostPoints(r, new Fighter { IsLeader = true }), 6);
     }
 
     [Fact]
@@ -63,10 +63,10 @@ public class EnduranceTests
     {
         var r = Defaults();
         var f = new Fighter();
-        for (int i = 1; i <= 9; i++) EnduranceMath.Charge(f, r, i);
-        Assert.Equal(10.0, EnduranceMath.Points(r, f), 6);
+        for (int i = 1; i <= 9; i++) AthleticsMath.Charge(f, r, i);
+        Assert.Equal(10.0, AthleticsMath.Points(r, f), 6);
         Assert.False(f.Exhausted);
-        var o = EnduranceMath.Charge(f, r, 10);
+        var o = AthleticsMath.Charge(f, r, 10);
         Assert.True(o.Charged);
         Assert.True(o.EnteredExhaustion);
         Assert.Equal(10.0, o.Before, 6);
@@ -84,8 +84,8 @@ public class EnduranceTests
     {
         var r = Defaults(cost: 100);
         var f = new Fighter();
-        Assert.True(EnduranceMath.Charge(f, r, 1).EnteredExhaustion);
-        var again = EnduranceMath.Charge(f, r, 2);
+        Assert.True(AthleticsMath.Charge(f, r, 1).EnteredExhaustion);
+        var again = AthleticsMath.Charge(f, r, 2);
         Assert.False(again.EnteredExhaustion);
         Assert.Equal(0.0, again.After);
         Assert.True(f.Exhausted);
@@ -97,7 +97,7 @@ public class EnduranceTests
     public void The_outcome_reports_cost_and_multiplier_for_the_log()
     {
         var r = Defaults();
-        var o = EnduranceMath.Charge(new Fighter { IsHero = true, IsLeader = true }, r, 5);
+        var o = AthleticsMath.Charge(new Fighter { IsHero = true, IsLeader = true }, r, 5);
         Assert.Equal(5.625, o.Cost, 6);
         Assert.Equal(0.5625, o.Multiplier, 6);
         Assert.Equal(100.0, o.Pool);
@@ -109,11 +109,11 @@ public class EnduranceTests
     public void Changing_the_pool_mid_battle_keeps_each_fighters_share()
     {
         var f = new Fighter();
-        EnduranceMath.Charge(f, Defaults(max: 100), 1);                 // 90 of 100 = 90%
-        Assert.Equal(90.0, EnduranceMath.Points(Defaults(max: 100), f), 6);
+        AthleticsMath.Charge(f, Defaults(max: 100), 1);                 // 90 of 100 = 90%
+        Assert.Equal(90.0, AthleticsMath.Points(Defaults(max: 100), f), 6);
         var bigger = Defaults(max: 200);
-        Assert.Equal(180.0, EnduranceMath.Points(bigger, f), 6);         // still 90%
-        var o = EnduranceMath.Charge(f, bigger, 2);                      // 10 of 200 = 5%
+        Assert.Equal(180.0, AthleticsMath.Points(bigger, f), 6);         // still 90%
+        var o = AthleticsMath.Charge(f, bigger, 2);                      // 10 of 200 = 5%
         Assert.Equal(180.0, o.Before, 6);
         Assert.Equal(170.0, o.After, 6);
         Assert.Equal(0.85, f.Fraction, 9);
@@ -124,12 +124,12 @@ public class EnduranceTests
     {
         var r = Defaults(); // delay 3 s, full in 60 s standing
         var f = new Fighter();
-        EnduranceMath.Charge(f, r, 10.0);                                // 90%
-        var during = EnduranceMath.Regen(f, r, 12.9, 0.1, 0f, 5f);
+        AthleticsMath.Charge(f, r, 10.0);                                // 90%
+        var during = AthleticsMath.Regen(f, r, 12.9, 0.1, 0f, 5f);
         Assert.Equal(0.0, during.Gained);
         Assert.Equal(0.9, f.Fraction, 9);
         // the step (12.9, 13.5] straddles the end of the delay at 13.0: only 0.5 s refills
-        var straddle = EnduranceMath.Regen(f, r, 13.5, 0.6, 0f, 5f);
+        var straddle = AthleticsMath.Regen(f, r, 13.5, 0.6, 0f, 5f);
         Assert.Equal(0.5, straddle.Seconds, 9);
         Assert.Equal(0.5 / 60, straddle.Gained, 9);
         Assert.True(f.Regenerating);
@@ -140,9 +140,9 @@ public class EnduranceTests
     {
         var r = Defaults(cost: 100);
         var standing = new Fighter();
-        EnduranceMath.Charge(standing, r, 0);
+        AthleticsMath.Charge(standing, r, 0);
         var moving = new Fighter();
-        EnduranceMath.Charge(moving, r, 0);
+        AthleticsMath.Charge(moving, r, 0);
 
         double t = 3.0; // regen starts here
         RegenOutcome last = default;
@@ -150,7 +150,7 @@ public class EnduranceTests
         while (standing.Fraction < 1 && steps < 10000)
         {
             t += 0.1;
-            last = EnduranceMath.Regen(standing, r, t, 0.1, 0.2f, 5f);
+            last = AthleticsMath.Regen(standing, r, t, 0.1, 0.2f, 5f);
             steps++;
         }
         Assert.True(last.ReachedFull);
@@ -164,7 +164,7 @@ public class EnduranceTests
         while (moving.Fraction < 1 && steps < 10000)
         {
             t += 0.1;
-            last = EnduranceMath.Regen(moving, r, t, 0.1, 3.0f, 5f);
+            last = AthleticsMath.Regen(moving, r, t, 0.1, 3.0f, 5f);
             steps++;
         }
         Assert.True(last.ReachedFull);
@@ -177,11 +177,11 @@ public class EnduranceTests
     {
         var r = Defaults(threshold: 0.5f);
         var f = new Fighter();
-        Assert.False(EnduranceMath.IsMoving(r, 0.5f));
-        Assert.True(EnduranceMath.IsMoving(r, 0.51f));
-        Assert.Equal(1.0 / 60, EnduranceMath.RegenFractionPerSecond(r, f, 0.5f, 5f), 9);
-        Assert.Equal(1.0 / 120, EnduranceMath.RegenFractionPerSecond(r, f, 8f, 12f), 9);
-        Assert.True(EnduranceMath.IsMoving(Defaults(threshold: 0f), 0.01f));
+        Assert.False(AthleticsMath.IsMoving(r, 0.5f));
+        Assert.True(AthleticsMath.IsMoving(r, 0.51f));
+        Assert.Equal(1.0 / 60, AthleticsMath.RegenFractionPerSecond(r, f, 0.5f, 5f), 9);
+        Assert.Equal(1.0 / 120, AthleticsMath.RegenFractionPerSecond(r, f, 8f, 12f), 9);
+        Assert.True(AthleticsMath.IsMoving(Defaults(threshold: 0f), 0.01f));
     }
 
     [Fact]
@@ -189,25 +189,25 @@ public class EnduranceTests
     {
         var r = Defaults();
         var f = new Fighter();
-        EnduranceMath.Charge(f, r, 0);
-        EnduranceMath.Regen(f, r, 4.0, 1.0, 0f, 5f); // 1 s of refill
+        AthleticsMath.Charge(f, r, 0);
+        AthleticsMath.Regen(f, r, 4.0, 1.0, 0f, 5f); // 1 s of refill
         Assert.True(f.Regenerating);
         double before = f.Fraction;
-        EnduranceMath.Charge(f, r, 4.0);
+        AthleticsMath.Charge(f, r, 4.0);
         Assert.False(f.Regenerating);
         Assert.Equal(before - 0.1, f.Fraction, 9);
-        Assert.Equal(0.0, EnduranceMath.Regen(f, r, 6.9, 2.9, 0f, 5f).Gained); // still inside the new 3 s
+        Assert.Equal(0.0, AthleticsMath.Regen(f, r, 6.9, 2.9, 0f, 5f).Gained); // still inside the new 3 s
     }
 
     [Fact]
-    public void Speed_returns_the_moment_endurance_is_above_zero_by_default()
+    public void Speed_returns_the_moment_athletics_is_above_zero_by_default()
     {
         var r = Defaults(cost: 100);
         var f = new Fighter();
-        EnduranceMath.Charge(f, r, 10);
+        AthleticsMath.Charge(f, r, 10);
         Assert.True(f.Exhausted);
-        Assert.False(EnduranceMath.Regen(f, r, 13.0, 3.0, 0f, 5f).Recovered); // delay just ended, nothing gained
-        var o = EnduranceMath.Regen(f, r, 13.1, 0.1, 0f, 5f);
+        Assert.False(AthleticsMath.Regen(f, r, 13.0, 3.0, 0f, 5f).Recovered); // delay just ended, nothing gained
+        var o = AthleticsMath.Regen(f, r, 13.1, 0.1, 0f, 5f);
         Assert.True(o.Recovered);
         Assert.Equal(3.1, o.ExhaustedSeconds, 6);
         Assert.False(f.Exhausted);
@@ -218,27 +218,27 @@ public class EnduranceTests
     {
         var r = Defaults(cost: 100, recover: 10);
         var f = new Fighter();
-        EnduranceMath.Charge(f, r, 0);
+        AthleticsMath.Charge(f, r, 0);
         double t = 3.0;
         while (f.Fraction < 0.09)
         {
             t += 0.5;
-            Assert.False(EnduranceMath.Regen(f, r, t, 0.5, 0f, 5f).Recovered);
+            Assert.False(AthleticsMath.Regen(f, r, t, 0.5, 0f, 5f).Recovered);
         }
         Assert.True(f.Exhausted);                           // ~9.2%: not yet
-        Assert.True(EnduranceMath.Regen(f, r, t + 1.0, 1.0, 0f, 5f).Recovered); // 1 s more: ~10.8% - above 10%
-        EnduranceMath.Charge(f, Defaults(cost: 100), t + 1.0);                 // empty again
+        Assert.True(AthleticsMath.Regen(f, r, t + 1.0, 1.0, 0f, 5f).Recovered); // 1 s more: ~10.8% - above 10%
+        AthleticsMath.Charge(f, Defaults(cost: 100), t + 1.0);                 // empty again
         Assert.True(f.Exhausted);
         t += 1.0;
         while (f.Fraction < 0.07)
         {
             t += 0.5;
-            Assert.False(EnduranceMath.Regen(f, r, t, 0.5, 0f, 5f).Recovered);
+            Assert.False(AthleticsMath.Regen(f, r, t, 0.5, 0f, 5f).Recovered);
         }
         // the player lowers the threshold to 5% mid-battle; he is also swinging, so nothing refills
         f.LastBlowTime = t;
         var lowered = Defaults(cost: 100, recover: 5);
-        var o = EnduranceMath.Regen(f, lowered, t + 0.1, 0.1, 0f, 5f);
+        var o = AthleticsMath.Regen(f, lowered, t + 0.1, 0.1, 0f, 5f);
         Assert.Equal(0.0, o.Gained);
         Assert.True(o.Recovered);
     }
@@ -248,24 +248,24 @@ public class EnduranceTests
     {
         var r = Defaults(cost: 100);
         var f = new Fighter();
-        Assert.Equal(1f, EnduranceMath.AttackSpeedMultiplier(r, f));
-        EnduranceMath.Charge(f, r, 0);
-        Assert.Equal(0.2f, EnduranceMath.AttackSpeedMultiplier(r, f), 5);
-        Assert.Equal(0.5f, EnduranceMath.AttackSpeedMultiplier(Defaults(speed: 50), f), 5);
-        Assert.Equal(1f, EnduranceMath.AttackSpeedMultiplier(Defaults(enabled: false), f));
-        Assert.True(EnduranceMath.IsExhausted(r, f));
-        Assert.False(EnduranceMath.IsExhausted(Defaults(enabled: false), f));
+        Assert.Equal(1f, AthleticsMath.AttackSpeedMultiplier(r, f));
+        AthleticsMath.Charge(f, r, 0);
+        Assert.Equal(0.2f, AthleticsMath.AttackSpeedMultiplier(r, f), 5);
+        Assert.Equal(0.5f, AthleticsMath.AttackSpeedMultiplier(Defaults(speed: 50), f), 5);
+        Assert.Equal(1f, AthleticsMath.AttackSpeedMultiplier(Defaults(enabled: false), f));
+        Assert.True(AthleticsMath.IsExhausted(r, f));
+        Assert.False(AthleticsMath.IsExhausted(Defaults(enabled: false), f));
     }
 
     [Fact]
     public void A_speed_update_is_needed_for_a_real_step_or_any_move_to_or_from_one()
     {
-        Assert.True(EnduranceMath.SpeedUpdateNeeded(1f, 0.2f));
-        Assert.True(EnduranceMath.SpeedUpdateNeeded(0.2f, 1f));
-        Assert.True(EnduranceMath.SpeedUpdateNeeded(0.2f, 0.5f));
-        Assert.False(EnduranceMath.SpeedUpdateNeeded(0.2f, 0.2f));
-        Assert.False(EnduranceMath.SpeedUpdateNeeded(0.50f, 0.51f));
-        Assert.True(EnduranceMath.SpeedUpdateNeeded(0.995f, 1f)); // back to exactly full speed
+        Assert.True(AthleticsMath.SpeedUpdateNeeded(1f, 0.2f));
+        Assert.True(AthleticsMath.SpeedUpdateNeeded(0.2f, 1f));
+        Assert.True(AthleticsMath.SpeedUpdateNeeded(0.2f, 0.5f));
+        Assert.False(AthleticsMath.SpeedUpdateNeeded(0.2f, 0.2f));
+        Assert.False(AthleticsMath.SpeedUpdateNeeded(0.50f, 0.51f));
+        Assert.True(AthleticsMath.SpeedUpdateNeeded(0.995f, 1f)); // back to exactly full speed
     }
 
     [Fact]
@@ -273,20 +273,20 @@ public class EnduranceTests
     {
         var off = Defaults(enabled: false);
         var f = new Fighter();
-        var o = EnduranceMath.Charge(f, off, 1);
+        var o = AthleticsMath.Charge(f, off, 1);
         Assert.False(o.Charged);
         Assert.Equal(1.0, f.Fraction);
         Assert.Equal(0, f.Blows);
 
-        EnduranceMath.Charge(f, Defaults(cost: 100), 2); // exhausted while on
-        var read = EnduranceMath.Read(off, f);
+        AthleticsMath.Charge(f, Defaults(cost: 100), 2); // exhausted while on
+        var read = AthleticsMath.Read(off, f);
         Assert.False(read.Enabled);
         Assert.Equal(100.0, read.Points);
         Assert.Equal(1.0, read.Fraction);
         Assert.False(read.Exhausted);
-        Assert.Equal(0.0, EnduranceMath.Regen(f, off, 100, 10, 0f, 5f).Gained);
+        Assert.Equal(0.0, AthleticsMath.Regen(f, off, 100, 10, 0f, 5f).Gained);
 
-        f.ResetFull(); // what the module does when EnduranceEnabled goes off
+        f.ResetFull(); // what the module does when AthleticsEnabled goes off
         Assert.Equal(1.0, f.Fraction);
         Assert.False(f.Exhausted);
         Assert.False(f.Regenerating);
@@ -297,7 +297,7 @@ public class EnduranceTests
     {
         var r = Defaults(cost: 0);
         var f = new Fighter();
-        var o = EnduranceMath.Charge(f, r, 7);
+        var o = AthleticsMath.Charge(f, r, 7);
         Assert.True(o.Charged);
         Assert.Equal(0.0, o.Cost);
         Assert.Equal(1.0, f.Fraction);
@@ -310,10 +310,10 @@ public class EnduranceTests
     {
         var r = Defaults(delayBlows: 0);
         var f = new Fighter { IsHero = true };
-        EnduranceMath.Charge(f, r, 5);
-        var o = EnduranceMath.Regen(f, r, 5.5, 0.5, 0f, 5f);
+        AthleticsMath.Charge(f, r, 5);
+        var o = AthleticsMath.Regen(f, r, 5.5, 0.5, 0f, 5f);
         Assert.Equal(0.5, o.Seconds, 9);
-        var read = EnduranceMath.Read(r, f);
+        var read = AthleticsMath.Read(r, f);
         Assert.True(read.Enabled);
         Assert.True(read.IsHero);
         Assert.Equal(100.0, read.Pool);

@@ -11,8 +11,8 @@ using TraxCombat.Models;
 namespace TraxCombat.Missions
 {
     /// <summary>
-    /// The endurance engine (DESIGN §2) - per-fighter state, blow detection, regen, the attack-speed
-    /// penalty and hot swap. The rules themselves are Core's pure <see cref="EnduranceMath"/>; this
+    /// The Athletics engine (DESIGN §2) - per-fighter state, blow detection, regen, the attack-speed
+    /// penalty and hot swap. The rules themselves are Core's pure <see cref="AthleticsMath"/>; this
     /// file feeds them from the game (RESEARCH §B-§F):
     ///
     /// STATE: one <see cref="TrackedAgent"/> per human agent, built at <c>OnAgentBuild</c> (+ a sweep
@@ -34,16 +34,16 @@ namespace TraxCombat.Missions
     /// the recovery are that coarse), only for fighters below full or exhausted: the horse's speed
     /// for a rider, its top speed passed along for step 5c.
     ///
-    /// SPEED: the multiplier (<see cref="EnduranceMath.AttackSpeedMultiplier"/>, a float per fighter)
+    /// SPEED: the multiplier (<see cref="AthleticsMath.AttackSpeedMultiplier"/>, a float per fighter)
     /// changes only on a transition or a settings change; the fighter is marked and the tick loop
     /// calls <c>Agent.UpdateAgentProperties()</c> once - never from inside an engine hit callback -
     /// and <see cref="TraxAgentStatModel"/> applies the multiplier on that and every later recompute.
     ///
     /// HOT SWAP: every rule reads <see cref="TraxSettings.Shared"/> at use; the tick compares the
     /// settings version and, on a change, re-targets speeds (ExhaustedAttackSpeedPercent) or puts
-    /// everyone back to full and lifts every penalty (EnduranceEnabled off).
+    /// everyone back to full and lifts every penalty (AthleticsEnabled off).
     /// </summary>
-    public sealed partial class EnduranceLogic
+    public sealed partial class AthleticsLogic
     {
         /// <summary>Regen step (engine plumbing, see the class doc).</summary>
         private const float RegenStepSeconds = 0.1f;
@@ -58,17 +58,17 @@ namespace TraxCombat.Missions
         private const int ActionKick = (int)Agent.ActionCodeType.Kick;
         private const int ActionWeaponBash = (int)Agent.ActionCodeType.WeaponBash;
 
-        private static EnduranceLogic? _current;
+        private static AthleticsLogic? _current;
 
         private TrackedAgent?[] _byIndex = new TrackedAgent?[512];
         private TrackedAgent[] _dense = new TrackedAgent[512];
         private int _count;
         private int _swept;
         private readonly System.Collections.Generic.List<TrackedAgent> _heroes = new System.Collections.Generic.List<TrackedAgent>();
-        private readonly EnduranceStats _stats = new EnduranceStats();
+        private readonly AthleticsStats _stats = new AthleticsStats();
 
         /// <summary>This mission's numbers (the offline smoke reads them).</summary>
-        internal EnduranceStats Stats => _stats;
+        internal AthleticsStats Stats => _stats;
 
         private int _seenVersion = -1;
         private bool _seenEnabled;
@@ -89,23 +89,23 @@ namespace TraxCombat.Missions
         private bool _firstRecovering;
         private bool _firstDone;
 
-        /// <summary>The endurance logic of the mission running now (null between missions) - the stat
+        /// <summary>The Athletics logic of the mission running now (null between missions) - the stat
         /// decorator and the HUD read through it.</summary>
-        internal static EnduranceLogic? Current => _current;
+        internal static AthleticsLogic? Current => _current;
 
-        private static EnduranceRules Rules => EnduranceRules.From(TraxSettings.Shared);
+        private static AthleticsRules Rules => AthleticsRules.From(TraxSettings.Shared);
 
         // ------------------------------------------------------------------ lifecycle
 
-        private void StartEndurance()
+        private void StartAthletics()
         {
             _current = this;
             var r = Rules;
             _seenVersion = TraxSettings.Shared.Version;
             _seenEnabled = r.Enabled;
             _seenSpeedPercent = r.ExhaustedAttackSpeedPercent;
-            TraxLog.Info("endurance", "mission start: " + EnduranceStats.DescribeRules(in r) + " - read live");
-            TraxLog.Info("endurance", Campaign.Current != null
+            TraxLog.Info("athletics", "mission start: " + AthleticsStats.DescribeRules(in r) + " - read live");
+            TraxLog.Info("athletics", Campaign.Current != null
                 ? "party-leader rule: campaign - the hero who leads the fighter's own party (you for yours)"
                 : "party-leader rule: no campaign (custom battle) - the side's general, or every hero of a side without one");
             var top = MissionGameModels.Current?.AgentStatCalculateModel;
@@ -115,7 +115,7 @@ namespace TraxCombat.Missions
                   + ", not ours - the attack-speed penalty will NOT apply (another mod registered after us?)");
         }
 
-        private void StopEndurance()
+        private void StopAthletics()
         {
             if (ReferenceEquals(_current, this)) _current = null;
         }
@@ -130,7 +130,7 @@ namespace TraxCombat.Missions
                 if (Get(a) == null) Track(a);
             }
             _swept = _count - before;
-            TraxLog.Info("endurance", "first tick: tracking " + _count + " fighters" + (_swept > 0 ? " (" + _swept + " picked up by the first-tick sweep)" : string.Empty));
+            TraxLog.Info("athletics", "first tick: tracking " + _count + " fighters" + (_swept > 0 ? " (" + _swept + " picked up by the first-tick sweep)" : string.Empty));
         }
 
         // ------------------------------------------------------------------ per-agent state
@@ -234,24 +234,24 @@ namespace TraxCombat.Missions
             if (st.IsLeader)
             {
                 _stats.LeaderNames.Add(st.HeroName + (a.IsMainAgent ? " (you)" : string.Empty));
-                TraxLog.Limited("endurance", "party leader: " + st.HeroName + (st.IsHero ? "" : " (not a hero)")
-                    + " - pays x" + F2(EnduranceMath.CostMultiplier(in r, st)) + " per blow (" + F1(EnduranceMath.BlowCostPoints(in r, st)) + " now)",
-                    "endurance-leader");
+                TraxLog.Limited("athletics", "party leader: " + st.HeroName + (st.IsHero ? "" : " (not a hero)")
+                    + " - pays x" + F2(AthleticsMath.CostMultiplier(in r, st)) + " per blow (" + F1(AthleticsMath.BlowCostPoints(in r, st)) + " now)",
+                    "athletics-leader");
             }
             else if (TraxLog.VerboseOn)
             {
-                TraxLog.Verbose("endurance", "hero: " + st.HeroName + " - pays x" + F2(EnduranceMath.CostMultiplier(in r, st))
-                    + " per blow (" + F1(EnduranceMath.BlowCostPoints(in r, st)) + " now)", "endurance-hero");
+                TraxLog.Verbose("athletics", "hero: " + st.HeroName + " - pays x" + F2(AthleticsMath.CostMultiplier(in r, st))
+                    + " per blow (" + F1(AthleticsMath.BlowCostPoints(in r, st)) + " now)", "athletics-hero");
             }
         }
 
         // ------------------------------------------------------------------ the tick
 
-        private void TickEndurance(float dt)
+        private void TickAthletics(float dt)
         {
             var settings = TraxSettings.Shared;
             if (settings.Version != _seenVersion) ApplySettingsChange(settings);
-            var r = EnduranceRules.From(settings);
+            var r = AthleticsRules.From(settings);
             double now = Mission.CurrentTime;
             long start = Stopwatch.GetTimestamp();
             TrackPlayer();
@@ -275,7 +275,7 @@ namespace TraxCombat.Missions
                 catch (Exception e)
                 {
                     st.SpeedDirty = false;
-                    Failed("endurance.poll", e);
+                    Failed("athletics.poll", e);
                 }
             }
 
@@ -295,7 +295,7 @@ namespace TraxCombat.Missions
                 }
                 catch (Exception e)
                 {
-                    Failed("endurance.formation-stats", e);
+                    Failed("athletics.formation-stats", e);
                 }
             }
 
@@ -314,7 +314,7 @@ namespace TraxCombat.Missions
         /// <summary>The channel-1 action changed (seen by the poll or inside a hit): the falling edge
         /// of a swing ends its measured length, the rising edge into ReleaseMelee is a swing; ranged
         /// releases, kicks and bashes are counted for the cross-checks (never charged here).</summary>
-        internal void ObserveAction(TrackedAgent st, int action, double now, in EnduranceRules r)
+        internal void ObserveAction(TrackedAgent st, int action, double now, in AthleticsRules r)
         {
             int prev = st.PrevAction;
             st.PrevAction = action;
@@ -337,7 +337,7 @@ namespace TraxCombat.Missions
             }
         }
 
-        private void StartRelease(TrackedAgent st, double now, in EnduranceRules r)
+        private void StartRelease(TrackedAgent st, double now, in AthleticsRules r)
         {
             bool mounted = st.Agent.MountAgent != null;
             _stats.MeleeReleasesSeen++;
@@ -383,9 +383,9 @@ namespace TraxCombat.Missions
 
         // ------------------------------------------------------------------ charging
 
-        private void Charge(TrackedAgent st, BlowKind kind, double now, in EnduranceRules r, bool mounted)
+        private void Charge(TrackedAgent st, BlowKind kind, double now, in AthleticsRules r, bool mounted)
         {
-            var o = EnduranceMath.Charge(st, in r, now);
+            var o = AthleticsMath.Charge(st, in r, now);
             if (!o.Charged) return;
             _stats.AddCharge(kind, mounted, o.Before - o.After); // what was really drained (a swing at 0 drains nothing)
             if (TraxLog.VerboseOn) LogBlow(st, kind, in o, mounted);
@@ -395,16 +395,16 @@ namespace TraxCombat.Missions
 
         /// <summary>Recompute the fighter's speed multiplier from the live rules; if it moved enough,
         /// take it and mark the fighter for a properties recompute. True when marked.</summary>
-        private static bool RetargetSpeed(TrackedAgent st, in EnduranceRules r)
+        private static bool RetargetSpeed(TrackedAgent st, in AthleticsRules r)
         {
-            float desired = EnduranceMath.AttackSpeedMultiplier(in r, st);
-            if (!EnduranceMath.SpeedUpdateNeeded(st.SpeedMultiplier, desired)) return false;
+            float desired = AthleticsMath.AttackSpeedMultiplier(in r, st);
+            if (!AthleticsMath.SpeedUpdateNeeded(st.SpeedMultiplier, desired)) return false;
             st.SpeedMultiplier = desired;
             st.SpeedDirty = true;
             return true;
         }
 
-        private void OnExhausted(TrackedAgent st, double now, in EnduranceRules r)
+        private void OnExhausted(TrackedAgent st, double now, in AthleticsRules r)
         {
             _stats.ExhaustionsEntered++;
             if (_firstExhausted == null)
@@ -423,14 +423,14 @@ namespace TraxCombat.Missions
             }
             if (st.Agent.IsMainAgent)
             {
-                TraxLog.Limited("endurance", "YOU are exhausted at " + Sec(now) + " s: 0 of " + F0(EnduranceMath.PoolPoints(in r, st))
+                TraxLog.Limited("athletics", "YOU are exhausted at " + Sec(now) + " s: 0 of " + F0(AthleticsMath.PoolPoints(in r, st))
                     + " after " + st.Blows + " blows this mission - attacks at " + r.ExhaustedAttackSpeedPercent
-                    + "% speed until you rest (refill starts " + F1(r.RegenDelaySeconds) + " s after your last blow)", "endurance-player");
+                    + "% speed until you rest (refill starts " + F1(r.RegenDelaySeconds) + " s after your last blow)", "athletics-player");
             }
             else if (TraxLog.VerboseOn)
             {
-                TraxLog.Verbose("endurance", "exhausted: " + Name(st) + " at " + Sec(now) + " s after " + st.Blows + " blows - attacks x"
-                    + F2(st.SpeedMultiplier), "endurance-exhaust");
+                TraxLog.Verbose("athletics", "exhausted: " + Name(st) + " at " + Sec(now) + " s after " + st.Blows + " blows - attacks x"
+                    + F2(st.SpeedMultiplier), "athletics-exhaust");
             }
         }
 
@@ -482,7 +482,7 @@ namespace TraxCombat.Missions
             _seenVersion = settings.Version;
             try
             {
-                var r = EnduranceRules.From(settings);
+                var r = AthleticsRules.From(settings);
                 if (r.Enabled != _seenEnabled)
                 {
                     _seenEnabled = r.Enabled;
@@ -496,12 +496,12 @@ namespace TraxCombat.Missions
                             st.ResetFull();
                             if (RetargetSpeed(st, in r)) lifted++;
                         }
-                        TraxLog.Info("endurance", "EnduranceEnabled switched OFF mid-mission: " + refilled + " fighters back to full, "
+                        TraxLog.Info("athletics", "AthleticsEnabled switched OFF mid-mission: " + refilled + " fighters back to full, "
                             + lifted + " attack-speed penalties lifted (applied on the next tick)");
                     }
                     else
                     {
-                        TraxLog.Info("endurance", "EnduranceEnabled switched ON mid-mission: everyone starts full");
+                        TraxLog.Info("athletics", "AthleticsEnabled switched ON mid-mission: everyone starts full");
                     }
                 }
                 if (r.ExhaustedAttackSpeedPercent != _seenSpeedPercent)
@@ -516,13 +516,13 @@ namespace TraxCombat.Missions
             }
             catch (Exception e)
             {
-                Failed("endurance.settings", e);
+                Failed("athletics.settings", e);
             }
         }
 
         // ------------------------------------------------------------------ regen
 
-        private void RegenPass(double step, double now, in EnduranceRules r)
+        private void RegenPass(double step, double now, in AthleticsRules r)
         {
             if (!r.Enabled) return;
             for (int i = 0; i < _count; i++)
@@ -541,7 +541,7 @@ namespace TraxCombat.Missions
                         top = body.GetMaximumForwardUnlimitedSpeed();
                         if (top > 0f) _stats.AddEffort(speed / top);
                     }
-                    var o = EnduranceMath.Regen(st, in r, now, step, speed, top);
+                    var o = AthleticsMath.Regen(st, in r, now, step, speed, top);
                     if (o.Seconds > 0)
                     {
                         if (o.Moving) _stats.RegenMovingSeconds += o.Seconds;
@@ -552,12 +552,12 @@ namespace TraxCombat.Missions
                 }
                 catch (Exception e)
                 {
-                    Failed("endurance.regen", e);
+                    Failed("athletics.regen", e);
                 }
             }
         }
 
-        private void OnRecovered(TrackedAgent st, double now, in RegenOutcome o, in EnduranceRules r)
+        private void OnRecovered(TrackedAgent st, double now, in RegenOutcome o, in AthleticsRules r)
         {
             _stats.ExhaustionsLeft++;
             if (ReferenceEquals(st, _firstExhausted) && _firstAfterLogged && !_firstDone && !_firstRecovering)
@@ -571,29 +571,29 @@ namespace TraxCombat.Missions
             RetargetSpeed(st, in r);
             if (st.Agent.IsMainAgent)
             {
-                TraxLog.Limited("endurance", "YOU recovered at " + Sec(now) + " s: " + F1(EnduranceMath.Points(in r, st)) + " of "
-                    + F0(EnduranceMath.PoolPoints(in r, st)) + " after " + Sec(o.ExhaustedSeconds) + " s exhausted - full attack speed again",
-                    "endurance-player");
+                TraxLog.Limited("athletics", "YOU recovered at " + Sec(now) + " s: " + F1(AthleticsMath.Points(in r, st)) + " of "
+                    + F0(AthleticsMath.PoolPoints(in r, st)) + " after " + Sec(o.ExhaustedSeconds) + " s exhausted - full attack speed again",
+                    "athletics-player");
             }
             else if (TraxLog.VerboseOn)
             {
-                TraxLog.Verbose("endurance", "recovered: " + Name(st) + " at " + Sec(now) + " s after " + Sec(o.ExhaustedSeconds) + " s exhausted",
-                    "endurance-exhaust");
+                TraxLog.Verbose("athletics", "recovered: " + Name(st) + " at " + Sec(now) + " s after " + Sec(o.ExhaustedSeconds) + " s exhausted",
+                    "athletics-exhaust");
             }
         }
 
-        private void OnRefilled(TrackedAgent st, double now, in RegenOutcome o, in EnduranceRules r)
+        private void OnRefilled(TrackedAgent st, double now, in RegenOutcome o, in AthleticsRules r)
         {
             _stats.RefillsToFull++;
             bool you = st.Agent.IsMainAgent;
             if (!you && !TraxLog.VerboseOn) return;
-            double pool = EnduranceMath.PoolPoints(in r, st);
+            double pool = AthleticsMath.PoolPoints(in r, st);
             string text = " back to full at " + Sec(now) + " s: " + F0(o.EpisodeStartFraction * pool) + " → " + F0(pool) + " in "
                 + Sec(o.EpisodeStandingSeconds + o.EpisodeMovingSeconds) + " s of refill (standing " + Sec(o.EpisodeStandingSeconds)
                 + " s, moving " + Sec(o.EpisodeMovingSeconds) + " s; empty to full takes " + F0(r.FullRegenSecondsStanding) + " s standing, "
                 + F0(r.FullRegenSecondsMoving) + " s moving)";
-            if (you) TraxLog.Limited("endurance", "YOU are" + text, "endurance-player");
-            else TraxLog.Verbose("endurance", Name(st) + " is" + text, "endurance-regen");
+            if (you) TraxLog.Limited("athletics", "YOU are" + text, "athletics-player");
+            else TraxLog.Verbose("athletics", Name(st) + " is" + text, "athletics-regen");
         }
 
         // ------------------------------------------------------------------ engine events
@@ -668,7 +668,7 @@ namespace TraxCombat.Missions
             }
             catch (Exception e)
             {
-                Failed("endurance.melee-hit", e);
+                Failed("athletics.melee-hit", e);
             }
         }
 
@@ -711,7 +711,7 @@ namespace TraxCombat.Missions
             }
             catch (Exception e)
             {
-                Failed("endurance.shoot", e);
+                Failed("athletics.shoot", e);
             }
         }
 
@@ -731,7 +731,7 @@ namespace TraxCombat.Missions
             }
             catch (Exception e)
             {
-                Failed("endurance.missile-hit", e);
+                Failed("athletics.missile-hit", e);
             }
         }
 
@@ -739,12 +739,12 @@ namespace TraxCombat.Missions
 
         /// <summary>The attack-speed multiplier to apply to <paramref name="agent"/> now (1 = none):
         /// the running mission's value for a tracked human, 1 for anyone else, and 1 for everyone
-        /// while EnduranceEnabled is off (read live - fail safe). Any thread; reads only.</summary>
+        /// while AthleticsEnabled is off (read live - fail safe). Any thread; reads only.</summary>
         internal static float SpeedMultiplierFor(Agent agent)
         {
             var logic = _current;
             if (logic == null || agent == null) return 1f;
-            if (!TraxSettings.Shared.EnduranceEnabled) return 1f;
+            if (!TraxSettings.Shared.AthleticsEnabled) return 1f;
             var st = logic.Get(agent);
             return st?.SpeedMultiplier ?? 1f;
         }
@@ -798,11 +798,11 @@ namespace TraxCombat.Missions
                     }
                 }
                 if (TraxLog.VerboseOn)
-                    TraxLog.Verbose("endurance", "speeds sampled at " + when + ": on foot " + _stats.FootTop.Count + ", riders " + _stats.HorseTop.Count, "endurance-speeds");
+                    TraxLog.Verbose("athletics", "speeds sampled at " + when + ": on foot " + _stats.FootTop.Count + ", riders " + _stats.HorseTop.Count, "athletics-speeds");
             }
             catch (Exception e)
             {
-                Failed("endurance.speeds", e);
+                Failed("athletics.speeds", e);
             }
         }
 

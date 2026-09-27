@@ -43,13 +43,13 @@ namespace TraxCombat.Core
     }
 
     /// <summary>
-    /// One formation's endurance at the last refresh (steps 8-9 draw it): how many fighters, the
+    /// One formation's Athletics at the last refresh (steps 8-9 draw it): how many fighters, the
     /// mean ± standard deviation in POINTS and as a FRACTION of each fighter's pool (the same thing
-    /// while every pool is equal; endurance v2 gives per-fighter pools), and how many are exhausted.
+    /// while every pool is equal; Athletics v2 gives per-fighter pools), and how many are exhausted.
     /// </summary>
-    public readonly struct FormationEnduranceStats
+    public readonly struct FormationAthleticsStats
     {
-        public FormationEnduranceStats(int count, double meanPoints, double stdPoints, double meanFraction, double stdFraction, int exhausted)
+        public FormationAthleticsStats(int count, double meanPoints, double stdPoints, double meanFraction, double stdFraction, int exhausted)
         {
             Count = count;
             MeanPoints = meanPoints;
@@ -59,8 +59,8 @@ namespace TraxCombat.Core
             Exhausted = exhausted;
         }
 
-        public static FormationEnduranceStats From(in MeanStd points, in MeanStd fractions, int exhausted) =>
-            new FormationEnduranceStats(points.Count, points.Mean, points.StdDev, fractions.Mean, fractions.StdDev, exhausted);
+        public static FormationAthleticsStats From(in MeanStd points, in MeanStd fractions, int exhausted) =>
+            new FormationAthleticsStats(points.Count, points.Mean, points.StdDev, fractions.Mean, fractions.StdDev, exhausted);
 
         public int Count { get; }
 

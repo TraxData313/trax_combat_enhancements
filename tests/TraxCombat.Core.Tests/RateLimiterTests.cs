@@ -46,7 +46,7 @@ public class RateLimiterTests
         var r = new RateLimiter(burst: 1, perSecond: 0);
         Assert.True(r.TryPass("damage", 0, out _));
         Assert.False(r.TryPass("damage", 0, out _));
-        Assert.True(r.TryPass("endurance", 0, out _));
+        Assert.True(r.TryPass("athletics", 0, out _));
     }
 
     [Fact]

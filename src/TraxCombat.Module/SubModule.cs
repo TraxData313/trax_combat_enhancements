@@ -24,7 +24,7 @@ namespace TraxCombat
     ///   OnGameStart              - config.json re-read (hand edits); the two model DECORATORS
     ///                              registered (damage, agent stats) - one registration covers
     ///                              campaign, custom battle and naval custom battle (RESEARCH §A).
-    ///   OnMissionBehaviorInitialize - config.json re-read; EnduranceLogic attached (SP only).
+    ///   OnMissionBehaviorInitialize - config.json re-read; AthleticsLogic attached (SP only).
     /// Every hook is wrapped: an exception is logged as [error] and the game carries on.
     /// </summary>
     public sealed class SubModule : MBSubModuleBase
@@ -121,8 +121,8 @@ namespace TraxCombat
             {
                 if (mission == null || GameNetwork.IsMultiplayer) return;
                 ConfigStore.Reload("mission start");
-                mission.AddMissionBehavior(new EnduranceLogic());
-                TraxLog.Info("mission", "attached: EnduranceLogic (views arrive with steps 6-9)");
+                mission.AddMissionBehavior(new AthleticsLogic());
+                TraxLog.Info("mission", "attached: AthleticsLogic (views arrive with steps 6-9)");
             }
             catch (Exception e)
             {
@@ -168,7 +168,7 @@ namespace TraxCombat
                     var stats = new TraxAgentStatModel(statModels);
                     starter.AddModel<AgentStatCalculateModel>(stats);
                     TraxLog.Info("speed", "agent stat model decorator registered over " + stats.BaseModelName
-                        + " - scales swing / thrust-and-draw / reload speed by each fighter's endurance multiplier; tournament AI-level fix "
+                        + " - scales swing / thrust-and-draw / reload speed by each fighter's Athletics multiplier; tournament AI-level fix "
                         + (TraxAgentStatModel.AiLevelFixAvailable ? "active over " + statModels.Count + " base model(s)" : "UNAVAILABLE (field not found)"));
                 }
                 else

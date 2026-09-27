@@ -4,8 +4,8 @@ using TraxCombat.Core;
 namespace TraxCombat.Missions
 {
     /// <summary>
-    /// One fighter's record in <see cref="EnduranceLogic"/>: Core's pure <see cref="Fighter"/> state
-    /// (endurance, exhaustion, the speed multiplier the decorator applies) plus what blow
+    /// One fighter's record in <see cref="AthleticsLogic"/>: Core's pure <see cref="Fighter"/> state
+    /// (Athletics, exhaustion, the speed multiplier the decorator applies) plus what blow
     /// detection needs from the game side. One object per human agent, created at spawn, kept in
     /// an array by <see cref="Agent.Index"/> (reference-checked - indices are reused) and a dense
     /// list for the tick loop. Plain fields: the tick loop touches them for ~1000 agents a frame.

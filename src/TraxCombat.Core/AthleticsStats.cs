@@ -7,7 +7,7 @@ using System.Threading;
 namespace TraxCombat.Core
 {
     /// <summary>
-    /// One mission's endurance numbers for the <c>[summary]</c> block - built so ONE playtest run
+    /// One mission's Athletics numbers for the <c>[summary]</c> block - built so ONE playtest run
     /// proves or disproves every behaviour of DESIGN §2 (CLAUDE.md, logging): blows by kind and by
     /// riders vs on foot, the detection cross-checks (releases vs hits vs shots), what was free,
     /// exhaustions, heroes and leaders, the player, the formations, regen standing vs moving, the
@@ -18,7 +18,7 @@ namespace TraxCombat.Core
     /// multi-thread callable), except <see cref="AddDecoratorScaled"/> which is interlocked.
     /// Plain counters are public fields on purpose: the module just counts.
     /// </summary>
-    public sealed class EnduranceStats
+    public sealed class AthleticsStats
     {
         public const int ActionSlots = 64;
         public const int EffortBins = 11; // tenths 0.0-0.1 … 0.9-1.0, then above 1
@@ -194,22 +194,22 @@ namespace TraxCombat.Core
         // ------------------------------------------------------------------ the summary text
 
         /// <summary>
-        /// The <c>[summary]</c> endurance lines, plain words (docs/PLAYTEST.md §3 quotes them).
+        /// The <c>[summary]</c> Athletics lines, plain words (docs/PLAYTEST.md §3 quotes them).
         /// <paramref name="actionName"/> names an engine action code; <paramref name="formations"/> are
         /// the player's formations at the end (name, stats).
         /// </summary>
-        public List<string> SummaryLines(in EnduranceRules r, Func<int, string> actionName, IList<KeyValuePair<string, FormationEnduranceStats>> formations)
+        public List<string> SummaryLines(in AthleticsRules r, Func<int, string> actionName, IList<KeyValuePair<string, FormationAthleticsStats>> formations)
         {
             var lines = new List<string>();
-            lines.Add("endurance settings at the end: " + DescribeRules(in r));
+            lines.Add("Athletics settings at the end: " + DescribeRules(in r));
 
-            lines.Add("endurance blows charged: " + ChargedTotal
+            lines.Add("Athletics blows charged: " + ChargedTotal
                 + " (melee swings " + Charged(BlowKind.Melee) + ", shots/throws " + Charged(BlowKind.Ranged)
                 + ", couched/braced hits " + Charged(BlowKind.Couched) + ", landed-only swings " + Charged(BlowKind.LandedMelee)
                 + ", landed-only shots " + Charged(BlowKind.LandedRanged) + ") - by riders " + ChargedMounted + ", on foot " + ChargedOnFoot
-                + "; endurance spent " + N0(PointsSpent) + " points");
+                + "; Athletics spent " + N0(PointsSpent) + " points");
 
-            var sb = new StringBuilder("endurance detection: melee releases seen ").Append(MeleeReleasesSeen)
+            var sb = new StringBuilder("Athletics detection: melee releases seen ").Append(MeleeReleasesSeen)
                 .Append(" (mounted ").Append(MeleeReleasesMounted).Append(") | shots seen ").Append(ShotsSeen)
                 .Append(" (+").Append(ExtraProjectiles).Append(" extra projectiles of the same shot ignored) | ranged releases seen by the poll ")
                 .Append(RangedReleasesPolled).Append(" | melee hits by fighters ").Append(MeleeHitsInRelease + MeleeHitsOutsideRelease)
@@ -230,13 +230,13 @@ namespace TraxCombat.Core
             if (LandedMeleeByTimeFallback > 0) sb.Append(" | landed swings charged by the time fallback ").Append(LandedMeleeByTimeFallback);
             lines.Add(sb.ToString());
 
-            lines.Add("endurance free (never charged): kicks " + KicksSeen + ", shield bashes " + BashesSeen + ", kick/bash hits " + KickOrBashHits
-                + ", couched hits within one blow-length of the last " + CouchedWithinBlowTime + ", attacks while endurance was off " + AttacksWhileOff
+            lines.Add("Athletics free (never charged): kicks " + KicksSeen + ", shield bashes " + BashesSeen + ", kick/bash hits " + KickOrBashHits
+                + ", couched hits within one blow-length of the last " + CouchedWithinBlowTime + ", attacks while Athletics was off " + AttacksWhileOff
                 + ", releases / shots waiting for a landed hit (misses cost: no) " + ReleasesAwaitingHit + " / " + ShotsAwaitingHit);
 
-            lines.Add("endurance exhaustions: " + ExhaustionsEntered + " entered, " + ExhaustionsLeft + " left");
+            lines.Add("Athletics exhaustions: " + ExhaustionsEntered + " entered, " + ExhaustionsLeft + " left");
 
-            string heroes = "endurance heroes: " + HeroesFlagged + " flagged, " + LeaderNames.Count + " party leader" + (LeaderNames.Count == 1 ? "" : "s");
+            string heroes = "Athletics heroes: " + HeroesFlagged + " flagged, " + LeaderNames.Count + " party leader" + (LeaderNames.Count == 1 ? "" : "s");
             if (LeaderNames.Count > 0)
             {
                 const int shown = 20;
@@ -249,23 +249,23 @@ namespace TraxCombat.Core
             lines.Add(heroes);
 
             lines.Add(PlayerSeen
-                ? "endurance you: " + PlayerBlows + " blows, " + PlayerExhaustions + " exhaustion" + (PlayerExhaustions == 1 ? "" : "s")
+                ? "Athletics you: " + PlayerBlows + " blows, " + PlayerExhaustions + " exhaustion" + (PlayerExhaustions == 1 ? "" : "s")
                   + ", lowest " + N1(PlayerLowestPoints) + " of " + N0(PlayerPool)
-                : "endurance you: no player fighter this mission");
+                : "Athletics you: no player fighter this mission");
 
             if (formations.Count == 0)
             {
-                lines.Add("endurance your formations at the end: none with men in them");
+                lines.Add("Athletics your formations at the end: none with men in them");
             }
             else
             {
-                var f = new StringBuilder("endurance your formations at the end:");
+                var f = new StringBuilder("Athletics your formations at the end:");
                 for (int i = 0; i < formations.Count; i++)
                     f.Append(i == 0 ? " " : " | ").Append(formations[i].Key).Append(' ').Append(formations[i].Value.Describe());
                 lines.Add(f.ToString());
             }
 
-            lines.Add("endurance regen: " + N0(RegenStandingSeconds) + " fighter-seconds standing, " + N0(RegenMovingSeconds)
+            lines.Add("Athletics regen: " + N0(RegenStandingSeconds) + " fighter-seconds standing, " + N0(RegenMovingSeconds)
                 + " moving; " + RefillsToFull + " refills to full");
 
             int percent = r.ExhaustedAttackSpeedPercent;
@@ -276,8 +276,8 @@ namespace TraxCombat.Core
                 + DecoratorScaled + " recomputes; " + IntervalsMixed + " intervals spanning a change of state left out");
 
             lines.Add(Ticks == 0
-                ? "endurance tick cost: no ticks"
-                : "endurance tick cost: avg " + N3(TickMsTotal / Ticks) + " ms, max " + N3(TickMsMax) + " ms per tick over " + Ticks
+                ? "Athletics tick cost: no ticks"
+                : "Athletics tick cost: avg " + N3(TickMsTotal / Ticks) + " ms, max " + N3(TickMsMax) + " ms per tick over " + Ticks
                   + " ticks; fighters polled avg " + N0((double)PolledTotal / Ticks) + ", max " + PolledMax);
 
             var e = new StringBuilder("speeds for step 5c: on foot walk limit ").Append(Speed(FootWalk)).Append(", top ").Append(Speed(FootTop))
@@ -291,11 +291,11 @@ namespace TraxCombat.Core
             {
                 if (_errors.Count == 0)
                 {
-                    lines.Add("endurance errors: none");
+                    lines.Add("Athletics errors: none");
                 }
                 else
                 {
-                    var er = new StringBuilder("endurance errors: ");
+                    var er = new StringBuilder("Athletics errors: ");
                     int n = 0;
                     foreach (var pair in _errors) n += pair.Value;
                     er.Append(n).Append(" (");
@@ -315,16 +315,16 @@ namespace TraxCombat.Core
 
         /// <summary><c>ON - pool 100, cost per blow 10.0 / hero 7.5 / party leader 5.6, …</c> or <c>OFF …</c> -
         /// the settings sentence of the mission-start line and the summary.</summary>
-        public static string DescribeRules(in EnduranceRules r)
+        public static string DescribeRules(in AthleticsRules r)
         {
-            if (!r.Enabled) return "OFF (EnduranceEnabled) - everyone full, no penalty";
+            if (!r.Enabled) return "OFF (AthleticsEnabled) - everyone full, no penalty";
             var soldier = new Fighter();
             var hero = new Fighter { IsHero = true };
             var leader = new Fighter { IsHero = true, IsLeader = true };
-            return "ON - pool " + N0(EnduranceMath.PoolPoints(in r, soldier))
-                + ", cost per blow " + N1(EnduranceMath.BlowCostPoints(in r, soldier))
-                + " / hero " + N1(EnduranceMath.BlowCostPoints(in r, hero))
-                + " / party leader " + N1(EnduranceMath.BlowCostPoints(in r, leader))
+            return "ON - pool " + N0(AthleticsMath.PoolPoints(in r, soldier))
+                + ", cost per blow " + N1(AthleticsMath.BlowCostPoints(in r, soldier))
+                + " / hero " + N1(AthleticsMath.BlowCostPoints(in r, hero))
+                + " / party leader " + N1(AthleticsMath.BlowCostPoints(in r, leader))
                 + ", misses cost: " + (r.CostOnMiss ? "yes" : "no (landed blows only)")
                 + ", exhausted attacks at " + r.ExhaustedAttackSpeedPercent + "% (recover above " + r.ExhaustedRecoverPercent + "%)"
                 + ", refill after " + N1(r.RegenDelaySeconds) + " s rest: full in " + N0(r.FullRegenSecondsStanding) + " s standing / "

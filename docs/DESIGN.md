@@ -206,9 +206,9 @@ file also carries `ConfigVersion`, a format stamp — not a setting.
 | `DamageRandomRanged` | true | Randomize arrows, bolts and thrown weapons. |
 | `DamageRandomOnMounts` | true | Randomize hits that land on horses too. |
 | `DamageRandomOnShields` | false | Randomize the damage a shield takes when it blocks. |
-| `EnduranceEnabled` | true | Master switch for endurance. |
-| `MaxEndurance` | 100 | Size of the pool. |
-| `CostPerBlow` | 10 | Endurance one blow costs before multipliers. |
+| `AthleticsEnabled` | true | Switch for Athletics (the stamina bar). |
+| `MaxAthletics` | 100 | Size of the Athletics bar, in points. |
+| `CostPerBlow` | 10 | Athletics points one blow costs before multipliers. |
 | `CostOnMiss` | true | true: every attack costs, landed or not. false: only blows that land. |
 | `HeroCostMultiplier` | 0.75 | Cost multiplier for heroes. |
 | `PartyLeaderCostMultiplier` | 0.75 | Extra multiplier for a party's leading hero, on top of the hero one. |

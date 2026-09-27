@@ -22,19 +22,19 @@ namespace TraxCombat.Core
     }
 
     /// <summary>
-    /// The endurance settings in effect for ONE decision, read live from
+    /// The Athletics settings in effect for ONE decision, read live from
     /// <see cref="TraxSettings"/> (<see cref="From"/>) - never cached across a tick, so an MCM change
     /// mid-battle applies to the next blow / regen step. Built fresh where needed (a struct: no
     /// allocation).
     /// </summary>
-    public readonly struct EnduranceRules
+    public readonly struct AthleticsRules
     {
-        public EnduranceRules(bool enabled, int maxEndurance, float costPerBlow, bool costOnMiss, float heroCostMultiplier,
+        public AthleticsRules(bool enabled, int maxAthletics, float costPerBlow, bool costOnMiss, float heroCostMultiplier,
             float partyLeaderCostMultiplier, int exhaustedAttackSpeedPercent, int exhaustedRecoverPercent, float regenDelayBlowTimes,
             float blowTimeSeconds, float fullRegenSecondsStanding, float fullRegenSecondsMoving, float movingSpeedThreshold)
         {
             Enabled = enabled;
-            MaxEndurance = maxEndurance;
+            MaxAthletics = maxAthletics;
             CostPerBlow = costPerBlow;
             CostOnMiss = costOnMiss;
             HeroCostMultiplier = heroCostMultiplier;
@@ -50,7 +50,7 @@ namespace TraxCombat.Core
 
         public bool Enabled { get; }
 
-        public int MaxEndurance { get; }
+        public int MaxAthletics { get; }
 
         public float CostPerBlow { get; }
 
@@ -81,18 +81,18 @@ namespace TraxCombat.Core
         public double RecoverAboveFraction => ExhaustedRecoverPercent / 100.0;
 
         /// <summary>The live values, read now.</summary>
-        public static EnduranceRules From(TraxSettings s) => new EnduranceRules(
-            s.EnduranceEnabled, s.MaxEndurance, s.CostPerBlow, s.CostOnMiss, s.HeroCostMultiplier, s.PartyLeaderCostMultiplier,
+        public static AthleticsRules From(TraxSettings s) => new AthleticsRules(
+            s.AthleticsEnabled, s.MaxAthletics, s.CostPerBlow, s.CostOnMiss, s.HeroCostMultiplier, s.PartyLeaderCostMultiplier,
             s.ExhaustedAttackSpeedPercent, s.ExhaustedRecoverPercent, s.RegenDelayBlowTimes, s.BlowTimeSeconds,
             s.FullRegenSecondsStanding, s.FullRegenSecondsMoving, s.MovingSpeedThreshold);
     }
 
     /// <summary>
-    /// One fighter's endurance - pure state, no game types (the module's per-agent record derives
-    /// from it). Endurance is stored as a FRACTION of the fighter's pool (1 = full), so changing
+    /// One fighter's Athletics - pure state, no game types (the module's per-agent record derives
+    /// from it). Athletics is stored as a FRACTION of the fighter's pool (1 = full), so changing
     /// the pool size mid-battle keeps everyone's share by construction (DESIGN §2); points =
-    /// fraction × <see cref="EnduranceMath.PoolPoints"/>. Mutated only through
-    /// <see cref="EnduranceMath"/> (charge, regen, reset) - main thread.
+    /// fraction × <see cref="AthleticsMath.PoolPoints"/>. Mutated only through
+    /// <see cref="AthleticsMath"/> (charge, regen, reset) - main thread.
     /// </summary>
     public class Fighter
     {
@@ -135,13 +135,13 @@ namespace TraxCombat.Core
 
         /// <summary>
         /// The attack-speed multiplier the stat decorator applies to this fighter RIGHT NOW (1 = none).
-        /// Set by the module when it decides a new value (<see cref="EnduranceMath.SpeedUpdateNeeded"/>)
+        /// Set by the module when it decides a new value (<see cref="AthleticsMath.SpeedUpdateNeeded"/>)
         /// just before it asks the game to recompute the agent's properties - so every recompute the
         /// game does on its own (weapon switch, mount) applies the same value.
         /// </summary>
         public float SpeedMultiplier { get; set; } = 1f;
 
-        /// <summary>Everyone starts a mission full; EnduranceEnabled turned off puts everyone back to full.</summary>
+        /// <summary>Everyone starts a mission full; AthleticsEnabled turned off puts everyone back to full.</summary>
         public void ResetFull()
         {
             Fraction = 1.0;
@@ -165,7 +165,7 @@ namespace TraxCombat.Core
             EnteredExhaustion = enteredExhaustion;
         }
 
-        /// <summary>False when endurance is switched off - nothing changed.</summary>
+        /// <summary>False when Athletics is switched off - nothing changed.</summary>
         public bool Charged { get; }
 
         /// <summary>Points charged (CostPerBlow × the multipliers).</summary>
@@ -230,9 +230,9 @@ namespace TraxCombat.Core
     }
 
     /// <summary>What the HUD reads for one fighter (steps 6-9) - a snapshot, no references kept.</summary>
-    public readonly struct EnduranceReading
+    public readonly struct AthleticsReading
     {
-        public EnduranceReading(bool enabled, double points, double pool, double fraction, bool exhausted, bool isHero, bool isLeader, float speedMultiplier)
+        public AthleticsReading(bool enabled, double points, double pool, double fraction, bool exhausted, bool isHero, bool isLeader, float speedMultiplier)
         {
             Enabled = enabled;
             Points = points;
@@ -244,10 +244,10 @@ namespace TraxCombat.Core
             SpeedMultiplier = speedMultiplier;
         }
 
-        /// <summary>EnduranceEnabled at the time of reading - off: everyone reads full, unpenalized.</summary>
+        /// <summary>AthleticsEnabled at the time of reading - off: everyone reads full, unpenalized.</summary>
         public bool Enabled { get; }
 
-        /// <summary>Endurance left, in points.</summary>
+        /// <summary>Athletics left, in points.</summary>
         public double Points { get; }
 
         /// <summary>This fighter's pool, in points.</summary>
@@ -268,15 +268,15 @@ namespace TraxCombat.Core
 
     /// <summary>
     /// DESIGN §2 as pure functions. EACH RULE IS ONE FUNCTION of (fighter, live rules), so the
-    /// planned endurance v2 (DESIGN §2b, step 5c) changes a rule in one place:
-    ///   <see cref="PoolPoints"/>        pool size for a fighter (§2: flat MaxEndurance; 5c: Athletics, health cap)
+    /// planned Athletics v2 (DESIGN §2b, step 5c) changes a rule in one place:
+    ///   <see cref="PoolPoints"/>        pool size for a fighter (§2: flat MaxAthletics; 5c: the Athletics skill, health cap)
     ///   <see cref="BlowCostPoints"/>    cost of one blow (CostPerBlow × hero × leader)
     ///   <see cref="RegenFractionPerSecond"/> regen rate from speed AND top speed (§2: standing/moving; 5c: effort)
     ///   <see cref="AttackSpeedMultiplier"/>  the float the stat decorator applies (§2: the cliff; 5c: a line)
     ///   <see cref="IsExhausted"/>       exhausted (for logs, bars and the penalty)
-    /// Settings are passed in (<see cref="EnduranceRules"/>, read live by the caller); nothing is cached.
+    /// Settings are passed in (<see cref="AthleticsRules"/>, read live by the caller); nothing is cached.
     /// </summary>
-    public static class EnduranceMath
+    public static class AthleticsMath
     {
         /// <summary>Below this share of the pool counts as empty - so 10 blows of 10 empty a 100 pool
         /// exactly, whatever floating point says.</summary>
@@ -289,19 +289,19 @@ namespace TraxCombat.Core
 
         // ------------------------------------------------------------------ the rules, one function each
 
-        /// <summary>Pool size in points for this fighter. §2: the flat <c>MaxEndurance</c>.</summary>
-        public static double PoolPoints(in EnduranceRules r, Fighter f) => Math.Max(1, r.MaxEndurance);
+        /// <summary>Pool size in points for this fighter. §2: the flat <c>MaxAthletics</c>.</summary>
+        public static double PoolPoints(in AthleticsRules r, Fighter f) => Math.Max(1, r.MaxAthletics);
 
         /// <summary>Hero × party-leader multiplier for this fighter (they stack: 0.75 × 0.75).</summary>
-        public static double CostMultiplier(in EnduranceRules r, Fighter f) =>
+        public static double CostMultiplier(in AthleticsRules r, Fighter f) =>
             (f.IsHero ? r.HeroCostMultiplier : 1.0) * (f.IsLeader ? r.PartyLeaderCostMultiplier : 1.0);
 
         /// <summary>Points one blow costs this fighter: CostPerBlow × the multipliers (10 / 7.5 / 5.6).</summary>
-        public static double BlowCostPoints(in EnduranceRules r, Fighter f) => Math.Max(0, r.CostPerBlow * CostMultiplier(in r, f));
+        public static double BlowCostPoints(in AthleticsRules r, Fighter f) => Math.Max(0, r.CostPerBlow * CostMultiplier(in r, f));
 
         /// <summary>Counts as moving: <paramref name="speed"/> (m/s, the horse's for a rider) above
         /// <c>MovingSpeedThreshold</c>.</summary>
-        public static bool IsMoving(in EnduranceRules r, float speed) => speed > r.MovingSpeedThreshold;
+        public static bool IsMoving(in AthleticsRules r, float speed) => speed > r.MovingSpeedThreshold;
 
         /// <summary>
         /// Refill rate in pool fractions per second. §2: full in <c>FullRegenSecondsStanding</c> while
@@ -309,18 +309,18 @@ namespace TraxCombat.Core
         /// fighter's current top speed, the horse's for a rider) is unused by §2 - it is passed so
         /// 5c's effort rule (speed ÷ top speed) needs no new plumbing.
         /// </summary>
-        public static double RegenFractionPerSecond(in EnduranceRules r, Fighter f, float speed, float topSpeed)
+        public static double RegenFractionPerSecond(in AthleticsRules r, Fighter f, float speed, float topSpeed)
         {
             double seconds = IsMoving(in r, speed) ? r.FullRegenSecondsMoving : r.FullRegenSecondsStanding;
             return seconds > 0 ? 1.0 / seconds : 0;
         }
 
         /// <summary>Exhausted now (the penalty applies). Off → never.</summary>
-        public static bool IsExhausted(in EnduranceRules r, Fighter f) => r.Enabled && f.Exhausted;
+        public static bool IsExhausted(in AthleticsRules r, Fighter f) => r.Enabled && f.Exhausted;
 
         /// <summary>The attack-speed multiplier for this fighter now. §2: the cliff -
         /// <c>ExhaustedAttackSpeedPercent</c>/100 while exhausted, else 1.</summary>
-        public static float AttackSpeedMultiplier(in EnduranceRules r, Fighter f) =>
+        public static float AttackSpeedMultiplier(in AthleticsRules r, Fighter f) =>
             IsExhausted(in r, f) ? Math.Max(0.01f, r.ExhaustedAttackSpeedPercent / 100f) : 1f;
 
         /// <summary>True when <paramref name="desired"/> differs enough from what is applied to be
@@ -332,13 +332,13 @@ namespace TraxCombat.Core
         // ------------------------------------------------------------------ reads
 
         /// <summary>Points left now (off → a full pool).</summary>
-        public static double Points(in EnduranceRules r, Fighter f) => (r.Enabled ? f.Fraction : 1.0) * PoolPoints(in r, f);
+        public static double Points(in AthleticsRules r, Fighter f) => (r.Enabled ? f.Fraction : 1.0) * PoolPoints(in r, f);
 
-        public static EnduranceReading Read(in EnduranceRules r, Fighter f)
+        public static AthleticsReading Read(in AthleticsRules r, Fighter f)
         {
             double pool = PoolPoints(in r, f);
-            if (!r.Enabled) return new EnduranceReading(false, pool, pool, 1.0, false, f.IsHero, f.IsLeader, f.SpeedMultiplier);
-            return new EnduranceReading(true, f.Fraction * pool, pool, f.Fraction, f.Exhausted, f.IsHero, f.IsLeader, f.SpeedMultiplier);
+            if (!r.Enabled) return new AthleticsReading(false, pool, pool, 1.0, false, f.IsHero, f.IsLeader, f.SpeedMultiplier);
+            return new AthleticsReading(true, f.Fraction * pool, pool, f.Fraction, f.Exhausted, f.IsHero, f.IsLeader, f.SpeedMultiplier);
         }
 
         // ------------------------------------------------------------------ changes
@@ -348,7 +348,7 @@ namespace TraxCombat.Core
         /// becomes exhausted (a cliff). Any blow restarts the regen delay and ends a refill run.
         /// Off → nothing happens (<see cref="BlowOutcome.Charged"/> false).
         /// </summary>
-        public static BlowOutcome Charge(Fighter f, in EnduranceRules r, double now)
+        public static BlowOutcome Charge(Fighter f, in AthleticsRules r, double now)
         {
             if (!r.Enabled) return default;
             double pool = PoolPoints(in r, f);
@@ -383,7 +383,7 @@ namespace TraxCombat.Core
         /// recovery check - run every step, so a lowered <c>ExhaustedRecoverPercent</c> applies at once.
         /// Off → nothing.
         /// </summary>
-        public static RegenOutcome Regen(Fighter f, in EnduranceRules r, double now, double dt, float speed, float topSpeed)
+        public static RegenOutcome Regen(Fighter f, in AthleticsRules r, double now, double dt, float speed, float topSpeed)
         {
             if (!r.Enabled || dt <= 0) return default;
             bool moving = IsMoving(in r, speed);

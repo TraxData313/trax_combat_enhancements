@@ -40,7 +40,7 @@ public class SpreadStatsTests
     }
 
     [Fact]
-    public void Matches_the_naive_two_pass_formula_on_random_endurance_values()
+    public void Matches_the_naive_two_pass_formula_on_random_athletics_values()
     {
         var rng = new Random(7);
         var values = Enumerable.Range(0, 1000).Select(_ => rng.NextDouble() * 100).ToArray();
@@ -62,7 +62,7 @@ public class SpreadStatsTests
             points.Add(p);
             fractions.Add(p / 100);
         }
-        var f = FormationEnduranceStats.From(points, fractions, exhausted: 0);
+        var f = FormationAthleticsStats.From(points, fractions, exhausted: 0);
         Assert.Equal(3, f.Count);
         Assert.Equal(72.0, f.MeanPoints, 9);
         Assert.Equal(Math.Sqrt(128.0 / 3), f.StdPoints, 9);
@@ -72,9 +72,9 @@ public class SpreadStatsTests
         Assert.Equal(0.0, f.LowFraction(20));
         Assert.Equal(1.0, f.HighFraction(20));
 
-        var one = FormationEnduranceStats.From(Single(0), Single(0), exhausted: 1);
+        var one = FormationAthleticsStats.From(Single(0), Single(0), exhausted: 1);
         Assert.Equal("0 ± 0 (1 man, 1 exhausted)", one.Describe());
-        Assert.Equal("empty", default(FormationEnduranceStats).Describe());
+        Assert.Equal("empty", default(FormationAthleticsStats).Describe());
     }
 
     private static MeanStd Single(double v)

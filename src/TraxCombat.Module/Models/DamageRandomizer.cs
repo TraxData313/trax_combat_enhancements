@@ -30,7 +30,7 @@ namespace TraxCombat.Models
     internal static class DamageRandomizer
     {
         /// <summary>This mission's numbers - reset by <see cref="OnMissionStart"/>, written by
-        /// <see cref="WriteSummary"/> (both from EnduranceLogic).</summary>
+        /// <see cref="WriteSummary"/> (both from AthleticsLogic).</summary>
         internal static readonly DamageStats Stats = new DamageStats();
 
         /// <summary>The dice. The offline smoke swaps in a seeded (or a broken) source.</summary>
@@ -39,7 +39,7 @@ namespace TraxCombat.Models
         private static int _mainThreadId;
         private static int _firstRollLogged;
 
-        /// <summary>Mission start (EnduranceLogic.AfterStart, main thread): zero the stats, note
+        /// <summary>Mission start (AthleticsLogic.AfterStart, main thread): zero the stats, note
         /// the main thread, log the damage settings in effect.</summary>
         public static void OnMissionStart()
         {
@@ -102,7 +102,7 @@ namespace TraxCombat.Models
             }
         }
 
-        /// <summary>The [summary] damage lines (EnduranceLogic.WriteSummary, marked spot).</summary>
+        /// <summary>The [summary] damage lines (AthleticsLogic.WriteSummary, marked spot).</summary>
         public static void WriteSummary()
         {
             foreach (var line in Stats.SummaryLines())
