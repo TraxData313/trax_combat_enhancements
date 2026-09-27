@@ -53,6 +53,60 @@ drains by attacking, and the only penalty is slow attacks when empty.
 - **Cavalry**: riders use the very same pool. Riding never drains it; only blows do. The
   horse has no endurance of its own.
 
+## 2b. Endurance v2 — Anton's additions (2026-09-27), lands in steps 5b–5d
+
+Step 5 builds §2 as written; step 5c then reshapes it as below and folds this section into
+§2. Where the two disagree, this section wins.
+
+- **The pool follows Athletics** (Anton: "I was always thinking of the Athletics skill when
+  speaking about endurance"). Pool = `EnduranceBase` (50) + `EndurancePerAthletics` (0.5)
+  × the fighter's Athletics skill: Athletics 0 → 50, 100 → 100, 200 → 150, 300 → 200.
+  Riders too — Athletics, never Riding. Replaces the flat `MaxEndurance`. Changing either
+  number mid-battle keeps each fighter's fraction.
+- **The peak line** `EndurancePeakPoints` (100, in POINTS, not a percent of the pool). At or
+  above it a fighter is at their peak: full damage upside, full swing speed, full run
+  speed, never steps back. Below it, each of those falls in a straight line with the points
+  left, down to its floor at 0. A 150-pool veteran stays at peak from 150 down to 100; a
+  50-pool recruit never reaches it.
+- **Health caps the pool** (`HealthCapsEndurance`, on): the usable pool = pool × health
+  left. Pool 100 at 75% health → 75; a fighter holding 80 drops to 75 at once, and regen
+  never fills above the cap.
+- **Damage upside follows endurance** (`DamageBonusFollowsEndurance`, on): the roll becomes
+  `[1 − p, 1 + p × min(E / peak, 1)]` with E = the attacker's endurance (the rider's for a
+  horse charge). At or above the peak +50%; at 50 points +25%; at 0 no upside at all — only
+  the −50% side. The downside never changes.
+- **Swing speed is gradual** (Anton's pick, replaces the cliff): attack speed =
+  S + (1 − S) × min(E / peak, 1), S = `ExhaustedAttackSpeedPercent` (20%). Full speed at
+  the peak, 20% at 0. `ExhaustedRecoverPercent` retires. "Exhausted" still means E = 0 (for
+  logs and bars).
+- **Run speed follows endurance**: top speed on foot = M + (1 − M) × min(E / peak, 1),
+  M = `MinMoveSpeedMultiplier` (0.3). Tired men slow down, so fresher men overtake them.
+  Horses keep their speed (Anton's pick): `MountMinSpeedMultiplier` (1.0 = unaffected;
+  lower it to let a tired rider's horse slow on the same curve).
+- **Regen follows effort** (replaces standing/moving): standing or walking refills the pool
+  in `FullRegenSecondsStanding` (60 s). Faster than a walk, the rate falls in a straight
+  line to × `RegenMultiplierAtFullRun` (0.5) at the fighter's top speed. Effort = speed ÷
+  current top speed (the horse's for riders); walking = effort up to `WalkEffortFraction`
+  (0.4 — step 5c checks the game's real walk/run ratio and sets it). `FullRegenSecondsMoving`
+  and `MovingSpeedThreshold` retire.
+- **Tired fighters step back** (step 5d, `StepBackEnabled`, on): after each MELEE swing an
+  AI fighter on foot may step back, facing its enemy with its guard up. Chance =
+  `StepBackMaxChancePercent` (100) × (1 − min(E / peak, 1)): 0% at the peak, 50% at half,
+  every swing at 0. Back `StepBackDistance` (2 m) for up to `StepBackSeconds` (1.5 s), then
+  the formation takes it again. Never the player, never riders, never after ranged attacks.
+  The point: the tired fall back and the fresh step in. If the game's AI fights this,
+  step 5d reports and proposes the nearest thing that works.
+
+## 2c. Defaults file (step 5b)
+
+`defaults.json` at the repo root holds EVERY parameter's default, one per line, with the
+plain-words explanation above it — the one place Anton tunes defaults, then pushes. It is
+the single source of defaults: the build embeds and ships it; the first-run config file,
+MCM's Default preset and a **"Revert all to defaults"** button in MCM all read it. A second
+MCM button writes the CURRENT values as a defaults file in the config folder, so a good
+tuning found in game can be copied into the repo. The Default column of the Parameters
+table below is the INITIAL value; `defaults.json` wins.
+
 ## 3. Showing endurance
 
 All toggles, all on by default.
@@ -74,6 +128,18 @@ All toggles, all on by default.
 
 Bars show only in fights (battle, duel, tournament modes) and never while the game's
 "hide battle UI" is on.
+
+**Additions (Anton, 2026-09-27):**
+- The player and target bars show the NUMBER and a marker at the peak line (100 points).
+  Fill colour by points: above the peak green; at or below the peak blue; at or below
+  `BarYellowBelowPercent` (75) % of the peak yellow; `BarOrangeBelowPercent` (50) orange;
+  `BarRedBelowPercent` (25) red.
+- Squads also show their AVERAGE HEALTH (`ShowFormationHealth`, on) — above the formation
+  and in the orders menu.
+- Orders menu: our strip sits directly UNDER the vanilla formation cards, one cell per card
+  ("below the arrows remaining", Anton's words) — endurance average ± spread and average
+  health. Still no UIExtenderEx; if the cards' positions cannot be matched reliably, the
+  step falls back to a compact panel and says so.
 
 ## 4. Configuration
 
@@ -147,6 +213,34 @@ file also carries `ConfigVersion`, a format stamp — not a setting.
 | `VerboseLogging` | false | Log every roll, blow and exhaustion (rate-limited) to `trax_combat.log`. Off = load, settings, mission start/end, per-battle summaries and errors only. |
 
 New parameters discovered while building go into this table in the same commit.
+
+## Planned parameters (§2b, §3 additions — not in the schema yet)
+
+The step that builds each one moves its row into the Parameters table above (the schema
+test reads that table only) and removes the retired rows in the same commit.
+
+| Key | Default | Step | What it does |
+|---|---|---|---|
+| `EnduranceBase` | 50 | 5c | Pool at Athletics 0. Replaces `MaxEndurance`. |
+| `EndurancePerAthletics` | 0.5 | 5c | Pool added per Athletics point (300 → +150). |
+| `EndurancePeakPoints` | 100 | 5c | Points at or above which a fighter is at their peak. |
+| `HealthCapsEndurance` | true | 5c | Health left caps the usable pool. |
+| `DamageBonusFollowsEndurance` | true | 5c | The damage upside shrinks with the attacker's endurance below the peak. |
+| `MinMoveSpeedMultiplier` | 0.3 | 5c | Top speed on foot at 0 endurance. |
+| `MountMinSpeedMultiplier` | 1.0 | 5c | Horse top speed at the rider's 0 endurance (1.0 = horses never slow). |
+| `RegenMultiplierAtFullRun` | 0.5 | 5c | Regen rate at top speed, relative to standing or walking. |
+| `WalkEffortFraction` | 0.4 | 5c | Up to this share of top speed counts as walking (full regen). |
+| `StepBackEnabled` | true | 5d | Tired AI fighters on foot step back after melee swings. |
+| `StepBackMaxChancePercent` | 100 | 5d | Chance to step back at 0 endurance (0 at the peak, straight line between). |
+| `StepBackDistance` | 2 | 5d | Metres a fighter steps back. |
+| `StepBackSeconds` | 1.5 | 5d | Longest a step back lasts before the formation takes over again. |
+| `BarYellowBelowPercent` | 75 | 6 | Bar turns yellow at or below this % of the peak. |
+| `BarOrangeBelowPercent` | 50 | 6 | Orange at or below this %. |
+| `BarRedBelowPercent` | 25 | 6 | Red at or below this %. |
+| `ShowFormationHealth` | true | 8 | Squad bars and the orders-menu strip also show average health. |
+
+Retire in 5c: `MaxEndurance`, `FullRegenSecondsMoving`, `MovingSpeedThreshold`,
+`ExhaustedRecoverPercent`.
 
 ## Interpretations (Anton can overturn any of these)
 
