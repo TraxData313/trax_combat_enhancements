@@ -151,6 +151,10 @@ namespace TraxCombat.Missions
         /// <summary>His pace hold (step 5e) - queued, running or waiting for a game job; null until his first.</summary>
         public PaceState? Pace;
 
+        /// <summary>Step 16: his input hold (the AI timer and the backpedal through his own input) and its component;
+        /// null until he is first held that way.</summary>
+        public AiInputState? Input;
+
         public void RememberMissile(int index)
         {
             switch (MissileNext)

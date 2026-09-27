@@ -30,6 +30,24 @@ namespace TraxCombat.Missions
 
         /// <summary>The mission's first step back - its start and end are logged in full.</summary>
         public bool First;
+
+        // ---- step 16
+        /// <summary>A backpedal through his own input (StepBackBackpedal when it started), not the scripted walk.</summary>
+        public bool ByInput;
+
+        /// <summary>His attacks held while it runs (StepBackHoldAttacks when it started).</summary>
+        public bool HoldAttacks;
+
+        /// <summary>The next every-0.25 s sample (facing, distance) and what the samples saw.</summary>
+        public double NextSampleAt;
+        public bool SampledAny;
+        public bool BackTurnedAny;
+
+        /// <summary>The input hook's call count at the start - none by its end = the engine never called us.</summary>
+        public long CallsAtStart;
+
+        /// <summary>The first step back's samples, one "t+0.25 s: 0.31 m back, 4° off" per sample (log only).</summary>
+        public System.Text.StringBuilder? Detail;
     }
 
     /// <summary>What a step back was started with (filled by <see cref="IStepBackBody.Probe"/>).</summary>
@@ -51,6 +69,22 @@ namespace TraxCombat.Missions
 
         /// <summary>The scripted flags WE added (not set before): cleared by hand if the release leaves them.</summary>
         public int OurFlags;
+
+        // ---- step 16: the backpedal
+        /// <summary>Started as a backpedal (the input body).</summary>
+        public bool ByInput;
+
+        /// <summary>The unit world direction straight away from his enemy at the start - the line the probe checked.</summary>
+        public double DirX, DirY;
+
+        /// <summary>Metres covered along that line (the last steer).</summary>
+        public double Covered;
+
+        /// <summary>When the ground behind him is checked next (mission time).</summary>
+        public double NextEdgeCheck;
+
+        /// <summary>What hooking him did (the first step back's log line).</summary>
+        public AiInputHook.HookResult Hook;
     }
 
     /// <summary>Where a stepping-back man is and how he stands (mid-step and at the end).</summary>
@@ -104,6 +138,12 @@ namespace TraxCombat.Missions
         /// <summary>Releases him to his formation (<c>DisableScriptedMovement</c>) and checks nothing
         /// of ours is left.</summary>
         StepBackRelease Release(TrackedAgent st, in StepBackPlan plan);
+
+        /// <summary>Step 16, every tick while it runs (after <see cref="Check"/> said go on): a backpedal measures the
+        /// distance covered (<see cref="StepBackEnd.Arrived"/>), checks the ground behind him every 0.25 s
+        /// (<see cref="StepBackEnd.EdgeAhead"/>) and hands back this frame's backwards input in his own frame
+        /// (<paramref name="lx"/>, <paramref name="ly"/>). The scripted walk: nothing (None).</summary>
+        StepBackEnd Steer(TrackedAgent st, ref StepBackPlan plan, in StepBackRules r, double now, out float lx, out float ly);
     }
 
     /// <summary>
@@ -112,7 +152,7 @@ namespace TraxCombat.Missions
     /// then <c>SetScriptedPositionAndDirection</c> (walk, + NoAttack while StepBackHoldAttacks) and
     /// <c>DisableScriptedMovement</c>. Main thread (the logic's tick), never inside an engine callback.
     /// </summary>
-    internal sealed class GameStepBackBody : IStepBackBody
+    internal class GameStepBackBody : IStepBackBody
     {
         private const int GoToPosition = (int)Agent.AIScriptedFrameFlags.GoToPosition;
         private const int NoAttack = (int)Agent.AIScriptedFrameFlags.NoAttack;
@@ -233,7 +273,7 @@ namespace TraxCombat.Missions
 
         // ------------------------------------------------------------------ start
 
-        public bool Start(TrackedAgent st, ref StepBackPlan plan, in StepBackRules r)
+        public virtual bool Start(TrackedAgent st, ref StepBackPlan plan, in StepBackRules r)
         {
             var a = st.Agent;
             var flags = Agent.AIScriptedFrameFlags.DoNotRun;
@@ -252,7 +292,16 @@ namespace TraxCombat.Missions
 
         // ------------------------------------------------------------------ while it runs
 
-        public StepBackEnd Check(TrackedAgent st, in StepBackPlan plan)
+        public virtual StepBackEnd Check(TrackedAgent st, in StepBackPlan plan)
+        {
+            var why = CommonCheck(st, in plan);
+            if (why != StepBackEnd.None) return why;
+            if (((int)st.Agent.GetScriptedFlags() & GoToPosition) == 0) return StepBackEnd.ClearedByGame;
+            return StepBackEnd.None;
+        }
+
+        /// <summary>The reasons every step back ends early, whatever its technique (5d's list).</summary>
+        protected static StepBackEnd CommonCheck(TrackedAgent st, in StepBackPlan plan)
         {
             var a = st.Agent;
             if (!a.IsActive()) return StepBackEnd.NotActive;
@@ -270,7 +319,13 @@ namespace TraxCombat.Missions
                 if ((int)order.OrderEnum != plan.MovementOrder || (int)formation.ArrangementOrder.OrderEnum != plan.Arrangement)
                     return StepBackEnd.OrderChanged;
             }
-            if (((int)a.GetScriptedFlags() & GoToPosition) == 0) return StepBackEnd.ClearedByGame;
+            return StepBackEnd.None;
+        }
+
+        public virtual StepBackEnd Steer(TrackedAgent st, ref StepBackPlan plan, in StepBackRules r, double now, out float lx, out float ly)
+        {
+            lx = 0f;
+            ly = 0f;
             return StepBackEnd.None;
         }
 
@@ -297,7 +352,7 @@ namespace TraxCombat.Missions
 
         // ------------------------------------------------------------------ release
 
-        public StepBackRelease Release(TrackedAgent st, in StepBackPlan plan)
+        public virtual StepBackRelease Release(TrackedAgent st, in StepBackPlan plan)
         {
             var rel = new StepBackRelease();
             var a = st.Agent;
@@ -314,13 +369,98 @@ namespace TraxCombat.Missions
 
         /// <summary>Clears the flags we added if they outlived the scripted frame (the engine is
         /// expected to drop them with it - item pickup's NoAttack goes that way; counted if not).</summary>
-        private static bool ClearOurFlags(Agent a, int ours)
+        protected static bool ClearOurFlags(Agent a, int ours)
         {
             int flags = (int)a.GetScriptedFlags();
             int left = flags & ours & (NoAttack | DoNotRun | ConsiderRotation);
             if (left == 0) return false;
             a.SetScriptedFlags((Agent.AIScriptedFrameFlags)(flags & ~left));
             return true;
+        }
+    }
+
+    /// <summary>
+    /// Step 16's step back (StepBackBackpedal, AI_NOTES "Step 16"): the same gate and probe as the scripted walk
+    /// (<see cref="GameStepBackBody.Probe"/> - the spot on the navmesh, level, a straight clear way for the WHOLE
+    /// StepBackDistance), then NO scripted frame: the man is hooked (<see cref="AiInputHook.Hook"/>) and, every tick,
+    /// his component writes a backwards input along the line the probe checked, turned into his own frame from his
+    /// current body frame - a backpedal, facing whatever his AI faces (his enemy). It stops at the distance covered
+    /// (arrived), when the ground 0.6 m further back stops being walkable (edge ahead - checked every 0.25 s), at its
+    /// time or on any of 5d's reasons; a scripted frame the GAME puts on him meanwhile is the game's job (handed over).
+    /// Nothing to release in the engine: the logic stops the input, the callback flag goes off if he is idle and it
+    /// was ours, his own AI and formation take him back. Main thread (the logic's tick).
+    /// </summary>
+    internal sealed class InputStepBackBody : GameStepBackBody
+    {
+        private const int GameScripted = (int)Agent.AIScriptedFrameFlags.GoToPosition;
+
+        public override bool Start(TrackedAgent st, ref StepBackPlan plan, in StepBackRules r)
+        {
+            if (!AiInputMath.Direction(plan.From.x, plan.From.y, plan.Spot.x, plan.Spot.y, out double dx, out double dy)) return false;
+            plan.ByInput = true;
+            plan.DirX = dx;
+            plan.DirY = dy;
+            plan.Covered = 0;
+            st.Input ??= new AiInputState();
+            plan.Hook = AiInputHook.Hook(st);
+            plan.FlagsAfter = plan.FlagsBefore;
+            plan.OurFlags = 0;
+            return true;
+        }
+
+        public override StepBackEnd Check(TrackedAgent st, in StepBackPlan plan)
+        {
+            var why = CommonCheck(st, in plan);
+            if (why != StepBackEnd.None) return why;
+            // the game put a scripted frame on him (an item to pick up, a strategic area…): its job now, never cancelled
+            if (((int)st.Agent.GetScriptedFlags() & GameScripted) != 0) return StepBackEnd.HandedOver;
+            return StepBackEnd.None;
+        }
+
+        public override StepBackEnd Steer(TrackedAgent st, ref StepBackPlan plan, in StepBackRules r, double now, out float lx, out float ly)
+        {
+            lx = 0f;
+            ly = -1f;
+            var a = st.Agent;
+            Vec3 p = a.Position;
+            plan.Covered = AiInputMath.Covered(plan.From.x, plan.From.y, p.x, p.y, plan.DirX, plan.DirY);
+            if (AiInputMath.Arrived(plan.Covered, r.Distance)) return StepBackEnd.Arrived;
+            if (now >= plan.NextEdgeCheck)
+            {
+                plan.NextEdgeCheck = now + AiInputMath.EdgeCheckSeconds;
+                if (!GroundBehindOk(a, p, plan.DirX, plan.DirY)) return StepBackEnd.EdgeAhead;
+            }
+            var rot = a.Frame.rotation;
+            if (AiInputMath.BackpedalVector(plan.DirX, plan.DirY, rot.s.x, rot.s.y, rot.f.x, rot.f.y, AiInputMath.BackpedalInput, out double x, out double y))
+            {
+                lx = (float)x;
+                ly = (float)y;
+            }
+            return StepBackEnd.None;
+        }
+
+        /// <summary>The ground <see cref="AiInputMath.EdgeLookAhead"/> further along the line: on the navmesh, within
+        /// <see cref="StepBackMath.MaxHeightStep"/> of his height, a straight clear way to it (no wall edge, ditch, fence).</summary>
+        private static bool GroundBehindOk(Agent a, Vec3 p, double dx, double dy)
+        {
+            var ahead = new Vec2((float)(p.x + dx * AiInputMath.EdgeLookAhead), (float)(p.y + dy * AiInputMath.EdgeLookAhead));
+            WorldPosition wp = a.GetWorldPosition();
+            wp.SetVec2(ahead);
+            float z = wp.GetNavMeshZ();
+            if (float.IsNaN(z) || !StepBackMath.LevelEnough(p.z, z)) return false;
+            return a.CanMoveDirectlyToPosition(in ahead);
+        }
+
+        public override StepBackRelease Release(TrackedAgent st, in StepBackPlan plan)
+        {
+            var rel = new StepBackRelease();
+            var a = st.Agent;
+            if (st.Removed || !a.IsActive()) return rel;
+            Sample(st, in plan, out rel.End);
+            rel.Released = true;
+            AiInputHook.UnhookIfIdle(st);
+            rel.FlagsAfter = (int)a.GetScriptedFlags();
+            return rel;
         }
     }
 }

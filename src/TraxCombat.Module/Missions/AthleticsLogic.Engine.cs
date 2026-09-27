@@ -1150,6 +1150,14 @@ namespace TraxCombat.Missions
             }
             try
             {
+                HoldHitTaken(victim, isCanceled, in collisionData); // step 16: the guard by state - held, stepping back, everyone else
+            }
+            catch (Exception e)
+            {
+                Failed("hold.hit", e);
+            }
+            try
+            {
                 var st = Get(attacker);
                 if (st == null || collisionData.IsHorseCharge) return; // horses (charges) are not tracked; bumps are free
                 if (collisionData.IsAlternativeAttack)

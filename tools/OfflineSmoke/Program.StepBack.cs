@@ -29,7 +29,14 @@ namespace TraxCombat.Tools
             public bool StillScriptedAfterRelease;
             public int MovementState = 1; // holding a line
             public readonly Dictionary<int, StepBackEnd> EndFor = new Dictionary<int, StepBackEnd>();
+            public readonly Dictionary<int, StepBackEnd> SteerEnd = new Dictionary<int, StepBackEnd>();
             public readonly List<int> Started = new List<int>();
+
+            /// <summary>Step 16: plays the backpedal body (StepBackInputBody): Start sets the line, Steer covers 0.3 m a
+            /// call and hands back this vector.</summary>
+            public bool Input;
+            public float SteerX = 0.1f, SteerY = -0.99f;
+            public int Steers;
             public readonly List<int> Released = new List<int>();
             public int Samples;
 
@@ -61,6 +68,15 @@ namespace TraxCombat.Tools
             {
                 if (!Take) return false;
                 Started.Add(st.AgentIndex);
+                if (Input)
+                {
+                    plan.ByInput = true;
+                    AiInputMath.Direction(plan.From.x, plan.From.y, plan.Spot.x, plan.Spot.y, out plan.DirX, out plan.DirY);
+                    plan.Hook = AiInputHook.HookResult.FirstHookTurnedOn;
+                    plan.FlagsAfter = plan.FlagsBefore;
+                    plan.OurFlags = 0;
+                    return true;
+                }
                 plan.FlagsAfter = (int)(Agent.AIScriptedFrameFlags.GoToPosition | Agent.AIScriptedFrameFlags.DoNotRun
                                         | (r.HoldAttacks ? Agent.AIScriptedFrameFlags.NoAttack : 0));
                 plan.OurFlags = plan.FlagsAfter & ~(int)Agent.AIScriptedFrameFlags.GoToPosition;
@@ -69,6 +85,19 @@ namespace TraxCombat.Tools
 
             public StepBackEnd Check(TrackedAgent st, in StepBackPlan plan) =>
                 EndFor.TryGetValue(st.AgentIndex, out var why) ? why : StepBackEnd.None;
+
+            public StepBackEnd Steer(TrackedAgent st, ref StepBackPlan plan, in StepBackRules r, double now, out float lx, out float ly)
+            {
+                lx = 0f;
+                ly = 0f;
+                if (!plan.ByInput) return StepBackEnd.None;
+                Steers++;
+                plan.Covered += 0.3;
+                lx = SteerX;
+                ly = SteerY;
+                if (SteerEnd.TryGetValue(st.AgentIndex, out var why)) return why;
+                return AiInputMath.Arrived(plan.Covered, r.Distance) ? StepBackEnd.Arrived : StepBackEnd.None;
+            }
 
             public bool Sample(TrackedAgent st, in StepBackPlan plan, out StepBackSnapshot s)
             {
@@ -106,6 +135,7 @@ namespace TraxCombat.Tools
         private static void StepBackDefaults()
         {
             S.Set(SettingsSchema.StepBackEnabled, true, SettingSources.File);
+            S.Set(SettingsSchema.StepBackBackpedal, false, SettingSources.File); // step 16: the Legacy walk here (Program.AiInput.cs: the backpedal)
             S.Set(SettingsSchema.StepBackMaxChancePercent, 100, SettingSources.File);
             S.Set(SettingsSchema.StepBackDistance, 2.0, SettingSources.File);
             S.Set(SettingsSchema.StepBackSeconds, 1.5, SettingSources.File);
@@ -134,7 +164,7 @@ namespace TraxCombat.Tools
                 _logic = logic;
                 SetStatic(typeof(AthleticsLogic), "_current", logic);
                 typeof(AthleticsLogic).GetMethod("StartAthletics", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(logic, null);
-                LogHas("[stepback] mission start: ON - after a melee swing an AI fighter on foot steps back with chance 100% x (1 - f) (0 at full strength), 2.0 m straight away from his enemy for up to 1.5 s, only with the enemy within 4.0 m, no swings while stepping back, at most 50 at once - read live; technique: a scripted step");
+                LogHas("[stepback] mission start: ON - after a melee swing an AI fighter on foot steps back with chance 100% x (1 - f) (0 at full strength), 2.0 m straight away from his enemy for up to 1.5 s, only with the enemy within 4.0 m, no swings while stepping back, at most 50 at once; a scripted walk to the spot (StepBackBackpedal off) - read live; technique: a scripted step");
                 var body = new FakeStepBody();
                 logic.StepBackBody = body;
                 logic.StepBackDice = new FixedDice(0.999); // only a chance of 1 (an empty bar) says yes
@@ -169,7 +199,10 @@ namespace TraxCombat.Tools
                 logic.TickStepBacks(started + 1.5);
                 Check(logic.SteppingNow == 0 && body.Released.Count == 1 && stats.Ended(StepBackEnd.TimeUp) == 1 && stats.Releases == 1,
                     "not released when StepBackSeconds ran out");
-                LogHas("[stepback] first step back ended (time up) after 1.5 s: now at (10.0, 8.8, 0.0), moved 1.20 m (0.80 m from the spot), facing his enemy (14° off, 2.8 m from him); mid-step facing his enemy (26° off), moving away (0.80 m/s away); hits taken 0 (blocked 0), swings 1; released: scripted movement off");
+                LogHas("[stepback] first step back ended (time up) after 1.5 s: now at (10.0, 8.8, 0.0), moved 1.20 m (0.80 m from the spot), facing his enemy (14° off, 2.8 m from him); mid-step facing his enemy (26° off), moving away (0.80 m/s away); every 0.25 s (metres back, facing): +0.8 s 0.80 m, 26° off, 0.80 m/s away");
+                LogHas("; hits taken 0 (blocked 0), swings 1; released: scripted movement off");
+                Check(stats.Samples >= 2 && stats.StepsSampled == 1 && stats.StepsBackTurnedAny == 0, "step 16: the step back was not sampled every 0.25 s: "
+                    + stats.Samples + " samples, " + stats.StepsSampled + " steps sampled");
 
                 // --- live time: a shorter StepBackSeconds applies to a running step back
                 var b = EmptyRecruit(101, ref t);
@@ -265,8 +298,8 @@ namespace TraxCombat.Tools
                 LogHas("[summary] step back release check: 5 released through the engine - scripted movement still on right after 0 (must be 0)");
                 LogHas("at mission end: 1 were mid-step (released then), overdue (past their time) 0 (must be 0), scripted movement still on after that release 0 (must be 0)");
                 Check(logic.StepStats.SummaryLines(StepBackRules.From(S)).Count == 8, "the step-back summary is not 8 lines");
-                Check(logic.RateStats.SteppedBack[0] > 0, "step 5e: no attack-rate cycle was left out for a step back in it (its pause is not the attack rhythm)");
-                LogHas("; with a step back in them (its pause, not the attack rhythm) ");
+                Check(logic.RateStats.SteppedBack[0] > 0, "step 16: no attack-rate cycle with a step back inside was counted (the timer survives the step back)");
+                LogHas("; with a step back inside (COUNTED since step 16 - the AI timer survives the step back; each band shows them apart) ");
                 _ = b;
                 _ = c1;
                 _ = c2;

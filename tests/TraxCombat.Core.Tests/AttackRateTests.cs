@@ -22,9 +22,20 @@ public class AttackRateTests
         Assert.Null(r.PlayerTimerOffBecause);
         Assert.StartsWith("ON - PAUSE ONLY: animations at full speed (AttackAnimationMinPercent 100); after each attack no new attack for D x (1/m - 1)", r.Describe());
         Assert.Contains("you (AttackRatePlayerTimer) on - your attack button does nothing until it ends, held it attacks the moment it ends", r.Describe());
-        Assert.Contains("AI (AttackRatePaceHold) on - NoAttack, melee and ranged, on foot and mounted", r.Describe());
+        Assert.Contains("AI (AttackRatePaceHold) on - by input (AttackRatePaceByInput on: only the attack bits taken out of his own input, his guard his own, raised when he wants to attack - AiHoldRaiseGuard on), melee and ranged, on foot and mounted", r.Describe());
+        Assert.True(r.PaceByInput);   // step 16: the default technique
+        Assert.True(r.RaiseGuard);
         Assert.Contains("AI decisions (AttackRateAiDecisions) off", r.Describe());
         Assert.EndsWith("never held: blocking, parrying, moving, weapon switches, kicks", r.Describe());
+
+        // step 16: the A/B switch back to NoAttack - named in the sentence
+        s.Set(SettingsSchema.AttackRatePaceByInput, false, SettingSources.Mcm);
+        r = AttackRateRules.From(s);
+        Assert.False(r.PaceByInput);
+        Assert.Contains("AI (AttackRatePaceHold) on - NoAttack (AttackRatePaceByInput off: the engine's no-attack flag, step 13's technique), melee and ranged, on foot and mounted", r.Describe());
+        s.Set(SettingsSchema.AiHoldRaiseGuard, false, SettingSources.Mcm);
+        s.Set(SettingsSchema.AttackRatePaceByInput, true, SettingSources.Mcm);
+        Assert.Contains("his guard his own - AiHoldRaiseGuard off)", AttackRateRules.From(s).Describe());
 
         s.Set(SettingsSchema.AttackRatePaceHold, false, SettingSources.Mcm);
         s.Set(SettingsSchema.AttackRateAiDecisions, true, SettingSources.Mcm);
@@ -197,7 +208,7 @@ public class AttackRateTests
         Assert.Equal(2, s.LeftOut[AttackRateStats.Group(AttackKind.Melee, true)]);
         var lines = s.SummaryLines(new AttackRateRules(true, true, false, true), true);
         Assert.EndsWith(" - an attack-rate switch CHANGED during this battle: the rows below mix both settings", lines[0]);
-        Assert.Contains("attack rate - left out: cycles whose two ends fell in different f bands (melee AI / you, ranged AI / you) 0 / 1, 0 / 0; longer than 4 s ÷ m melee or 12 s ÷ m ranged (a pause, not a fighting rhythm) 0 / 2, 0 / 0; readies that ended in no attack (cancelled, feints) 0 / 0, 1 / 0; chained (the next ready straight out of the last attack, pause 0) 1 / 0, 0 / 0; with a step back in them (its pause, not the attack rhythm) 1 / 0, 0 / 0", lines);
+        Assert.Contains("attack rate - left out: cycles whose two ends fell in different f bands (melee AI / you, ranged AI / you) 0 / 1, 0 / 0; longer than 4 s ÷ m melee or 12 s ÷ m ranged (a pause, not a fighting rhythm) 0 / 2, 0 / 0; readies that ended in no attack (cancelled, feints) 0 / 0, 1 / 0; chained (the next ready straight out of the last attack, pause 0) 1 / 0, 0 / 0; with a step back inside (COUNTED since step 16 - the AI timer survives the step back; each band shows them apart) 1 / 0, 0 / 0", lines);
     }
 
     [Fact]
@@ -230,7 +241,7 @@ public class AttackRateTests
         s.PlayerHeldAtMissionEnd = 1;
         s.AddPlayerEnd(PlayerTimerEnd.MissionEnd);
         var lines = s.SummaryLines(new AttackRateRules(true, true, false, true), false);
-        Assert.Contains("attack rate, melee, you, f 0.5-1 - timer: 3 (D avg 0.80 s at m 0.50 → asked avg 0.80 s = D x (1/m - 1)); measured: the next attack began avg 0.77 s after the attack's end (n 3), 0.07 s after the timer ended; started before the timer ended: 1 (must be 0)", lines);
+        Assert.Contains("attack rate, melee, you, f 0.5-1 - timer: 3 (D avg 0.80 s at m 0.50 → asked avg 0.80 s = D x (1/m - 1)); measured: the next attack began avg 0.77 s after the attack's end (n 3), 0.07 s after the timer ended; started before the timer ended: 1 (must be 0); the timer's floor D/m avg 1.60 s - the cycle vs it: n/a (at least ~100% = held as the spec asks)", lines);
         Assert.Contains("attack rate - your timer (AttackRatePlayerTimer on at the end): 3 timers (melee 3, ranged 0), avg asked 0.80 s, max 0.80 s; your presses swallowed: 2 during your own attack (no chained blow), 5 during the countdown - the recovery bar flashed 4x; the button held through the end 2x, your attack began avg 0.03 s after (n 2) - near 0 = hold-to-attack works; attacks that started while held anyway: 0 (must be 0 - the input gate missed them); holds begun at your swing's start 3 (ended with no countdown, below 0.1 s: 1); ended early: switched off 1, not you any more 0, mission end 1 (still running at the end, released: 1)", lines);
     }
 
@@ -238,7 +249,7 @@ public class AttackRateTests
     public void AI_timers_their_reasons_and_the_guard_by_f_are_summarised()
     {
         var s = new AttackRateStats();
-        s.AddHoldStart(1, 0.8f, AttackKind.Melee);
+        s.AddHoldStart(1, 0.8f, AttackKind.Melee, byInput: true);
         s.AddHoldStart(3, 0.2f, AttackKind.Ranged, mounted: true);
         s.AddHoldEnd(PaceEnd.TimeUp, 0.5);
         s.AddHoldEnd(PaceEnd.AttackStarted, 1.5);
@@ -263,12 +274,15 @@ public class AttackRateTests
 
         var lines = s.SummaryLines(new AttackRateRules(true, true, false, true), false);
         Assert.Contains("attack rate - AI decisions (AttackRateAiDecisions off at the end): scaled in 2 recomputes - the chance to attack and to riposte x m, to loose x m, the aim before a shot ÷ m (off by default since step 13: on top of the timer it double-counts)", lines);
-        Assert.Contains("attack rate - AI timer (AttackRatePaceHold on at the end; NoAttack after each attack of a tired AI fighter, melee and ranged, on foot and mounted): 2 holds (melee 1, ranged 1, mounted 1), avg 1.00 s, max 1.50 s at avg m 0.50; by f: f 0.5-1 1, f below 0.5 0, empty (f 0) 1", lines);
+        Assert.Contains("attack rate - AI timer (AttackRatePaceHold on at the end; technique at the end: by input (AttackRatePaceByInput on: only the attack bits taken out of his own input, his guard his own, raised when he wants to attack - AiHoldRaiseGuard on); after each attack of a tired AI fighter, melee and ranged, on foot and mounted): 2 holds (by input 1, by NoAttack 1; melee 1, ranged 1, mounted 1), avg 1.00 s, max 1.50 s at avg m 0.50; by f: f 0.5-1 1, f below 0.5 0, empty (f 0) 1", lines);
+        Assert.Equal(1, s.HoldsByInput);
+        Assert.Equal(1, s.HoldsByFlag);
         Assert.Contains(lines, l => l.StartsWith("attack rate - AI timer, not held: at full strength 1, not needed (below 0.1 s) 1, the next attack already readied at the attack's end 0, the attack's length not measured 1,", StringComparison.Ordinal)
                                     && l.Contains("| not started by the tick: busy with a game job (scripted, an object, a ladder, detached) 1,"));
-        Assert.Contains(lines, l => l.StartsWith("attack rate - AI timer ends: time up 1, an attack started anyway 1 (must be about 0 - NoAttack holds attacks),", StringComparison.Ordinal)
-                                    && l.Contains("| NoAttack cleared by us 1, already cleared by the game 0, a game job on him at the end (left alone, cleared once free: 1, of them under a long scripted frame: 0) 1, still held at mission end 0")
-                                    && l.EndsWith("| the next ready came avg 0.30 s after a hold ended (n 2) - the AI's own re-decision after NoAttack lifts", StringComparison.Ordinal));
+        Assert.Contains(lines, l => l.StartsWith("attack rate - AI timer ends: time up 1, an attack started anyway 1 (must be about 0 - the hold stops attacks),", StringComparison.Ordinal)
+                                    && l.Contains("| lifted by us 1, NoAttack already cleared by the game 0, a game job on him at the end (left alone, cleared once free: 1, of them under a long scripted frame: 0) 1, still held at mission end 0")
+                                    && l.EndsWith("| the next ready came avg 0.30 s after a hold ended (n 2) - the AI's own re-decision after the hold lifts (NoAttack cost 1-3 s; by input he readies at once if he still wants to)", StringComparison.Ordinal));
+        Assert.Contains(lines, l => l.Contains(", the attack's length not measured 1, covered by a scripted step back (a NoAttack hold waiting for the step to end whose time ran out first) 0 |"));
         Assert.Contains("attack rate - guard by f (melee hits on fighters on foot that were blocked or parried; blocking is never slowed - tired men must not block less): peak (f 1) 40% (n 10) | f 0.5-1 n/a (n 0) | f below 0.5 n/a (n 0) | empty (f 0) 50% (n 4) | while held by the AI timer 50% (n 4)", lines);
     }
 

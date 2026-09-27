@@ -302,7 +302,7 @@ namespace TraxCombat.Missions
 
                 TraxLog.Info("summary", "==== " + _label + " - ended (" + when + ") after "
                     + Safe(() => m!.CurrentTime.ToString("0", CultureInfo.InvariantCulture)) + " s, result: " + Result(m)
-                    + ", " + Safe(() => _modSwitch.Describe(m != null ? m.CurrentTime : 0)) + " ====");
+                    + ", " + Safe(() => _modSwitch.Describe(m != null ? m.CurrentTime : 0)) + ", " + Safe(HoldsHeader) + " ====");
                 TraxLog.Info("summary", "agents built: " + _built + " (" + _builtHumans + " people incl. " + _builtHeroes
                     + " heroes, " + _builtMounts + " mounts)");
                 TraxLog.Info("summary", "people removed: " + _killed + " killed, " + _unconscious + " knocked out, "

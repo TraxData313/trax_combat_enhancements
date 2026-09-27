@@ -129,6 +129,15 @@ namespace TraxCombat.Core
             "Tired AI wait out the pause",
             "On: after each attack - melee or ranged, on foot or mounted - a tired AI fighter does not start another until his pause is over; his guard stays up. Off: tired AI fighters are not held. Off mid-battle: every waiting fighter may attack again at once.");
 
+        // Step 16 (BATTLE_PACING lever #2): the AI's pause through its own input - held men keep blocking.
+        public static readonly ParamDef AttackRatePaceByInput = Bool("AttackRatePaceByInput", TiredGroup,
+            "Tired AI keep their guard up (new way)",
+            "On: a tired AI fighter waiting out his pause keeps fighting in every way but one - only his wish to attack is taken out of his own controls, so he still blocks, parries and moves as he likes. Off: the old way - the game's own 'no attack' order, under which waiting men blocked almost nothing (2-13% in the playtest). An A/B switch: the battle summary's guard line compares the two. A pause already running finishes the way it began.");
+
+        public static readonly ParamDef AiHoldRaiseGuard = Bool("AiHoldRaiseGuard", TiredGroup,
+            "Held AI raise their guard",
+            "On: when a tired AI fighter who is waiting out his pause or stepping back wants to attack, he raises his guard instead (a block - with a shield, the shield). Off: his attack is simply dropped and he blocks only when his own AI decides to. Only with the new ways (\"Tired AI keep their guard up\", \"Step back = walk backwards\").");
+
         public static readonly ParamDef AttackRateAiDecisions = Bool("AttackRateAiDecisions", TiredGroup,
             "Tired AI also decide to attack less",
             "On: a tired AI fighter also decides to attack (and to strike back after a parry) less often, looses arrows less readily and aims longer - by his attack speed - on top of the pause. Off: the pause alone slows him. With both on they stack and tired AI fighters attack slower than asked, so it is off unless you want that.");
@@ -154,6 +163,11 @@ namespace TraxCombat.Core
         public static readonly ParamDef StepBackEnabled = Bool("StepBackEnabled", StepBackGroup,
             "Tired fighters step back",
             "On: after a melee swing, a tired AI fighter on foot may step back a little, facing his enemy with his guard up, then return to his place in the formation - so the tired fall back and the fresh take the blows. Never you, never riders, never after a shot or a throw; field battles only. Off mid-battle: everyone stepping back returns to his formation at once.");
+
+        // Step 16: the step back as a backpedal through the AI's own input (BATTLE_PACING section B).
+        public static readonly ParamDef StepBackBackpedal = Bool("StepBackBackpedal", StepBackGroup,
+            "Step back = walk backwards (new way)",
+            "On: a fighter stepping back walks backwards, like you holding S - he keeps facing his enemy with his guard up and stops when he has covered the step distance or the step time runs out (or the ground behind him ends). Off: the old way - the game walks him to a spot behind him, and most men turned their backs to do it (80% in the playtest). An A/B switch: the summary's facing and guard lines compare the two. A step back already running finishes the way it began.");
 
         public static readonly ParamDef StepBackMaxChancePercent = Int("StepBackMaxChancePercent", 0, 100, StepBackGroup,
             "Chance when empty (%)",
@@ -366,9 +380,9 @@ namespace TraxCombat.Core
             DamageRandomOnMounts, DamageRandomOnShields,
             AthleticsEnabled, AthleticsPoolFloor, AthleticsPoolPerSkill, AthleticsPeakPercent, HealthCapsAthletics,
             CostPerBlow, CostOnMiss, HeroCostMultiplier, PartyLeaderCostMultiplier,
-            ExhaustedAttackSpeedPercent, AttackRatePlayerTimer, AttackRatePaceHold, AttackRateAiDecisions, AttackAnimationMinPercent,
+            ExhaustedAttackSpeedPercent, AttackRatePlayerTimer, AttackRatePaceHold, AttackRatePaceByInput, AiHoldRaiseGuard, AttackRateAiDecisions, AttackAnimationMinPercent,
             MinMoveSpeedMultiplier, MountMinSpeedMultiplier, DamageBonusFollowsAthletics,
-            StepBackEnabled, StepBackMaxChancePercent, StepBackDistance, StepBackSeconds, StepBackEnemyRange,
+            StepBackEnabled, StepBackBackpedal, StepBackMaxChancePercent, StepBackDistance, StepBackSeconds, StepBackEnemyRange,
             StepBackHoldAttacks, StepBackMaxAtOnce,
             RegenDelayBlowTimes, BlowTimeSeconds, FullRegenSecondsStanding, RegenRateNearFullPercent, RegenMultiplierAtFullRun,
             WalkEffortFraction,

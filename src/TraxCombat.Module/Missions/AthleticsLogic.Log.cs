@@ -172,6 +172,16 @@ namespace TraxCombat.Missions
             {
                 Failed("stepback.summary", e);
             }
+
+            // Step 16: the AI holds - the techniques, the guard by state, the input hook, the timer surviving a step back.
+            try
+            {
+                WriteHoldSummary();
+            }
+            catch (Exception e)
+            {
+                Failed("hold.summary", e);
+            }
         }
 
         // ------------------------------------------------------------------ wording

@@ -43,6 +43,26 @@ namespace TraxCombat.Missions
 
         /// <summary>The mission's first hold - its start and end are logged in full.</summary>
         public bool First;
+
+        // ---- step 16
+        /// <summary>This hold runs through the AI's own input (AttackRatePaceByInput when it started), not NoAttack.</summary>
+        public bool ByInput;
+
+        /// <summary>A step back ran during this hold (both at once) - counted once when the hold ends.</summary>
+        public bool Overlapped;
+
+        /// <summary>A NoAttack hold waiting for a SCRIPTED step back to end (its frame owns the flag word).</summary>
+        public bool Deferred;
+
+        /// <summary>The input hook's call count when the hold started - none by its end = the engine never called us.</summary>
+        public long CallsAtStart;
+
+        /// <summary>What hooking him did (the first hold's log line).</summary>
+        public AiInputHook.HookResult Hook;
+
+        /// <summary>Melee hits he took during this hold and how many he blocked (the first hold's log line).</summary>
+        public int HitsTaken;
+        public int HitsBlocked;
     }
 
     /// <summary>
@@ -130,7 +150,48 @@ namespace TraxCombat.Missions
         }
 
         /// <summary>The game's own jobs that script a man (managed reads, plus the move-to-object state).</summary>
-        private static bool GameJob(Agent a) =>
+        internal static bool GameJob(Agent a) =>
             a.IsUsingGameObject || a.IsInLadderQueue || a.IsDetachedFromFormation || a.AIMoveToGameObjectIsEnabled();
+    }
+
+    /// <summary>
+    /// Step 16's engine side of the AI timer (AttackRatePaceByInput, AI_NOTES "Step 16"): no flag at all - the man is
+    /// hooked (<see cref="AiInputHook.Hook"/>: our component, the engine's callback on) and the logic's wish
+    /// (<see cref="AiInputState.HoldAttacks"/>) makes the component take only the attack bits out of his own input,
+    /// so his guard, parries and moves stay his. The same men as the NoAttack body are refused (not AI, a game job on
+    /// him) so the A/B arms hold the same men; nothing is shared with the game, so nothing ever waits. Release: the
+    /// callback flag off again if he is idle and it was ours. Main thread (the logic's tick).
+    /// </summary>
+    internal sealed class InputPaceBody : IPaceBody
+    {
+        public bool Start(TrackedAgent st, PaceState ps, out PaceRefusal refusal)
+        {
+            var a = st.Agent;
+            refusal = PaceRefusal.Gone;
+            if (!a.IsActive()) return false;
+            refusal = PaceRefusal.NotAi;
+            if (a.IsMainAgent || !a.IsAIControlled) return false;
+            refusal = PaceRefusal.Busy;
+            if (GamePaceBody.GameJob(a)) return false;
+            st.Input ??= new AiInputState();
+            ps.Hook = AiInputHook.Hook(st);
+            ps.FlagsBefore = ps.FlagsAfter = (int)a.GetScriptedFlags();
+            refusal = PaceRefusal.Error;
+            return true;
+        }
+
+        public PaceRelease Release(TrackedAgent st, PaceState ps, bool evenUnderAFrame)
+        {
+            // the logic took the wish back before this call; the callback flag goes off if he is idle and it was ours
+            if (st.Removed || !st.Agent.IsActive()) return PaceRelease.Gone;
+            AiInputHook.UnhookIfIdle(st);
+            return PaceRelease.ClearedByUs;
+        }
+
+        public bool MustEnd(TrackedAgent st, out PaceEnd why)
+        {
+            why = PaceEnd.PlayerControl;
+            return st.Agent.IsMainAgent;
+        }
     }
 }

@@ -218,6 +218,8 @@ namespace TraxCombat.Core
         public int ExhaustedAttackSpeedPercent => GetInt(SettingsSchema.ExhaustedAttackSpeedPercent);
         public bool AttackRatePlayerTimer => GetBool(SettingsSchema.AttackRatePlayerTimer);
         public bool AttackRatePaceHold => GetBool(SettingsSchema.AttackRatePaceHold);
+        public bool AttackRatePaceByInput => GetBool(SettingsSchema.AttackRatePaceByInput);
+        public bool AiHoldRaiseGuard => GetBool(SettingsSchema.AiHoldRaiseGuard);
         public bool AttackRateAiDecisions => GetBool(SettingsSchema.AttackRateAiDecisions);
         public int AttackAnimationMinPercent => GetInt(SettingsSchema.AttackAnimationMinPercent);
         public float MinMoveSpeedMultiplier => GetFloat(SettingsSchema.MinMoveSpeedMultiplier);
@@ -225,6 +227,7 @@ namespace TraxCombat.Core
         public bool DamageBonusFollowsAthletics => GetBool(SettingsSchema.DamageBonusFollowsAthletics);
 
         public bool StepBackEnabled => GetBool(SettingsSchema.StepBackEnabled);
+        public bool StepBackBackpedal => GetBool(SettingsSchema.StepBackBackpedal);
         public int StepBackMaxChancePercent => GetInt(SettingsSchema.StepBackMaxChancePercent);
         public float StepBackDistance => GetFloat(SettingsSchema.StepBackDistance);
         public float StepBackSeconds => GetFloat(SettingsSchema.StepBackSeconds);

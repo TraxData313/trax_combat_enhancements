@@ -10,8 +10,9 @@ namespace TraxCombat.Core
     public readonly struct StepBackRules
     {
         public StepBackRules(bool stepBackEnabled, int maxChancePercent, float distance, float seconds, float enemyRange,
-            bool holdAttacks, int maxAtOnce, bool athleticsEnabled = true, bool modEnabled = true)
+            bool holdAttacks, int maxAtOnce, bool athleticsEnabled = true, bool modEnabled = true, bool backpedal = true)
         {
+            Backpedal = backpedal;
             ModEnabled = modEnabled;
             AthleticsEnabled = athleticsEnabled;
             StepBackEnabled = stepBackEnabled;
@@ -58,13 +59,17 @@ namespace TraxCombat.Core
         /// <summary>StepBackMaxAtOnce - the most stepping back at the same time, all sides.</summary>
         public int MaxAtOnce { get; }
 
+        /// <summary>StepBackBackpedal (step 16) - a backwards input through the AI's own controls (facing his enemy);
+        /// false = step 5d's scripted walk to the spot.</summary>
+        public bool Backpedal { get; }
+
         /// <summary>The chance at f 0 as a share, 0..1.</summary>
         public double MaxChance => MaxChancePercent <= 0 ? 0 : MaxChancePercent >= 100 ? 1.0 : MaxChancePercent / 100.0;
 
         /// <summary>The live values, read now.</summary>
         public static StepBackRules From(TraxSettings s) => new StepBackRules(
             s.StepBackEnabled, s.StepBackMaxChancePercent, s.StepBackDistance, s.StepBackSeconds, s.StepBackEnemyRange,
-            s.StepBackHoldAttacks, s.StepBackMaxAtOnce, s.AthleticsEnabled, s.ModEnabled);
+            s.StepBackHoldAttacks, s.StepBackMaxAtOnce, s.AthleticsEnabled, s.ModEnabled, s.StepBackBackpedal);
 
         /// <summary>One line for the log: "ON - after a melee swing …" or "OFF (StepBackEnabled)".</summary>
         public string Describe() => Enabled
@@ -72,7 +77,8 @@ namespace TraxCombat.Core
               + Distance.ToString("0.0#", System.Globalization.CultureInfo.InvariantCulture) + " m straight away from his enemy for up to "
               + Seconds.ToString("0.0#", System.Globalization.CultureInfo.InvariantCulture) + " s, only with the enemy within "
               + EnemyRange.ToString("0.0#", System.Globalization.CultureInfo.InvariantCulture) + " m, "
-              + (HoldAttacks ? "no swings while stepping back" : "swings allowed while stepping back") + ", at most " + MaxAtOnce + " at once"
+              + (HoldAttacks ? "no swings while stepping back" : "swings allowed while stepping back") + ", at most " + MaxAtOnce + " at once; "
+              + (Backpedal ? "a backpedal (StepBackBackpedal on: a backwards input, facing his enemy, until the distance is covered)" : "a scripted walk to the spot (StepBackBackpedal off)")
             : "OFF (" + OffBecause + ")";
     }
 
@@ -205,6 +211,13 @@ namespace TraxCombat.Core
 
         /// <summary>Our code threw for him - released as a precaution.</summary>
         Error,
+
+        /// <summary>Step 16 (backpedal): StepBackDistance covered along the line straight away from his enemy - arrived.</summary>
+        Arrived,
+
+        /// <summary>Step 16 (backpedal): the ground a little further back stopped being walkable (off the navmesh, a
+        /// height step, no straight way) - stopped before a wall edge or a ditch.</summary>
+        EdgeAhead,
     }
 
     /// <summary>

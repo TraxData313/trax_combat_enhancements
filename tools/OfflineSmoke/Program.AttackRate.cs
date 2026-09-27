@@ -37,6 +37,7 @@ namespace TraxCombat.Tools
         {
             public bool Take = true;
             public PaceRefusal? NextRefusal;
+            public AiInputHook.HookResult Hook = AiInputHook.HookResult.FirstHookTurnedOn; // step 16: as the input body reports it
             public int WaitingReleases;
             public bool UnderAPlainFrame;
             public readonly List<int> Started = new List<int>();
@@ -54,6 +55,7 @@ namespace TraxCombat.Tools
                 }
                 if (!Take) return false;
                 Started.Add(st.AgentIndex);
+                ps.Hook = Hook;
                 ps.FlagsBefore = 0;
                 ps.FlagsAfter = (int)Agent.AIScriptedFrameFlags.NoAttack;
                 return true;
@@ -141,6 +143,8 @@ namespace TraxCombat.Tools
             logic.PaceBody = body;
             logic.StepBackDice = new FixedDice(0.999);
             logic.StepBackBody = new FakeStepBody { Allow = false }; // no step backs in these checks
+            logic.StepBackInputBody = new FakeStepBody { Allow = false, Input = true };
+            logic.PaceInputBody = new FakePaceBody { Take = false };   // step 16: the old technique here (AthleticsDefaults) - never used
             return logic;
         }
 
@@ -174,7 +178,7 @@ namespace TraxCombat.Tools
                 var b = NewRateLogic(body);
                 var sb = b.RateStats;
                 LogHas("[rate] mission start: ON - PAUSE ONLY: animations at full speed (AttackAnimationMinPercent 100); after each attack no new attack for D x (1/m - 1) (D = its wind-up + release, ranged + its reload): you (AttackRatePlayerTimer) on");
-                LogHas("AI (AttackRatePaceHold) on - NoAttack, melee and ranged, on foot and mounted; AI decisions (AttackRateAiDecisions) off; never held: blocking, parrying, moving, weapon switches, kicks - read live");
+                LogHas("AI (AttackRatePaceHold) on - NoAttack (AttackRatePaceByInput off: the engine's no-attack flag, step 13's technique), melee and ranged, on foot and mounted; AI decisions (AttackRateAiDecisions) off; never held: blocking, parrying, moving, weapon switches, kicks - read live");
 
                 // ---- A: an AI melee fighter, full-speed animations (D 0.82 s): no timer at full strength,
                 // none below 0.1 s, then D x (1/m - 1) after every attack, the gap exactly the timer
@@ -191,7 +195,7 @@ namespace TraxCombat.Tools
                 LogHas(" at attack speed x0.88 (f 0.84) → no new attack for 0.12 s = D x (1/m - 1), until ");
                 LogHas("; scripted flags 0 → 2 (NoAttack set: the engine took it)");
                 LogHas("[rate] first AI timer ended at ");
-                LogHas(" - time up; scripted flags now 0; the gap to his next attack is in the summary (\"timer:\" rows)");
+                LogHas(" - time up; scripted flags now 0; melee hits taken while held 0 (blocked 0); the gap to his next attack is in the summary (\"timer:\" rows)");
                 for (int i = 0; i < 29; i++) Attack(b, y, ref t);
                 Check(y.Exhausted && sb.Holds == 30 && sb.Released(PaceRelease.ClearedByUs) == 30, "A: holds " + sb.Holds + " (30), cleared " + sb.Released(PaceRelease.ClearedByUs));
                 Check(Near(sb.TimerAskedMean(AttackKind.Melee, false, 3), 3.28) && Near(sb.GapMean(AttackKind.Melee, false, 3), 3.28) && sb.StartedEarly(AttackKind.Melee, false) == 0,
@@ -208,7 +212,7 @@ namespace TraxCombat.Tools
                     "A: the empty band row: " + string.Join(" // ", linesA));
                 Check(linesA.Exists(l => l.StartsWith("attack rate, melee, AI, empty (f 0) - timer: 1", StringComparison.Ordinal)
                                          && l.Contains("(D avg 0.82 s at m 0.20 → asked avg 3.28 s = D x (1/m - 1)); measured: the next attack began avg 3.28 s after the attack's end")
-                                         && l.EndsWith(" 0.00 s after the timer ended; started before the timer ended: 0 (must be 0)", StringComparison.Ordinal)),
+                                         && l.Contains(" 0.00 s after the timer ended; started before the timer ended: 0 (must be 0); the timer's floor D/m avg 4.10 s - the cycle vs it: 102% (n ")),
                     "A: the empty band's timer row: " + string.Join(" // ", linesA));
 
                 // ---- B: ranged - the timer after the RELOAD, D = draw + loose + reload; a throw with none
@@ -357,12 +361,13 @@ namespace TraxCombat.Tools
                 y.SpeedDirty = false;
 
                 // review 10a R1: a tired swing whose step back is REFUSED (the cap, a shield wall, no enemy
-                // near) is still held; one whose step back STARTS is not (the step back holds his attacks)
+                // near) is still held. Step 16: one whose step back STARTS is held too - the timer survives the step
+                // back; this NoAttack hold waits behind the scripted walk and is set the tick it ends
                 var stepBody = new FakeStepBody();
                 b.StepBackBody = stepBody;
                 S.Set(SettingsSchema.StepBackEnabled, true, SettingSources.File);
                 Check(y.Exhausted, "R1: precondition - y is not empty (his swing would not ask for a step back)");
-                int holdsR1 = sb.Holds, steppingNotHeld = sb.NotHeld(PaceNotHeld.SteppingBack);
+                int holdsR1 = sb.Holds;
                 stepBody.NextRefusal = StepBackRefusal.AtOnceCap;
                 SwingOnce(b, y, ref t);
                 Check(y.StepBack != null && y.StepBack.Pending, "R1: the empty swing did not ask for a step back");
@@ -375,11 +380,33 @@ namespace TraxCombat.Tools
                 SwingOnce(b, y, ref t);
                 b.TickStepBacks(t);                          // this time it starts
                 b.TickPace(t);
-                Check(b.SteppingNow == 1 && !y.Pace.Active && sb.Holds == holdsR1 + 1 && sb.NotHeld(PaceNotHeld.SteppingBack) == steppingNotHeld + 1,
-                    "R1: a hold started on a man stepping back (or was not counted as stepping back)");
+                Check(b.SteppingNow == 1 && !y.Pace.Active && y.Pace.Deferred && b.DeferredNow == 1 && sb.Holds == holdsR1 + 1 && b.HoldStats.Deferred == 1,
+                    "R1 / step 16: the hold was not deferred behind the scripted step back (never dropped, never over its frame)");
+                double untilR1 = y.Pace.Until;
                 t += 1.6;
-                b.TickStepBacks(t);                          // its time is up: released
-                Check(b.SteppingNow == 0, "R1: the step back did not end");
+                b.TickStepBacks(t);                          // its time is up: released...
+                b.TickPace(t);                               // ...and the deferred NoAttack set in the same tick
+                Check(b.SteppingNow == 0 && y.Pace.Active && !y.Pace.Deferred && b.DeferredNow == 0 && sb.Holds == holdsR1 + 2
+                      && b.HoldStats.DeferredStarted == 1 && Near(y.Pace.Until, untilR1),
+                    "R1 / step 16: the deferred hold was not set when the step back ended (the timer must survive the step back)");
+                t = y.Pace.Until;
+                b.TickPace(t);                               // the rest of the pause served
+                Check(!y.Pace.Active && b.HoldStats.HoldsOverlappingAStep == 1, "step 16: the deferred hold did not end / was not counted as overlapping");
+                // a short pause fully covered by the step back: never set, counted
+                var mild = Wounded(b, 213, 70f, t);          // f 0.93: a pause of a few tenths
+                stepBody.NextRefusal = StepBackRefusal.None;
+                S.Set(SettingsSchema.StepBackMaxChancePercent, 100, SettingSources.Mcm);
+                b.StepBackDice = new FixedDice(0.0);         // every roll says yes
+                SwingOnce(b, mild, ref t);
+                b.TickStepBacks(t);
+                b.TickPace(t);
+                Check(b.SteppingNow == 1 && mild.Pace != null && mild.Pace.Deferred, "step 16: the mild man's hold was not deferred");
+                t += 1.6;
+                b.TickStepBacks(t);
+                b.TickPace(t);
+                Check(!mild.Pace!.Active && !mild.Pace.Deferred && b.HoldStats.DeferredCovered == 1 && sb.NotHeld(PaceNotHeld.CoveredByStepBack) == 1,
+                    "step 16: a pause the step back covered was set anyway or not counted");
+                b.StepBackDice = new FixedDice(0.999);
                 S.Set(SettingsSchema.StepBackEnabled, false, SettingSources.File);
                 b.StepBackBody = new FakeStepBody { Allow = false };
 
@@ -421,10 +448,10 @@ namespace TraxCombat.Tools
                 LogHas("[summary] attack rate - your timer (AttackRatePlayerTimer on at the end): ");
                 LogHas("the button held through the end 1x, your attack began avg 0.01 s after (n 1) - near 0 = hold-to-attack works; attacks that started while held anyway: 1 (must be 0 - the input gate missed them)");
                 LogHas("ended early: switched off 2, not you any more 0, mission end 1 (still running at the end, released: 1)");
-                LogHas("[summary] attack rate - AI timer (AttackRatePaceHold on at the end; NoAttack after each attack of a tired AI fighter, melee and ranged, on foot and mounted): ");
+                LogHas("[summary] attack rate - AI timer (AttackRatePaceHold on at the end; technique at the end: NoAttack (AttackRatePaceByInput off: the engine's no-attack flag, step 13's technique); after each attack of a tired AI fighter, melee and ranged, on foot and mounted): ");
                 LogHas("[summary] attack rate - AI timer, not held: at full strength 7, not needed (below 0.1 s) 3, the next attack already readied at the attack's end 1,");
                 LogHas("[summary] attack rate - AI timer ends: time up ");
-                LogHas(", an attack started anyway 1 (must be about 0 - NoAttack holds attacks), switched off ");
+                LogHas(", an attack started anyway 1 (must be about 0 - the hold stops attacks), switched off ");
                 LogHas(", left the field 1, mission end 1, you took him 1, error 0");
                 // (3 waited: the game job, the long frame and R2's - R2's was followed by a new hold, not cleared)
                 LogHas("a game job on him at the end (left alone, cleared once free: 2, of them under a long scripted frame: 1) 3, still held at mission end 1");

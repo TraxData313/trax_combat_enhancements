@@ -34,9 +34,10 @@ namespace TraxCombat.Core
         /// <summary>m is 1: nothing to hold.</summary>
         FullStrength = 0,
 
-        /// <summary>His step back (5d) is running, or the one this swing asked for started - it holds his
-        /// attacks itself. (A step back that was asked for but REFUSED leaves the timer to run.)</summary>
-        SteppingBack = 1,
+        /// <summary>Step 16: a Legacy hold (NoAttack) deferred behind a SCRIPTED step back (its frame owns the flag
+        /// word) whose time ran out before the step back ended - his attacks were held by the step back all along.
+        /// (Before step 16: "stepping back" - a started step back dropped the hold, review 10a R1's rule.)</summary>
+        CoveredByStepBack = 1,
 
         /// <summary>The attack's duration was not measured (its ready or release was not seen whole).</summary>
         NoDuration = 2,
@@ -129,7 +130,8 @@ namespace TraxCombat.Core
         {
         }
 
-        public AttackRateRules(bool modEnabled, bool athleticsEnabled, bool aiDecisions, bool paceHold, bool playerTimer, int animationMinPercent)
+        public AttackRateRules(bool modEnabled, bool athleticsEnabled, bool aiDecisions, bool paceHold, bool playerTimer, int animationMinPercent,
+            bool paceByInput = true, bool raiseGuard = true)
         {
             ModEnabled = modEnabled;
             AthleticsEnabled = athleticsEnabled;
@@ -137,6 +139,8 @@ namespace TraxCombat.Core
             PaceHold = paceHold;
             PlayerTimer = playerTimer;
             AnimationMinPercent = animationMinPercent;
+            PaceByInput = paceByInput;
+            RaiseGuard = raiseGuard;
         }
 
         public bool ModEnabled { get; }
@@ -154,6 +158,13 @@ namespace TraxCombat.Core
 
         /// <summary>AttackAnimationMinPercent - the slowest the attack animations get (100 = full speed always).</summary>
         public int AnimationMinPercent { get; }
+
+        /// <summary>AttackRatePaceByInput (step 16) - the AI timer takes the attack bits out of the AI's own input
+        /// (his guard stays his own); false = step 13's NoAttack flag.</summary>
+        public bool PaceByInput { get; }
+
+        /// <summary>AiHoldRaiseGuard (step 16) - a held man who wants to attack raises his guard instead.</summary>
+        public bool RaiseGuard { get; }
 
         /// <summary>Athletics is live (the master switch first).</summary>
         public bool Enabled => ModEnabled && AthleticsEnabled;
@@ -174,7 +185,14 @@ namespace TraxCombat.Core
         public string? PlayerTimerOffBecause => !ModEnabled ? "ModEnabled" : !AthleticsEnabled ? "AthleticsEnabled" : !PlayerTimer ? "AttackRatePlayerTimer" : null;
 
         public static AttackRateRules From(TraxSettings s) =>
-            new AttackRateRules(s.ModEnabled, s.AthleticsEnabled, s.AttackRateAiDecisions, s.AttackRatePaceHold, s.AttackRatePlayerTimer, s.AttackAnimationMinPercent);
+            new AttackRateRules(s.ModEnabled, s.AthleticsEnabled, s.AttackRateAiDecisions, s.AttackRatePaceHold, s.AttackRatePlayerTimer, s.AttackAnimationMinPercent,
+                s.AttackRatePaceByInput, s.AiHoldRaiseGuard);
+
+        /// <summary>The AI timer's technique in words (step 16), for the log and the summary.</summary>
+        public string PaceTechnique() => PaceByInput
+            ? "by input (AttackRatePaceByInput on: only the attack bits taken out of his own input, his guard his own"
+              + (RaiseGuard ? ", raised when he wants to attack - AiHoldRaiseGuard on)" : " - AiHoldRaiseGuard off)")
+            : "NoAttack (AttackRatePaceByInput off: the engine's no-attack flag, step 13's technique)";
 
         /// <summary>The settings sentence of the mission-start line and the summary.</summary>
         public string Describe()
@@ -187,7 +205,7 @@ namespace TraxCombat.Core
                        : "x max(m, " + (AnimationMinPercent / 100.0).ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) + ") (AttackAnimationMinPercent " + AnimationMinPercent + " - a little slow-mo)")
                    + "; after each attack no new attack for D x (1/m - 1) (D = its wind-up + release, ranged + its reload): you (AttackRatePlayerTimer) "
                    + (PlayerTimer ? "on - your attack button does nothing until it ends, held it attacks the moment it ends" : "off")
-                   + ", AI (AttackRatePaceHold) " + (PaceHold ? "on - NoAttack, melee and ranged, on foot and mounted" : "off")
+                   + ", AI (AttackRatePaceHold) " + (PaceHold ? "on - " + PaceTechnique() + ", melee and ranged, on foot and mounted" : "off")
                    + "; AI decisions (AttackRateAiDecisions) "
                    + (AiDecisions ? "on: the chance to attack, to riposte and to loose x m, the aim before a shot ÷ m" : "off")
                    + "; never held: blocking, parrying, moving, weapon switches, kicks";

@@ -15,11 +15,15 @@ namespace TraxCombat.Missions
     ///   AttackAnimationMinPercent, 100 = never); after each attack of duration D (its wind-up + release;
     ///   ranged + the reload after the loose), ending at m, the fighter may not START another attack
     ///   for D × (1/m − 1):
-    ///   - AI (AttackRatePaceHold, the old "pace hold"): NoAttack (guard up) from the attack's end -
-    ///     melee and ranged, on foot and mounted. Asked for when the attack ends (a melee swing: after
-    ///     the step-back roll), started by the tick (never inside an engine callback), lifted when its
-    ///     time is up - or at once when a switch goes off, he leaves, the player takes him, an attack
-    ///     slips through, the mission ends. The engine side is behind <see cref="IPaceBody"/>.
+    ///   - AI (AttackRatePaceHold, the old "pace hold"): from the attack's end - melee and ranged, on foot
+    ///     and mounted. Step 16: by INPUT (AttackRatePaceByInput - only the attack bits taken out of his own
+    ///     input, his guard his own; <see cref="InputPaceBody"/>) or by NoAttack (step 13, <see cref="GamePaceBody"/>).
+    ///     Asked for when the attack ends (a melee swing: after the step-back roll), started by the tick (never
+    ///     inside an engine callback), lifted when its time is up - or at once when a switch goes off, he leaves,
+    ///     the player takes him, an attack slips through, the mission ends. THE TIMER SURVIVES A STEP BACK (step
+    ///     16, R1's old "a started step back drops the hold" is gone): by input both run at once and his attacks
+    ///     stay held until the later end; a NoAttack hold behind a SCRIPTED step back (its frame owns the flag
+    ///     word) is deferred and set the tick the step back ends, if time is left.
     ///   - You (AttackRatePlayerTimer): AthleticsLogic.PlayerTimer.cs + the input gate.
     ///   - AttackRateAiDecisions (off by default since step 13 - it double-counts on top of the timer):
     ///     the AI's chance to attack, to riposte and to loose × m, the aim before a shot ÷ m, in the
@@ -49,9 +53,12 @@ namespace TraxCombat.Missions
         private readonly AttackRateStats _rateStats = new AttackRateStats();
         private readonly List<TrackedAgent> _pacePending = new List<TrackedAgent>(64);
         private readonly List<TrackedAgent> _paceHeld = new List<TrackedAgent>(64);
+        private readonly List<TrackedAgent> _paceDeferred = new List<TrackedAgent>(16);
 
         private bool _seenAiDecisions;
         private bool _seenPaceHold;
+        private bool _seenPaceByInput;
+        private bool _seenRaiseGuard;
         private bool _seenPlayerTimer;
         private int _seenAnimationMin;
         private bool _paceSeenOn;
@@ -65,6 +72,14 @@ namespace TraxCombat.Missions
 
         /// <summary>The engine side of the AI timer - the offline smoke swaps in a stand-in.</summary>
         internal IPaceBody PaceBody { get; set; } = new GamePaceBody();
+
+        /// <summary>Step 16: the engine side of the AI timer by input (AttackRatePaceByInput) - the smoke swaps it too.</summary>
+        internal IPaceBody PaceInputBody { get; set; } = new InputPaceBody();
+
+        private IPaceBody PaceBodyOf(PaceState ps) => ps.ByInput ? PaceInputBody : PaceBody;
+
+        /// <summary>NoAttack holds waiting for a scripted step back to end (step 16; the smoke checks it).</summary>
+        internal int DeferredNow => _paceDeferred.Count;
 
         /// <summary>AI timers running now (not those waiting for a game job).</summary>
         internal int HeldNow
@@ -84,6 +99,8 @@ namespace TraxCombat.Missions
             var rr = AttackRateRules.From(s);
             _seenAiDecisions = s.AttackRateAiDecisions;
             _seenPaceHold = s.AttackRatePaceHold;
+            _seenPaceByInput = s.AttackRatePaceByInput;
+            _seenRaiseGuard = s.AiHoldRaiseGuard;
             _seenPlayerTimer = s.AttackRatePlayerTimer;
             _seenAnimationMin = s.AttackAnimationMinPercent;
             _paceSeenOn = rr.PaceOn;
@@ -330,17 +347,14 @@ namespace TraxCombat.Missions
         private void NoteCycle(TrackedAgent st, AttackKind kind, int binNow, int binAfterLast, double seconds, float asked)
         {
             bool player = IsPlayer(st);
-            if (kind == AttackKind.Melee && st.SteppedBackThisCycle)
-            {
-                _rateStats.AddSteppedBack(kind, player);
-                return;
-            }
             if (binNow != binAfterLast)
             {
                 _rateStats.AddMixed(kind, player);
                 return;
             }
-            _rateStats.AddCycle(kind, player, binNow, seconds, asked);
+            // step 16: the AI timer survives a step back, so a cycle with one inside is still his attack rhythm -
+            // counted in its band (and shown apart); before step 16 it was left out (the step back dropped the hold)
+            _rateStats.AddCycle(kind, player, binNow, seconds, asked, steppedBack: kind == AttackKind.Melee && st.SteppedBackThisCycle);
         }
 
         // ------------------------------------------------------------------ the attack's end: the timer
@@ -381,8 +395,18 @@ namespace TraxCombat.Missions
         /// lifts the hold); a hold still queued is moot.</summary>
         private void PaceAttackStarted(TrackedAgent st)
         {
+            // step 16: an AI attack that began while a hold or a step back (with its attacks held) had him
+            var sbh = st.StepBack;
+            if ((st.Pace != null && st.Pace.Active) || (sbh != null && sbh.Active && sbh.HoldAttacks)) _holdStats.AttacksWhileHeld++;
             var ps = st.Pace;
             if (ps == null) return;
+            if (ps.Deferred)
+            {
+                // he attacked behind the scripted step back: this deferred hold is moot (his attack's end asks a new one)
+                ps.Deferred = false;
+                _paceDeferred.Remove(st);
+                _rateStats.AddRefused(PaceRefusal.TooLate);
+            }
             if (ps.Pending)
             {
                 ps.Pending = false;
@@ -412,18 +436,17 @@ namespace TraxCombat.Missions
                     _rateStats.AddNotHeld(PaceNotHeld.FullStrength);
                     return;
                 }
-                // A step back already RUNNING holds his attacks itself. One only asked for by this very
-                // swing (Pending) is decided by the tick, which runs the step backs BEFORE the holds: if
-                // it starts, the queued hold is dropped there (TickPace); if it is refused (the cap, a
-                // shield wall, no enemy near...) the hold goes ahead (review 10a R1).
-                var sb = st.StepBack;
-                if (sb != null && sb.Active)
-                {
-                    _rateStats.AddNotHeld(PaceNotHeld.SteppingBack);
-                    return;
-                }
+                // Step 16: a step back - running, or asked for by this very swing - never skips the timer any more
+                // (review 10a R1's "a started step back drops the hold" is gone: the timer SURVIVES the step back;
+                // TickPace starts it at once by input, or defers a NoAttack hold behind a scripted step).
                 var ps = st.Pace;
                 if (ps != null && (ps.Pending || ps.Active)) return; // an attack slipped through a hold: the tick is lifting it
+                if (ps != null && ps.Deferred)
+                {
+                    // a newer attack's timer supersedes a deferred one
+                    ps.Deferred = false;
+                    _paceDeferred.Remove(st);
+                }
                 if (IsAttackAction(next))
                 {
                     _rateStats.AddNotHeld(PaceNotHeld.AlreadyReadied);
@@ -497,6 +520,7 @@ namespace TraxCombat.Missions
                         }
                     }
                     DropPacePending();
+                    DropPaceDeferred(PaceRefusal.Gone);
                     TraxLog.Info("rate", (rr.PaceOffBecause ?? "AttackRatePaceHold") + " switched OFF mid-mission at " + Sec(now) + " s: "
                         + n + " held fighters may attack again at once");
                 }
@@ -523,7 +547,7 @@ namespace TraxCombat.Missions
                         EndHold(st, ps, ps.EndReason, now, native: true);
                         continue;
                     }
-                    if (PaceBody.MustEnd(st, out var why))
+                    if (PaceBodyOf(ps).MustEnd(st, out var why))
                     {
                         EndHold(st, ps, why, now, native: true);
                         continue;
@@ -537,8 +561,10 @@ namespace TraxCombat.Missions
                 }
             }
 
-            if (_pacePending.Count == 0) return;
             int budget = AttackRateMath.MaxHoldStartsPerTick;
+            if (_paceDeferred.Count > 0) budget = TickDeferred(now, in rr, budget);
+
+            if (_pacePending.Count == 0) return;
             for (int i = 0; i < _pacePending.Count; i++)
             {
                 var st = _pacePending[i];
@@ -550,12 +576,16 @@ namespace TraxCombat.Missions
                     RefuseHold(st, ps, PaceRefusal.Gone);
                     continue;
                 }
-                // the step back asked for by the same swing started (TickStepBacks ran first this tick):
-                // it holds his attacks itself. (Still pending = its tick failed: the old, safe answer.)
+                // Step 16: the timer survives the step back (TickStepBacks ran first this tick). By input it starts
+                // now, whatever the step back does - one component holds the attack bits until the later end. A
+                // NoAttack hold cannot go on a man under OUR scripted frame (the frame owns the flag word): it waits
+                // for the step back to end. (R1: a hold is never skipped for a step back, pending or running.)
                 var sb = st.StepBack;
-                if (sb != null && (sb.Active || sb.Pending))
+                if (!rr.PaceByInput && sb != null && sb.Active && !sb.ByInput)
                 {
-                    _rateStats.AddNotHeld(PaceNotHeld.SteppingBack);
+                    ps.Deferred = true;
+                    _paceDeferred.Add(st);
+                    _holdStats.Deferred++;
                     continue;
                 }
                 // too late: the time is (nearly) up, or his next attack began since this one ended (the
@@ -571,24 +601,88 @@ namespace TraxCombat.Missions
                     continue;
                 }
                 budget--;
-                StartHold(st, ps, now);
+                StartHold(st, ps, now, rr.PaceByInput);
             }
             _pacePending.Clear();
         }
 
-        private void StartHold(TrackedAgent st, PaceState ps, double now)
+        /// <summary>
+        /// Step 16: the NoAttack holds waiting behind a scripted step back - set the tick the step back ends (this tick's
+        /// TickStepBacks ran first, so no frame is lost) if at least 0.1 s of the pause is left; else the step back
+        /// covered the whole pause (counted). Gone, switched off or his attack begun since = refused.
+        /// </summary>
+        private int TickDeferred(double now, in AttackRateRules rr, int budget)
+        {
+            for (int i = _paceDeferred.Count - 1; i >= 0; i--)
+            {
+                if (i >= _paceDeferred.Count) continue;
+                var st = _paceDeferred[i];
+                var ps = st.Pace!;
+                var sb = st.StepBack;
+                if (sb != null && sb.Active && !sb.ByInput && !st.Removed && !_paceClosed && rr.PaceOn) continue; // still stepping back
+                _paceDeferred.RemoveAt(i);
+                ps.Deferred = false;
+                if (st.Removed || _paceClosed || !rr.PaceOn)
+                {
+                    RefuseHold(st, ps, PaceRefusal.Gone);
+                    continue;
+                }
+                if (IsAttackAction(st.PrevAction))
+                {
+                    RefuseHold(st, ps, PaceRefusal.TooLate);
+                    continue;
+                }
+                if (!AiInputMath.DeferredStillWorth(ps.Until, now))
+                {
+                    _rateStats.AddNotHeld(PaceNotHeld.CoveredByStepBack);
+                    _holdStats.DeferredCovered++;
+                    continue;
+                }
+                if (budget <= 0)
+                {
+                    RefuseHold(st, ps, PaceRefusal.TickBudget);
+                    continue;
+                }
+                budget--;
+                _holdStats.DeferredStarted++;
+                ps.Overlapped = true;
+                StartHold(st, ps, now, byInput: false);
+            }
+            return budget;
+        }
+
+        private void DropPaceDeferred(PaceRefusal why)
+        {
+            for (int i = 0; i < _paceDeferred.Count; i++)
+            {
+                var ps = _paceDeferred[i].Pace;
+                if (ps == null || !ps.Deferred) continue;
+                ps.Deferred = false;
+                RefuseHold(_paceDeferred[i], ps, why);
+            }
+            _paceDeferred.Clear();
+        }
+
+        private void StartHold(TrackedAgent st, PaceState ps, double now, bool byInput)
         {
             bool held;
             PaceRefusal why;
+            // step 16: the technique is read at the START; a running hold keeps the one it began with. A NoAttack of his
+            // last hold still WAITING for a game job to end keeps the technique too (the waiting pass must clear it -
+            // a flag nobody tracks would hold him forever)
+            if (ps.Waiting) byInput = ps.ByInput;
+            ps.ByInput = byInput;
+            var body = PaceBodyOf(ps);
+            if (byInput) EnsureInput(st);
             try
             {
-                held = PaceBody.Start(st, ps, out why);
+                held = body.Start(st, ps, out why);
             }
             catch (Exception e)
             {
                 Failed("rate.pace-start", e);
                 // whatever the engine got, take it back (a NoAttack nobody tracks would never end)
-                try { PaceBody.Release(st, ps, evenUnderAFrame: false); } catch { /* already failing - logged above */ }
+                try { body.Release(st, ps, evenUnderAFrame: false); } catch { /* already failing - logged above */ }
                 RefuseHold(st, ps, PaceRefusal.Error);
                 return;
             }
@@ -597,6 +691,16 @@ namespace TraxCombat.Missions
                 RefuseHold(st, ps, why);
                 return;
             }
+            if (byInput)
+            {
+                var s = st.Input!;
+                AiInputHook.SetHold(st, true, now);
+                ps.CallsAtStart = s.Calls;
+                NoteHooked(st, ps.Hook);
+            }
+            var sbNow = st.StepBack;
+            if (sbNow != null && sbNow.Active) ps.Overlapped = true; // the timer survives the step back running now
+            ps.HitsTaken = ps.HitsBlocked = 0;
             // his last hold may still be waiting for a game job - then he is already in the list
             // (review 10a R2: listed twice, the tick would end this hold twice and count it twice)
             bool listed = ps.Waiting;
@@ -606,8 +710,14 @@ namespace TraxCombat.Missions
             ps.Waiting = false;
             ps.First = !_firstHoldStarted;
             _firstHoldStarted = true;
+            if (ps.First && byInput)
+            {
+                var s = st.Input!;
+                s.Capture = true;
+                s.CapturedFirst = s.CapturedAttack = false;
+            }
             if (!listed) _paceHeld.Add(st);
-            _rateStats.AddHoldStart(ps.Bin, ps.Asked, ps.Kind, st.Agent.MountAgent != null);
+            _rateStats.AddHoldStart(ps.Bin, ps.Asked, ps.Kind, st.Agent.MountAgent != null, byInput);
             _rateStats.AddTimer(ps.Kind, false, ps.Bin, ps.Duration, ps.Asked, ps.Pause);
             // the gap to his next attack is measured from the attack's end, where the timer began
             st.TimerPending = true;
@@ -646,6 +756,26 @@ namespace TraxCombat.Missions
             ps.EndAsked = false;
             double held = now - ps.StartedAt;
             _rateStats.AddHoldEnd(why, held);
+            if (ps.Overlapped) _holdStats.HoldsOverlappingAStep++;
+            ps.Overlapped = false;
+            if (ps.ByInput)
+            {
+                // step 16: the wish goes off on EVERY path (managed only) - the callback writes nothing from the next frame
+                AiInputHook.SetHold(st, false, now);
+                var s = st.Input;
+                if (s != null)
+                {
+                    if (s.Calls == ps.CallsAtStart && held >= NoCallGraceSeconds && why != PaceEnd.LeftField)
+                    {
+                        _holdStats.HoldsWithoutACall++;
+                        if (_holdStats.HoldsWithoutACall == 1)
+                            TraxLog.Info("rate", "WARNING: " + Name(st) + " was held by input for " + F2(held) + " s and the engine never called our input hook - "
+                                + "the new way may not work in this game: switch \"Tired AI keep their guard up\" (AttackRatePaceByInput) off and tell Claude");
+                    }
+                    DrainInputError(st);
+                    if (ps.First) s.Capture = false; // (the end line below reads what was captured)
+                }
+            }
             ps.EndedAt = why == PaceEnd.TimeUp ? now : -1;
             Lift(st, ps, now, native, waitingPass: false);
             if (ps.First) LogHoldEnd(st, ps, why, now, held);
@@ -658,7 +788,7 @@ namespace TraxCombat.Missions
         private void Lift(TrackedAgent st, PaceState ps, double now, bool native, bool waitingPass)
         {
             bool longFrame = waitingPass && ps.Waiting && now - ps.WaitingSince >= AttackRateMath.WaitingMaxSecondsUnderAFrame;
-            var rel = native && !st.Removed ? PaceBody.Release(st, ps, longFrame) : PaceRelease.Gone;
+            var rel = native && !st.Removed ? PaceBodyOf(ps).Release(st, ps, longFrame) : PaceRelease.Gone;
             if (!waitingPass) _rateStats.AddRelease(rel);
             if (rel == PaceRelease.Waiting)
             {
@@ -689,6 +819,14 @@ namespace TraxCombat.Missions
             {
                 Failed("rate.pace-release", e);
                 _paceHeld.Remove(st);
+                try
+                {
+                    if (st.Input != null && st.Input.HoldAttacks) AiInputHook.SetHold(st, false, now);
+                }
+                catch
+                {
+                    // the record is gone; the next hold rewrites the wish
+                }
             }
         }
 
@@ -697,6 +835,11 @@ namespace TraxCombat.Missions
         {
             var ps = st.Pace;
             if (ps == null) return;
+            if (ps.Deferred)
+            {
+                ps.Deferred = false;
+                _paceDeferred.Remove(st);
+            }
             if (ps.Active) EndHold(st, ps, PaceEnd.LeftField, SafeNow(), native: false);
             else if (ps.Waiting)
             {
@@ -736,6 +879,7 @@ namespace TraxCombat.Missions
             }
             _paceHeld.Clear();
             DropPacePending();
+            DropPaceDeferred(PaceRefusal.Gone);
             ClosePlayerTimer(now);
         }
 
@@ -799,6 +943,20 @@ namespace TraxCombat.Missions
                 _seenPaceHold = s.AttackRatePaceHold;
                 _rateSwitched = true;
             }
+            if (s.AttackRatePaceByInput != _seenPaceByInput)
+            {
+                _seenPaceByInput = s.AttackRatePaceByInput;
+                _rateSwitched = true;
+                _holdStats.TimerSwitched = true;
+                TraxLog.Info("rate", "AttackRatePaceByInput switched " + (s.AttackRatePaceByInput ? "ON" : "OFF") + " mid-mission at " + Sec(SafeNow()) + " s: new AI timers use "
+                    + AiInputMath.TimerTechnique(s.AttackRatePaceByInput) + "; the " + HeldNow + " running now finish the way they began");
+            }
+            if (s.AiHoldRaiseGuard != _seenRaiseGuard)
+            {
+                _seenRaiseGuard = s.AiHoldRaiseGuard;
+                TraxLog.Info("rate", "AiHoldRaiseGuard switched " + (s.AiHoldRaiseGuard ? "ON" : "OFF") + " mid-mission at " + Sec(SafeNow()) + " s: a held AI man who wants to attack "
+                    + (s.AiHoldRaiseGuard ? "raises his guard instead (from the next frame)" : "only has the attack taken out (from the next frame)"));
+            }
             if (s.AttackRatePlayerTimer != _seenPlayerTimer)
             {
                 _seenPlayerTimer = s.AttackRatePlayerTimer;
@@ -845,8 +1003,12 @@ namespace TraxCombat.Missions
                 + (st.Agent.MountAgent != null ? " (mounted)" : string.Empty) + " (D " + F2(ps.Duration) + " s: wind-up + " + (ps.Kind == AttackKind.Melee ? "swing" : "loose + reload")
                 + ") ended at " + Sec(ps.AttackEnd) + " s at attack speed x" + F2(ps.Asked) + " (f " + F2(AthleticsMath.PeakShare(Rules, st)) + ") → no new attack for "
                 + F2(ps.Pause) + " s = D x (1/m - 1), until " + Sec(ps.Until) + " s";
-            if (first)
-                TraxLog.Info("rate", "first AI timer this mission: " + text + "; scripted flags " + ps.FlagsBefore + " → " + ps.FlagsAfter
+            if (first && ps.ByInput)
+                TraxLog.Info("rate", "first AI timer this mission: " + text + "; technique: BY INPUT - " + HookText(ps.Hook)
+                    + "; only the attack bits are taken out of his own input while it runs" + (TraxSettings.Shared.AiHoldRaiseGuard ? ", a guard raised when he wants to attack" : "")
+                    + "; scripted flags " + ps.FlagsBefore + " (none of ours)" + (st.StepBack != null && st.StepBack.Active ? "; he is stepping back too - his attacks stay held until the later end" : ""));
+            else if (first)
+                TraxLog.Info("rate", "first AI timer this mission: " + text + "; technique: NoAttack; scripted flags " + ps.FlagsBefore + " → " + ps.FlagsAfter
                     + " (NoAttack " + (((ps.FlagsAfter & (int)Agent.AIScriptedFrameFlags.NoAttack) != 0) ? "set: the engine took it" : "NOT set") + ")");
             else
                 TraxLog.Verbose("rate", "AI timer: " + text, "rate-hold");
@@ -854,15 +1016,18 @@ namespace TraxCombat.Missions
 
         private void LogHoldEnd(TrackedAgent st, PaceState ps, PaceEnd why, double now, double held)
         {
-            TraxLog.Info("rate", "first AI timer ended at " + Sec(now) + " s after " + F2(held) + " s - " + EndText(why) + "; scripted flags now "
-                + ps.FlagsAfter + (ps.Waiting ? " (a game job is on him: our NoAttack comes off once he is free)" : string.Empty)
+            TraxLog.Info("rate", "first AI timer ended at " + Sec(now) + " s after " + F2(held) + " s - " + EndText(why) + "; "
+                + (ps.ByInput
+                    ? "the input hook: " + InputCaptureText(st.Input, attackWord: "an attack wish while held") + "; melee hits taken while held " + ps.HitsTaken + " (blocked " + ps.HitsBlocked + ")"
+                    : "scripted flags now " + ps.FlagsAfter + (ps.Waiting ? " (a game job is on him: our NoAttack comes off once he is free)" : string.Empty)
+                      + "; melee hits taken while held " + ps.HitsTaken + " (blocked " + ps.HitsBlocked + ")")
                 + "; the gap to his next attack is in the summary (\"timer:\" rows)");
         }
 
         private static string EndText(PaceEnd why) => why switch
         {
             PaceEnd.TimeUp => "time up",
-            PaceEnd.AttackStarted => "an attack started anyway (NoAttack did not hold it)",
+            PaceEnd.AttackStarted => "an attack started anyway (the hold did not stop it)",
             PaceEnd.SwitchedOff => "switched off",
             PaceEnd.LeftField => "he left the field",
             PaceEnd.MissionEnd => "mission end",

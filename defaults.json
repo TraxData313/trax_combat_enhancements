@@ -131,6 +131,21 @@
   // (true or false)
   "AttackRatePaceHold": true,
 
+  // On: a tired AI fighter waiting out his pause keeps fighting in every way but one - only his
+  // wish to attack is taken out of his own controls, so he still blocks, parries and moves as
+  // he likes. Off: the old way - the game's own 'no attack' order, under which waiting men
+  // blocked almost nothing (2-13% in the playtest). An A/B switch: the battle summary's guard
+  // line compares the two. A pause already running finishes the way it began.
+  // (true or false)
+  "AttackRatePaceByInput": true,
+
+  // On: when a tired AI fighter who is waiting out his pause or stepping back wants to attack,
+  // he raises his guard instead (a block - with a shield, the shield). Off: his attack is
+  // simply dropped and he blocks only when his own AI decides to. Only with the new ways
+  // ("Tired AI keep their guard up", "Step back = walk backwards").
+  // (true or false)
+  "AiHoldRaiseGuard": true,
+
   // On: a tired AI fighter also decides to attack (and to strike back after a parry) less
   // often, looses arrows less readily and aims longer - by his attack speed - on top of the
   // pause. Off: the pause alone slows him. With both on they stack and tired AI fighters attack
@@ -170,6 +185,15 @@
   // battles only. Off mid-battle: everyone stepping back returns to his formation at once.
   // (true or false)
   "StepBackEnabled": true,
+
+  // On: a fighter stepping back walks backwards, like you holding S - he keeps facing his enemy
+  // with his guard up and stops when he has covered the step distance or the step time runs out
+  // (or the ground behind him ends). Off: the old way - the game walks him to a spot behind
+  // him, and most men turned their backs to do it (80% in the playtest). An A/B switch: the
+  // summary's facing and guard lines compare the two. A step back already running finishes the
+  // way it began.
+  // (true or false)
+  "StepBackBackpedal": true,
 
   // Chance, in percent, that a fighter with an empty bar steps back after a melee swing. It
   // falls in a straight line to 0 at the peak line: halfway down, half this chance; at full

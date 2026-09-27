@@ -35,11 +35,14 @@ namespace TraxCombat.Core
         private readonly MeanStd[,] _asked = new MeanStd[Groups, Bins];
         private readonly MeanStd[,] _slowdown = new MeanStd[Groups, Bins]; // 1/m per cycle: target = fresh × this
         private readonly MeanStd[,] _anim = new MeanStd[Groups, Bins];      // the animation multiplier asked, per attack
+        private readonly MeanStd[,] _cyclesStep = new MeanStd[Groups, Bins]; // step 16: the counted cycles with a step back inside
+        private readonly MeanStd[,] _cyclesPlain = new MeanStd[Groups, Bins]; // …and without one
 
         // ---- the no-attack timer (step 13), per group and band
         private readonly MeanStd[,] _timerD = new MeanStd[Groups, Bins];
         private readonly MeanStd[,] _timerM = new MeanStd[Groups, Bins];
         private readonly MeanStd[,] _timerAsked = new MeanStd[Groups, Bins];
+        private readonly MeanStd[,] _timerFloor = new MeanStd[Groups, Bins]; // step 16: D / m = the attack + its pause - the shortest cycle the spec allows
         private readonly MeanStd[,] _gap = new MeanStd[Groups, Bins];       // the attack's end → the next attack's start
         private readonly MeanStd[,] _after = new MeanStd[Groups, Bins];     // the timer's end → the next attack's start
         private readonly int[,] _early = new int[Groups, Bins];              // the next attack started before the timer ended
@@ -57,14 +60,17 @@ namespace TraxCombat.Core
         /// <summary>Attacks whose next ready began straight out of the release / recoil / reload (pause 0).</summary>
         public readonly int[] Chained = new int[Groups];
 
-        /// <summary>Cycles (and their pauses) with a step back (5d) in them - the step back's pause, not
-        /// the attack rhythm: left out.</summary>
+        /// <summary>Cycles with a step back (5d) inside. Until step 16 they were left out (a started step back dropped
+        /// the AI timer); since step 16 the timer survives a step back, so they COUNT in their band and are shown
+        /// apart. Their pause phase is still left out (it is the step back's, not the AI's own gap).</summary>
         public readonly int[] SteppedBack = new int[Groups];
 
         // ---- the AI's timer (the pace hold)
         private readonly int[] _holdsByBin = new int[Bins];
         private readonly int[] _holdsByKind = new int[2];
         private int _holdsMounted;
+        private int _holdsByInput;
+        private int _holdsByFlag;
         private readonly int[] _notHeld = new int[(int)PaceNotHeld.Count];
         private readonly int[] _refused = new int[(int)PaceRefusal.Count];
         private readonly int[] _ended = new int[(int)PaceEnd.Count];
@@ -140,7 +146,7 @@ namespace TraxCombat.Core
         /// <summary>One cycle (release to release / shot to shot) that ran at m <paramref name="asked"/>
         /// in band <paramref name="bin"/> - classified by the band after the first attack's charge,
         /// the same at the second one (else <see cref="AddMixed"/>). True when it counted.</summary>
-        public bool AddCycle(AttackKind kind, bool player, int bin, double seconds, float asked)
+        public bool AddCycle(AttackKind kind, bool player, int bin, double seconds, float asked, bool steppedBack = false)
         {
             if (bin < 0 || bin >= Bins || double.IsNaN(seconds) || seconds < 0) return false;
             int g = Group(kind, player);
@@ -151,6 +157,15 @@ namespace TraxCombat.Core
             }
             float m = AttackRateMath.SafeM(asked);
             _cycles[g, bin].Add(seconds);
+            if (steppedBack)
+            {
+                SteppedBack[g]++;
+                _cyclesStep[g, bin].Add(seconds);
+            }
+            else
+            {
+                _cyclesPlain[g, bin].Add(seconds);
+            }
             _asked[g, bin].Add(m);
             _slowdown[g, bin].Add(1.0 / m);
             return true;
@@ -171,6 +186,17 @@ namespace TraxCombat.Core
         public void AddChained(AttackKind kind, bool player) => Chained[Group(kind, player)]++;
 
         public void AddSteppedBack(AttackKind kind, bool player) => SteppedBack[Group(kind, player)]++;
+
+        public int CycleCountWithStepBack(AttackKind kind, bool player, int bin) => _cyclesStep[Group(kind, player), bin].Count;
+
+        public double CycleMeanWithStepBack(AttackKind kind, bool player, int bin) => _cyclesStep[Group(kind, player), bin].Mean;
+
+        /// <summary>The band's average timer floor D / m (the attack and its pause) - NaN without timers.</summary>
+        public double TimerFloorMean(AttackKind kind, bool player, int bin)
+        {
+            var f = _timerFloor[Group(kind, player), bin];
+            return f.Count == 0 ? double.NaN : f.Mean;
+        }
 
         public int PhaseCount(AttackKind kind, bool player, int bin, AttackPhase phase) => _phases[Group(kind, player), bin, (int)phase].Count;
 
@@ -215,6 +241,7 @@ namespace TraxCombat.Core
             _timerD[g, bin].Add(duration);
             _timerM[g, bin].Add(m);
             _timerAsked[g, bin].Add(pause);
+            if (!double.IsNaN(duration) && duration > 0) _timerFloor[g, bin].Add(duration + pause); // D + D (1/m - 1) = D / m
             if (pause > _timerMax[g]) _timerMax[g] = pause;
         }
 
@@ -262,11 +289,13 @@ namespace TraxCombat.Core
         public int Refused(PaceRefusal why) => _refused[(int)why];
 
         /// <summary>A hold started in band <paramref name="bin"/> at m <paramref name="asked"/>.</summary>
-        public void AddHoldStart(int bin, float asked, AttackKind kind = AttackKind.Melee, bool mounted = false)
+        public void AddHoldStart(int bin, float asked, AttackKind kind = AttackKind.Melee, bool mounted = false, bool byInput = false)
         {
             if (bin >= 0 && bin < Bins) _holdsByBin[bin]++;
             _holdsByKind[(int)kind]++;
             if (mounted) _holdsMounted++;
+            if (byInput) _holdsByInput++;
+            else _holdsByFlag++;
             _holdAsked.Add(asked);
         }
 
@@ -283,6 +312,11 @@ namespace TraxCombat.Core
         public int HoldsOf(AttackKind kind) => _holdsByKind[(int)kind];
 
         public int HoldsMounted => _holdsMounted;
+
+        /// <summary>Step 16: holds by technique - the AI's own input (AttackRatePaceByInput) and the NoAttack flag.</summary>
+        public int HoldsByInput => _holdsByInput;
+
+        public int HoldsByFlag => _holdsByFlag;
 
         /// <summary>A hold ended after <paramref name="seconds"/>.</summary>
         public void AddHoldEnd(PaceEnd why, double seconds)
@@ -367,7 +401,7 @@ namespace TraxCombat.Core
                       + "; longer than " + N0(AttackRateMath.MeleeCycleCapSeconds) + " s ÷ m melee or " + N0(AttackRateMath.RangedCycleCapSeconds)
                       + " s ÷ m ranged (a pause, not a fighting rhythm) " + Four(LeftOut) + "; readies that ended in no attack (cancelled, feints) "
                       + Four(ReadiesCancelled) + "; chained (the next ready straight out of the last attack, pause 0) " + Four(Chained)
-                      + "; with a step back in them (its pause, not the attack rhythm) " + Four(SteppedBack));
+                      + "; with a step back inside (COUNTED since step 16 - the AI timer survives the step back; each band shows them apart) " + Four(SteppedBack));
 
             lines.Add("attack rate - your timer (AttackRatePlayerTimer " + (r.PlayerTimer ? "on" : "off") + " at the end): "
                       + TimerCount(true) + "; your presses swallowed: " + SwallowedInAttack + " during your own attack (no chained blow), " + SwallowedInTimer
@@ -382,10 +416,12 @@ namespace TraxCombat.Core
                       + " recomputes - the chance to attack and to riposte x m, to loose x m, the aim before a shot ÷ m (off by default since step 13: on top of the timer it double-counts)");
 
             var h = new StringBuilder("attack rate - AI timer (AttackRatePaceHold ").Append(r.PaceHold ? "on" : "off")
-                .Append(" at the end; NoAttack after each attack of a tired AI fighter, melee and ranged, on foot and mounted): ").Append(Holds).Append(" holds");
+                .Append(" at the end; technique at the end: ").Append(r.PaceTechnique())
+                .Append("; after each attack of a tired AI fighter, melee and ranged, on foot and mounted): ").Append(Holds).Append(" holds");
             if (Holds > 0)
             {
-                h.Append(" (melee ").Append(HoldsOf(AttackKind.Melee)).Append(", ranged ").Append(HoldsOf(AttackKind.Ranged)).Append(", mounted ").Append(_holdsMounted)
+                h.Append(" (by input ").Append(_holdsByInput).Append(", by NoAttack ").Append(_holdsByFlag)
+                 .Append("; melee ").Append(HoldsOf(AttackKind.Melee)).Append(", ranged ").Append(HoldsOf(AttackKind.Ranged)).Append(", mounted ").Append(_holdsMounted)
                  .Append("), avg ").Append(N2(_holdSeconds.Mean)).Append(" s, max ").Append(N2(_holdMax)).Append(" s at avg m ").Append(N2(_holdAsked.Mean)).Append("; by f:");
                 for (int b = 1; b < Bins; b++) h.Append(b == 1 ? " " : ", ").Append(AthleticsMath.PeakBinName(b)).Append(' ').Append(_holdsByBin[b]);
             }
@@ -394,20 +430,21 @@ namespace TraxCombat.Core
             lines.Add("attack rate - AI timer, not held: at full strength " + NotHeld(PaceNotHeld.FullStrength)
                       + ", not needed (below " + N1(AttackTimerMath.MinTimerSeconds) + " s) " + NotHeld(PaceNotHeld.NotNeeded)
                       + ", the next attack already readied at the attack's end " + NotHeld(PaceNotHeld.AlreadyReadied)
-                      + ", the attack's length not measured " + NotHeld(PaceNotHeld.NoDuration) + ", stepping back " + NotHeld(PaceNotHeld.SteppingBack)
+                      + ", the attack's length not measured " + NotHeld(PaceNotHeld.NoDuration)
+                      + ", covered by a scripted step back (a NoAttack hold waiting for the step to end whose time ran out first) " + NotHeld(PaceNotHeld.CoveredByStepBack)
                       + " | not started by the tick: busy with a game job (scripted, an object, a ladder, detached) " + Refused(PaceRefusal.Busy)
                       + ", NoAttack already set by the game " + Refused(PaceRefusal.AlreadyNoAttack) + ", not AI-controlled " + Refused(PaceRefusal.NotAi)
                       + ", gone " + Refused(PaceRefusal.Gone) + ", too late (his time nearly up, or his next attack already begun) " + Refused(PaceRefusal.TooLate) + ", per-tick cap " + Refused(PaceRefusal.TickBudget)
                       + ", the engine did not take NoAttack " + Refused(PaceRefusal.EngineIgnored) + ", error " + Refused(PaceRefusal.Error));
 
             lines.Add("attack rate - AI timer ends: time up " + Ended(PaceEnd.TimeUp) + ", an attack started anyway " + Ended(PaceEnd.AttackStarted)
-                      + " (must be about 0 - NoAttack holds attacks), switched off " + Ended(PaceEnd.SwitchedOff) + ", left the field " + Ended(PaceEnd.LeftField)
+                      + " (must be about 0 - the hold stops attacks), switched off " + Ended(PaceEnd.SwitchedOff) + ", left the field " + Ended(PaceEnd.LeftField)
                       + ", mission end " + Ended(PaceEnd.MissionEnd) + ", you took him " + Ended(PaceEnd.PlayerControl)
-                      + ", error " + Ended(PaceEnd.Error) + " | NoAttack cleared by us " + Released(PaceRelease.ClearedByUs) + ", already cleared by the game "
+                      + ", error " + Ended(PaceEnd.Error) + " | lifted by us " + Released(PaceRelease.ClearedByUs) + ", NoAttack already cleared by the game "
                       + Released(PaceRelease.ClearedByGame) + ", a game job on him at the end (left alone, cleared once free: " + ClearedAfterWaiting
                       + ", of them under a long scripted frame: " + ClearedUnderAFrame + ") "
                       + Released(PaceRelease.Waiting) + ", still held at mission end " + HeldAtMissionEnd + " | the next ready came avg "
-                      + (_nextReady.Count > 0 ? N2(_nextReady.Mean) + " s after a hold ended (n " + _nextReady.Count + ") - the AI's own re-decision after NoAttack lifts" : "n/a (no ready after a hold)"));
+                      + (_nextReady.Count > 0 ? N2(_nextReady.Mean) + " s after a hold ended (n " + _nextReady.Count + ") - the AI's own re-decision after the hold lifts (NoAttack cost 1-3 s; by input he readies at once if he still wants to)" : "n/a (no ready after a hold)"));
 
             var g = new StringBuilder("attack rate - guard by f (melee hits on fighters on foot that were blocked or parried; blocking is never slowed - tired men must not block less):");
             for (int b = 0; b < Bins; b++)
@@ -480,7 +517,11 @@ namespace TraxCombat.Core
                 }
 
                 var c = _cycles[g, b];
-                sb.Append(" | cycle ").Append(c.Count > 0 ? N2(c.Mean) + " s" : "n/a").Append(" (n ").Append(c.Count).Append(')');
+                sb.Append(" | cycle ").Append(c.Count > 0 ? N2(c.Mean) + " s" : "n/a").Append(" (n ").Append(c.Count);
+                if (_cyclesStep[g, b].Count > 0)
+                    sb.Append("; with a step back inside ").Append(N2(_cyclesStep[g, b].Mean)).Append(" s n ").Append(_cyclesStep[g, b].Count)
+                      .Append(", without ").Append(_cyclesPlain[g, b].Count > 0 ? N2(_cyclesPlain[g, b].Mean) + " s" : "-").Append(" n ").Append(_cyclesPlain[g, b].Count);
+                sb.Append(')');
                 if (c.Count > 0) sb.Append(", m ").Append(N2(_asked[g, b].Mean));
                 if (b == 0)
                 {
@@ -517,6 +558,18 @@ namespace TraxCombat.Core
                     else
                         t.Append("; no next attack measured after it");
                     t.Append("; started before the timer ended: ").Append(_early[g, b]).Append(" (must be 0)");
+                    var floor = _timerFloor[g, b];
+                    if (floor.Count > 0)
+                    {
+                        // step 16: the spec's own floor - an attack of D and its pause D (1/m - 1) take D / m; a band whose
+                        // cycles fall well below it was not really held (before step 16 at empty: a step back dropped the hold)
+                        t.Append("; the timer's floor D/m avg ").Append(N2(floor.Mean)).Append(" s - the cycle vs it: ");
+                        t.Append(c.Count > 0 ? P0(c.Mean / floor.Mean) + " (n " + c.Count + ")" : "n/a");
+                        if (_cyclesStep[g, b].Count > 0)
+                            t.Append(", with a step back inside ").Append(P0(_cyclesStep[g, b].Mean / floor.Mean)).Append(", without ")
+                             .Append(_cyclesPlain[g, b].Count > 0 ? P0(_cyclesPlain[g, b].Mean / floor.Mean) : "-");
+                        t.Append(" (at least ~100% = held as the spec asks)");
+                    }
                     lines.Add(t.ToString());
                 }
             }

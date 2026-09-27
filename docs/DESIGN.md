@@ -466,13 +466,16 @@ says (§2c).
 | `PartyLeaderCostMultiplier` | 0.75 | Extra multiplier for a party's leading hero, on top of the hero one. |
 | `ExhaustedAttackSpeedPercent` | 20 | Attack speed (the attack RATE) at 0 Athletics, percent of normal (a straight line up to 100% at the peak line) - since step 13 delivered by the no-attack timer D × (1/m − 1) after each attack. |
 | `AttackRatePlayerTimer` | true | Step 13: your own no-attack timer - after each of your attacks below the peak line the attack button does nothing until it ends (held, it attacks the moment it ends); blocking, kicks, moving, weapon switches always work. Off: your attacks are never held. |
-| `AttackRatePaceHold` | true | Step 13: the AI's no-attack timer - after each attack (melee and ranged, on foot and mounted) a tired AI fighter may not start another for D × (1/m − 1), guard up (NoAttack; A/B switch). |
+| `AttackRatePaceHold` | true | Step 13: the AI's no-attack timer - after each attack (melee and ranged, on foot and mounted) a tired AI fighter may not start another for D × (1/m − 1), guard up (A/B switch). |
+| `AttackRatePaceByInput` | true | Step 16: the AI timer through the AI's own input - only the attack bits are taken out, his blocks, parries and moves stay his own. Off = step 13's NoAttack flag (held men blocked 2-13%). A/B switch; a running pause finishes the way it began. |
+| `AiHoldRaiseGuard` | true | Step 16: a held AI fighter (his pause or a step back, the new techniques) who wants to attack raises his guard instead (`DefendDown` - a block, the shield). Off: the attack is only dropped. |
 | `AttackRateAiDecisions` | false | Tired AI fighters also decide to attack (and riposte) less often, loose less readily and aim longer - × / ÷ their attack speed (A/B switch). Off since step 13: on top of the timer it double-counts (the log read 128% / 172% too slow). |
 | `AttackAnimationMinPercent` | 100 | Step 13: the attack animations (swing, thrust / draw / throw, reload) play at max(m, this %) - 100 = always full speed (the whole slow-down is the timer); lower brings a little slow-mo back. |
 | `MinMoveSpeedMultiplier` | 0.7 | Top speed on foot at 0 Athletics (0.3 until step 14 - Anton: "too slow, unrealistic"). |
 | `MountMinSpeedMultiplier` | 1.0 | Horse top speed at the rider's 0 Athletics (1.0 = horses never slow). |
 | `DamageBonusFollowsAthletics` | true | The damage upside shrinks with the attacker's Athletics below the peak. |
 | `StepBackEnabled` | true | Tired AI fighters on foot step back after melee swings (§2). Off mid-battle: everyone stepping back returns to his formation at once. |
+| `StepBackBackpedal` | true | Step 16: the step back is a backpedal through the AI's own input (a backwards movement, facing his enemy) until `StepBackDistance` is covered or `StepBackSeconds` run out. Off = step 5d's scripted walk (80% turned their backs). A/B switch; a running step finishes the way it began. |
 | `StepBackMaxChancePercent` | 100 | Chance to step back at 0 Athletics (0 at the peak, straight line between). |
 | `StepBackDistance` | 2.0 | Metres a fighter steps back, straight away from his enemy. |
 | `StepBackSeconds` | 1.5 | Longest a step back lasts before the formation takes over again. |

@@ -154,6 +154,11 @@ namespace TraxCombat.Tools
             S.Set(SettingsSchema.ExhaustedAttackSpeedPercent, 20, SettingSources.File);
             S.Set(SettingsSchema.AttackRateAiDecisions, false, SettingSources.File); // step 13: off
             S.Set(SettingsSchema.AttackRatePaceHold, true, SettingSources.File);
+            // step 16: the older smoke steps check the Legacy techniques (NoAttack, the scripted walk) - the new ways
+            // have their own step (Program.AiInput.cs)
+            S.Set(SettingsSchema.AttackRatePaceByInput, false, SettingSources.File);
+            S.Set(SettingsSchema.AiHoldRaiseGuard, true, SettingSources.File);
+            S.Set(SettingsSchema.StepBackBackpedal, false, SettingSources.File);
             S.Set(SettingsSchema.AttackRatePlayerTimer, true, SettingSources.File);
             S.Set(SettingsSchema.AttackAnimationMinPercent, 100, SettingSources.File); // step 13: full-speed animations
             S.Set(SettingsSchema.MinMoveSpeedMultiplier, 0.7, SettingSources.File);

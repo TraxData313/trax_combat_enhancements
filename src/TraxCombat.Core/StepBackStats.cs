@@ -17,10 +17,28 @@ namespace TraxCombat.Core
     /// </summary>
     public sealed class StepBackStats
     {
-        /// <summary>The technique, named in the summary header (AI_NOTES "Step 5d").</summary>
+        /// <summary>Step 5d's technique (StepBackBackpedal off), named in the summary (AI_NOTES "Step 5d").</summary>
         public const string Technique =
             "a scripted step - the engine's SetScriptedPositionAndDirection to the spot straight away from his target, facing him, at a walk "
             + "(+ NoAttack while StepBackHoldAttacks), then DisableScriptedMovement - his formation takes him back";
+
+        /// <summary>Step 16's technique (StepBackBackpedal on), AI_NOTES "Step 16".</summary>
+        public const string BackpedalTechnique =
+            "a backpedal - a backwards movement written into the AI's own input (AgentComponent.OnAIInputSet) along the line straight away from "
+            + "his target, facing whatever his AI faces - his enemy - with only his attack bits taken out while StepBackHoldAttacks; it stops at "
+            + "StepBackDistance covered, StepBackSeconds, or the ground ending behind him - then his own AI and formation take him back";
+
+        /// <summary>The technique(s) this mission used, for the summary: the one running at the start, or both with
+        /// their counts when the switch changed mid-battle.</summary>
+        public string TechniqueText(bool backpedalNow)
+        {
+            if (StartedByInput > 0 && StartedScripted > 0)
+                return "MIXED this battle (StepBackBackpedal switched): " + StartedByInput + " backpedals, " + StartedScripted + " scripted steps - "
+                       + BackpedalTechnique + " | " + Technique;
+            if (StartedByInput > 0) return BackpedalTechnique;
+            if (StartedScripted > 0) return Technique;
+            return backpedalNow ? BackpedalTechnique : Technique;
+        }
 
         private static readonly int Refusals = Enum.GetValues(typeof(StepBackRefusal)).Length;
         private static readonly int Ends = Enum.GetValues(typeof(StepBackEnd)).Length;
@@ -35,9 +53,14 @@ namespace TraxCombat.Core
         private readonly int[] _midFacing = new int[4];
         private readonly int[] _midMotion = new int[4];
         private readonly int[] _endFacing = new int[4];
+        private readonly int[] _sampleFacing = new int[4];
 
         // ---- starts
         public int Started;
+
+        /// <summary>Step 16: starts by technique - the backpedal (input) and the scripted walk.</summary>
+        public int StartedByInput;
+        public int StartedScripted;
         public int StartedHolding;
         public int StartedCharging;
         public int StartedNoFormation;
@@ -54,6 +77,12 @@ namespace TraxCombat.Core
         public int MidSamples;
         public int EndSamples;
 
+        /// <summary>Step 16: every step back sampled every <see cref="AiInputMath.SampleSeconds"/> (facing), and the
+        /// step backs whose man had his back turned at ANY sample (THE risk; ~0 expected with the backpedal).</summary>
+        public int Samples;
+        public int StepsBackTurnedAny;
+        public int StepsSampled;
+
         // ---- the guard
         public int HitsWhileStepping;
         public int BlockedWhileStepping;
@@ -69,6 +98,9 @@ namespace TraxCombat.Core
         public int OverdueAtMissionEnd;
         public int StillScriptedAtMissionEnd;
         public int SwitchedOffReleases;
+
+        /// <summary>Step 16: backpedals ended (our input stopped - no engine call needed).</summary>
+        public int InputReleases;
 
         // ------------------------------------------------------------------ counting
 
@@ -87,9 +119,11 @@ namespace TraxCombat.Core
 
         /// <param name="movementState">His formation's movement state at the start: 0 charge, 1 hold,
         /// 3 stand ground, −1 no formation (MovementOrder.MovementStateEnum).</param>
-        public void AddStart(int movementState, int facingBin, double askedDistance)
+        public void AddStart(int movementState, int facingBin, double askedDistance, bool backpedal = false)
         {
             Started++;
+            if (backpedal) StartedByInput++;
+            else StartedScripted++;
             if (movementState < 0) StartedNoFormation++;
             else if (movementState == 0) StartedCharging++;
             else StartedHolding++;
@@ -104,6 +138,21 @@ namespace TraxCombat.Core
             MidSamples++;
             _midFacing[Clamp(facingBin)]++;
             _midMotion[Clamp(motionBin)]++;
+        }
+
+        /// <summary>One of the every-0.25 s samples of a running step back (step 16): his facing then.</summary>
+        public void AddSample(int facingBin)
+        {
+            Samples++;
+            _sampleFacing[Clamp(facingBin)]++;
+        }
+
+        /// <summary>A step back ended that was sampled at least once; <paramref name="backTurnedAny"/> = his back was
+        /// turned at one of the samples.</summary>
+        public void AddSampledStep(bool backTurnedAny)
+        {
+            StepsSampled++;
+            if (backTurnedAny) StepsBackTurnedAny++;
         }
 
         /// <param name="moved">Metres he really moved (NaN when not read - a removed man).</param>
@@ -196,8 +245,8 @@ namespace TraxCombat.Core
             }
         }
 
-        /// <summary>Everything that ended other than by its time running out.</summary>
-        public int CutShort => EndedTotal - Ended(StepBackEnd.TimeUp);
+        /// <summary>Everything that ended other than by its time running out or (step 16) by covering its distance.</summary>
+        public int CutShort => EndedTotal - Ended(StepBackEnd.TimeUp) - Ended(StepBackEnd.Arrived);
 
         public int StartFacing(int bin) => _startFacing[bin];
 
@@ -206,6 +255,8 @@ namespace TraxCombat.Core
         public int MidMotion(int bin) => _midMotion[bin];
 
         public int EndFacing(int bin) => _endFacing[bin];
+
+        public int SampleFacing(int bin) => _sampleFacing[bin];
 
         // ------------------------------------------------------------------ wording
 
@@ -247,6 +298,8 @@ namespace TraxCombat.Core
             StepBackEnd.ClearedByGame => "cleared by the game first",
             StepBackEnd.NotActive => "no longer active",
             StepBackEnd.Error => "error",
+            StepBackEnd.Arrived => "arrived (StepBackDistance covered)",
+            StepBackEnd.EdgeAhead => "the ground ends behind him (edge ahead)",
             _ => why.ToString(),
         };
 
@@ -256,7 +309,7 @@ namespace TraxCombat.Core
         public List<string> SummaryLines(in StepBackRules r)
         {
             var lines = new List<string>();
-            lines.Add("step back - technique: " + Technique + "; settings at the end: " + r.Describe());
+            lines.Add("step back - technique: " + TechniqueText(r.Backpedal) + "; settings at the end: " + r.Describe());
 
             var sb = new StringBuilder("step back rolls after AI melee swings on foot, by f (the chance must be 0% at full strength and rise as f falls): ");
             for (int bin = 0; bin < AthleticsMath.PeakBins; bin++)
@@ -277,10 +330,12 @@ namespace TraxCombat.Core
             AppendCounts(sb, _refused, i => RefusalText((StepBackRefusal)i), skipZeroIndex: true);
             lines.Add(sb.ToString());
 
-            sb = new StringBuilder("step back ends: ").Append(EndedTotal).Append(" - completed (time up) ").Append(Ended(StepBackEnd.TimeUp))
-                .Append(", cut short ").Append(CutShort);
+            sb = new StringBuilder("step back ends: ").Append(EndedTotal).Append(" - completed (time up) ").Append(Ended(StepBackEnd.TimeUp));
+            if (StartedByInput > 0) sb.Append(", arrived (StepBackDistance covered) ").Append(Ended(StepBackEnd.Arrived));
+            sb.Append(", cut short ").Append(CutShort);
             var cut = (int[])_ended.Clone();
             cut[(int)StepBackEnd.TimeUp] = 0;
+            cut[(int)StepBackEnd.Arrived] = 0;
             AppendCounts(sb, cut, i => EndText((StepBackEnd)i), skipZeroIndex: true);
             if (NowStepping > 0) sb.Append("; still stepping back when the summary was written ").Append(NowStepping);
             lines.Add(sb.ToString());
@@ -289,11 +344,15 @@ namespace TraxCombat.Core
                 ? "none measured"
                 : "avg " + N2(Moved.Mean) + " m of " + N2(AskedDistance.Mean) + " asked (min " + N2(MovedMin) + ", max " + N2(MovedMax)
                   + ", reached the spot " + ReachedSpot + " of " + Moved.Count + ")")
-                + ", lasted avg " + (Seconds.Count == 0 ? "n/a" : N2(Seconds.Mean) + " s (n " + Seconds.Count + ")"));
+                + ", lasted avg " + (Seconds.Count == 0 ? "n/a" : N2(Seconds.Mean) + " s (n " + Seconds.Count + ")")
+                + (Moved.Count > 0 && Seconds.Count > 0 && Seconds.Mean > 0 ? " - about " + N2(Moved.Mean / Seconds.Mean) + " m/s" : ""));
 
             lines.Add("step back facing (THE risk: a turned back) - at the start: " + Facing(_startFacing)
                 + " | mid-step (" + MidSamples + " sampled): " + Facing(_midFacing) + "; " + Motion(_midMotion)
-                + " | at the end (" + EndSamples + "): " + Facing(_endFacing));
+                + " | at the end (" + EndSamples + "): " + Facing(_endFacing)
+                + " | every " + N2(AiInputMath.SampleSeconds) + " s (" + Samples + " samples): " + Facing(_sampleFacing)
+                + "; step backs with the back turned at ANY sample " + StepsBackTurnedAny + " of " + StepsSampled
+                + (StepsSampled > 0 ? " (" + P0((double)StepsBackTurnedAny / StepsSampled) + ")" : "") + " (must be about 0)");
 
             lines.Add("step back guard: hits taken while stepping back " + HitsWhileStepping + " - blocked " + BlockedWhileStepping
                 + (HitsWhileStepping > 0 ? " (" + P0((double)BlockedWhileStepping / HitsWhileStepping) + ")" : "")
@@ -303,6 +362,7 @@ namespace TraxCombat.Core
 
             lines.Add("step back release check: " + Releases + " released through the engine - scripted movement still on right after "
                 + StillScriptedAfterRelease + " (must be 0), our flags (NoAttack, DoNotRun) cleared by hand " + FlagsClearedByHand
+                + (StartedByInput > 0 ? "; backpedals ended by stopping the input " + InputReleases + " (nothing of ours left in the engine)" : "")
                 + " | at mission end: " + MidStepAtMissionEnd + " were mid-step (released then), overdue (past their time) " + OverdueAtMissionEnd
                 + " (must be 0), scripted movement still on after that release " + StillScriptedAtMissionEnd + " (must be 0)"
                 + (SwitchedOffReleases > 0 ? " | switched off mid-battle " + SwitchedOffReleases + " time(s), everyone released at once" : ""));
