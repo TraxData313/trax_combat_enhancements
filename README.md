@@ -10,12 +10,15 @@ every fight a little less predictable and a lot more about who is still fresh.
 
 - **Damage randomness** — every hit that lands, melee or ranged, rolls ±50% damage.
   A 50-damage blow lands for anywhere between 25 and 75.
-- **Endurance** — every fighter has a pool that each blow drains (10 of 100). Empty means
-  attacking at 20% speed until you catch your breath. Rest to refill it: one minute standing
-  still, two while moving. Heroes pay less per blow, and party leaders less again — the
-  battle leans on its heroes.
-- **See it** — your own endurance bar, the bar of whoever you're looking at, and your
-  squads' average endurance (± spread) floating above them and in the orders menu.
+- **Athletics** — every fighter has an Athletics bar, his stamina, named after the Athletics
+  skill (which will set its size). Each blow drains it (10 of 100). Empty means attacking at
+  20% speed until you catch your breath. Rest to refill it: one minute standing still, two
+  while moving. Heroes pay less per blow, and party leaders less again — the battle leans on
+  its heroes.
+- **See it** — your own Athletics bar, the bar of whoever you're looking at, and your
+  squads' average Athletics (± spread) floating above them and in the orders menu.
+- **A master switch** — turn the whole mod off mid-battle and the fight is pure vanilla, so
+  you can play the same battle both ways and compare.
 
 Every number is adjustable — in the Mod Configuration Menu if you have it, or in a plain
 config file with an explanation beside each value. Full spec: [docs/DESIGN.md](docs/DESIGN.md).

@@ -1,5 +1,9 @@
 # Research — verified game hooks for v1.4.8
 
+> **Words (step 5b, 2026-09-27):** what these findings call "endurance" is now called
+> **Athletics** everywhere (`EnduranceLogic` → `AthleticsLogic`, `[endurance]` → `[athletics]`,
+> `MaxEndurance` → `MaxAthletics`); the findings below keep the words they were written in.
+
 Step 2 of the BUILD ORDER (2026-09-27). Every claim below was read in the decompiled
 **v1.4.8** game unless it is marked **UNVERIFIED**. Paths are relative to
 `..\reference\game-decompiled\` unless they start with `Modules\` (= the game install) or

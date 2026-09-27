@@ -6,10 +6,12 @@ Guidance for Claude Code when working in this repository.
 
 **Trax Combat Enhancements** (working title) — a combat mod for *Mount & Blade II:
 Bannerlord* v1.4.8 that makes fights a bit more fun: every landed hit rolls ±50% damage,
-and every fighter has an **endurance** pool that blows drain and rest refills — empty means
-slow attacks. Heroes and party leaders pay less per blow, so the game leans hero-centred.
-Endurance is shown for the player, the fighter they look at, and — averaged with a ± spread —
-above the player's own formations and in the orders menu.
+and every fighter has an **Athletics** bar — his stamina, named after (and, from step 5c,
+sized by) the Athletics skill — that blows drain and rest refills; empty means slow attacks.
+Heroes and party leaders pay less per blow, so the game leans hero-centred. The Athletics bar
+is shown for the player, the fighter they look at, and — averaged with a ± spread — above the
+player's own formations and in the orders menu. Words: the pool/bar/points are "Athletics",
+the character-screen skill is "the Athletics skill" (it used to be called "endurance").
 
 **The full spec is `docs/DESIGN.md`. Read it before any work.** Released on **Steam Workshop
 only** (no Nexus).
@@ -90,11 +92,11 @@ die at any moment (tokens run out) and the next one loses nothing.
   everything at once when the build is finished, so the log must let us troubleshoot any
   feature WITHOUT a second run. One rolling log file (`trax_combat.log`, ~2 MB trim) beside
   the config file, timestamped lines tagged by area (`[config]`, `[mcm]`, `[mission]`,
-  `[damage]`, `[endurance]`, `[speed]`, `[hud]`, `[error]`). Always logged: mod/game version
+  `[damage]`, `[athletics]`, `[speed]`, `[hud]`, `[error]`). Always logged: mod/game version
   at load, every parameter value on load and on change, each mission start/end (type,
   scene, agent counts), which behaviors/views attached, and every caught exception with its
   stack. Per-battle SUMMARY at mission end (damage rolls: count, min/avg/max factor;
-  endurance: blows charged, exhaustions entered/left, heroes' lowest endurance, formation
+  Athletics: blows charged, exhaustions entered/left, heroes' lowest Athletics, formation
   averages). Chatty per-event lines (each roll, each blow, each regen tick) only when
   `VerboseLogging` is on — and even then rate-limited so a 1000-agent battle cannot flood
   the file. Every game hook is wrapped in try/catch that logs `[error]` and fails SAFE (the
@@ -128,20 +130,20 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
   DamageStats.cs              per-mission roll stats (kinds, min/avg/max, before → after, dice
                               histogram, skips by reason, errors per site, thread) + the
                               [summary] text; thread-safe
-  Endurance.cs                DESIGN §2 pure: EnduranceRules (live from TraxSettings), Fighter
-                              (state as a FRACTION of the pool), EnduranceMath - ONE function per
+  Athletics.cs                DESIGN §2 pure: AthleticsRules (live from TraxSettings), Fighter
+                              (state as a FRACTION of the pool), AthleticsMath - ONE function per
                               rule (PoolPoints, BlowCostPoints, RegenFractionPerSecond(speed, top),
                               AttackSpeedMultiplier, IsExhausted) + Charge / Regen / Read;
-                              BlowKind, BlowOutcome, RegenOutcome, EnduranceReading (HUD snapshot)
-  SpreadStats.cs              MeanStd (Welford, population std), FormationEnduranceStats (squad
+                              BlowKind, BlowOutcome, RegenOutcome, AthleticsReading (HUD snapshot)
+  SpreadStats.cs              MeanStd (Welford, population std), FormationAthleticsStats (squad
                               mean ± std, band), IntervalStats (histogram median), SpeedVerdict
                               (the in-game engine-clamp test: exhausted vs fresh attack timing)
-  EnduranceStats.cs           per-mission endurance counters + the [summary] text (blows by kind,
+  AthleticsStats.cs           per-mission Athletics counters + the [summary] text (blows by kind,
                               riders, detection cross-checks, free actions, heroes, player,
                               formations, regen, attack-speed check, tick cost, 5c speeds, errors)
 src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhancements.dll:
   SubModule.cs                entry point: load log, config init/re-reads, MCM register/retry,
-                              the two model decorators (OnGameStart), EnduranceLogic per mission
+                              the two model decorators (OnGameStart), AthleticsLogic per mission
   ModPaths.cs                 Configs\TraxCombatEnhancements\ via EngineFilePaths.ConfigsPath
   ConfigStore.cs              config.json ↔ TraxSettings.Shared: first run, re-read at game and
                               mission start, write after MCM Done by the rewrite rule, backups
@@ -157,24 +159,24 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               stats, [damage] lines (mission start, first roll + thread,
                               verbose roll/skip), the [summary] damage block
   Models/TraxAgentStatModel.cs AgentStatCalculateModel DECORATOR — forwards everything;
-                              UpdateAgentStats: base first, then × the fighter's endurance speed
+                              UpdateAgentStats: base first, then × the fighter's Athletics speed
                               multiplier; + the tournament SetAILevelMultiplier fix
   Models/SpeedPenalty.cs      the penalty on AgentDrivenProperties (swing, thrust/draw, reload -
                               nothing else) + Snapshot for the log
-  Missions/EnduranceLogic.cs  MissionLogic in every SP mission (partial): lifecycle, start/end
+  Missions/AthleticsLogic.cs  MissionLogic in every SP mission (partial): lifecycle, start/end
                               lines, damage stats reset (AfterStart), the [summary] block
-  Missions/EnduranceLogic.Engine.cs  the endurance engine: per-agent state (by Agent.Index +
+  Missions/AthleticsLogic.Engine.cs  the Athletics engine: per-agent state (by Agent.Index +
                               dense array), hero/leader flags, blow detection (poll ReleaseMelee,
                               OnMeleeHit, OnAgentShootMissile, OnMissileHit), regen, the speed
                               multiplier + UpdateAgentProperties, hot swap, SpeedMultiplierFor
                               (the decorator's lookup), Failed (errors once per site)
-  Missions/EnduranceLogic.Api.cs  READ API for steps 6-9: TryGetReading(agent),
+  Missions/AthleticsLogic.Api.cs  READ API for steps 6-9: TryGetReading(agent),
                               TryGetFormationStats(formation), FormationStatsVersion, IsRunning
-  Missions/EnduranceLogic.Log.cs  [endurance]/[speed] lines (verbose buckets) + summary feed
+  Missions/AthleticsLogic.Log.cs  [athletics]/[speed] lines (verbose buckets) + summary feed
   Missions/TrackedAgent.cs    one fighter's record: Core Fighter + detection fields
 tests/TraxCombat.Core.Tests/  net8.0 xUnit (122) — schema vs DESIGN.md, settings, config file,
-                              merge rule, rate limiter, damage roll/rules/dice/stats, endurance
-                              rules, mean/std, interval stats, endurance summary. Keep green.
+                              merge rule, rate limiter, damage roll/rules/dice/stats, Athletics
+                              rules, mean/std, interval stats, Athletics summary. Keep green.
 module/SubModule.xml          release manifest (Id TraxCombatEnhancements, v0.1.0); GUI/Prefabs
                               for the HUD movies arrive in step 6
 tools/deploy.ps1              build → AssemblyGuard → OfflineSmoke → install as
@@ -185,8 +187,8 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               launched: types load without MCM, config flows, tournament fix,
                               damage (Program.Damage.cs: the real decorator over the game's
                               CustomAgentApplyDamageModel, fed the game's own hit structs),
-                              endurance (Program.Endurance.cs: the real stat decorator and
-                              EnduranceLogic on uninitialized Agent objects), the MCM page built
+                              Athletics (Program.Athletics.cs: the real stat decorator and
+                              AthleticsLogic on uninitialized Agent objects), the MCM page built
                               by MCM's real builder (28 checks);
                               TRAX_SMOKE_KEEP=1 keeps its temp folder + log to read
 tools/package.ps1             Steam release layout (step 11)

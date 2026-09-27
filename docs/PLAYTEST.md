@@ -17,7 +17,7 @@ Every battle ends with a `[summary]` block — that alone answers most questions
 - Start or load a campaign.
 
 Every log line looks like `2026.09.30 20:15:02.117 [tag] message`. The tags: `[load]`
-`[compat]` `[config]` `[mcm]` `[mission]` `[summary]` `[damage]` `[speed]` `[endurance]`
+`[compat]` `[config]` `[mcm]` `[mission]` `[summary]` `[damage]` `[speed]` `[athletics]`
 `[hud]` `[error]` `[log]`. Search the file for a tag to follow one area.
 
 ---
@@ -50,7 +50,7 @@ features (damage randomness, section 2, is already active in every fight).
 **1c. The config file, with explanations.** Open
 `Documents\Mount and Blade II Bannerlord\Configs\TraxCombatEnhancements\config.json`.
 - You see: a header saying where the file lives and how edits apply, then 7 sections
-  (Damage randomness, Endurance, Exhaustion, Regeneration, Bars - you and your target,
+  (Damage randomness, Athletics, Exhaustion, Regeneration, Bars - you and your target,
   Bars - your squads, Advanced) and above EVERY key a `//` explanation in plain words ending
   `(default …, range … to …)`.
 - Log, first run only: `[config] first run: created config.json with every default and a plain-words explanation beside each value`
@@ -71,15 +71,15 @@ Mod Options → move *Spread (± %)* from 50 to 40, press Done.
   `[config] wrote config.json (MCM Done): from MCM DamageRandomPercent`
 - The file now says `"DamageRandomPercent": 40`. No restart asked for, ever.
 
-**1f. A hand edit is picked up at the next battle.** Alt-Tab, change `"MaxEndurance": 100` to
+**1f. A hand edit is picked up at the next battle.** Alt-Tab, change `"MaxAthletics": 100` to
 `150` in config.json, save, start (or enter) the next battle.
-- Log: `[config] MaxEndurance: 100 → 150 (source: file)` and
+- Log: `[config] MaxAthletics: 100 → 150 (source: file)` and
   `[config] config.json re-read at mission start: 1 change(s), settings version N`
 - Every mission start writes `[config] config.json re-read at mission start: no changes`
   when nothing changed.
 - **The rewrite rule** (optional, 1 minute): hand-edit one value, then — BEFORE the next
   battle — change a DIFFERENT value in MCM and press Done. The hand edit must still be in the
-  file. Log: `… kept hand edit(s) from the file that apply at the next battle start: MaxEndurance = 150 (now 100)`.
+  file. Log: `… kept hand edit(s) from the file that apply at the next battle start: MaxAthletics = 150 (now 100)`.
 - Mistakes are safe: a typo'd key → `[config] file problem: "Maxendurence" is not a setting of this version - ignored (typo?)`
   (kept in the file under "Not recognised"); a bad number → `[config] could not read config.json at mission start (line …)`
   and the values stay as they were.
@@ -87,7 +87,7 @@ Mod Options → move *Spread (± %)* from 50 to 40, press Done.
 **1g. Mission start and end, and the summary.** Fight any battle to the end (or retreat).
 - Log, at the start:
   - `[config] config.json re-read at mission start: …`
-  - `[mission] attached: EnduranceLogic (views arrive with steps 6-9)`
+  - `[mission] attached: AthleticsLogic (views arrive with steps 6-9)`
   - `[mission] start: scene <scene id>, field battle, mode …, combat type Combat, game Campaign, agents so far …`
   - `[mission] first tick: N agents active, …` and `[mission] deployment finished: N agents active, mode Battle`
 - Log, at the end — the `[summary]` block:
@@ -103,7 +103,7 @@ Mod Options → move *Spread (± %)* from 50 to 40, press Done.
 - `[damage] damage model decorator registered over SandBox.GameComponents.SandboxAgentApplyDamageModel - damage randomness rolls on its result (ApplyGeneralDamageModifiers)`
   — with War Sails on, over `NavalDLC.GameComponents.NavalAgentApplyDamageModel`; in a custom
   battle over `TaleWorlds.MountAndBlade.CustomAgentApplyDamageModel`.
-- `[speed] agent stat model decorator registered over … - scales swing / thrust-and-draw / reload speed by each fighter's endurance multiplier; tournament AI-level fix active over N base model(s)`
+- `[speed] agent stat model decorator registered over … - scales swing / thrust-and-draw / reload speed by each fighter's Athletics multiplier; tournament AI-level fix active over N base model(s)`
 - In a tournament, when a round starts: `[speed] tournament AI level multiplier 1 → 1.33 passed on to N base stat model(s)`
   (the opponents get tougher each round, as in vanilla — our hook must not swallow that).
 
@@ -208,9 +208,10 @@ or a siege engine with an axe.
 
 ---
 
-## 3. Endurance
+## 3. Athletics (the stamina bar)
 
-Every fighter — you, your men, the enemy — has an endurance pool (100). Every attack costs
+Every fighter — you, your men, the enemy — has an Athletics bar (100 points; from step 5c its
+size comes from his Athletics skill). Every attack costs
 some: a swing or thrust when it starts, a shot or throw when it leaves the hand, a couched
 lance or braced spear when it hits. Kicks, shield bashes, blocking, running and riding are
 free. At 0 the fighter is **exhausted**: his attacks run at 20% speed (wind-up, strike, bow
@@ -226,20 +227,20 @@ readout.
 
 **3a. The engine is on.** Start any battle.
 - Log, at the start:
-  - `[endurance] mission start: ON - pool 100, cost per blow 10.0 / hero 7.5 / party leader 5.6, misses cost: yes, exhausted attacks at 20% (recover above 0%), refill after 3.0 s rest: full in 60 s standing / 120 s moving (above 0.5 m/s) - read live`
-  - `[endurance] party-leader rule: campaign - …` (or `no campaign (custom battle) - the side's general, or every hero of a side without one`)
+  - `[athletics] mission start: ON - pool 100, cost per blow 10.0 / hero 7.5 / party leader 5.6, misses cost: yes, exhausted attacks at 20% (recover above 0%), refill after 3.0 s rest: full in 60 s standing / 120 s moving (above 0.5 m/s) - read live`
+  - `[athletics] party-leader rule: campaign - …` (or `no campaign (custom battle) - the side's general, or every hero of a side without one`)
   - `[speed] stat model on top in this mission: ours, over <the game's model> - the attack-speed penalty is applied on every recompute`
     — **if it says `WARNING: … not ours`**, another mod took the slot: tell Claude.
-  - `[endurance] party leader: <your name> - pays x0.56 per blow (5.6 now)` — one line per
+  - `[athletics] party leader: <your name> - pays x0.56 per blow (5.6 now)` — one line per
     leader: you, and each enemy lord leading his party (custom battle: the enemy's hero).
-  - `[endurance] first tick: tracking N fighters`
+  - `[athletics] first tick: tracking N fighters`
 
 **3b. Swing until empty — feel the 20%.** Swing continuously (at the air or at looters, it
 makes no difference: misses cost too). As party leader you last 18 swings.
 - You see: after the 18th swing everything you do with the weapon is very slow — a wind-up
   and strike take about five times as long. Blocking and moving are normal.
-- Log (always): `[endurance] YOU are exhausted at 42.3 s: 0 of 100 after 18 blows this mission - attacks at 20% speed until you rest (refill starts 3.0 s after your last blow)`
-- Log (verbose), one line per swing: `[endurance] blow melee (on foot): <you> (you) - cost 5.6 (x0.56: hero party leader), 100.0 → 94.4 of 100`
+- Log (always): `[athletics] YOU are exhausted at 42.3 s: 0 of 100 after 18 blows this mission - attacks at 20% speed until you rest (refill starts 3.0 s after your last blow)`
+- Log (verbose), one line per swing: `[athletics] blow melee (on foot): <you> (you) - cost 5.6 (x0.56: hero party leader), 100.0 → 94.4 of 100`
   … the last one ends `4.4 → 0.0 of 100 - EXHAUSTED`.
 - Once per battle, for the FIRST fighter anyone sees exhausted (often an AI soldier):
   - `[speed] first exhaustion this mission: <name> at … s - attack properties before: swing 1.012, thrust/draw 1.012, reload 0.930 → after UpdateAgentProperties: swing 0.202, thrust/draw 0.202, reload 0.186 (x0.20 / x0.20 / x0.20, asked x0.20) - the penalty is in the agent's properties`
@@ -253,32 +254,32 @@ makes no difference: misses cost too). As party leader you last 18 swings.
 **3c. Stop and wait ~3 s.** Right after 3b, stand still and do nothing.
 - You see: for about 3 seconds you are still slow; then your attacks are normal again (the
   moment the refill starts, since `ExhaustedRecoverPercent` is 0).
-- Log: `[endurance] YOU recovered at 48.4 s: 0.2 of 100 after 3.1 s exhausted - full attack speed again`
+- Log: `[athletics] YOU recovered at 48.4 s: 0.2 of 100 after 3.1 s exhausted - full attack speed again`
   — "after 3.1 s" = the 3.0 s rest plus at most one 0.1 s refill step.
 
 **3d. Stand vs run — compare the refill.** Empty yourself, then stand still for a full
 minute. Empty yourself again, then keep running (or ride) until full.
-- Log after standing: `[endurance] YOU are back to full at … s: 0 → 100 in 60.0 s of refill (standing 60.0 s, moving 0.0 s; empty to full takes 60 s standing, 120 s moving)`
+- Log after standing: `[athletics] YOU are back to full at … s: 0 → 100 in 60.0 s of refill (standing 60.0 s, moving 0.0 s; empty to full takes 60 s standing, 120 s moving)`
 - Log after running: `… 0 → 100 in 120.0 s of refill (standing 0.0 s, moving 120.0 s; …)`
   (a mix shows both parts; any attack restarts the 3 s and a new refill run).
-- Summary: `[summary] endurance regen: N fighter-seconds standing, M moving; K refills to full`
+- Summary: `[summary] Athletics regen: N fighter-seconds standing, M moving; K refills to full`
   — M above 0 proves the moving rule fires (riders count their horse's speed).
 
 **3e. Shoot a bow until empty.** Bow or crossbow, keep shooting (18 shots as leader).
 - You see: drawing the bow (or reloading the crossbow) becomes very slow. Javelins and
   throwing axes likewise.
-- Log (verbose): `[endurance] blow ranged (on foot): <you> (you) - cost 5.6 (x0.56: hero party leader), …`
-- Summary: `endurance detection: … shots seen N (+0 extra projectiles of the same shot ignored) | ranged releases seen by the poll M | …`
+- Log (verbose): `[athletics] blow ranged (on foot): <you> (you) - cost 5.6 (x0.56: hero party leader), …`
+- Summary: `Athletics detection: … shots seen N (+0 extra projectiles of the same shot ignored) | ranged releases seen by the poll M | …`
   — N and M close together = both signals agree; and
   `attack speed check, ranged - time between shots: fresh median … | exhausted median … → x… (asked x5.00) - exhausted attacks ARE slower`.
 
 **3f. Ride and swing.** Mount up, swing at enemies from the saddle; then ride around 30 s
 without attacking; then (if you have one) couch a lance and hit someone.
 - You see: the same slow-down once empty on horseback; riding itself never drains you.
-- Log (verbose): `[endurance] blow melee (mounted): …`; a couched hit: `[endurance] blow couched/braced (mounted): …`
+- Log (verbose): `[athletics] blow melee (mounted): …`; a couched hit: `[athletics] blow couched/braced (mounted): …`
   (one per hit; a second hit within 1.5 s is free).
-- Summary: `endurance blows charged: … - by riders N, on foot M` and
-  `endurance detection: melee releases seen X (mounted Y) | … | melee hits by fighters H (on foot …, mounted …): during a counted release A, outside one B [in action: …]`
+- Summary: `Athletics blows charged: … - by riders N, on foot M` and
+  `Athletics detection: melee releases seen X (mounted Y) | … | melee hits by fighters H (on foot …, mounted …): during a counted release A, outside one B [in action: …]`
   — **B should be small next to A.** A large B, above all for riders, means swings are
   slipping past the detector (RESEARCH UNVERIFIED #2) — send the log.
 
@@ -286,7 +287,7 @@ without attacking; then (if you have one) couch a lance and hit someone.
 (and a lord on the other side).
 - Log (verbose): soldiers `cost 10.0`, your companion `cost 7.5 (x0.75: hero)`, you and a
   lord who leads his party `cost 5.6 (x0.56: hero party leader)`.
-- Summary: `[summary] endurance heroes: N flagged, M party leaders (<names>); lowest a hero reached: <name> 12.5 of 100`.
+- Summary: `[summary] Athletics heroes: N flagged, M party leaders (<names>); lowest a hero reached: <name> 12.5 of 100`.
 - In an army, only each party's OWN leader gets the leader price (not the army's marshal
   for everyone); a garrison lord in a siege pays the hero price only.
 
@@ -298,34 +299,34 @@ Mod Options → Trax Combat Enhancements.
     frame back, `[speed] ExhaustedAttackSpeedPercent now 50%: N exhausted fighters get the new speed on the next tick`.
   - The summary's attack-speed check compares against the value at the END — set it back
     to 20 for a clean reading.
-- *Endurance* (master switch) off.
+- *Athletics* (its own switch) off.
   - You see: every slow fighter is back to normal speed at once.
-  - Log: `[endurance] EnduranceEnabled switched OFF mid-mission: N fighters back to full, M attack-speed penalties lifted (applied on the next tick)`;
-    the summary later counts `attacks while endurance was off`. Turn it on again →
-    `[endurance] EnduranceEnabled switched ON mid-mission: everyone starts full`.
+  - Log: `[athletics] AthleticsEnabled switched OFF mid-mission: N fighters back to full, M attack-speed penalties lifted (applied on the next tick)`;
+    the summary later counts `attacks while Athletics was off`. Turn it on again →
+    `[athletics] AthleticsEnabled switched ON mid-mission: everyone starts full`.
 - Optional: *Misses cost too* off → swinging at the air is free, only hits cost:
   verbose `blow melee (landed)` / `blow ranged (landed)`; summary `landed-only swings` /
-  `landed-only shots`. Optional: *Pool size* 100 → 200 → everyone keeps his share
+  `landed-only shots`. Optional: *Bar size (points)* 100 → 200 → everyone keeps his share
   (the next blow line says `of 200`).
 
 **3i. The summary.** End the battle. After the damage lines, the `[summary]` block has:
 ```
-[summary] endurance settings at the end: ON - pool 100, cost per blow 10.0 / hero 7.5 / party leader 5.6, …
-[summary] endurance blows charged: 412 (melee swings 300, shots/throws 100, couched/braced hits 12, landed-only swings 0, landed-only shots 0) - by riders 60, on foot 352; endurance spent 3890 points
-[summary] endurance detection: melee releases seen 300 (mounted 50) | shots seen 100 (+0 extra projectiles of the same shot ignored) | ranged releases seen by the poll 98 | melee hits by fighters 280 (on foot 240, mounted 40): during a counted release 276, outside one 4 [in action: Other(0) 4]
-[summary] endurance free (never charged): kicks 3, shield bashes 5, kick/bash hits 6, couched hits within one blow-length of the last 2, attacks while endurance was off 0, releases / shots waiting for a landed hit (misses cost: no) 0 / 0
-[summary] endurance exhaustions: 45 entered, 30 left
-[summary] endurance heroes: 12 flagged, 5 party leaders (you, Derthert, …); lowest a hero reached: Rhagaea 12.5 of 100
-[summary] endurance you: 25 blows, 1 exhaustion, lowest 0.0 of 100
-[summary] endurance your formations at the end: 1 Infantry 72 ± 8 (40 men, 2 exhausted) | 2 Archers 95 ± 3 (20 men)
-[summary] endurance regen: 1234 fighter-seconds standing, 567 moving; 38 refills to full
+[summary] Athletics settings at the end: ON - pool 100, cost per blow 10.0 / hero 7.5 / party leader 5.6, …
+[summary] Athletics blows charged: 412 (melee swings 300, shots/throws 100, couched/braced hits 12, landed-only swings 0, landed-only shots 0) - by riders 60, on foot 352; Athletics spent 3890 points
+[summary] Athletics detection: melee releases seen 300 (mounted 50) | shots seen 100 (+0 extra projectiles of the same shot ignored) | ranged releases seen by the poll 98 | melee hits by fighters 280 (on foot 240, mounted 40): during a counted release 276, outside one 4 [in action: Other(0) 4]
+[summary] Athletics free (never charged): kicks 3, shield bashes 5, kick/bash hits 6, couched hits within one blow-length of the last 2, attacks while Athletics was off 0, releases / shots waiting for a landed hit (misses cost: no) 0 / 0
+[summary] Athletics exhaustions: 45 entered, 30 left
+[summary] Athletics heroes: 12 flagged, 5 party leaders (you, Derthert, …); lowest a hero reached: Rhagaea 12.5 of 100
+[summary] Athletics you: 25 blows, 1 exhaustion, lowest 0.0 of 100
+[summary] Athletics your formations at the end: 1 Infantry 72 ± 8 (40 men, 2 exhausted) | 2 Archers 95 ± 3 (20 men)
+[summary] Athletics regen: 1234 fighter-seconds standing, 567 moving; 38 refills to full
 [summary] attack speed check, melee - time between swings: fresh median 1.35 s, avg 1.52 s (n 250) | exhausted median 6.10 s, avg 6.40 s (n 30) → x4.52 (asked x5.00) - exhausted attacks ARE slower
 [summary] attack speed check, melee - swing length (swings that hit nothing): fresh median … | exhausted median … → x… - exhausted attacks ARE slower
 [summary] attack speed check, ranged - time between shots: fresh median … | exhausted median … → x… - exhausted attacks ARE slower
 [summary] attack speed updates: 75 recomputes asked (UpdateAgentProperties), the decorator applied a penalty in 80 recomputes; 12 intervals spanning a change of state left out
-[summary] endurance tick cost: avg 0.120 ms, max 1.300 ms per tick over 5400 ticks; fighters polled avg 480, max 1020
+[summary] Athletics tick cost: avg 0.120 ms, max 1.300 ms per tick over 5400 ticks; fighters polled avg 480, max 1020
 [summary] speeds for step 5c: on foot walk limit avg 1.80 m/s (n 480), top avg 4.90 m/s (n 480) → walk/top 0.37; horses walk …; refill samples speed/top in tenths …
-[summary] endurance errors: none
+[summary] Athletics errors: none
 ```
 What proves what:
 - **The penalty works in the engine**: the three `attack speed check` lines say
@@ -339,15 +340,15 @@ What proves what:
   listed under **free** (a kick count of 0 with kick/bash hits above 0 only means kicks run
   on another action channel — they are free either way).
 - **Heroes and leaders**: the names you expect in `party leaders`; your own blows and
-  exhaustions under `endurance you`.
+  exhaustions under `Athletics you`.
 - **Formations** (steps 8-9 draw these): one entry per formation of yours with men left,
   mean ± spread in points.
-- **Cost**: in a 500+ battle `endurance tick cost` avg should stay well under 1 ms. Above
+- **Cost**: in a 500+ battle `Athletics tick cost` avg should stay well under 1 ms. Above
   2 ms → tell Claude (the poll can move to worker threads).
 - **Step 5c's numbers**: the `speeds for step 5c` line (walk limit vs top speed, on foot and
   horses, and how fast refilling fighters really moved) — just send it along.
-- **Errors**: `endurance errors: none`. Otherwise each failed spot fell back to vanilla (no
-  cost, no penalty) and the first one per place is an `[error] endurance.…` / `[error] speed.…`
+- **Errors**: `Athletics errors: none`. Otherwise each failed spot fell back to vanilla (no
+  cost, no penalty) and the first one per place is an `[error] athletics.…` / `[error] speed.…`
   block with its stack above.
 
 (steps below are added as the features land)

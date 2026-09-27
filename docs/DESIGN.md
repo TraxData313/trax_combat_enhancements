@@ -24,12 +24,13 @@ A 50-damage hit lands for anything from 25 to 75, rolled anew on every hit.
   (rolled) damage, so a high roll knocks down more often than a low one. Crush-through is
   decided before damage and is unaffected.
 
-## 2. Endurance
+## 2. Athletics (the stamina bar)
 
-A per-fighter pool in every combat mission. Simpler cousin of RCM's posture: it only ever
-drains by attacking, and the only penalty is slow attacks when empty.
+A per-fighter pool — the **Athletics** bar — in every combat mission. Simpler cousin of RCM's
+posture: it only ever drains by attacking, and the only penalty is slow attacks when empty.
+(Its size comes from the Athletics SKILL from step 5c on, §2b; until then it is flat.)
 
-- **Pool**: `MaxEndurance` (100). Every fighter starts a mission full.
+- **Pool**: `MaxAthletics` (100). Every fighter starts a mission full.
 - **Cost**: every blow costs `CostPerBlow` (10) × multipliers:
   - heroes (lords, companions, the player): × `HeroCostMultiplier` (0.75)
   - the hero who LEADS the fighter's party (the player for their own party, a lord for his):
@@ -39,11 +40,11 @@ drains by attacking, and the only penalty is slow attacks when empty.
 - **What is a blow**: a melee swing or thrust, a shot, a throw. A couched lance or braced
   spear hit has no swing, so it costs one blow when it LANDS. Kicks, shield bashes and
   siege engines (ballista, onager) cost nothing.
-- **Exhausted**: at 0 endurance the fighter attacks at `ExhaustedAttackSpeedPercent` (20%)
+- **Exhausted**: at 0 Athletics the fighter attacks at `ExhaustedAttackSpeedPercent` (20%)
   of normal speed — melee swings and thrusts, bow draw, crossbow reload, throws. Speed comes
-  back once endurance rises above `ExhaustedRecoverPercent` of the pool (0 = the moment it
+  back once Athletics rises above `ExhaustedRecoverPercent` of the pool (0 = the moment it
   is above 0, as asked).
-- **Changing `MaxEndurance` mid-battle** keeps each fighter's fraction (60% stays 60%).
+- **Changing `MaxAthletics` mid-battle** keeps each fighter's fraction (60% stays 60%).
 - **Regeneration**: starts after `RegenDelayBlowTimes` (2) × `BlowTimeSeconds` (1.5 s) with
   no attack. Then refills from 0 to full in:
   - `FullRegenSecondsStanding` (60 s) while standing still,
@@ -51,9 +52,9 @@ drains by attacking, and the only penalty is slow attacks when empty.
     `MovingSpeedThreshold`).
   Any new blow stops regeneration and restarts the delay.
 - **Cavalry**: riders use the very same pool. Riding never drains it; only blows do. The
-  horse has no endurance of its own.
+  horse has no Athletics of its own.
 
-## 2b. Endurance v2 — Anton's additions (2026-09-27), lands in steps 5b–5d
+## 2b. Athletics v2 — Anton's additions (2026-09-27), lands in steps 5b–5d
 
 Step 5 builds §2 as written; step 5c then reshapes it as below and folds this section into
 §2. Where the two disagree, this section wins.
@@ -63,13 +64,14 @@ Step 5 builds §2 as written; step 5c then reshapes it as below and folds this s
   it). The pool, the bar, the points: **Athletics**. The skill on the character screen:
   **Athletics skill**. Every player-facing word — MCM, config keys and comments, bars,
   messages, log tags (`[athletics]`), README, Steam page — and the code too (one
-  vocabulary: `EnduranceLogic` → `AthleticsLogic`, `EnduranceEnabled` → `AthleticsEnabled`,
-  and so on). The rename is done in step 5b; "endurance" in this document means the same
-  thing until then. TASKS_DONE history keeps its words.
+  vocabulary: `AthleticsLogic`, `AthleticsEnabled`, `MaxAthletics`, `FormationAthleticsStats`
+  and so on). **Done in step 5b**: the word used to be "endurance" (`EnduranceLogic`,
+  `EnduranceEnabled`, `MaxEndurance`, the `[endurance]` log tag); TASKS_DONE history and
+  RESEARCH's findings keep their words.
 - **The pool IS the Athletics skill** (Anton's pick): pool = max(`AthleticsPoolFloor` (50),
   `AthleticsPoolPerSkill` (1.0) × Athletics skill). Skill 180 → the bar tops at 180; a
   300-skill hero gets 300. The bar's number matches the skill screen. Riders too —
-  Athletics, never Riding. Replaces the flat `MaxEndurance`. Changing either number
+  Athletics, never Riding. Replaces the flat `MaxAthletics`. Changing either number
   mid-battle keeps each fighter's fraction. The floor is Anton's experiment slider: real
   troops (v1.4.8 data) have Athletics 20 (recruits), 40 (tier 2), 60 (elite cataphract),
   130 (legionary), 170 (Fian champion) — without the floor a recruit would be empty after
@@ -127,18 +129,18 @@ MCM button writes the CURRENT values as a defaults file in the config folder, so
 tuning found in game can be copied into the repo. The Default column of the Parameters
 table below is the INITIAL value; `defaults.json` wins.
 
-## 3. Showing endurance
+## 3. Showing Athletics
 
 All toggles, all on by default.
 
-1. **Player bar** (`ShowPlayerBar`): the player's endurance near the vanilla health bar,
+1. **Player bar** (`ShowPlayerBar`): the player's Athletics bar near the vanilla health bar,
    in the spirit of RBM's posture bar (RBM = Realistic Battle Mod, confirmed by Anton —
    style reference only).
 2. **Looked-at NPC** (`ShowTargetBar`): a small bar for the fighter the player is aiming at
    / looking at, within `TargetBarMaxDistance`; it lingers `TargetBarLingerSeconds` after
    the aim leaves so it does not flicker. Aiming at a horse shows its rider.
 3. **Squad bars** (`ShowFormationBars`): above each of the PLAYER'S formations, a bar of the
-   formation's average endurance, with a band of ± `FormationSpreadStdDevs` (1) standard
+   formation's average Athletics, with a band of ± `FormationSpreadStdDevs` (1) standard
    deviations (`ShowFormationSpread`). `FormationBarsAlways` off = only while vanilla shows
    its formation markers (marker key held or orders menu open).
 4. **Orders menu** (`ShowInOrderMenu`): while the orders menu is open, a compact panel of our
@@ -158,7 +160,7 @@ Bars show only in fights (battle, duel, tournament modes) and never while the ga
 - Squads also show their AVERAGE HEALTH (`ShowFormationHealth`, on) — above the formation
   and in the orders menu.
 - Orders menu: our strip sits directly UNDER the vanilla formation cards, one cell per card
-  ("below the arrows remaining", Anton's words) — endurance average ± spread and average
+  ("below the arrows remaining", Anton's words) — Athletics average ± spread and average
   health. Still no UIExtenderEx; if the cards' positions cannot be matched reliably, the
   step falls back to a compact panel and says so.
 
@@ -212,14 +214,14 @@ file also carries `ConfigVersion`, a format stamp — not a setting.
 | `CostOnMiss` | true | true: every attack costs, landed or not. false: only blows that land. |
 | `HeroCostMultiplier` | 0.75 | Cost multiplier for heroes. |
 | `PartyLeaderCostMultiplier` | 0.75 | Extra multiplier for a party's leading hero, on top of the hero one. |
-| `ExhaustedAttackSpeedPercent` | 20 | Attack speed at 0 endurance, percent of normal. |
+| `ExhaustedAttackSpeedPercent` | 20 | Attack speed at 0 Athletics, percent of normal. |
 | `ExhaustedRecoverPercent` | 0 | Once exhausted, speed returns only above this % of the pool. 0 = as soon as it is above 0. |
 | `RegenDelayBlowTimes` | 2 | Idle blows before regeneration starts. |
 | `BlowTimeSeconds` | 1.5 | How long "one blow" is, for the delay above. |
 | `FullRegenSecondsStanding` | 60 | Seconds from empty to full while standing still. |
 | `FullRegenSecondsMoving` | 120 | Seconds from empty to full while moving or riding. |
 | `MovingSpeedThreshold` | 0.5 | Speed (m/s) above which a fighter counts as moving. |
-| `ShowPlayerBar` | true | Player endurance bar. |
+| `ShowPlayerBar` | true | Player Athletics bar. |
 | `ShowTargetBar` | true | Bar for the fighter you look at. |
 | `TargetBarMaxDistance` | 30 | Metres — how far away a looked-at fighter still gets a bar. |
 | `TargetBarLingerSeconds` | 2 | Seconds the bar stays after your aim leaves the fighter. |
@@ -242,17 +244,17 @@ test reads that table only) and removes the retired rows in the same commit.
 
 | Key | Default | Step | What it does |
 |---|---|---|---|
-| `AthleticsPoolFloor` | 50 | 5c | Smallest possible Athletics pool (for anyone with a low Athletics skill; 0 = none). Replaces `MaxEndurance`. |
+| `AthleticsPoolFloor` | 50 | 5c | Smallest possible Athletics pool (for anyone with a low Athletics skill; 0 = none). Replaces `MaxAthletics`. |
 | `AthleticsPoolPerSkill` | 1.0 | 5c | Pool per point of Athletics skill (1.0 → the bar tops at the skill). |
 | `AthleticsPeakPercent` | 75 | 5c | At or above this % of their own pool a fighter is at full strength (green); below it they weaken in a straight line to 0. |
 | `HealthCapsAthletics` | true | 5c | Health left caps the usable pool. |
 | `DamageBonusFollowsAthletics` | true | 5c | The damage upside shrinks with the attacker's Athletics below the peak. |
-| `MinMoveSpeedMultiplier` | 0.3 | 5c | Top speed on foot at 0 endurance. |
-| `MountMinSpeedMultiplier` | 1.0 | 5c | Horse top speed at the rider's 0 endurance (1.0 = horses never slow). |
+| `MinMoveSpeedMultiplier` | 0.3 | 5c | Top speed on foot at 0 Athletics. |
+| `MountMinSpeedMultiplier` | 1.0 | 5c | Horse top speed at the rider's 0 Athletics (1.0 = horses never slow). |
 | `RegenMultiplierAtFullRun` | 0.5 | 5c | Regen rate at top speed, relative to standing or walking. |
 | `WalkEffortFraction` | 0.4 | 5c | Up to this share of top speed counts as walking (full regen). |
 | `StepBackEnabled` | true | 5d | Tired AI fighters on foot step back after melee swings. |
-| `StepBackMaxChancePercent` | 100 | 5d | Chance to step back at 0 endurance (0 at the peak, straight line between). |
+| `StepBackMaxChancePercent` | 100 | 5d | Chance to step back at 0 Athletics (0 at the peak, straight line between). |
 | `StepBackDistance` | 2 | 5d | Metres a fighter steps back. |
 | `StepBackSeconds` | 1.5 | 5d | Longest a step back lasts before the formation takes over again. |
 | `BarYellowBelowPercent` | 75 | 6 | Bar turns yellow at or below this % of the peak line (blue just below the line, green above it). |
@@ -260,13 +262,13 @@ test reads that table only) and removes the retired rows in the same commit.
 | `BarRedBelowPercent` | 25 | 6 | Red at or below this %. |
 | `ShowFormationHealth` | true | 8 | Squad bars and the orders-menu strip also show average health. |
 
-Retire in 5c: `MaxEndurance`, `FullRegenSecondsMoving`, `MovingSpeedThreshold`,
+Retire in 5c: `MaxAthletics`, `FullRegenSecondsMoving`, `MovingSpeedThreshold`,
 `ExhaustedRecoverPercent`.
 
 ## Interpretations (Anton can overturn any of these)
 
 1. **"A blow" = an attack the fighter makes** — swing, thrust, shot, throw — landed or not.
-   Anton's damage rule says "each time it lands"; the endurance rule does not, so every
+   Anton's damage rule says "each time it lands"; the Athletics rule does not, so every
    attack costs. `CostOnMiss = false` switches to landed-only.
 2. **Hero multiplier is 0.75.** The ask said 0.75 and also "0.5, 10 → 5"; the leader
    formula 0.75 × 0.75 × 10 settles it at 0.75. One number to change if 0.5 was meant.

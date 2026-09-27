@@ -10,7 +10,7 @@ BUILD ORDER (one step at a time — [~] = in flight, see CLAUDE.md "manager prot
 - [ ] 6. Player Athletics bar (RBM posture style) — number, 75% peak marker, green/blue/yellow/orange/red
 - [ ] 7. Bar for the NPC I look at (toggle)
 - [ ] 8. Squad bars above my formations: average ± 1 std + average health
-- [ ] 9. Orders menu: strip under the formation cards (below the arrows) — endurance ± spread + health (no UIExtenderEx)
+- [ ] 9. Orders menu: strip under the formation cards (below the arrows) — Athletics ± spread + health (no UIExtenderEx)
 - [ ] 10. Self-review + polish pass (Anton's playtest comes after, all at once)
 - [ ] 11. Steam packaging — upload only on Anton's yes
 
@@ -21,5 +21,5 @@ BUGS:
 
 NOT DECIDED (defaults in place, Anton can flip):
 - [ ] Hero multiplier: 0.75 (default now) or 0.5? (see DESIGN interpretations)
-- [ ] Kicks / shield bashes cost endurance? (free now)
-- [ ] Endurance in tournaments / arena too? (on for now)
+- [ ] Kicks / shield bashes cost Athletics? (free now)
+- [ ] Athletics in tournaments / arena too? (on for now)
