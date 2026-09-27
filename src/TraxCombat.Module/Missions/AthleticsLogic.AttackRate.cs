@@ -328,8 +328,14 @@ namespace TraxCombat.Missions
                     _rateStats.AddNotHeld(PaceNotHeld.FullStrength);
                     return;
                 }
+                // A step back already RUNNING holds his attacks itself. One only asked for by this very
+                // swing (Pending) is decided by the tick, which runs the step backs BEFORE the holds: if
+                // it starts, the queued hold is dropped there (TickPace); if it is refused (the cap, a
+                // shield wall, no enemy near...) the hold goes ahead - review 10a R1: skipping the hold
+                // for a merely pending step back left every refused one unheld, i.e. most tired men in a
+                // big battle once StepBackMaxAtOnce is reached.
                 var sb = st.StepBack;
-                if (sb != null && (sb.Pending || sb.Active))
+                if (sb != null && sb.Active)
                 {
                     _rateStats.AddNotHeld(PaceNotHeld.SteppingBack);
                     return;
@@ -464,6 +470,14 @@ namespace TraxCombat.Missions
                     RefuseHold(st, ps, PaceRefusal.Gone);
                     continue;
                 }
+                // the step back asked for by the same swing started (TickStepBacks ran first this tick):
+                // it holds his attacks itself. (Still pending = its tick failed: the old, safe answer.)
+                var sb = st.StepBack;
+                if (sb != null && (sb.Active || sb.Pending))
+                {
+                    _rateStats.AddNotHeld(PaceNotHeld.SteppingBack);
+                    continue;
+                }
                 // too late: the time is (nearly) up, or his next ready began since the swing ended (the
                 // poll ran before this in the same tick) - NoAttack must never land on a readied blow
                 if (ps.Until - now < AttackRateMath.MinHoldSeconds || st.PrevAction == ActionReadyMelee || st.PrevAction == ActionReleaseMelee)
@@ -503,13 +517,16 @@ namespace TraxCombat.Missions
                 RefuseHold(st, ps, why);
                 return;
             }
+            // his last hold may still be waiting for a game job - then he is already in the list
+            // (review 10a R2: listed twice, the tick would end this hold twice and count it twice)
+            bool listed = ps.Waiting;
             ps.Active = true;
             ps.StartedAt = now;
             ps.EndAsked = false;
             ps.Waiting = false;
             ps.First = !_firstHoldStarted;
             _firstHoldStarted = true;
-            _paceHeld.Add(st);
+            if (!listed) _paceHeld.Add(st);
             _rateStats.AddHoldStart(ps.Bin, ps.Asked);
             if (ps.First) LogHold(st, ps, now, first: true);
             else if (TraxLog.VerboseOn) LogHold(st, ps, now, first: false);

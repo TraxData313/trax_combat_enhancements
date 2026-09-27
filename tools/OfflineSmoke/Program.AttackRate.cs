@@ -352,6 +352,68 @@ namespace TraxCombat.Tools
                 b.ApplySettingsChange(S);
                 y.SpeedDirty = false;
 
+                // review 10a R1: a tired swing whose step back is REFUSED (the cap, a shield wall, no enemy
+                // near) is still held; one whose step back STARTS is not (the step back holds his attacks)
+                var stepBody = new FakeStepBody();
+                b.StepBackBody = stepBody;
+                S.Set(SettingsSchema.StepBackEnabled, true, SettingSources.File);
+                Check(y.Exhausted, "R1: precondition - y is not empty (his swing would not ask for a step back)");
+                int holdsR1 = sb.Holds, steppingNotHeld = sb.NotHeld(PaceNotHeld.SteppingBack);
+                stepBody.NextRefusal = StepBackRefusal.AtOnceCap;
+                b.ObserveAction(y, ActReadyMeleeCode, t, in r);
+                t += 2;
+                b.ObserveAction(y, ActRelease, t, in r);
+                t += 2.5;
+                b.ObserveAction(y, ActIdle, t, in r);
+                Check(y.StepBack != null && y.StepBack.Pending, "R1: the empty swing did not ask for a step back");
+                b.TickStepBacks(t);                          // the tick: step backs first...
+                b.TickPace(t);                               // ...then the holds
+                Check(b.StepStats.Refused(StepBackRefusal.AtOnceCap) == 1 && b.SteppingNow == 0 && y.Pace.Active && sb.Holds == holdsR1 + 1,
+                    "R1: a refused step back left the swing unheld - holds " + (sb.Holds - holdsR1) + ", held now " + y.Pace.Active);
+                t = y.Pace.Until;
+                b.TickPace(t);                               // time up
+                b.ObserveAction(y, ActReadyMeleeCode, t, in r);
+                t += 2;
+                b.ObserveAction(y, ActRelease, t, in r);
+                t += 2.5;
+                b.ObserveAction(y, ActIdle, t, in r);
+                b.TickStepBacks(t);                          // this time it starts
+                b.TickPace(t);
+                Check(b.SteppingNow == 1 && !y.Pace.Active && sb.Holds == holdsR1 + 1 && sb.NotHeld(PaceNotHeld.SteppingBack) == steppingNotHeld + 1,
+                    "R1: a hold started on a man stepping back (or was not counted as stepping back)");
+                t += 1.6;
+                b.TickStepBacks(t);                          // its time is up: released
+                Check(b.SteppingNow == 0, "R1: the step back did not end");
+                S.Set(SettingsSchema.StepBackEnabled, false, SettingSources.File);
+                b.StepBackBody = new FakeStepBody { Allow = false };
+
+                // review 10a R2: a new hold while the last one still waits for a game job - listed once
+                var heldList = (List<TrackedAgent>)typeof(AthleticsLogic).GetField("_paceHeld", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(b)!;
+                b.ObserveAction(y, ActReadyMeleeCode, t, in r);
+                t += 2;
+                b.ObserveAction(y, ActRelease, t, in r);
+                t += 2.5;
+                b.ObserveAction(y, ActIdle, t, in r);
+                b.TickPace(t);
+                Check(y.Pace.Active, "R2: no hold");
+                body.WaitingReleases = 2;
+                t = y.Pace.Until;
+                b.TickPace(t);                               // a game job on him: waiting
+                Check(y.Pace.Waiting && heldList.Count == 1, "R2: not waiting");
+                b.ObserveAction(y, ActReadyMeleeCode, t, in r); // (the stand-in lets him swing - in game the job cleared NoAttack)
+                t += 2;
+                b.ObserveAction(y, ActRelease, t, in r);
+                t += 2.5;
+                b.ObserveAction(y, ActIdle, t, in r);
+                b.TickPace(t);                               // the waiting pass (still busy), then the new hold starts
+                Check(y.Pace.Active && heldList.Count == 1, "R2: the new hold listed him twice: " + heldList.Count);
+                int endsR2 = sb.Ended(PaceEnd.TimeUp);
+                t = y.Pace.Until;
+                b.TickPace(t);
+                Check(!y.Pace.Active && heldList.Count == 0 && sb.Ended(PaceEnd.TimeUp) == endsR2 + 1, "R2: the hold ended twice or stayed listed: ends "
+                    + (sb.Ended(PaceEnd.TimeUp) - endsR2) + ", listed " + heldList.Count);
+                body.WaitingReleases = 0;
+
                 // mission end: a running hold is lifted before the summary; the summary mentions the switch
                 b.ObserveAction(y, ActReadyMeleeCode, t, in r);
                 t += 2;
@@ -370,7 +432,8 @@ namespace TraxCombat.Tools
                 LogHas("[summary] attack rate - pace hold, not held: at full strength ");
                 LogHas("[summary] attack rate - pace hold ends: time up ");
                 LogHas(", a swing started anyway 1 (must be about 0 - NoAttack holds swings), switched off 1, left the field 1, mission end 1, you took him 0, mounted 1, error 0");
-                LogHas("a game job on him at the end (left alone, cleared once free: 2, of them under a long scripted frame: 1) 2, still held at mission end 1");
+                // (3 waited: the game job, the long frame and R2's - R2's was followed by a new hold, not cleared)
+                LogHas("a game job on him at the end (left alone, cleared once free: 2, of them under a long scripted frame: 1) 3, still held at mission end 1");
                 LogHas("[summary] attack rate - guard by f (melee hits on fighters on foot that were blocked or parried; blocking is never slowed - tired men must not block less): ");
                 _ = rr;
                 _ = w;

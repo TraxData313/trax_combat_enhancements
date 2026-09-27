@@ -1088,7 +1088,9 @@ it; his pause is his.
   within the cap; else the mission's AI mean once it has 5; else no hold ("no fresh cycle known
   yet"). Per fighter first: a dagger and a two-hander keep their own rhythms.
 - **Order at a swing's end**: the step-back roll first; a step back asked for takes precedence
-  (it holds attacks itself). A swing ending straight into a ready (a chain) is not held. The
+  (it holds attacks itself) - but only if the tick STARTS it: the hold is queued too, and
+  `TickPace` (after `TickStepBacks`) drops it for a man now stepping back; a REFUSED step back
+  leaves the hold to run (review 10a R1). A swing ending straight into a ready (a chain) is not held. The
   tick refuses a hold whose man has readied or swung since ("too late"), so NoAttack never lands
   on a readied blow.
 - **Queue, then the tick** (5d's rule): the hold is asked for at the swing's end (maybe inside a

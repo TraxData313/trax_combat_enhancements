@@ -39,7 +39,8 @@ namespace TraxCombat.Core
         /// <summary>A rider - never held (his rhythm is the horse's pass).</summary>
         Rider = 2,
 
-        /// <summary>His step back (5d) was just asked for - it holds his attacks itself.</summary>
+        /// <summary>His step back (5d) is running, or the one this swing asked for started - it holds his
+        /// attacks itself. (A step back that was asked for but REFUSED leaves the hold to run.)</summary>
         SteppingBack = 3,
 
         /// <summary>No fresh cycle known yet - neither his own nor the mission's.</summary>
