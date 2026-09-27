@@ -553,25 +553,27 @@ namespace TraxCombat.Missions
         }
 
         /// <summary>Recompute the fighter's three multipliers from the live rules; each that moved enough
-        /// (<see cref="AthleticsMath.SpeedUpdateNeeded"/>) is taken and the fighter (attack / run) or his
-        /// horse is marked for a properties recompute. True when anything was marked.</summary>
-        private static bool RetargetSpeed(TrackedAgent st, in AthleticsRules r)
+        /// (<see cref="AthleticsMath.SpeedUpdateNeeded"/>) - or at all, when <paramref name="exact"/>
+        /// (a refill that reached its top: the resting speed is set exactly, not left up to one step
+        /// behind) - is taken and the fighter (attack / run) or his horse is marked for a properties
+        /// recompute. True when anything was marked.</summary>
+        private static bool RetargetSpeed(TrackedAgent st, in AthleticsRules r, bool exact = false)
         {
             bool human = false, horse = false;
             float attack = AthleticsMath.AttackSpeedMultiplier(in r, st);
-            if (AthleticsMath.SpeedUpdateNeeded(st.SpeedMultiplier, attack, r.AttackSpeedFloor))
+            if (exact ? attack != st.SpeedMultiplier : AthleticsMath.SpeedUpdateNeeded(st.SpeedMultiplier, attack, r.AttackSpeedFloor))
             {
                 st.SpeedMultiplier = attack;
                 human = true;
             }
             float run = AthleticsMath.RunSpeedMultiplier(in r, st);
-            if (AthleticsMath.SpeedUpdateNeeded(st.RunSpeedMultiplier, run, r.RunSpeedFloor))
+            if (exact ? run != st.RunSpeedMultiplier : AthleticsMath.SpeedUpdateNeeded(st.RunSpeedMultiplier, run, r.RunSpeedFloor))
             {
                 st.RunSpeedMultiplier = run;
                 human = true;
             }
             float mount = AthleticsMath.MountSpeedMultiplier(in r, st);
-            if (AthleticsMath.SpeedUpdateNeeded(st.MountSpeedMultiplier, mount, r.MountSpeedFloor))
+            if (exact ? mount != st.MountSpeedMultiplier : AthleticsMath.SpeedUpdateNeeded(st.MountSpeedMultiplier, mount, r.MountSpeedFloor))
             {
                 st.MountSpeedMultiplier = mount;
                 horse = true;
@@ -870,7 +872,7 @@ namespace TraxCombat.Missions
                             _stats.RegenFasterRateSeconds += o.Seconds * o.RateMultiplier;
                         }
                     }
-                    if (o.Gained > 0 || o.Recovered) RetargetSpeed(st, in r);
+                    if (o.Gained > 0 || o.Recovered) RetargetSpeed(st, in r, exact: o.ReachedTop);
                     if (o.EnteredPeak) OnEnteredPeak(st, now, in r);
                     if (o.Recovered) OnRecovered(st, now, in o, in r);
                     if (o.ReachedTop) OnRefilled(st, now, in o, in r);

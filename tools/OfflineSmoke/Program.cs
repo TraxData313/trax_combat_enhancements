@@ -67,12 +67,14 @@ namespace TraxCombat.Tools
             Step("damage: a bug in the roll keeps the game's value and logs ONE [error] per mission", DamageFailSafe);
             Step("damage: verbose roll/skip lines and the [summary] damage block", DamageLogAndSummary);
             Step("damage: a roll off the main thread is detected and reported", DamageOffMainThread);
-            // Athletics (step 5) - the real speed penalty, stat decorator and Athletics logic, fed
-            // uninitialized Agent objects (no native side).
-            Step("Athletics: the speed penalty scales swing, thrust/draw and reload on the game's AgentDrivenProperties - nothing else", SpeedPenaltyScalesOnlyTheThree);
-            Step("Athletics: the stat decorator applies each fighter's multiplier on every recompute, never compounds, lifts it when off", DecoratorAppliesEachFightersMultiplier);
-            Step("Athletics: swings through the real logic - 10 empty a soldier, 18 a party leader; kicks, bashes, ranged releases free", BlowsThroughTheLogic);
-            Step("Athletics: mid-battle settings - speed percent re-targets the exhausted, a pool change reads live, switching off refills and lifts", AthleticsHotSwap);
+            // Athletics (steps 5, 5c) - the real speed penalties, stat decorator, Athletics logic and
+            // damage decorator, fed uninitialized Agent objects (no native side).
+            Step("Athletics: the attack, run and horse levers each scale only their own AgentDrivenProperties", SpeedPenaltyScalesOnlyItsOwnValues);
+            Step("Athletics: the stat decorator applies each fighter's attack and run multipliers and a slowed rider's horse's, on every recompute, never compounds, lifts them when off", DecoratorAppliesEachFightersMultipliers);
+            Step("Athletics: swings through the real logic - a recruit (floor 50) 2 blows at full strength, slower every blow, empty on the 5th; a 300-skill party leader 14 and 54; kicks, bashes, ranged releases free; the attack-speed check by f", BlowsThroughTheLogic);
+            Step("Athletics: health caps the bar at once, the peak line stays on the full pool, the cap switch works live", HealthCapsTheBar);
+            Step("Athletics: the damage upside follows the attacker's f through the real damage decorator (empty: never above x1.00; untracked: full)", DamageUpsideFollowsTheAttacker);
+            Step("Athletics: mid-battle settings - speeds, peak line, horses, pool size (shares kept) re-target live; switching off refills and lifts", AthleticsHotSwap);
             Step("Athletics: the [summary] Athletics block", AthleticsSummary);
             Step("master switch: ModEnabled off is vanilla at once - damage unrolled but recorded, penalties lifted, no costs; on = everyone full", MasterSwitchIsVanillaLive);
             Step("Athletics: a failure is logged once per site, counted, and reported in the summary", AthleticsFailSafe);

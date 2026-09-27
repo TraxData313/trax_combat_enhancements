@@ -13,18 +13,23 @@ using TraxCombat.Models;
 namespace TraxCombat.Tools
 {
     /// <summary>
-    /// Offline checks for Athletics (step 5) - the REAL module code on .NET Framework with the
+    /// Offline checks for Athletics (steps 5, 5c) - the REAL module code on .NET Framework with the
     /// game's DLLs, no game:
-    ///   * <see cref="SpeedPenalty"/> on the game's own <see cref="AgentDrivenProperties"/>;
+    ///   * <see cref="SpeedPenalty"/> on the game's own <see cref="AgentDrivenProperties"/> (attack,
+    ///     run and horse levers each touch only their own values);
     ///   * the REAL <see cref="TraxAgentStatModel"/> decorating a stand-in base model that, like
-    ///     Sandbox's and CustomBattle's, assigns fresh attack-speed values on every recompute;
-    ///   * the REAL <see cref="AthleticsLogic"/>: swings fed through its action observer, charges,
-    ///     exhaustion, the speed target, hot swap, the read API, the summary, the error path.
+    ///     Sandbox's and CustomBattle's, assigns fresh values on every recompute - fighters and a
+    ///     slowed rider's horse;
+    ///   * the REAL <see cref="AthleticsLogic"/>: swings fed through its action observer, the pool
+    ///     from the skill (the floor for a fighter without a character), the curves after every
+    ///     blow, DESIGN's blow counts, the health cap, hot swap, the read API, the summary, the
+    ///     error path; and the REAL damage decorator reading the attacker's f.
     /// The agents are UNINITIALIZED <see cref="Agent"/> objects (no native side) with only their
-    /// index and driven properties set - so nothing here may call a native member (IsActive,
-    /// IsHuman, GetCurrentActionType, UpdateAgentProperties' engine push). What it cannot check:
-    /// that the engine honours a 0.2 multiplier, the poll, the hit events - PLAYTEST §3 and the
-    /// [summary]'s attack-speed check prove those in game.
+    /// index, driven properties and health set - so nothing here may call a native member
+    /// (IsActive, IsHuman, GetCurrentActionType, MountAgent, UpdateAgentProperties' engine push).
+    /// What it cannot check: that the engine honours the multipliers, the poll, the hit events,
+    /// the regen pass - PLAYTEST §3 and the [summary]'s attack-speed and run-speed checks prove
+    /// those in game.
     /// </summary>
     internal static partial class Program
     {
@@ -36,8 +41,8 @@ namespace TraxCombat.Tools
         private static TraxAgentStatModel? _statTop;
         private static FreshStatsModel? _statBase;
 
-        /// <summary>Stands in for Sandbox's model: assigns FRESH attack-speed values on every recompute
-        /// (Sandbox's and CustomBattle's UpdateHumanStats do, with '=').</summary>
+        /// <summary>Stands in for Sandbox's model: assigns FRESH values on every recompute
+        /// (Sandbox's and CustomBattle's UpdateHumanStats / UpdateHorseStats do, with '=').</summary>
         private sealed class FreshStatsModel : AgentStatCalculateModel
         {
             public int Updates;
@@ -53,6 +58,9 @@ namespace TraxCombat.Tools
                 p.ThrustOrRangedReadySpeedMultiplier = 1.02f;
                 p.ReloadSpeed = 0.95f;
                 p.HandlingMultiplier = 1.1f;
+                p.MaxSpeedMultiplier = 0.8f;
+                p.CombatMaxSpeedMultiplier = 0.84f;
+                p.MountSpeed = 0.9f;
             }
 
             public override float GetDifficultyModifier() => 1f;
@@ -76,8 +84,10 @@ namespace TraxCombat.Tools
 
         private static Action<Agent, int>? _setIndex;
         private static Action<Agent, AgentDrivenProperties>? _setProperties;
+        private static Action<Agent, float>? _setHealth;
+        private static Action<Agent, float>? _setHealthLimit;
 
-        /// <summary>An Agent object without its native side: index + driven properties only. The two
+        /// <summary>An Agent object without its native side: index + driven properties only. The
         /// backing fields are written by compiled IL: reflection's FieldInfo.SetValue would run
         /// Agent's static initializer, which calls the engine (ActionIndexCache → MBAnimation) and
         /// breaks the Agent type for the rest of the process.</summary>
@@ -89,6 +99,15 @@ namespace TraxCombat.Tools
             _setIndex(a, index);
             _setProperties(a, new AgentDrivenProperties());
             return a;
+        }
+
+        /// <summary>Health and its maximum - both managed fields (the health cap reads them).</summary>
+        private static void SetHealth(Agent a, float health, float limit)
+        {
+            _setHealth ??= FieldSetter<float>("_health");
+            _setHealthLimit ??= FieldSetter<float>("<HealthLimit>k__BackingField");
+            _setHealth(a, health);
+            _setHealthLimit(a, limit);
         }
 
         private static Action<Agent, T> FieldSetter<T>(string name)
@@ -106,56 +125,66 @@ namespace TraxCombat.Tools
 
         private static bool Near(float a, float b) => Math.Abs(a - b) < 1e-4f;
 
+        private static bool Near(double a, double b) => Math.Abs(a - b) < 1e-6;
+
+        private static AthleticsRules Rules => AthleticsRules.From(S);
+
         /// <summary>DESIGN's initial numbers, set explicitly - the checks count blows with them
-        /// ("10 empty a soldier, 18 a party leader"), whatever Anton tunes in defaults.json.</summary>
+        /// ("5 empty a recruit, 54 a 300-skill party leader"), whatever Anton tunes in defaults.json.</summary>
         private static void AthleticsDefaults()
         {
             S.ResetToDefaults(SettingSources.Defaults);
             S.Set(SettingsSchema.ModEnabled, true, SettingSources.File);
             S.Set(SettingsSchema.AthleticsEnabled, true, SettingSources.File);
-            S.Set(SettingsSchema.MaxAthletics, 100, SettingSources.File);
+            S.Set(SettingsSchema.AthleticsPoolFloor, 50, SettingSources.File);
+            S.Set(SettingsSchema.AthleticsPoolPerSkill, 1.0, SettingSources.File);
+            S.Set(SettingsSchema.AthleticsPeakPercent, 75, SettingSources.File);
+            S.Set(SettingsSchema.HealthCapsAthletics, true, SettingSources.File);
             S.Set(SettingsSchema.CostPerBlow, 10, SettingSources.File);
             S.Set(SettingsSchema.CostOnMiss, true, SettingSources.File);
             S.Set(SettingsSchema.HeroCostMultiplier, 0.75, SettingSources.File);
             S.Set(SettingsSchema.PartyLeaderCostMultiplier, 0.75, SettingSources.File);
             S.Set(SettingsSchema.ExhaustedAttackSpeedPercent, 20, SettingSources.File);
-            S.Set(SettingsSchema.ExhaustedRecoverPercent, 0, SettingSources.File);
+            S.Set(SettingsSchema.MinMoveSpeedMultiplier, 0.3, SettingSources.File);
+            S.Set(SettingsSchema.MountMinSpeedMultiplier, 1.0, SettingSources.File);
+            S.Set(SettingsSchema.DamageBonusFollowsAthletics, true, SettingSources.File);
             S.Set(SettingsSchema.RegenDelayBlowTimes, 2, SettingSources.File);
             S.Set(SettingsSchema.BlowTimeSeconds, 1.5, SettingSources.File);
             S.Set(SettingsSchema.FullRegenSecondsStanding, 60, SettingSources.File);
-            S.Set(SettingsSchema.FullRegenSecondsMoving, 120, SettingSources.File);
-            S.Set(SettingsSchema.MovingSpeedThreshold, 0.5, SettingSources.File);
+            S.Set(SettingsSchema.RegenMultiplierAtFullRun, 0.5, SettingSources.File);
+            S.Set(SettingsSchema.WalkEffortFraction, 0.4, SettingSources.File);
             S.Set(SettingsSchema.VerboseLogging, false, SettingSources.File);
         }
 
         // ------------------------------------------------------------------ checks
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        private static void SpeedPenaltyScalesOnlyTheThree()
+        private static void SpeedPenaltyScalesOnlyItsOwnValues()
         {
-            var p = new AgentDrivenProperties();
-            // every slot gets its own value (the enum has aliases - one slot, several names)
             var slots = Enum.GetValues(typeof(DrivenProperty)).Cast<DrivenProperty>().Where(d => (int)d >= 0 && (int)d < 98)
                 .GroupBy(d => (int)d).Select(g => g.First()).ToList();
-            foreach (var d in slots) p.SetStat(d, 1f + (int)d / 100f);
-            float swing = p.SwingSpeedMultiplier, thrust = p.ThrustOrRangedReadySpeedMultiplier, reload = p.ReloadSpeed;
-            var before = slots.ToDictionary(d => d, d => p.GetStat(d));
-
-            SpeedPenalty.Scale(p, 0.2f);
-            Check(Near(p.SwingSpeedMultiplier, swing * 0.2f), "swing not x0.2: " + p.SwingSpeedMultiplier);
-            Check(Near(p.ThrustOrRangedReadySpeedMultiplier, thrust * 0.2f), "thrust/draw not x0.2: " + p.ThrustOrRangedReadySpeedMultiplier);
-            Check(Near(p.ReloadSpeed, reload * 0.2f), "reload not x0.2: " + p.ReloadSpeed);
-            foreach (var pair in before)
+            void Lever(string name, Action<AgentDrivenProperties> apply, params DrivenProperty[] mine)
             {
-                int slot = (int)pair.Key;
-                if (slot == (int)DrivenProperty.SwingSpeedMultiplier || slot == (int)DrivenProperty.ThrustOrRangedReadySpeedMultiplier
-                    || slot == (int)DrivenProperty.ReloadSpeed) continue;
-                Check(p.GetStat(pair.Key) == pair.Value, pair.Key + " changed: " + pair.Value + " → " + p.GetStat(pair.Key));
+                var p = new AgentDrivenProperties();
+                // every slot gets its own value (the enum has aliases - one slot, several names)
+                foreach (var d in slots) p.SetStat(d, 1f + (int)d / 100f);
+                var before = slots.ToDictionary(d => d, d => p.GetStat(d));
+                apply(p);
+                foreach (var pair in before)
+                {
+                    bool own = mine.Any(m => (int)m == (int)pair.Key);
+                    float now = p.GetStat(pair.Key);
+                    if (own) Check(Near(now, pair.Value * 0.2f), name + ": " + pair.Key + " not x0.2: " + pair.Value + " → " + now);
+                    else Check(now == pair.Value, name + ": " + pair.Key + " changed: " + pair.Value + " → " + now);
+                }
             }
+            Lever("attack", p => SpeedPenalty.Scale(p, 0.2f), DrivenProperty.SwingSpeedMultiplier, DrivenProperty.ThrustOrRangedReadySpeedMultiplier, DrivenProperty.ReloadSpeed);
+            Lever("run", p => SpeedPenalty.ScaleRun(p, 0.2f), DrivenProperty.MaxSpeedMultiplier);
+            Lever("horse", p => SpeedPenalty.ScaleMount(p, 0.2f), DrivenProperty.MountSpeed);
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        private static void DecoratorAppliesEachFightersMultiplier()
+        private static void DecoratorAppliesEachFightersMultipliers()
         {
             AthleticsDefaults();
             _statBase = new FreshStatsModel();
@@ -164,31 +193,36 @@ namespace TraxCombat.Tools
             _logic = new AthleticsLogic();
             SetStatic(typeof(AthleticsLogic), "_current", _logic);
             typeof(AthleticsLogic).GetMethod("StartAthletics", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(_logic, null);
-            LogHas("[athletics] mission start: ON - pool 100, cost per blow 10.0 / hero 7.5 / party leader 5.");
+            LogHas("[athletics] mission start: ON - pool = the Athletics skill x1.00, at least 50; full strength at 75% of the pool and above; cost per blow 10.0 / hero 7.5 / party leader 5.");
             LogHas("[athletics] party-leader rule: no campaign (custom battle) - the side's general, or every hero of a side without one");
 
             var a = FakeAgent(3);
             var st = _logic.Track(a)!;
             Check(st != null && ReferenceEquals(_logic.Track(a), st), "Track is not idempotent");
             Check(!st!.IsHero && !st.IsLeader, "an agent without a character was flagged hero/leader");
+            Check(st.AthleticsSkill == 0 && !st.SkillKnown && AthleticsMath.PoolPoints(Rules, st) == 50,
+                "a fighter without a character did not get the floor pool: skill " + st.AthleticsSkill + ", pool " + AthleticsMath.PoolPoints(Rules, st));
             var p = a.AgentDrivenProperties;
 
             _statTop.UpdateAgentStats(a, p);
-            Check(Near(p.SwingSpeedMultiplier, 1.05f) && Near(p.ThrustOrRangedReadySpeedMultiplier, 1.02f) && Near(p.ReloadSpeed, 0.95f),
+            Check(Near(p.SwingSpeedMultiplier, 1.05f) && Near(p.ThrustOrRangedReadySpeedMultiplier, 1.02f) && Near(p.ReloadSpeed, 0.95f) && Near(p.MaxSpeedMultiplier, 0.8f),
                 "a fresh fighter's properties were changed: " + SpeedPenalty.Snapshot.Take(a));
 
             st.SpeedMultiplier = 0.2f;
+            st.RunSpeedMultiplier = 0.3f;
             _statTop.UpdateAgentStats(a, p);
             Check(Near(p.SwingSpeedMultiplier, 0.21f) && Near(p.ThrustOrRangedReadySpeedMultiplier, 0.204f) && Near(p.ReloadSpeed, 0.19f),
-                "the multiplier was not applied: " + SpeedPenalty.Snapshot.Take(a));
-            Check(Near(p.HandlingMultiplier, 1.1f), "HandlingMultiplier was touched");
+                "the attack multiplier was not applied: " + SpeedPenalty.Snapshot.Take(a));
+            Check(Near(p.MaxSpeedMultiplier, 0.24f), "the run multiplier was not applied: " + p.MaxSpeedMultiplier);
+            Check(Near(p.CombatMaxSpeedMultiplier, 0.84f) && Near(p.HandlingMultiplier, 1.1f) && Near(p.MountSpeed, 0.9f),
+                "CombatMaxSpeedMultiplier, HandlingMultiplier or MountSpeed was touched on a fighter");
             _statTop.UpdateAgentStats(a, p); // a second recompute (weapon switch): the base resets, we scale once
-            Check(Near(p.SwingSpeedMultiplier, 0.21f), "the penalty compounded over two recomputes: " + p.SwingSpeedMultiplier);
+            Check(Near(p.SwingSpeedMultiplier, 0.21f) && Near(p.MaxSpeedMultiplier, 0.24f), "the penalties compounded over two recomputes");
             Check(_statBase.Updates == 3, "the base model was not called on every recompute: " + _statBase.Updates);
 
             S.Set(SettingsSchema.AthleticsEnabled, false, SettingSources.Mcm);
             _statTop.UpdateAgentStats(a, p);
-            Check(Near(p.SwingSpeedMultiplier, 1.05f), "AthleticsEnabled off did not lift the penalty on a recompute");
+            Check(Near(p.SwingSpeedMultiplier, 1.05f) && Near(p.MaxSpeedMultiplier, 0.8f), "AthleticsEnabled off did not lift the penalties on a recompute");
             S.Set(SettingsSchema.AthleticsEnabled, true, SettingSources.Mcm);
 
             var twin = FakeAgent(3); // same index, another agent (indices are reused)
@@ -198,24 +232,50 @@ namespace TraxCombat.Tools
             _statTop.UpdateAgentStats(stranger, stranger.AgentDrivenProperties);
             Check(Near(stranger.AgentDrivenProperties.SwingSpeedMultiplier, 1.05f), "an untracked agent got a penalty");
 
+            // his horse: registered in the logic's mount table (what ApplyMountSpeed does in game)
+            var horse = FakeAgent(40);
+            st.MountSpeedMultiplier = 0.5f;
+            st.SlowedMount = horse;
+            typeof(AthleticsLogic).GetMethod("RegisterMount", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(_logic, new object[] { horse, st });
+            var hp = horse.AgentDrivenProperties;
+            _statTop.UpdateAgentStats(horse, hp);
+            Check(Near(hp.MountSpeed, 0.45f), "the rider's horse multiplier was not applied: MountSpeed " + hp.MountSpeed);
+            Check(Near(hp.SwingSpeedMultiplier, 1.05f) && Near(hp.MaxSpeedMultiplier, 0.8f), "a horse got a fighter's penalties");
+            var otherHorse = FakeAgent(41);
+            _statTop.UpdateAgentStats(otherHorse, otherHorse.AgentDrivenProperties);
+            Check(Near(otherHorse.AgentDrivenProperties.MountSpeed, 0.9f), "a horse nobody slows got a penalty");
+            st.SlowedMount = null; // he dismounted: the table's reference check lets the horse go
+            _statTop.UpdateAgentStats(horse, hp);
+            Check(Near(hp.MountSpeed, 0.9f), "a horse kept its rider's penalty after he left it");
+
             SetStatic(typeof(AthleticsLogic), "_current", null);
             _statTop.UpdateAgentStats(a, p);
-            Check(Near(p.SwingSpeedMultiplier, 1.05f), "no mission running, yet a penalty was applied");
+            Check(Near(p.SwingSpeedMultiplier, 1.05f) && Near(p.MaxSpeedMultiplier, 0.8f), "no mission running, yet a penalty was applied");
             SetStatic(typeof(AthleticsLogic), "_current", _logic);
 
-            Check(_logic.Stats.DecoratorScaled == 2, "decorator-applied count " + _logic.Stats.DecoratorScaled + ", expected 2");
+            var stats = _logic.Stats;
+            Check(stats.DecoratorAttack == 2 && stats.DecoratorRun == 2 && stats.DecoratorMount == 1,
+                "decorator counts attack/run/horse " + stats.DecoratorAttack + "/" + stats.DecoratorRun + "/" + stats.DecoratorMount + ", expected 2/2/1");
             st.SpeedMultiplier = 1f;
+            st.RunSpeedMultiplier = 1f;
+            st.MountSpeedMultiplier = 1f;
         }
 
-        private static void Swing(TrackedAgent st, ref double t, double ready, double release, double rest)
+        /// <summary>One swing whose phases last as long as the APPLIED attack multiplier makes them
+        /// (what the engine would do): ready at the multiplier in effect, release and rest at the one
+        /// the charge set. So the attack-speed check sees intervals of 1.3 s ÷ the asked multiplier.</summary>
+        private static void Swing(TrackedAgent st, ref double t)
         {
-            var r = AthleticsRules.From(S);
+            var r = Rules;
+            float before = st.SpeedMultiplier;
             _logic!.ObserveAction(st, ActReady, t, in r);
-            t += ready;
+            t += 0.5 / before;
             _logic.ObserveAction(st, ActRelease, t, in r);
-            t += release;
+            float after = st.SpeedMultiplier;
+            st.SpeedDirty = false; // as if the tick loop had applied it
+            t += 0.5 / after;
             _logic.ObserveAction(st, ActIdle, t, in r);
-            t += rest;
+            t += 0.3 / after;
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
@@ -228,84 +288,220 @@ namespace TraxCombat.Tools
             var st = _logic!.Track(a)!;
             Check(!ReferenceEquals(st, stale) && stale.Removed && st.Fraction == 1 && ReferenceEquals(FirstTracked(3), st),
                 "a reused index did not replace the stale record");
+            LogHas("[athletics] pool at spawn: (agent 3) - Athletics skill 0 (not readable) → pool 50 (the floor); 2 blows at full strength, 5 to empty");
             double t = 100;
 
-            Swing(st, ref t, 0.5, 0.5, 0.3);
-            Check(Math.Abs(st.Fraction - 0.9) < 1e-9, "one swing did not cost 10 of 100: " + st.Fraction);
-            LogHas("[athletics] blow melee (on foot): (agent 3) - cost 10.0, 100.0 → 90.0 of 100");
-            for (int i = 0; i < 8; i++) Swing(st, ref t, 0.5, 0.5, 0.3);
-            Check(!st.Exhausted && Math.Abs(st.Fraction - 0.1) < 1e-9, "after 9 swings: " + st.Fraction + (st.Exhausted ? " exhausted" : ""));
-            Swing(st, ref t, 0.5, 0.5, 0.3);
-            Check(st.Exhausted && st.Fraction == 0, "10 swings did not exhaust a soldier");
-            Check(Near(st.SpeedMultiplier, 0.2f) && st.SpeedDirty, "exhaustion did not target x0.2 and ask for a recompute");
-            LogHas("10.0 → 0.0 of 100 - EXHAUSTED");
-
-            // exhausted swings: slower in every phase (what 20% speed should look like in game)
-            for (int i = 0; i < 4; i++) Swing(st, ref t, 2.5, 2.5, 1.0);
-            Check(st.Blows == 14 && st.Exhausted && st.ExhaustionsEntered == 1, "exhausted swings: blows " + st.Blows + ", entries " + st.ExhaustionsEntered);
+            // a recruit's bar (the floor, 50): full strength for 2 blows, then every blow slower, empty on the 5th
+            Swing(st, ref t);
+            Check(Near(st.Fraction, 0.8) && st.SpeedMultiplier == 1f && st.RunSpeedMultiplier == 1f, "blow 1 of 50: " + st.Fraction + ", x" + st.SpeedMultiplier);
+            LogHas("[athletics] blow melee (on foot): (agent 3) - cost 10.0, 50.0 → 40.0 of 50 (f 1.00 → 1.00)");
+            Swing(st, ref t);
+            Check(Near(st.SpeedMultiplier, 0.84f) && Near(st.RunSpeedMultiplier, 0.86f), "blow 2 (f 0.8): attacks x" + st.SpeedMultiplier + ", run x" + st.RunSpeedMultiplier);
+            LogHas("40.0 → 30.0 of 50 (f 1.00 → 0.80) - below full strength");
+            Swing(st, ref t);
+            Check(Near(st.SpeedMultiplier, 0.2f + 0.8f * (20f / 37.5f)) && Near(st.RunSpeedMultiplier, 0.3f + 0.7f * (20f / 37.5f)), "blow 3 (f 0.53): x" + st.SpeedMultiplier);
+            Swing(st, ref t);
+            Check(!st.Exhausted && Near(st.SpeedMultiplier, 0.2f + 0.8f * (10f / 37.5f)), "blow 4 (f 0.27): x" + st.SpeedMultiplier);
+            Swing(st, ref t);
+            Check(st.Exhausted && st.Fraction == 0 && st.SpeedMultiplier == 0.2f && Near(st.RunSpeedMultiplier, 0.3f) && st.Blows == 5,
+                "5 blows did not empty a recruit exactly at x0.20 / run x0.30: " + st.Fraction + ", x" + st.SpeedMultiplier + ", run x" + st.RunSpeedMultiplier);
+            LogHas("10.0 → 0.0 of 50 (f 0.27 → 0.00) - EXHAUSTED");
+            LogHas("[athletics] exhausted: (agent 3) at ");
+            for (int i = 0; i < 4; i++) Swing(st, ref t); // empty swings: 5x as long
+            Check(st.Blows == 9 && st.Exhausted && st.ExhaustionsEntered == 1, "empty swings: blows " + st.Blows + ", entries " + st.ExhaustionsEntered);
 
             // free: kicks, bashes; ranged releases are counted by the poll but charged by the shot event
-            var r = AthleticsRules.From(S);
+            var r = Rules;
             _logic.ObserveAction(st, (int)Agent.ActionCodeType.Kick, t, in r);
             _logic.ObserveAction(st, (int)Agent.ActionCodeType.WeaponBash, t + 0.5, in r);
             _logic.ObserveAction(st, (int)Agent.ActionCodeType.ReleaseRanged, t + 1.0, in r);
             _logic.ObserveAction(st, ActIdle, t + 1.5, in r);
             t += 2;
-            Check(st.Blows == 14, "a kick, bash or ranged release was charged");
+            Check(st.Blows == 9, "a kick, bash or ranged release was charged");
 
-            var stats = _logic.Stats;
-            Check(stats.Charged(BlowKind.Melee) == 14 && stats.MeleeReleasesSeen == 14 && stats.ExhaustionsEntered == 1,
-                "stats: melee " + stats.Charged(BlowKind.Melee) + ", releases " + stats.MeleeReleasesSeen + ", exhaustions " + stats.ExhaustionsEntered);
-            Check(stats.KicksSeen == 1 && stats.BashesSeen == 1 && stats.RangedReleasesPolled == 1, "free actions not counted");
-            Check(stats.MeleeFresh.Count == 9 && stats.MeleeExhausted.Count == 4, "intervals fresh/exhausted " + stats.MeleeFresh.Count + "/" + stats.MeleeExhausted.Count);
-            Check(stats.SwingFresh.Count == 9 && stats.SwingExhausted.Count == 4, "swing lengths fresh/exhausted " + stats.SwingFresh.Count + "/" + stats.SwingExhausted.Count);
-
-            // a party leader who is a hero: 5.6 a blow, empty on the 18th
+            // a 300-skill party leader who is a hero: 5.6 a blow, 14 at full strength, empty on the 54th
             var b = FakeAgent(4);
             var lead = _logic.Track(b)!;
             lead.IsHero = true;
             lead.IsLeader = true;
-            Swing(lead, ref t, 0.5, 0.5, 0.3);
-            LogHas("[athletics] blow melee (on foot): (agent 4) - cost 5.6 (x0.5");
-            LogHas(": hero party leader), 100.0 → 94.4 of 100");
-            for (int i = 0; i < 16; i++) Swing(lead, ref t, 0.5, 0.5, 0.3);
-            Check(!lead.Exhausted, "a party leader was empty before his 18th blow");
-            Swing(lead, ref t, 0.5, 0.5, 0.3);
-            Check(lead.Exhausted && lead.Blows == 18, "a party leader was not empty on his 18th blow: " + lead.Blows);
+            lead.AthleticsSkill = 300;
+            int atFull = 0;
+            for (int i = 1; i <= 54; i++)
+            {
+                if (AthleticsMath.PeakShare(Rules, lead) >= 1.0) atFull++;
+                Swing(lead, ref t);
+                if (i == 1)
+                {
+                    LogHas("[athletics] blow melee (on foot): (agent 4) - cost 5.6 (x0.5");
+                    LogHas(": hero party leader), 300.0 → 294.4 of 300 (f 1.00 → 1.00)");
+                }
+                if (i == 53) Check(!lead.Exhausted, "a 300-skill party leader was empty before his 54th blow");
+            }
+            Check(atFull == 14, "a 300-skill party leader struck " + atFull + " blows at full strength, DESIGN says 14");
+            Check(lead.Exhausted && lead.Blows == 54, "a 300-skill party leader was not empty on his 54th blow: " + lead.Blows);
+            for (int i = 0; i < 4; i++) Swing(lead, ref t);
+
+            var stats = _logic.Stats;
+            Check(stats.Charged(BlowKind.Melee) == 67 && stats.MeleeReleasesSeen == 67 && stats.ExhaustionsEntered == 2 && stats.PeakLeft == 2,
+                "stats: melee " + stats.Charged(BlowKind.Melee) + ", releases " + stats.MeleeReleasesSeen + ", exhaustions " + stats.ExhaustionsEntered + ", peak left " + stats.PeakLeft);
+            Check(stats.KicksSeen == 1 && stats.BashesSeen == 1 && stats.RangedReleasesPolled == 1, "free actions not counted");
+            Check(stats.MeleeIntervals.Bin(0).Count == 14 && stats.MeleeIntervals.Bin(3).Count == 8 && stats.MeleeIntervals.Mixed == 0,
+                "melee intervals by f: peak " + stats.MeleeIntervals.Bin(0).Count + ", empty " + stats.MeleeIntervals.Bin(3).Count + ", mixed " + stats.MeleeIntervals.Mixed);
+            Check(stats.MeleeIntervals.Describe().EndsWith("- tired attacks ARE slower (empty (f 0) vs the peak)", StringComparison.Ordinal),
+                "the attack-speed check does not see the empty swings as slower: " + stats.MeleeIntervals.Describe());
+            Check(stats.SwingLengths.Bin(3).Count == 8 && Near(stats.SwingLengths.AskedMean(3), 0.2), "swing lengths when empty: " + stats.SwingLengths.Bin(3).Count);
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static void HealthCapsTheBar()
+        {
+            var c = FakeAgent(7);
+            var w = _logic!.Track(c)!;
+            Check(AthleticsLogic.TryGetReading(c, out var fresh) && fresh.UsablePool == 50 && fresh.InPeakZone, "a fighter with unknown health is not full");
+            _logic.CheckHealth(w, Rules, 200); // no maximum known: reads as full health
+            Check(w.Fraction == 1, "an unknown maximum health cut the bar");
+
+            SetHealth(c, 50f, 100f);
+            _logic.CheckHealth(w, Rules, 201);
+            var stats = _logic.Stats;
+            Check(Near(w.Fraction, 0.5) && Near(w.Health, 0.5) && stats.HealthCuts == 1 && Near(stats.HealthCutMaxPoints, 25.0),
+                "50% health did not cap the bar at 25 of 50: " + w.Fraction + ", cuts " + stats.HealthCuts);
+            LogHas("[athletics] health cap: (agent 7) at 50% health - Athletics 50.0 → 25.0 of 50 (f 0.67)");
+            Check(Near(w.SpeedMultiplier, 0.2f + 0.8f * (0.5f / 0.75f)) && Near(w.RunSpeedMultiplier, 0.3f + 0.7f * (0.5f / 0.75f)) && w.SpeedDirty,
+                "the cut did not slow him on the curve: x" + w.SpeedMultiplier + ", run x" + w.RunSpeedMultiplier);
+            Check(AthleticsLogic.TryGetReading(c, out var capped) && Near(capped.UsablePool, 25) && Near(capped.Points, 25) && Near(capped.PeakShare, 0.5 / 0.75)
+                  && !capped.InPeakZone && Near(capped.PeakFraction, 0.75), "the read API does not show the cap");
+
+            SetHealth(c, 90f, 100f);
+            _logic.CheckHealth(w, Rules, 202);
+            Check(Near(w.Fraction, 0.5) && stats.HealthCuts == 1, "healing moved the bar (only regen refills)");
+
+            S.Set(SettingsSchema.HealthCapsAthletics, false, SettingSources.Mcm);
+            SetHealth(c, 20f, 100f);
+            _logic.CheckHealth(w, Rules, 203);
+            Check(Near(w.Fraction, 0.5) && stats.HealthCuts == 1, "HealthCapsAthletics off still cut");
+            S.Set(SettingsSchema.HealthCapsAthletics, true, SettingSources.Mcm);
+            _logic.CheckHealth(w, Rules, 204);
+            Check(Near(w.Fraction, 0.2) && stats.HealthCuts == 2 && Near(stats.HealthCutPoints, 40.0), "the cap back on did not cut to 20%: " + w.Fraction);
+            w.SpeedDirty = false;
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static void DamageUpsideFollowsTheAttacker()
+        {
+            DamageDefaults();
+            S.Set(SettingsSchema.DamageBonusFollowsAthletics, true, SettingSources.File);
+            DamageRandomizer.OnMissionStart();
+            LogHas(", upside follows the attacker's Athletics (DamageBonusFollowsAthletics) on - read live on every hit");
+
+            var empty = FirstTracked(3).Agent;      // the recruit, empty (f 0)
+            var freshAgent = FakeAgent(8);
+            _logic!.Track(freshAgent);               // full (f 1)
+            var halfAgent = FakeAgent(10);
+            var half = _logic.Track(halfAgent)!;
+            SetHealth(halfAgent, 37.5f, 100f);       // the cap puts him at 37.5% of his bar: f 0.5
+            _logic.CheckHealth(half, Rules, 300);
+            half.SpeedDirty = false;
+            var stranger = FakeAgent(11);            // not tracked: the full upside
+
+            System.Threading.Thread.Sleep(200);
+            S.Set(SettingsSchema.VerboseLogging, true, SettingSources.File);
+            Hit(attacker: empty);
+            S.Set(SettingsSchema.VerboseLogging, false, SettingSources.File);
+            LogHas(", attacker f 0.00 → up to x1.00)");
+
+            var fromEmpty = Enumerable.Range(0, 2000).Select(_ => Hit(attacker: empty)).ToList();
+            var fromFresh = Enumerable.Range(0, 2000).Select(_ => Hit(attacker: freshAgent)).ToList();
+            var fromHalf = Enumerable.Range(0, 2000).Select(_ => Hit(attacker: halfAgent)).ToList();
+            var fromStranger = Enumerable.Range(0, 2000).Select(_ => Hit(attacker: stranger)).ToList();
+            Check(fromEmpty.Max() <= 50f && fromEmpty.Min() < 26f, "an empty attacker's hits left 25..50: " + fromEmpty.Min() + ".." + fromEmpty.Max());
+            Check(fromHalf.Max() <= 62.5f && fromHalf.Max() > 61f && fromHalf.Min() < 26f, "a half-strength attacker's hits left 25..62.5: " + fromHalf.Min() + ".." + fromHalf.Max());
+            Check(fromFresh.Max() > 74f && fromFresh.Max() <= 75f, "a fresh attacker lost his upside: max " + fromFresh.Max());
+            Check(fromStranger.Max() > 74f, "an untracked attacker lost his upside: max " + fromStranger.Max());
+
+            var ds = DamageRandomizer.Stats;
+            Check(ds.UpsideCount(3, out _, out float maxEmpty, out double allowedEmpty) == 2001 && maxEmpty <= 1f && allowedEmpty == 0,
+                "upside bin empty: max x" + maxEmpty + ", allowed " + allowedEmpty);
+            Check(ds.UpsideCount(1, out _, out float maxHalf, out double allowedHalf) == 2000 && maxHalf <= 1.25f && Near(allowedHalf, 0.5),
+                "upside bin 0.5-1: max x" + maxHalf + ", allowed " + allowedHalf);
+            Check(ds.UpsideCount(0, out _, out _, out _) == 2000 && ds.UpsideCount(4, out _, out _, out _) == 2000 && ds.AboveCeiling == 0,
+                "upside bins peak / no pool / above the top: " + ds.UpsideCount(0, out _, out _, out _) + " / " + ds.UpsideCount(4, out _, out _, out _) + " / " + ds.AboveCeiling);
+            DamageRandomizer.WriteSummary();
+            LogHas("[summary] damage upside by the attacker's Athletics (f = the share of his peak line left; upside = how much of the +p he was allowed): peak (f 1) 2000 hits");
+            LogHas("| empty (f 0) 2001 hits avg x0.");
+            LogHas("| no pool (attacker not tracked) 2000 hits");
+            LogHas("; rolls above their allowed top: 0");
+
+            S.Set(SettingsSchema.DamageBonusFollowsAthletics, false, SettingSources.Mcm); // live: the next hit
+            var offRolls = Enumerable.Range(0, 2000).Select(_ => Hit(attacker: empty)).ToList();
+            Check(offRolls.Max() > 74f, "DamageBonusFollowsAthletics off: an empty attacker still lost his upside: max " + offRolls.Max());
+            S.Set(SettingsSchema.DamageBonusFollowsAthletics, true, SettingSources.Mcm);
+            DamageRandomizer.OnMissionStart();
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         private static void AthleticsHotSwap()
         {
-            var a = FirstTracked(3);
-            var lead = FirstTracked(4);
+            var a = FirstTracked(3);    // empty recruit
+            var lead = FirstTracked(4); // empty 300-skill leader
+            var w = FirstTracked(7);    // wounded, 20% of his bar
 
             S.Set(SettingsSchema.ExhaustedAttackSpeedPercent, 50, SettingSources.Mcm);
             _logic!.ApplySettingsChange(S);
-            Check(Near(a.SpeedMultiplier, 0.5f) && Near(lead.SpeedMultiplier, 0.5f), "ExhaustedAttackSpeedPercent 50 did not re-target the exhausted");
-            LogHas("[speed] ExhaustedAttackSpeedPercent now 50%: 2 exhausted fighters get the new speed on the next tick");
-            S.Set(SettingsSchema.ExhaustedAttackSpeedPercent, 20, SettingSources.Mcm);
+            Check(Near(a.SpeedMultiplier, 0.5f) && Near(lead.SpeedMultiplier, 0.5f), "ExhaustedAttackSpeedPercent 50 did not re-target the empty");
+            LogHas("[speed] speed settings now: when empty attacks at 50%, run x0.30, horses x1.00; full strength at 75% of the pool - ");
+            LogHas(" fighters get new speeds over the next ticks (at most 50 recomputes a tick)");
+            S.Set(SettingsSchema.MinMoveSpeedMultiplier, 0.5, SettingSources.Mcm);
             _logic.ApplySettingsChange(S);
-            Check(Near(a.SpeedMultiplier, 0.2f), "back to 20% did not re-target");
+            Check(Near(a.RunSpeedMultiplier, 0.5f), "MinMoveSpeedMultiplier 0.5 did not re-target the run speed: x" + a.RunSpeedMultiplier);
+            S.Set(SettingsSchema.ExhaustedAttackSpeedPercent, 20, SettingSources.Mcm);
+            S.Set(SettingsSchema.MinMoveSpeedMultiplier, 0.3, SettingSources.Mcm);
+            _logic.ApplySettingsChange(S);
+            Check(Near(a.SpeedMultiplier, 0.2f) && Near(a.RunSpeedMultiplier, 0.3f), "back to 20% / x0.3 did not re-target");
 
-            Check(AthleticsLogic.TryGetReading(a.Agent, out var read) && read.Enabled && read.Exhausted && read.Points == 0 && Near(read.SpeedMultiplier, 0.2f),
-                "the read API does not report the exhausted fighter");
+            S.Set(SettingsSchema.AthleticsPeakPercent, 20, SettingSources.Mcm); // the wounded man (20%) is now at full strength
+            _logic.ApplySettingsChange(S);
+            Check(w.SpeedMultiplier == 1f && w.RunSpeedMultiplier == 1f && w.SpeedDirty, "a lower peak line did not give full strength back: x" + w.SpeedMultiplier);
+            S.Set(SettingsSchema.AthleticsPeakPercent, 75, SettingSources.Mcm);
+            _logic.ApplySettingsChange(S);
+            Check(w.SpeedMultiplier < 1f, "the peak line back at 75% did not weaken him again");
+
+            S.Set(SettingsSchema.MountMinSpeedMultiplier, 0.5, SettingSources.Mcm);
+            _logic.ApplySettingsChange(S);
+            Check(Near(a.MountSpeedMultiplier, 0.5f) && a.MountDirty, "MountMinSpeedMultiplier 0.5 did not target an empty rider's horse");
+            S.Set(SettingsSchema.MountMinSpeedMultiplier, 1.0, SettingSources.Mcm);
+            _logic.ApplySettingsChange(S);
+            Check(a.MountSpeedMultiplier == 1f, "horses back to never-slowed did not re-target");
+            a.MountDirty = false;
+
+            S.Set(SettingsSchema.AthleticsPoolFloor, 100, SettingSources.Mcm);
+            _logic.ApplySettingsChange(S);
+            LogHas("[athletics] pool settings now: the Athletics skill x1.00, at least 100 - pools now min 100 / avg ");
+            LogHas("; everyone keeps his share (a fighter at 60% stays at 60%)");
+            Check(Near(w.Fraction, 0.2) && AthleticsLogic.TryGetReading(w.Agent, out var r100) && r100.Pool == 100 && Near(r100.Points, 20),
+                "a pool change did not keep the share / reach the read API");
+            S.Set(SettingsSchema.AthleticsPoolPerSkill, 0.5, SettingSources.Mcm);
+            Check(AthleticsLogic.TryGetReading(lead.Agent, out var r150) && r150.Pool == 150 && r150.AthleticsSkill == 300, "per-skill 0.5 did not give a 300-skill leader 150");
+            S.Set(SettingsSchema.AthleticsPoolFloor, 50, SettingSources.Mcm);
+            S.Set(SettingsSchema.AthleticsPoolPerSkill, 1.0, SettingSources.Mcm);
+            _logic.ApplySettingsChange(S);
+
+            Check(AthleticsLogic.TryGetReading(a.Agent, out var read) && read.Enabled && read.Exhausted && read.Points == 0 && read.PeakShare == 0
+                  && Near(read.SpeedMultiplier, 0.2f) && Near(read.RunSpeedMultiplier, 0.3f), "the read API does not report the empty fighter");
+            Check(AthleticsLogic.TryGetPeakShare(a.Agent, out double fa) && fa == 0 && !AthleticsLogic.TryGetPeakShare(FakeAgent(3), out _),
+                "TryGetPeakShare wrong for the empty fighter or a stranger with his index");
             Check(!AthleticsLogic.TryGetReading(FakeAgent(3), out _), "the read API answered for an untracked agent with a reused index");
-
-            S.Set(SettingsSchema.MaxAthletics, 150, SettingSources.Mcm);
-            var r150 = AthleticsRules.From(S);
-            Check(Math.Abs(AthleticsMath.Points(r150, lead) - 0) < 1e-9 && AthleticsLogic.TryGetReading(lead.Agent, out var r2) && r2.Pool == 150,
-                "a pool change did not reach the read API");
-            S.Set(SettingsSchema.MaxAthletics, 100, SettingSources.Mcm);
 
             S.Set(SettingsSchema.AthleticsEnabled, false, SettingSources.Mcm);
             _logic.ApplySettingsChange(S);
-            LogHas("[athletics] AthleticsEnabled switched OFF mid-mission: 2 fighters back to full, 2 attack-speed penalties lifted (applied on the next tick)");
-            Check(a.Fraction == 1 && !a.Exhausted && a.SpeedMultiplier == 1f && a.SpeedDirty, "switching off did not refill and lift the penalty");
-            Check(AthleticsLogic.TryGetReading(a.Agent, out var off) && !off.Enabled && off.Points == 100 && !off.Exhausted, "switched off, the read API is not full");
+            LogHas("[athletics] AthleticsEnabled switched OFF mid-mission: ");
+            LogHas(" speed penalties lifted (applied over the next ticks)");
+            Check(a.Fraction == 1 && !a.Exhausted && a.SpeedMultiplier == 1f && a.RunSpeedMultiplier == 1f && a.SpeedDirty, "switching off did not refill and lift the penalties");
+            Check(AthleticsLogic.TryGetReading(a.Agent, out var off) && !off.Enabled && off.Points == 50 && !off.Exhausted && off.PeakShare == 1,
+                "switched off, the read API is not full");
             S.Set(SettingsSchema.AthleticsEnabled, true, SettingSources.Mcm);
             _logic.ApplySettingsChange(S);
-            LogHas("[athletics] AthleticsEnabled switched ON mid-mission: everyone starts full");
+            LogHas("[athletics] AthleticsEnabled switched ON mid-mission: everyone starts full (a wound's cap applies again at the next refill step)");
         }
 
         private static TrackedAgent FirstTracked(int index)
@@ -318,17 +514,24 @@ namespace TraxCombat.Tools
         private static void AthleticsSummary()
         {
             _logic!.WriteAthleticsSummary();
-            LogHas("[summary] Athletics settings at the end: ON - pool 100");
-            LogHas("[summary] Athletics blows charged: 32 (melee swings 32, shots/throws 0, couched/braced hits 0, landed-only swings 0, landed-only shots 0) - by riders 0, on foot 32; Athletics spent ");
-            LogHas("[summary] Athletics detection: melee releases seen 32 (mounted 0)");
+            var stats = _logic.Stats;
+            LogHas("[summary] Athletics settings at the end: ON - pool = the Athletics skill x1.00, at least 50;");
+            LogHas("[summary] Athletics pools (the Athletics skill x1.00, at least 50; settings at the end): " + stats.FightersTracked + " fighters - min 50 / avg ");
+            LogHas("[summary] Athletics blows charged: 67 (melee swings 67, shots/throws 0, couched/braced hits 0, landed-only swings 0, landed-only shots 0) - by riders 0, on foot 67; Athletics spent ");
+            LogHas("[summary] Athletics detection: melee releases seen 67 (mounted 0)");
             LogHas("[summary] Athletics free (never charged): kicks 1, shield bashes 1,");
-            LogHas("[summary] Athletics exhaustions: 2 entered, 0 left");
+            LogHas("[summary] Athletics exhaustions (empty, f 0): 2 entered, 0 left; the peak zone: left 2 times");
+            LogHas("[summary] Athletics fighter-time by f (the share of his peak line left): no fighter-time recorded");
             LogHas("[summary] Athletics you: no player fighter this mission");
-            LogHas("[summary] attack speed check, melee - time between swings: fresh median ");
-            LogHas("- exhausted attacks ARE slower");
-            LogHas("[summary] attack speed check, melee - swing length (swings that hit nothing): fresh median ");
-            LogHas("[summary] attack speed check, ranged - time between shots: fresh no samples | exhausted no samples - not enough samples to judge");
-            LogHas("[summary] speeds for step 5c: ");
+            LogHas("[summary] Athletics health cap: " + stats.HealthCuts + " cuts (a wound pulled Athletics down to the health left), biggest ");
+            LogHas("[summary] attack speed check, melee - time between swings, by f: peak (f 1) median ");
+            LogHas(" - tired attacks ARE slower (empty (f 0) vs the peak)");
+            LogHas("[summary] attack speed check, melee - swing length (swings that hit nothing), by f: peak (f 1) median ");
+            LogHas("[summary] attack speed check, ranged - time between shots, by f: peak (f 1) no samples - not enough samples to judge");
+            LogHas("[summary] speed updates: ");
+            LogHas("[summary] run speed check, on foot (÷ the fighter's own top speed when fresh), by f: no samples");
+            LogHas("[summary] run speed check, horses (÷ the horse's own top speed while its rider was fresh), by the rider's f: MountMinSpeedMultiplier 1.00 = horses never slow - no samples");
+            LogHas("[summary] walk vs run speeds (tune WalkEffortFraction, now 0.40): ");
             LogHas("[summary] Athletics errors: none");
             LogHas("[speed] first exhausted fighter ((agent 3)) at mission end: recovered");
         }
@@ -356,37 +559,38 @@ namespace TraxCombat.Tools
             DamageRandomizer.WriteSummary();
             LogHas("[summary] damage while the mod was OFF - the game's own numbers, not rolled (factor 1.00): 50 hits (melee 40, ranged 10, mounts 0, shields 0); damage 2500 → 2500 (+0.0%), avg 50.0 per hit");
 
-            // --- Athletics: exhaust one fighter, then switch the mod off
+            // --- Athletics: empty one fighter, then switch the mod off
             AthleticsDefaults();
             S.Set(SettingsSchema.ModEnabled, true, SettingSources.Mcm);
             _logic!.ApplySettingsChange(S);
             var a = FirstTracked(3);
             double t = 500;
-            for (int i = 0; i < 10; i++) Swing(a, ref t, 0.5, 0.5, 0.3);
-            Check(a.Exhausted && Near(a.SpeedMultiplier, 0.2f), "precondition: fighter 3 not exhausted");
+            for (int i = 0; i < 5; i++) Swing(a, ref t);
+            Check(a.Exhausted && Near(a.SpeedMultiplier, 0.2f) && Near(a.RunSpeedMultiplier, 0.3f), "precondition: fighter 3 not empty");
             var p = a.Agent.AgentDrivenProperties;
             _statTop!.UpdateAgentStats(a.Agent, p);
-            Check(Near(p.SwingSpeedMultiplier, 0.21f), "precondition: no penalty on the exhausted fighter");
+            Check(Near(p.SwingSpeedMultiplier, 0.21f) && Near(p.MaxSpeedMultiplier, 0.24f), "precondition: no penalties on the empty fighter");
 
             S.Set(SettingsSchema.ModEnabled, false, SettingSources.Mcm);
             _statTop.UpdateAgentStats(a.Agent, p); // a recompute before the logic's tick: already vanilla
-            Check(Near(p.SwingSpeedMultiplier, 1.05f), "mod off: the stat decorator still applied the penalty");
+            Check(Near(p.SwingSpeedMultiplier, 1.05f) && Near(p.MaxSpeedMultiplier, 0.8f), "mod off: the stat decorator still applied a penalty");
             _logic.ApplySettingsChange(S);
-            LogHas("[athletics] the whole mod (ModEnabled) switched OFF mid-mission: 1 fighters back to full, 1 attack-speed penalties lifted (applied on the next tick)");
-            Check(a.Fraction == 1 && !a.Exhausted && a.SpeedMultiplier == 1f && a.SpeedDirty, "mod off: not refilled / penalty not lifted");
+            LogHas("[athletics] the whole mod (ModEnabled) switched OFF mid-mission: ");
+            Check(a.Fraction == 1 && !a.Exhausted && a.SpeedMultiplier == 1f && a.RunSpeedMultiplier == 1f && a.SpeedDirty, "mod off: not refilled / penalties not lifted");
             Check(AthleticsLogic.TryGetReading(a.Agent, out var read) && !read.Enabled && read.Points == read.Pool, "mod off: the read API is not full and off");
+            Check(AthleticsLogic.TryGetPeakShare(a.Agent, out double f) && f == 1, "mod off: the damage decorator would not see full strength");
             // (in game the tick does not even poll swings while off; fed one anyway, it costs nothing)
             int blows = a.Blows;
-            Swing(a, ref t, 0.5, 0.5, 0.3);
+            Swing(a, ref t);
             Check(a.Blows == blows && a.Fraction == 1, "mod off: a swing was charged");
 
             S.Set(SettingsSchema.ModEnabled, true, SettingSources.Mcm);
             _logic.ApplySettingsChange(S);
             LogHas("[athletics] the whole mod (ModEnabled) switched ON mid-mission: everyone starts full");
-            Swing(a, ref t, 0.5, 0.5, 0.3);
+            Swing(a, ref t);
             Check(a.Blows == blows + 1 && a.Fraction < 1, "mod back on: a swing was not charged");
             Check(Enumerable.Range(0, 50).Select(_ => Hit()).Distinct().Count() > 5, "mod back on: damage does not roll");
-            Check(AthleticsStats.DescribeRules(AthleticsRules.From(S)).StartsWith("ON - pool 100"), "mod back on: rules not ON");
+            Check(AthleticsStats.DescribeRules(AthleticsRules.From(S)).StartsWith("ON - pool = the Athletics skill"), "mod back on: rules not ON");
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]

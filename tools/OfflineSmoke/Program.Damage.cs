@@ -27,14 +27,14 @@ namespace TraxCombat.Tools
 
         /// <summary>One hit through the decorator; returns what the game would receive.</summary>
         private static float Hit(bool shield = false, bool agent = true, bool missile = false, bool mount = false,
-            float charge = 0f, float fall = 0f, float damage = 50f)
+            float charge = 0f, float fall = 0f, float damage = 50f, Agent? attacker = null)
         {
             var cd = AttackCollisionData.GetAttackCollisionDataForDebugPurpose(
                 shield, false, false, agent, false, missile, false, false, !agent, false, false, false,
                 default(CombatCollisionResult), 0, 0, 0, 0, default(BoneBodyPartType), 0, default(Agent.UsageDirection), 0,
                 default(CombatHitResultFlags), 0.5f, 0.5f, 0f, 0f, 0f, 0f, charge, fall,
                 Vec3.Zero, Vec3.Zero, Vec3.Zero, Vec3.Zero, Vec3.Zero, Vec3.Zero, Vec3.Zero);
-            var ai = new AttackInformation { IsVictimAgentNull = !agent, IsVictimAgentMount = mount };
+            var ai = new AttackInformation { IsVictimAgentNull = !agent, IsVictimAgentMount = mount, AttackerAgent = attacker! };
             return _damageModel!.ApplyGeneralDamageModifiers(in ai, in cd, damage);
         }
 
@@ -47,6 +47,7 @@ namespace TraxCombat.Tools
             S.Set(SettingsSchema.DamageRandomRanged, true, SettingSources.File);
             S.Set(SettingsSchema.DamageRandomOnMounts, true, SettingSources.File);
             S.Set(SettingsSchema.DamageRandomOnShields, false, SettingSources.File);
+            S.Set(SettingsSchema.DamageBonusFollowsAthletics, true, SettingSources.File);
             S.Set(SettingsSchema.VerboseLogging, false, SettingSources.File);
         }
 
@@ -58,7 +59,7 @@ namespace TraxCombat.Tools
             Check(_damageModel.BaseModelName == typeof(CustomAgentApplyDamageModel).FullName, "decorator base is " + _damageModel.BaseModelName);
             DamageRandomizer.Rng = ThreadSafeRandom.Shared; // the real dice, on .NET Framework
             DamageRandomizer.OnMissionStart();
-            LogHas("[damage] mission start: damage randomness ON, spread ±50% (a 50-damage hit lands for 25-75), melee on, ranged on, on mounts on, on shields off - read live on every hit");
+            LogHas("[damage] mission start: damage randomness ON, spread ±50% (a 50-damage hit lands for 25-75), melee on, ranged on, on mounts on, on shields off, upside follows the attacker's Athletics (DamageBonusFollowsAthletics) on - read live on every hit");
 
             var values = new List<float>();
             for (int i = 0; i < 4000; i++) values.Add(Hit());
