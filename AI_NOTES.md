@@ -1326,6 +1326,43 @@ next open tries the cards again. Every fallback is logged with its reason and co
 6. War Sails naval battles (NavalOrderBar, same slot structure; its cards' counts vs a ship
    formation's) - untested; a mismatch would show as the panel with its reason.
 
+## Step 10a — review (DONE 2026-09-27)
+
+The full findings list is `docs/REVIEW.md` (R1-R24: 1 major, 9 minors, 1 For Anton, 13 not a
+bug). The lessons worth keeping for any later change:
+
+- **Two queued decisions in one tick: resolve the first before judging the second.** At a
+  swing's end the step-back roll and the pace hold are both only ASKED (the tick starts them).
+  The hold used to skip a man whose step back was merely pending - but the tick refuses many
+  step backs (the cap, a shield wall, no enemy near), and those men were then neither stepping
+  back nor held (R1). Now the hold is queued anyway and `TickPace` (which runs AFTER
+  `TickStepBacks`) drops it only for a man whose step back really started. Any new "X takes
+  precedence over Y" between queued actions: decide in the tick, in order, not at the ask.
+- **A record list keyed by agent must forget the same way on every path.** Leaving the field,
+  a stale record at a reused index, a deleted agent: all go through `Forget()` (loop entry, step
+  back, pace hold, slowed horse; no engine call on the old agent). `OnAgentDeleted` is the
+  backstop. A list entry the tick keeps working on after its agent is gone is how an engine call
+  lands on a dead (or someone else's) agent (R5). Same for "waiting" pace holds: a man already in
+  `_paceHeld` must not be added twice (R2).
+- **Teardown code must survive its own failure.** Anything that must happen at the end
+  (`StopAthletics`, the summary's once-flag) goes in a `finally` or before the risky part, and on
+  the teardown fallback nothing reads an agent's native side (R3, R4).
+- **The views are gone before the summary.** `Mission.EndMissionInternal` calls the listeners'
+  `OnEndMission` first; `MissionScreen.OnEndMission` finalizes AND unregisters every view - so no
+  view ticks on cleared agents even though `IsMissionTickable` stays true once `MissionEnded`
+  (R10). Agents are cleared (`Agent.Clear()` zeroes every native pointer: `IsActive()` would be an
+  uncatchable access violation) only after `OnEndMissionInternal`.
+- **The log holds one handle now** (R6): `TraxLog` keeps a `StreamWriter` with `AutoFlush`
+  (~7 µs a line instead of ~110 µs for open / append / close; measured), shared read / write /
+  delete, released at every mission end (after the summary) and at unload, reopened by the next
+  line, re-opened when `ModPaths` changes. Anything that READS the log while the game runs (the
+  offline smoke's `LogText`) must open it with `FileShare.ReadWrite`.
+- **Log volume with VerboseLogging on**: ~10 buckets × 20 lines/s × ~200 bytes = 30-50 KB/s in a
+  big battle, so the 2 MB cap trims every ~35 s and earlier battles' summaries are lost (R7 - For
+  Anton, not changed). Budget any new verbose bucket against that.
+- **Deferred**: verbose lines are built before the rate limiter drops them (R8, ~30 call sites);
+  the LATER features' settings that do nothing (R21 - step 10b).
+
 ## Step 10 — Balance + polish
 
 ## Step 11 — Steam packaging

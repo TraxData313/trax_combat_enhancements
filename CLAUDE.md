@@ -128,6 +128,8 @@ defaults.json                 THE ONE TRUTH for every default value (DESIGN §2c
                               its value, its explanation + range as // lines. Anton tunes it and
                               pushes; embedded in TraxCombat.Core.dll at build. After a schema
                               wording/range/order change: dotnet run --project tools/DefaultsTool -- refresh
+docs/REVIEW.md                step 10a's code review: every finding (R1-R24) with its severity, place,
+                              scenario and status (fixed in which commit / not a bug / deferred / For Anton)
 src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-tested:
   ParamDef.cs                 one setting: key, type, range, group, label, plain-words
                               description, apply timing (Live / NextBattle); Normalize, Format;
@@ -231,7 +233,9 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               the [config] defaults: line; RevertAllToDefaults, ExportDefaults
   TraxLog.cs                  trax_combat.log: tagged lines, 2 MB trim, Verbose (rate-limited,
                               only when VerboseLogging), Limited (always, rate-limited per bucket),
-                              Error (stack, rate-limited, in-game notice)
+                              Error (stack, rate-limited, in-game notice); ONE handle kept open
+                              (AutoFlush, shared read/write/delete - read it with FileShare.ReadWrite),
+                              Release() at every mission end and at unload (step 10a)
   Mcm/McmBridge.cs            the MCM page — fluent builder, MCM types in METHOD BODIES ONLY,
                               no MCM-typed lambdas (read its class doc before touching it);
                               group "Defaults": the Revert / Save-defaults-file BUTTONS
@@ -257,7 +261,9 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               lines ("mod ON/OFF"), master-switch toggles ([mission] line each),
                               damage stats reset (AfterStart), the [summary] block
   Missions/AthleticsLogic.Engine.cs  the Athletics engine: per-agent state (by Agent.Index +
-                              dense array), the Athletics skill + hero/leader flags at spawn, blow
+                              dense array; a man leaving, a stale record at a reused index and a
+                              deleted agent are all dropped by Forget - 10a), the Athletics skill +
+                              hero/leader flags at spawn, blow
                               detection (poll ReleaseMelee, OnMeleeHit, OnAgentShootMissile,
                               OnMissileHit), the health cap (OnAgentHit + every regen step), regen
                               by effort, three speed multipliers re-targeted in 0.05 steps and
@@ -389,8 +395,10 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               formations - layouts, UI scale, RTS Camera's set, the lift, values,
                               live switches, every fallback, quiet reopen, summary, fail safe),
                               defaults read from the embedded defaults.json, the MCM page built
-                              by MCM's real builder and its two buttons clicked (42 steps; the
-                              config checks work for any tuned default);
+                              by MCM's real builder and its two buttons clicked; step 10a: the log
+                              writer (readable while held, new path, release, trim) and stale
+                              records forgotten (44 steps; the config checks work for any tuned
+                              default);
                               TRAX_SMOKE_KEEP=1 keeps its temp folder + log to read
 tools/DefaultsTool/           defaults.json upkeep: refresh (rewrite comments/order, keep every
                               value) | check; --file <path> for an exported one
