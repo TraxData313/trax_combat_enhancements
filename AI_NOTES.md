@@ -341,6 +341,8 @@ see its section (kept for the trail)
 1. The engine honours a 0.2 multiplier (no clamp), bows and crossbows included without the
    `Bipedal*` values → `[summary] attack speed check, melee - …` / `swing length` / `ranged` say
    `ARE slower` (x3-x5); `[speed] first exhaustion …` shows the managed values took x0.20.
+   (Step 5e replaced those lines: read the `attack rate, … empty (f 0)` rows - wind-up / swing /
+   draw / reload about x5.00.)
 2. Every swing, mounted too, shows as `ReleaseMelee` on channel 1 → `Athletics detection: …
    during a counted release A, outside one B [in action: …]` with B ≪ A; `(mounted Y)` > 0.
 3. Polling ~1000 agents per tick is cheap → `Athletics tick cost: avg … ms`.
@@ -555,7 +557,8 @@ TASKS_TODO's 5d line cites it).
 1. The skill read (heroes' real skill, troops' data) → `[athletics] YOU: Athletics skill N → pool …`
    = the character screen; no `(not readable)`; summary `Athletics pools … whose skill could not be read` absent.
 2. The engine honours the attack curve at mid values, not only 0.2 → `attack speed check … by f`
-   rows with x ≈ asked and `- tired attacks ARE slower`.
+   rows with x ≈ asked and `- tired attacks ARE slower`. (Since step 5e: the `attack rate, …`
+   band rows - each phase's (x…) against the peak ≈ 1/m.)
 3. `MaxSpeedMultiplier` honoured live and `GetMaximumForwardUnlimitedSpeed()` follows it →
    `run speed check, on foot … - the engine's top speed follows the curve`, `moving p90` falling.
 4. Horses: `MountSpeed` honoured, the mount table and OnAgentMount/Dismount → with MountMin 0.5
@@ -1026,6 +1029,111 @@ it; his pause is his.
    band's fresh cycle ÷ m) and measured ÷ target with a verdict word; the pace holds; the guard
    by f (tired men must not block less). These supersede step 5c's "attack speed check" lines.
 
+**Built (DONE 2026-09-27)** - file map in CLAUDE.md "Layout"
+- Settings (54, group "Tired fighters", after the attack speed): `AttackRateAiDecisions` true,
+  `AttackRatePaceHold` true (A/B switches; schema, TraxSettings, defaults.json + refresh, DESIGN).
+- Core `AttackRate.cs`: `AttackKind`, `AttackPhase` (wind-up, held, release, clean release, recoil,
+  reload, pause), the hold's reasons (`PaceNotHeld`, `PaceRefusal`, `PaceEnd`, `PaceRelease`),
+  `AttackRateRules` (live; the master switch first), `AttackRateMath` (ScaleChance / ScaleWait,
+  CycleCap, TargetCycle, FreshReference, ExpectedReady, HoldUntil, HoldNeeded, Verdict + the
+  plumbing constants). `AttackRateStats.cs`: per group (melee / ranged × AI / you) × f band - every
+  phase's MeanStd, the cycle, m, 1/m (target = the peak's cycle × the band's mean 1/m), left-out
+  counts (mixed bands, beyond the cap, cancelled readies, chained, a step back inside), the holds,
+  the guard by f, the T2 recompute count, the [summary] lines. 13 tests (274; step 5c's 3
+  interval tests went with their classes).
+- Superseded and removed: `BinnedIntervals`, `SpeedVerdict`, `IntervalStats` (SpreadStats.cs), the
+  three "attack speed check" summary lines, `TrackedAgent.ReleaseBin/ReleaseAsked/ReleaseMixed`.
+- Module: `SpeedPenalty.ScaleAiDecisions` + `AiSnapshot`; the decorator applies it after `Scale`
+  while the switch is on (read live, counted); `AthleticsLogic.AttackRate.cs` (phases on every
+  action change, the ready-progress poll, cycles + fresh references, the hold: asked, ticked,
+  lifted, the guard, the switch notes, the logs, the summary); `PaceBody.cs` (`PaceState`,
+  `IPaceBody`, `GamePaceBody`); hooks: ObserveAction (phases first), StartRelease (cycle; a swing
+  while held), EndRelease (after the step-back roll: the hold), OnAgentShootMissile (ranged cycle),
+  the tick (ready poll; `TickPace` after `TickStepBacks`), OnMeleeHit (guard), Untrack,
+  ApplySettingsChange (phases reset on an on/off; T2 re-applied), ApplyFighterSpeed (first slowed),
+  WriteAthleticsSummary (`ClosePace` first, the lines after the Athletics block), the step back's
+  start (`SteppedBackThisCycle`).
+- Smoke (39 steps): the AI-decision lever touches exactly its four values; the decorator (T2
+  applied, off live, never on horses, never a defence value); `Program.AttackRate.cs` - A: the
+  animations alone read "too fast" (about 75% when empty); B: with the hold the empty band is 100%
+  on target; every hold path with `FakePaceBody` (time up, a swing slipping through, a game job
+  waited out, mounted, left the field, switched off, mission end), refusals, riders, chained blows,
+  no reference, the T2 switch re-applied, the summary; the first-slowed line through the real
+  decorator; the master switch lifts a running hold; the step-back smoke's cycles are left out.
+  deploy.ps1 green (guard OK, smoke OK, installed).
+
+**Decisions**
+- **Phases are filed at the band at their START, with the m in effect then** (before this
+  action's own charge - `PhasesOnAction` runs first in `ObserveAction`). A cycle keeps step 5c's
+  rule: the band after the first release's charge, the same at the second (else "mixed").
+- **Wind-up vs held**: the ready's progress is polled (one native call) only for a fighter in a
+  ready that has not reached `ReadyFullProgress` 0.98 - the poll stops at full wind-up; a ready
+  released before that is all wind-up (held 0). A ready that ends in no attack is counted apart.
+- **The pause** = from the end of an attack (its release, recoil or reload) to the next ready; a
+  ready straight out of the attack is a "chained" pause 0; a pause spanning a step back is left
+  out (that pause is the step back's), and so is the cycle (`SteppedBackThisCycle`, set when a step
+  back STARTS, reset at each release).
+- **The cap** (`MeleeCycleCapSeconds` 4 s, `RangedCycleCapSeconds` 12 s, ÷ m): longer cycles,
+  phases and pauses are not a fighting rhythm - left out, counted. Log / reference plumbing like
+  5c's 30 s cap; not a gameplay number.
+- **The hold's arithmetic**: next ready may begin at `release start + fresh ÷ m − expected ready`,
+  expected ready = his last melee ready × its m ÷ m now. So his next RELEASE lands at release
+  start + fresh ÷ m, the target, if the AI readies the moment it may. Holds under
+  `MinHoldSeconds` 0.1 s are "not needed" (the swing and ready already fill it - this is what
+  T1 + T2 look like when they work).
+- **Fresh reference**: his own release-to-release cycles while m was 1 at both ends, on foot, AI,
+  within the cap; else the mission's AI mean once it has 5; else no hold ("no fresh cycle known
+  yet"). Per fighter first: a dagger and a two-hander keep their own rhythms.
+- **Order at a swing's end**: the step-back roll first; a step back asked for takes precedence
+  (it holds attacks itself). A swing ending straight into a ready (a chain) is not held. The
+  tick refuses a hold whose man has readied or swung since ("too late"), so NoAttack never lands
+  on a readied blow.
+- **Queue, then the tick** (5d's rule): the hold is asked for at the swing's end (maybe inside a
+  hit callback) and started by `TickPace` in the same or the next tick; a swing while held is
+  flagged there and lifted by the tick.
+- **Flag hygiene**: `GamePaceBody.Start` refuses a man with GoToPosition, NoAttack, a game object,
+  a ladder queue, a detachment or a horse; `Release` lifts OUR NoAttack only while none of those is
+  on him - else it waits (re-checked every 0.25 s) and clears it once he is free (a vanilla job
+  that set NoAttack itself is over by then - clearing a leftover is harmless). Left the field =
+  no engine call; mission end = lifted through the engine before the summary.
+- **T2 values**: no 0.05 floor on the attack chance (vanilla clamps its own formula there) - m
+  0.2 must mean five times rarer. The riposte chance is an attack decision → × m.
+  `AiWaitBeforeShootFactor` 0 (siege defenders) stays 0.
+- **Not scaled on purpose**: `AIHoldingReadyMaxDuration` (a longer hold = a raised weapon and a
+  lowered guard), `AIDecideOnAttackChance` (defence), handling, shield defend speed, Bipedal*.
+- **First slowed**: the first `ApplyFighterSpeed` of the mission with m below 1 snapshots every
+  touched value before and after `UpdateAgentProperties` and checks each against its factor.
+- **No new gameplay numbers** besides the two switches: 0.98 progress, 0.1 s, 4 s / 12 s, 5
+  samples, 100 starts a tick, 0.25 s, ±15% are plumbing / log constants (documented here).
+
+**Gotchas**
+- Python / sed on markdown is against the house rule (CLAUDE.md) - PLAYTEST was edited by a
+  UTF-8-safe script once in this step and checked clean (no mojibake); use Edit/Write.
+- The smoke's offline `Mission` is null: `SafeNow()` reads 0, so "switched … at 0.0 s" lines are
+  offline artefacts.
+- The swing's own speed in the smoke is the m before its charge (the engine starts it at the old
+  properties) - the first cycle of a new band carries the previous swing: the animations-alone
+  empty band reads ~74%, not exactly 4.9 / 6.5.
+
+**UNVERIFIED - only the game can tell (PLAYTEST 3n; the line that settles each)**
+1. The engine honours the animation multipliers through the whole ready and release, player and
+   AI (5c #2) → the `attack rate, … <band>` rows: `wind-up`, `swing`, `draw`, `reload` ≈ (x1/m).
+2. The native AI follows the four AI values (a longer pause, a longer aim) → with
+   `AttackRatePaceHold` OFF (battle 2): the AI melee `pause` rows (x…) > 1 and the verdict; ranged
+   `aim` / `pause` rows.
+3. NoAttack with no scripted position holds swings in open melee → `pace hold ends: … a swing
+   started anyway` near 0, and the AI melee verdict ON TARGET with the hold on.
+4. Held men keep their guard → `guard by f … while held by the pace hold` not below the peak row.
+5. The block recoil is not scaled → `recoil after a block … (x1.00)` in the tired rows (the known
+   gap; the next lever is in the research above).
+6. A ready's progress reaches 0.98 at full wind-up → `held` above 0 in the AI rows (0 everywhere =
+   the poll never saw full: wind-up then includes the hold).
+7. The fresh reference is sane → `first pace hold … fresh cycle 1.xx s (his own, N samples)` and
+   `not held … no fresh cycle known yet` small.
+8. The AI readies the moment the hold ends → `the next ready came avg … after a hold ended` near 0.
+9. Cost: the ready poll in a 1000-man battle → `Athletics tick cost` (compare with a 5c/5d log).
+
+## Step 7 — Looked-at NPC bar
 
 - `TargetAthleticsView : TraxHudView` - the recipe above (Step 6, "A new view"). Own raycast
   `Mission.RayCastForClosestAgent` from `MissionScreen.CombatCamera` every `HudRefreshSeconds`

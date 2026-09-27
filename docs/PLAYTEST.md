@@ -231,7 +231,8 @@ of his bar. Kicks, shield bashes, blocking, running and riding are free.
 things fall in straight lines as the bar empties:
 - the lucky side of his damage roll (+50% at the line, +25% halfway down, none at empty — the
   unlucky −50% side never changes),
-- his attack speed — wind-up, strike, bow draw, crossbow reload, throws — down to 20% at empty,
+- his attack RATE — wind-up, strike, bow draw, crossbow reload, throws, and for the AI the pause
+  between attacks — down to 20% at empty: one attack where he used to make five (3n),
 - his run speed on foot, down to x0.30 at empty (horses keep their speed).
 At 0 he is **exhausted**. Wounds cap the bar: at 60% health only 60% of it can be used, and
 the peak line does not move, so a badly wounded man never gets back to full strength. About
@@ -273,8 +274,9 @@ looters). One campaign fight with a companion covers the hero price. No bar on s
 **3b. You: full strength, then weaker every swing, then empty.** Swing continuously at the
 air (misses cost too), counting.
 - You see: the first ~5 swings at normal speed; from then on every swing a little slower;
-  at empty (~16) a wind-up and strike take about five times as long. Try to run: at empty you
-  run at about a third of your normal pace. Blocking is normal.
+  at empty (~16) a wind-up and strike take about five times as long - hammering the button
+  gives about a fifth of your fresh rate. Try to run: at empty you run at about a third of
+  your normal pace. Blocking is normal (never slowed).
 - Log (always):
   - `[athletics] YOU dropped below full strength at … s: 61.9 of 90 (the line is 68) after 5 blows this mission - f 0.92: attacks x0.93, run x0.94, damage upside 92% of the full`
   - `[athletics] YOU are exhausted at … s: 0 of 90 after 16 blows this mission - attacks at 20% speed, run x0.30, no damage upside until you rest (refill starts 3.0 s after your last blow)`
@@ -288,7 +290,7 @@ air (misses cost too), counting.
   - later `[speed] first exhausted fighter leaves 0 after … s: properties just before - … (x0.20 / x0.20 / x0.20, run x0.30 of his fresh values; they stayed penalized: yes) - they now climb with his bar`
   - and `[speed] first exhausted fighter back at full strength: properties now … (x1.00 / x1.00 / x1.00, run x1.00 of his fresh values …)`.
   - These prove the numbers reached the fighter. Whether the ENGINE honours them is what your
-    eyes and the summary's **attack speed check** and **run speed check** (3m) settle.
+    eyes and the summary's **attack rate** lines (3n) and **run speed check** (3m) settle.
     "did NOT take the asked factors" or "stayed penalized: NO" → tell Claude.
 
 **3c. Recruits run dry, legionaries keep going.** Let the lines meet and watch.
@@ -361,8 +363,8 @@ fighting while tired, then empty.
   Javelins and throwing axes likewise.
 - Log (verbose): `[athletics] blow ranged (on foot): <you> (you) - cost 5.6 (x0.56: hero party leader), … (f … → …)`
 - Summary: `Athletics detection: … shots seen N (+0 extra projectiles of the same shot ignored) | ranged releases seen by the poll M | …`
-  — N and M close together = both signals agree; and
-  `attack speed check, ranged - time between shots, by f: peak (f 1) median … | … | empty (f 0) median … x… (asked x5.00, n …) - tired attacks ARE slower (…)`.
+  — N and M close together = both signals agree; and the `attack rate, ranged, you` rows (3n):
+  `draw` and `reload` about x5 at empty (`aim` is your own choice).
 
 **3j. Ride and swing.** Mount up, swing at enemies from the saddle; then ride around 30 s
 without attacking; then (if you have one) couch a lance and hit someone.
@@ -404,6 +406,12 @@ Mod Options → Trax Combat Enhancements. Every change applies on the first fram
 - Optional: *Misses cost too* off → swinging at the air is free, only hits cost:
   verbose `blow melee (landed)` / `blow ranged (landed)`; summary `landed-only swings` /
   `landed-only shots`.
+- *Tired fighters* → *Tired AI attack less often* / *Tired AI keep a slower pace* (the attack
+  rate's A/B switches, 3n): each logs `[config] AttackRate…: true → false (source: MCM)`; the
+  first one also `[rate] AttackRateAiDecisions switched OFF mid-mission at … s: N tired fighters
+  get their AI attack values back over the next ticks …`, the second `[rate] AttackRatePaceHold
+  switched OFF mid-mission at … s: N held fighters may attack again at once`. For a clean A/B,
+  flip them BETWEEN battles (a battle that flips one says so in its summary).
 
 **3m. The summary.** End the battle. After the damage lines, the `[summary]` block has
 (numbers made up):
@@ -421,10 +429,7 @@ Mod Options → Trax Combat Enhancements. Every change applies on the first fram
 [summary] Athletics health cap: 120 cuts (a wound pulled Athletics down to the health left), biggest 60.0 points, 2400 points in all
 [summary] Athletics regen: 9000 fighter-seconds refilling - at a walk or slower (effort up to 0.40) 7000 s at the full rate, faster 2000 s at avg x0.71; refills to the top: 38 to full, 12 to a wound's cap
 [summary] Athletics refill effort (speed ÷ current top speed), seconds per tenth (0-0.1 … 0.9-1, above 1): 5200 300 400 900 200 150 150 200 400 900 200, max 1.30
-[summary] attack speed check, melee - time between swings, by f: peak (f 1) median 1.35 s (n 250) | f 0.5-1 median 1.55 s x1.15 (asked x1.20, n 180) | f below 0.5 median 2.60 s x1.93 (asked x2.10, n 90) | empty (f 0) median 6.10 s x4.52 (asked x5.00, n 30) - tired attacks ARE slower (empty (f 0) vs the peak)
-[summary] attack speed check, melee - swing length (swings that hit nothing), by f: … - tired attacks ARE slower (…)
-[summary] attack speed check, ranged - time between shots, by f: … - tired attacks ARE slower (…)
-[summary] speed updates: 900 recomputes asked (UpdateAgentProperties: fighters 900, horses 0; a change below x0.05 waits; 0 held a tick by the per-tick budget), the decorator applied attack penalties in 1200 recomputes, run penalties in 1200, horse penalties in 0; intervals left out as their two ends fell in different f bins: melee 40, swing lengths 60, ranged 5
+[summary] speed updates: 900 recomputes asked (UpdateAgentProperties: fighters 900, horses 0; a change below x0.05 waits; 0 held a tick by the per-tick budget), the decorator applied attack penalties in 1200 recomputes, run penalties in 1200, horse penalties in 0 (the attack timings by f: the "attack rate" lines)
 [summary] run speed check, on foot (÷ the fighter's own top speed when fresh), by f: peak (f 1) engine top x1.00 asked x1.00, moving p90 x0.95 max x1.10 (n 30000) | … | empty (f 0) engine top x0.30 asked x0.30, moving p90 x0.30 max x0.35 (n 900) - the engine's top speed follows the curve
 [summary] run speed check, horses (÷ the horse's own top speed while its rider was fresh), by the rider's f: MountMinSpeedMultiplier 1.00 = horses never slow - peak (f 1) engine top x1.00 asked x1.00, … - unaffected, as asked
 [summary] walk vs run speeds (tune WalkEffortFraction, now 0.40): on foot walk limit avg 1.80 m/s (n 480), top avg 4.50 m/s (n 480) → walk/top 0.40; horses walk …, top … → walk/top …
@@ -436,12 +441,8 @@ What proves what:
   your pool = your Athletics skill; each leader's pool = his skill (character screen).
 - **The peak zone**: `fighter-time by f` — most time at full strength in a short fight, more
   below the line in a long one; `the peak zone: left N times` > 0.
-- **Attack speed follows the curve in the engine**: the three `attack speed check` lines —
-  each row's x close to its asked x (x1.1-1.2 just below the line, ~x2 below half, x3-x5
-  empty: the AI's thinking time between attacks is not slowed, so "time between swings"
-  stays under the asked; "swing length" is the purest measure) and `tired attacks ARE
-  slower`. **`are NOT clearly slower … tell Claude`** = the engine clamps the multiplier.
-  `not enough samples` = too few tired attacks; fight longer.
+- **Attack speed follows the curve in the engine**: the `attack rate` lines after the
+  Athletics block (3n — they replaced step 5c's "attack speed check" lines).
 - **Run speed follows the curve**: `run speed check, on foot … - the engine's top speed follows the curve`,
   `moving p90` falling row by row. **`does NOT follow` → tell Claude.** Horses: `unaffected, as asked`.
 - **Damage upside**: the `max` falls row by row; `rolls above their allowed top: 0`.
@@ -460,6 +461,96 @@ What proves what:
 - **Errors**: `Athletics errors: none`. Otherwise each failed spot fell back to vanilla (no
   cost, no penalty) and the first one per place is an `[error] athletics.…` / `[error] speed.…`
   block with its stack above.
+
+**3n. Attack rate — the whole cycle slows, not only the swing (step 5e).** Anton's rule: at
+attack speed 50% a man who attacked once a second attacks once every two seconds. A tired
+fighter's attack speed m (the `attacks x…` of 3b) now drives three things (DESIGN §2):
+- **the animations** (always): wind-up, swing, bow draw, crossbow reload, throws ÷ m;
+- **the AI's decisions** (*Tired AI attack less often*, `AttackRateAiDecisions`, on): its
+  chance to attack, to strike back after a parry and to loose × m, its aim before a shot ÷ m;
+- **the pace hold** (*Tired AI keep a slower pace*, `AttackRatePaceHold`, on): after each melee
+  swing a tired AI fighter on foot holds his next attack, guard up, until his fresh rhythm ÷ m
+  has passed since that swing (never you, never riders; ranged gets the first two only).
+Blocking is never slowed: handling, shield speed and every defence value of the AI are left
+alone. The one known gap: the recoil after a blocked blow plays at the game's own speed.
+
+Where to see it cleanly:
+- **A tired recruit, one on one** — a town's **arena practice fight** (no step backs there, so
+  the AI rows are pure). Fight a recruit-level opponent with a shield and let him swing at you
+  while you block: his first 2 swings come at the fresh rhythm, then each one later, and when
+  he is empty about one swing where he used to make five — between swings he stands, guard up,
+  and still blocks. (A custom battle works too: switch *Tired fighters step back* off for the
+  cleanest numbers — cycles with a step back in them are left out and counted, see below.)
+- **A tired archer** — custom battle, archers against archers at range: volleys slow as the
+  bars empty (recruit archers are empty after 5 shots); an empty archer draws, aims and nocks
+  at about a fifth of his fresh pace.
+- **You** — hammer the attack button 20 s fresh, then 20 s when empty (3b): your swings come
+  about five times rarer. Your pause is yours, so your rows are judged only when you attack as
+  fast as you can.
+- **A/B in one session** (flip BETWEEN battles, the same custom battle each time):
+  battle 1 the defaults; battle 2 *Tired AI keep a slower pace* off (the AI's decisions
+  alone); battle 3 it on and *Tired AI attack less often* off (the hold alone). Compare the
+  `verdict` lines; tell Claude which read closest to ON TARGET.
+
+What you should feel: tired men fight in slow motion - fewer blows, longer gaps, guard up in
+between - while fresh men keep their pace. Halfway down the bar (m about 0.6) about 6 attacks
+where there were 10; empty (m 0.2) one where there were 5.
+
+Log:
+- `[rate] mission start: ON - animations x m always (swing, thrust / bow draw / throw, reload); AI decisions (AttackRateAiDecisions) on: the chance to attack, to riposte and to loose x m, the aim before a shot ÷ m; pace hold (AttackRatePaceHold) on: …; blocking and the recoil after a block: untouched - read live; …`
+- once, the first fighter slowed below full strength - every value the techniques touch,
+  before → after, each checked:
+  `[rate] first slowed fighter this mission: <name> at … s - attacks x0.97 (f 0.96); T1 animations: swing 1.020 → 0.989, thrust/draw …, reload … (each x0.97 as asked); T2 AI decisions (AttackRateAiDecisions on): attack chance 0.144 → 0.140 (x0.97), riposte chance …, shoot chance …, aim before a shot … (x1.03) (chances x0.97, the aim ÷ 0.97 as asked); T3 pace hold (…): …; untouched on purpose: handling (blocking), shield defend speed, the recoil after a block, AIHoldingReady`
+  — **`NOT … as asked - tell Claude`** = a value did not take its factor.
+- once, the first hold in full:
+  `[rate] first pace hold this mission: <name> at … s - attacks x0.93 (f 0.91); fresh cycle 1.40 s (his own, 3 samples) → target 1.51 s from his swing at … s; his next ready expected to take 0.35 s → held 0.40 s (until … s); scripted flags 0 → 2 (NoAttack set: the engine took it)`
+  then `[rate] first pace hold ended at … s after 0.40 s - time up; scripted flags now 0; …`.
+  **`NoAttack NOT set`** → tell Claude.
+- verbose (bucket rate-hold): every hold, its end and every refusal.
+
+Summary (after the Athletics block; numbers made up):
+```
+[summary] attack rate settings at the end (DESIGN §2 - the whole cycle follows the attack speed m): ON - animations x m always (…); AI decisions (AttackRateAiDecisions) on: …; pace hold (AttackRatePaceHold) on: …; blocking and the recoil after a block: untouched
+[summary] attack rate, melee, AI, peak (f 1): wind-up 0.32 + held 0.08, swing 0.52 (clean, hit nothing 0.60), recoil after a block 0.40, pause 0.45 | cycle 1.40 s (n 900), m 1.00 - the fresh reference
+[summary] attack rate, melee, AI, f 0.5-1: wind-up 0.41 (x1.28) + held 0.10 (x1.25), swing 0.66 (x1.27) (clean, hit nothing 0.77 (x1.28)), recoil after a block 0.40 (x1.00), pause 0.80 (x1.78) | cycle 1.85 s (n 300), m 0.78 → target 1.80 s: 103% - on target
+[summary] attack rate, melee, AI, f below 0.5: … | cycle 3.20 s (n 120), m 0.42 → target 3.33 s: 96% - on target
+[summary] attack rate, melee, AI, empty (f 0): wind-up 1.60 (x5.00) + held 0.40 (x5.00), swing 2.60 (x5.00) (…), recoil after a block 0.41 (x1.02), pause 2.40 (x5.33) | cycle 6.60 s (n 40), m 0.20 → target 7.00 s: 94% - on target
+[summary] attack rate, melee, AI - verdict: ON TARGET in 3 of 3 tired bands (fresh cycle 1.40 s; f 0.5-1 103% on target, f below 0.5 96% on target, empty (f 0) 94% on target)
+[summary] attack rate, melee, you, peak (f 1): … | cycle 0.95 s (n 40), m 1.00 - the fresh reference
+[summary] attack rate, melee, you, empty (f 0): … | cycle 4.60 s (n 12), m 0.20 → target 4.75 s: 97% - on target
+[summary] attack rate, melee, you - verdict: …
+[summary] attack rate, ranged, AI, peak (f 1): draw 0.60 + aim 0.90, loose 0.20, reload 0.70, pause 0.30 | cycle 2.70 s (n 400), m 1.00 - the fresh reference
+[summary] attack rate, ranged, AI, empty (f 0): draw 3.00 (x5.00) + aim 1.80 (x2.00), loose 0.20 (x1.00), reload 3.50 (x5.00), pause 0.90 (x3.00) | cycle 9.40 s (n 30), m 0.20 → target 13.50 s: 70% - too fast
+[summary] attack rate, ranged, AI - verdict: OFF TARGET in 1 of 3 tired bands (…)
+[summary] attack rate, ranged, you: no attacks measured
+[summary] attack rate - left out: cycles whose two ends fell in different f bands (melee AI / you, ranged AI / you) 400 / 10, 50 / 0; longer than 4 s ÷ m melee or 12 s ÷ m ranged (a pause, not a fighting rhythm) 300 / 5, 40 / 0; readies that ended in no attack (cancelled, feints) 200 / 8, 10 / 0; chained (the next ready straight out of the last attack, pause 0) 120 / 20, 0 / 0; with a step back in them (its pause, not the attack rhythm) 60 / 0, 0 / 0
+[summary] attack rate - AI decisions (AttackRateAiDecisions on at the end): scaled in 1100 recomputes - the chance to attack and to riposte x m, to loose x m, the aim before a shot ÷ m; …
+[summary] attack rate - pace hold (AttackRatePaceHold on at the end; tired AI fighters on foot, after a melee swing): 500 holds, avg 0.85 s, max 3.10 s at avg m 0.45; by f: f 0.5-1 200, f below 0.5 200, empty (f 0) 100
+[summary] attack rate - pace hold, not held: at full strength 2000, not needed (his swing and next ready already fill the target) 150, the next attack already readied at the swing's end 60, no fresh cycle known yet 5, stepping back 60, you 40, riders 80 | not started by the tick: busy with a game job (…) 3, NoAttack already set by the game 0, …
+[summary] attack rate - pace hold ends: time up 480, a swing started anyway 2 (must be about 0 - NoAttack holds swings), switched off 0, left the field 15, mission end 3, you took him 0, mounted 0, error 0 | NoAttack cleared by us 495, already cleared by the game 2, a game job on him at the end (left alone, cleared once free: 1) 1, still held at mission end 3 | the next ready came avg 0.15 s after a hold ended (n 420) - near 0 = the hold set his rhythm
+[summary] attack rate - guard by f (melee hits on fighters on foot that were blocked or parried; blocking is never slowed - tired men must not block less): peak (f 1) 45% (n 900) | f 0.5-1 47% (n 400) | f below 0.5 46% (n 150) | empty (f 0) 44% (n 60) | while held by the pace hold 52% (n 90)
+```
+What proves what:
+- **The whole cycle follows m**: each group's `verdict` line - `ON TARGET` = every tired band's
+  cycle within ±15% of the peak's cycle ÷ m. `too fast` / `too slow` names the band.
+- **Which phase did it** (the x beside each phase is its ratio to the peak row): wind-up and
+  swing (draw and reload) about 1/m = **the engine honours the animation multipliers** (5c's
+  UNVERIFIED #2); `pause` growing = the AI's decisions and / or the hold; `recoil after a block`
+  near x1.00 is the known gap (the game's own speed - tell Claude if it matters in play).
+- **AI rows too fast with the hold ON**: read `pace hold ends` - `a swing started anyway` well
+  above 0 = the engine ignores NoAttack outside a scripted move → tell Claude. `not held … the
+  next attack already readied` large = the AI chains its blows before the hold can start.
+- **AI rows too fast with the hold OFF (battle 2)** = the AI's decisions alone do not slow its
+  pause enough (their native meaning is UNVERIFIED) → keep the hold on.
+- **AI rows too slow with both on** = the two stack; battle 3 (hold alone) tells which to keep.
+- **Ranged AI** has no hold: `aim` and `pause` growing = the AI's shooting values work;
+  `too fast` there → tell Claude (a ranged hold is the next lever).
+- **You**: `wind-up` / `swing` about 1/m; the cycle verdict counts only if you attacked as fast
+  as you could.
+- **Blocking is untouched**: the `guard by f` rows within ~10 points of the peak row, and
+  `while held` not below it. Tired men blocking much less → tell Claude.
+- `the next ready came avg … after a hold ended` near 0 = the hold set his rhythm (the AI
+  attacks the moment it may).
 
 ---
 

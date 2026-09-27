@@ -352,6 +352,32 @@ public sealed class TraxAgentStatModel : AgentStatCalculateModel   // decorator
   `MaxSpeedMultiplier` / `MountSpeed` mid-mission, and `GetMaximumForwardUnlimitedSpeed()`
   follows it (`run speed check … engine top x… asked x…`).
 
+**Step 5e addendum — the whole attack cycle (verified in source and data, 2026-09-27; detail in
+AI_NOTES "Step 5e")**
+
+- **Channel 1 phases**: `ReadyMelee` (19) wind-up + held → `ReleaseMelee` (20) swing +
+  follow-through → `BlockedMelee` (22, the attacker's recoil after a block or parry;
+  `ParriedMelee` 21 is only couched-lance / braced-spear) → the pause → the next ready (a chain
+  goes Release → Ready). Ranged: `ReadyRanged` (15) draw + aim → `ReleaseRanged` (16) /
+  `ReleaseThrowing` (17) → `Reload` (18: bow nock, crossbow wind, the next javelin).
+- **Which property scales which phase**: swing / thrust-or-ranged-ready = the ready AND the
+  release (native `ready_speed_multiplier` 2.2 / `release_speed_multiplier` 1.2 act on top);
+  `ReloadSpeed` = the reload; `HandlingMultiplier` = handling, i.e. the DEFENCE side (native
+  `defend_speed_multiplier` 3.2) - never touched; the block recoil has no visible property
+  (`added_animation_duration_for_blocked_attacks` 0.095 s is added natively); no property sets
+  the time between attacks.
+- **Per-agent action speed is not safe**: `Agent.SetCurrentActionSpeed(channel, speed)` sets an
+  ABSOLUTE speed with no getter, vanilla uses it only on siege-machine usage animations, and the
+  native combat code paces attack actions itself (the on-hit slow-down every frame). Not built.
+- **The AI's pause**: `SetAiRelatedProperties` assigns every Ai* value with `=` on every recompute
+  - `AIAttackOnDecideChance` (the chance to attack at a decision; vanilla lowers it for defensive
+  orders), `AIAttackOnParryChance` (riposte), `AiShootFreq`, `AiWaitBeforeShootFactor` (0 for siege
+  defenders with an ammo supply). The first three × m, the last ÷ m, in the stat decorator.
+- **A hold**: `SetScriptedFlags(GetScriptedFlags() | NoAttack)` with no scripted position is
+  vanilla's own "do not attack" (`Agent.UseGameObject`); the flag word is shared with scripted
+  jobs, so it is set only on a free man and lifted only while he is free.
+- **UNVERIFIED** (the `attack rate` summary lines settle each): #14-#17 below.
+
 ---
 
 ## D. Movement — standing or moving
@@ -852,3 +878,7 @@ Full notes, the alternatives and the choice: AI_NOTES "Step 5d".
 | 11 | A scripted man keeps facing his enemy and his guard while he steps back (§L) | 5d |
 | 12 | Our prefab draws as the smoke-checked tree says: FillBarWidget fills, bound colours, `Brush.FontColor` on the texts, the ListPanel row (PLAYTEST §7a-7c) | 6 |
 | 13 | The player bar vs the vanilla bar's Passive state while steering a ship (War Sails: 60 px lower) (PLAYTEST §7f) | 6 |
+| 14 | The native AI follows `AIAttackOnDecideChance` / `AIAttackOnParryChance` / `AiShootFreq` × m and `AiWaitBeforeShootFactor` ÷ m with a longer pause / aim (§C step 5e addendum; PLAYTEST 3n, battle 2) | 5e |
+| 15 | `NoAttack` set with `SetScriptedFlags` and no scripted position holds a man's swings in open melee, guard kept (PLAYTEST 3n: `a swing started anyway`, `guard by f … while held`) | 5e |
+| 16 | The block / parry recoil (`BlockedMelee`) is not scaled by any driven property (PLAYTEST 3n: `recoil after a block … (x1.00)`) | 5e |
+| 17 | A ready's `GetCurrentActionProgress(1)` reaches ~1 at full wind-up and holds there (PLAYTEST 3n: `held` above 0 for the AI's held blows and aimed shots) | 5e |

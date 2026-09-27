@@ -86,8 +86,27 @@ regen.)
     **What "attack speed" means (Anton, 2026-09-27): the RATE of attacking, the whole cycle
     — ready/wind-up, swing, recovery, and for the AI the pause before its next attack — not
     only the swing animation.** At a multiplier of 0.5 a fighter who attacked once a second
-    attacks once every two seconds. The combat itself slows down. The summary measures the
-    real interval between attacks and compares it with this target (step 5e).
+    attacks once every two seconds. The combat itself slows down. Built in step 5e, three
+    techniques on the same m (research: AI_NOTES "Step 5e"):
+    - **The animations** (always, since step 5): swing, thrust / bow draw / throw and reload
+      speed × m - the wind-up, the swing with its follow-through, the draw, the reload.
+    - **The AI's decisions** (`AttackRateAiDecisions`, on - an A/B switch): the AI's chance to
+      attack at a decision, to riposte after a parry and to loose × m, its aim before a shot ÷ m
+      - so its pause between attacks grows with the rest. The player has no AI: his pause is his.
+    - **The pace hold** (`AttackRatePaceHold`, on - an A/B switch): after each MELEE swing of a
+      tired AI fighter on foot, he may not start his next attack (the engine's own "no attack"
+      flag, guard up) until his next blow can land no sooner than his fresh cycle ÷ m after this
+      one (his fresh cycle = his own time between blows at full strength, else the battle's AI
+      average). Never the player, never riders, never while he steps back; ranged fighters get
+      the first two techniques only.
+    - **Blocking is never slowed**: weapon handling, shield speed and every defence value of the
+      AI are left alone. Shared and unavoidable: a tired man's slower swing keeps him committed
+      longer. Not reachable: the recoil after a blocked blow plays at the game's own speed
+      (per-agent animation speed is not safe to touch - AI_NOTES "Step 5e").
+    - **Measured**: the summary's `attack rate` lines give, per f band, melee and ranged, AI and
+      you apart, every phase's average, the cycle, m, the target (the peak's cycle ÷ m) and
+      measured ÷ target with a verdict word (on target within ±15%, too fast, too slow), the pace
+      holds, and whether tired men block as often as fresh ones.
   - **Run speed on foot** = M + (1 − M) × f, M = `MinMoveSpeedMultiplier` (0.3). Tired men
     slow down, so fresher men overtake them. Horses keep their speed (Anton's pick):
     `MountMinSpeedMultiplier` (1.0 = unaffected; lower it to let a tired rider's horse slow on
@@ -233,7 +252,8 @@ of MCM (and the first key of the config file) turns the WHOLE mod off — live, 
 so the same battle can be fought with and without it and compared. Off: the damage roll hands
 back the game's own number; nobody pays Athletics, nobody refills; every speed penalty (attack,
 run, horse) is lifted at once (the stat decorator checks the switch itself, so even a recompute
-before the logic's next tick is vanilla); the bars (steps 6–9) hide; tired fighters never step back (5d).
+before the logic's next tick is vanilla - the AI's attack values included, 5e); the bars (steps 6–9) hide; tired fighters never step back (5d) and
+every pace hold is lifted at once (5e).
 Back on: everyone starts with a full Athletics bar — a fresh start, not a resume. The two model
 decorators stay registered (they cannot be removed mid-game) and pass everything through; the
 tournament AI-level fix, which only keeps vanilla behaviour intact, stays. **Logging stays on**:
@@ -383,6 +403,14 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     code (MCM has no colour picker) - `BarMath` in Core, one place to change; empty = red text
     and frame rather than a pulse (a pulse at a 0.1 s refresh would stutter); stealth missions
     count as fights. The bar's size and place became four Advanced settings (`PlayerBar*`).
+
+13. **The attack rate** (step 5e, Claude's calls): the AI's pause follows m through the AI's own
+    attack values AND an exact hold after each melee swing - two techniques because the native
+    meaning of the AI values cannot be seen, each an A/B switch so the playtest can keep the one
+    that reads on target; the hold is melee-only and never for the player or riders; the AI's
+    "hold a readied blow" time is NOT lengthened (a raised weapon means a lowered guard - tired
+    men must not defend worse); cycles with a step back in them are left out of the measurement
+    (that pause is the step back's).
 
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance`, `TargetBarLingerSeconds`, `FormationBarsAlways`,

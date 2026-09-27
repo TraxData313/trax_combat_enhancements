@@ -12,8 +12,9 @@ every fight a little less predictable and a lot more about who is still fresh.
   A 50-damage blow lands for anywhere between 25 and 75.
 - **Athletics** — every fighter has an Athletics bar, his stamina, as big as his Athletics
   skill (never under 50). Each blow costs 10 points. The top quarter of the bar is full
-  strength; below it his lucky hits, his swing speed and his run speed fade, down to
-  attacking at 20% speed when it is empty. Wounds cap the bar. Rest to refill it: one minute
+  strength; below it his lucky hits, his attack rate and his run speed fade, down to one
+  attack where he used to make five when it is empty - slower swings and, for the AI, longer
+  pauses between them, guard up (blocking is never slowed). Wounds cap the bar. Rest to refill it: one minute
   standing or walking, twice that running flat out. Heroes pay less per blow, party leaders
   less again, and a hero's big Athletics skill means a big bar — the battle leans on its
   heroes.
