@@ -8,16 +8,19 @@ Guidance for Claude Code when working in this repository.
 Bannerlord* v1.4.8 that makes fights a bit more fun: every landed hit rolls ±50% damage,
 and every fighter has an **Athletics** bar — his stamina, as big as his Athletics skill —
 that blows drain and rest refills. The top quarter of his own bar is full strength; below
-it his damage upside, attack RATE (the animations and, for the AI, the pause between attacks -
-step 5e) and run speed fall, down to one attack in five when empty; wounds cap the bar; tired
-AI fighters step back out of the press after a swing (step 5d).
+it his damage upside, attack RATE and run speed fall, down to one attack in five when empty -
+since step 13 PAUSE ONLY: the animations play at full speed and a no-attack timer of
+D × (1/m − 1) follows each attack (the player's input gated, the AI held by NoAttack; the player
+sees an Attack recovery bar above his Athletics bar); wounds cap the bar; tired AI fighters step
+back out of the press after a swing (step 5d).
 Heroes and party leaders pay less per blow (and big-skill heroes have
 big bars), so the game leans hero-centred. The Athletics bar is shown for the player (step 6)
 and — averaged, with a ± spread and the men's health — in a strip under each formation card of
 the orders menu (step 9). The bar for the fighter you look at and squad bars above the
 formations are LATER (DESIGN §3; their settings wait in DESIGN's "Planned parameters"). Words:
 the pool/bar/points are "Athletics", the character-screen skill is "the Athletics skill" (it
-used to be called "endurance"), the "peak line" is the white mark at the top quarter of the bar.
+used to be called "endurance"), the "peak line" is the white mark at the top quarter of the bar,
+"the pause" is the no-attack timer after an attack (step 13).
 
 **The full spec is `docs/DESIGN.md`. Read it before any work.** Released on **Steam Workshop
 only** (no Nexus).
@@ -143,7 +146,7 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
   ParamDef.cs                 one setting: key, type, range, group, label, plain-words
                               description, apply timing (Live / NextBattle); Normalize, Format;
                               its Default comes from defaults.json (DefaultsFile), never code
-  SettingsSchema.cs           EVERY setting of DESIGN's table (59), in file + MCM order, 9 groups
+  SettingsSchema.cs           EVERY setting of DESIGN's table (66), in file + MCM order, 9 groups
                               ("Master switch" first, "Advanced" last; step 10b's one vocabulary and
                               units in its header comment) — the one place a setting is declared
                               (a test parses DESIGN.md: keys + types); NO default values. The LATER
@@ -158,7 +161,9 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               typed properties, Set(key, value, source), Version, Changed event
   ConfigFile.cs               config.json TEXT: commented writer (header incl. how to revert +
                               // above each key; AppendSettings shared with defaults.json),
-                              tolerant reader (comments, trailing commas, casing, "0,75"), Apply
+                              tolerant reader (comments, trailing commas, casing, "0,75"), Apply;
+                              FormatVersion 2 + Migrate (step 13: a format-1 file's old defaults -
+                              AttackRateAiDecisions true, PlayerBarOffsetBottom 54 - get the new ones once)
   ConfigMerge.cs              THE FILE-REWRITE RULE (MCM wins for what it touched, the disk for
                               the rest) + EditTracker (what MCM changed since the last write)
   RateLimiter.cs              per-tag token bucket for chatty log lines, counts what it drops;
@@ -208,17 +213,27 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
   StepBackStats.cs            per-mission step-back counters + the 8 [summary] lines (rolls by
                               f bin, starts, ends by reason, moves, facing, guard, release checks)
   AttackRate.cs               DESIGN §2 attack RATE pure (step 5e): AttackKind, AttackPhase (wind-up,
-                              held, release, clean release, recoil, reload, pause), the pace hold's
+                              held, release, clean release, recoil, reload, pause), the AI timer's
                               reasons (PaceNotHeld / PaceRefusal / PaceEnd / PaceRelease),
-                              AttackRateRules (live; AiDecisionsOn / PaceOn, the master switch
-                              first), AttackRateMath (ScaleChance x m / ScaleWait ÷ m, CycleCap,
-                              TargetCycle = fresh ÷ m, FreshReference, ExpectedReady, HoldUntil,
-                              HoldNeeded, Verdict ±15%; plumbing constants)
-  AttackRateStats.cs          per-mission attack rate: melee / ranged x AI / you x f band - every
-                              phase, the cycle, m, the target, measured ÷ target + verdict; left-out
-                              counts (mixed, beyond the cap, cancelled, chained, a step back inside);
-                              the pace holds; the guard by f; the AI-decision recomputes; the
-                              [summary] "attack rate" lines (they replaced 5c's attack speed check)
+                              AttackRateRules (live; AiDecisionsOn / PaceOn / PlayerTimerOn, the
+                              animation floor, the master switch first), AttackRateMath (ScaleChance
+                              x m / ScaleWait ÷ m, CycleCap, TargetCycle = fresh ÷ m, Verdict ±15%;
+                              plumbing constants)
+  AttackTimer.cs              step 13 PAUSE ONLY pure: AttackTimerMath (Pause = D x (1/m − 1), Worth
+                              ≥ 0.1 s, AnimationMultiplier = max(m, min%), CountdownText "1.3 s" (tenths
+                              up), FlashOn - 2 pulses, the recovery bar's colours), PlayerAttackTimer
+                              (YOUR timer: the hold from the release's start, the countdown, Frame =
+                              the input gate's decision - clear / swallowed / flash / ended / held at
+                              the end, Release), PlayerGateFrame, PlayerTimerEnd, AttackRecoveryReading
+                              (the Attack recovery bar's read: Share, SecondsText, the flash)
+  AttackRateStats.cs          per-mission attack rate: melee / ranged x AI / you x f band - the
+                              animation asked, every phase, the cycle, m, the target, measured ÷
+                              target + verdict; the TIMER rows (D, m, the pause asked, the measured
+                              gap to the next attack, after its end, early starts); left-out counts
+                              (mixed, beyond the cap, cancelled, chained, a step back inside); your
+                              timer (presses swallowed, flashes, held-button fires, missed attacks,
+                              releases); the AI timer (kinds, mounted, reasons, ends); the guard by f;
+                              the AI-decision recomputes; the [summary] "attack rate" lines
   AthleticsBar.cs             step 6 (and the strip's colours; step 7's LATER target bar would reuse it): BarBand, BarRules (live
                               Bar*BelowPercent), BarMath - Band (green at the peak line, blue just
                               below, yellow/orange/red at or below their % of the line, the most
@@ -259,14 +274,17 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
   SubModule.cs                entry point: load log (+ "module: <Id>" - which copy runs), config
                               init/re-reads, MCM register/retry (the module list handed to McmBridge -
                               step 12), the two model decorators
-                              (OnGameStart), AthleticsLogic per mission; step 11: claims SingleCopy
+                              (OnGameStart), AthleticsLogic per mission + its PlayerAttackGate at
+                              index 0 (step 13); step 11: claims SingleCopy
                               FIRST in OnSubModuleLoad - refused = _inert (an INSTANCE flag: one
                               assembly may serve both modules), every hook returns at once; the
                               running copy's ReportCopiesOnce ([compat] + one message, main menu)
   ModPaths.cs                 Configs\TraxCombatEnhancements\ via EngineFilePaths.ConfigsPath
   ConfigStore.cs              config.json ↔ TraxSettings.Shared: first run, re-read at game and
                               mission start, write after MCM Done by the rewrite rule, backups;
-                              the [config] defaults: line; RevertAllToDefaults, ExportDefaults
+                              the [config] defaults: line; RevertAllToDefaults, ExportDefaults;
+                              step 13: ConfigFile.Migrate at every read (logged "migrated config.json …",
+                              the file rewritten as format 2) and on the MCM-save re-read
   TraxLog.cs                  trax_combat.log: tagged lines, trimmed past LogMaxMegabytes (read live) to
                               half by LogTrim (a failed trim retries after 1 MB), Verbose (rate-limited,
                               only when VerboseLogging, written "~[tag]"), VerboseWants(bucket) (R8: the
@@ -289,10 +307,12 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               stats, [damage] lines (mission start, first roll + thread,
                               verbose roll/skip), the [summary] damage block
   Models/TraxAgentStatModel.cs AgentStatCalculateModel DECORATOR — forwards everything;
-                              UpdateAgentStats: base first, then × the fighter's attack and run
-                              multipliers (+ the AI's attack values while AttackRateAiDecisions,
-                              5e), or a slowed rider's horse's (SpeedFactorsFor - managed reads
-                              only); + the tournament SetAILevelMultiplier fix
+                              UpdateAgentStats: base first, then the attack ANIMATIONS × max(m,
+                              AttackAnimationMinPercent) (step 13: 100 = full speed), the run
+                              multiplier (+ the AI's attack values while AttackRateAiDecisions,
+                              5e - off by default since 13), or a slowed rider's horse's
+                              (SpeedFactorsFor - managed reads only); + the tournament
+                              SetAILevelMultiplier fix
   Models/SpeedPenalty.cs      the penalties on AgentDrivenProperties: attack (swing, thrust/draw,
                               reload), the AI's decisions (5e: attack / riposte / shoot chance x m,
                               the aim ÷ m), run (MaxSpeedMultiplier), horse (MountSpeed) - nothing
@@ -330,22 +350,37 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               CanBeAssignedForScriptedMovement, orders, target, navmesh checks,
                               SetScriptedPositionAndDirection / DisableScriptedMovement, flag
                               checks; StepBackState / Plan / Snapshot / Release
-  Missions/AthleticsLogic.AttackRate.cs  step 5e: every channel-1 action change closes / opens a
-                              phase (filed at the band at its start, BEFORE the action's charge),
-                              the ready-progress poll (wind-up vs held), cycles + the fresh
-                              references (his own, the mission's), the PACE HOLD (asked at a tired AI
-                              swing's end after the step-back roll, started by TickPace, lifted on
-                              every path: time, a swing slipping through, switched off, left the
-                              field, player, mounted, mission end, a game job waited out), the
-                              guard by f, the switch notes (T2 re-applied), [rate] lines (mission
-                              start, the first slowed fighter's values, the first hold), the summary
-  Missions/PaceBody.cs        PaceState; IPaceBody = the hold's ENGINE side (the smoke plays it);
-                              GamePaceBody: NoAttack via SetScriptedFlags only on a free man
-                              (no GoToPosition / NoAttack / object / ladder / detachment / horse),
-                              lifted only while he is free, else Waiting
+  Missions/AthleticsLogic.AttackRate.cs  steps 5e / 13: every channel-1 action change closes / opens
+                              a phase (filed at the band at its start, BEFORE the action's charge)
+                              and builds the attack's D (wind-up + release, ranged + the reload),
+                              flagging its END; AttackEnded (after the step-back roll) → yours or the
+                              AI TIMER (the old pace hold: NoAttack for D x (1/m − 1) after every
+                              attack, melee and ranged, riders too - queued, started by TickPace,
+                              lifted on every path: time, an attack slipping through, switched off,
+                              left the field, the player took him, mission end, a game job waited
+                              out); AttackBegan (the gap after the last timer); the ready-progress
+                              poll (wind-up vs held); cycles; the guard by f; the switch notes (AI
+                              decisions / the animation floor re-applied); [rate] lines (mission
+                              start, the first slowed fighter's values, the first AI timer), the summary
+  Missions/AthleticsLogic.PlayerTimer.cs  step 13, YOUR timer: the hold from the release's start
+                              (PlayerAttackStarting), the countdown (PlayerAttackEnded), the gate's
+                              frame (GatePlayerInput: native flags → GateFrame, managed - clears
+                              AttackMask while held), swallowed presses, the flash, hold-to-attack,
+                              missed attacks, releases (switched off, not you, mission end), the tick's
+                              safety net, TryGetPlayerRecovery (the recovery bar's read), [athletics]
+                              YOU lines; SmokePlayer (the smoke's stand-in for Mission.MainAgent)
+  Missions/PlayerAttackGate.cs  step 13: a MissionLogic added then moved to INDEX 0 of
+                              Mission.MissionBehaviors (SubModule, OnMissionBehaviorInitialize) - it
+                              pre-ticks right after MissionMainAgentController wrote the input
+  Missions/PaceBody.cs        PaceState (+ D, kind, the attack's end, the pause); IPaceBody = the AI
+                              timer's ENGINE side (the smoke plays it); GamePaceBody: NoAttack via
+                              SetScriptedFlags only on a free man (no GoToPosition / NoAttack / object
+                              / ladder / detachment; riders allowed since 13), lifted only while he is
+                              free, else Waiting
   Missions/TrackedAgent.cs    one fighter's record: Core Fighter + detection, f-bin, fresh top
                               speed and slowed-horse fields, his StepBackState (null until needed),
-                              the attack-rate phase state, his fresh cycles, his PaceState
+                              the attack-rate phase state, the running attack's D and its end, his
+                              last rest by kind, his last timer (for the gap), his PaceState
   Missions/AthleticsLogic.Hud.cs  step 6: AttachHud on the logic's FIRST TICK (the screen runs by
                               then - RESEARCH §G) - each view via MissionScreen.AddMissionView with
                               a GauntletHudLayer, "[hud] attached:" lines; WriteHudSummary (the
@@ -359,7 +394,8 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               Finish at mission end; every entry wrapped - an error or a movie that
                               does not load disables the view for the mission (layer removed,
                               [error], "[hud] … DISABLED"); [hud] lines for build / removal / not
-                              shown, each with its reason (QuietConditionToggles: a view's own
+                              shown, each with its reason, in the view's OWN rate buckets (step 13:
+                              hud-layer:<view>, hud-outside:<view>) (QuietConditionToggles: a view's own
                               condition coming and going → verbose after the first build); HudStats;
                               step 12: OutsideToggle / ReadOutside = a view's outside-a-battle rule (the
                               grace clock; builds / removals outside a fight in the "hud-outside" bucket)
@@ -375,6 +411,13 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
   Hud/PlayerAthleticsVM.cs    its ViewModel - every property EXACTLY the bound widget property's
                               type (float / Color / bool / string: Gauntlet converts only strings);
                               change-checked setters; the number text rebuilt only when it changes
+  Hud/AttackRecoveryView.cs   step 13 (Anton's "attack recovery" bar): just above the Athletics bar -
+                              EMPTY at your attack, FILLING over your pause with the seconds inside,
+                              FULL otherwise; the flash on an early press; read every frame
+                              (OnLayerFrame), layout at the refresh; the Athletics bar's gate + its own
+                              switch + ShowPlayerBar and AttackRatePlayerTimer on; first values / first
+                              pause / first flash lines (bucket hud-recovery), the summary line
+  Hud/AttackRecoveryVM.cs     its ViewModel (layout, Fill, FillColor, SecondsText / SecondsShown, FlashOn)
   Hud/OrderCards.cs           step 9's engine seams: IOrderCardSource / GauntletOrderCards (the
                               "MissionOrder" layer found with the public FindLayer, its widget tree
                               walked once per open - card = OrderTroopItemBrushWidget in a two-widget
@@ -387,7 +430,7 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               / values lines, the [summary] strip line
   Hud/OrderStripVM.cs         its ViewModels: the root + 8 fixed OrderStripCellVM in one
                               MBBindingList, bound TWICE by the prefab (the cells, the panel rows)
-tests/TraxCombat.Core.Tests/  net8.0 xUnit (323) — schema vs DESIGN.md (keys + types), one copy
+tests/TraxCombat.Core.Tests/  net8.0 xUnit (333) — schema vs DESIGN.md (keys + types), one copy
                               runs (SingleCopyTests: claims on private slots, copies, texts), when
                               MCM is tried and when it stops (McmPlanTests - step 12),
                               defaults.json (DefaultsFileTests), master switch, settings, config
@@ -396,8 +439,10 @@ tests/TraxCombat.Core.Tests/  net8.0 xUnit (323) — schema vs DESIGN.md (keys +
                               damage roll/rules/dice/stats/upside,
                               Athletics v2 rules (pool, f, cap, curves, effort regen, DESIGN's
                               blow counts), mean/std, the run-speed check, Athletics summary, the
-                              attack rate (rules, AI values x / ÷ m, the hold's target, the cap,
-                              verdicts, phases / cycles / holds / guard + summary),
+                              attack rate (rules, AI values x / ÷ m, the cap, verdicts, phases /
+                              cycles / timers / holds / guard + summary), the timer (AttackTimerTests:
+                              the pause, the animation floor, the countdown text, the flash, YOUR
+                              timer as the gate drives it, the recovery read), the config migration,
                               step back (chance by f, dice, spot, facing, stats, summary), the bar
                               (bands by f on DESIGN's fighters, shares, numbers, colours), the HUD
                               gate (order, master switch first; step 12: outside a battle - the
@@ -413,6 +458,8 @@ module/GUI/Prefabs/           the HUD movies - file name = movie name, `Trax…`
                               global across modules): TraxPlayerAthleticsBar.xml (step 6: native
                               sprite BlankWhiteSquare_9 + brush AgentHUD.Interaction.Text only;
                               FillBarWidgets draw shares; no widget takes mouse events),
+                              TraxAttackRecoveryBar.xml (step 13: the label, a frame, the fill, the
+                              seconds centred on it, the flash overlay - same native sprite / brush),
                               TraxOrderStrip.xml (step 9: {Cells} ItemTemplates - the cells placed
                               by Scaled* pixel bindings, the panel rows; the ± band = a FillBarWidget
                               ChangeWidget; a list widget carries no @binding - its own bindings
@@ -444,12 +491,17 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               upside by f, horses), the step back (Program.StepBack.cs: the real
                               logic's bookkeeping with a stand-in IStepBackBody - rolls by f,
                               queue, cap, live time, every release path, logs, summary), the
-                              attack rate (Program.AttackRate.cs: phases, cycles and verdicts
-                              through the real logic - the animations alone too fast, the hold
-                              on target - every pace-hold path with a stand-in IPaceBody, the
-                              first-slowed line through the real decorator), the master switch
-                              (step backs released, pace holds lifted, the bar and the strip removed
-                              too), the HUD (Program.Hud.cs: PrefabIsValid - any prefab against the
+                              attack rate (Program.AttackRate.cs, step 13: full-speed animations,
+                              the AI timer D x (1/m − 1) - melee, ranged from the reload, a throw,
+                              riders - the gap = the timer, every lift path with a stand-in IPaceBody;
+                              YOUR timer through the real logic via SmokePlayer + GateFrame: the hold
+                              from the release, swallowed presses, the flash, hold-to-attack, a
+                              missed attack, the switches, ranged; the gate FIRST in a stand-in
+                              mission's behaviour list; the first-slowed line through the real
+                              decorator), the decorator's animation floor (100 / 0 / 60), the master
+                              switch (step backs released, AI timers lifted, your countdown released,
+                              the bar and the strip removed too), the recovery bar (Program.Recovery.cs:
+                              its prefab, the real view over a running timer), the HUD (Program.Hud.cs: PrefabIsValid - any prefab against the
                               game's own widget types, properties, brushes, sprites and the VMs'
                               property types, DataSource lists into their ItemTemplates, no @binding
                               on a list widget; the real PlayerAthleticsView driven by made-up
@@ -470,7 +522,7 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               2 MB of verbose lines, the ~ mark, VerboseWants loses no count; step
                               11 (Program.Copies.cs, LAST): two real SubModule instances - the second
                               stands down (no log line, model, mission, message), the first registers
-                              ONE decorator of each kind and reports once (48 steps; the config
+                              ONE decorator of each kind and reports once (51 steps; the config
                               checks work for any tuned default);
                               TRAX_SMOKE_KEEP=1 keeps its temp folder + log to read
 tools/DefaultsTool/           defaults.json upkeep: refresh (rewrite comments/order, keep every

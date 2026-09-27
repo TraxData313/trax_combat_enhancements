@@ -29,8 +29,11 @@ Releasing it: [tools/WORKSHOP-UPLOAD.md](tools/WORKSHOP-UPLOAD.md).
 - **Athletics** — every fighter has an Athletics bar, his stamina, as big as his **Athletics
   skill** (never under 50). Each blow costs 10 points. The top quarter of the bar — above the
   peak line — is full strength; below it his lucky hits, his attack rate and his run speed fade,
-  down to one attack where he used to make five when it is empty: slower swings and, for the AI,
-  longer pauses between them, guard up (blocking is never slowed). Wounds cap the bar. Rest to
+  down to one attack where he used to make five when it is empty. No slow motion: every swing,
+  draw and throw plays at full speed, but after each attack a tired fighter must wait before the
+  next one — you see your wait fill up in an Attack recovery bar (press attack too early and it
+  just flashes; hold the button and you strike the moment it fills), the AI waits with its guard
+  up. Blocking, kicks and moving are never held. Wounds cap the bar. Rest to
   refill it: one minute standing or walking, twice that running flat out. Heroes pay less per
   blow, party leaders less again, and a hero's big Athletics skill means a big bar — the battle
   leans on its heroes.
@@ -39,7 +42,7 @@ Releasing it: [tools/WORKSHOP-UPLOAD.md](tools/WORKSHOP-UPLOAD.md).
   tired, the more often. The fresh take the blows. Field battles only.
 - **See it** — your own Athletics bar under your health bar: the number, a mark at the peak line,
   green at full strength, then blue, yellow, orange and red as you tire, the part your wounds hold
-  shown dark. And in the orders menu, a slim strip under each formation card: its men's average
+  shown dark; above it the Attack recovery bar with the seconds of your wait inside it. And in the orders menu, a slim strip under each formation card: its men's average
   Athletics ± spread ("72% ± 8") and their average health ("HP 81%"). The strip reads the game's own
   cards, so it lines up at any resolution and UI scale, and with RTS Camera's order menu.
 - **A master switch** — turn the whole mod off, even mid-battle, and the fight is pure vanilla, so

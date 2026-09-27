@@ -54,9 +54,12 @@ needs MCM refuses to start for every player without it.
     (the dev copy runs), `[load] module: TraxCombatEnhancements.Dev (the dev install - tools\deploy.ps1)`,
     `[load] game: v1.4.8.…`, `[load] modules (N): …`
   - `[compat] Realistic Battle Mod (RBM) not enabled - good`
-  - `[config] defaults: defaults.json (embedded in TraxCombat.Core.dll), 59 keys for 59 settings - every default read from it`
+  - `[config] defaults: defaults.json (embedded in TraxCombat.Core.dll), 66 keys for 66 settings - every default read from it`
   - `[config] first run: created config.json with every default and a plain-words explanation beside each value`
-  - `[config] settings in effect (59, version 0):` and 59 lines like `[config]   DamageRandomPercent = 50`
+  - `[config] settings in effect (66, version 0):` and 66 lines like `[config]   DamageRandomPercent = 50`
+  - (If you kept an OLD config.json from before step 13 instead: `[config] migrated config.json at startup: AttackRateAiDecisions: true → false (format 1 → 2, the old default; step 13: …)`,
+    `… PlayerBarOffsetBottom: 54 → 30 (…)`, `rewrote config.json as format 2 with the 2 migrated value(s)` and
+    `added 7 missing setting(s) to config.json with their defaults` - once; the next start reads format 2 and says nothing.)
   - `[mcm] MCM (Mod Configuration Menu) is not loaded - no settings page; the mod runs on config.json alone. That is fine.`
     — or, if another enabled mod carries MCM's DLL in its own folder (step 12, your 21:08 session):
     `[mcm] MCM's module is not enabled - no settings page; config.json only. (An MCM 5.… DLL is loaded - another mod carries it - …)`
@@ -86,7 +89,7 @@ end it (win or retreat).
 **A4. Now WITH MCM (and RTS Camera, as you usually play).** Quit. Enable *Mod Configuration Menu v5*
 (with Harmony, ButterLib, UIExtenderEx) and RTS Camera + Command System. Start.
 - You see: *"… loaded - settings in Mod Options."*
-- Log: `[mcm] settings page registered at main menu (attempt 1): MCM 5.…, page "Trax Combat Enhancements", 59 settings in 9 groups, format "none" (config.json is the only store), Default preset = the mod's defaults (defaults.json); group "Defaults": buttons "Revert all to defaults" and "Save current values as a defaults file".`
+- Log: `[mcm] settings page registered at main menu (attempt 1): MCM 5.…, page "Trax Combat Enhancements", 66 settings in 9 groups, format "none" (config.json is the only store), Default preset = the mod's defaults (defaults.json); group "Defaults": buttons "Revert all to defaults" and "Save current values as a defaults file".`
   (`at retry (attempt 2)` is fine — MCM woke a moment after us; the first try is now always at the
   main menu, where MCM builds its services — step 12); the settings dump shows
   `VerboseLogging = true (default false)`.
@@ -162,10 +165,15 @@ are tired, then Escape → Mod Options → *Mod enabled* off → Done → fight 
 Every fighter has an Athletics bar **as big as his Athletics skill** (never under 50). Every attack
 costs points — 10 for a soldier, 7.5 for a hero, 5.6 for the hero who leads his party (you). The top
 quarter of the bar (from the **peak line**, the white mark, up) is full strength; below it his lucky
-hits, attack RATE (wind-up, swing, draw, reload and, for the AI, the pause between attacks) and run
-speed fall in straight lines — at empty one attack where he made five, a run at 0.3. Wounds cap the
-bar. About 3 s after the last attack it refills: 60 s from empty to full standing or walking, half
-that fast running flat out. Blocking is never slowed.
+hits, attack RATE and run speed fall in straight lines — at empty one attack where he made five, a
+run at 0.3. **PAUSE ONLY (step 13)**: every swing, thrust, draw, throw and reload plays at FULL speed
+(no slow-mo); what slows is the **pause after each attack** — an attack of length D at attack speed m
+is followed by D × (1/m − 1) in which no new attack can start (at empty: four attack-lengths). For
+you the **Attack recovery bar** above your Athletics bar empties at the attack and fills over the
+pause, the seconds inside it; pressing attack meanwhile does nothing and flashes it; holding attack
+starts the next one the moment it is full. The AI waits out its pause the same way, guard up. Wounds
+cap the bar. About 3 s after the last attack it refills: 60 s from empty to full standing or walking,
+half that fast running flat out. Blocking, parrying, kicks, moving, weapon switches: never held.
 
 | Fighter | Athletics skill | Bar | A blow costs | Blows at full strength | Blows to empty |
 |---|---|---|---|---|---|
@@ -180,13 +188,22 @@ Setup: custom battle, you as general, your side Imperial Legionaries plus a few 
 Imperial Recruits plus a few archers. Keep this battle going through C1-C6.
 
 **C1. You — full strength, weaker every swing, empty, refill.** Before the lines meet, swing at the
-air (misses cost too), counting.
-- You see: the number drops ~5.6 a swing; the first ~5 swings at normal speed, the bar green down to
-  the white mark; then every swing a little slower and the bar blue → yellow → orange → red; at
-  ~16 the word reads *Exhausted* in red and a swing takes about five times as long. Run: about a third
-  of your pace. Block: normal. Stop: about 3 s later the bar climbs, ~45 s to green, 60 s to full.
+air (misses cost too), counting — click as fast as you can.
+- You see: the number drops ~5.6 a swing; the first ~5 swings back to back, the bar green down to the
+  white mark and the **Attack recovery bar** above it full and quiet; then the bar blue → yellow →
+  orange → red and after every swing the recovery bar **empties and refills** (amber, the seconds
+  inside it: `0.1 s`, `0.4 s`, … up to `≈ 3 s` at empty); **every swing itself plays at normal speed
+  — no slow motion at all**. At ~16 the word reads *Exhausted* in red. Run: about a third of your
+  pace. Block: normal. Stop: about 3 s later the bar climbs, ~45 s to green, 60 s to full.
 - Then empty yourself again and RUN flat out while it refills: about twice as long.
 - Log (always):
+  - `[rate] attached: your attack gate FIRST in the behaviour list (0 of N; behaviours pre-tick from the end, so it runs right after MissionMainAgentController at K) - …`
+    (at the mission start - `could not attach your attack gate` → tell Claude) and, at your first pause,
+    `[rate] your attack gate holds for the first time: it pre-ticks after MissionMainAgentController (gate 0, controller K of N …)` — **`WARNING: your attack gate's order is off` → tell Claude**
+  - `[athletics] YOU: first attack pause this battle at … s - your melee attack (wind-up 0.28 + swing 0.55 = D 0.83 s) ended at attack speed x0.93 (f 0.91) → no new attack for 0.06 s = D x (1/m - 1), until … s; the hold began at your release's start (expected … s) …`
+    — the pause must be D x (1/m − 1) (pauses under 0.1 s are skipped: the first ones may come a few
+    swings below the line); later ones rate-limited: `[athletics] YOU: attack pause 1.20 s at … s (D 0.80 s at x0.40, melee) until … s`,
+    `[athletics] YOU: attack pause ended at … s`
   - `[athletics] YOU: Athletics skill 90 → pool 90 (the skill x1.00, at least 50); full strength down to 68 (75%); a blow costs you 5.6 - about 5 blows at full strength, 16 to empty`
     — **the skill must match your character screen**
   - `[athletics] YOU dropped below full strength at … s: 61.9 of 90 (the line is 68) after 5 blows this mission - f 0.92: attacks x0.93, run x0.94, damage upside 92% of the full`
@@ -196,26 +213,58 @@ air (misses cost too), counting.
     — after the run `… avg rate x0.5…`
   - the colours: `[hud] player bar: BLUE for the first time this battle at … - f 0.97, …`, then
     `YELLOW`, `ORANGE`, `RED`, `[hud] player bar: EXHAUSTED shown at …`
-- Broken: your pool is not your Athletics skill; no slowdown at empty; a swing that costs nothing;
-  the number counting UP while you swing; a colour that disagrees with the fill (green below the mark).
+  - the recovery bar: `[hud] recovery bar: first pause shown at … s - empty at your attack, now refilling over 0.40 s (D 0.82 s at attack speed x0.67), "0.4 s" inside it, counting down`
+- Broken: your pool is not your Athletics skill; **a swing in slow motion** (the animations must stay
+  normal — the summary's `animations asked x1.00`); no pause at empty; a swing that costs nothing;
+  the number counting UP while you swing; a colour that disagrees with the fill (green below the mark);
+  the recovery bar stuck empty or not filling.
+
+**C1b. The pause — pressing early, holding, blocking, kicking (step 13).** Stay below the peak line
+(orange or red is easiest) and try each, a few times:
+1. **Press early**: tap attack while the recovery bar still fills. You see: nothing happens — no
+   wind-up, no half swing — and the recovery bar **flashes twice**. Tap during your own swing too:
+   no chained second blow (below the peak line), a flash.
+2. **Hold to attack**: press attack right after a swing and keep it held. You see: the next wind-up
+   starts by itself the moment the recovery bar is full.
+3. **Block during the pause**: hold block while the bar fills (let an enemy swing at you). You see:
+   you block normally the whole time. **Kick** (the kick key) and **switch weapons** during it: both
+   work at once.
+4. **Bow or javelins**: shoot; the next arrow is nocked as usual, but the draw waits until the bar
+   is full (held, it draws the moment it fills). A bow you are already drawing is never cancelled.
+- Log (always; the first of each in full, the rest rate-limited):
+  - `[athletics] YOU: attack pressed at … s during your own attack (no chained blow below the peak line) - swallowed: the engine never saw it (no wind-up); the Attack recovery bar flashes; keep it held and the attack starts the moment the pause ends`
+    and `[athletics] YOU: attack pressed early at … s with 0.62 s of your pause left - swallowed, bar flashed`
+  - `[athletics] YOU: first attack pause ended at … s after … s (asked … s) - your attack button was held: the next attack starts now; presses swallowed during it: N`
+  - `[athletics] YOU: your held attack button started the next attack at … s, 0.02 s after the pause ended (hold-to-attack: near 0 = it fires the moment the recovery bar is full)`
+  - `[hud] recovery bar: first flash at … s - you pressed attack with … s of your pause left (2 pulses of 0.12 s)`
+  - **Broken**: `[athletics] YOU: an attack began at … s while your pause held (…) - the input gate did not stop it` —
+    a swing that started although the bar was not full (tell Claude); blocking or kicking not working during
+    the pause; a stuck swing or a half wind-up after an early press.
+- Summary: `attack rate - your timer (AttackRatePlayerTimer on at the end): N timers (melee …, ranged …), avg asked … s, max … s; your presses swallowed: A during your own attack (no chained blow), B during the countdown - the recovery bar flashed Cx; the button held through the end Dx, your attack began avg 0.0x s after (n D) - near 0 = hold-to-attack works; attacks that started while held anyway: 0 (must be 0 - the input gate missed them); …`
+  — **`attacks that started while held anyway` must be 0**; `your attack began avg` near 0; and the
+  `attack rate, melee, you, <band> - timer:` rows: `started before the timer ended: 0 (must be 0)`.
 
 **C2. Recruits run dry, legionaries keep going.** Let the lines meet; watch the front from close by.
-- You see: recruits slow after 2 swings and crawl after ~5 — between swings they stand, guard up,
+- You see: recruits' swings stay quick, but after 2 swings they wait longer and longer between them
+  and after ~5 they strike about once in four swing-lengths — between blows they stand, guard up,
   still blocking; legionaries keep their pace for ~4 swings and last ~13; exhausted men lag when a
-  formation moves and fresh men overtake them.
+  formation moves and fresh men overtake them. **No slow-motion swings anywhere.**
 - Log:
   - verbose samples: `~[athletics] pool at spawn: Imperial Recruit - Athletics skill 20 → pool 50 (the floor); 2 blows at full strength, 5 to empty`,
     `~[athletics] blow melee (on foot): … - cost 10.0, 40.0 → 30.0 of 50 (f 1.00 → 0.80) - below full strength`
   - once: `[speed] first exhaustion this mission: <name> at … - properties before: … → after UpdateAgentProperties: … - the penalties are in the agent's properties`
-  - once: `[rate] first slowed fighter this mission: <name> at … - attacks x0.97 …; T1 animations: … (each x0.97 as asked); T2 AI decisions (AttackRateAiDecisions on): … (chances x0.97, the aim ÷ 0.97 as asked); …`
+    (with full-speed animations only the run value moves: `x1.00 / x1.00 / x1.00, run x0.…`)
+  - once: `[rate] first slowed fighter this mission: <name> at … - attack speed x0.97 (f 0.96); animations (AttackAnimationMinPercent 100 → x1.00): swing … → … (each x1.00 as asked - full speed, no slow-mo); AI decisions (AttackRateAiDecisions off): … (unchanged, as asked); the timer (you: AttackRatePlayerTimer on, AI: AttackRatePaceHold on) comes after each attack …`
     — **`NOT … as asked - tell Claude`**
-  - once: `[rate] first pace hold this mission: <name> at … - … held 0.40 s (until … s); scripted flags 0 → 2 (NoAttack set: the engine took it)`
-    — **`NoAttack NOT set` → tell Claude**
-- The summary (appendix L4, L5) settles whether the engine honours it:
-  `attack rate, melee, AI - verdict: ON TARGET in 3 of 3 tired bands`, `run speed check, on foot … - the engine's top speed follows the curve`,
+  - once: `[rate] first AI timer this mission: <name> at … s - his melee attack (D 0.80 s: wind-up + swing) ended at … s at attack speed x0.85 (f 0.81) → no new attack for 0.14 s = D x (1/m - 1), until … s; scripted flags 0 → 2 (NoAttack set: the engine took it)`
+    — **`NoAttack NOT set` → tell Claude**; and `[rate] first AI timer ended at … s after … s - time up; …`
+- The summary (appendix L4, L5) settles whether the engine honours it: the `attack rate, melee, AI,
+  <band>` rows read `animations asked x1.00` and their wind-up / swing about `(x1.00)`; the
+  `… - timer:` rows `started before the timer ended: 0`; `attack rate - AI timer ends: … an attack
+  started anyway 0`; `run speed check, on foot … - the engine's top speed follows the curve`;
   `Athletics tick cost: avg … ms` (well under 1 ms).
-- Feel: tired men fight in slow motion — fewer blows, longer gaps, guard up in between — while
-  fresh men keep their pace. Say if it is too much or too little.
+- Feel: tired men swing as fast as ever but strike less often — longer gaps, guard up in between —
+  while fresh men keep their pace. Say if it is too much or too little.
 
 **C3. Wounds.** Take a few hits (stand in front of their archers).
 - You see: the right end of your bar goes dark red-brown — the part your wounds hold; the refill
@@ -224,30 +273,45 @@ air (misses cost too), counting.
   and `[hud] player bar: wounded at … - the last 38% of the bar shown dark: usable 56 of 90 (health caps the bar); f can reach at most 0.83 now`.
 
 **C4. Shoot.** Take a bow (or javelins) and shoot until empty; watch the two groups of archers.
-- You see: each draw a little slower below the peak line, very slow at empty; tired archers' volleys
-  thin out.
-- Summary: `attack rate, ranged, AI - verdict: …`; `Athletics detection: … shots seen N … | ranged releases seen by the poll M` (N ≈ M).
+- You see: every draw at normal speed; below the peak line the recovery bar refills after each shot
+  (from the moment the next arrow is nocked), the next draw waits for it; tired archers' volleys thin
+  out, their draws still quick.
+- Summary: `attack rate, ranged, AI, <band> - timer: … (D avg 2.50 s at m … → asked avg … s = D x (1/m - 1)); … started before the timer ended: 0 (must be 0)`
+  (a ranged D is draw + loose + reload); `attack rate, ranged, AI - verdict: …`; `attack rate - AI timer
+  (…): N holds (melee …, ranged R, …)` with R above 0; `Athletics detection: … shots seen N … | ranged releases seen by the poll M` (N ≈ M).
 
 **C5. Ride.** Mount, swing from the saddle; couch a lance if you have one; then ride 30 s without
 attacking.
-- You see: the same curve on horseback; riding itself never drains you; horses keep their speed.
-- Summary: `Athletics detection: … melee hits by fighters H (…): during a counted release A, outside one B` — **B small next to A**.
+- You see: the same curve on horseback — the same pause and recovery bar after a swing from the
+  saddle; riding itself never drains you; horses keep their speed; tired enemy riders (horse archers
+  too) attack less often.
+- Summary: `Athletics detection: … melee hits by fighters H (…): during a counted release A, outside one B` — **B small next to A**;
+  `attack rate - AI timer (…): N holds (…, mounted M)` — riders are held too (step 13).
 
 **C6. Change it mid-battle (hot swap).** Escape → Mod Options → Trax Combat Enhancements; every change
 applies on the first frame back.
-- *Tired fighters* → *Attack speed when empty (%)* 20 → 50: empty men attack at half speed instead of
-  a fifth. Log `[config] ExhaustedAttackSpeedPercent: 20 → 50 (source: MCM)`, then
+- *Tired fighters* → *Attack speed when empty (%)* 20 → 50: empty men pause one attack-length instead
+  of four. Log `[config] ExhaustedAttackSpeedPercent: 20 → 50 (source: MCM)`, then
   `[speed] speed settings now: when empty attacks at 50%, run x0.30, horses x1.00; full strength at 75% of the pool - N fighters get new speeds …`. Back to 20.
+- *Tired fighters* → *Your attacks wait out the pause* off (while your bar refills): the recovery bar
+  goes, you attack freely at once. Log `[rate] AttackRatePlayerTimer switched OFF mid-mission at … s: your attacks are no longer held …`
+  and `[athletics] YOU: your attack pause released at … s - switched off (…): attack at once`. Back on.
+- *Tired fighters* → *Slowest attack animation (%)* 100 → 50: tired swings slow down again (a little
+  slow-mo on top of the pause) - log `[rate] AttackAnimationMinPercent now 50 at … s: N tired fighters get their attack animations at x max(m, 0.50) …`. Back to 100: normal speed.
+- *Your Athletics bar* → *Attack recovery bar* off / on: it goes and comes back (`[hud] recovery bar: layer removed at … - ShowAttackRecoveryBar off`).
 - *Damage randomness* → *Spread (± %)* 50 → 0: the same blow deals the same number. Log per hit
   `~[damage] not rolled - spread 0 (DamageRandomPercent): melee on a person: …`. Back to 50: the very
   next hit rolls again.
-- *Athletics* → *Athletics* off: every slow fighter is normal at once, your bar goes. Log
-  `[athletics] AthleticsEnabled switched OFF mid-mission: N fighters back to full, M speed penalties lifted …`;
-  on again `… switched ON mid-mission: everyone starts full …`. Then finish the battle.
+- *Athletics* → *Athletics* off: every slow fighter is normal at once, your bar and the recovery bar
+  go, every pause (yours and the AI's) ends at once. Log
+  `[athletics] AthleticsEnabled switched OFF mid-mission: N fighters back to full, M speed penalties lifted …`,
+  `[rate] AthleticsEnabled switched OFF mid-mission at … s: N held fighters may attack again at once`
+  (and your `YOU: your attack pause released …` if one ran); on again `… switched ON mid-mission: everyone starts full …`. Then finish the battle.
 
 **C7 (optional, +10 min). The attack-rate A/B.** Three short runs of C's setup, flipping BETWEEN
-battles: (1) the defaults; (2) *Tired fighters* → *Tired AI keep a slower pace* off (the AI's
-decisions alone); (3) it on and *Tired AI attack less often* off (the hold alone). Compare each
+battles: (1) the defaults (the AI's pause on, *Tired AI also decide to attack less* off); (2) *Tired AI
+also decide to attack less* ON as well (both stacked - step 5e's log read "too slow" like this);
+(3) *Tired AI wait out the pause* off (the AI not held - its rate then barely drops). Compare each
 summary's `attack rate, melee, AI - verdict` line and tell Claude which read closest to ON TARGET —
 and which FELT right.
 
@@ -296,10 +360,17 @@ its right end lined up with the health bar's fill: the word *Athletics*, the num
 (left / your whole bar; it reads 0 only when truly empty), and a slim bar: the fill coloured by f
 (green at or above the peak line, blue just below, yellow ≤ 75% of the line, orange ≤ 50%, red ≤ 25%),
 a white mark at the peak line, the part your wounds hold dark red-brown, the rest dark grey. Empty:
-*Exhausted*, word, number and frame red.
+*Exhausted*, word, number and frame red. **Just above it (step 13) the Attack recovery bar**: the words
+*Attack recovery* and a slim bar — full and steel-grey when you may attack, EMPTY when you attack
+below the peak line, then filling (amber) over your pause with the seconds left inside it; it
+flashes white twice when you press attack too early. Since step 13 your Athletics row sits a little
+lower (30 px from the bottom) to make room.
 ```
                                      [♥ ████████████ health ████████████ ]
+       Attack recovery              [████████████████████████████████████]     full: you may attack
              Athletics  180 / 180   [██████████████████████████|███████]     all green, mark at 3/4
+
+       Attack recovery              [██████████░░░░ 1.3 s ░░░░░░░░░░░░░░░]     filling: 1.3 s of your pause left
              Athletics   71 / 180   [██████████░░░░░░░░░░░░░░░░|░▓▓▓▓▓▓]     yellow fill, grey, dark wounded end
              Exhausted    0 / 180   [░░░░░░░░░░░░░░░░░░░░░░░░░░|░▓▓▓▓▓▓]     all red text and frame
 ```
@@ -327,15 +398,22 @@ Gameplay) or photo mode on, or once you are knocked out. Outside a battle — th
 town — it shows while you hold a weapon or a shield, or while your Athletics refills (F6, step 12).
 Try: *Hide Battle UI* on and off; get knocked out (or watch the end of a battle); change the game's
 UI scale once; mount a horse.
-- You see: the row under the health bar (and the horse bar), not overlapping them, not cut off; it
-  scales with the UI scale like the health bar; it goes and comes back with each switch.
+- You see: the two rows (Attack recovery above, Athletics below) under the health bar (and the horse
+  bar), not overlapping them or each other, not cut off; they scale with the UI scale like the health
+  bar; they go and come back together with each switch (the recovery bar also with *Attack recovery
+  bar* and *Your attacks wait out the pause*).
 - Log: `[hud] attached: player bar (PlayerAthleticsView, movie TraxPlayerAthleticsBar, prefab installed) - …`;
+  `[hud] attached: recovery bar (AttackRecoveryView, movie TraxAttackRecoveryBar, prefab installed) - shown while ModEnabled, AthleticsEnabled and ShowAttackRecoveryBar are on, …, you are on the field and your Athletics bar (ShowPlayerBar) and your pause (AttackRatePlayerTimer) are on; outside a battle too …`;
   `[hud] player bar: layer created at 31.2 s (mode Battle, was hidden: not a fight (mission mode)) - movie TraxPlayerAthleticsBar loaded OK (13 widgets)`;
+  `[hud] recovery bar: layer created at 31.2 s (…) - movie TraxAttackRecoveryBar loaded OK (9 widgets)`;
   `[hud] player bar: first values pushed at … - 90 / 90, fill 1.00, …, colour green (peak zone - full strength), …`;
-  `[hud] player bar: layer removed at … - the game's Hide battle UI is on` / `- no player agent on the field` / `- ShowPlayerBar off`.
+  `[hud] recovery bar: first values pushed at … - full (no pause running); bar 205 x 14 px, 62 px from the right edge and 54 px from the bottom (your Athletics bar's row 30 + 24; …); flash on an early attack on`;
+  `[hud] player bar: layer removed at … - the game's Hide battle UI is on` / `- no player agent on the field` / `- ShowPlayerBar off`
+  (and the same `[hud] recovery bar: layer removed at …` lines; `- your Athletics bar (ShowPlayerBar) or your pause (AttackRatePlayerTimer) is off`).
 - If it sits wrong: move it live with *Advanced* → *Your bar: length / thickness / from the right
-  edge / from the bottom edge (px)* until it looks right; tell Claude the four numbers and your
-  resolution and UI scale.
+  edge / from the bottom edge (px)* (the recovery bar moves with it) and *Recovery bar: length /
+  thickness / above your bar (px)* until it looks right; tell Claude the numbers and your resolution
+  and UI scale.
 - War Sails: while you steer a ship the vanilla hero bar shrinks and drops — say whether ours collides.
 
 **E2. The strip under the cards — with RTS Camera.** Open the orders menu.
@@ -358,7 +436,8 @@ UI scale once; mount a horse.
 
 **Broken — tell Claude**: no bar at all (read the `[hud]` lines in order: no `attached:` → look for
 `[error] hud.attach`; `prefab NOT FOUND` → the GUI folder did not install; `movie … FAILED to load`);
-the bar or a cell in the wrong place, overlapping vanilla UI or cut off; a colour that disagrees with
+the bar, the recovery bar or a cell in the wrong place, overlapping vanilla UI or each other, or cut off; the recovery bar
+stuck empty or never flashing; a colour that disagrees with
 the fill or its `for the first time` line's f; a wrong number (not your pool, counting up, 0 with fill
 left); the wounded part missing; staying on screen when it should hide, or not coming back; a cell
 under the wrong card or a card with men and no cell; the **compact panel with *Strip under the cards*
@@ -447,7 +526,7 @@ defaults file**.
   back to its default (N changed) - applied now; config.json saved."* (MCM's Cancel does not undo it.)
 - Log: `[mcm] "Revert all to defaults" pressed`, one `[config] <Key>: … → … (source: defaults)` per
   setting that moved, `[config] wrote config.json (reverted to defaults): every value as it is in effect now`,
-  `[config] reverted all 59 settings to their defaults (…): N changed, applied live`.
+  `[config] reverted all 66 settings to their defaults (…): N changed, applied live`.
 
 **G4 (optional, 1 min). The rewrite rule.** Hand-edit one value in config.json; then — before any
 battle — change a DIFFERENT value in MCM and press Done. The hand edit must still be in the file.
@@ -480,9 +559,11 @@ From `Documents\Mount and Blade II Bannerlord\Configs\TraxCombatEnhancements\` (
   when both are on); `[mcm]` registered or not (A1, A4) — step 12: at most ONE `not ready yet` line,
   followed by `registered at retry (attempt N)` or one `never became ready - gave up after 31 attempts …`;
   with MCM's module off but its DLL carried by another mod, one `MCM's module is not enabled - no settings page; config.json only.`
-  and nothing more; `[config] defaults: … 59 keys for 59 settings` (any `defaults.json PROBLEM:` under it →
-  that setting runs on a fallback — tell Claude); `[config] settings in effect (59, version N):` and
-  one line per setting (a changed one ends `(default …)`).
+  and nothing more; `[config] defaults: … 66 keys for 66 settings` (any `defaults.json PROBLEM:` under it →
+  that setting runs on a fallback — tell Claude); `[config] settings in effect (66, version N):` and
+  one line per setting (a changed one ends `(default …)`). An old config.json (format 1, before step
+  13) is migrated once: `[config] migrated config.json at …: AttackRateAiDecisions: true → false (format 1 → 2, the old default; …)`
+  (and `PlayerBarOffsetBottom: 54 → 30`), then `rewrote config.json as format 2 …`.
 - Every change: `[config] <Key>: <old> → <new> (source: MCM|file|defaults)` — dragging a slider logs
   each step; Cancel logs the way back.
 - Every game start and mission start: `[config] config.json re-read at <when>: no changes` or
@@ -590,42 +671,58 @@ shield blocks (switch), falls, doors / siege engines / ships.
   `outside one` small next to `during a counted release`, `shots seen` ≈ `ranged releases seen by the poll`;
   errors none.
 
-### L5. Attack rate — the whole cycle follows m
+### L5. Attack rate — PAUSE ONLY (step 13)
 
-A tired fighter's attack speed m drives three things: **the animations** (always: wind-up, swing,
-draw, reload, throws ÷ m); **the AI's decisions** (*Tired AI attack less often*: its chance to attack,
-riposte and loose × m, its aim ÷ m); **the pace hold** (*Tired AI keep a slower pace*: after each melee
-swing a tired AI fighter on foot holds his next attack until his fresh cycle ÷ m has passed; never you,
-never riders). Blocking is never slowed; the recoil after a blocked blow plays at the game's speed (the
-known gap).
-- `[rate] mission start: ON - animations x m always (…); AI decisions (AttackRateAiDecisions) on: …; pace hold (AttackRatePaceHold) on: …; blocking and the recoil after a block: untouched - read live; …`
-- Once: `[rate] first slowed fighter this mission: …` (C2), `[rate] first pace hold this mission: …`
-  and `[rate] first pace hold ended at … s after 0.40 s - time up; scripted flags now 0; …`.
-- Verbose: `~[rate] pace hold: …`, `~[rate] pace hold ended: …`, `~[rate] pace hold not started: …`.
+A tired fighter's attack speed m sets **the pause after each attack**: an attack of D seconds (its
+wind-up + release; ranged + the reload after the loose) is followed by D × (1/m − 1) with no new attack
+(under 0.1 s: none). **You** (*Your attacks wait out the pause*): the input gate swallows your attack
+presses until it ends; held, the attack starts when it does. **The AI** (*Tired AI wait out the pause*):
+NoAttack, guard up, melee and ranged, on foot and mounted. **The animations** play at full speed
+(*Slowest attack animation (%)* 100); **the AI's decisions** (*Tired AI also decide to attack less*) are
+off by default. Blocking, parrying, kicks, moving and weapon switches are never held.
+- `[rate] attached: your attack gate FIRST in the behaviour list (0 of N; … right after MissionMainAgentController at K) - …` (mission start),
+  `[rate] mission start: ON - PAUSE ONLY: animations at full speed (AttackAnimationMinPercent 100); after each attack no new attack for D x (1/m - 1) (D = its wind-up + release, ranged + its reload): you (AttackRatePlayerTimer) on - …, AI (AttackRatePaceHold) on - NoAttack, melee and ranged, on foot and mounted; AI decisions (AttackRateAiDecisions) off; never held: blocking, parrying, moving, weapon switches, kicks - read live; …`
+- Once: `[rate] first slowed fighter this mission: …` (C2), `[rate] first AI timer this mission: …` and
+  `[rate] first AI timer ended at … s after … s - time up; …`, `[rate] your attack gate holds for the first time: …`;
+  yours: the `[athletics] YOU: first attack pause …`, `… first attack pause ended …`, `… attack pressed …`,
+  `… your held attack button started the next attack …` lines (C1, C1b).
+- Verbose: `~[rate] AI timer: …`, `~[rate] AI timer ended: …`, `~[rate] AI timer not started: …`.
+- Switches mid-battle: `[rate] AttackRatePaceHold switched OFF mid-mission at … s: N held fighters may attack again at once`,
+  `[rate] the AI timer is ON again at …`, `[rate] AttackRatePlayerTimer switched OFF / ON …`, `[rate] AttackRateAiDecisions switched ON …`,
+  `[rate] AttackAnimationMinPercent now 50 at …`.
 - Summary (numbers made up):
   ```
-  [summary] attack rate, melee, AI, peak (f 1): wind-up 0.32 + held 0.08, swing 0.52 (clean, hit nothing 0.60), recoil after a block 0.40, pause 0.45 | cycle 1.40 s (n 900), m 1.00 - the fresh reference
-  [summary] attack rate, melee, AI, f 0.5-1: wind-up 0.41 (x1.28) + …, pause 0.80 (x1.78) | cycle 1.85 s (n 300), m 0.78 → target 1.80 s: 103% - on target
-  [summary] attack rate, melee, AI, empty (f 0): wind-up 1.60 (x5.00) + …, recoil after a block 0.41 (x1.02), pause 2.40 (x5.33) | cycle 6.60 s (n 40), m 0.20 → target 7.00 s: 94% - on target
-  [summary] attack rate, melee, AI - verdict: ON TARGET in 3 of 3 tired bands (…)
-  [summary] attack rate, melee, you, empty (f 0): … | cycle 4.60 s (n 12), m 0.20 → target 4.75 s: 97% - on target
-  [summary] attack rate, ranged, AI, empty (f 0): draw 3.00 (x5.00) + aim 1.80 (x2.00), loose 0.20 (x1.00), reload 3.50 (x5.00), pause 0.90 (x3.00) | cycle 9.40 s (n 30), m 0.20 → target 13.50 s: 70% - too fast
+  [summary] attack rate, melee, AI, peak (f 1): animations asked x1.00 - wind-up 0.32 + held 0.08, swing 0.52 (clean, hit nothing 0.60), recoil after a block 0.40, pause 0.45 | cycle 1.40 s (n 900), m 1.00 - the fresh reference
+  [summary] attack rate, melee, AI, f 0.5-1: animations asked x1.00 - wind-up 0.32 (x1.00) + …, swing 0.53 (x1.02) …, pause 1.60 (x3.56) | cycle 2.45 s (n 300), m 0.72 → target 1.94 s: 126% - too slow
+  [summary] attack rate, melee, AI, f 0.5-1 - timer: 310 (D avg 0.84 s at m 0.72 → asked avg 0.33 s = D x (1/m - 1)); measured: the next attack began avg 1.55 s after the attack's end (n 290), 1.22 s after the timer ended; started before the timer ended: 0 (must be 0)
+  [summary] attack rate, melee, AI, empty (f 0): animations asked x1.00 - wind-up 0.32 (x1.00) + …, pause 4.60 (x10.2) | cycle 5.50 s (n 40), m 0.20 → target 7.00 s: 79% - too fast
+  [summary] attack rate, melee, AI, empty (f 0) - timer: 45 (D avg 0.84 s at m 0.20 → asked avg 3.36 s = D x (1/m - 1)); measured: … 4.40 s after the attack's end (n 40), 1.04 s after the timer ended; started before the timer ended: 0 (must be 0)
+  [summary] attack rate, melee, AI - verdict: OFF TARGET in 1 of 3 tired bands (…)
+  [summary] attack rate, melee, you, empty (f 0): animations asked x1.00 - … | cycle 4.10 s (n 12), m 0.20 → target 4.75 s: 86% - on target
+  [summary] attack rate, melee, you, empty (f 0) - timer: 14 (D avg 0.82 s at m 0.20 → asked avg 3.28 s …); measured: … 3.30 s after the attack's end (n 12), 0.02 s after the timer ended; started before the timer ended: 0 (must be 0)
+  [summary] attack rate, ranged, AI, f below 0.5 - timer: 30 (D avg 2.60 s at m 0.45 → asked avg 3.18 s …); …; started before the timer ended: 0 (must be 0)
   [summary] attack rate - left out: cycles whose two ends fell in different f bands …; longer than 4 s ÷ m …; readies that ended in no attack …; chained …; with a step back in them …
-  [summary] attack rate - AI decisions (AttackRateAiDecisions on at the end): scaled in 1100 recomputes - …
-  [summary] attack rate - pace hold (…): 500 holds, avg 0.85 s, max 3.10 s at avg m 0.45; by f: …
-  [summary] attack rate - pace hold, not held: at full strength 2000, not needed … 150, the next attack already readied at the swing's end 60, … | not started by the tick: …
-  [summary] attack rate - pace hold ends: time up 480, a swing started anyway 2 (must be about 0 - NoAttack holds swings), … | … | the next ready came avg 0.15 s after a hold ended (n 420) - near 0 = the hold set his rhythm
-  [summary] attack rate - guard by f (…): peak (f 1) 45% (n 900) | f 0.5-1 47% (n 400) | f below 0.5 46% (n 150) | empty (f 0) 44% (n 60) | while held by the pace hold 52% (n 90)
+  [summary] attack rate - your timer (AttackRatePlayerTimer on at the end): 40 timers (melee 34, ranged 6), avg asked 1.10 s, max 3.30 s; your presses swallowed: 6 during your own attack (no chained blow), 25 during the countdown - the recovery bar flashed 18x; the button held through the end 12x, your attack began avg 0.02 s after (n 12) - near 0 = hold-to-attack works; attacks that started while held anyway: 0 (must be 0 - the input gate missed them); holds begun at your swing's start 30 (ended with no countdown, below 0.1 s: 2); ended early: switched off 1, not you any more 0, mission end 0 (still running at the end, released: 0)
+  [summary] attack rate - AI decisions (AttackRateAiDecisions off at the end): scaled in 0 recomputes - … (off by default since step 13: on top of the timer it double-counts)
+  [summary] attack rate - AI timer (AttackRatePaceHold on at the end; NoAttack after each attack of a tired AI fighter, melee and ranged, on foot and mounted): 900 holds (melee 800, ranged 100, mounted 60), avg 0.95 s, max 3.40 s at avg m 0.55; by f: …
+  [summary] attack rate - AI timer, not held: at full strength 2000, not needed (below 0.1 s) 150, the next attack already readied at the attack's end 60, the attack's length not measured 5, stepping back 200 | not started by the tick: …
+  [summary] attack rate - AI timer ends: time up 880, an attack started anyway 2 (must be about 0 - NoAttack holds attacks), … | … | the next ready came avg 1.20 s after a hold ended (n 700) - the AI's own re-decision after NoAttack lifts
+  [summary] attack rate - guard by f (…): peak (f 1) 45% (n 900) | f 0.5-1 47% (n 400) | f below 0.5 46% (n 150) | empty (f 0) 44% (n 60) | while held by the AI timer 52% (n 90)
   ```
-  Proves: each group's **`verdict`** — `ON TARGET` = every tired band's cycle within ±15% of the peak's
-  cycle ÷ m (`too fast` / `too slow` names the band); wind-up and swing (draw, reload) about 1/m = the
-  engine honours the animation multipliers; `pause` growing = the decisions and / or the hold.
-  AI rows too fast with the hold ON: `a swing started anyway` well above 0 → the engine ignores NoAttack
-  (tell Claude); `the next attack already readied` large → the AI chains blows before the hold. Too fast
-  with the hold OFF (C7 run 2) → keep the hold. Too slow with both on → the two stack; C7 run 3 tells
-  which to keep. Ranged AI has no hold: `too fast` there → tell Claude. **Blocking untouched**: the
-  `guard by f` rows within ~10 points of the peak row, `while held` not below it. You: your rows count
-  only if you attacked as fast as you could.
+  Proves, in this order:
+  1. **No slow-mo**: every row `animations asked x1.00` and its wind-up / swing / draw / reload about
+     `(x1.00)` of the peak's (a hit swing may run a little longer - `clean` is the pure one).
+  2. **The timer holds**: every `… - timer:` row `started before the timer ended: 0 (must be 0)`; `your
+     timer` → `attacks that started while held anyway: 0`; `AI timer ends` → `an attack started anyway`
+     about 0. Above 0 → the engine ignores NoAttack (AI) or the input gate's order is off (you) - tell Claude.
+  3. **Its size**: `asked avg` = D avg × (1/m avg − 1) in every row; `measured … after the attack's end` ≥
+     asked; `after the timer ended` = your fingers (near 0 when you hammer) or the AI's own re-decision.
+  4. **Hold-to-attack**: `your attack began avg 0.0x s after` near 0.
+  5. **The rate** (the `verdict`): target = the peak's cycle ÷ m. Your rows near target when you
+     attacked as fast as you could. The AI's rows: its own gap after an attack does not shrink, so
+     mild bands can read `too slow` (the NoAttack re-decision) and empty ones `too fast` (its own idle
+     gap runs inside the timer) - that is the D-based timer as specified; C7 tells which feels right.
+  6. **Blocking untouched**: the `guard by f` rows within ~10 points of the peak row, `while held` not below it.
 
 ### L6. Step back
 
@@ -652,9 +749,15 @@ known gap).
   own check: …)`); a wall's edge or stairs (`spot not level`, `no straight way back`, `spot off the navmesh`);
   tournaments, arena, naval (`not a field battle (…)`).
 
-### L7. The HUD — your bar and the orders strip
+### L7. The HUD — your bar, the recovery bar and the orders strip
 
-- Attach, first tick: `[hud] attached: player bar (…)` and `[hud] attached: orders strip (OrderStripView, movie TraxOrderStrip, prefab installed) - shown while ModEnabled, AthleticsEnabled and ShowInOrderMenu are on, … and while the orders menu is open`.
+- Attach, first tick: `[hud] attached: player bar (…)`, `[hud] attached: recovery bar (AttackRecoveryView, movie TraxAttackRecoveryBar, prefab installed) - …`
+  and `[hud] attached: orders strip (OrderStripView, movie TraxOrderStrip, prefab installed) - shown while ModEnabled, AthleticsEnabled and ShowInOrderMenu are on, … and while the orders menu is open`.
+  (Each view's build / removal lines have their own rate bucket since step 13.)
+- The recovery bar (step 13): `layer created …`, `first values pushed at … - full (no pause running); bar 205 x 14 px, … 54 px from the bottom (your Athletics bar's row 30 + 24; …)`;
+  the first pause in full (`first pause shown at … - empty at your attack, now refilling over … s (D … s at attack speed x…), "1.2 s" inside it, counting down`),
+  the first flash (`first flash at … - you pressed attack with … s of your pause left (2 pulses of 0.12 s)`);
+  `layer removed at … - ShowAttackRecoveryBar off` / `- your Athletics bar (ShowPlayerBar) or your pause (AttackRatePlayerTimer) is off` and the player bar's reasons.
 - Your bar: `layer created …`, `first values pushed …` (E1); the FIRST time of each colour per battle
   (C1 — the f at each must fit: blue between 0.75 and 1, yellow ≤ 0.75, orange ≤ 0.50, red ≤ 0.25);
   `EXHAUSTED shown`; `wounded` (C3); `layer removed at … - <reason>` (`ShowPlayerBar off`, `AthleticsEnabled off`,
@@ -678,6 +781,8 @@ known gap).
   ```
   [summary] hud: player bar (movie TraxPlayerAthleticsBar) - on screen 312.4 s of 340.2 s (92%); layer built 2x, removed 2x (ShowPlayerBar off 1, mission end 1); hidden: ShowPlayerBar off 7.7 s, not a fight 20.1 s; 3120 refreshes; errors 0
   [summary] hud: player bar colours on screen - green 180.0 s (58%), blue 60.0 s (19%), yellow 40.0 s (13%), orange 20.0 s (6%), red 12.4 s (4%); 14 colour changes; exhausted shown 2x (8.2 s); wounded part shown 45.0 s (lowest usable 62% - the last 38% of the bar dark)
+  [summary] hud: recovery bar (movie TraxAttackRecoveryBar) - on screen 312.4 s of 340.2 s (92%); layer built 2x, removed 2x (…); hidden: …; 3120 refreshes; errors 0
+  [summary] hud: recovery bar - pauses shown 40 (avg 1.10 s, longest 3.30 s), 60.2 s on screen not full; flashes shown 18 (FlashBarOnEarlyAttack on at the end) - your pauses and swallowed presses are in the attack rate lines
   [summary] hud: orders strip (movie TraxOrderStrip) - on screen 48.1 s of 340.2 s (14%); layer built 12x, removed 12x (orders menu closed 11, mission end 1); hidden: not a fight 20.1 s, orders menu closed 272.0 s; 480 refreshes; errors 0
   [summary] hud: orders strip - opened 12x: under the cards in 12, the compact panel in 0; technique: the live vanilla cards (layer MissionOrder: 16 cards); card layouts seen: 16 cards in 2 sets, set 1 drawn; cells placed 36 (lifted to the screen's edge 0), card changes 0, short mismatches 0 (under 1.0 s), card re-scans 0, values pushed 40; fallbacks: none
   ```

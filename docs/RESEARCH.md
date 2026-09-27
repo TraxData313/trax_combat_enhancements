@@ -378,6 +378,30 @@ AI_NOTES "Step 5e")**
   jobs, so it is set only on a free man and lifted only while he is free.
 - **UNVERIFIED** (the `attack rate` summary lines settle each): #14-#17 below.
 
+**Step 13 addendum — holding the PLAYER's attacks (verified in source 2026-09-27; detail and every
+decision in AI_NOTES "Step 13")**
+
+- The player's input is written by `MissionMainAgentController` (MountAndBlade.View, a `[DefaultView]`
+  MissionView) in `OnPreMissionTick` → `ControlTick`: every frame `MovementFlags = 0`, then the attack
+  key (9) held ORs `AttackDirectionToMovementFlag(GetAttackDirection())` - one of
+  `MovementControlFlag.AttackLeft/Right/Up/Down` (`AttackMask` 0x3C0); block (10) the `Defend*` bits;
+  kick (16) is `EventControlFlag.Kick` 0x8000, not an attack bit. `Agent.MovementFlags` is native
+  (`IMBAgent.Get/SetMovementFlags`). No engine flag holds only the player's attacks (`NoAttack` is an
+  AI decision flag; `CombatActionsEnabled` gates block too).
+- Tick order (Mission.cs): the native `IMBMission.Tick` calls `Mission.OnPreTick` FIRST (it waits for
+  the previous async agent tick, then every behaviour's `OnPreMissionTick` in REVERSE list order), then
+  its own work; `OnMissionTick` (reverse order too) runs after, in the managed `Mission.OnTick`.
+  `SubModule.OnMissionBehaviorInitialize` runs inside `Mission.AfterStart` after all starting
+  behaviours (logics, then views, then `MissionScreen.OnAddBehaviors`' default views) are listed, so a
+  mod's `AddMissionBehavior` appends it LAST = first in the reverse loops, before the controller.
+- **The lever**: a behaviour added with `AddMissionBehavior`, then moved to index 0 of the public
+  `Mission.MissionBehaviors` (still before `AfterStart`'s `foreach EarlyStart`) pre-ticks after the
+  controller and before the native reads the flags; clearing `AttackMask` there = the engine never
+  sees the press (no wind-up), a held button passes the frame the hold ends. Never while a ready runs
+  (bits vanishing mid-ready = the release). Built as `PlayerAttackGate`.
+- **UNVERIFIED** (the summary's `attacks that started while held anyway` settles it): that the native
+  reads the flags after the pre-tick in every mission type, and nothing else rewrites them in between.
+
 ---
 
 ## D. Movement — standing or moving

@@ -1643,7 +1643,7 @@ a third report (the exit hang) is not ours - notes below, no code.
 3. With MCM's module enabled: `registered at main menu (attempt 1)` (or `retry (attempt 2)`).
 4. With MCM's module off and a carried DLL: the "module is not enabled" line once, no other `[mcm]` line.
 
-## Step 13 — PAUSE ONLY: a no-attack timer instead of slow-mo (research 2026-09-27, before coding)
+## Step 13 — PAUSE ONLY: a no-attack timer instead of slow-mo (DONE 2026-09-27; the research below was written before coding)
 
 Anton's playtest call (2026-09-27): the attack slow-down "feels strange, I start swinging in slow-mo".
 His choice: animations at full speed; after each attack a **no-attack timer** of D × (1/m − 1) (D =
@@ -1748,11 +1748,86 @@ ONLY" is the spec.
    AI decisions: unchanged. Changing it mid-battle recomputes every tired fighter (budgeted).
 10. **`AttackRatePlayerTimer`** (on): the player's own timer is its own switch - an escape hatch in case
     the input gate misbehaves in some mission; the AI's stays `AttackRatePaceHold`.
-11. **The countdown and the flash** live on the player bar (ShowAttackCountdown, FlashBarOnEarlyAttack):
-    the countdown ("1.3 s", tenths rounded UP so it never reads 0.0 while running) left of the word
-    Athletics, only while the timer runs (not during the swing itself); the flash = a white overlay on the
-    bar, updated every frame (OnLayerFrame), not at HudRefreshSeconds (a 0.1 s pulse would stutter).
+11. **The countdown and the flash** - REPLACED mid-step by Anton (via the manager, 2026-09-27): "above
+    that bar add a bar 'attack recovery' that empties when I attack and until it fills I can't attack;
+    inside it add the secs delay added". Built instead: the **Attack recovery bar** (its own view,
+    `ShowAttackRecoveryBar`), the seconds ("1.3 s", tenths rounded UP so it never reads 0.0 while it
+    runs) inside it, the flash on IT (`FlashBarOnEarlyAttack`) - a white overlay, updated every frame
+    (OnLayerFrame), not at HudRefreshSeconds (a 0.1 s pulse would stutter). `ShowAttackCountdown` never
+    shipped.
 12. The target of the summary's verdict stays **the fresh cycle ÷ m** (DESIGN's "rate × m"); the
     technique's own check is new: per band the timer asked vs the measured gap from the attack's end to
     the next attack's start (must be ≥ the timer), attacks that started anyway (must be ~0), the latency
     after the timer ended, and the animation multiplier asked and measured (×1.00 by default).
+13. **The recovery bar's place**: above the Athletics row there is no room - the vanilla horse bar sits
+    at 80 px and the hero health bar's frame at 90 px from the bottom (AgentStatus.xml, Default state),
+    our row at 54 (+ ~24 high). So the Athletics row moved to **30** (`PlayerBarOffsetBottom`) and the
+    recovery row sits `RecoveryBarOffsetAbove` (24) above it - where the Athletics row was. Format 2
+    moves a config.json holding the old 54. It moves with the Athletics bar; its right end = the
+    Athletics bar's (`PlayerBarOffsetRight`).
+14. **The recovery bar's rules**: the Athletics bar's gate and outside-a-battle rule, its own switch, and
+    only while `ShowPlayerBar` and `AttackRatePlayerTimer` are on (with the timer off it would sit full for
+    nothing). EMPTY from the release's start when the hold began there (the swing), FILLING over the
+    countdown, FULL otherwise; amber while not full, steel when full.
+
+**Built (DONE 2026-09-27)** - file map in CLAUDE.md "Layout"
+- Core `AttackTimer.cs`: `AttackTimerMath` (Pause = D × (1/m − 1), Worth ≥ 0.1 s, AnimationMultiplier =
+  max(m, min%), CountdownText, FlashOn - 2 pulses 0.12 / 0.08 s, the bar's colours), `PlayerAttackTimer`
+  (AttackStarted → the hold from the release, AttackEnded → the countdown, Frame(now, pressing) → clear /
+  swallowed / flash / ended / held-at-end, Release), `PlayerGateFrame`, `PlayerTimerEnd`,
+  `AttackRecoveryReading` (Share, SecondsText, Recovering, the flash). `AttackRate.cs`: `AttackRateRules`
+  + PlayerTimer / AnimationMinPercent / PlayerTimerOn, the new Describe; `PaceNotHeld` without Player /
+  Rider / NoReference (+ NoDuration), `PaceEnd.AttackStarted`, no Mounted; the fresh-reference hold maths
+  (ExpectedReady, HoldUntil, FreshReference, HoldNeeded) removed. `AttackRateStats`: the animation asked per
+  band, the timer rows (D, m, asked, the gap, after the end, early), your timer's counters, the AI timer's
+  kinds / mounted. `ConfigFile.FormatVersion` 2 + `Migrate` (format 1: AttackRateAiDecisions true → the new
+  default, PlayerBarOffsetBottom 54 → the new default; a file without a stamp is not migrated).
+- Settings 59 → 66: `AttackRatePlayerTimer`, `AttackAnimationMinPercent` (Tired fighters, reordered: speed,
+  your pause, the AI's pause, the AI decisions, the animation floor), `ShowAttackRecoveryBar`,
+  `FlashBarOnEarlyAttack` (Your Athletics bar), `RecoveryBarWidth` / `Height` / `OffsetAbove` (Advanced);
+  defaults: AttackRateAiDecisions false, PlayerBarOffsetBottom 30 (DESIGN's table carries the same - a
+  design change, not a tuning).
+- Module: the phases build D and flag an attack's end (`TrackedAgent.AttackEndedNow`, `EndedDuration`);
+  `ObserveAction` → `AttackEnded` after the step-back roll → yours (`PlayerAttackEnded`) or the AI's
+  (`AiAttackEnded`, queued like the old hold); a ready / release begins → `AttackBegan` (the gap after the
+  last timer, an AI hold slipped through, your hold missed); your hold at the release's start
+  (`PlayerAttackStarting`, after the charge). `AthleticsLogic.PlayerTimer.cs`: the gate's frame
+  (`GatePlayerInput` native → `GateFrame` managed), the countdown's end, hold-to-attack, releases
+  (switched off, not you, mission end), the tick's safety net (a countdown the gate never ended is ended
+  0.25 s late and counted), `TryGetPlayerRecovery`. `PlayerAttackGate` (index 0 of the list, attached in
+  SubModule with a `[rate] attached: …` line naming the controller's index; checked again at the first hold).
+  `GamePaceBody`: riders allowed; `MustEnd` = the player took him only. The stat decorator: animations
+  × max(m, min%), AI decisions only with the switch; counts "attack" only when the animations were slowed.
+  `TraxHudView`: each view's own rate buckets (`hud-layer:<view>`, `hud-outside:<view>`) - the two bars
+  build and go together and one must not spend the other's budget (the smoke's fast run hit it).
+- HUD: `AttackRecoveryView` + `AttackRecoveryVM` + `TraxAttackRecoveryBar.xml` (9 widgets: the row, the
+  label, the frame, the inside, the fill, the seconds, the flash); attached after the player bar.
+- Tests 323 → 333 (`AttackTimerTests` 10, the migration, the new rules / summary lines; 2 old hold-maths
+  tests removed). Smoke 48 → 51 steps: the attack rate rewritten (full-speed animations; the AI timer -
+  melee, ranged from the reload's end, a throw, riders; the gap = the timer; every lift path; YOUR timer
+  through the real logic), the gate first in a stand-in mission's list, the recovery prefab, the recovery
+  bar through the real view; the decorator step (the floor at 100 / 0 / 60, the AI switch), the master
+  switch releasing your countdown. deploy.ps1 green.
+
+**Numbers from the smoke's model** (the AI readies the moment NoAttack lifts, its own pause 0.4 s, D 0.82):
+at empty the pause is 3.28 s and the cycle 0.9 + 3.28 = 4.18 s against the fresh 1.3 ÷ 0.2 = 6.5 s → 64%
+"too fast" - the AI's own idle gap runs INSIDE the timer, as the D-based spec implies. In game the
+NoAttack re-decision (1.5-2.6 s measured in step 12's log) sits on top; mild bands may read "too slow".
+
+**UNVERIFIED - only the game can tell (PLAYTEST C1, C1b, C2, C4, C5, E1, L5, L7; the line that settles each)**
+1. The gate clears the input before the engine reads it → `attack rate - your timer …: attacks that started
+   while held anyway: 0`; your `… - timer:` rows `started before the timer ended: 0`; and in the hand: an
+   early press does nothing (no half wind-up). `[rate] your attack gate holds for the first time: it
+   pre-ticks after MissionMainAgentController (gate 0, controller K …)` - a WARNING there = the order broke.
+2. Hold-to-attack: the held button starts the wind-up the frame the bar is full → `your attack began avg
+   0.0x s after`.
+3. Blocking, kicks, weapon switches during the pause (the eye - C1b 3); shield bashes wait (by design).
+4. Ranged: the reload (nocking) is not held and the next draw waits → your ranged `timer:` rows; the eye.
+5. NoAttack holds ranged AI and mounted AI as it holds melee on foot → `attack rate - AI timer ends: … an
+   attack started anyway` ~0 with `ranged` and `mounted` holds above 0 in the `AI timer (…)` line.
+6. The animations really play at full speed → every band `animations asked x1.00` and the phases `(x1.00)`;
+   the `[rate] first slowed fighter …` line `(each x1.00 as asked - full speed, no slow-mo)`.
+7. The AI-decision default (off): the C7 A/B - the melee AI verdict with it on vs off.
+8. The recovery bar's place at 1080p and other UI scales (between the vanilla bars and our Athletics row,
+   nothing overlapping) → the eye; the `first values pushed` line's numbers.
+9. The flash reads as "not yet" without being annoying (2 pulses, no restart while one runs) → Anton.

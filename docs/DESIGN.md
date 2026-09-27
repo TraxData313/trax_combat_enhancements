@@ -30,8 +30,8 @@ A 50-damage hit lands for anything from 25 to 75, rolled anew on every hit.
 
 A per-fighter pool — the **Athletics** bar — in every combat mission. Simpler cousin of RCM's
 posture: it only ever drains by attacking. Near the top of his OWN bar a fighter is at full
-strength; below that line his damage upside, swing speed and run speed fall in straight lines,
-down to slow attacks and a slow run when it is empty. (Athletics v2, Anton 2026-09-27, built in
+strength; below that line his damage upside, attack rate and run speed fall in straight lines,
+down to long pauses between attacks and a slow run when it is empty. (Athletics v2, Anton 2026-09-27, built in
 step 5c: it replaced step 5's flat 100-point pool, the cliff at 0 and the standing/moving
 regen.)
 
@@ -62,7 +62,7 @@ regen.)
   siege engines (ballista, onager) cost nothing.
 - **The peak zone** — the top of every fighter's OWN bar (Anton, 2026-09-27). At or above
   `AthleticsPeakPercent` (75) % of the fighter's pool the bar is GREEN and the fighter is at
-  full strength: full damage upside, full swing speed, full run speed, never steps back.
+  full strength: full damage upside, full attack rate (no pause), full run speed, never steps back.
   Below the line each of those falls in a straight line down to its floor at 0. With cost in
   points, bigger pools stay in the zone longer — recruit (floor 50): 2 swings at full
   strength, 5 to empty; legionary (130): 4 and 13; Fian champion (170): 5 and 17; a
@@ -80,47 +80,63 @@ regen.)
     `[1 − p, 1 + p × f]` with f from the ATTACKER (the rider's for a horse charge; an attacker
     Athletics does not follow keeps the full upside). In the peak zone +50%; halfway down to
     0, +25%; at 0 no upside at all — only the −50% side. The downside never changes.
-  - **Attack speed** = S + (1 − S) × f, S = `ExhaustedAttackSpeedPercent` (20%): melee swings
-    and thrusts, bow draw, crossbow reload, throws. Full speed in the peak zone, 20% at 0 —
-    a straight line, no cliff. **Exhausted** means E = 0 (for logs and bars).
-    **What "attack speed" means (Anton, 2026-09-27): the RATE of attacking, the whole cycle
-    — ready/wind-up, swing, recovery, and for the AI the pause before its next attack — not
-    only the swing animation.** At a multiplier of 0.5 a fighter who attacked once a second
-    attacks once every two seconds. The combat itself slows down. Built in step 5e, three
-    techniques on the same m (research: AI_NOTES "Step 5e"):
-    - **The animations** (always, since step 5): swing, thrust / bow draw / throw and reload
-      speed × m - the wind-up, the swing with its follow-through, the draw, the reload.
-    - **The AI's decisions** (`AttackRateAiDecisions`, on - an A/B switch): the AI's chance to
-      attack at a decision, to riposte after a parry and to loose × m, its aim before a shot ÷ m
-      - so its pause between attacks grows with the rest. The player has no AI: his pause is his.
-    - **The pace hold** (`AttackRatePaceHold`, on - an A/B switch): after each MELEE swing of a
-      tired AI fighter on foot, he may not start his next attack (the engine's own "no attack"
-      flag, guard up) until his next blow can land no sooner than his fresh cycle ÷ m after this
-      one (his fresh cycle = his own time between blows at full strength, else the battle's AI
-      average). Never the player, never riders, never while he steps back; ranged fighters get
-      the first two techniques only.
+  - **Attack speed** = m = S + (1 − S) × f, S = `ExhaustedAttackSpeedPercent` (20%): full in the
+    peak zone, 20% at 0 — a straight line, no cliff. **Exhausted** means E = 0 (for logs and
+    bars). **What "attack speed" means (Anton, 2026-09-27): the RATE of attacking** — at m 0.5 a
+    fighter who attacked once a second attacks once every two seconds; the combat slows down,
+    not the swing.
+    **PAUSE ONLY (Anton's playtest call, 2026-09-27; built in step 13 — research and every
+    decision in AI_NOTES "Step 13").** The animation slow-down of steps 5-12 read as "slow-mo"
+    and felt strange, so every attack animation — wind-up, swing, thrust, bow draw, throw,
+    reload — now plays at FULL speed, and the whole slow-down is a **no-attack timer** after
+    each attack: an attack of duration **D** that ends at attack speed **m** leaves a pause of
+    **D × (1/m − 1)** in which the fighter may not START another attack — so the attacking part
+    of his rhythm runs at × m (m 0.5: pause = D; m 0.2 at empty: pause = 4 × D). At full
+    strength (m 1) there is no pause; a pause under 0.1 s is not started (plumbing).
+    - **D** = the attack's own time: its wind-up (the ready up to full — the part a blow is HELD
+      ready is not counted) + its release (the swing with its follow-through). Ranged: the draw
+      + the loose + **the reload that follows** (nocking, winding a crossbow, taking the next
+      javelin); the pause starts when that reload ends. Melee: at the swing's end (a block
+      recoil plays inside the pause). m is the exact curve value when the attack ends.
+    - **Never held**: blocking and parrying, moving, switching weapons, kicks (a key and an
+      action of their own; free). Shield bashes — the attack button while blocking — wait with
+      every other use of the attack button (still free of Athletics). The reload itself is never
+      held; the next draw, aim or throw waits.
+    - **You** (`AttackRatePlayerTimer`, on): below the peak line your attack button does nothing
+      while your pause runs — no wind-up at all, no stuck state; **keep it held and your next
+      attack starts the moment the pause ends**. The hold begins at your release's start when
+      the pause it will leave is sure to be worth it, so a click during your own swing cannot
+      chain a blow past it. How: a tiny behaviour sits first in the mission's behaviour list, so
+      it runs right after the game's player controller has written the frame's input, and clears
+      only the attack bits (nothing patched, no Harmony). A bow already drawn is never cancelled
+      (the pause only ever starts at a loose).
+    - **The AI** (`AttackRatePaceHold`, on - the A/B switch of step 5e's "pace hold"): after each
+      attack of a tired AI fighter — melee AND ranged, on foot AND mounted (horse archers and
+      lancers too) — the engine's own "no attack" flag (guard up) for the pause, set only on a
+      man with no game job on him, lifted only while he is free; never while he steps back.
+    - **The AI's decisions** (`AttackRateAiDecisions`, **off** since step 13 - an A/B switch):
+      the AI's chance to attack, to riposte and to loose × m, its aim before a shot ÷ m. On top of
+      the timer it double-counts (the playtest log read 128% / 172% "too slow"): the timer runs
+      inside the AI's own gap after an attack, and a NoAttack hold already costs the AI its own
+      re-decision (1.5-2.6 s measured) when it lifts.
+    - **The animations — optional, the old technique** (`AttackAnimationMinPercent`, 100): the
+      attack animations play at max(m, this %) - 100 = always full speed; lower it to bring a
+      little slow-mo back on top of the timer; 0 = steps 5-12's animations × m whole. Run speed
+      is not affected by it.
+    - **You see it**: the **Attack recovery bar** just above your Athletics bar (§3) empties when
+      you attack and fills over your pause, the seconds left inside it; it **flashes** when you
+      press attack too early (`FlashBarOnEarlyAttack`).
     - **Blocking is never slowed**: weapon handling, shield speed and every defence value of the
-      AI are left alone. Shared and unavoidable: a tired man's slower swing keeps him committed
-      longer. Not reachable: the recoil after a blocked blow plays at the game's own speed
-      (per-agent animation speed is not safe to touch - AI_NOTES "Step 5e").
+      AI are left alone, and with full-speed animations a tired man's swing no longer keeps him
+      committed longer.
     - **Measured**: the summary's `attack rate` lines give, per f band, melee and ranged, AI and
-      you apart, every phase's average, the cycle, m, the target (the peak's cycle ÷ m) and
-      measured ÷ target with a verdict word (on target within ±15%, too fast, too slow), the pace
-      holds, and whether tired men block as often as fresh ones.
-  - **PAUSE ONLY — Anton's playtest call (2026-09-27), supersedes the animation technique
-    above (built in step 13).** In game the animation slow-down read as "slow-mo" and felt
-    strange. So: every attack animation (wind-up, swing, thrust, draw, throw, reload) plays at
-    FULL speed, always; the whole slow-down is a **no-attack timer** after each attack. After
-    an attack of duration D (measured, this attack's own wind-up + release), the fighter may
-    not start another attack for D × (1/m − 1) — so the rate is exactly × m (m 0.5: pause = D,
-    one attack every 2 s instead of 1 s; m 0.2 at empty: pause = 4 × D). Blocking, parrying,
-    moving are never held. Applies to the PLAYER (his attack input does nothing until the
-    timer runs out; holding the button starts the attack the moment it ends) and to the AI
-    (the pace hold, now melee AND ranged, carries the whole slow-down; the AI-decision scaling
-    stays an A/B switch, off if it double-counts). The player sees it: a **countdown**
-    ("1.3 s") beside his Athletics bar while the timer runs, and the **bar flashes** when he
-    tries to attack before it ends. A slider keeps a little slow-mo possible
-    (`AttackAnimationMinPercent`, default 100 = none) for anyone who wants it back.
+      you apart, the animation multiplier asked (×1.00 by default) and every phase's average
+      against the peak's (the animations as the engine played them), each timer's D, m and pause
+      against the measured gap from the attack's end to the next attack (attacks that started
+      inside a timer: must be 0), the cycle, m, the target (the peak's cycle ÷ m) and measured ÷
+      target with a verdict word (on target within ±15%, too fast, too slow); your timer (presses
+      swallowed, the held button firing, releases); the AI's holds; whether tired men block as
+      often as fresh ones.
   - **Run speed on foot** = M + (1 − M) × f, M = `MinMoveSpeedMultiplier` (0.3). Tired men
     slow down, so fresher men overtake them. Horses keep their speed (Anton's pick):
     `MountMinSpeedMultiplier` (1.0 = unaffected; lower it to let a tired rider's horse slow on
@@ -205,13 +221,17 @@ button and the "(default …)" in comments, MCM hints and the log all show the f
 
 ## 3. Showing Athletics
 
-All toggles, all on by default. **Built: items 1 and 4. Items 2 and 3 are LATER** (Anton moved
+All toggles, all on by default. **Built: items 1, 1b and 4. Items 2 and 3 are LATER** (Anton moved
 them off the build order, 2026-09-27): their designs stay here, their settings wait in "Planned
 parameters" below, and nothing of them is in the game, MCM or the config file.
 
 1. **Player bar** (`ShowPlayerBar`): the player's Athletics bar near the vanilla health bar,
    in the spirit of RBM's posture bar (RBM = Realistic Battle Mod, confirmed by Anton —
    style reference only). Built in step 6.
+1b. **Attack recovery bar** (`ShowAttackRecoveryBar`, Anton 2026-09-27: "above that bar add a bar
+   'attack recovery' that empties when I attack and until it fills I can't attack; inside it add
+   the secs delay added"): your no-attack pause (§2) made visible, just above the Athletics bar.
+   Built in step 13 — below.
 2. **LATER (step 7) — Looked-at NPC** (`ShowTargetBar`): a small bar for the fighter the player
    is aiming at / looking at, within `TargetBarMaxDistance`; it lingers `TargetBarLingerSeconds`
    after the aim leaves so it does not flicker. Aiming at a horse shows its rider.
@@ -278,7 +298,30 @@ bar (`PlayerBarWidth` × `PlayerBarHeight`, placed by `PlayerBarOffsetRight` /
 the bar: the fill in the colour of f, a white marker at the peak line, the part the wounds hold
 dark red-brown (from the usable share to the end — `HealthCapsAthletics`), the rest dark grey.
 Empty (E = 0): the word reads *Exhausted* and the word, the number and the bar's frame turn
-red. Refreshed every `HudRefreshSeconds`.
+red. Refreshed every `HudRefreshSeconds`. Since step 13 its row sits at 30 px (it was 54) so the
+Attack recovery bar fits above it, both under the vanilla health and horse bars (the config format
+2 moves a config.json that still holds the old 54).
+
+**The Attack recovery bar as built (step 13):** one slim row just above your Athletics bar (its
+row `RecoveryBarOffsetAbove` (24) px higher — it moves with your bar — its right end lined up with
+it, `RecoveryBarWidth` × `RecoveryBarHeight`, 205 × 14 px): the words *Attack recovery* and a bar.
+- It IS your no-attack pause (`AttackRatePlayerTimer`): **EMPTY** from your attack's release when a
+  pause will follow (below the peak line), **filling** over the pause once the attack ends, with
+  **the seconds left inside it** ("1.3 s", tenths rounded up, so it never reads 0.0 while it
+  still runs), **FULL** (steel, no text) whenever no pause runs — at full strength it simply stays
+  full. The fill is amber while it refills. You cannot start an attack until it is full; keep the
+  button held and the attack starts the moment it fills.
+- **It flashes** (`FlashBarOnEarlyAttack`, on): a white overlay, two quick pulses (0.12 s on,
+  0.08 s off — a UI constant like the bars' colours), when you press attack while it is not full
+  (the press does nothing); hammering does not restart a flash that still runs.
+- Shown by the Athletics bar's own rules (fights, and outside a battle with
+  `ShowPlayerBarOutsideBattles`), with its own switch, and only while the Athletics bar
+  (`ShowPlayerBar`) and your pause (`AttackRatePlayerTimer`) are on — with your pause off there is
+  nothing to recover. The fill, the seconds and the flash update every frame (a 0.1 s refresh
+  would stutter); the layout at `HudRefreshSeconds`. Native sprites and brushes only.
+- Logged like the Athletics bar: `[hud] attached: recovery bar …`, `layer created … movie
+  TraxAttackRecoveryBar loaded OK`, `first values pushed …`, the first pause and the first flash of
+  the battle in full, and the summary's `hud: recovery bar …` lines (pauses shown, flashes).
 
 **Additions (Anton, 2026-09-27):**
 - The player bar (and, LATER, the target bar) shows the Athletics NUMBER (current / pool) and a
@@ -318,9 +361,9 @@ of MCM (and the first key of the config file) turns the WHOLE mod off — live, 
 so the same battle can be fought with and without it and compared. Off: the damage roll hands
 back the game's own number; nobody pays Athletics, nobody refills; every speed penalty (attack,
 run, horse) is lifted at once (the stat decorator checks the switch itself, so even a recompute
-before the logic's next tick is vanilla - the AI's attack values included, 5e); the player bar
-and the orders-menu strip (steps 6, 9) hide; tired fighters never step back (5d) and every pace
-hold is lifted at once (5e).
+before the logic's next tick is vanilla - the AI's attack values included, 5e); the player bar,
+the Attack recovery bar and the orders-menu strip (steps 6, 13, 9) hide; tired fighters never step
+back (5d) and every no-attack timer - yours and every AI fighter's - is released at once (5e, 13).
 Back on: everyone starts with a full Athletics bar — a fresh start, not a resume. The two model
 decorators stay registered (they cannot be removed mid-game) and pass everything through; the
 tournament AI-level fix, which only keeps vanilla behaviour intact, stays. **Logging stays on**:
@@ -525,7 +568,8 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     that reads on target; the hold is melee-only and never for the player or riders; the AI's
     "hold a readied blow" time is NOT lengthened (a raised weapon means a lowered guard - tired
     men must not defend worse); cycles with a step back in them are left out of the measurement
-    (that pause is the step back's).
+    (that pause is the step back's). Step 13 (item 16) replaced the hold's target and scope: the
+    hold is now the no-attack timer after every attack, melee and ranged, riders too.
 
 14. **The orders-menu strip** (step 9, Claude's calls): the numbers are SHARES of each man's own
     bar ("72%"), not points (pools differ per man since 5c); the "± 8" is the band's half-width
@@ -541,6 +585,20 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     `VerboseLogging` on costs nothing the playtest reads, and the cap became `LogMaxMegabytes` (8);
     the six settings of the two LATER features left the schema (no switch that does nothing) and
     wait in "Planned parameters"; the Defaults buttons moved above Advanced.
+
+16. **PAUSE ONLY** (step 13, Claude's calls on Anton's playtest call - AI_NOTES "Step 13"): D is the
+    wind-up (not a blow held ready) + the release, and for ranged + the reload after the loose (the
+    pause starts when it ends); m is taken when the attack ends; pauses under 0.1 s are not
+    started; your hold begins at your release's start when its pause is sure to be ≥ 0.1 s (so a
+    click during your swing cannot chain a blow past it) and is never applied during a ready;
+    kicks are never held, shield bashes (the attack button while blocking) wait like every attack;
+    the reload is never held; the AI's timer covers riders too (without the animation slow-down a
+    tired rider would attack at the full rate); `AttackRateAiDecisions` is off by default (it
+    double-counts on top of the timer) and config format 2 turns an old file's `true` off once;
+    the verdict's target stays the fresh cycle ÷ m (the rate × m), the timer is checked on its own
+    (the gap it leaves, attacks inside it); your timer has its own switch
+    (`AttackRatePlayerTimer`) as an escape hatch; the recovery bar hides with your timer off, the
+    Athletics bar's row moved to 30 px to make room (format 2 moves an old 54).
 
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),
