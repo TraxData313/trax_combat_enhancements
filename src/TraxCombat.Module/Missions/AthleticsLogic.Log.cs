@@ -75,6 +75,17 @@ namespace TraxCombat.Missions
         {
             var r = AthleticsRules.From(TraxSettings.Shared);
 
+            // Step 5d: nobody may stay scripted past the mission - release everyone first (through the
+            // engine while the agents live), then the summary counts it.
+            try
+            {
+                CloseStepBacks(agentsAlive);
+            }
+            catch (Exception e)
+            {
+                Failed("stepback.close", e);
+            }
+
             // the lowest any hero reached (heroes' records outlive their removal from the loop)
             TrackedAgent? lowest = null;
             double lowestPoints = double.MaxValue;
@@ -130,6 +141,17 @@ namespace TraxCombat.Missions
 
             foreach (var line in _stats.SummaryLines(in r, ActionName, formations))
                 TraxLog.Info("summary", line);
+
+            // Step 5d: own try - a bug there must not cost the rest of the summary.
+            try
+            {
+                foreach (var line in _stepStats.SummaryLines(StepBackRules.From(TraxSettings.Shared)))
+                    TraxLog.Info("summary", line);
+            }
+            catch (Exception e)
+            {
+                Failed("stepback.summary", e);
+            }
         }
 
         // ------------------------------------------------------------------ wording

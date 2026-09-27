@@ -96,6 +96,7 @@ namespace TraxCombat.Missions
                     _firstTickDone = true;
                     TraxLog.Info("mission", "first tick: " + Mission.Agents.Count + " agents active, mode " + Mission.Mode);
                     SweepAgents();
+                    NoteStepBackMission();
                 }
                 catch (Exception e)
                 {

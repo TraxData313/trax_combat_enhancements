@@ -150,6 +150,10 @@ namespace TraxCombat.Core
 
         /// <summary>The engine call threw (logged as [error]).</summary>
         EngineError,
+
+        /// <summary>The engine did not take the scripted position (GoToPosition not set right after
+        /// the call) - disabled again at once, to be safe.</summary>
+        EngineIgnored,
     }
 
     /// <summary>Why a step back ended. <see cref="None"/> = it goes on.</summary>
@@ -175,6 +179,10 @@ namespace TraxCombat.Core
         /// <summary>He was moved to another formation (or lost his).</summary>
         FormationChanged,
 
+        /// <summary>He was detached from his formation (a siege detachment) - released, the detachment
+        /// drives him from there.</summary>
+        Detached,
+
         /// <summary>The player took him over.</summary>
         PlayerControl,
 
@@ -187,6 +195,10 @@ namespace TraxCombat.Core
         /// <summary>The game gave him a job of its own (an object, a ladder queue, a detachment) - our
         /// record is dropped WITHOUT disabling, so the game's job is never cancelled.</summary>
         HandedOver,
+
+        /// <summary>The game cleared the scripted movement itself before our time was up (nothing to
+        /// release).</summary>
+        ClearedByGame,
 
         /// <summary>No longer active (not caught by the removal event).</summary>
         NotActive,

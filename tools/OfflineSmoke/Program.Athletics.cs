@@ -567,10 +567,19 @@ namespace TraxCombat.Tools
             AthleticsDefaults();
             S.Set(SettingsSchema.ModEnabled, true, SettingSources.Mcm);
             _logic!.ApplySettingsChange(S);
+            StepBackDefaults();
+            // the summary step before this one ended "the mission", which closes the step back for good
+            // (no new ones after the summary) - reopen it for this check
+            typeof(AthleticsLogic).GetField("_stepClosed", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(_logic, false);
+            var stepBody = new FakeStepBody();
+            _logic.StepBackBody = stepBody;          // the engine side played by the smoke (step 5d)
+            _logic.StepBackDice = new FixedDice(0.999); // only an empty bar says yes
             var a = FirstTracked(3);
             double t = 500;
             for (int i = 0; i < 5; i++) Swing(a, ref t);
             Check(a.Exhausted && Near(a.SpeedMultiplier, 0.2f) && Near(a.RunSpeedMultiplier, 0.3f), "precondition: fighter 3 not empty");
+            _logic.TickStepBacks(t);
+            Check(_logic.SteppingNow == 1, "precondition: fighter 3 is not stepping back");
             var p = a.Agent.AgentDrivenProperties;
             _statTop!.UpdateAgentStats(a.Agent, p);
             Check(Near(p.SwingSpeedMultiplier, 0.21f) && Near(p.MaxSpeedMultiplier, 0.24f), "precondition: no penalties on the empty fighter");
@@ -580,13 +589,19 @@ namespace TraxCombat.Tools
             Check(Near(p.SwingSpeedMultiplier, 1.05f) && Near(p.MaxSpeedMultiplier, 0.8f), "mod off: the stat decorator still applied a penalty");
             _logic.ApplySettingsChange(S);
             LogHas("[athletics] the whole mod (ModEnabled) switched OFF mid-mission: ");
+            int released = stepBody.Released.Count;
+            _logic.TickStepBacks(t);
+            Check(_logic.SteppingNow == 0 && stepBody.Released.Count == released + 1, "mod off: the step back was not released at once");
+            LogHas("[stepback] the whole mod (ModEnabled) switched OFF mid-mission at ");
             Check(a.Fraction == 1 && !a.Exhausted && a.SpeedMultiplier == 1f && a.RunSpeedMultiplier == 1f && a.SpeedDirty, "mod off: not refilled / penalties not lifted");
             Check(AthleticsLogic.TryGetReading(a.Agent, out var read) && !read.Enabled && read.Points == read.Pool, "mod off: the read API is not full and off");
             Check(AthleticsLogic.TryGetPeakShare(a.Agent, out double f) && f == 1, "mod off: the damage decorator would not see full strength");
             // (in game the tick does not even poll swings while off; fed one anyway, it costs nothing)
             int blows = a.Blows;
+            int rolls = _logic.StepStats.Rolls;
             Swing(a, ref t);
             Check(a.Blows == blows && a.Fraction == 1, "mod off: a swing was charged");
+            Check(_logic.StepStats.Rolls == rolls, "mod off: a swing was rolled for a step back");
 
             S.Set(SettingsSchema.ModEnabled, true, SettingSources.Mcm);
             _logic.ApplySettingsChange(S);

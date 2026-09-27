@@ -92,6 +92,9 @@ namespace TraxCombat.Missions
         /// next pass of the tick loop (never inside an engine hit callback).</summary>
         public bool SpeedDirty;
 
+        /// <summary>His step back (step 5d) - queued or running; null until his first yes.</summary>
+        public StepBackState? StepBack;
+
         public void RememberMissile(int index)
         {
             switch (MissileNext)

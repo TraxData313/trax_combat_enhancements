@@ -64,7 +64,7 @@ namespace TraxCombat.Core
         // ---- release checks
         public int Releases;
         public int StillScriptedAfterRelease;
-        public int NoAttackClearedByHand;
+        public int FlagsClearedByHand;
         public int MidStepAtMissionEnd;
         public int OverdueAtMissionEnd;
         public int StillScriptedAtMissionEnd;
@@ -227,6 +227,7 @@ namespace TraxCombat.Core
             StepBackRefusal.Gone => "gone before the tick (left the field or switched off)",
             StepBackRefusal.NoLongerEligible => "no longer eligible at the tick (mounted, mission kind)",
             StepBackRefusal.EngineError => "engine call failed",
+            StepBackRefusal.EngineIgnored => "engine did not take the scripted position",
             _ => why.ToString(),
         };
 
@@ -238,10 +239,12 @@ namespace TraxCombat.Core
             StepBackEnd.SwitchedOff => "switched off",
             StepBackEnd.OrderChanged => "formation order changed",
             StepBackEnd.FormationChanged => "formation changed",
+            StepBackEnd.Detached => "detached from his formation",
             StepBackEnd.PlayerControl => "the player took him",
             StepBackEnd.Mounted => "mounted",
             StepBackEnd.Routing => "routing",
             StepBackEnd.HandedOver => "handed over to the game (not disabled)",
+            StepBackEnd.ClearedByGame => "cleared by the game first",
             StepBackEnd.NotActive => "no longer active",
             StepBackEnd.Error => "error",
             _ => why.ToString(),
@@ -299,7 +302,7 @@ namespace TraxCombat.Core
                 + " | swings started while stepping back " + SwingsWhileStepping + (r.HoldAttacks ? " (0 expected: StepBackHoldAttacks is on)" : " (StepBackHoldAttacks is off: allowed)"));
 
             lines.Add("step back release check: " + Releases + " released through the engine - scripted movement still on right after "
-                + StillScriptedAfterRelease + " (must be 0), NoAttack cleared by hand " + NoAttackClearedByHand
+                + StillScriptedAfterRelease + " (must be 0), our flags (NoAttack, DoNotRun) cleared by hand " + FlagsClearedByHand
                 + " | at mission end: " + MidStepAtMissionEnd + " were mid-step (released then), overdue (past their time) " + OverdueAtMissionEnd
                 + " (must be 0), scripted movement still on after that release " + StillScriptedAtMissionEnd + " (must be 0)"
                 + (SwitchedOffReleases > 0 ? " | switched off mid-battle " + SwitchedOffReleases + " time(s), everyone released at once" : ""));

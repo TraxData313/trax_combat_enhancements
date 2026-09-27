@@ -144,6 +144,7 @@ namespace TraxCombat.Missions
                 ? "stat model on top in this mission: ours, over " + ours.BaseModelName + " - the attack-speed, run-speed and horse-speed penalties are applied on every recompute"
                 : "WARNING: the stat model on top in this mission is " + (top?.GetType().FullName ?? "(none)")
                   + ", not ours - the speed penalties will NOT apply (another mod registered after us?)");
+            StartStepBacks();
         }
 
         private void StopAthletics()
@@ -278,6 +279,7 @@ namespace TraxCombat.Missions
                 UnregisterMount(horse, st);
                 _horsesToRelease.Add(horse);
             }
+            StepBackLeftField(st);
             RemoveFromLoop(st);
         }
 
@@ -414,6 +416,17 @@ namespace TraxCombat.Missions
                 }
             }
 
+            // Step 5d: the running step backs and the ones the swings above asked for - every tick,
+            // whatever the switches (switching off releases everyone at once).
+            try
+            {
+                TickStepBacks(now);
+            }
+            catch (Exception e)
+            {
+                Failed("stepback.tick", e);
+            }
+
             _stats.AddTick(polled, (Stopwatch.GetTimestamp() - start) * 1000.0 / Stopwatch.Frequency);
         }
 
@@ -460,7 +473,7 @@ namespace TraxCombat.Missions
         {
             int prev = st.PrevAction;
             st.PrevAction = action;
-            if (prev == ActionReleaseMelee) EndRelease(st, now);
+            if (prev == ActionReleaseMelee) EndRelease(st, now, in r);
             switch (action)
             {
                 case ActionReleaseMelee:
@@ -485,6 +498,7 @@ namespace TraxCombat.Missions
             _stats.MeleeReleasesSeen++;
             if (mounted) _stats.MeleeReleasesMounted++;
             st.ReleaseSerial++;
+            StepBackSwingStarted(st);
 
             // the interval since the last release ran at the multiplier set after that release's charge
             int binNow = AthleticsMath.PeakBin(AthleticsMath.PeakShare(in r, st));
@@ -514,8 +528,9 @@ namespace TraxCombat.Missions
             st.AskedAfterLastRelease = st.SpeedMultiplier;
         }
 
-        /// <summary>A swing that hit nothing ran its whole animation: its length measures the speed.</summary>
-        private void EndRelease(TrackedAgent st, double now)
+        /// <summary>A swing that hit nothing ran its whole animation: its length measures the speed.
+        /// Every counted swing's end is also the step-back roll (step 5d: "after each melee swing").</summary>
+        private void EndRelease(TrackedAgent st, double now, in AthleticsRules r)
         {
             if (st.ReleaseStart < 0) return;
             if (!st.HitThisRelease)
@@ -524,6 +539,7 @@ namespace TraxCombat.Missions
                 else _stats.SwingLengths.Add(st.ReleaseBin, now - st.ReleaseStart, st.ReleaseAsked);
             }
             st.ReleaseStart = -1;
+            StepBackSwingEnded(st, now, in r);
         }
 
         // ------------------------------------------------------------------ charging
@@ -1040,6 +1056,14 @@ namespace TraxCombat.Missions
         /// poll); landed-only mode charges the first hit of each swing on an agent.</summary>
         public override void OnMeleeHit(Agent attacker, Agent victim, bool isCanceled, AttackCollisionData collisionData)
         {
+            try
+            {
+                StepBackHitTaken(victim, isCanceled, in collisionData); // step 5d: blocked or landed, stepping back or not
+            }
+            catch (Exception e)
+            {
+                Failed("stepback.hit", e);
+            }
             try
             {
                 var st = Get(attacker);

@@ -76,7 +76,9 @@ namespace TraxCombat.Tools
             Step("Athletics: the damage upside follows the attacker's f through the real damage decorator (empty: never above x1.00; untracked: full)", DamageUpsideFollowsTheAttacker);
             Step("Athletics: mid-battle settings - speeds, peak line, horses, pool size (shares kept) re-target live; switching off refills and lifts", AthleticsHotSwap);
             Step("Athletics: the [summary] Athletics block", AthleticsSummary);
-            Step("master switch: ModEnabled off is vanilla at once - damage unrolled but recorded, penalties lifted, no costs; on = everyone full", MasterSwitchIsVanillaLive);
+            // The step back (step 5d) - the real logic's bookkeeping with a stand-in for the engine side.
+            Step("step back: rolled at every AI swing's end by f (0% at full strength, 100% empty), started from the tick, timed live, capped, refused by the safety checks, released on every path (time, order, hand-over untouched, left the field, switched off, mission end), logged and summarised", StepBackThroughTheLogic);
+            Step("master switch: ModEnabled off is vanilla at once - damage unrolled but recorded, penalties lifted, no costs, every step back released; on = everyone full", MasterSwitchIsVanillaLive);
             Step("Athletics: a failure is logged once per site, counted, and reported in the summary", AthleticsFailSafe);
             Step("MCM still not loaded after phase 1", () => Check(!McmLoaded(), "MCMv5 got loaded during phase 1"));
 
