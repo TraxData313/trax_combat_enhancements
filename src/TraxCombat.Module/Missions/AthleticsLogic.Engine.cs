@@ -961,7 +961,7 @@ namespace TraxCombat.Missions
             bool you = st.Agent.IsMainAgent;
             if (!you && !TraxLog.VerboseOn) return;
             double pool = AthleticsMath.PoolPoints(in r, st);
-            string text = (full ? " back to full at " : " refilled to his wound's cap (" + P0(o.Top) + ") at ") + Sec(now) + " s: "
+            string text = (full ? " back to full at " : " refilled to the wound's cap (" + P0(o.Top) + ") at ") + Sec(now) + " s: "
                 + F0(o.EpisodeStartFraction * pool) + " → " + F0(o.Top * pool) + " of " + F0(pool) + " in " + Sec(o.EpisodeSeconds)
                 + " s of refill (at a walk or slower " + Sec(o.EpisodeWalkSeconds) + " s, faster " + Sec(o.EpisodeSeconds - o.EpisodeWalkSeconds)
                 + " s; avg rate x" + F2(o.EpisodeSeconds > 0 ? o.EpisodeRateSeconds / o.EpisodeSeconds : 1) + "; empty to full takes "

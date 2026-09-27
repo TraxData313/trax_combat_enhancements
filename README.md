@@ -10,11 +10,13 @@ every fight a little less predictable and a lot more about who is still fresh.
 
 - **Damage randomness** — every hit that lands, melee or ranged, rolls ±50% damage.
   A 50-damage blow lands for anywhere between 25 and 75.
-- **Athletics** — every fighter has an Athletics bar, his stamina, named after the Athletics
-  skill (which will set its size). Each blow drains it (10 of 100). Empty means attacking at
-  20% speed until you catch your breath. Rest to refill it: one minute standing still, two
-  while moving. Heroes pay less per blow, and party leaders less again — the battle leans on
-  its heroes.
+- **Athletics** — every fighter has an Athletics bar, his stamina, as big as his Athletics
+  skill (never under 50). Each blow costs 10 points. The top quarter of the bar is full
+  strength; below it his lucky hits, his swing speed and his run speed fade, down to
+  attacking at 20% speed when it is empty. Wounds cap the bar. Rest to refill it: one minute
+  standing or walking, twice that running flat out. Heroes pay less per blow, party leaders
+  less again, and a hero's big Athletics skill means a big bar — the battle leans on its
+  heroes.
 - **See it** — your own Athletics bar, the bar of whoever you're looking at, and your
   squads' average Athletics (± spread) floating above them and in the orders menu.
 - **A master switch** — turn the whole mod off mid-battle and the fight is pure vanilla, so

@@ -323,6 +323,35 @@ public sealed class TraxAgentStatModel : AgentStatCalculateModel   // decorator
   `InitializeMissionEquipment*`, …) — otherwise the base class's default silently replaces
   the sandbox logic.
 
+**Step 5c addendum — run speed, horse speed, wounds, the skill (verified in source, 2026-09-27)**
+
+- **Run speed on foot = `MaxSpeedMultiplier` (87)**. Sandbox's `UpdateHumanStats` assigns it
+  with `=`: `GetEnvironmentSpeedFactor × clamp(0.7 × (1 + 0.001 × Athletics) − 0.2 × (1 −
+  0.001 × Athletics) × load ÷ 80, 0, max at skill 300)` (SandboxAgentStatCalculateModel.cs
+  ~1069-1082; `DefaultSkillEffects.AthleticsSpeedFactor` is +0.1% per point), then again
+  after perks (~1580). CustomBattle's model likewise (~324, ~412); War Sails multiplies inside
+  its own BaseModel-first pass. So our scaling after the base never compounds.
+- `CombatMaxSpeedMultiplier` (88) = min(lerp(`BipedalCombatSpeedMinMultiplier` 0.74,
+  `…Max` 0.84, load ÷ weight), 1) — a share of the top speed kept in combat stance; left
+  alone (scaling it too would square the run penalty while fighting).
+- **Horse speed = `MountSpeed` (93)** on the MOUNT agent's own properties: `UpdateHorseStats`
+  assigns `environment × 0.22 × (1 + speed)` with `=` (reading its rider's Riding skill). A
+  rider mounting recomputes only the rider (`Agent.OnMount` → `UpdateAgentStats`, Agent.cs
+  ~1749) — so a slowed horse is recomputed by us; our decorator finds it through the logic's
+  own table (horse index → rider record, reference-checked), no native call.
+- **Wounds**: `MissionBehavior.OnAgentHit` fires after `Health` is lowered (Agent.cs ~5467 →
+  `Mission.OnAgentHit` ~5628). `Agent.Health` (`_health`) and `HealthLimit` are managed.
+- **Horse charges**: `AttackInformation.AttackerAgent` is the MOUNT (`IsAttackerAgentMount`);
+  the rider is its `RiderAgent`.
+- **The Athletics skill**: `agent.Character.GetSkillValue(DefaultSkills.Athletics)` —
+  `CharacterObject` asks its `HeroObject` for heroes (CharacterObject.cs ~792), troops read
+  their XML skills. v1.4.8 data: imperial recruit 20, infantryman 40, elite cataphract 60,
+  legionary 130, Fian champion 170 (SandBoxCore spnpccharacters.xml, used by custom battle
+  too); custom-battle commanders 80–90 (`custombattle_commander_*` skill sets).
+- **UNVERIFIED** (step 5c's summary settles each): the engine honours a changed
+  `MaxSpeedMultiplier` / `MountSpeed` mid-mission, and `GetMaximumForwardUnlimitedSpeed()`
+  follows it (`run speed check … engine top x… asked x…`).
+
 ---
 
 ## D. Movement — standing or moving
@@ -348,6 +377,25 @@ public sealed class TraxAgentStatModel : AgentStatCalculateModel   // decorator
 
 - **UNVERIFIED** that a rider's own `MovementVelocity` follows the horse — using the mount's
   avoids the question.
+
+**Step 5c addendum — walk vs run (regen by effort; verified in source and data, 2026-09-27)**
+
+- The game has two gaits of its own. **Walk** = `Agent.WalkSpeedCached` = the mount's
+  `WalkingSpeedLimitOfMountable` (native) or `Monster.WalkingSpeedLimit` (Agent.cs ~3732):
+  `monsters.xml` human **1.8 m/s** (settlement 1.6 / 1.4, child 1.6). A formation told to walk
+  moves at the MIN `WalkSpeedCached` of its men × the walk restriction; one told to run at the
+  AVERAGE `GetMaximumForwardUnlimitedSpeed()` (Formation.cs ~1338 / ~1357). **Run** =
+  `GetMaximumForwardUnlimitedSpeed()`, native.
+- The run speed itself is computed natively. `native_parameters.xml` has
+  `bipedal_speed_multiplier` 6.2 (and `bipedal_sprint_speed_ratio` 0.37); with
+  `MaxSpeedMultiplier` ≈ 0.63–0.79 for typical troops (skill 20–130, 15–35 kg carried), a top
+  of 6.2 × that = 3.9–4.9 m/s → **walk ÷ top ≈ 0.37–0.46, about 0.42**. That product is an
+  INFERENCE (the native formula is not visible).
+- Decision (step 5c): `WalkEffortFraction` stays **0.4**. Above it the rate falls in a straight
+  line, so a walk measured at 0.42 still refills at 98% of the full rate — the exact edge
+  barely matters. The summary's `walk vs run speeds (tune WalkEffortFraction …)` line
+  measures walk ÷ top in every mission (walk limit and top of every fresh fighter at
+  deployment); if it comes out well above 0.4, move the default to it.
 
 ---
 

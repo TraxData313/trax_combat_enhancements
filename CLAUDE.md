@@ -6,9 +6,11 @@ Guidance for Claude Code when working in this repository.
 
 **Trax Combat Enhancements** (working title) — a combat mod for *Mount & Blade II:
 Bannerlord* v1.4.8 that makes fights a bit more fun: every landed hit rolls ±50% damage,
-and every fighter has an **Athletics** bar — his stamina, named after (and, from step 5c,
-sized by) the Athletics skill — that blows drain and rest refills; empty means slow attacks.
-Heroes and party leaders pay less per blow, so the game leans hero-centred. The Athletics bar
+and every fighter has an **Athletics** bar — his stamina, as big as his Athletics skill —
+that blows drain and rest refills. The top quarter of his own bar is full strength; below
+it his damage upside, swing speed and run speed fall, down to slow attacks when empty;
+wounds cap the bar. Heroes and party leaders pay less per blow (and big-skill heroes have
+big bars), so the game leans hero-centred. The Athletics bar
 is shown for the player, the fighter they look at, and — averaged with a ± spread — above the
 player's own formations and in the orders menu. Words: the pool/bar/points are "Athletics",
 the character-screen skill is "the Athletics skill" (it used to be called "endurance").
@@ -148,24 +150,33 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
   RandomSource.cs             IRandomSource (injectable dice); ThreadSafeRandom ([ThreadStatic]
                               Random per thread, the game's); SeededRandom (tests, smoke)
   DamageRoll.cs               DESIGN §1 pure: HitFacts, DamageRules (live from TraxSettings),
-                              Decide = the skip rules (ModOff last), factor U[1-p,1+p), game
-                              rounding, 0 stays 0, positive never below 1; DamageCategory,
-                              DamageSkipReason
+                              Decide = the skip rules (ModOff last), factor U[1-p, 1+p×upside),
+                              Upside(rules, attacker f) (DESIGN §2), game rounding, 0 stays 0,
+                              positive never below 1; RollOutcome (Upside, Ceiling);
+                              DamageCategory, DamageSkipReason
   DamageStats.cs              per-mission roll stats (kinds, min/avg/max, before → after, avg per
-                              hit, dice histogram, skips by reason, mod-OFF hits unrolled, errors
-                              per site, thread) + the [summary] text; thread-safe
-  Athletics.cs                DESIGN §2 pure: AthleticsRules (live from TraxSettings; Enabled =
-                              ModEnabled && AthleticsEnabled, OffBecause), Fighter
-                              (state as a FRACTION of the pool), AthleticsMath - ONE function per
-                              rule (PoolPoints, BlowCostPoints, RegenFractionPerSecond(speed, top),
-                              AttackSpeedMultiplier, IsExhausted) + Charge / Regen / Read;
-                              BlowKind, BlowOutcome, RegenOutcome, AthleticsReading (HUD snapshot)
+                              hit, dice histogram, skips by reason, mod-OFF hits unrolled, the
+                              upside by the attacker's f + rolls above their top, errors per
+                              site, thread) + the [summary] text; thread-safe
+  Athletics.cs                DESIGN §2 pure (Athletics v2, step 5c): AthleticsRules (live;
+                              Enabled = ModEnabled && AthleticsEnabled, OffBecause, the floors),
+                              Fighter (state as a FRACTION of the FULL pool, AthleticsSkill,
+                              Health, the three applied multipliers), AthleticsMath - ONE function
+                              per rule (PoolPoints = max(floor, per-skill × skill), UsableFraction
+                              = the health cap, PeakShare = f, Attack/Run/MountSpeedMultiplier =
+                              floor + (1 − floor) × f, DamageUpside, BlowCostPoints in points,
+                              RegenRateMultiplier by effort, SpeedUpdateNeeded (0.05 step), PeakBin)
+                              + Charge / ApplyHealth / Regen / Read; BlowKind, BlowOutcome,
+                              RegenOutcome, AthleticsReading (HUD snapshot incl. f, usable pool)
   SpreadStats.cs              MeanStd (Welford, population std), FormationAthleticsStats (squad
-                              mean ± std, band), IntervalStats (histogram median), SpeedVerdict
-                              (the in-game engine-clamp test: exhausted vs fresh attack timing)
-  AthleticsStats.cs           per-mission Athletics counters + the [summary] text (blows by kind,
-                              riders, detection cross-checks, free actions, heroes, player,
-                              formations, regen, attack-speed check, tick cost, 5c speeds, errors)
+                              mean ± std, band, mean f, at full strength), IntervalStats
+                              (histogram median), SpeedVerdict, BinnedIntervals (attack timings by
+                              f + the verdict), RunSpeedCheck (engine top / asked / moving by f)
+  AthleticsStats.cs           per-mission Athletics counters + the [summary] text (pools from the
+                              skill, blows by kind, riders, detection cross-checks, free actions,
+                              exhaustions + peak zone, fighter-time by f, heroes, player,
+                              formations, health cap, regen by effort, attack-speed and run-speed
+                              checks by f, recomputes, walk vs run speeds, tick cost, errors)
 src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhancements.dll:
   SubModule.cs                entry point: load log, config init/re-reads, MCM register/retry,
                               the two model decorators (OnGameStart), AthleticsLogic per mission
@@ -183,30 +194,40 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
   Models/TraxDamageModel.cs   AgentApplyDamageModel DECORATOR — forwards everything; overrides
                               ApplyGeneralDamageModifiers only: BaseModel first, then the roll
                               (our exceptions → the game's value)
-  Models/DamageRandomizer.cs  feature 1, game side: game structs → HitFacts → Decide → roll,
+  Models/DamageRandomizer.cs  feature 1, game side: game structs → HitFacts → Decide → roll with
+                              the attacker's f (the rider's on a horse charge) as the upside,
                               stats, [damage] lines (mission start, first roll + thread,
                               verbose roll/skip), the [summary] damage block
   Models/TraxAgentStatModel.cs AgentStatCalculateModel DECORATOR — forwards everything;
-                              UpdateAgentStats: base first, then × the fighter's Athletics speed
-                              multiplier; + the tournament SetAILevelMultiplier fix
-  Models/SpeedPenalty.cs      the penalty on AgentDrivenProperties (swing, thrust/draw, reload -
-                              nothing else) + Snapshot for the log
+                              UpdateAgentStats: base first, then × the fighter's attack and run
+                              multipliers, or a slowed rider's horse's (SpeedFactorsFor - managed
+                              reads only); + the tournament SetAILevelMultiplier fix
+  Models/SpeedPenalty.cs      the penalties on AgentDrivenProperties: attack (swing, thrust/draw,
+                              reload), run (MaxSpeedMultiplier), horse (MountSpeed) - nothing
+                              else + Snapshot for the log
   Missions/AthleticsLogic.cs  MissionLogic in every SP mission (partial): lifecycle, start/end
                               lines ("mod ON/OFF"), master-switch toggles ([mission] line each),
                               damage stats reset (AfterStart), the [summary] block
   Missions/AthleticsLogic.Engine.cs  the Athletics engine: per-agent state (by Agent.Index +
-                              dense array), hero/leader flags, blow detection (poll ReleaseMelee,
-                              OnMeleeHit, OnAgentShootMissile, OnMissileHit), regen, the speed
-                              multiplier + UpdateAgentProperties, hot swap, SpeedMultiplierFor
-                              (the decorator's lookup), Failed (errors once per site)
-  Missions/AthleticsLogic.Api.cs  READ API for steps 6-9: TryGetReading(agent),
-                              TryGetFormationStats(formation), FormationStatsVersion, IsRunning
+                              dense array), the Athletics skill + hero/leader flags at spawn, blow
+                              detection (poll ReleaseMelee, OnMeleeHit, OnAgentShootMissile,
+                              OnMissileHit), the health cap (OnAgentHit + every regen step), regen
+                              by effort, three speed multipliers re-targeted in 0.05 steps and
+                              applied by UpdateAgentProperties (≤ 50 a tick), the horse table
+                              (OnAgentMount/Dismount), hot swap, SpeedFactorsFor (the decorator's
+                              lookup), the run-speed and walk/run sampling, Failed
+  Missions/AthleticsLogic.Api.cs  READ API for steps 6-9: TryGetReading(agent) (points, pool,
+                              usable pool, f, peak line, multipliers), TryGetPeakShare(agent),
+                              TryGetFormationStats(formation) (incl. mean f), FormationStatsVersion,
+                              IsRunning
   Missions/AthleticsLogic.Log.cs  [athletics]/[speed] lines (verbose buckets) + summary feed
-  Missions/TrackedAgent.cs    one fighter's record: Core Fighter + detection fields
-tests/TraxCombat.Core.Tests/  net8.0 xUnit (154) — schema vs DESIGN.md (keys + types),
+  Missions/TrackedAgent.cs    one fighter's record: Core Fighter + detection, f-bin, fresh top
+                              speed and slowed-horse fields
+tests/TraxCombat.Core.Tests/  net8.0 xUnit (207) — schema vs DESIGN.md (keys + types),
                               defaults.json (DefaultsFileTests), master switch, settings, config
-                              file, merge rule, rate limiter, damage roll/rules/dice/stats,
-                              Athletics rules, mean/std, interval stats, Athletics summary. They
+                              file, merge rule, rate limiter, damage roll/rules/dice/stats/upside,
+                              Athletics v2 rules (pool, f, cap, curves, effort regen, DESIGN's
+                              blow counts), mean/std, interval + binned checks, Athletics summary. They
                               run on DESIGN's INITIAL values (DesignTable.cs: a module
                               initializer), so tuning defaults.json never breaks them. Keep green.
 module/SubModule.xml          release manifest (Id TraxCombatEnhancements, v0.1.0); GUI/Prefabs
@@ -219,10 +240,12 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               launched: types load without MCM, config flows, tournament fix,
                               damage (Program.Damage.cs: the real decorator over the game's
                               CustomAgentApplyDamageModel, fed the game's own hit structs),
-                              Athletics (Program.Athletics.cs: the real stat decorator and
-                              AthleticsLogic on uninitialized Agent objects), the master switch,
+                              Athletics (Program.Athletics.cs: the real stat decorator, damage
+                              decorator and AthleticsLogic on uninitialized Agent objects - the
+                              curves blow by blow, DESIGN's blow counts, the health cap, the
+                              upside by f, horses), the master switch,
                               defaults read from the embedded defaults.json, the MCM page built
-                              by MCM's real builder and its two buttons clicked (31 checks; the
+                              by MCM's real builder and its two buttons clicked (33 checks; the
                               config checks work for any tuned default);
                               TRAX_SMOKE_KEEP=1 keeps its temp folder + log to read
 tools/DefaultsTool/           defaults.json upkeep: refresh (rewrite comments/order, keep every

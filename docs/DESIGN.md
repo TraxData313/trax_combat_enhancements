@@ -23,101 +23,94 @@ A 50-damage hit lands for anything from 25 to 75, rolled anew on every hit.
 - Knockdown, stagger and dismount stay the game's own rules — but they read the final
   (rolled) damage, so a high roll knocks down more often than a low one. Crush-through is
   decided before damage and is unaffected.
+- A tired attacker loses the lucky side of the roll (§2, `DamageBonusFollowsAthletics`): his
+  range is `[1 − p, 1 + p × f]`, f = his share of the peak line left.
 
 ## 2. Athletics (the stamina bar)
 
 A per-fighter pool — the **Athletics** bar — in every combat mission. Simpler cousin of RCM's
-posture: it only ever drains by attacking, and the only penalty is slow attacks when empty.
-(Its size comes from the Athletics SKILL from step 5c on, §2b; until then it is flat.)
-
-- **Pool**: `MaxAthletics` (100). Every fighter starts a mission full.
-- **Cost**: every blow costs `CostPerBlow` (10) × multipliers:
-  - heroes (lords, companions, the player): × `HeroCostMultiplier` (0.75)
-  - the hero who LEADS the fighter's party (the player for their own party, a lord for his):
-    × `PartyLeaderCostMultiplier` (0.75) on top → 0.75 × 0.75 × 10 = 5.6 per blow.
-  - This is what makes the game hero-centred: the player's party leader lasts ~18 blows,
-    a common soldier 10.
-- **What is a blow**: a melee swing or thrust, a shot, a throw. A couched lance or braced
-  spear hit has no swing, so it costs one blow when it LANDS. Kicks, shield bashes and
-  siege engines (ballista, onager) cost nothing.
-- **Exhausted**: at 0 Athletics the fighter attacks at `ExhaustedAttackSpeedPercent` (20%)
-  of normal speed — melee swings and thrusts, bow draw, crossbow reload, throws. Speed comes
-  back once Athletics rises above `ExhaustedRecoverPercent` of the pool (0 = the moment it
-  is above 0, as asked).
-- **Changing `MaxAthletics` mid-battle** keeps each fighter's fraction (60% stays 60%).
-- **Regeneration**: starts after `RegenDelayBlowTimes` (2) × `BlowTimeSeconds` (1.5 s) with
-  no attack. Then refills from 0 to full in:
-  - `FullRegenSecondsStanding` (60 s) while standing still,
-  - `FullRegenSecondsMoving` (120 s) while moving (walking, running, or riding at speed above
-    `MovingSpeedThreshold`).
-  Any new blow stops regeneration and restarts the delay.
-- **Cavalry**: riders use the very same pool. Riding never drains it; only blows do. The
-  horse has no Athletics of its own.
-
-## 2b. Athletics v2 — Anton's additions (2026-09-27), lands in steps 5b–5d
-
-Step 5 builds §2 as written; step 5c then reshapes it as below and folds this section into
-§2. Where the two disagree, this section wins.
+posture: it only ever drains by attacking. Near the top of his OWN bar a fighter is at full
+strength; below that line his damage upside, swing speed and run speed fall in straight lines,
+down to slow attacks and a slow run when it is empty. (Athletics v2, Anton 2026-09-27, built in
+step 5c: it replaced step 5's flat 100-point pool, the cliff at 0 and the standing/moving
+regen.)
 
 - **It is called ATHLETICS, everywhere** (Anton, 2026-09-27: "so it is the athletics bar that
   gets depleted" — so every player sees at once that the Athletics skill controls all of
   it). The pool, the bar, the points: **Athletics**. The skill on the character screen:
   **Athletics skill**. Every player-facing word — MCM, config keys and comments, bars,
   messages, log tags (`[athletics]`), README, Steam page — and the code too (one
-  vocabulary: `AthleticsLogic`, `AthleticsEnabled`, `MaxAthletics`, `FormationAthleticsStats`
-  and so on). **Done in step 5b**: the word used to be "endurance" (`EnduranceLogic`,
-  `EnduranceEnabled`, `MaxEndurance`, the `[endurance]` log tag); TASKS_DONE history and
-  RESEARCH's findings keep their words.
+  vocabulary: `AthleticsLogic`, `AthleticsEnabled`, `FormationAthleticsStats` and so on).
+  The word used to be "endurance" (renamed in step 5b); TASKS_DONE history and RESEARCH's
+  findings keep their words.
 - **The pool IS the Athletics skill** (Anton's pick): pool = max(`AthleticsPoolFloor` (50),
-  `AthleticsPoolPerSkill` (1.0) × Athletics skill). Skill 180 → the bar tops at 180; a
-  300-skill hero gets 300. The bar's number matches the skill screen. Riders too —
-  Athletics, never Riding. Replaces the flat `MaxAthletics`. Changing either number
-  mid-battle keeps each fighter's fraction. The floor is Anton's experiment slider: real
-  troops (v1.4.8 data) have Athletics 20 (recruits), 40 (tier 2), 60 (elite cataphract),
-  130 (legionary), 170 (Fian champion) — without the floor a recruit would be empty after
-  two swings.
-- **Cost stays in points**: a blow costs `CostPerBlow` (10) points × the hero / leader
-  multipliers, whatever the pool. So a bigger Athletics pool = more blows = heroes stronger.
-- **The peak zone** — the top of every fighter's OWN bar (Anton, 2026-09-27, replacing the
-  earlier 100-point line as "too much"). At or above `AthleticsPeakPercent` (75) % of the
-  fighter's pool the bar is GREEN and the fighter is at full strength: full damage upside,
-  full swing speed, full run speed, never steps back. Below the line, each of those falls in
-  a straight line down to its floor at 0. With cost in points, bigger pools stay in the zone
-  longer — recruit (floor 50): 2 swings at full strength, 5 to empty; legionary (130): 4 and
-  13; Fian champion (170): 5 and 17; a 300-skill leader (cost 5.6): 14 and 53. A fresh
-  fighter always runs in and lands its first blows at full strength.
-  Below, `f = min(E / (AthleticsPeakPercent% × pool), 1)` — the share of the peak line left —
-  drives every curve; E = current Athletics points.
+  `AthleticsPoolPerSkill` (1.0) × Athletics skill), never below 1 point. Skill 180 → the bar
+  tops at 180; a 300-skill hero gets 300. The bar's number matches the skill screen: heroes
+  (lords, companions, the player) use their real skill, troops the skill in their troop data.
+  Riders too — Athletics, never Riding. Every fighter starts a mission full. Changing either
+  number mid-battle keeps each fighter's fraction (60% stays 60%). The floor is Anton's
+  experiment slider: real troops (v1.4.8 data) have Athletics 20 (recruits), 40 (tier 2),
+  60 (elite cataphract), 130 (legionary), 170 (Fian champion) — without the floor a recruit
+  would be empty after two swings.
+- **Cost, in points**: every blow costs `CostPerBlow` (10) POINTS × multipliers, whatever the
+  pool — so a bigger Athletics pool = more blows = heroes stronger:
+  - heroes (lords, companions, the player): × `HeroCostMultiplier` (0.75)
+  - the hero who LEADS the fighter's party (the player for their own party, a lord for his):
+    × `PartyLeaderCostMultiplier` (0.75) on top → 0.75 × 0.75 × 10 = 5.6 per blow.
+- **What is a blow**: a melee swing or thrust, a shot, a throw. A couched lance or braced
+  spear hit has no swing, so it costs one blow when it LANDS. Kicks, shield bashes and
+  siege engines (ballista, onager) cost nothing.
+- **The peak zone** — the top of every fighter's OWN bar (Anton, 2026-09-27). At or above
+  `AthleticsPeakPercent` (75) % of the fighter's pool the bar is GREEN and the fighter is at
+  full strength: full damage upside, full swing speed, full run speed, never steps back.
+  Below the line each of those falls in a straight line down to its floor at 0. With cost in
+  points, bigger pools stay in the zone longer — recruit (floor 50): 2 swings at full
+  strength, 5 to empty; legionary (130): 4 and 13; Fian champion (170): 5 and 17; a
+  300-skill party leader (cost 5.6): 14 and 54 (53⅓ blows' worth). A fresh fighter always
+  runs in and lands its first blows at full strength.
+  `f = min(E / (AthleticsPeakPercent% × pool), 1)` — the share of the peak line left, E =
+  current Athletics points — drives every curve below.
 - **Health caps the pool** (`HealthCapsAthletics`, on): the usable pool = pool × health
-  left. Pool 100 at 75% health → 75; a fighter holding 80 drops to 75 at once, and regen
-  never fills above the cap. The peak line stays measured on the FULL pool, so a badly
-  wounded fighter can never climb back into full strength (at 50% health, f is at most
+  left. Pool 100 at 75% health → 75; a fighter holding 80 drops to 75 at once (at the hit),
+  and regen never fills above the cap. The peak line stays measured on the FULL pool, so a
+  badly wounded fighter can never climb back into full strength (at 50% health, f is at most
   0.67) — wounds make you weaker, not only shorter-winded.
-- **Damage upside follows Athletics** (`DamageBonusFollowsAthletics`, on): the roll becomes
-  `[1 − p, 1 + p × f]` with f from the ATTACKER (the rider's for a horse charge). In the
-  peak zone +50%; halfway down to 0, +25%; at 0 no upside at all — only the −50% side. The
-  downside never changes.
-- **Swing speed is gradual** (Anton's pick, replaces the cliff): attack speed =
-  S + (1 − S) × f, S = `ExhaustedAttackSpeedPercent` (20%). Full speed in the peak zone, 20%
-  at 0. `ExhaustedRecoverPercent` retires. "Exhausted" still means E = 0 (for logs and
-  bars).
-- **Run speed follows Athletics**: top speed on foot = M + (1 − M) × f,
-  M = `MinMoveSpeedMultiplier` (0.3). Tired men slow down, so fresher men overtake them.
-  Horses keep their speed (Anton's pick): `MountMinSpeedMultiplier` (1.0 = unaffected;
-  lower it to let a tired rider's horse slow on the same curve).
-- **Regen follows effort** (replaces standing/moving): standing or walking refills the pool
-  in `FullRegenSecondsStanding` (60 s). Faster than a walk, the rate falls in a straight
-  line to × `RegenMultiplierAtFullRun` (0.5) at the fighter's top speed. Effort = speed ÷
-  current top speed (the horse's for riders); walking = effort up to `WalkEffortFraction`
-  (0.4 — step 5c checks the game's real walk/run ratio and sets it). `FullRegenSecondsMoving`
-  and `MovingSpeedThreshold` retire.
-- **Tired fighters step back** (step 5d, `StepBackEnabled`, on): after each MELEE swing an
-  AI fighter on foot may step back, facing its enemy with its guard up. Chance =
+- **Below the peak, three things weaken** (each 1 at f = 1, its floor at f = 0):
+  - **Damage upside** (`DamageBonusFollowsAthletics`, on): the roll of §1 becomes
+    `[1 − p, 1 + p × f]` with f from the ATTACKER (the rider's for a horse charge; an attacker
+    Athletics does not follow keeps the full upside). In the peak zone +50%; halfway down to
+    0, +25%; at 0 no upside at all — only the −50% side. The downside never changes.
+  - **Attack speed** = S + (1 − S) × f, S = `ExhaustedAttackSpeedPercent` (20%): melee swings
+    and thrusts, bow draw, crossbow reload, throws. Full speed in the peak zone, 20% at 0 —
+    a straight line, no cliff. **Exhausted** means E = 0 (for logs and bars).
+  - **Run speed on foot** = M + (1 − M) × f, M = `MinMoveSpeedMultiplier` (0.3). Tired men
+    slow down, so fresher men overtake them. Horses keep their speed (Anton's pick):
+    `MountMinSpeedMultiplier` (1.0 = unaffected; lower it to let a tired rider's horse slow on
+    the same curve).
+- **Regeneration** starts after `RegenDelayBlowTimes` (2) × `BlowTimeSeconds` (1.5 s) with no
+  attack, and follows EFFORT = speed ÷ the fighter's current top speed (the horse's for
+  riders). Standing or walking — effort up to `WalkEffortFraction` (0.4) — refills from empty
+  to full in `FullRegenSecondsStanding` (60 s). Faster than a walk the rate falls in a
+  straight line to × `RegenMultiplierAtFullRun` (0.5) at top speed (120 s from empty to full
+  at a flat-out run). Never above the health cap. Any new blow stops regeneration and
+  restarts the delay. (0.4 because the game walks people at 1.8 m/s and their top speed on
+  foot works out at about 4–5 m/s — RESEARCH §D. "Current" top speed: a tired man's top is
+  lower, so keeping up with a walking formation is harder work for him.)
+- **Cavalry**: riders use the very same pool (their Athletics skill). Riding never drains
+  it; only blows do. The horse has no Athletics of its own.
+- **Tired fighters step back** (step 5d, planned; `StepBackEnabled`, on): after each MELEE
+  swing an AI fighter on foot may step back, facing its enemy with its guard up. Chance =
   `StepBackMaxChancePercent` (100) × (1 − f): 0% in the peak zone, 50% halfway down to 0,
   every swing at 0. Back `StepBackDistance` (2 m) for up to `StepBackSeconds` (1.5 s), then
   the formation takes it again. Never the player, never riders, never after ranged attacks.
   The point: the tired fall back and the fresh step in. If the game's AI fights this,
   step 5d reports and proposes the nearest thing that works.
+
+## 2b. Athletics v2 (folded into §2)
+
+Anton's additions of 2026-09-27 were written here while step 5 built the first version; step
+5c built them and folded them into §2, which is now the one current spec. The step-back rule
+(step 5d) is §2's last bullet.
 
 ## 2c. Defaults file (built in step 5b)
 
@@ -199,9 +192,9 @@ Every parameter lives in two places that stay in sync:
 **Master switch** (`ModEnabled`, Anton 2026-09-27, built in step 5b): one checkbox at the top
 of MCM (and the first key of the config file) turns the WHOLE mod off — live, even mid-battle —
 so the same battle can be fought with and without it and compared. Off: the damage roll hands
-back the game's own number; nobody pays Athletics, nobody refills; every attack-speed penalty
-is lifted at once (the stat decorator checks the switch itself, so even a recompute before the
-logic's next tick is vanilla); the bars (steps 6–9) hide; tired fighters never step back (5d).
+back the game's own number; nobody pays Athletics, nobody refills; every speed penalty (attack,
+run, horse) is lifted at once (the stat decorator checks the switch itself, so even a recompute
+before the logic's next tick is vanilla); the bars (steps 6–9) hide; tired fighters never step back (5d).
 Back on: everyone starts with a full Athletics bar — a fresh start, not a resume. The two model
 decorators stay registered (they cannot be removed mid-game) and pass everything through; the
 tournament AI-level fix, which only keeps vanilla behaviour intact, stays. **Logging stays on**:
@@ -315,7 +308,8 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
    for their own parties. Stacks with the hero multiplier.
 4. **Blocking, running and riding cost nothing.** Only blows drain. (Blocking: confirmed by
    Anton, 2026-09-27.)
-5. **Exhaustion is a cliff at 0**, as asked — no gradual slowdown.
+5. **Weakening is gradual below the peak line** (Anton's pick for Athletics v2, step 5c) — it
+   replaced the first ask's cliff at 0. "Exhausted" still names E = 0.
 6. **Applies in every combat mission** (field battles, sieges, hideouts, custom battles,
    tournaments and arena). Per-mission toggles only if playtest asks for them.
 7. **Custom battle has no parties**: there the "party leader" is the side's general, or —
@@ -326,8 +320,8 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
    toggle; fall damage and hits on objects never roll.
 10. **RBM is declared incompatible** (Anton confirmed, 2026-09-27) — see §5.
 
-Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`,
-`TargetBarMaxDistance`, `TargetBarLingerSeconds`, `FormationBarsAlways`,
+Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
+(retired in 5c), `TargetBarMaxDistance`, `TargetBarLingerSeconds`, `FormationBarsAlways`,
 `HudRefreshSeconds`, `FormationStatsRefreshSeconds` came out of step 2's research
 (`docs/RESEARCH.md`, "Design implications"), settled by Claude while Anton was away
 (2026-09-27) — every one is a default he can overturn.
