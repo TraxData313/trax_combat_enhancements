@@ -105,3 +105,39 @@
   No new parameters, DESIGN unchanged. UNVERIFIED in game (AI_NOTES Step 4): the engine
   calling the hook in every battle type, shield HP following the roll, object hits, name
   wording. (2026.09.27 14.34.04)
+- [x] **Step 5 — endurance core.** DESIGN §2 as written. Core (pure, 30 new tests → 122):
+  `EnduranceRules` read live; `Fighter` stores endurance as a FRACTION of its pool (a
+  MaxEndurance change keeps everyone's share by construction); `EnduranceMath` has ONE
+  function per rule — `PoolPoints`, `BlowCostPoints` (10 / 7.5 hero / 5.6 party leader),
+  `RegenFractionPerSecond(speed, topSpeed)`, `AttackSpeedMultiplier` (a float), `IsExhausted` —
+  so endurance v2 (5c, DESIGN §2b) reshapes rules, not plumbing; `Charge` (cliff at 0, exact
+  10 blows for a soldier, 18 for a leader), `Regen` (3 s delay with partial steps, 60 s standing
+  / 120 s moving, recovery threshold checked every step); `MeanStd` (Welford, population std)
+  + `FormationEnduranceStats` for steps 8-9; `IntervalStats` + `SpeedVerdict`; `EnduranceStats`
+  + the summary text. Module: `EnduranceLogic` (lifecycle / Engine / Api / Log partials) +
+  `TrackedAgent`: state by Agent.Index (reference-checked) + dense array; hero / leader flags at
+  spawn (campaign: leads his own party; custom battle: the side's general, else its heroes);
+  melee = per-tick poll of the channel-1 rising edge into ReleaseMelee, also checked inside
+  `OnMeleeHit`; ranged = `OnAgentShootMissile` (0.1 s dedupe); landed-only mode keyed on the
+  swing counter / the shooter's own missile indices (siege engines never charge); couched /
+  braced = one blow when it lands; kicks, bashes, horse charges free; regen every 0.1 s for
+  fighters below full, the horse's speed for riders. Speed: the float multiplier per fighter,
+  `UpdateAgentProperties` only when it changes and only from the tick; `TraxAgentStatModel`
+  scales swing / thrust-and-draw / reload after the base model (`SpeedPenalty`; verified the
+  base models assign them fresh, so no compounding). Hot swap: EnduranceEnabled off refills
+  everyone and lifts every penalty (decorator also checks it live), ExhaustedAttackSpeedPercent
+  re-targets the exhausted. Read API for steps 6-9: `TryGetReading`, `TryGetFormationStats`
+  (player team, mean ± std every FormationStatsRefreshSeconds), `FormationStatsVersion`. Logs
+  built to replace the playtest we cannot run: the player's exhaustion / recovery / refill
+  always; the first exhaustion's driven properties before → after → at recovery → restored;
+  verbose per-blow and per-transition lines in own buckets; the summary block with blows by
+  kind and riders, detection cross-checks (hits outside a counted release, polled ranged
+  releases vs shots), free actions, heroes and leaders, the player, formations, regen standing
+  vs moving, tick cost, walk/top speeds for 5c, and the ATTACK SPEED CHECK (median attack
+  interval and clean swing length fresh vs exhausted → "ARE slower" / "NOT clearly slower …
+  tell Claude") that settles the engine-clamp question. OfflineSmoke +6 (28): the real
+  decorator and logic on uninitialized Agent objects (IL setters — reflection would run
+  Agent's native static initializer). PLAYTEST §3 written. No new parameters, DESIGN
+  unchanged. UNVERIFIED in game (AI_NOTES Step 5, each with its settling line): engine clamp,
+  mounted swings as ReleaseMelee, poll cost, one shot event per shot, kick channel, couched
+  hits, leader flags, stat model on top. (2026.09.27 15.12.26)

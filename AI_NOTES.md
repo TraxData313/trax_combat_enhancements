@@ -323,6 +323,13 @@ change), `TraxLog.Limited`. OfflineSmoke +6 checks (28) in `Program.Endurance.cs
 - Run-speed lever: driven properties `MaxSpeedMultiplier` (87) / `CombatMaxSpeedMultiplier` (88)
   in the same decorator (same pattern as the attack speed). `Agent.SetMaximumSpeedLimit` is the
   formation movement's own lever - avoid it.
+- Per-fighter pool (Athletics, DESIGN §2b as revised in 11edf4f): cache the skill on the record at
+  `Track` (e.g. `GetEffectiveSkill(agent, DefaultSkills.Athletics)` through the stat model) and
+  make `EnduranceMath.PoolPoints(r, f)` read it; the fraction store already keeps each share when
+  the pool changes. Health cap: clamp `Fraction` to health left in the regen step and on a hit.
+- Damage upside from the ATTACKER's endurance: the damage decorator can call
+  `EnduranceLogic.TryGetReading(attacker, out var r)` (the rider for a horse charge) - main
+  thread, allocation-free.
 
 **UNVERIFIED — only the game can tell (PLAYTEST §3 has the steps; the line that settles each)**
 1. The engine honours a 0.2 multiplier (no clamp), bows and crossbows included without the
