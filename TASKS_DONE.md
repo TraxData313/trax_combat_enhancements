@@ -141,3 +141,46 @@
   unchanged. UNVERIFIED in game (AI_NOTES Step 5, each with its settling line): engine clamp,
   mounted swings as ReleaseMelee, poll cost, one shot event per shot, kick channel, couched
   hits, leader flags, stat model on top. (2026.09.27 15.12.26)
+- [x] **Step 5b — Athletics rename + defaults.json (+ master switch).** RENAME (Anton: "it is
+  the Athletics bar that gets depleted"): the pool/bar/points are "Athletics", the character-screen
+  skill "the Athletics skill" - keys `EnduranceEnabled` → `AthleticsEnabled`, `MaxEndurance` →
+  `MaxAthletics`, group "Athletics", MCM labels/hints, config comments, log tag `[athletics]`
+  (buckets `athletics-*`, sites `athletics.*`, summary "Athletics …"), code (`AthleticsLogic` ×4
+  partials, `AthleticsRules/Math/Reading/Stats`, `FormationAthleticsStats`, `Athletics.cs`, tests,
+  smoke `Program.Athletics.cs`) by a verified script; docs by hand (DESIGN, CLAUDE, README,
+  PLAYTEST, AI_NOTES, TASKS_TODO; RESEARCH keeps its words under a note). No aliases (nothing
+  released). DEFAULTS.JSON (DESIGN §2c) - the ONE truth for default values: repo-root file,
+  every setting with its value and its description + range as // lines; embedded in
+  TraxCombat.Core.dll; each ParamDef takes its Default from it while SettingsSchema initialises
+  (the schema has no default values; first-run config, missing-key fallback, MCM preset/Reset,
+  hints, log all read ParamDef.Default). Fail safe: a bad embedded value → bottom of its range /
+  clamped, listed in `DefaultsFile.Problems` → `[config] defaults.json PROBLEM` lines; `[config]
+  defaults: … 33 keys for 33 settings` at load. `DefaultsFile.Check` (keys both ways, strict JSON
+  types, ranges, comment layout with values blanked) + `tools/DefaultsTool` (refresh keeps every
+  value, rewrites comments/order; check) - the tests print the refresh command. Unit tests now
+  run on DESIGN's Default column (INITIAL values) via a module initializer, so tuning
+  defaults.json never breaks them (proved by tuning three defaults: tests + smoke green); SchemaTests
+  compare keys + types only; the smoke's config checks work for any default. config.json header:
+  how to revert without MCM (delete a line / the file); a deleted config.json now means every
+  default at the next re-read. MCM group "Defaults", verified against MCMv5 5.12.3 + MCM.UI 1.4.8:
+  AddButton with ProxyRef<Action> (null setter; OnValueClick invokes it) - **Revert all to
+  defaults** (live, each change `(source: defaults)`, config.json rewritten with every key, page
+  re-reads via PropertyChanged, green message) and **Save current values as a defaults file**
+  (defaults.json in the exact repo layout beside config.json, path + differing values logged and
+  shown). MASTER SWITCH (manager's scope addition from Anton): `ModEnabled`, first setting in its
+  own first group - off = vanilla at once: damage `Decide` → `ModOff` last (game value kept,
+  recorded unrolled: "damage while the mod was OFF … avg N per hit"; the ON line gained "avg N
+  per hit"), `AthleticsRules.Enabled` = ModEnabled && AthleticsEnabled (the switch-off path refills
+  everyone and lifts penalties; the stat decorator checks it itself), back on = everyone full;
+  logging stays on: `[mission] start … mod ON|OFF`, a `[mission] mod switched OFF … at 42.3 s`
+  line per toggle, summary header "mod ON" / "mod OFF" / "mod was on for N% of the battle (…)"
+  (Core `ModSwitchLog`). CLAUDE.md hard requirements: master switch first; defaults only in
+  defaults.json. Tests 122 → 154 (DefaultsFileTests 21, MasterSwitchTests 11), OfflineSmoke 28 → 31
+  (embedded defaults, master switch, both buttons clicked as MCM.UI does); 0 warnings;
+  AssemblyGuard OK; deployed (game not running; installed folder has no stale files). PLAYTEST §1
+  updated, §4 (ON/OFF A/B + flip mid-battle) and §5 (defaults: revert mid-battle, export, a
+  changed default reaching the game) written. UNVERIFIED in game (AI_NOTES Step 5b): the buttons
+  in MCM's real UI, the page refresh, messages over the options screen, toggle times, an OFF
+  battle feeling vanilla. `git grep -i endurance` now hits only TASKS_DONE history, RESEARCH's
+  findings (+ its note), and the deliberate "it used to be called endurance" mentions (DESIGN
+  §2b, CLAUDE.md, the done step 5 lines in TASKS_TODO / AI_NOTES). (2026.09.27 15.53.36)

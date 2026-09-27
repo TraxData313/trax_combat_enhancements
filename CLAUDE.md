@@ -120,14 +120,27 @@ die at any moment (tokens run out) and the next one loses nothing.
 ```
 TraxCombatEnhancements.sln    Core + Module + tests (the tools build on their own)
 Directory.Build.props         C# 10, nullable, GameFolder, McmBinFolder; *.user override imported
+defaults.json                 THE ONE TRUTH for every default value (DESIGN §2c): every setting,
+                              its value, its explanation + range as // lines. Anton tunes it and
+                              pushes; embedded in TraxCombat.Core.dll at build. After a schema
+                              wording/range/order change: dotnet run --project tools/DefaultsTool -- refresh
 src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-tested:
-  ParamDef.cs                 one setting: key, type, default, range, group, label, plain-words
-                              description, apply timing (Live / NextBattle); Normalize, Format
-  SettingsSchema.cs           EVERY setting of DESIGN's table, in file + MCM order, 7 groups —
-                              the one place a setting is declared (a test parses DESIGN.md)
+  ParamDef.cs                 one setting: key, type, range, group, label, plain-words
+                              description, apply timing (Live / NextBattle); Normalize, Format;
+                              its Default comes from defaults.json (DefaultsFile), never code
+  SettingsSchema.cs           EVERY setting of DESIGN's table, in file + MCM order, 8 groups
+                              ("Master switch" first) — the one place a setting is declared
+                              (a test parses DESIGN.md: keys + types); NO default values
+  DefaultsFile.cs             defaults.json: the embedded copy → ParamDef.Default (fail safe:
+                              problems listed, never thrown), strict Check (keys both ways,
+                              JSON types, ranges, comment layout), Write (the repo file and the
+                              MCM export alike), ResolveAll (tests); UseValuesForTests
+  ModSwitchLog.cs             the master switch over one mission: toggles with times, on-share,
+                              "mod ON" / "mod OFF" / "mod was on for N% …" for the summary header
   TraxSettings.cs             THE live settings object (TraxSettings.Shared), read at use time:
                               typed properties, Set(key, value, source), Version, Changed event
-  ConfigFile.cs               config.json TEXT: commented writer (header + // above each key),
+  ConfigFile.cs               config.json TEXT: commented writer (header incl. how to revert +
+                              // above each key; AppendSettings shared with defaults.json),
                               tolerant reader (comments, trailing commas, casing, "0,75"), Apply
   ConfigMerge.cs              THE FILE-REWRITE RULE (MCM wins for what it touched, the disk for
                               the rest) + EditTracker (what MCM changed since the last write)
@@ -135,12 +148,14 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
   RandomSource.cs             IRandomSource (injectable dice); ThreadSafeRandom ([ThreadStatic]
                               Random per thread, the game's); SeededRandom (tests, smoke)
   DamageRoll.cs               DESIGN §1 pure: HitFacts, DamageRules (live from TraxSettings),
-                              Decide = the skip rules, factor U[1-p,1+p), game rounding, 0 stays 0,
-                              positive never below 1; DamageCategory, DamageSkipReason
-  DamageStats.cs              per-mission roll stats (kinds, min/avg/max, before → after, dice
-                              histogram, skips by reason, errors per site, thread) + the
-                              [summary] text; thread-safe
-  Athletics.cs                DESIGN §2 pure: AthleticsRules (live from TraxSettings), Fighter
+                              Decide = the skip rules (ModOff last), factor U[1-p,1+p), game
+                              rounding, 0 stays 0, positive never below 1; DamageCategory,
+                              DamageSkipReason
+  DamageStats.cs              per-mission roll stats (kinds, min/avg/max, before → after, avg per
+                              hit, dice histogram, skips by reason, mod-OFF hits unrolled, errors
+                              per site, thread) + the [summary] text; thread-safe
+  Athletics.cs                DESIGN §2 pure: AthleticsRules (live from TraxSettings; Enabled =
+                              ModEnabled && AthleticsEnabled, OffBecause), Fighter
                               (state as a FRACTION of the pool), AthleticsMath - ONE function per
                               rule (PoolPoints, BlowCostPoints, RegenFractionPerSecond(speed, top),
                               AttackSpeedMultiplier, IsExhausted) + Charge / Regen / Read;
@@ -156,12 +171,15 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               the two model decorators (OnGameStart), AthleticsLogic per mission
   ModPaths.cs                 Configs\TraxCombatEnhancements\ via EngineFilePaths.ConfigsPath
   ConfigStore.cs              config.json ↔ TraxSettings.Shared: first run, re-read at game and
-                              mission start, write after MCM Done by the rewrite rule, backups
+                              mission start, write after MCM Done by the rewrite rule, backups;
+                              the [config] defaults: line; RevertAllToDefaults, ExportDefaults
   TraxLog.cs                  trax_combat.log: tagged lines, 2 MB trim, Verbose (rate-limited,
                               only when VerboseLogging), Limited (always, rate-limited per bucket),
                               Error (stack, rate-limited, in-game notice)
   Mcm/McmBridge.cs            the MCM page — fluent builder, MCM types in METHOD BODIES ONLY,
-                              no MCM-typed lambdas (read its class doc before touching it)
+                              no MCM-typed lambdas (read its class doc before touching it);
+                              group "Defaults": the Revert / Save-defaults-file BUTTONS
+                              (ProxyRef<Action>, page refresh via PropertyChanged)
   Models/TraxDamageModel.cs   AgentApplyDamageModel DECORATOR — forwards everything; overrides
                               ApplyGeneralDamageModifiers only: BaseModel first, then the roll
                               (our exceptions → the game's value)
@@ -174,7 +192,8 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
   Models/SpeedPenalty.cs      the penalty on AgentDrivenProperties (swing, thrust/draw, reload -
                               nothing else) + Snapshot for the log
   Missions/AthleticsLogic.cs  MissionLogic in every SP mission (partial): lifecycle, start/end
-                              lines, damage stats reset (AfterStart), the [summary] block
+                              lines ("mod ON/OFF"), master-switch toggles ([mission] line each),
+                              damage stats reset (AfterStart), the [summary] block
   Missions/AthleticsLogic.Engine.cs  the Athletics engine: per-agent state (by Agent.Index +
                               dense array), hero/leader flags, blow detection (poll ReleaseMelee,
                               OnMeleeHit, OnAgentShootMissile, OnMissileHit), regen, the speed
@@ -184,9 +203,12 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               TryGetFormationStats(formation), FormationStatsVersion, IsRunning
   Missions/AthleticsLogic.Log.cs  [athletics]/[speed] lines (verbose buckets) + summary feed
   Missions/TrackedAgent.cs    one fighter's record: Core Fighter + detection fields
-tests/TraxCombat.Core.Tests/  net8.0 xUnit (122) — schema vs DESIGN.md, settings, config file,
-                              merge rule, rate limiter, damage roll/rules/dice/stats, Athletics
-                              rules, mean/std, interval stats, Athletics summary. Keep green.
+tests/TraxCombat.Core.Tests/  net8.0 xUnit (154) — schema vs DESIGN.md (keys + types),
+                              defaults.json (DefaultsFileTests), master switch, settings, config
+                              file, merge rule, rate limiter, damage roll/rules/dice/stats,
+                              Athletics rules, mean/std, interval stats, Athletics summary. They
+                              run on DESIGN's INITIAL values (DesignTable.cs: a module
+                              initializer), so tuning defaults.json never breaks them. Keep green.
 module/SubModule.xml          release manifest (Id TraxCombatEnhancements, v0.1.0); GUI/Prefabs
                               for the HUD movies arrive in step 6
 tools/deploy.ps1              build → AssemblyGuard → OfflineSmoke → install as
@@ -198,9 +220,13 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               damage (Program.Damage.cs: the real decorator over the game's
                               CustomAgentApplyDamageModel, fed the game's own hit structs),
                               Athletics (Program.Athletics.cs: the real stat decorator and
-                              AthleticsLogic on uninitialized Agent objects), the MCM page built
-                              by MCM's real builder (28 checks);
+                              AthleticsLogic on uninitialized Agent objects), the master switch,
+                              defaults read from the embedded defaults.json, the MCM page built
+                              by MCM's real builder and its two buttons clicked (31 checks; the
+                              config checks work for any tuned default);
                               TRAX_SMOKE_KEEP=1 keeps its temp folder + log to read
+tools/DefaultsTool/           defaults.json upkeep: refresh (rewrite comments/order, keep every
+                              value) | check; --file <path> for an exported one
 tools/package.ps1             Steam release layout (step 11)
 ```
 

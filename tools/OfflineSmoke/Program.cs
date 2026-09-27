@@ -83,7 +83,7 @@ namespace TraxCombat.Tools
             Step("MCM present: the settings page builds through MCM's real fluent builder", McmPageBuilds);
             Step("MCM page: every setting, right type, range, hint, group", McmPageMatchesSchema);
             Step("MCM sliders write the live settings at once (hot swap)", McmSlidersAreLive);
-            Step("MCM Reset (the 'default' preset) restores DESIGN's defaults, not the values at build time", McmPresetRestoresDefaults);
+            Step("MCM Reset (the 'default' preset) restores the mod's defaults (defaults.json), not the values at build time", McmPresetRestoresDefaults);
             Step("MCM Done writes config.json", McmDoneWritesFile);
             Step("MCM buttons: \"Save current values as a defaults file\" writes a clean defaults.json beside config.json; \"Revert all to defaults\" is live, logged, rewrites config.json, refreshes the page", McmButtons);
 

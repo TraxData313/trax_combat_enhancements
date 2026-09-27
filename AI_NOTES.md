@@ -65,8 +65,9 @@ AthleticsLogic stub); `module/SubModule.xml` v0.1.0; `tools/deploy.ps1` (build �
   `TraxSettings.Shared.Changed` (raised on the setter's thread, main thread in practice) or
   compare `TraxSettings.Shared.Version`.
 - A NEW setting = a row in DESIGN's table + an entry in `SettingsSchema` (right group, right
-  place — file and MCM order follow it) + a typed property on `TraxSettings`. `SchemaTests`
-  fail until all three agree; the file and the MCM page pick it up by themselves; an old
+  place — file and MCM order follow it) + a typed property on `TraxSettings` + (since step 5b)
+  `"Key": value` in defaults.json, then the DefaultsTool refresh. `SchemaTests` and
+  `DefaultsFileTests` fail until all four agree; the file and the MCM page pick it up by themselves; an old
   config.json gets the new key written in at the next read (logged).
 - Log: `TraxLog.Info(tag, msg)`; chatty lines `if (TraxLog.VerboseOn) TraxLog.Verbose(tag, msg)`
   (check VerboseOn FIRST so the hot path builds no strings); `TraxLog.Error("area.hook", e)` in
@@ -133,7 +134,8 @@ AthleticsLogic stub); `module/SubModule.xml` v0.1.0; `tools/deploy.ps1` (build �
 2. `EngineFilePaths.ConfigsPath` resolves to `Documents\Mount and Blade II Bannerlord\Configs`
    in game (fallback path logged if not).
 3. MCM registration timing: `BaseSettingsBuilder.Create` non-null at the main menu or within
-   the 1 s retries; the page appears in Mod Options with 7 groups / 32 settings (built and
+   the 1 s retries; the page appears in Mod Options with 7 groups / 32 settings (since 5b: 8 groups / 33
+   settings + the "Defaults" buttons) (built and
    inspected offline through MCM's real builder + discoverer, but not the Gauntlet UI).
 4. MCM opened from the Escape menu MID-BATTLE edits live values; Done raises SAVE_TRIGGERED
    in game (the container path is decompiled, not run); slider drags log every step.
@@ -313,6 +315,9 @@ change), `TraxLog.Limited`. OfflineSmoke +6 checks (28) in `Program.Athletics.cs
   the smoke asserts text prefixes around such numbers.
 
 **For step 5c** (manager asked; verified in source, values UNVERIFIED in game)
+- (Step 5b) Names are Athletics now; new keys go into defaults.json as well (see "Step 5b"); the
+  run-speed and damage-upside levers must respect `r.Enabled` (= ModEnabled && AthleticsEnabled)
+  and give back vanilla speed / damage when it is false.
 - Top speed: `agent.GetMaximumForwardUnlimitedSpeed()` - pointer read, cheap; for a rider use
   the mount's. Speed: `(MountAgent ?? agent).MovementVelocity.Length` (native, m/s).
 - Walk speed: `agent.WalkSpeedCached` (managed) = the mount's `WalkingSpeedLimitOfMountable`
@@ -350,6 +355,106 @@ change), `TraxLog.Limited`. OfflineSmoke +6 checks (28) in `Program.Athletics.cs
 10. The horse's speed drives riders' regen → `Athletics regen: … moving`.
 11. `Mission.MainAgent` is set by `OnAgentBuild` (only the "(you)" in the leader list depends on it).
 
+## Step 5b — Athletics rename, defaults.json, master switch (DONE 2026-09-27)
+
+**Built**
+- **Rename** (Anton: "it is the Athletics bar that gets depleted"): keys `EnduranceEnabled` →
+  `AthleticsEnabled`, `MaxEndurance` → `MaxAthletics`; group "Endurance" → "Athletics"; types and
+  files `EnduranceLogic(.Api/.Engine/.Log)` → `AthleticsLogic`, `EnduranceRules/Math/Reading/Stats`
+  → `Athletics*`, `FormationEnduranceStats` → `FormationAthleticsStats`, `Endurance.cs` →
+  `Athletics.cs`, the tests, smoke `Program.Athletics.cs`; log tag `[athletics]`, buckets
+  `athletics-*`, error sites `athletics.*`, summary lines "Athletics …". Words: the bar / pool /
+  points = "Athletics"; the character-screen skill = "the Athletics skill". Code renamed by a
+  verified script (tag/bucket/site rules, then Endurance → Athletics), docs by hand. No aliases
+  for the old keys (nothing released; the loader reports unknown keys as typos).
+- **defaults.json** (DESIGN §2c) - the one truth for default values; Core `DefaultsFile`,
+  `tools/DefaultsTool`, 21 tests. MCM buttons *Revert all to defaults* / *Save current values
+  as a defaults file*; the config header says how to revert without MCM.
+- **Master switch `ModEnabled`** (Anton's scope addition mid-step, DESIGN §4): first setting, own
+  first group; Core `ModSwitchLog`; 11 tests; a smoke step.
+- 154 tests (122 → +21 defaults, +11 master switch), OfflineSmoke 31 checks.
+
+**The one-truth design for defaults**
+- `defaults.json` (repo root) → `EmbeddedResource` in Core (LogicalName
+  `TraxCombat.Core.defaults.json`; a missing file is a build error on purpose) →
+  `DefaultsFile.DefaultFor(key, type, min, max)`, called by the `ParamDef` constructor while
+  `SettingsSchema`'s static fields initialise. The schema declares NO default values; everything
+  else reads `ParamDef.Default` (new TraxSettings, first-run file, missing key, MCM preset/Reset,
+  the revert button, "(default …)" in comments/hints/log).
+- **Static-init trap**: the embedded parse runs INSIDE SettingsSchema's type initializer, so it
+  must not touch SettingsSchema - it keeps a raw `JToken` per key; unknown-key detection is lazy
+  (`DefaultsFile.Problems`, read after the schema exists).
+- **Fail safe**: a key missing / unusable in the embedded file → bottom of its range (false for a
+  switch); out of range → clamped; all listed in `Problems` → `[config]   defaults.json PROBLEM:`
+  lines at load; the smoke fails on any.
+- **Tests run on DESIGN's Default column**, not on defaults.json: `DesignTable.cs` has a
+  `[ModuleInitializer]` that hands DESIGN's values to `DefaultsFile.UseValuesForTests` before any
+  test touches the schema. So Anton tuning defaults.json never breaks a test that counts blows
+  (verified: DamageRandomPercent 40 / CostPerBlow 8 / VerboseLogging true → all green, smoke too).
+  The smoke runs the real embedded defaults: its config checks read the default and pick
+  different hand-edit values; the Athletics smoke sets DESIGN's numbers explicitly.
+- DESIGN's Default column = INITIAL value; SchemaTests compare keys + types only.
+- `DefaultsFileTests`: keys both ways (exact casing), strict JSON types (true/false; an integer
+  token for Int; any number for Float), inside the range, ≤ 4 decimals, the // lines = what
+  `DefaultsFile.Write` produces with values blanked (number formatting is free), the embedded
+  copy = the repo file, and `ResolveAll` (the load path) finds no problem.
+- `dotnet run --project tools/DefaultsTool -- refresh` rewrites comments / headings / order and
+  keeps every value; refuses while a key is missing, unknown or bad. `check` reports only.
+- **A new setting** = DESIGN row (initial value) + schema entry (no default) + TraxSettings
+  property + `"Key": value` anywhere in defaults.json + refresh. Tested workflow (ModEnabled).
+
+**Master switch `ModEnabled`**
+- Damage: `DamageRules.ModEnabled`; `Decide` returns `ModOff` LAST (after every other rule), so
+  an OFF battle counts exactly the hits an ON battle rolls; `DamageRandomizer` keeps the game's
+  value and calls `DamageStats.AddVanilla` → summary "damage while the mod was OFF … avg N per
+  hit" (the ON line gained ", avg N per hit"; a mixed battle adds "damage avg per hit: rolled
+  (mod ON) … | mod OFF …").
+- Athletics: `AthleticsRules.Enabled` = ModEnabled && AthleticsEnabled (+ `OffBecause`), so every
+  existing `r.Enabled` gate (poll, hits, shots, regen, read API) covers it; the switch-off path
+  (`ApplySettingsChange`) refills everyone and lifts penalties; `SpeedMultiplierFor` checks
+  ModEnabled itself (vanilla even before the next tick). Back on = everyone full (Anton's choice,
+  kept: a fresh start).
+- Mission: `ModSwitchLog` in AthleticsLogic - `[mission] start: … mod ON|OFF`, a `[mission] mod
+  switched OFF (ModEnabled) at 42.3 s - …` line per toggle (observed each tick), summary header
+  "mod ON" / "mod OFF" / "mod was on for N% of the battle (started ON; OFF at …)". The logic and
+  both decorators stay attached while off (logging + the vanilla-keeping tournament AI fix).
+
+**MCM buttons** - verified in MCMv5 **5.12.3** (the Workshop DLL = `..\reference\MCMv5-5.12.3-decompiled`)
+and MCM.UI for 1.4.8 (`Bannerlord.MBOptionScreen.v1.4.8.dll`, decompiled for this step):
+- `ISettingsPropertyGroupBuilder.AddButton(id, name, IRef, content, Action<ISettingsPropertyButtonBuilder>)`;
+  the button builder is an `ISettingsPropertyBuilder<>` (SetOrder / SetRequireRestart / SetHintText).
+- Click = `SettingsPropertyVM.OnValueClick`: `if (PropertyReference.Value is Action a) a();` → our
+  `ProxyRef<Action>(getter, null)`; getters are instance methods returning a static handler.
+- Presets: BuildAsGlobal stores the button's current value (the Action) in the "default" preset;
+  applying a preset writes through the setter - null → ignored.
+- Page refresh after a revert: every SettingsPropertyVM subscribes to the settings object's
+  PropertyChanged and re-reads its value for any name but SAVE_TRIGGERED → `RefreshPage` raises
+  "TRAX_VALUES_RESET" via `BaseSettings.OnPropertyChanged`.
+- The revert is not in MCM's undo stack (URS): Cancel does not undo it (hint says so). It writes
+  config.json itself with EVERY key from memory (`WriteMerged(everyKeyFromMemory)`), so a hand edit
+  waiting in the file is overwritten too - "revert all" means all.
+- Export: `DefaultsFile.Write(Settings.Snapshot())` → `<config dir>\defaults.json`, the repo file's
+  exact layout (copy it over as is; `DefaultsTool check --file <path>` checks it).
+
+**Gotchas**
+- Git Bash `sed -i` rewrote a CRLF file as LF - edit defaults.json with the Edit tool or the tool.
+- An XML comment cannot contain `--` (MSB4025) - the refresh command lives in C#, not the csproj.
+- `[ModuleInitializer]` in a library raises CA2255 - suppressed with a pragma and a reason.
+- Check parses with `DuplicatePropertyNameHandling.Error` (strict); the embedded load with
+  `Replace` (robust). core.autocrlf=true: the repo stores LF, the build embeds CRLF on Windows;
+  the tests compare without line endings.
+- ConfigStore: a config.json deleted while the game runs now means "every default" at the next
+  re-read (was: the values in effect) - what the header promises.
+
+**UNVERIFIED — only the game can tell (PLAYTEST §4, §5 have the lines)**
+1. The two buttons render and click in MCM's real UI (page built by MCM's real builder offline;
+   the click path read in the MCM.UI decompile and simulated in the smoke).
+2. The page re-reads its values after a revert (the PropertyChanged wiring, same decompile).
+3. The green/red InformationManager line shows while the options screen is open.
+4. Toggle times: `Mission.CurrentTime` at the first tick after MCM closes.
+5. An OFF battle really plays as vanilla, no penalty left over (`[athletics] the whole mod
+   (ModEnabled) switched OFF … penalties lifted` + the feel of it).
+
 ## Steps 6-9 — the Athletics READ API (from step 5)
 
 Static, allocation-free, main thread (call from a view's `OnMissionScreenTick`), in
@@ -362,7 +467,7 @@ if (AthleticsLogic.TryGetReading(agent, out AthleticsReading r))   // false: a h
     r.Points; r.Pool; r.Fraction;   // points left, the fighter's pool, 0..1 (bar fill)
     r.Exhausted; r.SpeedMultiplier; // exhausted now; the attack-speed factor applied (1 = none)
     r.IsHero; r.IsLeader;
-    r.Enabled;                      // AthleticsEnabled - off: reads full; the HUD should hide
+    r.Enabled;                      // ModEnabled && AthleticsEnabled - off: reads full; the HUD must hide
 }
 if (AthleticsLogic.TryGetFormationStats(formation, out FormationAthleticsStats f)) // player team only
 {
@@ -378,6 +483,17 @@ AthleticsLogic.IsRunning
   `Mission.PlayerTeam`, bucketed by `(int)agent.Formation.FormationIndex`), so a view never loops
   agents itself. Enemy formations are not computed (ask if a step needs them).
 - Athletics v2 (5c) keeps this API; readings stay in points + fraction (pools become per fighter).
+- **Master switch first (step 5b, CLAUDE.md)**: every view / feature checks
+  `TraxSettings.Shared.ModEnabled` BEFORE anything else, live, and hides / undoes what it shows
+  when it is off (5d: no step-back starts, a running one is released to the formation at once;
+  6-9: every bar and panel hidden); add that "off" behaviour to the smoke's
+  `MasterSwitchIsVanillaLive` step.
+- **New parameters** (5c's `AthleticsPoolFloor` …, 6's bar colours, 8's `ShowFormationHealth`):
+  DESIGN Parameters row (initial value) + schema entry (NO default) + TraxSettings property +
+  `"Key": value` in defaults.json + `dotnet run --project tools/DefaultsTool -- refresh`. Retiring
+  one (5c: `MaxAthletics`, `FullRegenSecondsMoving`, `MovingSpeedThreshold`,
+  `ExhaustedRecoverPercent`) = remove it from all of those; the tests name whatever is left.
+  The rules structs take `modEnabled` as an optional last ctor argument (`From` passes it).
 - The HUD can be added from `AthleticsLogic`'s first tick (`MissionScreen.AddMissionView`) - the
   first-tick branch is in `AthleticsLogic.OnMissionTick`.
 
@@ -387,8 +503,8 @@ AthleticsLogic.IsRunning
 - `PlayerAthleticsView : MissionBattleUIBaseView` + own `GauntletLayer` + VM + prefab in
   `module\GUI\Prefabs`. Added by `AthleticsLogic`'s first tick via
   `MissionScreen.AddMissionView` (NOT in OnMissionBehaviorInitialize — §F/§G).
-- Layer created/destroyed in `OnMissionScreenTick` on `ShowPlayerBar && !HideBattleUI &&
-  combat mode` (hot swap). Place beside the vanilla hero bar (bottom-right, MarginBottom 90 /
+- Layer created/destroyed in `OnMissionScreenTick` on `ModEnabled && ShowPlayerBar &&
+  !HideBattleUI && combat mode` (hot swap; the master switch first - step 5b). Place beside the vanilla hero bar (bottom-right, MarginBottom 90 /
   MarginRight 40 in `AgentStatus.xml`); RBM's bars are the style reference (§G).
 - (from step 3) The Module already references `TaleWorlds.MountAndBlade.View`, `GauntletUI`,
   `GauntletUI.Data`, `Engine.GauntletUI`, `ScreenSystem`, `InputSystem`; `deploy.ps1` copies
@@ -400,6 +516,7 @@ AthleticsLogic.IsRunning
   `MissionScreen.CombatCamera` every `HudRefreshSeconds`, mount → `RiderAgent`, linger.
   Needs the proposed `TargetBarMaxDistance` / `TargetBarLingerSeconds` (implication 7).
 - Read: `AthleticsLogic.TryGetReading(target.IsMount ? target.RiderAgent : target, out var r)`.
+- Hidden while `ModEnabled` is off (the master switch first - step 5b).
 
 ## Step 8 — Squad bars above formations
 
@@ -411,7 +528,7 @@ AthleticsLogic.IsRunning
   same refresh pass (`RefreshFormationStats`) rather than a second loop. Position = `MBWindowManager.WorldToScreen(CombatCamera,
   CachedMedianPosition.GetGroundVec3() + (0,0,FormationBarHeight))`, hide when w < 0.
   Anchor via bound `ScaledPosition*Offset` or an own `Widget` subclass (§G, UNVERIFIED #7).
-  Implication 8 (`FormationBarsAlways`).
+  Implication 8 (`FormationBarsAlways`). Hidden while `ModEnabled` is off (step 5b).
 
 ## Step 9 — Orders menu
 
@@ -421,6 +538,7 @@ AthleticsLogic.IsRunning
   if Anton insists on numbers inside the cards (and then test with RTS Camera).
 - Numbers: `AthleticsLogic.TryGetFormationStats(formation, out var f)` → `f.Describe()`-style
   "72 ± 8" (use `f.MeanPoints` / `f.StdPoints` directly for the strip).
+- Hidden while `ModEnabled` is off (step 5b).
 
 ## Step 10 — Balance + polish
 
