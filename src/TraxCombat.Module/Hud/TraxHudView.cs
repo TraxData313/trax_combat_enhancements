@@ -58,12 +58,19 @@ namespace TraxCombat.Hud
         private HudShow _show;
         private double _lastWantedAt = double.NegativeInfinity;
 
+        /// <summary>This view's own rate buckets for its build / removal lines (step 13: one view's lines
+        /// never spend another's budget - the player bar and the recovery bar build and go together).</summary>
+        private readonly string _layerBucket;
+        private readonly string _outsideBucket;
+
         protected TraxHudView(string viewName, string movieName, ParamDef toggle)
         {
             ViewName = viewName;
             MovieName = movieName;
             Toggle = toggle;
             Stats = new HudStats(viewName, movieName, toggle.Key);
+            _layerBucket = "hud-layer:" + viewName;
+            _outsideBucket = "hud-outside:" + viewName;
         }
 
         /// <summary>"player bar" - how the log names this view.</summary>
@@ -346,11 +353,11 @@ namespace TraxCombat.Hud
             }
             if (_layerUp)
             {
-                DestroyLayer(hide, f.Now, HudFrame.IsFightMode(f.Mode) ? "hud-layer" : "hud-outside");
+                DestroyLayer(hide, f.Now, HudFrame.IsFightMode(f.Mode) ? _layerBucket : _outsideBucket);
                 return;
             }
             if (!wasDecided)
-                TraxLog.Limited("hud", ViewName + ": not shown at " + S1(f.Now) + " s - " + Why(hide), "hud-layer");
+                TraxLog.Limited("hud", ViewName + ": not shown at " + S1(f.Now) + " s - " + Why(hide), _layerBucket);
             else if (TraxLog.VerboseWants("hud-hidden"))
                 TraxLog.Verbose("hud", ViewName + ": still hidden at " + S1(f.Now) + " s, now because " + Why(hide), "hud-hidden");
         }
@@ -383,12 +390,12 @@ namespace TraxCombat.Hud
                 + (wasHiddenBy != HudHide.None ? ", was hidden: " + HudGate.Describe(wasHiddenBy, Toggle.Key, ViewConditionText) : string.Empty)
                 + ") - movie " + MovieName + " loaded OK (" + detail + ")"
                 + (QuietConditionToggles ? " - later builds and removals by \"" + ViewConditionText + "\" go to the verbose log only" : string.Empty),
-                outside ? "hud-outside" : "hud-layer");
+                outside ? _outsideBucket : _layerBucket);
         }
 
         /// <summary>Takes the layer down and logs why - outside a fight (step 12) in its own rate bucket,
         /// so a walk through town drawing and sheathing never eats the battle lines' budget.</summary>
-        private void DestroyLayer(HudHide why, double now, string bucket = "hud-layer")
+        private void DestroyLayer(HudHide why, double now, string? bucket = null)
         {
             _layerUp = false;
             try
@@ -405,7 +412,7 @@ namespace TraxCombat.Hud
                 if (TraxLog.VerboseWants("hud-layer-quiet")) TraxLog.Verbose("hud", ViewName + ": layer removed at " + S1(now) + " s - " + Why(why), "hud-layer-quiet");
                 return;
             }
-            TraxLog.Limited("hud", ViewName + ": layer removed at " + S1(now) + " s - " + Why(why), bucket);
+            TraxLog.Limited("hud", ViewName + ": layer removed at " + S1(now) + " s - " + Why(why), bucket ?? _layerBucket);
         }
 
         /// <summary>Mission over (the screen finalizes its views before the logic's summary runs).</summary>

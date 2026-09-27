@@ -271,7 +271,7 @@ namespace TraxCombat.Missions
 
         /// <summary>Every tick: switched off or not you any more → released at once; a countdown the gate
         /// never ended (it is not running) is ended here so the recovery bar cannot stick.</summary>
-        private void TickPlayerTimer(double now)
+        internal void TickPlayerTimer(double now)
         {
             if (!_playerTimer.Holding) return;
             if (!AttackRateRules.From(TraxSettings.Shared).PlayerTimerOn)

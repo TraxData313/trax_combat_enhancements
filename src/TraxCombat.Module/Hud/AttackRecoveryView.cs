@@ -46,6 +46,7 @@ namespace TraxCombat.Hud
             : base("recovery bar", Movie, SettingsSchema.ShowAttackRecoveryBar)
         {
             Stats.HasOutsideRule = true;
+            Stats.ConditionName = "your Athletics bar or your pause off";
         }
 
         /// <summary>The live ViewModel (null while no layer is up) - the offline smoke reads it.</summary>
@@ -112,7 +113,7 @@ namespace TraxCombat.Hud
                 {
                     _firstPauseLogged = true;
                     TraxLog.Limited("hud", "recovery bar: first pause shown at " + S1(f.Now) + " s - empty at your attack, now refilling over " + F2(r.Pause)
-                        + " s (D " + F2(r.Duration) + " s at attack speed x" + F2(r.M) + "), \"" + r.SecondsText + "\" inside it, counting down", "hud-first");
+                        + " s (D " + F2(r.Duration) + " s at attack speed x" + F2(r.M) + "), \"" + r.SecondsText + "\" inside it, counting down", "hud-recovery");
                 }
             }
             if (flash && !double.IsNaN(r.FlashStartedAt) && !r.FlashStartedAt.Equals(_lastFlashStart))
@@ -123,7 +124,7 @@ namespace TraxCombat.Hud
                 {
                     _firstFlashLogged = true;
                     TraxLog.Limited("hud", "recovery bar: first flash at " + S1(f.Now) + " s - you pressed attack " + (r.Running ? "with " + F2(r.Remaining) + " s of your pause left" : "during your own attack")
-                        + " (" + AttackTimerMath.FlashPulses + " pulses of " + F2(AttackTimerMath.FlashOnSeconds) + " s)", "hud-first");
+                        + " (" + AttackTimerMath.FlashPulses + " pulses of " + F2(AttackTimerMath.FlashOnSeconds) + " s)", "hud-recovery");
                 }
             }
             if (r.Recovering) _fillingSeconds += f.Dt;
@@ -147,7 +148,7 @@ namespace TraxCombat.Hud
                 TraxLog.Limited("hud", "recovery bar: first values pushed at " + S1(f.Now) + " s - " + (r.Recovering ? "refilling, " + F2(r.Share) + " of it" : "full (no pause running)")
                     + "; bar " + s.RecoveryBarWidth + " x " + s.RecoveryBarHeight + " px, " + s.PlayerBarOffsetRight + " px from the right edge and "
                     + (s.PlayerBarOffsetBottom + s.RecoveryBarOffsetAbove) + " px from the bottom (your Athletics bar's row " + s.PlayerBarOffsetBottom + " + "
-                    + s.RecoveryBarOffsetAbove + "; UI pixels - the game's UI scale applies); flash on an early attack " + (s.FlashBarOnEarlyAttack ? "on" : "off"), "hud-first");
+                    + s.RecoveryBarOffsetAbove + "; UI pixels - the game's UI scale applies); flash on an early attack " + (s.FlashBarOnEarlyAttack ? "on" : "off"), "hud-recovery");
             }
             return true;
         }
