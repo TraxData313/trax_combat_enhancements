@@ -228,19 +228,27 @@ namespace TraxCombat.Core
 
         public static readonly ParamDef ShowFormationSpread = Bool("ShowFormationSpread", SquadBarsGroup,
             "Show the spread",
-            "Draw a band on each squad bar showing how far the men's Athletics spreads around the average.");
+            "Draw a band showing how far the men's Athletics spreads around the average - on each squad bar and in the orders-menu strip (off: the strip shows the average alone, without its \"± 8\").");
 
         public static readonly ParamDef FormationSpreadStdDevs = Float("FormationSpreadStdDevs", 0, 3, SquadBarsGroup,
             "Spread band width (std devs)",
-            "Width of that band on each side of the average, in standard deviations. 1 = about two men in three fall inside it.");
+            "Width of that band on each side of the average, in standard deviations - the strip's \"± 8\" is this width in percent of the bar. 1 = about two men in three fall inside it.");
 
         public static readonly ParamDef FormationBarHeight = Float("FormationBarHeight", 0, 10, SquadBarsGroup,
             "Squad bar height (m)",
             "How high above the formation's centre its bar floats, in metres.");
 
         public static readonly ParamDef ShowInOrderMenu = Bool("ShowInOrderMenu", SquadBarsGroup,
-            "Orders menu panel",
-            "While the orders menu is open, list each formation's average Athletics and spread, for example \"Infantry 72 ± 8\".");
+            "Orders menu strip",
+            "While the orders menu is open, show under each formation card its men's average Athletics ± spread as a slim bar and numbers, for example \"72% ± 8\" (and their average health).");
+
+        public static readonly ParamDef ShowFormationHealth = Bool("ShowFormationHealth", SquadBarsGroup,
+            "Show average health",
+            "The orders-menu strip (and the squad bars) also show the men's average health left, for example \"HP 81%\".");
+
+        public static readonly ParamDef OrderStripUnderCards = Bool("OrderStripUnderCards", SquadBarsGroup,
+            "Strip under the cards",
+            "On: the strip sits under each of the game's formation cards (read live, so it follows any resolution, UI scale or order-menu mod that keeps the cards). Off - or whenever the cards cannot be matched - a compact panel at the top of the screen lists the same numbers instead.");
 
         // ------------------------------------------------------------------ advanced
 
@@ -265,6 +273,36 @@ namespace TraxCombat.Core
         public static readonly ParamDef PlayerBarOffsetBottom = Int("PlayerBarOffsetBottom", 0, 1000, AdvancedGroup,
             "Your bar: from the bottom edge (px)",
             "Distance from the bottom of the screen to your bar's row (the word Athletics, the number and the bar), in the game's UI pixels. 54 puts it just under the vanilla health and horse bars.");
+
+        // The orders-menu strip (step 9) - UI pixels of the 1080p layout, measured from each vanilla
+        // formation card (read live); the fallback panel's place. The game's UI scale applies.
+        public static readonly ParamDef OrderStripTextSize = Int("OrderStripTextSize", 8, 30, AdvancedGroup,
+            "Orders strip: text size",
+            "Font size of the orders-menu strip's numbers, in the game's UI pixels.");
+
+        public static readonly ParamDef OrderStripTextOffset = Int("OrderStripTextOffset", -40, 60, AdvancedGroup,
+            "Orders strip: numbers offset (px)",
+            "Distance from the bottom of a formation card to the top of its numbers, in the game's UI pixels. The numbers sit at the left and right ends, leaving the middle to the game's order icons.");
+
+        public static readonly ParamDef OrderStripBarOffset = Int("OrderStripBarOffset", -40, 60, AdvancedGroup,
+            "Orders strip: bar offset (px)",
+            "Distance from the bottom of a formation card to the top of its Athletics bar, in the game's UI pixels. 20 puts it just under the game's order icons, which hang 20 px below a card.");
+
+        public static readonly ParamDef OrderStripBarHeight = Int("OrderStripBarHeight", 1, 20, AdvancedGroup,
+            "Orders strip: bar thickness (px)",
+            "Thickness of the orders-menu strip's Athletics bar, in the game's UI pixels.");
+
+        public static readonly ParamDef OrderStripSideMargin = Int("OrderStripSideMargin", 0, 40, AdvancedGroup,
+            "Orders strip: side margin (px)",
+            "How far the strip's numbers and bar keep in from a card's left and right edges, in the game's UI pixels.");
+
+        public static readonly ParamDef OrderPanelOffsetTop = Int("OrderPanelOffsetTop", 0, 1000, AdvancedGroup,
+            "Orders panel: from the top (px)",
+            "Where the fallback panel sits (used when the cards cannot be matched, or with the strip under the cards off): distance from the top of the screen, in the game's UI pixels. It is centred left to right.");
+
+        public static readonly ParamDef OrderPanelWidth = Int("OrderPanelWidth", 120, 900, AdvancedGroup,
+            "Orders panel: width (px)",
+            "Width of the fallback panel, in the game's UI pixels.");
 
         public static readonly ParamDef FormationStatsRefreshSeconds = Float("FormationStatsRefreshSeconds", 0.05, 2, AdvancedGroup,
             "Squad stats refresh (s)",
@@ -292,8 +330,10 @@ namespace TraxCombat.Core
             ShowPlayerBar, ShowTargetBar, TargetBarMaxDistance, TargetBarLingerSeconds,
             BarYellowBelowPercent, BarOrangeBelowPercent, BarRedBelowPercent,
             ShowFormationBars, FormationBarsAlways, ShowFormationSpread, FormationSpreadStdDevs,
-            FormationBarHeight, ShowInOrderMenu,
+            FormationBarHeight, ShowInOrderMenu, ShowFormationHealth, OrderStripUnderCards,
             HudRefreshSeconds, PlayerBarWidth, PlayerBarHeight, PlayerBarOffsetRight, PlayerBarOffsetBottom,
+            OrderStripTextSize, OrderStripTextOffset, OrderStripBarOffset, OrderStripBarHeight, OrderStripSideMargin,
+            OrderPanelOffsetTop, OrderPanelWidth,
             FormationStatsRefreshSeconds, VerboseLogging,
         };
 

@@ -254,13 +254,14 @@
   // (true or false)
   "FormationBarsAlways": true,
 
-  // Draw a band on each squad bar showing how far the men's Athletics spreads around the
-  // average.
+  // Draw a band showing how far the men's Athletics spreads around the average - on each squad
+  // bar and in the orders-menu strip (off: the strip shows the average alone, without its "±
+  // 8").
   // (true or false)
   "ShowFormationSpread": true,
 
-  // Width of that band on each side of the average, in standard deviations. 1 = about two men
-  // in three fall inside it.
+  // Width of that band on each side of the average, in standard deviations - the strip's "± 8"
+  // is this width in percent of the bar. 1 = about two men in three fall inside it.
   // (range 0.0 to 3.0)
   "FormationSpreadStdDevs": 1.0,
 
@@ -268,10 +269,22 @@
   // (range 0.0 to 10.0)
   "FormationBarHeight": 3.0,
 
-  // While the orders menu is open, list each formation's average Athletics and spread, for
-  // example "Infantry 72 ± 8".
+  // While the orders menu is open, show under each formation card its men's average Athletics ±
+  // spread as a slim bar and numbers, for example "72% ± 8" (and their average health).
   // (true or false)
   "ShowInOrderMenu": true,
+
+  // The orders-menu strip (and the squad bars) also show the men's average health left, for
+  // example "HP 81%".
+  // (true or false)
+  "ShowFormationHealth": true,
+
+  // On: the strip sits under each of the game's formation cards (read live, so it follows any
+  // resolution, UI scale or order-menu mod that keeps the cards). Off - or whenever the cards
+  // cannot be matched - a compact panel at the top of the screen lists the same numbers
+  // instead.
+  // (true or false)
+  "OrderStripUnderCards": true,
 
   // ==================== Advanced ====================
   // How often your bar and the target's bar update, in seconds. Lower is smoother and costs a
@@ -298,6 +311,40 @@
   // bars.
   // (range 0 to 1000)
   "PlayerBarOffsetBottom": 54,
+
+  // Font size of the orders-menu strip's numbers, in the game's UI pixels.
+  // (range 8 to 30)
+  "OrderStripTextSize": 13,
+
+  // Distance from the bottom of a formation card to the top of its numbers, in the game's UI
+  // pixels. The numbers sit at the left and right ends, leaving the middle to the game's order
+  // icons.
+  // (range -40 to 60)
+  "OrderStripTextOffset": 1,
+
+  // Distance from the bottom of a formation card to the top of its Athletics bar, in the game's
+  // UI pixels. 20 puts it just under the game's order icons, which hang 20 px below a card.
+  // (range -40 to 60)
+  "OrderStripBarOffset": 20,
+
+  // Thickness of the orders-menu strip's Athletics bar, in the game's UI pixels.
+  // (range 1 to 20)
+  "OrderStripBarHeight": 4,
+
+  // How far the strip's numbers and bar keep in from a card's left and right edges, in the
+  // game's UI pixels.
+  // (range 0 to 40)
+  "OrderStripSideMargin": 2,
+
+  // Where the fallback panel sits (used when the cards cannot be matched, or with the strip
+  // under the cards off): distance from the top of the screen, in the game's UI pixels. It is
+  // centred left to right.
+  // (range 0 to 1000)
+  "OrderPanelOffsetTop": 80,
+
+  // Width of the fallback panel, in the game's UI pixels.
+  // (range 120 to 900)
+  "OrderPanelWidth": 300,
 
   // How often the squad averages and spreads are recomputed, in seconds.
   // (range 0.05 to 2.0)

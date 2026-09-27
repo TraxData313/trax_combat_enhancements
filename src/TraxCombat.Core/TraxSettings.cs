@@ -250,12 +250,21 @@ namespace TraxCombat.Core
         public float FormationSpreadStdDevs => GetFloat(SettingsSchema.FormationSpreadStdDevs);
         public float FormationBarHeight => GetFloat(SettingsSchema.FormationBarHeight);
         public bool ShowInOrderMenu => GetBool(SettingsSchema.ShowInOrderMenu);
+        public bool ShowFormationHealth => GetBool(SettingsSchema.ShowFormationHealth);
+        public bool OrderStripUnderCards => GetBool(SettingsSchema.OrderStripUnderCards);
 
         public float HudRefreshSeconds => GetFloat(SettingsSchema.HudRefreshSeconds);
         public int PlayerBarWidth => GetInt(SettingsSchema.PlayerBarWidth);
         public int PlayerBarHeight => GetInt(SettingsSchema.PlayerBarHeight);
         public int PlayerBarOffsetRight => GetInt(SettingsSchema.PlayerBarOffsetRight);
         public int PlayerBarOffsetBottom => GetInt(SettingsSchema.PlayerBarOffsetBottom);
+        public int OrderStripTextSize => GetInt(SettingsSchema.OrderStripTextSize);
+        public int OrderStripTextOffset => GetInt(SettingsSchema.OrderStripTextOffset);
+        public int OrderStripBarOffset => GetInt(SettingsSchema.OrderStripBarOffset);
+        public int OrderStripBarHeight => GetInt(SettingsSchema.OrderStripBarHeight);
+        public int OrderStripSideMargin => GetInt(SettingsSchema.OrderStripSideMargin);
+        public int OrderPanelOffsetTop => GetInt(SettingsSchema.OrderPanelOffsetTop);
+        public int OrderPanelWidth => GetInt(SettingsSchema.OrderPanelWidth);
         public float FormationStatsRefreshSeconds => GetFloat(SettingsSchema.FormationStatsRefreshSeconds);
         public bool VerboseLogging => GetBool(SettingsSchema.VerboseLogging);
     }

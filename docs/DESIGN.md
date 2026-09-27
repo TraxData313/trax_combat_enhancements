@@ -338,15 +338,24 @@ says (§2c).
 | `BarRedBelowPercent` | 25 | Red at or below this % (an empty bar is always red). |
 | `ShowFormationBars` | true | Average bars above your formations. |
 | `FormationBarsAlways` | true | true: always shown. false: only while vanilla shows formation markers. |
-| `ShowFormationSpread` | true | ± spread band on the formation bars. |
-| `FormationSpreadStdDevs` | 1.0 | Band width in standard deviations. |
+| `ShowFormationSpread` | true | ± spread band on the formation bars and in the orders-menu strip (off: the strip shows the average alone). |
+| `FormationSpreadStdDevs` | 1.0 | Band width in standard deviations (the strip's "± 8" is this width). |
 | `FormationBarHeight` | 3.0 | Metres above the formation's centre for its bar. |
-| `ShowInOrderMenu` | true | Panel of formation averages ± spread while the orders menu is open. |
+| `ShowInOrderMenu` | true | The orders-menu strip: under each formation card, the men's average Athletics ± spread (bar + "72% ± 8"). |
+| `ShowFormationHealth` | true | Squad bars and the orders-menu strip also show average health ("HP 81%"). |
+| `OrderStripUnderCards` | true | true: the strip sits under the vanilla cards (read live) when they can be matched, else the compact panel. false: always the compact panel. |
 | `HudRefreshSeconds` | 0.1 | (Advanced) How often the player and target bars update. |
 | `PlayerBarWidth` | 205 | (Advanced) Length of your bar in UI pixels of the 1920 × 1080 layout (the game's UI scale applies); 205 = the inside of the vanilla health bar. |
 | `PlayerBarHeight` | 12 | (Advanced) Thickness of your bar, UI pixels. |
 | `PlayerBarOffsetRight` | 62 | (Advanced) Screen's right edge → your bar's right end, UI pixels (62 = under the vanilla health bar). |
 | `PlayerBarOffsetBottom` | 54 | (Advanced) Screen's bottom edge → your bar's row (label, number, bar), UI pixels (54 = just under the health and horse bars). |
+| `OrderStripTextSize` | 13 | (Advanced) Font size of the strip's numbers, UI pixels. |
+| `OrderStripTextOffset` | 1 | (Advanced) A card's bottom edge → the top of its numbers, UI pixels (they sit left and right of the vanilla order icons). |
+| `OrderStripBarOffset` | 20 | (Advanced) A card's bottom edge → the top of its strip bar, UI pixels (20 = just under the vanilla order icons). |
+| `OrderStripBarHeight` | 4 | (Advanced) Thickness of the strip bar, UI pixels. |
+| `OrderStripSideMargin` | 2 | (Advanced) How far the numbers and the bar keep in from a card's sides, UI pixels. |
+| `OrderPanelOffsetTop` | 80 | (Advanced) Screen's top edge → the fallback panel (centred), UI pixels. |
+| `OrderPanelWidth` | 300 | (Advanced) Width of the fallback panel, UI pixels. |
 | `FormationStatsRefreshSeconds` | 0.25 | (Advanced) How often formation averages and spreads are recomputed. |
 | `VerboseLogging` | false | Log every roll, blow and exhaustion (rate-limited) to `trax_combat.log`. Off = load, settings, mission start/end, per-battle summaries and errors only. |
 
@@ -358,11 +367,10 @@ The step that builds each one moves its row into the Parameters table above (the
 test reads that table only) and removes any retired rows in the same commit. (Step 5d moved
 its four `StepBack*` rows up and added `StepBackEnemyRange`, `StepBackHoldAttacks`,
 `StepBackMaxAtOnce`; step 6 moved the three `Bar*BelowPercent` rows up and added the four
-`PlayerBar*` layout rows.)
+`PlayerBar*` layout rows; step 9 moved `ShowFormationHealth` up and added `OrderStripUnderCards`,
+the five `OrderStrip*` and the two `OrderPanel*` rows.)
 
-| Key | Default | Step | What it does |
-|---|---|---|---|
-| `ShowFormationHealth` | true | 8 | Squad bars and the orders-menu strip also show average health. |
+None left.
 
 Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics skill),
 `FullRegenSecondsMoving` and `MovingSpeedThreshold` (→ regen by effort),
