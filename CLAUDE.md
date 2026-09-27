@@ -64,7 +64,10 @@ die at any moment (tokens run out) and the next one loses nothing.
   `Assembly.GetTypes()` on our DLL at startup, and ANY type whose base type, interface or
   field type comes from a missing assembly makes the whole mod fail to load. MCM types may
   appear in METHOD BODIES ONLY (e.g. MCM's fluent builder), or in a satellite assembly loaded
-  by hand. Same rule for any other optional dependency.
+  by hand. Same rule for any other optional dependency. Trap inside the trap (step 3): a
+  LAMBDA whose parameter is an MCM type is cached by the compiler in a static field typed
+  `Func<McmType,…>` — an MCM field after all. `McmBridge` hands MCM `Action<object>` instance
+  methods instead; `tools/AssemblyGuard` (run by every deploy) catches any slip.
 - **Decorate game models, never subclass `Default*`/`Sandbox*` models.** `AddModel` replaces
   by base type; a subclass silently drops War Sails' and other mods' versions. Extend the
   abstract model and delegate to the previously registered one (sibling lesson). If a model
@@ -100,17 +103,49 @@ die at any moment (tokens run out) and the next one loses nothing.
   which log lines prove it worked. It is the script for the final test session.
 - **Commit as each good piece lands** — not only at step end. Small, working commits.
 
-## Layout (planned — make it true in step 3, then keep it true)
+## Layout (real since step 3, 2026-09-27 — keep it true)
 
 ```
-src/TraxCombat.Core/          netstandard2.0 — pure logic, unit-tested: config schema +
-                              defaults, damage roll, endurance math (costs, regen, exhaustion),
-                              formation statistics (mean / std)
-src/TraxCombat.Module/        net472 — the Bannerlord module: SubModule, config file I/O,
-                              MCM bridge (soft), mission behaviors, models, HUD views
-tests/TraxCombat.Core.Tests/  net8.0 xUnit — keep green
-module/SubModule.xml          manifest; module/GUI/Prefabs for our HUD movies
-tools/deploy.ps1              build + install as "Trax Combat Enhancements (dev)"
+TraxCombatEnhancements.sln    Core + Module + tests (the tools build on their own)
+Directory.Build.props         C# 10, nullable, GameFolder, McmBinFolder; *.user override imported
+src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-tested:
+  ParamDef.cs                 one setting: key, type, default, range, group, label, plain-words
+                              description, apply timing (Live / NextBattle); Normalize, Format
+  SettingsSchema.cs           EVERY setting of DESIGN's table, in file + MCM order, 7 groups —
+                              the one place a setting is declared (a test parses DESIGN.md)
+  TraxSettings.cs             THE live settings object (TraxSettings.Shared), read at use time:
+                              typed properties, Set(key, value, source), Version, Changed event
+  ConfigFile.cs               config.json TEXT: commented writer (header + // above each key),
+                              tolerant reader (comments, trailing commas, casing, "0,75"), Apply
+  ConfigMerge.cs              THE FILE-REWRITE RULE (MCM wins for what it touched, the disk for
+                              the rest) + EditTracker (what MCM changed since the last write)
+  RateLimiter.cs              per-tag token bucket for chatty log lines, counts what it drops
+src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhancements.dll:
+  SubModule.cs                entry point: load log, config init/re-reads, MCM register/retry,
+                              the two model decorators (OnGameStart), EnduranceLogic per mission
+  ModPaths.cs                 Configs\TraxCombatEnhancements\ via EngineFilePaths.ConfigsPath
+  ConfigStore.cs              config.json ↔ TraxSettings.Shared: first run, re-read at game and
+                              mission start, write after MCM Done by the rewrite rule, backups
+  TraxLog.cs                  trax_combat.log: tagged lines, 2 MB trim, Verbose (rate-limited,
+                              only when VerboseLogging), Error (stack, rate-limited, in-game notice)
+  Mcm/McmBridge.cs            the MCM page — fluent builder, MCM types in METHOD BODIES ONLY,
+                              no MCM-typed lambdas (read its class doc before touching it)
+  Models/TraxDamageModel.cs   AgentApplyDamageModel DECORATOR — pass-through until step 4
+  Models/TraxAgentStatModel.cs AgentStatCalculateModel DECORATOR — pass-through until step 5,
+                              + the tournament SetAILevelMultiplier fix
+  Missions/EnduranceLogic.cs  MissionLogic in every SP mission: start/end lines, [summary]
+                              block — grows into the endurance engine in step 5
+tests/TraxCombat.Core.Tests/  net8.0 xUnit (53) — schema vs DESIGN.md, settings, config file,
+                              merge rule, rate limiter. Keep green.
+module/SubModule.xml          release manifest (Id TraxCombatEnhancements, v0.1.0); GUI/Prefabs
+                              for the HUD movies arrive in step 6
+tools/deploy.ps1              build → AssemblyGuard → OfflineSmoke → install as
+                              Modules\TraxCombatEnhancements.Dev "Trax Combat Enhancements (dev)"
+tools/AssemblyGuard/          soft-dependency guard (from the sibling): MCM, Harmony, ButterLib,
+                              UIExtenderEx, NavalDLC, CustomBattle in any type surface = FAIL
+tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLLs, no game
+                              launched: types load without MCM, config flows, tournament fix,
+                              the MCM page built by MCM's real builder (16 checks)
 tools/package.ps1             Steam release layout (step 11)
 ```
 
@@ -122,9 +157,11 @@ dotnet test  -c Release
 powershell -ExecutionPolicy Bypass -File tools\deploy.ps1
 ```
 
-Game path (and MCM path, if referenced) in `Directory.Build.props`; personal overrides in
-`Directory.Build.props.user` (git-ignored). The deploy fails while the game runs (DLL lock) —
-say so and hand Anton the deploy line.
+Game path and MCM path in `Directory.Build.props`; personal overrides in
+`Directory.Build.props.user` (git-ignored). The deploy runs the AssemblyGuard and the offline
+smoke test before it installs anything (`-SkipSmoke` only if the smoke cannot run on a
+machine). The deploy fails while the game runs (DLL lock) — say so and hand Anton the deploy
+line.
 
 **Editing text files: use the Edit/Write tools, never PowerShell `Get-Content`/`Set-Content`.**
 Windows PowerShell 5.1 reads BOM-less UTF-8 as ANSI and writes it back as mojibake (every

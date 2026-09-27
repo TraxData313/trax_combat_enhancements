@@ -90,6 +90,15 @@ mid-battle. Nothing ever needs a game restart; if some parameter can only apply 
 next battle, its description says so. Hand edits to the file are picked up at the next
 battle start.
 
+**When MCM writes the file** (its Done button), a hand edit made meanwhile is never lost: the
+file on disk is re-read at that moment, MCM's value is written only for the settings MCM
+changed, and every other setting keeps the value on disk (it takes effect at the next battle
+start). Unknown keys are kept in a "not recognised" section; a file that does not parse is
+saved as `config.json.broken-<time>` before a fresh one replaces it. MCM's Reset buttons
+restore the defaults of the table below. Ranges live in the schema
+(`src/TraxCombat.Core/SettingsSchema.cs`) and are printed beside each key in the file. The
+file also carries `ConfigVersion`, a format stamp — not a setting.
+
 ## 5. Compatibility
 
 - **RBM (Realistic Battle Mod) is NOT compatible** (Anton, 2026-09-27): it has its own

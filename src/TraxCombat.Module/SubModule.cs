@@ -18,7 +18,8 @@ namespace TraxCombat
     /// The mod's entry point. What happens when:
     ///   OnSubModuleLoad          - [load] versions/modules/paths; config.json created or read;
     ///                              every setting logged.
-    ///   main menu (OnBeforeInitialModuleScreenSetAsRoot) - MCM page registered (if MCM is there).
+    ///   main menu (OnBeforeInitialModuleScreenSetAsRoot) - MCM page registered (if MCM is there);
+    ///                              the one RBM-incompatibility message (DESIGN §5), if RBM is on.
     ///   OnApplicationTick        - MCM registration retry (1/s until ready); the in-game error notice.
     ///   OnGameStart              - config.json re-read (hand edits); the two model DECORATORS
     ///                              registered (damage, agent stats) - one registration covers
@@ -30,6 +31,8 @@ namespace TraxCombat
     {
         private static readonly Stopwatch NoticeClock = Stopwatch.StartNew();
         private static double _lastNoticeAt = -1000;
+        private static bool _rbmEnabled;
+        private static bool _compatNoticeShown;
         private bool _announced;
 
         protected override void OnSubModuleLoad()
@@ -72,6 +75,7 @@ namespace TraxCombat
                         "Trax Combat Enhancements " + ModVersion() + " loaded"
                         + (McmBridge.IsRegistered ? " - settings in Mod Options." : " - settings in config.json.")));
                 }
+                ShowCompatNoticeOnce("main menu");
             }
             catch (Exception e)
             {
@@ -101,6 +105,7 @@ namespace TraxCombat
                 TraxLog.Info("load", "game start: " + (game?.GameType?.GetType().Name ?? "unknown game type"));
                 ConfigStore.Reload("game start");
                 McmBridge.TryRegister("game start");
+                ShowCompatNoticeOnce("game start");
                 RegisterModels(gameStarterObject);
             }
             catch (Exception e)
@@ -196,12 +201,28 @@ namespace TraxCombat
                 TraxLog.Error("load.modules", e);
             }
             TraxLog.Info("load", "modules (" + modules.Length + "): " + string.Join(", ", modules));
-            if (modules.Any(m => string.Equals(m, "RBM", StringComparison.OrdinalIgnoreCase)))
-                TraxLog.Info("load", "WARNING: Realistic Battle Mod (RBM) is enabled - it has its own stamina and posture and patches combat; play with it OFF when testing this mod (DESIGN interpretation 10).");
+            var rbm = modules.Where(m => string.Equals(m, "RBM", StringComparison.OrdinalIgnoreCase)
+                                         || m.StartsWith("RBM_", StringComparison.OrdinalIgnoreCase)).ToList();
+            _rbmEnabled = rbm.Count > 0;
+            TraxLog.Info("compat", _rbmEnabled
+                ? "Realistic Battle Mod is ENABLED (" + string.Join(", ", rbm) + ") - NOT compatible (DESIGN §5): it has its own posture and stamina and patches the same combat. The mod still runs; results with both on are not meaningful."
+                : "Realistic Battle Mod (RBM) not enabled - good");
             int ours = modules.Count(m => m.StartsWith("TraxCombatEnhancements", StringComparison.OrdinalIgnoreCase));
             if (ours > 1)
                 TraxLog.Info("load", "WARNING: more than one copy of this mod is enabled (" + string.Join(", ", modules.Where(m => m.StartsWith("TraxCombatEnhancements", StringComparison.OrdinalIgnoreCase)))
                     + ") - enable only one.");
+        }
+
+        /// <summary>DESIGN §5: if RBM is enabled, ONE on-screen message per session - at the main
+        /// menu, or at the first game start if the menu was somehow skipped. Never refuses to run.</summary>
+        private static void ShowCompatNoticeOnce(string when)
+        {
+            if (!_rbmEnabled || _compatNoticeShown) return;
+            _compatNoticeShown = true;
+            InformationManager.DisplayMessage(new InformationMessage(
+                "Trax Combat Enhancements is not compatible with Realistic Battle Mod - disable one of them.",
+                Colors.Yellow));
+            TraxLog.Info("compat", "RBM incompatibility message shown at " + when);
         }
 
         private static string ModVersion()

@@ -13,6 +13,7 @@ namespace TraxCombat
     /// newest half once it tops ~2 MB. Built for ONE big playtest at the end (CLAUDE.md): every
     /// line is timestamped and tagged by area so the file greps clean -
     ///   [load] versions, modules, paths      [config] every value on load, every change
+    ///   [compat] RBM detected or not (DESIGN §5)
     ///   [mcm] the menu bridge                [mission] start / end / behaviours attached
     ///   [summary] the per-battle block       [damage] [endurance] [speed] [hud] per feature
     ///   [error] every caught exception, with its stack (rate-limited per place)

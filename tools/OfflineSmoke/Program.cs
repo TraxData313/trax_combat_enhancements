@@ -57,6 +57,7 @@ namespace TraxCombat.Tools
             Step("broken file: kept values, backed up before the next write", BrokenFile);
             Step("missing keys defaulted and added, unknown key kept and reported", MissingAndUnknownKeys);
             Step("log rate limit: a verbose flood is capped", VerboseFloodCapped);
+            Step("tournament AI-level fix reads the private field and pushes it down the chain", TournamentAiLevelFix);
             Step("MCM still not loaded after phase 1", () => Check(!McmLoaded(), "MCMv5 got loaded during phase 1"));
 
             // Phase 2 - a player WITH MCM.
@@ -267,6 +268,30 @@ namespace TraxCombat.Tools
             TraxLog.Verbose("damage", "must not appear");
             Check(!LogText.Contains("must not appear"), "verbose line written with VerboseLogging off");
             ConfigStore.Reload("after flood"); // file and memory in step again
+        }
+
+        /// <summary>TournamentBehavior calls SetAILevelMultiplier on the TOP stat model (us); the
+        /// decorator must read its own private _AILevelMultiplier (compiled accessor against the
+        /// real TaleWorlds.MountAndBlade.dll) and push it into every model below it.</summary>
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static void TournamentAiLevelFix()
+        {
+            Check(Models.TraxAgentStatModel.AiLevelFixAvailable, "the _AILevelMultiplier accessor could not be built");
+            var below = new Models.TraxAgentStatModel(Array.Empty<TaleWorlds.MountAndBlade.AgentStatCalculateModel>()); // stands in for Sandbox's model
+            var top = new Models.TraxAgentStatModel(new TaleWorlds.MountAndBlade.AgentStatCalculateModel[] { below });
+            var read = (Func<TaleWorlds.MountAndBlade.AgentStatCalculateModel, float>)GetStatic(typeof(Models.TraxAgentStatModel), "ReadAiLevel")!;
+            var sync = typeof(Models.TraxAgentStatModel).GetMethod("SyncAiLevel", BindingFlags.Instance | BindingFlags.NonPublic)!;
+
+            top.SetAILevelMultiplier(1f + 2f / 3f); // what TournamentBehavior does at round 2
+            Check(Math.Abs(read(top) - 1.6667f) < 1e-3, "accessor read " + read(top));
+            Check(Math.Abs(read(below) - 1f) < 1e-6, "base model changed before the sync");
+            sync.Invoke(top, null);
+            Check(Math.Abs(read(below) - 1.6667f) < 1e-3, "multiplier not pushed to the base model: " + read(below));
+            LogHas("[speed] tournament AI level multiplier 1 → 1.67 passed on to 1 base stat model(s)");
+
+            top.ResetAILevelMultiplier(); // tournament over
+            sync.Invoke(top, null);
+            Check(Math.Abs(read(below) - 1f) < 1e-6, "reset not pushed to the base model");
         }
 
         private static int Occurrences(string text, string what)

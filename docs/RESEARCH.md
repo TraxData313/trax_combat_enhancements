@@ -587,13 +587,22 @@ internal static class McmBridge            // no MCM type outside method bodies
 }
 ```
 
+- **Correction (step 3): the sample above would FAIL the AssemblyGuard.** A non-capturing
+  lambda such as `g => g.AddBool(…)` is cached by the compiler in a static field of the hidden
+  `<>c` class typed `Action<ISettingsPropertyGroupBuilder>` — an MCM-typed FIELD, the very load
+  trap. Proven with a probe assembly: `FAIL: <>c.<>9__0_0 is typed on MCMv5`. The built
+  `McmBridge` passes `Action<object>` instance methods (delegate contravariance) and holds the
+  built settings as `object`.
 - Format `"none"`: MCM never stores a copy, so `config.json` is the only store and there is
   no "MCM file vs config file" drift. **UNVERIFIED** end to end (the format class exists and
   is dispatched by `BaseSettingsContainer.Load/SaveSettings`).
 - Presets: the fluent "Default" preset is filled in `DefaultSettingsBuilder.BuildAsGlobal`
-  from each ref's CURRENT value (i.e. the player's loaded values, not ours) → call
-  `WithoutDefaultPreset()` and add our own `CreatePreset("trax_defaults", "Mod defaults",
-  p => p.SetPropertyValue(id, default)…)` with DESIGN's defaults.
+  from each ref's CURRENT value (i.e. the player's loaded values, not ours). **Correction
+  (step 3):** do NOT remove it — MCM.UI's page Reset and per-setting reset apply the preset
+  with id `"default"` (`SettingsVM.ResetSettings` / `ResetSettingsValue`), so without it Reset
+  silently does nothing. Instead call `CreatePreset("default", …)` with DESIGN's defaults
+  BEFORE `BuildAsGlobal`: the preset builder keeps the first value per key, so ours win.
+  Verified offline by `tools/OfflineSmoke`.
 - SubModule.xml: `Bannerlord.MBOptionScreen` as `LoadBeforeThis optional="true"`.
 - Keep `tools/AssemblyGuard` from the sibling (fail the package if any type's base type,
   interface or field comes from MCMv5).
