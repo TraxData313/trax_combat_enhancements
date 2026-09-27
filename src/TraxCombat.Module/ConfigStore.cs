@@ -244,6 +244,11 @@ namespace TraxCombat
                 TraxLog.Info("config", "config.json has no " + ConfigFile.VersionKey + " stamp - read as version " + ConfigFile.FormatVersion);
             else if (read.FileVersion > ConfigFile.FormatVersion)
                 TraxLog.Info("config", "config.json is format " + read.FileVersion + ", newer than this build (" + ConfigFile.FormatVersion + ") - reading what it knows");
+            // a file of an older format that still carries a default a newer version changed gets the
+            // new one, once (step 13: format 2) - logged here, the change itself logged by the Apply below
+            var migrated = ConfigFile.Migrate(read);
+            foreach (var note in migrated)
+                TraxLog.Info("config", "migrated config.json at " + when + ": " + note);
             foreach (var issue in read.Issues)
                 TraxLog.Info("config", "file problem: " + issue);
             foreach (var pair in read.Unknown)
@@ -257,11 +262,12 @@ namespace TraxCombat
             // A newer version added settings the file lacks: write them in, keeping every valid
             // value the file has. Not when something in it is invalid - rewriting would replace
             // the player's broken text with the default before he has seen the log line.
-            if (absent.Count > 0 && !read.HasInvalid)
+            if ((absent.Count > 0 || migrated.Count > 0) && !read.HasInvalid)
             {
                 var plan = ConfigMerge.ForWrite(read, Settings.Snapshot(), Array.Empty<string>());
                 WriteText(path, ConfigFile.Write(plan.Values, plan.Unknown));
-                TraxLog.Info("config", "added " + absent.Count + " missing setting(s) to config.json with their defaults");
+                if (absent.Count > 0) TraxLog.Info("config", "added " + absent.Count + " missing setting(s) to config.json with their defaults");
+                if (migrated.Count > 0) TraxLog.Info("config", "rewrote config.json as format " + ConfigFile.FormatVersion + " with the " + migrated.Count + " migrated value(s)");
             }
             return true;
         }
@@ -276,6 +282,7 @@ namespace TraxCombat
             if (File.Exists(path))
             {
                 disk = ConfigFile.Read(File.ReadAllText(path, Encoding.UTF8));
+                ConfigFile.Migrate(disk); // an old-format file's old defaults must not come back through the merge
                 if (!disk.Ok)
                 {
                     string backup = path + ".broken-" + DateTime.Now.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture);

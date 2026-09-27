@@ -27,32 +27,27 @@ namespace TraxCombat.Core
         Pause = 6,
     }
 
-    /// <summary>Why a tired AI fighter's swing ended WITHOUT a pace hold (counted, step 5e).</summary>
+    /// <summary>Why a tired AI fighter's attack ended WITHOUT a timer (the pace hold - step 13: after every
+    /// attack, melee and ranged, on foot and mounted; counted).</summary>
     public enum PaceNotHeld
     {
         /// <summary>m is 1: nothing to hold.</summary>
         FullStrength = 0,
 
-        /// <summary>The player - never held.</summary>
-        Player = 1,
-
-        /// <summary>A rider - never held (his rhythm is the horse's pass).</summary>
-        Rider = 2,
-
         /// <summary>His step back (5d) is running, or the one this swing asked for started - it holds his
-        /// attacks itself. (A step back that was asked for but REFUSED leaves the hold to run.)</summary>
-        SteppingBack = 3,
+        /// attacks itself. (A step back that was asked for but REFUSED leaves the timer to run.)</summary>
+        SteppingBack = 1,
 
-        /// <summary>No fresh cycle known yet - neither his own nor the mission's.</summary>
-        NoReference = 4,
+        /// <summary>The attack's duration was not measured (its ready or release was not seen whole).</summary>
+        NoDuration = 2,
 
-        /// <summary>The next ready had already begun when the swing ended (a chained blow).</summary>
-        AlreadyReadied = 5,
+        /// <summary>The next ready had already begun when the attack ended (a chained blow).</summary>
+        AlreadyReadied = 3,
 
-        /// <summary>The swing and his next ready already fill the target cycle.</summary>
-        NotNeeded = 6,
+        /// <summary>The timer came out below <see cref="AttackTimerMath.MinTimerSeconds"/>.</summary>
+        NotNeeded = 4,
 
-        Count = 7,
+        Count = 5,
     }
 
     /// <summary>Why a queued hold was not started by the tick (step 5e).</summary>
@@ -64,7 +59,7 @@ namespace TraxCombat.Core
         /// <summary>Not AI-controlled (the player took him).</summary>
         NotAi = 1,
 
-        /// <summary>The game has a job for him: a scripted frame, a game object, a ladder, a detachment - or he mounted.</summary>
+        /// <summary>The game has a job for him: a scripted frame, a game object, a ladder, a detachment.</summary>
         Busy = 2,
 
         /// <summary>NoAttack was already set by someone else.</summary>
@@ -90,8 +85,8 @@ namespace TraxCombat.Core
     {
         TimeUp = 0,
 
-        /// <summary>A swing started anyway - NoAttack did not hold it (expected 0).</summary>
-        SwingStarted = 1,
+        /// <summary>An attack (a ready or a release, melee or ranged) started anyway - NoAttack did not hold it (expected 0).</summary>
+        AttackStarted = 1,
 
         /// <summary>ModEnabled, AthleticsEnabled or AttackRatePaceHold switched off.</summary>
         SwitchedOff = 2,
@@ -102,9 +97,8 @@ namespace TraxCombat.Core
         /// <summary>The player took him over.</summary>
         PlayerControl = 5,
 
-        Mounted = 6,
-        Error = 7,
-        Count = 8,
+        Error = 6,
+        Count = 7,
     }
 
     /// <summary>What one attempt to lift a hold found (step 5e).</summary>
@@ -124,17 +118,25 @@ namespace TraxCombat.Core
     }
 
     /// <summary>
-    /// The attack-rate settings for ONE decision, read live from <see cref="TraxSettings"/> (step 5e;
-    /// DESIGN §2 "Attack speed" = the whole attack cycle follows m). A struct, built where needed.
+    /// The attack-rate settings for ONE decision, read live from <see cref="TraxSettings"/> (step 5e; step
+    /// 13: PAUSE ONLY - the animations at full speed, a no-attack timer after each attack). A struct,
+    /// built where needed.
     /// </summary>
     public readonly struct AttackRateRules
     {
         public AttackRateRules(bool modEnabled, bool athleticsEnabled, bool aiDecisions, bool paceHold)
+            : this(modEnabled, athleticsEnabled, aiDecisions, paceHold, playerTimer: true, animationMinPercent: 100)
+        {
+        }
+
+        public AttackRateRules(bool modEnabled, bool athleticsEnabled, bool aiDecisions, bool paceHold, bool playerTimer, int animationMinPercent)
         {
             ModEnabled = modEnabled;
             AthleticsEnabled = athleticsEnabled;
             AiDecisions = aiDecisions;
             PaceHold = paceHold;
+            PlayerTimer = playerTimer;
+            AnimationMinPercent = animationMinPercent;
         }
 
         public bool ModEnabled { get; }
@@ -144,8 +146,14 @@ namespace TraxCombat.Core
         /// <summary>AttackRateAiDecisions (the switch itself).</summary>
         public bool AiDecisions { get; }
 
-        /// <summary>AttackRatePaceHold (the switch itself).</summary>
+        /// <summary>AttackRatePaceHold (the switch itself) - the AI's no-attack timer.</summary>
         public bool PaceHold { get; }
+
+        /// <summary>AttackRatePlayerTimer (the switch itself) - your no-attack timer (step 13).</summary>
+        public bool PlayerTimer { get; }
+
+        /// <summary>AttackAnimationMinPercent - the slowest the attack animations get (100 = full speed always).</summary>
+        public int AnimationMinPercent { get; }
 
         /// <summary>Athletics is live (the master switch first).</summary>
         public bool Enabled => ModEnabled && AthleticsEnabled;
@@ -153,30 +161,43 @@ namespace TraxCombat.Core
         /// <summary>The AI's attack decisions follow m now.</summary>
         public bool AiDecisionsOn => Enabled && AiDecisions;
 
-        /// <summary>Pace holds may run now.</summary>
+        /// <summary>The AI's timers (pace holds) may run now.</summary>
         public bool PaceOn => Enabled && PaceHold;
+
+        /// <summary>Your timer may run now.</summary>
+        public bool PlayerTimerOn => Enabled && PlayerTimer;
 
         /// <summary>Which switch holds the pace hold off ("ModEnabled", "AthleticsEnabled", "AttackRatePaceHold"), null while on.</summary>
         public string? PaceOffBecause => !ModEnabled ? "ModEnabled" : !AthleticsEnabled ? "AthleticsEnabled" : !PaceHold ? "AttackRatePaceHold" : null;
 
-        public static AttackRateRules From(TraxSettings s) => new AttackRateRules(s.ModEnabled, s.AthleticsEnabled, s.AttackRateAiDecisions, s.AttackRatePaceHold);
+        /// <summary>Which switch holds your timer off ("ModEnabled", "AthleticsEnabled", "AttackRatePlayerTimer"), null while on.</summary>
+        public string? PlayerTimerOffBecause => !ModEnabled ? "ModEnabled" : !AthleticsEnabled ? "AthleticsEnabled" : !PlayerTimer ? "AttackRatePlayerTimer" : null;
+
+        public static AttackRateRules From(TraxSettings s) =>
+            new AttackRateRules(s.ModEnabled, s.AthleticsEnabled, s.AttackRateAiDecisions, s.AttackRatePaceHold, s.AttackRatePlayerTimer, s.AttackAnimationMinPercent);
 
         /// <summary>The settings sentence of the mission-start line and the summary.</summary>
         public string Describe()
         {
             if (!ModEnabled) return "OFF - the whole mod is switched off (ModEnabled): vanilla attack rate";
             if (!AthleticsEnabled) return "OFF (AthleticsEnabled): vanilla attack rate";
-            return "ON - animations x m always (swing, thrust / bow draw / throw, reload); AI decisions (AttackRateAiDecisions) "
+            return "ON - PAUSE ONLY: animations "
+                   + (AnimationMinPercent >= 100
+                       ? "at full speed (AttackAnimationMinPercent 100)"
+                       : "x max(m, " + (AnimationMinPercent / 100.0).ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) + ") (AttackAnimationMinPercent " + AnimationMinPercent + " - a little slow-mo)")
+                   + "; after each attack no new attack for D x (1/m - 1) (D = its wind-up + release, ranged + its reload): you (AttackRatePlayerTimer) "
+                   + (PlayerTimer ? "on - your attack button does nothing until it ends, held it attacks the moment it ends" : "off")
+                   + ", AI (AttackRatePaceHold) " + (PaceHold ? "on - NoAttack, melee and ranged, on foot and mounted" : "off")
+                   + "; AI decisions (AttackRateAiDecisions) "
                    + (AiDecisions ? "on: the chance to attack, to riposte and to loose x m, the aim before a shot ÷ m" : "off")
-                   + "; pace hold (AttackRatePaceHold) "
-                   + (PaceHold ? "on: after a melee swing a tired AI fighter on foot holds his next attack, guard up, until his fresh cycle ÷ m has passed" : "off")
-                   + "; blocking and the recoil after a block: untouched";
+                   + "; never held: blocking, parrying, moving, weapon switches, kicks";
         }
     }
 
     /// <summary>
-    /// Step 5e as pure functions (AI_NOTES "Step 5e"): how the AI's decision values follow m, the
-    /// pace hold's target, which intervals count as a fighting rhythm, and the summary's verdict.
+    /// Step 5e as pure functions (AI_NOTES "Step 5e"): how the AI's decision values follow m, which
+    /// intervals count as a fighting rhythm, and the summary's verdict (the timer itself: step 13's
+    /// <see cref="AttackTimerMath"/>).
     /// </summary>
     public static class AttackRateMath
     {
@@ -184,18 +205,12 @@ namespace TraxCombat.Core
         public const double VerdictTolerance = 0.15;
 
         /// <summary>A melee cycle (release to release) longer than this ÷ m is a pause, not a fighting
-        /// rhythm: left out of the averages and of the fresh reference. Log / reference plumbing, like
+        /// rhythm: left out of the averages. Log plumbing, like
         /// step 5c's 30 s interval cap.</summary>
         public const double MeleeCycleCapSeconds = 4.0;
 
         /// <summary>The same for a ranged cycle (shot to shot - a crossbow reloads for seconds).</summary>
         public const double RangedCycleCapSeconds = 12.0;
-
-        /// <summary>A hold shorter than this is not worth two flag writes (engine plumbing).</summary>
-        public const double MinHoldSeconds = 0.1;
-
-        /// <summary>The mission's AI fresh cycle stands in for a fighter's own only after this many samples.</summary>
-        public const int MinMissionFreshSamples = 5;
 
         /// <summary>The summary judges a group only with this many cycles at the peak (its reference)…</summary>
         public const int MinFreshCycles = 5;
@@ -237,34 +252,6 @@ namespace TraxCombat.Core
 
         /// <summary>The target cycle at m: the fresh cycle ÷ m (1 s fresh at m 0.5 → 2 s).</summary>
         public static double TargetCycle(double freshCycle, float m) => freshCycle / SafeM(m);
-
-        /// <summary>
-        /// The fresh cycle a hold aims from: the fighter's OWN average cycle while m was 1 when he has
-        /// one, else the mission's AI average once it has <see cref="MinMissionFreshSamples"/>
-        /// samples, else NaN (no hold).
-        /// </summary>
-        public static double FreshReference(double ownSum, int ownCount, double missionMean, int missionCount, out bool own)
-        {
-            own = ownCount > 0 && ownSum > 0;
-            if (own) return ownSum / ownCount;
-            return missionCount >= MinMissionFreshSamples && missionMean > 0 ? missionMean : double.NaN;
-        }
-
-        /// <summary>His next ready, expected from his last one (struck at <paramref name="lastAsked"/>),
-        /// at m now: a wind-up scales with 1/m. No ready known → 0.</summary>
-        public static double ExpectedReady(double lastReady, float lastAsked, float m) =>
-            lastReady > 0 ? lastReady * SafeM(lastAsked) / SafeM(m) : 0;
-
-        /// <summary>
-        /// When his next ready may begin so that his next release comes no sooner than
-        /// <paramref name="freshCycle"/> ÷ m after <paramref name="releaseStart"/>:
-        /// release start + fresh ÷ m − the ready he is expected to need.
-        /// </summary>
-        public static double HoldUntil(double releaseStart, double freshCycle, float m, double expectedReady) =>
-            releaseStart + TargetCycle(freshCycle, m) - Math.Max(0, expectedReady);
-
-        /// <summary>A hold is worth starting: at least <see cref="MinHoldSeconds"/> left.</summary>
-        public static bool HoldNeeded(double holdUntil, double now) => holdUntil - now >= MinHoldSeconds;
 
         /// <summary>measured ÷ target → "on target" (±15%), "too fast" (shorter cycles) or "too slow".</summary>
         public static string Verdict(double ratio) =>

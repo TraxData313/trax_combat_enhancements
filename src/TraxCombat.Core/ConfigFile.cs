@@ -67,6 +67,9 @@ namespace TraxCombat.Core
         /// <summary>The file's <c>ConfigVersion</c> stamp, if it had one.</summary>
         public int? FileVersion { get; internal set; }
 
+        /// <summary>What <see cref="ConfigFile.Migrate"/> changed ("Key: old → new (why)"), empty when nothing.</summary>
+        public List<string> Migrated { get; } = new List<string>();
+
         public bool HasInvalid => Issues.Any(i => i.Kind == ConfigIssueKind.Invalid);
     }
 
@@ -79,10 +82,10 @@ namespace TraxCombat.Core
     /// </summary>
     public static class ConfigFile
     {
-        /// <summary>The format stamp written into every file. Bump it (and migrate in the
-        /// reader) when a later version must change the meaning of an existing key or push a
-        /// new default into files that already carry the old one.</summary>
-        public const int FormatVersion = 1;
+        /// <summary>The format stamp written into every file. Bump it (and migrate in
+        /// <see cref="Migrate"/>) when a later version must change the meaning of an existing key or
+        /// push a new default into files that already carry the old one. 2 = step 13 (PAUSE ONLY).</summary>
+        public const int FormatVersion = 2;
 
         /// <summary>The meta key holding <see cref="FormatVersion"/> - not a setting.</summary>
         public const string VersionKey = "ConfigVersion";
@@ -299,6 +302,37 @@ namespace TraxCombat.Core
                 if (!result.Values.ContainsKey(p.Key))
                     result.Missing.Add(p);
             return result;
+        }
+
+        /// <summary>
+        /// Pushes the defaults a newer format changed into a file of an older format that still carries
+        /// the OLD default (a value the player set himself is kept - a hand-set value equal to the old
+        /// default cannot be told apart, and moves too). Idempotent; a file without a stamp is taken as
+        /// the current format (it was written by hand). Fills <see cref="ConfigReadResult.Migrated"/>.
+        /// Format 2 (step 13, PAUSE ONLY): <c>AttackRateAiDecisions</c> true → the new default (off: on
+        /// top of the no-attack timer it double-counts); <c>PlayerBarOffsetBottom</c> 54 → the new default
+        /// (30: the Attack recovery bar sits above your bar, both under the vanilla health bar).
+        /// </summary>
+        public static List<string> Migrate(ConfigReadResult read)
+        {
+            if (read == null || !read.Ok) return new List<string>();
+            int from = read.FileVersion ?? FormatVersion;
+            if (from < 2)
+            {
+                MoveOldDefault(read, SettingsSchema.AttackRateAiDecisions, 1,
+                    "step 13: the no-attack timer carries the slow-down - the AI-decision scaling on top of it double-counts", from);
+                MoveOldDefault(read, SettingsSchema.PlayerBarOffsetBottom, 54,
+                    "step 13: the Attack recovery bar sits above your bar, so the pair moved down under the vanilla health bar", from);
+            }
+            return read.Migrated;
+        }
+
+        private static void MoveOldDefault(ConfigReadResult read, ParamDef p, double oldDefault, string why, int from)
+        {
+            if (!read.Values.TryGetValue(p.Key, out double v) || Math.Abs(v - oldDefault) > 1e-9) return;
+            if (Math.Abs(p.Default - oldDefault) < 1e-9) return; // the default is back where it was: nothing to push
+            read.Values[p.Key] = p.Default;
+            read.Migrated.Add(p.Key + ": " + p.Format(oldDefault) + " → " + p.Format(p.Default) + " (format " + from + " → " + FormatVersion + ", the old default; " + why + ")");
         }
 
         /// <summary>

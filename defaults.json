@@ -18,9 +18,9 @@
 {
   // ==================== Master switch ====================
   // Turn the whole mod off and every battle is plain vanilla: no damage rolls, no Athletics, no
-  // slow attacks, no step backs, no bars. The log still records each battle (its summary says
-  // mod ON or OFF), so the same battle can be fought both ways and compared. Switched back on,
-  // everyone starts with a full Athletics bar.
+  // pauses between attacks, no step backs, no bars. The log still records each battle (its
+  // summary says mod ON or OFF), so the same battle can be fought both ways and compared.
+  // Switched back on, everyone starts with a full Athletics bar.
   // (true or false)
   "ModEnabled": true,
 
@@ -55,9 +55,9 @@
   // ==================== Athletics ====================
   // On: every fighter has an Athletics bar - his stamina, as big as his Athletics skill - that
   // his attacks drain and rest refills. At or above the peak line he fights at full strength;
-  // below it his damage upside, attack speed and run speed fall, down to slow attacks and a
-  // slow run when it is empty, and tired AI fighters step back. Off: no Athletics at all - no
-  // costs, no slowing, no step backs, no bars.
+  // below it his damage upside, attack speed and run speed fall - down to long pauses between
+  // attacks and a slow run when it is empty - and tired AI fighters step back. Off: no
+  // Athletics at all - no costs, no slowing, no step backs, no bars.
   // (true or false)
   "AthleticsEnabled": true,
 
@@ -109,27 +109,42 @@
   "PartyLeaderCostMultiplier": 0.75,
 
   // ==================== Tired fighters ====================
-  // How fast a fighter with an empty bar attacks, in percent of normal: the wind-up and swing,
-  // thrusts, bow draw, crossbow reload and throws - and, for the AI, the pause between attacks
-  // (the next two switches). 20 = one attack where a fresh man makes five. From the peak line
-  // down to empty it falls in a straight line. 100 = attacks never slow down. Blocking is never
-  // slowed.
+  // How often a fighter with an empty bar can attack, in percent of normal. His attacks play at
+  // full speed; after each one he must wait before he can start the next: the attack's own
+  // length times (100 / this - 1) - at 20 he waits four attack lengths, so he attacks once
+  // where a fresh man attacks five times. From the peak line down to empty it falls in a
+  // straight line. 100 = attacks never slow down. Blocking is never slowed.
   // (range 5 to 100)
   "ExhaustedAttackSpeedPercent": 20,
 
-  // On: a tired AI fighter also decides to attack (and to strike back after a parry) less
-  // often, looses arrows less readily and aims longer before a shot - by his attack speed - so
-  // his whole rhythm slows, not only the swing. Blocking is never touched. Off: only the
-  // animations slow down.
+  // On: below the peak line, after each of your attacks your attack button does nothing until
+  // the pause is over - the Attack recovery bar above your Athletics bar fills back up
+  // meanwhile. Keep the button held and your next attack starts the moment it is full.
+  // Blocking, kicks, moving and switching weapons always work. Off: your own attacks are never
+  // held (the AI's still are). Off mid-battle: your pause ends at once.
   // (true or false)
-  "AttackRateAiDecisions": true,
+  "AttackRatePlayerTimer": true,
 
-  // On: after each melee swing a tired AI fighter on foot holds his next attack, guard up,
-  // until his time between attacks has grown to his fresh rhythm divided by his attack speed -
-  // at 50% attack speed one attack every 2 seconds instead of every second. Never you, never
-  // riders. Off mid-battle: every held fighter may attack again at once.
+  // On: after each attack - melee or ranged, on foot or mounted - a tired AI fighter does not
+  // start another until his pause is over; his guard stays up. Off: tired AI fighters are not
+  // held. Off mid-battle: every waiting fighter may attack again at once.
   // (true or false)
   "AttackRatePaceHold": true,
+
+  // On: a tired AI fighter also decides to attack (and to strike back after a parry) less
+  // often, looses arrows less readily and aims longer - by his attack speed - on top of the
+  // pause. Off: the pause alone slows him. With both on they stack and tired AI fighters attack
+  // slower than asked, so it is off unless you want that.
+  // (true or false)
+  "AttackRateAiDecisions": false,
+
+  // The attack animations - wind-up and swing, thrust, bow draw, throw, crossbow reload - never
+  // play slower than this percent of normal. 100 = always full speed: the whole slow-down is
+  // the pause between attacks. Lower it to bring some slow motion back for tired fighters
+  // (their animations slow with their attack speed, but not below this). Run speed is not
+  // affected.
+  // (range 0 to 100)
+  "AttackAnimationMinPercent": 100,
 
   // Top speed on foot of a fighter with an empty bar, times his normal top speed. From the peak
   // line down to empty it falls in a straight line, so fresh men overtake tired ones. 1.0 =
@@ -228,6 +243,18 @@
   // (true or false)
   "ShowPlayerBarOutsideBattles": true,
 
+  // A slim bar just above your Athletics bar, shown with it: it empties when you attack below
+  // the peak line and fills back up over your pause - until it is full you cannot start another
+  // attack - with the seconds left inside it ("1.3 s"). At full strength there is no pause and
+  // it stays full. Hidden while your pause is switched off (Your attacks wait out the pause).
+  // (true or false)
+  "ShowAttackRecoveryBar": true,
+
+  // The Attack recovery bar flashes twice when you press attack while it is still filling (the
+  // press does nothing).
+  // (true or false)
+  "FlashBarOnEarlyAttack": true,
+
   // The colours of your bar and of the orders-menu strip: green at or above the peak line, blue
   // just below it, and yellow once the Athletics left is at or below this percent of the peak
   // line. With the line at 75% of the bar, 75 turns it yellow from about 56% of the bar down.
@@ -294,10 +321,25 @@
   "PlayerBarOffsetRight": 62,
 
   // Distance from the bottom of the screen to your bar's row (the word Athletics, the number
-  // and the bar), in the game's UI pixels. 54 puts it just under the vanilla health and horse
-  // bars.
+  // and the bar), in the game's UI pixels. 30 leaves room for the Attack recovery bar above it,
+  // both just under the vanilla health and horse bars.
   // (range 0 to 1000)
-  "PlayerBarOffsetBottom": 54,
+  "PlayerBarOffsetBottom": 30,
+
+  // Length of the Attack recovery bar, in the game's UI pixels. 205 matches your Athletics bar
+  // under it.
+  // (range 40 to 800)
+  "RecoveryBarWidth": 205,
+
+  // Thickness of the Attack recovery bar, in the game's UI pixels. The seconds inside it need
+  // about 12.
+  // (range 2 to 40)
+  "RecoveryBarHeight": 14,
+
+  // How far above your Athletics bar's row the Attack recovery bar's row sits (bottom to
+  // bottom), in the game's UI pixels. 24 = right on top of it. It moves with your bar.
+  // (range -400 to 600)
+  "RecoveryBarOffsetAbove": 24,
 
   // Font size of the orders-menu strip's numbers, in the game's UI pixels.
   // (range 8 to 30)
@@ -338,10 +380,10 @@
   // (range 0.05 to 2.0)
   "FormationStatsRefreshSeconds": 0.25,
 
-  // Also write every damage roll, blow, step back and pace hold to trax_combat.log,
-  // rate-limited so a big battle cannot flood it. These lines carry a ~ before their tag and
-  // are the only ones a trim cuts. Off: loading, settings, battle start and end, first-time
-  // events, summaries and errors only.
+  // Also write every damage roll, blow, step back and AI pause to trax_combat.log, rate-limited
+  // so a big battle cannot flood it. These lines carry a ~ before their tag and are the only
+  // ones a trim cuts. Off: loading, settings, battle start and end, first-time events,
+  // summaries and errors only.
   // (true or false)
   "VerboseLogging": false,
 

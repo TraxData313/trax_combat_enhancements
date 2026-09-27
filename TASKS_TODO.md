@@ -16,6 +16,7 @@ BUILD ORDER (one step at a time — [~] = in flight, see CLAUDE.md "manager prot
 - [x] 12. Playtest fixes, round 1 (see BUGS) — bar outside battles, MCM stops cleanly; exit hang not ours (see AI_NOTES)
 - [~] 13. PAUSE ONLY (Anton's playtest call): no slow-mo, a no-attack timer after each attack (you + AI), countdown "1.3 s" by the bar, bar flashes if you swing too early (DESIGN §2) — + "Attack recovery" bar ABOVE the Athletics bar: empties on attack, refills over the pause, secs inside, flashes on an early press (Anton, 2026-09-27)
 - [ ] 14. Refill faster when low, slower when full: straight line, rate near full = 50% of rate near empty (slider), empty→full still 60 s at a walk · run-speed floor 0.3 → 0.7 (Anton: "too slow, unrealistic")
+- [ ] 15. Research (no code): how RBM makes battles longer and more tactical, WITHOUT its unit overhaul — a menu of levers (+ our own ideas) for Anton to pick; 80v80 infantry ended in 4–5 min (Anton, 2026-09-27) — after 13 and 14
 
 PLAYTEST (Anton, all at once at the end — script in docs/PLAYTEST.md):
 - [ ] Play with RBM disabled — declared NOT compatible (Anton, 2026-09-27; the mod warns if it sees it)

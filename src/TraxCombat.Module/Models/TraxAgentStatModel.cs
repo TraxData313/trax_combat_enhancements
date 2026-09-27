@@ -17,8 +17,10 @@ namespace TraxCombat.Models
     ///
     /// EVERY abstract AND virtual member forwards to BaseModel - a virtual left un-overridden
     /// would run the abstract class's default body instead of the sandbox logic
-    /// (GetEffectiveMaxHealth, GetEffectiveSkill, …; RESEARCH §C). The one change (steps 5, 5c, 5e):
-    /// <see cref="UpdateAgentStats"/> scales the attack-speed and run-speed properties by the
+    /// (GetEffectiveMaxHealth, GetEffectiveSkill, …; RESEARCH §C). The one change (steps 5, 5c, 5e, 13):
+    /// <see cref="UpdateAgentStats"/> scales the attack ANIMATIONS (step 13: only down to
+    /// AttackAnimationMinPercent - 100 = full speed, the no-attack timer carries the slow-down) and the
+    /// run-speed property by the
     /// fighter's Athletics multipliers, the AI's attack-decision values by the attack multiplier
     /// (step 5e, while AttackRateAiDecisions is on), and a slowed rider's horse's speed
     /// (<see cref="SpeedPenalty"/>).
@@ -122,19 +124,20 @@ namespace TraxCombat.Models
                 if (AthleticsLogic.SpeedFactorsFor(agent, out float attack, out float run, out float mount))
                 {
                     bool ai = false;
-                    if (attack != 1f)
+                    var s = TraxSettings.Shared;
+                    // step 13 (PAUSE ONLY): the animations play at max(m, AttackAnimationMinPercent) - 100 =
+                    // full speed, the no-attack timer carries the slow-down (read live on every recompute)
+                    float animation = AttackTimerMath.AnimationMultiplier(attack, s.AttackAnimationMinPercent);
+                    if (animation != 1f) SpeedPenalty.Scale(agentDrivenProperties, animation);
+                    // step 5e: the AI's decisions may follow the same m (an A/B switch, off since step 13)
+                    if (attack != 1f && s.AttackRateAiDecisions)
                     {
-                        SpeedPenalty.Scale(agentDrivenProperties, attack);
-                        // step 5e: the AI's pause follows the same m (read live - the switch is an A/B)
-                        if (TraxSettings.Shared.AttackRateAiDecisions)
-                        {
-                            SpeedPenalty.ScaleAiDecisions(agentDrivenProperties, attack);
-                            ai = true;
-                        }
+                        SpeedPenalty.ScaleAiDecisions(agentDrivenProperties, attack);
+                        ai = true;
                     }
                     if (run != 1f) SpeedPenalty.ScaleRun(agentDrivenProperties, run);
                     if (mount != 1f) SpeedPenalty.ScaleMount(agentDrivenProperties, mount);
-                    AthleticsLogic.NoteDecoratorScaled(attack != 1f, run != 1f, mount != 1f, ai);
+                    AthleticsLogic.NoteDecoratorScaled(animation != 1f, run != 1f, mount != 1f, ai);
                 }
             }
             catch (Exception e)

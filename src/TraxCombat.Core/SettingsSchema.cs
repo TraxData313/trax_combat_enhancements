@@ -47,7 +47,7 @@ namespace TraxCombat.Core
         /// off = that feature steps aside and the game runs vanilla (CLAUDE.md hard requirement).</summary>
         public static readonly ParamDef ModEnabled = Bool("ModEnabled", MasterGroup,
             "Mod enabled",
-            "Turn the whole mod off and every battle is plain vanilla: no damage rolls, no Athletics, no slow attacks, no step backs, no bars. The log still records each battle (its summary says mod ON or OFF), so the same battle can be fought both ways and compared. Switched back on, everyone starts with a full Athletics bar.");
+            "Turn the whole mod off and every battle is plain vanilla: no damage rolls, no Athletics, no pauses between attacks, no step backs, no bars. The log still records each battle (its summary says mod ON or OFF), so the same battle can be fought both ways and compared. Switched back on, everyone starts with a full Athletics bar.");
 
         // ------------------------------------------------------------------ damage randomness
 
@@ -79,7 +79,7 @@ namespace TraxCombat.Core
 
         public static readonly ParamDef AthleticsEnabled = Bool("AthleticsEnabled", AthleticsGroup,
             "Athletics",
-            "On: every fighter has an Athletics bar - his stamina, as big as his Athletics skill - that his attacks drain and rest refills. At or above the peak line he fights at full strength; below it his damage upside, attack speed and run speed fall, down to slow attacks and a slow run when it is empty, and tired AI fighters step back. Off: no Athletics at all - no costs, no slowing, no step backs, no bars.");
+            "On: every fighter has an Athletics bar - his stamina, as big as his Athletics skill - that his attacks drain and rest refills. At or above the peak line he fights at full strength; below it his damage upside, attack speed and run speed fall - down to long pauses between attacks and a slow run when it is empty - and tired AI fighters step back. Off: no Athletics at all - no costs, no slowing, no step backs, no bars.");
 
         public static readonly ParamDef AthleticsPoolFloor = Int("AthleticsPoolFloor", 0, 1000, AthleticsGroup,
             "Smallest bar (points)",
@@ -117,15 +117,25 @@ namespace TraxCombat.Core
 
         public static readonly ParamDef ExhaustedAttackSpeedPercent = Int("ExhaustedAttackSpeedPercent", 5, 100, TiredGroup,
             "Attack speed when empty (%)",
-            "How fast a fighter with an empty bar attacks, in percent of normal: the wind-up and swing, thrusts, bow draw, crossbow reload and throws - and, for the AI, the pause between attacks (the next two switches). 20 = one attack where a fresh man makes five. From the peak line down to empty it falls in a straight line. 100 = attacks never slow down. Blocking is never slowed.");
+            "How often a fighter with an empty bar can attack, in percent of normal. His attacks play at full speed; after each one he must wait before he can start the next: the attack's own length times (100 / this - 1) - at 20 he waits four attack lengths, so he attacks once where a fresh man attacks five times. From the peak line down to empty it falls in a straight line. 100 = attacks never slow down. Blocking is never slowed.");
 
-        public static readonly ParamDef AttackRateAiDecisions = Bool("AttackRateAiDecisions", TiredGroup,
-            "Tired AI attack less often",
-            "On: a tired AI fighter also decides to attack (and to strike back after a parry) less often, looses arrows less readily and aims longer before a shot - by his attack speed - so his whole rhythm slows, not only the swing. Blocking is never touched. Off: only the animations slow down.");
+        // Step 13 - PAUSE ONLY (Anton's playtest call): the slow-down is a no-attack timer after each
+        // attack, the animations play at full speed (AttackTimerMath, AI_NOTES "Step 13").
+        public static readonly ParamDef AttackRatePlayerTimer = Bool("AttackRatePlayerTimer", TiredGroup,
+            "Your attacks wait out the pause",
+            "On: below the peak line, after each of your attacks your attack button does nothing until the pause is over - the Attack recovery bar above your Athletics bar fills back up meanwhile. Keep the button held and your next attack starts the moment it is full. Blocking, kicks, moving and switching weapons always work. Off: your own attacks are never held (the AI's still are). Off mid-battle: your pause ends at once.");
 
         public static readonly ParamDef AttackRatePaceHold = Bool("AttackRatePaceHold", TiredGroup,
-            "Tired AI keep a slower pace",
-            "On: after each melee swing a tired AI fighter on foot holds his next attack, guard up, until his time between attacks has grown to his fresh rhythm divided by his attack speed - at 50% attack speed one attack every 2 seconds instead of every second. Never you, never riders. Off mid-battle: every held fighter may attack again at once.");
+            "Tired AI wait out the pause",
+            "On: after each attack - melee or ranged, on foot or mounted - a tired AI fighter does not start another until his pause is over; his guard stays up. Off: tired AI fighters are not held. Off mid-battle: every waiting fighter may attack again at once.");
+
+        public static readonly ParamDef AttackRateAiDecisions = Bool("AttackRateAiDecisions", TiredGroup,
+            "Tired AI also decide to attack less",
+            "On: a tired AI fighter also decides to attack (and to strike back after a parry) less often, looses arrows less readily and aims longer - by his attack speed - on top of the pause. Off: the pause alone slows him. With both on they stack and tired AI fighters attack slower than asked, so it is off unless you want that.");
+
+        public static readonly ParamDef AttackAnimationMinPercent = Int("AttackAnimationMinPercent", 0, 100, TiredGroup,
+            "Slowest attack animation (%)",
+            "The attack animations - wind-up and swing, thrust, bow draw, throw, crossbow reload - never play slower than this percent of normal. 100 = always full speed: the whole slow-down is the pause between attacks. Lower it to bring some slow motion back for tired fighters (their animations slow with their attack speed, but not below this). Run speed is not affected.");
 
         public static readonly ParamDef MinMoveSpeedMultiplier = Float("MinMoveSpeedMultiplier", 0.1, 1, TiredGroup,
             "Run speed when empty (x)",
@@ -203,6 +213,16 @@ namespace TraxCombat.Core
             "Your bar outside battles too",
             "Outside a battle - the training field, a town, a village - your bar shows while you hold a weapon or a shield, and stays while your Athletics refills; with empty hands and a full bar it goes. Never during a conversation, a barter or a cutscene. Off: your bar shows in fights only (battles, duels, tournaments, stealth).");
 
+        // Step 13 (Anton's playtest: "above that bar add a bar 'attack recovery' that empties when I
+        // attack and until it fills I can't attack; inside it add the secs delay added").
+        public static readonly ParamDef ShowAttackRecoveryBar = Bool("ShowAttackRecoveryBar", PlayerBarGroup,
+            "Attack recovery bar",
+            "A slim bar just above your Athletics bar, shown with it: it empties when you attack below the peak line and fills back up over your pause - until it is full you cannot start another attack - with the seconds left inside it (\"1.3 s\"). At full strength there is no pause and it stays full. Hidden while your pause is switched off (Your attacks wait out the pause).");
+
+        public static readonly ParamDef FlashBarOnEarlyAttack = Bool("FlashBarOnEarlyAttack", PlayerBarGroup,
+            "Flash it on an early attack",
+            "The Attack recovery bar flashes twice when you press attack while it is still filling (the press does nothing).");
+
         // The looked-at fighter's bar (ShowTargetBar, TargetBarMaxDistance, TargetBarLingerSeconds) is
         // LATER (step 7): its settings left the schema in step 10b - no switch that does nothing
         // (review R21). DESIGN's "Planned parameters" keeps the rows.
@@ -270,7 +290,21 @@ namespace TraxCombat.Core
 
         public static readonly ParamDef PlayerBarOffsetBottom = Int("PlayerBarOffsetBottom", 0, 1000, AdvancedGroup,
             "Your bar: from the bottom edge (px)",
-            "Distance from the bottom of the screen to your bar's row (the word Athletics, the number and the bar), in the game's UI pixels. 54 puts it just under the vanilla health and horse bars.");
+            "Distance from the bottom of the screen to your bar's row (the word Athletics, the number and the bar), in the game's UI pixels. 30 leaves room for the Attack recovery bar above it, both just under the vanilla health and horse bars.");
+
+        // The Attack recovery bar (step 13) - above your Athletics bar, its right end lined up with it
+        // (PlayerBarOffsetRight); UI pixels of the 1080p layout, the game's UI scale applies.
+        public static readonly ParamDef RecoveryBarWidth = Int("RecoveryBarWidth", 40, 800, AdvancedGroup,
+            "Recovery bar: length (px)",
+            "Length of the Attack recovery bar, in the game's UI pixels. 205 matches your Athletics bar under it.");
+
+        public static readonly ParamDef RecoveryBarHeight = Int("RecoveryBarHeight", 2, 40, AdvancedGroup,
+            "Recovery bar: thickness (px)",
+            "Thickness of the Attack recovery bar, in the game's UI pixels. The seconds inside it need about 12.");
+
+        public static readonly ParamDef RecoveryBarOffsetAbove = Int("RecoveryBarOffsetAbove", -400, 600, AdvancedGroup,
+            "Recovery bar: above your bar (px)",
+            "How far above your Athletics bar's row the Attack recovery bar's row sits (bottom to bottom), in the game's UI pixels. 24 = right on top of it. It moves with your bar.");
 
         // The orders-menu strip (step 9) - UI pixels of the 1080p layout, measured from each vanilla
         // formation card (read live); the fallback panel's place. The game's UI scale applies.
@@ -308,7 +342,7 @@ namespace TraxCombat.Core
 
         public static readonly ParamDef VerboseLogging = Bool("VerboseLogging", AdvancedGroup,
             "Verbose log",
-            "Also write every damage roll, blow, step back and pace hold to trax_combat.log, rate-limited so a big battle cannot flood it. These lines carry a ~ before their tag and are the only ones a trim cuts. Off: loading, settings, battle start and end, first-time events, summaries and errors only.");
+            "Also write every damage roll, blow, step back and AI pause to trax_combat.log, rate-limited so a big battle cannot flood it. These lines carry a ~ before their tag and are the only ones a trim cuts. Off: loading, settings, battle start and end, first-time events, summaries and errors only.");
 
         // Step 10b (review R7): the log's size cap, and what a trim keeps (LogTrim).
         public static readonly ParamDef LogMaxMegabytes = Int("LogMaxMegabytes", 1, 100, AdvancedGroup,
@@ -325,14 +359,17 @@ namespace TraxCombat.Core
             DamageRandomOnMounts, DamageRandomOnShields,
             AthleticsEnabled, AthleticsPoolFloor, AthleticsPoolPerSkill, AthleticsPeakPercent, HealthCapsAthletics,
             CostPerBlow, CostOnMiss, HeroCostMultiplier, PartyLeaderCostMultiplier,
-            ExhaustedAttackSpeedPercent, AttackRateAiDecisions, AttackRatePaceHold, MinMoveSpeedMultiplier, MountMinSpeedMultiplier, DamageBonusFollowsAthletics,
+            ExhaustedAttackSpeedPercent, AttackRatePlayerTimer, AttackRatePaceHold, AttackRateAiDecisions, AttackAnimationMinPercent,
+            MinMoveSpeedMultiplier, MountMinSpeedMultiplier, DamageBonusFollowsAthletics,
             StepBackEnabled, StepBackMaxChancePercent, StepBackDistance, StepBackSeconds, StepBackEnemyRange,
             StepBackHoldAttacks, StepBackMaxAtOnce,
             RegenDelayBlowTimes, BlowTimeSeconds, FullRegenSecondsStanding, RegenMultiplierAtFullRun,
             WalkEffortFraction,
-            ShowPlayerBar, ShowPlayerBarOutsideBattles, BarYellowBelowPercent, BarOrangeBelowPercent, BarRedBelowPercent,
+            ShowPlayerBar, ShowPlayerBarOutsideBattles, ShowAttackRecoveryBar, FlashBarOnEarlyAttack,
+            BarYellowBelowPercent, BarOrangeBelowPercent, BarRedBelowPercent,
             ShowInOrderMenu, ShowFormationHealth, ShowFormationSpread, FormationSpreadStdDevs, OrderStripUnderCards,
             HudRefreshSeconds, PlayerBarWidth, PlayerBarHeight, PlayerBarOffsetRight, PlayerBarOffsetBottom,
+            RecoveryBarWidth, RecoveryBarHeight, RecoveryBarOffsetAbove,
             OrderStripTextSize, OrderStripTextOffset, OrderStripBarOffset, OrderStripBarHeight, OrderStripSideMargin,
             OrderPanelOffsetTop, OrderPanelWidth,
             FormationStatsRefreshSeconds, VerboseLogging, LogMaxMegabytes,

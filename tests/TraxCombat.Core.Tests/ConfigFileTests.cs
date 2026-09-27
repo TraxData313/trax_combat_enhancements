@@ -20,6 +20,39 @@ public class ConfigFileTests
     }
 
     [Fact]
+    public void A_format_1_file_carrying_the_old_step_13_defaults_gets_the_new_ones_once()
+    {
+        // Anton's config.json from before step 13: format 1, the AI decisions on, the bar at 54
+        string old = "{ \"ConfigVersion\": 1, \"AttackRateAiDecisions\": true, \"PlayerBarOffsetBottom\": 54, \"DamageRandomPercent\": 40 }";
+        var read = ConfigFile.Read(old);
+        Assert.Equal(1, read.FileVersion);
+        var notes = ConfigFile.Migrate(read);
+        Assert.Equal(2, notes.Count);
+        Assert.Equal(0, read.Values["AttackRateAiDecisions"]);
+        Assert.Equal(SettingsSchema.PlayerBarOffsetBottom.Default, read.Values["PlayerBarOffsetBottom"]);
+        Assert.Equal(40, read.Values["DamageRandomPercent"]);   // anything else is left alone
+        Assert.Contains(notes, n => n.StartsWith("AttackRateAiDecisions: true → false (format 1 → 2, the old default; step 13:", StringComparison.Ordinal));
+        Assert.Contains(notes, n => n.StartsWith("PlayerBarOffsetBottom: 54 → 30 (format 1 → 2, the old default;", StringComparison.Ordinal));
+        Assert.Equal(2, ConfigFile.Migrate(read).Count);         // idempotent: nothing new the second time
+
+        // a value the player chose himself (not the old default) stays
+        var own = ConfigFile.Read("{ \"ConfigVersion\": 1, \"AttackRateAiDecisions\": false, \"PlayerBarOffsetBottom\": 70 }");
+        Assert.Empty(ConfigFile.Migrate(own));
+        Assert.Equal(70, own.Values["PlayerBarOffsetBottom"]);
+
+        // a format-2 file (written by this version) and a hand-made file with no stamp are never migrated
+        var now = ConfigFile.Read("{ \"ConfigVersion\": 2, \"AttackRateAiDecisions\": true, \"PlayerBarOffsetBottom\": 54 }");
+        Assert.Empty(ConfigFile.Migrate(now));
+        Assert.Equal(1, now.Values["AttackRateAiDecisions"]);
+        var hand = ConfigFile.Read("{ \"AttackRateAiDecisions\": true }");
+        Assert.Empty(ConfigFile.Migrate(hand));
+
+        // a file that did not parse: nothing
+        Assert.Empty(ConfigFile.Migrate(ConfigFile.Read("{ nope")));
+        Assert.Equal(2, ConfigFile.FormatVersion);
+    }
+
+    [Fact]
     public void Changed_values_round_trip()
     {
         var s = new TraxSettings();

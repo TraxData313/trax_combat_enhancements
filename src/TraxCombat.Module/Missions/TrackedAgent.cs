@@ -111,15 +111,38 @@ namespace TraxCombat.Missions
         public int PauseBin;
         public float PauseAsked = 1f;
 
-        /// <summary>His last melee ready that ended in a swing (seconds) and the m it ran at - the pace
-        /// hold expects his next one from it.</summary>
-        public double LastReadySeconds = -1;
-        public float LastReadyAsked = 1f;
+        // ---- step 13: the no-attack timer. D of the attack running now (its wind-up up to full, then +
+        // its release; ranged + the reload after the loose), filled by the phases.
+        public double AttackDuration;
 
-        /// <summary>His own fresh melee cycles on foot (release to release while m was 1) - the pace
-        /// hold's reference.</summary>
-        public double FreshCycleSum;
-        public int FreshCycleCount;
+        /// <summary>The running attack's wind-up was seen (else D is only its release - "not measured").</summary>
+        public bool AttackDurationKnown;
+
+        /// <summary>The running attack's wind-up (seconds) - D's first part, for the log and his rest.</summary>
+        public double CurrentWindUp;
+
+        /// <summary>A ranged attack's loose ended into a reload: the attack ends when the reload does.</summary>
+        public bool AwaitReloadEnd;
+
+        /// <summary>An attack ended at this action change (set by the phases, taken by the timer's decision).</summary>
+        public bool AttackEndedNow;
+        public AttackKind EndedKind;
+        public double EndedDuration;
+        public bool EndedDurationKnown;
+
+        /// <summary>His last measured rest of an attack (release, + reload for ranged) by kind - the
+        /// player's hold from the release's start estimates his timer from it.</summary>
+        public double LastRestMelee = -1;
+        public double LastRestRanged = -1;
+
+        /// <summary>His last timer (the player's or an AI hold) whose next attack is still to come - the
+        /// summary measures the gap from its start (the attack's end) to that next attack.</summary>
+        public bool TimerPending;
+        public double TimerStart;
+        public double TimerAsked;
+        public float TimerM = 1f;
+        public int TimerBin;
+        public AttackKind TimerKind;
 
         /// <summary>A step back (5d) started since his last release: this cycle and its pause are the step
         /// back's, not his attack rhythm - left out of the attack-rate numbers.</summary>

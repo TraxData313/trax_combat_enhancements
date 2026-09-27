@@ -312,6 +312,7 @@ namespace TraxCombat.Missions
             }
             StepBackLeftField(st);
             PaceLeftField(st);
+            PlayerTimerLeftField(st);
             RemoveFromLoop(st);
         }
 
@@ -460,7 +461,7 @@ namespace TraxCombat.Missions
                 Failed("stepback.tick", e);
             }
 
-            // Step 5e: the pace holds - every tick, whatever the switches (off lifts every hold at once).
+            // Step 5e / 13: the AI timers - every tick, whatever the switches (off lifts every hold at once).
             try
             {
                 TickPace(now);
@@ -468,6 +469,17 @@ namespace TraxCombat.Missions
             catch (Exception e)
             {
                 Failed("rate.pace-tick", e);
+            }
+
+            // Step 13: your timer - switched off or not you any more = released at once (the input gate
+            // does the frame work; this is the tick's safety net).
+            try
+            {
+                TickPlayerTimer(now);
+            }
+            catch (Exception e)
+            {
+                Failed("rate.player-tick", e);
             }
 
             _stats.AddTick(polled, (Stopwatch.GetTimestamp() - start) * 1000.0 / Stopwatch.Frequency);
@@ -510,23 +522,33 @@ namespace TraxCombat.Missions
         }
 
         /// <summary>The channel-1 action changed (seen by the poll or inside a hit): the attack-rate
-        /// phases first (step 5e - filed at the band BEFORE this action's charge), then the falling edge
-        /// of a swing ends it (the step-back roll, the pace hold), the rising edge into ReleaseMelee is a
-        /// swing; ranged releases, kicks and bashes are counted for the cross-checks (never charged here).</summary>
+        /// phases first (step 5e - filed at the band BEFORE this action's charge; step 13: they build the
+        /// attack's D and flag its end), then the falling edge of a swing ends it (the step-back roll),
+        /// then an attack that ended here gets its no-attack timer (step 13 - yours or the AI's), the
+        /// rising edge into ReleaseMelee is a swing (and your hold may begin at its start); ranged
+        /// releases, kicks and bashes are counted for the cross-checks (never charged here).</summary>
         internal void ObserveAction(TrackedAgent st, int action, double now, in AthleticsRules r)
         {
             int prev = st.PrevAction;
             st.PrevAction = action;
+            st.AttackEndedNow = false;
             PhasesOnAction(st, action, now, in r);
             if (prev == ActionReleaseMelee) EndRelease(st, now, in r, action);
+            if (st.AttackEndedNow)
+            {
+                st.AttackEndedNow = false;
+                AttackEnded(st, now, action, in r);
+            }
             switch (action)
             {
                 case ActionReleaseMelee:
                     StartRelease(st, now, in r);
+                    PlayerAttackStarting(st, now, AttackKind.Melee, in r);
                     break;
                 case ActionReleaseRanged:
                 case ActionReleaseThrowing:
                     _stats.RangedReleasesPolled++;
+                    PlayerAttackStarting(st, now, AttackKind.Ranged, in r);
                     break;
                 case ActionKick:
                     _stats.KicksSeen++;
@@ -544,7 +566,6 @@ namespace TraxCombat.Missions
             if (mounted) _stats.MeleeReleasesMounted++;
             st.ReleaseSerial++;
             StepBackSwingStarted(st);
-            PaceSwingStarted(st);
 
             // the cycle since the last release ran at the multiplier set after that release's charge
             int binNow = AthleticsMath.PeakBin(AthleticsMath.PeakShare(in r, st));
@@ -568,17 +589,15 @@ namespace TraxCombat.Missions
             st.AskedAfterLastRelease = st.SpeedMultiplier;
         }
 
-        /// <summary>Every counted swing's end is the step-back roll (step 5d: "after each melee swing"),
-        /// then the pace hold's decision (step 5e; a step back asked for just now takes precedence if the
-        /// tick starts it - a refused one leaves the hold to run).
+        /// <summary>Every counted swing's end is the step-back roll (step 5d: "after each melee swing");
+        /// the no-attack timer's decision follows in ObserveAction (step 13; a step back asked for just now
+        /// takes precedence if the tick starts it - a refused one leaves the timer to run).
         /// <paramref name="next"/> = the action he went into (a ready = a chained blow).</summary>
         private void EndRelease(TrackedAgent st, double now, in AthleticsRules r, int next)
         {
             if (st.ReleaseStart < 0) return;
-            double releaseStart = st.ReleaseStart;
             st.ReleaseStart = -1;
             StepBackSwingEnded(st, now, in r);
-            PaceSwingEnded(st, now, releaseStart, next, in r);
         }
 
         // ------------------------------------------------------------------ charging

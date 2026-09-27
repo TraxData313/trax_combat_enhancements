@@ -7,33 +7,35 @@ using TraxCombat.Models;
 namespace TraxCombat.Missions
 {
     /// <summary>
-    /// The attack RATE (DESIGN §2 "Attack speed", step 5e; research and choice in AI_NOTES "Step 5e"):
-    /// the whole attack cycle follows the attack multiplier m, not only the swing.
+    /// The attack RATE (DESIGN §2 "Attack speed", step 5e; step 13 PAUSE ONLY - research and choice in
+    /// AI_NOTES "Step 5e" and "Step 13"): the attack rate follows the attack multiplier m.
     ///
-    /// THREE TECHNIQUES
-    ///   T1 the animations (steps 5 / 5c): swing, thrust / draw / throw, reload × m - the stat decorator.
-    ///   T2 AttackRateAiDecisions: the AI's chance to attack, to riposte and to loose × m, the aim
-    ///      before a shot ÷ m - the same decorator pass (<see cref="SpeedPenalty.ScaleAiDecisions"/>);
-    ///      a switch change re-applies to every tired fighter over the next ticks (budgeted).
-    ///   T3 AttackRatePaceHold: after each MELEE swing of a tired AI fighter on foot, NoAttack (guard up)
-    ///      until his next release can come no sooner than his fresh cycle ÷ m after this one. Asked
-    ///      for at the swing's END (after the step-back roll), started by the next tick (never inside
-    ///      an engine callback), lifted when its time is up - or at once when a switch goes off, he
-    ///      leaves, the player takes him, he mounts, a swing slips through, the mission ends. The
-    ///      engine side is behind <see cref="IPaceBody"/>: NoAttack only on a man with nothing of the
-    ///      game's on him, lifted only while nothing of the game's is on him (else we wait).
+    /// THE TECHNIQUE (step 13, Anton's playtest call - the animation slow-down read as "slow-mo"):
+    ///   the animations play at full speed (the stat decorator scales them only down to
+    ///   AttackAnimationMinPercent, 100 = never); after each attack of duration D (its wind-up + release;
+    ///   ranged + the reload after the loose), ending at m, the fighter may not START another attack
+    ///   for D × (1/m − 1):
+    ///   - AI (AttackRatePaceHold, the old "pace hold"): NoAttack (guard up) from the attack's end -
+    ///     melee and ranged, on foot and mounted. Asked for when the attack ends (a melee swing: after
+    ///     the step-back roll), started by the tick (never inside an engine callback), lifted when its
+    ///     time is up - or at once when a switch goes off, he leaves, the player takes him, an attack
+    ///     slips through, the mission ends. The engine side is behind <see cref="IPaceBody"/>.
+    ///   - You (AttackRatePlayerTimer): AthleticsLogic.PlayerTimer.cs + the input gate.
+    ///   - AttackRateAiDecisions (off by default since step 13 - it double-counts on top of the timer):
+    ///     the AI's chance to attack, to riposte and to loose × m, the aim before a shot ÷ m, in the
+    ///     stat decorator.
     ///
     /// MEASURED (the playtest reads it without a second run): every action change on channel 1 closes
     /// and opens a PHASE (wind-up + held / draw + aim, release, recoil after a block, reload, the pause
     /// before the next ready), each filed under the f band at its start with the m it ran at; the
-    /// cycle release-to-release / shot-to-shot; per band and group (melee / ranged × AI / you) the
-    /// target (the peak's cycle ÷ m) and measured ÷ target with a verdict word; the holds; the guard
-    /// by f (tired men must not block less). A ready's full wind-up is found by polling its progress
-    /// (one native call per fighter in an unfinished ready - the tick cost line shows it).
+    /// animation multiplier asked per attack; each timer's D, m and pause against the measured gap from
+    /// the attack's end to the next attack's start (early = started during it); the cycle release-to-
+    /// release / shot-to-shot; per band and group (melee / ranged × AI / you) the target (the peak's
+    /// cycle ÷ m) and measured ÷ target with a verdict word; the AI's holds; the guard by f.
     ///
-    /// LOGS: [rate] mission start (the techniques), the FIRST slowed fighter's properties before →
-    /// after (every value any technique touches), the FIRST hold in full (start and end), switch
-    /// changes, switched-off releases; verbose: every hold (bucket rate-hold); the [summary] lines of
+    /// LOGS: [rate] mission start (the technique), the FIRST slowed fighter's properties before → after
+    /// (every value a technique touches), the FIRST AI timer in full (start and end), switch changes,
+    /// switched-off releases; verbose: every AI timer (bucket rate-hold); the [summary] lines of
     /// <see cref="AttackRateStats"/>.
     /// </summary>
     public sealed partial class AthleticsLogic
@@ -48,11 +50,10 @@ namespace TraxCombat.Missions
         private readonly List<TrackedAgent> _pacePending = new List<TrackedAgent>(64);
         private readonly List<TrackedAgent> _paceHeld = new List<TrackedAgent>(64);
 
-        /// <summary>The AI's fresh melee cycles on foot this mission (the hold's fallback reference).</summary>
-        private MeanStd _missionFresh;
-
         private bool _seenAiDecisions;
         private bool _seenPaceHold;
+        private bool _seenPlayerTimer;
+        private int _seenAnimationMin;
         private bool _paceSeenOn;
         private bool _rateSwitched;
         private bool _paceClosed;
@@ -62,10 +63,10 @@ namespace TraxCombat.Missions
         /// <summary>This mission's attack-rate numbers (the offline smoke reads them).</summary>
         internal AttackRateStats RateStats => _rateStats;
 
-        /// <summary>The engine side of the pace hold - the offline smoke swaps in a stand-in.</summary>
+        /// <summary>The engine side of the AI timer - the offline smoke swaps in a stand-in.</summary>
         internal IPaceBody PaceBody { get; set; } = new GamePaceBody();
 
-        /// <summary>Holds running now (not those waiting for a game job).</summary>
+        /// <summary>AI timers running now (not those waiting for a game job).</summary>
         internal int HeldNow
         {
             get
@@ -83,8 +84,10 @@ namespace TraxCombat.Missions
             var rr = AttackRateRules.From(s);
             _seenAiDecisions = s.AttackRateAiDecisions;
             _seenPaceHold = s.AttackRatePaceHold;
+            _seenPlayerTimer = s.AttackRatePlayerTimer;
+            _seenAnimationMin = s.AttackAnimationMinPercent;
             _paceSeenOn = rr.PaceOn;
-            TraxLog.Info("rate", "mission start: " + rr.Describe() + " - read live; the [summary] \"attack rate\" lines measure every phase and the cycle by f");
+            TraxLog.Info("rate", "mission start: " + rr.Describe() + " - read live; the [summary] \"attack rate\" lines measure every phase, each timer against the gap it left, and the cycle by f");
         }
 
         // ------------------------------------------------------------------ the phases
@@ -120,18 +123,27 @@ namespace TraxCombat.Missions
             }
         }
 
+        /// <summary>A ready or a release, melee or ranged - an attack under way.</summary>
+        private static bool IsAttackAction(int action) =>
+            action == ActionReadyMelee || action == ActionReadyRanged || action == ActionReleaseMelee || action == ActionReleaseRanged || action == ActionReleaseThrowing;
+
+        private static bool IsReadyAction(int action) => action == ActionReadyMelee || action == ActionReadyRanged;
+
         /// <summary>
         /// The channel-1 action changed (poll or hit): close the running phase (filed under the band at
-        /// its START, with the m it ran at), note the pause between attacks, open the new phase. Runs
-        /// BEFORE this action's own charge, so a release is filed at the band it began in. May run
-        /// inside an engine hit callback: managed reads only.
+        /// its START, with the m it ran at), note the pause between attacks, open the new phase. Step 13:
+        /// the attack's D is built here (its wind-up + release, ranged + the reload after the loose) and
+        /// the moment an attack ENDS is flagged (<see cref="TrackedAgent.AttackEndedNow"/> - the timer's
+        /// decision follows in ObserveAction); an attack's START is the gap measurement after the last
+        /// timer. Runs BEFORE this action's own charge, so a release is filed at the band it began in.
+        /// May run inside an engine hit callback: managed reads only.
         /// </summary>
         private void PhasesOnAction(TrackedAgent st, int action, double now, in AthleticsRules r)
         {
             try
             {
                 if (!r.Enabled) return;
-                bool player = st.Agent.IsMainAgent;
+                bool player = IsPlayer(st);
                 int bin = AthleticsMath.PeakBin(AthleticsMath.PeakShare(in r, st));
                 float m = st.SpeedMultiplier;
                 int next = PhaseOfAction(action, out var kind);
@@ -149,11 +161,9 @@ namespace TraxCombat.Missions
                                 double wind = st.ReadyFullAt >= st.PhaseStart ? st.ReadyFullAt - st.PhaseStart : d;
                                 _rateStats.AddPhase(k, player, st.PhaseBin, AttackPhase.WindUp, wind, st.PhaseAsked);
                                 _rateStats.AddPhase(k, player, st.PhaseBin, AttackPhase.Held, d - wind, st.PhaseAsked);
-                                if (k == AttackKind.Melee)
-                                {
-                                    st.LastReadySeconds = d;
-                                    st.LastReadyAsked = st.PhaseAsked;
-                                }
+                                st.CurrentWindUp = wind;       // D's first part: the wind-up, never the held part
+                                st.AttackDuration = wind;
+                                st.AttackDurationKnown = true;
                             }
                             else
                             {
@@ -163,10 +173,23 @@ namespace TraxCombat.Missions
                         case AttackPhase.Release:
                             _rateStats.AddPhase(k, player, st.PhaseBin, AttackPhase.Release, d, st.PhaseAsked);
                             if (k == AttackKind.Melee && !st.HitThisRelease) _rateStats.AddPhase(k, player, st.PhaseBin, AttackPhase.CleanRelease, d, st.PhaseAsked);
+                            st.AttackDuration += d;
+                            // melee: the attack ends with its release (a block recoil plays inside the timer);
+                            // ranged: with the reload that follows the loose, if one does
+                            if (k == AttackKind.Ranged && next == (int)AttackPhase.Reload) st.AwaitReloadEnd = true;
+                            else AttackEndsHere(st, k);
                             break;
                         case AttackPhase.Recoil:
+                            _rateStats.AddPhase(k, player, st.PhaseBin, AttackPhase.Recoil, d, st.PhaseAsked);
+                            break;
                         case AttackPhase.Reload:
-                            _rateStats.AddPhase(k, player, st.PhaseBin, (AttackPhase)running, d, st.PhaseAsked);
+                            _rateStats.AddPhase(k, player, st.PhaseBin, AttackPhase.Reload, d, st.PhaseAsked);
+                            if (st.AwaitReloadEnd)
+                            {
+                                st.AwaitReloadEnd = false;
+                                st.AttackDuration += d;
+                                AttackEndsHere(st, AttackKind.Ranged);
+                            }
                             break;
                     }
                 }
@@ -186,7 +209,7 @@ namespace TraxCombat.Missions
                         _rateStats.AddPhase(st.PauseAttack, player, st.PauseBin, AttackPhase.Pause, now - st.PauseFrom, st.PauseAsked);
                     }
                     st.PauseFrom = -1;
-                    if (kind == AttackKind.Melee) PaceReadyStarted(st, now);
+                    AttackBegan(st, player, now, isReady: true);
                 }
                 else if (next < 0)
                 {
@@ -201,6 +224,16 @@ namespace TraxCombat.Missions
                 else if (next == (int)AttackPhase.Release)
                 {
                     st.PauseFrom = -1; // a release without a ready the poll saw: this pause cannot be measured
+                    if (running != (int)AttackPhase.WindUp)
+                    {
+                        // no ready seen: D is its release alone (not measured - no AI timer from it)
+                        st.CurrentWindUp = 0;
+                        st.AttackDuration = 0;
+                        st.AttackDurationKnown = false;
+                        AttackBegan(st, player, now, isReady: false);
+                    }
+                    // the animation it plays at: the multiplier in effect now, before this attack's charge
+                    _rateStats.AddAnimation(kind, player, bin, AttackTimerMath.AnimationMultiplier(m, TraxSettings.Shared.AttackAnimationMinPercent));
                 }
 
                 if (next >= 0)
@@ -223,6 +256,39 @@ namespace TraxCombat.Missions
             {
                 Failed("rate.phase", e);
             }
+        }
+
+        /// <summary>An attack ended at this action change: its D is handed to the timer's decision
+        /// (ObserveAction runs it right after the phases - a melee swing after its step-back roll).</summary>
+        private static void AttackEndsHere(TrackedAgent st, AttackKind kind)
+        {
+            st.AttackEndedNow = true;
+            st.EndedKind = kind;
+            st.EndedDuration = st.AttackDuration;
+            st.EndedDurationKnown = st.AttackDurationKnown;
+            st.AttackDuration = 0;
+            st.AttackDurationKnown = false;
+        }
+
+        /// <summary>
+        /// An attack began (a ready; or a release no ready was seen for): the gap since the last timer's
+        /// start (the last attack's end) is measured against the pause it asked; an AI hold still on him
+        /// was slipped through (the tick lifts it); your hold still on - the gate missed it.
+        /// </summary>
+        private void AttackBegan(TrackedAgent st, bool player, double now, bool isReady)
+        {
+            if (st.TimerPending)
+            {
+                st.TimerPending = false;
+                _rateStats.AddNextAttackAfterTimer(st.TimerKind, player, st.TimerBin, now - st.TimerStart, st.TimerAsked, st.TimerM);
+            }
+            if (player)
+            {
+                PlayerAttackBegan(st, now);
+                return;
+            }
+            PaceAttackStarted(st);
+            if (isReady) PaceReadyStarted(st, now);
         }
 
         /// <summary>A fighter in an unfinished ready (the tick, native): has the wind-up reached its end?
@@ -250,16 +316,20 @@ namespace TraxCombat.Missions
             st.PauseFrom = -1;
             st.LastReleaseTime = -1;
             st.LastShotForInterval = -1;
+            st.AttackDuration = 0;
+            st.AttackDurationKnown = false;
+            st.AwaitReloadEnd = false;
+            st.AttackEndedNow = false;
+            st.TimerPending = false;
         }
 
         /// <summary>
         /// One cycle (release to release, shot to shot), classified by the band after the first
-        /// attack's charge; the second one must be in the same band (else "mixed"). An AI fighter's
-        /// fresh melee cycle on foot also feeds the pace hold's references - his own and the mission's.
+        /// attack's charge; the second one must be in the same band (else "mixed").
         /// </summary>
         private void NoteCycle(TrackedAgent st, AttackKind kind, int binNow, int binAfterLast, double seconds, float asked)
         {
-            bool player = st.Agent.IsMainAgent;
+            bool player = IsPlayer(st);
             if (kind == AttackKind.Melee && st.SteppedBackThisCycle)
             {
                 _rateStats.AddSteppedBack(kind, player);
@@ -270,20 +340,46 @@ namespace TraxCombat.Missions
                 _rateStats.AddMixed(kind, player);
                 return;
             }
-            bool counted = _rateStats.AddCycle(kind, player, binNow, seconds, asked);
-            if (counted && kind == AttackKind.Melee && !player && binNow == 0 && asked >= 1f && st.Agent.MountAgent == null)
+            _rateStats.AddCycle(kind, player, binNow, seconds, asked);
+        }
+
+        // ------------------------------------------------------------------ the attack's end: the timer
+
+        /// <summary>
+        /// An attack ENDED (flagged by the phases; a melee swing after its step-back roll): its no-attack
+        /// timer, D × (1/m − 1) with m the exact curve value now - yours (the input gate) or an AI
+        /// fighter's (NoAttack, queued for the tick). <paramref name="next"/> = the action he went into.
+        /// </summary>
+        private void AttackEnded(TrackedAgent st, double now, int next, in AthleticsRules r)
+        {
+            try
             {
-                st.FreshCycleSum += seconds;
-                st.FreshCycleCount++;
-                _missionFresh.Add(seconds);
+                var kind = st.EndedKind;
+                double d = st.EndedDuration;
+                bool known = st.EndedDurationKnown;
+                float m = AthleticsMath.AttackSpeedMultiplier(in r, st);
+                int bin = AthleticsMath.PeakBin(AthleticsMath.PeakShare(in r, st));
+                if (known)
+                {
+                    double rest = d - st.CurrentWindUp;
+                    if (rest > 0)
+                    {
+                        if (kind == AttackKind.Melee) st.LastRestMelee = rest;
+                        else st.LastRestRanged = rest;
+                    }
+                }
+                if (IsPlayer(st)) PlayerAttackEnded(st, now, kind, d, m, bin, next);
+                else AiAttackEnded(st, now, kind, d, known, m, bin, next);
+            }
+            catch (Exception e)
+            {
+                Failed("rate.attack-end", e);
             }
         }
 
-        // ------------------------------------------------------------------ the pace hold (T3)
-
-        /// <summary>A counted melee swing started: while he is held it slipped through NoAttack (counted;
-        /// the tick lifts the hold); a hold still queued is moot.</summary>
-        private void PaceSwingStarted(TrackedAgent st)
+        /// <summary>An attack started while he is held: it slipped through NoAttack (counted; the tick
+        /// lifts the hold); a hold still queued is moot.</summary>
+        private void PaceAttackStarted(TrackedAgent st)
         {
             var ps = st.Pace;
             if (ps == null) return;
@@ -295,34 +391,22 @@ namespace TraxCombat.Missions
             if (ps.Active && !ps.EndAsked)
             {
                 ps.EndAsked = true;
-                ps.EndReason = PaceEnd.SwingStarted;
+                ps.EndReason = PaceEnd.AttackStarted;
             }
         }
 
         /// <summary>
-        /// A counted melee swing ENDED (after the step-back roll): a tired AI fighter on foot gets a hold
-        /// until his next ready may begin - <see cref="AttackRateMath.HoldUntil"/> - queued for the next
-        /// tick. May run inside an engine hit callback: managed reads only. Internal: the smoke drives it
-        /// through <see cref="ObserveAction"/>.
+        /// A tired AI fighter's attack ended (melee after the step-back roll; ranged after its reload):
+        /// his timer - NoAttack until the attack's end + D × (1/m − 1) - queued for the next tick.
+        /// Melee AND ranged, on foot AND mounted (step 13). May run inside an engine hit callback:
+        /// managed reads only.
         /// </summary>
-        private void PaceSwingEnded(TrackedAgent st, double now, double releaseStart, int nextAction, in AthleticsRules r)
+        private void AiAttackEnded(TrackedAgent st, double now, AttackKind kind, double d, bool known, float m, int bin, int next)
         {
             try
             {
                 var rr = AttackRateRules.From(TraxSettings.Shared);
                 if (!rr.PaceOn || _paceClosed) return;
-                var a = st.Agent;
-                if (a.IsMainAgent)
-                {
-                    _rateStats.AddNotHeld(PaceNotHeld.Player);
-                    return;
-                }
-                if (a.MountAgent != null)
-                {
-                    _rateStats.AddNotHeld(PaceNotHeld.Rider);
-                    return;
-                }
-                float m = st.SpeedMultiplier;
                 if (m >= 1f)
                 {
                     _rateStats.AddNotHeld(PaceNotHeld.FullStrength);
@@ -331,9 +415,7 @@ namespace TraxCombat.Missions
                 // A step back already RUNNING holds his attacks itself. One only asked for by this very
                 // swing (Pending) is decided by the tick, which runs the step backs BEFORE the holds: if
                 // it starts, the queued hold is dropped there (TickPace); if it is refused (the cap, a
-                // shield wall, no enemy near...) the hold goes ahead - review 10a R1: skipping the hold
-                // for a merely pending step back left every refused one unheld, i.e. most tired men in a
-                // big battle once StepBackMaxAtOnce is reached.
+                // shield wall, no enemy near...) the hold goes ahead (review 10a R1).
                 var sb = st.StepBack;
                 if (sb != null && sb.Active)
                 {
@@ -341,21 +423,19 @@ namespace TraxCombat.Missions
                     return;
                 }
                 var ps = st.Pace;
-                if (ps != null && (ps.Pending || ps.Active)) return; // a swing slipped through a hold: the tick is lifting it
-                if (nextAction == ActionReadyMelee)
+                if (ps != null && (ps.Pending || ps.Active)) return; // an attack slipped through a hold: the tick is lifting it
+                if (IsAttackAction(next))
                 {
                     _rateStats.AddNotHeld(PaceNotHeld.AlreadyReadied);
                     return;
                 }
-                double reference = AttackRateMath.FreshReference(st.FreshCycleSum, st.FreshCycleCount, _missionFresh.Mean, _missionFresh.Count, out bool own);
-                if (double.IsNaN(reference))
+                if (!known)
                 {
-                    _rateStats.AddNotHeld(PaceNotHeld.NoReference);
+                    _rateStats.AddNotHeld(PaceNotHeld.NoDuration);
                     return;
                 }
-                double ready = AttackRateMath.ExpectedReady(st.LastReadySeconds, st.LastReadyAsked, m);
-                double until = AttackRateMath.HoldUntil(releaseStart, reference, m, ready);
-                if (!AttackRateMath.HoldNeeded(until, now))
+                double pause = AttackTimerMath.Pause(d, m);
+                if (!AttackTimerMath.Worth(pause))
                 {
                     _rateStats.AddNotHeld(PaceNotHeld.NotNeeded);
                     return;
@@ -363,13 +443,13 @@ namespace TraxCombat.Missions
                 ps ??= st.Pace = new PaceState();
                 ps.Pending = true;
                 ps.PendingAt = now;
-                ps.Until = until;
-                ps.Bin = AthleticsMath.PeakBin(AthleticsMath.PeakShare(in r, st));
+                ps.Until = now + pause;
+                ps.Bin = bin;
                 ps.Asked = m;
-                ps.Reference = reference;
-                ps.ReferenceOwn = own;
-                ps.ExpectedReady = ready;
-                ps.ReleaseStart = releaseStart;
+                ps.Duration = d;
+                ps.Kind = kind;
+                ps.AttackEnd = now;
+                ps.Pause = pause;
                 ps.EndAsked = false;
                 _pacePending.Add(st);
             }
@@ -379,7 +459,7 @@ namespace TraxCombat.Missions
             }
         }
 
-        /// <summary>His melee ready began: how long after his last hold ended (near 0 = the hold set his rhythm).</summary>
+        /// <summary>His ready began: how long after his last hold ended (the AI's own re-decision once NoAttack lifts).</summary>
         private void PaceReadyStarted(TrackedAgent st, double now)
         {
             var ps = st.Pace;
@@ -390,8 +470,8 @@ namespace TraxCombat.Missions
 
         /// <summary>
         /// Every tick, whatever the switches (so switching off lifts every hold at once): the running
-        /// holds (asked to end, the player / a horse, time up), the ones waiting for a game job, then
-        /// the queued starts. Internal: the offline smoke drives it with its stand-in body.
+        /// holds (asked to end, the player took him, time up), the ones waiting for a game job, then the
+        /// queued starts. Internal: the offline smoke drives it with its stand-in body.
         /// </summary>
         internal void TickPace(double now)
         {
@@ -422,7 +502,7 @@ namespace TraxCombat.Missions
                 }
                 else
                 {
-                    TraxLog.Info("rate", "the pace hold is ON again at " + Sec(now) + " s: tired AI fighters are held from their next swing");
+                    TraxLog.Info("rate", "the AI timer is ON again at " + Sec(now) + " s: tired AI fighters wait out their pause after each attack");
                 }
             }
 
@@ -463,7 +543,7 @@ namespace TraxCombat.Missions
             {
                 var st = _pacePending[i];
                 var ps = st.Pace!;
-                if (!ps.Pending) continue; // cancelled by a swing meanwhile (counted there)
+                if (!ps.Pending) continue; // cancelled by an attack meanwhile (counted there)
                 ps.Pending = false;
                 if (st.Removed || _paceClosed || !rr.PaceOn)
                 {
@@ -478,9 +558,9 @@ namespace TraxCombat.Missions
                     _rateStats.AddNotHeld(PaceNotHeld.SteppingBack);
                     continue;
                 }
-                // too late: the time is (nearly) up, or his next ready began since the swing ended (the
+                // too late: the time is (nearly) up, or his next attack began since this one ended (the
                 // poll ran before this in the same tick) - NoAttack must never land on a readied blow
-                if (ps.Until - now < AttackRateMath.MinHoldSeconds || st.PrevAction == ActionReadyMelee || st.PrevAction == ActionReleaseMelee)
+                if (ps.Until - now < AttackTimerMath.MinTimerSeconds || IsAttackAction(st.PrevAction))
                 {
                     RefuseHold(st, ps, PaceRefusal.TooLate);
                     continue;
@@ -527,7 +607,15 @@ namespace TraxCombat.Missions
             ps.First = !_firstHoldStarted;
             _firstHoldStarted = true;
             if (!listed) _paceHeld.Add(st);
-            _rateStats.AddHoldStart(ps.Bin, ps.Asked);
+            _rateStats.AddHoldStart(ps.Bin, ps.Asked, ps.Kind, st.Agent.MountAgent != null);
+            _rateStats.AddTimer(ps.Kind, false, ps.Bin, ps.Duration, ps.Asked, ps.Pause);
+            // the gap to his next attack is measured from the attack's end, where the timer began
+            st.TimerPending = true;
+            st.TimerStart = ps.AttackEnd;
+            st.TimerAsked = ps.Pause;
+            st.TimerM = ps.Asked;
+            st.TimerBin = ps.Bin;
+            st.TimerKind = ps.Kind;
             if (ps.First) LogHold(st, ps, now, first: true);
             else if (TraxLog.VerboseWants("rate-hold")) LogHold(st, ps, now, first: false);
         }
@@ -537,7 +625,7 @@ namespace TraxCombat.Missions
             ps.Pending = false;
             _rateStats.AddRefused(why);
             if (TraxLog.VerboseWants("rate-hold"))
-                TraxLog.Verbose("rate", "pace hold not started: " + Name(st) + " (m " + F2(ps.Asked) + ") - " + why, "rate-hold");
+                TraxLog.Verbose("rate", "AI timer not started: " + Name(st) + " (m " + F2(ps.Asked) + ", " + F2(ps.Pause) + " s asked) - " + why, "rate-hold");
         }
 
         private void DropPacePending()
@@ -562,7 +650,7 @@ namespace TraxCombat.Missions
             Lift(st, ps, now, native, waitingPass: false);
             if (ps.First) LogHoldEnd(st, ps, why, now, held);
             else if (TraxLog.VerboseWants("rate-hold"))
-                TraxLog.Verbose("rate", "pace hold ended: " + Name(st) + " after " + F2(held) + " s - " + why, "rate-hold");
+                TraxLog.Verbose("rate", "AI timer ended: " + Name(st) + " after " + F2(held) + " s - " + why, "rate-hold");
         }
 
         /// <summary>Takes our NoAttack off - or, with a game job on him, waits (re-checked every
@@ -618,7 +706,7 @@ namespace TraxCombat.Missions
         }
 
         /// <summary>The mission is over (before the summary): every hold ends - through the engine while
-        /// the agents live - and no new one starts.</summary>
+        /// the agents live - and no new one starts; your timer is released too.</summary>
         private void ClosePace(bool agentsAlive)
         {
             if (_paceClosed) return;
@@ -648,12 +736,13 @@ namespace TraxCombat.Missions
             }
             _paceHeld.Clear();
             DropPacePending();
+            ClosePlayerTimer(now);
         }
 
         // ------------------------------------------------------------------ the guard, the settings
 
         /// <summary>A melee collision on a tracked fighter on foot (OnMeleeHit): blocked or landed, by his
-        /// f and whether a hold is on him - "tired men must not block less".</summary>
+        /// f and whether an AI timer is on him - "tired men must not block less".</summary>
         private void RateHitTaken(Agent? victim, bool isCanceled, in AttackCollisionData cd)
         {
             if (victim == null || isCanceled || cd.IsHorseCharge) return;
@@ -669,17 +758,17 @@ namespace TraxCombat.Missions
         }
 
         /// <summary>
-        /// A settings change (from <see cref="ApplySettingsChange"/>): AttackRateAiDecisions switched →
-        /// every tired fighter is recomputed over the next ticks (the decorator reads the switch live on
-        /// each recompute; the budget spreads them); either switch is logged and the summary is told the
-        /// battle mixed both settings.
+        /// A settings change (from <see cref="ApplySettingsChange"/>): AttackRateAiDecisions or
+        /// AttackAnimationMinPercent changed → every tired fighter is recomputed over the next ticks (the
+        /// decorator reads both live on each recompute; the budget spreads them); every attack-rate switch
+        /// is logged and the summary is told the battle mixed both settings.
         /// </summary>
         private void NoteRateSettings(TraxSettings s)
         {
-            if (s.AttackRateAiDecisions != _seenAiDecisions)
+            bool ai = s.AttackRateAiDecisions != _seenAiDecisions;
+            bool anim = s.AttackAnimationMinPercent != _seenAnimationMin;
+            if (ai || anim)
             {
-                _seenAiDecisions = s.AttackRateAiDecisions;
-                _rateSwitched = true;
                 int n = 0;
                 for (int i = 0; i < _count; i++)
                 {
@@ -688,14 +777,34 @@ namespace TraxCombat.Missions
                     st.SpeedDirty = true;
                     n++;
                 }
-                TraxLog.Info("rate", "AttackRateAiDecisions switched " + (s.AttackRateAiDecisions ? "ON" : "OFF") + " mid-mission at " + Sec(SafeNow()) + " s: "
-                    + n + " tired fighters get their AI attack values " + (s.AttackRateAiDecisions ? "scaled by their attack speed" : "back") + " over the next ticks (at most "
-                    + MaxRecomputesPerTick + " recomputes a tick)");
+                if (ai)
+                {
+                    _seenAiDecisions = s.AttackRateAiDecisions;
+                    _rateSwitched = true;
+                    TraxLog.Info("rate", "AttackRateAiDecisions switched " + (s.AttackRateAiDecisions ? "ON" : "OFF") + " mid-mission at " + Sec(SafeNow()) + " s: "
+                        + n + " tired fighters get their AI attack values " + (s.AttackRateAiDecisions ? "scaled by their attack speed" : "back") + " over the next ticks (at most "
+                        + MaxRecomputesPerTick + " recomputes a tick)");
+                }
+                if (anim)
+                {
+                    _seenAnimationMin = s.AttackAnimationMinPercent;
+                    _rateSwitched = true;
+                    TraxLog.Info("rate", "AttackAnimationMinPercent now " + s.AttackAnimationMinPercent + " at " + Sec(SafeNow()) + " s: " + n
+                        + " tired fighters get their attack animations at x max(m, " + F2(s.AttackAnimationMinPercent / 100f) + ") over the next ticks (at most "
+                        + MaxRecomputesPerTick + " recomputes a tick)" + (s.AttackAnimationMinPercent >= 100 ? " - full speed, the timer alone slows them" : " - a little slow-mo on top of the timer"));
+                }
             }
             if (s.AttackRatePaceHold != _seenPaceHold)
             {
                 _seenPaceHold = s.AttackRatePaceHold;
                 _rateSwitched = true;
+            }
+            if (s.AttackRatePlayerTimer != _seenPlayerTimer)
+            {
+                _seenPlayerTimer = s.AttackRatePlayerTimer;
+                _rateSwitched = true;
+                TraxLog.Info("rate", "AttackRatePlayerTimer switched " + (s.AttackRatePlayerTimer ? "ON" : "OFF") + " mid-mission at " + Sec(SafeNow()) + " s: "
+                    + (s.AttackRatePlayerTimer ? "your attacks wait out their pause again" : "your attacks are no longer held (a pause running now ends at once)"));
             }
         }
 
@@ -709,18 +818,20 @@ namespace TraxCombat.Missions
             {
                 var s = TraxSettings.Shared;
                 float m = st.SpeedMultiplier;
+                float anim = AttackTimerMath.AnimationMultiplier(m, s.AttackAnimationMinPercent);
                 var after = SpeedPenalty.Snapshot.Take(st.Agent);
                 var aiAfter = SpeedPenalty.AiSnapshot.Take(st.Agent);
                 bool ai = s.AttackRateAiDecisions;
-                bool animations = Close(after.Swing, before.Swing * m) && Close(after.Thrust, before.Thrust * m) && Close(after.Reload, before.Reload * m);
+                bool animations = Close(after.Swing, before.Swing * anim) && Close(after.Thrust, before.Thrust * anim) && Close(after.Reload, before.Reload * anim);
                 bool decisions = aiAfter.Took(aiBefore, ai ? m : 1f, ai ? 1f / AttackRateMath.SafeM(m) : 1f);
-                TraxLog.Info("rate", "first slowed fighter this mission: " + Name(st) + " at " + Sec(SafeNow()) + " s - attacks x" + F2(m)
-                    + " (f " + F2(AthleticsMath.PeakShare(Rules, st)) + "); T1 animations: swing " + F3(before.Swing) + " → " + F3(after.Swing)
-                    + ", thrust/draw " + F3(before.Thrust) + " → " + F3(after.Thrust) + ", reload " + F3(before.Reload) + " → " + F3(after.Reload)
-                    + " (" + (animations ? "each x" + F2(m) + " as asked" : "NOT x" + F2(m) + " - tell Claude") + "); T2 AI decisions (AttackRateAiDecisions "
-                    + (ai ? "on" : "off") + "): " + aiAfter.Change(aiBefore) + " (" + (decisions ? (ai ? "chances x" + F2(m) + ", the aim ÷ " + F2(m) + " as asked" : "unchanged, as asked") : "NOT as asked - tell Claude")
-                    + "); T3 pace hold (AttackRatePaceHold " + (s.AttackRatePaceHold ? "on" : "off") + "): his holds come after his swings - the first one is logged in full; "
-                    + "untouched on purpose: handling (blocking), shield defend speed, the recoil after a block, AIHoldingReady");
+                TraxLog.Info("rate", "first slowed fighter this mission: " + Name(st) + " at " + Sec(SafeNow()) + " s - attack speed x" + F2(m)
+                    + " (f " + F2(AthleticsMath.PeakShare(Rules, st)) + "); animations (AttackAnimationMinPercent " + s.AttackAnimationMinPercent + " → x" + F2(anim)
+                    + "): swing " + F3(before.Swing) + " → " + F3(after.Swing) + ", thrust/draw " + F3(before.Thrust) + " → " + F3(after.Thrust) + ", reload "
+                    + F3(before.Reload) + " → " + F3(after.Reload) + " (" + (animations ? "each x" + F2(anim) + " as asked" + (anim >= 1f ? " - full speed, no slow-mo" : string.Empty) : "NOT x" + F2(anim) + " - tell Claude")
+                    + "); AI decisions (AttackRateAiDecisions " + (ai ? "on" : "off") + "): " + aiAfter.Change(aiBefore) + " ("
+                    + (decisions ? (ai ? "chances x" + F2(m) + ", the aim ÷ " + F2(m) + " as asked" : "unchanged, as asked") : "NOT as asked - tell Claude")
+                    + "); the timer (you: AttackRatePlayerTimer " + (s.AttackRatePlayerTimer ? "on" : "off") + ", AI: AttackRatePaceHold " + (s.AttackRatePaceHold ? "on" : "off")
+                    + ") comes after each attack - the first of each is logged in full; untouched on purpose: handling (blocking), shield defend speed, the recoil after a block, AIHoldingReady");
             }
             catch (Exception e)
             {
@@ -730,33 +841,32 @@ namespace TraxCombat.Missions
 
         private void LogHold(TrackedAgent st, PaceState ps, double now, bool first)
         {
-            string text = Name(st) + " at " + Sec(now) + " s - attacks x" + F2(ps.Asked) + " (f " + F2(AthleticsMath.PeakShare(Rules, st)) + "); fresh cycle "
-                + F2(ps.Reference) + " s (" + (ps.ReferenceOwn ? "his own, " + st.FreshCycleCount + " sample" + (st.FreshCycleCount == 1 ? "" : "s") : "the mission's AI average, " + _missionFresh.Count + " samples")
-                + ") → target " + F2(AttackRateMath.TargetCycle(ps.Reference, ps.Asked)) + " s from his swing at " + Sec(ps.ReleaseStart) + " s; his next ready expected to take "
-                + F2(ps.ExpectedReady) + " s → held " + F2(ps.Until - now) + " s (until " + Sec(ps.Until) + " s)";
+            string text = Name(st) + " at " + Sec(now) + " s - his " + (ps.Kind == AttackKind.Melee ? "melee" : "ranged") + " attack"
+                + (st.Agent.MountAgent != null ? " (mounted)" : string.Empty) + " (D " + F2(ps.Duration) + " s: wind-up + " + (ps.Kind == AttackKind.Melee ? "swing" : "loose + reload")
+                + ") ended at " + Sec(ps.AttackEnd) + " s at attack speed x" + F2(ps.Asked) + " (f " + F2(AthleticsMath.PeakShare(Rules, st)) + ") → no new attack for "
+                + F2(ps.Pause) + " s = D x (1/m - 1), until " + Sec(ps.Until) + " s";
             if (first)
-                TraxLog.Info("rate", "first pace hold this mission: " + text + "; scripted flags " + ps.FlagsBefore + " → " + ps.FlagsAfter
+                TraxLog.Info("rate", "first AI timer this mission: " + text + "; scripted flags " + ps.FlagsBefore + " → " + ps.FlagsAfter
                     + " (NoAttack " + (((ps.FlagsAfter & (int)Agent.AIScriptedFrameFlags.NoAttack) != 0) ? "set: the engine took it" : "NOT set") + ")");
             else
-                TraxLog.Verbose("rate", "pace hold: " + text, "rate-hold");
+                TraxLog.Verbose("rate", "AI timer: " + text, "rate-hold");
         }
 
         private void LogHoldEnd(TrackedAgent st, PaceState ps, PaceEnd why, double now, double held)
         {
-            TraxLog.Info("rate", "first pace hold ended at " + Sec(now) + " s after " + F2(held) + " s - " + EndText(why) + "; scripted flags now "
+            TraxLog.Info("rate", "first AI timer ended at " + Sec(now) + " s after " + F2(held) + " s - " + EndText(why) + "; scripted flags now "
                 + ps.FlagsAfter + (ps.Waiting ? " (a game job is on him: our NoAttack comes off once he is free)" : string.Empty)
-                + "; his next ready's delay after the hold is in the summary (pace hold ends)");
+                + "; the gap to his next attack is in the summary (\"timer:\" rows)");
         }
 
         private static string EndText(PaceEnd why) => why switch
         {
             PaceEnd.TimeUp => "time up",
-            PaceEnd.SwingStarted => "a swing started anyway (NoAttack did not hold it)",
+            PaceEnd.AttackStarted => "an attack started anyway (NoAttack did not hold it)",
             PaceEnd.SwitchedOff => "switched off",
             PaceEnd.LeftField => "he left the field",
             PaceEnd.MissionEnd => "mission end",
             PaceEnd.PlayerControl => "the player took him",
-            PaceEnd.Mounted => "he mounted",
             _ => "error",
         };
 

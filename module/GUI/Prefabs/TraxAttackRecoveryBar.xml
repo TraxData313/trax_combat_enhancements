@@ -1,0 +1,57 @@
+<Prefab>
+  <!--
+    Trax Combat Enhancements - YOUR ATTACK RECOVERY BAR (step 13, DESIGN §3 - Anton: "above that bar add
+    a bar 'attack recovery' that empties when I attack and until it fills I can't attack; inside it add
+    the secs delay added").
+    Just above your Athletics bar, its right end lined up with it: the words "Attack recovery" and a slim
+    bar. Inside the bar, bottom to top: the dark inside, the fill (@Fill - empty at your attack, filling
+    over your no-attack pause, full otherwise; amber while refilling, steel when full), the seconds left
+    centred on it (@SecondsText, "1.3 s", only while the pause runs), and the flash overlay (@FlashOn -
+    two quick pulses when you press attack too early).
+    Data: Hud\AttackRecoveryVM.cs. Every @binding's VM property has EXACTLY the widget property's type
+    (float / Color / bool / string) - Gauntlet converts only strings (AI_NOTES "Step 6").
+    Native sprites and brushes only (BlankWhiteSquare_9, AgentHUD.Interaction.Text). Sizes and places are
+    bound from the settings (RecoveryBar*, PlayerBarOffsetRight, PlayerBarOffsetBottom + RecoveryBarOffsetAbove),
+    in UI pixels of the 1080p layout - the game's UI scale multiplies them. A passive overlay: no widget
+    takes mouse events. The offline smoke parses this file like the Athletics bar's.
+  -->
+  <Window>
+    <Widget Id="TraxAttackRecovery" WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" DoNotAcceptEvents="true" DoNotPassEventsToChildren="true">
+      <Children>
+
+        <ListPanel Id="Row" WidthSizePolicy="CoverChildren" HeightSizePolicy="CoverChildren" HorizontalAlignment="Right" VerticalAlignment="Bottom" MarginRight="@OffsetRight" MarginBottom="@OffsetBottom" StackLayout.LayoutMethod="HorizontalLeftToRight" IsVisible="@IsShown" DoNotAcceptEvents="true">
+          <Children>
+
+            <TextWidget Id="Label" WidthSizePolicy="CoverChildren" HeightSizePolicy="CoverChildren" VerticalAlignment="Center" MarginRight="8" Brush="AgentHUD.Interaction.Text" Brush.FontSize="15" Brush.FontColor="#BDBDBDFF" Text="Attack recovery" DoNotAcceptEvents="true" />
+
+            <!-- the bar: a thin light frame -->
+            <Widget Id="Bar" WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="@BarWidth" SuggestedHeight="@BarHeight" VerticalAlignment="Center" Sprite="BlankWhiteSquare_9" Color="#C8C8C8B4" DoNotAcceptEvents="true">
+              <Children>
+
+                <!-- inside the 1-px frame: dark, the fill on top -->
+                <Widget Id="Inside" WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" MarginLeft="1" MarginRight="1" MarginTop="1" MarginBottom="1" Sprite="BlankWhiteSquare_9" Color="#141414F0" DoNotAcceptEvents="true">
+                  <Children>
+                    <FillBarWidget Id="RecoveryBar" WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" FillWidget="RecoveryFill" MaxAmountAsFloat="1" InitialAmountAsFloat="@Fill" DoNotAcceptEvents="true">
+                      <Children>
+                        <Widget Id="RecoveryFill" WidthSizePolicy="Fixed" HeightSizePolicy="StretchToParent" HorizontalAlignment="Left" Sprite="BlankWhiteSquare_9" Color="@FillColor" DoNotAcceptEvents="true" />
+                      </Children>
+                    </FillBarWidget>
+                  </Children>
+                </Widget>
+
+                <!-- the seconds left, centred on the bar -->
+                <TextWidget Id="Seconds" WidthSizePolicy="CoverChildren" HeightSizePolicy="CoverChildren" HorizontalAlignment="Center" VerticalAlignment="Center" Brush="AgentHUD.Interaction.Text" Brush.FontSize="12" Brush.FontColor="#FFFFFFFF" Text="@SecondsText" IsVisible="@SecondsShown" DoNotAcceptEvents="true" />
+
+                <!-- the flash on an early attack, over everything -->
+                <Widget Id="Flash" WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" Sprite="BlankWhiteSquare_9" Color="#FFF6DCE6" IsVisible="@FlashOn" DoNotAcceptEvents="true" />
+
+              </Children>
+            </Widget>
+
+          </Children>
+        </ListPanel>
+
+      </Children>
+    </Widget>
+  </Window>
+</Prefab>

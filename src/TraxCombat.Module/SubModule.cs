@@ -157,8 +157,19 @@ namespace TraxCombat
             {
                 if (mission == null || GameNetwork.IsMultiplayer) return;
                 ConfigStore.Reload("mission start");
-                mission.AddMissionBehavior(new AthleticsLogic());
+                var logic = new AthleticsLogic();
+                mission.AddMissionBehavior(logic);
                 TraxLog.Info("mission", "attached: AthleticsLogic (its HUD views join the mission screen on its first tick - [hud] attached: lines)");
+                try
+                {
+                    // step 13: the player's attack input gate - first in the list, so it pre-ticks after the controller
+                    TraxLog.Info("rate", PlayerAttackGate.Attach(mission, logic));
+                }
+                catch (Exception e)
+                {
+                    TraxLog.Error("rate.gate-attach", e);
+                    TraxLog.Info("rate", "could not attach your attack gate - your own attacks are not held this battle (the AI's still are)");
+                }
             }
             catch (Exception e)
             {

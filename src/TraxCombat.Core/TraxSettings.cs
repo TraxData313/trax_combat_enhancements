@@ -216,8 +216,10 @@ namespace TraxCombat.Core
         public float PartyLeaderCostMultiplier => GetFloat(SettingsSchema.PartyLeaderCostMultiplier);
 
         public int ExhaustedAttackSpeedPercent => GetInt(SettingsSchema.ExhaustedAttackSpeedPercent);
-        public bool AttackRateAiDecisions => GetBool(SettingsSchema.AttackRateAiDecisions);
+        public bool AttackRatePlayerTimer => GetBool(SettingsSchema.AttackRatePlayerTimer);
         public bool AttackRatePaceHold => GetBool(SettingsSchema.AttackRatePaceHold);
+        public bool AttackRateAiDecisions => GetBool(SettingsSchema.AttackRateAiDecisions);
+        public int AttackAnimationMinPercent => GetInt(SettingsSchema.AttackAnimationMinPercent);
         public float MinMoveSpeedMultiplier => GetFloat(SettingsSchema.MinMoveSpeedMultiplier);
         public float MountMinSpeedMultiplier => GetFloat(SettingsSchema.MountMinSpeedMultiplier);
         public bool DamageBonusFollowsAthletics => GetBool(SettingsSchema.DamageBonusFollowsAthletics);
@@ -238,6 +240,8 @@ namespace TraxCombat.Core
 
         public bool ShowPlayerBar => GetBool(SettingsSchema.ShowPlayerBar);
         public bool ShowPlayerBarOutsideBattles => GetBool(SettingsSchema.ShowPlayerBarOutsideBattles);
+        public bool ShowAttackRecoveryBar => GetBool(SettingsSchema.ShowAttackRecoveryBar);
+        public bool FlashBarOnEarlyAttack => GetBool(SettingsSchema.FlashBarOnEarlyAttack);
         public int BarYellowBelowPercent => GetInt(SettingsSchema.BarYellowBelowPercent);
         public int BarOrangeBelowPercent => GetInt(SettingsSchema.BarOrangeBelowPercent);
         public int BarRedBelowPercent => GetInt(SettingsSchema.BarRedBelowPercent);
@@ -253,6 +257,9 @@ namespace TraxCombat.Core
         public int PlayerBarHeight => GetInt(SettingsSchema.PlayerBarHeight);
         public int PlayerBarOffsetRight => GetInt(SettingsSchema.PlayerBarOffsetRight);
         public int PlayerBarOffsetBottom => GetInt(SettingsSchema.PlayerBarOffsetBottom);
+        public int RecoveryBarWidth => GetInt(SettingsSchema.RecoveryBarWidth);
+        public int RecoveryBarHeight => GetInt(SettingsSchema.RecoveryBarHeight);
+        public int RecoveryBarOffsetAbove => GetInt(SettingsSchema.RecoveryBarOffsetAbove);
         public int OrderStripTextSize => GetInt(SettingsSchema.OrderStripTextSize);
         public int OrderStripTextOffset => GetInt(SettingsSchema.OrderStripTextOffset);
         public int OrderStripBarOffset => GetInt(SettingsSchema.OrderStripBarOffset);

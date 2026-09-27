@@ -3,22 +3,25 @@ using TraxCombat.Core;
 
 namespace TraxCombat.Missions
 {
-    /// <summary>One fighter's pace hold (DESIGN §2 attack rate, step 5e): asked for by a swing's end
+    /// <summary>One AI fighter's no-attack timer (DESIGN §2, step 5e's pace hold; step 13: after every
+    /// attack, melee and ranged, on foot and mounted, for D × (1/m − 1)): asked for by an attack's end
     /// (pending until the tick), running (NoAttack set by us), or waiting for a game job to end before
     /// our NoAttack can be lifted. Allocated once per fighter who is ever held - reused (no per-tick
     /// allocation). Main thread.</summary>
     internal sealed class PaceState
     {
-        // ---- asked for by a swing's end, started by the next tick
+        // ---- asked for by an attack's end, started by the next tick
         public bool Pending;
         public double PendingAt;
         public double Until;
         public int Bin;
         public float Asked = 1f;
-        public double Reference;
-        public bool ReferenceOwn;
-        public double ExpectedReady;
-        public double ReleaseStart;
+
+        /// <summary>The attack's own duration D, its kind, when it ended (the timer runs from there) and the pause asked.</summary>
+        public double Duration;
+        public AttackKind Kind;
+        public double AttackEnd;
+        public double Pause;
 
         // ---- running
         public bool Active;
@@ -26,7 +29,7 @@ namespace TraxCombat.Missions
         public int FlagsBefore;
         public int FlagsAfter;
 
-        /// <summary>A swing started while held (inside a hit callback, maybe) - the tick ends the hold.</summary>
+        /// <summary>An attack started while held (inside a hit callback, maybe) - the tick ends the hold.</summary>
         public bool EndAsked;
         public PaceEnd EndReason;
 
@@ -59,8 +62,9 @@ namespace TraxCombat.Missions
         /// object, ladder or walk to an object) has lasted long enough - lift it under that frame too.</summary>
         PaceRelease Release(TrackedAgent st, PaceState ps, bool evenUnderAFrame);
 
-        /// <summary>A running hold must end now, before its time: the player took him, he mounted.
-        /// Managed reads only - it runs every tick for every held man.</summary>
+        /// <summary>A running hold must end now, before its time: the player took him. (Mounting no
+        /// longer ends it - step 13 holds riders too.) Managed reads only - it runs every tick for every
+        /// held man.</summary>
         bool MustEnd(TrackedAgent st, out PaceEnd why);
     }
 
@@ -68,7 +72,9 @@ namespace TraxCombat.Missions
     /// The engine side (AI_NOTES "Step 5e"): <c>SetScriptedFlags(GetScriptedFlags() | NoAttack)</c>
     /// with no scripted position - vanilla's own "do not attack" (Agent.UseGameObject). The flag word
     /// is shared with the step back, item pickup and siege objects, so NoAttack is set only on a man
-    /// with neither GoToPosition nor NoAttack already and no game object / ladder / detachment, and
+    /// with neither GoToPosition nor NoAttack already and no game object / ladder / detachment (a rider
+    /// too - step 13: without the animation technique a tired rider would otherwise attack at the full
+    /// rate), and
     /// lifted only while no object, ladder or walk to an object is on him (their NoAttack may be their
     /// own) - and no scripted frame, unless that frame has lasted
     /// <see cref="AttackRateMath.WaitingMaxSecondsUnderAFrame"/> (a job that may want its man to
@@ -87,7 +93,7 @@ namespace TraxCombat.Missions
             refusal = PaceRefusal.NotAi;
             if (a.IsMainAgent || !a.IsAIControlled) return false;
             refusal = PaceRefusal.Busy;
-            if (a.MountAgent != null || GameJob(a)) return false;
+            if (GameJob(a)) return false;
             int flags = (int)a.GetScriptedFlags();
             if ((flags & GoToPosition) != 0) return false;
             refusal = PaceRefusal.AlreadyNoAttack;
@@ -119,8 +125,8 @@ namespace TraxCombat.Missions
         public bool MustEnd(TrackedAgent st, out PaceEnd why)
         {
             var a = st.Agent;
-            why = a.IsMainAgent ? PaceEnd.PlayerControl : PaceEnd.Mounted;
-            return a.IsMainAgent || a.MountAgent != null;
+            why = PaceEnd.PlayerControl;
+            return a.IsMainAgent;
         }
 
         /// <summary>The game's own jobs that script a man (managed reads, plus the move-to-object state).</summary>
