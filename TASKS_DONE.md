@@ -638,3 +638,32 @@
   smoke (51 steps) on DESIGN's 0.7 / 50; deploy.ps1 green (guard OK, installed - the game was not
   running). Docs: PLAYTEST A1 / C / C1 / C6 / L1 / L4, README, Steam page, CLAUDE layout, AI_NOTES
   "Step 14". Commits 3127fee, 9d2cbab, f1bf966 + this. (2026.09.27 23.39.43)
+- [x] **Step 16 — the guard really up + a step back that faces the enemy** (BATTLE_PACING lever #2; Anton
+  asleep, no questions). Why: the 240v240 log - held men blocked 2%, stepping-back men 5%, everyone else 33%
+  (41% of landed hits struck those two states); 80% of step backs turned their backs, 0.6 m of 2 m, 2 of 2159
+  arrived; at empty a started step back dropped the pause (R1's rule), so the empty band cycled at 2.2 s.
+  Verified first (AI_NOTES "Step 16"): `Agent.OnAIInputSet` is a main-thread-only MBCallback that walks the
+  components in add order; components may be added from our tick (the async agent tick starts after it);
+  RTS Camera Command System adds one to every agent and turns the callback on for all. Built: ONE per-man
+  `AiInputComponent` (added lazily at a man's first input hold, the callback turned off again when he is idle
+  unless another component overrides the hook) with two wishes the logic writes each tick - (1) the AI timer
+  by input (`AttackRatePaceByInput`): only the attack bits out, his defend bits / moves / event flags his own,
+  a guard (`DefendDown`) raised when he wants to attack (`AiHoldRaiseGuard`), a ready always cancelled with a
+  guard, never released; (2) the step back as a backpedal (`StepBackBackpedal`): 5d's gate and probe (the
+  whole 2 m checked), then a backwards input along that line turned into his body frame every tick (his own
+  Forward/Strafe bits out), ending at StepBackDistance covered (arrived), StepBackSeconds, the ground 0.6 m
+  further back failing (edge ahead, every 0.25 s) or 5d's reasons. The timer SURVIVES a step back (R1's drop
+  gone): by input both run to the later end; a NoAttack hold behind a scripted walk is deferred and set the
+  tick it ends (else "covered"); R1's original bug cannot return (never skipped for a pending or running step).
+  A/B: the two switches off = steps 13 / 5d exactly; read at each start, logged when switched; the master
+  switch releases both at once. Never the player or a man he commands; RTS Camera coexists (ours runs last;
+  its defensive hold acts only where nobody steps back). Logs: the header names the technique ("AI holds:
+  Input / Legacy / mixed"); 4 new "AI holds" lines (techniques, the GUARD by state, the hook's calls / edits /
+  never-called holds / errors, overlaps + deferrals); step back: every-0.25 s facing + "back turned at ANY
+  sample", arrived, m/s; attack rate: stepped-back cycles now counted and shown apart, each band against the
+  timer's floor D/m; the first held man and the first step back in full (input bits before → after, the
+  vector, every 0.25 s); a WARNING if the engine never calls the hook. 70 settings; tests 351 → 367; smoke 51 →
+  52 steps (Program.AiInput.cs + R1 re-checked); build 0 warnings; deploy.ps1 green (installed). Docs: DESIGN
+  §2 + table + interpretation 18, PLAYTEST D (D4 = the A/B recipe) + L5 / L6 / new L6b, CLAUDE layout,
+  AI_NOTES "Step 16" (decisions, UNVERIFIED with the lines), REVIEW R1 note, BATTLE_PACING, README, Steam page;
+  TASKS_TODO 16 + three BUGS ticked. Commits a06e775, f0c2ea2, 21ea147, 64367fc + this. (2026.09.28 00.23.40)
