@@ -203,10 +203,36 @@ All toggles, all on by default.
    formation's average Athletics, with a band of ± `FormationSpreadStdDevs` (1) standard
    deviations (`ShowFormationSpread`). `FormationBarsAlways` off = only while vanilla shows
    its formation markers (marker key held or orders menu open).
-4. **Orders menu** (`ShowInOrderMenu`): while the orders menu is open, a compact panel of our
-   own lists each formation's average ± spread ("Infantry 72 ± 8") in the cards' order.
-   Numbers INSIDE vanilla's cards would need UIExtenderEx and risk clashing with RTS Camera
-   Command System — not worth it (Claude's call 2026-09-27, see RESEARCH implication 1).
+4. **Orders menu** (`ShowInOrderMenu`): while the orders menu is open, a strip directly UNDER
+   each of vanilla's formation cards (built in step 9 — below). Numbers INSIDE vanilla's cards
+   would need UIExtenderEx and risk clashing with RTS Camera Command System — not worth it
+   (Claude's call 2026-09-27, see RESEARCH implication 1).
+
+**The orders-menu strip as built (step 9):** one cell under each card the game draws, as wide as
+the card. Just under the card, left: the men's average Athletics as a share of their own pools
+and its spread, `72% ± 8` (the ± is `FormationSpreadStdDevs` standard deviations, in points of
+the bar); right: their average health left, `HP 81%` (`ShowFormationHealth`; the game's font has
+no heart). The middle stays free for the game's own order icons, which hang 20 px under a card.
+Under those, a slim bar (`OrderStripBarHeight`, 4 px): the average fill coloured by the men's
+average f with the player bar's colours (green … red), a lighter band from mean − k·σ to
+mean + k·σ (`ShowFormationSpread`), a thin tick at the peak line. The player himself is not
+counted (the cards count the men under his command; he has his own bar). Refreshed every
+`FormationStatsRefreshSeconds`.
+- **How it lines up** (no UIExtenderEx, nothing patched): the game's own cards are READ live —
+  the order layer's widget tree is walked once per open, and every frame each drawn card's
+  screen position and size are read and the cell is placed on its bottom edge in pixels. So it
+  fits any resolution, UI scale, the keyboard columns and the gamepad row, and RTS Camera
+  Command System's reworked cards (its columns run bottom to top; the same reader works). Card
+  slot k is formation k (Infantry, Archers, Cavalry, …); each card's own man-count confirms it
+  every frame. A cell that would leave the screen is lifted to its edge.
+- **Fallback — a compact panel** at the top centre (`OrderPanelOffsetTop`, `OrderPanelWidth`), one
+  row per formation ("1 Infantry  72% ± 8  HP 81%" and the same bar), when the cards cannot be
+  trusted for that open (none found, not whole sets of 8, two sets at once, none drawn 0.5 s
+  after the open, a card disagreeing with its formation for 1 s) or `OrderStripUnderCards` is off.
+  The next open tries the cards again. Every fallback is logged with its reason.
+- Five Advanced settings place the cell (`OrderStripTextSize`, `OrderStripTextOffset`,
+  `OrderStripBarOffset`, `OrderStripBarHeight`, `OrderStripSideMargin`), all live. The defaults
+  make the cell 23 px deep, which fits the bottom card of a column at 1920 × 1080 exactly.
 
 Bars show only in fights (battle, duel, tournament and stealth modes — step 6 added stealth:
 a stealth mission's fights cost Athletics too), with the player on the field, never while the
@@ -235,7 +261,7 @@ red. Refreshed every `HudRefreshSeconds`.
 - Orders menu: our strip sits directly UNDER the vanilla formation cards, one cell per card
   ("below the arrows remaining", Anton's words) — Athletics average ± spread and average
   health. Still no UIExtenderEx; if the cards' positions cannot be matched reliably, the
-  step falls back to a compact panel and says so.
+  step falls back to a compact panel and says so. (Built in step 9 — item 4 above.)
 
 ## 4. Configuration
 
@@ -419,6 +445,15 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     "hold a readied blow" time is NOT lengthened (a raised weapon means a lowered guard - tired
     men must not defend worse); cycles with a step back in them are left out of the measurement
     (that pause is the step back's).
+
+14. **The orders-menu strip** (step 9, Claude's calls): the numbers are SHARES of each man's own
+    bar ("72%"), not points (pools differ per man since 5c); the "± 8" is the band's half-width
+    (`FormationSpreadStdDevs` × σ, so number and band agree) and `ShowFormationSpread` switches both
+    off; health reads "HP 81%" (the game's font has no ♥); the squad numbers leave the player out
+    (the cards count the men under his command — his own bar shows him), which also changes the
+    summary's "your formations" line; the numbers sit left and right of vanilla's order icons and
+    the bar under them; the fallback panel sits at the top centre; `OrderStripUnderCards` lets
+    Anton force the panel if the strip ever looks wrong.
 
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance`, `TargetBarLingerSeconds`, `FormationBarsAlways`,

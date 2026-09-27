@@ -23,8 +23,9 @@ every fight a little less predictable and a lot more about who is still fresh.
   tired, the more often. The fresh take the blows.
 - **See it** — your own Athletics bar under your health bar (the number beside it, green at
   full strength, then blue, yellow, orange and red as you tire, the part your wounds hold
-  shown dark), the bar of whoever you're looking at, and your squads' average Athletics
-  (± spread) floating above them and in the orders menu.
+  shown dark), and in the orders menu a slim strip under each formation card: its men's
+  average Athletics ± spread ("72% ± 8") and their average health ("HP 81%"). It reads the
+  game's own cards, so it lines up at any resolution and with RTS Camera.
 - **A master switch** — turn the whole mod off mid-battle and the fight is pure vanilla, so
   you can play the same battle both ways and compare.
 

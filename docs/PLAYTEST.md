@@ -861,4 +861,121 @@ the game's UI scale once; mount a horse (the horse bar appears between the healt
    battle goes on without the bar — that is the fail safe working, but it is a bug).
 8. **The mouse snags** on the bar (e.g. clicking in the orders menu near it does nothing).
 
+## 8. Orders-menu strip
+
+Step 9, your words: "some vision of the state of the troops". **Where:** while the orders menu
+is open, right under each of the game's formation cards (the cards at the left and right edges
+of the screen). **What:** under a card, on its left `72% ± 8` — the men's average Athletics as a
+share of their own bars, ± their spread; on its right `HP 81%` — their average health left. The
+middle stays free for the game's own order icons (the order and target icons that hang under a
+card). Under those icons, a slim bar as wide as the card: the average fill in the colour of the
+men's average f (green at full strength, then blue, yellow, orange, red — the same colours as
+your own bar), a lighter band around the fill's end (the ± spread), a thin tick at 75% (the
+peak line).
+```
+   ┌──────────────┐
+   │ morale  83   │     the game's card: morale, troops, captain,
+   │ ⚔ 40         │     and at its bottom the ammo bar
+   │   ───────    │     ("arrows remaining")
+   └──────────────┘
+   72% ± 8 [⚑◎] HP 81%       ← ours: numbers left and right of the game's order icons
+   [██████████▒▒▒│░░░░]      ← ours: fill (colour by f), lighter ± band, tick at the peak line
+```
+You (the player) are not in the numbers — the card counts the men under your command, and so
+do we. The numbers refresh every quarter second of battle time (the battle runs at a quarter
+speed while the menu is open, so about once a second in real time).
+
+When it shows: *Mod enabled*, *Athletics* and *Orders menu strip* (`ShowInOrderMenu`) on, in a
+fight with you on the field, not with *Hide Battle UI* or photo mode, and only while the orders
+menu is open. Not during deployment (the deployment screen has no cards).
+
+**8a. See it.** A battle with several formations (a custom battle: infantry, archers, cavalry).
+Hold/press the orders key. Look under each card.
+- You see: a cell under every card with men, lined up with the card's left and right edges; no
+  cell under an empty slot; nothing covering the game's cards or order icons (our numbers may
+  touch the icons' edges, never sit on them).
+- Log — the first open of the battle:
+  - at the first tick: `[hud] attached: orders strip (OrderStripView, movie TraxOrderStrip, prefab installed) - shown while ModEnabled, AthleticsEnabled and ShowInOrderMenu are on, the game's Hide battle UI and photo mode are off, in a fight (battle, duel, tournament or stealth mode), you are on the field and while the orders menu is open`
+  - `[hud] orders strip: layer created at 35.2 s (mode Battle, was hidden: the orders menu is closed) - movie TraxOrderStrip loaded OK (… widgets) - later builds and removals by "the orders menu is closed" go to the verbose log only`
+  - **the proof of the alignment**: `[hud] orders strip: first placement under the cards at 35.2 s (open #1) - technique: the game's own cards read live, layer MissionOrder: 16 cards = 16 cards in 2 sets, set 1 drawn (the game's side columns - keyboard layout); screen 1920 x 1080 px, UI scale 1.00; cards drawn: 1 Infantry at (20, 44) 131 x 223, 40 men (= formation) | 2 Archers at (20, 307) …; cells (numbers 13 px at card bottom +1, bar 4 px at +20, 2 px in from the sides (23 px deep; …)): 1 Infantry at (20, 268) w 131 | …`
+    — every drawn card should say `(= formation)`; each cell's x = its card's x, its y = the
+    card's y + height + 1 (at UI scale 1).
+  - `[hud] orders strip: values at 35.2 s (open #1, under the cards): 1 Infantry 72% ± 8 HP 81% (40 men, f 0.93) | 2 Archers … - ± is 1.00 std, health on`
+    — compare with what you see; *f* sets the colour (≥ 1 green, above 0.75 blue, ≤ 0.75
+    yellow, ≤ 0.50 orange, ≤ 0.25 red).
+- Every later open writes only its `values at … (open #N, …)` line (closing and opening again is
+  quiet; with VerboseLogging on, each build and removal too).
+
+**8b. Fight, then look again.** Let the infantry fight a while, open the menu.
+- You see: the infantry's number and fill lower, the colour moving down the scale, the band
+  wider if some men are fresh and some spent; `HP` dropping as they take wounds. A formation
+  that has not fought stays green at 100%.
+- Log: the new `values at …` line; at battle end the Athletics block's line
+  `Athletics your formations at the end: 1 Infantry 61 ± 14 (38 men) f avg 0.71, 9 at full strength, health avg 74% | …`.
+
+**8c. With RTS Camera Command System on, and off.** Play one battle with it on (as you usually
+do) and one with it off.
+- You see: the same strip under the cards both times. With RTS Camera the columns run bottom to
+  top (Infantry is the bottom-left card) and its card always shows the current-order icon under
+  it — our numbers sit left and right of it.
+- Log, with RTS Camera: `… layer MissionOrder: 8 cards = 8 cards in 1 set, set 1 drawn (one layout - an order-menu mod such as RTS Camera Command System) …; cards drawn: 1 Infantry at (20, 833) 131 x 223, 40 men (= formation) | …`;
+  without it: `16 cards in 2 sets, set 1 drawn (the game's side columns - keyboard layout)`.
+- If RTS Camera's card clicks stop working while the strip is up, that is broken (our strip takes
+  no mouse events).
+
+**8d. Resolution, UI scale, gamepad.** Change the game's UI scale once (or play at another
+resolution); if you have a gamepad, open the menu with it (the cards move to one row at the top).
+- You see: the cells follow the cards at once, still under each card, as wide as the card.
+- Log: `[hud] orders strip: the cards changed at … (open #N) - 16 cards in 2 sets, set 2 drawn (the game's top row - gamepad layout); cards drawn: …; cells: …`
+  (rate-limited). The bottom card of a column: if its cell would leave the screen it is lifted
+  to the edge — the line ends `- 1 cell lifted to the screen's bottom edge` (not expected at the
+  defaults: the cell is 23 px deep and fits the 1080p bottom card exactly).
+- Too big, too small, too close to the icons? The five Advanced settings (*Orders strip: text
+  size / numbers offset / bar offset / bar thickness / side margin*) move it live — tell Claude
+  the numbers that look right.
+
+**8e. Switch things mid-battle** (Escape → Mod Options → *Bars - your squads*, then back).
+- *Orders menu strip* (`ShowInOrderMenu`) off: no strip at the next open; on again: back.
+  Log (the menu open): `[hud] orders strip: layer removed at … - ShowInOrderMenu off`.
+- *Show average health* (`ShowFormationHealth`) off: the `HP 81%` goes, the rest stays; on: back.
+  Log: `[config] ShowFormationHealth: true → false (source: MCM)`; the next `values at …` line ends `health off (ShowFormationHealth)`.
+- *Show the spread* (`ShowFormationSpread`) off: the numbers read `72%` and the band goes.
+- *Strip under the cards* (`OrderStripUnderCards`) off: a small dark panel at the top centre
+  lists your formations instead (8f). Log: `[hud] orders strip: the compact panel at … (open #N) - OrderStripUnderCards is off; …`.
+- *Mod enabled* off: the strip goes at once (`… layer removed at … - ModEnabled off (the master switch)`).
+
+**8f. The fallback panel.** You should NOT see it with the switch above on. If you do: a dark
+box at the top centre, one row per formation — `1 Infantry     72% ± 8   HP 81%` over a slim bar.
+- Log, with the reason: `[hud] orders strip: FALLBACK to the compact panel at … (open #N) - <why>; the panel lists your formations at the top of the screen (80 px down, 300 px wide) until the menu closes - the next open tries the cards again`.
+  The whys: `no MissionOrder layer on the screen and no other layer holds formation cards`,
+  `N cards found - not whole sets of 8 …`, `two sets of cards drawn at once …`,
+  `no card drawn (of 16 found) 0.60 s after the menu opened`, `… has 12 men but its card is not drawn`,
+  `2 Archers's card counts 25 men, the formation has 20 for more than 1.0 s`. Send the log.
+
+**8g. The summary** — two `[summary] hud:` lines for the strip:
+```
+[summary] hud: orders strip (movie TraxOrderStrip) - on screen 48.1 s of 340.2 s (14%); layer built 12x, removed 12x (orders menu closed 11, mission end 1); hidden: not a fight 20.1 s, orders menu closed 272.0 s; 480 refreshes; errors 0
+[summary] hud: orders strip - opened 12x: under the cards in 12, the compact panel in 0; technique: the live vanilla cards (layer MissionOrder: 16 cards); card layouts seen: 16 cards in 2 sets, set 1 drawn; cells placed 36 (lifted to the screen's edge 0), card changes 0, short mismatches 0 (under 1.0 s), card re-scans 0, values pushed 40; fallbacks: none
+```
+- *opened* = how often you opened the menu; *under the cards in* should equal it; *fallbacks:
+  none*; *errors 0*. *Short mismatches* = a card's man-count and ours disagreed for a moment (a
+  man fell between two updates) — harmless if small.
+
+**What counts as broken** — tell Claude and send the log:
+1. **Misaligned cells**: a cell not under its card (shifted, wrong width, under the wrong card),
+   at any resolution / UI scale / with RTS Camera. Compare the `first placement` / `cards
+   changed` lines: the card and cell positions there are what the mod believes.
+2. **Covering vanilla UI**: our numbers or bar on top of a card, the order icons, the ammo bar,
+   the order menu itself — or a cell cut off at the screen edge.
+3. **Wrong formation**: the numbers under the Archers' card are the Infantry's (check the
+   `values at` line against the troop counts on the cards), or a card with men has no cell.
+4. **The panel shows up** with `Strip under the cards` on (8f) — send the `FALLBACK` line.
+5. **Stays on screen** after the menu closes, in deployment, with Hide Battle UI on, or when
+   switched off; or does not come back.
+6. **Numbers that cannot be right**: 100% green for a formation that fought for minutes; `HP`
+   not falling when they are cut down; the band not around the fill's end.
+7. RTS Camera's card clicks or anything else in the orders menu stop working while the strip is
+   up.
+8. Any `[error] hud.…` line, or `[hud] orders strip: … DISABLED for the rest of this battle`.
+
 (steps below are added as the features land)

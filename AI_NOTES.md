@@ -797,6 +797,7 @@ if (AthleticsLogic.TryGetFormationStats(formation, out FormationAthleticsStats s
     s.MeanPoints; s.StdPoints;       // "72 ± 8" (s.Describe() = "72 ± 8 (40 men, 2 exhausted)")
     s.MeanFraction; s.StdFraction;   // bar fill (shares - pools differ per man since 5c)
     s.MeanPeakShare;                 // the men's average f - colour the squad bar by it
+    s.MeanHealth;                    // their average health left, 0..1 (step 9)
     s.LowFraction(k); s.HighFraction(k); // the ± band, k = FormationSpreadStdDevs, clamped 0..1
 }
 AthleticsLogic.FormationStatsVersion  // bumps every FormationStatsRefreshSeconds - redraw on change
@@ -804,7 +805,8 @@ AthleticsLogic.IsRunning
 ```
 - Formation stats are recomputed by the logic's own tick (one O(N) pass over tracked fighters of
   `Mission.PlayerTeam`, bucketed by `(int)agent.Formation.FormationIndex`), so a view never loops
-  agents itself. Enemy formations are not computed (ask if a step needs them).
+  agents itself. Enemy formations are not computed (ask if a step needs them). Since step 9 the
+  PLAYER is left out (the orders menu's cards count the men under his command) and health is in.
 - Since 5c pools differ per fighter: MeanPoints is an average of different-sized bars (the
   "72 ± 8" text); bars should FILL by MeanFraction and COLOUR by MeanPeakShare (f), the player's
   and target's bars by `r.Fraction` / `r.PeakShare`, with the peak marker at `r.PeakFraction`.
@@ -1159,8 +1161,8 @@ it; his pause is his.
   `CountOfUnits > 0`, `PlayerOrderController.IsFormationSelectable`. Mean/std: already computed
   by step 5 - `AthleticsLogic.TryGetFormationStats(formation, out var f)`, redraw when
   `FormationStatsVersion` moves (band = `f.LowFraction(FormationSpreadStdDevs)` ..
-  `f.HighFraction(…)`). Average HEALTH (DESIGN §3 additions) is not computed yet - add it to the
-  same refresh pass (`RefreshFormationStats`) rather than a second loop. Position = `MBWindowManager.WorldToScreen(CombatCamera,
+  `f.HighFraction(…)`). Average HEALTH is in the stats since step 9 (`f.MeanHealth`; the strip's
+  `OrderStripMath.Numbers` / `Band` / `HealthText` and `OrderStripCellVM` are reusable). Position = `MBWindowManager.WorldToScreen(CombatCamera,
   CachedMedianPosition.GetGroundVec3() + (0,0,FormationBarHeight))`, hide when w < 0.
   Anchor: bind `ScaledPositionXOffset`/`YOffset` (floats - vanilla's GamepadCursor.xml does it;
   step 6 finding) before reaching for an own `Widget` subclass (§G, UNVERIFIED #7). A list VM
@@ -1265,6 +1267,62 @@ cards; no cards / not whole sets of 8; two sets visible at once; no card visible
 after the open; or a mismatch (a formation with men but no visible card, a visible card whose members
 disagree with its formation by more than 1) lasting 1 s (engine plumbing constants, like 5d's). The
 next open tries the cards again. Every fallback is logged with its reason and counted.
+
+**Built (DONE 2026-09-27).**
+- Core `OrderStrip.cs`: `OrderCard` / `OrderCardFrame` (≤ 32 cards, reused), `StripFormation`,
+  `OrderStripMath.Match` (sets of 8, the drawn set, slot k vs formation k by members ±1 →
+  Aligned / NotYet / Mismatch / Problem + `StripIssue` + `Describe()`), `PlaceCell` (pixels, lift at
+  the bottom edge), `Signature`, `Numbers` / `AthleticsText` / `HealthText` / `Band`, `StripLayout`
+  (cell = card bottom + min(text, bar offset); no negative margins), `OrderStripStats` (+ the
+  [summary] line). Formation stats: `MeanHealth` (+ "health avg 81%" in the summary). 288 tests.
+- Module `Hud/OrderCards.cs` (`IOrderCardSource` / `GauntletOrderCards`, `IStripFormations` /
+  `MissionStripFormations`), `Hud/OrderStripView.cs`, `Hud/OrderStripVM.cs` (root + 8 fixed cell VMs
+  in one `MBBindingList`, bound TWICE by the prefab: the cells and the panel rows),
+  `module\GUI\Prefabs\TraxOrderStrip.xml`. Base `TraxHudView` got `OnLayerFrame(in HudFrame)` (every
+  frame, before the refresh), `QuietConditionToggles` (the menu's open/close → verbose after the
+  first build), `ViewConditionWhen`, `AddSummaryLines`; `HudFrame.OrderMenuOpen`;
+  `HudStats.ConditionName` ("orders menu closed" in the summary).
+- The squad stats now LEAVE THE PLAYER OUT (`a.IsMainAgent`) - so our count = the card's count - and
+  read health live (`HealthOf`). The Athletics summary's "your formations" line follows.
+- `ShowFormationSpread` / `FormationSpreadStdDevs` drive the strip's band and "± N" (N = k·σ in
+  points of the bar); `ShowFormationHealth` the "HP"; 9 new settings (63).
+- References: `TaleWorlds.MountAndBlade.GauntletUI.Widgets` (main bin - the card widget type) and the
+  game's own `System.Numerics.Vectors` 4.1.3.0 (Widget.GlobalPosition / Size are Vector2; the .NET
+  Framework reference assemblies do not carry that version).
+
+**Gotchas met.**
+- **A widget's OWN @bindings resolve against its own DataSource** (`GauntletView.ViewModelPath`
+  appends it; `RefreshBinding` binds a LIST DataSource as a list only - its widget's properties are
+  never set). `IsVisible="@StripShown"` on the `{Cells}` widget would have been silently ignored;
+  the visibility sits on a widget around the list. The smoke's prefab walker now resolves own
+  attributes against the DataSource and FAILS any @binding on a list widget (proved by breaking it
+  on purpose).
+- The shared `hud-layer` notice bucket (30, then 1/s) is spent late in a fast smoke run - the
+  strip's smoke checks the gates through `Stats.RemovedBy`, not log lines. In game the strip's
+  open/close lines are verbose-only, so they never drain it.
+- HudFrame.Now is MISSION time: with `SlowDownOnOrder` the refresh (HudRefreshSeconds) and the
+  formation stats run 4x slower in real time while the menu is open - fine for values; the cells are
+  placed in `OnLayerFrame` every frame and the grace timers use the frame's real `Dt`.
+- The first open of a battle reads size 0 for a frame (the cards were never laid out) → NotYet
+  (cells hidden), placed the next frame.
+
+**UNVERIFIED (PLAYTEST §8) + settling lines.**
+1. The live widget tree reports the pixels we expect (GlobalPosition / Size of the generated card
+   widgets) and our Scaled* bindings land the cells there: `first placement under the cards … cards
+   drawn: 1 Infantry at (20, 44) 131 x 223 … cells: 1 Infantry at (20, 268) w 131` + Anton's eye
+   (PLAYTEST 8a, 8d). If the cells are offset by a constant, compare the card numbers with the
+   prefab maths above (1080p: columns at x 20 / 1769, y 44 + 263·k).
+2. RTS Camera Command System's cards are found and matched: `8 cards in 1 set … (one layout - an
+   order-menu mod such as RTS Camera Command System)`, every card `(= formation)`, Infantry at the
+   bottom left (PLAYTEST 8c). Its ButtonWidget cards still take their clicks (our layer: no events).
+3. The ItemTemplate list over a plain `Widget` instantiates 8 cells and 8 rows, and the ChangeWidget
+   band draws from low to high (`CustomChangeColor`): the eye (8a, 8f).
+4. The numbers fit beside vanilla's order icons at size 13 (≈ 34 px each side of a 60 px icon
+   pair): the eye; the five `OrderStrip*` settings move them live.
+5. The fallback panel never needed in vanilla or RTS Camera: the [summary] strip line `fallbacks:
+   none`, `under the cards in` = `opened`.
+6. War Sails naval battles (NavalOrderBar, same slot structure; its cards' counts vs a ship
+   formation's) - untested; a mismatch would show as the panel with its reason.
 
 ## Step 10 — Balance + polish
 

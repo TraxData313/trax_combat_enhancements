@@ -656,6 +656,22 @@ AI_NOTES "Step 5e")**
   Barter, Deployment, Tournament, Replay, CutScene, Benchmark - stealth missions exist in 1.4.8
   (sneaking into a town) and the player can fight in them.
 
+**Step 9 addendum - the orders-menu cards can be READ (verified in source 2026-09-27; details in
+AI_NOTES "Step 9")**
+
+- "Generated code" does not mean "no widgets": the generated OrderBar movie builds real widgets of
+  the real types in the prefab's order. Changing them needs UIExtenderEx (above), but READING them
+  needs nothing: `MissionScreen.FindLayer<GauntletLayer>("MissionOrder")` (public) →
+  `UIContext.Root` → the `OrderTroopItemBrushWidget` cards (two per slot: highlight + card), 16 in
+  vanilla (keyboard columns + gamepad row), 8 with RTS Camera Command System (one layout, columns
+  bottom to top). Slot k = FormationClass k (`RefreshTroopItemBindings`); the card's public
+  `CurrentMemberCount` = the formation's units minus the player, updated at once.
+- `Widget.GlobalPosition` / `Size` are screen pixels (parent-local layout, summed); our layer's
+  `ScaledPositionXOffset` / `ScaledPositionYOffset` / `ScaledSuggestedWidth` take pixels. A widget's
+  own @bindings resolve against its own `DataSource`; a list DataSource sets none of its widget's
+  properties (`GauntletView.RefreshBinding`).
+- The HUD font (FiraSansExtraCondensed) has `±` but no `♥`.
+
 ---
 
 ## H. Config file and MCM
@@ -882,3 +898,6 @@ Full notes, the alternatives and the choice: AI_NOTES "Step 5d".
 | 15 | `NoAttack` set with `SetScriptedFlags` and no scripted position holds a man's swings in open melee, guard kept (PLAYTEST 3n: `a swing started anyway`, `guard by f … while held`) | 5e |
 | 16 | The block / parry recoil (`BlockedMelee`) is not scaled by any driven property (PLAYTEST 3n: `recoil after a block … (x1.00)`) | 5e |
 | 17 | A ready's `GetCurrentActionProgress(1)` reaches ~1 at full wind-up and holds there (PLAYTEST 3n: `held` above 0 for the AI's held blows and aimed shots) | 5e |
+| 18 | The live order cards report the expected pixels and the strip's Scaled* bindings land the cells under them, vanilla and RTS Camera Command System (PLAYTEST 8a, 8c, 8d: `first placement under the cards …`) | 9 |
+| 19 | An ItemTemplate list over a plain Widget builds the 8 cells / rows; the FillBarWidget ChangeWidget draws the ± band (PLAYTEST 8a, 8f) | 9 |
+| 20 | War Sails naval battles: NavalOrderBar's cards match the ship formations' counts (else the panel, with its reason) | 9 |

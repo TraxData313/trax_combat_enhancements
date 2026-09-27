@@ -132,7 +132,7 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
   ParamDef.cs                 one setting: key, type, range, group, label, plain-words
                               description, apply timing (Live / NextBattle); Normalize, Format;
                               its Default comes from defaults.json (DefaultsFile), never code
-  SettingsSchema.cs           EVERY setting of DESIGN's table (54), in file + MCM order, 9 groups
+  SettingsSchema.cs           EVERY setting of DESIGN's table (63), in file + MCM order, 9 groups
                               ("Master switch" first) — the one place a setting is declared
                               (a test parses DESIGN.md: keys + types); NO default values
   DefaultsFile.cs             defaults.json: the embedded copy → ParamDef.Default (fail safe:
@@ -204,10 +204,19 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
   HudStats.cs                 one HUD view over one mission: time on screen, hidden by reason,
                               builds, removals by reason, refreshes, errors, disabled, movie
                               failure; for bars: time per colour, colour changes, empty, wounded
-                              (lowest usable) + the [summary] "hud:" lines
+                              (lowest usable) + the [summary] "hud:" lines; ConditionName (the
+                              view's own condition in the summary - "orders menu closed")
+  OrderStrip.cs               step 9, the orders-menu strip pure: OrderCard / OrderCardFrame (the
+                              vanilla cards read in one frame, pixels), StripFormation,
+                              OrderStripMath (Match = the drawn set of 8 + slot k vs formation k by
+                              the member counts → Aligned / NotYet / Mismatch / Problem; PlaceCell in
+                              pixels, lifted at the screen's edge; Signature; Numbers / texts
+                              "72% ± 8" "HP 81%"; Band; the slot names), StripLayout (the OrderStrip*
+                              settings), StripFallback, OrderStripStats (+ the [summary] strip line)
   SpreadStats.cs              MeanStd (Welford, population std), FormationAthleticsStats (squad
-                              mean ± std, band, mean f, at full strength), RunSpeedCheck (engine
-                              top / asked / moving by f); 5c's attack-interval classes went in 5e
+                              mean ± std, band, mean f, at full strength, mean health - step 9),
+                              RunSpeedCheck (engine top / asked / moving by f); 5c's
+                              attack-interval classes went in 5e
   AthleticsStats.cs           per-mission Athletics counters + the [summary] text (pools from the
                               skill, blows by kind, riders, detection cross-checks, free actions,
                               exhaustions + peak zone, fighter-time by f, heroes, player,
@@ -257,8 +266,8 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               lookup), the run-speed and walk/run sampling, Failed
   Missions/AthleticsLogic.Api.cs  READ API for steps 6-9: TryGetReading(agent) (points, pool,
                               usable pool, f, peak line, multipliers), TryGetPeakShare(agent),
-                              TryGetFormationStats(formation) (incl. mean f), FormationStatsVersion,
-                              IsRunning
+                              TryGetFormationStats(formation) (incl. mean f and health; the player
+                              left out, as the order cards), FormationStatsVersion, IsRunning
   Missions/AthleticsLogic.Log.cs  [athletics]/[speed] lines (verbose buckets) + summary feed
                               (releases every step back before the summary, then its lines)
   Missions/AthleticsLogic.StepBack.cs  step 5d bookkeeping: the roll at every counted swing's
@@ -293,17 +302,20 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
   Missions/AthleticsLogic.Hud.cs  step 6: AttachHud on the logic's FIRST TICK (the screen runs by
                               then - RESEARCH §G) - each view via MissionScreen.AddMissionView with
                               a GauntletHudLayer, "[hud] attached:" lines; WriteHudSummary (the
-                              [summary] hud: lines; the screen finalizes views before it). Steps
-                              7-9: one AttachHudView line each
+                              [summary] hud: lines + each view's own; the screen finalizes views
+                              before it). Attached: the player bar, the orders strip (step 9, with
+                              its GauntletOrderCards + MissionStripFormations)
   Hud/TraxHudView.cs          THE BASE OF EVERY HUD VIEW (MissionView): one GauntletLayer + movie +
                               VM that exists exactly while HudGate says so, read every frame
                               (ReadFrame → Tick(in HudFrame) - the smoke drives Tick); refresh every
-                              HudRefreshSeconds; suspend/resume; Finish at mission end; every entry
-                              wrapped - an error or a movie that does not load disables the view for
-                              the mission (layer removed, [error], "[hud] … DISABLED"); [hud] lines
-                              for build / removal / not shown, each with its reason; HudStats
+                              HudRefreshSeconds; OnLayerFrame every frame (step 9); suspend/resume;
+                              Finish at mission end; every entry wrapped - an error or a movie that
+                              does not load disables the view for the mission (layer removed,
+                              [error], "[hud] … DISABLED"); [hud] lines for build / removal / not
+                              shown, each with its reason (QuietConditionToggles: a view's own
+                              condition coming and going → verbose after the first build); HudStats
   Hud/HudLayer.cs             HudFrame (one frame as a view sees it; IsFightMode = Battle, Duel,
-                              Tournament, Stealth), IHudLayer (the engine seam), GauntletHudLayer
+                              Tournament, Stealth; OrderMenuOpen), IHudLayer (the engine seam), GauntletHudLayer
                               (vanilla's recipe: IsCustomType check, LoadMovie, AddLayer; release
                               the movie BEFORE RemoveLayer; a failed movie never goes on screen)
   Hud/PlayerAthleticsView.cs  step 6, DESIGN §3.1: the player's bar - TryGetReading(main) → BarMath
@@ -312,7 +324,19 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
   Hud/PlayerAthleticsVM.cs    its ViewModel - every property EXACTLY the bound widget property's
                               type (float / Color / bool / string: Gauntlet converts only strings);
                               change-checked setters; the number text rebuilt only when it changes
-tests/TraxCombat.Core.Tests/  net8.0 xUnit (274) — schema vs DESIGN.md (keys + types),
+  Hud/OrderCards.cs           step 9's engine seams: IOrderCardSource / GauntletOrderCards (the
+                              "MissionOrder" layer found with the public FindLayer, its widget tree
+                              walked once per open - card = OrderTroopItemBrushWidget in a two-widget
+                              slot - and each card's pixels / visibility / CurrentMemberCount read
+                              every frame; nothing patched), IStripFormations / MissionStripFormations
+  Hud/OrderStripView.cs       step 9, DESIGN §3.4: the orders-menu strip - while the menu is open,
+                              a cell under each card (placed every frame in pixels, slot k checked
+                              against formation k), the fallback panel (reasons, 0.5 s / 1 s grace),
+                              values every refresh, [hud] first placement / card changes / fallbacks
+                              / values lines, the [summary] strip line
+  Hud/OrderStripVM.cs         its ViewModels: the root + 8 fixed OrderStripCellVM in one
+                              MBBindingList, bound TWICE by the prefab (the cells, the panel rows)
+tests/TraxCombat.Core.Tests/  net8.0 xUnit (288) — schema vs DESIGN.md (keys + types),
                               defaults.json (DefaultsFileTests), master switch, settings, config
                               file, merge rule, rate limiter, damage roll/rules/dice/stats/upside,
                               Athletics v2 rules (pool, f, cap, curves, effort regen, DESIGN's
@@ -321,14 +345,20 @@ tests/TraxCombat.Core.Tests/  net8.0 xUnit (274) — schema vs DESIGN.md (keys +
                               verdicts, phases / cycles / holds / guard + summary),
                               step back (chance by f, dice, spot, facing, stats, summary), the bar
                               (bands by f on DESIGN's fighters, shares, numbers, colours), the HUD
-                              gate (order, master switch first) and HUD stats + summary. They
+                              gate (order, master switch first) and HUD stats + summary, the
+                              orders strip (matching card sets, cell placement at any scale and
+                              the lift, texts, band, health in the squad stats, summary). They
                               run on DESIGN's INITIAL values (DesignTable.cs: a module
                               initializer), so tuning defaults.json never breaks them. Keep green.
 module/SubModule.xml          release manifest (Id TraxCombatEnhancements, v0.1.0)
 module/GUI/Prefabs/           the HUD movies - file name = movie name, `Trax…` (prefab names are
                               global across modules): TraxPlayerAthleticsBar.xml (step 6: native
                               sprite BlankWhiteSquare_9 + brush AgentHUD.Interaction.Text only;
-                              FillBarWidgets draw shares; no widget takes mouse events)
+                              FillBarWidgets draw shares; no widget takes mouse events),
+                              TraxOrderStrip.xml (step 9: {Cells} ItemTemplates - the cells placed
+                              by Scaled* pixel bindings, the panel rows; the ± band = a FillBarWidget
+                              ChangeWidget; a list widget carries no @binding - its own bindings
+                              would resolve against the list)
 tools/deploy.ps1              build → AssemblyGuard → OfflineSmoke → install as
                               Modules\TraxCombatEnhancements.Dev "Trax Combat Enhancements (dev)",
                               module\GUI copied beside bin (package.ps1 in step 11 must do the same)
@@ -348,13 +378,18 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               through the real logic - the animations alone too fast, the hold
                               on target - every pace-hold path with a stand-in IPaceBody, the
                               first-slowed line through the real decorator), the master switch
-                              (step backs released, pace holds lifted, the bar removed too), the HUD
-                              (Program.Hud.cs: the prefab against the game's own widget types,
-                              properties, brushes, sprites and the VM's property types; the real
-                              PlayerAthleticsView driven by made-up HudFrames with a FakeHudLayer -
-                              every hide reason, colours, wound, empty, refresh, summary; the fail
-                              safe), defaults read from the embedded defaults.json, the MCM page built
-                              by MCM's real builder and its two buttons clicked (39 steps; the
+                              (step backs released, pace holds lifted, the bar and the strip removed
+                              too), the HUD (Program.Hud.cs: PrefabIsValid - any prefab against the
+                              game's own widget types, properties, brushes, sprites and the VMs'
+                              property types, DataSource lists into their ItemTemplates, no @binding
+                              on a list widget; the real PlayerAthleticsView driven by made-up
+                              HudFrames with a FakeHudLayer - every hide reason, colours, wound,
+                              empty, refresh, summary; the fail safe), the orders strip
+                              (Program.Strip.cs: the real OrderStripView with stand-in cards and
+                              formations - layouts, UI scale, RTS Camera's set, the lift, values,
+                              live switches, every fallback, quiet reopen, summary, fail safe),
+                              defaults read from the embedded defaults.json, the MCM page built
+                              by MCM's real builder and its two buttons clicked (42 steps; the
                               config checks work for any tuned default);
                               TRAX_SMOKE_KEEP=1 keeps its temp folder + log to read
 tools/DefaultsTool/           defaults.json upkeep: refresh (rewrite comments/order, keep every
