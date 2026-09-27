@@ -178,10 +178,16 @@ namespace TraxCombat.Tools
             Hit();
             Hit(shield: true);
             Hit(missile: true, mount: true);
+            Hit(charge: 4f);
+            Hit(fall: 6f);
+            Hit(agent: false);
             S.Set(SettingsSchema.VerboseLogging, false, SettingSources.File);
             LogHas("[damage] melee on a person: (nobody) → (nobody), unarmed, 50 → ");
             LogHas("[damage] ranged on a mount: (nobody) → (nobody), unarmed, 50 → ");
+            LogHas("[damage] horse charge on a person: (nobody) → (nobody), charge bump, 50 → ");
             LogHas("[damage] not rolled - shield blocks (DamageRandomOnShields off): melee on a shield: (nobody) → (nobody), unarmed, 50");
+            LogHas("[damage] not rolled - fall damage: fall on a person: (nobody) → (nobody), no weapon, 50");
+            LogHas("[damage] not rolled - objects (doors, siege engines, ships): melee on an object: (nobody) → (object), unarmed, 50");
             int before = Occurrences(LogText, "[damage] melee on a person");
             Hit();
             Check(Occurrences(LogText, "[damage] melee on a person") == before, "a roll line was written with VerboseLogging off");

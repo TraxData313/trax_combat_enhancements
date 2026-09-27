@@ -154,9 +154,8 @@ namespace TraxCombat.Models
         private static string Describe(in AttackInformation ai, in AttackCollisionData cd, in HitFacts facts)
         {
             var sb = new StringBuilder(96);
-            sb.Append(facts.HorseCharge ? "horse charge" : facts.Missile ? "ranged" : "melee");
+            sb.Append(facts.Fall ? "fall" : facts.HorseCharge ? "horse charge" : facts.Missile ? "ranged" : "melee");
             sb.Append(" on ").Append(!facts.VictimIsAgent ? "an object"
-                : facts.Fall ? "a faller"
                 : facts.ShieldBlocked ? "a shield"
                 : facts.VictimIsMount ? "a mount"
                 : "a person");
@@ -187,7 +186,7 @@ namespace TraxCombat.Models
         private static string Weapon(in AttackInformation ai, in AttackCollisionData cd, in HitFacts facts)
         {
             if (facts.HorseCharge) return "charge bump";
-            if (facts.Fall) return "fall";
+            if (facts.Fall) return "no weapon";
             var w = ai.AttackerWeapon;
             if (w.IsEmpty) return cd.IsAlternativeAttack ? "kick" : "unarmed";
             string name = w.Item?.Name?.ToString() ?? "(unnamed weapon)";
