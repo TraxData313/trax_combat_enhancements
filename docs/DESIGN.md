@@ -58,20 +58,28 @@ drains by attacking, and the only penalty is slow attacks when empty.
 Step 5 builds §2 as written; step 5c then reshapes it as below and folds this section into
 §2. Where the two disagree, this section wins.
 
-- **The pool follows Athletics** (Anton: "I was always thinking of the Athletics skill when
-  speaking about endurance"). Pool = `EnduranceBase` (50) + `EndurancePerAthletics` (0.5)
-  × the fighter's Athletics skill: Athletics 0 → 50, 100 → 100, 200 → 150, 300 → 200.
-  Riders too — Athletics, never Riding. Replaces the flat `MaxEndurance`. Changing either
-  number mid-battle keeps each fighter's fraction.
-- **The peak line** `EndurancePeakPoints` (100, in POINTS, not a percent of the pool). At or
+- **It is called ATHLETICS, everywhere** (Anton, 2026-09-27: "so it is the athletics bar that
+  gets depleted" — so every player sees at once that the Athletics skill controls all of
+  it). The pool, the bar, the points: **Athletics**. The skill on the character screen:
+  **Athletics skill**. Every player-facing word — MCM, config keys and comments, bars,
+  messages, log tags (`[athletics]`), README, Steam page — and the code too (one
+  vocabulary: `EnduranceLogic` → `AthleticsLogic`, `EnduranceEnabled` → `AthleticsEnabled`,
+  and so on). The rename is done in step 5b; "endurance" in this document means the same
+  thing until then. TASKS_DONE history keeps its words.
+- **The pool IS the Athletics skill** (Anton's pick): pool = max(`AthleticsPoolFloor` (50),
+  `AthleticsPoolPerSkill` (1.0) × Athletics skill). Skill 180 → the bar tops at 180; anyone
+  under 50 still gets 50; a 300-skill hero gets 300. The bar's number matches the skill
+  screen. Riders too — Athletics, never Riding. Replaces the flat `MaxEndurance`. Changing
+  either number mid-battle keeps each fighter's fraction.
+- **The peak line** `AthleticsPeakPoints` (100, in POINTS, not a percent of the pool). At or
   above it a fighter is at their peak: full damage upside, full swing speed, full run
   speed, never steps back. Below it, each of those falls in a straight line with the points
   left, down to its floor at 0. A 150-pool veteran stays at peak from 150 down to 100; a
   50-pool recruit never reaches it.
-- **Health caps the pool** (`HealthCapsEndurance`, on): the usable pool = pool × health
+- **Health caps the pool** (`HealthCapsAthletics`, on): the usable pool = pool × health
   left. Pool 100 at 75% health → 75; a fighter holding 80 drops to 75 at once, and regen
   never fills above the cap.
-- **Damage upside follows endurance** (`DamageBonusFollowsEndurance`, on): the roll becomes
+- **Damage upside follows endurance** (`DamageBonusFollowsAthletics`, on): the roll becomes
   `[1 − p, 1 + p × min(E / peak, 1)]` with E = the attacker's endurance (the rider's for a
   horse charge). At or above the peak +50%; at 50 points +25%; at 0 no upside at all — only
   the −50% side. The downside never changes.
@@ -221,11 +229,11 @@ test reads that table only) and removes the retired rows in the same commit.
 
 | Key | Default | Step | What it does |
 |---|---|---|---|
-| `EnduranceBase` | 50 | 5c | Pool at Athletics 0. Replaces `MaxEndurance`. |
-| `EndurancePerAthletics` | 0.5 | 5c | Pool added per Athletics point (300 → +150). |
-| `EndurancePeakPoints` | 100 | 5c | Points at or above which a fighter is at their peak. |
-| `HealthCapsEndurance` | true | 5c | Health left caps the usable pool. |
-| `DamageBonusFollowsEndurance` | true | 5c | The damage upside shrinks with the attacker's endurance below the peak. |
+| `AthleticsPoolFloor` | 50 | 5c | Smallest possible Athletics pool (for anyone with a low Athletics skill). Replaces `MaxEndurance`. |
+| `AthleticsPoolPerSkill` | 1.0 | 5c | Pool per point of Athletics skill (1.0 → the bar tops at the skill). |
+| `AthleticsPeakPoints` | 100 | 5c | Athletics points at or above which a fighter is at their peak. |
+| `HealthCapsAthletics` | true | 5c | Health left caps the usable pool. |
+| `DamageBonusFollowsAthletics` | true | 5c | The damage upside shrinks with the attacker's Athletics below the peak. |
 | `MinMoveSpeedMultiplier` | 0.3 | 5c | Top speed on foot at 0 endurance. |
 | `MountMinSpeedMultiplier` | 1.0 | 5c | Horse top speed at the rider's 0 endurance (1.0 = horses never slow). |
 | `RegenMultiplierAtFullRun` | 0.5 | 5c | Regen rate at top speed, relative to standing or walking. |
