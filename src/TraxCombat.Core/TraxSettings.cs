@@ -195,6 +195,9 @@ namespace TraxCombat.Core
         // One per setting, same name as its key (a test checks the pairing). Read these AT USE
         // TIME - e.g. TraxSettings.Shared.DamageRandomPercent inside the damage hook.
 
+        /// <summary>THE master switch - every feature checks it first (off = vanilla, live).</summary>
+        public bool ModEnabled => GetBool(SettingsSchema.ModEnabled);
+
         public bool DamageRandomEnabled => GetBool(SettingsSchema.DamageRandomEnabled);
         public int DamageRandomPercent => GetInt(SettingsSchema.DamageRandomPercent);
         public bool DamageRandomMelee => GetBool(SettingsSchema.DamageRandomMelee);

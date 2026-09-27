@@ -47,7 +47,9 @@ namespace TraxCombat.Models
             _mainThreadId = Environment.CurrentManagedThreadId;
             Interlocked.Exchange(ref _firstRollLogged, 0);
             var r = DamageRules.From(TraxSettings.Shared);
-            TraxLog.Info("damage", "mission start: damage randomness " + (r.Enabled ? "ON" : "OFF")
+            TraxLog.Info("damage", "mission start: "
+                + (r.ModEnabled ? string.Empty : "mod OFF (ModEnabled) - no hit is rolled, the game's own numbers are recorded for comparison; with the mod on: ")
+                + "damage randomness " + (r.Enabled ? "ON" : "OFF")
                 + ", spread ±" + r.Percent.ToString(CultureInfo.InvariantCulture) + "%"
                 + " (a 50-damage hit lands for " + Range(50f, r.Percent) + ")"
                 + ", melee " + OnOff(r.Melee) + ", ranged " + OnOff(r.Ranged)
@@ -72,7 +74,10 @@ namespace TraxCombat.Models
 
             if (reason != DamageSkipReason.None)
             {
-                Stats.AddSkip(reason);
+                // Master switch off: vanilla damage, recorded as a factor-1 hit for the ON/OFF
+                // comparison (the summary's "while the mod was OFF" line).
+                if (reason == DamageSkipReason.ModOff) Stats.AddVanilla(facts.Category, damage);
+                else Stats.AddSkip(reason);
                 if (TraxLog.VerboseOn) LogSkip(in ai, in cd, in facts, reason, damage);
                 return damage;
             }

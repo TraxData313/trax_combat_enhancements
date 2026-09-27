@@ -86,6 +86,16 @@ die at any moment (tokens run out) and the next one loses nothing.
   and that parameter's MCM hint and config-file comment say so. Hand edits of the config
   file are re-read at every mission start (and on load), so they need no restart either.
   Every change is logged (`[config] X: old → new (source: MCM|file)`).
+- **The master switch comes first (Anton, 2026-09-27).** Every feature gates on
+  `TraxSettings.Shared.ModEnabled` FIRST, read live: off = that feature is pure vanilla at once
+  (it lifts whatever it applied - penalties, bars, step-backs), while the mission logging keeps
+  running so an ON battle and an OFF battle compare (DESIGN §4). Back on = a fresh start
+  (everyone's Athletics full). New code: check it before anything else, and add the feature's
+  "off" behaviour to the smoke's master-switch step.
+- **Defaults live in `defaults.json`, nowhere else (step 5b, DESIGN §2c).** The schema has no
+  default values; a new setting needs `"Key": value` in defaults.json, then
+  `dotnet run --project tools/DefaultsTool -- refresh`. DESIGN's Default column is the INITIAL
+  value only - never "fix" it to match a tuned defaults.json.
 - **Save-safe**: the mod lives inside missions. It must add nothing to the campaign save, so
   it can be enabled or removed mid-campaign.
 - **Logging built for one big playtest at the end (Anton, 2026-09-27).** Anton tests

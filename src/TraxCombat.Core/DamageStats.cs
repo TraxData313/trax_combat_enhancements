@@ -24,6 +24,8 @@ namespace TraxCombat.Core
         private readonly Bucket[] _categories;
         private readonly int[] _bins = new int[Bins];
         private readonly int[] _skips = new int[ReasonCount];
+        private readonly int[] _vanillaHits = new int[CategoryCount];
+        private readonly long[] _vanillaDamage = new long[CategoryCount];
         private readonly Dictionary<string, int> _errors = new Dictionary<string, int>(StringComparer.Ordinal);
         private int _offMainThread;
 
@@ -82,8 +84,37 @@ namespace TraxCombat.Core
                 foreach (var b in _categories) b.Clear();
                 Array.Clear(_bins, 0, _bins.Length);
                 Array.Clear(_skips, 0, _skips.Length);
+                Array.Clear(_vanillaHits, 0, _vanillaHits.Length);
+                Array.Clear(_vanillaDamage, 0, _vanillaDamage.Length);
                 _errors.Clear();
                 _offMainThread = 0;
+            }
+        }
+
+        /// <summary>A hit that would have rolled while the mod was switched off
+        /// (<see cref="DamageSkipReason.ModOff"/>): the game's own number, factor 1 - the summary's
+        /// "while the mod was OFF" line, to compare an OFF battle with an ON one.</summary>
+        public void AddVanilla(DamageCategory category, float damage)
+        {
+            int shown = DamageRoll.GameRound(damage);
+            lock (_gate)
+            {
+                _vanillaHits[(int)category]++;
+                _vanillaDamage[(int)category] += shown;
+            }
+        }
+
+        /// <summary>Hits recorded while the mod was off (<see cref="AddVanilla"/>).</summary>
+        public int VanillaHits
+        {
+            get
+            {
+                lock (_gate)
+                {
+                    int n = 0;
+                    foreach (int h in _vanillaHits) n += h;
+                    return n;
+                }
             }
         }
 
@@ -230,7 +261,8 @@ namespace TraxCombat.Core
                         + ", mounts " + _categories[(int)DamageCategory.Mount].Count
                         + ", shields " + _categories[(int)DamageCategory.Shield].Count
                         + "); factor min " + F2(total.Min) + " / avg " + F3(total.FactorSum / total.Count) + " / max " + F2(total.Max)
-                        + "; damage " + total.Before + " → " + total.After + " (" + Percent(total.Before, total.After) + ")");
+                        + "; damage " + total.Before + " → " + total.After + " (" + Percent(total.Before, total.After) + "), avg "
+                        + F1((double)total.After / total.Count) + " per hit");
 
                     var sb = new StringBuilder("damage by kind:");
                     bool first = true;
@@ -250,6 +282,27 @@ namespace TraxCombat.Core
                     lines.Add("damage dice, " + Bins + " equal slices from the lowest to the highest possible roll (even = fair): "
                         + string.Join(" ", Array.ConvertAll(_bins, n => n.ToString(CultureInfo.InvariantCulture))));
                 }
+
+                int vanilla = 0;
+                long vanillaDamage = 0;
+                for (int c = 0; c < CategoryCount; c++)
+                {
+                    vanilla += _vanillaHits[c];
+                    vanillaDamage += _vanillaDamage[c];
+                }
+                if (vanilla > 0)
+                {
+                    lines.Add("damage while the mod was OFF - the game's own numbers, not rolled (factor 1.00): " + vanilla
+                        + " hits (melee " + _vanillaHits[(int)DamageCategory.Melee]
+                        + ", ranged " + _vanillaHits[(int)DamageCategory.Ranged]
+                        + ", mounts " + _vanillaHits[(int)DamageCategory.Mount]
+                        + ", shields " + _vanillaHits[(int)DamageCategory.Shield]
+                        + "); damage " + vanillaDamage + " → " + vanillaDamage + " (+0.0%), avg "
+                        + F1((double)vanillaDamage / vanilla) + " per hit");
+                }
+                if (total.Count > 0 && vanilla > 0)
+                    lines.Add("damage avg per hit: rolled (mod ON) " + F1((double)total.After / total.Count) + " (the game's "
+                        + F1((double)total.Before / total.Count) + " before the roll) | mod OFF " + F1((double)vanillaDamage / vanilla));
 
                 int skipped = 0;
                 foreach (int s in _skips) skipped += s;
@@ -324,8 +377,11 @@ namespace TraxCombat.Core
             DamageSkipReason.MountToggleOff => "on mounts (DamageRandomOnMounts off)",
             DamageSkipReason.MeleeToggleOff => "melee (DamageRandomMelee off)",
             DamageSkipReason.RangedToggleOff => "ranged (DamageRandomRanged off)",
+            DamageSkipReason.ModOff => "mod OFF (ModEnabled)",
             _ => r.ToString(),
         };
+
+        private static string F1(double v) => v.ToString("0.0", CultureInfo.InvariantCulture);
 
         private static string F2(double v) => v.ToString("0.00", CultureInfo.InvariantCulture);
 

@@ -40,6 +40,7 @@ namespace TraxCombat.Tools
 
         private static void DamageDefaults()
         {
+            S.Set(SettingsSchema.ModEnabled, true, SettingSources.File);
             S.Set(SettingsSchema.DamageRandomEnabled, true, SettingSources.File);
             S.Set(SettingsSchema.DamageRandomPercent, 50, SettingSources.File);
             S.Set(SettingsSchema.DamageRandomMelee, true, SettingSources.File);

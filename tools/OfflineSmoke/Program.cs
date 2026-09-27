@@ -74,6 +74,7 @@ namespace TraxCombat.Tools
             Step("Athletics: swings through the real logic - 10 empty a soldier, 18 a party leader; kicks, bashes, ranged releases free", BlowsThroughTheLogic);
             Step("Athletics: mid-battle settings - speed percent re-targets the exhausted, a pool change reads live, switching off refills and lifts", AthleticsHotSwap);
             Step("Athletics: the [summary] Athletics block", AthleticsSummary);
+            Step("master switch: ModEnabled off is vanilla at once - damage unrolled but recorded, penalties lifted, no costs; on = everyone full", MasterSwitchIsVanillaLive);
             Step("Athletics: a failure is logged once per site, counted, and reported in the summary", AthleticsFailSafe);
             Step("MCM still not loaded after phase 1", () => Check(!McmLoaded(), "MCMv5 got loaded during phase 1"));
 

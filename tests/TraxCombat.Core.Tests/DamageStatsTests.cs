@@ -38,7 +38,7 @@ public class DamageStatsTests
         Assert.Equal(126, after);
 
         var lines = s.SummaryLines();
-        Assert.Equal("damage rolls: 5 hits (melee 2, ranged 1, mounts 1, shields 1); factor min 0.50 / avg 1.000 / max 1.50; damage 125 → 126 (+0.8%)", lines[0]);
+        Assert.Equal("damage rolls: 5 hits (melee 2, ranged 1, mounts 1, shields 1); factor min 0.50 / avg 1.000 / max 1.50; damage 125 → 126 (+0.8%), avg 25.2 per hit", lines[0]);
         Assert.Equal("damage by kind: melee 2 x0.50..1.50 avg 1.000 (80 → 80) | ranged 1 x1.00..1.00 avg 1.000 (30 → 30) | mounts 1 x1.20..1.20 avg 1.200 (10 → 12) | shields 1 x0.80..0.80 avg 0.800 (5 → 4)", lines[1]);
         Assert.StartsWith("damage dice, 10 equal slices from the lowest to the highest possible roll (even = fair): 1 0 0 1 0 1 0 1 0 1", lines[2]);
         Assert.Contains("damage rolls ran on the main thread: all 5", lines);

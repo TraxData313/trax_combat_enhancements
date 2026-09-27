@@ -48,6 +48,12 @@ namespace TraxCombat.Core
 
         /// <summary>An arrow, bolt, stone or thrown weapon and DamageRandomRanged is off.</summary>
         RangedToggleOff,
+
+        /// <summary>The hit WOULD roll, but the master switch ModEnabled is off: it keeps the game's
+        /// damage and is recorded as a vanilla hit (factor 1) for the ON/OFF comparison - see
+        /// <see cref="DamageStats.AddVanilla"/>. Checked LAST, so an OFF battle counts exactly the
+        /// hits an ON battle would roll.</summary>
+        ModOff,
     }
 
     /// <summary>
@@ -100,7 +106,7 @@ namespace TraxCombat.Core
     /// moment of the hit (hot swap: an MCM change mid-battle applies to the next hit).</summary>
     public readonly struct DamageRules
     {
-        public DamageRules(bool enabled, int percent, bool melee, bool ranged, bool onMounts, bool onShields)
+        public DamageRules(bool enabled, int percent, bool melee, bool ranged, bool onMounts, bool onShields, bool modEnabled = true)
         {
             Enabled = enabled;
             Percent = percent;
@@ -108,8 +114,13 @@ namespace TraxCombat.Core
             Ranged = ranged;
             OnMounts = onMounts;
             OnShields = onShields;
+            ModEnabled = modEnabled;
         }
 
+        /// <summary>The master switch (ModEnabled). Off: nothing rolls - see <see cref="DamageSkipReason.ModOff"/>.</summary>
+        public bool ModEnabled { get; }
+
+        /// <summary>DamageRandomEnabled.</summary>
         public bool Enabled { get; }
 
         /// <summary>± spread in percent (0..100).</summary>
@@ -126,7 +137,7 @@ namespace TraxCombat.Core
         /// <summary>The live values, read now.</summary>
         public static DamageRules From(TraxSettings s) => new DamageRules(
             s.DamageRandomEnabled, s.DamageRandomPercent, s.DamageRandomMelee, s.DamageRandomRanged,
-            s.DamageRandomOnMounts, s.DamageRandomOnShields);
+            s.DamageRandomOnMounts, s.DamageRandomOnShields, s.ModEnabled);
     }
 
     /// <summary>One roll: the game's value, ours, and the dice.</summary>
@@ -171,7 +182,9 @@ namespace TraxCombat.Core
         /// fall, a 0 hit), then the switches in the order a player would look for them: master
         /// switch, spread, the TARGET toggles (shield, mount), then the ATTACK toggles (melee,
         /// ranged). The target and attack toggles combine: an arrow into a horse rolls only with
-        /// both "ranged" and "on mounts" on.
+        /// both "ranged" and "on mounts" on. LAST, the mod's master switch: a hit that would roll
+        /// with ModEnabled off is <see cref="DamageSkipReason.ModOff"/> - kept at the game's value
+        /// and recorded as vanilla, so an OFF battle's summary counts the same hits an ON one rolls.
         /// </summary>
         public static DamageSkipReason Decide(in HitFacts hit, float damage, in DamageRules rules)
         {
@@ -191,6 +204,7 @@ namespace TraxCombat.Core
             {
                 return DamageSkipReason.MeleeToggleOff;
             }
+            if (!rules.ModEnabled) return DamageSkipReason.ModOff;
             return DamageSkipReason.None;
         }
 

@@ -196,6 +196,22 @@ Every parameter lives in two places that stay in sync:
 - the **Mod Configuration Menu (MCM)** when installed. MCM must stay OPTIONAL: without it the
   mod runs on the file alone (see CLAUDE.md, hard requirements).
 
+**Master switch** (`ModEnabled`, Anton 2026-09-27, built in step 5b): one checkbox at the top
+of MCM (and the first key of the config file) turns the WHOLE mod off — live, even mid-battle —
+so the same battle can be fought with and without it and compared. Off: the damage roll hands
+back the game's own number; nobody pays Athletics, nobody refills; every attack-speed penalty
+is lifted at once (the stat decorator checks the switch itself, so even a recompute before the
+logic's next tick is vanilla); the bars (steps 6–9) hide; tired fighters never step back (5d).
+Back on: everyone starts with a full Athletics bar — a fresh start, not a resume. The two model
+decorators stay registered (they cannot be removed mid-game) and pass everything through; the
+tournament AI-level fix, which only keeps vanilla behaviour intact, stays. **Logging stays on**:
+the mission start line and the `[summary]` header say `mod ON` / `mod OFF`; a toggle
+mid-battle is logged with its time, and the header then says "mod was on for N% of the battle
+(started ON; OFF at 40.1 s, …)". The summary's vanilla-observable lines (duration, killed /
+knocked out / fled, agents) are unchanged, and while off the damage lines record the game's own
+hit numbers unrolled (factor 1, "damage while the mod was OFF … avg N per hit") so an ON run and
+an OFF run compare line by line. Every feature checks `ModEnabled` FIRST (CLAUDE.md).
+
 **Hot swap**: a change in MCM applies LIVE — the next hit, blow or HUD refresh uses it, even
 mid-battle. Nothing ever needs a game restart; if some parameter can only apply from the
 next battle, its description says so. Hand edits to the file are picked up at the next
@@ -227,6 +243,7 @@ says (§2c).
 
 | Key | Default (initial) | What it does |
 |---|---|---|
+| `ModEnabled` | true | THE master switch. Off = the whole mod steps aside and every battle is pure vanilla (live, even mid-battle); the log still records each battle for comparison. |
 | `DamageRandomEnabled` | true | Master switch for damage randomness. |
 | `DamageRandomPercent` | 50 | ± spread in percent. 50 → a 50-damage hit lands for 25–75. 0 = off. |
 | `DamageRandomMelee` | true | Randomize melee hits. |

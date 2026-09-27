@@ -317,6 +317,7 @@ namespace TraxCombat.Core
         /// the settings sentence of the mission-start line and the summary.</summary>
         public static string DescribeRules(in AthleticsRules r)
         {
+            if (!r.ModEnabled) return "OFF - the whole mod is switched off (ModEnabled) - everyone full, no penalty";
             if (!r.Enabled) return "OFF (AthleticsEnabled) - everyone full, no penalty";
             var soldier = new Fighter();
             var hero = new Fighter { IsHero = true };

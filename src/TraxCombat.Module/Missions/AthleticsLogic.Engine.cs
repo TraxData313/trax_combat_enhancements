@@ -72,6 +72,7 @@ namespace TraxCombat.Missions
 
         private int _seenVersion = -1;
         private bool _seenEnabled;
+        private string? _lastOffBecause;
         private int _seenSpeedPercent;
         private double _regenAccum;
         private bool _speedsSampled;
@@ -103,6 +104,7 @@ namespace TraxCombat.Missions
             var r = Rules;
             _seenVersion = TraxSettings.Shared.Version;
             _seenEnabled = r.Enabled;
+            _lastOffBecause = r.OffBecause;
             _seenSpeedPercent = r.ExhaustedAttackSpeedPercent;
             TraxLog.Info("athletics", "mission start: " + AthleticsStats.DescribeRules(in r) + " - read live");
             TraxLog.Info("athletics", Campaign.Current != null
@@ -496,14 +498,19 @@ namespace TraxCombat.Missions
                             st.ResetFull();
                             if (RetargetSpeed(st, in r)) lifted++;
                         }
-                        TraxLog.Info("athletics", "AthleticsEnabled switched OFF mid-mission: " + refilled + " fighters back to full, "
+                        TraxLog.Info("athletics", (r.ModEnabled ? "AthleticsEnabled" : "the whole mod (ModEnabled)")
+                            + " switched OFF mid-mission: " + refilled + " fighters back to full, "
                             + lifted + " attack-speed penalties lifted (applied on the next tick)");
                     }
                     else
                     {
-                        TraxLog.Info("athletics", "AthleticsEnabled switched ON mid-mission: everyone starts full");
+                        // Back on - by either switch - means everyone starts from a full bar (Anton's
+                        // master-switch rule: "on" is a fresh start, not a resume of the old state).
+                        TraxLog.Info("athletics", (_lastOffBecause == "ModEnabled" ? "the whole mod (ModEnabled)" : "AthleticsEnabled")
+                            + " switched ON mid-mission: everyone starts full");
                     }
                 }
+                _lastOffBecause = r.OffBecause; // which switch holds it off now (both may be off)
                 if (r.ExhaustedAttackSpeedPercent != _seenSpeedPercent)
                 {
                     _seenSpeedPercent = r.ExhaustedAttackSpeedPercent;
@@ -739,12 +746,14 @@ namespace TraxCombat.Missions
 
         /// <summary>The attack-speed multiplier to apply to <paramref name="agent"/> now (1 = none):
         /// the running mission's value for a tracked human, 1 for anyone else, and 1 for everyone
-        /// while AthleticsEnabled is off (read live - fail safe). Any thread; reads only.</summary>
+        /// while the mod (ModEnabled) or Athletics (AthleticsEnabled) is off (read live - fail safe).
+        /// Any thread; reads only.</summary>
         internal static float SpeedMultiplierFor(Agent agent)
         {
             var logic = _current;
             if (logic == null || agent == null) return 1f;
-            if (!TraxSettings.Shared.AthleticsEnabled) return 1f;
+            var s = TraxSettings.Shared;
+            if (!s.ModEnabled || !s.AthleticsEnabled) return 1f; // the master switch first (vanilla)
             var st = logic.Get(agent);
             return st?.SpeedMultiplier ?? 1f;
         }

@@ -2,6 +2,7 @@ using System;
 using System.Globalization;
 using TaleWorlds.Core;
 using TaleWorlds.MountAndBlade;
+using TraxCombat.Core;
 using TraxCombat.Models;
 
 namespace TraxCombat.Missions
@@ -16,6 +17,10 @@ namespace TraxCombat.Missions
     ///   [mission] first tick / deployment finished: agents on the field
     ///   [summary] block at the end (OnEndMissionInternal - fires for every ending, victory,
     ///             defeat, retreat or leaving, with the agents still present; RESEARCH §K)
+    ///   the MASTER SWITCH (ModEnabled): "mod ON/OFF" on the start line and the summary header,
+    ///             each toggle mid-battle as a [mission] line with its time. This logic stays
+    ///             attached and logging while the mod is off, so an OFF battle can be compared
+    ///             with an ON one (DESIGN §4).
     /// The Athletics engine (DESIGN §2, step 5) lives in AthleticsLogic.Engine.cs (tracking,
     /// blow detection, regen, the speed penalty, hot swap), its read API for the HUD steps 6-9 in
     /// AthleticsLogic.Api.cs, its log lines and summary in AthleticsLogic.Log.cs.
@@ -37,6 +42,7 @@ namespace TraxCombat.Missions
         private bool _firstTickDone;
         private bool _summaryWritten;
         private string _label = "(unknown mission)";
+        private readonly ModSwitchLog _modSwitch = new ModSwitchLog();
 
         public override void AfterStart()
         {
@@ -46,11 +52,14 @@ namespace TraxCombat.Missions
                 _errorsAtStart = TraxLog.ErrorCount;
                 var m = Mission;
                 _label = "scene " + Safe(() => m.SceneName) + ", " + Kind(m);
+                bool modOn = TraxSettings.Shared.ModEnabled;
+                _modSwitch.Start(m.CurrentTime, modOn);
                 TraxLog.Info("mission", "start: " + _label
                     + ", mode " + Safe(() => m.Mode.ToString())
                     + ", combat type " + Safe(() => m.CombatType.ToString())
                     + ", game " + Safe(() => Game.Current?.GameType?.GetType().Name ?? "none")
-                    + ", agents so far " + Safe(() => m.Agents.Count.ToString(CultureInfo.InvariantCulture)));
+                    + ", agents so far " + Safe(() => m.Agents.Count.ToString(CultureInfo.InvariantCulture))
+                    + (modOn ? ", mod ON" : ", mod OFF (ModEnabled) - this battle runs as vanilla; the log still records it for comparison"));
             }
             catch (Exception e)
             {
@@ -92,6 +101,17 @@ namespace TraxCombat.Missions
                 {
                     TraxLog.Error("mission.OnMissionTick", e);
                 }
+            }
+            try
+            {
+                // The master switch, read live every tick (MCM flips it from the Escape menu).
+                double now = Mission.CurrentTime;
+                if (_modSwitch.Observe(now, TraxSettings.Shared.ModEnabled))
+                    TraxLog.Info("mission", ModSwitchLog.ToggleText(_modSwitch.IsOn, now));
+            }
+            catch (Exception e)
+            {
+                TraxLog.Error("mission.mod-switch", e);
             }
             try
             {
@@ -231,7 +251,8 @@ namespace TraxCombat.Missions
             }
 
             TraxLog.Info("summary", "==== " + _label + " - ended (" + when + ") after "
-                + Safe(() => m!.CurrentTime.ToString("0", CultureInfo.InvariantCulture)) + " s, result: " + Result(m) + " ====");
+                + Safe(() => m!.CurrentTime.ToString("0", CultureInfo.InvariantCulture)) + " s, result: " + Result(m)
+                + ", " + Safe(() => _modSwitch.Describe(m != null ? m.CurrentTime : 0)) + " ====");
             TraxLog.Info("summary", "agents built: " + _built + " (" + _builtHumans + " people incl. " + _builtHeroes
                 + " heroes, " + _builtMounts + " mounts)");
             TraxLog.Info("summary", "people removed: " + _killed + " killed, " + _unconscious + " knocked out, "

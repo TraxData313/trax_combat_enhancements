@@ -24,19 +24,28 @@ namespace TraxCombat.Core
         // the parameters, and All must stay below them.
         private static int _next;
 
-        public static readonly ParamGroup DamageGroup = new ParamGroup(0, "Damage randomness");
-        public static readonly ParamGroup AthleticsGroup = new ParamGroup(1, "Athletics");
-        public static readonly ParamGroup ExhaustionGroup = new ParamGroup(2, "Exhaustion");
-        public static readonly ParamGroup RegenGroup = new ParamGroup(3, "Regeneration");
-        public static readonly ParamGroup PlayerBarsGroup = new ParamGroup(4, "Bars - you and your target");
-        public static readonly ParamGroup SquadBarsGroup = new ParamGroup(5, "Bars - your squads");
-        public static readonly ParamGroup AdvancedGroup = new ParamGroup(6, "Advanced");
+        public static readonly ParamGroup MasterGroup = new ParamGroup(0, "Master switch");
+        public static readonly ParamGroup DamageGroup = new ParamGroup(1, "Damage randomness");
+        public static readonly ParamGroup AthleticsGroup = new ParamGroup(2, "Athletics");
+        public static readonly ParamGroup ExhaustionGroup = new ParamGroup(3, "Exhaustion");
+        public static readonly ParamGroup RegenGroup = new ParamGroup(4, "Regeneration");
+        public static readonly ParamGroup PlayerBarsGroup = new ParamGroup(5, "Bars - you and your target");
+        public static readonly ParamGroup SquadBarsGroup = new ParamGroup(6, "Bars - your squads");
+        public static readonly ParamGroup AdvancedGroup = new ParamGroup(7, "Advanced");
+
+        // ------------------------------------------------------------------ master switch
+
+        /// <summary>THE master switch (Anton, 2026-09-27). Every feature checks it FIRST, live:
+        /// off = that feature steps aside and the game runs vanilla (CLAUDE.md hard requirement).</summary>
+        public static readonly ParamDef ModEnabled = Bool("ModEnabled", MasterGroup,
+            "Mod enabled",
+            "Turn the whole mod off to play a battle exactly as vanilla - for example to fight the same battle with and without it and compare. Off: no damage rolls, no Athletics costs, refill or slow attacks, no bars; the log still records every battle (its summary says mod ON or OFF). Applies live, even mid-battle; switched back on, everyone starts with a full Athletics bar.");
 
         // ------------------------------------------------------------------ damage randomness
 
         public static readonly ParamDef DamageRandomEnabled = Bool("DamageRandomEnabled", DamageGroup,
             "Damage randomness",
-            "Master switch. On: every hit that lands deals a random share of its normal damage (see the spread). Off: damage is the game's own.");
+            "On: every hit that lands deals a random share of its normal damage (see the spread). Off: damage is the game's own (the rest of the mod still runs).");
 
         public static readonly ParamDef DamageRandomPercent = Int("DamageRandomPercent", 0, 100, DamageGroup,
             "Spread (± %)",
@@ -179,6 +188,7 @@ namespace TraxCombat.Core
         /// <summary>Every setting, in file and MCM order. <c>All[i].Index == i</c>.</summary>
         public static readonly IReadOnlyList<ParamDef> All = new[]
         {
+            ModEnabled,
             DamageRandomEnabled, DamageRandomPercent, DamageRandomMelee, DamageRandomRanged,
             DamageRandomOnMounts, DamageRandomOnShields,
             AthleticsEnabled, MaxAthletics, CostPerBlow, CostOnMiss, HeroCostMultiplier,
@@ -195,7 +205,7 @@ namespace TraxCombat.Core
         /// <summary>The groups in order.</summary>
         public static readonly IReadOnlyList<ParamGroup> Groups = new[]
         {
-            DamageGroup, AthleticsGroup, ExhaustionGroup, RegenGroup, PlayerBarsGroup, SquadBarsGroup, AdvancedGroup,
+            MasterGroup, DamageGroup, AthleticsGroup, ExhaustionGroup, RegenGroup, PlayerBarsGroup, SquadBarsGroup, AdvancedGroup,
         };
 
         private static readonly Dictionary<string, ParamDef> ByKey = BuildIndex();

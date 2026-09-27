@@ -16,9 +16,17 @@
 // MCM's "Save current values as a defaults file" writes the values in play as a file like this
 // one, next to config.json - copy it over the repo's defaults.json to make them the defaults.
 {
+  // ==================== Master switch ====================
+  // Turn the whole mod off to play a battle exactly as vanilla - for example to fight the same
+  // battle with and without it and compare. Off: no damage rolls, no Athletics costs, refill or
+  // slow attacks, no bars; the log still records every battle (its summary says mod ON or OFF).
+  // Applies live, even mid-battle; switched back on, everyone starts with a full Athletics bar.
+  // (true or false)
+  "ModEnabled": true,
+
   // ==================== Damage randomness ====================
-  // Master switch. On: every hit that lands deals a random share of its normal damage (see the
-  // spread). Off: damage is the game's own.
+  // On: every hit that lands deals a random share of its normal damage (see the spread). Off:
+  // damage is the game's own (the rest of the mod still runs).
   // (true or false)
   "DamageRandomEnabled": true,
 

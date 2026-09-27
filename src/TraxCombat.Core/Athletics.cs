@@ -31,9 +31,11 @@ namespace TraxCombat.Core
     {
         public AthleticsRules(bool enabled, int maxAthletics, float costPerBlow, bool costOnMiss, float heroCostMultiplier,
             float partyLeaderCostMultiplier, int exhaustedAttackSpeedPercent, int exhaustedRecoverPercent, float regenDelayBlowTimes,
-            float blowTimeSeconds, float fullRegenSecondsStanding, float fullRegenSecondsMoving, float movingSpeedThreshold)
+            float blowTimeSeconds, float fullRegenSecondsStanding, float fullRegenSecondsMoving, float movingSpeedThreshold,
+            bool modEnabled = true)
         {
-            Enabled = enabled;
+            ModEnabled = modEnabled;
+            AthleticsEnabled = enabled;
             MaxAthletics = maxAthletics;
             CostPerBlow = costPerBlow;
             CostOnMiss = costOnMiss;
@@ -48,7 +50,19 @@ namespace TraxCombat.Core
             MovingSpeedThreshold = movingSpeedThreshold;
         }
 
-        public bool Enabled { get; }
+        /// <summary>The mod's master switch (ModEnabled).</summary>
+        public bool ModEnabled { get; }
+
+        /// <summary>AthleticsEnabled - Athletics' own switch.</summary>
+        public bool AthleticsEnabled { get; }
+
+        /// <summary>Athletics is live: the master switch AND its own switch are on. Off → nobody pays,
+        /// nobody refills, nobody is slowed, every reading is full (vanilla).</summary>
+        public bool Enabled => ModEnabled && AthleticsEnabled;
+
+        /// <summary>Which switch turned it off, for the log: "ModEnabled" (the whole mod) or
+        /// "AthleticsEnabled"; null while it is on.</summary>
+        public string? OffBecause => !ModEnabled ? "ModEnabled" : !AthleticsEnabled ? "AthleticsEnabled" : null;
 
         public int MaxAthletics { get; }
 
@@ -84,7 +98,7 @@ namespace TraxCombat.Core
         public static AthleticsRules From(TraxSettings s) => new AthleticsRules(
             s.AthleticsEnabled, s.MaxAthletics, s.CostPerBlow, s.CostOnMiss, s.HeroCostMultiplier, s.PartyLeaderCostMultiplier,
             s.ExhaustedAttackSpeedPercent, s.ExhaustedRecoverPercent, s.RegenDelayBlowTimes, s.BlowTimeSeconds,
-            s.FullRegenSecondsStanding, s.FullRegenSecondsMoving, s.MovingSpeedThreshold);
+            s.FullRegenSecondsStanding, s.FullRegenSecondsMoving, s.MovingSpeedThreshold, s.ModEnabled);
     }
 
     /// <summary>
@@ -141,7 +155,8 @@ namespace TraxCombat.Core
         /// </summary>
         public float SpeedMultiplier { get; set; } = 1f;
 
-        /// <summary>Everyone starts a mission full; AthleticsEnabled turned off puts everyone back to full.</summary>
+        /// <summary>Everyone starts a mission full; Athletics turned off (AthleticsEnabled or the
+        /// master switch ModEnabled) puts everyone back to full.</summary>
         public void ResetFull()
         {
             Fraction = 1.0;
@@ -244,7 +259,8 @@ namespace TraxCombat.Core
             SpeedMultiplier = speedMultiplier;
         }
 
-        /// <summary>AthleticsEnabled at the time of reading - off: everyone reads full, unpenalized.</summary>
+        /// <summary>Athletics live at the time of reading (ModEnabled AND AthleticsEnabled) - off:
+        /// everyone reads full, unpenalized, and the HUD should hide.</summary>
         public bool Enabled { get; }
 
         /// <summary>Athletics left, in points.</summary>

@@ -111,6 +111,7 @@ namespace TraxCombat.Tools
         private static void AthleticsDefaults()
         {
             S.ResetToDefaults(SettingSources.Defaults);
+            S.Set(SettingsSchema.ModEnabled, true, SettingSources.File);
             S.Set(SettingsSchema.AthleticsEnabled, true, SettingSources.File);
             S.Set(SettingsSchema.MaxAthletics, 100, SettingSources.File);
             S.Set(SettingsSchema.CostPerBlow, 10, SettingSources.File);
@@ -330,6 +331,62 @@ namespace TraxCombat.Tools
             LogHas("[summary] speeds for step 5c: ");
             LogHas("[summary] Athletics errors: none");
             LogHas("[speed] first exhausted fighter ((agent 3)) at mission end: recovered");
+        }
+
+        /// <summary>The master switch (ModEnabled, DESIGN §4): off = vanilla at once - the damage
+        /// decorator hands back the game's number (recorded for the comparison), the stat
+        /// decorator applies no penalty even before the logic's next tick, the logic refills everyone
+        /// and lifts every penalty, attacks cost nothing; on again = everyone starts full.</summary>
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static void MasterSwitchIsVanillaLive()
+        {
+            // --- damage
+            DamageDefaults();
+            DamageRandomizer.Rng = ThreadSafeRandom.Shared;
+            S.Set(SettingsSchema.ModEnabled, false, SettingSources.Mcm);
+            LogHas("[config] ModEnabled: true → false (source: MCM)");
+            DamageRandomizer.OnMissionStart();
+            LogHas("[damage] mission start: mod OFF (ModEnabled) - no hit is rolled, the game's own numbers are recorded for comparison; with the mod on: damage randomness ON");
+            var off = Enumerable.Range(0, 40).Select(_ => Hit()).Concat(Enumerable.Range(0, 10).Select(_ => Hit(missile: true))).ToList();
+            Check(off.All(v => v == 50f), "mod off: a hit was rolled");
+            Check(Hit(shield: true) == 50f && Hit(fall: 3f) == 50f, "mod off: shield / fall changed");
+            var ds = DamageRandomizer.Stats;
+            Check(ds.VanillaHits == 50 && ds.Rolls == 0, "mod off: vanilla hits " + ds.VanillaHits + ", rolls " + ds.Rolls);
+            Check(ds.Skips(DamageSkipReason.ShieldToggleOff) == 1 && ds.Skips(DamageSkipReason.FallDamage) == 1, "mod off: the other skip rules no longer decide first");
+            DamageRandomizer.WriteSummary();
+            LogHas("[summary] damage while the mod was OFF - the game's own numbers, not rolled (factor 1.00): 50 hits (melee 40, ranged 10, mounts 0, shields 0); damage 2500 → 2500 (+0.0%), avg 50.0 per hit");
+
+            // --- Athletics: exhaust one fighter, then switch the mod off
+            AthleticsDefaults();
+            S.Set(SettingsSchema.ModEnabled, true, SettingSources.Mcm);
+            _logic!.ApplySettingsChange(S);
+            var a = FirstTracked(3);
+            double t = 500;
+            for (int i = 0; i < 10; i++) Swing(a, ref t, 0.5, 0.5, 0.3);
+            Check(a.Exhausted && Near(a.SpeedMultiplier, 0.2f), "precondition: fighter 3 not exhausted");
+            var p = a.Agent.AgentDrivenProperties;
+            _statTop!.UpdateAgentStats(a.Agent, p);
+            Check(Near(p.SwingSpeedMultiplier, 0.21f), "precondition: no penalty on the exhausted fighter");
+
+            S.Set(SettingsSchema.ModEnabled, false, SettingSources.Mcm);
+            _statTop.UpdateAgentStats(a.Agent, p); // a recompute before the logic's tick: already vanilla
+            Check(Near(p.SwingSpeedMultiplier, 1.05f), "mod off: the stat decorator still applied the penalty");
+            _logic.ApplySettingsChange(S);
+            LogHas("[athletics] the whole mod (ModEnabled) switched OFF mid-mission: 1 fighters back to full, 1 attack-speed penalties lifted (applied on the next tick)");
+            Check(a.Fraction == 1 && !a.Exhausted && a.SpeedMultiplier == 1f && a.SpeedDirty, "mod off: not refilled / penalty not lifted");
+            Check(AthleticsLogic.TryGetReading(a.Agent, out var read) && !read.Enabled && read.Points == read.Pool, "mod off: the read API is not full and off");
+            // (in game the tick does not even poll swings while off; fed one anyway, it costs nothing)
+            int blows = a.Blows;
+            Swing(a, ref t, 0.5, 0.5, 0.3);
+            Check(a.Blows == blows && a.Fraction == 1, "mod off: a swing was charged");
+
+            S.Set(SettingsSchema.ModEnabled, true, SettingSources.Mcm);
+            _logic.ApplySettingsChange(S);
+            LogHas("[athletics] the whole mod (ModEnabled) switched ON mid-mission: everyone starts full");
+            Swing(a, ref t, 0.5, 0.5, 0.3);
+            Check(a.Blows == blows + 1 && a.Fraction < 1, "mod back on: a swing was not charged");
+            Check(Enumerable.Range(0, 50).Select(_ => Hit()).Distinct().Count() > 5, "mod back on: damage does not roll");
+            Check(AthleticsStats.DescribeRules(AthleticsRules.From(S)).StartsWith("ON - pool 100"), "mod back on: rules not ON");
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
