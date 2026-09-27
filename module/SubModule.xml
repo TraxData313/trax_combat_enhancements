@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Module xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/BUTR/Bannerlord.XmlSchemas/master/SubModule.xsd">
+  <!-- The RELEASE identity. tools\deploy.ps1 rewrites Id and Name for the local dev install
+       (Id TraxCombatEnhancements.Dev, "Trax Combat Enhancements (dev)") so it can sit beside a
+       Steam Workshop copy in the launcher. Enable only one of the two. -->
+  <Id value="TraxCombatEnhancements" />
+  <Name value="Trax Combat Enhancements" />
+  <Version value="v0.1.0" />
+  <DefaultModule value="false" />
+  <ModuleCategory value="Singleplayer" />
+  <ModuleType value="Community" />
+  <DependedModules>
+    <DependedModule Id="Native" />
+    <DependedModule Id="SandBoxCore" />
+    <DependedModule Id="Sandbox" />
+    <DependedModule Id="StoryMode" />
+  </DependedModules>
+  <DependedModuleMetadatas>
+    <DependedModuleMetadata id="Native" order="LoadBeforeThis" />
+    <DependedModuleMetadata id="SandBoxCore" order="LoadBeforeThis" />
+    <DependedModuleMetadata id="Sandbox" order="LoadBeforeThis" />
+    <DependedModuleMetadata id="StoryMode" order="LoadBeforeThis" />
+    <!-- Custom battle: optional. When present it registers its own damage and stat models first,
+         so our decorators wrap them in custom battles too. -->
+    <DependedModuleMetadata id="CustomBattle" order="LoadBeforeThis" optional="true" />
+    <!-- Mod Configuration Menu: optional. Load it before us (so its settings menu is ready when we
+         register our page), but never require it - the mod runs on config.json when MCM is absent. -->
+    <DependedModuleMetadata id="Bannerlord.MBOptionScreen" order="LoadBeforeThis" optional="true" />
+    <!-- War Sails: optional. When present its naval damage/stat models register before ours, so our
+         decorators wrap them (either order works - every model delegates - but this one is tidy). -->
+    <DependedModuleMetadata id="NavalDLC" order="LoadBeforeThis" optional="true" />
+  </DependedModuleMetadatas>
+  <SubModules>
+    <SubModule>
+      <Name value="Trax Combat Enhancements" />
+      <DLLName value="TraxCombatEnhancements.dll" />
+      <SubModuleClassType value="TraxCombat.SubModule" />
+      <Tags />
+    </SubModule>
+  </SubModules>
+</Module>
