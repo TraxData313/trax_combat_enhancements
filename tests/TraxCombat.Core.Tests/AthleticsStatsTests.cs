@@ -29,7 +29,8 @@ public class AthleticsStatsTests
         Assert.Contains("Athletics health cap: 0 cuts (a wound pulled Athletics down to the health left), biggest 0.0 points, 0 points in all", lines);
         Assert.Contains("Athletics tick cost: no ticks", lines);
         Assert.Contains("Athletics errors: none", lines);
-        Assert.Contains("attack speed check, melee - time between swings, by f: peak (f 1) no samples - not enough samples to judge (need 5 at the peak and 3 below 0.5 or empty)", lines);
+        Assert.DoesNotContain(lines, l => l.StartsWith("attack speed check", StringComparison.Ordinal)); // superseded by the attack-rate lines (step 5e)
+        Assert.Contains(lines, l => l.StartsWith("speed updates: 0 recomputes asked", StringComparison.Ordinal) && l.EndsWith("(the attack timings by f: the \"attack rate\" lines)", StringComparison.Ordinal));
         Assert.Contains("run speed check, on foot (÷ the fighter's own top speed when fresh), by f: no samples", lines);
         Assert.Contains("run speed check, horses (÷ the horse's own top speed while its rider was fresh), by the rider's f: MountMinSpeedMultiplier 1.00 = horses never slow - no samples", lines);
     }
@@ -138,7 +139,7 @@ public class AthleticsStatsTests
         Assert.Contains("Athletics your formations at the end: Infantry 72 ± 8 (2 men) f avg 0.93, 1 at full strength | Archers 72 ± 8 (2 men)", lines);
         Assert.Contains("Athletics regen: 150 fighter-seconds refilling - at a walk or slower (effort up to 0.40) 120 s at the full rate, faster 30 s at avg x0.70; refills to the top: 4 to full, 1 to a wound's cap", lines);
         Assert.Contains(lines, l => l.StartsWith("speed updates: 4 recomputes asked (UpdateAgentProperties: fighters 3, horses 1; a change below x0.05 waits; 0 held a tick by the per-tick budget), "
-            + "the decorator applied attack penalties in 1 recomputes, run penalties in 1, horse penalties in 1;", StringComparison.Ordinal));
+            + "the decorator applied attack penalties in 1 recomputes, run penalties in 1, horse penalties in 1 (the attack timings by f: the \"attack rate\" lines)", StringComparison.Ordinal));
         Assert.Contains("Athletics tick cost: avg 0.400 ms, max 0.600 ms per tick over 2 ticks; fighters polled avg 750, max 1000", lines);
     }
 

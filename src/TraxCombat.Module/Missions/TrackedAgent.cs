@@ -45,16 +45,13 @@ namespace TraxCombat.Missions
 
         public int ReleaseSerial;
         public double ReleaseStart = -1;
-        public bool ReleaseMixed;
         public bool HitThisRelease;
         public double LastReleaseTime = -1;
 
-        // ---- the attack-speed check by f: the f bin and the attack multiplier in effect after the
-        // last release / shot (what governs the interval up to the next one) and during this swing
+        // ---- the attack-rate cycle by f (step 5e): the f bin and the attack multiplier in effect after
+        // the last release / shot (what governs the cycle up to the next one)
         public int BinAfterLastRelease;
         public float AskedAfterLastRelease = 1f;
-        public int ReleaseBin;
-        public float ReleaseAsked = 1f;
         public int BinAfterLastShot;
         public float AskedAfterLastShot = 1f;
 
@@ -94,6 +91,42 @@ namespace TraxCombat.Missions
 
         /// <summary>His step back (step 5d) - queued or running; null until his first yes.</summary>
         public StepBackState? StepBack;
+
+        // ---- step 5e: the attack cycle's phases on channel 1 (AttackPhase, or -1 = none running)
+        public int PhaseKind = -1;
+        public AttackKind PhaseAttack;
+        public double PhaseStart;
+        public int PhaseBin;
+        public float PhaseAsked = 1f;
+
+        /// <summary>In a ready that has not reached full wind-up yet: the tick polls its progress.</summary>
+        public bool ReadyPolling;
+
+        /// <summary>When the running ready reached full wind-up (−1 = not yet): the rest is the hold / aim.</summary>
+        public double ReadyFullAt = -1;
+
+        /// <summary>An attack (its release, recoil or reload) ended here; the next ready closes the pause (−1 = none).</summary>
+        public double PauseFrom = -1;
+        public AttackKind PauseAttack;
+        public int PauseBin;
+        public float PauseAsked = 1f;
+
+        /// <summary>His last melee ready that ended in a swing (seconds) and the m it ran at - the pace
+        /// hold expects his next one from it.</summary>
+        public double LastReadySeconds = -1;
+        public float LastReadyAsked = 1f;
+
+        /// <summary>His own fresh melee cycles on foot (release to release while m was 1) - the pace
+        /// hold's reference.</summary>
+        public double FreshCycleSum;
+        public int FreshCycleCount;
+
+        /// <summary>A step back (5d) started since his last release: this cycle and its pause are the step
+        /// back's, not his attack rhythm - left out of the attack-rate numbers.</summary>
+        public bool SteppedBackThisCycle;
+
+        /// <summary>His pace hold (step 5e) - queued, running or waiting for a game job; null until his first.</summary>
+        public PaceState? Pace;
 
         public void RememberMissile(int index)
         {

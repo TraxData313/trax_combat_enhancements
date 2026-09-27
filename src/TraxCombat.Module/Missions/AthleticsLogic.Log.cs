@@ -85,6 +85,15 @@ namespace TraxCombat.Missions
             {
                 Failed("stepback.close", e);
             }
+            // Step 5e: likewise every pace hold (our NoAttack) comes off before the summary.
+            try
+            {
+                ClosePace(agentsAlive);
+            }
+            catch (Exception e)
+            {
+                Failed("rate.pace-close", e);
+            }
 
             // the lowest any hero reached (heroes' records outlive their removal from the loop)
             TrackedAgent? lowest = null;
@@ -141,6 +150,16 @@ namespace TraxCombat.Missions
 
             foreach (var line in _stats.SummaryLines(in r, ActionName, formations))
                 TraxLog.Info("summary", line);
+
+            // Step 5e: the attack rate - every phase and the cycle by f, the holds, the guard. Own try.
+            try
+            {
+                WriteRateSummary();
+            }
+            catch (Exception e)
+            {
+                Failed("rate.summary", e);
+            }
 
             // Step 5d: own try - a bug there must not cost the rest of the summary.
             try

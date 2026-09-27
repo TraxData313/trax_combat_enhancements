@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Reflection.Emit;
 using TaleWorlds.Core;
 using TaleWorlds.MountAndBlade;
+using TraxCombat.Core;
 using TraxCombat.Missions;
 
 namespace TraxCombat.Models
@@ -16,9 +17,11 @@ namespace TraxCombat.Models
     ///
     /// EVERY abstract AND virtual member forwards to BaseModel - a virtual left un-overridden
     /// would run the abstract class's default body instead of the sandbox logic
-    /// (GetEffectiveMaxHealth, GetEffectiveSkill, …; RESEARCH §C). The one change (steps 5, 5c):
+    /// (GetEffectiveMaxHealth, GetEffectiveSkill, …; RESEARCH §C). The one change (steps 5, 5c, 5e):
     /// <see cref="UpdateAgentStats"/> scales the attack-speed and run-speed properties by the
-    /// fighter's Athletics multipliers, and a slowed rider's horse's speed (<see cref="SpeedPenalty"/>).
+    /// fighter's Athletics multipliers, the AI's attack-decision values by the attack multiplier
+    /// (step 5e, while AttackRateAiDecisions is on), and a slowed rider's horse's speed
+    /// (<see cref="SpeedPenalty"/>).
     ///
     /// THE TOURNAMENT FIX (RESEARCH §C): TournamentBehavior raises the AI level each round with
     /// <c>MissionGameModels.Current.AgentStatCalculateModel.SetAILevelMultiplier(x)</c> - a
@@ -118,10 +121,20 @@ namespace TraxCombat.Models
             {
                 if (AthleticsLogic.SpeedFactorsFor(agent, out float attack, out float run, out float mount))
                 {
-                    if (attack != 1f) SpeedPenalty.Scale(agentDrivenProperties, attack);
+                    bool ai = false;
+                    if (attack != 1f)
+                    {
+                        SpeedPenalty.Scale(agentDrivenProperties, attack);
+                        // step 5e: the AI's pause follows the same m (read live - the switch is an A/B)
+                        if (TraxSettings.Shared.AttackRateAiDecisions)
+                        {
+                            SpeedPenalty.ScaleAiDecisions(agentDrivenProperties, attack);
+                            ai = true;
+                        }
+                    }
                     if (run != 1f) SpeedPenalty.ScaleRun(agentDrivenProperties, run);
                     if (mount != 1f) SpeedPenalty.ScaleMount(agentDrivenProperties, mount);
-                    AthleticsLogic.NoteDecoratorScaled(attack != 1f, run != 1f, mount != 1f);
+                    AthleticsLogic.NoteDecoratorScaled(attack != 1f, run != 1f, mount != 1f, ai);
                 }
             }
             catch (Exception e)

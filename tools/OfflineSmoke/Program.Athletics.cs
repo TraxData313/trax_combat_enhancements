@@ -61,6 +61,13 @@ namespace TraxCombat.Tools
                 p.MaxSpeedMultiplier = 0.8f;
                 p.CombatMaxSpeedMultiplier = 0.84f;
                 p.MountSpeed = 0.9f;
+                // step 5e: the AI's decision values, assigned fresh like SetAiRelatedProperties does
+                p.AIAttackOnDecideChance = 0.144f;
+                p.AIAttackOnParryChance = 0.08f;
+                p.AiShootFreq = 0.65f;
+                p.AiWaitBeforeShootFactor = 0.6f;
+                p.AIDecideOnAttackChance = 0.5f;
+                p.AIHoldingReadyMaxDuration = 0.25f;
             }
 
             public override float GetDifficultyModifier() => 1f;
@@ -145,6 +152,8 @@ namespace TraxCombat.Tools
             S.Set(SettingsSchema.HeroCostMultiplier, 0.75, SettingSources.File);
             S.Set(SettingsSchema.PartyLeaderCostMultiplier, 0.75, SettingSources.File);
             S.Set(SettingsSchema.ExhaustedAttackSpeedPercent, 20, SettingSources.File);
+            S.Set(SettingsSchema.AttackRateAiDecisions, true, SettingSources.File);
+            S.Set(SettingsSchema.AttackRatePaceHold, true, SettingSources.File);
             S.Set(SettingsSchema.MinMoveSpeedMultiplier, 0.3, SettingSources.File);
             S.Set(SettingsSchema.MountMinSpeedMultiplier, 1.0, SettingSources.File);
             S.Set(SettingsSchema.DamageBonusFollowsAthletics, true, SettingSources.File);
@@ -163,7 +172,7 @@ namespace TraxCombat.Tools
         {
             var slots = Enum.GetValues(typeof(DrivenProperty)).Cast<DrivenProperty>().Where(d => (int)d >= 0 && (int)d < 98)
                 .GroupBy(d => (int)d).Select(g => g.First()).ToList();
-            void Lever(string name, Action<AgentDrivenProperties> apply, params DrivenProperty[] mine)
+            void Lever(string name, Action<AgentDrivenProperties> apply, DrivenProperty[] mine, DrivenProperty[]? divided = null)
             {
                 var p = new AgentDrivenProperties();
                 // every slot gets its own value (the enum has aliases - one slot, several names)
@@ -173,14 +182,20 @@ namespace TraxCombat.Tools
                 foreach (var pair in before)
                 {
                     bool own = mine.Any(m => (int)m == (int)pair.Key);
+                    bool over = divided != null && divided.Any(m => (int)m == (int)pair.Key);
                     float now = p.GetStat(pair.Key);
                     if (own) Check(Near(now, pair.Value * 0.2f), name + ": " + pair.Key + " not x0.2: " + pair.Value + " → " + now);
+                    else if (over) Check(Near(now, pair.Value / 0.2f), name + ": " + pair.Key + " not ÷0.2: " + pair.Value + " → " + now);
                     else Check(now == pair.Value, name + ": " + pair.Key + " changed: " + pair.Value + " → " + now);
                 }
             }
-            Lever("attack", p => SpeedPenalty.Scale(p, 0.2f), DrivenProperty.SwingSpeedMultiplier, DrivenProperty.ThrustOrRangedReadySpeedMultiplier, DrivenProperty.ReloadSpeed);
-            Lever("run", p => SpeedPenalty.ScaleRun(p, 0.2f), DrivenProperty.MaxSpeedMultiplier);
-            Lever("horse", p => SpeedPenalty.ScaleMount(p, 0.2f), DrivenProperty.MountSpeed);
+            Lever("attack", p => SpeedPenalty.Scale(p, 0.2f), new[] { DrivenProperty.SwingSpeedMultiplier, DrivenProperty.ThrustOrRangedReadySpeedMultiplier, DrivenProperty.ReloadSpeed });
+            Lever("run", p => SpeedPenalty.ScaleRun(p, 0.2f), new[] { DrivenProperty.MaxSpeedMultiplier });
+            Lever("horse", p => SpeedPenalty.ScaleMount(p, 0.2f), new[] { DrivenProperty.MountSpeed });
+            // step 5e: the AI's chances x m, its aim ÷ m - and not one defence value (handling, blocking, parrying, shields)
+            Lever("AI decisions", p => SpeedPenalty.ScaleAiDecisions(p, 0.2f),
+                new[] { DrivenProperty.AIAttackOnDecideChance, DrivenProperty.AIAttackOnParryChance, DrivenProperty.AiShootFreq },
+                new[] { DrivenProperty.AiWaitBeforeShootFactor });
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
@@ -216,9 +231,18 @@ namespace TraxCombat.Tools
             Check(Near(p.MaxSpeedMultiplier, 0.24f), "the run multiplier was not applied: " + p.MaxSpeedMultiplier);
             Check(Near(p.CombatMaxSpeedMultiplier, 0.84f) && Near(p.HandlingMultiplier, 1.1f) && Near(p.MountSpeed, 0.9f),
                 "CombatMaxSpeedMultiplier, HandlingMultiplier or MountSpeed was touched on a fighter");
+            // step 5e: the AI's pause follows m (AttackRateAiDecisions on) - chances x0.2, the aim ÷0.2, no defence value
+            Check(Near(p.AIAttackOnDecideChance, 0.0288f) && Near(p.AIAttackOnParryChance, 0.016f) && Near(p.AiShootFreq, 0.13f) && Near(p.AiWaitBeforeShootFactor, 3.0f),
+                "the AI decision values did not follow m: " + p.AIAttackOnDecideChance + " / " + p.AIAttackOnParryChance + " / " + p.AiShootFreq + " / " + p.AiWaitBeforeShootFactor);
+            Check(Near(p.AIDecideOnAttackChance, 0.5f) && Near(p.AIHoldingReadyMaxDuration, 0.25f), "a defence value or AIHoldingReady was touched");
             _statTop.UpdateAgentStats(a, p); // a second recompute (weapon switch): the base resets, we scale once
-            Check(Near(p.SwingSpeedMultiplier, 0.21f) && Near(p.MaxSpeedMultiplier, 0.24f), "the penalties compounded over two recomputes");
+            Check(Near(p.SwingSpeedMultiplier, 0.21f) && Near(p.MaxSpeedMultiplier, 0.24f) && Near(p.AIAttackOnDecideChance, 0.0288f), "the penalties compounded over two recomputes");
             Check(_statBase.Updates == 3, "the base model was not called on every recompute: " + _statBase.Updates);
+            S.Set(SettingsSchema.AttackRateAiDecisions, false, SettingSources.Mcm); // the A/B switch, read live by the next recompute
+            _statTop.UpdateAgentStats(a, p);
+            Check(Near(p.SwingSpeedMultiplier, 0.21f) && Near(p.AIAttackOnDecideChance, 0.144f) && Near(p.AiWaitBeforeShootFactor, 0.6f),
+                "AttackRateAiDecisions off: the animations must stay slowed, the AI values vanilla");
+            S.Set(SettingsSchema.AttackRateAiDecisions, true, SettingSources.Mcm);
 
             S.Set(SettingsSchema.AthleticsEnabled, false, SettingSources.Mcm);
             _statTop.UpdateAgentStats(a, p);
@@ -254,8 +278,10 @@ namespace TraxCombat.Tools
             SetStatic(typeof(AthleticsLogic), "_current", _logic);
 
             var stats = _logic.Stats;
-            Check(stats.DecoratorAttack == 2 && stats.DecoratorRun == 2 && stats.DecoratorMount == 1,
-                "decorator counts attack/run/horse " + stats.DecoratorAttack + "/" + stats.DecoratorRun + "/" + stats.DecoratorMount + ", expected 2/2/1");
+            Check(stats.DecoratorAttack == 3 && stats.DecoratorRun == 3 && stats.DecoratorMount == 1,
+                "decorator counts attack/run/horse " + stats.DecoratorAttack + "/" + stats.DecoratorRun + "/" + stats.DecoratorMount + ", expected 3/3/1");
+            Check(_logic.RateStats.AiScaled == 2, "AI-decision recomputes " + _logic.RateStats.AiScaled + ", expected 2 (the third ran with the switch off)");
+            Check(Near(hp.AIAttackOnDecideChance, 0.144f), "a horse got the AI decision scaling");
             st.SpeedMultiplier = 1f;
             st.RunSpeedMultiplier = 1f;
             st.MountSpeedMultiplier = 1f;
@@ -345,11 +371,14 @@ namespace TraxCombat.Tools
             Check(stats.Charged(BlowKind.Melee) == 67 && stats.MeleeReleasesSeen == 67 && stats.ExhaustionsEntered == 2 && stats.PeakLeft == 2,
                 "stats: melee " + stats.Charged(BlowKind.Melee) + ", releases " + stats.MeleeReleasesSeen + ", exhaustions " + stats.ExhaustionsEntered + ", peak left " + stats.PeakLeft);
             Check(stats.KicksSeen == 1 && stats.BashesSeen == 1 && stats.RangedReleasesPolled == 1, "free actions not counted");
-            Check(stats.MeleeIntervals.Bin(0).Count == 14 && stats.MeleeIntervals.Bin(3).Count == 8 && stats.MeleeIntervals.Mixed == 0,
-                "melee intervals by f: peak " + stats.MeleeIntervals.Bin(0).Count + ", empty " + stats.MeleeIntervals.Bin(3).Count + ", mixed " + stats.MeleeIntervals.Mixed);
-            Check(stats.MeleeIntervals.Describe().EndsWith("- tired attacks ARE slower (empty (f 0) vs the peak)", StringComparison.Ordinal),
-                "the attack-speed check does not see the empty swings as slower: " + stats.MeleeIntervals.Describe());
-            Check(stats.SwingLengths.Bin(3).Count == 8 && Near(stats.SwingLengths.AskedMean(3), 0.2), "swing lengths when empty: " + stats.SwingLengths.Bin(3).Count);
+            // step 5e: the attack-rate cycles by f (the Swing helper plays every phase ÷ m: on target)
+            var rate = _logic.RateStats;
+            Check(rate.CycleCount(AttackKind.Melee, false, 0) == 14 && rate.CycleCount(AttackKind.Melee, false, 3) == 8 && rate.CyclesMixed[0] == 0,
+                "melee cycles by f: peak " + rate.CycleCount(AttackKind.Melee, false, 0) + ", empty " + rate.CycleCount(AttackKind.Melee, false, 3) + ", mixed " + rate.CyclesMixed[0]);
+            Check(Near(rate.FreshCycle(AttackKind.Melee, false), 1.3) && Near(rate.Ratio(AttackKind.Melee, false, 3), 1.0),
+                "the empty cycles are not the fresh 1.3 s ÷ 0.2: fresh " + rate.FreshCycle(AttackKind.Melee, false) + ", ratio " + rate.Ratio(AttackKind.Melee, false, 3));
+            Check(rate.PhaseCount(AttackKind.Melee, false, 3, AttackPhase.CleanRelease) == 8 && Near(rate.PhaseMean(AttackKind.Melee, false, 3, AttackPhase.Release), 2.5),
+                "empty swings: " + rate.PhaseCount(AttackKind.Melee, false, 3, AttackPhase.CleanRelease) + ", avg " + rate.PhaseMean(AttackKind.Melee, false, 3, AttackPhase.Release));
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
@@ -528,10 +557,15 @@ namespace TraxCombat.Tools
             LogHas("[summary] Athletics fighter-time by f (the share of his peak line left): no fighter-time recorded");
             LogHas("[summary] Athletics you: no player fighter this mission");
             LogHas("[summary] Athletics health cap: " + stats.HealthCuts + " cuts (a wound pulled Athletics down to the health left), biggest ");
-            LogHas("[summary] attack speed check, melee - time between swings, by f: peak (f 1) median ");
-            LogHas(" - tired attacks ARE slower (empty (f 0) vs the peak)");
-            LogHas("[summary] attack speed check, melee - swing length (swings that hit nothing), by f: peak (f 1) median ");
-            LogHas("[summary] attack speed check, ranged - time between shots, by f: peak (f 1) no samples - not enough samples to judge");
+            Check(!LogText.Contains("[summary] attack speed check"), "the superseded attack speed check lines are still written");
+            LogHas("[summary] attack rate settings at the end (DESIGN §2 - the whole cycle follows the attack speed m): ON - animations x m always");
+            LogHas("[summary] attack rate, melee, AI, peak (f 1): wind-up 0.50 + held 0.00, swing 0.51 (clean, hit nothing 0.51), recoil after a block -, pause 0.30 | cycle 1.30 s (n 14), m 1.00 - the fresh reference");
+            LogHas("m 0.20 → target 6.50 s: 100% - on target");
+            LogHas("[summary] attack rate, melee, AI - verdict: ON TARGET in ");
+            LogHas("[summary] attack rate, melee, you: no attacks measured");
+            LogHas("[summary] attack rate, ranged, AI, empty (f 0): draw - + aim -, loose 0.50, reload -, pause - | cycle n/a (n 0) - no fresh reference, no verdict"); // the one ranged release the poll saw
+            LogHas("[summary] attack rate, ranged, AI - verdict: no fresh reference (0 cycles at the peak, need 5)");
+            LogHas("[summary] attack rate - AI decisions (AttackRateAiDecisions on at the end): scaled in ");
             LogHas("[summary] speed updates: ");
             LogHas("[summary] run speed check, on foot (÷ the fighter's own top speed when fresh), by f: no samples");
             LogHas("[summary] run speed check, horses (÷ the horse's own top speed while its rider was fresh), by the rider's f: MountMinSpeedMultiplier 1.00 = horses never slow - no samples");
@@ -584,6 +618,22 @@ namespace TraxCombat.Tools
             _statTop!.UpdateAgentStats(a.Agent, p);
             Check(Near(p.SwingSpeedMultiplier, 0.21f) && Near(p.MaxSpeedMultiplier, 0.24f), "precondition: no penalties on the empty fighter");
 
+            // step 5e: a pace hold running on another tired fighter (f 0.27 - no step back at these dice)
+            typeof(AthleticsLogic).GetField("_paceClosed", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(_logic, false);
+            var paceBody = new FakePaceBody();
+            _logic.PaceBody = paceBody;
+            var h = _logic.Track(FakeAgent(60))!;
+            for (int i = 0; i < 3; i++) Swing(h, ref t);
+            var hr = Rules;
+            _logic.ObserveAction(h, ActReady, t, in hr);
+            t += 0.5 / h.SpeedMultiplier;
+            _logic.ObserveAction(h, ActRelease, t, in hr);
+            h.SpeedDirty = false;
+            t += 0.5 / h.SpeedMultiplier;
+            _logic.ObserveAction(h, ActIdle, t, in hr);
+            _logic.TickPace(t);
+            Check(_logic.HeldNow == 1 && paceBody.Started.Count == 1, "precondition: fighter 60 is not held");
+
             S.Set(SettingsSchema.ModEnabled, false, SettingSources.Mcm);
             _statTop.UpdateAgentStats(a.Agent, p); // a recompute before the logic's tick: already vanilla
             Check(Near(p.SwingSpeedMultiplier, 1.05f) && Near(p.MaxSpeedMultiplier, 0.8f), "mod off: the stat decorator still applied a penalty");
@@ -593,6 +643,10 @@ namespace TraxCombat.Tools
             _logic.TickStepBacks(t);
             Check(_logic.SteppingNow == 0 && stepBody.Released.Count == released + 1, "mod off: the step back was not released at once");
             LogHas("[stepback] the whole mod (ModEnabled) switched OFF mid-mission at ");
+            _logic.TickPace(t);
+            Check(_logic.HeldNow == 0 && paceBody.Released.Count == 1, "mod off: the pace hold was not lifted at once");
+            LogHas("[rate] ModEnabled switched OFF mid-mission at ");
+            LogHas(" s: 1 held fighters may attack again at once");
             Check(a.Fraction == 1 && !a.Exhausted && a.SpeedMultiplier == 1f && a.RunSpeedMultiplier == 1f && a.SpeedDirty, "mod off: not refilled / penalties not lifted");
             Check(AthleticsLogic.TryGetReading(a.Agent, out var read) && !read.Enabled && read.Points == read.Pool, "mod off: the read API is not full and off");
             Check(AthleticsLogic.TryGetPeakShare(a.Agent, out double f) && f == 1, "mod off: the damage decorator would not see full strength");

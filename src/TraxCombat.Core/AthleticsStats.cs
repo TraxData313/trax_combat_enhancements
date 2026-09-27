@@ -11,8 +11,9 @@ namespace TraxCombat.Core
     /// proves or disproves every rule of DESIGN §2 (CLAUDE.md, logging): the pools the Athletics
     /// skill gave, blows by kind and by riders vs on foot, the detection cross-checks (releases vs
     /// hits vs shots), what was free, exhaustions and the peak zone, fighter-time by f, heroes and
-    /// leaders, the player, the formations, the health cap, regen by effort, the measured attack
-    /// timings and run speeds binned by f (does the engine honour the curves?), the walk/run speed
+    /// leaders, the player, the formations, the health cap, regen by effort, the measured run speeds
+    /// binned by f (does the engine honour the curve? - the attack timings are AttackRateStats', step
+    /// 5e), the walk/run speed
     /// ratio that tunes WalkEffortFraction, the recomputes, the tick cost and errors. A new
     /// instance per mission.
     ///
@@ -91,10 +92,8 @@ namespace TraxCombat.Core
         public int RefillsToHealthCap;
         public double MaxEffort;
 
-        // ---- the measurements binned by f (RESEARCH UNVERIFIED #1 and step 5c's curves)
-        public readonly BinnedIntervals MeleeIntervals = new BinnedIntervals();
-        public readonly BinnedIntervals SwingLengths = new BinnedIntervals();
-        public readonly BinnedIntervals RangedIntervals = new BinnedIntervals();
+        // ---- the run-speed measurements binned by f (step 5c's curves; the attack timings moved to
+        // AttackRateStats in step 5e)
         public readonly RunSpeedCheck FootRun = new RunSpeedCheck();
         public readonly RunSpeedCheck HorseRun = new RunSpeedCheck();
 
@@ -397,14 +396,10 @@ namespace TraxCombat.Core
             e.Append(", max ").Append(N2(MaxEffort));
             lines.Add(e.ToString());
 
-            lines.Add("attack speed check, melee - time between swings, by f: " + MeleeIntervals.Describe());
-            lines.Add("attack speed check, melee - swing length (swings that hit nothing), by f: " + SwingLengths.Describe());
-            lines.Add("attack speed check, ranged - time between shots, by f: " + RangedIntervals.Describe());
             lines.Add("speed updates: " + (FighterRecomputes + HorseRecomputes) + " recomputes asked (UpdateAgentProperties: fighters " + FighterRecomputes
                 + ", horses " + HorseRecomputes + "; a change below x" + N2(AthleticsMath.SpeedUpdateStep) + " waits; " + RecomputesDeferred
                 + " held a tick by the per-tick budget), the decorator applied attack penalties in " + DecoratorAttack + " recomputes, run penalties in "
-                + DecoratorRun + ", horse penalties in " + DecoratorMount + "; intervals left out as their two ends fell in different f bins: melee "
-                + MeleeIntervals.Mixed + ", swing lengths " + SwingLengths.Mixed + ", ranged " + RangedIntervals.Mixed);
+                + DecoratorRun + ", horse penalties in " + DecoratorMount + " (the attack timings by f: the \"attack rate\" lines)");
 
             lines.Add("run speed check, on foot (÷ the fighter's own top speed when fresh), by f: " + FootRun.Describe(curveApplies: true));
             lines.Add("run speed check, horses (÷ the horse's own top speed while its rider was fresh), by the rider's f: "

@@ -259,6 +259,7 @@ namespace TraxCombat.Missions
 
             sb.Active = true;
             sb.StartedAt = now;
+            st.SteppedBackThisCycle = true; // step 5e: this cycle is the step back's, not his attack rhythm
             sb.Plan = plan;
             sb.MidSampled = false;
             sb.Mid = default;

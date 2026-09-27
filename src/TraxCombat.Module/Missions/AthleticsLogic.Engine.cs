@@ -145,6 +145,7 @@ namespace TraxCombat.Missions
                 : "WARNING: the stat model on top in this mission is " + (top?.GetType().FullName ?? "(none)")
                   + ", not ours - the speed penalties will NOT apply (another mod registered after us?)");
             StartStepBacks();
+            StartAttackRate();
         }
 
         private void StopAthletics()
@@ -280,6 +281,7 @@ namespace TraxCombat.Missions
                 _horsesToRelease.Add(horse);
             }
             StepBackLeftField(st);
+            PaceLeftField(st);
             RemoveFromLoop(st);
         }
 
@@ -373,6 +375,7 @@ namespace TraxCombat.Missions
                         polled++;
                         int action = (int)a.GetCurrentActionType(1);
                         if (action != st.PrevAction) ObserveAction(st, action, now, in r);
+                        if (st.ReadyPolling) PollReady(st, a, now); // step 5e: wind-up vs hold (only in an unfinished ready)
                         _stats.AddPeakTime(AthleticsMath.PeakShare(in r, st), dt);
                     }
                     if (st.SpeedDirty || st.MountDirty)
@@ -427,6 +430,16 @@ namespace TraxCombat.Missions
                 Failed("stepback.tick", e);
             }
 
+            // Step 5e: the pace holds - every tick, whatever the switches (off lifts every hold at once).
+            try
+            {
+                TickPace(now);
+            }
+            catch (Exception e)
+            {
+                Failed("rate.pace-tick", e);
+            }
+
             _stats.AddTick(polled, (Stopwatch.GetTimestamp() - start) * 1000.0 / Stopwatch.Frequency);
         }
 
@@ -466,14 +479,16 @@ namespace TraxCombat.Missions
             return cost <= 0 ? int.MaxValue : (int)Math.Ceiling(pool / cost - AthleticsMath.Epsilon);
         }
 
-        /// <summary>The channel-1 action changed (seen by the poll or inside a hit): the falling edge
-        /// of a swing ends its measured length, the rising edge into ReleaseMelee is a swing; ranged
-        /// releases, kicks and bashes are counted for the cross-checks (never charged here).</summary>
+        /// <summary>The channel-1 action changed (seen by the poll or inside a hit): the attack-rate
+        /// phases first (step 5e - filed at the band BEFORE this action's charge), then the falling edge
+        /// of a swing ends it (the step-back roll, the pace hold), the rising edge into ReleaseMelee is a
+        /// swing; ranged releases, kicks and bashes are counted for the cross-checks (never charged here).</summary>
         internal void ObserveAction(TrackedAgent st, int action, double now, in AthleticsRules r)
         {
             int prev = st.PrevAction;
             st.PrevAction = action;
-            if (prev == ActionReleaseMelee) EndRelease(st, now, in r);
+            PhasesOnAction(st, action, now, in r);
+            if (prev == ActionReleaseMelee) EndRelease(st, now, in r, action);
             switch (action)
             {
                 case ActionReleaseMelee:
@@ -499,14 +514,12 @@ namespace TraxCombat.Missions
             if (mounted) _stats.MeleeReleasesMounted++;
             st.ReleaseSerial++;
             StepBackSwingStarted(st);
+            PaceSwingStarted(st);
 
-            // the interval since the last release ran at the multiplier set after that release's charge
+            // the cycle since the last release ran at the multiplier set after that release's charge
             int binNow = AthleticsMath.PeakBin(AthleticsMath.PeakShare(in r, st));
-            if (st.LastReleaseTime >= 0)
-            {
-                if (binNow == st.BinAfterLastRelease) _stats.MeleeIntervals.Add(binNow, now - st.LastReleaseTime, st.AskedAfterLastRelease);
-                else _stats.MeleeIntervals.Mixed++;
-            }
+            if (st.LastReleaseTime >= 0) NoteCycle(st, AttackKind.Melee, binNow, st.BinAfterLastRelease, now - st.LastReleaseTime, st.AskedAfterLastRelease);
+            st.SteppedBackThisCycle = false;
             st.ReleaseStart = now;
             st.HitThisRelease = false;
 
@@ -520,26 +533,21 @@ namespace TraxCombat.Missions
                 _stats.ReleasesAwaitingHit++;
             }
             int binAfter = AthleticsMath.PeakBin(AthleticsMath.PeakShare(in r, st));
-            st.ReleaseBin = binAfter;
-            st.ReleaseAsked = st.SpeedMultiplier;
-            st.ReleaseMixed = binAfter != binNow;
             st.LastReleaseTime = now;
             st.BinAfterLastRelease = binAfter;
             st.AskedAfterLastRelease = st.SpeedMultiplier;
         }
 
-        /// <summary>A swing that hit nothing ran its whole animation: its length measures the speed.
-        /// Every counted swing's end is also the step-back roll (step 5d: "after each melee swing").</summary>
-        private void EndRelease(TrackedAgent st, double now, in AthleticsRules r)
+        /// <summary>Every counted swing's end is the step-back roll (step 5d: "after each melee swing"),
+        /// then the pace hold's decision (step 5e; a step back asked for just now takes precedence).
+        /// <paramref name="next"/> = the action he went into (a ready = a chained blow).</summary>
+        private void EndRelease(TrackedAgent st, double now, in AthleticsRules r, int next)
         {
             if (st.ReleaseStart < 0) return;
-            if (!st.HitThisRelease)
-            {
-                if (st.ReleaseMixed) _stats.SwingLengths.Mixed++;
-                else _stats.SwingLengths.Add(st.ReleaseBin, now - st.ReleaseStart, st.ReleaseAsked);
-            }
+            double releaseStart = st.ReleaseStart;
             st.ReleaseStart = -1;
             StepBackSwingEnded(st, now, in r);
+            PaceSwingEnded(st, now, releaseStart, next, in r);
         }
 
         // ------------------------------------------------------------------ charging
@@ -640,6 +648,10 @@ namespace TraxCombat.Missions
         {
             st.SpeedDirty = false;
             bool first = ReferenceEquals(st, _firstExhausted);
+            // step 5e: the mission's first slowing - every value a technique touches, before → after
+            bool firstSlowed = !_firstSlowedLogged && st.SpeedMultiplier < 1f;
+            var slowBefore = firstSlowed ? SpeedPenalty.Snapshot.Take(st.Agent) : default;
+            var aiBefore = firstSlowed ? SpeedPenalty.AiSnapshot.Take(st.Agent) : default;
             try
             {
                 st.Agent.UpdateAgentProperties();
@@ -649,6 +661,11 @@ namespace TraxCombat.Missions
             {
                 Failed("speed.update", e);
                 return;
+            }
+            if (firstSlowed)
+            {
+                _firstSlowedLogged = true;
+                LogFirstSlowed(st, in slowBefore, in aiBefore);
             }
             if (first && !_firstAfterLogged)
             {
@@ -783,6 +800,7 @@ namespace TraxCombat.Missions
                             var st = _dense[i];
                             if (st.Fraction < 1.0 || st.Exhausted) refilled++;
                             st.ResetFull();
+                            ResetPhases(st); // step 5e: no measured phase or cycle spans the time it is off
                             if (RetargetSpeed(st, in r)) lifted++;
                         }
                         TraxLog.Info("athletics", (r.ModEnabled ? "AthleticsEnabled" : "the whole mod (ModEnabled)")
@@ -791,6 +809,7 @@ namespace TraxCombat.Missions
                     }
                     else
                     {
+                        for (int i = 0; i < _count; i++) ResetPhases(_dense[i]);
                         // Back on - by either switch - means everyone starts from a full bar (Anton's
                         // master-switch rule: "on" is a fresh start, not a resume of the old state).
                         TraxLog.Info("athletics", (_lastOffBecause == "ModEnabled" ? "the whole mod (ModEnabled)" : "AthleticsEnabled")
@@ -798,6 +817,7 @@ namespace TraxCombat.Missions
                     }
                 }
                 _lastOffBecause = r.OffBecause; // which switch holds it off now (both may be off)
+                NoteRateSettings(settings);     // step 5e: the A/B switches (AI decisions re-applied)
 
                 if (r.PoolFloor != _seenPoolFloor || r.PoolPerSkill != _seenPoolPerSkill)
                 {
@@ -1066,6 +1086,14 @@ namespace TraxCombat.Missions
             }
             try
             {
+                RateHitTaken(victim, isCanceled, in collisionData); // step 5e: the guard by f (tired men must not block less)
+            }
+            catch (Exception e)
+            {
+                Failed("rate.hit", e);
+            }
+            try
+            {
                 var st = Get(attacker);
                 if (st == null || collisionData.IsHorseCharge) return; // horses (charges) are not tracked; bumps are free
                 if (collisionData.IsAlternativeAttack)
@@ -1156,11 +1184,7 @@ namespace TraxCombat.Missions
                 _stats.ShotsSeen++;
 
                 int binNow = AthleticsMath.PeakBin(AthleticsMath.PeakShare(in r, st));
-                if (st.LastShotForInterval >= 0)
-                {
-                    if (binNow == st.BinAfterLastShot) _stats.RangedIntervals.Add(binNow, now - st.LastShotForInterval, st.AskedAfterLastShot);
-                    else _stats.RangedIntervals.Mixed++;
-                }
+                if (st.LastShotForInterval >= 0) NoteCycle(st, AttackKind.Ranged, binNow, st.BinAfterLastShot, now - st.LastShotForInterval, st.AskedAfterLastShot);
 
                 // Mission.OnAgentShootMissile adds the new missile to MissilesList right before it calls
                 // the behaviours (Mission.cs ~4992) - so the last one is this shot's.
@@ -1229,7 +1253,13 @@ namespace TraxCombat.Missions
             return mount != 1f;
         }
 
-        internal static void NoteDecoratorScaled(bool attack, bool run, bool mount) => _current?._stats.AddDecoratorScaled(attack, run, mount);
+        internal static void NoteDecoratorScaled(bool attack, bool run, bool mount, bool aiDecisions = false)
+        {
+            var logic = _current;
+            if (logic == null) return;
+            logic._stats.AddDecoratorScaled(attack, run, mount);
+            if (aiDecisions) logic._rateStats.AddAiScaled();
+        }
 
         /// <summary>A caught exception: the FIRST per site per mission goes to the log with its stack
         /// (TraxLog.Error, itself rate-limited), the rest are counted for the summary. Never throws.</summary>

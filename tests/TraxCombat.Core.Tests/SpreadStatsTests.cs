@@ -84,50 +84,6 @@ public class SpreadStatsTests
         return s;
     }
 
-    [Fact]
-    public void Interval_stats_count_mean_median_and_leave_out_long_pauses()
-    {
-        var s = new IntervalStats();
-        Assert.Equal("no samples", s.Describe());
-        foreach (var v in new[] { 1.025, 1.275, 1.325, 1.325, 5.05 }) s.Add(v);
-        s.Add(45);   // a pause, not a rhythm
-        s.Add(-1);   // nonsense, ignored
-        Assert.Equal(5, s.Count);
-        Assert.Equal(1, s.OverCap);
-        Assert.Equal(2.0, s.Mean, 9);
-        Assert.Equal(1.325, s.Median, 9);   // bin centre of [1.30, 1.35)
-        Assert.Equal(1.025, s.Min, 9);
-        Assert.Equal(5.05, s.Max, 9);
-        Assert.Equal("median 1.33 s, avg 2.00 s (n 5)", s.Describe());
-        s.Clear();
-        Assert.Equal(0, s.Count);
-        Assert.Equal(0, s.OverCap);
-    }
-
-    [Fact]
-    public void The_speed_verdict_says_plainly_whether_exhausted_attacks_were_slower()
-    {
-        var fresh = Fill(1.2, 20);
-        Assert.Contains("not enough samples", SpeedVerdict.Describe(fresh, Fill(6.0, 2), 20));
-
-        string slower = SpeedVerdict.Describe(fresh, Fill(6.0, 10), 20);
-        Assert.Contains("(asked x5.00) - exhausted attacks ARE slower", slower);
-        Assert.Contains("→ x4.92", slower); // bin centres: 6.025 / 1.225
-
-        string clamped = SpeedVerdict.Describe(fresh, Fill(1.3, 10), 20);
-        Assert.Contains("exhausted attacks are NOT clearly slower", clamped);
-        Assert.Contains("RESEARCH UNVERIFIED #1", clamped);
-
-        Assert.Contains("no verdict", SpeedVerdict.Describe(fresh, Fill(1.3, 10), 80));
-    }
-
-    private static IntervalStats Fill(double centre, int n)
-    {
-        var s = new IntervalStats();
-        for (int i = 0; i < n; i++) s.Add(centre + 0.01);
-        return s;
-    }
-
     // ------------------------------------------------------------------ step 5c: the checks binned by f
 
     [Fact]
@@ -140,39 +96,6 @@ public class SpreadStatsTests
         Assert.Equal(0.75, f.MeanPeakShare, 9);
         Assert.Equal(1, f.InPeak);
         Assert.True(double.IsNaN(FormationAthleticsStats.From(Single(60), Single(0.6), 0).MeanPeakShare));
-    }
-
-    [Fact]
-    public void Binned_intervals_compare_each_f_bin_with_the_peak_and_judge_the_tiredest()
-    {
-        var b = new BinnedIntervals();
-        Assert.StartsWith("peak (f 1) no samples - not enough samples", b.Describe());
-        for (int i = 0; i < 20; i++) b.Add(0, 1.21, 1f);
-        for (int i = 0; i < 10; i++) b.Add(1, 1.41, 0.85f);
-        for (int i = 0; i < 10; i++) b.Add(2, 2.41, 0.5f);
-        Assert.EndsWith(" - tired attacks ARE slower (f below 0.5 vs the peak)", b.Describe()); // nobody empty yet: the next tiredest bin
-        for (int i = 0; i < 10; i++) b.Add(3, 6.01, 0.2f);
-        b.Add(3, 45, 0.2f);                                  // a pause: left out, asked not counted
-        b.Mixed = 4;
-        string line = b.Describe();
-        Assert.StartsWith("peak (f 1) median ", line);
-        Assert.Contains(" s (n 20) | f 0.5-1 median ", line);
-        Assert.Contains(" x1.16 (asked x1.18, n 10) | f below 0.5 median ", line);   // 1.425 / 1.225 (bin centres)
-        Assert.Contains(" x1.98 (asked x2.00, n 10) | empty (f 0) median ", line);
-        Assert.Contains(" x4.92 (asked x5.00, n 10)", line);
-        Assert.EndsWith(" - tired attacks ARE slower (empty (f 0) vs the peak)", line);
-        Assert.Equal(0.2, b.AskedMean(3), 6);
-        Assert.Equal(50, b.Count);
-
-        var clamped = new BinnedIntervals();
-        for (int i = 0; i < 20; i++) clamped.Add(0, 1.21, 1f);
-        for (int i = 0; i < 10; i++) clamped.Add(2, 1.31, 0.4f);
-        Assert.EndsWith("tired attacks are NOT clearly slower (f below 0.5 vs the peak): the engine may clamp the multiplier (RESEARCH UNVERIFIED #1) - tell Claude", clamped.Describe());
-
-        var mild = new BinnedIntervals();
-        for (int i = 0; i < 20; i++) mild.Add(0, 1.21, 1f);
-        for (int i = 0; i < 10; i++) mild.Add(3, 1.31, 0.8f);
-        Assert.EndsWith("the setting asks for less than x1.5 (empty (f 0) vs the peak), no verdict", mild.Describe());
     }
 
     [Fact]

@@ -265,6 +265,8 @@ namespace TraxCombat.Tools
                 LogHas("[summary] step back release check: 5 released through the engine - scripted movement still on right after 0 (must be 0)");
                 LogHas("at mission end: 1 were mid-step (released then), overdue (past their time) 0 (must be 0), scripted movement still on after that release 0 (must be 0)");
                 Check(logic.StepStats.SummaryLines(StepBackRules.From(S)).Count == 8, "the step-back summary is not 8 lines");
+                Check(logic.RateStats.SteppedBack[0] > 0, "step 5e: no attack-rate cycle was left out for a step back in it (its pause is not the attack rhythm)");
+                LogHas("; with a step back in them (its pause, not the attack rhythm) ");
                 _ = b;
                 _ = c1;
                 _ = c2;
