@@ -10,8 +10,10 @@ namespace TraxCombat.Models
     /// <summary>
     /// Feature 1 (DESIGN §1), the game-facing half: turns one hit's
     /// <see cref="AttackInformation"/> / <see cref="AttackCollisionData"/> into Core's
-    /// <see cref="HitFacts"/>, asks <see cref="DamageRoll.Decide"/> whether to roll, rolls, counts
-    /// everything in <see cref="Stats"/> for the mission's <c>[summary]</c>, and logs.
+    /// <see cref="HitFacts"/>, asks <see cref="DamageRoll.Decide"/> whether to roll, rolls - the
+    /// upside following the attacker's Athletics (DESIGN §2, step 5c: his f from
+    /// <see cref="Missions.AthleticsLogic.TryGetPeakShare"/>) - counts everything in
+    /// <see cref="Stats"/> for the mission's <c>[summary]</c>, and logs.
     /// Called by <see cref="TraxDamageModel.ApplyGeneralDamageModifiers"/> with the value every
     /// model below us produced (armor included) - the last step before the game rounds it.
     ///
@@ -54,6 +56,7 @@ namespace TraxCombat.Models
                 + " (a 50-damage hit lands for " + Range(50f, r.Percent) + ")"
                 + ", melee " + OnOff(r.Melee) + ", ranged " + OnOff(r.Ranged)
                 + ", on mounts " + OnOff(r.OnMounts) + ", on shields " + OnOff(r.OnShields)
+                + ", upside follows the attacker's Athletics (DamageBonusFollowsAthletics) " + OnOff(r.UpsideFollowsAthletics)
                 + " - read live on every hit");
         }
 
@@ -82,14 +85,29 @@ namespace TraxCombat.Models
                 return damage;
             }
 
-            var roll = DamageRoll.Roll(damage, rules.Percent, Rng);
+            double attackerF = AttackerPeakShare(in ai);
+            var roll = DamageRoll.Roll(damage, rules.Percent, Rng, DamageRoll.Upside(in rules, attackerF));
             int thread = Environment.CurrentManagedThreadId;
             bool offMain = _mainThreadId != 0 && thread != _mainThreadId;
-            Stats.AddRoll(facts.Category, in roll, offMain);
+            Stats.AddRoll(facts.Category, in roll, offMain, attackerF);
 
             bool first = Volatile.Read(ref _firstRollLogged) == 0 && Interlocked.CompareExchange(ref _firstRollLogged, 1, 0) == 0;
-            if (first || TraxLog.VerboseOn) LogRoll(in ai, in cd, in facts, in roll, first, thread);
+            if (first || TraxLog.VerboseOn) LogRoll(in ai, in cd, in facts, in roll, first, thread, attackerF);
             return roll.After;
+        }
+
+        /// <summary>
+        /// The attacker's f (DESIGN §2: the share of his peak line left) for the damage upside - the
+        /// RIDER's for a horse charge (the engine's attacker is then the horse). NaN when there is no
+        /// tracked attacker (none, a riderless horse, an agent Athletics does not follow): the roll
+        /// keeps its full upside.
+        /// </summary>
+        private static double AttackerPeakShare(in AttackInformation ai)
+        {
+            if (ai.IsAttackerAgentNull) return double.NaN;
+            var attacker = ai.AttackerAgent;
+            if (attacker != null && ai.IsAttackerAgentMount) attacker = attacker.RiderAgent;
+            return attacker != null && Missions.AthleticsLogic.TryGetPeakShare(attacker, out double f) ? f : double.NaN;
         }
 
         /// <summary>A caught exception in the damage path: the FIRST per site per mission goes to
@@ -116,13 +134,17 @@ namespace TraxCombat.Models
 
         // ------------------------------------------------------------------ log lines
 
-        private static void LogRoll(in AttackInformation ai, in AttackCollisionData cd, in HitFacts facts, in RollOutcome roll, bool first, int thread)
+        private static void LogRoll(in AttackInformation ai, in AttackCollisionData cd, in HitFacts facts, in RollOutcome roll, bool first, int thread,
+            double attackerF)
         {
             try
             {
                 string text = Describe(in ai, in cd, in facts) + ", " + roll.BeforeRounded.ToString(CultureInfo.InvariantCulture)
                     + " → " + roll.AfterRounded.ToString(CultureInfo.InvariantCulture)
-                    + " (x" + roll.Factor.ToString("0.00", CultureInfo.InvariantCulture) + ")";
+                    + " (x" + roll.Factor.ToString("0.00", CultureInfo.InvariantCulture)
+                    + (double.IsNaN(attackerF) ? ", attacker without a pool: full upside"
+                        : ", attacker f " + attackerF.ToString("0.00", CultureInfo.InvariantCulture) + " → up to x"
+                          + roll.Ceiling.ToString("0.00", CultureInfo.InvariantCulture)) + ")";
                 if (first)
                 {
                     TraxLog.Info("damage", "first roll this mission - "

@@ -11,15 +11,18 @@ using TraxCombat.Models;
 namespace TraxCombat.Missions
 {
     /// <summary>
-    /// The Athletics engine (DESIGN §2) - per-fighter state, blow detection, regen, the attack-speed
-    /// penalty and hot swap. The rules themselves are Core's pure <see cref="AthleticsMath"/>; this
-    /// file feeds them from the game (RESEARCH §B-§F):
+    /// The Athletics engine (DESIGN §2, Athletics v2 since step 5c) - per-fighter state, blow
+    /// detection, the health cap, regen by effort, the speed curves and hot swap. The rules
+    /// themselves are Core's pure <see cref="AthleticsMath"/>; this file feeds them from the game
+    /// (RESEARCH §B-§F):
     ///
     /// STATE: one <see cref="TrackedAgent"/> per human agent, built at <c>OnAgentBuild</c> (+ a sweep
     /// on the first tick for anyone spawned before us), in an array by <c>Agent.Index</c>
     /// (reference-checked: indices are reused) and a dense array for the loops (swap-removal at
-    /// <c>OnAgentRemoved</c>). Hero / party-leader flags cached at spawn; every multiplier and cost
-    /// is read live per blow.
+    /// <c>OnAgentRemoved</c>). The Athletics SKILL (heroes' real one - <c>Character.GetSkillValue</c>),
+    /// hero / party-leader flags cached at spawn; the pool, every multiplier and cost are computed
+    /// live from them. Athletics is a FRACTION of the full pool, so a pool-setting change keeps
+    /// everyone's share and a blow's point cost lands as cost ÷ pool.
     ///
     /// BLOWS: melee = the rising edge into <c>ReleaseMelee</c> on action channel 1, polled for every
     /// fighter every tick (one native call each - no engine event exists for a swing), and also
@@ -30,18 +33,24 @@ namespace TraxCombat.Missions
     /// (<c>IsDoingPassiveAttack</c>) = one blow when it lands, at most one per BlowTimeSeconds.
     /// Kicks, bashes (<c>IsAlternativeAttack</c>), horse charges and siege engines are free.
     ///
-    /// REGEN: every 0.1 s (engine plumbing - the integration is exact, only the moving sample and
-    /// the recovery are that coarse), only for fighters below full or exhausted: the horse's speed
-    /// for a rider, its top speed passed along for step 5c.
+    /// HEALTH CAP: the health left (managed <c>Health ÷ HealthLimit</c>) is read at every hit on a
+    /// fighter (<c>OnAgentHit</c>) and every regen step; while HealthCapsAthletics is on it pulls
+    /// the fraction down at once and regen stops at it.
     ///
-    /// SPEED: the multiplier (<see cref="AthleticsMath.AttackSpeedMultiplier"/>, a float per fighter)
-    /// changes only on a transition or a settings change; the fighter is marked and the tick loop
-    /// calls <c>Agent.UpdateAgentProperties()</c> once - never from inside an engine hit callback -
-    /// and <see cref="TraxAgentStatModel"/> applies the multiplier on that and every later recompute.
+    /// REGEN: every 0.1 s (engine plumbing - the integration is exact, only the effort sample and
+    /// "left 0" are that coarse), only for fighters below their top (full, or the health cap):
+    /// effort = speed ÷ CURRENT top speed (the horse's for a rider).
+    ///
+    /// SPEED: three multipliers per fighter from f (attack, run on foot, his horse), re-targeted on
+    /// a charge, a refill step, a wound and a settings change, but applied only when one moves by
+    /// <see cref="AthleticsMath.SpeedUpdateStep"/> (or onto an end point) - then the fighter (and/or
+    /// his horse) is marked and the tick loop calls <c>UpdateAgentProperties()</c>, at most
+    /// <see cref="MaxRecomputesPerTick"/> a tick, never from inside an engine hit callback;
+    /// <see cref="TraxAgentStatModel"/> applies the multipliers on that and every later recompute.
     ///
     /// HOT SWAP: every rule reads <see cref="TraxSettings.Shared"/> at use; the tick compares the
-    /// settings version and, on a change, re-targets speeds (ExhaustedAttackSpeedPercent) or puts
-    /// everyone back to full and lifts every penalty (AthleticsEnabled off).
+    /// settings version and, on a change, re-targets everyone's speeds, logs pool / speed changes,
+    /// or puts everyone back to full and lifts every penalty (Athletics or the whole mod off).
     /// </summary>
     public sealed partial class AthleticsLogic
     {
@@ -51,6 +60,14 @@ namespace TraxCombat.Missions
         /// <summary>Two shot events closer than this are one release of a multi-projectile weapon
         /// (RESEARCH §B; engine plumbing).</summary>
         private const double ShotDedupeSeconds = 0.1;
+
+        /// <summary>
+        /// At most this many <c>UpdateAgentProperties()</c> per tick (fighters and horses together);
+        /// the rest wait for the next tick (a fighter stays marked). Normal play never reaches it
+        /// (a few per tick); it spreads a burst - a settings change re-targeting 1000 fighters at once -
+        /// over ~20 frames instead of one long frame. Engine plumbing (step 5c).
+        /// </summary>
+        internal const int MaxRecomputesPerTick = 50;
 
         private const int ActionReleaseMelee = (int)Agent.ActionCodeType.ReleaseMelee;
         private const int ActionReleaseRanged = (int)Agent.ActionCodeType.ReleaseRanged;
@@ -62,6 +79,7 @@ namespace TraxCombat.Missions
 
         private TrackedAgent?[] _byIndex = new TrackedAgent?[512];
         private TrackedAgent[] _dense = new TrackedAgent[512];
+        private TrackedAgent?[] _mountOwner = new TrackedAgent?[256];
         private int _count;
         private int _swept;
         private readonly System.Collections.Generic.List<TrackedAgent> _heroes = new System.Collections.Generic.List<TrackedAgent>();
@@ -74,11 +92,17 @@ namespace TraxCombat.Missions
         private bool _seenEnabled;
         private string? _lastOffBecause;
         private int _seenSpeedPercent;
+        private float _seenRunFloor;
+        private float _seenMountFloor;
+        private int _seenPeakPercent;
+        private int _seenPoolFloor;
+        private float _seenPoolPerSkill;
         private double _regenAccum;
         private bool _speedsSampled;
 
         private Agent? _playerAgent;
         private TrackedAgent? _player;
+        private bool _playerPoolLogged;
 
         // The once-per-mission proof that the penalty reaches the agent's properties.
         private TrackedAgent? _firstExhausted;
@@ -86,12 +110,14 @@ namespace TraxCombat.Missions
         private SpeedPenalty.Snapshot _firstAfter;
         private double _firstAt;
         private float _firstAsked;
+        private float _firstAskedRun;
         private bool _firstAfterLogged;
         private bool _firstRecovering;
         private bool _firstDone;
+        private bool _firstHorseLogged;
 
         /// <summary>The Athletics logic of the mission running now (null between missions) - the stat
-        /// decorator and the HUD read through it.</summary>
+        /// decorator, the damage decorator and the HUD read through it.</summary>
         internal static AthleticsLogic? Current => _current;
 
         private static AthleticsRules Rules => AthleticsRules.From(TraxSettings.Shared);
@@ -105,16 +131,18 @@ namespace TraxCombat.Missions
             _seenVersion = TraxSettings.Shared.Version;
             _seenEnabled = r.Enabled;
             _lastOffBecause = r.OffBecause;
-            _seenSpeedPercent = r.ExhaustedAttackSpeedPercent;
+            RememberSpeedSettings(in r);
+            _seenPoolFloor = r.PoolFloor;
+            _seenPoolPerSkill = r.PoolPerSkill;
             TraxLog.Info("athletics", "mission start: " + AthleticsStats.DescribeRules(in r) + " - read live");
             TraxLog.Info("athletics", Campaign.Current != null
                 ? "party-leader rule: campaign - the hero who leads the fighter's own party (you for yours)"
                 : "party-leader rule: no campaign (custom battle) - the side's general, or every hero of a side without one");
             var top = MissionGameModels.Current?.AgentStatCalculateModel;
             TraxLog.Info("speed", top is TraxAgentStatModel ours
-                ? "stat model on top in this mission: ours, over " + ours.BaseModelName + " - the attack-speed penalty is applied on every recompute"
+                ? "stat model on top in this mission: ours, over " + ours.BaseModelName + " - the attack-speed, run-speed and horse-speed penalties are applied on every recompute"
                 : "WARNING: the stat model on top in this mission is " + (top?.GetType().FullName ?? "(none)")
-                  + ", not ours - the attack-speed penalty will NOT apply (another mod registered after us?)");
+                  + ", not ours - the speed penalties will NOT apply (another mod registered after us?)");
         }
 
         private void StopAthletics()
@@ -146,7 +174,37 @@ namespace TraxCombat.Missions
             return st != null && ReferenceEquals(st.Agent, agent) ? st : null;
         }
 
-        /// <summary>Starts tracking a human agent (idempotent). Internal: the offline smoke drives it.</summary>
+        /// <summary>The rider whose Athletics slows this horse now (the mount table, managed only), or null.</summary>
+        private TrackedAgent? MountOwner(Agent? horse)
+        {
+            if (horse == null) return null;
+            int i = horse.Index;
+            if (i < 0 || i >= _mountOwner.Length) return null;
+            var owner = _mountOwner[i];
+            return owner != null && ReferenceEquals(owner.SlowedMount, horse) ? owner : null;
+        }
+
+        private void RegisterMount(Agent horse, TrackedAgent owner)
+        {
+            int i = horse.Index;
+            if (i < 0) return;
+            if (i >= _mountOwner.Length)
+            {
+                int size = _mountOwner.Length;
+                while (size <= i) size *= 2;
+                Array.Resize(ref _mountOwner, size);
+            }
+            _mountOwner[i] = owner;
+        }
+
+        private void UnregisterMount(Agent horse, TrackedAgent owner)
+        {
+            int i = horse.Index;
+            if (i >= 0 && i < _mountOwner.Length && ReferenceEquals(_mountOwner[i], owner)) _mountOwner[i] = null;
+        }
+
+        /// <summary>Starts tracking a human agent (idempotent): reads his Athletics skill (the pool),
+        /// hero / leader flags. Internal: the offline smoke drives it.</summary>
         internal TrackedAgent? Track(Agent agent)
         {
             int i = agent.Index;
@@ -165,12 +223,38 @@ namespace TraxCombat.Missions
             }
 
             var st = new TrackedAgent(agent);
+            ReadSkill(st);
             FlagHeroAndLeader(st);
             _byIndex[i] = st;
             if (_count == _dense.Length) Array.Resize(ref _dense, _dense.Length * 2);
             st.DenseSlot = _count;
             _dense[_count++] = st;
+            if (TraxLog.VerboseOn && !st.IsHero && !st.IsLeader) LogPoolAtSpawn(st);
             return st;
+        }
+
+        /// <summary>The Athletics SKILL from the agent's character - a hero's real skill (CharacterObject
+        /// asks his Hero), a troop's from its XML. No character (or no game) → 0, the floor.</summary>
+        private void ReadSkill(TrackedAgent st)
+        {
+            int skill = 0;
+            bool known = false;
+            try
+            {
+                var c = st.Agent.Character;
+                if (c != null)
+                {
+                    skill = c.GetSkillValue(DefaultSkills.Athletics);
+                    known = true;
+                }
+            }
+            catch (Exception e)
+            {
+                Failed("athletics.skill", e);
+            }
+            st.AthleticsSkill = Math.Max(0, skill);
+            st.SkillKnown = known;
+            _stats.AddFighter(st.AthleticsSkill, known);
         }
 
         private void Untrack(Agent agent)
@@ -181,8 +265,27 @@ namespace TraxCombat.Missions
             {
                 _firstDone = true;
                 TraxLog.Info("speed", "first exhausted fighter (" + Name(st) + ") left the field still exhausted after "
-                    + Sec(Mission.CurrentTime - _firstAt) + " s - attack properties then: " + SpeedPenalty.Snapshot.Take(agent)
-                    + " (" + SpeedPenalty.Snapshot.Take(agent).RatioTo(_firstBefore) + " of the fresh values)");
+                    + Sec(Mission.CurrentTime - _firstAt) + " s - properties then: " + SpeedPenalty.Snapshot.Take(agent)
+                    + " (" + SpeedPenalty.Snapshot.Take(agent).RatioTo(FirstFresh) + " of his fresh values)");
+            }
+            if (st.SlowedMount != null)
+            {
+                // his horse runs on at its own speed (recomputed now if it lives on)
+                var horse = st.SlowedMount;
+                st.SlowedMount = null;
+                UnregisterMount(horse, st);
+                try
+                {
+                    if (horse.IsActive())
+                    {
+                        horse.UpdateAgentProperties();
+                        _stats.HorseRecomputes++;
+                    }
+                }
+                catch (Exception e)
+                {
+                    Failed("speed.horse-release", e);
+                }
             }
             RemoveFromLoop(st);
         }
@@ -233,16 +336,20 @@ namespace TraxCombat.Missions
             _heroes.Add(st);
             _stats.HeroesFlagged++;
             var r = Rules;
+            string pool = " - Athletics skill " + st.AthleticsSkill + (st.SkillKnown ? "" : " (not readable)") + " → pool " + F0(AthleticsMath.PoolPoints(in r, st))
+                          + " (full strength down to " + F0(AthleticsMath.PoolPoints(in r, st) * r.PeakFraction) + ")";
             if (st.IsLeader)
             {
-                _stats.LeaderNames.Add(st.HeroName + (a.IsMainAgent ? " (you)" : string.Empty));
-                TraxLog.Limited("athletics", "party leader: " + st.HeroName + (st.IsHero ? "" : " (not a hero)")
-                    + " - pays x" + F2(AthleticsMath.CostMultiplier(in r, st)) + " per blow (" + F1(AthleticsMath.BlowCostPoints(in r, st)) + " now)",
+                string name = st.HeroName + (a.IsMainAgent ? " (you)" : string.Empty);
+                _stats.LeaderNames.Add(name);
+                _stats.LeaderSkills.Add(new System.Collections.Generic.KeyValuePair<string, int>(name, st.AthleticsSkill));
+                TraxLog.Limited("athletics", "party leader: " + st.HeroName + (st.IsHero ? "" : " (not a hero)") + pool
+                    + ", pays x" + F2(AthleticsMath.CostMultiplier(in r, st)) + " per blow (" + F1(AthleticsMath.BlowCostPoints(in r, st)) + " now)",
                     "athletics-leader");
             }
             else if (TraxLog.VerboseOn)
             {
-                TraxLog.Verbose("athletics", "hero: " + st.HeroName + " - pays x" + F2(AthleticsMath.CostMultiplier(in r, st))
+                TraxLog.Verbose("athletics", "hero: " + st.HeroName + pool + ", pays x" + F2(AthleticsMath.CostMultiplier(in r, st))
                     + " per blow (" + F1(AthleticsMath.BlowCostPoints(in r, st)) + " now)", "athletics-hero");
             }
         }
@@ -256,9 +363,10 @@ namespace TraxCombat.Missions
             var r = AthleticsRules.From(settings);
             double now = Mission.CurrentTime;
             long start = Stopwatch.GetTimestamp();
-            TrackPlayer();
+            TrackPlayer(in r);
 
             int polled = 0;
+            int budget = MaxRecomputesPerTick;
             for (int i = 0; i < _count; i++)
             {
                 var st = _dense[i];
@@ -271,12 +379,25 @@ namespace TraxCombat.Missions
                         polled++;
                         int action = (int)a.GetCurrentActionType(1);
                         if (action != st.PrevAction) ObserveAction(st, action, now, in r);
+                        _stats.AddPeakTime(AthleticsMath.PeakShare(in r, st), dt);
                     }
-                    if (st.SpeedDirty) ApplySpeed(st);
+                    if (st.SpeedDirty || st.MountDirty)
+                    {
+                        if (budget > 0)
+                        {
+                            budget--;
+                            ApplySpeed(st);
+                        }
+                        else
+                        {
+                            _stats.RecomputesDeferred++;
+                        }
+                    }
                 }
                 catch (Exception e)
                 {
                     st.SpeedDirty = false;
+                    st.MountDirty = false;
                     Failed("athletics.poll", e);
                 }
             }
@@ -304,13 +425,40 @@ namespace TraxCombat.Missions
             _stats.AddTick(polled, (Stopwatch.GetTimestamp() - start) * 1000.0 / Stopwatch.Frequency);
         }
 
-        private void TrackPlayer()
+        private void TrackPlayer(in AthleticsRules r)
         {
             var main = Mission?.MainAgent;
-            if (ReferenceEquals(main, _playerAgent)) return;
-            _playerAgent = main;
-            var st = Get(main);
-            if (st != null) _player = st;
+            if (!ReferenceEquals(main, _playerAgent))
+            {
+                _playerAgent = main;
+                var st = Get(main);
+                if (st != null) _player = st;
+            }
+            if (_player != null && !_playerPoolLogged)
+            {
+                _playerPoolLogged = true;
+                double pool = AthleticsMath.PoolPoints(in r, _player);
+                TraxLog.Limited("athletics", "YOU: Athletics skill " + _player.AthleticsSkill + " → pool " + F0(pool) + " (the skill x" + F2(r.PoolPerSkill)
+                    + ", at least " + r.PoolFloor + "); full strength down to " + F0(pool * r.PeakFraction) + " (" + r.PeakPercent + "%); a blow costs you "
+                    + F1(AthleticsMath.BlowCostPoints(in r, _player)) + " - about " + BlowsAtFullStrength(in r, _player) + " blows at full strength, "
+                    + BlowsToEmpty(in r, _player) + " to empty", "athletics-player");
+            }
+        }
+
+        /// <summary>Blows a fresh fighter strikes at full strength (f 1 before the blow).</summary>
+        internal static int BlowsAtFullStrength(in AthleticsRules r, Fighter f)
+        {
+            double pool = AthleticsMath.PoolPoints(in r, f), cost = AthleticsMath.BlowCostPoints(in r, f);
+            if (cost <= 0) return int.MaxValue;
+            double line = pool * r.PeakFraction;
+            return (int)Math.Floor((pool - line) / cost + AthleticsMath.Epsilon) + 1;
+        }
+
+        /// <summary>Blows that empty a fresh fighter.</summary>
+        internal static int BlowsToEmpty(in AthleticsRules r, Fighter f)
+        {
+            double pool = AthleticsMath.PoolPoints(in r, f), cost = AthleticsMath.BlowCostPoints(in r, f);
+            return cost <= 0 ? int.MaxValue : (int)Math.Ceiling(pool / cost - AthleticsMath.Epsilon);
         }
 
         /// <summary>The channel-1 action changed (seen by the poll or inside a hit): the falling edge
@@ -346,11 +494,14 @@ namespace TraxCombat.Missions
             if (mounted) _stats.MeleeReleasesMounted++;
             st.ReleaseSerial++;
 
-            bool penalizedNow = st.SpeedMultiplier < 1f;
+            // the interval since the last release ran at the multiplier set after that release's charge
+            int binNow = AthleticsMath.PeakBin(AthleticsMath.PeakShare(in r, st));
             if (st.LastReleaseTime >= 0)
-                AddInterval(_stats.MeleeFresh, _stats.MeleeExhausted, now - st.LastReleaseTime, st.PenalizedAfterLastRelease, penalizedNow);
+            {
+                if (binNow == st.BinAfterLastRelease) _stats.MeleeIntervals.Add(binNow, now - st.LastReleaseTime, st.AskedAfterLastRelease);
+                else _stats.MeleeIntervals.Mixed++;
+            }
             st.ReleaseStart = now;
-            st.ReleaseStartPenalized = penalizedNow;
             st.HitThisRelease = false;
 
             if (r.CostOnMiss)
@@ -362,25 +513,25 @@ namespace TraxCombat.Missions
             {
                 _stats.ReleasesAwaitingHit++;
             }
-            st.ReleaseMixed = (st.SpeedMultiplier < 1f) != penalizedNow;
+            int binAfter = AthleticsMath.PeakBin(AthleticsMath.PeakShare(in r, st));
+            st.ReleaseBin = binAfter;
+            st.ReleaseAsked = st.SpeedMultiplier;
+            st.ReleaseMixed = binAfter != binNow;
             st.LastReleaseTime = now;
-            st.PenalizedAfterLastRelease = st.SpeedMultiplier < 1f;
+            st.BinAfterLastRelease = binAfter;
+            st.AskedAfterLastRelease = st.SpeedMultiplier;
         }
 
         /// <summary>A swing that hit nothing ran its whole animation: its length measures the speed.</summary>
         private void EndRelease(TrackedAgent st, double now)
         {
             if (st.ReleaseStart < 0) return;
-            if (!st.HitThisRelease && !st.ReleaseMixed)
-                (st.ReleaseStartPenalized ? _stats.SwingExhausted : _stats.SwingFresh).Add(now - st.ReleaseStart);
+            if (!st.HitThisRelease)
+            {
+                if (st.ReleaseMixed) _stats.SwingLengths.Mixed++;
+                else _stats.SwingLengths.Add(st.ReleaseBin, now - st.ReleaseStart, st.ReleaseAsked);
+            }
             st.ReleaseStart = -1;
-        }
-
-        private void AddInterval(IntervalStats fresh, IntervalStats exhausted, double seconds, bool penalizedBefore, bool penalizedNow)
-        {
-            if (penalizedBefore && penalizedNow) exhausted.Add(seconds);
-            else if (!penalizedBefore && !penalizedNow) fresh.Add(seconds);
-            else _stats.IntervalsMixed++;
         }
 
         // ------------------------------------------------------------------ charging
@@ -391,22 +542,49 @@ namespace TraxCombat.Missions
             if (!o.Charged) return;
             _stats.AddCharge(kind, mounted, o.Before - o.After); // what was really drained (a swing at 0 drains nothing)
             if (TraxLog.VerboseOn) LogBlow(st, kind, in o, mounted);
+            float prevAttack = st.SpeedMultiplier, prevRun = st.RunSpeedMultiplier;
             RetargetSpeed(st, in r);
-            if (o.EnteredExhaustion) OnExhausted(st, now, in r);
+            if (o.LeftPeak)
+            {
+                _stats.PeakLeft++;
+                if (st.Agent.IsMainAgent) LogPlayerLeftPeak(st, in r, now);
+            }
+            if (o.EnteredExhaustion) OnExhausted(st, now, in r, prevAttack, prevRun);
         }
 
-        /// <summary>Recompute the fighter's speed multiplier from the live rules; if it moved enough,
-        /// take it and mark the fighter for a properties recompute. True when marked.</summary>
+        /// <summary>Recompute the fighter's three multipliers from the live rules; each that moved enough
+        /// (<see cref="AthleticsMath.SpeedUpdateNeeded"/>) is taken and the fighter (attack / run) or his
+        /// horse is marked for a properties recompute. True when anything was marked.</summary>
         private static bool RetargetSpeed(TrackedAgent st, in AthleticsRules r)
         {
-            float desired = AthleticsMath.AttackSpeedMultiplier(in r, st);
-            if (!AthleticsMath.SpeedUpdateNeeded(st.SpeedMultiplier, desired)) return false;
-            st.SpeedMultiplier = desired;
-            st.SpeedDirty = true;
-            return true;
+            bool human = false, horse = false;
+            float attack = AthleticsMath.AttackSpeedMultiplier(in r, st);
+            if (AthleticsMath.SpeedUpdateNeeded(st.SpeedMultiplier, attack, r.AttackSpeedFloor))
+            {
+                st.SpeedMultiplier = attack;
+                human = true;
+            }
+            float run = AthleticsMath.RunSpeedMultiplier(in r, st);
+            if (AthleticsMath.SpeedUpdateNeeded(st.RunSpeedMultiplier, run, r.RunSpeedFloor))
+            {
+                st.RunSpeedMultiplier = run;
+                human = true;
+            }
+            float mount = AthleticsMath.MountSpeedMultiplier(in r, st);
+            if (AthleticsMath.SpeedUpdateNeeded(st.MountSpeedMultiplier, mount, r.MountSpeedFloor))
+            {
+                st.MountSpeedMultiplier = mount;
+                horse = true;
+            }
+            if (human) st.SpeedDirty = true;
+            if (horse) st.MountDirty = true;
+            return human || horse;
         }
 
-        private void OnExhausted(TrackedAgent st, double now, in AthleticsRules r)
+        /// <param name="prevAttack">The attack multiplier applied until this blow (the properties still
+        /// hold it - the recompute comes on the next tick).</param>
+        /// <param name="prevRun">Likewise for the run multiplier.</param>
+        private void OnExhausted(TrackedAgent st, double now, in AthleticsRules r, float prevAttack, float prevRun)
         {
             _stats.ExhaustionsEntered++;
             if (_firstExhausted == null)
@@ -414,25 +592,29 @@ namespace TraxCombat.Missions
                 _firstExhausted = st;
                 _firstAt = now;
                 _firstAsked = st.SpeedMultiplier;
-                _firstBefore = SpeedPenalty.Snapshot.Take(st.Agent); // not yet recomputed: the fresh values
+                _firstAskedRun = st.RunSpeedMultiplier;
+                _firstPrevAttack = prevAttack;
+                _firstPrevRun = prevRun;
+                _firstBefore = SpeedPenalty.Snapshot.Take(st.Agent); // not yet recomputed: the values at prevAttack / prevRun
                 if (!st.SpeedDirty)
                 {
                     _firstAfterLogged = true;
-                    _firstDone = true; // nothing to follow: no penalty was asked
-                    TraxLog.Info("speed", "first exhaustion this mission: " + Name(st) + " at " + Sec(now) + " s - no speed change asked (x"
-                        + F2(st.SpeedMultiplier) + ", ExhaustedAttackSpeedPercent " + r.ExhaustedAttackSpeedPercent + "); properties " + _firstBefore);
+                    _firstDone = true; // nothing to follow: no new speed was asked
+                    TraxLog.Info("speed", "first exhaustion this mission: " + Name(st) + " at " + Sec(now) + " s - no speed change asked (attacks x"
+                        + F2(st.SpeedMultiplier) + ", run x" + F2(st.RunSpeedMultiplier) + "); properties " + _firstBefore);
                 }
             }
             if (st.Agent.IsMainAgent)
             {
                 TraxLog.Limited("athletics", "YOU are exhausted at " + Sec(now) + " s: 0 of " + F0(AthleticsMath.PoolPoints(in r, st))
-                    + " after " + st.Blows + " blows this mission - attacks at " + r.ExhaustedAttackSpeedPercent
-                    + "% speed until you rest (refill starts " + F1(r.RegenDelaySeconds) + " s after your last blow)", "athletics-player");
+                    + " after " + st.Blows + " blows this mission - attacks at " + r.ExhaustedAttackSpeedPercent + "% speed, run x" + F2(r.RunSpeedFloor)
+                    + ", no damage upside" + (r.DamageBonusFollows ? string.Empty : " (off: full upside)") + " until you rest (refill starts "
+                    + F1(r.RegenDelaySeconds) + " s after your last blow)", "athletics-player");
             }
             else if (TraxLog.VerboseOn)
             {
                 TraxLog.Verbose("athletics", "exhausted: " + Name(st) + " at " + Sec(now) + " s after " + st.Blows + " blows - attacks x"
-                    + F2(st.SpeedMultiplier), "athletics-exhaust");
+                    + F2(st.SpeedMultiplier) + ", run x" + F2(st.RunSpeedMultiplier), "athletics-exhaust");
             }
         }
 
@@ -440,12 +622,18 @@ namespace TraxCombat.Missions
 
         private void ApplySpeed(TrackedAgent st)
         {
+            if (st.SpeedDirty) ApplyFighterSpeed(st);
+            if (st.MountDirty) ApplyMountSpeed(st);
+        }
+
+        private void ApplyFighterSpeed(TrackedAgent st)
+        {
             st.SpeedDirty = false;
             bool first = ReferenceEquals(st, _firstExhausted);
             try
             {
                 st.Agent.UpdateAgentProperties();
-                _stats.SpeedUpdates++;
+                _stats.FighterRecomputes++;
             }
             catch (Exception e)
             {
@@ -456,29 +644,93 @@ namespace TraxCombat.Missions
             {
                 _firstAfterLogged = true;
                 _firstAfter = SpeedPenalty.Snapshot.Take(st.Agent);
-                bool stuck = Close(_firstAfter.Swing, _firstBefore.Swing * _firstAsked) && Close(_firstAfter.Thrust, _firstBefore.Thrust * _firstAsked)
-                             && Close(_firstAfter.Reload, _firstBefore.Reload * _firstAsked);
-                TraxLog.Info("speed", "first exhaustion this mission: " + Name(st) + " at " + Sec(_firstAt) + " s - attack properties before: "
-                    + _firstBefore + " → after UpdateAgentProperties: " + _firstAfter + " (" + _firstAfter.RatioTo(_firstBefore) + ", asked x" + F2(_firstAsked) + ") - "
-                    + (stuck ? "the penalty is in the agent's properties" : "the values did NOT take the asked factor - tell Claude"));
+                // The "before" values were taken right after the emptying blow, while the previous
+                // multipliers still applied (the curve had already slowed him) - so each value should
+                // move by new ÷ old.
+                float stepAttack = _firstPrevAttack > 0f ? _firstAsked / _firstPrevAttack : 1f;
+                float stepRun = _firstPrevRun > 0f ? _firstAskedRun / _firstPrevRun : 1f;
+                bool stuck = Close(_firstAfter.Swing, _firstBefore.Swing * stepAttack) && Close(_firstAfter.Thrust, _firstBefore.Thrust * stepAttack)
+                             && Close(_firstAfter.Reload, _firstBefore.Reload * stepAttack) && Close(_firstAfter.Run, _firstBefore.Run * stepRun);
+                TraxLog.Info("speed", "first exhaustion this mission: " + Name(st) + " at " + Sec(_firstAt) + " s - properties before: "
+                    + _firstBefore + " (while attacks x" + F2(_firstPrevAttack) + ", run x" + F2(_firstPrevRun) + " applied) → after UpdateAgentProperties: "
+                    + _firstAfter + " (" + _firstAfter.RatioTo(_firstBefore) + "; asked attacks x" + F2(_firstAsked) + " / x" + F2(_firstPrevAttack) + " = x"
+                    + F2(stepAttack) + ", run x" + F2(_firstAskedRun) + " / x" + F2(_firstPrevRun) + " = x" + F2(stepRun) + ") - "
+                    + (stuck ? "the penalties are in the agent's properties" : "the values did NOT take the asked factors - tell Claude"));
             }
-            else if (first && _firstRecovering)
+            else if (first && _firstRecovering && st.SpeedMultiplier == 1f && st.RunSpeedMultiplier == 1f)
             {
                 _firstRecovering = false;
                 _firstDone = true;
                 var restored = SpeedPenalty.Snapshot.Take(st.Agent);
-                TraxLog.Info("speed", "first exhausted fighter back to full speed: properties now " + restored + " (" + restored.RatioTo(_firstBefore)
-                    + " of the fresh values - x1.00 expected unless his weapon changed)");
+                TraxLog.Info("speed", "first exhausted fighter back at full strength: properties now " + restored + " (" + restored.RatioTo(FirstFresh)
+                    + " of his fresh values - x1.00 expected unless his weapon or armour changed)");
             }
             if (TraxLog.VerboseOn)
             {
-                TraxLog.Verbose("speed", Name(st) + ": attack speed x" + F2(st.SpeedMultiplier)
-                    + (st.SpeedMultiplier < 1f ? " (exhausted)" : " (full)"), "speed-update");
+                TraxLog.Verbose("speed", Name(st) + ": attacks x" + F2(st.SpeedMultiplier) + ", run x" + F2(st.RunSpeedMultiplier)
+                    + " (f " + F2(AthleticsMath.PeakShare(Rules, st)) + (st.Exhausted ? ", empty" : st.SpeedMultiplier == 1f ? ", full strength" : string.Empty) + ")",
+                    "speed-update");
             }
         }
 
-        /// <summary>A settings change (MCM mid-battle, or the file at mission start): the two that
-        /// need a rebuild. Everything else is read live where it is used.</summary>
+        // The multipliers in effect when the first exhaustion's "before" snapshot was taken (the
+        // blow that emptied him had not been recomputed yet).
+        private float _firstPrevAttack = 1f;
+        private float _firstPrevRun = 1f;
+
+        /// <summary>The first exhausted fighter's properties as they were at full strength: the
+        /// "before" snapshot divided by the multipliers that applied to it.</summary>
+        private SpeedPenalty.Snapshot FirstFresh => new SpeedPenalty.Snapshot(
+            _firstBefore.Swing / Math.Max(0.01f, _firstPrevAttack), _firstBefore.Thrust / Math.Max(0.01f, _firstPrevAttack),
+            _firstBefore.Reload / Math.Max(0.01f, _firstPrevAttack), _firstBefore.Run / Math.Max(0.01f, _firstPrevRun));
+
+        /// <summary>His horse(s): release the one we slowed if he left it (or its multiplier went back to
+        /// 1), register and recompute the one he rides while its multiplier is below 1.</summary>
+        private void ApplyMountSpeed(TrackedAgent st)
+        {
+            st.MountDirty = false;
+            try
+            {
+                var old = st.SlowedMount;
+                var current = st.Agent.IsActive() ? st.Agent.MountAgent : null;
+                float m = st.MountSpeedMultiplier;
+                Agent? next = current != null && m < 1f ? current : null;
+                st.SlowedMount = next;
+                if (next != null) RegisterMount(next, st);
+                if (old != null && !ReferenceEquals(old, next))
+                {
+                    UnregisterMount(old, st);
+                    if (old.IsActive())
+                    {
+                        old.UpdateAgentProperties();
+                        _stats.HorseRecomputes++;
+                    }
+                }
+                if (next != null)
+                {
+                    float before = next.AgentDrivenProperties?.MountSpeed ?? 0f;
+                    next.UpdateAgentProperties();
+                    _stats.HorseRecomputes++;
+                    if (!_firstHorseLogged)
+                    {
+                        _firstHorseLogged = true;
+                        float after = next.AgentDrivenProperties?.MountSpeed ?? 0f;
+                        TraxLog.Info("speed", "first horse slowed this mission: the horse of " + Name(st) + " - MountSpeed " + F3(before) + " → " + F3(after)
+                            + " after UpdateAgentProperties (asked x" + F2(m) + " of its fresh speed; MountMinSpeedMultiplier " + F2(TraxSettings.Shared.MountMinSpeedMultiplier) + ")");
+                    }
+                    if (TraxLog.VerboseOn)
+                        TraxLog.Verbose("speed", "horse of " + Name(st) + ": speed x" + F2(m), "speed-update");
+                }
+            }
+            catch (Exception e)
+            {
+                Failed("speed.horse", e);
+            }
+        }
+
+        /// <summary>A settings change (MCM mid-battle, or the file at mission start): switching off /
+        /// on, the pool settings (logged - the fractions keep everyone's share), and every speed
+        /// re-targeted (the budget spreads the recomputes). Everything else is read live.</summary>
         internal void ApplySettingsChange(TraxSettings settings)
         {
             _seenVersion = settings.Version;
@@ -500,30 +752,89 @@ namespace TraxCombat.Missions
                         }
                         TraxLog.Info("athletics", (r.ModEnabled ? "AthleticsEnabled" : "the whole mod (ModEnabled)")
                             + " switched OFF mid-mission: " + refilled + " fighters back to full, "
-                            + lifted + " attack-speed penalties lifted (applied on the next tick)");
+                            + lifted + " speed penalties lifted (applied over the next ticks)");
                     }
                     else
                     {
                         // Back on - by either switch - means everyone starts from a full bar (Anton's
                         // master-switch rule: "on" is a fresh start, not a resume of the old state).
                         TraxLog.Info("athletics", (_lastOffBecause == "ModEnabled" ? "the whole mod (ModEnabled)" : "AthleticsEnabled")
-                            + " switched ON mid-mission: everyone starts full");
+                            + " switched ON mid-mission: everyone starts full (a wound's cap applies again at the next refill step)");
                     }
                 }
                 _lastOffBecause = r.OffBecause; // which switch holds it off now (both may be off)
-                if (r.ExhaustedAttackSpeedPercent != _seenSpeedPercent)
+
+                if (r.PoolFloor != _seenPoolFloor || r.PoolPerSkill != _seenPoolPerSkill)
                 {
-                    _seenSpeedPercent = r.ExhaustedAttackSpeedPercent;
-                    int changed = 0;
-                    for (int i = 0; i < _count; i++)
-                        if (RetargetSpeed(_dense[i], in r)) changed++;
-                    TraxLog.Info("speed", "ExhaustedAttackSpeedPercent now " + r.ExhaustedAttackSpeedPercent + "%: " + changed
-                        + " exhausted fighters get the new speed on the next tick");
+                    _seenPoolFloor = r.PoolFloor;
+                    _seenPoolPerSkill = r.PoolPerSkill;
+                    string dist = _stats.Pools(in r, out double min, out double mean, out double max, out int atFloor)
+                        ? "pools now min " + F0(min) + " / avg " + F1(mean) + " / max " + F0(max) + ", " + atFloor + " at the floor"
+                        : "nobody tracked yet";
+                    TraxLog.Info("athletics", "pool settings now: the Athletics skill x" + F2(r.PoolPerSkill) + ", at least " + r.PoolFloor + " - "
+                        + dist + "; everyone keeps his share (a fighter at 60% stays at 60%)");
+                }
+
+                bool speedSettings = r.ExhaustedAttackSpeedPercent != _seenSpeedPercent || r.MinMoveSpeedMultiplier != _seenRunFloor
+                                     || r.MountMinSpeedMultiplier != _seenMountFloor || r.PeakPercent != _seenPeakPercent;
+                int changed = 0;
+                for (int i = 0; i < _count; i++)
+                    if (RetargetSpeed(_dense[i], in r)) changed++;
+                if (speedSettings)
+                {
+                    RememberSpeedSettings(in r);
+                    TraxLog.Info("speed", "speed settings now: when empty attacks at " + r.ExhaustedAttackSpeedPercent + "%, run x" + F2(r.RunSpeedFloor)
+                        + ", horses x" + F2(r.MountsSlow ? r.MountSpeedFloor : 1f) + "; full strength at " + r.PeakPercent + "% of the pool - "
+                        + changed + " fighters get new speeds over the next ticks (at most " + MaxRecomputesPerTick + " recomputes a tick)");
                 }
             }
             catch (Exception e)
             {
                 Failed("athletics.settings", e);
+            }
+        }
+
+        private void RememberSpeedSettings(in AthleticsRules r)
+        {
+            _seenSpeedPercent = r.ExhaustedAttackSpeedPercent;
+            _seenRunFloor = r.MinMoveSpeedMultiplier;
+            _seenMountFloor = r.MountMinSpeedMultiplier;
+            _seenPeakPercent = r.PeakPercent;
+        }
+
+        // ------------------------------------------------------------------ health cap
+
+        /// <summary>Health left, 0..1 (managed fields - cheap, and safe on an agent without a native
+        /// side). An unknown maximum reads as full health.</summary>
+        private static double HealthOf(Agent a)
+        {
+            float limit = a.HealthLimit;
+            if (!(limit > 0f)) return 1.0;
+            double h = a.Health / limit;
+            return h < 0 ? 0 : h > 1 ? 1 : h;
+        }
+
+        /// <summary>Reads the fighter's health and applies the cap (DESIGN §2): a cut is counted,
+        /// logged, and re-targets his speeds. Internal: the offline smoke drives it.</summary>
+        internal void CheckHealth(TrackedAgent st, in AthleticsRules r, double now)
+        {
+            double cut = AthleticsMath.ApplyHealth(st, in r, HealthOf(st.Agent));
+            if (cut <= 0) return;
+            double pool = AthleticsMath.PoolPoints(in r, st);
+            _stats.AddHealthCut(cut * pool);
+            RetargetSpeed(st, in r);
+            double f = AthleticsMath.PeakShare(in r, st);
+            if (st.Agent.IsMainAgent)
+            {
+                TraxLog.Limited("athletics", "YOU are wounded at " + Sec(now) + " s (" + P0(st.Health) + " health): Athletics capped at "
+                    + F1(st.Fraction * pool) + " of " + F0(pool) + " (cut " + F1(cut * pool) + ") - f now " + F2(f)
+                    + (st.Health < r.PeakFraction ? "; full strength needs " + F0(pool * r.PeakFraction) + ", out of reach until healed" : string.Empty),
+                    "athletics-player");
+            }
+            else if (TraxLog.VerboseOn)
+            {
+                TraxLog.Verbose("athletics", "health cap: " + Name(st) + " at " + P0(st.Health) + " health - Athletics " + F1((st.Fraction + cut) * pool)
+                    + " → " + F1(st.Fraction * pool) + " of " + F0(pool) + " (f " + F2(f) + ")", "athletics-health");
             }
         }
 
@@ -535,27 +846,34 @@ namespace TraxCombat.Missions
             for (int i = 0; i < _count; i++)
             {
                 var st = _dense[i];
-                if (st.Fraction >= 1.0 && !st.Exhausted) continue; // full: nothing to do, no native call
                 try
                 {
+                    CheckHealth(st, in r, now);
+                    double top = AthleticsMath.UsableFraction(in r, st);
+                    if (st.Fraction >= top - AthleticsMath.Epsilon && !st.Exhausted) continue; // at his top: nothing to do, no native call
                     var a = st.Agent;
                     if (!a.IsActive()) continue;
-                    float speed = 0f, top = 0f;
-                    if (now - st.LastBlowTime > r.RegenDelaySeconds)
-                    {
-                        var body = a.MountAgent ?? a; // a rider's rest is his horse's pace (RESEARCH §D)
-                        speed = body.MovementVelocity.Length;
-                        top = body.GetMaximumForwardUnlimitedSpeed();
-                        if (top > 0f) _stats.AddEffort(speed / top);
-                    }
-                    var o = AthleticsMath.Regen(st, in r, now, step, speed, top);
+                    var mount = a.MountAgent;
+                    var body = mount ?? a; // a rider's effort is his horse's pace (RESEARCH §D)
+                    float speed = body.MovementVelocity.Length;
+                    float topSpeed = body.GetMaximumForwardUnlimitedSpeed();
+                    SampleRunSpeed(st, mount, speed, topSpeed, in r);
+
+                    var o = AthleticsMath.Regen(st, in r, now, step, speed, topSpeed);
                     if (o.Seconds > 0)
                     {
-                        if (o.Moving) _stats.RegenMovingSeconds += o.Seconds;
-                        else _stats.RegenStandingSeconds += o.Seconds;
+                        _stats.AddEffort(o.Effort, o.Seconds);
+                        if (o.Walking) _stats.RegenWalkSeconds += o.Seconds;
+                        else
+                        {
+                            _stats.RegenFasterSeconds += o.Seconds;
+                            _stats.RegenFasterRateSeconds += o.Seconds * o.RateMultiplier;
+                        }
                     }
+                    if (o.Gained > 0 || o.Recovered) RetargetSpeed(st, in r);
+                    if (o.EnteredPeak) OnEnteredPeak(st, now, in r);
                     if (o.Recovered) OnRecovered(st, now, in o, in r);
-                    if (o.ReachedFull) OnRefilled(st, now, in o, in r);
+                    if (o.ReachedTop) OnRefilled(st, now, in o, in r);
                 }
                 catch (Exception e)
                 {
@@ -564,46 +882,137 @@ namespace TraxCombat.Missions
             }
         }
 
+        /// <summary>The run-speed check (step 5c): every regen sample, relative to the fighter's (or his
+        /// horse's) own top speed while no penalty applied - refreshed whenever the multiplier is 1.</summary>
+        private void SampleRunSpeed(TrackedAgent st, Agent? mount, float speed, float topSpeed, in AthleticsRules r)
+        {
+            if (!(topSpeed > 0f)) return;
+            int bin = AthleticsMath.PeakBin(AthleticsMath.PeakShare(in r, st));
+            if (mount == null)
+            {
+                if (st.RunSpeedMultiplier == 1f) st.FreshTop = topSpeed;
+                if (st.FreshTop > 0f) _stats.FootRun.Add(bin, topSpeed / st.FreshTop, st.RunSpeedMultiplier, speed / st.FreshTop);
+            }
+            else
+            {
+                if (st.MountSpeedMultiplier == 1f || !ReferenceEquals(st.FreshMountOf, mount))
+                {
+                    if (st.MountSpeedMultiplier != 1f) return; // a new horse while slowed: no fresh top to compare with
+                    st.FreshMountTop = topSpeed;
+                    st.FreshMountOf = mount;
+                }
+                if (st.FreshMountTop > 0f) _stats.HorseRun.Add(bin, topSpeed / st.FreshMountTop, st.MountSpeedMultiplier, speed / st.FreshMountTop);
+            }
+        }
+
+        private void OnEnteredPeak(TrackedAgent st, double now, in AthleticsRules r)
+        {
+            _stats.PeakEntered++;
+            if (st.Agent.IsMainAgent && st.PlayerBelowPeakLogged)
+            {
+                st.PlayerBelowPeakLogged = false;
+                double pool = AthleticsMath.PoolPoints(in r, st);
+                TraxLog.Limited("athletics", "YOU are back at full strength at " + Sec(now) + " s: " + F1(st.Fraction * pool) + " of " + F0(pool)
+                    + " (the line is " + F0(pool * r.PeakFraction) + ")", "athletics-player");
+            }
+        }
+
+        private void LogPlayerLeftPeak(TrackedAgent st, in AthleticsRules r, double now)
+        {
+            st.PlayerBelowPeakLogged = true;
+            double pool = AthleticsMath.PoolPoints(in r, st);
+            TraxLog.Limited("athletics", "YOU dropped below full strength at " + Sec(now) + " s: " + F1(st.Fraction * pool) + " of " + F0(pool)
+                + " (the line is " + F0(pool * r.PeakFraction) + ") after " + st.Blows + " blows this mission - f " + F2(AthleticsMath.PeakShare(in r, st))
+                + ": attacks x" + F2(AthleticsMath.AttackSpeedMultiplier(in r, st)) + ", run x" + F2(AthleticsMath.RunSpeedMultiplier(in r, st))
+                + ", damage upside " + P0(AthleticsMath.DamageUpside(in r, st)) + " of the full", "athletics-player");
+        }
+
         private void OnRecovered(TrackedAgent st, double now, in RegenOutcome o, in AthleticsRules r)
         {
             _stats.ExhaustionsLeft++;
             if (ReferenceEquals(st, _firstExhausted) && _firstAfterLogged && !_firstDone && !_firstRecovering)
             {
                 var still = SpeedPenalty.Snapshot.Take(st.Agent);
-                TraxLog.Info("speed", "first exhausted fighter recovers after " + Sec(o.ExhaustedSeconds) + " s: properties just before - "
-                    + still + " (" + still.RatioTo(_firstBefore) + " of the fresh values; they stayed penalized: "
-                    + (Close(still.Swing, _firstAfter.Swing) ? "yes" : "NO - something recomputed them without us") + ")");
+                TraxLog.Info("speed", "first exhausted fighter leaves 0 after " + Sec(o.ExhaustedSeconds) + " s: properties just before - "
+                    + still + " (" + still.RatioTo(FirstFresh) + " of his fresh values; they stayed penalized: "
+                    + (Close(still.Swing, _firstAfter.Swing) ? "yes" : "NO - something recomputed them without us") + ") - they now climb with his bar");
                 _firstRecovering = true;
             }
-            RetargetSpeed(st, in r);
             if (st.Agent.IsMainAgent)
             {
-                TraxLog.Limited("athletics", "YOU recovered at " + Sec(now) + " s: " + F1(AthleticsMath.Points(in r, st)) + " of "
-                    + F0(AthleticsMath.PoolPoints(in r, st)) + " after " + Sec(o.ExhaustedSeconds) + " s exhausted - full attack speed again",
-                    "athletics-player");
+                TraxLog.Limited("athletics", "YOU are off empty at " + Sec(now) + " s: " + F1(AthleticsMath.Points(in r, st)) + " of "
+                    + F0(AthleticsMath.PoolPoints(in r, st)) + " after " + Sec(o.ExhaustedSeconds) + " s at 0 - attacks and run speed now climb with your bar (full at "
+                    + F0(AthleticsMath.PoolPoints(in r, st) * r.PeakFraction) + ")", "athletics-player");
             }
             else if (TraxLog.VerboseOn)
             {
-                TraxLog.Verbose("athletics", "recovered: " + Name(st) + " at " + Sec(now) + " s after " + Sec(o.ExhaustedSeconds) + " s exhausted",
+                TraxLog.Verbose("athletics", "off empty: " + Name(st) + " at " + Sec(now) + " s after " + Sec(o.ExhaustedSeconds) + " s at 0",
                     "athletics-exhaust");
             }
         }
 
         private void OnRefilled(TrackedAgent st, double now, in RegenOutcome o, in AthleticsRules r)
         {
-            _stats.RefillsToFull++;
+            bool full = o.Top >= 1.0 - AthleticsMath.Epsilon;
+            if (full) _stats.RefillsToFull++;
+            else _stats.RefillsToHealthCap++;
             bool you = st.Agent.IsMainAgent;
             if (!you && !TraxLog.VerboseOn) return;
             double pool = AthleticsMath.PoolPoints(in r, st);
-            string text = " back to full at " + Sec(now) + " s: " + F0(o.EpisodeStartFraction * pool) + " → " + F0(pool) + " in "
-                + Sec(o.EpisodeStandingSeconds + o.EpisodeMovingSeconds) + " s of refill (standing " + Sec(o.EpisodeStandingSeconds)
-                + " s, moving " + Sec(o.EpisodeMovingSeconds) + " s; empty to full takes " + F0(r.FullRegenSecondsStanding) + " s standing, "
-                + F0(r.FullRegenSecondsMoving) + " s moving)";
+            string text = (full ? " back to full at " : " refilled to his wound's cap (" + P0(o.Top) + ") at ") + Sec(now) + " s: "
+                + F0(o.EpisodeStartFraction * pool) + " → " + F0(o.Top * pool) + " of " + F0(pool) + " in " + Sec(o.EpisodeSeconds)
+                + " s of refill (at a walk or slower " + Sec(o.EpisodeWalkSeconds) + " s, faster " + Sec(o.EpisodeSeconds - o.EpisodeWalkSeconds)
+                + " s; avg rate x" + F2(o.EpisodeSeconds > 0 ? o.EpisodeRateSeconds / o.EpisodeSeconds : 1) + "; empty to full takes "
+                + F0(r.FullRegenSecondsStanding) + " s at rest, " + F0(r.FullRegenSecondsStanding / Math.Max(0.01, r.RegenMultiplierAtFullRun)) + " s at a full run)";
             if (you) TraxLog.Limited("athletics", "YOU are" + text, "athletics-player");
             else TraxLog.Verbose("athletics", Name(st) + " is" + text, "athletics-regen");
         }
 
         // ------------------------------------------------------------------ engine events
+
+        /// <summary>A fighter was hit: his health cap applies at once (DESIGN §2).</summary>
+        public override void OnAgentHit(Agent affectedAgent, Agent affectorAgent, in MissionWeapon affectorWeapon, in Blow blow, in AttackCollisionData attackCollisionData)
+        {
+            try
+            {
+                var st = Get(affectedAgent);
+                if (st == null) return;
+                var r = Rules;
+                if (!r.Enabled) return;
+                CheckHealth(st, in r, Mission.CurrentTime);
+            }
+            catch (Exception e)
+            {
+                Failed("athletics.agent-hit", e);
+            }
+        }
+
+        /// <summary>Mounting / dismounting: the horse multiplier moves with the rider (recomputed on the next tick).</summary>
+        public override void OnAgentMount(Agent agent)
+        {
+            try
+            {
+                var st = Get(agent);
+                if (st != null && (st.MountSpeedMultiplier < 1f || st.SlowedMount != null)) st.MountDirty = true;
+            }
+            catch (Exception e)
+            {
+                Failed("athletics.mount", e);
+            }
+        }
+
+        public override void OnAgentDismount(Agent agent)
+        {
+            try
+            {
+                var st = Get(agent);
+                if (st != null && st.SlowedMount != null) st.MountDirty = true;
+            }
+            catch (Exception e)
+            {
+                Failed("athletics.mount", e);
+            }
+        }
 
         /// <summary>Melee collisions (flesh, shield, parry, objects - RESEARCH §B). Couched/braced
         /// hits are charged here; a swing's release is checked here too (the hit can come before the
@@ -701,9 +1110,12 @@ namespace TraxCombat.Missions
                 st.LastShotTime = now;
                 _stats.ShotsSeen++;
 
-                bool penalizedNow = st.SpeedMultiplier < 1f;
+                int binNow = AthleticsMath.PeakBin(AthleticsMath.PeakShare(in r, st));
                 if (st.LastShotForInterval >= 0)
-                    AddInterval(_stats.RangedFresh, _stats.RangedExhausted, now - st.LastShotForInterval, st.PenalizedAfterLastShot, penalizedNow);
+                {
+                    if (binNow == st.BinAfterLastShot) _stats.RangedIntervals.Add(binNow, now - st.LastShotForInterval, st.AskedAfterLastShot);
+                    else _stats.RangedIntervals.Mixed++;
+                }
 
                 // Mission.OnAgentShootMissile adds the new missile to MissilesList right before it calls
                 // the behaviours (Mission.cs ~4992) - so the last one is this shot's.
@@ -714,7 +1126,8 @@ namespace TraxCombat.Missions
                 if (r.CostOnMiss) Charge(st, BlowKind.Ranged, now, in r, mounted);
                 else _stats.ShotsAwaitingHit++;
                 st.LastShotForInterval = now;
-                st.PenalizedAfterLastShot = st.SpeedMultiplier < 1f;
+                st.BinAfterLastShot = AthleticsMath.PeakBin(AthleticsMath.PeakShare(in r, st));
+                st.AskedAfterLastShot = st.SpeedMultiplier;
             }
             catch (Exception e)
             {
@@ -744,21 +1157,34 @@ namespace TraxCombat.Missions
 
         // ------------------------------------------------------------------ for the stat decorator
 
-        /// <summary>The attack-speed multiplier to apply to <paramref name="agent"/> now (1 = none):
-        /// the running mission's value for a tracked human, 1 for anyone else, and 1 for everyone
-        /// while the mod (ModEnabled) or Athletics (AthleticsEnabled) is off (read live - fail safe).
-        /// Any thread; reads only.</summary>
-        internal static float SpeedMultiplierFor(Agent agent)
+        /// <summary>
+        /// The speed multipliers to apply to <paramref name="agent"/> now (1 = none): a tracked
+        /// fighter's attack and run multipliers, or - for a horse a slowed rider rides - that
+        /// rider's horse multiplier. False (all 1) for anyone else, with no mission running, and for
+        /// everyone while the mod (ModEnabled) or Athletics (AthleticsEnabled) is off (read live -
+        /// fail safe). Any thread; reads only, managed only (no native call).
+        /// </summary>
+        internal static bool SpeedFactorsFor(Agent agent, out float attack, out float run, out float mount)
         {
+            attack = run = mount = 1f;
             var logic = _current;
-            if (logic == null || agent == null) return 1f;
+            if (logic == null || agent == null) return false;
             var s = TraxSettings.Shared;
-            if (!s.ModEnabled || !s.AthleticsEnabled) return 1f; // the master switch first (vanilla)
+            if (!s.ModEnabled || !s.AthleticsEnabled) return false; // the master switch first (vanilla)
             var st = logic.Get(agent);
-            return st?.SpeedMultiplier ?? 1f;
+            if (st != null)
+            {
+                attack = st.SpeedMultiplier;
+                run = st.RunSpeedMultiplier;
+                return attack != 1f || run != 1f;
+            }
+            var owner = logic.MountOwner(agent);
+            if (owner == null) return false;
+            mount = owner.MountSpeedMultiplier;
+            return mount != 1f;
         }
 
-        internal static void NoteDecoratorScaled() => _current?._stats.AddDecoratorScaled();
+        internal static void NoteDecoratorScaled(bool attack, bool run, bool mount) => _current?._stats.AddDecoratorScaled(attack, run, mount);
 
         /// <summary>A caught exception: the FIRST per site per mission goes to the log with its stack
         /// (TraxLog.Error, itself rate-limited), the rest are counted for the summary. Never throws.</summary>
@@ -775,11 +1201,12 @@ namespace TraxCombat.Missions
             }
         }
 
-        // ------------------------------------------------------------------ speeds for step 5c
+        // ------------------------------------------------------------------ walk vs run speeds
 
         /// <summary>Once per mission (deployment finished, else at the summary): every tracked
         /// fighter's walk-speed limit and top speed - on foot the agent's own, riders their
-        /// horse's - so step 5c learns the real walk/run ratio. Cheap: one pass, pointer reads.</summary>
+        /// horse's - so the real walk/run ratio behind WalkEffortFraction is measured. Cheap: one
+        /// pass, pointer reads.</summary>
         private void SampleSpeeds(string when)
         {
             if (_speedsSampled) return;
@@ -788,11 +1215,13 @@ namespace TraxCombat.Missions
             {
                 for (int i = 0; i < _count; i++)
                 {
-                    var a = _dense[i].Agent;
+                    var st = _dense[i];
+                    var a = st.Agent;
                     if (!a.IsActive()) continue;
                     var mount = a.MountAgent;
                     if (mount == null)
                     {
+                        if (st.RunSpeedMultiplier != 1f) continue; // a tired man's top is not his top
                         float top = a.GetMaximumForwardUnlimitedSpeed();
                         float walk = a.WalkSpeedCached > 0f ? a.WalkSpeedCached : a.Monster?.WalkingSpeedLimit ?? 0f;
                         if (top > 0f) _stats.FootTop.Add(top);
@@ -800,6 +1229,7 @@ namespace TraxCombat.Missions
                     }
                     else
                     {
+                        if (st.MountSpeedMultiplier != 1f) continue;
                         float top = mount.GetMaximumForwardUnlimitedSpeed();
                         float walk = mount.WalkingSpeedLimitOfMountable;
                         if (top > 0f) _stats.HorseTop.Add(top);

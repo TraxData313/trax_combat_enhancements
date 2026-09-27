@@ -1,5 +1,6 @@
 using System;
 using System.Globalization;
+using System.Text;
 
 namespace TraxCombat.Core
 {
@@ -49,7 +50,8 @@ namespace TraxCombat.Core
     /// </summary>
     public readonly struct FormationAthleticsStats
     {
-        public FormationAthleticsStats(int count, double meanPoints, double stdPoints, double meanFraction, double stdFraction, int exhausted)
+        public FormationAthleticsStats(int count, double meanPoints, double stdPoints, double meanFraction, double stdFraction, int exhausted,
+            double meanPeakShare = double.NaN, int inPeak = 0)
         {
             Count = count;
             MeanPoints = meanPoints;
@@ -57,10 +59,23 @@ namespace TraxCombat.Core
             MeanFraction = meanFraction;
             StdFraction = stdFraction;
             Exhausted = exhausted;
+            MeanPeakShare = meanPeakShare;
+            InPeak = inPeak;
         }
 
         public static FormationAthleticsStats From(in MeanStd points, in MeanStd fractions, int exhausted) =>
             new FormationAthleticsStats(points.Count, points.Mean, points.StdDev, fractions.Mean, fractions.StdDev, exhausted);
+
+        /// <summary>With the men's f (DESIGN §2) - the squad bar's colour (steps 8-9).</summary>
+        public static FormationAthleticsStats From(in MeanStd points, in MeanStd fractions, in MeanStd peakShares, int exhausted, int inPeak) =>
+            new FormationAthleticsStats(points.Count, points.Mean, points.StdDev, fractions.Mean, fractions.StdDev, exhausted, peakShares.Mean, inPeak);
+
+        /// <summary>The men's average f (0..1, the share of each man's own peak line left) - colour
+        /// the squad bar by it (1 = green). NaN when unknown / empty.</summary>
+        public double MeanPeakShare { get; }
+
+        /// <summary>How many men are in their peak zone (f 1).</summary>
+        public int InPeak { get; }
 
         public int Count { get; }
 
@@ -200,5 +215,215 @@ namespace TraxCombat.Core
                 ? head + cmp + " - exhausted attacks ARE slower"
                 : head + cmp + " - exhausted attacks are NOT clearly slower: the engine may clamp the multiplier (RESEARCH UNVERIFIED #1) - tell Claude";
         }
+    }
+
+    /// <summary>
+    /// Attack timings binned by the fighter's f (DESIGN §2: the share of his peak line left) - the
+    /// in-game test of the attack-speed CURVE (step 5c): peak (f 1), 0.5-1, below 0.5, empty (f 0).
+    /// Each sample carries the multiplier that was applied (asked), so the line can say "x2.40
+    /// slower, asked x2.50". An interval whose two ends fall in different bins is left out
+    /// (<see cref="Mixed"/>). Main thread; allocation only at construction.
+    /// </summary>
+    public sealed class BinnedIntervals
+    {
+        private readonly IntervalStats[] _bins = new IntervalStats[AthleticsMath.PeakBins];
+        private readonly MeanStd[] _asked = new MeanStd[AthleticsMath.PeakBins];
+
+        public BinnedIntervals()
+        {
+            for (int i = 0; i < _bins.Length; i++) _bins[i] = new IntervalStats();
+        }
+
+        /// <summary>Intervals left out because f changed bins between the two ends.</summary>
+        public int Mixed;
+
+        public IntervalStats Bin(int bin) => _bins[bin];
+
+        /// <summary>The average attack-speed multiplier applied to the samples of a bin (NaN when none).</summary>
+        public double AskedMean(int bin) => _asked[bin].Mean;
+
+        public int Count
+        {
+            get
+            {
+                int n = 0;
+                foreach (var b in _bins) n += b.Count;
+                return n;
+            }
+        }
+
+        /// <summary>One interval of <paramref name="seconds"/> in <paramref name="bin"/>, struck at the
+        /// attack-speed multiplier <paramref name="asked"/>. Pauses longer than the cap are left out.</summary>
+        public void Add(int bin, double seconds, float asked)
+        {
+            if (bin < 0 || bin >= _bins.Length || double.IsNaN(seconds) || seconds < 0) return;
+            _bins[bin].Add(seconds);
+            if (seconds <= IntervalStats.CapSeconds) _asked[bin].Add(asked);
+        }
+
+        /// <summary>
+        /// <c>peak (f 1) median 1.35 s (n 250) | f 0.5-1 median 1.50 s x1.11 (asked x1.14, n 80) | … | empty (f 0) median 6.10 s x4.52 (asked x5.00, n 30) - tired attacks ARE slower</c>
+        /// The verdict compares the tiredest bin with enough samples (empty, else below 0.5) with the
+        /// peak bin: at least x1.5 slower when at least x1.5 was asked = ARE slower.
+        /// </summary>
+        public string Describe()
+        {
+            var fresh = _bins[0];
+            var sb = new StringBuilder();
+            for (int b = 0; b < _bins.Length; b++)
+            {
+                var s = _bins[b];
+                if (b > 0 && s.Count == 0 && s.OverCap == 0) continue;
+                if (sb.Length > 0) sb.Append(" | ");
+                sb.Append(AthleticsMath.PeakBinName(b)).Append(' ');
+                if (s.Count == 0)
+                {
+                    sb.Append(s.Describe());
+                    continue;
+                }
+                sb.Append("median ").Append(S2(s.Median)).Append(" s");
+                if (b > 0 && fresh.Count > 0)
+                    sb.Append(" x").Append(S2(s.Median / fresh.Median)).Append(" (asked x").Append(S2(1.0 / _asked[b].Mean)).Append(", n ").Append(s.Count).Append(')');
+                else
+                    sb.Append(" (n ").Append(s.Count).Append(')');
+            }
+            return sb + " - " + Verdict();
+        }
+
+        private string Verdict()
+        {
+            var fresh = _bins[0];
+            int judged = _bins[3].Count >= SpeedVerdict.MinExhaustedSamples ? 3 : _bins[2].Count >= SpeedVerdict.MinExhaustedSamples ? 2 : -1;
+            if (fresh.Count < SpeedVerdict.MinFreshSamples || judged < 0)
+                return "not enough samples to judge (need " + SpeedVerdict.MinFreshSamples + " at the peak and " + SpeedVerdict.MinExhaustedSamples
+                       + " below 0.5 or empty)";
+            double asked = 1.0 / _asked[judged].Mean;
+            double ratio = _bins[judged].Median / fresh.Median;
+            string which = " (" + AthleticsMath.PeakBinName(judged) + " vs the peak)";
+            if (asked < SpeedVerdict.ClearlySlowerRatio)
+                return "the setting asks for less than x" + SpeedVerdict.ClearlySlowerRatio.ToString("0.0", CultureInfo.InvariantCulture) + which + ", no verdict";
+            return ratio >= SpeedVerdict.ClearlySlowerRatio
+                ? "tired attacks ARE slower" + which
+                : "tired attacks are NOT clearly slower" + which + ": the engine may clamp the multiplier (RESEARCH UNVERIFIED #1) - tell Claude";
+        }
+
+        private static string S2(double v) => v.ToString("0.00", CultureInfo.InvariantCulture);
+    }
+
+    /// <summary>
+    /// The in-game test of the run-speed curve (step 5c): samples binned by f, each relative to the
+    /// fighter's OWN top speed while fresh (so light and heavy troops compare): the engine's
+    /// current top speed ÷ fresh top (does the engine's top follow our multiplier?), the multiplier
+    /// asked, and how fast he really moved (speed ÷ fresh top: the 90th percentile and the maximum).
+    /// Main thread; allocation only at construction.
+    /// </summary>
+    public sealed class RunSpeedCheck
+    {
+        private const double RatioBin = 0.05;
+        private const int RatioBins = 30; // 0 .. 1.5
+        public const int MinSamples = 20;
+        public const double FollowsWithin = 0.05;
+
+        private readonly MeanStd[] _engine = new MeanStd[AthleticsMath.PeakBins];
+        private readonly MeanStd[] _asked = new MeanStd[AthleticsMath.PeakBins];
+        private readonly int[][] _actual = new int[AthleticsMath.PeakBins][];
+        private readonly double[] _actualMax = new double[AthleticsMath.PeakBins];
+
+        public RunSpeedCheck()
+        {
+            for (int i = 0; i < _actual.Length; i++) _actual[i] = new int[RatioBins + 1];
+        }
+
+        public int Samples(int bin) => _engine[bin].Count;
+
+        public double EngineMean(int bin) => _engine[bin].Mean;
+
+        public double AskedMean(int bin) => _asked[bin].Mean;
+
+        public double ActualMax(int bin) => _engine[bin].Count > 0 ? _actualMax[bin] : double.NaN;
+
+        public int Total
+        {
+            get
+            {
+                int n = 0;
+                foreach (var e in _engine) n += e.Count;
+                return n;
+            }
+        }
+
+        /// <param name="engineTopRatio">The engine's current top speed ÷ the fighter's fresh top.</param>
+        /// <param name="asked">The multiplier applied to him (1 = none).</param>
+        /// <param name="actualRatio">His speed now ÷ his fresh top.</param>
+        public void Add(int bin, double engineTopRatio, double asked, double actualRatio)
+        {
+            if (bin < 0 || bin >= _engine.Length || double.IsNaN(engineTopRatio) || double.IsNaN(actualRatio)) return;
+            _engine[bin].Add(engineTopRatio);
+            _asked[bin].Add(asked);
+            int k = actualRatio < 0 ? 0 : (int)(actualRatio / RatioBin + 1e-9); // 0.30 / 0.05 is 5.999… in doubles
+            _actual[bin][k > RatioBins ? RatioBins : k]++;
+            if (actualRatio > _actualMax[bin]) _actualMax[bin] = actualRatio;
+        }
+
+        /// <summary>The 90th percentile of speed ÷ fresh top in a bin, as the upper edge of its 0.05
+        /// slice ("90% of the samples moved at or below this"); NaN when empty.</summary>
+        public double ActualP90(int bin)
+        {
+            int n = _engine[bin].Count;
+            if (n == 0) return double.NaN;
+            int target = (int)Math.Ceiling(n * 0.9);
+            int seen = 0;
+            for (int k = 0; k <= RatioBins; k++)
+            {
+                seen += _actual[bin][k];
+                if (seen >= target) return (k + 1) * RatioBin;
+            }
+            return (RatioBins + 1) * RatioBin;
+        }
+
+        /// <summary>
+        /// <c>peak (f 1) engine top x1.00 asked x1.00, moving p90 x0.95 max x1.05 (n 3000) | … - the engine's top speed follows the curve</c>
+        /// (p90 = 90% of the samples moved at or below that share of the fresh top speed).
+        /// <paramref name="curveApplies"/> false (horses with MountMinSpeedMultiplier 1): the verdict
+        /// checks that nothing was slowed instead.
+        /// </summary>
+        public string Describe(bool curveApplies)
+        {
+            if (Total == 0) return "no samples";
+            var sb = new StringBuilder();
+            for (int b = 0; b < _engine.Length; b++)
+            {
+                int n = _engine[b].Count;
+                if (n == 0) continue;
+                if (sb.Length > 0) sb.Append(" | ");
+                sb.Append(AthleticsMath.PeakBinName(b)).Append(" engine top x").Append(S2(_engine[b].Mean)).Append(" asked x").Append(S2(_asked[b].Mean))
+                  .Append(", moving p90 x").Append(S2(ActualP90(b))).Append(" max x").Append(S2(_actualMax[b])).Append(" (n ").Append(n).Append(')');
+            }
+            return sb + " - " + Verdict(curveApplies);
+        }
+
+        private string Verdict(bool curveApplies)
+        {
+            bool judged = false;
+            for (int b = 0; b < _engine.Length; b++)
+            {
+                if (_engine[b].Count < MinSamples) continue;
+                double expected = curveApplies ? _asked[b].Mean : 1.0;
+                if (curveApplies && expected > 0.97) continue; // nothing asked in this bin
+                judged = true;
+                if (Math.Abs(_engine[b].Mean - expected) > FollowsWithin)
+                    return curveApplies
+                        ? "the engine's top speed does NOT follow the asked curve (" + AthleticsMath.PeakBinName(b) + ": x" + S2(_engine[b].Mean) + " vs asked x"
+                          + S2(expected) + ") - compare the moving numbers and tell Claude"
+                        : "slowed although nothing was asked (" + AthleticsMath.PeakBinName(b) + ": x" + S2(_engine[b].Mean) + ") - tell Claude";
+            }
+            if (!judged)
+                return curveApplies
+                    ? "not enough tired samples to judge (need " + MinSamples + " in a bin below the peak)"
+                    : "not enough samples to judge (need " + MinSamples + " in a bin)";
+            return curveApplies ? "the engine's top speed follows the curve" : "unaffected, as asked";
+        }
+
+        private static string S2(double v) => double.IsNaN(v) ? "n/a" : v.ToString("0.00", CultureInfo.InvariantCulture);
     }
 }

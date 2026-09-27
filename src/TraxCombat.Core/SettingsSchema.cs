@@ -27,7 +27,7 @@ namespace TraxCombat.Core
         public static readonly ParamGroup MasterGroup = new ParamGroup(0, "Master switch");
         public static readonly ParamGroup DamageGroup = new ParamGroup(1, "Damage randomness");
         public static readonly ParamGroup AthleticsGroup = new ParamGroup(2, "Athletics");
-        public static readonly ParamGroup ExhaustionGroup = new ParamGroup(3, "Exhaustion");
+        public static readonly ParamGroup TiredGroup = new ParamGroup(3, "Tired fighters");
         public static readonly ParamGroup RegenGroup = new ParamGroup(4, "Regeneration");
         public static readonly ParamGroup PlayerBarsGroup = new ParamGroup(5, "Bars - you and your target");
         public static readonly ParamGroup SquadBarsGroup = new ParamGroup(6, "Bars - your squads");
@@ -71,15 +71,27 @@ namespace TraxCombat.Core
 
         public static readonly ParamDef AthleticsEnabled = Bool("AthleticsEnabled", AthleticsGroup,
             "Athletics",
-            "On: every fighter has an Athletics bar - his stamina, named after the Athletics skill on the character screen (which will set its size) - that his attacks drain and rest refills; an empty bar means slow attacks. Off: no Athletics bar at all.");
+            "On: every fighter has an Athletics bar - his stamina, as big as his Athletics skill on the character screen - that his attacks drain and rest refills. Near the top of the bar he fights at full strength; below it his damage, swing speed and run speed fall, down to slow attacks when it is empty. Off: no Athletics bar at all.");
 
-        public static readonly ParamDef MaxAthletics = Int("MaxAthletics", 10, 1000, AthleticsGroup,
-            "Bar size (points)",
-            "How many Athletics points a fresh fighter's bar holds. Changing it mid-battle keeps everyone's share: a fighter at 60% stays at 60%.");
+        public static readonly ParamDef AthleticsPoolFloor = Int("AthleticsPoolFloor", 0, 1000, AthleticsGroup,
+            "Smallest bar (points)",
+            "No fighter's Athletics bar is smaller than this, whatever his Athletics skill - so a recruit with skill 20 still gets 50 points (5 blows). 0 = no floor: the bar is exactly the skill (never below 1 point). Changing it mid-battle keeps everyone's share: a fighter at 60% stays at 60%.");
+
+        public static readonly ParamDef AthleticsPoolPerSkill = Float("AthleticsPoolPerSkill", 0.1, 5, AthleticsGroup,
+            "Bar points per skill point",
+            "Athletics points per point of Athletics skill. 1.0: the bar tops at the skill - skill 180, a bar of 180. Changing it mid-battle keeps everyone's share.");
+
+        public static readonly ParamDef AthleticsPeakPercent = Int("AthleticsPeakPercent", 10, 100, AthleticsGroup,
+            "Full strength above (% of the bar)",
+            "At or above this share of his own bar a fighter is at full strength: full damage upside, full swing speed, full run speed. Below it each of those falls in a straight line to its lowest value at an empty bar. 100 = only a full bar is full strength.");
+
+        public static readonly ParamDef HealthCapsAthletics = Bool("HealthCapsAthletics", AthleticsGroup,
+            "Wounds cap the bar",
+            "On: a wounded fighter can only use the share of his bar that matches the health he has left - at 75% health, 75% of the bar; the rest is cut at once and never refills while the wound lasts. The full-strength line stays where it was, so a badly wounded fighter never gets back to full strength.");
 
         public static readonly ParamDef CostPerBlow = Float("CostPerBlow", 0, 100, AthleticsGroup,
             "Cost per blow",
-            "Athletics points one attack costs before the hero and leader discounts. With the defaults a common soldier gets 10 blows out of a full bar. 0 = attacks are free.");
+            "Athletics points one attack costs before the hero and leader discounts, whatever the size of the bar - so a bigger Athletics skill means more blows. With the defaults a recruit (a 50 bar) empties after 5 blows, a legionary (130) after 13. 0 = attacks are free.");
 
         public static readonly ParamDef CostOnMiss = Bool("CostOnMiss", AthleticsGroup,
             "Misses cost too",
@@ -93,15 +105,23 @@ namespace TraxCombat.Core
             "Party leader multiplier",
             "The hero who leads the fighter's own party (you for your party, a lord for his) pays this share again, on top of the hero discount: 0.75 × 0.75 × 10 = about 5.6 per blow.");
 
-        // ------------------------------------------------------------------ exhaustion
+        // ------------------------------------------------------------------ tired fighters (below the peak)
 
-        public static readonly ParamDef ExhaustedAttackSpeedPercent = Int("ExhaustedAttackSpeedPercent", 5, 100, ExhaustionGroup,
-            "Exhausted attack speed (%)",
-            "Attack speed of a fighter whose Athletics is empty, in percent of normal: swings, thrusts, bow draw, crossbow reload, throws. 100 = no slowdown.");
+        public static readonly ParamDef ExhaustedAttackSpeedPercent = Int("ExhaustedAttackSpeedPercent", 5, 100, TiredGroup,
+            "Attack speed when empty (%)",
+            "Attack speed of a fighter whose Athletics is empty, in percent of normal: swings, thrusts, bow draw, crossbow reload, throws. Between the full-strength line and empty it falls in a straight line. 100 = attacks never slow down.");
 
-        public static readonly ParamDef ExhaustedRecoverPercent = Int("ExhaustedRecoverPercent", 0, 90, ExhaustionGroup,
-            "Recover above (%)",
-            "Once exhausted, normal speed returns only when Athletics climbs above this percent of the pool. 0 = the moment it is above empty.");
+        public static readonly ParamDef MinMoveSpeedMultiplier = Float("MinMoveSpeedMultiplier", 0.1, 1, TiredGroup,
+            "Run speed when empty (x)",
+            "Top speed on foot of a fighter whose Athletics is empty, times his normal top speed. Between the full-strength line and empty it falls in a straight line, so fresh men overtake tired ones. 1.0 = tired men run as fast as fresh ones.");
+
+        public static readonly ParamDef MountMinSpeedMultiplier = Float("MountMinSpeedMultiplier", 0.1, 1, TiredGroup,
+            "Horse speed when the rider is empty (x)",
+            "Top speed of a horse whose rider's Athletics is empty, times its normal top speed, on the same straight line. 1.0 = horses never slow down, however tired the rider.");
+
+        public static readonly ParamDef DamageBonusFollowsAthletics = Bool("DamageBonusFollowsAthletics", TiredGroup,
+            "Damage upside follows Athletics",
+            "On: the lucky side of the damage roll shrinks as the attacker tires - at full strength a hit can land up to +50%, halfway down to empty up to +25%, empty never above normal. The unlucky side never changes. Off: every attacker gets the full roll.");
 
         // ------------------------------------------------------------------ regeneration
 
@@ -114,16 +134,16 @@ namespace TraxCombat.Core
             "How many seconds one blow counts as, for the rest delay above.");
 
         public static readonly ParamDef FullRegenSecondsStanding = Float("FullRegenSecondsStanding", 1, 600, RegenGroup,
-            "Refill time standing (s)",
-            "Seconds to refill from empty to full while standing still.");
+            "Refill time at rest (s)",
+            "Seconds to refill from empty to full while standing still or walking.");
 
-        public static readonly ParamDef FullRegenSecondsMoving = Float("FullRegenSecondsMoving", 1, 1200, RegenGroup,
-            "Refill time moving (s)",
-            "Seconds to refill from empty to full while walking, running or riding.");
+        public static readonly ParamDef RegenMultiplierAtFullRun = Float("RegenMultiplierAtFullRun", 0, 1, RegenGroup,
+            "Refill rate at a full run (x)",
+            "How fast Athletics refills while running flat out (or riding at the horse's top speed), times the rate at rest. Between a walk and a full run it falls in a straight line. 1.0 = running refills as fast as resting; 0 = no refill at a full run.");
 
-        public static readonly ParamDef MovingSpeedThreshold = Float("MovingSpeedThreshold", 0, 5, RegenGroup,
-            "Moving above (m/s)",
-            "Speed in metres per second above which a fighter (or the horse he rides) counts as moving, for the refill time.");
+        public static readonly ParamDef WalkEffortFraction = Float("WalkEffortFraction", 0.05, 1, RegenGroup,
+            "Walking pace (share of top speed)",
+            "Up to this share of his current top speed a fighter (or the horse he rides) counts as walking and refills at the full rate. The game walks people at 1.8 m/s and their top speed is about 4 to 5 m/s, so 0.4 covers a walk. 1.0 = any pace refills at the full rate.");
 
         // ------------------------------------------------------------------ bars: you and your target
 
@@ -191,11 +211,11 @@ namespace TraxCombat.Core
             ModEnabled,
             DamageRandomEnabled, DamageRandomPercent, DamageRandomMelee, DamageRandomRanged,
             DamageRandomOnMounts, DamageRandomOnShields,
-            AthleticsEnabled, MaxAthletics, CostPerBlow, CostOnMiss, HeroCostMultiplier,
-            PartyLeaderCostMultiplier,
-            ExhaustedAttackSpeedPercent, ExhaustedRecoverPercent,
-            RegenDelayBlowTimes, BlowTimeSeconds, FullRegenSecondsStanding, FullRegenSecondsMoving,
-            MovingSpeedThreshold,
+            AthleticsEnabled, AthleticsPoolFloor, AthleticsPoolPerSkill, AthleticsPeakPercent, HealthCapsAthletics,
+            CostPerBlow, CostOnMiss, HeroCostMultiplier, PartyLeaderCostMultiplier,
+            ExhaustedAttackSpeedPercent, MinMoveSpeedMultiplier, MountMinSpeedMultiplier, DamageBonusFollowsAthletics,
+            RegenDelayBlowTimes, BlowTimeSeconds, FullRegenSecondsStanding, RegenMultiplierAtFullRun,
+            WalkEffortFraction,
             ShowPlayerBar, ShowTargetBar, TargetBarMaxDistance, TargetBarLingerSeconds,
             ShowFormationBars, FormationBarsAlways, ShowFormationSpread, FormationSpreadStdDevs,
             FormationBarHeight, ShowInOrderMenu,
@@ -205,7 +225,7 @@ namespace TraxCombat.Core
         /// <summary>The groups in order.</summary>
         public static readonly IReadOnlyList<ParamGroup> Groups = new[]
         {
-            MasterGroup, DamageGroup, AthleticsGroup, ExhaustionGroup, RegenGroup, PlayerBarsGroup, SquadBarsGroup, AdvancedGroup,
+            MasterGroup, DamageGroup, AthleticsGroup, TiredGroup, RegenGroup, PlayerBarsGroup, SquadBarsGroup, AdvancedGroup,
         };
 
         private static readonly Dictionary<string, ParamDef> ByKey = BuildIndex();

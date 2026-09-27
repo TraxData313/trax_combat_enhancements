@@ -34,8 +34,8 @@ public class SettingsTests
     public void Ints_round_bools_normalise_floats_keep_four_decimals()
     {
         var s = new TraxSettings();
-        s.Set(SettingsSchema.MaxAthletics, 120.6, "test");
-        Assert.Equal(121, s.MaxAthletics);
+        s.Set(SettingsSchema.AthleticsPoolFloor, 120.6, "test");
+        Assert.Equal(121, s.AthleticsPoolFloor);
 
         s.Set(SettingsSchema.ShowPlayerBar, 0, "test");
         Assert.False(s.ShowPlayerBar);
@@ -158,7 +158,7 @@ public class SettingsTests
     public void Describe_marks_values_that_differ_from_the_default()
     {
         var s = new TraxSettings();
-        Assert.Equal("MaxAthletics = 100", s.Describe(SettingsSchema.MaxAthletics));
+        Assert.Equal("AthleticsPoolFloor = 50", s.Describe(SettingsSchema.AthleticsPoolFloor));
         s.Set(SettingsSchema.DamageRandomPercent, 30, "test");
         Assert.Equal("DamageRandomPercent = 30 (default 50)", s.Describe(SettingsSchema.DamageRandomPercent));
     }

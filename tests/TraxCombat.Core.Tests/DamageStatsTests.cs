@@ -142,4 +142,47 @@ public class DamageStatsTests
         Assert.InRange(max, 1.49f, 1.5f);
         Assert.InRange(mean, 0.99, 1.01);
     }
+
+    [Fact]
+    public void The_upside_line_bins_rolls_by_the_attackers_f_and_counts_rolls_above_their_ceiling()
+    {
+        var s = new DamageStats();
+        var rng = new SeededRandom(3);
+        for (int i = 0; i < 200; i++) s.AddRoll(DamageCategory.Melee, DamageRoll.Roll(40f, 50, rng, 1.0), attackerPeakShare: 1.0);
+        for (int i = 0; i < 100; i++) s.AddRoll(DamageCategory.Melee, DamageRoll.Roll(40f, 50, rng, 0.6), attackerPeakShare: 0.6);
+        for (int i = 0; i < 100; i++) s.AddRoll(DamageCategory.Melee, DamageRoll.Roll(40f, 50, rng, 0.2), attackerPeakShare: 0.2);
+        for (int i = 0; i < 100; i++) s.AddRoll(DamageCategory.Melee, DamageRoll.Roll(40f, 50, rng, 0.0), attackerPeakShare: 0.0);
+        for (int i = 0; i < 50; i++) s.AddRoll(DamageCategory.Ranged, DamageRoll.Roll(40f, 50, rng));   // untracked attacker
+
+        Assert.Equal(200, s.UpsideCount(0, out double avgPeak, out float maxPeak, out double allowedPeak));
+        Assert.Equal(1.0, allowedPeak, 9);
+        Assert.InRange(maxPeak, 1.45f, 1.5f);
+        Assert.InRange(avgPeak, 0.93, 1.07);
+        Assert.Equal(100, s.UpsideCount(3, out double avgEmpty, out float maxEmpty, out double allowedEmpty));
+        Assert.Equal(0.0, allowedEmpty);
+        Assert.True(maxEmpty <= 1.0f);
+        Assert.InRange(avgEmpty, 0.7, 0.8);                           // uniform over [0.5, 1): about 0.75
+        Assert.Equal(100, s.UpsideCount(1, out _, out float max06, out double allowed06));
+        Assert.Equal(0.6, allowed06, 9);
+        Assert.True(max06 <= 1.3f + 1e-5f);
+        Assert.Equal(50, s.UpsideCount(4, out _, out _, out double allowedNoPool));
+        Assert.Equal(1.0, allowedNoPool);
+        Assert.Equal(0, s.AboveCeiling);
+
+        var line = s.SummaryLines().Single(l => l.StartsWith("damage upside by the attacker's Athletics", StringComparison.Ordinal));
+        Assert.Contains("peak (f 1) 200 hits avg x", line);
+        Assert.Contains("| f 0.5-1 100 hits", line);
+        Assert.Contains(" upside 60%", line);
+        Assert.Contains("| f below 0.5 100 hits", line);
+        Assert.Contains("| empty (f 0) 100 hits", line);
+        Assert.Contains(" upside 0%", line);
+        Assert.Contains("| no pool (attacker not tracked) 50 hits", line);
+        Assert.EndsWith("; rolls above their allowed top: 0", line);
+
+        s.AddRoll(DamageCategory.Melee, new RollOutcome(40f, 60f, 1.5f, 0.99, upside: 0.0, spread: 0.5), attackerPeakShare: 0.0); // impossible: flagged
+        Assert.Equal(1, s.AboveCeiling);
+        s.Reset();
+        Assert.Equal(0, s.UpsideCount(0, out _, out _, out _));
+        Assert.Equal(0, s.AboveCeiling);
+    }
 }

@@ -251,18 +251,23 @@ says (§2c).
 | `DamageRandomOnMounts` | true | Randomize hits that land on horses too. |
 | `DamageRandomOnShields` | false | Randomize the damage a shield takes when it blocks. |
 | `AthleticsEnabled` | true | Switch for Athletics (the stamina bar). |
-| `MaxAthletics` | 100 | Size of the Athletics bar, in points. |
-| `CostPerBlow` | 10 | Athletics points one blow costs before multipliers. |
+| `AthleticsPoolFloor` | 50 | Smallest possible Athletics pool (for anyone with a low Athletics skill; 0 = none, never below 1 point). |
+| `AthleticsPoolPerSkill` | 1.0 | Pool per point of Athletics skill (1.0 → the bar tops at the skill). |
+| `AthleticsPeakPercent` | 75 | At or above this % of their own pool a fighter is at full strength (green); below it they weaken in a straight line to 0. |
+| `HealthCapsAthletics` | true | Health left caps the usable pool. |
+| `CostPerBlow` | 10 | Athletics points one blow costs before multipliers (points, whatever the pool). |
 | `CostOnMiss` | true | true: every attack costs, landed or not. false: only blows that land. |
 | `HeroCostMultiplier` | 0.75 | Cost multiplier for heroes. |
 | `PartyLeaderCostMultiplier` | 0.75 | Extra multiplier for a party's leading hero, on top of the hero one. |
-| `ExhaustedAttackSpeedPercent` | 20 | Attack speed at 0 Athletics, percent of normal. |
-| `ExhaustedRecoverPercent` | 0 | Once exhausted, speed returns only above this % of the pool. 0 = as soon as it is above 0. |
+| `ExhaustedAttackSpeedPercent` | 20 | Attack speed at 0 Athletics, percent of normal (a straight line up to 100% at the peak line). |
+| `MinMoveSpeedMultiplier` | 0.3 | Top speed on foot at 0 Athletics. |
+| `MountMinSpeedMultiplier` | 1.0 | Horse top speed at the rider's 0 Athletics (1.0 = horses never slow). |
+| `DamageBonusFollowsAthletics` | true | The damage upside shrinks with the attacker's Athletics below the peak. |
 | `RegenDelayBlowTimes` | 2 | Idle blows before regeneration starts. |
 | `BlowTimeSeconds` | 1.5 | How long "one blow" is, for the delay above. |
-| `FullRegenSecondsStanding` | 60 | Seconds from empty to full while standing still. |
-| `FullRegenSecondsMoving` | 120 | Seconds from empty to full while moving or riding. |
-| `MovingSpeedThreshold` | 0.5 | Speed (m/s) above which a fighter counts as moving. |
+| `FullRegenSecondsStanding` | 60 | Seconds from empty to full while standing still or walking. |
+| `RegenMultiplierAtFullRun` | 0.5 | Regen rate at top speed, relative to standing or walking. |
+| `WalkEffortFraction` | 0.4 | Up to this share of top speed counts as walking (full regen). |
 | `ShowPlayerBar` | true | Player Athletics bar. |
 | `ShowTargetBar` | true | Bar for the fighter you look at. |
 | `TargetBarMaxDistance` | 30 | Metres — how far away a looked-at fighter still gets a bar. |
@@ -279,22 +284,13 @@ says (§2c).
 
 New parameters discovered while building go into this table in the same commit.
 
-## Planned parameters (§2b, §3 additions — not in the schema yet)
+## Planned parameters (§2 step-back, §3 additions — not in the schema yet)
 
 The step that builds each one moves its row into the Parameters table above (the schema
-test reads that table only) and removes the retired rows in the same commit.
+test reads that table only) and removes any retired rows in the same commit.
 
 | Key | Default | Step | What it does |
 |---|---|---|---|
-| `AthleticsPoolFloor` | 50 | 5c | Smallest possible Athletics pool (for anyone with a low Athletics skill; 0 = none). Replaces `MaxAthletics`. |
-| `AthleticsPoolPerSkill` | 1.0 | 5c | Pool per point of Athletics skill (1.0 → the bar tops at the skill). |
-| `AthleticsPeakPercent` | 75 | 5c | At or above this % of their own pool a fighter is at full strength (green); below it they weaken in a straight line to 0. |
-| `HealthCapsAthletics` | true | 5c | Health left caps the usable pool. |
-| `DamageBonusFollowsAthletics` | true | 5c | The damage upside shrinks with the attacker's Athletics below the peak. |
-| `MinMoveSpeedMultiplier` | 0.3 | 5c | Top speed on foot at 0 Athletics. |
-| `MountMinSpeedMultiplier` | 1.0 | 5c | Horse top speed at the rider's 0 Athletics (1.0 = horses never slow). |
-| `RegenMultiplierAtFullRun` | 0.5 | 5c | Regen rate at top speed, relative to standing or walking. |
-| `WalkEffortFraction` | 0.4 | 5c | Up to this share of top speed counts as walking (full regen). |
 | `StepBackEnabled` | true | 5d | Tired AI fighters on foot step back after melee swings. |
 | `StepBackMaxChancePercent` | 100 | 5d | Chance to step back at 0 Athletics (0 at the peak, straight line between). |
 | `StepBackDistance` | 2 | 5d | Metres a fighter steps back. |
@@ -304,8 +300,9 @@ test reads that table only) and removes the retired rows in the same commit.
 | `BarRedBelowPercent` | 25 | 6 | Red at or below this %. |
 | `ShowFormationHealth` | true | 8 | Squad bars and the orders-menu strip also show average health. |
 
-Retire in 5c: `MaxAthletics`, `FullRegenSecondsMoving`, `MovingSpeedThreshold`,
-`ExhaustedRecoverPercent`.
+Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics skill),
+`FullRegenSecondsMoving` and `MovingSpeedThreshold` (→ regen by effort),
+`ExhaustedRecoverPercent` (→ the gradual curve has no recovery line).
 
 ## Interpretations (Anton can overturn any of these)
 

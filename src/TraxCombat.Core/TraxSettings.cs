@@ -165,7 +165,7 @@ namespace TraxCombat.Core
             return map;
         }
 
-        /// <summary><c>DamageRandomPercent = 30 (default 50)</c> or <c>MaxAthletics = 100</c> -
+        /// <summary><c>DamageRandomPercent = 30 (default 50)</c> or <c>AthleticsPoolFloor = 50</c> -
         /// the per-setting line of the load dump.</summary>
         public string Describe(ParamDef p)
         {
@@ -206,20 +206,25 @@ namespace TraxCombat.Core
         public bool DamageRandomOnShields => GetBool(SettingsSchema.DamageRandomOnShields);
 
         public bool AthleticsEnabled => GetBool(SettingsSchema.AthleticsEnabled);
-        public int MaxAthletics => GetInt(SettingsSchema.MaxAthletics);
+        public int AthleticsPoolFloor => GetInt(SettingsSchema.AthleticsPoolFloor);
+        public float AthleticsPoolPerSkill => GetFloat(SettingsSchema.AthleticsPoolPerSkill);
+        public int AthleticsPeakPercent => GetInt(SettingsSchema.AthleticsPeakPercent);
+        public bool HealthCapsAthletics => GetBool(SettingsSchema.HealthCapsAthletics);
         public float CostPerBlow => GetFloat(SettingsSchema.CostPerBlow);
         public bool CostOnMiss => GetBool(SettingsSchema.CostOnMiss);
         public float HeroCostMultiplier => GetFloat(SettingsSchema.HeroCostMultiplier);
         public float PartyLeaderCostMultiplier => GetFloat(SettingsSchema.PartyLeaderCostMultiplier);
 
         public int ExhaustedAttackSpeedPercent => GetInt(SettingsSchema.ExhaustedAttackSpeedPercent);
-        public int ExhaustedRecoverPercent => GetInt(SettingsSchema.ExhaustedRecoverPercent);
+        public float MinMoveSpeedMultiplier => GetFloat(SettingsSchema.MinMoveSpeedMultiplier);
+        public float MountMinSpeedMultiplier => GetFloat(SettingsSchema.MountMinSpeedMultiplier);
+        public bool DamageBonusFollowsAthletics => GetBool(SettingsSchema.DamageBonusFollowsAthletics);
 
         public float RegenDelayBlowTimes => GetFloat(SettingsSchema.RegenDelayBlowTimes);
         public float BlowTimeSeconds => GetFloat(SettingsSchema.BlowTimeSeconds);
         public float FullRegenSecondsStanding => GetFloat(SettingsSchema.FullRegenSecondsStanding);
-        public float FullRegenSecondsMoving => GetFloat(SettingsSchema.FullRegenSecondsMoving);
-        public float MovingSpeedThreshold => GetFloat(SettingsSchema.MovingSpeedThreshold);
+        public float RegenMultiplierAtFullRun => GetFloat(SettingsSchema.RegenMultiplierAtFullRun);
+        public float WalkEffortFraction => GetFloat(SettingsSchema.WalkEffortFraction);
 
         public bool ShowPlayerBar => GetBool(SettingsSchema.ShowPlayerBar);
         public bool ShowTargetBar => GetBool(SettingsSchema.ShowTargetBar);

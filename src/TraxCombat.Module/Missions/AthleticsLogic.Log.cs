@@ -11,15 +11,18 @@ namespace TraxCombat.Missions
 {
     /// <summary>
     /// The Athletics log lines (CLAUDE.md, logging - one playtest must prove every behaviour):
-    ///   always   [athletics] mission start (rules), leader rule, party leaders at spawn (limited),
-    ///            first tick (fighters tracked), YOUR exhaustion / recovery / back-to-full (limited),
-    ///            AthleticsEnabled switched mid-mission; [speed] stat model on top, the FIRST
-    ///            exhaustion's properties before → after → at recovery → restored (once per
-    ///            mission), ExhaustedAttackSpeedPercent changed mid-mission; the [summary] block.
-    ///   verbose  per blow (bucket athletics-blow), everyone's exhaustion / recovery
-    ///            (athletics-exhaust), back to full (athletics-regen), heroes at spawn
-    ///            (athletics-hero), each speed recompute (speed-update) - each kind rate-limited in
-    ///            its own bucket so one cannot starve the others.
+    ///   always   [athletics] mission start (rules), leader rule, party leaders at spawn with their
+    ///            pools (limited), first tick (fighters tracked), YOUR pool, dropping below / back to
+    ///            full strength, exhaustion, leaving 0, back to full, wounds (limited), Athletics or
+    ///            the mod switched mid-mission, pool settings changed; [speed] stat model on top, the
+    ///            FIRST exhaustion's properties before → after → leaving 0 → back at full strength,
+    ///            the first horse slowed (once per mission each), speed settings changed; the
+    ///            [summary] block.
+    ///   verbose  per-fighter pool at spawn (athletics-pool), per blow with f (athletics-blow),
+    ///            everyone's exhaustion / leaving 0 (athletics-exhaust), back to full
+    ///            (athletics-regen), heroes at spawn (athletics-hero), health-cap cuts
+    ///            (athletics-health), each speed recompute - fighters and horses (speed-update) -
+    ///            each kind rate-limited in its own bucket so one cannot starve the others.
     /// Strings are built only when the line will be written (VerboseOn checked first).
     /// </summary>
     public sealed partial class AthleticsLogic
@@ -38,9 +41,27 @@ namespace TraxCombat.Missions
                     if (st.IsLeader) sb.Append(" party leader");
                     sb.Append(')');
                 }
-                sb.Append(", ").Append(F1(o.Before)).Append(" → ").Append(F1(o.After)).Append(" of ").Append(F0(o.Pool));
+                sb.Append(", ").Append(F1(o.Before)).Append(" → ").Append(F1(o.After)).Append(" of ").Append(F0(o.Pool))
+                  .Append(" (f ").Append(F2(o.PeakShareBefore)).Append(" → ").Append(F2(o.PeakShareAfter)).Append(')');
+                if (o.LeftPeak) sb.Append(" - below full strength");
                 if (o.EnteredExhaustion) sb.Append(" - EXHAUSTED");
                 TraxLog.Verbose("athletics", sb.ToString(), "athletics-blow");
+            }
+            catch (Exception e)
+            {
+                Failed("athletics.log", e);
+            }
+        }
+
+        /// <summary>Verbose: a common soldier's pool at spawn (heroes and leaders have their own lines).</summary>
+        private void LogPoolAtSpawn(TrackedAgent st)
+        {
+            try
+            {
+                var r = AthleticsRules.From(TraxSettings.Shared);
+                TraxLog.Verbose("athletics", "pool at spawn: " + Name(st) + " - Athletics skill " + st.AthleticsSkill + (st.SkillKnown ? "" : " (not readable)")
+                    + " → pool " + F0(AthleticsMath.PoolPoints(in r, st)) + (AthleticsMath.IsAtFloor(in r, st.AthleticsSkill) ? " (the floor)" : "")
+                    + "; " + BlowsAtFullStrength(in r, st) + " blows at full strength, " + BlowsToEmpty(in r, st) + " to empty", "athletics-pool");
             }
             catch (Exception e)
             {
@@ -73,11 +94,12 @@ namespace TraxCombat.Missions
                 _stats.LowestHeroPool = AthleticsMath.PoolPoints(in r, lowest);
             }
 
-            TrackPlayer();
+            TrackPlayer(in r);
             if (_player != null)
             {
                 double pool = AthleticsMath.PoolPoints(in r, _player);
                 _stats.PlayerSeen = true;
+                _stats.PlayerSkill = _player.AthleticsSkill;
                 _stats.PlayerBlows = _player.Blows;
                 _stats.PlayerExhaustions = _player.ExhaustionsEntered;
                 _stats.PlayerLowestPoints = _player.LowestFraction * pool;
@@ -99,7 +121,7 @@ namespace TraxCombat.Missions
             {
                 var now = SpeedPenalty.Snapshot.Take(_firstExhausted.Agent);
                 TraxLog.Info("speed", "first exhausted fighter (" + Name(_firstExhausted) + ") at mission end: "
-                    + (_firstExhausted.Exhausted ? "still exhausted" : "recovered") + ", properties " + now + " (" + now.RatioTo(_firstBefore) + " of the fresh values)");
+                    + (_firstExhausted.Exhausted ? "still exhausted" : "recovered") + ", properties " + now + " (" + now.RatioTo(FirstFresh) + " of his fresh values)");
             }
             else if (_firstExhausted == null)
             {
@@ -186,5 +208,9 @@ namespace TraxCombat.Missions
         private static string F1(double v) => v.ToString("0.0", CultureInfo.InvariantCulture);
 
         private static string F2(double v) => v.ToString("0.00", CultureInfo.InvariantCulture);
+
+        private static string F3(double v) => v.ToString("0.000", CultureInfo.InvariantCulture);
+
+        private static string P0(double share) => (share * 100).ToString("0", CultureInfo.InvariantCulture) + "%";
     }
 }

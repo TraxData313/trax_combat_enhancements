@@ -16,9 +16,9 @@ namespace TraxCombat.Models
     ///
     /// EVERY abstract AND virtual member forwards to BaseModel - a virtual left un-overridden
     /// would run the abstract class's default body instead of the sandbox logic
-    /// (GetEffectiveMaxHealth, GetEffectiveSkill, …; RESEARCH §C). The one change (step 5):
-    /// <see cref="UpdateAgentStats"/> scales the attack-speed properties by the agent's Athletics
-    /// multiplier (<see cref="SpeedPenalty"/>).
+    /// (GetEffectiveMaxHealth, GetEffectiveSkill, …; RESEARCH §C). The one change (steps 5, 5c):
+    /// <see cref="UpdateAgentStats"/> scales the attack-speed and run-speed properties by the
+    /// fighter's Athletics multipliers, and a slowed rider's horse's speed (<see cref="SpeedPenalty"/>).
     ///
     /// THE TOURNAMENT FIX (RESEARCH §C): TournamentBehavior raises the AI level each round with
     /// <c>MissionGameModels.Current.AgentStatCalculateModel.SetAILevelMultiplier(x)</c> - a
@@ -102,12 +102,13 @@ namespace TraxCombat.Models
 
         /// <summary>
         /// Every recompute of an agent's properties passes here (spawn, weapon switch, mount, and the
-        /// ones <see cref="AthleticsLogic"/> asks for on an exhaustion change). The base model first
-        /// (outside our try - its exceptions are the game's own), then the attack-speed penalty: the
-        /// agent's CURRENT multiplier from the Athletics logic (a float per fighter, 1 = none; the
-        /// cliff of DESIGN §2 today, a curve after step 5c), read at this moment - so any recompute
-        /// the game does on its own keeps the penalty. Our exception → the base values stand
-        /// (no penalty), counted, the first per mission logged.
+        /// ones <see cref="AthleticsLogic"/> asks for when a fighter's f moved a step). The base model
+        /// first (outside our try - its exceptions are the game's own), then the Athletics penalties
+        /// (DESIGN §2's curves, step 5c): a tracked fighter's CURRENT attack-speed and run-speed
+        /// multipliers, or - for a horse whose rider Athletics slows (MountMinSpeedMultiplier below
+        /// 1) - that rider's horse multiplier; read at this moment, so any recompute the game does on
+        /// its own keeps them. Our exception → the base values stand (no penalty), counted, the first
+        /// per mission logged.
         /// </summary>
         public override void UpdateAgentStats(Agent agent, AgentDrivenProperties agentDrivenProperties)
         {
@@ -115,11 +116,12 @@ namespace TraxCombat.Models
             BaseModel.UpdateAgentStats(agent, agentDrivenProperties);
             try
             {
-                float factor = AthleticsLogic.SpeedMultiplierFor(agent);
-                if (factor != 1f)
+                if (AthleticsLogic.SpeedFactorsFor(agent, out float attack, out float run, out float mount))
                 {
-                    SpeedPenalty.Scale(agentDrivenProperties, factor);
-                    AthleticsLogic.NoteDecoratorScaled();
+                    if (attack != 1f) SpeedPenalty.Scale(agentDrivenProperties, attack);
+                    if (run != 1f) SpeedPenalty.ScaleRun(agentDrivenProperties, run);
+                    if (mount != 1f) SpeedPenalty.ScaleMount(agentDrivenProperties, mount);
+                    AthleticsLogic.NoteDecoratorScaled(attack != 1f, run != 1f, mount != 1f);
                 }
             }
             catch (Exception e)

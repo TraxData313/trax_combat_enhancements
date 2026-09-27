@@ -260,4 +260,55 @@ public class DamageRollTests
         Assert.Equal(20, rules.Percent);
         Assert.InRange(DamageRoll.Roll(100f, rules.Percent, new SeededRandom(1)).After, 80f, 120f);
     }
+
+    // ------------------------------------------------------------------ the upside follows the attacker's Athletics (step 5c)
+
+    [Theory]
+    [InlineData(0.0, 1.0, 0.5)]        // lowest draw: 1 - p, whatever the attacker's f
+    [InlineData(0.0, 0.0, 0.5)]
+    [InlineData(0.999999, 1.0, 1.5)]   // fresh: up to 1 + p
+    [InlineData(0.999999, 0.5, 1.25)]  // halfway down: up to 1 + p/2 ("+25%")
+    [InlineData(0.999999, 0.0, 1.0)]   // empty: never above normal
+    [InlineData(0.5, 0.0, 0.75)]       // empty: uniform over [0.5, 1)
+    [InlineData(0.5, 2.0, 1.0)]        // a share above 1 counts as 1
+    [InlineData(0.999999, -1.0, 1.0)]  // below 0 counts as 0
+    public void The_upside_shrinks_with_the_attackers_f_and_the_downside_never_changes(double u, double upside, double expected)
+    {
+        Assert.Equal(expected, DamageRoll.Factor(u, 0.5, upside), 4);
+    }
+
+    [Fact]
+    public void Upside_is_the_attackers_f_only_while_the_setting_is_on_and_he_has_a_pool()
+    {
+        var on = new DamageRules(true, 50, true, true, true, false, modEnabled: true, upsideFollowsAthletics: true);
+        var off = new DamageRules(true, 50, true, true, true, false, modEnabled: true, upsideFollowsAthletics: false);
+        Assert.Equal(0.4, DamageRoll.Upside(on, 0.4), 9);
+        Assert.Equal(1.0, DamageRoll.Upside(on, 1.0));
+        Assert.Equal(0.0, DamageRoll.Upside(on, 0.0));
+        Assert.Equal(1.0, DamageRoll.Upside(on, double.NaN));   // no tracked attacker: the full upside
+        Assert.Equal(1.0, DamageRoll.Upside(off, 0.0));         // setting off: the full upside
+        Assert.True(DamageRules.From(new TraxSettings()).UpsideFollowsAthletics); // DESIGN: on
+    }
+
+    [Fact]
+    public void A_roll_reports_its_ceiling_and_never_goes_above_it()
+    {
+        var rng = new SeededRandom(11);
+        foreach (double upside in new[] { 1.0, 0.75, 0.5, 0.25, 0.0 })
+        {
+            float max = 0, min = float.MaxValue;
+            for (int i = 0; i < 20_000; i++)
+            {
+                var r = DamageRoll.Roll(100f, 50, rng, upside);
+                Assert.Equal(upside, r.Upside, 9);
+                Assert.Equal(1 + 0.5 * upside, r.Ceiling, 9);
+                Assert.True(r.Factor <= r.Ceiling + 1e-6, "factor " + r.Factor + " above " + r.Ceiling);
+                if (r.Factor > max) max = r.Factor;
+                if (r.Factor < min) min = r.Factor;
+            }
+            Assert.InRange(min, 0.5f, 0.51f);                          // the downside never changes
+            Assert.InRange(max, (float)(1 + 0.5 * upside) - 0.01f, (float)(1 + 0.5 * upside));
+        }
+        Assert.True(double.IsNaN(new RollOutcome(10f, 10f, 1f, 0.5).Ceiling)); // p unknown
+    }
 }

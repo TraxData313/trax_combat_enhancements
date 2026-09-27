@@ -15,16 +15,23 @@ public class AthleticsStatsTests
     public void An_empty_mission_says_so_line_by_line()
     {
         var lines = Lines(new AthleticsStats());
-        Assert.Equal("Athletics settings at the end: ON - pool 100, cost per blow 10.0 / hero 7.5 / party leader 5.6, misses cost: yes, "
-            + "exhausted attacks at 20% (recover above 0%), refill after 3.0 s rest: full in 60 s standing / 120 s moving (above 0.5 m/s)", lines[0]);
+        Assert.Equal("Athletics settings at the end: ON - pool = the Athletics skill x1.00, at least 50; full strength at 75% of the pool and above; "
+            + "cost per blow 10.0 / hero 7.5 / party leader 5.6 points, misses cost: yes; when empty: attacks at 20%, run x0.30, horses x1.00 (never slowed); "
+            + "damage upside follows Athletics: yes; wounds cap the pool: yes; refill after 3.0 s rest: empty to full in 60 s at a walk or slower "
+            + "(up to 0.40 of top speed), x0.50 at a full run", lines[0]);
+        Assert.Contains("Athletics pools (the Athletics skill, settings at the end): no fighters tracked", lines);
         Assert.Contains("Athletics blows charged: 0 (melee swings 0, shots/throws 0, couched/braced hits 0, landed-only swings 0, landed-only shots 0) - by riders 0, on foot 0; Athletics spent 0 points", lines);
-        Assert.Contains("Athletics exhaustions: 0 entered, 0 left", lines);
+        Assert.Contains("Athletics exhaustions (empty, f 0): 0 entered, 0 left; the peak zone: left 0 times (a blow took a fighter below his line), re-entered 0 times (by refill)", lines);
+        Assert.Contains("Athletics fighter-time by f (the share of his peak line left): no fighter-time recorded", lines);
         Assert.Contains("Athletics heroes: 0 flagged, 0 party leaders; lowest a hero reached: n/a (no heroes)", lines);
         Assert.Contains("Athletics you: no player fighter this mission", lines);
         Assert.Contains("Athletics your formations at the end: none with men in them", lines);
+        Assert.Contains("Athletics health cap: 0 cuts (a wound pulled Athletics down to the health left), biggest 0.0 points, 0 points in all", lines);
         Assert.Contains("Athletics tick cost: no ticks", lines);
         Assert.Contains("Athletics errors: none", lines);
-        Assert.Contains(lines, l => l.StartsWith("attack speed check, melee - time between swings: fresh no samples | exhausted no samples - not enough samples", StringComparison.Ordinal));
+        Assert.Contains("attack speed check, melee - time between swings, by f: peak (f 1) no samples - not enough samples to judge (need 5 at the peak and 3 below 0.5 or empty)", lines);
+        Assert.Contains("run speed check, on foot (÷ the fighter's own top speed when fresh), by f: no samples", lines);
+        Assert.Contains("run speed check, horses (÷ the horse's own top speed while its rider was fresh), by the rider's f: MountMinSpeedMultiplier 1.00 = horses never slow - no samples", lines);
     }
 
     [Fact]
@@ -34,6 +41,31 @@ public class AthleticsStatsTests
         s.Set(SettingsSchema.AthleticsEnabled, false, SettingSources.Mcm);
         var lines = new AthleticsStats().SummaryLines(AthleticsRules.From(s), Action, new List<KeyValuePair<string, FormationAthleticsStats>>());
         Assert.Equal("Athletics settings at the end: OFF (AthleticsEnabled) - everyone full, no penalty", lines[0]);
+    }
+
+    [Fact]
+    public void Pools_come_from_the_skill_with_the_rules_at_the_end()
+    {
+        var s = new AthleticsStats();
+        foreach (int skill in new[] { 20, 20, 40, 130, 170 }) s.AddFighter(skill, skillKnown: true);
+        s.AddFighter(0, skillKnown: false);
+        s.PlayerSeen = true;
+        s.PlayerSkill = 180;
+        s.LeaderSkills.Add(new KeyValuePair<string, int>("Derthert", 250));
+        s.LeaderSkills.Add(new KeyValuePair<string, int>("you", 180));
+        Assert.True(s.Pools(Defaults, out double min, out double mean, out double max, out int atFloor));
+        Assert.Equal(50, min);
+        Assert.Equal(170, max);
+        Assert.Equal((50 + 50 + 50 + 130 + 170 + 50) / 6.0, mean, 9);
+        Assert.Equal(4, atFloor);
+        Assert.Contains("Athletics pools (the Athletics skill x1.00, at least 50; settings at the end): 6 fighters - min 50 / avg 83.3 / max 170; "
+            + "4 at the floor, 1 whose skill could not be read (the floor); you 180 (skill 180); party leaders: Derthert 250, you 180", Lines(s));
+
+        var s2 = new TraxSettings();
+        s2.Set(SettingsSchema.AthleticsPoolFloor, 0, SettingSources.Mcm);
+        Assert.True(s.Pools(AthleticsRules.From(s2), out min, out _, out _, out atFloor));
+        Assert.Equal(1, min);      // the unknown skill: never below 1 point
+        Assert.Equal(0, atFloor);
     }
 
     [Fact]
@@ -58,6 +90,8 @@ public class AthleticsStatsTests
         s.KickOrBashHits = 3;
         s.ExhaustionsEntered = 2;
         s.ExhaustionsLeft = 1;
+        s.PeakLeft = 7;
+        s.PeakEntered = 4;
         s.HeroesFlagged = 3;
         s.LeaderNames.Add("Derthert");
         s.LeaderNames.Add("you");
@@ -65,17 +99,22 @@ public class AthleticsStatsTests
         s.LowestHeroPoints = 12.5;
         s.LowestHeroPool = 100;
         s.PlayerSeen = true;
+        s.PlayerSkill = 180;
         s.PlayerBlows = 18;
         s.PlayerExhaustions = 1;
         s.PlayerLowestPoints = 0;
-        s.PlayerPool = 100;
-        s.RegenStandingSeconds = 120.4;
-        s.RegenMovingSeconds = 30;
+        s.PlayerPool = 180;
+        s.RegenWalkSeconds = 120.4;
+        s.RegenFasterSeconds = 30;
+        s.RegenFasterRateSeconds = 21;
         s.RefillsToFull = 4;
+        s.RefillsToHealthCap = 1;
         s.AddTick(500, 0.2);
         s.AddTick(1000, 0.6);
-        s.SpeedUpdates = 3;
-        s.AddDecoratorScaled();
+        s.FighterRecomputes = 3;
+        s.HorseRecomputes = 1;
+        s.AddDecoratorScaled(attack: true, run: true, mount: false);
+        s.AddDecoratorScaled(attack: false, run: false, mount: true);
 
         var inf = new MeanStd();
         inf.Add(64);
@@ -83,37 +122,66 @@ public class AthleticsStatsTests
         var infF = new MeanStd();
         infF.Add(0.64);
         infF.Add(0.80);
-        var lines = Lines(s, new KeyValuePair<string, FormationAthleticsStats>("Infantry", FormationAthleticsStats.From(inf, infF, 0)));
+        var infShare = new MeanStd();
+        infShare.Add(0.8533);
+        infShare.Add(1.0);
+        var lines = Lines(s,
+            new KeyValuePair<string, FormationAthleticsStats>("Infantry", FormationAthleticsStats.From(inf, infF, infShare, 0, 1)),
+            new KeyValuePair<string, FormationAthleticsStats>("Archers", FormationAthleticsStats.From(inf, infF, 0)));
 
         Assert.Contains("Athletics blows charged: 4 (melee swings 2, shots/throws 1, couched/braced hits 1, landed-only swings 0, landed-only shots 0) - by riders 2, on foot 2; Athletics spent 33 points", lines);
         Assert.Contains("Athletics detection: melee releases seen 2 (mounted 1) | shots seen 1 (+2 extra projectiles of the same shot ignored) | ranged releases seen by the poll 1 | melee hits by fighters 4 (on foot 2, mounted 2): during a counted release 3, outside one 1 [in action: action35 1]", lines);
         Assert.Contains("Athletics free (never charged): kicks 1, shield bashes 2, kick/bash hits 3, couched hits within one blow-length of the last 0, attacks while Athletics was off 0, releases / shots waiting for a landed hit (misses cost: no) 0 / 0", lines);
-        Assert.Contains("Athletics exhaustions: 2 entered, 1 left", lines);
+        Assert.Contains("Athletics exhaustions (empty, f 0): 2 entered, 1 left; the peak zone: left 7 times (a blow took a fighter below his line), re-entered 4 times (by refill)", lines);
         Assert.Contains("Athletics heroes: 3 flagged, 2 party leaders (Derthert, you); lowest a hero reached: Rhagaea 12.5 of 100", lines);
-        Assert.Contains("Athletics you: 18 blows, 1 exhaustion, lowest 0.0 of 100", lines);
-        Assert.Contains("Athletics your formations at the end: Infantry 72 ± 8 (2 men)", lines);
-        Assert.Contains("Athletics regen: 120 fighter-seconds standing, 30 moving; 4 refills to full", lines);
-        Assert.Contains("attack speed updates: 3 recomputes asked (UpdateAgentProperties), the decorator applied a penalty in 1 recomputes; 0 intervals spanning a change of state left out", lines);
+        Assert.Contains("Athletics you: skill 180 → pool 180; 18 blows, 1 exhaustion, lowest 0.0 of 180", lines);
+        Assert.Contains("Athletics your formations at the end: Infantry 72 ± 8 (2 men) f avg 0.93, 1 at full strength | Archers 72 ± 8 (2 men)", lines);
+        Assert.Contains("Athletics regen: 150 fighter-seconds refilling - at a walk or slower (effort up to 0.40) 120 s at the full rate, faster 30 s at avg x0.70; refills to the top: 4 to full, 1 to a wound's cap", lines);
+        Assert.Contains(lines, l => l.StartsWith("speed updates: 4 recomputes asked (UpdateAgentProperties: fighters 3, horses 1; a change below x0.05 waits; 0 held a tick by the per-tick budget), "
+            + "the decorator applied attack penalties in 1 recomputes, run penalties in 1, horse penalties in 1;", StringComparison.Ordinal));
         Assert.Contains("Athletics tick cost: avg 0.400 ms, max 0.600 ms per tick over 2 ticks; fighters polled avg 750, max 1000", lines);
     }
 
     [Fact]
-    public void Speeds_for_step_5c_and_the_effort_histogram()
+    public void Fighter_time_by_f_and_the_health_cap()
     {
         var s = new AthleticsStats();
-        s.FootWalk.Add(1.5);
-        s.FootWalk.Add(1.7);
-        s.FootTop.Add(4.0);
-        s.FootTop.Add(4.0);
-        s.AddEffort(0.05);
-        s.AddEffort(0.95);
-        s.AddEffort(1.0);
-        s.AddEffort(1.2);
-        s.AddEffort(-1); // ignored
-        Assert.Equal(4, s.EffortSamples);
-        var line = Lines(s).Single(l => l.StartsWith("speeds for step 5c", StringComparison.Ordinal));
-        Assert.Equal("speeds for step 5c: on foot walk limit avg 1.60 m/s (n 2), top avg 4.00 m/s (n 2) → walk/top 0.40; horses walk n/a, top n/a; "
-            + "refill samples speed/top in tenths (0-0.1 … 0.9-1, above 1): 1 0 0 0 0 0 0 0 0 2 1, max 1.20", line);
+        s.AddPeakTime(1.0, 60);
+        s.AddPeakTime(0.7, 20);
+        s.AddPeakTime(0.2, 15);
+        s.AddPeakTime(0.0, 5);
+        s.AddPeakTime(0.5, 0);   // no time: ignored
+        s.AddHealthCut(12.4);
+        s.AddHealthCut(40);
+        var lines = Lines(s);
+        Assert.Contains("Athletics fighter-time by f (the share of his peak line left): peak (f 1) 60.0%, f 0.5-1 20.0%, f below 0.5 15.0%, empty (f 0) 5.0% of 100 fighter-seconds", lines);
+        Assert.Contains("Athletics health cap: 2 cuts (a wound pulled Athletics down to the health left), biggest 40.0 points, 52 points in all", lines);
+
+        var off = new TraxSettings();
+        off.Set(SettingsSchema.HealthCapsAthletics, false, SettingSources.Mcm);
+        Assert.Contains("Athletics health cap: off (HealthCapsAthletics) - 2 cuts while it was on",
+            s.SummaryLines(AthleticsRules.From(off), Action, new List<KeyValuePair<string, FormationAthleticsStats>>()));
+    }
+
+    [Fact]
+    public void Walk_vs_run_speeds_and_the_effort_seconds()
+    {
+        var s = new AthleticsStats();
+        s.FootWalk.Add(1.8);
+        s.FootWalk.Add(1.8);
+        s.FootTop.Add(4.4);
+        s.FootTop.Add(4.6);
+        s.AddEffort(0.05, 2.0);
+        s.AddEffort(0.39, 3.0);
+        s.AddEffort(0.95, 1.0);
+        s.AddEffort(1.0, 1.0);
+        s.AddEffort(1.2, 1.0);
+        s.AddEffort(-1, 1);   // ignored
+        s.AddEffort(0.5, 0);  // no time: ignored
+        Assert.Equal(8.0, s.EffortSeconds, 9);
+        var lines = Lines(s);
+        Assert.Contains("walk vs run speeds (tune WalkEffortFraction, now 0.40): on foot walk limit avg 1.80 m/s (n 2), top avg 4.50 m/s (n 2) → walk/top 0.40; horses walk n/a, top n/a", lines);
+        Assert.Contains("Athletics refill effort (speed ÷ current top speed), seconds per tenth (0-0.1 … 0.9-1, above 1): 2 0 0 3 0 0 0 0 0 2 1, max 1.20", lines);
     }
 
     [Fact]

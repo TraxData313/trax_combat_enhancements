@@ -44,12 +44,12 @@ public class ConfigMergeTests
     public void Keys_missing_or_invalid_on_disk_take_memory()
     {
         var memory = new TraxSettings();
-        memory.Set(SettingsSchema.MaxAthletics, 150, SettingSources.File);
+        memory.Set(SettingsSchema.AthleticsPoolFloor, 150, SettingSources.File);
         var disk = Disk("{ \"CostPerBlow\": \"abc\" }");
 
         var plan = ConfigMerge.ForWrite(disk, memory.Snapshot(), Array.Empty<string>());
 
-        Assert.Equal(150, plan.Values["MaxAthletics"]);
+        Assert.Equal(150, plan.Values["AthleticsPoolFloor"]);
         Assert.Equal(10, plan.Values["CostPerBlow"]);
         Assert.Equal(SettingsSchema.All.Count, plan.Values.Count);
     }

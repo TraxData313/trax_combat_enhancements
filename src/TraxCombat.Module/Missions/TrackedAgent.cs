@@ -5,8 +5,9 @@ namespace TraxCombat.Missions
 {
     /// <summary>
     /// One fighter's record in <see cref="AthleticsLogic"/>: Core's pure <see cref="Fighter"/> state
-    /// (Athletics, exhaustion, the speed multiplier the decorator applies) plus what blow
-    /// detection needs from the game side. One object per human agent, created at spawn, kept in
+    /// (Athletics as a fraction of his pool, his Athletics skill, health, exhaustion, the speed
+    /// multipliers the decorator applies) plus what blow detection and the measurements need from
+    /// the game side. One object per human agent, created at spawn, kept in
     /// an array by <see cref="Agent.Index"/> (reference-checked - indices are reused) and a dense
     /// list for the tick loop. Plain fields: the tick loop touches them for ~1000 agents a frame.
     /// Main thread only.
@@ -36,16 +37,42 @@ namespace TraxCombat.Missions
         /// <summary>Out of the tick loop (removed from the field); a hero's record is kept for the summary.</summary>
         public bool Removed;
 
+        /// <summary>The Athletics skill was read from his character at spawn (false: none - the floor).</summary>
+        public bool SkillKnown;
+
         // ---- melee: the channel-1 action type as last seen (poll or hit), for the rising edge into ReleaseMelee
         public int PrevAction = NoAction;
 
         public int ReleaseSerial;
         public double ReleaseStart = -1;
-        public bool ReleaseStartPenalized;
         public bool ReleaseMixed;
         public bool HitThisRelease;
         public double LastReleaseTime = -1;
-        public bool PenalizedAfterLastRelease;
+
+        // ---- the attack-speed check by f: the f bin and the attack multiplier in effect after the
+        // last release / shot (what governs the interval up to the next one) and during this swing
+        public int BinAfterLastRelease;
+        public float AskedAfterLastRelease = 1f;
+        public int ReleaseBin;
+        public float ReleaseAsked = 1f;
+        public int BinAfterLastShot;
+        public float AskedAfterLastShot = 1f;
+
+        // ---- the run-speed check: his own top speed (and his horse's) while no penalty applied
+        public float FreshTop;
+        public float FreshMountTop;
+        public Agent? FreshMountOf;
+
+        /// <summary>The horse whose speed the stat decorator scales for this rider now (registered in
+        /// the logic's mount table by the horse's index), or null.</summary>
+        public Agent? SlowedMount;
+
+        /// <summary>His horse's multiplier changed, or he mounted / dismounted while one applied -
+        /// recompute the horse(s) on the next pass of the tick loop.</summary>
+        public bool MountDirty;
+
+        /// <summary>The peak-zone state last logged for the player (his "below the line" lines).</summary>
+        public bool PlayerBelowPeakLogged;
 
         // ---- landed-only mode (CostOnMiss off) and couched lances
         public int LandedSerial;
@@ -54,7 +81,6 @@ namespace TraxCombat.Missions
 
         // ---- ranged
         public double LastShotTime = double.NegativeInfinity;
-        public bool PenalizedAfterLastShot;
         public double LastShotForInterval = -1;
 
         /// <summary>The last few missiles this fighter shot (their indices) - a landed-only shot is
@@ -62,8 +88,8 @@ namespace TraxCombat.Missions
         public int Missile0 = -1, Missile1 = -1, Missile2 = -1, Missile3 = -1;
         public int MissileNext;
 
-        /// <summary>The speed multiplier changed - recompute the agent's properties on the next
-        /// pass of the tick loop (never inside an engine hit callback).</summary>
+        /// <summary>His attack or run multiplier changed - recompute the agent's properties on the
+        /// next pass of the tick loop (never inside an engine hit callback).</summary>
         public bool SpeedDirty;
 
         public void RememberMissile(int index)

@@ -29,6 +29,16 @@ namespace TraxCombat.Core
         private readonly Dictionary<string, int> _errors = new Dictionary<string, int>(StringComparer.Ordinal);
         private int _offMainThread;
 
+        /// <summary>Upside bins: the attacker's f bin (AthleticsMath.PeakBin 0-3) + one for "no pool".</summary>
+        public const int UpsideBins = AthleticsMath.PeakBins + 1;
+
+        private const int NoPoolBin = AthleticsMath.PeakBins;
+        private readonly int[] _upCount = new int[UpsideBins];
+        private readonly double[] _upFactorSum = new double[UpsideBins];
+        private readonly float[] _upFactorMax = new float[UpsideBins];
+        private readonly double[] _upAllowedSum = new double[UpsideBins];
+        private int _aboveCeiling;
+
         public DamageStats()
         {
             _categories = new Bucket[CategoryCount];
@@ -88,6 +98,11 @@ namespace TraxCombat.Core
                 Array.Clear(_vanillaDamage, 0, _vanillaDamage.Length);
                 _errors.Clear();
                 _offMainThread = 0;
+                Array.Clear(_upCount, 0, _upCount.Length);
+                Array.Clear(_upFactorSum, 0, _upFactorSum.Length);
+                Array.Clear(_upFactorMax, 0, _upFactorMax.Length);
+                Array.Clear(_upAllowedSum, 0, _upAllowedSum.Length);
+                _aboveCeiling = 0;
             }
         }
 
@@ -118,17 +133,47 @@ namespace TraxCombat.Core
             }
         }
 
-        public void AddRoll(DamageCategory category, in RollOutcome roll, bool offMainThread = false)
+        /// <param name="attackerPeakShare">The attacker's f (DESIGN §2: the share of his peak line left,
+        /// the rider's for a horse charge), NaN for an attacker Athletics does not track - the
+        /// upside check bins by it.</param>
+        public void AddRoll(DamageCategory category, in RollOutcome roll, bool offMainThread = false, double attackerPeakShare = double.NaN)
         {
             int bin = (int)(roll.Position * Bins);
             if (bin < 0) bin = 0;
             if (bin >= Bins) bin = Bins - 1;
+            int up = double.IsNaN(attackerPeakShare) ? NoPoolBin : AthleticsMath.PeakBin(attackerPeakShare);
+            bool above = !double.IsNaN(roll.Ceiling) && roll.Factor > roll.Ceiling + 1e-5;
             lock (_gate)
             {
                 _categories[(int)category].Add(in roll);
                 _bins[bin]++;
                 if (offMainThread) _offMainThread++;
+                _upCount[up]++;
+                _upFactorSum[up] += roll.Factor;
+                if (_upCount[up] == 1 || roll.Factor > _upFactorMax[up]) _upFactorMax[up] = roll.Factor;
+                _upAllowedSum[up] += roll.Upside;
+                if (above) _aboveCeiling++;
             }
+        }
+
+        /// <summary>Rolls in one upside bin (0-3 = the attacker's f bin, 4 = no pool) and their average
+        /// allowed upside share - for the tests and the smoke.</summary>
+        public int UpsideCount(int bin, out double avgFactor, out float maxFactor, out double avgAllowed)
+        {
+            lock (_gate)
+            {
+                int n = _upCount[bin];
+                avgFactor = n > 0 ? _upFactorSum[bin] / n : double.NaN;
+                maxFactor = n > 0 ? _upFactorMax[bin] : float.NaN;
+                avgAllowed = n > 0 ? _upAllowedSum[bin] / n : double.NaN;
+                return n;
+            }
+        }
+
+        /// <summary>Rolls whose factor went above their own ceiling 1 + p × upside (must stay 0).</summary>
+        public int AboveCeiling
+        {
+            get { lock (_gate) return _aboveCeiling; }
         }
 
         public void AddSkip(DamageSkipReason reason)
@@ -281,6 +326,21 @@ namespace TraxCombat.Core
 
                     lines.Add("damage dice, " + Bins + " equal slices from the lowest to the highest possible roll (even = fair): "
                         + string.Join(" ", Array.ConvertAll(_bins, n => n.ToString(CultureInfo.InvariantCulture))));
+
+                    var up = new StringBuilder("damage upside by the attacker's Athletics (f = the share of his peak line left; upside = how much of the +p he was allowed):");
+                    bool firstUp = true;
+                    for (int b = 0; b < UpsideBins; b++)
+                    {
+                        int n = _upCount[b];
+                        if (n == 0) continue;
+                        up.Append(firstUp ? " " : " | ");
+                        firstUp = false;
+                        up.Append(b == NoPoolBin ? "no pool (attacker not tracked)" : AthleticsMath.PeakBinName(b)).Append(' ').Append(n)
+                          .Append(" hits avg x").Append(F3(_upFactorSum[b] / n)).Append(" max x").Append(F2(_upFactorMax[b]))
+                          .Append(" upside ").Append((_upAllowedSum[b] / n * 100).ToString("0", CultureInfo.InvariantCulture)).Append('%');
+                    }
+                    up.Append("; rolls above their allowed top: ").Append(_aboveCeiling);
+                    lines.Add(up.ToString());
                 }
 
                 int vanilla = 0;

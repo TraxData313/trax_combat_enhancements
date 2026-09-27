@@ -106,7 +106,8 @@ namespace TraxCombat.Core
     /// moment of the hit (hot swap: an MCM change mid-battle applies to the next hit).</summary>
     public readonly struct DamageRules
     {
-        public DamageRules(bool enabled, int percent, bool melee, bool ranged, bool onMounts, bool onShields, bool modEnabled = true)
+        public DamageRules(bool enabled, int percent, bool melee, bool ranged, bool onMounts, bool onShields, bool modEnabled = true,
+            bool upsideFollowsAthletics = false)
         {
             Enabled = enabled;
             Percent = percent;
@@ -115,7 +116,12 @@ namespace TraxCombat.Core
             OnMounts = onMounts;
             OnShields = onShields;
             ModEnabled = modEnabled;
+            UpsideFollowsAthletics = upsideFollowsAthletics;
         }
+
+        /// <summary>DamageBonusFollowsAthletics (DESIGN §2): the upside of the roll shrinks with the
+        /// attacker's f - see <see cref="DamageRoll.Upside"/>.</summary>
+        public bool UpsideFollowsAthletics { get; }
 
         /// <summary>The master switch (ModEnabled). Off: nothing rolls - see <see cref="DamageSkipReason.ModOff"/>.</summary>
         public bool ModEnabled { get; }
@@ -137,19 +143,32 @@ namespace TraxCombat.Core
         /// <summary>The live values, read now.</summary>
         public static DamageRules From(TraxSettings s) => new DamageRules(
             s.DamageRandomEnabled, s.DamageRandomPercent, s.DamageRandomMelee, s.DamageRandomRanged,
-            s.DamageRandomOnMounts, s.DamageRandomOnShields, s.ModEnabled);
+            s.DamageRandomOnMounts, s.DamageRandomOnShields, s.ModEnabled, s.DamageBonusFollowsAthletics);
     }
 
     /// <summary>One roll: the game's value, ours, and the dice.</summary>
     public readonly struct RollOutcome
     {
-        public RollOutcome(float before, float after, float factor, double position)
+        public RollOutcome(float before, float after, float factor, double position, double upside = 1.0, double spread = double.NaN)
         {
             Before = before;
             After = after;
             Factor = factor;
             Position = position;
+            Upside = upside;
+            Spread = spread;
         }
+
+        /// <summary>p of this roll (NaN when unknown - a hand-built outcome in a test).</summary>
+        public double Spread { get; }
+
+        /// <summary>The highest factor this roll could reach: 1 + p × <see cref="Upside"/> (NaN when p
+        /// is unknown). The summary checks that no roll went above it.</summary>
+        public double Ceiling => 1 + Spread * Upside;
+
+        /// <summary>The share of the upside this roll allowed, 0..1 (the attacker's f; 1 = the full
+        /// +p) - the range was [1 − p, 1 + p × Upside).</summary>
+        public double Upside { get; }
 
         /// <summary>The damage the game (and every model below us) computed.</summary>
         public float Before { get; }
@@ -211,9 +230,28 @@ namespace TraxCombat.Core
         /// <summary>p = percent / 100, clamped to 0..1.</summary>
         public static double Spread(int percent) => percent <= 0 ? 0 : percent >= 100 ? 1 : percent / 100.0;
 
-        /// <summary>The factor for a uniform draw <paramref name="position"/> in [0, 1): 1 − p + 2p·u,
-        /// i.e. uniform over [1 − p, 1 + p).</summary>
-        public static float Factor(double position, double spread) => (float)(1 - spread + 2 * spread * position);
+        /// <summary>The factor for a uniform draw <paramref name="position"/> in [0, 1): uniform over
+        /// [1 − p, 1 + p × upside), i.e. 1 − p + p(1 + upside)·u. Upside 1 (the default, a fresh or
+        /// untracked attacker) = the full [1 − p, 1 + p); upside 0 (an empty attacker) = [1 − p, 1) -
+        /// the downside never changes (DESIGN §2, DamageBonusFollowsAthletics).</summary>
+        public static float Factor(double position, double spread, double upside = 1.0)
+        {
+            double up = upside >= 1 ? 1 : upside <= 0 || double.IsNaN(upside) ? 0 : upside;
+            return (float)(1 - spread + spread * (1 + up) * position);
+        }
+
+        /// <summary>
+        /// The share of the upside a hit may roll (DESIGN §2): the attacker's f (the share of his
+        /// peak line left, 0..1 - the rider's for a horse charge) while DamageBonusFollowsAthletics is
+        /// on; 1 (the full upside) when it is off, or for an attacker without a tracked pool
+        /// (<paramref name="attackerPeakShare"/> NaN: no attacker, a riderless horse, an agent
+        /// Athletics does not follow).
+        /// </summary>
+        public static double Upside(in DamageRules rules, double attackerPeakShare)
+        {
+            if (!rules.UpsideFollowsAthletics || double.IsNaN(attackerPeakShare)) return 1.0;
+            return attackerPeakShare >= 1 ? 1.0 : attackerPeakShare <= 0 ? 0.0 : attackerPeakShare;
+        }
 
         /// <summary>
         /// damage × factor, with DESIGN §1's rounding rule: a hit the game would show as 0 stays
@@ -228,14 +266,17 @@ namespace TraxCombat.Core
         }
 
         /// <summary>Draws the factor and applies it. The caller has already said "roll" via
-        /// <see cref="Decide"/>.</summary>
-        public static RollOutcome Roll(float damage, int percent, IRandomSource rng)
+        /// <see cref="Decide"/>; <paramref name="upside"/> comes from <see cref="Upside"/> (1 = the full
+        /// range).</summary>
+        public static RollOutcome Roll(float damage, int percent, IRandomSource rng, double upside = 1.0)
         {
             double u = rng.NextDouble();
             if (!(u >= 0)) u = 0;                        // NaN or negative from a broken source
             if (u >= 1) u = 0.9999999999;
-            float factor = Factor(u, Spread(percent));
-            return new RollOutcome(damage, Apply(damage, factor), factor, u);
+            double up = upside >= 1 ? 1 : upside <= 0 || double.IsNaN(upside) ? 0 : upside;
+            double p = Spread(percent);
+            float factor = Factor(u, p, up);
+            return new RollOutcome(damage, Apply(damage, factor), factor, u, up, p);
         }
 
         /// <summary>The game's own rounding of the final damage (<c>TaleWorlds.Library.MathF.Round</c>

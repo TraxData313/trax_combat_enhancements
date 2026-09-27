@@ -53,19 +53,41 @@
   "DamageRandomOnShields": false,
 
   // ==================== Athletics ====================
-  // On: every fighter has an Athletics bar - his stamina, named after the Athletics skill on
-  // the character screen (which will set its size) - that his attacks drain and rest refills;
-  // an empty bar means slow attacks. Off: no Athletics bar at all.
+  // On: every fighter has an Athletics bar - his stamina, as big as his Athletics skill on the
+  // character screen - that his attacks drain and rest refills. Near the top of the bar he
+  // fights at full strength; below it his damage, swing speed and run speed fall, down to slow
+  // attacks when it is empty. Off: no Athletics bar at all.
   // (true or false)
   "AthleticsEnabled": true,
 
-  // How many Athletics points a fresh fighter's bar holds. Changing it mid-battle keeps
-  // everyone's share: a fighter at 60% stays at 60%.
-  // (range 10 to 1000)
-  "MaxAthletics": 100,
+  // No fighter's Athletics bar is smaller than this, whatever his Athletics skill - so a
+  // recruit with skill 20 still gets 50 points (5 blows). 0 = no floor: the bar is exactly the
+  // skill (never below 1 point). Changing it mid-battle keeps everyone's share: a fighter at
+  // 60% stays at 60%.
+  // (range 0 to 1000)
+  "AthleticsPoolFloor": 50,
 
-  // Athletics points one attack costs before the hero and leader discounts. With the defaults a
-  // common soldier gets 10 blows out of a full bar. 0 = attacks are free.
+  // Athletics points per point of Athletics skill. 1.0: the bar tops at the skill - skill 180,
+  // a bar of 180. Changing it mid-battle keeps everyone's share.
+  // (range 0.1 to 5.0)
+  "AthleticsPoolPerSkill": 1.0,
+
+  // At or above this share of his own bar a fighter is at full strength: full damage upside,
+  // full swing speed, full run speed. Below it each of those falls in a straight line to its
+  // lowest value at an empty bar. 100 = only a full bar is full strength.
+  // (range 10 to 100)
+  "AthleticsPeakPercent": 75,
+
+  // On: a wounded fighter can only use the share of his bar that matches the health he has left
+  // - at 75% health, 75% of the bar; the rest is cut at once and never refills while the wound
+  // lasts. The full-strength line stays where it was, so a badly wounded fighter never gets
+  // back to full strength.
+  // (true or false)
+  "HealthCapsAthletics": true,
+
+  // Athletics points one attack costs before the hero and leader discounts, whatever the size
+  // of the bar - so a bigger Athletics skill means more blows. With the defaults a recruit (a
+  // 50 bar) empties after 5 blows, a legionary (130) after 13. 0 = attacks are free.
   // (range 0.0 to 100.0)
   "CostPerBlow": 10.0,
 
@@ -84,16 +106,29 @@
   // (range 0.0 to 2.0)
   "PartyLeaderCostMultiplier": 0.75,
 
-  // ==================== Exhaustion ====================
+  // ==================== Tired fighters ====================
   // Attack speed of a fighter whose Athletics is empty, in percent of normal: swings, thrusts,
-  // bow draw, crossbow reload, throws. 100 = no slowdown.
+  // bow draw, crossbow reload, throws. Between the full-strength line and empty it falls in a
+  // straight line. 100 = attacks never slow down.
   // (range 5 to 100)
   "ExhaustedAttackSpeedPercent": 20,
 
-  // Once exhausted, normal speed returns only when Athletics climbs above this percent of the
-  // pool. 0 = the moment it is above empty.
-  // (range 0 to 90)
-  "ExhaustedRecoverPercent": 0,
+  // Top speed on foot of a fighter whose Athletics is empty, times his normal top speed.
+  // Between the full-strength line and empty it falls in a straight line, so fresh men overtake
+  // tired ones. 1.0 = tired men run as fast as fresh ones.
+  // (range 0.1 to 1.0)
+  "MinMoveSpeedMultiplier": 0.3,
+
+  // Top speed of a horse whose rider's Athletics is empty, times its normal top speed, on the
+  // same straight line. 1.0 = horses never slow down, however tired the rider.
+  // (range 0.1 to 1.0)
+  "MountMinSpeedMultiplier": 1.0,
+
+  // On: the lucky side of the damage roll shrinks as the attacker tires - at full strength a
+  // hit can land up to +50%, halfway down to empty up to +25%, empty never above normal. The
+  // unlucky side never changes. Off: every attacker gets the full roll.
+  // (true or false)
+  "DamageBonusFollowsAthletics": true,
 
   // ==================== Regeneration ====================
   // How long a fighter must go without attacking before his Athletics starts to refill, counted
@@ -105,18 +140,21 @@
   // (range 0.1 to 10.0)
   "BlowTimeSeconds": 1.5,
 
-  // Seconds to refill from empty to full while standing still.
+  // Seconds to refill from empty to full while standing still or walking.
   // (range 1.0 to 600.0)
   "FullRegenSecondsStanding": 60.0,
 
-  // Seconds to refill from empty to full while walking, running or riding.
-  // (range 1.0 to 1200.0)
-  "FullRegenSecondsMoving": 120.0,
+  // How fast Athletics refills while running flat out (or riding at the horse's top speed),
+  // times the rate at rest. Between a walk and a full run it falls in a straight line. 1.0 =
+  // running refills as fast as resting; 0 = no refill at a full run.
+  // (range 0.0 to 1.0)
+  "RegenMultiplierAtFullRun": 0.5,
 
-  // Speed in metres per second above which a fighter (or the horse he rides) counts as moving,
-  // for the refill time.
-  // (range 0.0 to 5.0)
-  "MovingSpeedThreshold": 0.5,
+  // Up to this share of his current top speed a fighter (or the horse he rides) counts as
+  // walking and refills at the full rate. The game walks people at 1.8 m/s and their top speed
+  // is about 4 to 5 m/s, so 0.4 covers a walk. 1.0 = any pace refills at the full rate.
+  // (range 0.05 to 1.0)
+  "WalkEffortFraction": 0.4,
 
   // ==================== Bars - you and your target ====================
   // Show your own Athletics next to your health bar.
