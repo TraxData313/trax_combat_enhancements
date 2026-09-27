@@ -430,3 +430,40 @@
   R1/R2/R5 checks fail with the fix reverted (8 failures, proved); tests 288 (no Core logic changed);
   build 0 warnings, AssemblyGuard OK, smoke OK, deployed. Commits edff3dc, dc2fe8d, 0558f05, 0da7b9a
   + docs. (2026.09.27 19.56.57)
+- [x] **Step 10b — polish.** Made the one playtest smooth and what the player sees clean; no
+  balance number changed. (1) R21, no switch that does nothing: ShowTargetBar, TargetBarMaxDistance,
+  TargetBarLingerSeconds (step 7) and ShowFormationBars, FormationBarsAlways, FormationBarHeight
+  (step 8) had no reader - out of the schema, TraxSettings, defaults.json, MCM and config.json
+  (63 → 57); their rows wait in DESIGN "Planned parameters" marked LATER (step 7/8), DESIGN §3
+  items 2-3 marked LATER; no code existed only for them (two commented attach lines stay as
+  pointers). The spread / health settings stay - the strip reads them. (2) R7, log survival (the
+  manager's decision): Core LogTrim - a trim keeps EVERY non-verbose line (summaries, every
+  feature's first-time / YOU / mission-start line, settings, MCM, mission, errors with their
+  stacks) plus any [load] [compat] [config] [mcm] [mission] [summary] [error] line, and cuts only
+  the oldest verbose lines at one point in time; verbose lines now carry "~" before the tag so the
+  trim can tell them apart (the first-time lines share tags with verbose ones - a tag list alone
+  would lose the strip's alignment proof two minutes into a big battle); last resort (kept lines
+  alone over the target, many sessions) cuts the oldest kept; one note at the top. New setting
+  LogMaxMegabytes (Advanced, 1-100, default 8, live; 58 settings); 8 MB trim measured ~50-90 ms; a
+  failed trim retries after 1 MB. (3) R8 fixed too (the playtest runs verbose): RateLimiter.Peek +
+  TraxLog.VerboseWants(bucket) - 25 call sites ask before building a line, a "no" counts as
+  suppressed so the counts stay exact. (4) What the player reads: groups renamed and ordered
+  (Refill, Your Athletics bar, Orders menu strip; the strip's switch first), MCM's Defaults buttons
+  just above Advanced (MCM's UI sorts groups ASCENDING - verified in MBOptionScreen for 1.4.8;
+  MCMv5's own sort is descending, a trap) with a smoke check of the page order; one vocabulary
+  (Athletics / Athletics skill / peak line / empty), a unit in every label, every hint rewritten
+  as a player reads it, MCM hints end "Applies at once, even mid-battle."; keys unchanged;
+  defaults.json comments refreshed. (5) PLAYTEST rewritten as one ordered ~2 h session: A load
+  without / with MCM, B master switch ON / OFF / flipped, C Athletics feel, D step back, E bar +
+  strip (RTS Camera on; vanilla cards in A3), F campaign field battle + siege + tournament, G tuning
+  + Save as a defaults file + Revert; VerboseLogging ON throughout; "What to send Claude"; appendix
+  L1-L8 with every line and summary block; old section numbers mapped. (6) README (only what is
+  built, MCM optional, RBM warned), DESIGN (§4 "What the player reads", "The log", interpretation
+  15), CLAUDE layout, REVIEW R7/R8/R21 FIXED, AI_NOTES "Step 10b". BALANCE DOUBTS for Anton (not
+  changed): recruits (floor 50, cost 10) are below full strength after 2 swings and empty after 5,
+  so low-tier fights happen mostly tired; one attack in five at empty plus the pace hold may make
+  tired melees crawl (30-40% worth a try); run x0.3 at empty lets nobody escape and strings out
+  formations (0.5?); 45 s from empty to the peak line at rest means tired men rarely recover
+  mid-fight (by design: the fresh take over); step-back chance 100% at empty may make the front
+  "breathe" a lot. Tests 288 → 302 (LogTrim 11, Peek 3); build 0 warnings, AssemblyGuard OK, smoke
+  44 steps OK, deployed. Commits 312a7ce, fb0164d, 72d94cb, b685f3c, 4f7452d + this. (2026.09.27 20.28.33)

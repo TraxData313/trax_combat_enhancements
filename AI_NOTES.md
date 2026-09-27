@@ -1144,20 +1144,29 @@ it; his pause is his.
 8. The AI readies the moment the hold ends → `the next ready came avg … after a hold ended` near 0.
 9. Cost: the ready poll in a 1000-man battle → `Athletics tick cost` (compare with a 5c/5d log).
 
-## Step 7 — Looked-at NPC bar
+## Step 7 — Looked-at NPC bar (LATER - Anton, 2026-09-27)
 
+- **Its settings are not in the schema** (step 10b, R21): `ShowTargetBar`, `TargetBarMaxDistance`,
+  `TargetBarLingerSeconds` wait in DESIGN's "Planned parameters". Building the step = move the
+  three rows up, add them to SettingsSchema (group "Your Athletics bar"), TraxSettings and
+  defaults.json, run `DefaultsTool refresh` (see "Step 10b" below).
 - `TargetAthleticsView : TraxHudView` - the recipe above (Step 6, "A new view"). Own raycast
   `Mission.RayCastForClosestAgent` from `MissionScreen.CombatCamera` every `HudRefreshSeconds`
   (inside `ViewConditionMet` or `Refresh` - the frame gives `Player`; read the camera via the
   view's `MissionScreen`), mount → `RiderAgent`, linger `TargetBarLingerSeconds`, range
-  `TargetBarMaxDistance` (both already settings). RBM-style place: top centre. Colours, numbers,
+  `TargetBarMaxDistance`. RBM-style place: top centre. Colours, numbers,
   wounded part, marker: `BarMath` exactly as the player bar.
 - Read: `AthleticsLogic.TryGetReading(target.IsMount ? target.RiderAgent : target, out var r)`.
 - Hidden while `ModEnabled` is off - the base does it (HudGate); the smoke's master-switch step
   already covers the player bar - add the target view there too.
 
-## Step 8 — Squad bars above formations
+## Step 8 — Squad bars above formations (LATER - Anton, 2026-09-27)
 
+- **Its settings are not in the schema** (step 10b, R21): `ShowFormationBars`,
+  `FormationBarsAlways`, `FormationBarHeight` wait in DESIGN's "Planned parameters" (bring them
+  back as for step 7; a group of their own, e.g. "Squad bars", before Advanced).
+  `ShowFormationSpread`, `FormationSpreadStdDevs`, `ShowFormationHealth` are live already (the
+  orders strip) - reword their hints to name both places.
 - `FormationAthleticsView : TraxHudView` (`NeedsPlayer` - decide: can the player command while
   down? probably keep true). Player formations = `PlayerTeam.FormationsIncludingEmpty`,
   `CountOfUnits > 0`, `PlayerOrderController.IsFormationSelectable`. Mean/std: already computed
@@ -1361,8 +1370,86 @@ bug). The lessons worth keeping for any later change:
   big battle, so the 2 MB cap trims every ~35 s and earlier battles' summaries are lost (R7 - For
   Anton, not changed). Budget any new verbose bucket against that.
 - **Deferred**: verbose lines are built before the rate limiter drops them (R8, ~30 call sites);
-  the LATER features' settings that do nothing (R21 - step 10b).
+  the LATER features' settings that do nothing (R21 - step 10b). *(All three closed in step 10b.)*
 
-## Step 10 — Balance + polish
+## Step 10b — polish (DONE 2026-09-27)
+
+Step 10 was split: 10a the review, 10b this polish before Anton's one playtest. Balance is NOT
+touched here - Anton's numbers stay; the doubts go to him (TASKS_DONE entry / the manager's report).
+
+**No switch that does nothing (R21).** The six settings that served only the LATER features -
+`ShowTargetBar`, `TargetBarMaxDistance`, `TargetBarLingerSeconds` (step 7) and
+`ShowFormationBars`, `FormationBarsAlways`, `FormationBarHeight` (step 8) - had no reader; they
+left SettingsSchema, TraxSettings and defaults.json (so MCM and config.json). 63 → 57 (+1 below
+= 58). The designs live in DESIGN §3 items 2-3 (marked LATER), their rows in DESIGN's "Planned
+parameters" (a "When" column: LATER (step 7/8)), the recipes in "Step 7" / "Step 8" above. No
+code existed only for them: the HUD plumbing (TraxHudView, HudGate's view condition, the read
+API, the formation stats) is shared with the bar and the strip; the two commented
+`AttachHudView` lines in `AthleticsLogic.Hud.cs` stay as pointers. An old config.json that
+still has the six keys keeps them in its "Not recognised" section and logs `file problem:
+"ShowTargetBar" is not a setting of this version - ignored (typo?)` at every read (game and
+mission start) until they are deleted - harmless; PLAYTEST starts from a fresh config.json, and
+no player has the mod yet.
+
+**Log survival (R7 - the manager's decision).** Core `LogTrim` (pure, 11 tests), used by
+`TraxLog.Trim`:
+- An ENTRY = a stamped line + the unstamped lines under it (an error's indented stack, a message
+  with a line break). KEPT = every NON-verbose line - load, config, mcm, mission, summary, error,
+  [log] notes, and every feature's "mission start" / "first … this battle" / "YOU …" line - plus
+  any [load] [compat] [config] [mcm] [mission] [summary] [error] line even if verbose. CUT = the
+  oldest verbose lines, at ONE point in time (a big newer one that does not fit is not skipped to
+  keep a smaller older one). Last resort, only when the kept lines alone pass the target: their
+  oldest go too - the file carries over between game starts, so it must stay bounded.
+- Why a mark and not the manager's tag list alone: the per-feature first-time lines (`[hud] orders
+  strip: first placement …` - THE alignment proof, `[rate] first pace hold …`, `[athletics] YOU …`)
+  share their tags with verbose lines; by tag alone they would be cut ~2 minutes into a verbose
+  big battle. Verbose lines are written `stamp ~[tag] message` (`LogTrim.VerboseMark`); anything
+  that greps "[damage] …" still finds both kinds (the smoke's checks were untouched).
+- The note: ONE line at the top, `[log] (log trimmed at <t>: N older verbose lines cut, up to <t>;
+  every other line (…) is kept)`; earlier notes (and step 3's "(older lines trimmed") are dropped.
+- `LogMaxMegabytes` (Advanced, 1-100, default 8, live - `TraxLog.MaxBytes` reads it per line): the
+  trim fires past it and keeps half. Measured (net8, scratch bench): 8 MB read + trim + write
+  ~50-90 ms - a hitch every ~4 MB written (~100 s of a verbose 1000-agent battle); the game's
+  .NET Framework may be slower. A failed trim (another program holds the file) retries after
+  another 1 MB (`_trimRetryAt`), not at every line.
+
+**Verbose lines built only when written (R8).** `RateLimiter.Peek(tag, now)`: true takes NO token
+(the Verbose call that follows takes it); false counts the line as suppressed exactly like a
+built-and-dropped one, so the "(+N similar lines suppressed)" notes stay exact (another thread
+taking the token between the two = the old behaviour, built then dropped, counted). Wrapped as
+`TraxLog.VerboseWants(bucket)` = VerboseLogging on && Peek. **The pattern for any new verbose
+line**: `if (TraxLog.VerboseWants("my-bucket")) TraxLog.Verbose("tag", Build(), "my-bucket");` -
+the SAME bucket both times, and a guard like `!st.IsHero &&` BEFORE VerboseWants (a "no" counts).
+25 call sites converted; `VerboseOn` is now used only inside TraxLog.
+
+**What the player reads.** Groups: Master switch, Damage randomness, Athletics, Tired fighters,
+Tired fighters step back, **Refill** (was "Regeneration" over "refill" labels), **Your Athletics
+bar** (was "Bars - you and your target"), **Orders menu strip** (was "Bars - your squads"; now
+opens with its switch), Advanced. One vocabulary (the schema's header comment): Athletics / the
+Athletics skill / the peak line (the white mark; label "Peak line (% of the bar)") / empty; a unit
+in every label. `ParamDef.HintText` appends "Applies at once, even mid-battle." to every live
+setting (the descriptions lost their scattered copies); the config file keeps its header's rule
+(hand edits: next battle start). KEYS were not renamed - old config files keep working.
+- **MCM's group order** - verified in the UI's decompile (`Bannerlord.MBOptionScreen.v1.4.8.dll`,
+  `UISettingsUtils.SettingsPropertyGroupVMComparer`: the default group first, then `Order`
+  ASCENDING, then the name). Trap: MCMv5's own `GetSettingPropertyGroups().SortDefault()` sorts
+  by Order DESCENDING - do not read the page order from the abstractions. McmBridge gives a group
+  2 × its schema order and the Defaults buttons Advanced's − 1: Master switch first, the buttons,
+  Advanced last. The smoke checks the Order values.
+- No default was changed. Sanity check: every default inside its range (the schema test), units
+  right. Balance doubts listed for Anton in TASKS_DONE's 10b entry.
+
+**PLAYTEST** is one ordered session now (A-G, ~2 h, VerboseLogging ON throughout, "What to send
+Claude" at the end) with the line reference in its appendix (L1-L8); its last lines map the old
+section numbers (§1-§8, 3n, 8a…) that AI_NOTES / RESEARCH / TASKS_TODO still cite.
+
+**Gotchas met.**
+- A bash heredoc holding a Python script with `r'''` strings broke the shell's quoting - write
+  such a script to the scratchpad with the Write tool and run the file.
+- After ANY schema wording / order change: `dotnet run --project tools/DefaultsTool -- refresh`
+  (DefaultsFileTests compare every // line with what the mod would write).
+
+**UNVERIFIED (PLAYTEST).** The page's group order in game (A5 - verified in the decompile and by
+the smoke's Order check only); the trim's hitch in a real verbose battle (note the times).
 
 ## Step 11 — Steam packaging
