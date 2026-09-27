@@ -88,6 +88,7 @@ namespace TraxCombat.Tools
             Step("Athletics: the [summary] Athletics block", AthleticsSummary);
             // The step back (step 5d) - the real logic's bookkeeping with a stand-in for the engine side.
             Step("step back: rolled at every AI swing's end by f (0% at full strength, 100% empty), started from the tick, timed live, capped, refused by the safety checks, released on every path (time, order, hand-over untouched, left the field, switched off, mission end), logged and summarised", StepBackThroughTheLogic);
+            Step("stale records (review 10a R5): an index reused, or an agent deleted unseen - his step back, pace hold and slowed horse end like a man leaving the field, no engine call on him", StaleRecordsAreForgotten);
             // The attack rate (step 5e) - phases, cycles and verdicts, the pace hold with a stand-in engine side.
             Step("attack rate: every phase and the cycle by f through the real logic, the targets and verdicts (the animations alone too fast, with the pace hold on target), the pace hold asked at the swing's end, started by the tick, lifted on every path (time, a swing slipping through, a game job waited out, mounted, left the field, switched off, mission end), refusals, riders, chained blows, the AI-decision switch re-applied, the summary", AttackRateThroughTheLogic);
             Step("attack rate: the first slowed fighter's every touched value before → after, each checked against its factor", FirstSlowedIsLogged);

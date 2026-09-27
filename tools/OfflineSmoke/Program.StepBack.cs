@@ -278,5 +278,65 @@ namespace TraxCombat.Tools
                 StepBackDefaults();
             }
         }
+
+        /// <summary>Review 10a R5: a record whose agent left unseen - its index reused by a new agent, or
+        /// the agent deleted without a removal - is forgotten like a man leaving the field: his step
+        /// back and pace hold end, his slowed horse is queued for release, and nothing calls the engine
+        /// on the old agent. Before, only the loop entry went and the tick kept working on him.</summary>
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static void StaleRecordsAreForgotten()
+        {
+            var keep = _logic;
+            try
+            {
+                AthleticsDefaults();
+                StepBackDefaults();
+                var logic = new AthleticsLogic();
+                _logic = logic;
+                SetStatic(typeof(AthleticsLogic), "_current", logic);
+                typeof(AthleticsLogic).GetMethod("StartAthletics", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(logic, null);
+                var body = new FakeStepBody();
+                logic.StepBackBody = body;
+                logic.StepBackDice = new FixedDice(0.999);
+                var paceBody = new FakePaceBody();
+                logic.PaceBody = paceBody;
+                const BindingFlags Private = BindingFlags.Instance | BindingFlags.NonPublic;
+                var paceHeld = (List<TrackedAgent>)typeof(AthleticsLogic).GetField("_paceHeld", Private)!.GetValue(logic)!;
+                var horses = (List<Agent>)typeof(AthleticsLogic).GetField("_horsesToRelease", Private)!.GetValue(logic)!;
+                double t = 3000;
+
+                // an empty recruit stepping back, under a pace hold and on a slowed horse
+                var old = EmptyRecruit(120, ref t);
+                logic.TickStepBacks(t);
+                Check(logic.SteppingNow == 1, "precondition: the recruit does not step back");
+                old.Pace = new PaceState { Active = true, StartedAt = t, Until = t + 5 };
+                paceHeld.Add(old);
+                var horse = FakeAgent(700);
+                old.SlowedMount = horse;
+                typeof(AthleticsLogic).GetMethod("RegisterMount", Private)!.Invoke(logic, new object[] { horse, old });
+                int stepReleases = body.Released.Count, paceReleases = paceBody.Released.Count;
+
+                // his index comes back on a new agent before his removal was seen
+                var fresh = logic.Track(FakeAgent(120))!;
+                Check(!ReferenceEquals(fresh, old) && old.Removed && logic.SteppingNow == 0 && logic.StepStats.Ended(StepBackEnd.LeftField) == 1,
+                    "the stale record still steps back");
+                Check(!old.Pace.Active && paceHeld.Count == 0 && logic.RateStats.Ended(PaceEnd.LeftField) == 1, "the stale record is still held");
+                Check(old.SlowedMount == null && horses.Count == 1 && ReferenceEquals(horses[0], horse), "the stale record's horse was not queued for release");
+                Check(body.Released.Count == stepReleases && paceBody.Released.Count == paceReleases, "an engine call on the stale (gone) agent");
+
+                // the deletion backstop: an agent deleted without a removal we saw is forgotten; again = nothing
+                logic.OnAgentDeleted(fresh.Agent);
+                Check(fresh.Removed, "OnAgentDeleted did not forget the agent");
+                logic.OnAgentDeleted(fresh.Agent);
+                logic.OnAgentDeleted(FakeAgent(121)); // never tracked
+                Check(logic.StepStats.Ended(StepBackEnd.LeftField) == 1 && logic.Stats.Errors == 0, "the backstop did something twice or failed");
+            }
+            finally
+            {
+                _logic = keep;
+                SetStatic(typeof(AthleticsLogic), "_current", keep);
+                StepBackDefaults();
+            }
+        }
     }
 }

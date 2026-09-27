@@ -222,7 +222,12 @@ namespace TraxCombat.Missions
             if (old != null)
             {
                 if (ReferenceEquals(old.Agent, agent)) return old;
-                RemoveFromLoop(old); // a stale record: the index was reused
+                // a stale record: the index was reused without us seeing the old agent leave. Forget it
+                // the way a leaving man is forgotten - his step back, pace hold and slowed horse too,
+                // without an engine call on him (review 10a R5: only the loop entry went before, so a
+                // running step back or hold stayed listed and the tick kept calling the engine on the
+                // old agent)
+                Forget(old);
             }
 
             var st = new TrackedAgent(agent);
@@ -264,11 +269,20 @@ namespace TraxCombat.Missions
         {
             var st = Get(agent);
             if (st == null) return;
+            Forget(st);
+        }
+
+        /// <summary>He left the field (or his record went stale): out of the loop, his horse released
+        /// from the tick, his step back and pace hold ended - no engine call on him. Idempotent.</summary>
+        private void Forget(TrackedAgent st)
+        {
+            if (st.Removed) return;
+            var agent = st.Agent;
             if (ReferenceEquals(st, _firstExhausted) && !_firstDone && st.Exhausted)
             {
                 _firstDone = true;
                 TraxLog.Info("speed", "first exhausted fighter (" + Name(st) + ") left the field still exhausted after "
-                    + Sec(Mission.CurrentTime - _firstAt) + " s - properties then: " + SpeedPenalty.Snapshot.Take(agent)
+                    + Sec(SafeNow() - _firstAt) + " s - properties then: " + SpeedPenalty.Snapshot.Take(agent)
                     + " (" + SpeedPenalty.Snapshot.Take(agent).RatioTo(FirstFresh) + " of his fresh values)");
             }
             if (st.SlowedMount != null)
@@ -539,7 +553,8 @@ namespace TraxCombat.Missions
         }
 
         /// <summary>Every counted swing's end is the step-back roll (step 5d: "after each melee swing"),
-        /// then the pace hold's decision (step 5e; a step back asked for just now takes precedence).
+        /// then the pace hold's decision (step 5e; a step back asked for just now takes precedence if the
+        /// tick starts it - a refused one leaves the hold to run).
         /// <paramref name="next"/> = the action he went into (a ready = a chained blow).</summary>
         private void EndRelease(TrackedAgent st, double now, in AthleticsRules r, int next)
         {

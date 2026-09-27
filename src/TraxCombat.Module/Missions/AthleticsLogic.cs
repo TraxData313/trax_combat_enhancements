@@ -204,6 +204,20 @@ namespace TraxCombat.Missions
             }
         }
 
+        /// <summary>Backstop (review 10a R5): an agent deleted without a removal we saw is forgotten too
+        /// (no engine call on him). After OnAgentRemoved - the normal path - this finds nothing.</summary>
+        public override void OnAgentDeleted(Agent affectedAgent)
+        {
+            try
+            {
+                if (affectedAgent != null) Untrack(affectedAgent);
+            }
+            catch (Exception e)
+            {
+                Failed("athletics.agent-deleted", e);
+            }
+        }
+
         public override void OnEndMissionInternal()
         {
             try
@@ -223,13 +237,18 @@ namespace TraxCombat.Missions
             try
             {
                 WriteSummary("behaviour removed");
-                StopAthletics();
-                base.OnRemoveBehavior();
             }
             catch (Exception e)
             {
                 TraxLog.Error("mission.OnRemoveBehavior", e);
             }
+            finally
+            {
+                // always: a failed fallback summary must not leave this dead mission as "the running
+                // Athletics logic" for the decorators and the HUD (review 10a R3)
+                StopAthletics();
+            }
+            base.OnRemoveBehavior();
         }
 
         private void WriteSummary(string when)
@@ -238,38 +257,61 @@ namespace TraxCombat.Missions
             _summaryWritten = true;
             var m = Mission;
 
-            int activeHumans = 0, activeMounts = 0, playerSide = 0, otherSide = 0;
-            if (m != null)
+            // The header has its own try (review 10a R4): the flag above is already set, so an
+            // exception here used to cost the WHOLE summary of the battle.
+            try
             {
-                var playerTeam = m.PlayerTeam;
-                foreach (var a in m.Agents)
+                int activeHumans = 0, activeMounts = 0, playerSide = 0, otherSide = 0;
+                string field;
+                try
                 {
-                    if (a == null) continue;
-                    if (a.IsHuman)
+                    // the native side is read only at the real mission end (the teardown fallback's
+                    // agents may be gone - see WriteAthleticsSummary)
+                    if (m != null && when == "mission end" && m.Agents != null)
                     {
-                        activeHumans++;
-                        if (playerTeam != null && a.Team != null)
+                        var playerTeam = m.PlayerTeam;
+                        foreach (var a in m.Agents)
                         {
-                            if (a.Team.Side == playerTeam.Side) playerSide++;
-                            else otherSide++;
+                            if (a == null) continue;
+                            if (a.IsHuman)
+                            {
+                                activeHumans++;
+                                if (playerTeam != null && a.Team != null)
+                                {
+                                    if (a.Team.Side == playerTeam.Side) playerSide++;
+                                    else otherSide++;
+                                }
+                            }
+                            else if (a.IsMount)
+                            {
+                                activeMounts++;
+                            }
                         }
+                        field = activeHumans + " people (" + playerSide + " on the player's side, " + otherSide + " others), " + activeMounts + " mounts";
                     }
-                    else if (a.IsMount)
+                    else
                     {
-                        activeMounts++;
+                        field = "not read (" + when + ": the agents are gone)";
                     }
                 }
-            }
+                catch (Exception e)
+                {
+                    field = "not read (" + e.GetType().Name + ")";
+                }
 
-            TraxLog.Info("summary", "==== " + _label + " - ended (" + when + ") after "
-                + Safe(() => m!.CurrentTime.ToString("0", CultureInfo.InvariantCulture)) + " s, result: " + Result(m)
-                + ", " + Safe(() => _modSwitch.Describe(m != null ? m.CurrentTime : 0)) + " ====");
-            TraxLog.Info("summary", "agents built: " + _built + " (" + _builtHumans + " people incl. " + _builtHeroes
-                + " heroes, " + _builtMounts + " mounts)");
-            TraxLog.Info("summary", "people removed: " + _killed + " killed, " + _unconscious + " knocked out, "
-                + _routed + " fled, " + _otherRemoved + " other");
-            TraxLog.Info("summary", "still on the field: " + activeHumans + " people (" + playerSide + " on the player's side, "
-                + otherSide + " others), " + activeMounts + " mounts");
+                TraxLog.Info("summary", "==== " + _label + " - ended (" + when + ") after "
+                    + Safe(() => m!.CurrentTime.ToString("0", CultureInfo.InvariantCulture)) + " s, result: " + Result(m)
+                    + ", " + Safe(() => _modSwitch.Describe(m != null ? m.CurrentTime : 0)) + " ====");
+                TraxLog.Info("summary", "agents built: " + _built + " (" + _builtHumans + " people incl. " + _builtHeroes
+                    + " heroes, " + _builtMounts + " mounts)");
+                TraxLog.Info("summary", "people removed: " + _killed + " killed, " + _unconscious + " knocked out, "
+                    + _routed + " fled, " + _otherRemoved + " other");
+                TraxLog.Info("summary", "still on the field: " + field);
+            }
+            catch (Exception e)
+            {
+                TraxLog.Error("mission.summary-header", e);
+            }
             // Feature 1 (step 4): rolls per kind, min/avg/max factor, damage before → after, the
             // dice histogram, skips by reason, errors, thread. Own try: a bug there must not cost
             // the rest of the summary.
