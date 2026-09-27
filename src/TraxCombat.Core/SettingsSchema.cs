@@ -24,14 +24,21 @@ namespace TraxCombat.Core
         // the parameters, and All must stay below them.
         private static int _next;
 
+        // The words a player reads (step 10b): the pool, the bar and its points are "Athletics"; the
+        // character-screen skill is "the Athletics skill"; the "peak line" is the white mark on the bar
+        // (AthleticsPeakPercent) - at or above it a fighter is at full strength; "empty" = 0 Athletics.
+        // Units in the label: (points) (%) (x) (m) (s) (px) (MB). Every setting applies at once, even
+        // mid-battle (ParamDef.HintText says so in MCM); a description adds only what a mid-battle
+        // change does beyond that.
+
         public static readonly ParamGroup MasterGroup = new ParamGroup(0, "Master switch");
         public static readonly ParamGroup DamageGroup = new ParamGroup(1, "Damage randomness");
         public static readonly ParamGroup AthleticsGroup = new ParamGroup(2, "Athletics");
         public static readonly ParamGroup TiredGroup = new ParamGroup(3, "Tired fighters");
         public static readonly ParamGroup StepBackGroup = new ParamGroup(4, "Tired fighters step back");
-        public static readonly ParamGroup RegenGroup = new ParamGroup(5, "Regeneration");
-        public static readonly ParamGroup PlayerBarsGroup = new ParamGroup(6, "Bars - you and your target");
-        public static readonly ParamGroup SquadBarsGroup = new ParamGroup(7, "Bars - your squads");
+        public static readonly ParamGroup RefillGroup = new ParamGroup(5, "Refill");
+        public static readonly ParamGroup PlayerBarGroup = new ParamGroup(6, "Your Athletics bar");
+        public static readonly ParamGroup OrderStripGroup = new ParamGroup(7, "Orders menu strip");
         public static readonly ParamGroup AdvancedGroup = new ParamGroup(8, "Advanced");
 
         // ------------------------------------------------------------------ master switch
@@ -40,17 +47,17 @@ namespace TraxCombat.Core
         /// off = that feature steps aside and the game runs vanilla (CLAUDE.md hard requirement).</summary>
         public static readonly ParamDef ModEnabled = Bool("ModEnabled", MasterGroup,
             "Mod enabled",
-            "Turn the whole mod off to play a battle exactly as vanilla - for example to fight the same battle with and without it and compare. Off: no damage rolls, no Athletics costs, refill or slow attacks, no bars; the log still records every battle (its summary says mod ON or OFF). Applies live, even mid-battle; switched back on, everyone starts with a full Athletics bar.");
+            "Turn the whole mod off and every battle is plain vanilla: no damage rolls, no Athletics, no slow attacks, no step backs, no bars. The log still records each battle (its summary says mod ON or OFF), so the same battle can be fought both ways and compared. Switched back on, everyone starts with a full Athletics bar.");
 
         // ------------------------------------------------------------------ damage randomness
 
         public static readonly ParamDef DamageRandomEnabled = Bool("DamageRandomEnabled", DamageGroup,
             "Damage randomness",
-            "On: every hit that lands deals a random share of its normal damage (see the spread). Off: damage is the game's own (the rest of the mod still runs).");
+            "On: every hit that lands deals a random share of its normal damage (see Spread). Off: every hit deals the game's own damage; the rest of the mod still runs.");
 
         public static readonly ParamDef DamageRandomPercent = Int("DamageRandomPercent", 0, 100, DamageGroup,
             "Spread (± %)",
-            "How far a hit's damage may swing up or down, in percent. 50 means a 50-damage hit lands for anything from 25 to 75, rolled fresh on every hit. 0 turns the randomness off.");
+            "How far a hit's damage may swing up or down, in percent. 50: a 50-damage hit lands for anything from 25 to 75, rolled fresh on every hit. 0 turns the randomness off.");
 
         public static readonly ParamDef DamageRandomMelee = Bool("DamageRandomMelee", DamageGroup,
             "Randomize melee hits",
@@ -72,49 +79,49 @@ namespace TraxCombat.Core
 
         public static readonly ParamDef AthleticsEnabled = Bool("AthleticsEnabled", AthleticsGroup,
             "Athletics",
-            "On: every fighter has an Athletics bar - his stamina, as big as his Athletics skill on the character screen - that his attacks drain and rest refills. Near the top of the bar he fights at full strength; below it his damage, swing speed and run speed fall, down to slow attacks when it is empty. Off: no Athletics bar at all.");
+            "On: every fighter has an Athletics bar - his stamina, as big as his Athletics skill - that his attacks drain and rest refills. At or above the peak line he fights at full strength; below it his damage upside, attack speed and run speed fall, down to slow attacks and a slow run when it is empty, and tired AI fighters step back. Off: no Athletics at all - no costs, no slowing, no step backs, no bars.");
 
         public static readonly ParamDef AthleticsPoolFloor = Int("AthleticsPoolFloor", 0, 1000, AthleticsGroup,
             "Smallest bar (points)",
-            "No fighter's Athletics bar is smaller than this, whatever his Athletics skill - so a recruit with skill 20 still gets 50 points (5 blows). 0 = no floor: the bar is exactly the skill (never below 1 point). Changing it mid-battle keeps everyone's share: a fighter at 60% stays at 60%.");
+            "No fighter's Athletics bar is smaller than this, whatever his Athletics skill - so a recruit with Athletics skill 20 still gets a 50-point bar (5 blows). 0 = no floor: the bar is exactly the skill (never below 1 point). Changed mid-battle, everyone keeps his share: a fighter at 60% stays at 60%.");
 
         public static readonly ParamDef AthleticsPoolPerSkill = Float("AthleticsPoolPerSkill", 0.1, 5, AthleticsGroup,
             "Bar points per skill point",
-            "Athletics points per point of Athletics skill. 1.0: the bar tops at the skill - skill 180, a bar of 180. Changing it mid-battle keeps everyone's share.");
+            "Athletics points per point of Athletics skill. 1.0: the bar tops at the skill - skill 180, a 180-point bar. Changed mid-battle, everyone keeps his share.");
 
         public static readonly ParamDef AthleticsPeakPercent = Int("AthleticsPeakPercent", 10, 100, AthleticsGroup,
-            "Full strength above (% of the bar)",
-            "At or above this share of his own bar a fighter is at full strength: full damage upside, full swing speed, full run speed. Below it each of those falls in a straight line to its lowest value at an empty bar. 100 = only a full bar is full strength.");
+            "Peak line (% of the bar)",
+            "Where the peak line sits - the white mark on the bar - in percent of each fighter's own bar. At or above it he is at full strength: full damage upside, attack speed and run speed. Below it each of those falls in a straight line to its lowest value at an empty bar. 100 = only a full bar is full strength.");
 
         public static readonly ParamDef HealthCapsAthletics = Bool("HealthCapsAthletics", AthleticsGroup,
             "Wounds cap the bar",
-            "On: a wounded fighter can only use the share of his bar that matches the health he has left - at 75% health, 75% of the bar; the rest is cut at once and never refills while the wound lasts. The full-strength line stays where it was, so a badly wounded fighter never gets back to full strength.");
+            "On: a wounded fighter can only use the share of his bar that matches the health he has left - at 75% health, 75% of the bar; the rest is cut at once and does not refill while the wound lasts. The peak line stays where it was, so a badly wounded fighter never gets back to full strength.");
 
         public static readonly ParamDef CostPerBlow = Float("CostPerBlow", 0, 100, AthleticsGroup,
-            "Cost per blow",
-            "Athletics points one attack costs before the hero and leader discounts, whatever the size of the bar - so a bigger Athletics skill means more blows. With the defaults a recruit (a 50 bar) empties after 5 blows, a legionary (130) after 13. 0 = attacks are free.");
+            "Cost per blow (points)",
+            "Athletics points one attack costs a common soldier, whatever the size of his bar - so a bigger Athletics skill means more blows. With the defaults a recruit (a 50-point bar) is empty after 5 blows, a legionary (130) after 13. 0 = attacks are free.");
 
         public static readonly ParamDef CostOnMiss = Bool("CostOnMiss", AthleticsGroup,
             "Misses cost too",
             "On: every attack costs Athletics, landed or not. Off: only attacks that hit something (a body, a shield, a parrying weapon) cost.");
 
         public static readonly ParamDef HeroCostMultiplier = Float("HeroCostMultiplier", 0, 2, AthleticsGroup,
-            "Hero cost multiplier",
-            "Heroes (lords, companions and you) pay this share of the cost per blow. 0.75 = a quarter less than a common soldier.");
+            "Hero cost (x)",
+            "Heroes (lords, companions and you) pay the cost per blow times this. 0.75 = a quarter less than a common soldier.");
 
         public static readonly ParamDef PartyLeaderCostMultiplier = Float("PartyLeaderCostMultiplier", 0, 2, AthleticsGroup,
-            "Party leader multiplier",
-            "The hero who leads the fighter's own party (you for your party, a lord for his) pays this share again, on top of the hero discount: 0.75 × 0.75 × 10 = about 5.6 per blow.");
+            "Party leader cost (x)",
+            "The hero who leads the fighter's own party (you for your party, a lord for his) pays times this again, on top of the hero price: 10 × 0.75 × 0.75 = about 5.6 per blow.");
 
-        // ------------------------------------------------------------------ tired fighters (below the peak)
+        // ------------------------------------------------------------------ tired fighters (below the peak line)
 
         public static readonly ParamDef ExhaustedAttackSpeedPercent = Int("ExhaustedAttackSpeedPercent", 5, 100, TiredGroup,
             "Attack speed when empty (%)",
-            "Attack speed of a fighter whose Athletics is empty, in percent of normal: swings, thrusts, bow draw, crossbow reload, throws. Between the full-strength line and empty it falls in a straight line. 100 = attacks never slow down.");
+            "How fast a fighter with an empty bar attacks, in percent of normal: the wind-up and swing, thrusts, bow draw, crossbow reload and throws - and, for the AI, the pause between attacks (the next two switches). 20 = one attack where a fresh man makes five. From the peak line down to empty it falls in a straight line. 100 = attacks never slow down. Blocking is never slowed.");
 
         public static readonly ParamDef AttackRateAiDecisions = Bool("AttackRateAiDecisions", TiredGroup,
             "Tired AI attack less often",
-            "On: a tired AI fighter also decides to attack (and to strike back after a parry) less often, looses arrows less readily and aims longer before a shot - by the same factor as his attack speed - so his whole rhythm slows, not only the swing. Blocking is never touched. Off: only the animations slow down. Applies at once, even mid-battle.");
+            "On: a tired AI fighter also decides to attack (and to strike back after a parry) less often, looses arrows less readily and aims longer before a shot - by his attack speed - so his whole rhythm slows, not only the swing. Blocking is never touched. Off: only the animations slow down.");
 
         public static readonly ParamDef AttackRatePaceHold = Bool("AttackRatePaceHold", TiredGroup,
             "Tired AI keep a slower pace",
@@ -122,29 +129,29 @@ namespace TraxCombat.Core
 
         public static readonly ParamDef MinMoveSpeedMultiplier = Float("MinMoveSpeedMultiplier", 0.1, 1, TiredGroup,
             "Run speed when empty (x)",
-            "Top speed on foot of a fighter whose Athletics is empty, times his normal top speed. Between the full-strength line and empty it falls in a straight line, so fresh men overtake tired ones. 1.0 = tired men run as fast as fresh ones.");
+            "Top speed on foot of a fighter with an empty bar, times his normal top speed. From the peak line down to empty it falls in a straight line, so fresh men overtake tired ones. 1.0 = tired men run as fast as fresh ones.");
 
         public static readonly ParamDef MountMinSpeedMultiplier = Float("MountMinSpeedMultiplier", 0.1, 1, TiredGroup,
             "Horse speed when the rider is empty (x)",
-            "Top speed of a horse whose rider's Athletics is empty, times its normal top speed, on the same straight line. 1.0 = horses never slow down, however tired the rider.");
+            "Top speed of a horse whose rider's bar is empty, times its normal top speed, on the same straight line. 1.0 = horses never slow down, however tired the rider.");
 
         public static readonly ParamDef DamageBonusFollowsAthletics = Bool("DamageBonusFollowsAthletics", TiredGroup,
             "Damage upside follows Athletics",
-            "On: the lucky side of the damage roll shrinks as the attacker tires - at full strength a hit can land up to +50%, halfway down to empty up to +25%, empty never above normal. The unlucky side never changes. Off: every attacker gets the full roll.");
+            "On: the lucky side of the damage roll shrinks as the attacker tires - at or above the peak line a hit can land up to +50% (with Spread at 50), halfway down to empty up to +25%, empty never above normal. The unlucky side never changes. Off: every attacker gets the full roll.");
 
         // ------------------------------------------------------------------ tired fighters step back (step 5d)
 
         public static readonly ParamDef StepBackEnabled = Bool("StepBackEnabled", StepBackGroup,
             "Tired fighters step back",
-            "On: after a melee swing, a tired AI fighter on foot may step back a little, facing his enemy with his guard up, then return to his place in the formation - so the tired fall back and the fresh take the blows. Never you, never riders, never after a shot or a throw. Off mid-battle: everyone stepping back returns to his formation at once.");
+            "On: after a melee swing, a tired AI fighter on foot may step back a little, facing his enemy with his guard up, then return to his place in the formation - so the tired fall back and the fresh take the blows. Never you, never riders, never after a shot or a throw; field battles only. Off mid-battle: everyone stepping back returns to his formation at once.");
 
         public static readonly ParamDef StepBackMaxChancePercent = Int("StepBackMaxChancePercent", 0, 100, StepBackGroup,
             "Chance when empty (%)",
-            "Chance, in percent, that a fighter with an empty Athletics bar steps back after a melee swing. It falls in a straight line to 0 at the full-strength line: halfway down, half this chance; at full strength never. 0 = nobody steps back.");
+            "Chance, in percent, that a fighter with an empty bar steps back after a melee swing. It falls in a straight line to 0 at the peak line: halfway down, half this chance; at full strength never. 0 = nobody steps back.");
 
         public static readonly ParamDef StepBackDistance = Float("StepBackDistance", 0.5, 5, StepBackGroup,
             "Step distance (m)",
-            "How far back a fighter steps, in metres, straight away from the enemy he fights. A tired man walks slowly, so he may not get all the way before the time below runs out.");
+            "How far back a fighter steps, in metres, straight away from the enemy he fights. A tired man walks slowly, so he may not get all the way before the step time runs out.");
 
         public static readonly ParamDef StepBackSeconds = Float("StepBackSeconds", 0.3, 5, StepBackGroup,
             "Step time (s)",
@@ -162,75 +169,76 @@ namespace TraxCombat.Core
             "Most at once (whole battle)",
             "At most this many fighters, on all sides together, step back at the same time. It keeps big battles cheap and stops a whole front line from stepping back together.");
 
-        // ------------------------------------------------------------------ regeneration
+        // ------------------------------------------------------------------ refill (regeneration)
 
-        public static readonly ParamDef RegenDelayBlowTimes = Float("RegenDelayBlowTimes", 0, 20, RegenGroup,
+        public static readonly ParamDef RegenDelayBlowTimes = Float("RegenDelayBlowTimes", 0, 20, RefillGroup,
             "Rest before refill (blows)",
-            "How long a fighter must go without attacking before his Athletics starts to refill, counted in blow lengths (see the next setting). 2 × 1.5 s = 3 seconds.");
+            "How long a fighter must go without attacking before his Athletics starts to refill, counted in blow lengths (the next setting): 2 × 1.5 s = 3 seconds.");
 
-        public static readonly ParamDef BlowTimeSeconds = Float("BlowTimeSeconds", 0.1, 10, RegenGroup,
+        public static readonly ParamDef BlowTimeSeconds = Float("BlowTimeSeconds", 0.1, 10, RefillGroup,
             "Length of one blow (s)",
-            "How many seconds one blow counts as, for the rest delay above.");
+            "How many seconds one blow counts as, for the rest before refill.");
 
-        public static readonly ParamDef FullRegenSecondsStanding = Float("FullRegenSecondsStanding", 1, 600, RegenGroup,
+        public static readonly ParamDef FullRegenSecondsStanding = Float("FullRegenSecondsStanding", 1, 600, RefillGroup,
             "Refill time at rest (s)",
-            "Seconds to refill from empty to full while standing still or walking.");
+            "Seconds to refill an empty bar to full while standing still or walking.");
 
-        public static readonly ParamDef RegenMultiplierAtFullRun = Float("RegenMultiplierAtFullRun", 0, 1, RegenGroup,
+        public static readonly ParamDef RegenMultiplierAtFullRun = Float("RegenMultiplierAtFullRun", 0, 1, RefillGroup,
             "Refill rate at a full run (x)",
             "How fast Athletics refills while running flat out (or riding at the horse's top speed), times the rate at rest. Between a walk and a full run it falls in a straight line. 1.0 = running refills as fast as resting; 0 = no refill at a full run.");
 
-        public static readonly ParamDef WalkEffortFraction = Float("WalkEffortFraction", 0.05, 1, RegenGroup,
+        public static readonly ParamDef WalkEffortFraction = Float("WalkEffortFraction", 0.05, 1, RefillGroup,
             "Walking pace (share of top speed)",
             "Up to this share of his current top speed a fighter (or the horse he rides) counts as walking and refills at the full rate. The game walks people at 1.8 m/s and their top speed is about 4 to 5 m/s, so 0.4 covers a walk. 1.0 = any pace refills at the full rate.");
 
-        // ------------------------------------------------------------------ bars: you and your target
+        // ------------------------------------------------------------------ your Athletics bar (step 6)
 
-        public static readonly ParamDef ShowPlayerBar = Bool("ShowPlayerBar", PlayerBarsGroup,
+        public static readonly ParamDef ShowPlayerBar = Bool("ShowPlayerBar", PlayerBarGroup,
             "Your Athletics bar",
-            "Show your own Athletics next to your health bar.");
+            "Your Athletics bar, bottom right under your health bar: the Athletics you have left and your whole bar (\"132 / 180\"), a white mark at the peak line, the fill in the colour of your strength (green at full strength, then blue, yellow, orange, red) and the part your wounds hold shown dark.");
 
         // The looked-at fighter's bar (ShowTargetBar, TargetBarMaxDistance, TargetBarLingerSeconds) is
         // LATER (step 7): its settings left the schema in step 10b - no switch that does nothing
         // (review R21). DESIGN's "Planned parameters" keeps the rows.
 
-        // The bar colours (DESIGN §3 additions, step 6) - thresholds on f, the share of the
-        // full-strength line left: green at or above the line, blue just below it, then these.
-        public static readonly ParamDef BarYellowBelowPercent = Int("BarYellowBelowPercent", 0, 100, PlayerBarsGroup,
-            "Yellow at or below (% of the line)",
-            "Colour of the Athletics bars: green at or above the full-strength line, blue just below it, and yellow once the Athletics left is at or below this percent of the line. With the line at 75% of the bar, 75 turns the bar yellow from about 56% of the bar down.");
+        // The bar colours (DESIGN §3 additions, step 6) - thresholds on f, the share of the peak line
+        // left: green at or above the line, blue just below it, then these. The strip uses them too.
+        public static readonly ParamDef BarYellowBelowPercent = Int("BarYellowBelowPercent", 0, 100, PlayerBarGroup,
+            "Yellow at or below (% of the peak line)",
+            "The colours of your bar and of the orders-menu strip: green at or above the peak line, blue just below it, and yellow once the Athletics left is at or below this percent of the peak line. With the line at 75% of the bar, 75 turns it yellow from about 56% of the bar down.");
 
-        public static readonly ParamDef BarOrangeBelowPercent = Int("BarOrangeBelowPercent", 0, 100, PlayerBarsGroup,
-            "Orange at or below (% of the line)",
-            "The Athletics bars turn orange once the Athletics left is at or below this percent of the full-strength line (50: half of the line, about 38% of the bar with the line at 75%).");
+        public static readonly ParamDef BarOrangeBelowPercent = Int("BarOrangeBelowPercent", 0, 100, PlayerBarGroup,
+            "Orange at or below (% of the peak line)",
+            "Orange once the Athletics left is at or below this percent of the peak line (50: about 38% of the bar with the line at 75%).");
 
-        public static readonly ParamDef BarRedBelowPercent = Int("BarRedBelowPercent", 0, 100, PlayerBarsGroup,
-            "Red at or below (% of the line)",
-            "The Athletics bars turn red once the Athletics left is at or below this percent of the full-strength line (25: a quarter of the line, about 19% of the bar with the line at 75%). An empty bar is always red, and its number turns red too.");
+        public static readonly ParamDef BarRedBelowPercent = Int("BarRedBelowPercent", 0, 100, PlayerBarGroup,
+            "Red at or below (% of the peak line)",
+            "Red once the Athletics left is at or below this percent of the peak line (25: about 19% of the bar with the line at 75%). An empty bar is always red, and your bar's word and number turn red too.");
 
-        // ------------------------------------------------------------------ bars: your squads
+        // ------------------------------------------------------------------ the orders-menu strip (step 9)
 
         // The squad bars floating above the formations (ShowFormationBars, FormationBarsAlways,
         // FormationBarHeight) are LATER (step 8): their settings left the schema in step 10b (review
-        // R21). DESIGN's "Planned parameters" keeps the rows.
+        // R21). DESIGN's "Planned parameters" keeps the rows. The spread and health settings below
+        // will serve them too.
 
-        public static readonly ParamDef ShowFormationSpread = Bool("ShowFormationSpread", SquadBarsGroup,
-            "Show the spread",
-            "Show how far the men's Athletics spreads around the average in the orders-menu strip: the \"± 8\" after the number and a lighter band on its bar. Off: the average alone.");
-
-        public static readonly ParamDef FormationSpreadStdDevs = Float("FormationSpreadStdDevs", 0, 3, SquadBarsGroup,
-            "Spread band width (std devs)",
-            "Width of that band on each side of the average, in standard deviations - the strip's \"± 8\" is this width in percent of the bar. 1 = about two men in three fall inside it.");
-
-        public static readonly ParamDef ShowInOrderMenu = Bool("ShowInOrderMenu", SquadBarsGroup,
+        public static readonly ParamDef ShowInOrderMenu = Bool("ShowInOrderMenu", OrderStripGroup,
             "Orders menu strip",
-            "While the orders menu is open, show under each formation card its men's average Athletics ± spread as a slim bar and numbers, for example \"72% ± 8\" (and their average health).");
+            "While the orders menu is open, a slim strip under each of your formation cards: the men's average Athletics, in percent of their own bars, with its spread (\"72% ± 8\"), over a bar in the colour of their strength. You are not counted - you have your own bar.");
 
-        public static readonly ParamDef ShowFormationHealth = Bool("ShowFormationHealth", SquadBarsGroup,
+        public static readonly ParamDef ShowFormationHealth = Bool("ShowFormationHealth", OrderStripGroup,
             "Show average health",
-            "The orders-menu strip also shows the men's average health left, for example \"HP 81%\".");
+            "The strip also shows the men's average health left, for example \"HP 81%\".");
 
-        public static readonly ParamDef OrderStripUnderCards = Bool("OrderStripUnderCards", SquadBarsGroup,
+        public static readonly ParamDef ShowFormationSpread = Bool("ShowFormationSpread", OrderStripGroup,
+            "Show the spread",
+            "The strip shows how far the men's Athletics spreads around the average: the \"± 8\" after the number and a lighter band on its bar. Off: the average alone.");
+
+        public static readonly ParamDef FormationSpreadStdDevs = Float("FormationSpreadStdDevs", 0, 3, OrderStripGroup,
+            "Spread width (std devs)",
+            "How wide the spread is on each side of the average, in standard deviations - the strip's \"± 8\" is this width, in percent of the bar. 1 = about two men in three fall inside it.");
+
+        public static readonly ParamDef OrderStripUnderCards = Bool("OrderStripUnderCards", OrderStripGroup,
             "Strip under the cards",
             "On: the strip sits under each of the game's formation cards (read live, so it follows any resolution, UI scale or order-menu mod that keeps the cards). Off - or whenever the cards cannot be matched - a compact panel at the top of the screen lists the same numbers instead.");
 
@@ -261,7 +269,7 @@ namespace TraxCombat.Core
         // The orders-menu strip (step 9) - UI pixels of the 1080p layout, measured from each vanilla
         // formation card (read live); the fallback panel's place. The game's UI scale applies.
         public static readonly ParamDef OrderStripTextSize = Int("OrderStripTextSize", 8, 30, AdvancedGroup,
-            "Orders strip: text size",
+            "Orders strip: text size (px)",
             "Font size of the orders-menu strip's numbers, in the game's UI pixels.");
 
         public static readonly ParamDef OrderStripTextOffset = Int("OrderStripTextOffset", -40, 60, AdvancedGroup,
@@ -282,19 +290,19 @@ namespace TraxCombat.Core
 
         public static readonly ParamDef OrderPanelOffsetTop = Int("OrderPanelOffsetTop", 0, 1000, AdvancedGroup,
             "Orders panel: from the top (px)",
-            "Where the fallback panel sits (used when the cards cannot be matched, or with the strip under the cards off): distance from the top of the screen, in the game's UI pixels. It is centred left to right.");
+            "Where the fallback panel sits (used when the cards cannot be matched, or with Strip under the cards off): distance from the top of the screen, in the game's UI pixels. It is centred left to right.");
 
         public static readonly ParamDef OrderPanelWidth = Int("OrderPanelWidth", 120, 900, AdvancedGroup,
             "Orders panel: width (px)",
             "Width of the fallback panel, in the game's UI pixels.");
 
         public static readonly ParamDef FormationStatsRefreshSeconds = Float("FormationStatsRefreshSeconds", 0.05, 2, AdvancedGroup,
-            "Squad stats refresh (s)",
-            "How often the squad averages and spreads are recomputed, in seconds.");
+            "Strip averages refresh (s)",
+            "How often the orders-menu strip's averages (Athletics, spread, health) are worked out, in seconds of battle time.");
 
         public static readonly ParamDef VerboseLogging = Bool("VerboseLogging", AdvancedGroup,
             "Verbose log",
-            "Write every damage roll, blow and exhaustion to trax_combat.log (rate-limited, so a big battle cannot flood it). Off: only loading, settings, battle start and end, battle summaries and errors.");
+            "Also write every damage roll, blow, step back and pace hold to trax_combat.log, rate-limited so a big battle cannot flood it. These lines carry a ~ before their tag and are the only ones a trim cuts. Off: loading, settings, battle start and end, first-time events, summaries and errors only.");
 
         // Step 10b (review R7): the log's size cap, and what a trim keeps (LogTrim).
         public static readonly ParamDef LogMaxMegabytes = Int("LogMaxMegabytes", 1, 100, AdvancedGroup,
@@ -303,7 +311,7 @@ namespace TraxCombat.Core
 
         // ------------------------------------------------------------------ the list (keep LAST)
 
-        /// <summary>Every setting, in file and MCM order. <c>All[i].Index == i</c>.</summary>
+        /// <summary>Every setting, in file and MCM order (= declaration order). <c>All[i].Index == i</c>.</summary>
         public static readonly IReadOnlyList<ParamDef> All = new[]
         {
             ModEnabled,
@@ -316,10 +324,8 @@ namespace TraxCombat.Core
             StepBackHoldAttacks, StepBackMaxAtOnce,
             RegenDelayBlowTimes, BlowTimeSeconds, FullRegenSecondsStanding, RegenMultiplierAtFullRun,
             WalkEffortFraction,
-            ShowPlayerBar,
-            BarYellowBelowPercent, BarOrangeBelowPercent, BarRedBelowPercent,
-            ShowFormationSpread, FormationSpreadStdDevs,
-            ShowInOrderMenu, ShowFormationHealth, OrderStripUnderCards,
+            ShowPlayerBar, BarYellowBelowPercent, BarOrangeBelowPercent, BarRedBelowPercent,
+            ShowInOrderMenu, ShowFormationHealth, ShowFormationSpread, FormationSpreadStdDevs, OrderStripUnderCards,
             HudRefreshSeconds, PlayerBarWidth, PlayerBarHeight, PlayerBarOffsetRight, PlayerBarOffsetBottom,
             OrderStripTextSize, OrderStripTextOffset, OrderStripBarOffset, OrderStripBarHeight, OrderStripSideMargin,
             OrderPanelOffsetTop, OrderPanelWidth,
@@ -329,7 +335,7 @@ namespace TraxCombat.Core
         /// <summary>The groups in order.</summary>
         public static readonly IReadOnlyList<ParamGroup> Groups = new[]
         {
-            MasterGroup, DamageGroup, AthleticsGroup, TiredGroup, StepBackGroup, RegenGroup, PlayerBarsGroup, SquadBarsGroup, AdvancedGroup,
+            MasterGroup, DamageGroup, AthleticsGroup, TiredGroup, StepBackGroup, RefillGroup, PlayerBarGroup, OrderStripGroup, AdvancedGroup,
         };
 
         private static readonly Dictionary<string, ParamDef> ByKey = BuildIndex();

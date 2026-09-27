@@ -17,20 +17,20 @@
 // one, next to config.json - copy it over the repo's defaults.json to make them the defaults.
 {
   // ==================== Master switch ====================
-  // Turn the whole mod off to play a battle exactly as vanilla - for example to fight the same
-  // battle with and without it and compare. Off: no damage rolls, no Athletics costs, refill or
-  // slow attacks, no bars; the log still records every battle (its summary says mod ON or OFF).
-  // Applies live, even mid-battle; switched back on, everyone starts with a full Athletics bar.
+  // Turn the whole mod off and every battle is plain vanilla: no damage rolls, no Athletics, no
+  // slow attacks, no step backs, no bars. The log still records each battle (its summary says
+  // mod ON or OFF), so the same battle can be fought both ways and compared. Switched back on,
+  // everyone starts with a full Athletics bar.
   // (true or false)
   "ModEnabled": true,
 
   // ==================== Damage randomness ====================
-  // On: every hit that lands deals a random share of its normal damage (see the spread). Off:
-  // damage is the game's own (the rest of the mod still runs).
+  // On: every hit that lands deals a random share of its normal damage (see Spread). Off: every
+  // hit deals the game's own damage; the rest of the mod still runs.
   // (true or false)
   "DamageRandomEnabled": true,
 
-  // How far a hit's damage may swing up or down, in percent. 50 means a 50-damage hit lands for
+  // How far a hit's damage may swing up or down, in percent. 50: a 50-damage hit lands for
   // anything from 25 to 75, rolled fresh on every hit. 0 turns the randomness off.
   // (range 0 to 100)
   "DamageRandomPercent": 50,
@@ -53,41 +53,43 @@
   "DamageRandomOnShields": false,
 
   // ==================== Athletics ====================
-  // On: every fighter has an Athletics bar - his stamina, as big as his Athletics skill on the
-  // character screen - that his attacks drain and rest refills. Near the top of the bar he
-  // fights at full strength; below it his damage, swing speed and run speed fall, down to slow
-  // attacks when it is empty. Off: no Athletics bar at all.
+  // On: every fighter has an Athletics bar - his stamina, as big as his Athletics skill - that
+  // his attacks drain and rest refills. At or above the peak line he fights at full strength;
+  // below it his damage upside, attack speed and run speed fall, down to slow attacks and a
+  // slow run when it is empty, and tired AI fighters step back. Off: no Athletics at all - no
+  // costs, no slowing, no step backs, no bars.
   // (true or false)
   "AthleticsEnabled": true,
 
   // No fighter's Athletics bar is smaller than this, whatever his Athletics skill - so a
-  // recruit with skill 20 still gets 50 points (5 blows). 0 = no floor: the bar is exactly the
-  // skill (never below 1 point). Changing it mid-battle keeps everyone's share: a fighter at
-  // 60% stays at 60%.
+  // recruit with Athletics skill 20 still gets a 50-point bar (5 blows). 0 = no floor: the bar
+  // is exactly the skill (never below 1 point). Changed mid-battle, everyone keeps his share: a
+  // fighter at 60% stays at 60%.
   // (range 0 to 1000)
   "AthleticsPoolFloor": 50,
 
   // Athletics points per point of Athletics skill. 1.0: the bar tops at the skill - skill 180,
-  // a bar of 180. Changing it mid-battle keeps everyone's share.
+  // a 180-point bar. Changed mid-battle, everyone keeps his share.
   // (range 0.1 to 5.0)
   "AthleticsPoolPerSkill": 1.0,
 
-  // At or above this share of his own bar a fighter is at full strength: full damage upside,
-  // full swing speed, full run speed. Below it each of those falls in a straight line to its
-  // lowest value at an empty bar. 100 = only a full bar is full strength.
+  // Where the peak line sits - the white mark on the bar - in percent of each fighter's own
+  // bar. At or above it he is at full strength: full damage upside, attack speed and run speed.
+  // Below it each of those falls in a straight line to its lowest value at an empty bar. 100 =
+  // only a full bar is full strength.
   // (range 10 to 100)
   "AthleticsPeakPercent": 75,
 
   // On: a wounded fighter can only use the share of his bar that matches the health he has left
-  // - at 75% health, 75% of the bar; the rest is cut at once and never refills while the wound
-  // lasts. The full-strength line stays where it was, so a badly wounded fighter never gets
-  // back to full strength.
+  // - at 75% health, 75% of the bar; the rest is cut at once and does not refill while the
+  // wound lasts. The peak line stays where it was, so a badly wounded fighter never gets back
+  // to full strength.
   // (true or false)
   "HealthCapsAthletics": true,
 
-  // Athletics points one attack costs before the hero and leader discounts, whatever the size
-  // of the bar - so a bigger Athletics skill means more blows. With the defaults a recruit (a
-  // 50 bar) empties after 5 blows, a legionary (130) after 13. 0 = attacks are free.
+  // Athletics points one attack costs a common soldier, whatever the size of his bar - so a
+  // bigger Athletics skill means more blows. With the defaults a recruit (a 50-point bar) is
+  // empty after 5 blows, a legionary (130) after 13. 0 = attacks are free.
   // (range 0.0 to 100.0)
   "CostPerBlow": 10.0,
 
@@ -96,27 +98,29 @@
   // (true or false)
   "CostOnMiss": true,
 
-  // Heroes (lords, companions and you) pay this share of the cost per blow. 0.75 = a quarter
-  // less than a common soldier.
+  // Heroes (lords, companions and you) pay the cost per blow times this. 0.75 = a quarter less
+  // than a common soldier.
   // (range 0.0 to 2.0)
   "HeroCostMultiplier": 0.75,
 
-  // The hero who leads the fighter's own party (you for your party, a lord for his) pays this
-  // share again, on top of the hero discount: 0.75 × 0.75 × 10 = about 5.6 per blow.
+  // The hero who leads the fighter's own party (you for your party, a lord for his) pays times
+  // this again, on top of the hero price: 10 × 0.75 × 0.75 = about 5.6 per blow.
   // (range 0.0 to 2.0)
   "PartyLeaderCostMultiplier": 0.75,
 
   // ==================== Tired fighters ====================
-  // Attack speed of a fighter whose Athletics is empty, in percent of normal: swings, thrusts,
-  // bow draw, crossbow reload, throws. Between the full-strength line and empty it falls in a
-  // straight line. 100 = attacks never slow down.
+  // How fast a fighter with an empty bar attacks, in percent of normal: the wind-up and swing,
+  // thrusts, bow draw, crossbow reload and throws - and, for the AI, the pause between attacks
+  // (the next two switches). 20 = one attack where a fresh man makes five. From the peak line
+  // down to empty it falls in a straight line. 100 = attacks never slow down. Blocking is never
+  // slowed.
   // (range 5 to 100)
   "ExhaustedAttackSpeedPercent": 20,
 
   // On: a tired AI fighter also decides to attack (and to strike back after a parry) less
-  // often, looses arrows less readily and aims longer before a shot - by the same factor as his
-  // attack speed - so his whole rhythm slows, not only the swing. Blocking is never touched.
-  // Off: only the animations slow down. Applies at once, even mid-battle.
+  // often, looses arrows less readily and aims longer before a shot - by his attack speed - so
+  // his whole rhythm slows, not only the swing. Blocking is never touched. Off: only the
+  // animations slow down.
   // (true or false)
   "AttackRateAiDecisions": true,
 
@@ -127,39 +131,39 @@
   // (true or false)
   "AttackRatePaceHold": true,
 
-  // Top speed on foot of a fighter whose Athletics is empty, times his normal top speed.
-  // Between the full-strength line and empty it falls in a straight line, so fresh men overtake
-  // tired ones. 1.0 = tired men run as fast as fresh ones.
+  // Top speed on foot of a fighter with an empty bar, times his normal top speed. From the peak
+  // line down to empty it falls in a straight line, so fresh men overtake tired ones. 1.0 =
+  // tired men run as fast as fresh ones.
   // (range 0.1 to 1.0)
   "MinMoveSpeedMultiplier": 0.3,
 
-  // Top speed of a horse whose rider's Athletics is empty, times its normal top speed, on the
-  // same straight line. 1.0 = horses never slow down, however tired the rider.
+  // Top speed of a horse whose rider's bar is empty, times its normal top speed, on the same
+  // straight line. 1.0 = horses never slow down, however tired the rider.
   // (range 0.1 to 1.0)
   "MountMinSpeedMultiplier": 1.0,
 
-  // On: the lucky side of the damage roll shrinks as the attacker tires - at full strength a
-  // hit can land up to +50%, halfway down to empty up to +25%, empty never above normal. The
-  // unlucky side never changes. Off: every attacker gets the full roll.
+  // On: the lucky side of the damage roll shrinks as the attacker tires - at or above the peak
+  // line a hit can land up to +50% (with Spread at 50), halfway down to empty up to +25%, empty
+  // never above normal. The unlucky side never changes. Off: every attacker gets the full roll.
   // (true or false)
   "DamageBonusFollowsAthletics": true,
 
   // ==================== Tired fighters step back ====================
   // On: after a melee swing, a tired AI fighter on foot may step back a little, facing his
   // enemy with his guard up, then return to his place in the formation - so the tired fall back
-  // and the fresh take the blows. Never you, never riders, never after a shot or a throw. Off
-  // mid-battle: everyone stepping back returns to his formation at once.
+  // and the fresh take the blows. Never you, never riders, never after a shot or a throw; field
+  // battles only. Off mid-battle: everyone stepping back returns to his formation at once.
   // (true or false)
   "StepBackEnabled": true,
 
-  // Chance, in percent, that a fighter with an empty Athletics bar steps back after a melee
-  // swing. It falls in a straight line to 0 at the full-strength line: halfway down, half this
-  // chance; at full strength never. 0 = nobody steps back.
+  // Chance, in percent, that a fighter with an empty bar steps back after a melee swing. It
+  // falls in a straight line to 0 at the peak line: halfway down, half this chance; at full
+  // strength never. 0 = nobody steps back.
   // (range 0 to 100)
   "StepBackMaxChancePercent": 100,
 
   // How far back a fighter steps, in metres, straight away from the enemy he fights. A tired
-  // man walks slowly, so he may not get all the way before the time below runs out.
+  // man walks slowly, so he may not get all the way before the step time runs out.
   // (range 0.5 to 5.0)
   "StepBackDistance": 2.0,
 
@@ -183,17 +187,17 @@
   // (range 1 to 1000)
   "StepBackMaxAtOnce": 50,
 
-  // ==================== Regeneration ====================
+  // ==================== Refill ====================
   // How long a fighter must go without attacking before his Athletics starts to refill, counted
-  // in blow lengths (see the next setting). 2 × 1.5 s = 3 seconds.
+  // in blow lengths (the next setting): 2 × 1.5 s = 3 seconds.
   // (range 0.0 to 20.0)
   "RegenDelayBlowTimes": 2.0,
 
-  // How many seconds one blow counts as, for the rest delay above.
+  // How many seconds one blow counts as, for the rest before refill.
   // (range 0.1 to 10.0)
   "BlowTimeSeconds": 1.5,
 
-  // Seconds to refill from empty to full while standing still or walking.
+  // Seconds to refill an empty bar to full while standing still or walking.
   // (range 1.0 to 600.0)
   "FullRegenSecondsStanding": 60.0,
 
@@ -209,47 +213,51 @@
   // (range 0.05 to 1.0)
   "WalkEffortFraction": 0.4,
 
-  // ==================== Bars - you and your target ====================
-  // Show your own Athletics next to your health bar.
+  // ==================== Your Athletics bar ====================
+  // Your Athletics bar, bottom right under your health bar: the Athletics you have left and
+  // your whole bar ("132 / 180"), a white mark at the peak line, the fill in the colour of your
+  // strength (green at full strength, then blue, yellow, orange, red) and the part your wounds
+  // hold shown dark.
   // (true or false)
   "ShowPlayerBar": true,
 
-  // Colour of the Athletics bars: green at or above the full-strength line, blue just below it,
-  // and yellow once the Athletics left is at or below this percent of the line. With the line
-  // at 75% of the bar, 75 turns the bar yellow from about 56% of the bar down.
+  // The colours of your bar and of the orders-menu strip: green at or above the peak line, blue
+  // just below it, and yellow once the Athletics left is at or below this percent of the peak
+  // line. With the line at 75% of the bar, 75 turns it yellow from about 56% of the bar down.
   // (range 0 to 100)
   "BarYellowBelowPercent": 75,
 
-  // The Athletics bars turn orange once the Athletics left is at or below this percent of the
-  // full-strength line (50: half of the line, about 38% of the bar with the line at 75%).
+  // Orange once the Athletics left is at or below this percent of the peak line (50: about 38%
+  // of the bar with the line at 75%).
   // (range 0 to 100)
   "BarOrangeBelowPercent": 50,
 
-  // The Athletics bars turn red once the Athletics left is at or below this percent of the
-  // full-strength line (25: a quarter of the line, about 19% of the bar with the line at 75%).
-  // An empty bar is always red, and its number turns red too.
+  // Red once the Athletics left is at or below this percent of the peak line (25: about 19% of
+  // the bar with the line at 75%). An empty bar is always red, and your bar's word and number
+  // turn red too.
   // (range 0 to 100)
   "BarRedBelowPercent": 25,
 
-  // ==================== Bars - your squads ====================
-  // Show how far the men's Athletics spreads around the average in the orders-menu strip: the
-  // "± 8" after the number and a lighter band on its bar. Off: the average alone.
-  // (true or false)
-  "ShowFormationSpread": true,
-
-  // Width of that band on each side of the average, in standard deviations - the strip's "± 8"
-  // is this width in percent of the bar. 1 = about two men in three fall inside it.
-  // (range 0.0 to 3.0)
-  "FormationSpreadStdDevs": 1.0,
-
-  // While the orders menu is open, show under each formation card its men's average Athletics ±
-  // spread as a slim bar and numbers, for example "72% ± 8" (and their average health).
+  // ==================== Orders menu strip ====================
+  // While the orders menu is open, a slim strip under each of your formation cards: the men's
+  // average Athletics, in percent of their own bars, with its spread ("72% ± 8"), over a bar in
+  // the colour of their strength. You are not counted - you have your own bar.
   // (true or false)
   "ShowInOrderMenu": true,
 
-  // The orders-menu strip also shows the men's average health left, for example "HP 81%".
+  // The strip also shows the men's average health left, for example "HP 81%".
   // (true or false)
   "ShowFormationHealth": true,
+
+  // The strip shows how far the men's Athletics spreads around the average: the "± 8" after the
+  // number and a lighter band on its bar. Off: the average alone.
+  // (true or false)
+  "ShowFormationSpread": true,
+
+  // How wide the spread is on each side of the average, in standard deviations - the strip's "±
+  // 8" is this width, in percent of the bar. 1 = about two men in three fall inside it.
+  // (range 0.0 to 3.0)
+  "FormationSpreadStdDevs": 1.0,
 
   // On: the strip sits under each of the game's formation cards (read live, so it follows any
   // resolution, UI scale or order-menu mod that keeps the cards). Off - or whenever the cards
@@ -308,9 +316,9 @@
   // (range 0 to 40)
   "OrderStripSideMargin": 2,
 
-  // Where the fallback panel sits (used when the cards cannot be matched, or with the strip
-  // under the cards off): distance from the top of the screen, in the game's UI pixels. It is
-  // centred left to right.
+  // Where the fallback panel sits (used when the cards cannot be matched, or with Strip under
+  // the cards off): distance from the top of the screen, in the game's UI pixels. It is centred
+  // left to right.
   // (range 0 to 1000)
   "OrderPanelOffsetTop": 80,
 
@@ -318,13 +326,15 @@
   // (range 120 to 900)
   "OrderPanelWidth": 300,
 
-  // How often the squad averages and spreads are recomputed, in seconds.
+  // How often the orders-menu strip's averages (Athletics, spread, health) are worked out, in
+  // seconds of battle time.
   // (range 0.05 to 2.0)
   "FormationStatsRefreshSeconds": 0.25,
 
-  // Write every damage roll, blow and exhaustion to trax_combat.log (rate-limited, so a big
-  // battle cannot flood it). Off: only loading, settings, battle start and end, battle
-  // summaries and errors.
+  // Also write every damage roll, blow, step back and pace hold to trax_combat.log,
+  // rate-limited so a big battle cannot flood it. These lines carry a ~ before their tag and
+  // are the only ones a trim cuts. Off: loading, settings, battle start and end, first-time
+  // events, summaries and errors only.
   // (true or false)
   "VerboseLogging": false,
 

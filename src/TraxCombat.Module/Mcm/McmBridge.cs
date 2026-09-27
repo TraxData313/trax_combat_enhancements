@@ -56,12 +56,20 @@ namespace TraxCombat.Mcm
         private const string DefaultPresetId = "default";
         private const double RetrySeconds = 1.0;
 
-        /// <summary>The buttons' group, after every settings group (not a schema group - no settings).</summary>
+        /// <summary>The buttons' group (not a schema group - no settings): after every settings group
+        /// but Advanced, which stays last (step 10b). MCM's group order is 2 × the schema's
+        /// <see cref="ParamGroup.Order"/>, the buttons one less than Advanced's.</summary>
         public const string DefaultsGroupTitle = "Defaults";
         public const string RevertButtonId = "TraxRevertAllToDefaults";
         public const string RevertButtonName = "Revert all to defaults";
         public const string ExportButtonId = "TraxSaveDefaultsFile";
         public const string ExportButtonName = "Save current values as a defaults file";
+
+        /// <summary>A settings group's place on the MCM page: 2 × its schema order, leaving a gap.</summary>
+        public static int GroupOrder(ParamGroup group) => 2 * group.Order;
+
+        /// <summary>The Defaults buttons' place: just before Advanced (the last group).</summary>
+        public static int DefaultsGroupOrder => GroupOrder(SettingsSchema.AdvancedGroup) - 1;
 
         /// <summary>What the page raises after a revert so MCM re-reads every value (anything but SAVE_TRIGGERED).</summary>
         private const string RefreshEvent = "TRAX_VALUES_RESET";
@@ -248,7 +256,7 @@ namespace TraxCombat.Mcm
             public void Fill(object groupBuilder)
             {
                 var g = (MCM.Abstractions.FluentBuilder.ISettingsPropertyGroupBuilder)groupBuilder;
-                g.SetGroupOrder(SettingsSchema.Groups.Count);
+                g.SetGroupOrder(DefaultsGroupOrder);
                 g.AddButton(RevertButtonId, RevertButtonName, new MCM.Common.ProxyRef<Action>(RevertAction, null), "Revert",
                     (Action<object>)ConfigureRevert);
                 g.AddButton(ExportButtonId, ExportButtonName, new MCM.Common.ProxyRef<Action>(ExportAction, null), "Save",
@@ -284,7 +292,7 @@ namespace TraxCombat.Mcm
             public void Fill(object groupBuilder)
             {
                 var g = (MCM.Abstractions.FluentBuilder.ISettingsPropertyGroupBuilder)groupBuilder;
-                g.SetGroupOrder(_group.Order);
+                g.SetGroupOrder(GroupOrder(_group));
                 int order = 0;
                 foreach (var p in SettingsSchema.InGroup(_group))
                 {

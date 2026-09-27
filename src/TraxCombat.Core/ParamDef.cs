@@ -148,10 +148,12 @@ namespace TraxCombat.Core
                 ? "default " + Format(Default)
                 : "default " + Format(Default) + ", range " + Format(Min) + " to " + Format(Max);
 
-        /// <summary>The MCM hint: the description, when it applies (only if not live), the default.</summary>
+        /// <summary>The MCM hint: the description, when a change applies, the default. (The config
+        /// file's comment says only "Applies from the next battle." for such a setting: a hand edit
+        /// of ANY setting is read at the next battle start - its header says so.)</summary>
         public string HintText =>
             Description
-            + (Timing == ApplyTiming.NextBattle ? " Applies from the next battle." : string.Empty)
+            + (Timing == ApplyTiming.NextBattle ? " Applies from the next battle." : " Applies at once, even mid-battle.")
             + " Default: " + Format(Default) + ".";
 
         public override string ToString() => Key;

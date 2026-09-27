@@ -514,6 +514,14 @@ namespace TraxCombat.Tools
                 Check(export != null && export.DisplayName == McmBridge.ExportButtonName && export.Content == "Save"
                     && export.GroupName == McmBridge.DefaultsGroupTitle && export.HintText.Contains("defaults.json"), "the export button is missing or wrong");
                 Check(buttons.All(b => b.PropertyReference.Value is Action), "a button does not hand MCM an Action to invoke");
+                // Step 10b: the page's group order. MCM's UI (Bannerlord.MBOptionScreen for 1.4.8,
+                // UISettingsUtils.SettingsPropertyGroupVMComparer) shows groups by Order ASCENDING:
+                // Master switch first, the schema's order, the Defaults buttons, Advanced last.
+                var groupOrder = MCM.Abstractions.BaseSettingsExtensions.GetSettingPropertyGroups(settings)
+                    .OrderBy(g => g.Order).Select(g => g.GroupName).ToList();
+                var expectedGroups = SettingsSchema.Groups.Select(g => g.Title).ToList();
+                expectedGroups.Insert(expectedGroups.Count - 1, McmBridge.DefaultsGroupTitle);
+                Check(groupOrder.SequenceEqual(expectedGroups), "MCM group order is " + string.Join(", ", groupOrder) + " - expected " + string.Join(", ", expectedGroups));
                 foreach (var p in SettingsSchema.All)
                 {
                     var d = defs.FirstOrDefault(x => x.Id == p.Key);
