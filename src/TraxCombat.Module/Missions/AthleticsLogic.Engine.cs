@@ -37,9 +37,9 @@ namespace TraxCombat.Missions
     /// fighter (<c>OnAgentHit</c>) and every regen step; while HealthCapsAthletics is on it pulls
     /// the fraction down at once and regen stops at it.
     ///
-    /// REGEN: every 0.1 s (engine plumbing - the integration is exact, only the effort sample and
-    /// "left 0" are that coarse), only for fighters below their top (full, or the health cap):
-    /// effort = speed ÷ CURRENT top speed (the horse's for a rider).
+    /// REGEN: every 0.1 s (engine plumbing - the integration is exact, the refill curve of step 14
+    /// included; only the effort sample and "left 0" are that coarse), only for fighters below their
+    /// top (full, or the health cap): effort = speed ÷ CURRENT top speed (the horse's for a rider).
     ///
     /// SPEED: three multipliers per fighter from f (attack, run on foot, his horse), re-targeted on
     /// a charge, a refill step, a wound and a settings change, but applied only when one moves by
@@ -978,7 +978,8 @@ namespace TraxCombat.Missions
                         }
                     }
                     if (o.Gained > 0 || o.Recovered) RetargetSpeed(st, in r, exact: o.ReachedTop);
-                    if (o.EnteredPeak) OnEnteredPeak(st, now, in r);
+                    if (o.EmptyToPeakSeconds > 0) _stats.AddEmptyToPeak(o.EmptyToPeakSeconds);
+                    if (o.EnteredPeak) OnEnteredPeak(st, now, in o, in r);
                     if (o.Recovered) OnRecovered(st, now, in o, in r);
                     if (o.ReachedTop) OnRefilled(st, now, in o, in r);
                 }
@@ -1012,15 +1013,19 @@ namespace TraxCombat.Missions
             }
         }
 
-        private void OnEnteredPeak(TrackedAgent st, double now, in AthleticsRules r)
+        private void OnEnteredPeak(TrackedAgent st, double now, in RegenOutcome o, in AthleticsRules r)
         {
             _stats.PeakEntered++;
             if (st.Agent.IsMainAgent && st.PlayerBelowPeakLogged)
             {
                 st.PlayerBelowPeakLogged = false;
                 double pool = AthleticsMath.PoolPoints(in r, st);
+                string fromEmpty = o.EmptyToPeakSeconds > 0
+                    ? " - up from empty in " + Sec(o.EmptyToPeakSeconds) + " s of refill (" + Sec(AthleticsMath.RefillSeconds(in r, 0, r.PeakFraction, 1.0))
+                      + " s at a walk or slower; " + AthleticsStats.RefillCurveText(in r) + ")"
+                    : string.Empty;
                 TraxLog.Limited("athletics", "YOU are back at full strength at " + Sec(now) + " s: " + F1(st.Fraction * pool) + " of " + F0(pool)
-                    + " (the line is " + F0(pool * r.PeakFraction) + ")", "athletics-player");
+                    + " (the line is " + F0(pool * r.PeakFraction) + ")" + fromEmpty, "athletics-player");
             }
         }
 
@@ -1070,7 +1075,8 @@ namespace TraxCombat.Missions
                 + F0(o.EpisodeStartFraction * pool) + " → " + F0(o.Top * pool) + " of " + F0(pool) + " in " + Sec(o.EpisodeSeconds)
                 + " s of refill (at a walk or slower " + Sec(o.EpisodeWalkSeconds) + " s, faster " + Sec(o.EpisodeSeconds - o.EpisodeWalkSeconds)
                 + " s; avg rate x" + F2(o.EpisodeSeconds > 0 ? o.EpisodeRateSeconds / o.EpisodeSeconds : 1) + "; empty to full takes "
-                + F0(r.FullRegenSecondsStanding) + " s at rest, " + F0(r.FullRegenSecondsStanding / Math.Max(0.01, r.RegenMultiplierAtFullRun)) + " s at a full run)";
+                + F0(r.FullRegenSecondsStanding) + " s at rest, " + F0(r.FullRegenSecondsStanding / Math.Max(0.01, r.RegenMultiplierAtFullRun)) + " s at a full run; "
+                + AthleticsStats.RefillCurveText(in r) + ")";
             if (you) TraxLog.Limited("athletics", "YOU are" + text, "athletics-player");
             else TraxLog.Verbose("athletics", Name(st) + " is" + text, "athletics-regen");
         }

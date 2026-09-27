@@ -235,6 +235,7 @@ namespace TraxCombat.Core
         public float RegenDelayBlowTimes => GetFloat(SettingsSchema.RegenDelayBlowTimes);
         public float BlowTimeSeconds => GetFloat(SettingsSchema.BlowTimeSeconds);
         public float FullRegenSecondsStanding => GetFloat(SettingsSchema.FullRegenSecondsStanding);
+        public int RegenRateNearFullPercent => GetInt(SettingsSchema.RegenRateNearFullPercent);
         public float RegenMultiplierAtFullRun => GetFloat(SettingsSchema.RegenMultiplierAtFullRun);
         public float WalkEffortFraction => GetFloat(SettingsSchema.WalkEffortFraction);
 

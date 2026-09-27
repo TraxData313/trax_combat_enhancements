@@ -92,6 +92,12 @@ namespace TraxCombat.Core
         public int RefillsToHealthCap;
         public double MaxEffort;
 
+        // ---- the refill curve (step 14): refills from EMPTY to the peak line with no blow between
+        public int EmptyToPeakRuns;
+        public double EmptyToPeakSecondsTotal;
+        public double EmptyToPeakSecondsMin = double.MaxValue;
+        public double EmptyToPeakSecondsMax;
+
         // ---- the run-speed measurements binned by f (step 5c's curves; the attack timings moved to
         // AttackRateStats in step 5e)
         public readonly RunSpeedCheck FootRun = new RunSpeedCheck();
@@ -173,6 +179,17 @@ namespace TraxCombat.Core
             int bin = effort > 1.0 ? EffortBins - 1 : Math.Min(EffortBins - 2, (int)(effort * 10));
             _effortSeconds[bin] += seconds;
             if (effort > MaxEffort) MaxEffort = effort;
+        }
+
+        /// <summary>A refill from empty reached the peak line after <paramref name="seconds"/> of refill
+        /// (<see cref="RegenOutcome.EmptyToPeakSeconds"/>).</summary>
+        public void AddEmptyToPeak(double seconds)
+        {
+            if (!(seconds > 0)) return;
+            EmptyToPeakRuns++;
+            EmptyToPeakSecondsTotal += seconds;
+            if (seconds < EmptyToPeakSecondsMin) EmptyToPeakSecondsMin = seconds;
+            if (seconds > EmptyToPeakSecondsMax) EmptyToPeakSecondsMax = seconds;
         }
 
         public double EffortSeconds
@@ -388,9 +405,17 @@ namespace TraxCombat.Core
 
             double regen = RegenWalkSeconds + RegenFasterSeconds;
             lines.Add("Athletics regen: " + N0(regen) + " fighter-seconds refilling - at a walk or slower (effort up to " + N2(r.WalkEffortFraction) + ") "
-                + N0(RegenWalkSeconds) + " s at the full rate, faster " + N0(RegenFasterSeconds) + " s at avg x"
+                + N0(RegenWalkSeconds) + " s at the walking rate (x1), faster " + N0(RegenFasterSeconds) + " s at avg x"
                 + (RegenFasterSeconds > 0 ? N2(RegenFasterRateSeconds / RegenFasterSeconds) : "n/a") + "; refills to the top: "
-                + RefillsToFull + " to full, " + RefillsToHealthCap + " to a wound's cap");
+                + RefillsToFull + " to full, " + RefillsToHealthCap + " to a wound's cap; refill curve: " + RefillCurveShort(in r));
+
+            double walkToPeak = AthleticsMath.RefillSeconds(in r, 0, r.PeakFraction, 1.0);
+            string atWalk = double.IsInfinity(walkToPeak) ? "no refill at a walk with these settings" : N1(walkToPeak) + " s at a walk or slower with these settings";
+            lines.Add(EmptyToPeakRuns == 0
+                ? "Athletics refill from empty to the peak line (no blow between): none this mission (" + atWalk + ")"
+                : "Athletics refill from empty to the peak line (no blow between): " + EmptyToPeakRuns + " run" + (EmptyToPeakRuns == 1 ? "" : "s")
+                  + ", avg " + N1(EmptyToPeakSecondsTotal / EmptyToPeakRuns) + " s (fastest " + N1(EmptyToPeakSecondsMin) + " s, slowest "
+                  + N1(EmptyToPeakSecondsMax) + " s) - " + atWalk + ", longer while moving faster than a walk");
 
             var e = new StringBuilder("Athletics refill effort (speed ÷ current top speed), seconds per tenth (0-0.1 … 0.9-1, above 1): ");
             for (int i = 0; i < _effortSeconds.Length; i++) e.Append(i == 0 ? "" : " ").Append(N0(_effortSeconds[i]));
@@ -483,7 +508,31 @@ namespace TraxCombat.Core
                 + "; damage upside follows Athletics: " + (r.DamageBonusFollows ? "yes" : "no")
                 + "; wounds cap the pool: " + (r.HealthCaps ? "yes" : "no")
                 + "; refill after " + N1(r.RegenDelaySeconds) + " s rest: empty to full in " + N0(r.FullRegenSecondsStanding)
-                + " s at a walk or slower (up to " + N2(r.WalkEffortFraction) + " of top speed), x" + N2(r.RegenMultiplierAtFullRun) + " at a full run";
+                + " s at a walk or slower (up to " + N2(r.WalkEffortFraction) + " of top speed), x" + N2(r.RegenMultiplierAtFullRun) + " at a full run"
+                + ", " + RefillCurveText(in r);
+        }
+
+        /// <summary>The refill curve in words (step 14): <c>near full at 50% of the rate near empty (at a walk:
+        /// half the bar in 25 s, the peak line in 41 s)</c>, or <c>the same rate all the way</c> at 100.</summary>
+        public static string RefillCurveText(in AthleticsRules r)
+        {
+            if (r.RegenNearFullShare >= 1.0) return "the same rate all the way (RegenRateNearFullPercent 100)";
+            string text = "near full at " + N0(r.RegenNearFullShare * 100) + "% of the rate near empty";
+            double half = AthleticsMath.RefillSeconds(in r, 0, 0.5, 1.0);
+            double peak = AthleticsMath.RefillSeconds(in r, 0, r.PeakFraction, 1.0);
+            if (double.IsInfinity(half) || double.IsInfinity(peak)) return text;
+            return text + " (at a walk: half the bar in " + N0(half) + " s, the peak line in " + N0(peak) + " s)";
+        }
+
+        /// <summary>The curve for the summary's regen line: <c>near full x0.50 of near empty (x1.39 → x0.69 of a flat refill)</c>.</summary>
+        public static string RefillCurveShort(in AthleticsRules r)
+        {
+            if (r.RegenNearFullShare >= 1.0) return "flat (RegenRateNearFullPercent 100)";
+            double flat = r.FullRegenSecondsStanding > 0 ? 1.0 / r.FullRegenSecondsStanding : 0;
+            string text = "near full x" + N2(r.RegenNearFullShare) + " of near empty (RegenRateNearFullPercent " + r.RegenRateNearFullPercent + ")";
+            if (!(flat > 0)) return text;
+            double empty = AthleticsMath.RegenRateAtEmpty(in r) / flat;
+            return text + ", x" + N2(empty) + " → x" + N2(empty * r.RegenNearFullShare) + " of a flat refill";
         }
 
         private static string Speed(MeanStd s) => s.Count == 0 ? "n/a" : "avg " + N2(s.Mean) + " m/s (n " + s.Count + ")";

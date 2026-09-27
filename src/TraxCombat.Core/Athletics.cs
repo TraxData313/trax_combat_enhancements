@@ -33,7 +33,7 @@ namespace TraxCombat.Core
             float costPerBlow, bool costOnMiss, float heroCostMultiplier, float partyLeaderCostMultiplier,
             int exhaustedAttackSpeedPercent, float minMoveSpeedMultiplier, float mountMinSpeedMultiplier, bool damageBonusFollows,
             float regenDelayBlowTimes, float blowTimeSeconds, float fullRegenSecondsStanding, float regenMultiplierAtFullRun,
-            float walkEffortFraction, bool modEnabled = true)
+            float walkEffortFraction, int regenRateNearFullPercent, bool modEnabled = true)
         {
             ModEnabled = modEnabled;
             AthleticsEnabled = enabled;
@@ -54,6 +54,7 @@ namespace TraxCombat.Core
             FullRegenSecondsStanding = fullRegenSecondsStanding;
             RegenMultiplierAtFullRun = regenMultiplierAtFullRun;
             WalkEffortFraction = walkEffortFraction;
+            RegenRateNearFullPercent = regenRateNearFullPercent;
         }
 
         /// <summary>The mod's master switch (ModEnabled).</summary>
@@ -115,6 +116,14 @@ namespace TraxCombat.Core
         /// <summary>Up to this share of the current top speed counts as walking (full regen).</summary>
         public float WalkEffortFraction { get; }
 
+        /// <summary>RegenRateNearFullPercent (step 14): the refill rate near full, % of the rate near
+        /// empty - the straight line of <see cref="AthleticsMath.RegenCurve"/>; 100 = the flat refill.</summary>
+        public int RegenRateNearFullPercent { get; }
+
+        /// <summary>k of the refill curve: RegenRateNearFullPercent / 100 kept inside 0.01..1 (k 0 would
+        /// never reach full; above 1 would refill slower when low).</summary>
+        public double RegenNearFullShare => RegenRateNearFullPercent >= 100 ? 1.0 : RegenRateNearFullPercent <= 1 ? 0.01 : RegenRateNearFullPercent / 100.0;
+
         /// <summary>Seconds without a blow before regeneration starts: 2 × 1.5 = 3 s by default.</summary>
         public double RegenDelaySeconds => (double)RegenDelayBlowTimes * BlowTimeSeconds;
 
@@ -139,7 +148,7 @@ namespace TraxCombat.Core
             s.CostPerBlow, s.CostOnMiss, s.HeroCostMultiplier, s.PartyLeaderCostMultiplier,
             s.ExhaustedAttackSpeedPercent, s.MinMoveSpeedMultiplier, s.MountMinSpeedMultiplier, s.DamageBonusFollowsAthletics,
             s.RegenDelayBlowTimes, s.BlowTimeSeconds, s.FullRegenSecondsStanding, s.RegenMultiplierAtFullRun,
-            s.WalkEffortFraction, s.ModEnabled);
+            s.WalkEffortFraction, s.RegenRateNearFullPercent, s.ModEnabled);
     }
 
     /// <summary>
@@ -283,8 +292,9 @@ namespace TraxCombat.Core
     {
         public RegenOutcome(double gained, double seconds, double effort, double rateMultiplier, bool walking, bool recovered,
             double exhaustedSeconds, bool reachedTop, double top, double episodeStartFraction, double episodeSeconds,
-            double episodeWalkSeconds, double episodeRateSeconds, bool enteredPeak)
+            double episodeWalkSeconds, double episodeRateSeconds, bool enteredPeak, double emptyToPeakSeconds = 0)
         {
+            EmptyToPeakSeconds = emptyToPeakSeconds;
             Gained = gained;
             Seconds = seconds;
             Effort = effort;
@@ -339,6 +349,10 @@ namespace TraxCombat.Core
 
         /// <summary>This step lifted the fighter back into the peak zone (f reached 1).</summary>
         public bool EnteredPeak { get; }
+
+        /// <summary>Step 14: when this step crossed the peak line on a refill run that began at EMPTY (no blow
+        /// between), the seconds of refill from 0 to the line (exact, to the crossing); 0 otherwise.</summary>
+        public double EmptyToPeakSeconds { get; }
     }
 
     /// <summary>What the HUD reads for one fighter (steps 6-9) - a snapshot, no references kept.</summary>
@@ -434,6 +448,9 @@ namespace TraxCombat.Core
     ///                                     the curves floor + (1 − floor) × f
     ///   <see cref="DamageUpside"/>        the f the damage roll's upside follows
     ///   <see cref="RegenRateMultiplier"/> regen by effort (speed ÷ current top speed)
+    ///   <see cref="RegenCurve"/>          the refill curve (step 14): faster low, slower full, empty → full
+    ///                                     still FullRegenSecondsStanding (<see cref="RegenRateAtEmpty"/>,
+    ///                                     <see cref="RefillFrom"/> / <see cref="RefillSeconds"/> - exact)
     /// Settings are passed in (<see cref="AthleticsRules"/>, read live by the caller); nothing is cached.
     /// </summary>
     public static class AthleticsMath
@@ -555,13 +572,65 @@ namespace TraxCombat.Core
             return 1.0 + (Math.Max(0, r.RegenMultiplierAtFullRun) - 1.0) * t;
         }
 
-        /// <summary>Refill rate in pool fractions per second: 1 / FullRegenSecondsStanding at a walk or
-        /// slower, × <see cref="RegenRateMultiplier"/> faster than that.</summary>
-        public static double RegenFractionPerSecond(in AthleticsRules r, Fighter f, float speed, float topSpeed)
+        /// <summary>The refill rate right now in pool fractions per second: <see cref="RegenRateAtEmpty"/> ×
+        /// <see cref="RegenCurve"/> at his fill × <see cref="RegenRateMultiplier"/> for his effort. With
+        /// RegenRateNearFullPercent 100 it is the flat 1 / FullRegenSecondsStanding of steps 5c-13.</summary>
+        public static double RegenFractionPerSecond(in AthleticsRules r, Fighter f, float speed, float topSpeed) =>
+            RegenRateAtEmpty(in r) * RegenCurve(in r, f.Fraction) * RegenRateMultiplier(in r, Effort(speed, topSpeed));
+
+        // ------------------------------------------------------------------ the refill curve (step 14)
+        //
+        // Anton: "recover faster when it's low and slower as it is fuller ... maybe half linear". The rate
+        // is a straight line in the fill x (a share of the FULL pool): dx/dt = r0 × m × (1 − (1 − k) × x),
+        // k = RegenRateNearFullPercent / 100, m = the effort multiplier. r0 is chosen so empty → full at a
+        // walk still takes T = FullRegenSecondsStanding: ∫0..1 dx / (r0 (1 − a x)) = ln(1/k) / (a r0) = T,
+        // a = 1 − k. Each step is integrated EXACTLY (the effort is sampled once per step, so m is constant
+        // inside it): x(t) = x0 + (1 − a x0) × (1 − e^(−a r0 m t)) / a - the step length never changes the
+        // result, and k = 1 is the old flat rule to the bit (x0 + r0 m t, r0 = 1/T).
+
+        /// <summary>r0: the refill rate of an EMPTY bar at a walk or slower, pool fractions per second, so
+        /// that empty → full takes exactly FullRegenSecondsStanding (T): ln(1/k) / ((1 − k) × T); k = 1 →
+        /// 1/T (flat). T ≤ 0 → 0 (no refill).</summary>
+        public static double RegenRateAtEmpty(in AthleticsRules r)
         {
-            double full = r.FullRegenSecondsStanding > 0 ? 1.0 / r.FullRegenSecondsStanding : 0;
-            return full * RegenRateMultiplier(in r, Effort(speed, topSpeed));
+            if (!(r.FullRegenSecondsStanding > 0)) return 0;
+            double k = r.RegenNearFullShare;
+            double a = 1.0 - k;
+            if (a <= FlatCurve) return 1.0 / r.FullRegenSecondsStanding;
+            return Math.Log(1.0 / k) / (a * r.FullRegenSecondsStanding);
         }
+
+        /// <summary>The curve at fill <paramref name="fraction"/> (a share of the FULL pool, clamped to 0..1):
+        /// 1 − (1 − k) × x - 1 at empty, k at full; always 1 when k = 1.</summary>
+        public static double RegenCurve(in AthleticsRules r, double fraction) => 1.0 - (1.0 - r.RegenNearFullShare) * Clamp01(fraction);
+
+        /// <summary>The fill after <paramref name="seconds"/> of refill from <paramref name="from"/> at the
+        /// effort multiplier <paramref name="mult"/> - exact (see the curve's comment); not capped (the
+        /// caller stops at the top).</summary>
+        public static double RefillFrom(in AthleticsRules r, double from, double seconds, double mult)
+        {
+            double c = RegenRateAtEmpty(in r) * mult;
+            if (!(c > 0) || !(seconds > 0)) return from;
+            double a = 1.0 - r.RegenNearFullShare;
+            if (a <= FlatCurve) return from + c * seconds;
+            return from + (1.0 - a * from) * (1.0 - Math.Exp(-a * c * seconds)) / a;
+        }
+
+        /// <summary>Seconds of refill from <paramref name="from"/> up to <paramref name="to"/> at the effort
+        /// multiplier <paramref name="mult"/> - exact; 0 when <paramref name="to"/> ≤ <paramref name="from"/>,
+        /// +∞ when nothing refills (T ≤ 0 or the multiplier 0). At a walk (mult 1) 0 → 1 is FullRegenSecondsStanding.</summary>
+        public static double RefillSeconds(in AthleticsRules r, double from, double to, double mult)
+        {
+            if (to <= from) return 0;
+            double c = RegenRateAtEmpty(in r) * mult;
+            if (!(c > 0)) return double.PositiveInfinity;
+            double a = 1.0 - r.RegenNearFullShare;
+            if (a <= FlatCurve) return (to - from) / c;
+            return Math.Log((1.0 - a * from) / (1.0 - a * to)) / (a * c);
+        }
+
+        /// <summary>1 − k at or below this is the flat refill (k = 1: RegenRateNearFullPercent 100).</summary>
+        private const double FlatCurve = 1e-12;
 
         // ------------------------------------------------------------------ speed plumbing
 
@@ -650,8 +719,8 @@ namespace TraxCombat.Core
 
         /// <summary>
         /// Regeneration over the step (<paramref name="now"/> − <paramref name="dt"/>, <paramref name="now"/>]:
-        /// only the part after <c>last blow + RegenDelaySeconds</c> refills, at
-        /// <see cref="RegenFractionPerSecond"/> (effort sampled once per step), never above the top -
+        /// only the part after <c>last blow + RegenDelaySeconds</c> refills, along the refill curve
+        /// (<see cref="RefillFrom"/> - exact; the effort sampled once per step), never above the top -
         /// the full pool, or the health left under the cap. Then the "left 0" check. Off → nothing.
         /// </summary>
         public static RegenOutcome Regen(Fighter f, in AthleticsRules r, double now, double dt, float speed, float topSpeed)
@@ -661,7 +730,7 @@ namespace TraxCombat.Core
             double mult = RegenRateMultiplier(in r, effort);
             bool walking = IsWalking(in r, effort);
             double top = UsableFraction(in r, f);
-            double gained = 0, used = 0;
+            double gained = 0, used = 0, emptyToPeak = 0;
             bool reachedTop = false, enteredPeak = false;
             double episodeStart = 0, episodeSeconds = 0, episodeWalk = 0, episodeRate = 0;
 
@@ -683,17 +752,19 @@ namespace TraxCombat.Core
                         f.EpisodeRateSeconds = 0;
                     }
                     double before = f.Fraction;
-                    double after = before + rate * effective;
+                    double after = RefillFrom(in r, before, effective, mult);
                     used = effective;
                     if (after >= top - Epsilon)
                     {
-                        used = Math.Min(effective, (top - before) / rate);
+                        used = Math.Min(effective, RefillSeconds(in r, before, top, mult));
                         after = top;
                         reachedTop = true;
                     }
                     f.Fraction = after;
                     gained = after - before;
                     enteredPeak = PeakShareOf(in r, before) < 1.0 && PeakShareOf(in r, after) >= 1.0;
+                    if (enteredPeak && f.EpisodeStartFraction <= Epsilon) // a run from empty: the time to the line
+                        emptyToPeak = f.EpisodeSeconds + Math.Min(used, RefillSeconds(in r, before, r.PeakFraction, mult));
                     f.EpisodeSeconds += used;
                     if (walking) f.EpisodeWalkSeconds += used;
                     f.EpisodeRateSeconds += used * mult;
@@ -717,7 +788,7 @@ namespace TraxCombat.Core
                 exhaustedFor = now - f.ExhaustedSince;
             }
             return new RegenOutcome(gained, used, effort, mult, walking, recovered, exhaustedFor, reachedTop, top,
-                episodeStart, episodeSeconds, episodeWalk, episodeRate, enteredPeak);
+                episodeStart, episodeSeconds, episodeWalk, episodeRate, enteredPeak, emptyToPeak);
         }
 
         private static double Clamp01(double v) => v < 0 ? 0 : v > 1 ? 1 : v;

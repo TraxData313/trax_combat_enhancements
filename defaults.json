@@ -212,9 +212,19 @@
   // (range 0.1 to 10.0)
   "BlowTimeSeconds": 1.5,
 
-  // Seconds to refill an empty bar to full while standing still or walking.
+  // Seconds to refill an empty bar to full while standing still or walking. The bar refills
+  // faster while it is low and slower near full (the next setting); this stays the whole time
+  // from empty to full.
   // (range 1.0 to 600.0)
   "FullRegenSecondsStanding": 60.0,
+
+  // The bar refills fastest when it is empty and slows down as it fills, in a straight line:
+  // near full it refills at this percent of its speed near empty. The refill time at rest still
+  // takes it from empty to full. At 50 with 60 seconds: half the bar comes back in about 25
+  // seconds, three quarters (the peak line) in about 41, the last quarter in about 19. 100 =
+  // the same speed all the way.
+  // (range 10 to 100)
+  "RegenRateNearFullPercent": 50,
 
   // How fast Athletics refills while running flat out (or riding at the horse's top speed),
   // times the rate at rest. Between a walk and a full run it falls in a straight line. 1.0 =

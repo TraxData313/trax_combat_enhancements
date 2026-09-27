@@ -191,7 +191,14 @@ namespace TraxCombat.Core
 
         public static readonly ParamDef FullRegenSecondsStanding = Float("FullRegenSecondsStanding", 1, 600, RefillGroup,
             "Refill time at rest (s)",
-            "Seconds to refill an empty bar to full while standing still or walking.");
+            "Seconds to refill an empty bar to full while standing still or walking. The bar refills faster while it is low and slower near full (the next setting); this stays the whole time from empty to full.");
+
+        // Step 14 (Anton: "recover faster when it's low and slower as it is fuller ... maybe half linear"):
+        // the rate is a straight line in the fill, r0 × (1 − (1 − k) × x), with r0 chosen so empty → full
+        // still takes FullRegenSecondsStanding (AthleticsMath.RegenRateAtEmpty).
+        public static readonly ParamDef RegenRateNearFullPercent = Int("RegenRateNearFullPercent", 10, 100, RefillGroup,
+            "Refill speed near full (%)",
+            "The bar refills fastest when it is empty and slows down as it fills, in a straight line: near full it refills at this percent of its speed near empty. The refill time at rest still takes it from empty to full. At 50 with 60 seconds: half the bar comes back in about 25 seconds, three quarters (the peak line) in about 41, the last quarter in about 19. 100 = the same speed all the way.");
 
         public static readonly ParamDef RegenMultiplierAtFullRun = Float("RegenMultiplierAtFullRun", 0, 1, RefillGroup,
             "Refill rate at a full run (x)",
@@ -363,7 +370,7 @@ namespace TraxCombat.Core
             MinMoveSpeedMultiplier, MountMinSpeedMultiplier, DamageBonusFollowsAthletics,
             StepBackEnabled, StepBackMaxChancePercent, StepBackDistance, StepBackSeconds, StepBackEnemyRange,
             StepBackHoldAttacks, StepBackMaxAtOnce,
-            RegenDelayBlowTimes, BlowTimeSeconds, FullRegenSecondsStanding, RegenMultiplierAtFullRun,
+            RegenDelayBlowTimes, BlowTimeSeconds, FullRegenSecondsStanding, RegenRateNearFullPercent, RegenMultiplierAtFullRun,
             WalkEffortFraction,
             ShowPlayerBar, ShowPlayerBarOutsideBattles, ShowAttackRecoveryBar, FlashBarOnEarlyAttack,
             BarYellowBelowPercent, BarOrangeBelowPercent, BarRedBelowPercent,

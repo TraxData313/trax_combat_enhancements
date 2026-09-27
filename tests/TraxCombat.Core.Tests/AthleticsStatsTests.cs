@@ -18,7 +18,8 @@ public class AthleticsStatsTests
         Assert.Equal("Athletics settings at the end: ON - pool = the Athletics skill x1.00, at least 50; full strength at 75% of the pool and above; "
             + "cost per blow 10.0 / hero 7.5 / party leader 5.6 points, misses cost: yes; when empty: attacks at 20%, run x0.70, horses x1.00 (never slowed); "
             + "damage upside follows Athletics: yes; wounds cap the pool: yes; refill after 3.0 s rest: empty to full in 60 s at a walk or slower "
-            + "(up to 0.40 of top speed), x0.50 at a full run", lines[0]);
+            + "(up to 0.40 of top speed), x0.50 at a full run, near full at 50% of the rate near empty (at a walk: half the bar in 25 s, the peak line in 41 s)", lines[0]);
+        Assert.Contains("Athletics refill from empty to the peak line (no blow between): none this mission (40.7 s at a walk or slower with these settings)", lines);
         Assert.Contains("Athletics pools (the Athletics skill, settings at the end): no fighters tracked", lines);
         Assert.Contains("Athletics blows charged: 0 (melee swings 0, shots/throws 0, couched/braced hits 0, landed-only swings 0, landed-only shots 0) - by riders 0, on foot 0; Athletics spent 0 points", lines);
         Assert.Contains("Athletics exhaustions (empty, f 0): 0 entered, 0 left; the peak zone: left 0 times (a blow took a fighter below his line), re-entered 0 times (by refill)", lines);
@@ -110,6 +111,10 @@ public class AthleticsStatsTests
         s.RegenFasterRateSeconds = 21;
         s.RefillsToFull = 4;
         s.RefillsToHealthCap = 1;
+        s.AddEmptyToPeak(40.8);
+        s.AddEmptyToPeak(44.7);
+        s.AddEmptyToPeak(55.5);
+        s.AddEmptyToPeak(0);     // not a run: ignored
         s.AddTick(500, 0.2);
         s.AddTick(1000, 0.6);
         s.FighterRecomputes = 3;
@@ -137,10 +142,28 @@ public class AthleticsStatsTests
         Assert.Contains("Athletics heroes: 3 flagged, 2 party leaders (Derthert, you); lowest a hero reached: Rhagaea 12.5 of 100", lines);
         Assert.Contains("Athletics you: skill 180 → pool 180; 18 blows, 1 exhaustion, lowest 0.0 of 180", lines);
         Assert.Contains("Athletics your formations at the end: Infantry 72 ± 8 (2 men) f avg 0.93, 1 at full strength | Archers 72 ± 8 (2 men)", lines);
-        Assert.Contains("Athletics regen: 150 fighter-seconds refilling - at a walk or slower (effort up to 0.40) 120 s at the full rate, faster 30 s at avg x0.70; refills to the top: 4 to full, 1 to a wound's cap", lines);
+        Assert.Contains("Athletics regen: 150 fighter-seconds refilling - at a walk or slower (effort up to 0.40) 120 s at the walking rate (x1), faster 30 s at avg x0.70; refills to the top: 4 to full, 1 to a wound's cap; "
+            + "refill curve: near full x0.50 of near empty (RegenRateNearFullPercent 50), x1.39 → x0.69 of a flat refill", lines);
+        Assert.Contains("Athletics refill from empty to the peak line (no blow between): 3 runs, avg 47.0 s (fastest 40.8 s, slowest 55.5 s) - 40.7 s at a walk or slower with these settings, longer while moving faster than a walk", lines);
         Assert.Contains(lines, l => l.StartsWith("speed updates: 4 recomputes asked (UpdateAgentProperties: fighters 3, horses 1; a change below x0.05 waits; 0 held a tick by the per-tick budget), "
             + "the decorator applied attack penalties in 1 recomputes, run penalties in 1, horse penalties in 1 (the attack timings by f: the \"attack rate\" lines)", StringComparison.Ordinal));
         Assert.Contains("Athletics tick cost: avg 0.400 ms, max 0.600 ms per tick over 2 ticks; fighters polled avg 750, max 1000", lines);
+    }
+
+    [Fact]
+    public void The_refill_curve_in_words_curved_and_flat()
+    {
+        var s = new TraxSettings();
+        Assert.Equal("near full at 50% of the rate near empty (at a walk: half the bar in 25 s, the peak line in 41 s)", AthleticsStats.RefillCurveText(AthleticsRules.From(s)));
+        s.Set(SettingsSchema.RegenRateNearFullPercent, 100, SettingSources.Mcm);
+        var flat = AthleticsRules.From(s);
+        Assert.Equal("the same rate all the way (RegenRateNearFullPercent 100)", AthleticsStats.RefillCurveText(flat));
+        Assert.Equal("flat (RegenRateNearFullPercent 100)", AthleticsStats.RefillCurveShort(flat));
+        Assert.EndsWith("x0.50 at a full run, the same rate all the way (RegenRateNearFullPercent 100)", AthleticsStats.DescribeRules(flat), StringComparison.Ordinal);
+        Assert.Contains("Athletics refill from empty to the peak line (no blow between): none this mission (45.0 s at a walk or slower with these settings)",
+            new AthleticsStats().SummaryLines(flat, c => "a" + c, new List<KeyValuePair<string, FormationAthleticsStats>>()));
+        s.Set(SettingsSchema.RegenRateNearFullPercent, 25, SettingSources.Mcm);          // a deeper curve: faster at first
+        Assert.Equal("near full at 25% of the rate near empty (at a walk: half the bar in 20 s, the peak line in 36 s)", AthleticsStats.RefillCurveText(AthleticsRules.From(s)));
     }
 
     [Fact]

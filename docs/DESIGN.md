@@ -462,7 +462,8 @@ says (§2c).
 | `StepBackMaxAtOnce` | 50 | Most fighters stepping back at the same time, all sides together. |
 | `RegenDelayBlowTimes` | 2 | Idle blows before regeneration starts. |
 | `BlowTimeSeconds` | 1.5 | How long "one blow" is, for the delay above. |
-| `FullRegenSecondsStanding` | 60 | Seconds from empty to full while standing still or walking. |
+| `FullRegenSecondsStanding` | 60 | Seconds from empty to full while standing still or walking (the whole refill, whatever the curve below). |
+| `RegenRateNearFullPercent` | 50 | Step 14: the refill rate near full, % of the rate near empty - a straight line in the fill in between, empty → full still `FullRegenSecondsStanding`. 100 = the flat refill of steps 5c-13. |
 | `RegenMultiplierAtFullRun` | 0.5 | Regen rate at top speed, relative to standing or walking. |
 | `WalkEffortFraction` | 0.4 | Up to this share of top speed counts as walking (full regen). |
 | `ShowPlayerBar` | true | Player Athletics bar. |

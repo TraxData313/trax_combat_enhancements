@@ -162,6 +162,7 @@ namespace TraxCombat.Tools
             S.Set(SettingsSchema.RegenDelayBlowTimes, 2, SettingSources.File);
             S.Set(SettingsSchema.BlowTimeSeconds, 1.5, SettingSources.File);
             S.Set(SettingsSchema.FullRegenSecondsStanding, 60, SettingSources.File);
+            S.Set(SettingsSchema.RegenRateNearFullPercent, 50, SettingSources.File); // step 14: the refill curve
             S.Set(SettingsSchema.RegenMultiplierAtFullRun, 0.5, SettingSources.File);
             S.Set(SettingsSchema.WalkEffortFraction, 0.4, SettingSources.File);
             S.Set(SettingsSchema.VerboseLogging, false, SettingSources.File);

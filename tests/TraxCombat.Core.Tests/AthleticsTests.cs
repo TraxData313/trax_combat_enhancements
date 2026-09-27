@@ -11,9 +11,9 @@ public class AthleticsTests
     private static AthleticsRules Defaults(bool enabled = true, int floor = 50, float perSkill = 1.0f, int peak = 75, bool healthCaps = true,
         float cost = 10, bool costOnMiss = true, float hero = 0.75f, float leader = 0.75f, int speed = 20, float run = 0.7f, float mount = 1.0f,
         bool damageFollows = true, float delayBlows = 2, float blowTime = 1.5f, float standing = 60, float atFullRun = 0.5f, float walk = 0.4f,
-        bool modEnabled = true)
+        bool modEnabled = true, int nearFull = 50)
         => new(enabled, floor, perSkill, peak, healthCaps, cost, costOnMiss, hero, leader, speed, run, mount, damageFollows,
-            delayBlows, blowTime, standing, atFullRun, walk, modEnabled);
+            delayBlows, blowTime, standing, atFullRun, walk, nearFull, modEnabled);
 
     private static Fighter Troop(int skill, bool hero = false, bool leader = false) => new() { AthleticsSkill = skill, IsHero = hero, IsLeader = leader };
 
@@ -52,6 +52,8 @@ public class AthleticsTests
         Assert.Equal(3.0, r.RegenDelaySeconds, 6);
         Assert.Equal(0.5f, r.RegenMultiplierAtFullRun, 5);
         Assert.Equal(0.4f, r.WalkEffortFraction, 5);
+        Assert.Equal(50, r.RegenRateNearFullPercent);
+        Assert.Equal(0.5, r.RegenNearFullShare, 9);
 
         s.Set(SettingsSchema.AthleticsPoolFloor, 80, SettingSources.Mcm);
         s.Set(SettingsSchema.MountMinSpeedMultiplier, 0.6, SettingSources.Mcm);
@@ -350,7 +352,9 @@ public class AthleticsTests
         Assert.True(last.ReachedTop);
         Assert.Equal(0.6, last.Top, 9);
         Assert.Equal(0.6, f.Fraction, 9);
-        Assert.Equal(36.0, t, 1);                                       // 0.6 of the pool at 1/60 per second
+        double toCap = AthleticsMath.RefillSeconds(r, 0, 0.6, 1.0);     // along the curve: 30.9 s (flat: 36 s)
+        Assert.Equal(Math.Log(1 / 0.7) * 60 / Math.Log(2), toCap, 9);
+        Assert.InRange(t, toCap - 1e-9, toCap + 0.1);                   // the 0.1 s step that reached the cap
         Assert.Equal(0.0, AthleticsMath.Regen(f, r, t + 5, 5, 0f, 5f).Gained);
         AthleticsMath.ApplyHealth(f, r, 0.9);                           // healed: the cap rises, regen climbs again
         Assert.True(AthleticsMath.Regen(f, r, t + 6, 1, 0f, 5f).Gained > 0);
@@ -390,19 +394,29 @@ public class AthleticsTests
         Assert.Equal(0.0, AthleticsMath.RegenRateMultiplier(Defaults(atFullRun: 0f), 1.0));  // no refill at a full run
         Assert.Equal(1.0, AthleticsMath.RegenRateMultiplier(Defaults(atFullRun: 1f), 1.0));
         var f = Troop(100);
-        Assert.Equal(1.0 / 60, AthleticsMath.RegenFractionPerSecond(Defaults(), f, 0f, 5f), 9);
-        Assert.Equal(1.0 / 60, AthleticsMath.RegenFractionPerSecond(Defaults(), f, 3f, 0f), 9); // top unknown: full rate
-        Assert.Equal(0.5 / 60, AthleticsMath.RegenFractionPerSecond(Defaults(), f, 4.5f, 4.5f), 9); // a rider's horse at its top
+        var flat = Defaults(nearFull: 100);                                                  // the flat refill of steps 5c-13
+        Assert.Equal(1.0 / 60, AthleticsMath.RegenFractionPerSecond(flat, f, 0f, 5f), 9);
+        Assert.Equal(1.0 / 60, AthleticsMath.RegenFractionPerSecond(flat, f, 3f, 0f), 9); // top unknown: full rate
+        Assert.Equal(0.5 / 60, AthleticsMath.RegenFractionPerSecond(flat, f, 4.5f, 4.5f), 9); // a rider's horse at its top
+        // the curve (50): a full bar refills at half the empty rate - and the effort multiplies on top
+        double atEmpty = Math.Log(2) / 30;
+        Assert.Equal(atEmpty * 0.5, AthleticsMath.RegenFractionPerSecond(Defaults(), f, 0f, 5f), 12);
+        Assert.Equal(atEmpty * 0.5 * 0.5, AthleticsMath.RegenFractionPerSecond(Defaults(), f, 4.5f, 4.5f), 12);
         Assert.Equal(0.5, AthleticsMath.Effort(2f, 4f), 9);
         Assert.Equal(0.0, AthleticsMath.Effort(2f, 0f));
         Assert.True(AthleticsMath.IsWalking(Defaults(), 0.4));
         Assert.False(AthleticsMath.IsWalking(Defaults(), 0.41));
     }
 
-    [Fact]
-    public void Empty_to_full_takes_60_s_standing_or_walking_and_120_s_at_a_full_run()
+    [Theory]
+    [InlineData(100)] // the flat refill (steps 5c-13)
+    [InlineData(75)]
+    [InlineData(50)]  // DESIGN's initial value
+    [InlineData(25)]
+    [InlineData(10)]  // the slider's end
+    public void Empty_to_full_takes_60_s_standing_or_walking_and_120_s_at_a_full_run_whatever_the_curve(int nearFull)
     {
-        var r = Defaults(cost: 100);
+        var r = Defaults(cost: 100, nearFull: nearFull);
         foreach (var (speed, expected, walking) in new[] { (0f, 60.0, true), (1.8f, 60.0, true), (4.5f, 120.0, false) })
         {
             var f = Troop(100);
@@ -428,17 +442,191 @@ public class AthleticsTests
     [Fact]
     public void Nothing_regenerates_during_the_delay_and_only_the_part_after_it_counts()
     {
-        var r = Defaults(); // delay 3 s, full in 60 s at rest
+        foreach (int nearFull in new[] { 100, 50 })
+        {
+            var r = Defaults(nearFull: nearFull); // delay 3 s, full in 60 s at rest
+            var f = Troop(100);
+            AthleticsMath.Charge(f, r, 10.0);                                // 90%
+            var during = AthleticsMath.Regen(f, r, 12.9, 0.1, 0f, 5f);
+            Assert.Equal(0.0, during.Gained);
+            Assert.Equal(0.9, f.Fraction, 9);
+            // the step (12.9, 13.5] straddles the end of the delay at 13.0: only 0.5 s refills
+            var straddle = AthleticsMath.Regen(f, r, 13.5, 0.6, 0f, 5f);
+            Assert.Equal(0.5, straddle.Seconds, 9);
+            Assert.Equal(nearFull == 100 ? 0.5 / 60 : AthleticsMath.RefillFrom(r, 0.9, 0.5, 1.0) - 0.9, straddle.Gained, 12);
+            Assert.True(f.Regenerating);
+        }
+    }
+
+    // ------------------------------------------------------------------ the refill curve (step 14)
+
+    [Fact]
+    public void The_curve_at_50_refills_half_in_25_s_three_quarters_in_41_s_and_the_last_quarter_in_19_s()
+    {
+        var r = Defaults();                                               // 50%, 60 s - DESIGN §2's small table
+        Assert.Equal(Math.Log(2) / 30, AthleticsMath.RegenRateAtEmpty(r), 12);  // r0 = ln(1/k) / ((1 − k) T)
+        double half = AthleticsMath.RefillSeconds(r, 0, 0.5, 1.0);
+        double peak = AthleticsMath.RefillSeconds(r, 0, 0.75, 1.0);
+        double last = AthleticsMath.RefillSeconds(r, 0.75, 1.0, 1.0);
+        Assert.Equal(24.90, half, 2);
+        Assert.Equal(40.68, peak, 2);
+        Assert.Equal(19.32, last, 2);
+        Assert.Equal(60.0, peak + last, 9);
+        Assert.Equal(60.0, AthleticsMath.RefillSeconds(r, 0, 1, 1.0), 9);
+        Assert.Equal(120.0, AthleticsMath.RefillSeconds(r, 0, 1, 0.5), 9);     // the effort multiplies on top
+        Assert.Equal(1.0, AthleticsMath.RefillFrom(r, 0, 60, 1.0), 12);
+        Assert.Equal(0.5, AthleticsMath.RefillFrom(r, 0, half, 1.0), 12);
+        // the rate near full is half the rate near empty
+        Assert.Equal(0.5, AthleticsMath.RegenCurve(r, 1) / AthleticsMath.RegenCurve(r, 0), 12);
+    }
+
+    [Theory]
+    [InlineData(10, 60f)]
+    [InlineData(33, 60f)]
+    [InlineData(50, 30f)]
+    [InlineData(90, 120f)]
+    [InlineData(99, 1f)]
+    [InlineData(100, 60f)]
+    public void Empty_to_full_at_a_walk_is_the_refill_time_for_any_curve(int nearFull, float standing)
+    {
+        var r = Defaults(nearFull: nearFull, standing: standing);
+        Assert.Equal(standing, AthleticsMath.RefillSeconds(r, 0, 1, 1.0), 6);
+        Assert.Equal(1.0, AthleticsMath.RefillFrom(r, 0, standing, 1.0), 9);
+        // pieces add up: 0 → 0.3 → 0.8 → 1
+        double pieces = AthleticsMath.RefillSeconds(r, 0, 0.3, 1.0) + AthleticsMath.RefillSeconds(r, 0.3, 0.8, 1.0) + AthleticsMath.RefillSeconds(r, 0.8, 1, 1.0);
+        Assert.Equal(standing, pieces, 6);
+    }
+
+    [Fact]
+    public void At_100_the_curve_is_the_old_flat_rule_to_the_bit()
+    {
+        // the step-5c arithmetic, written out: after = before + (1/T × m) × s; at the top: s = (top − before) / rate
+        var r = Defaults(nearFull: 100, delayBlows: 0);
+        var f = Troop(130);
+        AthleticsMath.Charge(f, Defaults(cost: 130), 0);                  // empty
+        var dice = new Random(14);
+        double t = 0;
+        for (int i = 0; i < 3000; i++)
+        {
+            double dt = 0.05 + dice.NextDouble() * 0.2;
+            float speed = (float)(dice.NextDouble() * 5.0);
+            t += dt;
+            if (i % 400 == 399) AthleticsMath.ApplyHealth(f, r, 0.5 + dice.NextDouble() * 0.5); // a wound moves the top
+            if (i % 250 == 0) AthleticsMath.Charge(f, r, t - dt - 1e-6);                       // a blow now and then
+            double before = f.Fraction;
+            double top = AthleticsMath.UsableFraction(r, f);
+            double effective = t - Math.Max(t - dt, f.LastBlowTime + r.RegenDelaySeconds);
+            if (effective > dt) effective = dt;
+            double full = 1.0 / r.FullRegenSecondsStanding;
+            double rate = full * AthleticsMath.RegenRateMultiplier(r, AthleticsMath.Effort(speed, 4.5f));
+            double expected = before + rate * effective, used = effective;
+            if (expected >= top - AthleticsMath.Epsilon)
+            {
+                used = Math.Min(effective, (top - before) / rate);
+                expected = top;
+            }
+            var o = AthleticsMath.Regen(f, r, t, dt, speed, 4.5f);
+            if (before >= top - AthleticsMath.Epsilon) continue;               // at the top: nothing to compare
+            Assert.Equal(expected, f.Fraction);                                // exactly - not to some decimals
+            Assert.Equal(used, o.Seconds);
+        }
+    }
+
+    [Fact]
+    public void The_curve_is_monotonic_and_bounded()
+    {
+        var r = Defaults();
+        double previous = double.MaxValue;
+        for (int i = 0; i <= 100; i++)                                     // the rate falls as the bar fills
+        {
+            double c = AthleticsMath.RegenCurve(r, i / 100.0);
+            Assert.True(c < previous);
+            Assert.InRange(c, 0.5, 1.0);
+            previous = c;
+        }
+        Assert.Equal(1.0, AthleticsMath.RegenCurve(r, -0.2));             // clamped to the bar
+        Assert.Equal(0.5, AthleticsMath.RegenCurve(r, 1.3));
+        Assert.Equal(1.0, AthleticsMath.RegenCurve(Defaults(nearFull: 100), 0.7)); // flat: 1 everywhere
+
+        double x = 0;                                                      // the fill only climbs, never past full in 60 s
+        for (int s = 1; s <= 60; s++)
+        {
+            double next = AthleticsMath.RefillFrom(r, 0, s, 1.0);
+            Assert.True(next > x);
+            x = next;
+        }
+        Assert.Equal(1.0, x, 12);
+
+        // a deeper curve starts faster and ends slower, the same 60 s in all
+        var deep = Defaults(nearFull: 25);
+        Assert.True(AthleticsMath.RegenRateAtEmpty(deep) > AthleticsMath.RegenRateAtEmpty(r));
+        Assert.True(AthleticsMath.RegenRateAtEmpty(deep) * 0.25 < AthleticsMath.RegenRateAtEmpty(r) * 0.5);
+        Assert.True(AthleticsMath.RefillSeconds(deep, 0, 0.5, 1.0) < AthleticsMath.RefillSeconds(r, 0, 0.5, 1.0));
+    }
+
+    [Fact]
+    public void The_curve_edges_the_slider_the_refill_time_and_no_refill()
+    {
+        Assert.Equal(1.0, Defaults(nearFull: 100).RegenNearFullShare);
+        Assert.Equal(1.0, Defaults(nearFull: 150).RegenNearFullShare);   // above 100 would refill slower when low: capped
+        Assert.Equal(0.1, Defaults(nearFull: 10).RegenNearFullShare, 12);
+        Assert.Equal(0.01, Defaults(nearFull: 0).RegenNearFullShare, 12); // 0 would never reach full: at least 1%
+        Assert.Equal(60.0, AthleticsMath.RefillSeconds(Defaults(nearFull: 0), 0, 1, 1.0), 6);
+
+        var none = Defaults(standing: 0);                                 // no refill time: no refill
+        Assert.Equal(0.0, AthleticsMath.RegenRateAtEmpty(none));
+        Assert.Equal(0.3, AthleticsMath.RefillFrom(none, 0.3, 10, 1.0));
+        Assert.Equal(double.PositiveInfinity, AthleticsMath.RefillSeconds(none, 0, 1, 1.0));
+        Assert.Equal(double.PositiveInfinity, AthleticsMath.RefillSeconds(Defaults(), 0, 1, 0.0)); // no refill at a full run (x0)
+        Assert.Equal(0.0, AthleticsMath.RefillSeconds(Defaults(), 0.6, 0.4, 1.0));                 // already above
+        Assert.Equal(0.4, AthleticsMath.RefillFrom(Defaults(), 0.4, 0, 1.0));
+    }
+
+    [Fact]
+    public void Step_length_does_not_change_the_refill()
+    {
+        var r = Defaults(delayBlows: 0);
+        var coarse = Troop(100);
+        var fine = Troop(100);
+        AthleticsMath.Charge(coarse, Defaults(cost: 100), 0);
+        AthleticsMath.Charge(fine, Defaults(cost: 100), 0);
+        AthleticsMath.Regen(coarse, r, 30, 30, 0f, 5f);
+        for (int i = 1; i <= 300; i++) AthleticsMath.Regen(fine, r, i * 0.1, 0.1, 0f, 5f);
+        Assert.Equal(coarse.Fraction, fine.Fraction, 12);
+        Assert.Equal(AthleticsMath.RefillFrom(r, 0, 30, 1.0), coarse.Fraction, 12);
+    }
+
+    [Fact]
+    public void A_refill_from_empty_reports_its_time_to_the_peak_line()
+    {
+        var r = Defaults(delayBlows: 0);
         var f = Troop(100);
-        AthleticsMath.Charge(f, r, 10.0);                                // 90%
-        var during = AthleticsMath.Regen(f, r, 12.9, 0.1, 0f, 5f);
-        Assert.Equal(0.0, during.Gained);
-        Assert.Equal(0.9, f.Fraction, 9);
-        // the step (12.9, 13.5] straddles the end of the delay at 13.0: only 0.5 s refills
-        var straddle = AthleticsMath.Regen(f, r, 13.5, 0.6, 0f, 5f);
-        Assert.Equal(0.5, straddle.Seconds, 9);
-        Assert.Equal(0.5 / 60, straddle.Gained, 9);
-        Assert.True(f.Regenerating);
+        AthleticsMath.Charge(f, Defaults(cost: 100), 0);                  // empty
+        double reported = 0;
+        int crossings = 0;
+        for (int i = 1; i <= 700 && f.Fraction < 1; i++)
+        {
+            var o = AthleticsMath.Regen(f, r, i * 0.1, 0.1, 0f, 5f);
+            if (o.EmptyToPeakSeconds > 0) { reported = o.EmptyToPeakSeconds; crossings++; }
+        }
+        Assert.Equal(1, crossings);
+        Assert.Equal(AthleticsMath.RefillSeconds(r, 0, 0.75, 1.0), reported, 9); // 40.7 s - to the crossing, not the step's end
+
+        // a run that did not start at empty, or was cut by a blow, is not reported
+        var g = Troop(100);
+        AthleticsMath.Charge(g, Defaults(cost: 60), 0);                   // 40%
+        var partial = Troop(100);
+        AthleticsMath.Charge(partial, Defaults(cost: 100), 0);            // empty ...
+        bool any = false;
+        for (int i = 1; i <= 700; i++)
+        {
+            double now = i * 0.1;
+            if (i == 100) AthleticsMath.Charge(partial, Defaults(cost: 1), now); // ... a blow at 10 s: the run from empty ends
+            any |= AthleticsMath.Regen(g, r, now, 0.1, 0f, 5f).EmptyToPeakSeconds > 0;
+            any |= AthleticsMath.Regen(partial, r, now, 0.1, 0f, 5f).EmptyToPeakSeconds > 0;
+        }
+        Assert.False(any);
+        Assert.True(g.Fraction >= 0.75 && partial.Fraction >= 0.75);       // both did cross the line
     }
 
     [Fact]
@@ -478,7 +666,7 @@ public class AthleticsTests
         var r = Defaults(delayBlows: 0);
         var f = Troop(100);
         AthleticsMath.Charge(f, Defaults(cost: 26), 0);                   // 74: just below the line
-        var o = AthleticsMath.Regen(f, r, 1.0, 1.0, 0f, 5f);              // +1.67
+        var o = AthleticsMath.Regen(f, r, 1.0, 1.0, 0f, 5f);              // +1.5 along the curve (flat: +1.67)
         Assert.True(o.EnteredPeak);
         Assert.False(AthleticsMath.Regen(f, r, 2.0, 1.0, 0f, 5f).EnteredPeak);
     }
@@ -548,16 +736,18 @@ public class AthleticsTests
         f.SpeedMultiplier = 0.9f;
         f.RunSpeedMultiplier = 0.8f;
         AthleticsMath.Charge(f, r, 5);                                    // 180 → 172.5
-        AthleticsMath.Regen(f, r, 5.5, 0.5, 0f, 5f);                      // + 180 × 0.5 / 60 = 1.5
+        AthleticsMath.Regen(f, r, 5.5, 0.5, 0f, 5f);                      // + about 1.1 along the curve (flat: 1.5)
+        double points = 180 * AthleticsMath.RefillFrom(r, 172.5 / 180, 0.5, 1.0);
+        Assert.InRange(points, 173.5, 173.7);
         var read = AthleticsMath.Read(r, f);
         Assert.True(read.Enabled);
         Assert.True(read.IsHero);
         Assert.Equal(180, read.AthleticsSkill);
         Assert.Equal(180.0, read.Pool);
         Assert.Equal(180.0, read.UsablePool);
-        Assert.Equal(174.0, read.Points, 6);
-        Assert.Equal(174.0 / 180, read.Fraction, 9);
-        Assert.Equal(1.0, read.PeakShare);                                // 174 ≥ 135
+        Assert.Equal(points, read.Points, 6);
+        Assert.Equal(points / 180, read.Fraction, 9);
+        Assert.Equal(1.0, read.PeakShare);                                // 173.6 ≥ 135
         Assert.True(read.InPeakZone);
         Assert.Equal(0.9f, read.SpeedMultiplier);
         Assert.Equal(0.8f, read.RunSpeedMultiplier);
