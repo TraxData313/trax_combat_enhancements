@@ -312,3 +312,45 @@
   UNVERIFIED 12-13; DESIGN §3 as built + interpretation 12; CLAUDE Layout; README. UNVERIFIED in
   game: the drawing itself, placement at other resolutions / UI scales (4 live settings to tune),
   the War Sails steering state (vanilla bar drops 60 px). (2026.09.27 17.52.28)
+- [x] **Step 5e — attack rate.** Anton: "attack speed" is the RATE - at m 0.5 one attack every
+  2 s instead of every 1 s - so the whole cycle (wind-up, swing, recovery, the AI's pause) must
+  follow m, not only the swing. RESEARCH (AI_NOTES "Step 5e", RESEARCH §C addendum): channel-1
+  phases ReadyMelee → ReleaseMelee (swing + follow-through) → BlockedMelee (the attacker's recoil
+  after a block/parry) → pause; ranged ReadyRanged (draw + aim) → ReleaseRanged/Throwing → Reload.
+  Swing / thrust-or-ranged-ready scale the ready AND the release, ReloadSpeed the reload,
+  HandlingMultiplier is the DEFENCE side (never touched), the block recoil has no visible property,
+  no property sets the time between attacks. Per-agent action speed is NOT safe (SetCurrentActionSpeed
+  is absolute with no getter, vanilla never uses it on combat actions, the native combat code
+  paces them itself) - not built. The AI's pause lives in SetAiRelatedProperties (assigned with =
+  every recompute): AIAttackOnDecideChance (vanilla's own "attack less" knob for defensive
+  orders), AIAttackOnParryChance, AiShootFreq, AiWaitBeforeShootFactor. And NoAttack via
+  SetScriptedFlags with no scripted position is vanilla's own "do not attack" (UseGameObject).
+  BUILT: T1 the animations (unchanged); T2 `AttackRateAiDecisions` (on, A/B): the stat decorator
+  scales the three chances x m and the aim ÷ m, re-applied to every tired fighter when switched;
+  T3 `AttackRatePaceHold` (on, A/B): after each melee swing of a tired AI fighter on foot, NoAttack
+  (guard up) until his next release can come no sooner than his fresh cycle ÷ m (his own
+  release-to-release at m 1, else the mission's AI mean) - asked at the swing's end after the
+  step-back roll, started from the tick behind `IPaceBody`, set only on a man with nothing of the
+  game's on him, lifted on every path (time, a swing slipping through, switched off, left, player,
+  mounted, mission end), under a game job waited out (a plain frame at most 3 s). Blocking
+  untouched (handling, shield speed, every AI defence value, AIHoldingReady - a longer hold is a
+  lowered guard); melee only (ranged: T1 + T2). SELF-VERIFYING LOGS: every channel-1 phase filed
+  per f band (wind-up + held via the ready's progress, swing, clean swing, recoil, reload, pause),
+  the cycle, m, target = the peak's cycle × the band's mean 1/m, measured ÷ target with "on target"
+  (±15%) / "too fast" / "too slow" per band and a group verdict - melee / ranged x AI / you; left
+  out: mixed bands, beyond 4 s ÷ m (12 ranged), cancelled readies, chains, cycles with a step back
+  in them; the holds (reasons not held / not started / ended, NoAttack cleared by us / the game,
+  the next ready after a hold); the guard by f (tired men must not block less); `[rate]` mission
+  start, the FIRST slowed fighter's every touched value before → after checked against its factor,
+  the FIRST hold in full. These replace step 5c's "attack speed check" lines (BinnedIntervals,
+  SpeedVerdict, IntervalStats removed). Core `AttackRate.cs`, `AttackRateStats.cs` + 13 tests
+  (264 → 274, 3 old interval tests gone with their classes); module `AthleticsLogic.AttackRate.cs`,
+  `PaceBody.cs`, decorator + `SpeedPenalty.ScaleAiDecisions/AiSnapshot`; settings 52 → 54.
+  OfflineSmoke 37 → 39 steps (the animations alone read too fast ~75% empty, the hold 100% on
+  target, every hold path with a stand-in body, the first-slowed line through the real decorator,
+  the master switch lifts a hold, step-back cycles left out). Build 0 warnings, tests green,
+  AssemblyGuard OK, smoke OK, deployed. DESIGN §2 as built + interpretation 13; PLAYTEST 3n (arena
+  duel, tired archer, you, a 3-battle A/B); CLAUDE Layout; README. UNVERIFIED in game (AI_NOTES
+  5e #1-9): the engine honours the animation multipliers through ready and release; the native AI
+  follows the four values; NoAttack holds swings in open melee with the guard kept; the recoil is
+  unscaled (the known gap); the ready's progress reaches full. (2026.09.27 18.38.42)
