@@ -400,3 +400,33 @@
   (`first placement under the cards … cards drawn … cells …`), RTS Camera's 8 cards match
   (`8 cards in 1 set`), the item-template lists and the ChangeWidget band draw, the numbers fit
   beside the icons, War Sails' naval cards. (2026.09.27 19.24.27)
+- [x] **Step 10a — code review.** Fresh-eyes review of Core + Module (tests and tools as
+  evidence), every doubt checked against the v1.4.8 decompile; the list is `docs/REVIEW.md` (R1-R24).
+  TALLY: 0 blockers, 1 major (fixed), 9 minors (7 fixed, 2 deferred), 1 For Anton, 13 checked and
+  not a bug. WORST FINDS: R1 (major) - at a tired AI swing's end the pace hold was skipped whenever
+  a step back was merely PENDING, and the tick then refuses many of those (StepBackMaxAtOnce, shield
+  wall, no enemy near) - at f 0 the roll always says yes, so past the 50 cap most tired men in a big
+  battle were neither stepping back nor held (technique T3 silently off, the summary would read "too
+  fast"); now the hold is queued anyway and TickPace (after TickStepBacks) drops it only for a man
+  whose step back STARTED. R5 - a stale record at a reused agent index only left the loop: a running
+  step back / pace hold stayed listed (engine calls on the old agent) and a slowed horse stayed
+  registered; now one Forget() path for leaving / stale / deleted (+ an OnAgentDeleted backstop).
+  R6 - the log did open/append/close per line on the main thread (~110 µs measured; with the
+  playtest's VerboseLogging ~200 lines/s and a ~40 ms hitch at the first clash); now one AutoFlush
+  handle (~7 µs, nothing lost on a crash), shared for reading, released at every mission end. Also:
+  R2 a hold started while the last one waited was listed and counted twice; R3 teardown now always
+  drops AthleticsLogic.Current (finally); R4 the summary header had no try (an exception lost the
+  whole summary) and read agents' native side on the teardown fallback; R18 the first-tick sweep
+  gave up on everyone after one bad agent; R19 a resumed mission takes the running-logic slot back.
+  Verified fine (no change): views cannot tick on cleared agents (MissionScreen.OnEndMission
+  unregisters them first), no MCM type outside method bodies, nothing in the save, the only event
+  subscription is ConfigStore's app-lifetime one, no per-tick allocation, every stuck-state path,
+  hot swap, DESIGN §1-§4 rules. DEFERRED: R8 verbose lines built before the limiter drops them (~30
+  call sites, verbose-only cost); R21 the LATER features' do-nothing settings (step 10b). FOR ANTON
+  (R7): with VerboseLogging on a big battle writes 30-50 KB/s, so the 2 MB cap trims every ~35 s and
+  earlier battles' [summary] blocks are gone by hand-over - keep summary/error/mission lines through a
+  trim (recommended), raise the cap, or play with verbose off; PLAYTEST (10b) should follow his pick.
+  OfflineSmoke 42 → 44 steps (log writer; stale records) + R1/R2 checks in the attack-rate step - the
+  R1/R2/R5 checks fail with the fix reverted (8 failures, proved); tests 288 (no Core logic changed);
+  build 0 warnings, AssemblyGuard OK, smoke OK, deployed. Commits edff3dc, dc2fe8d, 0558f05, 0da7b9a
+  + docs. (2026.09.27 19.56.57)
