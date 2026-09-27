@@ -12,7 +12,7 @@ BUILD ORDER (one step at a time — [~] = in flight, see CLAUDE.md "manager prot
 - [x] 9. Orders menu: strip under the formation cards (below the arrows) — Athletics ± spread + health (no UIExtenderEx) — kept by Anton: "some vision of the state of the troops"
 - [x] 10a. Fresh-eyes code review: bugs, crash paths, stuck states, performance, gates — fix what is found
 - [x] 10b. Polish: hide the LATER features' settings (no switch that does nothing), settings/config readability, docs + PLAYTEST script as one clean run (Anton's playtest comes after, all at once)
-- [ ] 11. Steam packaging — upload only on Anton's yes
+- [~] 11. Steam packaging — upload only on Anton's yes
 
 PLAYTEST (Anton, all at once at the end — script in docs/PLAYTEST.md):
 - [ ] Play with RBM disabled — declared NOT compatible (Anton, 2026-09-27; the mod warns if it sees it)
