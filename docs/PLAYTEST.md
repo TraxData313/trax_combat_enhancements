@@ -103,7 +103,7 @@ Mod Options → move *Spread (± %)* from 50 to 40, press Done.
 - `[damage] damage model decorator registered over SandBox.GameComponents.SandboxAgentApplyDamageModel - damage randomness rolls on its result (ApplyGeneralDamageModifiers)`
   — with War Sails on, over `NavalDLC.GameComponents.NavalAgentApplyDamageModel`; in a custom
   battle over `TaleWorlds.MountAndBlade.CustomAgentApplyDamageModel`.
-- `[speed] agent stat model decorator registered over … (pass-through until step 5); tournament AI-level fix active over N base model(s)`
+- `[speed] agent stat model decorator registered over … - scales swing / thrust-and-draw / reload speed by each fighter's endurance multiplier; tournament AI-level fix active over N base model(s)`
 - In a tournament, when a round starts: `[speed] tournament AI level multiplier 1 → 1.33 passed on to N base stat model(s)`
   (the opponents get tougher each round, as in vanilla — our hook must not swallow that).
 
@@ -205,5 +205,149 @@ or a siege engine with an axe.
   — that is the flood guard, not a problem.
 - If `damage roll errors` is not "none": the game kept its own damage for those hits, the
   first one per mission is an `[error] damage.roll: …` block with its stack above — send the log.
+
+---
+
+## 3. Endurance
+
+Every fighter — you, your men, the enemy — has an endurance pool (100). Every attack costs
+some: a swing or thrust when it starts, a shot or throw when it leaves the hand, a couched
+lance or braced spear when it hits. Kicks, shield bashes, blocking, running and riding are
+free. At 0 the fighter is **exhausted**: his attacks run at 20% speed (wind-up, strike, bow
+draw, crossbow reload, throws — the game's own "swing speed" numbers, times 0.2). About 3 s
+after his last attack the pool starts to refill — full in 60 s standing, 120 s moving — and
+the moment it is above 0 the speed is back. Costs: a common soldier 10 a blow (10 blows), a
+hero (lord, companion) 7.5, the hero who leads his own party (you, a lord) 5.6 (18 blows).
+
+Set up once: `VerboseLogging` on. A **custom battle** (you are the general there, so the
+leader price) against looters or recruits is the easiest ground; one campaign fight with a
+companion in your party covers the hero price. No bar yet (steps 6-9) — the log is the
+readout.
+
+**3a. The engine is on.** Start any battle.
+- Log, at the start:
+  - `[endurance] mission start: ON - pool 100, cost per blow 10.0 / hero 7.5 / party leader 5.6, misses cost: yes, exhausted attacks at 20% (recover above 0%), refill after 3.0 s rest: full in 60 s standing / 120 s moving (above 0.5 m/s) - read live`
+  - `[endurance] party-leader rule: campaign - …` (or `no campaign (custom battle) - the side's general, or every hero of a side without one`)
+  - `[speed] stat model on top in this mission: ours, over <the game's model> - the attack-speed penalty is applied on every recompute`
+    — **if it says `WARNING: … not ours`**, another mod took the slot: tell Claude.
+  - `[endurance] party leader: <your name> - pays x0.56 per blow (5.6 now)` — one line per
+    leader: you, and each enemy lord leading his party (custom battle: the enemy's hero).
+  - `[endurance] first tick: tracking N fighters`
+
+**3b. Swing until empty — feel the 20%.** Swing continuously (at the air or at looters, it
+makes no difference: misses cost too). As party leader you last 18 swings.
+- You see: after the 18th swing everything you do with the weapon is very slow — a wind-up
+  and strike take about five times as long. Blocking and moving are normal.
+- Log (always): `[endurance] YOU are exhausted at 42.3 s: 0 of 100 after 18 blows this mission - attacks at 20% speed until you rest (refill starts 3.0 s after your last blow)`
+- Log (verbose), one line per swing: `[endurance] blow melee (on foot): <you> (you) - cost 5.6 (x0.56: hero party leader), 100.0 → 94.4 of 100`
+  … the last one ends `4.4 → 0.0 of 100 - EXHAUSTED`.
+- Once per battle, for the FIRST fighter anyone sees exhausted (often an AI soldier):
+  - `[speed] first exhaustion this mission: <name> at … s - attack properties before: swing 1.012, thrust/draw 1.012, reload 0.930 → after UpdateAgentProperties: swing 0.202, thrust/draw 0.202, reload 0.186 (x0.20 / x0.20 / x0.20, asked x0.20) - the penalty is in the agent's properties`
+  - later `[speed] first exhausted fighter recovers after … s: properties just before - … (x0.20 …; they stayed penalized: yes)`
+    and `[speed] first exhausted fighter back to full speed: properties now … (x1.00 / x1.00 / x1.00 …)`.
+  - These prove the numbers reached the fighter. Whether the ENGINE honours a 0.2 (it might
+    clamp it — never tested before) is what your eyes and the summary's **attack speed
+    check** (3i) settle. Values that "did NOT take the asked factor" or "stayed penalized: NO"
+    → tell Claude.
+
+**3c. Stop and wait ~3 s.** Right after 3b, stand still and do nothing.
+- You see: for about 3 seconds you are still slow; then your attacks are normal again (the
+  moment the refill starts, since `ExhaustedRecoverPercent` is 0).
+- Log: `[endurance] YOU recovered at 48.4 s: 0.2 of 100 after 3.1 s exhausted - full attack speed again`
+  — "after 3.1 s" = the 3.0 s rest plus at most one 0.1 s refill step.
+
+**3d. Stand vs run — compare the refill.** Empty yourself, then stand still for a full
+minute. Empty yourself again, then keep running (or ride) until full.
+- Log after standing: `[endurance] YOU are back to full at … s: 0 → 100 in 60.0 s of refill (standing 60.0 s, moving 0.0 s; empty to full takes 60 s standing, 120 s moving)`
+- Log after running: `… 0 → 100 in 120.0 s of refill (standing 0.0 s, moving 120.0 s; …)`
+  (a mix shows both parts; any attack restarts the 3 s and a new refill run).
+- Summary: `[summary] endurance regen: N fighter-seconds standing, M moving; K refills to full`
+  — M above 0 proves the moving rule fires (riders count their horse's speed).
+
+**3e. Shoot a bow until empty.** Bow or crossbow, keep shooting (18 shots as leader).
+- You see: drawing the bow (or reloading the crossbow) becomes very slow. Javelins and
+  throwing axes likewise.
+- Log (verbose): `[endurance] blow ranged (on foot): <you> (you) - cost 5.6 (x0.56: hero party leader), …`
+- Summary: `endurance detection: … shots seen N (+0 extra projectiles of the same shot ignored) | ranged releases seen by the poll M | …`
+  — N and M close together = both signals agree; and
+  `attack speed check, ranged - time between shots: fresh median … | exhausted median … → x… (asked x5.00) - exhausted attacks ARE slower`.
+
+**3f. Ride and swing.** Mount up, swing at enemies from the saddle; then ride around 30 s
+without attacking; then (if you have one) couch a lance and hit someone.
+- You see: the same slow-down once empty on horseback; riding itself never drains you.
+- Log (verbose): `[endurance] blow melee (mounted): …`; a couched hit: `[endurance] blow couched/braced (mounted): …`
+  (one per hit; a second hit within 1.5 s is free).
+- Summary: `endurance blows charged: … - by riders N, on foot M` and
+  `endurance detection: melee releases seen X (mounted Y) | … | melee hits by fighters H (on foot …, mounted …): during a counted release A, outside one B [in action: …]`
+  — **B should be small next to A.** A large B, above all for riders, means swings are
+  slipping past the detector (RESEARCH UNVERIFIED #2) — send the log.
+
+**3g. A companion or lord vs a soldier.** A campaign fight with a companion in your party
+(and a lord on the other side).
+- Log (verbose): soldiers `cost 10.0`, your companion `cost 7.5 (x0.75: hero)`, you and a
+  lord who leads his party `cost 5.6 (x0.56: hero party leader)`.
+- Summary: `[summary] endurance heroes: N flagged, M party leaders (<names>); lowest a hero reached: <name> 12.5 of 100`.
+- In an army, only each party's OWN leader gets the leader price (not the army's marshal
+  for everyone); a garrison lord in a siege pays the hero price only.
+
+**3h. Change it mid-battle in MCM.** While you (or others) are exhausted: Escape → Options →
+Mod Options → Trax Combat Enhancements.
+- *Exhausted attack speed (%)* 20 → 50, Done, back to the fight.
+  - You see: exhausted attacks now at half speed instead of a fifth.
+  - Log: `[config] ExhaustedAttackSpeedPercent: 20 → 50 (source: MCM)` then, on the first
+    frame back, `[speed] ExhaustedAttackSpeedPercent now 50%: N exhausted fighters get the new speed on the next tick`.
+  - The summary's attack-speed check compares against the value at the END — set it back
+    to 20 for a clean reading.
+- *Endurance* (master switch) off.
+  - You see: every slow fighter is back to normal speed at once.
+  - Log: `[endurance] EnduranceEnabled switched OFF mid-mission: N fighters back to full, M attack-speed penalties lifted (applied on the next tick)`;
+    the summary later counts `attacks while endurance was off`. Turn it on again →
+    `[endurance] EnduranceEnabled switched ON mid-mission: everyone starts full`.
+- Optional: *Misses cost too* off → swinging at the air is free, only hits cost:
+  verbose `blow melee (landed)` / `blow ranged (landed)`; summary `landed-only swings` /
+  `landed-only shots`. Optional: *Pool size* 100 → 200 → everyone keeps his share
+  (the next blow line says `of 200`).
+
+**3i. The summary.** End the battle. After the damage lines, the `[summary]` block has:
+```
+[summary] endurance settings at the end: ON - pool 100, cost per blow 10.0 / hero 7.5 / party leader 5.6, …
+[summary] endurance blows charged: 412 (melee swings 300, shots/throws 100, couched/braced hits 12, landed-only swings 0, landed-only shots 0) - by riders 60, on foot 352; endurance spent 3890 points
+[summary] endurance detection: melee releases seen 300 (mounted 50) | shots seen 100 (+0 extra projectiles of the same shot ignored) | ranged releases seen by the poll 98 | melee hits by fighters 280 (on foot 240, mounted 40): during a counted release 276, outside one 4 [in action: Other(0) 4]
+[summary] endurance free (never charged): kicks 3, shield bashes 5, kick/bash hits 6, couched hits within one blow-length of the last 2, attacks while endurance was off 0, releases / shots waiting for a landed hit (misses cost: no) 0 / 0
+[summary] endurance exhaustions: 45 entered, 30 left
+[summary] endurance heroes: 12 flagged, 5 party leaders (you, Derthert, …); lowest a hero reached: Rhagaea 12.5 of 100
+[summary] endurance you: 25 blows, 1 exhaustion, lowest 0.0 of 100
+[summary] endurance your formations at the end: 1 Infantry 72 ± 8 (40 men, 2 exhausted) | 2 Archers 95 ± 3 (20 men)
+[summary] endurance regen: 1234 fighter-seconds standing, 567 moving; 38 refills to full
+[summary] attack speed check, melee - time between swings: fresh median 1.35 s, avg 1.52 s (n 250) | exhausted median 6.10 s, avg 6.40 s (n 30) → x4.52 (asked x5.00) - exhausted attacks ARE slower
+[summary] attack speed check, melee - swing length (swings that hit nothing): fresh median … | exhausted median … → x… - exhausted attacks ARE slower
+[summary] attack speed check, ranged - time between shots: fresh median … | exhausted median … → x… - exhausted attacks ARE slower
+[summary] attack speed updates: 75 recomputes asked (UpdateAgentProperties), the decorator applied a penalty in 80 recomputes; 12 intervals spanning a change of state left out
+[summary] endurance tick cost: avg 0.120 ms, max 1.300 ms per tick over 5400 ticks; fighters polled avg 480, max 1020
+[summary] speeds for step 5c: on foot walk limit avg 1.80 m/s (n 480), top avg 4.90 m/s (n 480) → walk/top 0.37; horses walk …; refill samples speed/top in tenths …
+[summary] endurance errors: none
+```
+What proves what:
+- **The penalty works in the engine**: the three `attack speed check` lines say
+  `exhausted attacks ARE slower` (x3-x5 is right: the AI's thinking time between attacks
+  is not slowed, so "time between swings" stays under x5; "swing length" is the purest
+  measure). **`are NOT clearly slower … tell Claude`** = the engine clamps the multiplier —
+  the one thing only the game can tell. `not enough samples` = too few exhausted attacks;
+  fight longer (a big battle gives plenty).
+- **Detection**: `outside one` small next to `during a counted release`; `mounted` numbers
+  above 0 after riding; `shots seen` ≈ `ranged releases seen by the poll`; kicks and bashes
+  listed under **free** (a kick count of 0 with kick/bash hits above 0 only means kicks run
+  on another action channel — they are free either way).
+- **Heroes and leaders**: the names you expect in `party leaders`; your own blows and
+  exhaustions under `endurance you`.
+- **Formations** (steps 8-9 draw these): one entry per formation of yours with men left,
+  mean ± spread in points.
+- **Cost**: in a 500+ battle `endurance tick cost` avg should stay well under 1 ms. Above
+  2 ms → tell Claude (the poll can move to worker threads).
+- **Step 5c's numbers**: the `speeds for step 5c` line (walk limit vs top speed, on foot and
+  horses, and how fast refilling fighters really moved) — just send it along.
+- **Errors**: `endurance errors: none`. Otherwise each failed spot fell back to vanilla (no
+  cost, no penalty) and the first one per place is an `[error] endurance.…` / `[error] speed.…`
+  block with its stack above.
 
 (steps below are added as the features land)

@@ -218,37 +218,165 @@ per mission always logged with its thread, verbose line otherwise) → the game 
 6. Combined with other damage mods (only RBM is declared incompatible): the summary's before →
    after is the tool.
 
-## Step 5 — Endurance core
+## Step 5 — Endurance core (DONE 2026-09-27)
 
-- `EnduranceLogic : MissionLogic`: per-agent state array by `Agent.Index` (reference-checked),
-  built in `OnAgentBuild`, dropped in `OnAgentRemoved`, first-tick sweep. RESEARCH §F.
-- Blow detection (§B): poll `GetCurrentActionType(1)` rising edge into `ReleaseMelee`;
-  `OnAgentShootMissile` (0.1 s dedupe); `CostOnMiss=false` → `OnMeleeHit` (first per swing) /
-  `OnMissileHit`; couched/braced landed hit = one blow. Kicks/bashes free.
-- Hero/leader flags cached at spawn (§E), cost computed live per blow.
-- Regen in Core; moving = `(MountAgent ?? agent).MovementVelocity` vs threshold (§D).
-- Speed (§C): `TraxAgentStatModel : AgentStatCalculateModel` decorator scales
-  `SwingSpeedMultiplier`, `ThrustOrRangedReadySpeedMultiplier`, `ReloadSpeed` when
-  exhausted; `agent.UpdateAgentProperties()` only on transitions and on config change.
-  Forward EVERY member; fix the tournament `SetAILevelMultiplier` swallow.
-- MUST measure in game: 0.2 really slows (engine clamp), bows/crossbows too, polling cost.
-- (from step 3) `Models/TraxAgentStatModel.cs` exists and is registered; keep `SyncAiLevel()`
-  as the FIRST line of `InitializeAgentStats` / `UpdateAgentStats` (tournament fix), scale after
-  `BaseModel.UpdateAgentStats`. `Missions/EnduranceLogic.cs` is attached to every SP mission and
-  already counts agents built/removed for the summary — grow it, keep every hook wrapped.
-- (from step 4) Copy the damage pattern: pure rules + a thread-safe stats class with its own
-  `SummaryLines()` in Core (tested), a thin module class that feeds it, reset in
-  `EnduranceLogic.AfterStart`, written in `WriteSummary` in its own try (after the damage
-  block, at the marked spot). Per-mission "log the first error per site, count the rest":
-  `DamageStats.AddError(site)` — reuse the idea. Chatty lines: `TraxLog.Verbose("endurance",
-  msg, bucket)` — give each chatty kind (blow, regen tick, exhaustion) its own bucket so one
-  cannot starve the others. The damage model's hook runs INSIDE the hit (before
-  `OnMeleeHit`/`OnAgentHit`), so a landed-blow cost (`CostOnMiss=false`, couched lance) belongs
-  in the mission events, not in the damage model. Offline: `Program.Damage.cs`'s `Hit(...)`
-  shows how to build real hit structs without the game.
+**Built** (file map in CLAUDE.md "Layout"): Core `Endurance.cs` (EnduranceRules, Fighter,
+EnduranceMath), `SpreadStats.cs` (MeanStd, FormationEnduranceStats, IntervalStats,
+SpeedVerdict), `EnduranceStats.cs` (per-mission counters + summary text) + 30 tests (122).
+Module: `EnduranceLogic` as 4 partial files (lifecycle / Engine / Api / Log), `TrackedAgent`,
+`Models/SpeedPenalty.cs`, `TraxAgentStatModel.UpdateAgentStats` (the one non-forwarding
+change), `TraxLog.Limited`. OfflineSmoke +6 checks (28) in `Program.Endurance.cs`. PLAYTEST §3.
+
+**The flow** (all main thread):
+- Spawn: `OnAgentBuild` → `Track` (humans only; mounts never) → hero / leader flags cached.
+  First tick: `SweepAgents` picks up anyone spawned before us.
+- Tick (`TickEndurance`): settings version changed → `ApplySettingsChange`; for every tracked
+  active fighter one native `GetCurrentActionType(1)` → on a change `ObserveAction` (rising edge
+  into ReleaseMelee = `StartRelease` → `Charge`; falling edge = swing length; ReleaseRanged /
+  ReleaseThrowing / Kick / WeaponBash only counted); `SpeedDirty` → `UpdateAgentProperties()`;
+  every 0.1 s `RegenPass`; every `FormationStatsRefreshSeconds` `RefreshFormationStats`.
+- Events: `OnMeleeHit` (couched/braced charge, the release check, landed-only melee),
+  `OnAgentShootMissile` (ranged charge, 0.1 s dedupe, remembers the missile index),
+  `OnMissileHit` (landed-only ranged).
+- `Charge` → Core `EnduranceMath.Charge` → stats → `RetargetSpeed` (new multiplier? mark
+  dirty) → `OnExhausted`. Regen → `OnRecovered` (retarget) / `OnRefilled`.
+- Decorator: `BaseModel.UpdateAgentStats` → `EnduranceLogic.SpeedMultiplierFor(agent)` (1 for
+  untracked / no mission / EnduranceEnabled off) → `SpeedPenalty.Scale`.
+
+**Decisions**
+- **State = FRACTION of the pool** (`Fighter.Fraction`, 1 = full): "MaxEndurance change keeps
+  each fighter's fraction" holds by construction; points = fraction × `PoolPoints`.
+- **One pure function per rule** (manager's heads-up for endurance v2, DESIGN §2b):
+  `EnduranceMath.PoolPoints(r, f)`, `BlowCostPoints`, `RegenFractionPerSecond(r, f, speed,
+  topSpeed)` (top speed already passed, unused by §2), `AttackSpeedMultiplier` (a float per
+  fighter), `IsExhausted`. 5c changes those bodies, not the plumbing.
+- **Speed = a float per fighter** (`Fighter.SpeedMultiplier`) that the decorator applies on
+  EVERY recompute. The logic re-targets it on a charge, a recovery or a setting change and asks
+  for `UpdateAgentProperties()` only when it moved by `SpeedUpdateStep` (0.02) or to/from 1 —
+  §2's cliff flips twice per exhaustion; 5c's line will move in small steps.
+- **`UpdateAgentProperties()` only from the tick**, never inside an engine hit callback (not
+  proven unsafe - just not risked): ≤ 1 frame late.
+- **Poll every tick, not throttled**: release phases of fast weapons can be short; the cost is
+  measured (`endurance tick cost`). Fallback if it shows: `AgentComponent.OnTickParallel`.
+- **Regen every 0.1 s**, only fighters below full or exhausted (a full fighter costs nothing, no
+  native call). The integration is exact (only the part of the step after the delay counts); the
+  moving sample and recovery are 0.1 s coarse. Moving = `(MountAgent ?? agent).MovementVelocity`.
+- **Recovery is checked every regen step** even without a gain, so a lowered
+  `ExhaustedRecoverPercent` applies at once.
+- **Hit before the poll saw the release**: `OnMeleeHit` reads the action itself and runs the same
+  `ObserveAction`. A hit counts "in a counted release" if we were in one until now (the engine may
+  already be in the blocked/parried reaction) or the action is a release now.
+- **Landed-only melee** (`CostOnMiss` off): first hit on an agent per swing, keyed on the swing
+  counter (`ReleaseSerial` vs `LandedSerial`); a hit outside any release charges at most once per
+  `BlowTimeSeconds` (counted as "time fallback"). A release charged in on-miss mode marks its
+  serial, so switching modes mid-swing never charges twice.
+- **Landed-only ranged**: the shooter's own last 4 missile indices (`MissilesList`'s last entry at
+  `OnAgentShootMissile` - the game adds it right before calling behaviours); siege-engine
+  missiles never get there; a multi-penetration missile charges once.
+- **Couched lance / braced spear**: `IsDoingPassiveAttack` in `OnMeleeHit`, victim ≠ null, at
+  most one per `BlowTimeSeconds` (a couch through two men = one blow). Horse-charge bumps
+  (`IsHorseCharge`) and kicks / bashes (`IsAlternativeAttack`) are free.
+- **EnduranceEnabled off mid-battle**: `ResetFull()` everyone + retarget (penalties lifted on the
+  next tick); the decorator ALSO checks the flag live (fail safe). On again: everyone full.
+- **Leaders**: campaign = `(Origin.BattleCombatant as PartyBase).LeaderHero.CharacterObject ==
+  agent.Character`; no campaign = `BattleCombatant.General == agent.Character`, a side without a
+  general → its heroes. A leader who is not a hero (defensive) gets the leader factor alone.
+- "endurance spent" = points really drained (a swing at 0 drains nothing).
+- **The attack-speed measurement** (the engine-clamp question): melee time between releases,
+  ranged time between shots, and the length of swings that hit NOTHING (purest - a hit cuts the
+  animation short); each classified by the penalty at both ends (a change in between → left out);
+  0.05 s histogram up to 30 s; verdict "ARE slower" at ≥ x1.5 the fresh median.
+- Always-on lines: the player's own exhaustion / recovery / back-to-full and each party leader
+  at spawn (`TraxLog.Limited`, own buckets); everyone else's in verbose buckets
+  (endurance-blow, -exhaust, -regen, -hero, speed-update).
+- **No new parameters.** 0.1 s regen step, 0.1 s shot dedupe, 0.02 speed step, 30 s interval
+  cap, x1.5 verdict are engine/log plumbing. DESIGN unchanged.
+
+**Gotchas**
+- **Agent's static initializer calls the engine** (`DefaultTauntActions` → `ActionIndexCache` →
+  `MBAnimation`). Offline: never touch an Agent STATIC field; `FieldInfo.SetValue` on an Agent
+  INSTANCE runs the type initializer too (and breaks the type for the process) - the smoke sets
+  backing fields with IL `stfld` (`FieldSetter`). `FormatterServices.GetUninitializedObject`
+  is fine.
+- **`Agent.IsActive()` and `GetMaximumForwardUnlimitedSpeed()` are raw pointer reads**
+  (`AgentHelper`): on an uninitialized agent = access violation (uncatchable crash). Offline
+  paths avoid them (`WriteEnduranceSummary` samples speeds only with a Mission).
+- `ActionCodeType`, `FormationClass` and `DrivenProperty` have ALIAS values - `ToString()` may
+  print `AttackMeleeAllBegin` / `NumberOfDefaultFormations`. Names come from a fixed table
+  (formations: "1 Infantry"… as the game numbers them) or the first declared field.
+- Sandbox's and CustomBattle's `UpdateHumanStats` assign the three speed values with `=` on
+  every recompute → scaling after the base never compounds. A base model that multiplied instead
+  would compound - the first-exhaustion log would show a ratio ≠ the asked one.
+- There is NO native getter for driven properties: "the penalty is in the agent's properties"
+  proves the managed side (what we send); only the timing check proves the engine uses it.
+- .NET Framework (the game, the smoke) formats midpoints differently from .NET 8 (the tests):
+  the smoke asserts text prefixes around such numbers.
+
+**For step 5c** (manager asked; verified in source, values UNVERIFIED in game)
+- Top speed: `agent.GetMaximumForwardUnlimitedSpeed()` - pointer read, cheap; for a rider use
+  the mount's. Speed: `(MountAgent ?? agent).MovementVelocity.Length` (native, m/s).
+- Walk speed: `agent.WalkSpeedCached` (managed) = the mount's `WalkingSpeedLimitOfMountable`
+  (native) or `Monster.WalkingSpeedLimit` - `Modules\Native\ModuleData\monsters.xml`: human
+  1.8 m/s (human_settlement 1.4, child 1.6). The summary's `speeds for step 5c` line measures
+  walk vs top on foot and for horses every mission, plus a histogram of speed ÷ top speed seen
+  while refilling (tenths, "above 1" = faster than the "top"). That gives `WalkEffortFraction`.
+- Run-speed lever: driven properties `MaxSpeedMultiplier` (87) / `CombatMaxSpeedMultiplier` (88)
+  in the same decorator (same pattern as the attack speed). `Agent.SetMaximumSpeedLimit` is the
+  formation movement's own lever - avoid it.
+
+**UNVERIFIED — only the game can tell (PLAYTEST §3 has the steps; the line that settles each)**
+1. The engine honours a 0.2 multiplier (no clamp), bows and crossbows included without the
+   `Bipedal*` values → `[summary] attack speed check, melee - …` / `swing length` / `ranged` say
+   `ARE slower` (x3-x5); `[speed] first exhaustion …` shows the managed values took x0.20.
+2. Every swing, mounted too, shows as `ReleaseMelee` on channel 1 → `endurance detection: …
+   during a counted release A, outside one B [in action: …]` with B ≪ A; `(mounted Y)` > 0.
+3. Polling ~1000 agents per tick is cheap → `endurance tick cost: avg … ms`.
+4. `OnAgentShootMissile` once per shot → `shots seen N (+E extra projectiles …)` ≈ `ranged
+   releases seen by the poll`.
+5. Kicks / bashes on channel 1 → `endurance free: kicks K, shield bashes B, kick/bash hits H`
+   (K = 0 with H > 0 = another channel; free either way).
+6. Couched lance: `IsDoingPassiveAttack` is true at the landed hit → `couched/braced hits`.
+7. Leader flags in campaign, tournaments and custom battle → `[endurance] party leader: …` lines
+   and `endurance heroes: … party leaders (…)`.
+8. `GetCurrentActionType(1)` inside `OnMeleeHit` is meaningful → the `[in action: …]` list.
+9. Our stat model is on top in every mission type → `[speed] stat model on top in this mission: ours`.
+10. The horse's speed drives riders' regen → `endurance regen: … moving`.
+11. `Mission.MainAgent` is set by `OnAgentBuild` (only the "(you)" in the leader list depends on it).
+
+## Steps 6-9 — the endurance READ API (from step 5)
+
+Static, allocation-free, main thread (call from a view's `OnMissionScreenTick`), in
+`Missions/EnduranceLogic.Api.cs`. Every answer is a snapshot struct from Core - never hold our
+records.
+
+```csharp
+if (EnduranceLogic.TryGetReading(agent, out EnduranceReading r))   // false: a horse (pass RiderAgent),
+{                                                                  // untracked, or no mission running
+    r.Points; r.Pool; r.Fraction;   // points left, the fighter's pool, 0..1 (bar fill)
+    r.Exhausted; r.SpeedMultiplier; // exhausted now; the attack-speed factor applied (1 = none)
+    r.IsHero; r.IsLeader;
+    r.Enabled;                      // EnduranceEnabled - off: reads full; the HUD should hide
+}
+if (EnduranceLogic.TryGetFormationStats(formation, out FormationEnduranceStats f)) // player team only
+{
+    f.Count; f.Exhausted;
+    f.MeanPoints; f.StdPoints;       // "72 ± 8" (f.Describe() = "72 ± 8 (40 men, 2 exhausted)")
+    f.MeanFraction; f.StdFraction;   // bar fill
+    f.LowFraction(k); f.HighFraction(k); // the ± band, k = FormationSpreadStdDevs, clamped 0..1
+}
+EnduranceLogic.FormationStatsVersion  // bumps every FormationStatsRefreshSeconds - redraw on change
+EnduranceLogic.IsRunning
+```
+- Formation stats are recomputed by the logic's own tick (one O(N) pass over tracked fighters of
+  `Mission.PlayerTeam`, bucketed by `(int)agent.Formation.FormationIndex`), so a view never loops
+  agents itself. Enemy formations are not computed (ask if a step needs them).
+- Endurance v2 (5c) keeps this API; readings stay in points + fraction (pools become per fighter).
+- The HUD can be added from `EnduranceLogic`'s first tick (`MissionScreen.AddMissionView`) - the
+  first-tick branch is in `EnduranceLogic.OnMissionTick`.
 
 ## Step 6 — Player bar
 
+- Read: `EnduranceLogic.TryGetReading(Agent.Main, out var r)` every `HudRefreshSeconds`.
 - `PlayerEnduranceView : MissionBattleUIBaseView` + own `GauntletLayer` + VM + prefab in
   `module\GUI\Prefabs`. Added by `EnduranceLogic`'s first tick via
   `MissionScreen.AddMissionView` (NOT in OnMissionBehaviorInitialize — §F/§G).
@@ -264,12 +392,16 @@ per mission always logged with its thread, verbose line otherwise) → the game 
 - `TargetEnduranceView`, same pattern. Own raycast `Mission.RayCastForClosestAgent` from
   `MissionScreen.CombatCamera` every `HudRefreshSeconds`, mount → `RiderAgent`, linger.
   Needs the proposed `TargetBarMaxDistance` / `TargetBarLingerSeconds` (implication 7).
+- Read: `EnduranceLogic.TryGetReading(target.IsMount ? target.RiderAgent : target, out var r)`.
 
 ## Step 8 — Squad bars above formations
 
 - `FormationEnduranceView`: player formations = `PlayerTeam.FormationsIncludingEmpty`,
-  `CountOfUnits > 0`, `PlayerOrderController.IsFormationSelectable`. Mean/std in one O(N)
-  pass over our state array (Core math). Position = `MBWindowManager.WorldToScreen(CombatCamera,
+  `CountOfUnits > 0`, `PlayerOrderController.IsFormationSelectable`. Mean/std: already computed
+  by step 5 - `EnduranceLogic.TryGetFormationStats(formation, out var f)`, redraw when
+  `FormationStatsVersion` moves (band = `f.LowFraction(FormationSpreadStdDevs)` ..
+  `f.HighFraction(…)`). Average HEALTH (DESIGN §3 additions) is not computed yet - add it to the
+  same refresh pass (`RefreshFormationStats`) rather than a second loop. Position = `MBWindowManager.WorldToScreen(CombatCamera,
   CachedMedianPosition.GetGroundVec3() + (0,0,FormationBarHeight))`, hide when w < 0.
   Anchor via bound `ScaledPosition*Offset` or an own `Widget` subclass (§G, UNVERIFIED #7).
   Implication 8 (`FormationBarsAlways`).
@@ -280,6 +412,8 @@ per mission always logged with its thread, verbose line otherwise) → the game 
   Default plan (implication 1): our own compact per-formation panel while
   `Mission.IsOrderMenuOpen`, inside `FormationEnduranceView`. UIExtenderEx satellite only
   if Anton insists on numbers inside the cards (and then test with RTS Camera).
+- Numbers: `EnduranceLogic.TryGetFormationStats(formation, out var f)` → `f.Describe()`-style
+  "72 ± 8" (use `f.MeanPoints` / `f.StdPoints` directly for the strip).
 
 ## Step 10 — Balance + polish
 

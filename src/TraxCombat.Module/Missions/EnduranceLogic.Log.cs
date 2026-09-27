@@ -88,7 +88,7 @@ namespace TraxCombat.Missions
                 RefreshFormationStats(Mission.CurrentTime, in r);
                 for (int k = 0; k < _formationSnapshot.Length; k++)
                     if (_formationSnapshot[k].Count > 0)
-                        formations.Add(new KeyValuePair<string, FormationEnduranceStats>(((FormationClass)k).ToString(), _formationSnapshot[k]));
+                        formations.Add(new KeyValuePair<string, FormationEnduranceStats>(FormationName(k), _formationSnapshot[k]));
             }
 
             if (Mission != null) SampleSpeeds("mission end");
@@ -120,11 +120,37 @@ namespace TraxCombat.Missions
             _ => kind.ToString(),
         };
 
+        /// <summary>The game's group numbers and names (F1-F8 in the orders menu). FormationClass has
+        /// alias values (4 is also NumberOfDefaultFormations), so ToString() cannot be trusted.</summary>
+        private static readonly string[] FormationNames =
+        {
+            "1 Infantry", "2 Archers", "3 Cavalry", "4 Horse archers", "5 Skirmishers", "6 Heavy infantry",
+            "7 Light cavalry", "8 Heavy cavalry", "General", "Bodyguard",
+        };
+
+        private static string FormationName(int index) =>
+            index >= 0 && index < FormationNames.Length ? FormationNames[index] : "formation " + index;
+
+        private static string[]? _actionNames;
+
+        /// <summary><c>ReadyMelee(19)</c> - the FIRST declared name per value (ActionCodeType has aliases
+        /// such as AttackMeleeAllBegin = 19, so ToString() may pick the wrong one). Summary only.</summary>
         private static string ActionName(int code)
         {
             try
             {
-                return ((Agent.ActionCodeType)code).ToString();
+                if (_actionNames == null)
+                {
+                    var names = new string[EnduranceStats.ActionSlots];
+                    foreach (var f in typeof(Agent.ActionCodeType).GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static))
+                    {
+                        int v = Convert.ToInt32(f.GetValue(null), CultureInfo.InvariantCulture);
+                        if (v >= 0 && v < names.Length && names[v] == null) names[v] = f.Name;
+                    }
+                    _actionNames = names;
+                }
+                string? name = code >= 0 && code < _actionNames.Length ? _actionNames[code] : null;
+                return (name ?? "action") + "(" + code.ToString(CultureInfo.InvariantCulture) + ")";
             }
             catch
             {
