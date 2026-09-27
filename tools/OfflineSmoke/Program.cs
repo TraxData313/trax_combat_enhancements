@@ -19,7 +19,7 @@ namespace TraxCombat.Tools
     /// Order matters: MCM is refused by the assembly resolver until phase 2, exactly like a
     /// player's game without MCM; once loaded it cannot be unloaded.
     /// </summary>
-    internal static class Program
+    internal static partial class Program
     {
         private static readonly List<string> Failures = new List<string>();
         private static string _gameFolder = @"C:\Program Files (x86)\Steam\steamapps\common\Mount & Blade II Bannerlord";
@@ -58,6 +58,14 @@ namespace TraxCombat.Tools
             Step("missing keys defaulted and added, unknown key kept and reported", MissingAndUnknownKeys);
             Step("log rate limit: a verbose flood is capped", VerboseFloodCapped);
             Step("tournament AI-level fix reads the private field and pushes it down the chain", TournamentAiLevelFix);
+            // Damage randomness (step 4) - the real decorator over the game's own custom-battle
+            // model, fed the game's own AttackCollisionData / AttackInformation structs.
+            Step("damage: every roll lands in [1-p, 1+p] of the game's value, mean ~1, all four kinds roll", DamageRollsThroughDecorator);
+            Step("damage: never rolled - shield (toggle off), fall, objects, a 0 hit; a positive hit never below 1", DamageSkipRules);
+            Step("damage: settings changed mid-battle apply to the very next hit (hot swap)", DamageHotSwap);
+            Step("damage: a bug in the roll keeps the game's value and logs ONE [error] per mission", DamageFailSafe);
+            Step("damage: verbose roll/skip lines and the [summary] damage block", DamageLogAndSummary);
+            Step("damage: a roll off the main thread is detected and reported", DamageOffMainThread);
             Step("MCM still not loaded after phase 1", () => Check(!McmLoaded(), "MCMv5 got loaded during phase 1"));
 
             // Phase 2 - a player WITH MCM.
@@ -72,7 +80,9 @@ namespace TraxCombat.Tools
             if (Failures.Count == 0)
             {
                 Console.WriteLine("OFFLINE SMOKE: all checks passed.");
-                try { Directory.Delete(_dir, true); } catch { /* temp */ }
+                // TRAX_SMOKE_KEEP=1 keeps the folder, to read the log lines the checks produced.
+                if (Environment.GetEnvironmentVariable("TRAX_SMOKE_KEEP") == "1") Console.WriteLine("kept: " + _dir);
+                else try { Directory.Delete(_dir, true); } catch { /* temp */ }
                 return 0;
             }
             Console.WriteLine("OFFLINE SMOKE: " + Failures.Count + " check(s) FAILED - files kept in " + _dir);

@@ -2,6 +2,7 @@ using System;
 using System.Globalization;
 using TaleWorlds.Core;
 using TaleWorlds.MountAndBlade;
+using TraxCombat.Models;
 
 namespace TraxCombat.Missions
 {
@@ -53,6 +54,16 @@ namespace TraxCombat.Missions
             catch (Exception e)
             {
                 TraxLog.Error("mission.AfterStart", e);
+            }
+            try
+            {
+                // Feature 1: zero the damage stats (the damage model outlives missions), note the
+                // main thread, log the damage settings in effect. Before any hit can land.
+                DamageRandomizer.OnMissionStart();
+            }
+            catch (Exception e)
+            {
+                TraxLog.Error("damage.mission-start", e);
             }
         }
 
@@ -186,8 +197,19 @@ namespace TraxCombat.Missions
                 + _routed + " fled, " + _otherRemoved + " other");
             TraxLog.Info("summary", "still on the field: " + activeHumans + " people (" + playerSide + " on the player's side, "
                 + otherSide + " others), " + activeMounts + " mounts");
-            // Steps 4 and 5 add here: damage rolls (count, min/avg/max factor); endurance (blows
-            // charged, exhaustions entered/left, heroes' lowest endurance, formation averages).
+            // Feature 1 (step 4): rolls per kind, min/avg/max factor, damage before → after, the
+            // dice histogram, skips by reason, errors, thread. Own try: a bug there must not cost
+            // the rest of the summary.
+            try
+            {
+                DamageRandomizer.WriteSummary();
+            }
+            catch (Exception e)
+            {
+                TraxLog.Error("damage.summary", e);
+            }
+            // Step 5 adds here: endurance (blows charged, exhaustions entered/left, heroes' lowest
+            // endurance, formation averages).
             TraxLog.Info("summary", "errors logged during this mission: " + (TraxLog.ErrorCount - _errorsAtStart));
             TraxLog.FlushSuppressedCounts();
             TraxLog.Info("summary", "==== end of summary ====");

@@ -147,7 +147,8 @@ namespace TraxCombat
                 {
                     var damage = new TraxDamageModel();
                     starter.AddModel<AgentApplyDamageModel>(damage);
-                    TraxLog.Info("damage", "damage model decorator registered over " + damage.BaseModelName + " (pass-through until step 4)");
+                    TraxLog.Info("damage", "damage model decorator registered over " + damage.BaseModelName
+                        + " - damage randomness rolls on its result (ApplyGeneralDamageModifiers)");
                 }
                 else
                 {

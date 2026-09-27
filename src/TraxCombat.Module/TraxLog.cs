@@ -52,10 +52,15 @@ namespace TraxCombat
         public static void Info(string tag, string message) => Write(tag, message);
 
         /// <summary>A chatty per-event line: dropped unless VerboseLogging is on, rate-limited per tag.</summary>
-        public static void Verbose(string tag, string message)
+        public static void Verbose(string tag, string message) => Verbose(tag, message, tag);
+
+        /// <summary>As <see cref="Verbose(string,string)"/>, but rate-limited in its own
+        /// <paramref name="bucket"/> - e.g. "damage-skip", so skipped-hit lines never eat the
+        /// budget of the roll lines that share the [damage] tag.</summary>
+        public static void Verbose(string tag, string message, string bucket)
         {
             if (!VerboseOn) return;
-            if (!VerboseLimiter.TryPass(tag, Now, out int dropped)) return;
+            if (!VerboseLimiter.TryPass(bucket, Now, out int dropped)) return;
             Write(tag, dropped > 0 ? message + " (+" + dropped + " similar lines suppressed)" : message);
         }
 

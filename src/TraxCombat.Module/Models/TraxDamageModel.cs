@@ -1,3 +1,4 @@
+using System;
 using TaleWorlds.Core;
 using TaleWorlds.MountAndBlade;
 using TaleWorlds.MountAndBlade.ComponentInterfaces;
@@ -11,10 +12,11 @@ namespace TraxCombat.Models
     /// subclass of a Default*/Sandbox* model: AddModel replaces by base type, so a subclass
     /// would silently drop War Sails' and other mods' versions (CLAUDE.md).
     ///
-    /// Step 3: a pure pass-through - every member forwards to <c>BaseModel</c>, so vanilla
-    /// damage is untouched and the registration chain is proven before the feature lands.
-    /// Step 4 changes <see cref="ApplyGeneralDamageModifiers"/> only - the last step of the
-    /// game's non-virtual <c>CalculateDamage</c>, after armor (RESEARCH §A).
+    /// Every member forwards to <c>BaseModel</c> except <see cref="ApplyGeneralDamageModifiers"/>
+    /// (step 4) - the last step of the game's non-virtual <c>CalculateDamage</c>, after armor
+    /// (RESEARCH §A) - which rolls the ± factor on the base model's result via
+    /// <see cref="DamageRandomizer"/>. The game rounds what we return and only then decides
+    /// knockdown / stagger / dismount, so those follow the rolled damage (DESIGN §1).
     ///
     /// Registered in SubModule.OnGameStart only when a damage model already exists, so
     /// BaseModel is never null.
@@ -36,9 +38,26 @@ namespace TraxCombat.Models
         public override float ApplyDamageReductions(in AttackInformation attackInformation, in AttackCollisionData collisionData, float baseDamage)
             => BaseModel.ApplyDamageReductions(in attackInformation, in collisionData, baseDamage);
 
-        /// <summary>Step 4 multiplies the random factor in here (after the base model).</summary>
+        /// <summary>
+        /// THE damage-randomness hook (DESIGN §1). The base model runs first, untouched (its
+        /// exceptions are the game's own, so they are not ours to swallow); then
+        /// <see cref="DamageRandomizer.Apply"/> rolls on its result. Any exception in OUR part is
+        /// logged (first per mission with its stack, the rest counted in the summary) and the
+        /// hit keeps the base model's value - a bug here can never break a battle.
+        /// </summary>
         public override float ApplyGeneralDamageModifiers(in AttackInformation attackInformation, in AttackCollisionData collisionData, float baseDamage)
-            => BaseModel.ApplyGeneralDamageModifiers(in attackInformation, in collisionData, baseDamage);
+        {
+            float damage = BaseModel.ApplyGeneralDamageModifiers(in attackInformation, in collisionData, baseDamage);
+            try
+            {
+                return DamageRandomizer.Apply(in attackInformation, in collisionData, damage);
+            }
+            catch (Exception e)
+            {
+                DamageRandomizer.Failed("damage.roll", e);
+                return damage;
+            }
+        }
 
         public override void DecideMissileWeaponFlags(Agent attackerAgent, in MissionWeapon missileWeapon, ref WeaponFlags missileWeaponFlags)
             => BaseModel.DecideMissileWeaponFlags(attackerAgent, in missileWeapon, ref missileWeaponFlags);
