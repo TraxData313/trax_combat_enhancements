@@ -153,14 +153,30 @@ namespace TraxCombat.Missions
             if (ReferenceEquals(_current, this)) _current = null;
         }
 
+        /// <summary>Every tick: this mission is the one running (Mission.Current) but not the running
+        /// logic - another mission started on top of it and has ended since (its teardown cleared the
+        /// slot). Take it back, or the decorators and the HUD would see no Athletics here any more
+        /// (review 10a R19; managed reads only).</summary>
+        private void ReclaimCurrent()
+        {
+            if (!ReferenceEquals(_current, this) && Mission != null && ReferenceEquals(Mission.Current, Mission)) _current = this;
+        }
+
         /// <summary>First tick: pick up any human agent spawned before we were attached.</summary>
         private void SweepAgents()
         {
             int before = _count;
             foreach (var a in Mission.Agents)
             {
-                if (a == null || !a.IsHuman || !a.IsActive()) continue;
-                if (Get(a) == null) Track(a);
+                try
+                {
+                    if (a == null || !a.IsHuman || !a.IsActive()) continue;
+                    if (Get(a) == null) Track(a);
+                }
+                catch (Exception e)
+                {
+                    Failed("athletics.sweep", e); // one bad agent must not cost everyone after him (review 10a R18)
+                }
             }
             _swept = _count - before;
             TraxLog.Info("athletics", "first tick: tracking " + _count + " fighters" + (_swept > 0 ? " (" + _swept + " picked up by the first-tick sweep)" : string.Empty));

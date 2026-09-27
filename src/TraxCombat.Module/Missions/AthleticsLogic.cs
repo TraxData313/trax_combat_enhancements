@@ -126,6 +126,7 @@ namespace TraxCombat.Missions
             }
             try
             {
+                ReclaimCurrent();
                 TickAthletics(dt);
             }
             catch (Exception e)
