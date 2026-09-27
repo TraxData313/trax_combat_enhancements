@@ -11,7 +11,7 @@ BUILD ORDER (one step at a time — [~] = in flight, see CLAUDE.md "manager prot
 - [x] 5e. Attack speed = the whole attack RATE (wind-up + swing + recovery + AI pause): 0.5 → one attack per 2 s instead of 1 s (DESIGN §2) — right after 6
 - [x] 9. Orders menu: strip under the formation cards (below the arrows) — Athletics ± spread + health (no UIExtenderEx) — kept by Anton: "some vision of the state of the troops"
 - [x] 10a. Fresh-eyes code review: bugs, crash paths, stuck states, performance, gates — fix what is found
-- [ ] 10b. Polish: hide the LATER features' settings (no switch that does nothing), settings/config readability, docs + PLAYTEST script as one clean run (Anton's playtest comes after, all at once)
+- [~] 10b. Polish: hide the LATER features' settings (no switch that does nothing), settings/config readability, docs + PLAYTEST script as one clean run (Anton's playtest comes after, all at once)
 - [ ] 11. Steam packaging — upload only on Anton's yes
 
 PLAYTEST (Anton, all at once at the end — script in docs/PLAYTEST.md):
