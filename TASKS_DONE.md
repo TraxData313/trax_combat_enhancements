@@ -781,3 +781,26 @@
   README, Steam description, CLAUDE summary + layout, AI_NOTES "Step 20" (research, built, UNVERIFIED 1-6). Commits
   696216e, 8de673b, e90d3a2, 862a48a + this.
   (2026.09.28 11.36.17)
+- [x] **Step 20b — Anton's tuned defaults: run floor 0.6, the swing animation a straight line to 85%, the pause unchanged**
+  (Anton after his playtest, 2026-09-28: "speed (run) floor sweetspot is 60%"; "swing speed does get reduced but to 85% …
+  the delay in seconds is nice, leave it be"). defaults.json: `MinMoveSpeedMultiplier` 0.7 → 0.6, `AttackAnimationMinPercent`
+  100 → 85 (DESIGN's Default column keeps the initial 0.7 / 100 - tunings; the tests run on them). THE RULE changed: the
+  animations play at A + (1 − A) × f (Core `AttackTimerMath.AnimationMultiplier(f, A)`), full speed at the peak line, 0.925
+  halfway, 0.85 empty - steps 13-20's max(m, A) would sit at 85% from f 0.81 down. f is read off the APPLIED m
+  (`PeakShareOfAttack`, `AnimationForAttack`) because the decorator only knows m: every recompute (ours, the game's) gives the
+  same value, no new state, the line moves in m's 0.05 steps; attacks never slowed (ExhaustedAttackSpeedPercent 100) = full
+  speed too. Range 5-100 (the line at 0 would freeze a swing at empty); new label + hint. **The finding**: D is MEASURED from
+  the real phases, which the animation multiplier slows, so a ×0.85 swing would have made the pause 18% longer - fixed by
+  building D at FULL animation speed (played × the multiplier each phase played at - `TrackedAgent.PhaseAnimation`,
+  `AtFullSpeed`): the pause D × (1/m − 1), yours and the AI's, is exactly step 13's, the recovery bar unchanged, the slower
+  swing only adds its own ~0.14 s at empty. Stats: the verdict's target = fresh ÷ m + the band's played attack × (1 − its
+  animation) (`AnimationExtra`, "incl. +0.15 s of slower swing") so the heavier swing never reads "too slow"; the timer's
+  floor = played + pause; the timer row and the first-timer lines name the played attack. Hot swap and the master switch
+  unchanged (checked). **Config format 4**: a format-3 file's 0.7 and a format 2-3 file's 100 move to the shipped defaults
+  once, logged; `Migrate(read, defaultOf)` is the seam the tests use (the schema runs on DESIGN's values). **Anton's own
+  config.json holds 0.5 / 90 (his playtest values), so it is kept** - he needs MCM → "Revert all to defaults" (or the two by
+  hand) to play 0.6 / 85; his 90 now means the line (×0.90 at empty). Tests 401 → 405; smoke 57 → 58 steps (the decorator on
+  the line, a slower swing through the real logic keeps the full-speed pause); build 0 warnings; deploy.ps1: build,
+  AssemblyGuard, smoke green and INSTALLED. Docs: DESIGN §2 + table text + interpretation 22, PLAYTEST A1 / C1 / C2 / C6 /
+  L1 / L4 / L5, README, Steam description, CLAUDE summary + layout, AI_NOTES "Step 20b". Commits 22c827c, 0ddeb23 + this.
+  (2026.09.28 11.59.41)
