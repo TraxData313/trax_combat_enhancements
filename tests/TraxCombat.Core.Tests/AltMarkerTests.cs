@@ -226,9 +226,9 @@ public class AltMarkerTests
     public void Layout_reads_the_settings_and_describes_itself()
     {
         var layout = AltMarkerLayout.From(TraxSettings.Shared);
-        Assert.Equal((13, 2, 60, 3), (layout.TextSize, layout.Offset, layout.BarWidth, layout.BarHeight));
+        Assert.Equal((16, 2, 60, 3), (layout.TextSize, layout.Offset, layout.BarWidth, layout.BarHeight));
         Assert.True(layout.Bar);
-        Assert.Equal("numbers 13 px, 2 px under the marker, bar 60 x 3 px (UI pixels - the game's UI scale applies)", layout.Describe());
+        Assert.Equal("numbers 16 px, 2 px under the marker, bar 60 x 3 px (UI pixels - the game's UI scale applies)", layout.Describe());
         Assert.Equal("numbers 13 px, -5 px under the marker, no bar (AltMarkerBarHeight 0) (UI pixels - the game's UI scale applies)",
             new AltMarkerLayout(13, -5, 60, 0).Describe());
     }

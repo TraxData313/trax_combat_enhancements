@@ -132,6 +132,9 @@ namespace TraxCombat.Hud
             return false;
         }
 
+        /// <summary>Step 20: the frame reads the game's "show indicators" key (ALT) for this view.</summary>
+        protected virtual bool ReadsIndicatorKey => false;
+
         /// <summary>True for a view whose own condition comes and goes all the time (the orders menu
         /// opening and closing): only the FIRST build per mission is logged in full, later builds and
         /// removals caused by that condition go to the verbose log (the stats still count them all).</summary>
@@ -260,6 +263,7 @@ namespace TraxCombat.Hud
                 PlayerActive = main != null && main.IsActive(),
                 OrderMenuOpen = m.IsOrderMenuOpen,
                 PlayerWeaponDrawn = OutsideToggle != null && main != null && !HudFrame.IsFightMode((int)m.Mode) && HudFrame.HandsFull(main),
+                ShowIndicatorsKey = ReadsIndicatorKey && screen?.SceneLayer?.Input != null && screen.SceneLayer.Input.IsGameKeyDown(HudFrame.ShowIndicatorsGameKey),
             };
         }
 

@@ -599,7 +599,7 @@ says (§2c).
 | `OrderStripSideMargin` | 2 | (Advanced) How far the numbers and the bar keep in from a card's sides, UI pixels. |
 | `OrderPanelOffsetTop` | 80 | (Advanced) Screen's top edge → the fallback panel (centred), UI pixels. |
 | `OrderPanelWidth` | 300 | (Advanced) Width of the fallback panel, UI pixels. |
-| `AltMarkerTextSize` | 13 | (Advanced) Font size of the numbers under the formation markers, UI pixels. |
+| `AltMarkerTextSize` | 16 | (Advanced) Font size of the numbers under the formation markers, UI pixels (vanilla's marker count is 22; same font and outline - the brush NameMarker.Distance.Text). |
 | `AltMarkerOffset` | 2 | (Advanced) A formation marker's bottom edge (its distance row) → the top of our numbers, UI pixels (negative = up over the marker). |
 | `AltMarkerBarWidth` | 60 | (Advanced) Length of the slim bar under the marker's numbers, UI pixels (60 = the marker's distance row). |
 | `AltMarkerBarHeight` | 3 | (Advanced) Thickness of that bar, UI pixels; 0 = no bar. |

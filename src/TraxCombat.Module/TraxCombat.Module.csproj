@@ -107,6 +107,12 @@
       <HintPath>$(GameFolder)\bin\Win64_Shipping_Client\TaleWorlds.MountAndBlade.GauntletUI.Widgets.dll</HintPath>
       <Private>false</Private>
     </Reference>
+    <!-- Step 20: vanilla's formation markers - MissionFormationMarkerVM / MissionFormationMarkerTargetVM (read,
+         never patched). The game's own assembly (main bin) - always present, so it is safe in any type surface. -->
+    <Reference Include="TaleWorlds.MountAndBlade.ViewModelCollection">
+      <HintPath>$(GameFolder)\bin\Win64_Shipping_Client\TaleWorlds.MountAndBlade.ViewModelCollection.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
     <!-- A widget's GlobalPosition / Size are System.Numerics.Vector2 from the game's own copy (4.1.3.0). -->
     <Reference Include="System.Numerics.Vectors">
       <HintPath>$(GameFolder)\bin\Win64_Shipping_Client\System.Numerics.Vectors.dll</HintPath>

@@ -135,9 +135,10 @@ namespace TraxCombat.Missions
             if (Mission != null)
             {
                 if (agentsAlive) RefreshFormationStats(Mission.CurrentTime, in r);
-                for (int k = 0; k < _formationSnapshot.Length; k++)
-                    if (_formationSnapshot[k].Count > 0)
-                        formations.Add(new KeyValuePair<string, FormationAthleticsStats>(FormationName(k), _formationSnapshot[k]));
+                AddPlayerFormations(formations);
+                if (_formationTeamsSkipped > 0)
+                    TraxLog.Info("athletics", "formation averages: " + _formationTeamsSkipped + " fighters are on a team past index " + (MaxStatTeams - 1)
+                        + " - their formations get no averages (no ALT numbers, no strip cells); tell Claude");
             }
 
             if (Mission != null && agentsAlive) SampleSpeeds("mission end");

@@ -444,7 +444,7 @@
 
   // Font size of the numbers under the formation markers, in the game's UI pixels.
   // (range 8 to 30)
-  "AltMarkerTextSize": 13,
+  "AltMarkerTextSize": 16,
 
   // Distance from the bottom of a formation marker (its distance number) to the top of our
   // numbers, in the game's UI pixels. Negative moves them up over the marker.

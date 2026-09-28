@@ -79,7 +79,7 @@ namespace TraxCombat.Tools
         }
 
         private static HudFrame Frame(double now, Agent? player, MissionMode mode = MissionMode.Battle, bool hideUi = false, bool photo = false,
-            bool paused = false, float dt = 0.05f, bool orderMenu = false, bool weapon = false) => new HudFrame
+            bool paused = false, float dt = 0.05f, bool orderMenu = false, bool weapon = false, bool alt = false) => new HudFrame
             {
                 Dt = dt,
                 Now = now,
@@ -91,6 +91,7 @@ namespace TraxCombat.Tools
                 PlayerActive = player != null,
                 OrderMenuOpen = orderMenu,
                 PlayerWeaponDrawn = weapon,
+                ShowIndicatorsKey = alt,
             };
 
         /// <summary>A nested class: Program's own static fields initialise before Main registers the
@@ -741,6 +742,7 @@ namespace TraxCombat.Tools
             S.Set(SettingsSchema.ModEnabled, true, SettingSources.Mcm);
             view.Finish(903);
             StripFollowsTheMasterSwitch(player);
+            AltMarkersFollowTheMasterSwitch(player);
         }
 
         // ------------------------------------------------------------------ the fail safe

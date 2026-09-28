@@ -1,0 +1,68 @@
+<Prefab>
+  <!--
+    Trax Combat Enhancements - THE NUMBERS UNDER THE FORMATION MARKERS (step 20, DESIGN §3 item 3: hold ALT).
+    While the game shows its formation markers (ALT held, or the orders menu open), one label per marked
+    formation, centred just under its marker: "72% ± 8" (the men's average Athletics ± spread, in the
+    colour of their average f) and "HP 81%", then an optional slim bar (@BarShown): the mean fill in that
+    colour, a translucent ± band (@BandLow → @BandHigh) and a thin tick at the peak line - the strip's bar.
+    Each label is a centring box placed in SCREEN PIXELS (ScaledPositionXOffset / ScaledPositionYOffset /
+    ScaledSuggestedWidth take pixels) from the vanilla marker read live every frame; the rest is in UI
+    pixels of the 1080p layout (AltMarker* settings), so the game's UI scale applies. The text brush is the
+    one vanilla's markers use for their count and distance (NameMarker.Distance.Text: the same font and
+    outline); its colour and size are ours.
+    Data: Hud\AltMarkersVM.cs (the root) and AltMarkerLabelVM (each item of {Labels} - a grow-only list keyed
+    by formation). Every @binding's property has EXACTLY the widget property's type (float / int / Color /
+    bool / string). The list widget carries no @binding (a list DataSource ignores them). Native sprites and
+    brushes only. A passive overlay: no widget takes mouse events.
+    The offline smoke parses this file: widget types, attributes, brushes, sprites, bindings (the item
+    template against the item ViewModel), every ViewModel property drawn.
+  -->
+  <Window>
+    <Widget Id="TraxAltMarkers" WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" DoNotAcceptEvents="true" DoNotPassEventsToChildren="true">
+      <Children>
+        <Widget Id="Labels" DataSource="{Labels}" WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" DoNotAcceptEvents="true">
+          <ItemTemplate>
+            <ListPanel Id="Label" WidthSizePolicy="Fixed" HeightSizePolicy="CoverChildren" HorizontalAlignment="Left" VerticalAlignment="Top" StackLayout.LayoutMethod="VerticalTopToBottom" ScaledSuggestedWidth="@BoxWidth" ScaledPositionXOffset="@PositionX" ScaledPositionYOffset="@PositionY" IsVisible="@IsShown" DoNotAcceptEvents="true">
+              <Children>
+
+                <ListPanel Id="Numbers" WidthSizePolicy="CoverChildren" HeightSizePolicy="CoverChildren" HorizontalAlignment="Center" StackLayout.LayoutMethod="HorizontalLeftToRight" DoNotAcceptEvents="true">
+                  <Children>
+                    <TextWidget Id="Athletics" WidthSizePolicy="CoverChildren" HeightSizePolicy="CoverChildren" VerticalAlignment="Center" Brush="NameMarker.Distance.Text" Brush.FontSize="@TextSize" Brush.FontColor="@AthleticsColor" Text="@AthleticsText" DoNotAcceptEvents="true" />
+                    <TextWidget Id="Health" WidthSizePolicy="CoverChildren" HeightSizePolicy="CoverChildren" VerticalAlignment="Center" MarginLeft="8" Brush="NameMarker.Distance.Text" Brush.FontSize="@TextSize" Text="@HealthText" IsVisible="@HealthShown" DoNotAcceptEvents="true" />
+                  </Children>
+                </ListPanel>
+
+                <!-- the bar: dark ground, the mean fill, the ± band over it, the peak tick -->
+                <Widget Id="Bar" WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="@BarWidth" SuggestedHeight="@BarHeight" HorizontalAlignment="Center" MarginTop="1" Sprite="BlankWhiteSquare_9" Color="#141414D0" IsVisible="@BarShown" DoNotAcceptEvents="true">
+                  <Children>
+                    <FillBarWidget Id="AthleticsBar" WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" FillWidget="AthleticsFill" MaxAmountAsFloat="1" InitialAmountAsFloat="@Fill" DoNotAcceptEvents="true">
+                      <Children>
+                        <Widget Id="AthleticsFill" WidthSizePolicy="Fixed" HeightSizePolicy="StretchToParent" HorizontalAlignment="Left" Sprite="BlankWhiteSquare_9" Color="@FillColor" DoNotAcceptEvents="true" />
+                      </Children>
+                    </FillBarWidget>
+                    <FillBarWidget Id="Spread" WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" FillWidget="SpreadLow" ChangeWidget="SpreadBand" CustomChangeColor="true" MaxAmountAsFloat="1" InitialAmountAsFloat="@BandLow" CurrentAmountAsFloat="@BandHigh" DoNotAcceptEvents="true">
+                      <Children>
+                        <Widget Id="SpreadLow" WidthSizePolicy="Fixed" HeightSizePolicy="StretchToParent" HorizontalAlignment="Left" DoNotAcceptEvents="true" />
+                        <Widget Id="SpreadBand" WidthSizePolicy="Fixed" HeightSizePolicy="StretchToParent" HorizontalAlignment="Left" Sprite="BlankWhiteSquare_9" Color="#FFFFFF5A" DoNotAcceptEvents="true" />
+                      </Children>
+                    </FillBarWidget>
+                    <FillBarWidget Id="PeakBar" WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" FillWidget="PeakSpan" MaxAmountAsFloat="1" InitialAmountAsFloat="@PeakLine" DoNotAcceptEvents="true">
+                      <Children>
+                        <Widget Id="PeakSpan" WidthSizePolicy="Fixed" HeightSizePolicy="StretchToParent" HorizontalAlignment="Left" DoNotAcceptEvents="true">
+                          <Children>
+                            <Widget Id="PeakMarker" WidthSizePolicy="Fixed" HeightSizePolicy="StretchToParent" SuggestedWidth="1" HorizontalAlignment="Right" Sprite="BlankWhiteSquare_9" Color="#F2F2F2C8" DoNotAcceptEvents="true" />
+                          </Children>
+                        </Widget>
+                      </Children>
+                    </FillBarWidget>
+                  </Children>
+                </Widget>
+
+              </Children>
+            </ListPanel>
+          </ItemTemplate>
+        </Widget>
+      </Children>
+    </Widget>
+  </Window>
+</Prefab>

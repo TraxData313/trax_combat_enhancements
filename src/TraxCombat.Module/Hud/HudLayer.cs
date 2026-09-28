@@ -42,6 +42,14 @@ namespace TraxCombat.Hud
         /// <summary>Mission.IsOrderMenuOpen - the orders menu is open (step 9's strip shows then).</summary>
         public bool OrderMenuOpen;
 
+        /// <summary>Step 20: the game's "show indicators" key is held (GenericGameKeyContext.ShowIndicators = 5:
+        /// Left Alt, the controller's LB) - read only for a view that asks (<c>ReadsIndicatorKey</c>). With the
+        /// orders menu it is vanilla's rule for its formation markers.</summary>
+        public bool ShowIndicatorsKey;
+
+        /// <summary>GenericGameKeyContext.ShowIndicators (engine fact).</summary>
+        public const int ShowIndicatorsGameKey = 5;
+
         /// <summary>Step 12: the player holds a weapon or a shield - something wielded in either hand
         /// (<see cref="HandsFull"/>); fists only = false. Read only outside a fight, for a view with the
         /// outside-a-battle rule.</summary>

@@ -41,8 +41,12 @@ namespace TraxCombat.Missions
             var strip = new OrderStripView();
             strip.UseSources(new GauntletOrderCards(screen), new MissionStripFormations(Mission));
             AttachHudView(screen, strip);
+            // step 20: the numbers under vanilla's formation markers (hold ALT) - step 8's squad bars in their
+            // "only while vanilla shows the markers" form
+            var markers = new AltMarkerView();
+            markers.UseSources(new GauntletFormationMarkers(screen), new ProjectedFormationMarkers(screen, Mission));
+            AttachHudView(screen, markers);
             // step 7 (LATER): AttachHudView(screen, new TargetAthleticsView());
-            // step 8 (LATER): AttachHudView(screen, new FormationAthleticsView());
         }
 
         private MissionScreen? FindMissionScreen()
