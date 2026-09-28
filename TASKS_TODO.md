@@ -22,6 +22,7 @@ BUILD ORDER (one step at a time — [~] = in flight, see CLAUDE.md "manager prot
 - [x] 19. Hideout boss fight = a fresh start: when the boss (+ friends) fight begins — duel OR men-to-men — the player's side refills to full Athletics (Anton, 2026-09-28: "they come fresh and we will be tired")
 - [x] 18. Kicks and shield bashes cost 3 Athletics (Anton, 2026-09-28) — a slider, hero/leader multipliers apply like any blow
 - [~] 20. Hold ALT → Athletics + health under each vanilla formation marker (beside its count + distance) (Anton, 2026-09-28) — LATER #8 revived in its "only while vanilla shows the markers" form
+- [ ] 21. Slower, more defensive fights (Anton, 2026-09-28): AI infantry with a SHIELD in hand swing ~30% less (slider; foot men without a shield 15%, own slider) · AI archers wait an extra N seconds after each shot, sized to fire ~30% slower (seconds slider; crossbows their own) — AI only, through the existing pause (guard up), on top of tiredness; the summary measures the real swings/shots per minute — after 20
 
 PLAYTEST (Anton, all at once at the end — script in docs/PLAYTEST.md):
 - [ ] Play with RBM disabled — declared NOT compatible (Anton, 2026-09-27; the mod warns if it sees it)
