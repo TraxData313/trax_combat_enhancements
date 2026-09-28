@@ -719,3 +719,28 @@
   is still unproven. His screenshot showed the loading line as "0.1.0+<40-char commit>":
   ShortVersion() strips the "+commit" for the in-game line only; the log keeps the full id
   (29976a7). (2026.09.28 08.26.28)
+- [x] **Step 19 — the hideout boss fight is a fresh start for the player's side** (Anton, 2026-09-28: "they will come
+  fresh and we will be tired"). New `HideoutBossFightRefill` (on, Refill group, live; defaults.json + refresh; MCM from
+  the schema; 72 settings). The moment a hideout's boss fight BEGINS - duel or battle - every living fighter on the
+  player's side refills at once to the top his wounds allow (`AthleticsMath.FreshStart`: health read first, the peak line
+  still on the full pool) and whatever ran on him ends through its own path (a step back, an AI pause - running, queued or
+  deferred -, your pause; new `FreshStart` end reasons, named in the summaries only when > 0), phases reset, speeds
+  re-targeted exactly. WHY this hook (research first, AI_NOTES "Step 19"): both v1.4.8 hideout missions (the classic
+  `HideoutMissionController` and the stealth `HideoutAmbushMissionController`) start SandBox's
+  `DefeatHideoutBossObjective` ("hideout_mission_defeat_hideout_boss_objective") on the public `MissionObjectiveLogic`
+  in the very call that starts the fight - for both choices - so the tick compares `CurrentObjective` by reference (no
+  Harmony, no private state); duel vs battle from its name's raw `TextObject.Value` text id (any language). Who refills
+  = the game's own teams then: in a duel the game moves your men to Team.Invalid, so only you refill, as Anton wants.
+  The boss's side is spawned FRESH in the cutscene (new agents → full at spawn) - only measured, never touched; the
+  line proves it in game ("all fresh" / "NOT all fresh - tell Claude"). The intro (CutScene mode in a hideout) is noted,
+  so the summary says plainly when a boss phase played but the fight's start was never seen ("tell Claude"). Fail safe:
+  the side reads come first - an exception = one `[error] hideout.refill`, NOTHING refilled, the fight goes on. Logs:
+  `[athletics] hideout boss fight (duel|battle): refilled N of the player's side (you X → Y of P) at … s - …` always,
+  `[summary] hideout boss phase (…): …` in hideouts. Tests 387 (+11 `HideoutBossFightTests`); smoke +1 step (the game's
+  MissionObjective type, stand-in teams: battle / duel / off / fail safe / summaries) + the master switch step,
+  mutation-checked (13 failures); build 0 warnings; deploy.ps1: build, AssemblyGuard and smoke green, the INSTALL was
+  refused - the game was running (the launcher process holds the DLL); it installs with the next
+  `powershell -ExecutionPolicy Bypass -File tools\deploy.ps1` after the game closes (29976a7's short version rides
+  along). Docs: DESIGN §2 + table + 20, PLAYTEST F5 (two hideouts: duel once, battle once) + L4 + G3's 72, README,
+  Steam description, CLAUDE summary + layout, AI_NOTES "Step 19". Commits c183e47, 12663d4 + this.
+  (2026.09.28 09.35.08)

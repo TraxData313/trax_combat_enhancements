@@ -38,7 +38,9 @@ Releasing it: [tools/WORKSHOP-UPLOAD.md](tools/WORKSHOP-UPLOAD.md).
   refill it: one minute standing or walking, twice that running flat out — quick while the bar is
   low, slower as it fills (half the bar in about 25 seconds). Heroes pay less per
   blow, party leaders less again, and a hero's big Athletics skill means a big bar — the battle
-  leans on its heroes.
+  leans on its heroes. In a hideout, when the boss steps out with his men, they come fresh — and
+  so does your side: the moment the fight begins, your bar is full again (you alone in a duel, you
+  and your men in the brawl; wounds still cap it).
 - **Tired men step back** — after a swing, a tired AI soldier on foot may walk backwards out of the
   press, facing his enemy with his guard up, and rejoin his line a moment later: the more
   tired, the more often. The fresh take the blows. Field battles only.

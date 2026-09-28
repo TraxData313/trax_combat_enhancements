@@ -16,7 +16,7 @@ namespace TraxCombat.Tools
     /// with the teams played by a stand-in (<see cref="AthleticsLogic.HideoutSideOf"/>) and the step back / AI
     /// pause bodies by the smoke's (Program.StepBack.cs, Program.AttackRate.cs). What it cannot check: that the
     /// game's MissionObjectiveLogic really shows the objective, the teams in a duel, the intro's CutScene mode -
-    /// PLAYTEST "C1d" and the [athletics] / [summary] lines prove those in game.
+    /// PLAYTEST "F5" and the [athletics] / [summary] lines prove those in game.
     /// </summary>
     internal static partial class Program
     {

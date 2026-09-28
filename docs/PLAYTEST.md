@@ -1,7 +1,7 @@
 # Playtest — one session, start to finish
 
 Anton plays this ONCE, after the build is finished, and hands Claude the log. Seven parts in
-order, about **2 hours 25** (A 10 min, B 15, C 25, D 35, E 15, F 35, G 10; the optional bits add ~30). **Short on
+order, about **2 hours 45** (A 10 min, B 15, C 25, D 35, E 15, F 55, G 10; the optional bits add ~20). **Short on
 time after step 16? D4 alone (the A/B of the new guard and backpedal, 20 min) answers the newest
 questions.** Each part says what to do, what you
 should see, what counts as broken, and the log lines that prove it. The full line reference —
@@ -554,7 +554,7 @@ clicks not working while the strip is up; `[hud] … DISABLED for the rest of th
 
 ---
 
-## F. Campaign — a field battle, a siege, a tournament, the training field (35 min)
+## F. Campaign — a field battle, a siege, a tournament, two hideouts, the training field (55 min)
 
 Load (or start) a campaign with a companion or two in your party.
 
@@ -587,8 +587,36 @@ there). Fight a recruit-level opponent with a shield and block his swings: his f
 fresh rhythm, then each one later; empty, about one swing where he made five, guard up in between.
 Your bar is up the whole time (a weapon in hand).
 
-**F5 (optional, +10 min). A hideout.** The stealth phase costs Athletics too (the bar shows); the boss
-fights you in battle mode and may step back when tired — say if that feels wrong.
+**F5 (20 min). Two hideouts — the boss fight is a fresh start (step 19).** Anton's ask: when the boss
+comes out with his few friends, your side's Athletics is full again — duel or all against all —
+"because they will come fresh and we will be tired". Clear a hideout's first fight **tired**: swing a
+lot at the end so your bar is yellow / orange (or red) and your men are worn down. Then the cutscene
+(the boss and his men walk out) and the talk. **Hideout 1: "Very well."** (the duel). **Hideout 2: "I
+don't fight duels with brigands."** (everyone fights).
+- You see: the moment the talk closes and the fight begins, **your bar jumps to full** (green, the
+  number at the top) — or, wounded, to the dark part your wounds hold (the number stops at your health
+  left: that is right). The Attack recovery bar is full and quiet: your first swing at the boss has no
+  pause. In the DUEL your men stand aside and are NOT refilled (only you); in the BATTLE your men fight
+  fresh too — no step backs, no long waits between their first swings. The boss and his men are fresh
+  either way (the game spawns them in the cutscene). The stealth phase before costs Athletics as
+  usual (the bar shows); the boss fights in battle mode and may step back when tired - say if that
+  feels wrong.
+- *Refill* → *Hideout boss fight: your side starts fresh* off (before a hideout's talk): the bar does
+  NOT jump; the log line says `nobody refilled - HideoutBossFightRefill is off`.
+- Log (always): at the first tick `[athletics] hideout mission (HideoutMissionController): watching for the boss fight's start (the game's "Win the Duel" / "Win the Fight" objective) - then the player's side starts fresh (HideoutBossFightRefill on, read then)`
+  (the stealth hideout says `HideoutAmbushMissionController`); at the cutscene `[athletics] hideout: the boss intro began at … s (the cutscene) - the boss and his men spawn now, fresh; …`;
+  at the fight's start:
+  - duel: `[athletics] hideout boss fight (duel): refilled 1 of the player's side (you 38.0 → 120.0 of 120) at … s - in a duel only you: your men stand aside; 1 on the player's side, 0 already full, 0 held below full by their wounds (to the health they have left), 0 were empty; +82.0 Athletics in all; released: your attack pause no, AI pauses 0 (+0 queued), step backs 0 (+0 queued); the boss's side: 1 fighter, all fresh (at full - spawned for this fight); standing aside: 9 (not refilled)`
+  - battle: `[athletics] hideout boss fight (battle): refilled 8 of the player's side (you … → … of …) at … s - you and your men still standing; 9 on the player's side, 1 already full, 2 held below full by their wounds …; the boss's side: 6 fighters, all fresh (at full - spawned for this fight)`
+    (your pause, AI pauses or step backs still running are released there too - normally 0: the
+    cutscene and the talk outlast them); if your pause was running: `[athletics] YOU: your attack pause released at … s - a fresh start (the hideout boss fight began): attack at once`.
+  - the summary: `[summary] hideout boss phase (HideoutMissionController): the boss intro at … s, the fight began at … s as a DUEL - a fresh start: 1 of the player's side refilled (…; you 38.0 → 120.0 of 120); the boss's side: 1 fighter, all fresh (at full - spawned for this fight)`
+    (the battle: `as a BATTLE (men to men)`).
+- Broken — tell Claude: no `hideout boss fight` line in a hideout where you fought the boss (the summary
+  then says `the boss intro played at … s, but the start of the boss fight was NEVER SEEN - … the refill hook never fired: tell Claude`);
+  `duel or battle` in the line (the game's objective name was not the one expected - the refill still
+  ran); `the boss's side: … - NOT all fresh (tell Claude)`; `the refill FAILED`; in the duel your men
+  refilled (`refilled` above 1), in the battle your men not refilled; the bar not jumping.
 
 **F6 (5 min). Your bar outside a battle — the training field, then a town** (step 12: your first
 playtest found no bar in the training field — it runs in the game's walk-about mode, not a battle
@@ -634,7 +662,7 @@ defaults file**.
   back to its default (N changed) - applied now; config.json saved."* (MCM's Cancel does not undo it.)
 - Log: `[mcm] "Revert all to defaults" pressed`, one `[config] <Key>: … → … (source: defaults)` per
   setting that moved, `[config] wrote config.json (reverted to defaults): every value as it is in effect now`,
-  `[config] reverted all 70 settings to their defaults (…): N changed, applied live`.
+  `[config] reverted all 72 settings to their defaults (…): N changed, applied live`.
 
 **G4 (optional, 1 min). The rewrite rule.** Hand-edit one value in config.json; then — before any
 battle — change a DIFFERENT value in MCM and press Done. The hand edit must still be in the file.
@@ -750,6 +778,11 @@ shield blocks (switch), falls, doors / siege engines / ships.
   `~[speed] <name>: attacks x0.93, run x0.94 (f 0.92)`.
 - Mid-battle changes: `[athletics] pool settings now: …; everyone keeps his share …`, `[speed] speed settings now: …`,
   `[athletics] AthleticsEnabled switched OFF / ON mid-mission: …`.
+- Hideouts (step 19, F5): `[athletics] hideout mission (…): watching for the boss fight's start …`, `[athletics] hideout: the boss intro began at …`,
+  `[athletics] hideout boss fight (duel|battle): refilled N of the player's side (you X → Y of P) at … s - …` (off: `… at … s: nobody refilled - …`;
+  broken: `the refill FAILED (hideout.refill) - nothing refilled, …` + one `[error] hideout.refill`), and the summary's
+  `[summary] hideout boss phase (…): …` - in hideouts only; `NEVER SEEN` or `NOT all fresh` in it → tell Claude. A released step back
+  or pause is named `a fresh start (hideout boss fight) N` in the step-back and attack-rate summary lines (only when N > 0).
 - Summary (numbers made up):
   ```
   [summary] Athletics settings at the end: ON - pool = the Athletics skill x1.00, at least 50; …

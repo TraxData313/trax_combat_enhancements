@@ -2206,7 +2206,7 @@ Athletics group, after `CostPerBlow`); DESIGN §2 "Kicks and shield bashes cost 
 - Tests 376 (+9, `KickBashTests`); smoke: a new step (costs, dedupe on every path, no timer / roll, 0 / off live, the YOU
   line, Core's action codes = the game's) + the master switch step (a kick while off costs nothing).
 
-## Step 19 — the hideout boss fight is a fresh start for the player's side (research 2026-09-28, written before coding)
+## Step 19 — the hideout boss fight is a fresh start for the player's side (DONE 2026-09-28; the research below was written before coding)
 
 Anton (2026-09-28): "when I'm clearing a hideout, when the cutscene where the boss comes with his few friends, our Athletics is
 regenerated - either if I chose to duel him or to fight men to men - because they will come fresh and we will be tired."
@@ -2267,3 +2267,40 @@ regenerated - either if I chose to duel him or to fight men to men - because the
   `Finish(FreshStart)`, `EndHold(FreshStart)` + a queued / deferred pause dropped, `ReleasePlayerTimer(FreshStart)`, the phases reset,
   the speeds re-targeted). A seam `HideoutSideOf` (the smoke's stand-in for the teams, like `StepBackBody`).
 - Setting `HideoutBossFightRefill` (bool, on, Refill group, live).
+
+**Built as planned** (file map in CLAUDE.md "Layout"). Decisions and gotchas worth keeping:
+- **The refill goes to the wound cap AT ONCE** (`FreshStart` records today's health first - `HealthOf`, a killing blow in
+  flight keeps the last known health), unlike the master switch's "back on" (`ResetFull`, capped at the next regen step).
+  The peak line stays on the full pool, so a man at 60% health refills to 0.6 = f 0.8, not full strength.
+- **Order in `BossFightBegan`**: `BeginFight` (once per mission - a second boss objective is counted "came back", never
+  refilled) → the gate (`RefillOffBecause`: ModEnabled, AthleticsEnabled, HideoutBossFightRefill - the line is written
+  either way) → pass 1, the side reads (every engine read; an exception = `[error] hideout.refill` once per mission site,
+  `FailedAt`, NOTHING refilled) → pass 2 per man: `FreshStart`, the releases, `ResetPhases` (no cycle or timer gap spans
+  the fresh start), `RetargetSpeed(exact)` → the line. Called from the top of `TickAthletics` (after `TrackPlayer`), so
+  this tick's poll applies the speeds within its budget and this tick's step-back / pause passes see the ends.
+- **Releases, each on its existing path**: a running step back `Finish(FreshStart, native)` (the backpedal's wish off too); a
+  queued one out of `_stepPending` + `Refuse(NoLongerEligible)` (keeps "rolled yes = started + refused"); a running AI
+  pause `EndHold(FreshStart)` (NoAttack lifted or the input wish off); a queued one `Pending = false` (the queue skips it);
+  a deferred one out of `_paceDeferred`; your pause `ReleasePlayerTimer(FreshStart)` ("a fresh start (the hideout boss
+  fight began): attack at once"). New enum values `StepBackEnd.FreshStart`, `PaceEnd.FreshStart` (7, Count 8),
+  `PlayerTimerEnd.FreshStart` (5, Count 6); the attack-rate summary names them only when > 0 (pinned lines unchanged); the
+  step-back "cut short" list names any non-zero reason by itself.
+- **The boss's side is measured, never touched**: `AddBossSide(fraction, usable top)` → "all fresh (at full - spawned for
+  this fight)" or "N at full, lowest X% - NOT all fresh (tell Claude)". The research says they spawn fresh; the line is the
+  in-game proof Anton asked for.
+- **The seam**: `HideoutSideOf` (null in game = `SideInGame`: removed / not active → Gone; no team, side None or an invalid
+  team → Aside; `Team.IsPlayerAlly` → Player; else Boss). The smoke also hands `ObserveObjective` the game's OWN
+  `MissionObjective` type (a subclass with the boss id and a real `TextObject`) - TextObject and MissionObjective construct
+  offline (managed only); the smoke project now references TaleWorlds.Localization.
+- **Mutation-checked** (step 17's lesson): no releases + no cap → 13 failed smoke checks, all in the new step.
+- Tests 387 (+11, `HideoutBossFightTests`); smoke +1 step (Program.Hideout.cs) + the master switch step (mod off = nobody
+  refilled, the line still written). 72 settings.
+
+**UNVERIFIED — only the game can tell (PLAYTEST F5; the line that settles each)**
+1. `MissionObjectiveLogic.CurrentObjective` shows the boss objective in both hideout missions → `[athletics] hideout boss
+   fight (duel|battle): refilled …`; the summary's `NEVER SEEN` must not appear after a boss fight.
+2. The text ids tell the choice → `(duel)` / `(battle)`, never `(duel or battle)`.
+3. The duel's teams: your men on Team.Invalid → `refilled 1 of the player's side` and `standing aside: N`.
+4. The boss's side fresh → `the boss's side: …, all fresh (at full - spawned for this fight)`.
+5. The intro seen by the mode → `[athletics] hideout: the boss intro began at …` (the summary's "the boss intro at …").
+6. The bar jumps on screen the same frame (the HUD reads every refresh) - Anton's eye.

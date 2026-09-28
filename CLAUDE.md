@@ -17,7 +17,10 @@ swing (step 5d) - since step 16 a BACKPEDAL through the AI's own input, facing t
 pause survives it (one per-man `AgentComponent` on `OnAIInputSet` does both; A/B switches keep the old ways).
 Heroes and party leaders pay less per blow (and big-skill heroes have
 big bars), so the game leans hero-centred. Kicks and shield bashes cost a little too (step 18:
-`CostPerKickOrBash` 3 × the same multipliers, once each, never an attack pause). The Athletics
+`CostPerKickOrBash` 3 × the same multipliers, once each, never an attack pause). A hideout's boss
+fight is a fresh start for the player's side (step 19, `HideoutBossFightRefill`: when the game's
+"Win the Duel" / "Win the Fight" objective appears, his side refills to its wound cap and every pause /
+step back on them ends; in a duel his men stand aside, so only he refills). The Athletics
 bar is shown for the player (step 6)
 and — averaged, with a ± spread and the men's health — in a strip under each formation card of
 the orders menu (step 9). The bar for the fighter you look at and squad bars above the
@@ -151,7 +154,7 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
   ParamDef.cs                 one setting: key, type, range, group, label, plain-words
                               description, apply timing (Live / NextBattle); Normalize, Format;
                               its Default comes from defaults.json (DefaultsFile), never code
-  SettingsSchema.cs           EVERY setting of DESIGN's table (71), in file + MCM order, 9 groups
+  SettingsSchema.cs           EVERY setting of DESIGN's table (72), in file + MCM order, 9 groups
                               ("Master switch" first, "Advanced" last; step 10b's one vocabulary and
                               units in its header comment) — the one place a setting is declared
                               (a test parses DESIGN.md: keys + types); NO default values. The LATER
@@ -209,7 +212,8 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               never Blows; cost 0 = nothing at all),
                               RegenRateMultiplier by effort, SpeedUpdateNeeded (0.05 step), PeakBin;
                               step 14's refill curve: RegenCurve = 1 − (1 − k) x, RegenRateAtEmpty r0 =
-                              ln(1/k) / ((1 − k) T), RefillFrom / RefillSeconds - exact per step)
+                              ln(1/k) / ((1 − k) T), RefillFrom / RefillSeconds - exact per step;
+                              step 19: FreshStart - the refill to the top the wounds allow + FreshStartOutcome)
                               + Charge / ApplyHealth / Regen / Read; BlowKind, BlowOutcome,
                               RegenOutcome, AthleticsReading (HUD snapshot incl. f, usable pool,
                               BelowFull = below the top it can refill to - step 12)
@@ -218,6 +222,12 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               kick on both = one), Hit = the fallback when no channel shows one (the
                               poll's late sight within SameActionSeconds 1.0 not charged again); the
                               engine's action codes (the smoke checks them)
+  HideoutBossFight.cs         step 19: the hideout boss fight's facts - BossObjectiveId, the duel / battle text
+                              ids (KindOf from TextObject.Value), the controllers by name, BossFightKind,
+                              HideoutSide (Player / Boss / Aside / Gone), RefillOffBecause (ModEnabled first);
+                              HideoutBossFightStats: the intro, the fight's start (once), the refill counts, what
+                              it released, the boss side's freshness + the [athletics] line and the [summary]
+                              line ("intro played, fight never seen: tell Claude")
   StepBack.cs                 DESIGN §2 step back pure (step 5d): StepBackRules (live; Enabled =
                               ModEnabled && AthleticsEnabled && StepBackEnabled, Describe),
                               StepBackMath (Chance = max × (1 − f), Roll, AwayFrom = the spot,
@@ -433,6 +443,13 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               only YOUR hands - YouDrive (no pause while the AI drives your hero - RTS Camera's
                               free camera - R25; SmokePlayerAiControlled), a game object in use (a siege engine
                               fires on your attack bits) never held (R26)
+  Missions/AthleticsLogic.Hideout.cs  step 19: the hideout boss fight = a fresh start - NoteHideoutMission (first
+                              tick: the controller by NAME, MissionObjectiveLogic), TickHideout (top of the Athletics
+                              tick: the intro = CutScene mode, the objective by reference), ObserveObjective (the boss
+                              objective's id → BossFightBegan once), BossFightBegan (side reads FIRST - Team.IsPlayerAlly
+                              / Team.Invalid = aside; a throw = one [error], nothing refilled - then FreshStart + every
+                              release: Finish / EndHold / ReleasePlayerTimer (FreshStart), a queued / deferred one
+                              dropped, ResetPhases, RetargetSpeed exact); HideoutSideOf = the smoke's teams
   Missions/PlayerAttackGate.cs  step 13: a MissionLogic added then moved to INDEX 0 of
                               Mission.MissionBehaviors (SubModule, OnMissionBehaviorInitialize) - it
                               pre-ticks right after MissionMainAgentController wrote the input
@@ -497,7 +514,7 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               / values lines, the [summary] strip line
   Hud/OrderStripVM.cs         its ViewModels: the root + 8 fixed OrderStripCellVM in one
                               MBBindingList, bound TWICE by the prefab (the cells, the panel rows)
-tests/TraxCombat.Core.Tests/  net8.0 xUnit (376) — schema vs DESIGN.md (keys + types), one copy
+tests/TraxCombat.Core.Tests/  net8.0 xUnit (387) — schema vs DESIGN.md (keys + types), one copy
                               runs (SingleCopyTests: claims on private slots, copies, texts), when
                               MCM is tried and when it stops (McmPlanTests - step 12),
                               defaults.json (DefaultsFileTests), master switch, settings, config
@@ -508,7 +525,9 @@ tests/TraxCombat.Core.Tests/  net8.0 xUnit (376) — schema vs DESIGN.md (keys +
                               - T for any k, 100 = the old rule to the bit, exact steps - DESIGN's
                               blow counts), kicks and bashes (KickBashTests, step 18: 3 / 2.25 / 1.69,
                               free at 0 and off, one decision per action across both channels and the
-                              hit), mean/std, the run-speed check, Athletics summary, the
+                              hit), the hideout boss fight (HideoutBossFightTests, step 19: the refill to the
+                              wound cap, the ids and text ids, the gate, the line and the summary texts), mean/std,
+                              the run-speed check, Athletics summary, the
                               attack rate (rules, AI values x / ÷ m, the cap, verdicts, phases /
                               cycles / timers / holds / guard + summary), the timer (AttackTimerTests:
                               the pause, the animation floor, the countdown text, the flash, YOUR
@@ -551,7 +570,7 @@ tools/package.ps1             step 11, THE RELEASE: manifest gate (release Id + 
 tools/WORKSHOP-UPLOAD.md      the release loop, step by step (first upload, updates) + the uploader's quirks
 tools/WorkshopCreate.xml      the FIRST upload (creates the item, Private, tags, preview) - run once
 tools/WorkshopUpdate.xml      every later upload - ITEM_ID placeholder until the first upload
-tools/STEAM-DESCRIPTION.bbcode  the Workshop page, pasted by hand (≤ 8000 bytes; 4452 now)
+tools/STEAM-DESCRIPTION.bbcode  the Workshop page, pasted by hand (≤ 8000 bytes; 4671 now)
 tools/preview_thumbnail.html  the Workshop preview (source) → preview_thumbnail.png (1024², headless Edge)
 tools/AssemblyGuard/          soft-dependency guard (from the sibling): MCM, Harmony, ButterLib,
                               UIExtenderEx, NavalDLC, CustomBattle in any type surface = FAIL
@@ -584,7 +603,11 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               ways, OnMeleeHit's guard by state, the summary; the older steps run the
                               OLD techniques - AthleticsDefaults pins them), the decorator's animation floor (100 / 0 / 60), the master
                               switch (step backs released, AI timers lifted, your countdown released,
-                              the bar and the strip removed too), the recovery bar (Program.Recovery.cs:
+                              the bar and the strip removed too; step 19: a hideout boss fight refills nobody), the
+                              hideout boss fight (Program.Hideout.cs, step 19: the game's MissionObjective type with the
+                              boss id and names, stand-in teams - the battle refills the whole side to a wound's cap and
+                              ends every step back / pause / queued one / your pause, the duel you alone, off = nobody,
+                              a failing read = one [error] and nothing refilled, the lines), the recovery bar (Program.Recovery.cs:
                               its prefab, the real view over a running timer), the HUD (Program.Hud.cs: PrefabIsValid - any prefab against the
                               game's own widget types, properties, brushes, sprites and the VMs'
                               property types, DataSource lists into their ItemTemplates, no @binding
