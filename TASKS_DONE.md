@@ -706,3 +706,16 @@
   kick in the master-switch step; build 0 warnings; deploy.ps1 green (installed). Docs: DESIGN §2 + table + 8 / 19,
   PLAYTEST C intro + C1c + L4, README, Steam description, CLAUDE layout, AI_NOTES "Step 18". Commit 2f29477 + this.
   (2026.09.28 08.08.51)
+- [x] **Playtest round 3 read + the loading-screen version.** Anton's 200v200 infantry battle
+  (08:0x, 368 s, 401 agents, 0 errors) proved step 16 in the real game: the backpedal kept
+  87% of step-backs facing their enemy mid-step (12% before), 2% back turned (80% before),
+  1.43 m of 2 m moved (0.6 before), 259 arrivals (2 before), and men blocked 45% while stepping
+  back (5% before); men held by the AI timer blocked 52% (2-13% before) - now ABOVE the 30% of
+  everyone else, the raise-guard press doing its job and maybe more (AiHoldRaiseGuard is the
+  lever if tired men turtle). The ×0.70 run floor held at empty; the timer held (0-1 attacks
+  started early in ~2400 holds - the older "fresh cycle ÷ m" verdict still reads "too fast" in
+  the low bands because few start-to-start cycles stay inside one band there, the timer line is
+  the real proof); tick cost 0.055 ms at 400 men. No kick or bash happened, so the step-18 cost
+  is still unproven. His screenshot showed the loading line as "0.1.0+<40-char commit>":
+  ShortVersion() strips the "+commit" for the in-game line only; the log keeps the full id
+  (29976a7). (2026.09.28 08.26.28)

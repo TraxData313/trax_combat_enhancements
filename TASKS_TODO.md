@@ -32,6 +32,13 @@ LATER (moved off the build order by Anton, 2026-09-27 — designs kept in DESIGN
 - [ ] 8. Squad bars above my formations: average ± 1 std + average health
 
 BUGS:
+- [x] Loading screen showed "0.1.0+<40-char commit>" (Anton's screenshot, 2026-09-28) — players see "0.1.0" now, the log keeps the full id (29976a7; deploys when the game closes)
+
+PLAYTEST RESULTS (200v200 infantry, 2026-09-28 morning, step 16 in game — 0 errors):
+- Step back fixed: facing mid-step 87% (was 12%), back turned 2% (was 80%), 1.4 m moved (was 0.6), blocks 45% (was 5%)
+- Guard fixed: held men block 52% (was 2–13%) — now ABOVE everyone else's 30%; if tired men turtle too much: AiHoldRaiseGuard off
+- Run floor ×0.70 honoured; the attack timer held (0–1 early starts in ~2400); tick cost 0.055 ms at 400 men
+- Kicks/bashes: none seen in that battle — kick a few times next battle to prove the cost (PLAYTEST C1c)
 - [x] Tired AI men are DEFENCELESS (step 15's find, log 23:00): while the attack timer holds them (engine NoAttack) they block 2–13%, while stepping back 4–6%, vs 33–45% for everyone — 41% of landed melee hits struck men in those states → step 16 — fixed in 16: only the attack bits taken out of the AI's own input, guard raised (the summary's GUARD line checks it)
 - [x] Step back turns their backs (Anton saw it twice; log 22:48 + 23:00 confirms): 100% face the enemy at the start, ~80% back turned mid-step, only ~0.6 m of 2 m moved, block 5% vs 33–45% — the scripted "go to" walk turns them around → step 16 (after 15's research + 14) — fixed in 16: a backpedal through his own input, facing the enemy
 - [x] Empty AI attacks too fast (log: f 0 cycle 2.2 s vs target 8.5–9.3 s): at empty the step back fires every swing and a started step back DROPS the pace hold (R1's rule) — so after 1.5 s he swings again → step 16: the timer must survive a step back — fixed in 16: the timer survives a step back (the later end)
