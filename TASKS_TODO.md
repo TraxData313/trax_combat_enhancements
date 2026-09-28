@@ -21,6 +21,7 @@ BUILD ORDER (one step at a time — [~] = in flight, see CLAUDE.md "manager prot
 - [x] 17. Second fresh-eyes review: the ~4000 lines since step 10a's review (steps 12–16: player input timer, AI input component, backpedal, refill curve, migrations) — fix what is found, before Anton's morning playtest
 - [x] 19. Hideout boss fight = a fresh start: when the boss (+ friends) fight begins — duel OR men-to-men — the player's side refills to full Athletics (Anton, 2026-09-28: "they come fresh and we will be tired")
 - [x] 18. Kicks and shield bashes cost 3 Athletics (Anton, 2026-09-28) — a slider, hero/leader multipliers apply like any blow
+- [~] 20. Hold ALT → Athletics + health under each vanilla formation marker (beside its count + distance) (Anton, 2026-09-28) — LATER #8 revived in its "only while vanilla shows the markers" form
 
 PLAYTEST (Anton, all at once at the end — script in docs/PLAYTEST.md):
 - [ ] Play with RBM disabled — declared NOT compatible (Anton, 2026-09-27; the mod warns if it sees it)
@@ -30,7 +31,7 @@ PLAYTEST (Anton, all at once at the end — script in docs/PLAYTEST.md):
 
 LATER (moved off the build order by Anton, 2026-09-27 — designs kept in DESIGN §3 + AI_NOTES steps 7–9):
 - [ ] 7. Bar for the NPC I look at (toggle)
-- [ ] 8. Squad bars above my formations: average ± 1 std + average health
+- [~] 8. Squad bars above my formations: average ± 1 std + average health → being built as step 20 (ALT only)
 
 BUGS:
 - [x] Loading screen showed "0.1.0+<40-char commit>" (Anton's screenshot, 2026-09-28) — players see "0.1.0" now, the log keeps the full id (29976a7; deploys when the game closes)
