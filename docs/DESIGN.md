@@ -291,9 +291,9 @@ button and the "(default …)" in comments, MCM hints and the log all show the f
 
 ## 3. Showing Athletics
 
-All toggles, all on by default. **Built: items 1, 1b and 4. Items 2 and 3 are LATER** (Anton moved
-them off the build order, 2026-09-27): their designs stay here, their settings wait in "Planned
-parameters" below, and nothing of them is in the game, MCM or the config file.
+All toggles, all on by default. **Built: items 1, 1b, 3 (step 20, in its "hold ALT" form) and 4. Item 2
+is LATER** (Anton moved it off the build order, 2026-09-27): its design stays here, its settings wait in
+"Planned parameters" below, and nothing of it is in the game, MCM or the config file.
 
 1. **Player bar** (`ShowPlayerBar`): the player's Athletics bar near the vanilla health bar,
    in the spirit of RBM's posture bar (RBM = Realistic Battle Mod, confirmed by Anton —
@@ -305,10 +305,11 @@ parameters" below, and nothing of them is in the game, MCM or the config file.
 2. **LATER (step 7) — Looked-at NPC** (`ShowTargetBar`): a small bar for the fighter the player
    is aiming at / looking at, within `TargetBarMaxDistance`; it lingers `TargetBarLingerSeconds`
    after the aim leaves so it does not flicker. Aiming at a horse shows its rider.
-3. **LATER (step 8) — Squad bars** (`ShowFormationBars`): above each of the PLAYER'S formations,
-   a bar of the formation's average Athletics, with a band of ± `FormationSpreadStdDevs` (1)
-   standard deviations (`ShowFormationSpread`). `FormationBarsAlways` off = only while vanilla
-   shows its formation markers (marker key held or orders menu open).
+3. **Hold ALT — numbers under the formation markers** (`ShowAltMarkerStats`; built in step 20, Anton
+   2026-09-28: "I see the Athletics and health numbers above the troops when I hold ALT — it now shows
+   me the troop count and distance"). This is step 8's "squad bars" in their "only while vanilla shows
+   its formation markers" form. Built as below; an always-on form (`FormationBarsAlways`,
+   `FormationBarHeight`) stays in "Planned parameters".
 4. **Orders menu** (`ShowInOrderMenu`): while the orders menu is open, a strip directly UNDER
    each of vanilla's formation cards (built in step 9 — below). Numbers INSIDE vanilla's cards
    would need UIExtenderEx and risk clashing with RTS Camera Command System — not worth it
@@ -339,6 +340,36 @@ counted (the cards count the men under his command; he has his own bar). Refresh
 - Five Advanced settings place the cell (`OrderStripTextSize`, `OrderStripTextOffset`,
   `OrderStripBarOffset`, `OrderStripBarHeight`, `OrderStripSideMargin`), all live. The defaults
   make the cell 23 px deep, which fits the bottom card of a column at 1920 × 1080 exactly.
+
+**The numbers under the formation markers as built (step 20 — hold ALT):** vanilla draws a marker
+above every formation (the troop count, the formation icon, the distance) while you **hold the
+"show indicators" key (Left Alt; the controller's LB)** or **the orders menu is open** — its own rule,
+the same for every side. Exactly while vanilla shows them, each marked formation also gets, centred
+just under its marker (`AltMarkerOffset`, 2 px under the distance number):
+- `72% ± 8` — the men's average Athletics as a share of their own pools ± `FormationSpreadStdDevs`
+  standard deviations (`ShowFormationSpread`), **in the colour of the men's average f** (the player
+  bar's bands: green … red) — and `HP 81%`, their average health (`ShowFormationHealth`);
+- under them a slim bar (`AltMarkerBarWidth` × `AltMarkerBarHeight`, 60 × 3 px; 0 = none): the mean
+  fill in that colour, the lighter ± band, the peak tick — the strip's bar.
+- **Which formations**: every one vanilla marks — yours and your allies' always, the **enemy's** too
+  (`AltMarkersShowEnemy`, on: knowing the enemy is tired is the tactical point). The player himself is
+  not counted in his own formation (he has his own bar); everyone else is, on every side. A formation
+  with no tracked man gets no numbers.
+- **How it lines up** (nothing patched): vanilla's marker layer is READ LIVE — its own "markers shown"
+  flag (so ALT, the orders menu, or any mod's change to that rule is followed exactly), each marker's
+  screen point (the formation's median + 3 m, projected by the game THIS frame) and each marker
+  widget's live size. The label goes to the marker's bottom centre, computed exactly as vanilla
+  centres the marker, the same frame — at any resolution, UI scale, and under RTS Camera's free camera
+  (it moves the camera vanilla projects from). A marker vanilla hides — behind the camera, faded
+  (closer than 5 m), its formation empty or gone — has no label; a targeted enemy's marker vanilla pins
+  to the screen's edge keeps its label under it.
+- **Fallbacks**, each logged with its reason: the marker widgets not found → the game's points with a
+  nominal marker size; no marker layer / data at all → our own projection of the same point with the
+  game's rule copied (ALT or the orders menu). The next show tries the live markers again.
+- Values every `FormationStatsRefreshSeconds` (the averages are kept for every formation of every
+  side); the positions every frame. Shown only in fights, with the master switch, Athletics and
+  `ShowAltMarkerStats` on, never with the game's Hide battle UI or photo mode; the player need not be
+  on the field (vanilla shows its markers after your fall too). All live.
 
 Bars show in fights (battle, duel, tournament and stealth modes — step 6 added stealth:
 a stealth mission's fights cost Athletics too), with the player on the field, never while the
@@ -400,7 +431,7 @@ it, `RecoveryBarWidth` × `RecoveryBarHeight`, 205 × 14 px): the words *Attack 
   `BarYellowBelowPercent` (75) % yellow; `BarOrangeBelowPercent` (50) orange;
   `BarRedBelowPercent` (25) red. The orders-menu strip uses the same colours.
 - Squads also show their AVERAGE HEALTH (`ShowFormationHealth`, on) — in the orders menu (built,
-  step 9) and, LATER (step 8), above the formation.
+  step 9) and under the formation markers while ALT is held (built, step 20).
 - Orders menu: our strip sits directly UNDER the vanilla formation cards, one cell per card
   ("below the arrows remaining", Anton's words) — Athletics average ± spread and average
   health. Still no UIExtenderEx; if the cards' positions cannot be matched reliably, the
@@ -546,12 +577,14 @@ says (§2c).
 | `BarYellowBelowPercent` | 75 | Bar turns yellow at or below this % of the peak line (blue just below the line, green above it). |
 | `BarOrangeBelowPercent` | 50 | Orange at or below this %. |
 | `BarRedBelowPercent` | 25 | Red at or below this % (an empty bar is always red). |
-| `ShowFormationSpread` | true | ± spread in the orders-menu strip: the "± 8" and the lighter band (off: the strip shows the average alone). |
-| `FormationSpreadStdDevs` | 1.0 | Band width in standard deviations (the strip's "± 8" is this width). |
+| `ShowFormationSpread` | true | ± spread in the orders-menu strip and under the formation markers: the "± 8" and the lighter band (off: the average alone). |
+| `FormationSpreadStdDevs` | 1.0 | Band width in standard deviations (the "± 8" is this width). |
 | `ShowInOrderMenu` | true | The orders-menu strip: under each formation card, the men's average Athletics ± spread (bar + "72% ± 8"). |
-| `ShowFormationHealth` | true | The orders-menu strip also shows average health ("HP 81%"). |
+| `ShowFormationHealth` | true | The orders-menu strip and the formation markers' numbers also show average health ("HP 81%"). |
 | `OrderStripUnderCards` | true | true: the strip sits under the vanilla cards (read live) when they can be matched, else the compact panel. false: always the compact panel. |
-| `HudRefreshSeconds` | 0.1 | (Advanced) How often the player bar and the orders-menu strip update. |
+| `ShowAltMarkerStats` | true | Step 20 (Anton): while vanilla shows its formation markers (ALT held or the orders menu open - the game's own rule, read live), each marked formation also gets "72% ± 8" (the men's average Athletics ± spread, coloured by their average f) and "HP 81%" just under its marker, over a slim bar (§3 item 3). Yours and your allies' always. |
+| `AltMarkersShowEnemy` | true | Step 20: the enemy's formation markers get the numbers too (vanilla marks them) - knowing the enemy is tired is the tactical point. Off: yours and your allies' only. |
+| `HudRefreshSeconds` | 0.1 | (Advanced) How often the player bar, the orders-menu strip and the formation markers' numbers update (the markers' numbers follow the markers every frame). |
 | `PlayerBarWidth` | 205 | (Advanced) Length of your bar in UI pixels of the 1920 × 1080 layout (the game's UI scale applies); 205 = the inside of the vanilla health bar. |
 | `PlayerBarHeight` | 12 | (Advanced) Thickness of your bar, UI pixels. |
 | `PlayerBarOffsetRight` | 62 | (Advanced) Screen's right edge → your bar's right end, UI pixels (62 = under the vanilla health bar). |
@@ -566,7 +599,11 @@ says (§2c).
 | `OrderStripSideMargin` | 2 | (Advanced) How far the numbers and the bar keep in from a card's sides, UI pixels. |
 | `OrderPanelOffsetTop` | 80 | (Advanced) Screen's top edge → the fallback panel (centred), UI pixels. |
 | `OrderPanelWidth` | 300 | (Advanced) Width of the fallback panel, UI pixels. |
-| `FormationStatsRefreshSeconds` | 0.25 | (Advanced) How often formation averages and spreads are recomputed. |
+| `AltMarkerTextSize` | 13 | (Advanced) Font size of the numbers under the formation markers, UI pixels. |
+| `AltMarkerOffset` | 2 | (Advanced) A formation marker's bottom edge (its distance row) → the top of our numbers, UI pixels (negative = up over the marker). |
+| `AltMarkerBarWidth` | 60 | (Advanced) Length of the slim bar under the marker's numbers, UI pixels (60 = the marker's distance row). |
+| `AltMarkerBarHeight` | 3 | (Advanced) Thickness of that bar, UI pixels; 0 = no bar. |
+| `FormationStatsRefreshSeconds` | 0.25 | (Advanced) How often formation averages and spreads are recomputed - every formation of every side since step 20. |
 | `VerboseLogging` | false | Log every roll, blow and exhaustion (rate-limited) to `trax_combat.log`. Off = load, settings, mission start/end, per-battle summaries and errors only. |
 | `LogMaxMegabytes` | 8 | (Advanced) Size limit of `trax_combat.log`, MB. Past it a trim cuts the oldest VERBOSE lines, down to about half; every other line is kept (§4 "The log"). |
 
@@ -579,24 +616,26 @@ test reads that table only) and removes any retired rows in the same commit. (St
 its four `StepBack*` rows up and added `StepBackEnemyRange`, `StepBackHoldAttacks`,
 `StepBackMaxAtOnce`; step 6 moved the three `Bar*BelowPercent` rows up and added the four
 `PlayerBar*` layout rows; step 9 moved `ShowFormationHealth` up and added `OrderStripUnderCards`,
-the five `OrderStrip*` and the two `OrderPanel*` rows.)
+the five `OrderStrip*` and the two `OrderPanel*` rows; step 20 built step 8's `ShowFormationBars` as
+`ShowAltMarkerStats` - the "only while vanilla shows formation markers" form - and added
+`AltMarkersShowEnemy` and the four `AltMarker*` layout rows.)
 
-The two features Anton moved to LATER (2026-09-27, §3 items 2 and 3) keep their rows here. They
+The two features Anton moved to LATER (2026-09-27, §3 items 2 and 3) kept their rows here. They
 were in the schema, MCM and the config file until step 10b took them out (review R21: no switch
 that does nothing). The step that builds a feature moves its rows back up (and into the schema,
-TraxSettings and defaults.json). The designs are §3 and AI_NOTES "Step 7" / "Step 8".
+TraxSettings and defaults.json). The designs are §3 and AI_NOTES "Step 7" / "Step 8" / "Step 20".
+Item 3 is built (step 20, hold ALT); what is left of it is an always-on form above the formations.
 
 | Key | Default (initial) | What it does | When |
 |---|---|---|---|
 | `ShowTargetBar` | true | Bar for the fighter you look at. | LATER (step 7) |
 | `TargetBarMaxDistance` | 30 | Metres — how far away a looked-at fighter still gets a bar. | LATER (step 7) |
 | `TargetBarLingerSeconds` | 2 | Seconds the bar stays after your aim leaves the fighter. | LATER (step 7) |
-| `ShowFormationBars` | true | Average bars above your formations. | LATER (step 8) |
-| `FormationBarsAlways` | true | true: always shown. false: only while vanilla shows formation markers. | LATER (step 8) |
-| `FormationBarHeight` | 3.0 | Metres above the formation's centre for its bar. | LATER (step 8) |
+| `FormationBarsAlways` | false | true: the formation numbers always shown above the formations (our own projection - step 20's fallback), not only while vanilla shows its markers. | LATER (an always-on form of step 20) |
+| `FormationBarHeight` | 3.0 | Metres above the formation's centre for those always-on numbers (vanilla's markers use 3). | LATER (an always-on form of step 20) |
 
 `ShowFormationSpread`, `FormationSpreadStdDevs` and `ShowFormationHealth` stay in the table
-above: the orders-menu strip uses them now, and the squad bars will too.
+above: the orders-menu strip and the numbers under the formation markers (step 20) use them.
 
 Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics skill),
 `FullRegenSecondsMoving` and `MovingSpeedThreshold` (→ regen by effort),
@@ -725,6 +764,14 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     rule); the refill goes to the top a man can refill to (his wounds cap it), not past it; it also ends every
     running pause, queued pause and step back of those men (a fresh man has none), and the measured cycles do
     not span it; the boss's side is only measured, never touched; one fresh start per mission.
+21. **The numbers under the formation markers** (step 20, Claude's calls on Anton's "hold ALT" - AI_NOTES
+    "Step 20"): they show exactly while vanilla shows its markers - the game's own flag read live, which
+    is ALT held OR the orders menu open (so they show with the orders menu too, beside the strip); under
+    the marker, not over it (the marker's column reads count, icon, distance, then ours - and nothing of
+    vanilla's is covered); allies' formations count with yours (always shown), only the enemy's have a
+    switch; the player is left out of his own formation's average (as in the strip), everyone else on
+    every side is counted; the numbers are coloured by the men's average f rather than drawing a second
+    colour key; they show with the player down too, because vanilla's markers do.
 
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),

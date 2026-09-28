@@ -304,9 +304,10 @@
   // (true or false)
   "FlashBarOnEarlyAttack": true,
 
-  // The colours of your bar and of the orders-menu strip: green at or above the peak line, blue
-  // just below it, and yellow once the Athletics left is at or below this percent of the peak
-  // line. With the line at 75% of the bar, 75 turns it yellow from about 56% of the bar down.
+  // The colours of your bar, of the orders-menu strip and of the numbers under the formation
+  // markers: green at or above the peak line, blue just below it, and yellow once the Athletics
+  // left is at or below this percent of the peak line. With the line at 75% of the bar, 75
+  // turns it yellow from about 56% of the bar down.
   // (range 0 to 100)
   "BarYellowBelowPercent": 75,
 
@@ -328,17 +329,19 @@
   // (true or false)
   "ShowInOrderMenu": true,
 
-  // The strip also shows the men's average health left, for example "HP 81%".
+  // The strip and the numbers under the formation markers (hold ALT) also show the men's
+  // average health left, for example "HP 81%".
   // (true or false)
   "ShowFormationHealth": true,
 
-  // The strip shows how far the men's Athletics spreads around the average: the "± 8" after the
-  // number and a lighter band on its bar. Off: the average alone.
+  // The strip and the numbers under the formation markers show how far the men's Athletics
+  // spreads around the average: the "± 8" after the number and a lighter band on the bar. Off:
+  // the average alone.
   // (true or false)
   "ShowFormationSpread": true,
 
-  // How wide the spread is on each side of the average, in standard deviations - the strip's "±
-  // 8" is this width, in percent of the bar. 1 = about two men in three fall inside it.
+  // How wide the spread is on each side of the average, in standard deviations - the "± 8" is
+  // this width, in percent of the bar. 1 = about two men in three fall inside it.
   // (range 0.0 to 3.0)
   "FormationSpreadStdDevs": 1.0,
 
@@ -349,9 +352,24 @@
   // (true or false)
   "OrderStripUnderCards": true,
 
+  // ==================== Formation markers (hold ALT) ====================
+  // While the game shows its formation markers above the troops - you hold ALT, or the orders
+  // menu is open - each marker also gets the men's average Athletics with its spread ("72% ±
+  // 8", in the colour of their strength) and their average health ("HP 81%"), just under the
+  // troop count and distance, over a slim bar. Your formations and your allies' always; the
+  // enemy's with the next switch.
+  // (true or false)
+  "ShowAltMarkerStats": true,
+
+  // The enemy's formation markers get the numbers too - see which of their lines is tired
+  // before you charge it. Off: yours and your allies' only.
+  // (true or false)
+  "AltMarkersShowEnemy": true,
+
   // ==================== Advanced ====================
-  // How often your Athletics bar and the orders-menu strip update, in seconds. Lower is
-  // smoother and costs a little more.
+  // How often your Athletics bar, the orders-menu strip and the numbers under the formation
+  // markers update, in seconds. Lower is smoother and costs a little more. The markers' numbers
+  // follow the markers every frame whatever this says.
   // (range 0.02 to 1.0)
   "HudRefreshSeconds": 0.1,
 
@@ -424,8 +442,27 @@
   // (range 120 to 900)
   "OrderPanelWidth": 300,
 
-  // How often the orders-menu strip's averages (Athletics, spread, health) are worked out, in
-  // seconds of battle time.
+  // Font size of the numbers under the formation markers, in the game's UI pixels.
+  // (range 8 to 30)
+  "AltMarkerTextSize": 13,
+
+  // Distance from the bottom of a formation marker (its distance number) to the top of our
+  // numbers, in the game's UI pixels. Negative moves them up over the marker.
+  // (range -200 to 200)
+  "AltMarkerOffset": 2,
+
+  // Length of the slim Athletics bar under the marker's numbers, in the game's UI pixels. 60 =
+  // as wide as the marker's distance row.
+  // (range 20 to 300)
+  "AltMarkerBarWidth": 60,
+
+  // Thickness of that bar, in the game's UI pixels. 0 = no bar, the numbers alone.
+  // (range 0 to 20)
+  "AltMarkerBarHeight": 3,
+
+  // How often the formations' averages (Athletics, spread, health) for the orders-menu strip
+  // and the formation markers are worked out - every formation of every side - in seconds of
+  // battle time.
   // (range 0.05 to 2.0)
   "FormationStatsRefreshSeconds": 0.25,
 

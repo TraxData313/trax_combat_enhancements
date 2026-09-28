@@ -257,6 +257,8 @@ namespace TraxCombat.Core
         public bool ShowInOrderMenu => GetBool(SettingsSchema.ShowInOrderMenu);
         public bool ShowFormationHealth => GetBool(SettingsSchema.ShowFormationHealth);
         public bool OrderStripUnderCards => GetBool(SettingsSchema.OrderStripUnderCards);
+        public bool ShowAltMarkerStats => GetBool(SettingsSchema.ShowAltMarkerStats);
+        public bool AltMarkersShowEnemy => GetBool(SettingsSchema.AltMarkersShowEnemy);
 
         public float HudRefreshSeconds => GetFloat(SettingsSchema.HudRefreshSeconds);
         public int PlayerBarWidth => GetInt(SettingsSchema.PlayerBarWidth);
@@ -273,6 +275,10 @@ namespace TraxCombat.Core
         public int OrderStripSideMargin => GetInt(SettingsSchema.OrderStripSideMargin);
         public int OrderPanelOffsetTop => GetInt(SettingsSchema.OrderPanelOffsetTop);
         public int OrderPanelWidth => GetInt(SettingsSchema.OrderPanelWidth);
+        public int AltMarkerTextSize => GetInt(SettingsSchema.AltMarkerTextSize);
+        public int AltMarkerOffset => GetInt(SettingsSchema.AltMarkerOffset);
+        public int AltMarkerBarWidth => GetInt(SettingsSchema.AltMarkerBarWidth);
+        public int AltMarkerBarHeight => GetInt(SettingsSchema.AltMarkerBarHeight);
         public float FormationStatsRefreshSeconds => GetFloat(SettingsSchema.FormationStatsRefreshSeconds);
         public bool VerboseLogging => GetBool(SettingsSchema.VerboseLogging);
         public int LogMaxMegabytes => GetInt(SettingsSchema.LogMaxMegabytes);

@@ -39,7 +39,8 @@ namespace TraxCombat.Core
         public static readonly ParamGroup RefillGroup = new ParamGroup(5, "Refill");
         public static readonly ParamGroup PlayerBarGroup = new ParamGroup(6, "Your Athletics bar");
         public static readonly ParamGroup OrderStripGroup = new ParamGroup(7, "Orders menu strip");
-        public static readonly ParamGroup AdvancedGroup = new ParamGroup(8, "Advanced");
+        public static readonly ParamGroup AltMarkersGroup = new ParamGroup(8, "Formation markers (hold ALT)");
+        public static readonly ParamGroup AdvancedGroup = new ParamGroup(9, "Advanced");
 
         // ------------------------------------------------------------------ master switch
 
@@ -260,10 +261,11 @@ namespace TraxCombat.Core
         // (review R21). DESIGN's "Planned parameters" keeps the rows.
 
         // The bar colours (DESIGN §3 additions, step 6) - thresholds on f, the share of the peak line
-        // left: green at or above the line, blue just below it, then these. The strip uses them too.
+        // left: green at or above the line, blue just below it, then these. The strip and the ALT
+        // labels (step 20) use them too.
         public static readonly ParamDef BarYellowBelowPercent = Int("BarYellowBelowPercent", 0, 100, PlayerBarGroup,
             "Yellow at or below (% of the peak line)",
-            "The colours of your bar and of the orders-menu strip: green at or above the peak line, blue just below it, and yellow once the Athletics left is at or below this percent of the peak line. With the line at 75% of the bar, 75 turns it yellow from about 56% of the bar down.");
+            "The colours of your bar, of the orders-menu strip and of the numbers under the formation markers: green at or above the peak line, blue just below it, and yellow once the Athletics left is at or below this percent of the peak line. With the line at 75% of the bar, 75 turns it yellow from about 56% of the bar down.");
 
         public static readonly ParamDef BarOrangeBelowPercent = Int("BarOrangeBelowPercent", 0, 100, PlayerBarGroup,
             "Orange at or below (% of the peak line)",
@@ -275,10 +277,10 @@ namespace TraxCombat.Core
 
         // ------------------------------------------------------------------ the orders-menu strip (step 9)
 
-        // The squad bars floating above the formations (ShowFormationBars, FormationBarsAlways,
-        // FormationBarHeight) are LATER (step 8): their settings left the schema in step 10b (review
-        // R21). DESIGN's "Planned parameters" keeps the rows. The spread and health settings below
-        // will serve them too.
+        // The squad bars were LATER (step 8, left the schema in step 10b - review R21); step 20 built them
+        // in their "only while vanilla shows its formation markers" form: the ALT labels below
+        // (ShowAltMarkerStats). FormationBarsAlways / FormationBarHeight stay in DESIGN's "Planned
+        // parameters". The spread and health settings here serve the strip and the ALT labels alike.
 
         public static readonly ParamDef ShowInOrderMenu = Bool("ShowInOrderMenu", OrderStripGroup,
             "Orders menu strip",
@@ -286,25 +288,37 @@ namespace TraxCombat.Core
 
         public static readonly ParamDef ShowFormationHealth = Bool("ShowFormationHealth", OrderStripGroup,
             "Show average health",
-            "The strip also shows the men's average health left, for example \"HP 81%\".");
+            "The strip and the numbers under the formation markers (hold ALT) also show the men's average health left, for example \"HP 81%\".");
 
         public static readonly ParamDef ShowFormationSpread = Bool("ShowFormationSpread", OrderStripGroup,
             "Show the spread",
-            "The strip shows how far the men's Athletics spreads around the average: the \"± 8\" after the number and a lighter band on its bar. Off: the average alone.");
+            "The strip and the numbers under the formation markers show how far the men's Athletics spreads around the average: the \"± 8\" after the number and a lighter band on the bar. Off: the average alone.");
 
         public static readonly ParamDef FormationSpreadStdDevs = Float("FormationSpreadStdDevs", 0, 3, OrderStripGroup,
             "Spread width (std devs)",
-            "How wide the spread is on each side of the average, in standard deviations - the strip's \"± 8\" is this width, in percent of the bar. 1 = about two men in three fall inside it.");
+            "How wide the spread is on each side of the average, in standard deviations - the \"± 8\" is this width, in percent of the bar. 1 = about two men in three fall inside it.");
 
         public static readonly ParamDef OrderStripUnderCards = Bool("OrderStripUnderCards", OrderStripGroup,
             "Strip under the cards",
             "On: the strip sits under each of the game's formation cards (read live, so it follows any resolution, UI scale or order-menu mod that keeps the cards). Off - or whenever the cards cannot be matched - a compact panel at the top of the screen lists the same numbers instead.");
 
+        // ------------------------------------------------------------------ the formation markers (step 20)
+
+        // Anton (2026-09-28): "I see the Athletics and health numbers above the troops when I hold ALT".
+        // Shown exactly while the game shows its formation markers (ALT held, or the orders menu open).
+        public static readonly ParamDef ShowAltMarkerStats = Bool("ShowAltMarkerStats", AltMarkersGroup,
+            "Numbers under the formation markers",
+            "While the game shows its formation markers above the troops - you hold ALT, or the orders menu is open - each marker also gets the men's average Athletics with its spread (\"72% ± 8\", in the colour of their strength) and their average health (\"HP 81%\"), just under the troop count and distance, over a slim bar. Your formations and your allies' always; the enemy's with the next switch.");
+
+        public static readonly ParamDef AltMarkersShowEnemy = Bool("AltMarkersShowEnemy", AltMarkersGroup,
+            "Enemy formations too",
+            "The enemy's formation markers get the numbers too - see which of their lines is tired before you charge it. Off: yours and your allies' only.");
+
         // ------------------------------------------------------------------ advanced
 
         public static readonly ParamDef HudRefreshSeconds = Float("HudRefreshSeconds", 0.02, 1, AdvancedGroup,
             "Bar refresh (s)",
-            "How often your Athletics bar and the orders-menu strip update, in seconds. Lower is smoother and costs a little more.");
+            "How often your Athletics bar, the orders-menu strip and the numbers under the formation markers update, in seconds. Lower is smoother and costs a little more. The markers' numbers follow the markers every frame whatever this says.");
 
         // Where your bar sits (step 6) - UI pixels of the game's 1920 x 1080 reference layout; the
         // game's own UI scale multiplies them, exactly as it does the vanilla health bar's.
@@ -368,9 +382,27 @@ namespace TraxCombat.Core
             "Orders panel: width (px)",
             "Width of the fallback panel, in the game's UI pixels.");
 
+        // The numbers under the formation markers (step 20) - UI pixels of the 1080p layout, measured from
+        // each vanilla marker (read live); the game's UI scale applies.
+        public static readonly ParamDef AltMarkerTextSize = Int("AltMarkerTextSize", 8, 30, AdvancedGroup,
+            "Marker numbers: text size (px)",
+            "Font size of the numbers under the formation markers, in the game's UI pixels.");
+
+        public static readonly ParamDef AltMarkerOffset = Int("AltMarkerOffset", -200, 200, AdvancedGroup,
+            "Marker numbers: gap under the marker (px)",
+            "Distance from the bottom of a formation marker (its distance number) to the top of our numbers, in the game's UI pixels. Negative moves them up over the marker.");
+
+        public static readonly ParamDef AltMarkerBarWidth = Int("AltMarkerBarWidth", 20, 300, AdvancedGroup,
+            "Marker numbers: bar length (px)",
+            "Length of the slim Athletics bar under the marker's numbers, in the game's UI pixels. 60 = as wide as the marker's distance row.");
+
+        public static readonly ParamDef AltMarkerBarHeight = Int("AltMarkerBarHeight", 0, 20, AdvancedGroup,
+            "Marker numbers: bar thickness (px)",
+            "Thickness of that bar, in the game's UI pixels. 0 = no bar, the numbers alone.");
+
         public static readonly ParamDef FormationStatsRefreshSeconds = Float("FormationStatsRefreshSeconds", 0.05, 2, AdvancedGroup,
-            "Strip averages refresh (s)",
-            "How often the orders-menu strip's averages (Athletics, spread, health) are worked out, in seconds of battle time.");
+            "Formation averages refresh (s)",
+            "How often the formations' averages (Athletics, spread, health) for the orders-menu strip and the formation markers are worked out - every formation of every side - in seconds of battle time.");
 
         public static readonly ParamDef VerboseLogging = Bool("VerboseLogging", AdvancedGroup,
             "Verbose log",
@@ -400,17 +432,19 @@ namespace TraxCombat.Core
             ShowPlayerBar, ShowPlayerBarOutsideBattles, ShowAttackRecoveryBar, FlashBarOnEarlyAttack,
             BarYellowBelowPercent, BarOrangeBelowPercent, BarRedBelowPercent,
             ShowInOrderMenu, ShowFormationHealth, ShowFormationSpread, FormationSpreadStdDevs, OrderStripUnderCards,
+            ShowAltMarkerStats, AltMarkersShowEnemy,
             HudRefreshSeconds, PlayerBarWidth, PlayerBarHeight, PlayerBarOffsetRight, PlayerBarOffsetBottom,
             RecoveryBarWidth, RecoveryBarHeight, RecoveryBarOffsetAbove,
             OrderStripTextSize, OrderStripTextOffset, OrderStripBarOffset, OrderStripBarHeight, OrderStripSideMargin,
             OrderPanelOffsetTop, OrderPanelWidth,
+            AltMarkerTextSize, AltMarkerOffset, AltMarkerBarWidth, AltMarkerBarHeight,
             FormationStatsRefreshSeconds, VerboseLogging, LogMaxMegabytes,
         };
 
         /// <summary>The groups in order.</summary>
         public static readonly IReadOnlyList<ParamGroup> Groups = new[]
         {
-            MasterGroup, DamageGroup, AthleticsGroup, TiredGroup, StepBackGroup, RefillGroup, PlayerBarGroup, OrderStripGroup, AdvancedGroup,
+            MasterGroup, DamageGroup, AthleticsGroup, TiredGroup, StepBackGroup, RefillGroup, PlayerBarGroup, OrderStripGroup, AltMarkersGroup, AdvancedGroup,
         };
 
         private static readonly Dictionary<string, ParamDef> ByKey = BuildIndex();
