@@ -31,8 +31,8 @@ public class ConfigFileTests
         Assert.Equal(0, read.Values["AttackRateAiDecisions"]);
         Assert.Equal(SettingsSchema.PlayerBarOffsetBottom.Default, read.Values["PlayerBarOffsetBottom"]);
         Assert.Equal(40, read.Values["DamageRandomPercent"]);   // anything else is left alone
-        Assert.Contains(notes, n => n.StartsWith("AttackRateAiDecisions: true → false (format 1 → 3, the old default; step 13:", StringComparison.Ordinal));
-        Assert.Contains(notes, n => n.StartsWith("PlayerBarOffsetBottom: 54 → 30 (format 1 → 3, the old default;", StringComparison.Ordinal));
+        Assert.Contains(notes, n => n.StartsWith("AttackRateAiDecisions: true → false (format 1 → 4, the old default; step 13:", StringComparison.Ordinal));
+        Assert.Contains(notes, n => n.StartsWith("PlayerBarOffsetBottom: 54 → 30 (format 1 → 4, the old default;", StringComparison.Ordinal));
         Assert.Equal(2, ConfigFile.Migrate(read).Count);         // idempotent: nothing new the second time
 
         // a value the player chose himself (not the old default) stays
@@ -49,7 +49,7 @@ public class ConfigFileTests
 
         // a file that did not parse: nothing
         Assert.Empty(ConfigFile.Migrate(ConfigFile.Read("{ nope")));
-        Assert.Equal(3, ConfigFile.FormatVersion);
+        Assert.Equal(4, ConfigFile.FormatVersion);
     }
 
     [Fact]
@@ -62,7 +62,7 @@ public class ConfigFileTests
         var notes = ConfigFile.Migrate(read);
         Assert.Single(notes);
         Assert.StartsWith("MinMoveSpeedMultiplier: 0.3 → " + SettingsSchema.MinMoveSpeedMultiplier.Format(SettingsSchema.MinMoveSpeedMultiplier.Default)
-                          + " (format 2 → 3, the old default; step 14:", notes[0], StringComparison.Ordinal);
+                          + " (format 2 → 4, the old default; step 14:", notes[0], StringComparison.Ordinal);
         Assert.Equal(0.7, read.Values["MinMoveSpeedMultiplier"], 9);   // DESIGN's value (the tests run on DESIGN's table)
         Assert.Equal(1, read.Values["AttackRateAiDecisions"]);          // format 2 is past step 13: left alone
         Assert.Equal(54, read.Values["PlayerBarOffsetBottom"]);
@@ -83,6 +83,69 @@ public class ConfigFileTests
         Assert.Equal(2, ConfigFile.Migrate(one).Count);
         Assert.Equal(0.7, one.Values["MinMoveSpeedMultiplier"], 9);
         Assert.Equal(0, one.Values["AttackRateAiDecisions"]);
+    }
+
+    /// <summary>Step 20b's shipped defaults (defaults.json, Anton's tuning) - the unit tests run on DESIGN's initial
+    /// values (0.7 and 100), where the migration has nothing to push, so these are handed in.</summary>
+    private static double Shipped20b(ParamDef p) =>
+        p == SettingsSchema.MinMoveSpeedMultiplier ? 0.6 : p == SettingsSchema.AttackAnimationMinPercent ? 85 : p.Default;
+
+    [Fact]
+    public void A_format_3_file_carrying_the_old_run_floor_and_animation_gets_Antons_tuned_ones_once()
+    {
+        // Anton's config.json after step 14: format 3, both still at the old defaults (never touched)
+        string old = "{ \"ConfigVersion\": 3, \"MinMoveSpeedMultiplier\": 0.7, \"AttackAnimationMinPercent\": 100, \"ExhaustedAttackSpeedPercent\": 20, "
+                     + "\"MountMinSpeedMultiplier\": 0.7, \"DamageRandomPercent\": 40 }";
+        var read = ConfigFile.Read(old);
+        Assert.Equal(3, read.FileVersion);
+        var notes = ConfigFile.Migrate(read, Shipped20b);
+        Assert.Equal(2, notes.Count);
+        Assert.Contains("MinMoveSpeedMultiplier: 0.7 → 0.6 (format 3 → 4, the old default; step 20b, Anton after his playtest: an empty man runs at 60% of his pace - the sweet spot)", notes);
+        Assert.Contains(notes, n => n.StartsWith("AttackAnimationMinPercent: 100 → 85 (format 3 → 4, the old default; step 20b, Anton after his playtest: a tired man's attack animations slow in a straight line to 85% at empty", StringComparison.Ordinal));
+        Assert.Equal(0.6, read.Values["MinMoveSpeedMultiplier"], 9);
+        Assert.Equal(85, read.Values["AttackAnimationMinPercent"]);
+        Assert.Equal(0.7, read.Values["MountMinSpeedMultiplier"], 9);   // another key holding 0.7: never touched
+        Assert.Equal(20, read.Values["ExhaustedAttackSpeedPercent"]);
+        Assert.Equal(40, read.Values["DamageRandomPercent"]);
+        Assert.Equal(2, ConfigFile.Migrate(read, Shipped20b).Count);      // idempotent: nothing new the second time
+
+        // his own choices (not the old defaults) stay - each key on its own
+        var own = ConfigFile.Read("{ \"ConfigVersion\": 3, \"MinMoveSpeedMultiplier\": 0.8, \"AttackAnimationMinPercent\": 90 }");
+        Assert.Empty(ConfigFile.Migrate(own, Shipped20b));
+        Assert.Equal(0.8, own.Values["MinMoveSpeedMultiplier"], 9);
+        Assert.Equal(90, own.Values["AttackAnimationMinPercent"]);
+        var half = ConfigFile.Read("{ \"ConfigVersion\": 3, \"MinMoveSpeedMultiplier\": 0.65, \"AttackAnimationMinPercent\": 100 }");
+        Assert.Single(ConfigFile.Migrate(half, Shipped20b));
+        Assert.Equal(0.65, half.Values["MinMoveSpeedMultiplier"], 9);
+        Assert.Equal(85, half.Values["AttackAnimationMinPercent"]);
+
+        // a format-4 file is never migrated (his 100 / 0.7 there are his own)
+        var now = ConfigFile.Read("{ \"ConfigVersion\": 4, \"MinMoveSpeedMultiplier\": 0.7, \"AttackAnimationMinPercent\": 100 }");
+        Assert.Empty(ConfigFile.Migrate(now, Shipped20b));
+        Assert.Equal(0.7, now.Values["MinMoveSpeedMultiplier"], 9);
+        Assert.Equal(100, now.Values["AttackAnimationMinPercent"]);
+
+        // a format-2 file: 0.7 was never its default (0.3 was) - a 0.7 there is his own; its 0.3 goes straight to 0.6;
+        // AttackAnimationMinPercent 100 was already its default (step 13) → 85
+        var two = ConfigFile.Read("{ \"ConfigVersion\": 2, \"MinMoveSpeedMultiplier\": 0.3, \"AttackAnimationMinPercent\": 100 }");
+        var twoNotes = ConfigFile.Migrate(two, Shipped20b);
+        Assert.Equal(2, twoNotes.Count);
+        Assert.Equal(0.6, two.Values["MinMoveSpeedMultiplier"], 9);
+        Assert.Contains(twoNotes, n => n.StartsWith("MinMoveSpeedMultiplier: 0.3 → 0.6 (format 2 → 4, the old default; step 14:", StringComparison.Ordinal));
+        Assert.Equal(85, two.Values["AttackAnimationMinPercent"]);
+        var twoOwn = ConfigFile.Read("{ \"ConfigVersion\": 2, \"MinMoveSpeedMultiplier\": 0.7 }");
+        Assert.Empty(ConfigFile.Migrate(twoOwn, Shipped20b));
+        Assert.Equal(0.7, twoOwn.Values["MinMoveSpeedMultiplier"], 9);
+
+        // on DESIGN's initial values (the tests' schema: 0.7 and 100) there is nothing to push - the default is where it was
+        var design = ConfigFile.Read(old);
+        Assert.Empty(ConfigFile.Migrate(design));
+        Assert.Equal(0.7, design.Values["MinMoveSpeedMultiplier"], 9);
+        Assert.Equal(100, design.Values["AttackAnimationMinPercent"]);
+
+        // a file that did not parse, or no defaults given: nothing
+        Assert.Empty(ConfigFile.Migrate(ConfigFile.Read("{ nope"), Shipped20b));
+        Assert.Empty(ConfigFile.Migrate(ConfigFile.Read(old), null!));
     }
 
     [Fact]

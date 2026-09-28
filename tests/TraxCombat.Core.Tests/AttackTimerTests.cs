@@ -27,14 +27,75 @@ public class AttackTimerTests
     }
 
     [Fact]
-    public void The_animations_play_at_full_speed_unless_a_floor_below_100_is_asked()
+    public void The_animations_follow_a_straight_line_by_f_down_to_the_percent_at_empty()
     {
-        Assert.Equal(1f, AttackTimerMath.AnimationMultiplier(0.2f, 100), 6);   // the default: never slowed
-        Assert.Equal(0.6f, AttackTimerMath.AnimationMultiplier(0.2f, 60), 6);  // a little slow-mo: max(m, 60%)
-        Assert.Equal(0.8f, AttackTimerMath.AnimationMultiplier(0.8f, 60), 6);  // above the floor: m itself
-        Assert.Equal(0.2f, AttackTimerMath.AnimationMultiplier(0.2f, 0), 6);   // 0: the old step-5 animations whole
-        Assert.Equal(1f, AttackTimerMath.AnimationMultiplier(1f, 0), 6);
-        Assert.Equal(1f, AttackTimerMath.AnimationMultiplier(float.NaN, 50), 6);
+        // step 20b (Anton's 85): A + (1 − A) × f - full speed at the peak line, 85% empty, 92.5% halfway
+        Assert.Equal(1f, AttackTimerMath.AnimationMultiplier(1.0, 85), 6);
+        Assert.Equal(0.85f, AttackTimerMath.AnimationMultiplier(0.0, 85), 6);
+        Assert.Equal(0.925f, AttackTimerMath.AnimationMultiplier(0.5, 85), 6);
+        Assert.Equal(0.8875f, AttackTimerMath.AnimationMultiplier(0.25, 85), 6);
+        // not max(m, 0.85): at f 0.5 (m 0.6) the old rule sat at the 0.85 floor already
+        Assert.True(AttackTimerMath.AnimationMultiplier(0.9, 85) > AttackTimerMath.AnimationMultiplier(0.5, 85));
+        // 100 = full speed always (step 13's PAUSE ONLY), at any f
+        foreach (double f in new[] { 0.0, 0.3, 0.5, 0.99, 1.0 })
+            Assert.Equal(1f, AttackTimerMath.AnimationMultiplier(f, 100), 6);
+        // 0 = the line is f itself (the pure maths; the setting stops at 5, so a swing never freezes)
+        foreach (double f in new[] { 0.1, 0.4, 0.75 })
+            Assert.Equal((float)f, AttackTimerMath.AnimationMultiplier(f, 0), 6);
+        Assert.Equal(5, SettingsSchema.AttackAnimationMinPercent.Min);
+        Assert.Equal(0.05f, AttackTimerMath.AnimationMultiplier(0.0, (int)SettingsSchema.AttackAnimationMinPercent.Min), 6);
+        // above the peak line, NaN, out-of-range percents: safe
+        Assert.Equal(1f, AttackTimerMath.AnimationMultiplier(1.7, 50), 6);
+        Assert.Equal(1f, AttackTimerMath.AnimationMultiplier(double.NaN, 50), 6);
+        Assert.Equal(0.85f, AttackTimerMath.AnimationMultiplier(-0.2, 85), 6);
+        Assert.Equal(1f, AttackTimerMath.AnimationMultiplier(0.0, 140), 6);
+        // monotonic in f, never above 1
+        float last = 0f;
+        for (int i = 0; i <= 100; i++)
+        {
+            float a = AttackTimerMath.AnimationMultiplier(i / 100.0, 85);
+            Assert.True(a >= last && a <= 1f);
+            last = a;
+        }
+    }
+
+    [Fact]
+    public void The_decorator_reads_f_off_the_applied_attack_multiplier_so_the_line_moves_with_m()
+    {
+        const float s = 0.2f; // ExhaustedAttackSpeedPercent 20 (DESIGN)
+        Assert.Equal(1.0, AttackTimerMath.PeakShareOfAttack(1f, s), 9);
+        Assert.Equal(0.0, AttackTimerMath.PeakShareOfAttack(s, s), 6);
+        Assert.Equal(0.5, AttackTimerMath.PeakShareOfAttack(0.6f, s), 6);
+        foreach (double f in new[] { 0.0, 0.125, 0.5, 0.8125, 1.0 })
+        {
+            float m = AthleticsMath.Curve(s, f);   // the same curve the engine applies
+            Assert.Equal(f, AttackTimerMath.PeakShareOfAttack(m, s), 5);
+            Assert.Equal(AttackTimerMath.AnimationMultiplier(f, 85), AttackTimerMath.AnimationForAttack(m, s, 85), 5);
+        }
+        Assert.Equal(0.925f, AttackTimerMath.AnimationForAttack(0.6f, s, 85), 5);
+        Assert.Equal(0.85f, AttackTimerMath.AnimationForAttack(0.2f, s, 85), 5);
+        Assert.Equal(1f, AttackTimerMath.AnimationForAttack(0.2f, s, 100), 6);   // 100: never slowed
+        // attacks never slowed (ExhaustedAttackSpeedPercent 100: m is always 1) → the animations stay at full speed too
+        Assert.Equal(1f, AttackTimerMath.AnimationForAttack(1f, AthleticsRules.AttackSpeedFloorOf(100), 85), 6);
+        Assert.Equal(1.0, AttackTimerMath.PeakShareOfAttack(0.5f, 1f), 9);
+        Assert.Equal(0.0, AttackTimerMath.PeakShareOfAttack(0.1f, s), 9);          // below the floor (a stale m after a live change): clamped
+        Assert.Equal(1f, AttackTimerMath.AnimationForAttack(float.NaN, s, 85), 6);
+        Assert.Equal(0.05f, AthleticsRules.AttackSpeedFloorOf(5), 6);
+        Assert.Equal(0.01f, AthleticsRules.AttackSpeedFloorOf(0), 6);
+    }
+
+    [Fact]
+    public void D_is_taken_at_full_animation_speed_so_the_pause_in_seconds_does_not_grow_with_a_slower_swing()
+    {
+        // an empty man (m 0.2) whose 0.84 s attack played at x0.85 took 0.84 / 0.85 s on the clock
+        double played = 0.84 / 0.85;
+        double d = AttackTimerMath.AtFullSpeed(played, 0.85f);
+        Assert.Equal(0.84, d, 6);
+        Assert.Equal(AttackTimerMath.Pause(0.84, 0.2f), AttackTimerMath.Pause(d, 0.2f), 6);   // 3.36 s, as with full-speed animations
+        Assert.Equal(3.36, AttackTimerMath.Pause(d, 0.2f), 5);
+        Assert.Equal(played, AttackTimerMath.AtFullSpeed(played, 1f), 9);                     // full speed: the played seconds
+        Assert.Equal(played, AttackTimerMath.AtFullSpeed(played, float.NaN), 9);
+        Assert.Equal(played, AttackTimerMath.AtFullSpeed(played, 0f), 9);
     }
 
     [Fact]

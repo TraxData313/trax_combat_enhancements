@@ -160,19 +160,21 @@
   // (true or false)
   "AttackRateAiDecisions": false,
 
-  // The attack animations - wind-up and swing, thrust, bow draw, throw, crossbow reload - never
-  // play slower than this percent of normal. 100 = always full speed: the whole slow-down is
-  // the pause between attacks. Lower it to bring some slow motion back for tired fighters
-  // (their animations slow with their attack speed, but not below this). Run speed is not
-  // affected.
-  // (range 0 to 100)
-  "AttackAnimationMinPercent": 100,
+  // How fast the attack animations - wind-up and swing, thrust, bow draw, throw, crossbow
+  // reload - play for a fighter with an empty bar, in percent of normal. From the peak line
+  // down to empty they slow in a straight line (at 85: full speed at the peak line, 92.5%
+  // halfway, 85% empty), so a tired man's swings look a little heavier. The pause between
+  // attacks stays the same in seconds - a slower swing only adds its own extra moment. 100 =
+  // always full speed: the whole slow-down is the pause. With "Attack speed when empty" at 100
+  // they never slow either. Run speed is not affected.
+  // (range 5 to 100)
+  "AttackAnimationMinPercent": 85,
 
   // Top speed on foot of a fighter with an empty bar, times his normal top speed. From the peak
   // line down to empty it falls in a straight line, so fresh men overtake tired ones. 1.0 =
   // tired men run as fast as fresh ones.
   // (range 0.1 to 1.0)
-  "MinMoveSpeedMultiplier": 0.7,
+  "MinMoveSpeedMultiplier": 0.6,
 
   // Top speed of a horse whose rider's bar is empty, times its normal top speed, on the same
   // straight line. 1.0 = horses never slow down, however tired the rider.

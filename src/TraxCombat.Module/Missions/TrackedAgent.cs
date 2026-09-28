@@ -106,6 +106,10 @@ namespace TraxCombat.Missions
         public int PhaseBin;
         public float PhaseAsked = 1f;
 
+        /// <summary>Step 20b: the attack animation multiplier the running phase plays at (from its m at the start) -
+        /// its played seconds × this = the seconds at full animation speed that D is built from.</summary>
+        public float PhaseAnimation = 1f;
+
         /// <summary>In a ready that has not reached full wind-up yet: the tick polls its progress.</summary>
         public bool ReadyPolling;
 
@@ -119,13 +123,16 @@ namespace TraxCombat.Missions
         public float PauseAsked = 1f;
 
         // ---- step 13: the no-attack timer. D of the attack running now (its wind-up up to full, then +
-        // its release; ranged + the reload after the loose), filled by the phases.
+        // its release; ranged + the reload after the loose), filled by the phases. Step 20b: at FULL
+        // animation speed (each phase's played seconds × the animation multiplier it played at), so the
+        // pause D × (1/m − 1) does not grow with a slower swing; AttackPlayed = the same attack on the clock.
         public double AttackDuration;
+        public double AttackPlayed;
 
         /// <summary>The running attack's wind-up was seen (else D is only its release - "not measured").</summary>
         public bool AttackDurationKnown;
 
-        /// <summary>The running attack's wind-up (seconds) - D's first part, for the log and his rest.</summary>
+        /// <summary>The running attack's wind-up (seconds at full animation speed - step 20b) - D's first part, for the log and his rest.</summary>
         public double CurrentWindUp;
 
         /// <summary>A ranged attack's loose ended into a reload: the attack ends when the reload does.</summary>
@@ -135,6 +142,7 @@ namespace TraxCombat.Missions
         public bool AttackEndedNow;
         public AttackKind EndedKind;
         public double EndedDuration;
+        public double EndedPlayed;
         public bool EndedDurationKnown;
 
         /// <summary>His last measured rest of an attack (release, + reload for ranged) by kind - the

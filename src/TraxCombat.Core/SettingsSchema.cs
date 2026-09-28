@@ -148,9 +148,11 @@ namespace TraxCombat.Core
             "Tired AI also decide to attack less",
             "On: a tired AI fighter also decides to attack (and to strike back after a parry) less often, looses arrows less readily and aims longer - by his attack speed - on top of the pause. Off: the pause alone slows him. With both on they stack and tired AI fighters attack slower than asked, so it is off unless you want that.");
 
-        public static readonly ParamDef AttackAnimationMinPercent = Int("AttackAnimationMinPercent", 0, 100, TiredGroup,
-            "Slowest attack animation (%)",
-            "The attack animations - wind-up and swing, thrust, bow draw, throw, crossbow reload - never play slower than this percent of normal. 100 = always full speed: the whole slow-down is the pause between attacks. Lower it to bring some slow motion back for tired fighters (their animations slow with their attack speed, but not below this). Run speed is not affected.");
+        // Step 20b (Anton after his playtest of 2026-09-28): a straight line by f, like the run speed - it was
+        // max(m, this) in steps 13-20. The range stops at 5 (the line at 0 would freeze a swing at empty).
+        public static readonly ParamDef AttackAnimationMinPercent = Int("AttackAnimationMinPercent", 5, 100, TiredGroup,
+            "Attack animation speed when empty (%)",
+            "How fast the attack animations - wind-up and swing, thrust, bow draw, throw, crossbow reload - play for a fighter with an empty bar, in percent of normal. From the peak line down to empty they slow in a straight line (at 85: full speed at the peak line, 92.5% halfway, 85% empty), so a tired man's swings look a little heavier. The pause between attacks stays the same in seconds - a slower swing only adds its own extra moment. 100 = always full speed: the whole slow-down is the pause. With \"Attack speed when empty\" at 100 they never slow either. Run speed is not affected.");
 
         public static readonly ParamDef MinMoveSpeedMultiplier = Float("MinMoveSpeedMultiplier", 0.1, 1, TiredGroup,
             "Run speed when empty (x)",

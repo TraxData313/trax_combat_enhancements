@@ -18,8 +18,8 @@ namespace TraxCombat.Models
     /// EVERY abstract AND virtual member forwards to BaseModel - a virtual left un-overridden
     /// would run the abstract class's default body instead of the sandbox logic
     /// (GetEffectiveMaxHealth, GetEffectiveSkill, …; RESEARCH §C). The one change (steps 5, 5c, 5e, 13):
-    /// <see cref="UpdateAgentStats"/> scales the attack ANIMATIONS (step 13: only down to
-    /// AttackAnimationMinPercent - 100 = full speed, the no-attack timer carries the slow-down) and the
+    /// <see cref="UpdateAgentStats"/> scales the attack ANIMATIONS (step 20b: a straight line by f down to
+    /// AttackAnimationMinPercent at empty - 100 = full speed, the no-attack timer carries the slow-down) and the
     /// run-speed property by the
     /// fighter's Athletics multipliers, the AI's attack-decision values by the attack multiplier
     /// (step 5e, while AttackRateAiDecisions is on), and a slowed rider's horse's speed
@@ -125,9 +125,10 @@ namespace TraxCombat.Models
                 {
                     bool ai = false;
                     var s = TraxSettings.Shared;
-                    // step 13 (PAUSE ONLY): the animations play at max(m, AttackAnimationMinPercent) - 100 =
-                    // full speed, the no-attack timer carries the slow-down (read live on every recompute)
-                    float animation = AttackTimerMath.AnimationMultiplier(attack, s.AttackAnimationMinPercent);
+                    // step 20b: the animations follow the straight line A + (1 − A) × f (A = AttackAnimationMinPercent,
+                    // 100 = full speed - step 13's PAUSE ONLY), f read off the APPLIED m so the line moves in m's
+                    // recompute steps; the no-attack timer carries the rest of the slow-down (read live on every recompute)
+                    float animation = AttackTimerMath.AnimationForAttack(attack, AthleticsRules.AttackSpeedFloorOf(s.ExhaustedAttackSpeedPercent), s.AttackAnimationMinPercent);
                     if (animation != 1f) SpeedPenalty.Scale(agentDrivenProperties, animation);
                     // step 5e: the AI's decisions may follow the same m (an A/B switch, off since step 13)
                     if (attack != 1f && s.AttackRateAiDecisions)

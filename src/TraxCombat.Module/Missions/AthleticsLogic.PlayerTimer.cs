@@ -134,7 +134,7 @@ namespace TraxCombat.Missions
             if (endedEarly) _rateStats.PlayerEarlyHoldsTooShort++;
             if (!started) return;
             double pause = _playerTimer.Pause;
-            _rateStats.AddTimer(kind, true, bin, d, m, pause);
+            _rateStats.AddTimer(kind, true, bin, d, m, pause, st.EndedPlayed);
             st.TimerPending = true;
             st.TimerStart = now;
             st.TimerAsked = pause;
@@ -148,7 +148,8 @@ namespace TraxCombat.Missions
                 _firstPlayerTimerLogged = true;
                 TraxLog.Info("athletics", "YOU: first attack pause this battle at " + Sec(now) + " s - your " + (kind == AttackKind.Melee ? "melee" : "ranged") + " attack (wind-up "
                     + F2(st.CurrentWindUp) + " + " + (kind == AttackKind.Melee ? "swing " : "loose and reload ") + F2(Math.Max(0, d - st.CurrentWindUp)) + " = D " + F2(d)
-                    + " s) ended at attack speed x" + F2(m) + " (f " + F2(AthleticsMath.PeakShare(Rules, st)) + ") → no new attack for " + F2(pause)
+                    + " s" + (st.EndedPlayed - d >= 0.005 ? " at full animation speed; played " + F2(st.EndedPlayed) + " s - the slower swing, not in the pause" : string.Empty)
+                    + ") ended at attack speed x" + F2(m) + " (f " + F2(AthleticsMath.PeakShare(Rules, st)) + ") → no new attack for " + F2(pause)
                     + " s = D x (1/m - 1), until " + Sec(_playerTimer.TimerEnd) + " s; the hold began " + (earlyHold ? "at your release's start (expected " + F2(_playerTimer.ExpectedPause) + " s)" : "at the attack's end")
                     + "; your attack button does nothing until then (held, it attacks the moment it ends); blocking, kicks, moving and weapon switches stay free; the Attack recovery bar empties and refills over it");
             }

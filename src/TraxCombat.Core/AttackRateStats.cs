@@ -9,13 +9,14 @@ namespace TraxCombat.Core
     /// <summary>
     /// One mission's attack-rate numbers (step 5e; step 13: PAUSE ONLY) - the in-game proof that the
     /// attack RATE follows m (DESIGN §2): for melee and ranged, AI fighters and you apart, per f band -
-    /// the animation multiplier asked (step 13: x1.00 by default) and every phase's average (wind-up,
+    /// the animation multiplier asked (step 13: x1.00; step 20b: x0.85 at empty to x1.00 at the peak line by
+    /// default) and every phase's average (wind-up,
     /// held / aim, swing / loose, the recoil after a block, reload, the pause) with its ratio to the
     /// peak's (the animations as the engine really played them); the no-attack TIMER (D, m, the pause
     /// asked) against the measured gap from the attack's end to the next attack's start, and attacks
     /// that started before their timer ended (must be ~0); the cycle (release to release, shot to
-    /// shot), m, the target (the group's cycle at the peak × the band's average 1/m) and measured ÷
-    /// target with a verdict word; the AI's timers (the pace hold: AttackRatePaceHold); your timer
+    /// shot), m, the target (the group's cycle at the peak × the band's average 1/m, + step 20b's slower
+    /// swing: the band's played attack × (1 − its animation multiplier)) and measured ÷ target with a verdict word; the AI's timers (the pace hold: AttackRatePaceHold); your timer
     /// (AttackRatePlayerTimer: presses swallowed, the held button firing, releases); the AI-decision
     /// recomputes (AttackRateAiDecisions); and the guard by f (tired men must not block less). Main
     /// thread, except <see cref="AddAiScaled"/> (interlocked). Allocation only at construction.
@@ -42,7 +43,8 @@ namespace TraxCombat.Core
         private readonly MeanStd[,] _timerD = new MeanStd[Groups, Bins];
         private readonly MeanStd[,] _timerM = new MeanStd[Groups, Bins];
         private readonly MeanStd[,] _timerAsked = new MeanStd[Groups, Bins];
-        private readonly MeanStd[,] _timerFloor = new MeanStd[Groups, Bins]; // step 16: D / m = the attack + its pause - the shortest cycle the spec allows
+        private readonly MeanStd[,] _timerFloor = new MeanStd[Groups, Bins]; // step 16: the attack + its pause (D / m) - the shortest cycle the spec allows; step 20b: the attack as PLAYED + its pause
+        private readonly MeanStd[,] _timerPlayed = new MeanStd[Groups, Bins]; // step 20b: the attack as played (D is at full animation speed)
         private readonly MeanStd[,] _gap = new MeanStd[Groups, Bins];       // the attack's end → the next attack's start
         private readonly MeanStd[,] _after = new MeanStd[Groups, Bins];     // the timer's end → the next attack's start
         private readonly int[,] _early = new int[Groups, Bins];              // the next attack started before the timer ended
@@ -171,8 +173,8 @@ namespace TraxCombat.Core
             return true;
         }
 
-        /// <summary>The attack animation multiplier the stat decorator applied to one attack (step 13:
-        /// max(m, AttackAnimationMinPercent) - 1 by default).</summary>
+        /// <summary>The attack animation multiplier the stat decorator applied to one attack (step 20b: the line
+        /// A + (1 − A) × f, A = AttackAnimationMinPercent / 100 - 1 at the peak line and with A 100).</summary>
         public void AddAnimation(AttackKind kind, bool player, int bin, float animation)
         {
             if (bin < 0 || bin >= Bins || float.IsNaN(animation)) return;
@@ -215,12 +217,37 @@ namespace TraxCombat.Core
             return c.Count >= AttackRateMath.MinFreshCycles ? c.Mean : double.NaN;
         }
 
-        /// <summary>The band's target cycle: the fresh cycle × its average 1/m; NaN without a reference.</summary>
+        /// <summary>The band's target cycle: the fresh cycle × its average 1/m, + the slower swing's own extra time
+        /// (<see cref="AnimationExtra"/>, step 20b - the pause does not grow with it, the attack itself does); NaN
+        /// without a reference.</summary>
         public double TargetCycle(AttackKind kind, bool player, int bin)
         {
             double fresh = FreshCycle(kind, player);
             var s = _slowdown[Group(kind, player), bin];
-            return double.IsNaN(fresh) || s.Count == 0 ? double.NaN : fresh * s.Mean;
+            return double.IsNaN(fresh) || s.Count == 0 ? double.NaN : fresh * s.Mean + AnimationExtra(kind, player, bin);
+        }
+
+        /// <summary>
+        /// Step 20b: the seconds a band's attack takes longer because its animations played slower - the band's
+        /// played attack (melee: wind-up + swing; ranged: draw + loose + reload - the phases the animation
+        /// multiplier scales) × (1 − its average animation multiplier). 0 at full speed (AttackAnimationMinPercent
+        /// 100, the peak) or with no phase measured.
+        /// </summary>
+        public double AnimationExtra(AttackKind kind, bool player, int bin)
+        {
+            if (bin < 0 || bin >= Bins) return 0;
+            int g = Group(kind, player);
+            var a = _anim[g, bin];
+            if (a.Count == 0 || double.IsNaN(a.Mean) || a.Mean >= 1.0) return 0;
+            double played = PhaseOr0(g, bin, AttackPhase.WindUp) + PhaseOr0(g, bin, AttackPhase.Release);
+            if (kind == AttackKind.Ranged) played += PhaseOr0(g, bin, AttackPhase.Reload);
+            return played * (1.0 - Math.Max(0.0, a.Mean));
+        }
+
+        private double PhaseOr0(int g, int bin, AttackPhase phase)
+        {
+            var p = _phases[g, bin, (int)phase];
+            return p.Count > 0 && !double.IsNaN(p.Mean) ? p.Mean : 0;
         }
 
         /// <summary>measured ÷ target for a band with at least <see cref="AttackRateMath.MinBandCycles"/> cycles; NaN otherwise.</summary>
@@ -233,15 +260,20 @@ namespace TraxCombat.Core
 
         // ---- the no-attack timer (step 13)
 
-        /// <summary>A timer started (yours, or an AI's hold): the attack's D, m at its end, the pause asked.</summary>
-        public void AddTimer(AttackKind kind, bool player, int bin, double duration, float m, double pause)
+        /// <summary>A timer started (yours, or an AI's hold): the attack's D (step 20b: at full animation speed), m
+        /// at its end, the pause asked; <paramref name="played"/> = the attack as it really played (NaN = D - the
+        /// animations at full speed).</summary>
+        public void AddTimer(AttackKind kind, bool player, int bin, double duration, float m, double pause, double played = double.NaN)
         {
             if (bin < 0 || bin >= Bins || double.IsNaN(pause)) return;
             int g = Group(kind, player);
             _timerD[g, bin].Add(duration);
             _timerM[g, bin].Add(m);
             _timerAsked[g, bin].Add(pause);
-            if (!double.IsNaN(duration) && duration > 0) _timerFloor[g, bin].Add(duration + pause); // D + D (1/m - 1) = D / m
+            double attack = double.IsNaN(played) || played <= 0 ? duration : played;
+            if (!double.IsNaN(attack)) _timerPlayed[g, bin].Add(attack);
+            // D + D (1/m - 1) = D / m at full speed; step 20b: the attack as played + its pause (the slower swing's own time)
+            if (!double.IsNaN(attack) && attack > 0) _timerFloor[g, bin].Add(attack + pause);
             if (pause > _timerMax[g]) _timerMax[g] = pause;
         }
 
@@ -540,7 +572,10 @@ namespace TraxCombat.Core
                     else
                     {
                         string word = AttackRateMath.Verdict(ratio);
-                        sb.Append(" → target ").Append(N2(target)).Append(" s: ").Append(P0(ratio)).Append(" - ").Append(word);
+                        sb.Append(" → target ").Append(N2(target)).Append(" s");
+                        double extra = AnimationExtra(kind, player, b);
+                        if (extra >= 0.005) sb.Append(" (incl. +").Append(N2(extra)).Append(" s of slower swing)");
+                        sb.Append(": ").Append(P0(ratio)).Append(" - ").Append(word);
                         judged++;
                         if (word == "on target") onTarget++;
                         verdicts.Append(verdicts.Length == 0 ? "" : ", ").Append(AthleticsMath.PeakBinName(b)).Append(' ').Append(P0(ratio)).Append(' ').Append(word);
@@ -551,7 +586,11 @@ namespace TraxCombat.Core
                 if (_timerAsked[g, b].Count > 0 || _early[g, b] > 0)
                 {
                     var t = new StringBuilder(head).Append(", ").Append(AthleticsMath.PeakBinName(b)).Append(" - timer: ").Append(_timerAsked[g, b].Count)
-                        .Append(" (D avg ").Append(N2(_timerD[g, b].Mean)).Append(" s at m ").Append(N2(_timerM[g, b].Mean))
+                        .Append(" (D avg ").Append(N2(_timerD[g, b].Mean)).Append(" s");
+                    var played = _timerPlayed[g, b];
+                    if (played.Count > 0 && played.Mean - _timerD[g, b].Mean >= 0.005)
+                        t.Append(" at full animation speed - played ").Append(N2(played.Mean)).Append(" s, the slower swing");
+                    t.Append(" at m ").Append(N2(_timerM[g, b].Mean))
                         .Append(" → asked avg ").Append(N2(_timerAsked[g, b].Mean)).Append(" s = D x (1/m - 1))");
                     var gap = _gap[g, b];
                     if (gap.Count > 0)
@@ -564,7 +603,8 @@ namespace TraxCombat.Core
                     if (floor.Count > 0)
                     {
                         // step 16: the spec's own floor - an attack of D and its pause D (1/m - 1) take D / m; a band whose
-                        // cycles fall well below it was not really held (before step 16 at empty: a step back dropped the hold)
+                        // cycles fall well below it was not really held (before step 16 at empty: a step back dropped the hold);
+                        // step 20b: the attack as PLAYED (a slower swing) + its pause
                         t.Append("; the timer's floor D/m avg ").Append(N2(floor.Mean)).Append(" s - the cycle vs it: ");
                         t.Append(c.Count > 0 ? P0(c.Mean / floor.Mean) + " (n " + c.Count + ")" : "n/a");
                         if (_cyclesStep[g, b].Count > 0)

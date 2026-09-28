@@ -250,23 +250,35 @@ namespace TraxCombat.Tools
                 "the AI decision values did not follow m: " + p.AIAttackOnDecideChance + " / " + p.AIAttackOnParryChance + " / " + p.AiShootFreq + " / " + p.AiWaitBeforeShootFactor);
             Check(Near(p.AIDecideOnAttackChance, 0.5f) && Near(p.AIHoldingReadyMaxDuration, 0.25f), "a defence value or AIHoldingReady was touched");
             Check(Near(p.SwingSpeedMultiplier, 1.05f), "the AI-decision switch slowed the animations");
-            // the animation floor at 0: the old step-5 animations whole (x m), read live by the next recompute
-            S.Set(SettingsSchema.AttackAnimationMinPercent, 0, SettingSources.Mcm);
+            // step 20b: the animations follow the straight line A + (1 − A) × f, f read off the APPLIED m (S 0.2), read live
+            // by the next recompute - Anton's 85 at empty (m 0.2 = f 0): x0.85
+            S.Set(SettingsSchema.AttackAnimationMinPercent, 85, SettingSources.Mcm);
             _statTop.UpdateAgentStats(a, p);
-            Check(Near(p.SwingSpeedMultiplier, 0.21f) && Near(p.ThrustOrRangedReadySpeedMultiplier, 0.204f) && Near(p.ReloadSpeed, 0.19f),
-                "AttackAnimationMinPercent 0: the animations were not x m: " + SpeedPenalty.Snapshot.Take(a));
+            Check(Near(p.SwingSpeedMultiplier, 0.8925f) && Near(p.ThrustOrRangedReadySpeedMultiplier, 0.867f) && Near(p.ReloadSpeed, 0.8075f),
+                "AttackAnimationMinPercent 85 at empty: the animations were not x0.85: " + SpeedPenalty.Snapshot.Take(a));
             _statTop.UpdateAgentStats(a, p); // a second recompute (weapon switch): the base resets, we scale once
-            Check(Near(p.SwingSpeedMultiplier, 0.21f) && Near(p.MaxSpeedMultiplier, 0.24f) && Near(p.AIAttackOnDecideChance, 0.0288f), "the penalties compounded over two recomputes");
+            Check(Near(p.SwingSpeedMultiplier, 0.8925f) && Near(p.MaxSpeedMultiplier, 0.24f) && Near(p.AIAttackOnDecideChance, 0.0288f), "the penalties compounded over two recomputes");
             Check(_statBase.Updates == 5, "the base model was not called on every recompute: " + _statBase.Updates);
-            // 60: a little slow-mo - max(m, 0.6)
+            // halfway (m 0.6 = f 0.5): x0.925 - a straight line, not max(m, 0.85) (that sat at 0.85 from f 0.81 down)
+            st.SpeedMultiplier = 0.6f;
+            _statTop.UpdateAgentStats(a, p);
+            Check(Near(p.SwingSpeedMultiplier, 0.97125f) && Near(p.ThrustOrRangedReadySpeedMultiplier, 0.9435f) && Near(p.ReloadSpeed, 0.87875f),
+                "AttackAnimationMinPercent 85 halfway: the animations were not x0.925: " + SpeedPenalty.Snapshot.Take(a));
+            // 60 halfway: x0.80 (the old max(m, 0.6) gave x0.60 there)
             S.Set(SettingsSchema.AttackAnimationMinPercent, 60, SettingSources.Mcm);
             _statTop.UpdateAgentStats(a, p);
-            Check(Near(p.SwingSpeedMultiplier, 0.63f) && Near(p.ThrustOrRangedReadySpeedMultiplier, 0.612f) && Near(p.ReloadSpeed, 0.57f),
-                "AttackAnimationMinPercent 60: the animations were not x0.6: " + SpeedPenalty.Snapshot.Take(a));
+            Check(Near(p.SwingSpeedMultiplier, 0.84f) && Near(p.ThrustOrRangedReadySpeedMultiplier, 0.816f) && Near(p.ReloadSpeed, 0.76f),
+                "AttackAnimationMinPercent 60 halfway: the animations were not x0.80: " + SpeedPenalty.Snapshot.Take(a));
             S.Set(SettingsSchema.AttackRateAiDecisions, false, SettingSources.Mcm); // the A/B switch, read live by the next recompute
             _statTop.UpdateAgentStats(a, p);
-            Check(Near(p.SwingSpeedMultiplier, 0.63f) && Near(p.AIAttackOnDecideChance, 0.144f) && Near(p.AiWaitBeforeShootFactor, 0.6f),
-                "AttackRateAiDecisions off: the animation floor must stay, the AI values vanilla");
+            Check(Near(p.SwingSpeedMultiplier, 0.84f) && Near(p.AIAttackOnDecideChance, 0.144f) && Near(p.AiWaitBeforeShootFactor, 0.6f),
+                "AttackRateAiDecisions off: the animation line must stay, the AI values vanilla");
+            // the slider's bottom is 5: a 0 is taken as 5, so a swing never freezes (x0.05 at empty)
+            st.SpeedMultiplier = 0.2f;
+            S.Set(SettingsSchema.AttackAnimationMinPercent, 0, SettingSources.Mcm);
+            _statTop.UpdateAgentStats(a, p);
+            Check(S.AttackAnimationMinPercent == 5 && Near(p.SwingSpeedMultiplier, 0.0525f),
+                "AttackAnimationMinPercent 0 was not held at 5 (x0.05 at empty): " + S.AttackAnimationMinPercent + ", " + SpeedPenalty.Snapshot.Take(a));
             S.Set(SettingsSchema.AttackAnimationMinPercent, 100, SettingSources.Mcm);
 
             S.Set(SettingsSchema.AthleticsEnabled, false, SettingSources.Mcm);
@@ -303,10 +315,11 @@ namespace TraxCombat.Tools
             SetStatic(typeof(AthleticsLogic), "_current", _logic);
 
             var stats = _logic.Stats;
-            // attack = the recomputes that slowed the ANIMATIONS (the floor at 0 twice, at 60 twice - never at 100)
-            Check(stats.DecoratorAttack == 4 && stats.DecoratorRun == 6 && stats.DecoratorMount == 1,
-                "decorator counts attack/run/horse " + stats.DecoratorAttack + "/" + stats.DecoratorRun + "/" + stats.DecoratorMount + ", expected 4/6/1");
-            Check(_logic.RateStats.AiScaled == 4, "AI-decision recomputes " + _logic.RateStats.AiScaled + ", expected 4 (on for four of the six)");
+            // attack = the recomputes that slowed the ANIMATIONS (step 20b: 85 at empty twice and halfway, 60 halfway twice,
+            // 5 at empty - never at 100)
+            Check(stats.DecoratorAttack == 6 && stats.DecoratorRun == 8 && stats.DecoratorMount == 1,
+                "decorator counts attack/run/horse " + stats.DecoratorAttack + "/" + stats.DecoratorRun + "/" + stats.DecoratorMount + ", expected 6/8/1");
+            Check(_logic.RateStats.AiScaled == 5, "AI-decision recomputes " + _logic.RateStats.AiScaled + ", expected 5 (on for five of the eight)");
             Check(Near(hp.AIAttackOnDecideChance, 0.144f), "a horse got the AI decision scaling");
             st.SpeedMultiplier = 1f;
             st.RunSpeedMultiplier = 1f;

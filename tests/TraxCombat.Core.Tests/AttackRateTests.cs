@@ -45,7 +45,11 @@ public class AttackRateTests
         Assert.True(r.AiDecisionsOn);
         Assert.Equal("AttackRatePaceHold", r.PaceOffBecause);
         Assert.Contains("AI (AttackRatePaceHold) off", r.Describe());
-        Assert.Contains("animations x max(m, 0.60) (AttackAnimationMinPercent 60 - a little slow-mo)", r.Describe());
+        // step 20b: the straight line by f, and D at full animation speed (the pause in seconds unchanged)
+        Assert.Contains("animations x (0.60 + 0.40 f): full speed at the peak line, x0.80 halfway, x0.60 empty (AttackAnimationMinPercent 60); after each attack no new attack for D x (1/m - 1) (D = its wind-up + release, ranged + its reload, at full animation speed - the pause in seconds does not grow with the slower swing): you", r.Describe());
+        s.Set(SettingsSchema.AttackAnimationMinPercent, 85, SettingSources.Mcm);
+        Assert.Contains("animations x (0.85 + 0.15 f): full speed at the peak line, x0.93 halfway, x0.85 empty (AttackAnimationMinPercent 85)", AttackRateRules.From(s).Describe());
+        s.Set(SettingsSchema.AttackAnimationMinPercent, 60, SettingSources.Mcm);
         Assert.Contains("AI decisions (AttackRateAiDecisions) on: the chance to attack, to riposte and to loose x m, the aim before a shot ÷ m", r.Describe());
 
         s.Set(SettingsSchema.AttackRatePlayerTimer, false, SettingSources.Mcm);
@@ -172,6 +176,41 @@ public class AttackRateTests
 
         var slow = Melee(1.3, 1.0).SummaryLines(new AttackRateRules(true, true, false, true), false);
         Assert.Contains(slow, l => l.StartsWith("attack rate, melee, AI, f 0.5-1:", StringComparison.Ordinal) && l.EndsWith(": 130% - too slow", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void A_slower_swing_adds_its_own_time_to_the_target_and_the_timers_floor_but_never_to_the_pause()
+    {
+        // step 20b: the empty band's attacks played at x0.85 - wind-up 0.3 and swing 0.5 at full speed took 0.8 / 0.85 s
+        var s = Melee(1.0, 1.0);
+        var fresh = new AttackRateStats();
+        for (int i = 0; i < 10; i++) fresh.AddCycle(AttackKind.Melee, false, 0, 1.2, 1f);
+        double played = 0.8 / 0.85, extra = played * 0.15;   // 0.141 s longer on the clock
+        for (int i = 0; i < 4; i++)
+        {
+            fresh.AddPhase(AttackKind.Melee, false, 3, AttackPhase.WindUp, 0.3 / 0.85, 0.2f);
+            fresh.AddPhase(AttackKind.Melee, false, 3, AttackPhase.Release, 0.5 / 0.85, 0.2f);
+            fresh.AddAnimation(AttackKind.Melee, false, 3, 0.85f);
+            fresh.AddCycle(AttackKind.Melee, false, 3, 6.0 + extra, 0.2f);          // the timer's 3.2 s (D 0.8 at full speed) + the played attack + his own gap
+            fresh.AddTimer(AttackKind.Melee, false, 3, 0.8, 0.2f, AttackTimerMath.Pause(0.8, 0.2f), played);
+        }
+        Assert.Equal(extra, fresh.AnimationExtra(AttackKind.Melee, false, 3), 6);
+        Assert.Equal(6.0 + extra, fresh.TargetCycle(AttackKind.Melee, false, 3), 6);   // the fresh cycle ÷ m + the slower swing
+        Assert.Equal(1.0, fresh.Ratio(AttackKind.Melee, false, 3), 6);                  // on target - not "too slow"
+        Assert.Equal(played + 3.2, fresh.TimerFloorMean(AttackKind.Melee, false, 3), 6); // the attack as played + its pause
+        Assert.Equal(0, fresh.AnimationExtra(AttackKind.Melee, false, 0), 9);            // the peak: full speed
+        Assert.Equal(0, s.AnimationExtra(AttackKind.Melee, false, 1), 9);                // x1.00 bands: nothing added (step 13's target)
+
+        var lines = fresh.SummaryLines(new AttackRateRules(true, true, false, true, true, 85), false);
+        Assert.Contains(lines, l => l.StartsWith("attack rate, melee, AI, empty (f 0): animations asked x0.85 - wind-up 0.35 + held -, swing 0.59", StringComparison.Ordinal)
+                                    && l.EndsWith("→ target 6.14 s (incl. +0.14 s of slower swing): 100% - on target", StringComparison.Ordinal));
+        Assert.Contains(lines, l => l.StartsWith("attack rate, melee, AI, empty (f 0) - timer: 4 (D avg 0.80 s at full animation speed - played 0.94 s, the slower swing at m 0.20 → asked avg 3.20 s = D x (1/m - 1))", StringComparison.Ordinal)
+                                    && l.Contains("the timer's floor D/m avg 4.14 s"));
+        // at full speed the timer row reads as before (no "played")
+        var same = new AttackRateStats();
+        same.AddTimer(AttackKind.Melee, false, 3, 0.8, 0.2f, 3.2);
+        Assert.Contains(same.SummaryLines(new AttackRateRules(true, true, false, true), false),
+            l => l.StartsWith("attack rate, melee, AI, empty (f 0) - timer: 1 (D avg 0.80 s at m 0.20 → asked avg 3.20 s = D x (1/m - 1))", StringComparison.Ordinal));
     }
 
     [Fact]

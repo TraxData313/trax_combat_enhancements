@@ -8,7 +8,9 @@ namespace TraxCombat.Core
     /// speed; the slow-down is a NO-ATTACK TIMER after each attack. After an attack of duration D (its
     /// own wind-up + release; ranged: + the reload that follows) that ends at attack multiplier m, the
     /// fighter may not start another attack for D × (1/m − 1) - so the attacking part of his rhythm runs
-    /// at × m (m 0.5: pause = D; m 0.2: pause = 4 × D). Pure functions (AI_NOTES "Step 13").
+    /// at × m (m 0.5: pause = D; m 0.2: pause = 4 × D). Pure functions (AI_NOTES "Step 13"). Step 20b
+    /// (AI_NOTES "Step 20b"): the animations slow a little in a straight line by f (AttackAnimationMinPercent,
+    /// 85% at empty); D is measured at FULL animation speed, so the pause in seconds is unchanged.
     /// </summary>
     public static class AttackTimerMath
     {
@@ -40,17 +42,50 @@ namespace TraxCombat.Core
         public static bool Worth(double pause) => pause >= MinTimerSeconds;
 
         /// <summary>
-        /// The attack ANIMATION multiplier the stat decorator applies (swing, thrust / draw / throw,
-        /// reload): max(m, <paramref name="minPercent"/> / 100), never above 1. 100 (the default) = never
-        /// slowed; lower = a little slow-mo on top of the timer; at or below the attack speed floor the old
-        /// step-5 animations come back whole.
+        /// The attack ANIMATION multiplier (swing, thrust / draw / throw, reload) - step 20b, Anton after his
+        /// playtest of 2026-09-28 ("swing speed does get reduced but to 85%"): a STRAIGHT LINE by the peak
+        /// share f, like the run speed - A + (1 − A) × f, A = <paramref name="minPercent"/> / 100: full speed at
+        /// and above the peak line (f 1), A at empty (f 0), 0.85 → 0.925 halfway. 100 = never slowed (step 13's
+        /// full-speed animations). The pure line at 0 reaches 0 at empty, so the setting's range stops at 5
+        /// (an animation never freezes). Steps 13-20 used max(m, A) - with 85 that sits at 85% almost at once
+        /// (m 0.2 + 0.8 f reaches 0.85 at f ≈ 0.81).
         /// </summary>
-        public static float AnimationMultiplier(float m, int minPercent)
+        public static float AnimationMultiplier(double peakShare, int minPercent)
         {
-            if (float.IsNaN(m) || m >= 1f) return 1f;
-            float floor = Math.Max(0f, Math.Min(100, minPercent)) / 100f;
-            return Math.Min(1f, Math.Max(m, floor));
+            if (double.IsNaN(peakShare) || peakShare >= 1.0) return 1f;
+            float floor = Math.Max(0, Math.Min(100, minPercent)) / 100f;
+            return AthleticsMath.Curve(floor, peakShare);
         }
+
+        /// <summary>
+        /// The f an APPLIED attack multiplier m stands for: (m − S) / (1 − S), S = the attack speed floor
+        /// (<see cref="AthleticsRules.AttackSpeedFloor"/>), clamped to 0..1. The stat decorator knows only the m
+        /// it applies (0.05-stepped), and the animation line follows that same f - so it moves in the same
+        /// recompute steps and every recompute the game does on its own applies the same value. m ≥ 1, or S ≥ 1
+        /// (ExhaustedAttackSpeedPercent 100: attacks never slowed) → 1: the animations ride on the attack
+        /// slow-down and stay at full speed while it is off.
+        /// </summary>
+        public static double PeakShareOfAttack(float m, float attackFloor)
+        {
+            if (float.IsNaN(m) || m >= 1f || float.IsNaN(attackFloor) || attackFloor >= 1f) return 1.0;
+            double f = (m - (double)attackFloor) / (1.0 - attackFloor);
+            return f <= 0 ? 0 : f >= 1 ? 1 : f;
+        }
+
+        /// <summary>The animation multiplier of a fighter whose APPLIED attack multiplier is
+        /// <paramref name="m"/> (the stat decorator, the phases, the logs): <see cref="AnimationMultiplier"/> at
+        /// <see cref="PeakShareOfAttack"/>.</summary>
+        public static float AnimationForAttack(float m, float attackFloor, int minPercent) =>
+            AnimationMultiplier(PeakShareOfAttack(m, attackFloor), minPercent);
+
+        /// <summary>
+        /// Step 20b: seconds an attack phase took at animation multiplier <paramref name="animation"/>, as they
+        /// would be at FULL animation speed (played × animation). D is built from these, so the pause
+        /// D × (1/m − 1) stays what it was with full-speed animations - the slower swing only adds its own extra
+        /// time to the cycle, never a longer pause. 1 (or anything odd) = the played seconds.
+        /// </summary>
+        public static double AtFullSpeed(double played, float animation) =>
+            float.IsNaN(animation) || animation <= 0f || animation >= 1f ? played : played * animation;
 
         /// <summary>Seconds left of a timer ending at <paramref name="end"/> (0 once it is over).</summary>
         public static double Remaining(double now, double end) => end > now ? end - now : 0;

@@ -17,8 +17,10 @@ namespace TraxCombat.Missions
         public int Bin;
         public float Asked = 1f;
 
-        /// <summary>The attack's own duration D, its kind, when it ended (the timer runs from there) and the pause asked.</summary>
+        /// <summary>The attack's own duration D (step 20b: at full animation speed), its kind, when it ended (the timer
+        /// runs from there) and the pause asked; Played = the attack as it really played (a slower swing is longer).</summary>
         public double Duration;
+        public double Played;
         public AttackKind Kind;
         public double AttackEnd;
         public double Pause;

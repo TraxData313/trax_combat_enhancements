@@ -11,10 +11,11 @@ namespace TraxCombat.Missions
     /// AI_NOTES "Step 5e" and "Step 13"): the attack rate follows the attack multiplier m.
     ///
     /// THE TECHNIQUE (step 13, Anton's playtest call - the animation slow-down read as "slow-mo"):
-    ///   the animations play at full speed (the stat decorator scales them only down to
-    ///   AttackAnimationMinPercent, 100 = never); after each attack of duration D (its wind-up + release;
-    ///   ranged + the reload after the loose), ending at m, the fighter may not START another attack
-    ///   for D × (1/m − 1):
+    ///   the animations play at full speed - step 20b: slowed a little, in a straight line by f down to
+    ///   AttackAnimationMinPercent at empty (100 = never); after each attack of duration D (its wind-up + release;
+    ///   ranged + the reload after the loose - step 20b: each phase at FULL animation speed, played × the
+    ///   multiplier it played at, so the pause in seconds does not grow with the slower swing), ending at m,
+    ///   the fighter may not START another attack for D × (1/m − 1):
     ///   - AI (AttackRatePaceHold, the old "pace hold"): from the attack's end - melee and ranged, on foot
     ///     and mounted. Step 16: by INPUT (AttackRatePaceByInput - only the attack bits taken out of his own
     ///     input, his guard his own; <see cref="InputPaceBody"/>) or by NoAttack (step 13, <see cref="GamePaceBody"/>).
@@ -178,8 +179,10 @@ namespace TraxCombat.Missions
                                 double wind = st.ReadyFullAt >= st.PhaseStart ? st.ReadyFullAt - st.PhaseStart : d;
                                 _rateStats.AddPhase(k, player, st.PhaseBin, AttackPhase.WindUp, wind, st.PhaseAsked);
                                 _rateStats.AddPhase(k, player, st.PhaseBin, AttackPhase.Held, d - wind, st.PhaseAsked);
-                                st.CurrentWindUp = wind;       // D's first part: the wind-up, never the held part
-                                st.AttackDuration = wind;
+                                // D's first part: the wind-up, never the held part - at full animation speed (step 20b)
+                                st.CurrentWindUp = AttackTimerMath.AtFullSpeed(wind, st.PhaseAnimation);
+                                st.AttackDuration = st.CurrentWindUp;
+                                st.AttackPlayed = wind;
                                 st.AttackDurationKnown = true;
                             }
                             else
@@ -190,7 +193,8 @@ namespace TraxCombat.Missions
                         case AttackPhase.Release:
                             _rateStats.AddPhase(k, player, st.PhaseBin, AttackPhase.Release, d, st.PhaseAsked);
                             if (k == AttackKind.Melee && !st.HitThisRelease) _rateStats.AddPhase(k, player, st.PhaseBin, AttackPhase.CleanRelease, d, st.PhaseAsked);
-                            st.AttackDuration += d;
+                            st.AttackDuration += AttackTimerMath.AtFullSpeed(d, st.PhaseAnimation);
+                            st.AttackPlayed += d;
                             // melee: the attack ends with its release (a block recoil plays inside the timer);
                             // ranged: with the reload that follows the loose, if one does
                             if (k == AttackKind.Ranged && next == (int)AttackPhase.Reload) st.AwaitReloadEnd = true;
@@ -204,7 +208,8 @@ namespace TraxCombat.Missions
                             if (st.AwaitReloadEnd)
                             {
                                 st.AwaitReloadEnd = false;
-                                st.AttackDuration += d;
+                                st.AttackDuration += AttackTimerMath.AtFullSpeed(d, st.PhaseAnimation);
+                                st.AttackPlayed += d;
                                 AttackEndsHere(st, AttackKind.Ranged);
                             }
                             break;
@@ -246,11 +251,12 @@ namespace TraxCombat.Missions
                         // no ready seen: D is its release alone (not measured - no AI timer from it)
                         st.CurrentWindUp = 0;
                         st.AttackDuration = 0;
+                        st.AttackPlayed = 0;
                         st.AttackDurationKnown = false;
                         AttackBegan(st, player, now, isReady: false);
                     }
                     // the animation it plays at: the multiplier in effect now, before this attack's charge
-                    _rateStats.AddAnimation(kind, player, bin, AttackTimerMath.AnimationMultiplier(m, TraxSettings.Shared.AttackAnimationMinPercent));
+                    _rateStats.AddAnimation(kind, player, bin, AnimationAt(m, in r));
                 }
 
                 if (next >= 0)
@@ -260,6 +266,7 @@ namespace TraxCombat.Missions
                     st.PhaseStart = now;
                     st.PhaseBin = bin;
                     st.PhaseAsked = m;
+                    st.PhaseAnimation = AnimationAt(m, in r);
                     st.ReadyFullAt = -1;
                     st.ReadyPolling = next == (int)AttackPhase.WindUp;
                 }
@@ -275,6 +282,11 @@ namespace TraxCombat.Missions
             }
         }
 
+        /// <summary>Step 20b: the attack animation multiplier the stat decorator applies at the APPLIED attack
+        /// multiplier <paramref name="m"/> (the line A + (1 − A) × f, read live) - the phases' own copy of it.</summary>
+        private static float AnimationAt(float m, in AthleticsRules r) =>
+            AttackTimerMath.AnimationForAttack(m, r.AttackSpeedFloor, TraxSettings.Shared.AttackAnimationMinPercent);
+
         /// <summary>An attack ended at this action change: its D is handed to the timer's decision
         /// (ObserveAction runs it right after the phases - a melee swing after its step-back roll).</summary>
         private static void AttackEndsHere(TrackedAgent st, AttackKind kind)
@@ -282,8 +294,10 @@ namespace TraxCombat.Missions
             st.AttackEndedNow = true;
             st.EndedKind = kind;
             st.EndedDuration = st.AttackDuration;
+            st.EndedPlayed = st.AttackPlayed;
             st.EndedDurationKnown = st.AttackDurationKnown;
             st.AttackDuration = 0;
+            st.AttackPlayed = 0;
             st.AttackDurationKnown = false;
         }
 
@@ -334,6 +348,7 @@ namespace TraxCombat.Missions
             st.LastReleaseTime = -1;
             st.LastShotForInterval = -1;
             st.AttackDuration = 0;
+            st.AttackPlayed = 0;
             st.AttackDurationKnown = false;
             st.AwaitReloadEnd = false;
             st.AttackEndedNow = false;
@@ -470,6 +485,7 @@ namespace TraxCombat.Missions
                 ps.Bin = bin;
                 ps.Asked = m;
                 ps.Duration = d;
+                ps.Played = st.EndedPlayed;
                 ps.Kind = kind;
                 ps.AttackEnd = now;
                 ps.Pause = pause;
@@ -718,7 +734,7 @@ namespace TraxCombat.Missions
             }
             if (!listed) _paceHeld.Add(st);
             _rateStats.AddHoldStart(ps.Bin, ps.Asked, ps.Kind, st.Agent.MountAgent != null, byInput);
-            _rateStats.AddTimer(ps.Kind, false, ps.Bin, ps.Duration, ps.Asked, ps.Pause);
+            _rateStats.AddTimer(ps.Kind, false, ps.Bin, ps.Duration, ps.Asked, ps.Pause, ps.Played);
             // the gap to his next attack is measured from the attack's end, where the timer began
             st.TimerPending = true;
             st.TimerStart = ps.AttackEnd;
@@ -934,8 +950,9 @@ namespace TraxCombat.Missions
                     _seenAnimationMin = s.AttackAnimationMinPercent;
                     _rateSwitched = true;
                     TraxLog.Info("rate", "AttackAnimationMinPercent now " + s.AttackAnimationMinPercent + " at " + Sec(SafeNow()) + " s: " + n
-                        + " tired fighters get their attack animations at x max(m, " + F2(s.AttackAnimationMinPercent / 100f) + ") over the next ticks (at most "
-                        + MaxRecomputesPerTick + " recomputes a tick)" + (s.AttackAnimationMinPercent >= 100 ? " - full speed, the timer alone slows them" : " - a little slow-mo on top of the timer"));
+                        + " tired fighters get their attack animations "
+                        + (s.AttackAnimationMinPercent >= 100 ? "at full speed" : AttackRateRules.From(s).AnimationLineText()) + " over the next ticks (at most "
+                        + MaxRecomputesPerTick + " recomputes a tick)" + (s.AttackAnimationMinPercent >= 100 ? " - the timer alone slows them" : " - a slower swing on top of the timer; the pause in seconds unchanged"));
                 }
             }
             if (s.AttackRatePaceHold != _seenPaceHold)
@@ -976,7 +993,7 @@ namespace TraxCombat.Missions
             {
                 var s = TraxSettings.Shared;
                 float m = st.SpeedMultiplier;
-                float anim = AttackTimerMath.AnimationMultiplier(m, s.AttackAnimationMinPercent);
+                float anim = AnimationAt(m, Rules);
                 var after = SpeedPenalty.Snapshot.Take(st.Agent);
                 var aiAfter = SpeedPenalty.AiSnapshot.Take(st.Agent);
                 bool ai = s.AttackRateAiDecisions;
@@ -1001,6 +1018,7 @@ namespace TraxCombat.Missions
         {
             string text = Name(st) + " at " + Sec(now) + " s - his " + (ps.Kind == AttackKind.Melee ? "melee" : "ranged") + " attack"
                 + (st.Agent.MountAgent != null ? " (mounted)" : string.Empty) + " (D " + F2(ps.Duration) + " s: wind-up + " + (ps.Kind == AttackKind.Melee ? "swing" : "loose + reload")
+                + (ps.Played - ps.Duration >= 0.005 ? " at full animation speed; played " + F2(ps.Played) + " s - the slower swing" : string.Empty)
                 + ") ended at " + Sec(ps.AttackEnd) + " s at attack speed x" + F2(ps.Asked) + " (f " + F2(AthleticsMath.PeakShare(Rules, st)) + ") → no new attack for "
                 + F2(ps.Pause) + " s = D x (1/m - 1), until " + Sec(ps.Until) + " s";
             if (first && ps.ByInput)

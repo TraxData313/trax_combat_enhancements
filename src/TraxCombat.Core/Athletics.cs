@@ -136,7 +136,10 @@ namespace TraxCombat.Core
         public double PeakFraction => PeakPercent <= 1 ? 0.01 : PeakPercent >= 100 ? 1.0 : PeakPercent / 100.0;
 
         /// <summary>S - the attack-speed multiplier at 0 (never below 0.01: an animation must run).</summary>
-        public float AttackSpeedFloor => Math.Max(0.01f, Math.Min(1f, ExhaustedAttackSpeedPercent / 100f));
+        public float AttackSpeedFloor => AttackSpeedFloorOf(ExhaustedAttackSpeedPercent);
+
+        /// <summary>S for an ExhaustedAttackSpeedPercent value (0.01..1) - the stat decorator reads it without building the rules.</summary>
+        public static float AttackSpeedFloorOf(int exhaustedAttackSpeedPercent) => Math.Max(0.01f, Math.Min(1f, exhaustedAttackSpeedPercent / 100f));
 
         /// <summary>M - the run-speed multiplier at 0 on foot (0.01..1).</summary>
         public float RunSpeedFloor => Math.Max(0.01f, Math.Min(1f, MinMoveSpeedMultiplier));

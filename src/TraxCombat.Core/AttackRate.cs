@@ -160,7 +160,8 @@ namespace TraxCombat.Core
         /// <summary>AttackRatePlayerTimer (the switch itself) - your no-attack timer (step 13).</summary>
         public bool PlayerTimer { get; }
 
-        /// <summary>AttackAnimationMinPercent - the slowest the attack animations get (100 = full speed always).</summary>
+        /// <summary>AttackAnimationMinPercent - the attack animations' speed at empty; step 20b: a straight line by f
+        /// up to full speed at the peak line (100 = full speed always).</summary>
         public int AnimationMinPercent { get; }
 
         /// <summary>AttackRatePaceByInput (step 16) - the AI timer takes the attack bits out of the AI's own input
@@ -198,6 +199,16 @@ namespace TraxCombat.Core
               + (RaiseGuard ? ", raised when he wants to attack - AiHoldRaiseGuard on)" : " - AiHoldRaiseGuard off)")
             : "NoAttack (AttackRatePaceByInput off: the engine's no-attack flag, step 13's technique)";
 
+        /// <summary>Step 20b: the animation line in words - "x (0.85 + 0.15 f): full speed at the peak line, x0.93
+        /// halfway, x0.85 empty".</summary>
+        public string AnimationLineText()
+        {
+            var ci = System.Globalization.CultureInfo.InvariantCulture;
+            double a = Math.Max(0, Math.Min(100, AnimationMinPercent)) / 100.0;
+            return "x (" + a.ToString("0.00", ci) + " + " + (1 - a).ToString("0.00", ci) + " f): full speed at the peak line, x"
+                   + AttackTimerMath.AnimationMultiplier(0.5, AnimationMinPercent).ToString("0.00", ci) + " halfway, x" + a.ToString("0.00", ci) + " empty";
+        }
+
         /// <summary>The settings sentence of the mission-start line and the summary.</summary>
         public string Describe()
         {
@@ -206,8 +217,10 @@ namespace TraxCombat.Core
             return "ON - PAUSE ONLY: animations "
                    + (AnimationMinPercent >= 100
                        ? "at full speed (AttackAnimationMinPercent 100)"
-                       : "x max(m, " + (AnimationMinPercent / 100.0).ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) + ") (AttackAnimationMinPercent " + AnimationMinPercent + " - a little slow-mo)")
-                   + "; after each attack no new attack for D x (1/m - 1) (D = its wind-up + release, ranged + its reload): you (AttackRatePlayerTimer) "
+                       : AnimationLineText() + " (AttackAnimationMinPercent " + AnimationMinPercent + ")")
+                   + "; after each attack no new attack for D x (1/m - 1) (D = its wind-up + release, ranged + its reload"
+                   + (AnimationMinPercent >= 100 ? string.Empty : ", at full animation speed - the pause in seconds does not grow with the slower swing")
+                   + "): you (AttackRatePlayerTimer) "
                    + (PlayerTimer ? "on - your attack button does nothing until it ends, held it attacks the moment it ends" : "off")
                    + ", AI (AttackRatePaceHold) " + (PaceHold ? "on - " + PaceTechnique() + ", melee and ranged, on foot and mounted" : "off")
                    + "; AI decisions (AttackRateAiDecisions) "

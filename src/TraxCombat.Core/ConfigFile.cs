@@ -85,8 +85,9 @@ namespace TraxCombat.Core
         /// <summary>The format stamp written into every file. Bump it (and migrate in
         /// <see cref="Migrate"/>) when a later version must change the meaning of an existing key or
         /// push a new default into files that already carry the old one. 2 = step 13 (PAUSE ONLY),
-        /// 3 = step 14 (the run-speed floor 0.3 → 0.7).</summary>
-        public const int FormatVersion = 3;
+        /// 3 = step 14 (the run-speed floor 0.3 → 0.7), 4 = step 20b (Anton's tuning after his playtest: the
+        /// run-speed floor 0.7 → 0.6, the attack animation at empty 100 → 85).</summary>
+        public const int FormatVersion = 4;
 
         /// <summary>The meta key holding <see cref="FormatVersion"/> - not a setting.</summary>
         public const string VersionKey = "ConfigVersion";
@@ -315,33 +316,53 @@ namespace TraxCombat.Core
         /// (30: the Attack recovery bar sits above your bar, both under the vanilla health bar).
         /// Format 3 (step 14, Anton after his 240v240): <c>MinMoveSpeedMultiplier</c> 0.3 → the new default
         /// (0.7: an empty man runs at 70% of his pace - 0.3 was "too slow, unrealistic"). A format-1 file
-        /// gets both steps.
+        /// gets both steps. Format 4 (step 20b, Anton after his playtest of 2026-09-28): <c>MinMoveSpeedMultiplier</c>
+        /// 0.7 → the new default (0.6, "the sweet spot") in a format-3 file (the one format whose default was 0.7 -
+        /// an older file's 0.3 went straight to the new default above), <c>AttackAnimationMinPercent</c> 100 → the new
+        /// default (85: the swing slows in a straight line to 85% at empty) in a format 2-3 file (the key came with
+        /// format 2). The rewrite is ConfigStore's (logged "rewrote config.json as format 4 …").
         /// </summary>
-        public static List<string> Migrate(ConfigReadResult read)
+        public static List<string> Migrate(ConfigReadResult read) => Migrate(read, p => p.Default);
+
+        /// <summary><see cref="Migrate(ConfigReadResult)"/> with the new defaults given - the unit tests run on
+        /// DESIGN's INITIAL values, where a tuned default (step 20b's 0.6 and 85) does not exist, so they hand in
+        /// defaults.json's.</summary>
+        public static List<string> Migrate(ConfigReadResult read, Func<ParamDef, double> defaultOf)
         {
-            if (read == null || !read.Ok) return new List<string>();
+            if (read == null || !read.Ok || defaultOf == null) return new List<string>();
             int from = read.FileVersion ?? FormatVersion;
             if (from < 2)
             {
                 MoveOldDefault(read, SettingsSchema.AttackRateAiDecisions, 1,
-                    "step 13: the no-attack timer carries the slow-down - the AI-decision scaling on top of it double-counts", from);
+                    "step 13: the no-attack timer carries the slow-down - the AI-decision scaling on top of it double-counts", from, defaultOf);
                 MoveOldDefault(read, SettingsSchema.PlayerBarOffsetBottom, 54,
-                    "step 13: the Attack recovery bar sits above your bar, so the pair moved down under the vanilla health bar", from);
+                    "step 13: the Attack recovery bar sits above your bar, so the pair moved down under the vanilla health bar", from, defaultOf);
             }
             if (from < 3)
             {
                 MoveOldDefault(read, SettingsSchema.MinMoveSpeedMultiplier, 0.3,
-                    "step 14: an empty man runs at 70% of his pace - 0.3 was too slow", from);
+                    "step 14: an empty man runs at 70% of his pace - 0.3 was too slow", from, defaultOf);
+            }
+            if (from < 4)
+            {
+                // the old default as THAT file's format knew it: 0.7 only in format 3, 100 since format 2
+                if (from >= 3)
+                    MoveOldDefault(read, SettingsSchema.MinMoveSpeedMultiplier, 0.7,
+                        "step 20b, Anton after his playtest: an empty man runs at 60% of his pace - the sweet spot", from, defaultOf);
+                if (from >= 2)
+                    MoveOldDefault(read, SettingsSchema.AttackAnimationMinPercent, 100,
+                        "step 20b, Anton after his playtest: a tired man's attack animations slow in a straight line to 85% at empty - the pause in seconds stays as it was", from, defaultOf);
             }
             return read.Migrated;
         }
 
-        private static void MoveOldDefault(ConfigReadResult read, ParamDef p, double oldDefault, string why, int from)
+        private static void MoveOldDefault(ConfigReadResult read, ParamDef p, double oldDefault, string why, int from, Func<ParamDef, double> defaultOf)
         {
             if (!read.Values.TryGetValue(p.Key, out double v) || Math.Abs(v - oldDefault) > 1e-9) return;
-            if (Math.Abs(p.Default - oldDefault) < 1e-9) return; // the default is back where it was: nothing to push
-            read.Values[p.Key] = p.Default;
-            read.Migrated.Add(p.Key + ": " + p.Format(oldDefault) + " → " + p.Format(p.Default) + " (format " + from + " → " + FormatVersion + ", the old default; " + why + ")");
+            double now = defaultOf(p);
+            if (double.IsNaN(now) || Math.Abs(now - oldDefault) < 1e-9) return; // the default is back where it was: nothing to push
+            read.Values[p.Key] = now;
+            read.Migrated.Add(p.Key + ": " + p.Format(oldDefault) + " → " + p.Format(now) + " (format " + from + " → " + FormatVersion + ", the old default; " + why + ")");
         }
 
         /// <summary>

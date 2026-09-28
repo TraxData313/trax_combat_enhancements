@@ -355,7 +355,7 @@ namespace TraxCombat.Tools
                 b.ApplySettingsChange(S);
                 Check(y.SpeedDirty, "D: AttackAnimationMinPercent did not ask a recompute of a tired fighter");
                 LogHas("[rate] AttackAnimationMinPercent now 60 at ");
-                LogHas(" tired fighters get their attack animations at x max(m, 0.60) over the next ticks (at most 50 recomputes a tick) - a little slow-mo on top of the timer");
+                LogHas(" tired fighters get their attack animations x (0.60 + 0.40 f): full speed at the peak line, x0.80 halfway, x0.60 empty over the next ticks (at most 50 recomputes a tick) - a slower swing on top of the timer; the pause in seconds unchanged");
                 S.Set(SettingsSchema.AttackAnimationMinPercent, 100, SettingSources.Mcm);
                 b.ApplySettingsChange(S);
                 y.SpeedDirty = false;
@@ -456,6 +456,71 @@ namespace TraxCombat.Tools
                 // (3 waited: the game job, the long frame and R2's - R2's was followed by a new hold, not cleared)
                 LogHas("a game job on him at the end (left alone, cleared once free: 2, of them under a long scripted frame: 1) 3, still held at mission end 1");
                 LogHas("[summary] attack rate - guard by f (melee hits on fighters on foot that were blocked or parried; blocking is never slowed - tired men must not block less): ");
+            }
+            finally
+            {
+                _logic = keep;
+                SetStatic(typeof(AthleticsLogic), "_current", keep);
+                AthleticsDefaults();
+                StepBackDefaults();
+            }
+        }
+
+        /// <summary>
+        /// Step 20b: a slower swing never lengthens the pause. With AttackAnimationMinPercent 85 a wounded AI man
+        /// (f 0.4, m 0.52) plays his wind-up and swing at x0.91 - longer on the clock by 1/0.91 - and his timer is
+        /// still the FULL-SPEED D (0.82 s) x (1/m - 1): D is built from each phase's played seconds x the animation
+        /// multiplier it played at. The gap it leaves = the timer; the log's first-timer line and the summary's timer
+        /// row name the played attack; the mission-start sentence names the line.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static void SlowerSwingKeepsThePauseInSeconds()
+        {
+            var keep = _logic;
+            try
+            {
+                AthleticsDefaults();
+                S.Set(SettingsSchema.StepBackEnabled, false, SettingSources.File);
+                S.Set(SettingsSchema.AttackAnimationMinPercent, 85, SettingSources.File);
+                var body = new FakePaceBody();
+                var b = NewRateLogic(body);
+                var sb = b.RateStats;
+                LogHas("[rate] mission start: ON - PAUSE ONLY: animations x (0.85 + 0.15 f): full speed at the peak line, x0.93 halfway, x0.85 empty (AttackAnimationMinPercent 85); "
+                       + "after each attack no new attack for D x (1/m - 1) (D = its wind-up + release, ranged + its reload, at full animation speed - the pause in seconds does not grow with the slower swing)");
+
+                double t = 5000;
+                var w = Wounded(b, 250, 30f, t);   // f 0.4 → m 0.52, animations x0.91
+                float anim = AttackTimerMath.AnimationForAttack(w.SpeedMultiplier, Rules.AttackSpeedFloor, S.AttackAnimationMinPercent);
+                Check(Near(w.SpeedMultiplier, 0.52f) && Near(anim, 0.91f), "20b: the wounded man's m " + w.SpeedMultiplier + " (0.52), animations x" + anim + " (0.91)");
+                // the engine plays his 0.4 s ready and 0.5 s swing at x0.91: 1/0.91 longer on the clock
+                Attack(b, w, ref t, ready: 0.4 / anim, swing: 0.5 / anim);
+                var ps = w.Pace;
+                Check(ps != null && sb.Holds == 1, "20b: no AI timer after the slower swing");
+                float mEnd = ps!.Asked;
+                double fullSpeedPause = AttackTimerMath.Pause(0.82, mEnd);   // what a full-speed attack at that m would leave
+                Check(Near(ps.Duration, 0.82) && Near(ps.Played, 0.82 / anim) && Near(ps.Pause, fullSpeedPause),
+                    "20b: D " + ps.Duration + " (0.82 at full speed), played " + ps.Played + " (" + (0.82 / anim) + "), pause " + ps.Pause + " (" + fullSpeedPause + ", as with full-speed animations)");
+                Check(Near(sb.AnimationMean(AttackKind.Melee, false, 2), 0.91) && Near(sb.PhaseMean(AttackKind.Melee, false, 2, AttackPhase.Release), 0.5 / anim),
+                    "20b: the band's animations x" + sb.AnimationMean(AttackKind.Melee, false, 2) + " (0.91), swing " + sb.PhaseMean(AttackKind.Melee, false, 2, AttackPhase.Release) + " (as played)");
+                LogHas(" - his melee attack (D 0.82 s: wind-up + swing at full animation speed; played 0.90 s - the slower swing) ended at ");
+                LogHas(" → no new attack for " + fullSpeedPause.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) + " s = D x (1/m - 1), until ");
+                var lines = sb.SummaryLines(AttackRateRules.From(S), false);
+                Check(lines.Exists(l => l.StartsWith("attack rate, melee, AI, f below 0.5 - timer: 1 (D avg 0.82 s at full animation speed - played 0.90 s, the slower swing at m ", StringComparison.Ordinal)),
+                    "20b: the timer row: " + string.Join(" // ", lines));
+                Check(lines.Exists(l => l.StartsWith("attack rate, melee, AI, f below 0.5: animations asked x0.91 - wind-up 0.35", StringComparison.Ordinal)),
+                    "20b: the band row: " + string.Join(" // ", lines));
+
+                // back at 100: the next attack plays at full speed, D = played (step 13's behaviour exactly)
+                S.Set(SettingsSchema.AttackAnimationMinPercent, 100, SettingSources.Mcm);
+                b.ApplySettingsChange(S);
+                Check(w.SpeedDirty, "20b: AttackAnimationMinPercent 100 did not ask a recompute of the tired man");
+                w.SpeedDirty = false;
+                Attack(b, w, ref t);
+                // the first timer's gap was measured at this attack's start: exactly the full-speed pause
+                Check(Near(sb.GapMean(AttackKind.Melee, false, 2), fullSpeedPause) && sb.GapCount(AttackKind.Melee, false, 2) == 1 && sb.StartedEarly(AttackKind.Melee, false) == 0,
+                    "20b: the gap it left " + sb.GapMean(AttackKind.Melee, false, 2) + " (the timer " + fullSpeedPause + "), early " + sb.StartedEarly(AttackKind.Melee, false));
+                Check(Near(w.Pace!.Duration, 0.82) && Near(w.Pace.Played, 0.82) && Near(w.Pace.Pause, AttackTimerMath.Pause(0.82, w.Pace.Asked)),
+                    "20b: at 100 D " + w.Pace.Duration + ", played " + w.Pace.Played + ", pause " + w.Pace.Pause);
             }
             finally
             {
