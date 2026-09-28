@@ -211,6 +211,7 @@ namespace TraxCombat.Core
         public int AthleticsPeakPercent => GetInt(SettingsSchema.AthleticsPeakPercent);
         public bool HealthCapsAthletics => GetBool(SettingsSchema.HealthCapsAthletics);
         public float CostPerBlow => GetFloat(SettingsSchema.CostPerBlow);
+        public float CostPerKickOrBash => GetFloat(SettingsSchema.CostPerKickOrBash);
         public bool CostOnMiss => GetBool(SettingsSchema.CostOnMiss);
         public float HeroCostMultiplier => GetFloat(SettingsSchema.HeroCostMultiplier);
         public float PartyLeaderCostMultiplier => GetFloat(SettingsSchema.PartyLeaderCostMultiplier);

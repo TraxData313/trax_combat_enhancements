@@ -43,6 +43,13 @@ namespace TraxCombat.Missions
         // ---- melee: the channel-1 action type as last seen (poll or hit), for the rising edge into ReleaseMelee
         public int PrevAction = NoAction;
 
+        /// <summary>Step 18: the channel-0 (whole body) action type as last seen - polled on foot for kicks.</summary>
+        public int PrevLowerAction = NoAction;
+
+        /// <summary>Step 18: his kicks and shield bashes - one decision (charge) per action, both channels and
+        /// the hit fallback deduped (Core <see cref="KickBashTracker"/>).</summary>
+        public readonly KickBashTracker KickBash = new KickBashTracker();
+
         public int ReleaseSerial;
         public double ReleaseStart = -1;
         public bool HitThisRelease;

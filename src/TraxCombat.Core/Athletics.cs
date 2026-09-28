@@ -30,7 +30,7 @@ namespace TraxCombat.Core
     public readonly struct AthleticsRules
     {
         public AthleticsRules(bool enabled, int poolFloor, float poolPerSkill, int peakPercent, bool healthCaps,
-            float costPerBlow, bool costOnMiss, float heroCostMultiplier, float partyLeaderCostMultiplier,
+            float costPerBlow, bool costOnMiss, float heroCostMultiplier, float partyLeaderCostMultiplier, float costPerKickOrBash,
             int exhaustedAttackSpeedPercent, float minMoveSpeedMultiplier, float mountMinSpeedMultiplier, bool damageBonusFollows,
             float regenDelayBlowTimes, float blowTimeSeconds, float fullRegenSecondsStanding, float regenMultiplierAtFullRun,
             float walkEffortFraction, int regenRateNearFullPercent, bool modEnabled = true)
@@ -45,6 +45,7 @@ namespace TraxCombat.Core
             CostOnMiss = costOnMiss;
             HeroCostMultiplier = heroCostMultiplier;
             PartyLeaderCostMultiplier = partyLeaderCostMultiplier;
+            CostPerKickOrBash = costPerKickOrBash;
             ExhaustedAttackSpeedPercent = exhaustedAttackSpeedPercent;
             MinMoveSpeedMultiplier = minMoveSpeedMultiplier;
             MountMinSpeedMultiplier = mountMinSpeedMultiplier;
@@ -90,6 +91,10 @@ namespace TraxCombat.Core
         public float HeroCostMultiplier { get; }
 
         public float PartyLeaderCostMultiplier { get; }
+
+        /// <summary>CostPerKickOrBash (step 18): points one kick or shield bash costs before the hero and
+        /// party-leader multipliers; 0 = free (steps 5-17).</summary>
+        public float CostPerKickOrBash { get; }
 
         /// <summary>Attack speed at 0 Athletics, % of normal (S of the curve).</summary>
         public int ExhaustedAttackSpeedPercent { get; }
@@ -145,7 +150,7 @@ namespace TraxCombat.Core
         /// <summary>The live values, read now.</summary>
         public static AthleticsRules From(TraxSettings s) => new AthleticsRules(
             s.AthleticsEnabled, s.AthleticsPoolFloor, s.AthleticsPoolPerSkill, s.AthleticsPeakPercent, s.HealthCapsAthletics,
-            s.CostPerBlow, s.CostOnMiss, s.HeroCostMultiplier, s.PartyLeaderCostMultiplier,
+            s.CostPerBlow, s.CostOnMiss, s.HeroCostMultiplier, s.PartyLeaderCostMultiplier, s.CostPerKickOrBash,
             s.ExhaustedAttackSpeedPercent, s.MinMoveSpeedMultiplier, s.MountMinSpeedMultiplier, s.DamageBonusFollowsAthletics,
             s.RegenDelayBlowTimes, s.BlowTimeSeconds, s.FullRegenSecondsStanding, s.RegenMultiplierAtFullRun,
             s.WalkEffortFraction, s.RegenRateNearFullPercent, s.ModEnabled);
@@ -191,6 +196,10 @@ namespace TraxCombat.Core
         public double LowestFraction { get; internal set; } = 1.0;
 
         public int Blows { get; internal set; }
+
+        /// <summary>Kicks and shield bashes charged this mission (step 18) - not blows: <see cref="Blows"/>
+        /// never counts them.</summary>
+        public int KicksAndBashes { get; internal set; }
 
         public int ExhaustionsEntered { get; internal set; }
 
@@ -259,7 +268,7 @@ namespace TraxCombat.Core
         /// <summary>False when Athletics is switched off - nothing changed.</summary>
         public bool Charged { get; }
 
-        /// <summary>Points charged (CostPerBlow × the multipliers).</summary>
+        /// <summary>Points charged (CostPerBlow - or CostPerKickOrBash for a kick / bash - × the multipliers).</summary>
         public double Cost { get; }
 
         /// <summary>Hero × leader multiplier applied (1 for a common soldier).</summary>
@@ -444,6 +453,7 @@ namespace TraxCombat.Core
     ///   <see cref="UsableFraction"/>      the health cap (health left, or 1)
     ///   <see cref="PeakShare"/>           f = min(E / (peak% × FULL pool), 1)
     ///   <see cref="BlowCostPoints"/>      cost of one blow in POINTS (CostPerBlow × hero × leader)
+    ///   <see cref="KickOrBashCostPoints"/> cost of one kick or shield bash (CostPerKickOrBash × the same)
     ///   <see cref="AttackSpeedMultiplier"/>, <see cref="RunSpeedMultiplier"/>, <see cref="MountSpeedMultiplier"/>
     ///                                     the curves floor + (1 − floor) × f
     ///   <see cref="DamageUpside"/>        the f the damage roll's upside follows
@@ -552,6 +562,10 @@ namespace TraxCombat.Core
         /// <summary>Points one blow costs this fighter, whatever his pool: CostPerBlow × the multipliers
         /// (10 / 7.5 / 5.6).</summary>
         public static double BlowCostPoints(in AthleticsRules r, Fighter f) => Math.Max(0, r.CostPerBlow * CostMultiplier(in r, f));
+
+        /// <summary>Points one kick or shield bash costs this fighter (step 18): CostPerKickOrBash × the same
+        /// hero and party-leader multipliers as a blow (3 / 2.25 / 1.69). 0 = free.</summary>
+        public static double KickOrBashCostPoints(in AthleticsRules r, Fighter f) => Math.Max(0, r.CostPerKickOrBash * CostMultiplier(in r, f));
 
         // ------------------------------------------------------------------ regen by effort
 
@@ -674,9 +688,33 @@ namespace TraxCombat.Core
         public static BlowOutcome Charge(Fighter f, in AthleticsRules r, double now)
         {
             if (!r.Enabled) return default;
+            f.Blows++;
+            return Drain(f, in r, now, BlowCostPoints(in r, f));
+        }
+
+        /// <summary>
+        /// One kick or shield bash (step 18, DESIGN §2 "What is a blow"): take
+        /// <see cref="KickOrBashCostPoints"/> POINTS, exactly like a blow otherwise - never below 0, at 0 the
+        /// fighter is exhausted, the regen delay restarts, a refill run ends. Counted in
+        /// <see cref="Fighter.KicksAndBashes"/>, never in <see cref="Fighter.Blows"/>. Nothing happens
+        /// (<see cref="BlowOutcome.Charged"/> false) while Athletics is off or the cost is 0 (free, as before
+        /// step 18 - not even the regen delay). The attack timer is the caller's business: a kick or bash
+        /// never starts one.
+        /// </summary>
+        public static BlowOutcome ChargeKickOrBash(Fighter f, in AthleticsRules r, double now)
+        {
+            if (!r.Enabled) return default;
+            double cost = KickOrBashCostPoints(in r, f);
+            if (!(cost > 0)) return default;
+            f.KicksAndBashes++;
+            return Drain(f, in r, now, cost);
+        }
+
+        /// <summary>Take <paramref name="cost"/> points (a blow's or a kick's) - the shared body of the two charges.</summary>
+        private static BlowOutcome Drain(Fighter f, in AthleticsRules r, double now, double cost)
+        {
             double pool = PoolPoints(in r, f);
             double multiplier = CostMultiplier(in r, f);
-            double cost = BlowCostPoints(in r, f);
             double before = f.Fraction;
             double shareBefore = PeakShareOf(in r, before);
             double after = before - cost / pool;
@@ -685,7 +723,6 @@ namespace TraxCombat.Core
 
             f.Fraction = after;
             f.LastBlowTime = now;
-            f.Blows++;
             f.Regenerating = false;
             if (after < f.LowestFraction) f.LowestFraction = after;
 

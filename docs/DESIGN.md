@@ -58,8 +58,17 @@ regen.)
   - the hero who LEADS the fighter's party (the player for their own party, a lord for his):
     × `PartyLeaderCostMultiplier` (0.75) on top → 0.75 × 0.75 × 10 = 5.6 per blow.
 - **What is a blow**: a melee swing or thrust, a shot, a throw. A couched lance or braced
-  spear hit has no swing, so it costs one blow when it LANDS. Kicks, shield bashes and
-  siege engines (ballista, onager) cost nothing.
+  spear hit has no swing, so it costs one blow when it LANDS. Siege engines (ballista, onager)
+  cost nothing.
+- **Kicks and shield bashes cost too — less** (Anton, 2026-09-28; built in step 18): each costs
+  `CostPerKickOrBash` (3) POINTS × the same hero and party-leader multipliers as a blow — 3 for a
+  soldier, 2.25 for a hero, about 1.7 (1.69) for a party leader; 0 = free, as they were until step 18.
+  Charged ONCE per kick or bash, the moment it starts, landed or not (`CostOnMiss` is for blows);
+  the AI's and yours alike. Otherwise it is paid like a blow: the curves follow, it can take a
+  fighter below his peak line or empty him, and it restarts the refill delay. It is **not a blow**:
+  it never starts the no-attack pause below (step 13's rules stand - a kick is never held, a bash
+  waits while a pause runs), never rolls a step back, and the log counts it apart. Riders cannot
+  kick; a mounted bash, should the engine ever play one, is charged the same.
 - **The peak zone** — the top of every fighter's OWN bar (Anton, 2026-09-27). At or above
   `AthleticsPeakPercent` (75) % of the fighter's pool the bar is GREEN and the fighter is at
   full strength: full damage upside, full attack rate (no pause), full run speed, never steps back.
@@ -99,9 +108,10 @@ regen.)
       javelin); the pause starts when that reload ends. Melee: at the swing's end (a block
       recoil plays inside the pause). m is the exact curve value when the attack ends.
     - **Never held**: blocking and parrying, moving, switching weapons, kicks (a key and an
-      action of their own; free). Shield bashes — the attack button while blocking — wait with
-      every other use of the attack button (still free of Athletics). The reload itself is never
-      held; the next draw, aim or throw waits.
+      action of their own; since step 18 a kick costs Athletics but never starts or waits out a
+      pause). Shield bashes — the attack button while blocking — wait with every other use of the
+      attack button (since step 18 they cost Athletics too, but never START a pause). The reload
+      itself is never held; the next draw, aim or throw waits.
     - **You** (`AttackRatePlayerTimer`, on): below the peak line your attack button does nothing
       while your pause runs — no wind-up at all, no stuck state; **keep it held and your next
       attack starts the moment the pause ends**. The hold begins at your release's start when
@@ -488,6 +498,7 @@ says (§2c).
 | `AthleticsPeakPercent` | 75 | At or above this % of their own pool a fighter is at full strength (green); below it they weaken in a straight line to 0. |
 | `HealthCapsAthletics` | true | Health left caps the usable pool. |
 | `CostPerBlow` | 10 | Athletics points one blow costs before multipliers (points, whatever the pool). |
+| `CostPerKickOrBash` | 3 | Step 18 (Anton): Athletics points one kick or shield bash costs before the hero and party-leader multipliers (3 / 2.25 / 1.7), once, when it starts, landed or not; never starts the attack pause. 0 = free (steps 5-17). |
 | `CostOnMiss` | true | true: every attack costs, landed or not. false: only blows that land. |
 | `HeroCostMultiplier` | 0.75 | Cost multiplier for heroes. |
 | `PartyLeaderCostMultiplier` | 0.75 | Extra multiplier for a party's leading hero, on top of the hero one. |
@@ -595,8 +606,8 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
    tournaments and arena). Per-mission toggles only if playtest asks for them.
 7. **Custom battle has no parties**: there the "party leader" is the side's general, or —
    when a side has none — every hero on that side.
-8. **Kicks and shield bashes are free**; a couched-lance / braced-spear hit costs one blow
-   when it lands; siege engines are free.
+8. **Kicks and shield bashes cost `CostPerKickOrBash`** (3 - Anton, 2026-09-28, step 18; free until
+   then - see 19); a couched-lance / braced-spear hit costs one blow when it lands; siege engines are free.
 9. **Shield damage is not randomized** by default; horse-charge bumps follow the melee
    toggle; fall damage and hits on objects never roll.
 10. **RBM is declared incompatible** (Anton confirmed, 2026-09-27) — see §5.
@@ -682,6 +693,18 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     pause itself is still DESIGN's D × (1/m − 1): the AI's own gap after an attack runs inside it, so the
     verdict against the fresh cycle ÷ m may read "too fast" where NoAttack's 1-3 s re-decision used to
     fill the gap - the timer rows and the new "floor D/m" say whether the SPEC holds.
+
+19. **Kicks and shield bashes cost Athletics** (step 18, Claude's calls on Anton's "3, a slider, hero/leader
+    multipliers apply like any blow" - AI_NOTES "Step 18"): charged when the kick or bash STARTS, landed or
+    not - `CostOnMiss` stays a rule for blows (a kick is one short move, and a landed-only kick would be
+    free exactly when it fails); a cost of 0 is free in every way (not even the refill delay restarts), a
+    cost above 0 restarts the refill delay like a blow (it is effort); it is never a blow - `Blows`, the
+    "blows at full strength" counts and the attack-rate numbers leave it out, it starts no pause and no step
+    back. Where a kick is seen is not proven in game (a shield bash showed on the upper-body action channel
+    in the log of 2026-09-27; the game's own code reads kicks on the whole-body channel), so both channels
+    are read (the whole-body one on foot only - riders never kick) and a kick on both is one kick; a kick
+    or bash that LANDS while neither channel shows one is charged at its hit, and the summary says how many
+    each way. A mounted bash is charged like any bash if the engine ever plays one (vanilla has none).
 
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),

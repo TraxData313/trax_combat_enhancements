@@ -148,6 +148,7 @@ namespace TraxCombat.Tools
             S.Set(SettingsSchema.AthleticsPeakPercent, 75, SettingSources.File);
             S.Set(SettingsSchema.HealthCapsAthletics, true, SettingSources.File);
             S.Set(SettingsSchema.CostPerBlow, 10, SettingSources.File);
+            S.Set(SettingsSchema.CostPerKickOrBash, 3, SettingSources.File); // step 18
             S.Set(SettingsSchema.CostOnMiss, true, SettingSources.File);
             S.Set(SettingsSchema.HeroCostMultiplier, 0.75, SettingSources.File);
             S.Set(SettingsSchema.PartyLeaderCostMultiplier, 0.75, SettingSources.File);
@@ -361,14 +362,18 @@ namespace TraxCombat.Tools
             for (int i = 0; i < 4; i++) Swing(st, ref t); // empty swings: 5x as long
             Check(st.Blows == 9 && st.Exhausted && st.ExhaustionsEntered == 1, "empty swings: blows " + st.Blows + ", entries " + st.ExhaustionsEntered);
 
-            // free: kicks, bashes; ranged releases are counted by the poll but charged by the shot event
+            // step 18: a kick, then straight into a bash - each charged (at 0 they drain nothing), never a blow,
+            // never an attack timer or a step-back roll (he is empty: an attack would start both);
+            // ranged releases are counted by the poll but charged by the shot event
             var r = Rules;
+            int timers = AiTimersAsked(), rolls = _logic.StepStats.Rolls;
             _logic.ObserveAction(st, (int)Agent.ActionCodeType.Kick, t, in r);
             _logic.ObserveAction(st, (int)Agent.ActionCodeType.WeaponBash, t + 0.5, in r);
+            Check(AiTimersAsked() == timers && _logic.StepStats.Rolls == rolls, "a kick or a bash of an empty fighter started an attack timer or a step-back roll");
             _logic.ObserveAction(st, (int)Agent.ActionCodeType.ReleaseRanged, t + 1.0, in r);
             _logic.ObserveAction(st, ActIdle, t + 1.5, in r);
             t += 2;
-            Check(st.Blows == 9, "a kick, bash or ranged release was charged");
+            Check(st.Blows == 9 && st.KicksAndBashes == 2 && st.Fraction == 0, "a kick / bash counted as a blow, or a ranged release charged: blows " + st.Blows + ", kicks/bashes " + st.KicksAndBashes);
 
             // a 300-skill party leader who is a hero: 5.6 a blow, 14 at full strength, empty on the 54th
             var b = FakeAgent(4);
@@ -395,7 +400,8 @@ namespace TraxCombat.Tools
             var stats = _logic.Stats;
             Check(stats.Charged(BlowKind.Melee) == 67 && stats.MeleeReleasesSeen == 67 && stats.ExhaustionsEntered == 2 && stats.PeakLeft == 2,
                 "stats: melee " + stats.Charged(BlowKind.Melee) + ", releases " + stats.MeleeReleasesSeen + ", exhaustions " + stats.ExhaustionsEntered + ", peak left " + stats.PeakLeft);
-            Check(stats.KicksSeen == 1 && stats.BashesSeen == 1 && stats.RangedReleasesPolled == 1, "free actions not counted");
+            Check(stats.KicksSeen == 1 && stats.BashesSeen == 1 && stats.KicksCharged == 1 && stats.BashesCharged == 1 && stats.KicksSeenUpper == 1
+                  && stats.RangedReleasesPolled == 1, "kicks, bashes or ranged releases not counted");
             // step 5e: the attack-rate cycles by f (the Swing helper plays every phase ÷ m: on target)
             var rate = _logic.RateStats;
             Check(rate.CycleCount(AttackKind.Melee, false, 0) == 14 && rate.CycleCount(AttackKind.Melee, false, 3) == 8 && rate.CyclesMixed[0] == 0,
@@ -404,6 +410,109 @@ namespace TraxCombat.Tools
                 "the empty cycles are not the fresh 1.3 s ÷ 0.2: fresh " + rate.FreshCycle(AttackKind.Melee, false) + ", ratio " + rate.Ratio(AttackKind.Melee, false, 3));
             Check(rate.PhaseCount(AttackKind.Melee, false, 3, AttackPhase.CleanRelease) == 8 && Near(rate.PhaseMean(AttackKind.Melee, false, 3, AttackPhase.Release), 2.5),
                 "empty swings: " + rate.PhaseCount(AttackKind.Melee, false, 3, AttackPhase.CleanRelease) + ", avg " + rate.PhaseMean(AttackKind.Melee, false, 3, AttackPhase.Release));
+        }
+
+        /// <summary>AI timers asked so far (every band, melee and ranged) - an attack of a tired AI fighter adds one.</summary>
+        private static int AiTimersAsked()
+        {
+            int n = 0;
+            for (int bin = 0; bin < AthleticsMath.PeakBins; bin++)
+                n += _logic!.RateStats.Timers(AttackKind.Melee, false, bin) + _logic.RateStats.Timers(AttackKind.Ranged, false, bin);
+            return n;
+        }
+
+        /// <summary>Step 18: kicks and shield bashes cost CostPerKickOrBash x the blow's multipliers, once each,
+        /// when they start - whichever channel shows them, or at their hit when none did.</summary>
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static void KicksAndBashesCost()
+        {
+            S.Set(SettingsSchema.VerboseLogging, true, SettingSources.File);
+            Check(KickBashTracker.ActionKick == (int)Agent.ActionCodeType.Kick && KickBashTracker.ActionKickContinue == (int)Agent.ActionCodeType.KickContinue
+                  && KickBashTracker.ActionKickHit == (int)Agent.ActionCodeType.KickHit && KickBashTracker.ActionWeaponBash == (int)Agent.ActionCodeType.WeaponBash,
+                "Core's kick / bash action codes are not the game's");
+            var st = _logic!.Track(FakeAgent(20))!;
+            st.AthleticsSkill = 100; // pool 100, the line at 75: these kicks never leave the peak zone
+            var stats = _logic.Stats;
+            int charged = stats.KickOrBashCharged, atHit = stats.KickOrBashChargedAtHit;
+            var r = Rules;
+            double t = 300;
+
+            // a kick on channel 1 that lands (KickHit, its hit) - one charge of 3
+            _logic.ObserveAction(st, KickBashTracker.ActionKick, t, in r);
+            Check(Near(st.Fraction, 0.97) && st.KicksAndBashes == 1 && st.Blows == 0, "a kick did not cost 3 of 100: " + st.Fraction * 100);
+            LogHas("[athletics] kick (on foot): (agent 20) - cost 3.0, 100.0 → 97.0 of 100 (f 1.00 → 1.00)");
+            _logic.ObserveAction(st, KickBashTracker.ActionKickHit, t + 0.3, in r);
+            _logic.KickOrBashHit(st, t + 0.3, in r, mounted: false);
+            _logic.ObserveAction(st, ActIdle, t + 0.8, in r);
+            Check(Near(st.Fraction, 0.97) && st.KicksAndBashes == 1, "a kick that landed was charged again: " + st.Fraction * 100);
+            Check(st.LastBlowTime == t, "a kick did not restart the refill delay");
+
+            // a kick on channel 0 (the whole body), shown on channel 1 too - one kick
+            t += 2;
+            _logic.ObserveLowerAction(st, KickBashTracker.ActionKick, t, in r);
+            _logic.ObserveAction(st, KickBashTracker.ActionKick, t + 0.02, in r);
+            _logic.ObserveLowerAction(st, ActIdle, t + 0.7, in r);
+            _logic.ObserveAction(st, ActIdle, t + 0.7, in r);
+            Check(Near(st.Fraction, 0.94) && st.KicksAndBashes == 2 && stats.KicksSeenLower == 1, "a kick on both channels was not one kick: " + st.Fraction * 100);
+
+            // a shield bash that lands - once
+            t += 2;
+            _logic.ObserveAction(st, KickBashTracker.ActionWeaponBash, t, in r);
+            _logic.KickOrBashHit(st, t + 0.2, in r, mounted: false);
+            _logic.ObserveAction(st, ActIdle, t + 0.6, in r);
+            Check(Near(st.Fraction, 0.91) && st.KicksAndBashes == 3, "a bash that landed was not charged exactly once: " + st.Fraction * 100);
+            LogHas("[athletics] shield bash (on foot): (agent 20) - cost 3.0, 94.0 → 91.0 of 100");
+
+            // a hit no channel showed: charged at the hit; the poll's late sight of it is not charged again
+            t += 2;
+            _logic.KickOrBashHit(st, t, in r, mounted: false);
+            _logic.ObserveAction(st, KickBashTracker.ActionWeaponBash, t + 0.05, in r);
+            _logic.ObserveAction(st, ActIdle, t + 0.5, in r);
+            Check(Near(st.Fraction, 0.88) && st.KicksAndBashes == 4, "a kick/bash seen only at its hit: " + st.Fraction * 100);
+            LogHas("[athletics] kick/bash at its hit (on foot): (agent 20) - cost 3.0, 91.0 → 88.0 of 100");
+            Check(stats.KickOrBashCharged == charged + 4 && stats.KickOrBashChargedAtHit == atHit + 1 && st.Blows == 0,
+                "kick/bash charges not counted apart from blows: " + (stats.KickOrBashCharged - charged) + ", at the hit " + (stats.KickOrBashChargedAtHit - atHit));
+
+            // you, a party leader who is a hero: 3 x 0.75 x 0.75 = 1.69 - the YOU line; no attack pause
+            var me = _logic.Track(FakeAgent(21))!;
+            me.IsHero = true;
+            me.IsLeader = true; // the floor: 50
+            _logic.SmokePlayer = me.Agent;
+            t += 2;
+            _logic.ObserveAction(me, KickBashTracker.ActionKick, t, in r);
+            Check(!_logic.PlayerTimer.Running && !_logic.PlayerTimer.Holding, "your kick started your attack pause");
+            _logic.ObserveAction(me, ActIdle, t + 0.6, in r);
+            Check(Near(me.Fraction * 50, 50 - 1.6875), "a hero party leader's kick did not cost 1.69: " + me.Fraction * 50);
+            LogHas("[athletics] YOU: kick at ");
+            LogHas(" s cost 1.69 Athletics (3.00 x0.56 hero party leader): 50.0 → 48.3 of 50 (f 1.00 → 1.00) - the first this battle: a kick or a shield bash costs CostPerKickOrBash x your hero / party-leader multipliers, once, when it starts; it never starts your attack pause");
+            _logic.SmokePlayer = null;
+
+            // live: 0 = free (counted as such); Athletics or the whole mod off = nothing at all
+            double before = st.Fraction;
+            int free = stats.KickOrBashFree;
+            S.Set(SettingsSchema.CostPerKickOrBash, 0, SettingSources.Mcm);
+            r = Rules;
+            t += 2;
+            _logic.ObserveAction(st, KickBashTracker.ActionKick, t, in r);
+            _logic.ObserveAction(st, ActIdle, t + 0.6, in r);
+            Check(st.Fraction == before && st.KicksAndBashes == 4 && stats.KickOrBashFree == free + 1 && st.LastBlowTime < t,
+                "CostPerKickOrBash 0: the kick was not free (or restarted the refill delay)");
+            S.Set(SettingsSchema.CostPerKickOrBash, 3, SettingSources.Mcm);
+            foreach (var sw in new[] { SettingsSchema.AthleticsEnabled, SettingsSchema.ModEnabled })
+            {
+                S.Set(sw, false, SettingSources.Mcm);
+                r = Rules;
+                t += 2;
+                _logic.ObserveAction(st, KickBashTracker.ActionWeaponBash, t, in r);
+                _logic.ObserveAction(st, ActIdle, t + 0.6, in r);
+                Check(st.Fraction == before && st.KicksAndBashes == 4 && stats.KickOrBashFree == free + 1, sw.Key + " off: a bash was charged");
+                S.Set(sw, true, SettingSources.Mcm);
+            }
+            r = Rules;
+            t += 2;
+            _logic.ObserveAction(st, KickBashTracker.ActionKick, t, in r);
+            _logic.ObserveAction(st, ActIdle, t + 0.6, in r);
+            Check(Near(st.Fraction, before - 0.03) && st.KicksAndBashes == 5, "back on: a kick was not charged 3 again");
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
@@ -575,9 +684,12 @@ namespace TraxCombat.Tools
             var stats = _logic.Stats;
             LogHas("[summary] Athletics settings at the end: ON - pool = the Athletics skill x1.00, at least 50;");
             LogHas("[summary] Athletics pools (the Athletics skill x1.00, at least 50; settings at the end): " + stats.FightersTracked + " fighters - min 50 / avg ");
-            LogHas("[summary] Athletics blows charged: 67 (melee swings 67, shots/throws 0, couched/braced hits 0, landed-only swings 0, landed-only shots 0) - by riders 0, on foot 67; Athletics spent ");
+            LogHas("[summary] Athletics blows charged: 67 (melee swings 67, shots/throws 0, couched/braced hits 0, landed-only swings 0, landed-only shots 0) - by riders 0, on foot 67; + kicks/bashes " + stats.KickOrBashCharged + " (not blows - their own line); Athletics spent ");
             LogHas("[summary] Athletics detection: melee releases seen 67 (mounted 0)");
-            LogHas("[summary] Athletics free (never charged): kicks 1, shield bashes 1,");
+            LogHas("[summary] Athletics kicks/bashes charged " + stats.KickOrBashCharged + " (");
+            LogHas("| seen starting: kicks " + stats.KicksSeen + " (channel 1 " + stats.KicksSeenUpper + ", channel 0 " + stats.KicksSeenLower + "), shield bashes " + stats.BashesSeen);
+            LogHas("; each charged once, when it starts; never an attack pause");
+            LogHas("[summary] Athletics free (never charged): couched hits within one blow-length of the last ");
             LogHas("[summary] Athletics exhaustions (empty, f 0): 2 entered, 0 left; the peak zone: left 2 times");
             LogHas("[summary] Athletics fighter-time by f (the share of his peak line left): no fighter-time recorded");
             LogHas("[summary] Athletics you: no player fighter this mission");
@@ -689,6 +801,12 @@ namespace TraxCombat.Tools
             int rolls = _logic.StepStats.Rolls;
             Swing(a, ref t);
             Check(a.Blows == blows && a.Fraction == 1, "mod off: a swing was charged");
+            int kicks = a.KicksAndBashes;
+            var off18 = Rules;
+            _logic.ObserveAction(a, KickBashTracker.ActionKick, t, in off18);
+            _logic.ObserveAction(a, ActIdle, t + 0.5, in off18);
+            t += 1;
+            Check(a.KicksAndBashes == kicks && a.Fraction == 1, "mod off: a kick was charged (step 18)");
             Check(_logic.StepStats.Rolls == rolls, "mod off: a swing was rolled for a step back");
 
             S.Set(SettingsSchema.ModEnabled, true, SettingSources.Mcm);

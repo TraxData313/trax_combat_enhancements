@@ -93,6 +93,13 @@
   // (range 0.0 to 100.0)
   "CostPerBlow": 10.0,
 
+  // Athletics points one kick or one shield bash costs a common soldier - yours and the AI's
+  // alike. Heroes pay it times the hero cost and party leaders times both, just like a blow: 3
+  // costs a hero 2.25 and a party leader about 1.7. Paid once, when the kick or bash starts,
+  // landed or not. It never starts the pause between attacks. 0 = kicks and bashes are free.
+  // (range 0.0 to 20.0)
+  "CostPerKickOrBash": 3.0,
+
   // On: every attack costs Athletics, landed or not. Off: only attacks that hit something (a
   // body, a shield, a parrying weapon) cost.
   // (true or false)

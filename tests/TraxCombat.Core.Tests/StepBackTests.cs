@@ -14,7 +14,7 @@ public class StepBackTests
         => new(enabled, chance, distance, seconds, range, hold, atOnce, athletics, mod);
 
     private static AthleticsRules Athletics(bool enabled = true, bool mod = true)
-        => new(enabled, 50, 1.0f, 75, true, 10, true, 0.75f, 0.75f, 20, 0.7f, 1.0f, true, 2, 1.5f, 60, 0.5f, 0.4f, 50, mod);
+        => new(enabled, 50, 1.0f, 75, true, 10, true, 0.75f, 0.75f, 3, 20, 0.7f, 1.0f, true, 2, 1.5f, 60, 0.5f, 0.4f, 50, mod);
 
     // ------------------------------------------------------------------ settings
 

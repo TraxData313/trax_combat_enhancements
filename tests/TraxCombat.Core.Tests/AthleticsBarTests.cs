@@ -12,7 +12,7 @@ public class AthleticsBarTests
     private static readonly BarRules Design = new(75, 50, 25);
 
     private static AthleticsRules Athletics()
-        => new(true, 50, 1.0f, 75, true, 10, true, 0.75f, 0.75f, 20, 0.7f, 1.0f, true, 2, 1.5f, 60, 0.5f, 0.4f, 50, true);
+        => new(true, 50, 1.0f, 75, true, 10, true, 0.75f, 0.75f, 3, 20, 0.7f, 1.0f, true, 2, 1.5f, 60, 0.5f, 0.4f, 50, true);
 
     // ------------------------------------------------------------------ settings
 

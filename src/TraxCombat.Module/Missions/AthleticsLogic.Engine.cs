@@ -31,7 +31,10 @@ namespace TraxCombat.Missions
     /// CostOnMiss off = charge at the first landed hit of a swing (keyed on the swing counter) and
     /// when one of the fighter's own missiles hits an agent. Couched lance / braced spear
     /// (<c>IsDoingPassiveAttack</c>) = one blow when it lands, at most one per BlowTimeSeconds.
-    /// Kicks, bashes (<c>IsAlternativeAttack</c>), horse charges and siege engines are free.
+    /// Horse charges and siege engines are free. Kicks and shield bashes (step 18) cost CostPerKickOrBash
+    /// once each, when they start - the rising edge into Kick / WeaponBash on channel 1 or (on foot) channel 0,
+    /// or their hit (<c>IsAlternativeAttack</c>) when no channel showed one (Core <see cref="KickBashTracker"/>);
+    /// they never start the attack timer.
     ///
     /// HEALTH CAP: the health left (managed <c>Health ÷ HealthLimit</c>) is read at every hit on a
     /// fighter (<c>OnAgentHit</c>) and every regen step; while HealthCapsAthletics is on it pulls
@@ -104,6 +107,7 @@ namespace TraxCombat.Missions
         private Agent? _playerAgent;
         private TrackedAgent? _player;
         private bool _playerPoolLogged;
+        private bool _playerKickLogged; // step 18: the first kick / bash line carries the rule in words
 
         // The once-per-mission proof that the penalty reaches the agent's properties.
         private TrackedAgent? _firstExhausted;
@@ -406,6 +410,11 @@ namespace TraxCombat.Missions
                         polled++;
                         int action = (int)a.GetCurrentActionType(1);
                         if (action != st.PrevAction) ObserveAction(st, action, now, in r);
+                        if (a.MountAgent == null) // step 18: kicks may play on the whole-body channel (riders never kick)
+                        {
+                            int lower = (int)a.GetCurrentActionType(0);
+                            if (lower != st.PrevLowerAction) ObserveLowerAction(st, lower, now, in r);
+                        }
                         if (st.ReadyPolling) PollReady(st, a, now); // step 5e: wind-up vs hold (only in an unfinished ready)
                         _stats.AddPeakTime(AthleticsMath.PeakShare(in r, st), dt);
                     }
@@ -526,7 +535,8 @@ namespace TraxCombat.Missions
         /// attack's D and flag its end), then the falling edge of a swing ends it (the step-back roll),
         /// then an attack that ended here gets its no-attack timer (step 13 - yours or the AI's), the
         /// rising edge into ReleaseMelee is a swing (and your hold may begin at its start); ranged
-        /// releases, kicks and bashes are counted for the cross-checks (never charged here).</summary>
+        /// releases are counted for the cross-checks (charged by the shot event); a kick or shield bash
+        /// that starts here is charged (step 18 - never an attack timer).</summary>
         internal void ObserveAction(TrackedAgent st, int action, double now, in AthleticsRules r)
         {
             int prev = st.PrevAction;
@@ -550,13 +560,33 @@ namespace TraxCombat.Missions
                     _stats.RangedReleasesPolled++;
                     PlayerAttackStarting(st, now, AttackKind.Ranged, in r);
                     break;
-                case ActionKick:
-                    _stats.KicksSeen++;
-                    break;
-                case ActionWeaponBash:
-                    _stats.BashesSeen++;
-                    break;
             }
+            var kick = st.KickBash.Observe(false, action, now);
+            if (kick != KickBashKind.None) KickOrBashStarted(st, kick, false, now, in r);
+        }
+
+        /// <summary>Step 18: the channel-0 (whole body) action changed - only kicks and bashes are read there
+        /// (a kick may play on it; the game's <c>StandingPoint</c> reads kicks on channel 0).</summary>
+        internal void ObserveLowerAction(TrackedAgent st, int action, double now, in AthleticsRules r)
+        {
+            st.PrevLowerAction = action;
+            var kick = st.KickBash.Observe(true, action, now);
+            if (kick != KickBashKind.None) KickOrBashStarted(st, kick, true, now, in r);
+        }
+
+        /// <summary>Step 18: a new kick or shield bash starts - seen on one channel, charged once.</summary>
+        private void KickOrBashStarted(TrackedAgent st, KickBashKind kind, bool lowerChannel, double now, in AthleticsRules r)
+        {
+            _stats.AddKickOrBashSeen(kind, lowerChannel);
+            ChargeKickOrBash(st, kind, now, in r, st.Agent.MountAgent != null);
+        }
+
+        /// <summary>Step 18: a kick or bash LANDED (OnMeleeHit, after both channels were read): charged here
+        /// only when no channel showed it (the poll missed it) - else it was charged at its start.</summary>
+        internal void KickOrBashHit(TrackedAgent st, double now, in AthleticsRules r, bool mounted)
+        {
+            _stats.KickOrBashHits++;
+            if (st.KickBash.Hit(now)) ChargeKickOrBash(st, KickBashKind.None, now, in r, mounted);
         }
 
         private void StartRelease(TrackedAgent st, double now, in AthleticsRules r)
@@ -607,7 +637,34 @@ namespace TraxCombat.Missions
             var o = AthleticsMath.Charge(st, in r, now);
             if (!o.Charged) return;
             _stats.AddCharge(kind, mounted, o.Before - o.After); // what was really drained (a swing at 0 drains nothing)
-            if (TraxLog.VerboseWants("athletics-blow")) LogBlow(st, kind, in o, mounted);
+            if (TraxLog.VerboseWants("athletics-blow")) LogBlow(st, "blow " + KindName(kind), in o, mounted);
+            AfterCharge(st, in o, now, in r);
+        }
+
+        /// <summary>
+        /// Step 18: one kick or shield bash (<paramref name="kind"/> None = charged at its hit, kind unknown):
+        /// CostPerKickOrBash x the blow's multipliers, like a blow otherwise (the curves re-targeted, the peak
+        /// line, exhaustion, the regen delay) - but NEVER the attack timer, the step back or the player's hold
+        /// (those follow attacks only - step 13's rules: kicks never held, bashes wait while a timer runs).
+        /// Free (counted) while the cost is 0; Athletics off = nothing (the poll does not run).
+        /// </summary>
+        private void ChargeKickOrBash(TrackedAgent st, KickBashKind kind, double now, in AthleticsRules r, bool mounted)
+        {
+            var o = AthleticsMath.ChargeKickOrBash(st, in r, now);
+            if (!o.Charged)
+            {
+                if (r.Enabled) _stats.KickOrBashFree++;
+                return;
+            }
+            _stats.AddKickOrBashCharge(kind, mounted, o.Before - o.After);
+            if (IsPlayer(st)) LogPlayerKickOrBash(st, kind, in o, now, in r);
+            else if (TraxLog.VerboseWants("athletics-kick")) LogBlow(st, KickBashName(kind), in o, mounted, "athletics-kick");
+            AfterCharge(st, in o, now, in r);
+        }
+
+        /// <summary>What every charge (a blow, a kick, a bash) does after the points are taken.</summary>
+        private void AfterCharge(TrackedAgent st, in BlowOutcome o, double now, in AthleticsRules r)
+        {
             float prevAttack = st.SpeedMultiplier, prevRun = st.RunSpeedMultiplier;
             RetargetSpeed(st, in r);
             if (o.LeftPeak)
@@ -1160,13 +1217,27 @@ namespace TraxCombat.Missions
             {
                 var st = Get(attacker);
                 if (st == null || collisionData.IsHorseCharge) return; // horses (charges) are not tracked; bumps are free
-                if (collisionData.IsAlternativeAttack)
-                {
-                    _stats.KickOrBashHits++; // kicks and shield bashes are free (DESIGN interpretation 8)
-                    return;
-                }
                 var r = Rules;
                 double now = Mission.CurrentTime;
+                if (collisionData.IsAlternativeAttack) // step 18: a kick or shield bash - charged once, at its start
+                {
+                    if (!r.Enabled)
+                    {
+                        _stats.KickOrBashHits++;
+                        return;
+                    }
+                    // the hit can come before the poll saw the action: read both channels now (as for a swing)
+                    int upper = (int)attacker.GetCurrentActionType(1);
+                    if (upper != st.PrevAction) ObserveAction(st, upper, now, in r);
+                    bool onHorse = attacker.MountAgent != null;
+                    if (!onHorse)
+                    {
+                        int lower = (int)attacker.GetCurrentActionType(0);
+                        if (lower != st.PrevLowerAction) ObserveLowerAction(st, lower, now, in r);
+                    }
+                    KickOrBashHit(st, now, in r, onHorse);
+                    return;
+                }
                 if (!r.Enabled)
                 {
                     _stats.AttacksWhileOff++;

@@ -16,12 +16,13 @@ public class AthleticsStatsTests
     {
         var lines = Lines(new AthleticsStats());
         Assert.Equal("Athletics settings at the end: ON - pool = the Athletics skill x1.00, at least 50; full strength at 75% of the pool and above; "
-            + "cost per blow 10.0 / hero 7.5 / party leader 5.6 points, misses cost: yes; when empty: attacks at 20%, run x0.70, horses x1.00 (never slowed); "
+            + "cost per blow 10.0 / hero 7.5 / party leader 5.6 points; a kick or shield bash 3.00 / hero 2.25 / party leader 1.69 points, misses cost: yes; when empty: attacks at 20%, run x0.70, horses x1.00 (never slowed); "
             + "damage upside follows Athletics: yes; wounds cap the pool: yes; refill after 3.0 s rest: empty to full in 60 s at a walk or slower "
             + "(up to 0.40 of top speed), x0.50 at a full run, near full at 50% of the rate near empty (at a walk: half the bar in 25 s, the peak line in 41 s)", lines[0]);
         Assert.Contains("Athletics refill from empty to the peak line (no blow between): none this mission (40.7 s at a walk or slower with these settings)", lines);
         Assert.Contains("Athletics pools (the Athletics skill, settings at the end): no fighters tracked", lines);
-        Assert.Contains("Athletics blows charged: 0 (melee swings 0, shots/throws 0, couched/braced hits 0, landed-only swings 0, landed-only shots 0) - by riders 0, on foot 0; Athletics spent 0 points", lines);
+        Assert.Contains("Athletics blows charged: 0 (melee swings 0, shots/throws 0, couched/braced hits 0, landed-only swings 0, landed-only shots 0) - by riders 0, on foot 0; + kicks/bashes 0 (not blows - their own line); Athletics spent 0 points (kicks/bashes 0 of them)", lines);
+        Assert.Contains("Athletics kicks/bashes charged 0 (0.0 points; by riders 0): kicks 0, shield bashes 0, at their hit with no kick or bash seen 0 | seen starting: kicks 0 (channel 1 0, channel 0 0), shield bashes 0 (channel 1 0, channel 0 0); kick/bash hits 0; free (CostPerKickOrBash 0) 0; each charged once, when it starts; never an attack pause", lines);
         Assert.Contains("Athletics exhaustions (empty, f 0): 0 entered, 0 left; the peak zone: left 0 times (a blow took a fighter below his line), re-entered 0 times (by refill)", lines);
         Assert.Contains("Athletics fighter-time by f (the share of his peak line left): no fighter-time recorded", lines);
         Assert.Contains("Athletics heroes: 0 flagged, 0 party leaders; lowest a hero reached: n/a (no heroes)", lines);
@@ -87,8 +88,14 @@ public class AthleticsStatsTests
         s.MeleeHitsOnFoot = 2;
         s.MeleeHitsMounted = 2;
         s.AddHitOutsideRelease(35);
-        s.KicksSeen = 1;
-        s.BashesSeen = 2;
+        s.AddKickOrBashSeen(KickBashKind.Kick, lowerChannel: true);
+        s.AddKickOrBashSeen(KickBashKind.Bash, lowerChannel: false);
+        s.AddKickOrBashSeen(KickBashKind.Bash, lowerChannel: false);
+        s.AddKickOrBashSeen(KickBashKind.None, lowerChannel: false); // not a kick or bash: not counted
+        s.AddKickOrBashCharge(KickBashKind.Kick, mounted: false, 3);
+        s.AddKickOrBashCharge(KickBashKind.Bash, mounted: false, 1.6875);
+        s.AddKickOrBashCharge(KickBashKind.None, mounted: false, 2.25); // at its hit, no channel showed it
+        s.KickOrBashFree = 1;
         s.KickOrBashHits = 3;
         s.ExhaustionsEntered = 2;
         s.ExhaustionsLeft = 1;
@@ -135,9 +142,12 @@ public class AthleticsStatsTests
             new KeyValuePair<string, FormationAthleticsStats>("Infantry", FormationAthleticsStats.From(inf, infF, infShare, 0, 1)),
             new KeyValuePair<string, FormationAthleticsStats>("Archers", FormationAthleticsStats.From(inf, infF, 0)));
 
-        Assert.Contains("Athletics blows charged: 4 (melee swings 2, shots/throws 1, couched/braced hits 1, landed-only swings 0, landed-only shots 0) - by riders 2, on foot 2; Athletics spent 33 points", lines);
+        Assert.Contains("Athletics blows charged: 4 (melee swings 2, shots/throws 1, couched/braced hits 1, landed-only swings 0, landed-only shots 0) - by riders 2, on foot 2; + kicks/bashes 3 (not blows - their own line); Athletics spent 40 points (kicks/bashes 7 of them)", lines);
         Assert.Contains("Athletics detection: melee releases seen 2 (mounted 1) | shots seen 1 (+2 extra projectiles of the same shot ignored) | ranged releases seen by the poll 1 | melee hits by fighters 4 (on foot 2, mounted 2): during a counted release 3, outside one 1 [in action: action35 1]", lines);
-        Assert.Contains("Athletics free (never charged): kicks 1, shield bashes 2, kick/bash hits 3, couched hits within one blow-length of the last 0, attacks while Athletics was off 0, releases / shots waiting for a landed hit (misses cost: no) 0 / 0", lines);
+        Assert.Contains("Athletics kicks/bashes charged 3 (6.9 points; by riders 0): kicks 1, shield bashes 1, at their hit with no kick or bash seen 1 | seen starting: kicks 1 (channel 1 0, channel 0 1), shield bashes 2 (channel 1 2, channel 0 0); kick/bash hits 3; free (CostPerKickOrBash 0) 1; each charged once, when it starts; never an attack pause", lines);
+        Assert.Equal(3, s.KickOrBashCharged);
+        Assert.Equal(4, s.ChargedTotal); // blows only
+        Assert.Contains("Athletics free (never charged): couched hits within one blow-length of the last 0, attacks while Athletics was off 0, releases / shots waiting for a landed hit (misses cost: no) 0 / 0", lines);
         Assert.Contains("Athletics exhaustions (empty, f 0): 2 entered, 1 left; the peak zone: left 7 times (a blow took a fighter below his line), re-entered 4 times (by refill)", lines);
         Assert.Contains("Athletics heroes: 3 flagged, 2 party leaders (Derthert, you); lowest a hero reached: Rhagaea 12.5 of 100", lines);
         Assert.Contains("Athletics you: skill 180 → pool 180; 18 blows, 1 exhaustion, lowest 0.0 of 180", lines);

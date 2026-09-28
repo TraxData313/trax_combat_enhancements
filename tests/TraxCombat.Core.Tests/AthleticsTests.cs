@@ -11,8 +11,8 @@ public class AthleticsTests
     private static AthleticsRules Defaults(bool enabled = true, int floor = 50, float perSkill = 1.0f, int peak = 75, bool healthCaps = true,
         float cost = 10, bool costOnMiss = true, float hero = 0.75f, float leader = 0.75f, int speed = 20, float run = 0.7f, float mount = 1.0f,
         bool damageFollows = true, float delayBlows = 2, float blowTime = 1.5f, float standing = 60, float atFullRun = 0.5f, float walk = 0.4f,
-        bool modEnabled = true, int nearFull = 50)
-        => new(enabled, floor, perSkill, peak, healthCaps, cost, costOnMiss, hero, leader, speed, run, mount, damageFollows,
+        bool modEnabled = true, int nearFull = 50, float kick = 3)
+        => new(enabled, floor, perSkill, peak, healthCaps, cost, costOnMiss, hero, leader, kick, speed, run, mount, damageFollows,
             delayBlows, blowTime, standing, atFullRun, walk, nearFull, modEnabled);
 
     private static Fighter Troop(int skill, bool hero = false, bool leader = false) => new() { AthleticsSkill = skill, IsHero = hero, IsLeader = leader };
@@ -44,6 +44,7 @@ public class AthleticsTests
         Assert.Equal(0.75, r.PeakFraction, 9);
         Assert.True(r.HealthCaps);
         Assert.Equal(10f, r.CostPerBlow);
+        Assert.Equal(3f, r.CostPerKickOrBash);
         Assert.Equal(20, r.ExhaustedAttackSpeedPercent);
         Assert.Equal(0.7f, r.MinMoveSpeedMultiplier, 5);
         Assert.Equal(1.0f, r.MountMinSpeedMultiplier, 5);

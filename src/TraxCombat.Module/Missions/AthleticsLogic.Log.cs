@@ -13,12 +13,14 @@ namespace TraxCombat.Missions
     /// The Athletics log lines (CLAUDE.md, logging - one playtest must prove every behaviour):
     ///   always   [athletics] mission start (rules), leader rule, party leaders at spawn with their
     ///            pools (limited), first tick (fighters tracked), YOUR pool, dropping below / back to
-    ///            full strength, exhaustion, leaving 0, back to full, wounds (limited), Athletics or
+    ///            full strength, exhaustion, leaving 0, back to full, wounds (limited), your kicks and shield
+    ///            bashes (step 18 - limited, athletics-player-kick; the first with the rule), Athletics or
     ///            the mod switched mid-mission, pool settings changed; [speed] stat model on top, the
     ///            FIRST exhaustion's properties before → after → leaving 0 → back at full strength,
     ///            the first horse slowed (once per mission each), speed settings changed; the
     ///            [summary] block.
-    ///   verbose  per-fighter pool at spawn (athletics-pool), per blow with f (athletics-blow),
+    ///   verbose  per-fighter pool at spawn (athletics-pool), per blow with f (athletics-blow), per kick /
+    ///            shield bash (athletics-kick, step 18),
     ///            everyone's exhaustion / leaving 0 (athletics-exhaust), back to full
     ///            (athletics-regen), heroes at spawn (athletics-hero), health-cap cuts
     ///            (athletics-health), each speed recompute - fighters and horses (speed-update) -
@@ -28,12 +30,14 @@ namespace TraxCombat.Missions
     /// </summary>
     public sealed partial class AthleticsLogic
     {
-        private void LogBlow(TrackedAgent st, BlowKind kind, in BlowOutcome o, bool mounted)
+        /// <param name="what">"blow melee", "kick", "shield bash"…</param>
+        /// <param name="bucket">The verbose bucket (step 18: kicks and bashes have their own).</param>
+        private void LogBlow(TrackedAgent st, string what, in BlowOutcome o, bool mounted, string bucket = "athletics-blow")
         {
             try
             {
                 var sb = new StringBuilder(128);
-                sb.Append("blow ").Append(KindName(kind)).Append(mounted ? " (mounted)" : " (on foot)").Append(": ").Append(Name(st))
+                sb.Append(what).Append(mounted ? " (mounted)" : " (on foot)").Append(": ").Append(Name(st))
                   .Append(" - cost ").Append(F1(o.Cost));
                 if (st.IsHero || st.IsLeader)
                 {
@@ -46,7 +50,7 @@ namespace TraxCombat.Missions
                   .Append(" (f ").Append(F2(o.PeakShareBefore)).Append(" → ").Append(F2(o.PeakShareAfter)).Append(')');
                 if (o.LeftPeak) sb.Append(" - below full strength");
                 if (o.EnteredExhaustion) sb.Append(" - EXHAUSTED");
-                TraxLog.Verbose("athletics", sb.ToString(), "athletics-blow");
+                TraxLog.Verbose("athletics", sb.ToString(), bucket);
             }
             catch (Exception e)
             {
@@ -185,6 +189,39 @@ namespace TraxCombat.Missions
         }
 
         // ------------------------------------------------------------------ wording
+
+        /// <summary>Step 18: the player's kicks and shield bashes, always (rate-limited): the cost, the bar before
+        /// and after - the first of the battle with the rule in words.</summary>
+        private void LogPlayerKickOrBash(TrackedAgent st, KickBashKind kind, in BlowOutcome o, double now, in AthleticsRules r)
+        {
+            try
+            {
+                var sb = new StringBuilder(200);
+                sb.Append("YOU: ").Append(KickBashName(kind)).Append(" at ").Append(Sec(now)).Append(" s cost ").Append(F2(o.Cost)).Append(" Athletics (")
+                  .Append(F2(r.CostPerKickOrBash)).Append(" x").Append(F2(o.Multiplier));
+                if (st.IsHero) sb.Append(" hero");
+                if (st.IsLeader) sb.Append(" party leader");
+                sb.Append("): ").Append(F1(o.Before)).Append(" → ").Append(F1(o.After)).Append(" of ").Append(F0(o.Pool))
+                  .Append(" (f ").Append(F2(o.PeakShareBefore)).Append(" → ").Append(F2(o.PeakShareAfter)).Append(')');
+                if (!_playerKickLogged)
+                {
+                    _playerKickLogged = true;
+                    sb.Append(" - the first this battle: a kick or a shield bash costs CostPerKickOrBash x your hero / party-leader multipliers, once, when it starts; it never starts your attack pause");
+                }
+                TraxLog.Limited("athletics", sb.ToString(), "athletics-player-kick");
+            }
+            catch (Exception e)
+            {
+                Failed("athletics.log", e);
+            }
+        }
+
+        private static string KickBashName(KickBashKind kind) => kind switch
+        {
+            KickBashKind.Kick => "kick",
+            KickBashKind.Bash => "shield bash",
+            _ => "kick/bash at its hit",
+        };
 
         private static string KindName(BlowKind kind) => kind switch
         {

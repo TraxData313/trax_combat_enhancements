@@ -101,6 +101,11 @@ namespace TraxCombat.Core
             "Cost per blow (points)",
             "Athletics points one attack costs a common soldier, whatever the size of his bar - so a bigger Athletics skill means more blows. With the defaults a recruit (a 50-point bar) is empty after 5 blows, a legionary (130) after 13. 0 = attacks are free.");
 
+        // Step 18 (Anton, 2026-09-28): kicks and shield bashes cost too - their own price, the blow's multipliers.
+        public static readonly ParamDef CostPerKickOrBash = Float("CostPerKickOrBash", 0, 20, AthleticsGroup,
+            "Cost per kick or shield bash (points)",
+            "Athletics points one kick or one shield bash costs a common soldier - yours and the AI's alike. Heroes pay it times the hero cost and party leaders times both, just like a blow: 3 costs a hero 2.25 and a party leader about 1.7. Paid once, when the kick or bash starts, landed or not. It never starts the pause between attacks. 0 = kicks and bashes are free.");
+
         public static readonly ParamDef CostOnMiss = Bool("CostOnMiss", AthleticsGroup,
             "Misses cost too",
             "On: every attack costs Athletics, landed or not. Off: only attacks that hit something (a body, a shield, a parrying weapon) cost.");
@@ -379,7 +384,7 @@ namespace TraxCombat.Core
             DamageRandomEnabled, DamageRandomPercent, DamageRandomMelee, DamageRandomRanged,
             DamageRandomOnMounts, DamageRandomOnShields,
             AthleticsEnabled, AthleticsPoolFloor, AthleticsPoolPerSkill, AthleticsPeakPercent, HealthCapsAthletics,
-            CostPerBlow, CostOnMiss, HeroCostMultiplier, PartyLeaderCostMultiplier,
+            CostPerBlow, CostPerKickOrBash, CostOnMiss, HeroCostMultiplier, PartyLeaderCostMultiplier,
             ExhaustedAttackSpeedPercent, AttackRatePlayerTimer, AttackRatePaceHold, AttackRatePaceByInput, AiHoldRaiseGuard, AttackRateAiDecisions, AttackAnimationMinPercent,
             MinMoveSpeedMultiplier, MountMinSpeedMultiplier, DamageBonusFollowsAthletics,
             StepBackEnabled, StepBackBackpedal, StepBackMaxChancePercent, StepBackDistance, StepBackSeconds, StepBackEnemyRange,

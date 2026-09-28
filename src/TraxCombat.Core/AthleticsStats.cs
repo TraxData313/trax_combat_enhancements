@@ -10,7 +10,8 @@ namespace TraxCombat.Core
     /// One mission's Athletics numbers for the <c>[summary]</c> block - built so ONE playtest run
     /// proves or disproves every rule of DESIGN §2 (CLAUDE.md, logging): the pools the Athletics
     /// skill gave, blows by kind and by riders vs on foot, the detection cross-checks (releases vs
-    /// hits vs shots), what was free, exhaustions and the peak zone, fighter-time by f, heroes and
+    /// hits vs shots), kicks and shield bashes (step 18: charged apart, where they were seen), what was
+    /// free, exhaustions and the peak zone, fighter-time by f, heroes and
     /// leaders, the player, the formations, the health cap, regen by effort, the measured run speeds
     /// binned by f (does the engine honour the curve? - the attack timings are AttackRateStats', step
     /// 5e), the walk/run speed
@@ -59,10 +60,35 @@ namespace TraxCombat.Core
         public int MeleeHitsOnFoot;
         public int LandedMeleeByTimeFallback;
 
-        // ---- free / not charged
+        // ---- kicks and shield bashes (step 18: charged apart from blows, CostPerKickOrBash)
+        /// <summary>New kicks / bashes the poll saw start (<see cref="KickBashTracker.Observe"/>) - each is
+        /// decided once: charged, or free (cost 0).</summary>
         public int KicksSeen;
         public int BashesSeen;
+
+        /// <summary>…of them first seen on channel 1 (the upper body) / channel 0 (the whole body).</summary>
+        public int KicksSeenUpper;
+        public int KicksSeenLower;
+        public int BashesSeenUpper;
+        public int BashesSeenLower;
+
+        /// <summary>Kick / bash hits (IsAlternativeAttack) by tracked fighters, charged or not.</summary>
         public int KickOrBashHits;
+
+        public int KicksCharged;
+        public int BashesCharged;
+
+        /// <summary>Charged at the hit: no channel showed a kick or bash (kind unknown).</summary>
+        public int KickOrBashChargedAtHit;
+        public int KickOrBashChargedMounted;
+        public double KickOrBashPoints;
+
+        /// <summary>Decided free: CostPerKickOrBash 0 (Athletics off: the poll does not run).</summary>
+        public int KickOrBashFree;
+
+        public int KickOrBashCharged => KicksCharged + BashesCharged + KickOrBashChargedAtHit;
+
+        // ---- free / not charged
         public int CouchedWithinBlowTime;
         public int AttacksWhileOff;
         public int ReleasesAwaitingHit;
@@ -151,6 +177,35 @@ namespace TraxCombat.Core
         }
 
         public int Charged(BlowKind kind) => _charged[(int)kind];
+
+        /// <summary>One charged kick or shield bash (step 18) - apart from the blows; <paramref name="points"/> =
+        /// what it really drained. <paramref name="kind"/> None = charged at its hit (no channel showed it).</summary>
+        public void AddKickOrBashCharge(KickBashKind kind, bool mounted, double points)
+        {
+            if (kind == KickBashKind.Kick) KicksCharged++;
+            else if (kind == KickBashKind.Bash) BashesCharged++;
+            else KickOrBashChargedAtHit++;
+            if (mounted) KickOrBashChargedMounted++;
+            KickOrBashPoints += points;
+            PointsSpent += points;
+        }
+
+        /// <summary>A kick or bash the poll saw start, on channel 0 (<paramref name="lowerChannel"/>) or 1.</summary>
+        public void AddKickOrBashSeen(KickBashKind kind, bool lowerChannel)
+        {
+            if (kind == KickBashKind.Kick)
+            {
+                KicksSeen++;
+                if (lowerChannel) KicksSeenLower++;
+                else KicksSeenUpper++;
+            }
+            else if (kind == KickBashKind.Bash)
+            {
+                BashesSeen++;
+                if (lowerChannel) BashesSeenLower++;
+                else BashesSeenUpper++;
+            }
+        }
 
         public int ChargedTotal
         {
@@ -319,7 +374,8 @@ namespace TraxCombat.Core
                 + " (melee swings " + Charged(BlowKind.Melee) + ", shots/throws " + Charged(BlowKind.Ranged)
                 + ", couched/braced hits " + Charged(BlowKind.Couched) + ", landed-only swings " + Charged(BlowKind.LandedMelee)
                 + ", landed-only shots " + Charged(BlowKind.LandedRanged) + ") - by riders " + ChargedMounted + ", on foot " + ChargedOnFoot
-                + "; Athletics spent " + N0(PointsSpent) + " points");
+                + "; + kicks/bashes " + KickOrBashCharged + " (not blows - their own line)"
+                + "; Athletics spent " + N0(PointsSpent) + " points (kicks/bashes " + N0(KickOrBashPoints) + " of them)");
 
             var sb = new StringBuilder("Athletics detection: melee releases seen ").Append(MeleeReleasesSeen)
                 .Append(" (mounted ").Append(MeleeReleasesMounted).Append(") | shots seen ").Append(ShotsSeen)
@@ -342,8 +398,13 @@ namespace TraxCombat.Core
             if (LandedMeleeByTimeFallback > 0) sb.Append(" | landed swings charged by the time fallback ").Append(LandedMeleeByTimeFallback);
             lines.Add(sb.ToString());
 
-            lines.Add("Athletics free (never charged): kicks " + KicksSeen + ", shield bashes " + BashesSeen + ", kick/bash hits " + KickOrBashHits
-                + ", couched hits within one blow-length of the last " + CouchedWithinBlowTime + ", attacks while Athletics was off " + AttacksWhileOff
+            lines.Add("Athletics kicks/bashes charged " + KickOrBashCharged + " (" + N1(KickOrBashPoints) + " points; by riders " + KickOrBashChargedMounted
+                + "): kicks " + KicksCharged + ", shield bashes " + BashesCharged + ", at their hit with no kick or bash seen " + KickOrBashChargedAtHit
+                + " | seen starting: kicks " + KicksSeen + " (channel 1 " + KicksSeenUpper + ", channel 0 " + KicksSeenLower + "), shield bashes " + BashesSeen
+                + " (channel 1 " + BashesSeenUpper + ", channel 0 " + BashesSeenLower + "); kick/bash hits " + KickOrBashHits
+                + "; free (CostPerKickOrBash 0) " + KickOrBashFree + "; each charged once, when it starts; never an attack pause");
+
+            lines.Add("Athletics free (never charged): couched hits within one blow-length of the last " + CouchedWithinBlowTime + ", attacks while Athletics was off " + AttacksWhileOff
                 + ", releases / shots waiting for a landed hit (misses cost: no) " + ReleasesAwaitingHit + " / " + ShotsAwaitingHit);
 
             lines.Add("Athletics exhaustions (empty, f 0): " + ExhaustionsEntered + " entered, " + ExhaustionsLeft + " left; the peak zone: left "
@@ -502,6 +563,9 @@ namespace TraxCombat.Core
                 + "; cost per blow " + N1(AthleticsMath.BlowCostPoints(in r, soldier))
                 + " / hero " + N1(AthleticsMath.BlowCostPoints(in r, hero))
                 + " / party leader " + N1(AthleticsMath.BlowCostPoints(in r, leader)) + " points"
+                + "; a kick or shield bash " + N2(AthleticsMath.KickOrBashCostPoints(in r, soldier))
+                + " / hero " + N2(AthleticsMath.KickOrBashCostPoints(in r, hero))
+                + " / party leader " + N2(AthleticsMath.KickOrBashCostPoints(in r, leader)) + " points"
                 + ", misses cost: " + (r.CostOnMiss ? "yes" : "no (landed blows only)")
                 + "; when empty: attacks at " + r.ExhaustedAttackSpeedPercent + "%, run x" + N2(r.RunSpeedFloor)
                 + ", horses x" + N2(r.MountsSlow ? r.MountSpeedFloor : 1f) + (r.MountsSlow ? string.Empty : " (never slowed)")
