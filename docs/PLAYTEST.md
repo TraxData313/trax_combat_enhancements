@@ -182,7 +182,9 @@ starts the next one the moment it is full. The AI waits out its pause the same w
 cap the bar. About 3 s after the last attack it refills: 60 s from empty to full standing or walking,
 half that fast running flat out — **fast while the bar is low, slower as it fills** (step 14: near
 full at half the speed near empty): half the bar in ~25 s, the peak line in ~41 s, the last quarter
-~19 s. Blocking, parrying, kicks, moving, weapon switches: never held.
+~19 s. Blocking, parrying, kicks, moving, weapon switches: never held. **Kicks and shield bashes cost
+Athletics (step 18)**: 3 for a soldier, 2.25 for a hero, ~1.7 for a party leader (you) — once each,
+when they start, landed or not — but they never start a pause.
 
 | Fighter | Athletics skill | Bar | A blow costs | Blows at full strength | Blows to empty |
 |---|---|---|---|---|---|
@@ -262,6 +264,25 @@ air (misses cost too), counting — click as fast as you can.
 - Summary: `attack rate - your timer (AttackRatePlayerTimer on at the end): N timers (melee …, ranged …), avg asked … s, max … s; your presses swallowed: A during your own attack (no chained blow), B during the countdown - the recovery bar flashed Cx; the button held through the end Dx, your attack began avg 0.0x s after (n D) - near 0 = hold-to-attack works; attacks that started while held anyway: 0 (must be 0 - the input gate missed them); …`
   — **`attacks that started while held anyway` must be 0**; `your attack began avg` near 0; and the
   `attack rate, melee, you, <band> - timer:` rows: `started before the timer ended: 0 (must be 0)`.
+
+**C1c. Kicks and shield bashes cost Athletics (step 18).** Anywhere in the battle, at full strength
+(green, recovery bar full and quiet):
+1. **Kick 3 times** (at the air or an enemy). You see: the number drops **~1.7 each** — you are the
+   general, a hero AND the party leader (3 × 0.75 × 0.75) — about 5 in all; a soldier pays 3, a
+   companion 2.25. The recovery bar stays **full and quiet** after each kick: no pause.
+2. **Shield bash** (attack while blocking, with a shield) 3 times, one landing on an enemy: the same
+   ~1.7 each — the one that landed is charged once, not twice.
+3. Below the peak line: a kick right after a swing works at once (never held); a bash waits for the
+   recovery bar like any attack, and costs its ~1.7 when it goes.
+4. *Athletics* → *Cost per kick or shield bash (points)* 0: a kick costs nothing any more (at once).
+- Log (always; rate-limited): `[athletics] YOU: kick at … s cost 1.69 Athletics (3.00 x0.56 hero party leader): 90.0 → 88.3 of 90 (f 1.00 → 1.00) - the first this battle: a kick or a shield bash costs CostPerKickOrBash x your hero / party-leader multipliers, once, when it starts; it never starts your attack pause`,
+  then `[athletics] YOU: shield bash at … s cost 1.69 Athletics …` — one line per kick or bash; a bash that landed has ONE line.
+- Summary: `Athletics kicks/bashes charged N (… points; by riders 0): kicks K, shield bashes B, at their hit with no kick or bash seen H | seen starting: kicks K (channel 1 a, channel 0 b), shield bashes B (channel 1 c, channel 0 d); …`
+  — **tell Claude which channel saw your kicks** (a or b: the game plays a kick on one of them - which one
+  was not provable offline). `at their hit with no kick or bash seen` well above 0 → a kick or bash the poll
+  missed (the hit still paid for it).
+- Broken: a kick costing a full blow (5.6 for you) or nothing; a kick or a bash emptying the recovery bar;
+  two lines for one bash.
 
 **C2. Recruits run dry, legionaries keep going.** Let the lines meet; watch the front from close by.
 - You see: recruits' swings stay quick, but after 2 swings they wait longer and longer between them
@@ -630,7 +651,7 @@ From `Documents\Mount and Blade II Bannerlord\Configs\TraxCombatEnhancements\` (
 4. **Your notes, with times**: what looked or felt wrong and when; the bar and strip placement numbers
    you settled on (E1, E3) with your resolution and UI scale; which mods were on.
 5. **Your verdicts** on the open questions: the hero price (0.75 now, or 0.5?); kicks and shield bashes
-   free (now) or costing Athletics?; Athletics in tournaments and the arena (on now)?; which attack-rate
+   at 3 (step 18) - too cheap, too dear?; Athletics in tournaments and the arena (on now)?; which attack-rate
    switch felt right (C7); the balance — recruits empty after 5 swings, one attack in five at empty, a
    run at 0.7 (step 14), ~41 s from empty to full strength at rest along the refill curve (half the
    bar in ~25 s): too harsh, too soft, right?
@@ -714,7 +735,7 @@ shield blocks (switch), falls, doors / siege engines / ships.
 
 ### L4. Athletics and speed
 
-- Start: `[athletics] mission start: ON - pool = the Athletics skill x1.00, at least 50; full strength at 75% of the pool and above; cost per blow 10.0 / hero 7.5 / party leader 5.6 points, misses cost: yes; when empty: attacks at 20%, run x0.70, horses x1.00 (never slowed); damage upside follows Athletics: yes; wounds cap the pool: yes; refill after 3.0 s rest: empty to full in 60 s at a walk or slower (up to 0.40 of top speed), x0.50 at a full run, near full at 50% of the rate near empty (at a walk: half the bar in 25 s, the peak line in 41 s) - read live`;
+- Start: `[athletics] mission start: ON - pool = the Athletics skill x1.00, at least 50; full strength at 75% of the pool and above; cost per blow 10.0 / hero 7.5 / party leader 5.6 points; a kick or shield bash 3.00 / hero 2.25 / party leader 1.69 points, misses cost: yes; when empty: attacks at 20%, run x0.70, horses x1.00 (never slowed); damage upside follows Athletics: yes; wounds cap the pool: yes; refill after 3.0 s rest: empty to full in 60 s at a walk or slower (up to 0.40 of top speed), x0.50 at a full run, near full at 50% of the rate near empty (at a walk: half the bar in 25 s, the peak line in 41 s) - read live`;
   `[athletics] party-leader rule: …` (custom battle: `no campaign (custom battle) - the side's general, or every hero of a side without one`);
   `[speed] stat model on top in this mission: ours, over <the game's model> - …` (**`WARNING: … not ours`** → another mod took the slot: tell Claude);
   `[athletics] party leader: …`, `[athletics] YOU: …` (C1), `[athletics] first tick: tracking N fighters`.
@@ -723,7 +744,8 @@ shield blocks (switch), falls, doors / siege engines / ships.
   — "did NOT take the asked factors" or "stayed penalized: NO" → tell Claude; with a horse slowed
   (*Horse speed when the rider is empty (x)* below 1.0): `[speed] first horse slowed this mission: …`.
 - Verbose: `~[athletics] pool at spawn: …`, `~[athletics] hero: …`, `~[athletics] blow melee (on foot) / (mounted) / ranged / couched/braced …`
-  (`- below full strength`, `- EXHAUSTED`), `~[athletics] exhausted: …`, `~[athletics] off empty: …`,
+  (`- below full strength`, `- EXHAUSTED`), `~[athletics] kick (on foot): <name> - cost 3.0, 50.0 → 47.0 of 50 (f 1.00 → 1.00)`
+  / `shield bash` / `kick/bash at its hit` (step 18), `~[athletics] exhausted: …`, `~[athletics] off empty: …`,
   `~[athletics] <name> is back to full …`, `~[athletics] health cap: <name> at 40% health - Athletics 90.0 → 52.0 of 130 (f 0.53)`,
   `~[speed] <name>: attacks x0.93, run x0.94 (f 0.92)`.
 - Mid-battle changes: `[athletics] pool settings now: …; everyone keeps his share …`, `[speed] speed settings now: …`,
@@ -732,9 +754,10 @@ shield blocks (switch), falls, doors / siege engines / ships.
   ```
   [summary] Athletics settings at the end: ON - pool = the Athletics skill x1.00, at least 50; …
   [summary] Athletics pools (the Athletics skill x1.00, at least 50; settings at the end): 400 fighters - min 50 / avg 88.5 / max 130; 200 at the floor; you 90 (skill 90); party leaders: you 90, Arcor 80
-  [summary] Athletics blows charged: 412 (melee swings 300, shots/throws 100, couched/braced hits 12, landed-only swings 0, landed-only shots 0) - by riders 60, on foot 352; Athletics spent 3890 points
+  [summary] Athletics blows charged: 412 (melee swings 300, shots/throws 100, couched/braced hits 12, landed-only swings 0, landed-only shots 0) - by riders 60, on foot 352; + kicks/bashes 8 (not blows - their own line); Athletics spent 3914 points (kicks/bashes 24 of them)
   [summary] Athletics detection: melee releases seen 300 (mounted 50) | shots seen 100 (+0 extra projectiles of the same shot ignored) | ranged releases seen by the poll 98 | melee hits by fighters 280 (on foot 240, mounted 40): during a counted release 276, outside one 4 [in action: Other(0) 4]
-  [summary] Athletics free (never charged): kicks 3, shield bashes 5, kick/bash hits 6, couched hits within one blow-length of the last 2, attacks while Athletics was off 0, …
+  [summary] Athletics kicks/bashes charged 8 (23.6 points; by riders 0): kicks 3, shield bashes 5, at their hit with no kick or bash seen 0 | seen starting: kicks 3 (channel 1 0, channel 0 3), shield bashes 5 (channel 1 5, channel 0 0); kick/bash hits 6; free (CostPerKickOrBash 0) 0; each charged once, when it starts; never an attack pause
+  [summary] Athletics free (never charged): couched hits within one blow-length of the last 2, attacks while Athletics was off 0, …
   [summary] Athletics exhaustions (empty, f 0): 45 entered, 30 left; the peak zone: left 380 times (a blow took a fighter below his line), re-entered 150 times (by refill)
   [summary] Athletics fighter-time by f (the share of his peak line left): peak (f 1) 71.0%, f 0.5-1 16.0%, f below 0.5 9.0%, empty (f 0) 4.0% of 52000 fighter-seconds
   [summary] Athletics heroes: 2 flagged, 2 party leaders (you, Arcor); lowest a hero reached: Arcor 12.5 of 80

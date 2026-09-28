@@ -686,3 +686,23 @@
   fixes reverted); tests 367 unchanged (no Core fix); build 0 warnings; deploy.ps1 green (installed). Docs: REVIEW,
   PLAYTEST C1b 5 + L6b, CLAUDE layout, AI_NOTES "Step 17 - review". Commits 61333b2, 1f099b3, 1935bea + this.
   (2026.09.28 00.49.14)
+- [x] **Step 18 — kicks and shield bashes cost Athletics** (Anton, 2026-09-28: "3, a slider, hero/leader multipliers
+  apply like any blow"). New `CostPerKickOrBash` (3, 0-20, 0 = free as before; Athletics group after `CostPerBlow`;
+  defaults.json + refresh; MCM from the schema; Anton's config.json gains the key at its default on the next load - the
+  existing "missing setting added" path, nothing migrated). A kick or bash costs 3 × the blow's multipliers (hero 2.25,
+  party leader 1.69), ONCE, when it starts, landed or not (`CostOnMiss` stays a blow rule - DESIGN interpretation 19);
+  paid like a blow otherwise (curves, peak line, exhaustion, the refill delay restarts) but NOT a blow: no attack timer,
+  no step-back roll, never in `Blows` (step 13's rules stand: kicks never held, bashes wait while a pause runs). Core:
+  `AthleticsMath.KickOrBashCostPoints` / `ChargeKickOrBash` (shared `Drain` with `Charge`; cost 0 = nothing at all),
+  `KickBashTracker` (one decision per action: channel 1 and channel 0 OR-ed, the hit as the fallback, 1.0 s same-action
+  window). WHY two channels: where a kick plays is unproven - the playtest log saw one bash on channel 1 and no kick ever,
+  while the game's `StandingPoint` reads kicks on channel 0 - so the tick now also reads channel 0 on foot (one native call
+  per fighter; the poll measured 0.077 ms at 480 men) and the summary says which channel saw each; drop the unused read
+  after the playtest (AI_NOTES "Step 18"). The hit path reads both channels first, so a bash that lands is charged once and
+  a kick no poll saw is still paid at its hit. Summary: the blows line counts kicks/bashes apart; "Athletics free" became
+  `Athletics kicks/bashes charged N (P points; by riders R): … | seen starting: … (channel 1 a, channel 0 b) …`; the settings
+  sentence prices both. Your kicks log a `[athletics] YOU: kick …` line (the first with the rule). Tests 376 (+9
+  `KickBashTests`); smoke +1 step (costs, dedupe on every path, no timer / roll, 0 / off live, YOU line, action codes) and a
+  kick in the master-switch step; build 0 warnings; deploy.ps1 green (installed). Docs: DESIGN §2 + table + 8 / 19,
+  PLAYTEST C intro + C1c + L4, README, Steam description, CLAUDE layout, AI_NOTES "Step 18". Commit 2f29477 + this.
+  (2026.09.28 08.08.51)

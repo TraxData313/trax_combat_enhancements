@@ -16,7 +16,9 @@ above his Athletics bar); wounds cap the bar; tired AI fighters step back out of
 swing (step 5d) - since step 16 a BACKPEDAL through the AI's own input, facing the enemy, and the
 pause survives it (one per-man `AgentComponent` on `OnAIInputSet` does both; A/B switches keep the old ways).
 Heroes and party leaders pay less per blow (and big-skill heroes have
-big bars), so the game leans hero-centred. The Athletics bar is shown for the player (step 6)
+big bars), so the game leans hero-centred. Kicks and shield bashes cost a little too (step 18:
+`CostPerKickOrBash` 3 × the same multipliers, once each, never an attack pause). The Athletics
+bar is shown for the player (step 6)
 and — averaged, with a ± spread and the men's health — in a strip under each formation card of
 the orders menu (step 9). The bar for the fighter you look at and squad bars above the
 formations are LATER (DESIGN §3; their settings wait in DESIGN's "Planned parameters"). Words:
@@ -149,7 +151,7 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
   ParamDef.cs                 one setting: key, type, range, group, label, plain-words
                               description, apply timing (Live / NextBattle); Normalize, Format;
                               its Default comes from defaults.json (DefaultsFile), never code
-  SettingsSchema.cs           EVERY setting of DESIGN's table (70), in file + MCM order, 9 groups
+  SettingsSchema.cs           EVERY setting of DESIGN's table (71), in file + MCM order, 9 groups
                               ("Master switch" first, "Advanced" last; step 10b's one vocabulary and
                               units in its header comment) — the one place a setting is declared
                               (a test parses DESIGN.md: keys + types); NO default values. The LATER
@@ -203,12 +205,19 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               per rule (PoolPoints = max(floor, per-skill × skill), UsableFraction
                               = the health cap, PeakShare = f, Attack/Run/MountSpeedMultiplier =
                               floor + (1 − floor) × f, DamageUpside, BlowCostPoints in points,
+                              step 18: KickOrBashCostPoints + ChargeKickOrBash (Fighter.KicksAndBashes,
+                              never Blows; cost 0 = nothing at all),
                               RegenRateMultiplier by effort, SpeedUpdateNeeded (0.05 step), PeakBin;
                               step 14's refill curve: RegenCurve = 1 − (1 − k) x, RegenRateAtEmpty r0 =
                               ln(1/k) / ((1 − k) T), RefillFrom / RefillSeconds - exact per step)
                               + Charge / ApplyHealth / Regen / Read; BlowKind, BlowOutcome,
                               RegenOutcome, AthleticsReading (HUD snapshot incl. f, usable pool,
                               BelowFull = below the top it can refill to - step 12)
+  KickBash.cs                 step 18: KickBashKind, KickBashTracker - ONE decision per kick / shield bash:
+                              Observe(channel, action) = the rising edge on channel 1 or 0 (OR-ed: one
+                              kick on both = one), Hit = the fallback when no channel shows one (the
+                              poll's late sight within SameActionSeconds 1.0 not charged again); the
+                              engine's action codes (the smoke checks them)
   StepBack.cs                 DESIGN §2 step back pure (step 5d): StepBackRules (live; Enabled =
                               ModEnabled && AthleticsEnabled && StepBackEnabled, Describe),
                               StepBackMath (Chance = max × (1 − f), Roll, AwayFrom = the spot,
@@ -288,7 +297,8 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               RunSpeedCheck (engine top / asked / moving by f); 5c's
                               attack-interval classes went in 5e
   AthleticsStats.cs           per-mission Athletics counters + the [summary] text (pools from the
-                              skill, blows by kind, riders, detection cross-checks, free actions,
+                              skill, blows by kind, riders, detection cross-checks, kicks / bashes
+                              charged apart - by channel, at the hit, free (step 18), free actions,
                               exhaustions + peak zone, fighter-time by f, heroes, player,
                               formations, health cap, regen by effort and its curve, refills from
                               empty to the peak line (step 14), run-speed checks by f,
@@ -349,7 +359,10 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               deleted agent are all dropped by Forget - 10a), the Athletics skill +
                               hero/leader flags at spawn, blow
                               detection (poll ReleaseMelee, OnMeleeHit, OnAgentShootMissile,
-                              OnMissileHit), the health cap (OnAgentHit + every regen step), regen
+                              OnMissileHit), step 18's kicks / bashes (channel 1 + channel 0 on foot
+                              - ObserveLowerAction; the hit reads both, then KickOrBashHit;
+                              ChargeKickOrBash - no timer, no step back; the YOU line), the health
+                              cap (OnAgentHit + every regen step), regen
                               by effort, three speed multipliers re-targeted in 0.05 steps and
                               applied by UpdateAgentProperties (≤ 50 a tick), the horse table
                               (OnAgentMount/Dismount), hot swap, SpeedFactorsFor (the decorator's
@@ -484,7 +497,7 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               / values lines, the [summary] strip line
   Hud/OrderStripVM.cs         its ViewModels: the root + 8 fixed OrderStripCellVM in one
                               MBBindingList, bound TWICE by the prefab (the cells, the panel rows)
-tests/TraxCombat.Core.Tests/  net8.0 xUnit (367) — schema vs DESIGN.md (keys + types), one copy
+tests/TraxCombat.Core.Tests/  net8.0 xUnit (376) — schema vs DESIGN.md (keys + types), one copy
                               runs (SingleCopyTests: claims on private slots, copies, texts), when
                               MCM is tried and when it stops (McmPlanTests - step 12),
                               defaults.json (DefaultsFileTests), master switch, settings, config
@@ -493,7 +506,9 @@ tests/TraxCombat.Core.Tests/  net8.0 xUnit (367) — schema vs DESIGN.md (keys +
                               damage roll/rules/dice/stats/upside,
                               Athletics v2 rules (pool, f, cap, curves, effort regen, the refill curve
                               - T for any k, 100 = the old rule to the bit, exact steps - DESIGN's
-                              blow counts), mean/std, the run-speed check, Athletics summary, the
+                              blow counts), kicks and bashes (KickBashTests, step 18: 3 / 2.25 / 1.69,
+                              free at 0 and off, one decision per action across both channels and the
+                              hit), mean/std, the run-speed check, Athletics summary, the
                               attack rate (rules, AI values x / ÷ m, the cap, verdicts, phases /
                               cycles / timers / holds / guard + summary), the timer (AttackTimerTests:
                               the pause, the animation floor, the countdown text, the flash, YOUR
@@ -536,7 +551,7 @@ tools/package.ps1             step 11, THE RELEASE: manifest gate (release Id + 
 tools/WORKSHOP-UPLOAD.md      the release loop, step by step (first upload, updates) + the uploader's quirks
 tools/WorkshopCreate.xml      the FIRST upload (creates the item, Private, tags, preview) - run once
 tools/WorkshopUpdate.xml      every later upload - ITEM_ID placeholder until the first upload
-tools/STEAM-DESCRIPTION.bbcode  the Workshop page, pasted by hand (≤ 8000 bytes; 4427 now)
+tools/STEAM-DESCRIPTION.bbcode  the Workshop page, pasted by hand (≤ 8000 bytes; 4452 now)
 tools/preview_thumbnail.html  the Workshop preview (source) → preview_thumbnail.png (1024², headless Edge)
 tools/AssemblyGuard/          soft-dependency guard (from the sibling): MCM, Harmony, ButterLib,
                               UIExtenderEx, NavalDLC, CustomBattle in any type surface = FAIL
@@ -547,7 +562,9 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               Athletics (Program.Athletics.cs: the real stat decorator, damage
                               decorator and AthleticsLogic on uninitialized Agent objects - the
                               curves blow by blow, DESIGN's blow counts, the health cap, the
-                              upside by f, horses), the step back (Program.StepBack.cs: the real
+                              upside by f, horses; step 18: kicks and bashes - the costs, once each
+                              on either channel or at the hit, no timer / roll, 0 / off, the YOU line,
+                              the game's action codes), the step back (Program.StepBack.cs: the real
                               logic's bookkeeping with a stand-in IStepBackBody - rolls by f,
                               queue, cap, live time, every release path, logs, summary), the
                               attack rate (Program.AttackRate.cs, step 13: full-speed animations,

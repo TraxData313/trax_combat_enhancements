@@ -33,7 +33,8 @@ Releasing it: [tools/WORKSHOP-UPLOAD.md](tools/WORKSHOP-UPLOAD.md).
   draw and throw plays at full speed, but after each attack a tired fighter must wait before the
   next one — you see your wait fill up in an Attack recovery bar (press attack too early and it
   just flashes; hold the button and you strike the moment it fills), the AI waits with its guard
-  up. Blocking, kicks and moving are never held. Wounds cap the bar. Rest to
+  up. Blocking, kicks and moving are never held; a kick or a shield bash costs a little
+  Athletics (3 points) but never starts a wait. Wounds cap the bar. Rest to
   refill it: one minute standing or walking, twice that running flat out — quick while the bar is
   low, slower as it fills (half the bar in about 25 seconds). Heroes pay less per
   blow, party leaders less again, and a hero's big Athletics skill means a big bar — the battle

@@ -2171,3 +2171,37 @@ The second fresh-eyes review, over steps 12-16. The findings are `docs/REVIEW.md
   `OnMissionTick` and the async agent tick; `DefendDown` is only ever a replaced attack wish; the backpedal ends on
   `StepBackSeconds` whatever else happens; R1 stays closed; the refill curve's closed forms re-derived; no per-tick
   allocation in the new paths.
+
+## Step 18 — kicks and shield bashes cost Athletics (DONE 2026-09-28)
+
+Anton's call (2026-09-28): 3 points, a slider, hero / leader multipliers like any blow. `CostPerKickOrBash` (0-20,
+Athletics group, after `CostPerBlow`); DESIGN §2 "Kicks and shield bashes cost too", interpretations 8 + 19.
+
+- **Where a kick shows is NOT proven.** Step 5 polled channel 1 only; Anton's 2026-09-27 log saw one shield bash there
+  (`shield bashes 1, kick/bash hits 1`) and NO kick in any battle (K = 0, H = 0 - the AI rarely kicks). The game's own
+  `StandingPoint.TickAux` reads Jump / **Kick** / WeaponBash on **channel 0** (`GetCurrentAction(0)`), `Agent.HandleDropWeapon`
+  reads WeaponBash on channel 1. So the tick now also polls channel 0 **on foot** (one more native call per fighter;
+  step 17's 480-man log measured the whole poll at 0.077 ms a tick) and the summary counts each kick / bash by channel.
+  **After the playtest: if kicks show on one channel only, drop the other read** (`seen starting: kicks K (channel 1 a,
+  channel 0 b)`). Action types (Native `action_types.xml`): `act_kick_*` = Kick 28, `*_continue*` = KickContinue 29,
+  `*_hit*` = KickHit 30 (all "a kick" - one action), every bash (`act_shield_bash`, `act_hand_shield_bash`, `act_staff_bash`,
+  `act_2h_bash`, left-stance too) = WeaponBash 31; `act_hit_*_bash` (the blocked bash) has no type (Other).
+- **One decision per action** (Core `KickBashTracker`): channels OR-ed (a kick on both = one kick; it ends when neither
+  shows it); a kick → bash on the same channel is a new one; the hit (`IsAlternativeAttack`) first reads BOTH channels
+  (like a swing's hit), then charges only if neither shows a kick / bash and none was decided within 1.0 s
+  (`SameActionSeconds`, plumbing) - the poll's later sight of that same action is then not charged. So a bash that lands
+  is charged once, and a kick the poll never sees is still paid by its hit (counted: `at their hit with no kick or bash seen`).
+- **Charged at the START, landed or not** - `CostOnMiss` stays a blow rule (Claude's call, DESIGN 19). A charge > 0 restarts
+  the refill delay (effort) and follows every curve; a cost of 0 is nothing at all (no delay restart) and is counted `free`.
+  `Fighter.KicksAndBashes` counts them; `Blows` never does (the YOU lines' "after N blows" and DESIGN's blow counts stay true).
+- **Never a timer**: `ChargeKickOrBash` shares `AfterCharge` (retarget, peak line, exhaustion) with `Charge` but nothing of the
+  attack rate - kicks / bashes were never phases (`PhaseOfAction`), never `StartRelease`, never `PlayerAttackStarting`. Step
+  13's input rules are untouched: the kick flag is never cleared, a bash still waits while your pause runs (attack bits).
+- **Riders**: never kick (no channel-0 read mounted); a mounted WeaponBash, if the engine ever plays one (vanilla has none,
+  as far as the data shows), is charged like any bash and counted `by riders`.
+- Log: `[athletics] YOU: kick / shield bash at … s cost 1.69 Athletics (3.00 x0.56 hero party leader): …` (always, bucket
+  `athletics-player-kick`; the first per battle with the rule), `~[athletics] kick (on foot): …` (verbose, its own bucket
+  `athletics-kick` so blow lines cannot starve it). Summary: the blows line adds `+ kicks/bashes N (not blows …)` and the
+  spent points' share; `Athletics kicks/bashes charged N (P points; by riders R): …` replaced `Athletics free …`'s kick part.
+- Tests 376 (+9, `KickBashTests`); smoke: a new step (costs, dedupe on every path, no timer / roll, 0 / off live, the YOU
+  line, Core's action codes = the game's) + the master switch step (a kick while off costs nothing).
