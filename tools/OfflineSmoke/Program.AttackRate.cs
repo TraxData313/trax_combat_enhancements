@@ -448,7 +448,7 @@ namespace TraxCombat.Tools
                 LogHas("[summary] attack rate - your timer (AttackRatePlayerTimer on at the end): ");
                 LogHas("the button held through the end 1x, your attack began avg 0.01 s after (n 1) - near 0 = hold-to-attack works; attacks that started while held anyway: 1 (must be 0 - the input gate missed them)");
                 LogHas("ended early: switched off 2, not you any more 1, mission end 1 (still running at the end, released: 1)");
-                LogHas("[summary] attack rate - AI timer (AttackRatePaceHold on at the end; technique at the end: NoAttack (AttackRatePaceByInput off: the engine's no-attack flag, step 13's technique); after each attack of a tired AI fighter, melee and ranged, on foot and mounted): ");
+                LogHas("[summary] attack rate - AI timer (AttackRatePaceHold on at the end; technique at the end: NoAttack (AttackRatePaceByInput off: the engine's no-attack flag, step 13's technique); after each attack of a tired AI fighter, melee and ranged, on foot and mounted - step 21: fresh ones too when their class has a battle-pace share): ");
                 LogHas("[summary] attack rate - AI timer, not held: at full strength 7, not needed (below 0.1 s) 3, the next attack already readied at the attack's end 1,");
                 LogHas("[summary] attack rate - AI timer ends: time up ");
                 LogHas(", an attack started anyway 1 (must be about 0 - the hold stops attacks), switched off ");

@@ -236,6 +236,13 @@ namespace TraxCombat.Core
         public bool StepBackHoldAttacks => GetBool(SettingsSchema.StepBackHoldAttacks);
         public int StepBackMaxAtOnce => GetInt(SettingsSchema.StepBackMaxAtOnce);
 
+        // step 21 - battle pace
+        public int ShieldInfantrySwingsLessPercent => GetInt(SettingsSchema.ShieldInfantrySwingsLessPercent);
+        public int FootMeleeSwingsLessPercent => GetInt(SettingsSchema.FootMeleeSwingsLessPercent);
+        public float AiMeleeGapSeconds => GetFloat(SettingsSchema.AiMeleeGapSeconds);
+        public float ExtraPauseAfterBowShotSeconds => GetFloat(SettingsSchema.ExtraPauseAfterBowShotSeconds);
+        public float ExtraPauseAfterCrossbowShotSeconds => GetFloat(SettingsSchema.ExtraPauseAfterCrossbowShotSeconds);
+
         public float RegenDelayBlowTimes => GetFloat(SettingsSchema.RegenDelayBlowTimes);
         public float BlowTimeSeconds => GetFloat(SettingsSchema.BlowTimeSeconds);
         public float FullRegenSecondsStanding => GetFloat(SettingsSchema.FullRegenSecondsStanding);

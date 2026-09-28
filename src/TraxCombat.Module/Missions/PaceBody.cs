@@ -25,6 +25,13 @@ namespace TraxCombat.Missions
         public double AttackEnd;
         public double Pause;
 
+        /// <summary>Step 21: the pause's parts - the tired part (D × (1/m − 1)) and the battle-pace share on top - the class of
+        /// the attack and the "swing less" % that sized a melee share (0 for archers and classes without one).</summary>
+        public double Tired;
+        public double Share;
+        public AttackClass Class;
+        public int Percent;
+
         // ---- running
         public bool Active;
         public double StartedAt;

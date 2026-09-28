@@ -172,6 +172,7 @@ namespace TraxCombat.Tools
             S.Set(SettingsSchema.RegenMultiplierAtFullRun, 0.5, SettingSources.File);
             S.Set(SettingsSchema.WalkEffortFraction, 0.4, SettingSources.File);
             S.Set(SettingsSchema.VerboseLogging, false, SettingSources.File);
+            BattlePaceOff(); // step 21: the older steps check steps 13-20 to the bit (Program.BattlePace.cs has its own)
         }
 
         // ------------------------------------------------------------------ checks
@@ -784,6 +785,20 @@ namespace TraxCombat.Tools
             _logic.TickPace(t);
             Check(_logic.HeldNow == 1 && paceBody.Started.Count == 1, "precondition: fighter 60 is not held");
 
+            // step 21: a FRESH shield man waiting his battle-pace share (no tiredness at all)
+            S.Set(SettingsSchema.ShieldInfantrySwingsLessPercent, 30, SettingSources.Mcm);
+            var fresh = _logic.Track(FakeAgent(62))!;
+            fresh.AthleticsSkill = 300;
+            Facts.Shield.Add(62);
+            _logic.ObserveAction(fresh, ActReady, t - 0.9, in hr);
+            AthleticsLogic.ReadyFull(fresh, t - 0.58);
+            _logic.ObserveAction(fresh, ActRelease, t - 0.5, in hr);
+            fresh.SpeedDirty = false;
+            _logic.ObserveAction(fresh, ActIdle, t, in hr);
+            _logic.TickPace(t);
+            Check(_logic.HeldNow == 2 && fresh.Pace != null && fresh.Pace.Active && fresh.Pace.Share > 0 && fresh.Pace.Tired == 0,
+                "precondition: the fresh shield man 62 is not waiting his battle-pace share (step 21)");
+
             // step 13: your countdown running too (the fake agent stands in for Mission.MainAgent)
             var me = _logic.Track(FakeAgent(61))!;
             _logic.SmokePlayer = me.Agent;
@@ -800,9 +815,10 @@ namespace TraxCombat.Tools
             Check(_logic.SteppingNow == 0 && stepBody.Released.Count == released + 1, "mod off: the step back was not released at once");
             LogHas("[stepback] the whole mod (ModEnabled) switched OFF mid-mission at ");
             _logic.TickPace(t);
-            Check(_logic.HeldNow == 0 && paceBody.Released.Count == 1, "mod off: the pace hold was not lifted at once");
+            Check(_logic.HeldNow == 0 && paceBody.Released.Count == 2 && !fresh.Pace.Active, "mod off: the pace holds (a tired man's, a fresh shield man's battle-pace share) were not lifted at once");
             LogHas("[rate] ModEnabled switched OFF mid-mission at ");
-            LogHas(" s: 1 held fighters may attack again at once");
+            LogHas(" s: 2 held fighters may attack again at once");
+            S.Set(SettingsSchema.ShieldInfantrySwingsLessPercent, 0, SettingSources.Mcm);
             _logic.TickPlayerTimer(t);
             Check(!_logic.PlayerTimer.Holding && _logic.RateStats.PlayerEnded(PlayerTimerEnd.SwitchedOff) == 1, "mod off: your pause was not released at once");
             _logic.SmokePlayer = null;

@@ -36,11 +36,12 @@ namespace TraxCombat.Core
         public static readonly ParamGroup AthleticsGroup = new ParamGroup(2, "Athletics");
         public static readonly ParamGroup TiredGroup = new ParamGroup(3, "Tired fighters");
         public static readonly ParamGroup StepBackGroup = new ParamGroup(4, "Tired fighters step back");
-        public static readonly ParamGroup RefillGroup = new ParamGroup(5, "Refill");
-        public static readonly ParamGroup PlayerBarGroup = new ParamGroup(6, "Your Athletics bar");
-        public static readonly ParamGroup OrderStripGroup = new ParamGroup(7, "Orders menu strip");
-        public static readonly ParamGroup AltMarkersGroup = new ParamGroup(8, "Formation markers (hold ALT)");
-        public static readonly ParamGroup AdvancedGroup = new ParamGroup(9, "Advanced");
+        public static readonly ParamGroup BattlePaceGroup = new ParamGroup(5, "Battle pace (AI)");
+        public static readonly ParamGroup RefillGroup = new ParamGroup(6, "Refill");
+        public static readonly ParamGroup PlayerBarGroup = new ParamGroup(7, "Your Athletics bar");
+        public static readonly ParamGroup OrderStripGroup = new ParamGroup(8, "Orders menu strip");
+        public static readonly ParamGroup AltMarkersGroup = new ParamGroup(9, "Formation markers (hold ALT)");
+        public static readonly ParamGroup AdvancedGroup = new ParamGroup(10, "Advanced");
 
         // ------------------------------------------------------------------ master switch
 
@@ -133,7 +134,7 @@ namespace TraxCombat.Core
 
         public static readonly ParamDef AttackRatePaceHold = Bool("AttackRatePaceHold", TiredGroup,
             "Tired AI wait out the pause",
-            "On: after each attack - melee or ranged, on foot or mounted - a tired AI fighter does not start another until his pause is over; his guard stays up. Off: tired AI fighters are not held. Off mid-battle: every waiting fighter may attack again at once.");
+            "On: after each attack - melee or ranged, on foot or mounted - a tired AI fighter does not start another until his pause is over; his guard stays up. The \"Battle pace (AI)\" waits ride on it too. Off: no AI fighter is held - neither the tired pause nor the battle-pace waits. Off mid-battle: every waiting fighter may attack again at once.");
 
         // Step 16 (BATTLE_PACING lever #2): the AI's pause through its own input - held men keep blocking.
         public static readonly ParamDef AttackRatePaceByInput = Bool("AttackRatePaceByInput", TiredGroup,
@@ -200,6 +201,31 @@ namespace TraxCombat.Core
         public static readonly ParamDef StepBackMaxAtOnce = Int("StepBackMaxAtOnce", 1, 1000, StepBackGroup,
             "Most at once (whole battle)",
             "At most this many fighters, on all sides together, step back at the same time. It keeps big battles cheap and stops a whole front line from stepping back together.");
+
+        // ------------------------------------------------------------------ battle pace (step 21)
+
+        // Step 21 (Anton, 2026-09-28: "make the infantry more defensive, especially the guys with the shields ... swing 30% less" and
+        // "make the archers a bit slower ... about 30% slower overall"): a share on top of the AI's pause after each attack, at any
+        // tiredness (BattlePaceMath, AI_NOTES "Step 21"). The class is read at each attack from what the fighter really holds.
+        public static readonly ParamDef ShieldInfantrySwingsLessPercent = Int("ShieldInfantrySwingsLessPercent", 0, BattlePaceMath.MaxSwingsLessPercent, BattlePaceGroup,
+            "Shield infantry swing less (%)",
+            "AI soldiers on foot fighting with a shield in their other hand swing this many percent less often than they otherwise would, fresh or tired: after each swing they wait a little longer, guard up, before the next. 30 = 7 swings where they made 10. Read at every swing from what he really holds - heroes and lords too; never you, never riders. Rides on \"Tired AI wait out the pause\" (off there = no AI pause at all). 0 = off. A change applies at each fighter's next swing.");
+
+        public static readonly ParamDef FootMeleeSwingsLessPercent = Int("FootMeleeSwingsLessPercent", 0, BattlePaceMath.MaxSwingsLessPercent, BattlePaceGroup,
+            "Other infantry swing less (%)",
+            "The same for AI soldiers on foot fighting WITHOUT a shield - two-handed swords and axes, polearms, a one-hander alone: this many percent fewer swings, fresh or tired. 0 = off. A change applies at each fighter's next swing.");
+
+        public static readonly ParamDef AiMeleeGapSeconds = Float("AiMeleeGapSeconds", 0, 5, BattlePaceGroup,
+            "AI's own gap between swings (s)",
+            "How long an AI soldier on foot at full strength waits on his own between the end of one swing and the start of the next - about 1 second in the playtests. The two settings above size their wait on his whole rhythm (his swing, his tired pause and this gap), so that he really swings that percent less. The battle summary's \"battle pace\" lines show his real gap after a wait: raise this if it reads longer, lower it if shorter.");
+
+        public static readonly ParamDef ExtraPauseAfterBowShotSeconds = Float("ExtraPauseAfterBowShotSeconds", 0, 10, BattlePaceGroup,
+            "Bowmen: extra wait after each shot (s)",
+            "AI bowmen - on foot and horse archers alike - wait this many seconds more after each shot, on top of any tired pause. At 2.0 they fire about 30% fewer arrows a minute (a fresh AI bowman shot about once every 4.5 seconds in the playtests). Never you. 0 = off. A change applies at each archer's next shot.");
+
+        public static readonly ParamDef ExtraPauseAfterCrossbowShotSeconds = Float("ExtraPauseAfterCrossbowShotSeconds", 0, 10, BattlePaceGroup,
+            "Crossbowmen: extra wait after each shot (s)",
+            "AI crossbowmen wait this many seconds more after each shot, on top of any tired pause. At 2.5 they fire about 30% fewer bolts a minute (a fresh AI crossbowman shoots about once every 6 seconds, the long reload included). Thrown weapons and slings have no extra wait. Never you. 0 = off. A change applies at each crossbowman's next shot.");
 
         // ------------------------------------------------------------------ refill (regeneration)
 
@@ -429,6 +455,7 @@ namespace TraxCombat.Core
             MinMoveSpeedMultiplier, MountMinSpeedMultiplier, DamageBonusFollowsAthletics,
             StepBackEnabled, StepBackBackpedal, StepBackMaxChancePercent, StepBackDistance, StepBackSeconds, StepBackEnemyRange,
             StepBackHoldAttacks, StepBackMaxAtOnce,
+            ShieldInfantrySwingsLessPercent, FootMeleeSwingsLessPercent, AiMeleeGapSeconds, ExtraPauseAfterBowShotSeconds, ExtraPauseAfterCrossbowShotSeconds,
             RegenDelayBlowTimes, BlowTimeSeconds, FullRegenSecondsStanding, RegenRateNearFullPercent, RegenMultiplierAtFullRun,
             WalkEffortFraction, HideoutBossFightRefill,
             ShowPlayerBar, ShowPlayerBarOutsideBattles, ShowAttackRecoveryBar, FlashBarOnEarlyAttack,
@@ -446,7 +473,7 @@ namespace TraxCombat.Core
         /// <summary>The groups in order.</summary>
         public static readonly IReadOnlyList<ParamGroup> Groups = new[]
         {
-            MasterGroup, DamageGroup, AthleticsGroup, TiredGroup, StepBackGroup, RefillGroup, PlayerBarGroup, OrderStripGroup, AltMarkersGroup, AdvancedGroup,
+            MasterGroup, DamageGroup, AthleticsGroup, TiredGroup, StepBackGroup, BattlePaceGroup, RefillGroup, PlayerBarGroup, OrderStripGroup, AltMarkersGroup, AdvancedGroup,
         };
 
         private static readonly Dictionary<string, ParamDef> ByKey = BuildIndex();

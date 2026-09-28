@@ -106,6 +106,7 @@ namespace TraxCombat.Missions
             _seenAnimationMin = s.AttackAnimationMinPercent;
             _paceSeenOn = rr.PaceOn;
             TraxLog.Info("rate", "mission start: " + rr.Describe() + " - read live; the [summary] \"attack rate\" lines measure every phase, each timer against the gap it left, and the cycle by f");
+            StartBattlePace(in rr); // step 21
         }
 
         // ------------------------------------------------------------------ the phases
@@ -312,6 +313,7 @@ namespace TraxCombat.Missions
             {
                 st.TimerPending = false;
                 _rateStats.AddNextAttackAfterTimer(st.TimerKind, player, st.TimerBin, now - st.TimerStart, st.TimerAsked, st.TimerM);
+                if (!player) NotePaceGap(st, st.TimerKind, now - st.TimerStart - st.TimerAsked); // step 21: his own gap after the pause, by class
             }
             if (player)
             {
@@ -353,6 +355,7 @@ namespace TraxCombat.Missions
             st.AwaitReloadEnd = false;
             st.AttackEndedNow = false;
             st.TimerPending = false;
+            st.PaceLastValid = false; // step 21: no class cycle spans it either
         }
 
         /// <summary>
@@ -362,6 +365,7 @@ namespace TraxCombat.Missions
         private void NoteCycle(TrackedAgent st, AttackKind kind, int binNow, int binAfterLast, double seconds, float asked)
         {
             bool player = IsPlayer(st);
+            if (!player) NotePaceCycle(st, kind, seconds, asked); // step 21: by class, whatever the f bands
             if (binNow != binAfterLast)
             {
                 _rateStats.AddMixed(kind, player);
@@ -421,11 +425,13 @@ namespace TraxCombat.Missions
                 ps.Deferred = false;
                 _paceDeferred.Remove(st);
                 _rateStats.AddRefused(PaceRefusal.TooLate);
+                PaceNotStarted(st, ps);
             }
             if (ps.Pending)
             {
                 ps.Pending = false;
                 _rateStats.AddRefused(PaceRefusal.TooLate);
+                PaceNotStarted(st, ps);
             }
             if (ps.Active && !ps.EndAsked)
             {
@@ -435,67 +441,94 @@ namespace TraxCombat.Missions
         }
 
         /// <summary>
-        /// A tired AI fighter's attack ended (melee after the step-back roll; ranged after its reload):
-        /// his timer - NoAttack until the attack's end + D × (1/m − 1) - queued for the next tick.
-        /// Melee AND ranged, on foot AND mounted (step 13). May run inside an engine hit callback:
+        /// An AI fighter's attack ended (melee after the step-back roll; ranged after its reload): his timer - until the
+        /// attack's end + the pause - queued for the next tick. The pause = step 13's tired part D × (1/m − 1) + step 21's
+        /// battle-pace share by the attack's class (<see cref="BattlePaceMath.Plan"/>) - so a FRESH man is held too when his
+        /// class has a share. Melee AND ranged, on foot AND mounted (step 13). May run inside an engine hit callback:
         /// managed reads only.
         /// </summary>
         private void AiAttackEnded(TrackedAgent st, double now, AttackKind kind, double d, bool known, float m, int bin, int next)
         {
             try
             {
-                var rr = AttackRateRules.From(TraxSettings.Shared);
-                if (!rr.PaceOn || _paceClosed) return;
-                if (m >= 1f)
+                var s = TraxSettings.Shared;
+                var rr = AttackRateRules.From(s);
+                var bp = BattlePaceRules.From(s);
+                var cls = NoteClassAttack(st, kind); // step 21: counted whatever the switches (a battle at 0 still measures each class)
+                if (!rr.PaceOn || _paceClosed)
                 {
-                    _rateStats.AddNotHeld(PaceNotHeld.FullStrength);
+                    _paceStats.AddNoPause(cls);
+                    FirstOfClass(st, cls, now, default, in bp, "no pause - the AI timer is off");
                     return;
                 }
-                // Step 16: a step back - running, or asked for by this very swing - never skips the timer any more
-                // (review 10a R1's "a started step back drops the hold" is gone: the timer SURVIVES the step back;
-                // TickPace starts it at once by input, or defers a NoAttack hold behind a scripted step).
-                var ps = st.Pace;
-                if (ps != null && (ps.Pending || ps.Active)) return; // an attack slipped through a hold: the tick is lifting it
-                if (ps != null && ps.Deferred)
-                {
-                    // a newer attack's timer supersedes a deferred one
-                    ps.Deferred = false;
-                    _paceDeferred.Remove(st);
-                }
-                if (IsAttackAction(next))
-                {
-                    _rateStats.AddNotHeld(PaceNotHeld.AlreadyReadied);
-                    return;
-                }
-                if (!known)
-                {
-                    _rateStats.AddNotHeld(PaceNotHeld.NoDuration);
-                    return;
-                }
-                double pause = AttackTimerMath.Pause(d, m);
-                if (!AttackTimerMath.Worth(pause))
-                {
-                    _rateStats.AddNotHeld(PaceNotHeld.NotNeeded);
-                    return;
-                }
-                ps ??= st.Pace = new PaceState();
-                ps.Pending = true;
-                ps.PendingAt = now;
-                ps.Until = now + pause;
-                ps.Bin = bin;
-                ps.Asked = m;
-                ps.Duration = d;
-                ps.Played = st.EndedPlayed;
-                ps.Kind = kind;
-                ps.AttackEnd = now;
-                ps.Pause = pause;
-                ps.EndAsked = false;
-                _pacePending.Add(st);
+                var plan = BattlePaceMath.Plan(in bp, cls, known ? d : double.NaN, m);
+                string? why = AskPause(st, now, kind, d, known, m, bin, next, in plan);
+                SetPaceModel(st, in bp, in plan, known, paused: why == null);
+                if (why != null) _paceStats.AddNoPause(cls);
+                FirstOfClass(st, cls, now, in plan, in bp, why);
             }
             catch (Exception e)
             {
                 Failed("rate.pace-ask", e);
             }
+        }
+
+        /// <summary>
+        /// The timer's decision (steps 13 / 16, + step 21's share in <paramref name="plan"/>): null = asked (queued for the tick),
+        /// else why not (a literal - the first line of each class names it).
+        /// </summary>
+        private string? AskPause(TrackedAgent st, double now, AttackKind kind, double d, bool known, float m, int bin, int next, in PacePlan plan)
+        {
+            if (m >= 1f && !plan.HasExtra)
+            {
+                _rateStats.AddNotHeld(PaceNotHeld.FullStrength);
+                return "no pause - at full strength, and no battle-pace share (none for this class, or its setting at 0)";
+            }
+            // Step 16: a step back - running, or asked for by this very swing - never skips the timer any more
+            // (review 10a R1's "a started step back drops the hold" is gone: the timer SURVIVES the step back;
+            // TickPace starts it at once by input, or defers a NoAttack hold behind a scripted step).
+            var ps = st.Pace;
+            if (ps != null && (ps.Pending || ps.Active)) return "no pause - an attack slipped through his last pause (the tick lifts it)";
+            if (ps != null && ps.Deferred)
+            {
+                // a newer attack's timer supersedes a deferred one
+                ps.Deferred = false;
+                _paceDeferred.Remove(st);
+            }
+            if (IsAttackAction(next))
+            {
+                _rateStats.AddNotHeld(PaceNotHeld.AlreadyReadied);
+                return "no pause - his next attack was already readied (a chained blow)";
+            }
+            if (!known)
+            {
+                _rateStats.AddNotHeld(PaceNotHeld.NoDuration);
+                return "no pause - the attack's length was not measured";
+            }
+            double pause = plan.Total;
+            if (!AttackTimerMath.Worth(pause))
+            {
+                _rateStats.AddNotHeld(PaceNotHeld.NotNeeded);
+                return "no pause - under 0.1 s";
+            }
+            ps ??= st.Pace = new PaceState();
+            ps.Pending = true;
+            ps.PendingAt = now;
+            ps.Until = now + pause;
+            ps.Bin = bin;
+            ps.Asked = m;
+            ps.Duration = d;
+            ps.Played = st.EndedPlayed;
+            ps.Kind = kind;
+            ps.AttackEnd = now;
+            ps.Pause = pause;
+            ps.Tired = plan.Tired;
+            ps.Share = plan.Extra;
+            ps.Class = plan.Class;
+            ps.Percent = plan.Percent;
+            ps.EndAsked = false;
+            _pacePending.Add(st);
+            return null;
         }
 
         /// <summary>His ready began: how long after his last hold ended (the AI's own re-decision once NoAttack lifts).</summary>
@@ -734,7 +767,9 @@ namespace TraxCombat.Missions
             }
             if (!listed) _paceHeld.Add(st);
             _rateStats.AddHoldStart(ps.Bin, ps.Asked, ps.Kind, st.Agent.MountAgent != null, byInput);
-            _rateStats.AddTimer(ps.Kind, false, ps.Bin, ps.Duration, ps.Asked, ps.Pause, ps.Played);
+            _rateStats.AddTimer(ps.Kind, false, ps.Bin, ps.Duration, ps.Asked, ps.Pause, ps.Played, ps.Share);
+            _paceStats.AddPause(ps.Class, ps.Tired, ps.Share); // step 21: by class and reason
+            st.TimerClass = ps.Class;
             // the gap to his next attack is measured from the attack's end, where the timer began
             st.TimerPending = true;
             st.TimerStart = ps.AttackEnd;
@@ -750,6 +785,7 @@ namespace TraxCombat.Missions
         {
             ps.Pending = false;
             _rateStats.AddRefused(why);
+            PaceNotStarted(st, ps);
             if (TraxLog.VerboseWants("rate-hold"))
                 TraxLog.Verbose("rate", "AI timer not started: " + Name(st) + " (m " + F2(ps.Asked) + ", " + F2(ps.Pause) + " s asked) - " + why, "rate-hold");
         }
@@ -968,6 +1004,7 @@ namespace TraxCombat.Missions
                 TraxLog.Info("rate", "AttackRatePaceByInput switched " + (s.AttackRatePaceByInput ? "ON" : "OFF") + " mid-mission at " + Sec(SafeNow()) + " s: new AI timers use "
                     + AiInputMath.TimerTechnique(s.AttackRatePaceByInput) + "; the " + HeldNow + " running now finish the way they began");
             }
+            NoteBattlePaceSettings(s); // step 21
             if (s.AiHoldRaiseGuard != _seenRaiseGuard)
             {
                 _seenRaiseGuard = s.AiHoldRaiseGuard;
@@ -1020,7 +1057,10 @@ namespace TraxCombat.Missions
                 + (st.Agent.MountAgent != null ? " (mounted)" : string.Empty) + " (D " + F2(ps.Duration) + " s: wind-up + " + (ps.Kind == AttackKind.Melee ? "swing" : "loose + reload")
                 + (ps.Played - ps.Duration >= 0.005 ? " at full animation speed; played " + F2(ps.Played) + " s - the slower swing" : string.Empty)
                 + ") ended at " + Sec(ps.AttackEnd) + " s at attack speed x" + F2(ps.Asked) + " (f " + F2(AthleticsMath.PeakShare(Rules, st)) + ") → no new attack for "
-                + F2(ps.Pause) + " s = D x (1/m - 1), until " + Sec(ps.Until) + " s";
+                + F2(ps.Pause) + " s = " + (ps.Share >= 0.005
+                    ? "the tired pause " + F2(ps.Tired) + " s (D x (1/m - 1)) + " + F2(ps.Share) + " s of battle pace (" + BattlePaceMath.Name(ps.Class)
+                      + (ps.Percent > 0 ? " swing " + ps.Percent + "% less" : ": the extra seconds after a shot") + ")"
+                    : "D x (1/m - 1)") + ", until " + Sec(ps.Until) + " s";
             if (first && ps.ByInput)
                 TraxLog.Info("rate", "first AI timer this mission: " + text + "; technique: BY INPUT - " + HookText(ps.Hook)
                     + "; only the attack bits are taken out of his own input while it runs" + (TraxSettings.Shared.AiHoldRaiseGuard ? ", a guard raised when he wants to attack" : "")
@@ -1059,6 +1099,7 @@ namespace TraxCombat.Missions
         {
             foreach (var line in _rateStats.SummaryLines(AttackRateRules.From(TraxSettings.Shared), _rateSwitched))
                 TraxLog.Info("summary", line);
+            WriteBattlePaceSummary(); // step 21
         }
     }
 }

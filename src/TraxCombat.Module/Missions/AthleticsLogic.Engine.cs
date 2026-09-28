@@ -553,11 +553,13 @@ namespace TraxCombat.Missions
             switch (action)
             {
                 case ActionReleaseMelee:
+                    ReadAttackClass(st, melee: true, throwing: false); // step 21: the class from what he holds (AI only)
                     StartRelease(st, now, in r);
                     PlayerAttackStarting(st, now, AttackKind.Melee, in r);
                     break;
                 case ActionReleaseRanged:
                 case ActionReleaseThrowing:
+                    ReadAttackClass(st, melee: false, throwing: action == ActionReleaseThrowing);
                     _stats.RangedReleasesPolled++;
                     PlayerAttackStarting(st, now, AttackKind.Ranged, in r);
                     break;

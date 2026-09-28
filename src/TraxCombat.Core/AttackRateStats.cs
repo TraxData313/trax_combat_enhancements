@@ -45,6 +45,7 @@ namespace TraxCombat.Core
         private readonly MeanStd[,] _timerAsked = new MeanStd[Groups, Bins];
         private readonly MeanStd[,] _timerFloor = new MeanStd[Groups, Bins]; // step 16: the attack + its pause (D / m) - the shortest cycle the spec allows; step 20b: the attack as PLAYED + its pause
         private readonly MeanStd[,] _timerPlayed = new MeanStd[Groups, Bins]; // step 20b: the attack as played (D is at full animation speed)
+        private readonly MeanStd[,] _timerShare = new MeanStd[Groups, Bins];  // step 21: the battle-pace share inside the pause asked (0 when none)
         private readonly MeanStd[,] _gap = new MeanStd[Groups, Bins];       // the attack's end → the next attack's start
         private readonly MeanStd[,] _after = new MeanStd[Groups, Bins];     // the timer's end → the next attack's start
         private readonly int[,] _early = new int[Groups, Bins];              // the next attack started before the timer ended
@@ -263,13 +264,14 @@ namespace TraxCombat.Core
         /// <summary>A timer started (yours, or an AI's hold): the attack's D (step 20b: at full animation speed), m
         /// at its end, the pause asked; <paramref name="played"/> = the attack as it really played (NaN = D - the
         /// animations at full speed).</summary>
-        public void AddTimer(AttackKind kind, bool player, int bin, double duration, float m, double pause, double played = double.NaN)
+        public void AddTimer(AttackKind kind, bool player, int bin, double duration, float m, double pause, double played = double.NaN, double share = 0)
         {
             if (bin < 0 || bin >= Bins || double.IsNaN(pause)) return;
             int g = Group(kind, player);
             _timerD[g, bin].Add(duration);
             _timerM[g, bin].Add(m);
             _timerAsked[g, bin].Add(pause);
+            _timerShare[g, bin].Add(double.IsNaN(share) || share < 0 ? 0 : share);
             double attack = double.IsNaN(played) || played <= 0 ? duration : played;
             if (!double.IsNaN(attack)) _timerPlayed[g, bin].Add(attack);
             // D + D (1/m - 1) = D / m at full speed; step 20b: the attack as played + its pause (the slower swing's own time)
@@ -450,13 +452,15 @@ namespace TraxCombat.Core
 
             var h = new StringBuilder("attack rate - AI timer (AttackRatePaceHold ").Append(r.PaceHold ? "on" : "off")
                 .Append(" at the end; technique at the end: ").Append(r.PaceTechnique())
-                .Append("; after each attack of a tired AI fighter, melee and ranged, on foot and mounted): ").Append(Holds).Append(" holds");
+                .Append("; after each attack of a tired AI fighter, melee and ranged, on foot and mounted - step 21: fresh ones too when their class has a battle-pace share): ").Append(Holds).Append(" holds");
             if (Holds > 0)
             {
                 h.Append(" (by input ").Append(_holdsByInput).Append(", by NoAttack ").Append(_holdsByFlag)
                  .Append("; melee ").Append(HoldsOf(AttackKind.Melee)).Append(", ranged ").Append(HoldsOf(AttackKind.Ranged)).Append(", mounted ").Append(_holdsMounted)
                  .Append("), avg ").Append(N2(_holdSeconds.Mean)).Append(" s, max ").Append(N2(_holdMax)).Append(" s at avg m ").Append(N2(_holdAsked.Mean)).Append("; by f:");
-                for (int b = 1; b < Bins; b++) h.Append(b == 1 ? " " : ", ").Append(AthleticsMath.PeakBinName(b)).Append(' ').Append(_holdsByBin[b]);
+                // step 21: fresh men wait too when their class has a battle-pace share - the peak band is listed once it has holds
+                int first = _holdsByBin[0] > 0 ? 0 : 1;
+                for (int b = first; b < Bins; b++) h.Append(b == first ? " " : ", ").Append(AthleticsMath.PeakBinName(b)).Append(' ').Append(_holdsByBin[b]);
             }
             lines.Add(h.ToString());
 
@@ -591,7 +595,11 @@ namespace TraxCombat.Core
                     if (played.Count > 0 && played.Mean - _timerD[g, b].Mean >= 0.005)
                         t.Append(" at full animation speed - played ").Append(N2(played.Mean)).Append(" s, the slower swing");
                     t.Append(" at m ").Append(N2(_timerM[g, b].Mean))
-                        .Append(" → asked avg ").Append(N2(_timerAsked[g, b].Mean)).Append(" s = D x (1/m - 1))");
+                        .Append(" → asked avg ").Append(N2(_timerAsked[g, b].Mean)).Append(" s = D x (1/m - 1)");
+                    // step 21: the battle-pace share on top (the shield wall's wait, the archers' extra seconds)
+                    if (_timerShare[g, b].Count > 0 && _timerShare[g, b].Mean >= 0.005)
+                        t.Append(" + the battle-pace share avg ").Append(N2(_timerShare[g, b].Mean)).Append(" s");
+                    t.Append(')');
                     var gap = _gap[g, b];
                     if (gap.Count > 0)
                         t.Append("; measured: the next attack began avg ").Append(N2(gap.Mean)).Append(" s after the attack's end (n ").Append(gap.Count)

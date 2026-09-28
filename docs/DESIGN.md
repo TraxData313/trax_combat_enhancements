@@ -582,6 +582,11 @@ says (§2c).
 | `StepBackEnemyRange` | 4.0 | Steps back only while the enemy he fights is within this many metres. |
 | `StepBackHoldAttacks` | true | No swings while stepping back (guard up only). |
 | `StepBackMaxAtOnce` | 50 | Most fighters stepping back at the same time, all sides together. |
+| `ShieldInfantrySwingsLessPercent` | 30 | Step 21 (Anton): AI melee on foot with a shield in the other hand (read at each swing) swings this % less, fresh or tired - after each swing a pause that stretches his expected cycle (his attack + his tired pause + `AiMeleeGapSeconds`) ÷ (1 − %), guard up (§2 "Battle pace"). Never you, never riders. 0 = off; range 0-90; applies at the next swing. |
+| `FootMeleeSwingsLessPercent` | 15 | Step 21: the same for AI melee on foot WITHOUT a shield (two-handers, polearms, a one-hander alone). 0 = off. |
+| `AiMeleeGapSeconds` | 1.0 | Step 21: the AI's own gap between a melee attack's end and its next one at full strength (measured 1.0 s in Anton's logs of 2026-09-27/28) - the two "swing less" pauses are sized on it. |
+| `ExtraPauseAfterBowShotSeconds` | 2.0 | Step 21 (Anton): AI bow shots (on foot and horse archers) wait this many seconds more, on top of the tired pause - about 30% fewer shots (fresh AI bow cycle ~4.5 s). 0 = off; applies at the next shot. |
+| `ExtraPauseAfterCrossbowShotSeconds` | 2.5 | Step 21: the same for AI crossbow shots (fresh cycle ~6 s). Thrown weapons and slings: none. 0 = off. |
 | `RegenDelayBlowTimes` | 2 | Idle blows before regeneration starts. |
 | `BlowTimeSeconds` | 1.5 | How long "one blow" is, for the delay above. |
 | `FullRegenSecondsStanding` | 60 | Seconds from empty to full while standing still or walking (the whole refill, whatever the curve below). |

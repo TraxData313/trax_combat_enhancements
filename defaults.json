@@ -133,8 +133,9 @@
   "AttackRatePlayerTimer": true,
 
   // On: after each attack - melee or ranged, on foot or mounted - a tired AI fighter does not
-  // start another until his pause is over; his guard stays up. Off: tired AI fighters are not
-  // held. Off mid-battle: every waiting fighter may attack again at once.
+  // start another until his pause is over; his guard stays up. The "Battle pace (AI)" waits
+  // ride on it too. Off: no AI fighter is held - neither the tired pause nor the battle-pace
+  // waits. Off mid-battle: every waiting fighter may attack again at once.
   // (true or false)
   "AttackRatePaceHold": true,
 
@@ -234,6 +235,44 @@
   // battles cheap and stops a whole front line from stepping back together.
   // (range 1 to 1000)
   "StepBackMaxAtOnce": 50,
+
+  // ==================== Battle pace (AI) ====================
+  // AI soldiers on foot fighting with a shield in their other hand swing this many percent less
+  // often than they otherwise would, fresh or tired: after each swing they wait a little
+  // longer, guard up, before the next. 30 = 7 swings where they made 10. Read at every swing
+  // from what he really holds - heroes and lords too; never you, never riders. Rides on "Tired
+  // AI wait out the pause" (off there = no AI pause at all). 0 = off. A change applies at each
+  // fighter's next swing.
+  // (range 0 to 90)
+  "ShieldInfantrySwingsLessPercent": 30,
+
+  // The same for AI soldiers on foot fighting WITHOUT a shield - two-handed swords and axes,
+  // polearms, a one-hander alone: this many percent fewer swings, fresh or tired. 0 = off. A
+  // change applies at each fighter's next swing.
+  // (range 0 to 90)
+  "FootMeleeSwingsLessPercent": 15,
+
+  // How long an AI soldier on foot at full strength waits on his own between the end of one
+  // swing and the start of the next - about 1 second in the playtests. The two settings above
+  // size their wait on his whole rhythm (his swing, his tired pause and this gap), so that he
+  // really swings that percent less. The battle summary's "battle pace" lines show his real gap
+  // after a wait: raise this if it reads longer, lower it if shorter.
+  // (range 0.0 to 5.0)
+  "AiMeleeGapSeconds": 1.0,
+
+  // AI bowmen - on foot and horse archers alike - wait this many seconds more after each shot,
+  // on top of any tired pause. At 2.0 they fire about 30% fewer arrows a minute (a fresh AI
+  // bowman shot about once every 4.5 seconds in the playtests). Never you. 0 = off. A change
+  // applies at each archer's next shot.
+  // (range 0.0 to 10.0)
+  "ExtraPauseAfterBowShotSeconds": 2.0,
+
+  // AI crossbowmen wait this many seconds more after each shot, on top of any tired pause. At
+  // 2.5 they fire about 30% fewer bolts a minute (a fresh AI crossbowman shoots about once
+  // every 6 seconds, the long reload included). Thrown weapons and slings have no extra wait.
+  // Never you. 0 = off. A change applies at each crossbowman's next shot.
+  // (range 0.0 to 10.0)
+  "ExtraPauseAfterCrossbowShotSeconds": 2.5,
 
   // ==================== Refill ====================
   // How long a fighter must go without attacking before his Athletics starts to refill, counted

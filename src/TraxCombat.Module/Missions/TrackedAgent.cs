@@ -170,6 +170,25 @@ namespace TraxCombat.Missions
         /// null until he is first held that way.</summary>
         public AiInputState? Input;
 
+        // ---- step 21: battle pace (AI_NOTES "Step 21")
+        /// <summary>The class of his attack under way, read at its release from what he really holds (AI only).</summary>
+        public AttackClass AttackClass = AttackClass.FootMelee;
+
+        /// <summary>His last ended AI attack, for the next cycle note (valid once): its class and kind, the battle-pace share of
+        /// the pause after it (0 = none) and the model's cycle with the setting at 0 and with it (NaN = no model).</summary>
+        public bool PaceLastValid;
+        public AttackClass PaceLastClass;
+        public AttackKind PaceLastKind;
+        public double PaceLastShare;
+        public double PaceModelAt0 = double.NaN;
+        public double PaceModelWith = double.NaN;
+
+        /// <summary>The classes he attacked with this battle (a bit per class) - the summary's "by N men".</summary>
+        public int PaceClassesSeen;
+
+        /// <summary>The class of his last AI timer - the gap after it is filed under it.</summary>
+        public AttackClass TimerClass;
+
         public void RememberMissile(int index)
         {
             switch (MissileNext)
