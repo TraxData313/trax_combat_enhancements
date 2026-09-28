@@ -744,3 +744,40 @@
   along). Docs: DESIGN §2 + table + 20, PLAYTEST F5 (two hideouts: duel once, battle once) + L4 + G3's 72, README,
   Steam description, CLAUDE summary + layout, AI_NOTES "Step 19". Commits c183e47, 12663d4 + this.
   (2026.09.28 09.35.08)
+- [x] **Step 20 — hold ALT: Athletics + health under the game's formation markers** (Anton, 2026-09-28: "I see the
+  Athletics and health numbers above the troops when I hold ALT - it now shows me the troop count and distance"; LATER #8
+  built in its "only while vanilla shows the markers" form). Under every marker the game draws, centred just under its
+  distance number: `72% ± 8` (the men's average Athletics ± spread, IN THE COLOUR of their average f - the bar's bands)
+  and `HP 81%`, over the strip's slim bar (fill, ± band, peak tick). Yours and your allies' always; the ENEMY's too
+  (`AltMarkersShowEnemy`, on - vanilla marks them; knowing the enemy is tired is the point). WHEN (research first,
+  AI_NOTES "Step 20"): vanilla's `MissionGauntletFormationMarker` sets `IsEnabled = ShowIndicators key (5: Left Alt / LB)
+  held || the orders menu open` every frame (frozen in Deployment) - we read THAT flag live from its layer, so the numbers
+  show exactly with the markers (the orders menu too), and follow any mod that changes the rule; when it cannot be read,
+  the rule is copied (HudFrame's new `ShowIndicatorsKey`). HOW IT LINES UP, nothing patched: `FindLayer("MissionFormationMarker")`
+  → `GetMovieIdentifier("FormationMarker").DataSource` IS the public `MissionFormationMarkerVM` - its targets carry the
+  formation itself and the point vanilla projected THIS frame (median + 3 m); the marker widgets (`FormationMarkerListPanel`,
+  a real, non-generated movie) give their live size, alpha and pinned offsets, paired by the exact point (vanilla re-sorts
+  its targets far-first every frame, so labels are KEYED by team + formation, grow-only). The label goes to the marker's
+  bottom centre exactly as vanilla centres the marker, the same frame (our view ticks after vanilla's; its LateUpdate
+  re-lays out before drawing) - any resolution, UI scale, RTS Camera's free camera (it moves the camera vanilla projects
+  from; its four marker patches - solo formation hidden, alpha 0.2 near in free camera, distance text, targeting - are
+  followed for free, decompiled into `..\reference\RTSCamera-decompiled\`). Hidden with the marker: behind the camera,
+  faded (< 5 m), formation gone; a pinned (targeted) marker keeps its label. FALLBACKS, each logged with its reason and
+  counted, per show: a marker without its widget / no widgets → the game's points with a nominal size; no layer / data →
+  our own projection of the same point (`ProjectedFormationMarkers`). The READ API now keeps formation averages for EVERY
+  team (slots by `Team.TeamIndex`, one allocation-free pass every FormationStatsRefreshSeconds; the player still left out of
+  his own). 6 settings (78, a new group "Formation markers (hold ALT)"): `ShowAltMarkerStats`, `AltMarkersShowEnemy`,
+  Advanced `AltMarkerTextSize` 16 (vanilla's marker brush `NameMarker.Distance.Text`), `AltMarkerOffset` 2,
+  `AltMarkerBarWidth` 60, `AltMarkerBarHeight` 3 (0 = no bar) - all live; `FormationBarsAlways` / `FormationBarHeight` stay
+  planned (an always-on form). Gates: ModEnabled first, AthleticsEnabled, the switch, Hide battle UI, photo mode, a fight;
+  NOT the player (vanilla shows markers after you fall). Fail safe: any error disables the view for the battle ([error] +
+  DISABLED line). Logs: `[hud] attached: ALT markers …`, the first show per battle in full (`first shown at … - technique:
+  … ; N markers (yours a, allies b, enemy c): <each marker's point, size, distance>; labels (…): <each label's centre x /
+  top y>; no label: <why>`), the first values, every fallback, `[summary] hud: ALT markers - shown Nx, on screen N s;
+  technique …; formations labelled: yours / allies / enemy …; fallbacks …; errors N`. Tests 401 (+14 `AltMarkerTests`);
+  smoke 55 steps (+3: the prefab, the view with stand-in marker sources through 17 scenes, the fail safe; + the master
+  switch step); build 0 warnings; deploy.ps1: build, AssemblyGuard, smoke green and INSTALLED (the game was closed).
+  Docs: DESIGN §3 item 3 as built + table + planned rows + interpretation 21 + ten groups, PLAYTEST E4 + L7 + counts,
+  README, Steam description, CLAUDE summary + layout, AI_NOTES "Step 20" (research, built, UNVERIFIED 1-6). Commits
+  696216e, 8de673b, e90d3a2, 862a48a + this.
+  (2026.09.28 11.36.17)

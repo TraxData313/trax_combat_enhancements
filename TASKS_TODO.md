@@ -21,7 +21,7 @@ BUILD ORDER (one step at a time — [~] = in flight, see CLAUDE.md "manager prot
 - [x] 17. Second fresh-eyes review: the ~4000 lines since step 10a's review (steps 12–16: player input timer, AI input component, backpedal, refill curve, migrations) — fix what is found, before Anton's morning playtest
 - [x] 19. Hideout boss fight = a fresh start: when the boss (+ friends) fight begins — duel OR men-to-men — the player's side refills to full Athletics (Anton, 2026-09-28: "they come fresh and we will be tired")
 - [x] 18. Kicks and shield bashes cost 3 Athletics (Anton, 2026-09-28) — a slider, hero/leader multipliers apply like any blow
-- [~] 20. Hold ALT → Athletics + health under each vanilla formation marker (beside its count + distance) (Anton, 2026-09-28) — LATER #8 revived in its "only while vanilla shows the markers" form
+- [x] 20. Hold ALT → Athletics + health under each vanilla formation marker (beside its count + distance) (Anton, 2026-09-28) — LATER #8 revived in its "only while vanilla shows the markers" form — built: shows exactly with the game's markers (ALT or the orders menu), yours + the enemy's, markers read live (see AI_NOTES)
 - [ ] 20b. Anton's tuned defaults (2026-09-28): run floor 0.7 → 0.6 at empty · swing ANIMATION slowed in a straight line to 85% at empty (full speed at the peak line, like the run speed - today it is max(m, floor), which would hit 85% almost at once), the pause in seconds stays exactly as it is · config.json migrated once (format 4) — after 20, before 21
 - [ ] 21. Slower, more defensive fights (Anton, 2026-09-28): AI infantry with a SHIELD in hand swing ~30% less (slider; foot men without a shield 15%, own slider) · AI archers wait an extra N seconds after each shot, sized to fire ~30% slower (seconds slider; crossbows their own) — AI only, through the existing pause (guard up), on top of tiredness; the summary measures the real swings/shots per minute — after 20
 
@@ -33,7 +33,7 @@ PLAYTEST (Anton, all at once at the end — script in docs/PLAYTEST.md):
 
 LATER (moved off the build order by Anton, 2026-09-27 — designs kept in DESIGN §3 + AI_NOTES steps 7–9):
 - [ ] 7. Bar for the NPC I look at (toggle)
-- [~] 8. Squad bars above my formations: average ± 1 std + average health → being built as step 20 (ALT only)
+- [x] 8. Squad bars above my formations: average ± 1 std + average health → built as step 20 (ALT)
 
 BUGS:
 - [x] Loading screen showed "0.1.0+<40-char commit>" (Anton's screenshot, 2026-09-28) — players see "0.1.0" now, the log keeps the full id (29976a7; deploys when the game closes)
