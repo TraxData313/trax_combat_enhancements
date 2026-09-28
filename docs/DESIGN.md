@@ -71,7 +71,8 @@ regen.)
   kick; a mounted bash, should the engine ever play one, is charged the same.
 - **The peak zone** — the top of every fighter's OWN bar (Anton, 2026-09-27). At or above
   `AthleticsPeakPercent` (75) % of the fighter's pool the bar is GREEN and the fighter is at
-  full strength: full damage upside, full attack rate (no pause), full run speed, never steps back.
+  full strength: full damage upside, full attack rate (no tired pause - step 21's battle pace below still slows
+  the AI's foot melee and archers a little, fresh or not), full run speed, never steps back.
   Below the line each of those falls in a straight line down to its floor at 0. With cost in
   points, bigger pools stay in the zone longer — recruit (floor 50): 2 swings at full
   strength, 5 to empty; legionary (130): 4 and 13; Fian champion (170): 5 and 17; a
@@ -102,7 +103,8 @@ regen.)
     each attack: an attack of duration **D** that ends at attack speed **m** leaves a pause of
     **D × (1/m − 1)** in which the fighter may not START another attack — so the attacking part
     of his rhythm runs at × m (m 0.5: pause = D; m 0.2 at empty: pause = 4 × D). At full
-    strength (m 1) there is no pause; a pause under 0.1 s is not started (plumbing).
+    strength (m 1) there is no tired pause (step 21: the AI's battle-pace share may still apply - below); a pause
+    under 0.1 s is not started (plumbing).
     - **D** = the attack's own time: its wind-up (the ready up to full — the part a blow is HELD
       ready is not counted) + its release (the swing with its follow-through). Ranged: the draw
       + the loose + **the reload that follows** (nocking, winding a crossbow, taking the next
@@ -175,6 +177,36 @@ regen.)
       against the timer's own floor D / m (the attack and its pause - at least ~100% = held as asked;
       step 20b: the attack as played + its pause),
       cycles with a step back inside counted and shown apart, and the input hook's own numbers.
+    - **Battle pace — the shield wall swings less, archers shoot slower** (Anton, 2026-09-28: "make the
+      infantry more defensive, especially the guys with the shields, so that maybe they swing 30% less (and make
+      that adjustable)" and "make the archers a bit slower ... about 30% slower overall"; built in step 21 - AI_NOTES
+      "Step 21"). The AI's pause after each attack gets a SHARE on top of the tired part, by the attack's CLASS -
+      read at each release from what the fighter really holds (a shield in his other hand, a bow or a crossbow),
+      never from his formation or troop type; AI heroes, companions and lords are AI fighters like any other:
+      - **Shield infantry** (melee on foot with a shield in the other hand): `ShieldInfantrySwingsLessPercent` (30)
+        % fewer swings; **other foot melee** (two-handers, polearms, a one-hander alone): `FootMeleeSwingsLessPercent`
+        (15). Fresh or tired alike, on top of tiredness (multiplicative): the pause stretches his EXPECTED cycle - his
+        attack D + his tired pause T + his own gap G (`AiMeleeGapSeconds`, 1.0 s) - by 1 / (1 − q), q = % / 100:
+        **pause = (T + q × (D + G)) / (1 − q)**, so D + pause + G = (D + G + T) / (1 − q) - at every tiredness he
+        swings q fewer than tiredness alone lets him. Why not D × (1/(m (1 − q)) − 1): the AI does not attack the
+        moment it may - Anton's logs measured a fresh AI melee cycle of 1.80 s on a 0.78 s attack, and a pause ADDS
+        to his own ~1.0 s gap - so a share sized on D alone would buy about half the asked cut (16% for 30%). A fresh
+        shield man waits about 0.76 s after each swing, guard up.
+      - **Bowmen** (a bow, on foot and horse archers): `ExtraPauseAfterBowShotSeconds` (2.0) more seconds after each
+        shot; **crossbowmen** `ExtraPauseAfterCrossbowShotSeconds` (2.5) - on top of the tired pause, sized for about
+        30% fewer shots on the measured fresh cycles (bows ~4.5 s, crossbows ~6 s; the extra ≈ cycle × (1/0.7 − 1)).
+      - **No share**: riders' melee (lancers, horsemen), thrown weapons (javelins, throwing axes and knives, stones),
+        slings - and **you**, never (your timer stays pure tiredness). Kicks and bashes start no pause, as before.
+      - It rides on the AI timer (`AttackRatePaceHold`; off = no AI pause at all) and its technique (by input, guard
+        up), so everything of the tired pause holds for it: the master switch (off = every pause lifted at once),
+        a step back never cancels it, the hideout boss fight's fresh start ends it, a game job refuses it, RTS
+        Camera's AI-driven hero is you. Hot swap: read at each attack's end - a change applies at every fighter's next
+        attack; a pause already running keeps its length. 0 = that share off.
+      - **Measured**: the summary's "battle pace" lines give per class the attacks and the men, the pauses by reason
+        (the share alone at full strength, tired + the share, tired only), the tired part and the share, the measured
+        cycle = attacks a minute per man while fighting, the AI's own gap after a pause, and for foot melee the
+        model's cycle with the setting at 0 and with it (his attack + the pause + G) against the measured one. The
+        real check is the same battle with the sliders at 0 and at their values (PLAYTEST).
   - **Run speed on foot** = M + (1 − M) × f, M = `MinMoveSpeedMultiplier` (initial 0.7 - an empty
     man runs at 70% of his pace; step 14, Anton after his 240v240: "make them slow down to 70% speed",
     the 0.3 of steps 5c-13 was "too slow, unrealistic"; shipped **0.6** since step 20b - Anton after
@@ -464,9 +496,9 @@ Every parameter lives in two places that stay in sync:
 - the **Mod Configuration Menu (MCM)** when installed. MCM must stay OPTIONAL: without it the
   mod runs on the file alone (see CLAUDE.md, hard requirements).
 
-**What the player reads** (step 10b; step 20 added the tenth): ten groups, the same in MCM and the
+**What the player reads** (step 10b; step 20 added the tenth, step 21 the eleventh): eleven groups, the same in MCM and the
 file, in this order — *Master switch, Damage randomness, Athletics, Tired fighters, Tired fighters step
-back, Refill, Your Athletics bar, Orders menu strip, Formation markers (hold ALT), Advanced*; MCM shows
+back, Battle pace (AI), Refill, Your Athletics bar, Orders menu strip, Formation markers (hold ALT), Advanced*; MCM shows
 its *Defaults* buttons (§2c) just above
 *Advanced*, which stays last. One vocabulary: the pool, the bar and its points are *Athletics*; the
 character-screen skill is *the Athletics skill*; the *peak line* is the white mark on the bar
@@ -806,6 +838,20 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     stops at 5, not 0 (the line reaches 0 at empty - a frozen swing); config format 4 moves a format-3
     file's 0.7 and a format 2-3 file's 100 once, logged (a value he set himself stays - his config.json of
     2026-09-28 held his own playtest values 0.5 and 90, so it keeps them).
+
+23. **Battle pace** (step 21, the manager's decisions on Anton's two asks + Claude's calls - AI_NOTES "Step 21"): the
+    class is read at each attack's RELEASE from what he holds (a shield in the off hand; the main hand's weapon class
+    Bow / Crossbow), not his formation; "infantry" = on foot, so a shield on horseback is a rider (no share); it
+    stacks on tiredness multiplicatively on the EXPECTED cycle, not on D alone (the data check: the AI's own ~1 s gap
+    after an attack would have hidden half of a D-based share), with the AI's gap a setting (`AiMeleeGapSeconds`,
+    measured 1.0 s) the summary checks; the archers' extra is flat seconds on top (the brief's own form), sized from
+    the log's fresh cycles - the log does not split bows from crossbows, so bows 2.0 s (bow-heavy battles read
+    4.3-4.5 s) and crossbows 2.5 s (their reload is ~1.5 s longer); thrown weapons and slings get no share (not
+    archers; javelin men throw a few and close in); AI heroes are included; the player never; it rides on
+    `AttackRatePaceHold`, so that switch off means no AI pause at all; fresh men are now held too, so nearly every
+    foot soldier gets the step-16 input component at his first attack (one small object per man, once - the AI
+    timer's tick over 1000 held men cost ~0.005 ms and allocated nothing in the smoke); the "swing less" sliders stop
+    at 90 (100 = ÷ 0).
 
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),

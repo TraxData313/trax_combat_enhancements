@@ -43,7 +43,7 @@ SteamCMD, no password, no Steam Guard.
    **Never run `WorkshopCreate.xml` again** — it would make a second item. If the upload failed
    AFTER "Item created", the empty item exists: use its id with `WorkshopUpdate.xml`.
 8. **On the item page** (Owner Controls): *Edit title & description* → paste
-   `tools\STEAM-DESCRIPTION.bbcode` whole (4.3 KB; Steam's cap is 8000 bytes). Do NOT list MCM
+   `tools\STEAM-DESCRIPTION.bbcode` whole (5.4 KB; Steam's cap is 8000 bytes). Do NOT list MCM
    under Required items — it is optional. If Steam asks to accept the Workshop legal agreement,
    that is Anton's click.
 9. **Sanity check the exact build players get**: subscribe to the (still private) item, and in

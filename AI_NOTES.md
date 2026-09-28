@@ -2515,3 +2515,140 @@ steps pin DESIGN's 100 / 0.7 (`AthleticsDefaults`), so they still test step 13's
    beside it; `asked avg` = D avg × (1/m avg − 1).
 3. The run at empty is 60% → `run speed check … empty (f 0) engine top x0.60 asked x0.60`.
 4. The verdict does not turn "too slow" from the swing alone → the `incl. +… s of slower swing` in each tired band's target.
+
+## Step 21 — battle pace: the shield wall swings less, archers shoot slower (DONE 2026-09-28)
+
+Anton (2026-09-28, via the manager): "make the infantry more defensive, especially the guys with the shields, so that
+maybe they swing 30% less (and make that adjustable)" and "to compensate make the archers a bit slower, maybe add a delay
+in seconds that makes them fire about 30% slower overall". Goal: slower, more defensive battles (BATTLE_PACING's spirit - a
+lever of his own). The manager's frame: through the EXISTING AI timer (guard up, by input), on top of tiredness
+multiplicatively, AI only, a data check before fixing the formula. DESIGN §2 "Battle pace" is the spec; interpretation 23.
+
+**The data check (Anton's real log, `trax_combat.log` of 2026-09-27 21:00 → 2026-09-28 10:57, read only)**
+- Fresh AI melee (the `attack rate, melee, AI, peak (f 1)` rows; the input-technique battles, weighted by n):
+
+  | battle | fresh cycle (n) | wind-up + swing = D | "pause" phase |
+  |---|---|---|---|
+  | 08:22 200v200 inf | 1.83 s (308) | 0.35 + 0.44 = 0.79 | 1.07 |
+  | 08:30 200v200 | 1.78 (336) | 0.35 + 0.43 = 0.78 | 1.00 |
+  | 08:43 200v200 (+ archers, crossbows) | 1.75 (200) | 0.30 + 0.44 = 0.74 | 0.97 |
+  | 09:52 campaign field | 1.82 (89) | 0.32 + 0.39 = 0.71 | 1.17 |
+  | 10:30 naval | 1.89 (41) | 0.30 + 0.44 = 0.74 | 1.18 |
+  | 10:57 campaign field | 1.90 (28) | 0.48 + 0.57 = 1.05 | 0.90 |
+  | **weighted** | **1.80 s** | **0.78 s** | → the AI's own gap G = 1.80 − 0.78 = **1.02 s** |
+
+  (The NoAttack-era battles of 2026-09-27 read 1.61 / 1.86 / 1.70 - the same picture.) So the fresh cycle is 2.3 × D.
+- **Does a pause hide in that idle time, or add to it?** The tired bands of 08:43 (by input) answer: f 0.5-1, timer asked
+  avg 0.30 s → the next attack began 1.68 s after the attack's end = **1.38 s after the timer ended**, the band's cycle
+  without a step back 2.04 s against the fresh 1.75 (+0.29 for a 0.30 s timer, 0.05 of it the slower swing); f below 0.5,
+  asked 1.39 s → **1.51 s after the timer ended**. The AI's gap after a pause is its full ~1 s gap or more - a melee pause
+  ADDS to the cycle, it does not hide (the raised guard: a man who wanted to attack and was made to block re-decides).
+- **So the manager's first formula falls short**: m' = m × 0.7 on D alone gives a fresh man 0.78 × (1/0.7 − 1) = 0.33 s on
+  a 1.80 s cycle = **16% fewer swings, not 30%**. Resized: the share stretches the whole EXPECTED cycle.
+- Fresh AI ranged (`ranged, AI, peak`): 22:48 4.53 s (n 89 - Imperial Trained Archers, bows), 22:03 4.93 (117), 08:22 4.33
+  (153), 08:30 4.49 (33), 08:43 4.98 (409 - Imperial Sergeant Crossbowmen + Palatine Guards), 09:52 4.98 (79 - Elite Hired
+  Crossbow + Aserai archers), 10:30 5.52 (92 - Elite Hired Crossbow, naval), 10:57 6.22 (127 - with horse javelins); the
+  training field's lone bowman 3.6 s. Weighted ≈ 5.0 s. **The log does not split bows from crossbows** (the ranged rows mix
+  bows, crossbows and throws), so: bows ≈ 4.5 s (the bow-heavy battles 4.3-4.5 s), crossbows ≈ 6 s (their reload is ~1.5 s
+  longer; the crossbow-heavy battles read 5.0-5.5 with bows mixed in). Ranged hiding: 08:43's fresh ranged pause phase was
+  1.82 s and the gap after a tired pause 1.09-1.13 s (some hiding there); across battles the fresh ranged pause is 0.47-1.82
+  (avg ~1.1 s) - about the gap after a pause, so an extra wait mostly adds.
+
+**The formula (Core `BattlePaceMath.Plan`)**
+- Foot melee, q = % / 100, T = step 13's tired pause D × (1/m − 1), G = `AiMeleeGapSeconds`:
+  **pause = (T + q × (D + G)) / (1 − q)** → D + pause + G = (D + G + T) / (1 − q): the expected cycle ÷ (1 − q) at every
+  tiredness - he swings q fewer than tiredness alone lets him (multiplicative, the brief's rule, on the right base). Fresh
+  shield man (D 0.78, q 0.3): 0.3 × 1.78 / 0.7 = **0.76 s** (cycle 1.80 → 2.56, 30% fewer); fresh two-hander (q 0.15):
+  0.15 × 1.78 / 0.85 = 0.31 s; a tired shield man at m 0.5: T 0.78 → (0.78 + 0.53) / 0.7 = 1.88 s (cycle 2.58 → 3.69).
+- Archers: pause = T + the setting's seconds. Sized: extra ≈ cycle × (1/0.7 − 1) = 0.43 × cycle - bows 4.5 × 0.43 = 1.93 →
+  **2.0 s** (4.5 / 6.5: 31% fewer); crossbows 6.0 × 0.43 = 2.57 → **2.5 s** (6.0 / 8.5: 29% fewer).
+- Everything else: T alone (riders' melee, thrown weapons, slings); the player: never (his own timer, unchanged).
+
+**Decisions (Claude's, 2026-09-28 - Anton can overturn any)**
+1. **The class is read at each RELEASE from what he holds** (`IWeaponFacts` → `GameWeaponFacts`): a melee release → the
+   off hand's current usage `IsShield`; a ranged release → the main hand's `WeaponClass` (Bow, Crossbow, else "other"); a
+   throwing release → "other". `Agent.WieldedOffhandWeapon` / `WieldedWeapon` = the wielded slot index (a pointer the agent
+   keeps - no engine call) + the managed equipment item: safe inside the OnMeleeHit callback where ObserveAction can run.
+   On horseback = a rider whatever he holds ("infantry" = on foot). At the attack's END the class is checked against the
+   kind that ended (`Consistent`; a mismatch falls back to the plain class of its kind - never a share it was not read for).
+   A failing read logs one `[error] rate.class` and falls back the same way. Never for the player (no read at all).
+2. **`AiMeleeGapSeconds` is a setting** (every number a parameter): the measured 1.02 s → 1.0, in the Battle pace group with
+   a plain hint and a summary check beside it ("his own gap after a pause" vs the model's). It sizes both melee shares.
+3. **Thrown weapons and slings get no share** (Anton said archers; javelin men throw a few and close in, their throws are
+   limited by ammo; slings are rare). Their class is still measured (the "thrown and slings" line).
+4. **Rides on the AI timer** (`AttackRatePaceHold` + the master switch + `AthleticsEnabled` - the poll that sees attacks runs
+   only with Athletics on): off = no AI pause at all. Its technique (by input: guard up; NoAttack when switched), its lift
+   paths (time, an attack slipping through, a game job, the player took him, left the field, mission end, the hideout fresh
+   start), its survival through a step back - all unchanged and shared.
+5. **Fresh men are held now**: `AskPause` holds a man at m 1 when his class has a share (the old "m ≥ 1 → not held" is now
+   "m ≥ 1 and no share"). Paths that assumed no timer at the peak: the "AI timer" summary line (the peak band is listed once
+   it has holds, and the line says fresh men wait too); the step back (still rolls only below the peak - untouched); the
+   hideout fresh start (ends a share pause like any pause - the men start fresh and wait their share again at their next
+   attack, as fresh shield men do); the recovery bar (the player's only - untouched); the timer rows (the share shown).
+6. **Hot swap**: read at each attack's end - a change applies at every fighter's next attack; a running pause keeps its
+   length; one `[rate] battle pace changed mid-mission …` line per change; the summary header flags a changed battle.
+7. **The summary** - the model check is for foot melee only (the model needs G; the ranged gap varied 0.5-1.8 s across
+   battles, too wide for one number): per class the attacks by N men, pauses by reason, the cycle and "a minute per man while
+   fighting", the AI's own gap after a pause, and (foot melee) the model's cycle with the setting at 0 (D played + G + T) and
+   with it (+ the pause) against the measured - at 0 the same line checks G itself. Archers: the extra's share of the cycle as
+   an UPPER bound ("at most P% fewer - if none of it hid") - the honest in-battle number; the real check for every class is
+   the same battle with the sliders at 0 and at their values (PLAYTEST D5 / D6).
+8. **The class cycle** is filed under the class of the attack whose pause is inside it (the last ended AI attack of the same
+   kind), a fighting rhythm only: the attack-rate cap at his m + the share inside it (so a big slider never pushes the
+   shield wall's cycles out of the numbers). A pause asked for but not started (refused, superseded by his next attack)
+   drops that cycle's model and counts as "no pause".
+9. **The band verdicts** (attack rate by f) keep their meaning roughly: both the fresh reference and the tired bands carry the
+   share multiplicatively, but shield and non-shield men mix inside "melee AI" - read the battle pace lines for step 21,
+   the band lines for tiredness (said in PLAYTEST L6c).
+10. **The MCM group "Battle pace (AI)"** sits after "Tired fighters step back" (group order 5; Refill → Advanced renumbered;
+    Master switch first, Advanced last). The "swing less" sliders stop at 90 (100 would divide by 0). The AI timer's
+    switch hint says the battle-pace waits ride on it. No config migration (new keys take their defaults).
+11. **The seam for the smoke**: `WeaponFactsDefault.Current` - the game's read by default; the smoke swaps in its stand-in at
+    its third step, before any logic is built (a native pointer read on its uninitialized fake agents would take the process
+    down, uncatchable), and pins the new settings at 0 for the older steps (`BattlePaceOff` in `AthleticsDefaults`), so they
+    still check steps 13-20 to the bit.
+
+**Performance**
+- Fresh men get pauses now, so nearly every foot soldier gets step 16's input component at his first attack (one small
+  object per man, once - not per tick) and the engine's input callback is turned on / off per pause when we own it (two
+  native flag calls per attack; with RTS Camera it is on for everyone and never touched). The idle callback is one bool.
+- The AI timer's tick walks the held list: the smoke's cost step holds **1000 men at once** and times 500 ticks of the real
+  `TickPace`: **~0.004-0.007 ms a tick, 0 bytes allocated** (AppDomain monitoring). No cap was needed; the existing start
+  cap (100 a tick, `MaxHoldStartsPerTick`) stays. In game the summary's `Athletics tick cost` line is the check (step 16's
+  playtest: 0.055 ms at 400 men).
+
+**Built** - file map in CLAUDE.md "Layout"
+- Core `BattlePace.cs` (AttackClass, RangedWeaponKind, PacePlan, BattlePaceRules, BattlePaceMath), `BattlePaceStats.cs` (per
+  class + the 7 `[summary]` lines); `AttackRateStats` (the timer row's share, the peak band in the holds list, the AI timer
+  line's wording); `SettingsSchema` (+5, the new group), `TraxSettings` (+5). defaults.json + refresh; DESIGN's table rows.
+- Module `WeaponFacts.cs`, `AthleticsLogic.BattlePace.cs`; `AthleticsLogic.AttackRate.cs` (AiAttackEnded → NoteClassAttack +
+  Plan → AskPause; the pause's parts in PaceState; the share in StartHold's stats, LogHold's text, RefuseHold /
+  PaceAttackStarted → PaceNotStarted; NoteCycle / AttackBegan → the class cycle and gap; the settings lines; the summary);
+  `AthleticsLogic.Engine.cs` (ReadAttackClass at each release); `TrackedAgent` / `PaceState` fields.
+- Settings 78 → 83: `ShieldInfantrySwingsLessPercent` 30, `FootMeleeSwingsLessPercent` 15, `AiMeleeGapSeconds` 1.0,
+  `ExtraPauseAfterBowShotSeconds` 2.0, `ExtraPauseAfterCrossbowShotSeconds` 2.5 (DESIGN's initial values = defaults.json).
+- Tests 405 → 418 (`BattlePaceTests`: the class from what he holds, Consistent, a fresh shield man 0.771 s / 30% and the
+  brief's D-only 16%, the percent fewer at every m for both melee classes, archers fresh and tired, riders and throws, 0 =
+  off, ranges and NaN, the rules live from the settings, the settings sentence, the summary lines, at-0 and changed-flag).
+- Smoke 58 → 61 steps (`Program.BattlePace.cs`): the stand-in weapon read (step 3), the battle pace step through the real
+  logic (a fresh shield man 0.78 s by input with its first-of-class and first-timer lines, the class cycle 1.68 s and the
+  model 1.82 / 2.60, a tired shield man (T + 0.546) / 0.7, a two-hander 0.321 s, a fresh rider none / a tired one T alone,
+  a fresh bowman 2.0, a tired one T + 2.0, a horse archer 2.0, a crossbowman 2.5, a javelin none, the player never - no
+  read, no count -, the slider to 0 and 50 live, the master switch lifting it, the summary lines), the cost step; the
+  master-switch step also lifts a fresh shield man's share. deploy.ps1 green (build, AssemblyGuard, smoke, installed).
+
+**UNVERIFIED — only the game can tell (PLAYTEST D5, D6, L6c; the line that settles each)**
+1. The class read: a shield in the off hand reads as a shield, bows and crossbows by their class → one `[rate] battle pace -
+   first <class> attack this mission: <name> …` line per class present, with the troops you expect (a legionary shield
+   infantry, a voulgier other foot melee, a horseman a rider, an archer bowmen); no `[error] rate.class`.
+2. **The shield wall swings ~30% less**: D5's A/B - `shield infantry … = X swings a minute per man` with the slider at 30 ÷ at
+   0 ≈ 0.70; within the run `his own gap after a pause` near `AiMeleeGapSeconds` and `measured ÷ it` on target. If the gap
+   after a pause reads well below 1.0 (the pause hid in his idle time), or the run at 0 reads `measured ÷ it` far from 100%
+   (G is not 1.0 in that battle), retune `AiMeleeGapSeconds`.
+3. **Archers ~30% fewer shots**: D6's A/B - `bowmen … = X shots a minute per man` at 2.0 ÷ at 0 ≈ 0.70, the same for
+   crossbowmen; if the ratio is nearer 0.85 the extra partly hid - size the seconds up from the two X's.
+4. Fresh held men keep their guard → L6b `GUARD: held by the timer` close to `everyone else`.
+5. Cost → `Athletics tick cost` in a 400+ man battle near step 16's 0.055 ms; the input hook's `never called` ratio small.
+6. Slower battles overall → D5's `after N s` (an 80v80 infantry fight ended in 4-5 min before step 16) and Anton's feel.
+7. The crossbow is still in hand at its release (`WieldedWeapon` read at ReleaseRanged) → crossbowmen counted as crossbowmen,
+   not "thrown and slings".

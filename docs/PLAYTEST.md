@@ -1,9 +1,9 @@
 # Playtest — one session, start to finish
 
 Anton plays this ONCE, after the build is finished, and hands Claude the log. Seven parts in
-order, about **2 hours 50** (A 10 min, B 15, C 25, D 35, E 20, F 55, G 10; the optional bits add ~20). **Short on
+order, about **3 hours 15** (A 10 min, B 15, C 25, D 60, E 20, F 55, G 10; the optional bits add ~20). **Short on
 time after step 16? D4 alone (the A/B of the new guard and backpedal, 20 min) answers the newest
-questions.** Each part says what to do, what you
+questions; after step 21, D5 + D6 (the shield wall and the archers, 25 min).** Each part says what to do, what you
 should see, what counts as broken, and the log lines that prove it. The full line reference —
 every summary block and what proves what — is the **appendix** at the end.
 
@@ -56,7 +56,7 @@ needs MCM refuses to start for every player without it.
     (the dev copy runs), `[load] module: TraxCombatEnhancements.Dev (the dev install - tools\deploy.ps1)`,
     `[load] game: v1.4.8.…`, `[load] modules (N): …`
   - `[compat] Realistic Battle Mod (RBM) not enabled - good`
-  - `[config] defaults: defaults.json (embedded in TraxCombat.Core.dll), 70 keys for 70 settings - every default read from it`
+  - `[config] defaults: defaults.json (embedded in TraxCombat.Core.dll), 83 keys for 83 settings - every default read from it`
   - `[config] first run: created config.json with every default and a plain-words explanation beside each value`
   - `[config] settings in effect (70, version 0):` and 70 lines like `[config]   DamageRandomPercent = 50`
   - **Step 20b - YOUR config.json today** (2026-09-28 09:46) is format 3 and holds YOUR playtest values
@@ -81,8 +81,9 @@ needs MCM refuses to start for every player without it.
 
 **A2. The config file — and VerboseLogging on, by hand.** Alt-Tab, open `config.json`.
 - You see: a header (where the file lives, that edits apply at the next battle start, three ways back
-  to the defaults), then 9 sections — *Master switch, Damage randomness, Athletics, Tired fighters,
-  Tired fighters step back, Refill, Your Athletics bar, Orders menu strip, Advanced* — and above
+  to the defaults), then 11 sections — *Master switch, Damage randomness, Athletics, Tired fighters,
+  Tired fighters step back, Battle pace (AI), Refill, Your Athletics bar, Orders menu strip, Formation
+  markers (hold ALT), Advanced* — and above
   every key a `//` explanation ending `(default …, range … to …)`.
 - Change `"VerboseLogging": false` to `true` and save. Read a few explanations as a new player
   would; note any that confuse you.
@@ -101,7 +102,7 @@ end it (win or retreat).
 **A4. Now WITH MCM (and RTS Camera, as you usually play).** Quit. Enable *Mod Configuration Menu v5*
 (with Harmony, ButterLib, UIExtenderEx) and RTS Camera + Command System. Start.
 - You see: *"… loaded - settings in Mod Options."*
-- Log: `[mcm] settings page registered at main menu (attempt 1): MCM 5.…, page "Trax Combat Enhancements", 78 settings in 10 groups, format "none" (config.json is the only store), Default preset = the mod's defaults (defaults.json); group "Defaults": buttons "Revert all to defaults" and "Save current values as a defaults file".`
+- Log: `[mcm] settings page registered at main menu (attempt 1): MCM 5.…, page "Trax Combat Enhancements", 83 settings in 11 groups, format "none" (config.json is the only store), Default preset = the mod's defaults (defaults.json); group "Defaults": buttons "Revert all to defaults" and "Save current values as a defaults file".`
   (`at retry (attempt 2)` is fine — MCM woke a moment after us; the first try is now always at the
   main menu, where MCM builds its services — step 12); the settings dump shows
   `VerboseLogging = true (default false)`.
@@ -109,8 +110,8 @@ end it (win or retreat).
   is missing — send the `[mcm]` lines); a `not ready yet` line with no `registered` or `gave up` after it.
 
 **A5. The MCM page.** Options → Mod Options → *Trax Combat Enhancements*.
-- You see: the same 10 groups — *Master switch* (Mod enabled) on top, *Formation markers (hold ALT)*
-  (step 20) just before *Advanced* at the bottom, and
+- You see: the same 11 groups — *Master switch* (Mod enabled) on top, *Battle pace (AI)* (step 21) after
+  *Tired fighters step back*, *Formation markers (hold ALT)* (step 20) just before *Advanced* at the bottom, and
   just above Advanced a *Defaults* group with two buttons. Checkboxes for switches, sliders for
   numbers (their ends are the file's ranges), each label with its unit (points, %, x, m, s, px, MB).
   Hovering shows the explanation, *"Applies at once, even mid-battle."* and the default. *Verbose
@@ -479,6 +480,62 @@ the clock time at each start.
 7. Men walking backwards off a wall walk or into a ditch in a siege (F2) — the `edge ahead` ends should
    stop that; tell Claude where.
 
+**D5. Battle pace — the shield wall swings less (step 21, ~15 min).** Anton's ask: "make the infantry more
+defensive, especially the guys with the shields, so that maybe they swing 30% less". The AI's pause after
+each swing gets a share on top of tiredness - fresh men wait too, guard up. The same custom battle twice
+(D4's rules: the same map and armies, charge and leave them alone, note the clock time at each start):
+**infantry against infantry, both sides with shields** (e.g. 100 v 100 legionaries / Sturgian spearmen with
+shields, no archers), plus a few two-handed troops on one side if you can (Vlandian voulgiers, Sturgian
+heavy axemen).
+1. **Run 1 - the defaults**: MCM → *Battle pace (AI)*: *Shield infantry swing less (%)* 30, *Other infantry
+   swing less (%)* 15, *AI's own gap between swings (s)* 1.0.
+2. **Run 2 - off**: before the battle both *swing less* sliders to **0** → Done. The same battle. Put them
+   back to 30 / 15 after.
+- **Look for** (run 1 against run 2): fresh shield men trading blows **visibly slower** - a beat with the
+  shield up between swings; the shield wall holds longer; the melee lasts longer (the header's `after N s`).
+  Nobody should look frozen: a man waiting still blocks, parries, moves.
+- **The lines that settle it** (each run's `[summary]`, appendix L6c):
+  - `battle pace - shield infantry (…; ShieldInfantrySwingsLessPercent 30 - asks 30% fewer swings): N attacks by
+    M men; … cycle C s (n …) = X swings a minute per man while fighting; his own gap after a pause avg G s …;
+    the model …: with the setting at 0 A s = … a minute, with it B s = … a minute (30% fewer) - measured ÷ it
+    P%: on target` → **run 1's X ÷ run 2's X near 0.7** (the real check); within run 1, `measured ÷ it` on
+    target and `his own gap` near 1.0 s (the model's `AiMeleeGapSeconds`).
+  - Run 2 with the sliders at 0: the same line reads `… with the setting at 0 A s … - measured ÷ it P%: … (at
+    0 this checks the model's own gap)` - P near 100% says the 1.0 s gap is right for your battles; if it
+    reads e.g. 80% (cycles shorter than the model), tell Claude the number: *AI's own gap* should go down.
+  - `battle pace - other foot melee (…; FootMeleeSwingsLessPercent 15 …)`: the same for the men without a
+    shield (0.85 of run 2's rate).
+  - `battle pace - riders (…; no setting - tiredness only)`: unchanged between the runs.
+  - `[rate] battle pace - first shield infantry attack this mission: <name> at … s (AI melee on foot, a shield
+    in the other hand; ShieldInfantrySwingsLessPercent 30) → a pause of 0.76 s asked = the tired pause 0.00 s
+    + the battle-pace share 0.76 s - his expected cycle (…) 1.78 s ÷ (1 - 0.30) = 2.54 s: 30% fewer swings`
+    - one line per class the first time it attacks: the proof each class was read (a legionary as shield
+    infantry, a voulgier as other foot melee, a horseman as a rider).
+  - L6b's `GUARD` line: `held by the timer` close to `everyone else` (fresh men held now too - they must keep
+    blocking).
+
+**D6. Battle pace — archers shoot slower (step 21, ~10 min).** Anton's ask: "make the archers a bit slower
+... fire about 30% slower overall". Every AI bow shot is followed by 2.0 s more, a crossbow shot 2.5 s (on
+top of tiredness; horse archers too; javelins and slings no). The same battle twice: **an archer-heavy
+one** - e.g. 60 archers + 40 crossbowmen a side, a few infantry in front, you as general; order the archers
+to fire at will and wait 2-3 minutes before the lines meet.
+1. **Run 1 - the defaults**: *Bowmen: extra wait after each shot (s)* 2.0, *Crossbowmen: …* 2.5.
+2. **Run 2 - off**: both at **0**. The same battle. Back to 2.0 / 2.5 after.
+- **Look for**: fewer arrows in the air in run 1; the volleys thinner; archers still aim and move normally.
+- **The lines**: `battle pace - bowmen (…; ExtraPauseAfterBowShotSeconds 2.0 - sized for about 30% fewer
+  shots): N shots by M men; … cycle C s (n …) = X shots a minute per man while shooting; his own gap after a
+  pause avg G s (n …); the extra inside a cycle avg 2.00 s - if none of it hid in his own gap, without it the
+  cycle would be … s = … a minute: at most P% fewer shots …` → **run 1's X ÷ run 2's X near 0.7** - the real
+  check; the same for `crossbowmen`. If the rate fell much less (0.85, say), the extra partly hid in their own
+  idle time - tell Claude both X's and he sizes the seconds anew (or set them higher yourself).
+- `battle pace - thrown and slings (…; no setting - tiredness only)` - unchanged.
+
+**Broken — tell Claude** (D5 / D6): a man who never attacks again (a pause that does not end - `attack rate -
+AI timer ends: … still held at mission end` large); `[error]` lines at `rate.class` (the weapon read failed -
+every attack falls back to no share); YOUR attacks slowed at full strength (you are never in it - the
+recovery bar must stay full at the peak line); a class line reading `no attacks` for troops that clearly
+fought (the read put them elsewhere).
+
 ---
 
 ## E. Your Athletics bar, the orders-menu strip and the ALT markers (20 min)
@@ -717,7 +774,7 @@ defaults file**.
   back to its default (N changed) - applied now; config.json saved."* (MCM's Cancel does not undo it.)
 - Log: `[mcm] "Revert all to defaults" pressed`, one `[config] <Key>: … → … (source: defaults)` per
   setting that moved, `[config] wrote config.json (reverted to defaults): every value as it is in effect now`,
-  `[config] reverted all 78 settings to their defaults (…): N changed, applied live`.
+  `[config] reverted all 83 settings to their defaults (…): N changed, applied live`.
 
 **G4 (optional, 1 min). The rewrite rule.** Hand-edit one value in config.json; then — before any
 battle — change a DIFFERENT value in MCM and press Done. The hand edit must still be in the file.
@@ -734,7 +791,8 @@ From `Documents\Mount and Blade II Bannerlord\Configs\TraxCombatEnhancements\` (
 4. **Your notes, with times**: what looked or felt wrong and when; the bar and strip placement numbers
    you settled on (E1, E3) with your resolution and UI scale; which mods were on.
 5. **Your verdicts** on the open questions: the hero price (0.75 now, or 0.5?); kicks and shield bashes
-   at 3 (step 18) - too cheap, too dear?; Athletics in tournaments and the arena (on now)?; which attack-rate
+   at 3 (step 18) - too cheap, too dear?; the battle pace (step 21, D5 / D6) - shield wall 30%, other
+   infantry 15%, bows 2.0 s, crossbows 2.5 s: right, too much, too little?; Athletics in tournaments and the arena (on now)?; which attack-rate
    switch felt right (C7); the balance — recruits empty after 5 swings, one attack in five at empty, a
    run at 0.6 and swings at 85% at empty (step 20b), ~41 s from empty to full strength at rest along the
    refill curve (half the bar in ~25 s): too harsh, too soft, right?
@@ -751,7 +809,7 @@ From `Documents\Mount and Blade II Bannerlord\Configs\TraxCombatEnhancements\` (
   when both are on); `[mcm]` registered or not (A1, A4) — step 12: at most ONE `not ready yet` line,
   followed by `registered at retry (attempt N)` or one `never became ready - gave up after 31 attempts …`;
   with MCM's module off but its DLL carried by another mod, one `MCM's module is not enabled - no settings page; config.json only.`
-  and nothing more; `[config] defaults: … 70 keys for 70 settings` (any `defaults.json PROBLEM:` under it →
+  and nothing more; `[config] defaults: … 83 keys for 83 settings` (any `defaults.json PROBLEM:` under it →
   that setting runs on a fallback — tell Claude); `[config] settings in effect (70, version N):` and
   one line per setting (a changed one ends `(default …)`). An old config.json still holding an old default is
   migrated once: format 3 (step 14's) `[config] migrated config.json at …: MinMoveSpeedMultiplier: 0.7 → 0.6 (format 3 → 4, the old default; step 20b, …)`
@@ -1002,6 +1060,39 @@ header names the technique: `==== scene …, mod ON, AI holds: Input (the AI's o
   wall*, *Square*, *Circle*; retreating or routing; ladders, siege towers and engines (`busy (the game's
   own check: …)`); a wall's edge or stairs (`spot not level`, `no straight way back`, `spot off the navmesh`);
   tournaments, arena, naval (`not a field battle (…)`).
+
+### L6c. Battle pace — the shield wall and the archers (step 21)
+
+- Mission start: `[rate] battle pace (step 21) at mission start: ON - AI shield infantry swing 30% less
+  (ShieldInfantrySwingsLessPercent), other AI foot melee swing 15% less (FootMeleeSwingsLessPercent) - after each
+  such swing a pause that stretches his expected cycle (his attack + his tired pause + his own gap AiMeleeGapSeconds
+  1.00 s) ÷ (1 - the share), at full strength or tired; AI bowmen wait 2.0 s more after each shot (…), crossbowmen
+  wait 2.5 s more after each shot (…), on foot and mounted, on top of the tired pause; riders' melee, thrown
+  weapons, slings and you: tiredness only; …` (a slider at 0: `… unchanged (ShieldInfantrySwingsLessPercent 0 = off)`).
+- A change mid-battle: `[rate] battle pace changed mid-mission at … s: … - applies at each fighter's next attack;
+  a pause running now keeps its length`.
+- The first attack of each class, once per battle: `[rate] battle pace - first <class> attack this mission: <name>
+  at … s (<what the class is>; <its setting>) → a pause of X s asked = the tired pause T s + the battle-pace share
+  S s - …` or `→ no pause - at full strength, and no battle-pace share (none for this class, or its setting at 0)`.
+- The mission's first AI timer names its parts: `… → no new attack for 0.76 s = the tired pause 0.00 s (D x (1/m -
+  1)) + 0.76 s of battle pace (shield infantry swing 30% less), until … s`.
+- Summary — 7 lines (numbers made up):
+  ```
+  battle pace (step 21) settings at the end: ON - AI shield infantry swing 30% less (…) …
+  battle pace - shield infantry (AI melee on foot, a shield in the other hand; ShieldInfantrySwingsLessPercent 30 - asks 30% fewer swings): 2400 attacks by 180 men; pauses 2350 - at full strength 900 (the share alone), tired 1450 (tired + the share), tired only 0; tired part avg 1.10 s, the share avg 1.20 s; no pause 50 (…); cycle 3.60 s (n 1900) = 16.7 swings a minute per man while fighting; his own gap after a pause avg 1.05 s (n 1800 - the model assumes 1.00 s, AiMeleeGapSeconds: shorter = part of the pause hid in his own idle time); the model (his attack + the pause + his own gap): with the setting at 0 2.55 s = 23.5 a minute, with it 3.64 s = 16.5 a minute (30% fewer) - measured ÷ it 99%: on target
+  battle pace - other foot melee (AI melee on foot without a shield - …; FootMeleeSwingsLessPercent 15 - asks 15% fewer swings): …
+  battle pace - riders (AI melee on horseback; no setting - tiredness only): … cycle … = … swings a minute per man while fighting
+  battle pace - bowmen (AI bow shots, on foot and horse archers; ExtraPauseAfterBowShotSeconds 2.0 - sized for about 30% fewer shots): 900 shots by 60 men; pauses 900 - at full strength 200 (the share alone), tired 700 (tired + the share), tired only 0; …; cycle 7.80 s (n 800) = 7.7 shots a minute per man while shooting; his own gap after a pause avg 1.10 s (n 780); the extra inside a cycle avg 2.00 s - if none of it hid in his own gap, without it the cycle would be 5.80 s = 10.3 a minute: at most 26% fewer shots (the same battle with the slider at 0 is the real check)
+  battle pace - crossbowmen (AI crossbow shots, on foot and mounted; ExtraPauseAfterCrossbowShotSeconds 2.5 - …): …
+  battle pace - thrown and slings (AI javelins, throwing axes and knives, stones, slings; no setting - tiredness only): …
+  ```
+  Proves: **the same battle with the sliders at 0 and at their values - each class's "a minute per man"
+  about 0.70 (shield infantry, bows, crossbows) and 0.85 (other foot melee) of the run at 0**; riders and
+  thrown weapons unchanged; within a run: `measured ÷ it` on target and `his own gap` near `AiMeleeGapSeconds`
+  (if it reads well below, part of the pause hid in the AI's own idle time - the cut fell short; tell Claude).
+  The attack-rate lines change with it: the AI timer counts `peak (f 1)` holds now (`by f: peak (f 1) N, …`),
+  each timer row adds `+ the battle-pace share avg S s`, and the band verdicts' fresh reference carries the
+  share too (read the battle pace lines for step 21, the band lines for tiredness).
 
 ### L7. The HUD — your bar, the recovery bar, the orders strip and the ALT markers
 

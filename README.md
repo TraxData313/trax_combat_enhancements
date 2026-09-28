@@ -44,6 +44,10 @@ Releasing it: [tools/WORKSHOP-UPLOAD.md](tools/WORKSHOP-UPLOAD.md).
 - **Tired men step back** — after a swing, a tired AI soldier on foot may walk backwards out of the
   press, facing his enemy with his guard up, and rejoin his line a moment later: the more
   tired, the more often. The fresh take the blows. Field battles only.
+- **Slower, more defensive battles** — AI soldiers with a shield in hand swing about 30% less often,
+  fresh or tired (a beat with the shield up between blows); other foot soldiers 15% less; AI archers
+  wait 2 seconds more after each arrow and crossbowmen 2.5 — about 30% fewer shots a minute. Each is a
+  slider (0 = off); riders, javelins and you are never slowed by it.
 - **See it** — your own Athletics bar under your health bar: the number, a mark at the peak line,
   green at full strength, then blue, yellow, orange and red as you tire, the part your wounds hold
   shown dark; above it the Attack recovery bar with the seconds of your wait inside it. And in the orders menu, a slim strip under each formation card: its men's average

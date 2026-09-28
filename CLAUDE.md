@@ -22,7 +22,14 @@ big bars), so the game leans hero-centred. Kicks and shield bashes cost a little
 `CostPerKickOrBash` 3 × the same multipliers, once each, never an attack pause). A hideout's boss
 fight is a fresh start for the player's side (step 19, `HideoutBossFightRefill`: when the game's
 "Win the Duel" / "Win the Fight" objective appears, his side refills to its wound cap and every pause /
-step back on them ends; in a duel his men stand aside, so only he refills). The Athletics
+step back on them ends; in a duel his men stand aside, so only he refills). BATTLE PACE (step 21,
+Anton: slower, more defensive fights): the AI's pause after each attack gets a share on top of tiredness
+by the attack's CLASS, read at its release from what he holds (`IWeaponFacts`) - shield infantry swing
+`ShieldInfantrySwingsLessPercent` (30) % less, other foot melee `FootMeleeSwingsLessPercent` (15): pause =
+(T + q (D + G)) / (1 − q), G = `AiMeleeGapSeconds` (1.0, the AI's own gap measured in Anton's logs - a pause
+adds to it), so fresh men are held too; bowmen +`ExtraPauseAfterBowShotSeconds` (2.0 s), crossbowmen
++`ExtraPauseAfterCrossbowShotSeconds` (2.5 s); riders' melee, thrown weapons, slings and the player: none;
+the summary's "battle pace" lines give each class's attacks a minute per man. The Athletics
 bar is shown for the player (step 6)
 and — averaged, with a ± spread and the men's health — in a strip under each formation card of
 the orders menu (step 9) and, while you hold ALT (or the orders menu is open), under each of the
@@ -157,8 +164,9 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
   ParamDef.cs                 one setting: key, type, range, group, label, plain-words
                               description, apply timing (Live / NextBattle); Normalize, Format;
                               its Default comes from defaults.json (DefaultsFile), never code
-  SettingsSchema.cs           EVERY setting of DESIGN's table (78), in file + MCM order, 10 groups
-                              ("Master switch" first, "Formation markers (hold ALT)" - step 20 - before
+  SettingsSchema.cs           EVERY setting of DESIGN's table (83), in file + MCM order, 11 groups
+                              ("Master switch" first, "Battle pace (AI)" - step 21 - after the step back,
+                              "Formation markers (hold ALT)" - step 20 - before
                               "Advanced" last; step 10b's one vocabulary and
                               units in its header comment) — the one place a setting is declared
                               (a test parses DESIGN.md: keys + types); NO default values. The LATER
@@ -285,7 +293,20 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               COUNTED and shown apart per band); your timer (presses swallowed,
                               flashes, held-button fires, missed attacks, releases); the AI timer (by
                               input / by NoAttack, kinds, mounted, reasons, ends); the guard by f;
-                              the AI-decision recomputes; the [summary] "attack rate" lines
+                              the AI-decision recomputes; the [summary] "attack rate" lines; step 21:
+                              each timer row's battle-pace share, the peak band in the holds list
+  BattlePace.cs               step 21 pure (AI_NOTES "Step 21"): AttackClass (shield infantry, other foot
+                              melee, riders, bow, crossbow, thrown and slings), RangedWeaponKind, PacePlan
+                              (the tired part + the share), BattlePaceRules (live; SettingText, Describe),
+                              BattlePaceMath - Classify / Consistent (the class from what he holds, checked
+                              against the attack that ended), Plan (foot melee: (T + q (D + G)) / (1 − q);
+                              bows / crossbows: + seconds; the rest: T), ModelCycle, PerMinute, FewerShare,
+                              the class names; MaxSwingsLessPercent 90
+  BattlePaceStats.cs          step 21 per-mission, per class (AI only): attacks by N men, pauses by reason
+                              (the share alone / tired + the share / tired only), no pause, the tired part and
+                              the share, the cycle (a minute per man while fighting), the AI's own gap after a
+                              pause, the model's cycle at 0 and with the setting (foot melee), the archers'
+                              share inside a cycle + the 7 [summary] "battle pace" lines
   AthleticsBar.cs             step 6 (and the strip's colours; step 7's LATER target bar would reuse it): BarBand, BarRules (live
                               Bar*BelowPercent), BarMath - Band (green at the peak line, blue just
                               below, yellow/orange/red at or below their % of the line, the most
@@ -453,7 +474,20 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               waiting NoAttack keeps its own), the wish on / off on every path, THE TIMER
                               SURVIVES A STEP BACK (R1's drop gone: by input at once; NoAttack behind a
                               scripted walk DEFERRED - TickDeferred sets it the tick the walk ends or counts
-                              it covered), the never-called warning, the first hold's input frames
+                              it covered), the never-called warning, the first hold's input frames;
+                              step 21: AiAttackEnded → NoteClassAttack + BattlePaceMath.Plan → AskPause (the
+                              old decision, a reason literal when no pause; a FRESH man is held when his class
+                              has a share), the pause's parts in PaceState, the share in the timer rows and the
+                              first timer's line
+  Missions/AthleticsLogic.BattlePace.cs  step 21: ReadAttackClass at each release (AI only; a failing read =
+                              the plain class of its kind, one [error]), NoteClassAttack, SetPaceModel,
+                              PaceNotStarted (a refused / superseded pause), NotePaceCycle (by class, the cap
+                              + the share inside), NotePaceGap, the settings line at mission start and on a
+                              change, FirstOfClass (one [rate] line per class), WriteBattlePaceSummary
+  Missions/WeaponFacts.cs     step 21: IWeaponFacts (what he holds at a release - the smoke plays it) +
+                              GameWeaponFacts (WieldedOffhandWeapon's usage IsShield; WieldedWeapon's
+                              WeaponClass Bow / Crossbow - the slot index is a pointer read, the item managed:
+                              safe in a hit callback) + WeaponFactsDefault (the smoke swaps it once)
   Missions/AthleticsLogic.PlayerTimer.cs  step 13, YOUR timer: the hold from the release's start
                               (PlayerAttackStarting), the countdown (PlayerAttackEnded), the gate's
                               frame (GatePlayerInput: native flags → GateFrame, managed - clears
@@ -480,13 +514,16 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               / ladder / detachment; riders allowed since 13), lifted only while he is
                               free, else Waiting; step 16: InputPaceBody (no flag - hooked, the same
                               refusals, never waits; release = the callback off if idle); PaceState +
-                              ByInput, Overlapped, Deferred, the call count at the start, hits taken
+                              ByInput, Overlapped, Deferred, the call count at the start, hits taken;
+                              step 21: the pause's parts (Tired, Share), its Class and Percent
   Missions/TrackedAgent.cs    one fighter's record: Core Fighter + detection, f-bin, fresh top
                               speed and slowed-horse fields, his StepBackState (null until needed),
                               the attack-rate phase state (step 20b: + the phase's animation multiplier),
                               the running attack's D (at full animation speed) + as played and its end, his
                               last rest by kind, his last timer (for the gap), his PaceState, his
-                              AiInputState (step 16, null until first held by input)
+                              AiInputState (step 16, null until first held by input); step 21: the attack's
+                              class (read at its release), the last ended AI attack's class / share / model for
+                              the next cycle note, the classes he attacked with, his last timer's class
   Missions/AthleticsLogic.Hud.cs  step 6: AttachHud on the logic's FIRST TICK (the screen runs by
                               then - RESEARCH §G) - each view via MissionScreen.AddMissionView with
                               a GauntletHudLayer, "[hud] attached:" lines; WriteHudSummary (the
@@ -557,7 +594,7 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               values line, the [summary] line (AltMarkerStats)
   Hud/AltMarkersVM.cs         its ViewModels: the root + a GROW-ONLY MBBindingList of AltMarkerLabelVM keyed by
                               team + formation (a label never swaps formations when vanilla re-sorts)
-tests/TraxCombat.Core.Tests/  net8.0 xUnit (405) — schema vs DESIGN.md (keys + types), one copy
+tests/TraxCombat.Core.Tests/  net8.0 xUnit (418) — schema vs DESIGN.md (keys + types), one copy
                               runs (SingleCopyTests: claims on private slots, copies, texts), when
                               MCM is tried and when it stops (McmPlanTests - step 12),
                               defaults.json (DefaultsFileTests), master switch, settings, config
@@ -589,7 +626,10 @@ tests/TraxCombat.Core.Tests/  net8.0 xUnit (405) — schema vs DESIGN.md (keys +
                               orders strip (matching card sets, cell placement at any scale and
                               the lift, texts, band, health in the squad stats, summary), the ALT markers
                               (AltMarkerTests, step 20: pairing through a re-sort / a missing widget, sight,
-                              placement at any scale and pinned, vanilla's fade, nominal size, summary). They
+                              placement at any scale and pinned, vanilla's fade, nominal size, summary), the
+                              battle pace (BattlePaceTests, step 21: the class from what he holds, the pause
+                              for each class fresh and tired - the percent fewer at every m -, archers' extra,
+                              0 = off, ranges, the settings sentence, the summary lines). They
                               run on DESIGN's INITIAL values (DesignTable.cs: a module
                               initializer), so tuning defaults.json never breaks them. Keep green.
 module/SubModule.xml          release manifest (Id TraxCombatEnhancements, v0.1.0) - THE one home of the
@@ -620,7 +660,7 @@ tools/package.ps1             step 11, THE RELEASE: manifest gate (release Id + 
 tools/WORKSHOP-UPLOAD.md      the release loop, step by step (first upload, updates) + the uploader's quirks
 tools/WorkshopCreate.xml      the FIRST upload (creates the item, Private, tags, preview) - run once
 tools/WorkshopUpdate.xml      every later upload - ITEM_ID placeholder until the first upload
-tools/STEAM-DESCRIPTION.bbcode  the Workshop page, pasted by hand (≤ 8000 bytes; 5017 now)
+tools/STEAM-DESCRIPTION.bbcode  the Workshop page, pasted by hand (≤ 8000 bytes; 5370 now)
 tools/preview_thumbnail.html  the Workshop preview (source) → preview_thumbnail.png (1024², headless Edge)
 tools/AssemblyGuard/          soft-dependency guard (from the sibling): MCM, Harmony, ButterLib,
                               UIExtenderEx, NavalDLC, CustomBattle in any type surface = FAIL
@@ -685,7 +725,13 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               11 (Program.Copies.cs, LAST): two real SubModule instances - the second
                               stands down (no log line, model, mission, message), the first registers
                               ONE decorator of each kind and reports once; step 20b (Program.AttackRate.cs):
-                              a slower swing through the real logic keeps the full-speed pause (58 steps; the config
+                              a slower swing through the real logic keeps the full-speed pause; step 21
+                              (Program.BattlePace.cs): the stand-in weapon read for EVERY logic (step 3 - a native
+                              read on a fake agent would crash), the older steps pinned at 0 (BattlePaceOff), each
+                              class through the real logic (a fresh shield man 0.78 s, a tired one, a two-hander,
+                              riders, bows fresh / tired / mounted, a crossbow, a javelin, you never), hot swap,
+                              the master switch (its own step lifts a fresh man's share too), the summary; and the
+                              cost - 1000 men held at once, the AI timer's tick ~0.005 ms, 0 bytes (61 steps; the config
                               checks work for any tuned default);
                               TRAX_SMOKE_KEEP=1 keeps its temp folder + log to read
 tools/DefaultsTool/           defaults.json upkeep: refresh (rewrite comments/order, keep every
