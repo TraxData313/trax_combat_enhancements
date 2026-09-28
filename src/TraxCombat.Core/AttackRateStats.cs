@@ -410,7 +410,8 @@ namespace TraxCombat.Core
                       + "; attacks that started while held anyway: " + PlayerStartedAnyway + " (must be 0 - the input gate missed them)"
                       + "; holds begun at your swing's start " + PlayerEarlyHolds + " (ended with no countdown, below " + N1(AttackTimerMath.MinTimerSeconds) + " s: " + PlayerEarlyHoldsTooShort + ")"
                       + "; ended early: switched off " + PlayerEnded(PlayerTimerEnd.SwitchedOff) + ", not you any more " + PlayerEnded(PlayerTimerEnd.NotYou)
-                      + ", mission end " + PlayerEnded(PlayerTimerEnd.MissionEnd) + " (still running at the end, released: " + PlayerHeldAtMissionEnd + ")");
+                      + ", mission end " + PlayerEnded(PlayerTimerEnd.MissionEnd) + " (still running at the end, released: " + PlayerHeldAtMissionEnd + ")"
+                      + (PlayerEnded(PlayerTimerEnd.FreshStart) > 0 ? ", a fresh start (hideout boss fight) " + PlayerEnded(PlayerTimerEnd.FreshStart) : string.Empty));
 
             lines.Add("attack rate - AI decisions (AttackRateAiDecisions " + (r.AiDecisions ? "on" : "off") + " at the end): scaled in " + AiScaled
                       + " recomputes - the chance to attack and to riposte x m, to loose x m, the aim before a shot ÷ m (off by default since step 13: on top of the timer it double-counts)");
@@ -440,7 +441,8 @@ namespace TraxCombat.Core
             lines.Add("attack rate - AI timer ends: time up " + Ended(PaceEnd.TimeUp) + ", an attack started anyway " + Ended(PaceEnd.AttackStarted)
                       + " (must be about 0 - the hold stops attacks), switched off " + Ended(PaceEnd.SwitchedOff) + ", left the field " + Ended(PaceEnd.LeftField)
                       + ", mission end " + Ended(PaceEnd.MissionEnd) + ", you took him " + Ended(PaceEnd.PlayerControl)
-                      + ", error " + Ended(PaceEnd.Error) + " | lifted by us " + Released(PaceRelease.ClearedByUs) + ", NoAttack already cleared by the game "
+                      + ", error " + Ended(PaceEnd.Error) + (Ended(PaceEnd.FreshStart) > 0 ? ", a fresh start (hideout boss fight) " + Ended(PaceEnd.FreshStart) : string.Empty)
+                      + " | lifted by us " + Released(PaceRelease.ClearedByUs) + ", NoAttack already cleared by the game "
                       + Released(PaceRelease.ClearedByGame) + ", a game job on him at the end (left alone, cleared once free: " + ClearedAfterWaiting
                       + ", of them under a long scripted frame: " + ClearedUnderAFrame + ") "
                       + Released(PaceRelease.Waiting) + ", still held at mission end " + HeldAtMissionEnd + " | the next ready came avg "

@@ -43,6 +43,12 @@
       <HintPath>$(GameFolder)\bin\Win64_Shipping_Client\TaleWorlds.Library.dll</HintPath>
       <Private>false</Private>
     </Reference>
+    <!-- Step 19: the smoke builds the game's own MissionObjective with a TextObject name (the hideout boss
+         objective the refill watches for). -->
+    <Reference Include="TaleWorlds.Localization">
+      <HintPath>$(GameFolder)\bin\Win64_Shipping_Client\TaleWorlds.Localization.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
     <!-- The HUD checks (step 6): the views are MissionViews (Native's View assembly); a HudFrame
          carries an Agent (a DotNetObject). -->
     <Reference Include="TaleWorlds.DotNet">

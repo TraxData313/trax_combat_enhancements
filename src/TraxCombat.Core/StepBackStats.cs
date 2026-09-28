@@ -300,6 +300,7 @@ namespace TraxCombat.Core
             StepBackEnd.Error => "error",
             StepBackEnd.Arrived => "arrived (StepBackDistance covered)",
             StepBackEnd.EdgeAhead => "the ground ends behind him (edge ahead)",
+            StepBackEnd.FreshStart => "a fresh start (hideout boss fight)",
             _ => why.ToString(),
         };
 

@@ -176,7 +176,10 @@ namespace TraxCombat.Core
 
         MissionEnd = 4,
 
-        Count = 5,
+        /// <summary>Step 19: your side's fresh start (a hideout's boss fight began) - the pause is over.</summary>
+        FreshStart = 5,
+
+        Count = 6,
     }
 
     /// <summary>What one frame of the player's input gate decided (<see cref="PlayerAttackTimer.Frame"/>).</summary>

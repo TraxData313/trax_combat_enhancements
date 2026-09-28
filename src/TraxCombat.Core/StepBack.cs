@@ -218,6 +218,9 @@ namespace TraxCombat.Core
         /// <summary>Step 16 (backpedal): the ground a little further back stopped being walkable (off the navmesh, a
         /// height step, no straight way) - stopped before a wall edge or a ditch.</summary>
         EdgeAhead,
+
+        /// <summary>Step 19: his side's fresh start (a hideout's boss fight began) - he goes back to his formation.</summary>
+        FreshStart,
     }
 
     /// <summary>

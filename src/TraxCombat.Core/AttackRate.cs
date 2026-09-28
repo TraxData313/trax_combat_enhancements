@@ -99,7 +99,11 @@ namespace TraxCombat.Core
         PlayerControl = 5,
 
         Error = 6,
-        Count = 7,
+
+        /// <summary>Step 19: his side's fresh start (a hideout's boss fight began) - the pause is over.</summary>
+        FreshStart = 7,
+
+        Count = 8,
     }
 
     /// <summary>What one attempt to lift a hold found (step 5e).</summary>

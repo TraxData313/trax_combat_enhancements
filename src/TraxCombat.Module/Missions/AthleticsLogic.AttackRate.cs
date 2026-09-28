@@ -1032,6 +1032,7 @@ namespace TraxCombat.Missions
             PaceEnd.LeftField => "he left the field",
             PaceEnd.MissionEnd => "mission end",
             PaceEnd.PlayerControl => "the player took him",
+            PaceEnd.FreshStart => "a fresh start (hideout boss fight)",
             _ => "error",
         };
 

@@ -242,6 +242,7 @@ namespace TraxCombat.Core
         public int RegenRateNearFullPercent => GetInt(SettingsSchema.RegenRateNearFullPercent);
         public float RegenMultiplierAtFullRun => GetFloat(SettingsSchema.RegenMultiplierAtFullRun);
         public float WalkEffortFraction => GetFloat(SettingsSchema.WalkEffortFraction);
+        public bool HideoutBossFightRefill => GetBool(SettingsSchema.HideoutBossFightRefill);
 
         public bool ShowPlayerBar => GetBool(SettingsSchema.ShowPlayerBar);
         public bool ShowPlayerBarOutsideBattles => GetBool(SettingsSchema.ShowPlayerBarOutsideBattles);

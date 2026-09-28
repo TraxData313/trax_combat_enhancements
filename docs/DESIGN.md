@@ -194,6 +194,18 @@ regen.)
     So the rate at empty is ×1.39 the flat rate, near full ×0.69. A tired man gets back to full
     strength about 4 s sooner and tops off the last quarter about 4 s slower. The curve is on the
     FULL pool, so a wounded man refilling to his cap (say 50%) refills on its fast part.
+- **A fresh start in a hideout's boss fight** (Anton, 2026-09-28: "they will come fresh and we will be
+  tired"; built in step 19, `HideoutBossFightRefill`, on). When the last bandit of a hideout's first fight
+  falls, the boss comes out with his men - a short cutscene, then a talk: a duel ("Very well.") or everyone
+  fights ("I don't fight duels with brigands."). The moment that fight BEGINS, every living fighter on the
+  player's side refills at once to a full Athletics bar - up to the health cap, so wounds still cap it and a
+  badly wounded man still cannot reach full strength - and whatever runs on them ends: the attack pause
+  (yours and the AI's, a queued one too), a step back. In a **duel** the player's men stand aside (the game
+  takes them off his team), so only the player refills; in the **battle** the player and every man still
+  standing. The boss's side is not touched: the game spawns the boss and his men during the cutscene, so they
+  start full like every new fighter. Where it is seen: the game starts its "Win the Duel" / "Win the Fight"
+  objective at that very moment, in both kinds of hideout (AI_NOTES "Step 19"). Gated by the master switch
+  and `AthleticsEnabled` like everything else.
 - **Cavalry**: riders use the very same pool (their Athletics skill). Riding never drains
   it; only blows do. The horse has no Athletics of its own.
 - **Tired fighters step back** (built in step 5d - the literal rule; `StepBackEnabled`, on):
@@ -526,6 +538,7 @@ says (§2c).
 | `RegenRateNearFullPercent` | 50 | Step 14: the refill rate near full, % of the rate near empty - a straight line in the fill in between, empty → full still `FullRegenSecondsStanding`. 100 = the flat refill of steps 5c-13. |
 | `RegenMultiplierAtFullRun` | 0.5 | Regen rate at top speed, relative to standing or walking. |
 | `WalkEffortFraction` | 0.4 | Up to this share of top speed counts as walking (full regen). |
+| `HideoutBossFightRefill` | true | Step 19 (Anton): in a hideout, the moment the boss fight begins - the duel or the battle - every living fighter on the player's side (the player alone in a duel) refills to full Athletics (up to the health cap), and any attack pause, hold or step back on them ends (§2 "A fresh start"). Off: they face the boss as tired as the first fight left them. |
 | `ShowPlayerBar` | true | Player Athletics bar. |
 | `ShowPlayerBarOutsideBattles` | true | Outside the fight modes (the training field, towns, villages - the game's walk-about mode) the player bar shows too, while you hold a weapon or a shield or your Athletics is below full; never in a conversation, barter, deployment or cutscene (§3, step 12). Off: fights only. |
 | `ShowAttackRecoveryBar` | true | Step 13 (Anton): the Attack recovery bar just above your Athletics bar, shown with it - empties when you attack below the peak line, fills back over your no-attack timer (you cannot attack until it is full), the seconds left inside it ("1.3 s"); full and quiet at full strength. Hidden while `AttackRatePlayerTimer` is off. |
@@ -705,6 +718,13 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     are read (the whole-body one on foot only - riders never kick) and a kick on both is one kick; a kick
     or bash that LANDS while neither channel shows one is charged at its hit, and the summary says how many
     each way. A mounted bash is charged like any bash if the engine ever plays one (vanilla has none).
+
+20. **The hideout boss fight's fresh start** (step 19, Claude's calls on Anton's ask - AI_NOTES "Step 19"): the
+    moment is the game's boss objective appearing (not the cutscene, not the talk - the fight itself); "the
+    player's side" is the game's own teams at that moment (so the duel's onlookers are left out by the game's own
+    rule); the refill goes to the top a man can refill to (his wounds cap it), not past it; it also ends every
+    running pause, queued pause and step back of those men (a fresh man has none), and the measured cycles do
+    not span it; the boss's side is only measured, never touched; one fresh start per mission.
 
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),

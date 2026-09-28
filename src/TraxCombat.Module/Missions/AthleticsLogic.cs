@@ -98,6 +98,7 @@ namespace TraxCombat.Missions
                     TraxLog.Info("mission", "first tick: " + Mission.Agents.Count + " agents active, mode " + Mission.Mode);
                     SweepAgents();
                     NoteStepBackMission();
+                    NoteHideoutMission(); // step 19: a hideout? watch for its boss fight
                 }
                 catch (Exception e)
                 {
@@ -335,6 +336,16 @@ namespace TraxCombat.Missions
             catch (Exception e)
             {
                 Failed("athletics.summary", e);
+            }
+            // Step 19: the hideout boss phase - the intro, the fight's start, the fresh start (or plainly: never
+            // seen - tell Claude). Own try.
+            try
+            {
+                WriteHideoutSummary();
+            }
+            catch (Exception e)
+            {
+                Failed("hideout.summary", e);
             }
             // The HUD (step 6 on): per view - time on screen, layer builds and why they went,
             // colours shown, errors. The screen finalized the views before this runs.

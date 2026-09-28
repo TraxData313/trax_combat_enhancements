@@ -343,7 +343,8 @@ namespace TraxCombat.Missions
             // attack's gap is no test of the gate ("started before the timer ended" must stay a gate-miss count)
             if (why == PlayerTimerEnd.NotYou && _playerTimerOwner != null) _playerTimerOwner.TimerPending = false;
             TraxLog.Limited("athletics", "YOU: your attack pause released at " + Sec(now) + " s - " + (why == PlayerTimerEnd.SwitchedOff
-                ? "switched off (ModEnabled, AthleticsEnabled or AttackRatePlayerTimer): attack at once" : "you no longer control that fighter"), "athletics-timer");
+                ? "switched off (ModEnabled, AthleticsEnabled or AttackRatePlayerTimer): attack at once"
+                : why == PlayerTimerEnd.FreshStart ? "a fresh start (the hideout boss fight began): attack at once" : "you no longer control that fighter"), "athletics-timer");
         }
 
         /// <summary>The mission is over: your timer is released (nothing to lift in the engine - the gate

@@ -364,6 +364,53 @@ namespace TraxCombat.Core
         public double EmptyToPeakSeconds { get; }
     }
 
+    /// <summary>One fresh start (step 19, <see cref="AthleticsMath.FreshStart"/>): the bar before and after, as
+    /// shares of the FULL pool.</summary>
+    public readonly struct FreshStartOutcome
+    {
+        public FreshStartOutcome(bool refilled, double pool, double before, double after, bool wasExhausted, double peakShareBefore, double peakShareAfter)
+        {
+            Refilled = refilled;
+            Pool = pool;
+            Before = before;
+            After = after;
+            WasExhausted = wasExhausted;
+            PeakShareBefore = peakShareBefore;
+            PeakShareAfter = peakShareAfter;
+        }
+
+        /// <summary>False while Athletics is off - nothing changed.</summary>
+        public bool Refilled { get; }
+
+        /// <summary>His FULL pool in points.</summary>
+        public double Pool { get; }
+
+        /// <summary>The fill before, 0..1 of the full pool.</summary>
+        public double Before { get; }
+
+        /// <summary>The fill after = the top he can refill to: 1, or the health left under the cap.</summary>
+        public double After { get; }
+
+        public bool WasExhausted { get; }
+
+        public double PeakShareBefore { get; }
+
+        public double PeakShareAfter { get; }
+
+        public double BeforePoints => Before * Pool;
+
+        public double AfterPoints => After * Pool;
+
+        /// <summary>Points gained (never negative in practice: the cap was already applied at his last hit).</summary>
+        public double GainedPoints => (After - Before) * Pool;
+
+        /// <summary>He was already at the top he can refill to.</summary>
+        public bool AlreadyAtTop => Before >= After - AthleticsMath.Epsilon;
+
+        /// <summary>His wounds hold the top below a full bar (HealthCapsAthletics).</summary>
+        public bool Capped => After < 1.0 - AthleticsMath.Epsilon;
+    }
+
     /// <summary>What the HUD reads for one fighter (steps 6-9) - a snapshot, no references kept.</summary>
     public readonly struct AthleticsReading
     {
@@ -461,6 +508,7 @@ namespace TraxCombat.Core
     ///   <see cref="RegenCurve"/>          the refill curve (step 14): faster low, slower full, empty → full
     ///                                     still FullRegenSecondsStanding (<see cref="RegenRateAtEmpty"/>,
     ///                                     <see cref="RefillFrom"/> / <see cref="RefillSeconds"/> - exact)
+    ///   <see cref="FreshStart"/>          step 19: the hideout boss fight's refill - to the top the wounds allow
     /// Settings are passed in (<see cref="AthleticsRules"/>, read live by the caller); nothing is cached.
     /// </summary>
     public static class AthleticsMath
@@ -752,6 +800,29 @@ namespace TraxCombat.Core
             f.Fraction = f.Health;
             if (f.Fraction < f.LowestFraction) f.LowestFraction = f.Fraction;
             return cut;
+        }
+
+        /// <summary>
+        /// A fresh start (step 19, DESIGN §2 "A fresh start in a hideout's boss fight"): the fighter refills AT
+        /// ONCE to the top he can refill to - a full bar, or the health left while HealthCapsAthletics is on (the
+        /// health is recorded first, so the cap is today's; wounds still cap it) - and starts over: not
+        /// exhausted, no refill run, no regen delay. The peak line stays on the full pool, so a badly wounded
+        /// man still cannot reach full strength. The attack pause, holds and step backs are the caller's. Off
+        /// (either switch) → nothing (<see cref="FreshStartOutcome.Refilled"/> false).
+        /// </summary>
+        public static FreshStartOutcome FreshStart(Fighter f, in AthleticsRules r, double health)
+        {
+            if (!r.Enabled) return default;
+            f.Health = double.IsNaN(health) ? 1.0 : Clamp01(health);
+            double top = UsableFraction(in r, f);
+            double before = f.Fraction;
+            bool wasExhausted = f.Exhausted;
+            f.Fraction = top;
+            if (top < f.LowestFraction) f.LowestFraction = top;
+            f.Exhausted = false;
+            f.Regenerating = false;
+            f.LastBlowTime = double.NegativeInfinity;
+            return new FreshStartOutcome(true, PoolPoints(in r, f), before, top, wasExhausted, PeakShareOf(in r, before), PeakShareOf(in r, top));
         }
 
         /// <summary>

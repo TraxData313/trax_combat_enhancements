@@ -394,6 +394,7 @@ namespace TraxCombat.Missions
             double now = Mission.CurrentTime;
             long start = Stopwatch.GetTimestamp();
             TrackPlayer(in r);
+            TickHideout(now); // step 19: a hideout's boss fight began → the player's side starts fresh (before this tick's passes)
 
             int polled = 0;
             int budget = MaxRecomputesPerTick;

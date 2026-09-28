@@ -793,6 +793,13 @@ namespace TraxCombat.Tools
             _logic.TickPlayerTimer(t);
             Check(!_logic.PlayerTimer.Holding && _logic.RateStats.PlayerEnded(PlayerTimerEnd.SwitchedOff) == 1, "mod off: your pause was not released at once");
             _logic.SmokePlayer = null;
+            // step 19: a hideout's boss fight beginning while the mod is off refills nobody - the moment is still logged
+            _logic.HideoutSideOf = _ => HideoutSide.Player;
+            _logic.BossFightBegan(BossFightKind.Battle, t);
+            Check(_logic.HideoutStats.OffBecause == "ModEnabled" && _logic.HideoutStats.Refilled == 0, "mod off: the hideout boss fight refilled somebody");
+            LogHas(": nobody refilled - the whole mod is off (ModEnabled) (the player's side: ");
+            _logic.HideoutSideOf = null;
+            ResetHideout(null);
             Check(a.Fraction == 1 && !a.Exhausted && a.SpeedMultiplier == 1f && a.RunSpeedMultiplier == 1f && a.SpeedDirty, "mod off: not refilled / penalties not lifted");
             Check(AthleticsLogic.TryGetReading(a.Agent, out var read) && !read.Enabled && read.Points == read.Pool, "mod off: the read API is not full and off");
             Check(AthleticsLogic.TryGetPeakShare(a.Agent, out double f) && f == 1, "mod off: the damage decorator would not see full strength");

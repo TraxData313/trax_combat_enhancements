@@ -227,6 +227,12 @@ namespace TraxCombat.Core
             "Walking pace (share of top speed)",
             "Up to this share of his current top speed a fighter (or the horse he rides) counts as walking and refills at the full rate. The game walks people at 1.8 m/s and their top speed is about 4 to 5 m/s, so 0.4 covers a walk. 1.0 = any pace refills at the full rate.");
 
+        // Step 19 (Anton, 2026-09-28: "they will come fresh and we will be tired"): the hideout boss fight is a
+        // fresh start for the player's side (HideoutBossFightMath, AI_NOTES "Step 19").
+        public static readonly ParamDef HideoutBossFightRefill = Bool("HideoutBossFightRefill", RefillGroup,
+            "Hideout boss fight: your side starts fresh",
+            "In a hideout, the moment the fight with the boss begins - the duel or all against all - you and every man of yours still standing refill to a full Athletics bar (wounds still cap it) and any pause or step back running on you ends: the boss and his men come fresh, and so do you. In a duel your men stand aside, so only you refill. Off: you face the boss as tired as the first fight left you.");
+
         // ------------------------------------------------------------------ your Athletics bar (step 6)
 
         public static readonly ParamDef ShowPlayerBar = Bool("ShowPlayerBar", PlayerBarGroup,
@@ -390,7 +396,7 @@ namespace TraxCombat.Core
             StepBackEnabled, StepBackBackpedal, StepBackMaxChancePercent, StepBackDistance, StepBackSeconds, StepBackEnemyRange,
             StepBackHoldAttacks, StepBackMaxAtOnce,
             RegenDelayBlowTimes, BlowTimeSeconds, FullRegenSecondsStanding, RegenRateNearFullPercent, RegenMultiplierAtFullRun,
-            WalkEffortFraction,
+            WalkEffortFraction, HideoutBossFightRefill,
             ShowPlayerBar, ShowPlayerBarOutsideBattles, ShowAttackRecoveryBar, FlashBarOnEarlyAttack,
             BarYellowBelowPercent, BarOrangeBelowPercent, BarRedBelowPercent,
             ShowInOrderMenu, ShowFormationHealth, ShowFormationSpread, FormationSpreadStdDevs, OrderStripUnderCards,

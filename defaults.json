@@ -269,6 +269,14 @@
   // (range 0.05 to 1.0)
   "WalkEffortFraction": 0.4,
 
+  // In a hideout, the moment the fight with the boss begins - the duel or all against all - you
+  // and every man of yours still standing refill to a full Athletics bar (wounds still cap it)
+  // and any pause or step back running on you ends: the boss and his men come fresh, and so do
+  // you. In a duel your men stand aside, so only you refill. Off: you face the boss as tired as
+  // the first fight left you.
+  // (true or false)
+  "HideoutBossFightRefill": true,
+
   // ==================== Your Athletics bar ====================
   // Your Athletics bar, bottom right under your health bar: the Athletics you have left and
   // your whole bar ("132 / 180"), a white mark at the peak line, the fill in the colour of your
