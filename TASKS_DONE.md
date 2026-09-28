@@ -804,3 +804,31 @@
   AssemblyGuard, smoke green and INSTALLED. Docs: DESIGN §2 + table text + interpretation 22, PLAYTEST A1 / C1 / C2 / C6 /
   L1 / L4 / L5, README, Steam description, CLAUDE summary + layout, AI_NOTES "Step 20b". Commits 22c827c, 0ddeb23 + this.
   (2026.09.28 11.59.41)
+- [x] **Step 21 — battle pace: AI shield infantry swing ~30% less, other foot melee 15%, AI archers ~30% slower** (Anton,
+  2026-09-28: "make the infantry more defensive, especially the guys with the shields, so that maybe they swing 30% less
+  (and make that adjustable)" + "make the archers a bit slower, maybe add a delay in seconds that makes them fire about 30%
+  slower overall"). Through the EXISTING AI timer (guard up, by input): each AI attack's pause = step 13's tired part
+  D × (1/m − 1) + a share by the attack's CLASS, read at its RELEASE from what he really holds (`IWeaponFacts` /
+  `GameWeaponFacts`: the off hand's usage IsShield, the main hand's WeaponClass - a pointer read + managed items, safe in a
+  hit callback) - never his formation; on horseback = a rider. THE DATA CHECK (Anton's log, the input-era battles): a fresh
+  AI melee cycle of 1.80 s on a 0.78 s attack (his own gap ~1.0 s), and a pause ADDS to that gap (1.38-1.51 s after a tired
+  pause) - so the brief's m × 0.7 on D alone would have bought 16%, not 30%. RESIZED: the share stretches his whole expected
+  cycle, pause = (T + q (D + G)) / (1 − q), G = `AiMeleeGapSeconds` 1.0 (a setting, measured; the summary checks it) → at every
+  tiredness q fewer swings than tiredness alone (a fresh shield man 0.76 s, guard up). Archers: flat seconds on top, sized
+  from the fresh shot cycles (the log mixes bows and crossbows: bows ~4.5 s → 2.0 s, crossbows ~6 s → 2.5 s: extra ≈ cycle ×
+  (1/0.7 − 1)). Riders' melee, thrown weapons and slings: tiredness only; the player: never (no read, no count). FRESH men are
+  held now (m 1 + a share); it rides on AttackRatePaceHold + the master switch (off = every pause lifted at once), hot swap
+  at the next attack, every lift path and the step-back survival shared. Settings 78 → 83 in a new MCM group "Battle pace
+  (AI)" (after the step back; Advanced last): ShieldInfantrySwingsLessPercent 30 (0-90), FootMeleeSwingsLessPercent 15,
+  AiMeleeGapSeconds 1.0, ExtraPauseAfterBowShotSeconds 2.0, ExtraPauseAfterCrossbowShotSeconds 2.5 - DESIGN rows,
+  defaults.json refreshed, no migration. Logs: `[rate] battle pace (step 21) at mission start: …`, a mid-battle change,
+  the first attack of each class with its pause's parts, the first timer's parts; `[summary]` 7 "battle pace" lines per
+  class (attacks by N men, pauses by reason, the cycle = attacks a minute per man while fighting, the AI's own gap after a
+  pause, the model's cycle at 0 vs with the setting for foot melee, the archers' extra share as an upper bound), the timer
+  rows' share, the peak band in the holds. Performance: nearly every foot soldier gets step 16's component (once); the
+  smoke holds 1000 men at once - the AI timer's tick ~0.005 ms, 0 bytes allocated over 500 ticks; no cap needed. Tests 405 →
+  418 (BattlePaceTests); smoke 58 → 61 steps (the stand-in weapon read for every logic - a native read on a fake agent would
+  crash -, the older steps pinned at 0, the battle pace step, the cost step; the master-switch step lifts a fresh man's share
+  too); build 0 warnings; deploy.ps1: build, AssemblyGuard, smoke green and INSTALLED. Docs: DESIGN §2 "Battle pace" +
+  interpretation 23, PLAYTEST D5 / D6 / L6c, README, Steam description (5370 bytes), CLAUDE summary + layout, AI_NOTES
+  "Step 21" (the data, the formula, decisions, UNVERIFIED). Commits 0020499, a21a507 + this. (2026.09.28 12.33.35)
