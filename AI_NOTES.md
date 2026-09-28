@@ -2205,3 +2205,65 @@ Athletics group, after `CostPerBlow`); DESIGN §2 "Kicks and shield bashes cost 
   spent points' share; `Athletics kicks/bashes charged N (P points; by riders R): …` replaced `Athletics free …`'s kick part.
 - Tests 376 (+9, `KickBashTests`); smoke: a new step (costs, dedupe on every path, no timer / roll, 0 / off live, the YOU
   line, Core's action codes = the game's) + the master switch step (a kick while off costs nothing).
+
+## Step 19 — the hideout boss fight is a fresh start for the player's side (research 2026-09-28, written before coding)
+
+Anton (2026-09-28): "when I'm clearing a hideout, when the cutscene where the boss comes with his few friends, our Athletics is
+regenerated - either if I chose to duel him or to fight men to men - because they will come fresh and we will be tired."
+
+**How v1.4.8 runs a hideout's boss phase** (decompiled SandBox; no Harmony needed)
+- **Two hideout missions, one boss phase.** `SandBoxMissions.OpenHideoutBattleMission` ("HideoutBattle": `HideoutMissionController`
+  + `HideoutCinematicController`) and `OpenHideoutAmbushMission` ("HideoutAmbushMission", the stealth version: `HideoutAmbushMissionController`
+  + `HideoutAmbushBossFightCinematicController`). Both carry a `MissionObjectiveLogic` (TaleWorlds.MountAndBlade, public) and run the
+  same private state machine: … → the first fight → `CutSceneBeforeBossFight` → `ConversationBetweenLeaders` → `BossFightWithDuel` |
+  `BossFightWithAll` (a private enum field - `_hideoutMissionState` / `_currentHideoutMissionState`; not read).
+- **The boss phase starts** when the bandits' side is depleted (`IsSideDepleted`: NO active bandit left - so no first-phase bandit
+  survives into it): mode `CutScene` (9) for 4 s (`FirstPhaseEndInSeconds`), then the cinematic. Its `OnInitialFadeOutOver` callback
+  **spawns the boss and his men** (`SpawnBossAndBodyguards` → `SpawnRemainingTroopsForBossFight` → `Mission.SpawnTroop`, tag
+  `_hideout_bandit`; the classic spawns the troops not supplied yet, the ambush `Clamp(population / 2, 4, 20)`), sets the two teams
+  not-enemies and places everyone. `OnCutSceneOver` restores the mode (classic: the one before; ambush: Battle) and starts the
+  conversation with the boss.
+- **So the boss's side is FRESH by construction for us**: new agents → `OnAgentBuild` → `Track` → a full bar. Nothing to refill there
+  (Anton's call: only the player's side). The refill line still measures them ("the boss's side: N, all at full") to prove it in game.
+- **The choice** (`HideoutConversationsCampaignBehavior`): "Very well." → `ConversationManager.ConversationEndOneShot +=
+  StartBossFightDuelMode`; "I don't fight duels with brigands." → `+= StartBossFightBattleMode` (the static of whichever controller the
+  mission has). At the conversation's end, synchronously:
+  - **Duel** (`StartBossFightDuelModeInternal`): teams enemies again; every AI human of the player's team except you →
+    `SetTeam(Team.Invalid)`, a scripted position where he stands, looking at you (**your men sit out**); the boss's men the same, looking
+    at the boss; the boss alarmed. Then `new DefeatHideoutBossObjective(mission, isDuel: true)` → `MissionObjectiveLogic.StartObjective`.
+  - **Battle** (`StartBossFightBattleModeInternal`): teams enemies, everyone alarmed, the player's formations Charge (ambush: both
+    sides' order 4 = Charge). Then `new DefeatHideoutBossObjective(mission, isDuel: false)` → `StartObjective`.
+- **THE HOOK - public, polled, one reference compare a tick**: `Mission.GetMissionBehavior<MissionObjectiveLogic>().CurrentObjective`
+  (public getter) becomes an objective whose `UniqueId` (public abstract, a constant string) is
+  **`"hideout_mission_defeat_hideout_boss_objective"`** - in both missions, for both choices, the same call that set the teams (so by
+  our next tick the duel's teams are already in place). Nothing else starts that objective. `StartObjective` completes the previous one
+  first, and the duel's / fight's end completes this one (`CurrentObjective` → null) - so it is seen exactly once.
+- **Duel or battle - from the objective itself**: `Name` is a `TextObject` built from `"{=QEynMlwL}Win the Duel"` (duel) or
+  `"{=0sPTRh6L}Win the Fight"` (battle); `TextObject.Value` is a PUBLIC FIELD holding that raw string (not localized; `GetID()` would
+  allocate). The ids decide; the English words are a fallback; neither → "unknown" (the refill does not need it - who refills comes
+  from the teams).
+- **Who is "the player's side" at that moment**: `agent.Team.IsPlayerAlly` (Team.Side == PlayerTeam.Side - the player's team and an
+  allied one). In the duel your men are on `Team.Invalid` (side None, no mission → not a player ally) → only YOU refill, exactly as
+  Anton wants ("his men sit out"). The boss's side = a real team that is not the player's; the duel's onlookers (both sides' men) =
+  `Team.Invalid` - "standing aside", not refilled.
+- **The intro, for the summary's "did the hook fire?"**: `Mission.Mode == MissionMode.CutScene` (9) in a hideout mission (a behaviour
+  named `HideoutMissionController` / `HideoutAmbushMissionController` - by NAME, the module does not reference SandBox) = the boss phase
+  began. Intro seen + objective never seen = the hook never fired (or the player left during the talk) → the summary says "tell Claude".
+  Both cinematic controllers also have a public `IsCinematicActive`, but reading it would need SandBox types - the mode is enough.
+- **Timing**: the 4 s wait + the ~8 s cinematic + the conversation all run in mission time, so any pause, hold or step back that was
+  running when the last first-phase bandit fell has long run out by the fight's start; the refill still releases whatever runs (a
+  mod could pause time, a future version could shorten the intro) - cheap and safe.
+
+**The plan (built as below unless the code says otherwise)**
+- Core: `AthleticsMath.FreshStart(fighter, rules, health)` - the refill to the top he can refill to (full, or the health left under
+  the cap, the health recorded first), not exhausted, no refill run, no regen delay; `HideoutBossFight.cs` - the objective id, the
+  text ids → `BossFightKind` (Duel / Battle / Unknown), the controller names, `HideoutSide` (Player / Boss / Aside / Gone), the gate
+  (`RefillOffBecause` - ModEnabled, AthleticsEnabled, HideoutBossFightRefill), `HideoutBossFightStats` (the facts, the `[athletics]`
+  line, the `[summary]` lines). New end reasons `FreshStart` for the step back, the AI timer and your timer (named in the summaries
+  only when > 0, so the pinned lines stay).
+- Module: `AthleticsLogic.Hideout.cs` - `NoteHideoutMission` at the first tick (the controller by name, the objective logic),
+  `TickHideout` at the top of the Athletics tick (the intro by mode, the objective by reference), `ObserveObjective`, `BossFightBegan`
+  (collect the sides - engine reads - THEN refill; an exception before the refill = nothing refilled; releases each on its own path:
+  `Finish(FreshStart)`, `EndHold(FreshStart)` + a queued / deferred pause dropped, `ReleasePlayerTimer(FreshStart)`, the phases reset,
+  the speeds re-targeted). A seam `HideoutSideOf` (the smoke's stand-in for the teams, like `StepBackBody`).
+- Setting `HideoutBossFightRefill` (bool, on, Refill group, live).
