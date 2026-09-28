@@ -103,7 +103,7 @@ namespace TraxCombat
                 {
                     _announced = true;
                     InformationManager.DisplayMessage(new InformationMessage(
-                        "Trax Combat Enhancements " + ModVersion() + " loaded"
+                        "Trax Combat Enhancements " + ShortVersion() + " loaded"
                         + (McmBridge.IsRegistered ? " - settings in Mod Options." : " - settings in config.json.")));
                 }
                 ShowCompatNoticeOnce("main menu");
@@ -314,6 +314,16 @@ namespace TraxCombat
             var asm = typeof(SubModule).Assembly;
             var info = asm.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
             return string.IsNullOrEmpty(info) ? asm.GetName().Version.ToString() : info!;
+        }
+
+        /// <summary>The version players see ("0.1.0"): <see cref="ModVersion"/> without its
+        /// "+commit" build suffix, which stays in the log's [load] line for troubleshooting
+        /// (Anton, 2026-09-28: the loading screen showed the whole hash).</summary>
+        private static string ShortVersion()
+        {
+            string full = ModVersion();
+            int plus = full.IndexOf('+');
+            return plus > 0 ? full.Substring(0, plus) : full;
         }
 
         /// <summary>One in-game line after an [error] was logged (at most every 30 s), so the
