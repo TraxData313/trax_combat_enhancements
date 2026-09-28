@@ -2428,3 +2428,90 @@ the troop count and distance?" = LATER #8 (squad bars, AI_NOTES "Step 8") in its
 4. Enemy formations get stats → `values at …: … | enemy 1 Infantry 64% ± 12 HP 95% (…)`; the summary's `enemy N` > 0.
 5. RTS Camera's free camera: labels under the markers wherever the camera flies; the solo-formation marker hidden → no label (eye).
 6. The one-frame gap at each ALT press is invisible (eye); the fade after a release (vanilla ~0.25 s) vs ours (at once) looks fine.
+
+## Step 20b — Anton's tuned defaults: run floor 0.6, the swing animation a straight line to 85% (DONE 2026-09-28)
+
+Anton after his playtest (2026-09-28, via the manager): "speed (run) floor sweetspot is 60% when their athletics is at 0%"
+and "swing speed does get reduced but to 85%, so swings do show as slower, but not as dramatically as our original 20% (the
+action itself, the delay in seconds is nice, leave it be like it is)".
+
+**Built**
+- `defaults.json`: `MinMoveSpeedMultiplier` 0.7 → **0.6**, `AttackAnimationMinPercent` 100 → **85**. DESIGN's Default column
+  keeps the INITIAL 0.7 / 100 (CLAUDE.md: a tuning, not a design change - unlike steps 13 / 14, which moved DESIGN's value
+  with a rule change); the unit tests keep running on them.
+- **The animation RULE** (Core `AttackTimerMath`): `AnimationMultiplier(f, A)` = A + (1 − A) × f (`AthleticsMath.Curve`), A =
+  AttackAnimationMinPercent / 100 - full speed at and above the peak line, 0.925 halfway, 0.85 empty. Steps 13-20 used
+  max(m, A): with 85 that sits at 0.85 from f ≈ 0.81 down (m = 0.2 + 0.8 f). 100 = 1 always (step 13's PAUSE ONLY, one slider
+  away).
+- **f off the APPLIED m** (`PeakShareOfAttack(m, S)` = (m − S) / (1 − S) clamped, `AnimationForAttack`): the stat decorator
+  only knows the m it applies (`SpeedFactorsFor` → `st.SpeedMultiplier`, stepped by 0.05). Reading f off it keeps every
+  property recompute - ours and the game's own (weapon switch, mount) - on the same value, needs no new state or recompute
+  trigger, and the line moves in m's steps (a 0.05 step of m = 0.0625 of f = 0.009 of the animation - finer than anyone
+  sees). Side effect, on purpose: `ExhaustedAttackSpeedPercent` 100 (m ≡ 1, attacks never slowed) keeps the animations at
+  full speed too - "attacks never slow down" stays true to its word. `AthleticsRules.AttackSpeedFloorOf(percent)` is the one
+  clamp (the decorator reads it without building the rules).
+- **The range is 5-100 now** (was 0-100): the pure line at A = 0 reaches 0 at empty - a swing that never finishes. 5 matches
+  `ExhaustedAttackSpeedPercent`'s floor (the old max(m, 0) never went below S ≥ 0.05). A config.json holding 0-4 is clamped
+  with the usual `file problem` line. New label "Attack animation speed when empty (%)", new hint (the line, 92.5% halfway,
+  the pause unchanged, 100 = full speed, attack speed 100 = never slower).
+- Hot swap: unchanged and still live - `NoteRateSettings` marks every tired fighter (m < 1) dirty when the value changes, the
+  decorator reads A live at each recompute (the smoke checks both, and the log line now names the line:
+  `… get their attack animations x (0.50 + 0.50 f): full speed at the peak line, x0.75 halfway, x0.50 empty …`). Master switch:
+  unchanged - `SpeedFactorsFor` returns "nothing" while ModEnabled / AthleticsEnabled is off, so the recompute the switch
+  already asks puts every animation back to vanilla at once (the smoke's master-switch step still passes).
+
+**The D / pause finding (the brief's point 3)**
+- D is MEASURED from the real animation phases (`PhasesOnAction`): the wind-up = the ready's start to full wind-up (the
+  `GetCurrentActionProgress(1)` poll), + the release's seconds, ranged + the reload's. All three are exactly what the decorator
+  slows (SwingSpeedMultiplier, ThrustOrRangedReadySpeedMultiplier, ReloadSpeed). So a swing at ×0.85 is measured 1/0.85 =
+  18% longer, and the pause D × (1/m − 1) would have grown by the same 18% - the brief's worry was real.
+- Fix: D is built at FULL animation speed - each phase's played seconds × the animation multiplier it played at
+  (`AtFullSpeed`; `TrackedAgent.PhaseAnimation` is taken when the phase opens, from the same m as `PhaseAsked`, so the wind-up
+  and the release both use the pre-charge value - the recompute after the blow's charge lands a tick later, a ≤ 0.009 error
+  on the release's tail). The pause is then exactly step 13's for the same attack; the slower swing adds only its own time
+  to the cycle (at empty ~0.14 s on a 0.82 s melee attack). `CurrentWindUp` and `LastRest*` are in the same unit, so YOUR
+  hold's estimate at the release's start (wind-up + last rest) × (1/m − 1) is consistent, and the Attack recovery bar (it
+  reads your timer's pause) is unchanged. `AttackPlayed` / `EndedPlayed` / `PaceState.Played` carry the attack as played,
+  for the logs and the stats only.
+- **The stats** (`AttackRateStats`): the verdict's target was the fresh cycle ÷ m. The cycle now holds the slower attack, so
+  the target adds `AnimationExtra` = the band's played attack (melee wind-up + swing; ranged + the reload) × (1 − the band's
+  average animation multiplier) - "→ target 7.15 s (incl. +0.15 s of slower swing)". At 100 (or the peak) it is 0: the
+  target is step 13's to the bit. The timer's floor ("D/m") = the attack AS PLAYED + its pause (the shortest cycle the spec
+  allows now); the timer row prints "D avg 0.84 s at full animation speed - played 0.99 s, the slower swing" when the two
+  differ (≥ 0.005 s), exactly as before otherwise. The first-timer lines (AI and yours) name the played attack the same way.
+
+**Migration (config format 4)**
+- `ConfigFile.FormatVersion` 4; `Migrate(read)` = `Migrate(read, p => p.Default)`. The OLD default is the one the file's own
+  format knew: `MinMoveSpeedMultiplier` 0.7 → default only in a format-3 file (a format-2 file's default was 0.3 - its 0.3
+  moves straight to 0.6 by step 14's rule, and a 0.7 there is his own); `AttackAnimationMinPercent` 100 → default in a format
+  2-3 file (the key came with format 2). Logged `migrated config.json at …: MinMoveSpeedMultiplier: 0.7 → 0.6 (format 3 → 4,
+  the old default; step 20b, …)` + `rewrote config.json as format 4 with the 2 migrated value(s)` (ConfigStore unchanged).
+- **Why the seam** (`Migrate(read, defaultOf)`): the unit tests run on DESIGN's Default column, where MinMoveSpeedMultiplier IS
+  0.7 and the animation 100 - "the default is back where it was: nothing to push" - and the schema's defaults cannot be swapped
+  once built (`UseValuesForTests` throws after first use). The test hands in the shipped 0.6 / 85; a second assertion checks
+  that on DESIGN's values the step-20b migration pushes nothing.
+- **Anton's real config.json** (read only, 2026-09-28 09:46): format 3, `MinMoveSpeedMultiplier` **0.5**, `AttackAnimationMinPercent`
+  **90** - his own playtest values, NOT the old defaults. The migration rightly leaves them (the brief's rule: a value he tuned
+  stays), so **his next game will NOT run 0.6 / 85**: MCM → Defaults → "Revert all to defaults", or set the two by hand. And
+  his 90 now means the line (×0.90 at empty, ×0.95 halfway), not step 13's max(m, 0.90) - gentler than the 85 he asked for.
+  Said in PLAYTEST A1 and in the report to the manager. Not special-cased in code (a public migration must not move 0.5 / 90
+  for everyone).
+
+**Tests / smoke**: 401 → 405 (`AttackTimerTests`: the line 1 / 0.85 / 0.925 / 0.8875, 100 always 1, 0 = f, the range's 5 →
+0.05, NaN / out of range, monotonic; f off the applied m round-trips the engine's curve, S 100 → full speed; D at full speed
+keeps the pause (3.36 s). `AttackRateTests`: the slower swing in the target (on target, not "too slow"), the floor, the rows;
+the settings sentence for 60 and 85. `ConfigFileTests`: format 3 → 4 both keys, tuned values kept each on its own, format 4
+untouched, format 2's 0.7 his own / 0.3 → 0.6 / 100 → 85, DESIGN's values push nothing). Smoke 57 → 58 steps: the decorator
+check now on the line (85 at empty 0.8925 swing and halfway 0.97125, 60 halfway 0.84 - the old rule gave 0.63 - a 0 held at 5
+→ ×0.05, counters 6/8/1 and 5 AI recomputes); the hot-swap line; NEW `SlowerSwingKeepsThePauseInSeconds` - a wounded AI man
+(f 0.4, ×0.91) plays his 0.4 / 0.5 s attack 1/0.91 longer and his timer is the full-speed 0.82 × (1/m − 1), the gap it
+leaves the same, the first-timer line / timer row / band row name the played attack, back at 100 D = played. The older smoke
+steps pin DESIGN's 100 / 0.7 (`AthleticsDefaults`), so they still test step 13's full-speed animations to the bit.
+
+**UNVERIFIED — only the game can tell (PLAYTEST C1, C2, C6, L4, L5)**
+1. The heavier swing is visible but not slow-mo → Anton's eye; the summary's `animations asked` x0.85 at empty and the band's
+   swing `(x1.18)` of the peak's.
+2. The pause in seconds did not change → the timer rows' `D avg` stays ~0.8 s melee (as in his 2026-09-28 logs) with `played …`
+   beside it; `asked avg` = D avg × (1/m avg − 1).
+3. The run at empty is 60% → `run speed check … empty (f 0) engine top x0.60 asked x0.60`.
+4. The verdict does not turn "too slow" from the swing alone → the `incl. +… s of slower swing` in each tired band's target.

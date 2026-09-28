@@ -97,7 +97,8 @@ regen.)
     **PAUSE ONLY (Anton's playtest call, 2026-09-27; built in step 13 — research and every
     decision in AI_NOTES "Step 13").** The animation slow-down of steps 5-12 read as "slow-mo"
     and felt strange, so every attack animation — wind-up, swing, thrust, bow draw, throw,
-    reload — now plays at FULL speed, and the whole slow-down is a **no-attack timer** after
+    reload — now plays at FULL speed (step 20b: a little slower when tired, ×0.85 at empty by
+    default - see "The animations" below; the pause is unchanged), and the slow-down is a **no-attack timer** after
     each attack: an attack of duration **D** that ends at attack speed **m** leaves a pause of
     **D × (1/m − 1)** in which the fighter may not START another attack — so the attacking part
     of his rhythm runs at × m (m 0.5: pause = D; m 0.2 at empty: pause = 4 × D). At full
@@ -139,30 +140,46 @@ regen.)
       the timer it double-counts (the playtest log read 128% / 172% "too slow"): the timer runs
       inside the AI's own gap after an attack, and a NoAttack hold already costs the AI its own
       re-decision (1.5-2.6 s measured) when it lifts.
-    - **The animations — optional, the old technique** (`AttackAnimationMinPercent`, 100): the
-      attack animations play at max(m, this %) - 100 = always full speed; lower it to bring a
-      little slow-mo back on top of the timer; 0 = steps 5-12's animations × m whole. Run speed
-      is not affected by it.
+    - **The animations — a little slower when tired** (`AttackAnimationMinPercent`; initial 100,
+      shipped 85 since step 20b - Anton after his playtest of 2026-09-28: "swing speed does get
+      reduced but to 85%, so swings do show as slower, but not as dramatically as our original
+      20%"): the attack animations (wind-up and swing, thrust, bow draw, throw, reload) play at
+      **A + (1 − A) × f**, A = this % — full speed at and above the peak line, A at empty, a
+      straight line like the run speed (85: ×0.925 halfway, ×0.85 empty). 100 = always full
+      speed (step 13's PAUSE ONLY). Steps 13-20 used max(m, A), which with 85 sits at 85% from
+      f ≈ 0.81 down. **The pause stays the same in SECONDS**: D is measured at full animation
+      speed (each phase's played seconds × the animation multiplier it played at), so the pause
+      D × (1/m − 1) is what it was with full-speed animations and the slower swing only adds its
+      own extra time to the cycle ("the delay in seconds is nice, leave it be"). The line rides
+      on the attack slow-down: with `ExhaustedAttackSpeedPercent` 100 (attacks never slowed) the
+      animations stay at full speed too. The slider stops at 5 (the line at 0 would freeze a
+      swing at empty). Run speed is not affected by it.
     - **You see it**: the **Attack recovery bar** just above your Athletics bar (§3) empties when
       you attack and fills over your pause, the seconds left inside it; it **flashes** when you
       press attack too early (`FlashBarOnEarlyAttack`).
     - **Blocking is never slowed**: weapon handling, shield speed and every defence value of the
-      AI are left alone, and with full-speed animations a tired man's swing no longer keeps him
-      committed longer.
+      AI are left alone, and with (nearly) full-speed animations a tired man's swing no longer
+      keeps him committed much longer (step 20b: at most 1/0.85 ≈ 18% longer at empty).
     - **Measured**: the summary's `attack rate` lines give, per f band, melee and ranged, AI and
-      you apart, the animation multiplier asked (×1.00 by default) and every phase's average
-      against the peak's (the animations as the engine played them), each timer's D, m and pause
-      against the measured gap from the attack's end to the next attack (attacks that started
-      inside a timer: must be 0), the cycle, m, the target (the peak's cycle ÷ m) and measured ÷
-      target with a verdict word (on target within ±15%, too fast, too slow); your timer (presses
+      you apart, the animation multiplier asked (step 20b: ×0.85 at empty to ×1.00 at the peak
+      line by default) and every phase's average against the peak's (the animations as the engine
+      played them), each timer's D (at full animation speed; the played attack beside it when it
+      differs), m and pause against the measured gap from the attack's end to the next attack
+      (attacks that started inside a timer: must be 0), the cycle, m, the target (the peak's cycle
+      ÷ m, + step 20b's slower swing: the band's played attack × (1 − its animation multiplier) -
+      the pause does not grow with it, the attack does) and measured ÷ target with a verdict word
+      (on target within ±15%, too fast, too slow); your timer (presses
       swallowed, the held button firing, releases); the AI's holds; whether tired men block as
       often as fresh ones. Step 16: the GUARD by state (held by the pause / stepping back / everyone
       else - the held and the stepping-back men must block close to everyone else), each band's cycle
-      against the timer's own floor D / m (the attack and its pause - at least ~100% = held as asked),
+      against the timer's own floor D / m (the attack and its pause - at least ~100% = held as asked;
+      step 20b: the attack as played + its pause),
       cycles with a step back inside counted and shown apart, and the input hook's own numbers.
-  - **Run speed on foot** = M + (1 − M) × f, M = `MinMoveSpeedMultiplier` (0.7 - an empty man
-    runs at 70% of his pace; step 14, Anton after his 240v240: "make them slow down to 70% speed",
-    the 0.3 of steps 5c-13 was "too slow, unrealistic"). Tired men slow down, so fresher men
+  - **Run speed on foot** = M + (1 − M) × f, M = `MinMoveSpeedMultiplier` (initial 0.7 - an empty
+    man runs at 70% of his pace; step 14, Anton after his 240v240: "make them slow down to 70% speed",
+    the 0.3 of steps 5c-13 was "too slow, unrealistic"; shipped **0.6** since step 20b - Anton after
+    his playtest of 2026-09-28: "speed (run) floor sweetspot is 60% when their athletics is at 0%").
+    Tired men slow down, so fresher men
     overtake them. Horses keep their speed (Anton's pick):
     `MountMinSpeedMultiplier` (1.0 = unaffected; lower it to let a tired rider's horse slow on
     the same curve).
@@ -553,8 +570,8 @@ says (§2c).
 | `AttackRatePaceByInput` | true | Step 16: the AI timer through the AI's own input - only the attack bits are taken out, his blocks, parries and moves stay his own. Off = step 13's NoAttack flag (held men blocked 2-13%). A/B switch; a running pause finishes the way it began. |
 | `AiHoldRaiseGuard` | true | Step 16: a held AI fighter (his pause or a step back, the new techniques) who wants to attack raises his guard instead (`DefendDown` - a block, the shield). Off: the attack is only dropped. |
 | `AttackRateAiDecisions` | false | Tired AI fighters also decide to attack (and riposte) less often, loose less readily and aim longer - × / ÷ their attack speed (A/B switch). Off since step 13: on top of the timer it double-counts (the log read 128% / 172% too slow). |
-| `AttackAnimationMinPercent` | 100 | Step 13: the attack animations (swing, thrust / draw / throw, reload) play at max(m, this %) - 100 = always full speed (the whole slow-down is the timer); lower brings a little slow-mo back. |
-| `MinMoveSpeedMultiplier` | 0.7 | Top speed on foot at 0 Athletics (0.3 until step 14 - Anton: "too slow, unrealistic"). |
+| `AttackAnimationMinPercent` | 100 | The attack animations (swing, thrust / draw / throw, reload) at empty, in % - step 20b: a straight line A + (1 − A) × f up to full speed at the peak line (steps 13-20: max(m, this %)); 100 = always full speed (the whole slow-down is the timer). D is taken at full animation speed, so the pause in seconds never grows with it. Range 5-100; defaults.json 85 since step 20b. |
+| `MinMoveSpeedMultiplier` | 0.7 | Top speed on foot at 0 Athletics (0.3 until step 14 - Anton: "too slow, unrealistic"; defaults.json 0.6 since step 20b - Anton's "sweet spot"). |
 | `MountMinSpeedMultiplier` | 1.0 | Horse top speed at the rider's 0 Athletics (1.0 = horses never slow). |
 | `DamageBonusFollowsAthletics` | true | The damage upside shrinks with the attacker's Athletics below the peak. |
 | `StepBackEnabled` | true | Tired AI fighters on foot step back after melee swings (§2). Off mid-battle: everyone stepping back returns to his formation at once. |
@@ -774,6 +791,16 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     switch; the player is left out of his own formation's average (as in the strip), everyone else on
     every side is counted; the numbers are coloured by the men's average f rather than drawing a second
     colour key; they show with the player down too, because vanilla's markers do.
+22. **Anton's tuned defaults** (step 20b, Claude's calls on Anton's playtest words of 2026-09-28 - AI_NOTES
+    "Step 20b"): 0.6 and 85 are TUNINGS, so they live in defaults.json and this table's Default column keeps
+    the initial 0.7 and 100; the swing animation's RULE changed (a straight line by f, not max(m, A)), so the
+    text above changed with it; f is read off the attack multiplier the decorator applies (the line moves in
+    m's recompute steps, and attacks never slowed = animations never slowed); D is built at full animation
+    speed, so the pause in seconds is exactly step 13's and the slower swing adds only its own time - the
+    verdict's target adds that time too, so a tired band does not read "too slow" because of it; the slider
+    stops at 5, not 0 (the line reaches 0 at empty - a frozen swing); config format 4 moves a format-3
+    file's 0.7 and a format 2-3 file's 100 once, logged (a value he set himself stays - his config.json of
+    2026-09-28 held his own playtest values 0.5 and 90, so it keeps them).
 
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),

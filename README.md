@@ -29,9 +29,9 @@ Releasing it: [tools/WORKSHOP-UPLOAD.md](tools/WORKSHOP-UPLOAD.md).
 - **Athletics** — every fighter has an Athletics bar, his stamina, as big as his **Athletics
   skill** (never under 50). Each blow costs 10 points. The top quarter of the bar — above the
   peak line — is full strength; below it his lucky hits, his attack rate and his run speed fade,
-  down to one attack where he used to make five, and 70% of his running pace, when it is empty. No slow motion: every swing,
-  draw and throw plays at full speed, but after each attack a tired fighter must wait before the
-  next one — you see your wait fill up in an Attack recovery bar (press attack too early and it
+  down to one attack where he used to make five, and 60% of his running pace, when it is empty. No slow motion: his swings,
+  draws and throws only look a little heavier (85% of their speed when he is empty), but after each attack a tired fighter
+  must wait before the next one — you see your wait fill up in an Attack recovery bar (press attack too early and it
   just flashes; hold the button and you strike the moment it fills), the AI waits with its guard
   up. Blocking, kicks and moving are never held; a kick or a shield bash costs a little
   Athletics (3 points) but never starts a wait. Wounds cap the bar. Rest to
