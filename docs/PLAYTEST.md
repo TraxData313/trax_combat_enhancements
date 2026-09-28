@@ -1,7 +1,7 @@
 # Playtest — one session, start to finish
 
 Anton plays this ONCE, after the build is finished, and hands Claude the log. Seven parts in
-order, about **2 hours 45** (A 10 min, B 15, C 25, D 35, E 15, F 55, G 10; the optional bits add ~20). **Short on
+order, about **2 hours 50** (A 10 min, B 15, C 25, D 35, E 20, F 55, G 10; the optional bits add ~20). **Short on
 time after step 16? D4 alone (the A/B of the new guard and backpedal, 20 min) answers the newest
 questions.** Each part says what to do, what you
 should see, what counts as broken, and the log lines that prove it. The full line reference —
@@ -96,7 +96,7 @@ end it (win or retreat).
 **A4. Now WITH MCM (and RTS Camera, as you usually play).** Quit. Enable *Mod Configuration Menu v5*
 (with Harmony, ButterLib, UIExtenderEx) and RTS Camera + Command System. Start.
 - You see: *"… loaded - settings in Mod Options."*
-- Log: `[mcm] settings page registered at main menu (attempt 1): MCM 5.…, page "Trax Combat Enhancements", 70 settings in 9 groups, format "none" (config.json is the only store), Default preset = the mod's defaults (defaults.json); group "Defaults": buttons "Revert all to defaults" and "Save current values as a defaults file".`
+- Log: `[mcm] settings page registered at main menu (attempt 1): MCM 5.…, page "Trax Combat Enhancements", 78 settings in 10 groups, format "none" (config.json is the only store), Default preset = the mod's defaults (defaults.json); group "Defaults": buttons "Revert all to defaults" and "Save current values as a defaults file".`
   (`at retry (attempt 2)` is fine — MCM woke a moment after us; the first try is now always at the
   main menu, where MCM builds its services — step 12); the settings dump shows
   `VerboseLogging = true (default false)`.
@@ -104,7 +104,8 @@ end it (win or retreat).
   is missing — send the `[mcm]` lines); a `not ready yet` line with no `registered` or `gave up` after it.
 
 **A5. The MCM page.** Options → Mod Options → *Trax Combat Enhancements*.
-- You see: the same 9 groups — *Master switch* (Mod enabled) on top, *Advanced* at the bottom, and
+- You see: the same 10 groups — *Master switch* (Mod enabled) on top, *Formation markers (hold ALT)*
+  (step 20) just before *Advanced* at the bottom, and
   just above Advanced a *Defaults* group with two buttons. Checkboxes for switches, sliders for
   numbers (their ends are the file's ranges), each label with its unit (points, %, x, m, s, px, MB).
   Hovering shows the explanation, *"Applies at once, even mid-battle."* and the default. *Verbose
@@ -461,7 +462,7 @@ the clock time at each start.
 
 ---
 
-## E. Your Athletics bar and the orders-menu strip (15 min)
+## E. Your Athletics bar, the orders-menu strip and the ALT markers (20 min)
 
 **Your bar** — bottom right, one row under the vanilla health bar (and the horse bar when you ride),
 its right end lined up with the health bar's fill: the word *Athletics*, the number `132 / 180`
@@ -542,6 +543,37 @@ UI scale once; mount a horse.
 - Too big, too small, too close to the icons? *Advanced* → *Orders strip: text size / numbers offset /
   bar offset / bar thickness / side margin (px)* move it live — tell Claude the numbers that look right.
 
+**E4 (5 min). Hold ALT — the numbers under the formation markers (step 20, Anton's ask).** In a custom
+battle with several formations on both sides (RTS Camera on), **hold Left Alt** (the game's "show
+indicators" key) before the lines meet, then again after a while of fighting.
+```
+          57             the game's marker: the troop count,
+         [⚔]             the formation icon (your colour / an ally's / the enemy's),
+         » 45            the distance (the footprint icon and the number)
+   72% ± 8   HP 81%      ← ours: Athletics ± spread in the colour of the men's strength, their health
+     [████▒▒│░░]         ← ours: the same slim bar as the strip (fill, ± band, peak tick)
+```
+- You see: under EVERY marker the game draws — yours, your allies' and the enemy's — our two numbers
+  and the bar, centred under the distance number, following the marker as you move the camera (no lag,
+  no drift); none under a marker the game hides (behind you, very close, a formation wiped out). They
+  come and go exactly with the markers: hold ALT → both; let go → both go; **open the orders menu → the
+  markers show, and so do ours** (the game shows its markers with the menu). After fighting: the
+  front formations' numbers lower and yellow / orange / red, the fresh reserves green; the enemy's too.
+- With RTS Camera: switch to its free camera and hold ALT again — the numbers stay under the markers
+  wherever you fly; your own formation's marker vanishes when you are alone in it (RTS Camera hides it)
+  and so do ours.
+- Switch mid-battle (Escape → Mod Options): *Formation markers (hold ALT)* → *Enemy formations too* off →
+  the enemy's numbers go at once, yours stay; on again. *Numbers under the formation markers* off → all
+  go; on again. *Orders menu strip* → *Show average health* off → the `HP` goes here too. *Advanced* →
+  *Marker numbers: text size / gap under the marker / bar length / bar thickness (px)* move them live
+  (bar thickness 0 = no bar) — tell Claude the numbers that look right.
+- Log (appendix L7): `[hud] attached: ALT markers (AltMarkerView, movie TraxAltMarkers, prefab installed) - shown while ModEnabled, AthleticsEnabled and ShowAltMarkerStats are on, the game's Hide battle UI and photo mode are off, in a fight (battle, duel, tournament or stealth mode) and while the game shows its formation markers (ALT held or the orders menu open - read live from its own marker layer)`;
+  the first ALT: `[hud] ALT markers: layer created at …` then **`[hud] ALT markers: first shown at … (show #1) - technique: the game's own formation markers read live (their points and their widgets' sizes) (layer MissionFormationMarker, movie FormationMarker: 6 markers, 6 marker widgets); screen 1920 x 1080 px, UI scale 1.00; 6 markers (yours 3, allies 0, enemy 3): yours 1 Infantry (41 men) at (960, 402) 60 x 108, 85 m | …; labels (…): yours 1 Infantry at (960, 458) | …; no label: enemy 3 Cavalry - behind the camera`**
+  — THE proof of the alignment: each label's centre x = its marker's x, its top y = the marker's y + half its height + 2 at UI scale 1;
+  `[hud] ALT markers: values at … (show #1): yours 1 Infantry 72% ± 8 HP 81% (40 men, f 0.93) | … | enemy 1 Infantry 64% ± 12 HP 95% (…) - ± is 1.00 std, health on, enemy on`.
+  Later ALT presses are quiet (verbose `~[hud] ALT markers: layer created …`).
+- Summary: `[summary] hud: ALT markers - shown 14x, on screen 32.5 s; technique: the game's own formation markers read live (…); formations labelled: yours 3, allies 0, enemy 3 (most at once 6), …; fallbacks: none; errors 0`.
+
 **Broken — tell Claude**: no bar at all (read the `[hud]` lines in order: no `attached:` → look for
 `[error] hud.attach`; `prefab NOT FOUND` → the GUI folder did not install; `movie … FAILED to load`);
 the bar, the recovery bar or a cell in the wrong place, overlapping vanilla UI or each other, or cut off; the recovery bar
@@ -550,7 +582,11 @@ the fill or its `for the first time` line's f; a wrong number (not your pool, co
 left); the wounded part missing; staying on screen when it should hide, or not coming back; a cell
 under the wrong card or a card with men and no cell; the **compact panel with *Strip under the cards*
 on** (send the `FALLBACK` line — appendix L7); the mouse snagging on our layer, or RTS Camera's card
-clicks not working while the strip is up; `[hud] … DISABLED for the rest of this battle`.
+clicks not working while the strip is up; `[hud] … DISABLED for the rest of this battle`. **E4**: numbers
+with no marker above them, a marker without numbers that should have them (a formation with men,
+in front of you), numbers that trail or jump when the camera moves, numbers staying after ALT is
+released, any `[hud] ALT markers: FALLBACK …` or `a marker without its widget` line, or a summary whose
+technique is not *read live*.
 
 ---
 
@@ -662,7 +698,7 @@ defaults file**.
   back to its default (N changed) - applied now; config.json saved."* (MCM's Cancel does not undo it.)
 - Log: `[mcm] "Revert all to defaults" pressed`, one `[config] <Key>: … → … (source: defaults)` per
   setting that moved, `[config] wrote config.json (reverted to defaults): every value as it is in effect now`,
-  `[config] reverted all 72 settings to their defaults (…): N changed, applied live`.
+  `[config] reverted all 78 settings to their defaults (…): N changed, applied live`.
 
 **G4 (optional, 1 min). The rewrite rule.** Hand-edit one value in config.json; then — before any
 battle — change a DIFFERENT value in MCM and press Done. The hand edit must still be in the file.
@@ -938,7 +974,7 @@ header names the technique: `==== scene …, mod ON, AI holds: Input (the AI's o
   own check: …)`); a wall's edge or stairs (`spot not level`, `no straight way back`, `spot off the navmesh`);
   tournaments, arena, naval (`not a field battle (…)`).
 
-### L7. The HUD — your bar, the recovery bar and the orders strip
+### L7. The HUD — your bar, the recovery bar, the orders strip and the ALT markers
 
 - Attach, first tick: `[hud] attached: player bar (…)`, `[hud] attached: recovery bar (AttackRecoveryView, movie TraxAttackRecoveryBar, prefab installed) - …`
   and `[hud] attached: orders strip (OrderStripView, movie TraxOrderStrip, prefab installed) - shown while ModEnabled, AthleticsEnabled and ShowInOrderMenu are on, … and while the orders menu is open`.
@@ -966,6 +1002,16 @@ header names the technique: `==== scene …, mod ON, AI holds: Input (the AI's o
   — whys: `no MissionOrder layer on the screen and no other layer holds formation cards`, `N cards found - not whole sets of 8 …`,
   `two sets of cards drawn at once …`, `no card drawn (of 16 found) 0.60 s after the menu opened`,
   `… has 12 men but its card is not drawn`, `2 Archers's card counts 25 men, the formation has 20 for more than 1.0 s`.
+- The ALT markers (step 20, E4): `[hud] attached: ALT markers (AltMarkerView, movie TraxAltMarkers, prefab installed) - … while the game shows its formation markers (ALT held or the orders menu open - read live from its own marker layer)`;
+  `layer created …` once (later ALT presses and releases go to the verbose log only); **`first shown at … (show #1) - technique: …; screen W x H px, UI scale S; N markers (yours a, allies b, enemy c): <each marker: team, formation, men, its point, its widget's size, the distance>; labels (<layout>, centre x / top y): <each label>; no label: <formation> - behind the camera | faded (closer than 5 m or fading) | not laid out yet | no tracked men | enemy (AltMarkersShowEnemy off)`**
+  (the proof: a label's centre x = its marker's x; its top y = the marker's y + half its height + the gap × the UI scale);
+  `values at … (show #1): yours 1 Infantry 72% ± 8 HP 81% (40 men, f 0.93) | … - ± is 1.00 std, health on, enemy on` once per battle (verbose at each later show).
+  The FALLBACKS, each with its why (the first of each kind in full, later ones verbose), counted in the summary:
+  `[hud] ALT markers: a marker without its widget at … (show #N) - 1 of 6 markers had no widget at their point (layer MissionFormationMarker, movie FormationMarker: 6 markers, 5 marker widgets): … - a nominal marker size for those`;
+  `[hud] ALT markers: FALLBACK at … (show #N) - layer MissionFormationMarker, movie FormationMarker: 6 markers, 0 marker widgets - the game's points with a nominal marker size (60 x 108 UI px) until the markers go`;
+  `[hud] ALT markers: FALLBACK at … (show #N) - no MissionFormationMarker layer on the screen - our own projection of the same point (the formation's median + 3 m), the game's rule copied (ALT held or the orders menu open), until the markers go; the next show tries the game's markers again`
+  (or `- the MissionFormationMarker layer holds no FormationMarker movie over the game's marker ViewModel - …`: another mod replaced the markers).
+  At the battle's end, only if some fighters were on a team the averages do not cover: `[athletics] formation averages: N fighters are on a team past index 7 - … tell Claude`.
 - Summary:
   ```
   [summary] hud: player bar (movie TraxPlayerAthleticsBar) - on screen 312.4 s of 340.2 s (92%); layer built 2x, removed 2x (ShowPlayerBar off 1, mission end 1); hidden: ShowPlayerBar off 7.7 s, not a fight 20.1 s; 3120 refreshes; errors 0
@@ -974,7 +1020,12 @@ header names the technique: `==== scene …, mod ON, AI holds: Input (the AI's o
   [summary] hud: recovery bar - pauses shown 40 (avg 1.10 s, longest 3.30 s), 60.2 s on screen not full; flashes shown 18 (FlashBarOnEarlyAttack on at the end) - your pauses and swallowed presses are in the attack rate lines
   [summary] hud: orders strip (movie TraxOrderStrip) - on screen 48.1 s of 340.2 s (14%); layer built 12x, removed 12x (orders menu closed 11, mission end 1); hidden: not a fight 20.1 s, orders menu closed 272.0 s; 480 refreshes; errors 0
   [summary] hud: orders strip - opened 12x: under the cards in 12, the compact panel in 0; technique: the live vanilla cards (layer MissionOrder: 16 cards); card layouts seen: 16 cards in 2 sets, set 1 drawn; cells placed 36 (lifted to the screen's edge 0), card changes 0, short mismatches 0 (under 1.0 s), card re-scans 0, values pushed 40; fallbacks: none
+  [summary] hud: ALT markers (movie TraxAltMarkers) - on screen 32.5 s of 340.2 s (10%); layer built 14x, removed 14x (markers hidden 13, mission end 1); hidden: not a fight 20.1 s, markers hidden 287.6 s; 325 refreshes; errors 0
+  [summary] hud: ALT markers - shown 14x, on screen 32.5 s; technique: the game's own formation markers read live (their points and their widgets' sizes) (layer MissionFormationMarker, movie FormationMarker: 6 markers, 6 marker widgets); formations labelled: yours 3, allies 0, enemy 3 (most at once 6), frames with a label pinned at the screen's edge 0, values pushed 90; fallbacks: none; errors 0
   ```
+  The ALT line proves: *shown* = how often the game's markers came up (ALT presses + orders-menu opens) while
+  the numbers were on; *technique … read live* with no `(shows: …)` mix and *fallbacks: none*; *formations
+  labelled* names both sides (enemy > 0 with *Enemy formations too* on); *errors 0*.
   Outside a battle (a town, the training field) the player bar's line also ends
   `outside a battle: shown 3x (weapon drawn 2, refilling 1), on screen 45.2 s; errors 0` (or `outside a battle: never shown`).
   Proves: *on screen* ≈ your time on the field in the fight; every *removed* has its reason; bar

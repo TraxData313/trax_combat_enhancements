@@ -1160,7 +1160,7 @@ it; his pause is his.
 - Hidden while `ModEnabled` is off - the base does it (HudGate); the smoke's master-switch step
   already covers the player bar - add the target view there too.
 
-## Step 8 — Squad bars above formations (LATER - Anton, 2026-09-27)
+## Step 8 — Squad bars above formations (LATER - Anton, 2026-09-27; BUILT as step 20 in its "hold ALT" form - see "Step 20")
 
 - **Its settings are not in the schema** (step 10b, R21): `ShowFormationBars`,
   `FormationBarsAlways`, `FormationBarHeight` wait in DESIGN's "Planned parameters" (bring them
@@ -2305,7 +2305,7 @@ regenerated - either if I chose to duel him or to fight men to men - because the
 5. The intro seen by the mode → `[athletics] hideout: the boss intro began at …` (the summary's "the boss intro at …").
 6. The bar jumps on screen the same frame (the HUD reads every refresh) - Anton's eye.
 
-## Step 20 — hold ALT: Athletics + health under vanilla's formation markers (the research below was written before coding)
+## Step 20 — hold ALT: Athletics + health under vanilla's formation markers (DONE 2026-09-28; the research below was written before coding)
 
 Anton (2026-09-28): "Can you make it so I see the Athletics and health numbers above the troops when I hold ALT - it now shows me
 the troop count and distance?" = LATER #8 (squad bars, AI_NOTES "Step 8") in its "only while vanilla shows the markers" form.
@@ -2384,3 +2384,47 @@ the troop count and distance?" = LATER #8 (squad bars, AI_NOTES "Step 8") in its
   bar). Allies' formations count with yours (always); the enemy's behind the switch. `ShowFormationBars` is built as
   `ShowAltMarkerStats`; `FormationBarsAlways` / `FormationBarHeight` stay planned (an always-on form would need our own projection
   always; the height is vanilla's 3 m).
+
+**Built (DONE 2026-09-28) - as planned, file map in CLAUDE.md "Layout".** Decisions and gotchas worth keeping:
+- **The condition is vanilla's own flag** (`MissionFormationMarkerVM.IsEnabled`), read every frame in `ViewConditionMet` - so the
+  labels show with the orders menu too (DESIGN interpretation 21), follow any mod that changes the rule, and stay down in
+  Deployment. When it cannot be read (no layer - e.g. Hide battle UI just rebuilt it, or another mod replaced the markers), the
+  rule is copied: HudFrame's new `ShowIndicatorsKey` (game key 5, read only for a view with `ReadsIndicatorKey`) or the orders
+  menu. `NeedsPlayer` false - vanilla shows its markers with the player down.
+- **Placement = vanilla's own centring, the same frame**: the label's box (a 200-UI-px centring box, `ScaledSuggestedWidth` in
+  pixels) goes to `(ScreenPosition.X, ScreenPosition.Y + widget height / 2 + AltMarkerOffset × scale)`. Pinned markers (a targeted
+  enemy off-screen, orders menu open) use the widget's own `ScaledPositionX/YOffset` (last frame's - it is pinned, so it barely
+  moves). The widget's `AlphaFactor` ≤ 0.05 = faded (under 5 m, or the fade after a release; RTS Camera's free camera keeps 0.2 -
+  followed). The first frame of each ALT press reads the fade-out's ~0 alpha → no label for ONE frame (vanilla sets the alpha in
+  its LateUpdate, after our tick) - accepted, invisible.
+- **Labels are keyed, grow-only** (`AltMarkersVM.LabelFor(key)`, key = TeamIndex × 16 + formation): vanilla re-sorts its targets
+  far-first EVERY frame; a list re-bound by index would rebuild texts (allocations) and could flicker. A label with no marker this
+  frame is only hidden. The list lives for one show (a new VM per layer build, like the strip).
+- **Values** are pushed when `FormationStatsVersion` or the settings version moves, or a label is new - `PushedStats` /
+  `PushedSettings` per label (int compares per frame). Texts rebuild only on a changed number (the strip's `SetValues` rule).
+- **The read API covers every team now**: slots `TeamIndex × 10 + formation` (`MaxStatTeams` 8), one pass over all tracked fighters
+  every FormationStatsRefreshSeconds. **Gotcha**: the loop reads the managed `Formation` / `Team` first and `IsActive()` last -
+  `Agent.State` reads the engine's state pointer, and the smoke's uninitialized agents would crash on it (the old code only reached
+  it for the player's team). A team index past 7 is counted and named once at the battle's end ("tell Claude").
+- **Text**: vanilla's marker brush `NameMarker.Distance.Text` (the count's and distance's font, outline 0.5 - reads over the
+  battlefield), size 16 by default (vanilla's count is 22; 13 was too small beside it), the Athletics number coloured by the men's f.
+- **Fallbacks, per show** (a new ALT press tries the live markers again): a marker whose widget is not at its point → a nominal size
+  for it (60 × 108 UI px, 72 without the distance row); no widgets → the game's points, nominal sizes; no layer / movie / marker
+  VM → `ProjectedFormationMarkers` for the rest of the show. The first of each kind per mission in full, the rest verbose; the
+  fallback text is built only on the show's first such frame (no per-frame allocation).
+- **Smoke**: `[error]` lines share a per-site burst of 3 (TraxLog's ErrorLimiter) - the earlier fail-safe steps spend "hud.tick", so
+  the ALT fail-safe proves the error by the count and the DISABLED line.
+- Tests 401 (+14, `AltMarkerTests`); smoke 55 steps (+3: the prefab, the view, the fail safe; + the master-switch step); 78 settings
+  in 10 groups.
+
+**UNVERIFIED — only the game can tell (PLAYTEST E4; the line that settles each)**
+1. The marker layer and its VM are found and read live → `[hud] ALT markers: first shown at … - technique: the game's own formation
+   markers read live … (layer MissionFormationMarker, movie FormationMarker: N markers, N marker widgets)` - the same count twice,
+   no `FALLBACK` / `a marker without its widget` line; the summary's technique `read live` with no `(shows: …)` mix.
+2. The labels sit under the markers at Anton's resolution / UI scale and follow the camera without lag (the same-frame reasoning
+   above) → Anton's eye; the first-show line's label centre x = marker x, top y = marker y + half its height + 2 × scale.
+3. The widget's `Size` is the whole marker column (count + icon + distance) → the label clears the distance number (eye); if it
+   overlaps, `AltMarkerOffset` moves it live - Anton reports the number.
+4. Enemy formations get stats → `values at …: … | enemy 1 Infantry 64% ± 12 HP 95% (…)`; the summary's `enemy N` > 0.
+5. RTS Camera's free camera: labels under the markers wherever the camera flies; the solo-formation marker hidden → no label (eye).
+6. The one-frame gap at each ALT press is invisible (eye); the fade after a release (vanilla ~0.25 s) vs ours (at once) looks fine.

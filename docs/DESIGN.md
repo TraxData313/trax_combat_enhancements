@@ -447,9 +447,10 @@ Every parameter lives in two places that stay in sync:
 - the **Mod Configuration Menu (MCM)** when installed. MCM must stay OPTIONAL: without it the
   mod runs on the file alone (see CLAUDE.md, hard requirements).
 
-**What the player reads** (step 10b): nine groups, the same in MCM and the file, in this order —
-*Master switch, Damage randomness, Athletics, Tired fighters, Tired fighters step back, Refill,
-Your Athletics bar, Orders menu strip, Advanced*; MCM shows its *Defaults* buttons (§2c) just above
+**What the player reads** (step 10b; step 20 added the tenth): ten groups, the same in MCM and the
+file, in this order — *Master switch, Damage randomness, Athletics, Tired fighters, Tired fighters step
+back, Refill, Your Athletics bar, Orders menu strip, Formation markers (hold ALT), Advanced*; MCM shows
+its *Defaults* buttons (§2c) just above
 *Advanced*, which stays last. One vocabulary: the pool, the bar and its points are *Athletics*; the
 character-screen skill is *the Athletics skill*; the *peak line* is the white mark on the bar
 (`AthleticsPeakPercent`) — at or above it a fighter is at full strength; *empty* = 0 Athletics.
@@ -463,7 +464,8 @@ so the same battle can be fought with and without it and compared. Off: the dama
 back the game's own number; nobody pays Athletics, nobody refills; every speed penalty (attack,
 run, horse) is lifted at once (the stat decorator checks the switch itself, so even a recompute
 before the logic's next tick is vanilla - the AI's attack values included, 5e); the player bar,
-the Attack recovery bar and the orders-menu strip (steps 6, 13, 9) hide; tired fighters never step
+the Attack recovery bar, the orders-menu strip and the numbers under the formation markers (steps 6,
+13, 9, 20) hide; tired fighters never step
 back (5d) and every no-attack timer - yours and every AI fighter's - is released at once (5e, 13).
 Back on: everyone starts with a full Athletics bar — a fresh start, not a resume. The two model
 decorators stay registered (they cannot be removed mid-game) and pass everything through; the

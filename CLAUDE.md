@@ -23,8 +23,9 @@ fight is a fresh start for the player's side (step 19, `HideoutBossFightRefill`:
 step back on them ends; in a duel his men stand aside, so only he refills). The Athletics
 bar is shown for the player (step 6)
 and — averaged, with a ± spread and the men's health — in a strip under each formation card of
-the orders menu (step 9). The bar for the fighter you look at and squad bars above the
-formations are LATER (DESIGN §3; their settings wait in DESIGN's "Planned parameters"). Words:
+the orders menu (step 9) and, while you hold ALT (or the orders menu is open), under each of the
+game's formation markers, the enemy's too (step 20: vanilla's markers read live). The bar for the
+fighter you look at is LATER (DESIGN §3; its settings wait in DESIGN's "Planned parameters"). Words:
 the pool/bar/points are "Athletics", the character-screen skill is "the Athletics skill" (it
 used to be called "endurance"), the "peak line" is the white mark at the top quarter of the bar,
 "the pause" is the no-attack timer after an attack (step 13).
@@ -154,8 +155,9 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
   ParamDef.cs                 one setting: key, type, range, group, label, plain-words
                               description, apply timing (Live / NextBattle); Normalize, Format;
                               its Default comes from defaults.json (DefaultsFile), never code
-  SettingsSchema.cs           EVERY setting of DESIGN's table (72), in file + MCM order, 9 groups
-                              ("Master switch" first, "Advanced" last; step 10b's one vocabulary and
+  SettingsSchema.cs           EVERY setting of DESIGN's table (78), in file + MCM order, 10 groups
+                              ("Master switch" first, "Formation markers (hold ALT)" - step 20 - before
+                              "Advanced" last; step 10b's one vocabulary and
                               units in its header comment) — the one place a setting is declared
                               (a test parses DESIGN.md: keys + types); NO default values. The LATER
                               features' settings are NOT here (DESIGN "Planned parameters")
@@ -302,6 +304,14 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               pixels, lifted at the screen's edge; Signature; Numbers / texts
                               "72% ± 8" "HP 81%"; Band; the slot names), StripLayout (the OrderStrip*
                               settings), StripFallback, OrderStripStats (+ the [summary] strip line)
+  AltMarkers.cs               step 20, hold ALT pure: AltMarker (one vanilla marker as read: key = team index x 16 +
+                              formation, team type, vanilla's point, WSign, distance, men, its widget's size / alpha /
+                              pinned offsets, the stats), MarkerWidget, AltMarkerFrame (<= 64, reused), AltMarkerMath -
+                              Pair (widgets to targets: index first, then the exact point), Nominal (a fallback's size),
+                              Sight (enemy off / no stats / faded / not laid out / pinned / behind / shown), FullyOnScreen
+                              (vanilla's test), Place (the marker's bottom centre + the gap x the UI scale, a 200 px
+                              centring box), VanillaAlpha (the prefab's distance fade); AltMarkerLayout (the AltMarker*
+                              settings), AltMarkerTechnique / AltMarkerFallback, AltMarkerStats (+ the [summary] line)
   SpreadStats.cs              MeanStd (Welford, population std), FormationAthleticsStats (squad
                               mean ± std, band, mean f, at full strength, mean health - step 9),
                               RunSpeedCheck (engine top / asked / moving by f); 5c's
@@ -380,7 +390,8 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
   Missions/AthleticsLogic.Api.cs  READ API for steps 6-9: TryGetReading(agent) (points, pool,
                               usable pool, f, peak line, multipliers), TryGetPeakShare(agent),
                               TryGetFormationStats(formation) (incl. mean f and health; the player
-                              left out, as the order cards), FormationStatsVersion, IsRunning
+                              left out, as the order cards; step 20: EVERY team's formations - slots by
+                              Team.TeamIndex, MaxStatTeams 8, one allocation-free pass), FormationStatsVersion, IsRunning
   Missions/AthleticsLogic.Log.cs  [athletics]/[speed] lines (verbose buckets) + summary feed
                               (releases every step back before the summary, then its lines)
   Missions/AthleticsLogic.StepBack.cs  step 5d bookkeeping: the roll at every counted swing's
@@ -469,8 +480,9 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               then - RESEARCH §G) - each view via MissionScreen.AddMissionView with
                               a GauntletHudLayer, "[hud] attached:" lines; WriteHudSummary (the
                               [summary] hud: lines + each view's own; the screen finalizes views
-                              before it). Attached: the player bar, the orders strip (step 9, with
-                              its GauntletOrderCards + MissionStripFormations)
+                              before it). Attached: the player bar, the recovery bar, the orders strip
+                              (step 9, with its GauntletOrderCards + MissionStripFormations), the ALT
+                              markers (step 20, with GauntletFormationMarkers + ProjectedFormationMarkers)
   Hud/TraxHudView.cs          THE BASE OF EVERY HUD VIEW (MissionView): one GauntletLayer + movie +
                               VM that exists exactly while HudGate says so, read every frame
                               (ReadFrame → Tick(in HudFrame) - the smoke drives Tick); refresh every
@@ -482,10 +494,12 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               hud-layer:<view>, hud-outside:<view>) (QuietConditionToggles: a view's own
                               condition coming and going → verbose after the first build); HudStats;
                               step 12: OutsideToggle / ReadOutside = a view's outside-a-battle rule (the
-                              grace clock; builds / removals outside a fight in the "hud-outside" bucket)
+                              grace clock; builds / removals outside a fight in the "hud-outside" bucket);
+                              step 20: ReadsIndicatorKey (the frame reads the game's ALT key for that view)
   Hud/HudLayer.cs             HudFrame (one frame as a view sees it; IsFightMode = Battle, Duel,
                               Tournament, Stealth; step 12: IsWalkMode = StartUp, PlayerWeaponDrawn by
-                              HandsFull; OrderMenuOpen), IHudLayer (the engine seam), GauntletHudLayer
+                              HandsFull; OrderMenuOpen; step 20: ShowIndicatorsKey - game key 5, Left Alt),
+                              IHudLayer (the engine seam), GauntletHudLayer
                               (vanilla's recipe: IsCustomType check, LoadMovie, AddLayer; release
                               the movie BEFORE RemoveLayer; a failed movie never goes on screen)
   Hud/PlayerAthleticsView.cs  step 6, DESIGN §3.1: the player's bar - TryGetReading(main) → BarMath
@@ -514,7 +528,25 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               / values lines, the [summary] strip line
   Hud/OrderStripVM.cs         its ViewModels: the root + 8 fixed OrderStripCellVM in one
                               MBBindingList, bound TWICE by the prefab (the cells, the panel rows)
-tests/TraxCombat.Core.Tests/  net8.0 xUnit (387) — schema vs DESIGN.md (keys + types), one copy
+  Hud/FormationMarkers.cs     step 20's engine seams: IFormationMarkerSource (TryReadShown = vanilla's own
+                              "markers shown", Read → MarkerRead Live / PointsOnly / Projected / Unavailable),
+                              GauntletFormationMarkers (the "MissionFormationMarker" layer by the public
+                              FindLayer, GetMovieIdentifier("FormationMarker").DataSource = the game's
+                              MissionFormationMarkerVM - IsEnabled, Targets' Formation / ScreenPosition / WSign /
+                              Distance / TeamType / Size - and its FormationMarkerListPanel widgets' Position,
+                              Size, AlphaFactor, IsTargetingAFormation, own offsets; nothing patched),
+                              ProjectedFormationMarkers (the fallback: every team's formations, the median's
+                              ground + 3 m through WorldToScreen from the combat camera, nominal sizes)
+  Hud/AltMarkerView.cs        step 20, DESIGN §3 item 3 (hold ALT): shown exactly while vanilla shows its
+                              markers (its flag; else ALT or the orders menu copied; NeedsPlayer false); every
+                              frame: read, pair (or nominal), Sight, Place each label under its marker, values
+                              when the stats / settings version moves; fallbacks (a marker without its widget,
+                              no widgets, no layer → own projection for the show) once per show, the first of
+                              each in full; [hud] first-show line (technique, markers, labels, no-label reasons),
+                              values line, the [summary] line (AltMarkerStats)
+  Hud/AltMarkersVM.cs         its ViewModels: the root + a GROW-ONLY MBBindingList of AltMarkerLabelVM keyed by
+                              team + formation (a label never swaps formations when vanilla re-sorts)
+tests/TraxCombat.Core.Tests/  net8.0 xUnit (401) — schema vs DESIGN.md (keys + types), one copy
                               runs (SingleCopyTests: claims on private slots, copies, texts), when
                               MCM is tried and when it stops (McmPlanTests - step 12),
                               defaults.json (DefaultsFileTests), master switch, settings, config
@@ -542,7 +574,9 @@ tests/TraxCombat.Core.Tests/  net8.0 xUnit (387) — schema vs DESIGN.md (keys +
                               walk-about mode, weapon / refilling / grace, BelowFull) and HUD stats +
                               summary, the
                               orders strip (matching card sets, cell placement at any scale and
-                              the lift, texts, band, health in the squad stats, summary). They
+                              the lift, texts, band, health in the squad stats, summary), the ALT markers
+                              (AltMarkerTests, step 20: pairing through a re-sort / a missing widget, sight,
+                              placement at any scale and pinned, vanilla's fade, nominal size, summary). They
                               run on DESIGN's INITIAL values (DesignTable.cs: a module
                               initializer), so tuning defaults.json never breaks them. Keep green.
 module/SubModule.xml          release manifest (Id TraxCombatEnhancements, v0.1.0) - THE one home of the
@@ -556,7 +590,10 @@ module/GUI/Prefabs/           the HUD movies - file name = movie name, `Trax…`
                               TraxOrderStrip.xml (step 9: {Cells} ItemTemplates - the cells placed
                               by Scaled* pixel bindings, the panel rows; the ± band = a FillBarWidget
                               ChangeWidget; a list widget carries no @binding - its own bindings
-                              would resolve against the list)
+                              would resolve against the list), TraxAltMarkers.xml (step 20: {Labels}
+                              ItemTemplate - a centring box per formation placed by Scaled* pixel bindings,
+                              the numbers in vanilla's own marker brush NameMarker.Distance.Text, the
+                              strip's bar)
 tools/deploy.ps1              build → AssemblyGuard → OfflineSmoke → install as
                               Modules\TraxCombatEnhancements.Dev "Trax Combat Enhancements (dev)",
                               module\GUI copied beside bin
@@ -570,7 +607,7 @@ tools/package.ps1             step 11, THE RELEASE: manifest gate (release Id + 
 tools/WORKSHOP-UPLOAD.md      the release loop, step by step (first upload, updates) + the uploader's quirks
 tools/WorkshopCreate.xml      the FIRST upload (creates the item, Private, tags, preview) - run once
 tools/WorkshopUpdate.xml      every later upload - ITEM_ID placeholder until the first upload
-tools/STEAM-DESCRIPTION.bbcode  the Workshop page, pasted by hand (≤ 8000 bytes; 4671 now)
+tools/STEAM-DESCRIPTION.bbcode  the Workshop page, pasted by hand (≤ 8000 bytes; 4980 now)
 tools/preview_thumbnail.html  the Workshop preview (source) → preview_thumbnail.png (1024², headless Edge)
 tools/AssemblyGuard/          soft-dependency guard (from the sibling): MCM, Harmony, ButterLib,
                               UIExtenderEx, NavalDLC, CustomBattle in any type surface = FAIL
@@ -603,7 +640,7 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               ways, OnMeleeHit's guard by state, the summary; the older steps run the
                               OLD techniques - AthleticsDefaults pins them), the decorator's animation floor (100 / 0 / 60), the master
                               switch (step backs released, AI timers lifted, your countdown released,
-                              the bar and the strip removed too; step 19: a hideout boss fight refills nobody), the
+                              the bar, the strip and the ALT labels removed too; step 19: a hideout boss fight refills nobody), the
                               hideout boss fight (Program.Hideout.cs, step 19: the game's MissionObjective type with the
                               boss id and names, stand-in teams - the battle refills the whole side to a wound's cap and
                               ends every step back / pause / queued one / your pause, the duel you alone, off = nobody,
@@ -619,6 +656,11 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               (Program.Strip.cs: the real OrderStripView with stand-in cards and
                               formations - layouts, UI scale, RTS Camera's set, the lift, values,
                               live switches, every fallback, quiet reopen, summary, fail safe),
+                              the ALT markers (Program.AltMarkers.cs, step 20: the prefab; the real
+                              AltMarkerView with stand-in marker sources - vanilla's flag and the copied rule,
+                              labels under the markers at UI scale 1 and 4/3, a re-sort, colours / values,
+                              the enemy switch, behind / faded / not laid out / pinned, live settings, every
+                              fallback incl. our own projection, the gates, the master switch, summary, fail safe),
                               defaults read from the embedded defaults.json, the MCM page built
                               by MCM's real builder (its group order: Master switch first, the
                               Defaults buttons above Advanced, Advanced last) and its two buttons
@@ -629,7 +671,7 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               2 MB of verbose lines, the ~ mark, VerboseWants loses no count; step
                               11 (Program.Copies.cs, LAST): two real SubModule instances - the second
                               stands down (no log line, model, mission, message), the first registers
-                              ONE decorator of each kind and reports once (52 steps; the config
+                              ONE decorator of each kind and reports once (55 steps; the config
                               checks work for any tuned default);
                               TRAX_SMOKE_KEEP=1 keeps its temp folder + log to read
 tools/DefaultsTool/           defaults.json upkeep: refresh (rewrite comments/order, keep every

@@ -48,7 +48,11 @@ Releasing it: [tools/WORKSHOP-UPLOAD.md](tools/WORKSHOP-UPLOAD.md).
   green at full strength, then blue, yellow, orange and red as you tire, the part your wounds hold
   shown dark; above it the Attack recovery bar with the seconds of your wait inside it. And in the orders menu, a slim strip under each formation card: its men's average
   Athletics ± spread ("72% ± 8") and their average health ("HP 81%"). The strip reads the game's own
-  cards, so it lines up at any resolution and UI scale, and with RTS Camera's order menu.
+  cards, so it lines up at any resolution and UI scale, and with RTS Camera's order menu. **Hold
+  ALT** and the same two numbers appear under the game's formation markers above the troops — under
+  the troop count and distance — for your formations and the enemy's (see which of their lines is
+  tired before you charge it); they read the game's own markers, so they sit right with any camera,
+  RTS Camera's free camera included.
 - **A master switch** — turn the whole mod off, even mid-battle, and the fight is pure vanilla, so
   you can play the same battle both ways and compare.
 
