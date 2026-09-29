@@ -149,6 +149,9 @@ namespace TraxCombat.Tools
             S.Set(SettingsSchema.HealthCapsAthletics, true, SettingSources.File);
             S.Set(SettingsSchema.CostPerBlow, 10, SettingSources.File);
             S.Set(SettingsSchema.CostPerKickOrBash, 3, SettingSources.File); // step 18
+            S.Set(SettingsSchema.CostPerShieldBlock, 1, SettingSources.File); // step 22
+            S.Set(SettingsSchema.CostPerWrongSideShieldBlock, 5, SettingSources.File);
+            S.Set(SettingsSchema.CostPerWeaponParry, 2, SettingSources.File);
             S.Set(SettingsSchema.CostOnMiss, true, SettingSources.File);
             S.Set(SettingsSchema.HeroCostMultiplier, 0.75, SettingSources.File);
             S.Set(SettingsSchema.PartyLeaderCostMultiplier, 0.75, SettingSources.File);
@@ -529,6 +532,120 @@ namespace TraxCombat.Tools
             Check(Near(st.Fraction, before - 0.03) && st.KicksAndBashes == 5, "back on: a kick was not charged 3 again");
         }
 
+        /// <summary>Step 22: a blocked melee blow costs the DEFENDER - the shield on the right side 1, on the wrong side 5,
+        /// a weapon parry 2, x the blow's multipliers - once per blocked blow; never an attack pause or a step back.</summary>
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static void BlocksCostTheDefender()
+        {
+            S.Set(SettingsSchema.VerboseLogging, true, SettingSources.File);
+            // Core's codes and classifier against the game's own enum and collision struct
+            Check(BlockMath.ResultBlocked == (int)CombatCollisionResult.Blocked && BlockMath.ResultParried == (int)CombatCollisionResult.Parried
+                  && BlockMath.ResultChamberBlocked == (int)CombatCollisionResult.ChamberBlocked, "Core's collision result codes are not the game's");
+            BlockKind Kind(bool shield, bool correct, CombatCollisionResult result, bool missile = false, bool alternative = false)
+            {
+                var cd = AttackCollisionData.GetAttackCollisionDataForDebugPurpose(shield, correct, alternative, true, false, missile, false, false, false, false, false, false,
+                    result, 0, 0, 0, 0, BoneBodyPartType.Chest, 0, Agent.UsageDirection.AttackLeft, -1, CombatHitResultFlags.NormalHit, 0.5f, 1f, 0f, 0f, 0f, 0f, 0f, 0f,
+                    TaleWorlds.Library.Vec3.Up, TaleWorlds.Library.Vec3.Up, TaleWorlds.Library.Vec3.Zero, TaleWorlds.Library.Vec3.Zero, TaleWorlds.Library.Vec3.Zero,
+                    TaleWorlds.Library.Vec3.Zero, TaleWorlds.Library.Vec3.Up);
+                return BlockMath.KindOf(cd.IsMissile, cd.IsAlternativeAttack, cd.IsHorseCharge, cd.CollidedWithShieldOnBack, cd.AttackBlockedWithShield,
+                    cd.CorrectSideShieldBlock, (int)cd.CollisionResult);
+            }
+            Check(Kind(true, true, CombatCollisionResult.Blocked) == BlockKind.ShieldRightSide
+                  && Kind(true, false, CombatCollisionResult.Blocked) == BlockKind.ShieldWrongSide
+                  && Kind(false, false, CombatCollisionResult.Parried) == BlockKind.WeaponParry
+                  && Kind(false, false, CombatCollisionResult.ChamberBlocked) == BlockKind.WeaponParry
+                  && Kind(false, false, CombatCollisionResult.StrikeAgent) == BlockKind.None
+                  && Kind(true, true, CombatCollisionResult.Blocked, missile: true) == BlockKind.None
+                  && Kind(true, true, CombatCollisionResult.Blocked, alternative: true) == BlockKind.None,
+                "the game's AttackCollisionData does not classify as Core expects (shield right / wrong, parry, landed, missile, bash)");
+
+            var d = _logic!.Track(FakeAgent(22))!;
+            d.AthleticsSkill = 100; // pool 100, the line at 75
+            var stats = _logic.Stats;
+            int charged = stats.BlocksCharged, same = stats.BlocksSameBlow, rolls = _logic.StepStats.Rolls, timers = AiTimersAsked();
+            var r = Rules;
+            double t = 900;
+
+            // a shield block on the right side: 1; the same swing touching the shield again: not twice
+            _logic.BlockTaken(d, BlockKind.ShieldRightSide, 30, 1, t, in r, mounted: false);
+            Check(Near(d.Fraction, 0.99) && d.BlocksPaid == 1 && d.Blows == 0 && d.KicksAndBashes == 0, "a right-side shield block did not cost 1 of 100: " + d.Fraction * 100);
+            LogHas("[athletics] shield block (right side) (on foot): (agent 22) - cost 1.0, 100.0 → 99.0 of 100 (f 1.00 → 1.00)");
+            Check(d.LastBlowTime == t, "a paid block did not restart the refill delay");
+            _logic.BlockTaken(d, BlockKind.ShieldRightSide, 30, 1, t + 0.05, in r, mounted: false);
+            Check(Near(d.Fraction, 0.99) && d.BlocksPaid == 1 && stats.BlocksSameBlow == same + 1, "the same blocked blow was charged twice");
+            // his next swing on the wrong side: 5; another man's parried blow: 2
+            _logic.BlockTaken(d, BlockKind.ShieldWrongSide, 30, 2, t + 0.9, in r, mounted: false);
+            Check(Near(d.Fraction, 0.94), "a wrong-side shield block did not cost 5: " + d.Fraction * 100);
+            LogHas("[athletics] shield block (WRONG side) (on foot): (agent 22) - cost 5.0, 99.0 → 94.0 of 100");
+            _logic.BlockTaken(d, BlockKind.WeaponParry, 31, 7, t + 0.95, in r, mounted: true);
+            Check(Near(d.Fraction, 0.92) && d.BlocksPaid == 3 && stats.BlocksCharged == charged + 3 && stats.BlocksMounted >= 1, "a parry did not cost 2: " + d.Fraction * 100);
+            LogHas("[athletics] weapon parry (mounted): (agent 22) - cost 2.0, 94.0 → 92.0 of 100");
+            // a block is not an attack: no pause, no step back roll
+            Check(_logic.StepStats.Rolls == rolls && AiTimersAsked() == timers && d.Pace == null, "a block started an attack pause or rolled a step back");
+
+            // an AI hero pays x0.75 (3.75 for a wrong side), a hero who leads his party x0.56 (1.13 for a parry)
+            var lord = _logic.Track(FakeAgent(23))!;
+            lord.AthleticsSkill = 200;
+            lord.IsHero = true;
+            _logic.BlockTaken(lord, BlockKind.ShieldWrongSide, 32, 1, t, in r, mounted: false);
+            Check(Near(lord.Fraction * 200, 200 - 3.75), "an AI hero's wrong-side block did not cost 3.75: " + lord.Fraction * 200);
+            lord.IsLeader = true;
+            _logic.BlockTaken(lord, BlockKind.WeaponParry, 32, 2, t + 0.5, in r, mounted: false);
+            Check(Near(lord.Fraction * 200, 200 - 3.75 - 1.125), "a party leader's parry did not cost 1.13: " + lord.Fraction * 200);
+            LogHas("[athletics] weapon parry (on foot): (agent 23) - cost 1.1 (x0.56: hero party leader)");
+
+            // you, a hero party leader: 0.56 for a right-side block - the YOU line in full the first time, never your attack pause
+            var me = _logic.Track(FakeAgent(24))!;
+            me.IsHero = true;
+            me.IsLeader = true; // the floor: 50
+            _logic.SmokePlayer = me.Agent;
+            _logic.BlockTaken(me, BlockKind.ShieldRightSide, 33, 1, t, in r, mounted: false);
+            Check(Near(me.Fraction * 50, 50 - 0.5625), "your right-side block did not cost 0.56: " + me.Fraction * 50);
+            Check(!_logic.PlayerTimer.Running && !_logic.PlayerTimer.Holding, "your block started your attack pause");
+            LogHas("[athletics] YOU: shield block (right side) at ");
+            LogHas(" s cost 0.56 Athletics (1.00 x0.56 hero party leader): 50.0 → 49.4 of 50 (f 1.00 → 1.00) - the first of this kind this battle: a melee blow you block costs YOU CostPerShieldBlock x your hero / party-leader multipliers, once per blow, and restarts the refill delay; blocking is never held or slowed");
+            int youLines = LogText.Split(new[] { "YOU: shield block (right side)" }, StringSplitOptions.None).Length;
+            _logic.BlockTaken(me, BlockKind.ShieldRightSide, 33, 2, t + 1, in r, mounted: false);
+            Check(LogText.Split(new[] { "YOU: shield block (right side)" }, StringSplitOptions.None).Length == youLines, "your second right-side block was written in full again");
+            Check(stats.BlocksByYou >= 2 && stats.BlocksByHeroes >= 2, "blocks by you / AI heroes not counted apart: " + stats.BlocksByYou + " / " + stats.BlocksByHeroes);
+            _logic.SmokePlayer = null;
+
+            // blocks alone can empty a man: ten wrong-side blocks on a recruit (floor 50) - his speeds follow
+            var rec = _logic.Track(FakeAgent(25))!;
+            for (int i = 0; i < 10; i++) _logic.BlockTaken(rec, BlockKind.ShieldWrongSide, 34, i + 1, t + i * 2, in r, mounted: false);
+            Check(rec.Fraction == 0 && rec.Exhausted && Near(rec.SpeedMultiplier, 0.2f) && Near(rec.RunSpeedMultiplier, 0.7f) && rec.SpeedDirty && rec.Blows == 0,
+                "ten wrong-side blocks did not empty a recruit (or his speeds did not follow): " + rec.Fraction + ", x" + rec.SpeedMultiplier + ", run x" + rec.RunSpeedMultiplier);
+
+            // live: a new price at once; 0 = free (counted, no refill-delay restart); Athletics or the whole mod off = nothing
+            S.Set(SettingsSchema.CostPerWrongSideShieldBlock, 8, SettingSources.Mcm);
+            r = Rules;
+            double before = d.Fraction;
+            _logic.BlockTaken(d, BlockKind.ShieldWrongSide, 30, 3, t + 3, in r, mounted: false);
+            Check(Near(d.Fraction, before - 0.08), "CostPerWrongSideShieldBlock 8 was not live: " + d.Fraction * 100);
+            S.Set(SettingsSchema.CostPerWrongSideShieldBlock, 5, SettingSources.Mcm);
+            S.Set(SettingsSchema.CostPerShieldBlock, 0, SettingSources.Mcm);
+            r = Rules;
+            before = d.Fraction;
+            double lastBlow = d.LastBlowTime;
+            int free = stats.BlocksFree;
+            _logic.BlockTaken(d, BlockKind.ShieldRightSide, 30, 4, t + 5, in r, mounted: false);
+            Check(d.Fraction == before && d.LastBlowTime == lastBlow && stats.BlocksFree == free + 1, "CostPerShieldBlock 0: the block was not free (or restarted the refill delay)");
+            S.Set(SettingsSchema.CostPerShieldBlock, 1, SettingSources.Mcm);
+            foreach (var sw in new[] { SettingsSchema.AthleticsEnabled, SettingsSchema.ModEnabled })
+            {
+                S.Set(sw, false, SettingSources.Mcm);
+                r = Rules;
+                int off = stats.BlocksWhileOff;
+                _logic.BlockTaken(d, BlockKind.ShieldWrongSide, 30, 5, t + 7, in r, mounted: false);
+                Check(d.Fraction == before && stats.BlocksWhileOff == off + 1, sw.Key + " off: a block was charged");
+                S.Set(sw, true, SettingSources.Mcm);
+            }
+            r = Rules;
+            _logic.BlockTaken(d, BlockKind.WeaponParry, 30, 6, t + 9, in r, mounted: false);
+            Check(Near(d.Fraction, before - 0.02), "back on: a parry was not charged 2 again");
+            Check(stats.BlocksLine().StartsWith("Athletics blocks paid by the defender " + stats.BlocksCharged + " (", StringComparison.Ordinal), "the blocks summary line");
+        }
+
         [MethodImpl(MethodImplOptions.NoInlining)]
         private static void HealthCapsTheBar()
         {
@@ -698,13 +815,15 @@ namespace TraxCombat.Tools
             var stats = _logic.Stats;
             LogHas("[summary] Athletics settings at the end: ON - pool = the Athletics skill x1.00, at least 50;");
             LogHas("[summary] Athletics pools (the Athletics skill x1.00, at least 50; settings at the end): " + stats.FightersTracked + " fighters - min 50 / avg ");
-            LogHas("[summary] Athletics blows charged: 67 (melee swings 67, shots/throws 0, couched/braced hits 0, landed-only swings 0, landed-only shots 0) - by riders 0, on foot 67; + kicks/bashes " + stats.KickOrBashCharged + " (not blows - their own line); Athletics spent ");
+            LogHas("[summary] Athletics blows charged: 67 (melee swings 67, shots/throws 0, couched/braced hits 0, landed-only swings 0, landed-only shots 0) - by riders 0, on foot 67; + kicks/bashes " + stats.KickOrBashCharged + " and blocks " + stats.BlocksCharged + " (not blows - their own lines); Athletics spent ");
             LogHas("[summary] Athletics detection: melee releases seen 67 (mounted 0)");
             LogHas("[summary] Athletics kicks/bashes charged " + stats.KickOrBashCharged + " (");
             LogHas("| seen starting: kicks " + stats.KicksSeen + " (channel 1 " + stats.KicksSeenUpper + ", channel 0 " + stats.KicksSeenLower + "), shield bashes " + stats.BashesSeen);
             LogHas("; each charged once, when it starts; never an attack pause");
+            LogHas("[summary] Athletics blocks paid by the defender " + stats.BlocksCharged + " (");
+            LogHas("; each blocked blow charged once to the defender; never an attack pause or a step back");
             LogHas("[summary] Athletics free (never charged): couched hits within one blow-length of the last ");
-            LogHas("[summary] Athletics exhaustions (empty, f 0): 2 entered, 0 left; the peak zone: left 2 times");
+            LogHas("[summary] Athletics exhaustions (empty, f 0): 3 entered, 0 left; the peak zone: left 3 times"); // step 22: + the recruit ten wrong-side blocks emptied
             LogHas("[summary] Athletics fighter-time by f (the share of his peak line left): no fighter-time recorded");
             LogHas("[summary] Athletics you: no player fighter this mission");
             LogHas("[summary] Athletics health cap: " + stats.HealthCuts + " cuts (a wound pulled Athletics down to the health left), biggest ");
@@ -843,6 +962,9 @@ namespace TraxCombat.Tools
             _logic.ObserveAction(a, ActIdle, t + 0.5, in off18);
             t += 1;
             Check(a.KicksAndBashes == kicks && a.Fraction == 1, "mod off: a kick was charged (step 18)");
+            int paid = a.BlocksPaid;
+            _logic.BlockTaken(a, BlockKind.ShieldWrongSide, 99, 1, t, in off18, mounted: false);
+            Check(a.BlocksPaid == paid && a.Fraction == 1, "mod off: a block was charged (step 22)");
             Check(_logic.StepStats.Rolls == rolls, "mod off: a swing was rolled for a step back");
 
             S.Set(SettingsSchema.ModEnabled, true, SettingSources.Mcm);

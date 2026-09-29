@@ -212,6 +212,14 @@ namespace TraxCombat.Core
         public bool HealthCapsAthletics => GetBool(SettingsSchema.HealthCapsAthletics);
         public float CostPerBlow => GetFloat(SettingsSchema.CostPerBlow);
         public float CostPerKickOrBash => GetFloat(SettingsSchema.CostPerKickOrBash);
+
+        /// <summary>Step 22: what the DEFENDER pays for a melee blow he blocks - shield on the right side, on the wrong
+        /// side, a weapon parry (points before the multipliers; 0 = free).</summary>
+        public float CostPerShieldBlock => GetFloat(SettingsSchema.CostPerShieldBlock);
+
+        public float CostPerWrongSideShieldBlock => GetFloat(SettingsSchema.CostPerWrongSideShieldBlock);
+
+        public float CostPerWeaponParry => GetFloat(SettingsSchema.CostPerWeaponParry);
         public bool CostOnMiss => GetBool(SettingsSchema.CostOnMiss);
         public float HeroCostMultiplier => GetFloat(SettingsSchema.HeroCostMultiplier);
         public float PartyLeaderCostMultiplier => GetFloat(SettingsSchema.PartyLeaderCostMultiplier);

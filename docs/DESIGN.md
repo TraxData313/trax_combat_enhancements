@@ -593,6 +593,9 @@ says (§2c).
 | `HealthCapsAthletics` | true | Health left caps the usable pool. |
 | `CostPerBlow` | 10 | Athletics points one blow costs before multipliers (points, whatever the pool). |
 | `CostPerKickOrBash` | 3 | Step 18 (Anton): Athletics points one kick or shield bash costs before the hero and party-leader multipliers (3 / 2.25 / 1.7), once, when it starts, landed or not; never starts the attack pause. 0 = free (steps 5-17). |
+| `CostPerShieldBlock` | 1 | Step 22 (Anton): Athletics points the DEFENDER pays for a melee blow he blocks with his shield on the correct side, before the hero and party-leader multipliers (1 / 0.75 / 0.56); once per blocked blow; restarts the refill delay; never an attack pause or a step back. 0 = free (steps 5-21). |
+| `CostPerWrongSideShieldBlock` | 5 | Step 22 (Anton): the same for a blow his shield stops on the WRONG side (the engine's `CorrectSideShieldBlock` false) - 5 / 3.75 / 2.81. 0 = free. |
+| `CostPerWeaponParry` | 2 | Step 22 (Anton): the same for a blow he blocks or parries with a weapon, no shield (a chamber block too) - 2 / 1.5 / 1.13. 0 = free. |
 | `CostOnMiss` | true | true: every attack costs, landed or not. false: only blows that land. |
 | `HeroCostMultiplier` | 0.75 | Cost multiplier for heroes. |
 | `PartyLeaderCostMultiplier` | 0.75 | Extra multiplier for a party's leading hero, on top of the hero one. |
@@ -603,7 +606,7 @@ says (§2c).
 | `AiHoldRaiseGuard` | true | Step 16: a held AI fighter (his pause or a step back, the new techniques) who wants to attack raises his guard instead (`DefendDown` - a block, the shield). Off: the attack is only dropped. |
 | `AttackRateAiDecisions` | false | Tired AI fighters also decide to attack (and riposte) less often, loose less readily and aim longer - × / ÷ their attack speed (A/B switch). Off since step 13: on top of the timer it double-counts (the log read 128% / 172% too slow). |
 | `AttackAnimationMinPercent` | 100 | The attack animations (swing, thrust / draw / throw, reload) at empty, in % - step 20b: a straight line A + (1 − A) × f up to full speed at the peak line (steps 13-20: max(m, this %)); 100 = always full speed (the whole slow-down is the timer). D is taken at full animation speed, so the pause in seconds never grows with it. Range 5-100; defaults.json 85 since step 20b. |
-| `MinMoveSpeedMultiplier` | 0.7 | Top speed on foot at 0 Athletics (0.3 until step 14 - Anton: "too slow, unrealistic"; defaults.json 0.6 since step 20b - Anton's "sweet spot"). |
+| `MinMoveSpeedMultiplier` | 0.7 | Top speed on foot at 0 Athletics (0.3 until step 14 - Anton: "too slow, unrealistic"; defaults.json 0.6 since step 20b - Anton's "sweet spot"; defaults.json 0.3 again since step 22 - Anton, for slower battles). |
 | `MountMinSpeedMultiplier` | 1.0 | Horse top speed at the rider's 0 Athletics (1.0 = horses never slow). |
 | `DamageBonusFollowsAthletics` | true | The damage upside shrinks with the attacker's Athletics below the peak. |
 | `StepBackEnabled` | true | Tired AI fighters on foot step back after melee swings (§2). Off mid-battle: everyone stepping back returns to his formation at once. |
@@ -622,7 +625,7 @@ says (§2c).
 | `RegenDelayBlowTimes` | 2 | Idle blows before regeneration starts. |
 | `BlowTimeSeconds` | 1.5 | How long "one blow" is, for the delay above. |
 | `FullRegenSecondsStanding` | 60 | Seconds from empty to full while standing still or walking (the whole refill, whatever the curve below). |
-| `RegenRateNearFullPercent` | 50 | Step 14: the refill rate near full, % of the rate near empty - a straight line in the fill in between, empty → full still `FullRegenSecondsStanding`. 100 = the flat refill of steps 5c-13. |
+| `RegenRateNearFullPercent` | 50 | Step 14: the refill rate near full, % of the rate near empty - a straight line in the fill in between, empty → full still `FullRegenSecondsStanding`. 100 = the flat refill of steps 5c-13 - defaults.json 100 since step 22 (Anton: "fully linear again, 100% for 60 sec"). |
 | `RegenMultiplierAtFullRun` | 0.5 | Regen rate at top speed, relative to standing or walking. |
 | `WalkEffortFraction` | 0.4 | Up to this share of top speed counts as walking (full regen). |
 | `HideoutBossFightRefill` | true | Step 19 (Anton): in a hideout, the moment the boss fight begins - the duel or the battle - every living fighter on the player's side (the player alone in a duel) refills to full Athletics (up to the health cap), and any attack pause, hold or step back on them ends (§2 "A fresh start"). Off: they face the boss as tired as the first fight left them. |

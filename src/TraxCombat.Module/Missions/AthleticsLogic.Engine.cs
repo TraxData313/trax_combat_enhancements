@@ -34,7 +34,9 @@ namespace TraxCombat.Missions
     /// Horse charges and siege engines are free. Kicks and shield bashes (step 18) cost CostPerKickOrBash
     /// once each, when they start - the rising edge into Kick / WeaponBash on channel 1 or (on foot) channel 0,
     /// or their hit (<c>IsAlternativeAttack</c>) when no channel showed one (Core <see cref="KickBashTracker"/>);
-    /// they never start the attack timer.
+    /// they never start the attack timer. A BLOCKED melee blow (step 22) costs the DEFENDER - shield on the right
+    /// side, on the wrong side, or a weapon parry (<c>OnMeleeHit</c>'s collision data; Core <see cref="BlockMath"/>),
+    /// once per blocked blow (Core <see cref="BlockTracker"/>); never an attack timer or a step back.
     ///
     /// HEALTH CAP: the health left (managed <c>Health ÷ HealthLimit</c>) is read at every hit on a
     /// fighter (<c>OnAgentHit</c>) and every regen step; while HealthCapsAthletics is on it pulls
@@ -108,6 +110,7 @@ namespace TraxCombat.Missions
         private TrackedAgent? _player;
         private bool _playerPoolLogged;
         private bool _playerKickLogged; // step 18: the first kick / bash line carries the rule in words
+        private int _playerBlockLogged; // step 22: a bit per BlockKind - the first of each kind of YOUR blocks is written in full
 
         // The once-per-mission proof that the penalty reaches the agent's properties.
         private TrackedAgent? _firstExhausted;
@@ -665,7 +668,65 @@ namespace TraxCombat.Missions
             AfterCharge(st, in o, now, in r);
         }
 
-        /// <summary>What every charge (a blow, a kick, a bash) does after the points are taken.</summary>
+        /// <summary>
+        /// Step 22: a melee collision (OnMeleeHit, after the attacker's own part - so his release counter is current):
+        /// if it was a BLOCK, the defender pays. The kind from the engine's collision data (Core
+        /// <see cref="BlockMath.KindOf"/>); the attacker's swing number for the dedupe (0 for a couched lance / an
+        /// untracked attacker - the time rule alone).
+        /// </summary>
+        private void BlockHitTaken(Agent? attacker, Agent? victim, in AttackCollisionData cd)
+        {
+            if (victim == null) return;
+            var kind = BlockMath.KindOf(cd.IsMissile, cd.IsAlternativeAttack, cd.IsHorseCharge, cd.CollidedWithShieldOnBack,
+                cd.AttackBlockedWithShield, cd.CorrectSideShieldBlock, (int)cd.CollisionResult);
+            if (kind == BlockKind.None) return;
+            var st = Get(victim);
+            if (st == null) return; // a horse, an agent we do not track
+            int attackerIndex = -1, swing = 0;
+            if (attacker != null)
+            {
+                attackerIndex = attacker.Index;
+                var a = Get(attacker);
+                if (a != null && !attacker.IsDoingPassiveAttack) swing = a.ReleaseSerial;
+            }
+            var r = Rules;
+            BlockTaken(st, kind, attackerIndex, swing, Mission.CurrentTime, in r, victim.MountAgent != null);
+        }
+
+        /// <summary>
+        /// Step 22: the DEFENDER <paramref name="st"/> blocked a melee blow of <paramref name="kind"/> - charged ONCE per
+        /// blocked blow (<see cref="BlockTracker"/>: the same attacker's same swing within 1 s is the same blow),
+        /// the kind's cost x his hero / party-leader multipliers, like a kick otherwise (the curves re-targeted, the
+        /// peak line, exhaustion, the regen delay restarts) - never an attack pause, a step back or a damage roll.
+        /// Free (counted) while the cost is 0; Athletics / the mod off = nothing (counted). The smoke calls it directly.
+        /// </summary>
+        internal void BlockTaken(TrackedAgent st, BlockKind kind, int attackerIndex, int attackerSwing, double now, in AthleticsRules r, bool mounted)
+        {
+            if (kind == BlockKind.None) return;
+            if (!r.Enabled)
+            {
+                _stats.BlocksWhileOff++;
+                return;
+            }
+            if (!st.Block.IsNew(attackerIndex, attackerSwing, now))
+            {
+                _stats.BlocksSameBlow++;
+                return;
+            }
+            var o = AthleticsMath.ChargeBlock(st, in r, kind, now);
+            if (!o.Charged)
+            {
+                _stats.BlocksFree++;
+                return;
+            }
+            bool you = IsPlayer(st);
+            _stats.AddBlockCharge(kind, you, st.IsHero, mounted, o.Before - o.After);
+            if (you) LogPlayerBlock(st, kind, in o, now, in r, mounted);
+            else if (TraxLog.VerboseWants("athletics-block")) LogBlow(st, BlockMath.Name(kind), in o, mounted, "athletics-block");
+            AfterCharge(st, in o, now, in r);
+        }
+
+        /// <summary>What every charge (a blow, a kick, a bash, a block) does after the points are taken.</summary>
         private void AfterCharge(TrackedAgent st, in BlowOutcome o, double now, in AthleticsRules r)
         {
             float prevAttack = st.SpeedMultiplier, prevRun = st.RunSpeedMultiplier;
@@ -737,7 +798,7 @@ namespace TraxCombat.Missions
                 TraxLog.Limited("athletics", "YOU are exhausted at " + Sec(now) + " s: 0 of " + F0(AthleticsMath.PoolPoints(in r, st))
                     + " after " + st.Blows + " blows this mission - attacks at " + r.ExhaustedAttackSpeedPercent + "% speed, run x" + F2(r.RunSpeedFloor)
                     + ", no damage upside" + (r.DamageBonusFollows ? string.Empty : " (off: full upside)") + " until you rest (refill starts "
-                    + F1(r.RegenDelaySeconds) + " s after your last blow)", "athletics-player");
+                    + F1(r.RegenDelaySeconds) + " s after your last blow or paid block)", "athletics-player");
             }
             else if (TraxLog.VerboseWants("athletics-exhaust"))
             {
@@ -1297,6 +1358,14 @@ namespace TraxCombat.Missions
             {
                 Failed("athletics.melee-hit", e);
             }
+            try
+            {
+                BlockHitTaken(attacker, victim, in collisionData); // step 22: a blocked blow costs the DEFENDER (after the attacker's part)
+            }
+            catch (Exception e)
+            {
+                Failed("athletics.block", e);
+            }
         }
 
         /// <summary>Every shot and throw, AI and player (RESEARCH §B). Siege engines never come here.</summary>
@@ -1346,6 +1415,15 @@ namespace TraxCombat.Missions
         /// a shield.</summary>
         public override void OnMissileHit(Agent attacker, Agent victim, bool isCanceled, AttackCollisionData collisionData)
         {
+            try
+            {
+                // step 22: a missile stopped by a tracked fighter's shield is FREE for him (DESIGN) - only counted
+                if (victim != null && collisionData.AttackBlockedWithShield && Rules.Enabled && Get(victim) != null) _stats.MissilesBlockedByShield++;
+            }
+            catch (Exception e)
+            {
+                Failed("athletics.block", e);
+            }
             try
             {
                 if (victim == null) return;

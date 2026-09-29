@@ -54,9 +54,9 @@
 
   // ==================== Athletics ====================
   // On: every fighter has an Athletics bar - his stamina, as big as his Athletics skill - that
-  // his attacks drain and rest refills. At or above the peak line he fights at full strength;
-  // below it his damage upside, attack speed and run speed fall - down to long pauses between
-  // attacks and a slow run when it is empty - and tired AI fighters step back. Off: no
+  // his attacks and blocks drain and rest refills. At or above the peak line he fights at full
+  // strength; below it his damage upside, attack speed and run speed fall - down to long pauses
+  // between attacks and a slow run when it is empty - and tired AI fighters step back. Off: no
   // Athletics at all - no costs, no slowing, no step backs, no bars.
   // (true or false)
   "AthleticsEnabled": true,
@@ -99,6 +99,26 @@
   // landed or not. It never starts the pause between attacks. 0 = kicks and bashes are free.
   // (range 0.0 to 20.0)
   "CostPerKickOrBash": 3.0,
+
+  // Athletics points a common soldier pays for each melee blow he blocks with his shield held
+  // on the right side - yours and the AI's alike, on foot or mounted. Heroes pay it times the
+  // hero cost and party leaders times both, like a blow. Paid once per blocked blow; like any
+  // cost it restarts the refill delay. Blocking is never held or slowed. Arrows and bolts
+  // stopped by a shield are free. 0 = free.
+  // (range 0.0 to 20.0)
+  "CostPerShieldBlock": 1.0,
+
+  // Athletics points a common soldier pays for each melee blow his shield stops while held to
+  // the wrong side - the blow came from another direction than his guard, and the game counts
+  // it as a clumsy block. Heroes and party leaders pay less, like a blow. 0 = free.
+  // (range 0.0 to 20.0)
+  "CostPerWrongSideShieldBlock": 5.0,
+
+  // Athletics points a common soldier pays for each melee blow he blocks or parries with his
+  // weapon (no shield) - a chamber block too. Heroes and party leaders pay less, like a blow. 0
+  // = free.
+  // (range 0.0 to 20.0)
+  "CostPerWeaponParry": 2.0,
 
   // On: every attack costs Athletics, landed or not. Off: only attacks that hit something (a
   // body, a shield, a parrying weapon) cost.
@@ -175,7 +195,7 @@
   // line down to empty it falls in a straight line, so fresh men overtake tired ones. 1.0 =
   // tired men run as fast as fresh ones.
   // (range 0.1 to 1.0)
-  "MinMoveSpeedMultiplier": 0.6,
+  "MinMoveSpeedMultiplier": 0.3,
 
   // Top speed of a horse whose rider's bar is empty, times its normal top speed, on the same
   // straight line. 1.0 = horses never slow down, however tired the rider.
@@ -296,7 +316,7 @@
   // seconds, three quarters (the peak line) in about 41, the last quarter in about 19. 100 =
   // the same speed all the way.
   // (range 10 to 100)
-  "RegenRateNearFullPercent": 50,
+  "RegenRateNearFullPercent": 100,
 
   // How fast Athletics refills while running flat out (or riding at the horse's top speed),
   // times the rate at rest. Between a walk and a full run it falls in a straight line. 1.0 =

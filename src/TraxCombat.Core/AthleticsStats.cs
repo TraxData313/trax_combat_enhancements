@@ -10,7 +10,8 @@ namespace TraxCombat.Core
     /// One mission's Athletics numbers for the <c>[summary]</c> block - built so ONE playtest run
     /// proves or disproves every rule of DESIGN §2 (CLAUDE.md, logging): the pools the Athletics
     /// skill gave, blows by kind and by riders vs on foot, the detection cross-checks (releases vs
-    /// hits vs shots), kicks and shield bashes (step 18: charged apart, where they were seen), what was
+    /// hits vs shots), kicks and shield bashes (step 18: charged apart, where they were seen), blocks (step 22: what
+    /// the defenders paid, by kind and by who), what was
     /// free, exhaustions and the peak zone, fighter-time by f, heroes and
     /// leaders, the player, the formations, the health cap, regen by effort, the measured run speeds
     /// binned by f (does the engine honour the curve? - the attack timings are AttackRateStats', step
@@ -87,6 +88,39 @@ namespace TraxCombat.Core
         public int KickOrBashFree;
 
         public int KickOrBashCharged => KicksCharged + BashesCharged + KickOrBashChargedAtHit;
+
+        // ---- blocks (step 22: the DEFENDER pays for a melee blow he blocks - apart from blows and kicks)
+        private readonly int[] _blocks = new int[BlockMath.KindCount];
+        private readonly double[] _blockPoints = new double[BlockMath.KindCount];
+
+        /// <summary>Blocks paid by you / by AI heroes (lords, companions) / by every other AI fighter, and their points.</summary>
+        public int BlocksByYou;
+        public int BlocksByHeroes;
+        public int BlocksByOthers;
+        public double BlockPointsYou;
+        public double BlockPointsHeroes;
+        public double BlockPointsOthers;
+        public int BlocksMounted;
+
+        /// <summary>Decided free: the kind's cost 0.</summary>
+        public int BlocksFree;
+
+        /// <summary>Blocks seen while Athletics (or the mod) was off - never charged.</summary>
+        public int BlocksWhileOff;
+
+        /// <summary>The same blocked blow seen again (a second collision of the same swing) - not charged twice.</summary>
+        public int BlocksSameBlow;
+
+        /// <summary>Missiles a tracked fighter's shield stopped - free (DESIGN), counted to show it.</summary>
+        public int MissilesBlockedByShield;
+
+        public int BlocksCharged => _blocks[1] + _blocks[2] + _blocks[3];
+
+        public double BlockPoints => _blockPoints[1] + _blockPoints[2] + _blockPoints[3];
+
+        public int Blocks(BlockKind kind) => _blocks[(int)kind];
+
+        public double BlockPointsOf(BlockKind kind) => _blockPoints[(int)kind];
 
         // ---- free / not charged
         public int CouchedWithinBlowTime;
@@ -187,6 +221,33 @@ namespace TraxCombat.Core
             else KickOrBashChargedAtHit++;
             if (mounted) KickOrBashChargedMounted++;
             KickOrBashPoints += points;
+            PointsSpent += points;
+        }
+
+        /// <summary>One blocked blow the DEFENDER paid for (step 22); <paramref name="points"/> = what it really drained.
+        /// <paramref name="you"/> the player, else <paramref name="hero"/> an AI hero, else a common AI fighter.</summary>
+        public void AddBlockCharge(BlockKind kind, bool you, bool hero, bool mounted, double points)
+        {
+            int k = (int)kind;
+            if (k <= 0 || k >= BlockMath.KindCount) return;
+            _blocks[k]++;
+            _blockPoints[k] += points;
+            if (you)
+            {
+                BlocksByYou++;
+                BlockPointsYou += points;
+            }
+            else if (hero)
+            {
+                BlocksByHeroes++;
+                BlockPointsHeroes += points;
+            }
+            else
+            {
+                BlocksByOthers++;
+                BlockPointsOthers += points;
+            }
+            if (mounted) BlocksMounted++;
             PointsSpent += points;
         }
 
@@ -374,8 +435,8 @@ namespace TraxCombat.Core
                 + " (melee swings " + Charged(BlowKind.Melee) + ", shots/throws " + Charged(BlowKind.Ranged)
                 + ", couched/braced hits " + Charged(BlowKind.Couched) + ", landed-only swings " + Charged(BlowKind.LandedMelee)
                 + ", landed-only shots " + Charged(BlowKind.LandedRanged) + ") - by riders " + ChargedMounted + ", on foot " + ChargedOnFoot
-                + "; + kicks/bashes " + KickOrBashCharged + " (not blows - their own line)"
-                + "; Athletics spent " + N0(PointsSpent) + " points (kicks/bashes " + N0(KickOrBashPoints) + " of them)");
+                + "; + kicks/bashes " + KickOrBashCharged + " and blocks " + BlocksCharged + " (not blows - their own lines)"
+                + "; Athletics spent " + N0(PointsSpent) + " points (kicks/bashes " + N0(KickOrBashPoints) + ", blocks " + N0(BlockPoints) + " of them)");
 
             var sb = new StringBuilder("Athletics detection: melee releases seen ").Append(MeleeReleasesSeen)
                 .Append(" (mounted ").Append(MeleeReleasesMounted).Append(") | shots seen ").Append(ShotsSeen)
@@ -403,6 +464,8 @@ namespace TraxCombat.Core
                 + " | seen starting: kicks " + KicksSeen + " (channel 1 " + KicksSeenUpper + ", channel 0 " + KicksSeenLower + "), shield bashes " + BashesSeen
                 + " (channel 1 " + BashesSeenUpper + ", channel 0 " + BashesSeenLower + "); kick/bash hits " + KickOrBashHits
                 + "; free (CostPerKickOrBash 0) " + KickOrBashFree + "; each charged once, when it starts; never an attack pause");
+
+            lines.Add(BlocksLine());
 
             lines.Add("Athletics free (never charged): couched hits within one blow-length of the last " + CouchedWithinBlowTime + ", attacks while Athletics was off " + AttacksWhileOff
                 + ", releases / shots waiting for a landed hit (misses cost: no) " + ReleasesAwaitingHit + " / " + ShotsAwaitingHit);
@@ -549,6 +612,16 @@ namespace TraxCombat.Core
             return sb.ToString();
         }
 
+        /// <summary>The <c>[summary]</c> blocks line (step 22): what the defenders paid, by kind and by who.</summary>
+        public string BlocksLine() =>
+            "Athletics blocks paid by the defender " + BlocksCharged + " (" + N1(BlockPoints) + " points; by riders " + BlocksMounted + "): shield right side "
+            + Blocks(BlockKind.ShieldRightSide) + " (" + N1(BlockPointsOf(BlockKind.ShieldRightSide)) + "), shield WRONG side " + Blocks(BlockKind.ShieldWrongSide)
+            + " (" + N1(BlockPointsOf(BlockKind.ShieldWrongSide)) + "), weapon parries " + Blocks(BlockKind.WeaponParry) + " (" + N1(BlockPointsOf(BlockKind.WeaponParry))
+            + ") | by you " + BlocksByYou + " (" + N1(BlockPointsYou) + "), AI heroes " + BlocksByHeroes + " (" + N1(BlockPointsHeroes) + "), other AI "
+            + BlocksByOthers + " (" + N1(BlockPointsOthers) + ") | free (cost 0) " + BlocksFree + ", while Athletics was off " + BlocksWhileOff
+            + ", the same blow seen again (not charged twice) " + BlocksSameBlow + ", missiles stopped by a shield (free) " + MissilesBlockedByShield
+            + "; each blocked blow charged once to the defender; never an attack pause or a step back";
+
         /// <summary><c>ON - pool = the Athletics skill x1.00, at least 50; …</c> or <c>OFF …</c> - the
         /// settings sentence of the mission-start line and the summary.</summary>
         public static string DescribeRules(in AthleticsRules r)
@@ -566,6 +639,10 @@ namespace TraxCombat.Core
                 + "; a kick or shield bash " + N2(AthleticsMath.KickOrBashCostPoints(in r, soldier))
                 + " / hero " + N2(AthleticsMath.KickOrBashCostPoints(in r, hero))
                 + " / party leader " + N2(AthleticsMath.KickOrBashCostPoints(in r, leader)) + " points"
+                + "; a blocked blow costs the defender: shield right side " + N2(AthleticsMath.BlockCostPoints(in r, soldier, BlockKind.ShieldRightSide))
+                + " / wrong side " + N2(AthleticsMath.BlockCostPoints(in r, soldier, BlockKind.ShieldWrongSide))
+                + " / weapon parry " + N2(AthleticsMath.BlockCostPoints(in r, soldier, BlockKind.WeaponParry)) + " points (a hero x"
+                + N2(AthleticsMath.CostMultiplier(in r, hero)) + ", a party leader x" + N2(AthleticsMath.CostMultiplier(in r, leader)) + ")"
                 + ", misses cost: " + (r.CostOnMiss ? "yes" : "no (landed blows only)")
                 + "; when empty: attacks at " + r.ExhaustedAttackSpeedPercent + "%, run x" + N2(r.RunSpeedFloor)
                 + ", horses x" + N2(r.MountsSlow ? r.MountSpeedFloor : 1f) + (r.MountsSlow ? string.Empty : " (never slowed)")

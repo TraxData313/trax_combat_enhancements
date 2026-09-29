@@ -217,6 +217,37 @@ namespace TraxCombat.Missions
             }
         }
 
+        /// <summary>Step 22: YOUR blocks - the first of each kind per battle always (with the rule in words), the rest
+        /// verbose (bucket athletics-block, with the AI's).</summary>
+        private void LogPlayerBlock(TrackedAgent st, BlockKind kind, in BlowOutcome o, double now, in AthleticsRules r, bool mounted)
+        {
+            try
+            {
+                int bit = 1 << (int)kind;
+                bool first = (_playerBlockLogged & bit) == 0;
+                if (!first)
+                {
+                    if (TraxLog.VerboseWants("athletics-block")) LogBlow(st, BlockMath.Name(kind), in o, mounted, "athletics-block");
+                    return;
+                }
+                _playerBlockLogged |= bit;
+                var sb = new StringBuilder(300);
+                sb.Append("YOU: ").Append(BlockMath.Name(kind)).Append(" at ").Append(Sec(now)).Append(" s cost ").Append(F2(o.Cost)).Append(" Athletics (")
+                  .Append(F2(AthleticsMath.BlockCostSetting(in r, kind))).Append(" x").Append(F2(o.Multiplier));
+                if (st.IsHero) sb.Append(" hero");
+                if (st.IsLeader) sb.Append(" party leader");
+                sb.Append("): ").Append(F1(o.Before)).Append(" → ").Append(F1(o.After)).Append(" of ").Append(F0(o.Pool))
+                  .Append(" (f ").Append(F2(o.PeakShareBefore)).Append(" → ").Append(F2(o.PeakShareAfter)).Append(')')
+                  .Append(" - the first of this kind this battle: a melee blow you block costs YOU ").Append(BlockMath.SettingKey(kind))
+                  .Append(" x your hero / party-leader multipliers, once per blow, and restarts the refill delay; blocking is never held or slowed");
+                TraxLog.Info("athletics", sb.ToString());
+            }
+            catch (Exception e)
+            {
+                Failed("athletics.log", e);
+            }
+        }
+
         private static string KickBashName(KickBashKind kind) => kind switch
         {
             KickBashKind.Kick => "kick",

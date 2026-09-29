@@ -86,8 +86,9 @@ namespace TraxCombat.Core
         /// <see cref="Migrate"/>) when a later version must change the meaning of an existing key or
         /// push a new default into files that already carry the old one. 2 = step 13 (PAUSE ONLY),
         /// 3 = step 14 (the run-speed floor 0.3 → 0.7), 4 = step 20b (Anton's tuning after his playtest: the
-        /// run-speed floor 0.7 → 0.6, the attack animation at empty 100 → 85).</summary>
-        public const int FormatVersion = 4;
+        /// run-speed floor 0.7 → 0.6, the attack animation at empty 100 → 85), 5 = step 22 (Anton, for slower battles:
+        /// the refill a straight line again - RegenRateNearFullPercent 50 → 100 - and the run-speed floor 0.6 → 0.3).</summary>
+        public const int FormatVersion = 5;
 
         /// <summary>The meta key holding <see cref="FormatVersion"/> - not a setting.</summary>
         public const string VersionKey = "ConfigVersion";
@@ -320,7 +321,11 @@ namespace TraxCombat.Core
         /// 0.7 → the new default (0.6, "the sweet spot") in a format-3 file (the one format whose default was 0.7 -
         /// an older file's 0.3 went straight to the new default above), <c>AttackAnimationMinPercent</c> 100 → the new
         /// default (85: the swing slows in a straight line to 85% at empty) in a format 2-3 file (the key came with
-        /// format 2). The rewrite is ConfigStore's (logged "rewrote config.json as format 4 …").
+        /// format 2). Format 5 (step 22, Anton 2026-09-29, for slower battles): <c>RegenRateNearFullPercent</c> 50 → the
+        /// new default (100: the straight-line refill, empty → full in FullRegenSecondsStanding) in a format 3-4 file (the key
+        /// came with format 3); <c>MinMoveSpeedMultiplier</c> 0.6 → the new default (0.3) in a format-4 file (the one
+        /// format whose default was 0.6 - a format-3 file's 0.7 and an older file's 0.3 go straight to it by the rules
+        /// above). The rewrite is ConfigStore's (logged "rewrote config.json as format 5 …").
         /// </summary>
         public static List<string> Migrate(ConfigReadResult read) => Migrate(read, p => p.Default);
 
@@ -352,6 +357,16 @@ namespace TraxCombat.Core
                 if (from >= 2)
                     MoveOldDefault(read, SettingsSchema.AttackAnimationMinPercent, 100,
                         "step 20b, Anton after his playtest: a tired man's attack animations slow in a straight line to 85% at empty - the pause in seconds stays as it was", from, defaultOf);
+            }
+            if (from < 5)
+            {
+                // step 22: the old default as THAT file's format knew it - 50 since format 3 (the key's birth), 0.6 only in format 4
+                if (from >= 3)
+                    MoveOldDefault(read, SettingsSchema.RegenRateNearFullPercent, 50,
+                        "step 22, Anton for slower battles: the refill is a straight line again - empty to full in the refill time at a walk, no faster when low", from, defaultOf);
+                if (from >= 4)
+                    MoveOldDefault(read, SettingsSchema.MinMoveSpeedMultiplier, 0.6,
+                        "step 22, Anton for slower battles: an empty man runs at 30% of his pace again", from, defaultOf);
             }
             return read.Migrated;
         }

@@ -33,9 +33,13 @@ namespace TraxCombat.Core
             float costPerBlow, bool costOnMiss, float heroCostMultiplier, float partyLeaderCostMultiplier, float costPerKickOrBash,
             int exhaustedAttackSpeedPercent, float minMoveSpeedMultiplier, float mountMinSpeedMultiplier, bool damageBonusFollows,
             float regenDelayBlowTimes, float blowTimeSeconds, float fullRegenSecondsStanding, float regenMultiplierAtFullRun,
-            float walkEffortFraction, int regenRateNearFullPercent, bool modEnabled = true)
+            float walkEffortFraction, int regenRateNearFullPercent, bool modEnabled = true,
+            float costPerShieldBlock = 0, float costPerWrongSideShieldBlock = 0, float costPerWeaponParry = 0)
         {
             ModEnabled = modEnabled;
+            CostPerShieldBlock = costPerShieldBlock;
+            CostPerWrongSideShieldBlock = costPerWrongSideShieldBlock;
+            CostPerWeaponParry = costPerWeaponParry;
             AthleticsEnabled = enabled;
             PoolFloor = poolFloor;
             PoolPerSkill = poolPerSkill;
@@ -95,6 +99,18 @@ namespace TraxCombat.Core
         /// <summary>CostPerKickOrBash (step 18): points one kick or shield bash costs before the hero and
         /// party-leader multipliers; 0 = free (steps 5-17).</summary>
         public float CostPerKickOrBash { get; }
+
+        /// <summary>CostPerShieldBlock (step 22): points the DEFENDER pays for a melee blow he blocks with his
+        /// shield on the correct side, before the hero and party-leader multipliers; 0 = free.</summary>
+        public float CostPerShieldBlock { get; }
+
+        /// <summary>CostPerWrongSideShieldBlock (step 22): …with his shield on the wrong side (the engine's
+        /// <c>CorrectSideShieldBlock</c> false); 0 = free.</summary>
+        public float CostPerWrongSideShieldBlock { get; }
+
+        /// <summary>CostPerWeaponParry (step 22): …parried with a weapon (blocked, no shield - a chamber block
+        /// too); 0 = free.</summary>
+        public float CostPerWeaponParry { get; }
 
         /// <summary>Attack speed at 0 Athletics, % of normal (S of the curve).</summary>
         public int ExhaustedAttackSpeedPercent { get; }
@@ -156,7 +172,8 @@ namespace TraxCombat.Core
             s.CostPerBlow, s.CostOnMiss, s.HeroCostMultiplier, s.PartyLeaderCostMultiplier, s.CostPerKickOrBash,
             s.ExhaustedAttackSpeedPercent, s.MinMoveSpeedMultiplier, s.MountMinSpeedMultiplier, s.DamageBonusFollowsAthletics,
             s.RegenDelayBlowTimes, s.BlowTimeSeconds, s.FullRegenSecondsStanding, s.RegenMultiplierAtFullRun,
-            s.WalkEffortFraction, s.RegenRateNearFullPercent, s.ModEnabled);
+            s.WalkEffortFraction, s.RegenRateNearFullPercent, s.ModEnabled,
+            s.CostPerShieldBlock, s.CostPerWrongSideShieldBlock, s.CostPerWeaponParry);
     }
 
     /// <summary>
@@ -203,6 +220,10 @@ namespace TraxCombat.Core
         /// <summary>Kicks and shield bashes charged this mission (step 18) - not blows: <see cref="Blows"/>
         /// never counts them.</summary>
         public int KicksAndBashes { get; internal set; }
+
+        /// <summary>Blocked blows this fighter PAID for as the defender this mission (step 22) - not blows,
+        /// not kicks: <see cref="Blows"/> never counts them.</summary>
+        public int BlocksPaid { get; internal set; }
 
         public int ExhaustionsEntered { get; internal set; }
 
@@ -271,7 +292,8 @@ namespace TraxCombat.Core
         /// <summary>False when Athletics is switched off - nothing changed.</summary>
         public bool Charged { get; }
 
-        /// <summary>Points charged (CostPerBlow - or CostPerKickOrBash for a kick / bash - × the multipliers).</summary>
+        /// <summary>Points charged (CostPerBlow - or CostPerKickOrBash for a kick / bash, a block's cost for a
+        /// blocked blow - × the multipliers).</summary>
         public double Cost { get; }
 
         /// <summary>Hero × leader multiplier applied (1 for a common soldier).</summary>
@@ -504,6 +526,7 @@ namespace TraxCombat.Core
     ///   <see cref="PeakShare"/>           f = min(E / (peak% × FULL pool), 1)
     ///   <see cref="BlowCostPoints"/>      cost of one blow in POINTS (CostPerBlow × hero × leader)
     ///   <see cref="KickOrBashCostPoints"/> cost of one kick or shield bash (CostPerKickOrBash × the same)
+    ///   <see cref="BlockCostPoints"/>     step 22: what the DEFENDER pays for a blow he blocks, by kind (× the same)
     ///   <see cref="AttackSpeedMultiplier"/>, <see cref="RunSpeedMultiplier"/>, <see cref="MountSpeedMultiplier"/>
     ///                                     the curves floor + (1 − floor) × f
     ///   <see cref="DamageUpside"/>        the f the damage roll's upside follows
@@ -617,6 +640,22 @@ namespace TraxCombat.Core
         /// <summary>Points one kick or shield bash costs this fighter (step 18): CostPerKickOrBash × the same
         /// hero and party-leader multipliers as a blow (3 / 2.25 / 1.69). 0 = free.</summary>
         public static double KickOrBashCostPoints(in AthleticsRules r, Fighter f) => Math.Max(0, r.CostPerKickOrBash * CostMultiplier(in r, f));
+
+        /// <summary>The setting a blocked blow of this kind costs before the multipliers (step 22): the shield on the
+        /// right side CostPerShieldBlock, on the wrong side CostPerWrongSideShieldBlock, a weapon parry
+        /// CostPerWeaponParry; None → 0.</summary>
+        public static float BlockCostSetting(in AthleticsRules r, BlockKind kind) => kind switch
+        {
+            BlockKind.ShieldRightSide => r.CostPerShieldBlock,
+            BlockKind.ShieldWrongSide => r.CostPerWrongSideShieldBlock,
+            BlockKind.WeaponParry => r.CostPerWeaponParry,
+            _ => 0f,
+        };
+
+        /// <summary>Points the DEFENDER pays for one blow he blocks (step 22): the kind's setting × the same hero and
+        /// party-leader multipliers as a blow (1 / 5 / 2 for a soldier; 0.75 / 3.75 / 1.5 a hero; 0.56 / 2.81 / 1.13 a
+        /// hero who leads his party). 0 = free.</summary>
+        public static double BlockCostPoints(in AthleticsRules r, Fighter f, BlockKind kind) => Math.Max(0, BlockCostSetting(in r, kind) * CostMultiplier(in r, f));
 
         // ------------------------------------------------------------------ regen by effort
 
@@ -761,7 +800,25 @@ namespace TraxCombat.Core
             return Drain(f, in r, now, cost);
         }
 
-        /// <summary>Take <paramref name="cost"/> points (a blow's or a kick's) - the shared body of the two charges.</summary>
+        /// <summary>
+        /// One blocked blow, paid by the DEFENDER (step 22, DESIGN §2 "Defending costs too"): take
+        /// <see cref="BlockCostPoints"/> for its kind, exactly like a kick otherwise - never below 0, at 0 the fighter
+        /// is exhausted, the regen delay restarts (a block is effort, as a kick is), a refill run ends. Counted in
+        /// <see cref="Fighter.BlocksPaid"/>, never in <see cref="Fighter.Blows"/>. Nothing happens
+        /// (<see cref="BlowOutcome.Charged"/> false) while Athletics is off, the kind is None or its cost is 0 (free -
+        /// not even the regen delay). Once per blocked blow is the caller's business (<see cref="BlockTracker"/>); a
+        /// block never starts an attack pause, a step back or a damage roll.
+        /// </summary>
+        public static BlowOutcome ChargeBlock(Fighter f, in AthleticsRules r, BlockKind kind, double now)
+        {
+            if (!r.Enabled || kind == BlockKind.None) return default;
+            double cost = BlockCostPoints(in r, f, kind);
+            if (!(cost > 0)) return default;
+            f.BlocksPaid++;
+            return Drain(f, in r, now, cost);
+        }
+
+        /// <summary>Take <paramref name="cost"/> points (a blow's, a kick's or a block's) - the shared body of the charges.</summary>
         private static BlowOutcome Drain(Fighter f, in AthleticsRules r, double now, double cost)
         {
             double pool = PoolPoints(in r, f);

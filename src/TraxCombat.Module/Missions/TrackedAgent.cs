@@ -50,6 +50,11 @@ namespace TraxCombat.Missions
         /// the hit fallback deduped (Core <see cref="KickBashTracker"/>).</summary>
         public readonly KickBashTracker KickBash = new KickBashTracker();
 
+        /// <summary>Step 22: the last blow he BLOCKED (attacker + swing + time) - one charge per blocked blow
+        /// (Core <see cref="BlockTracker"/>, a struct: mutated in place through this field).</summary>
+        public BlockTracker Block;
+
+        /// <summary>His melee releases so far - a blow's number for the defender's block dedupe (step 22) too.</summary>
         public int ReleaseSerial;
         public double ReleaseStart = -1;
         public bool HitThisRelease;

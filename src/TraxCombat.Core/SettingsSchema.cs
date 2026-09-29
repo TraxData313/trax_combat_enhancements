@@ -81,7 +81,7 @@ namespace TraxCombat.Core
 
         public static readonly ParamDef AthleticsEnabled = Bool("AthleticsEnabled", AthleticsGroup,
             "Athletics",
-            "On: every fighter has an Athletics bar - his stamina, as big as his Athletics skill - that his attacks drain and rest refills. At or above the peak line he fights at full strength; below it his damage upside, attack speed and run speed fall - down to long pauses between attacks and a slow run when it is empty - and tired AI fighters step back. Off: no Athletics at all - no costs, no slowing, no step backs, no bars.");
+            "On: every fighter has an Athletics bar - his stamina, as big as his Athletics skill - that his attacks and blocks drain and rest refills. At or above the peak line he fights at full strength; below it his damage upside, attack speed and run speed fall - down to long pauses between attacks and a slow run when it is empty - and tired AI fighters step back. Off: no Athletics at all - no costs, no slowing, no step backs, no bars.");
 
         public static readonly ParamDef AthleticsPoolFloor = Int("AthleticsPoolFloor", 0, 1000, AthleticsGroup,
             "Smallest bar (points)",
@@ -107,6 +107,19 @@ namespace TraxCombat.Core
         public static readonly ParamDef CostPerKickOrBash = Float("CostPerKickOrBash", 0, 20, AthleticsGroup,
             "Cost per kick or shield bash (points)",
             "Athletics points one kick or one shield bash costs a common soldier - yours and the AI's alike. Heroes pay it times the hero cost and party leaders times both, just like a blow: 3 costs a hero 2.25 and a party leader about 1.7. Paid once, when the kick or bash starts, landed or not. It never starts the pause between attacks. 0 = kicks and bashes are free.");
+
+        // Step 22 (Anton, 2026-09-29): defending costs too - the DEFENDER pays for every melee blow he blocks, by how.
+        public static readonly ParamDef CostPerShieldBlock = Float("CostPerShieldBlock", 0, 20, AthleticsGroup,
+            "Cost per shield block (points)",
+            "Athletics points a common soldier pays for each melee blow he blocks with his shield held on the right side - yours and the AI's alike, on foot or mounted. Heroes pay it times the hero cost and party leaders times both, like a blow. Paid once per blocked blow; like any cost it restarts the refill delay. Blocking is never held or slowed. Arrows and bolts stopped by a shield are free. 0 = free.");
+
+        public static readonly ParamDef CostPerWrongSideShieldBlock = Float("CostPerWrongSideShieldBlock", 0, 20, AthleticsGroup,
+            "Cost per wrong-side shield block (points)",
+            "Athletics points a common soldier pays for each melee blow his shield stops while held to the wrong side - the blow came from another direction than his guard, and the game counts it as a clumsy block. Heroes and party leaders pay less, like a blow. 0 = free.");
+
+        public static readonly ParamDef CostPerWeaponParry = Float("CostPerWeaponParry", 0, 20, AthleticsGroup,
+            "Cost per weapon parry (points)",
+            "Athletics points a common soldier pays for each melee blow he blocks or parries with his weapon (no shield) - a chamber block too. Heroes and party leaders pay less, like a blow. 0 = free.");
 
         public static readonly ParamDef CostOnMiss = Bool("CostOnMiss", AthleticsGroup,
             "Misses cost too",
@@ -450,7 +463,7 @@ namespace TraxCombat.Core
             DamageRandomEnabled, DamageRandomPercent, DamageRandomMelee, DamageRandomRanged,
             DamageRandomOnMounts, DamageRandomOnShields,
             AthleticsEnabled, AthleticsPoolFloor, AthleticsPoolPerSkill, AthleticsPeakPercent, HealthCapsAthletics,
-            CostPerBlow, CostPerKickOrBash, CostOnMiss, HeroCostMultiplier, PartyLeaderCostMultiplier,
+            CostPerBlow, CostPerKickOrBash, CostPerShieldBlock, CostPerWrongSideShieldBlock, CostPerWeaponParry, CostOnMiss, HeroCostMultiplier, PartyLeaderCostMultiplier,
             ExhaustedAttackSpeedPercent, AttackRatePlayerTimer, AttackRatePaceHold, AttackRatePaceByInput, AiHoldRaiseGuard, AttackRateAiDecisions, AttackAnimationMinPercent,
             MinMoveSpeedMultiplier, MountMinSpeedMultiplier, DamageBonusFollowsAthletics,
             StepBackEnabled, StepBackBackpedal, StepBackMaxChancePercent, StepBackDistance, StepBackSeconds, StepBackEnemyRange,
