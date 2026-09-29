@@ -41,6 +41,15 @@ LATER (moved off the build order by Anton, 2026-09-27 — designs kept in DESIGN
 BUGS:
 - [x] Loading screen showed "0.1.0+<40-char commit>" (Anton's screenshot, 2026-09-28) — players see "0.1.0" now, the log keeps the full id (29976a7; deploys when the game closes)
 
+PLAYTEST RESULTS (4 custom ~200v200 + a village raid, 2026-09-29 evening, steps 20–24 in game — 0 errors; Anton: "the battle feels so good and tactical now, perfect!"):
+- Brace works: ~88% of AI men braced, mostly 15–30 s, lines don't turtle (0–55 still bracing at the end, a few 60 s+); blocked 57–63% while bracing
+- Ready count shown on ALT (yellow/red often) and the strip; config migrated 0.6 → 0.3, straight refill
+- Kicks/bashes PROVEN: 1 kick + 1 bash charged (closes the step-18 check)
+- Shield out: never needed - bracers already had it in hand (1276) or had none (284)
+- LOOK AT: shield blocks are ~75–80% "WRONG side" (cost 5) vs right side (1) - check the game's CorrectSideShieldBlock meaning before tuning; blocks drive most of the tiring now
+- Your config keeps AttackAnimationMinPercent 90 (default 85) - your call
+- Tick cost avg 0.06–0.10 ms at 400 men (one 6.9 ms spike)
+
 PLAYTEST RESULTS (200v200 infantry, 2026-09-28 morning, step 16 in game — 0 errors):
 - Step back fixed: facing mid-step 87% (was 12%), back turned 2% (was 80%), 1.4 m moved (was 0.6), blocks 45% (was 5%)
 - Guard fixed: held men block 52% (was 2–13%) — now ABOVE everyone else's 30%; if tired men turtle too much: AiHoldRaiseGuard off
