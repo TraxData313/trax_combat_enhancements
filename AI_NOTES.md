@@ -2851,3 +2851,63 @@ step 4, the real logic end to end, the cost; the master-switch step lifts braces
 6. Two-handers switch to a one-hander and shield (`a one-hander first` > 0 and later `taken out`), and their AI picks the
    two-hander again after the brace (Anton's eye).
 7. Cost → `Athletics tick cost` in a 400+ man battle close to step 22's.
+
+## Step 24 — the ready count per squad on the ALT labels and the orders strip (DONE 2026-09-29)
+
+Anton (2026-09-29, via the manager): "can you give me some indication above the squad of ready men, that are not resting
+in their current order status, somewhere near the athletics info on the ALT and on the formations view". DESIGN §3 (the
+strip's and the markers' "as built" + interpretation 26).
+
+**The data** - step 23's read API, nothing new in the logic: `FormationAthleticsStats.Ready` (= Count − Bracing) of `Total`
+(= Count), from the formation refresh pass every `FormationStatsRefreshSeconds`, every team. The player is left out of his
+own formation there (step 9), so the count agrees with the strip's other numbers and with the card's own count; under an
+ALT marker of HIS formation it may read one fewer than vanilla's count above it (vanilla counts him) - stated in DESIGN.
+
+**Claude's calls (Anton can overturn any)**
+1. **Words**: `ready 34/50`. "34/50" alone would not say what it counts; a longer word would not fit. Same text both places.
+2. **Colour** (`ReadyMath.Band`, "at or below", the most alarming wins): plain = the text brushes' own `#E8E8E8FF` (both
+   `AgentHUD.Interaction.Text` and `NameMarker.Distance.Text` in the game's `Native\GUI\Brushes\Mission.xml`), so the line
+   looks like its neighbours until it warns; yellow at or below `ReadyYellowBelowPercent` 75 (a quarter bracing), red at or
+   below `ReadyRedBelowPercent` 50 (half the line bracing) - the bars' own yellow / red. Two thresholds, not the bar's three:
+   enough for "fine / watch it / trouble".
+3. **Hidden while bracing cannot happen** (`ReadyRules.Hidden`: ModEnabled first, AthleticsEnabled, BraceEnabled, then
+   `ShowReadyCount`) - picked over "all ready" (less noise). An empty formation: no line (its cell / label is hidden anyway).
+4. **One switch for both places** (`ShowReadyCount`, in the "Orders menu strip" group beside `ShowFormationHealth`, which
+   also serves both); the thresholds beside it.
+5. **The strip**: a third row UNDER the bar, left, at `OrderStripReadyOffset` 24 (Advanced). Why not beside the numbers: a
+   131 px card leaves 35 px each side of vanilla's 60 px order-icon pair, and "72% ± 8" already takes ~34. The cell becomes
+   38.6 px deep from +1 = it ends at card bottom + 39.6, inside the 40 px gap between two stacked cards. The cost: at
+   1920 × 1080 a column's bottom card has 24 px to the screen's edge, so its cell is LIFTED 16 px (the existing lift - its
+   numbers then sit on the card's lowest 16 px, beside the icons). `StripLayout` counts the row only while it is drawn
+   (`ReadyRow` = `ReadyRules.Shown`), so with bracing off the cell is exactly step 9's 23 px and nothing is lifted. The
+   layout follows a settings change at once (`OnLayerFrame` re-applies it on the settings version), the values at the next
+   refresh. The panel rows carry it after the health (the panel is 300 px wide - it fits).
+6. **The ALT labels**: a third line under the bar, centred, `MarginTop 1` like the bar (a prefab constant like the bar's).
+   The label's box grows by one line (CoverChildren) - no layout setting needed. Every side's labels (the enemy braces too).
+7. **Refresh**: the views' existing pushes - the strip at `HudRefreshSeconds` when the stats version moved (a settings change
+   forces one), the ALT labels when the stats or the settings version moved (per label, int compares per frame). Texts rebuilt
+   only when a number changes (`SetReady`), colours are cached `Color`s (`OrderStripCellVM.ReadyColors`, shared). No
+   per-frame allocation added.
+8. **Logs**: the values lines (`… HP 81% ready 34/40 (40 men, …)` + the tail `…, ready count on: yellow at or below 75%, red at
+   or below 50% of the men ready` / `ready count hidden (BraceEnabled off - nobody braces)`), the strip's first placement names
+   the row (`ready count at +24 … 39 px deep`); one new [summary] line per view: `hud: orders strip - ready count (men not
+   bracing, step 24): shown N x (plain / yellow / red), the fewest ready 12/50 (24%, 1 Infantry); hidden N x (reasons)`.
+
+**Built** - Core `ReadyCount.cs` (ReadyBand, ReadyHidden, ReadyRules, ReadyMath, ReadyCountStats), `OrderStrip.cs`
+(StripLayout ready row, DescribeValues + ready), `AltMarkers.cs` (DescribeValues + ready); settings 94 → 98
+(`ShowReadyCount` true, `ReadyYellowBelowPercent` 75, `ReadyRedBelowPercent` 50 in "Orders menu strip"; Advanced
+`OrderStripReadyOffset` 24 - range −40..80); no config migration (new keys take their defaults). Module: the two VMs
+(ReadyText / ReadyColor / ReadyShown, the strip's ReadyMarginTop), the two views (push, stats, summary), both prefabs (a
+TextWidget with `Brush.FontColor` bound - the same binding the ALT Athletics number uses). Tests 442 → 460
+(`ReadyCountTests`). Smoke 65 → 67 steps (`Program.Ready.cs`; the older strip / ALT steps pin `ShowReadyCount` off so their
+exact log lines stay step 9 / 20's). Gotcha met: a `static readonly Color` on the smoke's `Program` loads TaleWorlds.Library in
+its type initializer, BEFORE Main hooks the resolver - "Could not load file or assembly TaleWorlds.Library"; keep game-typed
+statics in a nested class (as `AltColors` did).
+
+**UNVERIFIED — only the game can tell (PLAYTEST D7 "The ready count", E4, L7)**
+1. The line draws where planned: under the strip's bar without touching the next card (eye; the first placement line's
+   `ready count at +24 … 39 px deep`), and the bottom card's lifted cell reads fine at Anton's resolution - else
+   `OrderStripReadyOffset` / `OrderStripTextSize` live, or tell Claude to move it.
+2. The count moves with the braces in a hold-then-charge battle - falls and turns yellow / red while holding, jumps back at
+   the charge → the two `[summary] hud: … ready count` lines (yellow and red > 0, the fewest ready plausible) and the eye.
+3. The colours read on the battlefield (the plain one is the brushes' own; yellow / red the bars').

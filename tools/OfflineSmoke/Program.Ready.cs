@@ -96,7 +96,7 @@ namespace TraxCombat.Tools
             view.Tick(Frame(t += 0.2, player, orderMenu: true));
             Check(c[0].ReadyText == "ready 15/40" && c[0].ReadyColor == ReadyColors.Red, "strip: new stats not pushed: " + c[0].ReadyText);
 
-            // 4. the thresholds live: yellow at or below 95% turns the full Horse archers... no - 9/9 is 100%; Infantry red → the red line lowered
+            // 4. the thresholds live: the red line lowered to 30% turns Infantry (38% ready) yellow at the next refresh
             S.Set(SettingsSchema.ReadyRedBelowPercent, 30, SettingSources.Mcm);
             view.Tick(Frame(t += 0.2, player, orderMenu: true));
             Check(c[0].ReadyColor == ReadyColors.Yellow && c[2].ReadyColor == ReadyColors.Red, "strip: ReadyRedBelowPercent 30 did not apply at the next refresh");

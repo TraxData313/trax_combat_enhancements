@@ -63,7 +63,8 @@ Releasing it: [tools/WORKSHOP-UPLOAD.md](tools/WORKSHOP-UPLOAD.md).
   ALT** and the same two numbers appear under the game's formation markers above the troops — under
   the troop count and distance — for your formations and the enemy's (see which of their lines is
   tired before you charge it); they read the game's own markers, so they sit right with any camera,
-  RTS Camera's free camera included.
+  RTS Camera's free camera included. Both also count each formation's men **ready** — not bracing —
+  as "ready 34/50", turning yellow and red as fewer are ready (hidden while bracing is off).
 - **A master switch** — turn the whole mod off, even mid-battle, and the fight is pure vanilla, so
   you can play the same battle both ways and compare.
 

@@ -46,7 +46,9 @@ one-hander first) and held up (`BraceRaiseShield`); the summary's "brace" lines 
 bar is shown for the player (step 6)
 and — averaged, with a ± spread and the men's health — in a strip under each formation card of
 the orders menu (step 9) and, while you hold ALT (or the orders menu is open), under each of the
-game's formation markers, the enemy's too (step 20: vanilla's markers read live). The bar for the
+game's formation markers, the enemy's too (step 20: vanilla's markers read live); both also count
+each formation's men READY - not bracing - as "ready 34/50", plain / yellow / red (step 24, `ShowReadyCount`;
+hidden while bracing is off). The bar for the
 fighter you look at is LATER (DESIGN §3; its settings wait in DESIGN's "Planned parameters"). Words:
 the pool/bar/points are "Athletics", the character-screen skill is "the Athletics skill" (it
 used to be called "endurance"), the "peak line" is the white mark at the top quarter of the bar,
@@ -177,7 +179,7 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
   ParamDef.cs                 one setting: key, type, range, group, label, plain-words
                               description, apply timing (Live / NextBattle); Normalize, Format;
                               its Default comes from defaults.json (DefaultsFile), never code
-  SettingsSchema.cs           EVERY setting of DESIGN's table (94), in file + MCM order, 12 groups
+  SettingsSchema.cs           EVERY setting of DESIGN's table (98), in file + MCM order, 12 groups
                               ("Master switch" first, "Battle pace (AI)" - step 21 - after the step back,
                               "Brace by orders (AI)" - step 23 - after it,
                               "Formation markers (hold ALT)" - step 20 - before
@@ -343,6 +345,12 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               brace time, lengths (5 bins), ends by reason, the margins rolled + length by margin band,
                               the shield (at start, calls, seen, put away, never), the guard while bracing, the hook's
                               frames, attacks while bracing + the 7 [summary] "brace" lines
+  ReadyCount.cs               step 24 pure (AI_NOTES "Step 24"): ReadyBand (plain / yellow / red), ReadyHidden (ModOff
+                              first, AthleticsOff, BraceOff, SwitchedOff, NoMen), ReadyRules (live: ShowReadyCount,
+                              Ready*BelowPercent, Describe), ReadyMath - HiddenFor, Band (the most alarming wins, "at
+                              or below"), Text "ready 34/50" (FormationAthleticsStats.Ready of Total), PlainHex = the
+                              text brushes' own #E8E8E8FF; ReadyCountStats (shown by band, the fewest ready, hidden by
+                              reason + the [summary] "ready count" line of each view)
   AthleticsBar.cs             step 6 (and the strip's colours; step 7's LATER target bar would reuse it): BarBand, BarRules (live
                               Bar*BelowPercent), BarMath - Band (green at the peak line, blue just
                               below, yellow/orange/red at or below their % of the line, the most
@@ -369,7 +377,9 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               the member counts → Aligned / NotYet / Mismatch / Problem; PlaceCell in
                               pixels, lifted at the screen's edge; Signature; Numbers / texts
                               "72% ± 8" "HP 81%"; Band; the slot names), StripLayout (the OrderStrip*
-                              settings), StripFallback, OrderStripStats (+ the [summary] strip line)
+                              settings; step 24: the ready row at OrderStripReadyOffset counts in Top / Depth
+                              only while ReadyRules.Shown - 39 px deep, else step 9's 23), StripFallback,
+                              OrderStripStats (+ the [summary] strip line); DescribeValues + "ready 34/40"
   AltMarkers.cs               step 20, hold ALT pure: AltMarker (one vanilla marker as read: key = team index x 16 +
                               formation, team type, vanilla's point, WSign, distance, men, its widget's size / alpha /
                               pinned offsets, the stats), MarkerWidget, AltMarkerFrame (<= 64, reused), AltMarkerMath -
@@ -631,9 +641,12 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               a cell under each card (placed every frame in pixels, slot k checked
                               against formation k), the fallback panel (reasons, 0.5 s / 1 s grace),
                               values every refresh, [hud] first placement / card changes / fallbacks
-                              / values lines, the [summary] strip line
+                              / values lines, the [summary] strip line; step 24: the ready count per cell
+                              at each values push (ReadyMath; ReadyStats + its [summary] line)
   Hud/OrderStripVM.cs         its ViewModels: the root + 8 fixed OrderStripCellVM in one
-                              MBBindingList, bound TWICE by the prefab (the cells, the panel rows)
+                              MBBindingList, bound TWICE by the prefab (the cells, the panel rows);
+                              step 24: ReadyText / ReadyColor / ReadyShown / ReadyMarginTop, SetReady,
+                              ReadyColors (shared with the ALT labels)
   Hud/FormationMarkers.cs     step 20's engine seams: IFormationMarkerSource (TryReadShown = vanilla's own
                               "markers shown", Read → MarkerRead Live / PointsOnly / Projected / Unavailable),
                               GauntletFormationMarkers (the "MissionFormationMarker" layer by the public
@@ -649,10 +662,12 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               when the stats / settings version moves; fallbacks (a marker without its widget,
                               no widgets, no layer → own projection for the show) once per show, the first of
                               each in full; [hud] first-show line (technique, markers, labels, no-label reasons),
-                              values line, the [summary] line (AltMarkerStats)
+                              values line, the [summary] line (AltMarkerStats); step 24: the ready count in
+                              PushValues (every side; ReadyStats + its [summary] line)
   Hud/AltMarkersVM.cs         its ViewModels: the root + a GROW-ONLY MBBindingList of AltMarkerLabelVM keyed by
-                              team + formation (a label never swaps formations when vanilla re-sorts)
-tests/TraxCombat.Core.Tests/  net8.0 xUnit (442) — schema vs DESIGN.md (keys + types), one copy
+                              team + formation (a label never swaps formations when vanilla re-sorts); step 24:
+                              ReadyText / ReadyColor / ReadyShown, SetReady
+tests/TraxCombat.Core.Tests/  net8.0 xUnit (460) — schema vs DESIGN.md (keys + types), one copy
                               runs (SingleCopyTests: claims on private slots, copies, texts), when
                               MCM is tried and when it stops (McmPlanTests - step 12),
                               defaults.json (DefaultsFileTests), master switch, settings, config
@@ -692,7 +707,9 @@ tests/TraxCombat.Core.Tests/  net8.0 xUnit (442) — schema vs DESIGN.md (keys +
                               0 = off, ranges, the settings sentence, the summary lines), the brace (BraceTests,
                               step 23: the floor by order, the hysteresis, the wound cap's band, an order change,
                               the per-man margin, the switches, the shield step and RaiseShield, the summary, the
-                              formation's Ready / Bracing). They
+                              formation's Ready / Bracing), the ready count (ReadyCountTests, step 24: hidden
+                              rules in order, bands at or below 75 / 50, text, colours, the strip cell one row
+                              deeper only while drawn and the 1080p bottom card lifted, log text, summary). They
                               run on DESIGN's INITIAL values (DesignTable.cs: a module
                               initializer), so tuning defaults.json never breaks them. Keep green.
 module/SubModule.xml          release manifest (Id TraxCombatEnhancements, v0.1.0) - THE one home of the
@@ -709,7 +726,9 @@ module/GUI/Prefabs/           the HUD movies - file name = movie name, `Trax…`
                               would resolve against the list), TraxAltMarkers.xml (step 20: {Labels}
                               ItemTemplate - a centring box per formation placed by Scaled* pixel bindings,
                               the numbers in vanilla's own marker brush NameMarker.Distance.Text, the
-                              strip's bar)
+                              strip's bar; step 24: + "ready 34/50" under the bar, centred), both with
+                              step 24's ready TextWidget (Brush.FontColor bound; the strip's under its
+                              bar at @ReadyMarginTop, the panel's after the health)
 tools/deploy.ps1              build → AssemblyGuard → OfflineSmoke → install as
                               Modules\TraxCombatEnhancements.Dev "Trax Combat Enhancements (dev)",
                               module\GUI copied beside bin
@@ -723,7 +742,7 @@ tools/package.ps1             step 11, THE RELEASE: manifest gate (release Id + 
 tools/WORKSHOP-UPLOAD.md      the release loop, step by step (first upload, updates) + the uploader's quirks
 tools/WorkshopCreate.xml      the FIRST upload (creates the item, Private, tags, preview) - run once
 tools/WorkshopUpdate.xml      every later upload - ITEM_ID placeholder until the first upload
-tools/STEAM-DESCRIPTION.bbcode  the Workshop page, pasted by hand (≤ 8000 bytes; 5853 now)
+tools/STEAM-DESCRIPTION.bbcode  the Workshop page, pasted by hand (≤ 8000 bytes; 5964 now)
 tools/preview_thumbnail.html  the Workshop preview (source) → preview_thumbnail.png (1024², headless Edge)
 tools/AssemblyGuard/          soft-dependency guard (from the sibling): MCM, Harmony, ButterLib,
                               UIExtenderEx, NavalDLC, CustomBattle in any type surface = FAIL
@@ -803,7 +822,11 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               man 30 → his cap 50, the player never, a man taken over, the input frame (ranged let
                               through, the shield up), the shield steps, the timer and the brace never lifting each
                               other, the guard, live floors / margins, leaving the field, the switches, the summary;
-                              the cost - 1000 men looked at, 0.003 ms a tick, 0 bytes (65 steps; the config
+                              the cost - 1000 men looked at, 0.003 ms a tick, 0 bytes; step 24
+                              (Program.Ready.cs): the ready count through the real strip and ALT views -
+                              texts / colours, the deeper cell and the lifted bottom card, the panel rows, new
+                              stats, the thresholds / BraceEnabled / ShowReadyCount live, the master switch, the
+                              lines (the older strip / ALT steps pin ShowReadyCount off) (67 steps; the config
                               checks work for any tuned default);
                               TRAX_SMOKE_KEEP=1 keeps its temp folder + log to read
 tools/DefaultsTool/           defaults.json upkeep: refresh (rewrite comments/order, keep every

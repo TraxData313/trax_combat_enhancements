@@ -883,3 +883,23 @@
   and INSTALLED. Docs: DESIGN §2 "Brace by orders" + 8 rows + interpretation 25, PLAYTEST D7 + L6d, README, Steam description
   (5853 bytes), CLAUDE summary + layout, AI_NOTES "Step 23" (the UNVERIFIED list: turtling, the shield sticking, the order read).
   Commits 9006dc7, 0b4966d + this. (2026.09.29 07.10.53)
+
+- [x] 24. The ready count per squad (Anton, 2026-09-29: "some indication above the squad of ready men, that are not resting in
+  their current order status, somewhere near the athletics info on the ALT and on the formations view"). "ready 34/50" = the
+  men NOT bracing (step 23's FormationAthleticsStats.Ready of Total - the player left out, as every strip number) on the
+  orders-menu strip (a third row under each cell's bar, left, at OrderStripReadyOffset 24; the fallback panel's rows after the
+  health) and under every side's ALT marker label (a third line under the bar, centred). Plain (the text brushes' own
+  #E8E8E8) while most are ready, yellow at or below ReadyYellowBelowPercent 75, red at or below ReadyRedBelowPercent 50 (the
+  most alarming wins); HIDDEN while bracing cannot happen (master switch first, AthleticsEnabled, BraceEnabled) or with
+  ShowReadyCount off - one switch for both places. Why a row under the bar: the 35 px beside the vanilla order icons already
+  hold "72% ± 8"; the cell grows to 39 px = the 40 px gap between stacked cards, and StripLayout counts the row only while it
+  is drawn, so with bracing off the cell is step 9's 23 px again; at 1080p a column's bottom card (24 px to the edge) gets its
+  cell lifted 16 px while the row shows (logged). Values at the views' existing pushes (texts rebuilt only on a changed
+  number, cached colours - nothing per frame); live for every switch and threshold. Logs: the values lines carry "ready
+  34/40" and the rules' sentence; one new [summary] line per view (shown by colour, the fewest ready and which formation,
+  hidden by reason). Core ReadyCount.cs (ReadyRules / ReadyMath / ReadyCountStats), StripLayout's ready row; settings 94 →
+  98 (no migration); tests 442 → 460 (ReadyCountTests); smoke 65 → 67 steps (Program.Ready.cs through the real strip and ALT
+  views - texts, colours, the deeper cell and the lifted bottom card, the panel, new stats, live switches, the master switch,
+  the lines; the older steps pin ShowReadyCount off); build 0 warnings; deploy.ps1 green and INSTALLED. Docs: DESIGN §3 (strip
+  + markers) + 4 rows + interpretation 26, PLAYTEST D7 / E4 / L7 / "what to send", README, Steam description (5964 bytes),
+  CLAUDE summary + layout, AI_NOTES "Step 24". Commits 68d7151, fd23961 + this. (2026.09.29 07.26.44)

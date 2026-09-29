@@ -4,7 +4,7 @@ Anton plays this ONCE, after the build is finished, and hands Claude the log. Se
 order, about **3 hours 15** (A 10 min, B 15, C 25, D 60, E 20, F 55, G 10; the optional bits add ~20). **Short on
 time after step 16? D4 alone (the A/B of the new guard and backpedal, 20 min) answers the newest
 questions; after step 21, D5 + D6 (the shield wall and the archers, 25 min); after step 23, D7 (lines brace by
-their orders, 15 min).** Each part says what to do, what you
+their orders, 15 min - since step 24 with the "ready 34/50" count on ALT and in the orders menu).** Each part says what to do, what you
 should see, what counts as broken, and the log lines that prove it. The full line reference —
 every summary block and what proves what — is the **appendix** at the end.
 
@@ -599,6 +599,17 @@ Imperial Legionaries + Menavliaton a side), you as general, VerboseLogging on.
   shield seen in his hand after we asked` vs `the AI put it away again` - how well the shield sticks), **`brace
   GUARD`** (blocked % while bracing against the AI holds GUARD line's `everyone else`; `melee attacks that started
   while bracing anyway` about 0).
+- **The ready count (step 24, Anton's ask: "some indication above the squad of ready men")**: while your line holds
+  and braces, **hold ALT** - under each marker's bar a third line `ready 34/50`: the men NOT bracing out of the
+  formation (you are not counted, so under your own formation's marker it may read one fewer than the game's count
+  above). Plain white while most are ready, **yellow** once three in four or fewer are ready, **red** at half or
+  fewer. Watch it fall as the hold wears on, then **jump back up** the moment you order the charge (their floor drops
+  to 20). The enemy's markers show theirs too. **Open the orders menu** (it slows time): the same `ready 34/50` under
+  each card's bar, left; the cell is one row deeper, so the bottom card of each column has its numbers lifted a
+  little onto the card's lower edge (only while the ready line is there). Switch *Brace by orders (AI)* → *Tired AI
+  brace by their orders* off: the ready lines go at once (nobody braces), the strip is its old size; on again: back.
+  *Orders menu strip* → *Show the ready count* off / on does the same for both places; *Ready count yellow / red at
+  or below (%)* move the colours live.
 - **A/B (optional)**: *Tired AI brace by their orders* off - the same battle: men swing to empty (the step 13 pause
   alone slows them).
 
@@ -606,7 +617,8 @@ Imperial Legionaries + Menavliaton a side), you as general, VerboseLogging on.
 `brace lengths`); `braces the engine never called our input hook during` > 0; men bracing with a bow in hand and
 not shooting; YOU unable to attack at a low bar (the brace is never on you - your own pause is the recovery bar);
 `[error]` lines at `brace.*`; the shield never out (`the shield seen in his hand after we asked 0` while `taken out`
-is large).
+is large); a ready count that never moves while men visibly brace, or reads more than the formation's size; the
+orders strip's ready line overlapping the next card or cut off at the screen's bottom.
 
 ---
 
@@ -700,6 +712,7 @@ indicators" key) before the lines meet, then again after a while of fighting.
          » 45            the distance (the footprint icon and the number)
    72% ± 8   HP 81%      ← ours: Athletics ± spread in the colour of the men's strength, their health
      [████▒▒│░░]         ← ours: the same slim bar as the strip (fill, ± band, peak tick)
+     ready 34/50         ← ours (step 24): the men not bracing - plain, yellow, red; only while bracing is on
 ```
 - You see: under EVERY marker the game draws — yours, your allies' and the enemy's — our two numbers
   and the bar, centred under the distance number, following the marker as you move the camera (no lag,
@@ -718,7 +731,7 @@ indicators" key) before the lines meet, then again after a while of fighting.
 - Log (appendix L7): `[hud] attached: ALT markers (AltMarkerView, movie TraxAltMarkers, prefab installed) - shown while ModEnabled, AthleticsEnabled and ShowAltMarkerStats are on, the game's Hide battle UI and photo mode are off, in a fight (battle, duel, tournament or stealth mode) and while the game shows its formation markers (ALT held or the orders menu open - read live from its own marker layer)`;
   the first ALT: `[hud] ALT markers: layer created at …` then **`[hud] ALT markers: first shown at … (show #1) - technique: the game's own formation markers read live (their points and their widgets' sizes) (layer MissionFormationMarker, movie FormationMarker: 6 markers, 6 marker widgets); screen 1920 x 1080 px, UI scale 1.00; 6 markers (yours 3, allies 0, enemy 3): yours 1 Infantry (41 men) at (960, 402) 60 x 108, 85 m | …; labels (…): yours 1 Infantry at (960, 458) | …; no label: enemy 3 Cavalry - behind the camera`**
   — THE proof of the alignment: each label's centre x = its marker's x, its top y = the marker's y + half its height + 2 at UI scale 1;
-  `[hud] ALT markers: values at … (show #1): yours 1 Infantry 72% ± 8 HP 81% (40 men, f 0.93) | … | enemy 1 Infantry 64% ± 12 HP 95% (…) - ± is 1.00 std, health on, enemy on`.
+  `[hud] ALT markers: values at … (show #1): yours 1 Infantry 72% ± 8 HP 81% ready 40/40 (40 men, f 0.93) | … | enemy 1 Infantry 64% ± 12 HP 95% ready 80/80 (…) - ± is 1.00 std, health on, enemy on, ready count on: yellow at or below 75%, red at or below 50% of the men ready`.
   Later ALT presses are quiet (verbose `~[hud] ALT markers: layer created …`).
 - Summary: `[summary] hud: ALT markers - shown 14x, on screen 32.5 s; technique: the game's own formation markers read live (…); formations labelled: yours 3, allies 0, enemy 3 (most at once 6), …; fallbacks: none; errors 0`.
 
@@ -865,7 +878,8 @@ From `Documents\Mount and Blade II Bannerlord\Configs\TraxCombatEnhancements\` (
 5. **Your verdicts** on the open questions: the hero price (0.75 now, or 0.5?); kicks and shield bashes
    at 3 (step 18) - too cheap, too dear?; the battle pace (step 21, D5 / D6) - shield wall 30%, other
    infantry 15%, bows 2.0 s, crossbows 2.5 s: right, too much, too little?; the brace floors (step 23, D7) - hold 60,
-   advance 40, charge 20, back at +20 ± 5: do lines turtle, or brace too little?; Athletics in tournaments and the arena (on now)?; which attack-rate
+   advance 40, charge 20, back at +20 ± 5: do lines turtle, or brace too little?; the ready count (step 24) - readable,
+   useful, colours at 75% / 50% right, the strip's extra row fine at your resolution?; Athletics in tournaments and the arena (on now)?; which attack-rate
    switch felt right (C7); the balance — recruits empty after 5 swings, one attack in five at empty, a
    run at 0.6 and swings at 85% at empty (step 20b), ~41 s from empty to full strength at rest along the
    refill curve (half the bar in ~25 s): too harsh, too soft, right?
@@ -1233,7 +1247,10 @@ header names the technique: `==== scene …, mod ON, AI holds: Input (the AI's o
 - The ALT markers (step 20, E4): `[hud] attached: ALT markers (AltMarkerView, movie TraxAltMarkers, prefab installed) - … while the game shows its formation markers (ALT held or the orders menu open - read live from its own marker layer)`;
   `layer created …` once (later ALT presses and releases go to the verbose log only); **`first shown at … (show #1) - technique: …; screen W x H px, UI scale S; N markers (yours a, allies b, enemy c): <each marker: team, formation, men, its point, its widget's size, the distance>; labels (<layout>, centre x / top y): <each label>; no label: <formation> - behind the camera | faded (closer than 5 m or fading) | not laid out yet | no tracked men | enemy (AltMarkersShowEnemy off)`**
   (the proof: a label's centre x = its marker's x; its top y = the marker's y + half its height + the gap × the UI scale);
-  `values at … (show #1): yours 1 Infantry 72% ± 8 HP 81% (40 men, f 0.93) | … - ± is 1.00 std, health on, enemy on` once per battle (verbose at each later show).
+  `values at … (show #1): yours 1 Infantry 72% ± 8 HP 81% ready 34/40 (40 men, f 0.93) | … - ± is 1.00 std, health on, enemy on, ready count on: yellow at or below 75%, red at or below 50% of the men ready` once per battle (verbose at each later show; `ready count hidden (BraceEnabled off - nobody braces)` when bracing is off).
+- The ready count (step 24): in the strip's `values at …` line after the health (`1 Infantry 72% ± 8 HP 81% ready 34/40 (40 men, …)`) and its
+  tail (`…, health on, ready count on: yellow at or below 75%, red at or below 50% of the men ready`); the first placement's cell layout
+  names it (`…, ready count at +24, 2 px in from the sides (39 px deep; …)`); a column's bottom card at 1080p: `… - 1 cell lifted to the screen's bottom edge`.
   The FALLBACKS, each with its why (the first of each kind in full, later ones verbose), counted in the summary:
   `[hud] ALT markers: a marker without its widget at … (show #N) - 1 of 6 markers had no widget at their point (layer MissionFormationMarker, movie FormationMarker: 6 markers, 5 marker widgets): … - a nominal marker size for those`;
   `[hud] ALT markers: FALLBACK at … (show #N) - layer MissionFormationMarker, movie FormationMarker: 6 markers, 0 marker widgets - the game's points with a nominal marker size (60 x 108 UI px) until the markers go`;
@@ -1250,7 +1267,12 @@ header names the technique: `==== scene …, mod ON, AI holds: Input (the AI's o
   [summary] hud: orders strip - opened 12x: under the cards in 12, the compact panel in 0; technique: the live vanilla cards (layer MissionOrder: 16 cards); card layouts seen: 16 cards in 2 sets, set 1 drawn; cells placed 36 (lifted to the screen's edge 0), card changes 0, short mismatches 0 (under 1.0 s), card re-scans 0, values pushed 40; fallbacks: none
   [summary] hud: ALT markers (movie TraxAltMarkers) - on screen 32.5 s of 340.2 s (10%); layer built 14x, removed 14x (markers hidden 13, mission end 1); hidden: not a fight 20.1 s, markers hidden 287.6 s; 325 refreshes; errors 0
   [summary] hud: ALT markers - shown 14x, on screen 32.5 s; technique: the game's own formation markers read live (their points and their widgets' sizes) (layer MissionFormationMarker, movie FormationMarker: 6 markers, 6 marker widgets); formations labelled: yours 3, allies 0, enemy 3 (most at once 6), frames with a label pinned at the screen's edge 0, values pushed 90; fallbacks: none; errors 0
+  [summary] hud: orders strip - ready count (men not bracing, step 24): shown 120x (plain 80, yellow 30, red 10), the fewest ready 12/50 (24%, 1 Infantry); hidden: never
+  [summary] hud: ALT markers - ready count (men not bracing, step 24): shown 270x (plain 200, yellow 50, red 20), the fewest ready 9/80 (11%, enemy 1 Infantry); hidden: never
   ```
+  The two ready count lines (step 24) prove: the line was drawn (*shown* > 0) and moved through the colours in a
+  brace-heavy battle (yellow and red > 0), *the fewest ready* matches what you saw; *hidden …* names why it was not
+  drawn (`BraceEnabled off - nobody braces`, `ShowReadyCount off`) - `never shown` in a battle with bracing on = tell Claude.
   The ALT line proves: *shown* = how often the game's markers came up (ALT presses + orders-menu opens) while
   the numbers were on; *technique … read live* with no `(shows: …)` mix and *fallbacks: none*; *formations
   labelled* names both sides (enemy > 0 with *Enemy formations too* on); *errors 0*.

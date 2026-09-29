@@ -454,6 +454,15 @@ counted (the cards count the men under his command; he has his own bar). Refresh
 - Five Advanced settings place the cell (`OrderStripTextSize`, `OrderStripTextOffset`,
   `OrderStripBarOffset`, `OrderStripBarHeight`, `OrderStripSideMargin`), all live. The defaults
   make the cell 23 px deep, which fits the bottom card of a column at 1920 × 1080 exactly.
+- **The ready count** (step 24, `ShowReadyCount`, Anton 2026-09-29: "some indication above the squad of
+  ready men, that are not resting in their current order status"): a third row under the bar, left,
+  `ready 34/50` — the men NOT bracing (§2 "Brace by orders") out of the men the card counts (you are
+  not counted); plain while most are ready, **yellow** at or below `ReadyYellowBelowPercent` (75) %
+  ready, **red** at or below `ReadyRedBelowPercent` (50) %. The panel rows carry it after the health.
+  Hidden while bracing is off (`BraceEnabled`, `AthleticsEnabled`, the master switch). Its row sits at
+  `OrderStripReadyOffset` (24 px, right under the bar): the cell is then 39 px deep, filling the 40 px
+  gap between two stacked cards; the bottom card of a column at 1920 × 1080 (24 px to the edge) gets
+  its cell lifted 16 px — only while the row is drawn. Values at the strip's usual refresh, all live.
 
 **The numbers under the formation markers as built (step 20 — hold ALT):** vanilla draws a marker
 above every formation (the troop count, the formation icon, the distance) while you **hold the
@@ -465,6 +474,9 @@ just under its marker (`AltMarkerOffset`, 2 px under the distance number):
   bar's bands: green … red) — and `HP 81%`, their average health (`ShowFormationHealth`);
 - under them a slim bar (`AltMarkerBarWidth` × `AltMarkerBarHeight`, 60 × 3 px; 0 = none): the mean
   fill in that colour, the lighter ± band, the peak tick — the strip's bar.
+- under the bar (step 24, `ShowReadyCount`): `ready 34/50` — the men not bracing, the strip's count and
+  colours (plain / yellow / red), on every side's labels (the enemy braces too); hidden while bracing
+  is off. In your own formation you are not counted, so it may read one fewer than vanilla's count.
 - **Which formations**: every one vanilla marks — yours and your allies' always, the **enemy's** too
   (`AltMarkersShowEnemy`, on: knowing the enemy is tired is the tactical point). The player himself is
   not counted in his own formation (he has his own bar); everyone else is, on every side. A formation
@@ -961,6 +973,19 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     end; `EnforceShieldUsage` was NOT used (vanilla's formation update rewrites it for every AI agent; RBM needs a Harmony
     patch to keep it) - the shield is kept up through the input instead (`BraceRaiseShield`); riders and AI heroes
     brace, the player never; the formation read API counts Bracing / Ready for the next step's "ready men".
+
+26. **The ready count** (step 24, Claude's calls on Anton's ask of 2026-09-29 - AI_NOTES "Step 24"): "ready" = not
+    bracing, step 23's `Ready` of `Total` - the same men the strip's other numbers count, so the player is left out of
+    his own formation (under an ALT marker of his own formation it may read one fewer than vanilla's count above); the
+    words "ready 34/50" (the card and the marker already show the formation's size, but "34/50" alone would not say
+    what it counts); plain text (the brushes' own #E8E8E8) while most are ready, yellow at or below 75%, red at or below
+    50% (the bars' own yellow and red; the most alarming wins); HIDDEN while bracing cannot happen (the master switch,
+    `AthleticsEnabled`, `BraceEnabled`) rather than a constant "all ready" - less noise; ONE switch for both places
+    (`ShowReadyCount`, beside `ShowFormationHealth`, which also serves both). On the strip it is a third row under the
+    bar (a 40 px cell = the gap between two stacked cards), not squeezed beside the numbers (the 35 px beside the
+    order icons hold "72% ± 8" already); at 1920 × 1080 the bottom card of a column then has 24 px to the screen's edge,
+    so its cell is lifted 16 px (only while the row is drawn - with bracing off it is step 9's cell again). Under the ALT
+    markers it is a third line under the bar, centred.
 
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),
