@@ -77,7 +77,7 @@ namespace TraxCombat.Tools
 
             /// <summary>One marker (and its widget, 60 x 108 UI px, at its point) at <paramref name="scale"/>.</summary>
             public void Add(int teamIndex, int teamType, int k, float x, float y, int men, double mean, double std, double f, double health,
-                float alpha = 1f, int wSign = 1, bool widget = true, float scale = 1f)
+                float alpha = 1f, int wSign = 1, bool widget = true, float scale = 1f, int bracing = 0)
             {
                 var m = new AltMarker
                 {
@@ -89,7 +89,7 @@ namespace TraxCombat.Tools
                     WSign = wSign,
                     Distance = 80,
                     Men = men,
-                    Stats = new FormationAthleticsStats(men, mean * 100, std * 100, mean, std, 0, f, 0, health),
+                    Stats = new FormationAthleticsStats(men, mean * 100, std * 100, mean, std, 0, f, 0, health, bracing),
                 };
                 Markers.Add(m);
                 if (!widget) return;
@@ -127,6 +127,7 @@ namespace TraxCombat.Tools
             S.Set(SettingsSchema.AthleticsPeakPercent, 75, SettingSources.File);
             S.Set(SettingsSchema.ShowAltMarkerStats, true, SettingSources.File);
             S.Set(SettingsSchema.AltMarkersShowEnemy, true, SettingSources.File);
+            S.Set(SettingsSchema.ShowReadyCount, false, SettingSources.File); // step 24 has its own step (Program.Ready.cs): the older checks see step 20-23's labels
             S.Set(SettingsSchema.ShowFormationHealth, true, SettingSources.File);
             S.Set(SettingsSchema.ShowFormationSpread, true, SettingSources.File);
             S.Set(SettingsSchema.FormationSpreadStdDevs, 1.0, SettingSources.File);

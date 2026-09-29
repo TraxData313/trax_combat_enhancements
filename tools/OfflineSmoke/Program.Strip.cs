@@ -104,10 +104,10 @@ namespace TraxCombat.Tools
                 for (int k = 0; k < 8; k++) Values[k].Exists = true;
             }
 
-            public void Set(int k, int men, double meanFraction, double stdFraction, double meanF, double health, int exhausted = 0)
+            public void Set(int k, int men, double meanFraction, double stdFraction, double meanF, double health, int exhausted = 0, int bracing = 0)
             {
                 Values[k].Members = men;
-                Values[k].Stats = men > 0 ? new FormationAthleticsStats(men, meanFraction * 100, stdFraction * 100, meanFraction, stdFraction, exhausted, meanF, 0, health) : default;
+                Values[k].Stats = men > 0 ? new FormationAthleticsStats(men, meanFraction * 100, stdFraction * 100, meanFraction, stdFraction, exhausted, meanF, 0, health, bracing) : default;
             }
 
             public void Read(StripFormation[] into) => Array.Copy(Values, into, 8);
@@ -122,6 +122,7 @@ namespace TraxCombat.Tools
             S.Set(SettingsSchema.ShowInOrderMenu, true, SettingSources.File);
             S.Set(SettingsSchema.ShowFormationHealth, true, SettingSources.File);
             S.Set(SettingsSchema.OrderStripUnderCards, true, SettingSources.File);
+            S.Set(SettingsSchema.ShowReadyCount, false, SettingSources.File); // step 24 has its own step (Program.Ready.cs): the older checks see step 9-23's strip
             S.Set(SettingsSchema.ShowFormationSpread, true, SettingSources.File);
             S.Set(SettingsSchema.FormationSpreadStdDevs, 1.0, SettingSources.File);
             S.Set(SettingsSchema.OrderStripTextSize, 13, SettingSources.File);
