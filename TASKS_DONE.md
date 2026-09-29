@@ -856,3 +856,30 @@
   INSTALLED. Docs: DESIGN §2 "Defending costs too" + the run / refill notes + 3 rows + interpretation 24, PLAYTEST A1 (the
   migration) / C1 (30% run, the straight refill) / new C1d (blocks) / L4, README, Steam description (5467 bytes), CLAUDE
   summary + layout, AI_NOTES "Step 22". Commit a821f90 + this. (2026.09.29 06.48.00)
+- [x] 23. Brace by orders (Anton, 2026-09-29: "make soldiers not swing but only defend when they have reached a certain floor,
+  that depends on their current orders, until they have replenished the floor +20%" + "when defending they whip out their
+  shields"; mid-step: "+- 5% ... per soldier, once rolled on a battle"). Each AI man (heroes, riders; never you) is looked at
+  about every 0.25 s, staggered (TickBrace, a slice of the dense list): his bar = points ÷ his FULL pool vs his formation's
+  movement-order floor - Formation.GetReadonlyMovementOrderReference().OrderEnum: charge / charge a target / attack a gate 20
+  (BraceFloorChargePercent), advance 40 (BraceFloorAdvancePercent), everything else 60 (BraceFloorHoldPercent). WHY the AI
+  Move mapping: the team AI advances on MOVE orders (BehaviorAdvance / CautiousAdvance / Vanguard) - read literally every AI
+  advance would sit on 60 - so an AI-controlled formation on Move reads FormationAI.ActiveBehavior (advance → 40, tactical
+  charge → 20). At or below the floor he BRACES: a fourth wish on step 16's input component (melee attack bits out, a guard
+  when he wants to attack, a ready cancelled; a ranged weapon in hand or a ranged action let through) until floor + his
+  margin = BraceRecoverPercent 20 ± his own roll of BraceRecoverSpreadPercent 5 (rolled once per man and battle, rescaled live,
+  ≥ 1 point), the target capped by his wounds with the band sliding down under the cap (never stuck, never bracing full to
+  his cap). The order changing mid-brace applies at his next look. Its own wish: AiInputState.Active = ANY wish, so no hold's
+  end lifts another. The shield: BraceWieldShield - TryToWieldWeaponInSlot (a one-hander first after a two-hander), checked
+  every 1 s, at most 3 calls a brace, measured (the AI's weapon choice is native - whether it puts the shield away is only
+  visible in game); BraceRaiseShield - DefendDown in a frame with no guard of his own (EnforceShieldUsage NOT used: vanilla's
+  formation update rewrites it for every AI agent; RBM needs Harmony). Ends: refilled, the order changed, wound cap, switched
+  off (master switch / AthleticsEnabled / BraceEnabled - all at once), left the field (no engine call), the player took him,
+  the hideout fresh start, mission end. FormationAthleticsStats gets Bracing / Ready / Total for step 24. Logs: [brace]
+  mission start / settings change / switch-off lines, the first brace and its end in full, verbose per brace; 7 [summary]
+  "brace" lines (who, by order, time share, lengths + still bracing at the end = the "turtle" check, ends, margins, the shield,
+  the GUARD while bracing + attacks that still started). Settings 86 → 94 (a new MCM group after Battle pace). Tests 427 →
+  442 (BraceTests); smoke 62 → 65 steps (Program.Brace.cs: the real logic with a stand-in IBraceBody end to end; the cost -
+  1000 men, 400 bracing, 0.003 ms a tick, 0 bytes; the master-switch step lifts braces); build 0 warnings; deploy.ps1 green
+  and INSTALLED. Docs: DESIGN §2 "Brace by orders" + 8 rows + interpretation 25, PLAYTEST D7 + L6d, README, Steam description
+  (5853 bytes), CLAUDE summary + layout, AI_NOTES "Step 23" (the UNVERIFIED list: turtling, the shield sticking, the order read).
+  Commits 9006dc7, 0b4966d + this. (2026.09.29 07.10.53)

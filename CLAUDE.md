@@ -34,7 +34,15 @@ by the attack's CLASS, read at its release from what he holds (`IWeaponFacts`) -
 (T + q (D + G)) / (1 − q), G = `AiMeleeGapSeconds` (1.0, the AI's own gap measured in Anton's logs - a pause
 adds to it), so fresh men are held too; bowmen +`ExtraPauseAfterBowShotSeconds` (2.0 s), crossbowmen
 +`ExtraPauseAfterCrossbowShotSeconds` (2.5 s); riders' melee, thrown weapons, slings and the player: none;
-the summary's "battle pace" lines give each class's attacks a minute per man. The Athletics
+the summary's "battle pace" lines give each class's attacks a minute per man. BRACE BY ORDERS (step 23,
+Anton: "not swing but only defend" below a floor set by the orders): each AI man's bar (points ÷ his FULL pool)
+is compared about every 0.25 s (staggered) with his formation's movement-order floor - charge
+`BraceFloorChargePercent` (20), advance `BraceFloorAdvancePercent` (40; an AI formation's Move under an advance
+behaviour counts), the rest `BraceFloorHoldPercent` (60); at or below it he BRACES (a fourth wish on step 16's
+input component: melee attack bits out, guard up; ranged let through) until floor + `BraceRecoverPercent` (20)
+± his own roll of `BraceRecoverSpreadPercent` (5, once per man and battle), the target capped by his wounds (the
+band slides down under the cap - never stuck); the shield taken out (`BraceWieldShield`: TryToWieldWeaponInSlot, a
+one-hander first) and held up (`BraceRaiseShield`); the summary's "brace" lines answer "do lines turtle". The Athletics
 bar is shown for the player (step 6)
 and — averaged, with a ± spread and the men's health — in a strip under each formation card of
 the orders menu (step 9) and, while you hold ALT (or the orders menu is open), under each of the
@@ -135,7 +143,7 @@ die at any moment (tokens run out) and the next one loses nothing.
   file, capped at `LogMaxMegabytes` (8); a trim cuts ONLY the oldest verbose lines (marked `~`
   before the tag) and keeps every other line - summaries, first-time lines, settings, errors
   (step 10b, Core `LogTrim`). Timestamped lines tagged by area (`[config]`, `[mcm]`, `[mission]`,
-  `[damage]`, `[athletics]`, `[speed]`, `[rate]`, `[stepback]`, `[hud]`, `[error]`). Always logged: mod/game version
+  `[damage]`, `[athletics]`, `[speed]`, `[rate]`, `[stepback]`, `[brace]`, `[hud]`, `[error]`). Always logged: mod/game version
   at load, every parameter value on load and on change, each mission start/end (type,
   scene, agent counts), which behaviors/views attached, and every caught exception with its
   stack. Per-battle SUMMARY at mission end (damage rolls: count, min/avg/max factor;
@@ -169,8 +177,9 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
   ParamDef.cs                 one setting: key, type, range, group, label, plain-words
                               description, apply timing (Live / NextBattle); Normalize, Format;
                               its Default comes from defaults.json (DefaultsFile), never code
-  SettingsSchema.cs           EVERY setting of DESIGN's table (86), in file + MCM order, 11 groups
+  SettingsSchema.cs           EVERY setting of DESIGN's table (94), in file + MCM order, 12 groups
                               ("Master switch" first, "Battle pace (AI)" - step 21 - after the step back,
+                              "Brace by orders (AI)" - step 23 - after it,
                               "Formation markers (hold ALT)" - step 20 - before
                               "Advanced" last; step 10b's one vocabulary and
                               units in its header comment) — the one place a setting is declared
@@ -323,6 +332,17 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               the share, the cycle (a minute per man while fighting), the AI's own gap after a
                               pause, the model's cycle at 0 and with the setting (foot melee), the archers'
                               share inside a cycle + the 7 [summary] "battle pace" lines
+  Brace.cs                    step 23 pure (AI_NOTES "Step 23"): BraceOrderKind (the game's movement orders + the
+                              AI's advance / tactical charge on a Move), BraceOrder (charge / advance / hold), BraceEnd,
+                              ShieldStep, HandFacts, BraceBand, BraceRules (live; Enabled = ModEnabled && AthleticsEnabled
+                              && BraceEnabled, OffBecause, Describe), BraceMath - Group, Band (floor = min(F, cap − M),
+                              target = min(F + M, cap); M = recover ± his roll, ≥ 1 point), Enter / Leave / LeaveReason,
+                              RollUnit / Offset / Margin (the per-man spread, rescaled live), ShieldStepFor; plumbing
+                              PollSeconds 0.25, ShieldCheckSeconds 1, MaxWieldCalls 3, LongBraceSeconds 30
+  BraceStats.cs               step 23 per-mission: men polled / braced, braces by order and floor, AI fighter-time vs
+                              brace time, lengths (5 bins), ends by reason, the margins rolled + length by margin band,
+                              the shield (at start, calls, seen, put away, never), the guard while bracing, the hook's
+                              frames, attacks while bracing + the 7 [summary] "brace" lines
   AthleticsBar.cs             step 6 (and the strip's colours; step 7's LATER target bar would reuse it): BarBand, BarRules (live
                               Bar*BelowPercent), BarMath - Band (green at the peak line, blue just
                               below, yellow/orange/red at or below their % of the line, the most
@@ -359,7 +379,8 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               centring box), VanillaAlpha (the prefab's distance fade); AltMarkerLayout (the AltMarker*
                               settings), AltMarkerTechnique / AltMarkerFallback, AltMarkerStats (+ the [summary] line)
   SpreadStats.cs              MeanStd (Welford, population std), FormationAthleticsStats (squad
-                              mean ± std, band, mean f, at full strength, mean health - step 9),
+                              mean ± std, band, mean f, at full strength, mean health - step 9; step 23:
+                              Bracing / Ready / Total - the next step's "ready men"),
                               RunSpeedCheck (engine top / asked / moving by f); 5c's
                               attack-interval classes went in 5e
   AthleticsStats.cs           per-mission Athletics counters + the [summary] text (pools from the
@@ -443,7 +464,8 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               usable pool, f, peak line, multipliers), TryGetPeakShare(agent),
                               TryGetFormationStats(formation) (incl. mean f and health; the player
                               left out, as the order cards; step 20: EVERY team's formations - slots by
-                              Team.TeamIndex, MaxStatTeams 8, one allocation-free pass), FormationStatsVersion, IsRunning
+                              Team.TeamIndex, MaxStatTeams 8, one allocation-free pass; step 23: + how many brace),
+                              FormationStatsVersion, IsRunning
   Missions/AthleticsLogic.Log.cs  [athletics]/[speed] lines (verbose buckets) + summary feed
                               (releases every step back before the summary, then its lines)
   Missions/AthleticsLogic.StepBack.cs  step 5d bookkeeping: the roll at every counted swing's
@@ -475,7 +497,9 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               - the component added lazily FROM THE TICK + the engine's callback on;
                               UnhookIfIdle - off only if ours and no other component overrides the hook
                               (RTS Camera's); SetHold / SetBackpedal / Clear; Apply - the managed filter
-                              the smoke drives; FlagNames)
+                              the smoke drives; FlagNames); step 23: the brace wish (BraceHoldAttacks - melee
+                              only: BraceRanged / a ranged action let through; BraceShieldInHand → the shield
+                              held up, RaiseShield), SetBrace, the brace's frame counts; Active = ANY wish
   Missions/AthleticsLogic.AiHolds.cs  step 16 shared bookkeeping: EnsureInput, NoteHooked, the
                               component's errors logged from the tick, the GUARD by state (OnMeleeHit),
                               the [summary] "AI holds" lines, HoldsHeader (the technique in the header)
@@ -505,6 +529,19 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               PaceNotStarted (a refused / superseded pause), NotePaceCycle (by class, the cap
                               + the share inside), NotePaceGap, the settings line at mission start and on a
                               change, FirstOfClass (one [rate] line per class), WriteBattlePaceSummary
+  Missions/AthleticsLogic.Brace.cs  step 23: StartBrace / NoteBraceSettings (the [brace] lines), TickBrace (switched
+                              off → EndAllBraces at once; else a staggered slice so each man is looked at ~every
+                              0.25 s), PollBrace (not AI / the player → none; his roll once; the order → the band →
+                              BeginBrace / EndBrace / KeepBracing), BeginBrace (EnsureInput, Hook, SetBrace, the
+                              hands, the shield's first wield, the first brace in full), KeepBracing (hands every
+                              look, the shield seen / put away, a wield every 1 s up to 3), EndBrace (every path;
+                              the callback released if idle), BraceLeftField, BraceFreshStart (step 19),
+                              CloseBraces (mission end), BraceHitTaken (the guard), NoteBraceRelease, WriteBraceSummary
+  Missions/BraceBody.cs       step 23: BraceState (his roll, the running brace, the shield's progress), IBraceBody (the
+                              engine side - the smoke plays it), GameBraceBody (the order from
+                              GetReadonlyMovementOrderReference().OrderEnum + FormationAI.ActiveBehavior for an AI Move;
+                              the hands from the wielded indices + managed equipment; TryToWieldWeaponInSlot WithAnimation;
+                              AiInputHook.Hook / UnhookIfIdle), BraceBodyDefault (the smoke swaps it once)
   Missions/WeaponFacts.cs     step 21: IWeaponFacts (what he holds at a release - the smoke plays it) +
                               GameWeaponFacts (WieldedOffhandWeapon's usage IsShield; WieldedWeapon's
                               WeaponClass Bow / Crossbow - the slot index is a pointer read, the item managed:
@@ -615,7 +652,7 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               values line, the [summary] line (AltMarkerStats)
   Hud/AltMarkersVM.cs         its ViewModels: the root + a GROW-ONLY MBBindingList of AltMarkerLabelVM keyed by
                               team + formation (a label never swaps formations when vanilla re-sorts)
-tests/TraxCombat.Core.Tests/  net8.0 xUnit (427) — schema vs DESIGN.md (keys + types), one copy
+tests/TraxCombat.Core.Tests/  net8.0 xUnit (442) — schema vs DESIGN.md (keys + types), one copy
                               runs (SingleCopyTests: claims on private slots, copies, texts), when
                               MCM is tried and when it stops (McmPlanTests - step 12),
                               defaults.json (DefaultsFileTests), master switch, settings, config
@@ -652,7 +689,10 @@ tests/TraxCombat.Core.Tests/  net8.0 xUnit (427) — schema vs DESIGN.md (keys +
                               placement at any scale and pinned, vanilla's fade, nominal size, summary), the
                               battle pace (BattlePaceTests, step 21: the class from what he holds, the pause
                               for each class fresh and tired - the percent fewer at every m -, archers' extra,
-                              0 = off, ranges, the settings sentence, the summary lines). They
+                              0 = off, ranges, the settings sentence, the summary lines), the brace (BraceTests,
+                              step 23: the floor by order, the hysteresis, the wound cap's band, an order change,
+                              the per-man margin, the switches, the shield step and RaiseShield, the summary, the
+                              formation's Ready / Bracing). They
                               run on DESIGN's INITIAL values (DesignTable.cs: a module
                               initializer), so tuning defaults.json never breaks them. Keep green.
 module/SubModule.xml          release manifest (Id TraxCombatEnhancements, v0.1.0) - THE one home of the
@@ -683,7 +723,7 @@ tools/package.ps1             step 11, THE RELEASE: manifest gate (release Id + 
 tools/WORKSHOP-UPLOAD.md      the release loop, step by step (first upload, updates) + the uploader's quirks
 tools/WorkshopCreate.xml      the FIRST upload (creates the item, Private, tags, preview) - run once
 tools/WorkshopUpdate.xml      every later upload - ITEM_ID placeholder until the first upload
-tools/STEAM-DESCRIPTION.bbcode  the Workshop page, pasted by hand (≤ 8000 bytes; 5370 now)
+tools/STEAM-DESCRIPTION.bbcode  the Workshop page, pasted by hand (≤ 8000 bytes; 5853 now)
 tools/preview_thumbnail.html  the Workshop preview (source) → preview_thumbnail.png (1024², headless Edge)
 tools/AssemblyGuard/          soft-dependency guard (from the sibling): MCM, Harmony, ButterLib,
                               UIExtenderEx, NavalDLC, CustomBattle in any type surface = FAIL
@@ -757,7 +797,13 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               class through the real logic (a fresh shield man 0.78 s, a tired one, a two-hander,
                               riders, bows fresh / tired / mounted, a crossbow, a javelin, you never), hot swap,
                               the master switch (its own step lifts a fresh man's share too), the summary; and the
-                              cost - 1000 men held at once, the AI timer's tick ~0.005 ms, 0 bytes (62 steps; the config
+                              cost - 1000 men held at once, the AI timer's tick ~0.005 ms, 0 bytes; step 23
+                              (Program.Brace.cs): the stand-in brace body for EVERY logic (step 4), the real logic -
+                              charge 20 → 40, hold 60 → 80, the AI's advance, an order change both ways, a wounded
+                              man 30 → his cap 50, the player never, a man taken over, the input frame (ranged let
+                              through, the shield up), the shield steps, the timer and the brace never lifting each
+                              other, the guard, live floors / margins, leaving the field, the switches, the summary;
+                              the cost - 1000 men looked at, 0.003 ms a tick, 0 bytes (65 steps; the config
                               checks work for any tuned default);
                               TRAX_SMOKE_KEEP=1 keeps its temp folder + log to read
 tools/DefaultsTool/           defaults.json upkeep: refresh (rewrite comments/order, keep every

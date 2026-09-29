@@ -3,7 +3,8 @@
 Anton plays this ONCE, after the build is finished, and hands Claude the log. Seven parts in
 order, about **3 hours 15** (A 10 min, B 15, C 25, D 60, E 20, F 55, G 10; the optional bits add ~20). **Short on
 time after step 16? D4 alone (the A/B of the new guard and backpedal, 20 min) answers the newest
-questions; after step 21, D5 + D6 (the shield wall and the archers, 25 min).** Each part says what to do, what you
+questions; after step 21, D5 + D6 (the shield wall and the archers, 25 min); after step 23, D7 (lines brace by
+their orders, 15 min).** Each part says what to do, what you
 should see, what counts as broken, and the log lines that prove it. The full line reference —
 every summary block and what proves what — is the **appendix** at the end.
 
@@ -21,7 +22,7 @@ note the time (Advanced → *Log size limit (MB)* 32 makes it rarer).
 beside `config.json`. Every line is `2026.09.30 20:15:02.117 [tag] message`; a verbose line has a
 `~` before its tag: `2026.09.30 20:15:02.201 ~[damage] melee on a person: …`. Tags: `[load]`
 `[compat]` `[config]` `[mcm]` `[mission]` `[summary]` `[damage]` `[athletics]` `[speed]` `[rate]`
-`[stepback]` `[hud]` `[error]` `[log]` — search one to follow an area. Every battle ends with a
+`[stepback]` `[brace]` `[hud]` `[error]` `[log]` — search one to follow an area. Every battle ends with a
 `[summary]` block; Claude reads those first.
 
 **Any time, anywhere — broken**: an `[error]` line (the game also shows a red line *"Trax Combat
@@ -567,6 +568,46 @@ every attack falls back to no share); YOUR attacks slowed at full strength (you 
 recovery bar must stay full at the peak line); a class line reading `no attacks` for troops that clearly
 fought (the read put them elsewhere).
 
+**D7. Brace by orders — the lines attack, then brace (step 23, ~15 min).** Anton's ask: "make soldiers not
+swing but only defend when they have reached a certain floor, that depends on their current orders, until they
+have replenished the floor +20%" and "when defending they whip out their shields". An AI man whose bar (its FILL -
+points ÷ his full pool) falls to his formation's order floor stops swinging, guard up, shield out and up, until he
+is back to floor + 20 (± his own 5, rolled once a battle): **hold / halt / retreat / move / follow 60 → 80,
+advance 40 → 60, charge 20 → 40** (*Brace by orders (AI)* in MCM). Bows, crossbows and throws go on. Never you.
+**A hold-then-charge infantry battle**: custom battle, 80 v 80 infantry (shield men and two-handers mixed - e.g.
+Imperial Legionaries + Menavliaton a side), you as general, VerboseLogging on.
+1. **Hold**: F1 → *Hold* (your infantry halts). Let the enemy come to you. Watch your line fight: at first they
+   swing, then more and more stand with their shields up and do not swing. **Hold ALT** now and then: the numbers
+   under each formation marker - the bar falls, and a line near 60% is a line that braces. Two-handers with a
+   sword or axe as their other weapon should switch to it and a shield if they carry one.
+2. **Charge** after about a minute of fighting: F1 → *Charge*. The men who braced at 60-80% start swinging again at
+   once (their floor is 20 now); watch them surge, then brace again much later, near empty.
+3. **Advance** in a second battle (optional): F1 → *Advance* - the floor is 40.
+4. **The enemy** braces on its own team AI's orders - an AI line advancing into you uses the advance floor (40),
+   a holding one 60.
+- **Look for**: tired men with their shields up and not swinging, not a whole line frozen for minutes; archers
+  behind still shooting; men who were holding a two-hander switching to a sword and shield when they brace (and
+  back when it ends - their own AI picks); YOUR attacks never held by it.
+- **The lines**: the first brace in full - `[brace] first brace this mission: <name> at … s - order stop / hold (the
+  hold and the rest floor 60%), his bar 59.8% of his full pool (… points) → no melee attacks, guard up, until 81.3%
+  = floor 60.0% + his margin 21.3 points (BraceRecoverPercent 20 + 1.3, his own roll); shield: …` and its end `[brace]
+  first brace ended at … after … s - refilled to floor + recover; …; melee hits taken H, blocked B; his attacks taken
+  out F frames, the shield held up R frames, engine calls C`. Then the `[summary] brace …` lines (appendix L6d):
+  **`brace lengths`** (most braces short; a big `60 s or more` and `still bracing when the battle ended` =
+  lines that turtle - blocks cost Athletics (step 22) and stop the refill, so a man pressed hard may never get back
+  to his target; tell Claude), **`brace ends`** (`the order changed` > 0 after your charge), **`brace shield`** (`the
+  shield seen in his hand after we asked` vs `the AI put it away again` - how well the shield sticks), **`brace
+  GUARD`** (blocked % while bracing against the AI holds GUARD line's `everyone else`; `melee attacks that started
+  while bracing anyway` about 0).
+- **A/B (optional)**: *Tired AI brace by their orders* off - the same battle: men swing to empty (the step 13 pause
+  alone slows them).
+
+**Broken — tell Claude** (D7): a whole line that never swings again for minutes while not being hit (look at
+`brace lengths`); `braces the engine never called our input hook during` > 0; men bracing with a bow in hand and
+not shooting; YOU unable to attack at a low bar (the brace is never on you - your own pause is the recovery bar);
+`[error]` lines at `brace.*`; the shield never out (`the shield seen in his hand after we asked 0` while `taken out`
+is large).
+
 ---
 
 ## E. Your Athletics bar, the orders-menu strip and the ALT markers (20 min)
@@ -823,7 +864,8 @@ From `Documents\Mount and Blade II Bannerlord\Configs\TraxCombatEnhancements\` (
    you settled on (E1, E3) with your resolution and UI scale; which mods were on.
 5. **Your verdicts** on the open questions: the hero price (0.75 now, or 0.5?); kicks and shield bashes
    at 3 (step 18) - too cheap, too dear?; the battle pace (step 21, D5 / D6) - shield wall 30%, other
-   infantry 15%, bows 2.0 s, crossbows 2.5 s: right, too much, too little?; Athletics in tournaments and the arena (on now)?; which attack-rate
+   infantry 15%, bows 2.0 s, crossbows 2.5 s: right, too much, too little?; the brace floors (step 23, D7) - hold 60,
+   advance 40, charge 20, back at +20 ± 5: do lines turtle, or brace too little?; Athletics in tournaments and the arena (on now)?; which attack-rate
    switch felt right (C7); the balance — recruits empty after 5 swings, one attack in five at empty, a
    run at 0.6 and swings at 85% at empty (step 20b), ~41 s from empty to full strength at rest along the
    refill curve (half the bar in ~25 s): too harsh, too soft, right?
@@ -1129,6 +1171,36 @@ header names the technique: `==== scene …, mod ON, AI holds: Input (the AI's o
   The attack-rate lines change with it: the AI timer counts `peak (f 1)` holds now (`by f: peak (f 1) N, …`),
   each timer row adds `+ the battle-pace share avg S s`, and the band verdicts' fresh reference carries the
   share too (read the battle pace lines for step 21, the band lines for tiredness).
+
+### L6d. Brace by orders (step 23)
+
+- Mission start: `[brace] mission start: ON - an AI man whose Athletics bar (points ÷ his full pool, what the bar
+  shows) is at or below his formation's order floor stops attacking in melee and only defends (guard up) until he
+  refills to floor + 20% (BraceRecoverPercent) ± his own 5 (BraceRecoverSpreadPercent, rolled once per man and
+  battle): charge 20% → 40% (…), advance 40% → 60% (…), hold / halt / retreat / move / follow / anything else 60% → 80%
+  (…); a wound caps the target …; bows, crossbows and throws go on; the shield taken out …, held up …; AI heroes and
+  riders too, never you - read live, every AI man looked at about every 0.25 s; …` (off: `OFF (BraceEnabled) - AI
+  men swing at any Athletics`).
+- A change mid-battle: `[brace] settings changed mid-mission at … s: …`; a switch off: `[brace] BraceEnabled switched
+  OFF mid-mission at … s: N braces lifted at once - those men attack again` (or `the whole mod (ModEnabled)`).
+- The first brace and its end in full (D7); with VerboseLogging every other one `~[brace] brace: …` / `~[brace]
+  brace ended: <name> after … s - <why>, bar …%` (rate-limited, bucket `brace`).
+- Summary — 7 lines (numbers made up):
+  ```
+  brace by orders (step 23): ON - … (the settings sentence)
+  brace: 95 of 160 AI fighters braced, 210 braces - by order: charge 30, the AI's advance 60, stop / hold 120; by floor: charge 30, advance 60, hold and the rest 120; time bracing 2100 man-seconds = 14.6% of the AI fighters' time on the field (14400 man-seconds), avg 10.0 s a brace, 22.1 s per man who braced, the longest 48.3 s (Imperial Legionary)
+  brace lengths: under 5 s 60, 5-15 s 110, 15-30 s 30, 30-60 s 10, 60 s or more 0; still bracing when the battle ended 12 (2 of them for 30 s or more) - many long braces and many still bracing at the end = lines that turtle (…)
+  brace ends: refilled to floor + recover 150, the order changed 25, refilled to his wound cap 8, switched off 0, fell or left the field 15, the player took him 0, the hideout boss fight's fresh start 0, the battle ended 12, an error (lifted to stay safe) 0
+  brace margins (BraceRecoverSpreadPercent 5): 160 men rolled, their offsets now min -5.0 / avg +0.1 / max +4.9 points on 20%; braces by his own margin: short (−) 70 (avg 8.9 s), middle 72 (avg 10.1 s), long (+) 68 (avg 11.2 s)
+  brace shield (BraceWieldShield on): at the brace's start - already in hand 150, taken out 20, a one-hander first 15, no shield 20, a ranged weapon in hand (left alone) 5, two-hander and no one-hander (left alone) 0, the switch off 0; wield calls: the shield 40, a one-hander 15; the shield seen in his hand after we asked 30, the AI put it away again while bracing 6, never in his hand by the brace's end 5
+  brace GUARD: melee hits taken while bracing 400, blocked 180 (45.0% - compare the AI holds GUARD line's everyone else); his attacks taken out of his input 5000 frames (a guard raised 4800), the shield held up 60000 frames (BraceRaiseShield on), ranged frames let through 300; melee attacks that started while bracing anyway 2 (should be about 0), ranged shots while bracing 20 (allowed); braces the engine never called our input hook during 0 (should be 0)
+  ```
+  Proves: the floors by order (`by order` / `by floor`, `the order changed` after a charge); the lines do NOT turtle
+  (`brace lengths` mostly short, few `still bracing when the battle ended`) - if they do, the refill cannot beat the
+  blocks' cost: lower `CostPerShieldBlock` or the floors; the shield sticks (`seen in his hand` ≫ `put away again`);
+  bracing men block at least as well as everyone else (`brace GUARD` vs L6b's `everyone else`); the hook works
+  (`braces the engine never called our input hook during 0`, melee started while bracing ~0). The ALT numbers
+  and the orders strip show the bar; the "ready men" count per formation comes in the next step.
 
 ### L7. The HUD — your bar, the recovery bar, the orders strip and the ALT markers
 

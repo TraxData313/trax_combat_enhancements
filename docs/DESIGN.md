@@ -222,6 +222,50 @@ regen.)
         cycle = attacks a minute per man while fighting, the AI's own gap after a pause, and for foot melee the
         model's cycle with the setting at 0 and with it (his attack + the pause + G) against the measured one. The
         real check is the same battle with the sliders at 0 and at their values (PLAYTEST).
+    - **Brace by orders — tired AI men stop swinging and defend** (Anton, 2026-09-29: "soldiers get to 0% athletics
+      but they still swing as much as they can - make soldiers not swing but only defend when they have reached a
+      certain floor, that depends on their current orders, until they have replenished the floor +20%" ... "when
+      defending they whip out their shields if they have one"; the spread: "+- 5% additive to those 20% he has to wait
+      per soldier (once rolled on a battle, adds some bravery-like randomness)"; built in step 23 - AI_NOTES "Step
+      23", `BraceEnabled`, on). The goal: lines attack at first, then brace; with blocks costing Athletics (step 22)
+      they hold more and swing less.
+      - **The bar** is his Athletics as a share of his FULL pool - exactly what his bar's fill shows (not f).
+      - **The floor comes from his formation's movement order now** (`Formation.GetReadonlyMovementOrderReference()`,
+        yours or the enemy's team AI alike): **charge** (charge, charge a target, attack a gate, the AI's tactical
+        charge) `BraceFloorChargePercent` (20); **advance** (your Advance, or an AI formation walking into the enemy
+        on a Move order while its behaviour is an advance) `BraceFloorAdvancePercent` (40); **everything else** -
+        hold / stop, move to a position, retreat, fall back, follow, no order, no formation -
+        `BraceFloorHoldPercent` (60).
+      - **At or below his floor he BRACES**: no melee attacks - step 16's input component takes the attack bits out
+        of his own input and raises a guard when he wants to attack (a ready under way is cancelled, never
+        released); his own blocks, parries and moves stay his. **Until his bar is back to floor + his margin**: the
+        margin is `BraceRecoverPercent` (20) ± his own offset, a uniform roll of up to `BraceRecoverSpreadPercent`
+        (5) points made ONCE per man and battle (a slider change rescales everyone's roll at once; the target is
+        never below floor + 1). Holding 60 → 80 (± 5), advancing 40 → 60, charging 20 → 40.
+      - **The order may change mid-brace**: the new floor applies at his next look (a charge order at 55% ends a
+        hold brace at once - "the order changed"; a hold order at 35% starts one at once).
+      - **Wounds**: his target is capped at the top his wounds let him refill to, and under that cap the band keeps
+        its width (floor = min(order floor, cap − margin), from empty at the bottom) - a wounded man never braces
+        at a bar full to his cap and always reaches his target by refilling ("his wound cap"). Never stuck.
+      - **Ranged attacks go on**: a bow, crossbow or throwing weapon in his hand (read about every 0.25 s) or a
+        ranged action under way is let through. **The shield comes out** (`BraceWieldShield`, on): at the brace's
+        start, a man who carries a shield not in his hand takes it out (`Agent.TryToWieldWeaponInSlot`), a
+        one-handed weapon first if his weapon needs both hands; a man with a ranged weapon in hand, or a two-hander
+        and no one-hander, is left alone; checked every 1 s while he braces, at most 3 wield calls a brace (the AI
+        may put it away again - counted). **It stays up** (`BraceRaiseShield`, on): while he braces with a shield
+        in hand, a guard (`DefendDown`) is held whenever his own AI holds none. When the brace ends nothing is
+        forced back - his AI picks his weapons.
+      - **Who**: every AI fighter on foot or mounted, AI heroes and companions too; **never you** (nor a soldier
+        you took over with RTS Camera - his brace ends). Looked at about every 0.25 s, staggered over the ticks.
+      - **It stacks** with the attack pause (step 13), battle pace (step 21) and the step back (step 16): each is
+        its own wish on the same input component, and the attacks stay out while ANY holds him - one ending never
+        lifts another. The hideout boss fight's fresh start (step 19) ends it. The master switch, `AthleticsEnabled`
+        and `BraceEnabled` lift every brace at once. Hot swap: the floors and margins are read at every look.
+      - **Measured**: the summary's "brace" lines - the men who braced, braces by order, the time bracing (total,
+        per brace, per man, the share of the AI fighters' time), the brace lengths and how many still braced when
+        the battle ended (the "do lines turtle forever" check), the ends by reason, the margins rolled and the
+        brace length by margin, the shield (taken out, seen in hand, put away by the AI), and the GUARD while
+        bracing (blocks vs hits) with the attacks that still started (melee should be 0; ranged allowed).
   - **Run speed on foot** = M + (1 − M) × f, M = `MinMoveSpeedMultiplier` (initial 0.7 - an empty
     man runs at 70% of his pace; step 14, Anton after his 240v240: "make them slow down to 70% speed",
     the 0.3 of steps 5c-13 was "too slow, unrealistic"; shipped **0.6** since step 20b - Anton after
@@ -898,6 +942,21 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     100 and 0.3 are TUNINGS (defaults.json; this table keeps the initial 50 and 0.7, as step 20b did); config format 5
     moves a format 3-4 file's refill 50 and a format-4 file's run floor 0.6 once, logged - both were exactly what
     Anton's own config.json held (format 4, 0.6 and 50), so his next game runs 100 / 0.3 without a hand edit.
+
+25. **Brace by orders** (step 23, Claude's calls on Anton's ask of 2026-09-29 and the manager's brief - AI_NOTES "Step
+    23"): "the bar" = points ÷ the FULL pool (what the fill shows), not f; the order is the formation's movement order
+    read at every look, and an AI-commanded formation on a plain Move reads as ADVANCE while its behaviour is
+    BehaviorAdvance / CautiousAdvance / Vanguard (the team AI advances on Move orders - read literally, every AI
+    advance would sit on the hold floor 60) and as CHARGE under BehaviorTacticalCharge; attacking a gate or engine is a
+    charge; the wound cap keeps the band's width under the cap (floor = min(order floor, cap − margin)), so a wounded
+    man is never stuck and never braces full to his cap; the per-man margin is rolled once per man and battle at his
+    first look and the spread slider rescales every roll live (his place in the spread is kept); the brace uses ONLY
+    step 16's input technique (no NoAttack fallback - its own wish, so no hold's end can lift another); ranged is let
+    through by what he holds (read about every 0.25 s) and by a ranged action under way; the shield: taken out with
+    TryToWieldWeaponInSlot (a one-hander first after a two-hander), at most 3 calls a brace, nothing forced back at its
+    end; `EnforceShieldUsage` was NOT used (vanilla's formation update rewrites it for every AI agent; RBM needs a Harmony
+    patch to keep it) - the shield is kept up through the input instead (`BraceRaiseShield`); riders and AI heroes
+    brace, the player never; the formation read API counts Bracing / Ready for the next step's "ready men".
 
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),

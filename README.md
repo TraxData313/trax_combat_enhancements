@@ -50,6 +50,11 @@ Releasing it: [tools/WORKSHOP-UPLOAD.md](tools/WORKSHOP-UPLOAD.md).
   fresh or tired (a beat with the shield up between blows); other foot soldiers 15% less; AI archers
   wait 2 seconds more after each arrow and crossbowmen 2.5 — about 30% fewer shots a minute. Each is a
   slider (0 = off); riders, javelins and you are never slowed by it.
+- **Tired lines brace by their orders** — an AI soldier whose Athletics bar falls to a floor set by
+  his formation's order (holding 60%, advancing 40%, charging 20%) stops swinging and only defends,
+  shield out and up, until he is back 20 points above it (each man ± 5, a little bravery rolled once a
+  battle). So a holding line attacks at first, then braces; order a charge and it surges again.
+  Archers keep shooting; wounds never trap a man in it; never you. Every floor is a slider.
 - **See it** — your own Athletics bar under your health bar: the number, a mark at the peak line,
   green at full strength, then blue, yellow, orange and red as you tire, the part your wounds hold
   shown dark; above it the Attack recovery bar with the seconds of your wait inside it. And in the orders menu, a slim strip under each formation card: its men's average

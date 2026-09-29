@@ -2755,3 +2755,99 @@ exhaustion counts +1 for that recruit). deploy.ps1: build, AssemblyGuard, smoke 
    ≥ 45.0 s, close to it when men walked.
 6. The migration on Anton's file → `[config] migrated config.json at startup: RegenRateNearFullPercent: 50 → 100 …`,
    `… MinMoveSpeedMultiplier: 0.6 → 0.3 …`, `rewrote config.json as format 5 with the 2 migrated value(s)`.
+
+## Step 23 — brace by orders: tired AI men stop swinging and defend (DONE 2026-09-29)
+
+Anton (2026-09-29, via the manager): "soldiers get to 0% athletics but they still swing as much as they can - make soldiers
+not swing but only defend when they have reached a certain floor, that depends on their current orders, until they have
+replenished the floor +20%: standing, retreating or at halt 60% ... advancing 40%; charge 20% ... when defending they whip
+out their shields if they have one". Mid-step addition (Anton): "+- 5% additive to those 20% he has to wait per soldier
+(once rolled on a battle, adds some bravery-like randomness)" and a per-formation Bracing / Ready count for step 24.
+DESIGN §2 "Brace by orders" is the spec; interpretation 25.
+
+**Verified in the v1.4.8 source (`..\reference\game-decompiled\TaleWorlds.MountAndBlade\`)**
+- `Formation.GetReadonlyMovementOrderReference()` → `ref readonly MovementOrder`; `MovementOrder.OrderEnum`
+  (`MovementOrderEnum`: Invalid 0, AttackEntity 1, Charge 2, ChargeToTarget 3, Follow 4, FollowEntity 5, Move 7, Retreat 8,
+  Stop 9, Advance 10, FallBack 11). Managed reads (`Agent.Formation` = a field). RBM reads it the same way.
+- **The team AI advances on MOVE orders**: `BehaviorAdvance`, `BehaviorCautiousAdvance`, `BehaviorVanguard` set
+  `MovementOrderMove(position)`; `BehaviorCharge` sets Charge / ChargeToTarget; `BehaviorTacticalCharge` alternates Charge
+  and Move (reform, charge past); defend / hold-high-ground / skirmish behaviours use Move too; `BehaviorStop` Stop,
+  `BehaviorRetreat` Retreat. So read literally every AI advance would sit on the hold floor (60). Decided: an
+  AI-controlled formation (`Formation.IsAIControlled`) on Move reads its `FormationAI.ActiveBehavior` (a plain field
+  getter): Advance / CautiousAdvance / Vanguard → "the AI's advance" (40), TacticalCharge → "the AI's tactical charge" (20);
+  every other Move → hold. The player's own formations are not AI-controlled while he commands them - their orders are his.
+- **Wielding**: `Agent.TryToWieldWeaponInSlot(EquipmentIndex, WeaponWieldActionType, bool isWieldedOnSpawn)` - native
+  (`MBAPI.IMBAgent`); vanilla uses it for the victory cheer (`AgentVictoryLogic`, WithAnimation), scene animation points and
+  after a game object. `WieldNextWeapon(HandIndex, …)` cycles (useless for "the shield"). `GetOffhandWieldedItemIndex` /
+  `GetPrimaryWieldedItemIndex` read the agent's own memory (pointers); `Equipment[i]` is managed (`MissionWeapon.IsShield()`,
+  `CurrentUsageItem.WeaponFlags` `NotUsableWithOneHand`, `IsRangedWeapon`, `Item.Weapons` = the usages).
+- **The AI's own weapon choice is native** (no managed weapon-selection code in HumanAIComponent - its only wield hook is
+  `OnAgentWieldedItemChange → DisablePickUpForAgentIfNeeded`). Whether the AI puts our shield away again can only be seen in
+  game. Decided: best effort - checked every 1 s while bracing (`BraceMath.ShieldCheckSeconds`), at most 3 wield calls a
+  brace (a one-hander, the shield, one re-try), and MEASURED: `the shield seen in his hand after we asked` vs `the AI put it
+  away again while bracing` vs `never in his hand`.
+- **`Agent.EnforceShieldUsage(UsageDirection)`** (native) holds the shield up (vanilla's shield wall: front rank DefendDown) -
+  NOT used: `Agent.ApplyFormationValuesPostUpdate` calls `UpdateFormationOrders()` for every AI agent on each formation
+  update, which rewrites it from the arrangement (`ArrangementOrder.GetShieldDirectionOfUnit` - None outside shield wall /
+  circle / square); RBM keeps its own only by a Harmony prefix on `UpdateFormationOrders`. We have no Harmony, so the shield
+  is kept up through the input instead: `BraceRaiseShield` - `AiInputMath.RaiseShield` ORs `DefendDown` into a frame with no
+  attack and no guard of his own (his own block directions stay his).
+
+**The build (Claude's calls - Anton can overturn any)**
+1. **The bar** = `Fighter.Fraction` (points ÷ the FULL pool) - what the fill shows, not f.
+2. **The band** (`BraceMath.Band`): floor F by order, his margin M = `BraceRecoverPercent` + his offset (≥ 1 point), the top T
+   his wounds allow: target = min(F + M, T), floor = min(F, max(0, T − M)). Enter at or below the floor while below the
+   target; leave at or above the target. Under a wound cap the band keeps its width and slides down (a man capped at 50 under
+   hold braces 30 → 50) - never stuck, never bracing full to his cap. Ends: the group changed since the start → "the order
+   changed"; else capped → "his wound cap"; else "refilled".
+3. **The spread**: each AI man rolls a unit u ∈ [−1, 1) ONCE at his first look (`BraceDice`, ThreadSafeRandom in game, seeded
+   in the smoke) and keeps it; offset = u × `BraceRecoverSpreadPercent` read LIVE (a slider change rescales everyone at once,
+   each keeping his place - simpler and truer to "once rolled" than re-rolling). Default 5.
+4. **The look**: `TickBrace` every tick - switched off → every brace lifted at once (and a line); else a slice of the dense
+   list so each man is looked at about every 0.25 s (`PollSeconds`, plumbing; a call after a longer gap looks at everyone).
+   Per look: IsActive, the player / not AI-controlled check, the order, the band - no allocation (the BraceState is made once
+   per man). Measured: 1000 men, 400 bracing, **0.003 ms a tick, 0 bytes**.
+5. **The hold**: a fourth wish on step 16's `AiInputState` (`BraceHoldAttacks`) - `Active` is ANY wish, so the AI timer's end,
+   the backpedal's end and the brace's end never lift each other, and `UnhookIfIdle` keeps the callback on while any runs.
+   The same `AiInputMath.HoldAttacks` (attack bits out, a guard when he wants to attack, a ready cancelled). The brace is
+   input-only (no NoAttack variant - `AttackRatePaceByInput` does not switch it).
+6. **Ranged goes on**: the look reads his hands (`BraceRanged` = a ranged weapon in the main hand) and the frame lets
+   through a ranged action under way (ReadyRanged, ReleaseRanged / Throwing, Reload); a bracing man's melee release is
+   counted (should be ~0), a ranged one counted apart (allowed).
+7. **Who**: AI men on foot and mounted, AI heroes; never the player (`IsPlayer`), and a man the player takes over (not
+   AI-controlled) ends his brace ("the player took him"). The step back (it rolls at a swing's end - bracing men do not
+   swing) and battle pace are untouched. The hideout fresh start ends a brace. Leaving the field ends it without an engine call.
+8. **The shield**: at the start (`BraceWieldShield`): in hand → nothing; a ranged weapon in hand → left alone; a weapon that
+   needs both hands → a one-handed weapon first (an item with a one-handed melee usage), the shield at the next check; no
+   one-hander → left alone; else the shield. At the end nothing is forced back (the brief: let the AI choose).
+9. **Formation read API**: `FormationAthleticsStats.Bracing / Ready / Total` from the refresh pass (step 24 reads it).
+10. **Logs**: `[brace]` mission start (the settings sentence), a settings change (not on a master-switch toggle - SameAs
+    compares BraceEnabled), a switch-off line, the first brace and its end in full, verbose per brace (bucket `brace`); the
+    7 `[summary] brace` lines (who, by order, time share, lengths + still bracing at the end - the "turtle" check, ends by
+    reason, margins and length by margin, the shield, the GUARD while bracing + the hook's frames + attacks while bracing +
+    braces the engine never called us during).
+
+**Built** - file map in CLAUDE.md "Layout". Core `Brace.cs`, `BraceStats.cs`; `AiInput.cs` (RaiseShield); `SpreadStats.cs`
+(Bracing / Ready / Total). Settings 86 → 94 in a new MCM group "Brace by orders (AI)" after Battle pace (Refill → Advanced
+renumbered 7-11): `BraceEnabled` true, `BraceFloorChargePercent` 20, `BraceFloorAdvancePercent` 40, `BraceFloorHoldPercent` 60,
+`BraceRecoverPercent` 20, `BraceRecoverSpreadPercent` 5 (0-50), `BraceWieldShield` true, `BraceRaiseShield` true. No config
+migration (new keys take their defaults). Module `BraceBody.cs`, `AthleticsLogic.Brace.cs`; `AiInputHook.cs` (the brace wish,
+SetBrace, the frame counts); the tick, settings change, Forget, ObserveAction, OnMeleeHit, the summary, the hideout fresh start,
+the formation refresh wired. Tests 427 → 442 (`BraceTests`). Smoke 62 → 65 steps (`Program.Brace.cs`: the stand-in body at
+step 4, the real logic end to end, the cost; the master-switch step lifts braces). deploy.ps1 green, INSTALLED.
+
+**UNVERIFIED — only the game can tell (PLAYTEST D7, L6d)**
+1. The engine honours the brace frame → `melee attacks that started while bracing anyway` ~0, `braces the engine never called
+   our input hook during 0`.
+2. The order read matches what the player gave and what the enemy's AI does → `brace: … by order: …` (`stop / hold` in a hold,
+   `charge` after F1 → Charge, `the AI's advance` for the enemy's approach) and `the order changed` > 0 after a charge.
+3. **Lines do not turtle forever** → `brace lengths` mostly under 15 s, few `still bracing when the battle ended`; blocks cost
+   Athletics (step 22) and restart the refill delay, so a man pressed hard may not refill at all - if the lengths are long,
+   the fix is a cheaper `CostPerShieldBlock`, lower floors or a smaller margin (all sliders).
+4. **The shield comes out and stays** → `the shield seen in his hand after we asked` vs `the AI put it away again while
+   bracing`; if the AI always puts it away, the next try is re-asserting every check (raise `MaxWieldCalls`) - tell Claude.
+5. The raised shield helps → `brace GUARD` blocked % ≥ the AI holds GUARD line's `everyone else`; if bracing men are slowed
+   too much walking with the shield up (they lag their formation), switch `BraceRaiseShield` off and compare.
+6. Two-handers switch to a one-hander and shield (`a one-hander first` > 0 and later `taken out`), and their AI picks the
+   two-hander again after the brace (Anton's eye).
+7. Cost → `Athletics tick cost` in a 400+ man battle close to step 22's.
