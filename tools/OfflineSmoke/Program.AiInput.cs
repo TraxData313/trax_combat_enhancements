@@ -35,7 +35,7 @@ namespace TraxCombat.Tools
             var s = st.Input!;
             if (!s.Active) return flags;
             s.Calls++;
-            AiInputHook.Apply(st, s, S.AiHoldRaiseGuard, ref flags, ref vx, ref vy);
+            AiInputHook.Apply(st, s, S.AiHoldRaiseGuard, ref flags, ref vx, ref vy, S.BraceRaiseShield);
             return flags;
         }
 

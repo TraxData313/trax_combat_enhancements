@@ -924,6 +924,13 @@ namespace TraxCombat.Tools
             for (int i = 0; i < 3; i++) Swing(me, ref t);
             Check(_logic.PlayerTimer.Running, "precondition: your countdown is not running");
 
+            // step 23: tired men bracing (fighter 3 is empty, 60 is tired - both under the default hold floor)
+            var braceBody = new FakeBraceBody();
+            _logic.BraceBody = braceBody;
+            _logic.TickBrace(t);
+            int bracingBefore = _logic.BracingNow;
+            Check(bracingBefore >= 2 && a.Brace != null && a.Brace.Active && me.Brace == null, "precondition: the tired men do not brace (step 23), or you do");
+
             S.Set(SettingsSchema.ModEnabled, false, SettingSources.Mcm);
             _statTop.UpdateAgentStats(a.Agent, p); // a recompute before the logic's tick: already vanilla
             Check(Near(p.SwingSpeedMultiplier, 1.05f) && Near(p.MaxSpeedMultiplier, 0.8f), "mod off: the stat decorator still applied a penalty");
@@ -938,6 +945,10 @@ namespace TraxCombat.Tools
             LogHas("[rate] ModEnabled switched OFF mid-mission at ");
             LogHas(" s: 2 held fighters may attack again at once");
             S.Set(SettingsSchema.ShieldInfantrySwingsLessPercent, 0, SettingSources.Mcm);
+            _logic.TickBrace(t);
+            Check(_logic.BracingNow == 0 && braceBody.Released.Count == bracingBefore && !a.Brace!.Active && (a.Input == null || !a.Input.BraceHoldAttacks),
+                "mod off: the braces were not lifted at once (step 23)");
+            LogHas("[brace] the whole mod (ModEnabled) switched OFF mid-mission at ");
             _logic.TickPlayerTimer(t);
             Check(!_logic.PlayerTimer.Holding && _logic.RateStats.PlayerEnded(PlayerTimerEnd.SwitchedOff) == 1, "mod off: your pause was not released at once");
             _logic.SmokePlayer = null;

@@ -187,7 +187,7 @@ namespace TraxCombat.Core
         public static BraceRules From(TraxSettings s) => new BraceRules(s.ModEnabled, s.AthleticsEnabled, s.BraceEnabled,
             s.BraceFloorChargePercent, s.BraceFloorAdvancePercent, s.BraceFloorHoldPercent, s.BraceRecoverPercent, s.BraceWieldShield, s.BraceRaiseShield, s.BraceRecoverSpreadPercent);
 
-        public bool SameAs(in BraceRules o) => Enabled == o.Enabled && FloorChargePercent == o.FloorChargePercent && FloorAdvancePercent == o.FloorAdvancePercent
+        public bool SameAs(in BraceRules o) => BraceEnabled == o.BraceEnabled && FloorChargePercent == o.FloorChargePercent && FloorAdvancePercent == o.FloorAdvancePercent
                                                && FloorHoldPercent == o.FloorHoldPercent && RecoverPercent == o.RecoverPercent && RecoverSpreadPercent == o.RecoverSpreadPercent
                                                && WieldShield == o.WieldShield
                                                && RaiseShield == o.RaiseShield;
