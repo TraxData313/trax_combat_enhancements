@@ -29,14 +29,16 @@ Releasing it: [tools/WORKSHOP-UPLOAD.md](tools/WORKSHOP-UPLOAD.md).
 - **Athletics** — every fighter has an Athletics bar, his stamina, as big as his **Athletics
   skill** (never under 50). Each blow costs 10 points. The top quarter of the bar — above the
   peak line — is full strength; below it his lucky hits, his attack rate and his run speed fade,
-  down to one attack where he used to make five, and 60% of his running pace, when it is empty. No slow motion: his swings,
+  down to one attack where he used to make five, and 30% of his running pace, when it is empty. No slow motion: his swings,
   draws and throws only look a little heavier (85% of their speed when he is empty), but after each attack a tired fighter
   must wait before the next one — you see your wait fill up in an Attack recovery bar (press attack too early and it
   just flashes; hold the button and you strike the moment it fills), the AI waits with its guard
   up. Blocking, kicks and moving are never held; a kick or a shield bash costs a little
-  Athletics (3 points) but never starts a wait. Wounds cap the bar. Rest to
-  refill it: one minute standing or walking, twice that running flat out — quick while the bar is
-  low, slower as it fills (half the bar in about 25 seconds). Heroes pay less per
+  Athletics (3 points) but never starts a wait. Defending costs too: each blow you block costs you
+  1 point with the shield held the right way, 5 held the wrong way, 2 parried with a weapon — so a
+  man kept busy blocking tires and does not rest (arrows into a shield are free). Wounds cap the bar.
+  Rest to refill it: one minute standing or walking, twice that running flat out, at the same rate
+  all the way (a slider can make it quicker when low). Heroes pay less per
   blow, party leaders less again, and a hero's big Athletics skill means a big bar — the battle
   leans on its heroes. In a hideout, when the boss steps out with his men, they come fresh — and
   so does your side: the moment the fight begins, your bar is full again (you alone in a duel, you

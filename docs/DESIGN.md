@@ -29,7 +29,7 @@ A 50-damage hit lands for anything from 25 to 75, rolled anew on every hit.
 ## 2. Athletics (the stamina bar)
 
 A per-fighter pool — the **Athletics** bar — in every combat mission. Simpler cousin of RCM's
-posture: it only ever drains by attacking. Near the top of his OWN bar a fighter is at full
+posture: it drains by attacking (and, since step 22, a little by blocking). Near the top of his OWN bar a fighter is at full
 strength; below that line his damage upside, attack rate and run speed fall in straight lines,
 down to long pauses between attacks and a slow run when it is empty. (Athletics v2, Anton 2026-09-27, built in
 step 5c: it replaced step 5's flat 100-point pool, the cliff at 0 and the standing/moving
@@ -69,6 +69,21 @@ regen.)
   it never starts the no-attack pause below (step 13's rules stand - a kick is never held, a bash
   waits while a pause runs), never rolls a step back, and the log counts it apart. Riders cannot
   kick; a mounted bash, should the engine ever play one, is charged the same.
+- **Defending costs too** (Anton, 2026-09-29, for slower battles: "defending with shield in the right
+  direction 1, with shield - wrong direction 5, without shield - 2"; built in step 22). Every melee blow a
+  fighter BLOCKS costs HIM, the defender: `CostPerShieldBlock` (1) POINTS when his shield stops it on the
+  correct side, `CostPerWrongSideShieldBlock` (5) when the shield stops it held to the wrong side (the game
+  judges the side and weakens such a block itself), `CostPerWeaponParry` (2) when he blocks or parries it
+  with a weapon, no shield (a chamber block too) — each × the same hero and party-leader multipliers as a
+  blow (1 / 5 / 2 for a soldier, 0.75 / 3.75 / 1.5 for a hero, 0.56 / 2.81 / 1.13 for a party leader); 0 =
+  free. The AI's and yours alike, on foot or mounted. Charged ONCE per blocked blow (a swing touching the
+  guard twice is one blow). Paid like a kick: the curves follow, it can take a man below his peak line or
+  empty him, and **it restarts the refill delay** — a man under attack is not resting. It is not an
+  attack: it never starts an attack pause, never rolls a step back, never changes a damage roll, and
+  blocking itself is never held or slowed. **Free**: missiles stopped by a shield (for now - counted in the
+  summary), a blocked kick or shield bash, a blow the shield on his BACK stopped (he did not defend), and
+  everything while the master switch or `AthleticsEnabled` is off. The attacker's blow is charged as
+  before - a blocked swing is still a swing.
 - **The peak zone** — the top of every fighter's OWN bar (Anton, 2026-09-27). At or above
   `AthleticsPeakPercent` (75) % of the fighter's pool the bar is GREEN and the fighter is at
   full strength: full damage upside, full attack rate (no tired pause - step 21's battle pace below still slows
@@ -210,7 +225,9 @@ regen.)
   - **Run speed on foot** = M + (1 − M) × f, M = `MinMoveSpeedMultiplier` (initial 0.7 - an empty
     man runs at 70% of his pace; step 14, Anton after his 240v240: "make them slow down to 70% speed",
     the 0.3 of steps 5c-13 was "too slow, unrealistic"; shipped **0.6** since step 20b - Anton after
-    his playtest of 2026-09-28: "speed (run) floor sweetspot is 60% when their athletics is at 0%").
+    his playtest of 2026-09-28: "speed (run) floor sweetspot is 60% when their athletics is at 0%"; shipped
+    **0.3** again since step 22 - Anton, 2026-09-29, for slower battles: "lower the floor max speed they can
+    run with when they get exhausted to 30% again").
     Tired men slow down, so fresher men
     overtake them. Horses keep their speed (Anton's pick):
     `MountMinSpeedMultiplier` (1.0 = unaffected; lower it to let a tired rider's horse slow on
@@ -227,7 +244,11 @@ regen.)
   - **Faster when low, slower when full** (step 14, Anton: "recover faster when it's low and
     slower as it is fuller by some modifier, not crazy, maybe half linear"). The rate is a straight
     line in the fill x (Athletics ÷ the FULL pool): rate(x) = r0 × (1 − (1 − k) × x), k =
-    `RegenRateNearFullPercent` (50) / 100 - near full the bar refills at half its speed near empty.
+    `RegenRateNearFullPercent` (initial 50) / 100 - near full the bar refills at half its speed near empty.
+    **Shipped 100 since step 22** (Anton, 2026-09-29, for slower battles: "drop the faster athletics
+    increase when empty - return it to fully linear again all the way, 100% for 60 sec"): the same rate
+    all the way, empty → full in exactly 60 s at a walk (half in 30 s, the peak line in 45 s) - the curve
+    below stays one slider away.
     r0 keeps `FullRegenSecondsStanding` meaning "empty to full at a walk or slower":
     r0 = ln(1/k) / ((1 − k) × T) of the pool per second (k = 1 → 1/T, the flat refill of steps
     5c-13). The effort multiplier above multiplies on top (a flat-out run still takes twice as
@@ -855,6 +876,20 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     foot soldier gets the step-16 input component at his first attack (one small object per man, once - the AI
     timer's tick over 1000 held men cost ~0.005 ms and allocated nothing in the smoke); the "swing less" sliders stop
     at 90 (100 = ÷ 0).
+
+24. **Defending costs, the refill straight again, the run floor 0.3** (step 22, Claude's calls on Anton's three asks of
+    2026-09-29 - AI_NOTES "Step 22"): the DEFENDER pays - the man whose shield or weapon stopped the blow (the game's
+    melee collision: `AttackBlockedWithShield` with `CorrectSideShieldBlock` for the side; else a Blocked / Parried /
+    ChamberBlocked result = a weapon parry); a paid block restarts the refill delay, exactly as a kick does (step 18) -
+    so a man kept busy blocking does not refill, which is the point of "slower battles"; a cost of 0 is nothing at
+    all (no delay restart); ONE charge per blocked blow - the same attacker's same swing (his release counter; a
+    couched lance or an untracked attacker: by time) within 1 s is the same blow, a new swing or another attacker a
+    new one; missiles stopped by a shield are free for now (counted), and so are a blocked kick or bash (not blows)
+    and a blow the shield on the back stopped (no defence was made); riders pay like men on foot; AI heroes and the
+    player pay with their multipliers; the step back, the attack pause and the damage roll never look at a block.
+    100 and 0.3 are TUNINGS (defaults.json; this table keeps the initial 50 and 0.7, as step 20b did); config format 5
+    moves a format 3-4 file's refill 50 and a format-4 file's run floor 0.6 once, logged - both were exactly what
+    Anton's own config.json held (format 4, 0.6 and 50), so his next game runs 100 / 0.3 without a hand edit.
 
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),

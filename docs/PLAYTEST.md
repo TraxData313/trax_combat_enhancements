@@ -56,10 +56,17 @@ needs MCM refuses to start for every player without it.
     (the dev copy runs), `[load] module: TraxCombatEnhancements.Dev (the dev install - tools\deploy.ps1)`,
     `[load] game: v1.4.8.…`, `[load] modules (N): …`
   - `[compat] Realistic Battle Mod (RBM) not enabled - good`
-  - `[config] defaults: defaults.json (embedded in TraxCombat.Core.dll), 83 keys for 83 settings - every default read from it`
+  - `[config] defaults: defaults.json (embedded in TraxCombat.Core.dll), 86 keys for 86 settings - every default read from it`
   - `[config] first run: created config.json with every default and a plain-words explanation beside each value`
   - `[config] settings in effect (70, version 0):` and 70 lines like `[config]   DamageRandomPercent = 50`
-  - **Step 20b - YOUR config.json today** (2026-09-28 09:46) is format 3 and holds YOUR playtest values
+  - **Step 22 - YOUR config.json today** (2026-09-29, read only) is format 4 and holds exactly the two old defaults step 22
+    changes, so your next start migrates them, once:
+    `[config] migrated config.json at startup: RegenRateNearFullPercent: 50 → 100 (format 4 → 5, the old default; step 22, Anton for slower battles: the refill is a straight line again - empty to full in the refill time at a walk, no faster when low)`,
+    `[config] migrated config.json at startup: MinMoveSpeedMultiplier: 0.6 → 0.3 (format 4 → 5, the old default; step 22, Anton for slower battles: an empty man runs at 30% of his pace again)`
+    and `rewrote config.json as format 5 with the 2 migrated value(s)` - the settings dump then reads 100 and 0.3, and the three
+    new block costs come in at their defaults (`CostPerShieldBlock = 1`, `CostPerWrongSideShieldBlock = 5`, `CostPerWeaponParry = 2`).
+    The next start reads format 5 and says nothing. (A value you set yourself - say a run floor of 0.5 - stays.)
+  - **Step 20b (history)** - your config.json of 2026-09-28 (2026-09-28 09:46) is format 3 and holds YOUR playtest values
     `MinMoveSpeedMultiplier` **0.5** and `AttackAnimationMinPercent` **90** - not the old defaults, so the migration
     rightly leaves them alone (nothing is logged for them). **To play the new defaults** (run 0.6, swing 85): MCM →
     Defaults → "Revert all to defaults", or set the two by hand. Note: 90 now means the LINE (x0.90 at empty, x0.95
@@ -102,7 +109,7 @@ end it (win or retreat).
 **A4. Now WITH MCM (and RTS Camera, as you usually play).** Quit. Enable *Mod Configuration Menu v5*
 (with Harmony, ButterLib, UIExtenderEx) and RTS Camera + Command System. Start.
 - You see: *"… loaded - settings in Mod Options."*
-- Log: `[mcm] settings page registered at main menu (attempt 1): MCM 5.…, page "Trax Combat Enhancements", 83 settings in 11 groups, format "none" (config.json is the only store), Default preset = the mod's defaults (defaults.json); group "Defaults": buttons "Revert all to defaults" and "Save current values as a defaults file".`
+- Log: `[mcm] settings page registered at main menu (attempt 1): MCM 5.…, page "Trax Combat Enhancements", 86 settings in 11 groups, format "none" (config.json is the only store), Default preset = the mod's defaults (defaults.json); group "Defaults": buttons "Revert all to defaults" and "Save current values as a defaults file".`
   (`at retry (attempt 2)` is fine — MCM woke a moment after us; the first try is now always at the
   main menu, where MCM builds its services — step 12); the settings dump shows
   `VerboseLogging = true (default false)`.
@@ -215,15 +222,14 @@ air (misses cost too), counting — click as fast as you can.
   orange → red and after every swing the recovery bar **empties and refills** (amber, the seconds
   inside it: `0.1 s`, `0.4 s`, … up to `≈ 3 s` at empty - the SAME seconds as before step 20b); **every swing
   itself plays a little slower as you tire — visibly heavier near empty (85%), never slow motion** (step 20b).
-  At ~16 the word reads *Exhausted* in red. Run: about 60% of your
-  pace — clearly slower, not a crawl (step 20b). Block: normal. Stop: about 3 s later the bar
-  climbs — **quickly at first, then slower near the top** (step 14): ~25 s to half, ~41 s to green,
-  60 s to full.
-- Then empty yourself again and RUN flat out while it refills: about twice as long (the same curve).
-- Tell Claude: is 60% still the sweet spot for the run when empty? Is 85% the right heaviness for a tired
-  swing (*Tired fighters* → *Attack animation speed when empty (%)*: 100 = full speed to compare)? Does the
-  refill curve feel right (fast back into the fight, slow to top off)? *Refill* → *Refill speed near full (%)*
-  100 = the old even refill to compare.
+  At ~16 the word reads *Exhausted* in red. Run: about **30%** of your
+  pace — a trudge (step 22, Anton: "to 30% again"; 60% until then). Block: normal (but it costs a little -
+  C1d). Stop: about 3 s later the bar climbs — **in a straight line** (step 22: the even refill again): 30 s to
+  half, 45 s to green, 60 s to full.
+- Then empty yourself again and RUN flat out while it refills: about twice as long (120 s to full).
+- Tell Claude: is 30% right for the run when empty (*Tired fighters* → *Run speed when empty (x)*)? Is 85% the
+  right heaviness for a tired swing (*Tired fighters* → *Attack animation speed when empty (%)*: 100 = full speed
+  to compare)? The even refill vs step 14's curve: *Refill* → *Refill speed near full (%)* 50 = the curve to compare.
 - Log (always):
   - `[rate] attached: your attack gate FIRST in the behaviour list (0 of N; behaviours pre-tick from the end, so it runs right after MissionMainAgentController at K) - …`
     (at the mission start - `could not attach your attack gate` → tell Claude) and, at your first pause,
@@ -236,12 +242,12 @@ air (misses cost too), counting — click as fast as you can.
   - `[athletics] YOU: Athletics skill 90 → pool 90 (the skill x1.00, at least 50); full strength down to 68 (75%); a blow costs you 5.6 - about 5 blows at full strength, 16 to empty`
     — **the skill must match your character screen**
   - `[athletics] YOU dropped below full strength at … s: 61.9 of 90 (the line is 68) after 5 blows this mission - f 0.92: attacks x0.93, run x0.94, damage upside 92% of the full`
-  - `[athletics] YOU are exhausted at … s: 0 of 90 after 16 blows this mission - attacks at 20% speed, run x0.60, no damage upside until you rest (…)`
+  - `[athletics] YOU are exhausted at … s: 0 of 90 after 16 blows this mission - attacks at 20% speed, run x0.30, no damage upside until you rest (refill starts 3.0 s after your last blow or paid block)`
   - `[athletics] YOU are off empty at …`,
-    `[athletics] YOU are back at full strength at … s: 67.5 of 90 (the line is 68) - up from empty in 40.7 s of refill (40.7 s at a walk or slower; near full at 50% of the rate near empty (at a walk: half the bar in 25 s, the peak line in 41 s))`
-    — standing or walking the "up from empty" time ≈ 40.7 s (step 14's curve; the even refill took 45 s); running, longer,
-    `[athletics] YOU are back to full at … s: 0 → 90 of 90 in 60.0 s of refill (at a walk or slower 60.0 s, faster 0.0 s; avg rate x1.00; empty to full takes 60 s at rest, 120 s at a full run; near full at 50% of the rate near empty (…))`
-    — after the run `… avg rate x0.5…`; **still 60.0 s at a walk** (the curve moves time from the top of the bar to the bottom, never adds any)
+    `[athletics] YOU are back at full strength at … s: 67.5 of 90 (the line is 68) - up from empty in 45.0 s of refill (45.0 s at a walk or slower; the same rate all the way (RegenRateNearFullPercent 100))`
+    — standing or walking the "up from empty" time ≈ 45 s (step 22: the even refill; step 14's curve took 40.7 s); running, longer,
+    `[athletics] YOU are back to full at … s: 0 → 90 of 90 in 60.0 s of refill (at a walk or slower 60.0 s, faster 0.0 s; avg rate x1.00; empty to full takes 60 s at rest, 120 s at a full run; the same rate all the way (RegenRateNearFullPercent 100))`
+    — after the run `… avg rate x0.5…`; **60.0 s at a walk**, the bar rising by the same amount every second (step 22)
   - the colours: `[hud] player bar: BLUE for the first time this battle at … - f 0.97, …`, then
     `YELLOW`, `ORANGE`, `RED`, `[hud] player bar: EXHAUSTED shown at …`
   - the recovery bar: `[hud] recovery bar: first pause shown at … s - empty at your attack, now refilling over 0.40 s (D 0.82 s at attack speed x0.67), "0.4 s" inside it, counting down`
@@ -300,11 +306,36 @@ air (misses cost too), counting — click as fast as you can.
 - Broken: a kick costing a full blow (5.6 for you) or nothing; a kick or a bash emptying the recovery bar;
   two lines for one bash.
 
+**C1d. Blocking costs Athletics too (step 22).** At full strength, face one enemy (a sword and shield is
+easiest) and let him swing at you:
+1. **Block with the shield, the right way** (guard towards his swing) 5 times. You see: the number drops **~0.56
+   each** — you are a hero AND the party leader (1 × 0.75 × 0.75); a soldier pays 1, a companion 0.75. The
+   recovery bar stays **full and quiet**: a block is never an attack pause.
+2. **Block with the shield the WRONG way** (guard to the other side - the game's own "wrong side" block) a
+   few times: **~2.8 each** (5 × 0.56) — clearly more.
+3. **Parry with a weapon** (a two-hander or a sword without a shield): **~1.1 each** (2 × 0.56).
+4. Keep blocking a busy enemy for 20 s: **the bar does not refill while you block** — each paid block
+   restarts the 3 s refill delay, like a swing. Step back out of reach: the refill starts ~3 s later.
+5. Arrows into your shield: **free** (for now) — the number does not move.
+6. Watch the front: shield-wall men who block a lot tire too, a little — their bars in the orders strip /
+   under ALT drop even when they barely swing.
+7. *Athletics* → *Cost per shield block (points)* 0: a right-side block is free at once.
+- Log (always; the first of each KIND per battle, in full):
+  `[athletics] YOU: shield block (right side) at … s cost 0.56 Athletics (1.00 x0.56 hero party leader): 90.0 → 89.4 of 90 (f 1.00 → 1.00) - the first of this kind this battle: a melee blow you block costs YOU CostPerShieldBlock x your hero / party-leader multipliers, once per blow, and restarts the refill delay; blocking is never held or slowed`,
+  the same for `shield block (WRONG side)` (2.81, CostPerWrongSideShieldBlock) and `weapon parry` (1.13, CostPerWeaponParry);
+  later ones only with `VerboseLogging`: `~[athletics] shield block (right side) (on foot): <name> (you) - cost 0.6 (x0.56: hero party leader), …`
+  (the AI's the same, bucket `athletics-block`).
+- Summary (L4): `Athletics blocks paid by the defender N (P points; by riders R): shield right side a (…), shield WRONG side b (…), weapon parries c (…) | by you y (…), AI heroes h (…), other AI o (…) | free (cost 0) 0, while Athletics was off 0, the same blow seen again (not charged twice) d, missiles stopped by a shield (free) m; …`
+  — **tell Claude the three counts and the points against the blows line's total** (how much of the drain blocks
+  are); `the same blow seen again` is the dedupe at work (a swing touching a guard twice) - fine at any size.
+- Broken: a block costing a whole blow (5.6 for you) or nothing; a wrong-side block costing the same as a right-side
+  one every time (the side is not read); the recovery bar emptying on a block; arrows into your shield costing.
+
 **C2. Recruits run dry, legionaries keep going.** Let the lines meet; watch the front from close by.
 - You see: recruits' swings stay quick, but after 2 swings they wait longer and longer between them
   and after ~5 they strike about once in four swing-lengths — between blows they stand, guard up,
   still blocking; legionaries keep their pace for ~4 swings and last ~13; exhausted men lag when a
-  formation moves and fresh men overtake them. **No slow-motion swings anywhere** - tired men's swings only
+  formation moves and fresh men overtake them — an empty man trudges at 30% of his pace (step 22). **No slow-motion swings anywhere** - tired men's swings only
   look a little heavier (step 20b: x0.85 at empty).
 - Log:
   - verbose samples: `~[athletics] pool at spawn: Imperial Recruit - Athletics skill 20 → pool 50 (the floor); 2 blows at full strength, 5 to empty`,
@@ -774,7 +805,7 @@ defaults file**.
   back to its default (N changed) - applied now; config.json saved."* (MCM's Cancel does not undo it.)
 - Log: `[mcm] "Revert all to defaults" pressed`, one `[config] <Key>: … → … (source: defaults)` per
   setting that moved, `[config] wrote config.json (reverted to defaults): every value as it is in effect now`,
-  `[config] reverted all 83 settings to their defaults (…): N changed, applied live`.
+  `[config] reverted all 86 settings to their defaults (…): N changed, applied live`.
 
 **G4 (optional, 1 min). The rewrite rule.** Hand-edit one value in config.json; then — before any
 battle — change a DIFFERENT value in MCM and press Done. The hand edit must still be in the file.
@@ -809,7 +840,7 @@ From `Documents\Mount and Blade II Bannerlord\Configs\TraxCombatEnhancements\` (
   when both are on); `[mcm]` registered or not (A1, A4) — step 12: at most ONE `not ready yet` line,
   followed by `registered at retry (attempt N)` or one `never became ready - gave up after 31 attempts …`;
   with MCM's module off but its DLL carried by another mod, one `MCM's module is not enabled - no settings page; config.json only.`
-  and nothing more; `[config] defaults: … 83 keys for 83 settings` (any `defaults.json PROBLEM:` under it →
+  and nothing more; `[config] defaults: … 86 keys for 86 settings` (any `defaults.json PROBLEM:` under it →
   that setting runs on a fallback — tell Claude); `[config] settings in effect (70, version N):` and
   one line per setting (a changed one ends `(default …)`). An old config.json still holding an old default is
   migrated once: format 3 (step 14's) `[config] migrated config.json at …: MinMoveSpeedMultiplier: 0.7 → 0.6 (format 3 → 4, the old default; step 20b, …)`
@@ -878,7 +909,8 @@ shield blocks (switch), falls, doors / siege engines / ships.
 
 ### L4. Athletics and speed
 
-- Start: `[athletics] mission start: ON - pool = the Athletics skill x1.00, at least 50; full strength at 75% of the pool and above; cost per blow 10.0 / hero 7.5 / party leader 5.6 points; a kick or shield bash 3.00 / hero 2.25 / party leader 1.69 points, misses cost: yes; when empty: attacks at 20%, run x0.70, horses x1.00 (never slowed); damage upside follows Athletics: yes; wounds cap the pool: yes; refill after 3.0 s rest: empty to full in 60 s at a walk or slower (up to 0.40 of top speed), x0.50 at a full run, near full at 50% of the rate near empty (at a walk: half the bar in 25 s, the peak line in 41 s) - read live`;
+- Start: `[athletics] mission start: ON - pool = the Athletics skill x1.00, at least 50; full strength at 75% of the pool and above; cost per blow 10.0 / hero 7.5 / party leader 5.6 points; a kick or shield bash 3.00 / hero 2.25 / party leader 1.69 points; a blocked blow costs the defender: shield right side 1.00 / wrong side 5.00 / weapon parry 2.00 points (a hero x0.75, a party leader x0.56), misses cost: yes; when empty: attacks at 20%, run x0.30, horses x1.00 (never slowed); damage upside follows Athletics: yes; wounds cap the pool: yes; refill after 3.0 s rest: empty to full in 60 s at a walk or slower (up to 0.40 of top speed), x0.50 at a full run, the same rate all the way (RegenRateNearFullPercent 100) - read live`
+  (step 22: the block prices, run x0.30, the even refill);
   `[athletics] party-leader rule: …` (custom battle: `no campaign (custom battle) - the side's general, or every hero of a side without one`);
   `[speed] stat model on top in this mission: ours, over <the game's model> - …` (**`WARNING: … not ours`** → another mod took the slot: tell Claude);
   `[athletics] party leader: …`, `[athletics] YOU: …` (C1), `[athletics] first tick: tracking N fighters`.
@@ -888,7 +920,8 @@ shield blocks (switch), falls, doors / siege engines / ships.
   (*Horse speed when the rider is empty (x)* below 1.0): `[speed] first horse slowed this mission: …`.
 - Verbose: `~[athletics] pool at spawn: …`, `~[athletics] hero: …`, `~[athletics] blow melee (on foot) / (mounted) / ranged / couched/braced …`
   (`- below full strength`, `- EXHAUSTED`), `~[athletics] kick (on foot): <name> - cost 3.0, 50.0 → 47.0 of 50 (f 1.00 → 1.00)`
-  / `shield bash` / `kick/bash at its hit` (step 18), `~[athletics] exhausted: …`, `~[athletics] off empty: …`,
+  / `shield bash` / `kick/bash at its hit` (step 18), `~[athletics] shield block (right side) (on foot): <name> - cost 1.0, 50.0 → 49.0 of 50 (f 1.00 → 1.00)`
+  / `shield block (WRONG side)` / `weapon parry` (step 22, bucket `athletics-block` - the DEFENDER's cost), `~[athletics] exhausted: …`, `~[athletics] off empty: …`,
   `~[athletics] <name> is back to full …`, `~[athletics] health cap: <name> at 40% health - Athletics 90.0 → 52.0 of 130 (f 0.53)`,
   `~[speed] <name>: attacks x0.93, run x0.94 (f 0.92)`.
 - Mid-battle changes: `[athletics] pool settings now: …; everyone keeps his share …`, `[speed] speed settings now: …`,
@@ -902,9 +935,10 @@ shield blocks (switch), falls, doors / siege engines / ships.
   ```
   [summary] Athletics settings at the end: ON - pool = the Athletics skill x1.00, at least 50; …
   [summary] Athletics pools (the Athletics skill x1.00, at least 50; settings at the end): 400 fighters - min 50 / avg 88.5 / max 130; 200 at the floor; you 90 (skill 90); party leaders: you 90, Arcor 80
-  [summary] Athletics blows charged: 412 (melee swings 300, shots/throws 100, couched/braced hits 12, landed-only swings 0, landed-only shots 0) - by riders 60, on foot 352; + kicks/bashes 8 (not blows - their own line); Athletics spent 3914 points (kicks/bashes 24 of them)
+  [summary] Athletics blows charged: 412 (melee swings 300, shots/throws 100, couched/braced hits 12, landed-only swings 0, landed-only shots 0) - by riders 60, on foot 352; + kicks/bashes 8 and blocks 260 (not blows - their own lines); Athletics spent 4400 points (kicks/bashes 24, blocks 486 of them)
   [summary] Athletics detection: melee releases seen 300 (mounted 50) | shots seen 100 (+0 extra projectiles of the same shot ignored) | ranged releases seen by the poll 98 | melee hits by fighters 280 (on foot 240, mounted 40): during a counted release 276, outside one 4 [in action: Other(0) 4]
   [summary] Athletics kicks/bashes charged 8 (23.6 points; by riders 0): kicks 3, shield bashes 5, at their hit with no kick or bash seen 0 | seen starting: kicks 3 (channel 1 0, channel 0 3), shield bashes 5 (channel 1 5, channel 0 0); kick/bash hits 6; free (CostPerKickOrBash 0) 0; each charged once, when it starts; never an attack pause
+  [summary] Athletics blocks paid by the defender 260 (486.0 points; by riders 6): shield right side 180 (170.0), shield WRONG side 40 (196.0), weapon parries 40 (120.0) | by you 22 (19.5), AI heroes 4 (6.0), other AI 234 (460.5) | free (cost 0) 0, while Athletics was off 0, the same blow seen again (not charged twice) 12, missiles stopped by a shield (free) 90; each blocked blow charged once to the defender; never an attack pause or a step back
   [summary] Athletics free (never charged): couched hits within one blow-length of the last 2, attacks while Athletics was off 0, …
   [summary] Athletics exhaustions (empty, f 0): 45 entered, 30 left; the peak zone: left 380 times (a blow took a fighter below his line), re-entered 150 times (by refill)
   [summary] Athletics fighter-time by f (the share of his peak line left): peak (f 1) 71.0%, f 0.5-1 16.0%, f below 0.5 9.0%, empty (f 0) 4.0% of 52000 fighter-seconds
@@ -912,11 +946,11 @@ shield blocks (switch), falls, doors / siege engines / ships.
   [summary] Athletics you: skill 90 → pool 90; 25 blows, 1 exhaustion, lowest 0.0 of 90
   [summary] Athletics your formations at the end: 1 Infantry 61 ± 14 (38 men) f avg 0.71, 9 at full strength, health avg 74% | …
   [summary] Athletics health cap: 120 cuts (a wound pulled Athletics down to the health left), biggest 60.0 points, 2400 points in all
-  [summary] Athletics regen: 9000 fighter-seconds refilling - at a walk or slower (effort up to 0.40) 7000 s at the walking rate (x1), faster 2000 s at avg x0.71; refills to the top: 38 to full, 12 to a wound's cap; refill curve: near full x0.50 of near empty (RegenRateNearFullPercent 50), x1.39 → x0.69 of a flat refill
-  [summary] Athletics refill from empty to the peak line (no blow between): 14 runs, avg 47.3 s (fastest 40.8 s, slowest 61.2 s) - 40.7 s at a walk or slower with these settings, longer while moving faster than a walk
+  [summary] Athletics regen: 9000 fighter-seconds refilling - at a walk or slower (effort up to 0.40) 7000 s at the walking rate (x1), faster 2000 s at avg x0.71; refills to the top: 38 to full, 12 to a wound's cap; refill curve: flat (RegenRateNearFullPercent 100)
+  [summary] Athletics refill from empty to the peak line (no blow between): 14 runs, avg 51.3 s (fastest 45.1 s, slowest 66.2 s) - 45.0 s at a walk or slower with these settings, longer while moving faster than a walk
   [summary] Athletics refill effort (speed ÷ current top speed), seconds per tenth (0-0.1 … 0.9-1, above 1): 5200 300 400 900 200 150 150 200 400 900 200, max 1.30
   [summary] speed updates: 900 recomputes asked (…; 0 held a tick by the per-tick budget), the decorator applied attack penalties in 1200 recomputes, run penalties in 1200, horse penalties in 0 (…)
-  [summary] run speed check, on foot (÷ the fighter's own top speed when fresh), by f: peak (f 1) engine top x1.00 asked x1.00, moving p90 x0.95 … | … | empty (f 0) engine top x0.60 asked x0.60, … - the engine's top speed follows the curve
+  [summary] run speed check, on foot (÷ the fighter's own top speed when fresh), by f: peak (f 1) engine top x1.00 asked x1.00, moving p90 x0.95 … | … | empty (f 0) engine top x0.30 asked x0.30, … - the engine's top speed follows the curve
   [summary] run speed check, horses (…), by the rider's f: MountMinSpeedMultiplier 1.00 = horses never slow - … - unaffected, as asked
   [summary] walk vs run speeds (tune WalkEffortFraction, now 0.40): on foot walk limit avg 1.80 m/s (n 480), top avg 4.50 m/s (n 480) → walk/top 0.40; horses …
   [summary] Athletics tick cost: avg 0.120 ms, max 1.300 ms per tick over 5400 ticks; fighters polled avg 480, max 1020
@@ -925,7 +959,7 @@ shield blocks (switch), falls, doors / siege engines / ships.
   Proves: pools from the skill (min / avg / max, `at the floor` = the troops under skill 50; your pool =
   your skill); `whose skill could not be read` above 0 → tell Claude; the peak zone left and re-entered;
   **run speed `follows the curve`** (`does NOT follow` → tell Claude) and `moving p90` falling row by
-  row (the empty row now at x0.60 - step 20b; x0.70 in step 14); health-cap cuts after a real fight; regen by effort and
+  row (the empty row now at x0.30 - step 22; x0.60 in step 20b, x0.70 in step 14); health-cap cuts after a real fight; regen by effort and
   its curve; **`refill from empty to the peak line`** — the avg never below the "at a walk" time (a
   shorter one → the curve is off, tell Claude), close to it when men stood and walked, longer when they
   ran (step 14); **`walk vs run speeds`** — the ratio that
@@ -933,7 +967,9 @@ shield blocks (switch), falls, doors / siege engines / ships.
   `speed updates` in the hundreds or low thousands for a big battle and `held a tick` 0 or small;
   **`Athletics tick cost` avg well under 1 ms** in a 500+ battle (above 2 ms → tell Claude); detection:
   `outside one` small next to `during a counted release`, `shots seen` ≈ `ranged releases seen by the poll`;
-  errors none.
+  **`blocks paid by the defender`** (step 22) — all three kinds above 0 after a melee (`shield WRONG side 0` in a
+  big fight → the side is never read: tell Claude), `other AI` carrying most of it, `free` and `while Athletics was
+  off` 0 unless you set a price to 0 or switched off; errors none.
 
 ### L5. Attack rate — PAUSE ONLY (step 13)
 

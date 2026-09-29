@@ -19,7 +19,12 @@ swing (step 5d) - since step 16 a BACKPEDAL through the AI's own input, facing t
 pause survives it (one per-man `AgentComponent` on `OnAIInputSet` does both; A/B switches keep the old ways).
 Heroes and party leaders pay less per blow (and big-skill heroes have
 big bars), so the game leans hero-centred. Kicks and shield bashes cost a little too (step 18:
-`CostPerKickOrBash` 3 × the same multipliers, once each, never an attack pause). A hideout's boss
+`CostPerKickOrBash` 3 × the same multipliers, once each, never an attack pause). DEFENDING costs too (step 22):
+every melee blow a fighter BLOCKS costs HIM - `CostPerShieldBlock` 1 (shield, right side), `CostPerWrongSideShieldBlock`
+5, `CostPerWeaponParry` 2 - × the same multipliers, once per blocked blow (OnMeleeHit's collision data, Core `BlockMath` /
+`BlockTracker`); a paid block restarts the refill delay; never an attack pause or a step back; missiles into a shield
+free. Step 22 also shipped the refill a straight line again (`RegenRateNearFullPercent` 100) and the run floor 0.3
+(config format 5 migrates both once). A hideout's boss
 fight is a fresh start for the player's side (step 19, `HideoutBossFightRefill`: when the game's
 "Win the Duel" / "Win the Fight" objective appears, his side refills to its wound cap and every pause /
 step back on them ends; in a duel his men stand aside, so only he refills). BATTLE PACE (step 21,
@@ -164,7 +169,7 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
   ParamDef.cs                 one setting: key, type, range, group, label, plain-words
                               description, apply timing (Live / NextBattle); Normalize, Format;
                               its Default comes from defaults.json (DefaultsFile), never code
-  SettingsSchema.cs           EVERY setting of DESIGN's table (83), in file + MCM order, 11 groups
+  SettingsSchema.cs           EVERY setting of DESIGN's table (86), in file + MCM order, 11 groups
                               ("Master switch" first, "Battle pace (AI)" - step 21 - after the step back,
                               "Formation markers (hold ALT)" - step 20 - before
                               "Advanced" last; step 10b's one vocabulary and
@@ -182,11 +187,13 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
   ConfigFile.cs               config.json TEXT: commented writer (header incl. how to revert +
                               // above each key; AppendSettings shared with defaults.json),
                               tolerant reader (comments, trailing commas, casing, "0,75"), Apply;
-                              FormatVersion 4 + Migrate (step 13: a format-1 file's old defaults -
+                              FormatVersion 5 + Migrate (step 13: a format-1 file's old defaults -
                               AttackRateAiDecisions true, PlayerBarOffsetBottom 54 - get the new ones once;
                               step 14: a format-2 file's MinMoveSpeedMultiplier 0.3 → the default once;
                               step 20b: a format-3 file's 0.7 → 0.6 and a format 2-3 file's
-                              AttackAnimationMinPercent 100 → 85 once; Migrate(read, defaultOf) = the
+                              AttackAnimationMinPercent 100 → 85 once; step 22: a format 3-4 file's
+                              RegenRateNearFullPercent 50 → 100 and a format-4 file's MinMoveSpeedMultiplier
+                              0.6 → 0.3 once; Migrate(read, defaultOf) = the
                               seam the tests hand defaults.json's values through - they run on DESIGN's)
   ConfigMerge.cs              THE FILE-REWRITE RULE (MCM wins for what it touched, the disk for
                               the rest) + EditTracker (what MCM changed since the last write)
@@ -228,7 +235,10 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               RegenRateMultiplier by effort, SpeedUpdateNeeded (0.05 step), PeakBin;
                               step 14's refill curve: RegenCurve = 1 − (1 − k) x, RegenRateAtEmpty r0 =
                               ln(1/k) / ((1 − k) T), RefillFrom / RefillSeconds - exact per step;
-                              step 19: FreshStart - the refill to the top the wounds allow + FreshStartOutcome)
+                              step 19: FreshStart - the refill to the top the wounds allow + FreshStartOutcome;
+                              step 22: BlockCostSetting / BlockCostPoints by BlockKind + ChargeBlock
+                              (Fighter.BlocksPaid, never Blows; cost 0 = nothing at all), the three
+                              CostPer*Block/Parry rules)
                               + Charge / ApplyHealth / Regen / Read; BlowKind, BlowOutcome,
                               RegenOutcome, AthleticsReading (HUD snapshot incl. f, usable pool,
                               BelowFull = below the top it can refill to - step 12)
@@ -237,6 +247,12 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               kick on both = one), Hit = the fallback when no channel shows one (the
                               poll's late sight within SameActionSeconds 1.0 not charged again); the
                               engine's action codes (the smoke checks them)
+  Block.cs                    step 22: BlockKind (none / shield right side / shield WRONG side / weapon parry),
+                              BlockMath - KindOf (the engine's AttackBlockedWithShield, CorrectSideShieldBlock,
+                              CollisionResult; missiles, kicks / bashes, horse charges, the shield on the back
+                              = None), the result codes (the smoke checks them), Name, SettingKey;
+                              BlockTracker (a struct on the defender: the same attacker's same swing within
+                              SameBlowSeconds 1.0 = the same blow - one charge per blocked blow)
   HideoutBossFight.cs         step 19: the hideout boss fight's facts - BossObjectiveId, the duel / battle text
                               ids (KindOf from TextObject.Value), the controllers by name, BossFightKind,
                               HideoutSide (Player / Boss / Aside / Gone), RefillOffBecause (ModEnabled first);
@@ -348,7 +364,9 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               attack-interval classes went in 5e
   AthleticsStats.cs           per-mission Athletics counters + the [summary] text (pools from the
                               skill, blows by kind, riders, detection cross-checks, kicks / bashes
-                              charged apart - by channel, at the hit, free (step 18), free actions,
+                              charged apart - by channel, at the hit, free (step 18), blocks paid by
+                              the defender - by kind, by you / AI heroes / other AI, free, off, the
+                              same blow again, missiles into a shield (step 22), free actions,
                               exhaustions + peak zone, fighter-time by f, heroes, player,
                               formations, health cap, regen by effort and its curve, refills from
                               empty to the peak line (step 14), run-speed checks by f,
@@ -412,7 +430,10 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               detection (poll ReleaseMelee, OnMeleeHit, OnAgentShootMissile,
                               OnMissileHit), step 18's kicks / bashes (channel 1 + channel 0 on foot
                               - ObserveLowerAction; the hit reads both, then KickOrBashHit;
-                              ChargeKickOrBash - no timer, no step back; the YOU line), the health
+                              ChargeKickOrBash - no timer, no step back; the YOU line), step 22's
+                              blocks (OnMeleeHit's LAST try: BlockHitTaken → BlockMath.KindOf →
+                              BlockTaken - the defender's BlockTracker, ChargeBlock, AfterCharge; the
+                              YOU line per kind; OnMissileHit counts missiles into a shield), the health
                               cap (OnAgentHit + every regen step), regen
                               by effort, three speed multipliers re-targeted in 0.05 steps and
                               applied by UpdateAgentProperties (≤ 50 a tick), the horse table
@@ -516,7 +537,7 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               refusals, never waits; release = the callback off if idle); PaceState +
                               ByInput, Overlapped, Deferred, the call count at the start, hits taken;
                               step 21: the pause's parts (Tired, Share), its Class and Percent
-  Missions/TrackedAgent.cs    one fighter's record: Core Fighter + detection, f-bin, fresh top
+  Missions/TrackedAgent.cs    one fighter's record (step 22: + Block, his BlockTracker): Core Fighter + detection, f-bin, fresh top
                               speed and slowed-horse fields, his StepBackState (null until needed),
                               the attack-rate phase state (step 20b: + the phase's animation multiplier),
                               the running attack's D (at full animation speed) + as played and its end, his
@@ -594,7 +615,7 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               values line, the [summary] line (AltMarkerStats)
   Hud/AltMarkersVM.cs         its ViewModels: the root + a GROW-ONLY MBBindingList of AltMarkerLabelVM keyed by
                               team + formation (a label never swaps formations when vanilla re-sorts)
-tests/TraxCombat.Core.Tests/  net8.0 xUnit (418) — schema vs DESIGN.md (keys + types), one copy
+tests/TraxCombat.Core.Tests/  net8.0 xUnit (427) — schema vs DESIGN.md (keys + types), one copy
                               runs (SingleCopyTests: claims on private slots, copies, texts), when
                               MCM is tried and when it stops (McmPlanTests - step 12),
                               defaults.json (DefaultsFileTests), master switch, settings, config
@@ -605,7 +626,9 @@ tests/TraxCombat.Core.Tests/  net8.0 xUnit (418) — schema vs DESIGN.md (keys +
                               - T for any k, 100 = the old rule to the bit, exact steps - DESIGN's
                               blow counts), kicks and bashes (KickBashTests, step 18: 3 / 2.25 / 1.69,
                               free at 0 and off, one decision per action across both channels and the
-                              hit), the hideout boss fight (HideoutBossFightTests, step 19: the refill to the
+                              hit), blocks (BlockTests, step 22: 1 / 5 / 2 x the multipliers, live, drain
+                              and the refill delay, free at 0 and off, the classifier, once per blow, the
+                              refill at 100 exactly linear, the format-5 migration), the hideout boss fight (HideoutBossFightTests, step 19: the refill to the
                               wound cap, the ids and text ids, the gate, the line and the summary texts), mean/std,
                               the run-speed check, Athletics summary, the
                               attack rate (rules, AI values x / ÷ m, the cap, verdicts, phases /
@@ -673,7 +696,10 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               curves blow by blow, DESIGN's blow counts, the health cap, the
                               upside by f, horses; step 18: kicks and bashes - the costs, once each
                               on either channel or at the hit, no timer / roll, 0 / off, the YOU line,
-                              the game's action codes), the step back (Program.StepBack.cs: the real
+                              the game's action codes; step 22: blocks - Core's classifier on the game's
+                              own AttackCollisionData and result codes, the prices by kind and by who, once
+                              per blocked blow, no pause / roll, a recruit emptied by blocks, live, 0 / off),
+                              the step back (Program.StepBack.cs: the real
                               logic's bookkeeping with a stand-in IStepBackBody - rolls by f,
                               queue, cap, live time, every release path, logs, summary), the
                               attack rate (Program.AttackRate.cs, step 13: full-speed animations,
@@ -731,7 +757,7 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               class through the real logic (a fresh shield man 0.78 s, a tired one, a two-hander,
                               riders, bows fresh / tired / mounted, a crossbow, a javelin, you never), hot swap,
                               the master switch (its own step lifts a fresh man's share too), the summary; and the
-                              cost - 1000 men held at once, the AI timer's tick ~0.005 ms, 0 bytes (61 steps; the config
+                              cost - 1000 men held at once, the AI timer's tick ~0.005 ms, 0 bytes (62 steps; the config
                               checks work for any tuned default);
                               TRAX_SMOKE_KEEP=1 keeps its temp folder + log to read
 tools/DefaultsTool/           defaults.json upkeep: refresh (rewrite comments/order, keep every

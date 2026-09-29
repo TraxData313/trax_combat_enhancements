@@ -2652,3 +2652,106 @@ multiplicatively, AI only, a data check before fixing the formula. DESIGN §2 "B
 6. Slower battles overall → D5's `after N s` (an 80v80 infantry fight ended in 4-5 min before step 16) and Anton's feel.
 7. The crossbow is still in hand at its release (`WieldedWeapon` read at ReleaseRanged) → crossbowmen counted as crossbowmen,
    not "thrown and slings".
+
+## Step 22 — defending costs the defender, the refill linear again, the run floor 0.3 (DONE 2026-09-29)
+
+Anton (2026-09-29, via the manager, "to make battles slower"): "drop the faster athletics increase when empty - return it
+to fully linear again all the way, 100% for 60 sec"; "make defending cost some athletics: defending with shield in the
+right direction 1, with shield - wrong direction 5, without shield - 2 (params of course)"; "lower the floor max speed they
+can run with when they get exhausted to 30% again".
+
+**Verified in the v1.4.8 source (`..\reference\game-decompiled\TaleWorlds.MountAndBlade\`)**
+- `AttackCollisionData` (public struct): `AttackBlockedWithShield`, `CorrectSideShieldBlock`, `IsAlternativeAttack`,
+  `IsMissile`, `IsHorseCharge`, `CollidedWithShieldOnBack`, `CollisionResult` (`CombatCollisionResult`: None 0, StrikeAgent 1,
+  HitWorld 2, **Blocked 3, Parried 4, ChamberBlocked 5**). `GetAttackCollisionDataForDebugPurpose(...)` is public static - the
+  smoke builds real ones.
+- `Mission.MeleeHitCallback`: `flag` = Parried || Blocked || ChamberBlocked; `isCanceled` (flag2) = … || (flag &&
+  !AttackBlockedWithShield) - so a WEAPON block is "canceled" (no damage at all) and a SHIELD block is not (the shield takes
+  damage through `GetAttackCollisionResults`); then `OnMeleeHit(attacker, victim, isCanceled, collisionData)` on every
+  behaviour, ONCE per collision. `victim` = the agent whose guard stopped it = the DEFENDER. `CorrectSideShieldBlock` is read by
+  the game itself (`MissionCombatMechanicsHelper`: `ShieldCorrectSideBlockDamageMultiplier` on the shield's damage) - the side
+  is the game's own judgement. The shield on the back is its own flag (`CollidedWithShieldOnBack`).
+- Missiles: `OnMissileHit` with `AttackBlockedWithShield` (and `MissileBlockedWithWeapon`) - a separate callback.
+
+**Built** (file map in CLAUDE.md "Layout")
+- `defaults.json`: `RegenRateNearFullPercent` 50 → **100**, `MinMoveSpeedMultiplier` 0.6 → **0.3**. Tunings: DESIGN's Default
+  column keeps the INITIAL 50 / 0.7 (as step 20b did); the tests run on them. **100 is exactly linear** - step 14's flat branch
+  (`FlatCurve`): r0 = 1/T, `RefillFrom` = x0 + r0 m t, `RefillSeconds` = Δx / (r0 m) - BlockTests checks it to 1e-12 and step by
+  step through `Regen` (1/60 of the bar every second at a walk, full at 60 s).
+- New settings (Athletics group, after `CostPerKickOrBash`, Float 0-20, 0 = free): `CostPerShieldBlock` 1,
+  `CostPerWrongSideShieldBlock` 5, `CostPerWeaponParry` 2. 86 settings.
+- Core `Block.cs`: `BlockKind`; `BlockMath.KindOf` - a missile, a kick / bash (IsAlternativeAttack), a horse charge or the
+  shield on the back → None; the shield flag → right / wrong side by `CorrectSideShieldBlock`; else Blocked / Parried /
+  ChamberBlocked → a weapon parry; else None. `BlockTracker` (a struct on `TrackedAgent.Block`). `AthleticsMath.BlockCostPoints`
+  (the kind's setting × `CostMultiplier` - the blow's hero / leader multipliers), `ChargeBlock` (step 18's `ChargeKickOrBash`
+  pattern: off / None / cost 0 = nothing; `Fighter.BlocksPaid`, never `Blows`; `Drain`).
+- Module: `OnMeleeHit` got a LAST try block `BlockHitTaken` (after the attacker's part, so a release the poll had not seen yet
+  is counted and his `ReleaseSerial` is current) → `BlockTaken(defender, kind, attacker index, attacker swing, now, rules,
+  mounted)` (internal: the smoke drives it) → off: counted `BlocksWhileOff`; the tracker says the same blow: `BlocksSameBlow`;
+  `ChargeBlock`; free: `BlocksFree`; else stats by kind and by who, the log, `AfterCharge` (the curves re-targeted, the peak
+  line, exhaustion - exactly what a blow or a kick does after its points). NOTHING of the attack rate, the step back, the
+  pause or the damage roll is touched. `OnMissileHit` counts missiles into a tracked fighter's shield (free).
+
+**Decisions (Claude's - Anton can overturn any)**
+1. **The regen delay**: a PAID block restarts it (`Drain` sets `LastBlowTime`), exactly as step 18 decided for kicks - a block
+   is effort, and a man kept busy blocking should not refill (the point of "slower battles"). A block at cost 0 is nothing at
+   all (no restart), as a kick at 0.
+2. **Once per blocked blow**: `BlockTracker` keeps the defender's LAST blocked blow (the attacker's agent index, his swing =
+   `ReleaseSerial`, the time). The same attacker within `SameBlowSeconds` 1.0 (plumbing, like step 18's SameActionSeconds)
+   with the same swing - or no swing known (a couched lance: `IsDoingPassiveAttack`, or an untracked attacker → 0) - is the
+   same blow; a new swing (a chained blow at once), another attacker, or 1 s later = a new one. Only the last blow is
+   remembered: two attackers alternating collisions inside one swing each could charge one of them twice - rare (a blocked
+   swing stops at the guard) and cheap (1-5 points); the summary's `the same blow seen again` shows the dedupe's work.
+3. **Which blocks cost**: every tracked defender - you, AI heroes (their multipliers), common soldiers, riders (counted
+   mounted). Free: missiles into a shield (Anton: "for now" - counted in the summary so a later price has its data), a blocked
+   kick or bash (not blows since step 18), a blow the shield on the back stopped (no defence was made), a horse charge. A
+   friendly blow that is blocked counts like any (rare).
+4. **The attacker is unchanged**: his blocked swing costs him as before (released = charged; landed-only mode charges it at the
+   hit - a shield / parry is a "hit" there, as it always was).
+5. **The YOU line**: the first of EACH kind per battle is written in full (`[athletics] YOU: shield block (right side) at …
+   cost 0.56 Athletics (1.00 x0.56 hero party leader) … - the first of this kind this battle: …`) - three lines at most; the
+   rest go verbose with the AI's in bucket `athletics-block` (a big battle has hundreds of blocks - its own bucket, so blow
+   lines cannot starve it).
+6. **Migration (config format 5)**: the old default as THAT file's format knew it - `RegenRateNearFullPercent` 50 in format
+   3-4 (the key came with format 3), `MinMoveSpeedMultiplier` 0.6 only in format 4 (a format-3 file's 0.7 already goes
+   straight to today's default by step 20b's rule; a format 1-2 file's 0.3 IS today's default - nothing to push). **Anton's
+   real config.json** (read only, 2026-09-29 06:40): format 4, `MinMoveSpeedMultiplier` 0.6, `RegenRateNearFullPercent` 50 -
+   dry-run through the built Core DLL: exactly the two notes `RegenRateNearFullPercent: 50 → 100 (format 4 → 5, …)` and
+   `MinMoveSpeedMultiplier: 0.6 → 0.3 (format 4 → 5, …)`, the three new keys missing (→ their defaults). His next game runs
+   100 / 0.3 with the block costs on.
+
+**Side effects to know**
+- Shield walls drain now even when they barely swing - step 21 made them swing less and block more, so a pressed shield wall
+  tires from blocking (1 per blow) and does not refill while it is hit. Step 23 (brace by orders) will lean on exactly that.
+- A tired man held by the pause with his guard up (step 16's `AiHoldRaiseGuard`) pays for every block he makes: at empty he
+  stays empty while he is pressed. That is the design ("a man under attack is not resting") - watch the summary's
+  exhaustions and the `fighter-time by f` empty share against step 21's logs.
+- With the run floor at 0.3 the run multiplier spans 0.7, so more 0.05 recompute steps per refill (~14 from empty to the peak
+  line, as in steps 5c-13) - the per-tick budget (≤ 50) is unchanged.
+- Performance: one struct compare + a few field reads per melee collision; no allocation (the verbose line is built only when
+  `VerboseWants` says yes).
+
+**Tests / smoke**: 418 → 427 (`BlockTests`: prices by kind × soldier / hero / leader for any pool, the settings' place and live
+read + clamp, drain / BlocksPaid / the refill delay / exhaustion by blocks, free at 0 / off / None, the classifier, once per
+blow, the refill at 100 exactly linear, the format-5 migration incl. tuned values kept and Anton's case, the settings
+sentence); the pinned summary / settings strings and the format numbers of the older tests updated. Smoke 61 → 62 steps: NEW
+`BlocksCostTheDefender` (Core's result codes = the game's enum; the classifier on REAL `AttackCollisionData` built by the
+game's own factory - shield right / wrong, parry, chamber, landed, missile, bash; the real logic: 1 / 5 / 2 of 100, the same
+swing again not charged, the delay restarted, no blow / pause / step-back roll, an AI hero 3.75, a leader's parry 1.13, you
+0.56 with the YOU line once, ten wrong-side blocks empty a recruit and his speeds follow, live prices, 0 = free, Athletics /
+the mod off = nothing); the master-switch step (a block while off costs nothing); the summary step (the blocks line; the
+exhaustion counts +1 for that recruit). deploy.ps1: build, AssemblyGuard, smoke green, INSTALLED.
+
+**UNVERIFIED — only the game can tell (PLAYTEST C1, C1d, L4)**
+1. Blocks are seen in all three kinds → `[summary] Athletics blocks paid by the defender …: shield right side a, shield WRONG
+   side b, weapon parries c` all > 0 after a melee; `WRONG side 0` in a big fight → `CorrectSideShieldBlock` is not what we
+   think (tell Claude).
+2. The player's lines → `[athletics] YOU: shield block (right side) … cost 0.56 …`, `… (WRONG side) … 2.81 …`, `weapon parry …
+   1.13 …` - one of each kind per battle; the bar drops a little per block (Anton's eye).
+3. The dedupe → `the same blow seen again` small next to the charged count (a large share → OnMeleeHit fires more often per
+   blow than the research says - still charged once, fine).
+4. The run at empty is 30% → `run speed check … empty (f 0) engine top x0.30 asked x0.30`.
+5. The refill a straight line → `refill curve: flat (RegenRateNearFullPercent 100)`; `refill from empty to the peak line` avg
+   ≥ 45.0 s, close to it when men walked.
+6. The migration on Anton's file → `[config] migrated config.json at startup: RegenRateNearFullPercent: 50 → 100 …`,
+   `… MinMoveSpeedMultiplier: 0.6 → 0.3 …`, `rewrote config.json as format 5 with the 2 migrated value(s)`.

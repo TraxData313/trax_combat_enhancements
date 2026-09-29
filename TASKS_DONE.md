@@ -832,3 +832,27 @@
   too); build 0 warnings; deploy.ps1: build, AssemblyGuard, smoke green and INSTALLED. Docs: DESIGN §2 "Battle pace" +
   interpretation 23, PLAYTEST D5 / D6 / L6c, README, Steam description (5370 bytes), CLAUDE summary + layout, AI_NOTES
   "Step 21" (the data, the formula, decisions, UNVERIFIED). Commits 0020499, a21a507 + this. (2026.09.28 12.33.35)
+- [x] 22. Anton's tuning + defending costs (2026-09-29, "to make battles slower"): defaults.json RegenRateNearFullPercent
+  50 → 100 (the refill a straight line again: empty → full in 60 s at a walk, half in 30, the peak line in 45 - step 14's flat
+  branch, checked exact) and MinMoveSpeedMultiplier 0.6 → 0.3 (DESIGN's Default column keeps the initial 50 / 0.7 - tunings, as
+  in 20b). NEW: a blocked melee blow costs the DEFENDER - CostPerShieldBlock 1 (shield, right side), CostPerWrongSideShieldBlock 5
+  (the engine's CorrectSideShieldBlock false), CostPerWeaponParry 2 (Blocked / Parried / ChamberBlocked without the shield flag)
+  × the blow's hero / party-leader multipliers (0.75 / 3.75 / 1.5 a hero, 0.56 / 2.81 / 1.13 a hero leader); Athletics group,
+  0-20, 0 = free; 86 settings. Why the defender and how: OnMeleeHit fires once per melee collision with the victim = the man
+  whose guard stopped it (decompiled Mission.MeleeHitCallback); a last try block there (after the attacker's part, so his
+  release counter is current) → Core BlockMath.KindOf (missiles, kicks / bashes, horse charges, the shield on the back = free)
+  → BlockTaken → the defender's BlockTracker (the same attacker's same swing within 1 s = the same blow; a couched lance / an
+  untracked attacker by time) → AthleticsMath.ChargeBlock (step 18's kick pattern: Fighter.BlocksPaid, never Blows) →
+  AfterCharge. A PAID block restarts the refill delay (effort, as a kick - a man kept busy blocking does not rest); cost 0 =
+  nothing; master switch / AthleticsEnabled off = nothing; never an attack pause, a step back or a damage roll; the attacker's
+  own blow unchanged; missiles into a shield free (counted). Config format 5: a format 3-4 file's refill 50 and a format-4
+  file's run floor 0.6 → the new defaults once, logged - Anton's real config.json (format 4, 0.6, 50) dry-run through the built
+  DLL: exactly those two notes. Logs: `[athletics] YOU: shield block (right side) / (WRONG side) / weapon parry …` the first of
+  each kind per battle in full, the rest verbose (bucket athletics-block) with the AI's; the settings sentence names the
+  prices; `[summary] Athletics blocks paid by the defender N (P points; by riders R): by kind (points) | by you / AI heroes /
+  other AI | free, while off, the same blow seen again, missiles stopped by a shield`; the blows line adds the blocks and
+  their points. Tests 418 → 427 (BlockTests + the pinned strings / format numbers); smoke 61 → 62 steps (the classifier on
+  the game's own AttackCollisionData, the real logic end to end, the master switch); build 0 warnings; deploy.ps1 green and
+  INSTALLED. Docs: DESIGN §2 "Defending costs too" + the run / refill notes + 3 rows + interpretation 24, PLAYTEST A1 (the
+  migration) / C1 (30% run, the straight refill) / new C1d (blocks) / L4, README, Steam description (5467 bytes), CLAUDE
+  summary + layout, AI_NOTES "Step 22". Commit a821f90 + this. (2026.09.29 06.48.00)
