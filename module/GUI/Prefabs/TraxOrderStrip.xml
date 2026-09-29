@@ -5,7 +5,9 @@
     card - the numbers "72% ± 8" (left) and "HP 81%" (right) just under the card, the middle left
     free for the game's order icons, and under them a slim bar: the men's mean Athletics (@Fill,
     coloured by their average f), a translucent ± band (@BandLow → @BandHigh: the FillBarWidget's
-    ChangeWidget spans exactly that) and a thin tick at the peak line.
+    ChangeWidget spans exactly that) and a thin tick at the peak line. Step 24: under the bar, left,
+    "ready 34/50" - the men not bracing (@ReadyShown: ShowReadyCount on and bracing possible), plain /
+    yellow / red by the share ready; the panel rows carry it after the health.
     The cells are placed in SCREEN PIXELS read from the vanilla cards every frame (Scaled* widget
     properties take pixels - AI_NOTES "Step 9"); the rest is in UI pixels of the 1080p layout
     (OrderStrip* settings), so the game's UI scale applies.
@@ -35,6 +37,9 @@
                     <TextWidget Id="Athletics" WidthSizePolicy="CoverChildren" HeightSizePolicy="CoverChildren" HorizontalAlignment="Left" VerticalAlignment="Top" MarginLeft="@SideMargin" MarginTop="@TextMarginTop" Brush="AgentHUD.Interaction.Text" Brush.FontSize="@TextSize" Text="@AthleticsText" DoNotAcceptEvents="true" />
 
                     <TextWidget Id="Health" WidthSizePolicy="CoverChildren" HeightSizePolicy="CoverChildren" HorizontalAlignment="Right" VerticalAlignment="Top" MarginRight="@SideMargin" MarginTop="@TextMarginTop" Brush="AgentHUD.Interaction.Text" Brush.FontSize="@TextSize" Text="@HealthText" IsVisible="@HealthShown" DoNotAcceptEvents="true" />
+
+                    <!-- step 24: "ready 34/50" (men not bracing), left, under the bar; plain / yellow / red by the share ready -->
+                    <TextWidget Id="Ready" WidthSizePolicy="CoverChildren" HeightSizePolicy="CoverChildren" HorizontalAlignment="Left" VerticalAlignment="Top" MarginLeft="@SideMargin" MarginTop="@ReadyMarginTop" Brush="AgentHUD.Interaction.Text" Brush.FontSize="@TextSize" Brush.FontColor="@ReadyColor" Text="@ReadyText" IsVisible="@ReadyShown" DoNotAcceptEvents="true" />
 
                     <!-- the bar: dark ground, the mean fill, the ± band over it, the peak tick -->
                     <Widget Id="Bar" WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="@BarHeight" VerticalAlignment="Top" MarginTop="@BarMarginTop" MarginLeft="@SideMargin" MarginRight="@SideMargin" Sprite="BlankWhiteSquare_9" Color="#141414D0" DoNotAcceptEvents="true">
@@ -84,6 +89,7 @@
                           <Children>
                             <TextWidget Id="RowAthletics" WidthSizePolicy="CoverChildren" HeightSizePolicy="CoverChildren" Brush="AgentHUD.Interaction.Text" Brush.FontSize="@TextSize" Text="@AthleticsText" DoNotAcceptEvents="true" />
                             <TextWidget Id="RowHealth" WidthSizePolicy="CoverChildren" HeightSizePolicy="CoverChildren" MarginLeft="12" Brush="AgentHUD.Interaction.Text" Brush.FontSize="@TextSize" Text="@HealthText" IsVisible="@HealthShown" DoNotAcceptEvents="true" />
+                            <TextWidget Id="RowReady" WidthSizePolicy="CoverChildren" HeightSizePolicy="CoverChildren" MarginLeft="12" Brush="AgentHUD.Interaction.Text" Brush.FontSize="@TextSize" Brush.FontColor="@ReadyColor" Text="@ReadyText" IsVisible="@ReadyShown" DoNotAcceptEvents="true" />
                           </Children>
                         </ListPanel>
                       </Children>

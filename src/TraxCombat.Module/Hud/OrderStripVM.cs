@@ -106,6 +106,14 @@ namespace TraxCombat.Hud
             Color.ConvertStringToColor(BarMath.RedHex),
         };
 
+        /// <summary>Step 24: the ready count's colours by <see cref="ReadyBand"/> (plain, yellow, red).</summary>
+        internal static readonly Color[] ReadyColors =
+        {
+            Color.ConvertStringToColor(ReadyMath.ColorHex(ReadyBand.Plain)),
+            Color.ConvertStringToColor(ReadyMath.ColorHex(ReadyBand.Yellow)),
+            Color.ConvertStringToColor(ReadyMath.ColorHex(ReadyBand.Red)),
+        };
+
         private bool _isShown;
         private float _positionX;
         private float _positionY;
@@ -126,6 +134,12 @@ namespace TraxCombat.Hud
         private int _mean = -1;
         private int _spread = -2;
         private int _health = -2;
+        private string _readyText = string.Empty;
+        private Color _readyColor = ReadyColors[0];
+        private bool _readyShown;
+        private float _readyMarginTop;
+        private int _ready = -1;
+        private int _total = -1;
 
         public OrderStripCellVM(int formationIndex)
         {
@@ -143,6 +157,11 @@ namespace TraxCombat.Hud
 
         internal int ShownHealth => _health;
 
+        /// <summary>Step 24: the ready count now shown (-1 while hidden).</summary>
+        internal int ShownReady => _readyShown ? _ready : -1;
+
+        internal int ShownTotal => _readyShown ? _total : -1;
+
         internal void SetLayout(in StripLayout layout)
         {
             TextSize = layout.TextSize;
@@ -150,6 +169,7 @@ namespace TraxCombat.Hud
             BarMarginTop = layout.BarMarginTop;
             BarHeight = layout.BarHeight;
             SideMargin = layout.SideMargin;
+            ReadyMarginTop = layout.ReadyMarginTop;
         }
 
         /// <summary>Where the cell goes, in screen pixels (bound to the Scaled* widget properties).</summary>
@@ -180,6 +200,20 @@ namespace TraxCombat.Hud
                 HealthText = OrderStripMath.HealthText(health);
             }
             HealthShown = health >= 0;
+        }
+
+        /// <summary>Step 24: the ready count ("ready 34/50") - the text rebuilt only when a number changes.</summary>
+        internal void SetReady(bool shown, int ready, int total, ReadyBand band)
+        {
+            ReadyShown = shown;
+            if (!shown) return;
+            ReadyColor = ReadyColors[(int)band];
+            if (ready != _ready || total != _total)
+            {
+                _ready = ready;
+                _total = total;
+                ReadyText = ReadyMath.Text(ready, total);
+            }
         }
 
         /// <summary>This formation has a cell (strip) / a row (panel) now.</summary>
@@ -340,6 +374,58 @@ namespace TraxCombat.Hud
                 if (value == _healthShown) return;
                 _healthShown = value;
                 OnPropertyChangedWithValue(value, nameof(HealthShown));
+            }
+        }
+
+        /// <summary>Step 24: "ready 34/50" - men not bracing of the formation.</summary>
+        [DataSourceProperty]
+        public string ReadyText
+        {
+            get => _readyText;
+            set
+            {
+                if (value == _readyText) return;
+                _readyText = value;
+                OnPropertyChangedWithValue(value, nameof(ReadyText));
+            }
+        }
+
+        /// <summary>Step 24: plain, yellow or red by the share ready (Brush.FontColor).</summary>
+        [DataSourceProperty]
+        public Color ReadyColor
+        {
+            get => _readyColor;
+            set
+            {
+                if (value == _readyColor) return;
+                _readyColor = value;
+                OnPropertyChangedWithValue(value, nameof(ReadyColor));
+            }
+        }
+
+        /// <summary>Step 24: ShowReadyCount on and bracing possible (ReadyRules).</summary>
+        [DataSourceProperty]
+        public bool ReadyShown
+        {
+            get => _readyShown;
+            set
+            {
+                if (value == _readyShown) return;
+                _readyShown = value;
+                OnPropertyChangedWithValue(value, nameof(ReadyShown));
+            }
+        }
+
+        /// <summary>Step 24: the ready row inside the cell (OrderStripReadyOffset - the cell's top).</summary>
+        [DataSourceProperty]
+        public float ReadyMarginTop
+        {
+            get => _readyMarginTop;
+            set
+            {
+                if (value == _readyMarginTop) return;
+                _readyMarginTop = value;
+                OnPropertyChangedWithValue(value, nameof(ReadyMarginTop));
             }
         }
 

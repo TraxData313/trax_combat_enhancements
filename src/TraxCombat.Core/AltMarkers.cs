@@ -417,8 +417,8 @@ namespace TraxCombat.Core
             + ", " + OrderStripMath.Px(m.Distance) + " m";
 
         /// <summary>"yours 1 Infantry 72% ± 8 HP 81% (40 men, f 0.90)" - log lines only.</summary>
-        public static string DescribeValues(in AltMarker m, int meanPercent, int spreadPercent, int healthPercent) =>
-            TeamName(m.TeamType) + " " + OrderStripMath.DescribeValues(m.FormationIndex, m.Stats, meanPercent, spreadPercent, healthPercent);
+        public static string DescribeValues(in AltMarker m, int meanPercent, int spreadPercent, int healthPercent, int ready = -1, int total = -1) =>
+            TeamName(m.TeamType) + " " + OrderStripMath.DescribeValues(m.FormationIndex, m.Stats, meanPercent, spreadPercent, healthPercent, ready, total);
     }
 
     /// <summary>

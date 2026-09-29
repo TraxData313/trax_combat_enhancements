@@ -12,6 +12,9 @@ namespace TraxCombat.Hud
     /// of the game's formation cards a slim Athletics bar (the men's mean share of their pools,
     /// coloured by their average f, a ± FormationSpreadStdDevs band, the peak tick) and the numbers
     /// "72% ± 8" and "HP 81%" (ShowFormationHealth). Anton: "some vision of the state of the troops".
+    /// Step 24: under the bar, "ready 34/50" - the men NOT bracing (step 23's read API: Ready of Total, the
+    /// player left out like every other number here), plain / yellow / red by the share ready (ShowReadyCount;
+    /// hidden while bracing is off - <see cref="ReadyRules"/>); the panel rows carry it too.
     ///
     /// ALIGNMENT: the vanilla cards are READ LIVE, never patched (AI_NOTES "Step 9"): on each open
     /// the order layer's widget tree is scanned once (<see cref="IOrderCardSource.Scan"/>), then every
@@ -83,6 +86,9 @@ namespace TraxCombat.Hud
         /// <summary>This mission's strip numbers ([summary]).</summary>
         internal OrderStripStats StripStats { get; } = new OrderStripStats();
 
+        /// <summary>Step 24: this mission's ready counts ([summary]).</summary>
+        internal ReadyCountStats ReadyStats { get; } = new ReadyCountStats();
+
         /// <summary>The cells sit under the cards now.</summary>
         internal bool UnderCards => _mode == Mode.Cards;
 
@@ -135,7 +141,11 @@ namespace TraxCombat.Hud
             _vm = null;
         }
 
-        internal override void AddSummaryLines(List<string> lines) => lines.Add(StripStats.SummaryLine());
+        internal override void AddSummaryLines(List<string> lines)
+        {
+            lines.Add(StripStats.SummaryLine());
+            lines.Add(ReadyStats.SummaryLine(ViewName));
+        }
 
         // ------------------------------------------------------------------ every frame: alignment
 
@@ -342,6 +352,7 @@ namespace TraxCombat.Hud
             bool spread = s.ShowFormationSpread;
             double k = s.FormationSpreadStdDevs;
             bool health = s.ShowFormationHealth;
+            var ready = ReadyRules.From(s);
             int pushed = 0;
             for (int i = 0; i < OrderStripMath.CardsPerSet; i++)
             {
@@ -351,6 +362,18 @@ namespace TraxCombat.Hud
                 OrderStripMath.Band(in st, spread, k, out float low, out float high);
                 int hp = health ? OrderStripMath.HealthPercent(st.MeanHealth) : -1;
                 vm.Cells[i].SetValues(BarMath.Band(in rules, st.MeanPeakShare), BarMath.Fill(st.MeanFraction), low, high, peak, mean, sp, hp);
+                var hidden = ReadyMath.HiddenFor(in ready, in st);
+                if (hidden == ReadyHidden.None)
+                {
+                    var band = ReadyMath.Band(in ready, st.Ready, st.Total);
+                    vm.Cells[i].SetReady(true, st.Ready, st.Total, band);
+                    ReadyStats.NoteShown(st.Ready, st.Total, band, i);
+                }
+                else
+                {
+                    vm.Cells[i].SetReady(false, 0, 0, ReadyBand.Plain);
+                    ReadyStats.NoteHidden(hidden);
+                }
                 pushed++;
             }
             _statsVersion = version;
@@ -360,7 +383,7 @@ namespace TraxCombat.Hud
             {
                 _valuesLoggedThisOpen = true;
                 TraxLog.Limited("hud", ViewName + ": values at " + S1(f.Now) + " s (open #" + _openNo + ", " + ModeName() + "): " + DescribeValues(vm)
-                    + " - ± is " + (spread ? F2(k) + " std" : "off (ShowFormationSpread)") + ", health " + (health ? "on" : "off (ShowFormationHealth)"), "hud-strip-values");
+                    + " - ± is " + (spread ? F2(k) + " std" : "off (ShowFormationSpread)") + ", health " + (health ? "on" : "off (ShowFormationHealth)") + ", " + ready.Describe(), "hud-strip-values");
             }
             else if (TraxLog.VerboseWants("hud-strip-values"))
             {
@@ -421,7 +444,7 @@ namespace TraxCombat.Hud
                 if (!_forms[k].HasStats) continue;
                 var cell = vm.Cells[k];
                 if (sb.Length > 0) sb.Append(" | ");
-                sb.Append(OrderStripMath.DescribeValues(k, _forms[k].Stats, cell.ShownMean, cell.ShownSpread, cell.ShownHealth));
+                sb.Append(OrderStripMath.DescribeValues(k, _forms[k].Stats, cell.ShownMean, cell.ShownSpread, cell.ShownHealth, cell.ShownReady, cell.ShownTotal));
             }
             return sb.Length == 0 ? "no formation with tracked men" : sb.ToString();
         }

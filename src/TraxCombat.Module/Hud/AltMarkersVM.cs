@@ -56,7 +56,8 @@ namespace TraxCombat.Hud
         }
     }
 
-    /// <summary>One formation's label: "72% ± 8" (in the colour of the men's f) and "HP 81%", then the slim bar.</summary>
+    /// <summary>One formation's label: "72% ± 8" (in the colour of the men's f) and "HP 81%", then the slim bar; step 24: then
+    /// "ready 34/50" (the men not bracing), plain / yellow / red.</summary>
     public sealed class AltMarkerLabelVM : ViewModel
     {
         private static readonly Color[] BandColors =
@@ -88,6 +89,11 @@ namespace TraxCombat.Hud
         private int _mean = -1;
         private int _spread = -2;
         private int _health = -2;
+        private string _readyText = string.Empty;
+        private Color _readyColor = OrderStripCellVM.ReadyColors[0];
+        private bool _readyShown;
+        private int _ready = -1;
+        private int _total = -1;
 
         public AltMarkerLabelVM(int index)
         {
@@ -108,6 +114,11 @@ namespace TraxCombat.Hud
         internal int ShownSpread => _spread;
 
         internal int ShownHealth => _health;
+
+        /// <summary>Step 24: the ready count now shown (-1 while hidden).</summary>
+        internal int ShownReady => _readyShown ? _ready : -1;
+
+        internal int ShownTotal => _readyShown ? _total : -1;
 
         /// <summary>Seen with a marker this frame (the view hides the rest).</summary>
         internal bool SeenThisFrame { get; set; }
@@ -151,6 +162,20 @@ namespace TraxCombat.Hud
                 HealthText = OrderStripMath.HealthText(health);
             }
             HealthShown = health >= 0;
+        }
+
+        /// <summary>Step 24: the ready count ("ready 34/50") - the text rebuilt only when a number changes.</summary>
+        internal void SetReady(bool shown, int ready, int total, ReadyBand band)
+        {
+            ReadyShown = shown;
+            if (!shown) return;
+            ReadyColor = OrderStripCellVM.ReadyColors[(int)band];
+            if (ready != _ready || total != _total)
+            {
+                _ready = ready;
+                _total = total;
+                ReadyText = ReadyMath.Text(ready, total);
+            }
         }
 
         /// <summary>This label is drawn now (its marker is shown).</summary>
@@ -254,6 +279,45 @@ namespace TraxCombat.Hud
                 if (value == _healthShown) return;
                 _healthShown = value;
                 OnPropertyChangedWithValue(value, nameof(HealthShown));
+            }
+        }
+
+        /// <summary>Step 24: "ready 34/50" - men not bracing of the formation.</summary>
+        [DataSourceProperty]
+        public string ReadyText
+        {
+            get => _readyText;
+            set
+            {
+                if (value == _readyText) return;
+                _readyText = value;
+                OnPropertyChangedWithValue(value, nameof(ReadyText));
+            }
+        }
+
+        /// <summary>Step 24: plain, yellow or red by the share ready (Brush.FontColor).</summary>
+        [DataSourceProperty]
+        public Color ReadyColor
+        {
+            get => _readyColor;
+            set
+            {
+                if (value == _readyColor) return;
+                _readyColor = value;
+                OnPropertyChangedWithValue(value, nameof(ReadyColor));
+            }
+        }
+
+        /// <summary>Step 24: ShowReadyCount on and bracing possible (ReadyRules).</summary>
+        [DataSourceProperty]
+        public bool ReadyShown
+        {
+            get => _readyShown;
+            set
+            {
+                if (value == _readyShown) return;
+                _readyShown = value;
+                OnPropertyChangedWithValue(value, nameof(ReadyShown));
             }
         }
 

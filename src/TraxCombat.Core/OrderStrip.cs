@@ -167,22 +167,27 @@ namespace TraxCombat.Core
 
     /// <summary>
     /// The strip's cell layout in UI pixels of the 1080p layout (the Advanced OrderStrip* settings,
-    /// read live), measured from a card's BOTTOM edge. The cell starts at the higher of the two rows
-    /// (<see cref="Top"/>) so the prefab never needs a negative margin.
+    /// read live), measured from a card's BOTTOM edge. The cell starts at the higher of its rows
+    /// (<see cref="Top"/>) so the prefab never needs a negative margin. Step 24: a third row, the ready
+    /// count (<see cref="ReadyOffset"/>), counts only while it is drawn (<see cref="ReadyRow"/>) - with
+    /// bracing off the cell is exactly step 9's.
     /// </summary>
     public readonly struct StripLayout
     {
-        public StripLayout(int textSize, int textOffset, int barOffset, int barHeight, int sideMargin)
+        public StripLayout(int textSize, int textOffset, int barOffset, int barHeight, int sideMargin, int readyOffset = 0, bool readyRow = false)
         {
             TextSize = textSize;
             TextOffset = textOffset;
             BarOffset = barOffset;
             BarHeight = barHeight;
             SideMargin = sideMargin;
+            ReadyOffset = readyOffset;
+            ReadyRow = readyRow;
         }
 
         public static StripLayout From(TraxSettings s) =>
-            new StripLayout(s.OrderStripTextSize, s.OrderStripTextOffset, s.OrderStripBarOffset, s.OrderStripBarHeight, s.OrderStripSideMargin);
+            new StripLayout(s.OrderStripTextSize, s.OrderStripTextOffset, s.OrderStripBarOffset, s.OrderStripBarHeight, s.OrderStripSideMargin,
+                s.OrderStripReadyOffset, ReadyRules.From(s).Shown);
 
         public int TextSize { get; }
         public int TextOffset { get; }
@@ -190,8 +195,14 @@ namespace TraxCombat.Core
         public int BarHeight { get; }
         public int SideMargin { get; }
 
+        /// <summary>Step 24: card bottom → the ready count's top (OrderStripReadyOffset).</summary>
+        public int ReadyOffset { get; }
+
+        /// <summary>Step 24: the ready count is drawn (ReadyRules.Shown) - it then takes its place in the cell's depth.</summary>
+        public bool ReadyRow { get; }
+
         /// <summary>Card bottom → the cell's top (the higher row), UI pixels (may be negative).</summary>
-        public float Top => Math.Min(TextOffset, BarOffset);
+        public float Top => ReadyRow ? Math.Min(Math.Min(TextOffset, BarOffset), ReadyOffset) : Math.Min(TextOffset, BarOffset);
 
         /// <summary>The numbers row inside the cell.</summary>
         public float TextMarginTop => TextOffset - Top;
@@ -199,14 +210,26 @@ namespace TraxCombat.Core
         /// <summary>The bar inside the cell.</summary>
         public float BarMarginTop => BarOffset - Top;
 
+        /// <summary>Step 24: the ready count inside the cell.</summary>
+        public float ReadyMarginTop => ReadyOffset - Top;
+
         /// <summary>The numbers' line height (the HUD font's line is 1.2 of its size).</summary>
         public float TextHeight => TextSize * OrderStripMath.LineHeightFactor;
 
         /// <summary>The cell's depth from its top, UI pixels.</summary>
-        public float Depth => Math.Max(TextOffset + TextHeight, BarOffset + BarHeight) - Top;
+        public float Depth
+        {
+            get
+            {
+                float bottom = Math.Max(TextOffset + TextHeight, BarOffset + BarHeight);
+                if (ReadyRow) bottom = Math.Max(bottom, ReadyOffset + TextHeight);
+                return bottom - Top;
+            }
+        }
 
         public string Describe() =>
             "numbers " + TextSize + " px at card bottom " + Signed(TextOffset) + ", bar " + BarHeight + " px at " + Signed(BarOffset)
+            + (ReadyRow ? ", ready count at " + Signed(ReadyOffset) : string.Empty)
             + ", " + SideMargin + " px in from the sides (" + Depth.ToString("0", CultureInfo.InvariantCulture) + " px deep; UI pixels - the game's UI scale applies)";
 
         private static string Signed(int v) => (v >= 0 ? "+" : string.Empty) + v.ToString(CultureInfo.InvariantCulture);
@@ -414,9 +437,11 @@ namespace TraxCombat.Core
         public static string DescribeCard(int k, in OrderCard c) =>
             FormationName(k) + " at (" + Px(c.X) + ", " + Px(c.Y) + ") " + Px(c.Width) + " x " + Px(c.Height) + ", " + c.Members + (c.Members == 1 ? " man" : " men");
 
-        /// <summary>"1 Infantry 72% ± 8 HP 81% (40 men, f 0.93)" - log lines only.</summary>
-        public static string DescribeValues(int k, in FormationAthleticsStats s, int meanPercent, int spreadPercent, int healthPercent) =>
+        /// <summary>"1 Infantry 72% ± 8 HP 81% ready 34/40 (40 men, f 0.93)" - log lines only; the ready count (step 24) only
+        /// when shown (<paramref name="ready"/> ≥ 0).</summary>
+        public static string DescribeValues(int k, in FormationAthleticsStats s, int meanPercent, int spreadPercent, int healthPercent, int ready = -1, int total = -1) =>
             FormationName(k) + " " + AthleticsText(meanPercent, spreadPercent) + (healthPercent >= 0 ? " " + HealthText(healthPercent) : string.Empty)
+            + (ready >= 0 ? " " + ReadyMath.Text(ready, total) : string.Empty)
             + " (" + s.Count + (s.Count == 1 ? " man" : " men") + ", f " + (double.IsNaN(s.MeanPeakShare) ? "n/a" : s.MeanPeakShare.ToString("0.00", CultureInfo.InvariantCulture))
             + (s.Exhausted > 0 ? ", " + s.Exhausted + " exhausted" : string.Empty) + ")";
 

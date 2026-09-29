@@ -378,6 +378,20 @@ namespace TraxCombat.Core
             "Spread width (std devs)",
             "How wide the spread is on each side of the average, in standard deviations - the \"± 8\" is this width, in percent of the bar. 1 = about two men in three fall inside it.");
 
+        // Step 24 (Anton, 2026-09-29: "some indication above the squad of ready men, that are not resting in their current order
+        // status ... on the ALT and on the formations view"): ReadyMath, AI_NOTES "Step 24". One switch for both places.
+        public static readonly ParamDef ShowReadyCount = Bool("ShowReadyCount", OrderStripGroup,
+            "Show the ready count",
+            "The strip and the numbers under the formation markers (hold ALT) also show how many men are READY - not bracing (Brace by orders) - out of the formation, for example \"ready 34/50\" (you are not counted). It turns yellow and red as fewer are ready. Hidden while bracing is off.");
+
+        public static readonly ParamDef ReadyYellowBelowPercent = Int("ReadyYellowBelowPercent", 0, 100, OrderStripGroup,
+            "Ready count yellow at or below (%)",
+            "The ready count turns yellow once this percent of the formation or fewer are ready (75: a quarter of the men bracing).");
+
+        public static readonly ParamDef ReadyRedBelowPercent = Int("ReadyRedBelowPercent", 0, 100, OrderStripGroup,
+            "Ready count red at or below (%)",
+            "The ready count turns red once this percent of the formation or fewer are ready (50: half the men bracing).");
+
         public static readonly ParamDef OrderStripUnderCards = Bool("OrderStripUnderCards", OrderStripGroup,
             "Strip under the cards",
             "On: the strip sits under each of the game's formation cards (read live, so it follows any resolution, UI scale or order-menu mod that keeps the cards). Off - or whenever the cards cannot be matched - a compact panel at the top of the screen lists the same numbers instead.");
@@ -450,6 +464,10 @@ namespace TraxCombat.Core
             "Orders strip: bar thickness (px)",
             "Thickness of the orders-menu strip's Athletics bar, in the game's UI pixels.");
 
+        public static readonly ParamDef OrderStripReadyOffset = Int("OrderStripReadyOffset", -40, 80, AdvancedGroup,
+            "Orders strip: ready count offset (px)",
+            "Distance from the bottom of a formation card to the top of its ready count (\"ready 34/50\"), in the game's UI pixels. 24 puts it right under the strip's bar, filling the gap to the next card; a cell that would leave the screen is lifted to its edge.");
+
         public static readonly ParamDef OrderStripSideMargin = Int("OrderStripSideMargin", 0, 40, AdvancedGroup,
             "Orders strip: side margin (px)",
             "How far the strip's numbers and bar keep in from a card's left and right edges, in the game's UI pixels.");
@@ -514,11 +532,11 @@ namespace TraxCombat.Core
             WalkEffortFraction, HideoutBossFightRefill,
             ShowPlayerBar, ShowPlayerBarOutsideBattles, ShowAttackRecoveryBar, FlashBarOnEarlyAttack,
             BarYellowBelowPercent, BarOrangeBelowPercent, BarRedBelowPercent,
-            ShowInOrderMenu, ShowFormationHealth, ShowFormationSpread, FormationSpreadStdDevs, OrderStripUnderCards,
+            ShowInOrderMenu, ShowFormationHealth, ShowFormationSpread, FormationSpreadStdDevs, ShowReadyCount, ReadyYellowBelowPercent, ReadyRedBelowPercent, OrderStripUnderCards,
             ShowAltMarkerStats, AltMarkersShowEnemy,
             HudRefreshSeconds, PlayerBarWidth, PlayerBarHeight, PlayerBarOffsetRight, PlayerBarOffsetBottom,
             RecoveryBarWidth, RecoveryBarHeight, RecoveryBarOffsetAbove,
-            OrderStripTextSize, OrderStripTextOffset, OrderStripBarOffset, OrderStripBarHeight, OrderStripSideMargin,
+            OrderStripTextSize, OrderStripTextOffset, OrderStripBarOffset, OrderStripBarHeight, OrderStripReadyOffset, OrderStripSideMargin,
             OrderPanelOffsetTop, OrderPanelWidth,
             AltMarkerTextSize, AltMarkerOffset, AltMarkerBarWidth, AltMarkerBarHeight,
             FormationStatsRefreshSeconds, VerboseLogging, LogMaxMegabytes,

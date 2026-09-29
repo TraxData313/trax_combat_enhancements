@@ -12,7 +12,9 @@ namespace TraxCombat.Hud
     /// - while the game shows its FORMATION MARKERS (the troop count, the icon, the distance - ALT held or the
     /// orders menu open), each marked formation also gets, centred just under its marker, "72% ± 8" (the men's
     /// average Athletics ± spread, in the colour of their average f) and "HP 81%", over an optional slim bar.
-    /// Yours and your allies' always; the enemy's with AltMarkersShowEnemy.
+    /// Yours and your allies' always; the enemy's with AltMarkersShowEnemy. Step 24: under the bar, "ready 34/50" - the
+    /// men NOT bracing (step 23's read API: Ready of Total; in your formations you are left out, so it may read one fewer
+    /// than vanilla's count above), plain / yellow / red (ShowReadyCount; hidden while bracing is off - <see cref="ReadyRules"/>).
     ///
     /// WHEN: exactly while vanilla shows them - its own flag (<c>MissionFormationMarkerVM.IsEnabled</c>) read live
     /// every frame; when it cannot be read, vanilla's rule copied (ALT held or the orders menu open). Plus the
@@ -71,6 +73,9 @@ namespace TraxCombat.Hud
         /// <summary>This mission's numbers ([summary]).</summary>
         internal AltMarkerStats MarkerStats { get; } = new AltMarkerStats();
 
+        /// <summary>Step 24: this mission's ready counts ([summary]).</summary>
+        internal ReadyCountStats ReadyStats { get; } = new ReadyCountStats();
+
         /// <summary>This show uses our own projection.</summary>
         internal bool Projecting => _projecting;
 
@@ -124,7 +129,11 @@ namespace TraxCombat.Hud
             _shownNow = 0;
         }
 
-        internal override void AddSummaryLines(List<string> lines) => lines.Add(MarkerStats.SummaryLine(Stats.Errors));
+        internal override void AddSummaryLines(List<string> lines)
+        {
+            lines.Add(MarkerStats.SummaryLine(Stats.Errors));
+            lines.Add(ReadyStats.SummaryLine(ViewName));
+        }
 
         // ------------------------------------------------------------------ every frame: read, pair, place
 
@@ -246,7 +255,7 @@ namespace TraxCombat.Hud
             if ((shown > 0 && !notLaidOut) || _waited > FirstLogGraceSeconds) LogFirstShow(in f, vm, in layout, shown);
         }
 
-        private static void PushValues(AltMarkerLabelVM label, in AltMarker m, TraxSettings s, int version)
+        private void PushValues(AltMarkerLabelVM label, in AltMarker m, TraxSettings s, int version)
         {
             var rules = BarRules.From(s);
             float peak = BarMath.PeakLine(s.AthleticsPeakPercent / 100.0);
@@ -257,6 +266,19 @@ namespace TraxCombat.Hud
             OrderStripMath.Band(in st, spread, k, out float low, out float high);
             int hp = s.ShowFormationHealth ? OrderStripMath.HealthPercent(st.MeanHealth) : -1;
             label.SetValues(BarMath.Band(in rules, st.MeanPeakShare), BarMath.Fill(st.MeanFraction), low, high, peak, mean, sp, hp);
+            var ready = ReadyRules.From(s);
+            var hidden = ReadyMath.HiddenFor(in ready, in st);
+            if (hidden == ReadyHidden.None)
+            {
+                var band = ReadyMath.Band(in ready, st.Ready, st.Total);
+                label.SetReady(true, st.Ready, st.Total, band);
+                ReadyStats.NoteShown(st.Ready, st.Total, band, m.FormationIndex, m.TeamType);
+            }
+            else
+            {
+                label.SetReady(false, 0, 0, ReadyBand.Plain);
+                ReadyStats.NoteHidden(hidden);
+            }
             label.PushedStats = version;
             label.PushedSettings = s.Version;
         }
@@ -293,7 +315,7 @@ namespace TraxCombat.Hud
                 var s = TraxSettings.Shared;
                 TraxLog.Limited("hud", ViewName + ": values at " + S1(f.Now) + " s (show #" + _showNo + "): " + DescribeValues()
                     + " - ± is " + (s.ShowFormationSpread ? F2(s.FormationSpreadStdDevs) + " std" : "off (ShowFormationSpread)")
-                    + ", health " + (s.ShowFormationHealth ? "on" : "off (ShowFormationHealth)") + ", enemy " + (s.AltMarkersShowEnemy ? "on" : "off (AltMarkersShowEnemy)"), "hud-alt-values");
+                    + ", health " + (s.ShowFormationHealth ? "on" : "off (ShowFormationHealth)") + ", enemy " + (s.AltMarkersShowEnemy ? "on" : "off (AltMarkersShowEnemy)") + ", " + ReadyRules.From(s).Describe(), "hud-alt-values");
             }
             else if (first && TraxLog.VerboseWants("hud-alt-values"))
             {
@@ -364,7 +386,7 @@ namespace TraxCombat.Hud
                 ref var m = ref _frame.Markers[i];
                 var label = FindLabel(vm, m.Key);
                 if (label == null) continue;
-                sb.Append(sb.Length > 0 ? " | " : string.Empty).Append(AltMarkerMath.DescribeValues(in m, label.ShownMean, label.ShownSpread, label.ShownHealth));
+                sb.Append(sb.Length > 0 ? " | " : string.Empty).Append(AltMarkerMath.DescribeValues(in m, label.ShownMean, label.ShownSpread, label.ShownHealth, label.ShownReady, label.ShownTotal));
             }
             return sb.Length == 0 ? "no labelled formation" : sb.ToString();
         }

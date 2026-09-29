@@ -711,6 +711,9 @@ says (§2c).
 | `BarRedBelowPercent` | 25 | Red at or below this % (an empty bar is always red). |
 | `ShowFormationSpread` | true | ± spread in the orders-menu strip and under the formation markers: the "± 8" and the lighter band (off: the average alone). |
 | `FormationSpreadStdDevs` | 1.0 | Band width in standard deviations (the "± 8" is this width). |
+| `ShowReadyCount` | true | Step 24 (Anton): the orders-menu strip (cells and panel rows) and the numbers under the formation markers also show how many men are READY - not bracing (§2 "Brace by orders") - out of the formation, "ready 34/50" (the player not counted, as the strip's other numbers). Hidden while bracing is off (`BraceEnabled`, `AthleticsEnabled`, the master switch). One switch for both places (§3). |
+| `ReadyYellowBelowPercent` | 75 | Step 24: the ready count turns yellow at or below this % of the formation ready. |
+| `ReadyRedBelowPercent` | 50 | Step 24: the ready count turns red at or below this % ready (the most alarming wins). |
 | `ShowInOrderMenu` | true | The orders-menu strip: under each formation card, the men's average Athletics ± spread (bar + "72% ± 8"). |
 | `ShowFormationHealth` | true | The orders-menu strip and the formation markers' numbers also show average health ("HP 81%"). |
 | `OrderStripUnderCards` | true | true: the strip sits under the vanilla cards (read live) when they can be matched, else the compact panel. false: always the compact panel. |
@@ -728,6 +731,7 @@ says (§2c).
 | `OrderStripTextOffset` | 1 | (Advanced) A card's bottom edge → the top of its numbers, UI pixels (they sit left and right of the vanilla order icons). |
 | `OrderStripBarOffset` | 20 | (Advanced) A card's bottom edge → the top of its strip bar, UI pixels (20 = just under the vanilla order icons). |
 | `OrderStripBarHeight` | 4 | (Advanced) Thickness of the strip bar, UI pixels. |
+| `OrderStripReadyOffset` | 24 | (Advanced) Step 24: a card's bottom edge → the top of its ready count, UI pixels (24 = right under the strip bar; the cell is then 40 px deep - the gap between two stacked cards). |
 | `OrderStripSideMargin` | 2 | (Advanced) How far the numbers and the bar keep in from a card's sides, UI pixels. |
 | `OrderPanelOffsetTop` | 80 | (Advanced) Screen's top edge → the fallback panel (centred), UI pixels. |
 | `OrderPanelWidth` | 300 | (Advanced) Width of the fallback panel, UI pixels. |

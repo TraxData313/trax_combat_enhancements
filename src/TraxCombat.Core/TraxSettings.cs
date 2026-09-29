@@ -281,6 +281,9 @@ namespace TraxCombat.Core
         public float FormationSpreadStdDevs => GetFloat(SettingsSchema.FormationSpreadStdDevs);
         public bool ShowInOrderMenu => GetBool(SettingsSchema.ShowInOrderMenu);
         public bool ShowFormationHealth => GetBool(SettingsSchema.ShowFormationHealth);
+        public bool ShowReadyCount => GetBool(SettingsSchema.ShowReadyCount);
+        public int ReadyYellowBelowPercent => GetInt(SettingsSchema.ReadyYellowBelowPercent);
+        public int ReadyRedBelowPercent => GetInt(SettingsSchema.ReadyRedBelowPercent);
         public bool OrderStripUnderCards => GetBool(SettingsSchema.OrderStripUnderCards);
         public bool ShowAltMarkerStats => GetBool(SettingsSchema.ShowAltMarkerStats);
         public bool AltMarkersShowEnemy => GetBool(SettingsSchema.AltMarkersShowEnemy);
@@ -297,6 +300,7 @@ namespace TraxCombat.Core
         public int OrderStripTextOffset => GetInt(SettingsSchema.OrderStripTextOffset);
         public int OrderStripBarOffset => GetInt(SettingsSchema.OrderStripBarOffset);
         public int OrderStripBarHeight => GetInt(SettingsSchema.OrderStripBarHeight);
+        public int OrderStripReadyOffset => GetInt(SettingsSchema.OrderStripReadyOffset);
         public int OrderStripSideMargin => GetInt(SettingsSchema.OrderStripSideMargin);
         public int OrderPanelOffsetTop => GetInt(SettingsSchema.OrderPanelOffsetTop);
         public int OrderPanelWidth => GetInt(SettingsSchema.OrderPanelWidth);

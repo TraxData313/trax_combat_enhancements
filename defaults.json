@@ -457,6 +457,23 @@
   // (range 0.0 to 3.0)
   "FormationSpreadStdDevs": 1.0,
 
+  // The strip and the numbers under the formation markers (hold ALT) also show how many men are
+  // READY - not bracing (Brace by orders) - out of the formation, for example "ready 34/50"
+  // (you are not counted). It turns yellow and red as fewer are ready. Hidden while bracing is
+  // off.
+  // (true or false)
+  "ShowReadyCount": true,
+
+  // The ready count turns yellow once this percent of the formation or fewer are ready (75: a
+  // quarter of the men bracing).
+  // (range 0 to 100)
+  "ReadyYellowBelowPercent": 75,
+
+  // The ready count turns red once this percent of the formation or fewer are ready (50: half
+  // the men bracing).
+  // (range 0 to 100)
+  "ReadyRedBelowPercent": 50,
+
   // On: the strip sits under each of the game's formation cards (read live, so it follows any
   // resolution, UI scale or order-menu mod that keeps the cards). Off - or whenever the cards
   // cannot be matched - a compact panel at the top of the screen lists the same numbers
@@ -538,6 +555,12 @@
   // Thickness of the orders-menu strip's Athletics bar, in the game's UI pixels.
   // (range 1 to 20)
   "OrderStripBarHeight": 4,
+
+  // Distance from the bottom of a formation card to the top of its ready count ("ready 34/50"),
+  // in the game's UI pixels. 24 puts it right under the strip's bar, filling the gap to the
+  // next card; a cell that would leave the screen is lifted to its edge.
+  // (range -40 to 80)
+  "OrderStripReadyOffset": 24,
 
   // How far the strip's numbers and bar keep in from a card's left and right edges, in the
   // game's UI pixels.
