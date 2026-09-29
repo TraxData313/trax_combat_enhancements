@@ -61,6 +61,7 @@ PLAYTEST RESULTS (200v200 infantry, 2026-09-28 morning, step 16 in game — 0 er
 
 - [x] No Athletics bar in the training field (Anton, 2026-09-27) — it runs in walk-around mode, the bar only showed in battle/duel/tournament/stealth; show it outside battles too when a weapon is drawn or the bar isn't full — fixed in step 12: weapon or shield in hand, or refilling; new switch "Your bar outside battles too"
 - [x] MCM retried "not ready" every second all session when MCM wasn't enabled but another mod carried its DLL (log 21:08) — stop cleanly — fixed in step 12: MCM's module off = one line, no tries; retries capped at 30
+- [x] Won a village raid but got captured, army gone (Anton, 2026-09-29, twice from save fst2) — NOT our mod: the game logged DefenderVictory after a player win (rgl_log 20:16:54, 20:26:48); fst2 was saved right after backing out of and re-entering the village, which left the campaign thinking he was the DEFENDER. Our log: player victory, 97 of his men standing, 0 errors. Fix: leave the village to the map, re-enter, then raid
 - [ ] Game hangs on "shutting down" in Steam after exit (Anton) — NOT our mod by its log (it logged "unloaded (game closing)" 4 s after the mission, it runs no threads); suspects: another mod's helper process/thread, the game's Watchdog.exe; next time it hangs, tell Claude while it hangs — the process tree shows who is still alive (see AI_NOTES step 12)
 
 NOT DECIDED (defaults in place, Anton can flip):
