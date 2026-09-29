@@ -153,6 +153,7 @@ namespace TraxCombat.Missions
                   + ", not ours - the speed penalties will NOT apply (another mod registered after us?)");
             StartStepBacks();
             StartAttackRate();
+            StartBrace(); // step 23
         }
 
         private void StopAthletics()
@@ -319,6 +320,7 @@ namespace TraxCombat.Missions
             }
             StepBackLeftField(st);
             PaceLeftField(st);
+            BraceLeftField(st); // step 23
             PlayerTimerLeftField(st);
             RemoveFromLoop(st);
         }
@@ -484,6 +486,16 @@ namespace TraxCombat.Missions
                 Failed("rate.pace-tick", e);
             }
 
+            // Step 23: the brace by orders - every AI man looked at about every 0.25 s (staggered); off lifts every brace at once.
+            try
+            {
+                TickBrace(now);
+            }
+            catch (Exception e)
+            {
+                Failed("brace.tick", e);
+            }
+
             // Step 13: your timer - switched off or not you any more = released at once (the input gate
             // does the frame work; this is the tick's safety net).
             try
@@ -557,12 +569,14 @@ namespace TraxCombat.Missions
             {
                 case ActionReleaseMelee:
                     ReadAttackClass(st, melee: true, throwing: false); // step 21: the class from what he holds (AI only)
+                    NoteBraceRelease(st, melee: true);                 // step 23: a bracing man's melee attack (should not happen)
                     StartRelease(st, now, in r);
                     PlayerAttackStarting(st, now, AttackKind.Melee, in r);
                     break;
                 case ActionReleaseRanged:
                 case ActionReleaseThrowing:
                     ReadAttackClass(st, melee: false, throwing: action == ActionReleaseThrowing);
+                    NoteBraceRelease(st, melee: false); // step 23: ranged goes on while bracing
                     _stats.RangedReleasesPolled++;
                     PlayerAttackStarting(st, now, AttackKind.Ranged, in r);
                     break;
@@ -989,6 +1003,7 @@ namespace TraxCombat.Missions
                 }
                 _lastOffBecause = r.OffBecause; // which switch holds it off now (both may be off)
                 NoteRateSettings(settings);     // step 5e: the A/B switches (AI decisions re-applied)
+                NoteBraceSettings(settings);    // step 23: the floors / margins line (applied at every man's next look)
 
                 if (r.PoolFloor != _seenPoolFloor || r.PoolPerSkill != _seenPoolPerSkill)
                 {
@@ -1276,6 +1291,14 @@ namespace TraxCombat.Missions
             catch (Exception e)
             {
                 Failed("hold.hit", e);
+            }
+            try
+            {
+                BraceHitTaken(victim, in collisionData); // step 23: the guard while bracing
+            }
+            catch (Exception e)
+            {
+                Failed("brace.hit", e);
             }
             try
             {

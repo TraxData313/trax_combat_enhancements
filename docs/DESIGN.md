@@ -643,6 +643,14 @@ says (§2c).
 | `AiMeleeGapSeconds` | 1.0 | Step 21: the AI's own gap between a melee attack's end and its next one at full strength (measured 1.0 s in Anton's logs of 2026-09-27/28) - the two "swing less" pauses are sized on it. |
 | `ExtraPauseAfterBowShotSeconds` | 2.0 | Step 21 (Anton): AI bow shots (on foot and horse archers) wait this many seconds more, on top of the tired pause - about 30% fewer shots (fresh AI bow cycle ~4.5 s). 0 = off; applies at the next shot. |
 | `ExtraPauseAfterCrossbowShotSeconds` | 2.5 | Step 21: the same for AI crossbow shots (fresh cycle ~6 s). Thrown weapons and slings: none. 0 = off. |
+| `BraceEnabled` | true | Step 23 (Anton): an AI fighter whose bar (points ÷ his full pool) is at or below his formation's order floor stops attacking in melee and only defends, guard up, until he refills to floor + his margin (§2 "Brace by orders"). Ranged attacks go on. AI heroes and riders too, never you. Off = lifted at once. |
+| `BraceFloorChargePercent` | 20 | Step 23: the floor under a charge order (charge, charge a target, attack a gate, the AI's tactical charge), % of the full bar. |
+| `BraceFloorAdvancePercent` | 40 | Step 23: the floor under an advance order (yours, or an AI formation advancing on a Move order - its behaviour is an advance). |
+| `BraceFloorHoldPercent` | 60 | Step 23: the floor under every other order - hold / stop, move, retreat, fall back, follow, no order, no formation. |
+| `BraceRecoverPercent` | 20 | Step 23: the margin - a bracing man attacks again at floor + this (capped at the top his wounds let him refill to; the band keeps its width under the cap). |
+| `BraceRecoverSpreadPercent` | 5 | Step 23 (Anton: "+- 5% ... per soldier, once rolled on a battle"): each AI man's own margin = `BraceRecoverPercent` ± up to this, a uniform roll kept for the battle; the slider rescales every roll live; never below floor + 1. 0 = no spread. Range 0-50. |
+| `BraceWieldShield` | true | Step 23: a man who starts bracing with a shield not in his hand takes it out (a one-handed weapon first if his weapon needs both hands; a ranged weapon in hand is left alone); checked every 1 s while bracing, at most 3 wield calls a brace. At its end his AI picks again. |
+| `BraceRaiseShield` | true | Step 23: while bracing with a shield in hand, the shield is held up (`DefendDown` in his input) whenever his own AI holds no guard. Off: the guard only replaces an attack wish (step 16's rule). |
 | `RegenDelayBlowTimes` | 2 | Idle blows before regeneration starts. |
 | `BlowTimeSeconds` | 1.5 | How long "one blow" is, for the delay above. |
 | `FullRegenSecondsStanding` | 60 | Seconds from empty to full while standing still or walking (the whole refill, whatever the curve below). |

@@ -29,7 +29,17 @@ namespace TraxCombat.Missions
         /// <summary>The backwards input in his own frame (x right, y forward), refreshed every tick from his body frame.</summary>
         public float BackX, BackY = -1f;
 
-        public bool Active => HoldAttacks || StepHoldAttacks || Backpedal;
+        /// <summary>Step 23: he braces - his MELEE attacks held (a ranged weapon in hand is let through), the shield kept up.</summary>
+        public bool BraceHoldAttacks;
+
+        /// <summary>Step 23, refreshed by the brace poll: a bow, crossbow or throwing weapon in his hand (let through).</summary>
+        public bool BraceRanged;
+
+        /// <summary>Step 23, refreshed by the brace poll: his shield is in his other hand (BraceRaiseShield keeps it up).</summary>
+        public bool BraceShieldInHand;
+
+        /// <summary>Any wish at all - a man is held while ANY of them wants him held (one ending never lifts another).</summary>
+        public bool Active => HoldAttacks || StepHoldAttacks || Backpedal || BraceHoldAttacks;
 
         /// <summary>Since when the state has been active (mission time), for the calls-per-second figure.</summary>
         public double ActiveSince = -1;
@@ -57,6 +67,12 @@ namespace TraxCombat.Missions
         public long BackpedalFrames;
         public long NotAi;
         public int Errors;
+
+        // ---- step 23: what the hook did while he braced (summed into the brace summary)
+        public long BraceCleared;
+        public long BraceGuardRaised;
+        public long BraceShieldRaised;
+        public long BraceRangedPassed;
 
         /// <summary>The first exception the callback swallowed - the tick logs it through Failed (never inside the callback).</summary>
         public Exception? PendingError;
@@ -109,7 +125,7 @@ namespace TraxCombat.Missions
                 }
                 uint flags = (uint)movementFlag;
                 float vx = inputVector.x, vy = inputVector.y;
-                AiInputHook.Apply(_st, s, settings.AiHoldRaiseGuard, ref flags, ref vx, ref vy);
+                AiInputHook.Apply(_st, s, settings.AiHoldRaiseGuard, ref flags, ref vx, ref vy, settings.BraceRaiseShield);
                 movementFlag = (Agent.MovementControlFlag)flags;
                 if (s.Backpedal) inputVector = new Vec2(vx, vy);
             }
@@ -131,6 +147,9 @@ namespace TraxCombat.Missions
     {
         private const int ActReadyMelee = (int)Agent.ActionCodeType.ReadyMelee;
         private const int ActReadyRanged = (int)Agent.ActionCodeType.ReadyRanged;
+        private const int ActReleaseRanged = (int)Agent.ActionCodeType.ReleaseRanged;
+        private const int ActReleaseThrowing = (int)Agent.ActionCodeType.ReleaseThrowing;
+        private const int ActReload = (int)Agent.ActionCodeType.Reload;
 
         private static readonly Dictionary<Type, bool> Overrides = new Dictionary<Type, bool>();
 
@@ -239,13 +258,23 @@ namespace TraxCombat.Missions
             Account(s, was, now);
         }
 
+        /// <summary>Step 23: turns the brace's wish on or off (the timer's and the step back's are left as they are).</summary>
+        internal static void SetBrace(TrackedAgent st, bool on, double now)
+        {
+            var s = st.Input ??= new AiInputState();
+            bool was = s.Active;
+            s.BraceHoldAttacks = on;
+            if (!on) s.BraceRanged = s.BraceShieldInHand = false;
+            Account(s, was, now);
+        }
+
         /// <summary>Every wish off at once (switched off, left the field, mission end).</summary>
         internal static void Clear(TrackedAgent st, double now)
         {
             var s = st.Input;
             if (s == null) return;
             bool was = s.Active;
-            s.HoldAttacks = s.StepHoldAttacks = s.Backpedal = false;
+            s.HoldAttacks = s.StepHoldAttacks = s.Backpedal = s.BraceHoldAttacks = false;
             Account(s, was, now);
         }
 
@@ -266,14 +295,22 @@ namespace TraxCombat.Missions
         /// cancel, never release); backpedalling → his movement input replaced by the backwards vector. Counted; the
         /// mission's first held man / first backpedal captured in full.
         /// </summary>
-        internal static void Apply(TrackedAgent st, AiInputState s, bool raiseGuard, ref uint flags, ref float vx, ref float vy)
+        internal static void Apply(TrackedAgent st, AiInputState s, bool raiseGuard, ref uint flags, ref float vx, ref float vy, bool raiseShield = false)
         {
             uint before = flags;
             float bx = vx, by = vy;
             var edit = InputEdit.None;
-            if (s.HoldAttacks || s.StepHoldAttacks)
+            int action = st.PrevAction;
+            // step 23: the brace holds MELEE only - a ranged weapon in hand (the poll's read) or a ranged action under way goes on
+            bool braceMelee = false;
+            if (s.BraceHoldAttacks)
             {
-                int action = st.PrevAction;
+                bool ranged = s.BraceRanged || action == ActReadyRanged || action == ActReleaseRanged || action == ActReleaseThrowing || action == ActReload;
+                if (!ranged) braceMelee = true;
+                else if ((flags & AiInputMath.AttackMask) != 0) s.BraceRangedPassed++;
+            }
+            if (s.HoldAttacks || s.StepHoldAttacks || braceMelee)
+            {
                 bool inReady = action == ActReadyMelee || action == ActReadyRanged;
                 flags = AiInputMath.HoldAttacks(flags, raiseGuard, inReady, out edit);
                 if ((edit & InputEdit.AttackCleared) != 0)
@@ -282,7 +319,17 @@ namespace TraxCombat.Missions
                     if ((edit & InputEdit.GuardRaised) != 0) s.GuardRaised++;
                     if ((edit & InputEdit.OwnGuardKept) != 0) s.OwnGuardKept++;
                     if ((edit & InputEdit.ReadyCancelled) != 0) s.ReadyCancelled++;
+                    if (braceMelee)
+                    {
+                        s.BraceCleared++;
+                        if ((edit & (InputEdit.GuardRaised | InputEdit.ReadyCancelled)) != 0) s.BraceGuardRaised++;
+                    }
                 }
+            }
+            if (braceMelee && raiseShield && s.BraceShieldInHand)
+            {
+                flags = AiInputMath.RaiseShield(flags, out bool raised);
+                if (raised) s.BraceShieldRaised++;
             }
             if (s.Backpedal)
             {

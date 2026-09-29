@@ -52,8 +52,9 @@ namespace TraxCombat.Core
     public readonly struct FormationAthleticsStats
     {
         public FormationAthleticsStats(int count, double meanPoints, double stdPoints, double meanFraction, double stdFraction, int exhausted,
-            double meanPeakShare = double.NaN, int inPeak = 0, double meanHealth = double.NaN)
+            double meanPeakShare = double.NaN, int inPeak = 0, double meanHealth = double.NaN, int bracing = 0)
         {
+            Bracing = bracing < 0 ? 0 : bracing > count ? count : bracing;
             Count = count;
             MeanPoints = meanPoints;
             StdPoints = stdPoints;
@@ -72,9 +73,18 @@ namespace TraxCombat.Core
         public static FormationAthleticsStats From(in MeanStd points, in MeanStd fractions, in MeanStd peakShares, int exhausted, int inPeak) =>
             new FormationAthleticsStats(points.Count, points.Mean, points.StdDev, fractions.Mean, fractions.StdDev, exhausted, peakShares.Mean, inPeak);
 
-        /// <summary>With the men's health left (0..1 each) too - the strip's "HP 81%" (step 9).</summary>
-        public static FormationAthleticsStats From(in MeanStd points, in MeanStd fractions, in MeanStd peakShares, in MeanStd health, int exhausted, int inPeak) =>
-            new FormationAthleticsStats(points.Count, points.Mean, points.StdDev, fractions.Mean, fractions.StdDev, exhausted, peakShares.Mean, inPeak, health.Mean);
+        /// <summary>With the men's health left (0..1 each) too - the strip's "HP 81%" (step 9); step 23: how many brace now.</summary>
+        public static FormationAthleticsStats From(in MeanStd points, in MeanStd fractions, in MeanStd peakShares, in MeanStd health, int exhausted, int inPeak, int bracing = 0) =>
+            new FormationAthleticsStats(points.Count, points.Mean, points.StdDev, fractions.Mean, fractions.StdDev, exhausted, peakShares.Mean, inPeak, health.Mean, bracing);
+
+        /// <summary>Step 23: how many of <see cref="Count"/> brace now (no melee attacks, guard up - AI men only).</summary>
+        public int Bracing { get; }
+
+        /// <summary>Step 23: how many are READY to fight - not bracing (<see cref="Count"/> minus <see cref="Bracing"/>).</summary>
+        public int Ready => Count - Bracing;
+
+        /// <summary>Step 23: the formation's size at the refresh (= <see cref="Count"/>).</summary>
+        public int Total => Count;
 
         /// <summary>The men's average health left, 0..1 (health ÷ its maximum, each man counted once).
         /// NaN when unknown / empty.</summary>

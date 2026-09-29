@@ -251,6 +251,16 @@ namespace TraxCombat.Core
         public float ExtraPauseAfterBowShotSeconds => GetFloat(SettingsSchema.ExtraPauseAfterBowShotSeconds);
         public float ExtraPauseAfterCrossbowShotSeconds => GetFloat(SettingsSchema.ExtraPauseAfterCrossbowShotSeconds);
 
+        // step 23: brace by orders
+        public bool BraceEnabled => GetBool(SettingsSchema.BraceEnabled);
+        public int BraceFloorChargePercent => GetInt(SettingsSchema.BraceFloorChargePercent);
+        public int BraceFloorAdvancePercent => GetInt(SettingsSchema.BraceFloorAdvancePercent);
+        public int BraceFloorHoldPercent => GetInt(SettingsSchema.BraceFloorHoldPercent);
+        public int BraceRecoverPercent => GetInt(SettingsSchema.BraceRecoverPercent);
+        public int BraceRecoverSpreadPercent => GetInt(SettingsSchema.BraceRecoverSpreadPercent);
+        public bool BraceWieldShield => GetBool(SettingsSchema.BraceWieldShield);
+        public bool BraceRaiseShield => GetBool(SettingsSchema.BraceRaiseShield);
+
         public float RegenDelayBlowTimes => GetFloat(SettingsSchema.RegenDelayBlowTimes);
         public float BlowTimeSeconds => GetFloat(SettingsSchema.BlowTimeSeconds);
         public float FullRegenSecondsStanding => GetFloat(SettingsSchema.FullRegenSecondsStanding);

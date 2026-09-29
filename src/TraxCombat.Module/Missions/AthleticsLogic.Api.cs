@@ -21,7 +21,8 @@ namespace TraxCombat.Missions
     ///                                          labels show the enemy's too; step 9 read the player's
     ///                                          team only): count, mean ± standard deviation (points and
     ///                                          fraction), the men's average f and how many are at full
-    ///                                          strength, exhausted, their average health (step 9). The
+    ///                                          strength, exhausted, their average health (step 9), how
+    ///                                          many brace now and how many are ready (step 23). The
     ///                                          player himself is left out of his own formation, as the
     ///                                          orders menu's cards leave him out; everyone else on
     ///                                          every side counts. Refreshed every
@@ -43,6 +44,7 @@ namespace TraxCombat.Missions
         private readonly MeanStd[] _formationHealth = new MeanStd[StatSlots];
         private readonly int[] _formationExhausted = new int[StatSlots];
         private readonly int[] _formationInPeak = new int[StatSlots];
+        private readonly int[] _formationBracing = new int[StatSlots];
         private readonly FormationAthleticsStats[] _formationSnapshot = new FormationAthleticsStats[StatSlots];
         private double _formationRefreshedAt = double.NegativeInfinity;
         private int _formationVersion;
@@ -120,6 +122,7 @@ namespace TraxCombat.Missions
                 _formationHealth[k].Clear();
                 _formationExhausted[k] = 0;
                 _formationInPeak[k] = 0;
+                _formationBracing[k] = 0;
             }
             int skipped = 0;
             for (int i = 0; i < _count; i++)
@@ -143,11 +146,13 @@ namespace TraxCombat.Missions
                 _formationHealth[k].Add(HealthOf(a));
                 if (share >= 1.0) _formationInPeak[k]++;
                 if (AthleticsMath.IsExhausted(in r, st)) _formationExhausted[k]++;
+                var bs = st.Brace;
+                if (bs != null && bs.Active) _formationBracing[k]++; // step 23: the ready count = Count - Bracing
             }
             _formationTeamsSkipped = skipped;
             for (int k = 0; k < _formationSnapshot.Length; k++)
                 _formationSnapshot[k] = FormationAthleticsStats.From(in _formationPoints[k], in _formationFractions[k], in _formationPeakShares[k],
-                    in _formationHealth[k], _formationExhausted[k], _formationInPeak[k]);
+                    in _formationHealth[k], _formationExhausted[k], _formationInPeak[k], _formationBracing[k]);
             _formationVersion++;
         }
 

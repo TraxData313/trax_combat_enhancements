@@ -90,6 +90,15 @@ namespace TraxCombat.Missions
             {
                 Failed("stepback.close", e);
             }
+            // Step 23: every brace lifted (the wish off, the callback released) before the summary counts it.
+            try
+            {
+                CloseBraces(agentsAlive);
+            }
+            catch (Exception e)
+            {
+                Failed("brace.close", e);
+            }
             // Step 5e: likewise every pace hold (our NoAttack) comes off before the summary.
             try
             {
@@ -186,6 +195,16 @@ namespace TraxCombat.Missions
             catch (Exception e)
             {
                 Failed("hold.summary", e);
+            }
+
+            // Step 23: the brace by orders - who, which order, how long, why it ended, the shield, the guard. Own try.
+            try
+            {
+                WriteBraceSummary();
+            }
+            catch (Exception e)
+            {
+                Failed("brace.summary", e);
             }
         }
 

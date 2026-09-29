@@ -37,11 +37,12 @@ namespace TraxCombat.Core
         public static readonly ParamGroup TiredGroup = new ParamGroup(3, "Tired fighters");
         public static readonly ParamGroup StepBackGroup = new ParamGroup(4, "Tired fighters step back");
         public static readonly ParamGroup BattlePaceGroup = new ParamGroup(5, "Battle pace (AI)");
-        public static readonly ParamGroup RefillGroup = new ParamGroup(6, "Refill");
-        public static readonly ParamGroup PlayerBarGroup = new ParamGroup(7, "Your Athletics bar");
-        public static readonly ParamGroup OrderStripGroup = new ParamGroup(8, "Orders menu strip");
-        public static readonly ParamGroup AltMarkersGroup = new ParamGroup(9, "Formation markers (hold ALT)");
-        public static readonly ParamGroup AdvancedGroup = new ParamGroup(10, "Advanced");
+        public static readonly ParamGroup BraceGroup = new ParamGroup(6, "Brace by orders (AI)");
+        public static readonly ParamGroup RefillGroup = new ParamGroup(7, "Refill");
+        public static readonly ParamGroup PlayerBarGroup = new ParamGroup(8, "Your Athletics bar");
+        public static readonly ParamGroup OrderStripGroup = new ParamGroup(9, "Orders menu strip");
+        public static readonly ParamGroup AltMarkersGroup = new ParamGroup(10, "Formation markers (hold ALT)");
+        public static readonly ParamGroup AdvancedGroup = new ParamGroup(11, "Advanced");
 
         // ------------------------------------------------------------------ master switch
 
@@ -239,6 +240,44 @@ namespace TraxCombat.Core
         public static readonly ParamDef ExtraPauseAfterCrossbowShotSeconds = Float("ExtraPauseAfterCrossbowShotSeconds", 0, 10, BattlePaceGroup,
             "Crossbowmen: extra wait after each shot (s)",
             "AI crossbowmen wait this many seconds more after each shot, on top of any tired pause. At 2.5 they fire about 30% fewer bolts a minute (a fresh AI crossbowman shoots about once every 6 seconds, the long reload included). Thrown weapons and slings have no extra wait. Never you. 0 = off. A change applies at each crossbowman's next shot.");
+
+        // ------------------------------------------------------------------ brace by orders (step 23)
+
+        // Step 23 (Anton, 2026-09-29: "make soldiers not swing but only defend when they have reached a certain floor, that
+        // depends on their current orders, until they have replenished the floor +20%" and "when defending they whip out their
+        // shields if they have one"; the spread: "+- 5% additive to those 20% ... per soldier (once rolled on a battle, adds some
+        // bravery-like randomness)"): BraceMath, AI_NOTES "Step 23". The bar = points ÷ his full pool (what his bar shows).
+        public static readonly ParamDef BraceEnabled = Bool("BraceEnabled", BraceGroup,
+            "Tired AI brace by their orders",
+            "An AI soldier whose Athletics bar falls to his formation's order floor (the three settings below) stops attacking in melee and only defends, guard up, until he refills to that floor + the recover margin. Bows, crossbows and throws go on. AI heroes and riders too; never you. Off: AI men swing at any Athletics. Switching it off lifts every brace at once.");
+
+        public static readonly ParamDef BraceFloorChargePercent = Int("BraceFloorChargePercent", 0, 100, BraceGroup,
+            "Brace floor: charging (%)",
+            "Under a CHARGE order (charge, charge a target, the AI's own charge, attacking a gate) a soldier braces when his Athletics bar is at or below this % of his full bar. 0 = only when empty. The new floor applies at once when his formation's order changes.");
+
+        public static readonly ParamDef BraceFloorAdvancePercent = Int("BraceFloorAdvancePercent", 0, 100, BraceGroup,
+            "Brace floor: advancing (%)",
+            "Under an ADVANCE order (yours, or the AI's own advance into the enemy) a soldier braces at or below this % of his full bar.");
+
+        public static readonly ParamDef BraceFloorHoldPercent = Int("BraceFloorHoldPercent", 0, 100, BraceGroup,
+            "Brace floor: holding and the rest (%)",
+            "Under every other order - hold / halt, move to a position, retreat, fall back, follow, or no formation - a soldier braces at or below this % of his full bar. High = a holding line swings first and then braces early.");
+
+        public static readonly ParamDef BraceRecoverPercent = Int("BraceRecoverPercent", 0, 100, BraceGroup,
+            "Brace until floor + (%)",
+            "A bracing soldier attacks again once his bar is back to his floor + this many points (60 + 20 = 80%). A wound caps it: he stops bracing at the most his wounds let him refill to, so a wounded man is never stuck. Blocks cost Athletics and stop the refill, so a man pressed hard may brace a long time.");
+
+        public static readonly ParamDef BraceRecoverSpreadPercent = Int("BraceRecoverSpreadPercent", 0, 50, BraceGroup,
+            "Brace margin spread per soldier (± %)",
+            "Each AI soldier's own margin is the setting above plus or minus up to this many points, rolled once per soldier and battle - some come back sooner, some later (bravery). 0 = everyone exactly the margin above. A change rescales everyone's roll at once; his target is never below his floor + 1.");
+
+        public static readonly ParamDef BraceWieldShield = Bool("BraceWieldShield", BraceGroup,
+            "Bracing soldiers take out their shield",
+            "When a soldier starts bracing and carries a shield that is not in his hand, he takes it out (and a one-handed weapon first if his weapon needs both hands). A man with a bow or crossbow in hand is left alone. When the brace ends his own AI picks his weapons again.");
+
+        public static readonly ParamDef BraceRaiseShield = Bool("BraceRaiseShield", BraceGroup,
+            "Bracing soldiers keep the shield up",
+            "While bracing with a shield in hand a soldier holds it up whenever his own AI has no guard up (his own blocks and parries stay his). Off: the guard is raised only when he wants to attack.");
 
         // ------------------------------------------------------------------ refill (regeneration)
 
@@ -469,6 +508,8 @@ namespace TraxCombat.Core
             StepBackEnabled, StepBackBackpedal, StepBackMaxChancePercent, StepBackDistance, StepBackSeconds, StepBackEnemyRange,
             StepBackHoldAttacks, StepBackMaxAtOnce,
             ShieldInfantrySwingsLessPercent, FootMeleeSwingsLessPercent, AiMeleeGapSeconds, ExtraPauseAfterBowShotSeconds, ExtraPauseAfterCrossbowShotSeconds,
+            BraceEnabled, BraceFloorChargePercent, BraceFloorAdvancePercent, BraceFloorHoldPercent, BraceRecoverPercent, BraceRecoverSpreadPercent,
+            BraceWieldShield, BraceRaiseShield,
             RegenDelayBlowTimes, BlowTimeSeconds, FullRegenSecondsStanding, RegenRateNearFullPercent, RegenMultiplierAtFullRun,
             WalkEffortFraction, HideoutBossFightRefill,
             ShowPlayerBar, ShowPlayerBarOutsideBattles, ShowAttackRecoveryBar, FlashBarOnEarlyAttack,
@@ -486,7 +527,7 @@ namespace TraxCombat.Core
         /// <summary>The groups in order.</summary>
         public static readonly IReadOnlyList<ParamGroup> Groups = new[]
         {
-            MasterGroup, DamageGroup, AthleticsGroup, TiredGroup, StepBackGroup, BattlePaceGroup, RefillGroup, PlayerBarGroup, OrderStripGroup, AltMarkersGroup, AdvancedGroup,
+            MasterGroup, DamageGroup, AthleticsGroup, TiredGroup, StepBackGroup, BattlePaceGroup, BraceGroup, RefillGroup, PlayerBarGroup, OrderStripGroup, AltMarkersGroup, AdvancedGroup,
         };
 
         private static readonly Dictionary<string, ParamDef> ByKey = BuildIndex();

@@ -194,6 +194,9 @@ namespace TraxCombat.Missions
         /// <summary>The class of his last AI timer - the gap after it is filed under it.</summary>
         public AttackClass TimerClass;
 
+        /// <summary>Step 23: his brace (his margin's roll, bracing now, the shield) - null until his first look as an AI man.</summary>
+        public BraceState? Brace;
+
         public void RememberMissile(int index)
         {
             switch (MissileNext)

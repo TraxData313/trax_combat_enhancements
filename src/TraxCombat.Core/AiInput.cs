@@ -94,6 +94,17 @@ namespace TraxCombat.Core
             return f;
         }
 
+        /// <summary>
+        /// Step 23: a bracing man with a shield in hand keeps it up - a frame with neither an attack wish nor a guard of his
+        /// own gets <see cref="DefendDown"/> (his own blocks and parries, any direction, are left as they are). Run AFTER
+        /// <see cref="HoldAttacks"/>. <paramref name="raised"/> = this frame was changed.
+        /// </summary>
+        public static uint RaiseShield(uint flags, out bool raised)
+        {
+            raised = (flags & (DefendMask | AttackMask)) == 0;
+            return raised ? flags | DefendDown : flags;
+        }
+
         /// <summary>A world direction on the ground plane in a man's own input frame (x right, y forward), from his body
         /// frame's side axis (<paramref name="sx"/>, <paramref name="sy"/>) and forward axis - <c>Mat3.TransformToLocal</c>
         /// on the ground plane: (s·v, f·v).</summary>

@@ -294,6 +294,57 @@
   // (range 0.0 to 10.0)
   "ExtraPauseAfterCrossbowShotSeconds": 2.5,
 
+  // ==================== Brace by orders (AI) ====================
+  // An AI soldier whose Athletics bar falls to his formation's order floor (the three settings
+  // below) stops attacking in melee and only defends, guard up, until he refills to that floor
+  // + the recover margin. Bows, crossbows and throws go on. AI heroes and riders too; never
+  // you. Off: AI men swing at any Athletics. Switching it off lifts every brace at once.
+  // (true or false)
+  "BraceEnabled": true,
+
+  // Under a CHARGE order (charge, charge a target, the AI's own charge, attacking a gate) a
+  // soldier braces when his Athletics bar is at or below this % of his full bar. 0 = only when
+  // empty. The new floor applies at once when his formation's order changes.
+  // (range 0 to 100)
+  "BraceFloorChargePercent": 20,
+
+  // Under an ADVANCE order (yours, or the AI's own advance into the enemy) a soldier braces at
+  // or below this % of his full bar.
+  // (range 0 to 100)
+  "BraceFloorAdvancePercent": 40,
+
+  // Under every other order - hold / halt, move to a position, retreat, fall back, follow, or
+  // no formation - a soldier braces at or below this % of his full bar. High = a holding line
+  // swings first and then braces early.
+  // (range 0 to 100)
+  "BraceFloorHoldPercent": 60,
+
+  // A bracing soldier attacks again once his bar is back to his floor + this many points (60 +
+  // 20 = 80%). A wound caps it: he stops bracing at the most his wounds let him refill to, so a
+  // wounded man is never stuck. Blocks cost Athletics and stop the refill, so a man pressed
+  // hard may brace a long time.
+  // (range 0 to 100)
+  "BraceRecoverPercent": 20,
+
+  // Each AI soldier's own margin is the setting above plus or minus up to this many points,
+  // rolled once per soldier and battle - some come back sooner, some later (bravery). 0 =
+  // everyone exactly the margin above. A change rescales everyone's roll at once; his target is
+  // never below his floor + 1.
+  // (range 0 to 50)
+  "BraceRecoverSpreadPercent": 5,
+
+  // When a soldier starts bracing and carries a shield that is not in his hand, he takes it out
+  // (and a one-handed weapon first if his weapon needs both hands). A man with a bow or
+  // crossbow in hand is left alone. When the brace ends his own AI picks his weapons again.
+  // (true or false)
+  "BraceWieldShield": true,
+
+  // While bracing with a shield in hand a soldier holds it up whenever his own AI has no guard
+  // up (his own blocks and parries stay his). Off: the guard is raised only when he wants to
+  // attack.
+  // (true or false)
+  "BraceRaiseShield": true,
+
   // ==================== Refill ====================
   // How long a fighter must go without attacking before his Athletics starts to refill, counted
   // in blow lengths (the next setting): 2 × 1.5 s = 3 seconds.
