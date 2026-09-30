@@ -23,8 +23,8 @@ namespace TraxCombat.Tools
     internal static partial class Program
     {
         private static readonly List<string> Failures = new List<string>();
-        private static string _gameFolder = @"C:\Program Files (x86)\Steam\steamapps\common\Mount & Blade II Bannerlord";
-        private static string _mcmBin = @"C:\Program Files (x86)\Steam\steamapps\workshop\content\261550\2859238197\bin\Win64_Shipping_Client";
+        private static string _gameFolder = @"D:\SteamLibrary\steamapps\common\Mount & Blade II Bannerlord";
+        private static string _mcmBin = @"D:\SteamLibrary\steamapps\workshop\content\261550\2859238197\bin\Win64_Shipping_Client";
         private static bool _allowMcm;
         private static string _dir = string.Empty;
 

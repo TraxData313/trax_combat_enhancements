@@ -874,5 +874,5 @@ splits a message containing double quotes into separate arguments — write it t
 - **Sibling mods** for proven patterns: `..\TrainingBattlesMod` (CLAUDE.md "footguns" list,
   model decorators, Gauntlet windows, deploy/package tools, AssemblyGuard, Workshop upload
   loop in `tools/WORKSHOP-UPLOAD.md`), `..\ImmersiveAI` (MCM bridge, mission views).
-- Game install: `C:\Program Files (x86)\Steam\steamapps\common\Mount & Blade II Bannerlord`.
+- Game install: `D:\SteamLibrary\steamapps\common\Mount & Blade II Bannerlord`.
   Workshop mods (MCM = 2859238197, maybe RCM) under `...\steamapps\workshop\content\261550\`.

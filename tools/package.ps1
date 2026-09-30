@@ -25,8 +25,8 @@
 # (ASCII only in this file: Windows PowerShell 5.1 reads a BOM-less script as ANSI.)
 param(
     [string]$Configuration = "Release",
-    [string]$GameFolder = "C:\Program Files (x86)\Steam\steamapps\common\Mount & Blade II Bannerlord",
-    [string]$McmBinFolder = "C:\Program Files (x86)\Steam\steamapps\workshop\content\261550\2859238197\bin\Win64_Shipping_Client",
+    [string]$GameFolder = "D:\SteamLibrary\steamapps\common\Mount & Blade II Bannerlord",
+    [string]$McmBinFolder = "D:\SteamLibrary\steamapps\workshop\content\261550\2859238197\bin\Win64_Shipping_Client",
     [switch]$Force
 )
 

@@ -4,11 +4,11 @@
     <Nullable>enable</Nullable>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <!-- Path to the Bannerlord installation; override in Directory.Build.props.user if yours differs -->
-    <GameFolder>C:\Program Files (x86)\Steam\steamapps\common\Mount &amp; Blade II Bannerlord</GameFolder>
+    <GameFolder>D:\SteamLibrary\steamapps\common\Mount &amp; Blade II Bannerlord</GameFolder>
     <!-- Mod Configuration Menu (MCM v5), referenced but NOT shipped (its module provides it at runtime).
          Steam Workshop id 2859238197. Only method BODIES may name its types (CLAUDE.md, hard
          requirements) - tools\AssemblyGuard checks that on every deploy. -->
-    <McmBinFolder>C:\Program Files (x86)\Steam\steamapps\workshop\content\261550\2859238197\bin\Win64_Shipping_Client</McmBinFolder>
+    <McmBinFolder>D:\SteamLibrary\steamapps\workshop\content\261550\2859238197\bin\Win64_Shipping_Client</McmBinFolder>
     <!-- THE MOD'S VERSION has one home: module\SubModule.xml's <Version value="vX.Y.Z" />, stamped ONCE
          on release day (CLAUDE.md "Release"). Both DLLs take it from there (step 11), so the launcher,
          the [load] line and the zip name can never disagree. -->
