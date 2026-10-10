@@ -2911,3 +2911,62 @@ statics in a nested class (as `AltColors` did).
 2. The count moves with the braces in a hold-then-charge battle - falls and turns yellow / red while holding, jumps back at
    the charge → the two `[summary] hud: … ready count` lines (yellow and red > 0, the fewest ready plausible) and the eye.
 3. The colours read on the battlefield (the plain one is the brushes' own; yellow / red the bars').
+
+## Step 25 — overall damage reduction (DONE 2026-10-10)
+
+Anton (2026-10-10): "add 25% overall damage reduction on all sources (configurable), so if I do 100 dmg with a swing
+on average -> 75 dmg. This will further slow down the combat."
+
+**Built**: setting `DamageReductionPercent` (int, 25, range 0-90, group "Damage" - renamed from "Damage randomness";
+MCM groups are by index, so nothing saved moves), Core `DamageReduction.cs` (ReductionSkipReason, ReductionOutcome,
+Decide / Apply / Reduce / Clamp / Multiplier / Example), `DamageRules.ReductionPercent` (read in the same
+`DamageRules.From` as the roll - one settings read per hit), `DamageStats` reduction counters + one [summary] line;
+module `DamageRandomizer.Reduce` called on BOTH paths of `Apply` (rolled → on `roll.After`; skipped → on the game's
+value), the first reduced hit of a mission always logged, ", reduced → N" on the verbose roll / skip lines, the
+mission-start line extended AFTER "- read live on every hit" (every older substring check still matches).
+
+**The order per hit**: BaseModel.ApplyGeneralDamageModifiers (armor etc.) → the roll → the reduction → the game's
+`MathF.Round`. Same rounding rule as the roll: a value that SHOWS as 0 (≤ 0.5, banker's) is returned untouched; a
+positive one is `max(1, x · (1 − r/100))`. Clamped to 0..90 twice (the schema's range, `DamageReduction.Clamp`).
+
+**Which hits - decided per roll skip reason** (DESIGN interpretation 27):
+- objects (`!IsColliderAgent`: gates, rams, siege engines, ships) - NOT reduced: a men's-fight setting must not
+  lengthen sieges or naval hull damage.
+- no victim - NOT (defensive, not expected).
+- fall - NOT: not a blow; a jump from a wall should not grow safer.
+- a 0 hit stays 0 (a blocked blow's vanilla 0 is never touched; CalculateDamage only runs for damage > 0 anyway).
+- `DamageRandomEnabled` off / spread 0 / the melee, ranged, mount and shield toggles - STILL reduced: the roll is
+  "random", the reduction "weaker"; one off must not switch the other off.
+- shield blocks - reduced (with or without `DamageRandomOnShields`): "all sources", and a shield lasting a third
+  longer is the same "slower". No toggle - one setting to add if Anton wants shields at the game's pace.
+- kicks / bashes, horse charges, missiles, missile area damage, friendly fire, tournaments - all reduced (they all
+  come through `ApplyGeneralDamageModifiers` as agent hits - RESEARCH §A; step 4's verbose lines name them).
+- master switch off - NOT reduced (pure vanilla), counted as `mod OFF` LAST (after the structural rules and the
+  setting at 0) like the roll's ModOff, so an OFF battle counts the hits an ON battle would reduce.
+
+**Not touched**: stagger / knockdown / dismount still follow the final damage (game rules, DESIGN §1) - so they come a
+bit less often; stun periods, shrug-off thresholds and `CalculateShieldDamage` / sail / hull fire are not ours.
+
+**Config file**: no migration - a key absent from config.json takes its default ("missing → default", the file is
+rewritten with it; ConfigFile.FormatVersion stays 5). Anton's own config.json gets 25 at its first read.
+
+**Logs**: `[damage] mission start: … - read live on every hit; overall damage reduction (DamageReductionPercent) 25% after
+the roll, rolled or not (an average 100 hit lands 75; falls and objects never)`; `[damage] first reduced hit this mission -
+<hit>: the game's 18 → after the roll 23 → reduced 25% (DamageReductionPercent) → lands 17`; `[summary] damage reduction
+(DamageReductionPercent 25%, after the roll): N hits (melee …, ranged …, mounts …, shields …); damage the game's A → after
+the roll B → landed C (-25.0% from the roll's, …% from the game's), avg … per hit (the game's …); not reduced: …`. The roll
+lines above it are unchanged (the roll alone, before the reduction).
+
+**Tests**: DamageReductionTests (+22 → 482). **Smoke**: `DamageReductionThroughDecorator` (68 steps); the older damage
+steps pin `DamageReductionPercent` 0 in `DamageDefaults()`; the master-switch step sets 25 and checks 51 hits counted
+`mod OFF`, none reduced.
+
+**Gotcha (this machine, 2026-10-10)**: the D: drive (Directory.Build.props' game path) was not mounted; the build reads
+`Directory.Build.props.user` (C:\Program Files (x86)\Steam\…), and `tools\deploy.ps1` has its own D: defaults - run it
+with `-GameFolder` / `-McmBinFolder` pointed at the C: install. The smoke passed; the install copy hit a DLL lock (the
+game was running) - deploy again once it is closed.
+
+**UNVERIFIED - only the game can tell (PLAYTEST C8 / L3)**
+1. The "Delivered N damage" numbers read about a quarter lower and men take visibly more blows - and it FEELS slower
+   without being a slog (is 25 right?).
+2. Shields lasting longer feels right (else: a shield toggle).

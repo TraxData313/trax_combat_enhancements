@@ -395,7 +395,7 @@ applies on the first frame back.
   (x0.75 halfway, x0.50 empty), the pause's seconds stay the same - log `[rate] AttackAnimationMinPercent now 50 at … s: N tired fighters get their attack animations x (0.50 + 0.50 f): full speed at the peak line, x0.75 halfway, x0.50 empty over the next ticks (…) - a slower swing on top of the timer; the pause in seconds unchanged`.
   Then 100: full speed (`… at full speed over the next ticks (…) - the timer alone slows them`). Back to 85.
 - *Your Athletics bar* → *Attack recovery bar* off / on: it goes and comes back (`[hud] recovery bar: layer removed at … - ShowAttackRecoveryBar off`).
-- *Damage randomness* → *Spread (± %)* 50 → 0: the same blow deals the same number. Log per hit
+- *Damage* → *Spread (± %)* 50 → 0: the same blow deals the same number. Log per hit
   `~[damage] not rolled - spread 0 (DamageRandomPercent): melee on a person: …`. Back to 50: the very
   next hit rolls again.
 - *Athletics* → *Athletics* off: every slow fighter is normal at once, your bar and the recovery bar
@@ -410,6 +410,20 @@ also decide to attack less* ON as well (both stacked - step 5e's log read "too s
 (3) *Tired AI wait out the pause* off (the AI not held - its rate then barely drops). Compare each
 summary's `attack rate, melee, AI - verdict` line and tell Claude which read closest to ON TARGET —
 and which FELT right.
+
+**C8. Every hit 25% weaker (step 25, +5 min).** *Damage* → *Damage reduction (%)* is 25: every hit on a person,
+a horse or a shield lands a quarter lighter, AFTER the ±50% roll — an average 100 blow lands 75 (anything from
+38 to 113). Falls and gates keep the game's damage.
+- In the C setup, hit the same looter with the same weapon ten times (*Report Damage* on): the "Delivered N
+  damage" numbers sit about a quarter under what they were (a pitchfork's 18-ish average becomes ~14).
+  Men take visibly more blows to drop.
+- Log, at the battle's start: `[damage] mission start: … - read live on every hit; overall damage reduction (DamageReductionPercent) 25% after the roll, rolled or not (an average 100 hit lands 75; falls and objects never)`;
+  the first blow anyone lands: `[damage] first reduced hit this mission - melee on a person: … → …, <weapon>: the game's 18 → after the roll 23 → reduced 25% (DamageReductionPercent) → lands 17`.
+- Mid-battle: 25 → 0 — the very next hit is the game's again (`[config] DamageReductionPercent: 25 → 0 (source: MCM)`); back to 25.
+  *Damage randomness* off: hits stop varying but still land 25% lighter (`~[damage] not rolled - switched off (DamageRandomEnabled): …, 40, reduced → 30`). Back on.
+- Summary: `damage reduction (DamageReductionPercent 25%, after the roll): N hits (…); damage the game's A → after the roll B → landed C (-25.0% from the roll's, …% from the game's), …; not reduced: fall damage …`
+  — **-25% from the roll's** (±0.5 a hit of rounding), `0-25%` written as `0-25% (changed mid-battle)` only if you moved it.
+- Tell Claude how it FEELS: slower without being a slog? Is 25 right, or 20 / 30?
 
 ---
 
@@ -962,6 +976,15 @@ shield blocks (switch), falls, doors / siege engines / ships.
   upside `max` falling row by row and **`rolls above their allowed top: 0`**; errors none. With the mod
   OFF: `damage while the mod was OFF - the game's own numbers, not rolled (factor 1.00): …`; a battle
   that flipped it also has `damage avg per hit: rolled (mod ON) … | mod OFF …`.
+- **The overall reduction (step 25)** comes AFTER the roll: the roll lines above show the roll alone
+  (before the reduction); the reduction has its own lines:
+  - start: `… - read live on every hit; overall damage reduction (DamageReductionPercent) 25% after the roll, rolled or not (an average 100 hit lands 75; falls and objects never)`
+    (`0% - off, the game's damage` at 0; `- not while the mod is OFF` with the master switch off);
+  - always, the first reduced hit: `[damage] first reduced hit this mission - <hit>: the game's 18 → after the roll 23 → reduced 25% (DamageReductionPercent) → lands 17`;
+  - verbose: every roll line and skip line ends `, reduced → 17` when the reduction changed it;
+  - summary: `[summary] damage reduction (DamageReductionPercent 25%, after the roll): 812 hits (melee 650, ranged 120, mounts 40, shields 2); damage the game's 21934 → after the roll 22011 → landed 16508 (-25.0% from the roll's, -24.7% from the game's), avg 20.3 per hit (the game's 27.0); not reduced: fall damage 3, objects (doors, siege engines, ships) 5`
+    — proves `-25.0% from the roll's` (a few tenths of rounding); `not reduced` lists `fall damage`, `objects …`,
+    `0-damage hits`, `reduction 0 (DamageReductionPercent)`, `mod OFF (ModEnabled)`. None at all: `no hit reduced this mission`.
 
 ### L4. Athletics and speed
 

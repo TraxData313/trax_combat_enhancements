@@ -5,7 +5,9 @@ Guidance for Claude Code when working in this repository.
 ## What this is
 
 **Trax Combat Enhancements** (working title) — a combat mod for *Mount & Blade II:
-Bannerlord* v1.4.8 that makes fights a bit more fun: every landed hit rolls ±50% damage,
+Bannerlord* v1.4.8 that makes fights a bit more fun: every landed hit rolls ±50% damage and then lands 25% lighter (step 25, `DamageReductionPercent`, Anton:
+slower fights - AFTER the roll, on people, horses and shields, whatever the roll's switches; falls and objects never;
+Core `DamageReduction`),
 and every fighter has an **Athletics** bar — his stamina, as big as his Athletics skill —
 that blows drain and rest refills. The top quarter of his own bar is full strength; below
 it his damage upside, attack RATE and run speed fall, down to one attack in five when empty -
@@ -179,8 +181,9 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
   ParamDef.cs                 one setting: key, type, range, group, label, plain-words
                               description, apply timing (Live / NextBattle); Normalize, Format;
                               its Default comes from defaults.json (DefaultsFile), never code
-  SettingsSchema.cs           EVERY setting of DESIGN's table (98), in file + MCM order, 12 groups
-                              ("Master switch" first, "Battle pace (AI)" - step 21 - after the step back,
+  SettingsSchema.cs           EVERY setting of DESIGN's table (99), in file + MCM order, 12 groups
+                              ("Master switch" first, "Damage" second - step 25 renamed it from
+                              "Damage randomness", "Battle pace (AI)" - step 21 - after the step back,
                               "Brace by orders (AI)" - step 23 - after it,
                               "Formation markers (hold ALT)" - step 20 - before
                               "Advanced" last; step 10b's one vocabulary and
@@ -229,11 +232,18 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               Decide = the skip rules (ModOff last), factor U[1-p, 1+p×upside),
                               Upside(rules, attacker f) (DESIGN §2), game rounding, 0 stays 0,
                               positive never below 1; RollOutcome (Upside, Ceiling);
-                              DamageCategory, DamageSkipReason
+                              DamageCategory, DamageSkipReason; step 25: DamageRules.ReductionPercent
+  DamageReduction.cs          step 25 pure (AI_NOTES "Step 25"): ReductionSkipReason (objects, no victim, fall,
+                              0 hit, the setting at 0, ModOff LAST - counted like the roll's), DamageReduction -
+                              Decide (independent of the roll's switches), Apply = x (1 − r/100), 0 stays 0,
+                              positive never below 1, clamped 0-90 (MaxPercent), Reduce → ReductionOutcome (the
+                              game's / after the roll / landed), Example ("an average 100 hit lands 75")
   DamageStats.cs              per-mission roll stats (kinds, min/avg/max, before → after, avg per
                               hit, dice histogram, skips by reason, mod-OFF hits unrolled, the
                               upside by the attacker's f + rolls above their top, errors per
-                              site, thread) + the [summary] text; thread-safe
+                              site, thread) + the [summary] text; thread-safe; step 25: the reduction -
+                              hits by kind, the game's → after the roll → landed, the percents used, skips by
+                              reason + the [summary] "damage reduction" line
   Athletics.cs                DESIGN §2 pure (Athletics v2, step 5c): AthleticsRules (live;
                               Enabled = ModEnabled && AthleticsEnabled, OffBecause, the floors),
                               Fighter (state as a FRACTION of the FULL pool, AthleticsSkill,
@@ -437,7 +447,10 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
   Models/DamageRandomizer.cs  feature 1, game side: game structs → HitFacts → Decide → roll with
                               the attacker's f (the rider's on a horse charge) as the upside,
                               stats, [damage] lines (mission start, first roll + thread,
-                              verbose roll/skip), the [summary] damage block
+                              verbose roll/skip), the [summary] damage block; step 25: Reduce -
+                              AFTER the roll (or on the game's value when the roll is skipped),
+                              DamageReduction's rules, the first reduced hit logged in full, ", reduced
+                              → N" on the verbose lines, the reduction in the mission-start line
   Models/TraxAgentStatModel.cs AgentStatCalculateModel DECORATOR — forwards everything;
                               UpdateAgentStats: base first, then the attack ANIMATIONS × the line
                               A + (1 − A) f, f read off the applied m (step 20b; A =
@@ -667,13 +680,16 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
   Hud/AltMarkersVM.cs         its ViewModels: the root + a GROW-ONLY MBBindingList of AltMarkerLabelVM keyed by
                               team + formation (a label never swaps formations when vanilla re-sorts); step 24:
                               ReadyText / ReadyColor / ReadyShown, SetReady
-tests/TraxCombat.Core.Tests/  net8.0 xUnit (460) — schema vs DESIGN.md (keys + types), one copy
+tests/TraxCombat.Core.Tests/  net8.0 xUnit (482) — schema vs DESIGN.md (keys + types), one copy
                               runs (SingleCopyTests: claims on private slots, copies, texts), when
                               MCM is tried and when it stops (McmPlanTests - step 12),
                               defaults.json (DefaultsFileTests), master switch, settings, config
                               file, merge rule, rate limiter (+ Peek), the log trim (LogTrimTests:
                               kept kinds, one cut point, stacks, notes, the last resort, bytes),
-                              damage roll/rules/dice/stats/upside,
+                              damage roll/rules/dice/stats/upside, the damage reduction
+                              (DamageReductionTests, step 25: 100 → 75, 0, the 90 clamp, rounding,
+                              never below 1, 0 stays 0, which hits, the roll off still reduced, the
+                              master switch, the average after the roll, the summary line),
                               Athletics v2 rules (pool, f, cap, curves, effort regen, the refill curve
                               - T for any k, 100 = the old rule to the bit, exact steps - DESIGN's
                               blow counts), kicks and bashes (KickBashTests, step 18: 3 / 2.25 / 1.69,
@@ -742,7 +758,7 @@ tools/package.ps1             step 11, THE RELEASE: manifest gate (release Id + 
 tools/WORKSHOP-UPLOAD.md      the release loop, step by step (first upload, updates) + the uploader's quirks
 tools/WorkshopCreate.xml      the FIRST upload (creates the item, Private, tags, preview) - run once
 tools/WorkshopUpdate.xml      every later upload - ITEM_ID placeholder until the first upload
-tools/STEAM-DESCRIPTION.bbcode  the Workshop page, pasted by hand (≤ 8000 bytes; 5964 now)
+tools/STEAM-DESCRIPTION.bbcode  the Workshop page, pasted by hand (≤ 8000 bytes; 6196 now)
 tools/preview_thumbnail.html  the Workshop preview (source) → preview_thumbnail.png (1024², headless Edge)
 tools/AssemblyGuard/          soft-dependency guard (from the sibling): MCM, Harmony, ButterLib,
                               UIExtenderEx, NavalDLC, CustomBattle in any type surface = FAIL
@@ -826,7 +842,11 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               (Program.Ready.cs): the ready count through the real strip and ALT views -
                               texts / colours, the deeper cell and the lifted bottom card, the panel rows, new
                               stats, the thresholds / BraceEnabled / ShowReadyCount live, the master switch, the
-                              lines (the older strip / ALT steps pin ShowReadyCount off) (67 steps; the config
+                              lines (the older strip / ALT steps pin ShowReadyCount off); step 25
+                              (Program.Damage.cs, DamageReductionThroughDecorator): the real decorator - after
+                              the roll (100 → 37.5..112.5, mean 75), the roll off still reduced on every kind,
+                              never a fall / object / 0 hit, never below 1, live, the master switch, the lines
+                              (the older damage steps pin DamageReductionPercent 0 - DamageDefaults) (68 steps; the config
                               checks work for any tuned default);
                               TRAX_SMOKE_KEEP=1 keeps its temp folder + log to read
 tools/DefaultsTool/           defaults.json upkeep: refresh (rewrite comments/order, keep every

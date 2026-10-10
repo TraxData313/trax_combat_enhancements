@@ -903,3 +903,22 @@
   the lines; the older steps pin ShowReadyCount off); build 0 warnings; deploy.ps1 green and INSTALLED. Docs: DESIGN §3 (strip
   + markers) + 4 rows + interpretation 26, PLAYTEST D7 / E4 / L7 / "what to send", README, Steam description (5964 bytes),
   CLAUDE summary + layout, AI_NOTES "Step 24". Commits 68d7151, fd23961 + this. (2026.09.29 07.26.44)
+
+- [x] 25. Overall damage reduction (Anton, 2026-10-10: "25% overall damage reduction on all sources (configurable) ... 100
+  dmg on average -> 75 ... further slow down the combat"). New setting DamageReductionPercent (25, 0-90, live; group "Damage",
+  renamed from "Damage randomness"). Every hit our damage decorator sees on a person, a horse or a shield is multiplied by
+  (1 − r/100) AFTER the ±50% roll - the order per hit: the game's models → the roll → the reduction → the game rounds; a 100
+  hit rolls 50-150 and lands 37.5-112.5, 75 on average. Independent of the roll's switches (roll off / spread 0 / a toggle
+  off: the game's value is still reduced) - "random" and "weaker" are two things. NOT reduced: falls (not a blow), objects
+  (gates, siege engines, ships - sieges keep their pace); a 0 hit stays 0 (blocked blows' vanilla 0 untouched), a positive
+  hit never below 1, the top is 90 so nothing is unkillable; master switch off = vanilla, counted last like the roll's
+  ModOff. Shields reduced with no toggle (all sources; for Anton to overturn). Core DamageReduction.cs (pure, tested),
+  DamageRules.ReductionPercent, DamageStats' reduction counters + the [summary] "damage reduction" line (the game's → after
+  the roll → landed, -% from each, skips by reason); DamageRandomizer.Reduce on both paths, the first reduced hit logged in
+  full, ", reduced → N" on the verbose lines, the mission-start line states it. No config migration (an absent key takes
+  its default). Settings 98 → 99; tests 460 → 482 (DamageReductionTests); smoke 67 → 68 steps (the real decorator: mean 75,
+  roll off, never falls / objects / 0, never below 1, live, master switch, lines; the older damage steps pin 0); build 0
+  warnings; smoke all passed; deploy's install copy hit a DLL lock (game running) - deploy again with the game closed
+  (D: not mounted here: deploy.ps1 -GameFolder / -McmBinFolder at the C: install). Docs: DESIGN §1 section + row +
+  interpretation 27, PLAYTEST C8 + L3, README, Steam description (6196 bytes), CLAUDE summary + layout, AI_NOTES "Step 25".
+  Commits a9e3be6, 0b9d92b + this. (2026.10.10 20.59.53)

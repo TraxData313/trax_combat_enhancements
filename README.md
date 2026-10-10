@@ -26,6 +26,9 @@ Releasing it: [tools/WORKSHOP-UPLOAD.md](tools/WORKSHOP-UPLOAD.md).
 
 - **Damage randomness** — every hit that lands, melee or ranged, rolls ±50% damage.
   A 50-damage blow lands for anywhere between 25 and 75.
+- **Every hit 25% weaker** — after the roll, every hit on a person, a horse or a shield deals
+  25% less (a slider; 0 = the game's damage): an average 100-damage blow lands for 75, so men
+  take more blows to fall and fights last longer. Falls and gates keep the game's damage.
 - **Athletics** — every fighter has an Athletics bar, his stamina, as big as his **Athletics
   skill** (never under 50). Each blow costs 10 points. The top quarter of the bar — above the
   peak line — is full strength; below it his lucky hits, his attack rate and his run speed fade,
