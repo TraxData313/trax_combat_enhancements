@@ -15,6 +15,19 @@ and carry the fight.
 **Not an overhaul.** Vanilla troops, weapons, armour and AI — nothing in your campaign changes but how
 the fights flow. It writes nothing to your save: add it to a running campaign, remove it any time.
 
+## Your orders set how hard they fight
+
+Each formation's movement order decides how much strength its men spend before they stop attacking
+and only defend:
+
+- **Charge**: all in. They keep swinging until their bar is down to 20%.
+- **Advance**: pressing. They brace at 40%.
+- **Hold, stand, follow, fall back**: careful. They brace at 60%, shields up, and keep their
+  strength in reserve.
+
+So a holding line wears the enemy down while it saves its breath. When their lines are spent (hold
+ALT to see it), order the charge: your men drop their guard and surge in with the strength they kept.
+
 ## What changes
 
 - **The Athletics bar** — as big as the fighter's Athletics skill (never under 50). A swing, thrust,
