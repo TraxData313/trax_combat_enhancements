@@ -1,118 +1,83 @@
 <!DOCTYPE html>
-<!--
-  The Steam Workshop preview image (1024 x 1024) - source. Rendered to tools\preview_thumbnail.png by
-  headless Edge; the command is in tools\WORKSHOP-UPLOAD.md, "The preview image". The bar colours are the mod's own (src\TraxCombat.Core\AthleticsBar.cs); the white mark on each bar
-  is the peak line (75%). No game art is used. An in-game screenshot after the playtest would be better.
--->
+<!-- The Steam Workshop preview (1024 x 1024) - TEMPLATE. Rendered by: python tools\make_thumbnail.py, which cuts
+     the PANEL_* images out of Anton's F12 screenshots (screenshots\originals, git-ignored) and writes
+     tools\preview_thumbnail.jpg. Style: ..\better-skirmisher-separation's (gold frame, Palatino small caps).
+     A real battle behind; the hold-ALT close-up (a spent enemy line beside your fresh shield wall) magnified;
+     your Attack recovery + Athletics bars; the name and the hook below. -->
 <html>
 <head>
 <meta charset="utf-8">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  html, body { width: 1024px; height: 1024px; overflow: hidden; background: #0e0b08; }
+  html, body { width: 1024px; height: 1024px; overflow: hidden; background: #0d0a07; }
   .canvas {
-    position: relative; width: 1024px; height: 1024px;
-    background:
-      radial-gradient(ellipse 80% 60% at 50% 42%, rgba(92, 70, 38, 0.38) 0%, rgba(14, 11, 8, 0) 70%),
-      repeating-linear-gradient(135deg, rgba(255,255,255,0.012) 0px, rgba(255,255,255,0.012) 2px, rgba(0,0,0,0) 2px, rgba(0,0,0,0) 9px),
-      linear-gradient(to bottom, #17120c 0%, #0e0b08 100%);
+    position: relative; width: 1024px; height: 1024px; background: #0d0a07;
     font-family: 'Palatino Linotype', 'Book Antiqua', Georgia, serif;
+  }
+  .battle {
+    position: absolute; left: 0; top: 0; width: 1024px; height: 660px;
+    background: url('PANEL_BATTLE') center 30% / cover no-repeat;
+  }
+  .shade {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse 130% 95% at 50% 30%, rgba(0,0,0,0) 50%, rgba(13,10,7,0.4) 85%, rgba(13,10,7,0.8) 100%),
+      linear-gradient(to bottom, rgba(13,10,7,0.92) 0%, rgba(13,10,7,0.55) 6%, rgba(0,0,0,0) 13%, rgba(0,0,0,0) 46%, rgba(13,10,7,0.75) 58%, rgba(13,10,7,1) 66%);
   }
   .frame {
     position: absolute; inset: 22px;
-    border: 3px solid rgba(214, 178, 94, 0.85);
-    border-radius: 26px;
-    box-shadow: 0 0 0 1px rgba(0,0,0,0.6), inset 0 0 0 1px rgba(0,0,0,0.6), inset 0 0 80px rgba(0,0,0,0.5);
+    border: 3px solid rgba(214, 178, 94, 0.85); border-radius: 26px;
+    box-shadow: 0 0 0 1px rgba(0,0,0,0.6), inset 0 0 0 1px rgba(0,0,0,0.6), inset 0 0 60px rgba(0,0,0,0.35);
   }
-  .title { position: absolute; top: 74px; left: 0; right: 0; text-align: center; }
+  .card {
+    position: absolute; left: 212px; top: 272px; width: 600px;
+    border: 4px solid #e8c874; border-radius: 16px; overflow: hidden;
+    box-shadow: 0 0 22px 4px rgba(255, 205, 90, 0.45), 0 14px 34px rgba(0,0,0,0.85);
+    background: #0d0a07;
+  }
+  .card .shot { width: 592px; height: 258px; background: url('PANEL_ALT') center / cover no-repeat; }
+  .cap {
+    position: absolute; left: 50%; top: 240px; transform: translateX(-50%); white-space: nowrap; z-index: 2;
+    background: rgba(16, 12, 8, 0.94); border: 3px solid #e8c874; border-radius: 10px;
+    padding: 4px 14px 7px; color: #f0e4c8; font-size: 30px; font-variant: small-caps; letter-spacing: 2px;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.9);
+  }
+  .cap b { color: #e8c874; }
+  .bars {
+    position: absolute; left: 212px; top: 548px; width: 600px; height: 74px;
+    background: url('PANEL_BARS') center / cover no-repeat;
+    border-radius: 10px; border: 2px solid rgba(214, 178, 94, 0.55);
+    box-shadow: 0 10px 26px rgba(0,0,0,0.8);
+  }
+  .titleblock { position: absolute; left: 0; right: 0; bottom: 64px; text-align: center; }
   .trax {
-    color: #d6b25e; font-size: 34px; letter-spacing: 22px; padding-left: 22px;
-    font-variant: small-caps; text-shadow: 0 2px 6px rgba(0,0,0,0.9);
+    color: #d6b25e; font-size: 30px; letter-spacing: 20px; padding-left: 20px; font-variant: small-caps;
+    text-shadow: 0 2px 6px rgba(0,0,0,0.9);
   }
   h1 {
-    margin-top: 6px;
-    color: #e8c874; font-weight: 600; font-variant: small-caps; line-height: 0.98;
-    text-shadow: 0 3px 10px rgba(0,0,0,0.95), 0 0 45px rgba(232, 200, 116, 0.25);
+    color: #e8c874; font-weight: 600; font-variant: small-caps; line-height: 0.96; letter-spacing: 3px;
+    text-shadow: 0 3px 10px rgba(0,0,0,0.95), 0 0 45px rgba(232, 200, 116, 0.28);
   }
-  h1 .big { display: block; font-size: 132px; letter-spacing: 6px; }
-  h1 .mid { display: block; font-size: 84px; letter-spacing: 4px; }
-
-  .panel {
-    position: absolute; left: 92px; right: 92px; top: 432px;
-    padding: 30px 34px 26px 34px;
-    background: rgba(8, 7, 6, 0.72);
-    border: 2px solid rgba(214, 178, 94, 0.45);
-    border-radius: 16px;
-    box-shadow: 0 8px 30px rgba(0,0,0,0.6);
-  }
-  .panel .head {
-    color: #bdbdbd; font-family: 'Segoe UI', Arial, sans-serif; font-size: 22px; letter-spacing: 6px;
-    text-transform: uppercase; margin-bottom: 18px; display: flex; justify-content: space-between;
-  }
-  .panel .head span:last-child { letter-spacing: 1px; text-transform: none; color: #8e8e8e; font-size: 20px; }
-  .row { display: flex; align-items: center; height: 58px; }
-  .label {
-    width: 128px; color: #d9cfb8; font-size: 27px; font-style: italic;
-    text-shadow: 0 1px 3px rgba(0,0,0,0.8);
-  }
-  .bar {
-    position: relative; flex: 1; height: 34px;
-    background: rgba(40, 40, 40, 0.9);
-    border: 2px solid rgba(200, 200, 200, 0.70);
-    border-radius: 3px;
-  }
-  .fill { position: absolute; left: 0; top: 0; bottom: 0; }
-  .wound {
-    position: absolute; top: 0; bottom: 0; right: 0;
-    background: repeating-linear-gradient(135deg, rgba(10,10,10,0.95) 0px, rgba(10,10,10,0.95) 6px, rgba(60,20,18,0.95) 6px, rgba(60,20,18,0.95) 12px);
-  }
-  .peak { position: absolute; left: 75%; top: -8px; bottom: -8px; width: 4px; margin-left: -2px; background: #ffffff; box-shadow: 0 0 6px rgba(255,255,255,0.7); }
-  .num {
-    position: absolute; right: 10px; top: 0; bottom: 0; display: flex; align-items: center;
-    color: #ededed; font-family: 'Segoe UI', Arial, sans-serif; font-weight: 600; font-size: 21px;
-    text-shadow: 0 1px 3px rgba(0,0,0,1), 0 0 4px rgba(0,0,0,0.9);
-  }
-  .green { background: #5cb85c; } .blue { background: #4a90d9; } .yellow { background: #e8c93a; }
-  .orange { background: #ee8a2a; } .red { background: #d9392b; }
-
+  h1 .a { display: block; font-size: 104px; }
+  h1 .b { display: block; font-size: 80px; }
   .tagline {
-    position: absolute; left: 0; right: 0; bottom: 118px; text-align: center;
-    color: #f0e4c8; font-size: 38px; font-style: italic; text-shadow: 0 2px 8px rgba(0,0,0,0.95);
+    margin-top: 16px; color: #f0e4c8; font-size: 40px; font-style: italic;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.95);
   }
-  .features {
-    position: absolute; left: 0; right: 0; bottom: 70px; text-align: center;
-    color: #cdb27a; font-size: 27px; font-variant: small-caps; letter-spacing: 2px;
-    text-shadow: 0 2px 6px rgba(0,0,0,0.95);
-  }
-  .features .dot { color: #8a7448; padding: 0 10px; }
-  .features .n { font-variant: normal; font-variant-numeric: lining-nums; font-size: 25px; letter-spacing: 1px; }
 </style>
 </head>
 <body>
   <div class="canvas">
+    <div class="battle"></div>
+    <div class="shade"></div>
+    <div class="card"><div class="shot"></div></div>
+    <div class="cap"><b>Hold ALT</b> · who is tired?</div>
+    <div class="bars"></div>
     <div class="frame"></div>
-    <div class="title">
+    <div class="titleblock">
       <div class="trax">Trax</div>
-      <h1><span class="big">Combat</span><span class="mid">Enhancements</span></h1>
-    </div>
-
-    <div class="panel">
-      <div class="head"><span>Athletics</span><span>the white mark = full strength</span></div>
-      <div class="row"><div class="label">fresh</div>
-        <div class="bar"><div class="fill green" style="width:100%"></div><div class="peak"></div><div class="num">180 / 180</div></div></div>
-      <div class="row"><div class="label">winded</div>
-        <div class="bar"><div class="fill blue" style="width:66%"></div><div class="peak"></div><div class="num">119 / 180</div></div></div>
-      <div class="row"><div class="label">tiring</div>
-        <div class="bar"><div class="fill yellow" style="width:46%"></div><div class="peak"></div><div class="num">83 / 180</div></div></div>
-      <div class="row"><div class="label">wounded</div>
-        <div class="bar"><div class="fill orange" style="width:28%"></div><div class="wound" style="width:30%"></div><div class="peak"></div><div class="num">50 / 180</div></div></div>
-      <div class="row"><div class="label">spent</div>
-        <div class="bar"><div class="fill red" style="width:7%"></div><div class="peak"></div><div class="num">12 / 180</div></div></div>
-    </div>
-
-    <div class="tagline">Every hit rolls. Every blow costs.</div>
-    <div class="features">
-      <span class="n">&plusmn;50%</span> damage <span class="dot">&middot;</span> stamina <span class="dot">&middot;</span> tired men step back <span class="dot">&middot;</span> squad strip
+      <h1><span class="a">Combat</span><span class="b">Enhancements</span></h1>
+      <div class="tagline">Slower, tactical battles. Heroes matter.</div>
     </div>
   </div>
 </body>
