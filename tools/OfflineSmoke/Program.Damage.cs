@@ -49,6 +49,8 @@ namespace TraxCombat.Tools
             S.Set(SettingsSchema.DamageRandomOnShields, false, SettingSources.File);
             S.Set(SettingsSchema.DamageBonusFollowsAthletics, true, SettingSources.File);
             S.Set(SettingsSchema.VerboseLogging, false, SettingSources.File);
+            // Step 25 has its own step (DamageReductionThroughDecorator): the older checks see the roll alone, to the bit.
+            S.Set(SettingsSchema.DamageReductionPercent, 0, SettingSources.File);
         }
 
         private static void DamageRollsThroughDecorator()
@@ -230,6 +232,92 @@ namespace TraxCombat.Tools
             // Leave things as a player would find them: fresh stats, the file's values back in memory.
             DamageRandomizer.OnMissionStart();
             ConfigStore.Reload("after the damage smoke");
+        }
+
+        /// <summary>Step 25: the overall damage reduction through the real decorator - after the roll, on
+        /// every kind of hit, with the roll off too; never falls / objects / a 0 hit; a positive hit never
+        /// below 1; live; the master switch; the log lines and the [summary] line.</summary>
+        private static void DamageReductionThroughDecorator()
+        {
+            DamageDefaults();
+            S.Set(SettingsSchema.DamageReductionPercent, 25, SettingSources.File);
+            DamageRandomizer.Rng = ThreadSafeRandom.Shared;
+            DamageRandomizer.OnMissionStart();
+            LogHas("- read live on every hit; overall damage reduction (DamageReductionPercent) 25% after the roll, rolled or not (an average 100 hit lands 75; falls and objects never)");
+
+            // 1. After the roll: a 100 hit rolls 50..150, lands 37.5..112.5, 75 on average.
+            var values = Enumerable.Range(0, 4000).Select(_ => Hit(damage: 100f)).ToList();
+            Check(values.All(v => v >= 37.49f && v <= 112.51f), "reduced roll out of 37.5..112.5: " + values.Min() + ".." + values.Max());
+            Check(values.Average() > 74f && values.Average() < 76f, "reduced mean " + values.Average() + " is not ~75");
+            Check(values.Min() < 39f && values.Max() > 111f, "the reduced range is not reached: " + values.Min() + ".." + values.Max());
+            LogHas("[damage] first reduced hit this mission - melee on a person: (nobody) → (nobody), unarmed: the game's 100 → after the roll ");
+            LogHas("% (DamageReductionPercent) → lands ");
+            var st = DamageRandomizer.Stats;
+            Check(st.Rolls == 4000 && st.Reduced == 4000, "rolls " + st.Rolls + ", reduced " + st.Reduced);
+            st.ReductionDamage(out long game, out long beforeR, out long landed);
+            Check(game == 400000 && Math.Abs(landed - beforeR * 0.75) < 4000 * 0.6, "reduction sums " + game + " → " + beforeR + " → " + landed);
+
+            // 2. The roll switched off: still reduced, exactly - every kind of hit, shields too.
+            S.Set(SettingsSchema.DamageRandomEnabled, false, SettingSources.File);
+            Check(Hit(damage: 100f) == 75f, "roll off: a 100 melee hit is not 75");
+            Check(Hit(damage: 100f, missile: true) == 75f && Hit(damage: 100f, mount: true) == 75f
+                && Hit(damage: 100f, shield: true) == 75f && Hit(damage: 100f, charge: 4f) == 75f,
+                "roll off: ranged / mount / shield / charge not reduced to 75");
+            // never: a fall, an object, a 0 hit; a positive hit never below 1
+            Check(Hit(damage: 100f, fall: 6f) == 100f, "a fall was reduced");
+            Check(Hit(damage: 100f, agent: false) == 100f, "a hit on an object was reduced");
+            Check(Hit(damage: 0.4f) == 0.4f, "a hit the game shows as 0 was changed");
+            Check(Hit(damage: 1f) == 1f, "a 1-damage hit fell below 1");
+            S.Set(SettingsSchema.DamageReductionPercent, 90, SettingSources.File);
+            Check(Hit(damage: 5f) == 1f && Hit(damage: 100f) == 10f, "90%: 5 → 1 (the floor), 100 → 10");
+            S.Set(SettingsSchema.DamageReductionPercent, 25, SettingSources.File);
+            Check(st.ReductionSkips(ReductionSkipReason.FallDamage) == 1 && st.ReductionSkips(ReductionSkipReason.NotAnAgent) == 1
+                && st.ReductionSkips(ReductionSkipReason.ZeroDamage) == 1,
+                "reduction skips " + st.ReductionSkips(ReductionSkipReason.FallDamage) + "/" + st.ReductionSkips(ReductionSkipReason.NotAnAgent)
+                + "/" + st.ReductionSkips(ReductionSkipReason.ZeroDamage));
+
+            // 3. Live: the next hit sees an MCM change; 0 = the game's damage.
+            S.Set(SettingsSchema.DamageReductionPercent, 50, SettingSources.Mcm);
+            LogHas("[config] DamageReductionPercent: 25 → 50 (source: MCM)");
+            Check(Hit(damage: 100f) == 50f, "50% not applied at the next hit");
+            S.Set(SettingsSchema.DamageReductionPercent, 0, SettingSources.Mcm);
+            Check(Hit(damage: 100f) == 100f && Hit(damage: 100f, missile: true) == 100f, "0%: a hit was still reduced");
+            Check(st.ReductionSkips(ReductionSkipReason.PercentZero) == 2, "reduction 0 not counted: " + st.ReductionSkips(ReductionSkipReason.PercentZero));
+            S.Set(SettingsSchema.DamageReductionPercent, 25, SettingSources.Mcm);
+
+            // 4. The master switch: off = the game's value (rolled or not), counted; on again = reduced again.
+            S.Set(SettingsSchema.ModEnabled, false, SettingSources.Mcm);
+            Check(Hit(damage: 100f) == 100f && Hit(damage: 100f, shield: true) == 100f, "mod off: a hit was reduced");
+            S.Set(SettingsSchema.DamageRandomEnabled, true, SettingSources.File);
+            Check(Enumerable.Range(0, 20).All(_ => Hit(damage: 100f) == 100f), "mod off with the roll on: a hit was rolled or reduced");
+            Check(st.ReductionSkips(ReductionSkipReason.ModOff) == 22, "mod-off reduction skips " + st.ReductionSkips(ReductionSkipReason.ModOff));
+            S.Set(SettingsSchema.ModEnabled, true, SettingSources.Mcm);
+            S.Set(SettingsSchema.DamageRandomEnabled, false, SettingSources.File);
+            Check(Hit(damage: 100f) == 75f, "mod back on: not reduced");
+
+            // 5. The verbose lines say it, the summary proves it.
+            Thread.Sleep(1000); // the verbose buckets refill
+            S.Set(SettingsSchema.VerboseLogging, true, SettingSources.File);
+            Hit(damage: 100f);
+            S.Set(SettingsSchema.DamageRandomEnabled, true, SettingSources.File);
+            Hit(damage: 100f);
+            S.Set(SettingsSchema.VerboseLogging, false, SettingSources.File);
+            LogHas("[damage] not rolled - switched off (DamageRandomEnabled): melee on a person: (nobody) → (nobody), unarmed, 100, reduced → 75");
+            LogHas("[damage] melee on a person: (nobody) → (nobody), unarmed, 100 → ");
+            LogHas("), reduced → ");
+
+            DamageRandomizer.WriteSummary();
+            LogHas("[summary] damage reduction (DamageReductionPercent 25-90% (changed mid-battle), after the roll): ");
+            LogHas(" from the roll's, ");
+            LogHas("; not reduced: objects (doors, siege engines, ships) 1, fall damage 1, 0-damage hits 1, reduction 0 (DamageReductionPercent) 2, mod OFF (ModEnabled) 22");
+
+            // 6. A mission with the reduction at 0 says so.
+            S.Set(SettingsSchema.DamageReductionPercent, 0, SettingSources.File);
+            DamageRandomizer.OnMissionStart();
+            LogHas("overall damage reduction (DamageReductionPercent) 0% - off, the game's damage");
+
+            DamageRandomizer.OnMissionStart();
+            ConfigStore.Reload("after the damage reduction smoke");
         }
     }
 }

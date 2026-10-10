@@ -853,6 +853,7 @@ namespace TraxCombat.Tools
         {
             // --- damage
             DamageDefaults();
+            S.Set(SettingsSchema.DamageReductionPercent, 25, SettingSources.File); // step 25: off = not reduced either
             DamageRandomizer.Rng = ThreadSafeRandom.Shared;
             S.Set(SettingsSchema.ModEnabled, false, SettingSources.Mcm);
             LogHas("[config] ModEnabled: true → false (source: MCM)");
@@ -864,6 +865,7 @@ namespace TraxCombat.Tools
             var ds = DamageRandomizer.Stats;
             Check(ds.VanillaHits == 50 && ds.Rolls == 0, "mod off: vanilla hits " + ds.VanillaHits + ", rolls " + ds.Rolls);
             Check(ds.Skips(DamageSkipReason.ShieldToggleOff) == 1 && ds.Skips(DamageSkipReason.FallDamage) == 1, "mod off: the other skip rules no longer decide first");
+            Check(ds.Reduced == 0 && ds.ReductionSkips(ReductionSkipReason.ModOff) == 51, "mod off: reduced " + ds.Reduced + ", mod-off reduction skips " + ds.ReductionSkips(ReductionSkipReason.ModOff) + " (step 25)");
             DamageRandomizer.WriteSummary();
             LogHas("[summary] damage while the mod was OFF - the game's own numbers, not rolled (factor 1.00): 50 hits (melee 40, ranged 10, mounts 0, shields 0); damage 2500 → 2500 (+0.0%), avg 50.0 per hit");
 

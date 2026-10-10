@@ -80,6 +80,7 @@ namespace TraxCombat.Tools
             Step("damage: a bug in the roll keeps the game's value and logs ONE [error] per mission", DamageFailSafe);
             Step("damage: verbose roll/skip lines and the [summary] damage block", DamageLogAndSummary);
             Step("damage: a roll off the main thread is detected and reported", DamageOffMainThread);
+            Step("damage reduction (step 25): through the real decorator - AFTER the roll (100 → 37.5..112.5, mean 75), the roll off still reduced (melee / ranged / mount / shield / charge 100 → 75), never a fall, an object or a 0 hit, a positive hit never below 1 (90%: 5 → 1), live (50, 0), the master switch (the game's value, counted), the first-reduced-hit line, the verbose lines, the [summary] line, the mission-start line at 25 and at 0", DamageReductionThroughDecorator);
             // Athletics (steps 5, 5c) - the real speed penalties, stat decorator, Athletics logic and
             // damage decorator, fed uninitialized Agent objects (no native side).
             Step("Athletics: the attack, run and horse levers each scale only their own AgentDrivenProperties", SpeedPenaltyScalesOnlyItsOwnValues);
