@@ -8,9 +8,10 @@ Upload stays Anton's yes.
 
 ## Steps
 - [x] 25. Damage reduction (DamageReductionPercent 25, all sources, live, master switch) — full protocol
-- [ ] 26. Launch prep like better-skirmisher-separation (research its launch kit, adapt: Steam page, preview/cover, README, screenshot slots, package dry run) — no upload
+- [x] 26. Launch prep like better-skirmisher-separation (research its launch kit, adapt: Steam page, preview/cover, README, screenshot slots, package dry run) — no upload
 - [ ] 27. Final check + summary to Anton (open questions: version v0.1.0 vs v1.0.0)
 
 ## Notes
 - 25 done (442cfb7..01f681f): DamageReductionPercent 25 (0-90), Core DamageReduction.cs, after the roll; all hits on people/horses/shields, not falls/objects, not with mod off. 482 tests, smoke 68 OK. Deploy: agent said D: not mounted, used C: Steam paths, install copy hit a locked DLL -> Anton redeploys with the game closed. Open: shields reduced too (no toggle).
 - Anton mid-step: took screenshots with F12 (Steam screenshots); wants a GOOD thumbnail + description in readable bits; pitch: slows combat down WITHOUT the overhaul of "that popular combat mod" (RBM: spears, troop rework).
+- 26 done (eb59454..70292ae): thumbnail tools/preview_thumbnail.jpg, gallery docs/screenshots/01-05, description 6009 bytes, README rewritten, Workshop XMLs fixed to real paths, package dry run green (v0.1.0, zip 328 KB). Anton asked for an overview before going live -> step 27 = show him, wait for his yes + version.
