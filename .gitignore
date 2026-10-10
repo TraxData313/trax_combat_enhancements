@@ -15,4 +15,4 @@ steam_appid.txt
 steam_workshop_uploader.txt
 
 # Raw in-game screenshots (the thumbnail is built from them; only tools/preview_thumbnail.jpg is committed)
-screenshots/
+/screenshots/
