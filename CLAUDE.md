@@ -755,11 +755,25 @@ tools/package.ps1             step 11, THE RELEASE: manifest gate (release Id + 
                               or game DLLs) → dist\TraxCombatEnhancements_vX.Y.Z.zip (forward-slash
                               entries; an existing one only with -Force) → file list + sizes. dist\ is
                               git-ignored
-tools/WORKSHOP-UPLOAD.md      the release loop, step by step (first upload, updates) + the uploader's quirks
-tools/WorkshopCreate.xml      the FIRST upload (creates the item, Private, tags, preview) - run once
+tools/WORKSHOP-UPLOAD.md      the release loop, step by step (first upload, updates) + the uploader's quirks +
+                              "The images" (where the F12 shots live, the gallery list in order)
+tools/WorkshopCreate.xml      the FIRST upload (creates the item, Private, tags, preview .jpg, the short pitch) -
+                              run once; paths = this PC (C:\Users\Asus ROG\Documents\GitHub\..., C: Steam game)
 tools/WorkshopUpdate.xml      every later upload - ITEM_ID placeholder until the first upload
-tools/STEAM-DESCRIPTION.bbcode  the Workshop page, pasted by hand (≤ 8000 bytes; 6196 now)
-tools/preview_thumbnail.html  the Workshop preview (source) → preview_thumbnail.png (1024², headless Edge)
+tools/make_workshop_update.py step 26, from the sibling: WorkshopUpdate.xml → a one-off task in %TEMP% that also
+                              sends STEAM-DESCRIPTION.bbcode (escaped, &#10;) and --visibility; --notes required
+tools/STEAM-DESCRIPTION.bbcode  the Workshop page (≤ 8000 bytes; 6009 now) - step 26's launch pitch: slower,
+                              tactical, heroes matter, NOT an overhaul (RBM named politely as the deep one)
+tools/preview_thumbnail.html  the Workshop preview TEMPLATE (PANEL_* placeholders) → make_thumbnail.py
+tools/preview_thumbnail.jpg   THE preview (1024², ~275 KB, under Steam's 1 MB): a real battle, the hold-ALT
+                              close-up ("ready 1/9" vs "ready 37/53"), your two bars, name + "Slower, tactical
+                              battles. Heroes matter."
+tools/make_thumbnail.py       step 26 (the sibling's recipe): crops (SHOTS) + paint-outs (ERASE) from
+                              screenshots/originals → fills the template → headless Edge → the .jpg
+tools/make_gallery.py         step 26: the Workshop gallery, docs/screenshots/01-05 (2560 px, < 1 MB each),
+                              in order with captions
+docs/screenshots/             the gallery (committed; README shows 01). The RAW F12 shots go in /screenshots/
+                              (git-ignored) - Steam keeps them in <Steam>\userdata\<id>\760\remote\261550\screenshots
 tools/AssemblyGuard/          soft-dependency guard (from the sibling): MCM, Harmony, ButterLib,
                               UIExtenderEx, NavalDLC, CustomBattle in any type surface = FAIL
 tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLLs, no game

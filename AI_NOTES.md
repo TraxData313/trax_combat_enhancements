@@ -2970,3 +2970,46 @@ game was running) - deploy again once it is closed.
 1. The "Delivered N damage" numbers read about a quarter lower and men take visibly more blows - and it FEELS slower
    without being a slog (is 25 right?).
 2. Shields lasting longer feels right (else: a shield toggle).
+
+## Step 26 — launch prep: thumbnail, gallery, description, README (DONE 2026-10-10)
+
+Anton (2026-10-10): "the mod I start to enjoy very much. Start prepping it for launch - it makes the combat slower,
+makes tactics more important, makes heroes a bit stronger and more of key figures." Model: `..\better-skirmisher-separation`
+(its README, STEAM-DESCRIPTION, make_thumbnail / make_workshop_update, screenshots/ git-ignored). Contrast named: RBM, politely.
+
+**Screenshots.** Steam keeps F12 shots in `C:\Program Files (x86)\Steam\userdata\258577504\760\remote\261550\screenshots`
+(3440x1440). The 2026-10-10 batch: 20:52:26-20:54:05 = five battle shots (ours, ALT labels + strip + bars on screen);
+20:58:32-20:59:12 = eight shots of another mod's "Party Steward" town screen - NOT ours, left out. Copied to
+`/screenshots/originals/` (git-ignored like the sibling; the .gitignore line is `/screenshots/` - an unanchored
+`screenshots/` also hid `docs/screenshots`).
+
+**Thumbnail** (`tools/make_thumbnail.py` → `tools/preview_thumbnail.jpg`): the sibling's gold frame / Palatino look over a
+real battle (205310: shield wall + archers), a magnified hold-ALT close-up (205359: the enemy's 16% ± 12 "ready 1/9" in red
+beside your 79% ± 25 "ready 37/53") under a "Hold ALT · who is tired?" tab, your Attack recovery + Athletics bars (205226),
+then "Trax / Combat Enhancements / Slower, tactical battles. Heroes matter." Iterated by eye 7 times: crop wide enough to
+read as a battle; the order-menu column (x < ~480) cropped off; far formations' labels above the troops painted out
+(ERASE: clone the same rows 240 px right); the inset's troop counts "9" / "53" painted out (the tab sat on them); the tab
+OUTSIDE the inset (inside it covered either the markers or "ready 1/9"). Checked at 256 px. JPEG, not PNG: a photo PNG
+is ~1.5 MB, over Steam's 1 MB; the old PNG (no game art) is deleted and WorkshopCreate's <Image> points at the .jpg.
+
+**Gallery** (`tools/make_gallery.py` → `docs/screenshots/01..05`, 2560 px, ~600-700 KB): ALT, shield wall, orders strip,
+your bars, a mounted hero. The uploader cannot add gallery images (the sibling's finding) - by hand on the item page.
+
+**Description** (6009 bytes): pitch (3 lines) + "Not an overhaul" paragraph, then What changes / Tired men act like it /
+Heroes matter / See it / Make it yours / Compatibility / FAQ / Removing it / First release / credits (the sibling's
+"made by two of us" + "read my top pinned" lines). Every number checked against defaults.json (10 / 3 / 1-5 costs, 0.75 x
+0.75, 20% attack rate = 1 in 5, run 0.3, animation 0.85, 25% reduction, 30 / 15 % swings, brace 60 / 40 / 20) and the MCM
+labels quoted against SettingsSchema ("Damage reduction", "Shield infantry swing less", "Brace floor").
+
+**Found and fixed**: WorkshopCreate/Update.xml pointed at `C:\Users\Trax\Documents\BannerlordMods\...` - no such folder on
+this PC; now `C:\Users\Asus ROG\Documents\GitHub\trax_combat_enhancements` and the C: Steam game (the uploader exe is there).
+Gotcha for next time: Python heredocs with Windows paths ate `\b` (backspace) and `\261` (octal ±) - check edited files for
+control characters, or use the Edit tool.
+
+**Package dry run** (C: game: `-GameFolder` / `-McmBinFolder`, the defaults are on the unmounted D:): build, unit tests,
+AssemblyGuard, offline smoke all passed; v0.1.0, 9 files, 833,104 bytes; zip 328,497 bytes (dist/ git-ignored). Version NOT
+stamped - v0.1.0 vs v1.0.0 is Anton's call.
+
+**For Anton before upload**: look at the thumbnail and gallery; pick the first version number; the Workshop tags stay
+Utility / UI / Native / Singleplayer / v1.4.8 (add a "Battle" or "Gameplay" tag on the page if Steam's list has one);
+upload = his yes only.
