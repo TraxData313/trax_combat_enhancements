@@ -1,91 +1,69 @@
 # Trax Combat Enhancements
 
-*(working title)* — a combat mod for **Mount & Blade II: Bannerlord** (v1.4.8) that makes
-every fight a little less predictable and a lot more about who is still fresh.
+![Hold ALT: Athletics, health and the men ready to fight under each formation marker - the enemy's spent lines in red](docs/screenshots/01-hold-alt-who-is-tired.jpg)
 
-**Status: first release packaged, not published yet** — it goes on the Steam Workshop after its
-playtest. Progress is tracked in [TASKS_TODO.md](TASKS_TODO.md) and [TASKS_DONE.md](TASKS_DONE.md).
+A mod for Mount & Blade II: Bannerlord (v1.4.8): **slower, more tactical battles — where heroes matter.**
 
-**Requirements:** Mount & Blade II: Bannerlord **v1.4.8**, singleplayer. MCM (Mod Configuration
-Menu) is optional.
+Made by two of us: the code and all technical work by Claude (Opus 5.5), an AI; the idea, feedback and
+playtesting by [Trax](https://github.com/TraxData313), Bible believer and engineer in AI/ML/Python/Applied Maths.
+
+Every fighter gets a stamina bar — **Athletics**. Blows drain it, rest refills it, and a tired man hits
+softer, attacks less often and runs slower. Lines wear down, brace, step back and surge again on your
+orders, so *when* you commit your troops matters as much as which troops you bring. Heroes tire slowest
+and carry the fight.
+
+**Not an overhaul.** Vanilla troops, weapons, armour and AI — nothing in your campaign changes but how
+the fights flow. It writes nothing to your save: add it to a running campaign, remove it any time.
+
+## What changes
+
+- **The Athletics bar** — as big as the fighter's Athletics skill (never under 50). A swing, thrust,
+  shot or throw costs 10; a kick or shield bash 3; a blocked blow 1 to 5. Wounds cap it; about a
+  minute's rest refills it.
+- **Full strength in the top quarter** — below it, attack rate, lucky hits and run speed fade: empty,
+  one attack where there were five, and a 30% run.
+- **A pause after each attack** — no slow motion: a tired fighter waits before his next attack (you
+  see yours fill up in an Attack recovery bar); the AI waits with its guard up.
+- **Fights last longer** — every hit 25% softer, and it rolls ±50%. AI shield infantry swing ~30% less
+  often, other footmen 15%; archers wait a little longer between shots.
+- **Tired men act like it** — they step back out of the press facing the enemy, and brace (defend only,
+  shield up) when their bar falls to the floor their orders set: holding 60%, advancing 40%,
+  charging 20%.
+- **Heroes matter** — lords, companions and you pay a quarter less per blow, party leaders a quarter
+  less again, and a big skill means a big bar. In a hideout, your side comes fresh to the boss fight.
+- **See it** — your bars under your health; in the orders menu and under the formation markers (hold
+  ALT) each formation's Athletics, health and how many men are *ready*, yours and the enemy's.
+
+Every number is a setting, in the **Mod Configuration Menu** (optional) or a commented config file
+(`Documents\Mount and Blade II Bannerlord\Configs\TraxCombatEnhancements\config.json`); changes apply at
+once, even mid-battle. A master switch turns the whole mod off mid-battle, to compare.
 
 ## Install
 
-- **Steam Workshop** — once it is released: subscribe, then enable *Trax Combat Enhancements* in
-  the launcher. (The link goes here with the first upload.)
-- **Manual, meanwhile** — build the zip with `powershell -ExecutionPolicy Bypass -File tools\package.ps1`
-  (it lands in `dist\`), extract it into `<game>\Modules\` so it becomes
-  `Modules\TraxCombatEnhancements\`, and enable it in the launcher.
-- Keep only one copy: remove a manual install before subscribing (both carry the same module id).
-  If two copies do end up enabled (say the Workshop one and a dev build), the first to load runs,
-  the other stays out of the way, and the main menu says so.
+1. Subscribe on the Steam Workshop (the link goes here with the first upload) — or build the zip with
+   `powershell -ExecutionPolicy Bypass -File tools\package.ps1` and extract it into
+   `Mount & Blade II Bannerlord\Modules\`.
+2. Enable **Trax Combat Enhancements** in the launcher.
 
-Releasing it: [tools/WORKSHOP-UPLOAD.md](tools/WORKSHOP-UPLOAD.md).
+No requirements — no Harmony. [Mod Configuration Menu](https://steamcommunity.com/sharedfiles/filedetails/?id=2859238197)
+is optional. **Not compatible with Realistic Battle Mod (RBM)** — RBM is a deep overhaul with its own
+stamina and posture; this is the light road to slower battles on vanilla's troops. Use one or the other
+(the mod warns at the main menu if it sees RBM). Made to sit beside RTS Camera and War Sails.
 
-## What it does
+Free and open — public domain ([Unlicense](LICENSE)). Do whatever you like with it.
 
-- **Damage randomness** — every hit that lands, melee or ranged, rolls ±50% damage.
-  A 50-damage blow lands for anywhere between 25 and 75.
-- **Every hit 25% weaker** — after the roll, every hit on a person, a horse or a shield deals
-  25% less (a slider; 0 = the game's damage): an average 100-damage blow lands for 75, so men
-  take more blows to fall and fights last longer. Falls and gates keep the game's damage.
-- **Athletics** — every fighter has an Athletics bar, his stamina, as big as his **Athletics
-  skill** (never under 50). Each blow costs 10 points. The top quarter of the bar — above the
-  peak line — is full strength; below it his lucky hits, his attack rate and his run speed fade,
-  down to one attack where he used to make five, and 30% of his running pace, when it is empty. No slow motion: his swings,
-  draws and throws only look a little heavier (85% of their speed when he is empty), but after each attack a tired fighter
-  must wait before the next one — you see your wait fill up in an Attack recovery bar (press attack too early and it
-  just flashes; hold the button and you strike the moment it fills), the AI waits with its guard
-  up. Blocking, kicks and moving are never held; a kick or a shield bash costs a little
-  Athletics (3 points) but never starts a wait. Defending costs too: each blow you block costs you
-  1 point with the shield held the right way, 5 held the wrong way, 2 parried with a weapon — so a
-  man kept busy blocking tires and does not rest (arrows into a shield are free). Wounds cap the bar.
-  Rest to refill it: one minute standing or walking, twice that running flat out, at the same rate
-  all the way (a slider can make it quicker when low). Heroes pay less per
-  blow, party leaders less again, and a hero's big Athletics skill means a big bar — the battle
-  leans on its heroes. In a hideout, when the boss steps out with his men, they come fresh — and
-  so does your side: the moment the fight begins, your bar is full again (you alone in a duel, you
-  and your men in the brawl; wounds still cap it).
-- **Tired men step back** — after a swing, a tired AI soldier on foot may walk backwards out of the
-  press, facing his enemy with his guard up, and rejoin his line a moment later: the more
-  tired, the more often. The fresh take the blows. Field battles only.
-- **Slower, more defensive battles** — AI soldiers with a shield in hand swing about 30% less often,
-  fresh or tired (a beat with the shield up between blows); other foot soldiers 15% less; AI archers
-  wait 2 seconds more after each arrow and crossbowmen 2.5 — about 30% fewer shots a minute. Each is a
-  slider (0 = off); riders, javelins and you are never slowed by it.
-- **Tired lines brace by their orders** — an AI soldier whose Athletics bar falls to a floor set by
-  his formation's order (holding 60%, advancing 40%, charging 20%) stops swinging and only defends,
-  shield out and up, until he is back 20 points above it (each man ± 5, a little bravery rolled once a
-  battle). So a holding line attacks at first, then braces; order a charge and it surges again.
-  Archers keep shooting; wounds never trap a man in it; never you. Every floor is a slider.
-- **See it** — your own Athletics bar under your health bar: the number, a mark at the peak line,
-  green at full strength, then blue, yellow, orange and red as you tire, the part your wounds hold
-  shown dark; above it the Attack recovery bar with the seconds of your wait inside it. And in the orders menu, a slim strip under each formation card: its men's average
-  Athletics ± spread ("72% ± 8") and their average health ("HP 81%"). The strip reads the game's own
-  cards, so it lines up at any resolution and UI scale, and with RTS Camera's order menu. **Hold
-  ALT** and the same two numbers appear under the game's formation markers above the troops — under
-  the troop count and distance — for your formations and the enemy's (see which of their lines is
-  tired before you charge it); they read the game's own markers, so they sit right with any camera,
-  RTS Camera's free camera included. Both also count each formation's men **ready** — not bracing —
-  as "ready 34/50", turning yellow and red as fewer are ready (hidden while bracing is off).
-- **A master switch** — turn the whole mod off, even mid-battle, and the fight is pure vanilla, so
-  you can play the same battle both ways and compare.
+To thank me, open [my GitHub profile](https://github.com/TraxData313) and read my top pinned.
 
-Every number is adjustable — in the **Mod Configuration Menu (MCM)** if you have it (optional:
-the mod runs without it), or in a plain config file with an explanation beside each value
-(`Documents\Mount and Blade II Bannerlord\Configs\TraxCombatEnhancements\config.json`). Changes
-in MCM apply at once, even mid-battle; nothing ever needs a restart. The mod adds nothing to your
-save, so it can be added or removed mid-campaign. Full spec: [docs/DESIGN.md](docs/DESIGN.md).
+<details>
+<summary>How it works, and how it is built</summary>
 
-## Compatibility
+- The full behaviour and every parameter: [docs/DESIGN.md](docs/DESIGN.md).
+- Verified game-API findings for v1.4.8: [docs/RESEARCH.md](docs/RESEARCH.md).
+- The playtest script and every log line: [docs/PLAYTEST.md](docs/PLAYTEST.md).
+- Progress: [TASKS_TODO.md](TASKS_TODO.md), [TASKS_DONE.md](TASKS_DONE.md).
+- Releasing: [tools/WORKSHOP-UPLOAD.md](tools/WORKSHOP-UPLOAD.md) — the thumbnail and gallery come from
+  in-game screenshots via `tools/make_thumbnail.py` and `tools/make_gallery.py`.
+- The mod keeps `trax_combat.log` beside its config file, with a summary of every battle — attach it to
+  a bug report.
 
-- **Not compatible with RBM (Realistic Battle Mod)** — it brings its own posture and stamina
-  systems. Use one or the other; the mod warns you at the main menu if it sees RBM.
-- Built to sit alongside **RTS Camera** (and its Command System's order menu) and **War Sails**
-  (no step backs on deck) — to be confirmed in the first playtest.
-- MCM is optional.
-- Safe to add or remove mid-campaign: it lives inside battles and writes nothing to the save.
-
-## License
-
-Public domain ([Unlicense](LICENSE)).
+</details>
