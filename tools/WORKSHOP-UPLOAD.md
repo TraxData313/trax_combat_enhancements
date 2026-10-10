@@ -27,7 +27,7 @@ SteamCMD, no password, no Steam Guard.
    size. If a zip of that version is already there from a test package, add `-Force`.
    Its default game path is on `D:`; with the game on `C:` (this PC, 2026-10-10) pass both folders:
    ```powershell
-   powershell -ExecutionPolicy Bypass -File tools\package.ps1 -GameFolder "C:\Program Files (x86)\Steam\steamapps\common\Mount & Blade II Bannerlord" -McmBinFolder "C:\Program Files (x86)\Steam\steamapps\workshop\content±550859238197in\Win64_Shipping_Client"
+   powershell -ExecutionPolicy Bypass -File tools\package.ps1 -GameFolder "C:\Program Files (x86)\Steam\steamapps\common\Mount & Blade II Bannerlord" -McmBinFolder "C:\Program Files (x86)\Steam\steamapps\workshop\content\261550\2859238197\bin\Win64_Shipping_Client"
    ```
 4. **Check the images** — the preview `tools\preview_thumbnail.jpg` and the gallery
    `docs\screenshots\*.jpg` (see "The images" below). Both are built from Anton's F12 shots;
