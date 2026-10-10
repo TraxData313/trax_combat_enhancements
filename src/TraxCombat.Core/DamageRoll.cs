@@ -107,7 +107,7 @@ namespace TraxCombat.Core
     public readonly struct DamageRules
     {
         public DamageRules(bool enabled, int percent, bool melee, bool ranged, bool onMounts, bool onShields, bool modEnabled = true,
-            bool upsideFollowsAthletics = false)
+            bool upsideFollowsAthletics = false, int reductionPercent = 0)
         {
             Enabled = enabled;
             Percent = percent;
@@ -117,7 +117,12 @@ namespace TraxCombat.Core
             OnShields = onShields;
             ModEnabled = modEnabled;
             UpsideFollowsAthletics = upsideFollowsAthletics;
+            ReductionPercent = reductionPercent;
         }
+
+        /// <summary>DamageReductionPercent (step 25): every hit on a person or a horse is reduced by
+        /// this %, AFTER the roll - whether or not it rolled (see <see cref="DamageReduction"/>).</summary>
+        public int ReductionPercent { get; }
 
         /// <summary>DamageBonusFollowsAthletics (DESIGN §2): the upside of the roll shrinks with the
         /// attacker's f - see <see cref="DamageRoll.Upside"/>.</summary>
@@ -143,7 +148,7 @@ namespace TraxCombat.Core
         /// <summary>The live values, read now.</summary>
         public static DamageRules From(TraxSettings s) => new DamageRules(
             s.DamageRandomEnabled, s.DamageRandomPercent, s.DamageRandomMelee, s.DamageRandomRanged,
-            s.DamageRandomOnMounts, s.DamageRandomOnShields, s.ModEnabled, s.DamageBonusFollowsAthletics);
+            s.DamageRandomOnMounts, s.DamageRandomOnShields, s.ModEnabled, s.DamageBonusFollowsAthletics, s.DamageReductionPercent);
     }
 
     /// <summary>One roll: the game's value, ours, and the dice.</summary>

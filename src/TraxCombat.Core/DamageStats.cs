@@ -39,6 +39,17 @@ namespace TraxCombat.Core
         private readonly double[] _upAllowedSum = new double[UpsideBins];
         private int _aboveCeiling;
 
+        // Step 25: the overall damage reduction - hits reduced by kind, the game's value → after the
+        // roll → landed (rounded, what the player saw), the percents used, skips by reason.
+        private static readonly int ReductionReasonCount = Enum.GetValues(typeof(ReductionSkipReason)).Length;
+        private readonly int[] _reduced = new int[CategoryCount];
+        private long _reduceGame;
+        private long _reduceBefore;
+        private long _reduceAfter;
+        private int _reduceMinPercent;
+        private int _reduceMaxPercent;
+        private readonly int[] _reduceSkips = new int[ReductionReasonCount];
+
         public DamageStats()
         {
             _categories = new Bucket[CategoryCount];
@@ -103,7 +114,68 @@ namespace TraxCombat.Core
                 Array.Clear(_upFactorMax, 0, _upFactorMax.Length);
                 Array.Clear(_upAllowedSum, 0, _upAllowedSum.Length);
                 _aboveCeiling = 0;
+                Array.Clear(_reduced, 0, _reduced.Length);
+                _reduceGame = _reduceBefore = _reduceAfter = 0;
+                _reduceMinPercent = _reduceMaxPercent = 0;
+                Array.Clear(_reduceSkips, 0, _reduceSkips.Length);
             }
+        }
+
+        /// <summary>Step 25: one hit the overall reduction lowered.</summary>
+        public void AddReduction(DamageCategory category, in ReductionOutcome r)
+        {
+            int game = r.GameRounded, before = r.BeforeRounded, after = r.AfterRounded;
+            lock (_gate)
+            {
+                bool first = ReducedLocked() == 0;
+                _reduced[(int)category]++;
+                _reduceGame += game;
+                _reduceBefore += before;
+                _reduceAfter += after;
+                if (first || r.Percent < _reduceMinPercent) _reduceMinPercent = r.Percent;
+                if (first || r.Percent > _reduceMaxPercent) _reduceMaxPercent = r.Percent;
+            }
+        }
+
+        /// <summary>Step 25: a hit the overall reduction left alone, by reason.</summary>
+        public void AddReductionSkip(ReductionSkipReason reason)
+        {
+            if (reason == ReductionSkipReason.None) return;
+            lock (_gate) _reduceSkips[(int)reason]++;
+        }
+
+        /// <summary>Hits the overall reduction lowered (step 25).</summary>
+        public int Reduced
+        {
+            get { lock (_gate) return ReducedLocked(); }
+        }
+
+        public int ReducedIn(DamageCategory category)
+        {
+            lock (_gate) return _reduced[(int)category];
+        }
+
+        public int ReductionSkips(ReductionSkipReason reason)
+        {
+            lock (_gate) return _reduceSkips[(int)reason];
+        }
+
+        /// <summary>Sums of the rounded damage of the reduced hits: the game's, after the roll, landed.</summary>
+        public void ReductionDamage(out long game, out long beforeReduction, out long landed)
+        {
+            lock (_gate)
+            {
+                game = _reduceGame;
+                beforeReduction = _reduceBefore;
+                landed = _reduceAfter;
+            }
+        }
+
+        private int ReducedLocked()
+        {
+            int n = 0;
+            foreach (int c in _reduced) n += c;
+            return n;
         }
 
         /// <summary>A hit that would have rolled while the mod was switched off
@@ -364,6 +436,8 @@ namespace TraxCombat.Core
                     lines.Add("damage avg per hit: rolled (mod ON) " + F1((double)total.After / total.Count) + " (the game's "
                         + F1((double)total.Before / total.Count) + " before the roll) | mod OFF " + F1((double)vanillaDamage / vanilla));
 
+                lines.Add(ReductionLine());
+
                 int skipped = 0;
                 foreach (int s in _skips) skipped += s;
                 if (skipped == 0)
@@ -414,6 +488,55 @@ namespace TraxCombat.Core
             }
             return lines;
         }
+
+        /// <summary>The [summary] reduction line (step 25) - under the lock.</summary>
+        private string ReductionLine()
+        {
+            int n = ReducedLocked();
+            var sb = new StringBuilder("damage reduction (DamageReductionPercent");
+            if (n == 0)
+            {
+                sb.Append("): no hit reduced this mission");
+            }
+            else
+            {
+                sb.Append(' ').Append(_reduceMinPercent == _reduceMaxPercent
+                        ? _reduceMinPercent.ToString(CultureInfo.InvariantCulture) + "%"
+                        : _reduceMinPercent.ToString(CultureInfo.InvariantCulture) + "-" + _reduceMaxPercent.ToString(CultureInfo.InvariantCulture) + "% (changed mid-battle)")
+                  .Append(", after the roll): ").Append(n).Append(" hits (melee ").Append(_reduced[(int)DamageCategory.Melee])
+                  .Append(", ranged ").Append(_reduced[(int)DamageCategory.Ranged])
+                  .Append(", mounts ").Append(_reduced[(int)DamageCategory.Mount])
+                  .Append(", shields ").Append(_reduced[(int)DamageCategory.Shield])
+                  .Append("); damage the game's ").Append(_reduceGame).Append(" → after the roll ").Append(_reduceBefore)
+                  .Append(" → landed ").Append(_reduceAfter)
+                  .Append(" (").Append(Percent(_reduceBefore, _reduceAfter)).Append(" from the roll's, ")
+                  .Append(Percent(_reduceGame, _reduceAfter)).Append(" from the game's), avg ")
+                  .Append(F1((double)_reduceAfter / n)).Append(" per hit (the game's ").Append(F1((double)_reduceGame / n)).Append(')');
+            }
+            sb.Append("; not reduced:");
+            bool any = false;
+            for (int r = 1; r < _reduceSkips.Length; r++)
+            {
+                if (_reduceSkips[r] == 0) continue;
+                sb.Append(any ? ", " : " ");
+                any = true;
+                sb.Append(ReductionSkipName((ReductionSkipReason)r)).Append(' ').Append(_reduceSkips[r]);
+            }
+            if (!any) sb.Append(" 0 hits");
+            return sb.ToString();
+        }
+
+        /// <summary>Plain words for a reduction skip (step 25), naming the setting when one caused it.</summary>
+        public static string ReductionSkipName(ReductionSkipReason r) => r switch
+        {
+            ReductionSkipReason.NotAnAgent => "objects (doors, siege engines, ships)",
+            ReductionSkipReason.NoVictim => "no victim",
+            ReductionSkipReason.FallDamage => "fall damage",
+            ReductionSkipReason.ZeroDamage => "0-damage hits",
+            ReductionSkipReason.PercentZero => "reduction 0 (DamageReductionPercent)",
+            ReductionSkipReason.ModOff => "mod OFF (ModEnabled)",
+            _ => r.ToString(),
+        };
 
         public static string CategoryName(DamageCategory c) => c switch
         {

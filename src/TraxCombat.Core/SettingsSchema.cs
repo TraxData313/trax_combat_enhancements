@@ -32,7 +32,7 @@ namespace TraxCombat.Core
         // change does beyond that.
 
         public static readonly ParamGroup MasterGroup = new ParamGroup(0, "Master switch");
-        public static readonly ParamGroup DamageGroup = new ParamGroup(1, "Damage randomness");
+        public static readonly ParamGroup DamageGroup = new ParamGroup(1, "Damage");
         public static readonly ParamGroup AthleticsGroup = new ParamGroup(2, "Athletics");
         public static readonly ParamGroup TiredGroup = new ParamGroup(3, "Tired fighters");
         public static readonly ParamGroup StepBackGroup = new ParamGroup(4, "Tired fighters step back");
@@ -50,13 +50,13 @@ namespace TraxCombat.Core
         /// off = that feature steps aside and the game runs vanilla (CLAUDE.md hard requirement).</summary>
         public static readonly ParamDef ModEnabled = Bool("ModEnabled", MasterGroup,
             "Mod enabled",
-            "Turn the whole mod off and every battle is plain vanilla: no damage rolls, no Athletics, no pauses between attacks, no step backs, no bars. The log still records each battle (its summary says mod ON or OFF), so the same battle can be fought both ways and compared. Switched back on, everyone starts with a full Athletics bar.");
+            "Turn the whole mod off and every battle is plain vanilla: no damage rolls or reduction, no Athletics, no pauses between attacks, no step backs, no bars. The log still records each battle (its summary says mod ON or OFF), so the same battle can be fought both ways and compared. Switched back on, everyone starts with a full Athletics bar.");
 
         // ------------------------------------------------------------------ damage randomness
 
         public static readonly ParamDef DamageRandomEnabled = Bool("DamageRandomEnabled", DamageGroup,
             "Damage randomness",
-            "On: every hit that lands deals a random share of its normal damage (see Spread). Off: every hit deals the game's own damage; the rest of the mod still runs.");
+            "On: every hit that lands deals a random share of its normal damage (see Spread). Off: no roll - every hit deals the game's own damage (less the damage reduction below); the rest of the mod still runs.");
 
         public static readonly ParamDef DamageRandomPercent = Int("DamageRandomPercent", 0, 100, DamageGroup,
             "Spread (± %)",
@@ -76,7 +76,12 @@ namespace TraxCombat.Core
 
         public static readonly ParamDef DamageRandomOnShields = Bool("DamageRandomOnShields", DamageGroup,
             "Randomize shield damage",
-            "Also randomize the damage a shield takes when it blocks a blow. Off: shields wear down at the game's usual pace.");
+            "Also randomize the damage a shield takes when it blocks a blow. Off: shields wear down at the game's usual pace (less the damage reduction below).");
+
+        // Step 25 (Anton, 2026-10-10): every hit weaker, after the roll - slower fights.
+        public static readonly ParamDef DamageReductionPercent = Int("DamageReductionPercent", 0, DamageReduction.MaxPercent, DamageGroup,
+            "Damage reduction (%)",
+            "Every hit deals this much less damage, after the random roll - on people, horses and shields alike, from any weapon, arrow, kick or horse charge, and whether the roll is on or off. 25: an average 100-damage hit lands for 75, so it takes about a third more hits to bring a man down. A hit never drops below 1. Falls and hits on doors and siege engines keep the game's damage. 0 = the game's damage.");
 
         // ------------------------------------------------------------------ Athletics
 
@@ -518,7 +523,7 @@ namespace TraxCombat.Core
         {
             ModEnabled,
             DamageRandomEnabled, DamageRandomPercent, DamageRandomMelee, DamageRandomRanged,
-            DamageRandomOnMounts, DamageRandomOnShields,
+            DamageRandomOnMounts, DamageRandomOnShields, DamageReductionPercent,
             AthleticsEnabled, AthleticsPoolFloor, AthleticsPoolPerSkill, AthleticsPeakPercent, HealthCapsAthletics,
             CostPerBlow, CostPerKickOrBash, CostPerShieldBlock, CostPerWrongSideShieldBlock, CostPerWeaponParry, CostOnMiss, HeroCostMultiplier, PartyLeaderCostMultiplier,
             ExhaustedAttackSpeedPercent, AttackRatePlayerTimer, AttackRatePaceHold, AttackRatePaceByInput, AiHoldRaiseGuard, AttackRateAiDecisions, AttackAnimationMinPercent,

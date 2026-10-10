@@ -26,6 +26,23 @@ A 50-damage hit lands for anything from 25 to 75, rolled anew on every hit.
 - A tired attacker loses the lucky side of the roll (§2, `DamageBonusFollowsAthletics`): his
   range is `[1 − p, 1 + p × f]`, f = his share of the peak line left.
 
+### Overall damage reduction (step 25)
+
+Anton (2026-10-10): "add 25% overall damage reduction on all sources (configurable), so if I do 100 dmg with a
+swing on average -> 75 dmg. This will further slow down the combat."
+
+- Every hit that lands on a person or a horse — melee, arrows, bolts, thrown weapons, siege-engine shots, kicks,
+  shield bashes, horse-charge bumps, friendly fire — deals `DamageReductionPercent` (25) % less, AFTER the roll:
+  the game's models (armor included) → the ±p roll → × (1 − r/100) → the game rounds. A 100 hit rolls 50–150 and
+  lands 38–113, 75 on average.
+- Shield blocks are reduced too (the shield wears down a quarter slower), whatever `DamageRandomOnShields` says.
+- It does NOT follow the roll's switches: with `DamageRandomEnabled` off, or a hit the roll's toggles skip, the
+  game's value is still reduced. Only the master switch turns it off (vanilla damage) — and 0.
+- NOT reduced: falls (not a blow), hits on doors, siege engines, ships and other objects (sieges keep the game's
+  pace). A hit the game computes as 0 stays 0 (blocked blows that deal nothing stay nothing). A positive hit never
+  lands below 1. The top of the range is 90 %: nothing is ever made unkillable.
+- Knockdown, stagger and dismount read the final damage (§1), so they come a little less often, in step with it.
+
 ## 2. Athletics (the stamina bar)
 
 A per-fighter pool — the **Athletics** bar — in every combat mission. Simpler cousin of RCM's
@@ -663,6 +680,7 @@ says (§2c).
 | `DamageRandomRanged` | true | Randomize arrows, bolts and thrown weapons. |
 | `DamageRandomOnMounts` | true | Randomize hits that land on horses too. |
 | `DamageRandomOnShields` | false | Randomize the damage a shield takes when it blocks. |
+| `DamageReductionPercent` | 25 | Step 25 (Anton): every hit on a person, a horse or a shield deals this % less, AFTER the roll (an average 100 hit lands 75) - melee, ranged, kicks, bashes, charges, whether the roll is on or off; falls and objects never. A positive hit never below 1. 0 = the game's damage; range 0-90. |
 | `AthleticsEnabled` | true | Switch for Athletics (the stamina bar). |
 | `AthleticsPoolFloor` | 50 | Smallest possible Athletics pool (for anyone with a low Athletics skill; 0 = none, never below 1 point). |
 | `AthleticsPoolPerSkill` | 1.0 | Pool per point of Athletics skill (1.0 → the bar tops at the skill). |
@@ -986,6 +1004,17 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     order icons hold "72% ± 8" already); at 1920 × 1080 the bottom card of a column then has 24 px to the screen's edge,
     so its cell is lifted 16 px (only while the row is drawn - with bracing off it is step 9's cell again). Under the ALT
     markers it is a third line under the bar, centred.
+
+27. **Overall damage reduction** (step 25, Claude's calls on Anton's ask of 2026-10-10 - AI_NOTES "Step 25"): "all
+    sources" = every hit our damage decorator sees on a person or a horse, shield blocks included - melee, missiles,
+    kicks / bashes, horse charges, friendly fire, tournaments too (a blunt tournament hit is still a hit); NOT falls
+    (not a blow - a jump from a wall should not grow safer) and NOT objects (gates, rams, siege engines, ships: a siege
+    should not drag on for a men's-fight setting). AFTER the roll, so the roll's ±50% spread stays a share of the
+    reduced hit and the average is exactly × 0.75. Independent of the roll's switches (the roll is "random", the
+    reduction is "weaker" - one off must not turn off the other); the master switch alone makes it vanilla. Shields
+    are reduced with no toggle of their own (all sources; shields lasting longer is the same "slower" Anton asked
+    for) - one line to change if he wants them at the game's pace. Not on the stun / knockback numbers the game
+    computes elsewhere: only the damage.
 
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),

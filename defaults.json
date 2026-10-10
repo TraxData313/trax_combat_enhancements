@@ -17,16 +17,17 @@
 // one, next to config.json - copy it over the repo's defaults.json to make them the defaults.
 {
   // ==================== Master switch ====================
-  // Turn the whole mod off and every battle is plain vanilla: no damage rolls, no Athletics, no
-  // pauses between attacks, no step backs, no bars. The log still records each battle (its
-  // summary says mod ON or OFF), so the same battle can be fought both ways and compared.
-  // Switched back on, everyone starts with a full Athletics bar.
+  // Turn the whole mod off and every battle is plain vanilla: no damage rolls or reduction, no
+  // Athletics, no pauses between attacks, no step backs, no bars. The log still records each
+  // battle (its summary says mod ON or OFF), so the same battle can be fought both ways and
+  // compared. Switched back on, everyone starts with a full Athletics bar.
   // (true or false)
   "ModEnabled": true,
 
-  // ==================== Damage randomness ====================
-  // On: every hit that lands deals a random share of its normal damage (see Spread). Off: every
-  // hit deals the game's own damage; the rest of the mod still runs.
+  // ==================== Damage ====================
+  // On: every hit that lands deals a random share of its normal damage (see Spread). Off: no
+  // roll - every hit deals the game's own damage (less the damage reduction below); the rest of
+  // the mod still runs.
   // (true or false)
   "DamageRandomEnabled": true,
 
@@ -48,9 +49,17 @@
   "DamageRandomOnMounts": true,
 
   // Also randomize the damage a shield takes when it blocks a blow. Off: shields wear down at
-  // the game's usual pace.
+  // the game's usual pace (less the damage reduction below).
   // (true or false)
   "DamageRandomOnShields": false,
+
+  // Every hit deals this much less damage, after the random roll - on people, horses and
+  // shields alike, from any weapon, arrow, kick or horse charge, and whether the roll is on or
+  // off. 25: an average 100-damage hit lands for 75, so it takes about a third more hits to
+  // bring a man down. A hit never drops below 1. Falls and hits on doors and siege engines keep
+  // the game's damage. 0 = the game's damage.
+  // (range 0 to 90)
+  "DamageReductionPercent": 25,
 
   // ==================== Athletics ====================
   // On: every fighter has an Athletics bar - his stamina, as big as his Athletics skill - that

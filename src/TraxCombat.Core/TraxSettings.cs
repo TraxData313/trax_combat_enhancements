@@ -204,6 +204,7 @@ namespace TraxCombat.Core
         public bool DamageRandomRanged => GetBool(SettingsSchema.DamageRandomRanged);
         public bool DamageRandomOnMounts => GetBool(SettingsSchema.DamageRandomOnMounts);
         public bool DamageRandomOnShields => GetBool(SettingsSchema.DamageRandomOnShields);
+        public int DamageReductionPercent => GetInt(SettingsSchema.DamageReductionPercent);
 
         public bool AthleticsEnabled => GetBool(SettingsSchema.AthleticsEnabled);
         public int AthleticsPoolFloor => GetInt(SettingsSchema.AthleticsPoolFloor);

@@ -12,7 +12,9 @@ namespace TraxCombat.Models
     /// <see cref="AttackInformation"/> / <see cref="AttackCollisionData"/> into Core's
     /// <see cref="HitFacts"/>, asks <see cref="DamageRoll.Decide"/> whether to roll, rolls - the
     /// upside following the attacker's Athletics (DESIGN §2, step 5c: his f from
-    /// <see cref="Missions.AthleticsLogic.TryGetPeakShare"/>) - counts everything in
+    /// <see cref="Missions.AthleticsLogic.TryGetPeakShare"/>) - then (step 25) asks
+    /// <see cref="DamageReduction.Decide"/> whether to reduce the result, rolled or not, and reduces
+    /// it: the game's models → the roll → the reduction → the game rounds. Counts everything in
     /// <see cref="Stats"/> for the mission's <c>[summary]</c>, and logs.
     /// Called by <see cref="TraxDamageModel.ApplyGeneralDamageModifiers"/> with the value every
     /// model below us produced (armor included) - the last step before the game rounds it.
@@ -40,6 +42,7 @@ namespace TraxCombat.Models
 
         private static int _mainThreadId;
         private static int _firstRollLogged;
+        private static int _firstReductionLogged;
 
         /// <summary>Mission start (AthleticsLogic.AfterStart, main thread): zero the stats, note
         /// the main thread, log the damage settings in effect.</summary>
@@ -48,6 +51,7 @@ namespace TraxCombat.Models
             Stats.Reset();
             _mainThreadId = Environment.CurrentManagedThreadId;
             Interlocked.Exchange(ref _firstRollLogged, 0);
+            Interlocked.Exchange(ref _firstReductionLogged, 0);
             var r = DamageRules.From(TraxSettings.Shared);
             TraxLog.Info("damage", "mission start: "
                 + (r.ModEnabled ? string.Empty : "mod OFF (ModEnabled) - no hit is rolled, the game's own numbers are recorded for comparison; with the mod on: ")
@@ -57,7 +61,11 @@ namespace TraxCombat.Models
                 + ", melee " + OnOff(r.Melee) + ", ranged " + OnOff(r.Ranged)
                 + ", on mounts " + OnOff(r.OnMounts) + ", on shields " + OnOff(r.OnShields)
                 + ", upside follows the attacker's Athletics (DamageBonusFollowsAthletics) " + OnOff(r.UpsideFollowsAthletics)
-                + " - read live on every hit");
+                + " - read live on every hit; overall damage reduction (DamageReductionPercent) "
+                + (DamageReduction.Clamp(r.ReductionPercent) <= 0 ? "0% - off, the game's damage"
+                    : DamageReduction.Clamp(r.ReductionPercent).ToString(CultureInfo.InvariantCulture) + "% after the roll, rolled or not ("
+                      + DamageReduction.Example(r.ReductionPercent) + "; falls and objects never)")
+                + (r.ModEnabled ? string.Empty : " - not while the mod is OFF"));
         }
 
         /// <summary>The per-hit work. Returns the damage to hand back to the game. Throws only on
@@ -81,8 +89,10 @@ namespace TraxCombat.Models
                 // comparison (the summary's "while the mod was OFF" line).
                 if (reason == DamageSkipReason.ModOff) Stats.AddVanilla(facts.Category, damage);
                 else Stats.AddSkip(reason);
-                if (TraxLog.VerboseWants("damage-skip")) LogSkip(in ai, in cd, in facts, reason, damage);
-                return damage;
+                // Step 25: not rolled, but still reduced (the reduction has its own rules).
+                float landed = Reduce(in ai, in cd, in facts, in rules, damage, damage);
+                if (TraxLog.VerboseWants("damage-skip")) LogSkip(in ai, in cd, in facts, reason, damage, landed);
+                return landed;
             }
 
             double attackerF = AttackerPeakShare(in ai);
@@ -90,10 +100,33 @@ namespace TraxCombat.Models
             int thread = Environment.CurrentManagedThreadId;
             bool offMain = _mainThreadId != 0 && thread != _mainThreadId;
             Stats.AddRoll(facts.Category, in roll, offMain, attackerF);
+            float final = Reduce(in ai, in cd, in facts, in rules, damage, roll.After); // step 25: AFTER the roll
 
             bool first = Volatile.Read(ref _firstRollLogged) == 0 && Interlocked.CompareExchange(ref _firstRollLogged, 1, 0) == 0;
-            if (first || TraxLog.VerboseWants("damage")) LogRoll(in ai, in cd, in facts, in roll, first, thread, attackerF);
-            return roll.After;
+            if (first || TraxLog.VerboseWants("damage")) LogRoll(in ai, in cd, in facts, in roll, first, thread, attackerF, final);
+            return final;
+        }
+
+        /// <summary>
+        /// Step 25, the overall damage reduction of one hit: <paramref name="afterRoll"/> (the roll's
+        /// result, or the game's value when the roll was skipped) x (1 - DamageReductionPercent / 100),
+        /// by <see cref="DamageReduction.Decide"/>'s rules (objects, falls, 0 hits, the setting at 0 and
+        /// the master switch leave it alone - counted by reason). The first reduced hit of a mission is
+        /// logged in full. Throws only on a bug - the caller's catch returns the game's value.
+        /// </summary>
+        private static float Reduce(in AttackInformation ai, in AttackCollisionData cd, in HitFacts facts, in DamageRules rules, float game, float afterRoll)
+        {
+            var why = DamageReduction.Decide(in facts, afterRoll, in rules);
+            if (why != ReductionSkipReason.None)
+            {
+                Stats.AddReductionSkip(why);
+                return afterRoll;
+            }
+            var r = DamageReduction.Reduce(game, afterRoll, rules.ReductionPercent);
+            Stats.AddReduction(facts.Category, in r);
+            if (Volatile.Read(ref _firstReductionLogged) == 0 && Interlocked.CompareExchange(ref _firstReductionLogged, 1, 0) == 0)
+                LogFirstReduction(in ai, in cd, in facts, in r);
+            return r.After;
         }
 
         /// <summary>
@@ -135,7 +168,7 @@ namespace TraxCombat.Models
         // ------------------------------------------------------------------ log lines
 
         private static void LogRoll(in AttackInformation ai, in AttackCollisionData cd, in HitFacts facts, in RollOutcome roll, bool first, int thread,
-            double attackerF)
+            double attackerF, float final)
         {
             try
             {
@@ -144,7 +177,8 @@ namespace TraxCombat.Models
                     + " (x" + roll.Factor.ToString("0.00", CultureInfo.InvariantCulture)
                     + (double.IsNaN(attackerF) ? ", attacker without a pool: full upside"
                         : ", attacker f " + attackerF.ToString("0.00", CultureInfo.InvariantCulture) + " → up to x"
-                          + roll.Ceiling.ToString("0.00", CultureInfo.InvariantCulture)) + ")";
+                          + roll.Ceiling.ToString("0.00", CultureInfo.InvariantCulture)) + ")"
+                    + ReducedText(roll.After, final);
                 if (first)
                 {
                     TraxLog.Info("damage", "first roll this mission - "
@@ -164,18 +198,39 @@ namespace TraxCombat.Models
             }
         }
 
-        private static void LogSkip(in AttackInformation ai, in AttackCollisionData cd, in HitFacts facts, DamageSkipReason reason, float damage)
+        private static void LogSkip(in AttackInformation ai, in AttackCollisionData cd, in HitFacts facts, DamageSkipReason reason, float damage, float landed)
         {
             try
             {
                 TraxLog.Verbose("damage", "not rolled - " + DamageStats.SkipName(reason) + ": " + Describe(in ai, in cd, in facts)
-                    + ", " + DamageRoll.GameRound(damage).ToString(CultureInfo.InvariantCulture), "damage-skip");
+                    + ", " + DamageRoll.GameRound(damage).ToString(CultureInfo.InvariantCulture) + ReducedText(damage, landed), "damage-skip");
             }
             catch (Exception e)
             {
                 Failed("damage.log", e);
             }
         }
+
+        /// <summary>Step 25: the first reduced hit of a mission, always logged (the proof in game, even
+        /// with the roll switched off).</summary>
+        private static void LogFirstReduction(in AttackInformation ai, in AttackCollisionData cd, in HitFacts facts, in ReductionOutcome r)
+        {
+            try
+            {
+                TraxLog.Info("damage", "first reduced hit this mission - " + Describe(in ai, in cd, in facts) + ": the game's "
+                    + r.GameRounded.ToString(CultureInfo.InvariantCulture) + " → after the roll " + r.BeforeRounded.ToString(CultureInfo.InvariantCulture)
+                    + " → reduced " + r.Percent.ToString(CultureInfo.InvariantCulture) + "% (DamageReductionPercent) → lands "
+                    + r.AfterRounded.ToString(CultureInfo.InvariantCulture));
+            }
+            catch (Exception e)
+            {
+                Failed("damage.log", e);
+            }
+        }
+
+        /// <summary>", reduced → 38" when the reduction changed the value, else nothing.</summary>
+        private static string ReducedText(float before, float after)
+            => after == before ? string.Empty : ", reduced → " + DamageRoll.GameRound(after).ToString(CultureInfo.InvariantCulture);
 
         /// <summary><c>melee on a person: Vlandian Sergeant → Looter, Falchion</c></summary>
         private static string Describe(in AttackInformation ai, in AttackCollisionData cd, in HitFacts facts)
