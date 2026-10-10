@@ -29,12 +29,13 @@ BUILD ORDER (one step at a time — [~] = in flight, see CLAUDE.md "manager prot
 - [x] 24. "Ready" count per squad (Anton, 2026-09-29): how many men are NOT bracing - on the ALT labels and the orders-menu strip, beside the Athletics numbers (e.g. "ready 34/50") — after 23 (23 also rolls each man's ±5 on the +20 recover margin, once a battle) — built: "ready 34/50" under the bar on both, plain / yellow ≤75% / red ≤50%, hidden while bracing is off, one switch ShowReadyCount; the strip cell one row deeper (1080p bottom card lifted a little) (see AI_NOTES)
 - [x] 25. Overall damage reduction (Anton, 2026-10-10): every hit 25% weaker (slider, 0 = off), after the ±50% roll - an average 100 swing lands 75; slows the fights further — built: people, horses and shields, any weapon, kick or charge, roll on or off; falls and gates never; the summary line proves it; PLAYTEST C8 (see AI_NOTES)
 - [x] 26. Launch prep (Anton, 2026-10-10): thumbnail from his F12 screenshots + a readable Steam description (slower, tactical, heroes matter - NOT an overhaul like RBM) + README, like ..\better-skirmisher-separation — built: thumbnail = a real battle + the hold-ALT close-up ("ready 1/9" vs "ready 37/53") + your bars; 5 gallery shots; description 6009 bytes in short sections; README; upload paths fixed to this PC; package dry run green - version number + upload = Anton (see AI_NOTES)
+- [x] 27. Release v1.0.0 — Workshop 3817259431 public, GitHub release (Anton's yes 2026-10-10; gallery images = Anton on the item page) (see AI_NOTES)
 
 PLAYTEST (Anton, all at once at the end — script in docs/PLAYTEST.md):
 - [ ] Play with RBM disabled — declared NOT compatible (Anton, 2026-09-27; the mod warns if it sees it)
 - [ ] The same custom battle with the mod ON and OFF, compare the two summaries (PLAYTEST §4)
 - [ ] Tune defaults in game, "Save current values as a defaults file", hand it to Claude (PLAYTEST §5)
-- [ ] Anton: playtest, then say yes → first Workshop upload (tools/WORKSHOP-UPLOAD.md)
+- [x] Anton: playtest, then say yes → first Workshop upload (tools/WORKSHOP-UPLOAD.md) — yes 2026-10-10, v1.0.0 live
 
 LATER (moved off the build order by Anton, 2026-09-27 — designs kept in DESIGN §3 + AI_NOTES steps 7–9):
 - [ ] 7. Bar for the NPC I look at (toggle)

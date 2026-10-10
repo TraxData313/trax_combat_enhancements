@@ -3013,3 +3013,24 @@ stamped - v0.1.0 vs v1.0.0 is Anton's call.
 **For Anton before upload**: look at the thumbnail and gallery; pick the first version number; the Workshop tags stay
 Utility / UI / Native / Singleplayer / v1.4.8 (add a "Battle" or "Gameplay" tag on the page if Steam's list has one);
 upload = his yes only.
+
+## Step 27 — release v1.0.0 (DONE 2026-10-10)
+
+Anton's yes in chat: "v1.0.0, go ahead and upload it, git and steam live".
+
+- **Workshop item 3817259431** — https://steamcommunity.com/sharedfiles/filedetails/?id=3817259431. Created by
+  `WorkshopCreate.xml` (Private, short pitch, tags, preview), then ONE update from `make_workshop_update.py --notes
+  "v1.0.0 - first release." --visibility Public` (the full STEAM-DESCRIPTION.bbcode + Public). Never run the create file again.
+- **Verified** without a browser: `POST https://api.steampowered.com/ISteamRemoteStorage/GetPublishedFileDetails/v1/`
+  with `itemcount=1&publishedfileids[0]=3817259431` (no key needed) → result 1, visibility 0 (= Public; 1 friends, 2 private),
+  file_size 833067, the description in full. Handy check after every later update.
+- **Version / commits**: v1.0.0 stamped in 4cd40cd (pushed before packaging; the DLL is built from it) - tag `v1.0.0` points
+  there. GitHub release v1.0.0 carries `TraxCombatEnhancements_v1.0.0.zip` (328,486 bytes).
+- **Uploader quirks seen** (all as documented): the crash at the end on `Console.ReadKey` (non-interactive) after
+  "Uploading done!" - harmless, exit code meaningless; PowerShell 5.1 wraps its first stderr line ("Setting breakpad minidump
+  AppID") as a NativeCommandError - also harmless. The update with no `<Image>` only shows the CommittingChanges status
+  (no content changed since the create - Steam skips the identical upload). Droppings `steam_appid.txt` /
+  `steam_workshop_uploader.txt` at the repo root, git-ignored.
+- **Left to Anton** on the item page (Owner Controls → Add/edit images & videos), in order: `docs\screenshots\`
+  01-hold-alt-who-is-tired.jpg, 02-shield-wall-and-archers.jpg, 03-orders-menu-strip.jpg, 04-your-bars.jpg,
+  05-hero-in-the-field.jpg. Optionally subscribe and check the log says `module: TraxCombatEnhancements (the release)`.

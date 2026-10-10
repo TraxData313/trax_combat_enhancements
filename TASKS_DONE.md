@@ -939,3 +939,12 @@
   the description + visibility with an update); WORKSHOP-UPLOAD.md "The images" + the gallery list + the C: package line.
   package.ps1 dry run (C: game): build, unit tests, AssemblyGuard, offline smoke passed; 9 files 833,104 bytes, zip
   328,497 bytes. Version NOT stamped (v0.1.0 or v1.0.0 = Anton). CLAUDE layout, AI_NOTES "Step 26". (2026.10.10 21.12.13)
+- [x] **Step 27 — Release v1.0.0** (Anton, 2026-10-10: "v1.0.0, go ahead and upload it, git and steam live"). Stamped
+  module/SubModule.xml v1.0.0 and the docs that named v0.1.0 as current (4cd40cd, pushed BEFORE packaging - the DLL
+  carries that commit). package.ps1 on the C: game: build, unit tests, AssemblyGuard, offline smoke green; 9 files
+  833,067 bytes, zip 328,486 bytes. The official uploader with WorkshopCreate.xml ONCE: "Item created. Item ID is
+  3817259431", "Uploading done!" (Private, short pitch, tags, preview). The id into WorkshopUpdate.xml; make_workshop_update.py
+  --notes "v1.0.0 - first release." --visibility Public → the update upload: "Uploading done!". Steam's public
+  GetPublishedFileDetails confirms: title, visibility 0 (Public), 833,067 bytes, the full 6 KB description. README links
+  the Workshop item + the GitHub release; WORKSHOP-UPLOAD.md status / item; CLAUDE "Release" line. Tag v1.0.0 on 4cd40cd,
+  GitHub release v1.0.0 with the zip. Left to Anton: the five gallery shots on the item page. (2026.10.10 21.17.03)
