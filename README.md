@@ -40,7 +40,7 @@ once, even mid-battle. A master switch turns the whole mod off mid-battle, to co
 
 ## Install
 
-1. Subscribe on the Steam Workshop (the link goes here with the first upload) — or build the zip with
+1. Subscribe on the [Steam Workshop](https://steamcommunity.com/sharedfiles/filedetails/?id=3817259431) — or take the zip from the [GitHub release](https://github.com/TraxData313/trax_combat_enhancements/releases/latest), or build it with
    `powershell -ExecutionPolicy Bypass -File tools\package.ps1` and extract it into
    `Mount & Blade II Bannerlord\Modules\`.
 2. Enable **Trax Combat Enhancements** in the launcher.

@@ -16,11 +16,11 @@
              so page edits made on Steam are never overwritten; it DOES replace the tags (keep the list,
              bump the version tag when the game moves) and, only if an <Image Value="..."/> line is added,
              the preview image. -->
-        <ItemId Value="ITEM_ID"/>
+        <ItemId Value="3817259431"/>
     </GetItem>
     <UpdateItem>
         <ModuleFolder Value="C:\Users\Asus ROG\Documents\GitHub\trax_combat_enhancements\dist\TraxCombatEnhancements"/>
-        <ChangeNotes Value="vX.Y.Z - what changed, in a line or two." />
+        <ChangeNotes Value="v1.0.0 - first release." />
         <Tags>
             <Tag Value="Utility" />
             <Tag Value="UI" />

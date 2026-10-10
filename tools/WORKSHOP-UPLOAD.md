@@ -1,10 +1,10 @@
 # Releasing on the Steam Workshop
 
-**Status: not uploaded yet.** The package is one command away and the upload one more — but
-publishing is Anton's call, and it comes only after his playtest (`docs/PLAYTEST.md`).
+**Status: v1.0.0 live since 2026-10-10 — Public, with the full description.** Every later release:
+"Every release after the first" below; publishing stays Anton's call (`docs/PLAYTEST.md`).
 
-Item: **not created yet** — after the first upload, write its number here, in
-`tools\WorkshopUpdate.xml` and in README's Install section.
+Item: **3817259431** — https://steamcommunity.com/sharedfiles/filedetails/?id=3817259431 (also in
+`tools\WorkshopUpdate.xml` and in README's Install section).
 
 The upload path is Bannerlord's **own official uploader** —
 `TaleWorlds.MountAndBlade.SteamWorkshop.exe` in the game's `bin\Win64_Shipping_Client` — the
@@ -115,7 +115,7 @@ version is stamped once, on release day.
 ## What gets uploaded
 
 The whole `dist\TraxCombatEnhancements` folder, exactly what `package.ps1` built and listed
-(v0.1.0 test package, 2026-10-10: 9 files, 833,104 bytes; the zip 328,497 bytes):
+(v1.0.0, 2026-10-10: 9 files, 833,067 bytes; the zip 328,486 bytes):
 
 ```
 SubModule.xml                                  the release identity (Id TraxCombatEnhancements)
@@ -166,5 +166,5 @@ Added on the item page by hand, in this order:
 
 `dist\TraxCombatEnhancements_vX.Y.Z.zip` holds the module folder at its root: extract it into
 `<game>\Modules\` so it becomes `Modules\TraxCombatEnhancements\…`, then enable it in the
-launcher. It can go on a GitHub release for players outside Steam (not done yet — Anton's call).
+launcher. It goes on the GitHub release of each version (v1.0.0: `gh release create v1.0.0 <zip>`).
 Never keep a manual copy AND the Workshop copy of the same version: same module id twice.
