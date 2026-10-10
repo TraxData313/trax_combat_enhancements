@@ -15,7 +15,7 @@ SteamCMD, no password, no Steam Guard.
 
 1. **Playtest done, Anton says yes.** Nothing below happens before that.
 2. **Stamp the version — once.** `module\SubModule.xml` → `<Version value="vX.Y.Z" />` is the
-   ONLY place (v0.1.0 today; whether the first public one is v0.1.0 or v1.0.0 is Anton's call).
+   ONLY place (v1.0.0, the first public release, stamped 2026-10-10 - Anton's call).
    Both DLLs take their version from it (`Directory.Build.props`). Commit it **before**
    packaging: the DLL carries the commit it was built from, and the `[load]` line prints it.
 3. **Package** (from the repo root):
@@ -134,7 +134,7 @@ that list and fails on anything else. Subscribers get it under
 Anton's F12 screenshots (Steam saves them under
 `C:\Program Files (x86)\Steam\userdata\<id>\760\remote\261550\screenshots`) are copied into
 `screenshots\originals\` — git-ignored, as the sibling does; only the built images are committed.
-The images of v0.1.0 came from the 2026-10-10 20:52–20:54 battle shots (the 20:58+ shots of the same
+The images of v1.0.0 came from the 2026-10-10 20:52–20:54 battle shots (the 20:58+ shots of the same
 batch are another mod's Party Steward screen).
 
 **The preview** — `tools\preview_thumbnail.jpg` (1024 × 1024, ~275 KB), the image `WorkshopCreate.xml`

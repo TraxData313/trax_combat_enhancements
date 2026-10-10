@@ -71,4 +71,4 @@ NOT DECIDED (defaults in place, Anton can flip):
 - [x] Kicks / shield bashes cost Athletics? → yes, 3 (Anton, 2026-09-28) → step 18
 - [x] RTS Camera's AI driving your hero: no attack pause for him → leave it (Anton, 2026-09-28; REVIEW R-"For Anton")
 - [ ] Athletics in tournaments / arena too? (on for now)
-- [ ] First public version: v0.1.0 (now) or v1.0.0? (stamped once, in module/SubModule.xml)
+- [x] First public version → v1.0.0 (Anton, 2026-10-10; stamped in module/SubModule.xml)

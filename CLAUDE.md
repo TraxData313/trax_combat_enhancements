@@ -728,7 +728,7 @@ tests/TraxCombat.Core.Tests/  net8.0 xUnit (482) — schema vs DESIGN.md (keys +
                               deeper only while drawn and the 1080p bottom card lifted, log text, summary). They
                               run on DESIGN's INITIAL values (DesignTable.cs: a module
                               initializer), so tuning defaults.json never breaks them. Keep green.
-module/SubModule.xml          release manifest (Id TraxCombatEnhancements, v0.1.0) - THE one home of the
+module/SubModule.xml          release manifest (Id TraxCombatEnhancements, v1.0.0) - THE one home of the
                               version (the DLLs read it at build; stamped once, on release day)
 module/GUI/Prefabs/           the HUD movies - file name = movie name, `Trax…` (prefab names are
                               global across modules): TraxPlayerAthleticsBar.xml (step 6: native

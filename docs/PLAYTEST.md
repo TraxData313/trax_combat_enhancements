@@ -49,10 +49,10 @@ that spot); a crash; a battle that never ends.
 **A1. Start WITHOUT MCM, and without RTS Camera.** In the launcher enable only the dev mod (Harmony,
 ButterLib, UIExtenderEx may stay on). Start the game. This is the check that matters most: a mod that
 needs MCM refuses to start for every player without it.
-- You see: a normal start; at the main menu *"Trax Combat Enhancements 0.1.0… loaded - settings in
+- You see: a normal start; at the main menu *"Trax Combat Enhancements 1.0.0… loaded - settings in
   config.json."* No error dialog.
 - Log:
-  - `[load] ==================== Trax Combat Enhancements 0.1.0+… ====================` (after the `+`:
+  - `[load] ==================== Trax Combat Enhancements 1.0.0+… ====================` (after the `+`:
     the git commit it was built from), `[load] dll: …\Modules\TraxCombatEnhancements.Dev\bin\Win64_Shipping_Client\TraxCombatEnhancements.dll (built …)`
     (the dev copy runs), `[load] module: TraxCombatEnhancements.Dev (the dev install - tools\deploy.ps1)`,
     `[load] game: v1.4.8.…`, `[load] modules (N): …`
