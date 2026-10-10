@@ -922,3 +922,20 @@
   (D: not mounted here: deploy.ps1 -GameFolder / -McmBinFolder at the C: install). Docs: DESIGN §1 section + row +
   interpretation 27, PLAYTEST C8 + L3, README, Steam description (6196 bytes), CLAUDE summary + layout, AI_NOTES "Step 25".
   Commits a9e3be6, 0b9d92b + this. (2026.10.10 20.59.53)
+- [x] **Step 26 — launch prep** (Anton, 2026-10-10: "start prepping it for launch - it makes the combat slower, makes
+  tactics more important, makes heroes a bit stronger"; model ..\better-skirmisher-separation). Anton's F12 shots found in
+  the C: Steam userdata (20:52-20:54 = five battle shots of ours; 20:58+ = another mod's Party Steward, left out), copied to
+  /screenshots/originals (git-ignored, the sibling's choice). tools/make_thumbnail.py (the sibling's recipe: crop, paint
+  out stray labels, fill the HTML template, headless Edge) → tools/preview_thumbnail.jpg 1024x1024 273 KB: a real battle,
+  the hold-ALT close-up (the enemy's "ready 1/9" in red beside your shield wall's "ready 37/53") under a "Hold ALT · who is
+  tired?" tab, your two bars, "Trax Combat Enhancements - Slower, tactical battles. Heroes matter."; iterated by eye and
+  checked at 256 px; JPEG because a photo PNG is over Steam's 1 MB (the old no-game-art PNG removed). tools/make_gallery.py
+  → docs/screenshots/01-05 (2560 px, < 1 MB, in order with captions). STEAM-DESCRIPTION.bbcode rewritten (6009 bytes):
+  pitch + "not an overhaul" first, then short sections - what changes, tired men, heroes, see it, make it yours,
+  compatibility (RBM named politely as the deep overhaul this is the light road beside), FAQ, removing it, first release,
+  credits; every number checked against defaults.json, the MCM labels against SettingsSchema. README in the sibling's
+  shape. Upload kit: WorkshopCreate/Update.xml pointed at a C:\Users\Trax folder that is not on this PC - now the real repo
+  path + the C: game; the create task's short pitch + .jpg preview; tools/make_workshop_update.py from the sibling (sends
+  the description + visibility with an update); WORKSHOP-UPLOAD.md "The images" + the gallery list + the C: package line.
+  package.ps1 dry run (C: game): build, unit tests, AssemblyGuard, offline smoke passed; 9 files 833,104 bytes, zip
+  328,497 bytes. Version NOT stamped (v0.1.0 or v1.0.0 = Anton). CLAUDE layout, AI_NOTES "Step 26". (2026.10.10 21.12.13)
