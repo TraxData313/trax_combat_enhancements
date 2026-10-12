@@ -1028,3 +1028,30 @@
   players to the guide. CLAUDE.md layout (the guide, BATTLE_PACING, the byte count), WORKSHOP-UPLOAD.md's size note. No
   code; tests 514 green. Nothing uploaded - the Workshop page changes only when Anton pastes it or the next update sends it.
   (2026.10.12 11.25.32)
+- [x] 32. Swing stack (Anton, 2026-10-12: a tired 1v1 swing every ~3 s was blocked ~95% and kicks dodged the pause - "chain
+  swings stack"). Every fighter STORES swings: cap = max(SwingStackMinimum 2, round(current points / SwingStackPointsPerSwing
+  20)) half away from zero (150 full 8, 75 pts 4, empty 2; 50 full 3), spawn full, filled at every fresh start (switch,
+  hideout boss), clamped after every charge. An attack spends one AT ITS RELEASE (melee, loose, throw) and is held only at
+  0 - exactly until the next comes back; one comes back per the pause that attack would have left (D x (1/m - 1) at his
+  CURRENT m, D = his last measured attack, 0.8 s before any; + the AI's battle-pace share) of time NOT attacking (the clock
+  stops in a ready / release / the reload after a loose); above the peak line it refills at once. WHY the AI gets a grace:
+  step 21 measured the AI's own ~1 s gap after each attack, on top of any pause - without excluding it after a melee swing
+  from the stack, a fresh shield man (share 0.76 s < 1 s gap) would never be held and a tired one swing ~37% more (battle
+  pace undone); with it the AI's cycle at 0 is step 13's D + P + G. Kicks / bashes (KicksUseSwings) spend one, never start
+  a pause; at 0 your kick key is taken out by step 13's gate (researched: MissionMainAgentController sets
+  EventControlFlags |= Kick 0x8000 on the key press - cleared in the same pre-tick, on foot only), a held AI man's kick out
+  of his own input (step 16's hook gets the event flags; while held BY INPUT; the AI's kick there is unverified), a bash is
+  the attack bits already. You: no hold while a swing is stored (the burst chains), the hold from the release that spends
+  the last, the countdown retargeted every gate frame to the next swing (hold-to-attack fires the frame it is back). The
+  recovery bar: "Swings 4/8" (@LabelText, rebuilt only on change), the fill toward the next, seconds only at 0. Core
+  SwingStack.cs (rules, math, the per-fighter stack, stats + 5 summary lines), PlayerAttackTimer pauseOverride /
+  StartCountdown / Retarget, AttackRecoveryReading.WithStack, PaceNotHeld.FromStack; Module AthleticsLogic.SwingStack.cs +
+  hooks in Engine / AttackRate / PlayerTimer / Hideout / AiInputHook (HoldKicks) / PaceBody (StackWait) / TrackedAgent
+  (Swings, StackD); ResetPhases now an instance method (counts the burst a fresh start cuts). Settings 103 -> 107
+  (DESIGN rows + decision 30, defaults.json via DefaultsTool, MCM). Tests 514 -> 531 (SwingStackTests). Smoke 72 -> 75
+  (the real logic for you and the AI by input, the bar through the real view, 1000 men waiting: 0.087 ms a tick, the stack
+  pass 0.035 ms, 0 bytes); the older steps pin the stack off (SwingStackOff in AthleticsDefaults). Docs: DESIGN §2 + §3,
+  AI_NOTES "Step 32", PLAYTEST D9 + L6f, HOW-IT-WORKS section 4 "The swing stack" (stored swings by pool x bar, refill per
+  swing and per full stack by bar; sections renumbered), README + Steam description one clause each (3117 bytes), CLAUDE.md.
+  Deployed (AssemblyGuard + smoke green). Attack-rate verdicts: same math, read over a whole fight - bursts read fast, the
+  waits slow. (2026.10.12 12.52.48)
