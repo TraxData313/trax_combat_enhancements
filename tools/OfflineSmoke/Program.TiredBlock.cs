@@ -30,7 +30,8 @@ namespace TraxCombat.Tools
                 probe.SetStat(DrivenProperty.AiRandomizedDefendDirectionChance, 0.37f);
                 Check(Near(probe.AiRandomizedDefendDirectionChance, 0.37f), "AgentDrivenProperties.AiRandomizedDefendDirectionChance does not read its own slot");
 
-                var logic = NewPaceLogic(new FakePaceBody(), new FakeWeaponFacts());
+                var facts = new FakeWeaponFacts();
+                var logic = NewPaceLogic(new FakePaceBody(), facts);
                 LogHas("[guard] mission start: tired block direction: on - below the peak line an AI man's block direction is partly random: weight w = 100% × (1 − f) (TiredBlockRandomPercent), so at f 0.5 50% of his picks and empty 100% are a random direction");
                 var baseModel = new FreshStatsModel { BlockChance = -1.1f }; // a final-round tournament fighter: never random in vanilla
                 var top = new TraxAgentStatModel(new AgentStatCalculateModel[] { baseModel });
@@ -40,6 +41,7 @@ namespace TraxCombat.Tools
 
                 // a fresh man: the game's value untouched
                 var man = logic.Track(FakeAgent(70))!;
+                facts.Shield.Add(70); // step 34: his recomputes count "with a shield in hand"
                 man.AthleticsSkill = 100; // pool 100, the peak line 75
                 var p = man.Agent.AgentDrivenProperties;
                 top.UpdateAgentStats(man.Agent, p);
@@ -118,31 +120,47 @@ namespace TraxCombat.Tools
                 AiInputHook.Apply(braced, braced.Input, true, ref flags, ref vx, ref vy, false);
                 Check(flags == own, "the input frame changed a braced man's own guard direction: " + flags.ToString("X"));
 
-                // the guard by f band (before a block's charge), never you, nothing while Athletics is off
+                // the guard by f band (before a block's charge), never you, nothing while Athletics is off; step 34: split by what
+                // the DEFENDER holds as the blow arrives (the weapon read - a shield taken up or dropped mid-fight moves him over)
                 r = Rules;
                 var fresh = logic.Track(FakeAgent(73))!;
+                facts.Shield.Add(73);
                 for (int i = 0; i < 8; i++) logic.GuardTaken(fresh, BlockKind.ShieldRightSide, in r);
+                facts.Shield.Remove(73); // the shield gone: the next two blows count "without"
                 logic.GuardTaken(fresh, BlockKind.WeaponParry, in r);
                 logic.GuardTaken(fresh, BlockKind.None, in r);
                 var empty = logic.Track(FakeAgent(74))!;
                 for (int i = 0; i < 10; i++) AthleticsMath.Charge(empty, in r, t);
+                facts.Shield.Add(74);
                 logic.GuardTaken(empty, BlockKind.ShieldWrongSide, in r);
-                logic.GuardTaken(empty, BlockKind.None, in r);
-                logic.GuardTaken(empty, BlockKind.None, in r);
                 logic.GuardTaken(empty, BlockKind.ShieldRightSide, in r);
+                facts.Shield.Remove(74);
+                logic.GuardTaken(empty, BlockKind.None, in r);
+                logic.GuardTaken(empty, BlockKind.None, in r);
+                int readsBefore = facts.Reads;
                 logic.GuardTaken(me, BlockKind.None, in r); // you: never counted
                 S.Set(SettingsSchema.AthleticsEnabled, false, SettingSources.Mcm);
                 var off = Rules;
                 logic.GuardTaken(fresh, BlockKind.None, in off);
                 S.Set(SettingsSchema.AthleticsEnabled, true, SettingSources.Mcm);
+                Check(facts.Reads == readsBefore, "the weapon was read for a blow that is not counted (you / Athletics off)");
                 var ts = logic.TiredBlockStatsForSmoke;
                 Check(ts.Blows(0) == 10 && ts.Blows(3) == 4 && ts.Landed(3) == 2 && ts.WrongSide(3) == 1, "the guard by f band is off: " + ts.Blows(0) + " / " + ts.Blows(3));
+                Check(ts.Blows(0, true) == 8 && ts.Blows(0, false) == 2 && ts.Landed(0, false) == 1 && ts.Parried(0, false) == 1,
+                    "step 34: the peak band's split by a shield in hand is off: " + ts.Blows(0, true) + " with / " + ts.Blows(0, false) + " without");
+                Check(ts.Blows(3, true) == 2 && ts.WrongSide(3, true) == 1 && ts.Landed(3, true) == 0 && ts.Blows(3, false) == 2 && ts.Landed(3, false) == 2,
+                    "step 34: the empty band's split by a shield in hand is off: " + ts.Blows(3, true) + " with / " + ts.Blows(3, false) + " without");
+                Check(ts.Recomputes > 0 && ts.RecomputesWithShield == ts.Recomputes, "step 34: the shield man's recomputes were not counted with a shield: "
+                    + ts.RecomputesWithShield + " of " + ts.Recomputes);
                 Check(ts.Men == 1 && ts.Raised(1) >= 1 && ts.Raised(3) >= 1, "the raised chance was not counted by band (men " + ts.Men + ")");
 
                 typeof(AthleticsLogic).GetMethod("WriteTiredBlockSummary", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(logic, null);
                 LogHas("[summary] tired block direction (TiredBlockRandomPercent 100, step 30): the game's random-direction chance raised for 1 AI men (");
+                LogHas(" recomputes - " + ts.Recomputes + " with a shield in hand, 0 without; ");
                 LogHas("; his own → written, avg by f band: f 0.5-1 ");
                 LogHas("[summary] AI guard by f (melee blows that reached AI men; kicks, bashes, charges and missiles left out - step 30: tired men should block worse): peak (f 1) 10 blows - blocked 90.0% (shield right side 80.0%, WRONG side 0.0%, parry 10.0%), landed 10.0%; f 0.5-1 none; f below 0.5 none; empty (f 0) 4 blows - blocked 50.0% (shield right side 25.0%, WRONG side 25.0%, parry 0.0%), landed 50.0%");
+                LogHas("[summary] AI guard by f WITH a shield in hand (when the blow came - step 34): peak (f 1) 8 blows - blocked 100.0% (shield right side 100.0%, WRONG side 0.0%, parry 0.0%), landed 0.0%; f 0.5-1 none; f below 0.5 none; empty (f 0) 2 blows - blocked 100.0% (shield right side 50.0%, WRONG side 50.0%, parry 0.0%), landed 0.0% (a wrong direction with a shield = a WRONG-side block: the shield still stops the blow)");
+                LogHas("[summary] AI guard by f WITHOUT a shield (when the blow came - step 34): peak (f 1) 2 blows - blocked 50.0% (shield right side 0.0%, WRONG side 0.0%, parry 50.0%), landed 50.0%; f 0.5-1 none; f below 0.5 none; empty (f 0) 2 blows - blocked 0.0% (shield right side 0.0%, WRONG side 0.0%, parry 0.0%), landed 100.0% (a wrong direction without a shield = the blow lands: empty should land far more than peak)");
                 logic.SmokePlayer = null;
             }
             finally

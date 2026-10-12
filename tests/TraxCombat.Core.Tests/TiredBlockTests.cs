@@ -103,32 +103,63 @@ public class TiredBlockTests
     public void The_summary_counts_the_raised_chance_and_the_guard_by_f_band()
     {
         var st = new TiredBlockStats { Men = 2 };
-        st.AddRaised(1, -1.1f, 0.5f);
-        st.AddRaised(1, 0.2f, 0.6f);
-        st.AddRaised(3, -1.1f, 1f);
-        st.AddRaised(7, 0f, 1f); // a bad bin is ignored
-        for (int i = 0; i < 8; i++) st.AddGuard(0, BlockKind.ShieldRightSide);
-        st.AddGuard(0, BlockKind.WeaponParry);
-        st.AddGuard(0, BlockKind.None);
-        st.AddGuard(3, BlockKind.ShieldWrongSide);
-        st.AddGuard(3, BlockKind.None);
-        st.AddGuard(3, BlockKind.None);
-        st.AddGuard(3, BlockKind.ShieldRightSide);
+        st.AddRaised(1, -1.1f, 0.5f, true);
+        st.AddRaised(1, 0.2f, 0.6f, false);
+        st.AddRaised(3, -1.1f, 1f, false);
+        st.AddRaised(7, 0f, 1f, true); // a bad bin is ignored
+        for (int i = 0; i < 8; i++) st.AddGuard(0, BlockKind.ShieldRightSide, true);
+        st.AddGuard(0, BlockKind.WeaponParry, false);
+        st.AddGuard(0, BlockKind.None, false);
+        st.AddGuard(3, BlockKind.ShieldWrongSide, true);
+        st.AddGuard(3, BlockKind.None, false);
+        st.AddGuard(3, BlockKind.None, false);
+        st.AddGuard(3, BlockKind.ShieldRightSide, true);
         Assert.Equal(3, st.Recomputes);
+        Assert.Equal(1, st.RecomputesWithShield);
         Assert.Equal(2, st.NegativeOwn);
         Assert.Equal(2, st.Raised(1));
         Assert.Equal(2, st.Landed(3));
         Assert.Equal(1, st.WrongSide(3));
 
         var lines = st.SummaryLines(On());
-        Assert.Equal(2, lines.Count);
-        Assert.Equal("tired block direction (TiredBlockRandomPercent 100, step 30): the game's random-direction chance raised for 2 AI men (3 recomputes; "
+        Assert.Equal(4, lines.Count);
+        Assert.Equal("tired block direction (TiredBlockRandomPercent 100, step 30): the game's random-direction chance raised for 2 AI men (3 recomputes - "
+                     + "1 with a shield in hand, 2 without; "
                      + "2 of them over a game value below 0 - never random before); his own → written, avg by f band: f 0.5-1 0.10 → 0.55 (n 2), empty (f 0) 0.00 → 1.00 (n 1)",
             lines[0]);
         Assert.Equal("AI guard by f (melee blows that reached AI men; kicks, bashes, charges and missiles left out - step 30: tired men should block worse): "
                      + "peak (f 1) 10 blows - blocked 90.0% (shield right side 80.0%, WRONG side 0.0%, parry 10.0%), landed 10.0%; f 0.5-1 none; f below 0.5 none; "
                      + "empty (f 0) 4 blows - blocked 50.0% (shield right side 25.0%, WRONG side 25.0%, parry 0.0%), landed 50.0%",
             lines[1]);
+        Assert.Equal("AI guard by f WITH a shield in hand (when the blow came - step 34): "
+                     + "peak (f 1) 8 blows - blocked 100.0% (shield right side 100.0%, WRONG side 0.0%, parry 0.0%), landed 0.0%; f 0.5-1 none; f below 0.5 none; "
+                     + "empty (f 0) 2 blows - blocked 100.0% (shield right side 50.0%, WRONG side 50.0%, parry 0.0%), landed 0.0% "
+                     + "(a wrong direction with a shield = a WRONG-side block: the shield still stops the blow)",
+            lines[2]);
+        Assert.Equal("AI guard by f WITHOUT a shield (when the blow came - step 34): "
+                     + "peak (f 1) 2 blows - blocked 50.0% (shield right side 0.0%, WRONG side 0.0%, parry 50.0%), landed 50.0%; f 0.5-1 none; f below 0.5 none; "
+                     + "empty (f 0) 2 blows - blocked 0.0% (shield right side 0.0%, WRONG side 0.0%, parry 0.0%), landed 100.0% "
+                     + "(a wrong direction without a shield = the blow lands: empty should land far more than peak)",
+            lines[3]);
+    }
+
+    [Fact]
+    public void The_guard_split_by_a_shield_in_hand_adds_up_to_the_total()
+    {
+        var st = new TiredBlockStats();
+        st.AddGuard(2, BlockKind.ShieldWrongSide, true);
+        st.AddGuard(2, BlockKind.WeaponParry, false);
+        st.AddGuard(2, BlockKind.None, false);
+        st.AddGuard(2, BlockKind.None, true);
+        st.AddGuard(-1, BlockKind.None, true); // a bad bin is ignored in every table
+        Assert.Equal(4, st.Blows(2));
+        Assert.Equal(2, st.Blows(2, true));
+        Assert.Equal(2, st.Blows(2, false));
+        Assert.Equal(st.Landed(2), st.Landed(2, true) + st.Landed(2, false));
+        Assert.Equal(1, st.WrongSide(2, true));
+        Assert.Equal(0, st.WrongSide(2, false));
+        Assert.Equal(1, st.Parried(2, false));
+        Assert.Equal(0, st.Blows(0, true) + st.Blows(0, false));
     }
 
     [Fact]
@@ -137,8 +168,10 @@ public class TiredBlockTests
         var lines = new TiredBlockStats().SummaryLines(On(0));
         Assert.Equal("tired block direction (step 30): off at the end (TiredBlockRandomPercent 0) and never raised this battle - the game's own blocking", lines[0]);
         Assert.EndsWith("(no melee blow reached an AI man)", lines[1]);
+        Assert.EndsWith("none (no melee blow reached an AI man holding a shield) (a wrong direction with a shield = a WRONG-side block: the shield still stops the blow)", lines[2]);
+        Assert.EndsWith("none (no melee blow reached an AI man without a shield) (a wrong direction without a shield = the blow lands: empty should land far more than peak)", lines[3]);
         var raisedThenOff = new TiredBlockStats { Men = 1 };
-        raisedThenOff.AddRaised(2, 0f, 0.7f);
+        raisedThenOff.AddRaised(2, 0f, 0.7f, false);
         Assert.EndsWith(" - off at the end (ModEnabled)", raisedThenOff.SummaryLines(On(mod: false))[0]);
     }
 }

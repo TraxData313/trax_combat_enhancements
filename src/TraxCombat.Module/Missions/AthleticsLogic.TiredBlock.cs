@@ -9,7 +9,8 @@ namespace TraxCombat.Missions
     /// TiredBlockRandomPercent / 100 × (1 − f) is re-targeted with the speed multipliers (<see cref="RetargetSpeed"/>, the same
     /// recompute steps and budget) and written by the stat decorator into the game's own
     /// <c>AiRandomizedDefendDirectionChance</c> = own + (1 − own) × w (<see cref="TiredBlockMath.Chance"/>). This part: the
-    /// settings lines, the first raised chance in full, the GUARD by f band (OnMeleeHit) and the 2 [summary] lines.
+    /// settings lines, the first raised chance in full, the GUARD by f band (OnMeleeHit; step 34: split by a shield in hand) and
+    /// the 4 [summary] lines.
     /// AI_NOTES "Step 30", RESEARCH §M.
     /// </summary>
     public sealed partial class AthleticsLogic
@@ -62,7 +63,7 @@ namespace TraxCombat.Missions
         internal void TiredBlockApplied(TrackedAgent st, float game, float chance, float weight)
         {
             double f = st.BlockRandomPeakShare;
-            _tiredBlockStats.AddRaised(AthleticsMath.PeakBin(f), game, chance);
+            _tiredBlockStats.AddRaised(AthleticsMath.PeakBin(f), game, chance, ShieldInHand(st, "guard.shield.recompute"));
             if (!st.BlockRandomSeen)
             {
                 st.BlockRandomSeen = true;
@@ -99,15 +100,33 @@ namespace TraxCombat.Missions
             GuardTaken(st, kind, in r);
         }
 
-        /// <summary>One blow at an AI man counted by his f band (<see cref="BlockKind.None"/> = landed). Athletics off (f
-        /// meaningless) or the player → not counted. The smoke drives it.</summary>
+        /// <summary>One blow at an AI man counted by his f band (<see cref="BlockKind.None"/> = landed) and, step 34, by whether he
+        /// holds a shield in his off hand as it arrives (<see cref="ShieldInHand"/>). Athletics off (f meaningless) or the player
+        /// → not counted. The smoke drives it.</summary>
         internal void GuardTaken(TrackedAgent st, BlockKind kind, in AthleticsRules r)
         {
             if (!r.Enabled || IsPlayer(st)) return;
-            _tiredBlockStats.AddGuard(AthleticsMath.PeakBin(AthleticsMath.PeakShare(in r, st)), kind);
+            _tiredBlockStats.AddGuard(AthleticsMath.PeakBin(AthleticsMath.PeakShare(in r, st)), kind, ShieldInHand(st, "guard.shield"));
         }
 
-        /// <summary>The summary's 2 step-30 lines (own try in the caller).</summary>
+        /// <summary>Step 34: a shield in his off hand now - step 21's weapon read (<see cref="IWeaponFacts"/>: a pointer read and
+        /// the managed item, safe in a hit callback and in the stat decorator). A failing read logs one [error] per site and
+        /// counts as "without" - the totals stay whole.</summary>
+        private bool ShieldInHand(TrackedAgent st, string site)
+        {
+            try
+            {
+                WeaponFacts.Read(st, true, false, out bool shield, out _);
+                return shield;
+            }
+            catch (Exception e)
+            {
+                Failed(site, e);
+                return false;
+            }
+        }
+
+        /// <summary>The summary's 4 step-30 / step-34 lines (own try in the caller).</summary>
         private void WriteTiredBlockSummary()
         {
             foreach (var line in _tiredBlockStats.SummaryLines(TiredBlockRules.From(TraxSettings.Shared)))
