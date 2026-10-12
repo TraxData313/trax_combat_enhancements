@@ -1088,3 +1088,22 @@
   allocated. Tests 550 -> 551, smoke stays 80 (TiredBlockDirection extended: shield per agent, one dropped mid-fight, no
   read for you / Athletics off, the lines verbatim). Docs: AI_NOTES "Step 34", PLAYTEST D8 step 5 + L6e (read the
   WITHOUT line first), CLAUDE.md. Deployed (AssemblyGuard + smoke green). (2026.10.12 13.34.50)
+- [x] 35. Sprint tuning (Anton, 2026-10-12, after two tournaments: "the sprint felt very slow" - his log showed the engine
+  DOES reach the asked top (asked x1.66 = engine x1.66), but the game's foot acceleration TopSpeedReachDuration (DrivenProperty
+  86, per agent; Sandbox 2.5 + max(5 - (1 + skill x 0.01), 1) / 3.5 - min(weight / (weight + gear), 0.8) = 2.3-2.8 s) is
+  longer than the full-speed part and his taps were 0.4-0.8 s; tired, the store collapsed (points / 20) and 2 x a tired run
+  is still slow). (1) The PEAK on the FRESH run: Core SprintMath.RunFactor = SprintMaxMultiplier x the untired run for the
+  first 30%, then a line to SprintMinMultiplier x the CURRENT run - written on MaxSpeedMultiplier IN PLACE OF the tiredness
+  multiplier (TrackedAgent.SprintRun, 0 = none, replaces SprintMultiplier); fresh 2.0 -> 1.1, exhausted 2.0 -> 0.33;
+  Quantize floors at 0.05. (2) defaults.json SprintMaxMultiplier 2.0 (DESIGN's initial stays 1.6; range 1-3 kept; no
+  migration - Anton's config has 2.0). (3) SprintMinSeconds 2 (0-5): capacity = max(floor, points / pps), OnFloor; the refill
+  rule unchanged (the whole store in 7 s / the factors - the floor 14 s standing at empty); with a floor no empty-bar refusal
+  (a used-up store is below the 20%). (4) SprintTopSpeedReachSeconds 1 (0-5, 0 = the game's): the stat decorator caps
+  TopSpeedReachDuration = min(game, ours) only while sprinting - the base model rewrites the game's value every recompute,
+  and the start, each 0.05 step, the end and a sprint setting change recompute him; GameReach remembered for the logs.
+  (5) Logs: the mission-start sentence, the first-sprint lines (floor, fresh-run peak, run property before -> after, fade
+  target, game -> our acceleration), the summary's off-the-floor counts (you / AI), the acceleration clause, the speed check
+  x the fresh run. Tests 551 -> 557; smoke 80 -> 81 (SprintTuningThroughTheLogic: an exhausted you through the real logic and
+  decorator - 0.8 x 2.0 at the start, TopSpeedReachDuration 2.6 -> 1.0 -> 2.6; step 33's checks pin floor / reach 0).
+  Docs: DESIGN (prose, 2 rows, decision 32), AI_NOTES "Step 35", HOW-IT-WORKS section 13 tables, PLAYTEST D10 / L6g,
+  CLAUDE.md. Deployed (AssemblyGuard + smoke green). (2026.10.12 15.04.10)

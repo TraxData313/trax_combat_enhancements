@@ -61,9 +61,12 @@ stored swings - max(`SwingStackMinimum` 2, round(his CURRENT points / `SwingStac
 back per pause while he is not attacking (an AI melee man's own ~1 s gap after a swing from the stack excluded), so he can
 burst; kicks / bashes spend one too and are gated at 0 (`KicksUseSwings` - your kick key, a held AI man's input); the
 recovery bar reads "Swings 4/8". SPRINT (step 33, `SprintEnabled`): a store of seconds = current points / `SprintPointsPerSecond`
-20, refilled in 7 s (slower moving or tired), 20% to start; hold `SprintKey` (a key NAME, LeftControl) or an AI formation's NEW
-order (charge 100%, advance / move 50%) → the run × 1.6 for the first 30% of it, a line to 1.1 (the decorator puts
-`MaxSpeedMultiplier` above 1), no Athletics refill meanwhile; on foot only; the sprint bar above the recovery bar. The bar for the
+20, never below `SprintMinSeconds` 2 (step 35), refilled in 7 s (slower moving or tired), 20% to start; hold `SprintKey` (a key
+NAME, LeftControl) or an AI formation's NEW order (charge 100%, advance / move 50%) → step 35: `SprintMaxMultiplier` (2.0) × his
+FRESH run for the first 30% of it, whatever his Athletics, then a line to 1.1 × his CURRENT run (the decorator writes the
+sprint's run factor on `MaxSpeedMultiplier` in place of the tiredness multiplier, and caps `TopSpeedReachDuration` at
+`SprintTopSpeedReachSeconds` 1 s while sprinting - the game's ~2.3-2.8 s), no Athletics refill meanwhile; on foot only; the
+sprint bar above the recovery bar. The bar for the
 fighter you look at is LATER (DESIGN §3; its settings wait in DESIGN's "Planned parameters"). Words:
 the pool/bar/points are "Athletics", the character-screen skill is "the Athletics skill" (it
 used to be called "endurance"), the "peak line" is the white mark at the top quarter of the bar,
@@ -202,7 +205,7 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               its Default comes from defaults.json (DefaultsFile), never code; step 33: ParamType.Key +
                               KeyNames (a key by NAME, stored as its index; FormatJson writes "LeftControl"; the
                               file / defaults.json read the name, MCM a text box)
-  SettingsSchema.cs           EVERY setting of DESIGN's table (122), in file + MCM order, 13 groups
+  SettingsSchema.cs           EVERY setting of DESIGN's table (124), in file + MCM order, 13 groups
                               ("Master switch" first, "Damage" second - step 25 renamed it from
                               "Damage randomness", "Battle pace (AI)" - step 21 - after the step back,
                               "Brace by orders (AI)" - step 23 - after it, "Sprint" - step 33 - after that,
@@ -377,12 +380,16 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               pauseOverride / StartCountdown / Retarget, AttackRecoveryReading.WithStack
   Sprint.cs                   step 33 pure (AI_NOTES "Step 33"): SprintOrder (charge / advance or move / none), SprintEnd,
                               SprintStart, SprintRules (live; Enabled = ModEnabled && AthleticsEnabled && SprintEnabled, AiOn,
-                              Describe), SprintMath (Capacity = points / per second, TiredFactor, RefillMultiplier /
+                              Describe), SprintMath (Capacity = points / per second - step 35: max(SprintMinSeconds, it),
+                              PointsCapacity, OnFloor -, TiredFactor, RefillMultiplier /
                               RefillPerSecond / SecondsToFull - 7 / 14 / 14 / 28, CanStart (20%), AiShare, Group (step 23's
-                              kinds), Multiplier - the profile, Quantize 0.05, the bar's colours; plumbing MovingMetresPerSecond
+                              kinds), step 35's RunFactor (SprintMax × the FRESH run, a line to SprintMin × the CURRENT run -
+                              Multiplier = a fresh man's), Quantize 0.05 (never below 0.05), TopSpeedReach = min(game, ours),
+                              the bar's colours; plumbing MovingMetresPerSecond
                               0.5, MeleeRangeMetres 3, MeleeCheckSeconds / OrderPollSeconds 0.25), SprintStore (one fighter:
                               Stored - full until the first Clamp -, Refill, TryStart, Advance - drains only moving -, Stop,
-                              Share), SprintReading (the bar), SprintStats (+ the 4 [summary] "sprint" lines)
+                              Share; step 35: RunFactor), SprintReading (the bar), SprintStats (+ the 4 [summary] "sprint" lines;
+                              step 35: off-the-floor starts, the acceleration game → ours, the speed check × the fresh run)
   Brace.cs                    step 23 pure (AI_NOTES "Step 23"): BraceOrderKind (the game's movement orders + the
                               AI's advance / tactical charge on a Move), BraceOrder (charge / advance / hold / no formation -
                               step 28), BraceEnd,
@@ -618,9 +625,12 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               EndAllSprints; your key every tick - a PRESS starts, letting go ends; PollOrders every 0.25 s -
                               a formation's kind changed = a new order → OrderChangedFor its AI men; ForgetOrders while the AI
                               sprint is off), SprintPass every 0.1 s (Clamp to his points, RunSprint - drain while moving, melee
-                              every 0.25 s, the profile into TrackedAgent.SprintMultiplier in 0.05 steps → SpeedDirty -, Refill),
+                              every 0.25 s, the run factor into TrackedAgent.SprintRun in 0.05 steps → SpeedDirty -, Refill),
                               BeginSprint / EndSprint (every path), SprintLeftField, SprintFreshStart (step 19), CloseSprints,
-                              WriteSprintSummary, TryGetPlayerSprint (the bar); SpeedFactorsFor multiplies the run by it;
+                              WriteSprintSummary, TryGetPlayerSprint (the bar); step 35: SpeedFactorsFor puts SprintRun IN PLACE
+                              of the run and hands the decorator SprintTopSpeedReachSeconds (+ remembers the game's reach,
+                              TrackedAgent.GameReach); the floor and the acceleration in the first-sprint lines; a sprint setting
+                              change marks every sprinter for a recompute;
                               RegenPass skips a sprinter; the recompute budget's start ROTATES (the first man left waiting)
   Missions/SprintBody.cs      step 33: ISprintBody (the smoke plays it) + GameSprintBody (formations by Mission.Teams /
                               FormationsIncludingEmpty, the order by GameBraceBody.KindOf, motion, GetNearbyEnemyAgentCount,
@@ -767,7 +777,7 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
   Hud/AltMarkersVM.cs         its ViewModels: the root + a GROW-ONLY MBBindingList of AltMarkerLabelVM keyed by
                               team + formation (a label never swaps formations when vanilla re-sorts); step 24:
                               ReadyText / ReadyColor / ReadyShown, SetReady
-tests/TraxCombat.Core.Tests/  net8.0 xUnit (551) — schema vs DESIGN.md (keys + types), one copy
+tests/TraxCombat.Core.Tests/  net8.0 xUnit (557) — schema vs DESIGN.md (keys + types), one copy
                               runs (SingleCopyTests: claims on private slots, copies, texts), when
                               MCM is tried and when it stops (McmPlanTests - step 12),
                               defaults.json (DefaultsFileTests), master switch, settings, config
@@ -820,7 +830,9 @@ tests/TraxCombat.Core.Tests/  net8.0 xUnit (551) — schema vs DESIGN.md (keys +
                               switch and the master switch, your countdown's retarget, the bar's count, the summary), the sprint (SprintTests,
                               step 33: the store = points / 20, the clamp, refill 7 / 14 / 14 / 28 s, the 20% gate, the profile
                               1.6 to 2.25 s then 1.35 / 1.1, a 30% store 2.25 s long, 0.05 steps, drain only moving, the rest kept,
-                              AI shares and order groups, the switches, the key names in the file / defaults / MCM, the summary),
+                              AI shares and order groups, the switches, the key names in the file / defaults / MCM, the summary;
+                              step 35: the fresh-run peak 2.0 → 1.1 / exhausted 2.0 → 0.33, the 2 s floor (points 0, pool 50 at
+                              50%, pool 150 full), its slow refill, the acceleration cap on / off / 0, live, the master switch),
                               the ready count (ReadyCountTests, step 24: hidden
                               rules in order, bands at or below 75 / 50, text, colours, the strip cell one row
                               deeper only while drawn and the 1080p bottom card lifted, log text, summary), the
@@ -992,7 +1004,11 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               hold, melee, a rider, a man you drive), SprintAiEnabled and the master switch, left the field, the
                               fresh start, the clamp, the summary; the cost - 1000 men on a charge, 0.006 ms a tick, 0 bytes, ~12
                               recomputes a man; the sprint bar prefab and view (the older steps pin SprintEnabled off - SprintOff
-                              in AthleticsDefaults) (80 steps; the
+                              in AthleticsDefaults; step 33's own checks pin SprintMinSeconds / SprintTopSpeedReachSeconds 0 -
+                              SprintDefaults); step 35 (SprintTuningThroughTheLogic): an EXHAUSTED you through the real logic and
+                              decorator - the run property 0.8 x 2.0 at the start (not 0.8 x 0.3 x 2.0), the fade towards 0.33,
+                              TopSpeedReachDuration 2.6 → 1.0 and back, the floor's refill, reach 0 / live, the master switch,
+                              an AI man off the floor, SprintMinSeconds 0 refused, the lines (81 steps; the
                               config checks work for any tuned default)
                               TRAX_SMOKE_KEEP=1 keeps its temp folder + log to read
 tools/DefaultsTool/           defaults.json upkeep: refresh (rewrite comments/order, keep every

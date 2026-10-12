@@ -3477,3 +3477,81 @@ peak band's = tired shieldless men parry worse (step 30 works for them). Flat wi
 engine's random direction does not reach parries (then step 30's input fallback is the next idea). The WITH line: a
 rising `WRONG side` with `landed` flat = the shield still saves him - by design of the engine (UNVERIFIED item 3 of step
 30 answered by Anton's log: a wrong pose is a wrong-side block, not a miss of the shield).
+
+## Step 35 — sprint tuning: the peak on the fresh run, a 2 s floor, 1 s acceleration (DONE 2026-10-12)
+
+Anton (2026-10-12, after two tournaments): the sprint felt very slow; he raised `SprintMaxMultiplier` to 2.0 in MCM. His log:
+`sprint speed check: asked x1.66, engine x1.66, max x2.00` - the engine DOES reach the asked top (no cap). What was slow:
+(1) **acceleration** - the game's foot `TopSpeedReachDuration` is longer than the sprint's full-speed part, and his taps were
+0.4-0.8 s; (2) **tired** - the store collapsed (0.07 s stored = points / 20 near empty) and 2 × a tired run (× 0.3) is still
+slow (0.6 of a fresh pace).
+
+**The game's acceleration (verified in the v1.4.8 decompile)**
+- `DrivenProperty.TopSpeedReachDuration = 86`, a per-agent value in `AgentDrivenProperties` (the managed `_statValues` array,
+  sent with the rest by UpdateAgentProperties). Sandbox `UpdateHumanStats` assigns it with `=` on every recompute:
+  `2.5 + max(5 − (1 + effectiveSkill × 0.01), 1) / 3.5 − min(weight / (weight + gear), 0.8)` (skill = Athletics; weight /
+  gear from the character and his equipment) - **typically 2.3-2.8 s on foot**; CustomBattle: `2 / max((200 + skill) / 300 ×
+  weight / (weight + gear), 0.3)`; a horse's is the RidingModel's acceleration (on the mount agent - untouched). So the stat
+  decorator - where `MaxSpeedMultiplier` is already written, after the base model - is the right place: BaseModel first
+  writes the game's value fresh, we lower it only while he sprints, and the next recompute without a sprint gives the base
+  value back with no restore code.
+- UNVERIFIED: how the engine applies it to a man already running (a sprint from a run should be immediate anyway); whether a
+  1 s reach looks like a jolt - PLAYTEST D10 step 2.
+
+**The build (Claude's calls; DESIGN decision 32)**
+1. **The peak on the FRESH run** (Anton's call). Core `SprintMath.RunFactor(s, elapsed, length, run)` = the factor written
+   on the run property, × his FRESH run, IN PLACE OF his tiredness run multiplier `run`: `SprintMaxMultiplier` for the first
+   `SprintFullSpeedSharePercent` of T, then a straight line to `SprintMinMultiplier × run` at T. Fresh 2.0 → 1.1, half way
+   to the peak line (run 0.65) 2.0 → 0.715, exhausted (run 0.3) 2.0 → 0.33. `Multiplier` (step 33's) = RunFactor at run 1 -
+   a fresh man's profile is unchanged. `TrackedAgent.SprintRun` (0 = none) replaces step 33's `SprintMultiplier`;
+   `SpeedFactorsFor` returns it as `run` while set. `Quantize` keeps 0.05 steps but floors at 0.05, not 1 (a tired fade
+   ends below 1). Recomputes: the pass steps the factor at most once per 0.1 s, so even an exhausted man's 2.0 → 0.35 (33
+   steps of 0.05) costs ≤ ~16 recomputes over his 2 s sprint (the 0.1 s pass is the bound); the cost smoke (fresh men, step
+   33's numbers) stays ~12 a man.
+2. **`SprintMaxMultiplier` 2.0 in defaults.json** (DESIGN's Default column keeps the initial 1.6). Its range 1-3 already
+   leaves room above 2.0 - not changed. No config migration (Anton's config.json already holds 2.0 from MCM).
+3. **The floor `SprintMinSeconds` (2, range 0-5)**: `Capacity = max(floor, points / pps)`; `PointsCapacity` (no floor),
+   `OnFloor` (the floor holds it up). The refill rule is unchanged: `RefillPerSecond = capacity / SprintRefillSeconds ×
+   moving × tired`, so the whole CURRENT store (2 s on the floor) still takes `SprintRefillSeconds` ÷ the factors - 14 s
+   standing at an empty bar, 28 s moving. `TryStart`: `NoStore` only when the capacity is 0 (floor 0 and points 0); a
+   used-up store with a capacity is `BelowMinimum` (the 20% gate on the capacity as before) - so with a floor an empty
+   man sprints his 2 s once it has refilled past 0.4 s.
+4. **`SprintTopSpeedReachSeconds` (1, range 0-5, 0 = the game's; below 0.1 counts as 0.1)**: `SpeedFactorsFor` gains the
+   base model's value in (`gameReach` - remembered as `TrackedAgent.GameReach` on every recompute of a tracked man) and
+   `out reach` (the setting while `SprintRun` > 0); the decorator writes `SpeedPenalty.CapTopSpeedReach` = `SprintMath
+   .TopSpeedReach(game, ours)` = min(game, ours). A recompute happens at the sprint's start (SprintRun 0 → x), every 0.05
+   step, its end (x → 0), and - new - on any sprint setting change mid-mission (`NoteSprintSettings` marks every sprinter
+   SpeedDirty), so a reach change applies at once rather than at the next step.
+5. **Logs**: mission start / settings line - `never below 2.0 s (an empty bar still holds 2.0 s)`, `speed x2.00 of his
+   FRESH run speed (whatever his Athletics) … then a straight line to x1.10 of his CURRENT run speed`, `top speed reached
+   in at most 1.0 s while sprinting (the game's own acceleration: ~2.3-2.8 s on foot)`; the first YOU sprint: the floor
+   (`0 Athletics points / 20.0 = 0.00 s - the store's floor SprintMinSeconds 2.0 s holds it up`), the run property before
+   → after (`x0.30 → x2.00`), the fade target (`x1.10 of your current run (x0.33)`), the acceleration (`top speed reached
+   in 1.00 s instead of the game's 2.60 s`); the first AI sprint the same; later YOU starts add `(the floor)` and the
+   factors. Summary: `sprint - you: … N started off the 2.0 s floor`, `sprint - AI: … off the 2.0 s floor N`, the speed
+   check now `x his FRESH run speed = his top at the sprint's start ÷ his run multiplier then` (asked = SprintRun, engine =
+   top ÷ the start's top × the start's run multiplier - meaningful for a tired man too: his peak reads x2.00) + `acceleration
+   while sprinting: the game's top-speed reach avg … s → ours … s (sprint starts: N)`. Still 4 lines.
+6. **Tests 551 → 557** (SprintTests +6: the fresh-run profile, the floor, its refill, the acceleration cap, live settings +
+   the master switch + Describe, the summary clauses; the helper's new args default 0 so step 33's tests stay step 33's).
+   **Smoke 80 → 81**: `SprintTuningThroughTheLogic` (an exhausted you through the real logic AND the real decorator - the
+   run property 0.8 × 2.0 at the start, not 0.8 × 0.3 × 2.0; x2.0 held to 0.6 s, the fade towards 0.33; TopSpeedReachDuration
+   2.6 → 1.0 and back to 2.6 after; the floor's refill 2 / 7 × 0.5 a second; reach 0 = the game's, a change mid-sprint
+   recomputes him; the master switch = the base values; an exhausted AI man off the floor; SprintMinSeconds 0 = refused
+   (live); the lines). Step 33's smoke checks PIN `SprintMinSeconds` 0 / `SprintTopSpeedReachSeconds` 0 in `SprintDefaults`
+   (they test step 33's store); its one tired check now asks the new rule (run x0.85 → still 0.8 × 1.6). `FreshStatsModel`
+   writes TopSpeedReachDuration 2.6.
+
+**Numbers (defaults: pps 20, floor 2 s, peak 2.0, end 1.1, 30%, run floor 0.3, peak line 75%; × a fresh run)**
+
+| Bar | Store, pool 100 | Run now | Peak | End | Refill empty → full standing / running |
+|---|---:|---:|---:|---:|---:|
+| 100% | 5 s | 1.00 | 2.00 | 1.10 | 7 / 14 s |
+| 75% | 3.75 s | 1.00 | 2.00 | 1.10 | 7 / 14 s |
+| 50% | 2.5 s | 0.77 | 2.00 | 0.84 | 8.4 / 16.8 s |
+| 25% | 2 s (floor) | 0.53 | 2.00 | 0.59 | 10.5 / 21 s |
+| 0% | 2 s (floor) | 0.30 | 2.00 | 0.33 | 14 / 28 s |
+
+**Playtest checks (PLAYTEST D10, L6g)**: a 0.5 s TAP should lunge at once; an empty bar shows "Sprint 2.0 s" and bursts as
+fast as a fresh man then fades to the tired jog; the summary's acceleration clause (the game's 2.3-2.8 s → ours 1.00 s);
+`engine top` ≈ `asked` (both × the fresh run); the feet at 2 × (sliding?) and the 1 s reach (a jolt?).
