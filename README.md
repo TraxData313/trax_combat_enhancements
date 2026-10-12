@@ -24,6 +24,8 @@ decide the fight — and heroes matter.**
 - **Tired AI act on your orders:** below a floor set by the order (hold 60%, advance 40%, charge 20%)
   they stop swinging and defend, shield up, until they catch their breath. Order the charge and they
   surge again.
+- **Sprint:** hold Left Ctrl for a short burst of speed paid from your stamina; AI formations sprint on a
+  new charge.
 - **See it:** your bar under your health; in the orders menu and when you hold ALT, every formation's
   stamina and how many men are *ready* — yours and the enemy's.
 

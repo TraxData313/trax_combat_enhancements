@@ -3343,7 +3343,7 @@ the average rate unchanged, bursts possible; kicks and bashes spend one too and 
 4. Battle pace still bites: the `battle pace` lines' attacks a minute per man about as before (the grace) - if the AI swings
    clearly more often, tell Claude (the gap grace may be too short).
 
-## Step 33 — the sprint: a short burst of speed, a dodge for you, sharper charges for the AI (research 2026-10-12; build below)
+## Step 33 — the sprint: a short burst of speed, a dodge for you, sharper charges for the AI (DONE 2026-10-12; the research below was written before coding)
 
 Anton (2026-10-12): a sprint store in seconds = current Athletics points ÷ `SprintPointsPerSecond` (20) - 150 points = 7.5 s,
 empty = 0; refill (not sprinting) empty → full in `SprintRefillSeconds` (7) standing at / above the peak line, × 0.5 moving
@@ -3376,3 +3376,69 @@ to 50%. Research first, STOP if it needs native patching.
    (the average of its men's tops, cached ~2 s). So the whole formation sprinting together is what makes it faster - one man
    alone would be held to the others' pace; the charge's last stretch (closer than 2 × top speed to the enemy formation) runs
    uncapped. That is why the AI sprint takes the whole formation at once.
+
+**The build (Claude's calls - Anton can overturn any; DESIGN §2 "The sprint", decision 31)**
+1. **Core `Sprint.cs`**: `SprintRules` (live; Enabled = ModEnabled && AthleticsEnabled && SprintEnabled - the store is made
+   of Athletics points; AiOn; Describe(key)), `SprintMath` (Capacity = points / per second, TiredFactor = E + (1 − E) f,
+   RefillMultiplier (moving × tired), RefillPerSecond = capacity / T × it, SecondsToFull, CanStart (≥ 20% and a store at
+   all), AiShare, Group (step 23's BraceOrderKind → charge / advance-or-move / none), Multiplier (max for the first share of
+   the length, then a straight line to min; min capped at max), Quantize (0.05 steps), SecondsText (tenths rounded DOWN -
+   the bar never shows more than there is), the bar's colours; plumbing: moving above 0.5 m/s, melee 3 m, melee check and
+   order poll 0.25 s), `SprintStore` (per fighter, allocated once: Stored - +∞ = full until the first Clamp -, Active,
+   Length, Elapsed (seconds of MOVING), Since, StoredAtStart, Order, ByKey; Clamp, FillUp, Refill (never while active),
+   TryStart (share of the store; the gate on the whole store), Advance (drain = the clock, only moving; ends StoreEmpty /
+   LengthDone), Stop), `SprintReading` (the bar), `SprintStats` + 4 [summary] lines.
+2. **The key setting type** - `ParamType.Key` + `KeyNames` (22 names, the game's `InputKey` names; matched ignoring case,
+   spaces, '-', '_', and "ctrl"/"lctrl" short forms). Stored as the index (the double array stays), written / read as the
+   NAME in config.json and defaults.json (`FormatJson`, ConfigFile.TryConvert, DefaultsFile.TryValue - a number is refused
+   there), an MCM TEXT BOX (`AddText`, ProxyRef<string>; an unknown name refused with one [mcm] line, the old key kept), the
+   preset passes the name. Chosen over a free string: the whole settings stack is doubles, and a fixed list keeps a fight
+   key (W, Space, E…) from being picked by mistake. The smoke checks every name parses as the game's InputKey.
+3. **The lever**: `TrackedAgent.SprintMultiplier` (applied, quantised); `SpeedFactorsFor` returns run × it, so the
+   decorator's existing `ScaleRun` puts `MaxSpeedMultiplier` above 1 - no new engine call. A step sets SpeedDirty → the
+   tick's `UpdateAgentProperties` loop (50 a tick). That loop's start now ROTATES (`_budgetStart` = the first man left
+   waiting), so a 1000-man charge (1000 marked at once, then ~11 steps each over the sprint) is queued over ~20 ticks and the
+   end of the list never starves. The run-speed check skips a sprinter's samples (and any sample while SpeedDirty); the
+   walk/run sampling skips sprinters.
+4. **The tick** (`AthleticsLogic.Sprint.cs`, from TickAthletics before the recompute loop): switched off → EndAllSprints +
+   ForgetOrders; your key every tick (`ISprintBody.KeyDown(SprintKeyIndex)` = `Mission.InputManager.IsKeyDown(InputKey)` +
+   `PlayerCanSprint` = a fight mode and the order menu closed + YouDrive): a PRESS starts (refusals: below 20%, no store,
+   a horse - the first in full, then rate-limited), letting go = Released, the menu / not your hands = ControlChanged;
+   after the master switch a still-held key waits for a new press. The AI: `PollOrders` every 0.25 s - every formation of
+   every team (≤ 8 teams × 10) through `ReadOrders` (step 23's `GameBraceBody.KindOf`, now a shared static); the first look
+   only records; a changed kind marks the slot, then ONE pass over the fighters starts the men in marked slots
+   (`OrderChangedFor`: not the player / not his own AI = skipped, a running AI sprint ends OrderChanged, share 0 = none, a
+   horse = skipped). The 0.1 s `SprintPass`: Clamp to his points (counted), RunSprint (left the field, mounted, control
+   changed, the speed sample, Advance, the melee look every 0.25 s, the multiplier) or Refill (native reads only for a store
+   below full). RegenPass skips a sprinter before any read (no Athletics refill). Ends on every path: Released, StoreEmpty,
+   LengthDone, InMelee, OrderChanged, Mounted, SwitchedOff (all / AI only), LeftField (Forget), ControlChanged, FreshStart
+   (step 19's per-man fresh start also fills the store), MissionEnd (CloseSprints before the summary), Error.
+5. **The speed check** (the research's open question): at a sprint's start, with nothing pending, his top speed is the base;
+   every pass while the asked multiplier is in his properties (not SpeedDirty) files asked = sprint × run ÷ the run at the
+   start against engine = top ÷ base. "follows" = means within 0.05 over 20+ samples.
+6. **The bar**: `SprintBarView` + `SprintBarVM` + `TraxSprintBar.xml` - the recovery bar's recipe (label, frame, a
+   FillBarWidget, a 2 px white mark at `MarkOffset` = inner width × the start share). Above the recovery bar
+   (`SprintBarOffsetAbove` 46 = 24 + 22), as long and thick as it (reusing RecoveryBarWidth / Height - one new number
+   only). Fights only (no OutsideToggle). Shown with ShowPlayerBar + SprintEnabled; its own switch ShowSprintBar.
+7. **Logs**: `[sprint]` mission start (Describe), settings changes, switch-offs with counts; YOU first sprint in full (stored,
+   T, the profile, the run property before → after), later starts / ends (bucket `sprint-you`), the first refusal in full;
+   the first new order and the first AI order sprint in full; verbose `sprint-order` / `sprint-ai` through VerboseWants;
+   `[hud] sprint bar` first values / first sprint; [summary] 4 sprint lines + the bar's hud line.
+
+**Built (DONE 2026-10-12)** - file map in CLAUDE.md "Layout"
+- Settings 107 → 122: a "Sprint" group (13 groups, after the brace): SprintEnabled, SprintKey (LeftControl), SprintPointsPerSecond
+  20, SprintMinStartPercent 20, SprintMaxMultiplier 1.6, SprintMinMultiplier 1.1, SprintFullSpeedSharePercent 30,
+  SprintRefillSeconds 7, SprintRefillMovingFactor 0.5, SprintRefillExhaustedFactor 0.5, SprintAiEnabled, SprintAiChargeSharePercent
+  100, SprintAiMoveSharePercent 50; ShowSprintBar (Your Athletics bar); SprintBarOffsetAbove 46 (Advanced). No config format bump
+  (new keys come in with their defaults).
+- Tests 531 → 550 (`SprintTests` +19). Smoke 75 → 80 steps: `UseFakeSprintBody` (the key names = InputKey), `SprintThroughTheLogic`,
+  `SprintCostStaysFlat` (1000 men on a charge: 1000 marked = 20 ticks of the budget, ~12 recomputes a man, 0.006 ms a tick,
+  0 bytes), `SprintPrefabIsValid`, `SprintBarThroughTheView`; the MCM steps check the text box (a loose name sets it, "Banana" is
+  refused and logged); the older steps pin the sprint OFF (`AthleticsDefaults` → `SprintOff`).
+
+**Playtest checks (PLAYTEST D10, appendix L6g)**
+1. The speed check: `engine top avg` ≈ `asked avg` (≈ x1.4) - else the engine caps the run property above its base: tell Claude.
+2. The feet at x1.6 (sliding?), a big-skill hero's top speed (too silly?), Ctrl doing anything else in a fight.
+3. An AI charge: `sprints - charge N men` after `new orders seen - charge`; the formation reaching the enemy sooner (the formation's
+   speed cache refreshes every ~2 s - a move / advance sprint may show only after it).
+4. `[error] sprint.*` none.

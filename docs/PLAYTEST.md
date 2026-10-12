@@ -5,7 +5,7 @@ order, about **3 hours 15** (A 10 min, B 15, C 25, D 60, E 20, F 55, G 10; the o
 time after step 16? D4 alone (the A/B of the new guard and backpedal, 20 min) answers the newest
 questions; after step 21, D5 + D6 (the shield wall and the archers, 25 min); after step 23, D7 (lines brace by
 their orders, 15 min - since step 24 with the "ready 34/50" count on ALT and in the orders menu); after step 28, D8
-(a tournament: the opponent fights on to ~20%, 10 min; after step 29 its step 4 - block your way back from empty; after step 30 its step 5 - the tired opponent guesses his blocks); after step 32, D9 (the swing stack: save swings up and burst, the kick refused at 0, 10 min).** Each part says what to do, what you
+(a tournament: the opponent fights on to ~20%, 10 min; after step 29 its step 4 - block your way back from empty; after step 30 its step 5 - the tired opponent guesses his blocks); after step 32, D9 (the swing stack: save swings up and burst, the kick refused at 0, 10 min); after step 33, D10 (the sprint: Left Ctrl, a charge order, 15 min).** Each part says what to do, what you
 should see, what counts as broken, and the log lines that prove it. The full line reference —
 every summary block and what proves what — is the **appendix** at the end.
 
@@ -23,7 +23,7 @@ note the time (Advanced → *Log size limit (MB)* 32 makes it rarer).
 beside `config.json`. Every line is `2026.09.30 20:15:02.117 [tag] message`; a verbose line has a
 `~` before its tag: `2026.09.30 20:15:02.201 ~[damage] melee on a person: …`. Tags: `[load]`
 `[compat]` `[config]` `[mcm]` `[mission]` `[summary]` `[damage]` `[athletics]` `[speed]` `[rate]`
-`[stepback]` `[brace]` `[hud]` `[error]` `[log]` — search one to follow an area. Every battle ends with a
+`[stepback]` `[brace]` `[sprint]` `[hud]` `[error]` `[log]` — search one to follow an area. Every battle ends with a
 `[summary]` block; Claude reads those first.
 
 **Any time, anywhere — broken**: an `[error]` line (the game also shows a red line *"Trax Combat
@@ -747,6 +747,48 @@ swing is back; the AI's `battle pace` attacks a minute per man clearly higher th
 AI's own gap is refilling - AI_NOTES "Step 32"); `the AI's 0 input frames` with AI men seen kicking at 0 (the AI's kick is
 not in the input we edit - expected, note it).
 
+**D10. The sprint — a dodge for you, sharper charges for the AI (step 33, ~15 min).** Anton's ask: "a short burst of
+speed, meant to feel a little like a dodge, and for the AI to make charges sharper". Your store = your Athletics points ÷
+20 in seconds (150 = 7.5 s); hold **Left Ctrl** to sprint at 1.6 × your current run speed for the first 30% of it, then
+easing to 1.1 ×; 20% of the store is needed to start; it refills in 7 s standing fresh (half moving, half again tired).
+1. **Field battle, on foot.** Before the lines meet, look above the Attack recovery bar: **"Sprint 7.5 s"** (a 150 bar),
+   a blue bar with a white mark at 20%. Hold Left Ctrl and run: the bar turns **yellow** and drains only while you move;
+   you should clearly outrun your own men for ~2 s, then ease off. Let go after 3 s - the rest stays ("Sprint 4.4 s").
+   Stand still: it refills (7 s from empty at full strength). Run dry, then tap Ctrl at "Sprint 1.0 s": nothing (grey,
+   below the mark).
+2. **Watch the feet.** At 1.6 × do the legs keep up, or do the feet slide? Does a skilled hero (big Athletics) reach a
+   speed that looks silly? Note it - the engine's own animation is the open question (RESEARCH §N).
+3. **Ctrl conflicts.** Hold Ctrl with the order menu open, in the Escape menu, in a conversation: no sprint. In free
+   camera (RTS Camera / deployment) Ctrl + wheel changes the camera speed - the sprint is off there (not your hands).
+   Note anything else Ctrl does in a fight.
+4. **Order a charge.** Put an infantry formation on hold ~60 m from the enemy, then F1 → F3 (charge): the men should
+   surge for their first metres and slow back to a run; with ALT the formation reaches the enemy noticeably sooner. An
+   advance (F1 → F4) sprints them for half their store. A second charge order on a charging formation does nothing new.
+5. **A tournament.** Ctrl works in the arena too (a dodge out of a corner). The AI there has no formation orders, so it
+   never sprints.
+6. **Tired**: after a long fight your store is smaller and refills slower; an empty bar has no sprint at all. While you
+   sprint your Athletics bar does not refill.
+- **The lines**: `[sprint] mission start: ON - hold LeftControl (on foot, in a fight); the store = Athletics points / 20 s
+  (150 points = 7.5 s, empty = 0), a start needs 20% of it; speed x1.60 of the CURRENT run speed for the first 30% …`;
+  `[sprint] YOU: first sprint this battle at … s - stored 7.50 s of 7.50 s (150 Athletics points / 20.0), so it lasts T
+  7.50 s of moving: x1.60 of your current run speed (run x1.00 → x1.60 on the run property) until 2.25 s, then a straight
+  line to x1.10 at 7.50 s …`; `[sprint] YOU: sprint ended at … s (key released) after … s of moving - … s left stored`;
+  `[sprint] YOU: first sprint refused this battle at … - … below the 20% a start needs …`; `[sprint] first new order
+  seen this battle at … s: formation slot N Stop → Charge (charge: its AI men on foot sprint for up to 100% of their
+  store)`; `[sprint] first AI order sprint this battle: <name> at … s on a new charge order - stored … s, his share 100% →
+  T … s …`; `[hud] sprint bar: first values pushed …`, `[hud] sprint bar: first sprint shown …`. The summary (L6g):
+  `sprint - you: N sprints …`, `sprint - AI: new orders seen - charge C, advance / move A …; sprints - charge M men (… s in
+  all, avg … s) …`, and the speed check `sprint speed check (÷ his top speed at the sprint's start, while it ran): N
+  samples - asked avg x1.4…, engine top avg x1.4… - the engine's top speed follows the sprint - no cap above the run speed`.
+- **Tune live** (MCM, *Sprint*): *Sprint speed at its start* 1.3 = a gentler dodge, 2.0 = a lunge; *Full-speed part* 100 =
+  no easing; *Athletics points per sprint second* 10 = twice as long; *AI sprint on an advance or move* 0 = only charges;
+  *Sprint key* - type another name (e.g. `X1MouseButton` for a side mouse button); *Sprint* off = gone at once.
+
+**Broken — tell Claude** (D10): the speed check `does NOT follow (a native cap?)` or engine ≈ x1.00 while asked x1.4+
+(the engine caps the run property above its base - the sprint would need another lever); you visibly not faster while the
+bar drains; Ctrl doing something else in a fight; an AI charge with `sprints - charge 0 men` after a `new orders seen -
+charge` (the men were not read in that formation); AI men sprinting on a hold order; `[error] … sprint.` lines.
+
 ---
 
 ## E. Your Athletics bar, the orders-menu strip and the ALT markers (20 min)
@@ -1395,6 +1437,29 @@ header names the technique: `==== scene …, mod ON, AI holds: Input (the AI's o
   only at 0, kicks are refused at 0. In the attack-rate block (L5) the AI timer's `not held` line gains `a stored swing
   left (step 32's swing stack) N`, and the band verdicts mix bursts (fast) with waits (slow) - judge the rate over the
   whole fight, or A/B with *Swing stack* off. The recovery bar's summary line (L7) adds `swing stack shown, fewest stored N`.
+
+### L6g. The sprint (step 33)
+
+- Mission start: `[sprint] mission start: ON - hold LeftControl (on foot, in a fight); the store = Athletics points / 20 s
+  …; AI ON - on a NEW order: charge 100% of the store, advance / move 50% - read live; …` (off: `OFF (SprintEnabled) -
+  nobody sprints`, or the switch that holds it off). A change: `[sprint] settings changed mid-mission at … s: …`; a switch
+  off with sprints running: `[sprint] SprintEnabled switched off at … s: N sprints ended, their speeds back over the next
+  ticks …` (`SprintAiEnabled` = the AI's only).
+- YOU (D10, bucket `sprint-you`): the first sprint in full (stored, T, the profile), later starts / ends rate-limited
+  (`YOU: sprint at …`, `YOU: sprint ended at … (key released / store empty / control changed / …)`), the first refusal in
+  full (below 20%, an empty bar, on a horse). AI: the first new order and the first AI sprint in full; verbose `sprint-ai`
+  / `sprint-order` lines with VerboseLogging.
+- Summary - 4 lines (numbers made up):
+  ```
+  sprint (step 33): ON - hold LeftControl (on foot, in a fight); the store = Athletics points / 20 s (150 points = 7.5 s, empty = 0) …
+  sprint - you: 14 sprints (length asked avg 5.20 s, ran avg 2.80 s, longest 7.50 s); refused: below 20% stored 3, an empty bar 1, on a horse 0; ends: key released 12, store empty 2
+  sprint - AI: new orders seen - charge 4, advance / move 6, other 9; sprints - charge 310 men (1500.0 s in all, avg 4.84 s), advance / move 220 men (500.0 s, avg 2.27 s); not started - below 20% or empty: charge 12, advance / move 3; mounted 40, yours to drive 2; ends: its share used 300, an enemy within 3 m 150, the order changed again 60, …; melee checks 9000
+  sprint speed check (÷ his top speed at the sprint's start, while it ran): 4000 samples - asked avg x1.42, engine top avg x1.41, max x1.60, off by more than 0.05: 120 - the engine's top speed follows the sprint - no cap above the run speed; 6500 recomputes for the sprint, stores clamped by a points drop 800, refilled 9000.0 s of store
+  ```
+  Proves: you sprinted and let go (`ends: key released`), the 20% gate bites, the AI sprints on new orders (charge / advance
+  men), stops in melee, and the ENGINE honours the run property above its base (`engine top` ≈ `asked`). The HUD block (L7)
+  adds `hud: sprint bar - sprints shown N, … s on screen sprinting, … s below the start mark`. The Athletics `run speed
+  check` lines leave sprinting samples out (they would read as "above the curve").
 
 ### L7. The HUD — your bar, the recovery bar, the orders strip and the ALT markers
 

@@ -403,6 +403,35 @@ regen.)
   and `AthleticsEnabled` like everything else.
 - **Cavalry**: riders use the very same pool (their Athletics skill). Riding never drains
   it; only blows do. The horse has no Athletics of its own.
+- **The sprint** (step 33, Anton 2026-10-12 - "a short burst of speed, meant to feel a little like a dodge, and
+  for the AI to make charges sharper"; `SprintEnabled`, on; AI_NOTES "Step 33", RESEARCH §N). Every fighter on
+  foot stores **seconds of sprint = his CURRENT Athletics points ÷ `SprintPointsPerSecond`** (20): 150 points =
+  7.5 s, 100 = 5 s, empty = 0 (an exhausted man cannot sprint); when his points drop the stored seconds are
+  clamped to the new size. **Refill** (only while not sprinting): empty → full in `SprintRefillSeconds` (7 s)
+  standing or walking at / above the peak line; × `SprintRefillMovingFactor` (0.5) faster than a walk (effort
+  above `WalkEffortFraction` - the Athletics refill's notion); × a tiredness line from 1 at the peak line to
+  `SprintRefillExhaustedFactor` (0.5) at an empty bar; the two multiply (7 / 14 / 14 / 28 s). **A start** needs
+  at least `SprintMinStartPercent` (20) of the store (no spamming tiny bursts). **The speed**: the sprint's length
+  T = the seconds stored at its start (the AI: its share of them); for the first `SprintFullSpeedSharePercent`
+  (30) % of T he runs at `SprintMaxMultiplier` (1.6) × his CURRENT run speed (after tiredness - at the shipped
+  floor 0.3 a man halfway to the peak line runs 0.65 × 1.6 = 1.04 of his fresh pace), then a straight line to `SprintMinMultiplier` (1.1) × at T. A partial
+  store still starts at 1.6 (the dodge). The sprint's clock and the drain (1 s a second) run **only while he
+  moves** (above 0.5 m/s - plumbing). While sprinting his **Athletics does not refill**; no other cost. **On foot
+  only** (a horse refuses it, mounting ends it). The lever is the run property the tiredness already scales:
+  `MaxSpeedMultiplier` × the run multiplier × the sprint multiplier (quantised in 0.05 steps - each a
+  properties recompute through the 50-a-tick budget). **You**: hold `SprintKey` (default **LeftControl** - free
+  in the game's fight keys; a key NAME, any of Core `KeyNames`) in a fight, the order menu closed, your own
+  hands (not while RTS Camera's AI drives your hero). A PRESS starts it (a held key never restarts it after the
+  store ran dry); letting go ends it - the rest stays stored. **The AI** (`SprintAiEnabled`, on): every
+  formation's movement-order kind is read every 0.25 s (step 23's read - the AI's own advance / tactical charge on
+  a Move included); a kind that differs from the last look is a NEW order, and each AI man on foot in that
+  formation sprints once: a charge up to `SprintAiChargeSharePercent` (100) % of his store, an advance or a move to
+  a position up to `SprintAiMoveSharePercent` (50) %, anything else none. He stops early when an enemy is within
+  3 m (plumbing) or the order changes again. Never you or a hero you drive; brace, step back and the pause are
+  not touched. Whole formations sprint together on purpose: the game caps a formation man's speed against his
+  formation's average top (cached ~2 s), so one sprinter alone would be held to the others' pace. **Off** (the
+  master switch, `AthleticsEnabled`, `SprintEnabled`) = no sprint, every running one ended, speeds back on the
+  next recomputes. A hideout's boss fight (step 19) fills the stores of the side it refills.
 - **Tired fighters step back** (built in step 5d - the literal rule; `StepBackEnabled`, on):
   when a MELEE swing ends, an AI fighter on foot may step back, facing its enemy with its guard
   up. Chance = `StepBackMaxChancePercent` (100) × (1 − f), f after the swing's cost: 0% in the
@@ -497,6 +526,12 @@ is LATER** (Anton moved it off the build order, 2026-09-27): its design stays he
    'attack recovery' that empties when I attack and until it fills I can't attack; inside it add
    the secs delay added"): your no-attack pause (§2) made visible, just above the Athletics bar.
    Built in step 13 — below.
+1c. **Sprint bar** (`ShowSprintBar`, step 33): your sprint store (§2 "The sprint") as a slim row above the Attack
+   recovery bar (`SprintBarOffsetAbove` 46 px over your bar's row; as long and thick as the recovery bar): the words
+   "Sprint 6.2 s" (the seconds stored, tenths rounded down), the fill = the store's share of its size now, a white
+   mark at `SprintMinStartPercent` (hidden at 0); grey below the mark, blue when a sprint can start, yellow while you
+   sprint. Shown in fights with your Athletics bar (`ShowPlayerBar`) and the sprint (`SprintEnabled`); never outside
+   a battle (no sprint there).
 2. **LATER (step 7) — Looked-at NPC** (`ShowTargetBar`): a small bar for the fighter the player
    is aiming at / looking at, within `TargetBarMaxDistance`; it lingers `TargetBarLingerSeconds`
    after the aim leaves so it does not flicker. Aiming at a horse shows its rider.
@@ -1132,6 +1167,18 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     kick is gated only on foot (a mounted "kick" flag is the game's own); (g) the AI's kick is taken out only by the
     input technique (`AttackRatePaceByInput`, on by default); (h) a kick that spends an AI man's last swing starts
     his wait like an attack's end would. Each is a default Anton can overturn.
+31. **The sprint** (step 33, Claude's calls on Anton's design of 2026-10-12 - AI_NOTES "Step 33"): (a) it needs
+    Athletics on (the store is made of its points); (b) "moving" for the drain = above 0.5 m/s, for the refill = above
+    a walk (effort > `WalkEffortFraction`), as the Athletics refill reads it; (c) only a key PRESS starts your sprint -
+    holding the key through a dry store never restarts it by itself (no accidental sprints); (d) a menu or the order
+    menu taking the keys ends it, a horse refuses it; (e) the AI's "new order" = the order KIND changes (charge ↔
+    advance ↔ hold …), polled every 0.25 s per formation - the same kind given again (a second charge) is no new
+    order; the first look at a formation and an order given while the AI sprint was off are not new; (f) a new order
+    ends a running AI sprint and the new share is of what is left; (g) "in melee" = an enemy within 3 m, looked at
+    every 0.25 s; (h) the key is a NAME from a fixed list (an MCM text box; an unknown name is refused, the old key
+    kept) - not every game key, so a fight key cannot be picked by mistake; (i) the multiplier moves in 0.05 steps
+    (about 12 recomputes a man over a full sprint) and the recompute budget's start rotates, so a 1000-man charge is
+    queued over ~20 ticks without starving anyone. Each is a default Anton can overturn.
 
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),

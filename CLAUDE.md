@@ -60,7 +60,10 @@ hidden while bracing is off). A tired AI man's block DIRECTION is partly a guess
 stored swings - max(`SwingStackMinimum` 2, round(his CURRENT points / `SwingStackPointsPerSwing` 20)) - are spent; one comes
 back per pause while he is not attacking (an AI melee man's own ~1 s gap after a swing from the stack excluded), so he can
 burst; kicks / bashes spend one too and are gated at 0 (`KicksUseSwings` - your kick key, a held AI man's input); the
-recovery bar reads "Swings 4/8". The bar for the
+recovery bar reads "Swings 4/8". SPRINT (step 33, `SprintEnabled`): a store of seconds = current points / `SprintPointsPerSecond`
+20, refilled in 7 s (slower moving or tired), 20% to start; hold `SprintKey` (a key NAME, LeftControl) or an AI formation's NEW
+order (charge 100%, advance / move 50%) → the run × 1.6 for the first 30% of it, a line to 1.1 (the decorator puts
+`MaxSpeedMultiplier` above 1), no Athletics refill meanwhile; on foot only; the sprint bar above the recovery bar. The bar for the
 fighter you look at is LATER (DESIGN §3; its settings wait in DESIGN's "Planned parameters"). Words:
 the pool/bar/points are "Athletics", the character-screen skill is "the Athletics skill" (it
 used to be called "endurance"), the "peak line" is the white mark at the top quarter of the bar,
@@ -157,7 +160,7 @@ die at any moment (tokens run out) and the next one loses nothing.
   file, capped at `LogMaxMegabytes` (8); a trim cuts ONLY the oldest verbose lines (marked `~`
   before the tag) and keeps every other line - summaries, first-time lines, settings, errors
   (step 10b, Core `LogTrim`). Timestamped lines tagged by area (`[config]`, `[mcm]`, `[mission]`,
-  `[damage]`, `[athletics]`, `[speed]`, `[rate]`, `[stepback]`, `[brace]`, `[guard]`, `[hud]`, `[error]`). Always logged: mod/game version
+  `[damage]`, `[athletics]`, `[speed]`, `[rate]`, `[stepback]`, `[brace]`, `[guard]`, `[sprint]`, `[hud]`, `[error]`). Always logged: mod/game version
   at load, every parameter value on load and on change, each mission start/end (type,
   scene, agent counts), which behaviors/views attached, and every caught exception with its
   stack. Per-battle SUMMARY at mission end (damage rolls: count, min/avg/max factor;
@@ -196,11 +199,13 @@ docs/PLAYTEST.md              THE script of Anton's one playtest session (step 1
 src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-tested:
   ParamDef.cs                 one setting: key, type, range, group, label, plain-words
                               description, apply timing (Live / NextBattle); Normalize, Format;
-                              its Default comes from defaults.json (DefaultsFile), never code
-  SettingsSchema.cs           EVERY setting of DESIGN's table (107), in file + MCM order, 12 groups
+                              its Default comes from defaults.json (DefaultsFile), never code; step 33: ParamType.Key +
+                              KeyNames (a key by NAME, stored as its index; FormatJson writes "LeftControl"; the
+                              file / defaults.json read the name, MCM a text box)
+  SettingsSchema.cs           EVERY setting of DESIGN's table (122), in file + MCM order, 13 groups
                               ("Master switch" first, "Damage" second - step 25 renamed it from
                               "Damage randomness", "Battle pace (AI)" - step 21 - after the step back,
-                              "Brace by orders (AI)" - step 23 - after it,
+                              "Brace by orders (AI)" - step 23 - after it, "Sprint" - step 33 - after that,
                               "Formation markers (hold ALT)" - step 20 - before
                               "Advanced" last; step 10b's one vocabulary and
                               units in its header comment) — the one place a setting is declared
@@ -370,6 +375,14 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               FromStack / AfterWaiting / AtEmpty; Clamp, ProgressAt, SecondsToNext, FillUp, the burst Run),
                               SwingStackStats (+ the 5 [summary] "swing stack" lines); AttackTimer.cs: PlayerAttackTimer's
                               pauseOverride / StartCountdown / Retarget, AttackRecoveryReading.WithStack
+  Sprint.cs                   step 33 pure (AI_NOTES "Step 33"): SprintOrder (charge / advance or move / none), SprintEnd,
+                              SprintStart, SprintRules (live; Enabled = ModEnabled && AthleticsEnabled && SprintEnabled, AiOn,
+                              Describe), SprintMath (Capacity = points / per second, TiredFactor, RefillMultiplier /
+                              RefillPerSecond / SecondsToFull - 7 / 14 / 14 / 28, CanStart (20%), AiShare, Group (step 23's
+                              kinds), Multiplier - the profile, Quantize 0.05, the bar's colours; plumbing MovingMetresPerSecond
+                              0.5, MeleeRangeMetres 3, MeleeCheckSeconds / OrderPollSeconds 0.25), SprintStore (one fighter:
+                              Stored - full until the first Clamp -, Refill, TryStart, Advance - drains only moving -, Stop,
+                              Share), SprintReading (the bar), SprintStats (+ the 4 [summary] "sprint" lines)
   Brace.cs                    step 23 pure (AI_NOTES "Step 23"): BraceOrderKind (the game's movement orders + the
                               AI's advance / tactical charge on a Move), BraceOrder (charge / advance / hold / no formation -
                               step 28), BraceEnd,
@@ -599,6 +612,18 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               wait), AskStackWaitAfterKick, PlayerStackHoldIfEmpty, KickGate (your kick bit out at 0),
                               NoteStackSettings, StackPass (the smoke), WriteSwingStackSummary; the player timer, the AI timer
                               (PaceState.StackWait), AiInputHook (HoldKicks / HoldKick) and the recovery read carry the rest
+  Missions/AthleticsLogic.Sprint.cs  step 33: TickSprint (from TickAthletics BEFORE the recompute loop: switched off →
+                              EndAllSprints; your key every tick - a PRESS starts, letting go ends; PollOrders every 0.25 s -
+                              a formation's kind changed = a new order → OrderChangedFor its AI men; ForgetOrders while the AI
+                              sprint is off), SprintPass every 0.1 s (Clamp to his points, RunSprint - drain while moving, melee
+                              every 0.25 s, the profile into TrackedAgent.SprintMultiplier in 0.05 steps → SpeedDirty -, Refill),
+                              BeginSprint / EndSprint (every path), SprintLeftField, SprintFreshStart (step 19), CloseSprints,
+                              WriteSprintSummary, TryGetPlayerSprint (the bar); SpeedFactorsFor multiplies the run by it;
+                              RegenPass skips a sprinter; the recompute budget's start ROTATES (the first man left waiting)
+  Missions/SprintBody.cs      step 33: ISprintBody (the smoke plays it) + GameSprintBody (formations by Mission.Teams /
+                              FormationsIncludingEmpty, the order by GameBraceBody.KindOf, motion, GetNearbyEnemyAgentCount,
+                              the key through Mission.InputManager.IsKeyDown(InputKey) - KeyFor, PlayerCanSprint = a fight
+                              mode and the order menu closed), SprintBodyDefault
   Missions/AthleticsLogic.Brace.cs  step 23: StartBrace / NoteBraceSettings (the [brace] lines), TickBrace (switched
                               off → EndAllBraces at once; else a staggered slice so each man is looked at ~every
                               0.25 s), PollBrace (not AI / the player → none; his two rolls once - the margin on BraceDice,
@@ -700,6 +725,10 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               switch + ShowPlayerBar and AttackRatePlayerTimer on; first values / first
                               pause / first flash lines (bucket hud-recovery), the summary line
   Hud/AttackRecoveryVM.cs     its ViewModel (layout, Fill, FillColor, SecondsText / SecondsShown, FlashOn)
+  Hud/SprintBarView.cs        step 33: the sprint bar above the recovery bar ("Sprint 6.2 s", the store's fill, the start mark,
+                              grey / blue / yellow) - read every frame, layout at the refresh; fights only, ShowSprintBar +
+                              ShowPlayerBar + SprintEnabled; first values / first sprint lines (bucket hud-sprint), the summary
+  Hud/SprintBarVM.cs          its ViewModel (layout, Fill, FillColor, MarkOffset / MarkShown, LabelText by the tenth)
   Hud/OrderCards.cs           step 9's engine seams: IOrderCardSource / GauntletOrderCards (the
                               "MissionOrder" layer found with the public FindLayer, its widget tree
                               walked once per open - card = OrderTroopItemBrushWidget in a two-widget
@@ -735,7 +764,7 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
   Hud/AltMarkersVM.cs         its ViewModels: the root + a GROW-ONLY MBBindingList of AltMarkerLabelVM keyed by
                               team + formation (a label never swaps formations when vanilla re-sorts); step 24:
                               ReadyText / ReadyColor / ReadyShown, SetReady
-tests/TraxCombat.Core.Tests/  net8.0 xUnit (531) — schema vs DESIGN.md (keys + types), one copy
+tests/TraxCombat.Core.Tests/  net8.0 xUnit (550) — schema vs DESIGN.md (keys + types), one copy
                               runs (SingleCopyTests: claims on private slots, copies, texts), when
                               MCM is tried and when it stops (McmPlanTests - step 12),
                               defaults.json (DefaultsFileTests), master switch, settings, config
@@ -785,7 +814,11 @@ tests/TraxCombat.Core.Tests/  net8.0 xUnit (531) — schema vs DESIGN.md (keys +
                               range, apart from the margin, live, clamped at 0 / 100, the hysteresis, the wound cap), the swing stack (SwingStackTests, step 32: the cap - half away
                               from zero, the floor at empty, the examples -, spending, the refill per pause at the current m,
                               the clock stopped while attacking, the AI's gap, the clamp, bursts, fresh starts, live rules, the
-                              switch and the master switch, your countdown's retarget, the bar's count, the summary), the ready count (ReadyCountTests, step 24: hidden
+                              switch and the master switch, your countdown's retarget, the bar's count, the summary), the sprint (SprintTests,
+                              step 33: the store = points / 20, the clamp, refill 7 / 14 / 14 / 28 s, the 20% gate, the profile
+                              1.6 to 2.25 s then 1.35 / 1.1, a 30% store 2.25 s long, 0.05 steps, drain only moving, the rest kept,
+                              AI shares and order groups, the switches, the key names in the file / defaults / MCM, the summary),
+                              the ready count (ReadyCountTests, step 24: hidden
                               rules in order, bands at or below 75 / 50, text, colours, the strip cell one row
                               deeper only while drawn and the 1080p bottom card lifted, log text, summary), the
                               tired block direction (TiredBlockTests, step 30: w at f 1 / 0.5 / 0 x 0 / 50 / 100, never
@@ -801,7 +834,8 @@ module/GUI/Prefabs/           the HUD movies - file name = movie name, `Trax…`
                               sprite BlankWhiteSquare_9 + brush AgentHUD.Interaction.Text only;
                               FillBarWidgets draw shares; no widget takes mouse events),
                               TraxAttackRecoveryBar.xml (step 13: the label - step 32: @LabelText, "Swings 4/8" -, a frame, the fill, the
-                              seconds centred on it, the flash overlay - same native sprite / brush),
+                              seconds centred on it, the flash overlay - same native sprite / brush), TraxSprintBar.xml (step 33: the
+                              label @LabelText, a frame, the fill @Fill / @FillColor, the start mark @MarkOffset - same sprite / brush),
                               TraxOrderStrip.xml (step 9: {Cells} ItemTemplates - the cells placed
                               by Scaled* pixel bindings, the panel rows; the ± band = a FillBarWidget
                               ChangeWidget; a list widget carries no @binding - its own bindings
@@ -946,7 +980,15 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               saving up; the AI by input - no hold from the stack, his own gap not refilling, at 0 held
                               exactly for the rest, his kick bit taken out; kicks spend one; the switches; the summary; the
                               recovery bar's "Swings 4/8" through the real view; the cost - 1000 men waiting, 0.09 ms a tick,
-                              0 bytes (the older steps pin SwingStackEnabled off - SwingStackOff in AthleticsDefaults) (75 steps; the
+                              0 bytes (the older steps pin SwingStackEnabled off - SwingStackOff in AthleticsDefaults); step 33
+                              (Program.Sprint.cs): every SprintKey name = a game InputKey (LeftControl 29); the real logic with a
+                              stand-in ISprintBody - your key (press / release / refusals / a menu / a horse / the AI driving you),
+                              the real decorator putting MaxSpeedMultiplier ABOVE 1 (0.80 x 1.6), no refill while sprinting, the
+                              profile in 0.05 steps, drain only moving, the refill rates, the AI on new orders (charge / advance /
+                              hold, melee, a rider, a man you drive), SprintAiEnabled and the master switch, left the field, the
+                              fresh start, the clamp, the summary; the cost - 1000 men on a charge, 0.006 ms a tick, 0 bytes, ~12
+                              recomputes a man; the sprint bar prefab and view (the older steps pin SprintEnabled off - SprintOff
+                              in AthleticsDefaults) (80 steps; the
                               config checks work for any tuned default)
                               TRAX_SMOKE_KEEP=1 keeps its temp folder + log to read
 tools/DefaultsTool/           defaults.json upkeep: refresh (rewrite comments/order, keep every

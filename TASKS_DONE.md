@@ -1055,3 +1055,24 @@
   swing and per full stack by bar; sections renumbered), README + Steam description one clause each (3117 bytes), CLAUDE.md.
   Deployed (AssemblyGuard + smoke green). Attack-rate verdicts: same math, read over a whole fight - bursts read fast, the
   waits slow. (2026.10.12 12.52.48)
+- [x] 33. Sprint (Anton, 2026-10-12: "a short burst of speed, meant to feel a little like a dodge, and for the AI to make
+  charges sharper"). RESEARCH FIRST (§N, AI_NOTES "Step 33"): MaxSpeedMultiplier is the base models' whole speed factor
+  (0.63-0.91, perks multiply it), no managed clamp, the engine's top follows it linearly in Anton's own logs - so a sprint is
+  the run lever the tiredness already uses, no patch (UNVERIFIED above ~1.0: a native cap, the feet); Left Ctrl is bound only
+  to the campaign panels' stack modifier (Shift = zoom, Z crouch, CapsLock walk, Alt markers) - default LeftControl; a
+  movement order change is POLLED per formation every 0.25 s (the event fires on every SetMovementOrder); the game caps a
+  formation man's speed against the formation's average top (cached ~2 s), so whole formations sprint together. BUILT: Core
+  Sprint.cs (SprintRules / SprintMath / SprintStore / SprintReading / SprintStats - store = points / 20 s, clamped on a
+  drop, refill 7 s x0.5 moving x the tiredness line to 0.5, 20% to start, 1.6 for the first 30% of T then a line to 1.1,
+  0.05 steps, drain only moving); a new setting type ParamType.Key + KeyNames (SprintKey is a key NAME in the file /
+  defaults.json, an MCM text box, an unknown name refused); AthleticsLogic.Sprint.cs (your key - a press starts, letting go
+  ends, refusals; the AI on a NEW order kind - charge 100%, advance / move 50%, hold none; melee 3 m, a new order, a horse,
+  control, the switches, left the field, the hideout fresh start, mission end; no Athletics refill while sprinting; the
+  speed check engine vs asked) + SprintBody.cs (ISprintBody / GameSprintBody; step 23's order read shared as
+  GameBraceBody.KindOf); SpeedFactorsFor = run x sprint (MaxSpeedMultiplier above 1 through the existing decorator); the
+  recompute budget's start rotates so a charge's hundreds queue fairly; the sprint bar (SprintBarView / VM /
+  TraxSprintBar.xml: "Sprint 6.2 s", the 20% mark, grey / blue / yellow) above the recovery bar. Settings 107 -> 122 (a
+  "Sprint" group + ShowSprintBar + SprintBarOffsetAbove), tests 531 -> 550, smoke 75 -> 80 (1000 men on a charge: 0.006 ms a
+  tick, 0 bytes, ~12 recomputes a man; older steps pin the sprint off). Docs: DESIGN §2 / §3 1c / decision 31 / 15 rows,
+  RESEARCH §N + 2 UNVERIFIED rows, PLAYTEST D10 + L6g, the player guide section 13 (length by points, the profile, the
+  refill times), README + Steam one clause each (3239 bytes), CLAUDE.md. Deployed (AssemblyGuard + smoke green). (2026.10.12 13.29.12)

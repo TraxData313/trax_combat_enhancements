@@ -22,9 +22,10 @@ Want the formulas and every parameter? [DESIGN.md](DESIGN.md) is the full contra
 10. [Battle pace](#10-battle-pace)
 11. [Damage](#11-damage)
 12. [Heroes, and the hideout boss](#12-heroes-and-the-hideout-boss)
-13. [What you see on screen](#13-what-you-see-on-screen)
-14. [Tactics this creates](#14-tactics-this-creates)
-15. [Changing things](#15-changing-things)
+13. [The sprint](#13-the-sprint)
+14. [What you see on screen](#14-what-you-see-on-screen)
+15. [Tactics this creates](#15-tactics-this-creates)
+16. [Changing things](#16-changing-things)
 
 ---
 
@@ -319,7 +320,66 @@ Hits on a shield are not rolled by default (still reduced). A hit never drops be
 
 <sub>Settings: `HeroCostMultiplier` 0.75, `PartyLeaderCostMultiplier` 0.75, `HideoutBossFightRefill` on.</sub>
 
-## 13. What you see on screen
+## 13. The sprint
+
+Hold **Left Ctrl** to sprint: a short burst of speed, on foot, in a fight. Think of it as a dodge — out of a
+bad spot, onto a fleeing archer, round a shield wall's flank. The AI uses it too: when a formation gets a
+**new** charge or advance order, its men sprint off together, so charges hit harder and sooner.
+
+**How much sprint you have** is your Athletics points divided by 20, in seconds. A tired man has less; an
+empty bar has none.
+
+| Athletics points now | Sprint stored | Least to start one (20%) | At full speed (first 30%) |
+|---:|---:|---:|---:|
+| 50 | 2.5 s | 0.5 s | 0.75 s |
+| 100 | 5 s | 1 s | 1.5 s |
+| 150 | 7.5 s | 1.5 s | 2.25 s |
+| 200 | 10 s | 2 s | 3 s |
+| 300 | 15 s | 3 s | 4.5 s |
+
+**How fast.** A sprint starts at **1.6 ×** your *current* run speed — tiredness first, then the sprint on
+top — holds that for the first 30% of its length, then eases off in a straight line to **1.1 ×** at the end.
+A sprint is as long as what you had stored when it began, and even a part-full store starts at full speed.
+The clock only runs while you actually move; let go of the key and the rest stays stored.
+
+| Into the sprint | A full 7.5 s sprint | A 30% store (2.25 s) |
+|---|---:|---:|
+| the start | × 1.60 | × 1.60 |
+| 0.675 s | × 1.60 | × 1.60 (end of full speed) |
+| 1.5 s | × 1.60 | × 1.34 |
+| 2.25 s | × 1.60 (end of full speed) | × 1.10 (the end) |
+| 3 s | × 1.53 | — |
+| 4.5 s | × 1.39 | — |
+| 6 s | × 1.24 | — |
+| 7.5 s | × 1.10 (the end) | — |
+
+A fresh soldier running ~3.9 m/s covers about 42 m in a full 7.5 s sprint instead of 29 m.
+
+**The refill.** While you are not sprinting the store fills back up — **7 seconds** from empty to full
+standing at full strength. Moving faster than a walk halves the rate, and so does being tired (in a straight
+line from the peak line down to an empty bar). The two multiply.
+
+| Empty → full store | Standing or walking | Running |
+|---|---:|---:|
+| Full strength (at or above the peak line) | 7 s | 14 s |
+| Halfway to the peak line | 9.3 s | 18.7 s |
+| Nearly empty | 14 s | 28 s |
+
+**The catch.** While you sprint your **Athletics bar does not refill**. It costs nothing else — but a sprint
+right after a fight keeps you tired longer. Never on a horse.
+
+**The AI** sprints once per *new* order: on a charge for up to all of its store, on an advance or a move to a
+position for up to half (keeping the rest), on a hold none. A man stops early when an enemy is within 3 m or
+the order changes again. Give a formation a new charge order and watch it surge.
+
+<sub>Settings: `SprintEnabled` on, `SprintKey` LeftControl (a key name: LeftControl, RightControl, LeftAlt,
+RightAlt, LeftShift, RightShift, CapsLock, Tab, Q, T, Y, H, J, K, L, B, N, M, C, MiddleMouseButton,
+X1MouseButton, X2MouseButton), `SprintPointsPerSecond` 20, `SprintMinStartPercent` 20,
+`SprintMaxMultiplier` 1.6, `SprintMinMultiplier` 1.1, `SprintFullSpeedSharePercent` 30, `SprintRefillSeconds` 7,
+`SprintRefillMovingFactor` 0.5, `SprintRefillExhaustedFactor` 0.5, `SprintAiEnabled` on,
+`SprintAiChargeSharePercent` 100, `SprintAiMoveSharePercent` 50.</sub>
+
+## 14. What you see on screen
 
 **Your Athletics bar** sits under your health, with the white peak line at 75%. Its colour:
 
@@ -338,6 +398,10 @@ It also shows outside battles (walking about a town) while a weapon is drawn or 
 seconds until the next are written inside it. Press attack (or kick) with none stored and it flashes —
 the press is swallowed; hold the button and the attack fires the moment a swing is back.
 
+**The sprint bar** sits above that: **"Sprint 6.2 s"** — the seconds of sprint you have stored — and a bar
+with a white mark at the 20% a sprint needs to start. Grey below the mark, blue when you can sprint,
+yellow while you sprint.
+
 **The orders menu** shows, under each formation card: the men's average Athletics with its ± spread,
 their average health, and **"ready 34/50"** — how many are ready to fight (not bracing).
 
@@ -349,11 +413,11 @@ their average health, and **"ready 34/50"** — how many are ready to fight (not
 | Yellow | 75% or fewer ready |
 | Red | 50% or fewer ready — this line is spent |
 
-<sub>Settings: `ShowPlayerBar`, `ShowAttackRecoveryBar`, `ShowInOrderMenu`, `ShowAltMarkerStats`,
+<sub>Settings: `ShowPlayerBar`, `ShowAttackRecoveryBar`, `ShowSprintBar`, `ShowInOrderMenu`, `ShowAltMarkerStats`,
 `AltMarkersShowEnemy`, `ShowReadyCount`, `Bar*BelowPercent`, `Ready*BelowPercent`, and the HUD's sizes
 and offsets.</sub>
 
-## 14. Tactics this creates
+## 15. Tactics this creates
 
 - **Keep your troops rested.** A line at full strength beats a line at 30% almost every time — it
   attacks twice as often, runs faster and blocks true. Don't spend men you don't need yet.
@@ -370,8 +434,11 @@ and offsets.</sub>
 - **Block on the right side.** Clean blocks and parries let your bar refill while you defend; a
   wrong-side block stops it.
 - **Read the enemy.** "ready 12/48" in red under an enemy marker is an invitation.
+- **Sprint to get out, not to get in tired.** A short Ctrl-dodge saves a cornered hero; a long sprint into
+  a fight arrives with a bar that has not refilled. Charge orders make your men sprint by themselves —
+  give the charge when the gap is short enough that their store carries them all the way in.
 
-## 15. Changing things
+## 16. Changing things
 
 Every number above is a setting: in **MCM** (optional) or in the commented `config.json` beside the
 log. Changes apply at once, even mid-battle — nothing needs a restart. Each feature has its own switch,
