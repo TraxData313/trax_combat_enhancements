@@ -152,6 +152,7 @@ namespace TraxCombat.Tools
             S.Set(SettingsSchema.CostPerShieldBlock, 1, SettingSources.File); // step 22
             S.Set(SettingsSchema.CostPerWrongSideShieldBlock, 5, SettingSources.File);
             S.Set(SettingsSchema.CostPerWeaponParry, 2, SettingSources.File);
+            S.Set(SettingsSchema.OnlyWrongSideBlocksStopRefill, false, SettingSources.File); // step 29: the older steps check step 22's rule (every paid block restarts the delay) - BlocksLetTheRefillRun has its own
             S.Set(SettingsSchema.CostOnMiss, true, SettingSources.File);
             S.Set(SettingsSchema.HeroCostMultiplier, 0.75, SettingSources.File);
             S.Set(SettingsSchema.PartyLeaderCostMultiplier, 0.75, SettingSources.File);
@@ -603,7 +604,7 @@ namespace TraxCombat.Tools
             Check(Near(me.Fraction * 50, 50 - 0.5625), "your right-side block did not cost 0.56: " + me.Fraction * 50);
             Check(!_logic.PlayerTimer.Running && !_logic.PlayerTimer.Holding, "your block started your attack pause");
             LogHas("[athletics] YOU: shield block (right side) at ");
-            LogHas(" s cost 0.56 Athletics (1.00 x0.56 hero party leader): 50.0 → 49.4 of 50 (f 1.00 → 1.00) - the first of this kind this battle: a melee blow you block costs YOU CostPerShieldBlock x your hero / party-leader multipliers, once per blow, and restarts the refill delay; blocking is never held or slowed");
+            LogHas(" s cost 0.56 Athletics (1.00 x0.56 hero party leader): 50.0 → 49.4 of 50 (f 1.00 → 1.00) - the first of this kind this battle: a melee blow you block costs YOU CostPerShieldBlock x your hero / party-leader multipliers, once per blow, and restarts the refill delay (OnlyWrongSideBlocksStopRefill off: every paid block does); blocking is never held or slowed");
             int youLines = LogText.Split(new[] { "YOU: shield block (right side)" }, StringSplitOptions.None).Length;
             _logic.BlockTaken(me, BlockKind.ShieldRightSide, 33, 2, t + 1, in r, mounted: false);
             Check(LogText.Split(new[] { "YOU: shield block (right side)" }, StringSplitOptions.None).Length == youLines, "your second right-side block was written in full again");
@@ -644,6 +645,102 @@ namespace TraxCombat.Tools
             _logic.BlockTaken(d, BlockKind.WeaponParry, 30, 6, t + 9, in r, mounted: false);
             Check(Near(d.Fraction, before - 0.02), "back on: a parry was not charged 2 again");
             Check(stats.BlocksLine().StartsWith("Athletics blocks paid by the defender " + stats.BlocksCharged + " (", StringComparison.Ordinal), "the blocks summary line");
+        }
+
+        /// <summary>Fills <paramref name="st"/> from <paramref name="from"/> to <paramref name="to"/> s at a stand in 0.05 s steps (the
+        /// regen pass's own call - the pass itself reads native speeds a fake agent cannot give) with a blocked blow of
+        /// <paramref name="kind"/> every 1.5 s through the REAL logic's BlockTaken (a new swing each time); returns the blocks.</summary>
+        private static int DefendThroughTheLogic(TrackedAgent st, BlockKind kind, double from, double to, int attacker)
+        {
+            int blocks = 0;
+            double next = from + 1.5;
+            for (int i = 1; from + i * 0.05 <= to + 1e-9; i++)
+            {
+                double now = from + i * 0.05;
+                var r = Rules; // live, as the tick reads it
+                AthleticsMath.Regen(st, in r, now, 0.05, 0f, 5f);
+                if (now >= next - 1e-9)
+                {
+                    _logic!.BlockTaken(st, kind, attacker, ++_defendSwing, now, in r, mounted: false);
+                    blocks++;
+                    next += 1.5;
+                }
+            }
+            return blocks;
+        }
+
+        private static int _defendSwing = 1000;
+
+        /// <summary>Step 29 (Anton, 2026-10-12: a tournament 1v1 where both men sat at empty): only a WRONG-side shield
+        /// block restarts the refill delay (OnlyWrongSideBlocksStopRefill, live); a clean block or a parry still costs, but
+        /// the refill keeps running underneath.</summary>
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static void BlocksLetTheRefillRun()
+        {
+            AthleticsDefaults();
+            S.Set(SettingsSchema.OnlyWrongSideBlocksStopRefill, true, SettingSources.File); // DESIGN's value
+            S.Set(SettingsSchema.RegenRateNearFullPercent, 100, SettingSources.File);      // the shipped flat refill: 60 s empty to full
+            S.Set(SettingsSchema.VerboseLogging, true, SettingSources.File);
+            var stats = _logic!.Stats;
+            Check(AthleticsStats.DescribeRules(Rules).Contains("; only a WRONG-side shield block restarts the refill delay - a right-side block or a parry costs but the refill keeps running (OnlyWrongSideBlocksStopRefill)"),
+                "the settings sentence does not name the step-29 rule");
+            double t = 2000;
+
+            // YOU, a hero (x0.75) with Athletics skill 100 (pool 100): 14 swings empty you at t, then you only parry, one
+            // blow every 1.5 s - 2.5 points refill per 1.5 s, a parry costs 1.5: +1.0 a parry, you climb out
+            var me = _logic.Track(FakeAgent(63))!;
+            me.AthleticsSkill = 100;
+            me.IsHero = true;
+            _logic.SmokePlayer = me.Agent;
+            var r = Rules;
+            for (int i = 0; i < 14; i++) AthleticsMath.Charge(me, in r, t);
+            Check(me.Fraction == 0 && me.Exhausted, "14 swings did not empty a 100-pool hero");
+            int kept = stats.BlocksCharged - stats.BlocksRestartedDelay, restarted = stats.BlocksRestartedDelay;
+            int parries = DefendThroughTheLogic(me, BlockKind.WeaponParry, t, t + 60, 44);
+            Check(parries == 40 && me.BlocksPaid == 40, "40 parries were not all paid: " + parries + " / " + me.BlocksPaid);
+            Check(me.LastBlowTime == t, "a parry restarted the refill delay (step 29): " + me.LastBlowTime);
+            Check(!me.Exhausted && me.Fraction > 0.35 && me.Fraction < 0.40, "a parrying hero did not climb to ~38 of 100 in a minute: " + me.Fraction * 100);
+            Check(stats.BlocksRestartedDelay == restarted && stats.BlocksCharged - stats.BlocksRestartedDelay == kept + 40, "the parries were not counted as letting the refill run");
+            LogHas("[athletics] YOU: weapon parry at ");
+            LogHas("once per blow, and the refill keeps running (only a WRONG-side block restarts its delay - OnlyWrongSideBlocksStopRefill); blocking is never held or slowed");
+            LogHas(" - the refill runs on");
+            _logic.SmokePlayer = null;
+
+            // a right-side shield block lets it run too; a WRONG-side one every 1.5 s holds a man at 0 (the delay restarts)
+            var shield = _logic.Track(FakeAgent(64))!;
+            shield.AthleticsSkill = 100;
+            for (int i = 0; i < 10; i++) AthleticsMath.Charge(shield, in r, t);
+            DefendThroughTheLogic(shield, BlockKind.ShieldRightSide, t, t + 30, 45);
+            Check(shield.LastBlowTime == t && shield.Fraction > 0.25, "right-side blocks stopped the refill: " + shield.Fraction * 100);
+            var wrong = _logic.Track(FakeAgent(65))!;
+            wrong.AthleticsSkill = 100;
+            for (int i = 0; i < 10; i++) AthleticsMath.Charge(wrong, in r, t);
+            restarted = stats.BlocksRestartedDelay;
+            DefendThroughTheLogic(wrong, BlockKind.ShieldWrongSide, t, t + 30, 46);
+            Check(wrong.Fraction == 0 && Math.Abs(wrong.LastBlowTime - (t + 30)) < 1e-6 && stats.BlocksRestartedDelay == restarted + 20,
+                "wrong-side blocks did not hold a man at the delay: " + wrong.Fraction * 100 + ", last " + wrong.LastBlowTime);
+
+            // live: the switch off = step 22 - the next parry restarts the delay and he climbs no more
+            S.Set(SettingsSchema.OnlyWrongSideBlocksStopRefill, false, SettingSources.Mcm);
+            double held = me.Fraction;
+            DefendThroughTheLogic(me, BlockKind.WeaponParry, t + 60, t + 90, 44);
+            Check(Math.Abs(me.LastBlowTime - (t + 90)) < 1e-6 && me.Fraction < held, "OnlyWrongSideBlocksStopRefill off: parries still let the refill run: " + me.Fraction * 100);
+            S.Set(SettingsSchema.OnlyWrongSideBlocksStopRefill, true, SettingSources.Mcm);
+            double low = me.Fraction;
+            DefendThroughTheLogic(me, BlockKind.WeaponParry, t + 90, t + 120, 44);
+            Check(Math.Abs(me.LastBlowTime - (t + 90)) < 1e-6 && me.Fraction > low, "back on: the refill did not run under the parries: " + me.Fraction * 100);
+
+            // the master switch: a block costs nothing and touches no clock
+            S.Set(SettingsSchema.ModEnabled, false, SettingSources.Mcm);
+            r = Rules;
+            double f0 = me.Fraction, last = me.LastBlowTime;
+            int off = stats.BlocksWhileOff;
+            _logic.BlockTaken(me, BlockKind.ShieldWrongSide, 47, 1, t + 121, in r, mounted: false);
+            Check(me.Fraction == f0 && me.LastBlowTime == last && stats.BlocksWhileOff == off + 1, "mod off: a block was charged or restarted the delay");
+            S.Set(SettingsSchema.ModEnabled, true, SettingSources.Mcm);
+            Check(stats.BlocksLine().Contains(" | the refill delay restarted by " + stats.BlocksRestartedDelay + " (right side "), "the blocks summary line does not split the restarts");
+            AthleticsDefaults();
+            S.Set(SettingsSchema.VerboseLogging, true, SettingSources.File); // as step 22 left it: the next steps read verbose lines
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
