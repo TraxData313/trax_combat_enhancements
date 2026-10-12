@@ -170,6 +170,16 @@ namespace TraxCombat.Missions
             _stackStats.AddFill(AthleticsMath.PeakBin(AthleticsMath.PeakShare(in r, st)), (double)st.Swings.Count(cap) / cap, step);
         }
 
+        /// <summary>The regen pass's stack part over everyone (the game runs it inside RegenPass; the offline smoke drives this).</summary>
+        internal void StackPass(double now, double step)
+        {
+            var r = Rules;
+            var sr = SwingStackRules.From(TraxSettings.Shared);
+            if (!r.Enabled || !sr.Enabled) return;
+            var bp = BattlePaceRules.From(TraxSettings.Shared);
+            for (int i = 0; i < _count; i++) StackRegenSample(_dense[i], now, step, in r, in sr, in bp);
+        }
+
         /// <summary>The AI timer's decision with the stack on (AiAttackEnded): a stored swing left = no pause (an AI melee man's own
         /// gap starts - the clock waits it out); none = the timer holds him until the next comes back. Null = asked.</summary>
         private string? AskStackPause(TrackedAgent st, double now, AttackKind kind, double d, bool known, float m, int bin, int next, in PacePlan plan,
@@ -182,6 +192,7 @@ namespace TraxCombat.Missions
                 if (kind == AttackKind.Melee && !IsAttackAction(next)) st.Swings.StartGrace(now + bp.AiGapSeconds);
                 return "no pause - a stored swing left (the swing stack)";
             }
+            st.Swings.EndGrace(); // held at 0: the clock runs from the attack's end (his gap after the hold follows, as in step 13)
             double wait = st.Swings.SecondsToNext(StackRefillSeconds(st, in r, in bp), cap);
             return AskPause(st, now, kind, d, known, m, bin, next, in plan, wait);
         }
@@ -196,6 +207,7 @@ namespace TraxCombat.Missions
             double d = st.StackD > 0 ? st.StackD : SwingStackMath.FallbackSwingSeconds;
             float m = AthleticsMath.AttackSpeedMultiplier(in r, st);
             var plan = BattlePaceMath.Plan(in bp, st.AttackClass, d, m);
+            st.Swings.EndGrace();
             double wait = st.Swings.SecondsToNext(plan.Total, cap);
             AskPause(st, now, AttackKind.Melee, d, true, m, AthleticsMath.PeakBin(AthleticsMath.PeakShare(in r, st)), st.PrevAction, in plan, wait);
         }
@@ -299,9 +311,9 @@ namespace TraxCombat.Missions
             {
                 _stackSwitched = true;
                 if (sr.Enabled)
-                    for (int i = 0; i < _count; i++) _dense[i].Swings.FillUp();
+                    for (int i = 0; i < _count; i++) _stackStats.AddRun(IsPlayer(_dense[i]), _dense[i].Swings.FillUp());
                 TraxLog.Info("rate", "swing stack switched " + (sr.Enabled ? "ON" : "OFF") + " mid-mission at " + Sec(SafeNow()) + " s: "
-                    + (sr.Enabled ? "everyone's stack starts full; a pause runs only at 0 from the next attack" : "a pause after every attack below the peak line again from the next attack (a wait running now ends at its estimate)"));
+                    + (sr.Enabled ? "everyone's stack starts full; a pause runs only at 0 from the next attack" : sr.Describe() + " (a wait running now ends at its estimate)"));
                 return;
             }
             TraxLog.Info("rate", "swing stack settings now: " + sr.Describe() + " - every cap follows at the next look (a stack above its new cap is cut at the next charge)");

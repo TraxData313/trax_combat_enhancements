@@ -342,7 +342,7 @@ namespace TraxCombat.Missions
         }
 
         /// <summary>Athletics (or the mod) switched: nothing measured may span the time it was off.</summary>
-        private static void ResetPhases(TrackedAgent st)
+        private void ResetPhases(TrackedAgent st)
         {
             st.PhaseKind = -1;
             st.ReadyPolling = false;
@@ -356,7 +356,7 @@ namespace TraxCombat.Missions
             st.AttackEndedNow = false;
             st.TimerPending = false;
             st.PaceLastValid = false; // step 21: no class cycle spans it either
-            st.Swings.FillUp();       // step 32: a fresh start fills the swing stack too
+            _stackStats.AddRun(IsPlayer(st), st.Swings.FillUp()); // step 32: a fresh start fills the swing stack too (its running burst counted)
         }
 
         /// <summary>

@@ -284,6 +284,9 @@ namespace TraxCombat.Core
             if (until > GraceUntil) GraceUntil = until;
         }
 
+        /// <summary>He is held at 0 now: his own gap is no longer his choice - the clock runs from here.</summary>
+        public void EndGrace() => GraceUntil = double.NegativeInfinity;
+
         /// <summary>A fresh start (spawn, the switch back on, the hideout's boss fight): full again; the running burst is
         /// returned (≥ 2 = a burst to count) and closed.</summary>
         public int FillUp()
@@ -395,8 +398,13 @@ namespace TraxCombat.Core
                 if (Bursts(you) > 0)
                 {
                     t.Append(" by length");
+                    bool firstBin = true;
                     for (int b = 0; b < SwingStackMath.BurstBins; b++)
-                        if (_bursts[w, b] > 0) t.Append(' ').Append(SwingStackMath.BurstBinName(b)).Append(": ").Append(_bursts[w, b]);
+                    {
+                        if (_bursts[w, b] == 0) continue;
+                        t.Append(firstBin ? " " : ", ").Append(SwingStackMath.BurstBinName(b)).Append(": ").Append(_bursts[w, b]);
+                        firstBin = false;
+                    }
                     t.Append(", longest ").Append(_longest[w]);
                 }
                 var wt = _waits[w];
