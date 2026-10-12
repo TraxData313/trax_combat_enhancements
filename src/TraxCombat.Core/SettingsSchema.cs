@@ -382,15 +382,31 @@ namespace TraxCombat.Core
 
         public static readonly ParamDef SprintAiEnabled = Bool("SprintAiEnabled", SprintGroup,
             "AI soldiers sprint on new orders",
-            "When an AI formation gets a NEW movement order - yours or its own general's - each of its soldiers on foot sprints once: on a charge up to the share below of his store, on an advance or a move to a position up to its own share. He stops early once an enemy is within a few metres or the order changes again. Never you, never a hero you drive.");
+            "When an AI formation gets a NEW movement order - yours or its own general's - each of its soldiers on foot sprints once: as much as that order's use / keep below allow (a charge all of it, an advance half, a move a little while keeping a reserve). He stops early once an enemy is within a few metres or the order changes again. Never you, never a hero you drive.");
 
-        public static readonly ParamDef SprintAiChargeSharePercent = Int("SprintAiChargeSharePercent", 0, 100, SprintGroup,
-            "AI sprint on a charge (% of the store)",
-            "On a new CHARGE order (charge, charge a target, the AI's own charge) each AI soldier sprints for up to this percent of the seconds he has stored. 0 = no sprint on a charge.");
+        public static readonly ParamDef SprintAiChargeUsePercent = Int("SprintAiChargeUsePercent", 0, 100, SprintGroup,
+            "AI sprint on a charge: use (% of the store)",
+            "On a new CHARGE order (charge - F1 F3 -, charge a target, the AI general's own charge) each AI soldier on foot sprints for up to this percent of his FULL store, never into the reserve below. 0 = no sprint on a charge.");
 
-        public static readonly ParamDef SprintAiMoveSharePercent = Int("SprintAiMoveSharePercent", 0, 100, SprintGroup,
-            "AI sprint on an advance or move (% of the store)",
-            "On a new ADVANCE or MOVE order (yours, or the AI's own advance) each AI soldier sprints for up to this percent of his store - the rest stays stored for later. 0 = no sprint on an advance or a move. Hold, retreat, follow and the rest never start one.");
+        public static readonly ParamDef SprintAiChargeKeepPercent = Int("SprintAiChargeKeepPercent", 0, 100, SprintGroup,
+            "AI sprint on a charge: keep (% of the store)",
+            "The reserve a charge leaves stored, percent of his FULL store. He sprints only what he has above it: min(use, stored - keep). 0 = a charge may empty it.");
+
+        public static readonly ParamDef SprintAiAdvanceUsePercent = Int("SprintAiAdvanceUsePercent", 0, 100, SprintGroup,
+            "AI sprint on an advance: use (% of the store)",
+            "On a new ADVANCE order (advance / engage - F1 F4 -, or the AI general's own advance) each AI soldier on foot sprints for up to this percent of his FULL store. 0 = no sprint on an advance.");
+
+        public static readonly ParamDef SprintAiAdvanceKeepPercent = Int("SprintAiAdvanceKeepPercent", 0, 100, SprintGroup,
+            "AI sprint on an advance: keep (% of the store)",
+            "The reserve an advance leaves stored, percent of his FULL store - he sprints only what he has above it.");
+
+        public static readonly ParamDef SprintAiMoveUsePercent = Int("SprintAiMoveUsePercent", 0, 100, SprintGroup,
+            "AI sprint on a move: use (% of the store)",
+            "On a new MOVE order (move to a position - F1 F1 -, or an AI general's move that is neither its advance nor its charge) each AI soldier on foot sprints for up to this percent of his FULL store. 0 = no sprint on a move. Hold, retreat, fall back and follow never start one.");
+
+        public static readonly ParamDef SprintAiMoveKeepPercent = Int("SprintAiMoveKeepPercent", 0, 100, SprintGroup,
+            "AI sprint on a move: keep (% of the store)",
+            "The reserve a move leaves stored, percent of his FULL store - so shock troops moved behind the enemy still have their sprint for the real charge. A store at or below it: no sprint on a move.");
 
         // ------------------------------------------------------------------ refill (regeneration)
 
@@ -654,7 +670,8 @@ namespace TraxCombat.Core
             BraceWieldShield, BraceRaiseShield,
             SprintEnabled, SprintKey, SprintPointsPerSecond, SprintMinSeconds, SprintMinStartPercent, SprintMaxMultiplier, SprintMinMultiplier, SprintFullSpeedSharePercent,
             SprintTopSpeedReachSeconds,
-            SprintRefillSeconds, SprintRefillMovingFactor, SprintRefillExhaustedFactor, SprintAiEnabled, SprintAiChargeSharePercent, SprintAiMoveSharePercent,
+            SprintRefillSeconds, SprintRefillMovingFactor, SprintRefillExhaustedFactor, SprintAiEnabled, SprintAiChargeUsePercent, SprintAiChargeKeepPercent,
+            SprintAiAdvanceUsePercent, SprintAiAdvanceKeepPercent, SprintAiMoveUsePercent, SprintAiMoveKeepPercent,
             RegenDelayBlowTimes, BlowTimeSeconds, FullRegenSecondsStanding, RegenRateNearFullPercent, RegenMultiplierAtFullRun,
             WalkEffortFraction, HideoutBossFightRefill,
             ShowPlayerBar, ShowPlayerBarOutsideBattles, ShowAttackRecoveryBar, FlashBarOnEarlyAttack, ShowSprintBar,

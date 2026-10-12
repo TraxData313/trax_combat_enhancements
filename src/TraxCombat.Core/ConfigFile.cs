@@ -87,8 +87,10 @@ namespace TraxCombat.Core
         /// push a new default into files that already carry the old one. 2 = step 13 (PAUSE ONLY),
         /// 3 = step 14 (the run-speed floor 0.3 → 0.7), 4 = step 20b (Anton's tuning after his playtest: the
         /// run-speed floor 0.7 → 0.6, the attack animation at empty 100 → 85), 5 = step 22 (Anton, for slower battles:
-        /// the refill a straight line again - RegenRateNearFullPercent 50 → 100 - and the run-speed floor 0.6 → 0.3).</summary>
-        public const int FormatVersion = 5;
+        /// the refill a straight line again - RegenRateNearFullPercent 50 → 100 - and the run-speed floor 0.6 → 0.3), 6 = step 36
+        /// (the AI sprint by order: SprintAiChargeSharePercent renamed SprintAiChargeUsePercent, SprintAiMoveSharePercent dropped -
+        /// <see cref="Migrate(ConfigReadResult, Func{ParamDef, double})"/> does it for a file of any format).</summary>
+        public const int FormatVersion = 6;
 
         /// <summary>The meta key holding <see cref="FormatVersion"/> - not a setting.</summary>
         public const string VersionKey = "ConfigVersion";
@@ -368,7 +370,66 @@ namespace TraxCombat.Core
                     MoveOldDefault(read, SettingsSchema.MinMoveSpeedMultiplier, 0.6,
                         "step 22, Anton for slower battles: an empty man runs at 30% of his pace again", from, defaultOf);
             }
+            // step 36: the two AI sprint shares became six use / keep settings - in ANY format (the old keys are only ever
+            // steps 33-35's, and a hand-pasted one is renamed the same way)
+            RenameSprintShares(read, from);
             return read.Migrated;
+        }
+
+        /// <summary>Step 33's key, renamed by step 36 to <see cref="SettingsSchema.SprintAiChargeUsePercent"/>.</summary>
+        public const string OldSprintAiChargeShareKey = "SprintAiChargeSharePercent";
+
+        /// <summary>Step 33's key, dropped by step 36 (split into the advance and move use / keep).</summary>
+        public const string OldSprintAiMoveShareKey = "SprintAiMoveSharePercent";
+
+        /// <summary>
+        /// Step 36: <c>SprintAiChargeSharePercent</c> → <c>SprintAiChargeUsePercent</c> (its value kept, unless the file already
+        /// sets the new key); <c>SprintAiMoveSharePercent</c> dropped - it covered advance AND move as a share of what was
+        /// stored, the new advance / move use and keep take their defaults. Both old keys leave <see cref="ConfigReadResult.Unknown"/>,
+        /// so the rewrite does not carry them under "Not recognised". Idempotent.
+        /// </summary>
+        private static void RenameSprintShares(ConfigReadResult read, int from)
+        {
+            for (int i = read.Unknown.Count - 1; i >= 0; i--)
+            {
+                var pair = read.Unknown[i];
+                bool charge = string.Equals(pair.Key, OldSprintAiChargeShareKey, StringComparison.OrdinalIgnoreCase);
+                bool move = string.Equals(pair.Key, OldSprintAiMoveShareKey, StringComparison.OrdinalIgnoreCase);
+                if (!charge && !move) continue;
+                read.Unknown.RemoveAt(i);
+                string tag = " (format " + from + " → " + FormatVersion + "; step 36: ";
+                if (move)
+                {
+                    read.Migrated.Add(OldSprintAiMoveShareKey + " " + pair.Value + " dropped" + tag + "it covered advance and move as one share of the stored seconds - "
+                        + "now SprintAiAdvanceUse/KeepPercent and SprintAiMoveUse/KeepPercent, at their defaults)");
+                    continue;
+                }
+                var p = SettingsSchema.SprintAiChargeUsePercent;
+                if (read.Values.ContainsKey(p.Key))
+                {
+                    read.Migrated.Add(OldSprintAiChargeShareKey + " " + pair.Value + " dropped" + tag + "renamed " + p.Key + ", which the file already sets)");
+                    continue;
+                }
+                double v;
+                try
+                {
+                    if (!TryNumber(JToken.Parse(pair.Value), out v) || double.IsNaN(v) || double.IsInfinity(v))
+                    {
+                        read.Migrated.Add(OldSprintAiChargeShareKey + " " + pair.Value + " dropped" + tag + "renamed " + p.Key + ", but the value is not a number - its default used)");
+                        continue;
+                    }
+                }
+                catch (JsonException)
+                {
+                    read.Migrated.Add(OldSprintAiChargeShareKey + " dropped" + tag + "renamed " + p.Key + ", but the value did not parse - its default used)");
+                    continue;
+                }
+                double now = p.Normalize(v);
+                read.Values[p.Key] = now;
+                read.Missing.Remove(p);
+                read.Migrated.Add(OldSprintAiChargeShareKey + " " + p.Format(now) + " → " + p.Key + " " + p.Format(now) + tag
+                    + "renamed - a charge now sprints up to this % of the FULL store, never into SprintAiChargeKeepPercent)");
+            }
         }
 
         private static void MoveOldDefault(ConfigReadResult read, ParamDef p, double oldDefault, string why, int from, Func<ParamDef, double> defaultOf)

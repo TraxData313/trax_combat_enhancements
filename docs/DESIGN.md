@@ -434,8 +434,15 @@ regen.)
   store ran dry); letting go ends it - the rest stays stored. **The AI** (`SprintAiEnabled`, on): every
   formation's movement-order kind is read every 0.25 s (step 23's read - the AI's own advance / tactical charge on
   a Move included); a kind that differs from the last look is a NEW order, and each AI man on foot in that
-  formation sprints once: a charge up to `SprintAiChargeSharePercent` (100) % of his store, an advance or a move to
-  a position up to `SprintAiMoveSharePercent` (50) %, anything else none. He stops early when an enemy is within
+  formation sprints once. Step 36 (Anton: shock troops moved behind the enemy must still have their sprint for the
+  real charge): each order kind has a USE and a KEEP, both % of his FULL store (its capacity now), and he sprints
+  min(use x capacity, stored - keep x capacity) seconds - nothing below 0.2 s (plumbing) and no `SprintMinStartPercent`
+  gate for the AI (the reserve is its gate). Charge (charge, charge a target, attack a gate, the AI's tactical charge):
+  `SprintAiChargeUsePercent` 100 / `SprintAiChargeKeepPercent` 0 - everything. Advance (F1 F4 "engage", the AI's
+  own advance): `SprintAiAdvanceUsePercent` 50 / `SprintAiAdvanceKeepPercent` 0. Move (a plain move to a position, F1 F1,
+  or an AI general's Move under any other behaviour): `SprintAiMoveUsePercent` 20 / `SprintAiMoveKeepPercent` 70 - a 5 s
+  store sprints 1 s from full (80% left), 0.5 s from 80% (70% left), nothing from 60%. Hold / stop, retreat, fall back,
+  follow (a man or an entity), no order: none. He stops early when an enemy is within
   3 m (plumbing) or the order changes again. Never you or a hero you drive; brace, step back and the pause are
   not touched. Whole formations sprint together on purpose: the game caps a formation man's speed against his
   formation's average top (cached ~2 s), so one sprinter alone would be held to the others' pace. **Off** (the
@@ -858,8 +865,12 @@ says (§2c).
 | `SprintRefillMovingFactor` | 0.5 | Step 33: the store's refill × this while moving faster than a walk (effort above `WalkEffortFraction`): 14 s. Range 0-1. |
 | `SprintRefillExhaustedFactor` | 0.5 | Step 33: the refill × a line from 1 at the peak line (f = 1) to this at an empty bar (f = 0); multiplies with the moving factor (28 s moving and empty). Range 0-1. |
 | `SprintAiEnabled` | true | Step 33: an AI formation's NEW movement order (its kind changes - step 23's read, the AI's advance / tactical charge on a Move included; polled every 0.25 s) makes each of its AI men on foot sprint once, for up to the order's share of his store; he stops early when an enemy is within 3 m (plumbing) or the order changes again. Never you or a hero you drive; brace, step back and the pause untouched. |
-| `SprintAiChargeSharePercent` | 100 | Step 33: on a new CHARGE order (charge, charge a target, attack a gate, the AI's tactical charge) the AI sprints up to this % of its store. 0 = none. |
-| `SprintAiMoveSharePercent` | 50 | Step 33: on a new ADVANCE or MOVE order (the AI's own advance too) the AI sprints up to this % of its store (the rest stays stored). 0 = none. |
+| `SprintAiChargeUsePercent` | 100 | Step 36 (was step 33's `SprintAiChargeSharePercent` - config format 6 renames it): on a new CHARGE order (charge, charge a target, attack a gate, the AI's tactical charge) an AI man on foot sprints min(this % of his FULL store, stored − the keep below). 0 = none. Range 0-100. |
+| `SprintAiChargeKeepPercent` | 0 | Step 36: the reserve a charge leaves stored, % of his FULL store. Range 0-100. |
+| `SprintAiAdvanceUsePercent` | 50 | Step 36: on a new ADVANCE order (F1 F4 "engage", the AI's own advance) the AI sprints min(this % of his FULL store, stored − the keep). 0 = none. Range 0-100. |
+| `SprintAiAdvanceKeepPercent` | 0 | Step 36: the reserve an advance leaves stored, % of his FULL store. Range 0-100. |
+| `SprintAiMoveUsePercent` | 20 | Step 36: on a new MOVE order (a plain move to a position, F1 F1; an AI general's Move under any behaviour but its advance / charge) the AI sprints min(this % of his FULL store, stored − the keep). 0 = none. Range 0-100. |
+| `SprintAiMoveKeepPercent` | 70 | Step 36 (Anton: shock troops behind the enemy keep their sprint for the charge): the reserve a move leaves stored, % of his FULL store; at or below it a move sprints nothing. Range 0-100. |
 | `RegenDelayBlowTimes` | 2 | Idle blows before regeneration starts. |
 | `BlowTimeSeconds` | 1.5 | How long "one blow" is, for the delay above. |
 | `FullRegenSecondsStanding` | 60 | Seconds from empty to full while standing still or walking (the whole refill, whatever the curve below). |
@@ -1199,6 +1210,19 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     decorator runs the base model first and leaves the game's value otherwise; the start, every 0.05 step, the end and a
     sprint setting change each recompute him); (e) no config migration: Anton's own config.json already holds 2.0 (set in
     MCM), a fresh install takes defaults.json's. Each is a default Anton can overturn.
+33. **The AI sprint by order** (step 36, Claude's calls on Anton's rule of 2026-10-12 - AI_NOTES "Step 36"): (a) the use and
+    the keep are shares of his FULL store (its capacity now: current points ÷ `SprintPointsPerSecond`, never below
+    `SprintMinSeconds`), not of what is stored, so a move from full and a move from 80% differ only by the reserve; (b) the
+    AI has no `SprintMinStartPercent` gate any more - the keep is its gate, and a sprint shorter than 0.2 s (plumbing,
+    `SprintMath.AiMinSeconds`) is not started (a charge from 10% still sprints its 0.5 s); the player's 20% gate is
+    unchanged; (c) "move" = the game's Move order that is neither the AI's advance (`BehaviorAdvance` /
+    `CautiousAdvance` / `Vanguard`) nor its tactical charge - F1 F1, and an AI general's Move under defend / skirmish /
+    flank and the like; follow and follow-an-entity stay "none" (a man escorting someone should not dash off), as do
+    hold, retreat and fall back; (d) the summary counts "reserve kept" apart from "less than 0.2 s or empty"; (e) old
+    keys: config format 6 - `SprintAiChargeSharePercent` becomes `SprintAiChargeUsePercent` (its value kept unless the new
+    key is set), `SprintAiMoveSharePercent` is dropped (it was advance and move together, as a share of the stored
+    seconds - the new four take their defaults); both leave the file at its rewrite instead of sitting under "Not
+    recognised". Each is a default Anton can overturn.
 
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),

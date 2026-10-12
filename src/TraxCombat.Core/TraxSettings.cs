@@ -290,8 +290,12 @@ namespace TraxCombat.Core
         public float SprintRefillMovingFactor => GetFloat(SettingsSchema.SprintRefillMovingFactor);
         public float SprintRefillExhaustedFactor => GetFloat(SettingsSchema.SprintRefillExhaustedFactor);
         public bool SprintAiEnabled => GetBool(SettingsSchema.SprintAiEnabled);
-        public int SprintAiChargeSharePercent => GetInt(SettingsSchema.SprintAiChargeSharePercent);
-        public int SprintAiMoveSharePercent => GetInt(SettingsSchema.SprintAiMoveSharePercent);
+        public int SprintAiChargeUsePercent => GetInt(SettingsSchema.SprintAiChargeUsePercent);
+        public int SprintAiChargeKeepPercent => GetInt(SettingsSchema.SprintAiChargeKeepPercent);
+        public int SprintAiAdvanceUsePercent => GetInt(SettingsSchema.SprintAiAdvanceUsePercent);
+        public int SprintAiAdvanceKeepPercent => GetInt(SettingsSchema.SprintAiAdvanceKeepPercent);
+        public int SprintAiMoveUsePercent => GetInt(SettingsSchema.SprintAiMoveUsePercent);
+        public int SprintAiMoveKeepPercent => GetInt(SettingsSchema.SprintAiMoveKeepPercent);
 
         public float RegenDelayBlowTimes => GetFloat(SettingsSchema.RegenDelayBlowTimes);
         public float BlowTimeSeconds => GetFloat(SettingsSchema.BlowTimeSeconds);

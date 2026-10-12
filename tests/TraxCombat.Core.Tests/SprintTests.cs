@@ -5,13 +5,13 @@ namespace TraxCombat.Core.Tests;
 
 /// <summary>Step 33 (Anton, 2026-10-12): the sprint - a store in seconds = current points / 20, refilled in 7 s standing at full
 /// strength (x0.5 moving, down to x0.5 at an empty bar), 20% needed to start, 1.6 x the current run speed for the first 30% of
-/// the sprint then a straight line to 1.1 x; the AI sprints on a new order (charge 100%, advance / move 50%).</summary>
+/// the sprint then a straight line to 1.1 x; the AI sprints on a new order (step 36: charge use 100 / keep 0, advance 50 / 0, move 20 / 70).</summary>
 public class SprintTests
 {
     private static SprintRules Sprint(bool on = true, bool ai = true, bool mod = true, bool athletics = true, double pps = 20, int minStart = 20,
-        double max = 1.6, double min = 1.1, int fullShare = 30, double refill = 7, double moving = 0.5, double exhausted = 0.5, int charge = 100, int move = 50,
-        double floor = 0, double reach = 0) =>
-        new(mod, athletics, on, ai, pps, minStart, max, min, fullShare, refill, moving, exhausted, charge, move, floor, reach);
+        double max = 1.6, double min = 1.1, int fullShare = 30, double refill = 7, double moving = 0.5, double exhausted = 0.5, int charge = 100, int move = 20,
+        double floor = 0, double reach = 0, int chargeKeep = 0, int advance = 50, int advanceKeep = 0, int moveKeep = 70) =>
+        new(mod, athletics, on, ai, pps, minStart, max, min, fullShare, refill, moving, exhausted, charge, chargeKeep, advance, advanceKeep, move, moveKeep, floor, reach);
 
     private static AthleticsRules Athletics() => AthleticsRules.From(new TraxSettings());
 
@@ -202,29 +202,40 @@ public class SprintTests
     // ------------------------------------------------------------------ the AI
 
     [Fact]
-    public void AI_shares_charge_all_advance_or_move_half_others_none()
+    public void AI_use_and_keep_by_order_kind_and_the_kinds_grouped()
     {
         var s = Sprint();
-        Near(1, SprintMath.AiShare(in s, SprintOrder.Charge));
-        Near(0.5, SprintMath.AiShare(in s, SprintOrder.AdvanceOrMove));
-        Assert.Equal(0, SprintMath.AiShare(in s, SprintOrder.None));
+        Near(1, SprintMath.AiUse(in s, SprintOrder.Charge));
+        Near(0, SprintMath.AiKeep(in s, SprintOrder.Charge));
+        Near(0.5, SprintMath.AiUse(in s, SprintOrder.Advance));
+        Near(0, SprintMath.AiKeep(in s, SprintOrder.Advance));
+        Near(0.2, SprintMath.AiUse(in s, SprintOrder.Move));
+        Near(0.7, SprintMath.AiKeep(in s, SprintOrder.Move));
+        Assert.Equal(0, SprintMath.AiUse(in s, SprintOrder.None));
+        Assert.Equal(0, SprintMath.AiKeep(in s, SprintOrder.None));
         Assert.Equal(SprintOrder.Charge, SprintMath.Group(BraceOrderKind.Charge));
         Assert.Equal(SprintOrder.Charge, SprintMath.Group(BraceOrderKind.ChargeToTarget));
+        Assert.Equal(SprintOrder.Charge, SprintMath.Group(BraceOrderKind.AttackEntity));
         Assert.Equal(SprintOrder.Charge, SprintMath.Group(BraceOrderKind.AiCharge));
-        Assert.Equal(SprintOrder.AdvanceOrMove, SprintMath.Group(BraceOrderKind.Advance));
-        Assert.Equal(SprintOrder.AdvanceOrMove, SprintMath.Group(BraceOrderKind.AiAdvance));
-        Assert.Equal(SprintOrder.AdvanceOrMove, SprintMath.Group(BraceOrderKind.Move));
-        foreach (var k in new[] { BraceOrderKind.Stop, BraceOrderKind.Retreat, BraceOrderKind.FallBack, BraceOrderKind.Follow, BraceOrderKind.NoOrder, BraceOrderKind.NoFormation })
+        Assert.Equal(SprintOrder.Advance, SprintMath.Group(BraceOrderKind.Advance));
+        Assert.Equal(SprintOrder.Advance, SprintMath.Group(BraceOrderKind.AiAdvance));
+        Assert.Equal(SprintOrder.Move, SprintMath.Group(BraceOrderKind.Move));
+        foreach (var k in new[] { BraceOrderKind.Stop, BraceOrderKind.Retreat, BraceOrderKind.FallBack, BraceOrderKind.Follow, BraceOrderKind.FollowEntity,
+                     BraceOrderKind.NoOrder, BraceOrderKind.NoFormation })
             Assert.Equal(SprintOrder.None, SprintMath.Group(k));
+        Assert.Equal("advance", SprintMath.OrderName(SprintOrder.Advance));
+        Assert.Equal("move", SprintMath.OrderName(SprintOrder.Move));
     }
 
     [Fact]
-    public void An_AI_advance_sprint_uses_half_its_store_and_keeps_the_rest()
+    public void An_AI_advance_sprint_uses_half_its_FULL_store_and_keeps_the_rest()
     {
         var s = Sprint();
         var st = new SprintStore();
         st.Clamp(7.5);
-        Assert.Equal(SprintStart.Started, st.TryStart(in s, 0, 7.5, SprintMath.AiShare(in s, SprintOrder.AdvanceOrMove), false, SprintOrder.AdvanceOrMove));
+        Assert.Equal(SprintStart.Started, st.TryStartAi(in s, 0, 7.5, SprintOrder.Advance));
+        Assert.Equal(SprintOrder.Advance, st.Order);
+        Assert.False(st.ByKey);
         Near(3.75, st.Length);
         Near(1.6, st.Multiplier(in s));
         Assert.False(st.Advance(3.7, true, out _));
@@ -243,6 +254,8 @@ public class SprintTests
         Assert.Equal(SprintStart.Off, st.TryStart(Sprint(athletics: false), 0, 7.5, 1, true, SprintOrder.None));
         Assert.Equal(SprintStart.Off, st.TryStart(Sprint(on: false), 0, 7.5, 1, true, SprintOrder.None));
         Assert.Equal(SprintStart.Off, st.TryStart(Sprint(ai: false), 0, 7.5, 1, false, SprintOrder.Charge)); // the AI's own switch
+        Assert.Equal(SprintStart.Off, st.TryStartAi(Sprint(ai: false), 0, 7.5, SprintOrder.Charge));
+        Assert.Equal(SprintStart.Off, st.TryStartAi(Sprint(mod: false), 0, 7.5, SprintOrder.Charge));
         Assert.Equal(SprintStart.Started, st.TryStart(Sprint(ai: false), 0, 7.5, 1, true, SprintOrder.None)); // yours still works
         Assert.Equal("ModEnabled", Sprint(mod: false).OffBecause);
         Assert.Equal("SprintEnabled", Sprint(on: false).OffBecause);
@@ -262,8 +275,8 @@ public class SprintTests
         Near(20, s.PointsPerSecond);
         Near(1.6, s.MaxMultiplier, 1e-6);
         Assert.Equal(30, s.FullSpeedSharePercent);
-        t.Set(SettingsSchema.SprintAiMoveSharePercent, 80, "test");
-        Assert.Equal(80, SprintRules.From(t).AiMoveSharePercent);
+        t.Set(SettingsSchema.SprintAiMoveUsePercent, 80, "test");
+        Assert.Equal(80, SprintRules.From(t).AiMoveUsePercent);
         t.Set(SettingsSchema.ModEnabled, false, "test");
         Assert.False(SprintRules.From(t).Enabled);
     }
@@ -345,7 +358,8 @@ public class SprintTests
         Assert.Contains("sprint - you: 2 sprints", all);
         Assert.Contains("below 20% stored 1", all);
         Assert.Contains("key released 1", all);
-        Assert.Contains("charge 3 men (12.0 s in all, avg 4.00 s)", all);
+        Assert.Contains("charge (use 100% / keep 0%) 3 men (12.0 s in all, avg 4.00 s)", all);
+        Assert.Contains("move (use 20% / keep 70%) 0 men (0.0 s in all)", all);
         Assert.Contains("an enemy within 3 m 3", all);
         Assert.Contains("follows the sprint - no cap", all);
         Assert.True(stats.EngineFollows);
@@ -504,5 +518,176 @@ public class SprintTests
         new SprintStats().AddSummaryLines(none, Sprint(), "LeftControl");
         Assert.DoesNotContain("floor", string.Join("\n", none));
         Assert.Contains("acceleration: the game's own (SprintTopSpeedReachSeconds 0)", string.Join("\n", none));
+    }
+
+    // ------------------------------------------------------------------ step 36 (Anton, 2026-10-12): the AI sprint by order
+
+    private const double Full = 5; // Anton's examples: a full store of 5 s
+
+    [Theory]
+    [InlineData(1.0, 1.0)]   // move from 100%: 1 s (left 80%)
+    [InlineData(0.8, 0.5)]   // from 80%: 0.5 s (left 70%)
+    [InlineData(0.6, 0.0)]   // from 60%: none - the reserve
+    [InlineData(0.7, 0.0)]   // exactly at the reserve: none
+    [InlineData(0.73, 0.0)]  // 0.15 s above it: below the 0.2 s minimum
+    public void Step36_a_MOVE_uses_20_percent_and_keeps_70(double storedShare, double seconds)
+    {
+        Near(seconds, SprintMath.AiAmount(Sprint(), SprintOrder.Move, storedShare * Full, Full), 1e-9);
+    }
+
+    [Theory]
+    [InlineData(1.0, 2.5)]   // advance from 100%: 2.5 s
+    [InlineData(0.6, 2.5)]   // from 60%: 2.5 s (left 10%)
+    [InlineData(0.3, 1.5)]   // from 30%: what is there
+    public void Step36_an_ADVANCE_uses_half_and_keeps_nothing(double storedShare, double seconds)
+    {
+        Near(seconds, SprintMath.AiAmount(Sprint(), SprintOrder.Advance, storedShare * Full, Full), 1e-9);
+    }
+
+    [Theory]
+    [InlineData(1.0, 5.0)]
+    [InlineData(0.6, 3.0)]
+    [InlineData(0.1, 0.5)]   // 10%: below step 33's 20% start gate, yet the AI sprints - its gate is the reserve and the 0.2 s minimum
+    public void Step36_a_CHARGE_sprints_everything_it_has(double storedShare, double seconds)
+    {
+        Near(seconds, SprintMath.AiAmount(Sprint(), SprintOrder.Charge, storedShare * Full, Full), 1e-9);
+    }
+
+    [Fact]
+    public void Step36_other_orders_never_and_a_keep_above_the_store_is_none()
+    {
+        var s = Sprint();
+        Assert.Equal(0, SprintMath.AiAmount(in s, SprintOrder.None, Full, Full));
+        var keepAll = Sprint(chargeKeep: 100);
+        Assert.Equal(0, SprintMath.AiAmount(in keepAll, SprintOrder.Charge, Full, Full));
+        Assert.True(SprintMath.AiReserveStops(in keepAll, SprintOrder.Charge, Full, Full));
+        Assert.Equal(0, SprintMath.AiAmount(Sprint(moveKeep: 90), SprintOrder.Move, 0.8 * Full, Full));
+        Assert.Equal(0, SprintMath.AiAmount(Sprint(advance: 0), SprintOrder.Advance, Full, Full));
+        Assert.False(SprintMath.AiReserveStops(in s, SprintOrder.Advance, 0.01, Full)); // keep 0: empty is not "the reserve"
+        Assert.Equal(0, SprintMath.AiAmount(in s, SprintOrder.Move, Full, 0));
+        Near(1.0, SprintMath.AiAmount(in s, SprintOrder.Move, double.PositiveInfinity, Full)); // a new store (full until clamped)
+    }
+
+    [Fact]
+    public void Step36_a_move_then_a_second_move_sprints_only_down_to_the_reserve()
+    {
+        var s = Sprint();
+        var st = new SprintStore();
+        st.Clamp(Full);
+        Assert.Equal(SprintStart.Started, st.TryStartAi(in s, 0, Full, SprintOrder.Move));
+        Near(1.0, st.Length);
+        Assert.True(st.Advance(2, true, out var end));
+        Assert.Equal(SprintEnd.LengthDone, end);
+        st.Stop();
+        Near(4.0, st.Stored);       // left 80%
+        Assert.Equal(SprintStart.Started, st.TryStartAi(in s, 3, Full, SprintOrder.Move));
+        Near(0.5, st.Length);       // down to 70%
+        st.Advance(1, true, out _);
+        st.Stop();
+        Near(3.5, st.Stored);
+        Assert.Equal(SprintStart.ReserveKept, st.TryStartAi(in s, 5, Full, SprintOrder.Move));
+        Assert.False(st.Active);
+        Near(3.5, st.Stored);
+        // the reserve is there for the real charge
+        Assert.Equal(SprintStart.Started, st.TryStartAi(in s, 6, Full, SprintOrder.Charge));
+        Near(3.5, st.Length);
+        st.Stop();
+        // an empty store with no reserve: below the minimum, not "reserve kept"
+        var empty = new SprintStore();
+        empty.Clamp(Full);
+        empty.TryStartAi(in s, 0, Full, SprintOrder.Charge);
+        empty.Advance(10, true, out _);
+        empty.Stop();
+        Assert.Equal(SprintStart.BelowMinimum, empty.TryStartAi(in s, 1, Full, SprintOrder.Advance));
+        Assert.Equal(SprintStart.Off, empty.TryStartAi(in s, 1, Full, SprintOrder.None));
+        Assert.Equal(SprintStart.NoStore, new SprintStore().TryStartAi(in s, 1, 0, SprintOrder.Charge));
+    }
+
+    [Fact]
+    public void Step36_settings_read_live_and_the_sentence_names_each_order()
+    {
+        var t = new TraxSettings();
+        var s = SprintRules.From(t);
+        Assert.Equal(100, s.AiChargeUsePercent);
+        Assert.Equal(0, s.AiChargeKeepPercent);
+        Assert.Equal(50, s.AiAdvanceUsePercent);
+        Assert.Equal(0, s.AiAdvanceKeepPercent);
+        Assert.Equal(20, s.AiMoveUsePercent);
+        Assert.Equal(70, s.AiMoveKeepPercent);
+        Assert.Contains("charge use 100% / keep 0%, advance use 50% / keep 0%, move use 20% / keep 70%", s.Describe("LeftControl"));
+        Assert.Contains("no 20% start gate for the AI", s.Describe("LeftControl"));
+        t.Set(SettingsSchema.SprintAiMoveKeepPercent, 40, "test");
+        t.Set(SettingsSchema.SprintAiChargeKeepPercent, 30, "test");
+        var now = SprintRules.From(t);
+        Near(0.2 * Full, SprintMath.AiAmount(in now, SprintOrder.Move, 0.6 * Full, Full)); // 60% now above a 40% reserve
+        Near(0.7 * Full, SprintMath.AiAmount(in now, SprintOrder.Charge, Full, Full));
+        Assert.Contains("move use 20% / keep 40%", now.Describe("LeftControl"));
+        t.Set(SettingsSchema.ModEnabled, false, "test");
+        var off = SprintRules.From(t);
+        Assert.False(off.AiOn);
+        var st = new SprintStore();
+        st.Clamp(Full);
+        Assert.Equal(SprintStart.Off, st.TryStartAi(in off, 0, Full, SprintOrder.Charge));
+        Assert.DoesNotContain("keep", off.Describe("LeftControl"));
+    }
+
+    [Fact]
+    public void Step36_the_summary_counts_the_kinds_and_the_reserve_kept()
+    {
+        var stats = new SprintStats();
+        stats.AddOrderSeen(SprintOrder.Move);
+        stats.AddOrderSeen(SprintOrder.Advance);
+        stats.AddAiStart(SprintOrder.Move);
+        stats.AddEnd(false, SprintOrder.Move, 1, 1, SprintEnd.LengthDone);
+        stats.AddAiStart(SprintOrder.Advance);
+        stats.AddEnd(false, SprintOrder.Advance, 2.5, 2, SprintEnd.InMelee);
+        for (int i = 0; i < 3; i++) stats.AddAiReserveKept(SprintOrder.Move);
+        stats.AddAiRefused(SprintOrder.Advance);
+        var lines = new List<string>();
+        stats.AddSummaryLines(lines, Sprint(), "LeftControl");
+        string ai = lines[2];
+        Assert.StartsWith("sprint - AI: new orders seen - charge 0, advance 1, move 1, other 0; sprints - charge (use 100% / keep 0%) 0 men (0.0 s in all), "
+                          + "advance (use 50% / keep 0%) 1 men (2.0 s in all, avg 2.00 s), move (use 20% / keep 70%) 1 men (1.0 s in all, avg 1.00 s)"
+                          + "; not sprinted: reserve kept 3 (charge 0, advance 0, move 3), less than 0.2 s or empty: charge 0, advance 1, move 0", ai);
+        Assert.Equal(3, stats.AiReserveKeptTotal);
+    }
+
+    [Fact]
+    public void Step36_an_old_config_renames_the_charge_share_and_drops_the_move_share_once()
+    {
+        Assert.Equal(6, ConfigFile.FormatVersion);
+        // Anton's config.json of 2026-10-12: format 5 with step 33's two keys
+        string old = "{ \"ConfigVersion\": 5, \"SprintAiChargeSharePercent\": 90, \"SprintAiMoveSharePercent\": 50, \"Typo\": 1 }";
+        var read = ConfigFile.Read(old);
+        Assert.Equal(3, read.Unknown.Count);
+        Assert.Contains(read.Missing, p => p == SettingsSchema.SprintAiChargeUsePercent);
+        var notes = ConfigFile.Migrate(read);
+        Assert.Equal(2, notes.Count);
+        Assert.Contains(notes, n => n.StartsWith("SprintAiChargeSharePercent 90 → SprintAiChargeUsePercent 90 (format 5 → 6; step 36: renamed", StringComparison.Ordinal));
+        Assert.Contains(notes, n => n.StartsWith("SprintAiMoveSharePercent 50 dropped (format 5 → 6; step 36:", StringComparison.Ordinal));
+        Assert.Equal(90, read.Values["SprintAiChargeUsePercent"]);
+        Assert.DoesNotContain(read.Missing, p => p == SettingsSchema.SprintAiChargeUsePercent);
+        Assert.Single(read.Unknown);                                   // the typo stays reported
+        Assert.Equal("Typo", read.Unknown[0].Key);
+        Assert.False(read.Values.ContainsKey("SprintAiMoveUsePercent")); // the move takes its new default
+        Assert.Equal(2, ConfigFile.Migrate(read).Count);               // idempotent: nothing new the second time
+        var rewritten = ConfigFile.Write(read.Values, read.Unknown);
+        Assert.DoesNotContain("SprintAiChargeSharePercent", rewritten);
+        Assert.DoesNotContain("SprintAiMoveSharePercent", rewritten);
+        Assert.Contains("\"SprintAiChargeUsePercent\": 90", rewritten);
+
+        // the new key already set: the old one is only dropped; a non-number: dropped, the default used
+        var both = ConfigFile.Read("{ \"SprintAiChargeUsePercent\": 70, \"SprintAiChargeSharePercent\": 30 }");
+        Assert.Contains("which the file already sets", Assert.Single(ConfigFile.Migrate(both)));
+        Assert.Equal(70, both.Values["SprintAiChargeUsePercent"]);
+        var junk = ConfigFile.Read("{ \"SprintAiChargeSharePercent\": \"lots\" }");
+        Assert.Contains("not a number", Assert.Single(ConfigFile.Migrate(junk)));
+        Assert.False(junk.Values.ContainsKey("SprintAiChargeUsePercent"));
+        // out of range is clamped like any value
+        var big = ConfigFile.Read("{ \"SprintAiChargeSharePercent\": 150 }");
+        ConfigFile.Migrate(big);
+        Assert.Equal(100, big.Values["SprintAiChargeUsePercent"]);
+        // a current file: nothing
+        Assert.Empty(ConfigFile.Migrate(ConfigFile.Read("{ \"ConfigVersion\": 6, \"SprintAiMoveKeepPercent\": 60 }")));
     }
 }
