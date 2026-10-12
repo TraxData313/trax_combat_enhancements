@@ -68,9 +68,12 @@ namespace TraxCombat.Tools
             Check(new AthleticsLogic().BraceBody == BraceBodyDefault.Current, "a new logic does not start with the default brace body");
         }
 
-        /// <summary>DESIGN's initial brace numbers (tuning defaults.json never breaks the checks).</summary>
-        private static void BraceDefaults(int spread = 0)
+        /// <summary>DESIGN's initial brace numbers (tuning defaults.json never breaks the checks); step 28's floor roll PINNED at
+        /// 0 unless asked (step 23's checks assert exact floors).</summary>
+        private static void BraceDefaults(int spread = 0, int floorSpread = 0)
         {
+            S.Set(SettingsSchema.BraceFloorNoFormationPercent, 20, SettingSources.File);
+            S.Set(SettingsSchema.BraceFloorSpreadPercent, floorSpread, SettingSources.File);
             S.Set(SettingsSchema.BraceEnabled, true, SettingSources.File);
             S.Set(SettingsSchema.BraceFloorChargePercent, 20, SettingSources.File);
             S.Set(SettingsSchema.BraceFloorAdvancePercent, 40, SettingSources.File);
@@ -133,7 +136,7 @@ namespace TraxCombat.Tools
                 logic.BraceBody = body;
                 logic.BraceDice = new SeededRandom(23);
                 var bs = logic.BraceStats;
-                LogHas("[brace] mission start: ON - an AI man whose Athletics bar (points ÷ his full pool, what the bar shows) is at or below his formation's order floor stops attacking in melee and only defends (guard up) until he refills to floor + 20% (BraceRecoverPercent) exactly (BraceRecoverSpreadPercent 0): charge 20% → 40% (BraceFloorChargePercent), advance 40% → 60% (BraceFloorAdvancePercent), hold / halt / retreat / move / follow / anything else 60% → 80% (BraceFloorHoldPercent)");
+                LogHas("[brace] mission start: ON - an AI man whose Athletics bar (points ÷ his full pool, what the bar shows) is at or below his formation's order floor stops attacking in melee and only defends (guard up) until he refills to floor + 20% (BraceRecoverPercent) exactly (BraceRecoverSpreadPercent 0): charge 20% → 40% (BraceFloorChargePercent), advance 40% → 60% (BraceFloorAdvancePercent), hold / halt / retreat / move / follow / no order 60% → 80% (BraceFloorHoldPercent), no formation (tournaments, arenas, duels) 20% → 40% (BraceFloorNoFormationPercent)");
                 double t = 11000;
 
                 // ---- A: a CHARGING man braces at 20% and attacks again at 40%
@@ -146,7 +149,7 @@ namespace TraxCombat.Tools
                 Check(a.Brace!.Active && a.Input != null && a.Input.BraceHoldAttacks && body.Hooked.Contains(700) && bs.Braces == 1
                       && bs.ByKind(BraceOrderKind.Charge) == 1 && logic.BracingNow == 1, "A: a charging man at 20% did not brace");
                 LogHas("[brace] first brace this mission: (agent 700) at ");
-                LogHas(" s - order charge (the charge floor 20%), his bar 20.0% of his full pool (20.0 points) → no melee attacks, guard up, until 40.0% = floor 20.0% + his margin 20.0 points (BraceRecoverPercent 20 + 0.0, his own roll); shield: no shield; our component added, the engine's input callback turned on by us");
+                LogHas(" s - order charge (the charge floor 20%; his own floor 20.0% = + 0.0 points by his own roll, BraceFloorSpreadPercent 0), his bar 20.0% of his full pool (20.0 points) → no melee attacks, guard up, until 40.0% = his floor 20.0% + his margin 20.0 points (BraceRecoverPercent 20 + 0.0, his own roll); shield: no shield; our component added, the engine's input callback turned on by us");
                 Check(InputFrame(a, MvAttackDown) == MvDefendDown, "A: a bracing man's attack wish was not replaced by a guard");
                 Check(InputFrame(a, MvForward) == MvForward, "A: a bracing man without a shield got a guard he did not ask for");
                 Check(InputFrame(a, MvAttackLeft | MvDefendLeft) == MvDefendLeft, "A: a bracing man's own guard was not kept");
@@ -410,6 +413,110 @@ namespace TraxCombat.Tools
             }
         }
 
+        /// <summary>
+        /// Step 28 (Anton's tournament log, 2026-10-12: the 1v1 fighters have no formation and braced on the hold floor 60%):
+        /// a man in NO formation braces on BraceFloorNoFormationPercent (20) ± his own floor roll (BraceFloorSpreadPercent 10),
+        /// not at 60; the floor roll is made once, with its own dice (the margin's seeded sequence unchanged), and rescaled live;
+        /// his target = his floor + his margin; the summary's floor lines.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static void BraceNoFormationAndFloorRoll()
+        {
+            var keep = _logic;
+            try
+            {
+                AthleticsDefaults();
+                StepBackDefaults();
+                S.Set(SettingsSchema.StepBackEnabled, false, SettingSources.File);
+                S.Set(SettingsSchema.AttackRatePaceByInput, true, SettingSources.File);
+                S.Set(SettingsSchema.RegenRateNearFullPercent, 100, SettingSources.File);
+                BraceDefaults(floorSpread: 10);
+                var body = new FakeBraceBody();
+                var logic = NewPaceLogic(new FakePaceBody(), new FakeWeaponFacts());
+                logic.BraceBody = body;
+                logic.BraceDice = new SeededRandom(23);
+                logic.BraceFloorDice = new SeededRandom(28);
+                var bs = logic.BraceStats;
+                LogHas("± his own 10 (BraceFloorSpreadPercent, rolled once per man and battle, apart from the margin's roll)");
+                LogHas("no formation (tournaments, arenas, duels) 20% → 40% (BraceFloorNoFormationPercent)");
+                double t = 13000;
+
+                // a tournament fighter: no formation - fights on past 60% (the old hold floor) down to his own floor ~20 ± 10
+                var duel = Soldier(logic, body, 720, BraceOrderKind.NoFormation);
+                Look(logic, ref t);
+                Check(duel.Brace != null && !duel.Brace.Active, "no formation: a fresh man braced");
+                double u = duel.Brace!.FloorUnit;
+                Check(u >= -1 && u < 1 && u != duel.Brace.Unit, "no formation: his floor roll is out of range or equals his margin roll: " + u);
+                Check(duel.Brace.Unit == BraceMath.RollUnit(new SeededRandom(23)), "the floor roll changed the margin's seeded sequence (not its own dice)");
+                double floor = 0.20 + 0.10 * u;
+                double startedAt = double.NaN;
+                for (int n = 0; n < 10 && !duel.Brace.Active; n++)
+                {
+                    Blows(duel, 1, t);
+                    Look(logic, ref t);
+                    if (duel.Brace.Active) startedAt = duel.Fraction;
+                    else Check(duel.Fraction > floor - 1e-9, "no formation: he did not brace at " + duel.Fraction + " (his floor " + floor + ")");
+                }
+                Check(duel.Brace.Active && startedAt <= floor + 1e-9 && startedAt > floor - 0.1 - 1e-9 && startedAt < 0.6,
+                    "no formation: he braced at " + startedAt + ", not at the first blow under his own floor " + floor);
+                Check(duel.Brace.KindAtStart == BraceOrderKind.NoFormation && duel.Brace.GroupAtStart == BraceOrder.NoFormation && bs.ByGroup(BraceOrder.NoFormation) == 1
+                      && bs.ByGroup(BraceOrder.Hold) == 0, "no formation: counted under the wrong floor");
+                Check(Near(duel.Brace.BandAtStart.SetFloor, floor) && Near(duel.Brace.BandAtStart.Target, floor + 0.2), "no formation: his band is not his floor → his floor + 20");
+                LogHas("[brace] first brace this mission: (agent 720) at ");
+                LogHas(" - order no formation (the no formation floor 20%; his own floor ");
+                LogHas(" points by his own roll, BraceFloorSpreadPercent 10), his bar ");
+                RefillTo(duel, floor + 0.19, ref t);
+                Look(logic, ref t);
+                Check(duel.Brace.Active, "no formation: he stopped bracing before his floor + 20");
+                RefillTo(duel, floor + 0.2 + 1e-6, ref t);
+                Look(logic, ref t);
+                Check(!duel.Brace.Active && bs.Ends(BraceEnd.Refilled) == 1 && duel.Brace.FloorUnit == u, "no formation: he did not stop at his floor + 20 (or his roll changed)");
+
+                // the floor slider rescales his roll live; the no-formation slider is live too
+                var second = Soldier(logic, body, 721, BraceOrderKind.NoFormation);
+                Blows(second, 7, t);                                // 30%
+                Look(logic, ref t);
+                double u2 = second.Brace!.FloorUnit;
+                Check(second.Brace.Active == (0.3 <= 0.2 + 0.1 * u2 + 1e-9), "no formation: the second man's brace does not follow his own floor");
+                bool before = second.Brace.Active;
+                S.Set(SettingsSchema.BraceFloorNoFormationPercent, 30, SettingSources.Mcm);
+                S.Set(SettingsSchema.BraceFloorSpreadPercent, 30, SettingSources.Mcm);
+                double floor2 = Math.Max(0, Math.Min(1, 0.3 + 0.3 * u2));
+                Look(logic, ref t);
+                Check(second.Brace.FloorUnit == u2, "live: his floor roll was rolled again");
+                // not bracing before: he braces now exactly when 30% is at or under his new floor; bracing before: he keeps it (30% is under any target)
+                Check(before ? second.Brace.Active : second.Brace.Active == (0.3 <= floor2 + 1e-9), "live: the new sliders did not apply at his next look (floor " + floor2 + ")");
+                Check(Near(BraceMath.Band(BraceRules.From(S), BraceOrder.NoFormation, 1.0, 0, u2).SetFloor, floor2), "live: his floor is not 30 + 30 × his roll");
+                S.Set(SettingsSchema.BraceFloorNoFormationPercent, 20, SettingSources.Mcm);
+                S.Set(SettingsSchema.BraceFloorSpreadPercent, 10, SettingSources.Mcm);
+
+                // a man with a formation is untouched by the no-formation floor: hold 60 ± his own 10
+                var line = Soldier(logic, body, 722, BraceOrderKind.Stop);
+                Look(logic, ref t);
+                double floor3 = 0.6 + 0.1 * line.Brace!.FloorUnit;
+                Blows(line, 3, t);                                  // 70%
+                Look(logic, ref t);
+                Check(!line.Brace.Active, "a holding man braced at 70% (his floor " + floor3 + ")");
+                Blows(line, 1, t);                                  // 60%
+                Look(logic, ref t);
+                Check(line.Brace.Active == (0.6 <= floor3 + 1e-9), "a holding man at 60% does not follow his own floor " + floor3);
+
+                logic.WriteAthleticsSummary();
+                LogHas("; by floor: charge 0, advance 0, hold and the rest ");
+                LogHas(", no formation ");
+                LogHas("[summary] brace floors (BraceFloorSpreadPercent 10, step 28): 3 men rolled, their floor offsets now min ");
+                LogHas("; braces by his own floor: low (−, fights on longer) ");
+            }
+            finally
+            {
+                _logic = keep;
+                SetStatic(typeof(AthleticsLogic), "_current", keep);
+                AthleticsDefaults();
+                StepBackDefaults();
+                BraceDefaults();
+            }
+        }
+
         /// <summary>Step 23's cost: a thousand men looked at about four times a second - the tick stays small and allocates
         /// nothing once every man has his record.</summary>
         [MethodImpl(MethodImplOptions.NoInlining)]
@@ -419,11 +526,12 @@ namespace TraxCombat.Tools
             try
             {
                 AthleticsDefaults();
-                BraceDefaults(spread: 5);
+                BraceDefaults(spread: 5, floorSpread: 10);
                 var body = new FakeBraceBody();
                 var logic = NewPaceLogic(new FakePaceBody(), new FakeWeaponFacts());
                 logic.BraceBody = body;
                 logic.BraceDice = new SeededRandom(1);
+                logic.BraceFloorDice = new SeededRandom(2);
                 const int men = 1000;
                 double t0 = 12000;
                 for (int i = 0; i < men; i++)
