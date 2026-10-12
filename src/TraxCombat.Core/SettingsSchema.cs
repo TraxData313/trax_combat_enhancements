@@ -342,21 +342,31 @@ namespace TraxCombat.Core
             "Athletics points per sprint second (points)",
             "The sprint store holds his CURRENT Athletics points divided by this, in seconds: 150 points = 7.5 s at 20, 50 points = 2.5 s. When his points drop (a blow, a wound) the stored seconds drop with them. Lower = longer sprints.");
 
+        // Step 35 (Anton, 2026-10-12, after two tournaments: "when tired the store collapsed"): the store's floor.
+        public static readonly ParamDef SprintMinSeconds = Float("SprintMinSeconds", 0, 5, SprintGroup,
+            "Smallest sprint store (s)",
+            "The sprint store is never smaller than this, however tired he is: an exhausted man (an empty Athletics bar) still holds 2 s of sprint - a dodge - it just refills slower. Above it the store is his points divided by the points per second. 0 = no floor (an empty bar cannot sprint).");
+
         public static readonly ParamDef SprintMinStartPercent = Int("SprintMinStartPercent", 0, 100, SprintGroup,
             "Least stored to start (%)",
             "A sprint starts only with at least this percent of the store filled - no spamming tiny bursts. 0 = any amount.");
 
         public static readonly ParamDef SprintMaxMultiplier = Float("SprintMaxMultiplier", 1, 3, SprintGroup,
             "Sprint speed at its start (x)",
-            "How much faster than his CURRENT run speed (after tiredness) a sprinter runs at the start of his sprint - 1.6 = 60% faster. A sprint from a half-full store starts at this speed too.");
+            "The sprint's top speed, times his FRESH run speed (as if untired) - whatever his Athletics: 2.0 = twice a fresh man's run, for a tired man too. A sprint from a half-full store starts at this speed too.");
 
         public static readonly ParamDef SprintMinMultiplier = Float("SprintMinMultiplier", 1, 3, SprintGroup,
             "Sprint speed at its end (x)",
-            "After the full-speed part the speed falls in a straight line to this times his run speed at the sprint's end. Above the start speed = the start speed all the way.");
+            "After the full-speed part the speed falls in a straight line to this times his CURRENT run speed (after tiredness) at the sprint's end: a fresh man ends at 1.1 x his run, an exhausted one at 1.1 x his slow run. Above the start speed = the start speed all the way.");
 
         public static readonly ParamDef SprintFullSpeedSharePercent = Int("SprintFullSpeedSharePercent", 0, 100, SprintGroup,
             "Full-speed part of a sprint (%)",
             "The first this-percent of a sprint's length run at the start speed, then it falls to the end speed. A sprint is as long as the seconds stored when it began: a full 7.5 s sprint runs 2.25 s at full speed at 30. 100 = full speed all the way.");
+
+        // Step 35: the game's foot acceleration (TopSpeedReachDuration, ~2.3-2.8 s) is longer than a short sprint's full-speed part.
+        public static readonly ParamDef SprintTopSpeedReachSeconds = Float("SprintTopSpeedReachSeconds", 0, 5, SprintGroup,
+            "Sprint acceleration (s to top speed)",
+            "While sprinting a man reaches his top speed in at most this many seconds (the game's own on foot is about 2.3-2.8 s - longer than a short sprint's full-speed part). Back to the game's value when the sprint ends. 0 = the game's own acceleration.");
 
         public static readonly ParamDef SprintRefillSeconds = Float("SprintRefillSeconds", 1, 120, SprintGroup,
             "Sprint refill time (s)",
@@ -642,7 +652,8 @@ namespace TraxCombat.Core
             BraceEnabled, BraceFloorChargePercent, BraceFloorAdvancePercent, BraceFloorHoldPercent, BraceFloorNoFormationPercent, BraceFloorSpreadPercent,
             BraceRecoverPercent, BraceRecoverSpreadPercent,
             BraceWieldShield, BraceRaiseShield,
-            SprintEnabled, SprintKey, SprintPointsPerSecond, SprintMinStartPercent, SprintMaxMultiplier, SprintMinMultiplier, SprintFullSpeedSharePercent,
+            SprintEnabled, SprintKey, SprintPointsPerSecond, SprintMinSeconds, SprintMinStartPercent, SprintMaxMultiplier, SprintMinMultiplier, SprintFullSpeedSharePercent,
+            SprintTopSpeedReachSeconds,
             SprintRefillSeconds, SprintRefillMovingFactor, SprintRefillExhaustedFactor, SprintAiEnabled, SprintAiChargeSharePercent, SprintAiMoveSharePercent,
             RegenDelayBlowTimes, BlowTimeSeconds, FullRegenSecondsStanding, RegenRateNearFullPercent, RegenMultiplierAtFullRun,
             WalkEffortFraction, HideoutBossFightRefill,

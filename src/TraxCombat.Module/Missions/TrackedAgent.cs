@@ -212,9 +212,14 @@ namespace TraxCombat.Missions
         /// <summary>Step 33: his sprint store (full until its first clamp) and the sprint running now.</summary>
         public readonly SprintStore Sprint = new SprintStore();
 
-        /// <summary>Step 33: the sprint multiplier APPLIED (quantised in 0.05 steps; 1 = none) - the stat decorator multiplies his run
-        /// multiplier with it on every recompute.</summary>
-        public float SprintMultiplier = 1f;
+        /// <summary>Step 35 (was step 33's SprintMultiplier): the sprint's RUN FACTOR applied (quantised in 0.05 steps; 0 = no
+        /// sprint) - × his FRESH run speed: while it is set the stat decorator writes it on his run property INSTEAD of his tiredness
+        /// run multiplier (Core <see cref="TraxCombat.Core.SprintMath.RunFactor"/>), and caps his TopSpeedReachDuration.</summary>
+        public float SprintRun;
+
+        /// <summary>Step 35: the game's TopSpeedReachDuration as the base model last wrote it (the stat decorator's every recompute;
+        /// 0 = not seen yet) - the first-sprint line and the summary's acceleration.</summary>
+        public float GameReach;
 
         /// <summary>Step 33: his top speed and run multiplier at the sprint's start (the speed check's base; 0 = no base).</summary>
         public float SprintBaseTop;

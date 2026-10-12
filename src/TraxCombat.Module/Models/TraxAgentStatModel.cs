@@ -24,7 +24,9 @@ namespace TraxCombat.Models
     /// fighter's Athletics multipliers, the AI's attack-decision values by the attack multiplier
     /// (step 5e, while AttackRateAiDecisions is on), a slowed rider's horse's speed
     /// (<see cref="SpeedPenalty"/>), and (step 30) a tired AI man's AiRandomizedDefendDirectionChance raised by
-    /// his tired-block weight (<see cref="TiredBlockMath.Chance"/> - never the player).
+    /// his tired-block weight (<see cref="TiredBlockMath.Chance"/> - never the player); step 35: a SPRINTER's run property gets
+    /// the sprint's run factor (× his fresh run, in place of the tiredness multiplier) and his TopSpeedReachDuration is capped at
+    /// SprintTopSpeedReachSeconds.
     ///
     /// THE TOURNAMENT FIX (RESEARCH §C): TournamentBehavior raises the AI level each round with
     /// <c>MissionGameModels.Current.AgentStatCalculateModel.SetAILevelMultiplier(x)</c> - a
@@ -122,7 +124,8 @@ namespace TraxCombat.Models
             BaseModel.UpdateAgentStats(agent, agentDrivenProperties);
             try
             {
-                if (AthleticsLogic.SpeedFactorsFor(agent, out float attack, out float run, out float mount, out float blockRandom))
+                float gameReach = agentDrivenProperties.TopSpeedReachDuration; // step 35: the base model's own (assigned fresh every recompute)
+                if (AthleticsLogic.SpeedFactorsFor(agent, gameReach, out float attack, out float run, out float mount, out float blockRandom, out float reach))
                 {
                     bool ai = false;
                     var s = TraxSettings.Shared;
@@ -139,6 +142,9 @@ namespace TraxCombat.Models
                     }
                     if (run != 1f) SpeedPenalty.ScaleRun(agentDrivenProperties, run);
                     if (mount != 1f) SpeedPenalty.ScaleMount(agentDrivenProperties, mount);
+                    // step 35: a sprinter reaches his top speed sooner - min(the game's, SprintTopSpeedReachSeconds); not sprinting = the
+                    // base model's value stands (the sprint's start and end each recompute him)
+                    if (reach > 0f) SpeedPenalty.CapTopSpeedReach(agentDrivenProperties, reach);
                     // step 30: a tired AI man's block direction partly random - the game's own chance raised by w (never the
                     // player: his mouse picks; the logic gives him w 0 too). The base model recomputes the chance every time.
                     if (blockRandom > 0f && !agent.IsMainAgent)

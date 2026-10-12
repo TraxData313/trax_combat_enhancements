@@ -72,6 +72,7 @@ namespace TraxCombat.Tools
                 p.AIDecideOnAttackChance = 0.5f;
                 p.AIHoldingReadyMaxDuration = 0.25f;
                 p.AiRandomizedDefendDirectionChance = BlockChance;
+                p.TopSpeedReachDuration = 2.6f; // step 35: the game's foot acceleration, assigned fresh like UpdateHumanStats
             }
 
             public override float GetDifficultyModifier() => 1f;

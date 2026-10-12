@@ -1181,7 +1181,7 @@ namespace TraxCombat.Missions
             if (mount == null)
             {
                 // step 33: a sprint's raised top (or one a pending recompute still holds) is no sample of the tiredness curve
-                if (st.SprintMultiplier != 1f || st.SpeedDirty) return;
+                if (st.SprintRun > 0f || st.SpeedDirty) return;
                 if (st.RunSpeedMultiplier == 1f) st.FreshTop = topSpeed;
                 if (st.FreshTop > 0f) _stats.FootRun.Add(bin, topSpeed / st.FreshTop, st.RunSpeedMultiplier, speed / st.FreshTop);
             }
@@ -1525,14 +1525,17 @@ namespace TraxCombat.Missions
         /// The speed multipliers to apply to <paramref name="agent"/> now (1 = none): a tracked
         /// fighter's attack and run multipliers, or - for a horse a slowed rider rides - that
         /// rider's horse multiplier; step 30: the fighter's tired-block weight (0 = the game's block
-        /// direction chance untouched). False (all 1, weight 0) for anyone else, with no mission running, and for
-        /// everyone while the mod (ModEnabled) or Athletics (AthleticsEnabled) is off (read live -
-        /// fail safe). Any thread; reads only, managed only (no native call).
+        /// direction chance untouched). Step 35: while he sprints, <paramref name="run"/> is the sprint's RUN FACTOR (× his fresh
+        /// run - it replaces the tiredness multiplier) and <paramref name="reach"/> SprintTopSpeedReachSeconds (0 = leave the game's
+        /// TopSpeedReachDuration); <paramref name="gameReach"/> (the base model's value) is remembered on his record. False (all 1,
+        /// weight 0, reach 0) for anyone else, with no mission running, and for everyone while the mod (ModEnabled) or Athletics
+        /// (AthleticsEnabled) is off (read live - fail safe). Any thread; managed only (no native call).
         /// </summary>
-        internal static bool SpeedFactorsFor(Agent agent, out float attack, out float run, out float mount, out float blockRandom)
+        internal static bool SpeedFactorsFor(Agent agent, float gameReach, out float attack, out float run, out float mount, out float blockRandom, out float reach)
         {
             attack = run = mount = 1f;
             blockRandom = 0f;
+            reach = 0f;
             var logic = _current;
             if (logic == null || agent == null) return false;
             var s = TraxSettings.Shared;
@@ -1542,9 +1545,14 @@ namespace TraxCombat.Missions
             {
                 attack = st.SpeedMultiplier;
                 run = st.RunSpeedMultiplier;
-                if (st.SprintMultiplier != 1f) run *= st.SprintMultiplier; // step 33: the sprint rides on the run property (above 1)
+                st.GameReach = gameReach; // step 35: the base model's own value (this recompute's)
+                if (st.SprintRun > 0f)
+                {
+                    run = st.SprintRun; // step 35: the sprint's factor × the FRESH run, in place of the tiredness multiplier
+                    reach = s.SprintTopSpeedReachSeconds;
+                }
                 blockRandom = st.BlockRandomWeight; // step 30
-                return attack != 1f || run != 1f || blockRandom > 0f;
+                return attack != 1f || run != 1f || blockRandom > 0f || reach > 0f;
             }
             var owner = logic.MountOwner(agent);
             if (owner == null) return false;
@@ -1595,7 +1603,7 @@ namespace TraxCombat.Missions
                     var mount = a.MountAgent;
                     if (mount == null)
                     {
-                        if (st.RunSpeedMultiplier != 1f || st.SprintMultiplier != 1f) continue; // a tired man's top is not his top, nor a sprinter's (step 33)
+                        if (st.RunSpeedMultiplier != 1f || st.SprintRun > 0f) continue; // a tired man's top is not his top, nor a sprinter's (step 33)
                         float top = a.GetMaximumForwardUnlimitedSpeed();
                         float walk = a.WalkSpeedCached > 0f ? a.WalkSpeedCached : a.Monster?.WalkingSpeedLimit ?? 0f;
                         if (top > 0f) _stats.FootTop.Add(top);

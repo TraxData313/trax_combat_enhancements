@@ -405,21 +405,30 @@ regen.)
   it; only blows do. The horse has no Athletics of its own.
 - **The sprint** (step 33, Anton 2026-10-12 - "a short burst of speed, meant to feel a little like a dodge, and
   for the AI to make charges sharper"; `SprintEnabled`, on; AI_NOTES "Step 33", RESEARCH §N). Every fighter on
-  foot stores **seconds of sprint = his CURRENT Athletics points ÷ `SprintPointsPerSecond`** (20): 150 points =
-  7.5 s, 100 = 5 s, empty = 0 (an exhausted man cannot sprint); when his points drop the stored seconds are
-  clamped to the new size. **Refill** (only while not sprinting): empty → full in `SprintRefillSeconds` (7 s)
+  foot stores **seconds of sprint = max(`SprintMinSeconds`, his CURRENT Athletics points ÷ `SprintPointsPerSecond`)**
+  (2 s, 20): 150 points = 7.5 s, 100 = 5 s, 40 or fewer = the 2 s floor - an exhausted man still has a dodge (step 35,
+  Anton 2026-10-12: "when tired the store collapsed"; step 33 had empty = 0, which `SprintMinSeconds` 0 restores); when
+  his points drop the stored seconds are clamped to the new size. The refill rule is the same for the floor: the whole
+  current store in `SprintRefillSeconds` ÷ the factors, so a tired man's 2 s refill slowly (14 s standing at an empty bar). **Refill** (only while not sprinting): empty → full in `SprintRefillSeconds` (7 s)
   standing or walking at / above the peak line; × `SprintRefillMovingFactor` (0.5) faster than a walk (effort
   above `WalkEffortFraction` - the Athletics refill's notion); × a tiredness line from 1 at the peak line to
   `SprintRefillExhaustedFactor` (0.5) at an empty bar; the two multiply (7 / 14 / 14 / 28 s). **A start** needs
-  at least `SprintMinStartPercent` (20) of the store (no spamming tiny bursts). **The speed**: the sprint's length
-  T = the seconds stored at its start (the AI: its share of them); for the first `SprintFullSpeedSharePercent`
-  (30) % of T he runs at `SprintMaxMultiplier` (1.6) × his CURRENT run speed (after tiredness - at the shipped
-  floor 0.3 a man halfway to the peak line runs 0.65 × 1.6 = 1.04 of his fresh pace), then a straight line to `SprintMinMultiplier` (1.1) × at T. A partial
-  store still starts at 1.6 (the dodge). The sprint's clock and the drain (1 s a second) run **only while he
+  at least `SprintMinStartPercent` (20) of the store (no spamming tiny bursts). **The speed** (step 35 - Anton's
+  tournaments, 2026-10-12: "the sprint felt very slow"): the sprint's length T = the seconds stored at its start (the
+  AI: its share of them); for the first `SprintFullSpeedSharePercent` (30) % of T he runs at `SprintMaxMultiplier`
+  (1.6; defaults.json 2.0) × his **FRESH** run speed - whatever his Athletics (step 33 had × his CURRENT run, so at the
+  shipped run floor 0.3 an exhausted man's sprint was 0.3 × 1.6 = 0.48 of a fresh pace) - then a straight line to
+  `SprintMinMultiplier` (1.1) × his **CURRENT** run speed at T (a fresh man 2.0 → 1.1, an exhausted one 2.0 → 0.33). A
+  partial store still starts at the peak (the dodge). **Acceleration** (step 35): the game's foot
+  `TopSpeedReachDuration` (DrivenProperty 86, per agent; Sandbox: 2.5 + max(5 − (1 + skill × 0.01), 1) / 3.5 −
+  min(weight / (weight + gear), 0.8) ≈ 2.3-2.8 s) is longer than a short sprint's full-speed part - Anton's 0.4-0.8 s taps
+  never got going; while he sprints it is min(the game's, `SprintTopSpeedReachSeconds`) (1 s; 0 = the game's own), back to
+  the game's when the sprint ends. The sprint's clock and the drain (1 s a second) run **only while he
   moves** (above 0.5 m/s - plumbing). While sprinting his **Athletics does not refill**; no other cost. **On foot
   only** (a horse refuses it, mounting ends it). The lever is the run property the tiredness already scales:
-  `MaxSpeedMultiplier` × the run multiplier × the sprint multiplier (quantised in 0.05 steps - each a
-  properties recompute through the 50-a-tick budget). **You**: hold `SprintKey` (default **LeftControl** - free
+  `MaxSpeedMultiplier` × the sprint's run factor IN PLACE OF the tiredness run multiplier (step 35; quantised in 0.05
+  steps - each a properties recompute through the 50-a-tick budget - and never below 0.05), and the same recompute caps
+  `TopSpeedReachDuration`. **You**: hold `SprintKey` (default **LeftControl** - free
   in the game's fight keys; a key NAME, any of Core `KeyNames`) in a fight, the order menu closed, your own
   hands (not while RTS Camera's AI drives your hero). A PRESS starts it (a held key never restarts it after the
   store ran dry); letting go ends it - the rest stays stored. **The AI** (`SprintAiEnabled`, on): every
@@ -836,13 +845,15 @@ says (§2c).
 | `BraceRecoverSpreadPercent` | 5 | Step 23 (Anton: "+- 5% ... per soldier, once rolled on a battle"): each AI man's own margin = `BraceRecoverPercent` ± up to this, a uniform roll kept for the battle; the slider rescales every roll live; never below floor + 1. 0 = no spread. Range 0-50. |
 | `BraceWieldShield` | true | Step 23: a man who starts bracing with a shield not in his hand takes it out (a one-handed weapon first if his weapon needs both hands; a ranged weapon in hand is left alone); checked every 1 s while bracing, at most 3 wield calls a brace. At its end his AI picks again. |
 | `BraceRaiseShield` | true | Step 23: while bracing with a shield in hand, the shield is held up (`DefendDown` in his input) whenever his own AI holds no guard. Off: the guard only replaces an attack wish (step 16's rule). |
-| `SprintEnabled` | true | Step 33 (Anton, 2026-10-12): the SPRINT - every fighter on foot stores seconds of sprint = his CURRENT Athletics points ÷ `SprintPointsPerSecond` (150 / 20 = 7.5 s; empty = 0; a points drop clamps it); you hold `SprintKey`, the AI sprints on a new order (`SprintAiEnabled`); while sprinting his run speed × the profile (`SprintMaxMultiplier` → `SprintMinMultiplier`), his Athletics does NOT refill; never mounted. Needs Athletics (the store is its points). Off = no sprint, speeds back at once. Live. |
+| `SprintEnabled` | true | Step 33 (Anton, 2026-10-12): the SPRINT - every fighter on foot stores seconds of sprint = his CURRENT Athletics points ÷ `SprintPointsPerSecond` (150 / 20 = 7.5 s; step 35: never below `SprintMinSeconds`; a points drop clamps it); you hold `SprintKey`, the AI sprints on a new order (`SprintAiEnabled`); while sprinting his run speed follows the profile (`SprintMaxMultiplier` × the fresh run → `SprintMinMultiplier` × the current run - step 35) and he accelerates in `SprintTopSpeedReachSeconds`, his Athletics does NOT refill; never mounted. Needs Athletics (the store is its points). Off = no sprint, speeds back at once. Live. |
 | `SprintKey` | LeftControl | Step 33: the key you hold to sprint, by NAME (Core `KeyNames`: LeftControl, RightControl, LeftAlt, RightAlt, LeftShift, RightShift, CapsLock, Tab, Q, T, Y, H, J, K, L, B, N, M, C, MiddleMouseButton, X1MouseButton, X2MouseButton - the game's `InputKey` names; case, spaces, '-' and '_' ignored, "left ctrl" works). Left Ctrl is free in v1.4.8's fight keys (RESEARCH §N). Read live (`Mission.InputManager.IsKeyDown`), only in a fight, on foot, with the order menu closed. |
 | `SprintPointsPerSecond` | 20.0 | Step 33: Athletics points per stored sprint second (range 5-100). |
+| `SprintMinSeconds` | 2.0 | Step 35 (Anton, 2026-10-12: a tired man's store collapsed to nothing): the store is never smaller than this - capacity = max(this, points ÷ `SprintPointsPerSecond`); an exhausted man (points 0) still holds 2 s, refilled at the usual rate rule (capacity ÷ `SprintRefillSeconds` × the factors - so slowly when tired). 0 = no floor (step 33: an empty bar cannot sprint). Range 0-5. Live. |
 | `SprintMinStartPercent` | 20 | Step 33: a sprint starts only with at least this % of the store filled (no spamming tiny bursts); 0 = any. Range 0-100. |
-| `SprintMaxMultiplier` | 1.6 | Step 33: the speed at a sprint's start, × his CURRENT run speed (after tiredness) - also from a partial store (the dodge). Range 1-3. |
-| `SprintMinMultiplier` | 1.1 | Step 33: the speed at a sprint's end (× the current run speed); never above the start speed. Range 1-3. |
+| `SprintMaxMultiplier` | 1.6 | Step 33: the speed at a sprint's start - also from a partial store (the dodge). Step 35 (Anton, 2026-10-12): × his FRESH (untired) run speed, whatever his Athletics (was × the current, tired run); defaults.json 2.0 since step 35. Range 1-3. |
+| `SprintMinMultiplier` | 1.1 | Step 33: the speed at a sprint's end, × his CURRENT (tired) run speed (step 35: the line runs from `SprintMaxMultiplier` × the fresh run down to this × the current run); never above the start speed. Range 1-3. |
 | `SprintFullSpeedSharePercent` | 30 | Step 33 (Anton: 30): the first this-% of the sprint's length T (= the seconds stored at its start; the AI: its share) at `SprintMaxMultiplier`, then a straight line to `SprintMinMultiplier` at T. Full 7.5 s: x1.6 until 2.25 s. The clock runs only while moving. Range 0-100. |
+| `SprintTopSpeedReachSeconds` | 1.0 | Step 35 (Anton's taps were 0.4-0.8 s, the game's foot acceleration `TopSpeedReachDuration` ~2.3-2.8 s): while a man sprints the stat decorator writes his `TopSpeedReachDuration` (DrivenProperty 86, per agent) = min(the game's value, this); the sprint's start and end recompute him, so the game's value is back when it ends. 0 = the game's own. Range 0-5 (below 0.1 counts as 0.1). Live (the next recompute; a change marks every sprinter for one). |
 | `SprintRefillSeconds` | 7.0 | Step 33: empty → full store standing still (or walking) at / above the peak line; never while sprinting. Range 1-120. |
 | `SprintRefillMovingFactor` | 0.5 | Step 33: the store's refill × this while moving faster than a walk (effort above `WalkEffortFraction`): 14 s. Range 0-1. |
 | `SprintRefillExhaustedFactor` | 0.5 | Step 33: the refill × a line from 1 at the peak line (f = 1) to this at an empty bar (f = 0); multiplies with the moving factor (28 s moving and empty). Range 0-1. |
@@ -1179,6 +1190,15 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     kept) - not every game key, so a fight key cannot be picked by mistake; (i) the multiplier moves in 0.05 steps
     (about 12 recomputes a man over a full sprint) and the recompute budget's start rotates, so a 1000-man charge is
     queued over ~20 ticks without starving anyone. Each is a default Anton can overturn.
+32. **Sprint tuning** (step 35, Anton 2026-10-12 after two tournaments - AI_NOTES "Step 35"): (a) **the peak is on the
+    FRESH run** (Anton's call): `SprintMaxMultiplier` × an untired run, whatever the bar - a tired man's dodge is as quick
+    as a fresh one's at its start, and the fade to `SprintMinMultiplier` × his CURRENT run is where the tiredness shows;
+    (b) the store's floor `SprintMinSeconds` (2 s) refills by the same rule as the store (the whole store in
+    `SprintRefillSeconds` ÷ the factors), so it never refills faster than a full store would; (c) with a floor there is no
+    "empty bar" refusal - a used-up store is "below the 20%"; (d) the acceleration cap is written only while sprinting (the
+    decorator runs the base model first and leaves the game's value otherwise; the start, every 0.05 step, the end and a
+    sprint setting change each recompute him); (e) no config migration: Anton's own config.json already holds 2.0 (set in
+    MCM), a fresh install takes defaults.json's. Each is a default Anton can overturn.
 
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),

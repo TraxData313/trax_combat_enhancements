@@ -280,10 +280,12 @@ namespace TraxCombat.Core
         public string SprintKey => KeyNames.Name(Get(SettingsSchema.SprintKey));
         public int SprintKeyIndex => GetInt(SettingsSchema.SprintKey);
         public float SprintPointsPerSecond => GetFloat(SettingsSchema.SprintPointsPerSecond);
+        public float SprintMinSeconds => GetFloat(SettingsSchema.SprintMinSeconds);
         public int SprintMinStartPercent => GetInt(SettingsSchema.SprintMinStartPercent);
         public float SprintMaxMultiplier => GetFloat(SettingsSchema.SprintMaxMultiplier);
         public float SprintMinMultiplier => GetFloat(SettingsSchema.SprintMinMultiplier);
         public int SprintFullSpeedSharePercent => GetInt(SettingsSchema.SprintFullSpeedSharePercent);
+        public float SprintTopSpeedReachSeconds => GetFloat(SettingsSchema.SprintTopSpeedReachSeconds);
         public float SprintRefillSeconds => GetFloat(SettingsSchema.SprintRefillSeconds);
         public float SprintRefillMovingFactor => GetFloat(SettingsSchema.SprintRefillMovingFactor);
         public float SprintRefillExhaustedFactor => GetFloat(SettingsSchema.SprintRefillExhaustedFactor);

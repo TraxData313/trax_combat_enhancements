@@ -69,7 +69,7 @@ namespace TraxCombat.Core
         /// <summary>Less than SprintMinStartPercent of the store is filled.</summary>
         BelowMinimum,
 
-        /// <summary>An empty bar = no store at all.</summary>
+        /// <summary>No store at all: an empty bar with no floor (<c>SprintMinSeconds</c> 0).</summary>
         NoStore,
 
         /// <summary>On a horse - never.</summary>
@@ -90,7 +90,7 @@ namespace TraxCombat.Core
     {
         public SprintRules(bool modEnabled, bool athleticsEnabled, bool sprintEnabled, bool aiEnabled, double pointsPerSecond, int minStartPercent,
             double maxMultiplier, double minMultiplier, int fullSpeedSharePercent, double refillSeconds, double refillMovingFactor,
-            double refillExhaustedFactor, int aiChargeSharePercent, int aiMoveSharePercent)
+            double refillExhaustedFactor, int aiChargeSharePercent, int aiMoveSharePercent, double minSeconds = 0, double topSpeedReachSeconds = 0)
         {
             ModEnabled = modEnabled;
             AthleticsEnabled = athleticsEnabled;
@@ -107,6 +107,9 @@ namespace TraxCombat.Core
             RefillExhaustedFactor = Clamp01(refillExhaustedFactor);
             AiChargeSharePercent = Clamp(aiChargeSharePercent, 0, 100);
             AiMoveSharePercent = Clamp(aiMoveSharePercent, 0, 100);
+            MinSeconds = double.IsNaN(minSeconds) || minSeconds < 0 ? 0 : minSeconds;
+            TopSpeedReachSeconds = double.IsNaN(topSpeedReachSeconds) || topSpeedReachSeconds <= 0 ? 0
+                : topSpeedReachSeconds < SprintMath.MinTopSpeedReachSeconds ? SprintMath.MinTopSpeedReachSeconds : topSpeedReachSeconds;
         }
 
         public bool ModEnabled { get; }
@@ -124,10 +127,10 @@ namespace TraxCombat.Core
 
         public int MinStartPercent { get; }
 
-        /// <summary>SprintMaxMultiplier, at least 1.</summary>
+        /// <summary>SprintMaxMultiplier, at least 1 - since step 35 × his FRESH (untired) run speed.</summary>
         public double MaxMultiplier { get; }
 
-        /// <summary>SprintMinMultiplier, at least 1 and never above <see cref="MaxMultiplier"/>.</summary>
+        /// <summary>SprintMinMultiplier, at least 1 and never above <see cref="MaxMultiplier"/> - × his CURRENT (tired) run speed.</summary>
         public double MinMultiplier { get; }
 
         public int FullSpeedSharePercent { get; }
@@ -142,6 +145,12 @@ namespace TraxCombat.Core
         public int AiChargeSharePercent { get; }
 
         public int AiMoveSharePercent { get; }
+
+        /// <summary>Step 35, SprintMinSeconds: the store is never smaller than this (an exhausted man still has a dodge); 0 = no floor.</summary>
+        public double MinSeconds { get; }
+
+        /// <summary>Step 35, SprintTopSpeedReachSeconds: while sprinting his TopSpeedReachDuration is at most this; 0 = the game's own.</summary>
+        public double TopSpeedReachSeconds { get; }
 
         /// <summary>The sprint runs (the master switch first, then Athletics - the store is made of its points - then its own switch).</summary>
         public bool Enabled => ModEnabled && AthleticsEnabled && SprintEnabled;
@@ -161,19 +170,26 @@ namespace TraxCombat.Core
         public static SprintRules From(TraxSettings s) =>
             new SprintRules(s.ModEnabled, s.AthleticsEnabled, s.SprintEnabled, s.SprintAiEnabled, s.SprintPointsPerSecond, s.SprintMinStartPercent,
                 s.SprintMaxMultiplier, s.SprintMinMultiplier, s.SprintFullSpeedSharePercent, s.SprintRefillSeconds, s.SprintRefillMovingFactor,
-                s.SprintRefillExhaustedFactor, s.SprintAiChargeSharePercent, s.SprintAiMoveSharePercent);
+                s.SprintRefillExhaustedFactor, s.SprintAiChargeSharePercent, s.SprintAiMoveSharePercent, s.SprintMinSeconds, s.SprintTopSpeedReachSeconds);
 
         /// <summary>The settings sentence of the mission-start line, a change and the summary.</summary>
         public string Describe(string keyName)
         {
             if (!Enabled) return "OFF (" + OffBecause + ") - nobody sprints";
             var ci = CultureInfo.InvariantCulture;
-            double full = 150 / PointsPerSecond;
+            double full = Math.Max(MinSeconds, 150 / PointsPerSecond);
+            string floor = MinSeconds > 0
+                ? ", never below " + MinSeconds.ToString("0.0#", ci) + " s (an empty bar still holds " + MinSeconds.ToString("0.0#", ci) + " s)"
+                : ", empty = 0";
+            string reach = TopSpeedReachSeconds > 0
+                ? "top speed reached in at most " + TopSpeedReachSeconds.ToString("0.0#", ci) + " s while sprinting (the game's own acceleration: ~2.3-2.8 s on foot)"
+                : "the game's own acceleration (SprintTopSpeedReachSeconds 0)";
             return "ON - hold " + keyName + " (on foot, in a fight); the store = Athletics points / " + PointsPerSecond.ToString("0.#", ci) + " s (150 points = "
-                   + full.ToString("0.0#", ci) + " s, empty = 0), a start needs " + MinStartPercent + "% of it; speed x" + MaxMultiplier.ToString("0.00", ci)
-                   + " of the CURRENT run speed for the first " + FullSpeedSharePercent + "% of the sprint's length, then a straight line to x" + MinMultiplier.ToString("0.00", ci)
-                   + " (a full " + full.ToString("0.0#", ci) + " s sprint: x" + MaxMultiplier.ToString("0.00", ci) + " until " + (full * FullSpeedShare).ToString("0.0#", ci)
-                   + " s); drains only while moving; refill " + RefillSeconds.ToString("0.#", ci) + " s standing at full strength, x" + RefillMovingFactor.ToString("0.##", ci)
+                   + (150 / PointsPerSecond).ToString("0.0#", ci) + " s" + floor + "), a start needs " + MinStartPercent + "% of it; speed x" + MaxMultiplier.ToString("0.00", ci)
+                   + " of his FRESH run speed (whatever his Athletics) for the first " + FullSpeedSharePercent + "% of the sprint's length, then a straight line to x"
+                   + MinMultiplier.ToString("0.00", ci) + " of his CURRENT run speed (a full " + full.ToString("0.0#", ci) + " s sprint: x" + MaxMultiplier.ToString("0.00", ci)
+                   + " until " + (full * FullSpeedShare).ToString("0.0#", ci) + " s); " + reach + "; drains only while moving; refill " + RefillSeconds.ToString("0.#", ci)
+                   + " s standing at full strength, x" + RefillMovingFactor.ToString("0.##", ci)
                    + " moving, x" + RefillExhaustedFactor.ToString("0.##", ci) + " at an empty bar (straight line from the peak line), never while sprinting; no Athletics refill "
                    + "while sprinting; AI " + (AiEnabled ? "ON - on a NEW order: charge " + AiChargeSharePercent + "% of the store, advance / move " + AiMoveSharePercent + "%" : "OFF (SprintAiEnabled)");
         }
@@ -190,6 +206,9 @@ namespace TraxCombat.Core
     {
         /// <summary>SprintPointsPerSecond's floor (never ÷ 0; the range starts at 5).</summary>
         public const double MinPointsPerSecond = 1.0;
+
+        /// <summary>SprintTopSpeedReachSeconds' floor when not 0 (the range starts at 0.2).</summary>
+        public const double MinTopSpeedReachSeconds = 0.1;
 
         /// <summary>SprintRefillSeconds' floor (the range starts at 1).</summary>
         public const double MinRefillSeconds = 0.1;
@@ -220,9 +239,26 @@ namespace TraxCombat.Core
             return points / per;
         }
 
-        /// <summary>This fighter's store size now: his CURRENT points (0 while Athletics is off - the caller gates on Enabled).</summary>
+        /// <summary>Step 35: the store's size with its floor - max(<paramref name="minSeconds"/>, points ÷ per second).</summary>
+        public static double Capacity(double points, double pointsPerSecond, double minSeconds)
+        {
+            double raw = Capacity(points, pointsPerSecond);
+            return minSeconds > raw ? minSeconds : raw;
+        }
+
+        /// <summary>This fighter's store size now: his CURRENT points ÷ per second, never below SprintMinSeconds (step 35; the caller
+        /// gates on Enabled).</summary>
         public static double Capacity(in SprintRules s, in AthleticsRules r, Fighter f) =>
-            Capacity(f.Fraction * AthleticsMath.PoolPoints(in r, f), s.PointsPerSecond);
+            Capacity(PointsOf(in r, f), s.PointsPerSecond, s.MinSeconds);
+
+        /// <summary>The store his points alone would give (no floor).</summary>
+        public static double PointsCapacity(in SprintRules s, in AthleticsRules r, Fighter f) => Capacity(PointsOf(in r, f), s.PointsPerSecond);
+
+        /// <summary>Step 35: the floor holds his store up now (his points alone would store less than SprintMinSeconds).</summary>
+        public static bool OnFloor(in SprintRules s, in AthleticsRules r, Fighter f) =>
+            s.MinSeconds > 0 && PointsCapacity(in s, in r, f) < s.MinSeconds - 1e-9;
+
+        private static double PointsOf(in AthleticsRules r, Fighter f) => f.Fraction * AthleticsMath.PoolPoints(in r, f);
 
         /// <summary>The tiredness factor of the refill: 1 at and above the peak line (f = 1), a straight line down to
         /// SprintRefillExhaustedFactor at an empty bar (f = 0).</summary>
@@ -274,27 +310,46 @@ namespace TraxCombat.Core
         };
 
         /// <summary>
-        /// The speed multiplier <paramref name="elapsed"/> seconds (of moving) into a sprint <paramref name="length"/> seconds long:
-        /// SprintMaxMultiplier for the first SprintFullSpeedSharePercent of the length, then a straight line to SprintMinMultiplier
-        /// at the end. Full 7.5 s at 30%: 1.6 until 2.25 s, 1.35 at 4.875 s, 1.1 at 7.5 s. A zero length = the start speed.
+        /// Step 35 (Anton 2026-10-12): the RUN FACTOR the stat decorator writes on his run property <paramref name="elapsed"/> seconds
+        /// (of moving) into a sprint <paramref name="length"/> seconds long, as a multiple of his FRESH (untired) run speed - it
+        /// REPLACES his tiredness run multiplier <paramref name="run"/> while he sprints. SprintMaxMultiplier for the first
+        /// SprintFullSpeedSharePercent of the length (whatever his Athletics), then a straight line down to SprintMinMultiplier ×
+        /// <paramref name="run"/> (his CURRENT run) at the end. A fresh man at 2.0 / 1.1: 2.0 → 1.1; an exhausted one (run 0.3):
+        /// 2.0 → 0.33. A zero length = the start speed.
         /// </summary>
-        public static double Multiplier(in SprintRules s, double elapsed, double length)
+        public static double RunFactor(in SprintRules s, double elapsed, double length, double run)
         {
+            if (double.IsNaN(run) || run <= 0) run = 1;
             if (!(length > 0)) return s.MaxMultiplier;
             double full = s.FullSpeedShare * length;
             if (elapsed <= full) return s.MaxMultiplier;
+            double end = s.MinMultiplier * run;
             double rest = length - full;
             double t = rest > 0 ? (elapsed - full) / rest : 1;
             if (t > 1) t = 1;
-            return s.MaxMultiplier + (s.MinMultiplier - s.MaxMultiplier) * t;
+            return s.MaxMultiplier + (end - s.MaxMultiplier) * t;
         }
 
-        /// <summary>The multiplier as applied: rounded to the nearest <see cref="Step"/> (each step one recompute); 1 stays 1.</summary>
+        /// <summary>A FRESH man's profile (run 1): SprintMax → SprintMin × his run speed. Full 7.5 s at 1.6 / 1.1 / 30%: 1.6 until
+        /// 2.25 s, 1.35 at 4.875 s, 1.1 at 7.5 s.</summary>
+        public static double Multiplier(in SprintRules s, double elapsed, double length) => RunFactor(in s, elapsed, length, 1.0);
+
+        /// <summary>The run factor as applied: rounded to the nearest <see cref="Step"/> (each step one recompute), never below one
+        /// step (an exhausted man's fade ends below 1 - step 35).</summary>
         public static float Quantize(double m)
         {
-            if (double.IsNaN(m) || m <= 1) return 1f;
+            if (double.IsNaN(m) || m <= Step) return Step;
             float q = (float)(Math.Round(m / Step, MidpointRounding.AwayFromZero) * Step);
-            return q < 1f ? 1f : (float)Math.Round(q, 2);
+            return q < Step ? Step : (float)Math.Round(q, 2);
+        }
+
+        /// <summary>Step 35: his TopSpeedReachDuration while sprinting - min(the game's, <paramref name="ours"/>); ours 0 (or none) = the
+        /// game's.</summary>
+        public static float TopSpeedReach(float game, double ours)
+        {
+            if (double.IsNaN(ours) || ours <= 0) return game;
+            if (ours < MinTopSpeedReachSeconds) ours = MinTopSpeedReachSeconds;
+            return game > ours ? (float)ours : game;
         }
 
         /// <summary>"6.2 s" - the bar's label (tenths, rounded down so it never shows more than is there).</summary>
@@ -402,7 +457,8 @@ namespace TraxCombat.Core
             if (Active) return SprintStart.Running;
             if (!s.Enabled || (!byKey && !s.AiOn)) return SprintStart.Off;
             Clamp(capacity);
-            if (!(capacity > SprintMath.EmptySeconds) || !(Stored > SprintMath.EmptySeconds)) return SprintStart.NoStore;
+            if (!(capacity > SprintMath.EmptySeconds)) return SprintStart.NoStore; // step 35: with a floor there is always a store
+            if (!(Stored > SprintMath.EmptySeconds)) return SprintStart.BelowMinimum;
             if (!SprintMath.CanStart(in s, Stored, capacity)) return SprintStart.BelowMinimum;
             double length = Stored * Math.Max(0, Math.Min(1, share));
             if (!(length > SprintMath.EmptySeconds)) return SprintStart.Off;
@@ -443,8 +499,12 @@ namespace TraxCombat.Core
             return false;
         }
 
-        /// <summary>The speed multiplier now (1 when no sprint runs).</summary>
+        /// <summary>A fresh man's speed multiplier now (1 when no sprint runs).</summary>
         public double Multiplier(in SprintRules s) => Active ? SprintMath.Multiplier(in s, Elapsed, Length) : 1.0;
+
+        /// <summary>Step 35: the run factor to write now for a man whose tiredness run multiplier is <paramref name="run"/> (his run when
+        /// no sprint runs) - <see cref="SprintMath.RunFactor"/>.</summary>
+        public double RunFactor(in SprintRules s, double run) => Active ? SprintMath.RunFactor(in s, Elapsed, Length, run) : run;
 
         /// <summary>Ends the running sprint; what is left stays stored. Returns the seconds it ran (its clock).</summary>
         public double Stop()
@@ -489,7 +549,7 @@ namespace TraxCombat.Core
 
         public bool Active { get; }
 
-        /// <summary>The multiplier applied now (1 when not sprinting).</summary>
+        /// <summary>The run factor applied now, × his FRESH run speed (his tiredness run multiplier when not sprinting).</summary>
         public double Multiplier { get; }
 
         /// <summary>The fill, 0..1.</summary>
@@ -518,6 +578,8 @@ namespace TraxCombat.Core
         private readonly double[] _aiSeconds = new double[(int)SprintOrder.Count];
         private readonly int[] _aiRefused = new int[(int)SprintOrder.Count];
         private readonly int[] _ordersSeen = new int[(int)SprintOrder.Count];
+        private MeanStd _reachGame;
+        private MeanStd _reachOurs;
         private MeanStd _askedSpeed;
         private MeanStd _engineSpeed;
         private double _engineMax;
@@ -527,6 +589,11 @@ namespace TraxCombat.Core
         public int YouRefusedBelowMinimum;
         public int YouRefusedEmpty;
         public int YouRefusedMounted;
+
+        /// <summary>Step 35: sprints started while the store's floor (SprintMinSeconds) held it up - yours, the AI's.</summary>
+        public int YouOffFloor;
+
+        public int AiOffFloor;
         public int AiSkippedMounted;
         public int AiSkippedPlayer;
         public int AiSkippedSameOrder;
@@ -575,8 +642,22 @@ namespace TraxCombat.Core
 
         public double AiSeconds(SprintOrder o) => _aiSeconds[(int)o];
 
-        /// <summary>A sample while sprinting: the multiplier asked (relative to his run speed at the sprint's start) and the engine's
-        /// top speed ÷ his top then.</summary>
+        /// <summary>Step 35: a sprint start's acceleration - the game's TopSpeedReachDuration and ours.</summary>
+        public void AddReach(double game, double ours)
+        {
+            if (double.IsNaN(game) || double.IsNaN(ours) || game <= 0 || ours <= 0) return;
+            _reachGame.Add(game);
+            _reachOurs.Add(ours);
+        }
+
+        public int ReachSamples => _reachGame.Count;
+
+        public double ReachGameMean => _reachGame.Mean;
+
+        public double ReachOursMean => _reachOurs.Mean;
+
+        /// <summary>A sample while sprinting: the run factor asked (× his FRESH run speed - step 35) and the engine's top speed ÷ his
+        /// fresh top (his top at the sprint's start ÷ his run multiplier then).</summary>
         public void AddSpeed(double asked, double engine)
         {
             if (double.IsNaN(asked) || double.IsNaN(engine) || asked <= 0 || engine <= 0) return;
@@ -603,6 +684,7 @@ namespace TraxCombat.Core
             lines.Add("sprint - you: " + YouStarted + " sprints" + (Ended(true) > 0
                           ? " (length asked avg " + F2(_lengths[1].Mean) + " s, ran avg " + F2(_ran[1].Mean) + " s, longest " + F2(_longest[1]) + " s)"
                           : string.Empty)
+                      + (s.MinSeconds > 0 ? "; " + YouOffFloor + " started off the " + F1(s.MinSeconds) + " s floor (his points alone stored less)" : string.Empty)
                       + "; refused: below " + s.MinStartPercent + "% stored " + YouRefusedBelowMinimum + ", an empty bar " + YouRefusedEmpty + ", on a horse " + YouRefusedMounted
                       + "; ends: " + EndsText(true));
             lines.Add("sprint - AI: new orders seen - charge " + OrdersSeen(SprintOrder.Charge) + ", advance / move " + OrdersSeen(SprintOrder.AdvanceOrMove) + ", other "
@@ -610,13 +692,18 @@ namespace TraxCombat.Core
                       + Avg(AiSeconds(SprintOrder.Charge), AiStarted(SprintOrder.Charge)) + "), advance / move " + AiStarted(SprintOrder.AdvanceOrMove) + " men ("
                       + F1(AiSeconds(SprintOrder.AdvanceOrMove)) + " s" + Avg(AiSeconds(SprintOrder.AdvanceOrMove), AiStarted(SprintOrder.AdvanceOrMove))
                       + "); not started - below " + s.MinStartPercent + "% or empty: charge " + _aiRefused[(int)SprintOrder.Charge] + ", advance / move "
-                      + _aiRefused[(int)SprintOrder.AdvanceOrMove] + "; mounted " + AiSkippedMounted + ", yours to drive " + AiSkippedPlayer
+                      + _aiRefused[(int)SprintOrder.AdvanceOrMove] + (s.MinSeconds > 0 ? "; off the " + F1(s.MinSeconds) + " s floor " + AiOffFloor : string.Empty)
+                      + "; mounted " + AiSkippedMounted + ", yours to drive " + AiSkippedPlayer
                       + "; ends: " + EndsText(false) + "; melee checks " + MeleeChecks.ToString(ci));
             string verdict = EngineFollows == null ? "too few samples to judge (20 needed)"
                 : EngineFollows == true ? "the engine's top speed follows the sprint - no cap above the run speed"
                 : "the engine's top speed does NOT follow (a native cap?) - tell Claude";
-            lines.Add("sprint speed check (÷ his top speed at the sprint's start, while it ran): " + SpeedSamples + " samples - asked avg x" + F2(AskedMean)
-                      + ", engine top avg x" + F2(EngineMean) + ", max x" + F2(_engineMax) + ", off by more than 0.05: " + _farOff + " - " + verdict
+            string reach = s.TopSpeedReachSeconds <= 0 ? "acceleration: the game's own (SprintTopSpeedReachSeconds 0)"
+                : ReachSamples == 0 ? "acceleration: at most " + F2(s.TopSpeedReachSeconds) + " s while sprinting (no start with the game's value seen)"
+                : "acceleration while sprinting: the game's top-speed reach avg " + F2(ReachGameMean) + " s → ours " + F2(ReachOursMean) + " s (sprint starts: " + ReachSamples + ")";
+            lines.Add("sprint speed check (x his FRESH run speed = his top at the sprint's start ÷ his run multiplier then, while it ran): " + SpeedSamples
+                      + " samples - asked avg x" + F2(AskedMean)
+                      + ", engine top avg x" + F2(EngineMean) + ", max x" + F2(_engineMax) + ", off by more than 0.05: " + _farOff + " - " + verdict + "; " + reach
                       + "; " + Recomputes + " recomputes for the sprint, stores clamped by a points drop " + Clamps + ", refilled " + F1(RefilledSeconds) + " s of store"
                       + (FreshStarts > 0 ? ", fresh starts " + FreshStarts : string.Empty));
         }

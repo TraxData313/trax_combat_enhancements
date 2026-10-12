@@ -7,7 +7,7 @@ namespace TraxCombat.Missions
     /// <summary>
     /// Step 33 - THE SPRINT (Anton, 2026-10-12: "a short burst of speed, meant to feel a little like a dodge, and for the AI to make
     /// charges sharper"; AI_NOTES "Step 33", DESIGN §2 "The sprint"). Every fighter's <see cref="SprintStore"/> holds seconds =
-    /// his CURRENT Athletics points ÷ SprintPointsPerSecond (clamped when his points drop), refilled every
+    /// his CURRENT Athletics points ÷ SprintPointsPerSecond, never below SprintMinSeconds (step 35; clamped when his points drop), refilled every
     /// <see cref="RegenStepSeconds"/> while he is not sprinting (Core <see cref="SprintMath.RefillPerSecond"/>: 7 s standing at full
     /// strength, × the moving factor above a walk, × the tiredness line).
     ///
@@ -18,11 +18,13 @@ namespace TraxCombat.Missions
     /// up to its share (charge / advance or move), ending early when an enemy is within <see cref="SprintMath.MeleeRangeMetres"/>
     /// or the order changes again. Brace, step back and the pause are not touched.
     ///
-    /// SPEED: the sprint's profile (<see cref="SprintMath.Multiplier"/>, its clock = seconds of MOVING) is quantised in 0.05 steps
-    /// into <see cref="TrackedAgent.SprintMultiplier"/>; a step marks him for a properties recompute (the tick's budget queues a
-    /// charge's hundreds - <see cref="MaxRecomputesPerTick"/>, the start rotating so nobody starves) and the stat decorator
-    /// multiplies his run property with it. While sprinting his Athletics does not refill (RegenPass skips him). The master
-    /// switch, AthleticsEnabled and SprintEnabled end every sprint at once (speeds back on the next recomputes).
+    /// SPEED (step 35): the sprint's run factor (<see cref="SprintMath.RunFactor"/> - SprintMax × his FRESH run, then a line to
+    /// SprintMin × his CURRENT run; its clock = seconds of MOVING) is quantised in 0.05 steps into <see cref="TrackedAgent.SprintRun"/>;
+    /// a step (and the start, and the end) marks him for a properties recompute (the tick's budget queues a charge's hundreds -
+    /// <see cref="MaxRecomputesPerTick"/>, the start rotating so nobody starves) and the stat decorator writes it on his run property
+    /// in place of his tiredness multiplier, his TopSpeedReachDuration capped at SprintTopSpeedReachSeconds. While sprinting his
+    /// Athletics does not refill (RegenPass skips him). The master switch, AthleticsEnabled and SprintEnabled end every sprint at
+    /// once (speeds and acceleration back on the next recomputes).
     /// </summary>
     public sealed partial class AthleticsLogic
     {
@@ -68,6 +70,12 @@ namespace TraxCombat.Missions
             if (now == _seenSprintText) return;
             _seenSprintText = now;
             TraxLog.Info("sprint", "settings changed mid-mission at " + Sec(SafeNow()) + " s: " + now);
+            // step 35: a running sprint's acceleration / factor are written by the decorator - recompute every sprinter once
+            for (int i = 0; i < _count; i++)
+            {
+                var st = _dense[i];
+                if (st.Sprint.Active && !st.Removed) st.SpeedDirty = true;
+            }
         }
 
         /// <summary>
@@ -165,7 +173,7 @@ namespace TraxCombat.Missions
                     else if (res == SprintStart.NoStore)
                     {
                         _sprintStats.YouRefusedEmpty++;
-                        LogYouRefused(st, now, "your Athletics bar is empty - no sprint store", in s, in r);
+                        LogYouRefused(st, now, "your Athletics bar is empty and SprintMinSeconds is 0 - no sprint store", in s, in r);
                     }
                 }
             }
@@ -345,8 +353,9 @@ namespace TraxCombat.Missions
             }
             body.ReadMotion(st, out float speed, out float top);
             // the speed check: the engine's top against his top at the start, while the asked multiplier is in his properties
-            if (!st.SpeedDirty && st.SprintMultiplier != 1f && st.SprintBaseTop > 0f && top > 0f && st.SprintBaseRun > 0f)
-                _sprintStats.AddSpeed(st.SprintMultiplier * st.RunSpeedMultiplier / st.SprintBaseRun, top / st.SprintBaseTop);
+            // (step 35: both x his FRESH run - his top at the start ÷ his run multiplier then)
+            if (!st.SpeedDirty && st.SprintRun > 0f && st.SprintBaseTop > 0f && top > 0f && st.SprintBaseRun > 0f)
+                _sprintStats.AddSpeed(st.SprintRun, top / st.SprintBaseTop * st.SprintBaseRun);
             bool moving = speed >= SprintMath.MovingMetresPerSecond;
             if (sp.Advance(step, moving, out var end))
             {
@@ -363,7 +372,7 @@ namespace TraxCombat.Missions
                     return;
                 }
             }
-            SetSprintMultiplier(st, SprintMath.Quantize(sp.Multiplier(in s)));
+            SetSprintRun(st, SprintMath.Quantize(sp.RunFactor(in s, st.RunSpeedMultiplier)));
         }
 
         // ------------------------------------------------------------------ start and end
@@ -377,7 +386,7 @@ namespace TraxCombat.Missions
             st.SprintBaseRun = st.RunSpeedMultiplier;
             try
             {
-                if (!st.SpeedDirty && st.SprintMultiplier == 1f)
+                if (!st.SpeedDirty && st.SprintRun == 0f)
                 {
                     SprintBody.ReadMotion(st, out _, out float top);
                     st.SprintBaseTop = top;
@@ -387,44 +396,64 @@ namespace TraxCombat.Missions
             {
                 Failed("sprint.base", e);
             }
-            float m = SprintMath.Quantize(sp.Multiplier(in s));
-            SetSprintMultiplier(st, m);
+            // step 35: the floor, the acceleration
+            bool floor = SprintMath.OnFloor(in s, in r, st);
+            double raw = SprintMath.PointsCapacity(in s, in r, st);
+            float gameReach = st.GameReach;
+            float ourReach = SprintMath.TopSpeedReach(gameReach, s.TopSpeedReachSeconds);
+            if (s.TopSpeedReachSeconds > 0 && gameReach > 0f) _sprintStats.AddReach(gameReach, ourReach);
+            float run = st.RunSpeedMultiplier;
+            float m = SprintMath.Quantize(sp.RunFactor(in s, run));
+            SetSprintRun(st, m);
+            string pointsText = F0(AthleticsMath.Points(in r, st)) + " Athletics points / " + F1(s.PointsPerSecond)
+                + (floor ? " = " + F2(raw) + " s - the store's floor SprintMinSeconds " + F1(s.MinSeconds) + " s holds it up" : string.Empty);
+            string reachText = s.TopSpeedReachSeconds <= 0 ? "the game's own acceleration (SprintTopSpeedReachSeconds 0)"
+                : gameReach > 0f ? "top speed reached in " + F2(ourReach) + " s instead of the game's " + F2(gameReach) + " s"
+                : "top speed reached in at most " + F2(s.TopSpeedReachSeconds) + " s (the game's value not seen yet)";
             if (sp.ByKey)
             {
                 _sprintStats.YouStarted++;
+                if (floor) _sprintStats.YouOffFloor++;
                 if (!_firstYouSprintLogged)
                 {
                     _firstYouSprintLogged = true;
                     TraxLog.Info("sprint", "YOU: first sprint this battle at " + Sec(now) + " s - stored " + F2(sp.StoredAtStart) + " s of " + F2(cap) + " s ("
-                        + F0(AthleticsMath.Points(in r, st)) + " Athletics points / " + F1(s.PointsPerSecond) + "), so it lasts T " + F2(sp.Length)
-                        + " s of moving: x" + F2(s.MaxMultiplier) + " of your current run speed (run x" + F2(st.RunSpeedMultiplier) + " → x" + F2(st.RunSpeedMultiplier * m)
-                        + " on the run property) until " + F2(sp.Length * s.FullSpeedShare) + " s, then a straight line to x" + F2(s.MinMultiplier) + " at " + F2(sp.Length)
-                        + " s; it drains only while you move, your Athletics does not refill meanwhile; let go to stop (the rest stays stored)");
+                        + pointsText + "), so it lasts T " + F2(sp.Length) + " s of moving: x" + F2(s.MaxMultiplier) + " of your FRESH run speed (the run property x"
+                        + F2(run) + " → x" + F2(m) + ") until " + F2(sp.Length * s.FullSpeedShare) + " s, then a straight line to x" + F2(s.MinMultiplier)
+                        + " of your current run (x" + F2(s.MinMultiplier * run) + ") at " + F2(sp.Length) + " s; " + reachText
+                        + "; it drains only while you move, your Athletics does not refill meanwhile; let go to stop (the rest stays stored)");
                 }
                 else
                 {
-                    TraxLog.Limited("sprint", "YOU: sprint at " + Sec(now) + " s - stored " + F2(sp.StoredAtStart) + " of " + F2(cap) + " s, T " + F2(sp.Length) + " s", "sprint-you");
+                    TraxLog.Limited("sprint", "YOU: sprint at " + Sec(now) + " s - stored " + F2(sp.StoredAtStart) + " of " + F2(cap) + " s" + (floor ? " (the floor)" : string.Empty)
+                        + ", T " + F2(sp.Length) + " s, x" + F2(m) + " → x" + F2(s.MinMultiplier * run), "sprint-you");
                 }
             }
-            else if (!_firstAiSprintLogged)
+            else
             {
-                _firstAiSprintLogged = true;
-                TraxLog.Info("sprint", "first AI order sprint this battle: " + Name(st) + " at " + Sec(now) + " s on a new " + SprintMath.OrderName(sp.Order)
-                    + " order - stored " + F2(sp.StoredAtStart) + " s of " + F2(cap) + " s, his share " + F0(100 * sp.Length / Math.Max(1e-9, sp.StoredAtStart))
-                    + "% → T " + F2(sp.Length) + " s: x" + F2(s.MaxMultiplier) + " (run x" + F2(st.RunSpeedMultiplier) + " → x" + F2(st.RunSpeedMultiplier * m) + ") until "
-                    + F2(sp.Length * s.FullSpeedShare) + " s, then to x" + F2(s.MinMultiplier) + "; ends early on an enemy within " + F1(SprintMath.MeleeRangeMetres)
-                    + " m or a new order");
-            }
-            else if (TraxLog.VerboseWants("sprint-ai"))
-            {
-                TraxLog.Verbose("sprint", Name(st) + " sprints at " + Sec(now) + " s (" + SprintMath.OrderName(sp.Order) + ", T " + F2(sp.Length) + " s)", "sprint-ai");
+                if (floor) _sprintStats.AiOffFloor++;
+                if (!_firstAiSprintLogged)
+                {
+                    _firstAiSprintLogged = true;
+                    TraxLog.Info("sprint", "first AI order sprint this battle: " + Name(st) + " at " + Sec(now) + " s on a new " + SprintMath.OrderName(sp.Order)
+                        + " order - stored " + F2(sp.StoredAtStart) + " s of " + F2(cap) + " s" + (floor ? " (the " + F1(s.MinSeconds) + " s floor)" : string.Empty)
+                        + ", his share " + F0(100 * sp.Length / Math.Max(1e-9, sp.StoredAtStart))
+                        + "% → T " + F2(sp.Length) + " s: x" + F2(s.MaxMultiplier) + " of the fresh run (run x" + F2(run) + " → x" + F2(m) + ") until "
+                        + F2(sp.Length * s.FullSpeedShare) + " s, then to x" + F2(s.MinMultiplier) + " of his current run (x" + F2(s.MinMultiplier * run) + "); " + reachText
+                        + "; ends early on an enemy within " + F1(SprintMath.MeleeRangeMetres) + " m or a new order");
+                }
+                else if (TraxLog.VerboseWants("sprint-ai"))
+                {
+                    TraxLog.Verbose("sprint", Name(st) + " sprints at " + Sec(now) + " s (" + SprintMath.OrderName(sp.Order) + ", T " + F2(sp.Length) + " s)", "sprint-ai");
+                }
             }
         }
 
-        private void SetSprintMultiplier(TrackedAgent st, float m)
+        /// <summary>His applied sprint run factor (0 = none); a change marks him for a recompute (the start, every 0.05 step, the end).</summary>
+        private void SetSprintRun(TrackedAgent st, float m)
         {
-            if (m == st.SprintMultiplier) return;
-            st.SprintMultiplier = m;
+            if (m == st.SprintRun) return;
+            st.SprintRun = m;
             if (st.Removed) return;
             st.SpeedDirty = true;
             _sprintStats.Recomputes++;
@@ -438,7 +467,7 @@ namespace TraxCombat.Missions
             double ran = sp.Stop();
             if (_sprintingNow > 0) _sprintingNow--;
             _sprintStats.AddEnd(sp.ByKey, sp.Order, sp.Length, ran, end);
-            SetSprintMultiplier(st, 1f);
+            SetSprintRun(st, 0f);
             if (sp.ByKey)
             {
                 TraxLog.Limited("sprint", "YOU: sprint ended at " + Sec(now) + " s (" + SprintMath.EndName(end) + ") after " + F2(ran) + " s of moving - "
@@ -458,7 +487,7 @@ namespace TraxCombat.Missions
             }
             catch
             {
-                st.SprintMultiplier = 1f;
+                st.SprintRun = 0f;
                 st.SpeedDirty = true;
             }
         }
@@ -550,7 +579,7 @@ namespace TraxCombat.Missions
             var r = AthleticsRules.From(settings);
             double cap = SprintMath.Capacity(in s, in r, st);
             var sp = st.Sprint;
-            reading = new SprintReading(sp.StoredUpTo(cap), cap, s.MinStartShare, sp.Active, st.SprintMultiplier);
+            reading = new SprintReading(sp.StoredUpTo(cap), cap, s.MinStartShare, sp.Active, st.SprintRun > 0f ? st.SprintRun : st.RunSpeedMultiplier);
             return true;
         }
     }

@@ -64,11 +64,12 @@ namespace TraxCombat.Tools
                 return n;
             }
 
-            /// <summary>The engine following the asked speed: a base top of 4 m/s × his run × his sprint multiplier.</summary>
+            /// <summary>The engine following the asked speed: a fresh top of 4 m/s × his run factor (step 35: the sprint's run factor
+            /// in place of his tiredness multiplier while he sprints).</summary>
             public void ReadMotion(TrackedAgent st, out float speed, out float topSpeed)
             {
                 speed = Speeds.TryGetValue(st.AgentIndex, out float v) ? v : Speed;
-                topSpeed = 4f * st.RunSpeedMultiplier * st.SprintMultiplier;
+                topSpeed = 4f * (st.SprintRun > 0f ? st.SprintRun : st.RunSpeedMultiplier);
             }
 
             public bool EnemyWithin(TrackedAgent st, float metres) => EnemyNear.Contains(st.AgentIndex);
@@ -95,9 +96,14 @@ namespace TraxCombat.Tools
             Check(new AthleticsLogic().SprintBody == SprintBodyDefault.Current, "a new logic does not start with the default sprint body");
         }
 
-        /// <summary>DESIGN's initial sprint numbers (tuning defaults.json never breaks the checks).</summary>
+        /// <summary>DESIGN's initial sprint numbers (tuning defaults.json never breaks the checks). Step 35's floor and acceleration are
+        /// pinned OFF here (SprintMinSeconds 0, SprintTopSpeedReachSeconds 0): the step-33 checks test step 33's store (an empty bar
+        /// holds nothing) - <see cref="SprintTuningThroughTheLogic"/> turns them on. The peak-on-the-fresh-run rule has no switch:
+        /// for a fresh man it IS step 33's profile, and the one tired check below asks the new rule.</summary>
         private static void SprintDefaults(bool on = true)
         {
+            S.Set(SettingsSchema.SprintMinSeconds, 0, SettingSources.File);
+            S.Set(SettingsSchema.SprintTopSpeedReachSeconds, 0, SettingSources.File);
             S.Set(SettingsSchema.SprintEnabled, on, SettingSources.File);
             S.Set(SettingsSchema.SprintKey, 0, SettingSources.File);
             S.Set(SettingsSchema.SprintPointsPerSecond, 20, SettingSources.File);
@@ -144,7 +150,7 @@ namespace TraxCombat.Tools
                 var body = new FakeSprintBody();
                 var logic = NewSprintLogic(body);
                 var stats = logic.SprintStats;
-                LogHas("[sprint] mission start: ON - hold LeftControl (on foot, in a fight); the store = Athletics points / 20 s (150 points = 7.5 s, empty = 0), a start needs 20% of it; speed x1.60 of the CURRENT run speed for the first 30% of the sprint's length, then a straight line to x1.10 (a full 7.5 s sprint: x1.60 until 2.25 s)");
+                LogHas("[sprint] mission start: ON - hold LeftControl (on foot, in a fight); the store = Athletics points / 20 s (150 points = 7.5 s, empty = 0), a start needs 20% of it; speed x1.60 of his FRESH run speed (whatever his Athletics) for the first 30% of the sprint's length, then a straight line to x1.10 of his CURRENT run speed (a full 7.5 s sprint: x1.60 until 2.25 s); the game's own acceleration (SprintTopSpeedReachSeconds 0)");
                 LogHas("AI ON - on a NEW order: charge 100% of the store, advance / move 50%");
                 double t = 15000;
                 void Tick(float dt = 0.1f)
@@ -167,11 +173,11 @@ namespace TraxCombat.Tools
                 body.Key = true;
                 body.Speeds[700] = 3f;
                 Tick();
-                Check(me.Sprint.Active && me.Sprint.ByKey && Near(me.Sprint.Length, 7.5) && me.SprintMultiplier == 1.6f && me.SpeedDirty,
-                    "the press did not start a full sprint at x1.6: active " + me.Sprint.Active + ", T " + me.Sprint.Length + ", x" + me.SprintMultiplier);
+                Check(me.Sprint.Active && me.Sprint.ByKey && Near(me.Sprint.Length, 7.5) && me.SprintRun == 1.6f && me.SpeedDirty,
+                    "the press did not start a full sprint at x1.6: active " + me.Sprint.Active + ", T " + me.Sprint.Length + ", x" + me.SprintRun);
                 Check(stats.YouStarted == 1, "your sprint not counted");
                 LogHas("[sprint] YOU: first sprint this battle at ");
-                LogHas(" - stored 7.50 s of 7.50 s (150 Athletics points / 20.0), so it lasts T 7.50 s of moving: x1.60 of your current run speed (run x1.00 → x1.60 on the run property) until 2.25 s, then a straight line to x1.10 at 7.50 s; it drains only while you move, your Athletics does not refill meanwhile; let go to stop (the rest stays stored)");
+                LogHas(" - stored 7.50 s of 7.50 s (150 Athletics points / 20.0), so it lasts T 7.50 s of moving: x1.60 of your FRESH run speed (the run property x1.00 → x1.60) until 2.25 s, then a straight line to x1.10 of your current run (x1.10) at 7.50 s; the game's own acceleration (SprintTopSpeedReachSeconds 0); it drains only while you move, your Athletics does not refill meanwhile; let go to stop (the rest stays stored)");
                 var statBase = new FreshStatsModel();
                 var statTop = new TraxAgentStatModel(new AgentStatCalculateModel[] { statBase });
                 statTop.Initialize(statBase);
@@ -179,10 +185,10 @@ namespace TraxCombat.Tools
                 statTop.UpdateAgentStats(me.Agent, p);
                 Check(Near(p.MaxSpeedMultiplier, 0.8f * 1.6f) && p.MaxSpeedMultiplier > 1f, "the decorator did not put the run property above 1: " + p.MaxSpeedMultiplier + " (0.80 x 1.6)");
                 Check(Near(p.CombatMaxSpeedMultiplier, 0.84f) && Near(p.SwingSpeedMultiplier, 1.05f), "the sprint touched another property");
-                // tired (run x0.7 at empty would be x0.7): the sprint multiplies the CURRENT run speed
+                // tired (run x0.85): step 35 - the peak is x the FRESH run, whatever his tiredness (it replaces the run multiplier)
                 me.RunSpeedMultiplier = 0.85f;
                 statTop.UpdateAgentStats(me.Agent, p);
-                Check(Near(p.MaxSpeedMultiplier, 0.8f * 0.85f * 1.6f), "the sprint is not x the current (tired) run speed: " + p.MaxSpeedMultiplier);
+                Check(Near(p.MaxSpeedMultiplier, 0.8f * 1.6f), "the sprint's peak is not x the FRESH run speed (step 35): " + p.MaxSpeedMultiplier + " (0.80 x 1.6)");
                 me.RunSpeedMultiplier = 1f;
 
                 // no Athletics refill while sprinting (the regen pass skips him before any engine read)
@@ -198,14 +204,14 @@ namespace TraxCombat.Tools
                     me.SpeedDirty = false;
                     Tick();
                 }
-                Check(me.SprintMultiplier == 1.6f, "the full-speed part did not hold x1.6 to 2.25 s: x" + me.SprintMultiplier + " at " + me.Sprint.Elapsed);
+                Check(me.SprintRun == 1.6f, "the full-speed part did not hold x1.6 to 2.25 s: x" + me.SprintRun + " at " + me.Sprint.Elapsed);
                 double storedAt = me.Sprint.Stored, elapsedAt = me.Sprint.Elapsed;
                 while (me.Sprint.Elapsed < 4.85)
                 {
                     me.SpeedDirty = false;
                     Tick();
                 }
-                Check(me.SprintMultiplier == 1.35f, "halfway down the line (4.875 s) is not x1.35: x" + me.SprintMultiplier + " at " + me.Sprint.Elapsed);
+                Check(me.SprintRun == 1.35f, "halfway down the line (4.875 s) is not x1.35: x" + me.SprintRun + " at " + me.Sprint.Elapsed);
                 Check(NearTo(storedAt - me.Sprint.Stored, me.Sprint.Elapsed - elapsedAt, 1e-6),
                     "the store did not drain 1 s a second while moving: " + storedAt + " → " + me.Sprint.Stored + " over " + (me.Sprint.Elapsed - elapsedAt) + " s");
                 // standing still holding the key: nothing drains
@@ -220,7 +226,7 @@ namespace TraxCombat.Tools
                 // letting go: ended, the rest stored, the multiplier back to 1
                 body.Key = false;
                 Tick();
-                Check(!me.Sprint.Active && me.SprintMultiplier == 1f && me.Sprint.Stored >= held && me.Sprint.Stored <= held + 0.11, "letting go did not end it keeping the rest (+ this tick's refill): " + held + " → " + me.Sprint.Stored);
+                Check(!me.Sprint.Active && me.SprintRun == 0f && me.Sprint.Stored >= held && me.Sprint.Stored <= held + 0.11, "letting go did not end it keeping the rest (+ this tick's refill): " + held + " → " + me.Sprint.Stored);
                 Check(stats.Ends(true, SprintEnd.Released) == 1, "the release not counted");
                 LogHas("[sprint] YOU: sprint ended at ");
                 LogHas(" (key released) after ");
@@ -316,7 +322,7 @@ namespace TraxCombat.Tools
                 body.Orders[3] = BraceOrderKind.Charge;
                 t += 0.3;
                 Tick();
-                Check(men.TrueForAll(m => m.Sprint.Active && !m.Sprint.ByKey && m.Sprint.Order == SprintOrder.Charge && Near(m.Sprint.Length, 5.0) && m.SprintMultiplier == 1.6f),
+                Check(men.TrueForAll(m => m.Sprint.Active && !m.Sprint.ByKey && m.Sprint.Order == SprintOrder.Charge && Near(m.Sprint.Length, 5.0) && m.SprintRun == 1.6f),
                     "a new charge did not start every man's full sprint at x1.6");
                 Check(!rider.Sprint.Active && !taken.Sprint.Active && !other.Sprint.Active, "a rider, a man you drive or another formation sprinted");
                 Check(stats.AiStarted(SprintOrder.Charge) == 5 && stats.AiSkippedMounted == 1 && stats.AiSkippedPlayer == 1 && stats.OrdersSeen(SprintOrder.Charge) == 1,
@@ -324,11 +330,11 @@ namespace TraxCombat.Tools
                 LogHas("[sprint] first new order seen this battle at ");
                 LogHas(" s: formation slot 3 Stop → Charge (charge: its AI men on foot sprint for up to 100% of their store)");
                 LogHas("[sprint] first AI order sprint this battle: ");
-                LogHas(" on a new charge order - stored 5.00 s of 5.00 s, his share 100% → T 5.00 s: x1.60 (run x1.00 → x1.60) until 1.50 s, then to x1.10; ends early on an enemy within 3.0 m or a new order");
+                LogHas(" on a new charge order - stored 5.00 s of 5.00 s, his share 100% → T 5.00 s: x1.60 of the fresh run (run x1.00 → x1.60) until 1.50 s, then to x1.10 of his current run (x1.10); the game's own acceleration (SprintTopSpeedReachSeconds 0); ends early on an enemy within 3.0 m or a new order");
                 // an enemy within 3 m: he stops at the next look (every 0.25 s)
                 body.EnemyNear.Add(701);
                 for (int i = 0; i < 3; i++) Tick();
-                Check(!men[0].Sprint.Active && stats.Ends(false, SprintEnd.InMelee) == 1 && men[0].SprintMultiplier == 1f, "an enemy within 3 m did not end his sprint");
+                Check(!men[0].Sprint.Active && stats.Ends(false, SprintEnd.InMelee) == 1 && men[0].SprintRun == 0f, "an enemy within 3 m did not end his sprint");
                 Check(men[1].Sprint.Active, "the others stopped too");
                 // the order changes again: the running sprints end, an ADVANCE starts half of what is left
                 body.Orders[3] = BraceOrderKind.Advance;
@@ -374,9 +380,9 @@ namespace TraxCombat.Tools
                 Check(men[3].Sprint.Active && me.Sprint.Active, "no sprints before the master switch");
                 S.Set(SettingsSchema.ModEnabled, false, SettingSources.Mcm);
                 Tick();
-                Check(logic.SprintingNow == 0 && !me.Sprint.Active && !men[3].Sprint.Active && me.SprintMultiplier == 1f && men[3].SprintMultiplier == 1f,
+                Check(logic.SprintingNow == 0 && !me.Sprint.Active && !men[3].Sprint.Active && me.SprintRun == 0f && men[3].SprintRun == 0f,
                     "ModEnabled off did not end every sprint at once");
-                Check(!AthleticsLogic.SpeedFactorsFor(men[3].Agent, out _, out float run, out _, out _) && run == 1f, "the decorator still applies with the mod off");
+                Check(!AthleticsLogic.SpeedFactorsFor(men[3].Agent, 2.6f, out _, out float run, out _, out _, out float reachOff) && run == 1f && reachOff == 0f, "the decorator still applies with the mod off");
                 LogHas("[sprint] ModEnabled switched off at ");
                 S.Set(SettingsSchema.ModEnabled, true, SettingSources.Mcm);
                 Tick();
@@ -422,7 +428,7 @@ namespace TraxCombat.Tools
                 LogHas("; refused: below 20% stored 1, an empty bar 1, on a horse 1; ends: key released ");
                 LogHas("[summary] sprint - AI: new orders seen - charge ");
                 LogHas("; mounted ");
-                LogHas("[summary] sprint speed check (÷ his top speed at the sprint's start, while it ran): ");
+                LogHas("[summary] sprint speed check (x his FRESH run speed = his top at the sprint's start ÷ his run multiplier then, while it ran): ");
                 LogHas(" - the engine's top speed follows the sprint - no cap above the run speed");
                 logic.SmokePlayer = null;
             }
@@ -482,6 +488,160 @@ namespace TraxCombat.Tools
                 Check(stats.Recomputes <= men * 14, "cost: too many sprint recomputes - the 0.05 steps should give ~12 a man: " + stats.Recomputes);
                 Check(msPerTick < 0.5, "cost: the sprint's tick over " + men + " men took " + msPerTick + " ms (budget 0.5 ms)");
                 Check(allocated < 64 * 1024, "cost: the sprint's tick allocates - " + allocated + " bytes over " + ticks + " ticks");
+            }
+            finally
+            {
+                _logic = keep;
+                SetStatic(typeof(AthleticsLogic), "_current", keep);
+                AthleticsDefaults();
+            }
+        }
+
+        /// <summary>
+        /// Step 35 (Anton, 2026-10-12, after two tournaments): the peak on the FRESH run (an exhausted man's run property 0.8 x 0.3 →
+        /// 0.8 x 2.0 at the start, fading to 1.1 x his current run), the store's 2 s floor (an empty bar sprints, refills slowly),
+        /// TopSpeedReachDuration capped at 1 s while sprinting and the game's back at the end - through the REAL logic and the REAL
+        /// stat decorator; live settings, the master switch, the lines.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static void SprintTuningThroughTheLogic()
+        {
+            var keep = _logic;
+            try
+            {
+                AthleticsDefaults();
+                SprintDefaults();
+                S.Set(SettingsSchema.SprintMaxMultiplier, 2.0, SettingSources.File);
+                S.Set(SettingsSchema.SprintMinSeconds, 2.0, SettingSources.File);
+                S.Set(SettingsSchema.SprintTopSpeedReachSeconds, 1.0, SettingSources.File);
+                var body = new FakeSprintBody();
+                var logic = NewSprintLogic(body);
+                var stats = logic.SprintStats;
+                LogHas("(150 points = 7.5 s, never below 2.0 s (an empty bar still holds 2.0 s)), a start needs 20% of it; speed x2.00 of his FRESH run speed (whatever his Athletics) for the first 30% of the sprint's length, then a straight line to x1.10 of his CURRENT run speed (a full 7.5 s sprint: x2.00 until 2.25 s); top speed reached in at most 1.0 s while sprinting (the game's own acceleration: ~2.3-2.8 s on foot)");
+                double t = 18000;
+                void Tick(float dt = 0.1f)
+                {
+                    t += dt;
+                    logic.TickSprint(dt, t, Rules);
+                }
+
+                // an EXHAUSTED you: points 0, run x0.3 - the spawn recompute shows the game's acceleration 2.6 s
+                var me = logic.Track(FakeAgent(900))!;
+                me.AthleticsSkill = 150;
+                for (int i = 0; i < 60 && me.Fraction > 0; i++) AthleticsMath.Charge(me, Rules, t);
+                Check(me.Fraction <= 0, "could not empty your bar: " + me.Fraction);
+                me.RunSpeedMultiplier = 0.3f;
+                logic.SmokePlayer = me.Agent;
+                var statBase = new FreshStatsModel();
+                var statTop = new TraxAgentStatModel(new AgentStatCalculateModel[] { statBase });
+                statTop.Initialize(statBase);
+                var p = me.Agent.AgentDrivenProperties;
+                statTop.UpdateAgentStats(me.Agent, p);
+                Check(Near(p.MaxSpeedMultiplier, 0.8f * 0.3f) && Near(p.TopSpeedReachDuration, 2.6f) && Near(me.GameReach, 2.6f),
+                    "not sprinting: run " + p.MaxSpeedMultiplier + " (0.8 x 0.3), reach " + p.TopSpeedReachDuration + " (the game's 2.6), remembered " + me.GameReach);
+                body.Speeds[900] = 0f;
+                Tick();
+                Check(Near(me.Sprint.Stored, 2.0), "an empty bar does not hold the 2 s floor: " + me.Sprint.Stored);
+
+                // the press: x2.0 of the FRESH run at once (the run property 0.8 x 2.0 = 1.6, not 0.8 x 0.3 x 2.0), reach 1 s
+                me.SpeedDirty = false;
+                body.Key = true;
+                body.Speeds[900] = 3f;
+                Tick();
+                Check(me.Sprint.Active && Near(me.Sprint.Length, 2.0) && me.SprintRun == 2.0f && me.SpeedDirty && stats.YouOffFloor == 1,
+                    "an exhausted press did not start a 2 s sprint at x2.0 of the fresh run off the floor: active " + me.Sprint.Active + ", T " + me.Sprint.Length + ", x" + me.SprintRun + ", off the floor " + stats.YouOffFloor);
+                statTop.UpdateAgentStats(me.Agent, p);
+                Check(Near(p.MaxSpeedMultiplier, 0.8f * 2.0f) && Near(p.TopSpeedReachDuration, 1.0f),
+                    "the decorator at the sprint's start: run " + p.MaxSpeedMultiplier + " (0.8 x 2.0), reach " + p.TopSpeedReachDuration + " (1.0)");
+                Check(Near(p.CombatMaxSpeedMultiplier, 0.84f) && Near(p.SwingSpeedMultiplier, 1.05f), "the sprint touched another property");
+                LogHas("[sprint] YOU: first sprint this battle at ");
+                LogHas(" - stored 2.00 s of 2.00 s (0 Athletics points / 20.0 = 0.00 s - the store's floor SprintMinSeconds 2.0 s holds it up), so it lasts T 2.00 s of moving: x2.00 of your FRESH run speed (the run property x0.30 → x2.00) until 0.60 s, then a straight line to x1.10 of your current run (x0.33) at 2.00 s; top speed reached in 1.00 s instead of the game's 2.60 s; it drains only while you move");
+                // the fade: 2.0 held to 0.6 s, then down towards 1.1 x 0.3 = 0.33
+                float lowest = 9f;
+                bool heldPeak = true;
+                while (me.Sprint.Active)
+                {
+                    me.SpeedDirty = false;
+                    Tick();
+                    if (!me.Sprint.Active) break;
+                    if (me.Sprint.Elapsed <= 0.6 - 1e-6 && me.SprintRun != 2.0f) heldPeak = false;
+                    if (me.SprintRun < lowest) lowest = me.SprintRun;
+                }
+                Check(heldPeak, "the full-speed part did not hold x2.0");
+                Check(lowest <= 0.5f && lowest >= 0.35f, "the fade did not run down towards x0.33 of the fresh run: lowest x" + lowest);
+                Check(stats.Ends(true, SprintEnd.StoreEmpty) == 1 && me.SprintRun == 0f && me.SpeedDirty, "the 2 s sprint did not end on an empty store, marked for its recompute");
+                statTop.UpdateAgentStats(me.Agent, p);
+                Check(Near(p.MaxSpeedMultiplier, 0.8f * 0.3f) && Near(p.TopSpeedReachDuration, 2.6f),
+                    "after the sprint the game's values are not back: run " + p.MaxSpeedMultiplier + ", reach " + p.TopSpeedReachDuration);
+
+                // the floor refills slowly: standing exhausted 2 / 7 x 0.5 a second; a press at once is below the 20% mark
+                body.Key = false;
+                body.Speeds[900] = 0f;
+                Tick();
+                double s0 = me.Sprint.Stored;
+                for (int i = 0; i < 10; i++) Tick();
+                Check(NearTo(me.Sprint.Stored - s0, 2.0 / 7.0 * 0.5, 1e-3), "the floor's refill standing exhausted is not 2 / 7 x 0.5 a second: " + (me.Sprint.Stored - s0));
+                for (int i = 0; i < 30; i++) Tick();   // 0.57 s of 2 stored: above 20%
+
+                // SprintTopSpeedReachSeconds 0 = the game's own; back to 1 mid-sprint = every sprinter recomputed (live)
+                S.Set(SettingsSchema.SprintTopSpeedReachSeconds, 0, SettingSources.Mcm);
+                logic.ApplySettingsChange(S);
+                body.Key = true;
+                body.Speeds[900] = 3f;
+                Tick();
+                Check(me.Sprint.Active, "a press above 20% of the floor did not start");
+                statTop.UpdateAgentStats(me.Agent, p);
+                Check(Near(p.TopSpeedReachDuration, 2.6f) && Near(p.MaxSpeedMultiplier, 0.8f * 2.0f), "reach 0 did not leave the game's acceleration: " + p.TopSpeedReachDuration);
+                me.SpeedDirty = false;
+                S.Set(SettingsSchema.SprintTopSpeedReachSeconds, 1.0, SettingSources.Mcm);
+                logic.ApplySettingsChange(S);
+                Check(me.SpeedDirty, "a sprint setting change did not mark the sprinter for a recompute");
+                statTop.UpdateAgentStats(me.Agent, p);
+                Check(Near(p.TopSpeedReachDuration, 1.0f), "reach back to 1 s mid-sprint did not apply: " + p.TopSpeedReachDuration);
+                // the master switch: ended at once, the decorator vanilla (the base model's run and acceleration)
+                S.Set(SettingsSchema.ModEnabled, false, SettingSources.Mcm);
+                Tick();
+                statTop.UpdateAgentStats(me.Agent, p);
+                Check(!me.Sprint.Active && Near(p.MaxSpeedMultiplier, 0.8f) && Near(p.TopSpeedReachDuration, 2.6f),
+                    "ModEnabled off: sprint " + me.Sprint.Active + ", run " + p.MaxSpeedMultiplier + ", reach " + p.TopSpeedReachDuration);
+                S.Set(SettingsSchema.ModEnabled, true, SettingSources.Mcm);
+                body.Key = false;
+                Tick();
+
+                // THE AI: an exhausted man (a 100 pool, empty) sprints a charge off the 2 s floor
+                var man = logic.Track(FakeAgent(901))!;
+                man.AthleticsSkill = 100;
+                for (int i = 0; i < 60 && man.Fraction > 0; i++) AthleticsMath.Charge(man, Rules, t);
+                man.RunSpeedMultiplier = 0.5f;
+                body.Slots[901] = 2;
+                body.Speeds[901] = 3.5f;
+                body.Orders[2] = BraceOrderKind.Stop;
+                t += 0.3;
+                Tick();
+                body.Orders[2] = BraceOrderKind.Charge;
+                t += 0.3;
+                Tick();
+                Check(man.Sprint.Active && Near(man.Sprint.Length, 2.0) && man.SprintRun == 2.0f && stats.AiOffFloor == 1,
+                    "a tired AI man did not sprint his 2 s floor at x2.0: T " + man.Sprint.Length + ", x" + man.SprintRun + ", off the floor " + stats.AiOffFloor);
+                LogHas(" on a new charge order - stored 2.00 s of 2.00 s (the 2.0 s floor), his share 100% → T 2.00 s: x2.00 of the fresh run (run x0.50 → x2.00) until 0.60 s, then to x1.10 of his current run (x0.55); top speed reached in at most 1.00 s (the game's value not seen yet)");
+
+                // SprintMinSeconds 0 (live): step 33's empty bar - no store, a press refused
+                S.Set(SettingsSchema.SprintMinSeconds, 0, SettingSources.Mcm);
+                Tick();
+                body.Key = true;
+                Tick();
+                Check(!me.Sprint.Active && Near(me.Sprint.Stored, 0) && stats.YouRefusedEmpty == 1, "SprintMinSeconds 0: an empty bar sprinted: " + me.Sprint.Stored);
+                body.Key = false;
+                S.Set(SettingsSchema.SprintMinSeconds, 2.0, SettingSources.Mcm);
+                Tick();
+
+                // the summary
+                CallPrivate(logic, "CloseSprints");
+                CallPrivate(logic, "WriteSprintSummary");
+                LogHas("; 2 started off the 2.0 s floor (his points alone stored less)");
+                LogHas("; off the 2.0 s floor 1");
+                LogHas("acceleration while sprinting: the game's top-speed reach avg 2.60 s → ours 1.00 s (sprint starts: 1)");
+                logic.SmokePlayer = null;
             }
             finally
             {

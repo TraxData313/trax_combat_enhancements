@@ -433,18 +433,27 @@
   // (range 5.0 to 100.0)
   "SprintPointsPerSecond": 20.0,
 
+  // The sprint store is never smaller than this, however tired he is: an exhausted man (an
+  // empty Athletics bar) still holds 2 s of sprint - a dodge - it just refills slower. Above it
+  // the store is his points divided by the points per second. 0 = no floor (an empty bar cannot
+  // sprint).
+  // (range 0.0 to 5.0)
+  "SprintMinSeconds": 2.0,
+
   // A sprint starts only with at least this percent of the store filled - no spamming tiny
   // bursts. 0 = any amount.
   // (range 0 to 100)
   "SprintMinStartPercent": 20,
 
-  // How much faster than his CURRENT run speed (after tiredness) a sprinter runs at the start
-  // of his sprint - 1.6 = 60% faster. A sprint from a half-full store starts at this speed too.
+  // The sprint's top speed, times his FRESH run speed (as if untired) - whatever his Athletics:
+  // 2.0 = twice a fresh man's run, for a tired man too. A sprint from a half-full store starts
+  // at this speed too.
   // (range 1.0 to 3.0)
-  "SprintMaxMultiplier": 1.6,
+  "SprintMaxMultiplier": 2.0,
 
-  // After the full-speed part the speed falls in a straight line to this times his run speed at
-  // the sprint's end. Above the start speed = the start speed all the way.
+  // After the full-speed part the speed falls in a straight line to this times his CURRENT run
+  // speed (after tiredness) at the sprint's end: a fresh man ends at 1.1 x his run, an
+  // exhausted one at 1.1 x his slow run. Above the start speed = the start speed all the way.
   // (range 1.0 to 3.0)
   "SprintMinMultiplier": 1.1,
 
@@ -453,6 +462,12 @@
   // runs 2.25 s at full speed at 30. 100 = full speed all the way.
   // (range 0 to 100)
   "SprintFullSpeedSharePercent": 30,
+
+  // While sprinting a man reaches his top speed in at most this many seconds (the game's own on
+  // foot is about 2.3-2.8 s - longer than a short sprint's full-speed part). Back to the game's
+  // value when the sprint ends. 0 = the game's own acceleration.
+  // (range 0.0 to 5.0)
+  "SprintTopSpeedReachSeconds": 1.0,
 
   // Seconds to refill an empty sprint store to full while standing still or walking at full
   // strength (at or above the peak line). It refills only while he is not sprinting.

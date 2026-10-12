@@ -39,6 +39,12 @@ namespace TraxCombat.Models
 
         public static void ScaleMount(AgentDrivenProperties p, float factor) => p.MountSpeed *= factor;
 
+        /// <summary>Step 35: a sprinter's <see cref="AgentDrivenProperties.TopSpeedReachDuration"/> (DrivenProperty 86, per agent - the
+        /// seconds to reach his top speed; Sandbox's UpdateHumanStats assigns it with <c>=</c> on every recompute, ~2.3-2.8 s on foot)
+        /// = min(the game's, <paramref name="seconds"/>).</summary>
+        public static void CapTopSpeedReach(AgentDrivenProperties p, float seconds) =>
+            p.TopSpeedReachDuration = SprintMath.TopSpeedReach(p.TopSpeedReachDuration, seconds);
+
         /// <summary>
         /// Step 5e, <c>AttackRateAiDecisions</c> (AI_NOTES "Step 5e"): the AI's own attack-decision
         /// values follow the attack multiplier m, so its PAUSE between attacks grows with the

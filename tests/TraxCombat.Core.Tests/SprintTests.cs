@@ -9,8 +9,9 @@ namespace TraxCombat.Core.Tests;
 public class SprintTests
 {
     private static SprintRules Sprint(bool on = true, bool ai = true, bool mod = true, bool athletics = true, double pps = 20, int minStart = 20,
-        double max = 1.6, double min = 1.1, int fullShare = 30, double refill = 7, double moving = 0.5, double exhausted = 0.5, int charge = 100, int move = 50) =>
-        new(mod, athletics, on, ai, pps, minStart, max, min, fullShare, refill, moving, exhausted, charge, move);
+        double max = 1.6, double min = 1.1, int fullShare = 30, double refill = 7, double moving = 0.5, double exhausted = 0.5, int charge = 100, int move = 50,
+        double floor = 0, double reach = 0) =>
+        new(mod, athletics, on, ai, pps, minStart, max, min, fullShare, refill, moving, exhausted, charge, move, floor, reach);
 
     private static AthleticsRules Athletics() => AthleticsRules.From(new TraxSettings());
 
@@ -159,7 +160,10 @@ public class SprintTests
         Assert.Equal(1.55f, SprintMath.Quantize(1.56));
         Assert.Equal(1.1f, SprintMath.Quantize(1.1));
         Assert.Equal(1f, SprintMath.Quantize(1.0));
-        Assert.Equal(1f, SprintMath.Quantize(0.9));
+        Assert.Equal(0.9f, SprintMath.Quantize(0.9));   // step 35: a tired man's fade ends below 1
+        Assert.Equal(0.35f, SprintMath.Quantize(0.33));
+        Assert.Equal(0.05f, SprintMath.Quantize(0));     // never 0 (0 = no sprint on his record)
+        Assert.Equal(0.05f, SprintMath.Quantize(double.NaN));
     }
 
     [Fact]
@@ -348,5 +352,157 @@ public class SprintTests
         var capped = new SprintStats();
         for (int i = 0; i < 25; i++) capped.AddSpeed(1.6, 1.0);
         Assert.False(capped.EngineFollows);
+    }
+
+    // ------------------------------------------------------------------ step 35 (Anton, 2026-10-12, after two tournaments)
+
+    [Fact]
+    public void Step35_the_peak_is_on_the_FRESH_run_and_fades_to_1_1_of_the_CURRENT_run()
+    {
+        var s = Sprint(max: 2.0, min: 1.1);
+        // a fresh man: 2.0 → 1.1
+        Near(2.0, SprintMath.RunFactor(in s, 0, 7.5, 1));
+        Near(2.0, SprintMath.RunFactor(in s, 2.25, 7.5, 1));
+        Near(1.55, SprintMath.RunFactor(in s, 4.875, 7.5, 1));
+        Near(1.1, SprintMath.RunFactor(in s, 7.5, 7.5, 1));
+        // an exhausted man (run x0.3): the same peak, the fade to 1.1 x 0.3 = 0.33
+        Near(2.0, SprintMath.RunFactor(in s, 0, 2, 0.3));
+        Near(2.0, SprintMath.RunFactor(in s, 0.6, 2, 0.3));
+        Near((2.0 + 0.33) / 2, SprintMath.RunFactor(in s, 1.3, 2, 0.3));
+        Near(0.33, SprintMath.RunFactor(in s, 2, 2, 0.3));
+        Near(0.33, SprintMath.RunFactor(in s, 5, 2, 0.3));
+        Assert.Equal(0.35f, SprintMath.Quantize(SprintMath.RunFactor(in s, 2, 2, 0.3)));
+        // half way to the peak line (run 0.65 at the floor 0.3): 2.0 → 0.715
+        Near(0.715, SprintMath.RunFactor(in s, 5, 5, 0.65));
+        // the fresh-man profile is the old relative one
+        Near(SprintMath.Multiplier(in s, 4, 7.5), SprintMath.RunFactor(in s, 4, 7.5, 1));
+        // the store's factor: his run when no sprint runs
+        var st = new SprintStore();
+        st.Clamp(2);
+        Near(0.3, st.RunFactor(in s, 0.3));
+        Assert.Equal(SprintStart.Started, st.TryStart(in s, 0, 2, 1, true, SprintOrder.None));
+        Near(2.0, st.RunFactor(in s, 0.3));
+        st.Advance(1.3, true, out _);
+        Near((2.0 + 0.33) / 2, st.RunFactor(in s, 0.3));
+        st.Stop();
+        Near(0.3, st.RunFactor(in s, 0.3));
+    }
+
+    [Fact]
+    public void Step35_the_store_never_drops_below_its_floor()
+    {
+        var s = Sprint(floor: 2);
+        var r = Athletics();
+        Near(2, SprintMath.Capacity(0, 20, 2));
+        Near(7.5, SprintMath.Capacity(150, 20, 2));
+        Near(2, SprintMath.Capacity(30, 20, 2));
+        Near(0, SprintMath.Capacity(0, 20, 0));
+        var empty = new Fighter { AthleticsSkill = 150, Fraction = 0 };
+        Near(2, SprintMath.Capacity(in s, in r, empty));
+        Assert.True(SprintMath.OnFloor(in s, in r, empty));
+        Near(0, SprintMath.PointsCapacity(in s, in r, empty));
+        var small = new Fighter { AthleticsSkill = 50, Fraction = 0.5 };   // pool 50 at 50%: 25 points = 1.25 s
+        Near(2, SprintMath.Capacity(in s, in r, small));
+        Assert.True(SprintMath.OnFloor(in s, in r, small));
+        var big = new Fighter { AthleticsSkill = 150 };                     // pool 150 full: 7.5 s
+        Near(7.5, SprintMath.Capacity(in s, in r, big));
+        Assert.False(SprintMath.OnFloor(in s, in r, big));
+        var noFloor = Sprint();
+        Assert.False(SprintMath.OnFloor(in noFloor, in r, empty));          // no floor: never "on" it
+        // an exhausted man sprints off his floor - no "empty bar" refusal
+        var st = new SprintStore();
+        Assert.Equal(SprintStart.Started, st.TryStart(in s, 0, SprintMath.Capacity(in s, in r, empty), 1, true, SprintOrder.None));
+        Near(2, st.Length);
+        // floor 0: step 33's rule - an empty bar has no store
+        Assert.Equal(SprintStart.NoStore, new SprintStore().TryStart(in noFloor, 0, SprintMath.Capacity(in noFloor, in r, empty), 1, true, SprintOrder.None));
+    }
+
+    [Fact]
+    public void Step35_the_floor_refills_at_the_usual_rule_slowly_when_tired()
+    {
+        var s = Sprint(floor: 2);
+        // capacity / 7 x the factors: an exhausted man standing 14 s, moving 28 s - for 2 s of store
+        Near(2 / 7.0 * 0.5, SprintMath.RefillPerSecond(in s, 2, false, 0));
+        Near(2 / 7.0 * 0.25, SprintMath.RefillPerSecond(in s, 2, true, 0));
+        var st = new SprintStore();
+        st.Clamp(2);
+        st.TryStart(in s, 0, 2, 1, true, SprintOrder.None);
+        Assert.True(st.Advance(3, true, out var end));
+        Assert.Equal(SprintEnd.StoreEmpty, end);
+        st.Stop();
+        // a used-up store with a floor: a press is below the minimum, not "no store"
+        Assert.Equal(SprintStart.BelowMinimum, st.TryStart(in s, 0, 2, 1, true, SprintOrder.None));
+        double per = SprintMath.RefillPerSecond(in s, 2, false, 0);
+        for (int i = 0; i < 70; i++) st.Refill(0.1, per, 2);
+        Near(1, st.Stored, 1e-9);           // 7 s of 14: half
+        for (int i = 0; i < 70; i++) st.Refill(0.1, per, 2);
+        Near(2, st.Stored, 1e-9);           // 14 s: full
+    }
+
+    [Fact]
+    public void Step35_acceleration_is_capped_while_sprinting_and_0_leaves_the_game_alone()
+    {
+        Assert.Equal(1.0f, SprintMath.TopSpeedReach(2.6f, 1.0));
+        Assert.Equal(2.6f, SprintMath.TopSpeedReach(2.6f, 0));
+        Assert.Equal(2.6f, SprintMath.TopSpeedReach(2.6f, double.NaN));
+        Assert.Equal(0.8f, SprintMath.TopSpeedReach(0.8f, 1.0));            // a game value already quicker stays
+        Assert.Equal(0.1f, SprintMath.TopSpeedReach(2.6f, 0.02));           // never below 0.1 s
+        Near(0.1, Sprint(reach: 0.05).TopSpeedReachSeconds);
+        Assert.Equal(0, Sprint(reach: -1).TopSpeedReachSeconds);
+        Assert.Equal(0, Sprint(reach: 0).TopSpeedReachSeconds);
+        Near(1, Sprint(reach: 1).TopSpeedReachSeconds);
+    }
+
+    [Fact]
+    public void Step35_settings_live_and_the_master_switch_first()
+    {
+        var t = new TraxSettings();
+        var s = SprintRules.From(t);
+        Near(2, s.MinSeconds, 1e-6);                 // DESIGN's initial values
+        Near(1, s.TopSpeedReachSeconds, 1e-6);
+        t.Set(SettingsSchema.SprintMinSeconds, 3.5, "test");
+        t.Set(SettingsSchema.SprintTopSpeedReachSeconds, 0.6, "test");
+        t.Set(SettingsSchema.SprintMaxMultiplier, 2.0, "test");
+        s = SprintRules.From(t);
+        Near(3.5, s.MinSeconds, 1e-6);
+        Near(0.6, s.TopSpeedReachSeconds, 1e-6);
+        Near(2.0, s.MaxMultiplier, 1e-6);
+        t.Set(SettingsSchema.SprintTopSpeedReachSeconds, 0, "test");
+        Assert.Equal(0, SprintRules.From(t).TopSpeedReachSeconds);
+        // the master switch: no sprint even off a floor
+        var st = new SprintStore();
+        Assert.Equal(SprintStart.Off, st.TryStart(Sprint(mod: false, floor: 2), 0, 2, 1, true, SprintOrder.None));
+        Assert.Equal(SprintStart.Off, st.TryStart(Sprint(athletics: false, floor: 2), 0, 2, 1, true, SprintOrder.None));
+        var on = Sprint(max: 2.0, floor: 2, reach: 1).Describe("LeftControl");
+        Assert.Contains("never below 2.0 s (an empty bar still holds 2.0 s)", on);
+        Assert.Contains("speed x2.00 of his FRESH run speed (whatever his Athletics)", on);
+        Assert.Contains("a straight line to x1.10 of his CURRENT run speed", on);
+        Assert.Contains("top speed reached in at most 1.0 s while sprinting", on);
+        Assert.Contains("the game's own acceleration (SprintTopSpeedReachSeconds 0)", Sprint().Describe("LeftControl"));
+        Assert.Contains("empty = 0", Sprint().Describe("LeftControl"));
+    }
+
+    [Fact]
+    public void Step35_the_summary_counts_floor_starts_and_the_acceleration()
+    {
+        var stats = new SprintStats();
+        stats.YouStarted = 3;
+        stats.YouOffFloor = 2;
+        stats.AiOffFloor = 7;
+        stats.AddReach(2.6, 1.0);
+        stats.AddReach(2.4, 1.0);
+        for (int i = 0; i < 25; i++) stats.AddSpeed(2.0, 2.0);
+        var lines = new List<string>();
+        stats.AddSummaryLines(lines, Sprint(max: 2.0, floor: 2, reach: 1), "LeftControl");
+        string all = string.Join("\n", lines);
+        Assert.Equal(4, lines.Count);
+        Assert.Contains("; 2 started off the 2.0 s floor (his points alone stored less)", all);
+        Assert.Contains("; off the 2.0 s floor 7", all);
+        Assert.Contains("sprint speed check (x his FRESH run speed = his top at the sprint's start ÷ his run multiplier then, while it ran)", all);
+        Assert.Contains("acceleration while sprinting: the game's top-speed reach avg 2.50 s → ours 1.00 s (sprint starts: 2)", all);
+        var none = new List<string>();
+        new SprintStats().AddSummaryLines(none, Sprint(), "LeftControl");
+        Assert.DoesNotContain("floor", string.Join("\n", none));
+        Assert.Contains("acceleration: the game's own (SprintTopSpeedReachSeconds 0)", string.Join("\n", none));
     }
 }

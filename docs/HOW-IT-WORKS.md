@@ -326,58 +326,83 @@ Hold **Left Ctrl** to sprint: a short burst of speed, on foot, in a fight. Think
 bad spot, onto a fleeing archer, round a shield wall's flank. The AI uses it too: when a formation gets a
 **new** charge or advance order, its men sprint off together, so charges hit harder and sooner.
 
-**How much sprint you have** is your Athletics points divided by 20, in seconds. A tired man has less; an
-empty bar has none.
+**How much sprint you have** is your Athletics points divided by 20, in seconds — but **never less than
+2 seconds**. A tired man has a shorter sprint; even an empty bar still holds a 2 s dodge (it just refills
+slowly).
 
-| Athletics points now | Sprint stored | Least to start one (20%) | At full speed (first 30%) |
-|---:|---:|---:|---:|
-| 50 | 2.5 s | 0.5 s | 0.75 s |
-| 100 | 5 s | 1 s | 1.5 s |
-| 150 | 7.5 s | 1.5 s | 2.25 s |
-| 200 | 10 s | 2 s | 3 s |
-| 300 | 15 s | 3 s | 4.5 s |
+| Your Athletics bar | Pool 50 | Pool 100 | Pool 150 |
+|---|---:|---:|---:|
+| 100% (full) | 2.5 s | 5 s | 7.5 s |
+| 75% (the peak line) | 2 s (floor) | 3.75 s | 5.6 s |
+| 50% | 2 s (floor) | 2.5 s | 3.75 s |
+| 25% | 2 s (floor) | 2 s (floor) | 2 s (floor) |
+| 10% | 2 s (floor) | 2 s (floor) | 2 s (floor) |
+| 0% (empty) | 2 s (floor) | 2 s (floor) | 2 s (floor) |
 
-**How fast.** A sprint starts at **1.6 ×** your *current* run speed — tiredness first, then the sprint on
-top — holds that for the first 30% of its length, then eases off in a straight line to **1.1 ×** at the end.
+A sprint starts only with at least 20% of the store filled, and runs at full speed for its first 30%.
+
+**How fast.** A sprint starts at **2 ×** the speed you run when *fresh* — whatever your Athletics, a tired
+man sprints as fast as a fresh one at the start. It holds that for the first 30% of its length, then eases off
+in a straight line to **1.1 ×** your *current* run speed at the end — so a fresh man ends a little faster than
+his run, an exhausted one ends back at his tired jog. While sprinting you also **reach top speed in 1 second**
+(the game's own acceleration on foot takes about 2.3–2.8 s), so even a short tap gets you going.
+
+| Your Athletics bar | Your run now (× a fresh run) | Sprint peak (× a fresh run) | Sprint end (× a fresh run) |
+|---|---:|---:|---:|
+| 100% / 75% (the peak line) | × 1.00 | × 2.00 | × 1.10 |
+| 50% | × 0.77 | × 2.00 | × 0.84 |
+| 25% | × 0.53 | × 2.00 | × 0.59 |
+| 10% | × 0.39 | × 2.00 | × 0.43 |
+| 0% (empty) | × 0.30 | × 2.00 | × 0.33 |
+
 A sprint is as long as what you had stored when it began, and even a part-full store starts at full speed.
 The clock only runs while you actually move; let go of the key and the rest stays stored.
 
-| Into the sprint | A full 7.5 s sprint | A 30% store (2.25 s) |
+| Into the sprint | Fresh: a full 7.5 s sprint | Empty bar: the 2 s floor |
 |---|---:|---:|
-| the start | × 1.60 | × 1.60 |
-| 0.675 s | × 1.60 | × 1.60 (end of full speed) |
-| 1.5 s | × 1.60 | × 1.34 |
-| 2.25 s | × 1.60 (end of full speed) | × 1.10 (the end) |
-| 3 s | × 1.53 | — |
-| 4.5 s | × 1.39 | — |
-| 6 s | × 1.24 | — |
+| the start | × 2.00 | × 2.00 |
+| 0.6 s | × 2.00 | × 2.00 (end of full speed) |
+| 1 s | × 2.00 | × 1.52 |
+| 1.5 s | × 2.00 | × 0.93 |
+| 2 s | × 2.00 | × 0.33 (the end) |
+| 2.25 s | × 2.00 (end of full speed) | — |
+| 3 s | × 1.87 | — |
+| 4.5 s | × 1.61 | — |
+| 6 s | × 1.36 | — |
 | 7.5 s | × 1.10 (the end) | — |
 
-A fresh soldier running ~3.9 m/s covers about 42 m in a full 7.5 s sprint instead of 29 m.
+(× a fresh run speed.) A fresh soldier running ~3.9 m/s covers about 49 m in a full 7.5 s sprint instead of
+29 m.
 
 **The refill.** While you are not sprinting the store fills back up — **7 seconds** from empty to full
 standing at full strength. Moving faster than a walk halves the rate, and so does being tired (in a straight
-line from the peak line down to an empty bar). The two multiply.
+line from the peak line down to an empty bar). The two multiply. The times are for the whole store, whatever
+its size — an exhausted man's 2 s floor takes 14 s standing.
 
 | Empty → full store | Standing or walking | Running |
 |---|---:|---:|
-| Full strength (at or above the peak line) | 7 s | 14 s |
-| Halfway to the peak line | 9.3 s | 18.7 s |
-| Nearly empty | 14 s | 28 s |
+| 100% / 75% (at or above the peak line) | 7 s | 14 s |
+| 50% | 8.4 s | 16.8 s |
+| 25% | 10.5 s | 21 s |
+| 10% | 12.4 s | 24.7 s |
+| 0% (empty) | 14 s | 28 s |
 
 **The catch.** While you sprint your **Athletics bar does not refill**. It costs nothing else — but a sprint
 right after a fight keeps you tired longer. Never on a horse.
 
 **The AI** sprints once per *new* order: on a charge for up to all of its store, on an advance or a move to a
 position for up to half (keeping the rest), on a hold none. A man stops early when an enemy is within 3 m or
-the order changes again. Give a formation a new charge order and watch it surge.
+the order changes again. Give a formation a new charge order and watch it surge — tired men too, off their
+2 s floor.
 
 <sub>Settings: `SprintEnabled` on, `SprintKey` LeftControl (a key name: LeftControl, RightControl, LeftAlt,
 RightAlt, LeftShift, RightShift, CapsLock, Tab, Q, T, Y, H, J, K, L, B, N, M, C, MiddleMouseButton,
-X1MouseButton, X2MouseButton), `SprintPointsPerSecond` 20, `SprintMinStartPercent` 20,
-`SprintMaxMultiplier` 1.6, `SprintMinMultiplier` 1.1, `SprintFullSpeedSharePercent` 30, `SprintRefillSeconds` 7,
-`SprintRefillMovingFactor` 0.5, `SprintRefillExhaustedFactor` 0.5, `SprintAiEnabled` on,
-`SprintAiChargeSharePercent` 100, `SprintAiMoveSharePercent` 50.</sub>
+X1MouseButton, X2MouseButton), `SprintPointsPerSecond` 20, `SprintMinSeconds` 2, `SprintMinStartPercent` 20,
+`SprintMaxMultiplier` 2.0, `SprintMinMultiplier` 1.1, `SprintFullSpeedSharePercent` 30,
+`SprintTopSpeedReachSeconds` 1, `SprintRefillSeconds` 7, `SprintRefillMovingFactor` 0.5,
+`SprintRefillExhaustedFactor` 0.5, `SprintAiEnabled` on, `SprintAiChargeSharePercent` 100,
+`SprintAiMoveSharePercent` 50. The run-now column comes from tiredness: `MinMoveSpeedMultiplier` 0.3 at an empty
+bar, `AthleticsPeakPercent` 75.</sub>
 
 ## 14. What you see on screen
 

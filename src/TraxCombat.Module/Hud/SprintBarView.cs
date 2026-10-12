@@ -86,7 +86,7 @@ namespace TraxCombat.Hud
                     {
                         _firstSprintLogged = true;
                         TraxLog.Limited("hud", "sprint bar: first sprint shown at " + S1(f.Now) + " s - \"" + r.LabelText + "\" of " + F2(r.Capacity)
-                            + " s, the fill yellow and draining while you move (x" + F2(r.Multiplier) + " on your run speed now)", "hud-sprint");
+                            + " s, the fill yellow and draining while you move (x" + F2(r.Multiplier) + " of your FRESH run speed now)", "hud-sprint");
                     }
                 }
             }
