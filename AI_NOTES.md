@@ -3158,3 +3158,58 @@ line's new tail).
    are `CostPerWeaponParry`, `FullRegenSecondsStanding` and the curve.
 3. Step 30 (tired AI blocks in a random direction) is the last part of the deadlock fix - more wrong-side blocks from tired
    AI, which then DO stop their refill.
+
+## Step 30 — tired AI blocks in a random direction (research 2026-10-12; build below)
+
+Anton (2026-10-12, the same tournament 1v1 as steps 28-29): at the exhausted end the AI blocked ~95% of his swings -
+"crazy good AIs". His rule: the more exhausted an AI man is, the more his block DIRECTION is random. In the green (f = 1)
+his own AI's choice; below it a mix with weight w = (TiredBlockRandomPercent / 100) × (1 − f) - at f 0.5 half his picks his
+own, half a uniformly random direction (still right 1 in 4 by luck); at empty all random. Pairs with step 29: a wrong-side
+shield block costs 5 and restarts his refill delay.
+
+**Research (Part A) - verified in the v1.4.8 source, decompiled with ilspycmd 9.1 into %TEMP%\trax_decomp (RESEARCH §M)**
+1. **How the guard direction travels.** Four bits of `Agent.MovementControlFlag`: DefendLeft 0x400, DefendRight 0x800,
+   DefendUp 0x1000, DefendDown 0x2000 (`DefendDirMask` 0x3C00); DefendAuto 0x4000 / DefendBlock 0x8000 are set by no
+   managed code. The player's guard is ONLY those bits: `MissionMainAgentController` ORs `GetDefendMovementFlag()` (native,
+   the mouse) into `MovementFlags`, or with auto-block the MIRROR of the attacker's direction (`CustomBattleAutoBlockModel`:
+   attacker AttackLeft → DefendRight, AttackRight → DefendLeft, Up → Up, Down → Down). The AI's input passes the same word
+   through `OnAIInputSet` (step 16) - RTS Camera's attack-bit edits there act, and step 16's raised guard (DefendDown) is a
+   DIRECTION (down / forward), not a direction-less "guard up". Whether the AI's own defend decision is in that word when our
+   callback runs, or the native AI applies it after, is invisible from managed code: replacing the bits is plausible, UNVERIFIED.
+2. **The game's own lever** (the find of this step): `DrivenProperty.AiRandomizedDefendDirectionChance` (40), set ONLY by
+   `AgentStatCalculateModel.SetAiRelatedProperties` (Sandbox's, custom battle's and multiplayer's models call it) to
+   **1 − num³**, num = clamp01(melee skill / 300 × 0.1 / 0.32 / 0.96 by difficulty) × `_AILevelMultiplier`; pushed to the
+   engine by every `UpdateAgentProperties` - through our stat decorator (step 5). A recruit (skill 20, realistic): num 0.06,
+   chance ≈ 1. **The tournament**: `TournamentBehavior` sets the multiplier to 1 + round / 3 (2.0 in the final): a 200-skill
+   opponent has num 1.28 and a chance of −1.10 - NEVER random. That is Anton's "crazy good" opponent, in vanilla.
+3. **Shields**: the defend direction is the shield's pose (`ArrangementOrder.GetShieldDirectionOfUnit`: a shield wall's front
+   rank DefendDown, edges DefendLeft / Right, inner ranks DefendUp = overhead). `CorrectSideShieldBlock` is the engine's own
+   judgement (native), read by the damage code for the shield's damage. Whether a wrong pose lets the blow past the shield or
+   only makes a wrong-side block: native, UNVERIFIED. A weapon parry in the wrong direction is no parry - the blow lands.
+4. **Riders**: the same bits and the same property (every human agent).
+5. **Verdict: FEASIBLE - through the driven property, not the input bits.** The brief's design (replace his direction bits in
+   OnAIInputSet, one roll per incoming attack, a timeout, hook every tired AI man) would work only if the native AI's decision
+   is in the word when we see it, and costs a component + a native callback per tired man per frame. The property is the
+   game's own per-decision randomiser: one float per recompute, no hook, no per-frame work, riders included, and it is exactly
+   Anton's mix (below). The input route stays the documented fallback if PLAYTEST D8 shows the engine ignoring the property.
+
+**The build (Claude's calls - Anton can overturn any)**
+1. **The formula**: own = clamp01(the base model's value) (a tournament's −1.10 → 0); w = clamp01(TiredBlockRandomPercent /
+   100) × (1 − f); the chance written = own + (1 − own) × w. P(a random pick) = w + (1 − w) × own - exactly "w of his picks
+   random, the rest his own AI's (which itself randomises at its own chance)". w = 0 (green, setting 0, off, the player) →
+   the property is NOT written: the game's value stands, negative or not.
+2. **Applied in recompute steps**, like the speeds: `Fighter.BlockRandomWeight` = the w the decorator applies now, re-targeted
+   with the other three multipliers (`AthleticsMath.SpeedUpdateNeeded`, 0.05 steps, any move to or from 0 at once) and applied
+   by the same `UpdateAgentProperties` budget (≤ 50 a tick). Every settings change re-targets everyone (live).
+3. **Never the player**: w = 0 for `Agent.IsMainAgent` (the hero you drive, also while RTS Camera's AI drives him) - the decorator
+   checks it again. The player's direction is his mouse anyway. Riders: yes.
+4. **One roll per incoming attack** is the native AI's own granularity (it decides a defence per perceived attack) - UNVERIFIED,
+   nothing of ours runs per frame, so nothing can flicker. No timeout needed (no state of ours is held).
+5. **Interplay with the forced guards** (step 16's timer hold, step 16's backpedal, step 23's brace): they raise DefendDown only
+   when he holds no guard of his own (`OwnGuardKept` otherwise) - a fixed direction of OURS, which this step does not randomise.
+   Whenever his own AI picks the direction - most blocks, held or not - the raised chance applies. Attack bits never touched.
+6. **Gate**: ModEnabled first (`SpeedFactorsFor` returns nothing while it is off), then AthleticsEnabled, then the setting > 0 -
+   switched off = everyone re-targeted to w 0 and recomputed back to the game's value over the next ticks.
+7. **Measured** (summary, 2 lines; `[guard]` tag): the chance raised - men, recomputes, by f band his own avg → the written avg;
+   the GUARD of AI men against melee blows by f band - blocked % (shield right side / WRONG side / weapon parry) vs landed %
+   (kicks, bashes, horse charges, missiles left out) - Anton's playtest line: empty men should block far worse than fresh ones.

@@ -899,6 +899,58 @@ Full notes, the alternatives and the choice: AI_NOTES "Step 5d".
 - **UNVERIFIED** (PLAYTEST §6): whether a scripted man keeps facing his enemy and blocking while he
   backs up; the step-5d summary measures both.
 
+## M. The AI's block direction (step 30, verified in the v1.4.8 source 2026-10-12)
+
+Decompiled for this step with `ilspycmd` 9.1 into `%TEMP%\trax_decomp\` (the `..\reference` copy is
+not on this PC): `TaleWorlds.MountAndBlade`, `TaleWorlds.Core`, `TaleWorlds.Engine`,
+`Modules\Native\…\TaleWorlds.MountAndBlade.View`, `Modules\SandBox\…\SandBox`. Full notes and the
+choice: AI_NOTES "Step 30".
+
+- **The defend direction is four bits of `Agent.MovementControlFlag`**: DefendLeft 0x400, DefendRight
+  0x800, DefendUp 0x1000, DefendDown 0x2000 (`DefendDirMask` 0x3C00); DefendAuto 0x4000 and DefendBlock
+  0x8000 are separate (no managed code sets either). `Agent.MovementFlagToDirection` maps them to
+  `UsageDirection` DefendDown 5 / DefendUp 4 (= AttackEnd) / DefendLeft 6 / DefendRight 7.
+- **The player's guard is nothing but those bits**: `MissionMainAgentController` (View) on the block key
+  ORs `mainAgent.GetDefendMovementFlag()` (native: the mouse's direction) into `MovementFlags` - or, with
+  the auto-block option, the direction `AutoBlockModel.GetBlockDirection` returns, MIRRORED: the
+  attacker's AttackLeft (2) → DefendRight 0x800, AttackRight (3) → DefendLeft 0x400, AttackUp → DefendUp,
+  AttackDown → DefendDown (`CustomBattleAutoBlockModel`: the nearest enemy in a ready / release, his
+  `GetCurrentActionDirection(1)`). So "the right block" for an attack is that mirror.
+- **The AI's input passes the same word through `Agent.OnAIInputSet`** (step 16, §AI_NOTES "Step 16"):
+  RTS Camera rewrites AI attack bits there and they act; step 16 raises a guard with DefendDown there. So
+  REPLACING the AI's direction bits in that callback is very likely possible - but only the native AI knows
+  whether its own defend decision is in the word at that moment or applied after it. UNVERIFIED either way.
+- **The game already has the lever, natively**: `DrivenProperty.AiRandomizedDefendDirectionChance` (40,
+  TaleWorlds.Core) = `AgentDrivenProperties.AiRandomizedDefendDirectionChance`, written ONLY by
+  `AgentStatCalculateModel.SetAiRelatedProperties` (called by `SandboxAgentStatCalculateModel`,
+  `CustomBattleAgentStatCalculateModel`, the multiplayer model): **`1 − num³`**, num = `CalculateAILevel(agent,
+  meleeSkill) × _AILevelMultiplier` = clamp01(skill / 300 × 0.1 / 0.32 / 0.96 by difficulty) × the
+  multiplier. Pushed to the engine with every `UpdateAgentProperties` - the same path our stat decorator
+  already scales the attack animations and run speed on.
+- **Why the tournament AI blocks ~everything**: `TournamentBehavior` (SandBox) calls
+  `SetAILevelMultiplier(1 + CurrentRoundIndex / 3)` - 2.0 in the final round. A 200-skill opponent on
+  realistic: num = 0.64 × 2 = 1.28 → the chance = 1 − 2.10 = **−1.10**: never a random direction (and his
+  `AIBlockOnDecideAbility` / `AIParryOnDecideAbility` at their tops). A recruit (skill 20) has num ≈ 0.06 →
+  chance ≈ 1. Our decorator passes the multiplier on (§C's tournament fix), so this is vanilla behaviour.
+- **Other per-agent defence values** in the same method (not touched): `AIBlockOnDecideAbility`,
+  `AIParryOnDecideAbility`, `AiParryDecisionChangeValue`, `AIRealizeBlockingFromIncorrectSideAbility`
+  (attacking into a guard), `AiDefendWithShieldDecisionChanceValue`, `UseRealisticBlocking` (1 for every
+  non-player). `Agent.SetWeaponGuard(UsageDirection)` and `EnforceShieldUsage(UsageDirection)` (formation
+  shield walls) are native setters of a held guard, not a per-attack choice.
+- **Shields**: the defend direction is the shield's POSE - `ArrangementOrder.GetShieldDirectionOfUnit`
+  puts a shield wall's front rank on DefendDown (forward), its edge men on DefendLeft / DefendRight, the
+  inner ranks on DefendUp (overhead). `AttackCollisionData.CorrectSideShieldBlock` is the engine's own
+  judgement (native); managed code only reads it (`MissionCombatMechanicsHelper`:
+  `ShieldCorrectSideBlockDamageMultiplier` on the shield's damage - step 22's "wrong side" costs 5).
+  Whether a wrong pose lets a blow past the shield or only makes it a wrong-side block is native:
+  UNVERIFIED. A WEAPON parry in the wrong direction is no parry - the blow lands (the game's directional
+  blocking for everyone with `UseRealisticBlocking`; native).
+- **Riders**: the same flags, the same driven property (SetAiRelatedProperties runs for every human
+  agent, mounted or not).
+- **Conclusion (step 30)**: feasible - and the clean route is the driven property, not the input bits:
+  the stat decorator raises the chance by Anton's weight (AI_NOTES "Step 30"). The input-bit replacement
+  stays the fallback if the playtest shows the engine ignores the property.
+
 ---
 
 ## UNVERIFIED — to check in the named step
@@ -925,3 +977,4 @@ Full notes, the alternatives and the choice: AI_NOTES "Step 5d".
 | 18 | The live order cards report the expected pixels and the strip's Scaled* bindings land the cells under them, vanilla and RTS Camera Command System (PLAYTEST 8a, 8c, 8d: `first placement under the cards …`) | 9 |
 | 19 | An ItemTemplate list over a plain Widget builds the 8 cells / rows; the FillBarWidget ChangeWidget draws the ± band (PLAYTEST 8a, 8f) | 9 |
 | 20 | War Sails naval battles: NavalOrderBar's cards match the ship formations' counts (else the panel, with its reason) | 9 |
+| 21 | The native AI reads `AiRandomizedDefendDirectionChance` once per defence decision and a raised chance makes a tired AI guess his block direction wrong (more wrong-side shield blocks, more blows landing) (§M; PLAYTEST D8: the summary's "tired block direction" guard line by f) | 30 |
