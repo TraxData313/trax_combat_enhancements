@@ -24,6 +24,9 @@ and only defend:
 - **Advance**: pressing. They brace at 40%.
 - **Hold, stand, follow, fall back**: careful. They brace at 60%, shields up, and keep their
   strength in reserve.
+- **No formation** (tournaments, arenas, duels): they fight on to 20%.
+
+Each man's floor also carries his own ±10, rolled once a battle, so a line never braces as one.
 
 So a holding line wears the enemy down while it saves its breath. When their lines are spent (hold
 ALT to see it), order the charge: your men drop their guard and surge in with the strength they kept.

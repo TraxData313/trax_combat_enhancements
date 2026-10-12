@@ -251,14 +251,21 @@ regen.)
         yours or the enemy's team AI alike): **charge** (charge, charge a target, attack a gate, the AI's tactical
         charge) `BraceFloorChargePercent` (20); **advance** (your Advance, or an AI formation walking into the enemy
         on a Move order while its behaviour is an advance) `BraceFloorAdvancePercent` (40); **everything else** -
-        hold / stop, move to a position, retreat, fall back, follow, no order, no formation -
-        `BraceFloorHoldPercent` (60).
+        hold / stop, move to a position, retreat, fall back, follow, no order -
+        `BraceFloorHoldPercent` (60); **no formation** - tournament and arena fighters, duels, anyone the game put in
+        no formation - `BraceFloorNoFormationPercent` (20; step 28, Anton 2026-10-12: a tournament 1v1 on the hold
+        floor braced 62% of its time, the AI blocking ~95% of his swings).
+      - **Each man's own floor** (step 28): his order's floor ± his own offset, a uniform roll of up to
+        `BraceFloorSpreadPercent` (10) points made ONCE per man and battle with its own dice - independent of the
+        margin's roll below; the slider rescales everyone's roll at once; clamped to 0-100. Everywhere (every order,
+        no formation too), so a line never braces as one man.
       - **At or below his floor he BRACES**: no melee attacks - step 16's input component takes the attack bits out
         of his own input and raises a guard when he wants to attack (a ready under way is cancelled, never
         released); his own blocks, parries and moves stay his. **Until his bar is back to floor + his margin**: the
         margin is `BraceRecoverPercent` (20) ± his own offset, a uniform roll of up to `BraceRecoverSpreadPercent`
         (5) points made ONCE per man and battle (a slider change rescales everyone's roll at once; the target is
-        never below floor + 1). Holding 60 → 80 (± 5), advancing 40 → 60, charging 20 → 40.
+        never below floor + 1). Holding 60 → 80 (± 5), advancing 40 → 60, charging 20 → 40, no formation 20 → 40 -
+        each from his own floor (± 10), so e.g. a holding man with +4 braces at 64 and attacks again at 84 (± 5).
       - **The order may change mid-brace**: the new floor applies at his next look (a charge order at 55% ends a
         hold brace at once - "the order changed"; a hold order at 35% starts one at once).
       - **Wounds**: his target is capped at the top his wounds let him refill to, and under that cap the band keeps

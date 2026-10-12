@@ -4,7 +4,8 @@ Anton plays this ONCE, after the build is finished, and hands Claude the log. Se
 order, about **3 hours 15** (A 10 min, B 15, C 25, D 60, E 20, F 55, G 10; the optional bits add ~20). **Short on
 time after step 16? D4 alone (the A/B of the new guard and backpedal, 20 min) answers the newest
 questions; after step 21, D5 + D6 (the shield wall and the archers, 25 min); after step 23, D7 (lines brace by
-their orders, 15 min - since step 24 with the "ready 34/50" count on ALT and in the orders menu).** Each part says what to do, what you
+their orders, 15 min - since step 24 with the "ready 34/50" count on ALT and in the orders menu); after step 28, D8
+(a tournament: the opponent fights on to ~20%, 10 min).** Each part says what to do, what you
 should see, what counts as broken, and the log lines that prove it. The full line reference —
 every summary block and what proves what — is the **appendix** at the end.
 
@@ -634,6 +635,34 @@ not shooting; YOU unable to attack at a low bar (the brace is never on you - you
 is large); a ready count that never moves while men visibly brace, or reads more than the formation's size; the
 orders strip's ready line overlapping the next card or cut off at the screen's bottom.
 
+**D8. Tournaments and duels fight on - the no-formation floor and each man's own floor (step 28, ~10 min).** Anton's
+log (2026-10-12): in a tournament 1v1 both fighters got tired and the AI blocked ~95% of his swings - tournament and
+arena fighters have NO formation, so they braced on the hold floor 60% (11 of 16 AI braced, 62% of their time, the
+longest brace 163 s). Now no formation has its own floor, `BraceFloorNoFormationPercent` **20 → 40**, and every AI
+man's floor carries his own roll of ±`BraceFloorSpreadPercent` **10** (once per man and battle, apart from the ±5 on
+the margin) - in every battle, so a holding line no longer braces as one man either.
+1. **A tournament** in any town (a few rounds, VerboseLogging on). Fight your opponent. He should swing on well below
+   half his bar, then brace (shield up, no swings) only near the end - around 10-30% - and come back about 20 points
+   later. A round should end in a fight, not a wall of blocks.
+2. **An arena practice fight** (optional): the same - everyone in no formation.
+3. **A field battle** (optional, any D part): a holding line now braces man by man over about 20 points of bar (50-70)
+   instead of all at 60.
+- **The lines**: `[brace] mission start: ON - … is at or below his formation's order floor ± his own 10
+  (BraceFloorSpreadPercent, rolled once per man and battle, apart from the margin's roll) … no formation (tournaments,
+  arenas, duels) 20% → 40% (BraceFloorNoFormationPercent); …`. The first brace: `[brace] first brace this mission: <name>
+  at … s - order no formation (the no formation floor 20%; his own floor 23.4% = + 3.4 points by his own roll,
+  BraceFloorSpreadPercent 10), his bar 23.1% of his full pool … until 44.9% = his floor 23.4% + his margin 21.5 points …`.
+  The summary: `brace: … by floor: charge 0, advance 0, hold and the rest 0, no formation N; time bracing … = X% of the AI
+  fighters' time on the field …, the longest … s` - **X far below the 62% of Anton's log, the longest well under 163 s**;
+  and `brace floors (BraceFloorSpreadPercent 10, step 28): N men rolled, their floor offsets now min -9.x / avg ~0 / max
+  +9.x points on the order's floor; braces by his own floor: low (−, fights on longer) …, middle …, high (+, braces
+  sooner) …`.
+- **Tune live** (MCM, *Brace by orders (AI)*): *Brace floor: no formation* 0 = duel opponents never brace until empty;
+  *Brace floor spread per soldier* 0 = everyone exactly on his order's floor again.
+
+**Broken — tell Claude** (D8): a tournament summary with `hold and the rest` braces and no `no formation` ones (the
+order read sees a formation there); `time bracing` still near half the AI's time in a 1v1; floor offsets outside ±10.
+
 ---
 
 ## E. Your Athletics bar, the orders-menu strip and the ALT markers (20 min)
@@ -1212,23 +1241,25 @@ header names the technique: `==== scene …, mod ON, AI holds: Input (the AI's o
 ### L6d. Brace by orders (step 23)
 
 - Mission start: `[brace] mission start: ON - an AI man whose Athletics bar (points ÷ his full pool, what the bar
-  shows) is at or below his formation's order floor stops attacking in melee and only defends (guard up) until he
+  shows) is at or below his formation's order floor ± his own 10 (BraceFloorSpreadPercent, rolled once per man and
+  battle, apart from the margin's roll - step 28) stops attacking in melee and only defends (guard up) until he
   refills to floor + 20% (BraceRecoverPercent) ± his own 5 (BraceRecoverSpreadPercent, rolled once per man and
-  battle): charge 20% → 40% (…), advance 40% → 60% (…), hold / halt / retreat / move / follow / anything else 60% → 80%
-  (…); a wound caps the target …; bows, crossbows and throws go on; the shield taken out …, held up …; AI heroes and
+  battle): charge 20% → 40% (…), advance 40% → 60% (…), hold / halt / retreat / move / follow / no order 60% → 80%
+  (…), no formation (tournaments, arenas, duels) 20% → 40% (BraceFloorNoFormationPercent; step 28); a wound caps the target …; bows, crossbows and throws go on; the shield taken out …, held up …; AI heroes and
   riders too, never you - read live, every AI man looked at about every 0.25 s; …` (off: `OFF (BraceEnabled) - AI
   men swing at any Athletics`).
 - A change mid-battle: `[brace] settings changed mid-mission at … s: …`; a switch off: `[brace] BraceEnabled switched
   OFF mid-mission at … s: N braces lifted at once - those men attack again` (or `the whole mod (ModEnabled)`).
 - The first brace and its end in full (D7); with VerboseLogging every other one `~[brace] brace: …` / `~[brace]
   brace ended: <name> after … s - <why>, bar …%` (rate-limited, bucket `brace`).
-- Summary — 7 lines (numbers made up):
+- Summary — 8 lines (numbers made up; step 28 added `no formation` to `by floor` and the `brace floors` line):
   ```
   brace by orders (step 23): ON - … (the settings sentence)
-  brace: 95 of 160 AI fighters braced, 210 braces - by order: charge 30, the AI's advance 60, stop / hold 120; by floor: charge 30, advance 60, hold and the rest 120; time bracing 2100 man-seconds = 14.6% of the AI fighters' time on the field (14400 man-seconds), avg 10.0 s a brace, 22.1 s per man who braced, the longest 48.3 s (Imperial Legionary)
+  brace: 95 of 160 AI fighters braced, 210 braces - by order: charge 30, the AI's advance 60, stop / hold 120; by floor: charge 30, advance 60, hold and the rest 120, no formation 0; time bracing 2100 man-seconds = 14.6% of the AI fighters' time on the field (14400 man-seconds), avg 10.0 s a brace, 22.1 s per man who braced, the longest 48.3 s (Imperial Legionary)
   brace lengths: under 5 s 60, 5-15 s 110, 15-30 s 30, 30-60 s 10, 60 s or more 0; still bracing when the battle ended 12 (2 of them for 30 s or more) - many long braces and many still bracing at the end = lines that turtle (…)
   brace ends: refilled to floor + recover 150, the order changed 25, refilled to his wound cap 8, switched off 0, fell or left the field 15, the player took him 0, the hideout boss fight's fresh start 0, the battle ended 12, an error (lifted to stay safe) 0
   brace margins (BraceRecoverSpreadPercent 5): 160 men rolled, their offsets now min -5.0 / avg +0.1 / max +4.9 points on 20%; braces by his own margin: short (−) 70 (avg 8.9 s), middle 72 (avg 10.1 s), long (+) 68 (avg 11.2 s)
+  brace floors (BraceFloorSpreadPercent 10, step 28): 160 men rolled, their floor offsets now min -9.9 / avg +0.2 / max +9.8 points on the order's floor; braces by his own floor: low (−, fights on longer) 60 (avg 9.5 s), middle 75 (avg 10.0 s), high (+, braces sooner) 75 (avg 10.4 s)
   brace shield (BraceWieldShield on): at the brace's start - already in hand 150, taken out 20, a one-hander first 15, no shield 20, a ranged weapon in hand (left alone) 5, two-hander and no one-hander (left alone) 0, the switch off 0; wield calls: the shield 40, a one-hander 15; the shield seen in his hand after we asked 30, the AI put it away again while bracing 6, never in his hand by the brace's end 5
   brace GUARD: melee hits taken while bracing 400, blocked 180 (45.0% - compare the AI holds GUARD line's everyone else); his attacks taken out of his input 5000 frames (a guard raised 4800), the shield held up 60000 frames (BraceRaiseShield on), ranged frames let through 300; melee attacks that started while bracing anyway 2 (should be about 0), ranged shots while bracing 20 (allowed); braces the engine never called our input hook during 0 (should be 0)
   ```

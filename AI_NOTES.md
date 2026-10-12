@@ -3034,3 +3034,58 @@ Anton's yes in chat: "v1.0.0, go ahead and upload it, git and steam live".
 - **Left to Anton** on the item page (Owner Controls → Add/edit images & videos), in order: `docs\screenshots\`
   01-hold-alt-who-is-tired.jpg, 02-shield-wall-and-archers.jpg, 03-orders-menu-strip.jpg, 04-your-bars.jpg,
   05-hero-in-the-field.jpg. Optionally subscribe and check the log says `module: TraxCombatEnhancements (the release)`.
+
+## Step 28 — duel deadlock fix, part 1: the no-formation floor and each man's own floor (DONE 2026-10-12)
+
+Anton (2026-10-12, a tournament log): both 1v1 fighters got exhausted and the AI blocked ~95% of his swings. The log:
+tournament / arena fighters have NO formation (`Agent.Formation == null` → `BraceOrderKind.NoFormation`), and step 23 put
+"no formation" in the hold group - floor 60%: 11 of 16 AI braced, 62% of their field time, the longest brace 163 s. The
+manager's brief: no formation its own floor (20), and every AI man's FLOOR his own roll (±10), apart from the ±5 margin roll.
+
+**The build (Claude's calls - Anton can overturn any)**
+1. **A fourth floor group** `BraceOrder.NoFormation` (Core `Brace.cs`): `BraceMath.Group(NoFormation)` → it, `FloorPercent`
+   → `BraceFloorNoFormationPercent` (20, 0-100). The hold group keeps stop / move / retreat / fall back / follow / no order
+   (NoOrder = a formation with an Invalid order - kept on hold: a real formation, just unread). Names: "no formation" in the
+   first-brace line ("the no formation floor 20%"), the summary's `by floor: … no formation N`, the settings sentence
+   ("no formation (tournaments, arenas, duels) 20% → 40% (BraceFloorNoFormationPercent)"; the hold clause says "no order"
+   now, not "anything else"). Who has no formation in the game: tournament / arena fighters, a hideout duel's two, any agent
+   the mission spawned outside a formation (e.g. some scripted fights) - all the same floor.
+2. **His own floor**: a SECOND unit roll `BraceState.FloorUnit` ∈ [−1, 1) at his first look, ONCE per man and battle, kept;
+   `BraceMath.FloorOffset = unit × BraceFloorSpreadPercent / 100` read LIVE (the slider rescales everyone at once, each
+   keeping his place - the margin's pattern); `BraceMath.Floor = clamp01(order floor + offset)`; `Band(r, order, top, unit,
+   floorUnit)` uses it as F - so the wound-cap rule, the hysteresis (target = F + his margin ≥ F + 1 point) and the "never
+   stuck" slide are unchanged. `SetFloor` in the band is now HIS floor (the log shows the order's floor beside it).
+   Default 10 (range 0-30, the brief's "e.g."). Everywhere: every order, no formation too.
+3. **Independent dice**: the floor roll comes from its own source, `AthleticsLogic.BraceFloorDice` (ThreadSafeRandom in
+   game - the same thread-static Random, so the two draws are simply two draws), seeded APART in the smoke - so step 23's
+   seeded margin sequence is unchanged (the smoke checks the first man's margin = the first draw of SeededRandom(23)).
+4. **Clamping**: a floor under 0 → 0 (he braces only when empty, target = his margin); over 100 → 100, and then (step 23's
+   rule for any band that would reach past the top) the band keeps its width M under the top: floor = min(F, 1 − M) - a
+   floor-95 man with +10 braces at 80 and stops at full, never "braces at full".
+5. **Stats / logs**: `BraceStats.AddMan(unit, floorUnit)`, `AddEnd(…, floorUnit)`; the summary is 8 lines now - after
+   `brace margins` a `brace floors (BraceFloorSpreadPercent 10, step 28): N men rolled, their floor offsets now min / avg /
+   max points on the order's floor; braces by his own floor: low (−, fights on longer) …, middle …, high (+, braces sooner)
+   …` (thirds of the unit, like the margin bands). The first-brace line: `order no formation (the no formation floor 20%;
+   his own floor 23.4% = + 3.4 points by his own roll, BraceFloorSpreadPercent 10), … until 44.9% = his floor 23.4% + his
+   margin …`. The settings sentence names the floor roll only when it is above 0.
+6. **No config migration**: a config.json without the two keys reads them as their defaults (`ConfigFile.Apply`: missing →
+   default) and `ConfigStore` writes them in at that read ("added 2 missing setting(s) to config.json with their defaults")
+   - FormatVersion stays 5. Settings 99 → 101.
+
+**Tests / smoke**: Core 482 → 487 (`BraceTests`: the no-formation floor 20 → 40 and the old 60 gone, its own live slider,
+the hold floor untouched; the floor roll ±10 on hold / no formation / charge, independent of the margin (floor and target
+from each), live rescale 0 / 10 / 30, NaN / out-of-range units, clamped at 0 and 100 with the hysteresis over 2000 random
+rolls, the wound cap sliding his own band (70 → 90 capped at 50 = 30 → 50); the summary's new line and the `no formation`
+count). Smoke 68 → 69 steps: `BraceNoFormationAndFloorRoll` (the real logic: a no-formation man fights past 60 and braces
+at the first blow under 20 + his roll, stops at his floor + 20, his roll kept, the margin's sequence unchanged, both
+sliders live, a holding man on 60 ± his roll, the lines); step 23's checks pin `BraceFloorSpreadPercent` 0
+(`BraceDefaults`), the 1000-man cost check runs with it at 10 (0.003 ms a tick, 0 bytes).
+
+**UNVERIFIED — only the game can tell (PLAYTEST D8)**
+1. Tournament fighters really read as no formation → the summary's `by floor: … no formation N` > 0 and `hold and the
+   rest` 0 in a tournament. If a tournament puts its fighters in a formation after all, the next fix is to read the mission
+   (tournament / arena behaviour by name, like the step back's check) - tell Claude.
+2. The 1v1 becomes a fight → `time bracing` share far below 62%, the longest brace far below 163 s. Steps 29 (only
+   wrong-side blocks restart the refill) and 30 (tired AI blocks in a random direction) are the rest of the deadlock fix.
+3. Field battles: a holding line braces man by man between ~50 and ~70 → `brace floors` offsets spread ±10, braces in all
+   three floor bands.

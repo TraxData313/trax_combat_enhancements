@@ -40,7 +40,9 @@ the summary's "battle pace" lines give each class's attacks a minute per man. BR
 Anton: "not swing but only defend" below a floor set by the orders): each AI man's bar (points ÷ his FULL pool)
 is compared about every 0.25 s (staggered) with his formation's movement-order floor - charge
 `BraceFloorChargePercent` (20), advance `BraceFloorAdvancePercent` (40; an AI formation's Move under an advance
-behaviour counts), the rest `BraceFloorHoldPercent` (60); at or below it he BRACES (a fourth wish on step 16's
+behaviour counts), the rest `BraceFloorHoldPercent` (60), NO formation (tournaments, arenas, duels - step 28)
+`BraceFloorNoFormationPercent` (20); each man's floor ± his own roll of `BraceFloorSpreadPercent` (10, once per man and
+battle, its own dice - step 28); at or below it he BRACES (a fourth wish on step 16's
 input component: melee attack bits out, guard up; ranged let through) until floor + `BraceRecoverPercent` (20)
 ± his own roll of `BraceRecoverSpreadPercent` (5, once per man and battle), the target capped by his wounds (the
 band slides down under the cap - never stuck); the shield taken out (`BraceWieldShield`: TryToWieldWeaponInSlot, a
@@ -181,7 +183,7 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
   ParamDef.cs                 one setting: key, type, range, group, label, plain-words
                               description, apply timing (Live / NextBattle); Normalize, Format;
                               its Default comes from defaults.json (DefaultsFile), never code
-  SettingsSchema.cs           EVERY setting of DESIGN's table (99), in file + MCM order, 12 groups
+  SettingsSchema.cs           EVERY setting of DESIGN's table (101), in file + MCM order, 12 groups
                               ("Master switch" first, "Damage" second - step 25 renamed it from
                               "Damage randomness", "Battle pace (AI)" - step 21 - after the step back,
                               "Brace by orders (AI)" - step 23 - after it,
@@ -345,16 +347,20 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               pause, the model's cycle at 0 and with the setting (foot melee), the archers'
                               share inside a cycle + the 7 [summary] "battle pace" lines
   Brace.cs                    step 23 pure (AI_NOTES "Step 23"): BraceOrderKind (the game's movement orders + the
-                              AI's advance / tactical charge on a Move), BraceOrder (charge / advance / hold), BraceEnd,
+                              AI's advance / tactical charge on a Move), BraceOrder (charge / advance / hold / no formation -
+                              step 28), BraceEnd,
                               ShieldStep, HandFacts, BraceBand, BraceRules (live; Enabled = ModEnabled && AthleticsEnabled
                               && BraceEnabled, OffBecause, Describe), BraceMath - Group, Band (floor = min(F, cap − M),
                               target = min(F + M, cap); M = recover ± his roll, ≥ 1 point), Enter / Leave / LeaveReason,
-                              RollUnit / Offset / Margin (the per-man spread, rescaled live), ShieldStepFor; plumbing
+                              RollUnit / Offset / Margin (the per-man spread, rescaled live), step 28: FloorOffset / Floor
+                              (his own floor = the order's + his floor roll x BraceFloorSpreadPercent, clamped 0-1; Band takes
+                              both rolls), ShieldStepFor; plumbing
                               PollSeconds 0.25, ShieldCheckSeconds 1, MaxWieldCalls 3, LongBraceSeconds 30
   BraceStats.cs               step 23 per-mission: men polled / braced, braces by order and floor, AI fighter-time vs
                               brace time, lengths (5 bins), ends by reason, the margins rolled + length by margin band,
                               the shield (at start, calls, seen, put away, never), the guard while bracing, the hook's
-                              frames, attacks while bracing + the 7 [summary] "brace" lines
+                              frames, attacks while bracing; step 28: by floor incl. no formation, the floor offsets rolled
+                              + braces by floor-offset band + the 8 [summary] "brace" lines
   ReadyCount.cs               step 24 pure (AI_NOTES "Step 24"): ReadyBand (plain / yellow / red), ReadyHidden (ModOff
                               first, AthleticsOff, BraceOff, SwitchedOff, NoMen), ReadyRules (live: ShowReadyCount,
                               Ready*BelowPercent, Describe), ReadyMath - HiddenFor, Band (the most alarming wins, "at
@@ -554,13 +560,15 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               change, FirstOfClass (one [rate] line per class), WriteBattlePaceSummary
   Missions/AthleticsLogic.Brace.cs  step 23: StartBrace / NoteBraceSettings (the [brace] lines), TickBrace (switched
                               off → EndAllBraces at once; else a staggered slice so each man is looked at ~every
-                              0.25 s), PollBrace (not AI / the player → none; his roll once; the order → the band →
+                              0.25 s), PollBrace (not AI / the player → none; his two rolls once - the margin on BraceDice,
+                              the floor on BraceFloorDice (step 28); the order → the band →
                               BeginBrace / EndBrace / KeepBracing), BeginBrace (EnsureInput, Hook, SetBrace, the
                               hands, the shield's first wield, the first brace in full), KeepBracing (hands every
                               look, the shield seen / put away, a wield every 1 s up to 3), EndBrace (every path;
                               the callback released if idle), BraceLeftField, BraceFreshStart (step 19),
                               CloseBraces (mission end), BraceHitTaken (the guard), NoteBraceRelease, WriteBraceSummary
-  Missions/BraceBody.cs       step 23: BraceState (his roll, the running brace, the shield's progress), IBraceBody (the
+  Missions/BraceBody.cs       step 23: BraceState (his roll, step 28's floor roll FloorUnit, the running brace, the shield's
+                              progress), IBraceBody (the
                               engine side - the smoke plays it), GameBraceBody (the order from
                               GetReadonlyMovementOrderReference().OrderEnum + FormationAI.ActiveBehavior for an AI Move;
                               the hands from the wielded indices + managed equipment; TryToWieldWeaponInSlot WithAnimation;
@@ -680,7 +688,7 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
   Hud/AltMarkersVM.cs         its ViewModels: the root + a GROW-ONLY MBBindingList of AltMarkerLabelVM keyed by
                               team + formation (a label never swaps formations when vanilla re-sorts); step 24:
                               ReadyText / ReadyColor / ReadyShown, SetReady
-tests/TraxCombat.Core.Tests/  net8.0 xUnit (482) — schema vs DESIGN.md (keys + types), one copy
+tests/TraxCombat.Core.Tests/  net8.0 xUnit (487) — schema vs DESIGN.md (keys + types), one copy
                               runs (SingleCopyTests: claims on private slots, copies, texts), when
                               MCM is tried and when it stops (McmPlanTests - step 12),
                               defaults.json (DefaultsFileTests), master switch, settings, config
@@ -723,7 +731,8 @@ tests/TraxCombat.Core.Tests/  net8.0 xUnit (482) — schema vs DESIGN.md (keys +
                               0 = off, ranges, the settings sentence, the summary lines), the brace (BraceTests,
                               step 23: the floor by order, the hysteresis, the wound cap's band, an order change,
                               the per-man margin, the switches, the shield step and RaiseShield, the summary, the
-                              formation's Ready / Bracing), the ready count (ReadyCountTests, step 24: hidden
+                              formation's Ready / Bracing; step 28: the no-formation floor, each man's own floor roll -
+                              range, apart from the margin, live, clamped at 0 / 100, the hysteresis, the wound cap), the ready count (ReadyCountTests, step 24: hidden
                               rules in order, bands at or below 75 / 50, text, colours, the strip cell one row
                               deeper only while drawn and the 1080p bottom card lifted, log text, summary). They
                               run on DESIGN's INITIAL values (DesignTable.cs: a module
@@ -762,7 +771,7 @@ tools/WorkshopCreate.xml      the FIRST upload (creates the item, Private, tags,
 tools/WorkshopUpdate.xml      every later upload - ITEM_ID placeholder until the first upload
 tools/make_workshop_update.py step 26, from the sibling: WorkshopUpdate.xml → a one-off task in %TEMP% that also
                               sends STEAM-DESCRIPTION.bbcode (escaped, &#10;) and --visibility; --notes required
-tools/STEAM-DESCRIPTION.bbcode  the Workshop page (≤ 8000 bytes; 6009 now) - step 26's launch pitch: slower,
+tools/STEAM-DESCRIPTION.bbcode  the Workshop page (≤ 8000 bytes; 6826 now - step 28) - step 26's launch pitch: slower,
                               tactical, heroes matter, NOT an overhaul (RBM named politely as the deep one)
 tools/preview_thumbnail.html  the Workshop preview TEMPLATE (PANEL_* placeholders) → make_thumbnail.py
 tools/preview_thumbnail.jpg   THE preview (1024², ~275 KB, under Steam's 1 MB): a real battle, the hold-ALT
@@ -852,7 +861,10 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               man 30 → his cap 50, the player never, a man taken over, the input frame (ranged let
                               through, the shield up), the shield steps, the timer and the brace never lifting each
                               other, the guard, live floors / margins, leaving the field, the switches, the summary;
-                              the cost - 1000 men looked at, 0.003 ms a tick, 0 bytes; step 24
+                              the cost - 1000 men looked at, 0.003 ms a tick, 0 bytes; step 28 (BraceNoFormationAndFloorRoll):
+                              a no-formation man braces at 20 ± his own floor roll (not 60), his floor dice apart from the
+                              margin's, both sliders live, the floor lines (step 23's checks pin BraceFloorSpreadPercent 0 -
+                              BraceDefaults); step 24
                               (Program.Ready.cs): the ready count through the real strip and ALT views -
                               texts / colours, the deeper cell and the lifted bottom card, the panel rows, new
                               stats, the thresholds / BraceEnabled / ShowReadyCount live, the master switch, the
@@ -860,7 +872,7 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               (Program.Damage.cs, DamageReductionThroughDecorator): the real decorator - after
                               the roll (100 → 37.5..112.5, mean 75), the roll off still reduced on every kind,
                               never a fall / object / 0 hit, never below 1, live, the master switch, the lines
-                              (the older damage steps pin DamageReductionPercent 0 - DamageDefaults) (68 steps; the config
+                              (the older damage steps pin DamageReductionPercent 0 - DamageDefaults) (69 steps; the config
                               checks work for any tuned default);
                               TRAX_SMOKE_KEEP=1 keeps its temp folder + log to read
 tools/DefaultsTool/           defaults.json upkeep: refresh (rewrite comments/order, keep every
