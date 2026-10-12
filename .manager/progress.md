@@ -15,7 +15,7 @@ Board = TASKS_TODO.md BUILD ORDER 28-30 (project manager protocol in CLAUDE.md).
 
 Phase 2 (Anton 2026-10-12):
 - [~] 32. Swing stack: max(2, round(points/20)) stored swings, one back per pause, kicks/bashes use one, pips on the recovery bar
-- [ ] 33. Sprint: key, bar = points/20 s, min 20% to start, 1.6x current for the first 25% of the sprint time (slider; 2.5 s of 7.5 = 33%? Anton to confirm) then linear to 1.1x, refill 7 s (x0.5 moving, x0.5 exhausted), no Athletics refill while sprinting, AI on new orders (charge all, move/advance 50%), foot only
+- [ ] 33. Sprint: key, bar = points/20 s, min 20% to start, 1.6x current for the first 30% of the sprint time (slider, default 30 - Anton) then linear to 1.1x, refill 7 s (x0.5 moving, x0.5 exhausted), no Athletics refill while sprinting, AI on new orders (charge all, move/advance 50%), foot only
 
 ## Notes
 - Release: fixes collect in main; version / upload = Anton's call later.
