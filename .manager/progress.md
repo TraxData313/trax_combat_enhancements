@@ -8,11 +8,12 @@ Board = TASKS_TODO.md BUILD ORDER 28-30 (project manager protocol in CLAUDE.md).
 
 ## Steps
 - [x] 28. Brace floor for no formation 20% (BraceFloorNoFormationPercent) + per-man floor roll ±10 (BraceFloorSpreadPercent, independent of the ±5 recover roll), everywhere
-- [~] 29. Only wrong-side shield blocks restart the refill delay (one switch); right-side + parries still cost
-- [ ] 30. Tired AI block direction: mix his own pick with a random one by weight setting × (1 − f), once per incoming attack; research the input direction bits first
+- [x] 29. Only wrong-side shield blocks restart the refill delay (one switch); right-side + parries still cost
+- [~] 30. Tired AI block direction: mix his own pick with a random one by weight setting × (1 − f), once per incoming attack; research the input direction bits first
 
 ## Notes
 - Release: fixes collect in main; version / upload = Anton's call later.
 - 28 done (6f2ffc6..83fd903): BraceFloorNoFormationPercent 20, BraceFloorSpreadPercent 10 (own dice, live). 487 tests, smoke 69. Assumes tournament men read as "no formation" (PLAYTEST D8 checks).
+- 29 done (5289cfd..ab24f63): OnlyWrongSideBlocksStopRefill true; AthleticsMath.BlockRestartsRefill. 498 tests, smoke 70. Parrying from empty every 1.5 s: soldier climbs only with pool > 80, hero > 60, hero+leader always; right-side shield blocks always climb. Anton's call whether small-bar parriers should climb (levers: CostPerWeaponParry, FullRegenSecondsStanding).
 - Deploy on this PC (scripts default to D:, which does not exist):
   powershell -ExecutionPolicy Bypass -File tools\deploy.ps1 -GameFolder "C:\Program Files (x86)\Steam\steamapps\common\Mount & Blade II Bannerlord" -McmBinFolder "C:\Program Files (x86)\Steam\steamapps\workshop\content\261550\2859238197\bin\Win64_Shipping_Client"
