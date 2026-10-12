@@ -948,3 +948,22 @@
   GetPublishedFileDetails confirms: title, visibility 0 (Public), 833,067 bytes, the full 6 KB description. README links
   the Workshop item + the GitHub release; WORKSHOP-UPLOAD.md status / item; CLAUDE "Release" line. Tag v1.0.0 on 4cd40cd,
   GitHub release v1.0.0 with the zip. Left to Anton: the five gallery shots on the item page. (2026.10.10 21.17.03)
+- [x] 28. Duel deadlock fix, part 1 - no formation braces at 20%, each man's own floor ±10 (Anton, 2026-10-12, a tournament
+  log: the 1v1 fighters have NO formation, so step 23 put them on the hold floor 60% - 11 of 16 AI braced, 62% of their time,
+  the longest brace 163 s, the AI blocking ~95% of his swings). WHAT: a fourth floor group BraceOrder.NoFormation (tournaments,
+  arenas, duels - Agent.Formation null) on BraceFloorNoFormationPercent 20 (0-100; the hold group keeps stop / move / retreat /
+  fall back / follow / no order); every AI man's FLOOR = his order's ± his own roll of BraceFloorSpreadPercent 10 (0-30) - a
+  second unit roll (BraceState.FloorUnit) once per man and battle on its OWN dice (BraceFloorDice; the margin's ±5 untouched,
+  its seeded smoke sequence unchanged), x the slider read live (rescales everyone at once), clamped 0-100, everywhere. WHY a
+  roll on the floor and not only the margin: a line no longer braces as one man, and a duel opponent's floor is not
+  predictable. Band(r, order, top, unit, floorUnit): his floor is F, so the hysteresis (target = his floor + his margin, at
+  least 1 point), the wound cap's sliding band and "never stuck" are step 23's rules unchanged. Logs: the settings sentence
+  (no formation 20% → 40%; "± his own 10 (BraceFloorSpreadPercent …)" when above 0), the first brace ("the no formation floor
+  20%; his own floor 23.4% = + 3.4 points by his own roll"), the summary 8 lines - by floor + no formation, a new "brace
+  floors" line (offsets min / avg / max, braces by floor-offset band). Settings 99 → 101 (DESIGN rows, schema, defaults.json
+  refreshed, MCM via the schema); no config migration (missing keys take their default and are written in; format 5 stays).
+  Tests 482 → 487 (BraceTests: the no-formation floor, the floor roll - range, apart from the margin, live, clamped at 0 / 100,
+  hysteresis over random rolls, the wound cap - the summary). Smoke 68 → 69 (BraceNoFormationAndFloorRoll through the real
+  logic; step 23's checks pin the floor roll at 0, the 1000-man cost runs with it: 0.003 ms a tick, 0 bytes). deploy.ps1
+  green, INSTALLED (this PC needs -GameFolder / -McmBinFolder on C:). Docs: DESIGN, AI_NOTES "Step 28", PLAYTEST D8 + L6d,
+  CLAUDE.md, README + STEAM-DESCRIPTION.bbcode (6826 bytes; not uploaded - Anton's call). (2026.10.12 10.51.42)
