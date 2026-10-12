@@ -1,5 +1,8 @@
 # Battle pacing — how to make battles longer and more tactical (step 15, research)
 
+> Developer research, kept as the record of what was weighed. For how the mod plays as shipped, read
+> the player guide, [HOW-IT-WORKS.md](HOW-IT-WORKS.md).
+
 Anton's ask (2026-09-27): battles end fast (an 80v80 infantry fight in 4–5 minutes). "I wanted to have
 a way to slow them down a bit for tactical decisions or hero units to become more powerful, so check
 what different tactics RBM deploys to make the battle take longer and feel more strategic — I want

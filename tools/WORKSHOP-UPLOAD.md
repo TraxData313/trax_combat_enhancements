@@ -47,7 +47,7 @@ SteamCMD, no password, no Steam Guard.
    **Never run `WorkshopCreate.xml` again** — it would make a second item. If the upload failed
    AFTER "Item created", the empty item exists: use its id with `WorkshopUpdate.xml`.
 8. **The full description** — the create task sends only the short pitch. Either paste
-   `tools\STEAM-DESCRIPTION.bbcode` whole on the item page (*Edit title & description*; 6.0 KB,
+   `tools\STEAM-DESCRIPTION.bbcode` whole on the item page (*Edit title & description*; 3.0 KB,
    Steam's cap is 8000), or let the uploader send it with the first update (the sibling's way):
    ```powershell
    $task = python tools\make_workshop_update.py --notes "First release."

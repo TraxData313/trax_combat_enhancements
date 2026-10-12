@@ -178,6 +178,12 @@ defaults.json                 THE ONE TRUTH for every default value (DESIGN §2c
                               its value, its explanation + range as // lines. Anton tunes it and
                               pushes; embedded in TraxCombat.Core.dll at build. After a schema
                               wording/range/order change: dotnet run --project tools/DefaultsTool -- refresh
+docs/HOW-IT-WORKS.md          step 31, THE PLAYER GUIDE (linked from the README and the Workshop page): every mechanic
+                              by topic in TABLES computed from defaults.json (pool / attacks per bar, tiredness by bar
+                              level, refill, block costs + "does a parrying man climb", tired block guesses, brace
+                              floors + a worked example, step back, pace, damage, HUD colours, tactics) - setting
+                              names in small print. A tuned default changes its tables: recompute them
+docs/BATTLE_PACING.md         step 15's research (how RBM paces battles, our levers) - developer reading
 docs/REVIEW.md                the code reviews: step 10a (R1-R24) and step 17's second one over steps 12-16
                               (R25-R36) - every finding with its severity, place, scenario and status (fixed
                               in which commit / not a bug / deferred / For Anton)
@@ -800,8 +806,10 @@ tools/WorkshopCreate.xml      the FIRST upload (creates the item, Private, tags,
 tools/WorkshopUpdate.xml      every later upload - ITEM_ID placeholder until the first upload
 tools/make_workshop_update.py step 26, from the sibling: WorkshopUpdate.xml → a one-off task in %TEMP% that also
                               sends STEAM-DESCRIPTION.bbcode (escaped, &#10;) and --visibility; --notes required
-tools/STEAM-DESCRIPTION.bbcode  the Workshop page (≤ 8000 bytes; 6826 now - step 28) - step 26's launch pitch: slower,
-                              tactical, heroes matter, NOT an overhaul (RBM named politely as the deep one)
+tools/STEAM-DESCRIPTION.bbcode  the Workshop page (≤ 8000 bytes; 3042 now - step 31's short rewrite): the hook, 5 idea
+                              bullets (rest your troops, fresh shock troops into tired lines), "How it works, at a
+                              glance", the link to docs/HOW-IT-WORKS.md, "Good to know" (NOT an overhaul, RBM named
+                              politely as the deep one)
 tools/preview_thumbnail.html  the Workshop preview TEMPLATE (PANEL_* placeholders) → make_thumbnail.py
 tools/preview_thumbnail.jpg   THE preview (1024², ~275 KB, under Steam's 1 MB): a real battle, the hold-ALT
                               close-up ("ready 1/9" vs "ready 37/53"), your two bars, name + "Slower, tactical
