@@ -16,6 +16,7 @@ Board = TASKS_TODO.md BUILD ORDER 28-30 (project manager protocol in CLAUDE.md).
 Phase 2 (Anton 2026-10-12):
 - [x] 32. Swing stack: max(2, round(points/20)) stored swings, one back per pause, kicks/bashes use one, pips on the recovery bar
 - [~] 33. Sprint: key, bar = points/20 s, min 20% to start, 1.6x current for the first 30% of the sprint time (slider, default 30 - Anton) then linear to 1.1x, refill 7 s (x0.5 moving, x0.5 exhausted), no Athletics refill while sprinting, AI on new orders (charge all, move/advance 50%), foot only
+- [ ] 34. Split "AI guard by f" (and the tired-direction lines) by SHIELD vs NO SHIELD, so the log proves tired shieldless men parry worse (Anton yes 2026-10-12). Add to TASKS_TODO after 33 lands. Logs: already capped 8 MB (LogMaxMegabytes, LogTrim) - keep it so.
 
 ## Notes
 - Release: fixes collect in main; version / upload = Anton's call later.
