@@ -20,7 +20,7 @@ Phase 2 (Anton 2026-10-12):
 - [x] 35. Sprint tuning: peak 2.0 x FRESH run, fade to 1.1 x current; default 2.0; store floor 2 s; TopSpeedReachDuration 1 s while sprinting (game ~2.3-2.8 s: Sandbox 2.5 + max(4 - skill/100, 1)/3.5 - min(w/(w+gear), 0.8))
 - [x] 36. AI sprint by order (Anton 2026-10-12): per order a USE share and a RESERVE kept: charge (F1+F3) use 100 / keep 0, advance (F1+F4, "engage") use 50 / keep 0, move use 20 / keep 70 - sprint = min(use share, store - reserve) of the store, at the moment the order is given; 6 sliders (replaces SprintAiChargeSharePercent / SprintAiMoveSharePercent - move and advance split). Why: shock troops moved behind the enemy keep their sprint for the real charge. Add to TASKS_TODO after 35 lands.
 - [x] 37. AI sprint = one reserve per order: charge keep 0, advance keep 50, move keep 80; sprint = stored - keep; drop the 3 Use settings (config format 7 migration)
-- [~] 38. Release v1.1.0 (Anton yes 2026-10-12): stamp, package, Workshop update with description, GitHub release
+- [x] 38. Release v1.1.0 (Anton yes 2026-10-12): stamp, package, Workshop update with description, GitHub release
 
 ## Notes
 - Release: fixes collect in main; version / upload = Anton's call later.
@@ -38,3 +38,4 @@ Phase 2 (Anton 2026-10-12):
 - 35 done (a9780cb..83737a3): peak 2.0 x fresh run, fade to 1.1 x current; SprintMinSeconds 2; SprintTopSpeedReachSeconds 1 (game 2.3-2.8). 557 tests, smoke 81. Untested: engine honouring TopSpeedReachDuration mid-run, look of 2x with 1 s ramp. Note: the 1000-man cost check still runs on step 33 numbers.
 - 36 done (9923b48..fe9341e): 6 sliders use/keep per order (charge 100/0, advance 50/0, move 20/70), config format 6 migrates the old 2 keys. 573 tests, smoke 82. Deploy install FAILED (game running) - Anton reruns the deploy line after closing the game. ALL STEPS DONE.
 - 37 done (0f25e14..2a78360): keeps charge 0 / advance 50 / move 80, config format 7, 575 tests, smoke 82, installed. ALL STEPS DONE (28-37). Next: Anton playtests, then decides a release.
+- 38 done: v1.1.0 live on the Workshop (description sent) + GitHub release v1.1.0. Gallery images unchanged (no new screenshots).

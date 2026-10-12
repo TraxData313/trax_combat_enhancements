@@ -1046,7 +1046,7 @@ line.
 
 ## Release
 
-Live: Workshop item **3817259431** (Public, v1.0.0, 2026-10-10), GitHub release v1.0.0 with the zip.
+Live: Workshop item **3817259431** (Public, v1.1.0 since 2026-10-12 - v1.0.0 was 2026-10-10), GitHub releases v1.0.0 and v1.1.0 with the zips.
 The whole loop is **`tools/WORKSHOP-UPLOAD.md`** — read it before any release. **Publishing is
 Anton's decision, after his playtest**: Claude never runs the uploader, and never posts or
 uploads anything, without his yes for that release. **The release rhythm** (the sibling's, Anton
