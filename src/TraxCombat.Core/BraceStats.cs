@@ -20,6 +20,8 @@ namespace TraxCombat.Core
         private readonly int[] _lengths = new int[5];
         private readonly int[] _bandBraces = new int[3];
         private readonly double[] _bandSeconds = new double[3];
+        private readonly int[] _floorBandBraces = new int[3];
+        private readonly double[] _floorBandSeconds = new double[3];
         private readonly int[] _shieldAtStart = new int[6];
 
         // ---- men and time
@@ -37,6 +39,12 @@ namespace TraxCombat.Core
         public double UnitMin = double.NaN;
         public double UnitMax = double.NaN;
         public double UnitSum;
+
+        // ---- step 28: the per-man FLOOR offset (units in [−1, 1) - shown × BraceFloorSpreadPercent)
+        public int FloorUnitsRolled;
+        public double FloorUnitMin = double.NaN;
+        public double FloorUnitMax = double.NaN;
+        public double FloorUnitSum;
 
         // ---- the shield
         public int ShieldOffSwitch;
@@ -66,15 +74,20 @@ namespace TraxCombat.Core
         public int Lengths(int bin) => _lengths[bin];
         public int ShieldAtStart(ShieldStep s) => _shieldAtStart[(int)s];
         public int BandBraces(int band) => _bandBraces[band];
+        public int FloorBandBraces(int band) => _floorBandBraces[band];
 
-        /// <summary>An AI man's first look this battle: his margin's roll.</summary>
-        public void AddMan(double unit)
+        /// <summary>An AI man's first look this battle: his margin's roll and (step 28) his floor's roll.</summary>
+        public void AddMan(double unit, double floorUnit = 0)
         {
             MenPolled++;
             UnitsRolled++;
             UnitSum += unit;
             if (double.IsNaN(UnitMin) || unit < UnitMin) UnitMin = unit;
             if (double.IsNaN(UnitMax) || unit > UnitMax) UnitMax = unit;
+            FloorUnitsRolled++;
+            FloorUnitSum += floorUnit;
+            if (double.IsNaN(FloorUnitMin) || floorUnit < FloorUnitMin) FloorUnitMin = floorUnit;
+            if (double.IsNaN(FloorUnitMax) || floorUnit > FloorUnitMax) FloorUnitMax = floorUnit;
         }
 
         /// <summary>A brace began; <paramref name="firstForHim"/> = his first this battle.</summary>
@@ -88,8 +101,9 @@ namespace TraxCombat.Core
         /// <summary>The shield's step at a brace's start (<see cref="ShieldOffSwitch"/> when BraceWieldShield is off).</summary>
         public void AddShieldAtStart(ShieldStep s) => _shieldAtStart[(int)s]++;
 
-        /// <summary>A brace ended after <paramref name="seconds"/>; <paramref name="unit"/> = his roll (the margin band).</summary>
-        public void AddEnd(BraceEnd why, double seconds, double unit, string? name)
+        /// <summary>A brace ended after <paramref name="seconds"/>; <paramref name="unit"/> = his margin roll (the margin band),
+        /// <paramref name="floorUnit"/> = his floor roll (step 28, the floor band).</summary>
+        public void AddEnd(BraceEnd why, double seconds, double unit, string? name, double floorUnit = 0)
         {
             _ends[(int)why]++;
             if (!(seconds >= 0)) seconds = 0;
@@ -98,6 +112,9 @@ namespace TraxCombat.Core
             int band = UnitBand(unit);
             _bandBraces[band]++;
             _bandSeconds[band] += seconds;
+            int fband = UnitBand(floorUnit);
+            _floorBandBraces[fband]++;
+            _floorBandSeconds[fband] += seconds;
             if (seconds > LongestSeconds)
             {
                 LongestSeconds = seconds;
@@ -125,7 +142,7 @@ namespace TraxCombat.Core
         /// <summary>The [summary] "brace" lines.</summary>
         public List<string> SummaryLines(in BraceRules r)
         {
-            var lines = new List<string>(8);
+            var lines = new List<string>(9);
             lines.Add("brace by orders (step 23): " + r.Describe() + (SettingsChanged ? " - its settings CHANGED during this battle (the lines mix both)" : string.Empty));
             int braces = Braces;
             if (MenPolled == 0)
@@ -135,7 +152,7 @@ namespace TraxCombat.Core
             }
             double share = AiManSeconds > 0 ? BraceSeconds / AiManSeconds : 0;
             lines.Add("brace: " + MenBraced + " of " + MenPolled + " AI fighters braced, " + braces + " braces - by order: " + KindsText()
-                      + "; by floor: charge " + ByGroup(BraceOrder.Charge) + ", advance " + ByGroup(BraceOrder.Advance) + ", hold and the rest " + ByGroup(BraceOrder.Hold)
+                      + "; by floor: charge " + ByGroup(BraceOrder.Charge) + ", advance " + ByGroup(BraceOrder.Advance) + ", hold and the rest " + ByGroup(BraceOrder.Hold) + ", no formation " + ByGroup(BraceOrder.NoFormation)
                       + "; time bracing " + F0(BraceSeconds) + " man-seconds = " + Pct(share) + " of the AI fighters' time on the field (" + F0(AiManSeconds) + " man-seconds)"
                       + (braces > 0 ? ", avg " + F1(BraceSeconds / braces) + " s a brace, " + F1(MenBraced > 0 ? BraceSeconds / MenBraced : 0) + " s per man who braced, the longest "
                                       + F1(LongestSeconds) + " s" + (LongestName != null ? " (" + LongestName + ")" : string.Empty) : string.Empty));
@@ -147,6 +164,10 @@ namespace TraxCombat.Core
                       + (UnitsRolled > 0 ? ", their offsets now min " + Pts(UnitMin, r) + " / avg " + Pts(UnitSum / UnitsRolled, r) + " / max " + Pts(UnitMax, r) + " points on "
                                            + r.RecoverPercent + "%" : string.Empty)
                       + "; braces by his own margin: short (−) " + BandText(0) + ", middle " + BandText(1) + ", long (+) " + BandText(2));
+            lines.Add("brace floors (BraceFloorSpreadPercent " + r.FloorSpreadPercent + ", step 28): " + FloorUnitsRolled + " men rolled"
+                      + (FloorUnitsRolled > 0 ? ", their floor offsets now min " + FloorPts(FloorUnitMin, r) + " / avg " + FloorPts(FloorUnitSum / FloorUnitsRolled, r) + " / max "
+                                                + FloorPts(FloorUnitMax, r) + " points on the order's floor" : string.Empty)
+                      + "; braces by his own floor: low (−, fights on longer) " + FloorBandText(0) + ", middle " + FloorBandText(1) + ", high (+, braces sooner) " + FloorBandText(2));
             lines.Add("brace shield (BraceWieldShield " + (r.WieldShield ? "on" : "off") + "): at the brace's start - already in hand " + ShieldAtStart(ShieldStep.InHand)
                       + ", taken out " + ShieldAtStart(ShieldStep.WieldShield) + ", a one-hander first " + ShieldAtStart(ShieldStep.WieldOneHanded)
                       + ", no shield " + ShieldAtStart(ShieldStep.NoShield) + ", a ranged weapon in hand (left alone) " + ShieldAtStart(ShieldStep.RangedInHand)
@@ -180,6 +201,15 @@ namespace TraxCombat.Core
 
         private string BandText(int band) =>
             _bandBraces[band] + (_bandBraces[band] > 0 ? " (avg " + F1(_bandSeconds[band] / _bandBraces[band]) + " s)" : string.Empty);
+
+        private string FloorBandText(int band) =>
+            _floorBandBraces[band] + (_floorBandBraces[band] > 0 ? " (avg " + F1(_floorBandSeconds[band] / _floorBandBraces[band]) + " s)" : string.Empty);
+
+        private static string FloorPts(double unit, in BraceRules r)
+        {
+            double v = BraceMath.FloorOffset(in r, unit) * 100.0;
+            return (v > 0.05 ? "+" : string.Empty) + v.ToString("0.0", CultureInfo.InvariantCulture);
+        }
 
         private static string Pts(double unit, in BraceRules r)
         {

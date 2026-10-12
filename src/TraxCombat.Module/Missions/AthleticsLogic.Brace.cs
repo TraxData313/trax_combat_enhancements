@@ -10,7 +10,8 @@ namespace TraxCombat.Missions
     /// floor, that depends on their current orders, until they have replenished the floor +20%" ... "when defending they whip
     /// out their shields if they have one"; AI_NOTES "Step 23", DESIGN §2 "Brace by orders"). Every AI man is looked at about
     /// every <see cref="BraceMath.PollSeconds"/>, staggered over the ticks: his bar (points ÷ his FULL pool - what the bar shows)
-    /// against his formation's order floor (<see cref="BraceMath.Band"/>, his own margin rolled once per battle). At or below
+    /// against his formation's order floor (<see cref="BraceMath.Band"/>, his own margin and - step 28 - his own floor offset
+    /// rolled once per battle; no formation = its own floor). At or below
     /// it he BRACES - step 16's input component takes his melee attack bits out (guard up) until he refills to floor + his
     /// margin (capped by his wounds). The brace is its own wish in <see cref="AiInputState"/>: the AI timer's and the step
     /// back's ends never lift it, its end never lifts theirs. Ranged attacks go on. The shield is taken out if he carries one
@@ -36,6 +37,10 @@ namespace TraxCombat.Missions
 
         /// <summary>The dice for each man's margin roll (seeded in the offline smoke).</summary>
         internal IRandomSource BraceDice { get; set; } = ThreadSafeRandom.Shared;
+
+        /// <summary>Step 28: the dice for each man's FLOOR roll - its own source, so the floor roll is independent of the margin's
+        /// and the smoke's seeded margins stay as they were (seeded apart there).</summary>
+        internal IRandomSource BraceFloorDice { get; set; } = ThreadSafeRandom.Shared;
 
         /// <summary>Men bracing right now.</summary>
         internal int BracingNow => _bracing.Count;
@@ -116,7 +121,8 @@ namespace TraxCombat.Missions
             {
                 bs = st.Brace = new BraceState();
                 bs.Unit = BraceMath.RollUnit(BraceDice); // once per man and battle (Anton's "bravery")
-                _braceStats.AddMan(bs.Unit);
+                bs.FloorUnit = BraceMath.RollUnit(BraceFloorDice); // step 28: his own floor, rolled apart
+                _braceStats.AddMan(bs.Unit, bs.FloorUnit);
             }
             else if (!double.IsNaN(bs.LastPoll))
             {
@@ -126,7 +132,7 @@ namespace TraxCombat.Missions
             bs.LastPoll = now;
             var kind = body.ReadOrder(st);
             var group = BraceMath.Group(kind);
-            var band = BraceMath.Band(in br, group, AthleticsMath.UsableFraction(in ar, st), bs.Unit);
+            var band = BraceMath.Band(in br, group, AthleticsMath.UsableFraction(in ar, st), bs.Unit, bs.FloorUnit);
             double x = st.Fraction;
             if (!bs.Active)
             {
@@ -258,7 +264,7 @@ namespace TraxCombat.Missions
             var s = st.Input;
             if (s != null && s.Calls == bs.CallsAtStart && held >= NoCallGraceSeconds && why != BraceEnd.LeftField) _braceStats.BracesWithoutACall++;
             if (bs.ShieldAsked && !bs.ShieldSeen && !bs.SwitchedBackCounted) _braceStats.NeverGotIt++;
-            _braceStats.AddEnd(why, held, bs.Unit, held > _braceStats.LongestSeconds ? Name(st) : null);
+            _braceStats.AddEnd(why, held, bs.Unit, held > _braceStats.LongestSeconds ? Name(st) : null, bs.FloorUnit);
             _bracing.Remove(st);
             if (native && !st.Removed)
             {
@@ -407,11 +413,13 @@ namespace TraxCombat.Missions
         private string BraceText(TrackedAgent st, BraceState bs, in BraceBand band, double x, double now, in BraceRules br)
         {
             double margin = BraceMath.Margin(in br, bs.Unit);
+            double floorOffset = BraceMath.FloorOffset(in br, bs.FloorUnit);
             string shield = !br.WieldShield ? "the shield left as it is (BraceWieldShield off)"
                 : "shield: " + BraceMath.Name(bs.StepAtStart) + (bs.WieldCalls > 0 ? " (wield asked)" : string.Empty);
             return Name(st) + " at " + Sec(now) + " s - order " + BraceMath.Name(bs.KindAtStart) + " (the " + BraceMath.Name(bs.GroupAtStart) + " floor "
-                   + br.FloorPercent(bs.GroupAtStart) + "%), his bar " + Pct(x) + " of his full pool (" + F1(AthleticsMath.Points(AthleticsRules.From(TraxSettings.Shared), st))
-                   + " points) → no melee attacks, guard up, until " + Pct(band.Target) + " = floor " + Pct(band.SetFloor) + " + his margin " + F1(margin * 100)
+                   + br.FloorPercent(bs.GroupAtStart) + "%; his own floor " + Pct(band.SetFloor) + " = " + (floorOffset >= 0 ? "+ " : "- ")
+                   + F1(Math.Abs(floorOffset) * 100) + " points by his own roll, BraceFloorSpreadPercent " + br.FloorSpreadPercent + "), his bar " + Pct(x) + " of his full pool (" + F1(AthleticsMath.Points(AthleticsRules.From(TraxSettings.Shared), st))
+                   + " points) → no melee attacks, guard up, until " + Pct(band.Target) + " = his floor " + Pct(band.SetFloor) + " + his margin " + F1(margin * 100)
                    + " points (BraceRecoverPercent " + br.RecoverPercent + " " + (BraceMath.Offset(in br, bs.Unit) >= 0 ? "+ " : "- ")
                    + F1(Math.Abs(BraceMath.Offset(in br, bs.Unit)) * 100) + ", his own roll)"
                    + (band.Capped ? " - capped by his wounds (he can refill to " + Pct(band.Target) + " only; he braces from " + Pct(band.Floor) + ")" : string.Empty)

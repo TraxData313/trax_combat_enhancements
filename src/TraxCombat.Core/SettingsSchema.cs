@@ -254,7 +254,7 @@ namespace TraxCombat.Core
         // bravery-like randomness)"): BraceMath, AI_NOTES "Step 23". The bar = points ÷ his full pool (what his bar shows).
         public static readonly ParamDef BraceEnabled = Bool("BraceEnabled", BraceGroup,
             "Tired AI brace by their orders",
-            "An AI soldier whose Athletics bar falls to his formation's order floor (the three settings below) stops attacking in melee and only defends, guard up, until he refills to that floor + the recover margin. Bows, crossbows and throws go on. AI heroes and riders too; never you. Off: AI men swing at any Athletics. Switching it off lifts every brace at once.");
+            "An AI soldier whose Athletics bar falls to his formation's order floor (the settings below) stops attacking in melee and only defends, guard up, until he refills to that floor + the recover margin. Bows, crossbows and throws go on. AI heroes and riders too; never you. Off: AI men swing at any Athletics. Switching it off lifts every brace at once.");
 
         public static readonly ParamDef BraceFloorChargePercent = Int("BraceFloorChargePercent", 0, 100, BraceGroup,
             "Brace floor: charging (%)",
@@ -266,7 +266,18 @@ namespace TraxCombat.Core
 
         public static readonly ParamDef BraceFloorHoldPercent = Int("BraceFloorHoldPercent", 0, 100, BraceGroup,
             "Brace floor: holding and the rest (%)",
-            "Under every other order - hold / halt, move to a position, retreat, fall back, follow, or no formation - a soldier braces at or below this % of his full bar. High = a holding line swings first and then braces early.");
+            "Under every other order - hold / halt, move to a position, retreat, fall back, follow, no order - a soldier braces at or below this % of his full bar. High = a holding line swings first and then braces early.");
+
+        // Step 28 (Anton, 2026-10-12, a tournament log: the 1v1 fighters have no formation, so they braced on the hold floor
+        // 60% - 62% of their time, the longest 163 s, the AI blocking ~95% of his swings): no formation has its own floor, and
+        // every man's floor gets his own roll (AI_NOTES "Step 28").
+        public static readonly ParamDef BraceFloorNoFormationPercent = Int("BraceFloorNoFormationPercent", 0, 100, BraceGroup,
+            "Brace floor: no formation - tournaments, arenas, duels (%)",
+            "A soldier in no formation - tournament and arena fighters, duels - braces at or below this % of his full bar. Low = a duel opponent fights on until he is nearly spent, instead of turtling behind his shield.");
+
+        public static readonly ParamDef BraceFloorSpreadPercent = Int("BraceFloorSpreadPercent", 0, 30, BraceGroup,
+            "Brace floor spread per soldier (± %)",
+            "Each AI soldier's own floor is his order's floor plus or minus up to this many points, rolled once per soldier and battle (apart from the margin's roll below) - some brace sooner, some fight on longer. Never below 0 or above 100. 0 = everyone exactly on his order's floor. A change rescales everyone's roll at once.");
 
         public static readonly ParamDef BraceRecoverPercent = Int("BraceRecoverPercent", 0, 100, BraceGroup,
             "Brace until floor + (%)",
@@ -531,7 +542,8 @@ namespace TraxCombat.Core
             StepBackEnabled, StepBackBackpedal, StepBackMaxChancePercent, StepBackDistance, StepBackSeconds, StepBackEnemyRange,
             StepBackHoldAttacks, StepBackMaxAtOnce,
             ShieldInfantrySwingsLessPercent, FootMeleeSwingsLessPercent, AiMeleeGapSeconds, ExtraPauseAfterBowShotSeconds, ExtraPauseAfterCrossbowShotSeconds,
-            BraceEnabled, BraceFloorChargePercent, BraceFloorAdvancePercent, BraceFloorHoldPercent, BraceRecoverPercent, BraceRecoverSpreadPercent,
+            BraceEnabled, BraceFloorChargePercent, BraceFloorAdvancePercent, BraceFloorHoldPercent, BraceFloorNoFormationPercent, BraceFloorSpreadPercent,
+            BraceRecoverPercent, BraceRecoverSpreadPercent,
             BraceWieldShield, BraceRaiseShield,
             RegenDelayBlowTimes, BlowTimeSeconds, FullRegenSecondsStanding, RegenRateNearFullPercent, RegenMultiplierAtFullRun,
             WalkEffortFraction, HideoutBossFightRefill,

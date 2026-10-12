@@ -27,14 +27,15 @@ namespace TraxCombat.Core
         Count,
     }
 
-    /// <summary>Step 23: the three floors - charge (charge, charge a target, attack a gate, the AI's tactical charge), advance
-    /// (advance, the AI's advance) and hold (everything else: stop / halt, move, retreat, fall back, follow, no order, no
-    /// formation).</summary>
+    /// <summary>Step 23: the floors - charge (charge, charge a target, attack a gate, the AI's tactical charge), advance
+    /// (advance, the AI's advance) and hold (everything else: stop / halt, move, retreat, fall back, follow, no order); step 28:
+    /// no formation (tournaments, arenas, duels - a man the game put in no formation) has its own.</summary>
     public enum BraceOrder
     {
         Charge,
         Advance,
         Hold,
+        NoFormation,
         Count,
     }
 
@@ -128,7 +129,7 @@ namespace TraxCombat.Core
         /// <summary>At or above this he stops (floor + recover, never above the top his wounds let him refill to).</summary>
         public double Target { get; }
 
-        /// <summary>The order's floor and floor + recover as set (no wound cap).</summary>
+        /// <summary>His own floor (the order's + his floor offset - step 28) and floor + his margin (no wound cap).</summary>
         public double SetFloor { get; }
         public double SetTarget { get; }
 
@@ -143,8 +144,10 @@ namespace TraxCombat.Core
     public readonly struct BraceRules
     {
         public BraceRules(bool modEnabled, bool athleticsEnabled, bool braceEnabled, int floorCharge, int floorAdvance, int floorHold,
-            int recover, bool wieldShield, bool raiseShield, int recoverSpread = 0)
+            int recover, bool wieldShield, bool raiseShield, int recoverSpread = 0, int floorNoFormation = 20, int floorSpread = 0)
         {
+            FloorNoFormationPercent = floorNoFormation;
+            FloorSpreadPercent = floorSpread;
             RecoverSpreadPercent = recoverSpread;
             ModEnabled = modEnabled;
             AthleticsEnabled = athleticsEnabled;
@@ -163,6 +166,14 @@ namespace TraxCombat.Core
         public int FloorChargePercent { get; }
         public int FloorAdvancePercent { get; }
         public int FloorHoldPercent { get; }
+
+        /// <summary>Step 28: the floor of a man in no formation (tournaments, arenas, duels).</summary>
+        public int FloorNoFormationPercent { get; }
+
+        /// <summary>Step 28: each AI man's own FLOOR is the order's ± up to this many points, rolled once per battle,
+        /// independent of the margin's roll.</summary>
+        public int FloorSpreadPercent { get; }
+
         public int RecoverPercent { get; }
 
         /// <summary>Each AI man's own margin is RecoverPercent ± up to this many points, rolled once per battle (Anton: "adds
@@ -181,14 +192,17 @@ namespace TraxCombat.Core
         {
             BraceOrder.Charge => FloorChargePercent,
             BraceOrder.Advance => FloorAdvancePercent,
+            BraceOrder.NoFormation => FloorNoFormationPercent,
             _ => FloorHoldPercent,
         };
 
         public static BraceRules From(TraxSettings s) => new BraceRules(s.ModEnabled, s.AthleticsEnabled, s.BraceEnabled,
-            s.BraceFloorChargePercent, s.BraceFloorAdvancePercent, s.BraceFloorHoldPercent, s.BraceRecoverPercent, s.BraceWieldShield, s.BraceRaiseShield, s.BraceRecoverSpreadPercent);
+            s.BraceFloorChargePercent, s.BraceFloorAdvancePercent, s.BraceFloorHoldPercent, s.BraceRecoverPercent, s.BraceWieldShield, s.BraceRaiseShield, s.BraceRecoverSpreadPercent,
+            s.BraceFloorNoFormationPercent, s.BraceFloorSpreadPercent);
 
         public bool SameAs(in BraceRules o) => BraceEnabled == o.BraceEnabled && FloorChargePercent == o.FloorChargePercent && FloorAdvancePercent == o.FloorAdvancePercent
-                                               && FloorHoldPercent == o.FloorHoldPercent && RecoverPercent == o.RecoverPercent && RecoverSpreadPercent == o.RecoverSpreadPercent
+                                               && FloorHoldPercent == o.FloorHoldPercent && FloorNoFormationPercent == o.FloorNoFormationPercent
+                                               && FloorSpreadPercent == o.FloorSpreadPercent && RecoverPercent == o.RecoverPercent && RecoverSpreadPercent == o.RecoverSpreadPercent
                                                && WieldShield == o.WieldShield
                                                && RaiseShield == o.RaiseShield;
 
@@ -196,13 +210,15 @@ namespace TraxCombat.Core
         public string Describe()
         {
             if (!Enabled) return "OFF (" + OffBecause + ") - AI men swing at any Athletics";
-            return "ON - an AI man whose Athletics bar (points ÷ his full pool, what the bar shows) is at or below his formation's order floor "
-                   + "stops attacking in melee and only defends (guard up) until he refills to floor + " + RecoverPercent + "% (BraceRecoverPercent)"
+            return "ON - an AI man whose Athletics bar (points ÷ his full pool, what the bar shows) is at or below his formation's order floor"
+                   + (FloorSpreadPercent > 0 ? " ± his own " + FloorSpreadPercent + " (BraceFloorSpreadPercent, rolled once per man and battle, apart from the margin's roll)" : string.Empty)
+                   + " stops attacking in melee and only defends (guard up) until he refills to floor + " + RecoverPercent + "% (BraceRecoverPercent)"
                    + (RecoverSpreadPercent > 0 ? " ± his own " + RecoverSpreadPercent + " (BraceRecoverSpreadPercent, rolled once per man and battle)" : " exactly (BraceRecoverSpreadPercent 0)")
                    + ": charge "
                    + FloorChargePercent + "% → " + Math.Min(100, FloorChargePercent + RecoverPercent) + "% (BraceFloorChargePercent), advance "
-                   + FloorAdvancePercent + "% → " + Math.Min(100, FloorAdvancePercent + RecoverPercent) + "% (BraceFloorAdvancePercent), hold / halt / retreat / move / follow / anything else "
-                   + FloorHoldPercent + "% → " + Math.Min(100, FloorHoldPercent + RecoverPercent) + "% (BraceFloorHoldPercent); a wound caps the target at the top he can refill to "
+                   + FloorAdvancePercent + "% → " + Math.Min(100, FloorAdvancePercent + RecoverPercent) + "% (BraceFloorAdvancePercent), hold / halt / retreat / move / follow / no order "
+                   + FloorHoldPercent + "% → " + Math.Min(100, FloorHoldPercent + RecoverPercent) + "% (BraceFloorHoldPercent), no formation (tournaments, arenas, duels) "
+                   + FloorNoFormationPercent + "% → " + Math.Min(100, FloorNoFormationPercent + RecoverPercent) + "% (BraceFloorNoFormationPercent); a wound caps the target at the top he can refill to "
                    + "(the band slides down under it); bows, crossbows and throws go on; "
                    + (WieldShield ? "the shield taken out if he carries one (BraceWieldShield)" : "the shield left as it is (BraceWieldShield off)") + ", "
                    + (RaiseShield ? "held up while he has no guard of his own (BraceRaiseShield)" : "raised only when he wants to attack (BraceRaiseShield off)")
@@ -241,6 +257,7 @@ namespace TraxCombat.Core
             BraceOrderKind.AiCharge => BraceOrder.Charge,
             BraceOrderKind.Advance => BraceOrder.Advance,
             BraceOrderKind.AiAdvance => BraceOrder.Advance,
+            BraceOrderKind.NoFormation => BraceOrder.NoFormation,
             _ => BraceOrder.Hold,
         };
 
@@ -255,20 +272,30 @@ namespace TraxCombat.Core
         public static double Offset(in BraceRules r, double unit) =>
             double.IsNaN(unit) ? 0 : Math.Max(-1, Math.Min(1, unit)) * Math.Max(0, r.RecoverSpreadPercent) / 100.0;
 
+        /// <summary>Step 28: his own FLOOR offset in points of the bar (fraction) for BraceFloorSpreadPercent now - his floor
+        /// roll (a second unit, rolled apart from the margin's) × the setting read live.</summary>
+        public static double FloorOffset(in BraceRules r, double floorUnit) =>
+            double.IsNaN(floorUnit) || r.FloorSpreadPercent <= 0 ? 0 : Math.Max(-1, Math.Min(1, floorUnit)) * r.FloorSpreadPercent / 100.0;
+
+        /// <summary>Step 28: his own floor = the order's floor + his offset, clamped to 0-100% of the bar.</summary>
+        public static double Floor(in BraceRules r, BraceOrder order, double floorUnit) =>
+            Clamp01(r.FloorPercent(order) / 100.0 + FloorOffset(in r, floorUnit));
+
         /// <summary>His own margin: recover + his offset, at least <see cref="MinMargin"/>.</summary>
         public static double Margin(in BraceRules r, double unit) =>
             Math.Max(MinMargin, Clamp01(r.RecoverPercent / 100.0) + Offset(in r, unit));
 
         /// <summary>
-        /// His band now. Floor F = the order's %, his margin M = recover ± his own offset (at least 1 point), the top T his
+        /// His band now. Floor F = the order's % + his own floor offset (step 28, clamped 0-100%), his margin M = recover ± his own offset (at least 1 point), the top T his
         /// wounds let him refill to (1 without a wound or with HealthCapsAthletics off): target = min(F + M, T); floor =
         /// min(F, max(0, T − M)) - under a wound cap the band keeps its width M and slides down under the cap (at the
         /// bottom: from empty to the cap), so a wounded man is never stuck bracing (he always reaches his target by
-        /// refilling) and never braces at a full-to-his-cap bar. <paramref name="unit"/> = his roll (0 = the plain margin).
+        /// refilling) and never braces at a full-to-his-cap bar. <paramref name="unit"/> = his margin roll (0 = the plain
+        /// margin), <paramref name="floorUnit"/> = his floor roll (0 = the order's floor exactly).
         /// </summary>
-        public static BraceBand Band(in BraceRules r, BraceOrder order, double top, double unit = 0)
+        public static BraceBand Band(in BraceRules r, BraceOrder order, double top, double unit = 0, double floorUnit = 0)
         {
-            double f = Clamp01(r.FloorPercent(order) / 100.0);
+            double f = Floor(in r, order, floorUnit);
             double rec = Margin(in r, unit);
             double t = double.IsNaN(top) ? 1.0 : Clamp01(top);
             double setTarget = Math.Min(1.0, f + rec);
@@ -324,6 +351,7 @@ namespace TraxCombat.Core
         {
             BraceOrder.Charge => "charge",
             BraceOrder.Advance => "advance",
+            BraceOrder.NoFormation => "no formation",
             _ => "hold and the rest",
         };
 

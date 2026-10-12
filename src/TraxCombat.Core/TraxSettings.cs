@@ -257,6 +257,8 @@ namespace TraxCombat.Core
         public int BraceFloorChargePercent => GetInt(SettingsSchema.BraceFloorChargePercent);
         public int BraceFloorAdvancePercent => GetInt(SettingsSchema.BraceFloorAdvancePercent);
         public int BraceFloorHoldPercent => GetInt(SettingsSchema.BraceFloorHoldPercent);
+        public int BraceFloorNoFormationPercent => GetInt(SettingsSchema.BraceFloorNoFormationPercent);   // step 28
+        public int BraceFloorSpreadPercent => GetInt(SettingsSchema.BraceFloorSpreadPercent);             // step 28
         public int BraceRecoverPercent => GetInt(SettingsSchema.BraceRecoverPercent);
         public int BraceRecoverSpreadPercent => GetInt(SettingsSchema.BraceRecoverSpreadPercent);
         public bool BraceWieldShield => GetBool(SettingsSchema.BraceWieldShield);

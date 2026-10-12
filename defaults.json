@@ -304,10 +304,10 @@
   "ExtraPauseAfterCrossbowShotSeconds": 2.5,
 
   // ==================== Brace by orders (AI) ====================
-  // An AI soldier whose Athletics bar falls to his formation's order floor (the three settings
-  // below) stops attacking in melee and only defends, guard up, until he refills to that floor
-  // + the recover margin. Bows, crossbows and throws go on. AI heroes and riders too; never
-  // you. Off: AI men swing at any Athletics. Switching it off lifts every brace at once.
+  // An AI soldier whose Athletics bar falls to his formation's order floor (the settings below)
+  // stops attacking in melee and only defends, guard up, until he refills to that floor + the
+  // recover margin. Bows, crossbows and throws go on. AI heroes and riders too; never you. Off:
+  // AI men swing at any Athletics. Switching it off lifts every brace at once.
   // (true or false)
   "BraceEnabled": true,
 
@@ -322,11 +322,24 @@
   // (range 0 to 100)
   "BraceFloorAdvancePercent": 40,
 
-  // Under every other order - hold / halt, move to a position, retreat, fall back, follow, or
-  // no formation - a soldier braces at or below this % of his full bar. High = a holding line
-  // swings first and then braces early.
+  // Under every other order - hold / halt, move to a position, retreat, fall back, follow, no
+  // order - a soldier braces at or below this % of his full bar. High = a holding line swings
+  // first and then braces early.
   // (range 0 to 100)
   "BraceFloorHoldPercent": 60,
+
+  // A soldier in no formation - tournament and arena fighters, duels - braces at or below this
+  // % of his full bar. Low = a duel opponent fights on until he is nearly spent, instead of
+  // turtling behind his shield.
+  // (range 0 to 100)
+  "BraceFloorNoFormationPercent": 20,
+
+  // Each AI soldier's own floor is his order's floor plus or minus up to this many points,
+  // rolled once per soldier and battle (apart from the margin's roll below) - some brace
+  // sooner, some fight on longer. Never below 0 or above 100. 0 = everyone exactly on his
+  // order's floor. A change rescales everyone's roll at once.
+  // (range 0 to 30)
+  "BraceFloorSpreadPercent": 10,
 
   // A bracing soldier attacks again once his bar is back to his floor + this many points (60 +
   // 20 = 80%). A wound caps it: he stops bracing at the most his wounds let him refill to, so a

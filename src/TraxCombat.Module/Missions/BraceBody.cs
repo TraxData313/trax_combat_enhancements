@@ -5,7 +5,7 @@ using TraxCombat.Core;
 namespace TraxCombat.Missions
 {
     /// <summary>
-    /// Step 23: one AI fighter's brace (AI_NOTES "Step 23") - his roll for the margin (once per battle), whether he braces now,
+    /// Step 23: one AI fighter's brace (AI_NOTES "Step 23") - his roll for the margin and (step 28) his floor (once per battle), whether he braces now,
     /// under which order it began, and the shield's progress. Allocated once per AI man at his first look, reused - no per-tick
     /// allocation. Main thread (the logic's tick; hit callbacks read it).
     /// </summary>
@@ -13,6 +13,10 @@ namespace TraxCombat.Missions
     {
         /// <summary>His roll for the margin spread, uniform in [−1, 1) - rolled at his first look, never again this battle.</summary>
         public double Unit;
+
+        /// <summary>Step 28: his roll for his FLOOR's spread, uniform in [−1, 1) - rolled at his first look with its own dice
+        /// (independent of <see cref="Unit"/>), never again this battle; × BraceFloorSpreadPercent read live.</summary>
+        public double FloorUnit;
 
         /// <summary>His last look (mission time) - the AI fighter-time the summary compares the braces with.</summary>
         public double LastPoll = double.NaN;
