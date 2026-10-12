@@ -719,6 +719,7 @@ says (§2c).
 | `MinMoveSpeedMultiplier` | 0.7 | Top speed on foot at 0 Athletics (0.3 until step 14 - Anton: "too slow, unrealistic"; defaults.json 0.6 since step 20b - Anton's "sweet spot"; defaults.json 0.3 again since step 22 - Anton, for slower battles). |
 | `MountMinSpeedMultiplier` | 1.0 | Horse top speed at the rider's 0 Athletics (1.0 = horses never slow). |
 | `DamageBonusFollowsAthletics` | true | The damage upside shrinks with the attacker's Athletics below the peak. |
+| `TiredBlockRandomPercent` | 100 | Step 30 (Anton, 2026-10-12): a tired AI man's block DIRECTION is partly left to chance - weight w = this % × (1 − f); the game's own `AiRandomizedDefendDirectionChance` (clamped to 0-1) becomes own + (1 − own) × w (f 1 untouched, f 0.5 at 100 = half his picks random, empty = all). AI only, riders too, never the player. 0 = off (the game's blocking). Live. |
 | `StepBackEnabled` | true | Tired AI fighters on foot step back after melee swings (§2). Off mid-battle: everyone stepping back returns to his formation at once. |
 | `StepBackBackpedal` | true | Step 16: the step back is a backpedal through the AI's own input (a backwards movement, facing his enemy) until `StepBackDistance` is covered or `StepBackSeconds` run out. Off = step 5d's scripted walk (80% turned their backs). A/B switch; a running step finishes the way it began. |
 | `StepBackMaxChancePercent` | 100 | Chance to step back at 0 Athletics (0 at the peak, straight line between). |

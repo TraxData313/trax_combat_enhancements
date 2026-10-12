@@ -225,6 +225,16 @@
   // (true or false)
   "DamageBonusFollowsAthletics": true,
 
+  // How much a tired AI fighter's block direction is left to chance. At or above the peak line
+  // his own AI picks it. Below it, this share times how far down he is becomes a random pick
+  // instead: at 100, halfway down half his blocks go in a random direction, and an empty man
+  // guesses every block - right only one time in four, by luck. A wrong guess with a shield is
+  // a wrong-side block (it costs more and stops his refill); with a weapon the blow lands. It
+  // raises the game's own chance for clumsy fighters, never lowers it. On foot and mounted;
+  // never you. 0 = off: the game's own blocking.
+  // (range 0 to 100)
+  "TiredBlockRandomPercent": 100,
+
   // ==================== Tired fighters step back ====================
   // On: after a melee swing, a tired AI fighter on foot may step back a little, facing his
   // enemy with his guard up, then return to his place in the formation - so the tired fall back

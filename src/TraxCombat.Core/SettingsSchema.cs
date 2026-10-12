@@ -192,6 +192,12 @@ namespace TraxCombat.Core
             "Damage upside follows Athletics",
             "On: the lucky side of the damage roll shrinks as the attacker tires - at or above the peak line a hit can land up to +50% (with Spread at 50), halfway down to empty up to +25%, empty never above normal. The unlucky side never changes. Off: every attacker gets the full roll.");
 
+        // Step 30 (Anton, 2026-10-12): the tired AI guesses his block direction - the game's own randomiser
+        // (AiRandomizedDefendDirectionChance) raised by this share x (1 - f). AI_NOTES "Step 30".
+        public static readonly ParamDef TiredBlockRandomPercent = Int("TiredBlockRandomPercent", 0, 100, TiredGroup,
+            "Tired AI blocks in a random direction (%)",
+            "How much a tired AI fighter's block direction is left to chance. At or above the peak line his own AI picks it. Below it, this share times how far down he is becomes a random pick instead: at 100, halfway down half his blocks go in a random direction, and an empty man guesses every block - right only one time in four, by luck. A wrong guess with a shield is a wrong-side block (it costs more and stops his refill); with a weapon the blow lands. It raises the game's own chance for clumsy fighters, never lowers it. On foot and mounted; never you. 0 = off: the game's own blocking.");
+
         // ------------------------------------------------------------------ tired fighters step back (step 5d)
 
         public static readonly ParamDef StepBackEnabled = Bool("StepBackEnabled", StepBackGroup,
@@ -544,7 +550,7 @@ namespace TraxCombat.Core
             AthleticsEnabled, AthleticsPoolFloor, AthleticsPoolPerSkill, AthleticsPeakPercent, HealthCapsAthletics,
             CostPerBlow, CostPerKickOrBash, CostPerShieldBlock, CostPerWrongSideShieldBlock, CostPerWeaponParry, OnlyWrongSideBlocksStopRefill, CostOnMiss, HeroCostMultiplier, PartyLeaderCostMultiplier,
             ExhaustedAttackSpeedPercent, AttackRatePlayerTimer, AttackRatePaceHold, AttackRatePaceByInput, AiHoldRaiseGuard, AttackRateAiDecisions, AttackAnimationMinPercent,
-            MinMoveSpeedMultiplier, MountMinSpeedMultiplier, DamageBonusFollowsAthletics,
+            MinMoveSpeedMultiplier, MountMinSpeedMultiplier, DamageBonusFollowsAthletics, TiredBlockRandomPercent,
             StepBackEnabled, StepBackBackpedal, StepBackMaxChancePercent, StepBackDistance, StepBackSeconds, StepBackEnemyRange,
             StepBackHoldAttacks, StepBackMaxAtOnce,
             ShieldInfantrySwingsLessPercent, FootMeleeSwingsLessPercent, AiMeleeGapSeconds, ExtraPauseAfterBowShotSeconds, ExtraPauseAfterCrossbowShotSeconds,

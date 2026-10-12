@@ -268,6 +268,10 @@ namespace TraxCombat.Core
         /// <summary>The multiplier applied now to the horse this fighter rides (MountSpeed), 1 = none.</summary>
         public float MountSpeedMultiplier { get; set; } = 1f;
 
+        /// <summary>Step 30: the tired-block weight w the stat decorator applies now (0 = the game's own block direction
+        /// chance untouched) - re-targeted with the multipliers above, in the same recompute steps (<see cref="TiredBlockMath"/>).</summary>
+        public float BlockRandomWeight { get; set; }
+
         /// <summary>Everyone starts a mission full; Athletics turned off (AthleticsEnabled or the
         /// master switch ModEnabled) puts everyone back to full. A wound's cap applies again at the
         /// next regen step once Athletics is on.</summary>

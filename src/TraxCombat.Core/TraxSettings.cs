@@ -239,6 +239,9 @@ namespace TraxCombat.Core
         public float MountMinSpeedMultiplier => GetFloat(SettingsSchema.MountMinSpeedMultiplier);
         public bool DamageBonusFollowsAthletics => GetBool(SettingsSchema.DamageBonusFollowsAthletics);
 
+        /// <summary>Step 30: 0-100, the share of a tired AI man's block directions left to chance at empty (x (1 - f)); 0 = off.</summary>
+        public int TiredBlockRandomPercent => GetInt(SettingsSchema.TiredBlockRandomPercent);
+
         public bool StepBackEnabled => GetBool(SettingsSchema.StepBackEnabled);
         public bool StepBackBackpedal => GetBool(SettingsSchema.StepBackBackpedal);
         public int StepBackMaxChancePercent => GetInt(SettingsSchema.StepBackMaxChancePercent);
