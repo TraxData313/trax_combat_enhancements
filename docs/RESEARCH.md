@@ -951,6 +951,62 @@ choice: AI_NOTES "Step 30".
   the stat decorator raises the chance by Anton's weight (AI_NOTES "Step 30"). The input-bit replacement
   stays the fallback if the playtest shows the engine ignores the property.
 
+## N. A sprint above the run speed (step 33, verified in the v1.4.8 source and data 2026-10-12)
+
+Source: `%TEMP%\trax_decomp\` (as §M) + `TaleWorlds.InputSystem.dll` (ilspycmd), the game's `native_parameters.xml`, and
+Anton's own `BannerlordGameKeys.xml` and `trax_combat.log`. Full notes and the build: AI_NOTES "Step 33".
+
+1. **Running faster than the base run speed - the same lever as the run floor, `MaxSpeedMultiplier` (87).**
+   - It is NOT a "1 = the top" factor: it is the base models' whole speed factor, and vanilla itself puts it at
+     0.7 × (1 + 0.001 × Athletics) − a load term (0.63-0.79 for typical troops, up to 0.91 at skill 300), then
+     perks and a banner effect multiply it (`Athletics.Sprint`, `Athletics.FormFittingArmor`, `Tactics.SmallUnitTactics`,
+     `IncreasedTroopMovementSpeed` - SandboxAgentStatCalculateModel ~1499-1580); multiplayer sets
+     1.05 × the class's multiplier. The managed side never clamps it (`AgentDrivenProperties.SetStat` writes the native
+     array). So 1.6 × a typical troop's 0.63 = 1.0 - a value vanilla heroes reach; a skill-300 hero's 0.91 × 1.6 = 1.46
+     is beyond anything vanilla produces.
+   - The engine's top speed follows it LINEARLY on the way down - measured in Anton's 2026-10-12 battles: `run speed
+     check, on foot … f 0.5-1 engine top x0.81 asked x0.81 … empty engine top x0.31 asked x0.30 - the engine's top
+     speed follows the curve` (`GetMaximumForwardUnlimitedSpeed()`, a pointer read of the native value). The native
+     formula is invisible; `bipedal_speed_multiplier` 6.2 × MaxSpeedMultiplier matches the measured tops (3.9 m/s at
+     ~0.63). No native cap is visible - **UNVERIFIED above ~1.0**: whether the engine caps the speed, and whether the
+     run animation keeps up or the feet slide. The summary's `sprint speed check` (engine top while sprinting ÷ his top
+     when fresh vs asked) settles the cap; the eyes settle the sliding.
+   - `CombatMaxSpeedMultiplier` (88) is a ≤ 1 SHARE of the top kept in combat stance - left alone, so a sprint in
+     combat stance is faster by the same factor. `TopSpeedReachDuration` (the acceleration, 2.5-3.6 s by skill and
+     load) is untouched: a sprint from a standstill takes ~3 s to reach its top (a dodge from a run is immediate).
+   - **AI in formation**: `HumanAIComponent.GetFormationFrame` caps a formation man's speed as a MULTIPLIER of his own
+     top: hold / move / advance `GetDesiredSpeedInFormation` = clamp((0.7 + 0.4 × catch-up) × formation speed ÷ his
+     top, 0.2, 1); the formation's speed `CachedMovementSpeed` = the AVERAGE of its men's tops, refreshed every
+     1.9-2.1 s (`_cachedMovementSpeedUpdateTimer`). So a whole formation sprinting moves faster once that cache
+     refreshes (up to ~2 s late); a lone sprinter is held to the others' pace. On a CHARGE the cap applies only while
+     the formation is farther than 2 × his top speed from the nearest enemy formation (then against the
+     `AverageMaxUnlimitedSpeedExcludeFarAgents` cache); closer, no cap at all - the charge's last stretch runs free.
+   - **Verdict: feasible without patching** - the stat decorator multiplies the run multiplier it already applies.
+2. **The key.** Combat game keys (`CombatHotKeyCategory`, v1.4.8 defaults): Attack LMB, Defend RMB, Action F, Jump
+   Space, Crouch Z, Kick E, ToggleWeaponMode X, weapons Numpad1-4, Drop G, Sheath \, **Zoom LeftShift**, ViewCharacter
+   ~, LockTarget MMB, Camera R, ToggleWalk CapsLock, Cheer O, PushToTalk V, EquipmentSwitch U; ShowIndicators LeftAlt
+   (Generic); orders F1-F9 and 1-9 (`MissionOrderHotkeyCategory`). **Left Ctrl appears in exactly one binding of Anton's
+   `BannerlordGameKeys.xml`**: `EntireStackModifier` (Ctrl, GenericCampaignPanelsGameKeyCategory - the party /
+   inventory screens, not missions). Other uses found: `InputManager.IsControlDown()` in MissionScreen's FREE camera
+   (photo mode / deployment: Ctrl + wheel = camera speed, Ctrl + Alt freezes the camera) and in cheat mode only;
+   `OrderTroopPlacer` (Ctrl while dragging a formation's new position = a horizontal layout - the order menu, where
+   the sprint is off); `MBInitialScreenBase` Ctrl+E (main menu). Stealth crouch is Z (game key 15). **Left Ctrl is
+   free in a fight on foot.** Read like the game reads keys: `Mission.InputManager` (the scene layer's
+   `IInputContext`) `.IsKeyDown(InputKey)` - `InputContext.IsKeyDown` returns false when the layer may not use keys
+   (`CanUse` → `IsKeysAllowed`: an Escape menu, an inquiry, the order menu's focus), plus our own gates (fight mode,
+   not paused, the order menu closed, your hands - not RTS Camera's AI). `TaleWorlds.InputSystem.InputKey`: LeftControl
+   29, RightControl 157, LeftAlt 56, LeftShift 42, CapsLock 58, MiddleMouseButton 226, X1/X2MouseButton 227/228.
+3. **A movement order changing - poll, not event.** `Formation.OnBeforeMovementOrderApplied` exists (public event, the
+   enum only) but fires on EVERY `SetMovementOrder` call - before `AreOrdersPracticallySame` - and the AI re-applies its
+   behaviour's order on its own ticks (a Move with a moving position counts), so it is noisy and needs a subscribe /
+   unsubscribe on every formation of every team. `OrderController.OnOrderIssued` sees only orders through an order
+   controller (the player's and the AI general's), not a formation AI's behaviour change. Cheap and complete: poll each
+   formation's order KIND every 0.25 s - step 23's read (`GetReadonlyMovementOrderReference().OrderEnum`, an
+   AI-controlled Move read through `AI.ActiveBehavior`: advance / tactical charge) - ≤ 8 teams × 10 formations, managed
+   reads only; a kind that differs from the last poll is a new order. Men are in `Formation`; a man moved to another
+   formation is not "a new order" (his slot is compared too).
+4. **"In melee"**: `Mission.GetNearbyEnemyAgentCount(Team, Vec2, radius)` - native, no allocation, the proximity map.
+
 ---
 
 ## UNVERIFIED — to check in the named step
@@ -978,3 +1034,5 @@ choice: AI_NOTES "Step 30".
 | 19 | An ItemTemplate list over a plain Widget builds the 8 cells / rows; the FillBarWidget ChangeWidget draws the ± band (PLAYTEST 8a, 8f) | 9 |
 | 20 | War Sails naval battles: NavalOrderBar's cards match the ship formations' counts (else the panel, with its reason) | 9 |
 | 21 | The native AI reads `AiRandomizedDefendDirectionChance` once per defence decision and a raised chance makes a tired AI guess his block direction wrong (more wrong-side shield blocks, more blows landing) (§M; PLAYTEST D8: the summary's "tired block direction" guard line by f) | 30 |
+| 22 | The engine honours `MaxSpeedMultiplier` ABOVE ~1.0 (no native cap) and the run animation keeps up without sliding (§N; PLAYTEST D10: the summary's `sprint speed check` engine ÷ asked ≈ 1) | 33 |
+| 23 | An AI formation that sprints on a move / advance order really moves faster once its speed cache refreshes (~2 s), and a charge's last stretch runs free (§N; PLAYTEST D10: `sprint - AI` seconds and the speed check) | 33 |

@@ -3342,3 +3342,37 @@ the average rate unchanged, bursts possible; kicks and bashes spend one too and 
    chained blows), `refused at 0 … the AI's N input frames` (0 = the AI does not kick through our hook - unverified).
 4. Battle pace still bites: the `battle pace` lines' attacks a minute per man about as before (the grace) - if the AI swings
    clearly more often, tell Claude (the gap grace may be too short).
+
+## Step 33 — the sprint: a short burst of speed, a dodge for you, sharper charges for the AI (research 2026-10-12; build below)
+
+Anton (2026-10-12): a sprint store in seconds = current Athletics points ÷ `SprintPointsPerSecond` (20) - 150 points = 7.5 s,
+empty = 0; refill (not sprinting) empty → full in `SprintRefillSeconds` (7) standing at / above the peak line, × 0.5 moving
+(above a walk), × a tiredness line 1 at the peak line → 0.5 empty, the two multiply; start only with ≥ 20% of it stored; the
+speed: the first 30% of the sprint's length T (= the seconds stored at its start) at 1.6 × his CURRENT run speed, then a
+straight line to 1.1 × at T; the store drains 1 s a second only while moving; releasing the key ends it; no Athletics refill
+while sprinting; on foot only. The AI sprints once on a NEW movement order: charge up to 100% of its store, advance / move up
+to 50%. Research first, STOP if it needs native patching.
+
+**Research - verdict: feasible, no patch** (RESEARCH §N has the sources)
+1. **Speed above the base**: `MaxSpeedMultiplier` is the base models' whole speed factor (0.63-0.79 for typical troops, 0.91
+   at skill 300, × perks and a banner on top) - not a 0..1 share; no managed clamp; the engine's top follows it linearly
+   (Anton's own 2026-10-12 summaries: engine x0.81 / asked x0.81, x0.31 / x0.30). 1.6 × 0.63 = 1.0 sits inside vanilla's own
+   range; a skill-300 hero at 1.46 is past it. UNVERIFIED above ~1.0: a native cap, the feet sliding - the new `sprint speed
+   check` summary line answers the first. The decorator multiplies the run factor it already applies (run × sprint) - one
+   lever, nothing new on the engine side. Acceleration (`TopSpeedReachDuration` 2.5-3.6 s) untouched: from a standstill the
+   sprint ramps up like any run; from a run it is immediate.
+2. **The key**: Left Ctrl is bound in v1.4.8 only to the campaign panels' "entire stack" modifier (party / inventory screens)
+   - Anton's own BannerlordGameKeys.xml confirms; Left Shift is Zoom, Z crouch (stealth), Caps Lock walk, Left Alt the
+   markers. MissionScreen reads Ctrl only in the free camera (photo mode, deployment) and cheat mode; the order menu's
+   formation drag uses Ctrl for a horizontal layout (the sprint is off while the order menu is open). **Default
+   LeftControl.** The key is `SprintKey`, a key NAME from a fixed list (Core `KeyNames`, each checked against the game's
+   `InputKey` enum by the smoke), read live through `Mission.InputManager.IsKeyDown(InputKey)` - the scene layer's input
+   context, which already answers false while a menu holds the keys.
+3. **Order changes**: poll, not the event. `Formation.OnBeforeMovementOrderApplied` fires on every SetMovementOrder (the AI
+   re-applies a moving Move on its ticks) before the "practically the same" check; `OrderController.OnOrderIssued` misses the
+   formation AI's own behaviour changes. Polling every formation's order KIND (step 23's read, the AI's advance / tactical
+   charge on a Move) every 0.25 s is ≤ ~80 managed reads - and gives exactly "the kind changed".
+4. **AI in formation**: a formation man's speed is capped as a multiplier of his own top, against the formation's speed
+   (the average of its men's tops, cached ~2 s). So the whole formation sprinting together is what makes it faster - one man
+   alone would be held to the others' pace; the charge's last stretch (closer than 2 × top speed to the enemy formation) runs
+   uncapped. That is why the AI sprint takes the whole formation at once.
