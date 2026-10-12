@@ -92,6 +92,7 @@ namespace TraxCombat.Core
         // ---- blocks (step 22: the DEFENDER pays for a melee blow he blocks - apart from blows and kicks)
         private readonly int[] _blocks = new int[BlockMath.KindCount];
         private readonly double[] _blockPoints = new double[BlockMath.KindCount];
+        private readonly int[] _blocksRestarted = new int[BlockMath.KindCount]; // step 29: paid blocks that restarted the refill delay
 
         /// <summary>Blocks paid by you / by AI heroes (lords, companions) / by every other AI fighter, and their points.</summary>
         public int BlocksByYou;
@@ -121,6 +122,12 @@ namespace TraxCombat.Core
         public int Blocks(BlockKind kind) => _blocks[(int)kind];
 
         public double BlockPointsOf(BlockKind kind) => _blockPoints[(int)kind];
+
+        /// <summary>Step 29: paid blocks of this kind that restarted the refill delay (the rest left the refill running).</summary>
+        public int BlocksRestarted(BlockKind kind) => _blocksRestarted[(int)kind];
+
+        /// <summary>Step 29: every paid block that restarted the refill delay.</summary>
+        public int BlocksRestartedDelay => _blocksRestarted[1] + _blocksRestarted[2] + _blocksRestarted[3];
 
         // ---- free / not charged
         public int CouchedWithinBlowTime;
@@ -225,12 +232,14 @@ namespace TraxCombat.Core
         }
 
         /// <summary>One blocked blow the DEFENDER paid for (step 22); <paramref name="points"/> = what it really drained.
-        /// <paramref name="you"/> the player, else <paramref name="hero"/> an AI hero, else a common AI fighter.</summary>
-        public void AddBlockCharge(BlockKind kind, bool you, bool hero, bool mounted, double points)
+        /// <paramref name="you"/> the player, else <paramref name="hero"/> an AI hero, else a common AI fighter;
+        /// <paramref name="restartedDelay"/> = it restarted the refill delay (step 29 - <see cref="BlowOutcome.RestartedDelay"/>).</summary>
+        public void AddBlockCharge(BlockKind kind, bool you, bool hero, bool mounted, double points, bool restartedDelay = true)
         {
             int k = (int)kind;
             if (k <= 0 || k >= BlockMath.KindCount) return;
             _blocks[k]++;
+            if (restartedDelay) _blocksRestarted[k]++;
             _blockPoints[k] += points;
             if (you)
             {
@@ -620,7 +629,12 @@ namespace TraxCombat.Core
             + ") | by you " + BlocksByYou + " (" + N1(BlockPointsYou) + "), AI heroes " + BlocksByHeroes + " (" + N1(BlockPointsHeroes) + "), other AI "
             + BlocksByOthers + " (" + N1(BlockPointsOthers) + ") | free (cost 0) " + BlocksFree + ", while Athletics was off " + BlocksWhileOff
             + ", the same blow seen again (not charged twice) " + BlocksSameBlow + ", missiles stopped by a shield (free) " + MissilesBlockedByShield
-            + "; each blocked blow charged once to the defender; never an attack pause or a step back";
+            + "; each blocked blow charged once to the defender; never an attack pause or a step back"
+            + " | the refill delay restarted by " + BlocksRestartedDelay + " (right side " + BlocksRestarted(BlockKind.ShieldRightSide) + ", WRONG side "
+            + BlocksRestarted(BlockKind.ShieldWrongSide) + ", parries " + BlocksRestarted(BlockKind.WeaponParry) + "), the refill kept running under "
+            + (BlocksCharged - BlocksRestartedDelay) + " (right side " + (Blocks(BlockKind.ShieldRightSide) - BlocksRestarted(BlockKind.ShieldRightSide))
+            + ", WRONG side " + (Blocks(BlockKind.ShieldWrongSide) - BlocksRestarted(BlockKind.ShieldWrongSide)) + ", parries "
+            + (Blocks(BlockKind.WeaponParry) - BlocksRestarted(BlockKind.WeaponParry)) + ") - OnlyWrongSideBlocksStopRefill (step 29)";
 
         /// <summary><c>ON - pool = the Athletics skill x1.00, at least 50; …</c> or <c>OFF …</c> - the
         /// settings sentence of the mission-start line and the summary.</summary>
@@ -643,6 +657,9 @@ namespace TraxCombat.Core
                 + " / wrong side " + N2(AthleticsMath.BlockCostPoints(in r, soldier, BlockKind.ShieldWrongSide))
                 + " / weapon parry " + N2(AthleticsMath.BlockCostPoints(in r, soldier, BlockKind.WeaponParry)) + " points (a hero x"
                 + N2(AthleticsMath.CostMultiplier(in r, hero)) + ", a party leader x" + N2(AthleticsMath.CostMultiplier(in r, leader)) + ")"
+                + (r.OnlyWrongSideBlocksStopRefill
+                    ? "; only a WRONG-side shield block restarts the refill delay - a right-side block or a parry costs but the refill keeps running (OnlyWrongSideBlocksStopRefill)"
+                    : "; every paid block restarts the refill delay (OnlyWrongSideBlocksStopRefill off)")
                 + ", misses cost: " + (r.CostOnMiss ? "yes" : "no (landed blows only)")
                 + "; when empty: attacks at " + r.ExhaustedAttackSpeedPercent + "%, run x" + N2(r.RunSpeedFloor)
                 + ", horses x" + N2(r.MountsSlow ? r.MountSpeedFloor : 1f) + (r.MountsSlow ? string.Empty : " (never slowed)")

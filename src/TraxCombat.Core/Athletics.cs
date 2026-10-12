@@ -34,9 +34,11 @@ namespace TraxCombat.Core
             int exhaustedAttackSpeedPercent, float minMoveSpeedMultiplier, float mountMinSpeedMultiplier, bool damageBonusFollows,
             float regenDelayBlowTimes, float blowTimeSeconds, float fullRegenSecondsStanding, float regenMultiplierAtFullRun,
             float walkEffortFraction, int regenRateNearFullPercent, bool modEnabled = true,
-            float costPerShieldBlock = 0, float costPerWrongSideShieldBlock = 0, float costPerWeaponParry = 0)
+            float costPerShieldBlock = 0, float costPerWrongSideShieldBlock = 0, float costPerWeaponParry = 0,
+            bool onlyWrongSideBlocksStopRefill = false)
         {
             ModEnabled = modEnabled;
+            OnlyWrongSideBlocksStopRefill = onlyWrongSideBlocksStopRefill;
             CostPerShieldBlock = costPerShieldBlock;
             CostPerWrongSideShieldBlock = costPerWrongSideShieldBlock;
             CostPerWeaponParry = costPerWeaponParry;
@@ -112,6 +114,12 @@ namespace TraxCombat.Core
         /// too); 0 = free.</summary>
         public float CostPerWeaponParry { get; }
 
+        /// <summary>OnlyWrongSideBlocksStopRefill (step 29, Anton: a skilful defender recovers while he stays on the
+        /// defence): on = only a WRONG-side shield block restarts the refill delay - a right-side block and a weapon
+        /// parry still cost, but the refill keeps running; off = every paid block restarts it (step 22). The
+        /// constructor's default is off (step 22) for the older tests; <see cref="From"/> reads the setting.</summary>
+        public bool OnlyWrongSideBlocksStopRefill { get; }
+
         /// <summary>Attack speed at 0 Athletics, % of normal (S of the curve).</summary>
         public int ExhaustedAttackSpeedPercent { get; }
 
@@ -173,7 +181,7 @@ namespace TraxCombat.Core
             s.ExhaustedAttackSpeedPercent, s.MinMoveSpeedMultiplier, s.MountMinSpeedMultiplier, s.DamageBonusFollowsAthletics,
             s.RegenDelayBlowTimes, s.BlowTimeSeconds, s.FullRegenSecondsStanding, s.RegenMultiplierAtFullRun,
             s.WalkEffortFraction, s.RegenRateNearFullPercent, s.ModEnabled,
-            s.CostPerShieldBlock, s.CostPerWrongSideShieldBlock, s.CostPerWeaponParry);
+            s.CostPerShieldBlock, s.CostPerWrongSideShieldBlock, s.CostPerWeaponParry, s.OnlyWrongSideBlocksStopRefill);
     }
 
     /// <summary>
@@ -276,8 +284,9 @@ namespace TraxCombat.Core
     public readonly struct BlowOutcome
     {
         public BlowOutcome(bool charged, double cost, double multiplier, double pool, double before, double after, bool enteredExhaustion,
-            double peakShareBefore, double peakShareAfter)
+            double peakShareBefore, double peakShareAfter, bool restartedDelay = true)
         {
+            RestartedDelay = restartedDelay;
             Charged = charged;
             Cost = cost;
             Multiplier = multiplier;
@@ -316,6 +325,10 @@ namespace TraxCombat.Core
 
         /// <summary>f after it.</summary>
         public double PeakShareAfter { get; }
+
+        /// <summary>This charge restarted the refill delay and ended a refill run - every blow, kick and bash; a paid
+        /// block only when <see cref="AthleticsMath.BlockRestartsRefill"/> says so (step 29). False when not charged.</summary>
+        public bool RestartedDelay { get; }
 
         /// <summary>This blow took the fighter out of the peak zone (f 1 → below 1).</summary>
         public bool LeftPeak => PeakShareBefore >= 1.0 && PeakShareAfter < 1.0;
@@ -657,6 +670,13 @@ namespace TraxCombat.Core
         /// hero who leads his party). 0 = free.</summary>
         public static double BlockCostPoints(in AthleticsRules r, Fighter f, BlockKind kind) => Math.Max(0, BlockCostSetting(in r, kind) * CostMultiplier(in r, f));
 
+        /// <summary>Step 29 (Anton, 2026-10-12: a skilful defender recovers while he stays on the defence): does a paid
+        /// block of this kind restart the refill delay? Off (OnlyWrongSideBlocksStopRefill false) → every kind (step 22);
+        /// on → only a WRONG-side shield block - a right-side block and a weapon parry still cost, but the refill keeps
+        /// running underneath. None → never (nothing is charged).</summary>
+        public static bool BlockRestartsRefill(in AthleticsRules r, BlockKind kind) =>
+            kind != BlockKind.None && (!r.OnlyWrongSideBlocksStopRefill || kind == BlockKind.ShieldWrongSide);
+
         // ------------------------------------------------------------------ regen by effort
 
         /// <summary>Effort = speed ÷ current top speed (the horse's for a rider); 0 when the top is unknown.</summary>
@@ -803,7 +823,9 @@ namespace TraxCombat.Core
         /// <summary>
         /// One blocked blow, paid by the DEFENDER (step 22, DESIGN §2 "Defending costs too"): take
         /// <see cref="BlockCostPoints"/> for its kind, exactly like a kick otherwise - never below 0, at 0 the fighter
-        /// is exhausted, the regen delay restarts (a block is effort, as a kick is), a refill run ends. Counted in
+        /// is exhausted; the regen delay restarts and a refill run ends ONLY when <see cref="BlockRestartsRefill"/> says so
+        /// (step 29: by default only a wrong-side shield block - a clean block or parry leaves the delay clock and a running
+        /// refill alone, so the bar just dips and keeps climbing). Counted in
         /// <see cref="Fighter.BlocksPaid"/>, never in <see cref="Fighter.Blows"/>. Nothing happens
         /// (<see cref="BlowOutcome.Charged"/> false) while Athletics is off, the kind is None or its cost is 0 (free -
         /// not even the regen delay). Once per blocked blow is the caller's business (<see cref="BlockTracker"/>); a
@@ -815,11 +837,13 @@ namespace TraxCombat.Core
             double cost = BlockCostPoints(in r, f, kind);
             if (!(cost > 0)) return default;
             f.BlocksPaid++;
-            return Drain(f, in r, now, cost);
+            return Drain(f, in r, now, cost, BlockRestartsRefill(in r, kind));
         }
 
-        /// <summary>Take <paramref name="cost"/> points (a blow's, a kick's or a block's) - the shared body of the charges.</summary>
-        private static BlowOutcome Drain(Fighter f, in AthleticsRules r, double now, double cost)
+        /// <summary>Take <paramref name="cost"/> points (a blow's, a kick's or a block's) - the shared body of the charges.
+        /// <paramref name="restartDelay"/> false (step 29: a clean block or parry) = the points only: the delay clock
+        /// (<see cref="Fighter.LastBlowTime"/>) and a running refill (<see cref="Fighter.Regenerating"/>) are left as they were.</summary>
+        private static BlowOutcome Drain(Fighter f, in AthleticsRules r, double now, double cost, bool restartDelay = true)
         {
             double pool = PoolPoints(in r, f);
             double multiplier = CostMultiplier(in r, f);
@@ -830,8 +854,11 @@ namespace TraxCombat.Core
             if (after > 1) after = 1;
 
             f.Fraction = after;
-            f.LastBlowTime = now;
-            f.Regenerating = false;
+            if (restartDelay)
+            {
+                f.LastBlowTime = now;
+                f.Regenerating = false;
+            }
             if (after < f.LowestFraction) f.LowestFraction = after;
 
             bool entered = false;
@@ -842,7 +869,7 @@ namespace TraxCombat.Core
                 f.ExhaustedSince = now;
                 entered = true;
             }
-            return new BlowOutcome(true, cost, multiplier, pool, before * pool, after * pool, entered, shareBefore, PeakShareOf(in r, after));
+            return new BlowOutcome(true, cost, multiplier, pool, before * pool, after * pool, entered, shareBefore, PeakShareOf(in r, after), restartDelay);
         }
 
         /// <summary>

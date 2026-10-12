@@ -111,9 +111,9 @@
 
   // Athletics points a common soldier pays for each melee blow he blocks with his shield held
   // on the right side - yours and the AI's alike, on foot or mounted. Heroes pay it times the
-  // hero cost and party leaders times both, like a blow. Paid once per blocked blow; like any
-  // cost it restarts the refill delay. Blocking is never held or slowed. Arrows and bolts
-  // stopped by a shield are free. 0 = free.
+  // hero cost and party leaders times both, like a blow. Paid once per blocked blow; it does
+  // not stop your refill unless the switch below is off. Blocking is never held or slowed.
+  // Arrows and bolts stopped by a shield are free. 0 = free.
   // (range 0.0 to 20.0)
   "CostPerShieldBlock": 1.0,
 
@@ -128,6 +128,14 @@
   // = free.
   // (range 0.0 to 20.0)
   "CostPerWeaponParry": 2.0,
+
+  // On: a shield block on the right side and a weapon parry still cost their points, but the
+  // bar keeps refilling underneath - a good blocker can win his breath back while he stays on
+  // the defence. Only a block with the shield held to the wrong side (and your own attacks,
+  // kicks and bashes) restarts the wait before the refill. Off: every paid block restarts that
+  // wait, so a man under constant attack never refills.
+  // (true or false)
+  "OnlyWrongSideBlocksStopRefill": true,
 
   // On: every attack costs Athletics, landed or not. Off: only attacks that hit something (a
   // body, a shield, a parrying weapon) cost.

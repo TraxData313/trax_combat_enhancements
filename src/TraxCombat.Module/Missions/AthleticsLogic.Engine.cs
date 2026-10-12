@@ -711,7 +711,8 @@ namespace TraxCombat.Missions
         /// Step 22: the DEFENDER <paramref name="st"/> blocked a melee blow of <paramref name="kind"/> - charged ONCE per
         /// blocked blow (<see cref="BlockTracker"/>: the same attacker's same swing within 1 s is the same blow),
         /// the kind's cost x his hero / party-leader multipliers, like a kick otherwise (the curves re-targeted, the
-        /// peak line, exhaustion, the regen delay restarts) - never an attack pause, a step back or a damage roll.
+        /// peak line, exhaustion; the regen delay restarts only as <see cref="AthleticsMath.BlockRestartsRefill"/> says - step 29:
+        /// by default a wrong-side block only) - never an attack pause, a step back or a damage roll.
         /// Free (counted) while the cost is 0; Athletics / the mod off = nothing (counted). The smoke calls it directly.
         /// </summary>
         internal void BlockTaken(TrackedAgent st, BlockKind kind, int attackerIndex, int attackerSwing, double now, in AthleticsRules r, bool mounted)
@@ -734,7 +735,7 @@ namespace TraxCombat.Missions
                 return;
             }
             bool you = IsPlayer(st);
-            _stats.AddBlockCharge(kind, you, st.IsHero, mounted, o.Before - o.After);
+            _stats.AddBlockCharge(kind, you, st.IsHero, mounted, o.Before - o.After, o.RestartedDelay);
             if (you) LogPlayerBlock(st, kind, in o, now, in r, mounted);
             else if (TraxLog.VerboseWants("athletics-block")) LogBlow(st, BlockMath.Name(kind), in o, mounted, "athletics-block");
             AfterCharge(st, in o, now, in r);
@@ -812,7 +813,7 @@ namespace TraxCombat.Missions
                 TraxLog.Limited("athletics", "YOU are exhausted at " + Sec(now) + " s: 0 of " + F0(AthleticsMath.PoolPoints(in r, st))
                     + " after " + st.Blows + " blows this mission - attacks at " + r.ExhaustedAttackSpeedPercent + "% speed, run x" + F2(r.RunSpeedFloor)
                     + ", no damage upside" + (r.DamageBonusFollows ? string.Empty : " (off: full upside)") + " until you rest (refill starts "
-                    + F1(r.RegenDelaySeconds) + " s after your last blow or paid block)", "athletics-player");
+                    + F1(r.RegenDelaySeconds) + " s after your last blow" + (r.OnlyWrongSideBlocksStopRefill ? ", kick, bash or WRONG-side block - a clean block or parry lets it run)" : " or paid block)"), "athletics-player");
             }
             else if (TraxLog.VerboseWants("athletics-exhaust"))
             {

@@ -50,6 +50,7 @@ namespace TraxCombat.Missions
                   .Append(" (f ").Append(F2(o.PeakShareBefore)).Append(" → ").Append(F2(o.PeakShareAfter)).Append(')');
                 if (o.LeftPeak) sb.Append(" - below full strength");
                 if (o.EnteredExhaustion) sb.Append(" - EXHAUSTED");
+                if (!o.RestartedDelay) sb.Append(" - the refill runs on"); // step 29: a clean block / parry
                 TraxLog.Verbose("athletics", sb.ToString(), bucket);
             }
             catch (Exception e)
@@ -258,7 +259,11 @@ namespace TraxCombat.Missions
                 sb.Append("): ").Append(F1(o.Before)).Append(" → ").Append(F1(o.After)).Append(" of ").Append(F0(o.Pool))
                   .Append(" (f ").Append(F2(o.PeakShareBefore)).Append(" → ").Append(F2(o.PeakShareAfter)).Append(')')
                   .Append(" - the first of this kind this battle: a melee blow you block costs YOU ").Append(BlockMath.SettingKey(kind))
-                  .Append(" x your hero / party-leader multipliers, once per blow, and restarts the refill delay; blocking is never held or slowed");
+                  .Append(" x your hero / party-leader multipliers, once per blow, and ")
+                  .Append(o.RestartedDelay
+                      ? (r.OnlyWrongSideBlocksStopRefill ? "restarts the refill delay (a WRONG-side block - a clean one would let the refill run)" : "restarts the refill delay (OnlyWrongSideBlocksStopRefill off: every paid block does)")
+                      : "the refill keeps running (only a WRONG-side block restarts its delay - OnlyWrongSideBlocksStopRefill)")
+                  .Append("; blocking is never held or slowed");
                 TraxLog.Info("athletics", sb.ToString());
             }
             catch (Exception e)

@@ -117,7 +117,7 @@ namespace TraxCombat.Core
         // Step 22 (Anton, 2026-09-29): defending costs too - the DEFENDER pays for every melee blow he blocks, by how.
         public static readonly ParamDef CostPerShieldBlock = Float("CostPerShieldBlock", 0, 20, AthleticsGroup,
             "Cost per shield block (points)",
-            "Athletics points a common soldier pays for each melee blow he blocks with his shield held on the right side - yours and the AI's alike, on foot or mounted. Heroes pay it times the hero cost and party leaders times both, like a blow. Paid once per blocked blow; like any cost it restarts the refill delay. Blocking is never held or slowed. Arrows and bolts stopped by a shield are free. 0 = free.");
+            "Athletics points a common soldier pays for each melee blow he blocks with his shield held on the right side - yours and the AI's alike, on foot or mounted. Heroes pay it times the hero cost and party leaders times both, like a blow. Paid once per blocked blow; it does not stop your refill unless the switch below is off. Blocking is never held or slowed. Arrows and bolts stopped by a shield are free. 0 = free.");
 
         public static readonly ParamDef CostPerWrongSideShieldBlock = Float("CostPerWrongSideShieldBlock", 0, 20, AthleticsGroup,
             "Cost per wrong-side shield block (points)",
@@ -126,6 +126,12 @@ namespace TraxCombat.Core
         public static readonly ParamDef CostPerWeaponParry = Float("CostPerWeaponParry", 0, 20, AthleticsGroup,
             "Cost per weapon parry (points)",
             "Athletics points a common soldier pays for each melee blow he blocks or parries with his weapon (no shield) - a chamber block too. Heroes and party leaders pay less, like a blow. 0 = free.");
+
+        // Step 29 (Anton, 2026-10-12): a skilful defender recovers while he stays on the defence - a clean block or
+        // parry still costs, but only a wrong-side block stops the refill.
+        public static readonly ParamDef OnlyWrongSideBlocksStopRefill = Bool("OnlyWrongSideBlocksStopRefill", AthleticsGroup,
+            "Only wrong-side blocks stop the refill",
+            "On: a shield block on the right side and a weapon parry still cost their points, but the bar keeps refilling underneath - a good blocker can win his breath back while he stays on the defence. Only a block with the shield held to the wrong side (and your own attacks, kicks and bashes) restarts the wait before the refill. Off: every paid block restarts that wait, so a man under constant attack never refills.");
 
         public static readonly ParamDef CostOnMiss = Bool("CostOnMiss", AthleticsGroup,
             "Misses cost too",
@@ -536,7 +542,7 @@ namespace TraxCombat.Core
             DamageRandomEnabled, DamageRandomPercent, DamageRandomMelee, DamageRandomRanged,
             DamageRandomOnMounts, DamageRandomOnShields, DamageReductionPercent,
             AthleticsEnabled, AthleticsPoolFloor, AthleticsPoolPerSkill, AthleticsPeakPercent, HealthCapsAthletics,
-            CostPerBlow, CostPerKickOrBash, CostPerShieldBlock, CostPerWrongSideShieldBlock, CostPerWeaponParry, CostOnMiss, HeroCostMultiplier, PartyLeaderCostMultiplier,
+            CostPerBlow, CostPerKickOrBash, CostPerShieldBlock, CostPerWrongSideShieldBlock, CostPerWeaponParry, OnlyWrongSideBlocksStopRefill, CostOnMiss, HeroCostMultiplier, PartyLeaderCostMultiplier,
             ExhaustedAttackSpeedPercent, AttackRatePlayerTimer, AttackRatePaceHold, AttackRatePaceByInput, AiHoldRaiseGuard, AttackRateAiDecisions, AttackAnimationMinPercent,
             MinMoveSpeedMultiplier, MountMinSpeedMultiplier, DamageBonusFollowsAthletics,
             StepBackEnabled, StepBackBackpedal, StepBackMaxChancePercent, StepBackDistance, StepBackSeconds, StepBackEnemyRange,

@@ -95,7 +95,14 @@ regen.)
   blow (1 / 5 / 2 for a soldier, 0.75 / 3.75 / 1.5 for a hero, 0.56 / 2.81 / 1.13 for a party leader); 0 =
   free. The AI's and yours alike, on foot or mounted. Charged ONCE per blocked blow (a swing touching the
   guard twice is one blow). Paid like a kick: the curves follow, it can take a man below his peak line or
-  empty him, and **it restarts the refill delay** — a man under attack is not resting. It is not an
+  empty him. **The refill delay** (step 29, Anton 2026-10-12, after a tournament 1v1 where both men sat at
+  empty for good: "a skilful defender should recover while staying on the defence"): with
+  `OnlyWrongSideBlocksStopRefill` on (the default) ONLY a wrong-side shield block restarts the refill delay
+  and ends a refill run; a right-side shield block and a weapon parry still cost their points, but the
+  delay clock and a running refill are left alone - the bar dips by the cost and keeps climbing underneath
+  (net up or down by the rates: see AI_NOTES "Step 29" for the numbers). Off = step 22: every paid block
+  restarts the delay — a man under attack is not resting. His own attacks, kicks and bashes restart it
+  either way. It is not an
   attack: it never starts an attack pause, never rolls a step back, never changes a damage roll, and
   blocking itself is never held or slowed. **Free**: missiles stopped by a shield (for now - counted in the
   summary), a blocked kick or shield bash, a blow the shield on his BACK stopped (he did not defend), and
@@ -695,9 +702,10 @@ says (§2c).
 | `HealthCapsAthletics` | true | Health left caps the usable pool. |
 | `CostPerBlow` | 10 | Athletics points one blow costs before multipliers (points, whatever the pool). |
 | `CostPerKickOrBash` | 3 | Step 18 (Anton): Athletics points one kick or shield bash costs before the hero and party-leader multipliers (3 / 2.25 / 1.7), once, when it starts, landed or not; never starts the attack pause. 0 = free (steps 5-17). |
-| `CostPerShieldBlock` | 1 | Step 22 (Anton): Athletics points the DEFENDER pays for a melee blow he blocks with his shield on the correct side, before the hero and party-leader multipliers (1 / 0.75 / 0.56); once per blocked blow; restarts the refill delay; never an attack pause or a step back. 0 = free (steps 5-21). |
+| `CostPerShieldBlock` | 1 | Step 22 (Anton): Athletics points the DEFENDER pays for a melee blow he blocks with his shield on the correct side, before the hero and party-leader multipliers (1 / 0.75 / 0.56); once per blocked blow; does not restart the refill delay while `OnlyWrongSideBlocksStopRefill` is on (step 29); never an attack pause or a step back. 0 = free (steps 5-21). |
 | `CostPerWrongSideShieldBlock` | 5 | Step 22 (Anton): the same for a blow his shield stops on the WRONG side (the engine's `CorrectSideShieldBlock` false) - 5 / 3.75 / 2.81. 0 = free. |
 | `CostPerWeaponParry` | 2 | Step 22 (Anton): the same for a blow he blocks or parries with a weapon, no shield (a chamber block too) - 2 / 1.5 / 1.13. 0 = free. |
+| `OnlyWrongSideBlocksStopRefill` | true | Step 29 (Anton): true = only a WRONG-side shield block restarts the refill delay (and ends a refill run); a right-side shield block and a weapon parry still cost but the refill keeps running underneath. false = every paid block restarts it (step 22). Attacks, kicks and bashes restart it either way. Live. |
 | `CostOnMiss` | true | true: every attack costs, landed or not. false: only blows that land. |
 | `HeroCostMultiplier` | 0.75 | Cost multiplier for heroes. |
 | `PartyLeaderCostMultiplier` | 0.75 | Extra multiplier for a party's leading hero, on top of the hero one. |
@@ -1024,6 +1032,14 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     are reduced with no toggle of their own (all sources; shields lasting longer is the same "slower" Anton asked
     for) - one line to change if he wants them at the game's pace. Not on the stun / knockback numbers the game
     computes elsewhere: only the damage.
+28. **Only a wrong-side block stops the refill** (step 29, Claude's calls on Anton's rule of 2026-10-12 - AI_NOTES
+    "Step 29"): the delay clock is the fighter's last-blow time; a block that does not restart the delay leaves that
+    clock AND a running refill run untouched (only the points move), so the refill never stalls under a stream of
+    clean blocks - it dips by each cost and climbs on. Whether he nets up depends on the rates by design: at the
+    shipped flat refill (empty to full in 60 s at a walk) a pool of P points refills P/40 points per 1.5 s, against
+    a parry's 2 × his multiplier - a soldier needs a pool above 80 to climb while parrying every 1.5 s, a hero above
+    60, a hero who leads his party always climbs (floor 50); a right-side shield block (1 ×) always nets up. The
+    player and the AI alike; one switch, live; off = step 22 to the bit.
 
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),

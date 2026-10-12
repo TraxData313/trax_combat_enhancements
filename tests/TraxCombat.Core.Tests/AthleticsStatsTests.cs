@@ -17,13 +17,13 @@ public class AthleticsStatsTests
         var lines = Lines(new AthleticsStats());
         Assert.Equal("Athletics settings at the end: ON - pool = the Athletics skill x1.00, at least 50; full strength at 75% of the pool and above; "
             + "cost per blow 10.0 / hero 7.5 / party leader 5.6 points; a kick or shield bash 3.00 / hero 2.25 / party leader 1.69 points; "
-            + "a blocked blow costs the defender: shield right side 1.00 / wrong side 5.00 / weapon parry 2.00 points (a hero x0.75, a party leader x0.56), misses cost: yes; when empty: attacks at 20%, run x0.70, horses x1.00 (never slowed); "
+            + "a blocked blow costs the defender: shield right side 1.00 / wrong side 5.00 / weapon parry 2.00 points (a hero x0.75, a party leader x0.56); only a WRONG-side shield block restarts the refill delay - a right-side block or a parry costs but the refill keeps running (OnlyWrongSideBlocksStopRefill), misses cost: yes; when empty: attacks at 20%, run x0.70, horses x1.00 (never slowed); "
             + "damage upside follows Athletics: yes; wounds cap the pool: yes; refill after 3.0 s rest: empty to full in 60 s at a walk or slower "
             + "(up to 0.40 of top speed), x0.50 at a full run, near full at 50% of the rate near empty (at a walk: half the bar in 25 s, the peak line in 41 s)", lines[0]);
         Assert.Contains("Athletics refill from empty to the peak line (no blow between): none this mission (40.7 s at a walk or slower with these settings)", lines);
         Assert.Contains("Athletics pools (the Athletics skill, settings at the end): no fighters tracked", lines);
         Assert.Contains("Athletics blows charged: 0 (melee swings 0, shots/throws 0, couched/braced hits 0, landed-only swings 0, landed-only shots 0) - by riders 0, on foot 0; + kicks/bashes 0 and blocks 0 (not blows - their own lines); Athletics spent 0 points (kicks/bashes 0, blocks 0 of them)", lines);
-        Assert.Contains("Athletics blocks paid by the defender 0 (0.0 points; by riders 0): shield right side 0 (0.0), shield WRONG side 0 (0.0), weapon parries 0 (0.0) | by you 0 (0.0), AI heroes 0 (0.0), other AI 0 (0.0) | free (cost 0) 0, while Athletics was off 0, the same blow seen again (not charged twice) 0, missiles stopped by a shield (free) 0; each blocked blow charged once to the defender; never an attack pause or a step back", lines);
+        Assert.Contains("Athletics blocks paid by the defender 0 (0.0 points; by riders 0): shield right side 0 (0.0), shield WRONG side 0 (0.0), weapon parries 0 (0.0) | by you 0 (0.0), AI heroes 0 (0.0), other AI 0 (0.0) | free (cost 0) 0, while Athletics was off 0, the same blow seen again (not charged twice) 0, missiles stopped by a shield (free) 0; each blocked blow charged once to the defender; never an attack pause or a step back | the refill delay restarted by 0 (right side 0, WRONG side 0, parries 0), the refill kept running under 0 (right side 0, WRONG side 0, parries 0) - OnlyWrongSideBlocksStopRefill (step 29)", lines);
         Assert.Contains("Athletics kicks/bashes charged 0 (0.0 points; by riders 0): kicks 0, shield bashes 0, at their hit with no kick or bash seen 0 | seen starting: kicks 0 (channel 1 0, channel 0 0), shield bashes 0 (channel 1 0, channel 0 0); kick/bash hits 0; free (CostPerKickOrBash 0) 0; each charged once, when it starts; never an attack pause", lines);
         Assert.Contains("Athletics exhaustions (empty, f 0): 0 entered, 0 left; the peak zone: left 0 times (a blow took a fighter below his line), re-entered 0 times (by refill)", lines);
         Assert.Contains("Athletics fighter-time by f (the share of his peak line left): no fighter-time recorded", lines);
@@ -98,9 +98,9 @@ public class AthleticsStatsTests
         s.AddKickOrBashCharge(KickBashKind.Bash, mounted: false, 1.6875);
         s.AddKickOrBashCharge(KickBashKind.None, mounted: false, 2.25); // at its hit, no channel showed it
         s.KickOrBashFree = 1;
-        s.AddBlockCharge(BlockKind.ShieldRightSide, you: true, hero: true, mounted: false, 0.5625);   // you, a hero party leader
+        s.AddBlockCharge(BlockKind.ShieldRightSide, you: true, hero: true, mounted: false, 0.5625, restartedDelay: false);   // you, a hero party leader - the refill ran on (step 29)
         s.AddBlockCharge(BlockKind.ShieldWrongSide, you: false, hero: false, mounted: false, 5);
-        s.AddBlockCharge(BlockKind.WeaponParry, you: false, hero: true, mounted: true, 1.5);          // an AI hero on a horse
+        s.AddBlockCharge(BlockKind.WeaponParry, you: false, hero: true, mounted: true, 1.5, restartedDelay: false);          // an AI hero on a horse
         s.AddBlockCharge(BlockKind.None, you: false, hero: false, mounted: false, 9);                 // not a block: not counted
         s.BlocksFree = 2;
         s.BlocksWhileOff = 3;
@@ -153,7 +153,7 @@ public class AthleticsStatsTests
             new KeyValuePair<string, FormationAthleticsStats>("Archers", FormationAthleticsStats.From(inf, infF, 0)));
 
         Assert.Contains("Athletics blows charged: 4 (melee swings 2, shots/throws 1, couched/braced hits 1, landed-only swings 0, landed-only shots 0) - by riders 2, on foot 2; + kicks/bashes 3 and blocks 3 (not blows - their own lines); Athletics spent 47 points (kicks/bashes 7, blocks 7 of them)", lines);
-        Assert.Contains("Athletics blocks paid by the defender 3 (7.1 points; by riders 1): shield right side 1 (0.6), shield WRONG side 1 (5.0), weapon parries 1 (1.5) | by you 1 (0.6), AI heroes 1 (1.5), other AI 1 (5.0) | free (cost 0) 2, while Athletics was off 3, the same blow seen again (not charged twice) 4, missiles stopped by a shield (free) 5; each blocked blow charged once to the defender; never an attack pause or a step back", lines);
+        Assert.Contains("Athletics blocks paid by the defender 3 (7.1 points; by riders 1): shield right side 1 (0.6), shield WRONG side 1 (5.0), weapon parries 1 (1.5) | by you 1 (0.6), AI heroes 1 (1.5), other AI 1 (5.0) | free (cost 0) 2, while Athletics was off 3, the same blow seen again (not charged twice) 4, missiles stopped by a shield (free) 5; each blocked blow charged once to the defender; never an attack pause or a step back | the refill delay restarted by 1 (right side 0, WRONG side 1, parries 0), the refill kept running under 2 (right side 1, WRONG side 0, parries 1) - OnlyWrongSideBlocksStopRefill (step 29)", lines);
         Assert.Equal(3, s.BlocksCharged);
         Assert.Equal(1, s.Blocks(BlockKind.ShieldWrongSide));
         Assert.Contains("Athletics detection: melee releases seen 2 (mounted 1) | shots seen 1 (+2 extra projectiles of the same shot ignored) | ranged releases seen by the poll 1 | melee hits by fighters 4 (on foot 2, mounted 2): during a counted release 3, outside one 1 [in action: action35 1]", lines);

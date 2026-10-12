@@ -221,6 +221,9 @@ namespace TraxCombat.Core
         public float CostPerWrongSideShieldBlock => GetFloat(SettingsSchema.CostPerWrongSideShieldBlock);
 
         public float CostPerWeaponParry => GetFloat(SettingsSchema.CostPerWeaponParry);
+
+        /// <summary>Step 29: on = only a wrong-side shield block restarts the refill delay (a clean block / parry still costs).</summary>
+        public bool OnlyWrongSideBlocksStopRefill => GetBool(SettingsSchema.OnlyWrongSideBlocksStopRefill);
         public bool CostOnMiss => GetBool(SettingsSchema.CostOnMiss);
         public float HeroCostMultiplier => GetFloat(SettingsSchema.HeroCostMultiplier);
         public float PartyLeaderCostMultiplier => GetFloat(SettingsSchema.PartyLeaderCostMultiplier);
