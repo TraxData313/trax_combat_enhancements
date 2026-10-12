@@ -22,8 +22,9 @@ namespace TraxCombat.Models
     /// AttackAnimationMinPercent at empty - 100 = full speed, the no-attack timer carries the slow-down) and the
     /// run-speed property by the
     /// fighter's Athletics multipliers, the AI's attack-decision values by the attack multiplier
-    /// (step 5e, while AttackRateAiDecisions is on), and a slowed rider's horse's speed
-    /// (<see cref="SpeedPenalty"/>).
+    /// (step 5e, while AttackRateAiDecisions is on), a slowed rider's horse's speed
+    /// (<see cref="SpeedPenalty"/>), and (step 30) a tired AI man's AiRandomizedDefendDirectionChance raised by
+    /// his tired-block weight (<see cref="TiredBlockMath.Chance"/> - never the player).
     ///
     /// THE TOURNAMENT FIX (RESEARCH §C): TournamentBehavior raises the AI level each round with
     /// <c>MissionGameModels.Current.AgentStatCalculateModel.SetAILevelMultiplier(x)</c> - a
@@ -121,7 +122,7 @@ namespace TraxCombat.Models
             BaseModel.UpdateAgentStats(agent, agentDrivenProperties);
             try
             {
-                if (AthleticsLogic.SpeedFactorsFor(agent, out float attack, out float run, out float mount))
+                if (AthleticsLogic.SpeedFactorsFor(agent, out float attack, out float run, out float mount, out float blockRandom))
                 {
                     bool ai = false;
                     var s = TraxSettings.Shared;
@@ -138,6 +139,15 @@ namespace TraxCombat.Models
                     }
                     if (run != 1f) SpeedPenalty.ScaleRun(agentDrivenProperties, run);
                     if (mount != 1f) SpeedPenalty.ScaleMount(agentDrivenProperties, mount);
+                    // step 30: a tired AI man's block direction partly random - the game's own chance raised by w (never the
+                    // player: his mouse picks; the logic gives him w 0 too). The base model recomputes the chance every time.
+                    if (blockRandom > 0f && !agent.IsMainAgent)
+                    {
+                        float game = agentDrivenProperties.AiRandomizedDefendDirectionChance;
+                        float chance = TiredBlockMath.Chance(game, blockRandom);
+                        agentDrivenProperties.AiRandomizedDefendDirectionChance = chance;
+                        AthleticsLogic.NoteTiredBlock(agent, game, chance, blockRandom);
+                    }
                     AthleticsLogic.NoteDecoratorScaled(animation != 1f, run != 1f, mount != 1f, ai);
                 }
             }

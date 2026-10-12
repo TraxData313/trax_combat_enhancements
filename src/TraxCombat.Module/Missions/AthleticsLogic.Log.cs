@@ -207,6 +207,16 @@ namespace TraxCombat.Missions
             {
                 Failed("brace.summary", e);
             }
+
+            // Step 30: the tired block direction - the chance raised, the AI's guard by f band. Own try.
+            try
+            {
+                WriteTiredBlockSummary();
+            }
+            catch (Exception e)
+            {
+                Failed("guard.summary", e);
+            }
         }
 
         // ------------------------------------------------------------------ wording

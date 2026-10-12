@@ -101,6 +101,11 @@ namespace TraxCombat.Missions
         /// next pass of the tick loop (never inside an engine hit callback).</summary>
         public bool SpeedDirty;
 
+        /// <summary>Step 30: f when <see cref="Fighter.BlockRandomWeight"/> was last re-targeted (the summary's band of the
+        /// chance the decorator writes), and whether his chance was ever raised this mission (the summary's men).</summary>
+        public double BlockRandomPeakShare = 1.0;
+        public bool BlockRandomSeen;
+
         /// <summary>His step back (step 5d) - queued or running; null until his first yes.</summary>
         public StepBackState? StepBack;
 

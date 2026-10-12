@@ -154,6 +154,7 @@ namespace TraxCombat.Missions
             StartStepBacks();
             StartAttackRate();
             StartBrace(); // step 23
+            StartTiredBlock(); // step 30
         }
 
         private void StopAthletics()
@@ -759,9 +760,17 @@ namespace TraxCombat.Missions
         /// (a refill that reached its top: the resting speed is set exactly, not left up to one step
         /// behind) - is taken and the fighter (attack / run) or his horse is marked for a properties
         /// recompute. True when anything was marked.</summary>
-        private static bool RetargetSpeed(TrackedAgent st, in AthleticsRules r, bool exact = false)
+        private bool RetargetSpeed(TrackedAgent st, in AthleticsRules r, bool exact = false)
         {
             bool human = false, horse = false;
+            // step 30: the tired-block weight w rides on the same recompute (the decorator writes the game's chance from it)
+            float block = TiredBlockWeight(st, in r);
+            if (exact ? block != st.BlockRandomWeight : AthleticsMath.SpeedUpdateNeeded(st.BlockRandomWeight, block, 0f))
+            {
+                st.BlockRandomWeight = block;
+                st.BlockRandomPeakShare = AthleticsMath.PeakShare(in r, st);
+                human = true;
+            }
             float attack = AthleticsMath.AttackSpeedMultiplier(in r, st);
             if (exact ? attack != st.SpeedMultiplier : AthleticsMath.SpeedUpdateNeeded(st.SpeedMultiplier, attack, r.AttackSpeedFloor))
             {
@@ -1005,6 +1014,7 @@ namespace TraxCombat.Missions
                 _lastOffBecause = r.OffBecause; // which switch holds it off now (both may be off)
                 NoteRateSettings(settings);     // step 5e: the A/B switches (AI decisions re-applied)
                 NoteBraceSettings(settings);    // step 23: the floors / margins line (applied at every man's next look)
+                NoteTiredBlockSettings(settings); // step 30: the tired-block line (everyone re-targeted below)
 
                 if (r.PoolFloor != _seenPoolFloor || r.PoolPerSkill != _seenPoolPerSkill)
                 {
@@ -1303,6 +1313,14 @@ namespace TraxCombat.Missions
             }
             try
             {
+                TiredGuardHit(victim, in collisionData); // step 30: the AI's guard by f band (before the block's charge moves f)
+            }
+            catch (Exception e)
+            {
+                Failed("guard.hit", e);
+            }
+            try
+            {
                 var st = Get(attacker);
                 if (st == null || collisionData.IsHorseCharge) return; // horses (charges) are not tracked; bumps are free
                 var r = Rules;
@@ -1469,13 +1487,15 @@ namespace TraxCombat.Missions
         /// <summary>
         /// The speed multipliers to apply to <paramref name="agent"/> now (1 = none): a tracked
         /// fighter's attack and run multipliers, or - for a horse a slowed rider rides - that
-        /// rider's horse multiplier. False (all 1) for anyone else, with no mission running, and for
+        /// rider's horse multiplier; step 30: the fighter's tired-block weight (0 = the game's block
+        /// direction chance untouched). False (all 1, weight 0) for anyone else, with no mission running, and for
         /// everyone while the mod (ModEnabled) or Athletics (AthleticsEnabled) is off (read live -
         /// fail safe). Any thread; reads only, managed only (no native call).
         /// </summary>
-        internal static bool SpeedFactorsFor(Agent agent, out float attack, out float run, out float mount)
+        internal static bool SpeedFactorsFor(Agent agent, out float attack, out float run, out float mount, out float blockRandom)
         {
             attack = run = mount = 1f;
+            blockRandom = 0f;
             var logic = _current;
             if (logic == null || agent == null) return false;
             var s = TraxSettings.Shared;
@@ -1485,7 +1505,8 @@ namespace TraxCombat.Missions
             {
                 attack = st.SpeedMultiplier;
                 run = st.RunSpeedMultiplier;
-                return attack != 1f || run != 1f;
+                blockRandom = st.BlockRandomWeight; // step 30
+                return attack != 1f || run != 1f || blockRandom > 0f;
             }
             var owner = logic.MountOwner(agent);
             if (owner == null) return false;
