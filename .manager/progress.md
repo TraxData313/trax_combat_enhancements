@@ -15,8 +15,8 @@ Board = TASKS_TODO.md BUILD ORDER 28-30 (project manager protocol in CLAUDE.md).
 
 Phase 2 (Anton 2026-10-12):
 - [x] 32. Swing stack: max(2, round(points/20)) stored swings, one back per pause, kicks/bashes use one, pips on the recovery bar
-- [~] 33. Sprint: key, bar = points/20 s, min 20% to start, 1.6x current for the first 30% of the sprint time (slider, default 30 - Anton) then linear to 1.1x, refill 7 s (x0.5 moving, x0.5 exhausted), no Athletics refill while sprinting, AI on new orders (charge all, move/advance 50%), foot only
-- [ ] 34. Split "AI guard by f" (and the tired-direction lines) by SHIELD vs NO SHIELD, so the log proves tired shieldless men parry worse (Anton yes 2026-10-12). Add to TASKS_TODO after 33 lands. Logs: already capped 8 MB (LogMaxMegabytes, LogTrim) - keep it so.
+- [x] 33. Sprint: key, bar = points/20 s, min 20% to start, 1.6x current for the first 30% of the sprint time (slider, default 30 - Anton) then linear to 1.1x, refill 7 s (x0.5 moving, x0.5 exhausted), no Athletics refill while sprinting, AI on new orders (charge all, move/advance 50%), foot only
+- [~] 34. Split "AI guard by f" (and the tired-direction lines) by SHIELD vs NO SHIELD, so the log proves tired shieldless men parry worse (Anton yes 2026-10-12). Add to TASKS_TODO after 33 lands. Logs: already capped 8 MB (LogMaxMegabytes, LogTrim) - keep it so.
 
 ## Notes
 - Release: fixes collect in main; version / upload = Anton's call later.
@@ -29,3 +29,4 @@ Phase 2 (Anton 2026-10-12):
 - ALL STEPS DONE 2026-10-12. Next: Anton playtests PLAYTEST D8 (tournament), then decides a release.
 - 32 done (d54238c..2a058db): SwingStackEnabled/PointsPerSwing 20/Minimum 2/KicksUseSwings. 531 tests, smoke 75. Deviation: the AI's own ~1 s gap (AiMeleeGapSeconds) is not counted as rest, so battle pace holds (DESIGN decision 30e). Player kick gated via EventControlFlag.Kick 0x8000; AI kick bit unverified. Bar label "Swings 4/8".
 - Tournament 12:34 log (steps 28-31 build): tired-direction chance rose to 1.00 at empty; with SHIELDS a wrong guess = wrong-side block (63% at empty), landed only 6% - shields still stop blows. Shieldless parries unproven (44 total). Proposed to Anton: split "AI guard by f" by shield / no shield (waiting for his yes); design question: should a tired man's wrong-side shield block leak damage.
+- 33 done (16a8000..9233231): sprint, Left Ctrl (free in fights; SprintKey by name), 122 settings, 550 tests, smoke 80. Unverified: engine cap above ~1.0 and foot sliding (summary "sprint speed check"); AI advance/move sprints may be held to formation avg speed (cached ~2 s).
