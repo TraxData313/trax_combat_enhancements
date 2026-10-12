@@ -5,7 +5,7 @@ order, about **3 hours 15** (A 10 min, B 15, C 25, D 60, E 20, F 55, G 10; the o
 time after step 16? D4 alone (the A/B of the new guard and backpedal, 20 min) answers the newest
 questions; after step 21, D5 + D6 (the shield wall and the archers, 25 min); after step 23, D7 (lines brace by
 their orders, 15 min - since step 24 with the "ready 34/50" count on ALT and in the orders menu); after step 28, D8
-(a tournament: the opponent fights on to ~20%, 10 min).** Each part says what to do, what you
+(a tournament: the opponent fights on to ~20%, 10 min; after step 29 its step 4 - block your way back from empty).** Each part says what to do, what you
 should see, what counts as broken, and the log lines that prove it. The full line reference —
 every summary block and what proves what — is the **appendix** at the end.
 
@@ -244,7 +244,7 @@ air (misses cost too), counting — click as fast as you can.
   - `[athletics] YOU: Athletics skill 90 → pool 90 (the skill x1.00, at least 50); full strength down to 68 (75%); a blow costs you 5.6 - about 5 blows at full strength, 16 to empty`
     — **the skill must match your character screen**
   - `[athletics] YOU dropped below full strength at … s: 61.9 of 90 (the line is 68) after 5 blows this mission - f 0.92: attacks x0.93, run x0.94, damage upside 92% of the full`
-  - `[athletics] YOU are exhausted at … s: 0 of 90 after 16 blows this mission - attacks at 20% speed, run x0.30, no damage upside until you rest (refill starts 3.0 s after your last blow or paid block)`
+  - `[athletics] YOU are exhausted at … s: 0 of 90 after 16 blows this mission - attacks at 20% speed, run x0.30, no damage upside until you rest (refill starts 3.0 s after your last blow, kick, bash or WRONG-side block - a clean block or parry lets it run)` (step 29; with OnlyWrongSideBlocksStopRefill off: `… after your last blow or paid block)`)
   - `[athletics] YOU are off empty at …`,
     `[athletics] YOU are back at full strength at … s: 67.5 of 90 (the line is 68) - up from empty in 45.0 s of refill (45.0 s at a walk or slower; the same rate all the way (RegenRateNearFullPercent 100))`
     — standing or walking the "up from empty" time ≈ 45 s (step 22: the even refill; step 14's curve took 40.7 s); running, longer,
@@ -316,20 +316,27 @@ easiest) and let him swing at you:
 2. **Block with the shield the WRONG way** (guard to the other side - the game's own "wrong side" block) a
    few times: **~2.8 each** (5 × 0.56) — clearly more.
 3. **Parry with a weapon** (a two-hander or a sword without a shield): **~1.1 each** (2 × 0.56).
-4. Keep blocking a busy enemy for 20 s: **the bar does not refill while you block** — each paid block
-   restarts the 3 s refill delay, like a swing. Step back out of reach: the refill starts ~3 s later.
+4. Keep blocking a busy enemy for 20 s **the right way** (or parrying): since step 29 **the bar keeps refilling
+   while you block** — each clean block takes its ~0.56 / ~1.1, the refill runs on underneath and you net UP
+   (a 90 bar refills 2.25 per 1.5 s at a stand). Now block the WRONG way for a while: **the refill stops** —
+   a wrong-side block restarts the 3 s delay, like a swing. (`OnlyWrongSideBlocksStopRefill` off = step 22:
+   every paid block stops it.) Step back out of reach: the refill starts ~3 s after your last swing or wrong block.
 5. Arrows into your shield: **free** (for now) — the number does not move.
 6. Watch the front: shield-wall men who block a lot tire too, a little — their bars in the orders strip /
    under ALT drop even when they barely swing.
 7. *Athletics* → *Cost per shield block (points)* 0: a right-side block is free at once.
 - Log (always; the first of each KIND per battle, in full):
-  `[athletics] YOU: shield block (right side) at … s cost 0.56 Athletics (1.00 x0.56 hero party leader): 90.0 → 89.4 of 90 (f 1.00 → 1.00) - the first of this kind this battle: a melee blow you block costs YOU CostPerShieldBlock x your hero / party-leader multipliers, once per blow, and restarts the refill delay; blocking is never held or slowed`,
-  the same for `shield block (WRONG side)` (2.81, CostPerWrongSideShieldBlock) and `weapon parry` (1.13, CostPerWeaponParry);
-  later ones only with `VerboseLogging`: `~[athletics] shield block (right side) (on foot): <name> (you) - cost 0.6 (x0.56: hero party leader), …`
-  (the AI's the same, bucket `athletics-block`).
+  `[athletics] YOU: shield block (right side) at … s cost 0.56 Athletics (1.00 x0.56 hero party leader): 90.0 → 89.4 of 90 (f 1.00 → 1.00) - the first of this kind this battle: a melee blow you block costs YOU CostPerShieldBlock x your hero / party-leader multipliers, once per blow, and the refill keeps running (only a WRONG-side block restarts its delay - OnlyWrongSideBlocksStopRefill); blocking is never held or slowed`,
+  the same for `weapon parry` (1.13, CostPerWeaponParry), and for `shield block (WRONG side)` (2.81, CostPerWrongSideShieldBlock)
+  ending `… and restarts the refill delay (a WRONG-side block - a clean one would let the refill run); …`;
+  later ones only with `VerboseLogging`: `~[athletics] shield block (right side) (on foot): <name> (you) - cost 0.6 (x0.56: hero party leader), … - the refill runs on`
+  (the AI's the same, bucket `athletics-block`; a wrong-side one without the tail).
 - Summary (L4): `Athletics blocks paid by the defender N (P points; by riders R): shield right side a (…), shield WRONG side b (…), weapon parries c (…) | by you y (…), AI heroes h (…), other AI o (…) | free (cost 0) 0, while Athletics was off 0, the same blow seen again (not charged twice) d, missiles stopped by a shield (free) m; …`
   — **tell Claude the three counts and the points against the blows line's total** (how much of the drain blocks
   are); `the same blow seen again` is the dedupe at work (a swing touching a guard twice) - fine at any size.
+  Step 29 adds at its end: `| the refill delay restarted by W (right side 0, WRONG side W, parries 0), the refill kept
+  running under K (right side a, WRONG side 0, parries c) - OnlyWrongSideBlocksStopRefill (step 29)` — **only the WRONG
+  side restarts with the switch on**; a right-side or parry count under "restarted" means the switch was off.
 - Broken: a block costing a whole blow (5.6 for you) or nothing; a wrong-side block costing the same as a right-side
   one every time (the side is not read); the recovery bar emptying on a block; arrows into your shield costing.
 
@@ -657,8 +664,23 @@ the margin) - in every battle, so a holding line no longer braces as one man eit
   and `brace floors (BraceFloorSpreadPercent 10, step 28): N men rolled, their floor offsets now min -9.x / avg ~0 / max
   +9.x points on the order's floor; braces by his own floor: low (−, fights on longer) …, middle …, high (+, braces
   sooner) …`.
+4. **Block your way back** (step 29, Anton 2026-10-12: the same 1v1 log showed both men stuck at empty, because every
+   paid block restarted the 3 s refill delay). In the tournament, tire yourself out on swings, then only DEFEND for
+   ~30 s: block the right way or parry. **Your bar climbs while you block** - each clean block dips it (~0.75 a block,
+   ~1.5 a parry as a hero) and it climbs on; a 100-point hero parrying every 1.5 s nets about +1 a parry, ~+40 a
+   minute. Then block the WRONG way on purpose: the climb **stops** while you keep doing it. Your opponent recovers the
+   same way while he braces - a round should not end with both of you at 0.
+- **The lines** (step 29): `[athletics] YOU: weapon parry at … - the first of this kind this battle: … once per blow, and
+  the refill keeps running (only a WRONG-side block restarts its delay - OnlyWrongSideBlocksStopRefill); …`; the
+  mission-start / summary settings sentence `…; only a WRONG-side shield block restarts the refill delay - a right-side
+  block or a parry costs but the refill keeps running (OnlyWrongSideBlocksStopRefill), …`; the blocks summary's `| the
+  refill delay restarted by W (right side 0, WRONG side W, parries 0), the refill kept running under K (…)`.
 - **Tune live** (MCM, *Brace by orders (AI)*): *Brace floor: no formation* 0 = duel opponents never brace until empty;
-  *Brace floor spread per soldier* 0 = everyone exactly on his order's floor again.
+  *Brace floor spread per soldier* 0 = everyone exactly on his order's floor again. (*Athletics*) *Only wrong-side
+  blocks stop the refill* off = step 22 (every paid block stops it) - the deadlock should come back.
+- **Note**: a SOLDIER with a small bar (the floor, 50) who parries every 1.5 s still sinks (1.25 refilled vs 2 paid per
+  parry) - by design, the rates decide; right-side shield blocks (1) let even him climb. Tell Claude if duels still
+  stall.
 
 **Broken — tell Claude** (D8): a tournament summary with `hold and the rest` braces and no `no formation` ones (the
 order read sees a formation there); `time bracing` still near half the AI's time in a 1v1; floor offsets outside ±10.

@@ -967,3 +967,22 @@
   logic; step 23's checks pin the floor roll at 0, the 1000-man cost runs with it: 0.003 ms a tick, 0 bytes). deploy.ps1
   green, INSTALLED (this PC needs -GameFolder / -McmBinFolder on C:). Docs: DESIGN, AI_NOTES "Step 28", PLAYTEST D8 + L6d,
   CLAUDE.md, README + STEAM-DESCRIPTION.bbcode (6826 bytes; not uploaded - Anton's call). (2026.10.12 10.51.42)
+- [x] 29. Duel deadlock fix, part 2 - only a WRONG-side shield block restarts the refill delay (Anton, 2026-10-12, the same
+  tournament 1v1: both men sat at empty for good, because since step 22 every PAID block set the delay clock like a blow, so
+  a man defending against a swing every ~1.5 s never refilled; his rule: a skilful defender recovers while he stays on the
+  defence). New switch OnlyWrongSideBlocksStopRefill (bool, default true, live; Athletics group after CostPerWeaponParry;
+  off = step 22 exactly). Core: AthleticsMath.BlockRestartsRefill(r, kind) = the one rule (switch off or a wrong-side
+  block); ChargeBlock hands it to Drain(restartDelay) - false = only the points move: LastBlowTime (the delay clock) and
+  Regenerating (the running refill run) untouched, so the bar dips by the cost and climbs on and a block inside a running
+  delay never lengthens it; the costs, exhaustion, curves and speed re-target unchanged; blows, kicks and bashes always
+  restart it. BlowOutcome.RestartedDelay; AthleticsRules' constructor takes the switch last, default false (older tests
+  keep step 22), From reads it. Logs: the YOU block line per kind ("the refill keeps running" / "restarts the refill delay
+  (a WRONG-side block …)"), the verbose tail " - the refill runs on", the YOU-exhausted line, the settings sentence, and
+  the blocks summary line split - restarted by W / kept running under K, by kind. Numbers (shipped flat refill, 60 s):
+  P/40 points refill per 1.5 s vs a parry's 2 x m - a parrying soldier climbs with a pool above 80, a hero above 60, a hero
+  party leader always; right-side blocks (1 x m) let everyone climb; a 100-pool hero parrying every 1.5 s from empty nets
+  +1 a parry (~38 after a minute), a floor soldier parrying still sinks (by design - the rates decide). Settings 101 -> 102
+  (DESIGN row + decision 28, schema, defaults.json refreshed, MCM via the schema); no config migration. Tests 487 -> 498
+  (BlockRefillTests). Smoke 69 -> 70 (BlocksLetTheRefillRun through the real logic's BlockTaken; the older steps pin the
+  switch off in AthleticsDefaults). deploy.ps1 green, INSTALLED. Docs: DESIGN, AI_NOTES "Step 29", PLAYTEST (the block list
+  item 4 + D8 step 4 + the lines), CLAUDE.md; README / STEAM-DESCRIPTION untouched (they never said blocks stop the refill). (2026.10.12 11.02.29)

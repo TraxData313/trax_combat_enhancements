@@ -24,7 +24,9 @@ big bars), so the game leans hero-centred. Kicks and shield bashes cost a little
 `CostPerKickOrBash` 3 × the same multipliers, once each, never an attack pause). DEFENDING costs too (step 22):
 every melee blow a fighter BLOCKS costs HIM - `CostPerShieldBlock` 1 (shield, right side), `CostPerWrongSideShieldBlock`
 5, `CostPerWeaponParry` 2 - × the same multipliers, once per blocked blow (OnMeleeHit's collision data, Core `BlockMath` /
-`BlockTracker`); a paid block restarts the refill delay; never an attack pause or a step back; missiles into a shield
+`BlockTracker`); since step 29 only a WRONG-side shield block restarts the refill delay (`OnlyWrongSideBlocksStopRefill`,
+Anton: a skilful defender recovers on the defence - a clean block or parry costs, the refill runs on underneath; off =
+every paid block, step 22); never an attack pause or a step back; missiles into a shield
 free. Step 22 also shipped the refill a straight line again (`RegenRateNearFullPercent` 100) and the run floor 0.3
 (config format 5 migrates both once). A hideout's boss
 fight is a fresh start for the player's side (step 19, `HideoutBossFightRefill`: when the game's
@@ -183,7 +185,7 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
   ParamDef.cs                 one setting: key, type, range, group, label, plain-words
                               description, apply timing (Live / NextBattle); Normalize, Format;
                               its Default comes from defaults.json (DefaultsFile), never code
-  SettingsSchema.cs           EVERY setting of DESIGN's table (101), in file + MCM order, 12 groups
+  SettingsSchema.cs           EVERY setting of DESIGN's table (102), in file + MCM order, 12 groups
                               ("Master switch" first, "Damage" second - step 25 renamed it from
                               "Damage randomness", "Battle pace (AI)" - step 21 - after the step back,
                               "Brace by orders (AI)" - step 23 - after it,
@@ -261,7 +263,9 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               step 19: FreshStart - the refill to the top the wounds allow + FreshStartOutcome;
                               step 22: BlockCostSetting / BlockCostPoints by BlockKind + ChargeBlock
                               (Fighter.BlocksPaid, never Blows; cost 0 = nothing at all), the three
-                              CostPer*Block/Parry rules)
+                              CostPer*Block/Parry rules; step 29: BlockRestartsRefill - only a wrong-side
+                              block restarts the delay while OnlyWrongSideBlocksStopRefill is on, else
+                              Drain leaves LastBlowTime / Regenerating alone; BlowOutcome.RestartedDelay)
                               + Charge / ApplyHealth / Regen / Read; BlowKind, BlowOutcome,
                               RegenOutcome, AthleticsReading (HUD snapshot incl. f, usable pool,
                               BelowFull = below the top it can refill to - step 12)
@@ -413,7 +417,8 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               skill, blows by kind, riders, detection cross-checks, kicks / bashes
                               charged apart - by channel, at the hit, free (step 18), blocks paid by
                               the defender - by kind, by you / AI heroes / other AI, free, off, the
-                              same blow again, missiles into a shield (step 22), free actions,
+                              same blow again, missiles into a shield (step 22), the delay restarted vs
+                              kept running by kind (step 29), free actions,
                               exhaustions + peak zone, fighter-time by f, heroes, player,
                               formations, health cap, regen by effort and its curve, refills from
                               empty to the peak line (step 14), run-speed checks by f,
@@ -483,7 +488,8 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               ChargeKickOrBash - no timer, no step back; the YOU line), step 22's
                               blocks (OnMeleeHit's LAST try: BlockHitTaken → BlockMath.KindOf →
                               BlockTaken - the defender's BlockTracker, ChargeBlock, AfterCharge; the
-                              YOU line per kind; OnMissileHit counts missiles into a shield), the health
+                              YOU line per kind - step 29: "the refill keeps running" or "restarts the refill
+                              delay"; OnMissileHit counts missiles into a shield), the health
                               cap (OnAgentHit + every regen step), regen
                               by effort, three speed multipliers re-targeted in 0.05 steps and
                               applied by UpdateAgentProperties (≤ 50 a tick), the horse table
@@ -688,7 +694,7 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
   Hud/AltMarkersVM.cs         its ViewModels: the root + a GROW-ONLY MBBindingList of AltMarkerLabelVM keyed by
                               team + formation (a label never swaps formations when vanilla re-sorts); step 24:
                               ReadyText / ReadyColor / ReadyShown, SetReady
-tests/TraxCombat.Core.Tests/  net8.0 xUnit (487) — schema vs DESIGN.md (keys + types), one copy
+tests/TraxCombat.Core.Tests/  net8.0 xUnit (498) — schema vs DESIGN.md (keys + types), one copy
                               runs (SingleCopyTests: claims on private slots, copies, texts), when
                               MCM is tried and when it stops (McmPlanTests - step 12),
                               defaults.json (DefaultsFileTests), master switch, settings, config
@@ -704,7 +710,10 @@ tests/TraxCombat.Core.Tests/  net8.0 xUnit (487) — schema vs DESIGN.md (keys +
                               free at 0 and off, one decision per action across both channels and the
                               hit), blocks (BlockTests, step 22: 1 / 5 / 2 x the multipliers, live, drain
                               and the refill delay, free at 0 and off, the classifier, once per blow, the
-                              refill at 100 exactly linear, the format-5 migration), the hideout boss fight (HideoutBossFightTests, step 19: the refill to the
+                              refill at 100 exactly linear, the format-5 migration), only a wrong-side block stops the
+                              refill (BlockRefillTests, step 29: the rule on / off, the clock and the running
+                              refill untouched, live, the master switch, a hero parrying every 1.5 s from 0
+                              climbs +1 a parry, a floor soldier parrying sinks, the summary split), the hideout boss fight (HideoutBossFightTests, step 19: the refill to the
                               wound cap, the ids and text ids, the gate, the line and the summary texts), mean/std,
                               the run-speed check, Athletics summary, the
                               attack rate (rules, AI values x / ÷ m, the cap, verdicts, phases /
@@ -796,7 +805,10 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               on either channel or at the hit, no timer / roll, 0 / off, the YOU line,
                               the game's action codes; step 22: blocks - Core's classifier on the game's
                               own AttackCollisionData and result codes, the prices by kind and by who, once
-                              per blocked blow, no pause / roll, a recruit emptied by blocks, live, 0 / off),
+                              per blocked blow, no pause / roll, a recruit emptied by blocks, live, 0 / off;
+                              step 29: BlocksLetTheRefillRun - a parrying hero at 0 climbs through the real
+                              BlockTaken, wrong-side blocks hold a man at 0, the switch live; the older steps
+                              pin OnlyWrongSideBlocksStopRefill off in AthleticsDefaults),
                               the step back (Program.StepBack.cs: the real
                               logic's bookkeeping with a stand-in IStepBackBody - rolls by f,
                               queue, cap, live time, every release path, logs, summary), the
@@ -872,7 +884,7 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               (Program.Damage.cs, DamageReductionThroughDecorator): the real decorator - after
                               the roll (100 → 37.5..112.5, mean 75), the roll off still reduced on every kind,
                               never a fall / object / 0 hit, never below 1, live, the master switch, the lines
-                              (the older damage steps pin DamageReductionPercent 0 - DamageDefaults) (69 steps; the config
+                              (the older damage steps pin DamageReductionPercent 0 - DamageDefaults) (70 steps; the config
                               checks work for any tuned default);
                               TRAX_SMOKE_KEEP=1 keeps its temp folder + log to read
 tools/DefaultsTool/           defaults.json upkeep: refresh (rewrite comments/order, keep every

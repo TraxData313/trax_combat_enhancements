@@ -3089,3 +3089,72 @@ sliders live, a holding man on 60 ± his roll, the lines); step 23's checks pin 
    wrong-side blocks restart the refill) and 30 (tired AI blocks in a random direction) are the rest of the deadlock fix.
 3. Field battles: a holding line braces man by man between ~50 and ~70 → `brace floors` offsets spread ±10, braces in all
    three floor bands.
+
+## Step 29 — duel deadlock fix, part 2: only a wrong-side shield block stops the refill (DONE 2026-10-12)
+
+Anton (2026-10-12, the same tournament 1v1 as step 28): both fighters reached empty and STAYED there. The refill starts
+`RegenDelayBlowTimes × BlowTimeSeconds` (3 s) after a fighter's last blow - and since step 22 every PAID block was a "blow"
+for that clock (`Drain` set `LastBlowTime = now`), so a man defending against a swing every ~1.5 s never refilled. Anton's
+rule: a SKILFUL defender should recover while staying on the defence. So only a WRONG-side shield block restarts the delay.
+
+**How the delay is represented (checked before building)**: one clock, `Fighter.LastBlowTime`; `Regen` refills only the
+part of each step after `LastBlowTime + RegenDelaySeconds`. `Drain` (the shared body of every charge) also set
+`Regenerating = false`, ending the current refill RUN (only the episode bookkeeping: start fill, seconds, walk share -
+the "refill from empty to the peak line" summary line). Nothing else gates the refill: `RegenPass` skips a man only at his
+top (a block drops him below it, so he is looked at again), the effort is sampled from his speed every step, and the
+HUD's "refilling" reason (`BelowFull`) reads the fill. So a non-restarting block must leave exactly two fields alone.
+
+**The build (Claude's calls - Anton can overturn any)**
+1. **One switch** `OnlyWrongSideBlocksStopRefill` (bool, DESIGN initial true, defaults.json true; Athletics group right
+   after `CostPerWeaponParry`; live - read in `AthleticsRules.From` at each block). Off = step 22 to the bit. Settings
+   101 → 102. No config format bump: a missing key reads as its default and `ConfigStore` writes it in.
+2. **The rule in one place**: `AthleticsMath.BlockRestartsRefill(r, kind)` = kind ≠ None && (switch off || kind ==
+   ShieldWrongSide). `ChargeBlock` passes it to `Drain(…, restartDelay)`: false = only the points move - `LastBlowTime`
+   and `Regenerating` untouched, so a running refill run simply continues (the bar dips by the cost and climbs on, the
+   episode keeps its start - its seconds then measure real time, drains included) and a block INSIDE a running delay does
+   not lengthen it. Exhaustion, the peak line, the curves and the speed re-target are unchanged (`AfterCharge` as before).
+   Blows, kicks and bashes always restart it. `BlowOutcome.RestartedDelay` (default true; false when not charged) tells
+   the module. `AthleticsRules`' constructor takes the switch LAST, default false (step 22) - the older tests' hand-built
+   rules keep step 22's behaviour; `From` reads the setting.
+3. **Logs**: the YOU block line (first of each kind per battle) ends `… once per blow, and the refill keeps running (only
+   a WRONG-side block restarts its delay - OnlyWrongSideBlocksStopRefill)` / `… and restarts the refill delay (a
+   WRONG-side block - a clean one would let the refill run)` / `(OnlyWrongSideBlocksStopRefill off: every paid block
+   does)`; the verbose block lines get ` - the refill runs on`; the YOU-exhausted line says `refill starts 3.0 s after your
+   last blow, kick, bash or WRONG-side block - a clean block or parry lets it run`; the settings sentence (mission start
+   and summary) gains `; only a WRONG-side shield block restarts the refill delay - a right-side block or a parry costs but
+   the refill keeps running (OnlyWrongSideBlocksStopRefill)` (or `every paid block restarts …` when off); the blocks
+   summary line ends `| the refill delay restarted by W (right side, WRONG side, parries), the refill kept running under K
+   (…) - OnlyWrongSideBlocksStopRefill (step 29)` (`AthleticsStats.AddBlockCharge(…, restartedDelay)`, per kind).
+
+**The numbers - does a parrying exhausted man escape?** At the SHIPPED refill (flat, `RegenRateNearFullPercent` 100,
+empty → full in 60 s at a walk) a pool of P points refills P/40 points per 1.5 s at a stand; a parry costs 2 × m, a
+right-side shield block 1 × m (m = 1 soldier, 0.75 hero, 0.5625 hero party leader). Parrying a blow every 1.5 s he
+climbs iff P > 80 m: a soldier needs a pool above 80 (Athletics skill > 80), a hero above 60, a hero who leads his party
+always (the floor is 50). Right-side shield blocks: P > 40 m - everyone climbs. Examples: a 100-pool hero parrying nets
++1.0 per parry (+40 a minute: from empty to ~38 in the first minute - the unit test and the smoke); a floor (50) soldier
+nets −0.75 per parry and stays at the bottom, but +0.25 per clean shield block. Fighting at more than walking pace
+lowers the refill (×0.5 at a full run), so circling duellists gain less. On DESIGN's initial curve (50) the refill near
+empty is ×1.39 faster (ln 2 / 30 s), so the threshold pools are ~28% lower. A wrong-side block every 1.5 s still holds
+anyone at the delay.
+
+**Tests / smoke**: Core 487 → 498 (`BlockRefillTests`: the rule's truth table on / off; a clean block / parry costs but
+leaves the clock and the running refill alone, the next step refills; a wrong-side one restarts and holds; a block inside a
+running delay does not lengthen it; off = every kind restarts and holds; the switch live through `TraxSettings` and its
+place in the schema; the master switch / AthleticsEnabled = nothing charged, no clock touched; the hero parrying every
+1.5 s from empty (+0.01 per cycle exactly, ~38 after a minute) vs step 22's 0 for good; the floor soldier (shield +0.25 a
+block, parry stays at the bottom, a hero party leader +0.125); wrong-side blocks hold him at 0; the sentence and the
+summary split). `AthleticsStatsTests`' expected texts gained the new clauses. Smoke 69 → 70 steps:
+`BlocksLetTheRefillRun` (the real logic's `BlockTaken` every 1.5 s with `AthleticsMath.Regen` stepped in 0.05 s - the
+regen pass itself needs native speeds; you as a 100-pool hero: 40 parries paid, the clock untouched, 35-40 of 100 after a
+minute; the YOU line and the verbose tail; right-side blocks let it run; wrong-side blocks hold a man at 0 with 20
+restarts counted; the switch off live = the delay restarts and the bar sinks, on again = it climbs; the master switch;
+the summary split). The older steps pin the switch OFF in `AthleticsDefaults` (step 22's checks unchanged except the YOU
+line's new tail).
+
+**UNVERIFIED — only the game can tell (PLAYTEST D8 step 4, C's block list item 4)**
+1. In a tournament, tired out then only blocking, the player's bar climbs; the opponent recovers while bracing → the
+   blocks summary line shows most blocks under "the refill kept running" and the 1v1 ends in a fight.
+2. Whether a soldier-sized pool parrying non-stop should also climb (today it sinks by design) - Anton's call; the levers
+   are `CostPerWeaponParry`, `FullRegenSecondsStanding` and the curve.
+3. Step 30 (tired AI blocks in a random direction) is the last part of the deadlock fix - more wrong-side blocks from tired
+   AI, which then DO stop their refill.
