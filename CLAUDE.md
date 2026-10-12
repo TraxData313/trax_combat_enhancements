@@ -403,7 +403,9 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               Weight = share × (1 − f) (0 at f 1, off, the player), OwnChance (the game's value clamped 0-1:
                               a final-round tournament fighter's −1.10 → 0), Chance = own + (1 − own) × w (w 0 = the game's
                               value untouched), RightShare; TiredBlockStats (the chance raised by f band, the AI's GUARD by f
-                              band - shield right / WRONG side / parry / landed - + the 2 [summary] lines);
+                              band - shield right / WRONG side / parry / landed - + the [summary] lines; step 34: the
+                              guard split by a shield in hand at the blow - all / WITH / WITHOUT, 4 lines - and the
+                              recomputes with a shield);
                               Fighter.BlockRandomWeight = the w applied now (Athletics.cs)
   ReadyCount.cs               step 24 pure (AI_NOTES "Step 24"): ReadyBand (plain / yellow / red), ReadyHidden (ModOff
                               first, AthleticsOff, BraceOff, SwitchedOff, NoMen), ReadyRules (live: ShowReadyCount,
@@ -638,7 +640,8 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               and recompute budget; RetargetSpeed is an instance method since), NoteTiredBlock /
                               TiredBlockApplied (the decorator's write counted by f band, the first in full),
                               TiredGuardHit → GuardTaken (OnMeleeHit, before the block's charge: the AI's guard by f
-                              band; you never), WriteTiredBlockSummary
+                              band; you never; step 34: ShieldInHand = step 21's IWeaponFacts read at the blow and
+                              at the recompute, a failing read = one [error], counted without), WriteTiredBlockSummary
   Missions/BraceBody.cs       step 23: BraceState (his roll, step 28's floor roll FloorUnit, the running brace, the shield's
                               progress), IBraceBody (the
                               engine side - the smoke plays it), GameBraceBody (the order from
@@ -764,7 +767,7 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
   Hud/AltMarkersVM.cs         its ViewModels: the root + a GROW-ONLY MBBindingList of AltMarkerLabelVM keyed by
                               team + formation (a label never swaps formations when vanilla re-sorts); step 24:
                               ReadyText / ReadyColor / ReadyShown, SetReady
-tests/TraxCombat.Core.Tests/  net8.0 xUnit (550) — schema vs DESIGN.md (keys + types), one copy
+tests/TraxCombat.Core.Tests/  net8.0 xUnit (551) — schema vs DESIGN.md (keys + types), one copy
                               runs (SingleCopyTests: claims on private slots, copies, texts), when
                               MCM is tried and when it stops (McmPlanTests - step 12),
                               defaults.json (DefaultsFileTests), master switch, settings, config
@@ -824,7 +827,7 @@ tests/TraxCombat.Core.Tests/  net8.0 xUnit (550) — schema vs DESIGN.md (keys +
                               tired block direction (TiredBlockTests, step 30: w at f 1 / 0.5 / 0 x 0 / 50 / 100, never
                               the player, the master switch first, the chance own + (1 − own) x w with a negative /
                               NaN / > 1 game value, w 0 untouched, the setting live and placed, the sentence, the
-                              2 summary lines). They
+                              summary lines; step 34: the shield / no-shield split adds up, its 2 lines). They
                               run on DESIGN's INITIAL values (DesignTable.cs: a module
                               initializer), so tuning defaults.json never breaks them. Keep green.
 module/SubModule.xml          release manifest (Id TraxCombatEnhancements, v1.0.0) - THE one home of the
@@ -972,7 +975,8 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               (Program.TiredBlock.cs): the real decorator + logic - DrivenProperty 40, the game's
                               chance untouched fresh, f 0.52 over −1.10 → 0.48, own 0.2 → 0.584, empty → 1, no
                               compounding, never you, the slider live (50 / 0), AthleticsEnabled / the master switch,
-                              a braced man's own guard direction untouched by the input frame, the guard by f band,
+                              a braced man's own guard direction untouched by the input frame, the guard by f band
+                              (step 34: split by a shield in hand - the stand-in read, a shield dropped mid-fight),
                               the [guard] and [summary] lines; the cost - 1000 tired men block + recompute, ~0.1 µs,
                               0 bytes (the older steps pin TiredBlockRandomPercent 0 - AthleticsDefaults);
                               step 32 (Program.SwingStack.cs): the real logic - your burst of stored swings, the hold from

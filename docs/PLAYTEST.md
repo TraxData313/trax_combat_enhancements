@@ -695,7 +695,10 @@ the margin) - in every battle, so a holding line no longer braces as one man eit
   0) → 0.48 = own 0.00 + (1 − own) × w, w = 100% × (1 − 0.52) = 0.48 - …`; the summary's two lines (L6e): `tired block
   direction (…): the game's random-direction chance raised for N AI men …; his own → written, avg by f band: …` and
   `AI guard by f (…): peak (f 1) … blows - blocked X% (…), landed …; … empty (f 0) … blows - blocked Y% (…)` - **Y well
-  below X**, with more `WRONG side` and `landed` in the low bands.
+  below X**, with more `WRONG side` and `landed` in the low bands. **Read the split (step 34)**: `AI guard by f WITH a
+  shield in hand` - a tired shield man's wrong guess is mostly a `WRONG side` block (the shield still stops it, landed
+  stays low); `AI guard by f WITHOUT a shield` - THE line for "do tired men parry worse": its empty band's `landed` should
+  be far above its peak band's (a wrong-direction parry is no parry).
 - **Tune live** (MCM, *Tired fighters*): *Tired AI blocks in a random direction (%)* 0 = the game's own blocking (the
   95% wall should come back in a final round), 50 = an empty man guesses half his blocks.
 
@@ -703,7 +706,8 @@ the margin) - in every battle, so a holding line no longer braces as one man eit
 order read sees a formation there); `time bracing` still near half the AI's time in a 1v1; floor offsets outside ±10.
 Step 30: the `AI guard by f` empty band blocking about as well as the peak band with `tired block direction` raised for
 the men who fought there - the engine ignores the game's own random-direction chance, and the fallback (his direction
-bits replaced in his input, AI_NOTES "Step 30") is next; no `[guard] first tired block direction` line in a battle where
+bits replaced in his input, AI_NOTES "Step 30") is next; step 34: `AI guard by f WITHOUT a shield` landing about as
+often at empty as at peak (with a few dozen blows in each band) - the shieldless AI is not guessing wrong; no `[guard] first tired block direction` line in a battle where
 AI men got tired (the decorator is not on top - see the `[speed] stat model on top` line).
 
 **D9. The swing stack — save swings up, then burst (step 32, ~10 min).** Anton's design: "chain swings stack" - one slow
@@ -1406,14 +1410,21 @@ header names the technique: `==== scene …, mod ON, AI holds: Input (the AI's o
 - A change mid-battle: `[guard] settings changed mid-mission at … s: …`.
 - The first raised chance in full (D8 step 5); with VerboseLogging every later recompute `~[guard] tired block
   direction: <name> f 0.40, w 0.60 - chance 0.12 → 0.65` (rate-limited, bucket `guard-chance`).
-- Summary - 2 lines (numbers made up):
+- Summary - 4 lines (numbers made up; the last two since step 34 - the guard split by what the DEFENDER holds as the blow
+  arrives, read before the block's cost is charged):
   ```
   tired block direction (TiredBlockRandomPercent 100, step 30): the game's random-direction chance raised for 140 AI men (900 recomputes; 30 of them over a game value below 0 - never random before); his own → written, avg by f band: f 0.5-1 0.35 → 0.55 (n 500), f below 0.5 0.33 → 0.80 (n 300), empty (f 0) 0.30 → 1.00 (n 100)
   AI guard by f (melee blows that reached AI men; kicks, bashes, charges and missiles left out - step 30: tired men should block worse): peak (f 1) 900 blows - blocked 40.0% (shield right side 25.0%, WRONG side 5.0%, parry 10.0%), landed 60.0%; f 0.5-1 …; f below 0.5 …; empty (f 0) 200 blows - blocked 15.0% (…), landed 85.0%
+  AI guard by f WITH a shield in hand (when the blow came - step 34): peak (f 1) 600 blows - blocked 50.0% (shield right side 37.5%, WRONG side 7.5%, parry 5.0%), landed 50.0%; …; empty (f 0) 120 blows - blocked 30.0% (shield right side 6.0%, WRONG side 20.0%, parry 4.0%), landed 70.0% (a wrong direction with a shield = a WRONG-side block: the shield still stops the blow)
+  AI guard by f WITHOUT a shield (when the blow came - step 34): peak (f 1) 300 blows - blocked 20.0% (shield right side 0.0%, WRONG side 0.0%, parry 20.0%), landed 80.0%; …; empty (f 0) 80 blows - blocked 3.0% (…), landed 97.0% (a wrong direction without a shield = the blow lands: empty should land far more than peak)
   ```
+  The first line's recomputes also say `N with a shield in hand, M without`.
   Proves: the chance is raised where the bar is low (`his own → written` climbing to 1.00 at empty) and the engine
   follows it (`AI guard by f`: blocked % falling band by band, `WRONG side` rising). In a field battle many blows land
   whatever the guard (flanks, backs), so compare bands, not absolute numbers; the tournament 1v1 is the clean test.
+  Step 34: the WITH line answers "does a tired shield man block on the wrong side" (`WRONG side` up, `landed` barely
+  moving - the shield still stops it); the WITHOUT line answers "does a tired shieldless man parry worse" (`landed` at
+  empty well above peak). Read the WITHOUT line first - mixing the two hid it in the first tournament log.
 
 ### L6f. The swing stack (step 32)
 

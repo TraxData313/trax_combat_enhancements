@@ -1076,3 +1076,15 @@
   tick, 0 bytes, ~12 recomputes a man; older steps pin the sprint off). Docs: DESIGN §2 / §3 1c / decision 31 / 15 rows,
   RESEARCH §N + 2 UNVERIFIED rows, PLAYTEST D10 + L6g, the player guide section 13 (length by points, the profile, the
   refill times), README + Steam one clause each (3239 bytes), CLAUDE.md. Deployed (AssemblyGuard + smoke green). (2026.10.12 13.29.12)
+- [x] 34. The AI guard log split by a SHIELD in hand (Anton, 2026-10-12: his tournament log showed tired shield men's random
+  direction turning into WRONG-side blocks - 63% at empty, landed 6% - while whether tired SHIELDLESS men parry worse was
+  hidden in the mixed line). Pure logging, no gameplay change, no setting. Core TiredBlockStats: one Guard table three times
+  (all / with a shield / without), AddGuard(bin, kind, shield), AddRaised(..., shield) + RecomputesWithShield; summary 2 -> 4
+  lines: the raised chance ("N recomputes - X with a shield in hand, Y without"), the old "AI guard by f" line unchanged,
+  "AI guard by f WITH a shield in hand (when the blow came - step 34)" (hint: the shield still stops a wrong-side block)
+  and "... WITHOUT a shield ..." (hint: a wrong direction = the blow lands, empty should land far more than peak). Module:
+  ShieldInHand = step 21's IWeaponFacts off-hand read, in GuardTaken after its early returns (OnMeleeHit, before the
+  block's charge) and at each raised recompute; a failing read = one [error], counted without. No per-hit line, nothing
+  allocated. Tests 550 -> 551, smoke stays 80 (TiredBlockDirection extended: shield per agent, one dropped mid-fight, no
+  read for you / Athletics off, the lines verbatim). Docs: AI_NOTES "Step 34", PLAYTEST D8 step 5 + L6e (read the
+  WITHOUT line first), CLAUDE.md. Deployed (AssemblyGuard + smoke green). (2026.10.12 13.34.50)

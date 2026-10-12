@@ -3442,3 +3442,38 @@ to 50%. Research first, STOP if it needs native patching.
 3. An AI charge: `sprints - charge N men` after `new orders seen - charge`; the formation reaching the enemy sooner (the formation's
    speed cache refreshes every ~2 s - a move / advance sprint may show only after it).
 4. `[error] sprint.*` none.
+
+
+## Step 34 — the AI guard log split by a shield in hand (DONE 2026-10-12)
+
+Anton (2026-10-12, his tournament log): tired AI with SHIELDS turned step 30's random direction into WRONG-side shield
+blocks (63% at empty) - and the shield still stopped the blow (landed 6%). Whether tired SHIELDLESS men parry worse (a
+wrong-direction parry is no parry - the blow should land) could not be told: `AI guard by f` mixed the two. Pure logging,
+no gameplay change, no new setting (none needed: the split is always written - three summary lines, no per-hit line).
+
+**Built**
+- Core `TiredBlockStats`: one private `Guard` table (blows, shield right / WRONG side / parry / landed by f band) three
+  times - all, WITH a shield in hand, WITHOUT; `AddGuard(bin, kind, shield)`; `AddRaised(bin, game, chance, shield)` +
+  `RecomputesWithShield`; accessors `Blows / Landed / WrongSide / Parried(bin, shield)`. Summary 2 → 4 lines: the raised
+  chance (now "N recomputes - X with a shield in hand, Y without; …"), the old `AI guard by f` line UNCHANGED (all - the
+  totals stay comparable with older logs), then `AI guard by f WITH a shield in hand (when the blow came - step 34): …
+  (a wrong direction with a shield = a WRONG-side block: the shield still stops the blow)` and `AI guard by f WITHOUT a
+  shield (when the blow came - step 34): … (a wrong direction without a shield = the blow lands: empty should land far
+  more than peak)`. Fixed arrays, nothing allocated per blow.
+- Module `AthleticsLogic.TiredBlock.cs`: `ShieldInHand(st, site)` = step 21's `IWeaponFacts.Read(st, melee: true, …)`
+  (the off-hand item's usage IsShield - a pointer read + the managed item: safe in OnMeleeHit and in the stat decorator);
+  read in `GuardTaken` AFTER its early returns (you / Athletics off: no read), i.e. where step 30 counts - in OnMeleeHit
+  BEFORE `BlockHitTaken` charges the block; and in `TiredBlockApplied` (the recompute). A failing read: one `[error]`
+  per site (`guard.shield`, `guard.shield.recompute`), counted "without" - the totals stay whole.
+- "With a shield" = in his OFF HAND when the blow arrives - a shield on his back (step 23 puts it away / takes it out)
+  counts "without", which is right: it cannot block a frontal blow. A blow at the shield on his back is still "landed"
+  in both tables as step 30 counted it.
+- Tests 550 → 551 (the split adds up; the two new lines' exact text; the empty-table texts). Smoke stays 80 steps:
+  `TiredBlockDirection` extended - the stand-in weapon read per agent, a shield dropped mid-fight moves the next blows
+  to "without", no read for you / Athletics off, the recomputes counted with a shield, the 2 new lines verbatim.
+
+**What to read in a log (PLAYTEST D8 step 5, L6e)**: the WITHOUT line first. Its empty band's `landed` well above its
+peak band's = tired shieldless men parry worse (step 30 works for them). Flat with a few dozen blows per band = the
+engine's random direction does not reach parries (then step 30's input fallback is the next idea). The WITH line: a
+rising `WRONG side` with `landed` flat = the shield still saves him - by design of the engine (UNVERIFIED item 3 of step
+30 answered by Anton's log: a wrong pose is a wrong-side block, not a miss of the shield).
