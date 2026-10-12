@@ -801,6 +801,19 @@ says (§2c).
 | `BraceRecoverSpreadPercent` | 5 | Step 23 (Anton: "+- 5% ... per soldier, once rolled on a battle"): each AI man's own margin = `BraceRecoverPercent` ± up to this, a uniform roll kept for the battle; the slider rescales every roll live; never below floor + 1. 0 = no spread. Range 0-50. |
 | `BraceWieldShield` | true | Step 23: a man who starts bracing with a shield not in his hand takes it out (a one-handed weapon first if his weapon needs both hands; a ranged weapon in hand is left alone); checked every 1 s while bracing, at most 3 wield calls a brace. At its end his AI picks again. |
 | `BraceRaiseShield` | true | Step 23: while bracing with a shield in hand, the shield is held up (`DefendDown` in his input) whenever his own AI holds no guard. Off: the guard only replaces an attack wish (step 16's rule). |
+| `SprintEnabled` | true | Step 33 (Anton, 2026-10-12): the SPRINT - every fighter on foot stores seconds of sprint = his CURRENT Athletics points ÷ `SprintPointsPerSecond` (150 / 20 = 7.5 s; empty = 0; a points drop clamps it); you hold `SprintKey`, the AI sprints on a new order (`SprintAiEnabled`); while sprinting his run speed × the profile (`SprintMaxMultiplier` → `SprintMinMultiplier`), his Athletics does NOT refill; never mounted. Needs Athletics (the store is its points). Off = no sprint, speeds back at once. Live. |
+| `SprintKey` | LeftControl | Step 33: the key you hold to sprint, by NAME (Core `KeyNames`: LeftControl, RightControl, LeftAlt, RightAlt, LeftShift, RightShift, CapsLock, Tab, Q, T, Y, H, J, K, L, B, N, M, C, MiddleMouseButton, X1MouseButton, X2MouseButton - the game's `InputKey` names; case, spaces, '-' and '_' ignored, "left ctrl" works). Left Ctrl is free in v1.4.8's fight keys (RESEARCH §N). Read live (`Mission.InputManager.IsKeyDown`), only in a fight, on foot, with the order menu closed. |
+| `SprintPointsPerSecond` | 20.0 | Step 33: Athletics points per stored sprint second (range 5-100). |
+| `SprintMinStartPercent` | 20 | Step 33: a sprint starts only with at least this % of the store filled (no spamming tiny bursts); 0 = any. Range 0-100. |
+| `SprintMaxMultiplier` | 1.6 | Step 33: the speed at a sprint's start, × his CURRENT run speed (after tiredness) - also from a partial store (the dodge). Range 1-3. |
+| `SprintMinMultiplier` | 1.1 | Step 33: the speed at a sprint's end (× the current run speed); never above the start speed. Range 1-3. |
+| `SprintFullSpeedSharePercent` | 30 | Step 33 (Anton: 30): the first this-% of the sprint's length T (= the seconds stored at its start; the AI: its share) at `SprintMaxMultiplier`, then a straight line to `SprintMinMultiplier` at T. Full 7.5 s: x1.6 until 2.25 s. The clock runs only while moving. Range 0-100. |
+| `SprintRefillSeconds` | 7.0 | Step 33: empty → full store standing still (or walking) at / above the peak line; never while sprinting. Range 1-120. |
+| `SprintRefillMovingFactor` | 0.5 | Step 33: the store's refill × this while moving faster than a walk (effort above `WalkEffortFraction`): 14 s. Range 0-1. |
+| `SprintRefillExhaustedFactor` | 0.5 | Step 33: the refill × a line from 1 at the peak line (f = 1) to this at an empty bar (f = 0); multiplies with the moving factor (28 s moving and empty). Range 0-1. |
+| `SprintAiEnabled` | true | Step 33: an AI formation's NEW movement order (its kind changes - step 23's read, the AI's advance / tactical charge on a Move included; polled every 0.25 s) makes each of its AI men on foot sprint once, for up to the order's share of his store; he stops early when an enemy is within 3 m (plumbing) or the order changes again. Never you or a hero you drive; brace, step back and the pause untouched. |
+| `SprintAiChargeSharePercent` | 100 | Step 33: on a new CHARGE order (charge, charge a target, attack a gate, the AI's tactical charge) the AI sprints up to this % of its store. 0 = none. |
+| `SprintAiMoveSharePercent` | 50 | Step 33: on a new ADVANCE or MOVE order (the AI's own advance too) the AI sprints up to this % of its store (the rest stays stored). 0 = none. |
 | `RegenDelayBlowTimes` | 2 | Idle blows before regeneration starts. |
 | `BlowTimeSeconds` | 1.5 | How long "one blow" is, for the delay above. |
 | `FullRegenSecondsStanding` | 60 | Seconds from empty to full while standing still or walking (the whole refill, whatever the curve below). |
@@ -812,6 +825,7 @@ says (§2c).
 | `ShowPlayerBarOutsideBattles` | true | Outside the fight modes (the training field, towns, villages - the game's walk-about mode) the player bar shows too, while you hold a weapon or a shield or your Athletics is below full; never in a conversation, barter, deployment or cutscene (§3, step 12). Off: fights only. |
 | `ShowAttackRecoveryBar` | true | Step 13 (Anton): the Attack recovery bar just above your Athletics bar, shown with it - empties when you attack below the peak line, fills back over your no-attack timer (you cannot attack until it is full), the seconds left inside it ("1.3 s"); full and quiet at full strength. Hidden while `AttackRatePlayerTimer` is off. |
 | `FlashBarOnEarlyAttack` | true | Step 13: the Attack recovery bar flashes (two quick pulses) when you press attack while it still fills. |
+| `ShowSprintBar` | true | Step 33: your sprint bar, a slim row above the Attack recovery bar, shown with your Athletics bar - "Sprint 6.2 s" and the store as a fill, a white mark at `SprintMinStartPercent`, grey below it, blue ready, yellow while sprinting. Hidden while the sprint is off. |
 | `BarYellowBelowPercent` | 75 | Bar turns yellow at or below this % of the peak line (blue just below the line, green above it). |
 | `BarOrangeBelowPercent` | 50 | Orange at or below this %. |
 | `BarRedBelowPercent` | 25 | Red at or below this % (an empty bar is always red). |
@@ -833,6 +847,7 @@ says (§2c).
 | `RecoveryBarWidth` | 205 | (Advanced) Length of the Attack recovery bar, UI pixels (205 = your Athletics bar's). |
 | `RecoveryBarHeight` | 14 | (Advanced) Thickness of the Attack recovery bar, UI pixels (the seconds inside it need about 12). |
 | `RecoveryBarOffsetAbove` | 24 | (Advanced) Your Athletics bar's row → the Attack recovery bar's row (bottom to bottom), UI pixels (24 = right on top of it; it moves with your bar). |
+| `SprintBarOffsetAbove` | 46 | (Advanced) Step 33: your Athletics bar's row → the sprint bar's row (bottom to bottom), UI pixels (46 = right on top of the recovery bar; as long and thick as the recovery bar - `RecoveryBarWidth`, `RecoveryBarHeight`). |
 | `OrderStripTextSize` | 13 | (Advanced) Font size of the strip's numbers, UI pixels. |
 | `OrderStripTextOffset` | 1 | (Advanced) A card's bottom edge → the top of its numbers, UI pixels (they sit left and right of the vanilla order icons). |
 | `OrderStripBarOffset` | 20 | (Advanced) A card's bottom edge → the top of its strip bar, UI pixels (20 = just under the vanilla order icons). |

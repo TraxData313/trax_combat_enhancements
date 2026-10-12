@@ -350,6 +350,12 @@ namespace TraxCombat.Mcm
                                 new MCM.Common.ProxyRef<int>(prop.GetInt, prop.SetInt),
                                 (Action<object>)prop.Configure);
                             break;
+                        case ParamType.Key:
+                            // step 33: a key by NAME - a text box (an unknown name is refused and logged, the old key kept)
+                            g.AddText(p.Key, p.Label,
+                                new MCM.Common.ProxyRef<string>(prop.GetKey, prop.SetKey),
+                                (Action<object>)prop.Configure);
+                            break;
                         default:
                             g.AddFloatingInteger(p.Key, p.Label, (float)p.Min, (float)p.Max,
                                 new MCM.Common.ProxyRef<float>(prop.GetFloat, prop.SetFloat),
@@ -385,6 +391,21 @@ namespace TraxCombat.Mcm
 
             public void SetFloat(float value) => Set(value);
 
+            /// <summary>Step 33: the key's name as MCM's text box shows it.</summary>
+            public string GetKey() => _p.Format(TraxSettings.Shared.Get(_p));
+
+            /// <summary>Step 33: a typed name - set when it is one of <see cref="KeyNames"/>, else refused with one [mcm] line (the
+            /// old key stays).</summary>
+            public void SetKey(string value)
+            {
+                if (KeyNames.TryIndex(value, out int index))
+                {
+                    Set(index);
+                    return;
+                }
+                TraxLog.Info("mcm", _p.Key + ": \"" + value + "\" is not a key name - kept " + GetKey() + " (one of " + KeyNames.ListText + ")");
+            }
+
             private void Set(double value)
             {
                 try
@@ -409,6 +430,10 @@ namespace TraxCombat.Mcm
                         ((MCM.Abstractions.FluentBuilder.Models.ISettingsPropertyIntegerBuilder)propertyBuilder)
                             .SetOrder(_order).SetRequireRestart(false).SetHintText(_p.HintText);
                         break;
+                    case ParamType.Key:
+                        ((MCM.Abstractions.FluentBuilder.Models.ISettingsPropertyTextBuilder)propertyBuilder)
+                            .SetOrder(_order).SetRequireRestart(false).SetHintText(_p.HintText);
+                        break;
                     default:
                         var f = (MCM.Abstractions.FluentBuilder.Models.ISettingsPropertyFloatingIntegerBuilder)propertyBuilder;
                         f.SetOrder(_order).SetRequireRestart(false).SetHintText(_p.HintText);
@@ -431,6 +456,7 @@ namespace TraxCombat.Mcm
                     {
                         ParamType.Bool => p.Default != 0,
                         ParamType.Int => (int)p.Default,
+                        ParamType.Key => p.Format(p.Default), // step 33: the name (MCM's text box holds a string)
                         _ => (float)p.Default,
                     };
                     b.SetPropertyValue(p.Key, value);

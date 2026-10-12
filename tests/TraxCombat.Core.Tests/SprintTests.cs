@@ -1,0 +1,352 @@
+using Newtonsoft.Json.Linq;
+using TraxCombat.Core;
+
+namespace TraxCombat.Core.Tests;
+
+/// <summary>Step 33 (Anton, 2026-10-12): the sprint - a store in seconds = current points / 20, refilled in 7 s standing at full
+/// strength (x0.5 moving, down to x0.5 at an empty bar), 20% needed to start, 1.6 x the current run speed for the first 30% of
+/// the sprint then a straight line to 1.1 x; the AI sprints on a new order (charge 100%, advance / move 50%).</summary>
+public class SprintTests
+{
+    private static SprintRules Sprint(bool on = true, bool ai = true, bool mod = true, bool athletics = true, double pps = 20, int minStart = 20,
+        double max = 1.6, double min = 1.1, int fullShare = 30, double refill = 7, double moving = 0.5, double exhausted = 0.5, int charge = 100, int move = 50) =>
+        new(mod, athletics, on, ai, pps, minStart, max, min, fullShare, refill, moving, exhausted, charge, move);
+
+    private static AthleticsRules Athletics() => AthleticsRules.From(new TraxSettings());
+
+    private static void Near(double expected, double actual, double eps = 1e-6) =>
+        Assert.True(Math.Abs(expected - actual) <= eps, "expected " + expected + ", got " + actual);
+
+    // ------------------------------------------------------------------ the store's size
+
+    [Fact]
+    public void The_store_is_points_over_20_seconds_and_empty_has_none()
+    {
+        Near(7.5, SprintMath.Capacity(150, 20));
+        Near(2.5, SprintMath.Capacity(50, 20));
+        Near(5, SprintMath.Capacity(100, 20));
+        Near(10, SprintMath.Capacity(200, 20));
+        Near(15, SprintMath.Capacity(300, 20));
+        Assert.Equal(0, SprintMath.Capacity(0, 20));
+        Assert.Equal(0, SprintMath.Capacity(-3, 20));
+        Near(15, SprintMath.Capacity(150, 10));
+    }
+
+    [Fact]
+    public void The_store_follows_his_CURRENT_points()
+    {
+        var s = Sprint();
+        var r = Athletics();
+        var f = new Fighter { AthleticsSkill = 150 };
+        Near(7.5, SprintMath.Capacity(in s, in r, f));
+        f.Fraction = 0.5;
+        Near(3.75, SprintMath.Capacity(in s, in r, f));
+        f.Fraction = 0;
+        Assert.Equal(0, SprintMath.Capacity(in s, in r, f));
+    }
+
+    [Fact]
+    public void A_new_store_is_full_until_the_first_clamp_and_a_points_drop_clamps_it()
+    {
+        var st = new SprintStore();
+        Assert.False(st.Clamp(7.5)); // the first look: +inf → 7.5, not counted as a drop
+        Near(7.5, st.Stored);
+        Assert.True(st.Clamp(5));    // a blow: 150 → 100 points
+        Near(5, st.Stored);
+        Assert.False(st.Clamp(6));   // points back up: the store does not jump, it refills
+        Near(5, st.Stored);
+        Assert.True(st.Clamp(0));    // empty: no sprint at all
+        Assert.Equal(0, st.Stored);
+        st.FillUp();                  // a fresh start
+        st.Clamp(7.5);
+        Near(7.5, st.Stored);
+    }
+
+    // ------------------------------------------------------------------ the refill
+
+    [Fact]
+    public void Refill_times_standing_moving_and_tired_combos()
+    {
+        var s = Sprint();
+        Near(7, SprintMath.SecondsToFull(in s, moving: false, peakShare: 1));
+        Near(14, SprintMath.SecondsToFull(in s, moving: true, peakShare: 1));
+        Near(14, SprintMath.SecondsToFull(in s, moving: false, peakShare: 0));
+        Near(28, SprintMath.SecondsToFull(in s, moving: true, peakShare: 0));
+        Near(7 / 0.75, SprintMath.SecondsToFull(in s, moving: false, peakShare: 0.5)); // half way to the peak line: x0.75
+        Near(7 / 0.375, SprintMath.SecondsToFull(in s, moving: true, peakShare: 0.5));
+        Near(1, SprintMath.TiredFactor(in s, 1.3)); // above the line it is 1
+        Near(0.5, SprintMath.TiredFactor(in s, -1));
+    }
+
+    [Fact]
+    public void Refill_is_capacity_over_7_per_second_and_never_while_sprinting_or_above_the_top()
+    {
+        var s = Sprint();
+        Near(7.5 / 7, SprintMath.RefillPerSecond(in s, 7.5, false, 1));
+        Assert.Equal(0, SprintMath.RefillPerSecond(in s, 0, false, 1));
+        var st = new SprintStore();
+        st.Clamp(0);
+        st.Clamp(7.5);
+        double per = SprintMath.RefillPerSecond(in s, 7.5, false, 1);
+        for (int i = 0; i < 35; i++) st.Refill(0.1, per, 7.5);
+        Near(3.75, st.Stored, 1e-9); // 3.5 s of 7: half full
+        for (int i = 0; i < 100; i++) st.Refill(0.1, per, 7.5);
+        Near(7.5, st.Stored); // never above the top
+        Assert.Equal(SprintStart.Started, st.TryStart(in s, 0, 7.5, 1, true, SprintOrder.None));
+        st.Advance(1, true, out _);
+        double before = st.Stored;
+        Assert.Equal(0, st.Refill(1, per, 7.5)); // sprinting: nothing
+        Assert.Equal(before, st.Stored);
+    }
+
+    // ------------------------------------------------------------------ the start gate
+
+    [Fact]
+    public void A_start_needs_20_percent_of_the_store_and_an_empty_bar_has_no_sprint()
+    {
+        var s = Sprint();
+        Assert.True(SprintMath.CanStart(in s, 1.5, 7.5));
+        Assert.False(SprintMath.CanStart(in s, 1.49, 7.5));
+        Assert.False(SprintMath.CanStart(in s, 0, 0));
+        var st = new SprintStore();
+        st.Clamp(7.5);
+        st.Clamp(1.4);
+        Assert.Equal(SprintStart.BelowMinimum, st.TryStart(in s, 0, 7.5, 1, true, SprintOrder.None));
+        Assert.Equal(SprintStart.NoStore, new SprintStore().TryStart(in s, 0, 0, 1, true, SprintOrder.None));
+        var any = Sprint(minStart: 0);
+        Assert.Equal(SprintStart.Started, st.TryStart(in any, 0, 7.5, 1, true, SprintOrder.None));
+        Assert.Equal(SprintStart.Running, st.TryStart(in any, 0, 7.5, 1, true, SprintOrder.None));
+    }
+
+    // ------------------------------------------------------------------ the speed profile
+
+    [Fact]
+    public void A_full_sprint_runs_1_6_until_2_25_s_then_a_straight_line_to_1_1_at_7_5_s()
+    {
+        var s = Sprint();
+        Near(1.6, SprintMath.Multiplier(in s, 0, 7.5));
+        Near(1.6, SprintMath.Multiplier(in s, 2.25, 7.5));
+        Near(1.35, SprintMath.Multiplier(in s, 4.875, 7.5));
+        Near(1.1, SprintMath.Multiplier(in s, 7.5, 7.5));
+        Near(1.1, SprintMath.Multiplier(in s, 9, 7.5));
+        Assert.True(SprintMath.Multiplier(in s, 2.3, 7.5) < 1.6);
+    }
+
+    [Fact]
+    public void A_30_percent_store_is_2_25_s_long_and_starts_at_full_speed_for_0_675_s()
+    {
+        var s = Sprint();
+        var st = new SprintStore();
+        st.Clamp(7.5);
+        st.Clamp(2.25); // 30% of a 7.5 s store
+        Assert.Equal(SprintStart.Started, st.TryStart(in s, 10, 7.5, 1, true, SprintOrder.None));
+        Near(2.25, st.Length);
+        Near(1.6, st.Multiplier(in s)); // the dodge: full speed from a partial store
+        st.Advance(0.675, true, out _);
+        Near(1.6, st.Multiplier(in s));
+        st.Advance(0.7875, true, out _);
+        Near(1.35, st.Multiplier(in s), 1e-9);
+        Assert.True(st.Advance(1, true, out var end));
+        Assert.Equal(SprintEnd.StoreEmpty, end);
+        Assert.Equal(0, st.Stored);
+    }
+
+    [Fact]
+    public void The_applied_multiplier_moves_in_0_05_steps()
+    {
+        Assert.Equal(1.6f, SprintMath.Quantize(1.6));
+        Assert.Equal(1.6f, SprintMath.Quantize(1.58));
+        Assert.Equal(1.55f, SprintMath.Quantize(1.56));
+        Assert.Equal(1.1f, SprintMath.Quantize(1.1));
+        Assert.Equal(1f, SprintMath.Quantize(1.0));
+        Assert.Equal(1f, SprintMath.Quantize(0.9));
+    }
+
+    [Fact]
+    public void Full_speed_100_percent_stays_at_the_start_speed_and_an_end_speed_above_it_is_capped()
+    {
+        var all = Sprint(fullShare: 100);
+        Near(1.6, SprintMath.Multiplier(in all, 7.4, 7.5));
+        var inverted = Sprint(max: 1.3, min: 2);
+        Near(1.3, inverted.MinMultiplier);
+        Near(1.3, SprintMath.Multiplier(in inverted, 7, 7.5));
+        var none = Sprint(fullShare: 0);
+        Near(1.35, SprintMath.Multiplier(in none, 3.75, 7.5));
+    }
+
+    // ------------------------------------------------------------------ draining, releasing
+
+    [Fact]
+    public void The_store_drains_only_while_moving_and_letting_go_keeps_the_rest()
+    {
+        var s = Sprint();
+        var st = new SprintStore();
+        st.Clamp(7.5);
+        st.TryStart(in s, 0, 7.5, 1, true, SprintOrder.None);
+        st.Advance(2, false, out _); // standing still holding the key
+        Near(7.5, st.Stored);
+        Near(0, st.Elapsed);
+        st.Advance(3, true, out _);
+        Near(4.5, st.Stored);
+        Near(3, st.Elapsed);
+        Near(3, st.Stop());
+        Assert.False(st.Active);
+        Near(4.5, st.Stored); // the rest stays stored
+        Assert.Equal(1.0, st.Multiplier(in s));
+    }
+
+    // ------------------------------------------------------------------ the AI
+
+    [Fact]
+    public void AI_shares_charge_all_advance_or_move_half_others_none()
+    {
+        var s = Sprint();
+        Near(1, SprintMath.AiShare(in s, SprintOrder.Charge));
+        Near(0.5, SprintMath.AiShare(in s, SprintOrder.AdvanceOrMove));
+        Assert.Equal(0, SprintMath.AiShare(in s, SprintOrder.None));
+        Assert.Equal(SprintOrder.Charge, SprintMath.Group(BraceOrderKind.Charge));
+        Assert.Equal(SprintOrder.Charge, SprintMath.Group(BraceOrderKind.ChargeToTarget));
+        Assert.Equal(SprintOrder.Charge, SprintMath.Group(BraceOrderKind.AiCharge));
+        Assert.Equal(SprintOrder.AdvanceOrMove, SprintMath.Group(BraceOrderKind.Advance));
+        Assert.Equal(SprintOrder.AdvanceOrMove, SprintMath.Group(BraceOrderKind.AiAdvance));
+        Assert.Equal(SprintOrder.AdvanceOrMove, SprintMath.Group(BraceOrderKind.Move));
+        foreach (var k in new[] { BraceOrderKind.Stop, BraceOrderKind.Retreat, BraceOrderKind.FallBack, BraceOrderKind.Follow, BraceOrderKind.NoOrder, BraceOrderKind.NoFormation })
+            Assert.Equal(SprintOrder.None, SprintMath.Group(k));
+    }
+
+    [Fact]
+    public void An_AI_advance_sprint_uses_half_its_store_and_keeps_the_rest()
+    {
+        var s = Sprint();
+        var st = new SprintStore();
+        st.Clamp(7.5);
+        Assert.Equal(SprintStart.Started, st.TryStart(in s, 0, 7.5, SprintMath.AiShare(in s, SprintOrder.AdvanceOrMove), false, SprintOrder.AdvanceOrMove));
+        Near(3.75, st.Length);
+        Near(1.6, st.Multiplier(in s));
+        Assert.False(st.Advance(3.7, true, out _));
+        Assert.True(st.Advance(1, true, out var end));
+        Assert.Equal(SprintEnd.LengthDone, end);
+        Near(3.75, st.Stored);
+        Near(1.1, st.Multiplier(in s), 1e-9);
+    }
+
+    [Fact]
+    public void The_master_switch_Athletics_and_the_sprint_switches_gate_every_start()
+    {
+        var st = new SprintStore();
+        st.Clamp(7.5);
+        Assert.Equal(SprintStart.Off, st.TryStart(Sprint(mod: false), 0, 7.5, 1, true, SprintOrder.None));
+        Assert.Equal(SprintStart.Off, st.TryStart(Sprint(athletics: false), 0, 7.5, 1, true, SprintOrder.None));
+        Assert.Equal(SprintStart.Off, st.TryStart(Sprint(on: false), 0, 7.5, 1, true, SprintOrder.None));
+        Assert.Equal(SprintStart.Off, st.TryStart(Sprint(ai: false), 0, 7.5, 1, false, SprintOrder.Charge)); // the AI's own switch
+        Assert.Equal(SprintStart.Started, st.TryStart(Sprint(ai: false), 0, 7.5, 1, true, SprintOrder.None)); // yours still works
+        Assert.Equal("ModEnabled", Sprint(mod: false).OffBecause);
+        Assert.Equal("SprintEnabled", Sprint(on: false).OffBecause);
+        Assert.Contains("OFF (ModEnabled)", Sprint(mod: false).Describe("LeftControl"));
+        var on = Sprint().Describe("LeftControl");
+        Assert.Contains("hold LeftControl", on);
+        Assert.Contains("150 points = 7.5 s", on);
+        Assert.Contains("x1.60 until 2.25 s", on);
+    }
+
+    [Fact]
+    public void Settings_read_live_from_the_shared_object()
+    {
+        var t = new TraxSettings();
+        var s = SprintRules.From(t);
+        Assert.True(s.Enabled);
+        Near(20, s.PointsPerSecond);
+        Near(1.6, s.MaxMultiplier, 1e-6);
+        Assert.Equal(30, s.FullSpeedSharePercent);
+        t.Set(SettingsSchema.SprintAiMoveSharePercent, 80, "test");
+        Assert.Equal(80, SprintRules.From(t).AiMoveSharePercent);
+        t.Set(SettingsSchema.ModEnabled, false, "test");
+        Assert.False(SprintRules.From(t).Enabled);
+    }
+
+    // ------------------------------------------------------------------ the key setting
+
+    [Fact]
+    public void Key_names_match_loosely_and_format_back()
+    {
+        Assert.True(KeyNames.TryIndex("LeftControl", out int lc));
+        Assert.Equal(0, lc);
+        Assert.True(KeyNames.TryIndex("left ctrl", out int a));
+        Assert.Equal(lc, a);
+        Assert.True(KeyNames.TryIndex("LCtrl", out int b));
+        Assert.Equal(lc, b);
+        Assert.True(KeyNames.TryIndex("x1_mouse_button", out int x1));
+        Assert.Equal("X1MouseButton", KeyNames.Name(x1));
+        Assert.False(KeyNames.TryIndex("W", out _)); // a movement key is not offered
+        Assert.False(KeyNames.TryIndex("", out _));
+        Assert.False(KeyNames.TryIndex(null, out _));
+        Assert.Equal("LeftControl", SettingsSchema.SprintKey.Format(0));
+        Assert.Equal("\"RightAlt\"", SettingsSchema.SprintKey.FormatJson(3));
+        Assert.Contains("one of LeftControl, RightControl", SettingsSchema.SprintKey.DefaultAndRangeText);
+        Assert.Equal("LeftControl", new TraxSettings().SprintKey);
+    }
+
+    [Fact]
+    public void The_key_round_trips_through_the_config_file_and_a_bad_name_falls_back_with_a_note()
+    {
+        var t = new TraxSettings();
+        KeyNames.TryIndex("RightAlt", out int ra);
+        t.Set(SettingsSchema.SprintKey, ra, "test");
+        var text = ConfigFile.Write(t.Snapshot());
+        Assert.Contains("\"SprintKey\": \"RightAlt\"", text);
+        var read = ConfigFile.Read(text);
+        Assert.True(read.Ok);
+        Assert.Equal(ra, read.Values["SprintKey"]);
+
+        var loose = ConfigFile.Read("{ \"SprintKey\": \"left alt\" }");
+        KeyNames.TryIndex("LeftAlt", out int la);
+        Assert.Equal(la, loose.Values["SprintKey"]);
+
+        var bad = ConfigFile.Read("{ \"SprintKey\": \"Banana\" }");
+        Assert.False(bad.Values.ContainsKey("SprintKey") && bad.Values["SprintKey"] != SettingsSchema.SprintKey.Default);
+        Assert.Contains(bad.Issues, i => i.Key == "SprintKey");
+    }
+
+    [Fact]
+    public void Defaults_file_reads_a_key_by_name_only()
+    {
+        Assert.True(DefaultsFile.TryValue(new JValue("CapsLock"), ParamType.Key, 0, KeyNames.All.Length - 1, out double v, out string? problem));
+        Assert.Null(problem);
+        Assert.Equal("CapsLock", KeyNames.Name(v));
+        Assert.False(DefaultsFile.TryValue(new JValue(3), ParamType.Key, 0, KeyNames.All.Length - 1, out _, out problem));
+        Assert.Contains("not a key name", problem);
+    }
+
+    // ------------------------------------------------------------------ the summary
+
+    [Fact]
+    public void The_summary_names_your_sprints_the_AI_by_order_and_the_speed_check()
+    {
+        var stats = new SprintStats();
+        stats.YouStarted = 2;
+        stats.YouRefusedBelowMinimum = 1;
+        stats.AddEnd(true, SprintOrder.None, 7.5, 5, SprintEnd.Released);
+        stats.AddEnd(true, SprintOrder.None, 2, 2, SprintEnd.StoreEmpty);
+        stats.AddOrderSeen(SprintOrder.Charge);
+        for (int i = 0; i < 3; i++)
+        {
+            stats.AddAiStart(SprintOrder.Charge);
+            stats.AddEnd(false, SprintOrder.Charge, 6, 4, SprintEnd.InMelee);
+        }
+        for (int i = 0; i < 25; i++) stats.AddSpeed(1.6, 1.58);
+        var lines = new List<string>();
+        stats.AddSummaryLines(lines, Sprint(), "LeftControl");
+        string all = string.Join("\n", lines);
+        Assert.Equal(4, lines.Count);
+        Assert.Contains("sprint - you: 2 sprints", all);
+        Assert.Contains("below 20% stored 1", all);
+        Assert.Contains("key released 1", all);
+        Assert.Contains("charge 3 men (12.0 s in all, avg 4.00 s)", all);
+        Assert.Contains("an enemy within 3 m 3", all);
+        Assert.Contains("follows the sprint - no cap", all);
+        Assert.True(stats.EngineFollows);
+        var capped = new SprintStats();
+        for (int i = 0; i < 25; i++) capped.AddSpeed(1.6, 1.0);
+        Assert.False(capped.EngineFollows);
+    }
+}

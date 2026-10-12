@@ -38,11 +38,12 @@ namespace TraxCombat.Core
         public static readonly ParamGroup StepBackGroup = new ParamGroup(4, "Tired fighters step back");
         public static readonly ParamGroup BattlePaceGroup = new ParamGroup(5, "Battle pace (AI)");
         public static readonly ParamGroup BraceGroup = new ParamGroup(6, "Brace by orders (AI)");
-        public static readonly ParamGroup RefillGroup = new ParamGroup(7, "Refill");
-        public static readonly ParamGroup PlayerBarGroup = new ParamGroup(8, "Your Athletics bar");
-        public static readonly ParamGroup OrderStripGroup = new ParamGroup(9, "Orders menu strip");
-        public static readonly ParamGroup AltMarkersGroup = new ParamGroup(10, "Formation markers (hold ALT)");
-        public static readonly ParamGroup AdvancedGroup = new ParamGroup(11, "Advanced");
+        public static readonly ParamGroup SprintGroup = new ParamGroup(7, "Sprint");
+        public static readonly ParamGroup RefillGroup = new ParamGroup(8, "Refill");
+        public static readonly ParamGroup PlayerBarGroup = new ParamGroup(9, "Your Athletics bar");
+        public static readonly ParamGroup OrderStripGroup = new ParamGroup(10, "Orders menu strip");
+        public static readonly ParamGroup AltMarkersGroup = new ParamGroup(11, "Formation markers (hold ALT)");
+        public static readonly ParamGroup AdvancedGroup = new ParamGroup(12, "Advanced");
 
         // ------------------------------------------------------------------ master switch
 
@@ -325,6 +326,62 @@ namespace TraxCombat.Core
             "Bracing soldiers keep the shield up",
             "While bracing with a shield in hand a soldier holds it up whenever his own AI has no guard up (his own blocks and parries stay his). Off: the guard is raised only when he wants to attack.");
 
+        // ------------------------------------------------------------------ the sprint (step 33)
+
+        // Step 33 (Anton, 2026-10-12: "a short burst of speed, meant to feel a little like a dodge, and for the AI to make charges
+        // sharper"): Core SprintMath, AI_NOTES "Step 33". The store in seconds = current Athletics points ÷ SprintPointsPerSecond.
+        public static readonly ParamDef SprintEnabled = Bool("SprintEnabled", SprintGroup,
+            "Sprint",
+            "Every fighter on foot has a sprint: a short burst of speed stored in seconds - his Athletics points now divided by the points per second below (150 points = 7.5 s; empty = none). Hold the sprint key to run faster; the AI sprints when its formation gets a new charge or advance order. While sprinting his Athletics does not refill. Never on a horse. Off: no sprint, speeds back to normal at once.");
+
+        public static readonly ParamDef SprintKey = Key("SprintKey", SprintGroup,
+            "Sprint key",
+            "Hold this key to sprint (on foot, in a fight). Type its name: " + KeyNames.ListText + ". Left Control is free in the game's default keys (Left Shift is zoom, Z crouch, Caps Lock walk, Left Alt the formation markers).");
+
+        public static readonly ParamDef SprintPointsPerSecond = Float("SprintPointsPerSecond", 5, 100, SprintGroup,
+            "Athletics points per sprint second (points)",
+            "The sprint store holds his CURRENT Athletics points divided by this, in seconds: 150 points = 7.5 s at 20, 50 points = 2.5 s. When his points drop (a blow, a wound) the stored seconds drop with them. Lower = longer sprints.");
+
+        public static readonly ParamDef SprintMinStartPercent = Int("SprintMinStartPercent", 0, 100, SprintGroup,
+            "Least stored to start (%)",
+            "A sprint starts only with at least this percent of the store filled - no spamming tiny bursts. 0 = any amount.");
+
+        public static readonly ParamDef SprintMaxMultiplier = Float("SprintMaxMultiplier", 1, 3, SprintGroup,
+            "Sprint speed at its start (x)",
+            "How much faster than his CURRENT run speed (after tiredness) a sprinter runs at the start of his sprint - 1.6 = 60% faster. A sprint from a half-full store starts at this speed too.");
+
+        public static readonly ParamDef SprintMinMultiplier = Float("SprintMinMultiplier", 1, 3, SprintGroup,
+            "Sprint speed at its end (x)",
+            "After the full-speed part the speed falls in a straight line to this times his run speed at the sprint's end. Above the start speed = the start speed all the way.");
+
+        public static readonly ParamDef SprintFullSpeedSharePercent = Int("SprintFullSpeedSharePercent", 0, 100, SprintGroup,
+            "Full-speed part of a sprint (%)",
+            "The first this-percent of a sprint's length run at the start speed, then it falls to the end speed. A sprint is as long as the seconds stored when it began: a full 7.5 s sprint runs 2.25 s at full speed at 30. 100 = full speed all the way.");
+
+        public static readonly ParamDef SprintRefillSeconds = Float("SprintRefillSeconds", 1, 120, SprintGroup,
+            "Sprint refill time (s)",
+            "Seconds to refill an empty sprint store to full while standing still or walking at full strength (at or above the peak line). It refills only while he is not sprinting.");
+
+        public static readonly ParamDef SprintRefillMovingFactor = Float("SprintRefillMovingFactor", 0, 1, SprintGroup,
+            "Sprint refill while running (x)",
+            "The sprint store refills at this times its rate while he moves faster than a walk (0.5 = half: 14 s instead of 7). 1 = moving refills as fast as standing.");
+
+        public static readonly ParamDef SprintRefillExhaustedFactor = Float("SprintRefillExhaustedFactor", 0, 1, SprintGroup,
+            "Sprint refill when exhausted (x)",
+            "Below the peak line the sprint store refills slower, in a straight line down to this times its rate at an empty bar (0.5 = half). It multiplies with the running factor: running and half tired at 0.5 / 0.5 = 0.375 of the rate.");
+
+        public static readonly ParamDef SprintAiEnabled = Bool("SprintAiEnabled", SprintGroup,
+            "AI soldiers sprint on new orders",
+            "When an AI formation gets a NEW movement order - yours or its own general's - each of its soldiers on foot sprints once: on a charge up to the share below of his store, on an advance or a move to a position up to its own share. He stops early once an enemy is within a few metres or the order changes again. Never you, never a hero you drive.");
+
+        public static readonly ParamDef SprintAiChargeSharePercent = Int("SprintAiChargeSharePercent", 0, 100, SprintGroup,
+            "AI sprint on a charge (% of the store)",
+            "On a new CHARGE order (charge, charge a target, the AI's own charge) each AI soldier sprints for up to this percent of the seconds he has stored. 0 = no sprint on a charge.");
+
+        public static readonly ParamDef SprintAiMoveSharePercent = Int("SprintAiMoveSharePercent", 0, 100, SprintGroup,
+            "AI sprint on an advance or move (% of the store)",
+            "On a new ADVANCE or MOVE order (yours, or the AI's own advance) each AI soldier sprints for up to this percent of his store - the rest stays stored for later. 0 = no sprint on an advance or a move. Hold, retreat, follow and the rest never start one.");
+
         // ------------------------------------------------------------------ refill (regeneration)
 
         public static readonly ParamDef RegenDelayBlowTimes = Float("RegenDelayBlowTimes", 0, 20, RefillGroup,
@@ -381,6 +438,11 @@ namespace TraxCombat.Core
         public static readonly ParamDef FlashBarOnEarlyAttack = Bool("FlashBarOnEarlyAttack", PlayerBarGroup,
             "Flash it on an early attack",
             "The Attack recovery bar flashes twice when you press attack while it is still filling (the press does nothing).");
+
+        // Step 33: your sprint store, a slim bar above the Attack recovery bar.
+        public static readonly ParamDef ShowSprintBar = Bool("ShowSprintBar", PlayerBarGroup,
+            "Sprint bar",
+            "A slim bar above the Attack recovery bar, shown with your Athletics bar: the seconds of sprint you have stored (\"Sprint 6.2 s\"), a mark at the least you need to start one, grey below it, blue when ready and bright while you sprint. Hidden while the sprint is off.");
 
         // The looked-at fighter's bar (ShowTargetBar, TargetBarMaxDistance, TargetBarLingerSeconds) is
         // LATER (step 7): its settings left the schema in step 10b - no switch that does nothing
@@ -492,6 +554,10 @@ namespace TraxCombat.Core
             "Recovery bar: above your bar (px)",
             "How far above your Athletics bar's row the Attack recovery bar's row sits (bottom to bottom), in the game's UI pixels. 24 = right on top of it. It moves with your bar.");
 
+        public static readonly ParamDef SprintBarOffsetAbove = Int("SprintBarOffsetAbove", -400, 600, AdvancedGroup,
+            "Sprint bar: above your bar (px)",
+            "How far above your Athletics bar's row the sprint bar's row sits (bottom to bottom), in the game's UI pixels - as long and thick as the Attack recovery bar. 46 = right on top of the recovery bar. It moves with your bar.");
+
         // The orders-menu strip (step 9) - UI pixels of the 1080p layout, measured from each vanilla
         // formation card (read live); the fallback panel's place. The game's UI scale applies.
         public static readonly ParamDef OrderStripTextSize = Int("OrderStripTextSize", 8, 30, AdvancedGroup,
@@ -576,14 +642,16 @@ namespace TraxCombat.Core
             BraceEnabled, BraceFloorChargePercent, BraceFloorAdvancePercent, BraceFloorHoldPercent, BraceFloorNoFormationPercent, BraceFloorSpreadPercent,
             BraceRecoverPercent, BraceRecoverSpreadPercent,
             BraceWieldShield, BraceRaiseShield,
+            SprintEnabled, SprintKey, SprintPointsPerSecond, SprintMinStartPercent, SprintMaxMultiplier, SprintMinMultiplier, SprintFullSpeedSharePercent,
+            SprintRefillSeconds, SprintRefillMovingFactor, SprintRefillExhaustedFactor, SprintAiEnabled, SprintAiChargeSharePercent, SprintAiMoveSharePercent,
             RegenDelayBlowTimes, BlowTimeSeconds, FullRegenSecondsStanding, RegenRateNearFullPercent, RegenMultiplierAtFullRun,
             WalkEffortFraction, HideoutBossFightRefill,
-            ShowPlayerBar, ShowPlayerBarOutsideBattles, ShowAttackRecoveryBar, FlashBarOnEarlyAttack,
+            ShowPlayerBar, ShowPlayerBarOutsideBattles, ShowAttackRecoveryBar, FlashBarOnEarlyAttack, ShowSprintBar,
             BarYellowBelowPercent, BarOrangeBelowPercent, BarRedBelowPercent,
             ShowInOrderMenu, ShowFormationHealth, ShowFormationSpread, FormationSpreadStdDevs, ShowReadyCount, ReadyYellowBelowPercent, ReadyRedBelowPercent, OrderStripUnderCards,
             ShowAltMarkerStats, AltMarkersShowEnemy,
             HudRefreshSeconds, PlayerBarWidth, PlayerBarHeight, PlayerBarOffsetRight, PlayerBarOffsetBottom,
-            RecoveryBarWidth, RecoveryBarHeight, RecoveryBarOffsetAbove,
+            RecoveryBarWidth, RecoveryBarHeight, RecoveryBarOffsetAbove, SprintBarOffsetAbove,
             OrderStripTextSize, OrderStripTextOffset, OrderStripBarOffset, OrderStripBarHeight, OrderStripReadyOffset, OrderStripSideMargin,
             OrderPanelOffsetTop, OrderPanelWidth,
             AltMarkerTextSize, AltMarkerOffset, AltMarkerBarWidth, AltMarkerBarHeight,
@@ -593,7 +661,7 @@ namespace TraxCombat.Core
         /// <summary>The groups in order.</summary>
         public static readonly IReadOnlyList<ParamGroup> Groups = new[]
         {
-            MasterGroup, DamageGroup, AthleticsGroup, TiredGroup, StepBackGroup, BattlePaceGroup, BraceGroup, RefillGroup, PlayerBarGroup, OrderStripGroup, AltMarkersGroup, AdvancedGroup,
+            MasterGroup, DamageGroup, AthleticsGroup, TiredGroup, StepBackGroup, BattlePaceGroup, BraceGroup, SprintGroup, RefillGroup, PlayerBarGroup, OrderStripGroup, AltMarkersGroup, AdvancedGroup,
         };
 
         private static readonly Dictionary<string, ParamDef> ByKey = BuildIndex();
@@ -640,6 +708,11 @@ namespace TraxCombat.Core
         private static ParamDef Int(string key, int min, int max, ParamGroup group, string label,
             string description, ApplyTiming timing = ApplyTiming.Live)
             => new ParamDef(_next++, key, ParamType.Int, min, max, group, label, description, timing);
+
+        /// <summary>Step 33: a key by name - its index in <see cref="KeyNames.All"/> (0 .. count − 1).</summary>
+        private static ParamDef Key(string key, ParamGroup group, string label, string description,
+            ApplyTiming timing = ApplyTiming.Live)
+            => new ParamDef(_next++, key, ParamType.Key, 0, KeyNames.All.Length - 1, group, label, description, timing);
 
         private static ParamDef Float(string key, double min, double max, ParamGroup group, string label,
             string description, ApplyTiming timing = ApplyTiming.Live)

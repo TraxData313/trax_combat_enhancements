@@ -10,6 +10,69 @@ namespace TraxCombat.Core
         Bool,
         Int,
         Float,
+
+        /// <summary>Step 33: a keyboard / mouse key by NAME (<see cref="KeyNames"/>) - stored as its index in that
+        /// list (a whole number like an Int), written and read as the name ("LeftControl").</summary>
+        Key,
+    }
+
+    /// <summary>
+    /// Step 33: the keys a <see cref="ParamType.Key"/> setting may name (SprintKey) - the game's own
+    /// <c>TaleWorlds.InputSystem.InputKey</c> names (the offline smoke checks each parses as one), in the order MCM and the
+    /// file's comment list them. Most keys the game binds in a fight by default are left out (WASD, LMB / RMB, Space jump,
+    /// E kick, F action, R camera, X weapon mode, G drop, U, V, O, Z crouch, the number row's orders); Left Shift (zoom),
+    /// Left Alt (the markers) and Caps Lock (walk) stay in the list for players who rebound those. A name is matched
+    /// ignoring case, spaces, '-' and '_' ("left ctrl" too).
+    /// </summary>
+    public static class KeyNames
+    {
+        /// <summary>Every name, in order; a Key setting's value is an index here.</summary>
+        public static readonly string[] All =
+        {
+            "LeftControl", "RightControl", "LeftAlt", "RightAlt", "LeftShift", "RightShift", "CapsLock", "Tab",
+            "Q", "T", "Y", "H", "J", "K", "L", "B", "N", "M", "C",
+            "MiddleMouseButton", "X1MouseButton", "X2MouseButton",
+        };
+
+        /// <summary>The name at <paramref name="index"/> (rounded, clamped into the list).</summary>
+        public static string Name(double index)
+        {
+            if (double.IsNaN(index)) return All[0];
+            long i = (long)Math.Round(index, MidpointRounding.AwayFromZero);
+            if (i < 0) i = 0;
+            if (i >= All.Length) i = All.Length - 1;
+            return All[i];
+        }
+
+        /// <summary>The index of <paramref name="name"/>, ignoring case, spaces, '-' and '_'; "ctrl" / "control" and "lctrl"
+        /// style short forms of the Ctrl, Alt and Shift keys are accepted too. False when it is none of <see cref="All"/>.</summary>
+        public static bool TryIndex(string? name, out int index)
+        {
+            index = -1;
+            if (name == null) return false;
+            var sb = new System.Text.StringBuilder(name.Length);
+            foreach (char c in name)
+                if (c != ' ' && c != '-' && c != '_') sb.Append(char.ToLowerInvariant(c));
+            string n = sb.ToString().Replace("ctrl", "control");
+            if (n == "lcontrol") n = "leftcontrol";
+            else if (n == "rcontrol") n = "rightcontrol";
+            else if (n == "lalt") n = "leftalt";
+            else if (n == "ralt") n = "rightalt";
+            else if (n == "lshift") n = "leftshift";
+            else if (n == "rshift") n = "rightshift";
+            for (int i = 0; i < All.Length; i++)
+            {
+                if (string.Equals(All[i], n, StringComparison.OrdinalIgnoreCase))
+                {
+                    index = i;
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /// <summary>"LeftControl, RightControl, …" - the file's comment and the MCM hint.</summary>
+        public static string ListText => string.Join(", ", All);
     }
 
     /// <summary>When a changed value takes effect. The target for EVERY setting is
@@ -115,6 +178,7 @@ namespace TraxCombat.Core
                     v = v != 0 ? 1 : 0;
                     break;
                 case ParamType.Int:
+                case ParamType.Key:
                     v = Math.Round(v, MidpointRounding.AwayFromZero);
                     rounded = Math.Abs(v - value) > 1e-9;
                     break;
@@ -137,16 +201,24 @@ namespace TraxCombat.Core
                     return value != 0 ? "true" : "false";
                 case ParamType.Int:
                     return ((long)Math.Round(value, MidpointRounding.AwayFromZero)).ToString(CultureInfo.InvariantCulture);
+                case ParamType.Key:
+                    return KeyNames.Name(value);
                 default:
                     return value.ToString("0.0###", CultureInfo.InvariantCulture);
             }
         }
 
+        /// <summary>The value as a JSON value in the config file and defaults.json: <see cref="Format"/>, a key's name in
+        /// quotes ("LeftControl").</summary>
+        public string FormatJson(double value) => Type == ParamType.Key ? "\"" + Format(value) + "\"" : Format(value);
+
         /// <summary>"default 50, range 0 to 100" - the tail of the config-file comment.</summary>
         public string DefaultAndRangeText =>
             Type == ParamType.Bool
                 ? "default " + Format(Default)
-                : "default " + Format(Default) + ", range " + Format(Min) + " to " + Format(Max);
+                : Type == ParamType.Key
+                    ? "default " + Format(Default) + ", one of " + KeyNames.ListText
+                    : "default " + Format(Default) + ", range " + Format(Min) + " to " + Format(Max);
 
         /// <summary>The MCM hint: the description, when a change applies, the default. (The config
         /// file's comment says only "Applies from the next battle." for such a setting: a hand edit

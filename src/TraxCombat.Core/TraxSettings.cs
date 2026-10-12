@@ -274,6 +274,23 @@ namespace TraxCombat.Core
         public bool BraceWieldShield => GetBool(SettingsSchema.BraceWieldShield);
         public bool BraceRaiseShield => GetBool(SettingsSchema.BraceRaiseShield);
 
+        // step 33: the sprint
+        public bool SprintEnabled => GetBool(SettingsSchema.SprintEnabled);
+        /// <summary>The key's NAME ("LeftControl" - KeyNames); <see cref="SprintKeyIndex"/> is its index.</summary>
+        public string SprintKey => KeyNames.Name(Get(SettingsSchema.SprintKey));
+        public int SprintKeyIndex => GetInt(SettingsSchema.SprintKey);
+        public float SprintPointsPerSecond => GetFloat(SettingsSchema.SprintPointsPerSecond);
+        public int SprintMinStartPercent => GetInt(SettingsSchema.SprintMinStartPercent);
+        public float SprintMaxMultiplier => GetFloat(SettingsSchema.SprintMaxMultiplier);
+        public float SprintMinMultiplier => GetFloat(SettingsSchema.SprintMinMultiplier);
+        public int SprintFullSpeedSharePercent => GetInt(SettingsSchema.SprintFullSpeedSharePercent);
+        public float SprintRefillSeconds => GetFloat(SettingsSchema.SprintRefillSeconds);
+        public float SprintRefillMovingFactor => GetFloat(SettingsSchema.SprintRefillMovingFactor);
+        public float SprintRefillExhaustedFactor => GetFloat(SettingsSchema.SprintRefillExhaustedFactor);
+        public bool SprintAiEnabled => GetBool(SettingsSchema.SprintAiEnabled);
+        public int SprintAiChargeSharePercent => GetInt(SettingsSchema.SprintAiChargeSharePercent);
+        public int SprintAiMoveSharePercent => GetInt(SettingsSchema.SprintAiMoveSharePercent);
+
         public float RegenDelayBlowTimes => GetFloat(SettingsSchema.RegenDelayBlowTimes);
         public float BlowTimeSeconds => GetFloat(SettingsSchema.BlowTimeSeconds);
         public float FullRegenSecondsStanding => GetFloat(SettingsSchema.FullRegenSecondsStanding);
@@ -285,6 +302,7 @@ namespace TraxCombat.Core
         public bool ShowPlayerBar => GetBool(SettingsSchema.ShowPlayerBar);
         public bool ShowPlayerBarOutsideBattles => GetBool(SettingsSchema.ShowPlayerBarOutsideBattles);
         public bool ShowAttackRecoveryBar => GetBool(SettingsSchema.ShowAttackRecoveryBar);
+        public bool ShowSprintBar => GetBool(SettingsSchema.ShowSprintBar); // step 33
         public bool FlashBarOnEarlyAttack => GetBool(SettingsSchema.FlashBarOnEarlyAttack);
         public int BarYellowBelowPercent => GetInt(SettingsSchema.BarYellowBelowPercent);
         public int BarOrangeBelowPercent => GetInt(SettingsSchema.BarOrangeBelowPercent);
@@ -309,6 +327,7 @@ namespace TraxCombat.Core
         public int RecoveryBarWidth => GetInt(SettingsSchema.RecoveryBarWidth);
         public int RecoveryBarHeight => GetInt(SettingsSchema.RecoveryBarHeight);
         public int RecoveryBarOffsetAbove => GetInt(SettingsSchema.RecoveryBarOffsetAbove);
+        public int SprintBarOffsetAbove => GetInt(SettingsSchema.SprintBarOffsetAbove); // step 33
         public int OrderStripTextSize => GetInt(SettingsSchema.OrderStripTextSize);
         public int OrderStripTextOffset => GetInt(SettingsSchema.OrderStripTextOffset);
         public int OrderStripBarOffset => GetInt(SettingsSchema.OrderStripBarOffset);

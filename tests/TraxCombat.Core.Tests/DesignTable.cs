@@ -48,7 +48,8 @@ internal static class DesignTable
         if (text == "true") return new JValue(true);
         if (text == "false") return new JValue(false);
         if (long.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out long whole)) return new JValue(whole);
-        return new JValue(double.Parse(text, NumberStyles.Float, CultureInfo.InvariantCulture));
+        if (double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out double number)) return new JValue(number);
+        return new JValue(text); // step 33: a key name ("LeftControl")
     }
 }
 

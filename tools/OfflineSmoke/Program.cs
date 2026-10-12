@@ -625,6 +625,7 @@ namespace TraxCombat.Tools
                     {
                         ParamType.Bool => MCM.Abstractions.SettingType.Bool,
                         ParamType.Int => MCM.Abstractions.SettingType.Int,
+                        ParamType.Key => MCM.Abstractions.SettingType.String, // step 33: a text box holding the key's name
                         _ => MCM.Abstractions.SettingType.Float,
                     };
                     Check(d.SettingType == expected, p.Key + ": MCM type " + d.SettingType);
@@ -632,6 +633,11 @@ namespace TraxCombat.Tools
                     Check(d.HintText == p.HintText, p.Key + ": hint differs");
                     Check(!d.RequireRestart, p.Key + ": marked require-restart");
                     Check(d.GroupName == p.Group.Title, p.Key + ": group " + d.GroupName);
+                    if (p.Type == ParamType.Key)
+                    {
+                        Check(d.PropertyReference.Value as string == p.Format(TraxSettings.Shared.Get(p)), p.Key + ": getter does not read the live key name");
+                        continue;
+                    }
                     Check(Math.Abs(Convert.ToDouble(d.PropertyReference.Value) - TraxSettings.Shared.Get(p)) < 1e-4,
                         p.Key + ": getter does not read the live value");
                     if (p.Type != ParamType.Bool)
@@ -656,6 +662,16 @@ namespace TraxCombat.Tools
 
                 defs["ShowPlayerBar"].PropertyReference.Value = false;             // a checkbox
                 Check(!TraxSettings.Shared.ShowPlayerBar, "checkbox did not reach the live settings");
+
+                // step 33: the sprint key's text box - a name (loosely typed) sets it at once, an unknown one is refused and logged
+                string oldKey = TraxSettings.Shared.SprintKey;
+                defs["SprintKey"].PropertyReference.Value = "right alt";
+                Check(TraxSettings.Shared.SprintKey == "RightAlt", "the key text box did not reach the live settings (" + TraxSettings.Shared.SprintKey + ")");
+                logHas("[config] SprintKey: " + oldKey + " → RightAlt (source: MCM)");
+                defs["SprintKey"].PropertyReference.Value = "Banana";
+                Check(TraxSettings.Shared.SprintKey == "RightAlt", "an unknown key name changed the key");
+                logHas("SprintKey: \"Banana\" is not a key name - kept RightAlt");
+                defs["SprintKey"].PropertyReference.Value = oldKey;
 
                 Check(Convert.ToInt32(defs["DamageRandomPercent"].PropertyReference.Value) == slid, "getter does not read back the live value");
             }

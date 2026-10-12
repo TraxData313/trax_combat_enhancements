@@ -282,6 +282,15 @@ namespace TraxCombat.Core
                     }
                     value = token.Value<bool>() ? 1 : 0;
                     return true;
+                case ParamType.Key:
+                    // step 33: a key by name ("LeftControl") - its index in KeyNames
+                    if (token.Type != JTokenType.String || !KeyNames.TryIndex(token.Value<string>(), out int keyIndex))
+                    {
+                        problem = raw + " is not a key name (one of " + KeyNames.ListText + ")";
+                        return false;
+                    }
+                    value = keyIndex;
+                    return true;
                 case ParamType.Int:
                     if (token.Type != JTokenType.Integer)
                     {
@@ -320,6 +329,7 @@ namespace TraxCombat.Core
 
         private static string Show(ParamType type, double v) =>
             type == ParamType.Bool ? (v != 0 ? "true" : "false")
+            : type == ParamType.Key ? KeyNames.Name(v)
             : type == ParamType.Int ? ((long)Math.Round(v)).ToString(CultureInfo.InvariantCulture)
             : v.ToString("0.0###", CultureInfo.InvariantCulture);
 
@@ -365,7 +375,9 @@ namespace TraxCombat.Core
 
         /// <summary>"(range 0 to 100)" / "(true or false)" - the last // line above a key.</summary>
         public static string RangeText(ParamDef p) =>
-            p.Type == ParamType.Bool ? "true or false" : "range " + p.Format(p.Min) + " to " + p.Format(p.Max);
+            p.Type == ParamType.Bool ? "true or false"
+            : p.Type == ParamType.Key ? "one of " + KeyNames.ListText
+            : "range " + p.Format(p.Min) + " to " + p.Format(p.Max);
 
         // ------------------------------------------------------------------ check
 

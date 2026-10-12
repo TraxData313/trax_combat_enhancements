@@ -411,6 +411,83 @@
   // (true or false)
   "BraceRaiseShield": true,
 
+  // ==================== Sprint ====================
+  // Every fighter on foot has a sprint: a short burst of speed stored in seconds - his
+  // Athletics points now divided by the points per second below (150 points = 7.5 s; empty =
+  // none). Hold the sprint key to run faster; the AI sprints when its formation gets a new
+  // charge or advance order. While sprinting his Athletics does not refill. Never on a horse.
+  // Off: no sprint, speeds back to normal at once.
+  // (true or false)
+  "SprintEnabled": true,
+
+  // Hold this key to sprint (on foot, in a fight). Type its name: LeftControl, RightControl,
+  // LeftAlt, RightAlt, LeftShift, RightShift, CapsLock, Tab, Q, T, Y, H, J, K, L, B, N, M, C,
+  // MiddleMouseButton, X1MouseButton, X2MouseButton. Left Control is free in the game's default
+  // keys (Left Shift is zoom, Z crouch, Caps Lock walk, Left Alt the formation markers).
+  // (one of LeftControl, RightControl, LeftAlt, RightAlt, LeftShift, RightShift, CapsLock, Tab, Q, T, Y, H, J, K, L, B, N, M, C, MiddleMouseButton, X1MouseButton, X2MouseButton)
+  "SprintKey": "LeftControl",
+
+  // The sprint store holds his CURRENT Athletics points divided by this, in seconds: 150 points
+  // = 7.5 s at 20, 50 points = 2.5 s. When his points drop (a blow, a wound) the stored seconds
+  // drop with them. Lower = longer sprints.
+  // (range 5.0 to 100.0)
+  "SprintPointsPerSecond": 20.0,
+
+  // A sprint starts only with at least this percent of the store filled - no spamming tiny
+  // bursts. 0 = any amount.
+  // (range 0 to 100)
+  "SprintMinStartPercent": 20,
+
+  // How much faster than his CURRENT run speed (after tiredness) a sprinter runs at the start
+  // of his sprint - 1.6 = 60% faster. A sprint from a half-full store starts at this speed too.
+  // (range 1.0 to 3.0)
+  "SprintMaxMultiplier": 1.6,
+
+  // After the full-speed part the speed falls in a straight line to this times his run speed at
+  // the sprint's end. Above the start speed = the start speed all the way.
+  // (range 1.0 to 3.0)
+  "SprintMinMultiplier": 1.1,
+
+  // The first this-percent of a sprint's length run at the start speed, then it falls to the
+  // end speed. A sprint is as long as the seconds stored when it began: a full 7.5 s sprint
+  // runs 2.25 s at full speed at 30. 100 = full speed all the way.
+  // (range 0 to 100)
+  "SprintFullSpeedSharePercent": 30,
+
+  // Seconds to refill an empty sprint store to full while standing still or walking at full
+  // strength (at or above the peak line). It refills only while he is not sprinting.
+  // (range 1.0 to 120.0)
+  "SprintRefillSeconds": 7.0,
+
+  // The sprint store refills at this times its rate while he moves faster than a walk (0.5 =
+  // half: 14 s instead of 7). 1 = moving refills as fast as standing.
+  // (range 0.0 to 1.0)
+  "SprintRefillMovingFactor": 0.5,
+
+  // Below the peak line the sprint store refills slower, in a straight line down to this times
+  // its rate at an empty bar (0.5 = half). It multiplies with the running factor: running and
+  // half tired at 0.5 / 0.5 = 0.375 of the rate.
+  // (range 0.0 to 1.0)
+  "SprintRefillExhaustedFactor": 0.5,
+
+  // When an AI formation gets a NEW movement order - yours or its own general's - each of its
+  // soldiers on foot sprints once: on a charge up to the share below of his store, on an
+  // advance or a move to a position up to its own share. He stops early once an enemy is within
+  // a few metres or the order changes again. Never you, never a hero you drive.
+  // (true or false)
+  "SprintAiEnabled": true,
+
+  // On a new CHARGE order (charge, charge a target, the AI's own charge) each AI soldier
+  // sprints for up to this percent of the seconds he has stored. 0 = no sprint on a charge.
+  // (range 0 to 100)
+  "SprintAiChargeSharePercent": 100,
+
+  // On a new ADVANCE or MOVE order (yours, or the AI's own advance) each AI soldier sprints for
+  // up to this percent of his store - the rest stays stored for later. 0 = no sprint on an
+  // advance or a move. Hold, retreat, follow and the rest never start one.
+  // (range 0 to 100)
+  "SprintAiMoveSharePercent": 50,
+
   // ==================== Refill ====================
   // How long a fighter must go without attacking before his Athletics starts to refill, counted
   // in blow lengths (the next setting): 2 × 1.5 s = 3 seconds.
@@ -481,6 +558,12 @@
   // press does nothing).
   // (true or false)
   "FlashBarOnEarlyAttack": true,
+
+  // A slim bar above the Attack recovery bar, shown with your Athletics bar: the seconds of
+  // sprint you have stored ("Sprint 6.2 s"), a mark at the least you need to start one, grey
+  // below it, blue when ready and bright while you sprint. Hidden while the sprint is off.
+  // (true or false)
+  "ShowSprintBar": true,
 
   // The colours of your bar, of the orders-menu strip and of the numbers under the formation
   // markers: green at or above the peak line, blue just below it, and yellow once the Athletics
@@ -602,6 +685,12 @@
   // bottom), in the game's UI pixels. 24 = right on top of it. It moves with your bar.
   // (range -400 to 600)
   "RecoveryBarOffsetAbove": 24,
+
+  // How far above your Athletics bar's row the sprint bar's row sits (bottom to bottom), in the
+  // game's UI pixels - as long and thick as the Attack recovery bar. 46 = right on top of the
+  // recovery bar. It moves with your bar.
+  // (range -400 to 600)
+  "SprintBarOffsetAbove": 46,
 
   // Font size of the orders-menu strip's numbers, in the game's UI pixels.
   // (range 8 to 30)

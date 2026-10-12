@@ -167,7 +167,7 @@ namespace TraxCombat.Core
                         sb.Append("  // ").Append(line).Append(Nl);
                     sb.Append("  // (").Append(tail(p)).Append(')').Append(Nl);
                     double v = values != null && values.TryGetValue(p.Key, out var found) ? p.Normalize(found) : p.Default;
-                    sb.Append("  \"").Append(p.Key).Append("\": ").Append(p.Format(v));
+                    sb.Append("  \"").Append(p.Key).Append("\": ").Append(p.FormatJson(v));
                 }
             }
         }
@@ -427,6 +427,15 @@ namespace TraxCombat.Core
                     default:
                         return false;
                 }
+            }
+
+            if (p.Type == ParamType.Key)
+            {
+                // step 33: a key by name ("LeftControl", "left ctrl")
+                why = "a key name (one of " + KeyNames.ListText + ")";
+                if (token.Type != JTokenType.String || !KeyNames.TryIndex(token.Value<string>(), out int keyIndex)) return false;
+                value = keyIndex;
+                return true;
             }
 
             why = p.Type == ParamType.Int ? "a whole number" : "a number";

@@ -50,6 +50,9 @@ public class SchemaTests
                 case ParamType.Int:
                     Assert.True(isWhole, key + " is a whole number - DESIGN's value must be one, not " + text);
                     break;
+                case ParamType.Key:
+                    Assert.True(KeyNames.TryIndex(text, out _), key + " is a key - DESIGN's value must be a key name, not " + text);
+                    break;
                 default:
                     Assert.True(isNumber && !isBool, key + " is a number - DESIGN's value must be one, not " + text);
                     break;
@@ -66,7 +69,9 @@ public class SchemaTests
         {
             SettingsSchema.TryGet(key, out var p);
             var token = DesignTable.ToToken(text);
-            double expected = token.Type == Newtonsoft.Json.Linq.JTokenType.Boolean ? ((bool)token ? 1 : 0) : (double)token;
+            double expected = token.Type == Newtonsoft.Json.Linq.JTokenType.Boolean ? ((bool)token ? 1 : 0)
+                : token.Type == Newtonsoft.Json.Linq.JTokenType.String ? (KeyNames.TryIndex((string?)token, out int k) ? k : -1)
+                : (double)token;
             Assert.True(Math.Abs(expected - p.Default) < 1e-9, key + ": test default " + p.Format(p.Default) + " vs DESIGN " + text);
         }
     }
@@ -124,6 +129,7 @@ public class SchemaTests
             {
                 ParamType.Bool => typeof(bool),
                 ParamType.Int => typeof(int),
+                ParamType.Key => typeof(string), // step 33: the key's name
                 _ => typeof(float),
             };
             Assert.Equal(expectedType, prop!.PropertyType);
@@ -131,7 +137,10 @@ public class SchemaTests
             // Move the value to a non-default spot and read it back through the property.
             double target = p.Type == ParamType.Bool ? 1 - p.Default : (p.Default == p.Max ? p.Min : p.Max);
             settings.Set(p, target, "test");
-            double read = Convert.ToDouble(prop.GetValue(settings), CultureInfo.InvariantCulture);
+            var got = prop.GetValue(settings);
+            double read = p.Type == ParamType.Key
+                ? (KeyNames.TryIndex((string?)got, out int keyIndex) ? keyIndex : -1)
+                : Convert.ToDouble(got, CultureInfo.InvariantCulture);
             Assert.True(Math.Abs(read - target) < 1e-4, p.Key + " property reads the wrong slot");
         }
     }
