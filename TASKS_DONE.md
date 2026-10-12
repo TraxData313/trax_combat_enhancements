@@ -1129,3 +1129,18 @@
   advance 2.5 s, live keep, master switch, summary; step 33 / 35 smoke lines updated). Docs: DESIGN, AI_NOTES "Step 36",
   HOW-IT-WORKS §13 (order → use / keep table, the shock-troops tip), PLAYTEST D10 step 7 + lines, CLAUDE.md. Deploy:
   build, AssemblyGuard and smoke green; the install copy failed - the game holds the DLL. (2026.10.12 15.17.57)
+- [x] 37. The AI sprint: ONE reserve per order (Anton, 2026-10-12: "simpler - one number per order"; AI_NOTES "Step 37").
+  An AI man on a new order sprints everything he holds above the order's reserve - stored − keep x his FULL store, nothing
+  below 0.2 s - instead of step 36's min(use, stored − keep). Keeps: charge 0 (all of it), advance 50 (100% → 50%, 90% →
+  40%, 60% → 10%, 45% none), move 80 (100% → 20%, 90% → 10% - Anton's example -, 60% none): men moved or advanced into
+  position keep sprint for the real charge. Core: SprintRules three keeps (the three uses gone), SprintMath.AiSprints
+  replaces AiUse, AiAmount = stored − keep x cap; texts "charge keeps 0%, advance keeps 50%, move keeps 80%", the summary
+  "move (keeps 80%) N men". Settings: SprintAiChargeUsePercent / SprintAiAdvanceUsePercent / SprintAiMoveUsePercent
+  removed (DESIGN rows, schema, defaults.json - 125 settings); SprintAiAdvanceKeepPercent 0 → 50 and SprintAiMoveKeepPercent
+  70 → 80 (DESIGN initial = these, new behaviour); MCM hints "keeps N% of his sprint store for later orders". Config FORMAT 7:
+  a format-6 file's advance 0 → 50 / move 70 → 80 only at step 36's defaults (logged), any user value kept; the three use
+  keys and step 33's two share keys dropped from any format, one [config] note each, out of Unknown. Tests 573 → 575; smoke
+  82 steps green (shock troops: move 1 s to 80%, second move reserve kept, the charge sprints the 80%, an advance 2.5 s, the
+  reserve live, master switch, summary). Docs: DESIGN (§2 sprint, 3 rows, decision 33 (f)), HOW-IT-WORKS §13 (order →
+  keeps, from 100 / 90 / 60%), PLAYTEST D10 step 7 + lines + L6g, CLAUDE.md. Deploy: build, AssemblyGuard, smoke green;
+  installed as TraxCombatEnhancements.Dev. (2026.10.12 15.31.22)

@@ -3626,3 +3626,53 @@ old keys; ConfigFile / Block tests: FormatVersion 6, "→ 6" in the notes). **Sm
 nothing (the line), the charge sprints 3.5 s, an advance 2.5 s, the move's keep live, the master switch, the summary;
 step 33's smoke now expects an advance of min(2.5, what is left) and the new first-order / first-sprint text; step 35's
 first-AI-sprint line too; `SprintDefaults` sets the six to DESIGN's values).
+
+## Step 37 — the AI sprint: one RESERVE per order (DONE 2026-10-12)
+
+**Anton (2026-10-12, same day as step 36):** simpler - ONE number per order, the reserve he keeps. "A man holding 90%
+ordered to move sprints 10% until he drops to 80%." Purpose unchanged from step 36: men moved or advanced into position
+still have sprint left for the real charge.
+
+**The rule.** `SprintMath.AiAmount` = stored − keep x capacity (capacity = his FULL store now, as in step 36), 0 below
+`AiMinSeconds` 0.2 s (plumbing) and for an order that never sprints (`SprintMath.AiSprints`: charge / advance / move;
+hold, retreat, fall back, follow, no order = none - unchanged). Keeps (DESIGN initial = defaults): charge 0, advance 50,
+move 80. Examples (5 s store): charge - all of it from anywhere (10% → 0.5 s, no 20% gate for the AI); advance - 100% →
+2.5 s (50%), 90% → 40%, 60% → 10%, 45% → none (ReserveKept); move - 100% → 1 s (20%), 90% → 10%, 60% → none. A keep of
+100 = that order never sprints (the old "use 0 = off"; now it counts as reserve kept, not as off - the logic no longer
+returns early for it, so the summary shows those men under "reserve kept").
+
+**What went.** `SprintAiChargeUsePercent`, `SprintAiAdvanceUsePercent`, `SprintAiMoveUsePercent` (schema, TraxSettings,
+SprintRules' constructor - now 17 args: ..., refillExhaustedFactor, chargeKeep, advanceKeep, moveKeep, minSeconds,
+topSpeedReach -, DESIGN rows, defaults.json; 128 → 125 settings), `SprintMath.AiUse` (→ `AiSprints`).
+`SprintStart.ReserveKept` / `BelowMinimum` / `Off` keep their meanings: ReserveKept when keep > 0 and less than 0.2 s
+above it; BelowMinimum = keep 0 and an (almost) empty store; Off = the switches or a non-sprinting order.
+
+**Texts.** Mission start / a change: "AI ON - on a NEW order he sprints what he holds above the order's reserve (stored -
+keep x his full store), nothing below 0.2 s (no 20% start gate for the AI): charge keeps 0%, advance keeps 50%, move keeps
+80%; hold, retreat, fall back, follow none". First new order: "(move: its AI men on foot sprint what they hold above a 80%
+reserve)". First AI sprint: "... move keeps 80% → asked T 1.00 s (stored - keep x 5.00; left after it 80%) ...". First
+reserve: "... stored 4.00 s of 5.00 s (80%), move keeps 80% - nothing above the reserve, no sprint (it stays for the next
+order)". Summary: "sprints - charge (keeps 0%) N men (...), advance (keeps 50%) ..., move (keeps 80%) ...; not sprinted:
+reserve kept N (charge c, advance a, move m), less than 0.2 s or empty: ...".
+
+**Config format 7** (`ConfigFile.FormatVersion` 6 → 7; the older steps' notes now read "→ 7" by themselves - the tag is
+built from FormatVersion). `Migrate`: (1) a FORMAT-6 file only (the one format whose files carry step 36's keeps):
+`MoveOldDefault` SprintAiAdvanceKeepPercent 0 → the default (50) and SprintAiMoveKeepPercent 70 → the default (80),
+each logged "SprintAiMoveKeepPercent: 70 → 80 (format 6 → 7, the old default; step 37, ...)" - any other value is the
+player's and stays (a format-7 file's 0 / 70 too); (2) ANY format: `DropRetiredSprintKeys` (replaces step 36's
+`RenameSprintShares`) takes the three `SprintAi*UsePercent` AND step 33's `SprintAiChargeSharePercent` /
+`SprintAiMoveSharePercent` out of `Unknown`, one note each ("SprintAiMoveUsePercent 20 dropped (format 6 → 7; step 37,
+Anton: one number per order - ...)"), so the rewrite does not carry them under "Not recognised". Step 33's charge share is
+no longer renamed (its target is gone: a charge now sprints all above its keep, which is what share 100 meant).
+ConfigStore rewrites the file once as format 7 (its existing "rewrote config.json as format 7 with the N migrated
+value(s)").
+
+**Tests** 573 → 575 (SprintTests rewritten for step 37: Theories for each kind on Anton's numbers, other orders / keep
+100 / keep above the store, move → second move = reserve kept → the charge sprints the 80%, an advance from full 2.5 s,
+an empty store with keep 0 = BelowMinimum and with keep 50 = ReserveKept, settings live (keep 100 = none) + master switch
++ the sentence, the summary line, the format-6 → 7 migration (defaults moved, user values kept, use keys dropped, the typo
+kept, idempotent, a format-7 file untouched) and step 33's shares dropped; Block / ConfigFile tests "→ 7"). **Smoke** 82
+steps (`SprintByOrderThroughTheLogic` rewritten: move from full 1 s down to 80%, a second move nothing (the line), the
+charge sprints the 4 s (80%) left, an advance from full 2.5 s, the move's reserve live at 40 (from ~50% a 0.5 s move),
+the master switch, the summary; step 33's smoke: an advance after a short charge sprints down to the 50% reserve;
+`SprintDefaults` sets the keeps 0 / 50 / 80).

@@ -773,18 +773,19 @@ current run his 0.4-0.8 s taps never got past the game's slow acceleration, and 
    Note anything else Ctrl does in a fight.
 4. **Order a charge.** Put an infantry formation on hold ~60 m from the enemy, then F1 → F3 (charge): the men should
    surge for their first metres and slow back to a run; with ALT the formation reaches the enemy noticeably sooner. An
-   advance (F1 → F4) sprints them for half their FULL store (step 36). A second charge order on a charging formation does
+   advance (F1 → F4) sprints them down to half their FULL store (step 37). A second charge order on a charging formation does
    nothing new.
 5. **A tournament.** Ctrl works in the arena too (a dodge out of a corner). The AI there has no formation orders, so it
    never sprints.
 6. **Tired** (step 35): fight until your bar is empty, then sprint: **"Sprint 2.0 s"** - the floor - and the burst starts
    just as fast as a fresh one (2 × a fresh run), then fades all the way back to your tired jog within the 2 s. Run dry and
    stand: the 2 s refill takes ~14 s at an empty bar (28 s moving). While you sprint your Athletics bar does not refill.
-7. **Shock troops** (step 36, Anton's case): put a fresh infantry formation on hold, then walk it round behind the enemy
-   with three or four plain **move** orders (F1 → F1, a spot each time) a few seconds apart. The first move: a short dash
-   (1 s of a 5 s store, 20%); the next one right after: a shorter one (down to 70%); then none - they jog. Now F1 → F3
-   (charge): they still sprint (about 70% of the store) into the enemy's back. An advance (F1 → F4) from a full store
-   sprints half of it, keeping nothing back.
+7. **Shock troops** (steps 36 / 37, Anton's case - one reserve per order): put a fresh infantry formation on hold, then
+   walk it round behind the enemy with three or four plain **move** orders (F1 → F1, a spot each time) a few seconds apart.
+   The first move: a short dash (1 s of a 5 s store, 20% - down to the 80% reserve); the next ones right after: none -
+   they jog (a man refilled to 90% dashes 10%). Now F1 → F3 (charge): they sprint everything left (about 80% of the
+   store) into the enemy's back. An advance (F1 → F4) from a full store sprints half of it (from 90%: 40%, from 60%:
+   10%, at or below 50%: none).
 - **The lines**: `[sprint] mission start: ON - hold LeftControl (on foot, in a fight); the store = Athletics points / 20 s
   (150 points = 7.5 s, never below 2.0 s (an empty bar still holds 2.0 s)), a start needs 20% of it; speed x2.00 of his
   FRESH run speed (whatever his Athletics) for the first 30% … then a straight line to x1.10 of his CURRENT run speed …; top
@@ -795,23 +796,23 @@ current run his 0.4-0.8 s taps never got past the game's slow acceleration, and 
   Athletics points / 20.0 = 0.00 s - the store's floor SprintMinSeconds 2.0 s holds it up)` and `(the run property x0.30 →
   x2.00) … to x1.10 of your current run (x0.33)`); `[sprint] YOU: sprint ended at … s (key released) after … s of moving - … s left stored`;
   `[sprint] YOU: first sprint refused this battle at … - … below the 20% a start needs …`; `[sprint] first new order
-  seen this battle at … s: formation slot N Stop → Charge (charge: its AI men on foot sprint min(100% of their full
-  store, what they hold above a 0% reserve))`; `[sprint] first AI order sprint this battle: <name> at … s on a new charge
-  order - stored 5.00 s of 5.00 s (100%), charge use 100% / keep 0% → asked T 5.00 s (min(use x 5.00, stored - keep x
-  5.00); left after it 0%) …` (step 36; a move: `move use 20% / keep 70% → asked T 1.00 s … left after it 80%`);
-  `[sprint] first AI sprint held back by a reserve this battle: <name> at … s on a new move order - stored 3.50 s of 5.00
-  s (70%), move use 20% / keep 70% - nothing above the reserve, no sprint (it stays for the next order)` (step 36); `[hud] sprint bar: first values pushed …`, `[hud] sprint bar: first sprint shown …`. The summary (L6g):
-  `sprint - you: N sprints …`, `sprint - AI: new orders seen - charge C, advance A, move V, other O; sprints - charge (use
-  100% / keep 0%) M men (… s in all, avg … s), advance (use 50% / keep 0%) …, move (use 20% / keep 70%) …; not sprinted:
-  reserve kept N (charge 0, advance 0, move N), less than 0.2 s or empty: …` (step 36), and the speed check `sprint speed check (x his FRESH run speed = his top at the sprint's start ÷ his
+  seen this battle at … s: formation slot N Stop → Charge (charge: its AI men on foot sprint what they hold
+  above a 0% reserve)`; `[sprint] first AI order sprint this battle: <name> at … s on a new charge order - stored 5.00 s
+  of 5.00 s (100%), charge keeps 0% → asked T 5.00 s (stored - keep x 5.00; left after it 0%) …` (step 37; a move: `move
+  keeps 80% → asked T 1.00 s … left after it 80%`); `[sprint] first AI sprint held back by a reserve this battle: <name>
+  at … s on a new move order - stored 4.00 s of 5.00 s (80%), move keeps 80% - nothing above the reserve, no sprint (it
+  stays for the next order)` (step 37); `[hud] sprint bar: first values pushed …`, `[hud] sprint bar: first sprint shown …`. The summary (L6g):
+  `sprint - you: N sprints …`, `sprint - AI: new orders seen - charge C, advance A, move V, other O; sprints - charge (keeps
+  0%) M men (… s in all, avg … s), advance (keeps 50%) …, move (keeps 80%) …; not sprinted: reserve kept N (charge 0,
+  advance A, move N), less than 0.2 s or empty: …` (step 37), and the speed check `sprint speed check (x his FRESH run speed = his top at the sprint's start ÷ his
   run multiplier then, while it ran): N samples - asked avg x1.6…, engine top avg x1.6… - the engine's top speed follows
   the sprint - no cap above the run speed; acceleration while sprinting: the game's top-speed reach avg 2.5… s → ours 1.00
   s (sprint starts: N)`; with a tired fight also `N started off the 2.0 s floor` (you) and `off the 2.0 s floor N` (AI).
 - **Tune live** (MCM, *Sprint*): *Sprint speed at its start* 1.5 = a gentler dodge, 2.5 = a lunge; *Sprint acceleration*
   0.5 = snappier, 0 = the game's own (compare a tap with and without); *Smallest sprint store* 0 = step 33's (an empty bar
   cannot sprint), 3 = a bigger tired dodge; *Full-speed part* 100 =
-  no easing; *Athletics points per sprint second* 10 = twice as long; *AI sprint on a move: keep* 0 = a move may use its 20%
-  every time, 90 = moves almost never sprint; *AI sprint on an advance: use* 0 = only charges and moves (step 36);
+  no easing; *Athletics points per sprint second* 10 = twice as long; *AI sprint on a move: keeps* 0 = a move sprints all of
+  it like a charge, 95 = moves almost never sprint; *AI sprint on an advance: keeps* 100 = only charges and moves (step 37);
   *Sprint key* - type another name (e.g. `X1MouseButton` for a side mouse button); *Sprint* off = gone at once.
 
 **Broken — tell Claude** (D10): a tap still feeling like nothing with *Sprint acceleration* 1 (then the engine ignores
@@ -820,7 +821,7 @@ TopSpeedReachDuration for a running man - AI_NOTES "Step 35"); the speed check `
 bar drains; Ctrl doing something else in a fight; an AI charge with `sprints - charge 0 men` after a `new orders seen -
 charge` (the men were not read in that formation); AI men sprinting on a hold order; step 36: shock troops NOT sprinting
 on the charge after several moves (`reserve kept` counted on the charge, or `sprints - charge 0 men`), a move sprinting
-more than 20% of the store, or `reserve kept 0` after many back-to-back moves; `[error] … sprint.` lines.
+more than 20% of the store (or below the 80% reserve), an advance below half, or `reserve kept 0` after many back-to-back moves; `[error] … sprint.` lines.
 
 ---
 
@@ -1481,9 +1482,9 @@ header names the technique: `==== scene …, mod ON, AI holds: Input (the AI's o
 ### L6g. The sprint (step 33)
 
 - Mission start: `[sprint] mission start: ON - hold LeftControl (on foot, in a fight); the store = Athletics points / 20 s
-  …; AI ON - on a NEW order he sprints min(use x his full store, stored - keep x it), nothing below 0.2 s (no 20% start
-  gate for the AI): charge use 100% / keep 0%, advance use 50% / keep 0%, move use 20% / keep 70%; hold, retreat, fall back,
-  follow none - read live; …` (step 36) (off: `OFF (SprintEnabled) -
+  …; AI ON - on a NEW order he sprints what he holds above the order's reserve (stored - keep x his full store), nothing
+  below 0.2 s (no 20% start gate for the AI): charge keeps 0%, advance keeps 50%, move keeps 80%; hold, retreat, fall back,
+  follow none - read live; …` (step 37) (off: `OFF (SprintEnabled) -
   nobody sprints`, or the switch that holds it off). A change: `[sprint] settings changed mid-mission at … s: …`; a switch
   off with sprints running: `[sprint] SprintEnabled switched off at … s: N sprints ended, their speeds back over the next
   ticks …` (`SprintAiEnabled` = the AI's only).
@@ -1497,11 +1498,11 @@ header names the technique: `==== scene …, mod ON, AI holds: Input (the AI's o
   ```
   sprint (step 33): ON - hold LeftControl (on foot, in a fight); the store = Athletics points / 20 s (150 points = 7.5 s, never below 2.0 s (an empty bar still holds 2.0 s)) …
   sprint - you: 14 sprints (length asked avg 5.20 s, ran avg 2.80 s, longest 7.50 s); 3 started off the 2.0 s floor (his points alone stored less); refused: below 20% stored 3, an empty bar 0, on a horse 0; ends: key released 12, store empty 2
-  sprint - AI: new orders seen - charge 4, advance 3, move 8, other 9; sprints - charge (use 100% / keep 0%) 310 men (1500.0 s in all, avg 4.84 s), advance (use 50% / keep 0%) 120 men (300.0 s in all, avg 2.50 s), move (use 20% / keep 70%) 140 men (120.0 s in all, avg 0.86 s); not sprinted: reserve kept 95 (charge 0, advance 0, move 95), less than 0.2 s or empty: charge 12, advance 3, move 20; off the 2.0 s floor 45; mounted 40, yours to drive 2; ends: its share used 300, an enemy within 3 m 150, the order changed again 60, …; melee checks 9000
+  sprint - AI: new orders seen - charge 4, advance 3, move 8, other 9; sprints - charge (keeps 0%) 310 men (1500.0 s in all, avg 4.84 s), advance (keeps 50%) 120 men (240.0 s in all, avg 2.00 s), move (keeps 80%) 140 men (120.0 s in all, avg 0.86 s); not sprinted: reserve kept 125 (charge 0, advance 30, move 95), less than 0.2 s or empty: charge 12, advance 3, move 20; off the 2.0 s floor 45; mounted 40, yours to drive 2; ends: its share used 300, an enemy within 3 m 150, the order changed again 60, …; melee checks 9000
   sprint speed check (x his FRESH run speed = his top at the sprint's start ÷ his run multiplier then, while it ran): 4000 samples - asked avg x1.62, engine top avg x1.61, max x2.00, off by more than 0.05: 120 - the engine's top speed follows the sprint - no cap above the run speed; acceleration while sprinting: the game's top-speed reach avg 2.55 s → ours 1.00 s (sprint starts: 540); 6500 recomputes for the sprint, stores clamped by a points drop 800, refilled 9000.0 s of store
   ```
   Proves: you sprinted and let go (`ends: key released`), the 20% gate bites, the AI sprints on new orders (charge / advance
-  / move men - step 36: moves short, `reserve kept` the back-to-back moves that found nothing above 70%), stops in melee, and the ENGINE honours the run property above its base (`engine top` ≈ `asked`, both × the
+  / move men - step 37: moves short, `reserve kept` the back-to-back moves that found nothing above 80% and the advances nothing above 50%), stops in melee, and the ENGINE honours the run property above its base (`engine top` ≈ `asked`, both × the
   FRESH run since step 35 - a tired man's peak reads x2.00 too). The acceleration clause shows the game's own
   TopSpeedReachDuration (2.3-2.8 s expected) against ours; the floor counts say how often a tired store was held up. The HUD block (L7)
   adds `hud: sprint bar - sprints shown N, … s on screen sprinting, … s below the start mark`. The Athletics `run speed

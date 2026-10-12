@@ -391,31 +391,32 @@ its size — an exhausted man's 2 s floor takes 14 s standing.
 right after a fight keeps you tired longer. Never on a horse.
 
 **The AI** sprints once per *new* order — at the moment you (or its own general) give it. Each kind of order
-says how much of a man's **full** store it may **use**, and how much it must **keep** in reserve; he sprints
-the smaller of "use" and "what he holds above the reserve":
+has one number: the **reserve** a man keeps, as a share of his **full** store. He sprints everything he holds
+above it, and nothing once he is at or below it:
 
-| Order | Use | Keep | Full store (5 s) | From 80% | From 60% |
-|---|---|---|---|---|---|
-| **Charge** (F1 F3, or the AI's charge) | 100% | 0% | 5 s | 4 s | 3 s |
-| **Advance** (F1 F4 "engage", or the AI's advance) | 50% | 0% | 2.5 s (50% left) | 2.5 s (30% left) | 2.5 s (10% left) |
-| **Move** (F1 F1, move to a position) | 20% | 70% | 1 s (80% left) | 0.5 s (70% left) | none |
-| Hold, retreat, fall back, follow | — | — | none | none | none |
+| Order | Keeps | From 100% | From 90% | From 60% |
+|---|---|---|---|---|
+| **Charge** (F1 F3, or the AI's charge) | 0% | all of it (100%) | all of it (90%) | all of it (60%) |
+| **Advance** (F1 F4 "engage", or the AI's advance) | 50% | 50% | 40% | 10% |
+| **Move** (F1 F1, move to a position) | 80% | 20% | 10% | none |
+| Hold, retreat, fall back, follow | — | none | none | none |
+
+(A man with a 5 s store: a move from full sprints 1 s, an advance 2.5 s, a charge 5 s.)
 
 A man stops early when an enemy is within 3 m or the order changes again. Give a formation a new charge order
 and watch it surge — tired men too, off their 2 s floor.
 
-**Tip — shock troops.** Move your shock infantry round behind the enemy with plain **move** orders: each move
-costs them only a little sprint and never touches the last 70%. When you give the real **charge**, they still
-have most of their store and hit the enemy's back at a sprint.
+**Tip — shock troops.** Move your shock infantry round behind the enemy with plain **move** orders: the first
+move costs them a little sprint and none of them touches the last 80%. When you give the real **charge**, they
+still have most of their store and hit the enemy's back at a sprint. Men advanced into position keep half.
 
 <sub>Settings: `SprintEnabled` on, `SprintKey` LeftControl (a key name: LeftControl, RightControl, LeftAlt,
 RightAlt, LeftShift, RightShift, CapsLock, Tab, Q, T, Y, H, J, K, L, B, N, M, C, MiddleMouseButton,
 X1MouseButton, X2MouseButton), `SprintPointsPerSecond` 20, `SprintMinSeconds` 2, `SprintMinStartPercent` 20,
 `SprintMaxMultiplier` 2.0, `SprintMinMultiplier` 1.1, `SprintFullSpeedSharePercent` 30,
 `SprintTopSpeedReachSeconds` 1, `SprintRefillSeconds` 7, `SprintRefillMovingFactor` 0.5,
-`SprintRefillExhaustedFactor` 0.5, `SprintAiEnabled` on, `SprintAiChargeUsePercent` 100 /
-`SprintAiChargeKeepPercent` 0, `SprintAiAdvanceUsePercent` 50 / `SprintAiAdvanceKeepPercent` 0,
-`SprintAiMoveUsePercent` 20 / `SprintAiMoveKeepPercent` 70. The run-now column comes from tiredness: `MinMoveSpeedMultiplier` 0.3 at an empty
+`SprintRefillExhaustedFactor` 0.5, `SprintAiEnabled` on, `SprintAiChargeKeepPercent` 0,
+`SprintAiAdvanceKeepPercent` 50, `SprintAiMoveKeepPercent` 80. The run-now column comes from tiredness: `MinMoveSpeedMultiplier` 0.3 at an empty
 bar, `AthleticsPeakPercent` 75.</sub>
 
 ## 14. What you see on screen
