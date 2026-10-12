@@ -11,7 +11,7 @@ Board = TASKS_TODO.md BUILD ORDER 28-30 (project manager protocol in CLAUDE.md).
 - [x] 29. Only wrong-side shield blocks restart the refill delay (one switch); right-side + parries still cost
 - [x] 30. Tired AI block direction: mix his own pick with a random one by weight setting × (1 − f), once per incoming attack; research the input direction bits first
 
-- [~] 31. Player-facing docs: tight Steam description + README, new docs/ player guide with tables (Anton 2026-10-12)
+- [x] 31. Player-facing docs: tight Steam description + README, new docs/ player guide with tables (Anton 2026-10-12)
 
 ## Notes
 - Release: fixes collect in main; version / upload = Anton's call later.
@@ -20,3 +20,5 @@ Board = TASKS_TODO.md BUILD ORDER 28-30 (project manager protocol in CLAUDE.md).
 - Deploy on this PC (scripts default to D:, which does not exist):
   powershell -ExecutionPolicy Bypass -File tools\deploy.ps1 -GameFolder "C:\Program Files (x86)\Steam\steamapps\common\Mount & Blade II Bannerlord" -McmBinFolder "C:\Program Files (x86)\Steam\steamapps\workshop\content\261550\2859238197\bin\Win64_Shipping_Client"
 - 30 done (4de175f..256ca1c): TiredBlockRandomPercent 100 via the game stat AiRandomizedDefendDirectionChance (DrivenProperty 40) in the stat decorator - chance = own + (1-own) x w, w = setting x (1-f); NOT the input bits (fallback designed in AI_NOTES). 514 tests, smoke 72. Unverified in game: PLAYTEST D8 step 5 ("AI guard by f" bands should differ).
+- 31 done (40c9c35..f604f85): Steam description 3042 bytes, README same shape, docs/HOW-IT-WORKS.md (14 sections, tables from defaults.json). Not uploaded - Anton decides the next Workshop update.
+- ALL STEPS DONE 2026-10-12. Next: Anton playtests PLAYTEST D8 (tournament), then decides a release.
