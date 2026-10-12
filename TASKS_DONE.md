@@ -986,3 +986,26 @@
   (BlockRefillTests). Smoke 69 -> 70 (BlocksLetTheRefillRun through the real logic's BlockTaken; the older steps pin the
   switch off in AthleticsDefaults). deploy.ps1 green, INSTALLED. Docs: DESIGN, AI_NOTES "Step 29", PLAYTEST (the block list
   item 4 + D8 step 4 + the lines), CLAUDE.md; README / STEAM-DESCRIPTION untouched (they never said blocks stop the refill). (2026.10.12 11.02.29)
+
+- [x] 30. Tired AI blocks in a random direction (Anton, 2026-10-12, the tournament 1v1 where the exhausted AI blocked ~95%:
+  "the more exhausted an AI man is, the more his block direction is random"). RESEARCH FIRST (RESEARCH §M, decompiled with
+  ilspycmd 9.1 into %TEMP% - the ..eference copy is not on this PC): the guard direction is four MovementControlFlag bits
+  (the player's guard is only those bits; auto-block mirrors the attacker's direction); the AI's pass OnAIInputSet, but
+  whether its own decision is in that word is native - and the game ALREADY has the lever per agent,
+  AiRandomizedDefendDirectionChance (DrivenProperty 40) = 1 - (AI level)^3 from SetAiRelatedProperties, recomputed on every
+  UpdateAgentStats; a final-round tournament opponent (AI level x2) sits at -1.10 = never random, a recruit near 1. So the
+  build uses the stat decorator, not the input bits: w = TiredBlockRandomPercent/100 x (1 - f), the chance written = own +
+  (1 - own) x w (own clamped 0-1; w 0 = the game's value untouched) - exactly Anton's mix with the AI's own randomness kept
+  underneath. w rides on RetargetSpeed with the speed multipliers (0.05 steps, same recompute budget; RetargetSpeed now an
+  instance method); never the main agent; riders too; ModEnabled first, then AthleticsEnabled, then the setting; the forced
+  DefendDown guards of steps 16 / 23 stay ours. Nothing runs per frame, no hook, so no flicker and no per-attack state; the
+  input-bit replacement (one roll per attack, a timeout) is designed in AI_NOTES as the fallback if the playtest shows the
+  engine ignoring the property. Logs: [guard] (new tag) mission start / settings change / the first raised chance in full /
+  verbose guard-chance; summary: "tired block direction" (men, recomputes, own -> written by f band, how many over a game
+  value below 0) and "AI guard by f" (blocked % - shield right / WRONG side / parry - vs landed, by f band; counted in
+  OnMeleeHit before the block's charge). Settings 102 -> 103 (DESIGN row + behaviour + decision 29 - deliberately reverses
+  "tired men must not block less" for the AI; schema in Tired fighters after DamageBonusFollowsAthletics; defaults.json
+  refreshed). Tests 498 -> 514 (TiredBlockTests). Smoke 70 -> 72 (TiredBlockDirection through the real decorator + logic,
+  TiredBlockCostStaysFlat: 1000 tired men block + recompute ~0.1 us a blow, 0 bytes; the older steps pin the setting 0 in
+  AthleticsDefaults). deploy.ps1 green, INSTALLED. Docs: AI_NOTES "Step 30", PLAYTEST D8 step 5 + L6e, CLAUDE.md, README and
+  the Workshop text one clause each (6916 bytes). (2026.10.12 11.20.12)
