@@ -115,8 +115,12 @@ namespace TraxCombat.Tools
             S.Set(SettingsSchema.SprintRefillMovingFactor, 0.5, SettingSources.File);
             S.Set(SettingsSchema.SprintRefillExhaustedFactor, 0.5, SettingSources.File);
             S.Set(SettingsSchema.SprintAiEnabled, true, SettingSources.File);
-            S.Set(SettingsSchema.SprintAiChargeSharePercent, 100, SettingSources.File);
-            S.Set(SettingsSchema.SprintAiMoveSharePercent, 50, SettingSources.File);
+            S.Set(SettingsSchema.SprintAiChargeUsePercent, 100, SettingSources.File);
+            S.Set(SettingsSchema.SprintAiChargeKeepPercent, 0, SettingSources.File);
+            S.Set(SettingsSchema.SprintAiAdvanceUsePercent, 50, SettingSources.File);
+            S.Set(SettingsSchema.SprintAiAdvanceKeepPercent, 0, SettingSources.File);
+            S.Set(SettingsSchema.SprintAiMoveUsePercent, 20, SettingSources.File);
+            S.Set(SettingsSchema.SprintAiMoveKeepPercent, 70, SettingSources.File);
             S.Set(SettingsSchema.ShowSprintBar, true, SettingSources.File);
             S.Set(SettingsSchema.SprintBarOffsetAbove, 46, SettingSources.File);
         }
@@ -151,7 +155,7 @@ namespace TraxCombat.Tools
                 var logic = NewSprintLogic(body);
                 var stats = logic.SprintStats;
                 LogHas("[sprint] mission start: ON - hold LeftControl (on foot, in a fight); the store = Athletics points / 20 s (150 points = 7.5 s, empty = 0), a start needs 20% of it; speed x1.60 of his FRESH run speed (whatever his Athletics) for the first 30% of the sprint's length, then a straight line to x1.10 of his CURRENT run speed (a full 7.5 s sprint: x1.60 until 2.25 s); the game's own acceleration (SprintTopSpeedReachSeconds 0)");
-                LogHas("AI ON - on a NEW order: charge 100% of the store, advance / move 50%");
+                LogHas("AI ON - on a NEW order he sprints min(use x his full store, stored - keep x it), nothing below 0.2 s (no 20% start gate for the AI): charge use 100% / keep 0%, advance use 50% / keep 0%, move use 20% / keep 70%; hold, retreat, fall back, follow none");
                 double t = 15000;
                 void Tick(float dt = 0.1f)
                 {
@@ -328,24 +332,25 @@ namespace TraxCombat.Tools
                 Check(stats.AiStarted(SprintOrder.Charge) == 5 && stats.AiSkippedMounted == 1 && stats.AiSkippedPlayer == 1 && stats.OrdersSeen(SprintOrder.Charge) == 1,
                     "the AI counts: started " + stats.AiStarted(SprintOrder.Charge) + ", mounted " + stats.AiSkippedMounted + ", yours " + stats.AiSkippedPlayer);
                 LogHas("[sprint] first new order seen this battle at ");
-                LogHas(" s: formation slot 3 Stop → Charge (charge: its AI men on foot sprint for up to 100% of their store)");
+                LogHas(" s: formation slot 3 Stop → Charge (charge: its AI men on foot sprint min(100% of their full store, what they hold above a 0% reserve))");
                 LogHas("[sprint] first AI order sprint this battle: ");
-                LogHas(" on a new charge order - stored 5.00 s of 5.00 s, his share 100% → T 5.00 s: x1.60 of the fresh run (run x1.00 → x1.60) until 1.50 s, then to x1.10 of his current run (x1.10); the game's own acceleration (SprintTopSpeedReachSeconds 0); ends early on an enemy within 3.0 m or a new order");
+                LogHas(" on a new charge order - stored 5.00 s of 5.00 s (100%), charge use 100% / keep 0% → asked T 5.00 s (min(use x 5.00, stored - keep x 5.00); left after it 0%): x1.60 of the fresh run (run x1.00 → x1.60) until 1.50 s, then to x1.10 of his current run (x1.10); the game's own acceleration (SprintTopSpeedReachSeconds 0); ends early on an enemy within 3.0 m or a new order");
                 // an enemy within 3 m: he stops at the next look (every 0.25 s)
                 body.EnemyNear.Add(701);
                 for (int i = 0; i < 3; i++) Tick();
                 Check(!men[0].Sprint.Active && stats.Ends(false, SprintEnd.InMelee) == 1 && men[0].SprintRun == 0f, "an enemy within 3 m did not end his sprint");
                 Check(men[1].Sprint.Active, "the others stopped too");
-                // the order changes again: the running sprints end, an ADVANCE starts half of what is left
+                // the order changes again: the running sprints end, an ADVANCE starts (step 36: half of his FULL 5 s store, or what is left)
                 body.Orders[3] = BraceOrderKind.Advance;
                 t += 0.3;
                 Tick();
                 Check(stats.Ends(false, SprintEnd.OrderChanged) == 4, "the new order did not end the running sprints: " + stats.Ends(false, SprintEnd.OrderChanged));
                 var m2 = men[1];
-                Check(m2.Sprint.Active && m2.Sprint.Order == SprintOrder.AdvanceOrMove && Near(m2.Sprint.Length, 0.5 * m2.Sprint.StoredAtStart), "an advance is not half the store");
+                Check(m2.Sprint.Active && m2.Sprint.Order == SprintOrder.Advance && Near(m2.Sprint.Length, Math.Min(2.5, m2.Sprint.StoredAtStart)), "an advance is not half the full store");
                 double left = m2.Sprint.StoredAtStart;
+                double asked = m2.Sprint.Length;
                 for (int i = 0; i < 40 && m2.Sprint.Active; i++) Tick();
-                Check(!m2.Sprint.Active && stats.Ends(false, SprintEnd.LengthDone) >= 1 && NearTo(m2.Sprint.Stored, left / 2, 0.11),
+                Check(!m2.Sprint.Active && stats.Ends(false, SprintEnd.LengthDone) >= 1 && NearTo(m2.Sprint.Stored, left - asked, 0.11),
                     "the advance sprint did not end at its share keeping the rest: " + m2.Sprint.Stored + " of " + left);
                 // a HOLD order: no sprint
                 body.Orders[3] = BraceOrderKind.Stop;
@@ -623,7 +628,7 @@ namespace TraxCombat.Tools
                 Tick();
                 Check(man.Sprint.Active && Near(man.Sprint.Length, 2.0) && man.SprintRun == 2.0f && stats.AiOffFloor == 1,
                     "a tired AI man did not sprint his 2 s floor at x2.0: T " + man.Sprint.Length + ", x" + man.SprintRun + ", off the floor " + stats.AiOffFloor);
-                LogHas(" on a new charge order - stored 2.00 s of 2.00 s (the 2.0 s floor), his share 100% → T 2.00 s: x2.00 of the fresh run (run x0.50 → x2.00) until 0.60 s, then to x1.10 of his current run (x0.55); top speed reached in at most 1.00 s (the game's value not seen yet)");
+                LogHas(" on a new charge order - stored 2.00 s of 2.00 s (100%) (the 2.0 s floor), charge use 100% / keep 0% → asked T 2.00 s (min(use x 2.00, stored - keep x 2.00); left after it 0%): x2.00 of the fresh run (run x0.50 → x2.00) until 0.60 s, then to x1.10 of his current run (x0.55); top speed reached in at most 1.00 s (the game's value not seen yet)");
 
                 // SprintMinSeconds 0 (live): step 33's empty bar - no store, a press refused
                 S.Set(SettingsSchema.SprintMinSeconds, 0, SettingSources.Mcm);
@@ -642,6 +647,135 @@ namespace TraxCombat.Tools
                 LogHas("; off the 2.0 s floor 1");
                 LogHas("acceleration while sprinting: the game's top-speed reach avg 2.60 s → ours 1.00 s (sprint starts: 1)");
                 logic.SmokePlayer = null;
+            }
+            finally
+            {
+                _logic = keep;
+                SetStatic(typeof(AthleticsLogic), "_current", keep);
+                AthleticsDefaults();
+            }
+        }
+
+        /// <summary>
+        /// Step 36 (Anton 2026-10-12, "shock troops behind the enemy keep their sprint for the charge"): through the real logic with
+        /// the stand-in orders - a MOVE from full sprints 20% of the 5 s store (1 s, 80% left), a second move right after only down
+        /// to the 70% reserve (0.5 s), a third nothing ("reserve kept"); the real CHARGE then sprints all that is left; an ADVANCE
+        /// half of a full store; the keep read live; the master switch; the lines and the summary. The refill is slowed
+        /// (SprintRefillSeconds 120) so the stores between orders stay near Anton's numbers.
+        /// </summary>
+        private static void SprintByOrderThroughTheLogic()
+        {
+            var keep = _logic;
+            try
+            {
+                AthleticsDefaults();
+                SprintDefaults();
+                S.Set(SettingsSchema.SprintRefillSeconds, 120, SettingSources.File);
+                var body = new FakeSprintBody();
+                var logic = NewSprintLogic(body);
+                var stats = logic.SprintStats;
+                LogHas("charge use 100% / keep 0%, advance use 50% / keep 0%, move use 20% / keep 70%");
+                double t = 19000;
+                void Tick(float dt = 0.1f)
+                {
+                    t += dt;
+                    logic.TickSprint(dt, t, Rules);
+                }
+                void Order(int slot, BraceOrderKind kind)
+                {
+                    body.Orders[slot] = kind;
+                    t += 0.3;
+                    Tick();
+                }
+                void RunOut(TrackedAgent m)
+                {
+                    for (int i = 0; i < 60 && m.Sprint.Active; i++) Tick();
+                }
+
+                // shock troops (slot 5): three 100-point men = 5 s stores; an advance man (slot 6)
+                var men = new List<TrackedAgent>();
+                for (int i = 0; i < 3; i++)
+                {
+                    var st = logic.Track(FakeAgent(1101 + i))!;
+                    st.AthleticsSkill = 100;
+                    body.Slots[1101 + i] = 5;
+                    body.Speeds[1101 + i] = 3.5f;
+                    men.Add(st);
+                }
+                var adv = logic.Track(FakeAgent(1110))!;
+                adv.AthleticsSkill = 100;
+                body.Slots[1110] = 6;
+                body.Speeds[1110] = 3.5f;
+                body.Orders[5] = BraceOrderKind.Stop;
+                body.Orders[6] = BraceOrderKind.Stop;
+                t += 0.3;
+                Tick();
+                var a = men[0];
+                Check(Near(a.Sprint.Stored, 5.0), "a 100-point man does not store 5 s: " + a.Sprint.Stored);
+
+                // a MOVE from full: 20% of 5 s = 1 s, 80% left
+                Order(5, BraceOrderKind.Move);
+                Check(men.TrueForAll(m => m.Sprint.Active && m.Sprint.Order == SprintOrder.Move && Near(m.Sprint.Length, 1.0)), "a move from full is not 1 s: " + a.Sprint.Length);
+                LogHas(" s: formation slot 5 Stop → Move (move: its AI men on foot sprint min(20% of their full store, what they hold above a 70% reserve))");
+                RunOut(a);
+                Check(!a.Sprint.Active && NearTo(a.Sprint.Stored, 4.0, 0.05) && stats.AiStarted(SprintOrder.Move) == 3, "the move did not leave 80%: " + a.Sprint.Stored);
+
+                // a second move right after (hold, then move again): only down to the 70% reserve - 0.5 s
+                Order(5, BraceOrderKind.Stop);
+                Order(5, BraceOrderKind.Move);
+                Check(a.Sprint.Active && NearTo(a.Sprint.Length, a.Sprint.StoredAtStart - 3.5, 1e-6) && NearTo(a.Sprint.Length, 0.5, 0.05),
+                    "the second move is not down to the reserve: T " + a.Sprint.Length + " from " + a.Sprint.StoredAtStart);
+                RunOut(a);
+                Check(NearTo(a.Sprint.Stored, 3.5, 0.03), "the second move did not stop at 70%: " + a.Sprint.Stored);
+
+                // a third move: nothing above the reserve - no sprint, counted
+                Order(5, BraceOrderKind.Stop);
+                Order(5, BraceOrderKind.Move);
+                Check(men.TrueForAll(m => !m.Sprint.Active) && stats.AiReserveKept(SprintOrder.Move) == 3, "a third move sprinted into the reserve: kept " + stats.AiReserveKept(SprintOrder.Move));
+                LogHas("[sprint] first AI sprint held back by a reserve this battle: ");
+                LogHas(" on a new move order - stored 3.5");
+                LogHas("move use 20% / keep 70% - nothing above the reserve, no sprint (it stays for the next order)");
+
+                // the REAL charge: everything that is left
+                Order(5, BraceOrderKind.Charge);
+                Check(men.TrueForAll(m => m.Sprint.Active && m.Sprint.Order == SprintOrder.Charge && NearTo(m.Sprint.Length, m.Sprint.StoredAtStart, 1e-6) && NearTo(m.Sprint.Length, 3.5, 0.05)),
+                    "the charge did not sprint the reserve: T " + a.Sprint.Length);
+                RunOut(a);
+
+                // an ADVANCE from full: 2.5 s, half left
+                Order(6, BraceOrderKind.Advance);
+                Check(adv.Sprint.Active && adv.Sprint.Order == SprintOrder.Advance && Near(adv.Sprint.Length, 2.5), "an advance from full is not 2.5 s: " + adv.Sprint.Length);
+                RunOut(adv);
+                Check(NearTo(adv.Sprint.Stored, 2.5, 0.05), "the advance did not keep half: " + adv.Sprint.Stored);
+
+                // live: the move's keep to 0 in MCM - the next move sprints again
+                S.Set(SettingsSchema.SprintAiMoveKeepPercent, 0, SettingSources.Mcm);
+                logic.ApplySettingsChange(S);
+                LogHas("move use 20% / keep 0%");
+                Order(6, BraceOrderKind.Stop);
+                Order(6, BraceOrderKind.Move);
+                Check(adv.Sprint.Active && Near(adv.Sprint.Length, 1.0), "the live keep 0 did not let a move sprint 1 s: " + adv.Sprint.Length);
+                RunOut(adv);
+                S.Set(SettingsSchema.SprintAiMoveKeepPercent, 70, SettingSources.Mcm);
+                logic.ApplySettingsChange(S);
+
+                // the master switch: an order given while off starts nothing
+                S.Set(SettingsSchema.ModEnabled, false, SettingSources.Mcm);
+                Tick();
+                Order(6, BraceOrderKind.Charge);
+                Check(!adv.Sprint.Active, "a charge sprinted with the mod off");
+                S.Set(SettingsSchema.ModEnabled, true, SettingSources.Mcm);
+                Tick();
+                Tick();
+                Check(logic.SprintingNow == 0, "a sprint started after the master switch came back");
+
+                // the summary
+                CallPrivate(logic, "CloseSprints");
+                CallPrivate(logic, "WriteSprintSummary");
+                LogHas("[summary] sprint - AI: new orders seen - charge 1, advance 1, move 4, other ");
+                LogHas("; sprints - charge (use 100% / keep 0%) 3 men (");
+                LogHas("advance (use 50% / keep 0%) 1 men (2.5 s in all, avg 2.50 s), move (use 20% / keep 70%) 7 men (");
+                LogHas("; not sprinted: reserve kept 3 (charge 0, advance 0, move 3), less than 0.2 s or empty: charge 0, advance 0, move 0");
             }
             finally
             {
