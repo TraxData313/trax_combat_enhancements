@@ -989,7 +989,8 @@
 
 - [x] 30. Tired AI blocks in a random direction (Anton, 2026-10-12, the tournament 1v1 where the exhausted AI blocked ~95%:
   "the more exhausted an AI man is, the more his block direction is random"). RESEARCH FIRST (RESEARCH §M, decompiled with
-  ilspycmd 9.1 into %TEMP% - the ..eference copy is not on this PC): the guard direction is four MovementControlFlag bits
+  ilspycmd 9.1 into %TEMP% - the ..
+eference copy is not on this PC): the guard direction is four MovementControlFlag bits
   (the player's guard is only those bits; auto-block mirrors the attacker's direction); the AI's pass OnAIInputSet, but
   whether its own decision is in that word is native - and the game ALREADY has the lever per agent,
   AiRandomizedDefendDirectionChance (DrivenProperty 40) = 1 - (AI level)^3 from SetAiRelatedProperties, recomputed on every
@@ -1009,3 +1010,22 @@
   TiredBlockCostStaysFlat: 1000 tired men block + recompute ~0.1 us a blow, 0 bytes; the older steps pin the setting 0 in
   AthleticsDefaults). deploy.ps1 green, INSTALLED. Docs: AI_NOTES "Step 30", PLAYTEST D8 step 5 + L6e, CLAUDE.md, README and
   the Workshop text one clause each (6916 bytes). (2026.10.12 11.20.12)
+- [x] 31. Player-facing docs (Anton 2026-10-12: "waaay too long"; the idea first - slower combat where timing, rest and
+  defence/attack matter, fresh shock troops into tired lines - then a glance at how, then tables for the curious). NEW
+  docs/HOW-IT-WORKS.md, the player guide in 14 sections, every number computed from defaults.json through Core's rules
+  (a scratch script, not in the repo): pool and attacks per bar by skill for soldier / hero / hero party leader; tiredness
+  by bar level 100/75/60/50/30/15/0 (pause after a 0.8 s swing - Anton's logs' D avg, not the brief's 0.9 -, animation,
+  attack rate, run, best roll, the tired AI's random-pick share); refill times by effort (60 / 80 / 120 s); block costs and
+  which stop the refill + step 29's "does a parrying empty man climb" (net points a minute by pool and rank); tired block
+  guesses (skilled fighter: w and 0.75 w wrong for a parry, shields forgiving - a wrong-side block; recruits already guess
+  in vanilla); brace floors / targets per order with the +-10 / 20+-5 rolls and a worked example (64% -> 81%); step back
+  by bar; pace (fresh shield man +0.77 s, ~23 swings a minute vs 33); damage (an average 100 hit lands 38-113 / 38-94 /
+  38-75, mean 75 / 66 / 56); heroes and the hideout refill; HUD colours in bar % and the ready colours; tactics; setting
+  names only in small print. tools/STEAM-DESCRIPTION.bbcode rewritten short (6916 -> 3042 bytes): hook, 5 idea bullets,
+  "How it works, at a glance", the guide's absolute GitHub link, "Good to know" (not an overhaul, MCM optional, v1.4.8,
+  RBM named politely), issues + log, credits, licence; the FAQ / removal / long sections went (the guide covers them).
+  README.md the same shape (screenshot 01, Workshop + release links kept, the guide linked, a developers' fold with DESIGN /
+  RESEARCH / BATTLE_PACING / PLAYTEST / REVIEW). docs/BATTLE_PACING.md kept as developer research, a note at its top points
+  players to the guide. CLAUDE.md layout (the guide, BATTLE_PACING, the byte count), WORKSHOP-UPLOAD.md's size note. No
+  code; tests 514 green. Nothing uploaded - the Workshop page changes only when Anton pastes it or the next update sends it.
+  (2026.10.12 11.25.32)
