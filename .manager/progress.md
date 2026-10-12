@@ -13,4 +13,6 @@ Board = TASKS_TODO.md BUILD ORDER 28-30 (project manager protocol in CLAUDE.md).
 
 ## Notes
 - Release: fixes collect in main; version / upload = Anton's call later.
-- 28 done (6f2ffc6..83fd903): BraceFloorNoFormationPercent 20, BraceFloorSpreadPercent 10 (own dice, live). 487 tests, smoke 69. Assumes tournament men read as "no formation" (PLAYTEST D8 checks). Deploy needs -GameFolder "C:\Program Files (x86)\Steam\steamapps\common\Mount & Blade II Bannerlord" -McmBinFolder "C:\Program Files (x86)\Steam\steamapps\workshop\content±550859238197in\Win64_Shipping_Client" (scripts default to D:).
+- 28 done (6f2ffc6..83fd903): BraceFloorNoFormationPercent 20, BraceFloorSpreadPercent 10 (own dice, live). 487 tests, smoke 69. Assumes tournament men read as "no formation" (PLAYTEST D8 checks).
+- Deploy on this PC (scripts default to D:, which does not exist):
+  powershell -ExecutionPolicy Bypass -File tools\deploy.ps1 -GameFolder "C:\Program Files (x86)\Steam\steamapps\common\Mount & Blade II Bannerlord" -McmBinFolder "C:\Program Files (x86)\Steam\steamapps\workshop\content\261550\2859238197\bin\Win64_Shipping_Client"
