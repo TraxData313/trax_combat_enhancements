@@ -25,6 +25,9 @@ namespace TraxCombat.Hud
         private string _secondsText = string.Empty;
         private bool _secondsShown;
         private bool _flashOn;
+        private string _labelText = AttackTimerMath.RecoveryLabelText;
+        private int _labelStored = -1;
+        private int _labelCap = -1;
 
         /// <summary>The live layout: its own length and thickness, lined up with your Athletics bar's right
         /// end, RecoveryBarOffsetAbove over its row (UI pixels; the game's UI scale applies).</summary>
@@ -44,6 +47,35 @@ namespace TraxCombat.Hud
             SecondsText = secondsText;
             SecondsShown = secondsText.Length > 0;
             FlashOn = flash;
+        }
+
+        /// <summary>Step 32: the label - "Swings 4/8" with the swing stack on (rebuilt only when the count or the cap moves),
+        /// "Attack recovery" with it off.</summary>
+        internal void SetCount(bool stackOn, int stored, int cap)
+        {
+            if (!stackOn)
+            {
+                _labelStored = _labelCap = -1;
+                LabelText = AttackTimerMath.RecoveryLabelText;
+                return;
+            }
+            if (stored == _labelStored && cap == _labelCap) return;
+            _labelStored = stored;
+            _labelCap = cap;
+            LabelText = SwingStackMath.LabelWord + " " + SwingStackMath.CountText(stored, cap);
+        }
+
+        /// <summary>The words left of the bar: "Attack recovery", or step 32's "Swings 4/8".</summary>
+        [DataSourceProperty]
+        public string LabelText
+        {
+            get => _labelText;
+            set
+            {
+                if (value == _labelText) return;
+                _labelText = value;
+                OnPropertyChangedWithValue(value, nameof(LabelText));
+            }
         }
 
         /// <summary>The row is drawn (false until the first reading).</summary>

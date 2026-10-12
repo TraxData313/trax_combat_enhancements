@@ -38,6 +38,12 @@ namespace TraxCombat.Missions
         /// <summary>Step 23, refreshed by the brace poll: his shield is in his other hand (BraceRaiseShield keeps it up).</summary>
         public bool BraceShieldInHand;
 
+        /// <summary>Step 32: while the timer holds him for the swing stack (KicksUseSwings), his kick is taken out too.</summary>
+        public bool HoldKicks;
+
+        /// <summary>Step 32: input frames whose kick the hook took out (the summary sums them).</summary>
+        public long KicksCleared;
+
         /// <summary>Any wish at all - a man is held while ANY of them wants him held (one ending never lifts another).</summary>
         public bool Active => HoldAttacks || StepHoldAttacks || Backpedal || BraceHoldAttacks;
 
@@ -124,6 +130,11 @@ namespace TraxCombat.Missions
                     return;
                 }
                 uint flags = (uint)movementFlag;
+                if (s.HoldKicks && s.HoldAttacks)
+                {
+                    uint ev = (uint)eventFlag;
+                    if (AiInputHook.HoldKick(s, ref ev)) eventFlag = (Agent.EventControlFlag)ev;
+                }
                 float vx = inputVector.x, vy = inputVector.y;
                 AiInputHook.Apply(_st, s, settings.AiHoldRaiseGuard, ref flags, ref vx, ref vy, settings.BraceRaiseShield);
                 movementFlag = (Agent.MovementControlFlag)flags;
@@ -240,6 +251,7 @@ namespace TraxCombat.Missions
             var s = st.Input ??= new AiInputState();
             bool was = s.Active;
             s.HoldAttacks = on;
+            if (!on) s.HoldKicks = false;
             Account(s, was, now);
         }
 
@@ -268,13 +280,26 @@ namespace TraxCombat.Missions
             Account(s, was, now);
         }
 
+        /// <summary>The engine's kick event bit (<c>Agent.EventControlFlag.Kick</c>; the smoke checks it).</summary>
+        internal const uint KickEventBit = (uint)Agent.EventControlFlag.Kick;
+
+        /// <summary>Step 32: a held man's kick taken out of his event flags while he waits for a stored swing (managed - the smoke
+        /// drives it). True when it was there.</summary>
+        internal static bool HoldKick(AiInputState s, ref uint eventFlags)
+        {
+            if ((eventFlags & KickEventBit) == 0) return false;
+            eventFlags &= ~KickEventBit;
+            s.KicksCleared++;
+            return true;
+        }
+
         /// <summary>Every wish off at once (switched off, left the field, mission end).</summary>
         internal static void Clear(TrackedAgent st, double now)
         {
             var s = st.Input;
             if (s == null) return;
             bool was = s.Active;
-            s.HoldAttacks = s.StepHoldAttacks = s.Backpedal = s.BraceHoldAttacks = false;
+            s.HoldAttacks = s.StepHoldAttacks = s.Backpedal = s.BraceHoldAttacks = s.HoldKicks = false;
             Account(s, was, now);
         }
 

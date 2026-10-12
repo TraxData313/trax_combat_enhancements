@@ -3,9 +3,11 @@
     Trax Combat Enhancements - YOUR ATTACK RECOVERY BAR (step 13, DESIGN §3 - Anton: "above that bar add
     a bar 'attack recovery' that empties when I attack and until it fills I can't attack; inside it add
     the secs delay added").
-    Just above your Athletics bar, its right end lined up with it: the words "Attack recovery" and a slim
+    Just above your Athletics bar, its right end lined up with it: the words (@LabelText - "Attack recovery",
+    or step 32's swing stack count "Swings 4/8") and a slim
     bar. Inside the bar, bottom to top: the dark inside, the fill (@Fill - empty at your attack, filling
-    over your no-attack pause, full otherwise; amber while refilling, steel when full), the seconds left
+    over your no-attack pause, full otherwise; amber while refilling, steel when full - step 32: with the swing
+    stack on, the refill toward your NEXT stored swing, full at the cap), the seconds left
     centred on it (@SecondsText, "1.3 s", only while the pause runs), and the flash overlay (@FlashOn -
     two quick pulses when you press attack too early).
     Data: Hud\AttackRecoveryVM.cs. Every @binding's VM property has EXACTLY the widget property's type
@@ -22,7 +24,7 @@
         <ListPanel Id="Row" WidthSizePolicy="CoverChildren" HeightSizePolicy="CoverChildren" HorizontalAlignment="Right" VerticalAlignment="Bottom" MarginRight="@OffsetRight" MarginBottom="@OffsetBottom" StackLayout.LayoutMethod="HorizontalLeftToRight" IsVisible="@IsShown" DoNotAcceptEvents="true">
           <Children>
 
-            <TextWidget Id="Label" WidthSizePolicy="CoverChildren" HeightSizePolicy="CoverChildren" VerticalAlignment="Center" MarginRight="8" Brush="AgentHUD.Interaction.Text" Brush.FontSize="15" Brush.FontColor="#BDBDBDFF" Text="Attack recovery" DoNotAcceptEvents="true" />
+            <TextWidget Id="Label" WidthSizePolicy="CoverChildren" HeightSizePolicy="CoverChildren" VerticalAlignment="Center" MarginRight="8" Brush="AgentHUD.Interaction.Text" Brush.FontSize="15" Brush.FontColor="#BDBDBDFF" Text="@LabelText" DoNotAcceptEvents="true" />
 
             <!-- the bar: a thin light frame -->
             <Widget Id="Bar" WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="@BarWidth" SuggestedHeight="@BarHeight" VerticalAlignment="Center" Sprite="BlankWhiteSquare_9" Color="#C8C8C8B4" DoNotAcceptEvents="true">

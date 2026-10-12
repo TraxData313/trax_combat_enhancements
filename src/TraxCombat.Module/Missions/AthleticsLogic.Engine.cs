@@ -153,6 +153,7 @@ namespace TraxCombat.Missions
                   + ", not ours - the speed penalties will NOT apply (another mod registered after us?)");
             StartStepBacks();
             StartAttackRate();
+            StartSwingStack(); // step 32
             StartBrace(); // step 23
             StartTiredBlock(); // step 30
         }
@@ -323,6 +324,7 @@ namespace TraxCombat.Missions
             PaceLeftField(st);
             BraceLeftField(st); // step 23
             PlayerTimerLeftField(st);
+            StackLeftField(st); // step 32: his running burst counted
             RemoveFromLoop(st);
         }
 
@@ -559,6 +561,7 @@ namespace TraxCombat.Missions
             int prev = st.PrevAction;
             st.PrevAction = action;
             st.AttackEndedNow = false;
+            if (r.Enabled) StackOnAction(st, now, in r); // step 32: the swing stack's clock up to now, in the phase he was in
             PhasesOnAction(st, action, now, in r);
             if (prev == ActionReleaseMelee) EndRelease(st, now, in r, action);
             if (st.AttackEndedNow)
@@ -571,6 +574,7 @@ namespace TraxCombat.Missions
                 case ActionReleaseMelee:
                     ReadAttackClass(st, melee: true, throwing: false); // step 21: the class from what he holds (AI only)
                     NoteBraceRelease(st, melee: true);                 // step 23: a bracing man's melee attack (should not happen)
+                    if (r.Enabled) SpendSwing(st, now, in r, kick: false); // step 32: the swing spends a stored one (before its charge)
                     StartRelease(st, now, in r);
                     PlayerAttackStarting(st, now, AttackKind.Melee, in r);
                     break;
@@ -579,6 +583,7 @@ namespace TraxCombat.Missions
                     ReadAttackClass(st, melee: false, throwing: action == ActionReleaseThrowing);
                     NoteBraceRelease(st, melee: false); // step 23: ranged goes on while bracing
                     _stats.RangedReleasesPolled++;
+                    if (r.Enabled) SpendSwing(st, now, in r, kick: false); // step 32: a loose / throw spends a stored swing
                     PlayerAttackStarting(st, now, AttackKind.Ranged, in r);
                     break;
             }
@@ -671,6 +676,7 @@ namespace TraxCombat.Missions
         /// </summary>
         private void ChargeKickOrBash(TrackedAgent st, KickBashKind kind, double now, in AthleticsRules r, bool mounted)
         {
+            if (r.Enabled) SpendSwing(st, now, in r, kick: true); // step 32: KicksUseSwings - one stored swing, whatever it costs
             var o = AthleticsMath.ChargeKickOrBash(st, in r, now);
             if (!o.Charged)
             {
@@ -747,6 +753,7 @@ namespace TraxCombat.Missions
         {
             float prevAttack = st.SpeedMultiplier, prevRun = st.RunSpeedMultiplier;
             RetargetSpeed(st, in r);
+            StackClamp(st, in r); // step 32: his points dropped - the stored swings follow the new cap
             if (o.LeftPeak)
             {
                 _stats.PeakLeft++;
@@ -1015,6 +1022,7 @@ namespace TraxCombat.Missions
                 NoteRateSettings(settings);     // step 5e: the A/B switches (AI decisions re-applied)
                 NoteBraceSettings(settings);    // step 23: the floors / margins line (applied at every man's next look)
                 NoteTiredBlockSettings(settings); // step 30: the tired-block line (everyone re-targeted below)
+                NoteStackSettings(settings);      // step 32: the swing stack's switch and numbers
 
                 if (r.PoolFloor != _seenPoolFloor || r.PoolPerSkill != _seenPoolPerSkill)
                 {
@@ -1097,12 +1105,15 @@ namespace TraxCombat.Missions
         private void RegenPass(double step, double now, in AthleticsRules r)
         {
             if (!r.Enabled) return;
+            var sr = SwingStackRules.From(TraxSettings.Shared); // step 32
+            var bp = BattlePaceRules.From(TraxSettings.Shared);
             for (int i = 0; i < _count; i++)
             {
                 var st = _dense[i];
                 try
                 {
                     CheckHealth(st, in r, now);
+                    if (sr.Enabled) StackRegenSample(st, now, step, in r, in sr, in bp); // step 32: the clock + the fill by f (managed)
                     double top = AthleticsMath.UsableFraction(in r, st);
                     if (st.Fraction >= top - AthleticsMath.Epsilon && !st.Exhausted) continue; // at his top: nothing to do, no native call
                     var a = st.Agent;

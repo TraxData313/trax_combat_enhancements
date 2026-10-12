@@ -143,6 +143,10 @@ namespace TraxCombat.Core
             M = m;
             FlashStartedAt = flashStartedAt;
             FlashLit = flashLit;
+            StackOn = false;
+            Stored = 0;
+            Cap = 0;
+            StackProgress = 1;
         }
 
         /// <summary>AttackRatePlayerTimer on (with the master switch and Athletics).</summary>
@@ -174,6 +178,7 @@ namespace TraxCombat.Core
         {
             get
             {
+                if (StackOn) return Stored >= Cap ? 1f : (float)StackProgress;
                 if (Running && Pause > 0) return (float)Math.Max(0.0, Math.Min(1.0, 1.0 - Remaining / Pause));
                 return InAttack ? 0f : 1f;
             }
@@ -183,7 +188,7 @@ namespace TraxCombat.Core
         public string SecondsText => Running ? AttackTimerMath.CountdownText(Remaining) : string.Empty;
 
         /// <summary>The bar is not full (it shows the recovering colour).</summary>
-        public bool Recovering => Running || InAttack;
+        public bool Recovering => StackOn ? Stored < Cap || Running || InAttack : Running || InAttack;
 
         public static AttackRecoveryReading From(PlayerAttackTimer t, double now, bool timerOn) =>
             new AttackRecoveryReading(timerOn, timerOn && t.InAttack, timerOn && t.Running, t.Remaining(now), t.Pause, t.Duration, t.M, t.FlashStartedAt, t.FlashLit(now));
@@ -191,6 +196,34 @@ namespace TraxCombat.Core
         /// <summary>No timer (not tracked as the one holding it, or switched off): full.</summary>
         public static AttackRecoveryReading Full(bool timerOn) =>
             new AttackRecoveryReading(timerOn, false, false, 0, 0, 0, 1f, double.NaN, false);
+
+        /// <summary>Step 32: this reading with the swing stack's state (the bar shows the count and the refill toward the next).</summary>
+        public AttackRecoveryReading WithStack(int stored, int cap, double progress) =>
+            new AttackRecoveryReading(this, true, stored, cap, progress);
+
+        private AttackRecoveryReading(in AttackRecoveryReading b, bool stackOn, int stored, int cap, double progress)
+            : this(b.TimerOn, b.InAttack, b.Running, b.Remaining, b.Pause, b.Duration, b.M, b.FlashStartedAt, b.FlashLit)
+        {
+            StackOn = stackOn;
+            Stored = stored < 0 ? 0 : stored > cap ? cap : stored;
+            Cap = cap;
+            StackProgress = double.IsNaN(progress) ? 0 : progress < 0 ? 0 : progress > 1 ? 1 : progress;
+        }
+
+        /// <summary>Step 32: the swing stack runs (the bar shows it).</summary>
+        public bool StackOn { get; }
+
+        /// <summary>Swings stored now (0..<see cref="Cap"/>).</summary>
+        public int Stored { get; }
+
+        /// <summary>The stack's size now.</summary>
+        public int Cap { get; }
+
+        /// <summary>The refill toward the next stored swing, 0..1 (1 at the cap).</summary>
+        public double StackProgress { get; }
+
+        /// <summary>"4/8" with the stack on, empty otherwise (allocates - the view caches it by <see cref="Stored"/> and <see cref="Cap"/>).</summary>
+        public string CountText => StackOn ? SwingStackMath.CountText(Stored, Cap) : string.Empty;
     }
 
     /// <summary>Why the player's hold ended before (or instead of) its countdown's natural end.</summary>
@@ -329,9 +362,16 @@ namespace TraxCombat.Core
         /// <see cref="AttackTimerMath.MinTimerSeconds"/>. <paramref name="endedEarlyHold"/>: a hold from the
         /// release's start ended here without a countdown (<see cref="PlayerTimerEnd.TooShort"/>).
         /// </summary>
-        public bool AttackEnded(double now, AttackKind kind, double duration, float m, out bool endedEarlyHold)
+        public bool AttackEnded(double now, AttackKind kind, double duration, float m, out bool endedEarlyHold) =>
+            AttackEnded(now, kind, duration, m, double.NaN, out endedEarlyHold);
+
+        /// <summary>
+        /// Step 32: the same with the countdown's length given (<paramref name="pauseOverride"/> - the swing stack's wait until
+        /// its next stored swing); NaN = step 13's D × (1/m − 1).
+        /// </summary>
+        public bool AttackEnded(double now, AttackKind kind, double duration, float m, double pauseOverride, out bool endedEarlyHold)
         {
-            double pause = AttackTimerMath.Pause(duration, m);
+            double pause = double.IsNaN(pauseOverride) ? AttackTimerMath.Pause(duration, m) : pauseOverride;
             Kind = kind;
             Duration = duration;
             M = m;
@@ -355,6 +395,39 @@ namespace TraxCombat.Core
             TimerEnd = now + pause;
             HeldAtEnd = false;
             return true;
+        }
+
+        /// <summary>
+        /// Step 32: a countdown of <paramref name="pause"/> seconds starting now with no attack ending here (the swing stack ran
+        /// empty on a kick or bash). False (nothing changed) when it is below <see cref="AttackTimerMath.MinTimerSeconds"/>.
+        /// </summary>
+        public bool StartCountdown(double now, double pause)
+        {
+            if (!AttackTimerMath.Worth(pause)) return false;
+            if (!Holding)
+            {
+                _baseline = true;
+                SwallowedThisHold = 0;
+            }
+            InAttack = false;
+            Running = true;
+            Pause = pause;
+            TimerStart = now;
+            TimerEnd = now + pause;
+            HeldAtEnd = false;
+            return true;
+        }
+
+        /// <summary>
+        /// Step 32: the running countdown now ends at <paramref name="end"/> (the swing stack's next stored swing moves as his m
+        /// does; <paramref name="end"/> ≤ now = it came back - the next gate frame ends the countdown). The pause becomes the
+        /// whole countdown so far, so the bar's share stays smooth. Nothing while no countdown runs.
+        /// </summary>
+        public void Retarget(double end)
+        {
+            if (!Running || double.IsNaN(end)) return;
+            TimerEnd = end;
+            Pause = Math.Max(0, TimerEnd - TimerStart);
         }
 
         /// <summary>

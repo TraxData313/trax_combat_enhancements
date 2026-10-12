@@ -235,6 +235,10 @@ namespace TraxCombat.Core
         public bool AiHoldRaiseGuard => GetBool(SettingsSchema.AiHoldRaiseGuard);
         public bool AttackRateAiDecisions => GetBool(SettingsSchema.AttackRateAiDecisions);
         public int AttackAnimationMinPercent => GetInt(SettingsSchema.AttackAnimationMinPercent);
+        public bool SwingStackEnabled => GetBool(SettingsSchema.SwingStackEnabled);
+        public int SwingStackPointsPerSwing => GetInt(SettingsSchema.SwingStackPointsPerSwing);
+        public int SwingStackMinimum => GetInt(SettingsSchema.SwingStackMinimum);
+        public bool KicksUseSwings => GetBool(SettingsSchema.KicksUseSwings);
         public float MinMoveSpeedMultiplier => GetFloat(SettingsSchema.MinMoveSpeedMultiplier);
         public float MountMinSpeedMultiplier => GetFloat(SettingsSchema.MountMinSpeedMultiplier);
         public bool DamageBonusFollowsAthletics => GetBool(SettingsSchema.DamageBonusFollowsAthletics);

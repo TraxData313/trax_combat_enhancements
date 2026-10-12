@@ -95,6 +95,16 @@ namespace TraxCombat.Missions
                 float m = AthleticsMath.AttackSpeedMultiplier(in r, st);
                 double rest = kind == AttackKind.Melee ? st.LastRestMelee : st.LastRestRanged;
                 double expected = AttackTimerMath.Pause(st.AttackDuration + Math.Max(0, rest), m);
+                var sr = SwingStackRules.From(TraxSettings.Shared);
+                if (sr.Enabled)
+                {
+                    // step 32: this release spent a stored swing (SpendSwing ran first) - a stored swing left = no hold at all
+                    // (the next attack may chain: that is the burst); none left = the hold from here until the next is back
+                    var bp = BattlePaceRules.From(TraxSettings.Shared);
+                    int cap = SwingStackMath.Cap(in sr, in r, st);
+                    if (st.Swings.Count(cap) > 0) return;
+                    expected = Math.Max(AttackTimerMath.MinTimerSeconds, st.Swings.SecondsToNext(StackRefillSeconds(st, in r, in bp), cap));
+                }
                 if (_playerTimer.AttackStarted(now, kind, expected))
                 {
                     _playerTimerOwner = st;
@@ -129,7 +139,25 @@ namespace TraxCombat.Missions
                 return;
             }
             bool earlyHold = _playerTimer.InAttack;
-            bool started = _playerTimer.AttackEnded(now, kind, d, m, out bool endedEarly);
+            double wait = double.NaN;
+            var sr = SwingStackRules.From(TraxSettings.Shared);
+            if (sr.Enabled)
+            {
+                // step 32: a stored swing left = no countdown (a hold from the release's start, if any, ends here); none = the
+                // countdown to the next stored swing (retargeted every gate frame - it follows your m)
+                var r = Rules;
+                var bp = BattlePaceRules.From(TraxSettings.Shared);
+                int cap = AdvanceStack(st, now, in r, in sr, in bp);
+                if (st.Swings.Count(cap) > 0)
+                {
+                    if (_playerTimer.InAttack) _playerTimer.Release();
+                    _playerStackWait = false;
+                    return;
+                }
+                wait = st.Swings.SecondsToNext(StackRefillSeconds(st, in r, in bp), cap);
+            }
+            bool started = _playerTimer.AttackEnded(now, kind, d, m, wait, out bool endedEarly);
+            _playerStackWait = started && !double.IsNaN(wait);
             _playerTimerOwner = st;
             if (endedEarly) _rateStats.PlayerEarlyHoldsTooShort++;
             if (!started) return;
@@ -150,7 +178,8 @@ namespace TraxCombat.Missions
                     + F2(st.CurrentWindUp) + " + " + (kind == AttackKind.Melee ? "swing " : "loose and reload ") + F2(Math.Max(0, d - st.CurrentWindUp)) + " = D " + F2(d)
                     + " s" + (st.EndedPlayed - d >= 0.005 ? " at full animation speed; played " + F2(st.EndedPlayed) + " s - the slower swing, not in the pause" : string.Empty)
                     + ") ended at attack speed x" + F2(m) + " (f " + F2(AthleticsMath.PeakShare(Rules, st)) + ") → no new attack for " + F2(pause)
-                    + " s = D x (1/m - 1), until " + Sec(_playerTimer.TimerEnd) + " s; the hold began " + (earlyHold ? "at your release's start (expected " + F2(_playerTimer.ExpectedPause) + " s)" : "at the attack's end")
+                    + (_playerStackWait ? " s - your swing stack is empty: the next stored swing comes back after that much time not attacking (D x (1/m - 1) at your current m)" : " s = D x (1/m - 1)")
+                    + ", until " + Sec(_playerTimer.TimerEnd) + " s; the hold began " + (earlyHold ? "at your release's start (expected " + F2(_playerTimer.ExpectedPause) + " s)" : "at the attack's end")
                     + "; your attack button does nothing until then (held, it attacks the moment it ends); blocking, kicks, moving and weapon switches stay free; the Attack recovery bar empties and refills over it");
             }
             else
@@ -238,6 +267,10 @@ namespace TraxCombat.Missions
                 // engine's shot, not your attack: let it through, your pause keeps counting (review R26)
                 var f = GateFrame(st, now, (flags & AttackMaskBits) != 0, a.IsUsingGameObject);
                 if (f.Clear) a.MovementFlags = (Agent.MovementControlFlag)(flags & ~AttackMaskBits);
+                // step 32 (KicksUseSwings): your kick key is an event flag the controller set this frame - out while no swing is stored
+                uint ev = (uint)a.EventControlFlags;
+                if ((ev & AiInputHook.KickEventBit) != 0 && KickGate(st, now, true, a.MountAgent != null))
+                    a.EventControlFlags = (Agent.EventControlFlag)(ev & ~AiInputHook.KickEventBit);
             }
             catch (Exception e)
             {
@@ -252,6 +285,7 @@ namespace TraxCombat.Missions
         /// bits are not his attack then: never cleared, never a swallowed press; the countdown runs on (R26).</summary>
         internal PlayerGateFrame GateFrame(TrackedAgent st, double now, bool pressing, bool usingObject = false)
         {
+            RetargetPlayerWait(st, now); // step 32: a swing-stack countdown ends when your next stored swing is back
             var f = _playerTimer.Frame(now, pressing && !usingObject);
             if (f.Ended) PlayerCountdownEnded(now, f.HeldAtEnd);
             if (!f.Swallowed) return f;
@@ -277,6 +311,13 @@ namespace TraxCombat.Missions
         private void PlayerCountdownEnded(double now, bool held)
         {
             _firedPending = held;
+            if (_playerStackWait)
+            {
+                // step 32: the wait for a stored swing is over - the swing you attack with next is "after waiting"
+                _playerStackWait = false;
+                _stackStats.AddWait(true, now - _playerTimer.TimerStart);
+                _playerTimerOwner?.Swings.MarkWaited();
+            }
             if (!_firstPlayerEndLogged)
             {
                 _firstPlayerEndLogged = true;
@@ -313,7 +354,16 @@ namespace TraxCombat.Missions
         /// never ended (it is not running) is ended here so the recovery bar cannot stick.</summary>
         internal void TickPlayerTimer(double now)
         {
-            if (!_playerTimer.Holding) return;
+            if (!_playerTimer.Holding)
+            {
+                // step 32's safety net: your stack is empty and no wait runs (a kick spent the last swing in a path that could
+                // not start it) - start it now
+                var p = _player;
+                if (p != null && !p.Removed && IsPlayer(p) && SwingStackRules.From(TraxSettings.Shared).Enabled && p.Swings.Stored == 0)
+                    PlayerStackHoldIfEmpty(p, now, Rules);
+                return;
+            }
+            if (_playerStackWait && _playerTimerOwner != null) RetargetPlayerWait(_playerTimerOwner, now);
             if (!AttackRateRules.From(TraxSettings.Shared).PlayerTimerOn)
             {
                 ReleasePlayerTimer(PlayerTimerEnd.SwitchedOff, now);
@@ -338,6 +388,7 @@ namespace TraxCombat.Missions
         /// <summary>Ends your hold at once (switched off, not you, the gate failed). Logged, counted.</summary>
         private void ReleasePlayerTimer(PlayerTimerEnd why, double now)
         {
+            _playerStackWait = false;
             if (!_playerTimer.Release()) return;
             _rateStats.AddPlayerEnd(why);
             // not you any more (another fighter, or the AI drives him - R25): the pause was never served, so the next
@@ -352,6 +403,7 @@ namespace TraxCombat.Missions
         /// simply stops clearing).</summary>
         private void ClosePlayerTimer(double now)
         {
+            _playerStackWait = false;
             if (!_playerTimer.Holding) return;
             _rateStats.PlayerHeldAtMissionEnd++;
             _rateStats.AddPlayerEnd(PlayerTimerEnd.MissionEnd);
@@ -378,6 +430,15 @@ namespace TraxCombat.Missions
             reading = on && ReferenceEquals(logic._playerTimerOwner, st)
                 ? AttackRecoveryReading.From(logic._playerTimer, now, on)
                 : AttackRecoveryReading.Full(on);
+            var sr = SwingStackRules.From(TraxSettings.Shared);
+            if (on && sr.Enabled)
+            {
+                // step 32: the count and the refill toward the next stored swing (projected to now - no clock moved here)
+                var r = Rules;
+                var bp = BattlePaceRules.From(TraxSettings.Shared);
+                int cap = SwingStackMath.Cap(in sr, in r, st);
+                reading = reading.WithStack(st.Swings.Count(cap), cap, st.Swings.ProgressAt(now, logic.StackRefillSeconds(st, in r, in bp), cap, StackAttacking(st)));
+            }
             return true;
         }
     }

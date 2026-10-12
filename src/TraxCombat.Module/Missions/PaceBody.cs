@@ -63,6 +63,9 @@ namespace TraxCombat.Missions
         /// <summary>A NoAttack hold waiting for a SCRIPTED step back to end (its frame owns the flag word).</summary>
         public bool Deferred;
 
+        /// <summary>Step 32: a swing-stack wait - it ends when his next stored swing comes back (Until is the estimate).</summary>
+        public bool StackWait;
+
         /// <summary>The input hook's call count when the hold started - none by its end = the engine never called us.</summary>
         public long CallsAtStart;
 

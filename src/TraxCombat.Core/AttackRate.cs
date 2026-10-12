@@ -48,7 +48,10 @@ namespace TraxCombat.Core
         /// <summary>The timer came out below <see cref="AttackTimerMath.MinTimerSeconds"/>.</summary>
         NotNeeded = 4,
 
-        Count = 5,
+        /// <summary>Step 32: a stored swing was left (the swing stack) - no wait needed.</summary>
+        FromStack = 5,
+
+        Count = 6,
     }
 
     /// <summary>Why a queued hold was not started by the tick (step 5e).</summary>

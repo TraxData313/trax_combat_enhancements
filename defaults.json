@@ -208,6 +208,32 @@
   // (range 5 to 100)
   "AttackAnimationMinPercent": 85,
 
+  // On: every fighter stores swings - one per 20 Athletics points he has now (see below), never
+  // fewer than 2. Each attack spends one and needs no wait while one is left; with none left he
+  // waits out the pause as before. One comes back per pause length while he is not attacking,
+  // so he attacks just as often on average - but he can save swings up and strike several in a
+  // row. Your Attack recovery bar shows the count. Off: the pause after every attack below the
+  // peak line (the old way).
+  // (true or false)
+  "SwingStackEnabled": true,
+
+  // The swing stack holds his CURRENT Athletics points divided by this, rounded (7.5 makes 8):
+  // a full 150 bar holds 8, half of it 4, a full 50 bar 3. Lower = more stored swings.
+  // (range 5 to 100)
+  "SwingStackPointsPerSwing": 20,
+
+  // The swing stack never holds fewer places than this, however low his Athletics - even empty
+  // he can save up this many swings.
+  // (range 1 to 10)
+  "SwingStackMinimum": 2,
+
+  // On (with the swing stack): a kick or a shield bash spends a stored swing like an attack,
+  // and with none left it cannot start - your kick key does nothing until one is back. It still
+  // never starts a pause by itself. Off: kicks and bashes are free of the stack (they still
+  // cost their Athletics).
+  // (true or false)
+  "KicksUseSwings": true,
+
   // Top speed on foot of a fighter with an empty bar, times his normal top speed. From the peak
   // line down to empty it falls in a straight line, so fresh men overtake tired ones. 1.0 =
   // tired men run as fast as fresh ones.

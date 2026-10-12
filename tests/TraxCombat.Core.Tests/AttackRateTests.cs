@@ -321,7 +321,7 @@ public class AttackRateTests
         Assert.Contains(lines, l => l.StartsWith("attack rate - AI timer ends: time up 1, an attack started anyway 1 (must be about 0 - the hold stops attacks),", StringComparison.Ordinal)
                                     && l.Contains("| lifted by us 1, NoAttack already cleared by the game 0, a game job on him at the end (left alone, cleared once free: 1, of them under a long scripted frame: 0) 1, still held at mission end 0")
                                     && l.EndsWith("| the next ready came avg 0.30 s after a hold ended (n 2) - the AI's own re-decision after the hold lifts (NoAttack cost 1-3 s; by input he readies at once if he still wants to)", StringComparison.Ordinal));
-        Assert.Contains(lines, l => l.Contains(", the attack's length not measured 1, covered by a scripted step back (a NoAttack hold waiting for the step to end whose time ran out first) 0 |"));
+        Assert.Contains(lines, l => l.Contains(", the attack's length not measured 1, covered by a scripted step back (a NoAttack hold waiting for the step to end whose time ran out first) 0, a stored swing left (step 32's swing stack) 0 |"));
         Assert.Contains("attack rate - guard by f (melee hits on fighters on foot that were blocked or parried; blocking is never slowed - tired men must not block less): peak (f 1) 40% (n 10) | f 0.5-1 n/a (n 0) | f below 0.5 n/a (n 0) | empty (f 0) 50% (n 4) | while held by the AI timer 50% (n 4)", lines);
     }
 

@@ -187,7 +187,8 @@ namespace TraxCombat.Missions
                 var o = AthleticsMath.FreshStart(st, in r, _freshHealth[i]);
                 _hideout.AddRefill(in o, IsPlayer(st));
                 ReleaseForFreshStart(st, now);
-                ResetPhases(st);                   // nothing measured spans the fresh start (a cycle, a timer's gap)
+                ResetPhases(st);                   // nothing measured spans the fresh start (a cycle, a timer's gap); step 32: the swing stack full
+                _stackStats.FreshStarts++;
                 RetargetSpeed(st, in r, exact: true); // full speed back at once (applied by the tick, within its budget)
             }
             _freshSide.Clear();

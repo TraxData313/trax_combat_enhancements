@@ -41,6 +41,8 @@ namespace TraxCombat.Hud
         private double _fillingSeconds;
         private bool _firstPauseLogged;
         private bool _firstFlashLogged;
+        private bool _firstEmptyShownLogged;
+        private int _lowestStored = -1;
 
         public AttackRecoveryView()
             : base("recovery bar", Movie, SettingsSchema.ShowAttackRecoveryBar)
@@ -102,7 +104,18 @@ namespace TraxCombat.Hud
             }
             bool flash = r.FlashLit && TraxSettings.Shared.FlashBarOnEarlyAttack;
             vm.SetRecovery(r.Share, r.Recovering, r.SecondsText, flash);
+            vm.SetCount(r.StackOn, r.Stored, r.Cap); // step 32: "Swings 4/8"
             vm.IsShown = true;
+            if (r.StackOn)
+            {
+                if (r.Stored < _lowestStored || _lowestStored < 0) _lowestStored = r.Stored;
+                if (r.Stored == 0 && !_firstEmptyShownLogged)
+                {
+                    _firstEmptyShownLogged = true;
+                    TraxLog.Limited("hud", "recovery bar: first empty swing stack shown at " + S1(f.Now) + " s - \"" + SwingStackMath.LabelWord + " 0/" + r.Cap
+                        + "\", the bar filling toward your next stored swing" + (r.Running ? ", \"" + r.SecondsText + "\" inside it" : string.Empty), "hud-recovery");
+                }
+            }
 
             if (r.Running && !_wasRunning)
             {
@@ -143,9 +156,10 @@ namespace TraxCombat.Hud
                 vm.IsShown = false;
                 return false;
             }
+            vm.SetCount(r.StackOn, r.Stored, r.Cap);
             if (first)
             {
-                TraxLog.Limited("hud", "recovery bar: first values pushed at " + S1(f.Now) + " s - " + (r.Recovering ? "refilling, " + F2(r.Share) + " of it" : "full (no pause running)")
+                TraxLog.Limited("hud", "recovery bar: first values pushed at " + S1(f.Now) + " s - " + (r.StackOn ? "swing stack " + r.CountText + ", " : string.Empty) + (r.Recovering ? "refilling, " + F2(r.Share) + " of it" : "full (no pause running)")
                     + "; bar " + s.RecoveryBarWidth + " x " + s.RecoveryBarHeight + " px, " + s.PlayerBarOffsetRight + " px from the right edge and "
                     + (s.PlayerBarOffsetBottom + s.RecoveryBarOffsetAbove) + " px from the bottom (your Athletics bar's row " + s.PlayerBarOffsetBottom + " + "
                     + s.RecoveryBarOffsetAbove + "; UI pixels - the game's UI scale applies); flash on an early attack " + (s.FlashBarOnEarlyAttack ? "on" : "off"), "hud-recovery");
@@ -158,7 +172,7 @@ namespace TraxCombat.Hud
             var s = TraxSettings.Shared;
             lines.Add("hud: recovery bar - pauses shown " + _pausesShown + (_pausesShown > 0 ? " (avg " + F2(_pauseSum / _pausesShown) + " s, longest " + F2(_pauseMax) + " s)" : string.Empty)
                       + ", " + F1(_fillingSeconds) + " s on screen not full; flashes shown " + _flashesShown + " (FlashBarOnEarlyAttack " + (s.FlashBarOnEarlyAttack ? "on" : "off")
-                      + " at the end) - your pauses and swallowed presses are in the attack rate lines");
+                      + " at the end)" + (_lowestStored >= 0 ? "; swing stack shown, fewest stored " + _lowestStored : string.Empty) + " - your pauses and swallowed presses are in the attack rate lines");
         }
 
         private static string F1(double v) => v.ToString("0.0", CultureInfo.InvariantCulture);

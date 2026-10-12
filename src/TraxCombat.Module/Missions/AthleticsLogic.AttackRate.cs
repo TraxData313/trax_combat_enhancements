@@ -356,6 +356,7 @@ namespace TraxCombat.Missions
             st.AttackEndedNow = false;
             st.TimerPending = false;
             st.PaceLastValid = false; // step 21: no class cycle spans it either
+            st.Swings.FillUp();       // step 32: a fresh start fills the swing stack too
         }
 
         /// <summary>
@@ -394,6 +395,7 @@ namespace TraxCombat.Missions
                 int bin = AthleticsMath.PeakBin(AthleticsMath.PeakShare(in r, st));
                 if (known)
                 {
+                    if (d > 0) st.StackD = d; // step 32: the swing stack's refill is timed by his last measured attack
                     double rest = d - st.CurrentWindUp;
                     if (rest > 0)
                     {
@@ -462,7 +464,10 @@ namespace TraxCombat.Missions
                     return;
                 }
                 var plan = BattlePaceMath.Plan(in bp, cls, known ? d : double.NaN, m);
-                string? why = AskPause(st, now, kind, d, known, m, bin, next, in plan);
+                var sr = SwingStackRules.From(s);
+                string? why = sr.Enabled
+                    ? AskStackPause(st, now, kind, d, known, m, bin, next, in plan, Rules, in sr, in bp) // step 32: held only with no stored swing
+                    : AskPause(st, now, kind, d, known, m, bin, next, in plan);
                 SetPaceModel(st, in bp, in plan, known, paused: why == null);
                 if (why != null) _paceStats.AddNoPause(cls);
                 FirstOfClass(st, cls, now, in plan, in bp, why);
@@ -477,9 +482,11 @@ namespace TraxCombat.Missions
         /// The timer's decision (steps 13 / 16, + step 21's share in <paramref name="plan"/>): null = asked (queued for the tick),
         /// else why not (a literal - the first line of each class names it).
         /// </summary>
-        private string? AskPause(TrackedAgent st, double now, AttackKind kind, double d, bool known, float m, int bin, int next, in PacePlan plan)
+        private string? AskPause(TrackedAgent st, double now, AttackKind kind, double d, bool known, float m, int bin, int next, in PacePlan plan,
+            double stackWait = double.NaN)
         {
-            if (m >= 1f && !plan.HasExtra)
+            bool stack = !double.IsNaN(stackWait); // step 32: the swing stack's wait until his next stored swing
+            if (!stack && m >= 1f && !plan.HasExtra)
             {
                 _rateStats.AddNotHeld(PaceNotHeld.FullStrength);
                 return "no pause - at full strength, and no battle-pace share (none for this class, or its setting at 0)";
@@ -500,12 +507,12 @@ namespace TraxCombat.Missions
                 _rateStats.AddNotHeld(PaceNotHeld.AlreadyReadied);
                 return "no pause - his next attack was already readied (a chained blow)";
             }
-            if (!known)
+            if (!known && !stack)
             {
                 _rateStats.AddNotHeld(PaceNotHeld.NoDuration);
                 return "no pause - the attack's length was not measured";
             }
-            double pause = plan.Total;
+            double pause = stack ? stackWait : plan.Total;
             if (!AttackTimerMath.Worth(pause))
             {
                 _rateStats.AddNotHeld(PaceNotHeld.NotNeeded);
@@ -526,6 +533,7 @@ namespace TraxCombat.Missions
             ps.Share = plan.Extra;
             ps.Class = plan.Class;
             ps.Percent = plan.Percent;
+            ps.StackWait = stack;
             ps.EndAsked = false;
             _pacePending.Add(st);
             return null;
@@ -601,7 +609,17 @@ namespace TraxCombat.Missions
                         EndHold(st, ps, why, now, native: true);
                         continue;
                     }
-                    if (now >= ps.Until) EndHold(st, ps, PaceEnd.TimeUp, now, native: true);
+                    // step 32: a swing-stack wait ends when his next stored swing is back (Until is its estimate; the stack switched
+                    // off mid-wait = the estimate stands)
+                    if (ps.StackWait && SwingStackRules.From(TraxSettings.Shared).Enabled)
+                    {
+                        if (StackWaitOver(st, now))
+                        {
+                            _stackStats.AddWait(false, now - ps.StartedAt);
+                            EndHold(st, ps, PaceEnd.TimeUp, now, native: true);
+                        }
+                    }
+                    else if (now >= ps.Until) EndHold(st, ps, PaceEnd.TimeUp, now, native: true);
                 }
                 catch (Exception e)
                 {
@@ -744,6 +762,7 @@ namespace TraxCombat.Missions
             {
                 var s = st.Input!;
                 AiInputHook.SetHold(st, true, now);
+                s.HoldKicks = ps.StackWait && SwingStackRules.From(TraxSettings.Shared).KicksOn; // step 32: no kick without a stored swing
                 ps.CallsAtStart = s.Calls;
                 NoteHooked(st, ps.Hook);
             }
@@ -825,6 +844,8 @@ namespace TraxCombat.Missions
                                 + "the new way may not work in this game: switch \"Tired AI keep their guard up\" (AttackRatePaceByInput) off and tell Claude");
                     }
                     DrainInputError(st);
+                    _stackStats.KicksRefusedAi += s.KicksCleared; // step 32
+                    s.KicksCleared = 0;
                     if (ps.First) s.Capture = false; // (the end line below reads what was captured)
                 }
             }
@@ -1100,6 +1121,7 @@ namespace TraxCombat.Missions
             foreach (var line in _rateStats.SummaryLines(AttackRateRules.From(TraxSettings.Shared), _rateSwitched))
                 TraxLog.Info("summary", line);
             WriteBattlePaceSummary(); // step 21
+            WriteSwingStackSummary(); // step 32
         }
     }
 }

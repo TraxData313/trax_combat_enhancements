@@ -202,6 +202,13 @@ namespace TraxCombat.Missions
         /// <summary>Step 23: his brace (his margin's roll, bracing now, the shield) - null until his first look as an AI man.</summary>
         public BraceState? Brace;
 
+        /// <summary>Step 32: his swing stack (spawn full).</summary>
+        public readonly SwingStack Swings = new SwingStack();
+
+        /// <summary>Step 32: the D (at full animation speed) of his last measured attack - the refill is timed by it (NaN = none yet:
+        /// <see cref="SwingStackMath.FallbackSwingSeconds"/>).</summary>
+        public double StackD = double.NaN;
+
         public void RememberMissile(int index)
         {
             switch (MissileNext)

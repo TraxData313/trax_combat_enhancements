@@ -469,6 +469,7 @@ namespace TraxCombat.Core
                       + ", the next attack already readied at the attack's end " + NotHeld(PaceNotHeld.AlreadyReadied)
                       + ", the attack's length not measured " + NotHeld(PaceNotHeld.NoDuration)
                       + ", covered by a scripted step back (a NoAttack hold waiting for the step to end whose time ran out first) " + NotHeld(PaceNotHeld.CoveredByStepBack)
+                      + ", a stored swing left (step 32's swing stack) " + NotHeld(PaceNotHeld.FromStack)
                       + " | not started by the tick: busy with a game job (scripted, an object, a ladder, detached) " + Refused(PaceRefusal.Busy)
                       + ", NoAttack already set by the game " + Refused(PaceRefusal.AlreadyNoAttack) + ", not AI-controlled " + Refused(PaceRefusal.NotAi)
                       + ", gone " + Refused(PaceRefusal.Gone) + ", too late (his time nearly up, or his next attack already begun) " + Refused(PaceRefusal.TooLate) + ", per-tick cap " + Refused(PaceRefusal.TickBudget)

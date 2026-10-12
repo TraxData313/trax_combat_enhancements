@@ -180,6 +180,24 @@ namespace TraxCombat.Core
             "Attack animation speed when empty (%)",
             "How fast the attack animations - wind-up and swing, thrust, bow draw, throw, crossbow reload - play for a fighter with an empty bar, in percent of normal. From the peak line down to empty they slow in a straight line (at 85: full speed at the peak line, 92.5% halfway, 85% empty), so a tired man's swings look a little heavier. The pause between attacks stays the same in seconds - a slower swing only adds its own extra moment. 100 = always full speed: the whole slow-down is the pause. With \"Attack speed when empty\" at 100 they never slow either. Run speed is not affected.");
 
+        // Step 32 (Anton, 2026-10-12 - "chain swings stack"): the pause becomes a refill clock of stored swings (Core SwingStack,
+        // AI_NOTES "Step 32"). Off = step 13's pause after every attack.
+        public static readonly ParamDef SwingStackEnabled = Bool("SwingStackEnabled", TiredGroup,
+            "Swing stack",
+            "On: every fighter stores swings - one per 20 Athletics points he has now (see below), never fewer than 2. Each attack spends one and needs no wait while one is left; with none left he waits out the pause as before. One comes back per pause length while he is not attacking, so he attacks just as often on average - but he can save swings up and strike several in a row. Your Attack recovery bar shows the count. Off: the pause after every attack below the peak line (the old way).");
+
+        public static readonly ParamDef SwingStackPointsPerSwing = Int("SwingStackPointsPerSwing", 5, 100, TiredGroup,
+            "Athletics points per stored swing (points)",
+            "The swing stack holds his CURRENT Athletics points divided by this, rounded (7.5 makes 8): a full 150 bar holds 8, half of it 4, a full 50 bar 3. Lower = more stored swings.");
+
+        public static readonly ParamDef SwingStackMinimum = Int("SwingStackMinimum", 1, 10, TiredGroup,
+            "Fewest stored swings",
+            "The swing stack never holds fewer places than this, however low his Athletics - even empty he can save up this many swings.");
+
+        public static readonly ParamDef KicksUseSwings = Bool("KicksUseSwings", TiredGroup,
+            "Kicks and shield bashes use a stored swing",
+            "On (with the swing stack): a kick or a shield bash spends a stored swing like an attack, and with none left it cannot start - your kick key does nothing until one is back. It still never starts a pause by itself. Off: kicks and bashes are free of the stack (they still cost their Athletics).");
+
         public static readonly ParamDef MinMoveSpeedMultiplier = Float("MinMoveSpeedMultiplier", 0.1, 1, TiredGroup,
             "Run speed when empty (x)",
             "Top speed on foot of a fighter with an empty bar, times his normal top speed. From the peak line down to empty it falls in a straight line, so fresh men overtake tired ones. 1.0 = tired men run as fast as fresh ones.");
@@ -550,6 +568,7 @@ namespace TraxCombat.Core
             AthleticsEnabled, AthleticsPoolFloor, AthleticsPoolPerSkill, AthleticsPeakPercent, HealthCapsAthletics,
             CostPerBlow, CostPerKickOrBash, CostPerShieldBlock, CostPerWrongSideShieldBlock, CostPerWeaponParry, OnlyWrongSideBlocksStopRefill, CostOnMiss, HeroCostMultiplier, PartyLeaderCostMultiplier,
             ExhaustedAttackSpeedPercent, AttackRatePlayerTimer, AttackRatePaceHold, AttackRatePaceByInput, AiHoldRaiseGuard, AttackRateAiDecisions, AttackAnimationMinPercent,
+            SwingStackEnabled, SwingStackPointsPerSwing, SwingStackMinimum, KicksUseSwings,
             MinMoveSpeedMultiplier, MountMinSpeedMultiplier, DamageBonusFollowsAthletics, TiredBlockRandomPercent,
             StepBackEnabled, StepBackBackpedal, StepBackMaxChancePercent, StepBackDistance, StepBackSeconds, StepBackEnemyRange,
             StepBackHoldAttacks, StepBackMaxAtOnce,
