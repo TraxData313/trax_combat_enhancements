@@ -13,6 +13,10 @@ Board = TASKS_TODO.md BUILD ORDER 28-30 (project manager protocol in CLAUDE.md).
 
 - [x] 31. Player-facing docs: tight Steam description + README, new docs/ player guide with tables (Anton 2026-10-12)
 
+Phase 2 (Anton 2026-10-12):
+- [~] 32. Swing stack: max(2, round(points/20)) stored swings, one back per pause, kicks/bashes use one, pips on the recovery bar
+- [ ] 33. Sprint: key, bar = points/20 s, min 20% to start, 1.6x current for 70% of the stored amount then linear to 1.1x, refill 7 s (x0.5 moving, x0.5 exhausted), no Athletics refill while sprinting, AI on new orders (charge all, move/advance 50%), foot only
+
 ## Notes
 - Release: fixes collect in main; version / upload = Anton's call later.
 - 28 done (6f2ffc6..83fd903): BraceFloorNoFormationPercent 20, BraceFloorSpreadPercent 10 (own dice, live). 487 tests, smoke 69. Assumes tournament men read as "no formation" (PLAYTEST D8 checks).
