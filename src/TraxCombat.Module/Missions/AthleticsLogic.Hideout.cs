@@ -251,6 +251,7 @@ namespace TraxCombat.Missions
                 }
             }
             BraceFreshStart(st, now); // step 23: a brace ends too
+            SprintFreshStart(st, now); // step 33: a sprint ends, the store full again
             if (_playerTimer.Holding && ReferenceEquals(_playerTimerOwner, st))
             {
                 ReleasePlayerTimer(PlayerTimerEnd.FreshStart, now);

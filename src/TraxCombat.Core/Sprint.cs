@@ -466,6 +466,45 @@ namespace TraxCombat.Core
         public double StoredUpTo(double capacity) => Math.Max(0, Math.Min(Stored, Math.Max(0, capacity)));
     }
 
+    /// <summary>Step 33: your sprint store as the sprint bar reads it.</summary>
+    public readonly struct SprintReading
+    {
+        public SprintReading(double stored, double capacity, double minShare, bool active, double multiplier)
+        {
+            Stored = stored;
+            Capacity = capacity;
+            MinShare = minShare;
+            Active = active;
+            Multiplier = multiplier;
+        }
+
+        /// <summary>Seconds stored (capped at the capacity).</summary>
+        public double Stored { get; }
+
+        /// <summary>The store's size now, seconds.</summary>
+        public double Capacity { get; }
+
+        /// <summary>The start mark (SprintMinStartPercent / 100).</summary>
+        public double MinShare { get; }
+
+        public bool Active { get; }
+
+        /// <summary>The multiplier applied now (1 when not sprinting).</summary>
+        public double Multiplier { get; }
+
+        /// <summary>The fill, 0..1.</summary>
+        public double Share => Capacity > SprintMath.EmptySeconds ? Math.Max(0, Math.Min(1, Stored / Capacity)) : 0;
+
+        /// <summary>A sprint could start now (at or above the mark, a store at all).</summary>
+        public bool Ready => Capacity > SprintMath.EmptySeconds && Stored > SprintMath.EmptySeconds && Share >= MinShare - 1e-9;
+
+        /// <summary>"Sprint 6.2 s".</summary>
+        public string LabelText => SprintMath.LabelWord + " " + SprintMath.SecondsText(Stored);
+
+        /// <summary>The fill's colour: yellow while sprinting, blue when a sprint could start, grey below the mark.</summary>
+        public string ColorHex => Active ? SprintMath.SprintingHex : Ready ? SprintMath.ReadyHex : SprintMath.BelowStartHex;
+    }
+
     /// <summary>
     /// Step 33: one mission's sprint numbers + the [summary] "sprint" lines. Main thread.
     /// </summary>

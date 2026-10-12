@@ -38,6 +38,7 @@ namespace TraxCombat.Missions
             }
             AttachHudView(screen, new PlayerAthleticsView());
             AttachHudView(screen, new AttackRecoveryView()); // step 13: the Attack recovery bar above it
+            AttachHudView(screen, new SprintBarView()); // step 33: the sprint bar above that
             var strip = new OrderStripView();
             strip.UseSources(new GauntletOrderCards(screen), new MissionStripFormations(Mission));
             AttachHudView(screen, strip);

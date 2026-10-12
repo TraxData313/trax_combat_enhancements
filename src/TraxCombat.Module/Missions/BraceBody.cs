@@ -93,9 +93,11 @@ namespace TraxCombat.Missions
 
         public bool IsAiControlled(TrackedAgent st) => st.Agent.IsAIControlled;
 
-        public BraceOrderKind ReadOrder(TrackedAgent st)
+        public BraceOrderKind ReadOrder(TrackedAgent st) => KindOf(st.Agent.Formation);
+
+        /// <summary>A formation's movement order now, as the brace (step 23) and the sprint (step 33) read it - managed reads only.</summary>
+        internal static BraceOrderKind KindOf(Formation? f)
         {
-            var f = st.Agent.Formation;
             if (f == null) return BraceOrderKind.NoFormation;
             switch (f.GetReadonlyMovementOrderReference().OrderEnum)
             {

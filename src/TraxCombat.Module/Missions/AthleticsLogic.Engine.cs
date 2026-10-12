@@ -87,6 +87,7 @@ namespace TraxCombat.Missions
         private TrackedAgent?[] _mountOwner = new TrackedAgent?[256];
         private int _count;
         private int _swept;
+        private int _budgetStart; // step 33: where the next tick's recompute budget starts (the first man left waiting)
         private readonly System.Collections.Generic.List<TrackedAgent> _heroes = new System.Collections.Generic.List<TrackedAgent>();
         private readonly System.Collections.Generic.List<Agent> _horsesToRelease = new System.Collections.Generic.List<Agent>();
         private readonly AthleticsStats _stats = new AthleticsStats();
@@ -156,6 +157,7 @@ namespace TraxCombat.Missions
             StartSwingStack(); // step 32
             StartBrace(); // step 23
             StartTiredBlock(); // step 30
+            StartSprint(); // step 33
         }
 
         private void StopAthletics()
@@ -325,6 +327,7 @@ namespace TraxCombat.Missions
             BraceLeftField(st); // step 23
             PlayerTimerLeftField(st);
             StackLeftField(st); // step 32: his running burst counted
+            SprintLeftField(st); // step 33
             RemoveFromLoop(st);
         }
 
@@ -404,12 +407,29 @@ namespace TraxCombat.Missions
             TrackPlayer(in r);
             TickHideout(now); // step 19: a hideout's boss fight began → the player's side starts fresh (before this tick's passes)
 
+            // Step 33: the sprint - your key, the order poll, the 0.1 s pass (marks the men whose speed steps) - before the loop
+            // below applies this tick's recomputes.
+            try
+            {
+                TickSprint(dt, now, in r);
+            }
+            catch (Exception e)
+            {
+                Failed("sprint.tick", e);
+            }
+
             int polled = 0;
             int budget = MaxRecomputesPerTick;
             if (_horsesToRelease.Count > 0) budget = ReleaseHorses(budget);
+            // step 33: the recompute budget's start ROTATES - a tick that ran out starts the next at the first man it left waiting,
+            // so a charge's hundreds of sprint steps queue fairly and nobody at the end of the list starves
+            int first = _count > 0 && _budgetStart < _count ? _budgetStart : 0;
+            int firstWaiting = -1;
             for (int i = 0; i < _count; i++)
             {
-                var st = _dense[i];
+                int j = i + first;
+                if (j >= _count) j -= _count;
+                var st = _dense[j];
                 try
                 {
                     var a = st.Agent;
@@ -437,6 +457,7 @@ namespace TraxCombat.Missions
                         else
                         {
                             _stats.RecomputesDeferred++;
+                            if (firstWaiting < 0) firstWaiting = j;
                         }
                     }
                 }
@@ -447,6 +468,7 @@ namespace TraxCombat.Missions
                     Failed("athletics.poll", e);
                 }
             }
+            _budgetStart = firstWaiting >= 0 ? firstWaiting : 0;
 
             _regenAccum += dt;
             if (_regenAccum >= RegenStepSeconds)
@@ -1023,6 +1045,7 @@ namespace TraxCombat.Missions
                 NoteBraceSettings(settings);    // step 23: the floors / margins line (applied at every man's next look)
                 NoteTiredBlockSettings(settings); // step 30: the tired-block line (everyone re-targeted below)
                 NoteStackSettings(settings);      // step 32: the swing stack's switch and numbers
+                NoteSprintSettings(settings);     // step 33: the sprint (switching it off ends every sprint in the next tick)
 
                 if (r.PoolFloor != _seenPoolFloor || r.PoolPerSkill != _seenPoolPerSkill)
                 {
@@ -1114,6 +1137,7 @@ namespace TraxCombat.Missions
                 {
                     CheckHealth(st, in r, now);
                     if (sr.Enabled) StackRegenSample(st, now, step, in r, in sr, in bp); // step 32: the clock + the fill by f (managed)
+                    if (st.Sprint.Active) continue; // step 33: no Athletics refill while sprinting (the step's time is simply not refilled)
                     double top = AthleticsMath.UsableFraction(in r, st);
                     if (st.Fraction >= top - AthleticsMath.Epsilon && !st.Exhausted) continue; // at his top: nothing to do, no native call
                     var a = st.Agent;
@@ -1156,6 +1180,8 @@ namespace TraxCombat.Missions
             int bin = AthleticsMath.PeakBin(AthleticsMath.PeakShare(in r, st));
             if (mount == null)
             {
+                // step 33: a sprint's raised top (or one a pending recompute still holds) is no sample of the tiredness curve
+                if (st.SprintMultiplier != 1f || st.SpeedDirty) return;
                 if (st.RunSpeedMultiplier == 1f) st.FreshTop = topSpeed;
                 if (st.FreshTop > 0f) _stats.FootRun.Add(bin, topSpeed / st.FreshTop, st.RunSpeedMultiplier, speed / st.FreshTop);
             }
@@ -1516,6 +1542,7 @@ namespace TraxCombat.Missions
             {
                 attack = st.SpeedMultiplier;
                 run = st.RunSpeedMultiplier;
+                if (st.SprintMultiplier != 1f) run *= st.SprintMultiplier; // step 33: the sprint rides on the run property (above 1)
                 blockRandom = st.BlockRandomWeight; // step 30
                 return attack != 1f || run != 1f || blockRandom > 0f;
             }
@@ -1568,7 +1595,7 @@ namespace TraxCombat.Missions
                     var mount = a.MountAgent;
                     if (mount == null)
                     {
-                        if (st.RunSpeedMultiplier != 1f) continue; // a tired man's top is not his top
+                        if (st.RunSpeedMultiplier != 1f || st.SprintMultiplier != 1f) continue; // a tired man's top is not his top, nor a sprinter's (step 33)
                         float top = a.GetMaximumForwardUnlimitedSpeed();
                         float walk = a.WalkSpeedCached > 0f ? a.WalkSpeedCached : a.Monster?.WalkingSpeedLimit ?? 0f;
                         if (top > 0f) _stats.FootTop.Add(top);

@@ -183,6 +183,7 @@ namespace TraxCombat.Tools
             BattlePaceOff(); // step 21: the older steps check steps 13-20 to the bit (Program.BattlePace.cs has its own)
             S.Set(SettingsSchema.TiredBlockRandomPercent, 0, SettingSources.File); // step 30: the older steps count recomputes without it (Program.TiredBlock.cs has its own)
             SwingStackOff(); // step 32: the older steps check one pause after EVERY attack (Program.SwingStack.cs has its own)
+            SprintOff(); // step 33: the older steps predate the sprint (Program.Sprint.cs has its own)
         }
 
         // ------------------------------------------------------------------ checks

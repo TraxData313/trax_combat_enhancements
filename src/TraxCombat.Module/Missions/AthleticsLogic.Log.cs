@@ -109,6 +109,15 @@ namespace TraxCombat.Missions
             {
                 Failed("rate.pace-close", e);
             }
+            // Step 33: every running sprint counted before the summary.
+            try
+            {
+                CloseSprints();
+            }
+            catch (Exception e)
+            {
+                Failed("sprint.close", e);
+            }
 
             // the lowest any hero reached (heroes' records outlive their removal from the loop)
             TrackedAgent? lowest = null;
@@ -216,6 +225,16 @@ namespace TraxCombat.Missions
             catch (Exception e)
             {
                 Failed("guard.summary", e);
+            }
+
+            // Step 33: the sprint - yours, the AI's by order, the engine's speed against the asked. Own try.
+            try
+            {
+                WriteSprintSummary();
+            }
+            catch (Exception e)
+            {
+                Failed("sprint.summary", e);
             }
         }
 

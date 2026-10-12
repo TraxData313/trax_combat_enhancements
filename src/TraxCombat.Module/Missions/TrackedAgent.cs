@@ -209,6 +209,21 @@ namespace TraxCombat.Missions
         /// <see cref="SwingStackMath.FallbackSwingSeconds"/>).</summary>
         public double StackD = double.NaN;
 
+        /// <summary>Step 33: his sprint store (full until its first clamp) and the sprint running now.</summary>
+        public readonly SprintStore Sprint = new SprintStore();
+
+        /// <summary>Step 33: the sprint multiplier APPLIED (quantised in 0.05 steps; 1 = none) - the stat decorator multiplies his run
+        /// multiplier with it on every recompute.</summary>
+        public float SprintMultiplier = 1f;
+
+        /// <summary>Step 33: his top speed and run multiplier at the sprint's start (the speed check's base; 0 = no base).</summary>
+        public float SprintBaseTop;
+
+        public float SprintBaseRun = 1f;
+
+        /// <summary>Step 33: an AI sprinter's next "enemy within 3 m" look (mission time).</summary>
+        public double SprintNextMelee;
+
         public void RememberMissile(int index)
         {
             switch (MissileNext)

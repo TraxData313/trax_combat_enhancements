@@ -1,0 +1,49 @@
+<Prefab>
+  <!--
+    Trax Combat Enhancements - YOUR SPRINT BAR (step 33, DESIGN §3 - Anton: "a short burst of speed").
+    Above the Attack recovery bar, its right end lined up with your Athletics bar: the words (@LabelText - "Sprint 6.2 s",
+    the seconds of sprint stored) and a slim bar. Inside the bar, bottom to top: the dark inside, the fill (@Fill - the
+    store's share of its size; @FillColor grey below the start mark, blue when a sprint can start, yellow while you
+    sprint) and the start mark (@MarkOffset from the inside's left edge - SprintMinStartPercent of it; @MarkShown).
+    Data: Hud\SprintBarVM.cs. Every @binding's VM property has EXACTLY the widget property's type (float / Color / bool /
+    string) - Gauntlet converts only strings (AI_NOTES "Step 6").
+    Native sprites and brushes only (BlankWhiteSquare_9, AgentHUD.Interaction.Text). Sizes and places are bound from the
+    settings (RecoveryBarWidth / RecoveryBarHeight, PlayerBarOffsetRight, PlayerBarOffsetBottom + SprintBarOffsetAbove), in UI
+    pixels of the 1080p layout - the game's UI scale multiplies them. A passive overlay: no widget takes mouse events. The
+    offline smoke parses this file like the other bars'.
+  -->
+  <Window>
+    <Widget Id="TraxSprint" WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" DoNotAcceptEvents="true" DoNotPassEventsToChildren="true">
+      <Children>
+
+        <ListPanel Id="Row" WidthSizePolicy="CoverChildren" HeightSizePolicy="CoverChildren" HorizontalAlignment="Right" VerticalAlignment="Bottom" MarginRight="@OffsetRight" MarginBottom="@OffsetBottom" StackLayout.LayoutMethod="HorizontalLeftToRight" IsVisible="@IsShown" DoNotAcceptEvents="true">
+          <Children>
+
+            <TextWidget Id="Label" WidthSizePolicy="CoverChildren" HeightSizePolicy="CoverChildren" VerticalAlignment="Center" MarginRight="8" Brush="AgentHUD.Interaction.Text" Brush.FontSize="15" Brush.FontColor="#BDBDBDFF" Text="@LabelText" DoNotAcceptEvents="true" />
+
+            <!-- the bar: a thin light frame -->
+            <Widget Id="Bar" WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="@BarWidth" SuggestedHeight="@BarHeight" VerticalAlignment="Center" Sprite="BlankWhiteSquare_9" Color="#C8C8C8B4" DoNotAcceptEvents="true">
+              <Children>
+
+                <!-- inside the 1-px frame: dark, the fill on top, the start mark over it -->
+                <Widget Id="Inside" WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" MarginLeft="1" MarginRight="1" MarginTop="1" MarginBottom="1" Sprite="BlankWhiteSquare_9" Color="#141414F0" DoNotAcceptEvents="true">
+                  <Children>
+                    <FillBarWidget Id="SprintFillBar" WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" FillWidget="SprintFill" MaxAmountAsFloat="1" InitialAmountAsFloat="@Fill" DoNotAcceptEvents="true">
+                      <Children>
+                        <Widget Id="SprintFill" WidthSizePolicy="Fixed" HeightSizePolicy="StretchToParent" HorizontalAlignment="Left" Sprite="BlankWhiteSquare_9" Color="@FillColor" DoNotAcceptEvents="true" />
+                      </Children>
+                    </FillBarWidget>
+                    <Widget Id="StartMark" WidthSizePolicy="Fixed" HeightSizePolicy="StretchToParent" SuggestedWidth="2" HorizontalAlignment="Left" MarginLeft="@MarkOffset" Sprite="BlankWhiteSquare_9" Color="#FFFFFFE6" IsVisible="@MarkShown" DoNotAcceptEvents="true" />
+                  </Children>
+                </Widget>
+
+              </Children>
+            </Widget>
+
+          </Children>
+        </ListPanel>
+
+      </Children>
+    </Widget>
+  </Window>
+</Prefab>
