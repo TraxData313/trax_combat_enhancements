@@ -88,9 +88,11 @@ namespace TraxCombat.Core
         /// 3 = step 14 (the run-speed floor 0.3 → 0.7), 4 = step 20b (Anton's tuning after his playtest: the
         /// run-speed floor 0.7 → 0.6, the attack animation at empty 100 → 85), 5 = step 22 (Anton, for slower battles:
         /// the refill a straight line again - RegenRateNearFullPercent 50 → 100 - and the run-speed floor 0.6 → 0.3), 6 = step 36
-        /// (the AI sprint by order: SprintAiChargeSharePercent renamed SprintAiChargeUsePercent, SprintAiMoveSharePercent dropped -
-        /// <see cref="Migrate(ConfigReadResult, Func{ParamDef, double})"/> does it for a file of any format).</summary>
-        public const int FormatVersion = 6;
+        /// (the AI sprint by order: SprintAiChargeSharePercent renamed SprintAiChargeUsePercent, SprintAiMoveSharePercent dropped),
+        /// 7 = step 37 (Anton: one number per order, the reserve - the three SprintAi*UsePercent keys dropped, and step 33's two
+        /// share keys with them; SprintAiAdvanceKeepPercent 0 → 50 and SprintAiMoveKeepPercent 70 → 80 in a format-6 file - the
+        /// drops by <see cref="Migrate(ConfigReadResult, Func{ParamDef, double})"/> for a file of any format).</summary>
+        public const int FormatVersion = 7;
 
         /// <summary>The meta key holding <see cref="FormatVersion"/> - not a setting.</summary>
         public const string VersionKey = "ConfigVersion";
@@ -370,65 +372,51 @@ namespace TraxCombat.Core
                     MoveOldDefault(read, SettingsSchema.MinMoveSpeedMultiplier, 0.6,
                         "step 22, Anton for slower battles: an empty man runs at 30% of his pace again", from, defaultOf);
             }
-            // step 36: the two AI sprint shares became six use / keep settings - in ANY format (the old keys are only ever
-            // steps 33-35's, and a hand-pasted one is renamed the same way)
-            RenameSprintShares(read, from);
+            if (from == 6)
+            {
+                // step 37: the reserves' old defaults existed only in format 6 (step 36 brought the keys)
+                MoveOldDefault(read, SettingsSchema.SprintAiAdvanceKeepPercent, 0,
+                    "step 37, Anton: one number per order - an advance sprints what he holds above a half-store reserve", from, defaultOf);
+                MoveOldDefault(read, SettingsSchema.SprintAiMoveKeepPercent, 70,
+                    "step 37, Anton: one number per order - a move sprints what he holds above an 80% reserve", from, defaultOf);
+            }
+            // steps 36 / 37: the retired AI sprint keys - in ANY format (they are only ever steps 33-36's, and a hand-pasted one
+            // goes the same way)
+            DropRetiredSprintKeys(read, from);
             return read.Migrated;
         }
 
-        /// <summary>Step 33's key, renamed by step 36 to <see cref="SettingsSchema.SprintAiChargeUsePercent"/>.</summary>
+        /// <summary>Step 33's key - renamed by step 36 to SprintAiChargeUsePercent, which step 37 dropped.</summary>
         public const string OldSprintAiChargeShareKey = "SprintAiChargeSharePercent";
 
-        /// <summary>Step 33's key, dropped by step 36 (split into the advance and move use / keep).</summary>
+        /// <summary>Step 33's key, dropped by step 36 (split into the advance and move settings).</summary>
         public const string OldSprintAiMoveShareKey = "SprintAiMoveSharePercent";
 
+        /// <summary>Step 36's keys, dropped by step 37 (one number per order: the reserve).</summary>
+        public static readonly string[] OldSprintAiUseKeys = { "SprintAiChargeUsePercent", "SprintAiAdvanceUsePercent", "SprintAiMoveUsePercent" };
+
         /// <summary>
-        /// Step 36: <c>SprintAiChargeSharePercent</c> → <c>SprintAiChargeUsePercent</c> (its value kept, unless the file already
-        /// sets the new key); <c>SprintAiMoveSharePercent</c> dropped - it covered advance AND move as a share of what was
-        /// stored, the new advance / move use and keep take their defaults. Both old keys leave <see cref="ConfigReadResult.Unknown"/>,
-        /// so the rewrite does not carry them under "Not recognised". Idempotent.
+        /// Steps 36 / 37: the retired AI sprint keys leave <see cref="ConfigReadResult.Unknown"/> - one note each - so the rewrite
+        /// does not carry them under "Not recognised" forever. Step 33's two shares and step 36's three uses: an AI man now sprints
+        /// everything he holds above the order's reserve (SprintAi*KeepPercent), so none of them has a home. Idempotent.
         /// </summary>
-        private static void RenameSprintShares(ConfigReadResult read, int from)
+        private static void DropRetiredSprintKeys(ConfigReadResult read, int from)
         {
             for (int i = read.Unknown.Count - 1; i >= 0; i--)
             {
                 var pair = read.Unknown[i];
-                bool charge = string.Equals(pair.Key, OldSprintAiChargeShareKey, StringComparison.OrdinalIgnoreCase);
-                bool move = string.Equals(pair.Key, OldSprintAiMoveShareKey, StringComparison.OrdinalIgnoreCase);
-                if (!charge && !move) continue;
+                string? why = null;
+                if (string.Equals(pair.Key, OldSprintAiChargeShareKey, StringComparison.OrdinalIgnoreCase))
+                    why = "step 33's charge share - a charge now sprints everything above SprintAiChargeKeepPercent";
+                else if (string.Equals(pair.Key, OldSprintAiMoveShareKey, StringComparison.OrdinalIgnoreCase))
+                    why = "step 33's advance-and-move share - now SprintAiAdvanceKeepPercent and SprintAiMoveKeepPercent, the reserves";
+                else
+                    foreach (var k in OldSprintAiUseKeys)
+                        if (string.Equals(pair.Key, k, StringComparison.OrdinalIgnoreCase))
+                            why = "step 37, Anton: one number per order - he sprints everything above the order's reserve (its KeepPercent)";
+                if (why == null) continue;
                 read.Unknown.RemoveAt(i);
-                string tag = " (format " + from + " → " + FormatVersion + "; step 36: ";
-                if (move)
-                {
-                    read.Migrated.Add(OldSprintAiMoveShareKey + " " + pair.Value + " dropped" + tag + "it covered advance and move as one share of the stored seconds - "
-                        + "now SprintAiAdvanceUse/KeepPercent and SprintAiMoveUse/KeepPercent, at their defaults)");
-                    continue;
-                }
-                var p = SettingsSchema.SprintAiChargeUsePercent;
-                if (read.Values.ContainsKey(p.Key))
-                {
-                    read.Migrated.Add(OldSprintAiChargeShareKey + " " + pair.Value + " dropped" + tag + "renamed " + p.Key + ", which the file already sets)");
-                    continue;
-                }
-                double v;
-                try
-                {
-                    if (!TryNumber(JToken.Parse(pair.Value), out v) || double.IsNaN(v) || double.IsInfinity(v))
-                    {
-                        read.Migrated.Add(OldSprintAiChargeShareKey + " " + pair.Value + " dropped" + tag + "renamed " + p.Key + ", but the value is not a number - its default used)");
-                        continue;
-                    }
-                }
-                catch (JsonException)
-                {
-                    read.Migrated.Add(OldSprintAiChargeShareKey + " dropped" + tag + "renamed " + p.Key + ", but the value did not parse - its default used)");
-                    continue;
-                }
-                double now = p.Normalize(v);
-                read.Values[p.Key] = now;
-                read.Missing.Remove(p);
-                read.Migrated.Add(OldSprintAiChargeShareKey + " " + p.Format(now) + " → " + p.Key + " " + p.Format(now) + tag
-                    + "renamed - a charge now sprints up to this % of the FULL store, never into SprintAiChargeKeepPercent)");
+                read.Migrated.Add(pair.Key + " " + pair.Value + " dropped (format " + from + " → " + FormatVersion + "; " + why + ")");
             }
         }
 

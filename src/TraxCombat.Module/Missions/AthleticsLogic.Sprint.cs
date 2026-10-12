@@ -230,8 +230,8 @@ namespace TraxCombat.Missions
                 {
                     _firstOrderLogged = true;
                     TraxLog.Info("sprint", "first new order seen this battle at " + Sec(now) + " s: formation slot " + slot + " " + was + " → " + kind + " ("
-                        + SprintMath.OrderName(group) + (group == SprintOrder.None ? ": no sprint)" : ": its AI men on foot sprint min(" + F0(100 * SprintMath.AiUse(in s, group))
-                        + "% of their full store, what they hold above a " + F0(100 * SprintMath.AiKeep(in s, group)) + "% reserve))"));
+                        + SprintMath.OrderName(group) + (!SprintMath.AiSprints(group) ? ": no sprint)" : ": its AI men on foot sprint what they hold above a "
+                        + F0(100 * SprintMath.AiKeep(in s, group)) + "% reserve)"));
                 }
                 else if (TraxLog.VerboseWants("sprint-order"))
                 {
@@ -279,13 +279,13 @@ namespace TraxCombat.Missions
             }
             if (sp.Active && !sp.ByKey) EndSprint(st, SprintEnd.OrderChanged, now);
             var group = SprintMath.Group(kind);
-            if (!(SprintMath.AiUse(in s, group) > 0)) return;
+            if (!SprintMath.AiSprints(group)) return;
             if (body.IsMounted(st))
             {
                 _sprintStats.AiSkippedMounted++;
                 return;
             }
-            // step 36: min(use x his full store, stored - keep x it) - no SprintMinStartPercent gate for the AI
+            // step 37: everything above the order's reserve (stored - keep x his full store) - no SprintMinStartPercent gate for the AI
             double cap = SprintMath.Capacity(in s, in r, st);
             var res = sp.TryStartAi(in s, now, cap, group);
             if (res == SprintStart.Started)
@@ -300,13 +300,13 @@ namespace TraxCombat.Missions
                 {
                     _firstReserveLogged = true;
                     TraxLog.Info("sprint", "first AI sprint held back by a reserve this battle: " + Name(st) + " at " + Sec(now) + " s on a new " + SprintMath.OrderName(group)
-                        + " order - stored " + F2(sp.StoredUpTo(cap)) + " s of " + F2(cap) + " s (" + F0(100 * sp.Share(cap)) + "%), " + SprintMath.OrderName(group) + " use "
-                        + F0(100 * SprintMath.AiUse(in s, group)) + "% / keep " + F0(100 * SprintMath.AiKeep(in s, group)) + "% - nothing above the reserve, no sprint "
+                        + " order - stored " + F2(sp.StoredUpTo(cap)) + " s of " + F2(cap) + " s (" + F0(100 * sp.Share(cap)) + "%), " + SprintMath.OrderName(group) + " keeps "
+                        + F0(100 * SprintMath.AiKeep(in s, group)) + "% - nothing above the reserve, no sprint "
                         + "(it stays for the next order)");
                 }
                 else if (TraxLog.VerboseWants("sprint-ai"))
                     TraxLog.Verbose("sprint", Name(st) + " keeps his reserve at " + Sec(now) + " s (" + SprintMath.OrderName(group) + ": stored " + F0(100 * sp.Share(cap))
-                        + "% of " + F2(cap) + " s, keep " + F0(100 * SprintMath.AiKeep(in s, group)) + "%) - no sprint", "sprint-ai");
+                        + "% of " + F2(cap) + " s, keeps " + F0(100 * SprintMath.AiKeep(in s, group)) + "%) - no sprint", "sprint-ai");
             }
             else if (res != SprintStart.Off && res != SprintStart.Running)
             {
@@ -454,9 +454,9 @@ namespace TraxCombat.Missions
                     _firstAiSprintLogged = true;
                     TraxLog.Info("sprint", "first AI order sprint this battle: " + Name(st) + " at " + Sec(now) + " s on a new " + SprintMath.OrderName(sp.Order)
                         + " order - stored " + F2(sp.StoredAtStart) + " s of " + F2(cap) + " s (" + F0(100 * sp.StoredAtStart / Math.Max(1e-9, cap)) + "%)"
-                        + (floor ? " (the " + F1(s.MinSeconds) + " s floor)" : string.Empty) + ", " + SprintMath.OrderName(sp.Order) + " use "
-                        + F0(100 * SprintMath.AiUse(in s, sp.Order)) + "% / keep " + F0(100 * SprintMath.AiKeep(in s, sp.Order)) + "% → asked T " + F2(sp.Length)
-                        + " s (min(use x " + F2(cap) + ", stored - keep x " + F2(cap) + "); left after it " + F0(100 * (sp.StoredAtStart - sp.Length) / Math.Max(1e-9, cap))
+                        + (floor ? " (the " + F1(s.MinSeconds) + " s floor)" : string.Empty) + ", " + SprintMath.OrderName(sp.Order) + " keeps "
+                        + F0(100 * SprintMath.AiKeep(in s, sp.Order)) + "% → asked T " + F2(sp.Length)
+                        + " s (stored - keep x " + F2(cap) + "; left after it " + F0(100 * (sp.StoredAtStart - sp.Length) / Math.Max(1e-9, cap))
                         + "%): x" + F2(s.MaxMultiplier) + " of the fresh run (run x" + F2(run) + " → x" + F2(m) + ") until "
                         + F2(sp.Length * s.FullSpeedShare) + " s, then to x" + F2(s.MinMultiplier) + " of his current run (x" + F2(s.MinMultiplier * run) + "); " + reachText
                         + "; ends early on an enemy within " + F1(SprintMath.MeleeRangeMetres) + " m or a new order");

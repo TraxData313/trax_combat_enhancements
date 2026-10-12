@@ -4,18 +4,18 @@ using System.Globalization;
 
 namespace TraxCombat.Core
 {
-    /// <summary>Step 33: which AI use / keep a formation's movement order gives (DESIGN §2 "The sprint"; step 36 split advance and
-    /// move).</summary>
+    /// <summary>Step 33: which AI reserve a formation's movement order gives (DESIGN §2 "The sprint"; step 36 split advance and
+    /// move; step 37: one reserve per kind).</summary>
     public enum SprintOrder
     {
-        /// <summary>Charge, charge a target, attack a gate, the AI's tactical charge - <c>SprintAiChargeUse/KeepPercent</c>.</summary>
+        /// <summary>Charge, charge a target, attack a gate, the AI's tactical charge - <c>SprintAiChargeKeepPercent</c>.</summary>
         Charge,
 
-        /// <summary>Step 36: advance ("engage", F1 F4), the AI general's own advance - <c>SprintAiAdvanceUse/KeepPercent</c>.</summary>
+        /// <summary>Step 36: advance ("engage", F1 F4), the AI general's own advance - <c>SprintAiAdvanceKeepPercent</c>.</summary>
         Advance,
 
         /// <summary>Step 36: a plain move to a position (F1 F1, or an AI general's Move that is neither its advance nor its charge) -
-        /// <c>SprintAiMoveUse/KeepPercent</c>.</summary>
+        /// <c>SprintAiMoveKeepPercent</c>.</summary>
         Move,
 
         /// <summary>Hold / halt, retreat, fall back, follow, no order, no formation - never a sprint.</summary>
@@ -98,8 +98,8 @@ namespace TraxCombat.Core
     {
         public SprintRules(bool modEnabled, bool athleticsEnabled, bool sprintEnabled, bool aiEnabled, double pointsPerSecond, int minStartPercent,
             double maxMultiplier, double minMultiplier, int fullSpeedSharePercent, double refillSeconds, double refillMovingFactor,
-            double refillExhaustedFactor, int aiChargeUsePercent, int aiChargeKeepPercent, int aiAdvanceUsePercent, int aiAdvanceKeepPercent,
-            int aiMoveUsePercent, int aiMoveKeepPercent, double minSeconds = 0, double topSpeedReachSeconds = 0)
+            double refillExhaustedFactor, int aiChargeKeepPercent, int aiAdvanceKeepPercent, int aiMoveKeepPercent, double minSeconds = 0,
+            double topSpeedReachSeconds = 0)
         {
             ModEnabled = modEnabled;
             AthleticsEnabled = athleticsEnabled;
@@ -114,11 +114,8 @@ namespace TraxCombat.Core
             RefillSeconds = double.IsNaN(refillSeconds) || refillSeconds < SprintMath.MinRefillSeconds ? SprintMath.MinRefillSeconds : refillSeconds;
             RefillMovingFactor = Clamp01(refillMovingFactor);
             RefillExhaustedFactor = Clamp01(refillExhaustedFactor);
-            AiChargeUsePercent = Clamp(aiChargeUsePercent, 0, 100);
             AiChargeKeepPercent = Clamp(aiChargeKeepPercent, 0, 100);
-            AiAdvanceUsePercent = Clamp(aiAdvanceUsePercent, 0, 100);
             AiAdvanceKeepPercent = Clamp(aiAdvanceKeepPercent, 0, 100);
-            AiMoveUsePercent = Clamp(aiMoveUsePercent, 0, 100);
             AiMoveKeepPercent = Clamp(aiMoveKeepPercent, 0, 100);
             MinSeconds = double.IsNaN(minSeconds) || minSeconds < 0 ? 0 : minSeconds;
             TopSpeedReachSeconds = double.IsNaN(topSpeedReachSeconds) || topSpeedReachSeconds <= 0 ? 0
@@ -155,18 +152,13 @@ namespace TraxCombat.Core
 
         public double RefillExhaustedFactor { get; }
 
-        /// <summary>Step 36: SprintAiChargeUsePercent - a charge sprints up to this % of his FULL store.</summary>
-        public int AiChargeUsePercent { get; }
-
-        /// <summary>Step 36: SprintAiChargeKeepPercent - the reserve a charge leaves, % of his FULL store.</summary>
+        /// <summary>Step 37: SprintAiChargeKeepPercent - the reserve a charge leaves, % of his FULL store; he sprints all above it.</summary>
         public int AiChargeKeepPercent { get; }
 
-        public int AiAdvanceUsePercent { get; }
-
+        /// <summary>Step 37: SprintAiAdvanceKeepPercent - the reserve an advance leaves.</summary>
         public int AiAdvanceKeepPercent { get; }
 
-        public int AiMoveUsePercent { get; }
-
+        /// <summary>Step 37: SprintAiMoveKeepPercent - the reserve a move leaves.</summary>
         public int AiMoveKeepPercent { get; }
 
         /// <summary>Step 35, SprintMinSeconds: the store is never smaller than this (an exhausted man still has a dodge); 0 = no floor.</summary>
@@ -193,8 +185,8 @@ namespace TraxCombat.Core
         public static SprintRules From(TraxSettings s) =>
             new SprintRules(s.ModEnabled, s.AthleticsEnabled, s.SprintEnabled, s.SprintAiEnabled, s.SprintPointsPerSecond, s.SprintMinStartPercent,
                 s.SprintMaxMultiplier, s.SprintMinMultiplier, s.SprintFullSpeedSharePercent, s.SprintRefillSeconds, s.SprintRefillMovingFactor,
-                s.SprintRefillExhaustedFactor, s.SprintAiChargeUsePercent, s.SprintAiChargeKeepPercent, s.SprintAiAdvanceUsePercent,
-                s.SprintAiAdvanceKeepPercent, s.SprintAiMoveUsePercent, s.SprintAiMoveKeepPercent, s.SprintMinSeconds, s.SprintTopSpeedReachSeconds);
+                s.SprintRefillExhaustedFactor, s.SprintAiChargeKeepPercent, s.SprintAiAdvanceKeepPercent, s.SprintAiMoveKeepPercent, s.SprintMinSeconds,
+                s.SprintTopSpeedReachSeconds);
 
         /// <summary>The settings sentence of the mission-start line, a change and the summary.</summary>
         public string Describe(string keyName)
@@ -218,12 +210,12 @@ namespace TraxCombat.Core
                    + "while sprinting; AI " + (AiEnabled ? "ON - " + AiOrdersText() : "OFF (SprintAiEnabled)");
         }
 
-        /// <summary>Step 36: "on a NEW order he sprints min(use x his full store, stored - keep x it): charge use 100% / keep 0%, ..."</summary>
+        /// <summary>Step 37: "on a NEW order he sprints what he holds above the order's reserve (stored - keep x his full store), ...:
+        /// charge keeps 0%, advance keeps 50%, move keeps 80%; ..."</summary>
         public string AiOrdersText() =>
-            "on a NEW order he sprints min(use x his full store, stored - keep x it), nothing below " + SprintMath.AiMinSeconds.ToString("0.0#", CultureInfo.InvariantCulture)
-            + " s (no " + MinStartPercent + "% start gate for the AI): charge use " + AiChargeUsePercent + "% / keep " + AiChargeKeepPercent + "%, advance use "
-            + AiAdvanceUsePercent + "% / keep " + AiAdvanceKeepPercent + "%, move use " + AiMoveUsePercent + "% / keep " + AiMoveKeepPercent
-            + "%; hold, retreat, fall back, follow none";
+            "on a NEW order he sprints what he holds above the order's reserve (stored - keep x his full store), nothing below "
+            + SprintMath.AiMinSeconds.ToString("0.0#", CultureInfo.InvariantCulture) + " s (no " + MinStartPercent + "% start gate for the AI): charge keeps "
+            + AiChargeKeepPercent + "%, advance keeps " + AiAdvanceKeepPercent + "%, move keeps " + AiMoveKeepPercent + "%; hold, retreat, fall back, follow none";
 
         private static int Clamp(int v, int lo, int hi) => v < lo ? lo : v > hi ? hi : v;
 
@@ -322,14 +314,8 @@ namespace TraxCombat.Core
         /// <summary>Step 36: an AI order sprint shorter than this is not started (float dust, a twitch). Plumbing.</summary>
         public const double AiMinSeconds = 0.2;
 
-        /// <summary>Step 36: the share of his FULL store an AI man may sprint on a new order of <paramref name="order"/> (0..1).</summary>
-        public static double AiUse(in SprintRules s, SprintOrder order) => order switch
-        {
-            SprintOrder.Charge => s.AiChargeUsePercent / 100.0,
-            SprintOrder.Advance => s.AiAdvanceUsePercent / 100.0,
-            SprintOrder.Move => s.AiMoveUsePercent / 100.0,
-            _ => 0,
-        };
+        /// <summary>Step 37: a new order of this kind sprints at all (charge, advance, move - never hold, retreat, fall back, follow).</summary>
+        public static bool AiSprints(SprintOrder order) => order == SprintOrder.Charge || order == SprintOrder.Advance || order == SprintOrder.Move;
 
         /// <summary>Step 36: the share of his FULL store an order of <paramref name="order"/> leaves stored (0..1).</summary>
         public static double AiKeep(in SprintRules s, SprintOrder order) => order switch
@@ -341,16 +327,16 @@ namespace TraxCombat.Core
         };
 
         /// <summary>
-        /// Step 36 (Anton 2026-10-12): the seconds an AI man sprints on a new order = min(use x <paramref name="capacity"/>,
-        /// <paramref name="stored"/> - keep x <paramref name="capacity"/>), 0 when that is below <see cref="AiMinSeconds"/>. A 5 s
-        /// store, move 20 / 70: from full 1 s (left 80%), from 80% 0.5 s (left 70%), from 60% none; advance 50 / 0: 2.5 s from full
-        /// or from 60%; charge 100 / 0: all of it.
+        /// Step 37 (Anton 2026-10-12, one number per order): the seconds an AI man sprints on a new order = <paramref name="stored"/> -
+        /// keep x <paramref name="capacity"/> - everything he holds above the order's reserve - 0 when that is below
+        /// <see cref="AiMinSeconds"/> (and for an order that never sprints). Keeps 0 / 50 / 80: a charge sprints all of it; an advance
+        /// from 100% → 50%, 90% → 40%, 60% → 10%, 45% none; a move from 100% → 20%, 90% → 10%, 60% none.
         /// </summary>
         public static double AiAmount(in SprintRules s, SprintOrder order, double stored, double capacity)
         {
-            if (double.IsNaN(capacity) || capacity <= 0 || double.IsNaN(stored)) return 0;
+            if (!AiSprints(order) || double.IsNaN(capacity) || capacity <= 0 || double.IsNaN(stored)) return 0;
             if (stored > capacity) stored = capacity;
-            double amount = Math.Min(AiUse(in s, order) * capacity, stored - AiKeep(in s, order) * capacity);
+            double amount = stored - AiKeep(in s, order) * capacity;
             return amount >= AiMinSeconds - 1e-9 ? amount : 0;
         }
 
@@ -541,14 +527,14 @@ namespace TraxCombat.Core
         }
 
         /// <summary>
-        /// Step 36: an AI order sprint - <see cref="SprintMath.AiAmount"/> seconds (the order's use, never into its reserve), no
-        /// SprintMinStartPercent gate (the reserve replaces it). Off: the switches or a use of 0; ReserveKept: his store is at or
+        /// Step 36 / 37: an AI order sprint - <see cref="SprintMath.AiAmount"/> seconds (all he holds above the order's reserve), no
+        /// SprintMinStartPercent gate (the reserve replaces it). Off: the switches or an order that never sprints; ReserveKept: his store is at or
         /// below the order's keep share; BelowMinimum: less than <see cref="SprintMath.AiMinSeconds"/> to sprint.
         /// </summary>
         public SprintStart TryStartAi(in SprintRules s, double now, double capacity, SprintOrder order)
         {
             if (Active) return SprintStart.Running;
-            if (!s.AiOn || !(SprintMath.AiUse(in s, order) > 0)) return SprintStart.Off;
+            if (!s.AiOn || !SprintMath.AiSprints(order)) return SprintStart.Off;
             Clamp(capacity);
             if (!(capacity > SprintMath.EmptySeconds)) return SprintStart.NoStore;
             double length = SprintMath.AiAmount(in s, order, Stored, capacity);
@@ -830,9 +816,9 @@ namespace TraxCombat.Core
             return parts.Count == 0 ? "none" : string.Join(", ", parts);
         }
 
-        /// <summary>Step 36: "move (use 20% / keep 70%) 12 men (9.6 s in all, avg 0.80 s)".</summary>
+        /// <summary>Step 37: "move (keeps 80%) 12 men (9.6 s in all, avg 0.80 s)".</summary>
         private string KindText(SprintOrder o, in SprintRules s) =>
-            SprintMath.OrderName(o) + " (use " + F0(100 * SprintMath.AiUse(in s, o)) + "% / keep " + F0(100 * SprintMath.AiKeep(in s, o)) + "%) " + AiStarted(o)
+            SprintMath.OrderName(o) + " (keeps " + F0(100 * SprintMath.AiKeep(in s, o)) + "%) " + AiStarted(o)
             + " men (" + F1(AiSeconds(o)) + " s in all" + Avg(AiSeconds(o), AiStarted(o)) + ")";
 
         private static string F0(double v) => v.ToString("0", CultureInfo.InvariantCulture);

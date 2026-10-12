@@ -382,31 +382,19 @@ namespace TraxCombat.Core
 
         public static readonly ParamDef SprintAiEnabled = Bool("SprintAiEnabled", SprintGroup,
             "AI soldiers sprint on new orders",
-            "When an AI formation gets a NEW movement order - yours or its own general's - each of its soldiers on foot sprints once: as much as that order's use / keep below allow (a charge all of it, an advance half, a move a little while keeping a reserve). He stops early once an enemy is within a few metres or the order changes again. Never you, never a hero you drive.");
-
-        public static readonly ParamDef SprintAiChargeUsePercent = Int("SprintAiChargeUsePercent", 0, 100, SprintGroup,
-            "AI sprint on a charge: use (% of the store)",
-            "On a new CHARGE order (charge - F1 F3 -, charge a target, the AI general's own charge) each AI soldier on foot sprints for up to this percent of his FULL store, never into the reserve below. 0 = no sprint on a charge.");
+            "When an AI formation gets a NEW movement order - yours or its own general's - each of its soldiers on foot sprints once: everything he holds above that order's reserve below (a charge all of it, an advance down to half, a move only a little). He stops early once an enemy is within a few metres or the order changes again. Hold, retreat, fall back and follow never start one. Never you, never a hero you drive.");
 
         public static readonly ParamDef SprintAiChargeKeepPercent = Int("SprintAiChargeKeepPercent", 0, 100, SprintGroup,
-            "AI sprint on a charge: keep (% of the store)",
-            "The reserve a charge leaves stored, percent of his FULL store. He sprints only what he has above it: min(use, stored - keep). 0 = a charge may empty it.");
-
-        public static readonly ParamDef SprintAiAdvanceUsePercent = Int("SprintAiAdvanceUsePercent", 0, 100, SprintGroup,
-            "AI sprint on an advance: use (% of the store)",
-            "On a new ADVANCE order (advance / engage - F1 F4 -, or the AI general's own advance) each AI soldier on foot sprints for up to this percent of his FULL store. 0 = no sprint on an advance.");
+            "AI sprint on a charge: keeps (% of the store)",
+            "On a new CHARGE order (charge - F1 F3 -, charge a target, the AI general's own charge) each AI soldier on foot keeps this percent of his FULL sprint store for later orders and sprints everything above it. 0 = a charge sprints all of it; 100 = no sprint on a charge.");
 
         public static readonly ParamDef SprintAiAdvanceKeepPercent = Int("SprintAiAdvanceKeepPercent", 0, 100, SprintGroup,
-            "AI sprint on an advance: keep (% of the store)",
-            "The reserve an advance leaves stored, percent of his FULL store - he sprints only what he has above it.");
-
-        public static readonly ParamDef SprintAiMoveUsePercent = Int("SprintAiMoveUsePercent", 0, 100, SprintGroup,
-            "AI sprint on a move: use (% of the store)",
-            "On a new MOVE order (move to a position - F1 F1 -, or an AI general's move that is neither its advance nor its charge) each AI soldier on foot sprints for up to this percent of his FULL store. 0 = no sprint on a move. Hold, retreat, fall back and follow never start one.");
+            "AI sprint on an advance: keeps (% of the store)",
+            "On a new ADVANCE order (advance / engage - F1 F4 -, or the AI general's own advance) each AI soldier on foot keeps this percent of his FULL sprint store for later orders and sprints everything above it. 50: from a full store he sprints half, from 60% a tenth, at or below half none.");
 
         public static readonly ParamDef SprintAiMoveKeepPercent = Int("SprintAiMoveKeepPercent", 0, 100, SprintGroup,
-            "AI sprint on a move: keep (% of the store)",
-            "The reserve a move leaves stored, percent of his FULL store - so shock troops moved behind the enemy still have their sprint for the real charge. A store at or below it: no sprint on a move.");
+            "AI sprint on a move: keeps (% of the store)",
+            "On a new MOVE order (move to a position - F1 F1 -, or an AI general's move that is neither its advance nor its charge) each AI soldier on foot keeps this percent of his FULL sprint store for later orders and sprints everything above it - so troops moved into position still have their sprint for the real charge. 80: from a full store he sprints a fifth, from 90% a tenth, at or below 80% none.");
 
         // ------------------------------------------------------------------ refill (regeneration)
 
@@ -670,8 +658,8 @@ namespace TraxCombat.Core
             BraceWieldShield, BraceRaiseShield,
             SprintEnabled, SprintKey, SprintPointsPerSecond, SprintMinSeconds, SprintMinStartPercent, SprintMaxMultiplier, SprintMinMultiplier, SprintFullSpeedSharePercent,
             SprintTopSpeedReachSeconds,
-            SprintRefillSeconds, SprintRefillMovingFactor, SprintRefillExhaustedFactor, SprintAiEnabled, SprintAiChargeUsePercent, SprintAiChargeKeepPercent,
-            SprintAiAdvanceUsePercent, SprintAiAdvanceKeepPercent, SprintAiMoveUsePercent, SprintAiMoveKeepPercent,
+            SprintRefillSeconds, SprintRefillMovingFactor, SprintRefillExhaustedFactor, SprintAiEnabled, SprintAiChargeKeepPercent,
+            SprintAiAdvanceKeepPercent, SprintAiMoveKeepPercent,
             RegenDelayBlowTimes, BlowTimeSeconds, FullRegenSecondsStanding, RegenRateNearFullPercent, RegenMultiplierAtFullRun,
             WalkEffortFraction, HideoutBossFightRefill,
             ShowPlayerBar, ShowPlayerBarOutsideBattles, ShowAttackRecoveryBar, FlashBarOnEarlyAttack, ShowSprintBar,
