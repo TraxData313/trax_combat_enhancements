@@ -20,6 +20,7 @@ Phase 2 (Anton 2026-10-12):
 - [x] 35. Sprint tuning: peak 2.0 x FRESH run, fade to 1.1 x current; default 2.0; store floor 2 s; TopSpeedReachDuration 1 s while sprinting (game ~2.3-2.8 s: Sandbox 2.5 + max(4 - skill/100, 1)/3.5 - min(w/(w+gear), 0.8))
 - [x] 36. AI sprint by order (Anton 2026-10-12): per order a USE share and a RESERVE kept: charge (F1+F3) use 100 / keep 0, advance (F1+F4, "engage") use 50 / keep 0, move use 20 / keep 70 - sprint = min(use share, store - reserve) of the store, at the moment the order is given; 6 sliders (replaces SprintAiChargeSharePercent / SprintAiMoveSharePercent - move and advance split). Why: shock troops moved behind the enemy keep their sprint for the real charge. Add to TASKS_TODO after 35 lands.
 - [x] 37. AI sprint = one reserve per order: charge keep 0, advance keep 50, move keep 80; sprint = stored - keep; drop the 3 Use settings (config format 7 migration)
+- [~] 38. Release v1.1.0 (Anton yes 2026-10-12): stamp, package, Workshop update with description, GitHub release
 
 ## Notes
 - Release: fixes collect in main; version / upload = Anton's call later.
