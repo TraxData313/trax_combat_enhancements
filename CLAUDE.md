@@ -54,7 +54,9 @@ and — averaged, with a ± spread and the men's health — in a strip under eac
 the orders menu (step 9) and, while you hold ALT (or the orders menu is open), under each of the
 game's formation markers, the enemy's too (step 20: vanilla's markers read live); both also count
 each formation's men READY - not bracing - as "ready 34/50", plain / yellow / red (step 24, `ShowReadyCount`;
-hidden while bracing is off). The bar for the
+hidden while bracing is off). A tired AI man's block DIRECTION is partly a guess (step 30, Anton 2026-10-12:
+`TiredBlockRandomPercent` 100 - w = % × (1 − f), the stat decorator raises the game's own per-agent
+`AiRandomizedDefendDirectionChance` to own + (1 − own) × w; never the player; Core `TiredBlock`). The bar for the
 fighter you look at is LATER (DESIGN §3; its settings wait in DESIGN's "Planned parameters"). Words:
 the pool/bar/points are "Athletics", the character-screen skill is "the Athletics skill" (it
 used to be called "endurance"), the "peak line" is the white mark at the top quarter of the bar,
@@ -151,7 +153,7 @@ die at any moment (tokens run out) and the next one loses nothing.
   file, capped at `LogMaxMegabytes` (8); a trim cuts ONLY the oldest verbose lines (marked `~`
   before the tag) and keeps every other line - summaries, first-time lines, settings, errors
   (step 10b, Core `LogTrim`). Timestamped lines tagged by area (`[config]`, `[mcm]`, `[mission]`,
-  `[damage]`, `[athletics]`, `[speed]`, `[rate]`, `[stepback]`, `[brace]`, `[hud]`, `[error]`). Always logged: mod/game version
+  `[damage]`, `[athletics]`, `[speed]`, `[rate]`, `[stepback]`, `[brace]`, `[guard]`, `[hud]`, `[error]`). Always logged: mod/game version
   at load, every parameter value on load and on change, each mission start/end (type,
   scene, agent counts), which behaviors/views attached, and every caught exception with its
   stack. Per-battle SUMMARY at mission end (damage rolls: count, min/avg/max factor;
@@ -185,7 +187,7 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
   ParamDef.cs                 one setting: key, type, range, group, label, plain-words
                               description, apply timing (Live / NextBattle); Normalize, Format;
                               its Default comes from defaults.json (DefaultsFile), never code
-  SettingsSchema.cs           EVERY setting of DESIGN's table (102), in file + MCM order, 12 groups
+  SettingsSchema.cs           EVERY setting of DESIGN's table (103), in file + MCM order, 12 groups
                               ("Master switch" first, "Damage" second - step 25 renamed it from
                               "Damage randomness", "Battle pace (AI)" - step 21 - after the step back,
                               "Brace by orders (AI)" - step 23 - after it,
@@ -365,6 +367,13 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               the shield (at start, calls, seen, put away, never), the guard while bracing, the hook's
                               frames, attacks while bracing; step 28: by floor incl. no formation, the floor offsets rolled
                               + braces by floor-offset band + the 8 [summary] "brace" lines
+  TiredBlock.cs               step 30 pure (AI_NOTES "Step 30", RESEARCH §M): TiredBlockRules (live: ModEnabled FIRST,
+                              AthleticsEnabled, TiredBlockRandomPercent > 0; Share, OffBecause, Describe), TiredBlockMath -
+                              Weight = share × (1 − f) (0 at f 1, off, the player), OwnChance (the game's value clamped 0-1:
+                              a final-round tournament fighter's −1.10 → 0), Chance = own + (1 − own) × w (w 0 = the game's
+                              value untouched), RightShare; TiredBlockStats (the chance raised by f band, the AI's GUARD by f
+                              band - shield right / WRONG side / parry / landed - + the 2 [summary] lines);
+                              Fighter.BlockRandomWeight = the w applied now (Athletics.cs)
   ReadyCount.cs               step 24 pure (AI_NOTES "Step 24"): ReadyBand (plain / yellow / red), ReadyHidden (ModOff
                               first, AthleticsOff, BraceOff, SwitchedOff, NoMen), ReadyRules (live: ShowReadyCount,
                               Ready*BelowPercent, Describe), ReadyMath - HiddenFor, Band (the most alarming wins, "at
@@ -468,8 +477,9 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               AttackAnimationMinPercent, 100 = full speed - step 13), the run
                               multiplier (+ the AI's attack values while AttackRateAiDecisions,
                               5e - off by default since 13), or a slowed rider's horse's
-                              (SpeedFactorsFor - managed reads only); + the tournament
-                              SetAILevelMultiplier fix
+                              (SpeedFactorsFor - managed reads only); step 30: a tired AI man's
+                              AiRandomizedDefendDirectionChance = TiredBlockMath.Chance(the base's, w) - never
+                              the main agent; + the tournament SetAILevelMultiplier fix
   Models/SpeedPenalty.cs      the penalties on AgentDrivenProperties: attack (swing, thrust/draw,
                               reload), the AI's decisions (5e: attack / riposte / shoot chance x m,
                               the aim ÷ m), run (MaxSpeedMultiplier), horse (MountSpeed) - nothing
@@ -573,6 +583,12 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               look, the shield seen / put away, a wield every 1 s up to 3), EndBrace (every path;
                               the callback released if idle), BraceLeftField, BraceFreshStart (step 19),
                               CloseBraces (mission end), BraceHitTaken (the guard), NoteBraceRelease, WriteBraceSummary
+  Missions/AthleticsLogic.TiredBlock.cs  step 30: StartTiredBlock / NoteTiredBlockSettings (the [guard] lines),
+                              TiredBlockWeight (RetargetSpeed carries w with the speed multipliers - same 0.05 steps
+                              and recompute budget; RetargetSpeed is an instance method since), NoteTiredBlock /
+                              TiredBlockApplied (the decorator's write counted by f band, the first in full),
+                              TiredGuardHit → GuardTaken (OnMeleeHit, before the block's charge: the AI's guard by f
+                              band; you never), WriteTiredBlockSummary
   Missions/BraceBody.cs       step 23: BraceState (his roll, step 28's floor roll FloorUnit, the running brace, the shield's
                               progress), IBraceBody (the
                               engine side - the smoke plays it), GameBraceBody (the order from
@@ -694,7 +710,7 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
   Hud/AltMarkersVM.cs         its ViewModels: the root + a GROW-ONLY MBBindingList of AltMarkerLabelVM keyed by
                               team + formation (a label never swaps formations when vanilla re-sorts); step 24:
                               ReadyText / ReadyColor / ReadyShown, SetReady
-tests/TraxCombat.Core.Tests/  net8.0 xUnit (498) — schema vs DESIGN.md (keys + types), one copy
+tests/TraxCombat.Core.Tests/  net8.0 xUnit (514) — schema vs DESIGN.md (keys + types), one copy
                               runs (SingleCopyTests: claims on private slots, copies, texts), when
                               MCM is tried and when it stops (McmPlanTests - step 12),
                               defaults.json (DefaultsFileTests), master switch, settings, config
@@ -743,7 +759,11 @@ tests/TraxCombat.Core.Tests/  net8.0 xUnit (498) — schema vs DESIGN.md (keys +
                               formation's Ready / Bracing; step 28: the no-formation floor, each man's own floor roll -
                               range, apart from the margin, live, clamped at 0 / 100, the hysteresis, the wound cap), the ready count (ReadyCountTests, step 24: hidden
                               rules in order, bands at or below 75 / 50, text, colours, the strip cell one row
-                              deeper only while drawn and the 1080p bottom card lifted, log text, summary). They
+                              deeper only while drawn and the 1080p bottom card lifted, log text, summary), the
+                              tired block direction (TiredBlockTests, step 30: w at f 1 / 0.5 / 0 x 0 / 50 / 100, never
+                              the player, the master switch first, the chance own + (1 − own) x w with a negative /
+                              NaN / > 1 game value, w 0 untouched, the setting live and placed, the sentence, the
+                              2 summary lines). They
                               run on DESIGN's INITIAL values (DesignTable.cs: a module
                               initializer), so tuning defaults.json never breaks them. Keep green.
 module/SubModule.xml          release manifest (Id TraxCombatEnhancements, v1.0.0) - THE one home of the
@@ -884,7 +904,13 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               (Program.Damage.cs, DamageReductionThroughDecorator): the real decorator - after
                               the roll (100 → 37.5..112.5, mean 75), the roll off still reduced on every kind,
                               never a fall / object / 0 hit, never below 1, live, the master switch, the lines
-                              (the older damage steps pin DamageReductionPercent 0 - DamageDefaults) (70 steps; the config
+                              (the older damage steps pin DamageReductionPercent 0 - DamageDefaults); step 30
+                              (Program.TiredBlock.cs): the real decorator + logic - DrivenProperty 40, the game's
+                              chance untouched fresh, f 0.52 over −1.10 → 0.48, own 0.2 → 0.584, empty → 1, no
+                              compounding, never you, the slider live (50 / 0), AthleticsEnabled / the master switch,
+                              a braced man's own guard direction untouched by the input frame, the guard by f band,
+                              the [guard] and [summary] lines; the cost - 1000 tired men block + recompute, ~0.1 µs,
+                              0 bytes (the older steps pin TiredBlockRandomPercent 0 - AthleticsDefaults) (72 steps; the config
                               checks work for any tuned default);
                               TRAX_SMOKE_KEEP=1 keeps its temp folder + log to read
 tools/DefaultsTool/           defaults.json upkeep: refresh (rewrite comments/order, keep every

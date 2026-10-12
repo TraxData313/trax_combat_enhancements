@@ -5,7 +5,7 @@ order, about **3 hours 15** (A 10 min, B 15, C 25, D 60, E 20, F 55, G 10; the o
 time after step 16? D4 alone (the A/B of the new guard and backpedal, 20 min) answers the newest
 questions; after step 21, D5 + D6 (the shield wall and the archers, 25 min); after step 23, D7 (lines brace by
 their orders, 15 min - since step 24 with the "ready 34/50" count on ALT and in the orders menu); after step 28, D8
-(a tournament: the opponent fights on to ~20%, 10 min; after step 29 its step 4 - block your way back from empty).** Each part says what to do, what you
+(a tournament: the opponent fights on to ~20%, 10 min; after step 29 its step 4 - block your way back from empty; after step 30 its step 5 - the tired opponent guesses his blocks).** Each part says what to do, what you
 should see, what counts as broken, and the log lines that prove it. The full line reference —
 every summary block and what proves what — is the **appendix** at the end.
 
@@ -681,9 +681,30 @@ the margin) - in every battle, so a holding line no longer braces as one man eit
 - **Note**: a SOLDIER with a small bar (the floor, 50) who parries every 1.5 s still sinks (1.25 refilled vs 2 paid per
   parry) - by design, the rates decide; right-side shield blocks (1) let even him climb. Tell Claude if duels still
   stall.
+5. **The tired opponent guesses wrong** (step 30, Anton 2026-10-12: "the more exhausted an AI man is, the more his block
+   direction is random"). In a LATE tournament round (the AI's level is doubled in the final - in vanilla that opponent
+   never guesses), get your opponent tired: keep him busy blocking and swinging until his bar is well down (the ALT
+   label or the verbose `[athletics]` lines). Then attack from varied directions. Fresh, he reads you; halfway down
+   about half his blocks should go the wrong way (still right 1 in 4 by luck); near empty, most of your swings from a
+   new direction should land or hit the wrong side of his shield (a wrong-side block costs him 5 and stops his
+   refill - he spirals; you, blocking cleanly, recover). It should feel like a tired man, not a wall.
+- **The lines** (step 30): `[guard] mission start: tired block direction: on - below the peak line an AI man's block
+  direction is partly random: weight w = 100% × (1 − f) (TiredBlockRandomPercent), so at f 0.5 50% of his picks and
+  empty 100% are a random direction …`; the first raised chance in full: `[guard] first tired block direction this
+  mission: <name> at … s, f 0.52 - the game's random-direction chance for him -1.10 (below 0: never random - counted as
+  0) → 0.48 = own 0.00 + (1 − own) × w, w = 100% × (1 − 0.52) = 0.48 - …`; the summary's two lines (L6e): `tired block
+  direction (…): the game's random-direction chance raised for N AI men …; his own → written, avg by f band: …` and
+  `AI guard by f (…): peak (f 1) … blows - blocked X% (…), landed …; … empty (f 0) … blows - blocked Y% (…)` - **Y well
+  below X**, with more `WRONG side` and `landed` in the low bands.
+- **Tune live** (MCM, *Tired fighters*): *Tired AI blocks in a random direction (%)* 0 = the game's own blocking (the
+  95% wall should come back in a final round), 50 = an empty man guesses half his blocks.
 
 **Broken — tell Claude** (D8): a tournament summary with `hold and the rest` braces and no `no formation` ones (the
 order read sees a formation there); `time bracing` still near half the AI's time in a 1v1; floor offsets outside ±10.
+Step 30: the `AI guard by f` empty band blocking about as well as the peak band with `tired block direction` raised for
+the men who fought there - the engine ignores the game's own random-direction chance, and the fallback (his direction
+bits replaced in his input, AI_NOTES "Step 30") is next; no `[guard] first tired block direction` line in a battle where
+AI men got tired (the decorator is not on top - see the `[speed] stat model on top` line).
 
 ---
 
@@ -1291,6 +1312,25 @@ header names the technique: `==== scene …, mod ON, AI holds: Input (the AI's o
   bracing men block at least as well as everyone else (`brace GUARD` vs L6b's `everyone else`); the hook works
   (`braces the engine never called our input hook during 0`, melee started while bracing ~0). The ALT numbers
   and the orders strip show the bar; the "ready men" count per formation comes in the next step.
+
+### L6e. Tired AI blocks in a random direction (step 30)
+
+- Mission start: `[guard] mission start: tired block direction: on - below the peak line an AI man's block direction is
+  partly random: weight w = 100% × (1 − f) (TiredBlockRandomPercent), so at f 0.5 50% of his picks and empty 100% are a
+  random direction (right 1 in 4 by luck); through the game's own AiRandomizedDefendDirectionChance = own + (1 − own) ×
+  w; full strength, you and men of the game's own choice untouched - read live; …` (off: `tired block direction: off
+  (TiredBlockRandomPercent 0 | AthleticsEnabled | ModEnabled) - every AI man blocks as the game decides`).
+- A change mid-battle: `[guard] settings changed mid-mission at … s: …`.
+- The first raised chance in full (D8 step 5); with VerboseLogging every later recompute `~[guard] tired block
+  direction: <name> f 0.40, w 0.60 - chance 0.12 → 0.65` (rate-limited, bucket `guard-chance`).
+- Summary - 2 lines (numbers made up):
+  ```
+  tired block direction (TiredBlockRandomPercent 100, step 30): the game's random-direction chance raised for 140 AI men (900 recomputes; 30 of them over a game value below 0 - never random before); his own → written, avg by f band: f 0.5-1 0.35 → 0.55 (n 500), f below 0.5 0.33 → 0.80 (n 300), empty (f 0) 0.30 → 1.00 (n 100)
+  AI guard by f (melee blows that reached AI men; kicks, bashes, charges and missiles left out - step 30: tired men should block worse): peak (f 1) 900 blows - blocked 40.0% (shield right side 25.0%, WRONG side 5.0%, parry 10.0%), landed 60.0%; f 0.5-1 …; f below 0.5 …; empty (f 0) 200 blows - blocked 15.0% (…), landed 85.0%
+  ```
+  Proves: the chance is raised where the bar is low (`his own → written` climbing to 1.00 at empty) and the engine
+  follows it (`AI guard by f`: blocked % falling band by band, `WRONG side` rising). In a field battle many blows land
+  whatever the guard (flanks, backs), so compare bands, not absolute numbers; the tournament 1v1 is the clean test.
 
 ### L7. The HUD — your bar, the recovery bar, the orders strip and the ALT markers
 

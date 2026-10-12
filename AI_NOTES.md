@@ -3213,3 +3213,43 @@ shield block costs 5 and restarts his refill delay.
 7. **Measured** (summary, 2 lines; `[guard]` tag): the chance raised - men, recomputes, by f band his own avg → the written avg;
    the GUARD of AI men against melee blows by f band - blocked % (shield right side / WRONG side / weapon parry) vs landed %
    (kicks, bashes, horse charges, missiles left out) - Anton's playtest line: empty men should block far worse than fresh ones.
+
+**Built (DONE 2026-10-12)** - file map in CLAUDE.md "Layout"
+- Setting `TiredBlockRandomPercent` (Int 0-100, DESIGN initial 100, defaults.json 100; Tired fighters, right after
+  `DamageBonusFollowsAthletics`; live). Settings 102 → 103. No config format bump (a missing key reads as its default and
+  `ConfigStore` writes it in).
+- Core `TiredBlock.cs` (TiredBlockRules, TiredBlockMath, TiredBlockStats), `Fighter.BlockRandomWeight`. Tests 498 → 514
+  (`TiredBlockTests`).
+- Module: `RetargetSpeed` (now an instance method - it asks `IsPlayer`) re-targets w beside the three multipliers
+  (`SpeedUpdateNeeded(applied, w, 0)`: 0.05 steps, any move to or from 0 at once) and records f
+  (`TrackedAgent.BlockRandomPeakShare`); `SpeedFactorsFor` hands w out (gated ModEnabled → AthleticsEnabled as before);
+  `TraxAgentStatModel.UpdateAgentStats` writes `TiredBlockMath.Chance(the base's value, w)` when w > 0 and the agent is not
+  the main agent, then `NoteTiredBlock`. `AthleticsLogic.TiredBlock.cs`: the [guard] lines (mission start, a settings
+  change, the first raised chance in full, verbose `guard-chance`), `TiredGuardHit` in OnMeleeHit BEFORE `BlockHitTaken`
+  (f before the block's charge) → `GuardTaken`, the 2 [summary] lines.
+- Base models recompute the chance on every update (Sandbox's `UpdateHumanStats` and custom battle's both call
+  `SetAiRelatedProperties`) - so our write never compounds (the smoke checks two recomputes in a row). A third-party base
+  model that does NOT recompute it would make it creep up per recompute; none known.
+- Smoke 70 → 72 steps (`Program.TiredBlock.cs`): `TiredBlockDirection`, `TiredBlockCostStaysFlat` (1000 tired men, each a
+  block + a recompute through the real decorator: ~0.1 µs a blow, 0 bytes). The older steps pin
+  `TiredBlockRandomPercent` 0 in `AthleticsDefaults` (they count recomputes).
+
+**The brief's items that the property route makes moot** (written down so nobody rebuilds them): the direction ↔ bit
+mapping (no bits are written - the smoke checks DrivenProperty 40 instead), the one-roll-per-attack bookkeeping and its
+timeout (the native AI rolls per decision, nothing of ours is held), hooking tired men lazily (no hook), the replaced /
+kept / right-by-luck counts per decision (invisible from managed code - the summary shows the chance written by band and
+the guard OUTCOME by band instead).
+
+**The fallback, designed, not built** (if PLAYTEST D8 shows the engine ignoring the property): step 16's `AiInputComponent`
+on every AI man below the peak line (hooked lazily from the tick, unhooked when back in the green, the RTS Camera rule
+kept); in `OnAIInputSet`, when `flags & DefendDirMask` shows a NEW own direction (or a change of it), ONE roll with
+probability w → a uniformly random one of the four bits, held while his own pick stays the same, dropped when he stops
+defending or after a ~1.5 s plumbing timeout; a forced `DefendDown` of ours is not rolled; attack bits never touched.
+
+**UNVERIFIED - only the game can tell (PLAYTEST D8 step 5, L6e)**
+1. The native AI reads the chance per defence decision and a raised chance makes it pick wrong → the `AI guard by f` line:
+   the empty band's blocked % well below the peak band's, `WRONG side` and `landed` up. If flat: the fallback above.
+2. A random pick is uniform over the four directions (native) - only the outcome shows it.
+3. A wrong pose with a shield → a wrong-side block (`WRONG side` count up) rather than a clean miss of the shield - either
+   way the blow is worse for him.
+4. The tournament opponent: `tired block direction … N of them over a game value below 0` > 0 in late rounds.

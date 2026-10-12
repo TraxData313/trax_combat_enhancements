@@ -44,7 +44,7 @@ ALT to see it), order the charge: your men drop their guard and surge in with th
   often, other footmen 15%; archers wait a little longer between shots.
 - **Tired men act like it** — they step back out of the press facing the enemy, and brace (defend only,
   shield up) when their bar falls to the floor their orders set: holding 60%, advancing 40%,
-  charging 20%.
+  charging 20%. A tired AI guesses his block direction more and more - an empty one guesses every block.
 - **Heroes matter** — lords, companions and you pay a quarter less per blow, party leaders a quarter
   less again, and a big skill means a big bar. In a hideout, your side comes fresh to the boss fight.
 - **See it** — your bars under your health; in the orders menu and under the formation markers (hold

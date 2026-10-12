@@ -297,6 +297,20 @@ regen.)
         the battle ended (the "do lines turtle forever" check), the ends by reason, the margins rolled and the
         brace length by margin, the shield (taken out, seen in hand, put away by the AI), and the GUARD while
         bracing (blocks vs hits) with the attacks that still started (melee should be 0; ranged allowed).
+  - **Tired AI blocks in a random direction** (step 30, Anton 2026-10-12, after a tournament 1v1 where the
+    exhausted AI blocked ~95% of his swings - "crazy good AIs"): the more exhausted an AI man is, the more his
+    block DIRECTION is a guess. Weight w = `TiredBlockRandomPercent` (100) / 100 × (1 − f): at or above the peak
+    line his own AI picks; at f 0.5 half his picks are his own and half a uniformly random direction; empty, every
+    pick is random (right 1 in 4 by luck). A wrong guess with a shield is a wrong-side block (5 points, and it
+    restarts his refill delay - step 29), with a weapon the blow lands. Built on the GAME'S OWN randomiser, the
+    per-agent `AiRandomizedDefendDirectionChance` (vanilla 1 − (AI level)³ - near 1 for a recruit, below 0 for a
+    final-round tournament fighter): the stat decorator writes own + (1 − own) × w (own clamped to 0-1), so his own
+    AI's picks keep their own randomness and ours is on top. w moves in the speed multipliers' recompute steps
+    (0.05); w 0 leaves the game's value. AI only, on foot and mounted; never the player (nor the hero RTS Camera's
+    AI drives for him); the forced guards of steps 16 / 23 (`DefendDown` when he holds none) are ours and stay
+    fixed. Off at 0, with AthleticsEnabled, and with the master switch. **Measured**: the summary's "tired block
+    direction" line (men, recomputes, his own → written chance by f band) and "AI guard by f" (blocked % - shield
+    right side / WRONG side / parry - vs landed, by f band): the empty band should block far worse than the fresh.
   - **Run speed on foot** = M + (1 − M) × f, M = `MinMoveSpeedMultiplier` (initial 0.7 - an empty
     man runs at 70% of his pace; step 14, Anton after his 240v240: "make them slow down to 70% speed",
     the 0.3 of steps 5c-13 was "too slow, unrealistic"; shipped **0.6** since step 20b - Anton after
@@ -1041,6 +1055,14 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     a parry's 2 × his multiplier - a soldier needs a pool above 80 to climb while parrying every 1.5 s, a hero above
     60, a hero who leads his party always climbs (floor 50); a right-side shield block (1 ×) always nets up. The
     player and the AI alike; one switch, live; off = step 22 to the bit.
+29. **Tired AI blocks in a random direction** (step 30, Claude's calls on Anton's rule of 2026-10-12 - AI_NOTES
+    "Step 30", RESEARCH §M). This deliberately REVERSES step 5e's principle "tired men must not block less" (the
+    guard-by-f check of steps 5e / 16 was there to keep the guard): for the AI, exhaustion now costs guard quality
+    too, so a duel between two exhausted men ends in a fight, not a 95% wall. The lever is the game's own
+    per-agent random-direction chance (raised, never lowered), not the AI input bits: the native AI rolls it per
+    defence decision, nothing of ours runs per frame, riders are covered, and the cost is one float per
+    recompute. If PLAYTEST D8 shows the engine ignoring it, the fallback is replacing his direction bits in
+    `OnAIInputSet` (step 16's hook) once per incoming attack - designed in AI_NOTES "Step 30", not built.
 
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),
