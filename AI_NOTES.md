@@ -3555,3 +3555,74 @@ slow (0.6 of a fresh pace).
 **Playtest checks (PLAYTEST D10, L6g)**: a 0.5 s TAP should lunge at once; an empty bar shows "Sprint 2.0 s" and bursts as
 fast as a fresh man then fades to the tired jog; the summary's acceleration clause (the game's 2.3-2.8 s → ours 1.00 s);
 `engine top` ≈ `asked` (both × the fresh run); the feet at 2 × (sliding?) and the 1 s reach (a jolt?).
+
+## Step 36 — the AI sprint by order: a use and a keep per order kind (DONE 2026-10-12)
+
+**Anton (2026-10-12):** "I will position my shock troops behind enemies and they won't use up all their sprint before even
+getting the real charge command." Step 33 sprinted an AI man on every NEW order: a charge up to 100% of what he had
+stored, an advance OR a move up to 50%. Three moves round the enemy's flank emptied the store before the charge.
+
+**The rule.** Each order kind has a USE and a KEEP, both % of his FULL store (the capacity now: current points ÷
+`SprintPointsPerSecond`, never below `SprintMinSeconds`); he sprints `min(use x cap, stored − keep x cap)` seconds
+(`SprintMath.AiAmount`), nothing below `SprintMath.AiMinSeconds` 0.2 s (plumbing - a twitch is not a sprint).
+Defaults (Anton's): charge 100 / 0, advance 50 / 0, move 20 / 70. A 5 s store: move from 100% → 1 s (80% left), from 80%
+→ 0.5 s (70% left), from 60% → none; advance from 100% → 2.5 s, from 60% → 2.5 s (10% left); charge → all of it.
+
+**Which kinds** (`SprintMath.Group` over step 23's `BraceOrderKind`, read by `GameBraceBody.KindOf`):
+- Charge: `Charge`, `ChargeToTarget`, `AttackEntity` (attack a gate / a siege engine), `AiCharge` (an AI Move under
+  `BehaviorTacticalCharge`).
+- Advance: `Advance` (F1 F4 - Anton's "engage"), `AiAdvance` (an AI Move under `BehaviorAdvance` / `BehaviorCautiousAdvance`
+  / `BehaviorVanguard`).
+- Move: `Move` - the game's `MovementOrderEnum.Move` that is neither of the above: F1 F1 (move to a position) and an AI
+  general's Move under defend / skirmish / flank / the rest. That is the shock-troop case for the player; for the AI
+  general it means its repositioning dashes are short and keep a reserve too, which reads right.
+- None: `Stop` (hold), `Retreat`, `FallBack`, `Follow`, `FollowEntity`, `NoOrder`, `NoFormation`. Follow stays none (a
+  bodyguard should not dash off after his lord); hold / retreat / fall back as in step 33. No strong reason found to change.
+
+**The 20% gate.** `SprintMinStartPercent` is the PLAYER's gate only now; the AI's gate is the keep plus the 0.2 s minimum
+(`SprintStore.TryStartAi`). With keep 0 the old 20% gate would refuse a charge from 10% - a tired formation's last surge;
+with keep 70 it would be meaningless. So a charge from 10% of a 5 s store sprints 0.5 s.
+
+**Outcomes** (`SprintStart`): Started; `ReserveKept` (new) - keep > 0 and stored − keep x cap < 0.2 s; `BelowMinimum` - the
+amount < 0.2 s otherwise (an empty store with no reserve, or a tiny use); `NoStore` - no capacity; `Off` - the switches or
+use 0 (the logic does not even try: `AiUse` 0 returns before the mount check, as step 33's share 0 did).
+
+**Code.** Core `Sprint.cs`: `SprintOrder` Charge / Advance / Move / None (step 33's `AdvanceOrMove` split); `SprintRules`
+six ints (`AiChargeUsePercent` …) + `AiOrdersText` (in `Describe`); `SprintMath.AiUse / AiKeep / AiAmount / AiReserveStops`,
+`AiMinSeconds`; `SprintStore.TryStartAi` (the player keeps `TryStart` with share 1); `SprintStats` - reserve kept per kind,
+`KindText` (the summary). Module `AthleticsLogic.Sprint.cs`: `OrderChangedFor` → `TryStartAi`; ReserveKept counted (+ one
+Info line per battle, then verbose `sprint-ai`); the first-order line names min(use, above the reserve); the first AI sprint
+line: stored s of cap (%), the kind's use / keep, the asked T and what is left after it.
+
+**Settings (live).** `SprintAiChargeUsePercent` 100, `SprintAiChargeKeepPercent` 0, `SprintAiAdvanceUsePercent` 50,
+`SprintAiAdvanceKeepPercent` 0, `SprintAiMoveUsePercent` 20, `SprintAiMoveKeepPercent` 70 (0-100 each), group "Sprint";
+read at each new order, so an MCM change applies at the next order.
+
+**Old keys - config format 6.** `ConfigFile.Read` puts a key it does not know into `Unknown`, which `Write` carries on
+every rewrite under "Not recognised - ignored" and the store logs as "not a setting of this version (typo?)" at every read
+- for Anton's file that would be two stale keys forever. So `Migrate` (the established pattern, steps 13 / 14 / 20b / 22)
+gets `RenameSprintShares`, run for a file of ANY format (the keys are only ever steps 33-35's; a hand-pasted one is renamed
+the same way): `SprintAiChargeSharePercent` → `SprintAiChargeUsePercent` with its value (clamped; unless the new key is
+already set; a non-number = dropped, the default used), `SprintAiMoveSharePercent` dropped (it was advance and move
+together, as a share of what was stored - the new four take their defaults). Both leave `Unknown` and `Missing` is fixed
+up, so ConfigStore rewrites the file once ("rewrote config.json as format 6 with the 2 migrated value(s)", each note
+logged "migrated config.json at …: SprintAiChargeSharePercent 100 → SprintAiChargeUsePercent 100 (format 5 → 6; step
+36: renamed …)"). FormatVersion 5 → 6 (the stamp; the step 13-22 rules are unchanged - their notes now say "→ 6").
+
+**Logs.** Mission start / a change: "AI ON - on a NEW order he sprints min(use x his full store, stored - keep x it),
+nothing below 0.2 s (no 20% start gate for the AI): charge use 100% / keep 0%, advance use 50% / keep 0%, move use 20% /
+keep 70%; hold, retreat, fall back, follow none". First new order: "(move: its AI men on foot sprint min(20% of their full
+store, what they hold above a 70% reserve))". First AI sprint: "… on a new move order - stored 5.00 s of 5.00 s (100%),
+move use 20% / keep 70% → asked T 1.00 s (min(use x 5.00, stored - keep x 5.00); left after it 80%): x…". First reserve:
+"first AI sprint held back by a reserve this battle: …". Summary: "sprint - AI: new orders seen - charge C, advance A,
+move M, other O; sprints - charge (use 100% / keep 0%) N men (… s in all, avg … s), advance (…) …, move (…) …; not
+sprinted: reserve kept N (charge 0, advance 0, move N), less than 0.2 s or empty: charge …, advance …, move …; …".
+
+**Tests** 557 → 573 (SprintTests: Anton's examples for each kind as Theories, other orders none, keep above the store,
+a move → a second move → reserve kept → the charge sprints the reserve, live settings + master switch + the sentence, the
+summary line, the format-6 migration - rename, drop, already set, non-number, clamp, idempotent, the rewrite free of the
+old keys; ConfigFile / Block tests: FormatVersion 6, "→ 6" in the notes). **Smoke** 81 → 82
+(`SprintByOrderThroughTheLogic`: shock troops through the real logic - move 1 s, second move 0.5 s down to 70%, third
+nothing (the line), the charge sprints 3.5 s, an advance 2.5 s, the move's keep live, the master switch, the summary;
+step 33's smoke now expects an advance of min(2.5, what is left) and the new first-order / first-sprint text; step 35's
+first-AI-sprint line too; `SprintDefaults` sets the six to DESIGN's values).

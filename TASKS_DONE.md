@@ -1107,3 +1107,25 @@
   decorator - 0.8 x 2.0 at the start, TopSpeedReachDuration 2.6 -> 1.0 -> 2.6; step 33's checks pin floor / reach 0).
   Docs: DESIGN (prose, 2 rows, decision 32), AI_NOTES "Step 35", HOW-IT-WORKS section 13 tables, PLAYTEST D10 / L6g,
   CLAUDE.md. Deployed (AssemblyGuard + smoke green). (2026.10.12 15.04.10)
+- [x] 36. AI sprint by order (Anton 2026-10-12: "I will position my shock troops behind enemies and they won't use up all
+  their sprint before even getting the real charge command"). Step 33 sprinted every new order up to a share of what was
+  STORED (charge 100, advance / move 50), so a few moves round the flank emptied the store. Now each order kind has a USE
+  and a KEEP, both % of his FULL store (capacity now): he sprints min(use x cap, stored - keep x cap), nothing below 0.2 s
+  (plumbing, SprintMath.AiMinSeconds), and the AI has NO SprintMinStartPercent gate any more (the keep is its gate; a
+  charge from 10% still sprints 0.5 s; your 20% gate unchanged). Charge (charge, charge a target, attack a gate, the AI's
+  tactical charge) 100 / 0; advance (F1 F4 "engage", the AI's advance) 50 / 0; move (Move: F1 F1, or an AI general's Move
+  under any behaviour but advance / charge) 20 / 70 - a 5 s store: 1 s from full (80% left), 0.5 s from 80%, none from
+  60%; hold / retreat / fall back / follow / follow-entity none. Core: SprintOrder Charge / Advance / Move / None
+  (AdvanceOrMove split), SprintStart.ReserveKept, SprintRules' six percents + AiOrdersText, SprintMath AiUse / AiKeep /
+  AiAmount / AiReserveStops, SprintStore.TryStartAi, SprintStats reserve kept per kind + the summary by kind with its use
+  / keep. Module: OrderChangedFor → TryStartAi, the first-order / first-AI-sprint lines (stored %, use / keep, asked T,
+  left after it), one "first AI sprint held back by a reserve" line. Settings (live, group Sprint): SprintAiChargeUse /
+  KeepPercent 100 / 0, SprintAiAdvanceUse / KeepPercent 50 / 0, SprintAiMoveUse / KeepPercent 20 / 70 replace
+  SprintAiChargeSharePercent / SprintAiMoveSharePercent (DESIGN 2 rows → 6, decision 33; defaults.json refreshed, 128
+  settings). Old keys: config FORMAT 6 - Migrate renames SprintAiChargeSharePercent → SprintAiChargeUsePercent (its value,
+  unless the new key is set) and drops SprintAiMoveSharePercent, in a file of any format, both out of Unknown so the
+  rewrite does not carry them under "Not recognised" (Anton's file has both). Tests 557 → 573; smoke 81 → 82
+  (SprintByOrderThroughTheLogic: shock troops move 1 s, 0.5 s, then reserve kept, the charge sprints the 3.5 s left, an
+  advance 2.5 s, live keep, master switch, summary; step 33 / 35 smoke lines updated). Docs: DESIGN, AI_NOTES "Step 36",
+  HOW-IT-WORKS §13 (order → use / keep table, the shock-troops tip), PLAYTEST D10 step 7 + lines, CLAUDE.md. Deploy:
+  build, AssemblyGuard and smoke green; the install copy failed - the game holds the DLL. (2026.10.12 15.17.57)
