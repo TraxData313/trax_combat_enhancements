@@ -3253,3 +3253,92 @@ defending or after a ~1.5 s plumbing timeout; a forced `DefendDown` of ours is n
 3. A wrong pose with a shield → a wrong-side block (`WRONG side` count up) rather than a clean miss of the shield - either
    way the blow is worse for him.
 4. The tournament opponent: `tired block direction … N of them over a game value below 0` > 0 in late rounds.
+
+
+## Step 32 — the swing stack: stored swings, a pause only at 0 (DONE 2026-10-12)
+
+Anton (2026-10-12, the tournament 1v1 again): below the peak line every attack was followed by its pause, so a tired man swung
+once every ~3 s - one telegraphed swing, blocked ~95% - and kicks (never held) were the way round it. His design, "chain
+swings stack": each fighter STORES swings, cap = max(`SwingStackMinimum` 2, round(current points / `SwingStackPointsPerSwing`
+20)) half away from zero; an attack spends one and waits only at 0, exactly until the next is back; one comes back per the
+pause that attack would have left (D × (1/m − 1) at his CURRENT m, + the AI's battle-pace share) while he is not attacking -
+the average rate unchanged, bursts possible; kicks and bashes spend one too and cannot start at 0.
+
+**Research - the kick input (v1.4.8, %TEMP%\trax_decomp)**
+1. **Your kick** is NOT an attack bit: `MissionMainAgentController` (View, ~line 772) sets `EventControlFlags |= 0x8000`
+   (`Agent.EventControlFlag.Kick`) when game key 16 ("Kick", default E) is PRESSED that frame and `mainAgent.KickClear()` (native)
+   or he is mounted. A one-frame event, written in the same pre-tick our gate already follows (step 13's `PlayerAttackGate`, first
+   in the behaviour list). So the gate can take it out the same way it takes out the attack bits: clear 0x8000 from
+   `EventControlFlags` before the engine reads them. **Clean** - no patch. Only on foot (a mounted "kick" is set without
+   `KickClear` and riders never kick - step 18). The gate runs only while your hold is on, which is exactly "no stored swing".
+2. **A shield bash** is the attack button while blocking (step 18) - the attack bits: held with every attack at 0, no extra work.
+3. **The AI's kick**: `AgentComponent.OnAIInputSet(ref EventControlFlag, ref MovementControlFlag, ref Vec2)` hands us the AI's
+   EVENT flags too (step 16's hook) - so a man held BY INPUT at 0 has 0x8000 taken out (`AiInputState.HoldKicks`,
+   `AiInputHook.HoldKick`). Whether the native AI's kick decision is in that word when we see it is UNVERIFIED (the AI rarely
+   kicks - step 18 saw none); the summary counts the frames cleared and any kick that started at 0 anyway. NoAttack (the old
+   technique) does what it does - not touched.
+
+**The build (Claude's calls - Anton can overturn any; DESIGN §2 "The swing stack", decision 30)**
+1. **Core `SwingStack.cs`**: `SwingStackRules` (live; Enabled = ModEnabled && AthleticsEnabled && SwingStackEnabled, KicksOn,
+   OffBecause, Describe), `SwingStackMath` (RoundAway, Cap from points / from a Fighter, Full = 2^20 "full until a cap clamps it",
+   FallbackSwingSeconds 0.8 - plumbing, the guide's swing until his first measured attack - burst bins, CountText "4/8"),
+   `SwingStack` (per fighter, allocated once: Stored, Progress, ClockAt, GraceUntil, Run, Waited; Advance(now, refill, cap,
+   attacking) - the clock stops while attacking, a refill under 0.1 s fills it at once; Spend(cap) → FromStack / AfterWaiting /
+   AtEmpty (an attack at 0 loses the refill so far - never free); Clamp; ProgressAt (the bar's projection, no mutation);
+   SecondsToNext; StartGrace / EndGrace; FillUp; CloseRun), `SwingStackStats` + 5 [summary] lines.
+   `PaceNotHeld.FromStack` (the AI timer's "not held" line). `PlayerAttackTimer.AttackEnded(…, pauseOverride)`,
+   `StartCountdown`, `Retarget` (the countdown follows the stack). `AttackRecoveryReading.WithStack` (StackOn, Stored, Cap,
+   StackProgress; Share / Recovering follow the stack).
+2. **The clock** (`AthleticsLogic.SwingStack.cs`): advanced at every channel-1 action change BEFORE the phases move (so the
+   interval is filed in the state he was in), in every regen pass (0.1 s, everyone - also the fill sample by f band), every tick
+   for an AI man waiting at 0 (TickPace) and every gate frame for you. "Attacking" = PhaseKind WindUp or Release, or the reload
+   after a loose (AwaitReloadEnd); a block recoil, the guard, the pause = rest. Refill seconds: you - Pause(D, m); the AI -
+   `BattlePaceMath.Plan(bp, his class, D, m).Total`; D = `TrackedAgent.StackD` (his last measured attack, set at AttackEnded).
+3. **Spends**: ObserveAction's ReleaseMelee / ReleaseRanged / ReleaseThrowing, before the charge and before
+   PlayerAttackStarting; `ChargeKickOrBash` first thing (whatever it costs, KicksUseSwings). `StackClamp` in AfterCharge.
+4. **The AI** (`AiAttackEnded` → `AskStackPause`): a swing stored = no pause (`FromStack`) and, after a MELEE attack, the
+   clock waits `AiMeleeGapSeconds` (StartGrace) - **the AI's own gap is not rest**: step 21 measured that the AI waits ~1.0 s of
+   its own after each attack and a pause ADDS to it; without the grace the stack refills inside his natural rhythm (a fresh
+   shield man's 0.76 s share < his 1.0 s gap: never held, battle pace undone; a tired man ~37% more attacks). With it, at 0 the
+   cycle is D + P + G (step 13's), bursts are D + G, and idle time beyond G refills. At 0: EndGrace, the wait = SecondsToNext →
+   `AskPause(…, stackWait)` (PaceState.StackWait; no FullStrength / NoDuration refusals - the wait does not need this attack's D);
+   TickPace ends a StackWait hold when `StackWaitOver` (the clock moved, a swing back → MarkWaited) - Until is only the estimate
+   (the stack switched off mid-wait = the estimate stands). StartHold by input sets `HoldKicks`; EndHold sums `KicksCleared`.
+   A kick that spends an AI man's last swing → `AskStackWaitAfterKick` (the same wait).
+5. **You**: `PlayerAttackStarting` - with a swing still stored after the spend, NO hold (the burst may chain); at 0 the hold
+   from the release's start (expected = the wait). `PlayerAttackEnded` - stored = no countdown (an early hold released); 0 = the
+   countdown = the wait (`_playerStackWait`). `GateFrame` retargets it first every frame (`RetargetPlayerWait`: back = end now,
+   so a held button fires this frame). `GatePlayerInput` → `KickGate` (managed; the smoke drives it): the kick bit out at 0, on
+   foot, counted, logged. `PlayerCountdownEnded` counts the wait and marks the next spend "after waiting". `TickPlayerTimer`:
+   the retarget + a safety net (an empty stack with no hold - a kick spent the last - starts the countdown).
+   `TryGetPlayerRecovery` adds the stack (count, cap, `ProgressAt` now).
+6. **Fresh starts**: `ResetPhases` (now an instance method - the switch off / on, the hideout's boss fight) FillUp + counts the
+   burst it cuts; `NoteStackSettings` (SwingStackEnabled on mid-battle = everyone full; off = the line names the switch).
+7. **The bar**: `AttackRecoveryVM.LabelText` bound by the prefab's Label (`Text="@LabelText"`), rebuilt only when the count or
+   the cap moves (`SetCount` - no per-frame string): "Swings 4/8" / "Attack recovery" with the stack off. Fill = the refill
+   toward the next (1 at the cap), amber below the cap, seconds only while waiting at 0. Chosen over pips: one TextWidget, a
+   binding the smoke's prefab check already validates, any cap (2-30+) fits; pips would need a list prefab and a cap limit.
+8. **Logs**: `[rate] swing stack (step 32) at mission start: …` (Describe), switch / settings lines; YOU (bucket
+   `athletics-stack`): first burst, stack empty (first in full: "1 → 0 of 4 on 70 points … the next comes back in X s"), a kick
+   refused (first in full), an attack at an empty stack; `[hud] recovery bar: first empty swing stack shown`; the first-pause
+   line names the stack; [summary] `swing stack:` + you / AI (attacks from the stack / after waiting / at empty, bursts by
+   length, waits) + kicks + the fill by f; `attack rate - AI timer, not held: … a stored swing left (step 32's swing stack) N`;
+   the recovery bar's summary clause "swing stack shown, fewest stored N".
+9. **The attack-rate verdicts**: unchanged math (each band's average cycle vs the target ÷ m). With the stack a band can hold
+   mostly burst cycles ("too fast") and the next band the waits ("too slow"); over a fight the average holds. Read with the
+   swing stack lines, or A/B with SwingStackEnabled off.
+
+**Built (DONE 2026-10-12)** - file map in CLAUDE.md "Layout"
+- Settings 103 → 107: `SwingStackEnabled` (true), `SwingStackPointsPerSwing` (Int 5-100, 20), `SwingStackMinimum` (Int 1-10, 2),
+  `KicksUseSwings` (true) - Tired fighters group, after `AttackAnimationMinPercent`; live. No config format bump.
+- Tests 514 → 531 (`SwingStackTests` +17; AttackRateTests' not-held line). Smoke 72 → 75 steps: `SwingStackThroughTheLogic`,
+  `SwingStackCostStaysFlat` (1000 men waiting at 0: the AI timer's tick 0.087 ms, the stack pass 0.035 ms, 0 bytes),
+  `RecoveryBarShowsTheStack`; the older steps pin the stack OFF (`AthleticsDefaults` → `SwingStackOff`).
+
+**Playtest checks (PLAYTEST part H)**
+1. Your burst: rest, then hammer - "Swings N/M" counts down with no wait; the YOU lines `first burst` and `swing stack empty`.
+2. At 0 the kick key does nothing (`kick pressed … refused`); the summary's `refused at 0 - yours N`.
+3. The AI: `attack rate - AI timer, not held: … a stored swing left` high, `swing stack - AI: … at an empty stack` ~0 (else
+   chained blows), `refused at 0 … the AI's N input frames` (0 = the AI does not kick through our hook - unverified).
+4. Battle pace still bites: the `battle pace` lines' attacks a minute per man about as before (the grace) - if the AI swings
+   clearly more often, tell Claude (the gap grace may be too short).

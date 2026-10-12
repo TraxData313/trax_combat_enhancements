@@ -18,8 +18,9 @@ decide the fight — and heroes matter.**
 - **An Athletics bar** for every fighter — his stamina, as big as his Athletics skill.
 - **Attacks, kicks and blocks drain it;** rest refills it in about a minute. Clean blocks and parries let
   it refill while you defend.
-- **Tired men fight worse:** a pause after each attack (no slow motion), a slower run, weaker lucky hits,
-  and tired AI start guessing which way to block.
+- **Tired men fight worse:** a pause between attacks once their stored swings run out (save a few up and
+  strike them back to back; no slow motion), a slower run, weaker lucky hits, and tired AI start guessing
+  which way to block.
 - **Tired AI act on your orders:** below a floor set by the order (hold 60%, advance 40%, charge 20%)
   they stop swinging and defend, shield up, until they catch their breath. Order the charge and they
   surge again.

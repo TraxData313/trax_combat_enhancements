@@ -198,6 +198,42 @@ regen.)
     - **You see it**: the **Attack recovery bar** just above your Athletics bar (§3) empties when
       you attack and fills over your pause, the seconds left inside it; it **flashes** when you
       press attack too early (`FlashBarOnEarlyAttack`).
+    - **The swing stack** (step 32, Anton 2026-10-12 - "chain swings stack"; `SwingStackEnabled`, on;
+      AI_NOTES "Step 32"). In a tournament 1v1 a single slow swing every ~3 s was blocked ~95% - one
+      telegraphed swing is trivially read - and kicks (never held) were the way round it. So the pause
+      no longer follows EVERY attack: each fighter **stores swings**, cap = max(`SwingStackMinimum` 2,
+      round(his CURRENT points / `SwingStackPointsPerSwing` 20)), rounded half AWAY from zero (7.5 → 8);
+      the floor holds even at empty (pool 150 full = 8, at 75 points 4, empty 2; pool 50 full = 3). He
+      spawns full; a fresh start (the switch back on, the hideout's boss fight) fills it. An attack -
+      whatever the pause covers: a melee release, a loose, a throw - **spends one at its release**; while
+      one is stored he is never held (the burst). With none left he waits - **exactly until the next comes
+      back**. The refill: one swing per the pause that attack would have left - **D × (1/m − 1) at his
+      CURRENT m** (D = his last measured attack's, 0.8 s before any), + for the AI his class's battle-pace
+      share - of time **NOT attacking** (the clock stands still during his own ready, release and the reload
+      after a loose). Above the peak line the pause is 0: always full. The cap follows his points live: a
+      charge that drops it cuts the stored count. So the AVERAGE rate stays step 13's and a rested man can
+      save up and burst. **The AI's own gap** (step 21's measurement: after an attack the AI waits about
+      `AiMeleeGapSeconds` 1.0 s of its own before the next) is NOT rest: after a melee swing taken from the
+      stack the clock waits that long before it runs - without it the stack would refill during his
+      natural rhythm and undo the battle pace (a fresh shield man would never be held); at 0 the clock runs
+      from the attack's end and his own gap follows the hold, as in step 13. **Kicks and shield bashes**
+      (`KicksUseSwings`, on) spend one too and never start a pause by themselves; at 0 they cannot start -
+      your kick key (the controller's `EventControlFlag.Kick`, set the frame you press it) is taken out by
+      the same input gate, a held AI man's kick out of his own input (step 16's hook - while the AI timer
+      holds him BY INPUT; the old NoAttack technique cannot); a bash is the attack button while blocking,
+      held with every attack. **The AI** decides nothing new: it may attack whenever a swing is stored; its
+      hold (by input or NoAttack) runs only at 0. The brace (step 23) still takes melee attacks out whatever
+      the stack. **You**: the hold begins at the release that spends your LAST stored swing (no chained
+      blow past it) and its countdown follows your next stored swing every frame (it moves with your m);
+      held, the attack fires the moment one is back. Off = step 13's pause after every attack, to the bit;
+      the master switch = no stack, no pause, nothing gated. **Shown**: the Attack recovery bar's words read
+      **"Swings 4/8"** (stored / cap), its fill is the refill toward the NEXT stored swing (full at the cap),
+      the seconds inside only while you wait at 0, the flash on an early press as before. **Measured**: the
+      `swing stack` summary lines (attacks from the stack / after waiting / at an empty stack, bursts by
+      length, waits, kicks spent / refused, the average fill by f band). **How the attack-rate verdicts read
+      now**: they still compare each band's average cycle with the target ÷ m - over a whole fight the
+      average holds, but a band filled mostly by a burst reads "too fast" and the waits after it "too slow";
+      read them with the swing stack lines (or switch the stack off for an A/B test).
     - **Blocking is never slowed**: weapon handling, shield speed and every defence value of the
       AI are left alone, and with (nearly) full-speed animations a tired man's swing no longer
       keeps him committed much longer (step 20b: at most 1/0.85 ≈ 18% longer at empty).
@@ -583,6 +619,10 @@ it, `RecoveryBarWidth` × `RecoveryBarHeight`, 205 × 14 px): the words *Attack 
   still runs), **FULL** (steel, no text) whenever no pause runs — at full strength it simply stays
   full. The fill is amber while it refills. You cannot start an attack until it is full; keep the
   button held and the attack starts the moment it fills.
+- **With the swing stack** (step 32, §2): its words read **"Swings 4/8"** (your stored swings / how many
+  you can hold now - rebuilt only when either changes) instead of "Attack recovery"; the fill is the refill
+  toward your NEXT stored swing (steel and full at the cap, amber below it, frozen while you attack); the
+  seconds inside only while you wait at 0. You can attack whenever the count is above 0.
 - **It flashes** (`FlashBarOnEarlyAttack`, on): a white overlay, two quick pulses (0.12 s on,
   0.08 s off — a UI constant like the bars' colours), when you press attack while it is not full
   (the press does nothing); hammering does not restart a flash that still runs.
@@ -1067,6 +1107,16 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     defence decision, nothing of ours runs per frame, riders are covered, and the cost is one float per
     recompute. If PLAYTEST D8 shows the engine ignoring it, the fallback is replacing his direction bits in
     `OnAIInputSet` (step 16's hook) once per incoming attack - designed in AI_NOTES "Step 30", not built.
+30. **The swing stack** (step 32, Claude's calls on Anton's design of 2026-10-12 - AI_NOTES "Step 32"): (a) the spend
+    is at the RELEASE (a cancelled ready or a feint costs nothing; the player's gate keeps a ready from starting at 0);
+    (b) "not attacking" = not in a ready, a release or the reload after a loose - a block recoil and the AI's guard count
+    as rest; (c) the refill's D is his LAST measured attack's (0.8 s before his first), its m his current one, so a
+    resting man's refill speeds up as his bar climbs; (d) an attack at an empty stack (a chained blow, a gate miss)
+    loses the refill made so far - an attack is never free; (e) the AI's own gap after a melee swing from the stack
+    does not refill (above) - Anton's "the average rate is unchanged" holds for the AI only with it; (f) the player's
+    kick is gated only on foot (a mounted "kick" flag is the game's own); (g) the AI's kick is taken out only by the
+    input technique (`AttackRatePaceByInput`, on by default); (h) a kick that spends an AI man's last swing starts
+    his wait like an attack's end would. Each is a default Anton can overturn.
 
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),

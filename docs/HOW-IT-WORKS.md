@@ -13,17 +13,18 @@ Want the formulas and every parameter? [DESIGN.md](DESIGN.md) is the full contra
 1. [The idea in one minute](#1-the-idea-in-one-minute)
 2. [The Athletics bar](#2-the-athletics-bar)
 3. [What tiredness does](#3-what-tiredness-does)
-4. [Resting and the refill](#4-resting-and-the-refill)
-5. [Defending costs too](#5-defending-costs-too)
-6. [Tired AI guess their blocks](#6-tired-ai-guess-their-blocks)
-7. [Brace by orders](#7-brace-by-orders)
-8. [Stepping back out of the press](#8-stepping-back-out-of-the-press)
-9. [Battle pace](#9-battle-pace)
-10. [Damage](#10-damage)
-11. [Heroes, and the hideout boss](#11-heroes-and-the-hideout-boss)
-12. [What you see on screen](#12-what-you-see-on-screen)
-13. [Tactics this creates](#13-tactics-this-creates)
-14. [Changing things](#14-changing-things)
+4. [The swing stack](#4-the-swing-stack)
+5. [Resting and the refill](#5-resting-and-the-refill)
+6. [Defending costs too](#6-defending-costs-too)
+7. [Tired AI guess their blocks](#7-tired-ai-guess-their-blocks)
+8. [Brace by orders](#8-brace-by-orders)
+9. [Stepping back out of the press](#9-stepping-back-out-of-the-press)
+10. [Battle pace](#10-battle-pace)
+11. [Damage](#11-damage)
+12. [Heroes, and the hideout boss](#12-heroes-and-the-hideout-boss)
+13. [What you see on screen](#13-what-you-see-on-screen)
+14. [Tactics this creates](#14-tactics-this-creates)
+15. [Changing things](#15-changing-things)
 
 ---
 
@@ -39,7 +40,7 @@ A rested line beats a spent one. Fresh shock infantry thrown at a line that has 
 minutes is a real blow.
 
 Nothing is slow motion. A tired man's swing looks almost normal; he just waits longer before the next
-one.
+one — and anyone can save up a few swings and strike them back to back (the swing stack, section 4).
 
 ## 2. The Athletics bar
 
@@ -83,14 +84,15 @@ effect slides in a straight line down to its worst at an empty bar.
 | 15% | 1.42 s | 88% | 36% | 44% | +10% | 80% |
 | 0% (empty) | 3.20 s | 85% | 20% | 30% | +0% | 100% |
 
-1. After a typical 0.8 s swing (Anton's battle logs average about that). The pause is a wait before
-   the next attack, not slow motion: blocking, moving and turning are never held. Your own pause fills
+1. After a typical 0.8 s swing (Anton's battle logs average about that). With the swing stack
+   (section 4) it is the wait only when no stored swing is left — and the time each one takes to come
+   back. The pause is a wait before the next attack, not slow motion: blocking, moving and turning are never held. Your own pause fills
    the Attack recovery bar; the AI waits with its guard up. A heavier, slower weapon waits longer.
 2. Roughly, compared with the same man fresh — the rate the pause aims at. Empty, he attacks once
    where he used to attack five times.
-3. Every hit rolls its damage (section 10). A tired man still rolls as low as a fresh one, but his
+3. Every hit rolls its damage (section 11). A tired man still rolls as low as a fresh one, but his
    lucky high rolls shrink.
-4. Only AI men, never you. See section 6 for what that means for his blocks.
+4. Only AI men, never you. See section 7 for what that means for his blocks.
 
 Horses are not slowed by their rider's bar by default.
 
@@ -98,10 +100,60 @@ Horses are not slowed by their rider's bar by default.
 `MinMoveSpeedMultiplier` 0.3, `MountMinSpeedMultiplier` 1.0 (horses off), `DamageBonusFollowsAthletics` on,
 `TiredBlockRandomPercent` 100.</sub>
 
-## 4. Resting and the refill
+## 4. The swing stack
+
+The pause after an attack does not come after **every** attack. Each fighter stores swings — one for
+every 20 points of Athletics he has **right now**, never fewer than 2. An attack (a swing, a thrust, a
+shot, a throw — or a kick or shield bash) spends one. While he has one stored, he attacks with no wait
+at all. With none left, he waits the pause of section 3 for the next one.
+
+Swings come back one per pause (the pause of section 3 at his bar **now**) while he is not attacking.
+So over a whole fight he attacks just as often as before — but a man who holds back can save swings
+up and then strike several in a row. One slow, telegraphed swing every few seconds is easy to read; a
+burst of four is not.
+
+Stored swings at most (his points ÷ 20, rounded half up, at least 2):
+
+| Bar size | Full (100%) | 75% | 50% | 25% | Empty |
+|---:|---:|---:|---:|---:|---:|
+| 50 | 3 | 2 | 2 | 2 | 2 |
+| 100 | 5 | 4 | 3 | 2 | 2 |
+| 150 | 8 | 6 | 4 | 2 | 2 |
+| 200 | 10 | 8 | 5 | 3 | 2 |
+| 300 | 15 | 11 | 8 | 4 | 2 |
+
+The count follows his points as they fall: each attack also costs Athletics, so a burst shrinks the
+stack's size too. *Example:* a 150-skill hero at half his bar holds 4 — he can strike 4 times back to
+back — and by then his bar is at 30%, so each next one takes 0.74 s to come back.
+
+How long the swings take to come back, after a 0.8 s swing, standing back from the fight:
+
+| Bar | One swing back | A 150 bar's whole stack, from 0 |
+|---:|---:|---:|
+| 75–100% | at once | at once |
+| 60% | 0.15 s | 0.8 s (5 swings) |
+| 50% | 0.29 s | 1.2 s (4) |
+| 30% | 0.74 s | 1.5 s (2) |
+| 15% | 1.42 s | 2.8 s (2) |
+| 0% (empty) | 3.20 s | 6.4 s (2) |
+
+(His bar refills meanwhile, so the real wait is a little shorter.) AI soldiers' battle-pace waits
+(section 10) come on top of their refill, and an AI swordsman's own breather between swings doesn't
+count as rest — so the stack never makes the AI attack more often than before.
+
+**Kicks and shield bashes** spend a stored swing too (they never start a pause of their own). With
+none stored, your kick key does nothing until one is back — no more kicking through your pause.
+
+Your **Attack recovery bar** (section 13) shows the stack: **"Swings 4/8"**, and the bar filling toward
+the next one.
+
+<sub>Settings: `SwingStackEnabled` on (off = a pause after every attack below the peak line),
+`SwingStackPointsPerSwing` 20, `SwingStackMinimum` 2, `KicksUseSwings` on.</sub>
+
+## 5. Resting and the refill
 
 The bar starts to refill **3 seconds** after his last attack, kick, shield bash or wrong-side block
-(clean blocks and parries don't stop it — section 5). It refills at a steady rate, a share of the
+(clean blocks and parries don't stop it — section 6). It refills at a steady rate, a share of the
 whole bar per second, so a big bar gains more points per second than a small one.
 
 | What he is doing | Empty → full | Empty → the peak line |
@@ -115,7 +167,7 @@ A wounded man refills only to his health share (at 60% health, to 60% of the bar
 <sub>Settings: `RegenDelayBlowTimes` 2 × `BlowTimeSeconds` 1.5 (the 3 s), `FullRegenSecondsStanding` 60,
 `RegenMultiplierAtFullRun` 0.5, `WalkEffortFraction` 0.4, `RegenRateNearFullPercent` 100 (a straight line).</sub>
 
-## 5. Defending costs too
+## 6. Defending costs too
 
 Every melee blow a man **blocks** costs him a little. Missiles into a shield are free.
 
@@ -138,12 +190,12 @@ back while parrying a blow every 1.5 seconds (a steady duel), standing still?
 | 200 | climbs (+120) | climbs (+140) | climbs (+155) | climbs |
 
 Points per minute, net. A shield on the right side always climbs. Moving fast while fighting refills
-slower (section 4), and a wrong-side block every 1.5 s holds anyone at the bottom.
+slower (section 5), and a wrong-side block every 1.5 s holds anyone at the bottom.
 
 <sub>Settings: `CostPerShieldBlock` 1, `CostPerWeaponParry` 2, `CostPerWrongSideShieldBlock` 5,
 `CostPerKickOrBash` 3, `OnlyWrongSideBlocksStopRefill` on.</sub>
 
-## 6. Tired AI guess their blocks
+## 7. Tired AI guess their blocks
 
 In the vanilla game a skilled AI fighter almost always blocks the right way — a tournament champion
 late in the tournament essentially never misses. With this mod, below the peak line an AI man's block
@@ -162,7 +214,7 @@ For a skilled fighter (one who never guesses in vanilla):
 | 0% | 100% | 75% (3 in 4) |
 
 **Shields are more forgiving.** A shield is a big thing: a wrong guess usually still catches the blow,
-but on the wrong side — which costs him 5 points and stops his refill (section 5). So a tired shield
+but on the wrong side — which costs him 5 points and stops his refill (section 6). So a tired shield
 man doesn't just take the hit; he gets more tired, faster.
 
 Low-skill troops (recruits, levies) already guess a lot in the vanilla game; for them the mod changes
@@ -173,7 +225,7 @@ affected — your block is your mouse.
 works through the game's own "randomised defend direction" value, so it is the game's AI doing the
 guessing.</sub>
 
-## 7. Brace by orders
+## 8. Brace by orders
 
 Your orders decide how hard your men fight before they stop attacking and only defend. When an AI
 man's bar falls to his formation's **floor**, he **braces**: no more attacks, shield out and raised,
@@ -201,7 +253,7 @@ never braces — that is your call.
 `BraceFloorNoFormationPercent` 20, `BraceFloorSpreadPercent` 10, `BraceRecoverPercent` 20,
 `BraceRecoverSpreadPercent` 5, `BraceWieldShield` on, `BraceRaiseShield` on, `BraceEnabled` on.</sub>
 
-## 8. Stepping back out of the press
+## 9. Stepping back out of the press
 
 After a swing, a tired AI soldier may walk **backwards** about 2 m out of the press — facing his
 enemy, guard up, for up to 1.5 s — and let a fresher man take his place. The chance follows his bar:
@@ -216,7 +268,7 @@ Only when an enemy is within 4 m, never on a ship's deck, never in tournaments o
 <sub>Settings: `StepBackMaxChancePercent` 100, `StepBackDistance` 2, `StepBackSeconds` 1.5,
 `StepBackEnemyRange` 4, `StepBackMaxAtOnce` 50, `StepBackEnabled` on.</sub>
 
-## 9. Battle pace
+## 10. Battle pace
 
 On top of tiredness, AI soldiers simply fight at a steadier pace. Shield infantry are the most patient
 — a shield wall should hold, not flail.
@@ -234,7 +286,7 @@ A tired man's own pause comes on top, and the "fewer" still holds at every bar l
 <sub>Settings: `ShieldInfantrySwingsLessPercent` 30, `FootMeleeSwingsLessPercent` 15, `AiMeleeGapSeconds` 1.0,
 `ExtraPauseAfterBowShotSeconds` 2.0, `ExtraPauseAfterCrossbowShotSeconds` 2.5.</sub>
 
-## 10. Damage
+## 11. Damage
 
 Two things, in this order:
 
@@ -256,7 +308,7 @@ Hits on a shield are not rolled by default (still reduced). A hit never drops be
 <sub>Settings: `DamageRandomPercent` 50, `DamageReductionPercent` 25, `DamageRandomOnShields` off,
 `DamageRandomMelee` / `Ranged` / `OnMounts` on.</sub>
 
-## 11. Heroes, and the hideout boss
+## 12. Heroes, and the hideout boss
 
 - **Heroes pay less** — a quarter less per attack, kick, bash and block; a party leader a quarter less
   again (section 2). With a hero's big Athletics skill, his bar is big too: late in a battle your heroes
@@ -267,7 +319,7 @@ Hits on a shield are not rolled by default (still reduced). A hit never drops be
 
 <sub>Settings: `HeroCostMultiplier` 0.75, `PartyLeaderCostMultiplier` 0.75, `HideoutBossFightRefill` on.</sub>
 
-## 12. What you see on screen
+## 13. What you see on screen
 
 **Your Athletics bar** sits under your health, with the white peak line at 75%. Its colour:
 
@@ -281,9 +333,10 @@ Hits on a shield are not rolled by default (still reduced). A hit never drops be
 
 It also shows outside battles (walking about a town) while a weapon is drawn or the bar is refilling.
 
-**The Attack recovery bar** sits just above it: empty right after your attack, filling over your pause
-with the seconds left written inside, full when you can attack again. Press attack too early and it
-flashes — the press is swallowed; hold the button and the attack fires the moment the bar is full.
+**The Attack recovery bar** sits just above it and shows your swing stack (section 4): **"Swings 4/8"**
+— stored swings out of how many you can hold now — and the bar filling toward the next one. At 0 the
+seconds until the next are written inside it. Press attack (or kick) with none stored and it flashes —
+the press is swallowed; hold the button and the attack fires the moment a swing is back.
 
 **The orders menu** shows, under each formation card: the men's average Athletics with its ± spread,
 their average health, and **"ready 34/50"** — how many are ready to fight (not bracing).
@@ -300,7 +353,7 @@ their average health, and **"ready 34/50"** — how many are ready to fight (not
 `AltMarkersShowEnemy`, `ShowReadyCount`, `Bar*BelowPercent`, `Ready*BelowPercent`, and the HUD's sizes
 and offsets.</sub>
 
-## 13. Tactics this creates
+## 14. Tactics this creates
 
 - **Keep your troops rested.** A line at full strength beats a line at 30% almost every time — it
   attacks twice as often, runs faster and blocks true. Don't spend men you don't need yet.
@@ -318,7 +371,7 @@ and offsets.</sub>
   wrong-side block stops it.
 - **Read the enemy.** "ready 12/48" in red under an enemy marker is an invitation.
 
-## 14. Changing things
+## 15. Changing things
 
 Every number above is a setting: in **MCM** (optional) or in the commented `config.json` beside the
 log. Changes apply at once, even mid-battle — nothing needs a restart. Each feature has its own switch,

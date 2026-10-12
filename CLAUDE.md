@@ -56,7 +56,11 @@ game's formation markers, the enemy's too (step 20: vanilla's markers read live)
 each formation's men READY - not bracing - as "ready 34/50", plain / yellow / red (step 24, `ShowReadyCount`;
 hidden while bracing is off). A tired AI man's block DIRECTION is partly a guess (step 30, Anton 2026-10-12:
 `TiredBlockRandomPercent` 100 - w = % × (1 − f), the stat decorator raises the game's own per-agent
-`AiRandomizedDefendDirectionChance` to own + (1 − own) × w; never the player; Core `TiredBlock`). The bar for the
+`AiRandomizedDefendDirectionChance` to own + (1 − own) × w; never the player; Core `TiredBlock`). SWING STACK (step 32, `SwingStackEnabled`): the pause runs only once a fighter's
+stored swings - max(`SwingStackMinimum` 2, round(his CURRENT points / `SwingStackPointsPerSwing` 20)) - are spent; one comes
+back per pause while he is not attacking (an AI melee man's own ~1 s gap after a swing from the stack excluded), so he can
+burst; kicks / bashes spend one too and are gated at 0 (`KicksUseSwings` - your kick key, a held AI man's input); the
+recovery bar reads "Swings 4/8". The bar for the
 fighter you look at is LATER (DESIGN §3; its settings wait in DESIGN's "Planned parameters"). Words:
 the pool/bar/points are "Athletics", the character-screen skill is "the Athletics skill" (it
 used to be called "endurance"), the "peak line" is the white mark at the top quarter of the bar,
@@ -193,7 +197,7 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
   ParamDef.cs                 one setting: key, type, range, group, label, plain-words
                               description, apply timing (Live / NextBattle); Normalize, Format;
                               its Default comes from defaults.json (DefaultsFile), never code
-  SettingsSchema.cs           EVERY setting of DESIGN's table (103), in file + MCM order, 12 groups
+  SettingsSchema.cs           EVERY setting of DESIGN's table (107), in file + MCM order, 12 groups
                               ("Master switch" first, "Damage" second - step 25 renamed it from
                               "Damage randomness", "Battle pace (AI)" - step 21 - after the step back,
                               "Brace by orders (AI)" - step 23 - after it,
@@ -358,6 +362,14 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               the share, the cycle (a minute per man while fighting), the AI's own gap after a
                               pause, the model's cycle at 0 and with the setting (foot melee), the archers'
                               share inside a cycle + the 7 [summary] "battle pace" lines
+  SwingStack.cs               step 32 pure (AI_NOTES "Step 32"): SwingStackRules (live; Enabled = ModEnabled &&
+                              AthleticsEnabled && SwingStackEnabled, KicksOn, Describe), SwingStackMath (RoundAway - half away
+                              from zero, Cap = max(min, round(points / per swing)), Full, FallbackSwingSeconds 0.8, burst bins,
+                              CountText "4/8"), SwingStack (one fighter: Stored, Progress, the clock - Advance stops while
+                              attacking, a refill < 0.1 s fills at once, StartGrace / EndGrace for the AI's own gap; Spend →
+                              FromStack / AfterWaiting / AtEmpty; Clamp, ProgressAt, SecondsToNext, FillUp, the burst Run),
+                              SwingStackStats (+ the 5 [summary] "swing stack" lines); AttackTimer.cs: PlayerAttackTimer's
+                              pauseOverride / StartCountdown / Retarget, AttackRecoveryReading.WithStack
   Brace.cs                    step 23 pure (AI_NOTES "Step 23"): BraceOrderKind (the game's movement orders + the
                               AI's advance / tactical charge on a Move), BraceOrder (charge / advance / hold / no formation -
                               step 28), BraceEnd,
@@ -580,6 +592,13 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               PaceNotStarted (a refused / superseded pause), NotePaceCycle (by class, the cap
                               + the share inside), NotePaceGap, the settings line at mission start and on a
                               change, FirstOfClass (one [rate] line per class), WriteBattlePaceSummary
+  Missions/AthleticsLogic.SwingStack.cs  step 32: the clock (StackOnAction before the phases, StackRegenSample in the
+                              regen pass - + the fill by f, StackWaitOver for a waiting AI man, RetargetPlayerWait every gate
+                              frame), SpendSwing (releases, kicks / bashes; the YOU lines), StackClamp (after every charge),
+                              AskStackPause (the AI: a swing stored = no pause + his own gap as grace; 0 = AskPause with the
+                              wait), AskStackWaitAfterKick, PlayerStackHoldIfEmpty, KickGate (your kick bit out at 0),
+                              NoteStackSettings, StackPass (the smoke), WriteSwingStackSummary; the player timer, the AI timer
+                              (PaceState.StackWait), AiInputHook (HoldKicks / HoldKick) and the recovery read carry the rest
   Missions/AthleticsLogic.Brace.cs  step 23: StartBrace / NoteBraceSettings (the [brace] lines), TickBrace (switched
                               off → EndAllBraces at once; else a staggered slice so each man is looked at ~every
                               0.25 s), PollBrace (not AI / the player → none; his two rolls once - the margin on BraceDice,
@@ -716,7 +735,7 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
   Hud/AltMarkersVM.cs         its ViewModels: the root + a GROW-ONLY MBBindingList of AltMarkerLabelVM keyed by
                               team + formation (a label never swaps formations when vanilla re-sorts); step 24:
                               ReadyText / ReadyColor / ReadyShown, SetReady
-tests/TraxCombat.Core.Tests/  net8.0 xUnit (514) — schema vs DESIGN.md (keys + types), one copy
+tests/TraxCombat.Core.Tests/  net8.0 xUnit (531) — schema vs DESIGN.md (keys + types), one copy
                               runs (SingleCopyTests: claims on private slots, copies, texts), when
                               MCM is tried and when it stops (McmPlanTests - step 12),
                               defaults.json (DefaultsFileTests), master switch, settings, config
@@ -763,7 +782,10 @@ tests/TraxCombat.Core.Tests/  net8.0 xUnit (514) — schema vs DESIGN.md (keys +
                               step 23: the floor by order, the hysteresis, the wound cap's band, an order change,
                               the per-man margin, the switches, the shield step and RaiseShield, the summary, the
                               formation's Ready / Bracing; step 28: the no-formation floor, each man's own floor roll -
-                              range, apart from the margin, live, clamped at 0 / 100, the hysteresis, the wound cap), the ready count (ReadyCountTests, step 24: hidden
+                              range, apart from the margin, live, clamped at 0 / 100, the hysteresis, the wound cap), the swing stack (SwingStackTests, step 32: the cap - half away
+                              from zero, the floor at empty, the examples -, spending, the refill per pause at the current m,
+                              the clock stopped while attacking, the AI's gap, the clamp, bursts, fresh starts, live rules, the
+                              switch and the master switch, your countdown's retarget, the bar's count, the summary), the ready count (ReadyCountTests, step 24: hidden
                               rules in order, bands at or below 75 / 50, text, colours, the strip cell one row
                               deeper only while drawn and the 1080p bottom card lifted, log text, summary), the
                               tired block direction (TiredBlockTests, step 30: w at f 1 / 0.5 / 0 x 0 / 50 / 100, never
@@ -778,7 +800,7 @@ module/GUI/Prefabs/           the HUD movies - file name = movie name, `Trax…`
                               global across modules): TraxPlayerAthleticsBar.xml (step 6: native
                               sprite BlankWhiteSquare_9 + brush AgentHUD.Interaction.Text only;
                               FillBarWidgets draw shares; no widget takes mouse events),
-                              TraxAttackRecoveryBar.xml (step 13: the label, a frame, the fill, the
+                              TraxAttackRecoveryBar.xml (step 13: the label - step 32: @LabelText, "Swings 4/8" -, a frame, the fill, the
                               seconds centred on it, the flash overlay - same native sprite / brush),
                               TraxOrderStrip.xml (step 9: {Cells} ItemTemplates - the cells placed
                               by Scaled* pixel bindings, the panel rows; the ± band = a FillBarWidget
@@ -918,8 +940,14 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               compounding, never you, the slider live (50 / 0), AthleticsEnabled / the master switch,
                               a braced man's own guard direction untouched by the input frame, the guard by f band,
                               the [guard] and [summary] lines; the cost - 1000 tired men block + recompute, ~0.1 µs,
-                              0 bytes (the older steps pin TiredBlockRandomPercent 0 - AthleticsDefaults) (72 steps; the config
-                              checks work for any tuned default);
+                              0 bytes (the older steps pin TiredBlockRandomPercent 0 - AthleticsDefaults);
+                              step 32 (Program.SwingStack.cs): the real logic - your burst of stored swings, the hold from
+                              the last one's release, the countdown to the next, the kick key refused at 0, hold-to-attack,
+                              saving up; the AI by input - no hold from the stack, his own gap not refilling, at 0 held
+                              exactly for the rest, his kick bit taken out; kicks spend one; the switches; the summary; the
+                              recovery bar's "Swings 4/8" through the real view; the cost - 1000 men waiting, 0.09 ms a tick,
+                              0 bytes (the older steps pin SwingStackEnabled off - SwingStackOff in AthleticsDefaults) (75 steps; the
+                              config checks work for any tuned default)
                               TRAX_SMOKE_KEEP=1 keeps its temp folder + log to read
 tools/DefaultsTool/           defaults.json upkeep: refresh (rewrite comments/order, keep every
                               value) | check; --file <path> for an exported one

@@ -5,7 +5,7 @@ order, about **3 hours 15** (A 10 min, B 15, C 25, D 60, E 20, F 55, G 10; the o
 time after step 16? D4 alone (the A/B of the new guard and backpedal, 20 min) answers the newest
 questions; after step 21, D5 + D6 (the shield wall and the archers, 25 min); after step 23, D7 (lines brace by
 their orders, 15 min - since step 24 with the "ready 34/50" count on ALT and in the orders menu); after step 28, D8
-(a tournament: the opponent fights on to ~20%, 10 min; after step 29 its step 4 - block your way back from empty; after step 30 its step 5 - the tired opponent guesses his blocks).** Each part says what to do, what you
+(a tournament: the opponent fights on to ~20%, 10 min; after step 29 its step 4 - block your way back from empty; after step 30 its step 5 - the tired opponent guesses his blocks); after step 32, D9 (the swing stack: save swings up and burst, the kick refused at 0, 10 min).** Each part says what to do, what you
 should see, what counts as broken, and the log lines that prove it. The full line reference —
 every summary block and what proves what — is the **appendix** at the end.
 
@@ -706,6 +706,47 @@ the men who fought there - the engine ignores the game's own random-direction ch
 bits replaced in his input, AI_NOTES "Step 30") is next; no `[guard] first tired block direction` line in a battle where
 AI men got tired (the decorator is not on top - see the `[speed] stat model on top` line).
 
+**D9. The swing stack — save swings up, then burst (step 32, ~10 min).** Anton's design: "chain swings stack" - one slow
+swing every few seconds is read and blocked; now each fighter stores swings (his Athletics points ÷ 20, rounded, at least
+2) and waits only when none is left. Custom battle or the arena; you on foot with a one-hander (or a tournament round).
+1. **Look at the bar.** The Attack recovery bar's words now read **"Swings 8/8"** (a 150 bar full) - fewer as your bar
+   falls (50%: 4, empty: 2). At full strength it never runs down below the cap for long (the pause there is 0).
+2. **Burst.** Get to about half your bar (swing at the air), stand still a few seconds until the count is full, then
+   hammer attack: every stored swing goes out back to back with no wait, the count falling "4/4 → 3/4 → … 0/3"; at 0 the
+   bar empties and fills toward the next, the seconds inside it. Keep the button held: the next swing fires the moment
+   one is back ("1/3").
+3. **Kick at 0.** With "0/N" press the kick key: nothing happens (the press is simply gone - only an attack press
+   flashes the bar); with a swing stored the kick works and spends it ("2/3 → 1/3").
+4. **Save up.** Back off and block (clean blocks are rest) for a few seconds: the count climbs one per pause. Then strike
+   a burst into an opponent's guard - against a tournament opponent a burst of 3-4 should land far more than one swing
+   every ~3 s did.
+5. **The AI**: watch a tired AI man in a 1v1 - he now strikes a few swings in a row, then waits; his pauses come between
+   bursts, not after every swing.
+- **The lines**: `[rate] swing stack (step 32) at mission start: ON - every fighter stores swings: max(2, his Athletics
+  points / 20, rounded) …`; `[athletics] YOU: first burst this battle at … s - a second attack straight after the last
+  from your stored swings (3/4 left; one comes back per … s you are not attacking)`; `[athletics] YOU: swing stack empty at
+  … s - you spent your last stored swing (1 → 0 of 3 on … points) on an attack; the next comes back in … s of not
+  attacking - until then your attack button and kick key do nothing …`; `[athletics] YOU: first attack pause this battle
+  at … → no new attack for … s - your swing stack is empty: the next stored swing comes back after that much time not
+  attacking …`; `[athletics] YOU: kick pressed at … s with no stored swing (0/3) - refused: the engine never saw it
+  (KicksUseSwings) …`; `[hud] recovery bar: first empty swing stack shown at … - "Swings 0/3", …`. The summary (L6f):
+  `swing stack - you: attacks N (from the stack A, after waiting at 0 W, at an empty stack 0); bursts (2+ in a row, no swing
+  back between) B by length …, longest L; waits at 0 W (avg … s …)`, the same for the AI, `swing stack - kicks and bashes
+  (…): spent a swing K (you k), refused at 0 - yours R (the gate took the kick key out), the AI's F input frames; started
+  at 0 anyway 0 …`, `swing stack - average fill (stored ÷ his cap) by f: …`, and in the attack-rate block `attack rate -
+  AI timer, not held: … a stored swing left (step 32's swing stack) N` (most AI attacks).
+- **Tune live** (MCM, *Tired fighters*): *Athletics points per stored swing* 10 = twice the stack, 40 = half; *Fewest stored
+  swings* 1 = an empty man waits after every swing again; *Kicks and shield bashes use a stored swing* off = kicks free of
+  the stack; *Swing stack* off = the pause after every attack (the old way) - an A/B in one battle.
+- **Read the verdicts with it**: the `attack rate` band rows still compare each band's cycle with its target; with the
+  stack a band full of bursts reads "too fast" and the waits after them "too slow" - over the fight they even out.
+
+**Broken — tell Claude** (D9): `at an empty stack` more than a few for you (the gate let an attack through at 0); a kick
+going out at "0/N"; the count not falling during a burst or not climbing while you rest; the held button not firing when a
+swing is back; the AI's `battle pace` attacks a minute per man clearly higher than in a battle with *Swing stack* off (the
+AI's own gap is refilling - AI_NOTES "Step 32"); `the AI's 0 input frames` with AI men seen kicking at 0 (the AI's kick is
+not in the input we edit - expected, note it).
+
 ---
 
 ## E. Your Athletics bar, the orders-menu strip and the ALT markers (20 min)
@@ -1331,6 +1372,29 @@ header names the technique: `==== scene …, mod ON, AI holds: Input (the AI's o
   Proves: the chance is raised where the bar is low (`his own → written` climbing to 1.00 at empty) and the engine
   follows it (`AI guard by f`: blocked % falling band by band, `WRONG side` rising). In a field battle many blows land
   whatever the guard (flanks, backs), so compare bands, not absolute numbers; the tournament 1v1 is the clean test.
+
+### L6f. The swing stack (step 32)
+
+- Mission start: `[rate] swing stack (step 32) at mission start: ON - every fighter stores swings: max(2, his Athletics
+  points / 20, rounded) (SwingStackMinimum 2, SwingStackPointsPerSwing 20 - a full 150 pool holds 8, empty 2); an attack
+  spends one and waits only when none is left; …` (off: `OFF (SwingStackEnabled) - step 13's pause after EVERY attack below
+  the peak line`; the mod or Athletics off: `… - no pause at all`). Changes: `[rate] swing stack switched ON / OFF mid-mission
+  at … s: …`, `[rate] swing stack settings now: …`.
+- YOU (D9): `first burst this battle`, `swing stack empty at …` (the first in full, later ones rate-limited, bucket
+  `athletics-stack`), `kick pressed at … with no stored swing (0/N) - refused`, `an attack at … started with NO stored swing`
+  (should stay rare - a chained blow or a gate miss); the first-pause line ends `- your swing stack is empty: …`.
+- Summary - 5 lines (numbers made up):
+  ```
+  swing stack: ON - every fighter stores swings: max(2, his Athletics points / 20, rounded) …
+  swing stack - you: attacks 120 (from the stack 95, after waiting at 0 25, at an empty stack 0); bursts (2+ in a row, no swing back between) 14 by length 2: 6, 3: 4, 4: 3, 5-6: 1, longest 6; waits at 0 25 (avg 1.10 s, longest 3.20 s)
+  swing stack - AI: attacks 5200 (from the stack 3900, after waiting at 0 1250, at an empty stack 50 - chained blows or a gate miss); bursts … ; waits at 0 1300 (avg 1.40 s, …)
+  swing stack - kicks and bashes (KicksUseSwings on at the end): spent a swing 40 (you 12), refused at 0 - yours 3 (the gate took the kick key out), the AI's 0 input frames; started at 0 anyway 0 (…)
+  swing stack - average fill (stored ÷ his cap) by f: peak (f 1) 100%, f 0.5-1 80%, f below 0.5 55%, empty (f 0) 30%; swings back 4100, cut by a points drop 900, fresh starts 0 - the attack rate lines' verdicts read over the whole fight now: …
+  ```
+  Proves: the stack is spent and refilled (`from the stack`, `swings back`), you burst (`bursts … longest`), waits happen
+  only at 0, kicks are refused at 0. In the attack-rate block (L5) the AI timer's `not held` line gains `a stored swing
+  left (step 32's swing stack) N`, and the band verdicts mix bursts (fast) with waits (slow) - judge the rate over the
+  whole fight, or A/B with *Swing stack* off. The recovery bar's summary line (L7) adds `swing stack shown, fewest stored N`.
 
 ### L7. The HUD — your bar, the recovery bar, the orders strip and the ALT markers
 
