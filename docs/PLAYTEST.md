@@ -771,6 +771,9 @@ current run his 0.4-0.8 s taps never got past the game's slow acceleration, and 
 3. **Ctrl conflicts.** Hold Ctrl with the order menu open, in the Escape menu, in a conversation: no sprint. In free
    camera (RTS Camera / deployment) Ctrl + wheel changes the camera speed - the sprint is off there (not your hands).
    Note anything else Ctrl does in a fight.
+   **In a town (2026-10-14):** walk about with nothing drawn - no sprint bar; draw a weapon - it appears; hold Ctrl - you
+   sprint and the bar stays up while it refills. Pick a street fight with a gang: the sprint works there too. Note anything
+   Ctrl does in town in vanilla.
 4. **Order a charge.** Put an infantry formation on hold ~60 m from the enemy, then F1 → F3 (charge): the men should
    surge for their first metres and slow back to a run; with ALT the formation reaches the enemy noticeably sooner. An
    advance (F1 → F4) sprints them down to half their FULL store (step 37). A second charge order on a charging formation does

@@ -14,7 +14,9 @@ namespace TraxCombat.Hud
     /// <see cref="AthleticsLogic.TryGetPlayerSprint"/>.
     ///
     /// Shown by the HUD gate in fights (the master switch first) with its own switch ShowSprintBar, and only while your
-    /// Athletics bar (ShowPlayerBar) and the sprint (SprintEnabled) are on. Never outside a battle (no sprint there).
+    /// Athletics bar (ShowPlayerBar) and the sprint (SprintEnabled) are on. Outside a battle (walking about a town or village -
+    /// the sprint works there too since 2026-10-14) by the Athletics bar's own rule and switch (ShowPlayerBarOutsideBattles): a
+    /// weapon drawn, or your Athletics or your sprint store below full, then the grace.
     ///
     /// Log: the first values on each new layer, the first sprint shown; the [summary] "sprint bar" line.
     /// </summary>
@@ -33,7 +35,21 @@ namespace TraxCombat.Hud
         public SprintBarView()
             : base("sprint bar", Movie, SettingsSchema.ShowSprintBar)
         {
+            Stats.HasOutsideRule = true;
             Stats.ConditionName = "your Athletics bar or the sprint off";
+        }
+
+        /// <summary>Outside a battle by the Athletics bar's own rule and switch; "below full" also while you sprint or your
+        /// sprint store refills.</summary>
+        protected override ParamDef? OutsideToggle => SettingsSchema.ShowPlayerBarOutsideBattles;
+
+        protected override bool ReadOutside(in HudFrame f, out bool belowFull)
+        {
+            belowFull = false;
+            if (f.Player == null || !AthleticsLogic.TryGetReading(f.Player, out var r) || !r.Enabled) return false;
+            if (!AthleticsLogic.TryGetPlayerSprint(f.Player, out var sp)) return false;
+            belowFull = r.BelowFull || sp.Active || sp.Share < 1.0 - 1e-6;
+            return true;
         }
 
         /// <summary>The live ViewModel (null while no layer is up) - the offline smoke reads it.</summary>

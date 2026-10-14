@@ -322,7 +322,7 @@ Hits on a shield are not rolled by default (still reduced). A hit never drops be
 
 ## 13. The sprint
 
-Hold **Left Ctrl** to sprint: a short burst of speed, on foot, in a fight. Think of it as a dodge — out of a
+Hold **Left Ctrl** to sprint: a short burst of speed, on foot, in a fight or walking about a town or village (so street fights have it too). Think of it as a dodge — out of a
 bad spot, onto a fleeing archer, round a shield wall's flank. The AI uses it too: when a formation gets a
 **new** charge or advance order, its men sprint off together, so charges hit harder and sooner.
 

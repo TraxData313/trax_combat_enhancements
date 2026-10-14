@@ -808,9 +808,13 @@ namespace TraxCombat.Tools
                 double t = 17000;
                 logic.TickSprint(0.1f, t, Rules);
 
-                // outside a battle: never (no sprint there); in battle: built, "Sprint 7.5 s", full, blue, the mark at 20%
+                // walking about a town (2026-10-14): the Athletics bar's outside rule - hidden with nothing drawn and both full,
+                // up with a weapon drawn; in battle: built, "Sprint 7.5 s", full, blue, the mark at 20%
+                view.Tick(Frame(t, me.Agent, MissionMode.StartUp));
+                Check(!layer.Up, "the sprint bar showed in town with no weapon drawn and a full store");
+                t += 0.05;
                 view.Tick(Frame(t, me.Agent, MissionMode.StartUp, weapon: true));
-                Check(!layer.Up, "the sprint bar showed outside a battle");
+                Check(layer.Up, "the sprint bar did not show in town with a weapon drawn");
                 t += 0.05;
                 view.Tick(Frame(t, me.Agent));
                 var vm = view.CurrentViewModel;

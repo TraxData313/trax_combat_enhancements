@@ -152,7 +152,8 @@ namespace TraxCombat.Missions
         public bool PlayerCanSprint()
         {
             var m = Mission.Current;
-            return m != null && HudFrame.IsFightMode((int)m.Mode) && !m.IsOrderMenuOpen;
+            // a fight, or walking about a town / village (Anton 2026-10-14: the street fights start from there)
+            return m != null && (HudFrame.IsFightMode((int)m.Mode) || HudFrame.IsWalkMode((int)m.Mode)) && !m.IsOrderMenuOpen;
         }
     }
 

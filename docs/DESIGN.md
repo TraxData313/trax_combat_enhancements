@@ -547,8 +547,10 @@ is LATER** (Anton moved it off the build order, 2026-09-27): its design stays he
    recovery bar (`SprintBarOffsetAbove` 46 px over your bar's row; as long and thick as the recovery bar): the words
    "Sprint 6.2 s" (the seconds stored, tenths rounded down), the fill = the store's share of its size now, a white
    mark at `SprintMinStartPercent` (hidden at 0); grey below the mark, blue when a sprint can start, yellow while you
-   sprint. Shown in fights with your Athletics bar (`ShowPlayerBar`) and the sprint (`SprintEnabled`); never outside
-   a battle (no sprint there).
+   sprint. Shown in fights with your Athletics bar (`ShowPlayerBar`) and the sprint (`SprintEnabled`). Outside a battle
+   (walking about a town or village - Anton 2026-10-14: the sprint works there too, so street fights have it) by the
+   Athletics bar's own rule (`ShowPlayerBarOutsideBattles`): a weapon drawn, or your Athletics or sprint store below
+   full, then the grace.
 2. **LATER (step 7) — Looked-at NPC** (`ShowTargetBar`): a small bar for the fighter the player
    is aiming at / looking at, within `TargetBarMaxDistance`; it lingers `TargetBarLingerSeconds`
    after the aim leaves so it does not flicker. Aiming at a horse shows its rider.
@@ -854,7 +856,7 @@ says (§2c).
 | `BraceWieldShield` | true | Step 23: a man who starts bracing with a shield not in his hand takes it out (a one-handed weapon first if his weapon needs both hands; a ranged weapon in hand is left alone); checked every 1 s while bracing, at most 3 wield calls a brace. At its end his AI picks again. |
 | `BraceRaiseShield` | true | Step 23: while bracing with a shield in hand, the shield is held up (`DefendDown` in his input) whenever his own AI holds no guard. Off: the guard only replaces an attack wish (step 16's rule). |
 | `SprintEnabled` | true | Step 33 (Anton, 2026-10-12): the SPRINT - every fighter on foot stores seconds of sprint = his CURRENT Athletics points ÷ `SprintPointsPerSecond` (150 / 20 = 7.5 s; step 35: never below `SprintMinSeconds`; a points drop clamps it); you hold `SprintKey`, the AI sprints on a new order (`SprintAiEnabled`); while sprinting his run speed follows the profile (`SprintMaxMultiplier` × the fresh run → `SprintMinMultiplier` × the current run - step 35) and he accelerates in `SprintTopSpeedReachSeconds`, his Athletics does NOT refill; never mounted. Needs Athletics (the store is its points). Off = no sprint, speeds back at once. Live. |
-| `SprintKey` | LeftControl | Step 33: the key you hold to sprint, by NAME (Core `KeyNames`: LeftControl, RightControl, LeftAlt, RightAlt, LeftShift, RightShift, CapsLock, Tab, Q, T, Y, H, J, K, L, B, N, M, C, MiddleMouseButton, X1MouseButton, X2MouseButton - the game's `InputKey` names; case, spaces, '-' and '_' ignored, "left ctrl" works). Left Ctrl is free in v1.4.8's fight keys (RESEARCH §N). Read live (`Mission.InputManager.IsKeyDown`), only in a fight, on foot, with the order menu closed. |
+| `SprintKey` | LeftControl | Step 33: the key you hold to sprint, by NAME (Core `KeyNames`: LeftControl, RightControl, LeftAlt, RightAlt, LeftShift, RightShift, CapsLock, Tab, Q, T, Y, H, J, K, L, B, N, M, C, MiddleMouseButton, X1MouseButton, X2MouseButton - the game's `InputKey` names; case, spaces, '-' and '_' ignored, "left ctrl" works). Left Ctrl is free in v1.4.8's fight keys (RESEARCH §N). Read live (`Mission.InputManager.IsKeyDown`), only in a fight or walking about a town / village (2026-10-14), on foot, with the order menu closed. |
 | `SprintPointsPerSecond` | 20.0 | Step 33: Athletics points per stored sprint second (range 5-100). |
 | `SprintMinSeconds` | 2.0 | Step 35 (Anton, 2026-10-12: a tired man's store collapsed to nothing): the store is never smaller than this - capacity = max(this, points ÷ `SprintPointsPerSecond`); an exhausted man (points 0) still holds 2 s, refilled at the usual rate rule (capacity ÷ `SprintRefillSeconds` × the factors - so slowly when tired). 0 = no floor (step 33: an empty bar cannot sprint). Range 0-5. Live. |
 | `SprintMinStartPercent` | 20 | Step 33: a sprint starts only with at least this % of the store filled (no spamming tiny bursts); 0 = any. Range 0-100. |
