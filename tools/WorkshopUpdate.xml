@@ -20,7 +20,7 @@
     </GetItem>
     <UpdateItem>
         <ModuleFolder Value="C:\Users\Asus ROG\Documents\GitHub\trax_combat_enhancements\dist\TraxCombatEnhancements"/>
-        <ChangeNotes Value="v1.1.0 - Duels and tournaments no longer stall: no-formation fighters brace at 20%, each man has his own brace floor. Swing stack: save up swings and burst them (kicks and bashes use one). Sprint: hold Left Ctrl for a short dash (2x a fresh run); the AI sprints on charge orders and keeps a reserve on advance and move. Tired AI guess their block direction; only wrong-side shield blocks stop your refill. New short description and a player guide on GitHub." />
+        <ChangeNotes Value="v1.1.1 - The sprint now works in towns and villages too, so you have it in street fights. Its bar shows there when you draw a weapon or while it refills." />
         <Tags>
             <Tag Value="Utility" />
             <Tag Value="UI" />
