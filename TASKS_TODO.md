@@ -42,6 +42,7 @@ BUILD ORDER (one step at a time — [~] = in flight, see CLAUDE.md "manager prot
 - [x] 37. AI sprint = one RESERVE per order (Anton, 2026-10-12): a man sprints what he holds above it - charge keeps 0, advance keeps 50, move keeps 80 (90% on a move → sprints 10%); the USE shares go (3 sliders instead of 6), so advanced / moved men still have sprint for the charge (see AI_NOTES) — built: stored − keep x full store, config format 7 (use keys dropped, old keep defaults moved once), 575 tests, smoke green, deployed
 - [x] 38. Release v1.1.0 (Anton's yes 2026-10-12: "waaay ahead of the old release" - he playtests details after): steps 28-37 + the new Steam description and README on the Workshop, GitHub release with the zip
 - [x] 39. Sprint in towns and villages (Anton, 2026-10-14: no sprint roaming a town - street fights start there): the key works in the walk-about mode, the sprint bar shows there by the Athletics bar's outside rule
+- [x] 40. Release v1.1.1 (Anton's yes 2026-10-14) - step 39's town sprint; Workshop 3817259431 updated, GitHub release
 
 PLAYTEST (Anton, all at once at the end — script in docs/PLAYTEST.md):
 - [ ] Play with RBM disabled — declared NOT compatible (Anton, 2026-09-27; the mod warns if it sees it)

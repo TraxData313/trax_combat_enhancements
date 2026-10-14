@@ -7,9 +7,9 @@
              2. Each release: set ChangeNotes below (short, for players; a double quote = &quot;), run
                 tools\package.ps1, then, Steam open and logged in:
                   & "C:\Program Files (x86)\Steam\steamapps\common\Mount & Blade II Bannerlord\bin\Win64_Shipping_Client\TaleWorlds.MountAndBlade.SteamWorkshop.exe" "C:\Users\Asus ROG\Documents\GitHub\trax_combat_enhancements\tools\WorkshopUpdate.xml"
-             Or (the sibling's way, step 26): python tools\make_workshop_update.py --notes "vX.Y.Z - ..." builds a
-                one-off copy in %TEMP% that also sends the description (STEAM-DESCRIPTION.bbcode) and, with
-                --visibility, the visibility - run the uploader on the path it prints.
+             Or (the sibling's way, step 26): python tools\make_workshop_update.py with notes "vX.Y.Z - ..." builds a
+                one-off copy in %TEMP% that also sends the description (STEAM-DESCRIPTION.bbcode) and, with the
+                visibility flag, the visibility - run the uploader on the path it prints.
              Same quirks as WorkshopCreate.xml: <Tasks> is the file's first node, comments only inside
              GetItem / UpdateItem / Tags, the title comes from SubModule.xml <Name>, success = "Uploading
              done!" in the output (never the exit code). This file sets no description and no visibility,

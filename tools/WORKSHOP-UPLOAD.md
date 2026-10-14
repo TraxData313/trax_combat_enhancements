@@ -1,6 +1,6 @@
 # Releasing on the Steam Workshop
 
-**Status: v1.1.0 live since 2026-10-12 (v1.0.0 2026-10-10) — Public, with the short description of step 31.** Every later release:
+**Status: v1.1.1 live since 2026-10-14 (v1.1.0 2026-10-12, v1.0.0 2026-10-10) — Public, with the short description of step 31.** Every later release:
 "Every release after the first" below; publishing stays Anton's call (`docs/PLAYTEST.md`).
 
 Item: **3817259431** — https://steamcommunity.com/sharedfiles/filedetails/?id=3817259431 (also in
@@ -108,6 +108,8 @@ version is stamped once, on release day.
   tags (it REPLACES the list — keep all five), the change notes (default "Minor changes."), the
   preview only if an `<Image>` line is present, the description and visibility only if present
   (`WorkshopUpdate.xml` has neither, so page edits survive).
+- **No `--` inside a comment** (2026-10-14): an XML comment may not hold a double dash - the uploader crashes in
+  LoadTasks before uploading anything ("An XML comment cannot contain '--'"). Write flags in words there.
 - **`ItemId` still `ITEM_ID`** → a FormatException before anything is uploaded — a safe failure.
 - **Visibility** values: `Private`, `Public`, `FriendsOnly` (any case).
 - **Limits**: the description 8000 bytes (Steam); the preview image under 1 MB.
