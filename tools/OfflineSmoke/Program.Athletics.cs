@@ -1136,6 +1136,9 @@ namespace TraxCombat.Tools
             // --- step 48: the impact model - off = nothing decided (its own logic), back on = decided
             ImpactModelFollowsTheMasterSwitch();
 
+            // --- step 51: the live blocks - off = the stun the game's at once, the cap back, nothing queued played; on = live again
+            ImpactBlocksFollowTheMasterSwitch();
+
             // --- step 49: courage - off = every timid man let go at once (its own logic), back on = looked at again
             CourageFollowsTheMasterSwitch();
 

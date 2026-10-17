@@ -142,7 +142,7 @@ namespace TraxCombat.Tools
                 logic.ImpactDice = dice;
                 var stats = logic.ImpactModelStats;
                 var model = SpikeDamageModel();
-                LogHas("[impact] mission start: the model (step 48 - IMPACT I2, docs/IMPACT.md) LIVE - kicks / bashes applied, blocks, clean hits, the riposte decided and logged only (effect not built yet); families: kicks / bashes on, blocks on, clean hits on, riposte on; anchors - a kick on an empty even man: shield 90%, down 80%");
+                LogHas("[impact] mission start: the model (step 48 - IMPACT I2, docs/IMPACT.md) LIVE - kicks / bashes, blocks, the riposte applied, clean hits decided and logged only (effect not built yet); families: kicks / bashes on, blocks on, clean hits on, riposte on; anchors - a kick on an empty even man: shield 90%, down 80%");
                 LogHas("two even fresh men: 0% always");
                 double t = 19000;
                 logic.TickImpact(t);
@@ -194,22 +194,23 @@ namespace TraxCombat.Tools
 
                 // ---- right / wrong side blocks on fresh copies of the man (IMPACT §4 B: x 1.09 / 1.42)
                 var man2 = Peasant(4802);
-                dice.Next(0.999, 0.0, 0.5, 0.5); // no knockdown, staggered, the stun's roll, the stagger's roll at their centres
+                dice.Next(0.999, 0.0, 0.5); // no knockdown, staggered, the stagger's roll at its centre (step 51: the stun has no die)
                 logic.ImpactModelHitTaken(king.Agent, man2.Agent, RightBlock());
                 d = logic.LastImpact;
                 Check(d.Event == ImpactEvent.RightBlock && Close(d.X, 1.09, 0.006) && Close(d.Stagger.Chance, 0.80, 0.001) && Close(d.Knockdown.Chance, 0.40, 0.001)
                       && d.Stagger.Happens && Close(d.StaggerSeconds, 0.6 * (1 + 1.5 * d.T), 0.001) && Close(d.StunFactor, 1 + d.T, 0.001) && !d.ShieldDrop.InRow,
                     "the king's blow on the man's right-side block: x " + d.X + ", stagger " + d.Stagger.Chance + " (" + d.StaggerSeconds + " s), down " + d.Knockdown.Chance);
-                // step 50: blocks are decided LIVE but their effect is not built (step 51) - decided on copies: his record untouched
-                Check(!man2.Impact.Reeling(t + 0.5) && !man2.Impact.StaggerImmune(t + 1) && man2.Impact.Recent(t, 8) == 0,
-                    "a live block with no effect built wrote the man's record (a stagger that never happened)");
-                LogHas("[impact] first right-side block decided at 19000.0 s - (agent 4801)'s right-side block of (agent 4800)'s blow (decided and logged only - its effect comes in step 51)");
+                // step 51: blocks are LIVE - the stagger is his (reeling, the immunity after it, one outcome on his record) and queued for the tick
+                Check(man2.Impact.Reeling(t + 0.5) && man2.Impact.StaggerImmune(t + d.StaggerSeconds + 1.9) && man2.Impact.Recent(t, 8) == 1 && logic.ImpactBlockPendingCount == 1,
+                    "a live block's stagger is not on the man's record / not queued for the tick");
+                LogHas("[impact] first right-side block decided at 19000.0 s - (agent 4801)'s right-side block of (agent 4800)'s blow (LIVE)");
                 LogHas("knocked down 10% (cut for 2 recent) - refused: on the ground; staggered 20% (cut for 2 recent) - refused: on the ground");
-                LogHas("[impact] first time staggered WOULD happen, at 19000.0 s - (agent 4802)'s right-side block of (agent 4800)'s blow");
-                // in SHADOW the record is kept ("would" alike): the same block staggers him, then inside his stagger: immune to a new one, the
-                // reeling bonus, the halving
+                LogHas("[impact] first time staggered happens, at 19000.0 s - (agent 4802)'s right-side block of (agent 4800)'s blow");
+                // in SHADOW the record is kept ("would" alike): a fresh copy of the man - the same block staggers him, then inside his stagger:
+                // immune to a new one, the reeling bonus, the halving
                 S.Set(SettingsSchema.ImpactShadowMode, true, SettingSources.Mcm);
-                dice.Next(0.999, 0.0, 0.5, 0.5);
+                man2 = Peasant(4804);
+                dice.Next(0.999, 0.0, 0.5);
                 logic.ImpactModelHitTaken(king.Agent, man2.Agent, RightBlock());
                 d = logic.LastImpact;
                 Check(d.Stagger.Happens && man2.Impact.Reeling(t + 0.5) && man2.Impact.StaggerImmune(t + d.StaggerSeconds + 1.9) && !man2.Impact.StaggerImmune(t + d.StaggerSeconds + 2.1),
@@ -291,6 +292,7 @@ namespace TraxCombat.Tools
                 logic.ImpactModelHitTaken(even1.Agent, Man(4822, 125, 0.3).Agent, KickLands());
                 Check(stats.ShadowDecisions == shadowBefore + 1, "a shadow decision not counted");
                 S.Set(SettingsSchema.ImpactShadowMode, false, SettingSources.Mcm);
+                logic.TickImpact(t += 0.02); // live again (step 51: the spike's own checks run with the model off - this mode line is ours)
                 S.Set(SettingsSchema.ImpactSpike, true, SettingSources.Mcm);
                 logic.TickImpact(t += 0.02);
                 LogHas("SHADOW (the spike is on - ImpactSpike owns the levers) - decided and logged, nothing applied");
@@ -476,7 +478,8 @@ namespace TraxCombat.Tools
                 var kick = KickLands();
                 var blow = new Blow(a.AgentIndex);
                 dice.Next(0.0, 0.999, 0.5);
-                Check(model.DecideAgentKnockedDownByBlow(a.Agent, tired.Agent, in kick, null!, in blow) && logic.ImpactLiveWatches == 1, "the live kick (step 50) was not knocked down / watched");
+                int watchesBefore = logic.ImpactLiveWatches; // step 51: the fresh parries above may time a guard
+                Check(model.DecideAgentKnockedDownByBlow(a.Agent, tired.Agent, in kick, null!, in blow) && logic.ImpactLiveWatches == watchesBefore + 1, "the live kick (step 50) was not knocked down / watched");
                 S.Set(SettingsSchema.ModEnabled, false, SettingSources.Mcm);
                 logic.TickImpact(t + 0.06);
                 var tired2 = logic.Track(FakeAgent(2953))!;

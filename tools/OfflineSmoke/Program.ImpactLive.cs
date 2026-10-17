@@ -70,7 +70,7 @@ namespace TraxCombat.Tools
                 var model = SpikeDamageModel();
                 double t = 30000;
                 logic.TickImpact(t);
-                LogHas("LIVE - kicks / bashes applied, blocks, clean hits, the riposte decided and logged only (effect not built yet)");
+                LogHas("LIVE - kicks / bashes, blocks, the riposte applied, clean hits decided and logged only (effect not built yet)");
 
                 TrackedAgent Man(int index, int athletics, double bar)
                 {
@@ -200,15 +200,17 @@ namespace TraxCombat.Tools
                 Check(!down && logic.ImpactLiveDrops == 0 && rider.Impact.Recent(t, 8) == 0 && live.NotApplied[0, (int)ImpactNotApplied.Rider] == 1,
                     "a kick on a rider applied something (step 53's)");
 
-                // ---- 6. courage's SHOCK: a live outcome counts (the kicks apply); a live block with no effect built does not
+                // ---- 6. courage's SHOCK: a live outcome counts (the kicks apply); step 51: a live block's outcome counts too - ONCE each
                 var impactLive = (bool)typeof(AthleticsLogic).GetMethod("ImpactLive", BindingFlags.Static | BindingFlags.NonPublic)!.Invoke(null, null)!;
                 Check(impactLive && tired.Impact.Recent(30001, 6) >= 1, "courage does not count the live kicks' outcomes as shock");
                 var blocker = Man(5040, 125, 0.0);
                 inputs.Shields.Add(5040);
                 inputs.Guards[5040] = (4.0, 100);
-                dice.Next(0.0, 0.0, 0.0, 0.5, 0.5);
+                dice.Next(0.999, 0.0, 0.0, 0.5); // no knockdown, the shield, the stagger, its length
                 logic.ImpactModelHitTaken(kicker.Agent, blocker.Agent, WrongBlock());
-                Check(logic.LastImpact.AnyOutcome && blocker.Impact.Recent(t, 6) == 0 && !blocker.Impact.Reeling(t + 0.1), "a block (no effect built) counted as shock / reeling");
+                Check(logic.LastImpact.ShieldDrop.Happens && logic.LastImpact.Stagger.Happens && blocker.Impact.Recent(t, 6) == 2 && blocker.Impact.Reeling(t + 0.1),
+                    "a live wrong-side block's two outcomes are not on his record once each (shock " + blocker.Impact.Recent(t, 6) + ")");
+                logic.TickImpact(t += 1.0 / 60); // the stagger and the drop made from the tick (step 51's checks are Program.ImpactBlocks.cs)
 
                 // ---- 7. SHADOW mode: decided and logged, nothing applied, nothing queued or watched
                 S.Set(SettingsSchema.ImpactShadowMode, true, SettingSources.Mcm);
@@ -271,7 +273,7 @@ namespace TraxCombat.Tools
 
                 // ---- the summary
                 logic.WriteImpactSummary();
-                LogHas("[summary] impact live (step 50 - kicks and bashes; LIVE - kicks / bashes applied");
+                LogHas("[summary] impact live (step 50 - kicks and bashes; LIVE - kicks / bashes, blocks, the riposte applied");
                 LogHas("knocked down decided ");
                 LogHas("[summary] impact live lengths: the reel asked x");
                 LogHas("[summary] impact live shields: drops queued from the tick ");

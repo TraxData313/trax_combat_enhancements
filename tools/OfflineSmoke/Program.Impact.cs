@@ -38,6 +38,7 @@ namespace TraxCombat.Tools
             public readonly HashSet<int> ShieldAgain = new HashSet<int>();
             public readonly List<(int Man, int Channel, float Speed)> Slows = new List<(int, int, float)>();
             public readonly List<(int Man, bool IgnorePriority)> Staggers = new List<(int, bool)>();
+            public readonly List<(int Man, float Speed)> StaggerSpeeds = new List<(int, float)>(); // step 51: the speed asked of each accepted-or-not call
             public readonly List<(int Man, int Slot)> Drops = new List<(int, int)>();
             public readonly List<(int Victim, int Attacker, int Damage)> OwnBlows = new List<(int, int, int)>();
             public bool AcceptStagger = true;
@@ -82,7 +83,11 @@ namespace TraxCombat.Tools
                     StaggerCallsOnRefused++; // the logic must never get here for a rider / horse
                     return false;
                 }
-                if (Record) Staggers.Add((st.AgentIndex, ignorePriority));
+                if (Record)
+                {
+                    Staggers.Add((st.AgentIndex, ignorePriority));
+                    StaggerSpeeds.Add((st.AgentIndex, speed));
+                }
                 actionIndex = StaggerIndex;
                 return AcceptStagger;
             }
@@ -124,11 +129,14 @@ namespace TraxCombat.Tools
             Check(new AthleticsLogic().ImpactBody == ImpactBodyDefault.Current, "a new logic does not start with the default impact body");
         }
 
-        /// <summary>The spike on, the mod on, the game's own stun cap (0.8 s - managed_core_parameters.xml; the smoke has no game to load it).</summary>
+        /// <summary>The spike on, the mod on, the game's own stun cap (0.8 s - managed_core_parameters.xml; the smoke has no game to load it).
+        /// Step 51: the impact MODEL off while the spike's checks run (its live blocks would own the cap the moment the spike goes off) - back
+        /// on with the spike off.</summary>
         private static void SpikeDefaults(bool on = true)
         {
             S.Set(SettingsSchema.ModEnabled, true, SettingSources.File);
             S.Set(SettingsSchema.ImpactSpike, on, SettingSources.File);
+            S.Set(SettingsSchema.ImpactEnabled, !on, SettingSources.File);
             S.Set(SettingsSchema.VerboseLogging, false, SettingSources.File);
             ManagedParameters.SetParameter(ManagedParametersEnum.StunPeriodMax, 0.8f);
         }
