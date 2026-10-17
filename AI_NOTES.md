@@ -3761,3 +3761,85 @@ held men go). Deploy: build, AssemblyGuard, smoke green; the install copy failed
    be read 0`.
 4. Cost → the summary's `cost avg … ms a tick` in a 400+ man battle.
 5. Square and circle look right (they were not in Anton's report), and a siege defenders' wall line on the battlements.
+
+## Step 42 — a small step out of the wall: the leash (DONE 2026-10-17)
+
+**Anton (2026-10-17, his playtest of step 41, log 19:26):** the hold WORKS - in contact 0.6% of men > 1 m ahead of their slot ON
+(mean 0.09 m) vs 17.8% OFF (mean 0.70 m, the farthest 9.6 m). But his eyes, ON: they "looked many times like they were about to
+reach to hit but stopped, maybe as the enemy took a few steps back, so they very rarely hit"; OFF they ran far out of the square
+chasing. His wish: "give them just a bit of a step if the enemy moves a small step back, but not as far".
+
+**The mechanism - a two-state leash per held man (Core `LeashMath`, `ShieldWallLeash.cs`)**
+- **FREE** = vanilla's own value given back (`GameWallBody.Release` - vanilla's formula, keep false for infantry), so the native AI
+  closes on its enemy and swings, exactly as without step 41 - while he stands **less than L out of his slot AND an enemy is close
+  in front of the slot**. He stays in the held list; nothing is written while he is out (vanilla's ~0.5 s update writes false
+  anyway - that IS the step; the after-vanilla rewrite skips him).
+- **HELD** = step 41's TRUE, written at once, once he is **L or more out**, or **no enemy is close** - he walks back (the flag pulls
+  him to his slot, as step 41's numbers show).
+- **Hysteresis, both edges**: after a step he may step again only once **back in his slot** - out ≤ `RearmAt(L)` = min(0.3 m, L/2)
+  (`BackInSlotMetres` 0.3: step 41's held men stood 0.09 m out on average in contact; half the leash keeps a gap for short leashes);
+  and a man out stays free until his enemy is 0.5 m farther than the distance that freed him (`EnemyHysteresisMetres`). Without the
+  first, a man whose enemy keeps backing off would sit at L stepping in 0.1 s jerks - a bulge of L. With it: step, return, step.
+- **"Close in front"** = the enemy is in front of his slot's line (out > 0) and within **L + `StrikeReachMetres` (2.0 m) of the
+  SLOT**. Why from the slot and why 2 m: a one-hander's strike lands about 2 m centre to centre (arm ~0.7 + blade ~0.9 + the target's
+  body ~0.35); measured from the slot, a step of at most L brings him into reach - an enemy farther off would only draw him to the
+  leash and back without a blow (Anton's "reached and stopped" again, just 1 m further out). Step 41's `ContactMetres` 5 is the log's
+  "in contact", far too wide for this; a per-weapon reach (`GetRealWeaponLength` + the arm) would cost more native reads per look for
+  a few tenths of a metre - the plain constant is the call.
+- **The enemy**: `Agent.GetTargetAgent()` (the native AI's own target - the very man vanilla would walk him at), else
+  `Agent.ImmediateEnemy`; only an active enemy (`IsEnemyOf`). Native reads - asked only when he could step now or is out
+  (`LeashMath.NeedsEnemy`), never at L 0.
+- **"Out"**: along the formation's facing for a shield wall (step 41's "ahead"); for a **square or circle** along the direction from
+  the formation's centre (`CachedAveragePosition`) to his slot - their sides and backs face OUTWARDS; along the facing a side man's
+  enemy is never "in front" and a back man could never step (the facing is used when his slot is within 0.5 m of the centre). Step
+  41's "ahead" samples stay along the facing (comparable with its ON / OFF lines).
+- **L = 0** = step 41's hard hold exactly: `LookWall` takes the leash branch only while L > 0 or a man is still out - at 0 the same
+  calls in the same order (the smoke runs 3 s with and without an enemy in front: identical writes, 0 enemy reads; step 41's own smoke
+  now runs pinned at 0).
+
+**Timing (the brief's point)**
+- A man OUT is looked at every **0.1 s** (`LeashMath.LookSeconds`) from the per-frame loop: he walks 1-3 m/s, so the leash bites
+  within 0.1-0.3 m of L (a 0.25 s look would let him 0.75 m past). Measured offline at 2 m/s: reined at 1.03 m with L 1. They are few.
+- HELD men keep step 41's cadence (right after vanilla's update, and the staggered 0.25 s look) - and every one of those looks also
+  runs the leash, so a held man in his slot is freed within ≤ 0.25 s of an enemy coming close (often at once: the after-vanilla look).
+- A man first seen in his slot may step on that very look.
+- Reined: the write follows in the same look; the engine's reaction to the flag is invisible (as step 41) - one frame at worst.
+
+**The alternative (not built - the brief said do not build both)**: hand the engine a slot point moved up to L toward the target as
+the integrity POSITION (keep TRUE always). The decompile shows only that `Agent.SetFormationIntegrityData` passes the position
+straight to native (`MBAPI.IMBAgent.SetFormationIntegrityData`) - vanilla writes Vec2.Zero there for a man beyond the catch-up
+radius, nothing managed reads it back, and nothing shows how the engine's movement uses it (a target point? a pull centre with
+`deviationOfPositions` as a radius?). So the on/off leash it is - it uses only behaviour we have SEEN (true = holds, false = walks at
+the enemy). Fallback idea if the on/off steps look jerky in game: the moved point, tried in a test battle first (RESEARCH §O item 8).
+
+**Plumbing constants (Core `LeashMath`, documented, not settings)**: `StrikeReachMetres` 2.0, `EnemyHysteresisMetres` 0.5,
+`BackInSlotMetres` 0.3, `LookSeconds` 0.1, `OverMetres` 0.5 (the log's overshoot mark), `MinRadialMetres` 0.5, `MaxMetres` 3 (the
+setting's range).
+
+**Built** - Core `ShieldWallLeash.cs` (WallLeash, LeashMove, LeashEnd, LeashMath, WallLeashStats + the [summary] "wall step out" line),
+`WallRules.StepOutMetres` / `Leash` (0 off the switches; clamped 0-3; the 2-argument constructor = 0), `WallWriteKind.Leash`;
+`ShieldWallStepOutMetres` (1.0 m, Live, right after ShieldWallHoldsSlots; 126 → 127 settings; no config migration - a new key takes
+its default: `ConfigFile` counts it Missing → default). Module: `IWallBody.TryEnemy` (+ GameWallBody), `WallState.Leash` /
+`NextLeashLook` / `EverStepped`, `AthleticsLogic.Wall` - the leash in `LookWall` (goto Sample: a man out writes nothing), `Manage`
+(the held list - a man first seen stepping out resolves his timer first), `NoteLeash`, `EndStep`; every let-go path ends a step
+(LookWall's gates, ReleaseAllWalls - the switch / master switch -, WallLeftField, WallFailed, CloseWalls = still out). Logs: the
+leash in the mission-start sentence ("a held man may step up to 1.0 m …" / "no step out (… 0 - the hard hold of step 41)"), a live
+change ("ShieldWallStepOutMetres 1.0 → 2.0 m mid-mission at … s: …"), the first step out and its end in full, verbose steps
+(bucket `wall-step`), writes "by the step-out leash", the [summary] line. Tests 610 → 625 (`ShieldWallLeashTests`). Smoke 86 → 89
+(`Program.Leash.cs`).
+
+**Gotcha - Smart App Control (this PC, 2026-10-17)**: Windows' reputation check is ENFORCED here
+(`HKLM:\SYSTEM\CurrentControlSet\Control\CI\Policy` VerifiedAndReputablePolicyState 1). It blocked the freshly rebuilt, unsigned
+`TraxCombatEnhancements.dll` in `tools\OfflineSmoke\bin\Release\net472` ("An Application Control policy has blocked this file",
+0x800711C7; CodeIntegrity events 3033 / 3077) right after the same source had passed the smoke - the verdict is per file hash, so
+a rebuild (a new commit stamps a new hash) can pass or fail. Not our code. Never change that setting; if it blocks, say so and hand
+Anton the deploy line.
+
+**UNVERIFIED — only the game can tell (PLAYTEST D12, L6h)**
+1. A freed man really closes and LANDS blows on an enemy who stepped back (Anton's eye) - the point of the step.
+2. Nobody chases far: `wall step out` "in contact past the leash + 0.5 m" near 0, and `wall slots ON` "more than 2 m" stays near
+   step 41's 0%; "reined at the leash … m past it" ~0.1-0.3 m.
+3. The step rate: "N steps out by M men (x a man a minute while held)" - a few a minute for front men is the picture; dozens = the
+   enemy flickers on the edge (raise the hysteresis), ~0 with enemies in contact = the target read sees nobody in front (tell Claude).
+4. Squares / circles: side and back men step OUTWARDS, not along the formation's facing.
+5. The native AI may take a moment to start walking after a free - if steps look late, the after-vanilla look is the lever.

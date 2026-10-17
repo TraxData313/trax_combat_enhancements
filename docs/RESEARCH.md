@@ -1070,6 +1070,14 @@ postfix). Full notes and the build: AI_NOTES "Step 41".
    him back toward his slot.
 7. **The behaviour weights are untouched** (`HumanAIComponent.SetBehaviorValueSet(DefensiveArrangementMove)`: Melee 4 at 0 m →
    0 at 5 m, GoToPos 3 → 5 at 8 m) - RBM does not change them either.
+8. **Step 42 (the leash) - what the managed side shows, and what it does not.** The integrity data's POSITION goes straight to
+   native (`Agent.SetFormationIntegrityData` → `MBAPI.IMBAgent.SetFormationIntegrityData`, Agent.cs ~2335; the only managed
+   callers are `HumanAIComponent` ~681 / ~689: zeros for a scattered formation, the slot or `Vec2.Zero` beyond the catch-up radius);
+   nothing managed reads it back or shows how the engine's movement uses it - so "pass a point moved toward the target" is an
+   untested idea, and step 42 switches the FLAG on / off instead (behaviour seen: true holds, false walks at the enemy). The enemy a
+   man fights: `Agent.GetTargetAgent()` (Agent.cs ~2873, native `IMBAgent.GetTargetAgent` - the native AI's own target) and
+   `Agent.ImmediateEnemy` (~704, native); `Agent.IsEnemyOf(Agent)` (~3392, native). Main-thread reads in `OnPreMissionTick` (no
+   agent job running).
 
 ---
 

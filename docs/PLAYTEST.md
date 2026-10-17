@@ -5,7 +5,7 @@ order, about **3 hours 15** (A 10 min, B 15, C 25, D 60, E 20, F 55, G 10; the o
 time after step 16? D4 alone (the A/B of the new guard and backpedal, 20 min) answers the newest
 questions; after step 21, D5 + D6 (the shield wall and the archers, 25 min); after step 23, D7 (lines brace by
 their orders, 15 min - since step 24 with the "ready 34/50" count on ALT and in the orders menu); after step 28, D8
-(a tournament: the opponent fights on to ~20%, 10 min; after step 29 its step 4 - block your way back from empty; after step 30 its step 5 - the tired opponent guesses his blocks); after step 32, D9 (the swing stack: save swings up and burst, the kick refused at 0, 10 min); after step 33, D10 (the sprint: Left Ctrl, a charge order, 15 min; step 35 - a tap, the tired floor); after step 41, D11 (a shield wall that holds its slots, ON then OFF, 10 min).** Each part says what to do, what you
+(a tournament: the opponent fights on to ~20%, 10 min; after step 29 its step 4 - block your way back from empty; after step 30 its step 5 - the tired opponent guesses his blocks); after step 32, D9 (the swing stack: save swings up and burst, the kick refused at 0, 10 min); after step 33, D10 (the sprint: Left Ctrl, a charge order, 15 min; step 35 - a tap, the tired floor); after step 41, D11 (a shield wall that holds its slots, ON then OFF, 10 min); after step 42, D12 (the small step out, L 1 / 0 / 2 live, 10 min).** Each part says what to do, what you
 should see, what counts as broken, and the log lines that prove it. The full line reference —
 every summary block and what proves what — is the **appendix** at the end.
 
@@ -857,6 +857,36 @@ engine ignores the flag for infantry - another lever is needed); the front rank 
 it (held too hard); `men whose update timer could not be read` above 0, or `[wall] vanilla's update timer … cannot be read`
 (a game update - the fallback runs); men in a LINE formation held (they never should be); `[error] … wall.` lines.
 
+**D12. The shield wall's small step out (step 42, ~10 min - right after D11, the same battle is fine).** Anton's playtest of
+step 41 (2026-10-17): the wall held, but the front men "looked many times like they were about to reach to hit but stopped,
+maybe as the enemy took a few steps back, so they very rarely hit". Now a held man may follow an enemy who backs off just out
+of reach - up to *Shield walls: a step out to strike* metres (1.0) out of his place - strike, and is held again and walks back.
+1. **Your test, L 1 (the default).** Custom battle, infantry against infantry, your infantry in a **shield wall** on the spot,
+   the enemy comes to you. Watch the front rank from the side when the enemy recoils or backs off a step. **You should SEE**:
+   a front man takes ONE short step after him and swings (hits land), then walks back into his place; the wall stays a wall
+   - small dents of about a metre that close again, nobody 2+ m out, nobody chasing.
+2. **L 0 - the hard hold (step 41) - live**: Escape → MCM → *Battle pace (AI)* → *Shield walls: a step out to strike* 0 → Done.
+   **You should see** step 41 again: men stand fast and reach at enemies who back off without following.
+3. **L 2 - live**: the same, 2. **You should see** longer steps (a looser wall), still no chasing beyond ~2 m, everyone walking
+   back. Pick the number you like - 1 is the starting guess.
+4. **A square** (optional): F2 → square; men on the SIDES and the BACK step outwards on their own face, not toward the front.
+5. **Things to note**: a man who stepped out comes back before he steps again (no man creeping forward step by step); a charge
+   (F1 → F3) still releases everyone as before; *Shield walls hold their slots* off = no leash at all (vanilla).
+- **The lines**: the mission start's sentence ends `… a held man may step up to 1.0 m out of his slot at an enemy close in
+  front of it (within 1.0 + 2.0 m of the slot), then is held again and walks back - he may step again once back within
+  0.30 m of his slot (ShieldWallStepOutMetres)` (L 0: `no step out (ShieldWallStepOutMetres 0 - the hard hold of step 41)`);
+  `[wall] first step out of the wall this mission: <name> at … s - his enemy … m out of his slot (close: within the leash
+  1.0 + 2.0 m of the slot), he stood … m out; …` and `[wall] first step out ended: <name> at … s - reached the leash: the
+  farthest … m out of his slot (the leash 1.0 m, … m past it), … s after it began - held again …`; a slider change:
+  `[wall] ShieldWallStepOutMetres 1.0 → 0.0 m mid-mission at … s: …`. The summary (L6h): `wall step out (step 42): …`.
+- **Tune live**: *Shield walls: a step out to strike (m)*, 0-3.
+
+**Broken — tell Claude** (D12): men still stop short and rarely hit with L 1 (`wall step out` shows steps, but the eye sees
+no blows - the native AI may need more than the flag); men chase beyond the leash (`in contact past the leash + 0.5 m` well
+above a few %, or `wall slots ON` "more than 2 m" climbing back toward OFF's); `0 steps out` in a battle where the enemy
+clearly backed off in front of the wall (the target read sees nobody); a step rate in the dozens a man a minute (flickering
+at the edge); square side men stepping toward the formation's front; `[error] … wall.` lines.
+
 ---
 
 ## E. Your Athletics bar, the orders-menu strip and the ALT markers (20 min)
@@ -1542,7 +1572,7 @@ header names the technique: `==== scene …, mod ON, AI holds: Input (the AI's o
   adds `hud: sprint bar - sprints shown N, … s on screen sprinting, … s below the start mark`. The Athletics `run speed
   check` lines leave sprinting samples out (they would read as "above the curve").
 
-### L6h. The shield wall holds its slots (step 41)
+### L6h. The shield wall holds its slots (step 41) and its small step out (step 42)
 
 - Mission start: `[wall] mission start: ON (ShieldWallHoldsSlots) - … - read live; written right after vanilla's own update of
   each man (his ~0.5 s timer) and at a look every 0.25 s; …` (off: `OFF (ShieldWallHoldsSlots) - vanilla: …` or
@@ -1562,6 +1592,13 @@ header names the technique: `==== scene …, mod ON, AI holds: Input (the AI's o
   Proves: the hold reaches the men (`held` looks, writes `right after vanilla's own update` ≈ `vanilla's own updates seen`,
   one every ~0.5 s - the timing of RESEARCH §O working in game), and that it WORKS: `in contact` "more than 1 m ahead" ON
   well below OFF. The left-to-vanilla reasons show who was not held and why (a line formation = "another arrangement").
+- Step 42 adds a SIXTH line (numbers made up) and `, by the step-out leash N` in the writes line:
+  ```
+  wall step out (step 42): leash 1.0 m now - 240 steps out by 31 men (2.10 a man a minute while held, out of their slots 6.5% of the held time); each step's farthest out: mean 0.80 m, the farthest 1.30 m; ended: reached the leash 150, enemy gone 80, let go to vanilla 9, fell or left 1; reined at the leash 0.12 m past it on average, at most 0.30 m (the 0.1 s look); back in their slots after a step 140; in contact past the leash 3.0%, past it + 0.5 m 0.2% (of 900 in-contact samples with the leash on - the overshoot: should be near 0)
+  ```
+  Proves: men step (`steps out by … men`, a few a man a minute), the leash bites (`reined … m past it` ~0.1-0.3 m, `past it +
+  0.5 m` near 0) and they come back (`back in their slots after a step`). With L 0 all battle: `- the leash was 0 (the hard
+  hold of step 41) the whole battle: no steps`. Verbose (bucket `wall-step`): `… steps out at … s` / `… step out ended at …`.
 
 ### L7. The HUD — your bar, the recovery bar, the orders strip and the ALT markers
 

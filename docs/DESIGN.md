@@ -304,6 +304,18 @@ regen.)
       - **measured**: the summary's "wall" lines - every man of a holding shield wall / square / circle sampled every 0.5 s:
         the share more than 1 m and 2 m AHEAD of his slot along the facing, the mean and farthest, all and in contact (an
         enemy within 5 m), split ON / OFF by the switch at the sample, so one battle with a mid-battle switch reads as an A/B.
+      - **a small step out - the leash** (Anton, 2026-10-17, his playtest of step 41: the wall held, but the men "looked many
+        times like they were about to reach to hit but stopped, maybe as the enemy took a few steps back, so they very rarely
+        hit" - "give them just a bit of a step if the enemy moves a small step back, but not as far"; built in step 42 - AI_NOTES
+        "Step 42"; `ShieldWallStepOutMetres` L, 1.0 m): a held man whose enemy (the AI's own target, else his immediate enemy)
+        stands close in front of his SLOT - in front of its line and within L + 2 m of it (a strike's reach from a step of at most
+        L) - is let free (vanilla's own value) so he closes and swings; he is held again the moment he stands L out of his slot or
+        no enemy is close (+ 0.5 m of grace while he is out), and walks back; he may step again only once back within 0.3 m (at
+        most half the leash) of his slot. "Out" = along the facing for a shield wall, away from the formation's centre for a square
+        or circle (their sides and backs face outwards). A man out is looked at every 0.1 s (the leash bites within ~0.1-0.3 m of
+        L); held men as above. 0 = the hard hold exactly. Live: a new L applies at the next look (≤ 0.1 s for a man out). Measured:
+        the summary's "wall step out" line - steps by men, a man's steps a minute while held, each step's farthest out, how the
+        steps ended, the overshoot past L, back in the slot, and in-contact samples past L and past L + 0.5 m.
     - **Brace by orders — tired AI men stop swinging and defend** (Anton, 2026-09-29: "soldiers get to 0% athletics
       but they still swing as much as they can - make soldiers not swing but only defend when they have reached a
       certain floor, that depends on their current orders, until they have replenished the floor +20%" ... "when
@@ -1265,6 +1277,14 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     speed; vanilla keeps it); one read-only reflection: vanilla's per-man update TIMER, to write right after it (RESEARCH
     §O) - if a game update renames it, a rewrite every 0.1 s takes over and the summary says so. Each is a default Anton can
     overturn.
+35. **A small step out of the wall - the leash** (step 42, Claude's calls on Anton's playtest of 2026-10-17 - AI_NOTES "Step
+    42"): (a) L = 1.0 m to start ("just a bit of a step"), 0-3, 0 = step 41's hard hold byte for byte; (b) the flag ON / OFF by a
+    two-state leash, not a slot point moved toward the target (the engine's use of that point is invisible - RESEARCH §O item 8);
+    (c) "close in front" = within L + 2 m of his SLOT, in front of its line (a strike's reach after a step of at most L - an enemy
+    farther off would only draw him out and back without a blow); (d) after a step he may step again only once back within
+    min(0.3 m, L/2) of his slot, and a man out keeps 0.5 m of grace on his enemy's distance - no jitter at either edge; (e) a
+    square's or circle's man steps OUTWARDS (from the formation's centre through his slot), not along the formation's facing;
+    (f) a man out is looked at every 0.1 s, held men keep step 41's cadence. Each is a default Anton can overturn.
 
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),

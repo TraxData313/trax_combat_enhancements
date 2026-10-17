@@ -299,7 +299,19 @@ With this mod he keeps his place in the formation and fights whatever reaches hi
 | A man far behind his place (about 20 m) | runs to rejoin, then holds |
 | Riders, you, a siege's attackers, naval battles | no |
 
-<sub>Setting: `ShieldWallHoldsSlots` on (live — switch it off mid-battle to see the difference).</sub>
+**A small step out to strike.** Held men still get one short step: when the enemy in front of a man backs off just
+out of his reach, he steps out after him (up to 1 m by default), strikes, and is held again at the end of that step and
+walks back to his place. He steps again only once he is back. Nobody chases far.
+
+| The enemy in front of his place is… | He… |
+|---|---|
+| within his reach | fights from his place (and may lean in up to the step) |
+| up to 1 m + a strike (2 m) away, in front of his place | steps out after him, at most 1 m, then walks back |
+| farther off, beside or behind his place | stays in his place |
+| (square, circle) out to the side or the back | steps OUTWARDS on that side — each face of the square fights its own way |
+
+<sub>Settings: `ShieldWallHoldsSlots` on (live — switch it off mid-battle to see the difference); `ShieldWallStepOutMetres`
+1.0 m (0 = they stand fast and fight only what reaches them; 2-3 = a looser wall; live).</sub>
 
 ## 11. Damage
 

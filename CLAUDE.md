@@ -74,7 +74,13 @@ order but a charge or a retreat (not detached, fleeing, or far from his slot AND
 siege's attackers, naval), gets the engine's "keep with the formation instead of moving to the agent" flag - vanilla's own
 `Agent.SetFormationIntegrityData` call rewritten with it TRUE from `OnPreMissionTick`, right after each of vanilla's ~0.5 s
 updates (his private update timer read once by reflection; RESEARCH §O) - RBM's idea without Harmony; off = vanilla's value
-written back at once; the summary's "wall" lines measure how far men stand AHEAD of their slots, ON vs OFF. The bar for the
+written back at once; the summary's "wall" lines measure how far men stand AHEAD of their slots, ON vs OFF. A SMALL STEP OUT
+(step 42, `ShieldWallStepOutMetres` L 1.0 m, Anton's playtest of 41: held men "looked many times like they were about to reach
+to hit but stopped"): a LEASH per held man - an enemy (the AI's target, else his immediate enemy) within L + 2 m in front of his
+SLOT frees him (vanilla's own value - he closes and swings) until he stands L out of his slot or the enemy is gone, then he is
+held (TRUE) and walks back; a new step only once back within min(0.3 m, L/2) of his slot; "out" = the facing for a shield wall,
+away from the centre for a square / circle; a man out is looked at every 0.1 s; L 0 = step 41 exactly; the summary's "wall step
+out" line (steps, a man's rate, how far, how each ended, the overshoot past L). The bar for the
 fighter you look at is LATER (DESIGN §3; its settings wait in DESIGN's "Planned parameters"). Words:
 the pool/bar/points are "Athletics", the character-screen skill is "the Athletics skill" (it
 used to be called "endurance"), the "peak line" is the white mark at the top quarter of the bar,
@@ -213,10 +219,10 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               its Default comes from defaults.json (DefaultsFile), never code; step 33: ParamType.Key +
                               KeyNames (a key by NAME, stored as its index; FormatJson writes "LeftControl"; the
                               file / defaults.json read the name, MCM a text box)
-  SettingsSchema.cs           EVERY setting of DESIGN's table (126), in file + MCM order, 13 groups
+  SettingsSchema.cs           EVERY setting of DESIGN's table (127), in file + MCM order, 13 groups
                               ("Master switch" first, "Damage" second - step 25 renamed it from
                               "Damage randomness", "Battle pace (AI)" - step 21 - after the step back (step 41's
-                              ShieldWallHoldsSlots at its end),
+                              ShieldWallHoldsSlots and step 42's ShieldWallStepOutMetres at its end),
                               "Brace by orders (AI)" - step 23 - after it, "Sprint" - step 33 - after that,
                               "Formation markers (hold ALT)" - step 20 - before
                               "Advanced" last; step 10b's one vocabulary and
@@ -424,7 +430,8 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               column / other), WallVerdict (held, or why not - in GATE ORDER: ModOff, SwitchedOff, Naval,
                               SiegeAttacker, NotAi, Mounted, NoFormation, Detached, Arrangement, ChargeOrder, RetreatOrder,
                               NoOrder, Retreating, FarBehind), WallFacts (the gates + positions: him, his slot, the facing, the
-                              centre, the integrity data), WallRules (live: ModEnabled FIRST, ShieldWallHoldsSlots; Describe),
+                              centre, the integrity data), WallRules (live: ModEnabled FIRST, ShieldWallHoldsSlots; Describe;
+                              step 42: StepOutMetres clamped 0-3, Leash = it while on else 0 - the 2-argument constructor = 0),
                               WallMath - IsDefensive, OrderVerdict, Eligible (no switches, no escape - the samples), Decide,
                               DistanceToSlot, FarFromSlot (CatchUpSpeeds 6 - vanilla's radius), BehindLine, Escapes, Ahead (along
                               any facing); plumbing PollSeconds 0.25, SampleSeconds 0.5, FallbackRewriteSeconds 0.1, ContactMetres
@@ -432,7 +439,18 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
   ShieldWallStats.cs          step 41 per-mission: WallAheadSamples (> 1 m / > 2 m ahead, mean of the part ahead, the farthest;
                               in contact apart), WallWriteKind (poll / after vanilla / fallback), WallStats (looks by verdict,
                               writes by kind, vanilla's updates seen + interval, releases by reason, the samples ON / OFF, men
-                              without a timer, left the field, held at the end, cost) + the 5 [summary] "wall" lines
+                              without a timer, left the field, held at the end, cost) + the 5 [summary] "wall" lines; step 42:
+                              WallWriteKind.Leash, WallStats.Leash, the 6th line (the step out)
+  ShieldWallLeash.cs          step 42 pure (AI_NOTES "Step 42"): WallLeash (Free / Armed / Returning, the step's start, start
+                              out and farthest out - a struct in WallState), LeashMove (Freed, Reined, EnemyGone, LeashOff,
+                              BackInSlot), LeashEnd (reached the leash / enemy gone / leash set to 0 / let go / fell / still
+                              out), LeashMath - OutDirection / OutOf / Out (the facing; a square / circle: centre → his slot,
+                              the facing within MinRadialMetres 0.5), EnemyCloseInFront (in front of the slot's line, within L +
+                              StrikeReachMetres 2 of the SLOT, + EnemyHysteresisMetres 0.5 while out), RearmAt = min(BackInSlot
+                              0.3, L/2), NeedsEnemy (the native read only when he could step / is out), Step (L ≤ 0 = the hard
+                              hold), Describe; plumbing LookSeconds 0.1, OverMetres 0.5, MaxMetres 3; WallLeashStats (steps, men,
+                              a man's rate while held, farthest out, ends, the overshoot of the reined, back in slot, time out,
+                              in-contact samples past L / L + 0.5) + the [summary] "wall step out" line
   TiredBlock.cs               step 30 pure (AI_NOTES "Step 30", RESEARCH §M): TiredBlockRules (live: ModEnabled FIRST,
                               AthleticsEnabled, TiredBlockRandomPercent > 0; Share, OffBecause, Describe), TiredBlockMath -
                               Weight = share × (1 − f) (0 at f 1, off, the player), OwnChance (the game's value clamped 0-1:
@@ -686,12 +704,17 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               reads + IsRetreating; the slot GetCurrentGlobalPositionOfUnit(agent, true), CurrentDirection,
                               CachedAveragePosition, CachedFormationIntegrityData; Hold = SetFormationIntegrityData(…, true);
                               Release = vanilla's own formula; the timer field _cachedAndFormationValuesUpdateTimer looked up once,
-                              read once per man; EnemyWithin = GetNearbyEnemyAgentCount), WallBodyDefault
+                              read once per man; EnemyWithin = GetNearbyEnemyAgentCount; step 42: TryEnemy = GetTargetAgent, else
+                              ImmediateEnemy, an active enemy only; WallState.Leash / NextLeashLook / EverStepped), WallBodyDefault
   Missions/AthleticsLogic.Wall.cs  step 41: StartWall (the [wall] line), TickWall from OnPreMissionTick (the switch / master
                               switch → ReleaseAllWalls at once; every frame each held man whose timer moved is rewritten -
                               LookWall AfterVanilla - or the fallback every 0.1 s; a staggered look every 0.25 s - the gates,
                               hold / let go with vanilla's value, a sample every second look), the held list (swap-remove),
-                              WallLeftField (Forget - no engine call), WallFailed, CloseWalls, WriteWallSummary
+                              WallLeftField (Forget - no engine call), WallFailed, CloseWalls, WriteWallSummary; step 42: the
+                              leash in LookWall (only while L > 0 or a man is out - L 0 = step 41's calls exactly; a man out =
+                              vanilla's value given back, kept in the list, nothing written - goto Sample), the per-frame loop
+                              looks at a man out every 0.1 s instead of after vanilla, Manage (into the list), NoteLeash, EndStep
+                              (every let-go path ends a step), the first step out / its end in full, a live L change line
   Missions/BraceBody.cs       step 23: BraceState (his roll, step 28's floor roll FloorUnit, the running brace, the shield's
                               progress), IBraceBody (the
                               engine side - the smoke plays it), GameBraceBody (the order from
@@ -817,7 +840,7 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
   Hud/AltMarkersVM.cs         its ViewModels: the root + a GROW-ONLY MBBindingList of AltMarkerLabelVM keyed by
                               team + formation (a label never swaps formations when vanilla re-sorts); step 24:
                               ReadyText / ReadyColor / ReadyShown, SetReady
-tests/TraxCombat.Core.Tests/  net8.0 xUnit (610) — schema vs DESIGN.md (keys + types), one copy
+tests/TraxCombat.Core.Tests/  net8.0 xUnit (625) — schema vs DESIGN.md (keys + types), one copy
                               runs (SingleCopyTests: claims on private slots, copies, texts), when
                               MCM is tried and when it stops (McmPlanTests - step 12),
                               defaults.json (DefaultsFileTests), master switch, settings, config
@@ -887,7 +910,11 @@ tests/TraxCombat.Core.Tests/  net8.0 xUnit (610) — schema vs DESIGN.md (keys +
                               wall's hold (ShieldWallTests, step 41: the gates in order with the master switch first, the three
                               arrangements, every order, the escape - far AND behind, far ahead held, no speed never far -, ahead
                               of the slot on any facing and a non-unit one, the switch live and on by default, the sentence, the
-                              samples' part ahead, the summary lines). They
+                              samples' part ahead, the summary lines), the leash (ShieldWallLeashTests, step 42: 0 = the hard
+                              hold, freed below L with an enemy close, held at L, back in the slot before the next step - min(0.3,
+                              L/2) -, no enemy = held, a man first seen in his slot, a live L change, the reach from the slot and
+                              its hysteresis, a square's outward side, the setting placed and live, the switches, the sentence,
+                              the summary line). They
                               run on DESIGN's INITIAL values (DesignTable.cs: a module
                               initializer), so tuning defaults.json never breaks them. Keep green.
 module/SubModule.xml          release manifest (Id TraxCombatEnhancements, v1.0.0) - THE one home of the
@@ -1066,7 +1093,13 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               the fallback every 0.1 s, a charge / a retreat let go with vanilla's value, the escape, the player
                               taking a man, the samples ON vs OFF, the switch and the master switch live, leaving the field, the
                               summary; the cost - 1000 men held, 0.016 ms a pre-tick, 0 bytes; the master-switch step lets held
-                              men go (86 steps; the config checks work for any tuned default)
+                              men go (step 41's checks pin ShieldWallStepOutMetres 0 - WallDefaults); step 42 (Program.Leash.cs):
+                              the real logic with men walking out at 2 m/s and back at 1 m/s - a shield wall's man and a square's
+                              side man freed (nothing written), no rewrite at vanilla's update while out, reined within the 0.1 s
+                              look (1.03 m at L 1), no new step before back in the slot, enemy gone, L 0 live (held, then not one
+                              enemy read) and 2 live, the master switch, the lines and the summary; L 0 = step 41's exact writes
+                              with and without an enemy in front; the cost - 1000 men, 200 out, 0.015 ms a pre-tick, 0 bytes (89
+                              steps; the config checks work for any tuned default)
                               TRAX_SMOKE_KEEP=1 keeps its temp folder + log to read
 tools/DefaultsTool/           defaults.json upkeep: refresh (rewrite comments/order, keep every
                               value) | check; --file <path> for an exported one
