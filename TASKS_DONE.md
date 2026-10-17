@@ -989,8 +989,7 @@
 
 - [x] 30. Tired AI blocks in a random direction (Anton, 2026-10-12, the tournament 1v1 where the exhausted AI blocked ~95%:
   "the more exhausted an AI man is, the more his block direction is random"). RESEARCH FIRST (RESEARCH §M, decompiled with
-  ilspycmd 9.1 into %TEMP% - the ..
-eference copy is not on this PC): the guard direction is four MovementControlFlag bits
+  ilspycmd 9.1 into %TEMP% - the ..eference copy is not on this PC): the guard direction is four MovementControlFlag bits
   (the player's guard is only those bits; auto-block mirrors the attacker's direction); the AI's pass OnAIInputSet, but
   whether its own decision is in that word is native - and the game ALREADY has the lever per agent,
   AiRandomizedDefendDirectionChance (DrivenProperty 40) = 1 - (AI level)^3 from SetAiRelatedProperties, recomputed on every
