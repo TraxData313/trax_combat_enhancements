@@ -22,7 +22,7 @@ Want the formulas and every parameter? [DESIGN.md](DESIGN.md) is the full contra
 10. [Battle pace](#10-battle-pace)
 11. [Eagerness, and the fever of a charge](#11-eagerness-and-the-fever-of-a-charge)
 11b. [Courage: men keep to their group](#11b-courage-men-keep-to-their-group)
-11c. [Impact: kicks that break a tired man](#11c-impact-kicks-that-break-a-tired-man)
+11c. [Staggers, shield drops and knockdowns](#11c-staggers-shield-drops-and-knockdowns)
 12. [Damage](#12-damage)
 13. [Heroes, and the hideout boss](#13-heroes-and-the-hideout-boss)
 14. [The sprint](#14-the-sprint)
@@ -475,130 +475,141 @@ count).
 `CourageSprintMetres` 12, `CourageSprintEnemies` 3, `CourageSprintKeepPercent` 50, `CouragePanicOddsPercent` 50,
 `CouragePanicSprintKeepPercent` 0, `CourageTightenWeights` on, `CourageTimidMeleeMetres` 2.</sub>
 
-## 11c. Impact: kicks that break a tired man
+## 11c. Staggers, shield drops and knockdowns
 
-In the base game a kick only pushes a man back, and he is guarding again before you can swing. With this
-mod a **kick or a shield bash on a tired man** can do much more — **knock him down**, make him **drop his
-shield**, and he **reels longer** and **gets up slower**. On a fresh man nothing changes. **Blocks** and
-**clean hits** count too, and a man who **runs into his blow** hits harder (below).
+In the base game a fresh man and an exhausted one take a blow the same way: a kick only pushes him back, a
+blocked swing bounces off, and he is guarding again before you can swing twice. With this mod a blow can
+**break** a man — **stagger** him (a real window for the next blow), knock his **shield** out of his hand,
+**knock him down** (he gets up slower), or knock a **rider off his horse**. On a fresh man of your size
+nothing changes.
 
-What counts is how tired **he** is, and how you two compare: both men's **current** Athletics (how big the
-bar is AND how full), what struck him and both men's skill. Two even men, the kicker fresh:
+### The idea: impact against stability
 
-| His bar | Shield dropped | Knocked down | His reel | His get-up |
-|---|---:|---:|---|---|
-| 100% – 75% (green) | 0% | 0% | as normal | as normal |
-| 50% | 14% | 1% | ×1.5 longer | ×1.33 slower |
-| 25% | 82% | 70% | ×2.0 longer | ×1.67 slower |
-| 10% | 90% | 80% | ×2.3 longer | ×1.87 slower |
-| 0% (empty) | 90% | 80% | ×2.5 longer | ×2 slower |
+Every kick, shield bash, block and clean hit is weighed once: the **impact** of the blow against the
+**stability** of the man who takes it.
 
-The more tired he is, the more **random** the reel and the get-up get (± up to 30% when empty) — a fresh
-man's timing is predictable, an exhausted man's is not.
+- **How tired he is** decides most of it. In the green (his bar at or above the peak line, 75%) a blow does
+  nothing more than in the base game; the emptier he gets, the more it does — an empty man is at the top of
+  every table below.
+- **How you two compare** comes next: both men's **current** Athletics (how big the bar is AND how full — a
+  200-point man at full against a 50-point man at 20% is a giant against a dwarf), what struck him (a heavy,
+  fast or blunt weapon hits harder, a kick hard, a shield bash with its shield's weight), what he guarded with
+  (a big shield, a parrying weapon, nothing), and both men's skill with it. A mismatch inside a factor of about
+  1.4 counts as an even match — so two men of a kind in the green are **always** safe.
+- **A man already reeling** from one of these staggers is far easier to drop (below).
+- **A man running into his blow** hits harder — the charge (below).
 
-**Size matters.** A big, fresh fighter cannot be kicked over: you (Athletics 100) against a tournament king
-with 220:
+### What each blow can do (the ceilings)
 
-| You kick the king at… | Shield dropped | Knocked down |
+The most each blow can do — reached on an exhausted man, or on a fresh man by a giant:
+
+| The blow | Staggered | Shield knocked away | Knocked down | Always, the more tired he is |
+|---|---:|---:|---:|---|
+| A **kick** or **shield bash** that lands | (his reel IS the stagger) | 90% | 80% | he reels up to ×2.5 longer |
+| A blow he blocks on the **right side** with his shield | 80% | — | 40% | his guard frozen up to ×2 longer |
+| A blow he **parries** with his weapon | 80% | — | 40% | his guard frozen up to ×2 longer |
+| A blow he blocks on the **WRONG side** | 90% | 50% | 40% | his guard frozen up to ×2 longer |
+| A **clean hit** (it lands) | 80% (his flinch, longer) | — | 50% | he never shrugs it off |
+| **The riposte**: a fresh man's right-side block or parry staggers the ATTACKER | 50% | — | — | the attacker reels up to 1 s |
+
+A knocked-down man always gets up slower (up to ×2 when empty); a knockdown replaces the stagger, and a
+knockdown and a lost shield can come together (the exhausted turtle broken).
+
+### Tiredness: two even men
+
+Two men of a kind (Athletics 100, skill 100, swords, 4 kg shields), the attacker **fresh**, the man who takes
+the blow at the bar shown:
+
+| His bar | Kick: shield / down | Right-side block: staggered / down | Parry: staggered / down | WRONG side: staggered / shield / down | Clean hit: staggered / down |
+|---|---:|---:|---:|---:|---:|
+| 100% – 75% (green) | 0% / 0% | 0% / 0% | 0% / 0% | 0% / 0% / 0% | 0% / 0% |
+| 50% | 14% / 1% | 21% / 0% | 31% / 1% | 39% / 12% / 3% | 21% / 0% |
+| 25% | 82% / 70% | 59% / 19% | 77% / 36% | 88% / 48% / 38% | 68% / 35% |
+| 10% | 90% / 80% | 79% / 39% | 80% / 40% | 90% / 50% / 40% | 80% / 50% |
+| 0% (empty) | 90% / 80% | 80% / 40% | 80% / 40% | 90% / 50% / 40% | 80% / 50% |
+
+**Two fresh men**: nothing, ever — whatever they do to each other. **Two men equally tired** (both at the bar
+shown) — exhaustion never cancels out:
+
+| Both at | Kick: shield / down | Right-side block: staggered / down | Parry: staggered / down | WRONG side: staggered / shield / down | Clean hit: staggered / down |
+|---|---:|---:|---:|---:|---:|
+| 75% and above | 0% / 0% | 0% / 0% | 0% / 0% | 0% / 0% / 0% | 0% / 0% |
+| 50% | 7% / 0% | 11% / 0% | 21% / 0% | 23% / 4% / 0% | 21% / 0% |
+| 25% | 56% / 38% | 45% / 9% | 59% / 19% | 67% / 31% / 19% | 59% / 24% |
+| 0% (both empty) | 90% / 80% | 76% / 35% | 80% / 40% | 90% / 50% / 40% | 80% / 50% |
+
+At the end of a long fight every blow tells, and a wrong-side block is clearly worse than a right one.
+
+### The mismatch: big against small
+
+**The king and the man.** A king with 200 Athletics, full (skill 250), against a man with 50, down to 20%
+(skill 60), both with 3.5 kg shields:
+
+| What | Staggered | Shield | Knocked down |
+|---|---:|---:|---:|
+| The king kicks the man | (reels ×2.1) | 90% | 80% |
+| The king swings, the man blocks on the right side | 80% | — | 40% |
+| … the man blocks on the WRONG side | 90% | 50% | 40% |
+| The king's blow lands on the man | 80% | — | 50% |
+| The man kicks the FRESH king | (a normal push) | 0% | 0% |
+| The man swings, the fresh king blocks | 0% — and the king **ripostes** 50% | — | 0% |
+| The man kicks the king at 30% | (reels ×1.9) | 9% | 0% |
+| The man kicks the king at 0% | — | 90% | 80% — an empty king is as weak as anyone |
+
+**You and a tournament king.** You (Athletics 100, skill 100) against a king with 220 (skill 250):
+
+| What | Shield | Knocked down |
 |---|---:|---:|
-| 100% (fresh) | 0% | 0% — no kick-win against a fresh king |
-| 30% | 45% | 26% |
-| 10% | 90% | 80% — tire him first, then break him |
+| You kick the king, fresh | 0% | 0% — no kick-win against a fresh king |
+| You kick the king at 60% | 0% | 0% |
+| You kick the king at 30% | 45% | 26% |
+| You kick the king at 10% | 90% | 80% — tire him first, then break him |
+| The king kicks you, fresh | 0% | 0% |
+| The king kicks you at 40% | 76% | 62% |
+| The king swings, you block on the right side at 40% | — | 7% (staggered 43%) |
 
-**Nobody is kicked to death.** After he gets up he cannot be knocked down again for **5 seconds**; after a
-long reel no new stagger for **2 seconds**; and each knockdown or dropped shield **halves** the next chance
-against him for **8 seconds**. A man on the ground is not kicked down again. A kick still costs you
-Athletics and a stored swing (sections 4 and 6), so spamming it empties you.
+**The stick and the axe.** A peasant (50 Athletics, skill 20) parrying a veteran berserker's two-handed axe
+(180 Athletics, skill 200) with a 0.6 kg stick — the mismatch counts even on a good block:
 
-**A dropped shield** lies on the ground and can be picked up again the normal way — you with the use key,
-the AI only once no enemy is within 20 m (so not in the middle of a melee).
+| What | Staggered | Knocked down |
+|---|---:|---:|
+| The axe on the FRESH peasant's parry | 46% | 9% |
+| The axe on his parry at half a bar | 80% | 40% |
+| The axe lands clean on the fresh peasant | 18% | 0% |
+| The peasant's stick on the fresh berserker's shield | 0% | 0% (the berserker ripostes 21%) |
 
-The same rules apply to you (every chance against you × `ImpactOnPlayerPercent`, 100%), and every kick you
-give or take is written to the log (`[impact] YOU: ...`). Riders are not knocked down by kicks yet.
+**The riposte** — a **fresh, skilful** blocker turns a blow round and staggers the attacker: a fresh veteran
+blocking a recruit at 40% — 50%; the same recruit fresh — 21%; a fresh man parrying an equal at 20% — 47%; two
+fresh even men — about 1%. A tired blocker ripostes less (the chance × how fresh he is); the more tired the
+attacker, the longer he reels (0.5 s → 1 s).
 
-<sub>Settings ("Impact: staggers, shield drops, knockdowns"): `ImpactEnabled` on, `ImpactKicksEnabled` on,
-`ImpactShadowMode` off (on = decide and log only), `KickShieldDropMaxPercent` 90, `KickKnockdownMaxPercent` 80,
-`KickReelTiredExtraPercent` 150, `GetUpMaxSlowdown` 2, `ImpactRandomPercent` 30, `ImpactKnockdownImmunitySeconds` 5,
-`ImpactStaggerImmunitySeconds` 2, `ImpactDiminishWindowSeconds` 8, `ImpactDiminishFactor` 0.5, `ShieldPickupLockSeconds` 0,
-`ImpactOnPlayerPercent` 100.</sub>
+### A man already reeling is easy prey
 
-### Blocks: a tired guard breaks
+While a man reels from any stagger of this system — a kick's long reel, a block's stagger, a riposte, a clean
+hit's stagger — the next blow on him counts as if he were three quarters more tired. Two even men:
 
-A blocked blow is not free for a tired man. Every block he makes **freezes his guard longer** the more tired
-he is (up to twice as long when empty), and a block can **stagger** him — a real stagger, a window for the
-next blow — or even **knock him down**. Blocking on the **wrong side** is much worse: the stagger comes
-easier and his **shield can fly out of his hand**. Two even men, the attacker fresh:
+| He reels and is… | A kick: shield / down | A sword blow lands: down | A mace blow lands: down |
+|---|---:|---:|---:|
+| fresh | 69% / 54% | 34% | 35% |
+| at half a bar | 90% / 80% | 50% | 50% |
 
-| His bar | Right-side shield block: staggered / down | Parry: staggered / down | WRONG side: staggered / shield / down | His guard frozen | A stagger lasts |
-|---|---:|---:|---:|---|---|
-| 100% – 75% (green) | 0% / 0% | 0% / 0% | 0% / 0% / 0% | as normal | 0.6 s |
-| 50% | 21% / 0% | 31% / 1% | 39% / 12% / 3% | ×1.33 | 0.9 s |
-| 25% | 59% / 19% | 77% / 36% | 88% / 48% / 38% | ×1.67 | 1.2 s |
-| 10% | 79% / 39% | 80% / 40% | 90% / 50% / 40% | ×1.87 | 1.4 s |
-| 0% (empty) | 80% / 40% | 80% / 40% | 90% / 50% / 40% | ×2 | 1.5 s |
+(The same blows on the same calm, fresh man: nothing.) He cannot be staggered *again* while he reels — but he
+can be knocked down.
 
-The stagger gets **more random** the more tired he is (± up to 30% when empty). **Exhaustion never cancels
-out**: two men who are both empty stay near these ceilings — at the end of a long fight every block can
-break, and a wrong-side block is clearly worse than a right one.
+### The charge: momentum
 
-**The mismatch counts, even on a good block.** A peasant parrying a veteran berserker's two-handed axe with a
-stick is staggered 46% of the time even fresh, and at half a bar 80% (down 40%).
-
-**The riposte.** A **fresh, skilful** blocker turns it round: his right-side block or parry can **stagger the
-attacker** — up to **50%** when a fresh veteran blocks a tired recruit (a fresh man parrying an equal at 20%:
-45%; two fresh even men: never). The more tired the attacker, the longer he reels (0.5 s → 1 s). A tired
-blocker ripostes less (the chance × how fresh he is).
-
-**Nobody is stun-locked.** After a stagger no new stagger for **2 seconds**, after getting up no new
-knockdown for **5 seconds**, each outcome halves the next for **8 seconds** — the same limits as for kicks.
-
-You block too: every stagger, knockdown or dropped shield on your block — and every riposte you suffer or
-deal — is a `[impact] YOU:` line in the log ("your right-side block of X's Sturgian Axe: you are staggered
-(55%)", "X blocked you (parry): you reel (riposte, 50%)"). Riders are never staggered (they come later).
-
-<sub>Settings: `ImpactBlocksEnabled` on, `ImpactRiposteEnabled` on, `RightBlockStaggerMaxPercent` 80,
-`RightBlockKnockdownMaxPercent` 40, `RightBlockShieldDropMaxPercent` 0, `ParryStaggerMaxPercent` 80, `ParryKnockdownMaxPercent` 40,
-`WrongBlockStaggerMaxPercent` 90, `WrongBlockShieldDropMaxPercent` 50, `WrongBlockKnockdownMaxPercent` 40, `RiposteStaggerMaxPercent` 50,
-`StaggerBaseSeconds` 0.6, `StaggerTiredExtraPercent` 150, `StaggerMaxSeconds` 2, `BlockStunTiredExtraPercent` 100,
-`RiposteStunMaxSeconds` 1, `ImpactStunCapSeconds` 2.</sub>
-
-### Clean hits: a tired man is thrown around
-
-A blow that **lands** on a tired man can **stagger** him — his own flinch, but longer (0.6 s fresh, up to 1.5 s
-empty) — or **knock him down**. And a tired man **never shrugs a blow off**: the game lets a man ignore a light
-hit without flinching; the more tired he is, the less he can (an empty man flinches at every hit). Two even
-men, the attacker fresh with a sword:
-
-| His bar | Staggered | Knocked down | A stagger lasts |
-|---|---:|---:|---|
-| 100% – 75% (green) | 0% | 0% | 0.6 s |
-| 50% | 21% | 0% | 0.9 s |
-| 25% | 68% | 35% | 1.2 s |
-| 10% | 80% | 50% | 1.4 s |
-| 0% (empty) | 80% | 50% | 1.5 s |
-
-**A staggered man is easy prey.** While he reels from any stagger of this system — a kick's long reel, a
-block's stagger, a riposte, a clean hit's stagger — the next blow on him counts as if he were three quarters
-more tired: a kick on a staggered man in the green knocks him down about half the time, a sword blow about a
-third, even though the same blows do nothing to him a moment later. (He cannot be staggered *again* while he
-reels — the 2 s limit — but he can be knocked down.)
-
-**Exhaustion never cancels out** here either: two empty men hitting each other stay at the ceilings (80% /
-50%) — at the end of a long fight every clean blow tells.
-
-### Momentum: the charge
-
-**A man running into his blow hits harder.** Up to a walk nothing changes; from a walk (2 m/s) to a full
-sprint (7 m/s and faster) the blow's impact grows by up to **+60%** — kicks, shield bashes and weapon blows
-alike, blocked or not. Only his speed TOWARD the man he strikes counts. What it does to a half-tired line (his
-bar 40%), the attacker fresh:
+**A man running into his blow hits harder.** Up to a walk (2 m/s) nothing changes; at a full sprint (7 m/s and
+faster) the blow's impact is **×1.6**, in between a straight line — kicks, shield bashes and weapon blows alike,
+blocked or not. Only his speed TOWARD the man he strikes counts. **The shock charge** — a fresh attacker into a
+line at 40% of its bar:
 
 | The attacker | Staggered | Knocked down |
 |---|---:|---:|
 | a sword, standing | 37% | 5% |
+| a sword, running (4.5 m/s) | 48% | 13% |
 | a sword, sprinting | 57% | 21% |
 | a two-handed axe, standing | 51% | 15% |
-| a two-handed axe, running (4.5 m/s) | 61% | 26% |
+| a two-handed axe, running | 61% | 26% |
 | a two-handed axe, sprinting | 68% | 34% |
 | a kick, standing | (shield 40%) | 22% |
 | a kick, sprinting | (shield 68%) | 52% |
@@ -606,13 +617,96 @@ bar 40%), the attacker fresh:
 So **hold a fresh shock unit back, place it on the flank or behind a tired, engaged line, and charge at the
 right moment**: the tired men are thrown around — staggered, knocked down, their shields knocked away — and
 every man who reels is easier to drop for the next blow. A charge into a **fresh** line is something else:
-momentum alone hardly staggers a fresh man (a sprinting swordsman on a fresh equal: under 5%, never down).
+momentum alone hardly moves a fresh man (a sprinting swordsman on a fresh equal: nothing; a sprinting
+two-handed axe: 4% staggered, never down).
 
-Riders: their charge is the horse's and comes later; they are never knocked down by this yet.
+**The cavalry charge.** A rider's blow carries his **horse's** speed — half a sprinting man's bonus (×1.3 at a
+full gallop of 10 m/s, nothing at a walk of 3 m/s or slower), so a cavalry charge into a tired line throws men
+down without felling the whole line. A fresh rider's sword (1.2 kg) into a line at 40%:
 
-<sub>Settings: `ImpactHitsEnabled` on, `HitStaggerMaxPercent` 80, `HitKnockdownMaxPercent` 50, `ImpactTiredNeverShrugsOff` on,
-`ImpactStaggeredBonus` 0.75, `ImpactMomentumEnabled` on, `ImpactMomentumPercent` 60, `ImpactMomentumWalkMetresPerSecond` 2,
-`ImpactMomentumSprintMetresPerSecond` 7.</sub>
+| The rider | Staggered | Knocked down |
+|---|---:|---:|
+| standing | 37% | 5% |
+| at a trot (5 m/s) | 41% | 7% |
+| at a canter (6.5 m/s) | 43% | 9% |
+| at a full gallop | 48% | 13% |
+| at a full gallop, a two-handed axe | 61% | 26% |
+| at a full gallop into a line at 25% | 75% | 44% (standing: 68% / 35%) |
+| at a full gallop into an empty line | 80% | 50% (the ceilings - never more) |
+| at a full gallop into a FRESH line | 0% | 0% |
+
+A **couched lance** gets nothing from this: its hit is already the game's own big one. The horse's own charge
+(running a man over) is the game's too.
+
+### Riders
+
+A rider is **never staggered** (the horse shares his every move) — a "knockdown" on a rider knocks him **off
+his horse** instead, at **half** the knockdown's chance; his **shield** can be knocked from his hand as a man on
+foot's. A fresh attacker on foot against a rider at the bar shown:
+
+| The rider's bar | A kick lands: off / shield | Right-side block: off | WRONG side: off / shield | A clean hit: off |
+|---|---:|---:|---:|---:|
+| 100% – 75% | 0% / 0% | 0% | 0% / 0% | 0% |
+| 50% | 1% / 14% | 0% | 1% / 12% | 0% |
+| 25% | 35% / 82% | 10% | 19% / 48% | 17% |
+| 0% (empty) | 40% / 90% | 20% | 20% / 50% | 25% |
+
+A blocking rider's guard freezes longer when he is tired, like anyone's. Horses themselves are the game's own
+(they rear as before).
+
+### How long
+
+The more tired he is, the longer — and the more **random** (± up to 30% when empty: a fresh man's timing is
+predictable, an exhausted man's is not):
+
+| His bar | A stagger lasts | A kicked man reels | He gets up | His guard frozen on a block | A riposted attacker reels |
+|---|---|---|---|---|---|
+| 75% and above | 0.6 s | as normal | as normal | as normal | 0.5 s |
+| about 56% | 0.8 s (0.8–0.9) | ×1.4 | ×1.25 slower | ×1.25 | 0.6 s |
+| about 38% | 1.05 s (0.9–1.2) | ×1.75 | ×1.5 slower | ×1.5 | 0.75 s |
+| about 19% | 1.3 s (1.0–1.6) | ×2.1 | ×1.75 slower | ×1.75 | 0.9 s |
+| 0% (empty) | 1.5 s (1.05–1.95) | ×2.5 | ×2 slower | ×2 | 1 s |
+
+### Nobody is stun-locked to death
+
+- After a stagger ends, **no new stagger for 2 seconds** (his guard can still be frozen — that is a block).
+- After he gets up, **no new knockdown for 5 seconds**; a man on the ground is not knocked down again.
+- Every stagger, knockdown or lost shield **halves** the next chance against the same man for **8 seconds**.
+- A kick still costs you Athletics and a stored swing (sections 4 and 6), so spamming it empties you.
+- **A dropped shield** lies on the ground and can be picked up again the normal way — you with the use key,
+  the AI only once no enemy is within 20 m (so not in the middle of a melee).
+
+### You
+
+The same rules apply to you — every chance against you × `ImpactOnPlayerPercent` (100%). A short line in the
+game's message feed tells you when it matters: **red** when you are knocked down, knocked off your horse, lose
+your shield or reel from a riposte; **purple** when you knock a man down or off his horse, break his guard or
+knock his shield away. At most one line every 1.5 s — what happens meanwhile is merged into the next ("You
+knock Aldric off his horse; you knock Rolf down"). Want your side's big moments too? `ImpactMessagesIncludeYourMen`
+adds a **white** line when one of your men knocks an enemy **hero** down or off his horse, or a hero of yours goes
+down. Every outcome you give or take is also in the log (`[impact] YOU: ...`).
+
+### With the rest of the mod
+
+- **Courage** (section 11b): every stagger, knockdown or lost shield is a hit that **shakes** a man — shaken men
+  want more mates around them and pack in; a tired line that is being thrown around folds back into the mass.
+- **The fever** (section 11): a charge's fever makes men swing, it does not make them stand firm — a feverish
+  man is staggered like anyone. A charge (fever) + sprint (section 14) + momentum is the shock unit's whole blow.
+- **Tired blocks** (section 7): tired AI guess their block direction — more wrong-side blocks, so more broken guards.
+
+<sub>Settings ("Impact: staggers, shield drops, knockdowns"): `ImpactEnabled` on, `ImpactKicksEnabled` / `ImpactBlocksEnabled` /
+`ImpactHitsEnabled` / `ImpactRiposteEnabled` on, `ImpactShadowMode` off (on = decide and log only); the ceilings `KickShieldDropMaxPercent` 90,
+`KickKnockdownMaxPercent` 80, `RightBlockStaggerMaxPercent` 80, `RightBlockShieldDropMaxPercent` 0, `RightBlockKnockdownMaxPercent` 40,
+`ParryStaggerMaxPercent` 80, `ParryKnockdownMaxPercent` 40, `WrongBlockStaggerMaxPercent` 90, `WrongBlockShieldDropMaxPercent` 50,
+`WrongBlockKnockdownMaxPercent` 40, `HitStaggerMaxPercent` 80, `HitKnockdownMaxPercent` 50, `RiposteStaggerMaxPercent` 50; the lengths
+`StaggerBaseSeconds` 0.6, `StaggerTiredExtraPercent` 150, `StaggerMaxSeconds` 2, `KickReelTiredExtraPercent` 150, `GetUpMaxSlowdown` 2,
+`BlockStunTiredExtraPercent` 100, `RiposteStunMaxSeconds` 1, `ImpactRandomPercent` 30, `ImpactStunCapSeconds` 2; the limits
+`ImpactStaggerImmunitySeconds` 2, `ImpactKnockdownImmunitySeconds` 5, `ImpactDiminishWindowSeconds` 8, `ImpactDiminishFactor` 0.5,
+`ShieldPickupLockSeconds` 0; who `ImpactOnPlayerPercent` 100, `ImpactRiderDismountPercent` 50, `ImpactTiredNeverShrugsOff` on; momentum
+`ImpactMomentumEnabled` on, `ImpactMomentumPercent` 60, `ImpactMomentumWalkMetresPerSecond` 2, `ImpactMomentumSprintMetresPerSecond` 7,
+`ImpactMomentumRiderPercent` 30, `ImpactMomentumRiderWalkMetresPerSecond` 3, `ImpactMomentumRiderGallopMetresPerSecond` 10; the lines
+`ImpactShowMessages` on, `ImpactMessagesIncludeYourMen` off, `ImpactMessageMinSeconds` 1.5; the pressure `ImpactMismatchWeight` 0.25,
+`ImpactEvenBandDoublings` 0.5, `ImpactStaggeredBonus` 0.75 and the weapon / guard / skill factors (DESIGN's table).</sub>
 
 ## 12. Damage
 
@@ -807,9 +901,14 @@ fever or not, so nothing jumps.
 Close to the camera the bars fade out (none closer than 1.5 m), far away they are a little smaller, a
 rider's sit a little higher, and in a huge battle only the 200 nearest men on the screen get them.
 
+**Lines in the message feed** (section 11c): red when you are knocked down, knocked off your horse, lose your
+shield or reel from a riposte; purple when you knock a man down or off his horse, break his guard or knock his
+shield away — the colours the game uses for its own couched-lance lines. At most one every 1.5 s, merged.
+
 <sub>Settings: `ShowPlayerBar`, `ShowAttackRecoveryBar`, `ShowSprintBar`, `ShowInOrderMenu`, `ShowAltMarkerStats`,
 `AltMarkersShowEnemy`, `ShowReadyCount`, `Bar*BelowPercent`, `Ready*BelowPercent`, `ShowAthleticsMarks`, `AthleticsMarksShowEnemy`,
-`ShowFeverMarks`, `FeverMarksShowEnemy`, `FeverMarkMax` 200 (men marked, both bars), and the HUD's sizes and offsets
+`ShowFeverMarks`, `FeverMarksShowEnemy`, `FeverMarkMax` 200 (men marked, both bars), `ImpactShowMessages`, `ImpactMessagesIncludeYourMen`,
+`ImpactMessageMinSeconds` 1.5, and the HUD's sizes and offsets
 (`AthleticsMarkWidth` 22, `AthleticsMarkHeight` 5, `AthleticsMarkGap` 2, `FeverMarkWidth` 22, `FeverMarkHeight` 5,
 `FeverMarkHeightMetres` 2.5).</sub>
 
@@ -827,7 +926,9 @@ rider's sit a little higher, and in a huge battle only the 200 nearest men on th
   guard and surge in with what they saved.
 - **Fresh shock troops into tired lines.** A reserve of fresh infantry or cavalry thrown at a formation
   that has been fighting for two minutes meets men who swing once where they used to swing five times,
-  run at a third of their speed and guess their blocks.
+  run at a third of their speed and guess their blocks — and a running or galloping charge throws them
+  around: staggered, knocked down, shields and riders knocked off (section 11c). Into a fresh line the same
+  charge only trades blows.
 - **Rotate.** Pull a spent formation back, let it walk for a minute (walking refills as fast as
   standing), put it back in.
 - **Don't let your hero swing himself empty.** Watch your bar; step out, block on the right side, and
