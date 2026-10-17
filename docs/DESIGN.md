@@ -282,6 +282,28 @@ regen.)
         cycle = attacks a minute per man while fighting, the AI's own gap after a pause, and for foot melee the
         model's cycle with the setting at 0 and with it (his attack + the pause + G) against the measured one. The
         real check is the same battle with the sliders at 0 and at their values (PLAYTEST).
+    - **The shield wall holds its slots** (Anton, 2026-10-17, a playtest: a fresh shield wall waiting for the enemy - "men
+      step 2-3 m forward out of the wall to swing at an enemy, then walk back to their slot ... every man does this, so the
+      wall bulges and breaks"; he wants them to keep their slot "the way Realistic Battle Mod does it"; built in step 41 -
+      AI_NOTES "Step 41", RESEARCH §O; `ShieldWallHoldsSlots`, on). Vanilla tells the engine "keep with the formation
+      instead of moving to the agent" only for a man with a shield in the 5th slot of a mostly RANGED formation - for a
+      shield-wall infantryman never, so the native AI walks him at the enemy he targets. The mod sets that flag for:
+      - **who**: AI men (never you, never a man you drive), on foot, in a formation and not detached from it, whose formation
+        is in a **shield wall, square or circle** (the game's three defensive arrangements), under **any order but a charge**
+        (charge, charge a target, the AI's tactical charge, attacking a gate) **or a retreat** - hold / halt, move, advance,
+        fall back, follow all hold; not a man fleeing; both sides alike;
+      - **the escape**: a man FAR from his slot (6 × the formation's speed - vanilla's own catch-up radius, ~20 m) AND
+        BEHIND the line is left to vanilla so he may run to rejoin; a man far AHEAD of his slot is held (walked back);
+      - **where**: field battles, custom battles, hideouts, sieges for the DEFENDERS; not a siege's attackers (their climb
+        and gate orders are moves - RBM's lesson: held to their slots they stood on the wall top), not naval battles;
+      - **what is written**: vanilla's own call with vanilla's own numbers (the slot vanilla itself computes, the formation's
+        facing and integrity data) and the flag true - right after each of vanilla's own updates (its per-man timer,
+        ~0.5 s) and at a staggered look every 0.25 s; nothing else changes (no speed, no behaviour weights, no Harmony);
+      - **live**: off (or the master switch off) writes vanilla's own value back for every held man at once - vanilla would
+        not under a halt order (it writes nothing there);
+      - **measured**: the summary's "wall" lines - every man of a holding shield wall / square / circle sampled every 0.5 s:
+        the share more than 1 m and 2 m AHEAD of his slot along the facing, the mean and farthest, all and in contact (an
+        enemy within 5 m), split ON / OFF by the switch at the sample, so one battle with a mid-battle switch reads as an A/B.
     - **Brace by orders — tired AI men stop swinging and defend** (Anton, 2026-09-29: "soldiers get to 0% athletics
       but they still swing as much as they can - make soldiers not swing but only defend when they have reached a
       certain floor, that depends on their current orders, until they have replenished the floor +20%" ... "when
@@ -845,6 +867,7 @@ says (§2c).
 | `AiMeleeGapSeconds` | 1.0 | Step 21: the AI's own gap between a melee attack's end and its next one at full strength (measured 1.0 s in Anton's logs of 2026-09-27/28) - the two "swing less" pauses are sized on it. |
 | `ExtraPauseAfterBowShotSeconds` | 2.0 | Step 21 (Anton): AI bow shots (on foot and horse archers) wait this many seconds more, on top of the tired pause - about 30% fewer shots (fresh AI bow cycle ~4.5 s). 0 = off; applies at the next shot. |
 | `ExtraPauseAfterCrossbowShotSeconds` | 2.5 | Step 21: the same for AI crossbow shots (fresh cycle ~6 s). Thrown weapons and slings: none. 0 = off. |
+| `ShieldWallHoldsSlots` | true | Step 41 (Anton, 2026-10-17): every AI man on foot in a shield wall, square or circle keeps his slot instead of walking out of it at the enemy he fights (the engine's "keep with the formation" flag, rewritten right after vanilla's own update - §2 "The shield wall holds its slots"). Any order but a charge or a retreat; not detached, fleeing, or far from his slot AND behind the line; both sides; never you, riders, a siege's attackers, naval battles. Live: off = vanilla's own value written back at once. |
 | `BraceEnabled` | true | Step 23 (Anton): an AI fighter whose bar (points ÷ his full pool) is at or below his formation's order floor stops attacking in melee and only defends, guard up, until he refills to floor + his margin (§2 "Brace by orders"). Ranged attacks go on. AI heroes and riders too, never you. Off = lifted at once. |
 | `BraceFloorChargePercent` | 20 | Step 23: the floor under a charge order (charge, charge a target, attack a gate, the AI's tactical charge), % of the full bar. |
 | `BraceFloorAdvancePercent` | 40 | Step 23: the floor under an advance order (yours, or an AI formation advancing on a Move order - its behaviour is an advance). |
@@ -1227,6 +1250,20 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     Config format 7 drops the three `SprintAi*UsePercent` keys (and step 33's two shares, renamed no more) with one
     [config] line each, and moves a format-6 file's `SprintAiAdvanceKeepPercent` 0 → 50 and `SprintAiMoveKeepPercent`
     70 → 80 only when they still hold step 36's defaults. Each is a default Anton can overturn.
+34. **The shield wall holds its slots** (step 41, Claude's calls on Anton's report of 2026-10-17 - AI_NOTES "Step 41"):
+    (a) **on by default** - it is the fix for what he reported, it changes nothing outside the three defensive
+    arrangements, and off is one switch, live; (b) all three defensive arrangements (shield wall, square, circle), not the
+    shield wall alone - square and circle are the same "stand and hold" orders and bulge the same way; (c) any order but
+    charge / retreat (a halt and an advance hold too - the brief and RBM differ here: RBM holds Moves only; under a halt
+    vanilla never writes the flag, so ours simply stays); (d) the slot is vanilla's own point (`blendWithOrderDirection`
+    true - the very value vanilla hands the engine), so only the flag differs from vanilla; (e) a scattered formation
+    (vanilla's "deviation > 3 × speed": it writes zeros and lets everyone go) is held too - forming the wall is the point
+    of the order (RBM does the same); (f) a siege's DEFENDERS are held (a wall line on the battlements is exactly a held
+    line; RBM excludes only attackers), naval battles not at all (ship decks and boarding are unknown ground - the step
+    back skips naval for the same reason); (g) no reflection on the private `ShouldCatchUpWithFormation` (it only paces
+    speed; vanilla keeps it); one read-only reflection: vanilla's per-man update TIMER, to write right after it (RESEARCH
+    §O) - if a game update renames it, a rewrite every 0.1 s takes over and the summary says so. Each is a default Anton can
+    overturn.
 
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),

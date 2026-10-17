@@ -347,6 +347,15 @@
   // (range 0.0 to 10.0)
   "ExtraPauseAfterCrossbowShotSeconds": 2.5,
 
+  // AI soldiers on foot in a shield wall, square or circle keep their place in the formation
+  // instead of stepping out of it at the enemy they fight - they still fight whatever reaches
+  // them, so the wall stays a wall. Under any order but a charge or a retreat; a man far behind
+  // his place may still run to rejoin. Both sides, never you, never riders, a siege's attackers
+  // or naval battles. Off: the game's own way - each man may walk a few steps out at his enemy
+  // and back.
+  // (true or false)
+  "ShieldWallHoldsSlots": true,
+
   // ==================== Brace by orders (AI) ====================
   // An AI soldier whose Athletics bar falls to his formation's order floor (the settings below)
   // stops attacking in melee and only defends, guard up, until he refills to that floor + the

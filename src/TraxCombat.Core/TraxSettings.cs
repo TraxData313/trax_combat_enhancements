@@ -262,6 +262,9 @@ namespace TraxCombat.Core
         public float ExtraPauseAfterBowShotSeconds => GetFloat(SettingsSchema.ExtraPauseAfterBowShotSeconds);
         public float ExtraPauseAfterCrossbowShotSeconds => GetFloat(SettingsSchema.ExtraPauseAfterCrossbowShotSeconds);
 
+        // step 41: the shield wall holds its slots
+        public bool ShieldWallHoldsSlots => GetBool(SettingsSchema.ShieldWallHoldsSlots);
+
         // step 23: brace by orders
         public bool BraceEnabled => GetBool(SettingsSchema.BraceEnabled);
         public int BraceFloorChargePercent => GetInt(SettingsSchema.BraceFloorChargePercent);

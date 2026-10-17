@@ -277,6 +277,13 @@ namespace TraxCombat.Core
             "Crossbowmen: extra wait after each shot (s)",
             "AI crossbowmen wait this many seconds more after each shot, on top of any tired pause. At 2.5 they fire about 30% fewer bolts a minute (a fresh AI crossbowman shoots about once every 6 seconds, the long reload included). Thrown weapons and slings have no extra wait. Never you. 0 = off. A change applies at each crossbowman's next shot.");
 
+        // Step 41 (Anton, 2026-10-17: a fresh shield wall waiting for the enemy - "men step 2-3 m forward out of the wall to swing at
+        // an enemy, then walk back to their slot ... keep their slot, the way RBM does it"): WallMath, AI_NOTES "Step 41", RESEARCH §O.
+        // In this group: it is the same aim as the rest of it - a more defensive, more tactical AI infantry.
+        public static readonly ParamDef ShieldWallHoldsSlots = Bool("ShieldWallHoldsSlots", BattlePaceGroup,
+            "Shield walls hold their slots",
+            "AI soldiers on foot in a shield wall, square or circle keep their place in the formation instead of stepping out of it at the enemy they fight - they still fight whatever reaches them, so the wall stays a wall. Under any order but a charge or a retreat; a man far behind his place may still run to rejoin. Both sides, never you, never riders, a siege's attackers or naval battles. Off: the game's own way - each man may walk a few steps out at his enemy and back.");
+
         // ------------------------------------------------------------------ brace by orders (step 23)
 
         // Step 23 (Anton, 2026-09-29: "make soldiers not swing but only defend when they have reached a certain floor, that
@@ -653,6 +660,7 @@ namespace TraxCombat.Core
             StepBackEnabled, StepBackBackpedal, StepBackMaxChancePercent, StepBackDistance, StepBackSeconds, StepBackEnemyRange,
             StepBackHoldAttacks, StepBackMaxAtOnce,
             ShieldInfantrySwingsLessPercent, FootMeleeSwingsLessPercent, AiMeleeGapSeconds, ExtraPauseAfterBowShotSeconds, ExtraPauseAfterCrossbowShotSeconds,
+            ShieldWallHoldsSlots,
             BraceEnabled, BraceFloorChargePercent, BraceFloorAdvancePercent, BraceFloorHoldPercent, BraceFloorNoFormationPercent, BraceFloorSpreadPercent,
             BraceRecoverPercent, BraceRecoverSpreadPercent,
             BraceWieldShield, BraceRaiseShield,
