@@ -54,7 +54,7 @@ BUILD ORDER (one step at a time — [~] = in flight, see CLAUDE.md "manager prot
 - [~] 49. COURAGE and cohesion (Anton, 2026-10-17 night: men roam alone, circle a shield wall 1-against-5, stand exhausted among enemies): each AI man weighs his mates vs the enemies near him, by toughness (tier / armour - looters vs armoured men need ~4-5:1), fever, tiredness, morale; short of courage he backs off / sprints to his formation's centre of mass and only steps in to strike; envelopment only as a mass (see AI_NOTES)
 - [ ] 50. IMPACT I3 kicks and bashes live: knockdown, shield drop, longer reel, slower get-up, immunity + diminishing returns
 - [ ] 51. IMPACT I4 blocks live: stun by tiredness, rolled stagger, wrong-side shield drop, a blocker knocked down, the riposte
-- [ ] 52. IMPACT I5 clean hits + the reeling bonus
+- [ ] 52. IMPACT I5 clean hits + the reeling bonus + MOMENTUM (Anton, 2026-10-17: a fresh shock unit charging a tired line must be devastating - the attacker's run / sprint speed into the blow adds impact); exhaustion never cancels out: two empty even men stay at the ceilings (mistakes count, IMPACT §4 A)
 - [ ] 53. IMPACT I6 riders (knocked off at half the chance), your message lines, the guide's tables, PLAYTEST
 - [ ] 54. IMPACT I7 the AI punishes a staggered / downed target (a short burst of attack decisions)
 
