@@ -43,6 +43,7 @@ BUILD ORDER (one step at a time — [~] = in flight, see CLAUDE.md "manager prot
 - [x] 38. Release v1.1.0 (Anton's yes 2026-10-12: "waaay ahead of the old release" - he playtests details after): steps 28-37 + the new Steam description and README on the Workshop, GitHub release with the zip
 - [x] 39. Sprint in towns and villages (Anton, 2026-10-14: no sprint roaming a town - street fights start there): the key works in the walk-about mode, the sprint bar shows there by the Athletics bar's outside rule
 - [x] 40. Release v1.1.1 (Anton's yes 2026-10-14) - step 39's town sprint; Workshop 3817259431 updated, GitHub release
+- [~] 41. Shield wall HOLDS ITS SLOTS (Anton, 2026-10-17: a fresh shield wall waiting for the enemy - men step 2-3 m out to swing, then walk back): tell each AI man in a shield wall / square / circle to keep his slot instead of walking at his target, like RBM (one switch, A/B live); the summary measures how many stand > 1 m ahead of their slot, on vs off (see AI_NOTES)
 
 PLAYTEST (Anton, all at once at the end — script in docs/PLAYTEST.md):
 - [ ] Play with RBM disabled — declared NOT compatible (Anton, 2026-09-27; the mod warns if it sees it)
