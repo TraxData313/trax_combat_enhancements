@@ -4951,3 +4951,60 @@ TraxCombat.Core: `new TraxSettings()` = defaults.json). README / the Steam text 
   impossible - the engine never registers a blocked blow).
 - If the cavalry charge feels weak / strong: `ImpactMomentumRiderPercent` (30) and the gallop reference (10 m/s) are the knobs; a lance thrust
   (not couched) gets the bonus today - a per-strike-type weight would be a new setting.
+
+## Step 54 — IMPACT I7, the AI punishes a window (DONE 2026-10-18)
+
+**The brief (Anton asleep - "get all done by morning, decide open questions")**: when an AI man's target is REELING or DOWN from our impact
+system, he presses the window - his aggression share raised to `ImpactPunishAggressionPercent` (100 = the game's full eagerness) for the window
++ a grace; a timid man (step 49) within ~3 m treats it like a surge. Both sides, never the player as the attacker - and the PLAYER's windows too
+(Anton: "otherwise it's a player-only weapon"). IMPACT §8 q14 had said "after I5, if the playtest shows the AI wasting windows": built now,
+with the proof measured ON and OFF so the playtest still answers the question.
+
+**How it works** (`Missions/AthleticsLogic.ImpactPunish.cs`, `Missions/PunishBody.cs`, Core `ImpactPunish.cs`)
+- **The window** = `PunishMath.WindowEnd(ImpactState)` = max(ReelingUntil, DownUntil), open while now < end + `ImpactPunishGraceSeconds`
+  (0.5). Every state the impact decision WRITES live passes `NotePunishWindow` at the END of `ImpactDecide` (after ApplyKick / ApplyHit /
+  ApplyRider / ApplyBlock - so a knockdown answered outside the seam, whose ground time is taken back at once, opens none); both men (the riposte
+  writes the ATTACKER's reel). Counted once per window per victim (a new one only after the last one's end + grace; AI men / you apart); the
+  battle-wide `_punishAnyUntil` mark = the latest end + grace + `AnyWindowSlackSeconds` 1 (a measured end can run a little past the asked).
+  Never in shadow / the spike (`ImpactRules.ShadowNow` - the "would" states never happened).
+- **The look** = the FEVER's (`PollFever`, every AI man ~every 0.25 s, staggered; the player / a rider → `PunishClear`). After contact is read:
+  the proof's time since the last look (by the last look's state); then, only when windows are live, he is in contact (`FeverContact`) AND
+  now < `_punishAnyUntil`: ONE target read (`IPunishBody.Target` = `GetTargetAgent()`, else `ImmediateEnemy`, an active enemy; the distance from
+  the positions) → `Get(agent)` → in a window? `Punishing` = in a window && `ImpactPunishEnabled`. `RetargetDecision` (right after, and from every
+  RetargetSpeed) does `PunishMath.Raise` = max(his share, quantized P) when `Punishing`, `PunishRules` read live there - a settings change
+  (switch off, master switch) drops the raise at once through ApplySettingsChange's RetargetSpeed loop. The raise ends at the first look that
+  sees the window closed (≤ 0.25 s after end + grace).
+- **The timid man** (`PunishTimid`): punishing, `PunishMath.TimidPresses` (range > 0, distance ≤ `ImpactPunishRangeMetres` 3, not in a PANIC),
+  courage on → `CourageMind.SurgeUntil` = max(it, window end + grace) - courage's look leaves a surging man alone (step 49b); if he was timid,
+  `EndTimid(CourageEnd.PunishWindow)` at once (counted). Any man in range gets the clock (he does not turn timid mid-window).
+- **The proof** (`NotePunishAttack`, from StartRelease beside NoteFeverAttack): an AI melee release on foot by a man in contact at his last look
+  while windows were live - filed by the punish ON / OFF at that look × his last-read target in a window NOW or not; an attack inside a window
+  marks it PUNISHED (once; on you apart - `PlayerAttacksInWindow` counts every one). Time: each look adds the gap to the last look's cell.
+
+**Claude's calls (DESIGN decision 46)**: (a) step 43's lever (the game's own two attack-decision chances), absolute 100 %, never lowered - the AI
+still DECIDES, nothing forced (no input-hook attack wish - that is the fallback if D23 shows ON = OFF); (b) the fever's look, not a per-tick
+check - a window is 0.6-3 s + 0.5 s; mean delay ~0.13 s; a per-tick target read = 1000 native calls a tick; (c) no target read while no
+window is open anywhere; (d) live outcomes only; (e) both sides + your windows, never you as attacker, never a rider; (f) a shocked man presses
+too, only a panic stays away; (g) in contact only; (h) the proof ON and OFF alike.
+
+**Settings** (4, Live, after `ImpactMessageMinSeconds`): `ImpactPunishEnabled` true, `ImpactPunishAggressionPercent` 100 (0-200),
+`ImpactPunishGraceSeconds` 0.5 (0-3), `ImpactPunishRangeMetres` 3.0 (0-10). 250 → 254; no config-format bump. `CourageEnd.PunishWindow`.
+TrackedAgent: as the punisher `Punishing`, `PunishTarget`, `PunishInWindow`, `PunishOn`, `PunishContact`; as the victim `PunishWindowEnd`,
+`PunishWindowSeen`, `PunishWindowHit`.
+
+**Measured (smoke - the stand-in bodies)**: an exhausted blocker's broken block (the real decision through OnMeleeHit's part) opened a 2.1 s
+window; the AI man fighting him 0.6 → 1.0 at the next look (the real decorator writes the game's own 0.144 / 0.080), his attack inside punished it
+once; back to 0.6 / 0.086 within 0.25 s of end + grace; a timid man 4 m off kept away, at 2.5 m stepped in (brave until end + 0.5); the switch
+live; YOUR broken block pressed and punished; shadow opened none; no target read before the first window. **Cost**: 1000 AI men in contact, half
+facing a reeling target, the fever's tick with the punish's reads - **0.011 ms a tick, 0 bytes**, 500 pressing. Tests 810 → 817
+(`ImpactPunishTests` 7); smoke 119 → 122 steps (+ the master-switch step's punish part).
+
+**Gotcha**: the impact decision's clock is the impact tick's (`SpikeNow` - the mission's time, else the last `TickImpact`); a smoke that
+decides without a TickImpact first decides at time 0 (its windows closed long ago) - call `TickImpact(t)` before `ImpactModelHitTaken`.
+
+**UNVERIFIED — only the game can tell (PLAYTEST D23)**
+1. The native AI reacts to a raised decision chance within a short window (the ON row's `target reeling / down` rate above the OFF row's). If
+   ON ≈ OFF: the fallback is a direct attack wish through step 16's input hook while the target is in a window.
+2. `GetTargetAgent()` is the man he fights (`seen` ≈ windows opened in a dense melee; `seen 0` = the read finds nobody).
+3. The tired line does not collapse too fast once a few men stagger (Anton's eye; the knobs: the percent, the grace).
+4. Cost in a 400-1000 man battle (`impact punish men … target reads N in N looks, cost`).

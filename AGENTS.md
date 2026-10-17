@@ -106,6 +106,12 @@ until seen off the horse); never a stagger on a rider, his shield drops, his blo
 +30 % at a 10 m/s gallop (`ImpactMomentumRider*`), never a couched lance; the on-screen lines (`ImpactShowMessages`: red to you, purple by you,
 white for your side's heroes behind `ImpactMessagesIncludeYourMen`, one per 1.5 s merged, never in shadow); lever `Dismount`; the `[summary]
 impact riders` / `impact messages` lines; HOW-IT-WORKS §11c one player section; PLAYTEST's IMPACT MORNING SCRIPT + D22; DESIGN decision 45.
+Step 54 (I7): THE AI PUNISHES A WINDOW - an AI man on foot in contact whose target (GetTargetAgent, else ImmediateEnemy) reels or lies down from a
+live impact outcome (the player's windows too) gets his aggression share raised to `ImpactPunishAggressionPercent` 100 for the window +
+`ImpactPunishGraceSeconds` 0.5 (step 43's recompute path, checked at the fever's ~0.25 s look, the target read only while a window is open
+anywhere); a man within `ImpactPunishRangeMetres` 3 gets courage's surge clock (a timid one steps in); never the player as attacker, never a
+rider, never in shadow; the `[summary] impact punish` lines (windows punished / wasted; attacks per man-minute vs a target in a window or not,
+ON vs OFF) - PLAYTEST D23, DESIGN decision 46.
 (Steps 25-40 -
 the swing stack, the sprint, the tired block direction and the rest - are described in CLAUDE.md, the fuller copy of this
 file.) The bar for the
@@ -254,7 +260,7 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
   ParamDef.cs                 one setting: key, type, range, group, label, plain-words
                               description, apply timing (Live / NextBattle); Normalize, Format;
                               its Default comes from defaults.json (DefaultsFile), never code
-  SettingsSchema.cs           EVERY setting of DESIGN's table (250 - step 53's 3 rider-momentum + 3 on-screen-line settings; step 52's 4 momentum settings; step 47's ImpactSpike in Advanced; step 48's 60 in "Impact: staggers,
+  SettingsSchema.cs           EVERY setting of DESIGN's table (254 - step 54's 4 punish settings; step 53's 3 rider-momentum + 3 on-screen-line settings; step 52's 4 momentum settings; step 47's ImpactSpike in Advanced; step 48's 60 in "Impact: staggers,
                               shield drops, knockdowns" after the courage group; step 49's 29 in "Courage and cohesion (AI)" after the fever),
                               in file + MCM order, 16 groups
                               ("Master switch" first, "Damage" second - step 25 renamed it from
@@ -523,6 +529,9 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
   ImpactRiders.cs             step 53 pure (AI_NOTES "Step 53"): ImpactRiderMath, ImpactRiderLiveStats (dismounts decided → applied → seen + the
                               [summary] riders lines), ImpactMessageMath (words, the game's colours, the notable rule), ImpactMessageQueue (the rate
                               limit + merge + the [summary] messages line); Impact.cs: AttackerPassive, the rider momentum, RiderSpeedBand
+  ImpactPunish.cs             step 54 pure (AI_NOTES "Step 54"): PunishRules (WindowsLive - never shadow / the spike -, Enabled, Share), PunishMath
+                              (WindowEnd, InWindow + the grace, Raise - never lowered / never the player, TimidPresses), PunishStats (windows opened /
+                              seen / punished, attacks per man-minute vs a target in a window or not, ON / OFF + the [summary] "impact punish" lines)
   Courage.cs                  step 49 pure (AI_NOTES "Step 49", RESEARCH §S): CouragePhase (brave / walking back / holding), CourageSkip (in the
                               order asked), CourageEnd, RegroupEnd, CourageStep, CourageSprintRefusal, ShockTimes (his last 4 landed hits), CourageRequired
                               (the terms), CourageRules (live; ModEnabled FIRST, CourageEnabled; Athletics only for the tiredness term; Describe with the
@@ -717,6 +726,10 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               vanilla's value, nothing written, looked at every 0.1 s), Manage, NoteLeash, EndStep
   Missions/ImpactBody.cs      step 47: IImpactBody - one method per lever (Read, SlowReaction, ForceStagger, DropShield queued,
                               OwnKnockdownBlow, CanForce - never a horse / rider / siege engine / water / down); GameImpactBody
+  Missions/PunishBody.cs      step 54: IPunishBody (the smoke plays it) - his target (GetTargetAgent, else ImmediateEnemy) and the distance; GamePunishBody
+  Missions/AthleticsLogic.ImpactPunish.cs  step 54, the AI punishes a window: NotePunishWindow (from ImpactDecide's end, live only), PunishLook (from
+                              PollFever: the target read while a window is open anywhere, Punishing → RetargetDecision raises the share, PunishTimid),
+                              NotePunishAttack (StartRelease), the [impact] lines, WritePunishSummary
   Missions/CourageBody.cs     step 49: CourageScan (reused arrays, 128 neighbours), ICourageBody (the smoke plays it), GameCourageBody (MissionAllows - battle
                               mode, no tournament / arena / naval; Gate; ReadKit - SpawnEquipment's armour sums, Character.Level, a two-hander / polearm
                               and no shield; Health ÷ HealthLimit; GetMorale; Formation.CachedAveragePosition; Scan = GetNearbyAgents into one MBList;
@@ -795,7 +808,8 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               last rest by kind, his last timer (for the gap), his PaceState, his
                               AiInputState (step 16, null until first held by input); step 21: the attack's
                               class (read at its release), the last ended AI attack's class / share / model for
-                              the next cycle note, the classes he attacked with, his last timer's class
+                              the next cycle note, the classes he attacked with, his last timer's class; step 54: the punish fields (Punishing,
+                              PunishTarget, the window's end / seen / hit)
   Missions/AthleticsLogic.Hud.cs  step 6: AttachHud on the logic's FIRST TICK (the screen runs by
                               then - RESEARCH §G) - each view via MissionScreen.AddMissionView with
                               a GauntletHudLayer, "[hud] attached:" lines; WriteHudSummary (the
@@ -883,7 +897,7 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
   Hud/FeverMarksVM.cs         its ViewModels: a GROW-ONLY POOL of FeverMarkVM (IsShown, PositionX / Y, Width / Height in pixels,
                               Fill, FillColor, FrameColor; step 46: BoxWidth / BoxHeight, FeverShown, BarShown, BarWidth / Height,
                               BarFill, BarUsable, BarColor, BarFrameColor, BarWoundColor)
-tests/TraxCombat.Core.Tests/  net8.0 xUnit (810 - step 53: + ImpactRidersTests; step 52: + ImpactHitsTests; step 51: + ImpactBlocksTests; step 50: + ImpactLiveTests; step 49 / 49b: + CourageTests; step 44: + FeverMarkTests; step 46: + AthleticsMarkTests, the format-9 migration; step 47: + ImpactSpikeTests; step 48: + ImpactTests - every IMPACT §4 worked example) — schema vs DESIGN.md (keys + types), one copy
+tests/TraxCombat.Core.Tests/  net8.0 xUnit (817 - step 54: + ImpactPunishTests; step 53: + ImpactRidersTests; step 52: + ImpactHitsTests; step 51: + ImpactBlocksTests; step 50: + ImpactLiveTests; step 49 / 49b: + CourageTests; step 44: + FeverMarkTests; step 46: + AthleticsMarkTests, the format-9 migration; step 47: + ImpactSpikeTests; step 48: + ImpactTests - every IMPACT §4 worked example) — schema vs DESIGN.md (keys + types), one copy
                               runs (SingleCopyTests: claims on private slots, copies, texts), when
                               MCM is tried and when it stops (McmPlanTests - step 12),
                               defaults.json (DefaultsFileTests), master switch, settings, config
@@ -1097,7 +1111,9 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               sword 6 % down, a sprinting two-handed axe 36 %), the cost 0.029 ms, 0 bytes; step 53 (Program.ImpactRiders.cs):
                               riders knocked off (the dismount seam, our CanDismount blow, seen / not seen), never a stagger on a rider, the
                               rider's momentum, the on-screen lines (merged, colours, never in shadow), THE CAVALRY CHARGE (a 40 % line: standing
-                              3 % down, a gallop 10 %; a fresh line 0), the cost 0.04 ms, 0 bytes (119 steps; the config
+                              3 % down, a gallop 10 %; a fresh line 0), the cost 0.04 ms, 0 bytes; step 54 (Program.ImpactPunish.cs): the AI
+                              presses a window - an exhausted blocker's broken block opens one, the man fighting him 0.6 → 1.0 and punishes it, a
+                              timid man steps in at 2.5 m (not at 4), YOUR window pressed, shadow none, the cost 0.011 ms, 0 bytes (122 steps; the config
                               checks work for any tuned default);
                               TRAX_SMOKE_KEEP=1 keeps its temp folder + log to read
 tools/DefaultsTool/           defaults.json upkeep: refresh (rewrite comments/order, keep every
