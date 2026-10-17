@@ -4035,3 +4035,52 @@ hash, step 42's gotcha); a one-line doc edit (a new hash) passed.
 3. The FillBarWidget inside 1-px margins draws the fill at 5 px tall (3 px inside); the colours fade (orange → yellow) → eye.
 4. 200 marks cost no visible frame time → the summary's `cost` and Anton's frame rate in a 500+ battle.
 5. The enemy's marks show on their charges → the first-marks line's `enemy N`.
+
+## Step 45 — research + plan: the IMPACT system (DONE 2026-10-17, no code)
+
+Anton (2026-10-17, while playtesting 41-44): kicks / bashes, blocks (right and wrong side) and clean hits can stagger, drop a
+shield or knock down, by both men's CURRENT Athletics, the weapon, the swing and the skill; longer staggers and slower get-ups
+when exhausted; the player too; "put it in order for me, I may be missing something". Twelve points, all kept.
+
+**Written**: `docs/IMPACT.md` (the whole picture: the 12 points mapped, one model, worked examples, ~60 named parameters, the
+build order I1-I7, 14 open questions with recommendations, what a combat designer would also ask) and RESEARCH §R (every lever,
+file + line) + UNVERIFIED rows 27-33. Nothing in DESIGN / defaults.json / TASKS_TODO's BUILD ORDER yet - Anton approves first.
+
+**Verified in the v1.4.8 decompile (%TEMP%\trax_decomp, RESEARCH §R)** - the facts the design rests on:
+1. Every melee collision builds its blow and asks the model's `Decide*` (ShrugOff, Dismount / KnockBack + KnockDown, Rear) -
+   Mission.cs 5496-5590 - but a BLOCKED / parried blow is never registered (5368): its answers are thrown away. So knocking down a
+   blocker needs a blow of our own (`Agent.RegisterBlow` is public; vanilla builds its drowning blow that way, Mission.cs 3668-3683)
+   or a crush-through.
+2. A registered blow with `InflictedDamage <= 0` plays no reaction (Agent.cs 5438); behaviours' `OnAgentHit` / `OnScoreHit` run
+   BEFORE the engine's `HandleBlowAux` (5468 / 5475) with `in Blow` - no callback can change a landed blow; only the decorator can.
+3. Vanilla: every landed kick / bash knocks BACK (MCMH 60-63), a kick never knocks DOWN (null weapon, MCMH 88).
+4. `CalculateDefendedBlowStunMultipliers` (ref attacker / defender stun on every block, MCMH 307) - capped at `StunPeriodMax` 0.8
+   after it (308-310; `ManagedParameters.SetParameter` is public) - and it runs inside `GetDefendCollisionResults`, which is
+   `[MBCallback(null, true)]` = MULTI-THREAD callable (Mission.cs 6455): read-only state, thread-safe dice, Interlocked counters.
+5. `act_stagger_{forward|backward|right|left}[_2|_3]` exist (ActionIndexCache.cs 159-181; types StrikeLight / Medium / Heavy),
+   unused by vanilla's managed code; RBM plays them with `SetActionChannel(0, …, actionSpeed)` and crashed a HORSE with
+   `act_stagger_backward_3` (not in the horse's action set). Knockdown = one fall-and-rise action of type Fall (23)
+   (`act_strike_fall_*_back_rise`, picked by monster_usage_sets.xml) - "get up slower" = slow that action.
+6. `SetCurrentActionSpeed` = an absolute speed for the current action; vanilla only uses it on actions it started (step 5e). The
+   reaction appears the tick AFTER the hit callbacks - our existing channel polls see its rising edge for free.
+7. `DropItem` leaves a pickable shield (vanilla's drop key; refused during a release / bash, Agent.cs 4446); queue it with
+   `Mission.AddTickAction(DropItem, …)` as vanilla's banner bearers do. A broken shield is `RemoveEquippedWeapon` (gone). The AI
+   picks up SHIELDS only when no enemy is within 20 m (HumanAIComponent.cs 234, 433).
+8. Vanilla's knockdown / knockback resistance already follows the Athletics SKILL (custom battle 0.4 + skill × 0.001).
+
+**The model in one line**: pressure x = the defender's tiredness (1 − f) + 0.25 × the mismatch beyond an even band (both men's
+CURRENT points^0.5, the blow's impact - weight, swing speed, blunt - against his guard - shield right / parry / wrong side / none -,
+both men's skill) + 0.75 if he is reeling from an impact stagger; each outcome = its ceiling (Anton's 90 / 80 / 80) × an S-curve
+of x from its own start (stagger 0, shield 0.2, knockdown 0.35); lengths × (1 + extra × T) with a roll whose spread grows with T;
+immunity 2 s / 5 s and halving for 8 s against stun-locks. The worked examples were computed with a script (the model's exact
+formulas): two even fresh men always 0; an even man at 25% kicked 82% shield / 70% down; the 200-at-100% king's kick on the
+50-at-20% man 90 / 80, the man's on the fresh king 0; the player (100) cannot kick-win against a fresh 220 king (0) but breaks
+him at 10% (90 / 80).
+
+**Claude's calls in the plan (Anton can overturn any - IMPACT §8)**: no Harmony; a spike first (I1: one Advanced switch, loud fixed
+values, each lever measured in a tournament + a 50v50); the model in SHADOW mode before any effect (I2); shield drop only from
+kicks / bashes and wrong-side blocks (0 on a right block); riders knocked off at half the knockdown chance, never a forced
+animation on a rider or a horse; the damage term (Anton's unfinished point 12) at 0 until he says what he meant; vanilla's own
+knockdowns kept (ours OR-ed on top).
+
+**Next**: Anton answers IMPACT §8 and approves (or reshapes) the build order → TASKS_TODO's BUILD ORDER gets I1… → I1.

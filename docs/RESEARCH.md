@@ -1135,6 +1135,218 @@ postfix). Full notes and the build: AI_NOTES "Step 41".
    pointer, like vanilla's own icon fade), one `WorldToScreen`. The camera once a frame: `CombatCamera.Position`, `.Direction`
    (= −Frame.rotation.u). No allocation (Vec3 is a struct).
 
+## R. Impact - staggers, shield drops, knockdowns: every lever without Harmony (step 45, verified in the v1.4.8 source 2026-10-17)
+
+Anton's wish (2026-10-17, docs/IMPACT.md): kicks, bashes, blocks and clean hits can stagger, drop a shield or knock down, by
+both men's CURRENT Athletics, the weapon, the swing and the skill. Paths below are relative to `%TEMP%\trax_decomp\` (ilspycmd
+of the v1.4.8 DLLs, as §M); `MCMH` = `TaleWorlds.MountAndBlade\TaleWorlds.MountAndBlade\MissionCombatMechanicsHelper.cs`,
+`Mission.cs` / `Agent.cs` live beside it; `ModuleData\` = `Modules\Native\ModuleData\` of the game install. Line numbers are
+the decompile's. RBM's posture code (its public source, `RealisticBattleAiModule\AiModule\Stance\` and `Agents\AiKickBash.cs`)
+was read for prior art only - described, never copied.
+
+### R1. The hit pipeline - who decides what, and when
+
+1. **A melee collision** reaches managed code as `Mission.MeleeHitCallback` (Mission.cs 5297, `[MBCallback(null, false)]` -
+   the main thread, step 4). `flag` = the collision is Parried / Blocked / ChamberBlocked (5300) - a SHIELD block is
+   `Blocked` too. `flag2` (cancel damage) = … || (flag && !AttackBlockedWithShield) (5313): a WEAPON parry is cancelled
+   (its `InflictedDamage`, `BaseMagnitude` zeroed, 5358-5364), a shield block is not (the shield takes the damage).
+2. **The blow is built for EVERY collision**, blocked or not: `CreateMeleeBlow` (5367 → 5496). It sets `AttackType` Kick
+   (no weapon) / Bash / Standard (5501-5508), `DamageType` Blunt for kicks and bashes (5512), copies
+   `AttackerStunPeriod` / `DefenderStunPeriod` from the collision data (5514-5515), then asks the damage model, in this
+   order (5553-5583): `DecideAgentShrugOffBlow` → `ShrugOff`; a rider → `DecideAgentDismountedByBlow` → `CanDismount`; on foot
+   → `DecideAgentKnockedBackByBlow` → `KnockBack`, `DecideAgentKnockedDownByBlow` → `KnockDown`; a horse →
+   `DecideMountRearedByBlow` → `MakesRear`.
+3. **But a BLOCKED blow is never registered**: `RegisterBlow` runs only `if (!flag && …)` (5368-5371). So the `Decide*`
+   answers for a blocked or parried blow are computed and THROWN AWAY - **no knockdown, knockback or dismount can come from
+   a blocked blow through the model.** (A blocked blow reaches the behaviours as `OnAgentHitBlocked` → `OnAgentHit(isBlocked:
+   true)` with a 0-damage blow, 5480-5493, and as `OnMeleeHit`, 5381-5384 - after the fact.)
+4. **A registered blow** goes `RegisterBlow` (5412) → `victim.RegisterBlow` (5437) → `Agent.HandleBlow` (Agent.cs 5413):
+   sound, then **`if (b.InflictedDamage <= 0) return;` (5438) - a 0-damage blow plays NO reaction at all** - health,
+   `Mission.OnAgentHit` → every behaviour's `OnAgentHit` + `OnScoreHit` (5468 → Mission.cs 5612-5616, `in Blow` - read only),
+   death, and LAST `HandleBlowAux(ref b)` (5475) = native `IMBAgent.HandleBlowAux`: the engine plays the reaction from the
+   blow's flags and stun periods (UNVERIFIED in detail - native). `OnRegisterBlow` (Mission.cs 5452) comes after it, the blow
+   by value. **So no behaviour callback can change a landed blow before the engine reacts** - the model's `Decide*` (inside
+   `CreateMeleeBlow`) is the only managed place, and only for landed blows.
+5. **Kicks and bashes** (`IsAlternativeAttack`): `DecideAgentKnockedBackByBlow` returns TRUE for every one (MCMH 60-63) -
+   every landed kick or bash knocks back in vanilla. `DecideAgentKnockedDownByBlow` is passed `attackerWeapon.CurrentUsageItem`
+   (Mission.cs 5575), which is null for a kick (`MissionWeapon.Invalid`, MissionWeapon.cs 43 / 136) → MCMH 88 skips it: **a
+   kick never knocks down in vanilla**; a bash passes the shield, whose `CanWeaponKnockDown` needs `WeaponFlags.CanKnockDown`
+   (CustomAgentApplyDamageModel.cs 189-214) - shields lack it. A kick's damage is `CalculateAlternativeAttackDamage` (1-2,
+   CustomAgentApplyDamageModel.cs 263-282) as its base magnitude (MCMH 625-631), then armour - a kick rounding to 0 never
+   reacts (point 4).
+6. **Horse charges** (`ChargeDamageCallback`, Mission.cs 6034-6066): `DecideAgentKnockedBackByBlow` / `…KnockedDownByBlow`
+   with a null weapon, registered only when damage > 0.
+
+### R2. The model levers (AgentApplyDamageModel - our `TraxDamageModel` decorator already forwards every one)
+
+The abstract model (`…ComponentInterfaces\AgentApplyDamageModel.cs`) - every method below is overridable by a decorator:
+
+| Method (line) | Called from | What we can do |
+|---|---|---|
+| `CalculateDefendedBlowStunMultipliers(attacker, defender, result, attackerWeapon, defenderWeapon, ref attackerStun, ref defenderStun)` (34) | MCMH 307, inside `GetDefendCollisionResults` - every BLOCKED / PARRIED / chamber collision, before the cap | **Lengthen the blocker's stun (his guard frozen) and the attacker's recoil stun (the riposte window)** - by ref. Custom battle's body is empty (CustomAgentApplyDamageModel.cs 168-170); Sandbox's multiplies the attacker's stun by the Athletics perk MightyBlow on Blocked / Parried (SandboxAgentApplyDamageModel.cs 770-788). |
+| `DecideCrushedThrough(attacker, defender, energy, direction, strike, defendItem, passive)` (64) | MCMH 311, the same callback | Let a blow **break through the guard** (the block fails, the blow lands). Vanilla: only `CanCrushThrough` weapons, an overhead swing, energy > 58 (× 1.2 against a shield) (CustomAgentApplyDamageModel.cs 115-133). |
+| `DecideAgentKnockedDownByBlow` (100) | Mission.cs 5575 (melee), 5881 (missiles), 6061 (charges) | **Knock down** on a LANDED blow - kicks and bashes included (point 5: vanilla says no for them). |
+| `DecideAgentKnockedBackByBlow` (98) | 5571, 5877, 6053 | Knock back (the reel) on a landed blow. |
+| `DecideAgentShrugOffBlow` (94) / `CalculateStaggerThresholdDamage` (36) | 5555 / MCMH 19 | A blow at or under the threshold is shrugged off (no reaction; vanilla 5 for every type, `DamageInterruptAttackthreshold*`, managed_core_parameters.xml; Sandbox adds perks / the captain, SandboxAgentApplyDamageModel.cs 957). Lower it for a tired man = he always flinches; raise it for a fresh one. A ShrugOff flag also cancels vanilla's knockdown / knockback (MCMH 30, 53, 77). |
+| `DecideAgentDismountedByBlow` (96) | 5564, 5870 | **Knock a rider off** (`CanDismount`). |
+| `DecideMountRearedByBlow` (102) | 5581 | A horse rears. |
+| `CalculateAlternativeAttackDamage` (38) | MCMH 628 | A kick's / bash's base magnitude - keep it ≥ 1 so the reaction plays (R1.4). |
+| `CanWeaponKnockDown` / `GetKnockDownPenetration` / `GetKnockBackPenetration` / `CanWeaponDismount` / `GetDismountPenetration` (58-110) | inside vanilla's `Decide*` | Not needed once we decide ourselves; vanilla's rule = `damage ≥ HealthLimit × max(0, resistance − penetration)` (MCMH 336-340). |
+
+The stat model (our `TraxAgentStatModel` decorator, already forwarding): `GetKnockDownResistance` / `GetKnockBackResistance` /
+`GetDismountResistance` (AgentStatCalculateModel.cs 125-129) - **vanilla already ties them to the Athletics SKILL**:
+custom battle knockdown 0.4 + skill × 0.001 (+ 0.1 mounted, + 0.15 against a thrust), knockback 0.15 + skill × 0.001
+(CustomBattleAgentStatCalculateModel.cs 123-150); Sandbox reads the skill effects `KnockDownResistance` /
+`KnockBackResistance` (SandboxAgentStatCalculateModel.cs 398-427).
+
+**The defended blow's stun, in numbers** (`GetDefendCollisionResults`, MCMH 228-312): the attacker's stun = 0.1 s for a
+swing, 0.67 s for a thrust (`StunPeriodAttackerSwing` / `…Thrust`), + min(0.15, 0.12 × k) on a parry, + min(0.25, 0.25 × k)
+on a chamber; the DEFENDER's stun = the blow's energy (10 + the swing's base magnitude from weapon speed, weight, inertia and the
+point of impact, × 1.25 overhead / × 1.15 heavy) × `StunMomentumTransferFactor` 0.0055 ÷ k, where k = 1 + 0.1 × the shield's
+weight, or 0.9 + 0.25 × the parrying weapon's weight (+ 0.25 two-handed, + 0.35 polearm, + 0.1 on a parry, + 0.4 on a chamber);
+then the model's multipliers; then BOTH capped at `StunPeriodMax` **0.8 s** (MCMH 308-310; values in
+`ModuleData\managed_core_parameters.xml` 154-193). So vanilla's defender stun is already an "impact ÷ stability" number. The cap
+is a managed parameter: `ManagedParameters.SetParameter(ManagedParametersEnum.StunPeriodMax, v)` is PUBLIC static
+(TaleWorlds.Core\ManagedParameters.cs 20-23) - global for everyone, so raising it means clamping everyone else's stun to 0.8
+ourselves in the decorator (vanilla's own value kept for every blow we do not lengthen).
+
+**THREADING - important**: the engine calls `GetDefendCollisionResults` as `[MBCallback(null, true)]` (Mission.cs 6454-6456)
+- **multi-thread callable**. So `CalculateDefendedBlowStunMultipliers` and `DecideCrushedThrough` may run on a worker thread:
+read-only state, `ThreadSafeRandom` dice, `Interlocked` counters, no log writes, no engine calls from there.
+`MeleeHitCallback`, `OnAgentHitBlocked`, `ChargeDamageCallback` are `[MBCallback(null, false)]` (5296, 5479, 6033) - main thread.
+
+### R3. Starting a reaction ourselves - `SetActionChannel`
+
+1. `Agent.SetActionChannel(channel, in ActionIndexCache, ignorePriority = false, flags, blendWithNext, actionSpeed = 1,
+   blendIn = -0.2, blendOutToNoAnim = 0.4, startProgress = 0, …)` (Agent.cs 2368-2372) - returns whether the engine took
+   it. `ActionIndexCache.Create(string)` (ActionIndexCache.cs 439) or vanilla's static fields.
+2. **The stagger actions exist in vanilla, unused by vanilla's managed code**: `ActionIndexCache.act_stagger_forward /
+   backward / right / left` (+ `_2`, `_3`) (ActionIndexCache.cs 159-181); in `ModuleData\action_types.xml` (15598-15668)
+   `act_stagger_*` = `actt_strike_light`, `_2` = `actt_strike_medium`, `_3` = `actt_strike_heavy` (+ `act_stagger_backward_3
+   _continue[_stand[_2]]`); animated in `action_sets.xml` (14376-14444, e.g. `stagger_left`, `stagger_backward_3`). As action
+   TYPES they are StrikeLight / Medium / Heavy (48-50) - so `Agent.IsInBeingStruckAction` (types 48-52 on channel 1 or 0,
+   Agent.cs 1338-1347) is true during them, like a real flinch.
+3. **Vanilla's own precedent** for overriding a reaction from managed code: `SiegeWeaponMovementComponent` (308-321) replaces a
+   pusher's strike reaction (types 48-52, channel 0 and 1) with `act_strike_bent_over` by `SetActionChannel`; Ballista /
+   Mangonel do it on channel 1 (Ballista.cs 354, Mangonel.cs 493). `Agent.SetOverridenStrikeAndDeathAction(strike, death)`
+   (Agent.cs 1979-1982, native) swaps a man's strike reaction for good - a per-man override of what the engine plays when hit.
+4. **RBM's prior art** (described only): its posture break plays `act_stagger_*` on channel 0 on foot / 1 mounted at
+   `actionSpeed` 0.9-1.0 (StanceLogic.Visuals.cs 172-179, MeleeBlowPatch.cs 693 / 725), gated by `IsActive() && IsOnLand() &&
+   !IsUsingGameObject` (Visuals.cs 167-170) and, for its horse-charge stagger, `IsHuman && !HasMount` - its comment: **`act_
+   stagger_backward_3` is not in the horse action set; a riderless horse resolved it to -1 and the engine CRASHED**
+   (StanceLogic.Core.cs 120-131). Its "tired" reaction uses `act_scared_to_normal_2` from progress 0.4, which vanilla has only in
+   the hideout bandit / villager action sets - RBM ships an action-set XML for it. Its kick knockdown sets `BlowFlags.KnockDown`
+   in a Harmony postfix on `CreateMeleeBlow` (AiKickBash.cs 592-680: a relative-skill roll, × 1.25 kick, × 1.25 from behind, ×
+   1.5 kicked within a few seconds, × 1.3 tired, down to × 0.5 in heavy armour; certain while still reeling from a posture
+   break). Its crush-through / disarm builds a SECOND blow and calls `RegisterBlow` itself (MeleeBlowPatch.cs 653-760).
+5. **The knockdown actions** are the engine's, chosen by `monster_usage_sets.xml` (`monster_usage_strike` entries, e.g. 1773:
+   `act_strike_fall_back_back_rise`) by direction, heavy and stance: `act_strike_fall_{front|back|right|left}[_heavy]_back_rise`
+   (+ `_continue`, left-stance) in `action_types.xml` 12504-12579, type `actt_fall` (= `ActionCodeType.Fall` 23). **The fall
+   and the rise are one action** (+ its `_continue`) - "get up slower" = slow THAT action. RBM's `IsKnockedDown` = channel 0
+   type Fall (AiKickBash.cs 190-194).
+6. **Never on a horse, a rider's lower body, a man using a game object (siege engine, ladder) or in water** (RBM's crash +
+   vanilla's own siege handling). UNVERIFIED: what the engine does with a forced stagger during the man's own release (it
+   should interrupt it - a strike action has the higher priority; RBM fires them mid-fight).
+
+### R4. Making a reaction LAST LONGER - `SetCurrentActionSpeed`
+
+1. `Agent.SetCurrentActionSpeed(channel, speed)` (Agent.cs 2363-2366, native): an ABSOLUTE playback speed for the action now
+   on that channel; no getter (step 5e's finding, AI_NOTES "Step 5e"). Vanilla uses it only on actions it started itself
+   (`SiegeWeaponMovementComponent` 326 / 330, every tick). For an action WE start, `SetActionChannel`'s `actionSpeed` does it at
+   the start.
+2. **The strike / fall reactions are not combat-speed actions** (no driven property scales them that the source shows), so their
+   native speed is most likely 1 - 0.5 would be twice as long. UNVERIFIED (spike I1 measures the real time by polling the
+   action's progress).
+3. **When to slow it**: the engine starts the reaction in `HandleBlowAux` AFTER every behaviour callback (R1.4) - so a struck
+   man is seen in his new action on the NEXT tick. Our tick already reads channel 1 for everyone and channel 0 on foot (steps
+   5 / 18) - the rising edge into StrikeLight..MountStrike (48-52) or Fall (23) is free to see; a short watch list (the men we
+   just hit) is enough.
+4. `SetCurrentActionProgress` (2358) could hold a reaction at a frame - NOT recommended (step 5e: it fights the engine).
+5. **The AI and a longer stun**: every AI man has `AIEstimateStunDurationPrecision` = 1 − lerp(0.2, 1, AI level)
+   (AgentStatCalculateModel.cs 203) - skilled AI times its counter to the enemy's stun; `AISetNoAttackTimerAfterBeingHit
+   Ability`, `…AfterBeingParriedAbility`, `AISetNoDefendTimerAfterHitting / AfterParryingAbility` (199-202) set its own
+   pauses. Whether the AI perceives a slowed reaction as a longer window, and whether a man inside a strike action can raise his
+   guard: native, UNVERIFIED - the spike counts blocks made from inside a lengthened reaction.
+
+### R5. DROPPING a shield
+
+1. `Agent.DropItem(EquipmentIndex, WeaponClass = Undefined)` (Agent.cs 4508-4526, public) → native `IMBAgent.DropItem`: the
+   item leaves the hand as a pickable `SpawnedItemEntity` on the ground (vanilla's drop key, `HandleDropWeapon` 4443-4506, then
+   `UpdateAgentProperties()` 4503). Vanilla REFUSES a drop during ReleaseMelee / ReleaseRanged / ReleaseThrowing / WeaponBash
+   (4446-4448) - RBM waits for the same (StanceLogic.Core.cs 270-301). The offhand slot = `GetOffhandWieldedItemIndex()`.
+2. **Deferred, the vanilla way**: `Mission.AddTickAction(MissionTickAction.DropItem, agent, slot, 0)` (Mission.cs 3778-3781;
+   run at 3662-3666) - BannerBearerLogic.cs 733 and DropExtraWeaponOnStopUsageComponent.cs 11 queue drops from callbacks this
+   way. So a drop decided in `OnMeleeHit` is queued, not called inside the callback.
+3. `RemoveEquippedWeapon(slot)` (4814-4825) deletes the item (no ground item) - what vanilla does when a SHIELD BREAKS:
+   `Agent.OnShieldDamaged` (1718-1727): hit points → 0 = `RemoveEquippedWeapon`. A broken shield is gone; a dropped one can be
+   picked up.
+4. **AI pickup**: `HumanAIComponent.ItemPickupTick` (210-246) looks for items only when his target is farther than 20 m (400 m²,
+   234) or none, he is alarmed, not busy, not in water; `SelectPickableItem` takes **shields, banners, stuck missiles, quivers**
+   (433). So an AI man who lost his shield mid-melee fights on without it, and picks one up once the fight around him moves
+   off (UNVERIFIED in game). The `ItemPickupModel` (`IsItemAvailableForAgent`, …ComponentInterfaces\ItemPickupModel.cs 9) is a
+   decoratable model - a lever to forbid re-pickup for N seconds. The player picks items up with the use key (vanilla).
+
+### R6. Knocking down a man whose blow was BLOCKED - a blow of our own
+
+R1.3: a blocked blow is never registered. The only no-Harmony way to put a blocker on the ground is **a second blow of our
+own**: `Agent.RegisterBlow(Blow, in AttackCollisionData)` is PUBLIC (Agent.cs 4668-4671). Vanilla builds such blows itself
+from managed code - the drowning blow (Mission.cs 3668-3683: `new Blow(index)`, `FillAsMeleeBlow(null, null, -1, -1)`,
+`InflictedDamage` 10, `DamageCalculated`, a collision built with the public `AttackCollisionData.GetAttackCollisionDataForDebug
+Purpose(…)`, then `RegisterBlow`), a moving entity's blow (6150), `KillAgentCheat` (6155-6191). Ours = `BlowFlags.KnockDown |
+KnockBack`, `InflictedDamage` ≥ 1 (R1.4: 0 plays nothing), `OwnerId` = the attacker (kill credit if 1 HP kills him). Side
+effects to handle: 1 HP of damage; `OnAgentHit` / `OnScoreHit` fire for it (our own logic must skip it - a static "ours"
+mark); a hit sound. RBM does exactly this for its crush-throughs (R3.4). UNVERIFIED: that the engine plays the knockdown from a
+synthetic blow (it should - the flags are what `HandleBlowAux` reads) - spike I1.
+
+### R7. The inputs the model can read (all managed, main thread unless noted)
+
+- **The weapon**: `attacker.Equipment[collision.AffectorWeaponSlotOrMissileIndex]` (Mission.cs 5321-5322) →
+  `MissionWeapon.Item.Weight` (ItemObject.cs 114), `GetModifiedSwingSpeedForCurrentUsage()` / `…SwingDamageForCurrentUsage()`
+  (MissionWeapon.cs 241-256), `CurrentUsageItem` (WeaponComponentData): `WeaponClass` (57), `SwingSpeed` / `ThrustSpeed` (35-37),
+  `SwingDamageType` / `ThrustDamageType` (47-51; `DamageTypes` Cut / Pierce / Blunt), `IsTwoHanded` (123), `IsPolearm` (95),
+  `IsShield` (111), `TotalInertia` (63), `RelevantSkill` (151), `WeaponFlags.CanKnockDown` / `CanCrushThrough`
+  (TaleWorlds.Core\WeaponFlags.cs 36-37). `ItemObject.ItemType` TwoHandedWeapon / Polearm.
+- **The blow**: `AttackCollisionData.StrikeType` (swing / thrust), `DamageType`, `AttackDirection`, `AttackProgress` (where
+  in the swing it hit), `CollisionDistanceOnWeapon`, `BaseMagnitude` (the energy - 0 on a parry, R1.1), `InflictedDamage`,
+  `MovementSpeedDamageModifier`, `IsAlternativeAttack`, `AttackBlockedWithShield`, `CorrectSideShieldBlock`, `CollisionResult`,
+  `VictimHitBodyPart`, `IsHorseCharge` (AttackCollisionData.cs 54-158); `Blow.AttackType` Kick / Bash / Standard (Blow.cs 35).
+  There is no "swing speed" field - the speed at impact is the weapon's modified swing speed × the progress curve
+  (`SpeedGraphFunction`, MCMH 250), already inside `BaseMagnitude` for a landed or shield-blocked blow.
+- **The skill**: `agent.Character.GetSkillValue(weapon.RelevantSkill)` (step 5c reads Athletics this way); vanilla's stat
+  model has `GetEffectiveSkill(agent, skill)` / `GetEffectiveSkillForWeapon` (AgentStatCalculateModel.cs 109-114).
+- **Athletics**: ours - `Fighter.Fraction` (points ÷ his FULL pool, Core Athletics.cs 199), the pool, the peak share f, read
+  through the logic's per-agent arrays (step 5's read API, `TryGetReading`) - from a worker thread too (plain reads).
+- **State**: `GetCurrentActionType(0/1)`, `IsInBeingStruckAction`, `GetIsLeftStance()` (2843), `HasMount`, `IsOnLand()`
+  (3314), `IsUsingGameObject` (668), `Health` / `HealthLimit`.
+
+### R8. The player, riders, horses
+
+- **The player** is an `Agent` like any: the decorators' `Decide*` and stun multipliers apply to him as attacker and as victim;
+  `SetActionChannel` / `DropItem` work on the main agent (vanilla's drop key is his). Whether his input is ignored during a
+  strike action is native (UNVERIFIED - in vanilla he cannot block while flinching). RBM gives a first-person player no
+  stagger clip (it looks awful in first person) and blocks his input instead (Visuals.cs 196-216) - a hint for us: the forced
+  ANIMATION may be wrong for the first-person camera; the stun multipliers are fine.
+- **Riders**: on a horse, `CreateMeleeBlow` asks `DecideAgentDismountedByBlow` instead of knockback / knockdown (5561-5568) -
+  "knocked down" = knocked off. Never a forced stagger on a rider's channel 0 (the horse's legs) - RBM uses channel 1 when
+  mounted.
+- **Horses**: `MakesRear` only (5581); a horse charge knocks men back / down through the same two `Decide*` (6053-6063).
+
+### R9. What needs Harmony - nothing
+
+| Wish | No-Harmony lever | What Harmony would add |
+|---|---|---|
+| Kick / bash / clean hit knocks down | `DecideAgentKnockedDownByBlow` (decorator) | - |
+| Kick reel / hit reaction longer, get-up slower | `SetCurrentActionSpeed` on the next tick (R4) | writing the landed blow's `DefenderStunPeriod` before `HandleBlowAux` (a `CreateMeleeBlow` postfix, RBM's way) - effect UNVERIFIED either way |
+| Blocker stunned longer, attacker's riposte window | `CalculateDefendedBlowStunMultipliers` (+ `StunPeriodMax` raised, R2) | - |
+| A visible STAGGER | `SetActionChannel(act_stagger_*)` from the tick (R3) | - |
+| Shield dropped | `DropItem` via `AddTickAction` (R5) | - |
+| Blocker knocked down | a blow of our own (R6), or `DecideCrushedThrough` (the block fails, the blow lands with its flags) | flags on the blocked blow itself - but vanilla never registers it, so Harmony would need a second patch on `MeleeHitCallback` too |
+| Rider knocked off | `DecideAgentDismountedByBlow` | - |
+
+One hack considered and REJECTED: the model's `in AttackCollisionData` parameters are readonly references to the engine's own
+struct; writing through them (`Unsafe.AsRef`) would set `DefenderStunPeriod` before `CreateMeleeBlow` copies it - undefined
+behaviour against a `readonly` contract, hidden from every reader. Not worth it.
+
 ---
 
 ## UNVERIFIED — to check in the named step
@@ -1167,3 +1379,10 @@ postfix). Full notes and the build: AI_NOTES "Step 41".
 | 24 | The native AI honours `shouldKeepWithFormationInsteadOfMovingToAgent` for an infantry shield wall's men (it was only ever set for shield men of ranged formations) and a one-frame vanilla FALSE every ~0.5 s does not undo it - the men stay in their slots and still fight what reaches them (§O; PLAYTEST D11: the summary's `wall slots ON` vs `OFF`, "more than 1 m ahead" in contact) | 41 |
 | 25 | The native combat AI uses `AIAttackOnDecideChance` / `AIAttackOnParryChance` per decision so that a share of 0.6 / 0.2 really means about that many fewer AI melee attacks in contact (§P; PLAYTEST D13: the summary's `fever proof` lines by bar band, and a battle at `AiAggressionFreshPercent` / `ExhaustedPercent` 100 vs 60 / 20) | 43 |
 | 26 | `WorldToScreen` from the combat camera lands the fever mark above the man's head the same frame (no lag behind a running man), our layer's `UIContext` gives the screen in pixels and the UI scale, `ScaledSuggestedHeight` and a FillBarWidget inside 1-px margins draw a 22 × 5 bar, and 200 moving marks cost no visible frame time (§Q; PLAYTEST D14: Anton's eye, the summary's `cost`) | 44 |
+| 27 | A forced `act_stagger_*` on channel 0 (on foot) is accepted mid-fight (`SetActionChannel` returns true), interrupts the man's own attack and guard, and plays its full length; its natural length in seconds (§R3; spike I1 measures it) | I1 |
+| 28 | `SetCurrentActionSpeed` on a reaction the ENGINE started (StrikeKnockBack after a kick, a Fall = knockdown + rise) slows it for its whole length and the engine does not reset it each frame; the strike / fall actions' native speed is 1 (§R4; spike I1: the reaction's measured seconds at speed 1 vs 0.5) | I1 |
+| 29 | A man inside a lengthened reaction cannot block or attack (the AI and the player) - so a longer reel IS a counter-attack window; the AI's `AIEstimateStunDurationPrecision` sees it (§R4.5; spike I1: blocks made from inside a lengthened reaction) | I1 |
+| 30 | `BlowFlags.KnockDown` from our `DecideAgentKnockedDownByBlow` on a landed KICK makes the engine play a knockdown (vanilla never asks it for kicks) (§R1.5; spike I1) | I1 |
+| 31 | `CalculateDefendedBlowStunMultipliers` lengthens the blocker's guard-freeze and the attacker's recoil as seen in game; `StunPeriodMax` raised by `ManagedParameters.SetParameter` is honoured; the decorator runs off the main thread without trouble (§R2; spike I1: stun asked vs the BlockedMelee / defend action measured) | I1 |
+| 32 | `DropItem` of the offhand shield (queued with `AddTickAction`) leaves a pickable shield on the ground, the AI fights on shieldless and picks one up only once no enemy is within 20 m (§R5; spike I1) | I1 |
+| 33 | A blow of our own (`RegisterBlow`, KnockDown, 1 damage) knocks down a man who just blocked (§R6; spike I1) | I1 |
