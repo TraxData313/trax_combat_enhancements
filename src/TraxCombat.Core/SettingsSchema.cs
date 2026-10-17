@@ -40,11 +40,12 @@ namespace TraxCombat.Core
         public static readonly ParamGroup BraceGroup = new ParamGroup(6, "Brace by orders (AI)");
         public static readonly ParamGroup SprintGroup = new ParamGroup(7, "Sprint");
         public static readonly ParamGroup FeverGroup = new ParamGroup(8, "Aggression and fever (AI)"); // step 43
-        public static readonly ParamGroup RefillGroup = new ParamGroup(9, "Refill");
-        public static readonly ParamGroup PlayerBarGroup = new ParamGroup(10, "Your Athletics bar");
-        public static readonly ParamGroup OrderStripGroup = new ParamGroup(11, "Orders menu strip");
-        public static readonly ParamGroup AltMarkersGroup = new ParamGroup(12, "Hold ALT: formation markers, Athletics and fever bars"); // step 44 renamed it (was "Formation markers (hold ALT)"), step 46 again (was "... and fever marks")
-        public static readonly ParamGroup AdvancedGroup = new ParamGroup(13, "Advanced");
+        public static readonly ParamGroup ImpactGroup = new ParamGroup(9, "Impact: staggers, shield drops, knockdowns"); // step 48 (IMPACT I2) - after the combat behaviour groups
+        public static readonly ParamGroup RefillGroup = new ParamGroup(10, "Refill");
+        public static readonly ParamGroup PlayerBarGroup = new ParamGroup(11, "Your Athletics bar");
+        public static readonly ParamGroup OrderStripGroup = new ParamGroup(12, "Orders menu strip");
+        public static readonly ParamGroup AltMarkersGroup = new ParamGroup(13, "Hold ALT: formation markers, Athletics and fever bars"); // step 44 renamed it (was "Formation markers (hold ALT)"), step 46 again (was "... and fever marks")
+        public static readonly ParamGroup AdvancedGroup = new ParamGroup(14, "Advanced");
 
         // ------------------------------------------------------------------ master switch
 
@@ -466,6 +467,252 @@ namespace TraxCombat.Core
             "Fever sprint: chance per roll (%)",
             "The chance of a fever sprint at each roll at the fever's start (and while it waits for the first enemy); it falls in a straight line with the fever left - half the fever left, half the chance; empty, none. Several sprints per fever are possible, rarer as it fades. 0 = never.");
 
+        // ------------------------------------------------------------------ impact (step 48 = IMPACT I2, docs/IMPACT.md §3 / §5)
+        // Anton, 2026-10-17: kicks, bashes, blocks and clean hits may stagger, drop a shield or knock down, by both men's CURRENT
+        // Athletics, the weapon, the swing and the skill. One number - the PRESSURE x on the man who takes the blow - and for each
+        // outcome a ceiling and an S-curve (Core ImpactMath). Order here: the switches, Anton's anchors (the ceilings), how long, the
+        // limits, who - then the model's inner numbers (pressure, weapon, skill, guard, curve) a player rarely touches.
+
+        public static readonly ParamDef ImpactEnabled = Bool("ImpactEnabled", ImpactGroup,
+            "Impact system",
+            "Kicks, shield bashes, blocks and clean hits can stagger a man, make him drop his shield or knock him down - more likely the more tired he is and the more he is outmatched (both men's CURRENT Athletics, the weapon and its swing, the guard, both men's skill). Two fresh, even men: never. Needs the Athletics system on. Off: the game's own reactions only.");
+
+        public static readonly ParamDef ImpactKicksEnabled = Bool("ImpactKicksEnabled", ImpactGroup,
+            "Impact from kicks and bashes",
+            "A kick or shield bash that lands may knock a tired man down or make him drop his shield, and makes him reel longer the more tired he is. Off: kicks and bashes are the game's own.");
+
+        public static readonly ParamDef ImpactBlocksEnabled = Bool("ImpactBlocksEnabled", ImpactGroup,
+            "Impact on blocks and parries",
+            "A blow blocked with a shield (on the right or the wrong side) or parried may stagger the tired blocker, knock him down, or (on the wrong side) make him drop his shield; his guard is held longer the more tired he is. Off: blocks are the game's own.");
+
+        public static readonly ParamDef ImpactHitsEnabled = Bool("ImpactHitsEnabled", ImpactGroup,
+            "Impact from clean hits",
+            "A weapon blow that lands unblocked may stagger a tired man longer or knock him down. Off: hits are the game's own.");
+
+        public static readonly ParamDef ImpactRiposteEnabled = Bool("ImpactRiposteEnabled", ImpactGroup,
+            "Riposte: a fresh blocker staggers a tired attacker",
+            "A FRESH man who blocks on the right side or parries may stagger the attacker who swung at him - more likely the more tired and outmatched the attacker is: a window to strike back.");
+
+        public static readonly ParamDef ImpactShadowMode = Bool("ImpactShadowMode", ImpactGroup,
+            "Shadow mode: decide and log only",
+            "On: the impact system decides every kick, block and hit and writes what WOULD happen to the log (trax_combat.log's summary), but changes nothing in the battle - to read the numbers of your own battles before playing with it. Off: what it decides happens.");
+
+        public static readonly ParamDef KickShieldDropMaxPercent = Int("KickShieldDropMaxPercent", 0, 100, ImpactGroup,
+            "Kick: shield dropped, at most (%)",
+            "The highest chance that a kick or bash makes a man drop the shield in his hand - reached when he is exhausted or badly outmatched. 0 in the green between even men.");
+
+        public static readonly ParamDef KickKnockdownMaxPercent = Int("KickKnockdownMaxPercent", 0, 100, ImpactGroup,
+            "Kick: knocked down, at most (%)",
+            "The highest chance that a kick or bash knocks a man to the ground.");
+
+        public static readonly ParamDef RightBlockStaggerMaxPercent = Int("RightBlockStaggerMaxPercent", 0, 100, ImpactGroup,
+            "Right-side block: staggered, at most (%)",
+            "The highest chance that a man who blocks a blow with his shield on the RIGHT side staggers back - an opening for the attacker, longer the more tired he is.");
+
+        public static readonly ParamDef RightBlockShieldDropMaxPercent = Int("RightBlockShieldDropMaxPercent", 0, 100, ImpactGroup,
+            "Right-side block: shield dropped, at most (%)",
+            "The highest chance that a RIGHT-side shield block makes him drop his shield. 0: a clean block is the reward for skill - only kicks and wrong-side blocks drop shields.");
+
+        public static readonly ParamDef RightBlockKnockdownMaxPercent = Int("RightBlockKnockdownMaxPercent", 0, 100, ImpactGroup,
+            "Right-side block: knocked down, at most (%)",
+            "The highest chance that a RIGHT-side shield block still knocks him down - a huge mismatch (a peasant's stick against a berserker's axe) or an exhausted blocker.");
+
+        public static readonly ParamDef ParryStaggerMaxPercent = Int("ParryStaggerMaxPercent", 0, 100, ImpactGroup,
+            "Parry: staggered, at most (%)",
+            "The highest chance that a man who parries a blow with his weapon staggers back.");
+
+        public static readonly ParamDef ParryKnockdownMaxPercent = Int("ParryKnockdownMaxPercent", 0, 100, ImpactGroup,
+            "Parry: knocked down, at most (%)",
+            "The highest chance that a parry still knocks the parrying man down.");
+
+        public static readonly ParamDef WrongBlockStaggerMaxPercent = Int("WrongBlockStaggerMaxPercent", 0, 100, ImpactGroup,
+            "Wrong-side block: staggered, at most (%)",
+            "The highest chance that a man who blocks with his shield on the WRONG side staggers back.");
+
+        public static readonly ParamDef WrongBlockShieldDropMaxPercent = Int("WrongBlockShieldDropMaxPercent", 0, 100, ImpactGroup,
+            "Wrong-side block: shield dropped, at most (%)",
+            "The highest chance that a WRONG-side shield block makes him drop his shield.");
+
+        public static readonly ParamDef WrongBlockKnockdownMaxPercent = Int("WrongBlockKnockdownMaxPercent", 0, 100, ImpactGroup,
+            "Wrong-side block: knocked down, at most (%)",
+            "The highest chance that a WRONG-side shield block knocks him down.");
+
+        public static readonly ParamDef HitStaggerMaxPercent = Int("HitStaggerMaxPercent", 0, 100, ImpactGroup,
+            "Clean hit: staggered longer, at most (%)",
+            "The highest chance that a blow that lands unblocked staggers a man longer than the game's own flinch.");
+
+        public static readonly ParamDef HitKnockdownMaxPercent = Int("HitKnockdownMaxPercent", 0, 100, ImpactGroup,
+            "Clean hit: knocked down, at most (%)",
+            "The highest chance that a blow that lands unblocked knocks a man down.");
+
+        public static readonly ParamDef RiposteStaggerMaxPercent = Int("RiposteStaggerMaxPercent", 0, 100, ImpactGroup,
+            "Riposte: attacker staggered, at most (%)",
+            "The highest chance that a fresh man's right-side block or parry staggers the ATTACKER - for an empty, outmatched attacker against a defender at full strength (a tired defender ripostes less).");
+
+        public static readonly ParamDef StaggerBaseSeconds = Float("StaggerBaseSeconds", 0.1, 3, ImpactGroup,
+            "Stagger length, fresh (s)",
+            "How long a stagger lasts on a man in the green, in seconds. It grows with his tiredness by the next setting.");
+
+        public static readonly ParamDef StaggerTiredExtraPercent = Int("StaggerTiredExtraPercent", 0, 500, ImpactGroup,
+            "Stagger longer when exhausted (+%)",
+            "An exhausted man's stagger lasts this much longer than a fresh man's (150: 0.6 s fresh, 1.5 s empty), in a straight line with his tiredness - and less predictably (the randomness below).");
+
+        public static readonly ParamDef StaggerMaxSeconds = Float("StaggerMaxSeconds", 0.2, 5, ImpactGroup,
+            "Stagger length, at most (s)",
+            "No stagger lasts longer than this, in seconds, whatever the roll.");
+
+        public static readonly ParamDef KickReelTiredExtraPercent = Int("KickReelTiredExtraPercent", 0, 500, ImpactGroup,
+            "Kicked man reels longer when exhausted (+%)",
+            "A kicked or bashed man reels back as in the game, but this much longer when exhausted (150: 2.5 times as long at an empty bar), in a straight line with his tiredness - so a kick gives a tired man's enemy time to strike. A fresh man reels as in the game.");
+
+        public static readonly ParamDef GetUpMaxSlowdown = Float("GetUpMaxSlowdown", 1, 4, ImpactGroup,
+            "Knocked-down man gets up slower, at most (x)",
+            "An exhausted man knocked to the ground takes up to this many times as long to get up (2 = twice as long at an empty bar), in a straight line with his tiredness. 1 = the game's own.");
+
+        public static readonly ParamDef BlockStunTiredExtraPercent = Int("BlockStunTiredExtraPercent", 0, 500, ImpactGroup,
+            "Blocker's guard held longer when exhausted (+%)",
+            "After every block or parry the blocker cannot act for a moment (the game's own stun); an exhausted blocker's lasts this much longer (100: twice as long at an empty bar).");
+
+        public static readonly ParamDef RiposteStunMaxSeconds = Float("RiposteStunMaxSeconds", 0, 3, ImpactGroup,
+            "Riposte: attacker's recoil, at most (s)",
+            "A riposted attacker recoils for up to this many seconds - half of it when he is fresh, all of it when he is empty.");
+
+        public static readonly ParamDef ImpactRandomPercent = Int("ImpactRandomPercent", 0, 100, ImpactGroup,
+            "Lengths' randomness when exhausted (± %)",
+            "Every stagger, reel, get-up and stun length is rolled within ± this percent at an EMPTY bar (less as he is fresher, none in the green): a fresh man's stagger is predictable, an exhausted man's is not.");
+
+        public static readonly ParamDef ImpactStunCapSeconds = Float("ImpactStunCapSeconds", 0.8, 5, ImpactGroup,
+            "Longest stun after a block (s)",
+            "The game caps every block stun at 0.8 s; while the impact system runs it allows up to this many seconds for the stuns it lengthens (every other stun keeps the game's 0.8 s).");
+
+        public static readonly ParamDef ImpactStaggerImmunitySeconds = Float("ImpactStaggerImmunitySeconds", 0, 20, ImpactGroup,
+            "No new stagger for (s) after one",
+            "After a stagger (or a lengthened reel) ends, the same man cannot be staggered again for this many seconds - nobody is stun-locked to death.");
+
+        public static readonly ParamDef ImpactKnockdownImmunitySeconds = Float("ImpactKnockdownImmunitySeconds", 0, 30, ImpactGroup,
+            "No new knockdown for (s) after getting up",
+            "After a man gets up from a knockdown he cannot be knocked down again for this many seconds.");
+
+        public static readonly ParamDef ImpactDiminishWindowSeconds = Float("ImpactDiminishWindowSeconds", 0, 60, ImpactGroup,
+            "Repeat impacts: remembered for (s)",
+            "Every stagger, dropped shield or knockdown a man suffered in the last this many seconds makes the next one against him less likely (the factor below). 0 = never.");
+
+        public static readonly ParamDef ImpactDiminishFactor = Float("ImpactDiminishFactor", 0, 1, ImpactGroup,
+            "Repeat impacts: chance kept each (x)",
+            "Each recent impact multiplies the next chance against the same man by this (0.5: one recent impact halves it, two quarter it). 1 = no limit.");
+
+        public static readonly ParamDef ShieldPickupLockSeconds = Float("ShieldPickupLockSeconds", 0, 120, ImpactGroup,
+            "Dropped shield: no pickup for (s)",
+            "A dropped shield lies on the ground and can be picked up again the game's way (the AI only when no enemy is within 20 m; you with the use key). Above 0: nobody picks a dropped shield up for this many seconds. 0 = the game's own.");
+
+        public static readonly ParamDef ImpactOnPlayerPercent = Int("ImpactOnPlayerPercent", 0, 100, ImpactGroup,
+            "Impact against you (%)",
+            "Every chance of a stagger, a dropped shield or a knockdown against YOU is this percent of the AI's. 100 = the same rules as everyone; 0 = you are never staggered, disarmed of your shield or knocked down by it.");
+
+        public static readonly ParamDef ImpactRiderDismountPercent = Int("ImpactRiderDismountPercent", 0, 100, ImpactGroup,
+            "Rider knocked off his horse (% of a knockdown)",
+            "A rider is never staggered (the horse shares the move); a \"knockdown\" on a rider knocks him OFF his horse instead, at this percent of the knockdown chance. Horses themselves are the game's own.");
+
+        public static readonly ParamDef ImpactTiredNeverShrugsOff = Bool("ImpactTiredNeverShrugsOff", ImpactGroup,
+            "Tired men always flinch",
+            "The game lets a man shrug off a light blow without flinching; on: a tired man shrugs off less the more tired he is (his flinch threshold falls with his strength), so a clean hit always tells on an exhausted man.");
+
+        public static readonly ParamDef ImpactMismatchWeight = Float("ImpactMismatchWeight", 0, 2, ImpactGroup,
+            "Mismatch weight (pressure per doubling)",
+            "How much an outmatched man suffers: every doubling of the mismatch beyond the even band adds this to the pressure on him (0.25: an enemy four times stronger counts as much as being about a third tired). 0 = only tiredness counts.");
+
+        public static readonly ParamDef ImpactEvenBandDoublings = Float("ImpactEvenBandDoublings", 0, 3, ImpactGroup,
+            "Even match band (doublings)",
+            "A mismatch within this many doublings either way counts as an even match (0.5 = a factor of 1.41) - so two fresh men of a kind never stagger each other. Only the part beyond it adds pressure (or takes pressure away, for the weaker attacker).");
+
+        public static readonly ParamDef ImpactBodyExponent = Float("ImpactBodyExponent", 0, 2, ImpactGroup,
+            "Body strength from Athletics points (exponent)",
+            "Body strength = his CURRENT Athletics points to this power (0.5: four times the points = twice the body). A 200-point king at full strength against a 50-point man at 20% is 4.5 times the body. 0 = Athletics points do not count, only tiredness.");
+
+        public static readonly ParamDef ImpactBodyFloorPoints = Int("ImpactBodyFloorPoints", 1, 200, ImpactGroup,
+            "Body strength floor (points)",
+            "An empty man still has a body: his body strength never counts fewer points than this.");
+
+        public static readonly ParamDef ImpactStaggeredBonus = Float("ImpactStaggeredBonus", 0, 3, ImpactGroup,
+            "Pressure on a reeling man (+)",
+            "A man still reeling from a stagger or a lengthened reel of this system gets this much extra pressure: a kick very likely knocks him down, even a weapon blow can. A fresh man's ordinary flinch does not count.");
+
+        public static readonly ParamDef ImpactDamageWeight = Float("ImpactDamageWeight", 0, 5, ImpactGroup,
+            "Damage dealt adds pressure (x)",
+            "A blow that lands adds this times the share of his full health it took (1: a blow that takes 30% of his health adds 0.3). 0 = the damage does not count (waiting for Anton's answer to IMPACT §8 question 1).");
+
+        public static readonly ParamDef ImpactRefWeightKg = Float("ImpactRefWeightKg", 0.1, 10, ImpactGroup,
+            "Reference weapon weight (kg)",
+            "A weapon (or shield) of this weight counts 1 in the impact and guard numbers; heavier counts more by the exponent below.");
+
+        public static readonly ParamDef ImpactWeightExponent = Float("ImpactWeightExponent", 0, 2, ImpactGroup,
+            "Weight's part (exponent)",
+            "Impact and guard grow with (weight ÷ reference weight) to this power (0.5: a 6 kg shield guards twice as well as a 1.5 kg one). 0 = weight does not count.");
+
+        public static readonly ParamDef ImpactRefSwingSpeed = Float("ImpactRefSwingSpeed", 10, 200, ImpactGroup,
+            "Reference swing speed",
+            "A swing (or thrust) of this speed - the weapon's own number, slowed by a tired man's slower swing - counts 1 in the impact; faster counts more by the exponent below.");
+
+        public static readonly ParamDef ImpactSpeedExponent = Float("ImpactSpeedExponent", 0, 3, ImpactGroup,
+            "Swing speed's part (exponent)",
+            "The impact grows with (swing speed ÷ reference speed) to this power. 0 = speed does not count.");
+
+        public static readonly ParamDef ImpactBluntFactor = Float("ImpactBluntFactor", 0.1, 3, ImpactGroup,
+            "Blunt weapons' impact (x)",
+            "Maces, hammers, clubs and other blunt blows hit this many times harder in the impact numbers.");
+
+        public static readonly ParamDef ImpactCutFactor = Float("ImpactCutFactor", 0.1, 3, ImpactGroup,
+            "Cutting weapons' impact (x)",
+            "Swords, axes and other cutting blows count this many times in the impact numbers.");
+
+        public static readonly ParamDef ImpactPierceFactor = Float("ImpactPierceFactor", 0.1, 3, ImpactGroup,
+            "Piercing weapons' impact (x)",
+            "Thrusts and other piercing blows count this many times in the impact numbers (a point pushes less than an edge or a head).");
+
+        public static readonly ParamDef ImpactKickFactor = Float("ImpactKickFactor", 0, 5, ImpactGroup,
+            "Kick's impact",
+            "A kick's impact number (a 1.2 kg sword's swing is about 0.9).");
+
+        public static readonly ParamDef ImpactBashFactor = Float("ImpactBashFactor", 0, 5, ImpactGroup,
+            "Shield bash's impact (x)",
+            "A shield bash's impact = the shield's weight number times this.");
+
+        public static readonly ParamDef ImpactSkillMinFactor = Float("ImpactSkillMinFactor", 0.1, 2, ImpactGroup,
+            "Skill 0 counts (x)",
+            "The weapon skill of the man who strikes (Athletics for a kick, one-handed for a bash) and of the man who guards (one-handed for a shield, his weapon's skill for a parry, Athletics for no guard) scale his side: skill 0 counts this much, rising in a straight line to the next value at skill 300.");
+
+        public static readonly ParamDef ImpactSkillMaxFactor = Float("ImpactSkillMaxFactor", 0.1, 3, ImpactGroup,
+            "Skill 300 counts (x)",
+            "What skill 300 (and above) counts: a recruit (20) 0.78, a veteran (200) 1.08, a 300 lord 1.25 with the defaults.");
+
+        public static readonly ParamDef ImpactGuardShieldRight = Float("ImpactGuardShieldRight", 0.05, 5, ImpactGroup,
+            "Guard: shield on the right side (x)",
+            "How well a shield held on the right side takes a blow, times the shield's weight number (a 4 kg shield 1.63).");
+
+        public static readonly ParamDef ImpactGuardParry = Float("ImpactGuardParry", 0.05, 5, ImpactGroup,
+            "Guard: weapon parry (x)",
+            "How well a parrying weapon takes a blow, times its weight number.");
+
+        public static readonly ParamDef ImpactGuardShieldWrong = Float("ImpactGuardShieldWrong", 0.05, 5, ImpactGroup,
+            "Guard: shield on the wrong side (x)",
+            "How well a shield held on the WRONG side takes a blow, times the shield's weight number - a fraction of the right side's.");
+
+        public static readonly ParamDef ImpactGuardNone = Float("ImpactGuardNone", 0.05, 5, ImpactGroup,
+            "Guard: none (his body)",
+            "The guard of a man hit clean or kicked: his body only.");
+
+        public static readonly ParamDef ImpactStaggerFrom = Float("ImpactStaggerFrom", 0, 0.95, ImpactGroup,
+            "Stagger starts at pressure",
+            "A stagger's chance starts at this pressure and climbs along an S-curve to its ceiling at a pressure of 1 (an empty even man).");
+
+        public static readonly ParamDef ImpactShieldDropFrom = Float("ImpactShieldDropFrom", 0, 0.95, ImpactGroup,
+            "Shield drop starts at pressure",
+            "A dropped shield needs at least this much pressure before it can happen at all.");
+
+        public static readonly ParamDef ImpactKnockdownFrom = Float("ImpactKnockdownFrom", 0, 0.95, ImpactGroup,
+            "Knockdown starts at pressure",
+            "A knockdown needs at least this much pressure before it can happen at all - the worse the outcome, the more pressure it needs.");
+
         // ------------------------------------------------------------------ refill (regeneration)
 
         public static readonly ParamDef RegenDelayBlowTimes = Float("RegenDelayBlowTimes", 0, 20, RefillGroup,
@@ -789,6 +1036,19 @@ namespace TraxCombat.Core
             SprintAiAdvanceKeepPercent, SprintAiMoveKeepPercent,
             AiAggressionFreshPercent, AiAggressionExhaustedPercent, FeverEnabled, FeverPointsPerSecond, FeverAggressionPercent, FeverContactMetres, FeverShieldDurationMultiplier,
             FeverSprintToClose, FeverSprintMinMetres, FeverSprintMaxMetres, FeverSprintCheckSeconds, FeverSprintChancePercent,
+            ImpactEnabled, ImpactKicksEnabled, ImpactBlocksEnabled, ImpactHitsEnabled, ImpactRiposteEnabled, ImpactShadowMode,
+            KickShieldDropMaxPercent, KickKnockdownMaxPercent, RightBlockStaggerMaxPercent, RightBlockShieldDropMaxPercent, RightBlockKnockdownMaxPercent,
+            ParryStaggerMaxPercent, ParryKnockdownMaxPercent, WrongBlockStaggerMaxPercent, WrongBlockShieldDropMaxPercent, WrongBlockKnockdownMaxPercent,
+            HitStaggerMaxPercent, HitKnockdownMaxPercent, RiposteStaggerMaxPercent,
+            StaggerBaseSeconds, StaggerTiredExtraPercent, StaggerMaxSeconds, KickReelTiredExtraPercent, GetUpMaxSlowdown, BlockStunTiredExtraPercent,
+            RiposteStunMaxSeconds, ImpactRandomPercent, ImpactStunCapSeconds,
+            ImpactStaggerImmunitySeconds, ImpactKnockdownImmunitySeconds, ImpactDiminishWindowSeconds, ImpactDiminishFactor, ShieldPickupLockSeconds,
+            ImpactOnPlayerPercent, ImpactRiderDismountPercent, ImpactTiredNeverShrugsOff,
+            ImpactMismatchWeight, ImpactEvenBandDoublings, ImpactBodyExponent, ImpactBodyFloorPoints, ImpactStaggeredBonus, ImpactDamageWeight,
+            ImpactRefWeightKg, ImpactWeightExponent, ImpactRefSwingSpeed, ImpactSpeedExponent, ImpactBluntFactor, ImpactCutFactor, ImpactPierceFactor,
+            ImpactKickFactor, ImpactBashFactor, ImpactSkillMinFactor, ImpactSkillMaxFactor,
+            ImpactGuardShieldRight, ImpactGuardParry, ImpactGuardShieldWrong, ImpactGuardNone,
+            ImpactStaggerFrom, ImpactShieldDropFrom, ImpactKnockdownFrom,
             RegenDelayBlowTimes, BlowTimeSeconds, FullRegenSecondsStanding, RegenRateNearFullPercent, RegenMultiplierAtFullRun,
             WalkEffortFraction, HideoutBossFightRefill,
             ShowPlayerBar, ShowPlayerBarOutsideBattles, ShowAttackRecoveryBar, FlashBarOnEarlyAttack, ShowSprintBar,
@@ -807,7 +1067,7 @@ namespace TraxCombat.Core
         /// <summary>The groups in order.</summary>
         public static readonly IReadOnlyList<ParamGroup> Groups = new[]
         {
-            MasterGroup, DamageGroup, AthleticsGroup, TiredGroup, StepBackGroup, BattlePaceGroup, BraceGroup, SprintGroup, FeverGroup, RefillGroup, PlayerBarGroup, OrderStripGroup, AltMarkersGroup, AdvancedGroup,
+            MasterGroup, DamageGroup, AthleticsGroup, TiredGroup, StepBackGroup, BattlePaceGroup, BraceGroup, SprintGroup, FeverGroup, ImpactGroup, RefillGroup, PlayerBarGroup, OrderStripGroup, AltMarkersGroup, AdvancedGroup,
         };
 
         private static readonly Dictionary<string, ParamDef> ByKey = BuildIndex();

@@ -1024,6 +1024,66 @@ says (§2c).
 | `FeverSprintMaxMetres` | 12.0 | Step 43: no fever sprint without an enemy within this. Range 1-40. |
 | `FeverSprintCheckSeconds` | 1.0 | Step 43 (Anton: the sprint fades with the fever): seconds between a feverish man's fever-sprint rolls. Range 0.1-10. |
 | `FeverSprintChancePercent` | 50 | Step 43: the fever-sprint chance per roll at a full fever; × fever left ÷ full (half the fever, half the chance; empty, none). 0 = never. Range 0-100. |
+| `ImpactEnabled` | true | Step 48, IMPACT I2 (docs/IMPACT.md, §2 "Impact" below): the impact system - kicks / bashes, blocks and clean hits may stagger, drop a shield, knock down, by the PRESSURE x on the man who takes the blow (Core `ImpactMath`). Gate: `ModEnabled` FIRST, `AthleticsEnabled`, this. Live. |
+| `ImpactKicksEnabled` | true | Step 48: the kick / bash family (knockdown, shield drop, the longer reel, the slower get-up). Live. |
+| `ImpactBlocksEnabled` | true | Step 48: the block family - right-side shield block, weapon parry, wrong-side shield block (stagger, knockdown, wrong-side shield drop, the blocker's stun by tiredness). Live. |
+| `ImpactHitsEnabled` | true | Step 48: the clean-hit family (a longer flinch, a knockdown on a landed weapon blow; the reeling bonus). Live. |
+| `ImpactRiposteEnabled` | true | Step 48: the riposte - a fresh defender's right-side block or parry staggers a tired, outmatched attacker (IMPACT §3.6). Live. |
+| `ImpactShadowMode` | false | Step 48: true = decide and LOG every event, change nothing. Default false - Claude's call 2026-10-17 night (decision 40; IMPACT §7 planned true until I3): Anton could not playtest the spike first and wants to see it live in the morning; every family keeps its own switch and this one turns ALL effects into logging only. The spike (`ImpactSpike` on) forces shadow. Live. |
+| `KickShieldDropMaxPercent` | 90 | Step 48: the kick / bash row's shield-drop ceiling (Anton's anchor). Range 0-100. |
+| `KickKnockdownMaxPercent` | 80 | Step 48: the kick / bash row's knockdown ceiling (Anton's anchor). Range 0-100. |
+| `RightBlockStaggerMaxPercent` | 80 | Step 48: the right-side shield block's stagger ceiling (Anton's anchor). Range 0-100. |
+| `RightBlockShieldDropMaxPercent` | 0 | Step 48: the right-side shield block's shield-drop ceiling - 0 (IMPACT §8 q7: a clean block is the reward for skill). Range 0-100. |
+| `RightBlockKnockdownMaxPercent` | 40 | Step 48: the right-side shield block's knockdown ceiling. Range 0-100. |
+| `ParryStaggerMaxPercent` | 80 | Step 48: the weapon parry's stagger ceiling. Range 0-100. |
+| `ParryKnockdownMaxPercent` | 40 | Step 48: the weapon parry's knockdown ceiling. Range 0-100. |
+| `WrongBlockStaggerMaxPercent` | 90 | Step 48: the wrong-side shield block's stagger ceiling. Range 0-100. |
+| `WrongBlockShieldDropMaxPercent` | 50 | Step 48: the wrong-side shield block's shield-drop ceiling. Range 0-100. |
+| `WrongBlockKnockdownMaxPercent` | 40 | Step 48: the wrong-side shield block's knockdown ceiling. Range 0-100. |
+| `HitStaggerMaxPercent` | 80 | Step 48: the clean hit's stagger (a lengthened flinch) ceiling. Range 0-100. |
+| `HitKnockdownMaxPercent` | 50 | Step 48: the clean hit's knockdown ceiling. Range 0-100. |
+| `RiposteStaggerMaxPercent` | 50 | Step 48: the riposte ceiling - × S(x_r) × the DEFENDER's f (IMPACT §3.6, §8 q8). Range 0-100. |
+| `StaggerBaseSeconds` | 0.6 | Step 48: a stagger's length at T 0, s (IMPACT §3.7). Range 0.1-3. |
+| `StaggerTiredExtraPercent` | 150 | Step 48: the stagger × (1 + this % × T) - 0.6 → 1.5 s empty. Range 0-500. |
+| `StaggerMaxSeconds` | 2.0 | Step 48: no stagger longer, whatever the roll. Range 0.2-5. |
+| `KickReelTiredExtraPercent` | 150 | Step 48: the kicked man's vanilla reel × (1 + this % × T) (× 2.5 empty). Range 0-500. |
+| `GetUpMaxSlowdown` | 2.0 | Step 48: the knocked-down man's fall-and-rise × (1 + (this − 1) × T), never above this. Range 1-4. |
+| `BlockStunTiredExtraPercent` | 100 | Step 48: every block's defender stun × (1 + this % × T). Range 0-500. |
+| `RiposteStunMaxSeconds` | 1.0 | Step 48: the riposted attacker's recoil = this × (0.5 + 0.5 T_A), s, never above `ImpactStunCapSeconds`. Range 0-3. |
+| `ImpactRandomPercent` | 30 | Step 48: every length × a roll in [1 − r, 1 + r], r = this % × T (none in the green). Range 0-100. |
+| `ImpactStunCapSeconds` | 2.0 | Step 48: the game's `StunPeriodMax` 0.8 raised to this while the system lengthens stuns (every other stun clamped to the game's 0.8). Range 0.8-5. |
+| `ImpactStaggerImmunitySeconds` | 2.0 | Step 48: no new stagger on a man until this long after his impact stagger (or lengthened reel) ends (IMPACT §3.9). Range 0-20. |
+| `ImpactKnockdownImmunitySeconds` | 5.0 | Step 48: no new knockdown until this long after he is up. Range 0-30. |
+| `ImpactDiminishWindowSeconds` | 8.0 | Step 48: each outcome he suffered within this window multiplies the next chance against him by `ImpactDiminishFactor`. 0 = never. Range 0-60. |
+| `ImpactDiminishFactor` | 0.5 | Step 48: the factor per recent outcome (0.5^n). 1 = no limit. Range 0-1. |
+| `ShieldPickupLockSeconds` | 0.0 | Step 48: a dropped shield cannot be picked up for this long; 0 = vanilla's pickup (IMPACT §8 q3). Range 0-120. |
+| `ImpactOnPlayerPercent` | 100 | Step 48: every chance against YOU × this % (IMPACT §8 q5). Range 0-100. |
+| `ImpactRiderDismountPercent` | 50 | Step 48: a rider's "knockdown" = knocked off at this % of the knockdown chance; never a stagger on a rider (IMPACT §3.8, §8 q4). Range 0-100. |
+| `ImpactTiredNeverShrugsOff` | true | Step 48: a tired man's flinch threshold × f - he shrugs off less (I5). Live. |
+| `ImpactMismatchWeight` | 0.25 | Step 48: x per doubling of the mismatch R beyond the even band. Range 0-2. |
+| `ImpactEvenBandDoublings` | 0.5 | Step 48: a mismatch within ± this many doublings (×1.41) = an even match (adds 0). Range 0-3. |
+| `ImpactBodyExponent` | 0.5 | Step 48: the body = his CURRENT points to this power. Range 0-2. |
+| `ImpactBodyFloorPoints` | 10 | Step 48: the body never counts fewer points (an empty man still has a body). Range 1-200. |
+| `ImpactStaggeredBonus` | 0.75 | Step 48: x added on a man reeling from an IMPACT stagger / a lengthened reel (never a fresh man's vanilla flinch). Range 0-3. |
+| `ImpactDamageWeight` | 0.0 | Step 48: x per share of his max health the landed blow took - Anton's unfinished point 12 (IMPACT §8 q1); 0 until he answers (the brief), the recommendation was 1.0. Range 0-5. |
+| `ImpactRefWeightKg` | 1.5 | Step 48: a weapon / shield of this weight = 1 in the impact and guard numbers. Range 0.1-10. |
+| `ImpactWeightExponent` | 0.5 | Step 48: (weight ÷ reference) to this power. Range 0-2. |
+| `ImpactRefSwingSpeed` | 90.0 | Step 48: a swing / thrust of this speed (the weapon's modified speed × the tired swing's animation share) = 1. Range 10-200. |
+| `ImpactSpeedExponent` | 1.0 | Step 48: (speed ÷ reference) to this power. Range 0-3. |
+| `ImpactBluntFactor` | 1.3 | Step 48: a blunt blow's impact factor. Range 0.1-3. |
+| `ImpactCutFactor` | 1.0 | Step 48: a cutting blow's impact factor. Range 0.1-3. |
+| `ImpactPierceFactor` | 0.8 | Step 48: a piercing blow's impact factor. Range 0.1-3. |
+| `ImpactKickFactor` | 1.2 | Step 48: a kick's impact. Range 0-5. |
+| `ImpactBashFactor` | 1.0 | Step 48: a bash's impact = the shield's weight factor × this. Range 0-5. |
+| `ImpactSkillMinFactor` | 0.75 | Step 48: skill 0's factor K (a straight line to the max at skill 300 - plumbing `ImpactMath.SkillCap`). Range 0.1-2. |
+| `ImpactSkillMaxFactor` | 1.25 | Step 48: skill 300's factor K. Range 0.1-3. |
+| `ImpactGuardShieldRight` | 1.0 | Step 48: the right-side shield guard × the shield's weight factor. Range 0.05-5. |
+| `ImpactGuardParry` | 0.8 | Step 48: the parry guard × the parrying weapon's weight factor. Range 0.05-5. |
+| `ImpactGuardShieldWrong` | 0.4 | Step 48: the wrong-side shield guard × the shield's weight factor. Range 0.05-5. |
+| `ImpactGuardNone` | 1.0 | Step 48: no guard (a clean hit, a kick) - the body only. Range 0.05-5. |
+| `ImpactStaggerFrom` | 0.0 | Step 48: the stagger's S-curve starts at this x (chance = ceiling × S((x − from) ÷ (1 − from))). Range 0-0.95. |
+| `ImpactShieldDropFrom` | 0.2 | Step 48: the shield drop's S-curve start. Range 0-0.95. |
+| `ImpactKnockdownFrom` | 0.35 | Step 48: the knockdown's S-curve start. Range 0-0.95. |
 | `RegenDelayBlowTimes` | 2 | Idle blows before regeneration starts. |
 | `BlowTimeSeconds` | 1.5 | How long "one blow" is, for the delay above. |
 | `FullRegenSecondsStanding` | 60 | Seconds from empty to full while standing still or walking (the whole refill, whatever the curve below). |

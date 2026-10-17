@@ -610,6 +610,310 @@
   // (range 0 to 100)
   "FeverSprintChancePercent": 50,
 
+  // ==================== Impact: staggers, shield drops, knockdowns ====================
+  // Kicks, shield bashes, blocks and clean hits can stagger a man, make him drop his shield or
+  // knock him down - more likely the more tired he is and the more he is outmatched (both men's
+  // CURRENT Athletics, the weapon and its swing, the guard, both men's skill). Two fresh, even
+  // men: never. Needs the Athletics system on. Off: the game's own reactions only.
+  // (true or false)
+  "ImpactEnabled": true,
+
+  // A kick or shield bash that lands may knock a tired man down or make him drop his shield,
+  // and makes him reel longer the more tired he is. Off: kicks and bashes are the game's own.
+  // (true or false)
+  "ImpactKicksEnabled": true,
+
+  // A blow blocked with a shield (on the right or the wrong side) or parried may stagger the
+  // tired blocker, knock him down, or (on the wrong side) make him drop his shield; his guard
+  // is held longer the more tired he is. Off: blocks are the game's own.
+  // (true or false)
+  "ImpactBlocksEnabled": true,
+
+  // A weapon blow that lands unblocked may stagger a tired man longer or knock him down. Off:
+  // hits are the game's own.
+  // (true or false)
+  "ImpactHitsEnabled": true,
+
+  // A FRESH man who blocks on the right side or parries may stagger the attacker who swung at
+  // him - more likely the more tired and outmatched the attacker is: a window to strike back.
+  // (true or false)
+  "ImpactRiposteEnabled": true,
+
+  // On: the impact system decides every kick, block and hit and writes what WOULD happen to the
+  // log (trax_combat.log's summary), but changes nothing in the battle - to read the numbers of
+  // your own battles before playing with it. Off: what it decides happens.
+  // (true or false)
+  "ImpactShadowMode": false,
+
+  // The highest chance that a kick or bash makes a man drop the shield in his hand - reached
+  // when he is exhausted or badly outmatched. 0 in the green between even men.
+  // (range 0 to 100)
+  "KickShieldDropMaxPercent": 90,
+
+  // The highest chance that a kick or bash knocks a man to the ground.
+  // (range 0 to 100)
+  "KickKnockdownMaxPercent": 80,
+
+  // The highest chance that a man who blocks a blow with his shield on the RIGHT side staggers
+  // back - an opening for the attacker, longer the more tired he is.
+  // (range 0 to 100)
+  "RightBlockStaggerMaxPercent": 80,
+
+  // The highest chance that a RIGHT-side shield block makes him drop his shield. 0: a clean
+  // block is the reward for skill - only kicks and wrong-side blocks drop shields.
+  // (range 0 to 100)
+  "RightBlockShieldDropMaxPercent": 0,
+
+  // The highest chance that a RIGHT-side shield block still knocks him down - a huge mismatch
+  // (a peasant's stick against a berserker's axe) or an exhausted blocker.
+  // (range 0 to 100)
+  "RightBlockKnockdownMaxPercent": 40,
+
+  // The highest chance that a man who parries a blow with his weapon staggers back.
+  // (range 0 to 100)
+  "ParryStaggerMaxPercent": 80,
+
+  // The highest chance that a parry still knocks the parrying man down.
+  // (range 0 to 100)
+  "ParryKnockdownMaxPercent": 40,
+
+  // The highest chance that a man who blocks with his shield on the WRONG side staggers back.
+  // (range 0 to 100)
+  "WrongBlockStaggerMaxPercent": 90,
+
+  // The highest chance that a WRONG-side shield block makes him drop his shield.
+  // (range 0 to 100)
+  "WrongBlockShieldDropMaxPercent": 50,
+
+  // The highest chance that a WRONG-side shield block knocks him down.
+  // (range 0 to 100)
+  "WrongBlockKnockdownMaxPercent": 40,
+
+  // The highest chance that a blow that lands unblocked staggers a man longer than the game's
+  // own flinch.
+  // (range 0 to 100)
+  "HitStaggerMaxPercent": 80,
+
+  // The highest chance that a blow that lands unblocked knocks a man down.
+  // (range 0 to 100)
+  "HitKnockdownMaxPercent": 50,
+
+  // The highest chance that a fresh man's right-side block or parry staggers the ATTACKER - for
+  // an empty, outmatched attacker against a defender at full strength (a tired defender
+  // ripostes less).
+  // (range 0 to 100)
+  "RiposteStaggerMaxPercent": 50,
+
+  // How long a stagger lasts on a man in the green, in seconds. It grows with his tiredness by
+  // the next setting.
+  // (range 0.1 to 3.0)
+  "StaggerBaseSeconds": 0.6,
+
+  // An exhausted man's stagger lasts this much longer than a fresh man's (150: 0.6 s fresh, 1.5
+  // s empty), in a straight line with his tiredness - and less predictably (the randomness
+  // below).
+  // (range 0 to 500)
+  "StaggerTiredExtraPercent": 150,
+
+  // No stagger lasts longer than this, in seconds, whatever the roll.
+  // (range 0.2 to 5.0)
+  "StaggerMaxSeconds": 2.0,
+
+  // A kicked or bashed man reels back as in the game, but this much longer when exhausted (150:
+  // 2.5 times as long at an empty bar), in a straight line with his tiredness - so a kick gives
+  // a tired man's enemy time to strike. A fresh man reels as in the game.
+  // (range 0 to 500)
+  "KickReelTiredExtraPercent": 150,
+
+  // An exhausted man knocked to the ground takes up to this many times as long to get up (2 =
+  // twice as long at an empty bar), in a straight line with his tiredness. 1 = the game's own.
+  // (range 1.0 to 4.0)
+  "GetUpMaxSlowdown": 2.0,
+
+  // After every block or parry the blocker cannot act for a moment (the game's own stun); an
+  // exhausted blocker's lasts this much longer (100: twice as long at an empty bar).
+  // (range 0 to 500)
+  "BlockStunTiredExtraPercent": 100,
+
+  // A riposted attacker recoils for up to this many seconds - half of it when he is fresh, all
+  // of it when he is empty.
+  // (range 0.0 to 3.0)
+  "RiposteStunMaxSeconds": 1.0,
+
+  // Every stagger, reel, get-up and stun length is rolled within ± this percent at an EMPTY bar
+  // (less as he is fresher, none in the green): a fresh man's stagger is predictable, an
+  // exhausted man's is not.
+  // (range 0 to 100)
+  "ImpactRandomPercent": 30,
+
+  // The game caps every block stun at 0.8 s; while the impact system runs it allows up to this
+  // many seconds for the stuns it lengthens (every other stun keeps the game's 0.8 s).
+  // (range 0.8 to 5.0)
+  "ImpactStunCapSeconds": 2.0,
+
+  // After a stagger (or a lengthened reel) ends, the same man cannot be staggered again for
+  // this many seconds - nobody is stun-locked to death.
+  // (range 0.0 to 20.0)
+  "ImpactStaggerImmunitySeconds": 2.0,
+
+  // After a man gets up from a knockdown he cannot be knocked down again for this many seconds.
+  // (range 0.0 to 30.0)
+  "ImpactKnockdownImmunitySeconds": 5.0,
+
+  // Every stagger, dropped shield or knockdown a man suffered in the last this many seconds
+  // makes the next one against him less likely (the factor below). 0 = never.
+  // (range 0.0 to 60.0)
+  "ImpactDiminishWindowSeconds": 8.0,
+
+  // Each recent impact multiplies the next chance against the same man by this (0.5: one recent
+  // impact halves it, two quarter it). 1 = no limit.
+  // (range 0.0 to 1.0)
+  "ImpactDiminishFactor": 0.5,
+
+  // A dropped shield lies on the ground and can be picked up again the game's way (the AI only
+  // when no enemy is within 20 m; you with the use key). Above 0: nobody picks a dropped shield
+  // up for this many seconds. 0 = the game's own.
+  // (range 0.0 to 120.0)
+  "ShieldPickupLockSeconds": 0.0,
+
+  // Every chance of a stagger, a dropped shield or a knockdown against YOU is this percent of
+  // the AI's. 100 = the same rules as everyone; 0 = you are never staggered, disarmed of your
+  // shield or knocked down by it.
+  // (range 0 to 100)
+  "ImpactOnPlayerPercent": 100,
+
+  // A rider is never staggered (the horse shares the move); a "knockdown" on a rider knocks him
+  // OFF his horse instead, at this percent of the knockdown chance. Horses themselves are the
+  // game's own.
+  // (range 0 to 100)
+  "ImpactRiderDismountPercent": 50,
+
+  // The game lets a man shrug off a light blow without flinching; on: a tired man shrugs off
+  // less the more tired he is (his flinch threshold falls with his strength), so a clean hit
+  // always tells on an exhausted man.
+  // (true or false)
+  "ImpactTiredNeverShrugsOff": true,
+
+  // How much an outmatched man suffers: every doubling of the mismatch beyond the even band
+  // adds this to the pressure on him (0.25: an enemy four times stronger counts as much as
+  // being about a third tired). 0 = only tiredness counts.
+  // (range 0.0 to 2.0)
+  "ImpactMismatchWeight": 0.25,
+
+  // A mismatch within this many doublings either way counts as an even match (0.5 = a factor of
+  // 1.41) - so two fresh men of a kind never stagger each other. Only the part beyond it adds
+  // pressure (or takes pressure away, for the weaker attacker).
+  // (range 0.0 to 3.0)
+  "ImpactEvenBandDoublings": 0.5,
+
+  // Body strength = his CURRENT Athletics points to this power (0.5: four times the points =
+  // twice the body). A 200-point king at full strength against a 50-point man at 20% is 4.5
+  // times the body. 0 = Athletics points do not count, only tiredness.
+  // (range 0.0 to 2.0)
+  "ImpactBodyExponent": 0.5,
+
+  // An empty man still has a body: his body strength never counts fewer points than this.
+  // (range 1 to 200)
+  "ImpactBodyFloorPoints": 10,
+
+  // A man still reeling from a stagger or a lengthened reel of this system gets this much extra
+  // pressure: a kick very likely knocks him down, even a weapon blow can. A fresh man's
+  // ordinary flinch does not count.
+  // (range 0.0 to 3.0)
+  "ImpactStaggeredBonus": 0.75,
+
+  // A blow that lands adds this times the share of his full health it took (1: a blow that
+  // takes 30% of his health adds 0.3). 0 = the damage does not count (waiting for Anton's
+  // answer to IMPACT §8 question 1).
+  // (range 0.0 to 5.0)
+  "ImpactDamageWeight": 0.0,
+
+  // A weapon (or shield) of this weight counts 1 in the impact and guard numbers; heavier
+  // counts more by the exponent below.
+  // (range 0.1 to 10.0)
+  "ImpactRefWeightKg": 1.5,
+
+  // Impact and guard grow with (weight ÷ reference weight) to this power (0.5: a 6 kg shield
+  // guards twice as well as a 1.5 kg one). 0 = weight does not count.
+  // (range 0.0 to 2.0)
+  "ImpactWeightExponent": 0.5,
+
+  // A swing (or thrust) of this speed - the weapon's own number, slowed by a tired man's slower
+  // swing - counts 1 in the impact; faster counts more by the exponent below.
+  // (range 10.0 to 200.0)
+  "ImpactRefSwingSpeed": 90.0,
+
+  // The impact grows with (swing speed ÷ reference speed) to this power. 0 = speed does not
+  // count.
+  // (range 0.0 to 3.0)
+  "ImpactSpeedExponent": 1.0,
+
+  // Maces, hammers, clubs and other blunt blows hit this many times harder in the impact
+  // numbers.
+  // (range 0.1 to 3.0)
+  "ImpactBluntFactor": 1.3,
+
+  // Swords, axes and other cutting blows count this many times in the impact numbers.
+  // (range 0.1 to 3.0)
+  "ImpactCutFactor": 1.0,
+
+  // Thrusts and other piercing blows count this many times in the impact numbers (a point
+  // pushes less than an edge or a head).
+  // (range 0.1 to 3.0)
+  "ImpactPierceFactor": 0.8,
+
+  // A kick's impact number (a 1.2 kg sword's swing is about 0.9).
+  // (range 0.0 to 5.0)
+  "ImpactKickFactor": 1.2,
+
+  // A shield bash's impact = the shield's weight number times this.
+  // (range 0.0 to 5.0)
+  "ImpactBashFactor": 1.0,
+
+  // The weapon skill of the man who strikes (Athletics for a kick, one-handed for a bash) and
+  // of the man who guards (one-handed for a shield, his weapon's skill for a parry, Athletics
+  // for no guard) scale his side: skill 0 counts this much, rising in a straight line to the
+  // next value at skill 300.
+  // (range 0.1 to 2.0)
+  "ImpactSkillMinFactor": 0.75,
+
+  // What skill 300 (and above) counts: a recruit (20) 0.78, a veteran (200) 1.08, a 300 lord
+  // 1.25 with the defaults.
+  // (range 0.1 to 3.0)
+  "ImpactSkillMaxFactor": 1.25,
+
+  // How well a shield held on the right side takes a blow, times the shield's weight number (a
+  // 4 kg shield 1.63).
+  // (range 0.05 to 5.0)
+  "ImpactGuardShieldRight": 1.0,
+
+  // How well a parrying weapon takes a blow, times its weight number.
+  // (range 0.05 to 5.0)
+  "ImpactGuardParry": 0.8,
+
+  // How well a shield held on the WRONG side takes a blow, times the shield's weight number - a
+  // fraction of the right side's.
+  // (range 0.05 to 5.0)
+  "ImpactGuardShieldWrong": 0.4,
+
+  // The guard of a man hit clean or kicked: his body only.
+  // (range 0.05 to 5.0)
+  "ImpactGuardNone": 1.0,
+
+  // A stagger's chance starts at this pressure and climbs along an S-curve to its ceiling at a
+  // pressure of 1 (an empty even man).
+  // (range 0.0 to 0.95)
+  "ImpactStaggerFrom": 0.0,
+
+  // A dropped shield needs at least this much pressure before it can happen at all.
+  // (range 0.0 to 0.95)
+  "ImpactShieldDropFrom": 0.2,
+
+  // A knockdown needs at least this much pressure before it can happen at all - the worse the
+  // outcome, the more pressure it needs.
+  // (range 0.0 to 0.95)
+  "ImpactKnockdownFrom": 0.35,
+
   // ==================== Refill ====================
   // How long a fighter must go without attacking before his Athletics starts to refill, counted
   // in blow lengths (the next setting): 2 × 1.5 s = 3 seconds.
