@@ -136,6 +136,23 @@ namespace TraxCombat.Missions
             }
         }
 
+        /// <summary>
+        /// Step 41: the shield wall's hold runs HERE - OnPreMissionTick is the first managed point of a frame after the agent tick
+        /// that ran vanilla's own formation update (Mission.OnPreTick waits for that tick, then calls this), so a man vanilla just
+        /// rewrote is rewritten before anything else of the frame (RESEARCH §O).
+        /// </summary>
+        public override void OnPreMissionTick(float dt)
+        {
+            try
+            {
+                TickWall(Mission.CurrentTime);
+            }
+            catch (Exception e)
+            {
+                Failed("wall.tick", e);
+            }
+        }
+
         public override void OnDeploymentFinished()
         {
             try

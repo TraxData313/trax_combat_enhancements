@@ -202,6 +202,9 @@ namespace TraxCombat.Missions
         /// <summary>Step 23: his brace (his margin's roll, bracing now, the shield) - null until his first look as an AI man.</summary>
         public BraceState? Brace;
 
+        /// <summary>Step 41: his shield-wall hold (held now, vanilla's update timer, the next sample) - null until his first look.</summary>
+        public WallState? Wall;
+
         /// <summary>Step 32: his swing stack (spawn full).</summary>
         public readonly SwingStack Swings = new SwingStack();
 

@@ -1038,6 +1038,15 @@ namespace TraxCombat.Tools
             int bracingBefore = _logic.BracingNow;
             Check(bracingBefore >= 2 && a.Brace != null && a.Brace.Active && me.Brace == null, "precondition: the tired men do not brace (step 23), or you do");
 
+            // step 41: every AI man stands in a halted shield wall (the stand-in's default) - held in his slot, you not
+            var wallBody = new FakeWallBody();
+            _logic.WallBody = wallBody;
+            typeof(AthleticsLogic).GetField("_wallClosed", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(_logic, false); // the summary step closed it
+            S.Set(SettingsSchema.ShieldWallHoldsSlots, true, SettingSources.File);
+            _logic.TickWall(t);
+            int walledBefore = _logic.WalledNow;
+            Check(walledBefore >= 2 && a.Wall != null && a.Wall.Held && me.Wall != null && !me.Wall.Held, "precondition: the AI men are not held in their slots (step 41), or you are");
+
             S.Set(SettingsSchema.ModEnabled, false, SettingSources.Mcm);
             _statTop.UpdateAgentStats(a.Agent, p); // a recompute before the logic's tick: already vanilla
             Check(Near(p.SwingSpeedMultiplier, 1.05f) && Near(p.MaxSpeedMultiplier, 0.8f), "mod off: the stat decorator still applied a penalty");
@@ -1056,6 +1065,12 @@ namespace TraxCombat.Tools
             Check(_logic.BracingNow == 0 && braceBody.Released.Count == bracingBefore && !a.Brace!.Active && (a.Input == null || !a.Input.BraceHoldAttacks),
                 "mod off: the braces were not lifted at once (step 23)");
             LogHas("[brace] the whole mod (ModEnabled) switched OFF mid-mission at ");
+            int wallWrites = wallBody.HoldCalls;
+            _logic.TickWall(t + 0.01);
+            Check(_logic.WalledNow == 0 && wallBody.Released.Count == walledBefore && !a.Wall!.Held, "mod off: the shield wall's held men were not given vanilla's value back at once (step 41)");
+            LogHas("[wall] the whole mod (ModEnabled) switched OFF mid-mission at ");
+            _logic.TickWall(t + 0.5);
+            Check(wallBody.HoldCalls == wallWrites, "mod off: a man was still held in his slot (step 41)");
             _logic.TickPlayerTimer(t);
             Check(!_logic.PlayerTimer.Holding && _logic.RateStats.PlayerEnded(PlayerTimerEnd.SwitchedOff) == 1, "mod off: your pause was not released at once");
             _logic.SmokePlayer = null;
@@ -1088,6 +1103,8 @@ namespace TraxCombat.Tools
             S.Set(SettingsSchema.ModEnabled, true, SettingSources.Mcm);
             _logic.ApplySettingsChange(S);
             LogHas("[athletics] the whole mod (ModEnabled) switched ON mid-mission: everyone starts full");
+            _logic.TickWall(t + 1);
+            Check(_logic.WalledNow >= walledBefore && a.Wall!.Held, "mod back on: the shield wall's men were not held again (step 41)");
             Swing(a, ref t);
             Check(a.Blows == blows + 1 && a.Fraction < 1, "mod back on: a swing was not charged");
             Check(Enumerable.Range(0, 50).Select(_ => Hit()).Distinct().Count() > 5, "mod back on: damage does not roll");

@@ -156,6 +156,7 @@ namespace TraxCombat.Missions
             StartAttackRate();
             StartSwingStack(); // step 32
             StartBrace(); // step 23
+            StartWall(); // step 41
             StartTiredBlock(); // step 30
             StartSprint(); // step 33
         }
@@ -325,6 +326,7 @@ namespace TraxCombat.Missions
             StepBackLeftField(st);
             PaceLeftField(st);
             BraceLeftField(st); // step 23
+            WallLeftField(st); // step 41
             PlayerTimerLeftField(st);
             StackLeftField(st); // step 32: his running burst counted
             SprintLeftField(st); // step 33

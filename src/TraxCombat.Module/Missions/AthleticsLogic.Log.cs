@@ -217,6 +217,16 @@ namespace TraxCombat.Missions
                 Failed("brace.summary", e);
             }
 
+            // Step 41: the shield wall holds its slots - who was held, the writes, how far ahead of their slots ON vs OFF. Own try.
+            try
+            {
+                WriteWallSummary();
+            }
+            catch (Exception e)
+            {
+                Failed("wall.summary", e);
+            }
+
             // Step 30: the tired block direction - the chance raised, the AI's guard by f band. Own try.
             try
             {
