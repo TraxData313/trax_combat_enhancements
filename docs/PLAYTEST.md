@@ -1086,6 +1086,36 @@ staggers, shield drops, knockdowns* → **Shadow mode: decide and log only**.
 switches on; `the engine read failed N` above 0 (an `[error] impact.read` line with its stack); the 100-75 band showing knockdowns or
 dropped shields between even men; `not tracked` near the total (the model sees no men); a stutter in a big battle (`cost` above ~10 µs).
 
+**D18. Courage and cohesion - men keep to their group (step 49, ~30 min).** Your exact scenario. Defaults on (MCM → *Courage and cohesion
+(AI)*). The log's start: `[courage] mission start: courage: each AI man on foot in a formation weighs his side against the enemy within
+6.0 m … a looter (armour 8, level 5) 1.35, an imperial legionary (armour 110, level 26) 5.97 = 4.4 looters …`.
+1. **A 20-man shield wall vs ~40 looters** (custom battle: your best armoured infantry, 20 men, F1 + F2 shield wall, halt; the enemy ~40
+   looters). Watch 2-3 minutes. **See**: the looters stop as a THICK ARC in front of the wall, a few at its face striking what is in reach
+   (your wall men step out 1 m to meet them - step 42); looters who drift round a flank alone or in twos turn and walk back to their mass
+   FACING you (a backpedal), some sprinting; nobody loops behind the wall alone; no lone looter stands among four of your men. **Lines**:
+   `[courage] first walk back this battle: <looter> … odds 0.0x < required 1.00 (base … x tired … x morale … x shock … x fever … x hero …);
+   … walking to the nearest bigger group of his side …` and `[courage] first walk back ended … arrived | among his mates …`.
+2. **Mid-battle, courage OFF** (MCM → *Courage and cohesion* off, ~1 minute, then on again): `[courage] CourageEnabled switched OFF
+   mid-mission at … s: N timid men let go at once`. **See** OFF: the looters wander round the flanks again. The summary compares both halves.
+3. **The same wall vs ~200 looters** (if your PC carries it). **See**: the front still holds back, but at the wall's ENDS the crowd wraps
+   round - as a mass, not one by one - and the looters' centre drifts round with it.
+4. **Anton's addition - shock troops on a tired flank**: let a line of your infantry fight a while (bars yellow / orange - hold ALT), then
+   send a FRESH enemy unit with two-handers (e.g. Sturgian / Vlandian two-handed troops, or a custom battle: their heavy infantry with great
+   axes) into its flank. **See**: the hit flank men PANIC - they sprint back into the mass (all their sprint), the flank folds in and the
+   whole block is pushed as one, ready to be surrounded. **Lines**: `[courage] first PANIC this battle: <man> … shocked (N hits in 6.0 s),
+   odds … below 50% of the required …; sprints … s, keeping only 0% of his store`.
+5. **The [summary] lines** (send them): `courage isolated (fewer than 2 mates within 6.0 m while an enemy is within it): ON x man-seconds
+   per AI man-minute …, OFF y …` - ON well below OFF; `courage distance from the formation's centre …: ON mean … m, p90 … m; OFF mean …, p90
+   …` - ON's p90 below OFF's; `courage timid: N times by M of K men looked (… walked back at once, … held …); caused by SHOCK …, by the odds
+   alone …; wobbles W` - W a small share of N; `courage regroup: walks back ended arrived …, among his mates …, gave up after 15 s …; time to
+   regroup mean … s; sprinted back …`; `courage flocking and panic: walks to the nearest bigger group … , to the formation's centre …; PANIC
+   walks …, panic sprints …; compression - … shocked a → b m` (b below a = the shocked pack in); `courage by local odds, in contact …` (the
+   low bands mostly timid, ≥ 2 brave) and `… men OUT of their formation …`; `courage toughness … min 1.3x … max …`; `courage cost`.
+**Broken — tell Claude** (D18): no `[courage] mission start` line; timid men that stand still far from their group (`gave up after 15 s`
+near the walks' total = the engine ignores the walk vector); timid men walking INTO your wall under a charge order (try `Timid men stop
+hunting` off - tell Claude which looked better); the isolated rate ON ≈ OFF; wobbles near the timid count (men flickering); `errors` in
+`behaviour weights`; a stutter (`courage cost` above ~0.5 ms a tick).
+
 ---
 
 ## E. Your Athletics bar, the orders-menu strip and the ALT markers (20 min)
@@ -1855,6 +1885,24 @@ header names the technique: `==== scene …, mod ON, AI holds: Input (the AI's o
   / d; mean x …; would <knock down | drop a shield | stagger> … = N (rolled …, mean chance …)`; `impact riposte (… by the attacker's bar …)`;
   `impact limits: refused - …; diminished: …; riders would be knocked off N`; `impact lengths asked: …`; `impact cost: N decisions, … µs a
   decision (max …) - … in shadow, … live (… applied)`. Never on: `impact (step 48 - the model): OFF all mission (<switch>) - nothing decided`.
+
+### L6l. Courage and cohesion (step 49)
+
+- Mission start: `[courage] mission start: courage: each AI man on foot in a formation weighs his side against the enemy within 6.0 m …
+  - read live; every AI man looked at about every 0.5 s; …` (or `courage OFF (ModEnabled | CourageEnabled) - the game's own bravery; the
+  looks still MEASURE …`). A change: `[courage] settings changed mid-mission at … s: …`. Switched off: `[courage] <switch> switched OFF
+  mid-mission at … s: N timid men let go at once …`.
+- First-time lines: `[courage] first walk back this battle: <man> at … s - his side … (himself … + N mates) vs the enemy … (M men) within
+  6.0 m = odds … < required … (base … x tired … x morale … x shock … (N hits in 6.0 s) x fever … x hero …); … m from his formation's centre,
+  walking to <the nearest bigger group of his side | his formation's centre> … m away [- in PANIC] [, sprinting … s]`; `[courage] first walk
+  back ended at … s after … s - <arrived | among his mates | the ground ahead ends | gave up after 15 s | his timid spell ended>; a → b m from
+  his formation's centre; <still timid - holds | brave again>; walked N frames`; `[courage] first PANIC this battle: …`. Verbose (bucket
+  `courage`): timid / holding / walks / ends.
+- The [summary] lines (D18 reads them): `courage settings`, `courage isolated … ON … OFF …`, `courage distance from the formation's centre
+  … ON mean / p90 … OFF mean / p90`, `courage timid: … caused by SHOCK …, by the odds alone …; wobbles …; ends: …; not looked at: …`,
+  `courage regroup: …`, `courage flocking and panic: …; compression - … shocked a → b m …, by the odds alone …`, `courage by local odds, in
+  contact …`, `courage by local odds, men OUT of their formation …`, `courage toughness … ; behaviour weights: set …, re-applied …, given back
+  …, errors …`, `courage cost: …`. Never looked at: `courage: no AI man on foot in a formation was looked at in this mission …`.
 
 ### L7. The HUD — your bar, the recovery bar, the orders strip and the ALT markers
 

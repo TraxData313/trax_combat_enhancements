@@ -1387,6 +1387,38 @@ behaviour against a `readonly` contract, hidden from every reader. Not worth it.
 
 ---
 
+## S. Courage and cohesion - the levers (step 49, verified in the v1.4.8 decompile `%TEMP%\trax_decomp\` 2026-10-18)
+
+1. **Per-man behaviour weights** - `HumanAIComponent.OverrideBehaviorParams(AISimpleBehaviorKind, y1, x2, y2, x3, y3)` is public
+   (HumanAIComponent.cs 144-153): writes `_behaviorValues[kind]`, sets `_lastBehaviorValueSet = Overriden` and `_hasNewBehaviorValues`;
+   `OnTickParallel` (203-208) → `SyncBehaviorParamsIfNecessary` (165-171) → `Agent.SetAllBehaviorParams` (native). The curve
+   (`BehaviorValues.GetValueAt`, 13-37): y1 at 0, a line to y2 at x2, to y3 at x3, y3 beyond. `AgentComponentExtensions.SetAIBehaviorValues`
+   (55) is the same call.
+2. **Vanilla's sets** (`SetBehaviorValueSet`, 718-790; a no-op when the set equals `_lastBehaviorValueSet`): Default / Charge: GoToPos 3, 7, 5,
+   20, 6 · Melee 8, 7, 4, 20, 1; DefaultMove: GoToPos 3, 7, 5, 20, 6 · Melee 8, 7, 5, 20, 0.01 (melee beats "my position" out to ~7 m - the
+   hunting); DefensiveArrangementMove (shield wall / square / circle): GoToPos 3, 8, 5, 20, 6 · Melee 4, 5, 0, 20, 0; Follow; DefaultDetached.
+3. **Who resets them** - `RefreshBehaviorValues(order, arrangement)` (792-815: detached → DefaultDetached; charge / charge to target → Charge;
+   column / follow → Follow; shield wall / square / circle → DefensiveArrangementMove; else DefaultMove), called on every order and
+   arrangement change: MovementOrder.cs 704 (OnApply), 773 / 777, 985 / 994 / 1005 / 1013 (the siege charge's tick), ArrangementOrder.cs 150,
+   Formation.cs 2229 (detach). After an override the last set is `Overriden`, so the next refresh ALWAYS re-applies vanilla's - and
+   `Agent.RefreshBehaviorValues` (AgentComponentExtensions.cs 50) is how to give vanilla's back.
+4. **`AiMoveEnemySideTimeValue`** - AgentStatCalculateModel.cs 215: `-2.5 + 0.5 × AI level` (DrivenProperty 29); no managed reader, no other
+   writer, RBM never sets it. Its meaning cannot be read from managed code - NOT used (step 49; a candidate lever for a test battle).
+   `AiMinimumDistanceToContinueFactor` (216: 2 + 0.3 × (3 − level)) likewise native-only (RBM's AgentStats.cs has a commented `= 5f`).
+5. **The centre of mass** - `Formation.CachedAveragePosition` (253) = the mean of the non-detached men without the player
+   (`CacheAverageAndMedianPositionAndVelocity`, 1449-1461); `CachedMedianPosition` is the median AGENT's WorldPosition.
+6. **Morale** - `Agent.GetMorale()` (AgentComponentExtensions.cs 7) = `CommonAIComponent.Morale`, −1 without it; clamped 0-100 (CommonAIComponent.cs
+   39-47); initial 35 + rand(30) + components' additions → the morale model, clamped 15-100 (66-75); below 0.01 a man panics (82-93).
+7. **Proximity** - `Mission.GetNearbyAgents(center, radius, MBList)` (6593) clears the list, then `GetNearbyAgentsAux` (2314-2335) fills it in
+   batches of 40 under a global lock (managed objects by id); `GetNearbyAllyAgents` (6579) the same for one side. A reused MBList = no
+   allocation.
+8. **Toughness inputs** - `Equipment.GetHeadArmorSum / GetHumanBodyArmorSum / GetLegArmorSum / GetArmArmorSum` (Equipment.cs 271-326, the
+   armour slots' modified values); `BasicCharacterObject.Level` (122), the battle tier = clamp(ceil((Level − 5) / 5), 0, 7), heroes 7 (278-285);
+   `WeaponComponentData.IsTwoHanded` (123: melee + NotUsableWithOneHand) / `IsPolearm` (95: melee + WideGrip); `Agent.Health` (managed field)
+   ÷ `HealthLimit`.
+
+---
+
 ## UNVERIFIED — to check in the named step
 
 | # | What | Step |
@@ -1424,3 +1456,6 @@ behaviour against a `readonly` contract, hidden from every reader. Not worth it.
 | 31 | `CalculateDefendedBlowStunMultipliers` lengthens the blocker's guard-freeze and the attacker's recoil as seen in game; `StunPeriodMax` raised by `ManagedParameters.SetParameter` is honoured; the decorator runs off the main thread without trouble (§R2; spike I1: stun asked vs the BlockedMelee / defend action measured) | I1 = step 47 (lever 2: x3 for even blockers vs the odd ones, `off the main thread`, the cap `restored` - D16; §R10.2-3) |
 | 32 | `DropItem` of the offhand shield (queued with `AddTickAction`) leaves a pickable shield on the ground, the AI fights on shieldless and picks one up only once no enemy is within 20 m (§R5; spike I1) | I1 = step 47 (lever 5: `left his hand`, `picked up again after` - D16; §R10.5) |
 | 33 | A blow of our own (`RegisterBlow`, KnockDown, 1 damage) knocks down a man who just blocked (§R6; spike I1) | I1 = step 47 (lever 6: `Fall seen` of `registered` - D16; §R10.6) |
+| 34 | The engine honours a REGROUP input vector (step 16's backpedal through `OnAIInputSet`) for many seconds, the man keeps facing his target while he walks back, and he does not fight the formation's own pull back to its slot (§S; PLAYTEST D18: `courage regroup` arrived / among mates vs "gave up after 15 s") | 49 |
+| 35 | Tightened Melee / GoToPos weights stop a timid man hunting beyond ~2 m in a holding line; under a CHARGE order (no slot) GoToPos does not walk him INTO the enemy (§S1-3; PLAYTEST D18, `CourageTightenWeights` as the A/B) | 49 |
+| 36 | `OnAgentHit` fires for landed blows only (a blocked one does not shock) and every landed hit reaches it (§S; PLAYTEST D18: `caused by SHOCK` against the fight's size) | 49 |

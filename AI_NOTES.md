@@ -4341,3 +4341,152 @@ reads, one or two GetSkillValue).
    kicks + bashes + clean hits on foot) - another mod's damage model on top of ours would lower it.
 2. The weapon reads give sane numbers (the first-of-kind lines: kg, speed, skill) for swords, axes, maces, polearms, a thrust.
 3. The bands read as Anton wants: the 100-75 band ~0, the 25-0 band near the anchors.
+
+## Step 49 — courage and cohesion: men keep to their group, envelop only as a mass (DONE 2026-10-18; research and build in one step)
+
+**Anton (2026-10-17 night, asleep - "decide open questions, let me know in the morning"):** AI men are unrealistically brave. 1-2
+looters split off and circle his shield wall, one loops behind it alone; a man goes alone against 4-5 enemies and stays there exhausted,
+"waiting to recharge there while they smack him from all sides". Real men stick with their group - instinct, not professionalism. A
+group attacking a smaller holding line sits as a thick arc in front of it, a few now and then stepping in to hit; it may ENVELOP only
+with critical mass ("2-3 per defender holding the line") and as a MASS, never single men. Toughness matters (looters vs all-metal men
+need 4-5:1). Fever makes them brave while it burns; tiredness and morale make them cling. Short of courage a man retreats to the group he
+came from, maybe sprinting. **His three additions mid-step (via the manager):** (1) SHOCK - a man recently hit (staggered, knocked down,
+shield dropped) needs higher odds; an enemy with a heavy two-hander / polearm weighs more ("tired, hit men will not stay against 3-4
+shock troops with giant axes"); (2) FLOCKING - the regroup target is the nearest BIGGER group of his side ("pushed like a flock of
+sheep"), so a shocked group compresses and is pushed as a mass, never scatters; (3) PANIC uses all their energy - a shocked, outmatched
+man sprints below his order's reserve.
+
+**Verified in the v1.4.8 source (`%TEMP%\trax_decomp\`; RESEARCH §S, file + line there)**
+- **Behaviour weights**: `HumanAIComponent.OverrideBehaviorParams(kind, y1, x2, y2, x3, y3)` is PUBLIC (HumanAIComponent.cs 144): it
+  writes the managed curve and marks `_lastBehaviorValueSet = Overriden`; `OnTickParallel` → `SyncBehaviorParamsIfNecessary` pushes the
+  array to native (165-171, 203-208). The curve: y1 at 0 m, a line to y2 at x2, to y3 at x3, y3 beyond (`BehaviorValues.GetValueAt`,
+  13-37); x = the distance (to the target / position). Vanilla's sets (SetBehaviorValueSet 718-790): DefaultMove Melee 8 / 7 m 5 / 20 m
+  0.01, GoToPos 3 / 7 m 5 / 20 m 6 - melee beats "my position" out to ~7 m, which is why a man in a holding line hunts an enemy 5-6 m
+  off. `RefreshBehaviorValues(order, arrangement)` (792-815) picks Charge / DefaultMove / DefensiveArrangementMove (shield wall, square,
+  circle) / Follow / DefaultDetached and is called on EVERY order and arrangement change (MovementOrder.cs 704, 773, 777, 985-1013 - the
+  siege charge path several times; ArrangementOrder.cs 150; Formation.cs 2229 detach). Because our override sets `_lastBehaviorValueSet =
+  Overriden`, the next refresh ALWAYS re-applies vanilla's set - so (a) the game wipes ours at every order, (b) giving vanilla's back is
+  simply `Agent.RefreshBehaviorValues(his order, his arrangement)` (AgentComponentExtensions.cs 50). Public extension `SetAIBehaviorValues`
+  (55) is the same call.
+- **AiMoveEnemySideTimeValue** (AgentStatCalculateModel.cs 215: `-2.5 + 0.5 × AI level`, so −2.5 … −2.0): assigned with `=` in
+  `SetAiRelatedProperties`, a DrivenProperty (29) read ONLY by the native AI - nothing managed reads it, no comment, no other writer; RBM
+  never touches it (its AgentStats.cs only has `AiMinimumDistanceToContinueFactor = 5f` COMMENTED OUT). Its meaning ("walk to the
+  enemy's side" timing?) cannot be established from the decompile. **Not used** - a blind lever on every recompute is not worth it when the
+  walk-back and the weights are verified managed levers. Noted as a candidate if Anton still sees side-walking (a test battle with it at
+  e.g. −10 vs vanilla would tell).
+- **The formation's centre**: `Formation.CachedAveragePosition` = the mean position of its NON-detached men, the player excluded
+  (Formation.cs 1449-1461 `CacheAverageAndMedianPositionAndVelocity`, the property 253) - the centre of MASS Anton asked for (the median
+  `CachedMedianPosition` is an agent's WorldPosition - not the mass). It follows the men, so men pushing round a flank move it.
+- **Morale**: `Agent.GetMorale()` = `CommonAIComponent.Morale` (AgentComponentExtensions.cs 7; −1 without the component), clamped 0-100
+  (CommonAIComponent.cs 39-47); a man starts at 35 + rand(30) + components, × the morale model, clamped 15-100 (66-75); panic below 0.01.
+- **Proximity**: `Mission.GetNearbyAgents(center, radius, MBList)` CLEARS the list then fills it under a global lock in batches of 40
+  (Mission.cs 6593-6597, 2314-2335) - a reused list = no allocation; `GetNearbyAllyAgents` (6579) for the flock.
+- **Toughness inputs** (managed, read once per man): `SpawnEquipment.GetHeadArmorSum / GetHumanBodyArmorSum / GetLegArmorSum /
+  GetArmArmorSum` (Equipment.cs 271-326), `Character.Level` (BasicCharacterObject.cs 122; the tier = ceil((level − 5) / 5), 278); the kit's
+  weapons `WeaponComponentData.IsTwoHanded` / `IsPolearm` (123 / 95) and `IsShield`. Health = `Agent.Health ÷ HealthLimit` (managed).
+- **Shock**: `OnAgentHit` (a blow that LANDED) - our record of the last four hit times; the impact model's outcomes on `TrackedAgent.Impact`
+  (`ImpactState.Recent`) count only while an impact family APPLIES (none until steps 50-52 build them - shadow outcomes did not happen).
+- RBM's frontline (public source, read for the idea only - none of its code is here): per man a "mindset" scored every decision -
+  allies in front / left / right (1.35 m probes), enemies in front (2 m), BackStep / FindAlly / FlankAlly; its decisions move a man's
+  formation position, not his courage. Our model is a different, coarser one: one circle, toughness sums, one threshold.
+
+**The model (Core `CourageMath`, `CourageMind`)**
+- **Toughness** = (1 + a × armour / 100) × (1 + l × min(level, 60) / 30) × (1 − h × the health share lost); a = `CourageArmourWeightPercent`
+  200, l = `CourageLevelWeightPercent` 100, h = `CourageHealthWeightPercent` 50. Why both armour AND level: armour is what a blow meets, the
+  level is the troop tree (skill, experience) - either alone mis-ranks a naked veteran or an armoured recruit; health because a bleeding man
+  is worth less. Looter (armour ~8, level 5) = 1.35; imperial legionary (armour ~110, level 26) = 5.97 → **4.4 looters per legionary**.
+  An ENEMY carrying a two-hander or polearm and NO shield (read once from his kit - carried, not wielded: the wielded slot is a native read
+  per neighbour per look, and shock troops fight with what they carry) × `CourageHeavyWeaponPercent` 150: a great axe breaks a guard and
+  outreaches a sword. Allies' heavy weapons do not comfort (a timid man fears; he does not count his friends' axes).
+- **Local odds** = Σ his side's toughness (him included) ÷ Σ the enemy's, men within `CourageRadiusMetres` 6, each weighted 1 to half the
+  radius then a line to 0 at its edge (so a man walking across the edge flips nobody at once). No enemy = ∞.
+- **Required odds** = `CourageBaseOddsPercent` 100% × (1 + `CourageTiredWeightPercent` 100% × the bar spent - Athletics on only) × (1 +
+  `CourageMoraleWeightPercent` 100% × max(0, 50 − morale) / 50) × (1 + `CourageShockWeightPercent` 100% × min(shock events, 3) / 3) × (1 −
+  (1 − `CourageFeverPercent` 40%) × the fever's share - 1 armed, left ÷ full burning) × (`CourageHeroPercent` 75% for a hero).
+  Shock events = landed hits within `CourageShockSeconds` 6 (+ live impact outcomes).
+- **Timid** below it. **Brave again** at ≥ required × (1 + `CourageHysteresisPercent` 25%) after `CourageMinTimidSeconds` 2 - AND only
+  once a walk back is over (decided while building: in the first draft a lone looter who backed 2 m out of the circle was brave again at
+  the next look and walked straight back in - Anton's "retreats to the formation he came from" means the walk finishes first).
+- **Walk or hold**: far (> `CourageRegroupRadiusMetres` 5 from his target) AND short of mates (< `CourageRegroupMates` 4 within the circle)
+  → he WALKS back; else he HOLDS. Shocked: twice the mates and half the radius - shaken men pack in tight (the "flock"). A holding man left
+  alone walks again only beyond radius + 2 m (no wobble at the edge). The walk ends: arrived (within the radius), among his mates, the
+  ground ahead ends (step 16's edge check every 0.25 s), or after 15 s (he holds where he is).
+- **The target (FLOCKING)**: the centroid of his side's men within `CourageFlockRadiusMetres` 20 when at least `CourageFlockMinMen` 6 are
+  there - the nearest bigger group, whichever formation; else his formation's `CachedAveragePosition`. Cheap: one more proximity query,
+  only for WALKING men, at their looks. Re-picked at every look while walking (the group moves).
+- **How he walks**: step 16's backpedal machinery - a fourth input wish `Regroup` in `AiInputState` (the component replaces his movement
+  input with our vector in his own frame, his move bits out; attacks and guard stay HIS - he still parries and strikes what reaches him).
+  He keeps facing whatever his AI faces (his target: the enemy) - straight back = a backpedal. Direction = toward the target + 0.5 × away
+  from the enemies' toughness-weighted centre; when the target lies BEHIND the enemies (the man who looped behind the wall: the way to the
+  centre and "away" > ~135° apart) he goes ROUND them (the perpendicular on the target's side + the away half) - never through. A step
+  back's backpedal wins while it runs (it is short and also faces the enemy). Steered every tick (his body frame read each tick, like the
+  step back).
+- **The sprint back** (`CourageSprintBack`): once per walk when the target is farther than `CourageSprintMetres` 12 or
+  `CourageSprintEnemies` 3+ enemies are within the circle - step 33's AI sprint (`SprintStore.TryStartRegroup`), what he holds above
+  `CourageSprintKeepPercent` 50% of his full store (its own reserve in place of his order's - "a bit of his sprint"; filed as a move-order
+  sprint). It does NOT end at 3 m from an enemy (he is getting away); it ends with the walk (`SprintEnd.Regrouped`).
+- **PANIC** (Anton's (3)): shocked AND odds < `CouragePanicOddsPercent` 50% of the required → he sprints AT ONCE whatever the distance,
+  keeping only `CouragePanicSprintKeepPercent` 0% - below his order's reserve ("panic uses all their energy"). A panic that starts mid-walk
+  asks for its sprint then. Logged (first panic in full, the summary's panic walks / sprints).
+- **The weights** (`CourageTightenWeights`): while timid (walking or holding) Melee 10 at 0 m → 6.5 at his reach (`CourageTimidMeleeMetres`
+  2) → 0.01 1.5 m further; GoToPos 5 → 6 (7 m) → 6. Beyond his reach his own place wins - he stops hunting; within it he fights.
+  Re-applied at EVERY look (0.5 s) - the game resets them on each order (above), so the per-look write IS the "re-apply after an order"
+  (the order poll runs only while the AI sprint / fever is on; the look always runs). Brave again / switched off / excluded: the game's set
+  back (`RefreshBehaviorValues`). Only timid men - calm men keep the game's (a mod-wide change of every man's weights is a bigger lever
+  than this step's ask).
+
+**Who** (Claude's calls - Anton can overturn any): AI men on foot IN A FORMATION; never the player or a man he took over, riders (cavalry
+roams by design), men held in a shield wall / square / circle by step 41 (the wall decides; held men cannot walk anyway), busy men
+(detached, an object, a ladder queue, running away), a siege's ATTACKERS (a man on the wall top would walk back down the ladder; their
+lines are ladders, not groups), no formation (tournaments, arenas, duels - no group to return to). Missions: battle mode, not naval, not
+tournament / arena (the step back's rule). Bracing men YES (a timid bracer backs off - the brace keeps his guard up). Feverish men by the
+fever term, not a blanket exemption (a fever of looters still will not charge an equal number of knights: odds 0.27 < 0.4). Courage works
+WITHOUT the Athletics system (the tiredness term then 0 and no sprint - the sprint is Athletics); the input component's Athletics gate now
+lets a Regroup wish through.
+
+**Worked examples (CourageTests; flat counts within half the radius; looter 1.35, legionary 5.97)**
+1. **40 looters vs a 20-man metal shield wall (2 ranks of 10)**: a FRONT looter has ~13 mates and 11 legionaries within reach: odds 18.9 /
+   65.7 = **0.29** - timid even in a full fever (0.4); among 13 mates he HOLDS - the thick arc, striking only within 2 m (and the wall's
+   step-out leash meets him). A FLANK looter at the wall's end, 3 mates vs 6: **0.15** - timid, 3 < 4 mates, 12 m from the mass → walks back
+   to it. Almost nobody flanks; the 1-2 who split off come back.
+2. **200 looters vs the same wall**: front: 25 vs 11 = **0.52** - timid, holds, but PRESSES while the charge's fever burns (≥ 0.4); flank:
+   30 vs 6 = **1.13** ≥ 1 - brave, they wrap the ends as a crowd; 5 who split off alone: timid, back to the mass. The mass's centre moves
+   round with them - envelopment emerges.
+3. **Equal troops**: a line vs a line 11 vs 11 = 1.0 - brave, they fight; 40 vs a 20-man wall: 10 per wall end vs 6 = 1.67 - they wrap; 30
+   vs 20: 5 per end = 0.83 - they do not. The critical mass is ~2:1 overall - Anton's "2-3 per defender".
+4. **Anton's shock unit**: 4 fresh two-hander legionaries hit the flank of a tired line (bar 30%), a flank man with 3 mates who took 2 hits in
+   the last 6 s: odds 23.9 / 35.8 = **0.67**; required 1.7 (tired) × 1.67 (shock) = **2.83**; 0.67 < 50% × 2.83 → **PANIC**: he sprints back
+   keeping 0% to the nearest bigger group (3 mates < 8 when shocked); his mates likewise - the flank packs in and is pushed as a mass. A
+   fresh, unhit man of the same line: required 1.0, timid but no panic; with 4 mates he holds.
+
+**Plumbing constants (Core `CourageMath`, documented, not settings)**: `PollSeconds` 0.5, `FullWeightShare` 0.5, the units 100 armour / 30
+levels / `LevelCap` 60, `MoraleNeutral` 50, `ShockCap` 3, `ShockMatesFactor` 2, `ShockRadiusShare` 0.5, `MoveAgainExtraMetres` 2,
+`MaxMovingSeconds` 15, `AwayWeight` 0.5, `RoundCosine` −0.7, the timid curves, the log's `IsolatedMates` 2 / `WobbleSeconds` 2 /
+`OutOfFormationRadii` 2, `CourageScan.Capacity` 128 neighbours; the walk's full stick and edge check are step 16's.
+
+**Built** (file map in CLAUDE.md "Layout"): Core `Courage.cs` (CouragePhase / Skip / End / RegroupEnd / Step / SprintRefusal, ShockTimes,
+CourageRequired, CourageRules, CourageMath, CourageMind), `CourageStats.cs` (+ 10 [summary] "courage" lines); `SprintStore.TryStartRegroup`
+/ `Regroup`, `SprintEnd.Regrouped`. Settings 211 → 238: a new group "Courage and cohesion (AI)" after "Aggression and fever (AI)" (27, all
+Live). Module `CourageBody.cs` (CourageScan, ICourageBody, GameCourageBody, CourageBodyDefault), `AthleticsLogic.Courage.cs`;
+`AiInputState.Regroup` + `AiInputHook.SetRegroup / ApplyRegroup`; `TrackedAgent.Courage / CourageBase / CourageHeavy / CourageSeen /
+Hits`; the engine hooks (StartCourage, TickCourage after the fever, CourageLeftField, NoteCourageSettings, OnAgentHit → the shock window,
+CloseCourage + WriteCourageSummary). Tests 740 → 764 (`CourageTests` 24). Smoke 106 → 109 steps (`Program.Courage.cs`: the stand-in world,
+the logic end to end, the cost - 1000 men 0.13 ms a tick with the stand-in's O(n) scan, 0 bytes; the master-switch step).
+
+**Measured ([courage] tag)**: mission start (the sentence with the looter / legionary numbers), settings changes, the first walk back in
+full (his side vs the enemy, every required term, the target, the sprint), its end, the first panic, switched off. [summary]: isolated
+man-seconds per AI man-minute ON vs OFF; distance from the formation's centre mean / p90 ON vs OFF; timid spells (walking / holding / walked
+again; by SHOCK vs by the odds alone; wobbles; ends; men not looked at by reason); walks back by end, time to regroup, sprints (asked /
+started / refused); flocking (to a bigger group vs the formation's centre), panic walks and sprints, COMPRESSION (a walk's distance from the
+formation's centre start → end, shocked vs odds alone); timid share by local odds band in contact and for men OUT of their formation;
+toughness min / mean / max, weights set / re-applied / given back; cost.
+
+**UNVERIFIED — only the game can tell (PLAYTEST D18)**
+1. The engine honours a regroup vector for many seconds (step 16's backpedal was ~1.5 s) - `courage regroup` arrived / among mates vs
+   "gave up after 15 s", and Anton's eyes: lone men walk back to their group facing the enemy.
+2. The tightened weights stop the hunting: timid men hold an arc instead of walking into the wall (Anton's eyes; `by local odds` in contact
+   shows who is timid). What GoToPos means for a man under a CHARGE order (no formation slot) is native - if timid chargers stand still
+   where they are, that is the expected look; if they drift INTO the enemy, tell Claude (`CourageTightenWeights` off as the A/B).
+3. `OnAgentHit` fires for landed hits only (a blocked blow does not shock) - the summary's "by SHOCK" count against the fight's size.
+4. The isolated rate ON well below OFF; the p90 distance ON below OFF; wobbles a small share of timid spells.
+5. Cost in a 400-1000 man battle (`courage cost` - the stand-in scan is O(n); the game's proximity map is cheaper per man but native).

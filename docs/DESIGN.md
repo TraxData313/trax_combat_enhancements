@@ -536,6 +536,26 @@ regen.)
     he DECIDES to start one); step 41/42's wall hold (a wall under a charge is not held anyway).
   - **Off**: the master switch or `AthleticsEnabled` = the game's own values at the next recompute (the decorator's gate),
     every fever ended; `FeverEnabled` off = the bar's share only, every fever ended at once.
+- **Courage and cohesion** (step 49, Anton 2026-10-17 night - AI_NOTES "Step 49", decision 41): every AI man on foot in a formation is
+  looked at every ~0.5 s (staggered): the tracked men within `CourageRadiusMetres` (6 m; full weight to half of it, a line to 0 at its edge),
+  each by his TOUGHNESS = (1 + `CourageArmourWeightPercent` 200% × armour / 100) × (1 + `CourageLevelWeightPercent` 100% × min(level, 60) / 30)
+  × (1 − `CourageHealthWeightPercent` 50% × the health he lost) - armour = the kit's head + body + legs + arms, read once; an ENEMY carrying a
+  two-hander or polearm and no shield × `CourageHeavyWeaponPercent` (150%). Local odds = his side's sum (him included) ÷ the enemy's. He needs
+  `CourageBaseOddsPercent` (100%) × (1 + `CourageTiredWeightPercent` × the bar spent - Athletics on only) × (1 + `CourageMoraleWeightPercent`
+  × max(0, 50 − morale) / 50) × (1 + `CourageShockWeightPercent` × min(landed hits within `CourageShockSeconds`, 3) / 3 - + live impact
+  outcomes once a family applies) × (1 − (1 − `CourageFeverPercent` 40%) × the fever's share) × (`CourageHeroPercent` 75% for a hero). Below
+  it he is TIMID: far from his target (> `CourageRegroupRadiusMetres` 5) AND short of mates (< `CourageRegroupMates` 4 - twice / half the
+  radius when shocked) he WALKS BACK through his own input (step 16's backpedal, a `Regroup` wish - facing his AI's target, his guard and
+  attacks his own) to the nearest BIGGER group of his side (≥ `CourageFlockMinMen` within `CourageFlockRadiusMetres`), else his formation's
+  centre of mass (`CachedAveragePosition`); leaning away from the enemy, round them when they stand between; he sprints when the target is
+  beyond `CourageSprintMetres` or `CourageSprintEnemies` enemies are near (step 33's AI sprint above `CourageSprintKeepPercent`); in a PANIC
+  (shocked, odds below `CouragePanicOddsPercent` of the required) at once, keeping `CouragePanicSprintKeepPercent` (0). Among his mates he
+  HOLDS. While timid (`CourageTightenWeights`) his Melee weight wins only within `CourageTimidMeleeMetres` (2 m), re-applied every look (the
+  game resets them on orders), the game's back when brave. Brave again at ≥ required × (1 + `CourageHysteresisPercent`) after
+  `CourageMinTimidSeconds`, and only once a walk is over. Never the player, riders, men held in a shield wall (step 41), busy / detached /
+  routing men, a siege's attackers, no formation; no tournaments, arenas, naval. Works without the Athletics system (no tiredness, no
+  sprint). Master switch FIRST, then `CourageEnabled`: off = everyone let go at once (the game's weights back); the looks still MEASURE, so
+  the summary's "courage" lines compare isolated men and their distance from the formation's centre ON vs OFF.
 - **Impact - staggers, dropped shields, knockdowns** (IMPACT I1-I7 = steps 47-53, the whole design in `docs/IMPACT.md`; step 48 =
   I2, THE MODEL, decision 40): every kick / bash that lands, every block (right side, parry, wrong side) and every clean weapon hit on
   a man we track is decided ONCE by Core `ImpactMath.Decide`: the pressure x on the man who takes it = his tiredness T = 1 − f +
@@ -1587,6 +1607,20 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     shadow while it runs (it owns the levers); (i) IMPACT §4's worked examples are unit tests (the step-45 script's inputs: a sword 1.2 kg
     at speed 92, the king's at 95, an axe 3 kg at 80, a stick 0.6 kg at 95, a mace 1.8 kg at 85); the doc's 75 % row read 0 where the
     model gives 0.6 % (a wrong-side block) - corrected to 1 in IMPACT §4.
+
+41. **Courage and cohesion** (step 49, Claude's calls on Anton's ask of 2026-10-17 night + his three additions - AI_NOTES "Step 49"; Anton
+    can overturn any): (a) toughness = armour AND level AND health, the weights tuned so a looter (8, level 5) is 1.35 and a legionary (110,
+    level 26) 5.97 = 4.4 looters (his "4-5:1"); (b) a two-hander / polearm without a shield read from the KIT once (not the wielded slot - a
+    native read per neighbour per look), and it weighs only as an enemy; (c) the base odds 1.0 (even) - at 1.0 equal lines fight and the
+    envelopment's critical mass comes out at ~2:1 overall (worked example 3), so no separate "flank" threshold; (d) timid men HOLD among
+    their mates and WALK only when far and alone - a line's end man never walks into his own line; (e) the walk finishes before courage comes
+    back (a lone man out of reach is not yet back with his group); (f) the regroup sprint has its OWN reserve (50%) instead of his order's,
+    a panic 0%; it does not end at 3 m from an enemy; (g) the weights only for TIMID men, re-applied at every look (that IS the re-apply after
+    each order); `AiMoveEnemySideTimeValue` not used (native-only, meaning unknown); (h) bracing men may be timid (they back off with their
+    guard up); fever lowers the odds needed, it does not exempt; (i) riders, a siege's attackers, no-formation men and walled men are not
+    looked at; (j) courage works without Athletics; (k) shock = landed hits (OnAgentHit) now, impact outcomes once an impact family applies;
+    a shocked man needs twice the mates and half the radius (the flock packs in); (l) the flock target = his side's centroid within 20 m
+    when 6+ men are there - one extra query, only for walking men.
 
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),

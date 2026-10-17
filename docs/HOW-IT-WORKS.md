@@ -21,6 +21,7 @@ Want the formulas and every parameter? [DESIGN.md](DESIGN.md) is the full contra
 9. [Stepping back out of the press](#9-stepping-back-out-of-the-press)
 10. [Battle pace](#10-battle-pace)
 11. [Eagerness, and the fever of a charge](#11-eagerness-and-the-fever-of-a-charge)
+11b. [Courage: men keep to their group](#11b-courage-men-keep-to-their-group)
 12. [Damage](#12-damage)
 13. [Heroes, and the hideout boss](#13-heroes-and-the-hideout-boss)
 14. [The sprint](#14-the-sprint)
@@ -391,6 +392,77 @@ and turning **yellow** as the fever burns after the clash, gone when it is spent
 `FeverEnabled` on, `FeverPointsPerSecond` 10, `FeverAggressionPercent` 80, `FeverContactMetres` 5,
 `FeverShieldDurationMultiplier` 0.7, `FeverSprintToClose` on, `FeverSprintMinMetres` 3, `FeverSprintMaxMetres` 12,
 `FeverSprintCheckSeconds` 1, `FeverSprintChancePercent` 50.</sub>
+
+## 11b. Courage: men keep to their group
+
+Real men stick with their group — not out of drill, out of instinct. In the base game a lone AI soldier
+circles your shield wall, or stands among four enemies until he drops. With this mod every AI soldier on
+foot keeps asking himself: **how strong are we here, against them?** He looks 6 m around him and weighs
+every man — his side (himself too) against the enemy — by how **tough** each one is:
+
+| Man | Armour | Level | Toughness |
+|---|---|---|---|
+| A looter in rags | ~8 | 5 | 1.35 |
+| A recruit | ~20 | 6 | 1.68 |
+| A tier-3 infantryman | ~50 | 16 | 3.07 |
+| An imperial legionary | ~110 | 26 | 5.97 |
+| A lord in full plate | ~150 | 30 | 8.0 |
+
+So it takes about **four or five looters to face one armoured veteran**. A wounded man counts less (half
+his health lost = 75%), and an enemy with a **great axe or a polearm and no shield counts half again** —
+shock troops break men.
+
+He needs his side to be at least **as strong** as the enemy around him. Less, and he is **timid**. What
+he needs moves:
+
+| He is… | Odds he needs |
+|---|---|
+| fresh and steady | 1.0 (even) |
+| half his Athletics bar spent | 1.5 |
+| empty | 2.0 |
+| morale 25 (his side is falling) | 1.5 |
+| hit once in the last 6 s | 1.33 |
+| hit three times | 2.0 |
+| in a full fever (section 11) | 0.4 |
+| a hero | 0.75 |
+
+They multiply: a tired (half bar) man who was just hit needs 1.5 × 1.33 = 2.
+
+**A timid man** does one of two things:
+
+- **Far from his mates** (fewer than 4 within 6 m, more than 5 m from his group) he **walks back** to the
+  nearest bigger group of his side (6+ men within 20 m), else to his formation's centre — **facing the
+  enemy**, backing away, going round them if they stand between. He sprints back when his group is more
+  than 12 m off or 3+ enemies are on him, spending what he holds above half his sprint store.
+- **Among his mates** he **holds**: he fights an enemy within 2 m (a sword's reach), and otherwise keeps his
+  place instead of hunting.
+
+He is brave again once he is back and the odds are 25% better than he needs (after at least 2 s).
+
+**Shock and panic.** A man who was hit wants more mates around him (twice as many) and packs in tighter —
+shaken men flock together and are pushed as a mass, they do not scatter. A shocked man whose odds are
+below **half** of what he needs **panics**: he sprints back at once and spends **all** his sprint.
+
+**What you will see** (the numbers in DESIGN's worked examples):
+
+| The fight | What happens |
+|---|---|
+| 40 looters attack your 20-man metal shield wall | A thick arc in front of the wall, striking only what is in reach; looters who split off round a flank (3 of them against 6 of yours: odds 0.15) walk back to the mass. Nobody circles you alone. |
+| 200 looters attack the same wall | The front still holds back (odds 0.5), but presses while the charge's fever burns; at the wall's ends 30 looters against 6 of yours (odds 1.1) stay brave and **wrap round it as a crowd**. |
+| Two equal armies | Line against line at even odds: they fight. To envelop a line they need about **2 men per defender** — 40 against a 20-man wall wraps it, 30 do not. |
+| 4 fresh men with great axes hit the flank of your tired line | Your flank man (bar 30%, hit twice: needs 2.8) faces odds 0.67 — he **panics** and sprints to the nearest bigger group; his mates too: the flank folds back into the mass. Rest your men, or keep fresh troops behind them. |
+
+Never you, never riders, never men holding a shield wall (section 10 holds them), not a siege's
+attackers, not tournaments or duels. It works even with the Athletics system off (then tiredness does not
+count).
+
+<sub>Settings ("Courage and cohesion (AI)"): `CourageEnabled` on, `CourageRadiusMetres` 6, `CourageBaseOddsPercent` 100,
+`CourageArmourWeightPercent` 200, `CourageLevelWeightPercent` 100, `CourageHealthWeightPercent` 50, `CourageHeavyWeaponPercent` 150,
+`CourageTiredWeightPercent` 100, `CourageMoraleWeightPercent` 100, `CourageShockSeconds` 6, `CourageShockWeightPercent` 100,
+`CourageFeverPercent` 40, `CourageHeroPercent` 75, `CourageHysteresisPercent` 25, `CourageMinTimidSeconds` 2,
+`CourageRegroupRadiusMetres` 5, `CourageRegroupMates` 4, `CourageFlockRadiusMetres` 20, `CourageFlockMinMen` 6, `CourageSprintBack` on,
+`CourageSprintMetres` 12, `CourageSprintEnemies` 3, `CourageSprintKeepPercent` 50, `CouragePanicOddsPercent` 50,
+`CouragePanicSprintKeepPercent` 0, `CourageTightenWeights` on, `CourageTimidMeleeMetres` 2.</sub>
 
 ## 12. Damage
 
