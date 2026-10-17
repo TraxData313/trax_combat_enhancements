@@ -18,7 +18,14 @@ decorator's seam like a kick's, its get-up slowed; its stagger = the engine's ow
 learned in battle), the measured end = the reeling time; tired men never shrug a blow off - the game's threshold × f in the decorator's
 `DecideAgentShrugOffBlow`; the reeling bonus real on every family; MOMENTUM - Anton's step-52 wish, §8's "the attacker's run" answered yes:
 the attacker's own speed into the blow × up to +60% impact at a sprint, every family, never a rider's; AI_NOTES "Step 52", DESIGN decision 44,
-PLAYTEST D21). Every family is live now; riders and the on-screen lines are step 53.**
+PLAYTEST D21); step 53 = I6, **RIDERS + THE ON-SCREEN LINES + THE GUIDE** (2026-10-18: a rider's knockdown = KNOCKED OFF his horse at 50%
+of the chance - a landed blow answered in the damage decorator's `DecideAgentDismountedByBlow` (main thread; the engine asks it instead of
+the KnockDown question for a rider), a blocking rider by our own blow flagged `CanDismount` from the tick, each followed until seen off the
+horse; never a stagger on a rider, his shield can drop, his block stun like anyone's, horses untouched; the RIDER's MOMENTUM = his horse's
+speed, +30% at a gallop (10 m/s), never a couched lance; §8 q12's on-screen lines - red to you, purple by you, white for your side's heroes
+behind a switch, at most one per 1.5 s, merged, never in shadow; docs/HOW-IT-WORKS.md §11c rewritten as one player-facing section; PLAYTEST's
+IMPACT MORNING SCRIPT + D22; AI_NOTES "Step 53", DESIGN decision 45). **I1-I6 are built; I7 (the AI using the window) is step 54.**
+Every number in this plan is a model - the playtest decides.**
 (Written as a plan in step 45:) The game-side facts behind every line are in
 `docs/RESEARCH.md` §R (file + line in the v1.4.8 decompile); the short version is in `AI_NOTES.md` "Step 45". The build order
 (§7) goes into `TASKS_TODO.md` only after Anton says yes.
@@ -196,7 +203,8 @@ the system is on; every blow we do not lengthen keeps vanilla's 0.8 — we clamp
 - **Tournaments, arenas, duels**: the same rules — that is where Anton wants the exhausted turtle broken.
 - **Riders** (proposal, §8 question 4): never a forced stagger (the horse's legs share channel 0 — RBM crashed a horse with it);
   a "knockdown" becomes **knocked off the horse** at `ImpactRiderDismountPercent` 50% of the knockdown chance; stun multipliers
-  apply. **Horses**: untouched (vanilla rears).
+  apply. **Horses**: untouched (vanilla rears). (Step 53 built it so: the dismount in `DecideAgentDismountedByBlow`, a blocking rider by
+  our own `CanDismount` blow; his shield can drop; the rider's own blows carry his horse's speed at +30% - DESIGN decision 45.)
 - **Not**: missiles, a man using a siege engine or ladder, a man in water, friendly fire, the dead.
 
 ### 3.9 Anti-abuse — nobody is stun-locked to death
@@ -335,6 +343,8 @@ skill 20; the peasant parries with a 0.6 kg stick)
 | | `ImpactTiredNeverShrugsOff` | true | the flinch threshold × f |
 | Momentum (step 52) | `ImpactMomentumEnabled` / `ImpactMomentumPercent` | true / 60 | the attacker's speed into the blow adds up to +60% impact |
 | | `ImpactMomentumWalkMetresPerSecond` / `ImpactMomentumSprintMetresPerSecond` | 2.0 / 7.0 | nothing up to a walk, all of it from a sprint |
+| Riders + lines (step 53) | `ImpactMomentumRiderPercent` / `…RiderWalkMetresPerSecond` / `…RiderGallopMetresPerSecond` | 30 / 3.0 / 10.0 | a rider's blow carries his horse's speed (never a couched lance) |
+| | `ImpactShowMessages` / `ImpactMessagesIncludeYourMen` / `ImpactMessageMinSeconds` | true / false / 1.5 | §8 q12's on-screen lines |
 | Plumbing (constants, documented) | `ImpactMaxActionsPerTick` 20, the watch list's size, the skill's 300 | | |
 
 ---
@@ -367,7 +377,7 @@ soldier under ALT).
 | **I3 Kicks and bashes LIVE** (points 1, 3, 4, 11) - step 50, BUILT 2026-10-18 | knockdown, dropped shield, the longer reel, the slower get-up, immunity + diminishing returns | `[impact] YOU: your kick on … : knocked down (62%)`, the summary's applied vs asked, reel / get-up measured |
 | **I4 Blocks LIVE** (points 2, 5, 6, 7) - step 51, BUILT 2026-10-18 | the stun by tiredness, the rolled stagger, wrong-side shield drops, a block knocked down (the technique I1 proved), the riposte | stagger lengths measured, blocks made from inside a stagger ~0, ripostes by the attacker's bar |
 | **I5 Clean hits + the reeling state** (points 8, 9) - step 52, BUILT 2026-10-18 (+ MOMENTUM, Anton's step-52 addition) | tired men never shrug off, the flinch lengthened, knockdowns on landed blows, the reeling bonus; the attacker's speed into the blow adds impact (every family) | knockdowns by weapon class and bar band; blows by the attacker's speed band and their outcome rates |
-| **I6 Riders, feedback, guide** - step 53 | knocked off a horse (after Anton's answer), the player's message lines, `docs/HOW-IT-WORKS.md` tables, PLAYTEST | dismounts; the guide's tables recomputed |
+| **I6 Riders, feedback, guide** - step 53, BUILT 2026-10-18 (+ the rider's momentum) | knocked off a horse (the dismount seam; our CanDismount blow for a block), the player's message lines, `docs/HOW-IT-WORKS.md` §11c rewritten, PLAYTEST's morning script + D22 | dismounts decided → applied → seen; the momentum line's RIDERS columns; lines shown / merged |
 | (I7, optional) - step 54 | the AI punishing a window: a short burst of attack decisions (step 43's lever) when his target is staggered or down | attacks per man-minute on staggered targets |
 
 **Harmony**: none needed (RESEARCH §R9). What it would buy: setting flags and stun periods on the game's own blow in a
@@ -405,7 +415,8 @@ blocker; (3) only then Harmony — a soft dependency in a satellite assembly beh
 11. **Kick spam**: kicks become strong against tired men. They cost 3 Athletics and a stored swing already. **Recommend: watch
     the summary; raise `CostPerKickOrBash` only if the AI or you spam.**
 12. **Feedback on screen**: a short message when YOU are disarmed / knocked down / break someone? **Recommend yes, one line,
-    rate-limited.**
+    rate-limited.** (Built in step 53: `ImpactShowMessages` - red to you, purple by you, merged within 1.5 s; your side's heroes behind
+    `ImpactMessagesIncludeYourMen`.)
 13. **Weapon disarm** (a parry knocking the WEAPON out of a tired hand) — you did not ask. **Recommend not now** (a later step
     if you want it; the same lever as the shield).
 14. **The AI using the window** (I7): should the AI attack harder when its target is staggered or down? **Recommend yes, after

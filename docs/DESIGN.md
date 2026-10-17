@@ -656,6 +656,26 @@ regen.)
   and the men below half a bar: THE proof of the shock charge), the clean hits per weapon class (cut / pierce / blunt / two-handed) × the
   hit man's bar band (knocked down / staggered decided → applied → seen), knockdowns on REELING men vs the rest (and on blows the game had
   shrugged off), the staggers asked vs measured vs untouched flinches, the shrug-offs refused by band, the limits.
+- **Impact I6: riders, the rider's momentum, the on-screen lines** (step 53, AI_NOTES "Step 53", decision 45; `Missions/AthleticsLogic.ImpactRiders.cs`,
+  Core `ImpactRiders.cs`; IMPACT §3.8, §8 q4 / q12): **a rider's knockdown = KNOCKED OFF his horse** at `ImpactRiderDismountPercent` (50) % of
+  the knockdown's chance (the model's `Dismount`), every family: a LANDED kick / bash / clean hit is answered in the damage decorator's
+  `DecideAgentDismountedByBlow` (main thread - Mission.CreateMeleeBlow asks it INSTEAD of the KnockDown question for a man on a horse; OR-ed
+  with vanilla's); a BLOCK (never registered by the engine) = a blow of our own flagged `CanDismount` (vanilla's own flag for it) from the
+  next tick, owned by the attacker, 1 damage; each dismount followed until he is off the horse (seen) or 2 s pass (not seen: his record's
+  ground time taken back). **Never a stagger or a slowed reaction on a rider** (the model refuses his stagger; no forced action on a mounted
+  man); his **shield** can be knocked away (kicks / bashes, wrong-side blocks - the step-50 queue); his **block stun** x (1 + T) like anyone's;
+  the riposte never staggers a mounted attacker; horses untouched (vanilla rears). **The rider's momentum**: his active blow (swing or
+  thrust) carries his HORSE's speed into the blow - vanilla's own rider velocity (`MovementVelocity.y` × the mount's movement direction),
+  along the line to the man he strikes - × (1 + `ImpactMomentumRiderPercent` (30) % × clamp((v − 3.0) ÷ (10.0 − 3.0), 0, 1)) (walk
+  `ImpactMomentumRiderWalkMetresPerSecond` 3.0, gallop `ImpactMomentumRiderGallopMetresPerSecond` 10.0); a **couched lance** (a passive
+  attack - `Agent.IsDoingPassiveAttack`) never (the game's own big hit). **The on-screen lines** (`ImpactShowMessages`, on): what was APPLIED to
+  you (knocked down, knocked off your horse, your shield knocked away, reeling from a riposte - red #D65252, the game's "received" colour) and
+  by you (a man knocked down / off his horse, his guard broken, his shield knocked away - purple #AE4AD9, the game's "delivered"); with
+  `ImpactMessagesIncludeYourMen` also your side's notable moments (a man of yours fells / unhorses an enemy HERO, a hero of yours goes down -
+  white); at most one line every `ImpactMessageMinSeconds` (1.5) s - what comes meanwhile merged into the next (3 parts, "(+N more)", the same
+  part once); never in shadow mode. The `[summary]` lines: **impact riders** (decisions on riders by family, dismounts decided by the rider's bar
+  → applied by way → seen / still mounted, why not), **impact riders' shields and limits**, **impact messages** (offered by role and kind →
+  shown, merged); the momentum line's RIDERS columns by the horse's band (standing / walking / trotting-cantering / galloping) + couched lances.
 - **Tired fighters step back** (built in step 5d - the literal rule; `StepBackEnabled`, on):
   when a MELEE swing ends, an AI fighter on foot may step back, facing its enemy with its guard
   up. Chance = `StepBackMaxChancePercent` (100) × (1 − f), f after the swing's cost: 0% in the
@@ -1209,7 +1229,7 @@ says (§2c).
 | `ImpactOnPlayerPercent` | 100 | Step 48: every chance against YOU × this % (IMPACT §8 q5). Range 0-100. |
 | `ImpactRiderDismountPercent` | 50 | Step 48: a rider's "knockdown" = knocked off at this % of the knockdown chance; never a stagger on a rider (IMPACT §3.8, §8 q4). Range 0-100. |
 | `ImpactTiredNeverShrugsOff` | true | Step 48: a tired man's flinch threshold × f - he shrugs off less (I5). Step 52: applied in the damage decorator's `DecideAgentShrugOffBlow` (main thread) to a clean hit on a man on foot while clean hits are live - the game's threshold × (1 − T), T × `ImpactOnPlayerPercent` for you. Live. |
-| `ImpactMomentumEnabled` | true | Step 52, MOMENTUM (Anton 2026-10-17: a fresh shock unit charging a tired line must be devastating): the attacker's own speed into the blow adds impact - kicks, bashes and weapon blows, blocked or not; never a rider's (step 53). Live. |
+| `ImpactMomentumEnabled` | true | Step 52, MOMENTUM (Anton 2026-10-17: a fresh shock unit charging a tired line must be devastating): the attacker's own speed into the blow adds impact - kicks, bashes and weapon blows, blocked or not; a rider's = his horse's speed at the rider settings (step 53, below). Live. |
 | `ImpactMomentumPercent` | 60 | Step 52: the impact added at a full sprint - I × (1 + this % × clamp((v − walk) ÷ (sprint − walk), 0, 1)), v = his velocity along the line to the man he strikes. Range 0-200. |
 | `ImpactMomentumWalkMetresPerSecond` | 2.0 | Step 52: up to this speed into the blow nothing is added (the game's walk limit measured 1.8 m/s). Range 0-10. |
 | `ImpactMomentumSprintMetresPerSecond` | 7.0 | Step 52: from this speed the whole bonus is added (a run measured ~4.4 m/s, a sprint x1.8-2 of a fresh run). Range 0.5-20. |
@@ -1774,6 +1794,30 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     only for clean hits that did something (you land hundreds); (j) a knockdown answered on a blow the game had already shrugged off is
     counted apart (`knockdowns answered on a blow the game had shrugged off`) - the shrug-off is decided before the KnockDown question, and
     whether the engine plays a fall on a ShrugOff-flagged blow is for D21 to show.
+45. **Riders, the rider's momentum, the on-screen lines** (step 53, IMPACT I6 - Anton asleep, "get all done by morning, decide open
+    questions"; Claude's calls - AI_NOTES "Step 53"): (a) a landed blow's dismount is answered in `DecideAgentDismountedByBlow` (checked in the
+    decompile: Mission.CreateMeleeBlow 5564, main thread; the engine never asks the KnockDown question for a rider, so this IS the seam); the
+    decision is made there ONCE and OnMeleeHit takes it (as the KnockDown seam's); (b) a blocking rider's dismount = our own blow with
+    `CanDismount` from the next tick (vanilla sets exactly that flag when its own dismount question says yes; RegisterBlow is the proven
+    lever 6) - a rider with no horse by then is refused with no engine call; whether the engine plays it is D22's question; (c) a rider's
+    SHIELD drops - yes, at the same chance as on foot, for kicks / bashes AND wrong-side blocks (a horse does not hold a shield for him; the
+    queued DropItem is vanilla's drop key, which works on horseback) - riders are rarely kicked, so it is mostly the wrong-side block; (d) a
+    rider's get-up after a dismount is the game's own (no slowed get-up: the fall from a saddle is a different action, unproven) - his record
+    keeps the model's ground time and the 5 s immunity; a dismount not seen within 2 s takes that back; (e) the block stun applies to riders
+    (IMPACT §3.8: "stun multipliers apply" - steps 51-52 had held it at the game's for riders): a stun is the engine's own guard freeze, not
+    an action of ours; (f) RIDER MOMENTUM - yes, for every ACTIVE blow of a rider (swing or thrust: a lance jab or a sword cut carries the horse
+    alike), at HALF a man's sprint bonus (+30 % at a full gallop): the horse's speed already adds vanilla DAMAGE to a rider's blow, and a
+    cavalry charge into a tired line must throw men down without felling the line (the smoke: a fresh rider's sword into a 40 % line hit once -
+    standing 3 % down, at a gallop 10 %; an exhausted line 45 % - never above the 50 % ceiling; a fresh line 0) - below a sprinting man on foot
+    (21 % in the guide's table); references for horses as settings (walk 3.0 m/s - a horse at a walk; gallop 10.0 m/s - the game's mount
+    speed 0.22 × (1 + the horse's speed stat): a 45-speed horse ~10 m/s); a COUCHED LANCE never (a passive attack: the game's own big hit -
+    vanilla's couched-lance damage is already the cavalry's one-shot); the horse's own charge (running a man over) is not an event of ours; (g)
+    the on-screen lines show only what was APPLIED (never in shadow mode - "(would)" lines would teach the player things that did not happen);
+    to you: knocked down / off / shield / riposte - NOT a broken guard on your own block (a tired player's every block would speak); by you:
+    down / off / guard broken / shield; your men's: only knocked down / off with a HERO on the receiving end (anything more floods a 500-man
+    battle); colours = the game's own combat lines (Mission.cs: delivered #AE4AD9, received #D65252), your men's white; (h) the rate limit is a
+    per-mission queue: the first line at once, then at most one per 1.5 s, everything meanwhile merged (3 parts + "(+N more)") - a burst of
+    events reads as one line, nothing is lost silently (the summary counts merged / overflow / discarded).
 
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),
