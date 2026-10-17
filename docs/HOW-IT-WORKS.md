@@ -676,6 +676,23 @@ predictable, an exhausted man's is not):
 - **A dropped shield** lies on the ground and can be picked up again the normal way — you with the use key,
   the AI only once no enemy is within 20 m (so not in the middle of a melee).
 
+### The enemy goes for the opening
+
+A man who **reels or lies on the ground** is an opening — for you, and for the AI. An AI soldier on foot whose enemy
+reels or is down (yours included: **if you stagger, the men on you press it**) decides to attack as eagerly as the
+game's own AI for as long as it lasts **+ 0.5 s**, whatever his tiredness had made of him (section 11); a **timid**
+man (section 11b) within **3 m** steps in for it, like a surge. How much more eager, in a charge (the game's attack
+decision 0.144):
+
+| He is | Normally decides to attack | Facing an opening |
+|---|---:|---:|
+| fresh (full bar) | 0.086 (60%) | 0.144 (100%) — ×1.7 |
+| in a charge's fever (peak) | 0.115 (80%) | 0.144 — ×1.25 |
+| half tired | 0.058 (40%) | 0.144 — ×2.5 |
+| exhausted | 0.029 (20%) | 0.144 — ×5 |
+
+He still decides himself — the opening makes him eager, not certain. Riders keep the game's own timing.
+
 ### You
 
 The same rules apply to you — every chance against you × `ImpactOnPlayerPercent` (100%). A short line in the
@@ -705,7 +722,8 @@ down. Every outcome you give or take is also in the log (`[impact] YOU: ...`).
 `ShieldPickupLockSeconds` 0; who `ImpactOnPlayerPercent` 100, `ImpactRiderDismountPercent` 50, `ImpactTiredNeverShrugsOff` on; momentum
 `ImpactMomentumEnabled` on, `ImpactMomentumPercent` 60, `ImpactMomentumWalkMetresPerSecond` 2, `ImpactMomentumSprintMetresPerSecond` 7,
 `ImpactMomentumRiderPercent` 30, `ImpactMomentumRiderWalkMetresPerSecond` 3, `ImpactMomentumRiderGallopMetresPerSecond` 10; the lines
-`ImpactShowMessages` on, `ImpactMessagesIncludeYourMen` off, `ImpactMessageMinSeconds` 1.5; the pressure `ImpactMismatchWeight` 0.25,
+`ImpactShowMessages` on, `ImpactMessagesIncludeYourMen` off, `ImpactMessageMinSeconds` 1.5; the opening `ImpactPunishEnabled` on,
+`ImpactPunishAggressionPercent` 100, `ImpactPunishGraceSeconds` 0.5, `ImpactPunishRangeMetres` 3; the pressure `ImpactMismatchWeight` 0.25,
 `ImpactEvenBandDoublings` 0.5, `ImpactStaggeredBonus` 0.75 and the weapon / guard / skill factors (DESIGN's table).</sub>
 
 ## 12. Damage

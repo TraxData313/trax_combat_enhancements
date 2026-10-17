@@ -5,8 +5,8 @@ order, about **3 hours 15** (A 10 min, B 15, C 25, D 60, E 20, F 55, G 10; the o
 time after step 16? D4 alone (the A/B of the new guard and backpedal, 20 min) answers the newest
 questions; after step 21, D5 + D6 (the shield wall and the archers, 25 min); after step 23, D7 (lines brace by
 their orders, 15 min - since step 24 with the "ready 34/50" count on ALT and in the orders menu); after step 28, D8
-(a tournament: the opponent fights on to ~20%, 10 min; after step 29 its step 4 - block your way back from empty; after step 30 its step 5 - the tired opponent guesses his blocks); after step 32, D9 (the swing stack: save swings up and burst, the kick refused at 0, 10 min); after step 33, D10 (the sprint: Left Ctrl, a charge order, 15 min; step 35 - a tap, the tired floor); after step 41, D11 (a shield wall that holds its slots, ON then OFF, 10 min); after step 42, D12 (the small step out, L 1 / 0 / 2 live, 10 min). The impact system (steps 47-53 - staggers, shields,
-knockdowns, riders, the charge): **THE IMPACT MORNING SCRIPT** in part D, just before D16 - five battles in order, ~80 min.** Each part says what to do, what you
+(a tournament: the opponent fights on to ~20%, 10 min; after step 29 its step 4 - block your way back from empty; after step 30 its step 5 - the tired opponent guesses his blocks); after step 32, D9 (the swing stack: save swings up and burst, the kick refused at 0, 10 min); after step 33, D10 (the sprint: Left Ctrl, a charge order, 15 min; step 35 - a tap, the tired floor); after step 41, D11 (a shield wall that holds its slots, ON then OFF, 10 min); after step 42, D12 (the small step out, L 1 / 0 / 2 live, 10 min). The impact system (steps 47-54 - staggers, shields,
+knockdowns, riders, the charge, the AI punishing a window): **THE IMPACT MORNING SCRIPT** in part D, just before D16 - six battles in order, ~90 min.** Each part says what to do, what you
 should see, what counts as broken, and the log lines that prove it. The full line reference —
 every summary block and what proves what — is the **appendix** at the end.
 
@@ -1000,9 +1000,9 @@ colour in a long fight while the strip's do; a bar that jumps when a man's fever
 a rider's bar inside his body or far above him (tell Claude how far - `RiderLiftMetres` is 1 m); the frame rate dropping while ALT is
 held; `[error] … hud.` lines or `ALT bars: … DISABLED`.
 
-### THE IMPACT MORNING SCRIPT (steps 47-53 - read this first; D16-D22 below are the detail)
+### THE IMPACT MORNING SCRIPT (steps 47-54 - read this first; D16-D23 below are the detail)
 
-Everything from D16 to D22 was built in one night on assumptions only the game can confirm. Do them **in this order** - each one says
+Everything from D16 to D23 was built in one night on assumptions only the game can confirm. Do them **in this order** - each one says
 whether the next one can be trusted. After each battle open `trax_combat.log` (beside config.json) and read the lines named here; send
 Claude the `[summary] impact …` block of every battle.
 
@@ -1013,6 +1013,7 @@ Claude the `[summary] impact …` block of every battle.
 | 3 | **A 50 v 50 shield-infantry battle** (D20 step 5): let the lines grind 5-8 min, hold ALT now and then | 10 | the same lines + `impact momentum`, `impact riders` (none expected), `courage …` | shields on the ground between tired lines, men staggering after blocks; `BLOCKS MADE FROM INSIDE A STAGGER` ~0 | a stutter (`cost` lines), a man frozen / sliding, `levers disabled` anything |
 | 4 | **D21 step 4 - the SHOCK CHARGE** (a fresh two-hander unit into the flank of a tired line, then into a fresh reserve, then once with Momentum OFF) | 15 | `impact momentum` - `sprinting` vs `standing`, most of all `on men below half a bar` | sprinting far above standing on tired men; the fresh reserve barely moves | `sprinting 0` although they clearly sprinted (the speed read is wrong) |
 | 5 | **D22 - the CAVALRY CHARGE and riders** (a fresh cavalry unit into a tired line; your own horse; a rider you fight on foot) | 15 | `impact riders …`, `impact riders' shields and limits`, the momentum line's `RIDERS` part, `impact messages` | `SEEN off the horse` ≈ APPLIED; riders never stagger; galloping above standing | `still mounted` ≈ applied (the engine ignores our dismount - tell Claude) |
+| 6 | **D23 - the AI PUNISHES a window** (a 50 v 50 shield battle ground to orange / red, a few minutes of it with *The AI punishes a staggered or downed man* OFF, then ON again; let a tired enemy break YOUR guard) | 10 | `impact punish windows`, `impact punish proof` (ON vs OFF), `impact punish men` | ON: `target reeling / down` well above `target not`, and above the OFF row's; a good share of windows `PUNISHED`; you get hit while you reel | ON = OFF (the native AI ignores the raised eagerness in that moment - tell Claude: the fallback is a direct attack wish through the input hook) |
 
 Then play normally (parts E-G). Your gut on each family - too many / about right / too few - is the most useful thing to send.
 
@@ -1329,6 +1330,36 @@ rider or a horse playing a stagger animation (must never happen); a crash right 
 shields … dropped 0` with drops queued; no `impact messages` line, or lines shown for things that did not happen (shadow mode must show
 none); the same event shown twice; `levers disabled` naming *a rider knocked off his horse* (an `[error] impact.live-dismount-blow` /
 `impact.model-dismount` / `impact.dismount-hook` line with its stack above).
+
+**D23. The AI PUNISHES a window - a reeling or downed man is pressed (step 54, IMPACT I7, ~10 min).** Your point: "otherwise it's a
+player-only weapon" - when a man staggers or goes down, the enemy fighting him should go for it, and that includes YOU. Defaults (MCM →
+*Impact: staggers, shield drops, knockdowns*: *The AI punishes a staggered or downed man* ON, *Punish: attack eagerness in an opening* 100%
+- the game's own full eagerness, above our 60% fresh / 20% empty and the fever's 80% -, *grace after the opening* 0.5 s, *a timid man steps
+in within* 3 m).
+1. **A 50 v 50 shield battle** (a custom battle, both sides infantry with shields): charge, let the lines grind 4-6 min until most bars are
+   orange / red (ALT). Watch a man whose block breaks (he staggers) or who is kicked down: the man in front of him should swing at once,
+   more eagerly than the men around - and a timid man standing back within ~3 m steps in for it.
+2. **Half-way, switch it OFF** (Escape → MCM → the setting above) for 2-3 min, then ON again - the summary compares the two rows.
+3. **Your own guard**: tire yourself (block a lot), let a fresher enemy break your block or kick you - while you reel, the men on you should
+   swing harder than before (no line on screen for that; the log has it).
+- **The lines**: `[impact] mission start, the AI punishing a window (step 54): ON - …`; `[impact] first window this battle: <him> reeling /
+  down at … s until … s (+ 0.50 s grace) - the AI men fighting him press it (attack decisions x1.00)`; `[impact] first AI man pressing a window
+  this battle: <him> at … s - his target <victim> reeling, 1.4 m off: attack decisions x1.00 (his own share x0.35) until the window closes`;
+  `[impact] first window punished this battle: <him> started an attack at … s on <victim> (reeling) - the punish ON`; `[impact] first timid man
+  stepping into a window this battle: …`; `[impact] YOU: first window of yours punished this battle - <him> attacked you at … s while you were
+  reeling`.
+- **The [summary] lines** (send them): `impact punish windows: opened N (on AI men a, on you b) - seen by an AI enemy in contact N (on you …),
+  PUNISHED (an AI melee attack started inside) N (on you … of b), wasted N (N% punished)`; `impact punish proof: AI melee attacks per
+  man-minute in contact (on foot) - punish ON: target reeling / down R (…), target not R (…); punish OFF: …`; `impact punish men: raised to
+  the window's share N times, ended N, timid men sent in N; AI attacks inside a window on you N; target reads N in N looks, cost N ms`.
+- **What to read first**: (a) the ON row's `target reeling / down` rate above its `target not` rate AND above the OFF row's `target reeling /
+  down` - that is the proof the AI uses the window (the OFF row is the AI's own reaction to a staggered man); (b) `PUNISHED` a good share of
+  `seen` (a window nobody in contact saw cannot be punished); (c) `on you` - your windows punished.
+- **Your gut**: does a tired line now collapse too fast once a few men stagger (lower *Punish: attack eagerness* to 80, or the grace to 0),
+  or does it feel right - a broken guard gets punished? Does the AI's pressing look natural?
+**Broken — tell Claude** (D23): ON = OFF in the proof line (the native AI does not react to the raised eagerness within a short window - the
+fallback is a direct attack wish through step 16's input hook); `seen 0` with windows opened (the target read finds nobody - the AI's
+target is not the man it fights); `target reads` far above `looks` / 4 (a cost leak); `[error] fever.poll` lines.
 
 ---
 
@@ -2187,6 +2218,18 @@ header names the technique: `==== scene …, mod ON, AI holds: Input (the AI's o
   the blow; …): standing … | walking … | trotting / cantering … | galloping … | couched lances (no momentum - the game's own big hit) N`.
 - Step 53 also changed: a rider's block stun is lengthened by his tiredness like anyone's (L6n's stun counts include riders now); the
   `impact limits` line reads `riders knocked off their horse by the dice N (step 53: applied / seen in the 'impact riders' line)`.
+
+### L6q. The AI punishes a window (step 54, IMPACT I7)
+
+- Mission start: `[impact] mission start, the AI punishing a window (step 54): ON - an AI man on foot whose enemy reels or lies down (a live
+  impact outcome, you too) decides to attack at 100% of the game's AI (never lower than his own share) until the window closes + 0.5 s; a timid
+  man within 3.0 m steps in for it; never you, never a rider - read live; …` (OFF: `OFF (<the switch>)[ - the windows are still measured]`);
+  a change: `[impact] punish settings changed mid-mission at … s: …`.
+- First-time lines: `first window this battle: …`, `first AI man pressing a window this battle: …`, `first window punished this battle: …`,
+  `first timid man stepping into a window this battle: …`, `YOU: first window of yours punished this battle - …` (D23).
+- The [summary] lines (after the riders'): `impact punish settings (step 54): …`, `impact punish windows: …`, `impact punish proof: …`,
+  `impact punish men: …` - or `impact punish: no window this battle could be live (impact off, in shadow or the spike) - nothing measured`.
+- Courage's summary: timid spells ended by `an enemy reeling / down close by (step 54)`.
 
 ### L6l. Courage and cohesion (step 49)
 

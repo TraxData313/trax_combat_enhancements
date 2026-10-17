@@ -24,7 +24,10 @@ the KnockDown question for a rider), a blocking rider by our own blow flagged `C
 horse; never a stagger on a rider, his shield can drop, his block stun like anyone's, horses untouched; the RIDER's MOMENTUM = his horse's
 speed, +30% at a gallop (10 m/s), never a couched lance; §8 q12's on-screen lines - red to you, purple by you, white for your side's heroes
 behind a switch, at most one per 1.5 s, merged, never in shadow; docs/HOW-IT-WORKS.md §11c rewritten as one player-facing section; PLAYTEST's
-IMPACT MORNING SCRIPT + D22; AI_NOTES "Step 53", DESIGN decision 45). **I1-I6 are built; I7 (the AI using the window) is step 54.**
+IMPACT MORNING SCRIPT + D22; AI_NOTES "Step 53", DESIGN decision 45); step 54 = I7, **THE AI PUNISHES A WINDOW** (2026-10-18, §8 q14 answered yes -
+Anton: "otherwise it's a player-only weapon": an AI man on foot whose target reels or lies down - the player's windows too - decides to attack at
+`ImpactPunishAggressionPercent` 100 % of the game's AI for the window + 0.5 s, step 43's lever, checked at the fever's ~0.25 s look; a timid man
+within 3 m steps in like a surge; AI_NOTES "Step 54", DESIGN decision 46, PLAYTEST D23). **All seven I-steps (I1-I7) are built.**
 Every number in this plan is a model - the playtest decides.**
 (Written as a plan in step 45:) The game-side facts behind every line are in
 `docs/RESEARCH.md` §R (file + line in the v1.4.8 decompile); the short version is in `AI_NOTES.md` "Step 45". The build order
@@ -378,7 +381,7 @@ soldier under ALT).
 | **I4 Blocks LIVE** (points 2, 5, 6, 7) - step 51, BUILT 2026-10-18 | the stun by tiredness, the rolled stagger, wrong-side shield drops, a block knocked down (the technique I1 proved), the riposte | stagger lengths measured, blocks made from inside a stagger ~0, ripostes by the attacker's bar |
 | **I5 Clean hits + the reeling state** (points 8, 9) - step 52, BUILT 2026-10-18 (+ MOMENTUM, Anton's step-52 addition) | tired men never shrug off, the flinch lengthened, knockdowns on landed blows, the reeling bonus; the attacker's speed into the blow adds impact (every family) | knockdowns by weapon class and bar band; blows by the attacker's speed band and their outcome rates |
 | **I6 Riders, feedback, guide** - step 53, BUILT 2026-10-18 (+ the rider's momentum) | knocked off a horse (the dismount seam; our CanDismount blow for a block), the player's message lines, `docs/HOW-IT-WORKS.md` §11c rewritten, PLAYTEST's morning script + D22 | dismounts decided → applied → seen; the momentum line's RIDERS columns; lines shown / merged |
-| (I7, optional) - step 54 | the AI punishing a window: a short burst of attack decisions (step 43's lever) when his target is staggered or down | attacks per man-minute on staggered targets |
+| **I7 The AI punishes a window** - step 54, BUILT 2026-10-18 | the AI man's aggression share raised to `ImpactPunishAggressionPercent` (step 43's lever) while his target reels or lies down (+ a grace), a timid man within 3 m steps in; both sides, the player's windows too, never the player as attacker | `impact punish proof`: attacks per man-minute on targets in a window vs not, punish ON vs OFF; windows opened / seen / punished / wasted |
 
 **Harmony**: none needed (RESEARCH §R9). What it would buy: setting flags and stun periods on the game's own blow in a
 `CreateMeleeBlow` postfix (RBM's way) instead of slowing the reaction a tick later and building our own blow for blocked hits.
@@ -420,7 +423,8 @@ blocker; (3) only then Harmony — a soft dependency in a satellite assembly beh
 13. **Weapon disarm** (a parry knocking the WEAPON out of a tired hand) — you did not ask. **Recommend not now** (a later step
     if you want it; the same lever as the shield).
 14. **The AI using the window** (I7): should the AI attack harder when its target is staggered or down? **Recommend yes, after
-    I5, if the playtest shows the AI wasting windows.**
+    I5, if the playtest shows the AI wasting windows.** (Built in step 54 without waiting for the playtest - Anton: "otherwise it's a
+    player-only weapon"; `ImpactPunishEnabled` off = the AI ignores windows, and the summary measures both ways.)
 
 ### What a combat designer would also ask (things not in Anton's list)
 

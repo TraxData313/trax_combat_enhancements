@@ -676,6 +676,20 @@ regen.)
   part once); never in shadow mode. The `[summary]` lines: **impact riders** (decisions on riders by family, dismounts decided by the rider's bar
   → applied by way → seen / still mounted, why not), **impact riders' shields and limits**, **impact messages** (offered by role and kind →
   shown, merged); the momentum line's RIDERS columns by the horse's band (standing / walking / trotting-cantering / galloping) + couched lances.
+- **Impact I7: the AI punishes a window** (step 54, AI_NOTES "Step 54", decision 46; `Missions/AthleticsLogic.ImpactPunish.cs`,
+  `Missions/PunishBody.cs`, Core `ImpactPunish.cs`; IMPACT §7 I7, §8 q14 - Anton: "otherwise it's a player-only weapon"): a WINDOW = a man
+  REELING or DOWN from a live impact outcome (his `ImpactState` - an impact stagger, a lengthened reel, a riposte's recoil, a knockdown, a
+  dismount; the PLAYER's too) + `ImpactPunishGraceSeconds` (0.5). At the fever's look (every AI man ~every 0.25 s, staggered) an AI man ON FOOT
+  IN CONTACT (an enemy within `FeverContactMetres`) reads his target (`GetTargetAgent()`, else `ImmediateEnemy` - one native read, made only
+  while some window is open in the battle); a target in a window = he PUNISHES: his aggression share (step 43) is raised to
+  `ImpactPunishAggressionPercent` (100 - the game's own eagerness; absolute, never lowered: S = max(his tired / fever share, P)) through the same
+  recompute path (0.05 steps, the stat decorator writes the two decision chances) until a look sees the window closed; a man within
+  `ImpactPunishRangeMetres` (3) of it gets courage's surge clock to the window's end - a TIMID man (step 49) steps in (never in a panic). Never
+  the player as the attacker, never a rider (the decorator keeps riders' values), never in shadow / the spike. Off (`ImpactPunishEnabled`) =
+  his own share at once; the windows are still measured. The `[summary]` lines: **impact punish windows** (opened on AI men / on you, seen by an
+  AI enemy in contact, PUNISHED - an AI melee attack started inside -, wasted), **impact punish proof** (AI melee attacks per man-minute in
+  contact against a target in a window vs not, the punish ON and OFF), **impact punish men** (raised, ended, timid men sent in, attacks in your
+  windows, target reads, cost).
 - **Tired fighters step back** (built in step 5d - the literal rule; `StepBackEnabled`, on):
   when a MELEE swing ends, an AI fighter on foot may step back, facing its enemy with its guard
   up. Chance = `StepBackMaxChancePercent` (100) × (1 − f), f after the swing's cost: 0% in the
@@ -1822,6 +1836,21 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     battle); colours = the game's own combat lines (Mission.cs: delivered #AE4AD9, received #D65252), your men's white; (h) the rate limit is a
     per-mission queue: the first line at once, then at most one per 1.5 s, everything meanwhile merged (3 parts + "(+N more)") - a burst of
     events reads as one line, nothing is lost silently (the summary counts merged / overflow / discarded).
+46. **The AI punishes a window** (step 54, IMPACT I7 - §8 q14 recommended "yes, after I5, if the playtest shows the AI wasting windows";
+    Anton approved every recommendation and, asleep, asked for it built - "otherwise it's a player-only weapon"; Claude's calls - AI_NOTES
+    "Step 54"): (a) the lever is step 43's aggression share (the game's own two attack-decision chances) - no new engine lever, nothing forced:
+    the AI still decides, only more eagerly; raised to an ABSOLUTE 100 % (the game's own AI) like the fever's peak, never lowered; (b) checked at
+    the FEVER's look (~0.25 s, staggered - the cadence that already reads contact) instead of a per-tick check: a window lasts 0.6-3 s + the 0.5 s
+    grace, so the share is raised within ~0.1 s on average; a per-tick target read would be 1000 native calls a tick; (c) the target read is
+    gated by a battle-wide "any window open" mark (+ 1 s slack) - a quiet battle reads no target at all; (d) windows only from LIVE outcomes (the
+    state the decision really wrote, after the apply's own fixes - a knockdown not answered in the seam takes its ground time back and opens
+    none); in shadow none (nothing happened); (e) both sides alike, the player's own windows too (his `ImpactState` is written at
+    `ImpactOnPlayerPercent`), never the player as the attacker, never a rider (riders keep the game's decision values - step 43); (f) the TIMID
+    man: within 3 m of a reeling / downed target he gets courage's surge clock to the window's end (his spell ended - `CourageEnd.PunishWindow`);
+    any man within the range gets the clock (so he does not turn timid mid-window); a shocked man presses too (a melee where everyone was hit
+    would waste every window otherwise) - only a PANIC keeps him away; (g) in contact only (an enemy within `FeverContactMetres` 5 m) - beyond it
+    the decision chances do not matter; (h) THE PROOF is measured with the punish ON and OFF alike (the OFF row = the AI's own reaction to a
+    staggered man): attack starts by the target of the man's last look, its state at the release.
 
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),
