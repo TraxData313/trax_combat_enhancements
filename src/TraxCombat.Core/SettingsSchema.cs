@@ -43,7 +43,7 @@ namespace TraxCombat.Core
         public static readonly ParamGroup RefillGroup = new ParamGroup(9, "Refill");
         public static readonly ParamGroup PlayerBarGroup = new ParamGroup(10, "Your Athletics bar");
         public static readonly ParamGroup OrderStripGroup = new ParamGroup(11, "Orders menu strip");
-        public static readonly ParamGroup AltMarkersGroup = new ParamGroup(12, "Formation markers (hold ALT)");
+        public static readonly ParamGroup AltMarkersGroup = new ParamGroup(12, "Hold ALT: formation markers and fever marks"); // step 44 renamed it (was "Formation markers (hold ALT)")
         public static readonly ParamGroup AdvancedGroup = new ParamGroup(13, "Advanced");
 
         // ------------------------------------------------------------------ master switch
@@ -600,6 +600,20 @@ namespace TraxCombat.Core
             "Enemy formations too",
             "The enemy's formation markers get the numbers too - see which of their lines is tired before you charge it. Off: yours and your allies' only.");
 
+        // Step 44 (Anton, 2026-10-17): "which soldiers are in FEVER" while the game shows its ALT icons - our own small mark above each
+        // man in a fever (FeverMarkView, AI_NOTES "Step 44"), shown exactly with the formation markers above.
+        public static readonly ParamDef ShowFeverMarks = Bool("ShowFeverMarks", AltMarkersGroup,
+            "Fever marks above the men",
+            "While the game shows its markers (you hold ALT, or the orders menu is open), a small bar above each man in a FEVER (the surge after a charge or advance order - Aggression and fever): bright orange while he still runs at the enemy, fading through yellow as the fever burns out after the first clash, gone when it is over. Its length is the fever left. Calm men get nothing; you never have a fever.");
+
+        public static readonly ParamDef FeverMarksShowEnemy = Bool("FeverMarksShowEnemy", AltMarkersGroup,
+            "Enemy fever marks too",
+            "The enemy's men in a fever get the mark too - see their charge coming and when its surge is spent. Off: yours and your allies' only.");
+
+        public static readonly ParamDef FeverMarkMax = Int("FeverMarkMax", 1, 1000, AltMarkersGroup,
+            "Most fever marks at once",
+            "At most this many fever marks are drawn in one frame - the men nearest to the camera first. Hundreds of men can be in a fever after a big charge; fewer marks cost less and clutter less.");
+
         // ------------------------------------------------------------------ advanced
 
         public static readonly ParamDef HudRefreshSeconds = Float("HudRefreshSeconds", 0.02, 1, AdvancedGroup,
@@ -694,6 +708,19 @@ namespace TraxCombat.Core
             "Marker numbers: bar thickness (px)",
             "Thickness of that bar, in the game's UI pixels. 0 = no bar, the numbers alone.");
 
+        // The fever marks (step 44) - UI pixels of the 1080p layout (the game's UI scale applies), and the height above the man.
+        public static readonly ParamDef FeverMarkWidth = Int("FeverMarkWidth", 4, 100, AdvancedGroup,
+            "Fever mark: length (px)",
+            "Length of the fever mark above a man near the camera, in the game's UI pixels (smaller far away - 60% at 60 m). The fill inside it is the fever left.");
+
+        public static readonly ParamDef FeverMarkHeight = Int("FeverMarkHeight", 2, 30, AdvancedGroup,
+            "Fever mark: thickness (px)",
+            "Thickness of the fever mark, in the game's UI pixels (smaller far away).");
+
+        public static readonly ParamDef FeverMarkHeightMetres = Float("FeverMarkHeightMetres", 1, 4, AdvancedGroup,
+            "Fever mark: height above the man (m)",
+            "How high above a man's feet his fever mark floats, in metres - the mark's bottom edge sits there. The game's own ALT icon over your men is at about 2 m.");
+
         public static readonly ParamDef FormationStatsRefreshSeconds = Float("FormationStatsRefreshSeconds", 0.05, 2, AdvancedGroup,
             "Formation averages refresh (s)",
             "How often the formations' averages (Athletics, spread, health) for the orders-menu strip and the formation markers are worked out - every formation of every side - in seconds of battle time.");
@@ -738,12 +765,13 @@ namespace TraxCombat.Core
             ShowPlayerBar, ShowPlayerBarOutsideBattles, ShowAttackRecoveryBar, FlashBarOnEarlyAttack, ShowSprintBar,
             BarYellowBelowPercent, BarOrangeBelowPercent, BarRedBelowPercent,
             ShowInOrderMenu, ShowFormationHealth, ShowFormationSpread, FormationSpreadStdDevs, ShowReadyCount, ReadyYellowBelowPercent, ReadyRedBelowPercent, OrderStripUnderCards,
-            ShowAltMarkerStats, AltMarkersShowEnemy,
+            ShowAltMarkerStats, AltMarkersShowEnemy, ShowFeverMarks, FeverMarksShowEnemy, FeverMarkMax,
             HudRefreshSeconds, PlayerBarWidth, PlayerBarHeight, PlayerBarOffsetRight, PlayerBarOffsetBottom,
             RecoveryBarWidth, RecoveryBarHeight, RecoveryBarOffsetAbove, SprintBarOffsetAbove,
             OrderStripTextSize, OrderStripTextOffset, OrderStripBarOffset, OrderStripBarHeight, OrderStripReadyOffset, OrderStripSideMargin,
             OrderPanelOffsetTop, OrderPanelWidth,
             AltMarkerTextSize, AltMarkerOffset, AltMarkerBarWidth, AltMarkerBarHeight,
+            FeverMarkWidth, FeverMarkHeight, FeverMarkHeightMetres,
             FormationStatsRefreshSeconds, VerboseLogging, LogMaxMegabytes,
         };
 

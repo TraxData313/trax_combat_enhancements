@@ -752,7 +752,7 @@
   // (true or false)
   "OrderStripUnderCards": true,
 
-  // ==================== Formation markers (hold ALT) ====================
+  // ==================== Hold ALT: formation markers and fever marks ====================
   // While the game shows its formation markers above the troops - you hold ALT, or the orders
   // menu is open - each marker also gets the men's average Athletics with its spread ("72% ±
   // 8", in the colour of their strength) and their average health ("HP 81%"), just under the
@@ -765,6 +765,25 @@
   // before you charge it. Off: yours and your allies' only.
   // (true or false)
   "AltMarkersShowEnemy": true,
+
+  // While the game shows its markers (you hold ALT, or the orders menu is open), a small bar
+  // above each man in a FEVER (the surge after a charge or advance order - Aggression and
+  // fever): bright orange while he still runs at the enemy, fading through yellow as the fever
+  // burns out after the first clash, gone when it is over. Its length is the fever left. Calm
+  // men get nothing; you never have a fever.
+  // (true or false)
+  "ShowFeverMarks": true,
+
+  // The enemy's men in a fever get the mark too - see their charge coming and when its surge is
+  // spent. Off: yours and your allies' only.
+  // (true or false)
+  "FeverMarksShowEnemy": true,
+
+  // At most this many fever marks are drawn in one frame - the men nearest to the camera first.
+  // Hundreds of men can be in a fever after a big charge; fewer marks cost less and clutter
+  // less.
+  // (range 1 to 1000)
+  "FeverMarkMax": 200,
 
   // ==================== Advanced ====================
   // How often your Athletics bar, the orders-menu strip and the numbers under the formation
@@ -871,6 +890,20 @@
   // Thickness of that bar, in the game's UI pixels. 0 = no bar, the numbers alone.
   // (range 0 to 20)
   "AltMarkerBarHeight": 3,
+
+  // Length of the fever mark above a man near the camera, in the game's UI pixels (smaller far
+  // away - 60% at 60 m). The fill inside it is the fever left.
+  // (range 4 to 100)
+  "FeverMarkWidth": 22,
+
+  // Thickness of the fever mark, in the game's UI pixels (smaller far away).
+  // (range 2 to 30)
+  "FeverMarkHeight": 5,
+
+  // How high above a man's feet his fever mark floats, in metres - the mark's bottom edge sits
+  // there. The game's own ALT icon over your men is at about 2 m.
+  // (range 1.0 to 4.0)
+  "FeverMarkHeightMetres": 2.5,
 
   // How often the formations' averages (Athletics, spread, health) for the orders-menu strip
   // and the formation markers are worked out - every formation of every side - in seconds of

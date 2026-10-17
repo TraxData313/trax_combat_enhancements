@@ -995,6 +995,9 @@ says (§2c).
 | `OrderStripUnderCards` | true | true: the strip sits under the vanilla cards (read live) when they can be matched, else the compact panel. false: always the compact panel. |
 | `ShowAltMarkerStats` | true | Step 20 (Anton): while vanilla shows its formation markers (ALT held or the orders menu open - the game's own rule, read live), each marked formation also gets "72% ± 8" (the men's average Athletics ± spread, coloured by their average f) and "HP 81%" just under its marker, over a slim bar (§3 item 3). Yours and your allies' always. |
 | `AltMarkersShowEnemy` | true | Step 20: the enemy's formation markers get the numbers too (vanilla marks them) - knowing the enemy is tired is the tactical point. Off: yours and your allies' only. |
+| `ShowFeverMarks` | true | Step 44 (Anton): while vanilla shows its formation markers (the same live flag as `ShowAltMarkerStats` - ALT held or the orders menu open), a small bar of ours above each AI man in a FEVER (§2 "Aggression and the fever"; armed or burning): bright orange while armed and at the burn's start, through yellow as the store empties, its fill = the fever left, gone when it is over (§3 item 3b). Calm men and you: nothing. Needs `FeverEnabled`. |
+| `FeverMarksShowEnemy` | true | Step 44: the enemy's men in a fever get the mark too (vanilla's own per-man ALT icon is yours and your allies' only - ours is not). Off: yours and your allies' only. |
+| `FeverMarkMax` | 200 | Step 44: most fever marks drawn in one frame - the men NEAREST the camera (in front of it, at least 1.5 m away) when more are in a fever; the rest wait. Range 1-1000. |
 | `HudRefreshSeconds` | 0.1 | (Advanced) How often the player bar, the orders-menu strip and the formation markers' numbers update (the markers' numbers follow the markers every frame). |
 | `PlayerBarWidth` | 205 | (Advanced) Length of your bar in UI pixels of the 1920 × 1080 layout (the game's UI scale applies); 205 = the inside of the vanilla health bar. |
 | `PlayerBarHeight` | 12 | (Advanced) Thickness of your bar, UI pixels. |
@@ -1016,6 +1019,9 @@ says (§2c).
 | `AltMarkerOffset` | 2 | (Advanced) A formation marker's bottom edge (its distance row) → the top of our numbers, UI pixels (negative = up over the marker). |
 | `AltMarkerBarWidth` | 60 | (Advanced) Length of the slim bar under the marker's numbers, UI pixels (60 = the marker's distance row). |
 | `AltMarkerBarHeight` | 3 | (Advanced) Thickness of that bar, UI pixels; 0 = no bar. |
+| `FeverMarkWidth` | 22 | (Advanced) Step 44: length of a fever mark near the camera, UI pixels (the game's UI scale applies; full size to 20 m, a line down to 60% at 60 m). Range 4-100. |
+| `FeverMarkHeight` | 5 | (Advanced) Step 44: thickness of a fever mark, UI pixels (smaller far away like the length). Range 2-30. |
+| `FeverMarkHeightMetres` | 2.5 | (Advanced) Step 44: the mark's bottom edge, metres above the man's feet (vanilla's ALT icon over your men sits at 2 m). Range 1-4. |
 | `FormationStatsRefreshSeconds` | 0.25 | (Advanced) How often formation averages and spreads are recomputed - every formation of every side since step 20. |
 | `VerboseLogging` | false | Log every roll, blow and exhaustion (rate-limited) to `trax_combat.log`. Off = load, settings, mission start/end, per-battle summaries and errors only. |
 | `LogMaxMegabytes` | 8 | (Advanced) Size limit of `trax_combat.log`, MB. Past it a trim cuts the oldest VERBOSE lines, down to about half; every other line is kept (§4 "The log"). |
