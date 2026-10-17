@@ -90,6 +90,19 @@ pressure x → each outcome's ceiling × an S-curve, immunity and halving on eac
 (Steps 25-40 -
 the swing stack, the sprint, the tired block direction and the rest - are described in CLAUDE.md, the fuller copy of this
 file.) The bar for the
+COURAGE AND COHESION (step 49, `CourageEnabled`, Anton 2026-10-17 night: "AI men are
+unrealistically brave" - a lone man circles a shield wall, stands exhausted among four enemies; + his three additions: shock, flocking,
+panic): every AI man on foot in a formation is looked at every ~0.5 s (staggered; one `Mission.GetNearbyAgents` into a reused list): his
+side's TOUGHNESS vs the enemy's within `CourageRadiusMetres` 6 m (toughness = armour, level, wounds - a looter 1.35, a legionary 5.97 =
+4.4 looters; an enemy with a two-hander / polearm and no shield x1.5) = his local odds, against the odds he needs (`CourageBaseOddsPercent`
+100 x tiredness x low morale x SHOCK - landed hits in the last 6 s - x the fever (40% at full) x a hero's 75%). Below it he is TIMID: far
+from his mates he WALKS BACK - a fourth input wish (`Regroup`, step 16's backpedal: facing the enemy) - to the nearest BIGGER group of his
+side (6+ within 20 m - FLOCKING), else his formation's centre of mass, round the enemy when it stands between, sprinting when far (above a
+50% reserve) or in a PANIC (shocked, odds below half the required: everything, `CouragePanicSprintKeepPercent` 0); among his mates he
+HOLDS - his behaviour weights tightened (Melee only within 2 m, re-applied every look - the game resets them on orders), the game's back
+when brave; shocked men want twice the mates and pack in. Never you, riders, walled men, a siege's attackers, no formation. Works
+without Athletics. The looks run ON and OFF: the `[courage]` summary compares isolated men and their distance from the formation's centre
+both ways (PLAYTEST D18). The bar for the
 fighter you look at is LATER (DESIGN §3; its settings wait in DESIGN's "Planned parameters"). Words:
 the pool/bar/points are "Athletics", the character-screen skill is "the Athletics skill" (it
 used to be called "endurance"), the "peak line" is the white mark at the top quarter of the bar,
@@ -186,7 +199,7 @@ die at any moment (tokens run out) and the next one loses nothing.
   file, capped at `LogMaxMegabytes` (8); a trim cuts ONLY the oldest verbose lines (marked `~`
   before the tag) and keeps every other line - summaries, first-time lines, settings, errors
   (step 10b, Core `LogTrim`). Timestamped lines tagged by area (`[config]`, `[mcm]`, `[mission]`,
-  `[damage]`, `[athletics]`, `[speed]`, `[rate]`, `[stepback]`, `[brace]`, `[guard]`, `[sprint]`, `[wall]`, `[fever]`, `[impact]`, `[hud]`, `[error]`). Always logged: mod/game version
+  `[damage]`, `[athletics]`, `[speed]`, `[rate]`, `[stepback]`, `[brace]`, `[guard]`, `[sprint]`, `[wall]`, `[fever]`, `[courage]`, `[impact]`, `[hud]`, `[error]`). Always logged: mod/game version
   at load, every parameter value on load and on change, each mission start/end (type,
   scene, agent counts), which behaviors/views attached, and every caught exception with its
   stack. Per-battle SUMMARY at mission end (damage rolls: count, min/avg/max factor;
@@ -220,8 +233,9 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
   ParamDef.cs                 one setting: key, type, range, group, label, plain-words
                               description, apply timing (Live / NextBattle); Normalize, Format;
                               its Default comes from defaults.json (DefaultsFile), never code
-  SettingsSchema.cs           EVERY setting of DESIGN's table (211 - step 47's ImpactSpike in Advanced; step 48's 60 in "Impact: staggers,
-                              shield drops, knockdowns" after the fever), in file + MCM order, 15 groups
+  SettingsSchema.cs           EVERY setting of DESIGN's table (238 - step 47's ImpactSpike in Advanced; step 48's 60 in "Impact: staggers,
+                              shield drops, knockdowns" after the courage group; step 49's 27 in "Courage and cohesion (AI)" after the fever),
+                              in file + MCM order, 16 groups
                               ("Master switch" first, "Damage" second - step 25 renamed it from
                               "Damage randomness", "Battle pace (AI)" - step 21 - after the step back,
                               "Brace by orders (AI)" - step 23 - after it,
@@ -473,6 +487,17 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               Athletics, ImpactEnabled, the families, shadow, Applies), ImpactMath (the pressure, the S-curve, the ceilings,
                               Decide - one decision per event, lengths, Describe; EffectsBuilt = none in step 48)
   ImpactStats.cs              step 48: by event × the defender's bar band + the [summary] "impact" lines
+  Courage.cs                  step 49 pure (AI_NOTES "Step 49", RESEARCH §S): CouragePhase (brave / walking back / holding), CourageSkip (in the
+                              order asked), CourageEnd, RegroupEnd, CourageStep, CourageSprintRefusal, ShockTimes (his last 4 landed hits), CourageRequired
+                              (the terms), CourageRules (live; ModEnabled FIRST, CourageEnabled; Athletics only for the tiredness term; Describe with the
+                              looter / legionary numbers), CourageMath (BaseToughness, Toughness, EnemyToughness (the heavy x), Weight (full to half the
+                              radius), Odds, FeverShare, ShockShare, Panic, MatesNeeded / RegroupRadius (shocked x2 / x0.5), Required, Timid, BraveAgain,
+                              WantsToMove, MovesAgain, Arrived, SprintWanted, SprintAmount (the reserve; a panic's), Direction (to the target + away, round
+                              the enemy), TimidMelee / CurveAt, the bands and names; plumbing PollSeconds 0.5 …), CourageMind (one man: Look → the step,
+                              StopMoving, End, the walk's target / direction, flips and wobbles, ShockStart / FlockTarget / Panic)
+  CourageStats.cs             step 49 per-mission: isolated / in-contact man-seconds ON vs OFF, the distance histogram (mean, p90), odds bands in contact and
+                              out of the formation, skips, ends, walks' ends + time to regroup, sprints + refusals, shock vs odds, flock vs centre, panic,
+                              compression (a walk's distance start → end by shock), toughness, weights, cost + the 10 [summary] "courage" lines
   SpreadStats.cs              MeanStd (Welford, population std), FormationAthleticsStats (squad
                               mean ± std, band, mean f, at full strength, mean health - step 9; step 23:
                               Bracing / Ready / Total - the next step's "ready men"),
@@ -602,7 +627,9 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               (RTS Camera's); SetHold / SetBackpedal / Clear; Apply - the managed filter
                               the smoke drives; FlagNames); step 23: the brace wish (BraceHoldAttacks - melee
                               only: BraceRanged / a ranged action let through; BraceShieldInHand → the shield
-                              held up, RaiseShield), SetBrace, the brace's frame counts; Active = ANY wish
+                              held up, RaiseShield), SetBrace, the brace's frame counts; Active = ANY wish; step 49: the Regroup wish
+                              (RegroupX / Y - a timid man's walk back; SetRegroup, ApplyRegroup - a step back's backpedal wins; the component lets it
+                              through with Athletics off)
   Missions/AthleticsLogic.AiHolds.cs  step 16 shared bookkeeping: EnsureInput, NoteHooked, the
                               component's errors logged from the tick, the GUARD by state (OnMeleeHit),
                               the [summary] "AI holds" lines, HoldsHeader (the technique in the header)
@@ -650,6 +677,17 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               vanilla's value, nothing written, looked at every 0.1 s), Manage, NoteLeash, EndStep
   Missions/ImpactBody.cs      step 47: IImpactBody - one method per lever (Read, SlowReaction, ForceStagger, DropShield queued,
                               OwnKnockdownBlow, CanForce - never a horse / rider / siege engine / water / down); GameImpactBody
+  Missions/CourageBody.cs     step 49: CourageScan (reused arrays, 128 neighbours), ICourageBody (the smoke plays it), GameCourageBody (MissionAllows - battle
+                              mode, no tournament / arena / naval; Gate; ReadKit - SpawnEquipment's armour sums, Character.Level, a two-hander / polearm
+                              and no shield; Health ÷ HealthLimit; GetMorale; Formation.CachedAveragePosition; Scan = GetNearbyAgents into one MBList;
+                              Flock = GetNearbyAllyAgents; ToLocal; GroundOk; Tighten = HumanAIComponent.OverrideBehaviorParams Melee + GoToPos; Restore =
+                              Agent.RefreshBehaviorValues(order, arrangement); Hook / Release), CourageBodyDefault
+  Missions/AthleticsLogic.Courage.cs  step 49: StartCourage / NoteCourageSettings (the [courage] lines), TickCourage (switched off → EndAllTimid; the staggered
+                              looks ON and OFF; the walkers steered every tick), PollCourage (the gates, the circle's sums, the measurement, the required
+                              odds with shock / fever, CourageMind.Look → BeginWalk / WalkEnded / brave), PickTarget (FLOCKING), AskSprintBack (TryStartRegroup,
+                              the panic reserve), SteerWalkers (arrived on the way, the edge, the vector into AiInputState.Regroup*), the weights (re-applied
+                              every look, the game's back), EndTimid on every path, CourageLeftField, CourageHitTaken (OnAgentHit - the shock window),
+                              CloseCourage, WriteCourageSummary
   Missions/AthleticsLogic.Impact.cs  step 47, the spike: StartImpact, TickImpact (the switch, the queued calls, the watches, the
                               shields), the deciders, ImpactHit (OnMeleeHit), DisableLever (one lever off after an error),
                               WriteImpactSummary; fixed pools of structs; step 48: KnockDownOnBlow = the spike's OR the model's answer
@@ -789,7 +827,7 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
   Hud/FeverMarksVM.cs         its ViewModels: a GROW-ONLY POOL of FeverMarkVM (IsShown, PositionX / Y, Width / Height in pixels,
                               Fill, FillColor, FrameColor; step 46: BoxWidth / BoxHeight, FeverShown, BarShown, BarWidth / Height,
                               BarFill, BarUsable, BarColor, BarFrameColor, BarWoundColor)
-tests/TraxCombat.Core.Tests/  net8.0 xUnit (740 - step 44: + FeverMarkTests; step 46: + AthleticsMarkTests, the format-9 migration; step 47: + ImpactSpikeTests; step 48: + ImpactTests - every IMPACT §4 worked example) — schema vs DESIGN.md (keys + types), one copy
+tests/TraxCombat.Core.Tests/  net8.0 xUnit (764 - step 49: + CourageTests; step 44: + FeverMarkTests; step 46: + AthleticsMarkTests, the format-9 migration; step 47: + ImpactSpikeTests; step 48: + ImpactTests - every IMPACT §4 worked example) — schema vs DESIGN.md (keys + types), one copy
                               runs (SingleCopyTests: claims on private slots, copies, texts), when
                               MCM is tried and when it stops (McmPlanTests - step 12),
                               defaults.json (DefaultsFileTests), master switch, settings, config
@@ -991,7 +1029,8 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               0.001 ms a tick, 0 bytes; step 48 (Program.ImpactModel.cs): the model through the real decorator's
                               KnockDown seam and logic with stand-in inputs - one decision per event, IMPACT §4's numbers, nothing
                               applied, shadow / the spike / the switches live, a failing read, the summary; the cost - 1000 men, 20
-                              events a tick, 0.016 ms, 0 bytes (106 steps; the config
+                              events a tick, 0.016 ms, 0 bytes; step 49 (Program.Courage.cs): courage through the real logic with a stand-in world,
+                              the cost - 1000 men 0.13 ms a tick, 0 bytes (109 steps; the config
                               checks work for any tuned default);
                               TRAX_SMOKE_KEEP=1 keeps its temp folder + log to read
 tools/DefaultsTool/           defaults.json upkeep: refresh (rewrite comments/order, keep every
