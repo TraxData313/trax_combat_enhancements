@@ -579,7 +579,7 @@ regen.)
   skill; no guard = Athletics), mounts, health - `Missions/ImpactInputs.cs`. A landed blow on a man on foot is decided in the damage
   decorator's KnockDown seam (before the engine registers it) and taken by OnMeleeHit; blocks in OnMeleeHit. Step 48 decided and
   LOGGED only; each effect step adds its family to `ImpactMath.EffectsBuilt` - **step 50 (I3): kicks and bashes are LIVE** (below),
-  51 blocks + the riposte, 52 clean hits (the board moved by one when step 49 was inserted) - and applies the same decision through the
+  **step 51 (I4): blocks + the riposte are LIVE** (below), 52 clean hits (the board moved by one when step 49 was inserted) - and applies the same decision through the
   spike's seams; a family decided live whose effect is not built yet decides on COPIES of the men's records (`ImpactRules.KeepsState` -
   a stagger that never happened gives no reeling bonus, immunity, halving or courage shock). Each family behind its own switch (`ImpactKicksEnabled` / `ImpactBlocksEnabled` /
   `ImpactHitsEnabled` / `ImpactRiposteEnabled`) and `ImpactShadowMode` turning ALL of them into logging only (the spike forces shadow
@@ -604,6 +604,33 @@ regen.)
   itself). The `[summary] impact live` lines: knocked down / shield dropped decided → applied → seen by the kicked man's bar band (and why
   not), the reel and the get-up asked vs measured (mean, max; untouched reels as the control), shields dropped → picked up again (after how
   long) / still on the ground / pickups locked, the limits that refused or halved a live kick, the levers disabled, the tick's cost.
+- **Impact I4: blocks and the riposte LIVE** (step 51, AI_NOTES "Step 51", decision 43; `Missions/AthleticsLogic.ImpactBlocks.cs`, Core
+  `ImpactBlocks.cs`): a block's ONE decision (right-side shield, parry, WRONG-side shield - IMPACT §3.5's rows) is APPLIED - **the stun by
+  tiredness** = the damage decorator's stun seam (`CalculateDefendedBlowStunMultipliers`, WORKER threads, read only): the blocker's stun x
+  (1 + `BlockStunTiredExtraPercent` × T) - no die, so the decision logs the very number the seam applies; T from a per-man snapshot the
+  main thread writes every tick (x `ImpactOnPlayerPercent` for you, 0 on a horse); the game's own stun held at the game's 0.8 s cap first,
+  ours at most `ImpactStunCapSeconds` - the game's `StunPeriodMax` raised to it while blocks are live and given back when they stop; every
+  stun we do not lengthen keeps the game's 0.8; the attacker's recoil is the game's (his longer recoil is the riposte); **the rolled
+  stagger** = `act_stagger_backward` on channel 0 from the NEXT TICK (`IImpactBody.ForceStagger` - never inside the callback; CanForce first:
+  never a rider, a horse, a man on a siege engine / ladder, in water or already down - no engine call), asked with the engine's priority,
+  then over it; at the speed that gives IMPACT §3.7's length (0.6 s fresh → 1.5 s ± 30% empty, at most `StaggerMaxSeconds`) - the
+  animation's own length LEARNED from the staggers measured (0.9 s guessed until one is); WATCHED, its measured end = his reel's end (the
+  2 s stagger immunity from it); **a wrong-side shield drop** = step 50's queued drop from the tick; **a blocker knocked down** = a blow of our
+  own from the tick (vanilla's drowning-blow recipe, KnockDown | KnockBack, 1 damage, owned by the attacker - the spike's lever 6), its Fall
+  watched and slowed by the get-up factor (as a kick's), the 5 s immunity from the measured get-up; **the riposte** (a fresh blocker's
+  right-side block or parry, IMPACT §3.6, at most 50%) = a forced stagger of the ATTACKER from the tick, its length the decision's recoil
+  (`RiposteStunMaxSeconds` x (0.5 + 0.5 T_A) ± the spread), watched the same way. `ImpactBlocksEnabled` off with `ImpactRiposteEnabled` on =
+  the riposte alone. An outcome the dice gave that is not played (its lever off, the pool full, refused at the tick, the engine refusing)
+  leaves no reeling / ground time on his record. Courage: each live outcome is ONE shock (our own blow's hit is not a second). You: the same
+  rules x `ImpactOnPlayerPercent`; every live block outcome you deal or take is an `[impact] YOU:` line ("your right-side block of X's
+  Sturgian Axe: you are staggered (55%)", "X blocked you (parry): you reel (riposte, 50%)"). Each lever (`BlockStun` - its worker-thread
+  error picked up by the tick -, `ForcedStagger`, `OwnBlow`) disabled ALONE on an error; off / shadow / the spike / `ImpactBlocksEnabled`
+  off / the master switch = the game's stun at once (the seam reads the switches live), the cap back at the tick, every queued action and
+  watch let go. The `[summary] impact live` block lines: per block kind x the blocker's bar band, staggered / shield dropped / knocked down
+  decided → applied → seen (and why not); the staggers asked vs MEASURED (the speed, accepted with / over the engine's priority) and BLOCKS
+  MADE FROM INSIDE A STAGGER (~0 = the window is real); the blockers knocked down (our blows → Fall seen, the get-up measured); the
+  riposte by the ATTACKER's bar band; the stun - the seam's calls (off the main thread), lengthened (x, before → after, at the cap), the
+  guard measured asked vs fresh blockers, the cap raised / restored; the limits, YOU, shock, levers, the queue.
 - **Tired fighters step back** (built in step 5d - the literal rule; `StepBackEnabled`, on):
   when a MELEE swing ends, an AI fighter on foot may step back, facing its enemy with its guard
   up. Chance = `StepBackMaxChancePercent` (100) × (1 − f), f after the swing's cost: 0% in the
@@ -1123,9 +1150,9 @@ says (§2c).
 | `CourageTimidMeleeMetres` | 2.0 | Step 49: a timid man's reach - his Melee weight stays above his GoToPos up to here. Range 0.5-6. |
 | `ImpactEnabled` | true | Step 48, IMPACT I2 (docs/IMPACT.md, §2 "Impact" below): the impact system - kicks / bashes, blocks and clean hits may stagger, drop a shield, knock down, by the PRESSURE x on the man who takes the blow (Core `ImpactMath`). Gate: `ModEnabled` FIRST, `AthleticsEnabled`, this. Live. |
 | `ImpactKicksEnabled` | true | Step 48: the kick / bash family (knockdown, shield drop, the longer reel, the slower get-up). Live. |
-| `ImpactBlocksEnabled` | true | Step 48: the block family - right-side shield block, weapon parry, wrong-side shield block (stagger, knockdown, wrong-side shield drop, the blocker's stun by tiredness). Live. |
+| `ImpactBlocksEnabled` | true | Step 48: the block family - right-side shield block, weapon parry, wrong-side shield block (stagger, knockdown, wrong-side shield drop, the blocker's stun by tiredness). Step 51: LIVE (off with the riposte on = the riposte alone). Live. |
 | `ImpactHitsEnabled` | true | Step 48: the clean-hit family (a longer flinch, a knockdown on a landed weapon blow; the reeling bonus). Live. |
-| `ImpactRiposteEnabled` | true | Step 48: the riposte - a fresh defender's right-side block or parry staggers a tired, outmatched attacker (IMPACT §3.6). Live. |
+| `ImpactRiposteEnabled` | true | Step 48: the riposte - a fresh defender's right-side block or parry staggers a tired, outmatched attacker (IMPACT §3.6). Step 51: LIVE - a forced stagger of the attacker from the tick. Live. |
 | `ImpactShadowMode` | false | Step 48: true = decide and LOG every event, change nothing. Default false - Claude's call 2026-10-17 night (decision 40; IMPACT §7 planned true until I3): Anton could not playtest the spike first and wants to see it live in the morning; every family keeps its own switch and this one turns ALL effects into logging only. The spike (`ImpactSpike` on) forces shadow. Live. |
 | `KickShieldDropMaxPercent` | 90 | Step 48: the kick / bash row's shield-drop ceiling (Anton's anchor). Range 0-100. |
 | `KickKnockdownMaxPercent` | 80 | Step 48: the kick / bash row's knockdown ceiling (Anton's anchor). Range 0-100. |
@@ -1140,15 +1167,15 @@ says (§2c).
 | `HitStaggerMaxPercent` | 80 | Step 48: the clean hit's stagger (a lengthened flinch) ceiling. Range 0-100. |
 | `HitKnockdownMaxPercent` | 50 | Step 48: the clean hit's knockdown ceiling. Range 0-100. |
 | `RiposteStaggerMaxPercent` | 50 | Step 48: the riposte ceiling - × S(x_r) × the DEFENDER's f (IMPACT §3.6, §8 q8). Range 0-100. |
-| `StaggerBaseSeconds` | 0.6 | Step 48: a stagger's length at T 0, s (IMPACT §3.7). Range 0.1-3. |
+| `StaggerBaseSeconds` | 0.6 | Step 48: a stagger's length at T 0, s (IMPACT §3.7). Step 51: live - the forced stagger played at the speed for it. Range 0.1-3. |
 | `StaggerTiredExtraPercent` | 150 | Step 48: the stagger × (1 + this % × T) - 0.6 → 1.5 s empty. Range 0-500. |
 | `StaggerMaxSeconds` | 2.0 | Step 48: no stagger longer, whatever the roll. Range 0.2-5. |
 | `KickReelTiredExtraPercent` | 150 | Step 48: the kicked man's vanilla reel × (1 + this % × T) (× 2.5 empty). Step 50: live - his reel played at 1 ÷ that factor, measured. Range 0-500. |
 | `GetUpMaxSlowdown` | 2.0 | Step 48: the knocked-down man's fall-and-rise × (1 + (this − 1) × T), never above this. Step 50: live for a kick's knockdown - played at 1 ÷ that factor, measured. Range 1-4. |
-| `BlockStunTiredExtraPercent` | 100 | Step 48: every block's defender stun × (1 + this % × T). Range 0-500. |
-| `RiposteStunMaxSeconds` | 1.0 | Step 48: the riposted attacker's recoil = this × (0.5 + 0.5 T_A), s, never above `ImpactStunCapSeconds`. Range 0-3. |
+| `BlockStunTiredExtraPercent` | 100 | Step 48: every block's defender stun × (1 + this % × T). Step 51: live - the decorator's stun seam, no die (the game's stun held at its own cap first). Range 0-500. |
+| `RiposteStunMaxSeconds` | 1.0 | Step 48: the riposted attacker's recoil = this × (0.5 + 0.5 T_A), s, never above `ImpactStunCapSeconds`. Step 51: live - the length of the attacker's forced stagger. Range 0-3. |
 | `ImpactRandomPercent` | 30 | Step 48: every length × a roll in [1 − r, 1 + r], r = this % × T (none in the green). Range 0-100. |
-| `ImpactStunCapSeconds` | 2.0 | Step 48: the game's `StunPeriodMax` 0.8 raised to this while the system lengthens stuns (every other stun clamped to the game's 0.8). Range 0.8-5. |
+| `ImpactStunCapSeconds` | 2.0 | Step 48: the game's `StunPeriodMax` 0.8 raised to this while the system lengthens stuns (every other stun clamped to the game's 0.8). Step 51: raised while blocks are live, given back when they stop. Range 0.8-5. |
 | `ImpactStaggerImmunitySeconds` | 2.0 | Step 48: no new stagger on a man until this long after his impact stagger (or lengthened reel) ends (IMPACT §3.9). Range 0-20. |
 | `ImpactKnockdownImmunitySeconds` | 5.0 | Step 48: no new knockdown until this long after he is up. Range 0-30. |
 | `ImpactDiminishWindowSeconds` | 8.0 | Step 48: each outcome he suffered within this window multiplies the next chance against him by `ImpactDiminishFactor`. 0 = never. Range 0-60. |
@@ -1666,6 +1693,28 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     "up" at once - the watch keeps the record honest; (g) one watch per man (a newer kick replaces the running one); fresh men's reels
     (factor 1) are watched unslowed as the control for "asked vs measured"; (h) every kick YOU deal or take is logged (not verbose) - they
     are few, and D19 needs them; the on-screen message is step 53's.
+
+43. **Blocks and the riposte live** (step 51, IMPACT I4 - Anton approved IMPACT with every recommended answer, "get all done by morning,
+    decide open questions"; Claude's calls - AI_NOTES "Step 51"): (a) the block stun has NO die (IMPACT §3.7's table is its mean): the game
+    asks it on worker threads BEFORE the decision, so it is computed from the blocker's tiredness alone and the decision logs the same
+    number - the randomness of a tired block lives in the rolled stagger; (b) T for the seam = a per-man float the main thread writes every
+    tick (one tick old at most; riders 0 until step 53; you x `ImpactOnPlayerPercent`); (c) the game's stun is held at the game's own cap
+    BEFORE it is lengthened (a fresh man's block stays exactly vanilla; an exhausted man's 0.8 s → 1.6 s, not 1.2 → 2.4); (d) the attacker's
+    recoil stays the game's - his longer recoil is the riposte, a forced stagger from the tick (the brief), because its dice are rolled on the
+    main thread after the seam; (e) the forced stagger asks the engine WITH its priority, then OVER it (the spike's D16 verdict decides which
+    one the game needs; the summary counts both); always `act_stagger_backward` (the attacker in front); (f) its speed = the animation's own
+    length ÷ the asked length, the own length LEARNED from the measured staggers (0.9 s - the spike's stand-in, RBM's 0.9-1.0 - until the
+    first), clamped 0.25-2; (g) a block's knockdown = our own blow (lever 6), never a crush-through - the spike proved it in the smoke and D16
+    reads it in game; (h) `ImpactBlocksEnabled` off + `ImpactRiposteEnabled` on = only the riposte is rolled on a right-side block / parry
+    (`ImpactRules.DecidesEvent`); (i) a dice outcome that is not played leaves no reeling / ground time on the record (`EndReel(now, 0)` /
+    `GotUp(now, 0)`), the halving and the shock stay (it was decided); (j) our own blow's OnAgentHit is not a courage hit (`ImpactHooks.
+    InOwnBlow`) - the knockdown is one shock already; (k) the guard is timed for at most 16 blocks at a time (a quarter of the watch pool),
+    only blocks with no outcome, never replacing a running measurement; (l) YOU lines only for blocks that DID something (you block hundreds
+    of times a battle); the weapon's name read only then; (m) two EMPTY even men stay at the ceilings (x = 1: the bodies even at the floor, T
+    1 - nothing cancels) on a parry, a wrong-side block and with a normal shield; a HEAVY (4 kg) right-side shield against an empty man's
+    tired swing (85% animation) is a real guard beyond the even band: 76 / 35% instead of 80 / 40 - kept (the shield's weight counts, the
+    tiredness is never cancelled); a wrong-side block is never better than a right one at any bar and clearly worse when tired (90 / 50 /
+    40 vs 80 / 0 / 40 at empty) - Anton can ask for the right side at exactly 80 / 40.
 
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),

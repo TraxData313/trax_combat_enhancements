@@ -1124,7 +1124,8 @@ hunting` off - tell Claude which looked better); the isolated rate ON ≈ OFF; w
 
 **D19. Kicks that break a tired man - IMPACT I3 LIVE (step 50, ~20 min).** Defaults (MCM → *Impact: staggers, shield drops,
 knockdowns*: Impact on, Kicks on, Shadow mode OFF; the spike OFF). The log's start: `[impact] mission start: the model (step 48 - IMPACT I2,
-docs/IMPACT.md) LIVE - kicks / bashes applied, blocks, clean hits, the riposte decided and logged only (effect not built yet); …`.
+docs/IMPACT.md) LIVE - kicks / bashes, blocks, the riposte applied, clean hits decided and logged only (effect not built yet); …` (step 51 made
+blocks live too - D20).
 1. **A tournament** (a town's arena, any round with a shield fighter). **Fresh** opponent: kick him 3-4 times - he only stumbles back, as
    before. **Line**: `[impact] YOU: your kick on <him> (his bar 9x%, x -0.xx): no knockdown (0%), shield kept (0%) - reels x1.00`.
 2. **Tire him**: make him block and swing (hold your shield up, let him hit it, feint) until his bar is orange / red (hold ALT - his
@@ -1148,7 +1149,7 @@ docs/IMPACT.md) LIVE - kicks / bashes applied, blocks, clean hits, the riposte d
    reels … s = x… measured; the get-up asked x… → the fall-and-rise measured … s …`; `impact live shields: drops queued from the tick …, left
    the hand …, picked up again … after … s, still on the ground …`; `impact live limits: knockdown refused - on the ground …, within the
    immunity after getting up …; halved by a recent outcome …; levers disabled none; tick … ms`. And the old `impact kicks by the kicked man's
-   bar …` line now reads `did knock down` (blocks still `would`).
+   bar …` line now reads `did knock down` (blocks too since step 51; clean hits still `would`).
 - **What to read first**: (a) `Fall seen` ≈ `applied` for the knockdowns (the engine plays our KnockDown flag on a kick - D16's lever 1);
   (b) `left the hand` ≈ `drops queued`; (c) the reel's `= x… measured` close to the asked mean (the slow holds on the engine's own reaction -
   D16's lever 3); the get-up measured ≈ 1.5 s × the asked factor; (d) the 100-75 band shows 0 knocked down / 0 dropped.
@@ -1159,6 +1160,61 @@ docs/IMPACT.md) LIVE - kicks / bashes applied, blocks, clean hits, the riposte d
 knockdown blow); `no fall seen after a knockdown` near the applied count; `left the hand 0` with drops queued; the reel measured ≈ the
 untouched reels (the slow does not hold - the fallback is SetOverridenStrikeAndDeathAction); `levers disabled` anything but none (an
 `[error] impact.live-…` line with its stack above); a man stuck on the ground or frozen mid-reel; a fresh man knocked down by an even man.
+
+**D20. Blocks that break a tired guard, and the riposte - IMPACT I4 LIVE (step 51, ~25 min - read it with D16's levers 2, 4 and 6).**
+Defaults (MCM → *Impact: staggers, shield drops, knockdowns*: Impact on, Blocks on, Riposte on, Shadow mode OFF; the spike OFF). The
+log's start adds: `[impact] live: blocks live at … s - the game's stun cap (StunPeriodMax) 0.80 → 2.00 s while they are
+(ImpactStunCapSeconds); a block's stun x (1 + 1.00 × T) from the blocker's tiredness, every other stun keeps the game's cap`.
+1. **A tournament, a shield opponent. Fresh**: swing at his shield 4-5 times - his guard holds as before, nothing happens (no `[impact] YOU:`
+   line - nothing to tell).
+2. **Tire him** (hold ALT - his Athletics bar above him - until it is orange / red: make him block a lot, kick once in a while). Now swing
+   at the side he guards (a RIGHT-side block) and then at the side he does NOT guard while his shield is up the wrong way (a WRONG-side block -
+   the log names it). **See**: after some of his blocks he STAGGERS back (a real stagger animation, longer the more tired he is, 1-2 s when
+   empty) - your free swing; on the wrong side it comes more often and his SHIELD can fly out of his hand (on the ground the next frame); now
+   and then he goes DOWN behind his shield and gets up slowly. **Lines**: `[impact] live: first block stagger - <him> after his right-side
+   block - act_stagger_backward from the tick at … s (0.0x s after the block), with the engine's priority, speed 0.xx for 1.xx s asked (the
+   animation's own length 0.90 s - a guess until one is measured)`; `[impact] live: first block stagger seen at …`; `[impact] live: first
+   block stagger measured at … s - <him>'s lasted 1.xx s (asked 1.xx s at speed 0.xx); no new stagger on him for 2.0 s`; `[impact] live:
+   first shield drop after a WRONG-side block made from the tick at …`; `[impact] live: first BLOCKER knocked down - our own blow …`;
+   `[impact] live: first blocker's Fall seen at …`. **Watch him inside the stagger**: does he raise his shield before it ends? (the summary
+   counts `BLOCKS MADE FROM INSIDE A STAGGER` - ~0 = the window is real).
+3. **Now be the tired one**: stand and block a strong opponent until YOU are red. **See**: your guard sticks a little longer after each
+   block; some of your blocks stagger you (how does it look in first person? tell Claude); a wrong-side block can take your shield. **Lines**:
+   `[impact] YOU: your right-side block of <him>'s <weapon> (your bar 1x%, x 1.xx): you are staggered (7x%) - 1.xx s`; `… your shield
+   dropped (…%)`; `… you are knocked down (…%) - gets up x1.9x slower`.
+4. **The riposte**: let a FRESH veteran (a lord, a later round's champion) block YOU while you are tired (swing at his shield with an orange
+   / red bar). **See**: after some of his blocks YOU reel back (up to ~1 s) - his window. **Line**: `[impact] YOU: <him> blocked you
+   (right-side block): you reel (riposte, 4x%) - 0.8x s (x_r 1.xx)`; `[impact] live: first RIPOSTE - the attacker <you> staggered after
+   <him>'s right-side block …`. Fresh against fresh: never. And YOU fresh against a tired attacker: `YOU: your parry of <him>'s …: he reels
+   (your riposte, …%)`.
+5. **A custom battle 100 v 100 shield infantry, ~8 min** (the lines grind, men tire; hold ALT now and then). **See**: as the lines tire,
+   men in the front rank stagger after blocks, shields on the ground between the lines, now and then a man goes down - and fresh troops sent
+   in break a tired line faster.
+6. **The [summary] lines** (send them): `impact live right-side shield blocks / parries / WRONG-side shield blocks by the blocker's bar
+   100-75% / 75-50% / 50-25% / 25-0% (step 51; LIVE …): N live (a / b / c / d); staggered decided … = N, applied … = N, seen M; [shield
+   dropped …;] knocked down (our own blow) decided …, applied …, Fall seen …`; `impact live block staggers: asked … s → measured … s at speed
+   x…; the engine took them with its priority …, over it …, not seen …; BLOCKS MADE FROM INSIDE A STAGGER N (should be ~0 …), hits taken
+   inside one M`; `impact live blockers knocked down: our own blows registered … → Fall seen …; the get-up asked x… → the fall-and-rise
+   measured … s; shields dropped on a wrong-side block: …`; `impact live riposte (a fresh blocker staggers the ATTACKER) by the attacker's bar
+   …: decided … applied … seen …; his stagger asked … s → measured … s`; `impact live block stun: the decorator's calls N (off the main thread
+   K), lengthened L (x… mean: … → … s, at the cap …), a fresh blocker's left as the game's …; the guard measured: asked x… → … s vs fresh
+   blockers … s = x… measured; the game's cap 0.80 → 2.00 s (raised …, restored …)`; `impact live block limits: …`.
+- **What to read first**: (a) the 100-75 band: 0 staggered / dropped / down on every block kind (fresh men's guards are vanilla); (b) WRONG
+  side above right side in every band, and both near the ceilings in 25-0 (90 / 50 / 40 vs 80 / 40) - **exhaustion never cancels**: two
+  empty men's blocks still break; (c) `seen` ≈ `applied` for the staggers (the engine plays our act_stagger mid-fight - D16's lever 4) and
+  the measured length ≈ the asked; (d) `BLOCKS MADE FROM INSIDE A STAGGER` ~0; (e) `off the main thread` above 0 (the seam's threading -
+  RESEARCH §R2) and `the guard measured … = x…` above 1 (the longer stun reaches the engine - D16's lever 2); (f) `Fall seen` ≈ our blows
+  (lever 6).
+- **Your gut**: too many / about right / too few staggers on a tired man's block? The knobs: `RightBlockStaggerMaxPercent` 80,
+  `ParryStaggerMaxPercent` 80, `WrongBlockStaggerMaxPercent` 90 / `WrongBlockShieldDropMaxPercent` 50, the knockdowns 40, `StaggerBaseSeconds`
+  0.6 / `StaggerTiredExtraPercent` 150, `BlockStunTiredExtraPercent` 100, `RiposteStaggerMaxPercent` 50; `ImpactBlocksEnabled` off keeps only
+  the riposte.
+**Broken — tell Claude** (D20): `seen 0` with stagger `applied` above 0 (the engine refuses our stagger mid-fight - the fallback is the longer
+block stun alone); `not seen` near the applied count; the engine taking them only `over it` (fine - say so) or `refused` (`the engine refused
+it` in not applied); `BLOCKS MADE FROM INSIDE A STAGGER` near the staggers seen (the stagger is no window - the AI blocks through it); a
+stagger that looks wrong (a man sliding, a rider - must never happen: riders are never staggered); `the game's cap 0.80 → 2.00 s` and blocks
+feeling long in the NEXT battle with blocks off (the cap must come back - `restored`); `levers disabled` anything (an `[error] impact.live-…`
+line with its stack above); our blows registered with `Fall seen 0` (lever 6 does not floor a blocker in game).
 
 ---
 
@@ -1932,8 +1988,8 @@ header names the technique: `==== scene …, mod ON, AI holds: Input (the AI's o
 
 ### L6m. Kicks and bashes LIVE (step 50, IMPACT I3)
 
-- Mission start: the model's line (L6k) reads `LIVE - kicks / bashes applied, blocks, clean hits, the riposte decided and logged only
-  (effect not built yet)`. At game start: `[impact] item pickup model decorator registered over <model> - an AI man may not pick a shield up
+- Mission start: the model's line (L6k) read `LIVE - kicks / bashes applied, blocks, clean hits, the riposte decided and logged only
+  (effect not built yet)` in step 50 (since step 51: L6n). At game start: `[impact] item pickup model decorator registered over <model> - an AI man may not pick a shield up
   again for ShieldPickupLockSeconds …` (or `this game type has no ItemPickupModel …`).
 - Every kick / bash YOU deal or take: `[impact] YOU: your <kick | shield bash> on <him> | <him>'s <kick | shield bash> on you (<his | your>
   bar N%, x …): knocked down (N%) [, shield dropped (N%)] - gets up xN slower | no knockdown (N% [- <refusal>]), shield kept (N% | no shield in
@@ -1947,6 +2003,30 @@ header names the technique: `==== scene …, mod ON, AI holds: Input (the AI's o
 - The [summary] lines (D19 reads them): `impact live (step 50 - kicks and bashes; <mode>): …`, `impact live lengths: …`, `impact live shields:
   …`, `impact live limits: …` (L6k's `impact <kind> by …` lines say `did` for the kicks and bashes). Nothing live: `impact live (step 50 -
   kicks and bashes): no live kick or bash this mission (<mode>)`.
+
+### L6n. Blocks and the riposte LIVE (step 51, IMPACT I4)
+
+- Mission start: the model's line (L6k) reads `LIVE - kicks / bashes, blocks, the riposte applied, clean hits decided and logged only (effect
+  not built yet)`; at the first tick `[impact] live: blocks live at … s - the game's stun cap (StunPeriodMax) 0.80 → 2.00 s while they are …`.
+  Blocks stop (off / shadow / the spike / the master switch): `[impact] blocks and the riposte no longer live at … s (<mode>): N queued
+  action(s) dropped unplayed, M watch(es) let go …` and once `[impact] live: blocks no longer live at … s - the game's stun cap back to 0.80 s`.
+- Every live block outcome YOU deal or take: `[impact] YOU: your <right-side block | parry | wrong-side block> of <him>'s <weapon> (your bar
+  N%, x …): you are knocked down (N%) | you are staggered (N%) | your shield dropped (N%) [- N.NN s] [- gets up xN slower]` / `… <him>'s
+  <kind> of your <weapon> (his bar …): he is staggered (N%) …`; the riposte: `[impact] YOU: <him> blocked you (<kind>): you reel (riposte,
+  N%) - N.NN s (x_r …)` / `YOU: your <kind> of <him>'s <weapon>: he reels (your riposte, N%) - …`.
+- First-time lines: `[impact] live: first block stagger - <him> after his <kind> - act_stagger_backward from the tick at … s (… after the
+  block), <with | OVER> the engine's priority, speed … for … s asked (the animation's own length … s - <measured | a guess until one is
+  measured>)`, `… first RIPOSTE - the attacker <him> staggered after <blocker>'s <kind> …`, `… first block stagger seen at …`, `… first <block
+  | riposte> stagger measured at … - lasted … s (asked … s at speed …); no new stagger on him for 2.0 s`, `… first shield drop after a
+  WRONG-side block made from the tick at …`, `… first BLOCKER knocked down - our own blow (RegisterBlow, KnockDown | KnockBack, 1 damage) on
+  <him> …`, `… first blocker's Fall seen at …`, `… a block stagger the engine took at … never showed on <him> …`. A lever's error: `[error]
+  impact.<live-stun | live-stun-cap | live-stun-snapshot | live-stagger | live-own-blow>` once with its stack + `[impact] live lever <the block
+  stun by tiredness | the forced stagger (blocks, the riposte) | the blocker's knockdown (our own blow)> disabled for this mission after an
+  error at …` (the stun's comes from a worker thread - logged at the next tick).
+- The [summary] lines (D20 reads them): `impact live <right-side shield blocks | parries | WRONG-side shield blocks> by the blocker's bar …`,
+  `impact live block staggers: …` (with `BLOCKS MADE FROM INSIDE A STAGGER`), `impact live blockers knocked down: …`, `impact live riposte
+  (a fresh blocker staggers the ATTACKER) by the attacker's bar …`, `impact live block stun: …`, `impact live block limits: …`. Nothing live:
+  `impact live blocks (step 51 - blocks and the riposte): no live block this mission (<mode>)`.
 
 ### L6l. Courage and cohesion (step 49)
 

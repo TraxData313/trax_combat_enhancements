@@ -479,8 +479,8 @@ count).
 
 In the base game a kick only pushes a man back, and he is guarding again before you can swing. With this
 mod a **kick or a shield bash on a tired man** can do much more — **knock him down**, make him **drop his
-shield**, and he **reels longer** and **gets up slower**. On a fresh man nothing changes. (This is the first
-part of the impact system; blocks and clean hits follow in later versions.)
+shield**, and he **reels longer** and **gets up slower**. On a fresh man nothing changes. **Blocks** count too
+(below); clean hits follow in a later version.
 
 What counts is how tired **he** is, and how you two compare: both men's **current** Athletics (how big the
 bar is AND how full), what struck him and both men's skill. Two even men, the kicker fresh:
@@ -521,6 +521,46 @@ give or take is written to the log (`[impact] YOU: ...`). Riders are not knocked
 `KickReelTiredExtraPercent` 150, `GetUpMaxSlowdown` 2, `ImpactRandomPercent` 30, `ImpactKnockdownImmunitySeconds` 5,
 `ImpactStaggerImmunitySeconds` 2, `ImpactDiminishWindowSeconds` 8, `ImpactDiminishFactor` 0.5, `ShieldPickupLockSeconds` 0,
 `ImpactOnPlayerPercent` 100.</sub>
+
+### Blocks: a tired guard breaks
+
+A blocked blow is not free for a tired man. Every block he makes **freezes his guard longer** the more tired
+he is (up to twice as long when empty), and a block can **stagger** him — a real stagger, a window for the
+next blow — or even **knock him down**. Blocking on the **wrong side** is much worse: the stagger comes
+easier and his **shield can fly out of his hand**. Two even men, the attacker fresh:
+
+| His bar | Right-side shield block: staggered / down | Parry: staggered / down | WRONG side: staggered / shield / down | His guard frozen | A stagger lasts |
+|---|---:|---:|---:|---|---|
+| 100% – 75% (green) | 0% / 0% | 0% / 0% | 0% / 0% / 0% | as normal | 0.6 s |
+| 50% | 21% / 0% | 31% / 1% | 39% / 12% / 3% | ×1.33 | 0.9 s |
+| 25% | 59% / 19% | 77% / 36% | 88% / 48% / 38% | ×1.67 | 1.2 s |
+| 10% | 79% / 39% | 80% / 40% | 90% / 50% / 40% | ×1.87 | 1.4 s |
+| 0% (empty) | 80% / 40% | 80% / 40% | 90% / 50% / 40% | ×2 | 1.5 s |
+
+The stagger gets **more random** the more tired he is (± up to 30% when empty). **Exhaustion never cancels
+out**: two men who are both empty stay near these ceilings — at the end of a long fight every block can
+break, and a wrong-side block is clearly worse than a right one.
+
+**The mismatch counts, even on a good block.** A peasant parrying a veteran berserker's two-handed axe with a
+stick is staggered 46% of the time even fresh, and at half a bar 80% (down 40%).
+
+**The riposte.** A **fresh, skilful** blocker turns it round: his right-side block or parry can **stagger the
+attacker** — up to **50%** when a fresh veteran blocks a tired recruit (a fresh man parrying an equal at 20%:
+45%; two fresh even men: never). The more tired the attacker, the longer he reels (0.5 s → 1 s). A tired
+blocker ripostes less (the chance × how fresh he is).
+
+**Nobody is stun-locked.** After a stagger no new stagger for **2 seconds**, after getting up no new
+knockdown for **5 seconds**, each outcome halves the next for **8 seconds** — the same limits as for kicks.
+
+You block too: every stagger, knockdown or dropped shield on your block — and every riposte you suffer or
+deal — is a `[impact] YOU:` line in the log ("your right-side block of X's Sturgian Axe: you are staggered
+(55%)", "X blocked you (parry): you reel (riposte, 50%)"). Riders are never staggered (they come later).
+
+<sub>Settings: `ImpactBlocksEnabled` on, `ImpactRiposteEnabled` on, `RightBlockStaggerMaxPercent` 80,
+`RightBlockKnockdownMaxPercent` 40, `RightBlockShieldDropMaxPercent` 0, `ParryStaggerMaxPercent` 80, `ParryKnockdownMaxPercent` 40,
+`WrongBlockStaggerMaxPercent` 90, `WrongBlockShieldDropMaxPercent` 50, `WrongBlockKnockdownMaxPercent` 40, `RiposteStaggerMaxPercent` 50,
+`StaggerBaseSeconds` 0.6, `StaggerTiredExtraPercent` 150, `StaggerMaxSeconds` 2, `BlockStunTiredExtraPercent` 100,
+`RiposteStunMaxSeconds` 1, `ImpactStunCapSeconds` 2.</sub>
 
 ## 12. Damage
 
