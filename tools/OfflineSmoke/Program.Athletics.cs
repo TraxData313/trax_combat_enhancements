@@ -1142,6 +1142,9 @@ namespace TraxCombat.Tools
             // --- step 52: the live clean hits - off = no knockdown answered, every shrug-off the game's; on = live again
             ImpactHitsFollowTheMasterSwitch();
 
+            // --- step 53: riders and the on-screen lines - off = the dismount seam the game's, no line (what waits thrown away); on = live again
+            ImpactRidersFollowTheMasterSwitch();
+
             // --- step 49: courage - off = every timid man let go at once (its own logic), back on = looked at again
             CourageFollowsTheMasterSwitch();
 

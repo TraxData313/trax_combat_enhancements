@@ -192,13 +192,16 @@ namespace TraxCombat.Tools
                 LogHas("): knocked down (80%) - gets up x");
                 logic.SmokePlayer = null;
 
-                // ---- 5. a RIDER: decided, nothing applied (step 53), his record untouched
+                // ---- 5. a RIDER: step 53 - the KnockDown seam never answers a rider (the engine asks his dismount instead - Program.ImpactRiders.cs),
+                // nothing of the kicks' own path (no reel watched, no KnockDown), counted in the riders' stats
                 var rider = Man(5030, 125, 0.0);
                 inputs.Mounted.Add(5030);
-                dice.Next(0.0, 0.0, 0.5);
+                dice.Next(0.0, 0.999, 0.5);
+                int watchesBefore = logic.ImpactLiveWatches;
                 down = Kick(kicker, rider);
-                Check(!down && logic.ImpactLiveDrops == 0 && rider.Impact.Recent(t, 8) == 0 && live.NotApplied[0, (int)ImpactNotApplied.Rider] == 1,
-                    "a kick on a rider applied something (step 53's)");
+                Check(!down && logic.ImpactLiveWatches == watchesBefore && live.NotApplied[0, (int)ImpactNotApplied.Rider] == 0 && logic.ImpactRiderStats.Decisions[0] == 1
+                      && logic.ImpactRiderStats.DismountNotApplied[(int)ImpactNotApplied.OutsideSeam] == 1,
+                    "a kick on a rider through the KnockDown seam: answered, watched or not counted as a rider's (step 53)");
 
                 // ---- 6. courage's SHOCK: a live outcome counts (the kicks apply); step 51: a live block's outcome counts too - ONCE each
                 var impactLive = (bool)typeof(AthleticsLogic).GetMethod("ImpactLive", BindingFlags.Static | BindingFlags.NonPublic)!.Invoke(null, null)!;

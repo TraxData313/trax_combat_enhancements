@@ -117,6 +117,31 @@ namespace TraxCombat.Tools
                 if (Record) OwnBlows.Add((victim.AgentIndex, attacker?.AgentIndex ?? -1, damage));
                 return true;
             }
+
+            // step 53: our dismount blow (only on a man in Mounted; a true one takes him off his horse unless KeepRiders holds him), your side
+            public readonly List<(int Victim, int Attacker, int Damage)> OwnDismounts = new List<(int, int, int)>();
+            public readonly HashSet<int> Yours = new HashSet<int>();
+            public bool ThrowOnDismount, AcceptDismount = true, DismountTakesHimOff = true;
+
+            public bool OwnDismountBlow(TrackedAgent victim, TrackedAgent? attacker, int damage)
+            {
+                if (ThrowOnDismount) throw new InvalidOperationException("smoke: the dismount blow failed");
+                int i = victim.AgentIndex;
+                if (victim.Removed || Gone.Contains(i) || !Mounted.Contains(i)) return false;
+                if (Record) OwnDismounts.Add((i, attacker?.AgentIndex ?? -1, damage));
+                if (AcceptDismount && DismountTakesHimOff) Mounted.Remove(i);
+                return AcceptDismount;
+            }
+
+            public bool OnPlayerSide(TrackedAgent st) => Yours.Contains(st.AgentIndex);
+        }
+
+        /// <summary>Step 53: the smoke's on-screen lines - collected, never the game's message feed.</summary>
+        private sealed class FakeMessageSink : IImpactMessageSink
+        {
+            public readonly List<(string Text, string Hex)> Lines = new List<(string, string)>();
+
+            public void Show(string text, string hex) => Lines.Add((text, hex));
         }
 
         /// <summary>Step 47: every logic built from here on plays the impact levers' engine side through the stand-in (the game's calls the
@@ -127,6 +152,10 @@ namespace TraxCombat.Tools
             Check(ImpactBodyDefault.Current is GameImpactBody, "the default impact body is not the game's: " + ImpactBodyDefault.Current.GetType().Name);
             ImpactBodyDefault.Current = new FakeImpactBody();
             Check(new AthleticsLogic().ImpactBody == ImpactBodyDefault.Current, "a new logic does not start with the default impact body");
+            // step 53: the on-screen lines go to the smoke's sink (never the game's message feed)
+            Check(ImpactMessageSinkDefault.Current is GameImpactMessageSink, "the default message sink is not the game's: " + ImpactMessageSinkDefault.Current.GetType().Name);
+            ImpactMessageSinkDefault.Current = new FakeMessageSink();
+            Check(new AthleticsLogic().MessageSink == ImpactMessageSinkDefault.Current, "a new logic does not start with the default message sink");
         }
 
         /// <summary>The spike on, the mod on, the game's own stun cap (0.8 s - managed_core_parameters.xml; the smoke has no game to load it).

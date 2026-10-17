@@ -109,7 +109,7 @@ namespace TraxCombat.Tools
                 var mounted = Man(6004, 125, 0.0);
                 body.Mounted.Add(6004);
                 Tick();
-                Check(Near(mounted.ImpactTired, 0f) && Near(StunFromWorker(model, attacker, mounted, 0.1f, 0.3f).Def, 0.3f), "a rider's stun lengthened (step 53's)");
+                Check(Near(mounted.ImpactTired, 1f) && Near(StunFromWorker(model, attacker, mounted, 0.1f, 0.3f).Def, 0.6f), "step 53: a rider's stun not lengthened like anyone's (IMPACT §3.8)");
                 long before = bl.Stun.Calls;
                 Parallel.For(0, 200, new ParallelOptions { MaxDegreeOfParallelism = 4 }, i =>
                 {
@@ -238,14 +238,18 @@ namespace TraxCombat.Tools
                 S.Set(SettingsSchema.ImpactOnPlayerPercent, 100, SettingSources.Mcm);
                 logic.SmokePlayer = null;
 
-                // ---- 7. a RIDER blocks: decided, nothing applied, no engine call; a man DOWN at the tick: refused before any call; the engine refusing
+                // ---- 7. a RIDER blocks: step 53 - never a forced stagger or a blocks' action (no block queue entry, no stagger call), his
+                // knockdown = our dismount blow queued in the riders' pool (Program.ImpactRiders.cs plays it); a man DOWN at the tick: refused
+                // before any call; the engine refusing
                 var rider = Man(6060, 125, 0.0);
                 inputs.Mounted.Add(6060);
                 body.Mounted.Add(6060);
                 dice.Next(0.0, 0.5);
+                int staggersBefore = body.Staggers.Count;
                 logic.ImpactModelHitTaken(attacker.Agent, rider.Agent, WrongBlock());
-                Check(logic.LastImpact.Dismount && logic.ImpactBlockPendingCount == 0 && rider.Impact.Recent(t, 8) == 0 && bl.NotApplied[(int)ImpactOutcome.Knockdown, (int)ImpactNotApplied.Rider] == 1,
-                    "a rider's block applied something (step 53's)");
+                Check(logic.LastImpact.Dismount && logic.ImpactBlockPendingCount == 0 && logic.ImpactRiderPendingCount == 1 && body.Staggers.Count == staggersBefore
+                      && body.StaggerCallsOnRefused == 0 && bl.NotApplied[(int)ImpactOutcome.Knockdown, (int)ImpactNotApplied.Rider] == 0,
+                    "a rider's block: a blocks' action queued, a stagger called, or the dismount blow not queued (step 53)");
                 var downed = Man(6070, 125, 0.0);
                 dice.Next(0.999, 0.0, 0.5);
                 logic.ImpactModelHitTaken(attacker.Agent, downed.Agent, RightBlock());

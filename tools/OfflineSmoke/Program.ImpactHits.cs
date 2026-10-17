@@ -60,7 +60,7 @@ namespace TraxCombat.Tools
                 double t = 32000;
                 logic.TickImpact(t);
                 LogHas("LIVE - kicks / bashes, blocks, clean hits, the riposte applied; families:");
-                LogHas("tired men always flinch on; momentum (the attacker's run into the blow) +60% impact at 7.0 m/s and faster, none at 2.0 m/s or slower (riders: step 53)");
+                LogHas("tired men always flinch on; momentum (the attacker's run into the blow) +60% impact at 7.0 m/s and faster, none at 2.0 m/s or slower; a rider's horse +30% at 10.0 m/s, none at 3.0 m/s (a couched lance never)");
 
                 TrackedAgent Man(int index, double bar)
                 {
@@ -192,12 +192,13 @@ namespace TraxCombat.Tools
                 LogHas("[impact] YOU: your blow on (agent 6013): he is staggered (80%; his bar 0%, x ");
                 logic.SmokePlayer = null;
 
-                // ---- 6. a RIDER: decided, nothing applied (step 53), no watch
+                // ---- 6. a RIDER: step 53 - the KnockDown seam never answers him (his is the dismount seam - Program.ImpactRiders.cs), no flinch watched
                 var rider = Man(6014, 0.0);
                 inputs.Mounted.Add(6014);
                 int watches = logic.ImpactLiveWatches;
                 dice.Next(0.0);
-                Check(!Hit(sword, rider) && logic.ImpactLiveWatches == watches && hits.NotApplied[0, (int)ImpactNotApplied.Rider] == 1, "a clean hit on a rider applied something");
+                Check(!Hit(sword, rider) && logic.ImpactLiveWatches == watches && hits.NotApplied[0, (int)ImpactNotApplied.Rider] == 0 && logic.ImpactRiderStats.Decisions[2] == 1,
+                    "a clean hit on a rider: answered in the KnockDown seam, watched, or not the riders' (step 53)");
 
                 // ---- 7. SHADOW: decided and logged, nothing answered or watched
                 S.Set(SettingsSchema.ImpactShadowMode, true, SettingSources.Mcm);

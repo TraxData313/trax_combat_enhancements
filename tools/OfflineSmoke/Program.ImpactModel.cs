@@ -33,6 +33,7 @@ namespace TraxCombat.Tools
             public readonly HashSet<int> Mounted = new HashSet<int>();
             public readonly Dictionary<int, double> Speeds = new Dictionary<int, double>(); // step 52: the attacker's speed into the blow (m/s)
             public readonly HashSet<int> TwoHanded = new HashSet<int>(); // step 52: a two-handed grip
+            public readonly HashSet<int> Couched = new HashSet<int>(); // step 53: a couched lance (a passive attack)
             public double Damage { get; set; }
             public bool Throw;
             public int Calls;
@@ -46,7 +47,8 @@ namespace TraxCombat.Tools
                 f.DefenderHasShield = Shields.Contains(victim.Index);
                 f.Damage = Damage;
                 f.DefenderMaxHealth = 100;
-                f.AttackerSpeed = !f.AttackerMounted && Speeds.TryGetValue(attacker.Index, out var v) ? v : 0;
+                f.AttackerSpeed = Speeds.TryGetValue(attacker.Index, out var v) ? v : 0; // step 53: a rider's = his horse's
+                f.AttackerPassive = f.AttackerMounted && Couched.Contains(attacker.Index);
                 f.TwoHanded = TwoHanded.Contains(attacker.Index);
                 if (f.Event != ImpactEvent.Kick && Weapons.TryGetValue(attacker.Index, out var w))
                 {
@@ -356,7 +358,7 @@ namespace TraxCombat.Tools
                 LogHas("[summary] impact shield bashes by the kicked man's bar ");
                 LogHas("[summary] impact riposte (a right-side block or parry staggers the ATTACKER; by the attacker's bar ");
                 LogHas("[summary] impact limits: refused - on the ground 2");
-                LogHas("riders would be knocked off 1");
+                LogHas("riders knocked off their horse by the dice 1 (step 53: applied / seen in the 'impact riders' line)");
                 LogHas("[summary] impact lengths asked: stagger ");
                 LogHas("[summary] impact cost: ");
                 LogHas("the engine read failed 1");
