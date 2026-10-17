@@ -134,6 +134,14 @@ namespace TraxCombat.Missions
             {
                 Failed("athletics.tick", e);
             }
+            try
+            {
+                TickImpact(Mission.CurrentTime); // step 47: the impact spike (master switch first; its levers fail one by one)
+            }
+            catch (Exception e)
+            {
+                Failed("impact.tick", e);
+            }
         }
 
         /// <summary>
@@ -363,6 +371,15 @@ namespace TraxCombat.Missions
             catch (Exception e)
             {
                 Failed("hideout.summary", e);
+            }
+            // Step 47: the impact spike - every lever's verdict (the deciders out, the game's stun cap back first). Own try.
+            try
+            {
+                WriteImpactSummary();
+            }
+            catch (Exception e)
+            {
+                Failed("impact.summary", e);
             }
             // The HUD (step 6 on): per view - time on screen, layer builds and why they went,
             // colours shown, errors. The screen finalized the views before this runs.

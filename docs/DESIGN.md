@@ -1082,6 +1082,7 @@ says (§2c).
 | `AthleticsMarkHeight` | 5 | (Advanced) Step 46: thickness of that bar, UI pixels. Range 2-30. |
 | `AthleticsMarkGap` | 2 | (Advanced) Step 46: the fever bar's top → the Athletics bar's bottom, UI pixels; the fever bar's place is kept while he has none (only while fever bars can show for his side at all). Range 0-20. |
 | `FormationStatsRefreshSeconds` | 0.25 | (Advanced) How often formation averages and spreads are recomputed - every formation of every side since step 20. |
+| `ImpactSpike` | false | (Advanced) Step 47, IMPACT I1 (docs/IMPACT.md §7): a TEST TOOL, not gameplay - while on, fixed loud values prove the six engine levers of the coming impact system in a real battle (a kick's KnockDown, the block stun x3 with the cap at 2 s, a reaction at speed 0.5, a forced stagger, a dropped shield, a knockdown blow of our own) and the `[summary] impact spike` lines give each a verdict WORKS / FAILS / UNSEEN with what it means for steps 48-53 (PLAYTEST D16). Its values are documented constants (Core `SpikeMath`), not settings. Master switch first; live (off = the game's stun cap back at once, nothing queued is played). |
 | `VerboseLogging` | false | Log every roll, blow and exhaustion (rate-limited) to `trax_combat.log`. Off = load, settings, mission start/end, per-battle summaries and errors only. |
 | `LogMaxMegabytes` | 8 | (Advanced) Size limit of `trax_combat.log`, MB. Past it a trim cuts the oldest VERBOSE lines, down to about half; every other line is kept (§4 "The log"). |
 

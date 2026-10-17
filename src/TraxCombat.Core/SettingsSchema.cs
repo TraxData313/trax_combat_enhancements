@@ -748,6 +748,12 @@ namespace TraxCombat.Core
             "Formation averages refresh (s)",
             "How often the formations' averages (Athletics, spread, health) for the orders-menu strip and the formation markers are worked out - every formation of every side - in seconds of battle time.");
 
+        // Step 47 (IMPACT I1, docs/IMPACT.md §7 - Anton approved the plan 2026-10-17): the SPIKE - a test tool, not gameplay. Its loud
+        // values are documented constants (Core SpikeMath), not settings: it proves the engine's levers, it tunes nothing.
+        public static readonly ParamDef ImpactSpike = Bool("ImpactSpike", AdvancedGroup,
+            "Impact test (spike) - not gameplay",
+            "A TEST TOOL for the coming impact system (staggers, dropped shields, knockdowns): while on, every battle applies fixed loud values - half the landed kicks knock the man down, blocks stun three times longer for half the men, every other kicked man reels at half speed, the first block every 10 s staggers the blocker, a kicked man drops his shield, one knockdown blow of the mod's own every 20 s - and the log's summary says per lever whether the game followed (WORKS / FAILS / UNSEEN). Leave it off to play. Live.");
+
         public static readonly ParamDef VerboseLogging = Bool("VerboseLogging", AdvancedGroup,
             "Verbose log",
             "Also write every damage roll, blow, step back and AI pause to trax_combat.log, rate-limited so a big battle cannot flood it. These lines carry a ~ before their tag and are the only ones a trim cuts. Off: loading, settings, battle start and end, first-time events, summaries and errors only.");
@@ -795,7 +801,7 @@ namespace TraxCombat.Core
             OrderPanelOffsetTop, OrderPanelWidth,
             AltMarkerTextSize, AltMarkerOffset, AltMarkerBarWidth, AltMarkerBarHeight,
             FeverMarkWidth, FeverMarkHeight, FeverMarkHeightMetres, AthleticsMarkWidth, AthleticsMarkHeight, AthleticsMarkGap,
-            FormationStatsRefreshSeconds, VerboseLogging, LogMaxMegabytes,
+            FormationStatsRefreshSeconds, ImpactSpike, VerboseLogging, LogMaxMegabytes,
         };
 
         /// <summary>The groups in order.</summary>

@@ -62,8 +62,14 @@ namespace TraxCombat.Models
         public override void DecideMissileWeaponFlags(Agent attackerAgent, in MissionWeapon missileWeapon, ref WeaponFlags missileWeaponFlags)
             => BaseModel.DecideMissileWeaponFlags(attackerAgent, in missileWeapon, ref missileWeaponFlags);
 
+        /// <summary>Step 47: the base model first (Sandbox's MightyBlow perk kept), then the impact seam - the running logic's stun decider
+        /// (the spike's x3; I4's stun by tiredness) and, while the game's cap is raised, the game's own cap for every blow nobody
+        /// lengthened. ANY THREAD (RESEARCH §R2) - <see cref="ImpactHooks.AfterDefendedBlowStun"/> never throws.</summary>
         public override void CalculateDefendedBlowStunMultipliers(Agent attackerAgent, Agent defenderAgent, CombatCollisionResult collisionResult, WeaponComponentData attackerWeapon, WeaponComponentData defenderWeapon, ref float attackerStunPeriod, ref float defenderStunPeriod)
-            => BaseModel.CalculateDefendedBlowStunMultipliers(attackerAgent, defenderAgent, collisionResult, attackerWeapon, defenderWeapon, ref attackerStunPeriod, ref defenderStunPeriod);
+        {
+            BaseModel.CalculateDefendedBlowStunMultipliers(attackerAgent, defenderAgent, collisionResult, attackerWeapon, defenderWeapon, ref attackerStunPeriod, ref defenderStunPeriod);
+            ImpactHooks.AfterDefendedBlowStun(attackerAgent, defenderAgent, collisionResult, ref attackerStunPeriod, ref defenderStunPeriod);
+        }
 
         public override float CalculateStaggerThresholdDamage(Agent defenderAgent, in Blow blow)
             => BaseModel.CalculateStaggerThresholdDamage(defenderAgent, in blow);
@@ -122,8 +128,13 @@ namespace TraxCombat.Models
         public override bool DecideAgentKnockedBackByBlow(Agent attackerAgent, Agent victimAgent, in AttackCollisionData collisionData, WeaponComponentData attackerWeapon, in Blow blow)
             => BaseModel.DecideAgentKnockedBackByBlow(attackerAgent, victimAgent, in collisionData, attackerWeapon, in blow);
 
+        /// <summary>Step 47: vanilla's answer first, then the impact seam OR-ed on top (the spike's KnockDown on a landed kick; I3 / I5's
+        /// model) - main thread; a throwing decider = vanilla's answer.</summary>
         public override bool DecideAgentKnockedDownByBlow(Agent attackerAgent, Agent victimAgent, in AttackCollisionData collisionData, WeaponComponentData attackerWeapon, in Blow blow)
-            => BaseModel.DecideAgentKnockedDownByBlow(attackerAgent, victimAgent, in collisionData, attackerWeapon, in blow);
+        {
+            bool game = BaseModel.DecideAgentKnockedDownByBlow(attackerAgent, victimAgent, in collisionData, attackerWeapon, in blow);
+            return ImpactHooks.KnockDownOnBlow(attackerAgent, victimAgent, in collisionData, in blow, game);
+        }
 
         public override bool DecideMountRearedByBlow(Agent attackerAgent, Agent victimAgent, in AttackCollisionData collisionData, WeaponComponentData attackerWeapon, in Blow blow)
             => BaseModel.DecideMountRearedByBlow(attackerAgent, victimAgent, in collisionData, attackerWeapon, in blow);

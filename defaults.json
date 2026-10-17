@@ -939,6 +939,15 @@
   // (range 0.05 to 2.0)
   "FormationStatsRefreshSeconds": 0.25,
 
+  // A TEST TOOL for the coming impact system (staggers, dropped shields, knockdowns): while on,
+  // every battle applies fixed loud values - half the landed kicks knock the man down, blocks
+  // stun three times longer for half the men, every other kicked man reels at half speed, the
+  // first block every 10 s staggers the blocker, a kicked man drops his shield, one knockdown
+  // blow of the mod's own every 20 s - and the log's summary says per lever whether the game
+  // followed (WORKS / FAILS / UNSEEN). Leave it off to play. Live.
+  // (true or false)
+  "ImpactSpike": false,
+
   // Also write every damage roll, blow, step back and AI pause to trax_combat.log, rate-limited
   // so a big battle cannot flood it. These lines carry a ~ before their tag and are the only
   // ones a trim cuts. Off: loading, settings, battle start and end, first-time events,

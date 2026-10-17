@@ -372,6 +372,7 @@ namespace TraxCombat.Core
         public int AthleticsMarkHeight => GetInt(SettingsSchema.AthleticsMarkHeight);
         public int AthleticsMarkGap => GetInt(SettingsSchema.AthleticsMarkGap);
         public float FormationStatsRefreshSeconds => GetFloat(SettingsSchema.FormationStatsRefreshSeconds);
+        public bool ImpactSpike => GetBool(SettingsSchema.ImpactSpike); // step 47
         public bool VerboseLogging => GetBool(SettingsSchema.VerboseLogging);
         public int LogMaxMegabytes => GetInt(SettingsSchema.LogMaxMegabytes);
     }

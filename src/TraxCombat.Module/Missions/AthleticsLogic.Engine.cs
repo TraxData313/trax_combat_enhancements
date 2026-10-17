@@ -160,11 +160,13 @@ namespace TraxCombat.Missions
             StartTiredBlock(); // step 30
             StartSprint(); // step 33
             StartFever(); // step 43
+            StartImpact(); // step 47
         }
 
         private void StopAthletics()
         {
             if (ReferenceEquals(_current, this)) _current = null;
+            ReleaseImpactHooks(); // step 47: our deciders out of the decorators, the game's stun cap back - always
         }
 
         /// <summary>Every tick: this mission is the one running (Mission.Current) but not the running
@@ -332,6 +334,7 @@ namespace TraxCombat.Missions
             StackLeftField(st); // step 32: his running burst counted
             SprintLeftField(st); // step 33
             FeverLeftField(st); // step 43
+            ImpactLeftField(st); // step 47
             RemoveFromLoop(st);
         }
 
@@ -1290,6 +1293,14 @@ namespace TraxCombat.Missions
         {
             try
             {
+                ImpactAgentHit(); // step 47: our own knockdown blow seen by the behaviours (counted)
+            }
+            catch (Exception e)
+            {
+                Failed("impact.agent-hit", e);
+            }
+            try
+            {
                 var st = Get(affectedAgent);
                 if (st == null) return;
                 var r = Rules;
@@ -1334,6 +1345,14 @@ namespace TraxCombat.Missions
         /// poll); landed-only mode charges the first hit of each swing on an agent.</summary>
         public override void OnMeleeHit(Agent attacker, Agent victim, bool isCanceled, AttackCollisionData collisionData)
         {
+            try
+            {
+                ImpactHitTaken(attacker, victim, in collisionData); // step 47: the impact spike's kicks and blocks (nothing while it is off)
+            }
+            catch (Exception e)
+            {
+                Failed("impact.hit", e);
+            }
             try
             {
                 StepBackHitTaken(victim, isCanceled, in collisionData); // step 5d: blocked or landed, stepping back or not
