@@ -355,7 +355,7 @@ namespace TraxCombat.Tools
 
                 // ---- the summary
                 logic.WriteImpactSummary();
-                LogHas("[summary] impact live right-side shield blocks by the blocker's bar 100-75% / 75-50% / 50-25% / 25-0% (step 51; LIVE - kicks / bashes, blocks, the riposte applied");
+                LogHas("[summary] impact live right-side shield blocks by the blocker's bar 100-75% / 75-50% / 50-25% / 25-0% (step 51; LIVE - kicks / bashes, blocks, clean hits, the riposte applied");
                 LogHas("[summary] impact live WRONG-side shield blocks by the blocker's bar ");
                 LogHas("[summary] impact live parries by the blocker's bar ");
                 LogHas("[summary] impact live block staggers: asked ");

@@ -66,7 +66,7 @@ namespace TraxCombat.Missions
                 bool kept = ImpactHitMath.StillShrugsOff(damage, gameThreshold, tired);
                 _hits.NoteShrug(st.Fraction, !kept);
                 if (!kept && HitsFirst(0))
-                    TraxLog.Info("impact", "live: first shrug-off REFUSED at " + Sec(now) + " s - " + Name(st) + " (bar " + Pct(st.Fraction) + ", T " + F2(tired) + ") took " + F1(damage)
+                    TraxLog.Info("impact", "live: first shrug-off REFUSED at " + Sec(now) + " s - " + Name(st) + " (bar " + Pct0(st.Fraction) + ", T " + F2(tired) + ") took " + F1(damage)
                         + " damage, the game's threshold " + F1(gameThreshold) + " x (1 - T) = " + F1(ImpactHitMath.ShrugOffThreshold(gameThreshold, tired)) + " - a tired man flinches (ImpactTiredNeverShrugsOff)");
                 return kept;
             }
@@ -130,7 +130,7 @@ namespace TraxCombat.Missions
             if ((knockDown || staggered) && (d.AttackerIsPlayer || d.DefenderIsPlayer)) YouHitLine(a, v, in d, knockDown);
             if ((knockDown || staggered) && HitsFirst(knockDown ? 1 : 2))
                 TraxLog.Info("impact", "live: first clean hit that " + (knockDown ? "KNOCKS DOWN" : "STAGGERS") + " at " + Sec(now) + " s - " + Name(a) + "'s " + ImpactHitMath.ClassName(cls) + " blow on " + Name(v)
-                    + " (his bar " + Pct(d.Bar) + ", x " + F2(d.X) + (d.Reeling ? ", REELING +" + F2(ImpactRules.From(TraxSettings.Shared).StaggeredBonus) : string.Empty)
+                    + " (his bar " + Pct0(d.Bar) + ", x " + F2(d.X) + (d.Reeling ? ", REELING +" + F2(ImpactRules.From(TraxSettings.Shared).StaggeredBonus) : string.Empty)
                     + (d.Momentum > 1.0001 ? ", momentum x" + F2(d.Momentum) + " at " + F1(d.AttackerSpeed) + " m/s" : string.Empty) + "): "
                     + (knockDown ? "KnockDown answered in the decorator's seam - his fall-and-rise to be slowed x" + F2(d.GetUpFactor)
                        : "his own flinch to be slowed to " + F2(d.StaggerSeconds) + " s (x" + F2(ImpactHitMath.FlinchFactor(d.StaggerSeconds, _flinchNatural.Seconds)) + " the flinch's "
@@ -145,7 +145,7 @@ namespace TraxCombat.Missions
             var roll = knockDown ? d.Knockdown : d.Stagger;
             string what = d.DefenderIsPlayer ? Name(a) + "'s blow on you: " + ImpactHitMath.YouOutcome(o) : "your blow on " + Name(v) + ": " + ImpactHitMath.HisOutcome(o);
             string len = knockDown ? " - gets up x" + F2(d.GetUpFactor) + " slower" : " - " + F2(d.StaggerSeconds) + " s";
-            TraxLog.Info("impact", "YOU: " + what + " (" + Pct0(roll.Chance) + "; " + (d.DefenderIsPlayer ? "your" : "his") + " bar " + Pct(d.Bar) + ", x " + F2(d.X)
+            TraxLog.Info("impact", "YOU: " + what + " (" + Pct0(roll.Chance) + "; " + (d.DefenderIsPlayer ? "your" : "his") + " bar " + Pct0(d.Bar) + ", x " + F2(d.X)
                 + (d.Reeling ? ", reeling" : string.Empty) + (d.Momentum > 1.0001 ? ", momentum x" + F2(d.Momentum) : string.Empty) + ")" + len);
         }
 

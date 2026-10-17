@@ -31,6 +31,8 @@ namespace TraxCombat.Tools
             public readonly Dictionary<int, (double Kg, double Skill)> Guards = new Dictionary<int, (double, double)>();
             public readonly HashSet<int> Shields = new HashSet<int>();
             public readonly HashSet<int> Mounted = new HashSet<int>();
+            public readonly Dictionary<int, double> Speeds = new Dictionary<int, double>(); // step 52: the attacker's speed into the blow (m/s)
+            public readonly HashSet<int> TwoHanded = new HashSet<int>(); // step 52: a two-handed grip
             public double Damage { get; set; }
             public bool Throw;
             public int Calls;
@@ -44,6 +46,8 @@ namespace TraxCombat.Tools
                 f.DefenderHasShield = Shields.Contains(victim.Index);
                 f.Damage = Damage;
                 f.DefenderMaxHealth = 100;
+                f.AttackerSpeed = !f.AttackerMounted && Speeds.TryGetValue(attacker.Index, out var v) ? v : 0;
+                f.TwoHanded = TwoHanded.Contains(attacker.Index);
                 if (f.Event != ImpactEvent.Kick && Weapons.TryGetValue(attacker.Index, out var w))
                 {
                     f.WeaponWeight = w.Kg;
@@ -142,7 +146,7 @@ namespace TraxCombat.Tools
                 logic.ImpactDice = dice;
                 var stats = logic.ImpactModelStats;
                 var model = SpikeDamageModel();
-                LogHas("[impact] mission start: the model (step 48 - IMPACT I2, docs/IMPACT.md) LIVE - kicks / bashes, blocks, the riposte applied, clean hits decided and logged only (effect not built yet); families: kicks / bashes on, blocks on, clean hits on, riposte on; anchors - a kick on an empty even man: shield 90%, down 80%");
+                LogHas("[impact] mission start: the model (step 48 - IMPACT I2, docs/IMPACT.md) LIVE - kicks / bashes, blocks, clean hits, the riposte applied; families: kicks / bashes on, blocks on, clean hits on, riposte on; anchors - a kick on an empty even man: shield 90%, down 80%");
                 LogHas("two even fresh men: 0% always");
                 double t = 19000;
                 logic.TickImpact(t);
@@ -243,7 +247,7 @@ namespace TraxCombat.Tools
                 Check(d.Event == ImpactEvent.Parry && Close(d.Stagger.Chance, 0.768, 0.006) && Close(d.Knockdown.Chance, 0.364, 0.006), "an even parry at 25%: " + d.Stagger.Chance + " / " + d.Knockdown.Chance);
                 var hit = CleanHit();
                 var b2 = new Blow(even1.AgentIndex);
-                Check(!model.DecideAgentKnockedDownByBlow(even1.Agent, even3.Agent, in hit, null!, in b2), "a clean hit got KnockDown before step 52");
+                Check(!model.DecideAgentKnockedDownByBlow(even1.Agent, even3.Agent, in hit, null!, in b2), "a clean hit whose dice said no got KnockDown (step 52: clean hits live)");
                 logic.ImpactModelHitTaken(even1.Agent, even3.Agent, in hit);
                 d = logic.LastImpact;
                 Check(d.Event == ImpactEvent.CleanHit && Close(d.Stagger.Chance, 0.683, 0.006) && Close(d.Knockdown.Chance, 0.345, 0.006) && stats.FromDecorator == 2,

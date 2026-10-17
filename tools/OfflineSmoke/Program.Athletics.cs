@@ -1139,6 +1139,9 @@ namespace TraxCombat.Tools
             // --- step 51: the live blocks - off = the stun the game's at once, the cap back, nothing queued played; on = live again
             ImpactBlocksFollowTheMasterSwitch();
 
+            // --- step 52: the live clean hits - off = no knockdown answered, every shrug-off the game's; on = live again
+            ImpactHitsFollowTheMasterSwitch();
+
             // --- step 49: courage - off = every timid man let go at once (its own logic), back on = looked at again
             CourageFollowsTheMasterSwitch();
 

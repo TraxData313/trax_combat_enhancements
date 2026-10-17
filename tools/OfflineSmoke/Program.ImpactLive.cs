@@ -70,7 +70,7 @@ namespace TraxCombat.Tools
                 var model = SpikeDamageModel();
                 double t = 30000;
                 logic.TickImpact(t);
-                LogHas("LIVE - kicks / bashes, blocks, the riposte applied, clean hits decided and logged only (effect not built yet)");
+                LogHas("LIVE - kicks / bashes, blocks, clean hits, the riposte applied"); // step 52: every family live
 
                 TrackedAgent Man(int index, int athletics, double bar)
                 {
@@ -273,7 +273,7 @@ namespace TraxCombat.Tools
 
                 // ---- the summary
                 logic.WriteImpactSummary();
-                LogHas("[summary] impact live (step 50 - kicks and bashes; LIVE - kicks / bashes, blocks, the riposte applied");
+                LogHas("[summary] impact live (step 50 - kicks and bashes; LIVE - kicks / bashes, blocks, clean hits, the riposte applied");
                 LogHas("knocked down decided ");
                 LogHas("[summary] impact live lengths: the reel asked x");
                 LogHas("[summary] impact live shields: drops queued from the tick ");
