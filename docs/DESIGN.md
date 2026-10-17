@@ -1444,6 +1444,20 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     field); (h) the view is named "ALT bars" in the log (it was "fever marks"), its classes keep their step-44 names; (i) the layer
     stays while either bar can show - `FeverEnabled` off no longer hides it while the Athletics bars are on. Also in step 46
     (Anton's playtest): `CostPerBlow` 3 → 7 in defaults.json (config format 9 moves a format-8 file's 3 once; a tuned value kept).
+39. **The impact spike** (step 47, IMPACT I1 - docs/IMPACT.md §7, approved by Anton 2026-10-17 with every recommended answer of its §8;
+    Claude's calls - AI_NOTES "Step 47"): (a) ONE Advanced switch `ImpactSpike` (off) - a test tool, not gameplay; its loud values
+    (x3 stun, cap 2 s, speed 0.5, every 10 s / 20 s, 1 damage) are DOCUMENTED CONSTANTS in Core `SpikeMath`, not settings - it proves
+    the engine, it tunes nothing (step 48's model brings the ~60 settings); (b) every lever measured against its OWN CONTROL in the
+    same battle: the landed kicks rotate in fours (KnockDown untouched / reel untouched / KnockDown slowed / reel slowed), the block
+    stun is x3 for blockers of an EVEN agent index only (deterministic, so the worker-thread decorator and the main-thread
+    measurement agree without a shared write) - so "x2 measured" is a fact of that battle, not a guess against a remembered number;
+    (c) the forced stagger alternates the engine's priority rule (with it / over it) so I4 learns which one the engine takes; (d) the
+    stagger and our own blow never land on the same block (the stagger first), and a man we act on is never a stun sample; (e) never a
+    stagger or our blow on a rider / horse / a man on a siege engine or in water / already down - refused BEFORE any engine call
+    (RBM crashed a horse); (f) the levers are the reusable seams of steps 48-53 (`ImpactHooks` in the decorators, `IImpactBody`),
+    the spike only their first user; (g) each lever behind its own try - an error disables that lever for the mission, the others
+    run on; (h) master switch first: off = the game's stun cap back at the next tick (the decorators already vanilla), nothing queued
+    is played.
 
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),
