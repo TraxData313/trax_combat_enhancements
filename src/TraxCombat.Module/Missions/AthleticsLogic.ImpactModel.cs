@@ -15,8 +15,9 @@ namespace TraxCombat.Missions
     ///   - a LANDED blow (kick, bash, clean hit) on a man on foot is decided in the damage decorator's KnockDown seam
     ///     (<see cref="ImpactModelOnLandedBlow"/> - before the engine registers the blow, so step 50 / 52 answer KnockDown there) and
     ///     remembered for the same callback's OnMeleeHit, which takes it instead of deciding again (one decision per event);
-    ///   - a BLOCK, a landed blow on a rider (the decorator asks the dismount, not the KnockDown) and anything the decorator did not see is
-    ///     decided in OnMeleeHit (<see cref="ImpactModelHitTaken"/>); step 51 makes the stagger / the drop / our blow from the tick, and the
+    ///   - step 53: a landed blow on a RIDER is decided the same way in the decorator's DISMOUNT seam (the engine asks it instead of the
+    ///     KnockDown question for a man on a horse - AthleticsLogic.ImpactRiders.cs);
+    ///   - a BLOCK and anything the decorator did not see is decided in OnMeleeHit (<see cref="ImpactModelHitTaken"/>); step 51 makes the stagger / the drop / our blow from the tick, and the
     ///     stun by tiredness in the stun seam (any thread - from T alone, no dice state).
     /// Step 50: a family decided LIVE whose effect is not built yet decides on COPIES of the men's states (<see cref="ImpactRules.KeepsState"/>)
     /// - a stagger that never happened gives no reeling bonus, immunity, halving or courage shock.

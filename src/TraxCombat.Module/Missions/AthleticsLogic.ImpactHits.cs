@@ -10,7 +10,7 @@ namespace TraxCombat.Missions
     /// "Step 52"). The model's ONE decision per clean hit (step 48 - made in the damage decorator's KnockDown seam) is APPLIED through the
     /// kicks' proven path (step 50):
     ///   - KNOCKDOWN: the decorator's KnockDown seam answers the decision (OR-ed with vanilla's), its Fall watched and slowed by the decided
-    ///     get-up factor, the measured end = <see cref="ImpactState.GotUp"/> (the 5 s immunity from it) - never on a rider (step 53);
+    ///     get-up factor, the measured end = <see cref="ImpactState.GotUp"/> (the 5 s immunity from it) - never on a rider (step 53: he is knocked OFF his horse - AthleticsLogic.ImpactRiders.cs);
     ///   - STAGGER: the engine's OWN flinch slowed (WatchKind.Reaction) to the decided length - its natural length LEARNED from the measured
     ///     flinches (the untouched controls and the slowed ones × their speed); the measured end into <see cref="ImpactState.EndReel"/> (the
     ///     reeling bonus for the next blow, the 2 s immunity) - not a forced stagger;
