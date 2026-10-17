@@ -81,7 +81,7 @@ namespace TraxCombat.Core
         /// <summary>Walked <see cref="CourageMath.MaxMovingSeconds"/> without getting there - he holds where he is.</summary>
         TookTooLong,
 
-        /// <summary>The odds came back on the way.</summary>
+        /// <summary>Reserved (a walk now always ends before courage comes back - counted 0).</summary>
         BecameBrave,
 
         /// <summary>His timid spell ended otherwise (switched off, excluded, left the field, the battle's end).</summary>
@@ -352,6 +352,9 @@ namespace TraxCombat.Core
         /// <summary>The walk's direction: the centre, plus this much of "away from the enemies near him" (both unit vectors).</summary>
         public const double AwayWeight = 0.5;
 
+        /// <summary>The centre lies BEHIND the enemies (the way to it and "away from them" more than ~135° apart): he goes round them.</summary>
+        public const double RoundCosine = -0.7;
+
         /// <summary>The log's "out of the formation": farther than this many regroup radii from its centre.</summary>
         public const double OutOfFormationRadii = 2;
 
@@ -526,7 +529,7 @@ namespace TraxCombat.Core
             if (!hasTo && !hasAway) return false;
             double x = (hasTo ? toX : 0) + (hasAway ? AwayWeight * awayX : 0);
             double y = (hasTo ? toY : 0) + (hasAway ? AwayWeight * awayY : 0);
-            if (hasTo && hasAway && x * toX + y * toY < 0.25)
+            if (hasTo && hasAway && toX * awayX + toY * awayY < RoundCosine)
             {
                 // the centre lies behind the enemies: go round them - the perpendicular of "away" on the centre's side
                 double lx = -awayY, ly = awayX; // left of away
@@ -727,19 +730,20 @@ namespace TraxCombat.Core
                 Phase = CouragePhase.Holding;
                 return CourageStep.TimidHolding;
             }
-            if (CourageMath.BraveAgain(in r, odds, required, now - Since))
-            {
-                if (Phase == CouragePhase.Moving) EndMoving(RegroupEnd.BecameBrave, now);
-                Phase = CouragePhase.Brave;
-                Flip(now);
-                return CourageStep.Brave;
-            }
             if (Phase == CouragePhase.Moving)
             {
+                // a walk back is finished before courage comes back - out of the enemy's reach is not yet "back with his group"
+                // (Anton: "short of courage a man retreats to the formation he came from")
                 if (CourageMath.Arrived(in r, distance, shocked)) return StopMoving(RegroupEnd.Arrived, now);
                 if (mates >= CourageMath.MatesNeeded(in r, shocked)) return StopMoving(RegroupEnd.AmongMates, now);
                 if (now - MovingSince >= CourageMath.MaxMovingSeconds) return StopMoving(RegroupEnd.TookTooLong, now);
                 return CourageStep.None;
+            }
+            if (CourageMath.BraveAgain(in r, odds, required, now - Since))
+            {
+                Phase = CouragePhase.Brave;
+                Flip(now);
+                return CourageStep.Brave;
             }
             if (CourageMath.MovesAgain(in r, distance, mates, shocked))
             {

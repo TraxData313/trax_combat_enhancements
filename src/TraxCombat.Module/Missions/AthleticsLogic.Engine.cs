@@ -160,6 +160,7 @@ namespace TraxCombat.Missions
             StartTiredBlock(); // step 30
             StartSprint(); // step 33
             StartFever(); // step 43
+            StartCourage(); // step 49
             StartImpact(); // step 47
         }
 
@@ -334,6 +335,7 @@ namespace TraxCombat.Missions
             StackLeftField(st); // step 32: his running burst counted
             SprintLeftField(st); // step 33
             FeverLeftField(st); // step 43
+            CourageLeftField(st); // step 49
             ImpactLeftField(st); // step 47
             RemoveFromLoop(st);
         }
@@ -536,6 +538,16 @@ namespace TraxCombat.Missions
             catch (Exception e)
             {
                 Failed("fever.tick", e);
+            }
+
+            // Step 49: courage and cohesion - every AI man looked at about every 0.5 s (staggered; ON and OFF - the OFF looks measure); the walkers steered.
+            try
+            {
+                TickCourage(now);
+            }
+            catch (Exception e)
+            {
+                Failed("courage.tick", e);
             }
 
             // Step 13: your timer - switched off or not you any more = released at once (the input gate
@@ -1067,6 +1079,7 @@ namespace TraxCombat.Missions
                 NoteStackSettings(settings);      // step 32: the swing stack's switch and numbers
                 NoteSprintSettings(settings);     // step 33: the sprint (switching it off ends every sprint in the next tick)
                 NoteFeverSettings(settings);      // step 43: aggression and fever (the decision factors re-targeted below with the speeds)
+                NoteCourageSettings(settings);    // step 49: courage (applied at every man's next look)
 
                 if (r.PoolFloor != _seenPoolFloor || r.PoolPerSkill != _seenPoolPerSkill)
                 {
@@ -1298,6 +1311,14 @@ namespace TraxCombat.Missions
             catch (Exception e)
             {
                 Failed("impact.agent-hit", e);
+            }
+            try
+            {
+                CourageHitTaken(affectedAgent, Mission.CurrentTime); // step 49: his shock window (whatever the switches - read at his next look)
+            }
+            catch (Exception e)
+            {
+                Failed("courage.hit", e);
             }
             try
             {

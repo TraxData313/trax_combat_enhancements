@@ -407,7 +407,7 @@ namespace TraxCombat.Missions
                 EndSprint(st, end, now);
                 return;
             }
-            if (!sp.ByKey && now >= st.SprintNextMelee)
+            if (!sp.ByKey && !sp.Regroup && now >= st.SprintNextMelee) // step 49: a sprint back is getting AWAY from the enemy
             {
                 st.SprintNextMelee = now + SprintMath.MeleeCheckSeconds;
                 _sprintStats.MeleeChecks++;

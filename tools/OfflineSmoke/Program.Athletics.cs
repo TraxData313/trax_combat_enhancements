@@ -1136,6 +1136,9 @@ namespace TraxCombat.Tools
             // --- step 48: the impact model - off = nothing decided (its own logic), back on = decided
             ImpactModelFollowsTheMasterSwitch();
 
+            // --- step 49: courage - off = every timid man let go at once (its own logic), back on = looked at again
+            CourageFollowsTheMasterSwitch();
+
             // --- the HUD (step 6): the Athletics bar goes the moment the switch goes, and comes back
             HudFollowsTheMasterSwitch(a.Agent);
         }

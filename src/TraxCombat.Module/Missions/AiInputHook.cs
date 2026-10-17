@@ -44,8 +44,15 @@ namespace TraxCombat.Missions
         /// <summary>Step 32: input frames whose kick the hook took out (the summary sums them).</summary>
         public long KicksCleared;
 
+        /// <summary>Step 49: a timid man walks back to his group: <see cref="RegroupX"/>, <see cref="RegroupY"/> replace the AI's movement
+        /// input (in his own frame, refreshed every tick). A step back's backpedal wins while it runs (it is short and faces the enemy too).
+        /// Works with the Athletics system off (courage does not need it).</summary>
+        public bool Regroup;
+        public float RegroupX, RegroupY = -1f;
+        public long RegroupFrames;
+
         /// <summary>Any wish at all - a man is held while ANY of them wants him held (one ending never lifts another).</summary>
-        public bool Active => HoldAttacks || StepHoldAttacks || Backpedal || BraceHoldAttacks;
+        public bool Active => HoldAttacks || StepHoldAttacks || Backpedal || BraceHoldAttacks || Regroup;
 
         /// <summary>Since when the state has been active (mission time), for the calls-per-second figure.</summary>
         public double ActiveSince = -1;
@@ -123,10 +130,22 @@ namespace TraxCombat.Missions
             {
                 s.Calls++;
                 var settings = TraxSettings.Shared;
-                if (!settings.ModEnabled || !settings.AthleticsEnabled) return; // the master switch first (the tick clears the wishes too)
+                if (!settings.ModEnabled) return; // the master switch first (the tick clears the wishes too)
+                if (!settings.AthleticsEnabled && !(s.Regroup && settings.CourageEnabled)) return; // step 49: courage works without Athletics
                 if (Agent.IsMainAgent || !Agent.IsAIControlled)
                 {
                     s.NotAi++; // the player's agent, or a soldier the player took over (RTS Camera): never touched
+                    return;
+                }
+                if (!settings.AthleticsEnabled)
+                {
+                    uint only = (uint)movementFlag;
+                    float ox = inputVector.x, oy = inputVector.y;
+                    if (AiInputHook.ApplyRegroup(s, ref only, ref ox, ref oy))
+                    {
+                        movementFlag = (Agent.MovementControlFlag)only;
+                        inputVector = new Vec2(ox, oy);
+                    }
                     return;
                 }
                 uint flags = (uint)movementFlag;
@@ -138,7 +157,7 @@ namespace TraxCombat.Missions
                 float vx = inputVector.x, vy = inputVector.y;
                 AiInputHook.Apply(_st, s, settings.AiHoldRaiseGuard, ref flags, ref vx, ref vy, settings.BraceRaiseShield);
                 movementFlag = (Agent.MovementControlFlag)flags;
-                if (s.Backpedal) inputVector = new Vec2(vx, vy);
+                if (s.Backpedal || (s.Regroup && settings.CourageEnabled)) inputVector = new Vec2(vx, vy);
             }
             catch (Exception e)
             {
@@ -270,6 +289,32 @@ namespace TraxCombat.Missions
             Account(s, was, now);
         }
 
+        /// <summary>Step 49: turns the regroup walk's wish on or off (the other wishes are left as they are).</summary>
+        internal static void SetRegroup(TrackedAgent st, bool on, double now)
+        {
+            var s = st.Input ??= new AiInputState();
+            bool was = s.Active;
+            s.Regroup = on;
+            if (!on)
+            {
+                s.RegroupX = 0f;
+                s.RegroupY = -1f;
+            }
+            Account(s, was, now);
+        }
+
+        /// <summary>Step 49: a regrouping man's frame - his own move bits out, the walk's vector in (never while a step back's backpedal runs;
+        /// never with CourageEnabled off). True when it wrote. Managed - the smoke drives it.</summary>
+        internal static bool ApplyRegroup(AiInputState s, ref uint flags, ref float vx, ref float vy)
+        {
+            if (!s.Regroup || s.Backpedal || !TraxSettings.Shared.CourageEnabled) return false;
+            flags = AiInputMath.Backpedal(flags);
+            vx = s.RegroupX;
+            vy = s.RegroupY;
+            s.RegroupFrames++;
+            return true;
+        }
+
         /// <summary>Step 23: turns the brace's wish on or off (the timer's and the step back's are left as they are).</summary>
         internal static void SetBrace(TrackedAgent st, bool on, double now)
         {
@@ -299,7 +344,7 @@ namespace TraxCombat.Missions
             var s = st.Input;
             if (s == null) return;
             bool was = s.Active;
-            s.HoldAttacks = s.StepHoldAttacks = s.Backpedal = s.BraceHoldAttacks = s.HoldKicks = false;
+            s.HoldAttacks = s.StepHoldAttacks = s.Backpedal = s.BraceHoldAttacks = s.HoldKicks = s.Regroup = false;
             Account(s, was, now);
         }
 
@@ -362,6 +407,10 @@ namespace TraxCombat.Missions
                 vx = s.BackX;
                 vy = s.BackY;
                 s.BackpedalFrames++;
+            }
+            else
+            {
+                ApplyRegroup(s, ref flags, ref vx, ref vy); // step 49: the walk back (a step back's backpedal wins while it runs)
             }
             if (s.Capture && !s.CapturedAttack && (edit & InputEdit.AttackCleared) != 0)
             {

@@ -63,6 +63,9 @@ namespace TraxCombat.Core
         /// <summary>An exception on his sprint (logged) - ended to stay safe.</summary>
         Error,
 
+        /// <summary>Step 49: a sprint back ended with his walk back (arrived, among his mates, brave again).</summary>
+        Regrouped,
+
         Count,
     }
 
@@ -444,6 +447,7 @@ namespace TraxCombat.Core
             SprintEnd.FreshStart => "the hideout's fresh start",
             SprintEnd.MissionEnd => "the battle ended",
             SprintEnd.Error => "an error",
+            SprintEnd.Regrouped => "back with his group",
             _ => e.ToString(),
         };
     }
@@ -477,6 +481,9 @@ namespace TraxCombat.Core
 
         /// <summary>The player's sprint (not an AI order sprint).</summary>
         public bool ByKey { get; private set; }
+
+        /// <summary>Step 49: a timid man's sprint back to his group (its own reserve; it does not end at 3 m from an enemy - he is getting AWAY).</summary>
+        public bool Regroup { get; private set; }
 
         /// <summary>Pulls the store down to <paramref name="capacity"/> (his points dropped, or the first look). True when it moved
         /// below what it held (not counting the first look's +∞).</summary>
@@ -523,6 +530,7 @@ namespace TraxCombat.Core
             StoredAtStart = Stored;
             Order = order;
             ByKey = byKey;
+            Regroup = false;
             return SprintStart.Started;
         }
 
@@ -547,6 +555,29 @@ namespace TraxCombat.Core
             StoredAtStart = Stored;
             Order = order;
             ByKey = false;
+            Regroup = false;
+            return SprintStart.Started;
+        }
+
+        /// <summary>
+        /// Step 49: a timid man's sprint back - <paramref name="length"/> seconds (CourageMath.SprintAmount: what he holds above the courage
+        /// reserve, or the panic one), filed as a move order's sprint. Off: SprintAiEnabled off; ReserveKept: nothing above the reserve.
+        /// </summary>
+        public SprintStart TryStartRegroup(in SprintRules s, double now, double capacity, double length)
+        {
+            if (Active) return SprintStart.Running;
+            if (!s.AiOn) return SprintStart.Off;
+            Clamp(capacity);
+            if (!(capacity > SprintMath.EmptySeconds)) return SprintStart.NoStore;
+            if (!(length > 0)) return SprintStart.ReserveKept;
+            Active = true;
+            Length = length > Stored ? Stored : length;
+            Elapsed = 0;
+            Since = now;
+            StoredAtStart = Stored;
+            Order = SprintOrder.Move;
+            ByKey = false;
+            Regroup = true;
             return SprintStart.Started;
         }
 

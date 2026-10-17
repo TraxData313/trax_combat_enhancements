@@ -127,6 +127,15 @@ namespace TraxCombat.Missions
             {
                 Failed("fever.close", e);
             }
+            // Step 49: every timid man let go (the game's behaviour weights back while the agents live) before the summary.
+            try
+            {
+                CloseCourage(agentsAlive);
+            }
+            catch (Exception e)
+            {
+                Failed("courage.close", e);
+            }
 
             // the lowest any hero reached (heroes' records outlive their removal from the loop)
             TrackedAgent? lowest = null;
@@ -264,6 +273,16 @@ namespace TraxCombat.Missions
             catch (Exception e)
             {
                 Failed("fever.summary", e);
+            }
+
+            // Step 49: courage and cohesion - isolated men and distance ON vs OFF, timid spells, walks back, flocking, panic, odds bands. Own try.
+            try
+            {
+                WriteCourageSummary();
+            }
+            catch (Exception e)
+            {
+                Failed("courage.summary", e);
             }
         }
 

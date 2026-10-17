@@ -251,6 +251,20 @@ namespace TraxCombat.Missions
         /// <summary>Step 43: in no formation at his last fever look (tournaments, arenas, duels - the summary's own group).</summary>
         public bool NoFormation;
 
+        /// <summary>Step 49: his courage - brave / timid (walking back or holding), the walk's target and direction, the flips.</summary>
+        public readonly CourageMind Courage = new CourageMind();
+
+        /// <summary>Step 49: his toughness at full health (armour and level, read once - NaN until first needed) and whether he carries a
+        /// two-hander / polearm and no shield (an enemy who does weighs CourageHeavyWeaponPercent).</summary>
+        public double CourageBase = double.NaN;
+        public bool CourageHeavy;
+
+        /// <summary>Step 49: looked at for courage at least once (the summary's men).</summary>
+        public bool CourageSeen;
+
+        /// <summary>Step 49: his last landed hits (OnAgentHit) - the SHOCK window reads them (a struct mutated in place through this field).</summary>
+        public ShockTimes Hits;
+
         public void RememberMissile(int index)
         {
             switch (MissileNext)
