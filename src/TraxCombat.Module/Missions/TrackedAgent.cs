@@ -54,6 +54,10 @@ namespace TraxCombat.Missions
         /// (Core <see cref="BlockTracker"/>, a struct: mutated in place through this field).</summary>
         public BlockTracker Block;
 
+        /// <summary>Step 48: his impact state (Core <see cref="ImpactState"/>, a struct mutated in place through this field) - reeling,
+        /// immunities, his recent outcomes; in shadow mode what WOULD have happened.</summary>
+        public ImpactState Impact;
+
         /// <summary>His melee releases so far - a blow's number for the defender's block dedupe (step 22) too.</summary>
         public int ReleaseSerial;
         public double ReleaseStart = -1;

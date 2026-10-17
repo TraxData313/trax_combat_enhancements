@@ -1355,6 +1355,14 @@ namespace TraxCombat.Missions
             }
             try
             {
+                ImpactModelHitTaken(attacker, victim, in collisionData); // step 48: the impact model's one decision per event (before any charge moves the bars)
+            }
+            catch (Exception e)
+            {
+                Failed("impact.model", e);
+            }
+            try
+            {
                 StepBackHitTaken(victim, isCanceled, in collisionData); // step 5d: blocked or landed, stepping back or not
             }
             catch (Exception e)

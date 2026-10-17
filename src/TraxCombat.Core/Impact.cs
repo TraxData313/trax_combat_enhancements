@@ -791,7 +791,7 @@ namespace TraxCombat.Core
                     : ImpactRefusal.None, dice);
 
             // the riposte: a right-side block or a parry, the roles turned, × the defender's f
-            if ((f.Event == ImpactEvent.RightBlock || f.Event == ImpactEvent.Parry) && r.RiposteOn && r.RiposteMax > 0)
+            if ((f.Event == ImpactEvent.RightBlock || f.Event == ImpactEvent.Parry) && r.RiposteOn && r.RiposteMax > 0 && !down)
             {
                 double xr = RipostePressure(in r, in f, ref d);
                 int na = attacker.Recent(now, r.DiminishWindow);
@@ -964,7 +964,7 @@ namespace TraxCombat.Core
             if (!o.InRow) return string.Empty;
             var c = CultureInfo.InvariantCulture;
             string s = name + " " + (100 * o.Chance).ToString("0.#", c) + "%";
-            if (o.Halvings > 0) s += " (x" + o.Halvings.ToString(c) + " recent)";
+            if (o.Halvings > 0) s += " (cut for " + o.Halvings.ToString(c) + " recent)";
             if (o.Refusal != ImpactRefusal.None) return s + " - refused: " + RefusalName(o.Refusal) + ";";
             if (!o.Rolled) return s + ";";
             return s + " → rolled " + o.Die.ToString("0.00", c) + (o.Happens ? " YES;" : " no;");

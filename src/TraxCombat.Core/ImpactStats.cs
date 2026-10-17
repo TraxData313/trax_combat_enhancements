@@ -46,8 +46,11 @@ namespace TraxCombat.Core
         public int Halved;
         public long Halvings;
         public int Dismounts;
+        /// <summary>Decisions made in shadow mode (ImpactShadowMode or the spike) / in live mode; of the live ones, those whose family's
+        /// effect is built and so applied (none in step 48).</summary>
         public int ShadowDecisions;
         public int LiveDecisions;
+        public int Applied;
         public int FromDecorator;
         public int OnPlayer;
         public int ByPlayer;
@@ -98,8 +101,8 @@ namespace TraxCombat.Core
             }
         }
 
-        /// <summary>One decision (shadow = it would apply; live = it applies).</summary>
-        public void Note(in ImpactDecision d, bool shadow, double costMs, int attackerBand)
+        /// <summary>One decision: made in shadow mode or live, and whether it was applied (live and its family's effect built).</summary>
+        public void Note(in ImpactDecision d, bool shadow, bool applied, double costMs, int attackerBand)
         {
             int e = (int)d.Event, b = ImpactMath.BarBand(d.Bar);
             Decided[e, b]++;
@@ -138,6 +141,7 @@ namespace TraxCombat.Core
             if (!double.IsNaN(d.RiposteStunSeconds)) RiposteSeconds.Add(d.RiposteStunSeconds);
             if (shadow) ShadowDecisions++;
             else LiveDecisions++;
+            if (applied && !shadow) Applied++;
             if (d.DefenderIsPlayer) OnPlayer++;
             if (d.AttackerIsPlayer) ByPlayer++;
             CostMs += costMs;
@@ -175,8 +179,8 @@ namespace TraxCombat.Core
         {
             var lines = new List<string>();
             int total = Decisions;
-            // "did" only once an effect is built and something ran live (steps 49-51 refine it per family)
-            string verb = LiveDecisions > 0 && ImpactMath.EffectsBuilt != ImpactFamily.None ? "did" : "would";
+            // "did" only once something was applied (steps 49-51 refine it per family)
+            string verb = Applied > 0 ? "did" : "would";
             if (!EverOn && total == 0)
             {
                 lines.Add("impact (step 48 - the model): OFF all mission (" + (now.OffBecause ?? "on at the end") + ") - nothing decided"
@@ -225,16 +229,16 @@ namespace TraxCombat.Core
                       + ", the blocker's stun " + Times(in StunFactor) + ", a riposted attacker's recoil " + Seconds(in RiposteSeconds)
                       + " (" + (ImpactMath.EffectsBuilt == ImpactFamily.None ? "asked only - no effect built yet; steps 49-51 measure what the engine plays" : "steps 49-51 measure what the engine plays") + ")");
             lines.Add("impact cost: " + I(total) + " decisions, " + (total > 0 ? F1(1000 * CostMs / total) : "0") + " µs a decision (max " + F1(1000 * MaxCostMs) + " µs) - "
-                      + (ShadowDecisions > 0 ? I(ShadowDecisions) + " in shadow" : "none in shadow") + ", " + I(LiveDecisions) + " live");
+                      + (ShadowDecisions > 0 ? I(ShadowDecisions) + " in shadow" : "none in shadow") + ", " + I(LiveDecisions) + " live (" + I(Applied) + " applied)");
             return lines;
         }
 
         private string ModeWords()
         {
-            if (ShadowDecisions > 0 && LiveDecisions > 0) return "MIXED - shadow " + I(ShadowDecisions) + ", live " + I(LiveDecisions);
+            if (ShadowDecisions > 0 && LiveDecisions > 0) return "MIXED - shadow " + I(ShadowDecisions) + ", live " + I(LiveDecisions) + " (" + I(Applied) + " applied)";
             if (ShadowDecisions > 0) return "SHADOW - decided and logged, nothing applied";
-            if (ImpactMath.EffectsBuilt == ImpactFamily.None) return "LIVE, but no effect is built yet (steps 49-51) - decided and logged only";
-            return "LIVE - " + ImpactMath.FamiliesText(ImpactMath.EffectsBuilt) + " applied";
+            if (Applied == 0) return "LIVE, but no effect is built yet (steps 49-51) - decided and logged only";
+            return "LIVE - " + ImpactMath.FamiliesText(ImpactMath.EffectsBuilt) + " applied (" + I(Applied) + " decisions)";
         }
 
         private string EventLine(ImpactEvent ev, string verb)

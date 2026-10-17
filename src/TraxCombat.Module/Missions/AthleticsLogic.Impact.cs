@@ -128,6 +128,7 @@ namespace TraxCombat.Missions
             ImpactHooks.BlockStun = this;
             if (_seenSpike.Enabled) SpikeSwitchedOn(Mission != null ? Mission.CurrentTime : 0, atStart: true);
             else TraxLog.Info("impact", "mission start: spike " + _seenSpike.Describe() + " - read live");
+            StartImpactModel(); // step 48: the model (its own line)
         }
 
         /// <summary>The logic leaves (OnRemoveBehavior): our deciders out of the decorators, the game's stun cap back - always.</summary>
@@ -211,6 +212,7 @@ namespace TraxCombat.Missions
             TakeStunFailure();
             CloseImpact(agentsAlive: true);
             foreach (var line in _spike.SummaryLines(SpikeRules.From(TraxSettings.Shared))) TraxLog.Info("summary", line);
+            WriteImpactModelSummary(); // step 48
         }
 
         // ------------------------------------------------------------------ the tick
@@ -234,6 +236,14 @@ namespace TraxCombat.Missions
             if (_spikeOn) _spike.OnSeconds += dt;
             else if (_spike.EverOn) _spike.OffSeconds += dt;
             TakeStunFailure();
+            try
+            {
+                TickImpactModel(now); // step 48: the model's switch and mode, read live
+            }
+            catch (Exception e)
+            {
+                Failed("impact.model-tick", e);
+            }
             if (!_spikeOn) return;
 
             _spikeCalls = 0;
@@ -275,6 +285,14 @@ namespace TraxCombat.Missions
         /// the rotation says so (<see cref="SpikeMath.Kick"/> on the NEXT kick's number - OnMeleeHit counts it right after, in the same engine
         /// callback). The game's answer is OR-ed by the hook.</summary>
         bool IKnockDownDecider.KnockDownOnBlow(Agent attacker, Agent victim, in AttackCollisionData collision, in TaleWorlds.MountAndBlade.Blow blow, bool gameSays)
+        {
+            bool spike = SpikeKnockDown(attacker, victim, in collision);
+            bool model = ImpactModelOnLandedBlow(attacker, victim, in collision); // step 48: a landed blow is decided here (own try; applies from steps 49 / 51)
+            return spike || model;
+        }
+
+        /// <summary>Lever 1's answer (step 47).</summary>
+        private bool SpikeKnockDown(Agent attacker, Agent victim, in AttackCollisionData collision)
         {
             if (!_spikeStarted || _spikeClosed || _spike.Disabled(SpikeLever.KickKnockDown) || !SpikeRules.From(TraxSettings.Shared).Enabled) return false;
             try

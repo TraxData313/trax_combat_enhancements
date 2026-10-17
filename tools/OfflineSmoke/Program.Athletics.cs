@@ -1133,6 +1133,9 @@ namespace TraxCombat.Tools
             // --- step 47: the impact spike on, then the master switch off - vanilla at once (its own logic)
             ImpactSpikeFollowsTheMasterSwitch();
 
+            // --- step 48: the impact model - off = nothing decided (its own logic), back on = decided
+            ImpactModelFollowsTheMasterSwitch();
+
             // --- the HUD (step 6): the Athletics bar goes the moment the switch goes, and comes back
             HudFollowsTheMasterSwitch(a.Agent);
         }

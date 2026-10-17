@@ -794,12 +794,12 @@ public class ImpactTests
         var st = new ImpactState();
         var at = new ImpactState();
         var kick = ImpactMath.Decide(in r, Facts(ImpactEvent.Kick, a, new Man(100, 0.1, 100)), ref st, ref at, 100, dice);
-        stats.Note(in kick, shadow: false, 0.002, 0);
+        stats.Note(in kick, shadow: false, applied: false, 0.002, 0);
         var st2 = new ImpactState();
         var block = ImpactMath.Decide(in r, Facts(ImpactEvent.RightBlock, a, new Man(100, 0.6, 100), Sword, 4.0), ref st2, ref at, 100, new Dice());
-        stats.Note(in block, shadow: false, 0.001, 0);
+        stats.Note(in block, shadow: false, applied: false, 0.001, 0);
         var again = ImpactMath.Decide(in r, Facts(ImpactEvent.Kick, a, new Man(100, 0.1, 100)), ref st, ref at, 101, new Dice());
-        stats.Note(in again, shadow: false, 0.001, 0);
+        stats.Note(in again, shadow: false, applied: false, 0.001, 0);
         stats.Skip(ImpactSkip.FamilyOff, ImpactEvent.CleanHit);
         stats.EverOn = true;
         var lines = stats.SummaryLines(in r);
@@ -815,7 +815,7 @@ public class ImpactTests
         Assert.Contains(lines, l => l.StartsWith("impact lengths asked: stagger none, a kicked man's reel"));
         Assert.Contains(lines, l => l.StartsWith("impact cost: 3 decisions, 1.3 µs a decision (max 2.0 µs)"));
         var shadow = new ImpactStats();
-        shadow.Note(in kick, shadow: true, 0, 0);
+        shadow.Note(in kick, shadow: true, applied: false, 0, 0);
         Assert.StartsWith("impact (step 48 - the model; SHADOW - decided and logged, nothing applied)", shadow.SummaryLines(in r)[0]);
         var never = new ImpactStats();
         never.Skip(ImpactSkip.Off, ImpactEvent.Kick);
