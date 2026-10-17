@@ -23,7 +23,7 @@ note the time (Advanced → *Log size limit (MB)* 32 makes it rarer).
 beside `config.json`. Every line is `2026.09.30 20:15:02.117 [tag] message`; a verbose line has a
 `~` before its tag: `2026.09.30 20:15:02.201 ~[damage] melee on a person: …`. Tags: `[load]`
 `[compat]` `[config]` `[mcm]` `[mission]` `[summary]` `[damage]` `[athletics]` `[speed]` `[rate]`
-`[stepback]` `[brace]` `[sprint]` `[wall]` `[hud]` `[error]` `[log]` — search one to follow an area. Every battle ends with a
+`[stepback]` `[brace]` `[sprint]` `[wall]` `[fever]` `[hud]` `[error]` `[log]` — search one to follow an area. Every battle ends with a
 `[summary]` block; Claude reads those first.
 
 **Any time, anywhere — broken**: an `[error]` line (the game also shows a red line *"Trax Combat
@@ -887,6 +887,44 @@ above a few %, or `wall slots ON` "more than 2 m" climbing back toward OFF's); `
 clearly backed off in front of the wall (the target read sees nobody); a step rate in the dozens a man a minute (flickering
 at the edge); square side men stepping toward the formation's front; `[error] … wall.` lines.
 
+**D13. Eagerness by Athletics, and the fever of a charge (step 43, ~25 min).** Anton's idea (2026-10-17): men are defensive
+by nature and a man at work doesn't hold a pace until he drops - the more tired, the less he swings; but when the general says
+NOW!, everybody surges, longer for veterans, shorter for the tired; the surge fades. Now an AI man on foot decides to attack at
+60% of the game's eagerness with a full bar, sliding to 20% at an empty one; a NEW charge / advance order lifts him to 80% for his
+current Athletics ÷ 10 seconds (the clock starts at the first enemy within 5 m; a shield in hand burns it in 70% of the time),
+fading back to his tired eagerness. A swing costs 3 Athletics now (was 10), a wrong-side shield block 2 (was 5) - an old
+config.json holding 10 / 5 is moved once (`[config] migrated config.json … CostPerBlow: 10.0 → 3.0 (format 7 → 8 …`).
+1. **A field battle (your test).** Custom battle, infantry against infantry (60 v 60, no archers). Hold your line (F1 F1 or
+   stand) and let them come; watch the first minute of contact. **You should SEE**: the lines meet and SPAR - blocks, parries,
+   a swing now and then - not a flurry of blows until men drop; as men tire they swing visibly less. Then **F1 F3 (charge)**:
+   your men surge - more swings at once, a few sprint the last metres - and after ~5-10 s of contact they settle down again.
+   The enemy general's own charges / advances do the same to his men.
+2. **Does it slow down without deadlocking?** Let a fight run 2-3 minutes. Tired lines should still trade blows (fewer, not none);
+   two spent lines should not stand parrying forever. Watch with the brace floors in mind: holding men stop at 60% of their bar,
+   advancing 40%, charging 20% - a holding line now braces later (cheaper swings) and swings less while it lasts.
+3. **A tournament** (or an arena fight): no orders, no fever - only the bar's eagerness (the no-formation brace floor is 20%).
+   **You should see** calmer duels - feints, blocks, a measured exchange - that still end; a tired fighter swings rarely.
+4. **Live, in MCM** (*Aggression and fever (AI)*): *AI aggression at a full bar* 100 and *… at an empty bar* 100 = the game's
+   own AI (compare the same fight); 60 / 20 back; try *Fever aggression at its peak* 100 (a charge at the game's full eagerness)
+   or 60 (the fever adds nothing to a fresh man); *Fever on a charge or advance order* off.
+- **The lines**: `[fever] mission start: aggression: AI men on foot decide to attack at 60% of the game's rate at a full bar,
+  sliding in a straight line to 20% at an empty one (…) - attack chance on a charge 0.144 → fresh 0.086, half 0.058, empty 0.029,
+  fever peak 0.115 …; fever: a NEW charge / advance order arms …; fever sprint: every 1.0 s …`; `[fever] first decision values
+  written this mission: <name> (bar 100%, x0.60) - attack chance 0.096 → 0.058, …`; `[fever] first fever armed this battle:
+  <name> at … s on a new charge order (yours | the AI general's, Charge) - N Athletics points / 10.0 = … s of fever; his attack
+  decisions x0.80 the game's (his tired share at a …% bar: x0.…) until an enemy comes within 5.0 m, then the clock runs`;
+  `[fever] first fever burning …`, `[fever] first fever sprint …`, `[fever] first fever faded …`. The summary (L6i): ten
+  `fever …` lines.
+- **Read first**: `fever proof:` - AI melee attacks per man-minute in contact by bar band 100-75 / 75-50 / 50-25 / 25-0 %: the
+  `no fever` row should FALL from the first band to the last (roughly 60 : 50 : 40 : 30 : 20 of each other, on top of the pause),
+  the `in a fever` row should sit above it; `fever proof, no formation` the same for a tournament; `fever values written` the
+  numbers that really went in (bar 100-75% x~0.55-0.60, … in a fever x~0.65-0.80); `fever recomputes` a few a man-minute.
+
+**Broken — tell Claude** (D13): the `no fever` rate does not fall with the bar (the native AI ignores the values - RESEARCH
+UNVERIFIED 25); `in a fever` no higher than `no fever`; `0 of N fevers met an enemy` after a real charge; fevers never armed
+after F1 F3 (`fever armed: 0`); a deadlock (two lines facing each other, nobody swinging, for a minute); `fever recomputes` in the
+dozens a man-minute; `[error] … fever.` lines.
+
 ---
 
 ## E. Your Athletics bar, the orders-menu strip and the ALT markers (20 min)
@@ -1599,6 +1637,24 @@ header names the technique: `==== scene …, mod ON, AI holds: Input (the AI's o
   Proves: men step (`steps out by … men`, a few a man a minute), the leash bites (`reined … m past it` ~0.1-0.3 m, `past it +
   0.5 m` near 0) and they come back (`back in their slots after a step`). With L 0 all battle: `- the leash was 0 (the hard
   hold of step 41) the whole battle: no steps`. Verbose (bucket `wall-step`): `… steps out at … s` / `… step out ended at …`.
+
+### L6i. Eagerness by Athletics and the fever (step 43)
+
+- Mission start: `[fever] mission start: aggression: … ; fever: … ; fever sprint: … - read live; every man looked at about every
+  0.25 s; …` (off: `aggression: off (ModEnabled | AthleticsEnabled) - the game's own attack decisions; fever: off (…)`). A change:
+  `[fever] settings changed mid-mission at … s: …`; the fever switched off: `[fever] FeverEnabled switched off at … s: N fevers ended …`.
+- First-time lines in full: decision values written, fever armed, burning, fever sprint, faded (D13). Verbose: `~[fever] … armed /
+  fever sprint / fever ended` (buckets fever-arm, fever-sprint, fever-end).
+- The [summary] lines: `fever settings: …`; `fever armed: N (charge … - by you … / by the AI general …; advance …); … re-armed …
+  kept … ignored …; not armed: on a horse …, no Athletics …, player-controlled …`; `fever contact: B of N fevers met an enemy
+  within 5.0 m - armed → contact mean … s, max … s; never met one (ended still armed): …`; `fever burn: faded …; burn length with
+  a shield in hand (most of it) …, mean … s from a mean store of … s (x0.70); without … (x1.00) …; all ends: …`; `fever
+  recomputes: … asked … over … AI man-minutes on foot = … a man-minute; per fever …`; `fever sprints: started … (fever left
+  100-67%: …, 67-33%: …, 33-0%: …) in … checks; refused: missed the roll …, reserve kept …, no store …, sprinting already …, in
+  melee …, no enemy in range …, sprint off …`; `fever proof: AI melee attacks per man-minute in contact …, by bar 100-75 / 75-50 /
+  50-25 / 25-0 %: in a formation, no fever a / b / c / d (…); in a fever … - in a fever x… the rate without`; `fever proof, no
+  formation (tournaments, arenas, duels - no orders, no fever): …`; `fever values written (AI on foot, the game's → ours): attack
+  chance bar 100-75% 0.096 → 0.056 (x0.58, n), …, in a fever …; riposte chance …`; `fever cost: … looks over … men, … µs a look`.
 
 ### L7. The HUD — your bar, the recovery bar, the orders strip and the ALT markers
 

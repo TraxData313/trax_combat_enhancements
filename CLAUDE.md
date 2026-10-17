@@ -23,7 +23,7 @@ Heroes and party leaders pay less per blow (and big-skill heroes have
 big bars), so the game leans hero-centred. Kicks and shield bashes cost a little too (step 18:
 `CostPerKickOrBash` 3 × the same multipliers, once each, never an attack pause). DEFENDING costs too (step 22):
 every melee blow a fighter BLOCKS costs HIM - `CostPerShieldBlock` 1 (shield, right side), `CostPerWrongSideShieldBlock`
-5, `CostPerWeaponParry` 2 - × the same multipliers, once per blocked blow (OnMeleeHit's collision data, Core `BlockMath` /
+5 (2 since step 43), `CostPerWeaponParry` 2 - × the same multipliers, once per blocked blow (OnMeleeHit's collision data, Core `BlockMath` /
 `BlockTracker`); since step 29 only a WRONG-side shield block restarts the refill delay (`OnlyWrongSideBlocksStopRefill`,
 Anton: a skilful defender recovers on the defence - a clean block or parry costs, the refill runs on underneath; off =
 every paid block, step 22); never an attack pause or a step back; missiles into a shield
@@ -80,7 +80,19 @@ to hit but stopped"): a LEASH per held man - an enemy (the AI's target, else his
 SLOT frees him (vanilla's own value - he closes and swings) until he stands L out of his slot or the enemy is gone, then he is
 held (TRUE) and walks back; a new step only once back within min(0.3 m, L/2) of his slot; "out" = the facing for a shield wall,
 away from the centre for a square / circle; a man out is looked at every 0.1 s; L 0 = step 41 exactly; the summary's "wall step
-out" line (steps, a man's rate, how far, how each ended, the overshoot past L). The bar for the
+out" line (steps, a man's rate, how far, how each ended, the overshoot past L). AGGRESSION FOLLOWS ATHLETICS AND THE FEVER OF A CHARGE (step 43,
+Anton 2026-10-17: "a man at work doesn't hold a pace until he drops; the more tired he is, the less he swings" - and "when the
+general says NOW!, everybody surges ... the surge fades"): every AI man ON FOOT's two melee attack-decision values (the game's
+`AIAttackOnDecideChance` - 0.144 charge / 0.096 / 0.05 wall - and `AIAttackOnParryChance`, assigned with `=` by the base model)
+× a share sliding with his bar (points ÷ FULL pool) from `AiAggressionFreshPercent` 60 to `AiAggressionExhaustedPercent` 20, in
+0.05 steps riding the speeds' re-target (the stat decorator; never you, never riders, never ranged; × 5e's m if that switch is
+on) - a tired man has two brakes, fewer decisions and the pause; a NEW charge / advance order (the sprint's order poll) arms a
+FEVER of his CURRENT points ÷ `FeverPointsPerSecond` 10 s at an ABSOLUTE `FeverAggressionPercent` 80 (never below his tired
+share), its clock from his first enemy within `FeverContactMetres` 5 m, burning × 1/0.7 with a shield in hand (read live),
+fading to his CURRENT tired share; a hold / move / retreat ends it; feverish men roll every 1 s (50% × the fever left) for a
+sprint at an enemy 3-12 m off, above their order's reserve; no formation = no fever; the [fever] summary proves it - AI melee
+attacks per man-minute in contact by bar band, without / in a fever / in no formation. Swings are cheaper: `CostPerBlow` 3 and
+`CostPerWrongSideShieldBlock` 2 in defaults.json (config format 8 moves a file's old 10 / 5 once). The bar for the
 fighter you look at is LATER (DESIGN §3; its settings wait in DESIGN's "Planned parameters"). Words:
 the pool/bar/points are "Athletics", the character-screen skill is "the Athletics skill" (it
 used to be called "endurance"), the "peak line" is the white mark at the top quarter of the bar,
@@ -177,7 +189,7 @@ die at any moment (tokens run out) and the next one loses nothing.
   file, capped at `LogMaxMegabytes` (8); a trim cuts ONLY the oldest verbose lines (marked `~`
   before the tag) and keeps every other line - summaries, first-time lines, settings, errors
   (step 10b, Core `LogTrim`). Timestamped lines tagged by area (`[config]`, `[mcm]`, `[mission]`,
-  `[damage]`, `[athletics]`, `[speed]`, `[rate]`, `[stepback]`, `[brace]`, `[guard]`, `[sprint]`, `[wall]`, `[hud]`, `[error]`). Always logged: mod/game version
+  `[damage]`, `[athletics]`, `[speed]`, `[rate]`, `[stepback]`, `[brace]`, `[guard]`, `[sprint]`, `[wall]`, `[fever]`, `[hud]`, `[error]`). Always logged: mod/game version
   at load, every parameter value on load and on change, each mission start/end (type,
   scene, agent counts), which behaviors/views attached, and every caught exception with its
   stack. Per-battle SUMMARY at mission end (damage rolls: count, min/avg/max factor;
@@ -219,11 +231,12 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               its Default comes from defaults.json (DefaultsFile), never code; step 33: ParamType.Key +
                               KeyNames (a key by NAME, stored as its index; FormatJson writes "LeftControl"; the
                               file / defaults.json read the name, MCM a text box)
-  SettingsSchema.cs           EVERY setting of DESIGN's table (127), in file + MCM order, 13 groups
+  SettingsSchema.cs           EVERY setting of DESIGN's table (139), in file + MCM order, 14 groups
                               ("Master switch" first, "Damage" second - step 25 renamed it from
                               "Damage randomness", "Battle pace (AI)" - step 21 - after the step back (step 41's
                               ShieldWallHoldsSlots and step 42's ShieldWallStepOutMetres at its end),
-                              "Brace by orders (AI)" - step 23 - after it, "Sprint" - step 33 - after that,
+                              "Brace by orders (AI)" - step 23 - after it, "Sprint" - step 33 - after that, "Aggression and
+                              fever (AI)" - step 43 - after the sprint,
                               "Formation markers (hold ALT)" - step 20 - before
                               "Advanced" last; step 10b's one vocabulary and
                               units in its header comment) — the one place a setting is declared
@@ -240,14 +253,15 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
   ConfigFile.cs               config.json TEXT: commented writer (header incl. how to revert +
                               // above each key; AppendSettings shared with defaults.json),
                               tolerant reader (comments, trailing commas, casing, "0,75"), Apply;
-                              FormatVersion 7 + Migrate (step 13: a format-1 file's old defaults -
+                              FormatVersion 8 + Migrate (step 13: a format-1 file's old defaults -
                               AttackRateAiDecisions true, PlayerBarOffsetBottom 54 - get the new ones once;
                               step 14: a format-2 file's MinMoveSpeedMultiplier 0.3 → the default once;
                               step 20b: a format-3 file's 0.7 → 0.6 and a format 2-3 file's
                               AttackAnimationMinPercent 100 → 85 once; step 22: a format 3-4 file's
                               RegenRateNearFullPercent 50 → 100 and a format-4 file's MinMoveSpeedMultiplier
                               0.6 → 0.3 once; step 37: a format-6 file's SprintAiAdvanceKeepPercent 0 → 50 and
-                              SprintAiMoveKeepPercent 70 → 80 once; any format: DropRetiredSprintKeys - step 33's two
+                              SprintAiMoveKeepPercent 70 → 80 once; step 43: any older file's CostPerBlow 10 → 3 and
+                              CostPerWrongSideShieldBlock 5 → 2 once; any format: DropRetiredSprintKeys - step 33's two
                               SprintAi*SharePercent and step 36's three SprintAi*UsePercent leave Unknown, one note each;
                               Migrate(read, defaultOf) = the
                               seam the tests hand defaults.json's values through - they run on DESIGN's)
@@ -451,6 +465,19 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               hold), Describe; plumbing LookSeconds 0.1, OverMetres 0.5, MaxMetres 3; WallLeashStats (steps, men,
                               a man's rate while held, farthest out, ends, the overshoot of the reined, back in slot, time out,
                               in-contact samples past L / L + 0.5) + the [summary] "wall step out" line
+  Fever.cs                    step 43 pure (AI_NOTES "Step 43"): FeverRules (live; ModEnabled FIRST, AthleticsEnabled = AggressionOn,
+                              Enabled = + FeverEnabled, SprintOn; the percents, the store, contact, shield, the sprint roll; Describe with
+                              a charge's values fresh / half / empty / peak), FeverMath (TiredShare = E + (F − E) × bar, AggressionShare -
+                              armed max(T, P), burning T + (P − T) × left ÷ full, never below T -, Quantize 0.05 (ShareStep), DecisionFactor
+                              (1 for the player / off), ApplyChance (× then clamp 0-1, no floor), Store = points ÷ per second, BurnRate,
+                              Group (charge / advance), SprintChance (× left ÷ full, full armed), SprintRoll, share bands; plumbing
+                              PollSeconds 0.25, MaxPercent 200), FeverStore (one man: Arm → Armed / Rearmed / KeptLarger / Repeat /
+                              NoStore / Off / NotAggressive, StartBurn, Burn - the shield live, SprintDue, Stop), FeverPhase, FeverEnd,
+                              FeverArm, FeverSprintRefusal
+  FeverStats.cs               step 43 per-mission: fevers armed by order and by you / the AI general, re-arms, contact delay, never met,
+                              burns by shield, ends, decision recomputes per AI man-minute and per fever, fever sprints by the fever left
+                              + refusals, THE PROOF - AI melee attacks per man-minute in contact by bar band (no fever / in a fever / no
+                              formation), the values written by band and in a fever + the 10 [summary] "fever" lines
   TiredBlock.cs               step 30 pure (AI_NOTES "Step 30", RESEARCH §M): TiredBlockRules (live: ModEnabled FIRST,
                               AthleticsEnabled, TiredBlockRandomPercent > 0; Share, OffBecause, Describe), TiredBlockMath -
                               Weight = share × (1 − f) (0 at f 1, off, the player), OwnChance (the game's value clamped 0-1:
@@ -565,7 +592,9 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               5e - off by default since 13), or a slowed rider's horse's
                               (SpeedFactorsFor - managed reads only); step 30: a tired AI man's
                               AiRandomizedDefendDirectionChance = TiredBlockMath.Chance(the base's, w) - never
-                              the main agent; + the tournament SetAILevelMultiplier fix
+                              the main agent; step 43: an AI man on foot's two melee attack-decision chances × his aggression
+                              share (SpeedPenalty.ScaleAttackDecisions; never the main agent or a rider); + the tournament
+                              SetAILevelMultiplier fix
   Models/SpeedPenalty.cs      the penalties on AgentDrivenProperties: attack (swing, thrust/draw,
                               reload), the AI's decisions (5e: attack / riposte / shoot chance x m,
                               the aim ÷ m), run (MaxSpeedMultiplier), horse (MountSpeed) - nothing
@@ -678,7 +707,9 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               of the run and hands the decorator SprintTopSpeedReachSeconds (+ remembers the game's reach,
                               TrackedAgent.GameReach); the floor and the acceleration in the first-sprint lines; a sprint setting
                               change marks every sprinter for a recompute;
-                              RegenPass skips a sprinter; the recompute budget's start ROTATES (the first man left waiting)
+                              RegenPass skips a sprinter; the recompute budget's start ROTATES (the first man left waiting); step 43:
+                              PollOrdersFor - the order poll runs while the AI sprint OR the fever is on and hands each changed
+                              formation's men to both (SprintFormationRead.ByPlayer = !Formation.IsAIControlled)
   Missions/SprintBody.cs      step 33: ISprintBody (the smoke plays it) + GameSprintBody (formations by Mission.Teams /
                               FormationsIncludingEmpty, the order by GameBraceBody.KindOf, motion, GetNearbyEnemyAgentCount,
                               the key through Mission.InputManager.IsKeyDown(InputKey) - KeyFor, PlayerCanSprint = a fight
@@ -715,6 +746,13 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               vanilla's value given back, kept in the list, nothing written - goto Sample), the per-frame loop
                               looks at a man out every 0.1 s instead of after vanilla, Manage (into the list), NoteLeash, EndStep
                               (every let-go path ends a step), the first step out / its end in full, a live L change line
+  Missions/AthleticsLogic.Fever.cs  step 43: StartFever / NoteFeverSettings (the [fever] lines), RetargetDecision (the share
+                              in 0.05 steps → SpeedDirty; called from RetargetSpeed and every look), FeverOrderFor (from the order poll:
+                              arm / re-arm / end), TickFever (switched off → EndAllFevers; a staggered slice, each man ~every 0.25 s),
+                              PollFever (player / rider → ended; contact = EnemyWithin(FeverContactMetres) → the burn; the shield by
+                              IWeaponFacts; the sprint check; the proof's contact time by group and bar band), FeverSprintCheck (the
+                              gates, the two proximity reads, FeverDice → TryStartAi + BeginSprint), EndFever (every path), FeverLeftField,
+                              CloseFevers, NoteFeverAttack (StartRelease), NoteDecisionValues (the decorator), WriteFeverSummary
   Missions/BraceBody.cs       step 23: BraceState (his roll, step 28's floor roll FloorUnit, the running brace, the shield's
                               progress), IBraceBody (the
                               engine side - the smoke plays it), GameBraceBody (the order from
@@ -840,7 +878,7 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
   Hud/AltMarkersVM.cs         its ViewModels: the root + a GROW-ONLY MBBindingList of AltMarkerLabelVM keyed by
                               team + formation (a label never swaps formations when vanilla re-sorts); step 24:
                               ReadyText / ReadyColor / ReadyShown, SetReady
-tests/TraxCombat.Core.Tests/  net8.0 xUnit (625) — schema vs DESIGN.md (keys + types), one copy
+tests/TraxCombat.Core.Tests/  net8.0 xUnit (642) — schema vs DESIGN.md (keys + types), one copy
                               runs (SingleCopyTests: claims on private slots, copies, texts), when
                               MCM is tried and when it stops (McmPlanTests - step 12),
                               defaults.json (DefaultsFileTests), master switch, settings, config
@@ -914,7 +952,11 @@ tests/TraxCombat.Core.Tests/  net8.0 xUnit (625) — schema vs DESIGN.md (keys +
                               hold, freed below L with an enemy close, held at L, back in the slot before the next step - min(0.3,
                               L/2) -, no enemy = held, a man first seen in his slot, a live L change, the reach from the slot and
                               its hysteresis, a square's outward side, the setting placed and live, the switches, the sentence,
-                              the summary line). They
+                              the summary line), aggression and the fever (FeverTests, step 43: the share by
+                              the bar 60 → 20, 0.05 steps and no floor, the player / switches, x 5e's m, the store from current
+                              points, armed = the absolute peak, contact, the shield live mid-fever, the fade to the CURRENT tired share,
+                              re-arming, an order's end, the sprint chance x the fever left, the roll cadence, the reserve cap, the
+                              settings, the format-8 migration 10 → 3 / 5 → 2 with tuned values kept, the summary lines). They
                               run on DESIGN's INITIAL values (DesignTable.cs: a module
                               initializer), so tuning defaults.json never breaks them. Keep green.
 module/SubModule.xml          release manifest (Id TraxCombatEnhancements, v1.0.0) - THE one home of the
@@ -1098,7 +1140,14 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               side man freed (nothing written), no rewrite at vanilla's update while out, reined within the 0.1 s
                               look (1.03 m at L 1), no new step before back in the slot, enemy gone, L 0 live (held, then not one
                               enemy read) and 2 live, the master switch, the lines and the summary; L 0 = step 41's exact writes
-                              with and without an enemy in front; the cost - 1000 men, 200 out, 0.015 ms a pre-tick, 0 bytes (89
+                              with and without an enemy in front; the cost - 1000 men, 200 out, 0.015 ms a pre-tick, 0 bytes; step 43
+                              (Program.Fever.cs): aggression and the fever through the real decorator and logic - the share by the bar
+                              (0.144 → 0.086 full, 0.058 at a half bar), never you or a rider, a charge armed at the absolute 0.8
+                              peak, nothing burned before contact, the burn and the fade (0.75 at 7 of 10 s), the shield taken out
+                              (4.9 s for 7 s of store), back to 0.6 after 5 recomputes, the proof's groups, the fever sprint (refusals,
+                              the reserve, the roll a second), re-arming, 100 / 100 and FeverEnabled live, the lines and the summary;
+                              the cost - 1000 men in a fever, 0.005 ms a tick, 0 bytes; the master-switch step ends a fever and
+                              gives the game's values back (the older steps pin the share 100 / 100 and the fever off - FeverOff) (91
                               steps; the config checks work for any tuned default)
                               TRAX_SMOKE_KEEP=1 keeps its temp folder + log to read
 tools/DefaultsTool/           defaults.json upkeep: refresh (rewrite comments/order, keep every

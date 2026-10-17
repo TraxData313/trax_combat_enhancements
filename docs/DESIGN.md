@@ -74,8 +74,8 @@ regen.)
   - heroes (lords, companions, the player): × `HeroCostMultiplier` (0.75)
   - the hero who LEADS the fighter's party (the player for their own party, a lord for his):
     × `PartyLeaderCostMultiplier` (0.75) on top → 0.75 × 0.75 × 10 = 5.6 per blow.
-  - Step 43 (Anton, 2026-10-17): defaults.json ships `CostPerBlow` **3** (3 / 2.25 / 1.69) - the calm AI below swings
-    about three times less, so a swing may cost less; the worked examples in this section keep the INITIAL 10 (the unit
+  - Step 43 (Anton, 2026-10-17): defaults.json ships `CostPerBlow` **3** (3 / 2.25 / 1.69) - the AI's eagerness now
+    follows its bar (§2 "Aggression and the fever"), so a swing may cost less; the worked examples in this section keep the INITIAL 10 (the unit
     tests count blows on them). Config format 8 moves a file still holding 10 to 3 once (and `CostPerWrongSideShieldBlock`
     5 → 2); a tuned value is kept.
 - **What is a blow**: a melee swing or thrust, a shot, a throw. A couched lance or braced
@@ -487,47 +487,53 @@ regen.)
   formation's average top (cached ~2 s), so one sprinter alone would be held to the others' pace. **Off** (the
   master switch, `AthleticsEnabled`, `SprintEnabled`) = no sprint, every running one ended, speeds back on the
   next recomputes. A hideout's boss fight (step 19) fills the stores of the side it refills.
-- **Calm and fever** (step 43, Anton 2026-10-17: "people are defensive by nature - they don't want to throw their
-  life away, they won't swing until they tire. But when the general turns to them and says NOW!, everybody surges ...
-  the more experienced they are the longer they follow that order, and the more tired they are ... the shorter they
-  fight hard. The surge fades." AI_NOTES "Step 43"; Core `FeverMath`, `FeverStore`).
-  - **Calm** (`AiCalmFactor` 3): every AI man ON FOOT's two melee attack-decision values - `AIAttackOnDecideChance`
+- **Aggression and the fever** (step 43, Anton 2026-10-17: "people are defensive by nature - they don't want to throw
+  their life away ... when the general turns to them and says NOW!, everybody surges ... the more experienced they are
+  the longer they follow that order, and the more tired they are ... the shorter they fight hard. The surge fades." -
+  and, redesigning the first draft's flat calm factor: "a man at work doesn't hold a pace until he drops; the more tired
+  he is, the less he swings". AI_NOTES "Step 43"; Core `FeverMath`, `FeverStore`).
+  - **Aggression follows Athletics**: every AI man ON FOOT's two melee attack-decision values - `AIAttackOnDecideChance`
     (the game's chance to start an attack at a combat decision, 0.1 × 0.48 × (3 − defensiveness) clamped 0.05-1: a
     charge 0.144, other orders 0.096, a shield wall / square / circle 0.05) and `AIAttackOnParryChance` (the riposte,
-    0.08 − 0.02 × defensiveness) - are divided by it, in the stat decorator after the base model's
-    `SetAiRelatedProperties` (which assigns both with `=` every recompute: never compounds). No floor of ours (the
-    game's 0.05 is its own formula's clamp; calm 3 means three times rarer, a shield wall's 0.05 → 0.017). Everyone,
-    always - tournaments, arenas and duels too. Never the player, never riders (a rider's swing comes with his pass; a
-    calm rider would ride past without striking), never ranged (`AiShootFreq`, the aim: archers have step 21's wait).
-    With `AttackRateAiDecisions` (step 5e, off) on, both multiply: the game's × m ÷ calm.
+    0.08 − 0.02 × defensiveness) - × his SHARE: `AiAggressionFreshPercent` (60) at a full bar, a straight line in the bar
+    to `AiAggressionExhaustedPercent` (20) at an empty one. The bar = points ÷ his FULL pool (the brace's reading, not f -
+    so it slides over the whole bar); a wound's cap is in that reading already (no special case: a wounded man is less
+    eager because his bar is lower). Written by the stat decorator after the base model's `SetAiRelatedProperties` (which
+    assigns both with `=` every recompute: never compounds), the share in 0.05 steps carried by the speeds' re-target
+    (every charge, refill step, wound and settings change) under the same 50-a-tick recompute budget. No floor of ours
+    (the game's 0.05 is its own formula's clamp; 20% means five times rarer - a tired shield wall's 0.05 → 0.01).
+    Everyone, always - tournaments, arenas and duels too. Never the player; never riders (a rider's swing comes with his
+    pass - a less eager rider would ride past without striking; the game's values for them); never ranged (`AiShootFreq`,
+    the aim: archers have step 21's wait). With `AttackRateAiDecisions` (step 5e, off) on, both multiply: the game's × m ×
+    share. A tired man now has TWO brakes - fewer decisions to attack AND the pause after each attack (unchanged, as are
+    step 21's shares, the swing stack and the brace floors; Anton playtests the balance first). 100 / 100 = the game's AI.
   - **The fever**: a NEW charge or advance order on his formation (the sprint's order poll - step 33/36: charge, charge a
     target, attack a gate, the AI's tactical charge on a Move; advance, the AI's advance on a Move; the player's F1+F3 /
     F1+F4 and the AI general's alike) ARMS each AI man on foot with a store of his CURRENT Athletics points ÷
-    `FeverPointsPerSecond` (10) seconds - a 100-point man at 80 points: 8 s. While armed or burning his calm divisor is
-    replaced by the aggression multiplier M on the CALM values: armed M = `FeverAggressionMultiplier` (3 - with calm 3
-    the game's own values); burning M = 1 + (peak − 1) × left ÷ full, in 10 steps of the share (rounded up: the peak
-    holds the first tenth, the last step runs to empty) → 1 = calm at empty. The clock starts only at his first enemy
-    within `FeverContactMetres` (5 m; looked at every ~0.25 s, staggered) - an AI general orders the charge from far
-    off; once burning it burns to empty, contact or not. It burns × 1 ÷ `FeverShieldDurationMultiplier` (0.7) while a
-    shield is in his off hand, read live at every look (a shield taken from the back, or put away for a two-hander,
-    switches the rate). The same order kind again (charge → charge to a target) leaves a running fever alone; the
-    other aggressive kind (advance → charge, charge → advance) re-arms it to the larger of what is left and a fresh
-    fever (a re-arm while burning keeps burning). A new order of any other kind (hold, stop, move, retreat, fall back,
-    follow) ends it, armed or burning - the general called them back. No formation (tournaments, arenas, duels): no
-    orders, no fever - calm only. Never the player, never riders (a man who mounts loses his fever). Heroes: the same
-    rules (their bigger pools already make their fevers longer).
-  - **The fever sprint** (`FeverSprintToClose`, on; Anton: "they might sometimes use their sprint to close"): while armed
-    or burning, every `FeverSprintCheckSeconds` (1 s) a man with sprint stored above his order's reserve (step 37), not
-    sprinting, an enemy at least `FeverSprintMinMetres` (3) and within `FeverSprintMaxMetres` (12 m), rolls with chance
-    `FeverSprintChancePercent` (50) × left ÷ full (full while armed) - several per fever, rarer as it fades; a start is
-    step 36's AI sprint (everything above the reserve; it ends at 3 m like any). Needs `SprintEnabled` and
-    `SprintAiEnabled`.
+    `FeverPointsPerSecond` (10) seconds - a 100-point man at 80 points: 8 s. Its peak is ABSOLUTE,
+    `FeverAggressionPercent` (80% of the game's values): while armed his share = max(his tired share, the peak); while
+    burning it fades in a straight line from the peak to his CURRENT tired share as the store empties - tired + (peak −
+    tired) × left ÷ full, never below tired ("tired" itself keeps sinking as he fights). A man already above the peak gets
+    nothing from it. The clock starts only at his first enemy within `FeverContactMetres` (5 m; looked at every ~0.25 s,
+    staggered) - an AI general orders the charge from far off; once burning it burns to empty, contact or not. It burns
+    × 1 ÷ `FeverShieldDurationMultiplier` (0.7) while a shield is in his off hand, read live at every look (a shield taken
+    from the back, or put away for a two-hander, switches the rate). The same order kind again (charge → charge to a
+    target) leaves a running fever alone; the other aggressive kind (advance → charge, charge → advance) re-arms it to the
+    larger of what is left and a fresh fever (a re-arm while burning keeps burning). A new order of any other kind (hold,
+    stop, move, retreat, fall back, follow) ends it, armed or burning - the general called them back. No formation
+    (tournaments, arenas, duels): no orders, no fever - the bar's share only. Never the player, never riders (a man who
+    mounts loses his fever). Heroes: the same rules (their bigger pools already make their fevers longer).
+  - **The fever sprint** (`FeverSprintToClose`, on; Anton: "they might sometimes use their sprint to close" - then: the
+    sprint fades with the fever): while armed or burning, every `FeverSprintCheckSeconds` (1 s) a man with sprint stored
+    above his order's reserve (step 37), not sprinting, an enemy at least `FeverSprintMinMetres` (3) and within
+    `FeverSprintMaxMetres` (12 m), rolls with chance `FeverSprintChancePercent` (50) × left ÷ full (full while armed) -
+    several per fever, rarer as it fades; a start is step 36's AI sprint (everything above the reserve; it ends at 3 m
+    like any). Needs `SprintEnabled` and `SprintAiEnabled`.
   - **What it does not touch**: the brace (a bracing man's attack bits stay out of his input - a fever never overrides
-    it); step 21's battle pace and step 32's swing stack time what happens AFTER an attack (the fever changes how often
+    it); step 21's battle pace and step 32's swing stack time what happens AFTER an attack (the share changes how often
     he DECIDES to start one); step 41/42's wall hold (a wall under a charge is not held anyway).
   - **Off**: the master switch or `AthleticsEnabled` = the game's own values at the next recompute (the decorator's gate),
-    every fever ended; `FeverEnabled` off = calm only, every fever ended at once; `AiCalmFactor` 1 = the game's values
-    outside a fever.
+    every fever ended; `FeverEnabled` off = the bar's share only, every fever ended at once.
 - **Tired fighters step back** (built in step 5d - the literal rule; `StepBackEnabled`, on):
   when a MELEE swing ends, an AI fighter on foot may step back, facing its enemy with its guard
   up. Chance = `StepBackMaxChancePercent` (100) × (1 − f), f after the swing's cost: 0% in the
@@ -887,7 +893,7 @@ says (§2c).
 | `AthleticsPoolPerSkill` | 1.0 | Pool per point of Athletics skill (1.0 → the bar tops at the skill). |
 | `AthleticsPeakPercent` | 75 | At or above this % of their own pool a fighter is at full strength (green); below it they weaken in a straight line to 0. |
 | `HealthCapsAthletics` | true | Health left caps the usable pool. |
-| `CostPerBlow` | 10 | Athletics points one blow costs before multipliers (points, whatever the pool). defaults.json 3 since step 43 (Anton: the calm AI swings less; config format 8 moves a file's old 10 once). |
+| `CostPerBlow` | 10 | Athletics points one blow costs before multipliers (points, whatever the pool). defaults.json 3 since step 43 (Anton: the AI's eagerness now follows its bar; config format 8 moves a file's old 10 once). |
 | `CostPerKickOrBash` | 3 | Step 18 (Anton): Athletics points one kick or shield bash costs before the hero and party-leader multipliers (3 / 2.25 / 1.7), once, when it starts, landed or not; never starts the attack pause. 0 = free (steps 5-17). |
 | `CostPerShieldBlock` | 1 | Step 22 (Anton): Athletics points the DEFENDER pays for a melee blow he blocks with his shield on the correct side, before the hero and party-leader multipliers (1 / 0.75 / 0.56); once per blocked blow; does not restart the refill delay while `OnlyWrongSideBlocksStopRefill` is on (step 29); never an attack pause or a step back. 0 = free (steps 5-21). |
 | `CostPerWrongSideShieldBlock` | 5 | Step 22 (Anton): the same for a blow his shield stops on the WRONG side (the engine's `CorrectSideShieldBlock` false) - 5 / 3.75 / 2.81. 0 = free. defaults.json 2 since step 43 (Anton; config format 8 moves a file's old 5 once). |
@@ -1342,15 +1348,15 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     min(0.3 m, L/2) of his slot, and a man out keeps 0.5 m of grace on his enemy's distance - no jitter at either edge; (e) a
     square's or circle's man steps OUTWARDS (from the formation's centre through his slot), not along the formation's facing;
     (f) a man out is looked at every 0.1 s, held men keep step 41's cadence. Each is a default Anton can overturn.
-36. **Calm and fever** (step 43, Claude's calls on Anton's idea of 2026-10-17 - AI_NOTES "Step 43"): (a) melee only - the two
-    attack-decision chances; archers keep their own wait (step 21); (b) AI on foot only - riders keep the game's values (a
-    calm rider misses his pass), never the player; (c) no floor of ours under the game's 0.05 clamp; (d) with step 5e's
-    switch on the two factors multiply; (e) the same order kind again does not re-arm, the other aggressive kind re-arms
-    to the larger of what is left and a fresh fever; (f) a hold / move / retreat ends a BURNING fever too; (g) the fade in
-    10 steps (~11 recomputes a man per fever, within the 50-a-tick budget); (h) the fever sprint is a roll every 1 s at
-    50% × the fever left (Anton's change of the once-per-fever rule), the reserve still capping it; (i) heroes the same;
-    (j) a man who mounts loses his fever; (k) the shield is read live at each ~0.25 s look. Each is a default Anton can
-    overturn.
+36. **Aggression and the fever** (step 43, Claude's calls on Anton's design of 2026-10-17 - AI_NOTES "Step 43"): (a) melee only -
+    the two attack-decision chances; archers keep their own wait (step 21); (b) AI on foot only - riders keep the game's
+    values (a less eager rider misses his pass), never the player; (c) no floor of ours under the game's 0.05 clamp; (d) the bar
+    = points ÷ his full pool, a wound's cap in it, no special case; (e) the share in 0.05 steps (rounded to the nearest), riding
+    the speeds' re-target and its recompute budget; (f) with step 5e's switch on the two factors multiply; (g) the same order
+    kind again does not re-arm, the other aggressive kind re-arms to the larger of what is left and a fresh fever; (h) a hold /
+    move / retreat ends a BURNING fever too; (i) the fever sprint is a roll every 1 s at 50% × the fever left (Anton's change of
+    the once-per-fever rule), the reserve still capping it; (j) heroes the same; (k) a man who mounts loses his fever; (l) the
+    shield is read live at each ~0.25 s look. Each is a default Anton can overturn.
 
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),

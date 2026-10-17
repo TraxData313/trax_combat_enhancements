@@ -20,7 +20,7 @@ Want the formulas and every parameter? [DESIGN.md](DESIGN.md) is the full contra
 8. [Brace by orders](#8-brace-by-orders)
 9. [Stepping back out of the press](#9-stepping-back-out-of-the-press)
 10. [Battle pace](#10-battle-pace)
-11. [Calm, and the fever of a charge](#11-calm-and-the-fever-of-a-charge)
+11. [Eagerness, and the fever of a charge](#11-eagerness-and-the-fever-of-a-charge)
 12. [Damage](#12-damage)
 13. [Heroes, and the hideout boss](#13-heroes-and-the-hideout-boss)
 14. [The sprint](#14-the-sprint)
@@ -37,9 +37,9 @@ resting refills it. While it is in its top quarter the man is at full strength. 
 less often, runs slower, hits less hard at best, and — if he is AI — starts to guess which way to
 block. His formation's orders decide how low he lets it go before he stops swinging and only defends.
 
-AI soldiers are also **calm** by nature: they hold their line and spar rather than trade blows until
-they drop — until you (or their general) order the **charge**. Then they surge, and the surge fades
-(section 11).
+AI soldiers are also **careful** by nature: they hold their line and spar rather than trade blows until
+they drop, and the more tired they are, the less they swing — until you (or their general) order the
+**charge**. Then they surge, and the surge fades (section 11).
 
 So battles get slower, and **when** you commit a formation matters as much as which troops you bring.
 A rested line beats a spent one. Fresh shock infantry thrown at a line that has been fighting for two
@@ -62,8 +62,8 @@ than 50 points. One attack — a swing, thrust, shot or throw — costs 3 points
 | 300 | 300 | 100 | 133 | 178 |
 
 Heroes (lords, companions, you) pay a quarter less per attack; a hero who leads a party pays a quarter
-less again (3 → 2.25 → 1.69 points). Attacks are cheap because the AI is calm (section 11): it swings far
-less often than the base game's AI, so each swing need not cost much for a long fight to wear men down.
+less again (3 → 2.25 → 1.69 points). Attacks are cheap because the AI is careful (section 11): it decides
+to swing far less often than the base game's AI, so each swing need not cost much for a long fight to wear men down.
 
 **The peak line.** The white mark on the bar sits at **75%**. Above it a man is at full strength;
 the first quarter of his bar is "free". Below it the effects in the next section start. A 50-point
@@ -321,27 +321,35 @@ walks back to his place. He steps again only once he is back. Nobody chases far.
 <sub>Settings: `ShieldWallHoldsSlots` on (live — switch it off mid-battle to see the difference); `ShieldWallStepOutMetres`
 1.0 m (0 = they stand fast and fight only what reaches them; 2-3 = a looser wall; live).</sub>
 
-## 11. Calm, and the fever of a charge
+## 11. Eagerness, and the fever of a charge
 
-Men are defensive by nature — nobody wants to throw his life away. In the base game AI soldiers trade
-blows until they drop. With this mod an AI soldier on foot decides to start an attack **3 times less
-often**: he holds his place, blocks, parries and waits for an opening. Tournaments and duels get calmer
-too.
+Men don't want to throw their lives away, and a man at work doesn't hold a pace until he drops. In the
+base game AI soldiers trade blows until they drop. With this mod an AI soldier on foot decides to start an
+attack **less often than the base game's AI — and less still the more tired he is**: 60% as often with a
+full Athletics bar, sliding in a straight line to 20% at an empty one. He holds his place, blocks, parries
+and waits for an opening. Tournaments and duels too.
 
-| AI soldier on foot | Base game: chance to attack at each moment he decides | Calm |
-|---|---:|---:|
-| On a charge | 14.4% | 4.8% |
-| On any other order (advance, hold, move…) | 9.6% | 3.2% |
-| In a shield wall, square or circle | 5% | 1.7% |
-| A counter-strike right after he parries (charge / other / wall) | 8% / 6% / 4% | 2.7% / 2% / 1.3% |
+| His Athletics bar | Eagerness (× the base game) | Chance to attack at each decision: on a charge | other orders | shield wall, square, circle |
+|---:|---:|---:|---:|---:|
+| Base game (any bar) | 100% | 14.4% | 9.6% | 5% |
+| 100% (full) | 60% | 8.6% | 5.8% | 3.0% |
+| 75% | 50% | 7.2% | 4.8% | 2.5% |
+| 50% | 40% | 5.8% | 3.8% | 2.0% |
+| 25% | 30% | 4.3% | 2.9% | 1.5% |
+| 0% (empty) | 20% | 2.9% | 1.9% | 1.0% |
 
-Riders keep the game's own (their swings come with each pass), and so do archers' shots and you.
+His counter-strike right after a parry (8% / 6% / 4% in the base game) shrinks the same way. This is on
+top of the pause after each attack (section 3): a tired man has **two brakes** — he decides to attack less
+often, and waits longer after each attack. A wounded man's bar is capped by his wounds (section 2), so he
+is less eager too. Riders keep the base game's (their swings come with each pass), and so do archers'
+shots and you.
 
 **The fever.** When a formation gets a **new charge or advance order** — yours or its own general's —
-every soldier on foot in it gets a **fever**: he attacks as eagerly as the base game's AI (3 × a calm
-man). The fever lasts his Athletics points **right now** ÷ 10, in seconds — so veterans with big bars
-surge longer, and men already tired from a long fight surge shorter. Its clock starts only when he first
-comes within **5 m** of an enemy, so a charge ordered from afar is not spent on the walk.
+every soldier on foot in it gets a **fever**: he attacks at **80%** of the base game's eagerness, whatever
+his bar (a fresh man rises from 60% to 80%, an exhausted one from 20% to 80%). The fever lasts his Athletics
+points **right now** ÷ 10, in seconds — so veterans with big bars surge longer, and men already tired from a
+long fight surge shorter. Its clock starts only when he first comes within **5 m** of an enemy, so a charge
+ordered from afar is not spent on the walk.
 
 | His Athletics now | Fever | With a shield in hand |
 |---:|---:|---:|
@@ -355,15 +363,16 @@ A man with a **shield in his hand** burns his fever faster (it lasts 70% as long
 it. It is read live: take the shield off your back, or put it away for a two-handed axe, and the rate
 changes from that moment.
 
-**The surge fades** in a straight line from its peak back to calm as the fever burns down:
+**The surge fades** in a straight line from 80% back down to his tired eagerness as the fever burns — and
+his tired eagerness itself keeps sinking as he fights:
 
-| Fever left | Attacks × a calm man | A charging man's chance to attack |
+| Fever left | A man still at a full bar | A man at a half bar |
 |---:|---:|---:|
-| 100% (and before he reaches the enemy) | × 3.0 | 14.4% (the base game's) |
-| 75% | × 2.5 | 12% |
-| 50% | × 2.0 | 9.6% |
-| 25% | × 1.5 | 7.2% |
-| 0% — calm again | × 1.0 | 4.8% |
+| 100% (and before he reaches the enemy) | 80% (11.5% on a charge) | 80% (11.5%) |
+| 75% | 75% | 70% |
+| 50% | 70% | 60% |
+| 25% | 65% | 50% |
+| 0% — back to his bar | 60% (8.6%) | 40% (5.8%) |
 
 A hold, move or retreat order ends the fever at once (the general called them back). A second charge or
 advance while it runs does not start it over — unless a fresh fever would be longer than what is left.
@@ -374,10 +383,10 @@ none when it is gone). He spends only the sprint he holds above his order's rese
 
 A bracing man (section 8) still does not attack, fever or not.
 
-<sub>Settings: `AiCalmFactor` 3 (1 = the base game's AI), `FeverEnabled` on, `FeverPointsPerSecond` 10,
-`FeverAggressionMultiplier` 3, `FeverContactMetres` 5, `FeverShieldDurationMultiplier` 0.7,
-`FeverSprintToClose` on, `FeverSprintMinMetres` 3, `FeverSprintMaxMetres` 12, `FeverSprintCheckSeconds` 1,
-`FeverSprintChancePercent` 50.</sub>
+<sub>Settings: `AiAggressionFreshPercent` 60, `AiAggressionExhaustedPercent` 20 (both 100 = the base game's AI),
+`FeverEnabled` on, `FeverPointsPerSecond` 10, `FeverAggressionPercent` 80, `FeverContactMetres` 5,
+`FeverShieldDurationMultiplier` 0.7, `FeverSprintToClose` on, `FeverSprintMinMetres` 3, `FeverSprintMaxMetres` 12,
+`FeverSprintCheckSeconds` 1, `FeverSprintChancePercent` 50.</sub>
 
 ## 12. Damage
 
@@ -552,8 +561,9 @@ and offsets.</sub>
 
 ## 16. Tactics this creates
 
-- **The charge is a surge — time it.** A charge order makes your men fight like the base game's AI for
-  their fever (about 10 s for a rested 100-point soldier, less for tired ones), then they calm down again.
+- **The charge is a surge — time it.** A charge order lifts your men to 80% of the base game's eagerness for
+  their fever (about 10 s for a rested 100-point soldier, less for tired ones), then they settle back to what
+  their bars allow. A tired line on a charge surges briefly; a rested one hits hard and long.
   Order it when it will decide the fight, not as a standing order. A new advance or charge restarts it
   only if that gives them more.
 - **Keep your troops rested.** A line at full strength beats a line at 30% almost every time — it
@@ -581,8 +591,10 @@ Every number above is a setting: in **MCM** (optional) or in the commented `conf
 log. Changes apply at once, even mid-battle — nothing needs a restart. Each feature has its own switch,
 and a **master switch** turns the whole mod off mid-battle, so you can play the same fight both ways.
 
-- Too slow? Lower `DamageReductionPercent`, `ShieldInfantrySwingsLessPercent`, `AiCalmFactor` or the brace floors.
-- Want the old fighting, everyone flailing? `AiCalmFactor` 1 (the base game's AI; fevers then surge above it).
+- Too slow? Lower `DamageReductionPercent`, `ShieldInfantrySwingsLessPercent` or the brace floors, or raise
+  `AiAggressionFreshPercent` / `AiAggressionExhaustedPercent`.
+- Want the old fighting, everyone flailing? `AiAggressionFreshPercent` and `AiAggressionExhaustedPercent` 100 (the base
+  game's AI at any bar).
 - Not slow enough? Raise them, or lower `ExhaustedAttackSpeedPercent`.
 
 The full list of settings, with ranges and what each does: [DESIGN.md → Parameters](DESIGN.md#parameters).
