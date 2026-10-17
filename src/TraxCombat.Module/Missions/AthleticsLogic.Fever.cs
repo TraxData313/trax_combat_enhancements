@@ -6,16 +6,19 @@ using TraxCombat.Core;
 namespace TraxCombat.Missions
 {
     /// <summary>
-    /// Step 43 - CALM AND FEVER (Anton, 2026-10-17: "people are defensive by nature … when the general turns to them and says NOW!,
-    /// everybody surges … the surge fades"; AI_NOTES "Step 43", DESIGN §2 "Calm and fever").
+    /// Step 43 - AGGRESSION AND THE FEVER (Anton, 2026-10-17: "a man at work doesn't hold a pace until he drops; the more tired he is,
+    /// the less he swings" … "when the general turns to them and says NOW!, everybody surges … the surge fades"; AI_NOTES "Step 43",
+    /// DESIGN §2 "Aggression and the fever").
     ///
-    /// CALM: every AI man's <see cref="TrackedAgent.DecisionFactor"/> = 1 ÷ AiCalmFactor; the stat decorator multiplies the game's two
-    /// melee attack-decision chances by it on every recompute (AI on foot only - the decorator checks the player and the horse).
+    /// AGGRESSION: every AI man's <see cref="TrackedAgent.DecisionFactor"/> = his share in 0.05 steps - AiAggressionFreshPercent at a
+    /// full bar, a line to AiAggressionExhaustedPercent at an empty one (the bar = points ÷ his full pool); <see cref="RetargetSpeed"/>
+    /// carries it, so every charge and refill step moves it; the stat decorator multiplies the game's two melee attack-decision chances
+    /// by it on every recompute (AI on foot only - the decorator checks the player and the horse).
     /// FEVER: a NEW charge / advance order on his formation (step 33's order poll - <see cref="FeverOrderFor"/>) arms his
     /// <see cref="FeverStore"/> with his CURRENT points ÷ FeverPointsPerSecond seconds; every man is looked at about every
     /// <see cref="FeverMath.PollSeconds"/> (staggered like the brace): an enemy within FeverContactMetres (one native proximity read)
-    /// starts the burn, the burn reads the shield in his hand live (step 21's weapon read), the factor follows the fade in
-    /// <see cref="FeverMath.FadeSteps"/> steps (a step marks him for a recompute under the tick's budget). A hold / move / retreat order
+    /// starts the burn, the burn reads the shield in his hand live (step 21's weapon read), his share is lifted to FeverAggressionPercent
+    /// and fades back to his tired share (a 0.05 step marks him for a recompute under the tick's budget). A hold / move / retreat order
     /// ends it. The fever sprint: every FeverSprintCheckSeconds a roll at FeverSprintChancePercent × fever left. No allocation per tick.
     /// </summary>
     public sealed partial class AthleticsLogic
@@ -47,10 +50,10 @@ namespace TraxCombat.Missions
         {
             _seenFeverText = FeverText(TraxSettings.Shared);
             TraxLog.Info("fever", "mission start: " + _seenFeverText + " - read live; every man looked at about every " + F2(FeverMath.PollSeconds)
-                + " s; the [summary] \"fever\" lines count fevers by order, contact, burns, the fade, fever sprints and AI attacks per man-minute calm vs feverish");
+                + " s; the [summary] \"fever\" lines count fevers by order, contact, burns, the fade, fever sprints and AI attacks per man-minute in contact by bar band, without and in a fever and in no formation");
         }
 
-        /// <summary>A calm / fever setting changed (from ApplySettingsChange - its RetargetSpeed loop re-targets every man's factor).</summary>
+        /// <summary>An aggression / fever setting changed (from ApplySettingsChange - its RetargetSpeed loop re-targets every man's factor).</summary>
         private void NoteFeverSettings(TraxSettings s)
         {
             string now = FeverText(s);
@@ -59,14 +62,15 @@ namespace TraxCombat.Missions
             TraxLog.Info("fever", "settings changed mid-mission at " + Sec(SafeNow()) + " s: " + now + " - every man's decision values follow at his next recompute");
         }
 
-        /// <summary>His calm / fever factor from the live rules; a change marks him for a recompute (true).</summary>
+        /// <summary>His aggression share (0.05 steps) from the live rules, his bar and his fever; a change marks him for a recompute (true).</summary>
         private bool RetargetDecision(TrackedAgent st)
         {
             var fr = FeverRules.From(TraxSettings.Shared);
             var fv = st.Fever;
-            float want = FeverMath.DecisionFactor(in fr, fv.Phase, fv.Left, fv.Full, IsPlayer(st));
+            float want = FeverMath.DecisionFactor(in fr, fv.Phase, fv.Left, fv.Full, st.Fraction, IsPlayer(st));
             if (want == st.DecisionFactor) return false;
             st.DecisionFactor = want;
+            _feverStats.DecisionRecomputes++;
             if (fv.Running) fv.Recomputes++;
             if (!st.Removed) st.SpeedDirty = true;
             return true;
@@ -110,8 +114,9 @@ namespace TraxCombat.Missions
                         _firstArmedLogged = true;
                         TraxLog.Info("fever", "first fever armed this battle: " + Name(st) + " at " + Sec(now) + " s on a new " + SprintMath.OrderName(group) + " order ("
                             + (byPlayer ? "yours" : "the AI general's") + ", " + kind + ") - " + F0(points) + " Athletics points / " + F1(fr.PointsPerSecond) + " = "
-                            + F2(fv.Full) + " s of fever; his attack decisions x" + F2(FeverMath.DecisionFactor(in fr, fv.Phase, fv.Left, fv.Full, false))
-                            + " the game's (calm x" + F2(1 / FeverMath.CalmDivisor(in fr)) + ") until an enemy comes within " + F1(fr.ContactMetres) + " m, then the clock runs");
+                            + F2(fv.Full) + " s of fever; his attack decisions x" + F2(FeverMath.DecisionFactor(in fr, fv.Phase, fv.Left, fv.Full, st.Fraction, false))
+                            + " the game's (his tired share at a " + F0(100 * st.Fraction) + "% bar: x" + F2(FeverMath.TiredShare(in fr, st.Fraction)) + ") until an enemy comes within "
+                            + F1(fr.ContactMetres) + " m, then the clock runs");
                     }
                     else if (TraxLog.VerboseWants("fever-arm"))
                         TraxLog.Verbose("fever", Name(st) + " armed at " + Sec(now) + " s (" + SprintMath.OrderName(group) + ", " + F2(fv.Full) + " s)", "fever-arm");
@@ -135,13 +140,13 @@ namespace TraxCombat.Missions
 
         // ------------------------------------------------------------------ the look
 
-        /// <summary>Every tick (from TickAthletics): fever off → every fever ends; the calm and the fever both off → nothing to look at; else a
+        /// <summary>Every tick (from TickAthletics): fever off → every fever ends; the master switch or Athletics off → nothing to look at; else a
         /// staggered slice so each man is looked at about every <see cref="FeverMath.PollSeconds"/>.</summary>
         internal void TickFever(double now)
         {
             var fr = FeverRules.From(TraxSettings.Shared);
             if (!fr.Enabled && _feverRunning > 0) EndAllFevers(FeverEnd.SwitchedOff, now, fr.OffBecause);
-            if (!fr.Enabled && !fr.CalmOn)
+            if (!fr.AggressionOn)
             {
                 _feverLastTick = now;
                 return;
@@ -200,7 +205,9 @@ namespace TraxCombat.Missions
                 return;
             }
             // the summary's time in contact: since the last look, by the state then
-            if (st.FeverContact) _feverStats.AddContactTime(fv.Running, gap);
+            if (gap > 0) _feverStats.AiManSeconds += gap;
+            if (st.FeverContact) _feverStats.AddContactTime(st.NoFormation ? FeverStats.NoFormation : fv.Running ? FeverStats.InFever : FeverStats.Calm, FeverStats.BarBand(st.Fraction), gap);
+            st.NoFormation = body.FormationSlot(st) < 0;
             bool contact = body.EnemyWithin(st, (float)fr.ContactMetres);
             st.FeverContact = contact;
             if (fv.Phase == FeverPhase.Armed && contact && fv.StartBurn(now))
@@ -212,8 +219,8 @@ namespace TraxCombat.Missions
                     TraxLog.Info("fever", "first fever burning this battle: " + Name(st) + " met an enemy within " + F1(fr.ContactMetres) + " m at " + Sec(now) + " s, "
                         + F1(now - fv.ArmedAt) + " s after the " + SprintMath.OrderName(fv.Order) + " order - " + F2(fv.Left) + " s of fever burn from now (x"
                         + F2(FeverMath.BurnRate(in fr, true)) + " with a shield in hand), his attack decisions fading from x"
-                        + F2(FeverMath.DecisionFactor(in fr, FeverPhase.Armed, 1, 1, false)) + " to x" + F2(1 / FeverMath.CalmDivisor(in fr)) + " the game's in "
-                        + FeverMath.FadeSteps + " steps");
+                        + F2(FeverMath.DecisionFactor(in fr, FeverPhase.Armed, 1, 1, st.Fraction, false)) + " to his tired share (x" + F2(FeverMath.TiredShare(in fr, st.Fraction))
+                        + " now, sinking as he fights) in 0.05 steps");
                 }
                 gap = 0; // the clock starts now
             }
@@ -313,7 +320,7 @@ namespace TraxCombat.Missions
 
         // ------------------------------------------------------------------ the end
 
-        /// <summary>His fever ends (every path): counted, the factor back to calm (a recompute within the budget).</summary>
+        /// <summary>His fever ends (every path): counted, the factor back to his tired share (a recompute within the budget).</summary>
         private void EndFever(TrackedAgent st, FeverEnd end, double now)
         {
             var fv = st.Fever;
@@ -325,7 +332,7 @@ namespace TraxCombat.Missions
             if (_feverRunning > 0) _feverRunning--;
             if (end != FeverEnd.LeftField && end != FeverEnd.MissionEnd)
             {
-                if (RetargetDecision(st)) recomputes++; // back to calm
+                if (RetargetDecision(st)) recomputes++; // back to his tired share
             }
             fv.Recomputes = recomputes;
             _feverStats.AddEnd(end, burned, fv.BurnShieldSeconds, fv.BurnPlainSeconds, full, fv.ShieldSwitched, recomputes);
@@ -335,7 +342,7 @@ namespace TraxCombat.Missions
                 var fr = FeverRules.From(TraxSettings.Shared);
                 TraxLog.Info("fever", "first fever faded this battle: " + Name(st) + " at " + Sec(now) + " s - " + F2(full) + " s of store burned in "
                     + F2(fv.BurnShieldSeconds + fv.BurnPlainSeconds) + " s (" + F2(fv.BurnShieldSeconds) + " s with a shield in hand, " + F2(fv.BurnPlainSeconds)
-                    + " s without), " + fv.Recomputes + " decision recomputes, " + fv.Sprints + " fever sprints; calm again (x" + F2(1 / FeverMath.CalmDivisor(in fr)) + " the game's)");
+                    + " s without), " + fv.Recomputes + " decision recomputes, " + fv.Sprints + " fever sprints; back to his tired share (x" + F2(st.DecisionFactor) + " the game's at a " + F0(100 * st.Fraction) + "% bar)");
             }
             else if (TraxLog.VerboseWants("fever-end"))
                 TraxLog.Verbose("fever", Name(st) + " fever ended at " + Sec(now) + " s (" + FeverMath.EndName(end) + ")", "fever-end");
@@ -375,7 +382,7 @@ namespace TraxCombat.Missions
             }
             _feverRunning = 0;
             if (ended > 0)
-                TraxLog.Info("fever", (because ?? "the fever") + " switched off at " + Sec(now) + " s: " + ended + " fevers ended, their men calm again over the next ticks");
+                TraxLog.Info("fever", (because ?? "the fever") + " switched off at " + Sec(now) + " s: " + ended + " fevers ended, their men back to their tired share over the next ticks");
         }
 
         private void FeverLeftField(TrackedAgent st)
@@ -401,11 +408,12 @@ namespace TraxCombat.Missions
 
         // ------------------------------------------------------------------ the measurements
 
-        /// <summary>A melee release (StartRelease): an AI man on foot in contact at his last look - counted calm or feverish.</summary>
+        /// <summary>A melee release (StartRelease): an AI man on foot in contact at his last look - counted by his group (no fever / in a
+        /// fever / no formation) and his bar band.</summary>
         internal void NoteFeverAttack(TrackedAgent st, bool mounted)
         {
             if (mounted || !st.FeverContact || IsPlayer(st)) return;
-            _feverStats.AddAttack(st.Fever.Running);
+            _feverStats.AddAttack(st.NoFormation ? FeverStats.NoFormation : st.Fever.Running ? FeverStats.InFever : FeverStats.Calm, FeverStats.BarBand(st.Fraction));
         }
 
         /// <summary>The stat decorator wrote the two values (any thread the game recomputes on; managed only).</summary>
@@ -417,13 +425,12 @@ namespace TraxCombat.Missions
             if (st == null) return;
             var fv = st.Fever;
             var fr = FeverRules.From(TraxSettings.Shared);
-            var state = !fv.Running ? FeverValueState.Calm
-                : FeverMath.Multiplier(in fr, fv.Phase, fv.Left, fv.Full) >= fr.AggressionMultiplier - 1e-9 ? FeverValueState.Peak : FeverValueState.Fading;
+            int state = fv.Running && fr.Enabled ? FeverStats.BarBands : FeverStats.BarBand(st.Fraction);
             logic._feverStats.AddValues(state, gameAttack, attack, gameRiposte, riposte);
             if (!logic._firstValuesLogged)
             {
                 logic._firstValuesLogged = true;
-                TraxLog.Info("fever", "first decision values written this mission: " + Name(st) + " (" + (state == FeverValueState.Calm ? "calm" : "feverish")
+                TraxLog.Info("fever", "first decision values written this mission: " + Name(st) + " (" + (state == FeverStats.BarBands ? "in a fever" : "bar " + F0(100 * st.Fraction) + "%")
                     + ", x" + F2(st.DecisionFactor) + ") - attack chance " + F3(gameAttack) + " → " + F3(attack) + ", riposte chance " + F3(gameRiposte) + " → " + F3(riposte));
             }
         }

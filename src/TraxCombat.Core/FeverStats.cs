@@ -5,34 +5,35 @@ using System.Text;
 
 namespace TraxCombat.Core
 {
-    /// <summary>Step 43: which decision values the decorator wrote - calm (no fever), the fever's peak, mid-fade.</summary>
-    public enum FeverValueState
-    {
-        Calm,
-        Peak,
-        Fading,
-        Count,
-    }
-
     /// <summary>
     /// Step 43 per mission: fevers armed by order kind (yours / the AI general's), the arm → contact delay, fevers that never met an
-    /// enemy, burn lengths with / without a shield in hand, the recomputes per fever, fever sprints by the fever's share left and the
-    /// refusals by reason, THE PROOF - AI melee attacks per man-minute in contact while calm vs feverish - and the decision values
-    /// the decorator really wrote by state. The [summary] "fever" lines. Main thread.
+    /// enemy, burn lengths with / without a shield in hand, the decision recomputes (per AI man-minute and per fever), fever sprints by
+    /// the fever's share left and the refusals by reason, THE PROOF - AI melee attacks per man-minute in contact by bar band: in a
+    /// formation without a fever, in a fever, and in no formation (tournaments, arenas, duels) - and the decision values the decorator
+    /// really wrote by bar band and in a fever. The [summary] "fever" lines. Main thread.
     /// </summary>
     public sealed class FeverStats
     {
+        /// <summary>The proof's groups: an AI man on foot in a formation without a fever, in a fever, in no formation.</summary>
+        public const int Calm = 0, InFever = 1, NoFormation = 2, Groups = 3;
+
+        /// <summary>The bar bands: 100-75, 75-50, 50-25, 25-0 %.</summary>
+        public const int BarBands = 4;
+
+        /// <summary>The values' states: the four bar bands without a fever, then "in a fever".</summary>
+        public const int ValueStates = BarBands + 1;
+
         private readonly int[,] _armed = new int[(int)SprintOrder.Count, 2]; // [order, by player 1 / AI general 0]
         private readonly int[] _ends = new int[(int)FeverEnd.Count];
         private readonly int[] _neverMet = new int[(int)FeverEnd.Count];
         private readonly int[] _sprintsByBand = new int[FeverMath.ShareBands];
         private readonly int[] _refused = new int[(int)FeverSprintRefusal.Count];
-        private readonly double[] _attacks = new double[2];      // [calm 0 / feverish 1] AI melee attacks in contact
-        private readonly double[] _contactSeconds = new double[2];
-        private readonly MeanStd[] _valGameAttack = new MeanStd[(int)FeverValueState.Count];
-        private readonly MeanStd[] _valAttack = new MeanStd[(int)FeverValueState.Count];
-        private readonly MeanStd[] _valGameRiposte = new MeanStd[(int)FeverValueState.Count];
-        private readonly MeanStd[] _valRiposte = new MeanStd[(int)FeverValueState.Count];
+        private readonly double[,] _attacks = new double[Groups, BarBands];
+        private readonly double[,] _contactSeconds = new double[Groups, BarBands];
+        private readonly MeanStd[] _valGameAttack = new MeanStd[ValueStates];
+        private readonly MeanStd[] _valAttack = new MeanStd[ValueStates];
+        private readonly MeanStd[] _valGameRiposte = new MeanStd[ValueStates];
+        private readonly MeanStd[] _valRiposte = new MeanStd[ValueStates];
         private MeanStd _contactDelay;
         private double _contactDelayMax;
         private MeanStd _burnShield;
@@ -56,6 +57,17 @@ namespace TraxCombat.Core
         public double PollCostMs;
         public int Polls;
 
+        /// <summary>Recomputes asked because a man's decision share moved a step (his bar, his fever, a setting).</summary>
+        public int DecisionRecomputes;
+
+        /// <summary>AI man-seconds on foot looked at (the recomputes' "per man-minute").</summary>
+        public double AiManSeconds;
+
+        /// <summary>The bar band of a bar (points ÷ his full pool): 0 = 100-75 %, 1 = 75-50, 2 = 50-25, 3 = 25-0.</summary>
+        public static int BarBand(double bar) => bar > 0.75 ? 0 : bar > 0.5 ? 1 : bar > 0.25 ? 2 : 3;
+
+        public static string BarBandName(int band) => band == 0 ? "100-75%" : band == 1 ? "75-50%" : band == 2 ? "50-25%" : "25-0%";
+
         public int Armed
         {
             get
@@ -76,9 +88,16 @@ namespace TraxCombat.Core
 
         public int SprintsInBand(int band) => _sprintsByBand[band];
 
-        public double Attacks(bool feverish) => _attacks[feverish ? 1 : 0];
+        public double Attacks(int group, int band) => _attacks[group, band];
 
-        public double ContactSeconds(bool feverish) => _contactSeconds[feverish ? 1 : 0];
+        public double ContactSeconds(int group, int band) => _contactSeconds[group, band];
+
+        public double ContactSeconds(int group)
+        {
+            double s = 0;
+            for (int b = 0; b < BarBands; b++) s += _contactSeconds[group, b];
+            return s;
+        }
 
         public double MeanRecomputes => _recomputes.Mean;
 
@@ -131,37 +150,49 @@ namespace TraxCombat.Core
 
         public void AddRefusal(FeverSprintRefusal r) => _refused[(int)r]++;
 
-        /// <summary>An AI man on foot's seconds in contact (an enemy within FeverContactMetres at his last look).</summary>
-        public void AddContactTime(bool feverish, double seconds)
+        /// <summary>An AI man on foot's seconds in contact (an enemy within FeverContactMetres at his last look), by group and bar band.</summary>
+        public void AddContactTime(int group, int band, double seconds)
         {
-            if (seconds > 0) _contactSeconds[feverish ? 1 : 0] += seconds;
+            if (seconds > 0) _contactSeconds[group, band] += seconds;
         }
 
         /// <summary>One AI melee attack (a release on foot) while in contact.</summary>
-        public void AddAttack(bool feverish) => _attacks[feverish ? 1 : 0]++;
+        public void AddAttack(int group, int band) => _attacks[group, band]++;
 
-        /// <summary>The decorator wrote the two values: the game's → ours.</summary>
-        public void AddValues(FeverValueState state, float gameAttack, float attack, float gameRiposte, float riposte)
+        /// <summary>The decorator wrote the two values: the game's → ours, by state (a bar band without a fever, or <see cref="BarBands"/> = in a fever).</summary>
+        public void AddValues(int state, float gameAttack, float attack, float gameRiposte, float riposte)
         {
-            int i = (int)state;
-            _valGameAttack[i].Add(gameAttack);
-            _valAttack[i].Add(attack);
-            _valGameRiposte[i].Add(gameRiposte);
-            _valRiposte[i].Add(riposte);
+            if (state < 0 || state >= ValueStates) return;
+            _valGameAttack[state].Add(gameAttack);
+            _valAttack[state].Add(attack);
+            _valGameRiposte[state].Add(gameRiposte);
+            _valRiposte[state].Add(riposte);
         }
 
-        public int ValuesWritten(FeverValueState state) => _valAttack[(int)state].Count;
+        public int ValuesWritten(int state) => _valAttack[state].Count;
 
-        public double MeanAttackWritten(FeverValueState state) => _valAttack[(int)state].Mean;
+        public double MeanAttackWritten(int state) => _valAttack[state].Mean;
 
         /// <summary>Attacks per man-minute in contact (NaN with no contact time).</summary>
-        public double PerManMinute(bool feverish)
+        public double PerManMinute(int group, int band)
         {
-            double s = _contactSeconds[feverish ? 1 : 0];
-            return s > 0 ? _attacks[feverish ? 1 : 0] / (s / 60.0) : double.NaN;
+            double s = _contactSeconds[group, band];
+            return s > 0 ? _attacks[group, band] / (s / 60.0) : double.NaN;
         }
 
-        /// <summary>The [summary] "fever" lines (8).</summary>
+        /// <summary>Over all bands of a group.</summary>
+        public double PerManMinute(int group)
+        {
+            double s = 0, a = 0;
+            for (int b = 0; b < BarBands; b++)
+            {
+                s += _contactSeconds[group, b];
+                a += _attacks[group, b];
+            }
+            return s > 0 ? a / (s / 60.0) : double.NaN;
+        }
+
+        /// <summary>The [summary] "fever" lines (10).</summary>
         public void AddSummaryLines(List<string> lines, in FeverRules r)
         {
             lines.Add("fever settings: " + r.Describe());
@@ -210,11 +241,11 @@ namespace TraxCombat.Core
             else t.Append(" none");
             lines.Add(t.ToString());
 
-            t.Clear().Append("fever fade: ");
-            if (_recomputes.Count == 0) t.Append("no fever ended");
-            else
-                t.Append(F1(_recomputes.Mean)).Append(" decision recomputes per fever (max ").Append(_recomputesMax).Append(") - the arming, ")
-                    .Append(FeverMath.FadeSteps - 1).Append(" steps down a full fade, the end = ").Append(FeverMath.FadeSteps + 1).Append(" for a fever that faded");
+            t.Clear().Append("fever recomputes: ").Append(DecisionRecomputes).Append(" asked for the decision values (a 0.05 step of the share) over ")
+                .Append(F1(AiManSeconds / 60.0)).Append(" AI man-minutes on foot = ")
+                .Append(AiManSeconds > 0 ? F2(DecisionRecomputes / (AiManSeconds / 60.0)) : "-").Append(" a man-minute; per fever ");
+            if (_recomputes.Count == 0) t.Append("- (no fever ended)");
+            else t.Append(F1(_recomputes.Mean)).Append(" (max ").Append(_recomputesMax).Append(')');
             lines.Add(t.ToString());
 
             t.Clear().Append("fever sprints: started ").Append(SprintsStarted).Append(" (fever left");
@@ -224,15 +255,20 @@ namespace TraxCombat.Core
                 t.Append(i == 0 ? " " : ", ").Append(FeverMath.RefusalName((FeverSprintRefusal)i)).Append(' ').Append(_refused[i]);
             lines.Add(t.ToString());
 
-            t.Clear().Append("fever proof: AI melee attacks per man-minute in contact (an enemy within ").Append(F1(r.ContactMetres)).Append(" m, on foot): calm ");
-            AppendRate(t, false);
-            t.Append(", feverish (armed or burning) ");
-            AppendRate(t, true);
-            double c = PerManMinute(false), f = PerManMinute(true);
-            if (c > 0 && f > 0) t.Append(" - feverish x").Append(F2(f / c)).Append(" the calm rate");
+            t.Clear().Append("fever proof: AI melee attacks per man-minute in contact (an enemy within ").Append(F1(r.ContactMetres))
+                .Append(" m, on foot), by bar 100-75 / 75-50 / 50-25 / 25-0 %: in a formation, no fever ");
+            AppendRates(t, Calm);
+            t.Append("; in a fever ");
+            AppendRates(t, InFever);
+            double c = PerManMinute(Calm), f = PerManMinute(InFever);
+            if (c > 0 && f > 0) t.Append(" - in a fever x").Append(F2(f / c)).Append(" the rate without");
             lines.Add(t.ToString());
 
-            t.Clear().Append("fever values written (AI on foot): attack chance");
+            t.Clear().Append("fever proof, no formation (tournaments, arenas, duels - no orders, no fever): by bar 100-75 / 75-50 / 50-25 / 25-0 % ");
+            AppendRates(t, NoFormation);
+            lines.Add(t.ToString());
+
+            t.Clear().Append("fever values written (AI on foot, the game's → ours): attack chance");
             AppendValues(t, _valGameAttack, _valAttack);
             t.Append("; riposte chance");
             AppendValues(t, _valGameRiposte, _valRiposte);
@@ -254,28 +290,30 @@ namespace TraxCombat.Core
                 .Append(" s (x").Append(F2(store.Mean > 0 ? burn.Mean / store.Mean : 0)).Append(')');
         }
 
-        private void AppendRate(StringBuilder t, bool feverish)
+        private void AppendRates(StringBuilder t, int group)
         {
-            double s = _contactSeconds[feverish ? 1 : 0];
-            if (!(s > 0))
+            double a = 0, s = 0;
+            for (int b = 0; b < BarBands; b++)
             {
-                t.Append("- (no time in contact)");
-                return;
+                if (b > 0) t.Append(" / ");
+                double rate = PerManMinute(group, b);
+                t.Append(double.IsNaN(rate) ? "-" : F2(rate));
+                a += _attacks[group, b];
+                s += _contactSeconds[group, b];
             }
-            t.Append(F2(PerManMinute(feverish))).Append(" (").Append(_attacks[feverish ? 1 : 0].ToString("0", CultureInfo.InvariantCulture))
-                .Append(" attacks over ").Append(F1(s / 60.0)).Append(" man-min)");
+            t.Append(" (").Append(a.ToString("0", CultureInfo.InvariantCulture)).Append(" attacks over ").Append(F1(s / 60.0)).Append(" man-min)");
         }
 
         private static void AppendValues(StringBuilder t, MeanStd[] game, MeanStd[] ours)
         {
-            for (int i = 0; i < (int)FeverValueState.Count; i++)
+            for (int i = 0; i < ValueStates; i++)
             {
-                string name = i == (int)FeverValueState.Calm ? "calm" : i == (int)FeverValueState.Peak ? "peak" : "mid-fade";
+                string name = i < BarBands ? "bar " + BarBandName(i) : "in a fever";
                 t.Append(i == 0 ? " " : ", ").Append(name).Append(' ');
                 if (ours[i].Count == 0) t.Append("-");
                 else
                     t.Append(F3(game[i].Mean)).Append(" → ").Append(F3(ours[i].Mean)).Append(" (x").Append(F2(game[i].Mean > 0 ? ours[i].Mean / game[i].Mean : 1))
-                        .Append(", ").Append(ours[i].Count).Append(" recomputes)");
+                        .Append(", ").Append(ours[i].Count).Append(')');
             }
         }
 

@@ -185,7 +185,7 @@ namespace TraxCombat.Tools
             S.Set(SettingsSchema.TiredBlockRandomPercent, 0, SettingSources.File); // step 30: the older steps count recomputes without it (Program.TiredBlock.cs has its own)
             SwingStackOff(); // step 32: the older steps check one pause after EVERY attack (Program.SwingStack.cs has its own)
             SprintOff(); // step 33: the older steps predate the sprint (Program.Sprint.cs has its own)
-            FeverOff(); // step 43: the older steps count the game's AI values and recomputes without the calm (Program.Fever.cs has its own)
+            FeverOff(); // step 43: the older steps count the game's AI values and recomputes without the aggression share (Program.Fever.cs has its own)
         }
 
         // ------------------------------------------------------------------ checks
@@ -219,7 +219,7 @@ namespace TraxCombat.Tools
             Lever("AI decisions", p => SpeedPenalty.ScaleAiDecisions(p, 0.2f),
                 new[] { DrivenProperty.AIAttackOnDecideChance, DrivenProperty.AIAttackOnParryChance, DrivenProperty.AiShootFreq },
                 new[] { DrivenProperty.AiWaitBeforeShootFactor });
-            // step 43: the calm / fever factor - the two melee attack-decision chances only (never shooting, the aim or a defence value)
+            // step 43: the aggression share - the two melee attack-decision chances only (never shooting, the aim or a defence value)
             Lever("calm and fever", p => SpeedPenalty.ScaleAttackDecisions(p, 0.2f),
                 new[] { DrivenProperty.AIAttackOnDecideChance, DrivenProperty.AIAttackOnParryChance });
         }
@@ -1051,18 +1051,18 @@ namespace TraxCombat.Tools
             int walledBefore = _logic.WalledNow;
             Check(walledBefore >= 2 && a.Wall != null && a.Wall.Held && me.Wall != null && !me.Wall.Held, "precondition: the AI men are not held in their slots (step 41), or you are");
 
-            // step 43: the calm on every AI man, and a fever armed on the fresh shield man (a charge)
+            // step 43: the aggression share on every AI man, and a fever armed on the fresh shield man (a charge)
             FeverDefaults();
             var feverBody = new FakeSprintBody();
             _logic.SprintBody = feverBody;
             _logic.ApplySettingsChange(S);
             _logic.FeverOrderFor(fresh, BraceOrderKind.Charge, false, t, FeverRules.From(S), Rules);
-            Check(fresh.Fever.Running && fresh.DecisionFactor == 1f && _logic.FeversRunning == 1, "precondition: the fresh man has no fever (step 43)");
+            Check(fresh.Fever.Running && Near(fresh.DecisionFactor, 0.8f) && _logic.FeversRunning == 1, "precondition: the fresh man has no fever at the 0.8 peak (step 43)");
             var pf = fresh.Agent.AgentDrivenProperties;
             S.Set(SettingsSchema.ModEnabled, false, SettingSources.Mcm);
             _statTop.UpdateAgentStats(a.Agent, p); // a recompute before the logic's tick: already vanilla
             _statTop.UpdateAgentStats(fresh.Agent, pf);
-            Check(Near(pf.AIAttackOnDecideChance, 0.144f) && Near(p.AIAttackOnDecideChance, 0.144f), "mod off: the calm / fever factor was still written (step 43)");
+            Check(Near(pf.AIAttackOnDecideChance, 0.144f) && Near(p.AIAttackOnDecideChance, 0.144f), "mod off: the aggression share was still written (step 43)");
             Check(Near(p.SwingSpeedMultiplier, 1.05f) && Near(p.MaxSpeedMultiplier, 0.8f), "mod off: the stat decorator still applied a penalty");
             _logic.ApplySettingsChange(S);
             LogHas("[athletics] the whole mod (ModEnabled) switched OFF mid-mission: ");
@@ -1120,7 +1120,7 @@ namespace TraxCombat.Tools
             S.Set(SettingsSchema.ModEnabled, true, SettingSources.Mcm);
             _logic.ApplySettingsChange(S);
             LogHas("[athletics] the whole mod (ModEnabled) switched ON mid-mission: everyone starts full");
-            Check(Near(a.DecisionFactor, 1f / 3f), "mod back on: fighter 3 is not calm again (step 43)");
+            Check(Near(a.DecisionFactor, 0.6f), "mod back on: fighter 3 (full again) is not at the 0.6 share (step 43)");
             FeverOff();
             _logic.ApplySettingsChange(S);
             _logic.TickWall(t + 1);

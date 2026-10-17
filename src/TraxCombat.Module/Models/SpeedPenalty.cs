@@ -66,7 +66,7 @@ namespace TraxCombat.Models
         }
 
         /// <summary>
-        /// Step 43, CALM AND FEVER (AI_NOTES "Step 43"): the AI's two MELEE attack-decision chances × <paramref name="factor"/> -
+        /// Step 43, AGGRESSION AND FEVER (AI_NOTES "Step 43"): the AI's two MELEE attack-decision chances × <paramref name="factor"/> -
         /// <see cref="AgentDrivenProperties.AIAttackOnDecideChance"/> (start an attack at a combat decision) and
         /// <see cref="AgentDrivenProperties.AIAttackOnParryChance"/> (a riposte), clamped 0..1 (<see cref="FeverMath.ApplyChance"/>).
         /// Both assigned with <c>=</c> by the base models' SetAiRelatedProperties on every recompute - never compounds. Ranged (AiShootFreq,

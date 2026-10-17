@@ -386,7 +386,7 @@ namespace TraxCombat.Core
                 // step 43: both old defaults go back to step 5c (CostPerBlow) and step 22 (CostPerWrongSideShieldBlock) - every older
                 // format knew them; a file without the key simply gets the new default
                 MoveOldDefault(read, SettingsSchema.CostPerBlow, 10,
-                    "step 43, Anton: a swing or shot costs 3 Athletics - the calm AI swings less, so a blow may cost less", from, defaultOf);
+                    "step 43, Anton: a swing or shot costs 3 Athletics - the AI's eagerness now follows its bar, so a blow may cost less", from, defaultOf);
                 MoveOldDefault(read, SettingsSchema.CostPerWrongSideShieldBlock, 5,
                     "step 43, Anton: a wrong-side shield block costs 2, like a weapon parry", from, defaultOf);
             }

@@ -20,12 +20,13 @@ Want the formulas and every parameter? [DESIGN.md](DESIGN.md) is the full contra
 8. [Brace by orders](#8-brace-by-orders)
 9. [Stepping back out of the press](#9-stepping-back-out-of-the-press)
 10. [Battle pace](#10-battle-pace)
-11. [Damage](#11-damage)
-12. [Heroes, and the hideout boss](#12-heroes-and-the-hideout-boss)
-13. [The sprint](#13-the-sprint)
-14. [What you see on screen](#14-what-you-see-on-screen)
-15. [Tactics this creates](#15-tactics-this-creates)
-16. [Changing things](#16-changing-things)
+11. [Calm, and the fever of a charge](#11-calm-and-the-fever-of-a-charge)
+12. [Damage](#12-damage)
+13. [Heroes, and the hideout boss](#13-heroes-and-the-hideout-boss)
+14. [The sprint](#14-the-sprint)
+15. [What you see on screen](#15-what-you-see-on-screen)
+16. [Tactics this creates](#16-tactics-this-creates)
+17. [Changing things](#17-changing-things)
 
 ---
 
@@ -35,6 +36,10 @@ Every fighter has a stamina bar, called **Athletics**. Attacking, kicking and bl
 resting refills it. While it is in its top quarter the man is at full strength. Below that he attacks
 less often, runs slower, hits less hard at best, and — if he is AI — starts to guess which way to
 block. His formation's orders decide how low he lets it go before he stops swinging and only defends.
+
+AI soldiers are also **calm** by nature: they hold their line and spar rather than trade blows until
+they drop — until you (or their general) order the **charge**. Then they surge, and the surge fades
+(section 11).
 
 So battles get slower, and **when** you commit a formation matters as much as which troops you bring.
 A rested line beats a spent one. Fresh shock infantry thrown at a line that has been fighting for two
@@ -46,27 +51,28 @@ one — and anyone can save up a few swings and strike them back to back (the sw
 ## 2. The Athletics bar
 
 A fighter's bar is as big as his **Athletics skill** (the one on the character screen), never smaller
-than 50 points. One attack — a swing, thrust, shot or throw — costs 10 points, missed or not.
+than 50 points. One attack — a swing, thrust, shot or throw — costs 3 points, missed or not.
 
 | Athletics skill | Bar (points) | Attacks from full to empty: soldier | hero | hero who leads his party |
 |---:|---:|---:|---:|---:|
-| 0–50 | 50 | 5 | 7 | 9 |
-| 100 | 100 | 10 | 13 | 18 |
-| 150 | 150 | 15 | 20 | 27 |
-| 200 | 200 | 20 | 27 | 36 |
-| 300 | 300 | 30 | 40 | 53 |
+| 0–50 | 50 | 17 | 22 | 30 |
+| 100 | 100 | 33 | 44 | 59 |
+| 150 | 150 | 50 | 67 | 89 |
+| 200 | 200 | 67 | 89 | 119 |
+| 300 | 300 | 100 | 133 | 178 |
 
 Heroes (lords, companions, you) pay a quarter less per attack; a hero who leads a party pays a quarter
-less again (10 → 7.5 → 5.6 points).
+less again (3 → 2.25 → 1.69 points). Attacks are cheap because the AI is calm (section 11): it swings far
+less often than the base game's AI, so each swing need not cost much for a long fight to wear men down.
 
 **The peak line.** The white mark on the bar sits at **75%**. Above it a man is at full strength;
 the first quarter of his bar is "free". Below it the effects in the next section start. A 50-point
-recruit spends his free quarter in barely more than one swing; a 150-skill hero who leads his party
-gets about seven.
+recruit spends his free quarter in about four swings; a 150-skill hero who leads his party gets about
+twenty-two.
 
 **Wounds cap the bar.** A man at half health can only refill to half his bar.
 
-<sub>Settings: `AthleticsPoolPerSkill` 1.0, `AthleticsPoolFloor` 50, `CostPerBlow` 10, `CostOnMiss` on,
+<sub>Settings: `AthleticsPoolPerSkill` 1.0, `AthleticsPoolFloor` 50, `CostPerBlow` 3, `CostOnMiss` on,
 `HeroCostMultiplier` 0.75, `PartyLeaderCostMultiplier` 0.75, `AthleticsPeakPercent` 75,
 `HealthCapsAthletics` on.</sub>
 
@@ -91,7 +97,7 @@ effect slides in a straight line down to its worst at an empty bar.
    the Attack recovery bar; the AI waits with its guard up. A heavier, slower weapon waits longer.
 2. Roughly, compared with the same man fresh — the rate the pause aims at. Empty, he attacks once
    where he used to attack five times.
-3. Every hit rolls its damage (section 11). A tired man still rolls as low as a fresh one, but his
+3. Every hit rolls its damage (section 12). A tired man still rolls as low as a fresh one, but his
    lucky high rolls shrink.
 4. Only AI men, never you. See section 7 for what that means for his blocks.
 
@@ -125,7 +131,8 @@ Stored swings at most (his points ÷ 20, rounded half up, at least 2):
 
 The count follows his points as they fall: each attack also costs Athletics, so a burst shrinks the
 stack's size too. *Example:* a 150-skill hero at half his bar holds 4 — he can strike 4 times back to
-back — and by then his bar is at 30%, so each next one takes 0.74 s to come back.
+back (2.25 points each) — and by then his bar is at 44% and he holds 3 at most, so each next one takes
+about 0.4 s to come back.
 
 How long the swings take to come back, after a 0.8 s swing, standing back from the fight:
 
@@ -145,7 +152,7 @@ count as rest — so the stack never makes the AI attack more often than before.
 **Kicks and shield bashes** spend a stored swing too (they never start a pause of their own). With
 none stored, your kick key does nothing until one is back — no more kicking through your pause.
 
-Your **Attack recovery bar** (section 13) shows the stack: **"Swings 4/8"**, and the bar filling toward
+Your **Attack recovery bar** (section 15) shows the stack: **"Swings 4/8"**, and the bar filling toward
 the next one.
 
 <sub>Settings: `SwingStackEnabled` on (off = a pause after every attack below the peak line),
@@ -176,7 +183,7 @@ Every melee blow a man **blocks** costs him a little. Missiles into a shield are
 |---|---:|---:|---:|---|
 | Shield, on the right side | 1 | 0.75 | 0.56 | No — the refill keeps running |
 | Weapon parry | 2 | 1.5 | 1.13 | No — the refill keeps running |
-| Shield, held on the **wrong** side | 5 | 3.75 | 2.81 | **Yes** — the 3 s wait starts again |
+| Shield, held on the **wrong** side | 2 | 1.5 | 1.13 | **Yes** — the 3 s wait starts again |
 | A kick or shield bash he makes | 3 | 2.25 | 1.69 | Yes (it is an attack) |
 
 So a skilful defender can catch his breath **while** defending. Can a man who is already empty climb
@@ -191,9 +198,10 @@ back while parrying a blow every 1.5 seconds (a steady duel), standing still?
 | 200 | climbs (+120) | climbs (+140) | climbs (+155) | climbs |
 
 Points per minute, net. A shield on the right side always climbs. Moving fast while fighting refills
-slower (section 5), and a wrong-side block every 1.5 s holds anyone at the bottom.
+slower (section 5), and a wrong-side block every 1.5 s holds anyone at the bottom — not by its price
+(2 points) but because each one stops the refill.
 
-<sub>Settings: `CostPerShieldBlock` 1, `CostPerWeaponParry` 2, `CostPerWrongSideShieldBlock` 5,
+<sub>Settings: `CostPerShieldBlock` 1, `CostPerWeaponParry` 2, `CostPerWrongSideShieldBlock` 2,
 `CostPerKickOrBash` 3, `OnlyWrongSideBlocksStopRefill` on.</sub>
 
 ## 7. Tired AI guess their blocks
@@ -215,8 +223,8 @@ For a skilled fighter (one who never guesses in vanilla):
 | 0% | 100% | 75% (3 in 4) |
 
 **Shields are more forgiving.** A shield is a big thing: a wrong guess usually still catches the blow,
-but on the wrong side — which costs him 5 points and stops his refill (section 6). So a tired shield
-man doesn't just take the hit; he gets more tired, faster.
+but on the wrong side — which costs him 2 points and stops his refill (section 6). So a tired shield
+man doesn't just take the hit; he stops recovering.
 
 Low-skill troops (recruits, levies) already guess a lot in the vanilla game; for them the mod changes
 little. It matters most for the elite: veterans, lords and tournament opponents. You are never
@@ -313,7 +321,65 @@ walks back to his place. He steps again only once he is back. Nobody chases far.
 <sub>Settings: `ShieldWallHoldsSlots` on (live — switch it off mid-battle to see the difference); `ShieldWallStepOutMetres`
 1.0 m (0 = they stand fast and fight only what reaches them; 2-3 = a looser wall; live).</sub>
 
-## 11. Damage
+## 11. Calm, and the fever of a charge
+
+Men are defensive by nature — nobody wants to throw his life away. In the base game AI soldiers trade
+blows until they drop. With this mod an AI soldier on foot decides to start an attack **3 times less
+often**: he holds his place, blocks, parries and waits for an opening. Tournaments and duels get calmer
+too.
+
+| AI soldier on foot | Base game: chance to attack at each moment he decides | Calm |
+|---|---:|---:|
+| On a charge | 14.4% | 4.8% |
+| On any other order (advance, hold, move…) | 9.6% | 3.2% |
+| In a shield wall, square or circle | 5% | 1.7% |
+| A counter-strike right after he parries (charge / other / wall) | 8% / 6% / 4% | 2.7% / 2% / 1.3% |
+
+Riders keep the game's own (their swings come with each pass), and so do archers' shots and you.
+
+**The fever.** When a formation gets a **new charge or advance order** — yours or its own general's —
+every soldier on foot in it gets a **fever**: he attacks as eagerly as the base game's AI (3 × a calm
+man). The fever lasts his Athletics points **right now** ÷ 10, in seconds — so veterans with big bars
+surge longer, and men already tired from a long fight surge shorter. Its clock starts only when he first
+comes within **5 m** of an enemy, so a charge ordered from afar is not spent on the walk.
+
+| His Athletics now | Fever | With a shield in hand |
+|---:|---:|---:|
+| 50 points | 5 s | 3.5 s |
+| 80 | 8 s | 5.6 s |
+| 100 | 10 s | 7 s |
+| 150 | 15 s | 10.5 s |
+| 200 | 20 s | 14 s |
+
+A man with a **shield in his hand** burns his fever faster (it lasts 70% as long) — he fights from behind
+it. It is read live: take the shield off your back, or put it away for a two-handed axe, and the rate
+changes from that moment.
+
+**The surge fades** in a straight line from its peak back to calm as the fever burns down:
+
+| Fever left | Attacks × a calm man | A charging man's chance to attack |
+|---:|---:|---:|
+| 100% (and before he reaches the enemy) | × 3.0 | 14.4% (the base game's) |
+| 75% | × 2.5 | 12% |
+| 50% | × 2.0 | 9.6% |
+| 25% | × 1.5 | 7.2% |
+| 0% — calm again | × 1.0 | 4.8% |
+
+A hold, move or retreat order ends the fever at once (the general called them back). A second charge or
+advance while it runs does not start it over — unless a fresh fever would be longer than what is left.
+
+**They sprint the last metres.** A man in his fever with an enemy 3–12 m away may sprint at him: every
+second he has a 50% chance at the fever's start, sliding down with the fever (half the fever, 25%;
+none when it is gone). He spends only the sprint he holds above his order's reserve (section 14).
+
+A bracing man (section 8) still does not attack, fever or not.
+
+<sub>Settings: `AiCalmFactor` 3 (1 = the base game's AI), `FeverEnabled` on, `FeverPointsPerSecond` 10,
+`FeverAggressionMultiplier` 3, `FeverContactMetres` 5, `FeverShieldDurationMultiplier` 0.7,
+`FeverSprintToClose` on, `FeverSprintMinMetres` 3, `FeverSprintMaxMetres` 12, `FeverSprintCheckSeconds` 1,
+`FeverSprintChancePercent` 50.</sub>
+
+## 12. Damage
 
 Two things, in this order:
 
@@ -335,7 +401,7 @@ Hits on a shield are not rolled by default (still reduced). A hit never drops be
 <sub>Settings: `DamageRandomPercent` 50, `DamageReductionPercent` 25, `DamageRandomOnShields` off,
 `DamageRandomMelee` / `Ranged` / `OnMounts` on.</sub>
 
-## 12. Heroes, and the hideout boss
+## 13. Heroes, and the hideout boss
 
 - **Heroes pay less** — a quarter less per attack, kick, bash and block; a party leader a quarter less
   again (section 2). With a hero's big Athletics skill, his bar is big too: late in a battle your heroes
@@ -346,7 +412,7 @@ Hits on a shield are not rolled by default (still reduced). A hit never drops be
 
 <sub>Settings: `HeroCostMultiplier` 0.75, `PartyLeaderCostMultiplier` 0.75, `HideoutBossFightRefill` on.</sub>
 
-## 13. The sprint
+## 14. The sprint
 
 Hold **Left Ctrl** to sprint: a short burst of speed, on foot, in a fight or walking about a town or village (so street fights have it too). Think of it as a dodge — out of a
 bad spot, onto a fleeing archer, round a shield wall's flank. The AI uses it too: when a formation gets a
@@ -430,7 +496,8 @@ above it, and nothing once he is at or below it:
 (A man with a 5 s store: a move from full sprints 1 s, an advance 2.5 s, a charge 5 s.)
 
 A man stops early when an enemy is within 3 m or the order changes again. Give a formation a new charge order
-and watch it surge — tired men too, off their 2 s floor.
+and watch it surge — tired men too, off their 2 s floor. In their fever (section 11) men may also sprint again
+at an enemy a few metres off, with what they hold above the reserve.
 
 **Tip — shock troops.** Move your shock infantry round behind the enemy with plain **move** orders: the first
 move costs them a little sprint and none of them touches the last 80%. When you give the real **charge**, they
@@ -445,7 +512,7 @@ X1MouseButton, X2MouseButton), `SprintPointsPerSecond` 20, `SprintMinSeconds` 2,
 `SprintAiAdvanceKeepPercent` 50, `SprintAiMoveKeepPercent` 80. The run-now column comes from tiredness: `MinMoveSpeedMultiplier` 0.3 at an empty
 bar, `AthleticsPeakPercent` 75.</sub>
 
-## 14. What you see on screen
+## 15. What you see on screen
 
 **Your Athletics bar** sits under your health, with the white peak line at 75%. Its colour:
 
@@ -483,8 +550,12 @@ their average health, and **"ready 34/50"** — how many are ready to fight (not
 `AltMarkersShowEnemy`, `ShowReadyCount`, `Bar*BelowPercent`, `Ready*BelowPercent`, and the HUD's sizes
 and offsets.</sub>
 
-## 15. Tactics this creates
+## 16. Tactics this creates
 
+- **The charge is a surge — time it.** A charge order makes your men fight like the base game's AI for
+  their fever (about 10 s for a rested 100-point soldier, less for tired ones), then they calm down again.
+  Order it when it will decide the fight, not as a standing order. A new advance or charge restarts it
+  only if that gives them more.
 - **Keep your troops rested.** A line at full strength beats a line at 30% almost every time — it
   attacks twice as often, runs faster and blocks true. Don't spend men you don't need yet.
 - **Hold, then charge.** A holding line braces at 60% and keeps its strength in reserve while the enemy
@@ -504,13 +575,14 @@ and offsets.</sub>
   a fight arrives with a bar that has not refilled. Charge orders make your men sprint by themselves —
   give the charge when the gap is short enough that their store carries them all the way in.
 
-## 16. Changing things
+## 17. Changing things
 
 Every number above is a setting: in **MCM** (optional) or in the commented `config.json` beside the
 log. Changes apply at once, even mid-battle — nothing needs a restart. Each feature has its own switch,
 and a **master switch** turns the whole mod off mid-battle, so you can play the same fight both ways.
 
-- Too slow? Lower `DamageReductionPercent`, `ShieldInfantrySwingsLessPercent` or the brace floors.
+- Too slow? Lower `DamageReductionPercent`, `ShieldInfantrySwingsLessPercent`, `AiCalmFactor` or the brace floors.
+- Want the old fighting, everyone flailing? `AiCalmFactor` 1 (the base game's AI; fevers then surge above it).
 - Not slow enough? Raise them, or lower `ExhaustedAttackSpeedPercent`.
 
 The full list of settings, with ranges and what each does: [DESIGN.md → Parameters](DESIGN.md#parameters).

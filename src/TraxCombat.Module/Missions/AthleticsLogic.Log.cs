@@ -256,7 +256,7 @@ namespace TraxCombat.Missions
                 Failed("sprint.summary", e);
             }
 
-            // Step 43: calm and fever - fevers by order, contact, burns, the fade, fever sprints, the proof. Own try.
+            // Step 43: aggression and fever - fevers by order, contact, burns, the fade, fever sprints, the proof. Own try.
             try
             {
                 WriteFeverSummary();

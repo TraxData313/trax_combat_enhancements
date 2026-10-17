@@ -39,7 +39,7 @@ namespace TraxCombat.Core
         public static readonly ParamGroup BattlePaceGroup = new ParamGroup(5, "Battle pace (AI)");
         public static readonly ParamGroup BraceGroup = new ParamGroup(6, "Brace by orders (AI)");
         public static readonly ParamGroup SprintGroup = new ParamGroup(7, "Sprint");
-        public static readonly ParamGroup FeverGroup = new ParamGroup(8, "Calm and fever (AI)"); // step 43
+        public static readonly ParamGroup FeverGroup = new ParamGroup(8, "Aggression and fever (AI)"); // step 43
         public static readonly ParamGroup RefillGroup = new ParamGroup(9, "Refill");
         public static readonly ParamGroup PlayerBarGroup = new ParamGroup(10, "Your Athletics bar");
         public static readonly ParamGroup OrderStripGroup = new ParamGroup(11, "Orders menu strip");
@@ -411,27 +411,32 @@ namespace TraxCombat.Core
             "AI sprint on a move: keeps (% of the store)",
             "On a new MOVE order (move to a position - F1 F1 -, or an AI general's move that is neither its advance nor its charge) each AI soldier on foot keeps this percent of his FULL sprint store for later orders and sprints everything above it - so troops moved into position still have their sprint for the real charge. 80: from a full store he sprints a fifth, from 90% a tenth, at or below 80% none.");
 
-        // ------------------------------------------------------------------ calm and fever (step 43)
+        // ------------------------------------------------------------------ aggression and fever (step 43)
 
         // Step 43 (Anton, 2026-10-17: "people are defensive by nature - they don't want to throw their life away ... when the general
         // turns to them and says NOW!, everybody surges ... the more experienced they are the longer they follow that order, and the
-        // more tired they are the shorter they fight hard"): FeverMath, AI_NOTES "Step 43". The calm: the game's own two attack-decision
-        // chances / the factor; the fever: x the aggression on the calm values, fading as the store burns.
-        public static readonly ParamDef AiCalmFactor = Float("AiCalmFactor", 1, 5, FeverGroup,
-            "AI calm (÷)",
-            "AI soldiers on foot decide to start an attack this many times less often than the game's own AI - its chance to attack at each combat decision and to strike back after a parry are divided by it (3: a charging man's 14% becomes 5%). Lines hold and spar instead of trading blows until they drop; tournaments and duels get calmer too. Never you, never riders (their swings come with each pass), never archers' shooting. 1 = the game's own AI.");
+        // more tired they are the shorter they fight hard"; then: "a man at work doesn't hold a pace until he drops; the more tired he
+        // is, the less he swings"): FeverMath, AI_NOTES "Step 43". The game's own two attack-decision chances x a share that follows
+        // his bar; the fever lifts it to an absolute peak, fading back as the store burns.
+        public static readonly ParamDef AiAggressionFreshPercent = Int("AiAggressionFreshPercent", 0, FeverMath.MaxPercent, FeverGroup,
+            "AI aggression at a full bar (%)",
+            "How eagerly an AI soldier on foot with a FULL Athletics bar decides to start an attack (and to strike back after a parry), in percent of the game's own AI. It slides in a straight line to the next setting as his bar empties - the more tired he is, the less he swings. 60: a charging man's 14% chance becomes 8.6%. Tournaments and duels too. Never you, never riders (their swings come with each pass), never archers' shooting. 100 with the next at 100 = the game's own AI.");
+
+        public static readonly ParamDef AiAggressionExhaustedPercent = Int("AiAggressionExhaustedPercent", 0, FeverMath.MaxPercent, FeverGroup,
+            "AI aggression at an empty bar (%)",
+            "The same at an EMPTY bar: 20 = a fifth of the game's eagerness (a charging man's 14% becomes 2.9%). A wounded man's bar is capped by his wounds, so he is less eager too. On top of the pause after each attack - a tired man has both brakes.");
 
         public static readonly ParamDef FeverEnabled = Bool("FeverEnabled", FeverGroup,
             "Fever on a charge or advance order",
-            "When an AI formation gets a NEW charge or advance order - yours or its own general's - each of its soldiers on foot gets a FEVER: for a while he attacks as eagerly as the multiplier below says, then calms down again. The fever's clock starts only when he first comes near an enemy. A hold, move or retreat order ends it. Never you, never riders; tournaments and duels have no orders, so no fever. Off: everyone stays calm.");
+            "When an AI formation gets a NEW charge or advance order - yours or its own general's - each of its soldiers on foot gets a FEVER: for a while he attacks as eagerly as the peak below says, then calms down again. The fever's clock starts only when he first comes near an enemy. A hold, move or retreat order ends it. Never you, never riders; tournaments and duels have no orders, so no fever. Off: every man's eagerness follows his bar alone.");
 
         public static readonly ParamDef FeverPointsPerSecond = Float("FeverPointsPerSecond", 1, 50, FeverGroup,
             "Athletics points per fever second (points)",
             "A man's fever lasts his CURRENT Athletics points divided by this, in seconds: 100 points = 10 s at 10, a tired man at 40 points only 4 s. Veterans have bigger Athletics pools, so they surge longer; tired men surge shorter. Lower = longer fevers. Read when the order comes.");
 
-        public static readonly ParamDef FeverAggressionMultiplier = Float("FeverAggressionMultiplier", 1, 5, FeverGroup,
-            "Fever aggression at its peak (x)",
-            "At the fever's start a man decides to attack this many times as often as a calm man (3 with a calm of 3 = exactly the game's own AI). It fades in a straight line back to calm as his fever burns down. 1 = no surge.");
+        public static readonly ParamDef FeverAggressionPercent = Int("FeverAggressionPercent", 0, FeverMath.MaxPercent, FeverGroup,
+            "Fever aggression at its peak (%)",
+            "In his fever a man decides to attack this eagerly, in percent of the game's own AI, whatever his bar - but never less than his tired eagerness. It fades in a straight line back to his tired eagerness as his fever burns down. At or below the full-bar setting the fever adds nothing to a fresh man.");
 
         public static readonly ParamDef FeverContactMetres = Float("FeverContactMetres", 1, 20, FeverGroup,
             "Fever starts burning at (m)",
@@ -726,7 +731,7 @@ namespace TraxCombat.Core
             SprintTopSpeedReachSeconds,
             SprintRefillSeconds, SprintRefillMovingFactor, SprintRefillExhaustedFactor, SprintAiEnabled, SprintAiChargeKeepPercent,
             SprintAiAdvanceKeepPercent, SprintAiMoveKeepPercent,
-            AiCalmFactor, FeverEnabled, FeverPointsPerSecond, FeverAggressionMultiplier, FeverContactMetres, FeverShieldDurationMultiplier,
+            AiAggressionFreshPercent, AiAggressionExhaustedPercent, FeverEnabled, FeverPointsPerSecond, FeverAggressionPercent, FeverContactMetres, FeverShieldDurationMultiplier,
             FeverSprintToClose, FeverSprintMinMetres, FeverSprintMaxMetres, FeverSprintCheckSeconds, FeverSprintChancePercent,
             RegenDelayBlowTimes, BlowTimeSeconds, FullRegenSecondsStanding, RegenRateNearFullPercent, RegenMultiplierAtFullRun,
             WalkEffortFraction, HideoutBossFightRefill,

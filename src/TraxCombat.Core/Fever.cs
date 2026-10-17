@@ -6,7 +6,7 @@ namespace TraxCombat.Core
     /// <summary>Step 43: where an AI man's fever is.</summary>
     public enum FeverPhase
     {
-        /// <summary>No fever - his decisions are the CALM ones (AiCalmFactor).</summary>
+        /// <summary>No fever - his decisions follow his bar (AiAggressionFresh / ExhaustedPercent).</summary>
         None,
 
         /// <summary>A new charge / advance order armed it (full); no enemy within FeverContactMetres yet - the peak, the clock not running.</summary>
@@ -19,7 +19,7 @@ namespace TraxCombat.Core
     /// <summary>Step 43: why a fever ended.</summary>
     public enum FeverEnd
     {
-        /// <summary>The store burned down to 0 - he is calm again.</summary>
+        /// <summary>The store burned down to 0 - back to his tired share.</summary>
         Faded,
 
         /// <summary>A new order that is neither a charge nor an advance (hold, move, retreat, stop, follow …) - the general called them back.</summary>
@@ -100,23 +100,25 @@ namespace TraxCombat.Core
     }
 
     /// <summary>
-    /// Step 43 - CALM AND FEVER (Anton, 2026-10-17: "people are defensive by nature … when the general turns to them and says NOW!,
-    /// everybody surges … the surge fades"; AI_NOTES "Step 43", DESIGN §2 "Calm and fever"). The settings for one decision, read live
-    /// from <see cref="TraxSettings"/>: the master switch first, then AthleticsEnabled (the fever's store IS his Athletics, and the calm
-    /// is the brake beside tiredness - Athletics off = the game's own AI), then the calm factor and the fever's switch.
+    /// Step 43 - AGGRESSION BY ATHLETICS AND THE FEVER (Anton, 2026-10-17: "a man at work doesn't hold a pace until he drops; the more
+    /// tired he is, the less he swings" - and "when the general turns to them and says NOW!, everybody surges … the surge fades";
+    /// AI_NOTES "Step 43", DESIGN §2 "Aggression and the fever"). The settings for one decision, read live from <see cref="TraxSettings"/>:
+    /// the master switch first, then AthleticsEnabled (both the share and the fever's store are his Athletics - Athletics off = the
+    /// game's own AI), then the fever's switch.
     /// </summary>
     public readonly struct FeverRules
     {
-        public FeverRules(bool modEnabled, bool athleticsEnabled, bool feverEnabled, double calmFactor, double pointsPerSecond, double aggressionMultiplier,
-            double contactMetres, double shieldDurationMultiplier, bool sprintToClose, double sprintMinMetres, double sprintMaxMetres,
+        public FeverRules(bool modEnabled, bool athleticsEnabled, bool feverEnabled, int freshPercent, int exhaustedPercent, double pointsPerSecond,
+            int peakPercent, double contactMetres, double shieldDurationMultiplier, bool sprintToClose, double sprintMinMetres, double sprintMaxMetres,
             double sprintCheckSeconds, int sprintChancePercent)
         {
             ModEnabled = modEnabled;
             AthleticsEnabled = athleticsEnabled;
             FeverEnabled = feverEnabled;
-            CalmFactor = double.IsNaN(calmFactor) || calmFactor < 1 ? 1 : calmFactor;
+            FreshPercent = ClampPercent(freshPercent);
+            ExhaustedPercent = ClampPercent(exhaustedPercent);
             PointsPerSecond = double.IsNaN(pointsPerSecond) || pointsPerSecond < FeverMath.MinPointsPerSecond ? FeverMath.MinPointsPerSecond : pointsPerSecond;
-            AggressionMultiplier = double.IsNaN(aggressionMultiplier) || aggressionMultiplier < 1 ? 1 : aggressionMultiplier;
+            PeakPercent = ClampPercent(peakPercent);
             ContactMetres = double.IsNaN(contactMetres) || contactMetres < FeverMath.MinMetres ? FeverMath.MinMetres : contactMetres;
             ShieldDurationMultiplier = double.IsNaN(shieldDurationMultiplier) || shieldDurationMultiplier < FeverMath.MinShieldDuration
                 ? FeverMath.MinShieldDuration : shieldDurationMultiplier;
@@ -128,20 +130,25 @@ namespace TraxCombat.Core
             SprintChancePercent = sprintChancePercent < 0 ? 0 : sprintChancePercent > 100 ? 100 : sprintChancePercent;
         }
 
+        private static int ClampPercent(int p) => p < 0 ? 0 : p > FeverMath.MaxPercent ? FeverMath.MaxPercent : p;
+
         public bool ModEnabled { get; }
         public bool AthleticsEnabled { get; }
 
         /// <summary>FeverEnabled (the switch itself).</summary>
         public bool FeverEnabled { get; }
 
-        /// <summary>AiCalmFactor, at least 1: the AI's attack-decision chances are divided by it (1 = the game's own).</summary>
-        public double CalmFactor { get; }
+        /// <summary>AiAggressionFreshPercent: the share of the game's attack-decision chances at a FULL bar.</summary>
+        public int FreshPercent { get; }
+
+        /// <summary>AiAggressionExhaustedPercent: the share at an EMPTY bar (a straight line in the bar between).</summary>
+        public int ExhaustedPercent { get; }
 
         /// <summary>FeverPointsPerSecond: the fever's store = his CURRENT Athletics points ÷ this, in seconds.</summary>
         public double PointsPerSecond { get; }
 
-        /// <summary>FeverAggressionMultiplier, at least 1: the calm values × this at the fever's peak.</summary>
-        public double AggressionMultiplier { get; }
+        /// <summary>FeverAggressionPercent: the fever's peak share - ABSOLUTE, of the game's values.</summary>
+        public int PeakPercent { get; }
 
         /// <summary>FeverContactMetres: an enemy this close starts the burn (and counts as "in contact" for the summary).</summary>
         public double ContactMetres { get; }
@@ -155,8 +162,12 @@ namespace TraxCombat.Core
         public double SprintCheckSeconds { get; }
         public int SprintChancePercent { get; }
 
-        /// <summary>The calm applies: master switch, Athletics, a factor above 1.</summary>
-        public bool CalmOn => ModEnabled && AthleticsEnabled && CalmFactor > 1 + 1e-9;
+        public double FreshShare => FreshPercent / 100.0;
+        public double ExhaustedShare => ExhaustedPercent / 100.0;
+        public double PeakShare => PeakPercent / 100.0;
+
+        /// <summary>The aggression share applies: the master switch, Athletics (100 / 100 = the game's own values).</summary>
+        public bool AggressionOn => ModEnabled && AthleticsEnabled;
 
         /// <summary>The fever applies: master switch, Athletics, FeverEnabled.</summary>
         public bool Enabled => ModEnabled && AthleticsEnabled && FeverEnabled;
@@ -167,37 +178,42 @@ namespace TraxCombat.Core
         /// <summary>The switch that holds the fever off (the master switch first), or null.</summary>
         public string? OffBecause => !ModEnabled ? "ModEnabled" : !AthleticsEnabled ? "AthleticsEnabled" : !FeverEnabled ? "FeverEnabled" : null;
 
-        /// <summary>The switch that holds the calm off, or null.</summary>
-        public string? CalmOffBecause => !ModEnabled ? "ModEnabled" : !AthleticsEnabled ? "AthleticsEnabled" : CalmFactor <= 1 + 1e-9 ? "AiCalmFactor 1" : null;
+        /// <summary>The switch that holds the aggression share off, or null.</summary>
+        public string? AggressionOffBecause => !ModEnabled ? "ModEnabled" : !AthleticsEnabled ? "AthleticsEnabled" : null;
 
-        public static FeverRules From(TraxSettings s) => new FeverRules(s.ModEnabled, s.AthleticsEnabled, s.FeverEnabled, s.AiCalmFactor,
-            s.FeverPointsPerSecond, s.FeverAggressionMultiplier, s.FeverContactMetres, s.FeverShieldDurationMultiplier, s.FeverSprintToClose,
-            s.FeverSprintMinMetres, s.FeverSprintMaxMetres, s.FeverSprintCheckSeconds, s.FeverSprintChancePercent);
+        public static FeverRules From(TraxSettings s) => new FeverRules(s.ModEnabled, s.AthleticsEnabled, s.FeverEnabled, s.AiAggressionFreshPercent,
+            s.AiAggressionExhaustedPercent, s.FeverPointsPerSecond, s.FeverAggressionPercent, s.FeverContactMetres, s.FeverShieldDurationMultiplier,
+            s.FeverSprintToClose, s.FeverSprintMinMetres, s.FeverSprintMaxMetres, s.FeverSprintCheckSeconds, s.FeverSprintChancePercent);
+
+        /// <summary>The game's attack chance on a charge (0.1 × 0.48 × 3 - RESEARCH §P), the examples' base.</summary>
+        public const double ChargeAttackChance = 0.144;
 
         /// <summary>The settings sentence for the mission-start line, a change and the summary.</summary>
         public string Describe()
         {
-            string calm = CalmOn
-                ? "calm: AI men on foot decide to attack " + FeverMath.F2(CalmFactor) + "x less often (AiCalmFactor - the game's attack and riposte chances ÷ "
-                  + FeverMath.F2(CalmFactor) + ", e.g. a charge's attack chance 0.144 → " + FeverMath.F3(0.144 / CalmFactor) + ")"
-                : "calm: off (" + CalmOffBecause + ") - the game's own attack decisions";
-            if (!Enabled) return calm + "; fever: off (" + OffBecause + ")";
-            double peak = AggressionMultiplier / (CalmOn ? CalmFactor : 1);
+            string aggression = AggressionOn
+                ? "aggression: AI men on foot decide to attack at " + FreshPercent + "% of the game's rate at a full bar, sliding in a straight line to "
+                  + ExhaustedPercent + "% at an empty one (AiAggressionFreshPercent / AiAggressionExhaustedPercent - the bar = points / his full pool) - attack chance on a charge "
+                  + FeverMath.F3(ChargeAttackChance) + " → fresh " + FeverMath.F3(ChargeAttackChance * FreshShare) + ", half "
+                  + FeverMath.F3(ChargeAttackChance * (ExhaustedShare + FreshShare) / 2) + ", empty " + FeverMath.F3(ChargeAttackChance * ExhaustedShare)
+                  + (Enabled ? ", fever peak " + FeverMath.F3(ChargeAttackChance * PeakShare) : string.Empty) + " (riposte the same shares)"
+                : "aggression: off (" + AggressionOffBecause + ") - the game's own attack decisions";
+            if (!Enabled) return aggression + "; fever: off (" + OffBecause + ")";
             string fever = "; fever: a NEW charge / advance order arms each AI man on foot with his CURRENT Athletics points / " + FeverMath.F1(PointsPerSecond)
-                + " s (FeverPointsPerSecond - 80 points = " + FeverMath.F1(80 / PointsPerSecond) + " s) at x" + FeverMath.F2(AggressionMultiplier)
-                + " the calm values (FeverAggressionMultiplier: x" + FeverMath.F2(peak) + " the game's - attack chance 0.144 → " + FeverMath.F3(Math.Min(1, 0.144 * peak))
-                + "); the clock starts at the first enemy within " + FeverMath.F1(ContactMetres) + " m (FeverContactMetres), burns x" + FeverMath.F2(1 / ShieldDurationMultiplier)
-                + " faster with a shield in hand (FeverShieldDurationMultiplier " + FeverMath.F2(ShieldDurationMultiplier) + "), and the aggression fades in a straight line ("
-                + FeverMath.FadeSteps + " steps) back to calm as it empties; a hold / move / retreat order ends it";
+                + " s (FeverPointsPerSecond - 80 points = " + FeverMath.F1(80 / PointsPerSecond) + " s) at " + PeakPercent
+                + "% of the game's rate (FeverAggressionPercent, never below his tired share); the clock starts at the first enemy within " + FeverMath.F1(ContactMetres)
+                + " m (FeverContactMetres), burns x" + FeverMath.F2(1 / ShieldDurationMultiplier) + " faster with a shield in hand (FeverShieldDurationMultiplier "
+                + FeverMath.F2(ShieldDurationMultiplier) + "), and the share fades in a straight line to his tired share as it empties; a hold / move / retreat order ends it";
             string sprint = !SprintOn ? "; fever sprint: off" + (SprintToClose ? " (FeverSprintChancePercent 0)" : " (FeverSprintToClose)")
                 : "; fever sprint: every " + FeverMath.F1(SprintCheckSeconds) + " s a feverish man with sprint above his order's reserve and an enemy "
                   + FeverMath.F1(SprintMinMetres) + "-" + FeverMath.F1(SprintMaxMetres) + " m away sprints with chance " + SprintChancePercent
                   + "% x the fever left (full while armed)";
-            return calm + fever + sprint;
+            return aggression + fever + sprint;
         }
     }
 
-    /// <summary>Step 43 pure math: the calm divisor, the store, the fade and its steps, the burn rate, the sprint chance.</summary>
+    /// <summary>Step 43 pure math: the tired share by the bar, the fever's share and its fade, the 0.05 steps, the store, the burn
+    /// rate, the sprint chance.</summary>
     public static class FeverMath
     {
         public const double MinPointsPerSecond = 1;
@@ -205,9 +221,11 @@ namespace TraxCombat.Core
         public const double MinShieldDuration = 0.1;
         public const double MinCheckSeconds = 0.1;
 
-        /// <summary>The fade's steps (plumbing): the multiplier moves in tenths of the burn - 1 recompute at the arming, 9 down the
-        /// fade, 1 at the end = ~11 recomputes per man per fever (DESIGN §2 "Calm and fever").</summary>
-        public const int FadeSteps = 10;
+        /// <summary>The percent settings' top (200 = twice the game's own).</summary>
+        public const int MaxPercent = 200;
+
+        /// <summary>The applied share moves in steps of this (plumbing, like the speeds' 0.05 - RetargetSpeed): a step = a recompute.</summary>
+        public const double ShareStep = 0.05;
 
         /// <summary>Every man is looked at about this often (staggered like the brace; plumbing).</summary>
         public const double PollSeconds = 0.25;
@@ -229,42 +247,48 @@ namespace TraxCombat.Core
             return left >= full ? 1 : left / full;
         }
 
-        /// <summary>The share in <see cref="FadeSteps"/> steps, rounded UP: the peak holds the first tenth of the burn, the last step
-        /// (0.1) runs until the store is empty - 0 only when empty.</summary>
-        public static double QuantizedShare(double left, double full)
+        /// <summary>His TIRED share: exhausted + (fresh − exhausted) × bar, bar = points ÷ his FULL pool, clamped 0..1 (a wound's cap
+        /// is in the bar already - no special case).</summary>
+        public static double TiredShare(in FeverRules r, double bar)
         {
-            double s = Share(left, full);
-            if (s <= 0) return 0;
-            double q = Math.Ceiling(s * FadeSteps - 1e-9) / FadeSteps;
-            return q > 1 ? 1 : q < 1.0 / FadeSteps ? 1.0 / FadeSteps : q;
+            double b = double.IsNaN(bar) || bar <= 0 ? 0 : bar >= 1 ? 1 : bar;
+            return r.ExhaustedShare + (r.FreshShare - r.ExhaustedShare) * b;
         }
-
-        /// <summary>The aggression multiplier on the calm values: none 1; armed the peak; burning 1 + (peak − 1) × left ÷ full in
-        /// <see cref="FadeSteps"/> steps (<paramref name="exact"/> = the straight line itself).</summary>
-        public static double Multiplier(in FeverRules r, FeverPhase phase, double left, double full, bool exact = false)
-        {
-            if (phase == FeverPhase.None || !r.Enabled) return 1;
-            if (phase == FeverPhase.Armed) return r.AggressionMultiplier;
-            double s = exact ? Share(left, full) : QuantizedShare(left, full);
-            return 1 + (r.AggressionMultiplier - 1) * s;
-        }
-
-        /// <summary>The calm divisor now: AiCalmFactor while the calm applies, else 1.</summary>
-        public static double CalmDivisor(in FeverRules r) => r.CalmOn ? r.CalmFactor : 1;
 
         /// <summary>
-        /// The factor on the game's two attack-decision values for him: the fever's multiplier ÷ the calm divisor. 1 = untouched (the
-        /// player, the master switch or Athletics off). Calm 3, peak 3: calm 1/3, the peak exactly the game's (1).
+        /// His share of the game's two attack-decision values now (exact): no fever = tired; armed = max(tired, peak); burning = tired
+        /// + (peak − tired) × left ÷ full, never below tired (a man already above the peak gets nothing from the fever). The fever off
+        /// = tired.
         /// </summary>
-        public static float DecisionFactor(in FeverRules r, FeverPhase phase, double left, double full, bool isPlayer)
+        public static double AggressionShare(in FeverRules r, FeverPhase phase, double left, double full, double bar)
         {
-            if (isPlayer || !r.ModEnabled || !r.AthleticsEnabled) return 1f;
-            double f = Multiplier(in r, phase, left, full) / CalmDivisor(in r);
-            return (float)f;
+            double tired = TiredShare(in r, bar);
+            if (phase == FeverPhase.None || !r.Enabled) return tired;
+            double peak = r.PeakShare;
+            if (peak <= tired) return tired;
+            if (phase == FeverPhase.Armed) return peak;
+            return tired + (peak - tired) * Share(left, full);
+        }
+
+        /// <summary>A share in <see cref="ShareStep"/> steps (rounded to the nearest; never below 0).</summary>
+        public static double Quantize(double share)
+        {
+            if (double.IsNaN(share) || share <= 0) return 0;
+            return Math.Round(share / ShareStep, MidpointRounding.AwayFromZero) * ShareStep;
+        }
+
+        /// <summary>
+        /// The factor the stat decorator puts on the game's two attack-decision values for him: his share in 0.05 steps. 1 = untouched
+        /// (the player, the master switch or Athletics off).
+        /// </summary>
+        public static float DecisionFactor(in FeverRules r, FeverPhase phase, double left, double full, double bar, bool isPlayer)
+        {
+            if (isPlayer || !r.AggressionOn) return 1f;
+            return (float)Quantize(AggressionShare(in r, phase, left, full, bar));
         }
 
         /// <summary>A chance × the factor, clamped 0..1 (NaN or factor 1 = the value untouched). No floor of ours: the game's own
-        /// 0.05 clamp is its formula's; calm 3 must mean three times rarer.</summary>
+        /// 0.05 clamp is its formula's; 20% must mean five times rarer.</summary>
         public static float ApplyChance(float value, float factor)
         {
             if (factor == 1f || float.IsNaN(factor) || float.IsNaN(value)) return value;
@@ -338,7 +362,7 @@ namespace TraxCombat.Core
     /// <summary>
     /// Step 43: one AI man's fever - armed at a new charge / advance order (his CURRENT points ÷ FeverPointsPerSecond seconds), burning
     /// from his first enemy within FeverContactMetres (× 1 ÷ FeverShieldDurationMultiplier while a shield is in his hand), fading to
-    /// calm as it empties. One per tracked fighter, reused all battle - no allocation per tick. Main thread.
+    /// his tired share as it empties. One per tracked fighter, reused all battle - no allocation per tick. Main thread.
     /// </summary>
     public sealed class FeverStore
     {

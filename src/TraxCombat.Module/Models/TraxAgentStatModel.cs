@@ -26,7 +26,7 @@ namespace TraxCombat.Models
     /// (<see cref="SpeedPenalty"/>), and (step 30) a tired AI man's AiRandomizedDefendDirectionChance raised by
     /// his tired-block weight (<see cref="TiredBlockMath.Chance"/> - never the player); step 35: a SPRINTER's run property gets
     /// the sprint's run factor (× his fresh run, in place of the tiredness multiplier) and his TopSpeedReachDuration is capped at
-    /// SprintTopSpeedReachSeconds; step 43: an AI man on foot's two melee attack-decision chances × his calm / fever factor
+    /// SprintTopSpeedReachSeconds; step 43: an AI man on foot's two melee attack-decision chances × his aggression share (his bar, a fever)
     /// (<see cref="SpeedPenalty.ScaleAttackDecisions"/>).
     ///
     /// THE TOURNAMENT FIX (RESEARCH §C): TournamentBehavior raises the AI level each round with
@@ -143,8 +143,8 @@ namespace TraxCombat.Models
                         SpeedPenalty.ScaleAiDecisions(agentDrivenProperties, attack);
                         ai = true;
                     }
-                    // step 43: CALM and FEVER - the two melee attack-decision chances × his factor (calm ÷ AiCalmFactor, the fever's ×
-                    // the aggression; multiplied on top of 5e's m), written after the base model's own SetAiRelatedProperties (assigned
+                    // step 43: AGGRESSION and FEVER - the two melee attack-decision chances × his share (a line by his bar from
+                    // AiAggressionFreshPercent to ...ExhaustedPercent, lifted by a fever; multiplied on top of 5e's m), written after the base model's own SetAiRelatedProperties (assigned
                     // with = every recompute - no compounding; no floor of ours). AI on foot only: never the player, never a rider.
                     if (decision != 1f && !agent.IsMainAgent && agent.MountAgent == null)
                     {

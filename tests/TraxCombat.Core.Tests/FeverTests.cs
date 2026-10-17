@@ -2,61 +2,94 @@ using TraxCombat.Core;
 
 namespace TraxCombat.Core.Tests;
 
-/// <summary>Step 43 (Anton, 2026-10-17): the CALM (the AI's two attack-decision chances ÷ AiCalmFactor), the FEVER (a new charge / advance
-/// order arms a store of current points ÷ 10 s at x3 the calm values, burning from the first contact, faster with a shield in hand,
-/// fading in 10 steps back to calm), the fever sprint (a roll every 1 s at 50% × fever left), cheaper blows (format 8).</summary>
+/// <summary>Step 43 (Anton, 2026-10-17): AGGRESSION BY ATHLETICS (the AI's two attack-decision chances × a share sliding with his bar from
+/// 60% full to 20% empty, in 0.05 steps), the FEVER (a new charge / advance order arms a store of current points ÷ 10 s at an ABSOLUTE 80%,
+/// burning from the first contact, faster with a shield in hand, fading back to his tired share), the fever sprint (a roll every 1 s at
+/// 50% × fever left), cheaper blows and wrong-side blocks (format 8).</summary>
 public class FeverTests
 {
-    private static FeverRules Rules(double calm = 3, bool fever = true, double pps = 10, double peak = 3, double contact = 5, double shield = 0.7,
-        bool sprint = true, double min = 3, double max = 12, double check = 1, int chance = 50, bool mod = true, bool athletics = true) =>
-        new(mod, athletics, fever, calm, pps, peak, contact, shield, sprint, min, max, check, chance);
+    private static FeverRules Rules(int fresh = 60, int exhausted = 20, bool fever = true, double pps = 10, int peak = 80, double contact = 5,
+        double shield = 0.7, bool sprint = true, double min = 3, double max = 12, double check = 1, int chance = 50, bool mod = true, bool athletics = true) =>
+        new(mod, athletics, fever, fresh, exhausted, pps, peak, contact, shield, sprint, min, max, check, chance);
 
     private static void Near(double expected, double actual, double eps = 1e-6) =>
         Assert.True(Math.Abs(expected - actual) <= eps, "expected " + expected + ", got " + actual);
 
-    // ------------------------------------------------------------------ calm
+    // ------------------------------------------------------------------ aggression by the bar
 
     [Fact]
-    public void Calm_divides_the_two_chances_with_no_floor_of_ours()
+    public void The_share_slides_with_the_bar_from_60_to_20_percent()
     {
         var r = Rules();
-        float f = FeverMath.DecisionFactor(in r, FeverPhase.None, 0, 0, isPlayer: false);
-        Near(1.0 / 3, f);
-        Near(0.048, FeverMath.ApplyChance(0.144f, f), 1e-6);        // a charge's attack chance
-        Near(0.032, FeverMath.ApplyChance(0.096f, f), 1e-6);        // other orders
-        Near(0.05 / 3, FeverMath.ApplyChance(0.05f, f), 1e-6);      // a shield wall's (the game's own 0.05 clamp) - below 0.05: no floor
-        Near(0.08 / 3, FeverMath.ApplyChance(0.08f, f), 1e-6);      // the riposte
-        Assert.Equal(1f, FeverMath.ApplyChance(0.9f, 3f));            // clamped to 1
-        Assert.Equal(0f, FeverMath.ApplyChance(-0.2f, 0.5f));          // never below 0
+        Near(0.6, FeverMath.TiredShare(in r, 1));
+        Near(0.5, FeverMath.TiredShare(in r, 0.75));
+        Near(0.4, FeverMath.TiredShare(in r, 0.5));
+        Near(0.2, FeverMath.TiredShare(in r, 0));
+        Near(0.2, FeverMath.TiredShare(in r, -1));          // clamped
+        Near(0.6, FeverMath.TiredShare(in r, 1.5));
+        // a wounded man capped at half health is at most at a half bar: no special case, the bar reads it
+        Near(0.4, FeverMath.TiredShare(in r, 0.5));
+        // 100 / 100 = the game's own at any bar
+        Near(1, FeverMath.TiredShare(Rules(fresh: 100, exhausted: 100), 0.3));
+        Assert.Equal(1f, FeverMath.DecisionFactor(Rules(fresh: 100, exhausted: 100), FeverPhase.None, 0, 0, 0.3, false));
     }
 
     [Fact]
-    public void Calm_1_the_player_and_the_switches_leave_the_games_values()
+    public void The_applied_values_in_005_steps_with_no_floor_of_ours()
     {
-        Assert.Equal(1f, FeverMath.DecisionFactor(Rules(calm: 1, fever: false), FeverPhase.None, 0, 0, false));
-        Assert.Equal(1f, FeverMath.DecisionFactor(Rules(), FeverPhase.Armed, 8, 8, isPlayer: true));
-        Assert.Equal(1f, FeverMath.DecisionFactor(Rules(mod: false), FeverPhase.Armed, 8, 8, false));        // the master switch first
-        Assert.Equal(1f, FeverMath.DecisionFactor(Rules(athletics: false), FeverPhase.None, 0, 0, false));
+        var r = Rules();
+        float fresh = FeverMath.DecisionFactor(in r, FeverPhase.None, 0, 0, 1, false);
+        float half = FeverMath.DecisionFactor(in r, FeverPhase.None, 0, 0, 0.5, false);
+        float empty = FeverMath.DecisionFactor(in r, FeverPhase.None, 0, 0, 0, false);
+        Near(0.6, fresh);
+        Near(0.4, half);
+        Near(0.2, empty);
+        Near(0.0864, FeverMath.ApplyChance(0.144f, fresh), 1e-6);  // a charge: 0.144 → fresh 0.086
+        Near(0.0288, FeverMath.ApplyChance(0.144f, empty), 1e-6);  // empty 0.029
+        Near(0.01, FeverMath.ApplyChance(0.05f, empty), 1e-6);     // a shield wall's 0.05 (the game's clamp) → 0.01: no floor
+        Near(0.016, FeverMath.ApplyChance(0.08f, empty), 1e-6);    // the riposte
+        Near(0.55, FeverMath.DecisionFactor(in r, FeverPhase.None, 0, 0, 0.9, false));   // 0.56 → 0.55
+        Near(0.25, FeverMath.DecisionFactor(in r, FeverPhase.None, 0, 0, 0.1, false));   // 0.24 → 0.25
+        Near(0.45, FeverMath.Quantize(0.474));
+        Near(0.5, FeverMath.Quantize(0.476));
+        Assert.Equal(0, FeverMath.Quantize(-0.1));
+        Assert.Equal(1f, FeverMath.ApplyChance(0.9f, 2f));          // clamped to 1
+        Assert.Equal(0f, FeverMath.ApplyChance(-0.2f, 0.5f));
+        // over a full bar the share takes (0.6 - 0.2) / 0.05 = 8 steps: about one recompute per 12.5% of the bar
+        int steps = 0;
+        float last = FeverMath.DecisionFactor(in r, FeverPhase.None, 0, 0, 1, false);
+        for (int i = 999; i >= 0; i--)
+        {
+            float now = FeverMath.DecisionFactor(in r, FeverPhase.None, 0, 0, i / 1000.0, false);
+            if (now != last) steps++;
+            last = now;
+        }
+        Assert.Equal(8, steps);
+    }
+
+    [Fact]
+    public void The_player_and_the_switches_leave_the_games_values()
+    {
+        Assert.Equal(1f, FeverMath.DecisionFactor(Rules(), FeverPhase.Armed, 8, 8, 0.2, isPlayer: true));
+        Assert.Equal(1f, FeverMath.DecisionFactor(Rules(mod: false), FeverPhase.Armed, 8, 8, 0.2, false));        // the master switch first
+        Assert.Equal(1f, FeverMath.DecisionFactor(Rules(athletics: false), FeverPhase.None, 0, 0, 0.2, false));
         Assert.Equal(0.144f, FeverMath.ApplyChance(0.144f, 1f));
-        Assert.False(Rules(calm: 1).CalmOn);
         Assert.Equal("ModEnabled", Rules(mod: false, athletics: false).OffBecause);
-        Assert.Equal("ModEnabled", Rules(mod: false).CalmOffBecause);
-        Assert.Equal("AiCalmFactor 1", Rules(calm: 1).CalmOffBecause);
+        Assert.Equal("ModEnabled", Rules(mod: false).AggressionOffBecause);
+        Assert.Equal("AthleticsEnabled", Rules(athletics: false).AggressionOffBecause);
+        Assert.Null(Rules().AggressionOffBecause);
         Assert.Equal("FeverEnabled", Rules(fever: false).OffBecause);
     }
 
     [Fact]
-    public void Calm_combines_with_step_5e_multiplicatively()
+    public void The_share_combines_with_step_5e_multiplicatively()
     {
-        // AttackRateAiDecisions on, a man at m 0.5: the game's 0.144 x 0.5 (5e) / 3 (calm) = 0.024, either order
-        float f = FeverMath.DecisionFactor(Rules(), FeverPhase.None, 0, 0, false);
+        // AttackRateAiDecisions on, a man at m 0.5 and a full bar: the game's 0.144 x 0.5 (5e) x 0.6 = 0.0432, either order
+        float f = FeverMath.DecisionFactor(Rules(), FeverPhase.None, 0, 0, 1, false);
         float a = FeverMath.ApplyChance(AttackRateMath.ScaleChance(0.144f, 0.5f), f);
         float b = AttackRateMath.ScaleChance(FeverMath.ApplyChance(0.144f, f), 0.5f);
-        Near(0.024, a, 1e-6);
+        Near(0.0432, a, 1e-6);
         Near(a, b, 1e-7);
-        // at the fever's peak the calm is undone, 5e's m stays
-        float peak = FeverMath.DecisionFactor(Rules(), FeverPhase.Armed, 8, 8, false);
-        Near(0.072, FeverMath.ApplyChance(AttackRateMath.ScaleChance(0.144f, 0.5f), peak), 1e-6);
     }
 
     // ------------------------------------------------------------------ the store, armed, burning
@@ -83,22 +116,29 @@ public class FeverTests
     }
 
     [Fact]
-    public void Armed_is_the_peak_and_does_not_burn_until_contact()
+    public void Armed_is_the_absolute_peak_and_does_not_burn_until_contact()
     {
         var r = Rules();
         var f = new FeverStore();
         f.Arm(in r, SprintOrder.Advance, 80, 0, false);
-        Near(3, FeverMath.Multiplier(in r, f.Phase, f.Left, f.Full));
-        Near(1, FeverMath.DecisionFactor(in r, f.Phase, f.Left, f.Full, false));   // calm 3 x peak 3 = the game's own
-        Assert.False(f.Burn(in r, 30, shieldInHand: false));                        // 30 s marching: nothing spent
+        Near(0.8, FeverMath.AggressionShare(in r, f.Phase, f.Left, f.Full, 0.8));       // max(0.52, 0.8)
+        Near(0.8, FeverMath.AggressionShare(in r, f.Phase, f.Left, f.Full, 0.1));       // a tired man too: max(0.24, 0.8)
+        Near(0.8, FeverMath.DecisionFactor(in r, f.Phase, f.Left, f.Full, 0.8, false));
+        Near(0.1152, FeverMath.ApplyChance(0.144f, 0.8f), 1e-6);                        // a charge's fever peak 0.115
+        Assert.False(f.Burn(in r, 30, shieldInHand: false));                             // 30 s marching: nothing spent
         Near(8, f.Left);
         Assert.True(f.StartBurn(31));
         Assert.Equal(FeverPhase.Burning, f.Phase);
-        Assert.False(f.StartBurn(32));                                               // once
+        Assert.False(f.StartBurn(32));                                                    // once
         Assert.False(f.Burn(in r, 1, false));
         Near(7, f.Left);
-        Assert.False(f.Burn(in r, 1, true));                                         // a shield in hand: 1 / 0.7 s a second
+        Assert.False(f.Burn(in r, 1, true));                                              // a shield in hand: 1 / 0.7 s a second
         Near(7 - 1 / 0.7, f.Left);
+        // a peak at or below his tired share adds nothing
+        var low = Rules(peak: 50);
+        Near(0.6, FeverMath.AggressionShare(in low, FeverPhase.Armed, 8, 8, 1));
+        Near(0.6, FeverMath.AggressionShare(in low, FeverPhase.Burning, 4, 8, 1));
+        Near(0.5, FeverMath.AggressionShare(in low, FeverPhase.Armed, 8, 8, 0.25));     // max(0.3, 0.5)
     }
 
     [Fact]
@@ -126,26 +166,25 @@ public class FeverTests
     }
 
     [Fact]
-    public void The_fade_is_a_straight_line_in_ten_steps_ending_at_calm()
+    public void The_fade_runs_from_the_peak_to_his_CURRENT_tired_share()
     {
         var r = Rules();
-        Near(3, FeverMath.Multiplier(in r, FeverPhase.Burning, 8, 8));
-        Near(3, FeverMath.Multiplier(in r, FeverPhase.Burning, 7.6, 8));        // 0.95 → the first tenth holds the peak
-        Near(2.8, FeverMath.Multiplier(in r, FeverPhase.Burning, 6.8, 8));      // 0.85 → 0.9
-        Near(2.0, FeverMath.Multiplier(in r, FeverPhase.Burning, 4, 8));        // half
-        Near(2.0, FeverMath.Multiplier(in r, FeverPhase.Burning, 4, 8, exact: true));
-        Near(1.2, FeverMath.Multiplier(in r, FeverPhase.Burning, 0.01, 8));     // the last step runs to empty
-        Near(1.0, FeverMath.Multiplier(in r, FeverPhase.Burning, 0, 8));
-        Near(1.0, FeverMath.Multiplier(in r, FeverPhase.None, 0, 8));
-        // the applied factor: calm 1/3 → 1 at the peak, 2/3 at half
-        Near(2.0 / 3, FeverMath.DecisionFactor(in r, FeverPhase.Burning, 4, 8, false));
-        // a whole burn at 0.25 s looks: 10 distinct values below the peak's arming → 11 recomputes with the arming and the end
+        // a fresh man (bar 1, tired 0.6): 0.8 → 0.7 at half → 0.6 at empty
+        Near(0.8, FeverMath.AggressionShare(in r, FeverPhase.Burning, 8, 8, 1));
+        Near(0.7, FeverMath.AggressionShare(in r, FeverPhase.Burning, 4, 8, 1));
+        Near(0.6, FeverMath.AggressionShare(in r, FeverPhase.Burning, 0, 8, 1));
+        // tired keeps sinking as he fights: at a half bar (0.4) half the fever left = 0.6; at a quarter bar (0.3) = 0.55
+        Near(0.6, FeverMath.AggressionShare(in r, FeverPhase.Burning, 4, 8, 0.5));
+        Near(0.55, FeverMath.AggressionShare(in r, FeverPhase.Burning, 4, 8, 0.25));
+        Near(0.3, FeverMath.AggressionShare(in r, FeverPhase.Burning, 0, 8, 0.25));      // never below tired
+        Near(0.4, FeverMath.AggressionShare(Rules(fever: false), FeverPhase.Burning, 8, 8, 0.5)); // the fever off: tired only
+        // a whole burn at 0.25 s looks for a fresh man: the arming 0.6 → 0.8, then 0.75, 0.7, 0.65, 0.6 = 5 recomputes
         var f = new FeverStore();
         f.Arm(in r, SprintOrder.Charge, 80, 0, false);
-        var seen = new List<float> { FeverMath.DecisionFactor(in r, FeverPhase.None, 0, 0, false) };
+        var seen = new List<float> { FeverMath.DecisionFactor(in r, FeverPhase.None, 0, 0, 1, false) };
         void Look()
         {
-            float now = FeverMath.DecisionFactor(in r, f.Phase, f.Left, f.Full, false);
+            float now = FeverMath.DecisionFactor(in r, f.Phase, f.Left, f.Full, 1, false);
             if (now != seen[^1]) seen.Add(now);
         }
         Look();
@@ -153,10 +192,11 @@ public class FeverTests
         while (!f.Burn(in r, 0.25, false)) Look();
         f.Stop();
         Look();
-        Assert.Equal(12, seen.Count);               // calm, peak, 9 steps down, calm = 11 changes
-        Near(1.0 / 3, seen[^1]);
-        Near(1, seen[1]);
-        for (int i = 2; i < seen.Count - 1; i++) Assert.True(seen[i] < seen[i - 1]);
+        Assert.Equal(6, seen.Count);
+        Near(0.6, seen[0]);
+        Near(0.8, seen[1]);
+        Near(0.6, seen[^1]);
+        for (int i = 2; i < seen.Count; i++) Assert.True(seen[i] < seen[i - 1]);
     }
 
     [Fact]
@@ -188,14 +228,14 @@ public class FeverTests
         f.Arm(in r, SprintOrder.Charge, 80, 0, false);
         f.Stop();
         Assert.False(f.Running);
-        Near(1.0 / 3, FeverMath.DecisionFactor(in r, f.Phase, f.Left, f.Full, false));
+        Near(0.4, FeverMath.DecisionFactor(in r, f.Phase, f.Left, f.Full, 0.5, false));
         Assert.Equal(FeverArm.Off, new FeverStore().Arm(Rules(mod: false), SprintOrder.Charge, 80, 0, false));
         Assert.Equal(FeverArm.Off, new FeverStore().Arm(Rules(fever: false), SprintOrder.Charge, 80, 0, false));
         Assert.Equal(FeverArm.Off, new FeverStore().Arm(Rules(athletics: false), SprintOrder.Charge, 80, 0, false));
-        // the fever off: the multiplier is 1 even for a stale burning store
+        // the fever off: his tired share even for a stale armed store
         var g = new FeverStore();
         g.Arm(in r, SprintOrder.Charge, 80, 0, false);
-        Near(1, FeverMath.Multiplier(Rules(fever: false), g.Phase, g.Left, g.Full));
+        Near(0.6, FeverMath.AggressionShare(Rules(fever: false), g.Phase, g.Left, g.Full, 1));
         Assert.Equal(SprintOrder.Charge, FeverMath.Group(BraceOrderKind.AiCharge));
         Assert.Equal(SprintOrder.Advance, FeverMath.Group(BraceOrderKind.AiAdvance));
         Assert.Equal(SprintOrder.Charge, FeverMath.Group(BraceOrderKind.ChargeToTarget));
@@ -266,20 +306,24 @@ public class FeverTests
     {
         var t = new TraxSettings();
         var r = FeverRules.From(t);
-        Assert.True(r.CalmOn);
+        Assert.True(r.AggressionOn);
         Assert.True(r.Enabled);
-        Near(3, r.CalmFactor);
+        Assert.Equal(60, r.FreshPercent);
+        Assert.Equal(20, r.ExhaustedPercent);
+        Assert.Equal(80, r.PeakPercent);
         Near(10, r.PointsPerSecond);
         Near(0.7, r.ShieldDurationMultiplier, 1e-6);
         Assert.Equal(50, r.SprintChancePercent);
-        t.Set(SettingsSchema.AiCalmFactor, 1.5, SettingSources.Mcm);
-        t.Set(SettingsSchema.FeverAggressionMultiplier, 2, SettingSources.Mcm);
+        t.Set(SettingsSchema.AiAggressionFreshPercent, 100, SettingSources.Mcm);
+        t.Set(SettingsSchema.AiAggressionExhaustedPercent, 100, SettingSources.Mcm);
         r = FeverRules.From(t);
-        Near(1.5, r.CalmFactor);
-        Near(2 / 1.5, FeverMath.DecisionFactor(in r, FeverPhase.Armed, 1, 1, false), 1e-6);
+        Assert.Equal(1f, FeverMath.DecisionFactor(in r, FeverPhase.None, 0, 0, 0.1, false));
+        t.Set(SettingsSchema.FeverAggressionPercent, 150, SettingSources.Mcm);
+        r = FeverRules.From(t);
+        Near(1.5, FeverMath.DecisionFactor(in r, FeverPhase.Armed, 1, 1, 0.1, false));
         Assert.Equal(SettingsSchema.SprintGroup.Order + 1, SettingsSchema.FeverGroup.Order);
         Assert.Same(SettingsSchema.AdvancedGroup, SettingsSchema.Groups[SettingsSchema.Groups.Count - 1]);
-        Assert.Same(SettingsSchema.FeverGroup, SettingsSchema.AiCalmFactor.Group);
+        Assert.Same(SettingsSchema.FeverGroup, SettingsSchema.AiAggressionFreshPercent.Group);
         Assert.Same(SettingsSchema.FeverGroup, SettingsSchema.FeverSprintChancePercent.Group);
     }
 
@@ -287,11 +331,13 @@ public class FeverTests
     public void The_sentence_names_the_numbers()
     {
         string d = Rules().Describe();
-        Assert.StartsWith("calm: AI men on foot decide to attack 3.00x less often (AiCalmFactor - the game's attack and riposte chances ÷ 3.00, e.g. a charge's attack chance 0.144 → 0.048)", d);
-        Assert.Contains("CURRENT Athletics points / 10.0 s (FeverPointsPerSecond - 80 points = 8.0 s) at x3.00 the calm values (FeverAggressionMultiplier: x1.00 the game's - attack chance 0.144 → 0.144)", d);
+        Assert.StartsWith("aggression: AI men on foot decide to attack at 60% of the game's rate at a full bar, sliding in a straight line to 20% at an empty one "
+                          + "(AiAggressionFreshPercent / AiAggressionExhaustedPercent - the bar = points / his full pool) - attack chance on a charge 0.144 → fresh 0.086, "
+                          + "half 0.058, empty 0.029, fever peak 0.115 (riposte the same shares)", d);
+        Assert.Contains("CURRENT Athletics points / 10.0 s (FeverPointsPerSecond - 80 points = 8.0 s) at 80% of the game's rate (FeverAggressionPercent, never below his tired share)", d);
         Assert.Contains("within 5.0 m (FeverContactMetres), burns x1.43 faster with a shield in hand", d);
         Assert.Contains("fever sprint: every 1.0 s a feverish man with sprint above his order's reserve and an enemy 3.0-12.0 m away sprints with chance 50% x the fever left", d);
-        Assert.Equal("calm: off (AiCalmFactor 1) - the game's own attack decisions; fever: off (FeverEnabled)", Rules(calm: 1, fever: false).Describe());
+        Assert.Equal("aggression: off (AthleticsEnabled) - the game's own attack decisions; fever: off (AthleticsEnabled)", Rules(athletics: false).Describe());
     }
 
     /// <summary>Step 43's shipped defaults (defaults.json) - the tests run on DESIGN's initial 10 / 5, where there is nothing to push.</summary>
@@ -341,36 +387,45 @@ public class FeverTests
         st.NotArmedMounted = 3;
         st.AddBurnStart(4);
         st.AddBurnStart(10);
-        st.AddEnd(FeverEnd.Faded, true, 5.6, 0, 8, false, 11);
-        st.AddEnd(FeverEnd.Faded, true, 0, 8, 8, true, 11);
+        st.AddEnd(FeverEnd.Faded, true, 5.6, 0, 8, false, 5);
+        st.AddEnd(FeverEnd.Faded, true, 0, 8, 8, true, 5);
         st.AddEnd(FeverEnd.OrderEnded, false, 0, 0, 0, false, 2);
+        st.DecisionRecomputes = 30;
+        st.AiManSeconds = 600;
         st.SprintChecks = 9;
         st.AddSprint(0.9);
         st.AddSprint(0.5);
         st.AddRefusal(FeverSprintRefusal.MissedRoll);
         st.AddRefusal(FeverSprintRefusal.NoEnemyInRange);
-        st.AddContactTime(false, 120);
-        st.AddContactTime(true, 60);
-        for (int i = 0; i < 6; i++) st.AddAttack(false);
-        for (int i = 0; i < 9; i++) st.AddAttack(true);
-        st.AddValues(FeverValueState.Calm, 0.144f, 0.048f, 0.08f, 0.0267f);
-        st.AddValues(FeverValueState.Peak, 0.144f, 0.144f, 0.08f, 0.08f);
+        st.AddContactTime(FeverStats.Calm, 0, 60);
+        st.AddContactTime(FeverStats.Calm, 3, 60);
+        st.AddContactTime(FeverStats.InFever, 0, 60);
+        st.AddContactTime(FeverStats.NoFormation, 1, 30);
+        for (int i = 0; i < 6; i++) st.AddAttack(FeverStats.Calm, 0);
+        for (int i = 0; i < 2; i++) st.AddAttack(FeverStats.Calm, 3);
+        for (int i = 0; i < 9; i++) st.AddAttack(FeverStats.InFever, 0);
+        st.AddAttack(FeverStats.NoFormation, 1);
+        st.AddValues(0, 0.144f, 0.0864f, 0.08f, 0.048f);
+        st.AddValues(FeverStats.BarBands, 0.144f, 0.1152f, 0.08f, 0.064f);
+        Assert.Equal(1, FeverStats.BarBand(0.7));
+        Assert.Equal(3, FeverStats.BarBand(0.25));
         var lines = new List<string>();
         st.AddSummaryLines(lines, in r);
-        Assert.Equal(9, lines.Count);
-        Assert.StartsWith("fever settings: calm: AI men on foot", lines[0]);
+        Assert.Equal(10, lines.Count);
+        Assert.StartsWith("fever settings: aggression: AI men on foot", lines[0]);
         Assert.Equal("fever armed: 3 (charge 2 - by you 1 / by the AI general 1; advance 1 - by you 0 / by the AI general 1); a different aggressive order on a running fever: "
                      + "re-armed to a fresh one 1, kept (more left than a fresh one) 0; the same order again ignored 2; not armed: on a horse 3, no Athletics 0, player-controlled 0", lines[1]);
         Assert.Equal("fever contact: 2 of 3 fevers met an enemy within 5.0 m - armed → contact mean 7.0 s, max 10.0 s; never met one (ended still armed): 1 (a hold / move / retreat order 1)", lines[2]);
         Assert.Equal("fever burn: faded 2; burn length with a shield in hand (most of it) 1, mean 5.6 s from a mean store of 8.0 s (x0.70); without 1, mean 8.0 s from a mean store of 8.0 s (x1.00) "
                      + "(FeverShieldDurationMultiplier 0.70 - a shield man's fever lasts that share); a shield taken up or put away mid-burn 1; all ends: faded 2, a hold / move / retreat order 1", lines[3]);
-        Assert.Equal("fever fade: 8.0 decision recomputes per fever (max 11) - the arming, 9 steps down a full fade, the end = 11 for a fever that faded", lines[4]);
+        Assert.Equal("fever recomputes: 30 asked for the decision values (a 0.05 step of the share) over 10.0 AI man-minutes on foot = 3.00 a man-minute; per fever 4.0 (max 5)", lines[4]);
         Assert.Equal("fever sprints: started 2 (fever left 100-67%: 1, 67-33%: 1, 33-0%: 0) in 9 checks; refused: missed the roll 1, reserve kept 0, no store 0, sprinting already 0, "
                      + "in melee 0, no enemy in range 1, sprint off 0", lines[5]);
-        Assert.Equal("fever proof: AI melee attacks per man-minute in contact (an enemy within 5.0 m, on foot): calm 3.00 (6 attacks over 2.0 man-min), feverish (armed or burning) 9.00 "
-                     + "(9 attacks over 1.0 man-min) - feverish x3.00 the calm rate", lines[6]);
-        Assert.Equal("fever values written (AI on foot): attack chance calm 0.144 → 0.048 (x0.33, 1 recomputes), peak 0.144 → 0.144 (x1.00, 1 recomputes), mid-fade -; "
-                     + "riposte chance calm 0.080 → 0.027 (x0.33, 1 recomputes), peak 0.080 → 0.080 (x1.00, 1 recomputes), mid-fade -", lines[7]);
-        Assert.StartsWith("fever cost: ", lines[8]);
+        Assert.Equal("fever proof: AI melee attacks per man-minute in contact (an enemy within 5.0 m, on foot), by bar 100-75 / 75-50 / 50-25 / 25-0 %: in a formation, no fever "
+                     + "6.00 / - / - / 2.00 (8 attacks over 2.0 man-min); in a fever 9.00 / - / - / - (9 attacks over 1.0 man-min) - in a fever x2.25 the rate without", lines[6]);
+        Assert.Equal("fever proof, no formation (tournaments, arenas, duels - no orders, no fever): by bar 100-75 / 75-50 / 50-25 / 25-0 % - / 2.00 / - / - (1 attacks over 0.5 man-min)", lines[7]);
+        Assert.Equal("fever values written (AI on foot, the game's → ours): attack chance bar 100-75% 0.144 → 0.086 (x0.60, 1), bar 75-50% -, bar 50-25% -, bar 25-0% -, in a fever 0.144 → 0.115 (x0.80, 1); "
+                     + "riposte chance bar 100-75% 0.080 → 0.048 (x0.60, 1), bar 75-50% -, bar 50-25% -, bar 25-0% -, in a fever 0.080 → 0.064 (x0.80, 1)", lines[8]);
+        Assert.StartsWith("fever cost: ", lines[9]);
     }
 }

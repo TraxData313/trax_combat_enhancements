@@ -1079,6 +1079,34 @@ postfix). Full notes and the build: AI_NOTES "Step 41".
    `Agent.ImmediateEnemy` (~704, native); `Agent.IsEnemyOf(Agent)` (~3392, native). Main-thread reads in `OnPreMissionTick` (no
    agent job running).
 
+## P. The AI's will to attack - the two decision values and who sets them (step 43, verified in the v1.4.8 source 2026-10-17)
+
+1. **The two values.** `AgentStatCalculateModel.SetAiRelatedProperties` (TaleWorlds.MountAndBlade, ~line 170-225), called by
+   every stat model's `UpdateHumanStats`, assigns with `=` on every recompute:
+   `AIAttackOnDecideChance = MathF.Clamp(0.1 × CalculateAIAttackOnDecideMaxValue() × (3 − agent.Defensiveness), 0.05, 1)` -
+   `CalculateAIAttackOnDecideMaxValue()` = 0.16 when `GetDifficultyModifier() ≤ 0.5` (the easy combat AI), else 0.48 - and
+   `AIAttackOnParryChance = 0.08 − 0.02 × agent.Defensiveness`. Neither reads the AI level (`num`, from the melee skill), so a
+   veteran and a recruit decide to attack equally often; the skill goes into the defence and timing values beside them.
+   `AiShootFreq` and the aim are separate (ranged). So a decorator writing after the base model never compounds (5e's
+   finding, re-read).
+2. **Defensiveness** comes from the formation's orders: `Formation.SetMovementOrder` → when
+   `MovementOrder.GetMovementOrderDefensivenessChange` ≠ 0, `_formationOrderDefensivenessFactor` = 0 for Charge /
+   ChargeToTarget, else `GetMovementOrderDefensiveness` (1) + `ArrangementOrder.GetArrangementOrderDefensiveness` (1 for
+   shield wall, square, circle, else 0); `SetArrangementOrder` adds the arrangement's change while the movement order is not a
+   charge. `UpdateAgentDrivenPropertiesBasedOnOrderDefensiveness` sets `agent.Defensiveness` on each unit, and that setter
+   (Agent.cs ~1082) calls `UpdateAgentProperties()` when the value moves by more than 0.0001. So: charge D 0 → 0.144 / 0.08;
+   any other order D 1 → 0.096 / 0.06; a shield wall, square or circle not charging D 2 → 0.048, clamped to 0.05 / 0.04; a
+   shield wall ordered to charge D 0. A man in no formation (tournaments, arenas, duels) keeps the field's default 0 →
+   0.144. The vanilla recompute at an order change comes BEFORE our 0.25 s order poll sees it; our arming asks its own.
+3. **`Agent.MountAgent`** is a managed read (`_cachedMountAgent`, Agent.cs ~5290) - safe in the stat decorator and on the smoke's
+   fake agents; its setter calls `UpdateAgentStats()`, so a man mounting or dismounting is recomputed by the game and the
+   decorator's "on foot only" check follows at once.
+4. **The proximity read** for "in contact": `Mission.GetNearbyEnemyAgentCount(team, position, radius)` (native, the proximity
+   map, no allocation) - step 33's `EnemyWithin`. One read per AI man on foot every ~0.25 s, two more for a fever-sprint
+   check (once a second while in a fever).
+5. **Not used**: `AIDecideOnAttackChance` (0.5 × D - rises with defensiveness: the chance to REACT to the enemy's attack, a
+   defence value), `AIHoldingReadyMaxDuration` (holding a readied blow lowers the guard), every timing / "ability" value.
+
 ---
 
 ## UNVERIFIED — to check in the named step
@@ -1109,3 +1137,4 @@ postfix). Full notes and the build: AI_NOTES "Step 41".
 | 22 | The engine honours `MaxSpeedMultiplier` ABOVE ~1.0 (no native cap) and the run animation keeps up without sliding (§N; PLAYTEST D10: the summary's `sprint speed check` engine ÷ asked ≈ 1) | 33 |
 | 23 | An AI formation that sprints on a move / advance order really moves faster once its speed cache refreshes (~2 s), and a charge's last stretch runs free (§N; PLAYTEST D10: `sprint - AI` seconds and the speed check) | 33 |
 | 24 | The native AI honours `shouldKeepWithFormationInsteadOfMovingToAgent` for an infantry shield wall's men (it was only ever set for shield men of ranged formations) and a one-frame vanilla FALSE every ~0.5 s does not undo it - the men stay in their slots and still fight what reaches them (§O; PLAYTEST D11: the summary's `wall slots ON` vs `OFF`, "more than 1 m ahead" in contact) | 41 |
+| 25 | The native combat AI uses `AIAttackOnDecideChance` / `AIAttackOnParryChance` per decision so that ÷ 3 really means about three times fewer AI melee attacks in contact (§P; PLAYTEST D13: the summary's `fever proof` calm vs feverish rates, and `AiCalmFactor` 1 vs 3) | 43 |

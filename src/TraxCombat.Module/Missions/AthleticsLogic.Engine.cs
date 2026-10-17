@@ -525,7 +525,7 @@ namespace TraxCombat.Missions
                 Failed("brace.tick", e);
             }
 
-            // Step 43: calm and fever - every man looked at about every 0.25 s (staggered): contact, the burn, the fade, the fever sprint.
+            // Step 43: aggression and fever - every man looked at about every 0.25 s (staggered): contact, the burn, the fade, the fever sprint.
             try
             {
                 TickFever(now);
@@ -658,7 +658,7 @@ namespace TraxCombat.Missions
             if (mounted) _stats.MeleeReleasesMounted++;
             st.ReleaseSerial++;
             StepBackSwingStarted(st);
-            NoteFeverAttack(st, mounted); // step 43: an AI melee attack on foot in contact, counted by calm / feverish
+            NoteFeverAttack(st, mounted); // step 43: an AI melee attack on foot in contact, counted by group and bar band
 
             // the cycle since the last release ran at the multiplier set after that release's charge
             int binNow = AthleticsMath.PeakBin(AthleticsMath.PeakShare(in r, st));
@@ -807,7 +807,7 @@ namespace TraxCombat.Missions
         private bool RetargetSpeed(TrackedAgent st, in AthleticsRules r, bool exact = false)
         {
             bool human = false, horse = false;
-            // step 43: the calm / fever factor on the AI's two attack-decision chances rides on the same recompute
+            // step 43: the aggression share (bar + fever) on the AI's two attack-decision chances rides on the same recompute
             if (RetargetDecision(st)) human = true;
             // step 30: the tired-block weight w rides on the same recompute (the decorator writes the game's chance from it)
             float block = TiredBlockWeight(st, in r);
@@ -1063,7 +1063,7 @@ namespace TraxCombat.Missions
                 NoteTiredBlockSettings(settings); // step 30: the tired-block line (everyone re-targeted below)
                 NoteStackSettings(settings);      // step 32: the swing stack's switch and numbers
                 NoteSprintSettings(settings);     // step 33: the sprint (switching it off ends every sprint in the next tick)
-                NoteFeverSettings(settings);      // step 43: calm and fever (the decision factors re-targeted below with the speeds)
+                NoteFeverSettings(settings);      // step 43: aggression and fever (the decision factors re-targeted below with the speeds)
 
                 if (r.PoolFloor != _seenPoolFloor || r.PoolPerSkill != _seenPoolPerSkill)
                 {
@@ -1552,7 +1552,7 @@ namespace TraxCombat.Missions
         internal static bool SpeedFactorsFor(Agent agent, float gameReach, out float attack, out float run, out float mount, out float blockRandom, out float reach)
             => SpeedFactorsFor(agent, gameReach, out attack, out run, out mount, out blockRandom, out reach, out _);
 
-        /// <summary>Step 43: <paramref name="decision"/> = his calm / fever factor on the AI's two attack-decision chances (1 = the game's).</summary>
+        /// <summary>Step 43: <paramref name="decision"/> = his aggression share (bar + fever, 0.05 steps) on the AI's two attack-decision chances (1 = the game's).</summary>
         internal static bool SpeedFactorsFor(Agent agent, float gameReach, out float attack, out float run, out float mount, out float blockRandom, out float reach,
             out float decision)
         {

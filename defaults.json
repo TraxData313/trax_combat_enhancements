@@ -531,20 +531,27 @@
   // (range 0 to 100)
   "SprintAiMoveKeepPercent": 80,
 
-  // ==================== Calm and fever (AI) ====================
-  // AI soldiers on foot decide to start an attack this many times less often than the game's
-  // own AI - its chance to attack at each combat decision and to strike back after a parry are
-  // divided by it (3: a charging man's 14% becomes 5%). Lines hold and spar instead of trading
-  // blows until they drop; tournaments and duels get calmer too. Never you, never riders (their
-  // swings come with each pass), never archers' shooting. 1 = the game's own AI.
-  // (range 1.0 to 5.0)
-  "AiCalmFactor": 3.0,
+  // ==================== Aggression and fever (AI) ====================
+  // How eagerly an AI soldier on foot with a FULL Athletics bar decides to start an attack (and
+  // to strike back after a parry), in percent of the game's own AI. It slides in a straight
+  // line to the next setting as his bar empties - the more tired he is, the less he swings. 60:
+  // a charging man's 14% chance becomes 8.6%. Tournaments and duels too. Never you, never
+  // riders (their swings come with each pass), never archers' shooting. 100 with the next at
+  // 100 = the game's own AI.
+  // (range 0 to 200)
+  "AiAggressionFreshPercent": 60,
+
+  // The same at an EMPTY bar: 20 = a fifth of the game's eagerness (a charging man's 14%
+  // becomes 2.9%). A wounded man's bar is capped by his wounds, so he is less eager too. On top
+  // of the pause after each attack - a tired man has both brakes.
+  // (range 0 to 200)
+  "AiAggressionExhaustedPercent": 20,
 
   // When an AI formation gets a NEW charge or advance order - yours or its own general's - each
-  // of its soldiers on foot gets a FEVER: for a while he attacks as eagerly as the multiplier
-  // below says, then calms down again. The fever's clock starts only when he first comes near
-  // an enemy. A hold, move or retreat order ends it. Never you, never riders; tournaments and
-  // duels have no orders, so no fever. Off: everyone stays calm.
+  // of its soldiers on foot gets a FEVER: for a while he attacks as eagerly as the peak below
+  // says, then calms down again. The fever's clock starts only when he first comes near an
+  // enemy. A hold, move or retreat order ends it. Never you, never riders; tournaments and
+  // duels have no orders, so no fever. Off: every man's eagerness follows his bar alone.
   // (true or false)
   "FeverEnabled": true,
 
@@ -555,11 +562,12 @@
   // (range 1.0 to 50.0)
   "FeverPointsPerSecond": 10.0,
 
-  // At the fever's start a man decides to attack this many times as often as a calm man (3 with
-  // a calm of 3 = exactly the game's own AI). It fades in a straight line back to calm as his
-  // fever burns down. 1 = no surge.
-  // (range 1.0 to 5.0)
-  "FeverAggressionMultiplier": 3.0,
+  // In his fever a man decides to attack this eagerly, in percent of the game's own AI,
+  // whatever his bar - but never less than his tired eagerness. It fades in a straight line
+  // back to his tired eagerness as his fever burns down. At or below the full-bar setting the
+  // fever adds nothing to a fresh man.
+  // (range 0 to 200)
+  "FeverAggressionPercent": 80,
 
   // The fever's clock starts the first time an enemy comes within this many metres of him - a
   // general orders the charge from afar, and the fever should not be spent on the walk. Once

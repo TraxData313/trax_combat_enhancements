@@ -232,10 +232,10 @@ namespace TraxCombat.Missions
         /// <summary>Step 33: an AI sprinter's next "enemy within 3 m" look (mission time).</summary>
         public double SprintNextMelee;
 
-        /// <summary>Step 43: his fever (armed at a new charge / advance order, burning from contact, fading to calm).</summary>
+        /// <summary>Step 43: his fever (armed at a new charge / advance order, burning from contact, fading to his tired share).</summary>
         public readonly FeverStore Fever = new FeverStore();
 
-        /// <summary>Step 43: the factor applied on the AI's two attack-decision chances (calm ÷, the fever's ×; 1 = the game's) - the
+        /// <summary>Step 43: the factor applied on the AI's two attack-decision chances (his share by his bar, lifted by a fever, 0.05 steps; 1 = the game's) - the
         /// stat decorator writes it on every recompute; a change marks him for one.</summary>
         public float DecisionFactor = 1f;
 
@@ -243,6 +243,9 @@ namespace TraxCombat.Missions
         public bool FeverContact;
 
         public double FeverLastLook = double.NaN;
+
+        /// <summary>Step 43: in no formation at his last fever look (tournaments, arenas, duels - the summary's own group).</summary>
+        public bool NoFormation;
 
         public void RememberMissile(int index)
         {

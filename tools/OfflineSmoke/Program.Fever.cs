@@ -11,7 +11,8 @@ namespace TraxCombat.Tools
 {
     /// <summary>
     /// Step 43 (Anton, 2026-10-17): CALM AND FEVER through the real stat decorator and the real logic - the AI's two melee attack-decision
-    /// chances ÷ AiCalmFactor, a new charge / advance order arming a fever of current points ÷ 10 s at x3 the calm values, the burn from the
+    /// chances × a share by his bar (60% full → 20% empty, 0.05 steps), a new charge / advance order arming a fever of current points ÷ 10 s
+    /// at an absolute 80%, the burn from the
     /// first contact (x1/0.7 with a shield in hand, read live), the fade in 10 steps back to calm, the fever sprint (AI_NOTES "Step 43").
     /// </summary>
     internal static partial class Program
@@ -19,16 +20,18 @@ namespace TraxCombat.Tools
         /// <summary>The older steps run with the calm and the fever OFF (they count the game's AI values and the recomputes).</summary>
         private static void FeverOff()
         {
-            S.Set(SettingsSchema.AiCalmFactor, 1.0, SettingSources.File);
+            S.Set(SettingsSchema.AiAggressionFreshPercent, 100, SettingSources.File);
+            S.Set(SettingsSchema.AiAggressionExhaustedPercent, 100, SettingSources.File);
             S.Set(SettingsSchema.FeverEnabled, false, SettingSources.File);
         }
 
         private static void FeverDefaults()
         {
-            S.Set(SettingsSchema.AiCalmFactor, 3.0, SettingSources.File);
+            S.Set(SettingsSchema.AiAggressionFreshPercent, 60, SettingSources.File);
+            S.Set(SettingsSchema.AiAggressionExhaustedPercent, 20, SettingSources.File);
             S.Set(SettingsSchema.FeverEnabled, true, SettingSources.File);
             S.Set(SettingsSchema.FeverPointsPerSecond, 10.0, SettingSources.File);
-            S.Set(SettingsSchema.FeverAggressionMultiplier, 3.0, SettingSources.File);
+            S.Set(SettingsSchema.FeverAggressionPercent, 80, SettingSources.File);
             S.Set(SettingsSchema.FeverContactMetres, 5.0, SettingSources.File);
             S.Set(SettingsSchema.FeverShieldDurationMultiplier, 0.7, SettingSources.File);
             S.Set(SettingsSchema.FeverSprintToClose, true, SettingSources.File);
@@ -72,7 +75,7 @@ namespace TraxCombat.Tools
                 var body = new FakeSprintBody();
                 var facts = new FakeWeaponFacts();
                 var logic = NewFeverLogic(body, facts, 0.1);
-                LogHas("[fever] mission start: calm: AI men on foot decide to attack 3.00x less often (AiCalmFactor - the game's attack and riposte chances ÷ 3.00, e.g. a charge's attack chance 0.144 → 0.048)");
+                LogHas("[fever] mission start: aggression: AI men on foot decide to attack at 60% of the game's rate at a full bar, sliding in a straight line to 20% at an empty one (AiAggressionFreshPercent / AiAggressionExhaustedPercent - the bar = points / his full pool) - attack chance on a charge 0.144 → fresh 0.086, half 0.058, empty 0.029, fever peak 0.115");
                 var baseModel = new FreshStatsModel();
                 var top = new TraxAgentStatModel(new AgentStatCalculateModel[] { baseModel });
                 top.Initialize(baseModel);
@@ -96,24 +99,24 @@ namespace TraxCombat.Tools
                 body.Orders[0] = BraceOrderKind.Stop;
                 logic.TickSprint(0.1f, t, Rules);                    // the first look at the orders only records
                 t = Looks(logic, t, t + 0.25);
-                Check(Near(man.DecisionFactor, 1f / 3f) && man.SpeedDirty, "calm: the AI man's factor is not 1/3 (or no recompute asked): " + man.DecisionFactor);
+                Check(Near(man.DecisionFactor, 0.6f) && man.SpeedDirty, "full bar: the AI man's share is not 0.6 (or no recompute asked): " + man.DecisionFactor);
                 Check(me.DecisionFactor == 1f, "calm: YOUR factor is not 1: " + me.DecisionFactor);
-                Check(Near(duelist.DecisionFactor, 1f / 3f), "calm: a man in no formation (a tournament) is not calm: " + duelist.DecisionFactor);
+                Check(Near(duelist.DecisionFactor, 0.6f), "a man in no formation (a tournament) is not at 0.6: " + duelist.DecisionFactor);
                 var p = man.Agent.AgentDrivenProperties;
                 top.UpdateAgentStats(man.Agent, p);
-                Check(Near(p.AIAttackOnDecideChance, 0.048f) && Near(p.AIAttackOnParryChance, 0.08f / 3f), "calm: the decorator did not write 0.144 → 0.048 and 0.080 → 0.027: "
+                Check(Near(p.AIAttackOnDecideChance, 0.0864f) && Near(p.AIAttackOnParryChance, 0.048f), "full bar: the decorator did not write 0.144 → 0.086 and 0.080 → 0.048: "
                     + p.AIAttackOnDecideChance + " / " + p.AIAttackOnParryChance);
                 Check(Near(p.AiShootFreq, 0.65f) && Near(p.AiWaitBeforeShootFactor, 0.6f) && Near(p.AIDecideOnAttackChance, 0.5f), "calm: a value that is not the two melee chances moved");
                 top.UpdateAgentStats(man.Agent, p);
-                Check(Near(p.AIAttackOnDecideChance, 0.048f), "calm: compounded over two recomputes: " + p.AIAttackOnDecideChance);
-                LogHas("[fever] first decision values written this mission: (agent 80) (calm, x0.33) - attack chance 0.144 → 0.048, riposte chance 0.080 → 0.027");
+                Check(Near(p.AIAttackOnDecideChance, 0.0864f), "compounded over two recomputes: " + p.AIAttackOnDecideChance);
+                LogHas("[fever] first decision values written this mission: (agent 80) (bar 100%, x0.60) - attack chance 0.144 → 0.086, riposte chance 0.080 → 0.048");
                 var pm = me.Agent.AgentDrivenProperties;
                 top.UpdateAgentStats(me.Agent, pm);
-                Check(Near(pm.AIAttackOnDecideChance, 0.144f), "calm: YOUR values were touched");
-                rider.DecisionFactor = 1f / 3f;                      // even with a factor on his record, a rider keeps the game's values
+                Check(Near(pm.AIAttackOnDecideChance, 0.144f), "YOUR values were touched");
+                rider.DecisionFactor = 0.6f;                        // even with a factor on his record, a rider keeps the game's values
                 var pr = rider.Agent.AgentDrivenProperties;
                 top.UpdateAgentStats(rider.Agent, pr);
-                Check(Near(pr.AIAttackOnDecideChance, 0.144f), "calm: a RIDER's values were touched: " + pr.AIAttackOnDecideChance);
+                Check(Near(pr.AIAttackOnDecideChance, 0.144f), "a RIDER's values were touched: " + pr.AIAttackOnDecideChance);
 
                 // ---- a CHARGE (the AI sprint off: the poll runs for the fever alone): armed at the peak, nothing burns before contact
                 body.Orders[0] = BraceOrderKind.Charge;
@@ -124,11 +127,11 @@ namespace TraxCombat.Tools
                     + fv.Phase + " " + fv.Full);
                 Check(!me.Fever.Running && !rider.Fever.Running && !duelist.Fever.Running, "charge: you, the rider or the man in no formation got a fever");
                 Check(logic.FeverStats.NotArmedPlayer == 1 && logic.FeverStats.NotArmedMounted == 1, "charge: the not-armed counts (you 1, rider 1) are off");
-                Check(man.DecisionFactor == 1f && man.SpeedDirty, "armed: the factor is not the peak 3 / 3 = 1: " + man.DecisionFactor);
+                Check(Near(man.DecisionFactor, 0.8f) && man.SpeedDirty, "armed: the share is not the absolute peak 0.8: " + man.DecisionFactor);
                 top.UpdateAgentStats(man.Agent, p);
-                Check(Near(p.AIAttackOnDecideChance, 0.144f) && Near(p.AIAttackOnParryChance, 0.08f), "armed: the peak is not the game's own values: " + p.AIAttackOnDecideChance);
+                Check(Near(p.AIAttackOnDecideChance, 0.1152f) && Near(p.AIAttackOnParryChance, 0.064f), "armed: the peak is not 0.115 / 0.064: " + p.AIAttackOnDecideChance);
                 LogHas("[fever] first fever armed this battle: (agent 80) at ");
-                LogHas(" s on a new charge order (the AI general's, Charge) - 100 Athletics points / 10.0 = 10.00 s of fever; his attack decisions x1.00 the game's (calm x0.33) until an enemy comes within 5.0 m, then the clock runs");
+                LogHas(" s on a new charge order (the AI general's, Charge) - 100 Athletics points / 10.0 = 10.00 s of fever; his attack decisions x0.80 the game's (his tired share at a 100% bar: x0.60) until an enemy comes within 5.0 m, then the clock runs");
                 t = Looks(logic, t, t + 5);                          // five seconds of walking at the enemy
                 Check(fv.Phase == FeverPhase.Armed && Near(fv.Left, 10.0), "armed: the store burned before contact: " + fv.Left);
 
@@ -140,29 +143,35 @@ namespace TraxCombat.Tools
                 LogHas("[fever] first fever burning this battle: (agent 80) met an enemy within 5.0 m at ");
                 t = Looks(logic, t, t + 3);
                 Check(Near(fv.Left, 7.0), "burning 3 s without a shield: not 7 s left: " + fv.Left);
-                // mid-fade: share 0.7 → x(1 + 2 x 0.7) / 3 = 0.8 of the game's
-                Check(Near(man.DecisionFactor, 0.8f), "mid-fade: the factor at 7 of 10 s is not 0.8: " + man.DecisionFactor);
+                // mid-fade: 0.6 + (0.8 - 0.6) x 0.7 = 0.74 → 0.75 (0.05 steps)
+                Check(Near(man.DecisionFactor, 0.75f), "mid-fade: the share at 7 of 10 s is not 0.75: " + man.DecisionFactor);
                 top.UpdateAgentStats(man.Agent, p);
-                Check(Near(p.AIAttackOnDecideChance, 0.1152f), "mid-fade: the attack chance is not 0.144 x 0.8: " + p.AIAttackOnDecideChance);
+                Check(Near(p.AIAttackOnDecideChance, 0.108f), "mid-fade: the attack chance is not 0.144 x 0.75: " + p.AIAttackOnDecideChance);
                 facts.Shield.Add(80);                                // the shield off his back
                 double shieldFrom = t;
                 int guard = 0;
                 while (fv.Running && guard++ < 200) t = Looks(logic, t, t + 0.25);
                 double shieldBurn = t - shieldFrom;
                 Check(!fv.Running && Math.Abs(shieldBurn - 4.9) <= 0.3, "the shield's burn: 7 s of store should go in 7 x 0.7 = 4.9 s, took " + shieldBurn);
-                Check(logic.FeverStats.Ended(FeverEnd.Faded) == 1 && Near(man.DecisionFactor, 1f / 3f), "faded: not counted, or the factor not back to calm: " + man.DecisionFactor);
-                Check(fv.Recomputes == FeverMath.FadeSteps + 1, "the fade's recomputes per fever: " + fv.Recomputes + " (expected the arming + 9 steps + the end = 11)");
+                Check(logic.FeverStats.Ended(FeverEnd.Faded) == 1 && Near(man.DecisionFactor, 0.6f), "faded: not counted, or the share not back to his tired 0.6: " + man.DecisionFactor);
+                Check(fv.Recomputes == 5, "the fade's recomputes per fever: " + fv.Recomputes + " (expected the arming 0.6 → 0.8 + 0.75, 0.7, 0.65, 0.6 = 5)");
                 top.UpdateAgentStats(man.Agent, p);
-                Check(Near(p.AIAttackOnDecideChance, 0.048f), "empty: the attack chance is not calm again: " + p.AIAttackOnDecideChance);
+                Check(Near(p.AIAttackOnDecideChance, 0.0864f), "faded: the attack chance is not his tired 0.086 again: " + p.AIAttackOnDecideChance);
                 LogHas("[fever] first fever faded this battle: (agent 80) at ");
                 LogHas(" s with a shield in hand, ");
 
                 // ---- the proof's counts: attacks in contact by state
-                logic.NoteFeverAttack(man, false);                   // calm, in contact
-                Check(logic.FeverStats.Attacks(false) == 1, "a calm attack in contact was not counted");
+                logic.NoteFeverAttack(man, false);                   // no fever, in contact, a full bar
+                Check(logic.FeverStats.Attacks(FeverStats.Calm, 0) == 1, "an attack in contact without a fever was not counted (bar 100-75%)");
                 logic.NoteFeverAttack(man, true);                    // a rider's swing: never
-                Check(logic.FeverStats.Attacks(false) == 1, "a mounted attack was counted");
-                Check(logic.FeverStats.ContactSeconds(true) > 7 && logic.FeverStats.ContactSeconds(false) >= 0, "the feverish time in contact is not ~8 s: " + logic.FeverStats.ContactSeconds(true));
+                Check(logic.FeverStats.Attacks(FeverStats.Calm, 0) == 1, "a mounted attack was counted");
+                Check(logic.FeverStats.ContactSeconds(FeverStats.InFever) > 7, "the fever's time in contact is not ~8 s: " + logic.FeverStats.ContactSeconds(FeverStats.InFever));
+                // the tournament's group: a man in no formation in contact
+                body.EnemyAt[83] = 2f;
+                t = Looks(logic, t, t + 0.5);
+                logic.NoteFeverAttack(duelist, false);
+                Check(logic.FeverStats.Attacks(FeverStats.NoFormation, 0) == 1 && logic.FeverStats.ContactSeconds(FeverStats.NoFormation) > 0,
+                    "a man in no formation was not counted in his own group");
 
                 // ---- the FEVER SPRINT: an advance on a second formation, the enemy 8 m away (armed, full chance 50%, the dice 0.1)
                 var runner = logic.Track(FakeAgent(84))!;
@@ -225,16 +234,18 @@ namespace TraxCombat.Tools
                 logic.TickSprint(0.1f, t, Rules);
                 Check(!rf.Running && logic.FeverStats.Ended(FeverEnd.OrderEnded) == 1, "a hold did not end the burning fever (the general called them back)");
 
-                // ---- live settings: AiCalmFactor 1 = the game's values, back to 3; a burning fever ended by FeverEnabled off
-                S.Set(SettingsSchema.AiCalmFactor, 1.0, SettingSources.Mcm);
+                // ---- live settings: 100 / 100 = the game's values, back to 60 / 20; a burning fever ended by FeverEnabled off
+                S.Set(SettingsSchema.AiAggressionFreshPercent, 100, SettingSources.Mcm);
+                S.Set(SettingsSchema.AiAggressionExhaustedPercent, 100, SettingSources.Mcm);
                 logic.ApplySettingsChange(S);
                 LogHas("[fever] settings changed mid-mission at ");
-                Check(man.DecisionFactor == 1f, "AiCalmFactor 1: the factor is not 1");
+                Check(man.DecisionFactor == 1f, "100 / 100: the share is not 1");
                 top.UpdateAgentStats(man.Agent, p);
-                Check(Near(p.AIAttackOnDecideChance, 0.144f), "AiCalmFactor 1: not the game's value");
-                S.Set(SettingsSchema.AiCalmFactor, 3.0, SettingSources.Mcm);
+                Check(Near(p.AIAttackOnDecideChance, 0.144f), "100 / 100: not the game's value");
+                S.Set(SettingsSchema.AiAggressionFreshPercent, 60, SettingSources.Mcm);
+                S.Set(SettingsSchema.AiAggressionExhaustedPercent, 20, SettingSources.Mcm);
                 logic.ApplySettingsChange(S);
-                Check(Near(man.DecisionFactor, 1f / 3f), "AiCalmFactor 3 again: not calm");
+                Check(Near(man.DecisionFactor, 0.6f), "60 / 20 again: not 0.6 at a full bar");
                 body.Orders[0] = BraceOrderKind.Stop;
                 t += 0.25;
                 logic.TickSprint(0.1f, t, Rules);
@@ -246,20 +257,28 @@ namespace TraxCombat.Tools
                 S.Set(SettingsSchema.FeverEnabled, false, SettingSources.Mcm);
                 logic.ApplySettingsChange(S);
                 logic.TickFever(t + 0.1);
-                Check(!fv.Running && logic.FeversRunning == 0 && Near(man.DecisionFactor, 1f / 3f), "FeverEnabled off: the burning fever did not end at once (or not calm)");
+                Check(!fv.Running && logic.FeversRunning == 0 && Near(man.DecisionFactor, 0.6f), "FeverEnabled off: the burning fever did not end at once (or not back to 0.6)");
                 LogHas("[fever] FeverEnabled switched off at ");
+
+                // ---- TIRED: ten wrong-side blocks (5 points each - AthleticsDefaults) take him to a half bar: 0.4 rides on the block's re-target
+                var ar = Rules;
+                for (int i = 0; i < 10; i++) logic.BlockTaken(man, BlockKind.ShieldWrongSide, 99, 1 + i, t + i * 0.1, in ar, mounted: false);
+                Check(Near(man.Fraction, 0.5) && Near(man.DecisionFactor, 0.4f), "a half bar: the share is not 0.4: " + man.Fraction + " / " + man.DecisionFactor);
+                top.UpdateAgentStats(man.Agent, p);
+                Check(Near(p.AIAttackOnDecideChance, 0.0576f), "a half bar: the attack chance is not 0.144 x 0.4: " + p.AIAttackOnDecideChance);
                 S.Set(SettingsSchema.FeverEnabled, true, SettingSources.Mcm);
 
                 // ---- the summary
                 logic.WriteFeverSummary();
-                LogHas("[summary] fever settings: calm: AI men on foot decide to attack 3.00x less often");
+                LogHas("[summary] fever settings: aggression: AI men on foot decide to attack at 60% of the game's rate at a full bar");
                 LogHas("[summary] fever armed: 3 (charge 1 - by you 0 / by the AI general 1; advance 2 - by you 0 / by the AI general 2)");
                 LogHas("[summary] fever contact: 3 of 3 fevers met an enemy within 5.0 m");
                 LogHas("[summary] fever burn: faded 1; burn length with a shield in hand (most of it) 1, mean ");
-                LogHas("[summary] fever fade: ");
+                LogHas("[summary] fever recomputes: ");
                 LogHas("[summary] fever sprints: started 1 (fever left 100-67%: 1, 67-33%: 0, 33-0%: 0) in ");
-                LogHas("[summary] fever proof: AI melee attacks per man-minute in contact (an enemy within 5.0 m, on foot): calm ");
-                LogHas("[summary] fever values written (AI on foot): attack chance calm 0.144 → 0.048 (x0.33, ");
+                LogHas("[summary] fever proof: AI melee attacks per man-minute in contact (an enemy within 5.0 m, on foot), by bar 100-75 / 75-50 / 50-25 / 25-0 %: in a formation, no fever ");
+                LogHas("[summary] fever proof, no formation (tournaments, arenas, duels - no orders, no fever): by bar 100-75 / 75-50 / 50-25 / 25-0 % ");
+                LogHas("[summary] fever values written (AI on foot, the game's → ours): attack chance bar 100-75% 0.144 → 0.086 (x0.60, ");
                 logic.SmokePlayer = null;
             }
             finally
