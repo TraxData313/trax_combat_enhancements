@@ -962,6 +962,29 @@
   // (true or false)
   "ImpactTiredNeverShrugsOff": true,
 
+  // Step 52 (Anton: a fresh shock unit charging a tired line must be devastating): the
+  // attacker's own speed into the blow - his run or sprint towards the man he strikes - adds to
+  // the blow's impact, for kicks, bashes and weapon blows, blocked or not. Riders: step 53. Off
+  // = only the weapon and the swing count.
+  // (true or false)
+  "ImpactMomentumEnabled": true,
+
+  // A blow struck at the sprint speed below or faster has this much more impact (60: x1.6 - a
+  // sprinting axe-man throws a tired man around); at a walk or slower nothing is added, in
+  // between a straight line.
+  // (range 0 to 200)
+  "ImpactMomentumPercent": 60,
+
+  // Up to this speed into the blow (metres a second) a man adds no momentum - the game's walk
+  // is about 1.8 m/s, a run 4-5 m/s.
+  // (range 0.0 to 10.0)
+  "ImpactMomentumWalkMetresPerSecond": 2.0,
+
+  // From this speed into the blow (metres a second) the whole momentum bonus is added - a fresh
+  // man's sprint (step 33) runs about 7-9 m/s, a run 4-5 m/s.
+  // (range 0.5 to 20.0)
+  "ImpactMomentumSprintMetresPerSecond": 7.0,
+
   // How much an outmatched man suffers: every doubling of the mismatch beyond the even band
   // adds this to the pressure on him (0.25: an enemy four times stronger counts as much as
   // being about a third tired). 0 = only tiredness counts.

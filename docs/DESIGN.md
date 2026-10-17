@@ -1183,7 +1183,11 @@ says (§2c).
 | `ShieldPickupLockSeconds` | 0.0 | Step 48: a dropped shield cannot be picked up for this long; 0 = vanilla's pickup (IMPACT §8 q3). Step 50: applied to the AI through a decorator of the game's `ItemPickupModel` (the player's use key is never locked). Range 0-120. |
 | `ImpactOnPlayerPercent` | 100 | Step 48: every chance against YOU × this % (IMPACT §8 q5). Range 0-100. |
 | `ImpactRiderDismountPercent` | 50 | Step 48: a rider's "knockdown" = knocked off at this % of the knockdown chance; never a stagger on a rider (IMPACT §3.8, §8 q4). Range 0-100. |
-| `ImpactTiredNeverShrugsOff` | true | Step 48: a tired man's flinch threshold × f - he shrugs off less (I5). Live. |
+| `ImpactTiredNeverShrugsOff` | true | Step 48: a tired man's flinch threshold × f - he shrugs off less (I5). Step 52: applied in the damage decorator's `DecideAgentShrugOffBlow` (main thread) to a clean hit on a man on foot while clean hits are live - the game's threshold × (1 − T), T × `ImpactOnPlayerPercent` for you. Live. |
+| `ImpactMomentumEnabled` | true | Step 52, MOMENTUM (Anton 2026-10-17: a fresh shock unit charging a tired line must be devastating): the attacker's own speed into the blow adds impact - kicks, bashes and weapon blows, blocked or not; never a rider's (step 53). Live. |
+| `ImpactMomentumPercent` | 60 | Step 52: the impact added at a full sprint - I × (1 + this % × clamp((v − walk) ÷ (sprint − walk), 0, 1)), v = his velocity along the line to the man he strikes. Range 0-200. |
+| `ImpactMomentumWalkMetresPerSecond` | 2.0 | Step 52: up to this speed into the blow nothing is added (the game's walk limit measured 1.8 m/s). Range 0-10. |
+| `ImpactMomentumSprintMetresPerSecond` | 7.0 | Step 52: from this speed the whole bonus is added (a run measured ~4.4 m/s, a sprint x1.8-2 of a fresh run). Range 0.5-20. |
 | `ImpactMismatchWeight` | 0.25 | Step 48: x per doubling of the mismatch R beyond the even band. Range 0-2. |
 | `ImpactEvenBandDoublings` | 0.5 | Step 48: a mismatch within ± this many doublings (×1.41) = an even match (adds 0). Range 0-3. |
 | `ImpactBodyExponent` | 0.5 | Step 48: the body = his CURRENT points to this power. Range 0-2. |

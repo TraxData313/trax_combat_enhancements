@@ -166,7 +166,8 @@ namespace TraxCombat.Missions
             w.St = st;
             w.Purpose = purpose;
             w.Factor = double.IsNaN(factor) ? 1 : factor;
-            w.Slow = (purpose == ImpactWatchPurpose.Reel || purpose == ImpactWatchPurpose.GetUp || purpose == ImpactWatchPurpose.BlockGetUp)
+            w.Slow = (purpose == ImpactWatchPurpose.Reel || purpose == ImpactWatchPurpose.GetUp || purpose == ImpactWatchPurpose.BlockGetUp
+                      || purpose == ImpactWatchPurpose.HitFlinch || purpose == ImpactWatchPurpose.HitGetUp) // step 52: a clean hit's flinch / fall
                      && ImpactLiveMath.NeedsSlow(factor) && !_live.Disabled(ImpactLever.SlowReaction);
             w.Asked = asked;
             w.Speed = speed;
@@ -181,6 +182,8 @@ namespace TraxCombat.Missions
         {
             if (purpose == ImpactWatchPurpose.Guard) _guardWatches += delta;
             else if (purpose == ImpactWatchPurpose.Stagger || purpose == ImpactWatchPurpose.Riposte) _liveStaggers += delta;
+            else if (purpose == ImpactWatchPurpose.HitControl) _hitControls += delta; // step 52
+            if (purpose == ImpactWatchPurpose.HitControl && delta > 0) _hits.Controls++;
         }
 
         private void RemoveLiveWatch(int i)
@@ -224,7 +227,8 @@ namespace TraxCombat.Missions
                 }
             }
             bool blocksLive = TickBlocksSwitch(now, in r); // step 51: the blocks / the riposte live? the cap, the T snapshot for the stun seam
-            if (!live && !blocksLive) return;
+            bool hitsLive = TickHitsSwitch(now, in r); // step 52: clean hits live? (not = their watches let go)
+            if (!live && !blocksLive && !hitsLive) return;
             int calls = 0;
             if (_liveDropCount > 0) RunLiveDrops(now, ref calls);
             if (_blockPendingCount > 0) RunBlockPending(now, ref calls);
@@ -249,6 +253,7 @@ namespace TraxCombat.Missions
             _liveWatchCount = 0;
             _guardWatches = 0;
             _liveStaggers = 0;
+            _hitControls = 0;
         }
 
         /// <summary>Step 51: one family's watches let go (the kicks': reels and get-ups; the blocks': staggers, ripostes, blockers' falls,
@@ -396,6 +401,7 @@ namespace TraxCombat.Missions
                         {
                             if (ImpactActions.IsFall(w.W.FirstType)) _live.FellInstead++;
                         }
+                        else if (IsHitPurpose(w.Purpose)) HitWatchAppeared(ref w, now); // step 52
                         else BlockWatchAppeared(ref w, now); // step 51
                         if (w.Slow) LiveSlow(ref w, now);
                         break;
@@ -431,7 +437,7 @@ namespace TraxCombat.Missions
                 ImpactBody.SlowReaction(w.St, w.W.Channel, speed);
                 _live.SlowCalls++;
                 if (LiveFirst(2))
-                    TraxLog.Info("impact", "live: first " + (w.Purpose == ImpactWatchPurpose.Reel ? "reel" : "fall-and-rise") + " slowed at " + Sec(now) + " s - " + Name(w.St) + "'s "
+                    TraxLog.Info("impact", "live: first " + (w.Purpose == ImpactWatchPurpose.Reel ? "reel" : w.Purpose == ImpactWatchPurpose.HitFlinch ? "clean-hit flinch" : "fall-and-rise") + " slowed at " + Sec(now) + " s - " + Name(w.St) + "'s "
                         + ImpactActions.Name(_liveRead.Type(w.W.Channel)) + " on channel " + w.W.Channel + " at speed " + F2(speed) + " (x" + F2(w.Factor) + " longer) the tick it showed");
                 return true;
             }
@@ -449,6 +455,11 @@ namespace TraxCombat.Missions
         {
             var r = ImpactRules.From(TraxSettings.Shared);
             bool slowed = w.Slow && ImpactLiveMath.NeedsSlow(w.Factor);
+            if (IsHitPurpose(w.Purpose))
+            {
+                HitWatchMeasured(ref w, length, now, in r, slowed); // step 52
+                return;
+            }
             if (w.Purpose != ImpactWatchPurpose.GetUp && w.Purpose != ImpactWatchPurpose.Reel)
             {
                 BlockWatchMeasured(ref w, length, now, in r, slowed); // step 51
@@ -473,6 +484,11 @@ namespace TraxCombat.Missions
 
         private void LiveNeverAppeared(ref ImpactLiveWatch w, double now)
         {
+            if (IsHitPurpose(w.Purpose))
+            {
+                HitWatchNeverAppeared(ref w, now); // step 52
+                return;
+            }
             if (w.Purpose != ImpactWatchPurpose.GetUp && w.Purpose != ImpactWatchPurpose.Reel)
             {
                 BlockWatchNeverAppeared(ref w, now); // step 51
@@ -624,6 +640,7 @@ namespace TraxCombat.Missions
             var r = ImpactRules.From(TraxSettings.Shared);
             foreach (var line in _live.SummaryLines(r.Applies(ImpactFamily.Kicks), r.ModeText())) TraxLog.Info("summary", line);
             foreach (var line in _blocks.SummaryLines(r.Applies(ImpactFamily.Blocks) || r.Applies(ImpactFamily.Riposte), r.ModeText(), _live.LeversText())) TraxLog.Info("summary", line);
+            foreach (var line in _hits.SummaryLines(r.Applies(ImpactFamily.Hits), r.ModeText(), _live.LeversText())) TraxLog.Info("summary", line); // step 52 (+ the momentum of every family)
         }
 
         /// <summary>The first of each of the live part's first-time lines (true once).</summary>

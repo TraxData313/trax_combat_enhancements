@@ -30,6 +30,9 @@ namespace TraxCombat.Core
 
         /// <summary>Step 51: a blocker knocked down - a blow of our own (RegisterBlow, KnockDown, 1 damage) from the tick.</summary>
         OwnBlow,
+
+        /// <summary>Step 52: a tired man's shrug-off refused (the damage decorator's <c>DecideAgentShrugOffBlow</c> - main thread).</summary>
+        ShrugOff,
     }
 
     /// <summary>Step 50: why a live outcome the dice gave was NOT carried out (the summary's "not applied").</summary>
@@ -84,6 +87,16 @@ namespace TraxCombat.Core
 
         /// <summary>Step 51: the blocker's guard frozen by the stun (asked x the stun factor; a fresh blocker's = the control).</summary>
         Guard,
+
+        /// <summary>Step 52: a clean hit's STAGGER - the engine's own flinch slowed to the decided length (WatchKind.Reaction).</summary>
+        HitFlinch,
+
+        /// <summary>Step 52: a man knocked down by a clean hit - his fall-and-rise (slowed by GetUpFactor, as a kick's get-up).</summary>
+        HitGetUp,
+
+        /// <summary>Step 52: an untouched flinch of a clean hit with no outcome - the control the stagger's lengths compare against and
+        /// the flinch's own length is learned from (a few at a time).</summary>
+        HitControl,
     }
 
     /// <summary>
@@ -92,7 +105,7 @@ namespace TraxCombat.Core
     /// </summary>
     public static class ImpactLiveMath
     {
-        public const int LeverCount = 7;
+        public const int LeverCount = 8;
         public const int NotAppliedCount = 9;
 
         /// <summary>Live watches (reels, falls) at once - 64, the spike's pool.</summary>
@@ -151,6 +164,7 @@ namespace TraxCombat.Core
             ImpactLever.BlockStun => "the block stun by tiredness",
             ImpactLever.ForcedStagger => "the forced stagger (blocks, the riposte)",
             ImpactLever.OwnBlow => "the blocker's knockdown (our own blow)",
+            ImpactLever.ShrugOff => "tired men always flinch (the shrug-off refused)",
             _ => "the reaction watch",
         };
 

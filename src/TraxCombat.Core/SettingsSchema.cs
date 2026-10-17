@@ -739,6 +739,22 @@ namespace TraxCombat.Core
             "Tired men always flinch",
             "The game lets a man shrug off a light blow without flinching; on: a tired man shrugs off less the more tired he is (his flinch threshold falls with his strength), so a clean hit always tells on an exhausted man.");
 
+        public static readonly ParamDef ImpactMomentumEnabled = Bool("ImpactMomentumEnabled", ImpactGroup,
+            "Momentum: a running blow hits harder",
+            "Step 52 (Anton: a fresh shock unit charging a tired line must be devastating): the attacker's own speed into the blow - his run or sprint towards the man he strikes - adds to the blow's impact, for kicks, bashes and weapon blows, blocked or not. Riders: step 53. Off = only the weapon and the swing count.");
+
+        public static readonly ParamDef ImpactMomentumPercent = Int("ImpactMomentumPercent", 0, 200, ImpactGroup,
+            "Momentum: impact added at a full sprint (+%)",
+            "A blow struck at the sprint speed below or faster has this much more impact (60: x1.6 - a sprinting axe-man throws a tired man around); at a walk or slower nothing is added, in between a straight line.");
+
+        public static readonly ParamDef ImpactMomentumWalkMetresPerSecond = Float("ImpactMomentumWalkMetresPerSecond", 0, 10, ImpactGroup,
+            "Momentum: no bonus up to (m/s)",
+            "Up to this speed into the blow (metres a second) a man adds no momentum - the game's walk is about 1.8 m/s, a run 4-5 m/s.");
+
+        public static readonly ParamDef ImpactMomentumSprintMetresPerSecond = Float("ImpactMomentumSprintMetresPerSecond", 0.5, 20, ImpactGroup,
+            "Momentum: full bonus from (m/s)",
+            "From this speed into the blow (metres a second) the whole momentum bonus is added - a fresh man's sprint (step 33) runs about 7-9 m/s, a run 4-5 m/s.");
+
         public static readonly ParamDef ImpactMismatchWeight = Float("ImpactMismatchWeight", 0, 2, ImpactGroup,
             "Mismatch weight (pressure per doubling)",
             "How much an outmatched man suffers: every doubling of the mismatch beyond the even band adds this to the pressure on him (0.25: an enemy four times stronger counts as much as being about a third tired). 0 = only tiredness counts.");
@@ -1171,6 +1187,7 @@ namespace TraxCombat.Core
             RiposteStunMaxSeconds, ImpactRandomPercent, ImpactStunCapSeconds,
             ImpactStaggerImmunitySeconds, ImpactKnockdownImmunitySeconds, ImpactDiminishWindowSeconds, ImpactDiminishFactor, ShieldPickupLockSeconds,
             ImpactOnPlayerPercent, ImpactRiderDismountPercent, ImpactTiredNeverShrugsOff,
+            ImpactMomentumEnabled, ImpactMomentumPercent, ImpactMomentumWalkMetresPerSecond, ImpactMomentumSprintMetresPerSecond,
             ImpactMismatchWeight, ImpactEvenBandDoublings, ImpactBodyExponent, ImpactBodyFloorPoints, ImpactStaggeredBonus, ImpactDamageWeight,
             ImpactRefWeightKg, ImpactWeightExponent, ImpactRefSwingSpeed, ImpactSpeedExponent, ImpactBluntFactor, ImpactCutFactor, ImpactPierceFactor,
             ImpactKickFactor, ImpactBashFactor, ImpactSkillMinFactor, ImpactSkillMaxFactor,

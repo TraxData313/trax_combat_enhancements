@@ -1,4 +1,5 @@
 using TaleWorlds.Core;
+using TaleWorlds.Library;
 using TaleWorlds.MountAndBlade;
 using TraxCombat.Core;
 
@@ -26,7 +27,8 @@ namespace TraxCombat.Missions
     /// swing or thrust speed for the strike type (the collision's <c>StrikeType</c>), the collision's damage type (Cut / Pierce / Blunt), the
     /// attacker's skill in its relevant skill; a bash = the shield in that slot and one-handed; the defender's off-hand shield (right / wrong
     /// side, one-handed) or main-hand weapon (a parry, its relevant skill); <c>MountAgent</c>; <c>HealthLimit</c>; the collision's
-    /// <c>InflictedDamage</c>. Nothing allocates.
+    /// <c>InflictedDamage</c>. Step 52: the attacker's speed into the blow (<see cref="SpeedInto"/> - engine reads of both men's position and
+    /// his velocity, main thread) and a two-handed grip. Nothing allocates.
     /// </summary>
     internal sealed class GameImpactInputs : IImpactInputs
     {
@@ -34,6 +36,7 @@ namespace TraxCombat.Missions
         {
             f.AttackerMounted = attacker.MountAgent != null;
             f.DefenderMounted = victim.MountAgent != null;
+            f.AttackerSpeed = f.AttackerMounted ? 0 : SpeedInto(attacker, victim); // step 52: MOMENTUM (a rider's is step 53's)
             var off = victim.WieldedOffhandWeapon;
             var offUsage = off.CurrentUsageItem;
             bool shield = offUsage != null && offUsage.IsShield;
@@ -55,6 +58,7 @@ namespace TraxCombat.Missions
                 {
                     f.WeaponWeight = WeightOf(w);
                     f.SwingSpeed = cd.StrikeType == (int)StrikeType.Thrust ? w.GetModifiedThrustSpeedForCurrentUsage() : w.GetModifiedSwingSpeedForCurrentUsage();
+                    f.TwoHanded = usage.IsTwoHanded || usage.IsPolearm; // step 52: the clean hits' summary class (a two-handed grip)
                     var skill = usage.RelevantSkill;
                     if (skill != null) f.AttackerSkill = Skill(attacker, skill);
                 }
@@ -85,6 +89,21 @@ namespace TraxCombat.Missions
             if (slot < 0 || slot >= (int)EquipmentIndex.NumAllWeaponSlots) return null;
             var item = attacker.Equipment[slot].Item;
             return item?.Name?.ToString();
+        }
+
+        /// <summary>
+        /// Step 52, MOMENTUM: the attacker's own speed INTO the blow (m/s) - his ground velocity the way vanilla's combat code builds it
+        /// (MissionCombatMechanicsHelper.GetAgentVelocityContribution: <c>MovementVelocity</c> turned by <c>MovementDirectionAsAngle</c>)
+        /// along the line to the victim. Negative (moving away) is returned as is - the model clamps it to none. Four engine reads, per event.
+        /// </summary>
+        internal static double SpeedInto(Agent attacker, Agent victim)
+        {
+            Vec2 v = attacker.MovementVelocity;
+            v.RotateCCW(attacker.MovementDirectionAsAngle);
+            Vec2 to = victim.Position.AsVec2 - attacker.Position.AsVec2;
+            float len = to.Normalize();
+            if (!(len > 1e-4f)) return 0;
+            return Vec2.DotProduct(v, to);
         }
 
         private static double WeightOf(MissionWeapon w) => w.Item != null ? w.Item.Weight : 0;

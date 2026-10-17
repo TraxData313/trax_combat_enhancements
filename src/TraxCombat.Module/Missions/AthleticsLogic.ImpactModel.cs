@@ -113,7 +113,7 @@ namespace TraxCombat.Missions
         /// <summary>
         /// The damage decorator's KnockDown seam (MAIN thread, inside the engine's MeleeHitCallback, before the blow is registered): a LANDED
         /// kick / bash / clean hit on a man on foot is decided HERE and remembered for this callback's OnMeleeHit. Returns the knockdown to
-        /// OR into the game's answer - only once its family APPLIES (step 50: kicks / bashes; 52 clean hits). Own try: an error = no knockdown, the
+        /// OR into the game's answer - only once its family APPLIES (step 50: kicks / bashes; step 52: clean hits). Own try: an error = no knockdown, the
         /// live KnockDown lever off for the mission (one [error]).
         /// </summary>
         internal bool ImpactModelOnLandedBlow(Agent attacker, Agent victim, in AttackCollisionData cd)
@@ -255,9 +255,16 @@ namespace TraxCombat.Missions
             double ms = (Stopwatch.GetTimestamp() - t0) * 1000.0 / Stopwatch.Frequency;
             int attackerBand = ImpactMath.BarBand(a.Fraction);
             _impact.Note(in d, r.ShadowNow, applied || riposteLive, ms, attackerBand);
+            _hits.NoteMomentum(in d, ImpactMath.SpeedBand(in r, d.AttackerSpeed), f.AttackerMounted); // step 52: every decided blow by the attacker's speed into it
             LastImpact = d;
             NoteImpactLines(a, v, in d, in f, in r, !(applied || riposteLive));
             if (applied && family == ImpactFamily.Kicks) knockDown = ApplyKick(a, v, in d, inSeam, now);
+            else if (applied && family == ImpactFamily.Hits) knockDown = ApplyHit(a, v, in d, in f, inSeam, now); // step 52
+            else if (family == ImpactFamily.Hits && r.Applies(family) && f.DefenderMounted && d.AnyOutcome)
+            {
+                if (d.Knockdown.Happens) _hits.NoteNotApplied(0, ImpactNotApplied.Rider);
+                if (d.Stagger.Happens) _hits.NoteNotApplied(1, ImpactNotApplied.Rider);
+            }
             else if (family == ImpactFamily.Kicks && r.Applies(family) && f.DefenderMounted && d.AnyOutcome)
             {
                 if (d.Knockdown.Happens) _live.NoteNotApplied(ImpactOutcome.Knockdown, ImpactNotApplied.Rider);

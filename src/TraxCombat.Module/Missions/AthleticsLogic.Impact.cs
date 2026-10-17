@@ -127,6 +127,7 @@ namespace TraxCombat.Missions
             ImpactHooks.KnockDown = this;
             ImpactHooks.BlockStun = this;
             ImpactHooks.PickupLock = this; // step 50: the AI's shield pickup lock
+            ImpactHooks.ShrugOff = this; // step 52: tired men always flinch
             if (_seenSpike.Enabled) SpikeSwitchedOn(Mission != null ? Mission.CurrentTime : 0, atStart: true);
             else TraxLog.Info("impact", "mission start: spike " + _seenSpike.Describe() + " - read live");
             StartImpactModel(); // step 48: the model (its own line)
@@ -138,6 +139,7 @@ namespace TraxCombat.Missions
             if (ReferenceEquals(ImpactHooks.KnockDown, this)) ImpactHooks.KnockDown = null;
             if (ReferenceEquals(ImpactHooks.BlockStun, this)) ImpactHooks.BlockStun = null;
             if (ReferenceEquals(ImpactHooks.PickupLock, this)) ImpactHooks.PickupLock = null;
+            if (ReferenceEquals(ImpactHooks.ShrugOff, this)) ImpactHooks.ShrugOff = null;
             if (_spikeStarted && ImpactHooks.RestoreStunCap()) _spike.CapRestores++;
         }
 
@@ -300,6 +302,7 @@ namespace TraxCombat.Missions
         bool IKnockDownDecider.KnockDownOnBlow(Agent attacker, Agent victim, in AttackCollisionData collision, in TaleWorlds.MountAndBlade.Blow blow, bool gameSays)
         {
             bool spike = SpikeKnockDown(attacker, victim, in collision);
+            _seamShrugOff = (blow.BlowFlag & TaleWorlds.MountAndBlade.BlowFlags.ShrugOff) != 0; // step 52: the game shrugged this blow off (a clean hit's knockdown counts it)
             bool model = ImpactModelOnLandedBlow(attacker, victim, in collision); // step 48: a landed blow is decided here (own try; applies from steps 49 / 51)
             return spike || model;
         }

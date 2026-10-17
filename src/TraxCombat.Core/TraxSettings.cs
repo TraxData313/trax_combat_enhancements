@@ -377,6 +377,10 @@ namespace TraxCombat.Core
         public int ImpactOnPlayerPercent => GetInt(SettingsSchema.ImpactOnPlayerPercent);
         public int ImpactRiderDismountPercent => GetInt(SettingsSchema.ImpactRiderDismountPercent);
         public bool ImpactTiredNeverShrugsOff => GetBool(SettingsSchema.ImpactTiredNeverShrugsOff);
+        public bool ImpactMomentumEnabled => GetBool(SettingsSchema.ImpactMomentumEnabled);
+        public int ImpactMomentumPercent => GetInt(SettingsSchema.ImpactMomentumPercent);
+        public float ImpactMomentumWalkMetresPerSecond => GetFloat(SettingsSchema.ImpactMomentumWalkMetresPerSecond);
+        public float ImpactMomentumSprintMetresPerSecond => GetFloat(SettingsSchema.ImpactMomentumSprintMetresPerSecond);
         public float ImpactMismatchWeight => GetFloat(SettingsSchema.ImpactMismatchWeight);
         public float ImpactEvenBandDoublings => GetFloat(SettingsSchema.ImpactEvenBandDoublings);
         public float ImpactBodyExponent => GetFloat(SettingsSchema.ImpactBodyExponent);

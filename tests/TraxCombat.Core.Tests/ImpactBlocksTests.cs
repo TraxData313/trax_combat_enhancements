@@ -306,7 +306,7 @@ public class ImpactBlocksTests
     [Fact]
     public void The_new_levers_and_reasons_have_their_names_and_disable_alone()
     {
-        Assert.Equal(7, ImpactLiveMath.LeverCount);
+        Assert.Equal(8, ImpactLiveMath.LeverCount); // step 52: + ShrugOff
         Assert.Equal(9, ImpactLiveMath.NotAppliedCount);
         Assert.Equal("the block stun by tiredness", ImpactLiveMath.LeverName(ImpactLever.BlockStun));
         Assert.Equal("the forced stagger (blocks, the riposte)", ImpactLiveMath.LeverName(ImpactLever.ForcedStagger));

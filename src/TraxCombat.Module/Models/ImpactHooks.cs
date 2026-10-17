@@ -28,6 +28,17 @@ namespace TraxCombat.Models
     }
 
     /// <summary>
+    /// Step 52: <c>ImpactTiredNeverShrugsOff</c> - asked by <see cref="TraxDamageModel.DecideAgentShrugOffBlow"/> only when the game says the
+    /// blow is SHRUGGED OFF (no flinch). MAIN thread (inside <c>Mission.CreateMeleeBlow</c> of the engine's <c>MeleeHitCallback</c> - checked
+    /// in the decompile, Mission.cs 5555; the missile path 5861 is the main thread too and never ours). <paramref name="gameThreshold"/> = the
+    /// base model's own threshold for this blow. True = he still shrugs it off; false = refused (a tired man flinches).
+    /// </summary>
+    internal interface IShrugOffDecider
+    {
+        bool ShrugOffKept(Agent victim, in AttackCollisionData collision, float gameThreshold);
+    }
+
+    /// <summary>
     /// Step 50: the AI's pickup of a dropped SHIELD - asked by <see cref="TraxItemPickupModel.IsItemAvailableForAgent"/> after the base model
     /// (MAIN thread: HumanAIComponent.ItemPickupTick runs in OnTick). True = refuse this pickup (<c>ShieldPickupLockSeconds</c> after a live
     /// kick / bash made his shield leave his hand). The player picks items up with the use key - no model asked, so never locked.
@@ -69,6 +80,35 @@ namespace TraxCombat.Models
         {
             get => _blockStun;
             set => _blockStun = value;
+        }
+
+        private static volatile IShrugOffDecider? _shrugOff;
+
+        /// <summary>Step 52: the running logic while it runs (the damage decorator's shrug-off asks it).</summary>
+        internal static IShrugOffDecider? ShrugOff
+        {
+            get => _shrugOff;
+            set => _shrugOff = value;
+        }
+
+        /// <summary>
+        /// Step 52: the decorator's shrug-off question after the game said YES: kept, or refused by the decider (a tired man flinches). The
+        /// game's threshold is asked of <paramref name="baseModel"/> only when a decider is plugged in; a throwing decider = the game's answer
+        /// (kept), logged by the logic's fail-safe.
+        /// </summary>
+        internal static bool ShrugOffKept(Agent victim, in AttackCollisionData collision, in Blow blow, TaleWorlds.MountAndBlade.ComponentInterfaces.AgentApplyDamageModel baseModel)
+        {
+            var d = _shrugOff;
+            if (d == null || victim == null || baseModel == null) return true;
+            try
+            {
+                return d.ShrugOffKept(victim, in collision, baseModel.CalculateStaggerThresholdDamage(victim, in blow));
+            }
+            catch (Exception e)
+            {
+                TraxCombat.Missions.AthleticsLogic.Failed("impact.shrug-off-hook", e);
+                return true;
+            }
         }
 
         private static volatile IShieldPickupLock? _pickupLock;

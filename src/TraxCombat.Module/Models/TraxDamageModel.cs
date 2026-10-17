@@ -119,8 +119,13 @@ namespace TraxCombat.Models
         public override float CalculateRemainingMomentum(float originalMomentum, in Blow b, in AttackCollisionData collisionData, Agent attacker, Agent victim, in MissionWeapon attackerWeapon, bool isCrushThrough)
             => BaseModel.CalculateRemainingMomentum(originalMomentum, in b, in collisionData, attacker, victim, in attackerWeapon, isCrushThrough);
 
+        /// <summary>Step 52: vanilla's answer first; a blow the game lets him SHRUG OFF is then asked of the impact seam
+        /// (<c>ImpactTiredNeverShrugsOff</c> - a tired man's threshold × f: he flinches) - main thread; a throwing decider = vanilla's answer.</summary>
         public override bool DecideAgentShrugOffBlow(Agent victimAgent, in AttackCollisionData collisionData, in Blow blow)
-            => BaseModel.DecideAgentShrugOffBlow(victimAgent, in collisionData, in blow);
+        {
+            bool game = BaseModel.DecideAgentShrugOffBlow(victimAgent, in collisionData, in blow);
+            return game && ImpactHooks.ShrugOffKept(victimAgent, in collisionData, in blow, BaseModel);
+        }
 
         public override bool DecideAgentDismountedByBlow(Agent attackerAgent, Agent victimAgent, in AttackCollisionData collisionData, WeaponComponentData attackerWeapon, in Blow blow)
             => BaseModel.DecideAgentDismountedByBlow(attackerAgent, victimAgent, in collisionData, attackerWeapon, in blow);
