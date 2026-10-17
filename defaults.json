@@ -610,6 +610,162 @@
   // (range 0 to 100)
   "FeverSprintChancePercent": 50,
 
+  // ==================== Courage and cohesion (AI) ====================
+  // Every AI soldier on foot in a formation weighs his mates against the enemies near him - by
+  // how tough each one is (armour, level, wounds). Short of courage he is TIMID: far from his
+  // mates he walks back to a bigger group of his side, facing the enemy (sprinting when it is
+  // far); among them he holds and strikes only what comes within reach - no lone man circling
+  // your shield wall, no exhausted man standing among four enemies. A big enough crowd stays
+  // brave and wraps around a line as a mass. Never you, never riders, never men held in a
+  // shield wall. Works without the Athletics system (then tiredness does not count). Off: the
+  // game's own bravery - the log still measures, so flipping it mid-battle compares the two.
+  // (true or false)
+  "CourageEnabled": true,
+
+  // The circle a man weighs his mates and his enemies in. Men within half of it count in full,
+  // then less and less to 0 at its edge (so a man walking across the edge does not flip
+  // anybody's courage at once).
+  // (range 2.0 to 30.0)
+  "CourageRadiusMetres": 6.0,
+
+  // How strong his side must be around him, in percent of the enemy's strength there, for a
+  // fresh, steady soldier to stay brave: 100 = even odds. Tiredness, low morale and shock raise
+  // it; a fever and being a hero lower it. Lower = braver soldiers.
+  // (range 10 to 500)
+  "CourageBaseOddsPercent": 100,
+
+  // How much armour makes a man count: his toughness is x (1 + this % x his armour / 100) -
+  // head, body, legs and arms added up. At 200 a looter in rags (armour ~8) counts 1.16, a man
+  // in 110 armour 3.2.
+  // (range 0 to 500)
+  "CourageArmourWeightPercent": 200,
+
+  // How much a man's level (his troop tier - his skill and experience) makes him count: x (1 +
+  // this % x level / 30), levels above 60 count as 60. At 100 a level-5 looter counts x1.17, a
+  // level-26 legionary x1.87. With the armour: about 4-5 looters per armoured veteran.
+  // (range 0 to 500)
+  "CourageLevelWeightPercent": 100,
+
+  // A wounded man counts less: x (1 - this % x the share of his health he lost). At 50 a man at
+  // half health counts 75%.
+  // (range 0 to 100)
+  "CourageHealthWeightPercent": 50,
+
+  // An ENEMY who carries a two-handed weapon or a polearm and no shield counts this much more
+  // (150 = half again): a great axe breaks a guard and outreaches a sword - tired, shaken men
+  // will not stay against three or four such shock troops. Read once from his kit. 100 = no
+  // difference.
+  // (range 100 to 500)
+  "CourageHeavyWeaponPercent": 150,
+
+  // A tired man clings to his mates: the odds he needs x (1 + this % x the share of his
+  // Athletics bar he has spent). At 100 an empty man needs twice the odds of a fresh one. Not
+  // counted while the Athletics system is off.
+  // (range 0 to 500)
+  "CourageTiredWeightPercent": 100,
+
+  // The game's own morale (0-100; men start at 35-65 and lose it as their side falls): below 50
+  // the odds he needs x (1 + this % x (50 - morale) / 50). At 100 a man at morale 25 needs 1.5
+  // times the odds. High morale adds nothing - that is the fever's job.
+  // (range 0 to 500)
+  "CourageMoraleWeightPercent": 100,
+
+  // A man who was hit is SHOCKED for this many seconds: each landed hit in that window counts
+  // (and, once the impact system's effects are built, each stagger, knockdown or dropped
+  // shield), three = full shock. A shocked man needs higher odds, wants more mates around him
+  // and packs in tighter; shocked and badly outmatched he PANICS. 0 = no shock.
+  // (range 0.0 to 60.0)
+  "CourageShockSeconds": 6.0,
+
+  // At full shock the odds he needs x (1 + this %): at 100 three hits in the window double
+  // them, one hit adds a third.
+  // (range 0 to 500)
+  "CourageShockWeightPercent": 100,
+
+  // A man in his FEVER (the charge's surge - Aggression and fever) needs only this share of the
+  // odds while it is full, back to 100% as it burns out. At 40 a feverish man stays brave at
+  // 40% of the odds - the charge goes in; when it fades, the weak side's men pull back. 100 =
+  // the fever does not touch courage.
+  // (range 0 to 100)
+  "CourageFeverPercent": 40,
+
+  // A hero (a lord, a companion) needs this share of the odds a soldier needs - they lead from
+  // the front. Their armour and level already make them count for a lot.
+  // (range 10 to 200)
+  "CourageHeroPercent": 75,
+
+  // A timid man becomes brave again only when the odds are this much ABOVE what he needs (25 =
+  // 25% more) - so he does not flicker between brave and timid at the edge.
+  // (range 0 to 200)
+  "CourageHysteresisPercent": 25,
+
+  // Once timid a man stays timid at least this long, whatever the odds do.
+  // (range 0.0 to 10.0)
+  "CourageMinTimidSeconds": 2.0,
+
+  // A timid man walks back only when he is farther than this from his group's centre; within it
+  // he has arrived and holds (half of it when shocked - shaken men pack in).
+  // (range 1.0 to 30.0)
+  "CourageRegroupRadiusMetres": 5.0,
+
+  // A timid man with at least this many mates within the courage circle is with his group - he
+  // holds there instead of walking (twice as many when shocked). 0 = timid men never walk back,
+  // they only hold.
+  // (range 0 to 30)
+  "CourageRegroupMates": 4,
+
+  // A timid man walks to the nearest bigger group of his own side - the centre of his allies
+  // within this distance, when there are enough of them (below) - like sheep pushed into the
+  // flock; else to his formation's centre of mass. 0 = always the formation's centre.
+  // (range 0.0 to 100.0)
+  "CourageFlockRadiusMetres": 20.0,
+
+  // How many allies within the distance above make a group worth running to.
+  // (range 1 to 100)
+  "CourageFlockMinMen": 6,
+
+  // A timid man whose group is far (below), or who has several enemies near him, sprints back -
+  // spending only what he holds above his reserve (below). In a PANIC he sprints at once and
+  // may spend nearly everything. Needs the sprint and "AI soldiers sprint on new orders" on.
+  // (true or false)
+  "CourageSprintBack": true,
+
+  // A timid man sprints back when his group's centre is farther than this.
+  // (range 0.0 to 100.0)
+  "CourageSprintMetres": 12.0,
+
+  // ...or when at least this many enemies are within the courage circle.
+  // (range 1 to 30)
+  "CourageSprintEnemies": 3,
+
+  // A timid man's sprint back spends only what he holds above this share of his full sprint
+  // store - a bit of his sprint, the rest kept for the fight.
+  // (range 0 to 100)
+  "CourageSprintKeepPercent": 50,
+
+  // A SHOCKED man whose odds are below this share of what he needs PANICS: he sprints back at
+  // once, whatever the distance, and keeps only the panic reserve below. 0 = no panic.
+  // (range 0 to 100)
+  "CouragePanicOddsPercent": 50,
+
+  // In a panic a man sprints everything above this share of his sprint store - his order's
+  // reserve and the normal sprint-back reserve do not hold him. 0 = all of it: panic uses all
+  // their energy.
+  // (range 0 to 100)
+  "CouragePanicSprintKeepPercent": 0,
+
+  // While timid a man's own AI fights only an enemy within reach (below) and otherwise keeps to
+  // his place - the game's per-man behaviour weights, re-applied after every order (the game
+  // resets them). Brave again: the game's own. Off: timid men only walk back, their AI's
+  // eagerness untouched.
+  // (true or false)
+  "CourageTightenWeights": true,
+
+  // A timid man still fights an enemy this close - beyond it his own place wins. 2 m is about a
+  // sword's reach.
+  // (range 0.5 to 6.0)
+  "CourageTimidMeleeMetres": 2.0,
+
   // ==================== Impact: staggers, shield drops, knockdowns ====================
   // Kicks, shield bashes, blocks and clean hits can stagger a man, make him drop his shield or
   // knock him down - more likely the more tired he is and the more he is outmatched (both men's

@@ -310,6 +310,34 @@ namespace TraxCombat.Core
         public float FeverSprintMaxMetres => GetFloat(SettingsSchema.FeverSprintMaxMetres);
         public float FeverSprintCheckSeconds => GetFloat(SettingsSchema.FeverSprintCheckSeconds);
         public int FeverSprintChancePercent => GetInt(SettingsSchema.FeverSprintChancePercent);
+        // step 49: courage and cohesion
+        public bool CourageEnabled => GetBool(SettingsSchema.CourageEnabled);
+        public float CourageRadiusMetres => GetFloat(SettingsSchema.CourageRadiusMetres);
+        public int CourageBaseOddsPercent => GetInt(SettingsSchema.CourageBaseOddsPercent);
+        public int CourageArmourWeightPercent => GetInt(SettingsSchema.CourageArmourWeightPercent);
+        public int CourageLevelWeightPercent => GetInt(SettingsSchema.CourageLevelWeightPercent);
+        public int CourageHealthWeightPercent => GetInt(SettingsSchema.CourageHealthWeightPercent);
+        public int CourageHeavyWeaponPercent => GetInt(SettingsSchema.CourageHeavyWeaponPercent);
+        public int CourageTiredWeightPercent => GetInt(SettingsSchema.CourageTiredWeightPercent);
+        public int CourageMoraleWeightPercent => GetInt(SettingsSchema.CourageMoraleWeightPercent);
+        public float CourageShockSeconds => GetFloat(SettingsSchema.CourageShockSeconds);
+        public int CourageShockWeightPercent => GetInt(SettingsSchema.CourageShockWeightPercent);
+        public int CourageFeverPercent => GetInt(SettingsSchema.CourageFeverPercent);
+        public int CourageHeroPercent => GetInt(SettingsSchema.CourageHeroPercent);
+        public int CourageHysteresisPercent => GetInt(SettingsSchema.CourageHysteresisPercent);
+        public float CourageMinTimidSeconds => GetFloat(SettingsSchema.CourageMinTimidSeconds);
+        public float CourageRegroupRadiusMetres => GetFloat(SettingsSchema.CourageRegroupRadiusMetres);
+        public int CourageRegroupMates => GetInt(SettingsSchema.CourageRegroupMates);
+        public float CourageFlockRadiusMetres => GetFloat(SettingsSchema.CourageFlockRadiusMetres);
+        public int CourageFlockMinMen => GetInt(SettingsSchema.CourageFlockMinMen);
+        public bool CourageSprintBack => GetBool(SettingsSchema.CourageSprintBack);
+        public float CourageSprintMetres => GetFloat(SettingsSchema.CourageSprintMetres);
+        public int CourageSprintEnemies => GetInt(SettingsSchema.CourageSprintEnemies);
+        public int CourageSprintKeepPercent => GetInt(SettingsSchema.CourageSprintKeepPercent);
+        public int CouragePanicOddsPercent => GetInt(SettingsSchema.CouragePanicOddsPercent);
+        public int CouragePanicSprintKeepPercent => GetInt(SettingsSchema.CouragePanicSprintKeepPercent);
+        public bool CourageTightenWeights => GetBool(SettingsSchema.CourageTightenWeights);
+        public float CourageTimidMeleeMetres => GetFloat(SettingsSchema.CourageTimidMeleeMetres);
         // step 48: the impact model (docs/IMPACT.md §5; Core ImpactRules reads them all at once)
         public bool ImpactEnabled => GetBool(SettingsSchema.ImpactEnabled);
         public bool ImpactKicksEnabled => GetBool(SettingsSchema.ImpactKicksEnabled);

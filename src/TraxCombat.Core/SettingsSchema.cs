@@ -40,12 +40,13 @@ namespace TraxCombat.Core
         public static readonly ParamGroup BraceGroup = new ParamGroup(6, "Brace by orders (AI)");
         public static readonly ParamGroup SprintGroup = new ParamGroup(7, "Sprint");
         public static readonly ParamGroup FeverGroup = new ParamGroup(8, "Aggression and fever (AI)"); // step 43
-        public static readonly ParamGroup ImpactGroup = new ParamGroup(9, "Impact: staggers, shield drops, knockdowns"); // step 48 (IMPACT I2) - after the combat behaviour groups
-        public static readonly ParamGroup RefillGroup = new ParamGroup(10, "Refill");
-        public static readonly ParamGroup PlayerBarGroup = new ParamGroup(11, "Your Athletics bar");
-        public static readonly ParamGroup OrderStripGroup = new ParamGroup(12, "Orders menu strip");
-        public static readonly ParamGroup AltMarkersGroup = new ParamGroup(13, "Hold ALT: formation markers, Athletics and fever bars"); // step 44 renamed it (was "Formation markers (hold ALT)"), step 46 again (was "... and fever marks")
-        public static readonly ParamGroup AdvancedGroup = new ParamGroup(14, "Advanced");
+        public static readonly ParamGroup CourageGroup = new ParamGroup(9, "Courage and cohesion (AI)"); // step 49 - after the fever (the AI's behaviour groups together)
+        public static readonly ParamGroup ImpactGroup = new ParamGroup(10, "Impact: staggers, shield drops, knockdowns"); // step 48 (IMPACT I2) - after the combat behaviour groups
+        public static readonly ParamGroup RefillGroup = new ParamGroup(11, "Refill");
+        public static readonly ParamGroup PlayerBarGroup = new ParamGroup(12, "Your Athletics bar");
+        public static readonly ParamGroup OrderStripGroup = new ParamGroup(13, "Orders menu strip");
+        public static readonly ParamGroup AltMarkersGroup = new ParamGroup(14, "Hold ALT: formation markers, Athletics and fever bars"); // step 44 renamed it (was "Formation markers (hold ALT)"), step 46 again (was "... and fever marks")
+        public static readonly ParamGroup AdvancedGroup = new ParamGroup(15, "Advanced");
 
         // ------------------------------------------------------------------ master switch
 
@@ -466,6 +467,119 @@ namespace TraxCombat.Core
         public static readonly ParamDef FeverSprintChancePercent = Int("FeverSprintChancePercent", 0, 100, FeverGroup,
             "Fever sprint: chance per roll (%)",
             "The chance of a fever sprint at each roll at the fever's start (and while it waits for the first enemy); it falls in a straight line with the fever left - half the fever left, half the chance; empty, none. Several sprints per fever are possible, rarer as it fades. 0 = never.");
+
+        // ------------------------------------------------------------------ courage and cohesion (step 49)
+        // Anton, 2026-10-17 night: AI men are unrealistically brave - a lone man circles a shield wall, stands exhausted among four enemies.
+        // Each AI man on foot weighs his side against the enemy near him by TOUGHNESS; short of courage he walks back to a bigger group of
+        // his side and only strikes what comes within reach (Core CourageMath, AI_NOTES "Step 49").
+
+        public static readonly ParamDef CourageEnabled = Bool("CourageEnabled", CourageGroup,
+            "Courage and cohesion",
+            "Every AI soldier on foot in a formation weighs his mates against the enemies near him - by how tough each one is (armour, level, wounds). Short of courage he is TIMID: far from his mates he walks back to a bigger group of his side, facing the enemy (sprinting when it is far); among them he holds and strikes only what comes within reach - no lone man circling your shield wall, no exhausted man standing among four enemies. A big enough crowd stays brave and wraps around a line as a mass. Never you, never riders, never men held in a shield wall. Works without the Athletics system (then tiredness does not count). Off: the game's own bravery - the log still measures, so flipping it mid-battle compares the two.");
+
+        public static readonly ParamDef CourageRadiusMetres = Float("CourageRadiusMetres", CourageMath.MinRadiusMetres, CourageMath.MaxRadiusMetres, CourageGroup,
+            "Courage: looks around him (m)",
+            "The circle a man weighs his mates and his enemies in. Men within half of it count in full, then less and less to 0 at its edge (so a man walking across the edge does not flip anybody's courage at once).");
+
+        public static readonly ParamDef CourageBaseOddsPercent = Int("CourageBaseOddsPercent", CourageMath.MinOddsPercent, CourageMath.MaxPercent, CourageGroup,
+            "Courage: odds a fresh man needs (%)",
+            "How strong his side must be around him, in percent of the enemy's strength there, for a fresh, steady soldier to stay brave: 100 = even odds. Tiredness, low morale and shock raise it; a fever and being a hero lower it. Lower = braver soldiers.");
+
+        public static readonly ParamDef CourageArmourWeightPercent = Int("CourageArmourWeightPercent", 0, CourageMath.MaxPercent, CourageGroup,
+            "Toughness: armour weight (% per 100 armour)",
+            "How much armour makes a man count: his toughness is x (1 + this % x his armour / 100) - head, body, legs and arms added up. At 200 a looter in rags (armour ~8) counts 1.16, a man in 110 armour 3.2.");
+
+        public static readonly ParamDef CourageLevelWeightPercent = Int("CourageLevelWeightPercent", 0, CourageMath.MaxPercent, CourageGroup,
+            "Toughness: level weight (% per 30 levels)",
+            "How much a man's level (his troop tier - his skill and experience) makes him count: x (1 + this % x level / 30), levels above 60 count as 60. At 100 a level-5 looter counts x1.17, a level-26 legionary x1.87. With the armour: about 4-5 looters per armoured veteran.");
+
+        public static readonly ParamDef CourageHealthWeightPercent = Int("CourageHealthWeightPercent", 0, 100, CourageGroup,
+            "Toughness: wounds weight (%)",
+            "A wounded man counts less: x (1 - this % x the share of his health he lost). At 50 a man at half health counts 75%.");
+
+        public static readonly ParamDef CourageHeavyWeaponPercent = Int("CourageHeavyWeaponPercent", 100, CourageMath.MaxPercent, CourageGroup,
+            "Toughness: an enemy with a two-hander (%)",
+            "An ENEMY who carries a two-handed weapon or a polearm and no shield counts this much more (150 = half again): a great axe breaks a guard and outreaches a sword - tired, shaken men will not stay against three or four such shock troops. Read once from his kit. 100 = no difference.");
+
+        public static readonly ParamDef CourageTiredWeightPercent = Int("CourageTiredWeightPercent", 0, CourageMath.MaxPercent, CourageGroup,
+            "Courage: tiredness raises the odds needed (%)",
+            "A tired man clings to his mates: the odds he needs x (1 + this % x the share of his Athletics bar he has spent). At 100 an empty man needs twice the odds of a fresh one. Not counted while the Athletics system is off.");
+
+        public static readonly ParamDef CourageMoraleWeightPercent = Int("CourageMoraleWeightPercent", 0, CourageMath.MaxPercent, CourageGroup,
+            "Courage: low morale raises the odds needed (%)",
+            "The game's own morale (0-100; men start at 35-65 and lose it as their side falls): below 50 the odds he needs x (1 + this % x (50 - morale) / 50). At 100 a man at morale 25 needs 1.5 times the odds. High morale adds nothing - that is the fever's job.");
+
+        public static readonly ParamDef CourageShockSeconds = Float("CourageShockSeconds", 0, 60, CourageGroup,
+            "Shock: lasts (s)",
+            "A man who was hit is SHOCKED for this many seconds: each landed hit in that window counts (and, once the impact system's effects are built, each stagger, knockdown or dropped shield), three = full shock. A shocked man needs higher odds, wants more mates around him and packs in tighter; shocked and badly outmatched he PANICS. 0 = no shock.");
+
+        public static readonly ParamDef CourageShockWeightPercent = Int("CourageShockWeightPercent", 0, CourageMath.MaxPercent, CourageGroup,
+            "Shock: raises the odds needed (%)",
+            "At full shock the odds he needs x (1 + this %): at 100 three hits in the window double them, one hit adds a third.");
+
+        public static readonly ParamDef CourageFeverPercent = Int("CourageFeverPercent", 0, 100, CourageGroup,
+            "Courage in a fever (%)",
+            "A man in his FEVER (the charge's surge - Aggression and fever) needs only this share of the odds while it is full, back to 100% as it burns out. At 40 a feverish man stays brave at 40% of the odds - the charge goes in; when it fades, the weak side's men pull back. 100 = the fever does not touch courage.");
+
+        public static readonly ParamDef CourageHeroPercent = Int("CourageHeroPercent", CourageMath.MinOddsPercent, 200, CourageGroup,
+            "Courage of heroes (%)",
+            "A hero (a lord, a companion) needs this share of the odds a soldier needs - they lead from the front. Their armour and level already make them count for a lot.");
+
+        public static readonly ParamDef CourageHysteresisPercent = Int("CourageHysteresisPercent", 0, 200, CourageGroup,
+            "Courage: brave again above (+%)",
+            "A timid man becomes brave again only when the odds are this much ABOVE what he needs (25 = 25% more) - so he does not flicker between brave and timid at the edge.");
+
+        public static readonly ParamDef CourageMinTimidSeconds = Float("CourageMinTimidSeconds", 0, 10, CourageGroup,
+            "Courage: timid at least (s)",
+            "Once timid a man stays timid at least this long, whatever the odds do.");
+
+        public static readonly ParamDef CourageRegroupRadiusMetres = Float("CourageRegroupRadiusMetres", 1, 30, CourageGroup,
+            "Regroup: close enough (m)",
+            "A timid man walks back only when he is farther than this from his group's centre; within it he has arrived and holds (half of it when shocked - shaken men pack in).");
+
+        public static readonly ParamDef CourageRegroupMates = Int("CourageRegroupMates", 0, 30, CourageGroup,
+            "Regroup: mates around him (men)",
+            "A timid man with at least this many mates within the courage circle is with his group - he holds there instead of walking (twice as many when shocked). 0 = timid men never walk back, they only hold.");
+
+        public static readonly ParamDef CourageFlockRadiusMetres = Float("CourageFlockRadiusMetres", 0, 100, CourageGroup,
+            "Regroup: a bigger group within (m)",
+            "A timid man walks to the nearest bigger group of his own side - the centre of his allies within this distance, when there are enough of them (below) - like sheep pushed into the flock; else to his formation's centre of mass. 0 = always the formation's centre.");
+
+        public static readonly ParamDef CourageFlockMinMen = Int("CourageFlockMinMen", 1, 100, CourageGroup,
+            "Regroup: a bigger group is (men)",
+            "How many allies within the distance above make a group worth running to.");
+
+        public static readonly ParamDef CourageSprintBack = Bool("CourageSprintBack", CourageGroup,
+            "Timid men sprint back",
+            "A timid man whose group is far (below), or who has several enemies near him, sprints back - spending only what he holds above his reserve (below). In a PANIC he sprints at once and may spend nearly everything. Needs the sprint and \"AI soldiers sprint on new orders\" on.");
+
+        public static readonly ParamDef CourageSprintMetres = Float("CourageSprintMetres", 0, 100, CourageGroup,
+            "Sprint back: the group farther than (m)",
+            "A timid man sprints back when his group's centre is farther than this.");
+
+        public static readonly ParamDef CourageSprintEnemies = Int("CourageSprintEnemies", 1, 30, CourageGroup,
+            "Sprint back: enemies near him (men)",
+            "...or when at least this many enemies are within the courage circle.");
+
+        public static readonly ParamDef CourageSprintKeepPercent = Int("CourageSprintKeepPercent", 0, 100, CourageGroup,
+            "Sprint back: reserve kept (%)",
+            "A timid man's sprint back spends only what he holds above this share of his full sprint store - a bit of his sprint, the rest kept for the fight.");
+
+        public static readonly ParamDef CouragePanicOddsPercent = Int("CouragePanicOddsPercent", 0, 100, CourageGroup,
+            "Panic: below these odds (%)",
+            "A SHOCKED man whose odds are below this share of what he needs PANICS: he sprints back at once, whatever the distance, and keeps only the panic reserve below. 0 = no panic.");
+
+        public static readonly ParamDef CouragePanicSprintKeepPercent = Int("CouragePanicSprintKeepPercent", 0, 100, CourageGroup,
+            "Panic: sprint reserve kept (%)",
+            "In a panic a man sprints everything above this share of his sprint store - his order's reserve and the normal sprint-back reserve do not hold him. 0 = all of it: panic uses all their energy.");
+
+        public static readonly ParamDef CourageTightenWeights = Bool("CourageTightenWeights", CourageGroup,
+            "Timid men stop hunting",
+            "While timid a man's own AI fights only an enemy within reach (below) and otherwise keeps to his place - the game's per-man behaviour weights, re-applied after every order (the game resets them). Brave again: the game's own. Off: timid men only walk back, their AI's eagerness untouched.");
+
+        public static readonly ParamDef CourageTimidMeleeMetres = Float("CourageTimidMeleeMetres", CourageMath.MinMeleeMetres, CourageMath.MaxMeleeMetres, CourageGroup,
+            "Timid men strike within (m)",
+            "A timid man still fights an enemy this close - beyond it his own place wins. 2 m is about a sword's reach.");
 
         // ------------------------------------------------------------------ impact (step 48 = IMPACT I2, docs/IMPACT.md §3 / §5)
         // Anton, 2026-10-17: kicks, bashes, blocks and clean hits may stagger, drop a shield or knock down, by both men's CURRENT
@@ -1036,6 +1150,11 @@ namespace TraxCombat.Core
             SprintAiAdvanceKeepPercent, SprintAiMoveKeepPercent,
             AiAggressionFreshPercent, AiAggressionExhaustedPercent, FeverEnabled, FeverPointsPerSecond, FeverAggressionPercent, FeverContactMetres, FeverShieldDurationMultiplier,
             FeverSprintToClose, FeverSprintMinMetres, FeverSprintMaxMetres, FeverSprintCheckSeconds, FeverSprintChancePercent,
+            CourageEnabled, CourageRadiusMetres, CourageBaseOddsPercent, CourageArmourWeightPercent, CourageLevelWeightPercent, CourageHealthWeightPercent,
+            CourageHeavyWeaponPercent, CourageTiredWeightPercent, CourageMoraleWeightPercent, CourageShockSeconds, CourageShockWeightPercent, CourageFeverPercent,
+            CourageHeroPercent, CourageHysteresisPercent, CourageMinTimidSeconds, CourageRegroupRadiusMetres, CourageRegroupMates, CourageFlockRadiusMetres,
+            CourageFlockMinMen, CourageSprintBack, CourageSprintMetres, CourageSprintEnemies, CourageSprintKeepPercent, CouragePanicOddsPercent,
+            CouragePanicSprintKeepPercent, CourageTightenWeights, CourageTimidMeleeMetres,
             ImpactEnabled, ImpactKicksEnabled, ImpactBlocksEnabled, ImpactHitsEnabled, ImpactRiposteEnabled, ImpactShadowMode,
             KickShieldDropMaxPercent, KickKnockdownMaxPercent, RightBlockStaggerMaxPercent, RightBlockShieldDropMaxPercent, RightBlockKnockdownMaxPercent,
             ParryStaggerMaxPercent, ParryKnockdownMaxPercent, WrongBlockStaggerMaxPercent, WrongBlockShieldDropMaxPercent, WrongBlockKnockdownMaxPercent,
@@ -1067,7 +1186,7 @@ namespace TraxCombat.Core
         /// <summary>The groups in order.</summary>
         public static readonly IReadOnlyList<ParamGroup> Groups = new[]
         {
-            MasterGroup, DamageGroup, AthleticsGroup, TiredGroup, StepBackGroup, BattlePaceGroup, BraceGroup, SprintGroup, FeverGroup, ImpactGroup, RefillGroup, PlayerBarGroup, OrderStripGroup, AltMarkersGroup, AdvancedGroup,
+            MasterGroup, DamageGroup, AthleticsGroup, TiredGroup, StepBackGroup, BattlePaceGroup, BraceGroup, SprintGroup, FeverGroup, CourageGroup, ImpactGroup, RefillGroup, PlayerBarGroup, OrderStripGroup, AltMarkersGroup, AdvancedGroup,
         };
 
         private static readonly Dictionary<string, ParamDef> ByKey = BuildIndex();

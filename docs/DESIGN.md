@@ -1047,6 +1047,33 @@ says (§2c).
 | `FeverSprintMaxMetres` | 12.0 | Step 43: no fever sprint without an enemy within this. Range 1-40. |
 | `FeverSprintCheckSeconds` | 1.0 | Step 43 (Anton: the sprint fades with the fever): seconds between a feverish man's fever-sprint rolls. Range 0.1-10. |
 | `FeverSprintChancePercent` | 50 | Step 43: the fever-sprint chance per roll at a full fever; × fever left ÷ full (half the fever, half the chance; empty, none). 0 = never. Range 0-100. |
+| `CourageEnabled` | true | Step 49 (Anton, 2026-10-17 night: "AI men are unrealistically brave"; §2 "Courage and cohesion"): every AI man on foot in a formation (not the player, riders, a siege's attackers, men held in a shield wall, busy / detached / routing men; field battles, sieges' defenders, hideouts - no tournaments, arenas, naval) is looked at every ~0.5 s: his side's toughness vs the enemy's within `CourageRadiusMetres`; below the required odds he is TIMID - walks back (far and short of mates) or holds (among them) with tightened behaviour weights. Gate: `ModEnabled` FIRST, then this; works without Athletics (the tiredness term then 0). Off = the game's AI at once (walks stopped, weights given back); the looks still measure. Live. |
+| `CourageRadiusMetres` | 6.0 | Step 49: the circle he weighs mates and enemies in (`Mission.GetNearbyAgents`); full weight to half of it, a line to 0 at its edge. Range 2-30. |
+| `CourageBaseOddsPercent` | 100 | Step 49: the odds (his side's toughness ÷ the enemy's, him included) a fresh, steady soldier needs; 100 = even. Range 10-500. |
+| `CourageArmourWeightPercent` | 200 | Step 49: toughness × (1 + this % × armour / 100), armour = his equipment's head + body + legs + arms (read once). Range 0-500. |
+| `CourageLevelWeightPercent` | 100 | Step 49: toughness × (1 + this % × min(level, 60) / 30) - the troop's skill and experience. With the armour: a looter (8, level 5) 1.35, a legionary (110, level 26) 5.97 = 4.4 looters. Range 0-500. |
+| `CourageHealthWeightPercent` | 50 | Step 49: toughness × (1 − this % × the health share he lost). Range 0-100. |
+| `CourageHeavyWeaponPercent` | 150 | Step 49 (Anton's addition: shock troops): an ENEMY carrying a two-handed weapon or a polearm and no shield (read once from his kit) counts × this %. Range 100-500. |
+| `CourageTiredWeightPercent` | 100 | Step 49: required × (1 + this % × (1 − his bar)), bar = points ÷ his FULL pool; 0 while Athletics is off. Range 0-500. |
+| `CourageMoraleWeightPercent` | 100 | Step 49: required × (1 + this % × max(0, 50 − morale) / 50) - the game's morale (`Agent.GetMorale`, 0-100). Range 0-500. |
+| `CourageShockSeconds` | 6.0 | Step 49 (Anton's addition: SHOCK): landed hits on him within this many seconds count (and live impact outcomes once an impact family applies); 3 = full shock. 0 = no shock. Range 0-60. |
+| `CourageShockWeightPercent` | 100 | Step 49: required × (1 + this % × min(shock events, 3) / 3). A shocked man also needs 2 × `CourageRegroupMates` and half `CourageRegroupRadiusMetres` (packs in). Range 0-500. |
+| `CourageFeverPercent` | 40 | Step 49: required × (1 − (1 − this %) × the fever's share - 1 armed, left ÷ full burning). Range 0-100. |
+| `CourageHeroPercent` | 75 | Step 49: a hero's required odds × this %. Range 10-200. |
+| `CourageHysteresisPercent` | 25 | Step 49: brave again only at required × (1 + this %). Range 0-200. |
+| `CourageMinTimidSeconds` | 2.0 | Step 49: a timid spell lasts at least this long. Range 0-10. |
+| `CourageRegroupRadiusMetres` | 5.0 | Step 49: a timid man farther than this from his target (the bigger group / the formation's centre) walks; within it he has arrived. Range 1-30. |
+| `CourageRegroupMates` | 4 | Step 49: a timid man with at least this many mates within the radius holds instead of walking; 0 = never walks. Range 0-30. |
+| `CourageFlockRadiusMetres` | 20.0 | Step 49 (Anton's addition: FLOCKING): the walk's target = the centroid of his side's men within this distance when at least `CourageFlockMinMen` are there, else his formation's `CachedAveragePosition`; 0 = always the formation. Range 0-100. |
+| `CourageFlockMinMen` | 6 | Step 49: allies within the flock radius that make a group worth running to. Range 1-100. |
+| `CourageSprintBack` | true | Step 49: a walking timid man sprints (step 33's AI sprint, the store above `CourageSprintKeepPercent`) when his target is farther than `CourageSprintMetres` or `CourageSprintEnemies` enemies are near; a regroup sprint does not end at 3 m from an enemy. Needs `SprintEnabled` + `SprintAiEnabled`. Live. |
+| `CourageSprintMetres` | 12.0 | Step 49: the target farther than this asks for the sprint back. Range 0-100. |
+| `CourageSprintEnemies` | 3 | Step 49: this many enemies within the radius ask for the sprint back. Range 1-30. |
+| `CourageSprintKeepPercent` | 50 | Step 49: the sprint back spends only the store above this share of his full store (its own reserve, in place of his order's). Range 0-100. |
+| `CouragePanicOddsPercent` | 50 | Step 49 (Anton's addition: PANIC): shocked AND odds below this % of the required = panic - he sprints at once whatever the distance. 0 = no panic. Range 0-100. |
+| `CouragePanicSprintKeepPercent` | 0 | Step 49: a panic sprint keeps only this share of his store (below his order's reserve). Range 0-100. |
+| `CourageTightenWeights` | true | Step 49: while timid his `HumanAIComponent.OverrideBehaviorParams`: Melee 10 → 6.5 at `CourageTimidMeleeMetres` → 0.01 1.5 m further, GoToPos 5 → 6 (7 m) → 6 - re-applied at every look (the game's `RefreshBehaviorValues` resets them on orders); brave again = `Agent.RefreshBehaviorValues(order, arrangement)` (the game's own set). Live. |
+| `CourageTimidMeleeMetres` | 2.0 | Step 49: a timid man's reach - his Melee weight stays above his GoToPos up to here. Range 0.5-6. |
 | `ImpactEnabled` | true | Step 48, IMPACT I2 (docs/IMPACT.md, §2 "Impact" below): the impact system - kicks / bashes, blocks and clean hits may stagger, drop a shield, knock down, by the PRESSURE x on the man who takes the blow (Core `ImpactMath`). Gate: `ModEnabled` FIRST, `AthleticsEnabled`, this. Live. |
 | `ImpactKicksEnabled` | true | Step 48: the kick / bash family (knockdown, shield drop, the longer reel, the slower get-up). Live. |
 | `ImpactBlocksEnabled` | true | Step 48: the block family - right-side shield block, weapon parry, wrong-side shield block (stagger, knockdown, wrong-side shield drop, the blocker's stun by tiredness). Live. |
