@@ -283,8 +283,7 @@ namespace TraxCombat.Hud
             {
                 ref var m = ref _frame.Marks[_frame.Order[k]];
                 if (m.Skip != FeverMarkSkip.None) continue;
-                nearest.Append(nearest.Length > 0 ? " | " : string.Empty).Append(FeverMarkMath.DescribeMark(in m));
-                if (m.HasBar) nearest.Append(", ").Append(AthleticsMarkMath.DescribeBar(in m));
+                nearest.Append(nearest.Length > 0 ? " | " : string.Empty).Append(AthleticsMarkMath.DescribeMan(in m));
                 if (m.InFever && !m.HasFever) nearest.Append(" (his fever bar off)");
                 shownNearest++;
             }
@@ -303,7 +302,7 @@ namespace TraxCombat.Hud
                 + "; screen " + OrderStripMath.Px(_frame.ScreenWidth) + " x " + OrderStripMath.Px(_frame.ScreenHeight) + " px, UI scale " + F2(_frame.Scale)
                 + "; " + (a.On ? a.Describe() : "Athletics bars off (" + AthleticsMarkMath.HiddenName(a.Hidden) + ")")
                 + "; fever " + (r.Hidden == FeverMarksHidden.None ? r.Describe() : "bars off (" + FeverMarkMath.HiddenName(r.Hidden) + ")")
-                + "; the nearest: " + nearest + "; source: " + _source!.Describe(), "hud-fever");
+                + "; the first drawn: " + nearest + "; source: " + _source!.Describe(), "hud-fever");
         }
     }
 }

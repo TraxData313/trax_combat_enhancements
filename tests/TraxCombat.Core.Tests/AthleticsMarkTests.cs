@@ -80,6 +80,18 @@ public class AthleticsMarkTests
         Assert.False(AthleticsMarkMath.ParseHex("red", out _, out _, out _, out _));
     }
 
+    [Fact]
+    public void The_log_names_a_calm_man_calm_and_a_man_in_a_fever_by_his_fever()
+    {
+        var calm = new FeverMark { Key = 7, Side = (int)MarkerTeam.Yours, Distance = 15.5f, ScreenX = 693, ScreenY = 540, HasBar = true, BarFill = 0.5f, BarUsable = 1f, Band = BarBand.Yellow };
+        Assert.Equal("yours man 7 at (693, 540), 15.5 m, calm, Athletics 50% yellow", AthleticsMarkMath.DescribeMan(in calm));
+        var hot = calm;
+        hot.InFever = true;
+        hot.Armed = true;
+        hot.HasBar = false;
+        Assert.Equal("yours man 7 at (693, 540), 15.5 m, armed", AthleticsMarkMath.DescribeMan(in hot));
+    }
+
     // ------------------------------------------------------------------ the stack
 
     [Fact]

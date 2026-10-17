@@ -183,6 +183,15 @@ namespace TraxCombat.Core
             return true;
         }
 
+        /// <summary>"yours man 17 at (950, 420), 12.3 m, armed, Athletics 100% green" / "…, calm, Athletics 50% yellow" - a man's whole mark for the
+        /// log (step 44's words for his fever when he has one; "calm" when not).</summary>
+        public static string DescribeMan(in FeverMark m)
+        {
+            string fever = FeverMarkMath.DescribeMark(in m);
+            if (!m.InFever) fever = fever.Substring(0, fever.LastIndexOf(", ", StringComparison.Ordinal)) + ", calm";
+            return m.HasBar ? fever + ", " + DescribeBar(in m) : fever;
+        }
+
         public static bool Wounded(in FeverMark m) => m.HasBar && m.BarUsable < WoundedBelow;
 
         /// <summary>"Athletics 72% yellow" / "… wounded to 60%" / "no Athletics bar" - log lines.</summary>

@@ -38,6 +38,8 @@ namespace TraxCombat.Tools
             public readonly Dictionary<int, Vec3> Feet = new Dictionary<int, Vec3>();
             public readonly Dictionary<int, int> Sides = new Dictionary<int, int>();
             public readonly HashSet<int> NotPlaced = new HashSet<int>();
+            public readonly HashSet<int> Riders = new HashSet<int>();                       // step 46: their bars go RiderLiftMetres higher
+            public bool ThrowInLocate;                                                        // step 46: the fail safe mid-walk
             public int Projections;
             public int Shows;
 
@@ -60,13 +62,15 @@ namespace TraxCombat.Tools
 
             public bool Locate(Agent agent, float heightMetres, ref FeverMark m)
             {
+                if (ThrowInLocate) throw new InvalidOperationException("smoke: the ALT-bar placement failed");
                 int i = agent.Index;
                 if (NotPlaced.Contains(i) || !Feet.TryGetValue(i, out var p)) return false;
                 m.Key = i;
                 m.Side = Sides.TryGetValue(i, out int side) ? side : (int)MarkerTeam.Yours;
+                m.Mounted = Riders.Contains(i);
                 m.WorldX = p.x;
                 m.WorldY = p.y;
-                m.WorldZ = p.z + heightMetres;
+                m.WorldZ = p.z + AthleticsMarkMath.MarkHeight(heightMetres, m.Mounted);
                 float dx = m.WorldX - CameraX, dy = m.WorldY, dz = m.WorldZ - CameraZ;
                 m.Distance = (float)Math.Sqrt(dx * dx + dy * dy + dz * dz);
                 m.InFront = dy > 0f;
@@ -95,6 +99,7 @@ namespace TraxCombat.Tools
             S.Set(SettingsSchema.FeverMarkHeight, 5, SettingSources.File);
             S.Set(SettingsSchema.FeverMarkHeightMetres, 2.5, SettingSources.File);
             S.Set(SettingsSchema.HudRefreshSeconds, 0.1, SettingSources.File);
+            S.Set(SettingsSchema.ShowAthleticsMarks, false, SettingSources.File);             // step 44's checks run without step 46's bars
         }
 
         private static class FeverColors
@@ -124,7 +129,7 @@ namespace TraxCombat.Tools
         // ------------------------------------------------------------------ the prefab
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        private static void FeverMarksPrefabIsValid() => PrefabIsValid(FeverMarkView.Movie, typeof(FeverMarksVM), 5, 40);
+        private static void FeverMarksPrefabIsValid() => PrefabIsValid(FeverMarkView.Movie, typeof(FeverMarksVM), 12, 90); // step 46: + the Athletics bar
 
         // ------------------------------------------------------------------ the view over the real logic's fevers
 
@@ -154,7 +159,7 @@ namespace TraxCombat.Tools
                 logic.SmokePlayer = me.Agent;
                 var behind = FeverMan(logic, body, src, 105, 0, 0f, -10f);
                 var close = FeverMan(logic, body, src, 106, 0, 0f, 1f);
-                var aside = FeverMan(logic, body, src, 107, 0, 100f, 10f);                        // far off the screen's side (100.5 m)
+                var aside = FeverMan(logic, body, src, 107, 0, 12f, 5f);                          // off the screen's side, 13 m - nearer than most (step 46: never takes a slot)
                 var gone = FeverMan(logic, body, src, 108, 0, 1f, 12f);
                 src.NotPlaced.Add(108);
                 for (int s = 0; s < 3; s++) body.Orders[s] = BraceOrderKind.Stop;
@@ -186,7 +191,7 @@ namespace TraxCombat.Tools
                 // vanilla's markers hidden: nothing, said once
                 view.Tick(Frame(t, player));
                 Check(!view.IsLayerUp && layer.Created == 0 && view.LastDecision == HudHide.ViewCondition, "the marks are up with vanilla's markers hidden");
-                LogHas("[hud] fever marks: not shown at " + TraxHudView.S1(t) + " s - the game's markers are hidden (ALT not held, the orders menu closed)");
+                LogHas("[hud] ALT bars: not shown at " + TraxHudView.S1(t) + " s - the game's markers are hidden (ALT not held, the orders menu closed)");
 
                 // 1. vanilla shows its markers: three marks - yours armed, yours burning, the enemy's - and every skip counted
                 src.Shown = true;
@@ -211,11 +216,13 @@ namespace TraxCombat.Tools
                 float far = FeverMarkMath.SizeFactor((float)Math.Sqrt(5 * 5 + 30 * 30));          // 30.4 m: a little smaller (0.9)
                 Check(m2.Fill == 1f && far < 0.91f && Math.Abs(m2.Width - 22f * far) < 1e-3f && Math.Abs(m2.PositionX - (960f - 1000f * 5f / 30f - 11f * far)) < 1e-3f,
                     "the enemy's mark misplaced: " + m2.PositionX + " w " + m2.Width);
-                LogHas("[hud] fever marks: layer created at ");
-                LogHas("[hud] fever marks: first marks drawn at " + TraxHudView.S1(t) + " s (show #1) - 7 men in a fever (yours and allies 5, enemy 1; armed 6, burning 1), 3 marks drawn; "
+                LogHas("[hud] ALT bars: layer created at ");
+                LogHas("[hud] ALT bars: first bars drawn at " + TraxHudView.S1(t) + " s (show #1) - 7 men looked at (yours and allies 5, enemy 1), 7 in a fever (armed 6, burning 1); "
+                       + "3 men marked: 0 Athletics bars (green 0, blue 0, yellow 0, orange 0, red 0; wounded 0), 3 fever bars; "
                        + "skipped: not on the field 1, behind the camera 1, closer than 1.5 m 1, off the screen 1; screen 1920 x 1080 px, UI scale 1.00; "
-                       + "marks 22 x 5 UI px (smaller far away; the game's UI scale applies), 2.5 m above his feet, at most 200 a frame (FeverMarkMax - the nearest to the camera), the enemy's too; "
-                       + "the nearest: yours man 100 at (960, 540), 20.0 m, armed | yours man 101 at (1460, 540), 11.2 m, burning 70% left | enemy man 102 at (793, 540), 30.4 m, armed; source: stand-in camera");
+                       + "Athletics bars off (ShowAthleticsMarks off); "
+                       + "fever marks 22 x 5 UI px (smaller far away; the game's UI scale applies), 2.5 m above his feet, at most 200 a frame (FeverMarkMax - the nearest to the camera), the enemy's too; "
+                       + "the first drawn: yours man 100 at (960, 540), 20.0 m, armed | yours man 101 at (1460, 540), 11.2 m, burning 70% left | enemy man 102 at (793, 540), 30.4 m, armed; source: stand-in camera");
 
                 // 2. the player down: still shown (vanilla's markers show without him)
                 view.Tick(Frame(t += 0.05, null));
@@ -229,13 +236,13 @@ namespace TraxCombat.Tools
                 view.Tick(Frame(t += 0.05, player));
                 Check(view.DrawnNow == 3, "FeverMarksShowEnemy on: the enemy's mark did not come back");
 
-                // 4. the cap: FeverMarkMax 2 - the nearest two ON THE SCREEN (11.2 m, 20 m); the man far off its side (100 m) was projected
-                //    and dropped before the pick, so he takes no slot; the enemy at 30 m waits
+                // 4. the cap: FeverMarkMax 2 - the nearest two ON THE SCREEN (11.2 m, 20 m); the man off its side (13 m - nearer than the 20 m
+                //    man) is projected and dropped, so he takes no slot; the enemy at 30 m waits and (step 46) is never projected
                 S.Set(SettingsSchema.FeverMarkMax, 2, SettingSources.Mcm);
                 int projections = src.Projections;
                 view.Tick(Frame(t += 0.05, player));
                 fr = view.LastFrame;
-                Check(view.DrawnNow == 2 && fr.Skipped[(int)FeverMarkSkip.Capped] == 1 && fr.Skipped[(int)FeverMarkSkip.OffScreen] == 1 && src.Projections - projections == 4
+                Check(view.DrawnNow == 2 && fr.Skipped[(int)FeverMarkSkip.Capped] == 1 && fr.Skipped[(int)FeverMarkSkip.OffScreen] == 1 && src.Projections - projections == 3
                       && Math.Abs(marks[0].PositionX - 1449f) < 1e-3f && marks[1].PositionX == 949f && !marks[2].IsShown,
                     "the cap of 2: drawn " + view.DrawnNow + ", capped " + fr.Skipped[(int)FeverMarkSkip.Capped] + ", projected " + (src.Projections - projections));
                 S.Set(SettingsSchema.FeverMarkMax, 200, SettingSources.Mcm);
@@ -309,7 +316,7 @@ namespace TraxCombat.Tools
                 S.Set(SettingsSchema.FeverEnabled, false, SettingSources.Mcm);
                 view.Tick(Frame(t += 0.05, player));
                 Check(!layer.Up && view.LastDecision == HudHide.ViewCondition, "FeverEnabled off: the marks stayed");
-                LogHas("[hud] fever marks: FeverEnabled switched off at " + TraxHudView.S1(t) + " s - no fevers, the marks go");
+                LogHas("[hud] ALT bars: FeverEnabled switched off at " + TraxHudView.S1(t) + " s - no fevers, the fever bars go");
                 Check(!AthleticsLogic.TryGetFever(armed.Agent, out _, out _), "TryGetFever read a fever with FeverEnabled off");
                 S.Set(SettingsSchema.FeverEnabled, true, SettingSources.Mcm);
                 view.Tick(Frame(t += 0.05, player));
@@ -346,12 +353,13 @@ namespace TraxCombat.Tools
                 Check(!layer.Up, "mission end: the marks stayed");
                 ((List<TraxHudView>)typeof(AthleticsLogic).GetField("_hudViews", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(logic)!).Add(view);
                 typeof(AthleticsLogic).GetMethod("WriteHudSummary", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(logic, null);
-                LogHas("[summary] hud: fever marks (movie TraxFeverMarks) - on screen ");
-                LogHas("[summary] hud: fever marks - shown 6x, on screen ");
-                LogHas("; marks a frame: mean ");
-                LogHas(", max 3; most men in fever at once 7 (yours and allies 5, enemy 1); frames at the cap 1 (FeverMarkMax 2 at the first - the nearest drawn); men skipped, summed over frames: not on the field ");
+                LogHas("[summary] hud: ALT bars (movie TraxFeverMarks) - on screen ");
+                LogHas("[summary] hud: ALT bars - shown 6x, on screen ");
+                LogHas("; men marked a frame: mean ");
+                LogHas(", max 3; Athletics bars a frame: mean 0.0, max 0; fever bars a frame: mean ");
+                LogHas(", max 3; most men looked at in a frame 7 (yours and allies 5, enemy 1), most in a fever 7; frames at the cap 1 (FeverMarkMax 2 at the first - the nearest drawn); men skipped, summed over frames: not on the field ");
                 LogHas(", beyond the cap 1; cost ");
-                Check(Occurrences(LogText, "[hud] fever marks: first marks drawn", logFrom) == 1, "the first marks were logged more than once");
+                Check(Occurrences(LogText, "[hud] ALT bars: first bars drawn", logFrom) == 1, "the first bars were logged more than once");
                 logic.SmokePlayer = null;
             }
             finally
@@ -390,7 +398,7 @@ namespace TraxCombat.Tools
                 S.Set(SettingsSchema.ModEnabled, false, SettingSources.Mcm);
                 view.Tick(Frame(932, player));
                 Check(!layer.Up && view.LastDecision == HudHide.ModOff && !AthleticsLogic.TryGetFever(man.Agent, out _, out _), "mod off: the fever mark stayed (or the fever read)");
-                LogHas("[hud] fever marks: layer removed at 932.0 s - ModEnabled off (the master switch)");
+                LogHas("[hud] ALT bars: layer removed at 932.0 s - ModEnabled off (the master switch)");
                 S.Set(SettingsSchema.ModEnabled, true, SettingSources.Mcm);
                 view.Tick(Frame(933, player));
                 Check(layer.Up && layer.Created == 2 && view.DrawnNow == 1, "mod back on: the fever mark did not come back");
@@ -426,7 +434,7 @@ namespace TraxCombat.Tools
             // and the DISABLED line prove the error; never more than one)
             Check(view.IsDisabled && !layer.Up && view.Stats.Errors == 1 && TraxLog.ErrorCount - errors <= 1,
                 "a failing read did not disable the fever marks (or logged twice): disabled " + view.IsDisabled + ", layer up " + layer.Up + ", view errors " + view.Stats.Errors);
-            LogHas("[hud] fever marks: an error in tick at 41.0 s (InvalidOperationException: smoke: the fever-mark read failed - stack in the [error] line) - DISABLED for the rest of this battle");
+            LogHas("[hud] ALT bars: an error in tick at 41.0 s (InvalidOperationException: smoke: the fever-mark read failed - stack in the [error] line) - DISABLED for the rest of this battle");
             Check(view.MarkStats.SummaryLine(view.Stats.Errors).EndsWith("; errors 1", StringComparison.Ordinal), "the summary does not count the error");
 
             var orphan = new FeverMarkView();
