@@ -1022,6 +1022,31 @@
   // (range 0.0 to 10.0)
   "ImpactMessageMinSeconds": 1.5,
 
+  // Step 54: when the man an AI soldier fights is reeling from a stagger or lies knocked down
+  // (by this impact system - yours too), the soldier presses the opening: he decides to attack
+  // as eagerly as the setting below for as long as it lasts (+ a short grace), and a timid man
+  // close to him steps in for it. Both sides; never you (you punish with your own hands). Off =
+  // the AI ignores the openings.
+  // (true or false)
+  "ImpactPunishEnabled": true,
+
+  // How eagerly an AI soldier decides to attack a reeling or downed enemy, as a share of the
+  // game's own AI (100 = the game's full eagerness; the aggression setting's 60% fresh / 20%
+  // empty and a fever's 80% are raised to it, never lowered).
+  // (range 0 to 200)
+  "ImpactPunishAggressionPercent": 100,
+
+  // The opening lasts this much longer than the stagger or the time on the ground - a swing
+  // started just as he recovers still counts.
+  // (range 0.0 to 3.0)
+  "ImpactPunishGraceSeconds": 0.5,
+
+  // A TIMID soldier (courage) whose enemy reels or lies down within this many metres of him
+  // steps in for the opening, like a surge - brave until it closes. Farther away he keeps his
+  // distance. 0 = timid men never do.
+  // (range 0.0 to 10.0)
+  "ImpactPunishRangeMetres": 3.0,
+
   // How much an outmatched man suffers: every doubling of the mismatch beyond the even band
   // adds this to the pressure on him (0.25: an enemy four times stronger counts as much as
   // being about a third tired). 0 = only tiredness counts.

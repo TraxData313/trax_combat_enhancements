@@ -69,6 +69,9 @@ namespace TraxCombat.Core
         /// <summary>Step 49b: a SURGE - a timid man among his mates steps in for CourageSurgeSeconds.</summary>
         Surge,
 
+        /// <summary>Step 54: the enemy he faces reels or lies down within ImpactPunishRangeMetres - he steps in for the window (like a surge).</summary>
+        PunishWindow,
+
         Count,
     }
 
@@ -664,6 +667,7 @@ namespace TraxCombat.Core
             CourageEnd.Error => "an error",
             CourageEnd.FeverPress => "his fever pressed on (not shocked)",
             CourageEnd.Surge => "a surge",
+            CourageEnd.PunishWindow => "an enemy reeling / down close by (step 54)",
             _ => e.ToString(),
         };
 

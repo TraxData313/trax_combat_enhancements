@@ -779,6 +779,22 @@ namespace TraxCombat.Core
             "On-screen lines: at most one every (s)",
             "The shortest time between two of these lines; what happens meanwhile is merged into the next one (\"You knock Aldric down; your shield is knocked away\"). 0 = a line for every tick that has something.");
 
+        public static readonly ParamDef ImpactPunishEnabled = Bool("ImpactPunishEnabled", ImpactGroup,
+            "The AI punishes a staggered or downed man",
+            "Step 54: when the man an AI soldier fights is reeling from a stagger or lies knocked down (by this impact system - yours too), the soldier presses the opening: he decides to attack as eagerly as the setting below for as long as it lasts (+ a short grace), and a timid man close to him steps in for it. Both sides; never you (you punish with your own hands). Off = the AI ignores the openings.");
+
+        public static readonly ParamDef ImpactPunishAggressionPercent = Int("ImpactPunishAggressionPercent", 0, 200, ImpactGroup,
+            "Punish: attack eagerness in an opening (%)",
+            "How eagerly an AI soldier decides to attack a reeling or downed enemy, as a share of the game's own AI (100 = the game's full eagerness; the aggression setting's 60% fresh / 20% empty and a fever's 80% are raised to it, never lowered).");
+
+        public static readonly ParamDef ImpactPunishGraceSeconds = Float("ImpactPunishGraceSeconds", 0, 3, ImpactGroup,
+            "Punish: grace after the opening (s)",
+            "The opening lasts this much longer than the stagger or the time on the ground - a swing started just as he recovers still counts.");
+
+        public static readonly ParamDef ImpactPunishRangeMetres = Float("ImpactPunishRangeMetres", 0, 10, ImpactGroup,
+            "Punish: a timid man steps in within (m)",
+            "A TIMID soldier (courage) whose enemy reels or lies down within this many metres of him steps in for the opening, like a surge - brave until it closes. Farther away he keeps his distance. 0 = timid men never do.");
+
         public static readonly ParamDef ImpactMismatchWeight = Float("ImpactMismatchWeight", 0, 2, ImpactGroup,
             "Mismatch weight (pressure per doubling)",
             "How much an outmatched man suffers: every doubling of the mismatch beyond the even band adds this to the pressure on him (0.25: an enemy four times stronger counts as much as being about a third tired). 0 = only tiredness counts.");
@@ -1214,6 +1230,7 @@ namespace TraxCombat.Core
             ImpactMomentumEnabled, ImpactMomentumPercent, ImpactMomentumWalkMetresPerSecond, ImpactMomentumSprintMetresPerSecond,
             ImpactMomentumRiderPercent, ImpactMomentumRiderWalkMetresPerSecond, ImpactMomentumRiderGallopMetresPerSecond,
             ImpactShowMessages, ImpactMessagesIncludeYourMen, ImpactMessageMinSeconds,
+            ImpactPunishEnabled, ImpactPunishAggressionPercent, ImpactPunishGraceSeconds, ImpactPunishRangeMetres,
             ImpactMismatchWeight, ImpactEvenBandDoublings, ImpactBodyExponent, ImpactBodyFloorPoints, ImpactStaggeredBonus, ImpactDamageWeight,
             ImpactRefWeightKg, ImpactWeightExponent, ImpactRefSwingSpeed, ImpactSpeedExponent, ImpactBluntFactor, ImpactCutFactor, ImpactPierceFactor,
             ImpactKickFactor, ImpactBashFactor, ImpactSkillMinFactor, ImpactSkillMaxFactor,

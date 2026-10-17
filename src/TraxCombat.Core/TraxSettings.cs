@@ -387,6 +387,10 @@ namespace TraxCombat.Core
         public bool ImpactShowMessages => GetBool(SettingsSchema.ImpactShowMessages);
         public bool ImpactMessagesIncludeYourMen => GetBool(SettingsSchema.ImpactMessagesIncludeYourMen);
         public float ImpactMessageMinSeconds => GetFloat(SettingsSchema.ImpactMessageMinSeconds);
+        public bool ImpactPunishEnabled => GetBool(SettingsSchema.ImpactPunishEnabled);
+        public int ImpactPunishAggressionPercent => GetInt(SettingsSchema.ImpactPunishAggressionPercent);
+        public float ImpactPunishGraceSeconds => GetFloat(SettingsSchema.ImpactPunishGraceSeconds);
+        public float ImpactPunishRangeMetres => GetFloat(SettingsSchema.ImpactPunishRangeMetres);
         public float ImpactMismatchWeight => GetFloat(SettingsSchema.ImpactMismatchWeight);
         public float ImpactEvenBandDoublings => GetFloat(SettingsSchema.ImpactEvenBandDoublings);
         public float ImpactBodyExponent => GetFloat(SettingsSchema.ImpactBodyExponent);
