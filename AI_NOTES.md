@@ -4853,3 +4853,101 @@ through the logic, the SHOCK CHARGE, the cost) + the master-switch step's clean-
 - The guide: HOW-IT-WORKS §11c has the kicks', blocks', clean hits' and momentum tables (computed with the defaults - recompute if a default
   moves).
 - `ImpactHitLiveStats.NoteMomentum` counts every family's decisions - the riders' line belongs there too.
+
+## Step 53 — IMPACT I6, riders + the on-screen lines + the guide (DONE 2026-10-18)
+
+**The brief (Anton asleep - "get all done by morning, decide open questions")**: a rider's knockdown = KNOCKED OFF his horse at the model's
+chance × 50 % (IMPACT §8 q4) through the decorator's dismount question (verify its thread), a blocked rider through our own blow with the
+dismount flag, never a forced stagger on a rider, the rider's shield drop (decide), horses untouched; RIDER MOMENTUM (Claude's call - the
+horse's speed for a rider's swung blows, the couched lance excluded; a cavalry charge into a tired line sends men flying but never one-shots
+everything); §8 q12's on-screen lines (rate-limited, merged, the game's colours, only yours / also your men's notable, never in shadow or
+"(would)" - decide); the guide's ONE section; the playtest's morning script + D22; measure, tests, smoke.
+
+**The decompile (Mission.cs, v1.4.8)**: `CreateMeleeBlow` (5496, inside `MeleeHitCallback` - `[MBCallback]`, the MAIN thread) asks
+`DecideAgentShrugOffBlow` first, then for a HUMAN victim: `if (MountAgent != null && MountAgent.RiderAgent == victim) DecideAgentDismountedByBlow
+→ BlowFlags.CanDismount` ELSE KnockBack + KnockDown. So the KnockDown seam NEVER sees a rider - the dismount seam IS his (5564; the missile path
+5870 is never ours). Vanilla's own answer (MissionCombatMechanicsHelper.DecideAgentDismountedByBlow) needs `attackerWeapon != null`, enough
+health left and no ShrugOff flag; ours is OR-ed on top. The flag is consumed natively (the engine's blow handling) - so our blow for a blocking
+rider carries exactly `BlowFlags.CanDismount` (RegisterBlow, lever 6's recipe). A rider's velocity, vanilla's way
+(GetAgentVelocityContribution): `rider.MovementVelocity.y × MountAgent.GetMovementDirection()`. A couched lance = a PASSIVE attack
+(`Agent.IsDoingPassiveAttack`, native, main thread - Mission.cs 5337 shows the game's own "couched lance damage" lines). The game's message
+colours (Mission.cs 5337-5350): delivered #AE4AD9FF, received #D65252FF. Horse speed = `MountSpeed` 0.22 × (1 + the speed stat): a 45-speed
+horse ~10 m/s at a gallop.
+
+**How it is applied** (`Missions/AthleticsLogic.ImpactRiders.cs`, Core `ImpactRiders.cs`)
+- `ImpactDecide`: `riderLive = Applies(family) && DefenderMounted` - a rider's decision applies and WRITES his state like anyone's (steps 50-52
+  decided riders on copies); `ApplyRider` instead of ApplyKick / ApplyHit / ApplyBlock (+ ApplyBlock riposte-only when a mounted blocker
+  ripostes a man on foot).
+- Landed blow: `TraxDamageModel.DecideAgentDismountedByBlow` = base OR `ImpactHooks.DismountOnBlow` → the logic's `IDismountDecider` sets
+  `_inDismountSeam` and calls the same `ImpactModelOnLandedBlow` as the KnockDown seam (decided ONCE, OnMeleeHit takes it). `ApplyRider`
+  answers `d.Dismount` only inside that seam (elsewhere: `OutsideSeam`, his record's ground time taken back), lever `ImpactLever.Dismount`.
+- Block: `QueueRiderBlow` → `_riderPending` (32) → `RunRiderPending` from the tick (blocks live, Dismount + OwnBlow levers on, the shared
+  per-tick call budget, still mounted - else `NoHorse`) → `IImpactBody.OwnDismountBlow` (the drowning-blow recipe, `CanDismount`, 1 damage, owned
+  by the attacker; refuses a man on foot / a horse / a game object). Its error disables `Dismount` alone.
+- Every dismount answered / registered is followed (`_riderChecks` 32): off the horse = SEEN (the seconds kept), still on after
+  `ImpactRiderMath.SeenWithinSeconds` 2 = NOT SEEN → `GotUp(now, 0)` (no ground time / immunity from a fall that never came).
+- The shield: the step-50 drop queue with `ImpactLiveDrop.Rider` (counted in the riders' stats) and `By` (the on-screen line's attacker).
+- Never a stagger: the model refuses it (`ImpactRefusal.Rider`), `CanForce` refuses any forced action on a mounted man; a rider's kick reel is
+  never watched / slowed. The block stun: `SnapshotTired` no longer writes 0 on a horse (IMPACT §3.8 "stun multipliers apply").
+- Rider momentum: `ImpactFacts.AttackerPassive`; `MomentumFactor(r, speed, mounted, passive)` - a rider at `ImpactMomentumRider*`, a passive
+  attack 1; `RiderSpeedBand`; `ImpactHitLiveStats.NoteMomentum(d, band, mounted, passive)` fills `RiderBlowsBy` (+ couched lances apart) and the
+  momentum line's `|| RIDERS` part.
+- The lines: `ImpactMessage(kind, by, to)` called ONLY where an outcome was really carried out (ApplyKick's / ApplyHit's knockdown answer,
+  RunOwnBlow, RunStagger - a guard broken / a riposte -, RunLiveDrops' drop, the two dismount paths) → Core `ImpactMessageQueue` (role: to you /
+  by you / your men; texts built only then) → `TickImpactMessages` from TickImpact (own try) → `IImpactMessageSink` (the game's
+  `InformationManager.DisplayMessage` in the game's colours; `ImpactMessageSinkDefault` - the smoke swaps it with the impact body). Switch off /
+  master switch off = what waits thrown away (counted). Every shown line is also logged (`[impact] on screen at … (#hex): …`).
+
+**Claude's calls (DESIGN decision 45)** - in short: (a) the dismount seam decides a landed blow on a rider once; (b) a block = our
+CanDismount blow, refused with no call when the horse is gone; (c) a rider's shield drops at the foot chance (kicks / bashes and wrong-side
+blocks - DropItem is vanilla's drop key, works mounted); (d) no slowed get-up after a dismount (the saddle fall is a different, unproven
+action) - the record keeps the model's ground time, a not-seen dismount takes it back; (e) the block stun applies to riders; (f) RIDER
+MOMENTUM for every ACTIVE blow (swing or thrust) at +30 % at 10 m/s, none to 3 m/s - half a man's sprint, below a sprinting man on foot; the
+couched lance never; the horse's own charge is not our event; (g) lines only for what was applied, never "(would)"; a broken guard on YOUR
+block is not shown (too frequent); your men's lines only knocked down / off with a HERO on the receiving end; (h) one line per 1.5 s, merged
+(3 parts + "(+N more)", duplicates once) - first line at once.
+
+**Settings** (6, Live, after `ImpactMomentumSprintMetresPerSecond`): `ImpactMomentumRiderPercent` 30 (0-200), `ImpactMomentumRiderWalkMetresPerSecond`
+3.0 (0-20), `ImpactMomentumRiderGallopMetresPerSecond` 10.0 (0.5-30), `ImpactShowMessages` true, `ImpactMessagesIncludeYourMen` false,
+`ImpactMessageMinSeconds` 1.5 (0-10). 244 → 250 settings; no config-format bump (no default moved). `ImpactLever.Dismount` (LeverCount 9),
+`ImpactNotApplied.NoHorse` (NotAppliedCount 10).
+
+**Measured (smoke - the stand-in body plays what the engine should)**: an exhausted rider's clean hit: 25 % (50 % × 50 %), knocked off in the
+seam and seen; a blocking rider knocked off by our blow and seen; NoHorse / not seen after 2 s → the record fixed. **THE CAVALRY CHARGE** (200
+men each, a fresh rider's 1.2 kg sword, hit once, seeded): a 40 % line - standing 3 % down (any outcome 40 %), a canter 7 % (51 %), a gallop
+10 % (50 %); an exhausted line 45 % (88 %); a FRESH line 0; a man SPRINTING on foot into the 40 % line 26 %. The guide's model numbers (Core,
+no dice): the gallop into a 40 % line 48 % staggered / 13 % down vs standing 37 / 5; into a 25 % line 75 / 44 (standing 68 / 35). Cost: 1000
+men (half riders), 20 landed blows + 20 blocks on riders a tick - **0.04 ms a tick, 0 bytes**. Tests 799 → 810 (`ImpactRidersTests` 11 + the
+momentum test's rider half); smoke 116 → 119 steps (+ the master-switch step's riders part; the older rider checks moved to step 53's behaviour).
+
+**The guide** (HOW-IT-WORKS §11c, one section "Staggers, shield drops and knockdowns"): the idea, the ceilings per blow, two even men by bar,
+two equally tired men, the king and the man both ways, you and a tournament king, the stick and the axe, the riposte, a reeling man, the shock
+charge, THE CAVALRY CHARGE, riders, how long, the limits, you + the lines, the cross-references (courage, fever, tired blocks), the settings in
+small print - every number from Core ImpactMath with the shipped defaults (a scratch console in the session's scratchpad, `guidecalc`, built on
+TraxCombat.Core: `new TraxSettings()` = defaults.json). README / the Steam text untouched (release text is Anton's call).
+
+**Gotchas**
+- The engine's KnockDown question is never asked for a rider: older smoke checks that drove a rider through `DecideAgentKnockedDownByBlow`
+  now expect `OutsideSeam` (riders' stats), not the step-50-52 `Rider` not-applied reason.
+- A dismount writes the KnockedDown state (ground time + 5 s immunity) - a kick on the same man seconds later is `knockdown immunity` and rolls
+  no knockdown die (the smoke's dice order).
+- Smart App Control blocked the test DLL once again (per hash); a rebuild after the next source change cleared it.
+
+**UNVERIFIED — only the game can tell (PLAYTEST D22)**
+1. The engine plays a dismount from our `DecideAgentDismountedByBlow` answer (`SEEN off the horse` ≈ APPLIED, seam).
+2. The engine plays a dismount from our own `CanDismount` blow (`SEEN` ≈ APPLIED, our blow) - if not: a KnockDown-flagged blow or a
+   crush-through, or vanilla's own dismount path; tell Claude.
+3. `RiderSpeedInto` reads sane horse speeds (the RIDERS columns' `galloping` fills in a cavalry charge) and `IsDoingPassiveAttack` is true at a
+   couched lance's hit (couched lances counted).
+4. A rider's block stun lengthened looks fine; a dropped rider's shield falls (DropItem mounted).
+5. The lines feel helpful, not noisy (1.5 s).
+
+**For step 54 (I7, optional - the AI using the window)**
+- The seams are there: every applied outcome passes `ImpactMessage(kind, by, to)`'s call sites and writes the victim's `ImpactState`
+  (`Reeling(now)`, `Down(now)`); a short burst of the AI's attack decisions (step 43's `AIAttackOnDecideChance` lever through the stat decorator)
+  for an attacker whose TARGET is reeling / down would read `TrackedAgent.Impact` of `Agent.GetTargetAgent()` in the fever's poll - measure attacks
+  per man-minute on staggered targets vs calm ones first (the summary has no such line yet).
+- If D22 shows `still mounted` ≈ applied for one way: switch that way to the other lever (our blow for landed blows too, or the seam for blocks is
+  impossible - the engine never registers a blocked blow).
+- If the cavalry charge feels weak / strong: `ImpactMomentumRiderPercent` (30) and the gallop reference (10 m/s) are the knobs; a lance thrust
+  (not couched) gets the bonus today - a per-strike-type weight would be a new setting.

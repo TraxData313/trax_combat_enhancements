@@ -135,7 +135,16 @@ learned from untouched controls), the measured end = the reeling time; tired men
 every family; MOMENTUM (Anton: "a fresh shock unit attacking a tired line must be devastating") - the attacker's own speed toward the victim
 (`ImpactFacts.AttackerSpeed`, vanilla's velocity formula) × (1 + `ImpactMomentumPercent` 60 % × clamp((v − 2.0) ÷ (7.0 − 2.0))) on every
 family's impact, never a rider's; `ImpactHitLiveStats` - the `[summary] impact momentum` line (every decided blow by the attacker's speed band:
-the proof of the shock charge) and the clean hits by weapon class × band (PLAYTEST D21; DESIGN decision 44). COURAGE AND COHESION (step 49, `CourageEnabled`, Anton 2026-10-17 night: "AI men are
+the proof of the shock charge) and the clean hits by weapon class × band (PLAYTEST D21; DESIGN decision 44). Step 53 (I6): RIDERS + THE
+ON-SCREEN LINES + THE GUIDE - a rider's knockdown = KNOCKED OFF his horse at `ImpactRiderDismountPercent` 50 % (the model's `Dismount`): a landed
+blow answered in the decorator's `DecideAgentDismountedByBlow` (`IDismountDecider`, main thread - the engine asks it INSTEAD of the KnockDown
+question for a rider), a blocking rider by our own blow flagged `CanDismount` from the tick (`IImpactBody.OwnDismountBlow`), each followed until
+seen off the horse (2 s); never a stagger / slowed reaction on a rider, his shield drops, his block stun x (1 + T) like anyone's; the RIDER's
+MOMENTUM = his horse's speed (vanilla's rider velocity) × (1 + `ImpactMomentumRiderPercent` 30 % × clamp((v − 3) ÷ (10 − 3))), never a couched
+lance (`IsDoingPassiveAttack`); the ON-SCREEN LINES (`ImpactShowMessages`): what was APPLIED to you (red #D65252) / by you (purple #AE4AD9) /
+your side's heroes (white, `ImpactMessagesIncludeYourMen`) → Core `ImpactMessageQueue` (one per `ImpactMessageMinSeconds` 1.5 s, merged) → the
+game's message feed from the tick (`IImpactMessageSink`), never in shadow; lever `Dismount`; the `[summary] impact riders` / `impact messages`
+lines; HOW-IT-WORKS §11c rewritten as one player section; PLAYTEST's IMPACT MORNING SCRIPT + D22; DESIGN decision 45. COURAGE AND COHESION (step 49, `CourageEnabled`, Anton 2026-10-17 night: "AI men are
 unrealistically brave" - a lone man circles a shield wall, stands exhausted among four enemies; + his three additions: shock, flocking,
 panic): every AI man on foot in a formation is looked at every ~0.5 s (staggered; one `Mission.GetNearbyAgents` into a reused list): his
 side's TOUGHNESS vs the enemy's within `CourageRadiusMetres` 6 m (toughness = armour, level, wounds - a looter 1.35, a legionary 5.97 =
@@ -288,7 +297,7 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               its Default comes from defaults.json (DefaultsFile), never code; step 33: ParamType.Key +
                               KeyNames (a key by NAME, stored as its index; FormatJson writes "LeftControl"; the
                               file / defaults.json read the name, MCM a text box)
-  SettingsSchema.cs           EVERY setting of DESIGN's table (244 - step 52's 4 momentum settings after ImpactTiredNeverShrugsOff; step 47's ImpactSpike in Advanced, before VerboseLogging; step 48's 60 in
+  SettingsSchema.cs           EVERY setting of DESIGN's table (250 - step 53's 3 rider-momentum + 3 on-screen-line settings after the momentum ones; step 52's 4 momentum settings after ImpactTiredNeverShrugsOff; step 47's ImpactSpike in Advanced, before VerboseLogging; step 48's 60 in
                               "Impact: staggers, shield drops, knockdowns" - after the courage group, before Refill; step 49's 29 (49b's two surge settings) in "Courage and
                               cohesion (AI)" - after the fever), in file + MCM order, 16 groups
                               ("Master switch" first, "Damage" second - step 25 renamed it from
@@ -669,7 +678,15 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               ImpactHitLiveStats (clean hits per class × band - knocked down / staggered decided → applied → seen, knockdowns on REELING
                               men vs the rest and on shrugged-off blows, the shrug-offs refused by band, the flinch asked vs measured vs controls, the
                               get-ups, limits; MOMENTUM - every decided blow of every family by the attacker's speed band, all men and below half a bar)
-                              + the [summary] "impact momentum" line and the clean-hit lines
+                              + the [summary] "impact momentum" line and the clean-hit lines; step 53: the momentum line's RIDERS columns
+                              (RiderBlowsBy by the horse's band, couched lances apart)
+  ImpactRiders.cs             step 53, IMPACT I6 pure (AI_NOTES "Step 53"): ImpactDismountWay (the seam / our blow), ImpactRiderMath (SeenWithinSeconds
+                              2, the pools 32, the families), ImpactRiderLiveStats (decisions on riders by family, dismounts decided by band → applied by
+                              way → seen / not seen, why not, the riders' shields, staggers / ripostes refused + the 2 [summary] "impact riders" lines),
+                              ImpactMessageKind / Role, ImpactMessageMath (the words, the game's colours #D65252 / #AE4AD9 / white, Stronger,
+                              NotableForYourMen), ImpactMessageQueue (the rate limit + merge: 3 parts, "(+N more)", duplicates once, Clear counted + the
+                              [summary] "impact messages" line); Impact.cs: ImpactFacts.AttackerPassive, the rider momentum rules, MomentumFactor(…,
+                              mounted, passive), RiderSpeedBand; ImpactLive.cs: ImpactLever.Dismount (LeverCount 9), ImpactNotApplied.NoHorse
   Courage.cs                  step 49 pure (AI_NOTES "Step 49", RESEARCH §S): CouragePhase (brave / walking back / holding), CourageSkip (in the
                               order asked), CourageEnd, RegroupEnd, CourageStep, CourageSprintRefusal, ShockTimes (his last 4 landed hits), CourageRequired
                               (the terms), CourageRules (live; ModEnabled FIRST, CourageEnabled; Athletics only for the tiredness term; Describe with the
@@ -729,7 +746,8 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               ApplyGeneralDamageModifiers: BaseModel first, then the roll
                               (our exceptions → the game's value); step 47: DecideAgentKnockedDownByBlow = the base's answer OR
                               ImpactHooks' decider, CalculateDefendedBlowStunMultipliers = the base, then ImpactHooks (any thread); step 52:
-                              DecideAgentShrugOffBlow = the base's answer, a YES asked again of ImpactHooks.ShrugOffKept (main thread)
+                              DecideAgentShrugOffBlow = the base's answer, a YES asked again of ImpactHooks.ShrugOffKept (main thread); step 53:
+                              DecideAgentDismountedByBlow = the base's answer OR ImpactHooks.DismountOnBlow (main thread)
   Models/ImpactHooks.cs       step 47, the impact system's MODEL seams: IKnockDownDecider (main thread, every collision on a man on foot)
                               and IBlockStunDecider (ANY thread - reads only) plugged in by the running logic; KnockDownOnBlow (OR-ed,
                               a throw = the game's answer), AfterDefendedBlowStun (a throw = the base's stun kept, the exception handed
@@ -737,7 +755,8 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               own cap), RaiseStunCap / RestoreStunCap (ManagedParameters StunPeriodMax, the game's value remembered once,
                               a higher cap left alone), InOwnBlow ([ThreadStatic] - our blow inside RegisterBlow); step 50: IShieldPickupLock +
                               PickupLock / ShieldPickupLocked (a throw = the game's answer); step 52: IShrugOffDecider + ShrugOff / ShrugOffKept
-                              (the base model's CalculateStaggerThresholdDamage asked only when a decider is plugged; a throw = the game's answer)
+                              (the base model's CalculateStaggerThresholdDamage asked only when a decider is plugged; a throw = the game's answer);
+                              step 53: IDismountDecider + Dismount / DismountOnBlow (OR-ed; a throw = the game's answer)
   Models/TraxItemPickupModel.cs  step 50: ItemPickupModel DECORATOR (registered only over an existing one) - forwards everything;
                               IsItemAvailableForAgent also refuses a SHIELD to an AI man within ShieldPickupLockSeconds of a live kick
                               knocking his away (only the AI asks this model; the player's use key never)
@@ -929,7 +948,17 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               ForceStagger (SetActionChannel(0, act_stagger_*) - CanForce checked again first), TryShieldInHand /
                               SlotHoldsShield / HasAnyShield (the managed equipment), DropShield (Mission.AddTickAction(DropItem) - queued,
                               vanilla's way), OwnKnockdownBlow (vanilla's drowning blow through RegisterBlow: KnockDown | KnockBack, ≥ 1
-                              damage, owned by the attacker); GameImpactBody, ImpactBodyDefault
+                              damage, owned by the attacker); step 53: OwnDismountBlow (the same blow flagged CanDismount - only on a
+                              mounted man), OnPlayerSide (Team.IsPlayerAlly - your men's lines); GameImpactBody, ImpactBodyDefault
+  Missions/AthleticsLogic.ImpactRiders.cs  step 53, RIDERS + THE ON-SCREEN LINES: the IDismountDecider (the decorator's dismount seam →
+                              ImpactModelOnLandedBlow with _inDismountSeam), ApplyRider (from ImpactDecide for a mounted defender: the dismount
+                              answered in the seam / our dismount blow queued for a block, the shield drop into step 50's queue (Rider-flagged),
+                              the YOU line), the riders' pools (ImpactRiderPending 32 - RunRiderPending: blocks live, the levers on, a horse still
+                              under him, OwnDismountBlow; ImpactRiderCheck 32 - seen off the horse / not within 2 s → GotUp(now, 0)), RidersLeftField,
+                              CloseRiders, the summary; ImpactMessage (only from APPLIED paths: ApplyKick / ApplyHit / RunOwnBlow / RunStagger /
+                              RunLiveDrops / the dismounts; to you, by you, your men's notable with a hero) → Core ImpactMessageQueue →
+                              TickImpactMessages (from TickImpact, own try) → IImpactMessageSink (GameImpactMessageSink = InformationManager in the
+                              game's colours; ImpactMessageSinkDefault - the smoke swaps it)
   Missions/CourageBody.cs     step 49: CourageScan (reused arrays, 128 neighbours), ICourageBody (the smoke plays it), GameCourageBody (MissionAllows - battle
                               mode, no tournament / arena / naval; Gate; ReadKit - SpawnEquipment's armour sums, Character.Level, a two-hander / polearm
                               and no shield; Health ÷ HealthLimit; GetMorale; Formation.CachedAveragePosition; Scan = GetNearbyAgents into one MBList;
@@ -999,7 +1028,9 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               MountAgent; HealthLimit; the collision's DamageType / InflictedDamage; TypeOf), ImpactInputsDefault; step 51:
                               BlowName (the weapon's name for a YOU line - asked only when you are one of the two); step 52: SpeedInto (MOMENTUM -
                               the attacker's MovementVelocity turned by MovementDirectionAsAngle, vanilla's formula, along the line to the victim;
-                              engine reads, main thread; 0 for a rider), the two-handed grip (IsTwoHanded || IsPolearm)
+                              engine reads, main thread), the two-handed grip (IsTwoHanded || IsPolearm); step 53: RiderSpeedInto (a rider's =
+                              vanilla's rider velocity: MovementVelocity.y × the mount's GetMovementDirection()), AttackerPassive = IsDoingPassiveAttack
+                              on a horse (a couched lance)
   Missions/BraceBody.cs       step 23: BraceState (his roll, step 28's floor roll FloorUnit, the running brace, the shield's
                               progress), IBraceBody (the
                               engine side - the smoke plays it), GameBraceBody (the order from
@@ -1152,8 +1183,14 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               pixels), Fill, FillColor, FrameColor (the fade's alpha baked in); step 46: the box (PositionX / Y =
                               its top-left, BoxWidth / BoxHeight), FeverShown, the Athletics bar - BarShown, BarWidth, BarHeight,
                               BarFill, BarUsable, BarColor, BarFrameColor, BarWoundColor
-tests/TraxCombat.Core.Tests/  net8.0 xUnit (799 - step 52: + ImpactHitsTests - the momentum factor (none to a walk, x1.3 at a run, x1.6 at
-                              a sprint, clamped, never a rider's, off / 0 %, live), the speed bands, momentum in EVERY family's impact and the riposte
+tests/TraxCombat.Core.Tests/  net8.0 xUnit (810 - step 53: + ImpactRidersTests - the six settings placed / live, a rider's momentum (none to
+                              3 m/s, x1.15 at a canter, x1.3 at a gallop, a couched lance x1, the foot / rider settings apart, the one switch), the horse
+                              bands, the momentum in the decision, THE CAVALRY CHARGE (gallop > standing, below a sprinting man's, never the whole line, a
+                              fresh line 0), a rider's knockdown = knocked off at half on every family / never a stagger / his shield at the full chance /
+                              0 and 100 %, the immunity after a dismount, the riposte never on a mounted attacker, the lines' words and colours, the
+                              notable rule, the RATE LIMIT and MERGE (1.5 s, 3 parts + more, duplicates, a new clock, 0, Clear), the riders' summary;
+                              step 52: + ImpactHitsTests - the momentum factor (none to a walk, x1.3 at a run, x1.6 at
+                              a sprint, clamped, a rider's his horse's since step 53, off / 0 %, live), the speed bands, momentum in EVERY family's impact and the riposte
                               turned round, a sprinting axe vs a standing one on a half-tired man (x10 the knockdowns) and on a fresh man (nothing),
                               two EMPTY even men on a clean hit at x = 1 (80 / 50), the reeling bonus +0.75 on all six events, a live clean hit's
                               record, the shrug-off threshold x (1 − T), the flinch factor and its learned length, the classes, the summary lines;
@@ -1529,7 +1566,16 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               throwing shrug-off decider, the master switch, the summary; THE SHOCK CHARGE (200 men each, seeded: a 40 % line -
                               a standing sword 6 % down, a standing axe 13 %, the axe SPRINTING 36 %; an exhausted line 54 %; kicks 19 → 45 %); the
                               cost - 1000 men, 20 live clean hits + 20 shrug-off questions a tick, 0.029 ms, 0 bytes; the master-switch step's
-                              clean-hit part (116 steps; the config checks work for any tuned default)
+                              clean-hit part; step 53 (Program.ImpactRiders.cs): RIDERS LIVE through the real decorator's DISMOUNT seam and the
+                              real logic - an exhausted rider knocked off (25 %) in the seam and seen off, never a stagger on a rider, a rider's
+                              shield dropped from the tick, a blocking rider knocked off by our CanDismount blow (owned by the attacker) and seen,
+                              no horse by the tick refused, not seen after 2 s = his record fixed, a fresh rider untouched, the KnockDown seam never
+                              answering a rider, a galloping rider x1.30 / a couched lance x1.00, THE LINES (you knocked off red at once, two by you
+                              within 1.5 s = one merged purple line, your shield red, your man unhorsing an enemy hero white behind the switch, none
+                              in shadow, the switch off), the dismount lever disabled alone, a throwing decider = the game's; THE CAVALRY CHARGE (a
+                              fresh rider's sword into a 40 % line: standing 3 % down, gallop 10 %, an exhausted line 45 %, a fresh line 0); the cost -
+                              1000 men half riders, 40 rider events a tick, 0.04 ms, 0 bytes; the master-switch step's riders part; the stand-in
+                              FakeMessageSink swapped in with the impact body (119 steps; the config checks work for any tuned default)
                               TRAX_SMOKE_KEEP=1 keeps its temp folder + log to read
 tools/DefaultsTool/           defaults.json upkeep: refresh (rewrite comments/order, keep every
                               value) | check; --file <path> for an exported one
