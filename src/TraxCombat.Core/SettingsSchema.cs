@@ -43,7 +43,7 @@ namespace TraxCombat.Core
         public static readonly ParamGroup RefillGroup = new ParamGroup(9, "Refill");
         public static readonly ParamGroup PlayerBarGroup = new ParamGroup(10, "Your Athletics bar");
         public static readonly ParamGroup OrderStripGroup = new ParamGroup(11, "Orders menu strip");
-        public static readonly ParamGroup AltMarkersGroup = new ParamGroup(12, "Hold ALT: formation markers and fever marks"); // step 44 renamed it (was "Formation markers (hold ALT)")
+        public static readonly ParamGroup AltMarkersGroup = new ParamGroup(12, "Hold ALT: formation markers, Athletics and fever bars"); // step 44 renamed it (was "Formation markers (hold ALT)"), step 46 again (was "... and fever marks")
         public static readonly ParamGroup AdvancedGroup = new ParamGroup(13, "Advanced");
 
         // ------------------------------------------------------------------ master switch
@@ -610,9 +610,19 @@ namespace TraxCombat.Core
             "Enemy fever marks too",
             "The enemy's men in a fever get the mark too - see their charge coming and when its surge is spent. Off: yours and your allies' only.");
 
+        // Step 46 (Anton, 2026-10-17): "how tired they are in a bar above that fever bar, a green bar that gets to red" - every man's own
+        // Athletics bar under ALT, drawn by the same view as the fever bar (one projection per man, one pool, one cap - AI_NOTES "Step 46").
+        public static readonly ParamDef ShowAthleticsMarks = Bool("ShowAthleticsMarks", AltMarkersGroup,
+            "Athletics bars above the men",
+            "While the game shows its markers (you hold ALT, or the orders menu is open), a small Athletics bar above EVERY soldier's head - how tired he is: its length is his Athletics left, its colour the bar's own (green at full strength, blue just below, then yellow, orange, red), the part his wounds hold dark red. It sits just above his fever bar, at the same height whether he is in a fever or not. You have your own bar.");
+
+        public static readonly ParamDef AthleticsMarksShowEnemy = Bool("AthleticsMarksShowEnemy", AltMarkersGroup,
+            "Enemy Athletics bars too",
+            "The enemy's soldiers get their Athletics bar too - see who is spent before you charge. Off: yours and your allies' only.");
+
         public static readonly ParamDef FeverMarkMax = Int("FeverMarkMax", 1, 1000, AltMarkersGroup,
-            "Most fever marks at once",
-            "At most this many fever marks are drawn in one frame - the men nearest to the camera first. Hundreds of men can be in a fever after a big charge; fewer marks cost less and clutter less.");
+            "Most men marked at once",
+            "At most this many men get their bars (Athletics and fever) in one frame - the men nearest to the camera first. A big battle has hundreds of men on the screen; fewer cost less and clutter less.");
 
         // ------------------------------------------------------------------ advanced
 
@@ -719,7 +729,20 @@ namespace TraxCombat.Core
 
         public static readonly ParamDef FeverMarkHeightMetres = Float("FeverMarkHeightMetres", 1, 4, AdvancedGroup,
             "Fever mark: height above the man (m)",
-            "How high above a man's feet his fever mark floats, in metres - the mark's bottom edge sits there. The game's own ALT icon over your men is at about 2 m.");
+            "How high above a man's feet his fever mark floats, in metres - the mark's bottom edge sits there (his Athletics bar sits above it). The game's own ALT icon over your men is at about 2 m. A rider's bars sit 1 m higher.");
+
+        // The Athletics bars above the men (step 46) - UI pixels of the 1080p layout, like the fever mark's.
+        public static readonly ParamDef AthleticsMarkWidth = Int("AthleticsMarkWidth", 4, 100, AdvancedGroup,
+            "Athletics bar above a man: length (px)",
+            "Length of the Athletics bar above a man near the camera, in the game's UI pixels (smaller far away - 60% at 60 m). The fill inside it is his Athletics left.");
+
+        public static readonly ParamDef AthleticsMarkHeight = Int("AthleticsMarkHeight", 2, 30, AdvancedGroup,
+            "Athletics bar above a man: thickness (px)",
+            "Thickness of the Athletics bar above a man, in the game's UI pixels (smaller far away).");
+
+        public static readonly ParamDef AthleticsMarkGap = Int("AthleticsMarkGap", 0, 20, AdvancedGroup,
+            "Athletics bar above a man: gap over the fever bar (px)",
+            "Space between a man's Athletics bar and the fever bar under it, in the game's UI pixels. The fever bar's place is kept while he has no fever, so his Athletics bar never jumps.");
 
         public static readonly ParamDef FormationStatsRefreshSeconds = Float("FormationStatsRefreshSeconds", 0.05, 2, AdvancedGroup,
             "Formation averages refresh (s)",
@@ -765,13 +788,13 @@ namespace TraxCombat.Core
             ShowPlayerBar, ShowPlayerBarOutsideBattles, ShowAttackRecoveryBar, FlashBarOnEarlyAttack, ShowSprintBar,
             BarYellowBelowPercent, BarOrangeBelowPercent, BarRedBelowPercent,
             ShowInOrderMenu, ShowFormationHealth, ShowFormationSpread, FormationSpreadStdDevs, ShowReadyCount, ReadyYellowBelowPercent, ReadyRedBelowPercent, OrderStripUnderCards,
-            ShowAltMarkerStats, AltMarkersShowEnemy, ShowFeverMarks, FeverMarksShowEnemy, FeverMarkMax,
+            ShowAltMarkerStats, AltMarkersShowEnemy, ShowFeverMarks, FeverMarksShowEnemy, ShowAthleticsMarks, AthleticsMarksShowEnemy, FeverMarkMax,
             HudRefreshSeconds, PlayerBarWidth, PlayerBarHeight, PlayerBarOffsetRight, PlayerBarOffsetBottom,
             RecoveryBarWidth, RecoveryBarHeight, RecoveryBarOffsetAbove, SprintBarOffsetAbove,
             OrderStripTextSize, OrderStripTextOffset, OrderStripBarOffset, OrderStripBarHeight, OrderStripReadyOffset, OrderStripSideMargin,
             OrderPanelOffsetTop, OrderPanelWidth,
             AltMarkerTextSize, AltMarkerOffset, AltMarkerBarWidth, AltMarkerBarHeight,
-            FeverMarkWidth, FeverMarkHeight, FeverMarkHeightMetres,
+            FeverMarkWidth, FeverMarkHeight, FeverMarkHeightMetres, AthleticsMarkWidth, AthleticsMarkHeight, AthleticsMarkGap,
             FormationStatsRefreshSeconds, VerboseLogging, LogMaxMegabytes,
         };
 

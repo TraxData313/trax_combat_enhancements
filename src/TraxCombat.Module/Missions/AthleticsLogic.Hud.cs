@@ -47,7 +47,8 @@ namespace TraxCombat.Missions
             var markers = new AltMarkerView();
             markers.UseSources(new GauntletFormationMarkers(screen), new ProjectedFormationMarkers(screen, Mission));
             AttachHudView(screen, markers);
-            // step 44: a small mark above each man in a fever, shown with the same vanilla flag (its own reader - nothing shared to fail)
+            // step 44: a small mark above each man in a fever, shown with the same vanilla flag (its own reader - nothing shared to fail);
+            // step 46: the same view draws every man's Athletics bar above it (the "ALT bars")
             var fever = new FeverMarkView();
             fever.UseSource(new GameFeverMarks(screen, new GauntletFormationMarkers(screen), FeverMarkView.Movie));
             AttachHudView(screen, fever);

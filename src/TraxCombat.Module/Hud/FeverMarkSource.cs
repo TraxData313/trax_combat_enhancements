@@ -24,9 +24,9 @@ namespace TraxCombat.Hud
         /// camera to project from - no marks this frame.</summary>
         bool BeginFrame(FeverMarkFrame frame);
 
-        /// <summary>Where <paramref name="agent"/> stands for the camera: <see cref="FeverMark.Key"/>, Side, the mark's world point
-        /// (<paramref name="heightMetres"/> above his feet), the camera distance, in front or not. False = not on the field (no team, not
-        /// active).</summary>
+        /// <summary>Where <paramref name="agent"/> stands for the camera: <see cref="FeverMark.Key"/>, Side, Mounted (step 46), the mark's world
+        /// point (<paramref name="heightMetres"/> above his feet, a rider <see cref="AthleticsMarkMath.RiderLiftMetres"/> higher), the camera
+        /// distance, in front or not. False = not on the field (no team, not active).</summary>
         bool Locate(Agent agent, float heightMetres, ref FeverMark m);
 
         /// <summary>The mark's world point → screen pixels (ScreenX / ScreenY). False = no valid point (behind the camera after all).</summary>
@@ -105,8 +105,9 @@ namespace TraxCombat.Hud
             if (team == null || !agent.IsActive()) return false;
             m.Key = agent.Index;
             m.Side = team.IsPlayerTeam ? (int)MarkerTeam.Yours : team.IsPlayerAlly ? (int)MarkerTeam.Ally : (int)MarkerTeam.Enemy;
+            m.Mounted = agent.MountAgent != null; // step 46: managed (the cached mount); a rider's Position is the ground under his horse
             var p = agent.Position;
-            p.z += heightMetres;
+            p.z += AthleticsMarkMath.MarkHeight(heightMetres, m.Mounted);
             m.WorldX = p.x;
             m.WorldY = p.y;
             m.WorldZ = p.z;

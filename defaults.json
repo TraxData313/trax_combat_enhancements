@@ -752,7 +752,7 @@
   // (true or false)
   "OrderStripUnderCards": true,
 
-  // ==================== Hold ALT: formation markers and fever marks ====================
+  // ==================== Hold ALT: formation markers, Athletics and fever bars ====================
   // While the game shows its formation markers above the troops - you hold ALT, or the orders
   // menu is open - each marker also gets the men's average Athletics with its spread ("72% ±
   // 8", in the colour of their strength) and their average health ("HP 81%"), just under the
@@ -779,9 +779,22 @@
   // (true or false)
   "FeverMarksShowEnemy": true,
 
-  // At most this many fever marks are drawn in one frame - the men nearest to the camera first.
-  // Hundreds of men can be in a fever after a big charge; fewer marks cost less and clutter
-  // less.
+  // While the game shows its markers (you hold ALT, or the orders menu is open), a small
+  // Athletics bar above EVERY soldier's head - how tired he is: its length is his Athletics
+  // left, its colour the bar's own (green at full strength, blue just below, then yellow,
+  // orange, red), the part his wounds hold dark red. It sits just above his fever bar, at the
+  // same height whether he is in a fever or not. You have your own bar.
+  // (true or false)
+  "ShowAthleticsMarks": true,
+
+  // The enemy's soldiers get their Athletics bar too - see who is spent before you charge. Off:
+  // yours and your allies' only.
+  // (true or false)
+  "AthleticsMarksShowEnemy": true,
+
+  // At most this many men get their bars (Athletics and fever) in one frame - the men nearest
+  // to the camera first. A big battle has hundreds of men on the screen; fewer cost less and
+  // clutter less.
   // (range 1 to 1000)
   "FeverMarkMax": 200,
 
@@ -901,9 +914,24 @@
   "FeverMarkHeight": 5,
 
   // How high above a man's feet his fever mark floats, in metres - the mark's bottom edge sits
-  // there. The game's own ALT icon over your men is at about 2 m.
+  // there (his Athletics bar sits above it). The game's own ALT icon over your men is at about
+  // 2 m. A rider's bars sit 1 m higher.
   // (range 1.0 to 4.0)
   "FeverMarkHeightMetres": 2.5,
+
+  // Length of the Athletics bar above a man near the camera, in the game's UI pixels (smaller
+  // far away - 60% at 60 m). The fill inside it is his Athletics left.
+  // (range 4 to 100)
+  "AthleticsMarkWidth": 22,
+
+  // Thickness of the Athletics bar above a man, in the game's UI pixels (smaller far away).
+  // (range 2 to 30)
+  "AthleticsMarkHeight": 5,
+
+  // Space between a man's Athletics bar and the fever bar under it, in the game's UI pixels.
+  // The fever bar's place is kept while he has no fever, so his Athletics bar never jumps.
+  // (range 0 to 20)
+  "AthleticsMarkGap": 2,
 
   // How often the formations' averages (Athletics, spread, health) for the orders-menu strip
   // and the formation markers are worked out - every formation of every side - in seconds of

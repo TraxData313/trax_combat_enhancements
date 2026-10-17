@@ -13,7 +13,7 @@ namespace TraxCombat.Core
         /// <summary>Not on the field for the camera (no team, not active) - the source could not place him.</summary>
         NotPlaced = 1,
 
-        /// <summary>The enemy's man while FeverMarksShowEnemy is off.</summary>
+        /// <summary>The enemy's man while his bars are switched off (FeverMarksShowEnemy, and since step 46 AthleticsMarksShowEnemy too).</summary>
         EnemyOff = 2,
 
         /// <summary>Behind the camera.</summary>
@@ -78,6 +78,30 @@ namespace TraxCombat.Core
         public float ScreenY;
 
         public FeverMarkSkip Skip;
+
+        // ---- step 46: one mark = one man's bars under ALT - his Athletics bar and / or his fever bar (AI_NOTES "Step 46")
+
+        /// <summary>His fever runs (armed or burning) - read for every man walked; <see cref="Armed"/> / <see cref="Share"/> only mean something then.</summary>
+        public bool InFever;
+
+        /// <summary>Riding (his bars go <see cref="AthleticsMarkMath.RiderLiftMetres"/> higher).</summary>
+        public bool Mounted;
+
+        /// <summary>His Athletics as the bar draws it: the fill (points ÷ his FULL pool), the usable share (the wound cap), the band by f.</summary>
+        public float BarFill;
+
+        public float BarUsable;
+
+        public BarBand Band;
+
+        /// <summary>Set by <see cref="AthleticsMarkMath.Decide"/>: an Athletics bar drawn for him (the switch, his side).</summary>
+        public bool HasBar;
+
+        /// <summary>A fever bar drawn for him (in a fever, the switches, his side).</summary>
+        public bool HasFever;
+
+        /// <summary>The fever bar's place kept under his Athletics bar (fever bars can show for his side) - so his Athletics bar never jumps.</summary>
+        public bool FeverSlot;
     }
 
     /// <summary>
@@ -135,6 +159,15 @@ namespace TraxCombat.Core
             return ref m;
         }
 
+        /// <summary>Step 46: takes back the last <see cref="Add"/> (the walk found no man to mark there).</summary>
+        public void DropLast()
+        {
+            if (Count > 0) Count--;
+        }
+
+        /// <summary>Step 46: the pick's order kept in place - the <paramref name="k"/>-th candidate (by distance) is the <paramref name="picked"/>-th drawn.</summary>
+        public void Keep(int picked, int index) => Order[picked] = index;
+
         /// <summary>A mark skipped for <paramref name="why"/>.</summary>
         public void SkipAt(int index, FeverMarkSkip why)
         {
@@ -158,6 +191,13 @@ namespace TraxCombat.Core
             Array.Resize(ref Keys, n);
             Grown++;
         }
+    }
+
+    /// <summary>Step 46: the engine's projection of one mark onto the screen for <see cref="FeverMarkMath.PickOnScreen"/> - a struct, so the
+    /// generic call never boxes (the view's real one wraps its source; the tests play one). True = projected and on the screen.</summary>
+    public interface IMarkProjector
+    {
+        bool ProjectOnScreen(ref FeverMark m);
     }
 
     /// <summary>
@@ -316,6 +356,39 @@ namespace TraxCombat.Core
             return n;
         }
 
+        /// <summary>
+        /// Step 46: the NEAREST <paramref name="max"/> marks ON THE SCREEN, projecting only as many as needed. When more are eligible than the cap,
+        /// <see cref="FeverMarkFrame.Order"/> is sorted by the camera distance first (allocation-free); then the candidates are projected nearest
+        /// first until the cap is full - a man off the screen is skipped (<see cref="FeverMarkSkip.OffScreen"/>) and never takes a slot (step 44's
+        /// fix kept), the rest wait (<see cref="FeverMarkSkip.Capped"/>, never projected). Under the cap: every one projected, in its own order.
+        /// With every soldier a candidate (step 46) this keeps the engine's projections near the cap's worth instead of one per man on the field.
+        /// Returns how many were picked (<see cref="FeverMarkFrame.Order"/>[0..picked)).
+        /// </summary>
+        public static int PickOnScreen<T>(FeverMarkFrame f, int max, ref T projector) where T : struct, IMarkProjector
+        {
+            if (max < 0) max = 0;
+            int n = f.Eligible;
+            if (n > max) Array.Sort(f.Keys, f.Order, 0, n);
+            int picked = 0;
+            for (int k = 0; k < n; k++)
+            {
+                int index = f.Order[k];
+                if (picked >= max)
+                {
+                    f.SkipAt(index, FeverMarkSkip.Capped);
+                    continue;
+                }
+                if (!projector.ProjectOnScreen(ref f.Marks[index]))
+                {
+                    f.SkipAt(index, FeverMarkSkip.OffScreen);
+                    continue;
+                }
+                f.Keep(picked++, index);
+            }
+            f.Picked = picked;
+            return picked;
+        }
+
         /// <summary>The mark's size in screen pixels: the UI px × the scale × <see cref="SizeFactor"/>, never below 1 px.</summary>
         public static void Size(in FeverMarkRules r, float scale, float distance, out float width, out float height)
         {
@@ -340,7 +413,7 @@ namespace TraxCombat.Core
         {
             FeverMarkSkip.None => "marked",
             FeverMarkSkip.NotPlaced => "not on the field",
-            FeverMarkSkip.EnemyOff => "enemy (FeverMarksShowEnemy off)",
+            FeverMarkSkip.EnemyOff => "enemy (its bars switched off)",
             FeverMarkSkip.Behind => "behind the camera",
             FeverMarkSkip.TooClose => "closer than " + F1(NearMetres) + " m",
             FeverMarkSkip.Capped => "beyond the cap",
@@ -380,19 +453,28 @@ namespace TraxCombat.Core
     }
 
     /// <summary>
-    /// One mission of the fever marks for the [summary]: how often they came up and for how long, the marks per frame (mean / max), the
-    /// frames the cap bit, the most men in fever at once, the men skipped by reason (summed over frames), the frame cost. Main thread.
+    /// One mission of the ALT bars (step 44's fever marks, step 46's Athletics bars - one view) for the [summary]: how often they came up and
+    /// for how long, the men marked per frame (mean / max), the Athletics bars and the fever bars per frame (mean / max) with the Athletics
+    /// bars' colours, the frames the cap bit, the most men looked at and in a fever at once, the men skipped by reason (summed over frames),
+    /// the frame cost. Main thread.
     /// </summary>
     public sealed class FeverMarkStats
     {
         private readonly long[] _skipped = new long[(int)FeverMarkSkip.Count];
+        private readonly long[] _bands = new long[BarMath.BandCount];
 
         public int Shows { get; private set; }
         public double SecondsOnScreen { get; private set; }
         public long Frames { get; private set; }
         public long MarksDrawn { get; private set; }
         public int MostMarks { get; private set; }
+        public long BarsDrawn { get; private set; }
+        public int MostBars { get; private set; }
+        public long WoundedBars { get; private set; }
+        public long FeverBarsDrawn { get; private set; }
+        public int MostFeverBars { get; private set; }
         public long CappedFrames { get; private set; }
+        public int MostLooked { get; private set; }
         public int MostInFever { get; private set; }
         public int MostYours { get; private set; }
         public int MostEnemy { get; private set; }
@@ -403,13 +485,26 @@ namespace TraxCombat.Core
 
         public void NoteShown() => Shows++;
 
-        /// <summary>One frame on screen: the marks drawn, the men in fever met (by side), whether the cap bit, the skips, the cost.</summary>
-        public void NoteFrame(double dt, int drawn, int inFever, int yours, int enemy, bool capped, int cap, int[] skipped, double costMs)
+        /// <summary>Step 46: this frame's bars - the Athletics bars drawn (by band; <paramref name="bands"/> indexed by <see cref="BarBand"/>), how many
+        /// of them show a wound cap, the fever bars drawn. Call before <see cref="NoteFrame"/> of the same frame (any order works).</summary>
+        public void NoteBars(int bars, int[] bands, int wounded, int feverBars)
+        {
+            BarsDrawn += bars;
+            if (bars > MostBars) MostBars = bars;
+            for (int i = 0; i < _bands.Length && i < bands.Length; i++) _bands[i] += bands[i];
+            WoundedBars += wounded;
+            FeverBarsDrawn += feverBars;
+            if (feverBars > MostFeverBars) MostFeverBars = feverBars;
+        }
+
+        /// <summary>One frame on screen: the men marked, the men looked at (placed - by side) and in a fever, whether the cap bit, the skips, the cost.</summary>
+        public void NoteFrame(double dt, int drawn, int looked, int inFever, int yours, int enemy, bool capped, int cap, int[] skipped, double costMs)
         {
             if (dt > 0) SecondsOnScreen += dt;
             Frames++;
             MarksDrawn += drawn;
             if (drawn > MostMarks) MostMarks = drawn;
+            if (looked > MostLooked) MostLooked = looked;
             if (inFever > MostInFever) MostInFever = inFever;
             if (yours > MostYours) MostYours = yours;
             if (enemy > MostEnemy) MostEnemy = enemy;
@@ -428,20 +523,37 @@ namespace TraxCombat.Core
 
         public long Skipped(FeverMarkSkip why) => _skipped[(int)why];
 
+        /// <summary>Athletics bars drawn in <paramref name="band"/>, summed over frames.</summary>
+        public long BarsIn(BarBand band) => _bands[(int)band];
+
         public double MeanMarks => Frames > 0 ? (double)MarksDrawn / Frames : 0;
+
+        public double MeanBars => Frames > 0 ? (double)BarsDrawn / Frames : 0;
+
+        public double MeanFeverBars => Frames > 0 ? (double)FeverBarsDrawn / Frames : 0;
 
         public double MeanCostMs => Frames > 0 ? CostMs / Frames : 0;
 
         /// <summary>The [summary] line (without the tag); <paramref name="errors"/> = the view's own error count.</summary>
         public string SummaryLine(int errors)
         {
-            var sb = new StringBuilder("hud: fever marks - shown ").Append(Shows).Append('x');
+            var sb = new StringBuilder("hud: ALT bars - shown ").Append(Shows).Append('x');
             if (Shows == 0)
-                return sb.Append(" (the game's markers never came up with the marks on - ALT never held or the orders menu never opened in a fight, or the fever / the marks off)")
+                return sb.Append(" (the game's markers never came up with the bars on - ALT never held or the orders menu never opened in a fight, or the Athletics and fever bars off)")
                          .Append("; errors ").Append(errors).ToString();
             sb.Append(", on screen ").Append(FeverMarkMath.F1(SecondsOnScreen)).Append(" s over ").Append(Frames).Append(" frames");
-            sb.Append("; marks a frame: mean ").Append(FeverMarkMath.F1(MeanMarks)).Append(", max ").Append(MostMarks);
-            sb.Append("; most men in fever at once ").Append(MostInFever).Append(" (yours and allies ").Append(MostYours).Append(", enemy ").Append(MostEnemy).Append(')');
+            sb.Append("; men marked a frame: mean ").Append(FeverMarkMath.F1(MeanMarks)).Append(", max ").Append(MostMarks);
+            sb.Append("; Athletics bars a frame: mean ").Append(FeverMarkMath.F1(MeanBars)).Append(", max ").Append(MostBars);
+            if (BarsDrawn > 0)
+            {
+                sb.Append(" (summed over frames:");
+                for (int i = 0; i < _bands.Length; i++)
+                    sb.Append(i == 0 ? " " : ", ").Append(BarMath.Name((BarBand)i)).Append(' ').Append(_bands[i]);
+                sb.Append("; wounded ").Append(WoundedBars).Append(')');
+            }
+            sb.Append("; fever bars a frame: mean ").Append(FeverMarkMath.F1(MeanFeverBars)).Append(", max ").Append(MostFeverBars);
+            sb.Append("; most men looked at in a frame ").Append(MostLooked).Append(" (yours and allies ").Append(MostYours).Append(", enemy ").Append(MostEnemy)
+              .Append("), most in a fever ").Append(MostInFever);
             sb.Append("; frames at the cap ").Append(CappedFrames);
             if (CappedFrames > 0) sb.Append(" (FeverMarkMax ").Append(FirstCap).Append(" at the first - the nearest drawn)");
             sb.Append("; men skipped, summed over frames: ");

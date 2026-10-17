@@ -4,10 +4,11 @@ using TraxCombat.Core;
 namespace TraxCombat.Hud
 {
     /// <summary>
-    /// The fever marks' data (module\GUI\Prefabs\TraxFeverMarks.xml, step 44): a GROW-ONLY POOL of marks for one show - mark i is the i-th
-    /// mark drawn this frame (they are not keyed by man: a mark is a bar placed anew every frame, so reusing slot i for another man costs
-    /// nothing and keeps the pool as small as the most marks drawn at once). Marks past this frame's count are only hidden. Same BINDING
-    /// RULE as the other HUD views (AI_NOTES "Step 6"): every property EXACTLY the widget property's type; change-checked setters.
+    /// The ALT bars' data (module\GUI\Prefabs\TraxFeverMarks.xml - step 44's fever marks, step 46's Athletics bars): a GROW-ONLY POOL of marks
+    /// for one show - mark i is the i-th MAN marked this frame (not keyed by man: a mark is a stack of bars placed anew every frame, so reusing
+    /// slot i for another man costs nothing and keeps the pool as small as the most men marked at once). Marks past this frame's count are
+    /// only hidden. Same BINDING RULE as the other HUD views (AI_NOTES "Step 6"): every property EXACTLY the widget property's type;
+    /// change-checked setters.
     /// </summary>
     public sealed class FeverMarksVM : ViewModel
     {
@@ -55,7 +56,12 @@ namespace TraxCombat.Hud
         }
     }
 
-    /// <summary>One fever mark: a small bar (a dark frame, the fill = the fever left in its colour) placed in screen pixels.</summary>
+    /// <summary>
+    /// One man's mark: a box placed in screen pixels (its bottom centre on his point) holding, centred, his ATHLETICS BAR at the top (step 46: a
+    /// dark frame, the wounded part dark red, the reachable part dark, the fill = his Athletics left in the band's colour) and his FEVER BAR at the
+    /// bottom (step 44: a dark frame, the fill = the fever left, orange → yellow). Either may be hidden; the fever bar's place is kept (its
+    /// widget hidden) while he has no fever, so his Athletics bar never jumps.
+    /// </summary>
     public sealed class FeverMarkVM : ViewModel
     {
         private static readonly Color Hidden = new Color(0f, 0f, 0f, 0f);
@@ -63,22 +69,51 @@ namespace TraxCombat.Hud
         private bool _isShown;
         private float _positionX;
         private float _positionY;
+        private float _boxWidth;
+        private float _boxHeight;
+        private bool _feverShown;
         private float _width;
         private float _height;
         private float _fill;
         private Color _fillColor = Hidden;
         private Color _frameColor = Hidden;
+        private bool _barShown;
+        private float _barWidth;
+        private float _barHeight;
+        private float _barFill;
+        private float _barUsable = 1f;
+        private Color _barColor = Hidden;
+        private Color _barFrameColor = Hidden;
+        private Color _barWoundColor = Hidden;
 
         /// <summary>One frame's values (the colours with the fade's alpha baked in).</summary>
-        internal void Set(float left, float top, float width, float height, float fill, Color fillColor, Color frameColor)
+        internal void Set(in MarkBox box, bool hasFever, float fill, Color fillColor, Color frameColor,
+            bool hasBar, float barFill, float barUsable, Color barColor, Color barFrameColor, Color barWoundColor)
         {
-            PositionX = left;
-            PositionY = top;
-            Width = width;
-            Height = height;
-            Fill = fill;
-            FillColor = fillColor;
-            FrameColor = frameColor;
+            PositionX = box.Left;
+            PositionY = box.Top;
+            BoxWidth = box.Width;
+            BoxHeight = box.Height;
+            FeverShown = hasFever;
+            Width = box.FeverWidth > 0f ? box.FeverWidth : 1f;
+            Height = box.FeverHeight > 0f ? box.FeverHeight : 1f;
+            if (hasFever)
+            {
+                Fill = fill;
+                FillColor = fillColor;
+                FrameColor = frameColor;
+            }
+            BarShown = hasBar;
+            BarWidth = box.BarWidth > 0f ? box.BarWidth : 1f;
+            BarHeight = box.BarHeight > 0f ? box.BarHeight : 1f;
+            if (hasBar)
+            {
+                BarFill = barFill;
+                BarUsable = barUsable;
+                BarColor = barColor;
+                BarFrameColor = barFrameColor;
+                BarWoundColor = barWoundColor;
+            }
             IsShown = true;
         }
 
@@ -95,7 +130,7 @@ namespace TraxCombat.Hud
             }
         }
 
-        /// <summary>Screen pixels from the left (ScaledPositionXOffset).</summary>
+        /// <summary>The box's left, screen pixels (ScaledPositionXOffset).</summary>
         [DataSourceProperty]
         public float PositionX
         {
@@ -108,7 +143,7 @@ namespace TraxCombat.Hud
             }
         }
 
-        /// <summary>Screen pixels from the top (ScaledPositionYOffset).</summary>
+        /// <summary>The box's top, screen pixels (ScaledPositionYOffset).</summary>
         [DataSourceProperty]
         public float PositionY
         {
@@ -121,7 +156,47 @@ namespace TraxCombat.Hud
             }
         }
 
-        /// <summary>Screen pixels (ScaledSuggestedWidth): FeverMarkWidth × the UI scale × the distance's size.</summary>
+        /// <summary>Step 46: the box, screen pixels (ScaledSuggestedWidth / Height): the wider bar × the stack's height.</summary>
+        [DataSourceProperty]
+        public float BoxWidth
+        {
+            get => _boxWidth;
+            set
+            {
+                if (value == _boxWidth) return;
+                _boxWidth = value;
+                OnPropertyChangedWithValue(value, nameof(BoxWidth));
+            }
+        }
+
+        [DataSourceProperty]
+        public float BoxHeight
+        {
+            get => _boxHeight;
+            set
+            {
+                if (value == _boxHeight) return;
+                _boxHeight = value;
+                OnPropertyChangedWithValue(value, nameof(BoxHeight));
+            }
+        }
+
+        // ------------------------------------------------------------------ the fever bar (step 44)
+
+        /// <summary>Step 46: the fever bar drawn (he is in a fever and its switches let it show) - its place may be kept without it.</summary>
+        [DataSourceProperty]
+        public bool FeverShown
+        {
+            get => _feverShown;
+            set
+            {
+                if (value == _feverShown) return;
+                _feverShown = value;
+                OnPropertyChangedWithValue(value, nameof(FeverShown));
+            }
+        }
+
+        /// <summary>The fever bar, screen pixels (ScaledSuggestedWidth): FeverMarkWidth × the UI scale × the distance's size.</summary>
         [DataSourceProperty]
         public float Width
         {
@@ -134,7 +209,7 @@ namespace TraxCombat.Hud
             }
         }
 
-        /// <summary>Screen pixels (ScaledSuggestedHeight).</summary>
+        /// <summary>The fever bar, screen pixels (ScaledSuggestedHeight).</summary>
         [DataSourceProperty]
         public float Height
         {
@@ -173,7 +248,7 @@ namespace TraxCombat.Hud
             }
         }
 
-        /// <summary>The dark frame, faded with the fill.</summary>
+        /// <summary>The fever bar's dark frame, faded with the fill.</summary>
         [DataSourceProperty]
         public Color FrameColor
         {
@@ -183,6 +258,111 @@ namespace TraxCombat.Hud
                 if (value == _frameColor) return;
                 _frameColor = value;
                 OnPropertyChangedWithValue(value, nameof(FrameColor));
+            }
+        }
+
+        // ------------------------------------------------------------------ the Athletics bar (step 46)
+
+        /// <summary>His Athletics bar drawn.</summary>
+        [DataSourceProperty]
+        public bool BarShown
+        {
+            get => _barShown;
+            set
+            {
+                if (value == _barShown) return;
+                _barShown = value;
+                OnPropertyChangedWithValue(value, nameof(BarShown));
+            }
+        }
+
+        /// <summary>The Athletics bar, screen pixels (ScaledSuggestedWidth): AthleticsMarkWidth × the UI scale × the distance's size.</summary>
+        [DataSourceProperty]
+        public float BarWidth
+        {
+            get => _barWidth;
+            set
+            {
+                if (value == _barWidth) return;
+                _barWidth = value;
+                OnPropertyChangedWithValue(value, nameof(BarWidth));
+            }
+        }
+
+        [DataSourceProperty]
+        public float BarHeight
+        {
+            get => _barHeight;
+            set
+            {
+                if (value == _barHeight) return;
+                _barHeight = value;
+                OnPropertyChangedWithValue(value, nameof(BarHeight));
+            }
+        }
+
+        /// <summary>His points ÷ his FULL pool, 0..1 (never past <see cref="BarUsable"/>).</summary>
+        [DataSourceProperty]
+        public float BarFill
+        {
+            get => _barFill;
+            set
+            {
+                if (value == _barFill) return;
+                _barFill = value;
+                OnPropertyChangedWithValue(value, nameof(BarFill));
+            }
+        }
+
+        /// <summary>The usable share (the wound cap): dark up to it, dark red beyond.</summary>
+        [DataSourceProperty]
+        public float BarUsable
+        {
+            get => _barUsable;
+            set
+            {
+                if (value == _barUsable) return;
+                _barUsable = value;
+                OnPropertyChangedWithValue(value, nameof(BarUsable));
+            }
+        }
+
+        /// <summary>The band's colour (BarMath - green / blue / yellow / orange / red), alpha = vanilla's distance fade.</summary>
+        [DataSourceProperty]
+        public Color BarColor
+        {
+            get => _barColor;
+            set
+            {
+                if (value == _barColor) return;
+                _barColor = value;
+                OnPropertyChangedWithValue(value, nameof(BarColor));
+            }
+        }
+
+        /// <summary>The dark frame and the reachable empty part, faded.</summary>
+        [DataSourceProperty]
+        public Color BarFrameColor
+        {
+            get => _barFrameColor;
+            set
+            {
+                if (value == _barFrameColor) return;
+                _barFrameColor = value;
+                OnPropertyChangedWithValue(value, nameof(BarFrameColor));
+            }
+        }
+
+        /// <summary>The wounded part (the player bar's dark red), faded.</summary>
+        [DataSourceProperty]
+        public Color BarWoundColor
+        {
+            get => _barWoundColor;
+            set
+            {
+                if (value == _barWoundColor) return;
+                _barWoundColor = value;
+                OnPropertyChangedWithValue(value, nameof(BarWoundColor));
             }
         }
     }

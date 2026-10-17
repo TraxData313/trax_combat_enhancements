@@ -1,16 +1,22 @@
 <Prefab>
   <!--
-    Trax Combat Enhancements - THE FEVER MARKS (step 44, DESIGN §3 item 3b: hold ALT).
-    While the game shows its markers (ALT held, or the orders menu open), a small bar above each AI man in a FEVER
-    (step 43 - armed or burning): a dark frame (@FrameColor) with the fill inside (@Fill = the fever left, 1 while
-    armed) in @FillColor - bright orange while armed and at the burn's start, through yellow as it empties; both
-    colours carry the mark's alpha (the fever's and vanilla's own ALT-icon distance fade, baked in by the view).
-    Each mark is placed in SCREEN PIXELS (ScaledPositionXOffset / ScaledPositionYOffset / ScaledSuggestedWidth /
-    ScaledSuggestedHeight take pixels): the view projects each man's feet + FeverMarkHeightMetres every frame and
-    sizes the bar from FeverMarkWidth x FeverMarkHeight UI pixels x the game's UI scale (smaller far away). The
-    1-pixel frame is a UI-pixel margin (the UI scale applies).
+    Trax Combat Enhancements - THE ALT BARS ABOVE THE MEN (step 44's fever marks, step 46's Athletics bars; DESIGN §3
+    items 3b and 3c: hold ALT).
+    While the game shows its markers (ALT held, or the orders menu open), one MARK per man: a box placed in SCREEN
+    PIXELS (ScaledPositionXOffset / ScaledPositionYOffset / ScaledSuggestedWidth / ScaledSuggestedHeight take pixels)
+    with its bottom centre on his point (the feet + FeverMarkHeightMetres, a rider higher), holding, centred:
+      at its TOP his ATHLETICS BAR (step 46, @BarShown): a dark frame (@BarFrameColor), inside it the wounded part
+        (@BarWoundColor - the player bar's dark red, the whole inside), the reachable part covering it up to
+        @BarUsable (dark, @BarFrameColor), and his Athletics left (@BarFill = points / his FULL pool) in @BarColor -
+        the bar's band colour by f (green at the peak line, blue just below, yellow / orange / red);
+      at its BOTTOM his FEVER BAR (step 44, @FeverShown): a dark frame (@FrameColor) with the fill inside (@Fill =
+        the fever left, 1 while armed) in @FillColor - bright orange armed and at the burn's start, through yellow.
+    The fever bar's PLACE stays in the box while he has no fever (its widget hidden), so his Athletics bar keeps its
+    height; the gap between the two is in the box's height (AthleticsMarkGap). Every colour carries the alpha of
+    vanilla's own ALT-icon distance fade (and the fever's), baked in by the view. The view sizes each bar from its UI
+    pixels x the game's UI scale (smaller far away); the 1-pixel frames are UI-pixel margins (the UI scale applies).
     Data: Hud\FeverMarksVM.cs (the root) and FeverMarkVM (each item of {Marks} - a grow-only pool, mark i = the
-    i-th drawn this frame). Every @binding's property has EXACTLY the widget property's type (float / Color /
+    i-th man marked this frame). Every @binding's property has EXACTLY the widget property's type (float / Color /
     bool). The list widget carries no @binding (a list DataSource ignores them). Native sprite only. A passive
     overlay: no widget takes mouse events.
     The offline smoke parses this file: widget types, attributes, sprites, bindings (the item template against the
@@ -21,13 +27,40 @@
       <Children>
         <Widget Id="Marks" DataSource="{Marks}" WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" DoNotAcceptEvents="true">
           <ItemTemplate>
-            <Widget Id="Mark" WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" HorizontalAlignment="Left" VerticalAlignment="Top" ScaledSuggestedWidth="@Width" ScaledSuggestedHeight="@Height" ScaledPositionXOffset="@PositionX" ScaledPositionYOffset="@PositionY" IsVisible="@IsShown" Sprite="BlankWhiteSquare_9" Color="@FrameColor" DoNotAcceptEvents="true">
+            <Widget Id="Mark" WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" HorizontalAlignment="Left" VerticalAlignment="Top" ScaledSuggestedWidth="@BoxWidth" ScaledSuggestedHeight="@BoxHeight" ScaledPositionXOffset="@PositionX" ScaledPositionYOffset="@PositionY" IsVisible="@IsShown" DoNotAcceptEvents="true">
               <Children>
-                <FillBarWidget Id="Fever" WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" MarginLeft="1" MarginRight="1" MarginTop="1" MarginBottom="1" FillWidget="FeverFill" MaxAmountAsFloat="1" InitialAmountAsFloat="@Fill" DoNotAcceptEvents="true">
+
+                <!-- step 46: his Athletics bar, at the top of the box -->
+                <Widget Id="AthleticsMark" WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" HorizontalAlignment="Center" VerticalAlignment="Top" ScaledSuggestedWidth="@BarWidth" ScaledSuggestedHeight="@BarHeight" IsVisible="@BarShown" Sprite="BlankWhiteSquare_9" Color="@BarFrameColor" DoNotAcceptEvents="true">
                   <Children>
-                    <Widget Id="FeverFill" WidthSizePolicy="Fixed" HeightSizePolicy="StretchToParent" HorizontalAlignment="Left" Sprite="BlankWhiteSquare_9" Color="@FillColor" DoNotAcceptEvents="true" />
+                    <Widget Id="Inside" WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" MarginLeft="1" MarginRight="1" MarginTop="1" MarginBottom="1" Sprite="BlankWhiteSquare_9" Color="@BarWoundColor" DoNotAcceptEvents="true">
+                      <Children>
+                        <FillBarWidget Id="UsableBar" WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" FillWidget="UsableFill" MaxAmountAsFloat="1" InitialAmountAsFloat="@BarUsable" DoNotAcceptEvents="true">
+                          <Children>
+                            <Widget Id="UsableFill" WidthSizePolicy="Fixed" HeightSizePolicy="StretchToParent" HorizontalAlignment="Left" Sprite="BlankWhiteSquare_9" Color="@BarFrameColor" DoNotAcceptEvents="true" />
+                          </Children>
+                        </FillBarWidget>
+                        <FillBarWidget Id="AthleticsBar" WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" FillWidget="AthleticsFill" MaxAmountAsFloat="1" InitialAmountAsFloat="@BarFill" DoNotAcceptEvents="true">
+                          <Children>
+                            <Widget Id="AthleticsFill" WidthSizePolicy="Fixed" HeightSizePolicy="StretchToParent" HorizontalAlignment="Left" Sprite="BlankWhiteSquare_9" Color="@BarColor" DoNotAcceptEvents="true" />
+                          </Children>
+                        </FillBarWidget>
+                      </Children>
+                    </Widget>
                   </Children>
-                </FillBarWidget>
+                </Widget>
+
+                <!-- step 44: his fever bar, at the bottom of the box (its place kept while hidden) -->
+                <Widget Id="FeverMark" WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" HorizontalAlignment="Center" VerticalAlignment="Bottom" ScaledSuggestedWidth="@Width" ScaledSuggestedHeight="@Height" IsVisible="@FeverShown" Sprite="BlankWhiteSquare_9" Color="@FrameColor" DoNotAcceptEvents="true">
+                  <Children>
+                    <FillBarWidget Id="Fever" WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" MarginLeft="1" MarginRight="1" MarginTop="1" MarginBottom="1" FillWidget="FeverFill" MaxAmountAsFloat="1" InitialAmountAsFloat="@Fill" DoNotAcceptEvents="true">
+                      <Children>
+                        <Widget Id="FeverFill" WidthSizePolicy="Fixed" HeightSizePolicy="StretchToParent" HorizontalAlignment="Left" Sprite="BlankWhiteSquare_9" Color="@FillColor" DoNotAcceptEvents="true" />
+                      </Children>
+                    </FillBarWidget>
+                  </Children>
+                </Widget>
+
               </Children>
             </Widget>
           </ItemTemplate>

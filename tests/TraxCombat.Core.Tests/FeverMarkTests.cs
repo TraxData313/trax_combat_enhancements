@@ -247,19 +247,24 @@ public class FeverMarkTests
     public void The_summary_line_counts_frames_marks_the_cap_and_the_skips()
     {
         var s = new FeverMarkStats();
-        Assert.Equal("hud: fever marks - shown 0x (the game's markers never came up with the marks on - ALT never held or the orders menu never opened in a fight, or the fever / the marks off); errors 0",
+        Assert.Equal("hud: ALT bars - shown 0x (the game's markers never came up with the bars on - ALT never held or the orders menu never opened in a fight, or the Athletics and fever bars off); errors 0",
             s.SummaryLine(0));
         s.NoteShown();
         var skipped = new int[(int)FeverMarkSkip.Count];
+        var none = new int[BarMath.BandCount];
         skipped[(int)FeverMarkSkip.Behind] = 10;
-        s.NoteFrame(0.5, 100, 150, 120, 30, false, 200, skipped, 0.02);
+        s.NoteBars(0, none, 0, 100);                                                       // step 44's fever bars alone (the Athletics bars off)
+        s.NoteFrame(0.5, 100, 150, 150, 120, 30, false, 200, skipped, 0.02);
         skipped[(int)FeverMarkSkip.Capped] = 5;
-        s.NoteFrame(0.5, 200, 400, 300, 100, true, 200, skipped, 0.04);
+        s.NoteBars(0, none, 0, 200);
+        s.NoteFrame(0.5, 200, 400, 400, 300, 100, true, 200, skipped, 0.04);
         Assert.Equal(2, s.Frames);
         Assert.Equal(150.0, s.MeanMarks);
+        Assert.Equal(150.0, s.MeanFeverBars);
         Assert.Equal(20, s.Skipped(FeverMarkSkip.Behind));
         Assert.Equal(5, s.Skipped(FeverMarkSkip.Capped));
-        Assert.Equal("hud: fever marks - shown 1x, on screen 1.0 s over 2 frames; marks a frame: mean 150.0, max 200; most men in fever at once 400 (yours and allies 300, enemy 100); "
+        Assert.Equal("hud: ALT bars - shown 1x, on screen 1.0 s over 2 frames; men marked a frame: mean 150.0, max 200; Athletics bars a frame: mean 0.0, max 0; "
+                     + "fever bars a frame: mean 150.0, max 200; most men looked at in a frame 400 (yours and allies 300, enemy 100), most in a fever 400; "
                      + "frames at the cap 1 (FeverMarkMax 200 at the first - the nearest drawn); men skipped, summed over frames: behind the camera 20, beyond the cap 5; cost 30 µs a frame (most 40 µs); errors 2",
             s.SummaryLine(2));
         s.Grown = 1;

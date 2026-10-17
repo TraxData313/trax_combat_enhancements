@@ -63,12 +63,15 @@ namespace TraxCombat.Hud
         private readonly string _layerBucket;
         private readonly string _outsideBucket;
 
-        protected TraxHudView(string viewName, string movieName, ParamDef toggle)
+        /// <param name="toggleName">Step 46: how the log names the view's switch when it is more than <paramref name="toggle"/> (the ALT bars:
+        /// "ShowAthleticsMarks / ShowFeverMarks" - see <see cref="ToggleOn"/>); null = the toggle's key.</param>
+        protected TraxHudView(string viewName, string movieName, ParamDef toggle, string? toggleName = null)
         {
             ViewName = viewName;
             MovieName = movieName;
             Toggle = toggle;
-            Stats = new HudStats(viewName, movieName, toggle.Key);
+            ToggleName = toggleName ?? toggle.Key;
+            Stats = new HudStats(viewName, movieName, ToggleName);
             _layerBucket = "hud-layer:" + viewName;
             _outsideBucket = "hud-outside:" + viewName;
         }
@@ -81,6 +84,12 @@ namespace TraxCombat.Hud
 
         /// <summary>The view's own Show… setting.</summary>
         internal ParamDef Toggle { get; }
+
+        /// <summary>The switch's name in the log (the toggle's key, or a view's own words for two switches - step 46).</summary>
+        internal string ToggleName { get; }
+
+        /// <summary>The view's switch, read live every frame (default: <see cref="Toggle"/>; step 46's ALT bars: either of their two switches).</summary>
+        protected virtual bool ToggleOn(TraxSettings s) => s.GetBool(Toggle);
 
         /// <summary>This mission's numbers ([summary] hud: lines).</summary>
         internal HudStats Stats { get; }
@@ -164,7 +173,7 @@ namespace TraxCombat.Hud
 
         /// <summary>When the view shows, in words - the attach line of the log.</summary>
         internal string ShowsWhen =>
-            "shown while ModEnabled, AthleticsEnabled and " + Toggle.Key + " are on, the game's Hide battle UI and photo mode are off, "
+            "shown while ModEnabled, AthleticsEnabled and " + ToggleName + " are on, the game's Hide battle UI and photo mode are off, "
             + "in a fight (battle, duel, tournament or stealth mode)"
             + (NeedsPlayer ? (ViewConditionWhen != null ? ", you are on the field" : " and you are on the field") : string.Empty)
             + (ViewConditionWhen != null ? " and " + ViewConditionWhen : string.Empty)
@@ -291,7 +300,7 @@ namespace TraxCombat.Hud
             bool fight = HudFrame.IsFightMode(f.Mode);
             bool hasPlayer = f.Player != null && f.PlayerActive;
             var outside = fight ? default : ReadOutsideFacts(in f, s, hasPlayer);
-            var input = new HudGateInput(s.ModEnabled, s.AthleticsEnabled, s.GetBool(Toggle), f.HideBattleUI, f.PhotoMode,
+            var input = new HudGateInput(s.ModEnabled, s.AthleticsEnabled, ToggleOn(s), f.HideBattleUI, f.PhotoMode,
                 fight, NeedsPlayer, hasPlayer, ViewConditionMet(in f), in outside);
             var hide = HudGate.Decide(in input);
             var show = HudGate.ShowReason(in input);
@@ -391,7 +400,7 @@ namespace TraxCombat.Hud
             }
             TraxLog.Limited("hud", ViewName + ": layer created at " + S1(f.Now) + " s (mode " + HudFrame.ModeName(f.Mode)
                 + (outside ? ", " + HudGate.Describe(show) : string.Empty)
-                + (wasHiddenBy != HudHide.None ? ", was hidden: " + HudGate.Describe(wasHiddenBy, Toggle.Key, ViewConditionText) : string.Empty)
+                + (wasHiddenBy != HudHide.None ? ", was hidden: " + HudGate.Describe(wasHiddenBy, ToggleName, ViewConditionText) : string.Empty)
                 + ") - movie " + MovieName + " loaded OK (" + detail + ")"
                 + (QuietConditionToggles ? " - later builds and removals by \"" + ViewConditionText + "\" go to the verbose log only" : string.Empty),
                 outside ? _outsideBucket : _layerBucket);
@@ -486,7 +495,7 @@ namespace TraxCombat.Hud
         }
 
         private string Why(HudHide hide) =>
-            HudGate.Describe(hide, Toggle.Key, ViewConditionText) + (hide == HudHide.NotFightMode ? " - mode " + HudFrame.ModeName(_mode) : string.Empty);
+            HudGate.Describe(hide, ToggleName, ViewConditionText) + (hide == HudHide.NotFightMode ? " - mode " + HudFrame.ModeName(_mode) : string.Empty);
 
         private double SafeNow()
         {

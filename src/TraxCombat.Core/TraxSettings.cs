@@ -340,6 +340,8 @@ namespace TraxCombat.Core
         public bool AltMarkersShowEnemy => GetBool(SettingsSchema.AltMarkersShowEnemy);
         public bool ShowFeverMarks => GetBool(SettingsSchema.ShowFeverMarks); // step 44
         public bool FeverMarksShowEnemy => GetBool(SettingsSchema.FeverMarksShowEnemy);
+        public bool ShowAthleticsMarks => GetBool(SettingsSchema.ShowAthleticsMarks); // step 46
+        public bool AthleticsMarksShowEnemy => GetBool(SettingsSchema.AthleticsMarksShowEnemy);
         public int FeverMarkMax => GetInt(SettingsSchema.FeverMarkMax);
 
         public float HudRefreshSeconds => GetFloat(SettingsSchema.HudRefreshSeconds);
@@ -366,6 +368,9 @@ namespace TraxCombat.Core
         public int FeverMarkWidth => GetInt(SettingsSchema.FeverMarkWidth); // step 44
         public int FeverMarkHeight => GetInt(SettingsSchema.FeverMarkHeight);
         public float FeverMarkHeightMetres => GetFloat(SettingsSchema.FeverMarkHeightMetres);
+        public int AthleticsMarkWidth => GetInt(SettingsSchema.AthleticsMarkWidth); // step 46
+        public int AthleticsMarkHeight => GetInt(SettingsSchema.AthleticsMarkHeight);
+        public int AthleticsMarkGap => GetInt(SettingsSchema.AthleticsMarkGap);
         public float FormationStatsRefreshSeconds => GetFloat(SettingsSchema.FormationStatsRefreshSeconds);
         public bool VerboseLogging => GetBool(SettingsSchema.VerboseLogging);
         public int LogMaxMegabytes => GetInt(SettingsSchema.LogMaxMegabytes);

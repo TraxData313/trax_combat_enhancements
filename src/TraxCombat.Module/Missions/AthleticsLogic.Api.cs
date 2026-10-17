@@ -140,6 +140,40 @@ namespace TraxCombat.Missions
             return true;
         }
 
+        /// <summary>Step 46: how many tracked fighters <see cref="TryGetMarkAt"/> walks this frame - every one when <paramref name="everyone"/>
+        /// (the Athletics bars), else only while a fever runs (step 44's walk: 0 = the loop costs nothing).</summary>
+        internal static int MarkWalkCount(bool everyone)
+        {
+            var logic = _current;
+            if (logic == null) return 0;
+            return everyone || logic._feverRunning > 0 ? logic._count : 0;
+        }
+
+        /// <summary>
+        /// Step 46: the tracked fighter at <paramref name="index"/> as the ALT bars need him - his fever (<see cref="FeverMark.InFever"/>, Armed,
+        /// Share) and, when <paramref name="everyone"/>, his Athletics bar as the strip and the player bar read it (BarFill = points ÷ his FULL
+        /// pool, BarUsable = the wound cap, Band by f) - written into <paramref name="m"/>. False for the player (his own bar), a man gone, and - when
+        /// not <paramref name="everyone"/> - a man not in a fever. Allocation-free, main thread; the rules are read once per frame by the caller.
+        /// </summary>
+        internal static bool TryGetMarkAt(int index, bool everyone, in AthleticsRules rules, in BarRules bands, ref FeverMark m, out Agent? agent)
+        {
+            agent = null;
+            var logic = _current;
+            if (logic == null || index < 0 || index >= logic._count) return false;
+            var st = logic._dense[index];
+            if (st == null || st.Removed || logic.IsPlayer(st)) return false;
+            bool fever = logic.FeverOf(st, out bool armed, out double share);
+            if (!fever && !everyone) return false;
+            m.InFever = fever;
+            m.Armed = armed;
+            m.Share = (float)share;
+            if (everyone)
+                AthleticsMarkMath.Read(ref m, in bands, rules.Enabled ? st.Fraction : 1.0, AthleticsMath.UsableFraction(in rules, st),
+                    AthleticsMath.PeakShare(in rules, st));
+            agent = st.Agent;
+            return true;
+        }
+
         private bool FeverOf(TrackedAgent st, out bool armed, out double share)
         {
             armed = false;
