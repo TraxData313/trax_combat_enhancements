@@ -65,6 +65,19 @@ namespace TraxCombat.Models
             p.AiWaitBeforeShootFactor = AttackRateMath.ScaleWait(p.AiWaitBeforeShootFactor, m);
         }
 
+        /// <summary>
+        /// Step 43, CALM AND FEVER (AI_NOTES "Step 43"): the AI's two MELEE attack-decision chances × <paramref name="factor"/> -
+        /// <see cref="AgentDrivenProperties.AIAttackOnDecideChance"/> (start an attack at a combat decision) and
+        /// <see cref="AgentDrivenProperties.AIAttackOnParryChance"/> (a riposte), clamped 0..1 (<see cref="FeverMath.ApplyChance"/>).
+        /// Both assigned with <c>=</c> by the base models' SetAiRelatedProperties on every recompute - never compounds. Ranged (AiShootFreq,
+        /// the aim) and every defence value left alone.
+        /// </summary>
+        public static void ScaleAttackDecisions(AgentDrivenProperties p, float factor)
+        {
+            p.AIAttackOnDecideChance = FeverMath.ApplyChance(p.AIAttackOnDecideChance, factor);
+            p.AIAttackOnParryChance = FeverMath.ApplyChance(p.AIAttackOnParryChance, factor);
+        }
+
         /// <summary>The AI decision values (step 5e) as the managed side holds them.</summary>
         public readonly struct AiSnapshot
         {

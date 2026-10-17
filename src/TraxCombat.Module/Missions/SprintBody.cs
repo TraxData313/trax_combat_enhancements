@@ -13,6 +13,9 @@ namespace TraxCombat.Missions
     {
         public int Slot;
         public BraceOrderKind Kind;
+
+        /// <summary>Step 43: the formation is under the player's command (his orders), not the AI general's.</summary>
+        public bool ByPlayer;
     }
 
     /// <summary>
@@ -120,6 +123,7 @@ namespace TraxCombat.Missions
                     if (slot < 0) continue;
                     into[n].Slot = slot;
                     into[n].Kind = GameBraceBody.KindOf(f);
+                    into[n].ByPlayer = !f.IsAIControlled; // step 43: whose order it was (the summary's "by you / by the AI general")
                     n++;
                 }
             }

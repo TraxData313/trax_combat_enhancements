@@ -33,6 +33,7 @@ namespace TraxCombat.Missions
         private readonly BraceOrderKind[] _slotKind = new BraceOrderKind[GameSprintBody.MaxTeams * GameSprintBody.SlotsPerTeam];
         private readonly bool[] _slotSeen = new bool[GameSprintBody.MaxTeams * GameSprintBody.SlotsPerTeam];
         private readonly bool[] _slotChanged = new bool[GameSprintBody.MaxTeams * GameSprintBody.SlotsPerTeam];
+        private readonly bool[] _slotByPlayer = new bool[GameSprintBody.MaxTeams * GameSprintBody.SlotsPerTeam]; // step 43
         private string _seenSprintText = string.Empty;
         private double _nextOrderPoll = double.NegativeInfinity;
         private double _sprintAccum;
@@ -90,9 +91,16 @@ namespace TraxCombat.Missions
             if (!s.Enabled)
             {
                 if (_sprintingNow > 0) EndAllSprints(SprintEnd.SwitchedOff, now, aiOnly: false);
-                ForgetOrders();
                 _playerKeyWasDown = true; // back on: a key still held waits for a new press
                 _sprintAccum = 0;
+                try
+                {
+                    PollOrdersFor(now, in s, in r, sprintAi: false); // step 43: the fever reads the same poll (else forgotten)
+                }
+                catch (Exception e)
+                {
+                    Failed("sprint.orders", e);
+                }
                 return;
             }
             try
@@ -105,15 +113,8 @@ namespace TraxCombat.Missions
             }
             try
             {
-                if (s.AiOn)
-                {
-                    PollOrders(now, in s, in r);
-                }
-                else
-                {
-                    if (_sprintingNow > 0) EndAllSprints(SprintEnd.SwitchedOff, now, aiOnly: true);
-                    ForgetOrders();
-                }
+                if (!s.AiOn && _sprintingNow > 0) EndAllSprints(SprintEnd.SwitchedOff, now, aiOnly: true);
+                PollOrdersFor(now, in s, in r, sprintAi: s.AiOn);
             }
             catch (Exception e)
             {
@@ -198,9 +199,23 @@ namespace TraxCombat.Missions
 
         // ------------------------------------------------------------------ the AI's orders
 
+        /// <summary>Step 43: the order poll serves the AI sprint AND the fever - it runs while either is on, else the last look is
+        /// forgotten (back on, the first look only records).</summary>
+        private void PollOrdersFor(double now, in SprintRules s, in AthleticsRules r, bool sprintAi)
+        {
+            var fr = FeverRules.From(TraxSettings.Shared);
+            if (!sprintAi && !fr.Enabled)
+            {
+                ForgetOrders();
+                return;
+            }
+            PollOrders(now, in s, in r, sprintAi, in fr);
+        }
+
         /// <summary>Every <see cref="SprintMath.OrderPollSeconds"/>: every formation's order kind; a changed kind = a new order → one
-        /// pass over the fighters for the men in those formations. The first look at a formation is not a change.</summary>
-        private void PollOrders(double now, in SprintRules s, in AthleticsRules r)
+        /// pass over the fighters for the men in those formations (the AI sprint while <paramref name="sprintAi"/>, step 43's fever while
+        /// it is on). The first look at a formation is not a change.</summary>
+        private void PollOrders(double now, in SprintRules s, in AthleticsRules r, bool sprintAi, in FeverRules fr)
         {
             if (now < _nextOrderPoll && now >= _nextOrderPoll - 10 * SprintMath.OrderPollSeconds) return;
             _nextOrderPoll = now + SprintMath.OrderPollSeconds;
@@ -212,6 +227,7 @@ namespace TraxCombat.Missions
                 int slot = _orderReads[i].Slot;
                 if (slot < 0 || slot >= _slotKind.Length) continue;
                 var kind = _orderReads[i].Kind;
+                _slotByPlayer[slot] = _orderReads[i].ByPlayer;
                 if (!_slotSeen[slot])
                 {
                     _slotSeen[slot] = true;
@@ -246,11 +262,23 @@ namespace TraxCombat.Missions
                 {
                     int slot = body.FormationSlot(st);
                     if (slot < 0 || slot >= _slotChanged.Length || !_slotChanged[slot]) continue;
-                    OrderChangedFor(st, _slotKind[slot], now, in s, in r);
+                    if (sprintAi) OrderChangedFor(st, _slotKind[slot], now, in s, in r);
                 }
                 catch (Exception e)
                 {
                     Failed("sprint.order-start", e);
+                }
+                try
+                {
+                    if (fr.Enabled)
+                    {
+                        int slot = body.FormationSlot(st);
+                        if (slot >= 0 && slot < _slotChanged.Length && _slotChanged[slot]) FeverOrderFor(st, _slotKind[slot], _slotByPlayer[slot], now, in fr, in r);
+                    }
+                }
+                catch (Exception e)
+                {
+                    Failed("fever.order", e);
                 }
             }
             for (int k = 0; k < _slotChanged.Length; k++) _slotChanged[k] = false;

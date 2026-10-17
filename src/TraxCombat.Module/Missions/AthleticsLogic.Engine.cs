@@ -159,6 +159,7 @@ namespace TraxCombat.Missions
             StartWall(); // step 41
             StartTiredBlock(); // step 30
             StartSprint(); // step 33
+            StartFever(); // step 43
         }
 
         private void StopAthletics()
@@ -330,6 +331,7 @@ namespace TraxCombat.Missions
             PlayerTimerLeftField(st);
             StackLeftField(st); // step 32: his running burst counted
             SprintLeftField(st); // step 33
+            FeverLeftField(st); // step 43
             RemoveFromLoop(st);
         }
 
@@ -523,6 +525,16 @@ namespace TraxCombat.Missions
                 Failed("brace.tick", e);
             }
 
+            // Step 43: calm and fever - every man looked at about every 0.25 s (staggered): contact, the burn, the fade, the fever sprint.
+            try
+            {
+                TickFever(now);
+            }
+            catch (Exception e)
+            {
+                Failed("fever.tick", e);
+            }
+
             // Step 13: your timer - switched off or not you any more = released at once (the input gate
             // does the frame work; this is the tick's safety net).
             try
@@ -646,6 +658,7 @@ namespace TraxCombat.Missions
             if (mounted) _stats.MeleeReleasesMounted++;
             st.ReleaseSerial++;
             StepBackSwingStarted(st);
+            NoteFeverAttack(st, mounted); // step 43: an AI melee attack on foot in contact, counted by calm / feverish
 
             // the cycle since the last release ran at the multiplier set after that release's charge
             int binNow = AthleticsMath.PeakBin(AthleticsMath.PeakShare(in r, st));
@@ -794,6 +807,8 @@ namespace TraxCombat.Missions
         private bool RetargetSpeed(TrackedAgent st, in AthleticsRules r, bool exact = false)
         {
             bool human = false, horse = false;
+            // step 43: the calm / fever factor on the AI's two attack-decision chances rides on the same recompute
+            if (RetargetDecision(st)) human = true;
             // step 30: the tired-block weight w rides on the same recompute (the decorator writes the game's chance from it)
             float block = TiredBlockWeight(st, in r);
             if (exact ? block != st.BlockRandomWeight : AthleticsMath.SpeedUpdateNeeded(st.BlockRandomWeight, block, 0f))
@@ -1048,6 +1063,7 @@ namespace TraxCombat.Missions
                 NoteTiredBlockSettings(settings); // step 30: the tired-block line (everyone re-targeted below)
                 NoteStackSettings(settings);      // step 32: the swing stack's switch and numbers
                 NoteSprintSettings(settings);     // step 33: the sprint (switching it off ends every sprint in the next tick)
+                NoteFeverSettings(settings);      // step 43: calm and fever (the decision factors re-targeted below with the speeds)
 
                 if (r.PoolFloor != _seenPoolFloor || r.PoolPerSkill != _seenPoolPerSkill)
                 {
@@ -1534,7 +1550,13 @@ namespace TraxCombat.Missions
         /// (AthleticsEnabled) is off (read live - fail safe). Any thread; managed only (no native call).
         /// </summary>
         internal static bool SpeedFactorsFor(Agent agent, float gameReach, out float attack, out float run, out float mount, out float blockRandom, out float reach)
+            => SpeedFactorsFor(agent, gameReach, out attack, out run, out mount, out blockRandom, out reach, out _);
+
+        /// <summary>Step 43: <paramref name="decision"/> = his calm / fever factor on the AI's two attack-decision chances (1 = the game's).</summary>
+        internal static bool SpeedFactorsFor(Agent agent, float gameReach, out float attack, out float run, out float mount, out float blockRandom, out float reach,
+            out float decision)
         {
+            decision = 1f;
             attack = run = mount = 1f;
             blockRandom = 0f;
             reach = 0f;
@@ -1554,7 +1576,8 @@ namespace TraxCombat.Missions
                     reach = s.SprintTopSpeedReachSeconds;
                 }
                 blockRandom = st.BlockRandomWeight; // step 30
-                return attack != 1f || run != 1f || blockRandom > 0f || reach > 0f;
+                decision = st.DecisionFactor; // step 43
+                return attack != 1f || run != 1f || blockRandom > 0f || reach > 0f || decision != 1f;
             }
             var owner = logic.MountOwner(agent);
             if (owner == null) return false;

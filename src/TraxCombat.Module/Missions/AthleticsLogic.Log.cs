@@ -118,6 +118,15 @@ namespace TraxCombat.Missions
             {
                 Failed("sprint.close", e);
             }
+            // Step 43: every running fever counted before the summary (the properties go with the mission).
+            try
+            {
+                CloseFevers();
+            }
+            catch (Exception e)
+            {
+                Failed("fever.close", e);
+            }
 
             // the lowest any hero reached (heroes' records outlive their removal from the loop)
             TrackedAgent? lowest = null;
@@ -245,6 +254,16 @@ namespace TraxCombat.Missions
             catch (Exception e)
             {
                 Failed("sprint.summary", e);
+            }
+
+            // Step 43: calm and fever - fevers by order, contact, burns, the fade, fever sprints, the proof. Own try.
+            try
+            {
+                WriteFeverSummary();
+            }
+            catch (Exception e)
+            {
+                Failed("fever.summary", e);
             }
         }
 

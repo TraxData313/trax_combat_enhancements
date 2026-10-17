@@ -26,7 +26,8 @@ namespace TraxCombat.Models
     /// (<see cref="SpeedPenalty"/>), and (step 30) a tired AI man's AiRandomizedDefendDirectionChance raised by
     /// his tired-block weight (<see cref="TiredBlockMath.Chance"/> - never the player); step 35: a SPRINTER's run property gets
     /// the sprint's run factor (× his fresh run, in place of the tiredness multiplier) and his TopSpeedReachDuration is capped at
-    /// SprintTopSpeedReachSeconds.
+    /// SprintTopSpeedReachSeconds; step 43: an AI man on foot's two melee attack-decision chances × his calm / fever factor
+    /// (<see cref="SpeedPenalty.ScaleAttackDecisions"/>).
     ///
     /// THE TOURNAMENT FIX (RESEARCH §C): TournamentBehavior raises the AI level each round with
     /// <c>MissionGameModels.Current.AgentStatCalculateModel.SetAILevelMultiplier(x)</c> - a
@@ -125,7 +126,7 @@ namespace TraxCombat.Models
             try
             {
                 float gameReach = agentDrivenProperties.TopSpeedReachDuration; // step 35: the base model's own (assigned fresh every recompute)
-                if (AthleticsLogic.SpeedFactorsFor(agent, gameReach, out float attack, out float run, out float mount, out float blockRandom, out float reach))
+                if (AthleticsLogic.SpeedFactorsFor(agent, gameReach, out float attack, out float run, out float mount, out float blockRandom, out float reach, out float decision))
                 {
                     bool ai = false;
                     var s = TraxSettings.Shared;
@@ -134,11 +135,21 @@ namespace TraxCombat.Models
                     // recompute steps; the no-attack timer carries the rest of the slow-down (read live on every recompute)
                     float animation = AttackTimerMath.AnimationForAttack(attack, AthleticsRules.AttackSpeedFloorOf(s.ExhaustedAttackSpeedPercent), s.AttackAnimationMinPercent);
                     if (animation != 1f) SpeedPenalty.Scale(agentDrivenProperties, animation);
+                    // step 43: the game's own two attack-decision chances, before step 5e's m (the summary's "the game's")
+                    float gameAttack = agentDrivenProperties.AIAttackOnDecideChance, gameRiposte = agentDrivenProperties.AIAttackOnParryChance;
                     // step 5e: the AI's decisions may follow the same m (an A/B switch, off since step 13)
                     if (attack != 1f && s.AttackRateAiDecisions)
                     {
                         SpeedPenalty.ScaleAiDecisions(agentDrivenProperties, attack);
                         ai = true;
+                    }
+                    // step 43: CALM and FEVER - the two melee attack-decision chances × his factor (calm ÷ AiCalmFactor, the fever's ×
+                    // the aggression; multiplied on top of 5e's m), written after the base model's own SetAiRelatedProperties (assigned
+                    // with = every recompute - no compounding; no floor of ours). AI on foot only: never the player, never a rider.
+                    if (decision != 1f && !agent.IsMainAgent && agent.MountAgent == null)
+                    {
+                        SpeedPenalty.ScaleAttackDecisions(agentDrivenProperties, decision);
+                        AthleticsLogic.NoteDecisionValues(agent, gameAttack, agentDrivenProperties.AIAttackOnDecideChance, gameRiposte, agentDrivenProperties.AIAttackOnParryChance);
                     }
                     if (run != 1f) SpeedPenalty.ScaleRun(agentDrivenProperties, run);
                     if (mount != 1f) SpeedPenalty.ScaleMount(agentDrivenProperties, mount);

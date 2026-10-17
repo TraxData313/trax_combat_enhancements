@@ -33,6 +33,9 @@ namespace TraxCombat.Tools
             public readonly HashSet<int> NotAi = new HashSet<int>();
             public readonly HashSet<int> Mounted = new HashSet<int>();
             public readonly HashSet<int> EnemyNear = new HashSet<int>();
+
+            /// <summary>Step 43: the nearest enemy's distance by man (EnemyWithin answers it against the radius asked).</summary>
+            public readonly Dictionary<int, float> EnemyAt = new Dictionary<int, float>();
             public readonly Dictionary<int, int> Slots = new Dictionary<int, int>();
             public readonly Dictionary<int, BraceOrderKind> Orders = new Dictionary<int, BraceOrderKind>();
             public readonly Dictionary<int, float> Speeds = new Dictionary<int, float>();
@@ -72,7 +75,8 @@ namespace TraxCombat.Tools
                 topSpeed = 4f * (st.SprintRun > 0f ? st.SprintRun : st.RunSpeedMultiplier);
             }
 
-            public bool EnemyWithin(TrackedAgent st, float metres) => EnemyNear.Contains(st.AgentIndex);
+            public bool EnemyWithin(TrackedAgent st, float metres) =>
+                EnemyNear.Contains(st.AgentIndex) || (EnemyAt.TryGetValue(st.AgentIndex, out float d) && d <= metres);
 
             public bool KeyDown(int keyIndex)
             {
