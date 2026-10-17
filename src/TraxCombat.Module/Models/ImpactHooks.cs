@@ -28,6 +28,16 @@ namespace TraxCombat.Models
     }
 
     /// <summary>
+    /// Step 50: the AI's pickup of a dropped SHIELD - asked by <see cref="TraxItemPickupModel.IsItemAvailableForAgent"/> after the base model
+    /// (MAIN thread: HumanAIComponent.ItemPickupTick runs in OnTick). True = refuse this pickup (<c>ShieldPickupLockSeconds</c> after a live
+    /// kick / bash made his shield leave his hand). The player picks items up with the use key - no model asked, so never locked.
+    /// </summary>
+    internal interface IShieldPickupLock
+    {
+        bool ShieldPickupLocked(Agent agent);
+    }
+
+    /// <summary>
     /// Step 47: the impact system's MODEL seams, shared by the two decorators and the running mission logic. The logic plugs its deciders
     /// in at mission start (and takes them out at its end); the decorators ask them and stay vanilla when none is plugged or one throws.
     /// The game's stun cap is raised / restored here - <c>ManagedParameters</c> is one global array, so a raised cap is put back at the
@@ -59,6 +69,31 @@ namespace TraxCombat.Models
         {
             get => _blockStun;
             set => _blockStun = value;
+        }
+
+        private static volatile IShieldPickupLock? _pickupLock;
+
+        /// <summary>Step 50: the running logic while it runs (the pickup decorator asks it).</summary>
+        internal static IShieldPickupLock? PickupLock
+        {
+            get => _pickupLock;
+            set => _pickupLock = value;
+        }
+
+        /// <summary>Step 50: the pickup decorator's question for a SHIELD on the ground: refused? A throwing lock = the game's answer.</summary>
+        internal static bool ShieldPickupLocked(Agent agent)
+        {
+            var l = _pickupLock;
+            if (l == null || agent == null) return false;
+            try
+            {
+                return l.ShieldPickupLocked(agent);
+            }
+            catch (Exception e)
+            {
+                TraxCombat.Missions.AthleticsLogic.Failed("impact.pickup-lock", e);
+                return false;
+            }
         }
 
         /// <summary>A blow of ours is inside <c>Agent.RegisterBlow</c> right now (this thread).</summary>

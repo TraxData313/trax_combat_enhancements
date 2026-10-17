@@ -227,6 +227,26 @@ namespace TraxCombat
             {
                 TraxLog.Error("speed.register", e);
             }
+
+            try
+            {
+                // step 50: the AI's pickup of a shield a live kick knocked from his hand (ShieldPickupLockSeconds; 0 = vanilla)
+                if (existing.Any(m => m is ItemPickupModel))
+                {
+                    var pickup = new TraxItemPickupModel();
+                    starter.AddModel<ItemPickupModel>(pickup);
+                    TraxLog.Info("impact", "item pickup model decorator registered over " + pickup.BaseModelName
+                        + " - an AI man may not pick a shield up again for ShieldPickupLockSeconds after a kick / bash knocked it from his hand (0 = vanilla)");
+                }
+                else
+                {
+                    TraxLog.Info("impact", "this game type has no ItemPickupModel - the shield pickup lock is not registered (vanilla pickup)");
+                }
+            }
+            catch (Exception e)
+            {
+                TraxLog.Error("impact.register", e);
+            }
         }
 
         // ------------------------------------------------------------------ load log

@@ -649,6 +649,10 @@ namespace TraxCombat.Tools
                   && ImpactActions.StrikeMedium == (int)Agent.ActionCodeType.StrikeMedium && ImpactActions.StrikeHeavy == (int)Agent.ActionCodeType.StrikeHeavy
                   && ImpactActions.StrikeKnockBack == (int)Agent.ActionCodeType.StrikeKnockBack && ImpactActions.MountStrike == (int)Agent.ActionCodeType.MountStrike,
                 "Core's action codes are not the game's ActionCodeType");
+            // step 50: vanilla's drop rule (Agent.HandleDropWeapon) - no drop during his own release / bash
+            Check(ImpactActions.ReleaseMelee == (int)Agent.ActionCodeType.ReleaseMelee && ImpactActions.ReleaseRanged == (int)Agent.ActionCodeType.ReleaseRanged
+                  && ImpactActions.ReleaseThrowing == (int)Agent.ActionCodeType.ReleaseThrowing && ImpactActions.WeaponBash == (int)Agent.ActionCodeType.WeaponBash,
+                "Core's release / bash codes (step 50's drop rule) are not the game's ActionCodeType");
             Check(ImpactActions.ResultStrikeAgent == (int)CombatCollisionResult.StrikeAgent, "Core's StrikeAgent is not the game's");
             Check(Enum.IsDefined(typeof(Mission.MissionTickAction), Mission.MissionTickAction.DropItem), "Mission.MissionTickAction has no DropItem");
             Check((int)(BlowFlags.KnockDown | BlowFlags.KnockBack) == 0x30, "the blow flags moved");

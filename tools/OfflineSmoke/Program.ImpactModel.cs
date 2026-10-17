@@ -139,7 +139,7 @@ namespace TraxCombat.Tools
                 logic.ImpactDice = dice;
                 var stats = logic.ImpactModelStats;
                 var model = SpikeDamageModel();
-                LogHas("[impact] mission start: the model (step 48 - IMPACT I2, docs/IMPACT.md) LIVE - but no effect is built yet (steps 49-51 bring them): every event decided and logged only; families: kicks / bashes on, blocks on, clean hits on, riposte on; anchors - a kick on an empty even man: shield 90%, down 80%");
+                LogHas("[impact] mission start: the model (step 48 - IMPACT I2, docs/IMPACT.md) LIVE - kicks / bashes applied, blocks, clean hits, the riposte decided and logged only (effect not built yet); families: kicks / bashes on, blocks on, clean hits on, riposte on; anchors - a kick on an empty even man: shield 90%, down 80%");
                 LogHas("two even fresh men: 0% always");
                 double t = 19000;
                 logic.TickImpact(t);
@@ -166,13 +166,13 @@ namespace TraxCombat.Tools
                     return m;
                 }
 
-                // ---- a landed KICK: decided in the decorator's KnockDown seam, the dice say DOWN - the answer stays the game's (step 48)
+                // ---- a landed KICK: decided in the decorator's KnockDown seam, the dice say DOWN - since step 50 the answer is KnockDown
                 var man1 = Peasant(4801);
                 var kick = KickLands();
                 var blow = new Blow(king.AgentIndex);
                 dice.Next(0.0, 0.0, 0.5); // knocked down, shield dropped, the get-up roll at its centre
                 bool down = model.DecideAgentKnockedDownByBlow(king.Agent, man1.Agent, in kick, null!, in blow);
-                Check(!down, "step 48 applied a knockdown - nothing may apply before step 49");
+                Check(down, "step 50: the kick's knockdown was not answered in the decorator's seam");
                 Check(stats.Decisions == 1 && stats.FromDecorator == 1, "the decorator did not decide the kick: " + stats.Decisions + " / " + stats.FromDecorator);
                 logic.ImpactModelHitTaken(king.Agent, man1.Agent, in kick);
                 Check(stats.Decisions == 1, "OnMeleeHit's part decided the kick a second time: " + stats.Decisions);
@@ -180,8 +180,8 @@ namespace TraxCombat.Tools
                 Check(d.Event == ImpactEvent.Kick && Close(d.X, 1.33, 0.006) && Close(d.Knockdown.Chance, 0.80, 0.001) && Close(d.ShieldDrop.Chance, 0.90, 0.001)
                       && d.Knockdown.Happens && d.ShieldDrop.Happens && Close(d.GetUpFactor, 1 + d.T, 0.001),
                     "the king's kick on the man (IMPACT §4 B: x 1.33, shield 90%, down 80%): x " + d.X + ", " + d.ShieldDrop.Chance + " / " + d.Knockdown.Chance + ", get-up x" + d.GetUpFactor);
-                Check(stats.LiveDecisions == 1 && stats.ShadowDecisions == 0 && stats.Applied == 0, "a live decision with no effect built: live " + stats.LiveDecisions + ", applied " + stats.Applied);
-                LogHas("[impact] first kick decided at 19000.0 s - (agent 4800)'s kick on (agent 4801) (decided and logged only - its effect comes in step 49): (agent 4801) bar 20% (T 0.73); points 200 vs 10");
+                Check(stats.LiveDecisions == 1 && stats.ShadowDecisions == 0 && stats.Applied == 1, "a live kick (step 50 - applied): live " + stats.LiveDecisions + ", applied " + stats.Applied);
+                LogHas("[impact] first kick decided at 19000.0 s - (agent 4800)'s kick on (agent 4801) (LIVE): (agent 4801) bar 20% (T 0.73); points 200 vs 10");
                 LogHas("skill 250 vs 60 (x1.17 / x0.85) → R 7.37");
                 LogHas("→ x 1.33: knocked down 80% → rolled 0.00 YES; shield dropped 90% → rolled 0.00 YES; gets up x1.73 slower");
                 // on the ground (the state remembers what WOULD have happened): the next blow on him is refused
@@ -197,17 +197,26 @@ namespace TraxCombat.Tools
                 Check(d.Event == ImpactEvent.RightBlock && Close(d.X, 1.09, 0.006) && Close(d.Stagger.Chance, 0.80, 0.001) && Close(d.Knockdown.Chance, 0.40, 0.001)
                       && d.Stagger.Happens && Close(d.StaggerSeconds, 0.6 * (1 + 1.5 * d.T), 0.001) && Close(d.StunFactor, 1 + d.T, 0.001) && !d.ShieldDrop.InRow,
                     "the king's blow on the man's right-side block: x " + d.X + ", stagger " + d.Stagger.Chance + " (" + d.StaggerSeconds + " s), down " + d.Knockdown.Chance);
-                Check(man2.Impact.Reeling(t + 0.5) && man2.Impact.StaggerImmune(t + d.StaggerSeconds + 1.9) && !man2.Impact.StaggerImmune(t + d.StaggerSeconds + 2.1),
-                    "the stagger's reeling / immunity not kept on his record");
-                LogHas("[impact] first right-side block decided at 19000.0 s - (agent 4801)'s right-side block of (agent 4800)'s blow (decided and logged only - its effect comes in step 50)");
+                // step 50: blocks are decided LIVE but their effect is not built (step 51) - decided on copies: his record untouched
+                Check(!man2.Impact.Reeling(t + 0.5) && !man2.Impact.StaggerImmune(t + 1) && man2.Impact.Recent(t, 8) == 0,
+                    "a live block with no effect built wrote the man's record (a stagger that never happened)");
+                LogHas("[impact] first right-side block decided at 19000.0 s - (agent 4801)'s right-side block of (agent 4800)'s blow (decided and logged only - its effect comes in step 51)");
                 LogHas("knocked down 10% (cut for 2 recent) - refused: on the ground; staggered 20% (cut for 2 recent) - refused: on the ground");
                 LogHas("[impact] first time staggered WOULD happen, at 19000.0 s - (agent 4802)'s right-side block of (agent 4800)'s blow");
-                // inside his stagger: immune to a new one, the reeling bonus, the halving
+                // in SHADOW the record is kept ("would" alike): the same block staggers him, then inside his stagger: immune to a new one, the
+                // reeling bonus, the halving
+                S.Set(SettingsSchema.ImpactShadowMode, true, SettingSources.Mcm);
+                dice.Next(0.999, 0.0, 0.5, 0.5);
+                logic.ImpactModelHitTaken(king.Agent, man2.Agent, RightBlock());
+                d = logic.LastImpact;
+                Check(d.Stagger.Happens && man2.Impact.Reeling(t + 0.5) && man2.Impact.StaggerImmune(t + d.StaggerSeconds + 1.9) && !man2.Impact.StaggerImmune(t + d.StaggerSeconds + 2.1),
+                    "shadow: the stagger's reeling / immunity not kept on his record");
                 logic.ImpactModelHitTaken(king.Agent, man2.Agent, WrongBlock());
                 d = logic.LastImpact;
                 Check(d.Event == ImpactEvent.WrongBlock && d.Stagger.Refusal == ImpactRefusal.StaggerImmune && d.Reeling && d.Knockdown.Halvings == 1
                       && Close(d.Knockdown.Chance, 0.20, 0.001) && Close(d.X, 1.42 + 0.75, 0.006),
                     "a blow on a reeling man: x " + d.X + ", stagger " + d.Stagger.Refusal + ", down " + d.Knockdown.Chance + " (halvings " + d.Knockdown.Halvings + ")");
+                S.Set(SettingsSchema.ImpactShadowMode, false, SettingSources.Mcm);
                 var man3 = Peasant(4803);
                 logic.ImpactModelHitTaken(king.Agent, man3.Agent, WrongBlock());
                 d = logic.LastImpact;
@@ -230,7 +239,7 @@ namespace TraxCombat.Tools
                 Check(d.Event == ImpactEvent.Parry && Close(d.Stagger.Chance, 0.768, 0.006) && Close(d.Knockdown.Chance, 0.364, 0.006), "an even parry at 25%: " + d.Stagger.Chance + " / " + d.Knockdown.Chance);
                 var hit = CleanHit();
                 var b2 = new Blow(even1.AgentIndex);
-                Check(!model.DecideAgentKnockedDownByBlow(even1.Agent, even3.Agent, in hit, null!, in b2), "a clean hit got KnockDown in step 48");
+                Check(!model.DecideAgentKnockedDownByBlow(even1.Agent, even3.Agent, in hit, null!, in b2), "a clean hit got KnockDown before step 52");
                 logic.ImpactModelHitTaken(even1.Agent, even3.Agent, in hit);
                 d = logic.LastImpact;
                 Check(d.Event == ImpactEvent.CleanHit && Close(d.Stagger.Chance, 0.683, 0.006) && Close(d.Knockdown.Chance, 0.345, 0.006) && stats.FromDecorator == 2,
@@ -452,6 +461,30 @@ namespace TraxCombat.Tools
                 logic.TickImpact(t + 0.04);
                 logic.ImpactModelHitTaken(a.Agent, d.Agent, Parried());
                 Check(stats.Decisions == 1, "mod back on: the impact model did not decide (step 48)");
+
+                // step 50: a live kick's knockdown answered and watched; the master switch off = nothing answered, every watch let go at once
+                var body = new FakeImpactBody();
+                logic.ImpactBody = body;
+                var dice = new ScriptDice();
+                logic.ImpactDice = dice;
+                var model = SpikeDamageModel();
+                var tired = logic.Track(FakeAgent(2952))!;
+                SetBar(tired, 0.0);
+                var kick = KickLands();
+                var blow = new Blow(a.AgentIndex);
+                dice.Next(0.0, 0.999, 0.5);
+                Check(model.DecideAgentKnockedDownByBlow(a.Agent, tired.Agent, in kick, null!, in blow) && logic.ImpactLiveWatches == 1, "the live kick (step 50) was not knocked down / watched");
+                S.Set(SettingsSchema.ModEnabled, false, SettingSources.Mcm);
+                logic.TickImpact(t + 0.06);
+                var tired2 = logic.Track(FakeAgent(2953))!;
+                SetBar(tired2, 0.0);
+                dice.Next(0.0, 0.999, 0.5);
+                Check(logic.ImpactLiveWatches == 0 && !model.DecideAgentKnockedDownByBlow(a.Agent, tired2.Agent, in kick, null!, in blow) && body.Slows.Count == 0,
+                    "mod off: the live kicks (step 50) still answered a knockdown or kept a watch");
+                S.Set(SettingsSchema.ModEnabled, true, SettingSources.Mcm);
+                logic.TickImpact(t + 0.08);
+                dice.Next(0.0, 0.999, 0.5);
+                Check(model.DecideAgentKnockedDownByBlow(a.Agent, tired2.Agent, in kick, null!, in blow), "mod back on: the live kick (step 50) not knocked down");
             }
             finally
             {

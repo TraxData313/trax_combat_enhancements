@@ -9,15 +9,17 @@ namespace TraxCombat.Missions
     /// Step 48 - IMPACT I2, THE MODEL in the mission (docs/IMPACT.md §3, §6; AI_NOTES "Step 48"): every kick / bash that lands, every block
     /// (right side, parry, wrong side) and every clean weapon hit on a man we track is DECIDED once by Core <see cref="ImpactMath.Decide"/> -
     /// both men's Athletics from our records, the weapon / guard / skills / mounts / health from <see cref="IImpactInputs"/> - and LOGGED
-    /// (the first of each kind and of each outcome in full, the rest verbose; the [summary] "impact" lines by event and bar band). Nothing is
-    /// applied in step 48: <see cref="ImpactRules.Applies"/> is false for every family until steps 49-51 build its effect
-    /// (<see cref="ImpactMath.EffectsBuilt"/>) - they plug the effect into the spike's seams with THIS decision:
+    /// (the first of each kind and of each outcome in full, the rest verbose; the [summary] "impact" lines by event and bar band). A family's
+    /// decision is APPLIED once <see cref="ImpactRules.Applies"/> says so (its effect built - <see cref="ImpactMath.EffectsBuilt"/>: step 50
+    /// kicks / bashes, AthleticsLogic.ImpactLive.cs; 51 blocks + the riposte; 52 clean hits), through the spike's seams with THIS decision:
     ///   - a LANDED blow (kick, bash, clean hit) on a man on foot is decided in the damage decorator's KnockDown seam
-    ///     (<see cref="ImpactModelOnLandedBlow"/> - before the engine registers the blow, so step 49 / 51 can answer KnockDown there) and
+    ///     (<see cref="ImpactModelOnLandedBlow"/> - before the engine registers the blow, so step 50 / 52 answer KnockDown there) and
     ///     remembered for the same callback's OnMeleeHit, which takes it instead of deciding again (one decision per event);
     ///   - a BLOCK, a landed blow on a rider (the decorator asks the dismount, not the KnockDown) and anything the decorator did not see is
-    ///     decided in OnMeleeHit (<see cref="ImpactModelHitTaken"/>); step 50 makes the stagger / the drop / our blow from the tick, and the
+    ///     decided in OnMeleeHit (<see cref="ImpactModelHitTaken"/>); step 51 makes the stagger / the drop / our blow from the tick, and the
     ///     stun by tiredness in the stun seam (any thread - from T alone, no dice state).
+    /// Step 50: a family decided LIVE whose effect is not built yet decides on COPIES of the men's states (<see cref="ImpactRules.KeepsState"/>)
+    /// - a stagger that never happened gives no reeling bonus, immunity, halving or courage shock.
     /// Master switch FIRST (then AthleticsEnabled, ImpactEnabled, the family), read live at every event. Main thread; no allocation per event.
     /// </summary>
     public sealed partial class AthleticsLogic
@@ -111,7 +113,8 @@ namespace TraxCombat.Missions
         /// <summary>
         /// The damage decorator's KnockDown seam (MAIN thread, inside the engine's MeleeHitCallback, before the blow is registered): a LANDED
         /// kick / bash / clean hit on a man on foot is decided HERE and remembered for this callback's OnMeleeHit. Returns the knockdown to
-        /// OR into the game's answer - only once its family APPLIES (steps 49 / 51; never in step 48). Own try: an error = no knockdown, logged.
+        /// OR into the game's answer - only once its family APPLIES (step 50: kicks / bashes; 52 clean hits). Own try: an error = no knockdown, the
+        /// live KnockDown lever off for the mission (one [error]).
         /// </summary>
         internal bool ImpactModelOnLandedBlow(Agent attacker, Agent victim, in AttackCollisionData cd)
         {
@@ -128,13 +131,13 @@ namespace TraxCombat.Missions
                 _pendingVictim = v;
                 _pendingEvent = ev;
                 _pendingAt = now;
-                if (!ImpactDecideEvent(a, v, ev, attacker, victim, in cd, now, out var d)) return false;
+                if (!ImpactDecideEvent(a, v, ev, attacker, victim, in cd, now, true, out _, out bool knockDown)) return false;
                 _impact.FromDecorator++;
-                return d.Knockdown.Happens && !d.Dismount && ImpactRules.From(TraxSettings.Shared).Applies(ImpactMath.Family(ev));
+                return knockDown;
             }
             catch (Exception e)
             {
-                Failed("impact.model-knockdown", e);
+                DisableImpactLever(ImpactLever.KnockDown, "impact.model-knockdown", e);
                 return false;
             }
         }
@@ -152,14 +155,16 @@ namespace TraxCombat.Missions
                 _impactPending = false;
                 if (ReferenceEquals(_pendingAttacker, a) && ReferenceEquals(_pendingVictim, v) && _pendingEvent == ev && Math.Abs(_pendingAt - now) < 1e-6) return; // decided once, in the decorator
             }
-            ImpactDecideEvent(a, v, ev, attacker, victim, in cd, now, out _);
+            ImpactDecideEvent(a, v, ev, attacker, victim, in cd, now, false, out _, out _);
         }
 
         /// <summary>The gates (the master switch first, Athletics, ImpactEnabled, the family, both men tracked), the engine's inputs, then
         /// <see cref="ImpactDecide"/>. A failing read = one [error] and the event counted "read failed".</summary>
-        private bool ImpactDecideEvent(TrackedAgent? a, TrackedAgent? v, ImpactEvent ev, Agent attacker, Agent victim, in AttackCollisionData cd, double now, out ImpactDecision d)
+        private bool ImpactDecideEvent(TrackedAgent? a, TrackedAgent? v, ImpactEvent ev, Agent attacker, Agent victim, in AttackCollisionData cd, double now, bool inSeam,
+            out ImpactDecision d, out bool knockDown)
         {
             d = default;
+            knockDown = false;
             if (!ImpactGate(a, v, ev, out _)) return false;
             var f = new ImpactFacts { Event = ev };
             try
@@ -172,7 +177,7 @@ namespace TraxCombat.Missions
                 _impact.Skip(ImpactSkip.ReadFailed, ev);
                 return false;
             }
-            return ImpactDecide(a, v, ref f, now, out d);
+            return ImpactDecide(a, v, ref f, now, inSeam, out d, out knockDown);
         }
 
         private bool ImpactGate(TrackedAgent? a, TrackedAgent? v, ImpactEvent ev, out ImpactRules r)
@@ -201,9 +206,14 @@ namespace TraxCombat.Missions
         /// <paramref name="f"/> (CURRENT points, bar, f, the attacker's swing animation share - step 20b's line -, the Athletics skill for a
         /// kick and for no guard, who is you), <see cref="ImpactMath.Decide"/> on both men's states, counted, logged.
         /// </summary>
-        internal bool ImpactDecide(TrackedAgent? a, TrackedAgent? v, ref ImpactFacts f, double now, out ImpactDecision d)
+        internal bool ImpactDecide(TrackedAgent? a, TrackedAgent? v, ref ImpactFacts f, double now, out ImpactDecision d) => ImpactDecide(a, v, ref f, now, false, out d, out _);
+
+        /// <summary>The decision, and (step 50) its effect when its family applies: <paramref name="inSeam"/> = asked from the decorator's
+        /// KnockDown seam (only there can a knockdown be answered); <paramref name="knockDown"/> = the answer for it.</summary>
+        internal bool ImpactDecide(TrackedAgent? a, TrackedAgent? v, ref ImpactFacts f, double now, bool inSeam, out ImpactDecision d, out bool knockDown)
         {
             d = default;
+            knockDown = false;
             if (!ImpactGate(a, v, f.Event, out var r)) return false;
             long t0 = Stopwatch.GetTimestamp();
             var ar = Rules;
@@ -218,13 +228,29 @@ namespace TraxCombat.Missions
             if (f.Event == ImpactEvent.Kick || f.Event == ImpactEvent.Bash || f.Event == ImpactEvent.CleanHit) f.DefenderSkill = v.AthleticsSkill;
             f.AttackerIsPlayer = IsPlayer(a!);
             f.DefenderIsPlayer = IsPlayer(v);
-            d = ImpactMath.Decide(in r, in f, ref v.Impact, ref a!.Impact, now, ImpactDice);
-            double ms = (Stopwatch.GetTimestamp() - t0) * 1000.0 / Stopwatch.Frequency;
             var family = ImpactMath.Family(f.Event);
-            bool applied = r.Applies(family); // never in step 48 (no effect built); steps 49-51 apply the decision where this is true
+            // step 50: what applies writes the states; shadow keeps "would"; a family decided live with no effect built yet decides on
+            // copies (it never happened); a rider: nothing of step 50 applies to him (knocked off = step 53) - his state untouched
+            bool applied = r.Applies(family) && !f.DefenderMounted;
+            bool keep = r.KeepsState(family) && (applied || r.ShadowNow);
+            var vs = v.Impact;
+            var ast = a!.Impact;
+            d = ImpactMath.Decide(in r, in f, ref vs, ref ast, now, ImpactDice);
+            if (keep)
+            {
+                v.Impact = vs;
+                a.Impact = ast;
+            }
+            double ms = (Stopwatch.GetTimestamp() - t0) * 1000.0 / Stopwatch.Frequency;
             _impact.Note(in d, r.ShadowNow, applied, ms, ImpactMath.BarBand(a.Fraction));
             LastImpact = d;
             NoteImpactLines(a, v, in d, in f, in r, !applied);
+            if (applied && family == ImpactFamily.Kicks) knockDown = ApplyKick(a, v, in d, inSeam, now);
+            else if (family == ImpactFamily.Kicks && r.Applies(family) && f.DefenderMounted && d.AnyOutcome)
+            {
+                if (d.Knockdown.Happens) _live.NoteNotApplied(ImpactOutcome.Knockdown, ImpactNotApplied.Rider);
+                if (d.ShieldDrop.Happens) _live.NoteNotApplied(ImpactOutcome.ShieldDrop, ImpactNotApplied.Rider);
+            }
             return true;
         }
 
@@ -247,7 +273,9 @@ namespace TraxCombat.Missions
 
         /// <summary>The decision's mode in the line's words - built only when a line is written (no allocation per event).</summary>
         private static string ModeWords(in ImpactDecision d, in ImpactRules r, bool notApplied) => notApplied
-            ? (r.ShadowNow ? "shadow - nothing applied" : "decided and logged only - its effect comes in step " + EffectStep(d.Event))
+            ? (r.ShadowNow ? "shadow - nothing applied"
+               : r.Applies(ImpactMath.Family(d.Event)) ? "LIVE, but a rider - nothing applied until step 53"
+               : "decided and logged only - its effect comes in step " + EffectStep(d.Event))
             : "LIVE";
 
         /// <summary>The first outcome of its kind this mission in this decision (each kind logged once in full).</summary>
@@ -268,9 +296,9 @@ namespace TraxCombat.Missions
 
         private static string EffectStep(ImpactEvent e) => ImpactMath.Family(e) switch
         {
-            ImpactFamily.Kicks => "49",
-            ImpactFamily.Blocks => "50",
-            _ => "51",
+            ImpactFamily.Kicks => "50",
+            ImpactFamily.Blocks => "51",
+            _ => "52",
         };
     }
 }

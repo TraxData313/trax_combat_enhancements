@@ -176,17 +176,20 @@ public class ImpactTests
     }
 
     [Fact]
-    public void Nothing_applies_in_step_48_shadow_or_not_and_the_spike_forces_shadow()
+    public void Step_50_kicks_apply_live_the_rest_decided_only_and_the_spike_forces_shadow()
     {
-        Assert.Equal(ImpactFamily.None, ImpactMath.EffectsBuilt);
+        Assert.Equal(ImpactFamily.Kicks, ImpactMath.EffectsBuilt);
         var live = Rules();
-        foreach (var f in new[] { ImpactFamily.Kicks, ImpactFamily.Blocks, ImpactFamily.Hits, ImpactFamily.Riposte })
+        Assert.True(live.Applies(ImpactFamily.Kicks));
+        Assert.True(live.KeepsState(ImpactFamily.Kicks));
+        foreach (var f in new[] { ImpactFamily.Blocks, ImpactFamily.Hits, ImpactFamily.Riposte })
         {
             Assert.True(live.Decides(f));
-            Assert.False(live.Applies(f)); // no effect built yet - decided and logged only
+            Assert.False(live.Applies(f)); // no effect built yet - decided and logged only (steps 51-52)
+            Assert.False(live.KeepsState(f)); // ... and on copies of the states: it never happened
         }
         Assert.False(live.ShadowNow);
-        Assert.StartsWith("LIVE - but no effect is built yet (steps 49-51 bring them)", live.ModeText());
+        Assert.Equal("LIVE - kicks / bashes applied, blocks, clean hits, the riposte decided and logged only (effect not built yet)", live.ModeText());
         var shadow = Rules(s => s.Set(SettingsSchema.ImpactShadowMode, true, "test"));
         Assert.True(shadow.ShadowNow);
         Assert.StartsWith("SHADOW (ImpactShadowMode)", shadow.ModeText());
@@ -803,7 +806,7 @@ public class ImpactTests
         stats.Skip(ImpactSkip.FamilyOff, ImpactEvent.CleanHit);
         stats.EverOn = true;
         var lines = stats.SummaryLines(in r);
-        Assert.StartsWith("impact (step 48 - the model; LIVE, but no effect is built yet (steps 49-51) - decided and logged only): 3 decisions - kicks 2, shield bashes 0, right-side blocks 1", lines[0]);
+        Assert.StartsWith("impact (step 48 - the model; LIVE, but nothing applied this mission (the built families: kicks / bashes) - decided and logged only): 3 decisions - kicks 2, shield bashes 0, right-side blocks 1", lines[0]);
         Assert.Contains("its family switched off 1", lines[0]);
         var kicks = lines.Single(l => l.StartsWith("impact kicks by the kicked man's bar 100-75% / 75-50% / 50-25% / 25-0%: 2 = 0 / 0 / 0 / 2"));
         Assert.Contains("would knock down 0 / 0 / 0 / 1 = 1", kicks);
@@ -814,6 +817,14 @@ public class ImpactTests
         Assert.Contains("stagger immunity", limits);
         Assert.Contains(lines, l => l.StartsWith("impact lengths asked: stagger none, a kicked man's reel"));
         Assert.Contains(lines, l => l.StartsWith("impact cost: 3 decisions, 1.3 µs a decision (max 2.0 µs)"));
+        // step 50: an APPLIED kick reads "did" on the kicks' line, the blocks' line still "would"
+        var live = new ImpactStats();
+        live.Note(in kick, shadow: false, applied: true, 0, 0);
+        live.Note(in block, shadow: false, applied: false, 0, 0);
+        var liveLines = live.SummaryLines(in r);
+        Assert.StartsWith("impact (step 48 - the model; LIVE - kicks / bashes applied (1 decisions)", liveLines[0]);
+        Assert.Contains("did knock down 0 / 0 / 0 / 1 = 1", liveLines.Single(l => l.StartsWith("impact kicks by")));
+        Assert.Contains("would stagger", liveLines.Single(l => l.StartsWith("impact right-side blocks by")));
         var shadow = new ImpactStats();
         shadow.Note(in kick, shadow: true, applied: false, 0, 0);
         Assert.StartsWith("impact (step 48 - the model; SHADOW - decided and logged, nothing applied)", shadow.SummaryLines(in r)[0]);

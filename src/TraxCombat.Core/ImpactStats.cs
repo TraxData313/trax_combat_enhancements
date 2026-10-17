@@ -51,6 +51,8 @@ namespace TraxCombat.Core
         public int ShadowDecisions;
         public int LiveDecisions;
         public int Applied;
+        /// <summary>Step 50: the applied decisions by event (the event lines say "did" for an event whose family applied, "would" else).</summary>
+        public readonly int[] AppliedByEvent = new int[E];
         public int FromDecorator;
         public int OnPlayer;
         public int ByPlayer;
@@ -141,7 +143,11 @@ namespace TraxCombat.Core
             if (!double.IsNaN(d.RiposteStunSeconds)) RiposteSeconds.Add(d.RiposteStunSeconds);
             if (shadow) ShadowDecisions++;
             else LiveDecisions++;
-            if (applied && !shadow) Applied++;
+            if (applied && !shadow)
+            {
+                Applied++;
+                AppliedByEvent[e]++;
+            }
             if (d.DefenderIsPlayer) OnPlayer++;
             if (d.AttackerIsPlayer) ByPlayer++;
             CostMs += costMs;
@@ -179,8 +185,8 @@ namespace TraxCombat.Core
         {
             var lines = new List<string>();
             int total = Decisions;
-            // "did" only once something was applied (steps 49-51 refine it per family)
-            string verb = Applied > 0 ? "did" : "would";
+            // "did" per event once its family applied (step 50: kicks / bashes); the riders' line stays "would" (step 53)
+            string verb = "would";
             if (!EverOn && total == 0)
             {
                 lines.Add("impact (step 48 - the model): OFF all mission (" + (now.OffBecause ?? "on at the end") + ") - nothing decided"
@@ -206,7 +212,7 @@ namespace TraxCombat.Core
             for (int e = 0; e < E; e++)
             {
                 if (DecidedOf((ImpactEvent)e) == 0) continue;
-                lines.Add(EventLine((ImpactEvent)e, verb));
+                lines.Add(EventLine((ImpactEvent)e, AppliedByEvent[e] > 0 ? "did" : "would"));
             }
 
             int ra = 0;
@@ -227,7 +233,7 @@ namespace TraxCombat.Core
                       + "; riders " + verb + " be knocked off " + I(Dismounts));
             lines.Add("impact lengths asked: stagger " + Seconds(in StaggerSeconds) + ", a kicked man's reel " + Times(in ReelFactor) + ", get-up " + Times(in GetUpFactor)
                       + ", the blocker's stun " + Times(in StunFactor) + ", a riposted attacker's recoil " + Seconds(in RiposteSeconds)
-                      + " (" + (ImpactMath.EffectsBuilt == ImpactFamily.None ? "asked only - no effect built yet; steps 49-51 measure what the engine plays" : "steps 49-51 measure what the engine plays") + ")");
+                      + " (" + (ImpactMath.EffectsBuilt == ImpactFamily.None ? "asked only - no effect built yet; steps 50-52 measure what the engine plays" : "the kicks' reel and get-up measured in the 'impact live lengths' line; blocks and hits asked only until steps 51-52") + ")");
             lines.Add("impact cost: " + I(total) + " decisions, " + (total > 0 ? F1(1000 * CostMs / total) : "0") + " µs a decision (max " + F1(1000 * MaxCostMs) + " µs) - "
                       + (ShadowDecisions > 0 ? I(ShadowDecisions) + " in shadow" : "none in shadow") + ", " + I(LiveDecisions) + " live (" + I(Applied) + " applied)");
             return lines;
@@ -237,7 +243,7 @@ namespace TraxCombat.Core
         {
             if (ShadowDecisions > 0 && LiveDecisions > 0) return "MIXED - shadow " + I(ShadowDecisions) + ", live " + I(LiveDecisions) + " (" + I(Applied) + " applied)";
             if (ShadowDecisions > 0) return "SHADOW - decided and logged, nothing applied";
-            if (Applied == 0) return "LIVE, but no effect is built yet (steps 49-51) - decided and logged only";
+            if (Applied == 0) return "LIVE, but nothing applied this mission (the built families: " + ImpactMath.FamiliesText(ImpactMath.EffectsBuilt) + ") - decided and logged only";
             return "LIVE - " + ImpactMath.FamiliesText(ImpactMath.EffectsBuilt) + " applied (" + I(Applied) + " decisions)";
         }
 

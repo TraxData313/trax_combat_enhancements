@@ -126,6 +126,7 @@ namespace TraxCombat.Missions
             _spike.Stun.Clear();
             ImpactHooks.KnockDown = this;
             ImpactHooks.BlockStun = this;
+            ImpactHooks.PickupLock = this; // step 50: the AI's shield pickup lock
             if (_seenSpike.Enabled) SpikeSwitchedOn(Mission != null ? Mission.CurrentTime : 0, atStart: true);
             else TraxLog.Info("impact", "mission start: spike " + _seenSpike.Describe() + " - read live");
             StartImpactModel(); // step 48: the model (its own line)
@@ -136,6 +137,7 @@ namespace TraxCombat.Missions
         {
             if (ReferenceEquals(ImpactHooks.KnockDown, this)) ImpactHooks.KnockDown = null;
             if (ReferenceEquals(ImpactHooks.BlockStun, this)) ImpactHooks.BlockStun = null;
+            if (ReferenceEquals(ImpactHooks.PickupLock, this)) ImpactHooks.PickupLock = null;
             if (_spikeStarted && ImpactHooks.RestoreStunCap()) _spike.CapRestores++;
         }
 
@@ -213,6 +215,7 @@ namespace TraxCombat.Missions
             CloseImpact(agentsAlive: true);
             foreach (var line in _spike.SummaryLines(SpikeRules.From(TraxSettings.Shared))) TraxLog.Info("summary", line);
             WriteImpactModelSummary(); // step 48
+            WriteImpactLiveSummary(); // step 50
         }
 
         // ------------------------------------------------------------------ the tick
@@ -243,6 +246,14 @@ namespace TraxCombat.Missions
             catch (Exception e)
             {
                 Failed("impact.model-tick", e);
+            }
+            try
+            {
+                TickImpactLive(now); // step 50: the live kicks' queued drops, watches, shields
+            }
+            catch (Exception e)
+            {
+                Failed("impact.live-tick", e);
             }
             if (!_spikeOn) return;
 
@@ -869,6 +880,7 @@ namespace TraxCombat.Missions
         private void ImpactLeftField(TrackedAgent st)
         {
             if (!_spikeStarted) return;
+            ImpactLiveLeftField(st); // step 50
             for (int i = 0; i < _watchCount; i++)
             {
                 if (!ReferenceEquals(_watches[i].St, st)) continue;

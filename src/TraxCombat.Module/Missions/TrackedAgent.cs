@@ -58,6 +58,10 @@ namespace TraxCombat.Missions
         /// immunities, his recent outcomes; in shadow mode what WOULD have happened.</summary>
         public ImpactState Impact;
 
+        /// <summary>Step 50: when a LIVE kick / bash last made his shield leave his hand (mission seconds; NaN = never) - the AI pickup lock
+        /// (<c>ShieldPickupLockSeconds</c>) reads it.</summary>
+        public double ShieldDroppedAt = double.NaN;
+
         /// <summary>His melee releases so far - a blow's number for the defender's block dedupe (step 22) too.</summary>
         public int ReleaseSerial;
         public double ReleaseStart = -1;

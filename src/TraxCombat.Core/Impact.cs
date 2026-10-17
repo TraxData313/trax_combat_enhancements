@@ -27,7 +27,7 @@ namespace TraxCombat.Core
     }
 
     /// <summary>Step 48: the event families - one switch each (<c>ImpactKicksEnabled</c>, <c>ImpactBlocksEnabled</c>, <c>ImpactHitsEnabled</c>,
-    /// <c>ImpactRiposteEnabled</c>) and one effect step each (49 kicks, 50 blocks + riposte, 51 hits).</summary>
+    /// <c>ImpactRiposteEnabled</c>) and one effect step each (50 kicks - built, 51 blocks + riposte, 52 hits; the board moved by one when step 49, courage, was inserted).</summary>
     [Flags]
     public enum ImpactFamily : byte
     {
@@ -123,7 +123,7 @@ namespace TraxCombat.Core
     /// stagger or a lengthened reel - the bonus, and no new stagger meanwhile), stagger-immune until (its end + the immunity), on the ground
     /// until, knockdown-immune until (up + the immunity), and his last <see cref="ImpactMath.MaxRemembered"/> outcomes' times (the halving).
     /// All times are the mission's seconds; the default (all 0) = nothing happened. In shadow mode the same state is kept for what WOULD
-    /// have happened, so the summary's limits read as they would live. Steps 49-51 may set the true ends from the measured reaction
+    /// have happened, so the summary's limits read as they would live. Steps 50-52 set the true ends from the measured reaction
     /// (<see cref="EndReel"/>, <see cref="GotUp"/>).
     /// </summary>
     public struct ImpactState
@@ -191,14 +191,14 @@ namespace TraxCombat.Core
             if (ReelingUntil > now) ReelingUntil = now; // a man on the ground no longer reels
         }
 
-        /// <summary>The measured end of his reel (steps 49-51's watch): the reeling and its immunity re-timed from it.</summary>
+        /// <summary>The measured end of his reel (steps 50-52's watch): the reeling and its immunity re-timed from it.</summary>
         public void EndReel(double at, double immunity)
         {
             ReelingUntil = at;
             StaggerImmuneUntil = at + Math.Max(0, immunity);
         }
 
-        /// <summary>The measured moment he is up again (steps 49-51's watch).</summary>
+        /// <summary>The measured moment he is up again (steps 50-52's watch).</summary>
         public void GotUp(double at, double immunity) => KnockedDown(at, at, immunity);
 
         /// <summary>Forget everything (a fresh start).</summary>
@@ -237,7 +237,7 @@ namespace TraxCombat.Core
 
     /// <summary>
     /// Step 48: the model's answer for one event (IMPACT §3): the pressure and its parts, each outcome's roll, the lengths (NaN = not
-    /// applicable) - ONE decision per event; steps 49-51 apply it through the spike's seams (the decorator's KnockDown, the block stun,
+    /// applicable) - ONE decision per event; steps 50-52 apply it through the spike's seams (the decorator's KnockDown, the block stun,
     /// <c>IImpactBody</c>).
     /// </summary>
     public struct ImpactDecision
@@ -438,11 +438,19 @@ namespace TraxCombat.Core
         /// <summary>The model decides this event's family (on, and its switch on).</summary>
         public bool Decides(ImpactFamily f) => Enabled && FamilyOn(f);
 
-        /// <summary>Its decisions change the battle: decided, not shadow, the spike off, and its effect built (steps 49-51).</summary>
+        /// <summary>Its decisions change the battle: decided, not shadow, the spike off, and its effect built (step 50: kicks / bashes; 51 blocks + riposte, 52 hits).</summary>
         public bool Applies(ImpactFamily f) => Decides(f) && !ShadowNow && (ImpactMath.EffectsBuilt & f) != 0;
 
         /// <summary>Shadow for every family now: the switch, or the spike running (it owns the levers while it tests them).</summary>
         public bool ShadowNow => Shadow || Spike;
+
+        /// <summary>
+        /// Step 50: does this family's decision WRITE the men's impact states (reeling, immunities, the recent outcomes)? Yes when it applies
+        /// (what happened) and in shadow mode (everything is "would" alike - step 48's reading). NO for a family decided LIVE whose effect is
+        /// not built yet (blocks and clean hits in step 50): a stagger that never happened must not give the reeling bonus, an immunity or a
+        /// halving to a live kick, nor shock to courage - that decision is made on copies of the states.
+        /// </summary>
+        public bool KeepsState(ImpactFamily f) => Applies(f) || (Decides(f) && ShadowNow);
 
         /// <summary>The mode in words (the log): "SHADOW …" / "LIVE …".</summary>
         public string ModeText()
@@ -453,7 +461,7 @@ namespace TraxCombat.Core
             var built = ImpactMath.EffectsBuilt;
             var notBuilt = (ImpactFamily.Kicks | ImpactFamily.Blocks | ImpactFamily.Hits | ImpactFamily.Riposte) & ~built;
             if (built == ImpactFamily.None)
-                return "LIVE - but no effect is built yet (steps 49-51 bring them): every event decided and logged only";
+                return "LIVE - but no effect is built yet (steps 50-52 bring them): every event decided and logged only";
             return "LIVE - " + ImpactMath.FamiliesText(built) + " applied"
                    + (notBuilt != ImpactFamily.None ? ", " + ImpactMath.FamiliesText(notBuilt) + " decided and logged only (effect not built yet)" : string.Empty);
         }
@@ -509,14 +517,14 @@ namespace TraxCombat.Core
         /// <summary>How many recent outcomes a man's state remembers (0.5^6 = 1.6% - more would change nothing; plumbing).</summary>
         public const int MaxRemembered = 6;
 
-        /// <summary>Plumbing until steps 49-51 measure the real ones with the spike's ReactionWatch: a vanilla kick reel ~0.45 s (the spike's
+        /// <summary>Plumbing until steps 50-52 measure the real ones with the spike's ReactionWatch: a vanilla kick reel ~0.45 s (the spike's
         /// stand-in 0.42 s) and a vanilla fall-and-rise ~1.5 s - the shadow state's reel / ground times are these × the decided factor.</summary>
         public const double VanillaReelSeconds = 0.45;
 
         public const double VanillaFallRiseSeconds = 1.5;
 
-        /// <summary>The families whose EFFECT is built (step 48: none - decide and log only; 49 adds Kicks, 50 Blocks + Riposte, 51 Hits).</summary>
-        public static readonly ImpactFamily EffectsBuilt = ImpactFamily.None;
+        /// <summary>The families whose EFFECT is built (step 48: none - decide and log only; step 50 adds Kicks, 51 Blocks + Riposte, 52 Hits).</summary>
+        public static readonly ImpactFamily EffectsBuilt = ImpactFamily.Kicks;
 
         public static ImpactFamily Family(ImpactEvent e) => e switch
         {
@@ -736,7 +744,7 @@ namespace TraxCombat.Core
         public static double RawChance(double ceiling, double x, double from) => Math.Max(0, ceiling) * Curve(x, from);
 
         /// <summary>
-        /// THE decision for one event (one per event - steps 49-51 apply it). Reads and WRITES both men's states (what happens - or in
+        /// THE decision for one event (one per event - steps 50-52 apply it). Reads and WRITES both men's states (what happens - or in
         /// shadow mode what would - is remembered: reeling, immunities, the outcomes for the halving). The dice: one per rolled outcome,
         /// one per length.
         /// </summary>

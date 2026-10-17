@@ -201,6 +201,15 @@ namespace TraxCombat.Core
 
         public static bool IsDefend(int type) => type >= DefendFirst && type <= DefendLast;
 
+        /// <summary>Step 50: his own release / bash on channel 1 - vanilla's drop key refuses a drop then (Agent.HandleDropWeapon 4446), so
+        /// the live shield drop waits for it to pass.</summary>
+        public const int ReleaseRanged = 16;
+        public const int ReleaseThrowing = 17;
+        public const int ReleaseMelee = 20;
+        public const int WeaponBash = 31;
+
+        public static bool RefusesDrop(int type1) => type1 == ReleaseRanged || type1 == ReleaseThrowing || type1 == ReleaseMelee || type1 == WeaponBash;
+
         /// <summary>The type in the log's words.</summary>
         public static string Name(int type) => type switch
         {
