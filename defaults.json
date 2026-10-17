@@ -356,6 +356,14 @@
   // (true or false)
   "ShieldWallHoldsSlots": true,
 
+  // With "Shield walls hold their slots" on: a held soldier may step up to this many metres out
+  // of his place at an enemy close in front of it (one who backed off just out of reach),
+  // strike, then he is held again and walks back to his place - he may step out again once he
+  // is back. 0 = no step at all: they stand fast and fight only what reaches them. Does nothing
+  // while "hold their slots" is off.
+  // (range 0.0 to 3.0)
+  "ShieldWallStepOutMetres": 1.0,
+
   // ==================== Brace by orders (AI) ====================
   // An AI soldier whose Athletics bar falls to his formation's order floor (the settings below)
   // stops attacking in melee and only defends, guard up, until he refills to that floor + the

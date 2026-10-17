@@ -284,6 +284,13 @@ namespace TraxCombat.Core
             "Shield walls hold their slots",
             "AI soldiers on foot in a shield wall, square or circle keep their place in the formation instead of stepping out of it at the enemy they fight - they still fight whatever reaches them, so the wall stays a wall. Under any order but a charge or a retreat; a man far behind his place may still run to rejoin. Both sides, never you, never riders, a siege's attackers or naval battles. Off: the game's own way - each man may walk a few steps out at his enemy and back.");
 
+        // Step 42 (Anton, 2026-10-17, his playtest of step 41: held men "looked many times like they were about to reach to hit but
+        // stopped, maybe as the enemy took a few steps back" - "give them just a bit of a step if the enemy moves a small step back, but
+        // not as far"): the leash, LeashMath, AI_NOTES "Step 42".
+        public static readonly ParamDef ShieldWallStepOutMetres = Float("ShieldWallStepOutMetres", 0, LeashMath.MaxMetres, BattlePaceGroup,
+            "Shield walls: a step out to strike (m)",
+            "With \"Shield walls hold their slots\" on: a held soldier may step up to this many metres out of his place at an enemy close in front of it (one who backed off just out of reach), strike, then he is held again and walks back to his place - he may step out again once he is back. 0 = no step at all: they stand fast and fight only what reaches them. Does nothing while \"hold their slots\" is off.");
+
         // ------------------------------------------------------------------ brace by orders (step 23)
 
         // Step 23 (Anton, 2026-09-29: "make soldiers not swing but only defend when they have reached a certain floor, that
@@ -660,7 +667,7 @@ namespace TraxCombat.Core
             StepBackEnabled, StepBackBackpedal, StepBackMaxChancePercent, StepBackDistance, StepBackSeconds, StepBackEnemyRange,
             StepBackHoldAttacks, StepBackMaxAtOnce,
             ShieldInfantrySwingsLessPercent, FootMeleeSwingsLessPercent, AiMeleeGapSeconds, ExtraPauseAfterBowShotSeconds, ExtraPauseAfterCrossbowShotSeconds,
-            ShieldWallHoldsSlots,
+            ShieldWallHoldsSlots, ShieldWallStepOutMetres,
             BraceEnabled, BraceFloorChargePercent, BraceFloorAdvancePercent, BraceFloorHoldPercent, BraceFloorNoFormationPercent, BraceFloorSpreadPercent,
             BraceRecoverPercent, BraceRecoverSpreadPercent,
             BraceWieldShield, BraceRaiseShield,

@@ -111,22 +111,36 @@ namespace TraxCombat.Core
     public readonly struct WallRules
     {
         public WallRules(bool modEnabled, bool holdsSlots)
+            : this(modEnabled, holdsSlots, 0)
+        {
+        }
+
+        /// <param name="stepOutMetres">Step 42: the leash (m) - how far a held man may step out of his slot at an enemy close in
+        /// front of it; 0 = step 41's hard hold. Clamped to 0 - <see cref="LeashMath.MaxMetres"/>.</param>
+        public WallRules(bool modEnabled, bool holdsSlots, double stepOutMetres)
         {
             ModEnabled = modEnabled;
             HoldsSlots = holdsSlots;
+            StepOutMetres = double.IsNaN(stepOutMetres) || stepOutMetres < 0 ? 0 : stepOutMetres > LeashMath.MaxMetres ? LeashMath.MaxMetres : stepOutMetres;
         }
 
         public bool ModEnabled { get; }
         public bool HoldsSlots { get; }
 
+        /// <summary>Step 42: the leash (m); 0 = the hard hold.</summary>
+        public double StepOutMetres { get; }
+
         public bool Enabled => ModEnabled && HoldsSlots;
+
+        /// <summary>The leash in force now: <see cref="StepOutMetres"/> while the hold is on, else 0.</summary>
+        public double Leash => Enabled ? StepOutMetres : 0;
 
         /// <summary>The switch that holds it off (the master switch first), or null when on.</summary>
         public string? OffBecause => !ModEnabled ? "ModEnabled" : !HoldsSlots ? "ShieldWallHoldsSlots" : null;
 
-        public static WallRules From(TraxSettings s) => new WallRules(s.ModEnabled, s.ShieldWallHoldsSlots);
+        public static WallRules From(TraxSettings s) => new WallRules(s.ModEnabled, s.ShieldWallHoldsSlots, s.ShieldWallStepOutMetres);
 
-        public bool SameAs(in WallRules o) => ModEnabled == o.ModEnabled && HoldsSlots == o.HoldsSlots;
+        public bool SameAs(in WallRules o) => ModEnabled == o.ModEnabled && HoldsSlots == o.HoldsSlots && StepOutMetres == o.StepOutMetres;
 
         /// <summary>The settings in one sentence (the mission-start and change lines, the summary).</summary>
         public string Describe()
@@ -136,7 +150,7 @@ namespace TraxCombat.Core
             return "ON (ShieldWallHoldsSlots) - every AI man on foot in a shield wall, square or circle keeps his slot instead of walking at the enemy "
                    + "he fights (he still fights what reaches him), under any order but a charge or a retreat; not a man detached from his formation, "
                    + "not one fleeing, not one far (" + F0(WallMath.CatchUpSpeeds) + " x the formation's speed) from his slot AND behind the line (left free "
-                   + "to rejoin); never you, riders, a siege's attackers or naval battles";
+                   + "to rejoin); never you, riders, a siege's attackers or naval battles; " + LeashMath.Describe(StepOutMetres);
         }
 
         private static string F0(double v) => v.ToString("0", CultureInfo.InvariantCulture);

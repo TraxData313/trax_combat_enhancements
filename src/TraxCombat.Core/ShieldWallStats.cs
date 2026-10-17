@@ -76,6 +76,10 @@ namespace TraxCombat.Core
         /// <summary>Vanilla's timer unreadable: every <see cref="WallMath.FallbackRewriteSeconds"/>.</summary>
         Fallback,
 
+        /// <summary>Step 42: a man stepping out held again by his <see cref="LeashMath.LookSeconds"/> look (the leash, or his enemy
+        /// gone).</summary>
+        Leash,
+
         Count,
     }
 
@@ -108,6 +112,9 @@ namespace TraxCombat.Core
         /// <summary>The samples while the hold was ON (the switch and the master switch on) and while it was OFF.</summary>
         public readonly WallAheadSamples On = new WallAheadSamples();
         public readonly WallAheadSamples Off = new WallAheadSamples();
+
+        /// <summary>Step 42: the steps out of the wall (the leash).</summary>
+        public readonly WallLeashStats Leash = new WallLeashStats();
 
         public int Looks(WallVerdict v) => _looks[(int)v];
         public int Releases(WallVerdict v) => _releases[(int)v];
@@ -173,6 +180,7 @@ namespace TraxCombat.Core
                       + ", left to vanilla: " + ReasonsText(_looks, skipHold: true));
             lines.Add("wall writes: " + WritesTotal + " \"keep your slot\" writes - right after vanilla's own update " + Writes(WallWriteKind.AfterVanilla)
                       + ", by the " + F2(WallMath.PollSeconds) + " s look " + Writes(WallWriteKind.Poll) + ", by the fallback " + Writes(WallWriteKind.Fallback)
+                      + ", by the step-out leash " + Writes(WallWriteKind.Leash)
                       + "; vanilla's own updates seen on held men " + VanillaUpdates
                       + (VanillaIntervals > 0 ? " (one every " + F2(VanillaIntervalSum / VanillaIntervals) + " s per man - the game's timer is 0.45-0.55 s)" : string.Empty)
                       + ", men whose update timer could not be read " + MenWithoutTimer + " (should be 0 - else the fallback)"
@@ -181,6 +189,7 @@ namespace TraxCombat.Core
                       + "; errors " + Errors + "; cost " + (Ticks > 0 ? "avg " + F3(TickMsSum / Ticks) + " ms a tick, max " + F2(TickMsMax) + " ms" : "no tick"));
             lines.Add("wall slots ON: " + On.Text());
             lines.Add("wall slots OFF (vanilla): " + Off.Text() + " - compare with the ON line: the hold works when ON's \"more than 1 m ahead\" (in contact above all) is well below OFF's");
+            lines.Add(Leash.SummaryLine(r.StepOutMetres));
             return lines;
         }
 
