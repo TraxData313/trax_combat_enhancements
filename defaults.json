@@ -682,10 +682,10 @@
   // (range 0 to 500)
   "CourageShockWeightPercent": 100,
 
-  // A man in his FEVER (the charge's surge - Aggression and fever) needs only this share of the
-  // odds while it is full, back to 100% as it burns out. At 40 a feverish man stays brave at
-  // 40% of the odds - the charge goes in; when it fades, the weak side's men pull back. 100 =
-  // the fever does not touch courage.
+  // A man in his FEVER (the charge's surge - Aggression and fever) who is NOT shaken by a hit
+  // presses on whatever the odds - the charge goes in. Once hit, his fever only lowers the odds
+  // he needs: to this share while it is full, back to 100% as it burns out. When it fades, the
+  // weak side's men pull back. 100 = the fever does not lower the odds of a hit man.
   // (range 0 to 100)
   "CourageFeverPercent": 40,
 
@@ -702,6 +702,18 @@
   // Once timid a man stays timid at least this long, whatever the odds do.
   // (range 0.0 to 10.0)
   "CourageMinTimidSeconds": 2.0,
+
+  // Now and then a timid man steps in: one who is not shaken by a hit, stands among his mates
+  // and has an enemy within 8 m rolls this chance about every half second, times his Athletics
+  // bar (a tired man surges less). A surge makes him brave for the seconds below - he steps in
+  // and swings, then the normal rules take him back. At 5 a fresh man surges about every 10 s.
+  // 0 = never.
+  // (range 0 to 100)
+  "CourageSurgeChancePercent": 5,
+
+  // How long a surge makes a timid man brave.
+  // (range 0.0 to 30.0)
+  "CourageSurgeSeconds": 4.0,
 
   // A timid man walks back only when he is farther than this from his group's centre; within it
   // he has arrived and holds (half of it when shocked - shaken men pack in).

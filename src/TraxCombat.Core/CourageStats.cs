@@ -37,6 +37,11 @@ namespace TraxCombat.Core
         public int MenLooked;
         public long Looks;
         public int TimidStarts;
+        public long FeverPressLooks;
+        public int FeverPressEnds;
+        public long SurgeEligibleLooks;
+        public int Surges;
+        public double StandoffSeconds;
         public int TimidByShock;
         public int WalksToGroup;
         public int WalksToCentre;
@@ -221,6 +226,13 @@ namespace TraxCombat.Core
                       + "distance from the formation's centre at a walk's start → end: shocked " + N(_compressFrom[1].Mean, "0.0") + " → " + N(_compressTo[1].Mean, "0.0")
                       + " m (" + _compressFrom[1].Count + " walks), by the odds alone " + N(_compressFrom[0].Mean, "0.0") + " → " + N(_compressTo[0].Mean, "0.0") + " m ("
                       + _compressFrom[0].Count + ")");
+            double minutes = _manSeconds[1] / 60.0;
+            lines.Add("courage fever and surges (step 49b): fever presses overriding timidity " + FeverPressLooks + " looks (" + FeverPressEnds
+                      + " timid men sent back in by their fever, not shocked); surges started " + Surges + " (" + N(minutes > 0 ? Surges / minutes : double.NaN, "0.00")
+                      + " per AI man-minute ON; " + SurgeEligibleLooks + " looks could roll, " + r.SurgeChancePercent + "% x the bar, " + N(r.SurgeSeconds, "0.#")
+                      + " s each); STANDOFF - timid man-seconds with an enemy " + N(CourageMath.StandoffMinMetres, "0") + "-" + N(CourageMath.SurgeEnemyMetres, "0")
+                      + " m and no attack by either in " + N(CourageMath.StandoffSeconds, "0") + " s: " + N(StandoffSeconds, "0") + " (" + N(minutes > 0 ? StandoffSeconds / minutes : double.NaN, "0.00")
+                      + " per AI man-minute ON) - high = lines frozen face to face");
             lines.Add("courage by local odds, in contact (an enemy within " + radius + " m, courage on): " + OddsText(_oddsContact));
             lines.Add("courage by local odds, men OUT of their formation (more than " + N(r.RegroupRadiusMetres * CourageMath.OutOfFormationRadii, "0.0")
                       + " m from its centre - the flankers and roamers): " + OddsText(_oddsOut));

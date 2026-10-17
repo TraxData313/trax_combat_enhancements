@@ -31,6 +31,10 @@ namespace TraxCombat.Missions
         private bool _firstTimidLogged;
         private bool _firstWalkEndLogged;
         private bool _firstPanicLogged;
+        private bool _firstSurgeLogged;
+
+        /// <summary>Step 49b: the surge's dice (the smoke swaps in a fixed one).</summary>
+        internal IRandomSource CourageDice { get; set; } = ThreadSafeRandom.Shared;
         private TrackedAgent? _firstWalker;
         private bool _courageClosed;
 
@@ -178,13 +182,21 @@ namespace TraxCombat.Missions
             double self = CourageToughness(st, in cr);
             double allies = self, enemies = 0, ex = 0, ey = 0, ew = 0;
             int mates = 0, foes = 0;
-            float radius = (float)cr.RadiusMetres;
+            // step 49b: the scan reaches 8 m at least (the surge's and the standoff's nearest enemy); the odds still count within the radius
+            float radius = (float)Math.Max(cr.RadiusMetres, CourageMath.SurgeEnemyMetres);
+            double nearest = double.NaN;
+            TrackedAgent? nearestFoe = null;
             body.Scan(st, radius, _courageScan);
             if (_courageScan.Truncated) _courageStats.ScanTruncated++;
             for (int i = 0; i < _courageScan.Count; i++)
             {
                 var o = _courageScan.Men[i];
                 if (o == null || ReferenceEquals(o, st)) continue;
+                if (_courageScan.Enemy[i] && (double.IsNaN(nearest) || _courageScan.Dist[i] < nearest))
+                {
+                    nearest = _courageScan.Dist[i];
+                    nearestFoe = o;
+                }
                 double w = CourageMath.Weight(_courageScan.Dist[i], cr.RadiusMetres);
                 if (!(w > 0)) continue;
                 double t = CourageToughness(o, in cr);
@@ -228,6 +240,27 @@ namespace TraxCombat.Missions
             {
                 awayX = px - ex / ew;
                 awayY = py - ey / ew;
+            }
+            // ---- step 49b: a surge running = brave, left alone; a fever without shock = he presses whatever the odds
+            if (cm.Surging(now))
+            {
+                if (cm.Timid) EndTimid(st, CourageEnd.Surge, now, native: true);
+                if (cm.WeightsSet) RestoreWeights(st, cm);
+                if (foes > 0) _courageStats.AddOdds(odds, false, dist > cr.RegroupRadiusMetres * CourageMath.OutOfFormationRadii);
+                return;
+            }
+            if (CourageMath.FeverPresses(fever, shocked))
+            {
+                double calm = CourageMath.Required(in cr, st.Fraction, body.Morale(st), 0, st.IsHero, 0, out _);
+                if (CourageMath.Timid(odds, calm)) _courageStats.FeverPressLooks++;
+                if (cm.Timid)
+                {
+                    _courageStats.FeverPressEnds++;
+                    EndTimid(st, CourageEnd.FeverPress, now, native: true);
+                }
+                if (cm.WeightsSet) RestoreWeights(st, cm);
+                if (foes > 0) _courageStats.AddOdds(odds, false, dist > cr.RegroupRadiusMetres * CourageMath.OutOfFormationRadii);
+                return;
             }
             var before = cm.Phase;
             double lookDistance = dist;
@@ -273,6 +306,30 @@ namespace TraxCombat.Missions
                     if (before == CouragePhase.Moving) WalkEnded(st, cm, now, dist);
                     EndTimidCommon(st, CourageEnd.Brave, now, native: true);
                     break;
+            }
+            // ---- step 49b: now and then a timid man among his mates steps in (a SURGE); the standoff measure
+            if (CourageMath.SurgeEligible(in cr, cm.Timid, shocked, mates, nearest))
+            {
+                _courageStats.SurgeEligibleLooks++;
+                if (CourageMath.SurgeRoll(CourageMath.SurgeChance(in cr, st.Fraction), CourageDice.NextDouble()))
+                {
+                    cm.SurgeUntil = now + cr.SurgeSeconds;
+                    _courageStats.Surges++;
+                    EndTimid(st, CourageEnd.Surge, now, native: true);
+                    if (!_firstSurgeLogged)
+                    {
+                        _firstSurgeLogged = true;
+                        TraxLog.Info("courage", "first surge this battle: " + Name(st) + " at " + Sec(now) + " s - timid among " + mates + " mates (odds " + F2(odds) + " < " + F2(required)
+                            + "), an enemy " + F1(nearest) + " m off: brave for " + F1(cr.SurgeSeconds) + " s (CourageSurgeChancePercent " + cr.SurgeChancePercent + " x his bar "
+                            + F0(100 * st.Fraction) + "%)");
+                    }
+                    return;
+                }
+            }
+            if (cm.Timid && gap > 0)
+            {
+                double lastAttack = Math.Max(st.LastReleaseTime, nearestFoe != null ? nearestFoe.LastReleaseTime : -1);
+                if (CourageMath.Standoff(true, nearest, lastAttack, now)) _courageStats.StandoffSeconds += gap;
             }
             if (cm.Timid && foes > 0) _courageStats.AddOdds(odds, true, dist > cr.RegroupRadiusMetres * CourageMath.OutOfFormationRadii);
             else if (foes > 0) _courageStats.AddOdds(odds, false, dist > cr.RegroupRadiusMetres * CourageMath.OutOfFormationRadii);

@@ -193,6 +193,7 @@ namespace TraxCombat.Tools
         {
             var logic = NewSprintLogic(new FakeSprintBody());
             logic.CourageBody = body;
+            logic.CourageDice = new FixedDice(0.99); // step 49b: no surge unless a check asks for one
             return logic;
         }
 
@@ -272,17 +273,68 @@ namespace TraxCombat.Tools
                 CourageRound(logic, t += 0.5);
                 Check(!massMan.Courage.Timid && massMan.Courage.Odds > 1.5, "a looter in a mass of 21 vs 2 metal men is timid: odds " + massMan.Courage.Odds);
 
-                // ---- FEVER: a looter + 1 mate vs 1 metal man (odds 0.45): timid calm, brave in a fever (required 0.4)
+                // ---- FEVER: a looter + 1 mate vs 1 metal man (odds 0.45): timid calm; in a fever (not shocked) he PRESSES (step 49b)
                 ox = 400;
                 var hot = Man(ox, 0, 5, 5, legionary: false);
                 Man(ox + 0.5, -0.5, 5, 5, legionary: false);
                 Man(ox, 2, 6, 6, legionary: true);
                 hot.Fever.Arm(FeverRules.From(S), SprintOrder.Charge, 100, t, false);
                 CourageRound(logic, t += 0.5);
-                Check(!hot.Courage.Timid && Near(hot.Courage.Required, 0.4), "an armed fever: required not 0.4 or the man timid at odds 0.45: " + hot.Courage.Required + " / " + hot.Courage.Odds);
+                Check(!hot.Courage.Timid && logic.CourageStats.FeverPressLooks >= 1, "an armed fever, no shock: the man is timid at odds 0.45 (or the press not counted)");
                 hot.Fever.Stop();
                 CourageRound(logic, t += 0.5);
                 Check(hot.Courage.Phase == CouragePhase.Holding, "the fever over: odds 0.45 < 1 not timid (holding - his mate's centre is close): " + hot.Courage.Phase);
+
+                // ---- step 49b: THE FEVER PRESS AND THE FALL-BACK - a looter with 2 mates vs 3 metal men (odds 0.23), his formation's body 12 m back:
+                // armed = he presses; a HIT mid-fever = timid at once, walking back (the fever only lowers a shocked man's odds: 0.4 x 1.33 = 0.53 > 0.23)
+                ox = 1200;
+                var presser = Man(ox, 0, 14, 14, legionary: false);
+                Man(ox - 0.8, -0.5, 14, 14, legionary: false);
+                Man(ox + 0.8, -0.5, 14, 14, legionary: false);
+                for (int i = 0; i < 6; i++) Man(ox - 3 + i, -12, 14, 14, legionary: false);
+                for (int i = 0; i < 3; i++) Man(ox - 1 + i, 2, 15, 15, legionary: true);
+                presser.Fever.Arm(FeverRules.From(S), SprintOrder.Charge, 100, t, false);
+                int pressLooks = (int)logic.CourageStats.FeverPressLooks;
+                CourageRound(logic, t += 0.5);
+                Check(!presser.Courage.Timid && logic.CourageStats.FeverPressLooks > pressLooks, "the fever press: a feverish, unshocked looter at odds 0.23 did not press on");
+                presser.Hits.Note(t);
+                CourageRound(logic, t += 0.5);
+                Check(presser.Courage.Phase == CouragePhase.Moving && presser.Fever.Running && presser.Courage.ShockStart,
+                    "a HIT mid-fever: the looter did not fall back (shock beats the fever): " + presser.Courage.Phase);
+                // the same man without the hit, the fever burnt out: he falls back too
+                ox = 1400;
+                var burnt = Man(ox, 0, 16, 16, legionary: false);
+                Man(ox - 0.8, -0.5, 16, 16, legionary: false);
+                Man(ox + 0.8, -0.5, 16, 16, legionary: false);
+                for (int i = 0; i < 6; i++) Man(ox - 3 + i, -12, 16, 16, legionary: false);
+                for (int i = 0; i < 3; i++) Man(ox - 1 + i, 2, 17, 17, legionary: true);
+                burnt.Fever.Arm(FeverRules.From(S), SprintOrder.Charge, 100, t, false);
+                CourageRound(logic, t += 0.5);
+                Check(!burnt.Courage.Timid, "the second presser did not press");
+                burnt.Fever.Stop();
+                CourageRound(logic, t += 0.5);
+                Check(burnt.Courage.Phase == CouragePhase.Moving, "the fever over: the looter at odds 0.23 does not fall back to the mass: " + burnt.Courage.Phase);
+
+                // ---- step 49b: A SURGE - a timid looter among 5 mates, three metal men 2 m off (odds 0.45): the die 0 → brave for 4 s, then timid again
+                ox = 1600;
+                var surger = Man(ox, 0, 18, 18, legionary: false);
+                for (int i = 0; i < 5; i++) Man(ox - 2 + i, -0.8, 18, 18, legionary: false);
+                for (int i = 0; i < 3; i++) Man(ox - 1 + i, 2, 19, 19, legionary: true);
+                logic.CourageDice = new FixedDice(0.0);
+                int surges = logic.CourageStats.Surges;
+                CourageRound(logic, t += 0.5);
+                logic.CourageDice = new FixedDice(0.99);
+                Check(!surger.Courage.Timid && logic.CourageStats.Surges > surges && Near(surger.Courage.SurgeUntil, t + 4), "the surge did not start (brave for 4 s)"); // his mates rolled the same die
+                LogHas("[courage] first surge this battle: ");
+                double surgeEnd = t + 4;
+                while (t + 0.5 < surgeEnd - 1e-9)
+                {
+                    CourageRound(logic, t += 0.5);
+                    Check(!surger.Courage.Timid, "timid again inside the 4 s surge at " + t);
+                }
+                CourageRound(logic, t += 0.5);
+                CourageRound(logic, t += 0.5);
+                Check(surger.Courage.Timid, "the surge over: the looter at odds 0.45 is not timid again");
 
                 // ---- THE WALL: a man held in a shield wall (step 41) is never looked at; a rider; the player
                 ox = 600;
@@ -309,7 +361,7 @@ namespace TraxCombat.Tools
                 Check(Math.Abs(sm.Required - 4.0 / 3) < 0.01, "one hit in the shock window: required not 1.33: " + sm.Required);
                 Check(sm.Phase == CouragePhase.Moving && sm.ShockStart && sm.Panic, "shocked and outmatched: not a PANIC walk back: " + sm.Phase + " panic " + sm.Panic);
                 Check(shaken.Sprint.Active && Math.Abs(shaken.Sprint.Length - 5.0) < 1e-6, "panic: the sprint does not spend everything (5 s, keeping 0%): " + shaken.Sprint.Length);
-                Check(logic.CourageStats.TimidByShock >= 1 && logic.CourageStats.PanicSprints == 1, "the shock / panic counts are off");
+                Check(logic.CourageStats.TimidByShock >= 1 && logic.CourageStats.PanicSprints >= 1, "the shock / panic counts are off"); // the hit presser above panicked too
                 LogHas("[courage] first PANIC this battle: (agent ");
                 LogHas("keeping only 0% of his store");
                 // the hit ages out of the window: the shock is gone after 6 s
@@ -365,6 +417,7 @@ namespace TraxCombat.Tools
                 LogHas("[summary] courage timid: ");
                 LogHas("[summary] courage regroup: walks back ended ");
                 LogHas("[summary] courage flocking and panic: walks to the nearest bigger group of their side (6+ allies within 20 m) ");
+                LogHas("[summary] courage fever and surges (step 49b): fever presses overriding timidity ");
                 LogHas("[summary] courage by local odds, in contact (an enemy within 6.0 m, courage on): < 0.25: ");
                 LogHas("[summary] courage toughness (per man, read once): min 1.35, mean ");
                 LogHas("[summary] courage cost: ");

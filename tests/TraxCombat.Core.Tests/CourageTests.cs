@@ -10,9 +10,10 @@ public class CourageTests
     private static CourageRules Rules(bool mod = true, bool on = true, bool athletics = true, double radius = 6, int baseOdds = 100, int armour = 200,
         int level = 100, int health = 50, int tired = 100, int morale = 100, int fever = 40, int hero = 75, int hysteresis = 25, double minTimid = 2,
         double regroup = 5, int mates = 4, bool sprint = true, double sprintMetres = 12, int sprintEnemies = 3, int keep = 50, bool weights = true,
-        double reach = 2, double shockSeconds = 6, int shock = 100, int heavy = 150, double flock = 20, int flockMin = 6, int panic = 50, int panicKeep = 0) =>
+        double reach = 2, double shockSeconds = 6, int shock = 100, int heavy = 150, double flock = 20, int flockMin = 6, int panic = 50, int panicKeep = 0,
+        int surge = 5, double surgeSeconds = 4) =>
         new(mod, on, athletics, radius, baseOdds, armour, level, health, tired, morale, fever, hero, hysteresis, minTimid, regroup, mates, sprint, sprintMetres,
-            sprintEnemies, keep, weights, reach, shockSeconds, shock, heavy, flock, flockMin, panic, panicKeep);
+            sprintEnemies, keep, weights, reach, shockSeconds, shock, heavy, flock, flockMin, panic, panicKeep, surge, surgeSeconds);
 
     private static void Near(double expected, double actual, double eps = 1e-3) =>
         Assert.True(Math.Abs(expected - actual) <= eps, "expected " + expected + ", got " + actual);
@@ -241,6 +242,8 @@ public class CourageTests
         Assert.True(CourageMath.CurveAt(2, y1, x2, y2, x3, y3) > goAt2);
         double goAt3 = CourageMath.CurveAt(3, CourageMath.TimidGoToY1, CourageMath.TimidGoToX2, CourageMath.TimidGoToY2, CourageMath.TimidGoToX3, CourageMath.TimidGoToY3);
         Assert.True(CourageMath.CurveAt(3, y1, x2, y2, x3, y3) < goAt3);    // a metre beyond: keeps his place
+        // step 49b: within his reach Melee is at FULL - never below vanilla's own 8 at 0 m
+        for (double d = 0; d <= 2.0001; d += 0.25) Assert.True(CourageMath.CurveAt(d, y1, x2, y2, x3, y3) >= 8, "melee below vanilla's 8 at " + d + " m");
         // vanilla's DefaultMove melee still beats its GoToPos at 6 m - why men hunt: 8 → 5 at 7 m vs 3 → 5 at 7 m
         Assert.True(CourageMath.CurveAt(6, 8, 7, 5, 20, 0.01) > CourageMath.CurveAt(6, 3, 7, 5, 20, 6));
     }
@@ -257,8 +260,16 @@ public class CourageTests
         double flank = Odds(4, Looter, 6, Legionary);
         Near(0.288, front, 0.005);
         Near(0.151, flank, 0.005);
-        Assert.True(CourageMath.Timid(front, 1) && CourageMath.Timid(front, 0.4));   // timid even in a full fever: a thick arc, striking within reach
+        // step 49b: in the charge's fever, not hit, they PRESS - the first clash happens …
+        Assert.True(CourageMath.FeverPresses(1, shocked: false));
+        // … a looter HIT in the clash falls back even in his fever (0.29 < 0.4 x 1.33) …
+        Assert.True(CourageMath.Timid(front, CourageMath.Required(in R, 1, 50, 1, false, CourageMath.ShockShare(in R, 1), out _)));
+        // … and once the fever is out they line up timid opposite the wall, holding among their mates …
+        Assert.True(CourageMath.Timid(front, 1));
         Assert.Equal(CourageStep.TimidHolding, new CourageMind().Look(in R, 0, front, 1, 3, 13)); // among 13 mates: holds
+        // … and now and then one surges in: 5% a look x his bar - about one fresh man in 20 each half second
+        Assert.True(CourageMath.SurgeEligible(in R, true, false, 13, 2));
+        Near(0.05, CourageMath.SurgeChance(in R, 1));
         Assert.Equal(CourageStep.TimidMoving, new CourageMind().Look(in R, 0, flank, 1, 12, 3));  // 3 mates, 12 m from the mass: walks back
     }
 
@@ -269,8 +280,8 @@ public class CourageTests
         double flank = Odds(30, Looter, 6, Legionary);
         Near(0.515, front, 0.005);
         Near(1.133, flank, 0.005);
-        Assert.True(CourageMath.Timid(front, 1));                  // the front holds…
-        Assert.False(CourageMath.Timid(front, 0.4));               // …but presses while the charge's fever burns
+        Assert.True(CourageMath.Timid(front, 1));                  // the front holds once the fever is out…
+        Assert.True(CourageMath.FeverPresses(0.5, false));         // …and presses while the charge's fever burns (step 49b: fever beats the odds)
         Assert.False(CourageMath.Timid(flank, 1));                 // the flanks wrap - as a crowd of 30, never one by one
         Assert.True(CourageMath.Timid(Odds(5, Looter, 6, Legionary), 1)); // five who split off alone: timid, back to the mass
     }
@@ -299,6 +310,50 @@ public class CourageTests
         Assert.Equal(CourageStep.TimidHolding, new CourageMind().Look(in R, 0, odds, fresh, 6, 4));
     }
 
+    // ------------------------------------------------------------------ step 49b: the fever press, the surge, the standoff
+
+    [Fact]
+    public void Fever_overrides_the_odds_but_not_shock()
+    {
+        Assert.True(CourageMath.FeverPresses(1, false));           // armed
+        Assert.True(CourageMath.FeverPresses(0.2, false));         // burning
+        Assert.False(CourageMath.FeverPresses(0, false));          // no fever
+        Assert.False(CourageMath.FeverPresses(1, true));           // hit: the fever no longer carries him
+    }
+
+    [Fact]
+    public void The_surge_roll_its_length_and_the_bar_share()
+    {
+        Assert.True(CourageMath.SurgeEligible(in R, true, false, 4, 7.9));
+        Assert.False(CourageMath.SurgeEligible(in R, false, false, 4, 2));  // brave already
+        Assert.False(CourageMath.SurgeEligible(in R, true, true, 4, 2));    // shocked
+        Assert.False(CourageMath.SurgeEligible(in R, true, false, 3, 2));   // too few mates
+        Assert.False(CourageMath.SurgeEligible(in R, true, false, 6, 8.5)); // no enemy within 8 m
+        Assert.False(CourageMath.SurgeEligible(Rules(surge: 0), true, false, 6, 2));
+        Near(0.05, CourageMath.SurgeChance(in R, 1));
+        Near(0.025, CourageMath.SurgeChance(in R, 0.5));           // tired men surge less
+        Near(0, CourageMath.SurgeChance(in R, 0));
+        Near(0.05, CourageMath.SurgeChance(Rules(athletics: false), 0)); // Athletics off: no bar to scale by
+        Assert.True(CourageMath.SurgeRoll(0.05, 0.049));
+        Assert.False(CourageMath.SurgeRoll(0.05, 0.05));
+        var m = new CourageMind();
+        m.SurgeUntil = 10 + R.SurgeSeconds;
+        Assert.True(m.Surging(13.9));
+        Assert.False(m.Surging(14));
+        Near(4, R.SurgeSeconds);
+    }
+
+    [Fact]
+    public void The_standoff_is_timid_men_3_to_8_m_off_with_no_attack_in_10_s()
+    {
+        Assert.True(CourageMath.Standoff(true, 5, -1, 100));
+        Assert.True(CourageMath.Standoff(true, 5, 90, 100));
+        Assert.False(CourageMath.Standoff(true, 5, 91, 100));      // someone swung 9 s ago
+        Assert.False(CourageMath.Standoff(true, 2, -1, 100));      // in contact - a fight
+        Assert.False(CourageMath.Standoff(true, 9, -1, 100));
+        Assert.False(CourageMath.Standoff(false, 5, -1, 100));
+    }
+
     // ------------------------------------------------------------------ switches, settings, summary
 
     [Fact]
@@ -317,7 +372,7 @@ public class CourageTests
         Assert.Equal(SettingsSchema.FeverGroup.Order + 1, SettingsSchema.CourageGroup.Order);
         Assert.Equal(SettingsSchema.CourageGroup.Order + 1, SettingsSchema.ImpactGroup.Order);
         var keys = SettingsSchema.InGroup(SettingsSchema.CourageGroup).Select(p => p.Key).ToList();
-        Assert.Equal(27, keys.Count);
+        Assert.Equal(29, keys.Count);
         Assert.Equal("CourageEnabled", keys[0]);
         Assert.All(SettingsSchema.InGroup(SettingsSchema.CourageGroup), p => Assert.Equal(ApplyTiming.Live, p.Timing));
     }
@@ -355,14 +410,15 @@ public class CourageTests
         s.AddEnd(CourageEnd.Brave);
         lines.Clear();
         s.AddSummaryLines(lines, in R);
-        Assert.Equal(10, lines.Count);
+        Assert.Equal(11, lines.Count);
         Assert.Contains("ON 30.00 man-seconds per AI man-minute", lines[1]);
         Assert.Contains("OFF 60.00", lines[1]);
         Assert.Contains("ON mean 5.3 m, p90 3 m (10 looks); OFF mean 10.0 m, p90 11 m (1 looks)", lines[2]);
         Assert.Contains("caused by SHOCK (a landed hit within the shock window) 1, by the odds alone 2", lines[3]);
         Assert.Contains("arrived (within the regroup radius) 1", lines[4]);
         Assert.Contains("shocked 10.0 → 3.0 m (1 walks)", lines[5]);
-        Assert.Contains("< 0.25: 100% timid of 1", lines[6]);
-        Assert.Contains(">= 2: 0% timid of 1", lines[7]);
+        Assert.Contains("fever presses overriding timidity 0 looks", lines[6]);
+        Assert.Contains("< 0.25: 100% timid of 1", lines[7]);
+        Assert.Contains(">= 2: 0% timid of 1", lines[8]);
     }
 }

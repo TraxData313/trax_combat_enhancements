@@ -1078,10 +1078,12 @@ says (§2c).
 | `CourageMoraleWeightPercent` | 100 | Step 49: required × (1 + this % × max(0, 50 − morale) / 50) - the game's morale (`Agent.GetMorale`, 0-100). Range 0-500. |
 | `CourageShockSeconds` | 6.0 | Step 49 (Anton's addition: SHOCK): landed hits on him within this many seconds count (and live impact outcomes once an impact family applies); 3 = full shock. 0 = no shock. Range 0-60. |
 | `CourageShockWeightPercent` | 100 | Step 49: required × (1 + this % × min(shock events, 3) / 3). A shocked man also needs 2 × `CourageRegroupMates` and half `CourageRegroupRadiusMetres` (packs in). Range 0-500. |
-| `CourageFeverPercent` | 40 | Step 49: required × (1 − (1 − this %) × the fever's share - 1 armed, left ÷ full burning). Range 0-100. |
+| `CourageFeverPercent` | 40 | Step 49: required × (1 − (1 − this %) × the fever's share - 1 armed, left ÷ full burning). Since step 49b it applies only to a SHOCKED man: an unshocked man in a fever presses whatever the odds. Range 0-100. |
 | `CourageHeroPercent` | 75 | Step 49: a hero's required odds × this %. Range 10-200. |
 | `CourageHysteresisPercent` | 25 | Step 49: brave again only at required × (1 + this %). Range 0-200. |
 | `CourageMinTimidSeconds` | 2.0 | Step 49: a timid spell lasts at least this long. Range 0-10. |
+| `CourageSurgeChancePercent` | 5 | Step 49b (the manager's review: "a few of them now and then go and hit the wall"): a timid man NOT shocked, with at least `CourageRegroupMates` mates and an enemy within 8 m, rolls this at each look (~0.5 s) × his bar share (Athletics on); a hit = brave for `CourageSurgeSeconds` (normal weights, no walk). 0 = never. Range 0-100. |
+| `CourageSurgeSeconds` | 4.0 | Step 49b: a surge's length. Range 0-30. |
 | `CourageRegroupRadiusMetres` | 5.0 | Step 49: a timid man farther than this from his target (the bigger group / the formation's centre) walks; within it he has arrived. Range 1-30. |
 | `CourageRegroupMates` | 4 | Step 49: a timid man with at least this many mates within the radius holds instead of walking; 0 = never walks. Range 0-30. |
 | `CourageFlockRadiusMetres` | 20.0 | Step 49 (Anton's addition: FLOCKING): the walk's target = the centroid of his side's men within this distance when at least `CourageFlockMinMen` are there, else his formation's `CachedAveragePosition`; 0 = always the formation. Range 0-100. |

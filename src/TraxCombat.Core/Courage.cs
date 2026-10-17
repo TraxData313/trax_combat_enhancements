@@ -63,6 +63,12 @@ namespace TraxCombat.Core
         /// <summary>An exception on his look (logged) - ended to stay safe.</summary>
         Error,
 
+        /// <summary>Step 49b: his fever (armed or burning) and no shock - the charge goes in.</summary>
+        FeverPress,
+
+        /// <summary>Step 49b: a SURGE - a timid man among his mates steps in for CourageSurgeSeconds.</summary>
+        Surge,
+
         Count,
     }
 
@@ -187,7 +193,8 @@ namespace TraxCombat.Core
             int levelWeightPercent, int healthWeightPercent, int tiredWeightPercent, int moraleWeightPercent, int feverPercent, int heroPercent,
             int hysteresisPercent, double minTimidSeconds, double regroupRadiusMetres, int regroupMates, bool sprintBack, double sprintMetres,
             int sprintEnemies, int sprintKeepPercent, bool tightenWeights, double timidMeleeMetres, double shockSeconds = 6, int shockWeightPercent = 100,
-            int heavyWeaponPercent = 150, double flockRadiusMetres = 20, int flockMinMen = 6, int panicOddsPercent = 50, int panicSprintKeepPercent = 0)
+            int heavyWeaponPercent = 150, double flockRadiusMetres = 20, int flockMinMen = 6, int panicOddsPercent = 50, int panicSprintKeepPercent = 0,
+            int surgeChancePercent = 5, double surgeSeconds = 4)
         {
             ModEnabled = modEnabled;
             CourageEnabled = courageEnabled;
@@ -218,6 +225,8 @@ namespace TraxCombat.Core
             FlockMinMen = flockMinMen < 1 ? 1 : flockMinMen;
             PanicOddsPercent = ClampInt(panicOddsPercent, 0, 100);
             PanicSprintKeepPercent = ClampInt(panicSprintKeepPercent, 0, 100);
+            SurgeChancePercent = ClampInt(surgeChancePercent, 0, 100);
+            SurgeSeconds = Clamp(surgeSeconds, 0, 30);
         }
 
         private static double Clamp(double v, double min, double max) => double.IsNaN(v) || v < min ? min : v > max ? max : v;
@@ -280,12 +289,19 @@ namespace TraxCombat.Core
         public int PanicOddsPercent { get; }
         public int PanicSprintKeepPercent { get; }
 
+        /// <summary>Step 49b (the manager's review of Anton's picture: "a few of them now and then go and hit the wall"): a timid man who is
+        /// not shocked, among his mates, an enemy within <see cref="CourageMath.SurgeEnemyMetres"/>, rolls this chance at each look × his bar
+        /// share; a hit makes him brave for <see cref="SurgeSeconds"/> - he steps in and swings. 0 = never.</summary>
+        public int SurgeChancePercent { get; }
+        public double SurgeSeconds { get; }
+
         public static CourageRules From(TraxSettings s) => new CourageRules(s.ModEnabled, s.CourageEnabled, s.AthleticsEnabled, s.CourageRadiusMetres,
             s.CourageBaseOddsPercent, s.CourageArmourWeightPercent, s.CourageLevelWeightPercent, s.CourageHealthWeightPercent, s.CourageTiredWeightPercent,
             s.CourageMoraleWeightPercent, s.CourageFeverPercent, s.CourageHeroPercent, s.CourageHysteresisPercent, s.CourageMinTimidSeconds,
             s.CourageRegroupRadiusMetres, s.CourageRegroupMates, s.CourageSprintBack, s.CourageSprintMetres, s.CourageSprintEnemies, s.CourageSprintKeepPercent,
             s.CourageTightenWeights, s.CourageTimidMeleeMetres, s.CourageShockSeconds, s.CourageShockWeightPercent, s.CourageHeavyWeaponPercent,
-            s.CourageFlockRadiusMetres, s.CourageFlockMinMen, s.CouragePanicOddsPercent, s.CouragePanicSprintKeepPercent);
+            s.CourageFlockRadiusMetres, s.CourageFlockMinMen, s.CouragePanicOddsPercent, s.CouragePanicSprintKeepPercent,
+            s.CourageSurgeChancePercent, s.CourageSurgeSeconds);
 
         private static string N(double v, string f = "0.##") => v.ToString(f, CultureInfo.InvariantCulture);
 
@@ -311,7 +327,9 @@ namespace TraxCombat.Core
                    + N(SprintMetres, "0") + " m away or " + SprintEnemies + "+ enemies are near; in PANIC (shocked, odds below " + PanicOddsPercent
                    + "% of the required) he sprints at once keeping only " + PanicSprintKeepPercent + "%" : "") + "; among them he holds"
                    + (TightenWeights ? " and strikes only within " + N(TimidMeleeMetres, "0.0") + " m (his behaviour weights)" : " (behaviour weights untouched)")
-                   + "; brave again at the required odds + " + HysteresisPercent + "% after " + N(MinTimidSeconds, "0.0") + " s timid";
+                   + "; brave again at the required odds + " + HysteresisPercent + "% after " + N(MinTimidSeconds, "0.0") + " s timid"
+                   + "; a man in his FEVER presses whatever the odds unless SHOCKED; a timid, unshocked man among his mates with an enemy within "
+                   + N(CourageMath.SurgeEnemyMetres, "0") + " m SURGES in for " + N(SurgeSeconds, "0.#") + " s at " + SurgeChancePercent + "% a look x his bar";
         }
     }
 
@@ -346,6 +364,36 @@ namespace TraxCombat.Core
         /// <summary>A walk back longer than this ends where he is (he holds) - a man who cannot get there does not walk forever.</summary>
         public const double MaxMovingSeconds = 15;
 
+        /// <summary>Step 49b: a surge needs an enemy within this (he can reach him in a few steps); the STANDOFF measure counts timid men whose
+        /// nearest enemy is between <see cref="StandoffMinMetres"/> and this, nobody of the two attacking in <see cref="StandoffSeconds"/>.</summary>
+        public const double SurgeEnemyMetres = 8;
+        public const double StandoffMinMetres = 3;
+        public const double StandoffSeconds = 10;
+
+        /// <summary>Step 49b: his fever overrides the odds - armed or burning, NOT shocked (a hit man falls back, fever or not).</summary>
+        public static bool FeverPresses(double feverShare, bool shocked) => feverShare > 0 && !shocked;
+
+        /// <summary>Step 49b: a surge may be rolled - timid, not shocked, at least CourageRegroupMates mates, an enemy within 8 m.</summary>
+        public static bool SurgeEligible(in CourageRules r, bool timid, bool shocked, int mates, double nearestEnemy) =>
+            timid && !shocked && r.SurgeChancePercent > 0 && r.SurgeSeconds > 0 && mates >= r.RegroupMates && !double.IsNaN(nearestEnemy)
+            && nearestEnemy <= SurgeEnemyMetres;
+
+        /// <summary>Step 49b: the surge chance at one look = CourageSurgeChancePercent × his bar share (Athletics on; off = × 1).</summary>
+        public static double SurgeChance(in CourageRules r, double bar)
+        {
+            double share = r.AthleticsEnabled ? (double.IsNaN(bar) ? 1 : bar < 0 ? 0 : bar > 1 ? 1 : bar) : 1;
+            return r.SurgeChancePercent / 100.0 * share;
+        }
+
+        /// <summary>Step 49b: the roll (a die in [0, 1)).</summary>
+        public static bool SurgeRoll(double chance, double die) => die < chance;
+
+        /// <summary>Step 49b: a standoff look - timid, his nearest enemy 3-8 m, neither he nor that enemy attacked in the last 10 s
+        /// (<paramref name="lastAttack"/> = the later of the two's last melee release; negative = never).</summary>
+        public static bool Standoff(bool timid, double nearestEnemy, double lastAttack, double now) =>
+            timid && !double.IsNaN(nearestEnemy) && nearestEnemy >= StandoffMinMetres && nearestEnemy <= SurgeEnemyMetres
+            && (lastAttack < 0 || now - lastAttack >= StandoffSeconds);
+
         /// <summary>A holding man starts walking again only this much beyond the regroup radius (no wobble at its edge).</summary>
         public const double MoveAgainExtraMetres = 2;
 
@@ -359,9 +407,10 @@ namespace TraxCombat.Core
         public const double OutOfFormationRadii = 2;
 
         /// <summary>The timid man's behaviour weights (the game's <c>BehaviorValues</c> curves: y1 at 0 m, y2 at x2, y3 at x3 and beyond):
-        /// Melee 10 at 0 m, 6.5 at his reach (CourageTimidMeleeMetres), 0.01 by reach + 1.5 m; GoToPos 5 at 0, 6 from 7 m on - so beyond
-        /// his reach his own position wins and he stops hunting. Vanilla's DefaultMove: Melee 8 / 7 m 5 / 20 m 0.01, GoToPos 3 / 7 m 5 / 20 m 6.</summary>
-        public const float TimidMeleeY1 = 10f, TimidMeleeY2 = 6.5f, TimidMeleeY3 = 0.01f, TimidMeleeFade = 1.5f;
+        /// Melee 10 FLAT out to his reach (CourageTimidMeleeMetres - above vanilla's 8 at 0 m: within reach he fights at full - step 49b), 0.01
+        /// by reach + 1.5 m; GoToPos 5 at 0, 6 from 7 m on - so about 0.7 m beyond his reach his own position wins and he stops hunting.
+        /// Vanilla's DefaultMove: Melee 8 / 7 m 5 / 20 m 0.01, GoToPos 3 / 7 m 5 / 20 m 6.</summary>
+        public const float TimidMeleeY1 = 10f, TimidMeleeY2 = 10f, TimidMeleeY3 = 0.01f, TimidMeleeFade = 1.5f;
         public const float TimidGoToY1 = 5f, TimidGoToX2 = 7f, TimidGoToY2 = 6f, TimidGoToX3 = 20f, TimidGoToY3 = 6f;
 
         /// <summary>Shock events counted up to this many (each a third of the full shock at 3).</summary>
@@ -613,6 +662,8 @@ namespace TraxCombat.Core
             CourageEnd.LeftField => "left the field",
             CourageEnd.MissionEnd => "the battle ended",
             CourageEnd.Error => "an error",
+            CourageEnd.FeverPress => "his fever pressed on (not shocked)",
+            CourageEnd.Surge => "a surge",
             _ => e.ToString(),
         };
 
@@ -695,6 +746,11 @@ namespace TraxCombat.Core
 
         /// <summary>A timid spell ever (the summary's men).</summary>
         public bool EverTimid;
+
+        /// <summary>Step 49b: a surge makes him brave until this (mission time; the look leaves him alone meanwhile).</summary>
+        public double SurgeUntil = double.NegativeInfinity;
+
+        public bool Surging(double now) => now < SurgeUntil;
 
         /// <summary>This spell began shocked (the summary's "by shock" vs "by the odds alone"); this walk goes to a bigger group of his side
         /// (not his formation's centre); this walk is a panic (its sprint keeps only the panic reserve); his distance from his formation's

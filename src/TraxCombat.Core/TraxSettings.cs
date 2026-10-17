@@ -326,6 +326,8 @@ namespace TraxCombat.Core
         public int CourageHeroPercent => GetInt(SettingsSchema.CourageHeroPercent);
         public int CourageHysteresisPercent => GetInt(SettingsSchema.CourageHysteresisPercent);
         public float CourageMinTimidSeconds => GetFloat(SettingsSchema.CourageMinTimidSeconds);
+        public int CourageSurgeChancePercent => GetInt(SettingsSchema.CourageSurgeChancePercent); // step 49b
+        public float CourageSurgeSeconds => GetFloat(SettingsSchema.CourageSurgeSeconds);
         public float CourageRegroupRadiusMetres => GetFloat(SettingsSchema.CourageRegroupRadiusMetres);
         public int CourageRegroupMates => GetInt(SettingsSchema.CourageRegroupMates);
         public float CourageFlockRadiusMetres => GetFloat(SettingsSchema.CourageFlockRadiusMetres);

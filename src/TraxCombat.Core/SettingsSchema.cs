@@ -519,7 +519,7 @@ namespace TraxCombat.Core
 
         public static readonly ParamDef CourageFeverPercent = Int("CourageFeverPercent", 0, 100, CourageGroup,
             "Courage in a fever (%)",
-            "A man in his FEVER (the charge's surge - Aggression and fever) needs only this share of the odds while it is full, back to 100% as it burns out. At 40 a feverish man stays brave at 40% of the odds - the charge goes in; when it fades, the weak side's men pull back. 100 = the fever does not touch courage.");
+            "A man in his FEVER (the charge's surge - Aggression and fever) who is NOT shaken by a hit presses on whatever the odds - the charge goes in. Once hit, his fever only lowers the odds he needs: to this share while it is full, back to 100% as it burns out. When it fades, the weak side's men pull back. 100 = the fever does not lower the odds of a hit man.");
 
         public static readonly ParamDef CourageHeroPercent = Int("CourageHeroPercent", CourageMath.MinOddsPercent, 200, CourageGroup,
             "Courage of heroes (%)",
@@ -532,6 +532,14 @@ namespace TraxCombat.Core
         public static readonly ParamDef CourageMinTimidSeconds = Float("CourageMinTimidSeconds", 0, 10, CourageGroup,
             "Courage: timid at least (s)",
             "Once timid a man stays timid at least this long, whatever the odds do.");
+
+        public static readonly ParamDef CourageSurgeChancePercent = Int("CourageSurgeChancePercent", 0, 100, CourageGroup,
+            "Surge: chance a look (%)",
+            "Now and then a timid man steps in: one who is not shaken by a hit, stands among his mates and has an enemy within 8 m rolls this chance about every half second, times his Athletics bar (a tired man surges less). A surge makes him brave for the seconds below - he steps in and swings, then the normal rules take him back. At 5 a fresh man surges about every 10 s. 0 = never.");
+
+        public static readonly ParamDef CourageSurgeSeconds = Float("CourageSurgeSeconds", 0, 30, CourageGroup,
+            "Surge: lasts (s)",
+            "How long a surge makes a timid man brave.");
 
         public static readonly ParamDef CourageRegroupRadiusMetres = Float("CourageRegroupRadiusMetres", 1, 30, CourageGroup,
             "Regroup: close enough (m)",
@@ -1152,7 +1160,7 @@ namespace TraxCombat.Core
             FeverSprintToClose, FeverSprintMinMetres, FeverSprintMaxMetres, FeverSprintCheckSeconds, FeverSprintChancePercent,
             CourageEnabled, CourageRadiusMetres, CourageBaseOddsPercent, CourageArmourWeightPercent, CourageLevelWeightPercent, CourageHealthWeightPercent,
             CourageHeavyWeaponPercent, CourageTiredWeightPercent, CourageMoraleWeightPercent, CourageShockSeconds, CourageShockWeightPercent, CourageFeverPercent,
-            CourageHeroPercent, CourageHysteresisPercent, CourageMinTimidSeconds, CourageRegroupRadiusMetres, CourageRegroupMates, CourageFlockRadiusMetres,
+            CourageHeroPercent, CourageHysteresisPercent, CourageMinTimidSeconds, CourageSurgeChancePercent, CourageSurgeSeconds, CourageRegroupRadiusMetres, CourageRegroupMates, CourageFlockRadiusMetres,
             CourageFlockMinMen, CourageSprintBack, CourageSprintMetres, CourageSprintEnemies, CourageSprintKeepPercent, CouragePanicOddsPercent,
             CouragePanicSprintKeepPercent, CourageTightenWeights, CourageTimidMeleeMetres,
             ImpactEnabled, ImpactKicksEnabled, ImpactBlocksEnabled, ImpactHitsEnabled, ImpactRiposteEnabled, ImpactShadowMode,
