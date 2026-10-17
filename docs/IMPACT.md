@@ -13,7 +13,12 @@ on a rider; AI_NOTES "Step 50", PLAYTEST D19); step 51 = I4, **BLOCKS AND THE RI
 the decorator's worker-thread seam - no die - with the game's cap raised to `ImpactStunCapSeconds` while blocks are live; the rolled stagger
 and the riposte = `act_stagger_backward` from the tick at the speed for §3.7's length, measured, the end into the record; a wrong-side shield
 drop from the tick; a blocker knocked down by our own blow, its get-up slowed; never on a rider; AI_NOTES "Step 51", DESIGN decision 43,
-PLAYTEST D20); clean hits are still decided and logged only (step 52).**
+PLAYTEST D20); step 52 = I5, **CLEAN HITS LIVE + THE REELING BONUS + MOMENTUM** (2026-10-18: a clean hit's knockdown answered in the
+decorator's seam like a kick's, its get-up slowed; its stagger = the engine's own flinch slowed to §3.7's length (the flinch's own length
+learned in battle), the measured end = the reeling time; tired men never shrug a blow off - the game's threshold × f in the decorator's
+`DecideAgentShrugOffBlow`; the reeling bonus real on every family; MOMENTUM - Anton's step-52 wish, §8's "the attacker's run" answered yes:
+the attacker's own speed into the blow × up to +60% impact at a sprint, every family, never a rider's; AI_NOTES "Step 52", DESIGN decision 44,
+PLAYTEST D21). Every family is live now; riders and the on-screen lines are step 53.**
 (Written as a plan in step 45:) The game-side facts behind every line are in
 `docs/RESEARCH.md` §R (file + line in the v1.4.8 decompile); the short version is in `AI_NOTES.md` "Step 45". The build order
 (§7) goes into `TASKS_TODO.md` only after Anton says yes.
@@ -328,6 +333,8 @@ skill 20; the peasant parries with a 0.6 kg stick)
 | Who | `ImpactOnPlayerPercent` | 100 | every chance against you × this |
 | | `ImpactRiderDismountPercent` | 50 | a rider's "knockdown" = knocked off, at this share |
 | | `ImpactTiredNeverShrugsOff` | true | the flinch threshold × f |
+| Momentum (step 52) | `ImpactMomentumEnabled` / `ImpactMomentumPercent` | true / 60 | the attacker's speed into the blow adds up to +60% impact |
+| | `ImpactMomentumWalkMetresPerSecond` / `ImpactMomentumSprintMetresPerSecond` | 2.0 / 7.0 | nothing up to a walk, all of it from a sprint |
 | Plumbing (constants, documented) | `ImpactMaxActionsPerTick` 20, the watch list's size, the skill's 300 | | |
 
 ---
@@ -359,7 +366,7 @@ soldier under ALT).
 | **I2 The model, SHADOW** (step 48, built 2026-10-17: `ImpactShadowMode` ships OFF - decision 40; nothing is applied anyway until 49-51) | Core `Impact.cs` (pure, unit-tested: x, R, band, S-curve, ceilings, lengths, immunity, diminishing returns, the reeling state), every setting in DESIGN + defaults.json + MCM, the inputs read at every kick / block / hit; decisions LOGGED, nothing applied | `[summary] impact (shadow): kicks 41 → would drop 6, knock down 4; right blocks 380 → would stagger 52 …` by bar band — Anton reads his own battles' numbers before anything changes |
 | **I3 Kicks and bashes LIVE** (points 1, 3, 4, 11) - step 50, BUILT 2026-10-18 | knockdown, dropped shield, the longer reel, the slower get-up, immunity + diminishing returns | `[impact] YOU: your kick on … : knocked down (62%)`, the summary's applied vs asked, reel / get-up measured |
 | **I4 Blocks LIVE** (points 2, 5, 6, 7) - step 51, BUILT 2026-10-18 | the stun by tiredness, the rolled stagger, wrong-side shield drops, a block knocked down (the technique I1 proved), the riposte | stagger lengths measured, blocks made from inside a stagger ~0, ripostes by the attacker's bar |
-| **I5 Clean hits + the reeling state** (points 8, 9) - step 52 | tired men never shrug off, the flinch lengthened, knockdowns on landed blows, the reeling bonus | knockdowns by weapon class and bar band |
+| **I5 Clean hits + the reeling state** (points 8, 9) - step 52, BUILT 2026-10-18 (+ MOMENTUM, Anton's step-52 addition) | tired men never shrug off, the flinch lengthened, knockdowns on landed blows, the reeling bonus; the attacker's speed into the blow adds impact (every family) | knockdowns by weapon class and bar band; blows by the attacker's speed band and their outcome rates |
 | **I6 Riders, feedback, guide** - step 53 | knocked off a horse (after Anton's answer), the player's message lines, `docs/HOW-IT-WORKS.md` tables, PLAYTEST | dismounts; the guide's tables recomputed |
 | (I7, optional) - step 54 | the AI punishing a window: a short burst of attack decisions (step 43's lever) when his target is staggered or down | attacks per man-minute on staggered targets |
 
@@ -413,7 +420,9 @@ blocker; (3) only then Harmony — a soft dependency in a satellite assembly beh
 - **Shields by size**: in the model through the shield's weight (a 6 kg tower shield 2.0, a 2 kg buckler 1.15) — enough?
 - **Two-handers and polearms parrying**: vanilla gives them extra stability (+0.25 / +0.35 in its stun formula) — mirror it in G?
 - **The attacker's run**: a sprinting kicker (step 33) or a running swing hits harder (vanilla's movement-speed bonus) — add
-  his speed to the impact?
+  his speed to the impact? **Answered in step 52 (Anton: "a fresh shock unit attacking a tired line must be devastating"): yes -
+  MOMENTUM, I × (1 + `ImpactMomentumPercent` 60% × clamp((v − 2.0) ÷ (7.0 − 2.0), 0, 1)), v = his own speed along the line to the man he
+  strikes; every family; never a rider's (step 53).**
 - **Missiles**: a javelin into a tired man's shield could drop it; arrows never. Out of scope for v1?
 - **Getting up costs breath**: a knocked-down man loses some Athletics getting up? Not proposed (he is already exhausted).
 - **Battle scale**: knockdowns in a 1000-man battle are many engine calls — the per-tick cap and the summary's cost line watch it.

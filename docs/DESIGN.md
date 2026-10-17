@@ -579,7 +579,8 @@ regen.)
   skill; no guard = Athletics), mounts, health - `Missions/ImpactInputs.cs`. A landed blow on a man on foot is decided in the damage
   decorator's KnockDown seam (before the engine registers it) and taken by OnMeleeHit; blocks in OnMeleeHit. Step 48 decided and
   LOGGED only; each effect step adds its family to `ImpactMath.EffectsBuilt` - **step 50 (I3): kicks and bashes are LIVE** (below),
-  **step 51 (I4): blocks + the riposte are LIVE** (below), 52 clean hits (the board moved by one when step 49 was inserted) - and applies the same decision through the
+  **step 51 (I4): blocks + the riposte are LIVE** (below), **step 52 (I5): clean hits + MOMENTUM are LIVE** (below - every family live now;
+  the board moved by one when step 49 was inserted) - and applies the same decision through the
   spike's seams; a family decided live whose effect is not built yet decides on COPIES of the men's records (`ImpactRules.KeepsState` -
   a stagger that never happened gives no reeling bonus, immunity, halving or courage shock). Each family behind its own switch (`ImpactKicksEnabled` / `ImpactBlocksEnabled` /
   `ImpactHitsEnabled` / `ImpactRiposteEnabled`) and `ImpactShadowMode` turning ALL of them into logging only (the spike forces shadow
@@ -631,6 +632,30 @@ regen.)
   MADE FROM INSIDE A STAGGER (~0 = the window is real); the blockers knocked down (our blows → Fall seen, the get-up measured); the
   riposte by the ATTACKER's bar band; the stun - the seam's calls (off the main thread), lengthened (x, before → after, at the cap), the
   guard measured asked vs fresh blockers, the cap raised / restored; the limits, YOU, shock, levers, the queue.
+- **Impact I5: clean hits LIVE, the reeling bonus, MOMENTUM** (step 52, AI_NOTES "Step 52", decision 44; `Missions/AthleticsLogic.ImpactHits.cs`,
+  Core `ImpactHits.cs`; Anton's points 8 / 9 + his step-52 wish: "a fresh shock unit attacking a tired line must be devastating"): a clean
+  hit's ONE decision (IMPACT §3.5's clean-hit row: stagger 80 %, down 50 % at the ceiling) is APPLIED - **the knockdown** = the damage
+  decorator's KnockDown answer (as a kick's), its fall-and-rise watched and slowed by the get-up factor, the 5 s immunity from the measured
+  get-up; **the stagger** = the engine's OWN flinch slowed (not a forced stagger) to the decided length (0.6 s fresh → 1.5 s ± 30 % empty):
+  speed = the flinch's own length ÷ the asked length, the own length LEARNED from the flinches measured (untouched controls - at most 8 timed
+  at once - and the slowed ones × their speed; 0.45 s guessed until one is); its measured end = his reel's end (the reeling bonus for the
+  next blow, the 2 s immunity); **tired men never shrug off** (`ImpactTiredNeverShrugsOff`): when the game lets a man shrug a clean hit off,
+  the decorator's `DecideAgentShrugOffBlow` (main thread - Mission.CreateMeleeBlow) asks again with the game's threshold × (1 − T) (T ×
+  `ImpactOnPlayerPercent` for you; never a rider; clean hits only) - an exhausted man flinches at any damage. **The reeling bonus** (+0.75)
+  is real on every family: a kick's lengthened reel, a block's stagger, a riposte and a clean hit's stagger all write the reeling time from
+  what the engine played - a kick on a staggered man very likely knocks him down, a heavy blow can. **MOMENTUM** (every family - kicks, bashes,
+  weapon blows, blocked or not): the attacker's own speed INTO the blow (his ground velocity, vanilla's formula, along the line to the man he
+  strikes - `ImpactFacts.AttackerSpeed`) multiplies the blow's impact by 1 + `ImpactMomentumPercent` (60) % × clamp((v − walk) ÷ (sprint −
+  walk), 0, 1), walk `ImpactMomentumWalkMetresPerSecond` 2.0, sprint `ImpactMomentumSprintMetresPerSecond` 7.0 (the game measured: a walk
+  1.8 m/s, a run ~4.4, a fresh sprint ~8-9); never a rider's (step 53); the fever is not a factor of its own (its sprints are speed). The
+  riposte reads it turned round (a charging attacker is harder to turn). Riders: nothing of a clean hit applies (step 53). You: the same
+  rules × `ImpactOnPlayerPercent`; every live clean hit that did something to you or that you did is an `[impact] YOU:` line. Courage: each
+  live outcome is ONE shock. Levers: the KnockDown answer, the slowed reaction and the watch shared with the kicks (each disabled alone);
+  `ShrugOff` its own. The `[summary]` lines: **impact momentum** (every decided blow of every family by the attacker's speed band - standing
+  < 0.5 m/s / walking < walk / running < sprint / sprinting: blows, mean speed, mean impact factor, an outcome %, knocked down % - all men
+  and the men below half a bar: THE proof of the shock charge), the clean hits per weapon class (cut / pierce / blunt / two-handed) × the
+  hit man's bar band (knocked down / staggered decided → applied → seen), knockdowns on REELING men vs the rest (and on blows the game had
+  shrugged off), the staggers asked vs measured vs untouched flinches, the shrug-offs refused by band, the limits.
 - **Tired fighters step back** (built in step 5d - the literal rule; `StepBackEnabled`, on):
   when a MELEE swing ends, an AI fighter on foot may step back, facing its enemy with its guard
   up. Chance = `StepBackMaxChancePercent` (100) × (1 − f), f after the swing's cost: 0% in the
@@ -1719,6 +1744,30 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     tired swing (85% animation) is a real guard beyond the even band: 76 / 35% instead of 80 / 40 - kept (the shield's weight counts, the
     tiredness is never cancelled); a wrong-side block is never better than a right one at any bar and clearly worse when tired (90 / 50 /
     40 vs 80 / 0 / 40 at empty) - Anton can ask for the right side at exactly 80 / 40.
+
+44. **Clean hits live, the reeling bonus, momentum** (step 52, IMPACT I5 - Anton asleep, "get all done by morning, decide open questions";
+    Claude's calls - AI_NOTES "Step 52"): (a) the clean-hit stagger is the engine's OWN flinch slowed (IMPACT §3.5), never a forced
+    stagger - its length the model's (0.6-1.5 s), the speed = the flinch's own length (LEARNED from untouched controls and slowed flinches;
+    0.45 s guessed) ÷ that, never faster than the game's (factor ≥ 1); a flinch that never shows (the game shrugged it off, he died) leaves
+    no reeling; (b) the shrug-off rule sits in `DecideAgentShrugOffBlow` (checked in the decompile: Mission.CreateMeleeBlow, the main thread
+    - no snapshot needed), asked only when the game says "shrugged off", clean melee hits on men on foot only (not kicks - vanilla knocks a
+    kick back anyway -, not missiles, not riders); the threshold × (1 − T) with T × `ImpactOnPlayerPercent` for you; the game's knockdown
+    / knockback questions then follow vanilla's own rules for the un-shrugged blow; (c) MOMENTUM = the attacker's OWN speed along the line
+    to the victim (not the closing speed of both - a man fleeing a charge is not spared; vanilla's `MovementSpeedDamageModifier` was not
+    used: it is a damage ratio, 0 for kicks and for blows early in the swing), read with vanilla's own velocity formula
+    (`MovementVelocity` turned by `MovementDirectionAsAngle`) - four engine reads per event, main thread; (d) its references are settings
+    (walk 2.0 m/s - above the game's 1.8 m/s walk limit, so walking men add nothing; sprint 7.0 m/s - between a run ~4.4 and a fresh sprint
+    ~8-9) rather than read per man from the game: the brief's formula needs one walk and one sprint for every man, and a tired man's slower
+    run SHOULD hit softer; +60 % at a full sprint (the brief's suggestion); (e) momentum multiplies the impact I of EVERY family (the brief:
+    a charging axe into a guard hits harder too) and so the riposte sees it turned round; riders' speed is never counted (step 53) and
+    counted apart in the summary; (f) momentum alone never breaks a FRESH line (a sprinting swordsman on a fresh even man: x 0.05, stagger
+    < 5 %, no knockdown) - the even band and the tiredness still decide; it is devastating on TIRED men (the smoke: a 40 % line hit once by
+    a standing swordsman 6 % down, by a sprinting two-handed axe 36 %; an exhausted line 54 %); (g) exhaustion never cancels on a clean hit
+    (G none = 1): two EMPTY even men with swords are at x = 1 - stagger 80 %, down 50 % (a Core test); (h) at most 8 untouched flinches timed
+    at once (the controls - blows are many, the 64 watches shared); a hit's stagger REPLACES a running watch on the same man; (i) YOU lines
+    only for clean hits that did something (you land hundreds); (j) a knockdown answered on a blow the game had already shrugged off is
+    counted apart (`knockdowns answered on a blow the game had shrugged off`) - the shrug-off is decided before the KnockDown question, and
+    whether the engine plays a fall on a ShrugOff-flagged blow is for D21 to show.
 
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),

@@ -479,8 +479,8 @@ count).
 
 In the base game a kick only pushes a man back, and he is guarding again before you can swing. With this
 mod a **kick or a shield bash on a tired man** can do much more — **knock him down**, make him **drop his
-shield**, and he **reels longer** and **gets up slower**. On a fresh man nothing changes. **Blocks** count too
-(below); clean hits follow in a later version.
+shield**, and he **reels longer** and **gets up slower**. On a fresh man nothing changes. **Blocks** and
+**clean hits** count too, and a man who **runs into his blow** hits harder (below).
 
 What counts is how tired **he** is, and how you two compare: both men's **current** Athletics (how big the
 bar is AND how full), what struck him and both men's skill. Two even men, the kicker fresh:
@@ -561,6 +561,58 @@ deal — is a `[impact] YOU:` line in the log ("your right-side block of X's Stu
 `WrongBlockStaggerMaxPercent` 90, `WrongBlockShieldDropMaxPercent` 50, `WrongBlockKnockdownMaxPercent` 40, `RiposteStaggerMaxPercent` 50,
 `StaggerBaseSeconds` 0.6, `StaggerTiredExtraPercent` 150, `StaggerMaxSeconds` 2, `BlockStunTiredExtraPercent` 100,
 `RiposteStunMaxSeconds` 1, `ImpactStunCapSeconds` 2.</sub>
+
+### Clean hits: a tired man is thrown around
+
+A blow that **lands** on a tired man can **stagger** him — his own flinch, but longer (0.6 s fresh, up to 1.5 s
+empty) — or **knock him down**. And a tired man **never shrugs a blow off**: the game lets a man ignore a light
+hit without flinching; the more tired he is, the less he can (an empty man flinches at every hit). Two even
+men, the attacker fresh with a sword:
+
+| His bar | Staggered | Knocked down | A stagger lasts |
+|---|---:|---:|---|
+| 100% – 75% (green) | 0% | 0% | 0.6 s |
+| 50% | 21% | 0% | 0.9 s |
+| 25% | 68% | 35% | 1.2 s |
+| 10% | 80% | 50% | 1.4 s |
+| 0% (empty) | 80% | 50% | 1.5 s |
+
+**A staggered man is easy prey.** While he reels from any stagger of this system — a kick's long reel, a
+block's stagger, a riposte, a clean hit's stagger — the next blow on him counts as if he were three quarters
+more tired: a kick on a staggered man in the green knocks him down about half the time, a sword blow about a
+third, even though the same blows do nothing to him a moment later. (He cannot be staggered *again* while he
+reels — the 2 s limit — but he can be knocked down.)
+
+**Exhaustion never cancels out** here either: two empty men hitting each other stay at the ceilings (80% /
+50%) — at the end of a long fight every clean blow tells.
+
+### Momentum: the charge
+
+**A man running into his blow hits harder.** Up to a walk nothing changes; from a walk (2 m/s) to a full
+sprint (7 m/s and faster) the blow's impact grows by up to **+60%** — kicks, shield bashes and weapon blows
+alike, blocked or not. Only his speed TOWARD the man he strikes counts. What it does to a half-tired line (his
+bar 40%), the attacker fresh:
+
+| The attacker | Staggered | Knocked down |
+|---|---:|---:|
+| a sword, standing | 37% | 5% |
+| a sword, sprinting | 57% | 21% |
+| a two-handed axe, standing | 51% | 15% |
+| a two-handed axe, running (4.5 m/s) | 61% | 26% |
+| a two-handed axe, sprinting | 68% | 34% |
+| a kick, standing | (shield 40%) | 22% |
+| a kick, sprinting | (shield 68%) | 52% |
+
+So **hold a fresh shock unit back, place it on the flank or behind a tired, engaged line, and charge at the
+right moment**: the tired men are thrown around — staggered, knocked down, their shields knocked away — and
+every man who reels is easier to drop for the next blow. A charge into a **fresh** line is something else:
+momentum alone hardly staggers a fresh man (a sprinting swordsman on a fresh equal: under 5%, never down).
+
+Riders: their charge is the horse's and comes later; they are never knocked down by this yet.
+
+<sub>Settings: `ImpactHitsEnabled` on, `HitStaggerMaxPercent` 80, `HitKnockdownMaxPercent` 50, `ImpactTiredNeverShrugsOff` on,
+`ImpactStaggeredBonus` 0.75, `ImpactMomentumEnabled` on, `ImpactMomentumPercent` 60, `ImpactMomentumWalkMetresPerSecond` 2,
+`ImpactMomentumSprintMetresPerSecond` 7.</sub>
 
 ## 12. Damage
 

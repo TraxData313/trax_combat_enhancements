@@ -1055,8 +1055,8 @@ cap left at 2 s after the battle (blocks in the NEXT battle with the spike OFF f
 
 **D17. The impact model - what WOULD happen in your battles (step 48, IMPACT I2, ~15 min - read it with D16, before the effects of
 steps 50-52).** The model decides every kick / bash, block and clean hit (docs/IMPACT.md §3) and writes it down. In step 48 itself NOTHING
-changed in the battle; from step 50 on the same decisions are applied, family by family (kicks / bashes since step 50 - D19; blocks 51,
-clean hits 52 - the board moved by one when step 49 was inserted). `ImpactShadowMode` ships OFF
+changed in the battle; from step 50 on the same decisions are applied, family by family (kicks / bashes since step 50 - D19; blocks 51 -
+D20; clean hits + momentum 52 - D21; the board moved by one when step 49 was inserted). `ImpactShadowMode` ships OFF
 (you wanted it live in the morning - DESIGN decision 40): to see a battle's numbers with the effects OFF, tick MCM → *Impact:
 staggers, shield drops, knockdowns* → **Shadow mode: decide and log only**.
 1. **The spike OFF** (D16 is a separate battle). The log's start: `[impact] mission start: the model (step 48 - IMPACT I2, docs/IMPACT.md)
@@ -1124,8 +1124,8 @@ hunting` off - tell Claude which looked better); the isolated rate ON ≈ OFF; w
 
 **D19. Kicks that break a tired man - IMPACT I3 LIVE (step 50, ~20 min).** Defaults (MCM → *Impact: staggers, shield drops,
 knockdowns*: Impact on, Kicks on, Shadow mode OFF; the spike OFF). The log's start: `[impact] mission start: the model (step 48 - IMPACT I2,
-docs/IMPACT.md) LIVE - kicks / bashes, blocks, the riposte applied, clean hits decided and logged only (effect not built yet); …` (step 51 made
-blocks live too - D20).
+docs/IMPACT.md) LIVE - kicks / bashes, blocks, clean hits, the riposte applied; …` (step 51 made blocks live too - D20; step 52 clean hits
+and momentum - D21).
 1. **A tournament** (a town's arena, any round with a shield fighter). **Fresh** opponent: kick him 3-4 times - he only stumbles back, as
    before. **Line**: `[impact] YOU: your kick on <him> (his bar 9x%, x -0.xx): no knockdown (0%), shield kept (0%) - reels x1.00`.
 2. **Tire him**: make him block and swing (hold your shield up, let him hit it, feint) until his bar is orange / red (hold ALT - his
@@ -1215,6 +1215,58 @@ it` in not applied); `BLOCKS MADE FROM INSIDE A STAGGER` near the staggers seen 
 stagger that looks wrong (a man sliding, a rider - must never happen: riders are never staggered); `the game's cap 0.80 → 2.00 s` and blocks
 feeling long in the NEXT battle with blocks off (the cap must come back - `restored`); `levers disabled` anything (an `[error] impact.live-…`
 line with its stack above); our blows registered with `Fall seen 0` (lever 6 does not floor a blocker in game).
+
+**D21. The SHOCK CHARGE - clean hits, the reeling bonus and MOMENTUM - IMPACT I5 LIVE (step 52, ~30 min - Anton's own scenario).**
+Defaults (MCM → *Impact: staggers, shield drops, knockdowns*: Impact on, Clean hits on, Tired men always flinch on, Momentum on, +60% at a
+full sprint, no bonus up to 2.0 m/s, full from 7.0 m/s; Shadow mode OFF; the spike OFF). The model's mission-start line now reads `LIVE -
+kicks / bashes, blocks, clean hits, the riposte applied; …; tired men always flinch on; momentum (the attacker's run into the blow) +60% impact
+at 7.0 m/s and faster, none at 2.0 m/s or slower (riders: step 53)`.
+1. **A tournament round (sword or blunt), you against one man. Fresh**: hit him clean 4-5 times - he flinches as in vanilla, nothing more (no
+   `[impact] YOU:` line for a hit that does nothing).
+2. **Tire him** (ALT: his bar orange / red) and hit him clean. **See**: his flinch lasts LONGER (up to ~1.5 s empty) - a window for your next
+   swing; now and then a clean hit KNOCKS HIM DOWN and he gets up slowly; he never shrugs off even a light hit any more. **Lines**: `[impact]
+   live: first clean hit that STAGGERS at … s - <you>'s <cut | pierce | blunt | two-handed> blow on <him> (his bar N%, x …): his own flinch to be
+   slowed to 1.xx s (x… the flinch's 0.45 s - a guess until one is measured)`; `[impact] live: first clean-hit flinch seen at …` / `… slowed at
+   …`; `[impact] live: first clean-hit stagger measured at … s - <him>'s flinch lasted 1.xx s (asked 1.xx s, x…); he counts as REELING until
+   then - the next blow on him gets the +0.75 …`; `[impact] live: first shrug-off REFUSED at … s - <him> (bar N%, T 0.xx) took N damage, the
+   game's threshold N x (1 - T) = N - a tired man flinches`; `[impact] YOU: your blow on <him>: he is knocked down (N%; his bar N%, x …) - gets
+   up xN slower`.
+3. **The reeling bonus**: stagger a man (a kick on a tired man, a wrong-side block, a clean hit) and hit or KICK him again while he still reels.
+   **See**: a kick on a reeling man very likely puts him down, even when he is not that tired; a heavy blow can too. **Lines**: the first
+   knockdown line says `REELING +0.75`; the summary's `on men REELING from an impact stagger N of M hits (…%)` far above `on the rest`.
+4. **ANTON'S SHOCK CHARGE - a custom battle**: your side = a shield-infantry line (F1) + a FRESH two-hander unit held back (F2: Sturgian
+   heavy axemen / Vlandian voulgiers / Battanian falxmen - any two-handed or polearm infantry), the enemy ~150 infantry. Let F1 and the enemy
+   grind for 4-6 minutes until both lines are orange / red (ALT shows the bars). Meanwhile walk F2 round to the enemy's FLANK or behind them
+   (F2 + Move - step 37: a move keeps 80% of their sprint). Then F2 + F3 CHARGE at 10-20 m. **See**: they sprint in (the sprint), and where they
+   hit the tired line men are thrown around - staggered, knocked down, shields flying; the men who reel go down to the next blow; the line
+   breaks from behind (courage's shock - step 49 - pulls the survivors back to their mates). Do it again with the charge against the enemy's
+   FRESH reserve - it should bounce (momentum alone hardly staggers a fresh man). And once with **Momentum** OFF (MCM, mid-battle - live) for the
+   comparison.
+5. **The [summary] lines** (send them): `impact momentum (step 52 - every decided kick, bash, block and clean hit by the attacker's speed into
+   the blow; …): standing N (0.0 m/s, impact x1.00): an outcome N%, down N%; on men below half a bar N: an outcome N%, down N% | walking … |
+   running … | sprinting N (8.x m/s, impact x1.6x): an outcome N%, down N%; on men below half a bar … | riders' blows not counted (step 53) N`;
+   `impact live clean hits, <cut | pierce | blunt | two-handed>, by the hit man's bar 100-75% / 75-50% / 50-25% / 25-0% (step 52; LIVE …): N
+   live (a / b / c / d); knocked down decided … = N, applied … = N[, Fall seen (all classes) M]; staggered (his flinch lengthened) decided …,
+   applied …`; `impact live clean-hit knockdowns: on men REELING from an impact stagger N of M hits (…%), on the rest … (…%); Fall seen …, not
+   seen …; the get-up asked x… → the fall-and-rise measured … s; knockdowns answered on a blow the game had shrugged off N`; `impact live
+   clean-hit staggers (the engine's own flinch slowed): asked … s (x… the flinch) → measured … s vs untouched flinches … s = x… measured; no
+   flinch seen …, fell instead …, controls …`; `impact live shrug-offs (ImpactTiredNeverShrugsOff - the game's threshold x f): the game let a
+   tired man shrug a clean hit off N times by his bar … → REFUSED (he flinched) … = N (…%), kept …`; `impact live clean-hit limits: …`.
+- **What to read first**: (a) THE PROOF - the momentum line: `sprinting` down % and outcome % far above `standing`, most of all `on men below
+  half a bar` (the smoke: a 40% line hit once - a standing swordsman 6% down, a sprinting two-handed axe 36%; an exhausted line 54%); (b) the
+  clean hits' 100-75 band ~0 everywhere (a fresh man's flinch is vanilla), the 25-0 band near 80 / 50 - exhaustion never cancels; (c) `Fall
+  seen` ≈ the knockdowns applied (the engine plays our KnockDown on a weapon blow); (d) the staggers' `measured` ≈ `asked` and above the
+  untouched flinches (`= x… measured` above 1 - SetCurrentActionSpeed holds on the flinch, D16's lever 3); (e) `REFUSED` well above 0 in the
+  50-0 bands (tired men flinch); (f) knockdowns on REELING men far above the rest.
+- **Your gut**: does the charge feel devastating - or too much / too little? The knobs: `ImpactMomentumPercent` 60 (the charge's punch),
+  `ImpactMomentumSprintMetresPerSecond` 7 (lower = a run already counts fully), `HitKnockdownMaxPercent` 50 / `HitStaggerMaxPercent` 80 (clean
+  hits), `ImpactStaggeredBonus` 0.75 (how easy a reeling man is to drop), `ImpactTiredNeverShrugsOff`.
+**Broken — tell Claude** (D21): `Fall seen 0` with clean-hit knockdowns applied (the engine ignores KnockDown on a weapon blow - the fallback
+is our own blow from the tick, like a block's); `knockdowns answered on a blow the game had shrugged off` with no falls (the ShrugOff flag
+cancels the fall); `no flinch seen` near the staggers applied; the staggers' measured ≈ the untouched flinches (the slow does not hold);
+`sprinting 0` in a battle where your men clearly sprinted into the enemy (the speed read is wrong - tell Claude the walking / running counts);
+a FRESH man knocked down by a clean hit from an even man; `levers disabled` anything (an `[error] impact.live-…` / `impact.shrug-off-hook`
+line with its stack above).
 
 ---
 
@@ -2026,7 +2078,29 @@ header names the technique: `==== scene …, mod ON, AI holds: Input (the AI's o
 - The [summary] lines (D20 reads them): `impact live <right-side shield blocks | parries | WRONG-side shield blocks> by the blocker's bar …`,
   `impact live block staggers: …` (with `BLOCKS MADE FROM INSIDE A STAGGER`), `impact live blockers knocked down: …`, `impact live riposte
   (a fresh blocker staggers the ATTACKER) by the attacker's bar …`, `impact live block stun: …`, `impact live block limits: …`. Nothing live:
-  `impact live blocks (step 51 - blocks and the riposte): no live block this mission (<mode>)`.
+  `impact live blocks (step 51 - blocks and the riposte): no live block this mission (<mode>)`. Since step 52 the mode reads `LIVE - kicks /
+  bashes, blocks, clean hits, the riposte applied`.
+
+### L6o. Clean hits, the reeling bonus and MOMENTUM LIVE (step 52, IMPACT I5)
+
+- Mission start: the model's line (L6k) adds `tired men always flinch on; momentum (the attacker's run into the blow) +60% impact at 7.0 m/s
+  and faster, none at 2.0 m/s or slower (riders: step 53)`. Clean hits stop (off / shadow / the spike / the master switch): `[impact] clean
+  hits no longer live at … s (<mode>): N watch(es) let go - a slowed flinch / fall ends by itself`.
+- Every decision line (first of a kind / verbose) shows the momentum when there is one: `impact 2.01 (3.0 kg, speed 80 x1.00, cut) incl.
+  momentum x1.60 (8.0 m/s into the blow) vs guard …`.
+- Every live clean hit that DID something to you or that you did: `[impact] YOU: <him>'s blow on you: you are knocked down | you are staggered
+  (N%; your bar N%, x …[, reeling][, momentum x…]) - gets up xN slower | - N.NN s` / `YOU: your blow on <him>: he is …`.
+- First-time lines: `[impact] live: first clean hit that <KNOCKS DOWN | STAGGERS> at … s - <attacker>'s <class> blow on <him> (his bar N%, x
+  …[, REELING +0.75][, momentum x… at … m/s]): KnockDown answered in the decorator's seam - his fall-and-rise to be slowed x… | his own flinch
+  to be slowed to … s (x… the flinch's … s - <measured | a guess until one is measured>)`, `… first clean-hit knockdown seen at …`, `… first
+  clean-hit flinch seen at …`, `… first clean-hit flinch slowed at …`, `… first clean-hit stagger measured at …`, `… first shrug-off REFUSED
+  at …`, `… a clean-hit knockdown answered at … showed NO Fall within 1.0 s on <him> …`. A lever's error: `[error] impact.live-shrug-off` (or
+  `impact.shrug-off-hook`) once with its stack + `[impact] live lever tired men always flinch (the shrug-off refused) disabled for this mission
+  …`; the knockdown / slow / watch levers are the kicks' (L6m).
+- The [summary] lines (D21 reads them): `impact momentum (step 52 - …)` (always - every family's decisions by the attacker's speed band),
+  `impact live clean hits, <class>, by the hit man's bar …` (one per weapon class that was hit, cut always), `impact live clean-hit
+  knockdowns: …`, `impact live clean-hit staggers (the engine's own flinch slowed): …`, `impact live shrug-offs (…): …`, `impact live
+  clean-hit limits: …`. Nothing live: `impact live clean hits (step 52): no live clean hit this mission (<mode>)`.
 
 ### L6l. Courage and cohesion (step 49)
 
