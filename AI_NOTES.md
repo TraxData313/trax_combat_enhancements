@@ -4162,3 +4162,95 @@ was called "the nearest" but under the cap it is the walk's order - renamed "the
 3. The box's children aligned Top / Bottom inside a Fixed box with Scaled sizes (Gauntlet) → eye: the fever bar under the Athletics bar.
 4. 200 stacks cost no visible frame time → the summary's `cost`, Anton's frame rate in a 500+ battle.
 5. The bars' colours match the strip's per formation in a long fight → eye + the summary's colour counts.
+
+## Step 47 — IMPACT I1, the spike: prove each engine lever in a real battle (DONE 2026-10-17)
+
+**Anton (2026-10-17 night)**: approved docs/IMPACT.md with every recommended §8 answer - "resolve open questions and get all done, don't
+wait for me, I will polish details in the morning". Steps 47-53 = I1-I7 on the board. He cannot playtest I1 before 48-53 are built the
+same night, so the spike is ALSO the morning diagnostic (PLAYTEST D16): its verdicts say which of 48-53's levers to trust.
+
+**The design (DESIGN decision 39 - Claude's calls)**
+- ONE Advanced switch `ImpactSpike` (off, Live, a test tool). The loud values are documented constants in Core `SpikeMath` (x3 stun, cap 2 s,
+  speed 0.5, every 10 / 20 s, 1 damage, the windows 0.6 / 1.0 s, the measure cap 8 s, the pools 64 / 64 / 32, 20 engine calls a tick) - not
+  settings: the spike proves the engine, it tunes nothing (the brief's "every number a parameter" is for gameplay values; step 48 brings
+  IMPACT §5's ~60 settings).
+- **Every lever against its OWN CONTROL in the same battle** (the brief said "every kick … KnockDown" AND "every kicked man's reel … at 0.5"
+  - impossible at once: a knocked-down man does not reel - and "before / after" needs a before): the landed kicks ROTATE in fours -
+  1 KnockDown untouched (the fall's own length), 2 untouched reel (vanilla's), 3 KnockDown + the rise at 0.5, 4 the reel at 0.5 (Core
+  `SpikeMath.Kick`); the block stun is x3 for blockers of an EVEN agent index only (`StunTreated`) - deterministic, so the decorator on a
+  worker thread and the measurement on the main thread agree with no shared write ("read only there").
+- Lever 4 alternates the engine's priority rule (attempt 1 with it, 2 over it, …) so I4 learns which one the engine needs mid-fight.
+- The stagger (every 10 s) and our blow (every 20 s) never take the same block (the stagger first; `Due` by NaN = at once); a man the spike
+  acts on is never a stun sample; a refusal (a rider …) does not start the 10 / 20 s clock (the next block may try).
+- **Never on a rider, a horse, a man on a siege engine / ladder, in water, already down** - `IImpactBody.CanForce`, checked when the block is
+  seen, again in the tick, and once more inside `GameImpactBody.ForceStagger` / `OwnKnockdownBlow` (RBM crashed a horse with
+  `act_stagger_backward_3`). Horses are never tracked anyway (the logic tracks humans).
+- Each lever behind its own try: an exception → `Failed` (one `[error]` per site) + `[impact] spike lever N (<name>) disabled for this mission
+  …` + that lever off (lever 2: the cap restored at once); its verdict reads FAILS. The stun decider's exception happens on a worker thread:
+  `ImpactHooks` keeps the base's stun, stores the first exception (Interlocked), and the next tick (`TakeStunFailure`) logs and disables.
+- Master switch first, live: `SpikeRules.Enabled = ModEnabled && ImpactSpike`; the deciders read the settings themselves (vanilla before the
+  tick sees the change); the tick then restores the cap and lets go every watch / queued call / shield (no engine call - a slowed reaction
+  ends by itself).
+
+**The reusable seams (for 48-53 - the spike is their first user)**
+- `Models/ImpactHooks.cs`: `IKnockDownDecider.KnockDownOnBlow(attacker, victim, in collision, in blow, gameSays)` - main thread, asked for
+  EVERY collision on a man on foot (blocked ones too - answer only for a registered blow: `SpikeMath.KickLanded` or I5's own test), OR-ed
+  with vanilla's; `IBlockStunDecider.SetBlockStun(attacker, defender, result, ref attackerStun, ref defenderStun)` - ANY thread, before the
+  cap; `RaiseStunCap(s)` / `RestoreStunCap()` (the game's value remembered once; a cap already higher left alone) and the clamp of every
+  untouched stun to the game's own cap while ours is raised; `InOwnBlow` ([ThreadStatic]) so OnAgentHit can skip our 1-damage blow. The
+  running `AthleticsLogic` IS both deciders (plugged in StartImpact, out in ReleaseImpactHooks - OnRemoveBehavior, always). I3 / I4: put
+  the model's decision inside those two methods (e.g. `if (spike) … else if (ImpactRules.Enabled) Model.Decide…`).
+- `Missions/ImpactBody.cs`: `IImpactBody` - `CanForce`, `Read` (both channels' type + index), `SlowReaction(st, channel, speed)`,
+  `ForceStagger(st, kind, speed, ignorePriority, out index)`, `TryShieldInHand` / `SlotHoldsShield` / `HasAnyShield`, `DropShield(st, slot)`
+  (queued), `OwnKnockdownBlow(victim, attacker, damage)`. The smoke's `FakeImpactBody` plays it for every logic.
+- Core `ReactionWatch` (a struct state machine) + `ActionRead`: I3's "the reel / the get-up slowed the tick it shows, again on a _continue"
+  and the summary's "lengths asked vs measured" (IMPACT §6) are this watch - reuse it, don't rewrite it.
+
+**How each lever is pulled and measured** (RESEARCH §R10 - file + line)
+1. KnockDown: the decorator answers true for rotation kicks 1, 3 on a man on foot; OnMeleeHit (same engine callback, right after) counts the
+   kick and watches a `Fall` (23) on channel 0 or 1 within 1.0 s. The unasked kicks are watched for any strike / fall reaction (their first
+   type is counted - StrikeKnockBack expected; a Fall there = vanilla's, "fell anyway").
+2. Block stun: x3 both stuns for an even blocker, held at the raised cap 2 s; the main thread watches the attacker's recoil (BlockedMelee /
+   ParriedMelee on channel 1 from first seen to its end) and the blocker's guard (his channel-1 defend action at the next tick, from the
+   block until its index changes) - treated vs control; ≤ 32 of the 64 watch slots (blocks are many, kicks few). The tally: calls, off the
+   main thread, treated / control, the stun asked before → after (µs sums, Interlocked).
+3. Speed 0.5: `SetCurrentActionSpeed(channel, 0.5)` the tick the reaction shows and again on every new action index of the same kind (the
+   fall's `_continue` = the rise); the lengths treated vs untouched (x2 expected).
+4. Stagger: the first block after 10 s queues it; the tick calls `SetActionChannel(0, act_stagger_backward, ignorePriority, 0, 0, 1)`;
+   accepted → watch that action index on channel 0 (seen, its natural length); blocks made / hits taken from inside it (OnMeleeHit).
+5. Shield: a kicked man with a shield in his off hand → `Mission.AddTickAction(DropItem, agent, slot, 0)` from the callback (vanilla's way);
+   every 0.5 s: the slot empty within 1.5 s = dropped; any shield in his equipment again = picked up (after how long); 180 s window.
+6. Own blow: the first block after 20 s (not the stagger's) queues it; the tick registers vanilla's drowning blow with KnockDown | KnockBack,
+   1 damage, owned by the attacker, direction attacker → victim; a Fall within 1.0 s.
+
+**Verdicts** (Core): a count lever = WORKS when at least half of what was asked was seen (≥ 1), FAILS when fewer after ≥ 3 asked, else UNSEEN;
+a length lever = WORKS at treated ÷ control ≥ 1.4 (2+ samples each), FAILS below 1.15 (3+ each), else UNSEEN; a lever with two parts (2:
+recoil + guard, 3: reel + fall) = FAILS if either fails, else WORKS if either works; disabled = FAILS. `SpikeMath.NextStep` names IMPACT
+§7's fallback for every FAILS (1 → our own blow after the kick / Harmony; 2 → the forced stagger; 3 → SetOverridenStrikeAndDeathAction; 4
+→ the block stun; 5 → DropItem from the tick / RemoveEquippedWeapon; 6 → a crush-through).
+
+**Built** (file map in CLAUDE.md "Layout"): Core `ImpactSpike.cs`, `ImpactSpikeStats.cs`; Module `Models/ImpactHooks.cs`, the two decorator
+methods, `Missions/ImpactBody.cs`, `Missions/AthleticsLogic.Impact.cs` (+ the calls in StartAthletics / StopAthletics / Forget / OnAgentHit /
+OnMeleeHit (first, own try) / OnMissionTick (own try) / WriteSummary (own try)). Settings 150 → 151. Tests 678 → 697 (ImpactSpikeTests 19).
+Smoke 98 → 103 steps (+ the master-switch step's spike part).
+
+**Measured (smoke)**: the reel 0.42 → 0.83 s and the fall-and-rise 1.5 → 3.0 s at 0.5 (the stand-in plays what the engine should - the
+mechanics, not the engine); the real decorator 0.21 → 0.63, x3 above the cap held at 2.0, an odd blocker's 0.9 clamped to the game's 0.8;
+401 decorator calls from worker threads tallied; all six WORKS on the stand-in; five levers disabled one by one, lever 1 still asking.
+Cost: 1000 men, 10 blocks a tick + a kick every 6 ticks (the watch pool full all the time) - **0.001 ms a tick, 0 bytes**. In game add the
+native reads: ≤ 64 watched men x 4 reads a tick (two types native, two indices pointer reads) + a few engine calls.
+
+**Gotchas**
+- `ActionIndexCache`'s static constructor resolves every action name through the engine (`MBAnimation.GetActionCodeWithName`): the smoke
+  may read its FIELDS by reflection, never touch them - the stagger lives behind the body.
+- The decorator gets no mission time: `SpikeNow` = Mission.CurrentTime, else the last tick's (the smoke has no Mission).
+- Lever 1's "asked" is counted in the decorator, "planned" in OnMeleeHit: a gap = another damage model on top of ours (the summary says
+  so); a 0-damage kick is asked by the engine (counted) but plays nothing (not watched).
+- A slow call that throws leaves the reaction at its own speed - its length is filed as UNTOUCHED (the honest bin).
+- The guard measurement is an upper bound (an AI may keep his guard up by choice) - its control has the same bias, the ratio holds.
+
+**UNVERIFIED — only the game can tell (PLAYTEST D16, RESEARCH rows 27-33)**: whether the engine plays a knockdown from a kick's KnockDown
+flag; whether `SetCurrentActionSpeed` holds on an engine-started reaction; whether a lengthened stun lengthens the recoil / guard the engine
+plays and whether StunPeriodMax 2 s is honoured; whether `act_stagger_backward` is accepted mid-fight (and with which priority rule), how
+long it plays, and whether a man blocks from inside it; whether the queued drop leaves the shield on the ground and when the AI picks it up;
+whether our own blow knocks a blocker down. And how a forced stagger looks on YOU in first person (IMPACT §8 q5).
