@@ -68,6 +68,7 @@ namespace TraxCombat.Missions
             var fr = FeverRules.From(TraxSettings.Shared);
             var fv = st.Fever;
             float want = FeverMath.DecisionFactor(in fr, fv.Phase, fv.Left, fv.Full, st.Fraction, IsPlayer(st));
+            if (st.Punishing) want = PunishMath.Raise(want, PunishRules.From(TraxSettings.Shared), true, IsPlayer(st)); // step 54: a target in a window
             if (want == st.DecisionFactor) return false;
             st.DecisionFactor = want;
             _feverStats.DecisionRecomputes++;
@@ -161,6 +162,7 @@ namespace TraxCombat.Missions
             if (n > _count) n = _count;
             if (n == 0) return;
             var ar = AthleticsRules.From(TraxSettings.Shared);
+            var pr = PunishRules.From(TraxSettings.Shared); // step 54
             long start = Stopwatch.GetTimestamp();
             for (int k = 0; k < n; k++)
             {
@@ -168,7 +170,7 @@ namespace TraxCombat.Missions
                 var st = _dense[_feverCursor++];
                 try
                 {
-                    PollFever(st, now, in fr, in ar);
+                    PollFever(st, now, in fr, in ar, in pr);
                 }
                 catch (Exception e)
                 {
@@ -180,7 +182,7 @@ namespace TraxCombat.Missions
             _feverStats.PollCostMs += (Stopwatch.GetTimestamp() - start) * 1000.0 / Stopwatch.Frequency;
         }
 
-        private void PollFever(TrackedAgent st, double now, in FeverRules fr, in AthleticsRules ar)
+        private void PollFever(TrackedAgent st, double now, in FeverRules fr, in AthleticsRules ar, in PunishRules pr)
         {
             if (st.Removed) return;
             var body = SprintBody;
@@ -194,6 +196,7 @@ namespace TraxCombat.Missions
             {
                 if (fv.Running) EndFever(st, FeverEnd.PlayerControl, now);
                 st.FeverContact = false;
+                PunishClear(st); // step 54
                 RetargetDecision(st);
                 return;
             }
@@ -201,6 +204,7 @@ namespace TraxCombat.Missions
             {
                 if (fv.Running) EndFever(st, FeverEnd.Mounted, now);
                 st.FeverContact = false;
+                PunishClear(st); // step 54
                 RetargetDecision(st);
                 return;
             }
@@ -210,6 +214,7 @@ namespace TraxCombat.Missions
             st.NoFormation = body.FormationSlot(st) < 0;
             bool contact = body.EnemyWithin(st, (float)fr.ContactMetres);
             st.FeverContact = contact;
+            PunishLook(st, now, in pr, gap); // step 54: his target in a window → the share raised by the RetargetDecision below
             if (fv.Phase == FeverPhase.Armed && contact && fv.StartBurn(now))
             {
                 _feverStats.AddBurnStart(now - fv.ArmedAt);

@@ -657,6 +657,7 @@ namespace TraxCombat.Missions
             foreach (var line in _blocks.SummaryLines(r.Applies(ImpactFamily.Blocks) || r.Applies(ImpactFamily.Riposte), r.ModeText(), _live.LeversText())) TraxLog.Info("summary", line);
             foreach (var line in _hits.SummaryLines(r.Applies(ImpactFamily.Hits), r.ModeText(), _live.LeversText())) TraxLog.Info("summary", line); // step 52 (+ the momentum of every family)
             WriteRidersSummary(in r); // step 53: the riders, the on-screen lines
+            WritePunishSummary(); // step 54: the AI punishing a window
         }
 
         /// <summary>The first of each of the live part's first-time lines (true once).</summary>

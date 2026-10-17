@@ -160,6 +160,7 @@ namespace TraxCombat.Missions
             StartTiredBlock(); // step 30
             StartSprint(); // step 33
             StartFever(); // step 43
+            StartPunish(); // step 54
             StartCourage(); // step 49
             StartImpact(); // step 47
         }
@@ -674,6 +675,7 @@ namespace TraxCombat.Missions
             st.ReleaseSerial++;
             StepBackSwingStarted(st);
             NoteFeverAttack(st, mounted); // step 43: an AI melee attack on foot in contact, counted by group and bar band
+            NotePunishAttack(st, mounted, now); // step 54: against a target in a window or not; a window punished
 
             // the cycle since the last release ran at the multiplier set after that release's charge
             int binNow = AthleticsMath.PeakBin(AthleticsMath.PeakShare(in r, st));
@@ -1080,6 +1082,7 @@ namespace TraxCombat.Missions
                 NoteSprintSettings(settings);     // step 33: the sprint (switching it off ends every sprint in the next tick)
                 NoteFeverSettings(settings);      // step 43: aggression and fever (the decision factors re-targeted below with the speeds)
                 NoteCourageSettings(settings);    // step 49: courage (applied at every man's next look)
+                NotePunishSettings(settings);     // step 54: the AI punishing a window (the factors re-targeted below)
 
                 if (r.PoolFloor != _seenPoolFloor || r.PoolPerSkill != _seenPoolPerSkill)
                 {

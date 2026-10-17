@@ -272,6 +272,11 @@ namespace TraxCombat.Missions
                 if (riposteLive) ApplyBlock(a, v, in d, now, false, true, attackerBand); // a mounted blocker's riposte on a man on foot
             }
             else if (block && (applied || riposteLive)) ApplyBlock(a, v, in d, now, applied, riposteLive, attackerBand);
+            if (!r.ShadowNow) // step 54: a window opened by what was really written (after the apply's own fixes)
+            {
+                if (keep) NotePunishWindow(v, now);
+                if (keepAttacker) NotePunishWindow(a, now);
+            }
             return true;
         }
 

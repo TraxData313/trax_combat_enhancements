@@ -260,6 +260,21 @@ namespace TraxCombat.Missions
         /// <summary>Step 43: in no formation at his last fever look (tournaments, arenas, duels - the summary's own group).</summary>
         public bool NoFormation;
 
+        /// <summary>Step 54 (the AI punishes a window), as the PUNISHER: his share raised to ImpactPunishAggressionPercent (his target is in a
+        /// window at his last look - RetargetDecision reads it); the target read at his last look (null when none was read - no window open
+        /// anywhere, not in contact); the window's state at that look and whether the punish was on / the windows live then (the proof's time).</summary>
+        public bool Punishing;
+        public TrackedAgent? PunishTarget;
+        public bool PunishInWindow;
+        public bool PunishOn;
+        public bool PunishContact;
+
+        /// <summary>Step 54, as the VICTIM: the end of his last counted window (+ the grace; NaN = none yet), whether an AI enemy in contact saw
+        /// it and whether an AI melee attack started inside it (the summary's opened / seen / punished).</summary>
+        public double PunishWindowEnd = double.NaN;
+        public bool PunishWindowSeen;
+        public bool PunishWindowHit;
+
         /// <summary>Step 49: his courage - brave / timid (walking back or holding), the walk's target and direction, the flips.</summary>
         public readonly CourageMind Courage = new CourageMind();
 
