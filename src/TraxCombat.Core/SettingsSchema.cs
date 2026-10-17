@@ -109,7 +109,7 @@ namespace TraxCombat.Core
 
         public static readonly ParamDef CostPerBlow = Float("CostPerBlow", 0, 100, AthleticsGroup,
             "Cost per blow (points)",
-            "Athletics points one attack costs a common soldier, whatever the size of his bar - so a bigger Athletics skill means more blows. With the defaults a recruit (a 50-point bar) is empty after 5 blows, a legionary (130) after 13. 0 = attacks are free.");
+            "Athletics points one attack costs a common soldier, whatever the size of his bar - so a bigger Athletics skill means more blows. At 7 a recruit (a 50-point bar) is empty after 8 blows, a legionary (130) after 19. 0 = attacks are free.");
 
         // Step 18 (Anton, 2026-09-28): kicks and shield bashes cost too - their own price, the blow's multipliers.
         public static readonly ParamDef CostPerKickOrBash = Float("CostPerKickOrBash", 0, 20, AthleticsGroup,

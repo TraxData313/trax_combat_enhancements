@@ -92,8 +92,10 @@ namespace TraxCombat.Core
         /// 7 = step 37 (Anton: one number per order, the reserve - the three SprintAi*UsePercent keys dropped, and step 33's two
         /// share keys with them; SprintAiAdvanceKeepPercent 0 → 50 and SprintAiMoveKeepPercent 70 → 80 in a format-6 file - the
         /// drops by <see cref="Migrate(ConfigReadResult, Func{ParamDef, double})"/> for a file of any format), 8 = step 43 (Anton: cheaper
-        /// swings and wrong-side blocks - CostPerBlow 10 → 3 and CostPerWrongSideShieldBlock 5 → 2 in any older file still holding them).</summary>
-        public const int FormatVersion = 8;
+        /// swings and wrong-side blocks - CostPerBlow 10 → 3 and CostPerWrongSideShieldBlock 5 → 2 in any older file still holding them),
+        /// 9 = step 46 (Anton's playtest: CostPerBlow 3 → 7 in a format-8 file still holding step 43's default; a tuned value kept and
+        /// noted; an older file's 10 goes straight to 7 through step 43's move).</summary>
+        public const int FormatVersion = 9;
 
         /// <summary>The meta key holding <see cref="FormatVersion"/> - not a setting.</summary>
         public const string VersionKey = "ConfigVersion";
@@ -385,10 +387,18 @@ namespace TraxCombat.Core
             {
                 // step 43: both old defaults go back to step 5c (CostPerBlow) and step 22 (CostPerWrongSideShieldBlock) - every older
                 // format knew them; a file without the key simply gets the new default
+                // (step 46: such a file goes straight to TODAY's default - 7 since Anton's playtest - not through step 43's 3)
                 MoveOldDefault(read, SettingsSchema.CostPerBlow, 10,
-                    "step 43, Anton: a swing or shot costs 3 Athletics - the AI's eagerness now follows its bar, so a blow may cost less", from, defaultOf);
+                    "steps 43 / 46, Anton: a swing or shot costs less - the AI's eagerness now follows its bar (step 43's 3, raised to 7 after his playtest)", from, defaultOf);
                 MoveOldDefault(read, SettingsSchema.CostPerWrongSideShieldBlock, 5,
                     "step 43, Anton: a wrong-side shield block costs 2, like a weapon parry", from, defaultOf);
+            }
+            if (from == 8)
+            {
+                // step 46: step 43's 3 was the default only in format 8 (an older file's 3 was his own); his own value is kept - said once
+                const string why = "step 46, Anton's playtest: a swing or shot costs 7 Athletics (step 43's 3 was too cheap)";
+                if (!MoveOldDefault(read, SettingsSchema.CostPerBlow, 3, why, from, defaultOf))
+                    KeptTuned(read, SettingsSchema.CostPerBlow, 3, why, from, defaultOf);
             }
             // steps 36 / 37: the retired AI sprint keys - in ANY format (they are only ever steps 33-36's, and a hand-pasted one
             // goes the same way)
@@ -430,13 +440,27 @@ namespace TraxCombat.Core
             }
         }
 
-        private static void MoveOldDefault(ConfigReadResult read, ParamDef p, double oldDefault, string why, int from, Func<ParamDef, double> defaultOf)
+        /// <returns>True when the value was moved.</returns>
+        private static bool MoveOldDefault(ConfigReadResult read, ParamDef p, double oldDefault, string why, int from, Func<ParamDef, double> defaultOf)
         {
-            if (!read.Values.TryGetValue(p.Key, out double v) || Math.Abs(v - oldDefault) > 1e-9) return;
+            if (!read.Values.TryGetValue(p.Key, out double v) || Math.Abs(v - oldDefault) > 1e-9) return false;
             double now = defaultOf(p);
-            if (double.IsNaN(now) || Math.Abs(now - oldDefault) < 1e-9) return; // the default is back where it was: nothing to push
+            if (double.IsNaN(now) || Math.Abs(now - oldDefault) < 1e-9) return false; // the default is back where it was: nothing to push
             read.Values[p.Key] = now;
             read.Migrated.Add(p.Key + ": " + p.Format(oldDefault) + " → " + p.Format(now) + " (format " + from + " → " + FormatVersion + ", the old default; " + why + ")");
+            return true;
+        }
+
+        /// <summary>Step 46: a tuned value the migration leaves alone, logged once (the file is rewritten as the new format right after, so
+        /// the note comes once): "CostPerBlow: 5.0 kept - your own value (format 8 → 9; the new default 7.0 …)". Nothing when the key is
+        /// missing, holds the old default, or already holds the new one.</summary>
+        private static void KeptTuned(ConfigReadResult read, ParamDef p, double oldDefault, string why, int from, Func<ParamDef, double> defaultOf)
+        {
+            if (!read.Values.TryGetValue(p.Key, out double v) || Math.Abs(v - oldDefault) < 1e-9) return;
+            double now = defaultOf(p);
+            if (double.IsNaN(now) || Math.Abs(v - now) < 1e-9) return;
+            read.Migrated.Add(p.Key + ": " + p.Format(v) + " kept - your own value (format " + from + " → " + FormatVersion + "; the new default " + p.Format(now)
+                              + " is not pushed over it; " + why + ")");
         }
 
         /// <summary>

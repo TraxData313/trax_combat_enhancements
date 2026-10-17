@@ -51,28 +51,28 @@ one — and anyone can save up a few swings and strike them back to back (the sw
 ## 2. The Athletics bar
 
 A fighter's bar is as big as his **Athletics skill** (the one on the character screen), never smaller
-than 50 points. One attack — a swing, thrust, shot or throw — costs 3 points, missed or not.
+than 50 points. One attack — a swing, thrust, shot or throw — costs 7 points, missed or not.
 
 | Athletics skill | Bar (points) | Attacks from full to empty: soldier | hero | hero who leads his party |
 |---:|---:|---:|---:|---:|
-| 0–50 | 50 | 17 | 22 | 30 |
-| 100 | 100 | 33 | 44 | 59 |
-| 150 | 150 | 50 | 67 | 89 |
-| 200 | 200 | 67 | 89 | 119 |
-| 300 | 300 | 100 | 133 | 178 |
+| 0–50 | 50 | 7 | 10 | 13 |
+| 100 | 100 | 14 | 19 | 25 |
+| 150 | 150 | 21 | 29 | 38 |
+| 200 | 200 | 29 | 38 | 51 |
+| 300 | 300 | 43 | 57 | 76 |
 
 Heroes (lords, companions, you) pay a quarter less per attack; a hero who leads a party pays a quarter
-less again (3 → 2.25 → 1.69 points). Attacks are cheap because the AI is careful (section 11): it decides
+less again (7 → 5.25 → 3.94 points). Attacks are cheap because the AI is careful (section 11): it decides
 to swing far less often than the base game's AI, so each swing need not cost much for a long fight to wear men down.
 
 **The peak line.** The white mark on the bar sits at **75%**. Above it a man is at full strength;
 the first quarter of his bar is "free". Below it the effects in the next section start. A 50-point
-recruit spends his free quarter in about four swings; a 150-skill hero who leads his party gets about
-twenty-two.
+recruit spends his free quarter in about two swings; a 150-skill hero who leads his party gets about
+ten.
 
 **Wounds cap the bar.** A man at half health can only refill to half his bar.
 
-<sub>Settings: `AthleticsPoolPerSkill` 1.0, `AthleticsPoolFloor` 50, `CostPerBlow` 3, `CostOnMiss` on,
+<sub>Settings: `AthleticsPoolPerSkill` 1.0, `AthleticsPoolFloor` 50, `CostPerBlow` 7, `CostOnMiss` on,
 `HeroCostMultiplier` 0.75, `PartyLeaderCostMultiplier` 0.75, `AthleticsPeakPercent` 75,
 `HealthCapsAthletics` on.</sub>
 
@@ -131,8 +131,8 @@ Stored swings at most (his points ÷ 20, rounded half up, at least 2):
 
 The count follows his points as they fall: each attack also costs Athletics, so a burst shrinks the
 stack's size too. *Example:* a 150-skill hero at half his bar holds 4 — he can strike 4 times back to
-back (2.25 points each) — and by then his bar is at 44% and he holds 3 at most, so each next one takes
-about 0.4 s to come back.
+back (5.25 points each) — and by then his bar is at 36% and he holds 3 at most, so each next one takes
+about 0.6 s to come back.
 
 How long the swings take to come back, after a 0.8 s swing, standing back from the fight:
 
