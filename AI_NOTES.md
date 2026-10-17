@@ -4642,3 +4642,111 @@ cost) + the master-switch step's live part + the game facts (the release / bash 
 - The riposte: the decision rolls it on the main thread AFTER the stun was set - apply it as a forced stagger of the ATTACKER from the tick.
 - `ImpactLiveStats` is kick-shaped (two outcomes); for 51 either widen it (stagger, the blocker's knockdown) or add a sibling - and extend
   `ImpactLever` with ForcedStagger / OwnBlow / BlockStun.
+
+## Step 51 — IMPACT I4, blocks and the riposte LIVE (DONE 2026-10-18)
+
+**The brief (Anton asleep - "get all done by morning, decide open questions")**: add `Blocks | Riposte` to `ImpactMath.EffectsBuilt` and
+APPLY the model's one decision per block (right-side shield, parry, WRONG-side shield) through the spike's seams and step 50's pools: the stun
+by tiredness (the worker-thread seam, T from a snapshot, the cap raised / restored, untouched stuns at the game's 0.8), the rolled stagger
+(ForceStagger from the tick, CanForce first, watched, its end into EndReel, length per §3.7), the wrong-side shield drop (step 50's queue), a
+blocker knocked down (our own blow from the tick, its Fall watched and slowed), the riposte (a forced stagger of the ATTACKER from the tick);
+the player (× `ImpactOnPlayerPercent`, YOU lines), courage's shock once, fail-safe per lever, shadow = log only; the summary; tests; smoke;
+PLAYTEST D20. Anton's points 2, 5, 6, 7 + "exhaustion never cancels - two empty even men stay at the ceilings" (IMPACT §4 A live).
+
+**How each effect is applied** (`Missions/AthleticsLogic.ImpactBlocks.cs`, Core `ImpactBlocks.cs`)
+- **The stun by tiredness**: `IBlockStunDecider.SetBlockStun` (the decorator's `CalculateDefendedBlowStunMultipliers`, ANY thread) - the
+  spike's x3 while `ImpactSpike` is on, else `BlockStunLive`: gated by `_stunLive` (volatile, written on the tick = blocks apply and the
+  lever is on) AND the switches read live there (ModEnabled, ImpactEnabled, ImpactBlocksEnabled, ImpactShadowMode); the blocker's record by
+  `GetAnyThread` (the dense map read once into a local); factor = `ImpactMath.BlockStunFactor(extra, T)` = 1 + extra × T, NO die; T =
+  `TrackedAgent.ImpactTired` (a volatile float `SnapshotTired` writes for every man every tick - 1 − f, × `ImpactOnPlayerPercent` for you, 0
+  on a horse); the stun = `ImpactMath.LengthenedStun`: the game's stun held at the game's cap first, × the factor, at most
+  `ImpactStunCapSeconds`. The attacker's recoil: untouched (the hook clamps it to the game's cap). Interlocked tally (`BlockStunLiveTally`).
+- **The cap**: `RaiseBlockCap` on the tick while blocks apply (`ImpactHooks.RaiseStunCap(ImpactStunCapSeconds)`, re-raised when the setting
+  moves, the game's left alone when ours is not above it), `ReleaseBlockCap` when they stop (never while the spike runs - it owns the cap
+  then: blocks never apply with the spike on, `ShadowNow`).
+- **The stagger / the riposte**: `ApplyBlock` (from `ImpactDecide`, the hit callback) queues `ImpactBlockPending` (a fixed pool of 64);
+  `RunBlockPending` (from `TickImpactLive`, the per-tick call budget shared with the drops): left the field / lever off / `CanForce` refused
+  (down, siege engine, water, a horse by then - NO engine call) → not applied and his record fixed; else `ForceStagger(Backward, speed, false)`,
+  refused → again over the engine's priority (`true`); accepted → a live watch (`ImpactWatchPurpose.Stagger` / `Riposte`, WatchKind.Stagger
+  with the action index); the speed = `ImpactBlockMath.StaggerSpeed(asked, natural)` = natural ÷ asked (0.25-2), the natural length
+  LEARNED (`StaggerNatural`: each measured stagger × its speed; 0.9 s until the first). Measured → `NoteStagger`, `EndReel(now,
+  ImpactStaggerImmunitySeconds)`; never shown → `EndReel(now, 0)`.
+- **Inside a stagger**: `ImpactModelHitTaken` (OnMeleeHit, any event on him) → `NoteInsideLiveStagger` while a Stagger / Riposte watch on
+  him has appeared → `BlocksFromInside` / `HitsFromInside` (gated by `_liveStaggers` - the count of such watches - so it is free when none).
+- **Wrong-side shield drop**: step 50's `ImpactLiveDrop` queue with `Block = true` (+ the event) - `RunLiveDrops` / `TickLiveShields` count it
+  in the blocks' stats (`DropNotApplied`, `_blocks.NoteApplied / NoteSeen`); the kicks' shields line counts both.
+- **A blocker knocked down**: `RunOwnBlow` → `IImpactBody.OwnKnockdownBlow(st, attacker, 1)` (lever 6) → a `BlockGetUp` watch (WatchKind.Fall,
+  slowed by the get-up factor like a kick's) → `GotUp(now, ImpactKnockdownImmunitySeconds)`.
+- **The guard timed** (the stun asked vs measured): a block with no outcome and a stun factor → a `Guard` watch (WatchKind.Guard, never
+  replacing a running one, ≤ 16 at once - `_guardWatches`); measured → `NoteGuard(factor, length)` (factor 1 = the control).
+- **Records / courage**: `ImpactDecide` keeps the BLOCKER's state by `KeepsState(Blocks)` and the ATTACKER's by `KeepsState(Riposte)` (the
+  riposte's own family); every outcome is one `NoteOutcome` in `Decide` = one shock; `CourageHitTaken` skips `ImpactHooks.InOwnBlow` (our
+  blow's OnAgentHit is not a second shock). `_blocks.ShockGiven` counts them.
+- **Riders**: a mounted blocker - nothing applied, record untouched, counted `a rider (step 53)`; T 0 for the stun; CanForce refuses anyway.
+- **You**: Decide scales the chances × `ImpactOnPlayerPercent`; YOU lines only for blocks that DID something (`YouBlockLine`); the weapon's
+  name via `IImpactInputs.BlowName` (asked only when you are one of the two - `_youBlowName`).
+- **Blocks off, the riposte on**: `ImpactRules.DecidesEvent` lets a right-side block / parry through the gate, `Decide` zeroes the block's
+  own ceilings (`r.Blocks`) and leaves the stun NaN; only the riposte is rolled and applied.
+
+**Claude's calls**: DESIGN decision 43 (a)-(m) - the stun without a die, the snapshot, the game's stun capped before it is lengthened, the
+attacker's recoil vanilla (the riposte is a forced stagger), with-then-over the priority, the learned animation length, our own blow for a
+block's knockdown, the riposte alone, a not-played outcome leaves no reeling / ground time, our blow not a second shock, the guard timing's
+limits, YOU lines only for outcomes, and **(m) the "exhaustion never cancels" check**: two EMPTY even men are AT the ceilings (x = 1) on a
+parry, a wrong-side block, a normal (2 kg) right-side shield, a kick, a clean hit (step 52) - but a HEAVY 4 kg right-side shield against an
+empty attacker's tired swing (85 % animation) sits beyond the even band: x 0.86 → 76 % / 35 % instead of 80 / 40. Kept (the shield's weight
+is a real guard; the tiredness itself never cancels: the bodies are even at the floor, T stays 1) - and the wrong side stays clearly worse
+(90 / 50 / 40). If Anton wants the right side at exactly 80 / 40, the cleanest change is to measure the swing's tiredness against the guard's
+(a tired defender's guard holds less too) - a model change for §3.3 with every §4 example to recompute.
+
+**Fail-safe**: `ImpactLever` + BlockStun / ForcedStagger / OwnBlow (LeverCount 7). The stun seam's exception is kept by `ImpactHooks` and
+taken by the tick (`TakeStunFailure`: the spike's lever 2 while the spike runs, else the live BlockStun lever) → `BlockStunLeverOff` (the seam
+off at once, the cap back). The stagger / our blow throw inside `RunBlockPending` → collected, that lever disabled after the loop (the rest
+of its queue dropped, records fixed). `[error] impact.live-stun | live-stun-cap | live-stun-snapshot | live-stagger | live-own-blow`.
+
+**Measured (smoke - the stand-in body plays what the engine should)**: a right-side block of an exhausted man → stagger asked 1.50 s at speed
+0.60 → measured 1.50 s, the animation's 0.90 s learned; a block and a hit from inside counted; the blocker's fall-and-rise x2 → 3.00 s; the
+riposte 0.73 s → 0.73 s; the guard x1.20 → 0.38 s vs a fresh blocker's 0.32 s; the stun seam's calls tallied off the main thread. Cost: 1000
+men, 20 live blocks + 20 stun-seam calls a tick, the T snapshot of every man - **0.030 ms a tick, 0 bytes** (the live tick 0.008 ms).
+
+**Built**: Core `ImpactBlocks.cs` (new: `ImpactBlockMath`, `StaggerNatural`, `BlockStunLiveTally`, `ImpactBlockLiveStats` + the 8 [summary]
+"impact live block" lines), `Impact.cs` (EffectsBuilt, `DecidesEvent`, `CanRiposte`, `BlockStunFactor`, `LengthenedStun`, the stun without a
+die, the riposte alone), `ImpactLive.cs` (the levers, `CannotForce` / `EngineRefused`, the watch purposes); Module
+`AthleticsLogic.ImpactBlocks.cs` (new), `AthleticsLogic.ImpactLive.cs` (watches / drops / shields per family, `TickBlocksSwitch` from the
+tick), `AthleticsLogic.ImpactModel.cs` (the gate, the two records, `ApplyBlock`, the inside look), `AthleticsLogic.Impact.cs` (`SetBlockStun`,
+`TakeStunFailure`), `AthleticsLogic.Courage.cs` (our blow), `ImpactInputs.cs` (`BlowName`), `TrackedAgent.ImpactTired`. No new setting (all 60
+came with step 48). Tests 775 → 787 (`ImpactBlocksTests` 12; step 50's "kicks only" tests now step 51's). Smoke 111 → 113 steps
+(`Program.ImpactBlocks.cs`) + the master-switch step's blocks part; the spike's checks run with the model OFF (`SpikeDefaults`).
+
+**Gotchas**
+- The spike's smoke and the step-48 smoke shared a log line: `LogHas` reads the WHOLE log, and the step-48 check of the spike's "SHADOW (the
+  spike is on …)" mode text was passing on the spike step's model start line. Now the step-48 smoke ticks live between shadow and the spike.
+- `Parallel.For` runs part of its loop on the calling thread - "off the main thread" is checked on the `Task.Run` calls.
+- `StaggerBaseSeconds` is a float: 0.6f × 2.5 = 1.5000000596 - smoke tolerances 1e-5, not 1e-9.
+- A fresh man's parry now times a guard (a watch): a check of "watches == 1" after it needs the count before.
+- A local function cannot capture an `in` parameter (CS1628) - `AddOutcome` is a static helper.
+
+**UNVERIFIED — only the game can tell (PLAYTEST D20, read with D16's levers 2 / 4 / 6)**
+1. A forced `act_stagger_backward` mid-fight is taken (with or over the priority - the summary counts both) and its measured length follows
+   the speed we ask (`measured` ≈ `asked`); the learned 0.9 s.
+2. `BLOCKS MADE FROM INSIDE A STAGGER` ~0 - the AI cannot raise its guard during our stagger (else the window is not real - the fallback is
+   the longer block stun alone).
+3. A lengthened stun reaches the engine (the guard measured x… above 1; D16 lever 2) and `CalculateDefendedBlowStunMultipliers` runs only for
+   melee blocks (not missiles into a shield, not a kick into a shield) - if `the decorator's calls` far exceed the blocks decided, tell Claude.
+4. Our own blow floors a blocker (D16 lever 6; `Fall seen` ≈ `our own blows registered`).
+5. How a forced stagger looks on YOU in first person (IMPACT §8 q5).
+
+**For step 52 (clean hits + the reeling bonus + MOMENTUM)**
+- Add `Hits` to `EffectsBuilt`; `ImpactDecide`'s branch gets an `ApplyHit` beside `ApplyKick` / `ApplyBlock`. The knockdown flows through the
+  decorator's KnockDown seam exactly like a kick's (`inSeam`, its Fall watched and slowed by `GetUpFactor` - reuse `AddLiveWatch(GetUp)`); the
+  stagger on a clean hit = the engine's own flinch lengthened (`WatchKind.Reaction` + `SlowReaction` like the kick's reel - IMPACT §3.5),
+  not a forced stagger; `ImpactTiredNeverShrugsOff` = the shrug-off threshold × f in the decorator (`CalculateStaggerThresholdDamage` /
+  `DecideAgentShrugOffBlow` - check their thread in the decompile first).
+- The REELING BONUS is now real: a block's stagger and a riposte write `ReelingUntil` from the measured end - a clean hit on a staggered man
+  gets +0.75 the moment hits are live (IMPACT §4 F). `NoteInsideLiveStagger` already counts hits taken from inside our staggers.
+- MOMENTUM (Anton's step-52 addition): the attacker's run / sprint speed into the blow adds impact - a new ImpactFacts field (his speed at the
+  blow: `AttackCollisionData.MovementSpeedDamageModifier` or the agent's velocity along the blow) and new settings (DESIGN rows +
+  defaults.json, a new config-format bump only if a default moves).
+- "Exhaustion never cancels" holds for clean hits (G none = 1: two empty men x = 1) - keep a Core test of it like
+  `ImpactBlocksTests.Two_EMPTY_even_men_stay_at_the_ceilings_LIVE_every_mistake_counts`.
+- Stats: `ImpactBlockLiveStats` is block-shaped - a sibling `ImpactHitLiveStats` (decided → applied → seen by band; knockdowns by weapon
+  class, IMPACT §7's proof) is simpler than widening it.
