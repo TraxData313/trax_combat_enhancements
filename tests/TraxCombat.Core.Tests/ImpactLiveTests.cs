@@ -84,12 +84,12 @@ public class ImpactLiveTests
         }
         var live = Rules();
         Assert.True(live.KeepsState(ImpactFamily.Kicks));
-        Assert.False(live.KeepsState(ImpactFamily.Blocks));
-        Assert.False(live.KeepsState(ImpactFamily.Hits));
-        Assert.False(live.KeepsState(ImpactFamily.Riposte));
+        Assert.True(live.KeepsState(ImpactFamily.Blocks)); // step 51: blocks live
+        Assert.False(live.KeepsState(ImpactFamily.Hits)); // step 52's
+        Assert.True(live.KeepsState(ImpactFamily.Riposte)); // step 51: the riposte live
         Assert.False(Rules(s => s.Set(SettingsSchema.ImpactKicksEnabled, false, "test")).KeepsState(ImpactFamily.Kicks));
         Assert.False(Rules(s => s.Set(SettingsSchema.ModEnabled, false, "test")).KeepsState(ImpactFamily.Kicks));
-        Assert.StartsWith("LIVE - kicks / bashes applied", live.Describe());
+        Assert.StartsWith("LIVE - kicks / bashes, blocks, the riposte applied", live.Describe()); // step 51
     }
 
     [Fact]

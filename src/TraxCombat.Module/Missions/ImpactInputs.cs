@@ -14,6 +14,10 @@ namespace TraxCombat.Missions
     {
         /// <summary>Fills the engine's side of <paramref name="f"/> (its <see cref="ImpactFacts.Event"/> already set).</summary>
         void Fill(Agent attacker, Agent victim, in AttackCollisionData cd, ref ImpactFacts f);
+
+        /// <summary>Step 51: what the attacker struck with, in words, for a YOU line ("Sturgian Axe"; null = unknown). Asked only when a YOU
+        /// line may be written (it allocates the name's string).</summary>
+        string? BlowName(Agent attacker, in AttackCollisionData cd);
     }
 
     /// <summary>
@@ -73,6 +77,14 @@ namespace TraxCombat.Missions
                     }
                     break;
             }
+        }
+
+        public string? BlowName(Agent attacker, in AttackCollisionData cd)
+        {
+            int slot = cd.AffectorWeaponSlotOrMissileIndex;
+            if (slot < 0 || slot >= (int)EquipmentIndex.NumAllWeaponSlots) return null;
+            var item = attacker.Equipment[slot].Item;
+            return item?.Name?.ToString();
         }
 
         private static double WeightOf(MissionWeapon w) => w.Item != null ? w.Item.Weight : 0;

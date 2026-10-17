@@ -20,6 +20,16 @@ namespace TraxCombat.Core
 
         /// <summary>The channel reads that watch a reel / a fall (and so measure it and write its end into his state).</summary>
         Watch,
+
+        /// <summary>Step 51: the blocker's stun lengthened by his tiredness (the damage decorator's stun seam - WORKER threads) and the raised
+        /// stun cap.</summary>
+        BlockStun,
+
+        /// <summary>Step 51: the rolled stagger of a blocker and the riposte's stagger of an attacker (SetActionChannel act_stagger_* from the tick).</summary>
+        ForcedStagger,
+
+        /// <summary>Step 51: a blocker knocked down - a blow of our own (RegisterBlow, KnockDown, 1 damage) from the tick.</summary>
+        OwnBlow,
     }
 
     /// <summary>Step 50: why a live outcome the dice gave was NOT carried out (the summary's "not applied").</summary>
@@ -45,6 +55,13 @@ namespace TraxCombat.Core
 
         /// <summary>He was in his own release / bash for <see cref="ImpactLiveMath.BusyWaitSeconds"/> - vanilla never drops then.</summary>
         Busy,
+
+        /// <summary>Step 51: refused before any engine call at the tick (<c>IImpactBody.CanForce</c>: already on the ground, a siege engine /
+        /// ladder, water, a horse under him by then).</summary>
+        CannotForce,
+
+        /// <summary>Step 51: the engine did not take it (SetActionChannel false both with and over its priority / RegisterBlow refused).</summary>
+        EngineRefused,
     }
 
     /// <summary>Step 50: what a live watch measures.</summary>
@@ -55,6 +72,18 @@ namespace TraxCombat.Core
 
         /// <summary>The knocked-down man's fall-and-rise (slowed by GetUpFactor).</summary>
         GetUp,
+
+        /// <summary>Step 51: a blocker's rolled stagger (our act_stagger_* at the speed for its length) - seen, its length, blocks from inside it.</summary>
+        Stagger,
+
+        /// <summary>Step 51: the riposte - the ATTACKER's forced stagger after a fresh man's right-side block or parry.</summary>
+        Riposte,
+
+        /// <summary>Step 51: a blocker knocked down by our own blow - its Fall (slowed by GetUpFactor, as a kick's get-up).</summary>
+        BlockGetUp,
+
+        /// <summary>Step 51: the blocker's guard frozen by the stun (asked x the stun factor; a fresh blocker's = the control).</summary>
+        Guard,
     }
 
     /// <summary>
@@ -63,8 +92,8 @@ namespace TraxCombat.Core
     /// </summary>
     public static class ImpactLiveMath
     {
-        public const int LeverCount = 4;
-        public const int NotAppliedCount = 7;
+        public const int LeverCount = 7;
+        public const int NotAppliedCount = 9;
 
         /// <summary>Live watches (reels, falls) at once - 64, the spike's pool.</summary>
         public const int MaxWatches = SpikeMath.MaxWatches;
@@ -119,6 +148,9 @@ namespace TraxCombat.Core
             ImpactLever.KnockDown => "the KnockDown answer",
             ImpactLever.ShieldDrop => "the shield drop",
             ImpactLever.SlowReaction => "the slowed reel / get-up",
+            ImpactLever.BlockStun => "the block stun by tiredness",
+            ImpactLever.ForcedStagger => "the forced stagger (blocks, the riposte)",
+            ImpactLever.OwnBlow => "the blocker's knockdown (our own blow)",
             _ => "the reaction watch",
         };
 
@@ -130,6 +162,8 @@ namespace TraxCombat.Core
             ImpactNotApplied.PoolFull => "the pool full",
             ImpactNotApplied.NoShieldAtTick => "the shield no longer in hand at the tick",
             ImpactNotApplied.Busy => "in his own swing / bash for 1 s",
+            ImpactNotApplied.CannotForce => "refused before any engine call (down / a siege engine / water)",
+            ImpactNotApplied.EngineRefused => "the engine refused it",
             _ => "he left the field",
         };
     }
@@ -310,7 +344,8 @@ namespace TraxCombat.Core
 
             lines.Add("impact live shields: drops queued from the tick " + I(DropsQueued) + ", left the hand " + I(Dropped) + " (not seen " + I(DropNotSeen) + "), picked up again "
                       + I(PickedUp) + (PickedUp > 0 ? " after " + Secs(in PickupSeconds, double.NaN) : string.Empty) + ", still on the ground " + I(StillOnGround)
-                      + ", the man left the field first " + I(DropperLeftField) + ", AI pickups refused by ShieldPickupLockSeconds " + I(PickupsLocked));
+                      + ", the man left the field first " + I(DropperLeftField) + ", AI pickups refused by ShieldPickupLockSeconds " + I(PickupsLocked)
+                      + " (the kicks' and, since step 51, the wrong-side blocks' drops together)");
 
             lines.Add("impact live limits: knockdown refused - on the ground " + I(RefusedDown) + ", within the immunity after getting up " + I(RefusedKnockdownImmune)
                       + "; halved by a recent outcome " + I(Halved) + "; kicked while reeling (+bonus) " + I(Reeling)

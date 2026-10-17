@@ -719,6 +719,7 @@ namespace TraxCombat.Missions
         /// <summary>A landed hit on him (OnAgentHit): his shock window.</summary>
         private void CourageHitTaken(Agent? victim, double now)
         {
+            if (TraxCombat.Models.ImpactHooks.InOwnBlow) return; // step 51: our own knockdown blow on a blocker - its knockdown is ONE shock already (ImpactState)
             var st = Get(victim);
             if (st != null) st.Hits.Note(now);
         }

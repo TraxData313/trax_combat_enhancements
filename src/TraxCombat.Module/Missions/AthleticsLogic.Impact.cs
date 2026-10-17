@@ -267,7 +267,9 @@ namespace TraxCombat.Missions
         private void TakeStunFailure()
         {
             var e = ImpactHooks.TakeStunFailure(out _);
-            if (e != null) DisableLever(SpikeLever.BlockStun, "impact.stun", e);
+            if (e == null) return;
+            if (_spikeOn) DisableLever(SpikeLever.BlockStun, "impact.stun", e);
+            else DisableImpactLever(ImpactLever.BlockStun, "impact.live-stun", e); // step 51: the live seam's error (the spike off)
         }
 
         private bool LeverOn(SpikeLever lever) => _spikeOn && !_spike.Disabled(lever);
@@ -336,9 +338,15 @@ namespace TraxCombat.Missions
         /// above the raised cap), the odd ones counted as the control. Reads only; Interlocked counters; no log line, no engine call.</summary>
         public void SetBlockStun(Agent attacker, Agent defender, CombatCollisionResult result, ref float attackerStun, ref float defenderStun)
         {
-            if (!_spikeStarted || _spikeClosed || _stunLeverOff || defender == null) return;
+            if (!_spikeStarted || _spikeClosed || defender == null) return;
             var s = TraxSettings.Shared;
-            if (!s.ModEnabled || !s.ImpactSpike) return; // the master switch first, read live
+            if (!s.ModEnabled) return; // the master switch first, read live
+            if (!s.ImpactSpike)
+            {
+                BlockStunLive(defender, s, ref defenderStun); // step 51: the stun by tiredness (blocks live)
+                return;
+            }
+            if (_stunLeverOff) return;
             _spike.Stun.Call(Thread.CurrentThread.ManagedThreadId != _mainThreadId);
             if (!SpikeMath.StunTreated(defender.Index))
             {

@@ -57,6 +57,9 @@ namespace TraxCombat.Tools
                     f.DefenderSkill = g.Skill;
                 }
             }
+
+            /// <summary>Step 51: the weapon's name for a YOU line ("a test axe" when the attacker has a weapon, else none).</summary>
+            public string? BlowName(Agent attacker, in AttackCollisionData cd) => Weapons.ContainsKey(attacker.Index) ? "test axe" : null;
         }
 
         /// <summary>Dice that answer the given numbers in order, then <see cref="Rest"/>.</summary>

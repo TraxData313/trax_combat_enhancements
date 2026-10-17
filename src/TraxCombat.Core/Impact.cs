@@ -27,7 +27,7 @@ namespace TraxCombat.Core
     }
 
     /// <summary>Step 48: the event families - one switch each (<c>ImpactKicksEnabled</c>, <c>ImpactBlocksEnabled</c>, <c>ImpactHitsEnabled</c>,
-    /// <c>ImpactRiposteEnabled</c>) and one effect step each (50 kicks - built, 51 blocks + riposte, 52 hits; the board moved by one when step 49, courage, was inserted).</summary>
+    /// <c>ImpactRiposteEnabled</c>) and one effect step each (50 kicks - built, 51 blocks + riposte - built, 52 hits; the board moved by one when step 49, courage, was inserted).</summary>
     [Flags]
     public enum ImpactFamily : byte
     {
@@ -438,8 +438,13 @@ namespace TraxCombat.Core
         /// <summary>The model decides this event's family (on, and its switch on).</summary>
         public bool Decides(ImpactFamily f) => Enabled && FamilyOn(f);
 
-        /// <summary>Its decisions change the battle: decided, not shadow, the spike off, and its effect built (step 50: kicks / bashes; 51 blocks + riposte, 52 hits).</summary>
+        /// <summary>Its decisions change the battle: decided, not shadow, the spike off, and its effect built (step 50: kicks / bashes; step 51: blocks + the riposte; 52 hits).</summary>
         public bool Applies(ImpactFamily f) => Decides(f) && !ShadowNow && (ImpactMath.EffectsBuilt & f) != 0;
+
+        /// <summary>Step 51: is this EVENT decided at all? Its family's switch - or, for a right-side block / a parry, the riposte's own switch
+        /// (<c>ImpactBlocksEnabled</c> off and <c>ImpactRiposteEnabled</c> on = only the riposte is rolled on a block; <see cref="ImpactMath.Decide"/>
+        /// leaves the block's own outcomes out then).</summary>
+        public bool DecidesEvent(ImpactEvent e) => Decides(ImpactMath.Family(e)) || (ImpactMath.CanRiposte(e) && Decides(ImpactFamily.Riposte));
 
         /// <summary>Shadow for every family now: the switch, or the spike running (it owns the levers while it tests them).</summary>
         public bool ShadowNow => Shadow || Spike;
@@ -523,8 +528,8 @@ namespace TraxCombat.Core
 
         public const double VanillaFallRiseSeconds = 1.5;
 
-        /// <summary>The families whose EFFECT is built (step 48: none - decide and log only; step 50 adds Kicks, 51 Blocks + Riposte, 52 Hits).</summary>
-        public static readonly ImpactFamily EffectsBuilt = ImpactFamily.Kicks;
+        /// <summary>The families whose EFFECT is built (step 48: none - decide and log only; step 50 adds Kicks, step 51 Blocks + Riposte, 52 Hits).</summary>
+        public static readonly ImpactFamily EffectsBuilt = ImpactFamily.Kicks | ImpactFamily.Blocks | ImpactFamily.Riposte;
 
         public static ImpactFamily Family(ImpactEvent e) => e switch
         {
@@ -538,6 +543,36 @@ namespace TraxCombat.Core
         public static bool IsLanded(ImpactEvent e) => !IsBlock(e);
 
         public static bool IsAlternative(ImpactEvent e) => e == ImpactEvent.Kick || e == ImpactEvent.Bash;
+
+        /// <summary>Step 51: a right-side block or a parry - the two blocks a defender can riposte from (IMPACT §3.6).</summary>
+        public static bool CanRiposte(ImpactEvent e) => e == ImpactEvent.RightBlock || e == ImpactEvent.Parry;
+
+        /// <summary>
+        /// Step 51 (IMPACT §3.5's "always" column for blocks, §3.7): the blocker's stun x (1 + extra × T) - DETERMINISTIC (no die): the
+        /// game asks it on WORKER threads before the decision, so the decorator's seam computes it from his tiredness alone and the decision
+        /// logs the same number. The randomness of a tired block lives in the rolled stagger. T clamped 0-1; extra below 0 = 0.
+        /// </summary>
+        public static double BlockStunFactor(double extraShare, double tired)
+        {
+            double t = double.IsNaN(tired) ? 0 : Math.Max(0, Math.Min(1, tired));
+            return 1 + Math.Max(0, double.IsNaN(extraShare) ? 0 : extraShare) * t;
+        }
+
+        public static double BlockStunFactor(in ImpactRules r, double tired) => BlockStunFactor(r.StunExtra, tired);
+
+        /// <summary>
+        /// Step 51: the stun the engine gets for a block lengthened by <paramref name="factor"/>: the game's own stun held at the game's own
+        /// cap first (what vanilla would have played), × the factor, never above <paramref name="cap"/> (<c>ImpactStunCapSeconds</c>). A
+        /// factor of 1 (a fresh blocker) = the game's stun untouched (the hook then clamps it to the game's cap as vanilla does).
+        /// </summary>
+        public static float LengthenedStun(float vanilla, float vanillaCap, double factor, float cap)
+        {
+            if (float.IsNaN(vanilla) || vanilla <= 0f || double.IsNaN(factor) || factor <= 1.001) return vanilla;
+            float v = vanillaCap > 0f && vanilla > vanillaCap ? vanillaCap : vanilla;
+            float s = (float)(v * factor);
+            if (cap > 0f && s > cap) s = cap;
+            return s < v ? v : s;
+        }
 
         /// <summary>The event of one melee collision (the module reads the engine's flags): a landed kick / bash, a block by its kind
         /// (step 22's <see cref="BlockMath.KindOf"/>), a landed weapon blow - or none (a kick into a shield, a blow into nothing).</summary>
@@ -772,6 +807,8 @@ namespace TraxCombat.Core
             bool reeling = defender.Reeling(now);
             double x = Pressure(in r, in f, reeling, ref d);
             Ceilings(in r, f.Event, out double kdCeil, out double sdCeil, out double stCeil);
+            bool blockOutcomes = !IsBlock(f.Event) || r.Blocks; // step 51: blocks off, the riposte on = only the riposte is rolled
+            if (!blockOutcomes) kdCeil = sdCeil = stCeil = 0;
             double scale = f.DefenderIsPlayer ? Math.Max(0, r.OnPlayer) : 1;
             int n = defender.Recent(now, r.DiminishWindow);
             double dim = n > 0 ? Math.Pow(r.DiminishFactor, n) : 1;
@@ -799,7 +836,7 @@ namespace TraxCombat.Core
                     : ImpactRefusal.None, dice);
 
             // the riposte: a right-side block or a parry, the roles turned, × the defender's f
-            if ((f.Event == ImpactEvent.RightBlock || f.Event == ImpactEvent.Parry) && r.RiposteOn && r.RiposteMax > 0 && !down)
+            if (CanRiposte(f.Event) && r.RiposteOn && r.RiposteMax > 0 && !down)
             {
                 double xr = RipostePressure(in r, in f, ref d);
                 int na = attacker.Recent(now, r.DiminishWindow);
@@ -821,8 +858,8 @@ namespace TraxCombat.Core
                 d.ReelFactor = Math.Max(1, Lengthen(r.ReelExtra, T, r.Random, dice.NextDouble()));
                 if (d.ReelFactor > 1 && !f.DefenderMounted) defender.Reel(now + VanillaReelSeconds * d.ReelFactor, r.StaggerImmunity); // a lengthened reel = an impact stagger
             }
-            if (IsBlock(f.Event))
-                d.StunFactor = Math.Max(1, Lengthen(r.StunExtra, T, r.Random, dice.NextDouble()));
+            if (IsBlock(f.Event) && blockOutcomes)
+                d.StunFactor = BlockStunFactor(in r, T); // step 51: no die - the decorator's worker-thread seam applies this very number
             if (d.Knockdown.Happens)
             {
                 d.GetUpFactor = Math.Max(1, Math.Min(r.GetUpMax, Lengthen(r.GetUpMax - 1, T, r.Random, dice.NextDouble())));

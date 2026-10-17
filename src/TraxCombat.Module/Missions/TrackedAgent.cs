@@ -62,6 +62,11 @@ namespace TraxCombat.Missions
         /// (<c>ShieldPickupLockSeconds</c>) reads it.</summary>
         public double ShieldDroppedAt = double.NaN;
 
+        /// <summary>Step 51: his tiredness T = 1 − f as the block stun reads it - written by the MAIN thread on every tick while blocks are
+        /// live (× <c>ImpactOnPlayerPercent</c> for you, 0 on a horse - riders are step 53's), read by the damage decorator's stun seam on
+        /// WORKER threads (a float write / read is atomic; a one-tick-old value is fine). 0 = fresh (never written yet).</summary>
+        public volatile float ImpactTired;
+
         /// <summary>His melee releases so far - a blow's number for the defender's block dedupe (step 22) too.</summary>
         public int ReleaseSerial;
         public double ReleaseStart = -1;

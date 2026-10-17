@@ -6,7 +6,7 @@ using TraxCombat.Core;
 namespace TraxCombat.Missions
 {
     /// <summary>
-    /// Step 48 - IMPACT I2, THE MODEL in the mission (docs/IMPACT.md §3, §6; AI_NOTES "Step 48"): every kick / bash that lands, every block
+    /// Step 48 - IMPACT I2, THE MODEL in the mission (docs/IMPACT.md §3, §6; AI_NOTES "Step 48"; step 51's blocks: AthleticsLogic.ImpactBlocks.cs): every kick / bash that lands, every block
     /// (right side, parry, wrong side) and every clean weapon hit on a man we track is DECIDED once by Core <see cref="ImpactMath.Decide"/> -
     /// both men's Athletics from our records, the weapon / guard / skills / mounts / health from <see cref="IImpactInputs"/> - and LOGGED
     /// (the first of each kind and of each outcome in full, the rest verbose; the [summary] "impact" lines by event and bar band). A family's
@@ -150,6 +150,7 @@ namespace TraxCombat.Missions
             var a = Get(attacker);
             var v = Get(victim);
             double now = SpikeNow;
+            if (v != null && _liveStaggers > 0) NoteInsideLiveStagger(v, ImpactMath.IsBlock(ev)); // step 51: a block made / a hit taken from inside our stagger
             if (_impactPending)
             {
                 _impactPending = false;
@@ -170,6 +171,8 @@ namespace TraxCombat.Missions
             try
             {
                 ImpactInputs.Fill(attacker, victim, in cd, ref f);
+                // step 51: the weapon's name for a YOU line about a block (asked only when you are one of the two - it allocates)
+                _youBlowName = ImpactMath.IsBlock(ev) && (IsPlayer(a!) || IsPlayer(v!)) ? ImpactInputs.BlowName(attacker, in cd) : null;
             }
             catch (Exception e)
             {
@@ -177,7 +180,14 @@ namespace TraxCombat.Missions
                 _impact.Skip(ImpactSkip.ReadFailed, ev);
                 return false;
             }
-            return ImpactDecide(a, v, ref f, now, inSeam, out d, out knockDown);
+            try
+            {
+                return ImpactDecide(a, v, ref f, now, inSeam, out d, out knockDown);
+            }
+            finally
+            {
+                _youBlowName = null;
+            }
         }
 
         private bool ImpactGate(TrackedAgent? a, TrackedAgent? v, ImpactEvent ev, out ImpactRules r)
@@ -188,7 +198,7 @@ namespace TraxCombat.Missions
                 _impact.Skip(ImpactSkip.Off, ev);
                 return false;
             }
-            if (!r.Decides(ImpactMath.Family(ev)))
+            if (!r.DecidesEvent(ev)) // step 51: a right-side block / parry is decided for the riposte alone when only the blocks' switch is off
             {
                 _impact.Skip(ImpactSkip.FamilyOff, ev);
                 return false;
@@ -229,27 +239,36 @@ namespace TraxCombat.Missions
             f.AttackerIsPlayer = IsPlayer(a!);
             f.DefenderIsPlayer = IsPlayer(v);
             var family = ImpactMath.Family(f.Event);
+            bool block = ImpactMath.IsBlock(f.Event);
             // step 50: what applies writes the states; shadow keeps "would"; a family decided live with no effect built yet decides on
-            // copies (it never happened); a rider: nothing of step 50 applies to him (knocked off = step 53) - his state untouched
+            // copies (it never happened); a rider: nothing of steps 50-51 applies to him (knocked off = step 53) - his state untouched.
+            // Step 51: a block's own outcomes write the BLOCKER's state, the riposte writes the ATTACKER's (its own switch and family).
             bool applied = r.Applies(family) && !f.DefenderMounted;
+            bool riposteLive = block && ImpactMath.CanRiposte(f.Event) && r.Applies(ImpactFamily.Riposte) && !f.AttackerMounted;
             bool keep = r.KeepsState(family) && (applied || r.ShadowNow);
+            bool keepAttacker = block ? r.KeepsState(ImpactFamily.Riposte) && (riposteLive || r.ShadowNow) : keep;
             var vs = v.Impact;
             var ast = a!.Impact;
             d = ImpactMath.Decide(in r, in f, ref vs, ref ast, now, ImpactDice);
-            if (keep)
-            {
-                v.Impact = vs;
-                a.Impact = ast;
-            }
+            if (keep) v.Impact = vs;
+            if (keepAttacker) a.Impact = ast;
             double ms = (Stopwatch.GetTimestamp() - t0) * 1000.0 / Stopwatch.Frequency;
-            _impact.Note(in d, r.ShadowNow, applied, ms, ImpactMath.BarBand(a.Fraction));
+            int attackerBand = ImpactMath.BarBand(a.Fraction);
+            _impact.Note(in d, r.ShadowNow, applied || riposteLive, ms, attackerBand);
             LastImpact = d;
-            NoteImpactLines(a, v, in d, in f, in r, !applied);
+            NoteImpactLines(a, v, in d, in f, in r, !(applied || riposteLive));
             if (applied && family == ImpactFamily.Kicks) knockDown = ApplyKick(a, v, in d, inSeam, now);
             else if (family == ImpactFamily.Kicks && r.Applies(family) && f.DefenderMounted && d.AnyOutcome)
             {
                 if (d.Knockdown.Happens) _live.NoteNotApplied(ImpactOutcome.Knockdown, ImpactNotApplied.Rider);
                 if (d.ShieldDrop.Happens) _live.NoteNotApplied(ImpactOutcome.ShieldDrop, ImpactNotApplied.Rider);
+            }
+            else if (block && (applied || riposteLive)) ApplyBlock(a, v, in d, now, applied, riposteLive, attackerBand);
+            else if (block && r.Applies(family) && f.DefenderMounted && d.AnyOutcome)
+            {
+                if (d.Knockdown.Happens) _blocks.NoteNotApplied(ImpactOutcome.Knockdown, ImpactNotApplied.Rider);
+                if (d.ShieldDrop.Happens) _blocks.NoteNotApplied(ImpactOutcome.ShieldDrop, ImpactNotApplied.Rider);
+                if (d.Stagger.Happens) _blocks.NoteNotApplied(ImpactOutcome.Stagger, ImpactNotApplied.Rider);
             }
             return true;
         }

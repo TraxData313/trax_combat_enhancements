@@ -14,14 +14,21 @@ namespace TraxCombat.Missions
         public ReactionWatch W;
         public double Factor;
         public bool Slow;
+
+        /// <summary>Step 51: a forced stagger's asked length (s) and the speed it was started at; the block's event (its kind).</summary>
+        public double Asked;
+        public float Speed;
+        public ImpactEvent Event;
     }
 
-    /// <summary>Step 50: a shield drop decided in a hit callback, made from the tick.</summary>
+    /// <summary>Step 50: a shield drop decided in a hit callback, made from the tick (step 51: a wrong-side block's too - <see cref="Block"/>).</summary>
     internal struct ImpactLiveDrop
     {
         public TrackedAgent St;
         public double At;
         public double Bar;
+        public bool Block;
+        public ImpactEvent Event;
     }
 
     /// <summary>Step 50: a shield whose drop was queued - left the hand? picked up again after how long?</summary>
@@ -32,6 +39,8 @@ namespace TraxCombat.Missions
         public double QueuedAt;
         public double DroppedAt; // NaN = not yet
         public double NextLook;
+        public bool Block;
+        public ImpactEvent Event;
     }
 
     /// <summary>
@@ -55,7 +64,7 @@ namespace TraxCombat.Missions
         private readonly ImpactLiveWatch[] _liveWatches = new ImpactLiveWatch[ImpactLiveMath.MaxWatches];
         private readonly ImpactLiveDrop[] _liveDrops = new ImpactLiveDrop[ImpactLiveMath.MaxDrops];
         private readonly ImpactLiveShield[] _liveShields = new ImpactLiveShield[ImpactLiveMath.MaxShields];
-        private readonly bool[] _liveFirst = new bool[12];
+        private readonly bool[] _liveFirst = new bool[24]; // 0-7 the kicks' (step 50), 8-19 the blocks' (step 51)
         private int _liveWatchCount;
         private int _liveDropCount;
         private int _liveShieldCount;
@@ -130,9 +139,13 @@ namespace TraxCombat.Missions
 
         private static string Pct0(double chance) => (100 * chance).ToString("0", System.Globalization.CultureInfo.InvariantCulture) + "%";
 
-        private void AddLiveWatch(TrackedAgent st, ImpactWatchPurpose purpose, WatchKind kind, double now, double appearWithin, double factor)
+        /// <summary>A watch on him (one a man: a newer one replaces his running one - unless <paramref name="replace"/> is false, step 51's
+        /// guard timing, which never takes a running measurement's place). Step 51: <paramref name="expectIndex"/> = the forced stagger's own
+        /// action index. False = not watched (the watch lever off, the pool full, or he is watched already and it may not replace).</summary>
+        private bool AddLiveWatch(TrackedAgent st, ImpactWatchPurpose purpose, WatchKind kind, double now, double appearWithin, double factor,
+            int expectIndex = -1, bool replace = true, ImpactEvent ev = ImpactEvent.Kick, double asked = double.NaN, float speed = 1f)
         {
-            if (_live.Disabled(ImpactLever.Watch)) return;
+            if (_live.Disabled(ImpactLever.Watch)) return false;
             int i = 0;
             for (; i < _liveWatchCount; i++) if (ReferenceEquals(_liveWatches[i].St, st)) break; // one watch a man: a newer kick replaces it
             if (i == _liveWatchCount)
@@ -140,20 +153,39 @@ namespace TraxCombat.Missions
                 if (_liveWatchCount >= _liveWatches.Length)
                 {
                     _live.WatchesFull++;
-                    return;
+                    return false;
                 }
                 _liveWatchCount++;
+            }
+            else
+            {
+                if (!replace) return false;
+                CountWatch(_liveWatches[i].Purpose, -1);
             }
             ref var w = ref _liveWatches[i];
             w.St = st;
             w.Purpose = purpose;
             w.Factor = double.IsNaN(factor) ? 1 : factor;
-            w.Slow = ImpactLiveMath.NeedsSlow(factor) && !_live.Disabled(ImpactLever.SlowReaction);
-            w.W.Begin(kind, now, appearWithin);
+            w.Slow = (purpose == ImpactWatchPurpose.Reel || purpose == ImpactWatchPurpose.GetUp || purpose == ImpactWatchPurpose.BlockGetUp)
+                     && ImpactLiveMath.NeedsSlow(factor) && !_live.Disabled(ImpactLever.SlowReaction);
+            w.Asked = asked;
+            w.Speed = speed;
+            w.Event = ev;
+            w.W.Begin(kind, now, appearWithin, expectIndex);
+            CountWatch(purpose, +1);
+            return true;
+        }
+
+        /// <summary>Step 51: the running guard timings and forced staggers (the stagger one gates OnMeleeHit's "from inside" look).</summary>
+        private void CountWatch(ImpactWatchPurpose purpose, int delta)
+        {
+            if (purpose == ImpactWatchPurpose.Guard) _guardWatches += delta;
+            else if (purpose == ImpactWatchPurpose.Stagger || purpose == ImpactWatchPurpose.Riposte) _liveStaggers += delta;
         }
 
         private void RemoveLiveWatch(int i)
         {
+            CountWatch(_liveWatches[i].Purpose, -1);
             _liveWatches[i] = _liveWatches[--_liveWatchCount];
             _liveWatches[_liveWatchCount] = default;
         }
@@ -165,6 +197,8 @@ namespace TraxCombat.Missions
             if (!_live.Disable(lever, site)) return;
             if (lever == ImpactLever.Watch) ClearLiveWatches();
             if (lever == ImpactLever.ShieldDrop) DropPendingDrops(ImpactNotApplied.LeverOff);
+            if (lever == ImpactLever.ForcedStagger || lever == ImpactLever.OwnBlow) LetGoBlockPending(lever); // step 51
+            if (lever == ImpactLever.BlockStun) BlockStunLeverOff(); // step 51: the seam stops at once, the game's cap back
             TraxLog.Info("impact", "live lever " + ImpactLiveMath.LeverName(lever) + " disabled for this mission after an error at " + site
                 + " - the other levers run on (tell Claude: the [error] line above has the stack)");
         }
@@ -176,22 +210,24 @@ namespace TraxCombat.Missions
         internal void TickImpactLive(double now)
         {
             long start = Stopwatch.GetTimestamp();
-            bool live = ImpactRules.From(TraxSettings.Shared).Applies(ImpactFamily.Kicks);
+            var r = ImpactRules.From(TraxSettings.Shared);
+            bool live = r.Applies(ImpactFamily.Kicks);
             if (live != _kicksLive)
             {
                 _kicksLive = live;
-                if (!live && (_liveDropCount > 0 || _liveWatchCount > 0))
+                if (!live)
                 {
-                    int drops = _liveDropCount, watches = _liveWatchCount;
-                    DropPendingDrops(ImpactNotApplied.LeverOff);
-                    ClearLiveWatches();
-                    TraxLog.Info("impact", "kicks no longer live at " + Sec(now) + " s (" + ImpactRules.From(TraxSettings.Shared).ModeText() + "): " + drops
-                        + " queued shield drop(s) dropped unplayed, " + watches + " watch(es) let go - a slowed reaction ends by itself");
+                    int drops = LetGoLiveDrops(blocks: false), watches = LetGoLiveWatches(kicks: true);
+                    if (drops > 0 || watches > 0)
+                        TraxLog.Info("impact", "kicks no longer live at " + Sec(now) + " s (" + r.ModeText() + "): " + drops
+                            + " queued shield drop(s) dropped unplayed, " + watches + " watch(es) let go - a slowed reaction ends by itself");
                 }
             }
-            if (!live) return;
+            bool blocksLive = TickBlocksSwitch(now, in r); // step 51: the blocks / the riposte live? the cap, the T snapshot for the stun seam
+            if (!live && !blocksLive) return;
             int calls = 0;
             if (_liveDropCount > 0) RunLiveDrops(now, ref calls);
+            if (_blockPendingCount > 0) RunBlockPending(now, ref calls);
             if (_liveWatchCount > 0) TickLiveWatches(now);
             if (_liveShieldCount > 0) TickLiveShields(now);
             _live.AddTick((Stopwatch.GetTimestamp() - start) * 1000.0 / Stopwatch.Frequency);
@@ -201,7 +237,7 @@ namespace TraxCombat.Missions
         {
             for (int i = 0; i < _liveDropCount; i++)
             {
-                _live.NoteNotApplied(ImpactOutcome.ShieldDrop, why);
+                DropNotApplied(in _liveDrops[i], why);
                 _liveDrops[i] = default;
             }
             _liveDropCount = 0;
@@ -211,6 +247,49 @@ namespace TraxCombat.Missions
         {
             for (int i = 0; i < _liveWatchCount; i++) _liveWatches[i] = default;
             _liveWatchCount = 0;
+            _guardWatches = 0;
+            _liveStaggers = 0;
+        }
+
+        /// <summary>Step 51: one family's watches let go (the kicks': reels and get-ups; the blocks': staggers, ripostes, blockers' falls,
+        /// guards) - the other family's run on. Returns how many.</summary>
+        private int LetGoLiveWatches(bool kicks)
+        {
+            int n = 0;
+            for (int i = 0; i < _liveWatchCount; i++)
+            {
+                var p = _liveWatches[i].Purpose;
+                bool kick = p == ImpactWatchPurpose.Reel || p == ImpactWatchPurpose.GetUp;
+                if (kick != kicks) continue;
+                RemoveLiveWatch(i--);
+                n++;
+            }
+            return n;
+        }
+
+        /// <summary>Step 51: one family's queued shield drops dropped unplayed (counted as its lever off). Returns how many.</summary>
+        private int LetGoLiveDrops(bool blocks)
+        {
+            int keep = 0, n = 0;
+            for (int i = 0; i < _liveDropCount; i++)
+            {
+                if (_liveDrops[i].Block == blocks)
+                {
+                    DropNotApplied(in _liveDrops[i], ImpactNotApplied.LeverOff);
+                    n++;
+                }
+                else _liveDrops[keep++] = _liveDrops[i];
+            }
+            for (int i = keep; i < _liveDropCount; i++) _liveDrops[i] = default;
+            _liveDropCount = keep;
+            return n;
+        }
+
+        /// <summary>A queued drop that never happened, counted where it belongs (the kicks' or the blocks' stats).</summary>
+        private void DropNotApplied(in ImpactLiveDrop p, ImpactNotApplied why)
+        {
+            if (p.Block) _blocks.NoteNotApplied(ImpactOutcome.ShieldDrop, why);
+            else _live.NoteNotApplied(ImpactOutcome.ShieldDrop, why);
         }
 
         /// <summary>The queued drops: his shield in hand now → DropShield (vanilla's queued DropItem), followed; not while he is in his own
@@ -223,7 +302,7 @@ namespace TraxCombat.Missions
                 var p = _liveDrops[i];
                 if (_live.Disabled(ImpactLever.ShieldDrop))
                 {
-                    _live.NoteNotApplied(ImpactOutcome.ShieldDrop, ImpactNotApplied.LeverOff);
+                    DropNotApplied(in p, ImpactNotApplied.LeverOff);
                     continue;
                 }
                 if (calls >= ImpactLiveMath.MaxActionsPerTick)
@@ -234,7 +313,7 @@ namespace TraxCombat.Missions
                 }
                 if (p.St == null || p.St.Removed || !ImpactBody.IsActive(p.St))
                 {
-                    _live.NoteNotApplied(ImpactOutcome.ShieldDrop, ImpactNotApplied.LeftField);
+                    DropNotApplied(in p, ImpactNotApplied.LeftField);
                     continue;
                 }
                 try
@@ -243,28 +322,29 @@ namespace TraxCombat.Missions
                     if (ImpactActions.RefusesDrop(_liveRead.Type1))
                     {
                         if (now - p.At < ImpactLiveMath.BusyWaitSeconds) _liveDrops[keep++] = p; // vanilla never drops during his own release / bash
-                        else _live.NoteNotApplied(ImpactOutcome.ShieldDrop, ImpactNotApplied.Busy);
+                        else DropNotApplied(in p, ImpactNotApplied.Busy);
                         continue;
                     }
                     if (!ImpactBody.TryShieldInHand(p.St, out int slot))
                     {
-                        _live.NoteNotApplied(ImpactOutcome.ShieldDrop, ImpactNotApplied.NoShieldAtTick);
+                        DropNotApplied(in p, ImpactNotApplied.NoShieldAtTick);
                         continue;
                     }
                     calls++;
                     if (!ImpactBody.DropShield(p.St, slot))
                     {
-                        _live.NoteNotApplied(ImpactOutcome.ShieldDrop, ImpactNotApplied.LeverOff);
+                        DropNotApplied(in p, ImpactNotApplied.LeverOff);
                         continue;
                     }
                     _live.DropsQueued++;
-                    _live.NoteApplied(ImpactOutcome.ShieldDrop, p.Bar);
+                    if (p.Block) _blocks.NoteApplied(p.Event, ImpactOutcome.ShieldDrop, p.Bar);
+                    else _live.NoteApplied(ImpactOutcome.ShieldDrop, p.Bar);
                     if (_liveShieldCount < _liveShields.Length)
-                        _liveShields[_liveShieldCount++] = new ImpactLiveShield { St = p.St, Slot = slot, QueuedAt = now, DroppedAt = double.NaN, NextLook = now };
+                        _liveShields[_liveShieldCount++] = new ImpactLiveShield { St = p.St, Slot = slot, QueuedAt = now, DroppedAt = double.NaN, NextLook = now, Block = p.Block, Event = p.Event };
                     else _live.WatchesFull++;
-                    if (LiveFirst(0))
-                        TraxLog.Info("impact", "live: first shield drop made from the tick at " + Sec(now) + " s - " + Name(p.St) + "'s shield in slot " + slot + ", "
-                            + F2(now - p.At) + " s after the kick (DropItem queued the vanilla way; it stays on the ground, pickable"
+                    if (LiveFirst(p.Block ? 8 : 0))
+                        TraxLog.Info("impact", "live: first shield drop " + (p.Block ? "after a WRONG-side block " : string.Empty) + "made from the tick at " + Sec(now) + " s - " + Name(p.St)
+                            + "'s shield in slot " + slot + ", " + F2(now - p.At) + " s after the " + (p.Block ? "block" : "kick") + " (DropItem queued the vanilla way; it stays on the ground, pickable"
                             + (TraxSettings.Shared.ShieldPickupLockSeconds > 0 ? " - the AI's pickup locked " + F1(TraxSettings.Shared.ShieldPickupLockSeconds) + " s" : string.Empty) + ")");
                 }
                 catch (Exception e)
@@ -312,7 +392,11 @@ namespace TraxCombat.Missions
                                 TraxLog.Info("impact", "live: first knockdown seen at " + Sec(now) + " s - " + Name(st) + " fell " + F2(now - w.W.Since) + " s after the kick (channel " + w.W.Channel
                                     + ", " + ImpactActions.Name(w.W.FirstType) + ")" + (w.Slow ? " - his fall-and-rise slowed x" + F2(w.Factor) : " - untouched (x1)"));
                         }
-                        else if (ImpactActions.IsFall(w.W.FirstType)) _live.FellInstead++;
+                        else if (w.Purpose == ImpactWatchPurpose.Reel)
+                        {
+                            if (ImpactActions.IsFall(w.W.FirstType)) _live.FellInstead++;
+                        }
+                        else BlockWatchAppeared(ref w, now); // step 51
                         if (w.Slow) LiveSlow(ref w, now);
                         break;
                     case WatchEvent.NewAction:
@@ -347,7 +431,7 @@ namespace TraxCombat.Missions
                 ImpactBody.SlowReaction(w.St, w.W.Channel, speed);
                 _live.SlowCalls++;
                 if (LiveFirst(2))
-                    TraxLog.Info("impact", "live: first " + (w.Purpose == ImpactWatchPurpose.GetUp ? "fall-and-rise" : "reel") + " slowed at " + Sec(now) + " s - " + Name(w.St) + "'s "
+                    TraxLog.Info("impact", "live: first " + (w.Purpose == ImpactWatchPurpose.Reel ? "reel" : "fall-and-rise") + " slowed at " + Sec(now) + " s - " + Name(w.St) + "'s "
                         + ImpactActions.Name(_liveRead.Type(w.W.Channel)) + " on channel " + w.W.Channel + " at speed " + F2(speed) + " (x" + F2(w.Factor) + " longer) the tick it showed");
                 return true;
             }
@@ -365,6 +449,11 @@ namespace TraxCombat.Missions
         {
             var r = ImpactRules.From(TraxSettings.Shared);
             bool slowed = w.Slow && ImpactLiveMath.NeedsSlow(w.Factor);
+            if (w.Purpose != ImpactWatchPurpose.GetUp && w.Purpose != ImpactWatchPurpose.Reel)
+            {
+                BlockWatchMeasured(ref w, length, now, in r, slowed); // step 51
+                return;
+            }
             if (w.Purpose == ImpactWatchPurpose.GetUp)
             {
                 _live.NoteGetUp(w.Factor, length, slowed);
@@ -384,6 +473,11 @@ namespace TraxCombat.Missions
 
         private void LiveNeverAppeared(ref ImpactLiveWatch w, double now)
         {
+            if (w.Purpose != ImpactWatchPurpose.GetUp && w.Purpose != ImpactWatchPurpose.Reel)
+            {
+                BlockWatchNeverAppeared(ref w, now); // step 51
+                return;
+            }
             if (w.Purpose == ImpactWatchPurpose.GetUp)
             {
                 _live.FallNotSeen++;
@@ -421,7 +515,8 @@ namespace TraxCombat.Missions
                             s.DroppedAt = now;
                             s.St!.ShieldDroppedAt = now;
                             _live.Dropped++;
-                            _live.NoteSeen(ImpactOutcome.ShieldDrop);
+                            if (s.Block) _blocks.NoteSeen(s.Event, ImpactOutcome.ShieldDrop);
+                            else _live.NoteSeen(ImpactOutcome.ShieldDrop);
                             if (LiveFirst(6))
                                 TraxLog.Info("impact", "live: first shield left the hand at " + Sec(now) + " s - " + Name(s.St) + ", " + F2(now - s.QueuedAt) + " s after the queued drop");
                         }
@@ -499,7 +594,7 @@ namespace TraxCombat.Missions
             int keep = 0;
             for (int i = 0; i < _liveDropCount; i++)
             {
-                if (ReferenceEquals(_liveDrops[i].St, st)) _live.NoteNotApplied(ImpactOutcome.ShieldDrop, ImpactNotApplied.LeftField);
+                if (ReferenceEquals(_liveDrops[i].St, st)) DropNotApplied(in _liveDrops[i], ImpactNotApplied.LeftField);
                 else _liveDrops[keep++] = _liveDrops[i];
             }
             for (int i = keep; i < _liveDropCount; i++) _liveDrops[i] = default;
@@ -511,6 +606,7 @@ namespace TraxCombat.Missions
                 else _live.DropperLeftField++;
                 RemoveLiveShield(i--);
             }
+            BlockPendingLeftField(st); // step 51: his queued staggers / ripostes / our blows (and an attacker's riposte on him)
         }
 
         /// <summary>Mission end: every pool let go (shields on the ground counted), the summary lines.</summary>
@@ -524,8 +620,10 @@ namespace TraxCombat.Missions
             _liveShieldCount = 0;
             DropPendingDrops(ImpactNotApplied.LeftField);
             ClearLiveWatches();
+            CloseBlockPending(); // step 51
             var r = ImpactRules.From(TraxSettings.Shared);
             foreach (var line in _live.SummaryLines(r.Applies(ImpactFamily.Kicks), r.ModeText())) TraxLog.Info("summary", line);
+            foreach (var line in _blocks.SummaryLines(r.Applies(ImpactFamily.Blocks) || r.Applies(ImpactFamily.Riposte), r.ModeText(), _live.LeversText())) TraxLog.Info("summary", line);
         }
 
         /// <summary>The first of each of the live part's first-time lines (true once).</summary>

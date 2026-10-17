@@ -176,20 +176,20 @@ public class ImpactTests
     }
 
     [Fact]
-    public void Step_50_kicks_apply_live_the_rest_decided_only_and_the_spike_forces_shadow()
+    public void Step_51_kicks_blocks_and_the_riposte_apply_live_clean_hits_decided_only_and_the_spike_forces_shadow()
     {
-        Assert.Equal(ImpactFamily.Kicks, ImpactMath.EffectsBuilt);
+        Assert.Equal(ImpactFamily.Kicks | ImpactFamily.Blocks | ImpactFamily.Riposte, ImpactMath.EffectsBuilt);
         var live = Rules();
-        Assert.True(live.Applies(ImpactFamily.Kicks));
-        Assert.True(live.KeepsState(ImpactFamily.Kicks));
-        foreach (var f in new[] { ImpactFamily.Blocks, ImpactFamily.Hits, ImpactFamily.Riposte })
+        foreach (var f in new[] { ImpactFamily.Kicks, ImpactFamily.Blocks, ImpactFamily.Riposte })
         {
-            Assert.True(live.Decides(f));
-            Assert.False(live.Applies(f)); // no effect built yet - decided and logged only (steps 51-52)
-            Assert.False(live.KeepsState(f)); // ... and on copies of the states: it never happened
+            Assert.True(live.Applies(f));
+            Assert.True(live.KeepsState(f));
         }
+        Assert.True(live.Decides(ImpactFamily.Hits));
+        Assert.False(live.Applies(ImpactFamily.Hits)); // no effect built yet - decided and logged only (step 52)
+        Assert.False(live.KeepsState(ImpactFamily.Hits)); // ... and on copies of the states: it never happened
         Assert.False(live.ShadowNow);
-        Assert.Equal("LIVE - kicks / bashes applied, blocks, clean hits, the riposte decided and logged only (effect not built yet)", live.ModeText());
+        Assert.Equal("LIVE - kicks / bashes, blocks, the riposte applied, clean hits decided and logged only (effect not built yet)", live.ModeText());
         var shadow = Rules(s => s.Set(SettingsSchema.ImpactShadowMode, true, "test"));
         Assert.True(shadow.ShadowNow);
         Assert.StartsWith("SHADOW (ImpactShadowMode)", shadow.ModeText());
@@ -588,7 +588,7 @@ public class ImpactTests
                 minUp = Math.Min(minUp, d.GetUpFactor);
                 maxUp = Math.Max(maxUp, d.GetUpFactor);
             }
-            Assert.InRange(d.StunFactor, 1.4 - 1e-9, 2.6 + 1e-9); // 2 × [0.7, 1.3]
+            Assert.Equal(2.0, d.StunFactor, 9); // step 51: no die - x (1 + T) exactly (the decorator's worker-thread seam applies this number)
         }
         Assert.True(minSt >= 1.05 - 1e-9 && maxSt <= 1.95 + 1e-9 && maxSt - minSt > 0.6, "stagger " + minSt + " - " + maxSt); // 1.5 s ± 30 %
         Assert.True(minUp >= 1.4 - 1e-9 && maxUp <= 2.0 + 1e-9, "get-up " + minUp + " - " + maxUp); // 2 × [0.7, 1.3], never above GetUpMaxSlowdown
@@ -806,7 +806,7 @@ public class ImpactTests
         stats.Skip(ImpactSkip.FamilyOff, ImpactEvent.CleanHit);
         stats.EverOn = true;
         var lines = stats.SummaryLines(in r);
-        Assert.StartsWith("impact (step 48 - the model; LIVE, but nothing applied this mission (the built families: kicks / bashes) - decided and logged only): 3 decisions - kicks 2, shield bashes 0, right-side blocks 1", lines[0]);
+        Assert.StartsWith("impact (step 48 - the model; LIVE, but nothing applied this mission (the built families: kicks / bashes, blocks, the riposte) - decided and logged only): 3 decisions - kicks 2, shield bashes 0, right-side blocks 1", lines[0]);
         Assert.Contains("its family switched off 1", lines[0]);
         var kicks = lines.Single(l => l.StartsWith("impact kicks by the kicked man's bar 100-75% / 75-50% / 50-25% / 25-0%: 2 = 0 / 0 / 0 / 2"));
         Assert.Contains("would knock down 0 / 0 / 0 / 1 = 1", kicks);
@@ -822,7 +822,7 @@ public class ImpactTests
         live.Note(in kick, shadow: false, applied: true, 0, 0);
         live.Note(in block, shadow: false, applied: false, 0, 0);
         var liveLines = live.SummaryLines(in r);
-        Assert.StartsWith("impact (step 48 - the model; LIVE - kicks / bashes applied (1 decisions)", liveLines[0]);
+        Assert.StartsWith("impact (step 48 - the model; LIVE - kicks / bashes, blocks, the riposte applied (1 decisions)", liveLines[0]);
         Assert.Contains("did knock down 0 / 0 / 0 / 1 = 1", liveLines.Single(l => l.StartsWith("impact kicks by")));
         Assert.Contains("would stagger", liveLines.Single(l => l.StartsWith("impact right-side blocks by")));
         var shadow = new ImpactStats();
