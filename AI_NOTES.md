@@ -4084,3 +4084,81 @@ animation on a rider or a horse; the damage term (Anton's unfinished point 12) a
 knockdowns kept (ours OR-ed on top).
 
 **Next**: Anton answers IMPACT §8 and approves (or reshapes) the build order → TASKS_TODO's BUILD ORDER gets I1… → I1.
+
+## Step 46 — an Athletics bar above every man under ALT (DONE 2026-10-17)
+
+**Anton's ask (2026-10-17)**: "add how tired they are in a bar above that fever bar, maybe a green bar that gets to red, like on the
+unit selection / formation screen". Plus, from his playtests (the coordinator's brief, mid-step): `CostPerBlow` 3 → 7.
+
+**The design (DESIGN §3 item 3c, decision 38 - Claude's calls, Anton can overturn any)**
+- **One view, not two** (a): step 44's `FeverMarkView` draws a STACK per man - his Athletics bar on top, his fever bar under it.
+  Why: one walk over the logic's dense array, one `Locate` (team, active, position, mount) and at most one projection per man, one
+  pool of widgets, one cap - two views would double the engine reads and could disagree on who is on the screen. The classes keep
+  their step-44 names (FeverMark*, the prefab TraxFeverMarks.xml); the LOG names the view "ALT bars" (was "fever marks").
+- **Fixed height** (b): the fever bar's PLACE is kept under every man's Athletics bar whenever fever bars can show for his side
+  (`FeverMark.FeverSlot` = the fever marks on - master switch, Athletics, FeverEnabled, ShowFeverMarks - and his side's switch), so
+  the bar never jumps when a charge arms or a fever ends. With the fever bars off for his side the bar sits on the point itself.
+- **The reading** (c): the strip's / player bar's - fill = `st.Fraction` (points ÷ FULL pool), `BarUsable` = the health cap
+  (`AthleticsMath.UsableFraction`), drawn like the player bar (the inside dark red #4A1C1C, the reachable part dark over it up to
+  the cap, the fill on top; the fill clamped to the cap), colour = `BarMath.Band(BarRules, f)` with the live Bar*BelowPercent. No
+  peak tick: at 22 px a 1-px tick is noise; the colour says green = at the peak line.
+- **Who** (d): every man the logic tracks except you (`IsPlayer`) and the Removed - AI on foot and riders, heroes, lords. A rider's
+  `Agent.Position` is the ground under his horse (vanilla's locked camera adds the horse's capsule + `RiderCameraHeightAdder` for a
+  rider - MissionMainAgentController 366), so his stack goes `AthleticsMarkMath.RiderLiftMetres` 1 m higher (plumbing; `MountAgent` is
+  the managed `_cachedMountAgent`).
+- **Switches**: `ShowAthleticsMarks` (on), `AthleticsMarksShowEnemy` (on) in the ALT group (renamed "Hold ALT: formation markers,
+  Athletics and fever bars"); Advanced `AthleticsMarkWidth` 22, `AthleticsMarkHeight` 5, `AthleticsMarkGap` 2. All Live. The view's
+  HudGate toggle = either switch (`TraxHudView.ToggleOn` - new virtual - and `ToggleName` "ShowAthleticsMarks / ShowFeverMarks" for
+  the log); its own condition = something to draw (FeverEnabled on OR ShowAthleticsMarks on), then vanilla's flag. Master switch
+  first (HudGate), Athletics off = no layer.
+- **The cap** (f): ONE, `FeverMarkMax` kept under its key (no migration) and re-worded to "most men marked at once" (both bars).
+- **The pick** (g): now every soldier on the field is a candidate. `FeverMarkMath.PickOnScreen<T>` (T : struct, IMarkProjector - no
+  boxing): when the candidates (after side / behind / too-close) exceed the cap, sort them by distance (`Array.Sort(keys, items)` -
+  allocation-free), then project NEAREST FIRST until the cap is full; an off-screen man is skipped and takes no slot (step 44's fix
+  kept), the rest are Capped without a projection. So a frame costs ≤ cap + (off-screen among the nearest) WorldToScreen calls, not
+  one per man. Under the cap: every one projected, no sort (step 44's order kept). Step 44's smoke now proves the fix with an
+  off-screen man NEARER than the on-screen ones (13 m vs 20 m).
+- **Walk**: `AthleticsLogic.MarkWalkCount(everyone)` / `TryGetMarkAt(i, everyone, in AthleticsRules, in BarRules, ref FeverMark, out
+  Agent)` - every tracked man with the bars on, else only the men in a fever (step 44's walk); the rules read ONCE per frame by the view.
+
+**Built** (file map in CLAUDE.md "Layout")
+- Core `AthleticsMarks.cs`: AthleticsMarksHidden, AthleticsMarkRules (live, Describe), MarkBox, AthleticsMarkMath (RiderLiftMetres,
+  WoundHex, MarkHeight, Decide - the bars by side then behind / too close, Read, Layout - the stack, BandColor, ParseHex, Wounded,
+  DescribeBar, DescribeMan, HiddenName). `FeverMarks.cs`: FeverMark + InFever, Mounted, BarFill, BarUsable, Band, HasBar, HasFever,
+  FeverSlot; FeverMarkFrame.DropLast / Keep; IMarkProjector; FeverMarkMath.PickOnScreen; FeverMarkStats.NoteBars + the new summary.
+- Module: `FeverMarkView` (the walk, Decide, PickOnScreen through a struct Projector, Layout, colours), `FeverMarksVM` (FeverMarkVM:
+  the box - PositionX/Y, BoxWidth/Height -, the fever bar - FeverShown, Width, Height, Fill, FillColor, FrameColor -, the Athletics
+  bar - BarShown, BarWidth, BarHeight, BarFill, BarUsable, BarColor, BarFrameColor, BarWoundColor), the prefab (a box with the
+  Athletics bar VerticalAlignment Top and the fever bar Bottom, both centred), `GameFeverMarks.Locate` (Mounted + the lift),
+  `TraxHudView` (ToggleOn / ToggleName), `AthleticsLogic.Api.cs` (MarkWalkCount, TryGetMarkAt).
+- Log: `[hud] ALT bars: first bars drawn at … - N men looked at (by side), N in a fever (armed, burning); N men marked (the nearest N
+  on the screen of M candidates - FeverMarkMax): N Athletics bars (by colour; wounded), N fever bars; skipped …; the layouts; the first
+  drawn: … calm, Athletics 50% yellow | …`; `FeverEnabled switched off … - the fever bars go (the Athletics bars stay)`; the [summary]
+  `hud: ALT bars - … men marked a frame; Athletics bars a frame (by colour summed; wounded); fever bars a frame; most men looked at /
+  in a fever; frames at the cap; skips; cost`.
+- Settings 145 → 150. Tests 655 → 678 (AthleticsMarkTests 22 incl. the theory's cases + step 46's migration test in FeverTests).
+  Smoke 95 → 98 steps (through the view, the fail safe mid-walk, the cost) + the master-switch step (the calm man's bar goes and comes back).
+- **CostPerBlow 3 → 7** (Anton's playtest): defaults.json; config format 9 - `if (from == 8)` (3 was the default ONLY in format 8, so an
+  older file's 3 is its owner's): a format-8 file's 3 → 7 once, a tuned value kept and noted ("CostPerBlow: 5.0 kept - your own value
+  (format 8 → 9; the new default 7.0 is not pushed over it; …)" - new `KeptTuned`); an older file's 10 goes straight to 7 through step
+  43's move (MoveOldDefault pushes TODAY's default; tested for formats 5 and 7). Step 43's note re-worded ("steps 43 / 46 … a swing or
+  shot costs less") since it now lands on 7. DESIGN's Default column untouched (10). HOW-IT-WORKS §2's attacks-per-bar table (50 bar:
+  7 / 10 / 13), 7 → 5.25 → 3.94, the free quarter (about two swings; ten for a 150 party-leading hero), §4's burst example (5.25 a
+  swing, 36%, ~0.6 s) recomputed; the fever table is in points (unchanged).
+
+**Measured (smoke)**: 1000 men ALL on the screen in front of the camera (every one a candidate), 400 in a fever, the cap 200: **~0.07 ms
+a frame, 0 bytes** over 300 frames, **200 projections a frame** (not 1000), every mark moving. Step 44's case (400 in a fever, many
+behind / off the screen): 0.03-0.04 ms. In game add per man walked: Agent.Team, IsActive, Position (a pointer read), MountAgent
+(managed) - 1000 cheap reads -, ~200 WorldToScreen calls, and Gauntlet's layout of ≤ 200 boxes of up to 9 widgets while ALT is held.
+
+**Gotchas**: a calm man's `Share` is 0 - step 44's DescribeMark said "burning 0% left"; DescribeMan says "calm". The log's man list
+was called "the nearest" but under the cap it is the walk's order - renamed "the first drawn". `FeverMarkSkip.EnemyOff` now means
+"the enemy with BOTH his bars switched off" (named "enemy (its bars switched off)"). Step 44's smoke pins ShowAthleticsMarks off
+(FeverMarkDefaults) so its exact counts stay step 44's.
+
+**UNVERIFIED — only the game can tell (PLAYTEST D15)**
+1. The look: 22 × 5 px with a 1-px frame - is the dark-red wound end visible at that size? Is the 2 px gap enough? → Anton's eye.
+2. A rider's bars 1 m higher than a man on foot's - over his head, not in it → eye; `RiderLiftMetres` is a constant (tell Claude).
+3. The box's children aligned Top / Bottom inside a Fixed box with Scaled sizes (Gauntlet) → eye: the fever bar under the Athletics bar.
+4. 200 stacks cost no visible frame time → the summary's `cost`, Anton's frame rate in a 500+ battle.
+5. The bars' colours match the strip's per formation in a long fight → eye + the summary's colour counts.
