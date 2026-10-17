@@ -3957,3 +3957,81 @@ App Control blocked the smoke's freshly built DLL once (step 42's gotcha, per fi
 4. Contact at 5 m is a fair "the fighting started" → `armed → contact mean` a few seconds for a charge from 30-50 m.
 5. The shield split → `burn length with a shield … (x0.70)` vs `without … (x1.00)`.
 6. Fever sprints happen but are not spam → a few per hundred fevers on a charge, more on an advance.
+
+## Step 44 — the fever mark under ALT (DONE 2026-10-17)
+
+**Anton's ask (2026-10-17)**: when he holds ALT the game shows a small icon above each of his soldiers; he wants to see there which
+soldiers are in FEVER (step 43).
+
+**Vanilla's icon (RESEARCH §Q)**: `MissionAgentLabelView` puts a 3D metamesh (`troop_banner_selection`, the troop's banner) on each
+human agent's visuals at build, keeps them in a PRIVATE `Dictionary<Agent, MetaMesh>`, shows them for YOUR side only (never the
+enemy) while ALT is held / the "always show friendly troop banners" option is on / in deployment, else only for the SELECTED
+formations while the orders flag shows; it fades them by the camera distance to the feet + 2 m (0 under 1.5 m, a line to 8 m) and
+REWRITES the mesh's vector arguments on every highlight change and every tick near the camera. **So we never tint it** (Claude's call,
+told to Anton): reflection into a private list, racing vanilla's writes - the two would fight. Ours is a separate 2D Gauntlet layer.
+
+**The design (DESIGN §3 item 3b, interpretation 37)**
+- **When**: step 20's rule - vanilla's own formation-marker flag (`MissionFormationMarkerVM.IsEnabled`: ALT held OR the orders menu
+  open), read live through a second `GauntletFormationMarkers` reader; the copied rule (HudFrame.ShowIndicatorsKey / OrderMenuOpen)
+  when unreadable. WHY this and not the icon's own rule: one rule for both of our ALT overlays (the labels and the marks come and go
+  together), it is readable (the icon's state is private), and the orders menu - where you decide to charge - is exactly when you want
+  to see who is still surging. FeverEnabled off = no marks (checked first in `ViewConditionMet`, with its own log line). The common
+  HudGate rules apply (ModEnabled FIRST, AthleticsEnabled, ShowFeverMarks, Hide battle UI, photo mode, a fight); NeedsPlayer false.
+- **Who**: AI men whose fever runs (armed or burning) - `AthleticsLogic.TryGetFever(agent, out armed, out share)` (public, like
+  TryGetReading) and its allocation-free walk `FeverWalkCount` / `TryGetFeverAt(i, …)` over the dense array (0 while no fever runs; the
+  three switches read directly, not FeverRules.From - a hot walk). Never the player (IsPlayer), never a calm man. Yours and allies'
+  always; the enemy's behind `FeverMarksShowEnemy` (on - vanilla's icon never marks the enemy; seeing their surge is the point).
+- **The look**: a slim BAR, 22 × 5 UI px (`FeverMarkWidth` / `FeverMarkHeight`, Advanced - step 20's precedent put its layout in
+  settings), a dark 1-px frame (FillBarWidget inside 1-px margins), the fill = the fever left (1 armed). Colour `FeverMarkMath.Tint`:
+  orange #FF8C1A armed and at the burn's start → yellow #FFE040 as it empties (a straight line in the share), alpha 1 → 0.45, 0 when
+  empty. Why a bar: the length says HOW MUCH surge is left, the colour the state - one native sprite (BlankWhiteSquare_9), no rotation
+  (Gauntlet widgets cannot rotate a square into a diamond), no new sprite to verify. The colours are UI constants (like the bars').
+- **Where**: the feet (`Agent.Position`) + `FeverMarkHeightMetres` 2.5 (just over vanilla's 2 m icon), projected every frame with
+  `MBWindowManager.WorldToScreen(CombatCamera, …)` (vanilla's formation markers' call) - the bar's bottom centre on that point.
+  Vanilla's icon fade (`FeverMarkMath.Fade`: 0 under 1.5 m, a line to 8 m) × the fever's alpha, baked into both colours (no
+  AlphaFactor question). Size × the UI scale × `SizeFactor` (1 to 20 m, a line to 0.6 at 60 m). The screen and the UI scale from our
+  own layer's UIContext (vanilla's marker layer as a fallback).
+- **Cost**: a grow-only POOL of marks per show (mark i = the i-th drawn this frame - not keyed by man: a bar placed anew every frame),
+  hidden past the frame's count; `FeverMarkFrame` reused (arrays double only when a battle has more men in fever than ever before).
+  Each eligible man is projected BEFORE the pick (an off-screen man never takes a slot from one on the screen - the first draft
+  projected only the picked, and in a crowd the nearest men are often off the screen's sides), then the nearest `FeverMarkMax` (200)
+  by camera distance (`Array.Sort(keys, items, 0, n)` - allocation-free; only when the cap bites).
+
+**Built** (file map in CLAUDE.md "Layout")
+- Core `FeverMarks.cs`: FeverMarkSkip (NotPlaced, EnemyOff, Behind, TooClose, OffScreen, Capped - in the order asked),
+  FeverMarksHidden (ModOff FIRST, AthleticsOff, FeverOff, SwitchedOff), FeverMark, FeverMarkFrame, FeverMarkRules (live), FeverMarkMath
+  (Tint, Fade, SizeFactor, PreSkip, Pick, Size, Place, OnScreen, the names), FeverMarkStats (+ the [summary] line).
+- Module: `Hud/FeverMarkSource.cs` (IFeverMarkSource - TryReadShown, NewShow, BeginFrame, Locate, Project, Describe; GameFeverMarks),
+  `Hud/FeverMarkView.cs`, `Hud/FeverMarksVM.cs` (FeverMarksVM + FeverMarkVM: IsShown, PositionX/Y, Width, Height - Scaled* pixels -,
+  Fill, FillColor, FrameColor), `module/GUI/Prefabs/TraxFeverMarks.xml`; attached in `AthleticsLogic.AttachHud` after the ALT labels;
+  `AthleticsLogic.Api.cs`: TryGetFever, FeverWalkCount, TryGetFeverAt.
+- 6 settings (145): `ShowFeverMarks` (on), `FeverMarksShowEnemy` (on), `FeverMarkMax` 200 (1-1000) in the ALT group - renamed
+  "Hold ALT: formation markers and fever marks" (was "Formation markers (hold ALT)"; group names are not stored anywhere but MCM's
+  page and the files' headings); Advanced `FeverMarkWidth` 22, `FeverMarkHeight` 5, `FeverMarkHeightMetres` 2.5. All Live.
+- Log: `[hud] attached: fever marks …`, the first build in full (later builds / removals by the condition verbose), `[hud] fever marks:
+  first marks drawn at … (show #N) - N men in a fever (yours and allies, enemy; armed, burning), N marks drawn (the nearest N of M -
+  FeverMarkMax), skipped: …; screen …, UI scale …; the layout; the nearest three; source …`, `FeverEnabled switched off …`, the
+  [summary] `hud: fever marks - shown Nx, on screen T s over N frames; marks a frame: mean / max; most men in fever at once (by side);
+  frames at the cap; men skipped by reason (summed over frames); cost µs a frame (most); errors`.
+- Tests 642 → 655 (FeverMarkTests: 13). Smoke 91 → 95 steps (the prefab, the view over the REAL logic's fevers with a stand-in camera,
+  the fail safe, the cost) + the master-switch step (the mark goes with ModEnabled, TryGetFever answers nothing meanwhile).
+
+**Measured (smoke)**: 1000 men, 400 in a fever (half the enemy's, 60 behind the camera, 78 off the screen), the cap 200: **~0.03 ms a
+frame, 0 bytes** over 300 frames with every mark moving. In game add the engine reads per man in a fever (Agent.Position, IsActive,
+one WorldToScreen - a few hundred native calls, ~tens of µs) and Gauntlet's own layout of up to 200 small widgets (only while ALT
+is held). The summary's `cost` is the view's own stopwatch around all of it but Gauntlet's drawing.
+
+**Gotchas**: the smoke's `[error]` count - `AthleticsLogic.Failed` reports a site once per mission and the earlier fail-safe steps
+spent "hud.tick", so the fever fail safe proves its error by the view's own count and the DISABLED line. A smoke step that calls
+`AthleticsDefaults()` must end with `ConfigStore.Reload(...)` (DamageDefaults inside it pins DamageRandomPercent / the reduction, and
+the MCM steps at the end need the file's values back). Smart App Control blocked the smoke's freshly built Core DLL once again (per
+hash, step 42's gotcha); a one-line doc edit (a new hash) passed.
+
+**UNVERIFIED — only the game can tell (PLAYTEST D14)**
+1. The bar sits above the man's head, just over vanilla's icon, and rides him without lag → Anton's eye; `FeverMarkHeightMetres` live.
+   (Our view ticks after the camera's update like the ALT labels - same-frame reasoning as step 20; if a running man's bar trails,
+   tell Claude.)
+2. The screen and UI scale from our own layer's UIContext → the first-marks line's `screen W x H px, UI scale S`.
+3. The FillBarWidget inside 1-px margins draws the fill at 5 px tall (3 px inside); the colours fade (orange → yellow) → eye.
+4. 200 marks cost no visible frame time → the summary's `cost` and Anton's frame rate in a 500+ battle.
+5. The enemy's marks show on their charges → the first-marks line's `enemy N`.

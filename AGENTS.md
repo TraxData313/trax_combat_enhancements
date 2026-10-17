@@ -72,7 +72,11 @@ share), its clock from his first enemy within `FeverContactMetres` 5 m, burning 
 fading to his CURRENT tired share; a hold / move / retreat ends it; feverish men roll every 1 s (50% × the fever left) for a
 sprint at an enemy 3-12 m off, above their order's reserve; no formation = no fever; the [fever] summary proves it - AI melee
 attacks per man-minute in contact by bar band, without / in a fever / in no formation. Swings are cheaper: `CostPerBlow` 3 and
-`CostPerWrongSideShieldBlock` 2 in defaults.json (config format 8 moves a file's old 10 / 5 once). (Steps 25-40 -
+`CostPerWrongSideShieldBlock` 2 in defaults.json (config format 8 moves a file's old 10 / 5 once). THE FEVER MARK UNDER ALT
+(step 44, `ShowFeverMarks`): while vanilla shows its formation markers (ALT or the orders menu), a small bar of ours above each AI
+man in a fever - bright orange and full while armed, its fill = the fever left fading through yellow, gone when it ends; vanilla's
+own per-man icon never touched; the enemy's behind `FeverMarksShowEnemy`; at most `FeverMarkMax` 200, the nearest on the screen.
+(Steps 25-40 -
 the swing stack, the sprint, the tired block direction and the rest - are described in CLAUDE.md, the fuller copy of this
 file.) The bar for the
 fighter you look at is LATER (DESIGN §3; its settings wait in DESIGN's "Planned parameters"). Words:
@@ -205,11 +209,11 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
   ParamDef.cs                 one setting: key, type, range, group, label, plain-words
                               description, apply timing (Live / NextBattle); Normalize, Format;
                               its Default comes from defaults.json (DefaultsFile), never code
-  SettingsSchema.cs           EVERY setting of DESIGN's table (139), in file + MCM order, 14 groups
+  SettingsSchema.cs           EVERY setting of DESIGN's table (145), in file + MCM order, 14 groups
                               ("Master switch" first, "Damage" second - step 25 renamed it from
                               "Damage randomness", "Battle pace (AI)" - step 21 - after the step back,
                               "Brace by orders (AI)" - step 23 - after it,
-                              "Formation markers (hold ALT)" - step 20 - before
+                              "Hold ALT: formation markers and fever marks" - step 20, renamed by step 44 - before
                               "Advanced" last; step 10b's one vocabulary and
                               units in its header comment) — the one place a setting is declared
                               (a test parses DESIGN.md: keys + types); NO default values. The LATER
@@ -435,6 +439,10 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               (vanilla's test), Place (the marker's bottom centre + the gap x the UI scale, a 200 px
                               centring box), VanillaAlpha (the prefab's distance fade); AltMarkerLayout (the AltMarker*
                               settings), AltMarkerTechnique / AltMarkerFallback, AltMarkerStats (+ the [summary] line)
+  FeverMarks.cs               step 44, the fever mark under ALT pure (AI_NOTES "Step 44"): FeverMarkSkip (in the order asked),
+                              FeverMarksHidden (ModOff FIRST), FeverMark, FeverMarkFrame (reused), FeverMarkRules (live),
+                              FeverMarkMath (Tint orange → yellow, Fade = vanilla's 1.5 → 8 m, SizeFactor, PreSkip, Pick the
+                              nearest N allocation-free, Size, Place, OnScreen), FeverMarkStats (+ the [summary] line)
   SpreadStats.cs              MeanStd (Welford, population std), FormationAthleticsStats (squad
                               mean ± std, band, mean f, at full strength, mean health - step 9; step 23:
                               Bracing / Ready / Total - the next step's "ready men"),
@@ -525,7 +533,8 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               TryGetFormationStats(formation) (incl. mean f and health; the player
                               left out, as the order cards; step 20: EVERY team's formations - slots by
                               Team.TeamIndex, MaxStatTeams 8, one allocation-free pass; step 23: + how many brace),
-                              FormationStatsVersion, IsRunning
+                              FormationStatsVersion, IsRunning; step 44: TryGetFever(agent, out armed, out share) +
+                              the allocation-free walk FeverWalkCount / TryGetFeverAt(i)
   Missions/AthleticsLogic.Log.cs  [athletics]/[speed] lines (verbose buckets) + summary feed
                               (releases every step back before the summary, then its lines)
   Missions/AthleticsLogic.StepBack.cs  step 5d bookkeeping: the roll at every counted swing's
@@ -725,7 +734,14 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
   Hud/AltMarkersVM.cs         its ViewModels: the root + a GROW-ONLY MBBindingList of AltMarkerLabelVM keyed by
                               team + formation (a label never swaps formations when vanilla re-sorts); step 24:
                               ReadyText / ReadyColor / ReadyShown, SetReady
-tests/TraxCombat.Core.Tests/  net8.0 xUnit (642) — schema vs DESIGN.md (keys + types), one copy
+  Hud/FeverMarkSource.cs      step 44's engine seam: IFeverMarkSource (vanilla's flag, the camera and screen, Locate a man,
+                              Project; the smoke plays it) + GameFeverMarks (CombatCamera, Agent.Position, WorldToScreen)
+  Hud/FeverMarkView.cs        step 44, DESIGN §3 item 3b: shown exactly while vanilla shows its markers and FeverEnabled is on;
+                              every frame the logic's fevers walked, placed, skipped, projected, the nearest FeverMarkMax drawn
+                              into a reused pool; [hud] first-marks line, the [summary] line; vanilla's per-man icon untouched
+  Hud/FeverMarksVM.cs         its ViewModels: a GROW-ONLY POOL of FeverMarkVM (IsShown, PositionX / Y, Width / Height in pixels,
+                              Fill, FillColor, FrameColor)
+tests/TraxCombat.Core.Tests/  net8.0 xUnit (655 - step 44: + FeverMarkTests) — schema vs DESIGN.md (keys + types), one copy
                               runs (SingleCopyTests: claims on private slots, copies, texts), when
                               MCM is tried and when it stops (McmPlanTests - step 12),
                               defaults.json (DefaultsFileTests), master switch, settings, config
@@ -789,7 +805,9 @@ module/GUI/Prefabs/           the HUD movies - file name = movie name, `Trax…`
                               the numbers in vanilla's own marker brush NameMarker.Distance.Text, the
                               strip's bar; step 24: + "ready 34/50" under the bar, centred), both with
                               step 24's ready TextWidget (Brush.FontColor bound; the strip's under its
-                              bar at @ReadyMarginTop, the panel's after the health)
+                              bar at @ReadyMarginTop, the panel's after the health), TraxFeverMarks.xml (step 44:
+                              {Marks} ItemTemplate - one small bar per mark, Scaled* pixel bindings, a dark frame and
+                              a FillBarWidget fill; BlankWhiteSquare_9 only)
 tools/deploy.ps1              build → AssemblyGuard → OfflineSmoke → install as
                               Modules\TraxCombatEnhancements.Dev "Trax Combat Enhancements (dev)",
                               module\GUI copied beside bin
@@ -911,7 +929,10 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               return, enemy gone, L 0 / 2 live, the master switch), L 0 = step 41's exact writes, the cost
                               step 43 (Program.Fever.cs): aggression and the fever through the real decorator and logic
                               (the share by the bar, the absolute peak, contact, the shield, the fade, the fever sprint, the master
-                              switch, the cost - 1000 men, 0.005 ms a tick, 0 bytes) (91 steps; the config
+                              switch, the cost - 1000 men, 0.005 ms a tick, 0 bytes); step 44 (Program.FeverMarks.cs):
+                              the fever-mark prefab, the real view over the real logic's fevers with a stand-in camera,
+                              the fail safe, the master switch, the cost - 400 men in a fever, the cap 200, 0.03 ms a
+                              frame, 0 bytes (95 steps; the config
                               checks work for any tuned default);
                               TRAX_SMOKE_KEEP=1 keeps its temp folder + log to read
 tools/DefaultsTool/           defaults.json upkeep: refresh (rewrite comments/order, keep every

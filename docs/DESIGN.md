@@ -617,7 +617,7 @@ button and the "(default …)" in comments, MCM hints and the log all show the f
 
 ## 3. Showing Athletics
 
-All toggles, all on by default. **Built: items 1, 1b, 3 (step 20, in its "hold ALT" form) and 4. Item 2
+All toggles, all on by default. **Built: items 1, 1b, 1c, 3 (step 20, in its "hold ALT" form), 3b (step 44) and 4. Item 2
 is LATER** (Anton moved it off the build order, 2026-09-27): its design stays here, its settings wait in
 "Planned parameters" below, and nothing of it is in the game, MCM or the config file.
 
@@ -644,6 +644,10 @@ is LATER** (Anton moved it off the build order, 2026-09-27): its design stays he
    me the troop count and distance"). This is step 8's "squad bars" in their "only while vanilla shows
    its formation markers" form. Built as below; an always-on form (`FormationBarsAlways`,
    `FormationBarHeight`) stays in "Planned parameters".
+3b. **Hold ALT — fever marks above the men** (`ShowFeverMarks`; built in step 44, Anton 2026-10-17: when I
+   hold ALT the game shows a small icon above each of my soldiers - "see there which soldiers are in FEVER"):
+   a small bar of ours above each man in a fever (§2 "Aggression and the fever"), shown with item 3. Built as
+   below.
 4. **Orders menu** (`ShowInOrderMenu`): while the orders menu is open, a strip directly UNDER
    each of vanilla's formation cards (built in step 9 — below). Numbers INSIDE vanilla's cards
    would need UIExtenderEx and risk clashing with RTS Camera Command System — not worth it
@@ -716,6 +720,33 @@ just under its marker (`AltMarkerOffset`, 2 px under the distance number):
   side); the positions every frame. Shown only in fights, with the master switch, Athletics and
   `ShowAltMarkerStats` on, never with the game's Hide battle UI or photo mode; the player need not be
   on the field (vanilla shows its markers after your fall too). All live.
+
+**The fever marks as built (step 44 — hold ALT):** while you hold ALT the game also draws a small banner
+icon above each of YOUR men (vanilla's `MissionAgentLabelView`: a 3D mesh on the man's body, yours and your
+allies' only). Exactly while the formation markers above show (the same live flag - ALT held or the orders
+menu open), each AI man in a FEVER - armed by a new charge / advance order, or burning after his first
+contact - gets a small bar of ours above his head:
+- **The look**: a slim bar (`FeverMarkWidth` × `FeverMarkHeight`, 22 × 5 UI px, the game's UI scale applies)
+  with a dark 1-px frame; its FILL is the fever left (full while armed). **Bright orange** while armed and at
+  the burn's start, through **yellow** as the store empties, its alpha falling from 1 to 0.45 with it; gone
+  the moment the fever ends (faded, a hold / move / retreat order, the man falls). A bar, not a dot: it shows
+  the state (colour) AND how much surge is left (length) at a glance, from the one native sprite every Trax
+  bar uses.
+- **Where**: centred above the man, its bottom edge `FeverMarkHeightMetres` (2.5 m) above his feet - just over
+  vanilla's icon (2 m) - projected through the combat camera every frame, so it rides the man (and follows
+  RTS Camera's free camera). Vanilla's own fade of its icon: none closer than 1.5 m, fading in up to 8 m;
+  full size to 20 m, a straight line to 60% at 60 m and beyond.
+- **Who**: AI men on foot in a fever - yours and your allies' always, the enemy's too (`FeverMarksShowEnemy`,
+  on: you see their charge coming and when its surge is spent - vanilla's icon never marks the enemy, ours
+  does). Calm men, riders and you (never a fever): nothing.
+- **How many**: at most `FeverMarkMax` (200) a frame - every man in a fever in front of the camera is
+  projected and the ones off the screen dropped first, then the NEAREST 200 drawn; the rest wait. A fixed,
+  reused pool of marks: nothing allocated per frame (1000 men, 400 in a fever: ~0.03 ms a frame in the smoke,
+  plus the game's own projection per man).
+- **Never vanilla's icon**: its mesh list is private and vanilla rewrites the mesh's colour arguments on every
+  highlight change - a tint of ours would fight it. Ours is a separate 2D layer; nothing of vanilla's is touched.
+- Shown only in fights, with the master switch, Athletics, `FeverEnabled` and `ShowFeverMarks` on, never with
+  Hide battle UI or photo mode; the player need not be on the field. All live.
 
 Bars show in fights (battle, duel, tournament and stealth modes — step 6 added stealth:
 a stealth mission's fights cost Athletics too), with the player on the field, never while the
@@ -799,7 +830,7 @@ Every parameter lives in two places that stay in sync:
 
 **What the player reads** (step 10b; step 20 added the tenth, step 21 the eleventh): eleven groups, the same in MCM and the
 file, in this order — *Master switch, Damage randomness, Athletics, Tired fighters, Tired fighters step
-back, Battle pace (AI), Refill, Your Athletics bar, Orders menu strip, Formation markers (hold ALT), Advanced*; MCM shows
+back, Battle pace (AI), Refill, Your Athletics bar, Orders menu strip, Hold ALT: formation markers and fever marks (step 44's name; step 20 called it Formation markers (hold ALT)), Advanced* (later steps added Damage reduction's rename, Brace, Sprint, Aggression and fever - 14 groups since step 43); MCM shows
 its *Defaults* buttons (§2c) just above
 *Advanced*, which stays last. One vocabulary: the pool, the bar and its points are *Athletics*; the
 character-screen skill is *the Athletics skill*; the *peak line* is the white mark on the bar
@@ -1363,6 +1394,15 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     move / retreat ends a BURNING fever too; (i) the fever sprint is a roll every 1 s at 50% × the fever left (Anton's change of
     the once-per-fever rule), the reserve still capping it; (j) heroes the same; (k) a man who mounts loses his fever; (l) the
     shield is read live at each ~0.25 s look. Each is a default Anton can overturn.
+37. **The fever mark under ALT** (step 44, Claude's calls on Anton's ask of 2026-10-17 - AI_NOTES "Step 44"): (a) our own 2D mark,
+    never a tint of vanilla's per-man icon (private mesh list, rewritten on every highlight - the two would fight); (b) WHEN = step
+    20's flag (vanilla's formation markers shown: ALT or the orders menu), not the per-man icon's own rule (ALT, the "always show
+    troop banners" option, or only the SELECTED formations while the orders menu is open) - one rule for both ALT overlays, and the
+    orders menu is exactly when you choose to charge; (c) a bar whose fill is the fever left, orange → yellow, not a dot; (d) the
+    enemy's on by default (vanilla's icon never marks the enemy; seeing their surge is the tactical point); (e) the cap picks the
+    nearest ON THE SCREEN (each eligible man is projected first); (f) vanilla's icon fade (1.5 → 8 m), 60% size at 60 m; (g) the
+    layout numbers are Advanced settings (step 20's precedent), the colours UI constants like the bars'. Each is a default Anton can
+    overturn.
 
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),

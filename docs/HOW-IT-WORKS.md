@@ -383,6 +383,10 @@ none when it is gone). He spends only the sprint he holds above his order's rese
 
 A bracing man (section 8) still does not attack, fever or not.
 
+**See it: hold ALT.** Every man in a fever — yours and the enemy's — gets a small bar above his head while
+you hold ALT (or the orders menu is open): **bright orange** and full while he runs at the enemy, shrinking
+and turning **yellow** as the fever burns after the clash, gone when it is spent (section 15).
+
 <sub>Settings: `AiAggressionFreshPercent` 60, `AiAggressionExhaustedPercent` 20 (both 100 = the base game's AI),
 `FeverEnabled` on, `FeverPointsPerSecond` 10, `FeverAggressionPercent` 80, `FeverContactMetres` 5,
 `FeverShieldDurationMultiplier` 0.7, `FeverSprintToClose` on, `FeverSprintMinMetres` 3, `FeverSprintMaxMetres` 12,
@@ -555,9 +559,22 @@ their average health, and **"ready 34/50"** — how many are ready to fight (not
 | Yellow | 75% or fewer ready |
 | Red | 50% or fewer ready — this line is spent |
 
+**Fever marks** (hold ALT, or the orders menu open): a small bar above each man in a **fever** (section 11) —
+yours and the enemy's. Its length is the fever left.
+
+| Fever mark | Means |
+|---|---|
+| Bright orange, full | armed — he is charging and has not met the enemy yet |
+| Orange, shrinking | the clash began: his fever burns (faster with a shield in hand) |
+| Faint yellow, short | nearly spent — he is about to calm down |
+| No mark | calm (no fever), or you |
+
+Close to the camera the marks fade out (none closer than 1.5 m), far away they are a little smaller, and in
+a huge battle only the 200 nearest are drawn.
+
 <sub>Settings: `ShowPlayerBar`, `ShowAttackRecoveryBar`, `ShowSprintBar`, `ShowInOrderMenu`, `ShowAltMarkerStats`,
-`AltMarkersShowEnemy`, `ShowReadyCount`, `Bar*BelowPercent`, `Ready*BelowPercent`, and the HUD's sizes
-and offsets.</sub>
+`AltMarkersShowEnemy`, `ShowReadyCount`, `Bar*BelowPercent`, `Ready*BelowPercent`, `ShowFeverMarks`, `FeverMarksShowEnemy`,
+`FeverMarkMax` 200, and the HUD's sizes and offsets (`FeverMarkWidth` 22, `FeverMarkHeight` 5, `FeverMarkHeightMetres` 2.5).</sub>
 
 ## 16. Tactics this creates
 

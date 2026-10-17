@@ -1107,6 +1107,34 @@ postfix). Full notes and the build: AI_NOTES "Step 41".
 5. **Not used**: `AIDecideOnAttackChance` (0.5 × D - rises with defensiveness: the chance to REACT to the enemy's attack, a
    defence value), `AIHoldingReadyMaxDuration` (holding a readied blow lowers the guard), every timing / "ability" value.
 
+## Q. Vanilla's per-man ALT icon, and a mark of ours above a man (step 44, verified in the v1.4.8 source 2026-10-17)
+
+1. **Who draws the icon**: `MissionAgentLabelView : MissionView` (TaleWorlds.MountAndBlade.View.MissionViews). At each human
+   agent's build it copies the 3D metamesh `troop_banner_selection` (material `agent_label_with_tableau` + the troop's banner
+   texture, `banner_top_of_head` as the second texture), `SetVectorArgument(0.5, 0.5, 0.25, 0.25)` and ADDS it to the agent's
+   visuals (`AgentVisuals.AddMultiMesh(mesh, BodyMeshTypes 13)`) - it rides the man's skeleton, it is not a UI widget. The
+   meshes live in a PRIVATE `Dictionary<Agent, MetaMesh> _agentMeshes`.
+2. **When it shows** (`OnMissionTick` → `IndicatorsActive = _alwaysShowFriendlyTroopBanners || Input.IsGameKeyDown(5)`; the mesh's
+   visibility mask in `IsMeshVisibleForAgent`): only for men of YOUR team or your ally team (never the enemy), never the agent
+   the camera follows, never with the "Friendly troop banner opacity" option at 0 or in photo mode; then visible while ALT (game
+   key 5, ShowIndicators) is held, the option "always show friendly troop banners" (ManagedOptions 13 = 2) is on, or in
+   Deployment; otherwise only for men of the formations SELECTED while the orders menu's flag shows (`IsAgentListeningToOrders`).
+   So its rule is NOT exactly the formation markers' (`MissionFormationMarkerVM.IsEnabled` = ALT or the orders menu open, §G /
+   AI_NOTES "Step 20"): with the orders menu open the icons mark only the selected formations.
+3. **Its fade and highlight** (`SetBannerHighlightVisibility`, every tick for the men within 8 m of the camera through the agent
+   proximity map, and on every selection / highlight change): `SetVectorArgument2(20, 0.4, 0.44, a × FriendlyTroopsBannerOpacity)`
+   with a = ±1 (highlighted / not) × the camera distance to `agent.Position + (0, 0, 2)`: 0 closer than 1.5 m, (d − 1.5) / 6.5
+   up to 8 m, full beyond. The icon's point is the man's feet + 2 m.
+4. **Why we never tint it**: the mesh list is private (reflection into it, then racing vanilla, which rewrites the vector
+   arguments - colour, highlight, alpha - on every highlight change and every tick near the camera). Step 44 draws its own 2D
+   Gauntlet bar instead, at the feet + `FeverMarkHeightMetres` (2.5 m), projected each frame with
+   `MBWindowManager.WorldToScreen(MissionScreen.CombatCamera, …)` - the call vanilla's formation markers use (§G, step 20) - and
+   vanilla's own 1.5 → 8 m fade.
+5. **Reads used per man in a fever, per frame while shown**: `Agent.Team` (managed) → `Team.IsPlayerTeam` / `IsPlayerAlly` (managed:
+   `Mission.PlayerTeam == this` / the same `Side`), `Agent.IsActive()` (the engine's state), `Agent.Position` (the native position
+   pointer, like vanilla's own icon fade), one `WorldToScreen`. The camera once a frame: `CombatCamera.Position`, `.Direction`
+   (= −Frame.rotation.u). No allocation (Vec3 is a struct).
+
 ---
 
 ## UNVERIFIED — to check in the named step
@@ -1138,3 +1166,4 @@ postfix). Full notes and the build: AI_NOTES "Step 41".
 | 23 | An AI formation that sprints on a move / advance order really moves faster once its speed cache refreshes (~2 s), and a charge's last stretch runs free (§N; PLAYTEST D10: `sprint - AI` seconds and the speed check) | 33 |
 | 24 | The native AI honours `shouldKeepWithFormationInsteadOfMovingToAgent` for an infantry shield wall's men (it was only ever set for shield men of ranged formations) and a one-frame vanilla FALSE every ~0.5 s does not undo it - the men stay in their slots and still fight what reaches them (§O; PLAYTEST D11: the summary's `wall slots ON` vs `OFF`, "more than 1 m ahead" in contact) | 41 |
 | 25 | The native combat AI uses `AIAttackOnDecideChance` / `AIAttackOnParryChance` per decision so that a share of 0.6 / 0.2 really means about that many fewer AI melee attacks in contact (§P; PLAYTEST D13: the summary's `fever proof` lines by bar band, and a battle at `AiAggressionFreshPercent` / `ExhaustedPercent` 100 vs 60 / 20) | 43 |
+| 26 | `WorldToScreen` from the combat camera lands the fever mark above the man's head the same frame (no lag behind a running man), our layer's `UIContext` gives the screen in pixels and the UI scale, `ScaledSuggestedHeight` and a FillBarWidget inside 1-px margins draw a 22 × 5 bar, and 200 moving marks cost no visible frame time (§Q; PLAYTEST D14: Anton's eye, the summary's `cost`) | 44 |

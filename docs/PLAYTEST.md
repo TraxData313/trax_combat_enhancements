@@ -120,7 +120,7 @@ end it (win or retreat).
 
 **A5. The MCM page.** Options → Mod Options → *Trax Combat Enhancements*.
 - You see: the same 11 groups — *Master switch* (Mod enabled) on top, *Battle pace (AI)* (step 21) after
-  *Tired fighters step back*, *Formation markers (hold ALT)* (step 20) just before *Advanced* at the bottom, and
+  *Tired fighters step back*, *Hold ALT: formation markers and fever marks* (step 20; step 44 renamed it) just before *Advanced* at the bottom, and
   just above Advanced a *Defaults* group with two buttons. Checkboxes for switches, sliders for
   numbers (their ends are the file's ranges), each label with its unit (points, %, x, m, s, px, MB).
   Hovering shows the explanation, *"Applies at once, even mid-battle."* and the default. *Verbose
@@ -925,6 +925,41 @@ UNVERIFIED 25); `in a fever` no higher than `no fever`; `0 of N fevers met an en
 after F1 F3 (`fever armed: 0`); a deadlock (two lines facing each other, nobody swinging, for a minute); `fever recomputes` in the
 dozens a man-minute; `[error] … fever.` lines.
 
+**D14. The fever mark under ALT (step 44, ~10 min - right after D13, the same battle is fine).** Anton's ask (2026-10-17): when
+I hold ALT the game shows a small icon above each of my soldiers - show me there which of them are in FEVER. Now, while the
+game's formation markers show (ALT held, or the orders menu open), each man in a fever gets a small bar of ours above his head
+(just over the game's own icon): **bright orange** and full while he is armed (running at the enemy), the fill shrinking and the
+colour fading through **yellow** as the fever burns after the first clash, gone when it is over. Calm men and you: nothing.
+1. **Your charge.** Custom battle, 60 v 60 infantry. Hold ALT before any order: **no marks** (nobody is in a fever). Give
+   **F1 F3 (charge)** and hold ALT as they run: **every charging man has a full orange bar** above his head, riding him as he
+   runs. At the clash, keep ALT down: within a few seconds the bars of the men in contact start to **shrink and turn yellow**;
+   ~10 s later (a fresh man; less for a tired one or one with a shield) they **vanish** one by one; the men still marching to
+   the enemy keep theirs full.
+2. **The enemy's charge.** When the AI general charges / advances, hold ALT: **his charging men are marked too** (the game's
+   own icon never marks the enemy - ours does). MCM → *Hold ALT: formation markers and fever marks* → *Enemy fever marks too*
+   off: theirs go at once, yours stay; on again.
+3. **Close and far.** Walk into your own charging line with ALT held: the bar fades out within ~8 m and is gone closer than
+   1.5 m (like the game's icon). Far men's bars are a little smaller. Open the orders menu (backspace): the marks show there
+   too (the formation markers do). F1 F1 (hold) ends the fever: the marks go.
+4. **Big battle** (500+ men, a full charge): at most *Most fever marks at once* (200) bars - the nearest ones - and the frame
+   rate should not drop when you hold ALT. Try 50 live.
+5. **Live, in MCM**: *Fever marks above the men* off / on; *Advanced* → *Fever mark: length / thickness / height above the man*
+   (if the bar sits on the game's icon, raise the height; tell Claude the number).
+- **The lines**: `[hud] attached: fever marks (FeverMarkView, movie TraxFeverMarks, prefab installed) - shown while …`;
+  `[hud] fever marks: layer created at … s (mode Battle, …) - movie TraxFeverMarks loaded OK (…)`; `[hud] fever marks: first marks
+  drawn at … s (show #N) - N men in a fever (yours and allies N, enemy N; armed N, burning N), N marks drawn; skipped: behind the
+  camera N, …; screen W x H px, UI scale S; marks 22 x 5 UI px …; the nearest: yours man 412 at (960, 510), 14.2 m, armed | …;
+  source: the combat camera's projection …`. The summary (L1 hud block): `hud: fever marks (movie TraxFeverMarks) - on screen …`
+  and `hud: fever marks - shown Nx, on screen T s over N frames; marks a frame: mean M, max X; most men in fever at once F (yours
+  and allies Y, enemy E); frames at the cap C; men skipped, summed over frames: …; cost N µs a frame (most N µs); errors 0`.
+- **Read first**: the summary's `cost` (a few tens of µs a frame expected - plus the game's own drawing of the bars) and `marks a
+  frame: max` (never above the cap).
+
+**Broken — tell Claude** (D14): no bar on charging men with ALT held but the `[fever]` lines say fevers are armed; a bar that
+does NOT ride its man (lags behind or sits at his feet); bars at the wrong height (on the icon, or far above); marks that stay on
+after the battle's fevers ended; a bar on YOU; the frame rate dropping while ALT is held in a big battle; `[error] … hud.` lines
+or `fever marks: … DISABLED`.
+
 ---
 
 ## E. Your Athletics bar, the orders-menu strip and the ALT markers (20 min)
@@ -1028,7 +1063,7 @@ indicators" key) before the lines meet, then again after a while of fighting.
 - With RTS Camera: switch to its free camera and hold ALT again — the numbers stay under the markers
   wherever you fly; your own formation's marker vanishes when you are alone in it (RTS Camera hides it)
   and so do ours.
-- Switch mid-battle (Escape → Mod Options): *Formation markers (hold ALT)* → *Enemy formations too* off →
+- Switch mid-battle (Escape → Mod Options): *Hold ALT: formation markers and fever marks* → *Enemy formations too* off →
   the enemy's numbers go at once, yours stay; on again. *Numbers under the formation markers* off → all
   go; on again. *Orders menu strip* → *Show average health* off → the `HP` goes here too. *Advanced* →
   *Marker numbers: text size / gap under the marker / bar length / bar thickness (px)* move them live
@@ -1709,7 +1744,10 @@ header names the technique: `==== scene …, mod ON, AI holds: Input (the AI's o
   [summary] hud: ALT markers - shown 14x, on screen 32.5 s; technique: the game's own formation markers read live (their points and their widgets' sizes) (layer MissionFormationMarker, movie FormationMarker: 6 markers, 6 marker widgets); formations labelled: yours 3, allies 0, enemy 3 (most at once 6), frames with a label pinned at the screen's edge 0, values pushed 90; fallbacks: none; errors 0
   [summary] hud: orders strip - ready count (men not bracing, step 24): shown 120x (plain 80, yellow 30, red 10), the fewest ready 12/50 (24%, 1 Infantry); hidden: never
   [summary] hud: ALT markers - ready count (men not bracing, step 24): shown 270x (plain 200, yellow 50, red 20), the fewest ready 9/80 (11%, enemy 1 Infantry); hidden: never
+  [summary] hud: fever marks (movie TraxFeverMarks) - on screen 32.5 s of 340.2 s (10%); layer built 14x, removed 14x (markers hidden or the fever off 13, mission end 1); …; errors 0
+  [summary] hud: fever marks - shown 14x, on screen 32.5 s over 1950 frames; marks a frame: mean 41.3, max 118; most men in fever at once 160 (yours and allies 80, enemy 80); frames at the cap 0; men skipped, summed over frames: behind the camera 9120, closer than 1.5 m 12, off the screen 3400; cost 35 µs a frame (most 210 µs); errors 0
   ```
+  (step 44: the fever marks' two lines - D14.)
   The two ready count lines (step 24) prove: the line was drawn (*shown* > 0) and moved through the colours in a
   brace-heavy battle (yellow and red > 0), *the fewest ready* matches what you saw; *hidden …* names why it was not
   drawn (`BraceEnabled off - nobody braces`, `ShowReadyCount off`) - `never shown` in a battle with bracing on = tell Claude.
