@@ -86,7 +86,7 @@ public class ImpactHitsTests
             Assert.True(SettingsSchema.TryGet(k, out var p));
             Assert.Equal(ApplyTiming.Live, p.Timing);
         }
-        Assert.Contains("momentum (the attacker's run into the blow) +60% impact at 7.0 m/s and faster, none at 2.0 m/s or slower (riders: step 53)", r.Describe());
+        Assert.Contains("momentum (the attacker's run into the blow) +60% impact at 7.0 m/s and faster, none at 2.0 m/s or slower; a rider's horse +30% at 10.0 m/s, none at 3.0 m/s (a couched lance never)", r.Describe());
         Assert.Contains("tired men always flinch on", r.Describe());
         Assert.EndsWith("momentum (the attacker's run into the blow) OFF", Rules(s => s.Set(SettingsSchema.ImpactMomentumEnabled, false, "test")).Describe());
     }
@@ -105,7 +105,7 @@ public class ImpactHitsTests
         Assert.Equal(1.6, ImpactMath.MomentumFactor(in r, 12.0, false), 9); // clamped
         Assert.Equal(1.0, ImpactMath.MomentumFactor(in r, -6.0, false), 9); // running AWAY from him adds nothing
         Assert.Equal(1.0, ImpactMath.MomentumFactor(in r, double.NaN, false), 9);
-        Assert.Equal(1.0, ImpactMath.MomentumFactor(in r, 7.0, true), 9); // a rider's: step 53
+        Assert.Equal(1 + 0.3 * 4 / 7.0, ImpactMath.MomentumFactor(in r, 7.0, true), 9); // step 53: a rider's = his horse's, at the rider settings
         Assert.Equal(1.0, ImpactMath.MomentumFactor(Rules(s => s.Set(SettingsSchema.ImpactMomentumEnabled, false, "test")), 7.0, false), 9);
         Assert.Equal(1.0, ImpactMath.MomentumFactor(Rules(s => s.Set(SettingsSchema.ImpactMomentumPercent, 0, "test")), 7.0, false), 9);
         var big = Rules(s => s.Set(SettingsSchema.ImpactMomentumPercent, 200, "test"));
@@ -152,9 +152,11 @@ public class ImpactHitsTests
         var still = Decide(Facts(ImpactEvent.Parry, 1.0, attackerBar: 0.3, speed: 0), r);
         var charge = Decide(Facts(ImpactEvent.Parry, 1.0, attackerBar: 0.3, speed: 8), r);
         Assert.True(charge.XRiposte <= still.XRiposte && charge.Riposte.Chance <= still.Riposte.Chance, "the riposte against a charge: " + charge.Riposte.Chance + " vs " + still.Riposte.Chance);
-        // a rider's speed never counts (step 53)
+        // step 53: a rider's speed counts at the RIDER settings (8 m/s: 5 of the 7 between 3 and 10 → x1.21), a couched lance never
         var rider = Facts(ImpactEvent.CleanHit, 0.5, speed: 8);
         rider.AttackerMounted = true;
+        Assert.Equal(1 + 0.3 * 5 / 7.0, Decide(in rider, r).Momentum, 9);
+        rider.AttackerPassive = true;
         Assert.Equal(1.0, Decide(in rider, r).Momentum, 9);
     }
 
@@ -298,7 +300,7 @@ public class ImpactHitsTests
         Assert.Equal(3, ImpactHitMath.ClassOf(Facts(ImpactEvent.CleanHit, 1, type: ImpactDamageType.Blunt, twoHanded: true)));
         Assert.Equal("two-handed", ImpactHitMath.ClassName(3));
         Assert.Equal("blunt", ImpactHitMath.ClassName(2));
-        Assert.Equal(8, ImpactLiveMath.LeverCount);
+        Assert.Equal(9, ImpactLiveMath.LeverCount); // step 53: + Dismount
         Assert.Equal("tired men always flinch (the shrug-off refused)", ImpactLiveMath.LeverName(ImpactLever.ShrugOff));
     }
 
@@ -333,7 +335,9 @@ public class ImpactHitsTests
         Assert.StartsWith("impact momentum (step 52 - every decided kick, bash, block and clean hit by the attacker's speed into the blow", lines[0]);
         Assert.Contains("standing 1 (0.0 m/s, impact x1.00): an outcome 0%, down 0%; on men below half a bar 1: an outcome 0%, down 0%", lines[0]);
         Assert.Contains("sprinting 1 (8.0 m/s, impact x1.60): an outcome 100%, down 100%; on men below half a bar 1: an outcome 100%, down 100%", lines[0]);
-        Assert.EndsWith("riders' blows not counted (step 53) 1", lines[0]);
+        Assert.Contains("|| RIDERS (step 53 - by the horse's speed into the blow;", lines[0]); // step 53: a rider's blow in his own columns
+        Assert.Contains("galloping 1 (8.0 m/s, impact x1.60): an outcome 100%, down 100%", lines[0]);
+        Assert.EndsWith("couched lances (no momentum - the game's own big hit) 0", lines[0]);
         Assert.Contains(lines, l => l.StartsWith("impact live clean hits, cut, by the hit man's bar 100-75% / 75-50% / 50-25% / 25-0% (step 52; LIVE): 1 live (0 / 0 / 1 / 0)"));
         var two = lines.Single(l => l.StartsWith("impact live clean hits, two-handed,"));
         Assert.Contains("knocked down decided 0 / 0 / 0 / 1 = 1, applied 0 / 0 / 0 / 1 = 1", two);

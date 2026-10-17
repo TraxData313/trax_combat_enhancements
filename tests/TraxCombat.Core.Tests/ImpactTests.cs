@@ -110,13 +110,15 @@ public class ImpactTests
             "ImpactStaggerImmunitySeconds", "ImpactKnockdownImmunitySeconds", "ImpactDiminishWindowSeconds", "ImpactDiminishFactor", "ShieldPickupLockSeconds",
             "ImpactOnPlayerPercent", "ImpactRiderDismountPercent", "ImpactTiredNeverShrugsOff",
             "ImpactMomentumEnabled", "ImpactMomentumPercent", "ImpactMomentumWalkMetresPerSecond", "ImpactMomentumSprintMetresPerSecond", // step 52
+            "ImpactMomentumRiderPercent", "ImpactMomentumRiderWalkMetresPerSecond", "ImpactMomentumRiderGallopMetresPerSecond", // step 53
+            "ImpactShowMessages", "ImpactMessagesIncludeYourMen", "ImpactMessageMinSeconds", // step 53
             "ImpactMismatchWeight", "ImpactEvenBandDoublings",
             "ImpactBodyExponent", "ImpactBodyFloorPoints", "ImpactStaggeredBonus", "ImpactDamageWeight", "ImpactRefWeightKg", "ImpactWeightExponent",
             "ImpactRefSwingSpeed", "ImpactSpeedExponent", "ImpactBluntFactor", "ImpactCutFactor", "ImpactPierceFactor", "ImpactKickFactor", "ImpactBashFactor",
             "ImpactSkillMinFactor", "ImpactSkillMaxFactor", "ImpactGuardShieldRight", "ImpactGuardParry", "ImpactGuardShieldWrong", "ImpactGuardNone",
             "ImpactStaggerFrom", "ImpactShieldDropFrom", "ImpactKnockdownFrom",
         };
-        Assert.Equal(64, keys.Length); // step 48's 60 + step 52's momentum 4
+        Assert.Equal(70, keys.Length); // step 48's 60 + step 52's momentum 4 + step 53's rider momentum 3 and on-screen lines 3
         var inGroup = SettingsSchema.InGroup(SettingsSchema.ImpactGroup).Select(p => p.Key).ToList();
         Assert.Equal(keys, inGroup);
         foreach (var k in keys)

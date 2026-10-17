@@ -118,8 +118,13 @@ namespace TraxCombat.Core
         public double Damage, DefenderMaxHealth;
 
         /// <summary>Step 52, MOMENTUM: the attacker's own speed INTO the blow (m/s) - his velocity along the line to the defender at the
-        /// moment of impact (0 or less = standing, or moving away). A rider's is step 53's business (never counted - <see cref="AttackerMounted"/>).</summary>
+        /// moment of impact (0 or less = standing, or moving away). Step 53: a rider's = his HORSE's speed along that line (vanilla's own rider
+        /// velocity - the rider's forward speed along the mount's movement direction), weighed by the rider settings.</summary>
         public double AttackerSpeed;
+
+        /// <summary>Step 53: the attacker's blow is a PASSIVE attack - a couched lance (or a braced polearm): the game's own big hit, so no
+        /// momentum is added to it.</summary>
+        public bool AttackerPassive;
 
         /// <summary>Step 52: the attacker's weapon is two-handed (a great axe, a two-handed sword or a polearm held in both hands) - the clean
         /// hits' summary class.</summary>
@@ -365,6 +370,9 @@ namespace TraxCombat.Core
             MomentumWeight = s.ImpactMomentumPercent / 100.0;
             MomentumWalk = s.ImpactMomentumWalkMetresPerSecond;
             MomentumSprint = s.ImpactMomentumSprintMetresPerSecond;
+            RiderMomentumWeight = s.ImpactMomentumRiderPercent / 100.0;
+            RiderMomentumWalk = s.ImpactMomentumRiderWalkMetresPerSecond;
+            RiderMomentumGallop = s.ImpactMomentumRiderGallopMetresPerSecond;
         }
 
         public static ImpactRules From(TraxSettings s) => new ImpactRules(s);
@@ -441,6 +449,12 @@ namespace TraxCombat.Core
         public double MomentumWalk { get; }
         public double MomentumSprint { get; }
 
+        /// <summary>Step 53, a RIDER's momentum: the impact added at a full gallop (0.3 = +30%) / the horse speed (m/s) below which nothing is
+        /// added / the speed at which all of it is. A couched lance never (<see cref="ImpactFacts.AttackerPassive"/>).</summary>
+        public double RiderMomentumWeight { get; }
+        public double RiderMomentumWalk { get; }
+        public double RiderMomentumGallop { get; }
+
         /// <summary>The model runs (decides and logs): the master switch FIRST, Athletics, the impact switch.</summary>
         public bool Enabled => ModEnabled && AthleticsOn && ImpactOn;
 
@@ -511,7 +525,8 @@ namespace TraxCombat.Core
                    + " for " + F1(DiminishWindow) + " s; against you " + F0(100 * OnPlayer) + "%; a rider knocked off at " + F0(100 * RiderDismount) + "% of a knockdown"
                    + "; tired men always flinch " + OnOff(TiredNeverShrugsOff)
                    + "; momentum (the attacker's run into the blow) " + (MomentumOn && MomentumWeight > 0
-                       ? "+" + F0(100 * MomentumWeight) + "% impact at " + F1(MomentumSprint) + " m/s and faster, none at " + F1(MomentumWalk) + " m/s or slower (riders: step 53)"
+                       ? "+" + F0(100 * MomentumWeight) + "% impact at " + F1(MomentumSprint) + " m/s and faster, none at " + F1(MomentumWalk) + " m/s or slower; a rider's horse +"
+                         + F0(100 * RiderMomentumWeight) + "% at " + F1(RiderMomentumGallop) + " m/s, none at " + F1(RiderMomentumWalk) + " m/s (a couched lance never)"
                        : "OFF");
         }
 
@@ -578,12 +593,37 @@ namespace TraxCombat.Core
         }
 
         /// <summary>Step 52: the impact factor of the attacker's speed into the blow - 1 + weight × <see cref="MomentumShare"/>; 1 while
-        /// momentum is off and for a rider (step 53's). Kicks, bashes and weapon blows alike, blocked or not.</summary>
-        public static double MomentumFactor(in ImpactRules r, double speed, bool attackerMounted)
+        /// momentum is off. Kicks, bashes and weapon blows alike, blocked or not. Step 53: a RIDER's = his horse's speed at the rider weight and
+        /// references (<c>ImpactMomentumRider*</c>) - and 1 for a couched lance (<paramref name="passive"/>: the game's own big hit already).</summary>
+        public static double MomentumFactor(in ImpactRules r, double speed, bool attackerMounted, bool passive = false)
         {
-            if (!r.MomentumOn || attackerMounted || !(r.MomentumWeight > 0)) return 1;
+            if (!r.MomentumOn) return 1;
+            if (attackerMounted)
+            {
+                if (passive || !(r.RiderMomentumWeight > 0)) return 1;
+                return 1 + r.RiderMomentumWeight * MomentumShare(speed, r.RiderMomentumWalk, r.RiderMomentumGallop);
+            }
+            if (!(r.MomentumWeight > 0)) return 1;
             return 1 + r.MomentumWeight * MomentumShare(speed, r.MomentumWalk, r.MomentumSprint);
         }
+
+        /// <summary>Step 53: the same bands for a RIDER's horse - 0 standing, 1 walking (below the rider walk reference - nothing added), 2
+        /// trotting / cantering (some), 3 galloping (at or above the gallop reference - all of it).</summary>
+        public static int RiderSpeedBand(in ImpactRules r, double speed)
+        {
+            if (double.IsNaN(speed) || speed < StandingMetresPerSecond) return 0;
+            if (speed < r.RiderMomentumWalk) return 1;
+            if (speed < r.RiderMomentumGallop) return 2;
+            return 3;
+        }
+
+        public static string RiderSpeedBandName(int band) => band switch
+        {
+            0 => "standing",
+            1 => "walking",
+            2 => "trotting / cantering",
+            _ => "galloping",
+        };
 
         /// <summary>Step 52: the summary's band of the attacker's speed into the blow - 0 standing (below 0.5 m/s), 1 walking (below the walk
         /// reference - no momentum), 2 running (some), 3 sprinting (at or above the sprint reference - all of it).</summary>
@@ -738,7 +778,7 @@ namespace TraxCombat.Core
 
         /// <summary>The blow's impact I (IMPACT §3.3): a kick's factor, a bash = the shield's weight factor × the bash factor, else the swing -
         /// step 52: × the MOMENTUM of the attacker's speed into the blow (<see cref="MomentumFactor"/>, 1 standing).</summary>
-        public static double Impact(in ImpactRules r, in ImpactFacts f) => BlowImpact(in r, in f) * MomentumFactor(in r, f.AttackerSpeed, f.AttackerMounted);
+        public static double Impact(in ImpactRules r, in ImpactFacts f) => BlowImpact(in r, in f) * MomentumFactor(in r, f.AttackerSpeed, f.AttackerMounted, f.AttackerPassive);
 
         /// <summary>The blow's own impact, before the momentum: a kick's factor, a bash = the shield's weight factor × the bash factor, else the swing.</summary>
         public static double BlowImpact(in ImpactRules r, in ImpactFacts f) => f.Event switch
@@ -792,7 +832,7 @@ namespace TraxCombat.Core
             d.BodyA = Body(in r, f.AttackerPoints);
             d.BodyD = Body(in r, f.DefenderPoints);
             d.AttackerSpeed = f.AttackerSpeed;
-            d.Momentum = MomentumFactor(in r, f.AttackerSpeed, f.AttackerMounted);
+            d.Momentum = MomentumFactor(in r, f.AttackerSpeed, f.AttackerMounted, f.AttackerPassive);
             d.Impact = BlowImpact(in r, in f) * d.Momentum;
             d.Guard = Guard(in r, f.Event, f.GuardWeight);
             d.SkillA = SkillFactor(in r, f.AttackerSkill);
@@ -1043,7 +1083,8 @@ namespace TraxCombat.Core
             string s = what + " (" + mode + "): " + defender + " bar " + (100 * d.Bar).ToString("0", c) + "% (T " + d.T.ToString("0.00", c) + ")"
                        + "; points " + f.AttackerPoints.ToString("0", c) + " vs " + f.DefenderPoints.ToString("0", c) + " (bodies " + d.BodyA.ToString("0", c) + " / " + d.BodyD.ToString("0", c) + ")"
                        + "; impact " + d.Impact.ToString("0.00", c) + BlowText(in f)
-                       + (d.Momentum > 1.0001 ? " incl. momentum x" + d.Momentum.ToString("0.00", c) + " (" + d.AttackerSpeed.ToString("0.0", c) + " m/s into the blow)" : string.Empty)
+                       + (d.Momentum > 1.0001 ? " incl. momentum x" + d.Momentum.ToString("0.00", c) + " (" + (f.AttackerMounted ? "his horse at " : string.Empty) + d.AttackerSpeed.ToString("0.0", c) + " m/s into the blow)"
+                          : f.AttackerMounted && f.AttackerPassive ? " (a couched lance - no momentum)" : string.Empty)
                        + " vs guard " + d.Guard.ToString("0.00", c) + " (" + GuardText(d.Event, f.GuardWeight) + ")"
                        + "; skill " + f.AttackerSkill.ToString("0", c) + " vs " + f.DefenderSkill.ToString("0", c) + " (x" + d.SkillA.ToString("0.00", c) + " / x" + d.SkillD.ToString("0.00", c) + ")"
                        + " → R " + d.R.ToString("0.00", c) + " (log2 " + d.Log2R.ToString("+0.00;-0.00", c) + ", " + d.MismatchPart.ToString("+0.00;-0.00", c) + " beyond the band)"

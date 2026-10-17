@@ -741,7 +741,7 @@ namespace TraxCombat.Core
 
         public static readonly ParamDef ImpactMomentumEnabled = Bool("ImpactMomentumEnabled", ImpactGroup,
             "Momentum: a running blow hits harder",
-            "Step 52 (Anton: a fresh shock unit charging a tired line must be devastating): the attacker's own speed into the blow - his run or sprint towards the man he strikes - adds to the blow's impact, for kicks, bashes and weapon blows, blocked or not. Riders: step 53. Off = only the weapon and the swing count.");
+            "Step 52 (Anton: a fresh shock unit charging a tired line must be devastating): the attacker's own speed into the blow - his run or sprint towards the man he strikes - adds to the blow's impact, for kicks, bashes and weapon blows, blocked or not. Riders: their horse's speed, at the rider settings below. Off = only the weapon and the swing count.");
 
         public static readonly ParamDef ImpactMomentumPercent = Int("ImpactMomentumPercent", 0, 200, ImpactGroup,
             "Momentum: impact added at a full sprint (+%)",
@@ -754,6 +754,30 @@ namespace TraxCombat.Core
         public static readonly ParamDef ImpactMomentumSprintMetresPerSecond = Float("ImpactMomentumSprintMetresPerSecond", 0.5, 20, ImpactGroup,
             "Momentum: full bonus from (m/s)",
             "From this speed into the blow (metres a second) the whole momentum bonus is added - a fresh man's sprint (step 33) runs about 7-9 m/s, a run 4-5 m/s.");
+
+        public static readonly ParamDef ImpactMomentumRiderPercent = Int("ImpactMomentumRiderPercent", 0, 200, ImpactGroup,
+            "Momentum: a rider's blow at a gallop (+%)",
+            "Step 53: a rider's swing or thrust carries his HORSE's speed into the blow - this much more impact at a full gallop (30: x1.3, half a man's sprint, so a cavalry charge into a tired line throws men down without felling everyone); a couched lance never (it is the game's own big hit already). 0 = riders add nothing.");
+
+        public static readonly ParamDef ImpactMomentumRiderWalkMetresPerSecond = Float("ImpactMomentumRiderWalkMetresPerSecond", 0, 20, ImpactGroup,
+            "Momentum: a rider adds nothing up to (m/s)",
+            "Up to this horse speed into the blow (metres a second) a rider adds no momentum - a horse at a walk; a trot is about 4-5 m/s.");
+
+        public static readonly ParamDef ImpactMomentumRiderGallopMetresPerSecond = Float("ImpactMomentumRiderGallopMetresPerSecond", 0.5, 30, ImpactGroup,
+            "Momentum: a rider's full bonus from (m/s)",
+            "From this horse speed into the blow (metres a second) a rider adds the whole rider bonus - a good horse gallops at about 9-11 m/s.");
+
+        public static readonly ParamDef ImpactShowMessages = Bool("ImpactShowMessages", ImpactGroup,
+            "On-screen lines: knocked down, shield lost",
+            "Step 53: a short line in the game's message feed when YOU are knocked down, knocked off your horse, lose your shield or reel from a riposte - and when you knock someone down, off his horse, break his guard or knock his shield away. At most one line every few seconds (below), several things at once merged into one. Never in shadow mode (nothing really happens there).");
+
+        public static readonly ParamDef ImpactMessagesIncludeYourMen = Bool("ImpactMessagesIncludeYourMen", ImpactGroup,
+            "On-screen lines: your side's heroes too",
+            "Off: only what happens to you and what you do. On: also when a man of your side knocks an enemy HERO down or off his horse, or when a hero of your side is knocked down or off his horse.");
+
+        public static readonly ParamDef ImpactMessageMinSeconds = Float("ImpactMessageMinSeconds", 0, 10, ImpactGroup,
+            "On-screen lines: at most one every (s)",
+            "The shortest time between two of these lines; what happens meanwhile is merged into the next one (\"You knock Aldric down; your shield is knocked away\"). 0 = a line for every tick that has something.");
 
         public static readonly ParamDef ImpactMismatchWeight = Float("ImpactMismatchWeight", 0, 2, ImpactGroup,
             "Mismatch weight (pressure per doubling)",
@@ -1188,6 +1212,8 @@ namespace TraxCombat.Core
             ImpactStaggerImmunitySeconds, ImpactKnockdownImmunitySeconds, ImpactDiminishWindowSeconds, ImpactDiminishFactor, ShieldPickupLockSeconds,
             ImpactOnPlayerPercent, ImpactRiderDismountPercent, ImpactTiredNeverShrugsOff,
             ImpactMomentumEnabled, ImpactMomentumPercent, ImpactMomentumWalkMetresPerSecond, ImpactMomentumSprintMetresPerSecond,
+            ImpactMomentumRiderPercent, ImpactMomentumRiderWalkMetresPerSecond, ImpactMomentumRiderGallopMetresPerSecond,
+            ImpactShowMessages, ImpactMessagesIncludeYourMen, ImpactMessageMinSeconds,
             ImpactMismatchWeight, ImpactEvenBandDoublings, ImpactBodyExponent, ImpactBodyFloorPoints, ImpactStaggeredBonus, ImpactDamageWeight,
             ImpactRefWeightKg, ImpactWeightExponent, ImpactRefSwingSpeed, ImpactSpeedExponent, ImpactBluntFactor, ImpactCutFactor, ImpactPierceFactor,
             ImpactKickFactor, ImpactBashFactor, ImpactSkillMinFactor, ImpactSkillMaxFactor,

@@ -33,12 +33,17 @@ namespace TraxCombat.Core
 
         /// <summary>Step 52: a tired man's shrug-off refused (the damage decorator's <c>DecideAgentShrugOffBlow</c> - main thread).</summary>
         ShrugOff,
+
+        /// <summary>Step 53: a rider KNOCKED OFF his horse - the damage decorator's <c>DecideAgentDismountedByBlow</c> answer for a landed blow
+        /// and, for a block, a blow of our own with <c>CanDismount</c> from the tick.</summary>
+        Dismount,
     }
 
     /// <summary>Step 50: why a live outcome the dice gave was NOT carried out (the summary's "not applied").</summary>
     public enum ImpactNotApplied : byte
     {
-        /// <summary>He rides a horse - knocked off / anything on a rider is step 53's; nothing applied, his state untouched.</summary>
+        /// <summary>He rides a horse - steps 50-52 applied nothing to a rider; step 53: only what a horse cannot carry (a slowed reel / get-up
+        /// of a man on foot) - his knockdown is a dismount, his stagger is refused by the model.</summary>
         Rider,
 
         /// <summary>A knockdown decided outside the decorator's KnockDown seam (another mod's damage model on top of ours) - too late to flag.</summary>
@@ -65,6 +70,9 @@ namespace TraxCombat.Core
 
         /// <summary>Step 51: the engine did not take it (SetActionChannel false both with and over its priority / RegisterBlow refused).</summary>
         EngineRefused,
+
+        /// <summary>Step 53: a rider to be knocked off had no horse under him any more when the tick came.</summary>
+        NoHorse,
     }
 
     /// <summary>Step 50: what a live watch measures.</summary>
@@ -105,8 +113,8 @@ namespace TraxCombat.Core
     /// </summary>
     public static class ImpactLiveMath
     {
-        public const int LeverCount = 8;
-        public const int NotAppliedCount = 9;
+        public const int LeverCount = 9;
+        public const int NotAppliedCount = 10;
 
         /// <summary>Live watches (reels, falls) at once - 64, the spike's pool.</summary>
         public const int MaxWatches = SpikeMath.MaxWatches;
@@ -165,12 +173,14 @@ namespace TraxCombat.Core
             ImpactLever.ForcedStagger => "the forced stagger (blocks, the riposte)",
             ImpactLever.OwnBlow => "the blocker's knockdown (our own blow)",
             ImpactLever.ShrugOff => "tired men always flinch (the shrug-off refused)",
+            ImpactLever.Dismount => "a rider knocked off his horse",
             _ => "the reaction watch",
         };
 
         public static string NotAppliedName(ImpactNotApplied n) => n switch
         {
-            ImpactNotApplied.Rider => "a rider (step 53)",
+            ImpactNotApplied.Rider => "a rider (nothing of it on a horse)",
+            ImpactNotApplied.NoHorse => "no horse under him by the tick",
             ImpactNotApplied.OutsideSeam => "decided outside the decorator's seam",
             ImpactNotApplied.LeverOff => "its lever disabled",
             ImpactNotApplied.PoolFull => "the pool full",

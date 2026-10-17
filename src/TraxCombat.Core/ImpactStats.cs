@@ -185,7 +185,7 @@ namespace TraxCombat.Core
         {
             var lines = new List<string>();
             int total = Decisions;
-            // "did" per event once its family applied (step 50: kicks / bashes); the riders' line stays "would" (step 53)
+            // "did" per event once its family applied (step 50: kicks / bashes); the riders' own lines are step 53's ImpactRiderLiveStats
             string verb = "would";
             if (!EverOn && total == 0)
             {
@@ -230,7 +230,7 @@ namespace TraxCombat.Core
                       + ", stagger immunity (reeling or just after) " + I(Refused[(int)ImpactRefusal.StaggerImmune]) + ", no shield in hand " + I(Refused[(int)ImpactRefusal.NoShield])
                       + ", a rider (never staggered) " + I(Refused[(int)ImpactRefusal.Rider]) + ", replaced by a knockdown / stagger " + I(Refused[(int)ImpactRefusal.Replaced])
                       + "; diminished: " + I(Halved) + " decisions with a recent outcome (" + (Halved > 0 ? F1((double)Halvings / Halved) : "0") + " halvings each on average)"
-                      + "; riders " + verb + " be knocked off " + I(Dismounts));
+                      + "; riders knocked off their horse by the dice " + I(Dismounts) + " (step 53: applied / seen in the 'impact riders' line)");
             lines.Add("impact lengths asked: stagger " + Seconds(in StaggerSeconds) + ", a kicked man's reel " + Times(in ReelFactor) + ", get-up " + Times(in GetUpFactor)
                       + ", the blocker's stun " + Times(in StunFactor) + ", a riposted attacker's recoil " + Seconds(in RiposteSeconds)
                       + " (" + (ImpactMath.EffectsBuilt == ImpactFamily.None ? "asked only - no effect built yet; steps 50-52 measure what the engine plays" : "the kicks' reel and get-up measured in the 'impact live lengths' line; blocks and hits asked only until steps 51-52") + ")");

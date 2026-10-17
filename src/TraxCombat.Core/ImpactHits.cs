@@ -150,7 +150,17 @@ namespace TraxCombat.Core
         public readonly int[] TiredBlows = new int[V];
         public readonly int[] TiredAny = new int[V];
         public readonly int[] TiredDown = new int[V];
-        public int RiderBlows;
+        /// <summary>Step 53: a RIDER's blows by his horse's speed band (<see cref="ImpactMath.RiderSpeedBand"/>) - the same columns; couched
+        /// lances counted apart (no momentum - the game's own big hit).</summary>
+        public readonly int[] RiderBlowsBy = new int[V];
+        public readonly int[] RiderAny = new int[V];
+        public readonly int[] RiderDown = new int[V];
+        public readonly double[] RiderFactorSum = new double[V];
+        public readonly double[] RiderSpeedSum = new double[V];
+        public int CouchedLances, CouchedAny;
+
+        /// <summary>Every rider's decided blow (couched lances included).</summary>
+        public int RiderBlows => Total(RiderBlowsBy) + CouchedLances;
 
         public int LiveDecisions
         {
@@ -226,17 +236,28 @@ namespace TraxCombat.Core
             else GetUpControl.Add(measured);
         }
 
-        /// <summary>MOMENTUM: one decided event (any family, live or shadow) by the attacker's speed band. A mounted attacker is counted apart
-        /// (his momentum is step 53's).</summary>
-        public void NoteMomentum(in ImpactDecision d, int speedBand, bool attackerMounted)
+        /// <summary>MOMENTUM: one decided event (any family, live or shadow) by the attacker's speed band. Step 53: a mounted attacker in his
+        /// own columns by his HORSE's band (<paramref name="speedBand"/> = <see cref="ImpactMath.RiderSpeedBand"/> then); a couched lance
+        /// (<paramref name="passive"/>) apart.</summary>
+        public void NoteMomentum(in ImpactDecision d, int speedBand, bool attackerMounted, bool passive = false)
         {
-            if (attackerMounted)
-            {
-                RiderBlows++;
-                return;
-            }
             int v = Math.Max(0, Math.Min(V - 1, speedBand));
             bool any = d.Knockdown.Happens || d.ShieldDrop.Happens || d.Stagger.Happens;
+            if (attackerMounted)
+            {
+                if (passive)
+                {
+                    CouchedLances++;
+                    if (any) CouchedAny++;
+                    return;
+                }
+                RiderBlowsBy[v]++;
+                RiderFactorSum[v] += double.IsNaN(d.Momentum) ? 1 : d.Momentum;
+                RiderSpeedSum[v] += double.IsNaN(d.AttackerSpeed) ? 0 : Math.Max(0, d.AttackerSpeed);
+                if (any) RiderAny[v]++;
+                if (d.Knockdown.Happens) RiderDown[v]++;
+                return;
+            }
             Blows[v]++;
             FactorSum[v] += double.IsNaN(d.Momentum) ? 1 : d.Momentum;
             SpeedSum[v] += double.IsNaN(d.AttackerSpeed) ? 0 : Math.Max(0, d.AttackerSpeed);
@@ -336,7 +357,16 @@ namespace TraxCombat.Core
                 if (TiredBlows[v] > 0)
                     s.Append("; on men below half a bar ").Append(I(TiredBlows[v])).Append(": an outcome ").Append(Pct(TiredAny[v], TiredBlows[v])).Append(", down ").Append(Pct(TiredDown[v], TiredBlows[v]));
             }
-            s.Append(" | riders' blows not counted (step 53) ").Append(I(RiderBlows));
+            s.Append(" || RIDERS (step 53 - by the horse's speed into the blow; an outcome on a rider's victim, down = knocked down / off)");
+            for (int v = 0; v < V; v++)
+            {
+                s.Append(v == 0 ? ": " : " | ").Append(ImpactMath.RiderSpeedBandName(v)).Append(' ').Append(I(RiderBlowsBy[v]));
+                if (RiderBlowsBy[v] == 0) continue;
+                s.Append(" (").Append(F1(RiderSpeedSum[v] / RiderBlowsBy[v])).Append(" m/s, impact x").Append(F2(RiderFactorSum[v] / RiderBlowsBy[v])).Append("): an outcome ")
+                    .Append(Pct(RiderAny[v], RiderBlowsBy[v])).Append(", down ").Append(Pct(RiderDown[v], RiderBlowsBy[v]));
+            }
+            s.Append(" | couched lances (no momentum - the game's own big hit) ").Append(I(CouchedLances));
+            if (CouchedLances > 0) s.Append(": an outcome ").Append(Pct(CouchedAny, CouchedLances));
             return s.ToString();
         }
 
