@@ -1007,6 +1007,70 @@ Anton's own `BannerlordGameKeys.xml` and `trax_combat.log`. Full notes and the b
    formation is not "a new order" (his slot is compared too).
 4. **"In melee"**: `Mission.GetNearbyEnemyAgentCount(Team, Vec2, radius)` - native, no allocation, the proximity map.
 
+## O. A shield wall that holds its slots - who writes the flag, and when (step 41, verified in the v1.4.8 source 2026-10-17)
+
+Source: `%TEMP%\trax_decomp\` (as §M) - `TaleWorlds.MountAndBlade\Agent.cs`, `HumanAIComponent.cs`, `Mission.cs`,
+`Formation.cs`, `OrderController.cs`, `ArrangementOrder.cs`; `TaleWorlds.Core\Timer.cs`. RBM read for its idea only (public
+source, `RealisticBattleAiModule/AiModule/Frontline/FormationMovement.cs`, class `OverrideParallelFormationMovement` - a Harmony
+postfix). Full notes and the build: AI_NOTES "Step 41".
+
+1. **The flag.** `HumanAIComponent.ParallelUpdateFormationMovement()` (~line 666), for an AI man in a formation that is not a
+   column, whose order is not Stop / Retreat and who is not retreating: if the formation's
+   `CachedFormationIntegrityData.DeviationOfPositionsExcludeFarAgents` > 3 × `AverageMaxUnlimitedSpeedExcludeFarAgents` it writes
+   `Agent.SetFormationIntegrityData(zeros, …, false)`; else `ShouldCatchUpWithFormation` = distance to his slot < 6 × that speed,
+   and `SetFormationIntegrityData(slot or zero, Formation.CurrentDirection, the integrity data…, keep)` with **keep =
+   catch-up && `GetOffhandWieldedItemIndex() == ExtraWeaponSlot` && the formation's ranged + horse-archer ratio ≥ 0.5** - a
+   shield never sits in the 5th slot, so for an infantry shield wall keep is **always false**: the native AI may walk each man
+   at the enemy he targets (Anton's 2-3 m step out). The slot = `Formation.GetCurrentGlobalPositionOfUnit(agent,
+   blendWithOrderDirection: true)` (the arrangement's local slot, interval-adjusted, on `CurrentDirection` = 0.8 × the
+   estimated + 0.2 × the ordered facing). `Agent.SetFormationIntegrityData(Vec2 position, Vec2 direction, Vec2 avgVelocity,
+   float avgMaxSpeed, float deviation, bool shouldKeepWithFormationInsteadOfMovingToAgent)` (Agent.cs ~2335) is PUBLIC and
+   goes straight to `MBAPI.IMBAgent` - no getter. `ShouldCatchUpWithFormation` (private setter) mirrors into native through
+   `Agent.SetShouldCatchUpWithFormation` only when it changes, and gates only the SPEED cap (`GetDesiredSpeedInFormation`) - not
+   needed for the hold.
+2. **Shield wall = a MOVE order.** `OrderController`'s arrangement orders (shield wall, line, loose, circle, square) call
+   `TryCancelStopOrder`, which replaces a Stop with `MovementOrderMove(formation.CreateNewOrderWorldPosition(…))`; deployment
+   leaves formations on Stop. So Anton's waiting shield wall runs vanilla's write above. Under a real Stop vanilla writes
+   nothing at all - whatever was written last stays.
+3. **WHO calls it, and HOW OFTEN.** Two paths, both found by grep over the whole decompile:
+   - **The timer** - `Agent.TickParallel(dt)` (~4723, run for every agent by `Mission.AgentTickMT` inside the parallel agent
+     job): `if (Mission.AllowAiTicking && IsAIControlled && _cachedAndFormationValuesUpdateTimer.Check(Mission.CurrentTime) &&
+     Formation != null) { _cachedAndFormationValuesUpdateTimer.AdjustStartTime(-5f);
+     ParallelUpdateCachedAndFormationValuesForAIAgent(false); }` → `HumanAIComponent.ParallelUpdateFormationMovement()`. The
+     timer is a private readonly `TaleWorlds.Core.Timer` made at spawn with a period of **0.45 + 0.1 × random s** (Agent.cs
+     ~1592) - **per man, staggered, about twice a second**, NOT every frame. The −5 s makes `Agent.TickAsAI()` (~5516, from
+     `Agent.Tick` after the parallel job) fire the same frame too (`ApplyFormationValuesPostUpdate`: the detachment tick,
+     `UpdateFormationOrders`, `SetFormationInfo` - not the flag). `Timer.Check` with auto-reset moves `StartTime` only when it
+     fires, and the second Check re-aligns it, so **`Timer.StartTime` (public) changes exactly on the frames vanilla's update
+     ran** - checked in the smoke on the real Timer class (6 moves in 3 s, none between).
+   - **Forced** - `Agent.ForceUpdateCachedAndFormationValues` (same method, at once) from `OrderController.AfterSetOrder` (every
+     order given through an order controller, every man of the formation), `Formation` (mass transfers, a lost mount, a
+     dispersed formation), the deployment handlers, the banner bearer logic, `Agent.Formation`'s setter. These do not move the
+     timer: our staggered look catches them within 0.25 s.
+4. **WHEN in the frame.** `Mission.OnTick`: … `OnMissionTick` of every behaviour (our logic's tick) → `TickAgentsAndTeamsAsync`
+   (native job → `TickAgentsAndTeamsImp`: `TWParallel.For` over `TickParallel`, then every `Agent.Tick`, then the teams) - so
+   **vanilla's write lands AFTER our OnMissionTick, at the end of the frame**. The next frame's `Mission.OnPreTick` first
+   `WaitTickCompletion()` (the job is done), then calls every behaviour's **`OnPreMissionTick`** - the first managed point after
+   vanilla's write, with no agent job running. The native read of the flag (the agent AI's movement decision) is inside the
+   engine and cannot be seen; wherever it is, vanilla's FALSE can live at most **from its write to our next OnPreMissionTick -
+   one frame - once per ~0.5 s per man** (~3% of frames at 60 fps); the other ~97% of the time the native AI reads our TRUE.
+   With a write from OnMissionTick instead it would also be one frame (the job starts after it); OnPreMissionTick is earlier
+   in the frame, so it is the choice.
+5. **Our write can win - cheaply.** The private timer is read ONCE per man by reflection (`Agent._cachedAndFormationValuesUpdateTimer`,
+   a reference - nothing boxed), then its public `StartTime` every frame for the held men only (a field read): a change = vanilla
+   just wrote → we rewrite now. That is ~2 writes a man a second (vanilla's own rate) + the 0.25 s look's 4 - measured offline:
+   1000 held men, 0.016 ms a pre-tick, 0 bytes. Without the timer (a game update renaming the field) the fallback rewrites every
+   0.1 s (the window grows to ≤ 0.1 s per ~0.5 s) and the summary says so. **No Harmony needed.**
+6. **Other writers.** RBM writes the same flag from a postfix on the same method (declared incompatible with this mod
+   already); RTS Camera / Command System hook the formation movement path too (RBM's own comment: two mods writing formation
+   state on the worker job race the native update) - we write only on the main thread with no job running, so we race nobody;
+   if another mod writes after vanilla on the worker job, its value stands until our next pre-tick, then ours (the last writer
+   wins each frame). Step 16's backpedal and step 23's brace act on the AI's INPUT (`OnAIInputSet` - attack / move bits), a
+   different channel: a held man still has his attacks paused, his guard raised and may backpedal; the native AI then pulls
+   him back toward his slot.
+7. **The behaviour weights are untouched** (`HumanAIComponent.SetBehaviorValueSet(DefensiveArrangementMove)`: Melee 4 at 0 m →
+   0 at 5 m, GoToPos 3 → 5 at 8 m) - RBM does not change them either.
+
 ---
 
 ## UNVERIFIED — to check in the named step
@@ -1036,3 +1100,4 @@ Anton's own `BannerlordGameKeys.xml` and `trax_combat.log`. Full notes and the b
 | 21 | The native AI reads `AiRandomizedDefendDirectionChance` once per defence decision and a raised chance makes a tired AI guess his block direction wrong (more wrong-side shield blocks, more blows landing) (§M; PLAYTEST D8: the summary's "tired block direction" guard line by f) | 30 |
 | 22 | The engine honours `MaxSpeedMultiplier` ABOVE ~1.0 (no native cap) and the run animation keeps up without sliding (§N; PLAYTEST D10: the summary's `sprint speed check` engine ÷ asked ≈ 1) | 33 |
 | 23 | An AI formation that sprints on a move / advance order really moves faster once its speed cache refreshes (~2 s), and a charge's last stretch runs free (§N; PLAYTEST D10: `sprint - AI` seconds and the speed check) | 33 |
+| 24 | The native AI honours `shouldKeepWithFormationInsteadOfMovingToAgent` for an infantry shield wall's men (it was only ever set for shield men of ranged formations) and a one-frame vanilla FALSE every ~0.5 s does not undo it - the men stay in their slots and still fight what reaches them (§O; PLAYTEST D11: the summary's `wall slots ON` vs `OFF`, "more than 1 m ahead" in contact) | 41 |

@@ -5,7 +5,7 @@ order, about **3 hours 15** (A 10 min, B 15, C 25, D 60, E 20, F 55, G 10; the o
 time after step 16? D4 alone (the A/B of the new guard and backpedal, 20 min) answers the newest
 questions; after step 21, D5 + D6 (the shield wall and the archers, 25 min); after step 23, D7 (lines brace by
 their orders, 15 min - since step 24 with the "ready 34/50" count on ALT and in the orders menu); after step 28, D8
-(a tournament: the opponent fights on to ~20%, 10 min; after step 29 its step 4 - block your way back from empty; after step 30 its step 5 - the tired opponent guesses his blocks); after step 32, D9 (the swing stack: save swings up and burst, the kick refused at 0, 10 min); after step 33, D10 (the sprint: Left Ctrl, a charge order, 15 min; step 35 - a tap, the tired floor).** Each part says what to do, what you
+(a tournament: the opponent fights on to ~20%, 10 min; after step 29 its step 4 - block your way back from empty; after step 30 its step 5 - the tired opponent guesses his blocks); after step 32, D9 (the swing stack: save swings up and burst, the kick refused at 0, 10 min); after step 33, D10 (the sprint: Left Ctrl, a charge order, 15 min; step 35 - a tap, the tired floor); after step 41, D11 (a shield wall that holds its slots, ON then OFF, 10 min).** Each part says what to do, what you
 should see, what counts as broken, and the log lines that prove it. The full line reference —
 every summary block and what proves what — is the **appendix** at the end.
 
@@ -23,7 +23,7 @@ note the time (Advanced → *Log size limit (MB)* 32 makes it rarer).
 beside `config.json`. Every line is `2026.09.30 20:15:02.117 [tag] message`; a verbose line has a
 `~` before its tag: `2026.09.30 20:15:02.201 ~[damage] melee on a person: …`. Tags: `[load]`
 `[compat]` `[config]` `[mcm]` `[mission]` `[summary]` `[damage]` `[athletics]` `[speed]` `[rate]`
-`[stepback]` `[brace]` `[sprint]` `[hud]` `[error]` `[log]` — search one to follow an area. Every battle ends with a
+`[stepback]` `[brace]` `[sprint]` `[wall]` `[hud]` `[error]` `[log]` — search one to follow an area. Every battle ends with a
 `[summary]` block; Claude reads those first.
 
 **Any time, anywhere — broken**: an `[error]` line (the game also shows a red line *"Trax Combat
@@ -826,6 +826,37 @@ charge` (the men were not read in that formation); AI men sprinting on a hold or
 on the charge after several moves (`reserve kept` counted on the charge, or `sprints - charge 0 men`), a move sprinting
 more than 20% of the store (or below the 80% reserve), an advance below half, or `reserve kept 0` after many back-to-back moves; `[error] … sprint.` lines.
 
+**D11. The shield wall holds its slots (step 41, ~10 min).** Anton's report (2026-10-17): a fresh shield wall waiting for
+the enemy - "men step 2-3 m forward out of the wall to swing at an enemy, then walk back to their slot ... every man does
+this, so the wall bulges and breaks". The mod now tells every AI man of a shield wall / square / circle to keep his slot
+(the engine's own "keep with the formation" flag, which vanilla only ever sets for shield men of ARCHER formations).
+1. **Your test, ON.** Custom battle, infantry against infantry (40 v 40 is plenty, shields on your side, nobody tired).
+   Put your infantry in a **shield wall** (F2 → shield wall) on the spot and let the enemy come to you. Watch the front rank
+   from the side or above as the enemy hits it. **You should SEE**: the wall stays a straight wall; the front rank swings
+   at what reaches it, from its place; nobody walks 2-3 m out and back; the line does not bulge where the fighting is.
+2. **The same, OFF, in the same battle.** Escape → MCM → *Battle pace (AI)* → *Shield walls hold their slots* off → Done
+   (the log notes the time). Watch the same wall for a minute: **you should see the old behaviour come back** - men
+   stepping out at their enemies and walking back. Switch it on again and watch them settle back into their slots. (Or
+   fight two battles, one each way - the summary splits the samples either way.)
+3. **Square and circle** (optional): the same with F2 → square / circle - they hold too.
+4. **A charge breaks it on purpose**: F1 → F3 on the shield wall - the men run at the enemy as before (a charge is never held).
+5. **Things to note**: a man who ends up far behind the wall (pushed, or late) should run to rejoin; the wall should still
+   turn and follow a move order (F1 → F1) as a wall; you and your bodyguard on foot are never held.
+- **The lines**: `[wall] mission start: ON (ShieldWallHoldsSlots) - every AI man on foot in a shield wall, square or circle
+  keeps his slot instead of walking at the enemy he fights …`; `[wall] first man held in his slot this mission: <name> at
+  … s - his formation in a shield wall under the order move to a position; his slot (…), he stands … m from it (… m ahead
+  along the facing …); the formation's speed … m/s …- "keep with the formation instead of moving to the agent" written TRUE
+  (vanilla's update timer read: he is rewritten right after each of vanilla's own updates)`; the switch: `[wall]
+  ShieldWallHoldsSlots switched OFF mid-mission at … s: N men given vanilla's own value back at once …` and `… switched ON
+  mid-mission at …`. The summary (L6h): **compare `wall slots ON` with `wall slots OFF (vanilla)`** - the share "more than
+  1 m ahead of his slot" and "more than 2 m", above all **in contact** (an enemy within 5 m): ON should be far lower.
+- **Tune live**: *Shield walls hold their slots* is the only setting (on / off).
+
+**Broken — tell Claude** (D11): the wall still bulges with the switch on and `wall slots ON` ≈ `OFF` in contact (the
+engine ignores the flag for infantry - another lever is needed); the front rank no longer swings at men right in front of
+it (held too hard); `men whose update timer could not be read` above 0, or `[wall] vanilla's update timer … cannot be read`
+(a game update - the fallback runs); men in a LINE formation held (they never should be); `[error] … wall.` lines.
+
 ---
 
 ## E. Your Athletics bar, the orders-menu strip and the ALT markers (20 min)
@@ -1510,6 +1541,27 @@ header names the technique: `==== scene …, mod ON, AI holds: Input (the AI's o
   TopSpeedReachDuration (2.3-2.8 s expected) against ours; the floor counts say how often a tired store was held up. The HUD block (L7)
   adds `hud: sprint bar - sprints shown N, … s on screen sprinting, … s below the start mark`. The Athletics `run speed
   check` lines leave sprinting samples out (they would read as "above the curve").
+
+### L6h. The shield wall holds its slots (step 41)
+
+- Mission start: `[wall] mission start: ON (ShieldWallHoldsSlots) - … - read live; written right after vanilla's own update of
+  each man (his ~0.5 s timer) and at a look every 0.25 s; …` (off: `OFF (ShieldWallHoldsSlots) - vanilla: …` or
+  `OFF (ModEnabled)`). The switch mid-battle: `[wall] ShieldWallHoldsSlots switched OFF mid-mission at … s: N men given
+  vanilla's own value back at once …` / `… switched ON mid-mission at … s: …` (the master switch: `the whole mod (ModEnabled)`).
+- The first man held in full (`[wall] first man held in his slot this mission: …`). Only if a game update renamed the timer:
+  `[wall] vanilla's update timer (Agent._cachedAndFormationValuesUpdateTimer) cannot be read on … - … rewritten every 0.10 s
+  instead (tell Claude)`. Verbose (bucket `wall`): `… let go at … s: a charge order - vanilla's own value given back`.
+- Summary - 5 lines (numbers made up):
+  ```
+  shield wall holds its slots (step 41): ON (ShieldWallHoldsSlots) - every AI man on foot in a shield wall, square or circle keeps his slot … - switched 2 time(s) during this battle (the ON / OFF lines below split the samples by it)
+  wall: 80 men looked at, 38 held in their slots at some point; looks - held 9000, left to vanilla: switched off 2400, you or a man you drive 300, mounted 0, another arrangement 6000, a charge order 900, far from his slot and behind the line 12
+  wall writes: 27000 "keep your slot" writes - right after vanilla's own update 9100, by the 0.25 s look 17900, by the fallback 0; vanilla's own updates seen on held men 9100 (one every 0.50 s per man - the game's timer is 0.45-0.55 s), men whose update timer could not be read 0 (should be 0 - else the fallback); released to vanilla's own value 80 (switched off 38, a charge order 40, far from his slot and behind the line 2); held men who fell or left the field 9, still held when the battle ended 0; errors 0; cost avg 0.004 ms a tick, max 0.05 ms
+  wall slots ON: 4500 samples of AI men in a holding shield wall / square / circle: more than 1 m ahead of his slot 2.0%, more than 2 m 0.5%, mean ahead 0.15 m (behind his slot counts 0), the farthest 2.6 m; in contact (an enemy within 5 m) 900 samples: more than 1 m ahead 4.0%, more than 2 m 1.0%, mean ahead 0.25 m, the farthest 2.6 m
+  wall slots OFF (vanilla): 1200 samples …: more than 1 m ahead of his slot 15.0%, more than 2 m 8.0%, … in contact … 400 samples: more than 1 m ahead 40.0%, more than 2 m 22.0% … - compare with the ON line: the hold works when ON's "more than 1 m ahead" (in contact above all) is well below OFF's
+  ```
+  Proves: the hold reaches the men (`held` looks, writes `right after vanilla's own update` ≈ `vanilla's own updates seen`,
+  one every ~0.5 s - the timing of RESEARCH §O working in game), and that it WORKS: `in contact` "more than 1 m ahead" ON
+  well below OFF. The left-to-vanilla reasons show who was not held and why (a line formation = "another arrangement").
 
 ### L7. The HUD — your bar, the recovery bar, the orders strip and the ALT markers
 

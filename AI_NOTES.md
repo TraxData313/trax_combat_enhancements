@@ -3676,3 +3676,88 @@ steps (`SprintByOrderThroughTheLogic` rewritten: move from full 1 s down to 80%,
 charge sprints the 4 s (80%) left, an advance from full 2.5 s, the move's reserve live at 40 (from ~50% a 0.5 s move),
 the master switch, the summary; step 33's smoke: an advance after a short charge sprints down to the 50% reserve;
 `SprintDefaults` sets the keeps 0 / 50 / 80).
+
+## Step 41 — the shield wall holds its slots (DONE 2026-10-17; the research below was written before coding)
+
+**Anton (2026-10-17, a playtest, a small fresh battle, nobody tired):** he ordered a formation into SHIELD WALL and let it
+wait for the enemy. Men step 2-3 m forward out of the wall to swing at an enemy, then walk back to their slot; every man does
+it, so the wall bulges and breaks. He wants them to keep their slot, "the way Realistic Battle Mod does it". DESIGN §2 "The
+shield wall holds its slots", RESEARCH §O (the whole timing finding, with file + line).
+
+**Verified in the v1.4.8 source (`%TEMP%\trax_decomp\`; RESEARCH §O)**
+- Vanilla's `HumanAIComponent.ParallelUpdateFormationMovement()` writes `Agent.SetFormationIntegrityData(slot, facing,
+  integrity…, keep)` with keep = catch-up && a 5th-slot item && a ≥ 50% ranged formation: for an infantry shield wall ALWAYS
+  false - the native AI walks each man at the enemy he targets. The setter is public and native; no getter.
+- **Timing - the write CAN win.** Vanilla runs it (a) on each AI man's own private `_cachedAndFormationValuesUpdateTimer`
+  (0.45-0.55 s, staggered, made at spawn) from `Agent.TickParallel` inside the agent job, which `Mission.OnTick` starts AFTER
+  every behaviour's `OnMissionTick`; and (b) at once on every order through an order controller (`AfterSetOrder` →
+  `ForceUpdateCachedAndFormationValues`) and a few formation events. The next frame's `Mission.OnPreTick` waits for the job, then
+  calls `OnPreMissionTick` - our write point. The timer's public `StartTime` moves exactly on the frames vanilla's update ran
+  (the smoke proves it on the real Timer class), so we rewrite each held man in the very next pre-tick: vanilla's FALSE lives
+  ≤ 1 frame per ~0.5 s per man. The native read is invisible (inside the engine) - but no read can fall more than one frame
+  after vanilla's write without seeing ours.
+- RBM (public source, read only for the idea - none of its code is here): a Harmony POSTFIX on that method - for AI men under
+  a MOVE, not a siege attacker, not a column, it sets `ShouldCatchUpWithFormation` true (reflection on the private setter) and
+  writes the same call with keep TRUE and the slot `GetCurrentGlobalPositionOfUnit(agent, false)`, except a man far from his
+  slot (≥ 6 × the speed) AND behind the line; it also disables the formation frame on charges. It leaves the behaviour weights
+  alone. We do the same idea WITHOUT Harmony: from our own MissionLogic, right after vanilla's write.
+
+**Claude's calls - Anton can overturn any**
+1. **On by default** - it is the fix for what he reported; nothing outside the three defensive arrangements changes; off is one
+   switch, live. Group "Battle pace (AI)": the same aim as that group (a more defensive, more tactical AI infantry) and next
+   to the shield infantry's own setting; a group of its own for one switch would be noise.
+2. **Who**: AI men (never `IsPlayer` / a man the player drives - `IsAIControlled` false), active, on foot, in a formation, not
+   `IsDetachedFromFormation`, formation arrangement shield wall / square / circle (`ArrangementOrder.GetArrangementOrderDefensiveness`
+   == 1 - the smoke checks our set equals the game's), the order NOT charge / charge a target / the AI's tactical charge /
+   attack a gate / retreat / no order; Stop, Move, Advance, the AI's advance, FallBack, Follow hold. Not a man fleeing
+   (`IsRetreating`, native - read only past the cheap gates). Both sides alike.
+3. **Where**: field battles, custom battles, hideouts, sieges for the DEFENDERS (a held line on the battlements is what a
+   defender wants; RBM excludes only the attackers); NOT a siege's attackers (RBM's lesson: their climb / gate orders are Moves -
+   held, they stood on the wall top); NOT naval battles / raids (ship decks, boarding - unknown ground; the step back skips naval
+   for the same reason). Tournaments and arenas have no formations (the "no formation" gate).
+4. **The slot = `blendWithOrderDirection: true`** - the very point vanilla hands the engine in this call, so the ONLY thing we
+   change is the flag (RBM's `false` = the formation's estimated facing without the interval adjustment; for a standing wall the
+   two are nearly the same). The "ahead of his slot" measure uses the same point and `CurrentDirection`.
+5. **A scattered formation is held too** (vanilla, deviation > 3 × speed, writes zeros + false and lets everyone go): forming
+   the wall is the order's point; RBM does the same.
+6. **The escape** (RBM's, on vanilla's catch-up radius `WallMath.CatchUpSpeeds` 6): far (≥ 6 × the formation's average top
+   speed, ~20 m) AND behind the line (behind `CachedAveragePosition` along `CurrentDirection`) = left to vanilla (he runs to
+   rejoin); far AHEAD = held (walked back). No speed cached yet = never far.
+7. **No reflection on `ShouldCatchUpWithFormation`**: it gates only the speed cap; vanilla keeps setting it (true near the slot,
+   false far) - a held man far ahead runs back uncapped, as he should. **One read-only reflection**: vanilla's update timer, once
+   per man (`GameWallBody.TimerField`, a FieldInfo looked up once; a missing field → the fallback, 0.1 s rewrites, one `[wall]`
+   line, the summary counts the men). The house's other reflection precedent: the tournament AI-level fix (`_AILevelMultiplier`).
+8. **Live**: off (ShieldWallHoldsSlots or the master switch) writes VANILLA's own value (its formula, `GameWallBody.Release`)
+   for every held man at once - "simply stop writing" is not enough: under a Stop order vanilla never writes the flag, so ours
+   would stay forever. A man let go by a gate (charge, retreat, mounted, detached, escape, the player took him…) gets the same
+   release. Leaving the field: no engine call. Back on: held again at his next look (≤ 0.25 s).
+9. **Plumbing constants (Core `WallMath`, documented, not settings)**: `PollSeconds` 0.25 (the look; brace's precedent),
+   `SampleSeconds` 0.5 (every second look), `FallbackRewriteSeconds` 0.1, `ContactMetres` 5 and `AheadNearMetres` 1 /
+   `AheadFarMetres` 2 (the log only), `CatchUpSpeeds` 6 (the game's own number).
+10. **Interactions**: step 16's backpedal and step 23's brace / the AI timer act on the AI's INPUT (`OnAIInputSet`), a different
+    channel - all keep working on a held man (his attacks paused, guard up, a backpedal; the native AI then pulls him back to his
+    slot). The sprint's speed factor is untouched. RTS Camera / Command System also hook the formation movement path on the worker
+    job; we write only on the main thread between jobs, so vanilla's / another mod's value can stand ≤ 1 frame before ours. RBM
+    writes the same flag (declared incompatible already).
+
+**Built** - file map in CLAUDE.md "Layout". Core `ShieldWall.cs` (WallArrangement, WallVerdict in gate order, WallFacts, WallRules,
+WallMath), `ShieldWallStats.cs` (WallAheadSamples, WallWriteKind, WallStats + the 5 [summary] lines). Settings 125 → 126:
+`ShieldWallHoldsSlots` (true, Live) at the end of "Battle pace (AI)". No config migration (a new key takes its default). Module
+`WallBody.cs` (WallState, IWallBody, GameWallBody, WallBodyDefault), `AthleticsLogic.Wall.cs` (StartWall, TickWall from
+`OnPreMissionTick`, LookWall, the held list with swap-remove, ReleaseAllWalls, WallLeftField from Forget, WallFailed, CloseWalls,
+WriteWallSummary); TrackedAgent.Wall. Logs: `[wall]` mission start, switch OFF / ON lines, the first man held in full, the no-timer
+line, verbose let-go lines (bucket `wall`); the [summary] "wall" lines. Tests 575 → 610 (`ShieldWallTests`). Smoke 82 → 86 steps
+(`Program.Wall.cs`: the stand-in body, the game's timer moving exactly with vanilla's update + the arrangement map, the real logic
+end to end, the cost - 1000 men held, 0.016 ms a pre-tick, 0 bytes, ~6 writes a man a second; the master-switch step lets the
+held men go). Deploy: build, AssemblyGuard, smoke green; the install copy failed - the game was running (DLL locked).
+
+**UNVERIFIED — only the game can tell (PLAYTEST D11, L6h)**
+1. The native AI honours the flag for infantry (it was only ever set for shield men of ranged formations) → `wall slots ON`
+   "more than 1 m ahead" (in contact above all) well below `wall slots OFF`'s. If ON ≈ OFF: the flag alone is not enough - the
+   next lever is the formation frame / the behaviour weights (RBM changes neither), tell Claude.
+2. Held men still FIGHT what reaches them (Anton's eye) - not a wall of statues. If they stop swinging at men 1.5 m away, the
+   native AI's "keep" may be too strict for the front rank.
+3. `vanilla's own updates seen … one every 0.5 s per man` (the timer read works in game) and `men whose update timer could not
+   be read 0`.
+4. Cost → the summary's `cost avg … ms a tick` in a 400+ man battle.
+5. Square and circle look right (they were not in Anton's report), and a siege defenders' wall line on the battlements.

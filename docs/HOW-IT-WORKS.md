@@ -287,6 +287,20 @@ A tired man's own pause comes on top, and the "fewer" still holds at every bar l
 <sub>Settings: `ShieldInfantrySwingsLessPercent` 30, `FootMeleeSwingsLessPercent` 15, `AiMeleeGapSeconds` 1.0,
 `ExtraPauseAfterBowShotSeconds` 2.0, `ExtraPauseAfterCrossbowShotSeconds` 2.5.</sub>
 
+**Shield walls hold their slots.** In the base game a man in a shield wall walks a few steps out of it to
+swing at the enemy in front of him, then walks back — every man does it, and the wall bulges and breaks.
+With this mod he keeps his place in the formation and fights whatever reaches him, so the wall stays a wall.
+
+| Formation | Holds its slots? |
+|---|---|
+| Shield wall, square, circle — on hold, move, advance, fall back, follow | yes, both sides |
+| Shield wall, square, circle — on a charge or a retreat | no (the charge breaks the wall on purpose) |
+| Line, loose, scatter, skein, column | no — the game's own behaviour |
+| A man far behind his place (about 20 m) | runs to rejoin, then holds |
+| Riders, you, a siege's attackers, naval battles | no |
+
+<sub>Setting: `ShieldWallHoldsSlots` on (live — switch it off mid-battle to see the difference).</sub>
+
 ## 11. Damage
 
 Two things, in this order:
@@ -462,7 +476,7 @@ and offsets.</sub>
 - **Keep your troops rested.** A line at full strength beats a line at 30% almost every time — it
   attacks twice as often, runs faster and blocks true. Don't spend men you don't need yet.
 - **Hold, then charge.** A holding line braces at 60% and keeps its strength in reserve while the enemy
-  wears itself out on it. When their markers go red (hold ALT), order the charge: your men drop their
+  wears itself out on it. Put it in a shield wall and it keeps its shape while it does. When their markers go red (hold ALT), order the charge: your men drop their
   guard and surge in with what they saved.
 - **Fresh shock troops into tired lines.** A reserve of fresh infantry or cavalry thrown at a formation
   that has been fighting for two minutes meets men who swing once where they used to swing five times,

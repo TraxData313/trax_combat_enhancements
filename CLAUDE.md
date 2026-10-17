@@ -68,7 +68,13 @@ advanced into position keep their sprint for the real charge; no 20% gate for th
 FRESH run for the first 30% of it, whatever his Athletics, then a line to 1.1 × his CURRENT run (the decorator writes the
 sprint's run factor on `MaxSpeedMultiplier` in place of the tiredness multiplier, and caps `TopSpeedReachDuration` at
 `SprintTopSpeedReachSeconds` 1 s while sprinting - the game's ~2.3-2.8 s), no Athletics refill meanwhile; on foot only; the
-sprint bar above the recovery bar. The bar for the
+sprint bar above the recovery bar. SHIELD WALLS HOLD THEIR SLOTS (step 41, `ShieldWallHoldsSlots`, Anton 2026-10-17: men stepped
+2-3 m out of a waiting wall to swing and walked back): every AI man on foot in a shield wall / square / circle, under any
+order but a charge or a retreat (not detached, fleeing, or far from his slot AND behind the line; never you, riders, a
+siege's attackers, naval), gets the engine's "keep with the formation instead of moving to the agent" flag - vanilla's own
+`Agent.SetFormationIntegrityData` call rewritten with it TRUE from `OnPreMissionTick`, right after each of vanilla's ~0.5 s
+updates (his private update timer read once by reflection; RESEARCH §O) - RBM's idea without Harmony; off = vanilla's value
+written back at once; the summary's "wall" lines measure how far men stand AHEAD of their slots, ON vs OFF. The bar for the
 fighter you look at is LATER (DESIGN §3; its settings wait in DESIGN's "Planned parameters"). Words:
 the pool/bar/points are "Athletics", the character-screen skill is "the Athletics skill" (it
 used to be called "endurance"), the "peak line" is the white mark at the top quarter of the bar,
@@ -165,7 +171,7 @@ die at any moment (tokens run out) and the next one loses nothing.
   file, capped at `LogMaxMegabytes` (8); a trim cuts ONLY the oldest verbose lines (marked `~`
   before the tag) and keeps every other line - summaries, first-time lines, settings, errors
   (step 10b, Core `LogTrim`). Timestamped lines tagged by area (`[config]`, `[mcm]`, `[mission]`,
-  `[damage]`, `[athletics]`, `[speed]`, `[rate]`, `[stepback]`, `[brace]`, `[guard]`, `[sprint]`, `[hud]`, `[error]`). Always logged: mod/game version
+  `[damage]`, `[athletics]`, `[speed]`, `[rate]`, `[stepback]`, `[brace]`, `[guard]`, `[sprint]`, `[wall]`, `[hud]`, `[error]`). Always logged: mod/game version
   at load, every parameter value on load and on change, each mission start/end (type,
   scene, agent counts), which behaviors/views attached, and every caught exception with its
   stack. Per-battle SUMMARY at mission end (damage rolls: count, min/avg/max factor;
@@ -207,9 +213,10 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               its Default comes from defaults.json (DefaultsFile), never code; step 33: ParamType.Key +
                               KeyNames (a key by NAME, stored as its index; FormatJson writes "LeftControl"; the
                               file / defaults.json read the name, MCM a text box)
-  SettingsSchema.cs           EVERY setting of DESIGN's table (125), in file + MCM order, 13 groups
+  SettingsSchema.cs           EVERY setting of DESIGN's table (126), in file + MCM order, 13 groups
                               ("Master switch" first, "Damage" second - step 25 renamed it from
-                              "Damage randomness", "Battle pace (AI)" - step 21 - after the step back,
+                              "Damage randomness", "Battle pace (AI)" - step 21 - after the step back (step 41's
+                              ShieldWallHoldsSlots at its end),
                               "Brace by orders (AI)" - step 23 - after it, "Sprint" - step 33 - after that,
                               "Formation markers (hold ALT)" - step 20 - before
                               "Advanced" last; step 10b's one vocabulary and
@@ -413,6 +420,19 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               the shield (at start, calls, seen, put away, never), the guard while bracing, the hook's
                               frames, attacks while bracing; step 28: by floor incl. no formation, the floor offsets rolled
                               + braces by floor-offset band + the 8 [summary] "brace" lines
+  ShieldWall.cs               step 41 pure (AI_NOTES "Step 41", RESEARCH §O): WallArrangement (shield wall / square / circle /
+                              column / other), WallVerdict (held, or why not - in GATE ORDER: ModOff, SwitchedOff, Naval,
+                              SiegeAttacker, NotAi, Mounted, NoFormation, Detached, Arrangement, ChargeOrder, RetreatOrder,
+                              NoOrder, Retreating, FarBehind), WallFacts (the gates + positions: him, his slot, the facing, the
+                              centre, the integrity data), WallRules (live: ModEnabled FIRST, ShieldWallHoldsSlots; Describe),
+                              WallMath - IsDefensive, OrderVerdict, Eligible (no switches, no escape - the samples), Decide,
+                              DistanceToSlot, FarFromSlot (CatchUpSpeeds 6 - vanilla's radius), BehindLine, Escapes, Ahead (along
+                              any facing); plumbing PollSeconds 0.25, SampleSeconds 0.5, FallbackRewriteSeconds 0.1, ContactMetres
+                              5, AheadNear / FarMetres 1 / 2
+  ShieldWallStats.cs          step 41 per-mission: WallAheadSamples (> 1 m / > 2 m ahead, mean of the part ahead, the farthest;
+                              in contact apart), WallWriteKind (poll / after vanilla / fallback), WallStats (looks by verdict,
+                              writes by kind, vanilla's updates seen + interval, releases by reason, the samples ON / OFF, men
+                              without a timer, left the field, held at the end, cost) + the 5 [summary] "wall" lines
   TiredBlock.cs               step 30 pure (AI_NOTES "Step 30", RESEARCH §M): TiredBlockRules (live: ModEnabled FIRST,
                               AthleticsEnabled, TiredBlockRandomPercent > 0; Share, OffBecause, Describe), TiredBlockMath -
                               Weight = share × (1 − f) (0 at f 1, off, the player), OwnChance (the game's value clamped 0-1:
@@ -661,6 +681,17 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               TiredGuardHit → GuardTaken (OnMeleeHit, before the block's charge: the AI's guard by f
                               band; you never; step 34: ShieldInHand = step 21's IWeaponFacts read at the blow and
                               at the recompute, a failing read = one [error], counted without), WriteTiredBlockSummary
+  Missions/WallBody.cs        step 41: WallState (held, his list slot, vanilla's timer + its last StartTime, the fallback's
+                              next rewrite, the next sample), IWallBody (the smoke plays it), GameWallBody (the facts by managed
+                              reads + IsRetreating; the slot GetCurrentGlobalPositionOfUnit(agent, true), CurrentDirection,
+                              CachedAveragePosition, CachedFormationIntegrityData; Hold = SetFormationIntegrityData(…, true);
+                              Release = vanilla's own formula; the timer field _cachedAndFormationValuesUpdateTimer looked up once,
+                              read once per man; EnemyWithin = GetNearbyEnemyAgentCount), WallBodyDefault
+  Missions/AthleticsLogic.Wall.cs  step 41: StartWall (the [wall] line), TickWall from OnPreMissionTick (the switch / master
+                              switch → ReleaseAllWalls at once; every frame each held man whose timer moved is rewritten -
+                              LookWall AfterVanilla - or the fallback every 0.1 s; a staggered look every 0.25 s - the gates,
+                              hold / let go with vanilla's value, a sample every second look), the held list (swap-remove),
+                              WallLeftField (Forget - no engine call), WallFailed, CloseWalls, WriteWallSummary
   Missions/BraceBody.cs       step 23: BraceState (his roll, step 28's floor roll FloorUnit, the running brace, the shield's
                               progress), IBraceBody (the
                               engine side - the smoke plays it), GameBraceBody (the order from
@@ -786,7 +817,7 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
   Hud/AltMarkersVM.cs         its ViewModels: the root + a GROW-ONLY MBBindingList of AltMarkerLabelVM keyed by
                               team + formation (a label never swaps formations when vanilla re-sorts); step 24:
                               ReadyText / ReadyColor / ReadyShown, SetReady
-tests/TraxCombat.Core.Tests/  net8.0 xUnit (575) — schema vs DESIGN.md (keys + types), one copy
+tests/TraxCombat.Core.Tests/  net8.0 xUnit (610) — schema vs DESIGN.md (keys + types), one copy
                               runs (SingleCopyTests: claims on private slots, copies, texts), when
                               MCM is tried and when it stops (McmPlanTests - step 12),
                               defaults.json (DefaultsFileTests), master switch, settings, config
@@ -852,7 +883,11 @@ tests/TraxCombat.Core.Tests/  net8.0 xUnit (575) — schema vs DESIGN.md (keys +
                               tired block direction (TiredBlockTests, step 30: w at f 1 / 0.5 / 0 x 0 / 50 / 100, never
                               the player, the master switch first, the chance own + (1 − own) x w with a negative /
                               NaN / > 1 game value, w 0 untouched, the setting live and placed, the sentence, the
-                              summary lines; step 34: the shield / no-shield split adds up, its 2 lines). They
+                              summary lines; step 34: the shield / no-shield split adds up, its 2 lines), the shield
+                              wall's hold (ShieldWallTests, step 41: the gates in order with the master switch first, the three
+                              arrangements, every order, the escape - far AND behind, far ahead held, no speed never far -, ahead
+                              of the slot on any facing and a non-unit one, the switch live and on by default, the sentence, the
+                              samples' part ahead, the summary lines). They
                               run on DESIGN's INITIAL values (DesignTable.cs: a module
                               initializer), so tuning defaults.json never breaks them. Keep green.
 module/SubModule.xml          release manifest (Id TraxCombatEnhancements, v1.0.0) - THE one home of the
@@ -1023,8 +1058,15 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               TopSpeedReachDuration 2.6 → 1.0 and back, the floor's refill, reach 0 / live, the master switch,
                               an AI man off the floor, SprintMinSeconds 0 refused, the lines; step 36 / 37 (SprintByOrderThroughTheLogic):
                               shock troops - a move 1 s down to the 80% reserve, a second nothing (reserve kept), the charge
-                              sprints the 80% left, an advance 2.5 s, the reserve live, the master switch, the summary (82 steps; the
-                              config checks work for any tuned default)
+                              sprints the 80% left, an advance 2.5 s, the reserve live, the master switch, the summary; step 41
+                              (Program.Wall.cs): the stand-in wall body for EVERY logic (step 4); the game's side - v1.4.8's Agent
+                              has the private readonly Timer, the real Timer driven as vanilla drives it moves its StartTime exactly
+                              on vanilla's update frames (6 in 3 s), our defensive set = GetArrangementOrderDefensiveness's; the
+                              real logic - one man held / left per reason, the rewrite in the next pre-tick after vanilla's update,
+                              the fallback every 0.1 s, a charge / a retreat let go with vanilla's value, the escape, the player
+                              taking a man, the samples ON vs OFF, the switch and the master switch live, leaving the field, the
+                              summary; the cost - 1000 men held, 0.016 ms a pre-tick, 0 bytes; the master-switch step lets held
+                              men go (86 steps; the config checks work for any tuned default)
                               TRAX_SMOKE_KEEP=1 keeps its temp folder + log to read
 tools/DefaultsTool/           defaults.json upkeep: refresh (rewrite comments/order, keep every
                               value) | check; --file <path> for an exported one

@@ -50,7 +50,15 @@ and — averaged, with a ± spread and the men's health — in a strip under eac
 the orders menu (step 9) and, while you hold ALT (or the orders menu is open), under each of the
 game's formation markers, the enemy's too (step 20: vanilla's markers read live); both also count
 each formation's men READY - not bracing - as "ready 34/50", plain / yellow / red (step 24, `ShowReadyCount`;
-hidden while bracing is off). The bar for the
+hidden while bracing is off). SHIELD WALLS HOLD THEIR SLOTS (step 41, `ShieldWallHoldsSlots`, Anton 2026-10-17: men stepped
+2-3 m out of a waiting wall to swing and walked back): every AI man on foot in a shield wall / square / circle, under any
+order but a charge or a retreat (not detached, fleeing, or far from his slot AND behind the line; never you, riders, a
+siege's attackers, naval), gets the engine's "keep with the formation instead of moving to the agent" flag - vanilla's own
+`Agent.SetFormationIntegrityData` call rewritten with it TRUE from `OnPreMissionTick`, right after each of vanilla's ~0.5 s
+updates (his private update timer read once by reflection; RESEARCH §O) - RBM's idea without Harmony; off = vanilla's value
+written back at once; the summary's "wall" lines measure how far men stand AHEAD of their slots, ON vs OFF. (Steps 25-40 -
+the swing stack, the sprint, the tired block direction and the rest - are described in CLAUDE.md, the fuller copy of this
+file.) The bar for the
 fighter you look at is LATER (DESIGN §3; its settings wait in DESIGN's "Planned parameters"). Words:
 the pool/bar/points are "Athletics", the character-screen skill is "the Athletics skill" (it
 used to be called "endurance"), the "peak line" is the white mark at the top quarter of the bar,
@@ -147,7 +155,7 @@ die at any moment (tokens run out) and the next one loses nothing.
   file, capped at `LogMaxMegabytes` (8); a trim cuts ONLY the oldest verbose lines (marked `~`
   before the tag) and keeps every other line - summaries, first-time lines, settings, errors
   (step 10b, Core `LogTrim`). Timestamped lines tagged by area (`[config]`, `[mcm]`, `[mission]`,
-  `[damage]`, `[athletics]`, `[speed]`, `[rate]`, `[stepback]`, `[brace]`, `[hud]`, `[error]`). Always logged: mod/game version
+  `[damage]`, `[athletics]`, `[speed]`, `[rate]`, `[stepback]`, `[brace]`, `[guard]`, `[sprint]`, `[wall]`, `[hud]`, `[error]`). Always logged: mod/game version
   at load, every parameter value on load and on change, each mission start/end (type,
   scene, agent counts), which behaviors/views attached, and every caught exception with its
   stack. Per-battle SUMMARY at mission end (damage rolls: count, min/avg/max factor;
@@ -181,7 +189,7 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
   ParamDef.cs                 one setting: key, type, range, group, label, plain-words
                               description, apply timing (Live / NextBattle); Normalize, Format;
                               its Default comes from defaults.json (DefaultsFile), never code
-  SettingsSchema.cs           EVERY setting of DESIGN's table (99), in file + MCM order, 12 groups
+  SettingsSchema.cs           EVERY setting of DESIGN's table (126), in file + MCM order, 13 groups
                               ("Master switch" first, "Damage" second - step 25 renamed it from
                               "Damage randomness", "Battle pace (AI)" - step 21 - after the step back,
                               "Brace by orders (AI)" - step 23 - after it,
@@ -355,6 +363,12 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               brace time, lengths (5 bins), ends by reason, the margins rolled + length by margin band,
                               the shield (at start, calls, seen, put away, never), the guard while bracing, the hook's
                               frames, attacks while bracing + the 7 [summary] "brace" lines
+  ShieldWall.cs               step 41 pure (AI_NOTES "Step 41", RESEARCH §O): WallArrangement, WallVerdict (in GATE ORDER,
+                              ModOff first), WallFacts, WallRules (live: ModEnabled FIRST, ShieldWallHoldsSlots), WallMath -
+                              IsDefensive, OrderVerdict, Eligible, Decide, the escape (far = 6 x the formation's speed, AND behind
+                              the line), Ahead (along any facing); plumbing PollSeconds 0.25, SampleSeconds 0.5, Fallback 0.1 s
+  ShieldWallStats.cs          step 41 per-mission: WallAheadSamples (ON / OFF), WallWriteKind, WallStats + the 5 [summary]
+                              "wall" lines
   ReadyCount.cs               step 24 pure (AI_NOTES "Step 24"): ReadyBand (plain / yellow / red), ReadyHidden (ModOff
                               first, AthleticsOff, BraceOff, SwitchedOff, NoMen), ReadyRules (live: ShowReadyCount,
                               Ready*BelowPercent, Describe), ReadyMath - HiddenFor, Band (the most alarming wins, "at
@@ -560,6 +574,12 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               look, the shield seen / put away, a wield every 1 s up to 3), EndBrace (every path;
                               the callback released if idle), BraceLeftField, BraceFreshStart (step 19),
                               CloseBraces (mission end), BraceHitTaken (the guard), NoteBraceRelease, WriteBraceSummary
+  Missions/WallBody.cs        step 41: WallState, IWallBody (the smoke plays it), GameWallBody (the facts, the slot
+                              GetCurrentGlobalPositionOfUnit(agent, true), Hold = SetFormationIntegrityData(..., true), Release =
+                              vanilla's own formula, vanilla's private update timer read once per man), WallBodyDefault
+  Missions/AthleticsLogic.Wall.cs  step 41: TickWall from OnPreMissionTick - each held man rewritten right after vanilla's
+                              update (his timer moved), a staggered look every 0.25 s (hold / let go / sample), off = vanilla's
+                              value back at once; WallLeftField, WriteWallSummary
   Missions/BraceBody.cs       step 23: BraceState (his roll, the running brace, the shield's progress), IBraceBody (the
                               engine side - the smoke plays it), GameBraceBody (the order from
                               GetReadonlyMovementOrderReference().OrderEnum + FormationAI.ActiveBehavior for an AI Move;
@@ -680,7 +700,7 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
   Hud/AltMarkersVM.cs         its ViewModels: the root + a GROW-ONLY MBBindingList of AltMarkerLabelVM keyed by
                               team + formation (a label never swaps formations when vanilla re-sorts); step 24:
                               ReadyText / ReadyColor / ReadyShown, SetReady
-tests/TraxCombat.Core.Tests/  net8.0 xUnit (482) — schema vs DESIGN.md (keys + types), one copy
+tests/TraxCombat.Core.Tests/  net8.0 xUnit (610) — schema vs DESIGN.md (keys + types), one copy
                               runs (SingleCopyTests: claims on private slots, copies, texts), when
                               MCM is tried and when it stops (McmPlanTests - step 12),
                               defaults.json (DefaultsFileTests), master switch, settings, config
@@ -860,7 +880,8 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               (Program.Damage.cs, DamageReductionThroughDecorator): the real decorator - after
                               the roll (100 → 37.5..112.5, mean 75), the roll off still reduced on every kind,
                               never a fall / object / 0 hit, never below 1, live, the master switch, the lines
-                              (the older damage steps pin DamageReductionPercent 0 - DamageDefaults) (68 steps; the config
+                              (the older damage steps pin DamageReductionPercent 0 - DamageDefaults); step 41 (Program.Wall.cs): the shield wall's
+                              hold - the game's timer, the real logic with a stand-in IWallBody, the cost (86 steps; the config
                               checks work for any tuned default);
                               TRAX_SMOKE_KEEP=1 keeps its temp folder + log to read
 tools/DefaultsTool/           defaults.json upkeep: refresh (rewrite comments/order, keep every
