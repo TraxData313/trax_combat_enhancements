@@ -999,6 +999,60 @@ colour in a long fight while the strip's do; a bar that jumps when a man's fever
 a rider's bar inside his body or far above him (tell Claude how far - `RiderLiftMetres` is 1 m); the frame rate dropping while ALT is
 held; `[error] … hud.` lines or `ALT bars: … DISABLED`.
 
+**D16. The impact spike - does the game follow each lever? (step 47, IMPACT I1, ~25 min - a DIAGNOSTIC, do it FIRST in the morning:
+steps 48-53 were built the same night on its assumptions).** The impact system (docs/IMPACT.md - staggers, dropped shields, knockdowns
+by both men's Athletics) pulls six engine levers no mod of ours has pulled before. The spike pulls each one with a LOUD fixed value and
+measures what the engine really did, each against its own untouched control in the same battle. It is a TEST TOOL, not gameplay: men
+will fall over and drop shields for no good reason while it is on.
+1. **Switch it on.** Escape → Mod Options (MCM) → Trax Combat Enhancements → *Advanced* → **Impact test (spike) - not gameplay** ON.
+   (With the impact system's own switches from step 48 on, leave them as they are - the spike runs on its own.) The log's next battle
+   starts with `[impact] mission start: SPIKE ON (ImpactSpike - a test tool, not gameplay): … the game's stun cap (StunPeriodMax) 0.80 →
+   2.00 s`.
+2. **A tournament (or the arena), ~5 min** - one man in front of you, many kicks. KICK (the game's Kick key - Options → Controls) and shield-BASH at least **8 times** - every 4 kicks run one of each kind: knocked down (untouched), a plain reel
+   (untouched), knocked down and getting up at half speed, a reel at half speed. Get kicked yourself if you can. Block his blows with
+   your shield and parry - and every ~10 s your first block makes YOU stagger (the forced stagger lands on whoever blocks first, you
+   included - how does it look in first person? IMPACT §8 question 5), every ~20 s a block knocks the blocker down (our own blow).
+   What you should see: a kicked man falling (half of them), getting up slowly (a quarter), a kicked man with a shield DROPPING it on
+   the ground.
+3. **A custom battle 50 v 50 infantry with shields, ~10 min** - charge (F1 F3), let the lines grind; hundreds of blocks feed lever 2 (the
+   block stun x3 for half the men) and levers 4 / 6 (a stagger every 10 s, a knockdown every 20 s somewhere in the melee). Kick a few
+   men yourself here too.
+4. **Read the summary** at the end of each battle (`trax_combat.log`, `[summary] impact spike` - one header and six lever lines; each
+   ends `→ WORKS`, `→ FAILS` or `→ UNSEEN - <what to do>`). Then switch the spike OFF (a test tool: never leave it on to play).
+- **The lines**: `[impact] spike lever 1: first KnockDown answered at … - kick #1 of the battle, by … on …`, `… first Fall seen after a
+  KnockDown kick … 0.05 s after the kick, on channel 0 (Fall, action …)` (or `… showed NO Fall within 1.0 s …`), `spike lever 3: first
+  reaction slowed …`, `… first slowed reel measured … lasted 0.85 s at speed 0.5 (untouched reels so far: 0.42 s (n 1))`, `spike lever 4:
+  forced stagger #1 … with the engine's priority: ACCEPTED (action …)` (or `refused by the engine`), `… first forced stagger played out …
+  lasted 0.9 s`, `spike lever 5: first shield drop queued …`, `… first shield left the hand …`, `… picked up again … 34 s after`, `spike
+  lever 6: first blow of our own … a Fall must show`, `… first Fall seen after our own blow …`. The summary: `impact spike (step 47, …):
+  on 100% of the battle; levers disabled by an error: none; engine calls N …; cost … ms a tick`, then `impact spike lever N - <what> : <the
+  numbers> → VERDICT - <what it means>`.
+- **What each verdict means for steps 48-53** (the line itself says it too - IMPACT §7's fallbacks):
+
+  | Lever | WORKS | FAILS - the fallback to try |
+  |---|---|---|
+  | 1 KnockDown on a kick (the decorator's decision; `Fall seen` of `asked`) | I3 / I5 knock men down through `DecideAgentKnockedDownByBlow` - as built | the engine ignores KnockDown on a kick: I3 knocks down with our own blow after the kick (lever 6); else Harmony on `CreateMeleeBlow` - your call |
+  | 2 Block stun x3 (`CalculateDefendedBlowStunMultipliers`; the attacker's recoil and the blocker's guard, treated vs control) | I4's longer block stun and the riposte (the attacker's recoil) - as built | the stun does not lengthen what the engine plays: I4's longer block stun and the riposte use a forced stagger (lever 4) instead |
+  | 3 Reaction speed 0.5 (`SetCurrentActionSpeed`; the reel and the fall-and-rise, slowed vs untouched - x2 expected) | I3's longer reel and slower get-up - as built | IMPACT §7 fallback 1: `SetOverridenStrikeAndDeathAction` (a per-man swap of the reaction the engine plays) |
+  | 4 Forced stagger (`SetActionChannel act_stagger_backward`; accepted / seen / its length / blocks from inside it) | I4's rolled stagger = `act_stagger_*` on channel 0 - as built; the length line is its natural length; `blocks made from inside it` should be ~0 | I4's stagger falls back to the longer block stun (lever 2) - no animation of ours |
+  | 5 Shield drop (`DropItem` queued; dropped / picked up after how long) | I3 / I4 drop shields that way - as built; "picked up again after" tells whether re-pickup is too quick (`ShieldPickupLockSeconds` exists for it) | the queued drop does not happen: DropItem from our tick, else `RemoveEquippedWeapon` (the shield gone, not on the ground) - your call |
+  | 6 Our own knockdown blow (`RegisterBlow`, KnockDown, 1 damage; `Fall seen`) | I4 knocks a blocker down with it - as built | IMPACT §7 fallback 2: a crush-through (`DecideCrushedThrough`) knocks a blocker down instead |
+
+  **UNSEEN** = not enough of that event in the battle (the line says what to do: kick more, block more, blocks more than 10 / 20 s apart)
+  - play a little more and read it again. A lever `disabled by an error` reads FAILS: send Claude the `[error] impact.…` line with its
+  stack.
+- **Read first**: lever 1's `Fall seen … of asked` and `the kicks NOT asked … fell anyway 0` (vanilla never knocks down with a kick - a
+  fall there is not ours); lever 3's `x2.0` (control → treated); lever 2's `off the main thread N` (expected > 0: the engine calls it on
+  worker threads - nothing to fix, just the proof) and its `x` on the recoil and the guard; lever 4's `accepted` by priority mode; the
+  header's `cost` (a few µs a tick).
+- **Also look (your eye)**: does a forced stagger on YOU look awful in first person (the camera), or fine? Does a slowed get-up look like
+  a tired man or like slow motion? Does a man on the ground get hit a lot (the AI using the window - step 53's question)?
+
+**Broken — tell Claude** (D16): no `[impact] mission start: SPIKE ON` line with the switch on; `the decorator was NEVER asked` in lever 1
+(another damage model on top of ours); a horse or a rider playing a stagger (must never happen - the log counts `never asked: a rider`);
+a crash right after a stagger or our blow (note the time - the log's last `[impact]` line); `[error] impact.…` lines; the game's stun
+cap left at 2 s after the battle (blocks in the NEXT battle with the spike OFF feel long - the `restored` count in lever 2).
+
 ---
 
 ## E. Your Athletics bar, the orders-menu strip and the ALT markers (20 min)
@@ -1729,6 +1783,24 @@ header names the technique: `==== scene …, mod ON, AI holds: Input (the AI's o
   50-25 / 25-0 %: in a formation, no fever a / b / c / d (…); in a fever … - in a fever x… the rate without`; `fever proof, no
   formation (tournaments, arenas, duels - no orders, no fever): …`; `fever values written (AI on foot, the game's → ours): attack
   chance bar 100-75% 0.096 → 0.056 (x0.58, n), …, in a fever …; riposte chance …`; `fever cost: … looks over … men, … µs a look`.
+
+### L6j. The impact spike (step 47)
+
+- Mission start: `[impact] mission start: spike OFF (ImpactSpike) - nothing of the impact system runs (vanilla) - read live` - or, on:
+  `[impact] mission start: SPIKE ON (ImpactSpike - a test tool, not gameplay): fixed loud values prove each engine lever - 1) … 6) …;
+  the game's stun cap (StunPeriodMax) 0.80 → 2.00 s - read live (…; PLAYTEST D16)`. Switched mid-mission: `[impact] spike switched
+  ON mid-mission at … s: …` / `[impact] spike switched OFF (ImpactSpike | ModEnabled) mid-mission at … s: vanilla at once - the game's
+  stun cap back to 0.80 s, N queued action(s) dropped unplayed, N watch(es) and N shield(s) no longer followed`.
+- First-time lines (one each per battle): lever 1 `first KnockDown answered`, `first Fall seen after a KnockDown kick` / `a KnockDown
+  kick … showed NO Fall`; lever 3 `first reaction slowed`, `first slowed reel measured`; lever 4 `forced stagger #1 …` (and the first
+  accepted one), `first forced stagger played out`; lever 5 `first shield drop queued`, `first shield left the hand`, `first dropped
+  shield picked up again`; lever 6 `first blow of our own`, `first Fall seen after our own blow` / `our blow … showed NO Fall`. A lever's
+  error: `[error] impact.<site>` (once, with its stack) + `[impact] spike lever N (<name>) disabled for this mission after an error at
+  <site> - the other levers run on …`.
+- The [summary] lines (D16 reads them): the header `impact spike (step 47, ImpactSpike - a test tool): on N% of the battle …; levers
+  disabled by an error: …; engine calls …; watch pool full …; cost … ms a tick`, then one line per lever `impact spike lever N - <what>:
+  <asked, seen, measured control → treated, refusals> → WORKS | FAILS | UNSEEN - <what it means for steps 48-53>`. Never on in that battle:
+  one line `impact spike (step 47): off all battle (ImpactSpike - a test tool, Advanced) - nothing asked, nothing changed`.
 
 ### L7. The HUD — your bar, the recovery bar, the orders strip and the ALT markers
 

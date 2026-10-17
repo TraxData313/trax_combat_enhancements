@@ -1,6 +1,8 @@
 # Impact — staggers, dropped shields and knockdowns
 
-**Status: a PLAN for Anton's approval (step 45, 2026-10-17). Nothing is built.** The game-side facts behind every line are in
+**Status: APPROVED by Anton (2026-10-17 night, every §8 recommendation taken) - on the board as steps 47-53 (I1-I7). Built so far:
+step 47 = I1, the spike (Advanced `ImpactSpike`; its verdicts per lever in PLAYTEST D16 - read them before trusting 48-53's levers).**
+(Written as a plan in step 45:) The game-side facts behind every line are in
 `docs/RESEARCH.md` §R (file + line in the v1.4.8 decompile); the short version is in `AI_NOTES.md` "Step 45". The build order
 (§7) goes into `TASKS_TODO.md` only after Anton says yes.
 

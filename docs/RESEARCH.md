@@ -1347,6 +1347,44 @@ One hack considered and REJECTED: the model's `in AttackCollisionData` parameter
 struct; writing through them (`Unsafe.AsRef`) would set `DefenderStunPeriod` before `CreateMeleeBlow` copies it - undefined
 behaviour against a `readonly` contract, hidden from every reader. Not worth it.
 
+### R10. The spike (step 47) - how each lever is pulled and measured (verified in the v1.4.8 decompile 2026-10-17; the engine's answer = PLAYTEST D16)
+
+1. **Where the decorator's two methods sit** (Mission.cs 5296-5420, `MeleeHitCallback`, main thread): `CreateMeleeBlow` runs for EVERY
+   collision, blocked or not (5367), and asks `DecideAgentKnockedDownByBlow` only `if (collisionData.IsColliderAgent)` on a man on foot
+   (5553-5577); then `RegisterBlow` only `if (!flag && victim active)` (5368) - so the spike answers KnockDown only for a collision the
+   engine will register: an alternative attack (`IsAlternativeAttack`), `CollisionResult == StrikeAgent` (1), not `AttackBlockedWithShield`
+   (Core `SpikeMath.KickLanded`). The behaviours' `OnMeleeHit` runs right AFTER, in the same callback (5381-5384) - the spike's rotation
+   peeks the next kick's number in the decorator and `OnMeleeHit` counts it, so both sides agree with no shared state. A kick that hits
+   an ARM is turned into `ContinueChecking` before any of this (5301-5303) - neither runs. `OnMeleeHit`'s `collisionData.InflictedDamage`
+   is the final one (the blow copies it, 5537) - 0 = no reaction at all (Agent.cs 5438), counted apart.
+2. **The stun** (`MCMH.GetDefendCollisionResults` 228-312): our multipliers come AFTER the base model (Sandbox's MightyBlow kept) and
+   BEFORE the cap `StunPeriodMax` (`ManagedParameters.Instance.GetManagedParameter`, 308-310). `ManagedParameters` is one static managed
+   float array (`TaleWorlds.Core\ManagedParameters.cs` 11-23: `GetParameter` / `SetParameter` public static) - raising the cap is a plain
+   write the smoke can check; it is GLOBAL, so the spike remembers the game's value once, restores it at the switch-off / mission end /
+   OnRemoveBehavior, and clamps every stun nobody lengthened to it meanwhile (`ImpactHooks.AfterDefendedBlowStun`). The A/B split is by
+   the BLOCKER's agent index (even = x3): `Agent.Index` is a managed auto-property, safe on a worker thread.
+3. **The channel reads**: `GetCurrentActionType(ch)` is native (`MBAPI.IMBAgent`), `GetCurrentAction(ch).Index` a pointer read
+   (`AgentHelper.GetChannel0/1CurrentActionIndex`, Agent.cs 2748-2756) - the watch reads both channels' type + index each tick for the
+   ≤ 64 men it watches (never the whole army). The defender of a block has no "defend hit" action TYPE (action_types.xml has none) - his
+   guard freeze is measured as "his channel-1 defend action, from the block until its index changes"; the attacker's recoil is
+   `BlockedMelee` (22) / `ParriedMelee` (21) on channel 1 (`act_blocked_*` / `act_*_parried` in action_types.xml).
+4. **The stagger**: `ActionIndexCache.act_stagger_backward` (ActionIndexCache.cs 161) - its static constructor resolves every name through
+   `MBAnimation.GetActionCodeWithName` (native, 439-449), so the offline smoke reads the FIELDS by reflection only; `SetActionChannel(0,
+   in act, ignorePriority, 0, 0f, speed)` returns whether the engine took it (Agent.cs 2368-2372). The spike alternates `ignorePriority`
+   (false, true, …) - which one the engine needs mid-fight is unknown (UNVERIFIED 27).
+5. **The drop**: `Mission.AddTickAction(MissionTickAction.DropItem, agent, slot, 0)` (Mission.cs 3778) - the Mission's own tick runs it
+   (3662-3666: `if (!item.Equipment[slot].IsEmpty) item.DropItem(slot)` for an ACTIVE agent only); `Agent.DropItem` → native
+   `IMBAgent.DropItem` for anything not burning (4508-4526). Not `HandleDropWeapon` - its "not during a release / bash" refusal (4446)
+   does not apply to a queued DropItem; a kicked man is in his reaction, not his own swing.
+6. **Our blow**: `Agent.RegisterBlow(Blow, in AttackCollisionData)` → private `HandleBlow` (Agent.cs 4668-4671, 5413-5470): the sound (it
+   reads `Mission.FindAgentWithIndex(b.OwnerId)` - the attacker, our owner), `InflictedDamage <= 0 → return` (so ≥ 1), health, then
+   `Mission.OnAgentHit(..., isBlocked: false, …)` → every behaviour's `OnAgentHit` (ours counts it inside `ImpactHooks.InOwnBlow`), death
+   below 1 HP (credited to the owner), and LAST `HandleBlowAux` (native - the reaction from the flags). The recipe is vanilla's drowning
+   blow (`MissionTickAction.RegisterDrownBlow`, Mission.cs 3667-3683: `new Blow(index)`, Blunt, the head bone, `BaseMagnitude` 10,
+   `FillAsMeleeBlow(null, null, -1, -1)`, `DamageCalculated`, `GetAttackCollisionDataForDebugPurpose(… StrikeAgent …)`) with `KnockDown |
+   KnockBack` (0x20 | 0x10, BlowFlags.cs), 1 damage, the direction attacker → victim, owned by the attacker. No damage model is asked
+   (no roll, no reduction) - `RegisterBlow` bypasses `CreateMeleeBlow`.
+
 ---
 
 ## UNVERIFIED — to check in the named step
@@ -1379,10 +1417,10 @@ behaviour against a `readonly` contract, hidden from every reader. Not worth it.
 | 24 | The native AI honours `shouldKeepWithFormationInsteadOfMovingToAgent` for an infantry shield wall's men (it was only ever set for shield men of ranged formations) and a one-frame vanilla FALSE every ~0.5 s does not undo it - the men stay in their slots and still fight what reaches them (§O; PLAYTEST D11: the summary's `wall slots ON` vs `OFF`, "more than 1 m ahead" in contact) | 41 |
 | 25 | The native combat AI uses `AIAttackOnDecideChance` / `AIAttackOnParryChance` per decision so that a share of 0.6 / 0.2 really means about that many fewer AI melee attacks in contact (§P; PLAYTEST D13: the summary's `fever proof` lines by bar band, and a battle at `AiAggressionFreshPercent` / `ExhaustedPercent` 100 vs 60 / 20) | 43 |
 | 26 | `WorldToScreen` from the combat camera lands the fever mark above the man's head the same frame (no lag behind a running man), our layer's `UIContext` gives the screen in pixels and the UI scale, `ScaledSuggestedHeight` and a FillBarWidget inside 1-px margins draw a 22 × 5 bar, and 200 moving marks cost no visible frame time (§Q; PLAYTEST D14: Anton's eye, the summary's `cost`) | 44 |
-| 27 | A forced `act_stagger_*` on channel 0 (on foot) is accepted mid-fight (`SetActionChannel` returns true), interrupts the man's own attack and guard, and plays its full length; its natural length in seconds (§R3; spike I1 measures it) | I1 |
-| 28 | `SetCurrentActionSpeed` on a reaction the ENGINE started (StrikeKnockBack after a kick, a Fall = knockdown + rise) slows it for its whole length and the engine does not reset it each frame; the strike / fall actions' native speed is 1 (§R4; spike I1: the reaction's measured seconds at speed 1 vs 0.5) | I1 |
-| 29 | A man inside a lengthened reaction cannot block or attack (the AI and the player) - so a longer reel IS a counter-attack window; the AI's `AIEstimateStunDurationPrecision` sees it (§R4.5; spike I1: blocks made from inside a lengthened reaction) | I1 |
-| 30 | `BlowFlags.KnockDown` from our `DecideAgentKnockedDownByBlow` on a landed KICK makes the engine play a knockdown (vanilla never asks it for kicks) (§R1.5; spike I1) | I1 |
-| 31 | `CalculateDefendedBlowStunMultipliers` lengthens the blocker's guard-freeze and the attacker's recoil as seen in game; `StunPeriodMax` raised by `ManagedParameters.SetParameter` is honoured; the decorator runs off the main thread without trouble (§R2; spike I1: stun asked vs the BlockedMelee / defend action measured) | I1 |
-| 32 | `DropItem` of the offhand shield (queued with `AddTickAction`) leaves a pickable shield on the ground, the AI fights on shieldless and picks one up only once no enemy is within 20 m (§R5; spike I1) | I1 |
-| 33 | A blow of our own (`RegisterBlow`, KnockDown, 1 damage) knocks down a man who just blocked (§R6; spike I1) | I1 |
+| 27 | A forced `act_stagger_*` on channel 0 (on foot) is accepted mid-fight (`SetActionChannel` returns true), interrupts the man's own attack and guard, and plays its full length; its natural length in seconds (§R3; spike I1 measures it) | I1 = step 47 (built 2026-10-17; the summary's lever 4 line, `accepted` by priority mode and `lasted` - PLAYTEST D16; §R10.4) |
+| 28 | `SetCurrentActionSpeed` on a reaction the ENGINE started (StrikeKnockBack after a kick, a Fall = knockdown + rise) slows it for its whole length and the engine does not reset it each frame; the strike / fall actions' native speed is 1 (§R4; spike I1: the reaction's measured seconds at speed 1 vs 0.5) | I1 = step 47 (lever 3: the reel and the fall-and-rise, slowed vs untouched in the same battle - D16) |
+| 29 | A man inside a lengthened reaction cannot block or attack (the AI and the player) - so a longer reel IS a counter-attack window; the AI's `AIEstimateStunDurationPrecision` sees it (§R4.5; spike I1: blocks made from inside a lengthened reaction) | I1 = step 47 (lever 4's `blocks made from inside it` / `hits taken inside it`; the AI's use of the window = step 53 - D16 "your eye") |
+| 30 | `BlowFlags.KnockDown` from our `DecideAgentKnockedDownByBlow` on a landed KICK makes the engine play a knockdown (vanilla never asks it for kicks) (§R1.5; spike I1) | I1 = step 47 (lever 1: `Fall seen` of `asked`, the unasked kicks' falls as the control - D16; §R10.1) |
+| 31 | `CalculateDefendedBlowStunMultipliers` lengthens the blocker's guard-freeze and the attacker's recoil as seen in game; `StunPeriodMax` raised by `ManagedParameters.SetParameter` is honoured; the decorator runs off the main thread without trouble (§R2; spike I1: stun asked vs the BlockedMelee / defend action measured) | I1 = step 47 (lever 2: x3 for even blockers vs the odd ones, `off the main thread`, the cap `restored` - D16; §R10.2-3) |
+| 32 | `DropItem` of the offhand shield (queued with `AddTickAction`) leaves a pickable shield on the ground, the AI fights on shieldless and picks one up only once no enemy is within 20 m (§R5; spike I1) | I1 = step 47 (lever 5: `left his hand`, `picked up again after` - D16; §R10.5) |
+| 33 | A blow of our own (`RegisterBlow`, KnockDown, 1 damage) knocks down a man who just blocked (§R6; spike I1) | I1 = step 47 (lever 6: `Fall seen` of `registered` - D16; §R10.6) |
