@@ -1145,6 +1145,9 @@ namespace TraxCombat.Tools
             // --- step 53: riders and the on-screen lines - off = the dismount seam the game's, no line (what waits thrown away); on = live again
             ImpactRidersFollowTheMasterSwitch();
 
+            // --- step 54: the AI punishing a window - off = the game's values at once, no window opened; on = pressed again
+            ImpactPunishFollowsTheMasterSwitch();
+
             // --- step 49: courage - off = every timid man let go at once (its own logic), back on = looked at again
             CourageFollowsTheMasterSwitch();
 
