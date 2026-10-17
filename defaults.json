@@ -100,7 +100,7 @@
   // bigger Athletics skill means more blows. With the defaults a recruit (a 50-point bar) is
   // empty after 5 blows, a legionary (130) after 13. 0 = attacks are free.
   // (range 0.0 to 100.0)
-  "CostPerBlow": 10.0,
+  "CostPerBlow": 3.0,
 
   // Athletics points one kick or one shield bash costs a common soldier - yours and the AI's
   // alike. Heroes pay it times the hero cost and party leaders times both, just like a blow: 3
@@ -121,7 +121,7 @@
   // the wrong side - the blow came from another direction than his guard, and the game counts
   // it as a clumsy block. Heroes and party leaders pay less, like a blow. 0 = free.
   // (range 0.0 to 20.0)
-  "CostPerWrongSideShieldBlock": 5.0,
+  "CostPerWrongSideShieldBlock": 2.0,
 
   // Athletics points a common soldier pays for each melee blow he blocks or parries with his
   // weapon (no shield) - a chamber block too. Heroes and party leaders pay less, like a blow. 0
@@ -530,6 +530,77 @@
   // 90% a tenth, at or below 80% none.
   // (range 0 to 100)
   "SprintAiMoveKeepPercent": 80,
+
+  // ==================== Calm and fever (AI) ====================
+  // AI soldiers on foot decide to start an attack this many times less often than the game's
+  // own AI - its chance to attack at each combat decision and to strike back after a parry are
+  // divided by it (3: a charging man's 14% becomes 5%). Lines hold and spar instead of trading
+  // blows until they drop; tournaments and duels get calmer too. Never you, never riders (their
+  // swings come with each pass), never archers' shooting. 1 = the game's own AI.
+  // (range 1.0 to 5.0)
+  "AiCalmFactor": 3.0,
+
+  // When an AI formation gets a NEW charge or advance order - yours or its own general's - each
+  // of its soldiers on foot gets a FEVER: for a while he attacks as eagerly as the multiplier
+  // below says, then calms down again. The fever's clock starts only when he first comes near
+  // an enemy. A hold, move or retreat order ends it. Never you, never riders; tournaments and
+  // duels have no orders, so no fever. Off: everyone stays calm.
+  // (true or false)
+  "FeverEnabled": true,
+
+  // A man's fever lasts his CURRENT Athletics points divided by this, in seconds: 100 points =
+  // 10 s at 10, a tired man at 40 points only 4 s. Veterans have bigger Athletics pools, so
+  // they surge longer; tired men surge shorter. Lower = longer fevers. Read when the order
+  // comes.
+  // (range 1.0 to 50.0)
+  "FeverPointsPerSecond": 10.0,
+
+  // At the fever's start a man decides to attack this many times as often as a calm man (3 with
+  // a calm of 3 = exactly the game's own AI). It fades in a straight line back to calm as his
+  // fever burns down. 1 = no surge.
+  // (range 1.0 to 5.0)
+  "FeverAggressionMultiplier": 3.0,
+
+  // The fever's clock starts the first time an enemy comes within this many metres of him - a
+  // general orders the charge from afar, and the fever should not be spent on the walk. Once
+  // burning it burns on, enemy near or not, until it is empty.
+  // (range 1.0 to 20.0)
+  "FeverContactMetres": 5.0,
+
+  // While a man holds a shield in his other hand his fever burns faster, so it lasts this share
+  // as long (0.7 = 70%): a shield man waits for the opening behind it. Read live - a man who
+  // takes his shield off his back, or puts it away for a two-handed axe, burns at the other
+  // rate from then on. 1 = the same with or without.
+  // (range 0.1 to 2.0)
+  "FeverShieldDurationMultiplier": 0.7,
+
+  // A man in his fever may sometimes sprint at an enemy a few metres away (the distances
+  // below): every check he rolls the chance below, scaled by how much fever he has left. He
+  // spends only what he holds above his order's sprint reserve (the Sprint settings). Needs the
+  // sprint and "AI soldiers sprint on new orders" on.
+  // (true or false)
+  "FeverSprintToClose": true,
+
+  // A fever sprint starts only with the nearest enemy at least this far away - closer is
+  // already melee.
+  // (range 0.0 to 10.0)
+  "FeverSprintMinMetres": 3.0,
+
+  // A fever sprint starts only with an enemy within this many metres. It ends by itself once an
+  // enemy is within a few metres.
+  // (range 1.0 to 40.0)
+  "FeverSprintMaxMetres": 12.0,
+
+  // How often a feverish man who could sprint at an enemy rolls for it, in seconds.
+  // (range 0.1 to 10.0)
+  "FeverSprintCheckSeconds": 1.0,
+
+  // The chance of a fever sprint at each roll at the fever's start (and while it waits for the
+  // first enemy); it falls in a straight line with the fever left - half the fever left, half
+  // the chance; empty, none. Several sprints per fever are possible, rarer as it fades. 0 =
+  // never.
+  // (range 0 to 100)
+  "FeverSprintChancePercent": 50,
 
   // ==================== Refill ====================
   // How long a fighter must go without attacking before his Athletics starts to refill, counted

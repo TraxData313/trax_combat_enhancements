@@ -297,6 +297,18 @@ namespace TraxCombat.Core
         public int SprintAiChargeKeepPercent => GetInt(SettingsSchema.SprintAiChargeKeepPercent);
         public int SprintAiAdvanceKeepPercent => GetInt(SettingsSchema.SprintAiAdvanceKeepPercent);
         public int SprintAiMoveKeepPercent => GetInt(SettingsSchema.SprintAiMoveKeepPercent);
+        // step 43: calm and fever
+        public float AiCalmFactor => GetFloat(SettingsSchema.AiCalmFactor);
+        public bool FeverEnabled => GetBool(SettingsSchema.FeverEnabled);
+        public float FeverPointsPerSecond => GetFloat(SettingsSchema.FeverPointsPerSecond);
+        public float FeverAggressionMultiplier => GetFloat(SettingsSchema.FeverAggressionMultiplier);
+        public float FeverContactMetres => GetFloat(SettingsSchema.FeverContactMetres);
+        public float FeverShieldDurationMultiplier => GetFloat(SettingsSchema.FeverShieldDurationMultiplier);
+        public bool FeverSprintToClose => GetBool(SettingsSchema.FeverSprintToClose);
+        public float FeverSprintMinMetres => GetFloat(SettingsSchema.FeverSprintMinMetres);
+        public float FeverSprintMaxMetres => GetFloat(SettingsSchema.FeverSprintMaxMetres);
+        public float FeverSprintCheckSeconds => GetFloat(SettingsSchema.FeverSprintCheckSeconds);
+        public int FeverSprintChancePercent => GetInt(SettingsSchema.FeverSprintChancePercent);
 
         public float RegenDelayBlowTimes => GetFloat(SettingsSchema.RegenDelayBlowTimes);
         public float BlowTimeSeconds => GetFloat(SettingsSchema.BlowTimeSeconds);

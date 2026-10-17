@@ -39,11 +39,12 @@ namespace TraxCombat.Core
         public static readonly ParamGroup BattlePaceGroup = new ParamGroup(5, "Battle pace (AI)");
         public static readonly ParamGroup BraceGroup = new ParamGroup(6, "Brace by orders (AI)");
         public static readonly ParamGroup SprintGroup = new ParamGroup(7, "Sprint");
-        public static readonly ParamGroup RefillGroup = new ParamGroup(8, "Refill");
-        public static readonly ParamGroup PlayerBarGroup = new ParamGroup(9, "Your Athletics bar");
-        public static readonly ParamGroup OrderStripGroup = new ParamGroup(10, "Orders menu strip");
-        public static readonly ParamGroup AltMarkersGroup = new ParamGroup(11, "Formation markers (hold ALT)");
-        public static readonly ParamGroup AdvancedGroup = new ParamGroup(12, "Advanced");
+        public static readonly ParamGroup FeverGroup = new ParamGroup(8, "Calm and fever (AI)"); // step 43
+        public static readonly ParamGroup RefillGroup = new ParamGroup(9, "Refill");
+        public static readonly ParamGroup PlayerBarGroup = new ParamGroup(10, "Your Athletics bar");
+        public static readonly ParamGroup OrderStripGroup = new ParamGroup(11, "Orders menu strip");
+        public static readonly ParamGroup AltMarkersGroup = new ParamGroup(12, "Formation markers (hold ALT)");
+        public static readonly ParamGroup AdvancedGroup = new ParamGroup(13, "Advanced");
 
         // ------------------------------------------------------------------ master switch
 
@@ -410,6 +411,56 @@ namespace TraxCombat.Core
             "AI sprint on a move: keeps (% of the store)",
             "On a new MOVE order (move to a position - F1 F1 -, or an AI general's move that is neither its advance nor its charge) each AI soldier on foot keeps this percent of his FULL sprint store for later orders and sprints everything above it - so troops moved into position still have their sprint for the real charge. 80: from a full store he sprints a fifth, from 90% a tenth, at or below 80% none.");
 
+        // ------------------------------------------------------------------ calm and fever (step 43)
+
+        // Step 43 (Anton, 2026-10-17: "people are defensive by nature - they don't want to throw their life away ... when the general
+        // turns to them and says NOW!, everybody surges ... the more experienced they are the longer they follow that order, and the
+        // more tired they are the shorter they fight hard"): FeverMath, AI_NOTES "Step 43". The calm: the game's own two attack-decision
+        // chances / the factor; the fever: x the aggression on the calm values, fading as the store burns.
+        public static readonly ParamDef AiCalmFactor = Float("AiCalmFactor", 1, 5, FeverGroup,
+            "AI calm (÷)",
+            "AI soldiers on foot decide to start an attack this many times less often than the game's own AI - its chance to attack at each combat decision and to strike back after a parry are divided by it (3: a charging man's 14% becomes 5%). Lines hold and spar instead of trading blows until they drop; tournaments and duels get calmer too. Never you, never riders (their swings come with each pass), never archers' shooting. 1 = the game's own AI.");
+
+        public static readonly ParamDef FeverEnabled = Bool("FeverEnabled", FeverGroup,
+            "Fever on a charge or advance order",
+            "When an AI formation gets a NEW charge or advance order - yours or its own general's - each of its soldiers on foot gets a FEVER: for a while he attacks as eagerly as the multiplier below says, then calms down again. The fever's clock starts only when he first comes near an enemy. A hold, move or retreat order ends it. Never you, never riders; tournaments and duels have no orders, so no fever. Off: everyone stays calm.");
+
+        public static readonly ParamDef FeverPointsPerSecond = Float("FeverPointsPerSecond", 1, 50, FeverGroup,
+            "Athletics points per fever second (points)",
+            "A man's fever lasts his CURRENT Athletics points divided by this, in seconds: 100 points = 10 s at 10, a tired man at 40 points only 4 s. Veterans have bigger Athletics pools, so they surge longer; tired men surge shorter. Lower = longer fevers. Read when the order comes.");
+
+        public static readonly ParamDef FeverAggressionMultiplier = Float("FeverAggressionMultiplier", 1, 5, FeverGroup,
+            "Fever aggression at its peak (x)",
+            "At the fever's start a man decides to attack this many times as often as a calm man (3 with a calm of 3 = exactly the game's own AI). It fades in a straight line back to calm as his fever burns down. 1 = no surge.");
+
+        public static readonly ParamDef FeverContactMetres = Float("FeverContactMetres", 1, 20, FeverGroup,
+            "Fever starts burning at (m)",
+            "The fever's clock starts the first time an enemy comes within this many metres of him - a general orders the charge from afar, and the fever should not be spent on the walk. Once burning it burns on, enemy near or not, until it is empty.");
+
+        public static readonly ParamDef FeverShieldDurationMultiplier = Float("FeverShieldDurationMultiplier", 0.1, 2, FeverGroup,
+            "Fever length with a shield in hand (x)",
+            "While a man holds a shield in his other hand his fever burns faster, so it lasts this share as long (0.7 = 70%): a shield man waits for the opening behind it. Read live - a man who takes his shield off his back, or puts it away for a two-handed axe, burns at the other rate from then on. 1 = the same with or without.");
+
+        public static readonly ParamDef FeverSprintToClose = Bool("FeverSprintToClose", FeverGroup,
+            "Feverish men sprint the last metres",
+            "A man in his fever may sometimes sprint at an enemy a few metres away (the distances below): every check he rolls the chance below, scaled by how much fever he has left. He spends only what he holds above his order's sprint reserve (the Sprint settings). Needs the sprint and \"AI soldiers sprint on new orders\" on.");
+
+        public static readonly ParamDef FeverSprintMinMetres = Float("FeverSprintMinMetres", 0, 10, FeverGroup,
+            "Fever sprint: enemy at least (m)",
+            "A fever sprint starts only with the nearest enemy at least this far away - closer is already melee.");
+
+        public static readonly ParamDef FeverSprintMaxMetres = Float("FeverSprintMaxMetres", 1, 40, FeverGroup,
+            "Fever sprint: enemy at most (m)",
+            "A fever sprint starts only with an enemy within this many metres. It ends by itself once an enemy is within a few metres.");
+
+        public static readonly ParamDef FeverSprintCheckSeconds = Float("FeverSprintCheckSeconds", 0.1, 10, FeverGroup,
+            "Fever sprint: a roll every (s)",
+            "How often a feverish man who could sprint at an enemy rolls for it, in seconds.");
+
+        public static readonly ParamDef FeverSprintChancePercent = Int("FeverSprintChancePercent", 0, 100, FeverGroup,
+            "Fever sprint: chance per roll (%)",
+            "The chance of a fever sprint at each roll at the fever's start (and while it waits for the first enemy); it falls in a straight line with the fever left - half the fever left, half the chance; empty, none. Several sprints per fever are possible, rarer as it fades. 0 = never.");
+
         // ------------------------------------------------------------------ refill (regeneration)
 
         public static readonly ParamDef RegenDelayBlowTimes = Float("RegenDelayBlowTimes", 0, 20, RefillGroup,
@@ -675,6 +726,8 @@ namespace TraxCombat.Core
             SprintTopSpeedReachSeconds,
             SprintRefillSeconds, SprintRefillMovingFactor, SprintRefillExhaustedFactor, SprintAiEnabled, SprintAiChargeKeepPercent,
             SprintAiAdvanceKeepPercent, SprintAiMoveKeepPercent,
+            AiCalmFactor, FeverEnabled, FeverPointsPerSecond, FeverAggressionMultiplier, FeverContactMetres, FeverShieldDurationMultiplier,
+            FeverSprintToClose, FeverSprintMinMetres, FeverSprintMaxMetres, FeverSprintCheckSeconds, FeverSprintChancePercent,
             RegenDelayBlowTimes, BlowTimeSeconds, FullRegenSecondsStanding, RegenRateNearFullPercent, RegenMultiplierAtFullRun,
             WalkEffortFraction, HideoutBossFightRefill,
             ShowPlayerBar, ShowPlayerBarOutsideBattles, ShowAttackRecoveryBar, FlashBarOnEarlyAttack, ShowSprintBar,
@@ -692,7 +745,7 @@ namespace TraxCombat.Core
         /// <summary>The groups in order.</summary>
         public static readonly IReadOnlyList<ParamGroup> Groups = new[]
         {
-            MasterGroup, DamageGroup, AthleticsGroup, TiredGroup, StepBackGroup, BattlePaceGroup, BraceGroup, SprintGroup, RefillGroup, PlayerBarGroup, OrderStripGroup, AltMarkersGroup, AdvancedGroup,
+            MasterGroup, DamageGroup, AthleticsGroup, TiredGroup, StepBackGroup, BattlePaceGroup, BraceGroup, SprintGroup, FeverGroup, RefillGroup, PlayerBarGroup, OrderStripGroup, AltMarkersGroup, AdvancedGroup,
         };
 
         private static readonly Dictionary<string, ParamDef> ByKey = BuildIndex();

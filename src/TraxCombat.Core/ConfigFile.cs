@@ -91,8 +91,9 @@ namespace TraxCombat.Core
         /// (the AI sprint by order: SprintAiChargeSharePercent renamed SprintAiChargeUsePercent, SprintAiMoveSharePercent dropped),
         /// 7 = step 37 (Anton: one number per order, the reserve - the three SprintAi*UsePercent keys dropped, and step 33's two
         /// share keys with them; SprintAiAdvanceKeepPercent 0 → 50 and SprintAiMoveKeepPercent 70 → 80 in a format-6 file - the
-        /// drops by <see cref="Migrate(ConfigReadResult, Func{ParamDef, double})"/> for a file of any format).</summary>
-        public const int FormatVersion = 7;
+        /// drops by <see cref="Migrate(ConfigReadResult, Func{ParamDef, double})"/> for a file of any format), 8 = step 43 (Anton: cheaper
+        /// swings and wrong-side blocks - CostPerBlow 10 → 3 and CostPerWrongSideShieldBlock 5 → 2 in any older file still holding them).</summary>
+        public const int FormatVersion = 8;
 
         /// <summary>The meta key holding <see cref="FormatVersion"/> - not a setting.</summary>
         public const string VersionKey = "ConfigVersion";
@@ -379,6 +380,15 @@ namespace TraxCombat.Core
                     "step 37, Anton: one number per order - an advance sprints what he holds above a half-store reserve", from, defaultOf);
                 MoveOldDefault(read, SettingsSchema.SprintAiMoveKeepPercent, 70,
                     "step 37, Anton: one number per order - a move sprints what he holds above an 80% reserve", from, defaultOf);
+            }
+            if (from < 8)
+            {
+                // step 43: both old defaults go back to step 5c (CostPerBlow) and step 22 (CostPerWrongSideShieldBlock) - every older
+                // format knew them; a file without the key simply gets the new default
+                MoveOldDefault(read, SettingsSchema.CostPerBlow, 10,
+                    "step 43, Anton: a swing or shot costs 3 Athletics - the calm AI swings less, so a blow may cost less", from, defaultOf);
+                MoveOldDefault(read, SettingsSchema.CostPerWrongSideShieldBlock, 5,
+                    "step 43, Anton: a wrong-side shield block costs 2, like a weapon parry", from, defaultOf);
             }
             // steps 36 / 37: the retired AI sprint keys - in ANY format (they are only ever steps 33-36's, and a hand-pasted one
             // goes the same way)
