@@ -5,7 +5,8 @@ order, about **3 hours 15** (A 10 min, B 15, C 25, D 60, E 20, F 55, G 10; the o
 time after step 16? D4 alone (the A/B of the new guard and backpedal, 20 min) answers the newest
 questions; after step 21, D5 + D6 (the shield wall and the archers, 25 min); after step 23, D7 (lines brace by
 their orders, 15 min - since step 24 with the "ready 34/50" count on ALT and in the orders menu); after step 28, D8
-(a tournament: the opponent fights on to ~20%, 10 min; after step 29 its step 4 - block your way back from empty; after step 30 its step 5 - the tired opponent guesses his blocks); after step 32, D9 (the swing stack: save swings up and burst, the kick refused at 0, 10 min); after step 33, D10 (the sprint: Left Ctrl, a charge order, 15 min; step 35 - a tap, the tired floor); after step 41, D11 (a shield wall that holds its slots, ON then OFF, 10 min); after step 42, D12 (the small step out, L 1 / 0 / 2 live, 10 min).** Each part says what to do, what you
+(a tournament: the opponent fights on to ~20%, 10 min; after step 29 its step 4 - block your way back from empty; after step 30 its step 5 - the tired opponent guesses his blocks); after step 32, D9 (the swing stack: save swings up and burst, the kick refused at 0, 10 min); after step 33, D10 (the sprint: Left Ctrl, a charge order, 15 min; step 35 - a tap, the tired floor); after step 41, D11 (a shield wall that holds its slots, ON then OFF, 10 min); after step 42, D12 (the small step out, L 1 / 0 / 2 live, 10 min). The impact system (steps 47-53 - staggers, shields,
+knockdowns, riders, the charge): **THE IMPACT MORNING SCRIPT** in part D, just before D16 - five battles in order, ~80 min.** Each part says what to do, what you
 should see, what counts as broken, and the log lines that prove it. The full line reference —
 every summary block and what proves what — is the **appendix** at the end.
 
@@ -999,6 +1000,22 @@ colour in a long fight while the strip's do; a bar that jumps when a man's fever
 a rider's bar inside his body or far above him (tell Claude how far - `RiderLiftMetres` is 1 m); the frame rate dropping while ALT is
 held; `[error] … hud.` lines or `ALT bars: … DISABLED`.
 
+### THE IMPACT MORNING SCRIPT (steps 47-53 - read this first; D16-D22 below are the detail)
+
+Everything from D16 to D22 was built in one night on assumptions only the game can confirm. Do them **in this order** - each one says
+whether the next one can be trusted. After each battle open `trax_combat.log` (beside config.json) and read the lines named here; send
+Claude the `[summary] impact …` block of every battle.
+
+| # | What | ~min | Read after it (the `[summary]` lines) | Good = | Bad = (the fallback Claude builds) |
+|---|---|---|---|---|---|
+| 1 | **D16 the spike** (MCM → Advanced → *Impact test (spike)* ON): a tournament, then a 50 v 50 shield battle; then the spike OFF again | 25 | `impact spike lever 1-6 … → WORKS / FAILS / UNSEEN` | all six WORKS (or UNSEEN - play a bit more) | a FAILS: its line names the fallback (lever 1 → our own knockdown blow; 3 → `SetOverridenStrikeAndDeathAction`; 4 → the longer block stun alone; 6 → a crush-through) |
+| 2 | **D19 + D20 + D21's steps 1-3 in ONE tournament** (the spike off, defaults): kick, block, hit a fresh man (nothing), tire him (ALT - his bar orange / red), then kick / swing at his shield / hit him clean; let him tire you | 15 | `impact live …` (kicks), `impact live … blocks …`, `impact live clean hits …`, `impact live shrug-offs`, `impact messages` | the 100-75 band 0 everywhere; `Fall seen` ≈ applied; staggers `seen` ≈ applied, `measured` ≈ asked; the on-screen lines appear (red / purple) | `Fall seen 0` on a family (the engine ignores our KnockDown there); the slowed reactions measure like the untouched ones (the slow does not hold) |
+| 3 | **A 50 v 50 shield-infantry battle** (D20 step 5): let the lines grind 5-8 min, hold ALT now and then | 10 | the same lines + `impact momentum`, `impact riders` (none expected), `courage …` | shields on the ground between tired lines, men staggering after blocks; `BLOCKS MADE FROM INSIDE A STAGGER` ~0 | a stutter (`cost` lines), a man frozen / sliding, `levers disabled` anything |
+| 4 | **D21 step 4 - the SHOCK CHARGE** (a fresh two-hander unit into the flank of a tired line, then into a fresh reserve, then once with Momentum OFF) | 15 | `impact momentum` - `sprinting` vs `standing`, most of all `on men below half a bar` | sprinting far above standing on tired men; the fresh reserve barely moves | `sprinting 0` although they clearly sprinted (the speed read is wrong) |
+| 5 | **D22 - the CAVALRY CHARGE and riders** (a fresh cavalry unit into a tired line; your own horse; a rider you fight on foot) | 15 | `impact riders …`, `impact riders' shields and limits`, the momentum line's `RIDERS` part, `impact messages` | `SEEN off the horse` ≈ APPLIED; riders never stagger; galloping above standing | `still mounted` ≈ applied (the engine ignores our dismount - tell Claude) |
+
+Then play normally (parts E-G). Your gut on each family - too many / about right / too few - is the most useful thing to send.
+
 **D16. The impact spike - does the game follow each lever? (step 47, IMPACT I1, ~25 min - a DIAGNOSTIC, do it FIRST in the morning:
 steps 48-53 were built the same night on its assumptions).** The impact system (docs/IMPACT.md - staggers, dropped shields, knockdowns
 by both men's Athletics) pulls six engine levers no mod of ours has pulled before. The spike pulls each one with a LOUD fixed value and
@@ -1220,7 +1237,7 @@ line with its stack above); our blows registered with `Fall seen 0` (lever 6 doe
 Defaults (MCM → *Impact: staggers, shield drops, knockdowns*: Impact on, Clean hits on, Tired men always flinch on, Momentum on, +60% at a
 full sprint, no bonus up to 2.0 m/s, full from 7.0 m/s; Shadow mode OFF; the spike OFF). The model's mission-start line now reads `LIVE -
 kicks / bashes, blocks, clean hits, the riposte applied; …; tired men always flinch on; momentum (the attacker's run into the blow) +60% impact
-at 7.0 m/s and faster, none at 2.0 m/s or slower (riders: step 53)`.
+at 7.0 m/s and faster, none at 2.0 m/s or slower; a rider's horse +30% at 10.0 m/s, none at 3.0 m/s (a couched lance never)` (step 53).
 1. **A tournament round (sword or blunt), you against one man. Fresh**: hit him clean 4-5 times - he flinches as in vanilla, nothing more (no
    `[impact] YOU:` line for a hit that does nothing).
 2. **Tire him** (ALT: his bar orange / red) and hit him clean. **See**: his flinch lasts LONGER (up to ~1.5 s empty) - a window for your next
@@ -1244,7 +1261,8 @@ at 7.0 m/s and faster, none at 2.0 m/s or slower (riders: step 53)`.
    comparison.
 5. **The [summary] lines** (send them): `impact momentum (step 52 - every decided kick, bash, block and clean hit by the attacker's speed into
    the blow; …): standing N (0.0 m/s, impact x1.00): an outcome N%, down N%; on men below half a bar N: an outcome N%, down N% | walking … |
-   running … | sprinting N (8.x m/s, impact x1.6x): an outcome N%, down N%; on men below half a bar … | riders' blows not counted (step 53) N`;
+   running … | sprinting N (8.x m/s, impact x1.6x): an outcome N%, down N%; on men below half a bar … || RIDERS (step 53 - …): standing … |
+   galloping … | couched lances (no momentum - the game's own big hit) N` (the riders' part: D22);
    `impact live clean hits, <cut | pierce | blunt | two-handed>, by the hit man's bar 100-75% / 75-50% / 50-25% / 25-0% (step 52; LIVE …): N
    live (a / b / c / d); knocked down decided … = N, applied … = N[, Fall seen (all classes) M]; staggered (his flinch lengthened) decided …,
    applied …`; `impact live clean-hit knockdowns: on men REELING from an impact stagger N of M hits (…%), on the rest … (…%); Fall seen …, not
@@ -1267,6 +1285,50 @@ cancels the fall); `no flinch seen` near the staggers applied; the staggers' mea
 `sprinting 0` in a battle where your men clearly sprinted into the enemy (the speed read is wrong - tell Claude the walking / running counts);
 a FRESH man knocked down by a clean hit from an even man; `levers disabled` anything (an `[error] impact.live-…` / `impact.shrug-off-hook`
 line with its stack above).
+
+**D22. RIDERS - knocked off their horses, the cavalry charge, and your on-screen lines - IMPACT I6 LIVE (step 53, ~20 min).** Defaults
+(MCM → *Impact: staggers, shield drops, knockdowns*: Impact on, Shadow mode OFF, *Rider knocked off his horse* 50%, *Momentum: a rider's blow
+at a gallop* +30%, no bonus up to 3.0 m/s, full from 10.0 m/s; *On-screen lines* on, *your side's heroes too* off, one every 1.5 s; the spike
+OFF).
+1. **You on foot against a rider** (a custom battle: you as infantry, the enemy a few cavalry; or a lord on horseback in a field battle). Let
+   him come; block, parry, swing at him as he passes - and at his horse's rider when he slows. **See**: a FRESH rider never comes off. Tire
+   him (he blocks a lot - his bar orange / red under ALT, riders' bars sit higher) and hit him: now and then he is **knocked off his horse**
+   (the game's own fall from the saddle); a kick or a wrong-side block can take his shield; he NEVER plays a stagger (the horse moves with
+   him). On screen (purple): `You knock <him> off his horse`. **Lines**: `[impact] live: first rider KNOCKED OFF his horse at … s - <you>'s
+   clean hit on <him> (his bar N%, x …, the knockdown's chance x 50% = N%) - answered in the damage decorator's dismount seam
+   (DecideAgentDismountedByBlow)`; `[impact] live: first rider SEEN off his horse at … s - <him>, 0.0x s after …`; for a block: `[impact] live:
+   first BLOCKING rider knocked off his horse - our own blow (RegisterBlow, CanDismount, 1 damage) on <him> …`.
+2. **You on a horse, tired** (ride, swing a lot until your bar is orange / red, then fight infantry): some hits knock YOU off - red on screen
+   `You are knocked off your horse`; your shield can go (`Your shield is knocked from your hand`). `[impact] YOU: <him>'s clean hit on you
+   (riding) (your bar N%, x …): you are knocked off your horse (N%)`.
+3. **THE CAVALRY CHARGE** (a custom battle: your infantry line grinds the enemy's 4-6 min until both are orange / red; a FRESH cavalry unit
+   held back (F3) charges the tired line at a full gallop - then once into a fresh line). **See**: where the horses hit the tired men,
+   men are thrown down and staggered more than by the same riders standing - but not the whole line; into a fresh line nothing more than
+   vanilla. Lancers who couch their lances get no bonus from us (the game's own big hit). **The momentum line's RIDERS part**: `galloping N
+   (10.x m/s, impact x1.30): an outcome N%, down N%` well above `standing` and `walking`.
+4. **The on-screen lines** (any fight): knocked down / knocked off / shield gone / a riposte on you (red); you knock a man down / off his horse,
+   break his guard, knock his shield away (purple). Several at once arrive as ONE line a moment later ("You knock Aldric down; you knock Rolf
+   off his horse"). Try *On-screen lines: your side's heroes too* ON in a field battle with companions: a white line when one of your men
+   unhorses or fells an enemy LORD, or when a companion of yours goes down. *On-screen lines* OFF: none.
+5. **The [summary] lines** (send them): `impact riders (step 53 - a knockdown on a rider = KNOCKED OFF his horse at 50% of its chance, never a
+   stagger; LIVE …): live decisions on riders kicks / bashes N / blocks N / clean hits N; dismounts DECIDED N (by the rider's bar …) →
+   APPLIED a in the decorator's dismount seam + b by our own blow (blocks) → SEEN off the horse within 2.0 s c + d, still mounted e + f (off
+   after 0.xx s on average) (not applied: …)`; `impact riders' shields and limits: shields knocked from a rider's hand decided N … → queued … →
+   dropped …; staggers REFUSED on riders (never on a horse) N; ripostes refused on a mounted attacker N; …; YOU: knocked off N, knocked someone
+   off N …`; `impact messages (step 53 - on-screen lines, ImpactShowMessages on, only yours, at most one every 1.5 s): offered N (to you …, by
+   you …, your men …; knocked down …, knocked off a horse …, shields …, guards broken …, ripostes …) → lines SHOWN N, parts MERGED into a line N
+   …`; the momentum line's `|| RIDERS …` part.
+- **What to read first**: (a) `SEEN off the horse` ≈ `APPLIED` on both ways (the engine plays a dismount from our answer AND from our own
+  CanDismount blow); (b) `staggers REFUSED on riders` above 0 and no rider ever seen staggering; (c) the RIDERS columns: `galloping` outcomes
+  above `standing`; couched lances counted apart; (d) `lines SHOWN` a few per minute of your fighting, `MERGED` a small share.
+- **Your gut**: riders knocked off too often / about right / too rarely (`ImpactRiderDismountPercent` 50); the cavalry charge's punch
+  (`ImpactMomentumRiderPercent` 30, `…RiderGallopMetresPerSecond` 10 - lower = a canter already counts fully); the lines - helpful or noisy
+  (`ImpactMessageMinSeconds` 1.5, `ImpactShowMessages`).
+**Broken — tell Claude** (D22): `still mounted` ≈ applied (the engine ignores our dismount - the seam's or our blow's: say which way); a
+rider or a horse playing a stagger animation (must never happen); a crash right after a rider is knocked off (note the time); `riders'
+shields … dropped 0` with drops queued; no `impact messages` line, or lines shown for things that did not happen (shadow mode must show
+none); the same event shown twice; `levers disabled` naming *a rider knocked off his horse* (an `[error] impact.live-dismount-blow` /
+`impact.model-dismount` / `impact.dismount-hook` line with its stack above).
 
 ---
 
@@ -2084,7 +2146,7 @@ header names the technique: `==== scene …, mod ON, AI holds: Input (the AI's o
 ### L6o. Clean hits, the reeling bonus and MOMENTUM LIVE (step 52, IMPACT I5)
 
 - Mission start: the model's line (L6k) adds `tired men always flinch on; momentum (the attacker's run into the blow) +60% impact at 7.0 m/s
-  and faster, none at 2.0 m/s or slower (riders: step 53)`. Clean hits stop (off / shadow / the spike / the master switch): `[impact] clean
+  and faster, none at 2.0 m/s or slower` (+ the riders' part since step 53 - L6p). Clean hits stop (off / shadow / the spike / the master switch): `[impact] clean
   hits no longer live at … s (<mode>): N watch(es) let go - a slowed flinch / fall ends by itself`.
 - Every decision line (first of a kind / verbose) shows the momentum when there is one: `impact 2.01 (3.0 kg, speed 80 x1.00, cut) incl.
   momentum x1.60 (8.0 m/s into the blow) vs guard …`.
@@ -2101,6 +2163,30 @@ header names the technique: `==== scene …, mod ON, AI holds: Input (the AI's o
   `impact live clean hits, <class>, by the hit man's bar …` (one per weapon class that was hit, cut always), `impact live clean-hit
   knockdowns: …`, `impact live clean-hit staggers (the engine's own flinch slowed): …`, `impact live shrug-offs (…): …`, `impact live
   clean-hit limits: …`. Nothing live: `impact live clean hits (step 52): no live clean hit this mission (<mode>)`.
+
+### L6p. Riders and the on-screen lines LIVE (step 53, IMPACT I6)
+
+- Mission start: the model's line (L6k) now ends `…; momentum … none at 2.0 m/s or slower; a rider's horse +30% at 10.0 m/s, none at 3.0 m/s
+  (a couched lance never)`. A decision line with a rider's momentum: `incl. momentum x1.30 (his horse at 10.0 m/s into the blow)`; a couched
+  lance: `(a couched lance - no momentum)`.
+- First-time lines: `[impact] live: first rider KNOCKED OFF his horse at … s - <attacker>'s <event> on <rider> (his bar N%, x …, the knockdown's
+  chance x 50% = N%[, momentum x…]) - answered in the damage decorator's dismount seam (DecideAgentDismountedByBlow)`; `… first BLOCKING rider
+  knocked off his horse - our own blow (RegisterBlow, CanDismount, 1 damage) on <him> after his <block> of <attacker>'s blow, from the tick at …
+  s (0.0x s after the block)`; `… first rider SEEN off his horse at … s - <him>, N.NN s after <the way>`; `… a rider still on his horse 2.0 s
+  after <the way> (<him>, at … s) - the engine did not play the dismount; tell Claude if the summary shows many (PLAYTEST D22)`.
+- YOU: `[impact] YOU: <him>'s <event> on you (riding) (your bar N%, x …): you are knocked off your horse (N%)[, your shield knocked away (N%)]`
+  / `YOU: your <event> on <him> (riding) (his bar …): he is knocked off his horse (N%)…`.
+- Every on-screen line is logged as shown: `[impact] on screen at … s (#D65252FF | #AE4AD9FF | #FFFFFFFF): <the line>` - red = done to you,
+  purple = done by you, white = your side's heroes (ImpactMessagesIncludeYourMen).
+- A lever's error: `[error] impact.live-dismount-blow` (our blow), `impact.model-dismount` (the seam's decision) or `impact.dismount-hook` once
+  with its stack + `[impact] live lever a rider knocked off his horse disabled for this mission …`; `impact.message` / `impact.messages-tick`
+  for the lines (no line, nothing else changes).
+- The [summary] lines (D22 reads them): `impact riders (step 53 - …): live decisions on riders …; dismounts DECIDED … → APPLIED … → SEEN …`
+  (or `impact riders (step 53): no live decision on a rider this mission (…)`), `impact riders' shields and limits: …`, `impact messages (step
+  53 - on-screen lines, …): offered … → lines SHOWN …, parts MERGED …`; the momentum line's `|| RIDERS (step 53 - by the horse's speed into
+  the blow; …): standing … | walking … | trotting / cantering … | galloping … | couched lances (no momentum - the game's own big hit) N`.
+- Step 53 also changed: a rider's block stun is lengthened by his tiredness like anyone's (L6n's stun counts include riders now); the
+  `impact limits` line reads `riders knocked off their horse by the dice N (step 53: applied / seen in the 'impact riders' line)`.
 
 ### L6l. Courage and cohesion (step 49)
 
