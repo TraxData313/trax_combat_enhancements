@@ -1,7 +1,11 @@
 # Impact — staggers, dropped shields and knockdowns
 
 **Status: APPROVED by Anton (2026-10-17 night, every §8 recommendation taken) - on the board as steps 47-53 (I1-I7). Built so far:
-step 47 = I1, the spike (Advanced `ImpactSpike`; its verdicts per lever in PLAYTEST D16 - read them before trusting 48-53's levers).**
+step 47 = I1, the spike (Advanced `ImpactSpike`; its verdicts per lever in PLAYTEST D16 - read them before trusting 48-53's levers);
+step 48 = I2, THE MODEL (Core `Impact.cs`: every §3 formula, every §4 example reproduced by a unit test; all 60 §5 settings in MCM's
+"Impact: staggers, shield drops, knockdowns" group; every kick / bash / block / clean hit decided once and logged, the [summary]
+"impact" lines - PLAYTEST D17). `ImpactShadowMode` ships OFF (Claude's call, DESIGN decision 40 - Anton wants to see it live in the
+morning; the shadow switch still turns every effect into logging only); no effect is applied until steps 49-51 build them.**
 (Written as a plan in step 45:) The game-side facts behind every line are in
 `docs/RESEARCH.md` §R (file + line in the v1.4.8 decompile); the short version is in `AI_NOTES.md` "Step 45". The build order
 (§7) goes into `TASKS_TODO.md` only after Anton says yes.
@@ -217,13 +221,15 @@ the system is on; every blow we do not lengthen keeps vanilla's 0.8 — we clamp
 | Defender's bar | T_D | Kick: shield / down | Right block: stagger / down | Parry: stagger / down | Wrong side: stagger / shield / down | Clean hit: stagger / down |
 |---|---|---|---|---|---|---|
 | 100% | 0 | 0 / 0 | 0 / 0 | 0 / 0 | 0 / 0 / 0 | 0 / 0 |
-| 75% (peak line) | 0 | 0 / 0 | 0 / 0 | 0 / 0 | 0 / 0 / 0 | 0 / 0 |
+| 75% (peak line) | 0 | 0 / 0 | 0 / 0 | 0 / 0 | 1 / 0 / 0 | 0 / 0 |
 | 50% | 0.33 | 14% / 1% | 21% / 0 | 31% / 1% | 39% / 12% / 3% | 21% / 0 |
 | 25% | 0.67 | 82% / 70% | 59% / 19% | 77% / 36% | 88% / 48% / 38% | 68% / 35% |
 | 10% | 0.87 | 90% / 80% | 79% / 39% | 80% / 40% | 90% / 50% / 40% | 80% / 50% |
 | 0% | 1 | 90% / 80% | 80% / 40% | 80% / 40% | 90% / 50% / 40% | 80% / 50% |
 
-Two EMPTY even men: every kick 90% / 80% — an exhausted 1v1 ends on the ground.
+Two EMPTY even men: every kick 90% / 80% — an exhausted 1v1 ends on the ground. (Step 48's tests: the 75% row's wrong side is
+0.6% - a fresh attacker against a man at 75 points with a 0.4 guard is just beyond the even band; it read 0 before. Every other figure
+of §4 comes out of `ImpactMath` within the doc's rounding.)
 
 **B. The 200-at-100% king against the 50-at-20% man** (king skill 250, man skill 60; swords, 3.5 kg shields)
 
@@ -281,7 +287,7 @@ skill 20; the peasant parries with a 0.6 kg stick)
 |---|---|---|---|
 | Switches | `ImpactEnabled` | true | the whole system (after `ModEnabled`, `AthleticsEnabled`) |
 | | `ImpactKicksEnabled` / `ImpactBlocksEnabled` / `ImpactHitsEnabled` / `ImpactRiposteEnabled` | true | one per event family (A/B in a battle) |
-| | `ImpactShadowMode` | false | decide and log, change nothing (I2's default true until I3) |
+| | `ImpactShadowMode` | false | decide and log, change nothing (planned true for I2 until I3; shipped false - DESIGN decision 40) |
 | Pressure | `ImpactMismatchWeight` | 0.25 | x per doubling of the mismatch beyond the band |
 | | `ImpactEvenBandDoublings` | 0.5 | a mismatch inside ±0.5 doublings (×1.41) is an even match |
 | | `ImpactBodyExponent` | 0.5 | how the points ratio turns into body strength |
@@ -342,7 +348,7 @@ soldier under ALT).
 | Step | What | Proof in the log |
 |---|---|---|
 | **I1 SPIKE** (riskiest first) | ONE Advanced switch `ImpactSpike` (off): fixed, loud values to prove each engine lever in a real battle — every landed kick gets the KnockDown flag; every block ×3 stun (cap raised to 2 s); every kicked man's reel and every knockdown's rise at speed 0.5; the first block every 10 s → `act_stagger_backward` on the blocker; every kicked man with a shield drops it (queued); one blow of our own (KnockDown, 1 damage) on a blocker every 20 s. Nothing of the model. A tournament + a 50v50 | `[impact] spike: kick KnockDown flags N → Fall seen M`, `reaction speed 0.5: StrikeKnockBack 0.42 s → 0.85 s measured`, `forced stagger accepted a/N, lasted 0.9 s, blocks from inside 0`, `block stun ×3: defender 0.21 → 0.63 s asked, defend-hit measured 0.6 s; calls off the main thread K`, `shield dropped N, picked up M after s`, `own knockdown blow N → Fall seen M` |
-| **I2 The model, SHADOW** | Core `Impact.cs` (pure, unit-tested: x, R, band, S-curve, ceilings, lengths, immunity, diminishing returns, the reeling state), every setting in DESIGN + defaults.json + MCM, the inputs read at every kick / block / hit; decisions LOGGED, nothing applied (`ImpactShadowMode` on) | `[summary] impact (shadow): kicks 41 → would drop 6, knock down 4; right blocks 380 → would stagger 52 …` by bar band — Anton reads his own battles' numbers before anything changes |
+| **I2 The model, SHADOW** (step 48, built 2026-10-17: `ImpactShadowMode` ships OFF - decision 40; nothing is applied anyway until 49-51) | Core `Impact.cs` (pure, unit-tested: x, R, band, S-curve, ceilings, lengths, immunity, diminishing returns, the reeling state), every setting in DESIGN + defaults.json + MCM, the inputs read at every kick / block / hit; decisions LOGGED, nothing applied | `[summary] impact (shadow): kicks 41 → would drop 6, knock down 4; right blocks 380 → would stagger 52 …` by bar band — Anton reads his own battles' numbers before anything changes |
 | **I3 Kicks and bashes LIVE** (points 1, 3, 4, 11) | knockdown, dropped shield, the longer reel, the slower get-up, immunity + diminishing returns | `[impact] YOU: your kick on … : knocked down (62%)`, the summary's applied vs asked, reel / get-up measured |
 | **I4 Blocks LIVE** (points 2, 5, 6, 7) | the stun by tiredness, the rolled stagger, wrong-side shield drops, a block knocked down (the technique I1 proved), the riposte | stagger lengths measured, blocks made from inside a stagger ~0, ripostes by the attacker's bar |
 | **I5 Clean hits + the reeling state** (points 8, 9) | tired men never shrug off, the flinch lengthened, knockdowns on landed blows, the reeling bonus | knockdowns by weapon class and bar band |

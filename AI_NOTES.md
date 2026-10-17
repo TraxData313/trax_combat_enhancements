@@ -4254,3 +4254,90 @@ flag; whether `SetCurrentActionSpeed` holds on an engine-started reaction; wheth
 plays and whether StunPeriodMax 2 s is honoured; whether `act_stagger_backward` is accepted mid-fight (and with which priority rule), how
 long it plays, and whether a man blocks from inside it; whether the queued drop leaves the shield on the ground and when the AI picks it up;
 whether our own blow knocks a blocker down. And how a forced stagger looks on YOU in first person (IMPACT §8 q5).
+
+## Step 48 — IMPACT I2, the model: one decision per event, decided and logged (DONE 2026-10-17)
+
+**The brief (Anton asleep, every IMPACT §8 recommendation approved)**: Core `Impact.cs` pure and tested, every §5 setting in DESIGN +
+defaults.json + schema + MCM, the inputs read in game at every kick / bash / block / landed hit, DECIDE and LOG only, structured so
+49-51 only plug in the effect; `ImpactShadowMode` OFF (a deviation from IMPACT §7 - Anton wants to see it live in the morning).
+
+**The model** (Core `ImpactMath`, IMPACT §3 to the letter - the step-45 script `model2.py` was found in the scratchpad and matched line by
+line): T = 1 − f; B = max(points, floor); R = (B_A ÷ B_D)^e × (I × K_A) ÷ (G × K_D); band = sign × max(0, |log₂ R| − 0.5); x = T + 0.25 ×
+band + 0.75 (reeling) + d × damage ÷ max health (d = 0); chance = ceiling × S((x − from) ÷ (1 − from)) × 0.5^n (× the player's share, × a
+rider's dismount share); the riposte x_r = T_A + 0.25 × band(log₂ R_r), R_r turned round, × the defender's f, its S from the stagger's
+start; lengths = base × (1 + extra × T) × (1 + r T (2u − 1)). Rolls: knockdown → shield → stagger (a knockdown REPLACES the stagger), then
+the riposte (never from a man on the ground or one himself staggered / knocked down), one die each, dice only when a chance > 0; then one
+die per length (the kick's reel when not knocked down, the block's stun, the get-up, the stagger, the riposte recoil).
+
+**Claude's calls (DESIGN decision 40)**
+- Shadow OFF by default (the brief); `ImpactRules.ShadowNow` = the switch OR the spike (it owns the levers); `Applies(family)` = decided
+  && !ShadowNow && the family's effect built - `ImpactMath.EffectsBuilt` (a static readonly, `None` in step 48 - a const made the
+  compiler call later branches unreachable). 49: add `Kicks`; 50: `Blocks | Riposte`; 51: `Hits` - and plug the effect.
+- The damage term ships at 0 (the brief: "until Anton answers" §8 q1).
+- ONE group "Impact: staggers, shield drops, knockdowns" (order 9, after the fever; Refill … Advanced renumbered 10-14) with all 60, in a
+  player's order: switches, the ceilings, lengths, limits, who, then pressure / weapon / skill / guard / curve.
+- One decision per event: a LANDED blow (kick, bash, clean hit) on a man on foot is decided in the damage decorator's KnockDown seam
+  (`ImpactModelOnLandedBlow`, main thread, inside MeleeHitCallback BEFORE the blow is registered - the only place 49 / 51 can answer
+  KnockDown); the same callback's OnMeleeHit (`ImpactModelHitTaken`, its own try, run right after the spike's) finds the pending slot
+  (attacker, victim, event, time) and does NOT decide again; anything else (blocks; a landed blow on a rider - the engine asks the
+  dismount there, not our seam; a decorator stacked under another mod's) is decided in OnMeleeHit. The slot is set BEFORE deciding, so a
+  gate that refuses in the decorator is not counted twice. The tick clears a slot nobody took.
+- The state is kept in shadow too (what WOULD have happened), so the summary's refusals / halvings read as they would live. The reel and
+  the ground time use plumbing estimates (`VanillaReelSeconds` 0.45, `VanillaFallRiseSeconds` 1.5) - 49-51 replace them with the measured
+  ends (`ImpactState.EndReel` / `GotUp` from the spike's `ReactionWatch`).
+- A kick's lengthened reel (T > 0, on foot) = an impact stagger (the reeling bonus, the stagger immunity); a fresh man's (factor 1) is not.
+- IMPACT §4 A's 75 % row read 0 for the wrong side; the model gives 0.6 % - the doc now says 1 (the only figure off the doc's rounding).
+
+**The inputs actually read in game** (`Missions/ImpactInputs.cs`, all managed - RESEARCH §R7): the weapon = `attacker.Equipment[cd.
+AffectorWeaponSlotOrMissileIndex]` - `Item.Weight` (not GetWeight: a thrown stack would multiply), `GetModifiedThrustSpeedForCurrentUsage`
+when `cd.StrikeType` is Thrust (1) else `GetModifiedSwingSpeedForCurrentUsage`, `CurrentUsageItem.RelevantSkill` → `Character.GetSkillValue`;
+the damage type = the COLLISION's `DamageType` (Cut 0 / Pierce 1 / Blunt 2; Invalid = cut); a bash = the shield in that slot + one-handed;
+a kick = no weapon, the kicker's Athletics skill (our record); the guard = `WieldedOffhandWeapon` (a shield: `Item.Weight`, one-handed) on a
+shield block, `WieldedWeapon` (`Item.Weight`, its RelevantSkill) on a parry, none = the defender's Athletics skill; `MountAgent`;
+`HealthLimit`; `cd.InflictedDamage`. **Substitute**: there is no swing-speed-at-impact field (RESEARCH §R7) - the weapon's modified
+speed × step 20b's animation share of the ATTACKER (`AttackTimerMath.AnimationMultiplier(f, AttackAnimationMinPercent)` - 0.85 + 0.15 f
+with the defaults) stands for it, as IMPACT §3.3 says. Athletics: `AthleticsMath.Points` (CURRENT), `Fraction` (the bar - the summary's
+band), `PeakShare` (f). Fists (no slot) count as the reference weight / speed (1).
+
+**Built** (file map in CLAUDE.md "Layout"): Core `Impact.cs` (ImpactEvent, ImpactFamily, ImpactDamageType, ImpactOutcome, ImpactRefusal,
+ImpactFacts, ImpactState, ImpactRoll, ImpactDecision, ImpactRules, ImpactMath), `ImpactStats.cs` (+ ImpactSkip); 60 settings (151 → 211,
+15 groups) + TraxSettings properties + defaults.json (refresh) + DESIGN rows / §2 "Impact" / decision 40; Module `Missions/ImpactInputs.cs`,
+`Missions/AthleticsLogic.ImpactModel.cs`, `TrackedAgent.Impact`, `AthleticsLogic.Impact.cs` (StartImpact → StartImpactModel, KnockDownOnBlow =
+SpikeKnockDown OR ImpactModelOnLandedBlow, TickImpact → TickImpactModel before the spike's early return, the summary), OnMeleeHit's new try.
+Tests 697 → 740 (ImpactTests: every §4 example - A as a theory over the six bars, B, C, D, E as a theory over the four weapons, F, G -, the
+§3.7 lengths, randomness bounds over 4000 seeded decisions, immunity / halving / knockdown windows, riders, you, the shield, the damage
+term, the dice order, the summary, one decision in full). Smoke 103 → 106 steps (`UseFakeImpactInputs`, `ImpactModelThroughTheLogic`,
+`ImpactModelCostStaysFlat`) + the master-switch step's model part.
+
+**Measured (smoke)**: 1000 men at every bar, 20 events a tick (kicks / bashes / clean hits through the decorator's seam, the three blocks)
+- **0.016 ms a tick, 0 bytes** over 1200 ticks, ~0.34 µs a decision. In game add per event the managed reads above (a few property
+reads, one or two GetSkillValue).
+
+**Gotchas**
+- A string built per event allocates: the decision's "mode" words were first built for every event (3.2 MB over 1200 ticks in the smoke) -
+  now only when a line is written (`ModeWords`).
+- `ImpactStats.Note(shadow, applied)`: "shadow" = the MODE (ImpactShadowMode / the spike), "applied" = live AND the effect built - in step 48
+  a live decision is "LIVE, but no effect is built yet" and the verb stays "would".
+- The test doc numbers: the step-45 script printed one decimal and the doc rounded again (10.47 → "10.5" → 11) - the tests allow 0.55 points.
+- The smoke's men: IMPACT §4 B needs a 250-skill king with a 200 pool - the smoke sets `AthleticsPoolPerSkill` 0.8 for that step; even men
+  use skill 100 (pool 80): only the RATIO of the points counts while both stay above the floor.
+- Smart App Control blocked the deploy's smoke exe (the per-hash gotcha of steps 42 / 44) right after the same exe passed from bash.
+
+**For steps 49-53**
+- Plug the effect where `ImpactRules.Applies(family)` is true and add the family to `ImpactMath.EffectsBuilt`: 49 - the knockdown is
+  ALREADY answered by `ImpactModelOnLandedBlow` (returns `Knockdown.Happens && !Dismount && Applies`); add the shield drop (IImpactBody.
+  DropShield from the tick, queued), the reel × `ReelFactor` and the get-up × `GetUpFactor` (the spike's watch + SlowReaction at 1 ÷
+  factor), the measured ends into `ImpactState`. 50 - the stun: the stun seam runs on WORKER threads before OnMeleeHit, so compute the
+  stun factor there from T alone (no dice state, or ThreadSafeRandom) - the decision's `StunFactor` is the logged one; the riposte's
+  recoil likewise in the seam (the decision rolls it on the main thread AFTER the stun was set - either move the riposte roll into the seam
+  with thread-safe dice and read-only state, or apply it as a forced stagger of the attacker from the tick); the stagger = ForceStagger
+  from the tick (lever 4), a blocker knocked down = our own blow (lever 6). 51 - clean hits: KnockDown already flows through the seam;
+  the longer flinch = SlowReaction; `ImpactTiredNeverShrugsOff` = the shrug-off threshold × f in the decorator. 52 - riders: the
+  decision's `Dismount` (the engine asks `DecideAgentDismountedByBlow` for riders - hook it there).
+- `ShieldPickupLockSeconds`, `ImpactStunCapSeconds`, `ImpactTiredNeverShrugsOff` are settings with no effect until 49-51.
+
+**UNVERIFIED — only the game can tell (PLAYTEST D17)**
+1. The decorator's seam sees every landed blow on a man on foot (`N landed blows decided in the damage decorator's KnockDown seam` close to
+   kicks + bashes + clean hits on foot) - another mod's damage model on top of ours would lower it.
+2. The weapon reads give sane numbers (the first-of-kind lines: kg, speed, skill) for swords, axes, maces, polearms, a thrust.
+3. The bands read as Anton wants: the 100-75 band ~0, the 25-0 band near the anchors.

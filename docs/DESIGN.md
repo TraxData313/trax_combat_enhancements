@@ -536,6 +536,29 @@ regen.)
     he DECIDES to start one); step 41/42's wall hold (a wall under a charge is not held anyway).
   - **Off**: the master switch or `AthleticsEnabled` = the game's own values at the next recompute (the decorator's gate),
     every fever ended; `FeverEnabled` off = the bar's share only, every fever ended at once.
+- **Impact - staggers, dropped shields, knockdowns** (IMPACT I1-I7 = steps 47-53, the whole design in `docs/IMPACT.md`; step 48 =
+  I2, THE MODEL, decision 40): every kick / bash that lands, every block (right side, parry, wrong side) and every clean weapon hit on
+  a man we track is decided ONCE by Core `ImpactMath.Decide`: the pressure x on the man who takes it = his tiredness T = 1 − f +
+  `ImpactMismatchWeight` (0.25) × the mismatch beyond the even band (± `ImpactEvenBandDoublings` 0.5) - R = (both men's CURRENT
+  points, never below `ImpactBodyFloorPoints`)^`ImpactBodyExponent` × (the blow's impact × the attacker's skill factor) ÷ (the guard ×
+  the defender's skill factor) - + `ImpactStaggeredBonus` (0.75) while he reels from an impact stagger + `ImpactDamageWeight` (0) ×
+  the landed damage ÷ his full health; each outcome = its ceiling (the `*MaxPercent` table, IMPACT §3.5) × S((x − from) ÷ (1 − from))
+  × `ImpactDiminishFactor`^(his outcomes in the last `ImpactDiminishWindowSeconds`) (× `ImpactOnPlayerPercent` against you; a rider:
+  never a stagger, a knockdown = knocked off at `ImpactRiderDismountPercent`), one die each, knockdown → shield → stagger (the
+  knockdown replaces the stagger); the riposte (a right-side block or parry) with the roles turned × the defender's f; lengths = base ×
+  (1 + extra × T) × a roll in [1 − r T, 1 + r T]; immunities (`ImpactStaggerImmunitySeconds` after a stagger ends,
+  `ImpactKnockdownImmunitySeconds` after getting up) kept on each man's record (Core `ImpactState`). The inputs (step 48): both men's
+  Athletics from our records (the attacker's swing × step 20b's animation share), the weapon in the collision's slot (item weight, the
+  modified swing / thrust speed by the strike type, the collision's damage type, the attacker's relevant skill; a bash = the shield's
+  weight and one-handed; a kick = Athletics), the defender's guard (the off-hand shield and one-handed, or the parrying weapon and its
+  skill; no guard = Athletics), mounts, health - `Missions/ImpactInputs.cs`. A landed blow on a man on foot is decided in the damage
+  decorator's KnockDown seam (before the engine registers it) and taken by OnMeleeHit; blocks in OnMeleeHit. **Step 48 decides and
+  LOGS only** - no effect is built (`ImpactMath.EffectsBuilt`); steps 49 (kicks), 50 (blocks + riposte), 51 (clean hits) apply the same
+  decision through the spike's seams, each family behind its own switch (`ImpactKicksEnabled` / `ImpactBlocksEnabled` /
+  `ImpactHitsEnabled` / `ImpactRiposteEnabled`) and `ImpactShadowMode` turning ALL of them into logging only (the spike forces shadow
+  while it runs). Master switch FIRST, then `AthleticsEnabled`, then `ImpactEnabled` - read live at every event. The summary's "impact"
+  lines count every decision by event × the defender's bar band (100-75 / 75-50 / 50-25 / 25-0 %) - asked, mean x, rolled, mean chance,
+  would apply, the refusals (on the ground, immunities, no shield, a rider), the halvings, the lengths asked, the cost.
 - **Tired fighters step back** (built in step 5d - the literal rule; `StepBackEnabled`, on):
   when a MELEE swing ends, an AI fighter on foot may step back, facing its enemy with its guard
   up. Chance = `StepBackMaxChancePercent` (100) × (1 − f), f after the swing's cost: 0% in the
@@ -1518,6 +1541,25 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     the spike only their first user; (g) each lever behind its own try - an error disables that lever for the mission, the others
     run on; (h) master switch first: off = the game's stun cap back at the next tick (the decorators already vanilla), nothing queued
     is played.
+40. **The impact model** (step 48, IMPACT I2 - Anton approved IMPACT §8's recommendations 2026-10-17 night and asked for everything
+    overnight; Claude's calls - AI_NOTES "Step 48"): (a) **`ImpactShadowMode` ships OFF** - a deviation from IMPACT §7 (I2 planned
+    shadow on until I3): Anton could not playtest the spike first and wants to see the system live in the morning; every effect step
+    (49-51) keeps its own family switch and the shadow switch turns ALL effects into logging only, so one checkbox gives him I2's
+    shadow battle back; (b) `ImpactDamageWeight` ships at 0 (IMPACT §8 q1 recommended (a) at 1.0 - but the sentence was unfinished;
+    the brief keeps it 0 until Anton says what he meant); (c) all 60 IMPACT §5 settings in ONE MCM group "Impact: staggers, shield
+    drops, knockdowns", placed after "Aggression and fever (AI)" (the combat-behaviour groups together, before the refill and the HUD),
+    ordered for the player: the switches, the ceilings (his anchors), the lengths, the limits, who - the model's inner numbers last;
+    (d) one decision per event: a landed blow is decided in the damage decorator's KnockDown seam (the only managed place before the
+    engine registers it - step 49 / 51 answer KnockDown there) and OnMeleeHit takes it; a block is decided in OnMeleeHit (its stun by
+    tiredness in step 50 depends on T alone, so the stun seam on a worker thread needs no shared state); (e) the state is kept in
+    shadow too (what WOULD have happened: on the ground, reeling, immune, halved) so the summary's limits read as they would live; the
+    shadow reel / ground times use plumbing estimates (`ImpactMath.VanillaReelSeconds` 0.45, `VanillaFallRiseSeconds` 1.5) until
+    steps 49-51 set the measured ends; (f) a kick's lengthened reel (T > 0) counts as an impact stagger (the reeling bonus and the
+    stagger immunity) - a fresh man's vanilla knock-back does not, so no kick-chain on the fresh; (g) the riposte is never asked from a
+    man on the ground, nor when the defender himself was staggered or knocked down; (h) the spike (`ImpactSpike`) forces the model to
+    shadow while it runs (it owns the levers); (i) IMPACT §4's worked examples are unit tests (the step-45 script's inputs: a sword 1.2 kg
+    at speed 92, the king's at 95, an axe 3 kg at 80, a stick 0.6 kg at 95, a mace 1.8 kg at 85); the doc's 75 % row read 0 where the
+    model gives 0.6 % (a wrong-side block) - corrected to 1 in IMPACT §4.
 
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),

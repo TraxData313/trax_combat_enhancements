@@ -84,7 +84,9 @@ THE IMPACT SYSTEM (docs/IMPACT.md, steps 47-53) starts with step 47's SPIKE (Adv
 values prove six engine levers (a kick's KnockDown decision, the block stun x3 / cap 2 s, a reaction at speed 0.5, a forced stagger, a
 queued shield drop, a knockdown blow of our own), each against its own control in the same battle; the `[summary] impact spike` lines
 read WORKS / FAILS / UNSEEN per lever (PLAYTEST D16). The levers are the reusable seams of 48-53: `ImpactHooks` (the damage decorator's
-deciders) and `IImpactBody` (never a rider or a horse).
+deciders) and `IImpactBody` (never a rider or a horse). Step 48 (I2) is THE MODEL (Core `ImpactMath`; MCM group "Impact: staggers,
+shield drops, knockdowns", 60 settings, `ImpactShadowMode` OFF - decision 40): every kick / bash, block and clean hit decided once (the
+pressure x → each outcome's ceiling × an S-curve, immunity and halving on each man's record), logged; nothing applied until 49-51.
 (Steps 25-40 -
 the swing stack, the sprint, the tired block direction and the rest - are described in CLAUDE.md, the fuller copy of this
 file.) The bar for the
@@ -218,7 +220,8 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
   ParamDef.cs                 one setting: key, type, range, group, label, plain-words
                               description, apply timing (Live / NextBattle); Normalize, Format;
                               its Default comes from defaults.json (DefaultsFile), never code
-  SettingsSchema.cs           EVERY setting of DESIGN's table (151 - step 47's ImpactSpike in Advanced), in file + MCM order, 14 groups
+  SettingsSchema.cs           EVERY setting of DESIGN's table (211 - step 47's ImpactSpike in Advanced; step 48's 60 in "Impact: staggers,
+                              shield drops, knockdowns" after the fever), in file + MCM order, 15 groups
                               ("Master switch" first, "Damage" second - step 25 renamed it from
                               "Damage randomness", "Battle pace (AI)" - step 21 - after the step back,
                               "Brace by orders (AI)" - step 23 - after it,
@@ -465,6 +468,11 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               48-53), ReactionWatch (the watch state machine over the channel reads)
   ImpactSpikeStats.cs         step 47: BlockStunTally (worker-thread Interlocked counters), ImpactSpikeStats (per lever, verdicts, the 7
                               [summary] "impact spike" lines)
+  Impact.cs                   step 48 pure (AI_NOTES "Step 48", IMPACT §3): ImpactEvent / Family / DamageType / Outcome / Refusal, ImpactFacts,
+                              ImpactState (reeling, immunities, recent outcomes), ImpactRoll, ImpactDecision, ImpactRules (ModEnabled FIRST,
+                              Athletics, ImpactEnabled, the families, shadow, Applies), ImpactMath (the pressure, the S-curve, the ceilings,
+                              Decide - one decision per event, lengths, Describe; EffectsBuilt = none in step 48)
+  ImpactStats.cs              step 48: by event × the defender's bar band + the [summary] "impact" lines
   SpreadStats.cs              MeanStd (Welford, population std), FormationAthleticsStats (squad
                               mean ± std, band, mean f, at full strength, mean health - step 9; step 23:
                               Bracing / Ready / Total - the next step's "ready men"),
@@ -644,7 +652,11 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               OwnKnockdownBlow, CanForce - never a horse / rider / siege engine / water / down); GameImpactBody
   Missions/AthleticsLogic.Impact.cs  step 47, the spike: StartImpact, TickImpact (the switch, the queued calls, the watches, the
                               shields), the deciders, ImpactHit (OnMeleeHit), DisableLever (one lever off after an error),
-                              WriteImpactSummary; fixed pools of structs
+                              WriteImpactSummary; fixed pools of structs; step 48: KnockDownOnBlow = the spike's OR the model's answer
+  Missions/AthleticsLogic.ImpactModel.cs  step 48, the model: the start / mode lines, ImpactModelOnLandedBlow (the decorator's KnockDown
+                              seam decides a landed blow, remembered), ImpactModelHitTaken (OnMeleeHit takes it or decides a block), the
+                              gates (master switch first), ImpactDecide (both men's Athletics, Decide on TrackedAgent.Impact), the lines
+  Missions/ImpactInputs.cs    step 48: IImpactInputs + GameImpactInputs (the weapon, the guard, the skills, mounts, health - managed reads)
   Missions/BraceBody.cs       step 23: BraceState (his roll, the running brace, the shield's progress), IBraceBody (the
                               engine side - the smoke plays it), GameBraceBody (the order from
                               GetReadonlyMovementOrderReference().OrderEnum + FormationAI.ActiveBehavior for an AI Move;
@@ -777,7 +789,7 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
   Hud/FeverMarksVM.cs         its ViewModels: a GROW-ONLY POOL of FeverMarkVM (IsShown, PositionX / Y, Width / Height in pixels,
                               Fill, FillColor, FrameColor; step 46: BoxWidth / BoxHeight, FeverShown, BarShown, BarWidth / Height,
                               BarFill, BarUsable, BarColor, BarFrameColor, BarWoundColor)
-tests/TraxCombat.Core.Tests/  net8.0 xUnit (697 - step 44: + FeverMarkTests; step 46: + AthleticsMarkTests, the format-9 migration; step 47: + ImpactSpikeTests) — schema vs DESIGN.md (keys + types), one copy
+tests/TraxCombat.Core.Tests/  net8.0 xUnit (740 - step 44: + FeverMarkTests; step 46: + AthleticsMarkTests, the format-9 migration; step 47: + ImpactSpikeTests; step 48: + ImpactTests - every IMPACT §4 worked example) — schema vs DESIGN.md (keys + types), one copy
                               runs (SingleCopyTests: claims on private slots, copies, texts), when
                               MCM is tried and when it stops (McmPlanTests - step 12),
                               defaults.json (DefaultsFileTests), master switch, settings, config
@@ -976,7 +988,10 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               decorator (worker threads too) and logic with a stand-in impact body - each lever on the right
                               events, never a stagger on a rider, the lengths vs their controls, a lever disabled after an error,
                               the switch and the master switch, the game's side (names, codes, signatures), the cost - 1000 men,
-                              0.001 ms a tick, 0 bytes (103 steps; the config
+                              0.001 ms a tick, 0 bytes; step 48 (Program.ImpactModel.cs): the model through the real decorator's
+                              KnockDown seam and logic with stand-in inputs - one decision per event, IMPACT §4's numbers, nothing
+                              applied, shadow / the spike / the switches live, a failing read, the summary; the cost - 1000 men, 20
+                              events a tick, 0.016 ms, 0 bytes (106 steps; the config
                               checks work for any tuned default);
                               TRAX_SMOKE_KEEP=1 keeps its temp folder + log to read
 tools/DefaultsTool/           defaults.json upkeep: refresh (rewrite comments/order, keep every

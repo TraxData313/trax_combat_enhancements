@@ -1053,6 +1053,39 @@ will fall over and drop shields for no good reason while it is on.
 a crash right after a stagger or our blow (note the time - the log's last `[impact]` line); `[error] impact.…` lines; the game's stun
 cap left at 2 s after the battle (blocks in the NEXT battle with the spike OFF feel long - the `restored` count in lever 2).
 
+**D17. The impact model - what WOULD happen in your battles (step 48, IMPACT I2, ~15 min - read it with D16, before the effects of
+steps 49-51).** The model decides every kick / bash, block and clean hit (docs/IMPACT.md §3) and writes it down. In step 48 itself NOTHING
+changes in the battle (no effect is built yet); from 49 on the same decisions are applied, family by family. `ImpactShadowMode` ships OFF
+(you wanted it live in the morning - DESIGN decision 40): to see a battle's numbers with the effects of 49-51 OFF, tick MCM → *Impact:
+staggers, shield drops, knockdowns* → **Shadow mode: decide and log only**.
+1. **The spike OFF** (D16 is a separate battle). The log's start: `[impact] mission start: the model (step 48 - IMPACT I2, docs/IMPACT.md)
+   LIVE - …` (or `SHADOW (ImpactShadowMode) …`) followed by your anchors in words (`a kick on an empty even man: shield 90%, down 80%; a
+   block on the right side: stagger 80% / down 40% …; two even fresh men: 0% always …`).
+2. **A tournament round** - kick a FRESH opponent a few times (nothing: x below 0 against an even fresh man), then tire him (make him block
+   and swing) and kick again; let him tire YOU and block his blows.
+3. **A custom battle 100 v 100 infantry with shields, ~8 min** - the lines grind, men tire, blocks by the thousand.
+4. **Read the summary** (`[summary] impact …`): the header (decisions by kind, YOU took / dealt, not decided by reason, how many landed blows
+   the decorator's seam decided), one line per event kind BY THE DEFENDER'S BAR BAND (100-75 / 75-50 / 50-25 / 25-0 %): how many, the mean
+   pressure x, and per outcome `would knock down / drop a shield / stagger a / b / c / d = N (rolled …, mean chance …)`; the riposte by the
+   ATTACKER's bar; `impact limits` (refused - on the ground, the immunities, no shield, a rider; halved decisions; riders knocked off);
+   `impact lengths asked` (stagger s, the kicked man's reel x, the get-up x, the blocker's stun x, a riposted attacker's recoil s); `impact
+   cost` (µs a decision).
+- **What to read first**: (a) the 100-75 band is ~0 everywhere (fresh men are never staggered - the model's promise); (b) the 25-0 band of
+  `wrong-side blocks` and `kicks` - is the "would" count the battle you want (Anton's anchors 90 / 80 there)? (c) `right-side blocks … would
+  stagger` in the 50-25 band - a FEW, not every block; (d) `impact limits … diminished` - if most decisions are halved, men are hit too
+  often for the 8 s window; (e) `cost` a few µs.
+- **Tell Claude**: the summary lines of one tournament and one battle, and your gut for each family: too many / about right / too few. The
+  knobs are all in the new MCM group (the ceilings first; `Mismatch weight` and `Even match band` for how much the bigger man counts).
+- The first decision of each kind is in the log in full: `[impact] first kick decided at … s - <attacker>'s kick on <him> (decided and
+  logged only - its effect comes in step 49): <him> bar 20% (T 0.73); points 200 vs 10 (bodies …); impact 1.20 (a kick) vs guard 1.00 (no
+  guard); skill 250 vs 60 (x1.17 / x0.85) → R 7.37 (…) → x 1.33: knocked down 80% → rolled 0.41 YES; shield dropped 90% → rolled 0.95 no;
+  gets up x1.73 slower` - and `[impact] first time <outcome> WOULD happen …` once per outcome. Every decision: `VerboseLogging` on (bucket
+  `impact`, rate-limited).
+
+**Broken — tell Claude** (D17): no `[impact] mission start: the model …` line; `impact (step 48 - the model): OFF all mission` with the
+switches on; `the engine read failed N` above 0 (an `[error] impact.read` line with its stack); the 100-75 band showing knockdowns or
+dropped shields between even men; `not tracked` near the total (the model sees no men); a stutter in a big battle (`cost` above ~10 µs).
+
 ---
 
 ## E. Your Athletics bar, the orders-menu strip and the ALT markers (20 min)
@@ -1801,6 +1834,27 @@ header names the technique: `==== scene …, mod ON, AI holds: Input (the AI's o
   disabled by an error: …; engine calls …; watch pool full …; cost … ms a tick`, then one line per lever `impact spike lever N - <what>:
   <asked, seen, measured control → treated, refusals> → WORKS | FAILS | UNSEEN - <what it means for steps 48-53>`. Never on in that battle:
   one line `impact spike (step 47): off all battle (ImpactSpike - a test tool, Advanced) - nothing asked, nothing changed`.
+
+### L6k. The impact model (step 48)
+
+- Mission start: `[impact] mission start: the model (step 48 - IMPACT I2, docs/IMPACT.md) LIVE - but no effect is built yet (steps 49-51
+  bring them): every event decided and logged only; families: kicks / bashes on, blocks on, clean hits on, riposte on; anchors - …; limits
+  - …; against you 100%; a rider knocked off at 50% of a knockdown - read live; …` (or `SHADOW (ImpactShadowMode)`, `SHADOW (the spike is
+  on - ImpactSpike owns the levers)`, `OFF (ModEnabled | AthleticsEnabled | ImpactEnabled) - the game's own reactions`). Mid-mission: `[impact]
+  the model switched ON | OFF (<switch>) mid-mission at … s: …`, `[impact] the model's mode changed mid-mission at … s: SHADOW … | LIVE …`.
+- First-time lines: `[impact] first <kick | shield bash | right-side block | parry | wrong-side block | clean hit> decided at … s - <one
+  decision in full: the bar and T, points and bodies, impact vs guard, skills → R (log2, beyond the band), reeling, damage → x: each outcome's
+  chance (cut for N recent) → rolled … YES | no, or - refused: <on the ground | knockdown immunity | stagger immunity | no shield in hand |
+  a rider | replaced>; the reel / stun / get-up / stagger / recoil lengths>`; `[impact] first time <knocked down | shield dropped | staggered |
+  riposte> WOULD happen | happens, at … s - …`. A failing engine read: `[error] impact.read` (once, with its stack) - counted "the engine
+  read failed". Verbose (bucket `impact`): every decision in the same words.
+- The [summary] lines (D17 reads them): `impact (step 48 - the model; <LIVE, but no effect is built yet | SHADOW | MIXED>): N decisions -
+  kicks …, shield bashes …, right-side blocks …, parries …, wrong-side blocks …, clean hits …; YOU took …, dealt …; not decided: off …, its
+  family switched off …, not tracked …, the engine read failed …; N landed blows decided in the damage decorator's KnockDown seam (one
+  decision per event)`; per kind `impact <kind> by the <kicked | blocker's | hit> man's bar 100-75% / 75-50% / 50-25% / 25-0%: N = a / b / c
+  / d; mean x …; would <knock down | drop a shield | stagger> … = N (rolled …, mean chance …)`; `impact riposte (… by the attacker's bar …)`;
+  `impact limits: refused - …; diminished: …; riders would be knocked off N`; `impact lengths asked: …`; `impact cost: N decisions, … µs a
+  decision (max …) - … in shadow, … live (… applied)`. Never on: `impact (step 48 - the model): OFF all mission (<switch>) - nothing decided`.
 
 ### L7. The HUD — your bar, the recovery bar, the orders strip and the ALT markers
 
