@@ -555,7 +555,12 @@ regen.)
   `CourageMinTimidSeconds`, and only once a walk is over. Never the player, riders, men held in a shield wall (step 41), busy / detached /
   routing men, a siege's attackers, no formation; no tournaments, arenas, naval. Works without the Athletics system (no tiredness, no
   sprint). Master switch FIRST, then `CourageEnabled`: off = everyone let go at once (the game's weights back); the looks still MEASURE, so
-  the summary's "courage" lines compare isolated men and their distance from the formation's centre ON vs OFF.
+  the summary's "courage" lines compare isolated men and their distance from the formation's centre ON vs OFF. Step 49b: a man in his FEVER
+  (armed or burning) who is NOT shocked is left alone - courage never makes him timid (a timid spell ends, `CourageFeverPercent` then applies
+  only to a shocked feverish man); a timid, unshocked man with ≥ `CourageRegroupMates` mates and an enemy within 8 m rolls
+  `CourageSurgeChancePercent` × his bar at each look for a `CourageSurgeSeconds` SURGE (brave, the game's weights, no walk); the timid Melee
+  weight is 10 flat to his reach (full within it); the summary adds fever presses, surges and the STANDOFF (timid men 3-8 m from an enemy,
+  no attack by either in 10 s).
 - **Impact - staggers, dropped shields, knockdowns** (IMPACT I1-I7 = steps 47-53, the whole design in `docs/IMPACT.md`; step 48 =
   I2, THE MODEL, decision 40): every kick / bash that lands, every block (right side, parry, wrong side) and every clean weapon hit on
   a man we track is decided ONCE by Core `ImpactMath.Decide`: the pressure x on the man who takes it = his tiredness T = 1 − f +
@@ -1622,7 +1627,9 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     guard up); fever lowers the odds needed, it does not exempt; (i) riders, a siege's attackers, no-formation men and walled men are not
     looked at; (j) courage works without Athletics; (k) shock = landed hits (OnAgentHit) now, impact outcomes once an impact family applies;
     a shocked man needs twice the mates and half the radius (the flock packs in); (l) the flock target = his side's centroid within 20 m
-    when 6+ men are there - one extra query, only for walking men.
+    when 6+ men are there - one extra query, only for walking men; (m) step 49b (the manager's review): an unshocked man in a fever presses
+    whatever the odds (the first clash must happen), shock beats fever; a 5% × bar surge per look for timid unshocked men among their mates
+    with an enemy within 8 m, 4 s brave; Melee at full within his reach.
 
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),

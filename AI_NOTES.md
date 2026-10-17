@@ -4490,3 +4490,47 @@ toughness min / mean / max, weights set / re-applied / given back; cost.
 3. `OnAgentHit` fires for landed hits only (a blocked blow does not shock) - the summary's "by SHOCK" count against the fight's size.
 4. The isolated rate ON well below OFF; the p90 distance ON below OFF; wobbles a small share of timid spells.
 5. Cost in a 400-1000 man battle (`courage cost` - the stand-in scan is O(n); the game's proximity map is cheaper per man but native).
+
+## Step 49b — the fever presses, men surge in now and then, the standoff measured (DONE 2026-10-18)
+
+**The manager's review of step 49 (Anton's picture):** step 49's own worked example said the front looter of 40 vs a 20-man metal wall
+is "timid even in a full fever" - with the tightened weights (Melee gone by 3.5 m) the looters might never close at all: a standoff where
+nobody fights. Anton's picture is the opposite: they ATTACK with their fever; when the fever ends and the wall holds they line up opposite
+it, and "a few of them now and then go and hit the wall".
+
+**The fix (Claude's calls - Anton can overturn any)**
+1. **The fever presses** (`CourageMath.FeverPresses`): while his fever is ARMED or BURNING and he is NOT SHOCKED (no landed hit / live impact
+   outcome within `CourageShockSeconds`; a panic needs shock, so it is covered), courage leaves him alone - a timid spell ends at once
+   (`CourageEnd.FeverPress`, the walk stopped, the game's weights back) and no new one starts. Fever overrides the odds, not shock: a man
+   hit in the clash falls back to the mass, fever or not. `CourageFeverPercent` is KEPT, now only for a SHOCKED feverish man (his required
+   odds × 40% at a full fever - the fever still steadies a hit man a little; with Anton's "fever makes them brave" this keeps one number
+   meaningful instead of retiring it). Burnt-out men (fever over) follow the normal rules: timid → walk back or hold.
+2. **The surge** (`CourageSurgeChancePercent` 5, `CourageSurgeSeconds` 4, Live, after `CourageMinTimidSeconds`): a timid man NOT shocked,
+   with at least `CourageRegroupMates` mates in the circle and an enemy within `CourageMath.SurgeEnemyMetres` 8 m, rolls at each look (~0.5 s)
+   chance × his bar share (Athletics on; off = × 1) - a fresh man about once in 10 s, a half-tired one once in 20. A hit = brave for 4 s
+   (`CourageMind.SurgeUntil`; the look leaves him alone meanwhile - the game's weights, no walk): he steps in and swings, then the normal
+   rules take him back (timid again at the next look if the odds are still bad). The scan now reaches max(radius, 8 m) for the nearest enemy;
+   the odds still weigh only within the radius. Dice: `AthleticsLogic.CourageDice`.
+3. **Melee at full within reach**: the timid Melee curve is now 10 FLAT out to `CourageTimidMeleeMetres` (was 10 → 6.5) - never below
+   vanilla's own 8 at 0 m within 2 m (a test walks 0-2 m), then to 0.01 by reach + 1.5 m; his place (GoToPos ~5.4) wins ~0.7 m past his reach.
+
+**Measured** (a new [summary] line `courage fever and surges (step 49b)`): fever presses overriding timidity (looks where a feverish,
+unshocked man's odds were below his CALM required odds) and timid men sent back in by their fever; surges started (per AI man-minute ON) and
+the looks that could roll; the STANDOFF - timid man-seconds whose nearest enemy is 3-8 m off and neither he nor that enemy released a melee
+attack in the last 10 s (`TrackedAgent.LastReleaseTime` - kept by the Athletics engine, so with Athletics off every timid man at 3-8 m
+counts) - high = lines frozen face to face. The first surge in full (`[courage] first surge this battle: …`).
+
+**The worked examples again** (CourageTests): 40 looters vs the 20-man wall - in the charge's fever, not hit, they PRESS: the first clash
+happens; a looter hit in it falls back (0.29 < 0.4 × 1.33 = 0.53 - not a panic: 0.29 > 0.27); when the fever is out they hold opposite the
+wall (0.29 < 1) among their mates, and now and then one surges in (5% a look × his bar). 200 looters: the front presses while the fever burns
+and holds after; the ends (1.13) stay brave and wrap. Equal troops and the shock unit unchanged (the shock unit's men were hit: shock beats
+their fever).
+
+**Built**: Core `CourageMath.FeverPresses / SurgeEligible / SurgeChance / SurgeRoll / Standoff`, `SurgeEnemyMetres` 8 / `StandoffMinMetres` 3 /
+`StandoffSeconds` 10, `CourageEnd.FeverPress / Surge`, `CourageMind.SurgeUntil / Surging`, `CourageStats` (FeverPressLooks / Ends,
+SurgeEligibleLooks, Surges, StandoffSeconds + the 11th line); 2 settings (238 → 240; the group 27 → 29). Tests 764 → 767 (fever vs shock,
+the surge roll / length / bar share, the standoff; the examples and the melee curve updated). Smoke: the fever press + the fall-back after a
+hit and after the fever, a surge (brave 4 s, then timid again). Deploy green.
+
+**UNVERIFIED — PLAYTEST D18**: the first clash happens (the fever's men reach the wall); the standoff line low; surges visible as single men
+stepping in; a surge's 4 s is enough to reach and swing (if men turn back before striking, raise `CourageSurgeSeconds`).

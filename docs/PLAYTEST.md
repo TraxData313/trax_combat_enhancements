@@ -1090,8 +1090,10 @@ dropped shields between even men; `not tracked` near the total (the model sees n
 (AI)*). The log's start: `[courage] mission start: courage: each AI man on foot in a formation weighs his side against the enemy within
 6.0 m … a looter (armour 8, level 5) 1.35, an imperial legionary (armour 110, level 26) 5.97 = 4.4 looters …`.
 1. **A 20-man shield wall vs ~40 looters** (custom battle: your best armoured infantry, 20 men, F1 + F2 shield wall, halt; the enemy ~40
-   looters). Watch 2-3 minutes. **See**: the looters stop as a THICK ARC in front of the wall, a few at its face striking what is in reach
-   (your wall men step out 1 m to meet them - step 42); looters who drift round a flank alone or in twos turn and walk back to their mass
+   looters). Watch 2-3 minutes. **See** (step 49b): the FIRST CLASH HAPPENS - the looters charge into the wall in their fever; the ones your
+   men hit fall back; when the fever is spent they stand as a THICK ARC in front of the wall, and SINGLE men surge in now and then, swing and
+   come back (`[courage] first surge this battle: …`); your wall men step out 1 m to meet them (step 42); looters who drift round a flank
+   alone or in twos turn and walk back to their mass
    FACING you (a backpedal), some sprinting; nobody loops behind the wall alone; no lone looter stands among four of your men. **Lines**:
    `[courage] first walk back this battle: <looter> … odds 0.0x < required 1.00 (base … x tired … x morale … x shock … x fever … x hero …);
    … walking to the nearest bigger group of his side …` and `[courage] first walk back ended … arrived | among his mates …`.
@@ -1110,8 +1112,11 @@ dropped shields between even men; `not tracked` near the total (the model sees n
    alone …; wobbles W` - W a small share of N; `courage regroup: walks back ended arrived …, among his mates …, gave up after 15 s …; time to
    regroup mean … s; sprinted back …`; `courage flocking and panic: walks to the nearest bigger group … , to the formation's centre …; PANIC
    walks …, panic sprints …; compression - … shocked a → b m` (b below a = the shocked pack in); `courage by local odds, in contact …` (the
-   low bands mostly timid, ≥ 2 brave) and `… men OUT of their formation …`; `courage toughness … min 1.3x … max …`; `courage cost`.
-**Broken — tell Claude** (D18): no `[courage] mission start` line; timid men that stand still far from their group (`gave up after 15 s`
+   low bands mostly timid, ≥ 2 brave) and `… men OUT of their formation …`; `courage toughness … min 1.3x … max …`; `courage cost`; step 49b:
+   `courage fever and surges (step 49b): fever presses overriding timidity N looks …; surges started N (x per AI man-minute ON …); STANDOFF -
+   timid man-seconds with an enemy 3-8 m and no attack by either in 10 s: S (y per AI man-minute ON)` - surges a few per man-minute, the
+   STANDOFF low (high = the lines froze face to face - tell Claude).
+**Broken — tell Claude** (D18): the looters never reach the wall (no clash at all) or the STANDOFF rate is high; no `[courage] mission start` line; timid men that stand still far from their group (`gave up after 15 s`
 near the walks' total = the engine ignores the walk vector); timid men walking INTO your wall under a charge order (try `Timid men stop
 hunting` off - tell Claude which looked better); the isolated rate ON ≈ OFF; wobbles near the timid count (men flickering); `errors` in
 `behaviour weights`; a stutter (`courage cost` above ~0.5 ms a tick).

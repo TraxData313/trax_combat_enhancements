@@ -423,7 +423,8 @@ he needs moves:
 | morale 25 (his side is falling) | 1.5 |
 | hit once in the last 6 s | 1.33 |
 | hit three times | 2.0 |
-| in a full fever (section 11) | 0.4 |
+| in his fever (section 11), not hit | **presses whatever the odds** |
+| in a full fever, but hit | × 0.4 |
 | a hero | 0.75 |
 
 They multiply: a tired (half bar) man who was just hit needs 1.5 × 1.33 = 2.
@@ -439,6 +440,14 @@ They multiply: a tired (half bar) man who was just hit needs 1.5 × 1.33 = 2.
 
 He is brave again once he is back and the odds are 25% better than he needs (after at least 2 s).
 
+**The charge goes in.** A man in the fever of a charge (section 11) who has not been hit **attacks whatever the
+odds** — the first clash always happens. Once hit he is shaken, and the fever no longer carries him: he falls
+back to the mass. When the fever is spent, the outmatched side lines up opposite the enemy.
+
+**Now and then one steps in.** A timid man who is not shaken, stands among his mates and has an enemy within 8 m
+may **surge**: about every half second a 5% chance (times his Athletics bar — a tired man surges less), so a
+fresh man about once in 10 s. A surge makes him brave for 4 s: he steps in, swings, and comes back.
+
 **Shock and panic.** A man who was hit wants more mates around him (twice as many) and packs in tighter —
 shaken men flock together and are pushed as a mass, they do not scatter. A shocked man whose odds are
 below **half** of what he needs **panics**: he sprints back at once and spends **all** his sprint.
@@ -447,7 +456,7 @@ below **half** of what he needs **panics**: he sprints back at once and spends *
 
 | The fight | What happens |
 |---|---|
-| 40 looters attack your 20-man metal shield wall | A thick arc in front of the wall, striking only what is in reach; looters who split off round a flank (3 of them against 6 of yours: odds 0.15) walk back to the mass. Nobody circles you alone. |
+| 40 looters attack your 20-man metal shield wall | They charge in with their fever and clash with the wall; those you hit fall back. When the fever is spent they stand in a thick arc in front of the wall, single men surging in now and then. Looters who split off round a flank (3 of them against 6 of yours: odds 0.15) walk back to the mass. Nobody circles you alone. |
 | 200 looters attack the same wall | The front still holds back (odds 0.5), but presses while the charge's fever burns; at the wall's ends 30 looters against 6 of yours (odds 1.1) stay brave and **wrap round it as a crowd**. |
 | Two equal armies | Line against line at even odds: they fight. To envelop a line they need about **2 men per defender** — 40 against a 20-man wall wraps it, 30 do not. |
 | 4 fresh men with great axes hit the flank of your tired line | Your flank man (bar 30%, hit twice: needs 2.8) faces odds 0.67 — he **panics** and sprints to the nearest bigger group; his mates too: the flank folds back into the mass. Rest your men, or keep fresh troops behind them. |
@@ -460,6 +469,7 @@ count).
 `CourageArmourWeightPercent` 200, `CourageLevelWeightPercent` 100, `CourageHealthWeightPercent` 50, `CourageHeavyWeaponPercent` 150,
 `CourageTiredWeightPercent` 100, `CourageMoraleWeightPercent` 100, `CourageShockSeconds` 6, `CourageShockWeightPercent` 100,
 `CourageFeverPercent` 40, `CourageHeroPercent` 75, `CourageHysteresisPercent` 25, `CourageMinTimidSeconds` 2,
+`CourageSurgeChancePercent` 5, `CourageSurgeSeconds` 4,
 `CourageRegroupRadiusMetres` 5, `CourageRegroupMates` 4, `CourageFlockRadiusMetres` 20, `CourageFlockMinMen` 6, `CourageSprintBack` on,
 `CourageSprintMetres` 12, `CourageSprintEnemies` 3, `CourageSprintKeepPercent` 50, `CouragePanicOddsPercent` 50,
 `CouragePanicSprintKeepPercent` 0, `CourageTightenWeights` on, `CourageTimidMeleeMetres` 2.</sub>

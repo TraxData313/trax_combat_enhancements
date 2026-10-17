@@ -125,8 +125,10 @@ side's TOUGHNESS vs the enemy's within `CourageRadiusMetres` 6 m (toughness = ar
 from his mates he WALKS BACK - a fourth input wish (`Regroup`, step 16's backpedal: facing the enemy) - to the nearest BIGGER group of his
 side (6+ within 20 m - FLOCKING), else his formation's centre of mass, round the enemy when it stands between, sprinting when far (above a
 50% reserve) or in a PANIC (shocked, odds below half the required: everything, `CouragePanicSprintKeepPercent` 0); among his mates he
-HOLDS - his behaviour weights tightened (Melee only within 2 m, re-applied every look - the game resets them on orders), the game's back
-when brave; shocked men want twice the mates and pack in. Never you, riders, walled men, a siege's attackers, no formation. Works
+HOLDS - his behaviour weights tightened (Melee at full only within 2 m, re-applied every look - the game resets them on orders), the game's
+back when brave; shocked men want twice the mates and pack in. Step 49b: a man in his FEVER who is not hit presses whatever the odds (the
+first clash happens; shock beats fever), and a timid, unhit man among his mates SURGES in now and then (`CourageSurgeChancePercent` 5 × his
+bar a look, 4 s); the summary measures the STANDOFF. Never you, riders, walled men, a siege's attackers, no formation. Works
 without Athletics. The looks run ON and OFF: the `[courage]` summary compares isolated men and their distance from the formation's centre
 both ways (PLAYTEST D18). The bar for the
 fighter you look at is LATER (DESIGN §3; its settings wait in DESIGN's "Planned parameters"). Words:
@@ -267,8 +269,8 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               its Default comes from defaults.json (DefaultsFile), never code; step 33: ParamType.Key +
                               KeyNames (a key by NAME, stored as its index; FormatJson writes "LeftControl"; the
                               file / defaults.json read the name, MCM a text box)
-  SettingsSchema.cs           EVERY setting of DESIGN's table (238 - step 47's ImpactSpike in Advanced, before VerboseLogging; step 48's 60 in
-                              "Impact: staggers, shield drops, knockdowns" - after the courage group, before Refill; step 49's 27 in "Courage and
+  SettingsSchema.cs           EVERY setting of DESIGN's table (240 - step 47's ImpactSpike in Advanced, before VerboseLogging; step 48's 60 in
+                              "Impact: staggers, shield drops, knockdowns" - after the courage group, before Refill; step 49's 29 (49b's two surge settings) in "Courage and
                               cohesion (AI)" - after the fever), in file + MCM order, 16 groups
                               ("Master switch" first, "Damage" second - step 25 renamed it from
                               "Damage randomness", "Battle pace (AI)" - step 21 - after the step back (step 41's
@@ -1059,7 +1061,7 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               pixels), Fill, FillColor, FrameColor (the fade's alpha baked in); step 46: the box (PositionX / Y =
                               its top-left, BoxWidth / BoxHeight), FeverShown, the Athletics bar - BarShown, BarWidth, BarHeight,
                               BarFill, BarUsable, BarColor, BarFrameColor, BarWoundColor
-tests/TraxCombat.Core.Tests/  net8.0 xUnit (764 - step 49: + CourageTests, the four worked examples) — schema vs DESIGN.md (keys + types), one copy
+tests/TraxCombat.Core.Tests/  net8.0 xUnit (767 - step 49 / 49b: + CourageTests, the four worked examples) — schema vs DESIGN.md (keys + types), one copy
                               runs (SingleCopyTests: claims on private slots, copies, texts), when
                               MCM is tried and when it stops (McmPlanTests - step 12),
                               defaults.json (DefaultsFileTests), master switch, settings, config
