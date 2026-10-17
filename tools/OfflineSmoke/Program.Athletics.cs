@@ -1130,6 +1130,9 @@ namespace TraxCombat.Tools
             Check(Enumerable.Range(0, 50).Select(_ => Hit()).Distinct().Count() > 5, "mod back on: damage does not roll");
             Check(AthleticsStats.DescribeRules(AthleticsRules.From(S)).StartsWith("ON - pool = the Athletics skill"), "mod back on: rules not ON");
 
+            // --- step 47: the impact spike on, then the master switch off - vanilla at once (its own logic)
+            ImpactSpikeFollowsTheMasterSwitch();
+
             // --- the HUD (step 6): the Athletics bar goes the moment the switch goes, and comes back
             HudFollowsTheMasterSwitch(a.Agent);
         }

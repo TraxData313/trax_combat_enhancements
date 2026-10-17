@@ -251,6 +251,9 @@ namespace TraxCombat.Missions
 
         private bool LeverOn(SpikeLever lever) => _spikeOn && !_spike.Disabled(lever);
 
+        /// <summary>The mission's time (the last tick's without a mission - the offline smoke).</summary>
+        private double SpikeNow => Mission != null ? Mission.CurrentTime : double.IsNaN(_spikeLastTick) ? 0 : _spikeLastTick;
+
         /// <summary>A lever's error: logged ONCE with its stack (<see cref="Failed"/>), the lever off for the rest of the mission, the others
         /// run on.</summary>
         private void DisableLever(SpikeLever lever, string site, Exception e)
@@ -277,7 +280,7 @@ namespace TraxCombat.Missions
             try
             {
                 if (!SpikeMath.KickLanded(collision.IsAlternativeAttack, collision.AttackBlockedWithShield, (int)collision.CollisionResult)) return false;
-                return KnockDownForKick(Get(victim), Get(attacker), Mission.CurrentTime);
+                return KnockDownForKick(Get(victim), Get(attacker), SpikeNow);
             }
             catch (Exception e)
             {
