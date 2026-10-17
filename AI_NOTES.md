@@ -3002,7 +3002,7 @@ Heroes matter / See it / Make it yours / Compatibility / FAQ / Removing it / Fir
 labels quoted against SettingsSchema ("Damage reduction", "Shield infantry swing less", "Brace floor").
 
 **Found and fixed**: WorkshopCreate/Update.xml pointed at `C:\Users\Trax\Documents\BannerlordMods\...` - no such folder on
-this PC; now `C:\Users\Asus ROG\Documents\GitHub\trax_combat_enhancements` and the C: Steam game (the uploader exe is there).
+this PC; now `C:\Users\Asus ROG\Documents\BannerlordMods\trax_combat_enhancements` and the C: Steam game (the uploader exe is there).
 Gotcha for next time: Python heredocs with Windows paths ate `\b` (backspace) and `\261` (octal ±) - check edited files for
 control characters, or use the Edit tool.
 

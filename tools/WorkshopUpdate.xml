@@ -6,7 +6,7 @@
                 uploader stops with a FormatException before it touches the item - nothing is uploaded.
              2. Each release: set ChangeNotes below (short, for players; a double quote = &quot;), run
                 tools\package.ps1, then, Steam open and logged in:
-                  & "C:\Program Files (x86)\Steam\steamapps\common\Mount & Blade II Bannerlord\bin\Win64_Shipping_Client\TaleWorlds.MountAndBlade.SteamWorkshop.exe" "C:\Users\Asus ROG\Documents\GitHub\trax_combat_enhancements\tools\WorkshopUpdate.xml"
+                  & "C:\Program Files (x86)\Steam\steamapps\common\Mount & Blade II Bannerlord\bin\Win64_Shipping_Client\TaleWorlds.MountAndBlade.SteamWorkshop.exe" "C:\Users\Asus ROG\Documents\BannerlordMods\trax_combat_enhancements\tools\WorkshopUpdate.xml"
              Or (the sibling's way, step 26): python tools\make_workshop_update.py with notes "vX.Y.Z - ..." builds a
                 one-off copy in %TEMP% that also sends the description (STEAM-DESCRIPTION.bbcode) and, with the
                 visibility flag, the visibility - run the uploader on the path it prints.
@@ -19,7 +19,7 @@
         <ItemId Value="3817259431"/>
     </GetItem>
     <UpdateItem>
-        <ModuleFolder Value="C:\Users\Asus ROG\Documents\GitHub\trax_combat_enhancements\dist\TraxCombatEnhancements"/>
+        <ModuleFolder Value="C:\Users\Asus ROG\Documents\BannerlordMods\trax_combat_enhancements\dist\TraxCombatEnhancements"/>
         <ChangeNotes Value="v1.1.1 - The sprint now works in towns and villages too, so you have it in street fights. Its bar shows there when you draw a weapon or while it refills." />
         <Tags>
             <Tag Value="Utility" />

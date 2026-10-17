@@ -36,7 +36,7 @@ SteamCMD, no password, no Steam Guard.
    (Library → Bannerlord → Properties → General → Steam Cloud). The uploader refuses otherwise.
 6. **Run the uploader with the CREATE file:**
    ```powershell
-   & "C:\Program Files (x86)\Steam\steamapps\common\Mount & Blade II Bannerlord\bin\Win64_Shipping_Client\TaleWorlds.MountAndBlade.SteamWorkshop.exe" "C:\Users\Asus ROG\Documents\GitHub\trax_combat_enhancements\tools\WorkshopCreate.xml"
+   & "C:\Program Files (x86)\Steam\steamapps\common\Mount & Blade II Bannerlord\bin\Win64_Shipping_Client\TaleWorlds.MountAndBlade.SteamWorkshop.exe" "C:\Users\Asus ROG\Documents\BannerlordMods\trax_combat_enhancements\tools\WorkshopCreate.xml"
    ```
    Success = **"Item created. Item ID is …"** and **"Uploading done!"** in the output. It creates
    the item **Private**, titled from `SubModule.xml <Name>` ("Trax Combat Enhancements"), with a
@@ -78,7 +78,7 @@ version is stamped once, on release day.
    `<game>\bin\Win64_Shipping_Client\Version.xml`).
 5. Steam open, then:
    ```powershell
-   & "C:\Program Files (x86)\Steam\steamapps\common\Mount & Blade II Bannerlord\bin\Win64_Shipping_Client\TaleWorlds.MountAndBlade.SteamWorkshop.exe" "C:\Users\Asus ROG\Documents\GitHub\trax_combat_enhancements\tools\WorkshopUpdate.xml"
+   & "C:\Program Files (x86)\Steam\steamapps\common\Mount & Blade II Bannerlord\bin\Win64_Shipping_Client\TaleWorlds.MountAndBlade.SteamWorkshop.exe" "C:\Users\Asus ROG\Documents\BannerlordMods\trax_combat_enhancements\tools\WorkshopUpdate.xml"
    ```
    Success = **"Uploading done!"**.
 6. A changed description: paste it on the page by hand (the update file never touches it), or
