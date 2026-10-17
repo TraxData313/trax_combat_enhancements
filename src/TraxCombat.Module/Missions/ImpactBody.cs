@@ -54,6 +54,14 @@ namespace TraxCombat.Missions
         /// through the public <c>Agent.RegisterBlow</c>. The behaviours' OnAgentHit see it inside <see cref="ImpactHooks.InOwnBlow"/>. True =
         /// registered.</summary>
         bool OwnKnockdownBlow(TrackedAgent victim, TrackedAgent? attacker, int damage);
+
+        /// <summary>Step 53, OwnDismountBlow: the same blow of our own on a RIDER, flagged <c>CanDismount</c> (what vanilla's own
+        /// <c>CreateMeleeBlow</c> sets when its dismount question says yes) - knocked off his horse; never on a man on foot, a horse, a man on a
+        /// siege engine. True = registered.</summary>
+        bool OwnDismountBlow(TrackedAgent victim, TrackedAgent? attacker, int damage);
+
+        /// <summary>Step 53: he fights on the player's side (the on-screen lines of your men - <c>Team.IsPlayerAlly</c>).</summary>
+        bool OnPlayerSide(TrackedAgent st);
     }
 
     /// <summary>
@@ -145,11 +153,29 @@ namespace TraxCombat.Missions
 
         public bool OwnKnockdownBlow(TrackedAgent victim, TrackedAgent? attacker, int damage)
         {
-            var v = victim.Agent;
             if (CanForce(victim) != ForceRefusal.None) return false;
+            return RegisterOwnBlow(victim, attacker, damage, BlowFlags.KnockDown | BlowFlags.KnockBack);
+        }
+
+        public bool OwnDismountBlow(TrackedAgent victim, TrackedAgent? attacker, int damage)
+        {
+            var v = victim.Agent;
+            if (victim.Removed || !v.IsActive() || !v.IsHuman || v.MountAgent == null || v.IsUsingGameObject) return false;
+            return RegisterOwnBlow(victim, attacker, damage, BlowFlags.CanDismount); // vanilla's flag for a rider (Mission.CreateMeleeBlow 5566)
+        }
+
+        public bool OnPlayerSide(TrackedAgent st)
+        {
+            var team = st.Agent.Team;
+            return team != null && team.IsPlayerAlly;
+        }
+
+        private static bool RegisterOwnBlow(TrackedAgent victim, TrackedAgent? attacker, int damage, BlowFlags flags)
+        {
+            var v = victim.Agent;
             if (damage < 1) damage = 1; // 0 plays no reaction (Agent.HandleBlow)
             var by = attacker != null && !attacker.Removed && attacker.Agent.IsActive() ? attacker.Agent : null;
-            // vanilla's drowning blow (Mission.cs 3668-3683), owned by the attacker, KnockDown | KnockBack instead of a plain hit
+            // vanilla's drowning blow (Mission.cs 3668-3683), owned by the attacker, with our flags (KnockDown | KnockBack; step 53: CanDismount) instead of a plain hit
             var blow = new Blow(by?.Index ?? v.Index);
             blow.DamageType = DamageTypes.Blunt;
             blow.BoneIndex = v.Monster.HeadLookDirectionBoneIndex;
@@ -174,7 +200,7 @@ namespace TraxCombat.Missions
             blow.Direction = dir;
             blow.InflictedDamage = damage;
             blow.DamageCalculated = true;
-            blow.BlowFlag = BlowFlags.KnockDown | BlowFlags.KnockBack;
+            blow.BlowFlag = flags;
             sbyte hand = v.Monster.MainHandItemBoneIndex;
             AttackCollisionData cd = AttackCollisionData.GetAttackCollisionDataForDebugPurpose(false, false, false, true, false, false, false, false, false, false, false, false,
                 CombatCollisionResult.StrikeAgent, -1, 0, 2, blow.BoneIndex, BoneBodyPartType.Head, hand, Agent.UsageDirection.AttackLeft, -1,

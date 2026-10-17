@@ -126,6 +126,7 @@ namespace TraxCombat.Missions
             {
                 AddLiveWatch(v, ImpactWatchPurpose.HitControl, WatchKind.Reaction, now, ImpactHitMath.FlinchAppearSeconds, 1, replace: false, ev: ImpactEvent.CleanHit);
             }
+            if (knockDown) ImpactMessage(ImpactMessageKind.KnockedDown, a, v); // step 53: the on-screen line
             if (knockDown || staggered) _hits.ShockGiven++;
             if ((knockDown || staggered) && (d.AttackerIsPlayer || d.DefenderIsPlayer)) YouHitLine(a, v, in d, knockDown);
             if ((knockDown || staggered) && HitsFirst(knockDown ? 1 : 2))

@@ -137,7 +137,8 @@ namespace TraxCombat.Missions
             }
             catch (Exception e)
             {
-                DisableImpactLever(ImpactLever.KnockDown, "impact.model-knockdown", e);
+                if (_inDismountSeam) DisableImpactLever(ImpactLever.Dismount, "impact.model-dismount", e); // step 53: the rider's seam
+                else DisableImpactLever(ImpactLever.KnockDown, "impact.model-knockdown", e);
                 return false;
             }
         }
@@ -241,11 +242,13 @@ namespace TraxCombat.Missions
             var family = ImpactMath.Family(f.Event);
             bool block = ImpactMath.IsBlock(f.Event);
             // step 50: what applies writes the states; shadow keeps "would"; a family decided live with no effect built yet decides on
-            // copies (it never happened); a rider: nothing of steps 50-51 applies to him (knocked off = step 53) - his state untouched.
+            // copies (it never happened). Step 53: a RIDER's decision applies too - his own path (ApplyRider: knocked off his horse, his shield;
+            // never a stagger) - and writes his state like any other.
             // Step 51: a block's own outcomes write the BLOCKER's state, the riposte writes the ATTACKER's (its own switch and family).
             bool applied = r.Applies(family) && !f.DefenderMounted;
+            bool riderLive = r.Applies(family) && f.DefenderMounted; // step 53
             bool riposteLive = block && ImpactMath.CanRiposte(f.Event) && r.Applies(ImpactFamily.Riposte) && !f.AttackerMounted;
-            bool keep = r.KeepsState(family) && (applied || r.ShadowNow);
+            bool keep = r.KeepsState(family) && (applied || riderLive || r.ShadowNow);
             bool keepAttacker = block ? r.KeepsState(ImpactFamily.Riposte) && (riposteLive || r.ShadowNow) : keep;
             var vs = v.Impact;
             var ast = a!.Impact;
@@ -254,29 +257,20 @@ namespace TraxCombat.Missions
             if (keepAttacker) a.Impact = ast;
             double ms = (Stopwatch.GetTimestamp() - t0) * 1000.0 / Stopwatch.Frequency;
             int attackerBand = ImpactMath.BarBand(a.Fraction);
-            _impact.Note(in d, r.ShadowNow, applied || riposteLive, ms, attackerBand);
-            _hits.NoteMomentum(in d, ImpactMath.SpeedBand(in r, d.AttackerSpeed), f.AttackerMounted); // step 52: every decided blow by the attacker's speed into it
+            _impact.Note(in d, r.ShadowNow, applied || riposteLive || riderLive, ms, attackerBand);
+            // step 52: every decided blow by the attacker's speed into it; step 53: a rider's by his horse's, a couched lance apart
+            _hits.NoteMomentum(in d, f.AttackerMounted ? ImpactMath.RiderSpeedBand(in r, d.AttackerSpeed) : ImpactMath.SpeedBand(in r, d.AttackerSpeed), f.AttackerMounted, f.AttackerPassive);
+            if (block && (applied || riderLive)) _riders.NoteRiposteOnRider(in d);
             LastImpact = d;
-            NoteImpactLines(a, v, in d, in f, in r, !(applied || riposteLive));
+            NoteImpactLines(a, v, in d, in f, in r, !(applied || riposteLive || riderLive));
             if (applied && family == ImpactFamily.Kicks) knockDown = ApplyKick(a, v, in d, inSeam, now);
             else if (applied && family == ImpactFamily.Hits) knockDown = ApplyHit(a, v, in d, in f, inSeam, now); // step 52
-            else if (family == ImpactFamily.Hits && r.Applies(family) && f.DefenderMounted && d.AnyOutcome)
+            else if (riderLive)
             {
-                if (d.Knockdown.Happens) _hits.NoteNotApplied(0, ImpactNotApplied.Rider);
-                if (d.Stagger.Happens) _hits.NoteNotApplied(1, ImpactNotApplied.Rider);
-            }
-            else if (family == ImpactFamily.Kicks && r.Applies(family) && f.DefenderMounted && d.AnyOutcome)
-            {
-                if (d.Knockdown.Happens) _live.NoteNotApplied(ImpactOutcome.Knockdown, ImpactNotApplied.Rider);
-                if (d.ShieldDrop.Happens) _live.NoteNotApplied(ImpactOutcome.ShieldDrop, ImpactNotApplied.Rider);
+                knockDown = ApplyRider(a, v, in d, now); // step 53: knocked off his horse (only the dismount seam answers a landed blow), his shield
+                if (riposteLive) ApplyBlock(a, v, in d, now, false, true, attackerBand); // a mounted blocker's riposte on a man on foot
             }
             else if (block && (applied || riposteLive)) ApplyBlock(a, v, in d, now, applied, riposteLive, attackerBand);
-            else if (block && r.Applies(family) && f.DefenderMounted && d.AnyOutcome)
-            {
-                if (d.Knockdown.Happens) _blocks.NoteNotApplied(ImpactOutcome.Knockdown, ImpactNotApplied.Rider);
-                if (d.ShieldDrop.Happens) _blocks.NoteNotApplied(ImpactOutcome.ShieldDrop, ImpactNotApplied.Rider);
-                if (d.Stagger.Happens) _blocks.NoteNotApplied(ImpactOutcome.Stagger, ImpactNotApplied.Rider);
-            }
             return true;
         }
 
@@ -300,7 +294,7 @@ namespace TraxCombat.Missions
         /// <summary>The decision's mode in the line's words - built only when a line is written (no allocation per event).</summary>
         private static string ModeWords(in ImpactDecision d, in ImpactRules r, bool notApplied) => notApplied
             ? (r.ShadowNow ? "shadow - nothing applied"
-               : r.Applies(ImpactMath.Family(d.Event)) ? "LIVE, but a rider - nothing applied until step 53"
+               : r.Applies(ImpactMath.Family(d.Event)) ? "LIVE, the riposte on a rider refused"
                : "decided and logged only - its effect comes in step " + EffectStep(d.Event))
             : "LIVE";
 

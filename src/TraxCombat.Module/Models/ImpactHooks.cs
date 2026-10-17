@@ -28,6 +28,16 @@ namespace TraxCombat.Models
     }
 
     /// <summary>
+    /// Step 53: a RIDER knocked off his horse - asked by <see cref="TraxDamageModel.DecideAgentDismountedByBlow"/> after the base model
+    /// (vanilla's answer kept: ours is OR-ed on top). MAIN thread (inside <c>Mission.CreateMeleeBlow</c> of the engine's <c>MeleeHitCallback</c>
+    /// - Mission.cs 5564, where the engine asks it INSTEAD of the KnockDown question for a man on a horse; the missile path 5870 never ours).
+    /// </summary>
+    internal interface IDismountDecider
+    {
+        bool DismountOnBlow(Agent attacker, Agent victim, in AttackCollisionData collision, in Blow blow, bool gameSays);
+    }
+
+    /// <summary>
     /// Step 52: <c>ImpactTiredNeverShrugsOff</c> - asked by <see cref="TraxDamageModel.DecideAgentShrugOffBlow"/> only when the game says the
     /// blow is SHRUGGED OFF (no flinch). MAIN thread (inside <c>Mission.CreateMeleeBlow</c> of the engine's <c>MeleeHitCallback</c> - checked
     /// in the decompile, Mission.cs 5555; the missile path 5861 is the main thread too and never ours). <paramref name="gameThreshold"/> = the
@@ -108,6 +118,32 @@ namespace TraxCombat.Models
             {
                 TraxCombat.Missions.AthleticsLogic.Failed("impact.shrug-off-hook", e);
                 return true;
+            }
+        }
+
+        private static volatile IDismountDecider? _dismount;
+
+        /// <summary>Step 53: the running logic while it runs (the damage decorator's dismount question asks it).</summary>
+        internal static IDismountDecider? Dismount
+        {
+            get => _dismount;
+            set => _dismount = value;
+        }
+
+        /// <summary>Step 53: the decorator's dismount question: the game's answer OR the decider's. A throwing decider = the game's answer,
+        /// logged by the logic's fail-safe.</summary>
+        internal static bool DismountOnBlow(Agent attacker, Agent victim, in AttackCollisionData collision, in Blow blow, bool gameSays)
+        {
+            var d = _dismount;
+            if (d == null || victim == null) return gameSays;
+            try
+            {
+                return d.DismountOnBlow(attacker, victim, in collision, in blow, gameSays) || gameSays;
+            }
+            catch (Exception e)
+            {
+                TraxCombat.Missions.AthleticsLogic.Failed("impact.dismount-hook", e);
+                return gameSays;
             }
         }
 

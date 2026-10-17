@@ -36,7 +36,9 @@ namespace TraxCombat.Missions
         {
             f.AttackerMounted = attacker.MountAgent != null;
             f.DefenderMounted = victim.MountAgent != null;
-            f.AttackerSpeed = f.AttackerMounted ? 0 : SpeedInto(attacker, victim); // step 52: MOMENTUM (a rider's is step 53's)
+            // step 52: MOMENTUM; step 53: a rider's = his horse's (vanilla's rider velocity), never a couched lance's (a passive attack)
+            f.AttackerSpeed = f.AttackerMounted ? RiderSpeedInto(attacker, victim) : SpeedInto(attacker, victim);
+            f.AttackerPassive = f.AttackerMounted && attacker.IsDoingPassiveAttack;
             var off = victim.WieldedOffhandWeapon;
             var offUsage = off.CurrentUsageItem;
             bool shield = offUsage != null && offUsage.IsShield;
@@ -100,6 +102,22 @@ namespace TraxCombat.Missions
         {
             Vec2 v = attacker.MovementVelocity;
             v.RotateCCW(attacker.MovementDirectionAsAngle);
+            Vec2 to = victim.Position.AsVec2 - attacker.Position.AsVec2;
+            float len = to.Normalize();
+            if (!(len > 1e-4f)) return 0;
+            return Vec2.DotProduct(v, to);
+        }
+
+        /// <summary>
+        /// Step 53, a RIDER's momentum: his speed into the blow the way vanilla builds a mounted agent's velocity
+        /// (MissionCombatMechanicsHelper.GetAgentVelocityContribution: the rider's <c>MovementVelocity.y</c> × his mount's
+        /// <c>GetMovementDirection()</c>) along the line to the victim. Engine reads, main thread.
+        /// </summary>
+        internal static double RiderSpeedInto(Agent attacker, Agent victim)
+        {
+            var mount = attacker.MountAgent;
+            if (mount == null) return SpeedInto(attacker, victim);
+            Vec2 v = attacker.MovementVelocity.y * mount.GetMovementDirection();
             Vec2 to = victim.Position.AsVec2 - attacker.Position.AsVec2;
             float len = to.Normalize();
             if (!(len > 1e-4f)) return 0;

@@ -29,6 +29,10 @@ namespace TraxCombat.Missions
         public double Bar;
         public bool Block;
         public ImpactEvent Event;
+
+        /// <summary>Step 53: who knocked it away (the on-screen line) and whether he rides (counted in the riders' stats).</summary>
+        public TrackedAgent? By;
+        public bool Rider;
     }
 
     /// <summary>Step 50: a shield whose drop was queued - left the hand? picked up again after how long?</summary>
@@ -113,8 +117,9 @@ namespace TraxCombat.Missions
                     _live.WatchesFull++;
                     _live.NoteNotApplied(ImpactOutcome.ShieldDrop, ImpactNotApplied.PoolFull);
                 }
-                else _liveDrops[_liveDropCount++] = new ImpactLiveDrop { St = v, At = now, Bar = d.Bar };
+                else _liveDrops[_liveDropCount++] = new ImpactLiveDrop { St = v, By = a, At = now, Bar = d.Bar };
             }
+            if (knockDown) ImpactMessage(ImpactMessageKind.KnockedDown, a, v); // step 53: the on-screen line
             if (knockDown || d.ShieldDrop.Happens) _live.ShockGiven++;
             if (d.AttackerIsPlayer || d.DefenderIsPlayer) YouKickLine(a, v, in d, knockDown);
             return knockDown;
@@ -228,10 +233,15 @@ namespace TraxCombat.Missions
             }
             bool blocksLive = TickBlocksSwitch(now, in r); // step 51: the blocks / the riposte live? the cap, the T snapshot for the stun seam
             bool hitsLive = TickHitsSwitch(now, in r); // step 52: clean hits live? (not = their watches let go)
-            if (!live && !blocksLive && !hitsLive) return;
             int calls = 0;
+            if (!live && !blocksLive && !hitsLive)
+            {
+                if (_riderPendingCount > 0 || _riderCheckCount > 0) TickImpactRiders(now, in r, ref calls); // step 53: a queued blow let go, the checks end
+                return;
+            }
             if (_liveDropCount > 0) RunLiveDrops(now, ref calls);
             if (_blockPendingCount > 0) RunBlockPending(now, ref calls);
+            if (_riderPendingCount > 0 || _riderCheckCount > 0) TickImpactRiders(now, in r, ref calls); // step 53: the riders' dismount blows and checks
             if (_liveWatchCount > 0) TickLiveWatches(now);
             if (_liveShieldCount > 0) TickLiveShields(now);
             _live.AddTick((Stopwatch.GetTimestamp() - start) * 1000.0 / Stopwatch.Frequency);
@@ -293,7 +303,8 @@ namespace TraxCombat.Missions
         /// <summary>A queued drop that never happened, counted where it belongs (the kicks' or the blocks' stats).</summary>
         private void DropNotApplied(in ImpactLiveDrop p, ImpactNotApplied why)
         {
-            if (p.Block) _blocks.NoteNotApplied(ImpactOutcome.ShieldDrop, why);
+            if (p.Rider) _riders.NoteShieldNotApplied(why); // step 53
+            else if (p.Block) _blocks.NoteNotApplied(ImpactOutcome.ShieldDrop, why);
             else _live.NoteNotApplied(ImpactOutcome.ShieldDrop, why);
         }
 
@@ -342,8 +353,10 @@ namespace TraxCombat.Missions
                         continue;
                     }
                     _live.DropsQueued++;
-                    if (p.Block) _blocks.NoteApplied(p.Event, ImpactOutcome.ShieldDrop, p.Bar);
+                    if (p.Rider) _riders.ShieldDropped++; // step 53
+                    else if (p.Block) _blocks.NoteApplied(p.Event, ImpactOutcome.ShieldDrop, p.Bar);
                     else _live.NoteApplied(ImpactOutcome.ShieldDrop, p.Bar);
+                    ImpactMessage(ImpactMessageKind.ShieldLost, p.By != null && !p.By.Removed ? p.By : null, p.St); // step 53: the on-screen line
                     if (_liveShieldCount < _liveShields.Length)
                         _liveShields[_liveShieldCount++] = new ImpactLiveShield { St = p.St, Slot = slot, QueuedAt = now, DroppedAt = double.NaN, NextLook = now, Block = p.Block, Event = p.Event };
                     else _live.WatchesFull++;
@@ -623,6 +636,7 @@ namespace TraxCombat.Missions
                 RemoveLiveShield(i--);
             }
             BlockPendingLeftField(st); // step 51: his queued staggers / ripostes / our blows (and an attacker's riposte on him)
+            RidersLeftField(st); // step 53
         }
 
         /// <summary>Mission end: every pool let go (shields on the ground counted), the summary lines.</summary>
@@ -637,10 +651,12 @@ namespace TraxCombat.Missions
             DropPendingDrops(ImpactNotApplied.LeftField);
             ClearLiveWatches();
             CloseBlockPending(); // step 51
+            CloseRiders(); // step 53
             var r = ImpactRules.From(TraxSettings.Shared);
             foreach (var line in _live.SummaryLines(r.Applies(ImpactFamily.Kicks), r.ModeText())) TraxLog.Info("summary", line);
             foreach (var line in _blocks.SummaryLines(r.Applies(ImpactFamily.Blocks) || r.Applies(ImpactFamily.Riposte), r.ModeText(), _live.LeversText())) TraxLog.Info("summary", line);
             foreach (var line in _hits.SummaryLines(r.Applies(ImpactFamily.Hits), r.ModeText(), _live.LeversText())) TraxLog.Info("summary", line); // step 52 (+ the momentum of every family)
+            WriteRidersSummary(in r); // step 53: the riders, the on-screen lines
         }
 
         /// <summary>The first of each of the live part's first-time lines (true once).</summary>

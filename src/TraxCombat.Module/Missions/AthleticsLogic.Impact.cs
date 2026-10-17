@@ -128,6 +128,7 @@ namespace TraxCombat.Missions
             ImpactHooks.BlockStun = this;
             ImpactHooks.PickupLock = this; // step 50: the AI's shield pickup lock
             ImpactHooks.ShrugOff = this; // step 52: tired men always flinch
+            ImpactHooks.Dismount = this; // step 53: a rider knocked off his horse
             if (_seenSpike.Enabled) SpikeSwitchedOn(Mission != null ? Mission.CurrentTime : 0, atStart: true);
             else TraxLog.Info("impact", "mission start: spike " + _seenSpike.Describe() + " - read live");
             StartImpactModel(); // step 48: the model (its own line)
@@ -140,6 +141,7 @@ namespace TraxCombat.Missions
             if (ReferenceEquals(ImpactHooks.BlockStun, this)) ImpactHooks.BlockStun = null;
             if (ReferenceEquals(ImpactHooks.PickupLock, this)) ImpactHooks.PickupLock = null;
             if (ReferenceEquals(ImpactHooks.ShrugOff, this)) ImpactHooks.ShrugOff = null;
+            if (ReferenceEquals(ImpactHooks.Dismount, this)) ImpactHooks.Dismount = null;
             if (_spikeStarted && ImpactHooks.RestoreStunCap()) _spike.CapRestores++;
         }
 
@@ -256,6 +258,14 @@ namespace TraxCombat.Missions
             catch (Exception e)
             {
                 Failed("impact.live-tick", e);
+            }
+            try
+            {
+                TickImpactMessages(now); // step 53: the next on-screen line, rate-limited and merged
+            }
+            catch (Exception e)
+            {
+                Failed("impact.messages-tick", e);
             }
             if (!_spikeOn) return;
 

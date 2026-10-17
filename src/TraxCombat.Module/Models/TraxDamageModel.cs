@@ -127,8 +127,13 @@ namespace TraxCombat.Models
             return game && ImpactHooks.ShrugOffKept(victimAgent, in collisionData, in blow, BaseModel);
         }
 
+        /// <summary>Step 53: vanilla's answer first, then the impact seam OR-ed on top (a rider's "knockdown" = knocked off his horse - the
+        /// model's dismount) - main thread (Mission.CreateMeleeBlow); a throwing decider = vanilla's answer.</summary>
         public override bool DecideAgentDismountedByBlow(Agent attackerAgent, Agent victimAgent, in AttackCollisionData collisionData, WeaponComponentData attackerWeapon, in Blow blow)
-            => BaseModel.DecideAgentDismountedByBlow(attackerAgent, victimAgent, in collisionData, attackerWeapon, in blow);
+        {
+            bool game = BaseModel.DecideAgentDismountedByBlow(attackerAgent, victimAgent, in collisionData, attackerWeapon, in blow);
+            return ImpactHooks.DismountOnBlow(attackerAgent, victimAgent, in collisionData, in blow, game);
+        }
 
         public override bool DecideAgentKnockedBackByBlow(Agent attackerAgent, Agent victimAgent, in AttackCollisionData collisionData, WeaponComponentData attackerWeapon, in Blow blow)
             => BaseModel.DecideAgentKnockedBackByBlow(attackerAgent, victimAgent, in collisionData, attackerWeapon, in blow);

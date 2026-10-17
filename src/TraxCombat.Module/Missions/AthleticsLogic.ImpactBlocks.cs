@@ -213,7 +213,8 @@ namespace TraxCombat.Missions
             ReleaseBlockCap(SpikeNow);
         }
 
-        /// <summary>Every tracked man's T for the seam: 1 − f, x <c>ImpactOnPlayerPercent</c> for you, 0 on a horse (riders: step 53).</summary>
+        /// <summary>Every tracked man's T for the seam: 1 − f, x <c>ImpactOnPlayerPercent</c> for you. Step 53: a rider's too (IMPACT §3.8 - the
+        /// stun multipliers apply on a horse; only a forced action never does) - steps 51-52 wrote 0 on a horse.</summary>
         private void SnapshotTired(in ImpactRules r)
         {
             try
@@ -224,11 +225,7 @@ namespace TraxCombat.Missions
                 {
                     var st = _dense[i];
                     double t = ImpactMath.Tired(AthleticsMath.PeakShare(in ar, st));
-                    if (t > 0)
-                    {
-                        if (ImpactBody.IsMounted(st)) t = 0;
-                        else if (IsPlayer(st)) t *= you;
-                    }
+                    if (t > 0 && IsPlayer(st)) t *= you;
                     st.ImpactTired = (float)t;
                 }
             }
@@ -270,7 +267,7 @@ namespace TraxCombat.Missions
                         _blocks.PoolFull++;
                         _blocks.NoteNotApplied(ImpactOutcome.ShieldDrop, ImpactNotApplied.PoolFull);
                     }
-                    else _liveDrops[_liveDropCount++] = new ImpactLiveDrop { St = v, At = now, Bar = d.Bar, Block = true, Event = d.Event };
+                    else _liveDrops[_liveDropCount++] = new ImpactLiveDrop { St = v, By = a, At = now, Bar = d.Bar, Block = true, Event = d.Event };
                 }
                 if (!d.Knockdown.Happens && !d.Stagger.Happens && !double.IsNaN(d.StunFactor) && _guardWatches < ImpactBlockMath.MaxGuardWatches)
                     AddLiveWatch(v, ImpactWatchPurpose.Guard, WatchKind.Guard, now, 0, d.StunFactor, replace: false, ev: d.Event);
@@ -436,6 +433,7 @@ namespace TraxCombat.Missions
             else _blocks.StaggerAcceptedWithPriority++;
             if (riposte) _blocks.NoteRiposteApplied(p.AttackerBand);
             else _blocks.NoteApplied(p.Event, ImpactOutcome.Stagger, p.Bar);
+            ImpactMessage(riposte ? ImpactMessageKind.Riposte : ImpactMessageKind.GuardBroken, p.Other != null && !p.Other.Removed ? p.Other : null, p.St); // step 53
             AddLiveWatch(p.St, riposte ? ImpactWatchPurpose.Riposte : ImpactWatchPurpose.Stagger, WatchKind.Stagger, now, ImpactBlockMath.StaggerAppearSeconds, 1,
                 expectIndex: index, ev: p.Event, asked: p.Asked, speed: speed);
             if (LiveFirst(riposte ? 11 : 12))
@@ -457,6 +455,7 @@ namespace TraxCombat.Missions
             }
             _blocks.OwnBlows++;
             _blocks.NoteApplied(p.Event, ImpactOutcome.Knockdown, p.Bar);
+            ImpactMessage(ImpactMessageKind.KnockedDown, by, p.St); // step 53
             AddLiveWatch(p.St, ImpactWatchPurpose.BlockGetUp, WatchKind.Fall, now, ImpactLiveMath.FallAppearSeconds, p.Asked, ev: p.Event);
             if (LiveFirst(13))
                 TraxLog.Info("impact", "live: first BLOCKER knocked down - our own blow (RegisterBlow, KnockDown | KnockBack, " + SpikeMath.OwnBlowDamage + " damage) on " + Name(p.St)
