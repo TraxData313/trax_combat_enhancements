@@ -4750,3 +4750,106 @@ came with step 48). Tests 775 → 787 (`ImpactBlocksTests` 12; step 50's "kicks 
   `ImpactBlocksTests.Two_EMPTY_even_men_stay_at_the_ceilings_LIVE_every_mistake_counts`.
 - Stats: `ImpactBlockLiveStats` is block-shaped - a sibling `ImpactHitLiveStats` (decided → applied → seen by band; knockdowns by weapon
   class, IMPACT §7's proof) is simpler than widening it.
+
+## Step 52 — IMPACT I5, clean hits LIVE + the reeling bonus + MOMENTUM (DONE 2026-10-18)
+
+**The brief (Anton asleep - "get all done by morning, decide open questions")**: add `Hits` to `ImpactMath.EffectsBuilt` and APPLY the
+model's one decision per clean hit - the knockdown through the decorator's KnockDown seam (like a kick), the stagger = the engine's own
+flinch slowed (WatchKind.Reaction), `ImpactTiredNeverShrugsOff` in the shrug-off seam (check its thread); THE REELING BONUS real on every
+family; and Anton's step-52 wish, MOMENTUM: "a fresh shock unit attacking a tired line must be devastating - staggered, falling, dropping
+their shields … placing the fresh unit in the right place, hitting CHARGE at the right moment and watching the tired men get thrown around
+like dolls" - the attacker's speed into the blow adds impact; "exhaustion never cancels" (two empty even men stay at the ceilings). Courage
+shock, the player (YOU lines), fail-safe per lever, shadow = log only, a sibling `ImpactHitLiveStats`, tests, smoke, PLAYTEST D21.
+
+**How each effect is applied** (`Missions/AthleticsLogic.ImpactHits.cs`, Core `ImpactHits.cs`)
+- **Knockdown**: `ImpactDecide` → `ApplyHit` (beside `ApplyKick` / `ApplyBlock`) answers the decorator's KnockDown seam (`inSeam`) - OR-ed with
+  vanilla's; its Fall watched (`ImpactWatchPurpose.HitGetUp`, WatchKind.Fall) and slowed by `GetUpFactor`, the measured get-up into
+  `GotUp(now, ImpactKnockdownImmunitySeconds)`; not in the seam / the lever off = not applied, `GotUp(now, 0)`.
+- **Stagger**: the engine's OWN flinch (types 48-52 on channel 0 or 1 - the kicks' Reaction watch) slowed to the decided `StaggerSeconds`
+  (§3.7: 0.6 s fresh → 1.5 s ± 30 % empty): factor = asked ÷ the flinch's own length (`ImpactHitMath.FlinchFactor`, never below 1), speed =
+  1 ÷ factor (step 50's `SpeedFor`, ≥ 0.25) the tick it shows and on each new action of it (`ImpactWatchPurpose.HitFlinch`). The flinch's own
+  length is LEARNED (`FlinchNatural`: untouched controls at speed 1 + slowed ones × their speed; 0.45 s - step 48's reel estimate - until the
+  first). Measured → `EndReel(now, ImpactStaggerImmunitySeconds)` = the reeling bonus for the next blow and the 2 s immunity; a Fall instead
+  (the game's own knockdown) → `EndReel(now, 0)`, not slowed further; never shown → `EndReel(now, 0)`.
+- **Controls**: a live clean hit with no outcome times the untouched flinch (`HitControl`, at most `ImpactHitMath.MaxControlWatches` 8 at
+  once, never replacing a running watch) - the summary's "vs untouched flinches" and the learned length.
+- **Tired men never shrug off**: the decompile (Mission.cs 5555, `CreateMeleeBlow` inside `MeleeHitCallback` - `[MBCallback(null, false)]`,
+  the MAIN thread; the missile path 5861 is main too and never ours) - so no snapshot needed. `TraxDamageModel.DecideAgentShrugOffBlow` = the
+  base's answer, and when the game says "shrugged off" `ImpactHooks.ShrugOffKept(victim, cd, blow, BaseModel)` asks the logic
+  (`IShrugOffDecider`) with the base model's `CalculateStaggerThresholdDamage` (vanilla's own `DecideAgentShrugOffBlow` asks
+  `MissionGameModels.Current` = our decorator → the base - the same number). The rule (`ShrugOffKept`): clean hits only (`ImpactEventOf` = a
+  landed weapon blow - never a missile, a kick, a block), hits apply, the switch, on foot (riders: step 53), T = 1 − f (× `ImpactOnPlayerPercent`
+  for you) - kept while damage ≤ threshold × (1 − T). Counted by band (asked / refused). The ShrugOff flag is decided BEFORE the KnockDown
+  question (CreateMeleeBlow's order), so `_seamShrugOff` (read from the blow's flags in `IKnockDownDecider.KnockDownOnBlow`) counts a knockdown
+  answered on a blow the game had shrugged off (`KnockdownOnShrugOff`) - whether the engine plays it is D21's question.
+- **The reeling bonus**: nothing new in the model - `Decide` already adds `ImpactStaggeredBonus` when `defender.Reeling(now)`; what step 52
+  makes true is that EVERY family now writes the reeling time from what was played: a kick's lengthened reel (step 50), a block's stagger and
+  the riposte (step 51), a clean hit's stagger (here). A Core test checks +0.75 on all six events and the stagger refused while reeling.
+- **MOMENTUM**: `ImpactFacts.AttackerSpeed` (m/s) = `GameImpactInputs.SpeedInto` - vanilla's own velocity (`MovementVelocity` turned by
+  `MovementDirectionAsAngle`, MissionCombatMechanicsHelper.GetAgentVelocityContribution) dotted with the unit vector attacker → victim (four
+  engine reads per event, main thread); 0 for a rider. `ImpactMath.MomentumFactor` = 1 + `ImpactMomentumPercent`/100 × clamp((v − walk) ÷
+  (sprint − walk), 0, 1) (walk 2.0, sprint 7.0 m/s - settings) multiplies the blow's impact (`BlowImpact` × it = `Impact`) for EVERY event, so
+  the riposte sees it turned round. `ImpactDecision.Momentum` / `AttackerSpeed`; the decision line says `incl. momentum x1.60 (8.0 m/s into the
+  blow)`. Not used: `AttackCollisionData.MovementSpeedDamageModifier` (a damage RATIO of both men's closing speed, computed only past 70 % of the
+  swing's speed graph and 0 for kicks - MCMH 619-690); `Agent.Velocity` (a frame transform per read - the same numbers, dearer).
+- **Records / courage / riders / you**: `KeepsState(Hits)` true now - a clean hit's outcomes are on the record (one `NoteOutcome` each = one
+  courage shock); riders: decided, nothing applied, counted `a rider (step 53)`; YOU lines only for clean hits that did something.
+
+**Claude's calls (DESIGN decision 44)**: (a) the clean-hit stagger is the engine's flinch slowed, never a forced stagger (IMPACT §3.5); its
+speed from a LEARNED flinch length, factor ≥ 1; (b) the shrug-off rule in `DecideAgentShrugOffBlow`, only when the game says yes, clean
+melee hits on men on foot; (c) momentum = the attacker's OWN speed toward the victim (a fleeing man is not spared), not the closing speed;
+(d) walk / sprint references as settings (2.0 / 7.0 m/s - the game's walk limit measured 1.8 m/s, a run ~4.4, a fresh sprint ~8-9 in Anton's
+log of 2026-10-17 22:11) - one reference for everyone so a tired man's slower run hits softer; +60 % (the brief); (e) every family's impact, the
+riposte turned round, never a rider's; (f) momentum alone never breaks a FRESH line (the even band); (g) two empty even men with swords on a
+clean hit: x = 1, 80 / 50 (a Core test); (h) ≤ 8 control flinches at once; a hit's stagger replaces a running watch on the man; (i) YOU lines
+only for outcomes; (j) a knockdown on a shrugged-off blow counted apart.
+
+**Settings** (4, Live, after `ImpactTiredNeverShrugsOff` in the Impact group): `ImpactMomentumEnabled` true, `ImpactMomentumPercent` 60 (0-200),
+`ImpactMomentumWalkMetresPerSecond` 2.0 (0-10), `ImpactMomentumSprintMetresPerSecond` 7.0 (0.5-20). 240 → 244 settings; no config-format bump
+(no default moved). New lever `ImpactLever.ShrugOff` (LeverCount 8; `[error] impact.live-shrug-off`, the hook's own `impact.shrug-off-hook`).
+
+**Measured (smoke - the stand-in body plays what the engine should)**: a control flinch 0.47 s; an exhausted man's stagger asked 1.50 s →
+slowed to 0.30 → measured 1.52 s; a man at 70 % staggered by a clean hit and KICKED inside it: x 0.82 → down (the same kick on a calm man: 0 %);
+a two-handed axe blow on a staggered man → down; shrug-offs refused 2 of 3 (empty 3 dmg, half 3 dmg; half 2 dmg kept). **THE SHOCK CHARGE**
+(200 men each, hit once, seeded): a 40 % line - a standing swordsman down 6 % (an outcome 40 %), a standing two-handed axe 13 % (57 %), the axe
+SPRINTING at 8 m/s 36 % (80 %); an exhausted line 54 % (94 %); kicks into the 40 % line standing 19 % → sprinting 45 %. Cost: 1000 men, 20 live
+clean hits + 20 shrug-off questions a tick - **0.029 ms a tick, 0 bytes**.
+
+**Built**: Core `ImpactHits.cs` (new: `ImpactHitMath`, `FlinchNatural`, `ImpactHitLiveStats` + the [summary] momentum and clean-hit lines),
+`Impact.cs` (EffectsBuilt + Hits; `ImpactFacts.AttackerSpeed / TwoHanded`; `ImpactDecision.AttackerSpeed / Momentum`; the momentum rules,
+`MomentumShare`, `MomentumFactor`, `SpeedBand`, `BlowImpact`; Describe), `ImpactLive.cs` (`ImpactLever.ShrugOff`, the purposes `HitFlinch /
+HitGetUp / HitControl`), `SettingsSchema` / `TraxSettings` (4); Module `AthleticsLogic.ImpactHits.cs` (new), `AthleticsLogic.ImpactLive.cs`
+(the hits' watches routed, `TickHitsSwitch`, the summary), `AthleticsLogic.ImpactModel.cs` (`ApplyHit`, the rider branch, `NoteMomentum` for
+every decision), `AthleticsLogic.Impact.cs` (the shrug-off decider plugged / released, `_seamShrugOff`), `ImpactInputs.cs` (`SpeedInto`, the
+two-handed grip), `Models/ImpactHooks.cs` (`IShrugOffDecider`, `ShrugOffKept`), `Models/TraxDamageModel.cs` (`DecideAgentShrugOffBlow`).
+Tests 787 → 799 (`ImpactHitsTests` 12; the step-50/51 "hits not built" tests now step 52's). Smoke 113 → 116 steps (`Program.ImpactHits.cs`:
+through the logic, the SHOCK CHARGE, the cost) + the master-switch step's clean-hit part.
+
+**Gotchas**
+- `Pct` already exists on the logic (the brace's, "0.0%") - the hits' lines use `Pct0`.
+- `AttackCollisionData.InflictedDamage` is a public field: the smoke sets it after `GetAttackCollisionDataForDebugPurpose` (no ctor argument).
+- The smoke can run the REAL shrug-off hook (`ImpactHooks.ShrugOffKept` with a `CustomAgentApplyDamageModel` and the managed parameter
+  `DamageInterruptAttackThresholdCut` set to 5) but not the decorator's whole `DecideAgentShrugOffBlow` (vanilla's needs `MissionGameModels.Current`).
+- Smart App Control blocked the smoke exe once again (per-hash); the next source change cleared it, as before.
+
+**UNVERIFIED — only the game can tell (PLAYTEST D21, read with D16's levers 1 and 3)**
+1. The engine plays a Fall from our KnockDown answer on a WEAPON blow (`Fall seen` ≈ applied) - and on a blow it had flagged ShrugOff (the
+   `knockdowns answered on a blow the game had shrugged off` count vs falls). If not: our own blow from the tick (lever 6), as for blocks.
+2. `SetCurrentActionSpeed` holds on a clean hit's flinch (`measured` ≈ `asked`, above the untouched flinches) and the flinch's real length
+   (the learned one replaces 0.45 s).
+3. `SpeedInto` reads sane speeds: the momentum line's `sprinting` band fills when men sprint into the enemy (a charge with the AI sprint); a
+   walking line ~1.8 m/s lands in `walking`.
+4. How the charge FEELS - Anton's scenario (D21 step 4).
+
+**For step 53 (riders, the player's message lines, the guide's tables)**
+- Riders: every family's decision on a mounted DEFENDER is decided and counted `a rider (step 53)` - `ImpactDecision.Dismount` (the knockdown
+  chance × `ImpactRiderDismountPercent`) is already rolled; the engine asks `DecideAgentDismountedByBlow` for a LANDED blow on a rider (Mission.cs
+  5564) - answer it there like the KnockDown seam (a new decider method, main thread), and for a block's dismount our own blow with
+  `BlowFlags.CanDismount`. A mounted ATTACKER's momentum is excluded today (`MomentumFactor(…, attackerMounted)` = 1, counted `riders' blows
+  not counted`): a rider's speed is the horse's - `MountAgent.MovementVelocity.y × MountAgent.GetMovementDirection()` (vanilla's formula) - and a
+  couched lance is vanilla's own big hit; decide whether momentum applies to riders' swings (probably a smaller weight).
+- The on-screen messages: the YOU lines exist in the log for kicks / blocks / hits - step 53 turns the important ones (you knocked down, your
+  shield gone, you knock someone down) into one rate-limited `InformationManager` line each (IMPACT §8 q12).
+- The guide: HOW-IT-WORKS §11c has the kicks', blocks', clean hits' and momentum tables (computed with the defaults - recompute if a default
+  moves).
+- `ImpactHitLiveStats.NoteMomentum` counts every family's decisions - the riders' line belongs there too.

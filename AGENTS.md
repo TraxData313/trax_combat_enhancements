@@ -89,12 +89,17 @@ shield drops, knockdowns", 60 settings, `ImpactShadowMode` OFF - decision 40): e
 pressure x → each outcome's ceiling × an S-curve, immunity and halving on each man's record), logged. Step 50 (I3): KICKS AND BASHES
 LIVE - the knockdown answered in the decorator's seam, the shield dropped from the next tick (pickable; the AI's pickup lockable through an
 ItemPickupModel decorator), the reel / fall-and-rise slowed by the decided factors and MEASURED (their ends = the immunities' start); never a
-rider; YOU lines; each lever disabled alone on an error; clean hits (52) still decided and logged only - on copies of the
+rider; YOU lines; each lever disabled alone on an error; a family not built yet decided on copies of the
 records (`ImpactRules.KeepsState`); the `[summary] impact live` lines (PLAYTEST D19). Step 51 (I4): BLOCKS AND THE RIPOSTE LIVE - the
 blocker's stun x (1 + T) in the decorator's worker-thread seam (no die, T from a per-man snapshot, the cap raised while live), the rolled
 stagger and the riposte (the ATTACKER's) = `act_stagger_backward` from the tick at the speed for its length (measured, the end into the
 record, blocks from inside counted), a wrong-side shield drop, a blocker knocked down by our own blow; never a rider; YOU lines; three
-levers disabled alone (PLAYTEST D20; DESIGN decision 43).
+levers disabled alone (PLAYTEST D20; DESIGN decision 43). Step 52 (I5): CLEAN HITS LIVE + THE REELING BONUS + MOMENTUM - a clean
+hit's knockdown in the decorator's seam (its get-up slowed), its stagger = the engine's own flinch slowed to the decided length (the flinch's
+length learned), the measured end = the reeling time; tired men never shrug off (the decorator's `DecideAgentShrugOffBlow`, main thread:
+threshold × (1 − T)); the reeling bonus real on every family; MOMENTUM (Anton: a fresh shock unit charging a tired line must be devastating)
+- the attacker's own speed toward the victim × up to +60 % impact at a sprint (`ImpactMomentum*`, 4 settings), every family, never a rider's;
+the `[summary] impact momentum` line by the attacker's speed band (PLAYTEST D21; DESIGN decision 44).
 (Steps 25-40 -
 the swing stack, the sprint, the tired block direction and the rest - are described in CLAUDE.md, the fuller copy of this
 file.) The bar for the
@@ -243,7 +248,7 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
   ParamDef.cs                 one setting: key, type, range, group, label, plain-words
                               description, apply timing (Live / NextBattle); Normalize, Format;
                               its Default comes from defaults.json (DefaultsFile), never code
-  SettingsSchema.cs           EVERY setting of DESIGN's table (240 - step 47's ImpactSpike in Advanced; step 48's 60 in "Impact: staggers,
+  SettingsSchema.cs           EVERY setting of DESIGN's table (244 - step 52's 4 momentum settings; step 47's ImpactSpike in Advanced; step 48's 60 in "Impact: staggers,
                               shield drops, knockdowns" after the courage group; step 49's 29 in "Courage and cohesion (AI)" after the fever),
                               in file + MCM order, 16 groups
                               ("Master switch" first, "Damage" second - step 25 renamed it from
@@ -496,13 +501,18 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               ImpactState (reeling, immunities, recent outcomes), ImpactRoll, ImpactDecision, ImpactRules (ModEnabled FIRST,
                               Athletics, ImpactEnabled, the families, shadow, Applies, step 50: KeepsState), ImpactMath (the pressure, the
                               S-curve, the ceilings, Decide - one decision per event, lengths, Describe; EffectsBuilt = Kicks since step 50,
-                              + Blocks | Riposte since step 51; step 51: DecidesEvent, BlockStunFactor - no die -, LengthenedStun)
+                              + Blocks | Riposte since step 51, + Hits since step 52; step 51: DecidesEvent, BlockStunFactor - no die -,
+                              LengthenedStun; step 52: ImpactFacts.AttackerSpeed / TwoHanded, MomentumShare / MomentumFactor / SpeedBand, BlowImpact)
   ImpactStats.cs              step 48: by event × the defender's bar band + the [summary] "impact" lines ("did" per applied event, step 50)
   ImpactLive.cs               step 50 pure (AI_NOTES "Step 50"): ImpactLever, ImpactNotApplied, ImpactWatchPurpose, ImpactLiveMath (SpeedFor =
                               1 ÷ factor, PickupLocked, the plumbing), ImpactLiveStats (+ the 4 [summary] "impact live" lines); step 51: the
-                              levers BlockStun / ForcedStagger / OwnBlow, CannotForce / EngineRefused, the block watch purposes
+                              levers BlockStun / ForcedStagger / OwnBlow, CannotForce / EngineRefused, the block watch purposes; step 52: the
+                              lever ShrugOff, the hit watch purposes
   ImpactBlocks.cs             step 51 pure (AI_NOTES "Step 51"): ImpactBlockMath (the block kinds, StaggerSpeed, the plumbing), StaggerNatural (the
                               stagger's own length learned), BlockStunLiveTally (Interlocked), ImpactBlockLiveStats (+ the 8 [summary] block lines)
+  ImpactHits.cs               step 52 pure (AI_NOTES "Step 52"): ImpactHitMath (weapon classes, the shrug-off threshold x (1 − T), FlinchFactor,
+                              the plumbing), FlinchNatural (the flinch's own length learned), ImpactHitLiveStats (clean hits by class x band,
+                              knockdowns on reeling men, shrug-offs refused, flinch lengths; MOMENTUM by the attacker's speed band + the [summary] lines)
   Courage.cs                  step 49 pure (AI_NOTES "Step 49", RESEARCH §S): CouragePhase (brave / walking back / holding), CourageSkip (in the
                               order asked), CourageEnd, RegroupEnd, CourageStep, CourageSprintRefusal, ShockTimes (his last 4 landed hits), CourageRequired
                               (the terms), CourageRules (live; ModEnabled FIRST, CourageEnabled; Athletics only for the tiredness term; Describe with the
@@ -560,9 +570,11 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
   Models/TraxDamageModel.cs   AgentApplyDamageModel DECORATOR — forwards everything; overrides
                               ApplyGeneralDamageModifiers: BaseModel first, then the roll
                               (our exceptions → the game's value); step 47: DecideAgentKnockedDownByBlow and
-                              CalculateDefendedBlowStunMultipliers - the base first, then ImpactHooks
+                              CalculateDefendedBlowStunMultipliers - the base first, then ImpactHooks; step 52: DecideAgentShrugOffBlow (a
+                              game YES asked again of ImpactHooks.ShrugOffKept)
   Models/ImpactHooks.cs       step 47: IKnockDownDecider (main thread), IBlockStunDecider (ANY thread - reads only), the stun cap
-                              raise / restore (StunPeriodMax), the clamp of every stun nobody lengthened, InOwnBlow; step 50: IShieldPickupLock
+                              raise / restore (StunPeriodMax), the clamp of every stun nobody lengthened, InOwnBlow; step 50: IShieldPickupLock;
+                              step 52: IShrugOffDecider + ShrugOffKept (main thread; a throw = the game's answer)
   Models/TraxItemPickupModel.cs  step 50: ItemPickupModel DECORATOR - a shield refused to an AI man within ShieldPickupLockSeconds of a live
                               kick knocking his away (the player's use key never asks it)
   Models/DamageRandomizer.cs  feature 1, game side: game structs → HitFacts → Decide → roll with
@@ -712,7 +724,7 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
   Missions/AthleticsLogic.ImpactModel.cs  step 48, the model: the start / mode lines, ImpactModelOnLandedBlow (the decorator's KnockDown
                               seam decides a landed blow, remembered), ImpactModelHitTaken (OnMeleeHit takes it or decides a block), the
                               gates (master switch first), ImpactDecide (both men's Athletics, Decide on COPIES of TrackedAgent.Impact, kept
-                              when KeepsState; step 50: ApplyKick when the kicks apply), the lines
+                              when KeepsState; step 50: ApplyKick when the kicks apply; step 52: ApplyHit, NoteMomentum for every decision), the lines
   Missions/AthleticsLogic.ImpactLive.cs  step 50, kicks live: ApplyKick, TickImpactLive (drops from the tick, the reel / fall watches with
                               SlowReaction, the measured ends into ImpactState, the shields), the pickup lock, DisableImpactLever, the summary;
                               step 51: per-family let-go, TickBlocksSwitch, RunBlockPending from the tick
@@ -720,8 +732,11 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               every tick), ApplyBlock (the stagger / our blow / the wrong-side drop / the riposte queued, the guard timed, YOU lines),
                               RunBlockPending (CanForce first; ForceStagger with, then over the priority; OwnKnockdownBlow; watched), the watches'
                               ends into ImpactState, blocks / hits from inside a stagger, the let-go paths
+  Missions/AthleticsLogic.ImpactHits.cs  step 52, clean hits live: the IShrugOffDecider (tired men always flinch), ApplyHit (the knockdown in
+                              the seam + its get-up watch; the stagger = his own flinch watched and slowed; controls ≤ 8; YOU lines), TickHitsSwitch,
+                              the hit watches' ends into ImpactState (the reeling time), the learned flinch length
   Missions/ImpactInputs.cs    step 48: IImpactInputs + GameImpactInputs (the weapon, the guard, the skills, mounts, health - managed reads;
-                              step 51: BlowName for a YOU line)
+                              step 51: BlowName for a YOU line; step 52: SpeedInto - the attacker's speed toward the victim, the two-handed grip)
   Missions/BraceBody.cs       step 23: BraceState (his roll, the running brace, the shield's progress), IBraceBody (the
                               engine side - the smoke plays it), GameBraceBody (the order from
                               GetReadonlyMovementOrderReference().OrderEnum + FormationAI.ActiveBehavior for an AI Move;
@@ -854,7 +869,7 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
   Hud/FeverMarksVM.cs         its ViewModels: a GROW-ONLY POOL of FeverMarkVM (IsShown, PositionX / Y, Width / Height in pixels,
                               Fill, FillColor, FrameColor; step 46: BoxWidth / BoxHeight, FeverShown, BarShown, BarWidth / Height,
                               BarFill, BarUsable, BarColor, BarFrameColor, BarWoundColor)
-tests/TraxCombat.Core.Tests/  net8.0 xUnit (787 - step 51: + ImpactBlocksTests; step 50: + ImpactLiveTests; step 49 / 49b: + CourageTests; step 44: + FeverMarkTests; step 46: + AthleticsMarkTests, the format-9 migration; step 47: + ImpactSpikeTests; step 48: + ImpactTests - every IMPACT §4 worked example) — schema vs DESIGN.md (keys + types), one copy
+tests/TraxCombat.Core.Tests/  net8.0 xUnit (799 - step 52: + ImpactHitsTests; step 51: + ImpactBlocksTests; step 50: + ImpactLiveTests; step 49 / 49b: + CourageTests; step 44: + FeverMarkTests; step 46: + AthleticsMarkTests, the format-9 migration; step 47: + ImpactSpikeTests; step 48: + ImpactTests - every IMPACT §4 worked example) — schema vs DESIGN.md (keys + types), one copy
                               runs (SingleCopyTests: claims on private slots, copies, texts), when
                               MCM is tried and when it stops (McmPlanTests - step 12),
                               defaults.json (DefaultsFileTests), master switch, settings, config
@@ -1063,7 +1078,9 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               20 live kicks a tick, 0.018 ms, 0 bytes; step 51 (Program.ImpactBlocks.cs): blocks live - the stun seam from
                               worker threads, the stagger / the drop / our blow / the riposte from the tick, measured, the YOU lines, refusals
                               with no engine call, each lever alone, the summary; the cost - 1000 men, 20 live blocks + 20 seam calls a tick,
-                              0.030 ms, 0 bytes (113 steps; the config
+                              0.030 ms, 0 bytes; step 52 (Program.ImpactHits.cs): clean hits live - the flinch slowed and measured, the
+                              reeling bonus (a staggered man kicked down), the shrug-off hook, THE SHOCK CHARGE (a 40 % line: a standing
+                              sword 6 % down, a sprinting two-handed axe 36 %), the cost 0.029 ms, 0 bytes (116 steps; the config
                               checks work for any tuned default);
                               TRAX_SMOKE_KEEP=1 keeps its temp folder + log to read
 tools/DefaultsTool/           defaults.json upkeep: refresh (rewrite comments/order, keep every
