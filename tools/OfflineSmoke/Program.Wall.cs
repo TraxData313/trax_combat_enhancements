@@ -69,6 +69,23 @@ namespace TraxCombat.Tools
             }
 
             public bool EnemyWithin(TrackedAgent st, double metres) => Contact.Contains(st.AgentIndex);
+
+            /// <summary>Step 42: the enemy each man fights (his target), by agent index; none = no enemy.</summary>
+            public readonly Dictionary<int, (double X, double Y)> Enemies = new Dictionary<int, (double X, double Y)>();
+            public int EnemyReads;
+
+            public bool TryEnemy(TrackedAgent st, out double x, out double y)
+            {
+                EnemyReads++;
+                if (Enemies.TryGetValue(st.AgentIndex, out var e))
+                {
+                    x = e.X;
+                    y = e.Y;
+                    return true;
+                }
+                x = y = double.NaN;
+                return false;
+            }
         }
 
         /// <summary>An AI man on foot in a halted shield wall facing +y, <paramref name="ahead"/> m ahead of his slot (0, 0), the
@@ -99,7 +116,12 @@ namespace TraxCombat.Tools
             Check(new AthleticsLogic().WallBody == WallBodyDefault.Current, "a new logic does not start with the default wall body");
         }
 
-        private static void WallDefaults() => S.Set(SettingsSchema.ShieldWallHoldsSlots, true, SettingSources.File);
+        /// <summary>Step 41's checks run the HARD hold (step 42's leash pinned at 0 - the proof that 0 is step 41 exactly).</summary>
+        private static void WallDefaults()
+        {
+            S.Set(SettingsSchema.ShieldWallHoldsSlots, true, SettingSources.File);
+            S.Set(SettingsSchema.ShieldWallStepOutMetres, 0.0, SettingSources.File);
+        }
 
         /// <summary>
         /// Step 41, the game's side of the timing (RESEARCH §O): the private timer field exists on v1.4.8's Agent with the game's

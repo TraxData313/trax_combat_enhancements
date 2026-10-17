@@ -14,7 +14,8 @@ namespace TraxCombat.Missions
     /// </summary>
     internal sealed class WallState
     {
-        /// <summary>Held now: the "keep your slot" flag is ours.</summary>
+        /// <summary>In the held list: the "keep your slot" flag is ours - or, while <see cref="Leash"/> is Free (step 42), he is
+        /// stepping out on vanilla's own value and will be held again by the leash.</summary>
         public bool Held;
 
         /// <summary>His index in the logic's held list (−1 = not in it).</summary>
@@ -37,6 +38,12 @@ namespace TraxCombat.Missions
         public double NextRewrite;
 
         public double NextSample;
+
+        /// <summary>Step 42: his leash - stepping out now (then he is in the held list but carries vanilla's value), back in his
+        /// slot since his last step; the stepping man's next look; whether he ever stepped out this mission.</summary>
+        public WallLeash Leash;
+        public double NextLeashLook;
+        public bool EverStepped;
     }
 
     /// <summary>
@@ -63,6 +70,10 @@ namespace TraxCombat.Missions
 
         /// <summary>An enemy within <paramref name="metres"/> of him (the log's "in contact").</summary>
         bool EnemyWithin(TrackedAgent st, double metres);
+
+        /// <summary>Step 42: the enemy he fights - the native AI's target, else his immediate enemy - and where he stands (the
+        /// scene's x / y); false = none (or not an active enemy).</summary>
+        bool TryEnemy(TrackedAgent st, out double x, out double y);
     }
 
     /// <summary>
@@ -209,6 +220,27 @@ namespace TraxCombat.Missions
             if (m == null || a.Team == null) return false;
             return m.GetNearbyEnemyAgentCount(a.Team, a.Position.AsVec2, (float)metres) > 0;
         }
+
+        /// <summary>Step 42: <c>Agent.GetTargetAgent()</c> (the native AI's own target - the man vanilla walks him at), else
+        /// <c>Agent.ImmediateEnemy</c>; only an active enemy counts. Native reads - called only for a man who could step out now
+        /// or is stepping out (LeashMath.NeedsEnemy), and never while the leash is 0.</summary>
+        public bool TryEnemy(TrackedAgent st, out double x, out double y)
+        {
+            var a = st.Agent;
+            var e = a.GetTargetAgent();
+            if (!IsEnemy(a, e)) e = a.ImmediateEnemy;
+            if (!IsEnemy(a, e))
+            {
+                x = y = double.NaN;
+                return false;
+            }
+            var p = e!.Position;
+            x = p.x;
+            y = p.y;
+            return true;
+        }
+
+        private static bool IsEnemy(Agent a, Agent? e) => e != null && e.IsActive() && a.IsEnemyOf(e);
     }
 
     /// <summary>The wall body every new <see cref="AthleticsLogic"/> starts with - the game's; the offline smoke swaps in its
