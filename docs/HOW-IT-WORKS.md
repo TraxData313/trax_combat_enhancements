@@ -22,6 +22,7 @@ Want the formulas and every parameter? [DESIGN.md](DESIGN.md) is the full contra
 10. [Battle pace](#10-battle-pace)
 11. [Eagerness, and the fever of a charge](#11-eagerness-and-the-fever-of-a-charge)
 11b. [Courage: men keep to their group](#11b-courage-men-keep-to-their-group)
+11c. [Impact: kicks that break a tired man](#11c-impact-kicks-that-break-a-tired-man)
 12. [Damage](#12-damage)
 13. [Heroes, and the hideout boss](#13-heroes-and-the-hideout-boss)
 14. [The sprint](#14-the-sprint)
@@ -473,6 +474,53 @@ count).
 `CourageRegroupRadiusMetres` 5, `CourageRegroupMates` 4, `CourageFlockRadiusMetres` 20, `CourageFlockMinMen` 6, `CourageSprintBack` on,
 `CourageSprintMetres` 12, `CourageSprintEnemies` 3, `CourageSprintKeepPercent` 50, `CouragePanicOddsPercent` 50,
 `CouragePanicSprintKeepPercent` 0, `CourageTightenWeights` on, `CourageTimidMeleeMetres` 2.</sub>
+
+## 11c. Impact: kicks that break a tired man
+
+In the base game a kick only pushes a man back, and he is guarding again before you can swing. With this
+mod a **kick or a shield bash on a tired man** can do much more — **knock him down**, make him **drop his
+shield**, and he **reels longer** and **gets up slower**. On a fresh man nothing changes. (This is the first
+part of the impact system; blocks and clean hits follow in later versions.)
+
+What counts is how tired **he** is, and how you two compare: both men's **current** Athletics (how big the
+bar is AND how full), what struck him and both men's skill. Two even men, the kicker fresh:
+
+| His bar | Shield dropped | Knocked down | His reel | His get-up |
+|---|---:|---:|---|---|
+| 100% – 75% (green) | 0% | 0% | as normal | as normal |
+| 50% | 14% | 1% | ×1.5 longer | ×1.33 slower |
+| 25% | 82% | 70% | ×2.0 longer | ×1.67 slower |
+| 10% | 90% | 80% | ×2.3 longer | ×1.87 slower |
+| 0% (empty) | 90% | 80% | ×2.5 longer | ×2 slower |
+
+The more tired he is, the more **random** the reel and the get-up get (± up to 30% when empty) — a fresh
+man's timing is predictable, an exhausted man's is not.
+
+**Size matters.** A big, fresh fighter cannot be kicked over: you (Athletics 100) against a tournament king
+with 220:
+
+| You kick the king at… | Shield dropped | Knocked down |
+|---|---:|---:|
+| 100% (fresh) | 0% | 0% — no kick-win against a fresh king |
+| 30% | 45% | 26% |
+| 10% | 90% | 80% — tire him first, then break him |
+
+**Nobody is kicked to death.** After he gets up he cannot be knocked down again for **5 seconds**; after a
+long reel no new stagger for **2 seconds**; and each knockdown or dropped shield **halves** the next chance
+against him for **8 seconds**. A man on the ground is not kicked down again. A kick still costs you
+Athletics and a stored swing (sections 4 and 6), so spamming it empties you.
+
+**A dropped shield** lies on the ground and can be picked up again the normal way — you with the use key,
+the AI only once no enemy is within 20 m (so not in the middle of a melee).
+
+The same rules apply to you (every chance against you × `ImpactOnPlayerPercent`, 100%), and every kick you
+give or take is written to the log (`[impact] YOU: ...`). Riders are not knocked down by kicks yet.
+
+<sub>Settings ("Impact: staggers, shield drops, knockdowns"): `ImpactEnabled` on, `ImpactKicksEnabled` on,
+`ImpactShadowMode` off (on = decide and log only), `KickShieldDropMaxPercent` 90, `KickKnockdownMaxPercent` 80,
+`KickReelTiredExtraPercent` 150, `GetUpMaxSlowdown` 2, `ImpactRandomPercent` 30, `ImpactKnockdownImmunitySeconds` 5,
+`ImpactStaggerImmunitySeconds` 2, `ImpactDiminishWindowSeconds` 8, `ImpactDiminishFactor` 0.5, `ShieldPickupLockSeconds` 0,
+`ImpactOnPlayerPercent` 100.</sub>
 
 ## 12. Damage
 

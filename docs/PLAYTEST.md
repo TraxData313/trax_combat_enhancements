@@ -1054,9 +1054,10 @@ a crash right after a stagger or our blow (note the time - the log's last `[impa
 cap left at 2 s after the battle (blocks in the NEXT battle with the spike OFF feel long - the `restored` count in lever 2).
 
 **D17. The impact model - what WOULD happen in your battles (step 48, IMPACT I2, ~15 min - read it with D16, before the effects of
-steps 49-51).** The model decides every kick / bash, block and clean hit (docs/IMPACT.md §3) and writes it down. In step 48 itself NOTHING
-changes in the battle (no effect is built yet); from 49 on the same decisions are applied, family by family. `ImpactShadowMode` ships OFF
-(you wanted it live in the morning - DESIGN decision 40): to see a battle's numbers with the effects of 49-51 OFF, tick MCM → *Impact:
+steps 50-52).** The model decides every kick / bash, block and clean hit (docs/IMPACT.md §3) and writes it down. In step 48 itself NOTHING
+changed in the battle; from step 50 on the same decisions are applied, family by family (kicks / bashes since step 50 - D19; blocks 51,
+clean hits 52 - the board moved by one when step 49 was inserted). `ImpactShadowMode` ships OFF
+(you wanted it live in the morning - DESIGN decision 40): to see a battle's numbers with the effects OFF, tick MCM → *Impact:
 staggers, shield drops, knockdowns* → **Shadow mode: decide and log only**.
 1. **The spike OFF** (D16 is a separate battle). The log's start: `[impact] mission start: the model (step 48 - IMPACT I2, docs/IMPACT.md)
    LIVE - …` (or `SHADOW (ImpactShadowMode) …`) followed by your anchors in words (`a kick on an empty even man: shield 90%, down 80%; a
@@ -1077,7 +1078,7 @@ staggers, shield drops, knockdowns* → **Shadow mode: decide and log only**.
 - **Tell Claude**: the summary lines of one tournament and one battle, and your gut for each family: too many / about right / too few. The
   knobs are all in the new MCM group (the ceilings first; `Mismatch weight` and `Even match band` for how much the bigger man counts).
 - The first decision of each kind is in the log in full: `[impact] first kick decided at … s - <attacker>'s kick on <him> (decided and
-  logged only - its effect comes in step 49): <him> bar 20% (T 0.73); points 200 vs 10 (bodies …); impact 1.20 (a kick) vs guard 1.00 (no
+  logged only - its effect comes in step 51 | LIVE): <him> bar 20% (T 0.73); points 200 vs 10 (bodies …); impact 1.20 (a kick) vs guard 1.00 (no
   guard); skill 250 vs 60 (x1.17 / x0.85) → R 7.37 (…) → x 1.33: knocked down 80% → rolled 0.41 YES; shield dropped 90% → rolled 0.95 no;
   gets up x1.73 slower` - and `[impact] first time <outcome> WOULD happen …` once per outcome. Every decision: `VerboseLogging` on (bucket
   `impact`, rate-limited).
@@ -1120,6 +1121,44 @@ dropped shields between even men; `not tracked` near the total (the model sees n
 near the walks' total = the engine ignores the walk vector); timid men walking INTO your wall under a charge order (try `Timid men stop
 hunting` off - tell Claude which looked better); the isolated rate ON ≈ OFF; wobbles near the timid count (men flickering); `errors` in
 `behaviour weights`; a stutter (`courage cost` above ~0.5 ms a tick).
+
+**D19. Kicks that break a tired man - IMPACT I3 LIVE (step 50, ~20 min).** Defaults (MCM → *Impact: staggers, shield drops,
+knockdowns*: Impact on, Kicks on, Shadow mode OFF; the spike OFF). The log's start: `[impact] mission start: the model (step 48 - IMPACT I2,
+docs/IMPACT.md) LIVE - kicks / bashes applied, blocks, clean hits, the riposte decided and logged only (effect not built yet); …`.
+1. **A tournament** (a town's arena, any round with a shield fighter). **Fresh** opponent: kick him 3-4 times - he only stumbles back, as
+   before. **Line**: `[impact] YOU: your kick on <him> (his bar 9x%, x -0.xx): no knockdown (0%), shield kept (0%) - reels x1.00`.
+2. **Tire him**: make him block and swing (hold your shield up, let him hit it, feint) until his bar is orange / red (hold ALT - his
+   Athletics bar above him). Kick him. **See**: his SHIELD falls to the ground (the next frame, not mid-kick) and stays there; he GOES DOWN
+   and gets up visibly SLOWLY (up to x2); a kick that does not floor him makes him reel longer (up to x2.5) - your free swing. **Lines**:
+   `[impact] YOU: your kick on <him> (his bar 1x%, x 1.xx): knocked down (80%), shield dropped (90%) - gets up x1.9x slower`;
+   `[impact] live: first shield drop made from the tick at … s - <him>'s shield in slot N, 0.02 s after the kick …`; `[impact] live: first
+   knockdown seen at … s - <him> fell 0.0x s after the kick (channel 0, Fall) - his fall-and-rise slowed x1.9x`; `[impact] live: first
+   fall-and-rise slowed at … s - … at speed 0.5x …`; `[impact] live: first get-up measured at … s - <him> was down N.NN s (asked x1.9x); no new
+   knockdown on him for 5.0 s`; `[impact] live: first shield left the hand at …`.
+3. **Kick him again right after he is up** (within 5 s): he does not go down (`… no knockdown (…% - knockdown immunity)`). Later kicks on
+   him are halved for 8 s.
+4. **A fresh KING** (a later round, or a lord in the arena - Athletics 200+): kick him fresh - nothing at all (`x` below 0); tire him to red
+   and kick - now he falls. **You cannot kick-win against a fresh king.**
+5. **Let him tire YOU** (stand and block a strong opponent until you are red) - his kicks can now floor you / take your shield:
+   `[impact] YOU: <him>'s kick on you (your bar …%): knocked down (…%) …`. Your dropped shield: walk over it and press the use key.
+6. **A custom battle 50 v 50 shield infantry, ~5 min** (the AI kicks and bashes too). **The [summary] lines** (send them): `impact live
+   (step 50 - kicks and bashes; LIVE …): N live kicks / bashes by the kicked man's bar 100-75% / 75-50% / 50-25% / 25-0% - knocked down
+   decided a / b / c / d = N, applied … = N, Fall seen M (not applied: …); shield dropped decided …, applied …, left the hand M …; YOU: dealt
+   …, took …; outcomes counted as courage's SHOCK …`; `impact live lengths: the reel asked x… (max x…) → measured … s (max … s) vs untouched
+   reels … s = x… measured; the get-up asked x… → the fall-and-rise measured … s …`; `impact live shields: drops queued from the tick …, left
+   the hand …, picked up again … after … s, still on the ground …`; `impact live limits: knockdown refused - on the ground …, within the
+   immunity after getting up …; halved by a recent outcome …; levers disabled none; tick … ms`. And the old `impact kicks by the kicked man's
+   bar …` line now reads `did knock down` (blocks still `would`).
+- **What to read first**: (a) `Fall seen` ≈ `applied` for the knockdowns (the engine plays our KnockDown flag on a kick - D16's lever 1);
+  (b) `left the hand` ≈ `drops queued`; (c) the reel's `= x… measured` close to the asked mean (the slow holds on the engine's own reaction -
+  D16's lever 3); the get-up measured ≈ 1.5 s × the asked factor; (d) the 100-75 band shows 0 knocked down / 0 dropped.
+- **Your gut**: too many / about right / too few knockdowns and dropped shields? The knobs: `KickKnockdownMaxPercent` 80,
+  `KickShieldDropMaxPercent` 90, `GetUpMaxSlowdown` 2, `KickReelTiredExtraPercent` 150; `ShieldPickupLockSeconds` (0) if the AI picks shields
+  up again too soon (AI only - never you); `CostPerKickOrBash` (3) if kick-spam is a problem.
+**Broken — tell Claude** (D19): `knocked down … applied N, Fall seen 0` (the engine ignores the flag on kicks - Claude's fallback is our own
+knockdown blow); `no fall seen after a knockdown` near the applied count; `left the hand 0` with drops queued; the reel measured ≈ the
+untouched reels (the slow does not hold - the fallback is SetOverridenStrikeAndDeathAction); `levers disabled` anything but none (an
+`[error] impact.live-…` line with its stack above); a man stuck on the ground or frozen mid-reel; a fresh man knocked down by an even man.
 
 ---
 
@@ -1872,8 +1911,8 @@ header names the technique: `==== scene …, mod ON, AI holds: Input (the AI's o
 
 ### L6k. The impact model (step 48)
 
-- Mission start: `[impact] mission start: the model (step 48 - IMPACT I2, docs/IMPACT.md) LIVE - but no effect is built yet (steps 49-51
-  bring them): every event decided and logged only; families: kicks / bashes on, blocks on, clean hits on, riposte on; anchors - …; limits
+- Mission start: `[impact] mission start: the model (step 48 - IMPACT I2, docs/IMPACT.md) LIVE - kicks / bashes applied, blocks, clean hits,
+  the riposte decided and logged only (effect not built yet) (step 50; before it: `LIVE - but no effect is built yet …`); families: kicks / bashes on, blocks on, clean hits on, riposte on; anchors - …; limits
   - …; against you 100%; a rider knocked off at 50% of a knockdown - read live; …` (or `SHADOW (ImpactShadowMode)`, `SHADOW (the spike is
   on - ImpactSpike owns the levers)`, `OFF (ModEnabled | AthleticsEnabled | ImpactEnabled) - the game's own reactions`). Mid-mission: `[impact]
   the model switched ON | OFF (<switch>) mid-mission at … s: …`, `[impact] the model's mode changed mid-mission at … s: SHADOW … | LIVE …`.
@@ -1883,13 +1922,31 @@ header names the technique: `==== scene …, mod ON, AI holds: Input (the AI's o
   a rider | replaced>; the reel / stun / get-up / stagger / recoil lengths>`; `[impact] first time <knocked down | shield dropped | staggered |
   riposte> WOULD happen | happens, at … s - …`. A failing engine read: `[error] impact.read` (once, with its stack) - counted "the engine
   read failed". Verbose (bucket `impact`): every decision in the same words.
-- The [summary] lines (D17 reads them): `impact (step 48 - the model; <LIVE, but no effect is built yet | SHADOW | MIXED>): N decisions -
+- The [summary] lines (D17 reads them): `impact (step 48 - the model; <LIVE - kicks / bashes applied (N decisions) | LIVE, but nothing applied this mission … | SHADOW | MIXED>): N decisions -
   kicks …, shield bashes …, right-side blocks …, parries …, wrong-side blocks …, clean hits …; YOU took …, dealt …; not decided: off …, its
   family switched off …, not tracked …, the engine read failed …; N landed blows decided in the damage decorator's KnockDown seam (one
   decision per event)`; per kind `impact <kind> by the <kicked | blocker's | hit> man's bar 100-75% / 75-50% / 50-25% / 25-0%: N = a / b / c
   / d; mean x …; would <knock down | drop a shield | stagger> … = N (rolled …, mean chance …)`; `impact riposte (… by the attacker's bar …)`;
   `impact limits: refused - …; diminished: …; riders would be knocked off N`; `impact lengths asked: …`; `impact cost: N decisions, … µs a
   decision (max …) - … in shadow, … live (… applied)`. Never on: `impact (step 48 - the model): OFF all mission (<switch>) - nothing decided`.
+
+### L6m. Kicks and bashes LIVE (step 50, IMPACT I3)
+
+- Mission start: the model's line (L6k) reads `LIVE - kicks / bashes applied, blocks, clean hits, the riposte decided and logged only
+  (effect not built yet)`. At game start: `[impact] item pickup model decorator registered over <model> - an AI man may not pick a shield up
+  again for ShieldPickupLockSeconds …` (or `this game type has no ItemPickupModel …`).
+- Every kick / bash YOU deal or take: `[impact] YOU: your <kick | shield bash> on <him> | <him>'s <kick | shield bash> on you (<his | your>
+  bar N%, x …): knocked down (N%) [, shield dropped (N%)] - gets up xN slower | no knockdown (N% [- <refusal>]), shield kept (N% | no shield in
+  hand) - reels xN`.
+- First-time lines: `[impact] live: first shield drop made from the tick at …`, `… first knockdown seen at …`, `… first <reel |
+  fall-and-rise> slowed at … at speed …`, `… first get-up measured at …`, `… first slowed reel measured at …`, `… first shield left the hand at
+  …`, `… first knocked-away shield picked up again at …`, `… a knockdown answered at … showed NO Fall within 1.0 s …`. A lever's error:
+  `[error] impact.<model-knockdown | live-drop | live-slow | live-watch | live-shield>` once with its stack + `[impact] live lever <name>
+  disabled for this mission after an error at …`. Switched off / shadow mid-mission: `[impact] kicks no longer live at … s (<mode>): N queued
+  shield drop(s) dropped unplayed, M watch(es) let go`.
+- The [summary] lines (D19 reads them): `impact live (step 50 - kicks and bashes; <mode>): …`, `impact live lengths: …`, `impact live shields:
+  …`, `impact live limits: …` (L6k's `impact <kind> by …` lines say `did` for the kicks and bashes). Nothing live: `impact live (step 50 -
+  kicks and bashes): no live kick or bash this mission (<mode>)`.
 
 ### L6l. Courage and cohesion (step 49)
 

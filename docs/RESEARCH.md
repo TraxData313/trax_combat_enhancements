@@ -1284,7 +1284,10 @@ read-only state, `ThreadSafeRandom` dice, `Interlocked` counters, no log writes,
    234) or none, he is alarmed, not busy, not in water; `SelectPickableItem` takes **shields, banners, stuck missiles, quivers**
    (433). So an AI man who lost his shield mid-melee fights on without it, and picks one up once the fight around him moves
    off (UNVERIFIED in game). The `ItemPickupModel` (`IsItemAvailableForAgent`, …ComponentInterfaces\ItemPickupModel.cs 9) is a
-   decoratable model - a lever to forbid re-pickup for N seconds. The player picks items up with the use key (vanilla).
+   decoratable model - a lever to forbid re-pickup for N seconds. The player picks items up with the use key (vanilla). **Used by step 50**
+   (`Models/TraxItemPickupModel.cs`, `ShieldPickupLockSeconds`): the AI asks it from `HumanAIComponent.OnTick` → `ItemPickupTick` (the main
+   thread; `IsAgentEquipmentSuitableForPickUpAvailability` at 229, `IsItemAvailableForAgent` / `GetItemScoreForAgent` in `SelectPickableItem`
+   447-449); SandBoxSubModule registers `DefaultItemPickupModel` (54); the player's use key never asks it.
 
 ### R6. Knocking down a man whose blow was BLOCKED - a blow of our own
 

@@ -1,11 +1,15 @@
 # Impact — staggers, dropped shields and knockdowns
 
-**Status: APPROVED by Anton (2026-10-17 night, every §8 recommendation taken) - on the board as steps 47-53 (I1-I7). Built so far:
-step 47 = I1, the spike (Advanced `ImpactSpike`; its verdicts per lever in PLAYTEST D16 - read them before trusting 48-53's levers);
+**Status: APPROVED by Anton (2026-10-17 night, every §8 recommendation taken) - on the board as steps 47, 48 and 50-54 (I1-I7; step 49,
+courage, was inserted between I2 and I3, so I3 = 50, I4 blocks = 51, I5 hits = 52, I6 riders = 53, I7 = 54). Built so far:
+step 47 = I1, the spike (Advanced `ImpactSpike`; its verdicts per lever in PLAYTEST D16 - read them before trusting the levers);
 step 48 = I2, THE MODEL (Core `Impact.cs`: every §3 formula, every §4 example reproduced by a unit test; all 60 §5 settings in MCM's
 "Impact: staggers, shield drops, knockdowns" group; every kick / bash / block / clean hit decided once and logged, the [summary]
 "impact" lines - PLAYTEST D17). `ImpactShadowMode` ships OFF (Claude's call, DESIGN decision 40 - Anton wants to see it live in the
-morning; the shadow switch still turns every effect into logging only); no effect is applied until steps 49-51 build them.**
+morning; the shadow switch still turns every effect into logging only); step 50 = I3, **KICKS AND BASHES LIVE** (2026-10-18: the knockdown
+answered in the decorator's seam, the shield dropped from the tick and left pickable - the AI's pickup lockable by `ShieldPickupLockSeconds`,
+the reel and the fall-and-rise slowed by the decided factors and MEASURED, their real ends in each man's record for the immunities; never
+on a rider; AI_NOTES "Step 50", PLAYTEST D19); blocks, clean hits and the riposte are still decided and logged only (steps 51-52).**
 (Written as a plan in step 45:) The game-side facts behind every line are in
 `docs/RESEARCH.md` §R (file + line in the v1.4.8 decompile); the short version is in `AI_NOTES.md` "Step 45". The build order
 (§7) goes into `TASKS_TODO.md` only after Anton says yes.
@@ -349,11 +353,11 @@ soldier under ALT).
 |---|---|---|
 | **I1 SPIKE** (riskiest first) | ONE Advanced switch `ImpactSpike` (off): fixed, loud values to prove each engine lever in a real battle — every landed kick gets the KnockDown flag; every block ×3 stun (cap raised to 2 s); every kicked man's reel and every knockdown's rise at speed 0.5; the first block every 10 s → `act_stagger_backward` on the blocker; every kicked man with a shield drops it (queued); one blow of our own (KnockDown, 1 damage) on a blocker every 20 s. Nothing of the model. A tournament + a 50v50 | `[impact] spike: kick KnockDown flags N → Fall seen M`, `reaction speed 0.5: StrikeKnockBack 0.42 s → 0.85 s measured`, `forced stagger accepted a/N, lasted 0.9 s, blocks from inside 0`, `block stun ×3: defender 0.21 → 0.63 s asked, defend-hit measured 0.6 s; calls off the main thread K`, `shield dropped N, picked up M after s`, `own knockdown blow N → Fall seen M` |
 | **I2 The model, SHADOW** (step 48, built 2026-10-17: `ImpactShadowMode` ships OFF - decision 40; nothing is applied anyway until 49-51) | Core `Impact.cs` (pure, unit-tested: x, R, band, S-curve, ceilings, lengths, immunity, diminishing returns, the reeling state), every setting in DESIGN + defaults.json + MCM, the inputs read at every kick / block / hit; decisions LOGGED, nothing applied | `[summary] impact (shadow): kicks 41 → would drop 6, knock down 4; right blocks 380 → would stagger 52 …` by bar band — Anton reads his own battles' numbers before anything changes |
-| **I3 Kicks and bashes LIVE** (points 1, 3, 4, 11) | knockdown, dropped shield, the longer reel, the slower get-up, immunity + diminishing returns | `[impact] YOU: your kick on … : knocked down (62%)`, the summary's applied vs asked, reel / get-up measured |
-| **I4 Blocks LIVE** (points 2, 5, 6, 7) | the stun by tiredness, the rolled stagger, wrong-side shield drops, a block knocked down (the technique I1 proved), the riposte | stagger lengths measured, blocks made from inside a stagger ~0, ripostes by the attacker's bar |
-| **I5 Clean hits + the reeling state** (points 8, 9) | tired men never shrug off, the flinch lengthened, knockdowns on landed blows, the reeling bonus | knockdowns by weapon class and bar band |
-| **I6 Riders, feedback, guide** | knocked off a horse (after Anton's answer), the player's message lines, `docs/HOW-IT-WORKS.md` tables, PLAYTEST | dismounts; the guide's tables recomputed |
-| (I7, optional) | the AI punishing a window: a short burst of attack decisions (step 43's lever) when his target is staggered or down | attacks per man-minute on staggered targets |
+| **I3 Kicks and bashes LIVE** (points 1, 3, 4, 11) - step 50, BUILT 2026-10-18 | knockdown, dropped shield, the longer reel, the slower get-up, immunity + diminishing returns | `[impact] YOU: your kick on … : knocked down (62%)`, the summary's applied vs asked, reel / get-up measured |
+| **I4 Blocks LIVE** (points 2, 5, 6, 7) - step 51 | the stun by tiredness, the rolled stagger, wrong-side shield drops, a block knocked down (the technique I1 proved), the riposte | stagger lengths measured, blocks made from inside a stagger ~0, ripostes by the attacker's bar |
+| **I5 Clean hits + the reeling state** (points 8, 9) - step 52 | tired men never shrug off, the flinch lengthened, knockdowns on landed blows, the reeling bonus | knockdowns by weapon class and bar band |
+| **I6 Riders, feedback, guide** - step 53 | knocked off a horse (after Anton's answer), the player's message lines, `docs/HOW-IT-WORKS.md` tables, PLAYTEST | dismounts; the guide's tables recomputed |
+| (I7, optional) - step 54 | the AI punishing a window: a short burst of attack decisions (step 43's lever) when his target is staggered or down | attacks per man-minute on staggered targets |
 
 **Harmony**: none needed (RESEARCH §R9). What it would buy: setting flags and stun periods on the game's own blow in a
 `CreateMeleeBlow` postfix (RBM's way) instead of slowing the reaction a tick later and building our own blow for blocked hits.

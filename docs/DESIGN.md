@@ -577,13 +577,33 @@ regen.)
   modified swing / thrust speed by the strike type, the collision's damage type, the attacker's relevant skill; a bash = the shield's
   weight and one-handed; a kick = Athletics), the defender's guard (the off-hand shield and one-handed, or the parrying weapon and its
   skill; no guard = Athletics), mounts, health - `Missions/ImpactInputs.cs`. A landed blow on a man on foot is decided in the damage
-  decorator's KnockDown seam (before the engine registers it) and taken by OnMeleeHit; blocks in OnMeleeHit. **Step 48 decides and
-  LOGS only** - no effect is built (`ImpactMath.EffectsBuilt`); steps 49 (kicks), 50 (blocks + riposte), 51 (clean hits) apply the same
-  decision through the spike's seams, each family behind its own switch (`ImpactKicksEnabled` / `ImpactBlocksEnabled` /
+  decorator's KnockDown seam (before the engine registers it) and taken by OnMeleeHit; blocks in OnMeleeHit. Step 48 decided and
+  LOGGED only; each effect step adds its family to `ImpactMath.EffectsBuilt` - **step 50 (I3): kicks and bashes are LIVE** (below),
+  51 blocks + the riposte, 52 clean hits (the board moved by one when step 49 was inserted) - and applies the same decision through the
+  spike's seams; a family decided live whose effect is not built yet decides on COPIES of the men's records (`ImpactRules.KeepsState` -
+  a stagger that never happened gives no reeling bonus, immunity, halving or courage shock). Each family behind its own switch (`ImpactKicksEnabled` / `ImpactBlocksEnabled` /
   `ImpactHitsEnabled` / `ImpactRiposteEnabled`) and `ImpactShadowMode` turning ALL of them into logging only (the spike forces shadow
   while it runs). Master switch FIRST, then `AthleticsEnabled`, then `ImpactEnabled` - read live at every event. The summary's "impact"
   lines count every decision by event × the defender's bar band (100-75 / 75-50 / 50-25 / 25-0 %) - asked, mean x, rolled, mean chance,
   would apply, the refusals (on the ground, immunities, no shield, a rider), the halvings, the lengths asked, the cost.
+- **Impact I3: kicks and bashes LIVE** (step 50, AI_NOTES "Step 50", decision 42; `Missions/AthleticsLogic.ImpactLive.cs`, Core
+  `ImpactLive.cs`): a landed kick / bash's decision is APPLIED - the **knockdown** = the damage decorator's KnockDown answer (vanilla never
+  knocks down with a kick); the **shield drop** = queued in the hit callback and made from the NEXT TICK (`IImpactBody.DropShield` - the
+  vanilla queued DropItem; never while he is in his own release / bash - vanilla's drop rule - waiting up to 1 s), the shield stays on the
+  ground, pickable by vanilla's rules (IMPACT §8 answer 3) - an AI man may not pick a shield up for `ShieldPickupLockSeconds` (0 = never
+  locked) through a decorator of the game's `ItemPickupModel` (only the AI asks it; your use key is never locked); **the longer reel** =
+  his knock-back reaction at speed 1 ÷ `ReelFactor` (x1 fresh → up to x2.5 x (1 ± 30%) empty) the tick it shows and again on each
+  _continue; **the slower get-up** = his fall-and-rise at 1 ÷ `GetUpFactor` (up to x2) - both MEASURED by Core `ReactionWatch` and their
+  real ends written into his record (`ImpactState.EndReel` / `GotUp`), so the 2 s stagger immunity and the 5 s knockdown immunity run from
+  what the engine played (the step-48 estimates 0.45 s / 1.5 s only until the watch ends); the 8 s halving as decided. Never a rider
+  (knocked off = step 53: decided, nothing applied, his record untouched). You: the same rules × `ImpactOnPlayerPercent`; every kick you
+  deal or take is an `[impact] YOU:` line (what it did with its chance, or why nothing). Courage (step 49): a live outcome is SHOCK (his
+  record's recent outcomes, `CourageShockSeconds`). Each lever (the KnockDown answer, the drop, the slowed reaction, the watch) is disabled
+  ALONE for the mission on an error (one `[error]`); at most 20 drops a tick (plumbing), 64 watches / 32 shields (pools). Off / shadow /
+  `ImpactKicksEnabled` off / the master switch = nothing answered, every queued drop and watch let go at once (a slowed reaction ends by
+  itself). The `[summary] impact live` lines: knocked down / shield dropped decided → applied → seen by the kicked man's bar band (and why
+  not), the reel and the get-up asked vs measured (mean, max; untouched reels as the control), shields dropped → picked up again (after how
+  long) / still on the ground / pickups locked, the limits that refused or halved a live kick, the levers disabled, the tick's cost.
 - **Tired fighters step back** (built in step 5d - the literal rule; `StepBackEnabled`, on):
   when a MELEE swing ends, an AI fighter on foot may step back, facing its enemy with its guard
   up. Chance = `StepBackMaxChancePercent` (100) × (1 − f), f after the swing's cost: 0% in the
@@ -1123,8 +1143,8 @@ says (§2c).
 | `StaggerBaseSeconds` | 0.6 | Step 48: a stagger's length at T 0, s (IMPACT §3.7). Range 0.1-3. |
 | `StaggerTiredExtraPercent` | 150 | Step 48: the stagger × (1 + this % × T) - 0.6 → 1.5 s empty. Range 0-500. |
 | `StaggerMaxSeconds` | 2.0 | Step 48: no stagger longer, whatever the roll. Range 0.2-5. |
-| `KickReelTiredExtraPercent` | 150 | Step 48: the kicked man's vanilla reel × (1 + this % × T) (× 2.5 empty). Range 0-500. |
-| `GetUpMaxSlowdown` | 2.0 | Step 48: the knocked-down man's fall-and-rise × (1 + (this − 1) × T), never above this. Range 1-4. |
+| `KickReelTiredExtraPercent` | 150 | Step 48: the kicked man's vanilla reel × (1 + this % × T) (× 2.5 empty). Step 50: live - his reel played at 1 ÷ that factor, measured. Range 0-500. |
+| `GetUpMaxSlowdown` | 2.0 | Step 48: the knocked-down man's fall-and-rise × (1 + (this − 1) × T), never above this. Step 50: live for a kick's knockdown - played at 1 ÷ that factor, measured. Range 1-4. |
 | `BlockStunTiredExtraPercent` | 100 | Step 48: every block's defender stun × (1 + this % × T). Range 0-500. |
 | `RiposteStunMaxSeconds` | 1.0 | Step 48: the riposted attacker's recoil = this × (0.5 + 0.5 T_A), s, never above `ImpactStunCapSeconds`. Range 0-3. |
 | `ImpactRandomPercent` | 30 | Step 48: every length × a roll in [1 − r, 1 + r], r = this % × T (none in the green). Range 0-100. |
@@ -1133,7 +1153,7 @@ says (§2c).
 | `ImpactKnockdownImmunitySeconds` | 5.0 | Step 48: no new knockdown until this long after he is up. Range 0-30. |
 | `ImpactDiminishWindowSeconds` | 8.0 | Step 48: each outcome he suffered within this window multiplies the next chance against him by `ImpactDiminishFactor`. 0 = never. Range 0-60. |
 | `ImpactDiminishFactor` | 0.5 | Step 48: the factor per recent outcome (0.5^n). 1 = no limit. Range 0-1. |
-| `ShieldPickupLockSeconds` | 0.0 | Step 48: a dropped shield cannot be picked up for this long; 0 = vanilla's pickup (IMPACT §8 q3). Range 0-120. |
+| `ShieldPickupLockSeconds` | 0.0 | Step 48: a dropped shield cannot be picked up for this long; 0 = vanilla's pickup (IMPACT §8 q3). Step 50: applied to the AI through a decorator of the game's `ItemPickupModel` (the player's use key is never locked). Range 0-120. |
 | `ImpactOnPlayerPercent` | 100 | Step 48: every chance against YOU × this % (IMPACT §8 q5). Range 0-100. |
 | `ImpactRiderDismountPercent` | 50 | Step 48: a rider's "knockdown" = knocked off at this % of the knockdown chance; never a stagger on a rider (IMPACT §3.8, §8 q4). Range 0-100. |
 | `ImpactTiredNeverShrugsOff` | true | Step 48: a tired man's flinch threshold × f - he shrugs off less (I5). Live. |
@@ -1599,16 +1619,16 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     overnight; Claude's calls - AI_NOTES "Step 48"): (a) **`ImpactShadowMode` ships OFF** - a deviation from IMPACT §7 (I2 planned
     shadow on until I3): Anton could not playtest the spike first and wants to see the system live in the morning; every effect step
     (49-51) keeps its own family switch and the shadow switch turns ALL effects into logging only, so one checkbox gives him I2's
-    shadow battle back; (b) `ImpactDamageWeight` ships at 0 (IMPACT §8 q1 recommended (a) at 1.0 - but the sentence was unfinished;
+    shadow battle back (effect steps renumbered 50-52 when step 49 was inserted); (b) `ImpactDamageWeight` ships at 0 (IMPACT §8 q1 recommended (a) at 1.0 - but the sentence was unfinished;
     the brief keeps it 0 until Anton says what he meant); (c) all 60 IMPACT §5 settings in ONE MCM group "Impact: staggers, shield
     drops, knockdowns", placed after "Aggression and fever (AI)" (the combat-behaviour groups together, before the refill and the HUD),
     ordered for the player: the switches, the ceilings (his anchors), the lengths, the limits, who - the model's inner numbers last;
     (d) one decision per event: a landed blow is decided in the damage decorator's KnockDown seam (the only managed place before the
-    engine registers it - step 49 / 51 answer KnockDown there) and OnMeleeHit takes it; a block is decided in OnMeleeHit (its stun by
-    tiredness in step 50 depends on T alone, so the stun seam on a worker thread needs no shared state); (e) the state is kept in
+    engine registers it - step 50 / 52 answer KnockDown there) and OnMeleeHit takes it; a block is decided in OnMeleeHit (its stun by
+    tiredness in step 51 depends on T alone, so the stun seam on a worker thread needs no shared state); (e) the state is kept in
     shadow too (what WOULD have happened: on the ground, reeling, immune, halved) so the summary's limits read as they would live; the
     shadow reel / ground times use plumbing estimates (`ImpactMath.VanillaReelSeconds` 0.45, `VanillaFallRiseSeconds` 1.5) until
-    steps 49-51 set the measured ends; (f) a kick's lengthened reel (T > 0) counts as an impact stagger (the reeling bonus and the
+    steps 50-52 set the measured ends (step 50 does for the kicks' reel and get-up); (f) a kick's lengthened reel (T > 0) counts as an impact stagger (the reeling bonus and the
     stagger immunity) - a fresh man's vanilla knock-back does not, so no kick-chain on the fresh; (g) the riposte is never asked from a
     man on the ground, nor when the defender himself was staggered or knocked down; (h) the spike (`ImpactSpike`) forces the model to
     shadow while it runs (it owns the levers); (i) IMPACT §4's worked examples are unit tests (the step-45 script's inputs: a sword 1.2 kg
@@ -1630,6 +1650,22 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     when 6+ men are there - one extra query, only for walking men; (m) step 49b (the manager's review): an unshocked man in a fever presses
     whatever the odds (the first clash must happen), shock beats fever; a 5% × bar surge per look for timid unshocked men among their mates
     with an enemy within 8 m, 4 s brave; Melee at full within his reach.
+
+42. **Kicks and bashes live** (step 50, IMPACT I3 - Anton approved IMPACT with every recommended answer and asked for it overnight;
+    Claude's calls - AI_NOTES "Step 50"): (a) a family decided LIVE whose effect is not built yet (blocks, clean hits in step 50) decides
+    on COPIES of the records (`ImpactRules.KeepsState`) - step 48 wrote every decision's state, which would now give live kicks a reeling
+    bonus / immunity / halving (and courage a shock) from staggers that never happened; shadow mode still keeps every state ("would"
+    alike); (b) riders: NOTHING of a kick applies (not even the shield) until step 53 decides the dismount - decided, logged, record
+    untouched; (c) the shield drop waits for the TICK (the brief: never from inside a hit callback - the spike queued it from the
+    callback) and for his own release / bash to pass (vanilla's drop key refuses then; up to 1 s, else not applied); (d)
+    `ShieldPickupLockSeconds` is applied through a decorator of the game's `ItemPickupModel` (RESEARCH §R5.4 - only the AI asks it; the
+    player's use key has no model, so the lock never touches you); default 0 = vanilla (answer 3); (e) the get-up factor slows the WHOLE
+    fall-and-rise (the Fall action and its _continue - the spike's lever 3; the engine gives no separate "rise" action to slow alone);
+    (f) a knockdown the dice gave that could not be applied (decided outside the decorator's seam - another mod's damage model on top -
+    or its lever disabled) leaves no ground time or immunity (`GotUp(now, 0)`), and a knockdown whose Fall never showed within 1 s is
+    "up" at once - the watch keeps the record honest; (g) one watch per man (a newer kick replaces the running one); fresh men's reels
+    (factor 1) are watched unslowed as the control for "asked vs measured"; (h) every kick YOU deal or take is logged (not verbose) - they
+    are few, and D19 needs them; the on-screen message is step 53's.
 
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),

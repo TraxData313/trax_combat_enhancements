@@ -4534,3 +4534,111 @@ hit and after the fever, a surge (brave 4 s, then timid again). Deploy green.
 
 **UNVERIFIED — PLAYTEST D18**: the first clash happens (the fever's men reach the wall); the standoff line low; surges visible as single men
 stepping in; a surge's 4 s is enough to reach and swing (if men turn back before striking, raise `CourageSurgeSeconds`).
+
+## Step 50 — IMPACT I3, kicks and bashes LIVE (DONE 2026-10-18)
+
+**The brief (Anton asleep - "get all done by morning, decide open questions")**: add `Kicks` to `ImpactMath.EffectsBuilt` and APPLY the
+model's one decision per landed kick / bash through the spike's seams: the knockdown (applied, never on riders), the shield drop (from the
+tick, left pickable - answer 3), the longer reel and the slower get-up (SlowReaction, measured with ReactionWatch, the ends into
+`ImpactState`), the anti-abuse on the live path, the player × `ImpactOnPlayerPercent` with YOU lines, courage's shock, fail-safe levers,
+the summary, tests, smoke, D19. **Numbering**: step 49 (courage) was inserted, so the impact effect steps are 50 kicks / 51 blocks + riposte
+/ 52 clean hits / 53 riders + feedback / 54 the AI punishes (I7) - every "49 / 50 / 51" touched in code and docs was moved.
+
+**How each effect is applied** (`Missions/AthleticsLogic.ImpactLive.cs`, Core `ImpactLive.cs`)
+- **Knockdown**: `ImpactModelOnLandedBlow` (the decorator's KnockDown seam, main thread, before the blow is registered) decides and, when the
+  kicks apply, `ApplyKick(…, inSeam: true)` answers it - OR-ed with vanilla's by `ImpactHooks.KnockDownOnBlow`. Its Fall is then WATCHED
+  (`ReactionWatch` WatchKind.Fall, 1.0 s to show): slowed to 1 ÷ `GetUpFactor` the tick it shows and again on its _continue (the rise), and
+  its measured end → `ImpactState.GotUp(end, ImpactKnockdownImmunitySeconds)`. A knockdown decided in OnMeleeHit (the decorator never asked
+  - another mod's model on top) cannot be answered: counted `outside the seam`, the record fixed at once (`GotUp(now, 0)`).
+- **Shield drop**: queued in the callback (`ImpactLiveDrop`), made from the NEXT TICK (`RunLiveDrops`): his shield in hand now
+  (`TryShieldInHand` - else `no shield at the tick`), not while channel 1 shows his own ReleaseMelee / ReleaseRanged / ReleaseThrowing /
+  WeaponBash (vanilla's drop key refuses then - Agent.HandleDropWeapon 4446; waits ≤ 1 s, else `busy`), then `IImpactBody.DropShield`
+  (vanilla's queued DropItem - one more frame), ≤ 20 a tick. Followed every 0.5 s: left the hand (→ `TrackedAgent.ShieldDroppedAt`), picked
+  up again (any shield in his equipment - after how long), still on the ground after 180 s / at the end.
+- **Pickup lock** (`ShieldPickupLockSeconds`, 0 = vanilla): RESEARCH §R5.4's lever - a new DECORATOR `Models/TraxItemPickupModel.cs` over
+  the game's `ItemPickupModel` (registered only when one exists - SandBox / custom battles), `IsItemAvailableForAgent` = the base's answer
+  AND not (a shield AND `ImpactHooks.ShieldPickupLocked(agent)`). Only the AI asks this model (HumanAIComponent.ItemPickupTick, OnTick -
+  main thread); the player's use key never - documented, the lock never touches you.
+- **Longer reel**: no knockdown → his reaction watched (WatchKind.Reaction, 0.6 s to show), slowed to 1 ÷ `ReelFactor` the tick it shows and
+  on each new action of it; the measured end → `ImpactState.EndReel(end, ImpactStaggerImmunitySeconds)` (only for a lengthened reel - the
+  model sets a reel state only then). A fresh man's reel (factor 1) is watched UNSLOWED - the control the summary compares against.
+- **Get-up**: the WHOLE fall-and-rise is slowed (the Fall action and its _continue - the engine gives no separate rise to slow alone; the
+  spike's lever 3 did the same).
+- **Anti-abuse live**: `ImpactMath.Decide` reads the records as before; what changed is that the records now hold the MEASURED ends, so the
+  2 s (after a reel) and 5 s (after getting up) run from what the engine played; the 8 s halving as decided; a man on the ground refused.
+- **Riders**: nothing applied (not even the shield) - decided, logged (`LIVE, but a rider - nothing applied until step 53`), record untouched,
+  counted `a rider (step 53)`.
+- **You**: Decide already scales the chances against you by `ImpactOnPlayerPercent`; every live kick / bash you deal or take writes an
+  `[impact] YOU:` line (not verbose - they are few) - what happened with its chance, or why nothing (`no knockdown (0%), shield kept (0%) -
+  reels x1.00`).
+- **Courage**: `AthleticsLogic.Courage`'s `ImpactLive()` is true now (`Applies(Kicks)`), so `st.Impact.Recent` (knockdowns, shield drops)
+  is SHOCK in his window - nothing to wire beyond making the records honest (next point).
+
+**Claude's calls (DESIGN decision 42)**
+1. **A family decided LIVE whose effect is not built yet decides on COPIES of the records** (`ImpactRules.KeepsState` = Applies || (decided
+   && shadow)). Step 48 wrote every decision's state - harmless while nothing applied, but now a block's would-be stagger would give live
+   kicks the reeling bonus (+0.75), a stagger immunity and a halving, and courage a shock, for something that never happened. Shadow mode
+   still keeps every state ("would" alike - the step-48 reading). Consequence for the summary: in LIVE mode the blocks' / hits' refusals
+   and halvings are those of a world where only kicks happen (true now).
+2. Riders: nothing of a kick applies until step 53 decides the dismount (the brief: "never on riders").
+3. The drop from the tick, not the callback (the brief); the spike queued AddTickAction from the callback - both are deferred, the tick adds
+   vanilla's release / bash rule.
+4. The pickup lock through the model decorator (AI only) rather than re-dropping a picked-up shield (crude, and it would hit you).
+5. One watch per man: a newer kick replaces his running watch (no double measurement of one reaction).
+6. Plumbing constants (not settings - the spike's proven numbers): 64 watches / 64 drops / 32 shields, 20 drops a tick, 0.6 / 1.0 s to show,
+   the 8 s measure cap, the slowest speed 0.25, factors ≤ 1.001 not slowed, the 1 s busy wait, 0.5 s shield looks, 180 s pickup window.
+
+**Fail-safe**: four levers (`ImpactLever`): the KnockDown answer (an exception in the seam's try), the drop (`impact.live-drop` /
+`impact.live-shield`), the slowed reaction (`impact.live-slow` - the reaction plays on at its own speed and is filed as untouched), the
+watch (`impact.live-watch` - the records keep the model's estimates). Each: one `[error]` with its stack + `[impact] live lever <name>
+disabled for this mission …`; the others run on. The tick itself has its own try (`impact.live-tick`). Off / shadow / kicks off / the
+master switch (all through `Applies`): every queued drop dropped unplayed, every watch let go (one `[impact] kicks no longer live …` line) -
+no engine call (a slowed reaction ends by itself).
+
+**Measured (the 4 `[summary] impact live` lines)**: knocked down / shield dropped - decided → applied → seen (the Fall showed / the shield
+left his hand) by the kicked man's bar band, not applied by reason; the reel asked (mean, max) → measured (mean, max) vs untouched reels =
+the measured ratio; the get-up asked → the fall-and-rise measured (vs untouched if any); slowed calls (+ on a _continue), no reel / no fall
+seen, fell instead, capped; shields queued → left the hand → picked up again (after how long) / still on the ground / pickups locked;
+knockdowns refused (on the ground, the immunity), halved, kicked while reeling; levers disabled; the live tick's cost. The step-48 lines
+now say "did" for the kicks / bashes (per event - `ImpactStats.AppliedByEvent`).
+
+**Smoke (stand-in body - the mechanics, not the engine)**: the exhausted man's fall-and-rise at speed 0.5 measured **3.02 s** (asked x2.00;
+an untouched fall 1.52 s), reels asked x2.30 mean (max x2.50) → measured **0.97 s** mean (max 1.07 s) against the stand-in's 0.42 s reel.
+Cost: 1000 men, 20 live kicks a tick through the decorator (the pools full all the time) - **0.018 ms a tick, 0 bytes**; the live tick itself
+0.001 ms.
+
+**Built**: Core `ImpactLive.cs` (new), `Impact.cs` (EffectsBuilt = Kicks, KeepsState, numbering), `ImpactStats.cs` (AppliedByEvent, "did" per
+event), `ImpactSpike.cs` (`ImpactActions` release / bash codes + `RefusesDrop`); Module `AthleticsLogic.ImpactLive.cs` (new),
+`AthleticsLogic.ImpactModel.cs` (copies + KeepsState, ApplyKick, the seam's lever), `AthleticsLogic.Impact.cs` (TickImpactLive / the summary /
+left the field / the pickup hook plugged), `TrackedAgent.ShieldDroppedAt`, `Models/ImpactHooks.cs` (IShieldPickupLock), `Models/
+TraxItemPickupModel.cs` (new) + its registration in SubModule. No new setting (all 60 came with step 48). Tests 767 → 775 (ImpactLiveTests
+8; ImpactTests' step-48 "nothing applies" test now "kicks apply"). Smoke 109 → 111 steps (`Program.ImpactLive.cs`: through the logic + the
+cost) + the master-switch step's live part + the game facts (the release / bash codes).
+
+**Gotchas**
+- `First(int)` already exists on the logic (the spike's) - the live part's first-time lines are `LiveFirst`; `Pct` exists too (the brace's).
+- Smart App Control blocked the test DLL after the first build (per-hash, as in steps 42 / 44 / 48) - a source change (a new hash) cleared it.
+- The smoke's `FakeImpactBody.SlotHoldsShield` ignores the slot - the "picked up again" test is `HasAnyShield` (a man with a SPARE shield on
+  his back reads "picked up" at once in game too - rare in Bannerlord's troop trees; the spike had the same rule).
+
+**UNVERIFIED — only the game can tell (PLAYTEST D19, read with D16)**
+1. The engine plays a knockdown from our KnockDown answer on a KICK (D16's lever 1; `Fall seen` ≈ `applied`). If not: the fallback is our own
+   knockdown blow from the tick (lever 6) for a kick the dice knocked down.
+2. `SetCurrentActionSpeed` holds on the engine's own reel and fall (D16's lever 3; the reel's `= x… measured` ≈ the asked mean). If not:
+   `SetOverridenStrikeAndDeathAction` (IMPACT §7's fallback 1).
+3. The queued drop leaves a pickable shield and the AI fights on without it; `ShieldPickupLockSeconds` > 0 really keeps the AI off it.
+4. How a slowed fall-and-rise LOOKS (Anton's eyes): if the slowed FALL looks floaty, the next step can slow only the _continue.
+
+**For step 51 (blocks)**
+- Add `Blocks | Riposte` to `EffectsBuilt`; in `ImpactDecide` the `applied && family == …` branch gets an `ApplyBlock` beside `ApplyKick`
+  (the records are already kept / copied by `KeepsState`).
+- The stun by tiredness belongs in `SetBlockStun` (the stun seam, ANY thread - T from the defender's record read-only, no dice state or
+  `ThreadSafeRandom`); raise the cap with `ImpactHooks.RaiseStunCap(ImpactStunCapSeconds)` while blocks apply and restore it when they stop
+  (the spike's pattern in `RaiseCapForSpike` / `SpikeSwitchedOff`). The decision's `StunFactor` is the logged one.
+- The rolled stagger: `IImpactBody.ForceStagger` from the tick (queue it like `ImpactLiveDrop`; `CanForce` before - never a rider), the
+  priority rule D16's lever 4 proved, watched with `WatchKind.Stagger` and its measured end into `EndReel`; the knockdown of a blocker = our
+  own blow (`OwnKnockdownBlow`, lever 6) from the tick, its Fall watched like the kicks' get-up (reuse `AddLiveWatch` / `LiveMeasured`); the
+  wrong-side shield drop = the same `RunLiveDrops`.
+- The riposte: the decision rolls it on the main thread AFTER the stun was set - apply it as a forced stagger of the ATTACKER from the tick.
+- `ImpactLiveStats` is kick-shaped (two outcomes); for 51 either widen it (stagger, the blocker's knockdown) or add a sibling - and extend
+  `ImpactLever` with ForcedStagger / OwnBlow / BlockStun.
