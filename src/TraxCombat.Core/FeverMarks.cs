@@ -22,11 +22,11 @@ namespace TraxCombat.Core
         /// <summary>Closer to the camera than <see cref="FeverMarkMath.NearMetres"/> (vanilla's own icon is gone there too).</summary>
         TooClose = 4,
 
-        /// <summary>More men in fever in front of the camera than FeverMarkMax - the farthest wait.</summary>
-        Capped = 5,
+        /// <summary>Projected, but outside the screen (checked BEFORE the pick, so he takes no slot from a man on it).</summary>
+        OffScreen = 5,
 
-        /// <summary>Projected, but outside the screen.</summary>
-        OffScreen = 6,
+        /// <summary>More men in fever on the screen than FeverMarkMax - the farthest wait.</summary>
+        Capped = 6,
 
         Count = 7,
     }
@@ -87,7 +87,7 @@ namespace TraxCombat.Core
     /// </summary>
     public sealed class FeverMarkFrame
     {
-        /// <summary>The first size of the arrays - plumbing.</summary>
+        /// <summary>The first size of the arrays (they double when a battle needs more) - plumbing.</summary>
         public const int InitialCapacity = 256;
 
         public FeverMark[] Marks = new FeverMark[InitialCapacity];
@@ -99,7 +99,7 @@ namespace TraxCombat.Core
 
         public int Count;
 
-        /// <summary>Marks that passed the first skips (in front, close enough, the side switched on) - in <see cref="Order"/>.</summary>
+        /// <summary>Marks that passed every skip but the cap (the side switched on, in front, close enough, on the screen) - in <see cref="Order"/>.</summary>
         public int Eligible;
 
         /// <summary>The nearest <see cref="Eligible"/> up to the cap - <see cref="Order"/>[0..Picked).</summary>

@@ -29,6 +29,9 @@ namespace TraxCombat.Missions
     ///                                          FormationStatsRefreshSeconds (live). False for an empty
     ///                                          formation or a team past <see cref="MaxStatTeams"/>.
     ///   <see cref="FormationStatsVersion"/>     bumps at every refresh - redraw squad bars when it moves.
+    ///   <see cref="TryGetFever"/>(agent)        step 44: one AI man's fever (step 43) - armed, or burning with the share
+    ///                                          left; false for a calm man, the player, or the fever off. The fever-mark
+    ///                                          view walks the same answer allocation-free (FeverWalkCount / TryGetFeverAt).
     /// </summary>
     public sealed partial class AthleticsLogic
     {
@@ -93,6 +96,61 @@ namespace TraxCombat.Missions
             if (slot < 0) return false;
             stats = logic._formationSnapshot[slot];
             return stats.Count > 0;
+        }
+
+        /// <summary>
+        /// Step 44: one AI man's FEVER now (step 43) - true while it runs: <paramref name="armed"/> = armed (no enemy met yet, the peak),
+        /// else burning with <paramref name="share"/> = the store left ÷ full (1 while armed). False for a calm man, the player (never a
+        /// fever), an agent we do not track, or while the fever is off (the master switch, Athletics, FeverEnabled - read live).
+        /// Allocation-free, main thread.
+        /// </summary>
+        public static bool TryGetFever(Agent agent, out bool armed, out double share)
+        {
+            armed = false;
+            share = 0;
+            var logic = _current;
+            if (logic == null || agent == null || logic._feverRunning <= 0) return false;
+            var st = logic.Get(agent);
+            return st != null && logic.FeverOf(st, out armed, out share);
+        }
+
+        /// <summary>Step 44: how many tracked fighters <see cref="TryGetFeverAt"/> walks this frame (0 while no fever runs - the fever-mark
+        /// view's loop then costs nothing).</summary>
+        internal static int FeverWalkCount
+        {
+            get
+            {
+                var logic = _current;
+                return logic == null || logic._feverRunning <= 0 ? 0 : logic._count;
+            }
+        }
+
+        /// <summary>Step 44: the tracked fighter at <paramref name="index"/> (0 .. <see cref="FeverWalkCount"/>) when he is in a fever - the
+        /// fever-mark view's allocation-free walk (no lookup by agent). See <see cref="TryGetFever"/>.</summary>
+        internal static bool TryGetFeverAt(int index, out Agent? agent, out bool armed, out double share)
+        {
+            agent = null;
+            armed = false;
+            share = 0;
+            var logic = _current;
+            if (logic == null || index < 0 || index >= logic._count) return false;
+            var st = logic._dense[index];
+            if (st == null || !logic.FeverOf(st, out armed, out share)) return false;
+            agent = st.Agent;
+            return true;
+        }
+
+        private bool FeverOf(TrackedAgent st, out bool armed, out double share)
+        {
+            armed = false;
+            share = 0;
+            var fv = st.Fever;
+            if (st.Removed || !fv.Running) return false;
+            var s = TraxSettings.Shared; // FeverRules.Enabled's three switches, read without building the rules (a hot walk)
+            if (!s.ModEnabled || !s.AthleticsEnabled || !s.FeverEnabled || IsPlayer(st)) return false;
+            armed = fv.Phase == FeverPhase.Armed;
+            share = armed ? 1.0 : fv.Share;
+            return armed || share > 0;
         }
 
         /// <summary>Bumps each time the formation snapshot is refreshed.</summary>

@@ -1,0 +1,38 @@
+<Prefab>
+  <!--
+    Trax Combat Enhancements - THE FEVER MARKS (step 44, DESIGN §3 item 3b: hold ALT).
+    While the game shows its markers (ALT held, or the orders menu open), a small bar above each AI man in a FEVER
+    (step 43 - armed or burning): a dark frame (@FrameColor) with the fill inside (@Fill = the fever left, 1 while
+    armed) in @FillColor - bright orange while armed and at the burn's start, through yellow as it empties; both
+    colours carry the mark's alpha (the fever's and vanilla's own ALT-icon distance fade, baked in by the view).
+    Each mark is placed in SCREEN PIXELS (ScaledPositionXOffset / ScaledPositionYOffset / ScaledSuggestedWidth /
+    ScaledSuggestedHeight take pixels): the view projects each man's feet + FeverMarkHeightMetres every frame and
+    sizes the bar from FeverMarkWidth x FeverMarkHeight UI pixels x the game's UI scale (smaller far away). The
+    1-pixel frame is a UI-pixel margin (the UI scale applies).
+    Data: Hud\FeverMarksVM.cs (the root) and FeverMarkVM (each item of {Marks} - a grow-only pool, mark i = the
+    i-th drawn this frame). Every @binding's property has EXACTLY the widget property's type (float / Color /
+    bool). The list widget carries no @binding (a list DataSource ignores them). Native sprite only. A passive
+    overlay: no widget takes mouse events.
+    The offline smoke parses this file: widget types, attributes, sprites, bindings (the item template against the
+    item ViewModel), every ViewModel property drawn.
+  -->
+  <Window>
+    <Widget Id="TraxFeverMarks" WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" DoNotAcceptEvents="true" DoNotPassEventsToChildren="true">
+      <Children>
+        <Widget Id="Marks" DataSource="{Marks}" WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" DoNotAcceptEvents="true">
+          <ItemTemplate>
+            <Widget Id="Mark" WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" HorizontalAlignment="Left" VerticalAlignment="Top" ScaledSuggestedWidth="@Width" ScaledSuggestedHeight="@Height" ScaledPositionXOffset="@PositionX" ScaledPositionYOffset="@PositionY" IsVisible="@IsShown" Sprite="BlankWhiteSquare_9" Color="@FrameColor" DoNotAcceptEvents="true">
+              <Children>
+                <FillBarWidget Id="Fever" WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" MarginLeft="1" MarginRight="1" MarginTop="1" MarginBottom="1" FillWidget="FeverFill" MaxAmountAsFloat="1" InitialAmountAsFloat="@Fill" DoNotAcceptEvents="true">
+                  <Children>
+                    <Widget Id="FeverFill" WidthSizePolicy="Fixed" HeightSizePolicy="StretchToParent" HorizontalAlignment="Left" Sprite="BlankWhiteSquare_9" Color="@FillColor" DoNotAcceptEvents="true" />
+                  </Children>
+                </FillBarWidget>
+              </Children>
+            </Widget>
+          </ItemTemplate>
+        </Widget>
+      </Children>
+    </Widget>
+  </Window>
+</Prefab>

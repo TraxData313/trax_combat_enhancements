@@ -743,6 +743,7 @@ namespace TraxCombat.Tools
             view.Finish(903);
             StripFollowsTheMasterSwitch(player);
             AltMarkersFollowTheMasterSwitch(player);
+            FeverMarksFollowTheMasterSwitch(player); // step 44
         }
 
         // ------------------------------------------------------------------ the fail safe
