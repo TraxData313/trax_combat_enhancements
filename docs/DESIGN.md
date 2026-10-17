@@ -78,6 +78,8 @@ regen.)
     follows its bar (§2 "Aggression and the fever"), so a swing may cost less; the worked examples in this section keep the INITIAL 10 (the unit
     tests count blows on them). Config format 8 moves a file still holding 10 to 3 once (and `CostPerWrongSideShieldBlock`
     5 → 2); a tuned value is kept.
+  - Step 46 (Anton's playtest, 2026-10-17): defaults.json ships `CostPerBlow` **7** (7 / 5.25 / 3.94). Config format 9 moves a
+    format-8 file still holding 3 to 7 once (a tuned value is kept and noted); an older file's 10 goes straight to 7.
 - **What is a blow**: a melee swing or thrust, a shot, a throw. A couched lance or braced
   spear hit has no swing, so it costs one blow when it LANDS. Siege engines (ballista, onager)
   cost nothing.
@@ -617,7 +619,7 @@ button and the "(default …)" in comments, MCM hints and the log all show the f
 
 ## 3. Showing Athletics
 
-All toggles, all on by default. **Built: items 1, 1b, 1c, 3 (step 20, in its "hold ALT" form), 3b (step 44) and 4. Item 2
+All toggles, all on by default. **Built: items 1, 1b, 1c, 3 (step 20, in its "hold ALT" form), 3b (step 44), 3c (step 46) and 4. Item 2
 is LATER** (Anton moved it off the build order, 2026-09-27): its design stays here, its settings wait in
 "Planned parameters" below, and nothing of it is in the game, MCM or the config file.
 
@@ -748,6 +750,27 @@ contact - gets a small bar of ours above his head:
 - Shown only in fights, with the master switch, Athletics, `FeverEnabled` and `ShowFeverMarks` on, never with
   Hide battle UI or photo mode; the player need not be on the field. All live.
 
+**3c. The Athletics bar above every man as built (step 46 — hold ALT; Anton 2026-10-17: "add how tired they are in a bar
+above that fever bar, maybe a green bar that gets to red, like on the unit selection / formation screen"):** the same
+view draws, at the same moments (the formation markers' live flag - ALT or the orders menu), a small Athletics bar
+above EVERY soldier's head - the fever bar of 3b stays under it while he is in a fever:
+- **The look**: `AthleticsMarkWidth` × `AthleticsMarkHeight` (22 × 5 UI px), a dark 1-px frame; the FILL = his points ÷
+  his FULL pool (the strip's and the player bar's reading), the part his wounds hold dark red (the player bar's way); the
+  colour = the bar's bands (`Bar*BelowPercent`, read live: green at or above the peak line, blue just below, yellow /
+  orange / red, empty red). No peak tick (too small to read - the colour carries it).
+- **The stack**: the box's bottom on his point (`FeverMarkHeightMetres` above his feet, a rider 1 m higher); the fever bar
+  at the bottom, `AthleticsMarkGap` (2 px), the Athletics bar on top. The fever bar's PLACE is kept while he has no fever
+  (whenever fever bars can show for his side), so his bar never jumps when a fever starts or ends; with the fever bars off
+  for his side (`ShowFeverMarks`, `FeverEnabled`, the enemy's switch) the bar sits on the point itself.
+- **Who**: every man the logic tracks - AI men on foot and riders, heroes and lords too; yours and your allies' always, the
+  enemy's with `AthleticsMarksShowEnemy` (on). Never you (your own bar, bottom right).
+- **How many**: ONE cap for both bars, `FeverMarkMax` (200 men marked a frame - the key kept: no config migration). The
+  nearest ON THE SCREEN: the candidates (every man in front of the camera, at least 1.5 m away) are sorted by distance when
+  the cap bites and projected nearest first until it is full - a man off the screen never takes a slot, and only about the
+  cap's worth of projections are made (smoke: 1000 men all on the screen, 0.07 ms a frame, 0 bytes, 200 projections).
+- Vanilla's fade and the smaller size far away as 3b. Shown with the master switch, Athletics and `ShowAthleticsMarks` on
+  (`ShowFeverMarks` off and the fever off do not hide it); the layer goes only when there is nothing to draw. All live.
+
 Bars show in fights (battle, duel, tournament and stealth modes — step 6 added stealth:
 a stealth mission's fights cost Athletics too), with the player on the field, never while the
 game's "hide battle UI" or photo mode is on, and never while the master switch or Athletics is
@@ -830,7 +853,7 @@ Every parameter lives in two places that stay in sync:
 
 **What the player reads** (step 10b; step 20 added the tenth, step 21 the eleventh): eleven groups, the same in MCM and the
 file, in this order — *Master switch, Damage randomness, Athletics, Tired fighters, Tired fighters step
-back, Battle pace (AI), Refill, Your Athletics bar, Orders menu strip, Hold ALT: formation markers and fever marks (step 44's name; step 20 called it Formation markers (hold ALT)), Advanced* (later steps added Damage reduction's rename, Brace, Sprint, Aggression and fever - 14 groups since step 43); MCM shows
+back, Battle pace (AI), Refill, Your Athletics bar, Orders menu strip, Hold ALT: formation markers, Athletics and fever bars (step 46's name; step 44's was "... and fever marks", step 20 called it Formation markers (hold ALT)), Advanced* (later steps added Damage reduction's rename, Brace, Sprint, Aggression and fever - 14 groups since step 43); MCM shows
 its *Defaults* buttons (§2c) just above
 *Advanced*, which stays last. One vocabulary: the pool, the bar and its points are *Athletics*; the
 character-screen skill is *the Athletics skill*; the *peak line* is the white mark on the bar
@@ -924,7 +947,7 @@ says (§2c).
 | `AthleticsPoolPerSkill` | 1.0 | Pool per point of Athletics skill (1.0 → the bar tops at the skill). |
 | `AthleticsPeakPercent` | 75 | At or above this % of their own pool a fighter is at full strength (green); below it they weaken in a straight line to 0. |
 | `HealthCapsAthletics` | true | Health left caps the usable pool. |
-| `CostPerBlow` | 10 | Athletics points one blow costs before multipliers (points, whatever the pool). defaults.json 3 since step 43 (Anton: the AI's eagerness now follows its bar; config format 8 moves a file's old 10 once). |
+| `CostPerBlow` | 10 | Athletics points one blow costs before multipliers (points, whatever the pool). defaults.json 3 since step 43 (Anton: the AI's eagerness now follows its bar; config format 8 moves a file's old 10 once), 7 since step 46 (Anton's playtest; config format 9 moves a format-8 file's 3 once). |
 | `CostPerKickOrBash` | 3 | Step 18 (Anton): Athletics points one kick or shield bash costs before the hero and party-leader multipliers (3 / 2.25 / 1.7), once, when it starts, landed or not; never starts the attack pause. 0 = free (steps 5-17). |
 | `CostPerShieldBlock` | 1 | Step 22 (Anton): Athletics points the DEFENDER pays for a melee blow he blocks with his shield on the correct side, before the hero and party-leader multipliers (1 / 0.75 / 0.56); once per blocked blow; does not restart the refill delay while `OnlyWrongSideBlocksStopRefill` is on (step 29); never an attack pause or a step back. 0 = free (steps 5-21). |
 | `CostPerWrongSideShieldBlock` | 5 | Step 22 (Anton): the same for a blow his shield stops on the WRONG side (the engine's `CorrectSideShieldBlock` false) - 5 / 3.75 / 2.81. 0 = free. defaults.json 2 since step 43 (Anton; config format 8 moves a file's old 5 once). |
@@ -1408,6 +1431,18 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     nearest ON THE SCREEN (each eligible man is projected first); (f) vanilla's icon fade (1.5 → 8 m), 60% size at 60 m; (g) the
     layout numbers are Advanced settings (step 20's precedent), the colours UI constants like the bars'. Each is a default Anton can
     overturn.
+38. **The Athletics bar above every man** (step 46, Claude's calls on Anton's ask of 2026-10-17 - AI_NOTES "Step 46"; Anton can
+    overturn any): (a) ONE view - step 44's - drawing up to two bars per man (one walk, one projection per man, one pool, one cap),
+    not a second view; (b) a FIXED height: the fever bar's place is kept under the Athletics bar whenever fever bars can show for
+    his side, so the bar never jumps - only with the fever bars off for that side does it sit on the point; (c) the reading = the
+    strip's / player bar's: points ÷ his FULL pool, the wound cap dark red like the player bar, BarMath's band colours; no peak tick;
+    (d) every man the logic tracks - riders (1 m higher, a plumbing constant `RiderLiftMetres`), heroes, lords - never you; (e) the
+    enemy's on by default (`AthleticsMarksShowEnemy`); (f) ONE shared cap, `FeverMarkMax`, kept under its old key (men marked, not
+    bars - no config migration) rather than renamed; (g) the pick sorts the candidates first and projects nearest first until the cap
+    is full (an off-screen man still never takes a slot - step 44's fix - and ~200 projections a frame instead of one per man on the
+    field); (h) the view is named "ALT bars" in the log (it was "fever marks"), its classes keep their step-44 names; (i) the layer
+    stays while either bar can show - `FeverEnabled` off no longer hides it while the Athletics bars are on. Also in step 46
+    (Anton's playtest): `CostPerBlow` 3 → 7 in defaults.json (config format 9 moves a format-8 file's 3 once; a tuned value kept).
 
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),

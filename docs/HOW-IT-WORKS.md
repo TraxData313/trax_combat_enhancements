@@ -559,8 +559,21 @@ their average health, and **"ready 34/50"** — how many are ready to fight (not
 | Yellow | 75% or fewer ready |
 | Red | 50% or fewer ready — this line is spent |
 
-**Fever marks** (hold ALT, or the orders menu open): a small bar above each man in a **fever** (section 11) —
-yours and the enemy's. Its length is the fever left.
+**Athletics bars over the men** (hold ALT, or the orders menu open): a small bar above **every soldier's**
+head — yours, your allies' and the enemy's (not yours: you have your own) — his own Athletics bar in
+miniature: its length is the Athletics he has left, its colour the bar's colour (green at full strength,
+blue just below the peak line, then yellow, orange, red), the part his wounds hold dark red. Watch a line
+go from green to red as the fight goes on, and pick the tired enemy to charge.
+
+```
+     a fresh man:            a tired man in a charge:
+        [██████████]            [█████░░░░░]   his Athletics bar (green / yellow)
+                                [▓▓▓▓▓▓▓▓▓▓]   his fever bar under it (orange)
+```
+
+**Fever marks**: under that bar, a second small bar on each man in a **fever** (section 11) — yours and
+the enemy's. Its length is the fever left. His Athletics bar stays at the same height whether he is in a
+fever or not, so nothing jumps.
 
 | Fever mark | Means |
 |---|---|
@@ -569,12 +582,14 @@ yours and the enemy's. Its length is the fever left.
 | Faint yellow, short | nearly spent — he is about to calm down |
 | No mark | calm (no fever), or you |
 
-Close to the camera the marks fade out (none closer than 1.5 m), far away they are a little smaller, and in
-a huge battle only the 200 nearest are drawn.
+Close to the camera the bars fade out (none closer than 1.5 m), far away they are a little smaller, a
+rider's sit a little higher, and in a huge battle only the 200 nearest men on the screen get them.
 
 <sub>Settings: `ShowPlayerBar`, `ShowAttackRecoveryBar`, `ShowSprintBar`, `ShowInOrderMenu`, `ShowAltMarkerStats`,
-`AltMarkersShowEnemy`, `ShowReadyCount`, `Bar*BelowPercent`, `Ready*BelowPercent`, `ShowFeverMarks`, `FeverMarksShowEnemy`,
-`FeverMarkMax` 200, and the HUD's sizes and offsets (`FeverMarkWidth` 22, `FeverMarkHeight` 5, `FeverMarkHeightMetres` 2.5).</sub>
+`AltMarkersShowEnemy`, `ShowReadyCount`, `Bar*BelowPercent`, `Ready*BelowPercent`, `ShowAthleticsMarks`, `AthleticsMarksShowEnemy`,
+`ShowFeverMarks`, `FeverMarksShowEnemy`, `FeverMarkMax` 200 (men marked, both bars), and the HUD's sizes and offsets
+(`AthleticsMarkWidth` 22, `AthleticsMarkHeight` 5, `AthleticsMarkGap` 2, `FeverMarkWidth` 22, `FeverMarkHeight` 5,
+`FeverMarkHeightMetres` 2.5).</sub>
 
 ## 16. Tactics this creates
 
