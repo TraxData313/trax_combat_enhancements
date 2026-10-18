@@ -531,6 +531,13 @@
   // (range 0 to 100)
   "SprintAiMoveKeepPercent": 80,
 
+  // When an AI soldier on foot breaks and ROUTS (the game's own rout - his morale gone), he
+  // spends his WHOLE sprint store once, at the rout's start, for the first get-away (no order
+  // reserve, it does not end near an enemy). The rout itself stays the game's - only the speed
+  // is added. Needs the AI sprint on. Off: routing men run at their normal tired speed.
+  // (true or false)
+  "SprintOnRout": true,
+
   // ==================== Aggression and fever (AI) ====================
   // How eagerly an AI soldier on foot with a FULL Athletics bar decides to start an attack (and
   // to strike back after a parry), in percent of the game's own AI. It slides in a straight

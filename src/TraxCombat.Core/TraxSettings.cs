@@ -297,6 +297,7 @@ namespace TraxCombat.Core
         public int SprintAiChargeKeepPercent => GetInt(SettingsSchema.SprintAiChargeKeepPercent);
         public int SprintAiAdvanceKeepPercent => GetInt(SettingsSchema.SprintAiAdvanceKeepPercent);
         public int SprintAiMoveKeepPercent => GetInt(SettingsSchema.SprintAiMoveKeepPercent);
+        public bool SprintOnRout => GetBool(SettingsSchema.SprintOnRout);
         // step 43: aggression and fever
         public int AiAggressionFreshPercent => GetInt(SettingsSchema.AiAggressionFreshPercent);
         public int AiAggressionExhaustedPercent => GetInt(SettingsSchema.AiAggressionExhaustedPercent);

@@ -342,6 +342,88 @@ namespace TraxCombat.Missions
             }
         }
 
+        // ------------------------------------------------------------------ the rout (step 57)
+
+        private bool _firstRoutSprintLogged;
+
+        /// <summary>
+        /// Step 57 (Anton 2026-10-18: "when they are broken and begin to rout, use their available sprint for the first get-away"): the game
+        /// calls this ONCE per man who ROUTS - <c>MissionAgentPanicHandler.OnPreMissionTick</c> (main thread) right after
+        /// <c>CommonAIComponent.Retreat()</c> for a man whose morale broke (<c>CommonAIComponent.Panic</c> → <c>Mission.OnAgentPanicked</c>);
+        /// a formation's Retreat ORDER never calls it (v1.4.8 decompile: Mission.OnAgentFleeing's only caller). An AI man on foot then spends his
+        /// WHOLE sprint store (<see cref="SprintStore.TryStartRout"/> - no order reserve, no end near an enemy); a running ORDER sprint is handed
+        /// over (<see cref="SprintEnd.Routed"/>). The rout stays the game's. Never the player, never a rider. Fails safe (one [error]).
+        /// </summary>
+        public override void OnAgentFleeing(TaleWorlds.MountAndBlade.Agent affectedAgent)
+        {
+            try
+            {
+                if (affectedAgent == null) return;
+                var st = Get(affectedAgent);
+                if (st == null || st.Removed) return;
+                RoutSprint(st, SafeNow());
+            }
+            catch (Exception e)
+            {
+                Failed("sprint.rout", e);
+            }
+        }
+
+        /// <summary>Step 57: the rout's sprint for one tracked man (the smoke calls it through <see cref="OnAgentFleeing"/>).</summary>
+        private void RoutSprint(TrackedAgent st, double now)
+        {
+            var settings = TraxSettings.Shared;
+            var s = SprintRules.From(settings);
+            _sprintStats.RoutsSeen++;
+            var body = SprintBody;
+            if (IsPlayer(st) || !body.IsAiControlled(st))
+            {
+                _sprintStats.RoutSkippedPlayer++;
+                return;
+            }
+            if (!s.RoutOn) // the master switch first (SprintRules.Enabled), then Athletics, the sprint, the AI's sprint, SprintOnRout
+            {
+                _sprintStats.AddRoutRefused(SprintStart.Off);
+                return;
+            }
+            if (body.IsMounted(st))
+            {
+                _sprintStats.AddRoutRefused(SprintStart.Mounted);
+                return;
+            }
+            var sp = st.Sprint;
+            bool replaced = false;
+            if (sp.Active && !sp.ByKey && !sp.Rout)
+            {
+                EndSprint(st, SprintEnd.Routed, now); // an order / regroup sprint: the rest of his store goes into the get-away
+                replaced = true;
+            }
+            var r = AthleticsRules.From(settings);
+            double cap = SprintMath.Capacity(in s, in r, st);
+            var res = sp.TryStartRout(in s, now, cap);
+            if (res != SprintStart.Started)
+            {
+                _sprintStats.AddRoutRefused(res);
+                if (TraxLog.VerboseWants("sprint-rout"))
+                    TraxLog.Verbose("sprint", Name(st) + " routs at " + Sec(now) + " s - no get-away sprint (" + res + ", stored " + F2(sp.StoredUpTo(cap)) + " s)", "sprint-rout");
+                return;
+            }
+            _sprintStats.AddRoutStart(sp.StoredAtStart);
+            if (replaced) _sprintStats.RoutReplaced++;
+            BeginSprint(st, now, in s, in r, cap);
+            if (!_firstRoutSprintLogged)
+            {
+                _firstRoutSprintLogged = true;
+                TraxLog.Info("sprint", "first ROUT sprint this battle: " + Name(st) + " broke and routs at " + Sec(now) + " s (the game's own rout - "
+                    + "MissionBehavior.OnAgentFleeing) - he sprints his WHOLE store " + F2(sp.StoredAtStart) + " s of " + F2(cap) + " s for the get-away"
+                    + (replaced ? " (his running order sprint handed over)" : string.Empty) + ", no reserve, no end near an enemy (SprintOnRout)");
+            }
+            else if (TraxLog.VerboseWants("sprint-rout"))
+            {
+                TraxLog.Verbose("sprint", Name(st) + " routs at " + Sec(now) + " s - sprints " + F2(sp.StoredAtStart) + " s", "sprint-rout");
+            }
+        }
+
         // ------------------------------------------------------------------ the pass
 
         /// <summary>Every <see cref="RegenStepSeconds"/>: each store clamped to his points; a running sprint advanced (its clock and
@@ -407,7 +489,7 @@ namespace TraxCombat.Missions
                 EndSprint(st, end, now);
                 return;
             }
-            if (!sp.ByKey && !sp.Regroup && now >= st.SprintNextMelee) // step 49: a sprint back is getting AWAY from the enemy
+            if (!sp.ByKey && !sp.Regroup && !sp.Rout && now >= st.SprintNextMelee) // step 49 / 57: a sprint back or a rout is getting AWAY from the enemy
             {
                 st.SprintNextMelee = now + SprintMath.MeleeCheckSeconds;
                 _sprintStats.MeleeChecks++;
@@ -477,7 +559,7 @@ namespace TraxCombat.Missions
             else
             {
                 if (floor) _sprintStats.AiOffFloor++;
-                if (!_firstAiSprintLogged)
+                if (!_firstAiSprintLogged && !sp.Rout) // step 57: a rout's sprint has its own first line (RoutSprint)
                 {
                     _firstAiSprintLogged = true;
                     TraxLog.Info("sprint", "first AI order sprint this battle: " + Name(st) + " at " + Sec(now) + " s on a new " + SprintMath.OrderName(sp.Order)

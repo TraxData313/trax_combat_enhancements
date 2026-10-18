@@ -414,6 +414,10 @@ namespace TraxCombat.Core
             "AI sprint on a move: keeps (% of the store)",
             "On a new MOVE order (move to a position - F1 F1 -, or an AI general's move that is neither its advance nor its charge) each AI soldier on foot keeps this percent of his FULL sprint store for later orders and sprints everything above it - so troops moved into position still have their sprint for the real charge. 80: from a full store he sprints a fifth, from 90% a tenth, at or below 80% none.");
 
+        public static readonly ParamDef SprintOnRout = Bool("SprintOnRout", SprintGroup,
+            "AI sprint when a man routs",
+            "When an AI soldier on foot breaks and ROUTS (the game's own rout - his morale gone), he spends his WHOLE sprint store once, at the rout's start, for the first get-away (no order reserve, it does not end near an enemy). The rout itself stays the game's - only the speed is added. Needs the AI sprint on. Off: routing men run at their normal tired speed.");
+
         // ------------------------------------------------------------------ aggression and fever (step 43)
 
         // Step 43 (Anton, 2026-10-17: "people are defensive by nature - they don't want to throw their life away ... when the general
@@ -1281,7 +1285,7 @@ namespace TraxCombat.Core
             SprintEnabled, SprintKey, SprintPointsPerSecond, SprintMinSeconds, SprintMinStartPercent, SprintMaxMultiplier, SprintMinMultiplier, SprintFullSpeedSharePercent,
             SprintTopSpeedReachSeconds,
             SprintRefillSeconds, SprintRefillMovingFactor, SprintRefillExhaustedFactor, SprintAiEnabled, SprintAiChargeKeepPercent,
-            SprintAiAdvanceKeepPercent, SprintAiMoveKeepPercent,
+            SprintAiAdvanceKeepPercent, SprintAiMoveKeepPercent, SprintOnRout,
             AiAggressionFreshPercent, AiAggressionExhaustedPercent, FeverEnabled, FeverPointsPerSecond, FeverAggressionPercent, FeverContactMetres, FeverShieldDurationMultiplier,
             FeverSprintToClose, FeverSprintMinMetres, FeverSprintMaxMetres, FeverSprintCheckSeconds, FeverSprintChancePercent,
             CourageEnabled, CourageRadiusMetres, CourageBaseOddsPercent, CourageArmourWeightPercent, CourageLevelWeightPercent, CourageHealthWeightPercent,

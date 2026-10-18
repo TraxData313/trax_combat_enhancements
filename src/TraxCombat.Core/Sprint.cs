@@ -66,6 +66,9 @@ namespace TraxCombat.Core
         /// <summary>Step 49: a sprint back ended with his walk back (arrived, among his mates, brave again).</summary>
         Regrouped,
 
+        /// <summary>Step 57: a running AI order sprint handed over to his rout's sprint (the whole store).</summary>
+        Routed,
+
         Count,
     }
 
@@ -102,8 +105,9 @@ namespace TraxCombat.Core
         public SprintRules(bool modEnabled, bool athleticsEnabled, bool sprintEnabled, bool aiEnabled, double pointsPerSecond, int minStartPercent,
             double maxMultiplier, double minMultiplier, int fullSpeedSharePercent, double refillSeconds, double refillMovingFactor,
             double refillExhaustedFactor, int aiChargeKeepPercent, int aiAdvanceKeepPercent, int aiMoveKeepPercent, double minSeconds = 0,
-            double topSpeedReachSeconds = 0)
+            double topSpeedReachSeconds = 0, bool onRout = false)
         {
+            OnRout = onRout;
             ModEnabled = modEnabled;
             AthleticsEnabled = athleticsEnabled;
             SprintEnabled = sprintEnabled;
@@ -176,6 +180,12 @@ namespace TraxCombat.Core
         /// <summary>The AI sprints on new orders now.</summary>
         public bool AiOn => Enabled && AiEnabled;
 
+        /// <summary>Step 57, SprintOnRout (the switch itself).</summary>
+        public bool OnRout { get; }
+
+        /// <summary>Step 57: a routing AI man sprints his whole store now (the master switch, Athletics, the sprint, the AI's sprint, then this).</summary>
+        public bool RoutOn => AiOn && OnRout;
+
         /// <summary>Which switch holds it off ("ModEnabled", "AthleticsEnabled", "SprintEnabled"), null while on.</summary>
         public string? OffBecause => !ModEnabled ? "ModEnabled" : !AthleticsEnabled ? "AthleticsEnabled" : !SprintEnabled ? "SprintEnabled" : null;
 
@@ -189,7 +199,7 @@ namespace TraxCombat.Core
             new SprintRules(s.ModEnabled, s.AthleticsEnabled, s.SprintEnabled, s.SprintAiEnabled, s.SprintPointsPerSecond, s.SprintMinStartPercent,
                 s.SprintMaxMultiplier, s.SprintMinMultiplier, s.SprintFullSpeedSharePercent, s.SprintRefillSeconds, s.SprintRefillMovingFactor,
                 s.SprintRefillExhaustedFactor, s.SprintAiChargeKeepPercent, s.SprintAiAdvanceKeepPercent, s.SprintAiMoveKeepPercent, s.SprintMinSeconds,
-                s.SprintTopSpeedReachSeconds);
+                s.SprintTopSpeedReachSeconds, s.SprintOnRout);
 
         /// <summary>The settings sentence of the mission-start line, a change and the summary.</summary>
         public string Describe(string keyName)
@@ -210,7 +220,8 @@ namespace TraxCombat.Core
                    + " until " + (full * FullSpeedShare).ToString("0.0#", ci) + " s); " + reach + "; drains only while moving; refill " + RefillSeconds.ToString("0.#", ci)
                    + " s standing at full strength, x" + RefillMovingFactor.ToString("0.##", ci)
                    + " moving, x" + RefillExhaustedFactor.ToString("0.##", ci) + " at an empty bar (straight line from the peak line), never while sprinting; no Athletics refill "
-                   + "while sprinting; AI " + (AiEnabled ? "ON - " + AiOrdersText() : "OFF (SprintAiEnabled)");
+                   + "while sprinting; AI " + (AiEnabled ? "ON - " + AiOrdersText() : "OFF (SprintAiEnabled)")
+                   + "; a routing AI man " + (RoutOn ? "sprints his WHOLE store once at the rout's start (SprintOnRout)" : "does not sprint (" + (!OnRout ? "SprintOnRout" : "SprintAiEnabled") + " off)");
         }
 
         /// <summary>Step 37: "on a NEW order he sprints what he holds above the order's reserve (stored - keep x his full store), ...:
@@ -448,6 +459,7 @@ namespace TraxCombat.Core
             SprintEnd.MissionEnd => "the battle ended",
             SprintEnd.Error => "an error",
             SprintEnd.Regrouped => "back with his group",
+            SprintEnd.Routed => "handed to his rout's sprint",
             _ => e.ToString(),
         };
     }
@@ -484,6 +496,9 @@ namespace TraxCombat.Core
 
         /// <summary>Step 49: a timid man's sprint back to his group (its own reserve; it does not end at 3 m from an enemy - he is getting AWAY).</summary>
         public bool Regroup { get; private set; }
+
+        /// <summary>Step 57: a routing man's get-away sprint (his whole store; it does not end at 3 m from an enemy - he is running AWAY).</summary>
+        public bool Rout { get; private set; }
 
         /// <summary>Pulls the store down to <paramref name="capacity"/> (his points dropped, or the first look). True when it moved
         /// below what it held (not counting the first look's +∞).</summary>
@@ -531,6 +546,7 @@ namespace TraxCombat.Core
             Order = order;
             ByKey = byKey;
             Regroup = false;
+            Rout = false;
             return SprintStart.Started;
         }
 
@@ -556,6 +572,7 @@ namespace TraxCombat.Core
             Order = order;
             ByKey = false;
             Regroup = false;
+            Rout = false;
             return SprintStart.Started;
         }
 
@@ -578,6 +595,33 @@ namespace TraxCombat.Core
             Order = SprintOrder.Move;
             ByKey = false;
             Regroup = true;
+            Rout = false;
+            return SprintStart.Started;
+        }
+
+        /// <summary>
+        /// Step 57 (Anton 2026-10-18: "when they are broken and begin to rout, use their available sprint for the first get-away"): a routing
+        /// AI man's sprint - his WHOLE store (no order reserve, no SprintMinStartPercent gate), once, at the rout's start; filed under no order
+        /// (<see cref="SprintOrder.None"/>), <see cref="Rout"/> set (no end near an enemy). Running: a sprint already runs (the caller hands a
+        /// running ORDER sprint over first); Off: <see cref="SprintRules.RoutOn"/> off; NoStore: no capacity; BelowMinimum: less than
+        /// <see cref="SprintMath.AiMinSeconds"/> stored (an empty store).
+        /// </summary>
+        public SprintStart TryStartRout(in SprintRules s, double now, double capacity)
+        {
+            if (Active) return SprintStart.Running;
+            if (!s.RoutOn) return SprintStart.Off;
+            Clamp(capacity);
+            if (!(capacity > SprintMath.EmptySeconds)) return SprintStart.NoStore;
+            if (!(Stored >= SprintMath.AiMinSeconds - 1e-9)) return SprintStart.BelowMinimum;
+            Active = true;
+            Length = Stored;
+            Elapsed = 0;
+            Since = now;
+            StoredAtStart = Stored;
+            Order = SprintOrder.None;
+            ByKey = false;
+            Regroup = false;
+            Rout = true;
             return SprintStart.Started;
         }
 
@@ -713,6 +757,34 @@ namespace TraxCombat.Core
         public double RefilledSeconds;
         public long MeleeChecks;
 
+        /// <summary>Step 57: routs seen (the game's OnAgentFleeing on a tracked man), rout sprints started, the seconds stored at their
+        /// starts, running order sprints handed over, and why none: the player, a rider, the switches off, an empty store, already sprinting.</summary>
+        public int RoutsSeen;
+        public int RoutStarted;
+        public double RoutSeconds;
+        public int RoutReplaced;
+        public int RoutSkippedPlayer;
+        public int RoutSkippedMounted;
+        public int RoutOff;
+        public int RoutEmpty;
+        public int RoutRunning;
+
+        /// <summary>Step 57: a routing man's sprint started with <paramref name="stored"/> seconds.</summary>
+        public void AddRoutStart(double stored)
+        {
+            RoutStarted++;
+            if (!double.IsNaN(stored) && stored > 0) RoutSeconds += stored;
+        }
+
+        /// <summary>Step 57: a rout sprint refused for <paramref name="why"/>.</summary>
+        public void AddRoutRefused(SprintStart why)
+        {
+            if (why == SprintStart.Running) RoutRunning++;
+            else if (why == SprintStart.Off) RoutOff++;
+            else if (why == SprintStart.Mounted) RoutSkippedMounted++;
+            else RoutEmpty++; // NoStore / BelowMinimum
+        }
+
         private static int Who(bool you) => you ? 1 : 0;
 
         public void AddOrderSeen(SprintOrder o) => _ordersSeen[(int)o]++;
@@ -834,6 +906,10 @@ namespace TraxCombat.Core
                       + ", engine top avg x" + F2(EngineMean) + ", max x" + F2(_engineMax) + ", off by more than 0.05: " + _farOff + " - " + verdict + "; " + reach
                       + "; " + Recomputes + " recomputes for the sprint, stores clamped by a points drop " + Clamps + ", refilled " + F1(RefilledSeconds) + " s of store"
                       + (FreshStarts > 0 ? ", fresh starts " + FreshStarts : string.Empty));
+            lines.Add("sprint on rout (step 57, SprintOnRout " + (s.OnRout ? "on" : "OFF") + (s.RoutOn || !s.OnRout ? string.Empty : " - held off by " + (s.Enabled ? "SprintAiEnabled" : s.OffBecause)) + "): routs seen "
+                      + RoutsSeen + ", sprints started " + RoutStarted + (RoutStarted > 0 ? " (whole store avg " + F2(RoutSeconds / RoutStarted) + " s)" : string.Empty)
+                      + ", of them taking over a running order sprint " + RoutReplaced + "; refused: empty store " + RoutEmpty + ", already sprinting " + RoutRunning
+                      + ", switched off " + RoutOff + ", on a horse " + RoutSkippedMounted + ", yours " + RoutSkippedPlayer);
         }
 
         private string EndsText(bool you)

@@ -354,7 +354,7 @@ public class SprintTests
         var lines = new List<string>();
         stats.AddSummaryLines(lines, Sprint(), "LeftControl");
         string all = string.Join("\n", lines);
-        Assert.Equal(4, lines.Count);
+        Assert.Equal(5, lines.Count); // step 57: + the rout line
         Assert.Contains("sprint - you: 2 sprints", all);
         Assert.Contains("below 20% stored 1", all);
         Assert.Contains("key released 1", all);
@@ -509,7 +509,7 @@ public class SprintTests
         var lines = new List<string>();
         stats.AddSummaryLines(lines, Sprint(max: 2.0, floor: 2, reach: 1), "LeftControl");
         string all = string.Join("\n", lines);
-        Assert.Equal(4, lines.Count);
+        Assert.Equal(5, lines.Count); // step 57: + the rout line
         Assert.Contains("; 2 started off the 2.0 s floor (his points alone stored less)", all);
         Assert.Contains("; off the 2.0 s floor 7", all);
         Assert.Contains("sprint speed check (x his FRESH run speed = his top at the sprint's start ÷ his run multiplier then, while it ran)", all);
