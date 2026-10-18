@@ -5,7 +5,7 @@
        Steam Workshop copy in the launcher. Enable only one of the two. -->
   <Id value="TraxCombatEnhancements" />
   <Name value="Trax Combat Enhancements" />
-  <Version value="v1.1.1" />
+  <Version value="v1.2.0" />
   <DefaultModule value="false" />
   <ModuleCategory value="Singleplayer" />
   <ModuleType value="Community" />
