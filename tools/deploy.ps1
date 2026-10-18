@@ -1,6 +1,7 @@
 # Builds the mod, checks it still loads without its optional dependencies, and installs it into
 # the Bannerlord Modules folder as the DEV module.
-# Usage: powershell -ExecutionPolicy Bypass -File tools\deploy.ps1 [-Configuration Release]
+# Usage: powershell -ExecutionPolicy Bypass -File tools\deploy.ps1 [-Configuration Release] [-GameFolder <path>] [-McmBinFolder <path>]
+# (without the two paths: Directory.Build.props.user's, then Directory.Build.props', then the C: Steam library's)
 #
 # The local deploy wears its own identity - Id "TraxCombatEnhancements.Dev", shown as
 # "Trax Combat Enhancements (dev)" - so it can one day sit beside the Steam Workshop copy in the
@@ -9,13 +10,37 @@
 # (ASCII only in this file: Windows PowerShell 5.1 reads a BOM-less script as ANSI.)
 param(
     [string]$Configuration = "Release",
-    [string]$GameFolder = "D:\SteamLibrary\steamapps\common\Mount & Blade II Bannerlord",
-    [string]$McmBinFolder = "D:\SteamLibrary\steamapps\workshop\content\261550\2859238197\bin\Win64_Shipping_Client",
+    [string]$GameFolder = "",
+    [string]$McmBinFolder = "",
     [switch]$SkipSmoke
 )
 
 $ErrorActionPreference = "Stop"
 $repoRoot = Split-Path -Parent $PSScriptRoot
+
+# Step 56: no -GameFolder / -McmBinFolder given = this PC's own paths - Directory.Build.props.user first (the personal
+# override the build reads too), then Directory.Build.props, then the C: Steam library; the first folder that exists wins.
+function Get-BuildPath([string]$name, [string]$fallback) {
+    foreach ($file in @("Directory.Build.props.user", "Directory.Build.props")) {
+        $path = Join-Path $repoRoot $file
+        if (-not (Test-Path $path)) { continue }
+        try {
+            [xml]$xml = Get-Content -LiteralPath $path -Raw
+            $node = $xml.SelectSingleNode("//*[local-name()='$name']")
+            if ($node -ne $null -and $node.InnerText -and (Test-Path -LiteralPath $node.InnerText)) { return $node.InnerText }
+        }
+        catch { Write-Host "Could not read $name from ${file}: $($_.Exception.Message)" }
+    }
+    return $fallback
+}
+if (-not $GameFolder) {
+    $GameFolder = Get-BuildPath "GameFolder" "C:\Program Files (x86)\Steam\steamapps\common\Mount & Blade II Bannerlord"
+}
+if (-not $McmBinFolder) {
+    $McmBinFolder = Get-BuildPath "McmBinFolder" "C:\Program Files (x86)\Steam\steamapps\workshop\content\261550\2859238197\bin\Win64_Shipping_Client"
+}
+Write-Host "Game folder: $GameFolder"
+Write-Host "MCM bin folder: $McmBinFolder"
 $moduleDir = Join-Path $GameFolder "Modules\TraxCombatEnhancements.Dev"
 $binDir = Join-Path $moduleDir "bin\Win64_Shipping_Client"
 $outDir = Join-Path $repoRoot "src\TraxCombat.Module\bin\$Configuration"

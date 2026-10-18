@@ -105,6 +105,29 @@ namespace TraxCombat.Tools
             S.Set(SettingsSchema.ImpactShadowMode, false, SettingSources.File);
             S.Set(SettingsSchema.ImpactSpike, false, SettingSources.File);
             S.Set(SettingsSchema.VerboseLogging, false, SettingSources.File);
+            Step48BlockModel();
+        }
+
+        /// <summary>Step 56: the steps 48-55 checks were written on the STEP-48 block model - a correct block counted the blocker's T in
+        /// full, its ceilings 80 / 40, the riposte 50 % × f_D, the block stun x (1 + T) - so they pin it here (DESIGN's initial values);
+        /// step 56's own check (<see cref="RightBlocksFavourTheDefender"/>) puts defaults.json's back with <see cref="Step56BlockModel"/>.</summary>
+        private static readonly ParamDef[] BlockModelKeys =
+        {
+            SettingsSchema.RightBlockStaggerMaxPercent, SettingsSchema.RightBlockKnockdownMaxPercent, SettingsSchema.ParryStaggerMaxPercent,
+            SettingsSchema.ParryKnockdownMaxPercent, SettingsSchema.RiposteStaggerMaxPercent, SettingsSchema.BlockStunTiredExtraPercent,
+            SettingsSchema.CorrectBlockTiredWeightPercent, SettingsSchema.RiposteBlockerTiredPercent,
+        };
+
+        private static readonly double[] Step48BlockValues = { 80, 40, 80, 40, 50, 100, 100, 100 };
+
+        private static void Step48BlockModel()
+        {
+            for (int i = 0; i < BlockModelKeys.Length; i++) S.Set(BlockModelKeys[i], Step48BlockValues[i], SettingSources.File);
+        }
+
+        private static void Step56BlockModel()
+        {
+            foreach (var p in BlockModelKeys) S.Set(p, p.Default, SettingSources.File);
         }
 
         private static void SetBar(TrackedAgent st, double fraction) =>
