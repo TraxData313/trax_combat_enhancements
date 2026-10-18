@@ -319,11 +319,23 @@ defaults.json                 THE ONE TRUTH for every default value (DESIGN §2c
                               its value, its explanation + range as // lines. Anton tunes it and
                               pushes; embedded in TraxCombat.Core.dll at build. After a schema
                               wording/range/order change: dotnet run --project tools/DefaultsTool -- refresh
-docs/HOW-IT-WORKS.md          step 31, THE PLAYER GUIDE (linked from the README and the Workshop page): every mechanic
-                              by topic in TABLES computed from defaults.json (pool / attacks per bar, tiredness by bar
-                              level, refill, block costs + "does a parrying man climb", tired block guesses, brace
-                              floors + a worked example, step back, pace, damage, HUD colours, tactics) - setting
-                              names in small print. A tuned default changes its tables: recompute them
+README.md                     the GitHub page (step 60's retelling - the same story and shape as the Workshop page): the
+                              hook "Men tire. Lines hold. A fresh charge at the right moment breaks them.", "The idea" (7
+                              bites), "How a battle plays" (tiredness and rest, orders and the fever, holding the line, blows
+                              that count, duels and tournaments, what you see - screenshots 01 + 02), Settings, Good to know
+                              (RBM politely), Install, credits, the developers' fold. Player words only: no numbers tables,
+                              no setting keys
+docs/HOW-IT-WORKS.md          THE PLAYER GUIDE (step 31; made light by step 60; linked from the README and the Workshop
+                              page): each system in plain words, three small tables (attacks per bar, brace by order),
+                              Tactics, Settings; every section ends with a link to its numbers in MECHANICS.md. No setting
+                              keys here
+docs/MECHANICS.md             step 60, THE MECHANICS REFERENCE (the old guide's tables moved, not recomputed): every mechanic
+                              by system in TABLES computed from defaults.json (pool / attacks per bar, tiredness by bar level,
+                              the swing stack, refill, block costs + "does a parrying man climb", tired block guesses, brace
+                              floors + a worked example, step back, pace + the shield wall, aggression and the fever, courage,
+                              cavalry flocking, impact - every chance table and worked example -, damage, the sprint, HUD
+                              colours, the MCM pages) - setting names in small print; sections 1-16, anchors kept from the old
+                              guide's numbering. A tuned default changes its tables: recompute them here
 docs/BATTLE_PACING.md         step 15's research (how RBM paces battles, our levers) - developer reading
 docs/REVIEW.md                the code reviews: step 10a (R1-R24) and step 17's second one over steps 12-16
                               (R25-R36) - every finding with its severity, place, scenario and status (fixed
@@ -1470,10 +1482,11 @@ tools/WorkshopCreate.xml      the FIRST upload (creates the item, Private, tags,
 tools/WorkshopUpdate.xml      every later upload - ITEM_ID placeholder until the first upload
 tools/make_workshop_update.py step 26, from the sibling: WorkshopUpdate.xml → a one-off task in %TEMP% that also
                               sends STEAM-DESCRIPTION.bbcode (escaped, &#10;) and --visibility; --notes required
-tools/STEAM-DESCRIPTION.bbcode  the Workshop page (≤ 8000 bytes; 3042 now - step 31's short rewrite): the hook, 5 idea
-                              bullets (rest your troops, fresh shock troops into tired lines), "How it works, at a
-                              glance", the link to docs/HOW-IT-WORKS.md, "Good to know" (NOT an overhaul, RBM named
-                              politely as the deep one)
+tools/STEAM-DESCRIPTION.bbcode  the Workshop page (≤ 8000 bytes; 5745 now - step 60's retelling, the README's story
+                              in the same shape): the hook, "The idea" (7 bullets), "How a battle plays" (six themes in
+                              short paragraphs), the links to docs/HOW-IT-WORKS.md and docs/MECHANICS.md, "Settings"
+                              (the short MCM page + Advanced), "Good to know" (NOT an overhaul, RBM named politely as
+                              the deep one), credits. Steam BBCode: [h1] [b] [i] [list][*] [url]; check the byte count
 tools/preview_thumbnail.html  the Workshop preview TEMPLATE (PANEL_* placeholders) → make_thumbnail.py
 tools/preview_thumbnail.jpg   THE preview (1024², ~275 KB, under Steam's 1 MB): a real battle, the hold-ALT
                               close-up ("ready 1/9" vs "ready 37/53"), your two bars, name + "Slower, tactical
