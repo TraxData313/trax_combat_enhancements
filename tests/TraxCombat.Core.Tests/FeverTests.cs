@@ -323,8 +323,10 @@ public class FeverTests
         Near(1.5, FeverMath.DecisionFactor(in r, FeverPhase.Armed, 1, 1, 0.1, false));
         Assert.Equal(SettingsSchema.SprintGroup.Order + 1, SettingsSchema.FeverGroup.Order);
         Assert.Same(SettingsSchema.AdvancedGroup, SettingsSchema.Groups[SettingsSchema.Groups.Count - 1]);
-        Assert.Same(SettingsSchema.FeverGroup, SettingsSchema.AiAggressionFreshPercent.Group);
+        Assert.Same(SettingsSchema.PlayerAiGroup, SettingsSchema.AiAggressionFreshPercent.Group); // the player page since step 59
+        Assert.Same(SettingsSchema.PlayerAiGroup, SettingsSchema.FeverEnabled.Group);
         Assert.Same(SettingsSchema.FeverGroup, SettingsSchema.FeverSprintChancePercent.Group);
+        Assert.Equal("FeverPointsPerSecond", SettingsSchema.InGroup(SettingsSchema.FeverGroup).First().Key);
     }
 
     [Fact]

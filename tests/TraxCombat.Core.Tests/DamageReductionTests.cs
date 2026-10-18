@@ -180,7 +180,7 @@ public class DamageReductionTests
         s.Set(SettingsSchema.DamageReductionPercent, 0, SettingSources.Mcm);
         Assert.Equal(0, DamageRules.From(s).ReductionPercent);
         Assert.Equal(DamageReduction.MaxPercent, (int)SettingsSchema.DamageReductionPercent.Max);
-        Assert.Same(SettingsSchema.DamageGroup, SettingsSchema.DamageReductionPercent.Group);
+        Assert.Same(SettingsSchema.PlayerDamageGroup, SettingsSchema.DamageReductionPercent.Group); // the player page since step 59
     }
 
     // ------------------------------------------------------------------ the stats and the summary line

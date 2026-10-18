@@ -31,23 +31,33 @@ namespace TraxCombat.Core
         // mid-battle (ParamDef.HintText says so in MCM); a description adds only what a mid-battle
         // change does beyond that.
 
-        public static readonly ParamGroup MasterGroup = new ParamGroup(0, "Master switch");
-        public static readonly ParamGroup DamageGroup = new ParamGroup(1, "Damage");
-        public static readonly ParamGroup AthleticsGroup = new ParamGroup(2, "Athletics");
-        public static readonly ParamGroup TiredGroup = new ParamGroup(3, "Tired fighters");
-        public static readonly ParamGroup StepBackGroup = new ParamGroup(4, "Tired fighters step back");
-        public static readonly ParamGroup BattlePaceGroup = new ParamGroup(5, "Battle pace (AI)");
-        public static readonly ParamGroup BraceGroup = new ParamGroup(6, "Brace by orders (AI)");
-        public static readonly ParamGroup SprintGroup = new ParamGroup(7, "Sprint");
-        public static readonly ParamGroup FeverGroup = new ParamGroup(8, "Aggression and fever (AI)"); // step 43
-        public static readonly ParamGroup CourageGroup = new ParamGroup(9, "Courage and cohesion (AI)"); // step 49 - after the fever (the AI's behaviour groups together)
-        public static readonly ParamGroup CavalryFlockGroup = new ParamGroup(10, "Cavalry flocking (AI)"); // step 55 - after courage (the AI's behaviour groups together)
-        public static readonly ParamGroup ImpactGroup = new ParamGroup(11, "Impact: staggers, shield drops, knockdowns"); // step 48 (IMPACT I2) - after the combat behaviour groups
-        public static readonly ParamGroup RefillGroup = new ParamGroup(12, "Refill");
-        public static readonly ParamGroup PlayerBarGroup = new ParamGroup(13, "Your Athletics bar");
-        public static readonly ParamGroup OrderStripGroup = new ParamGroup(14, "Orders menu strip");
-        public static readonly ParamGroup AltMarkersGroup = new ParamGroup(15, "Hold ALT: formation markers, Athletics and fever bars"); // step 44 renamed it (was "Formation markers (hold ALT)"), step 46 again (was "... and fever marks")
-        public static readonly ParamGroup AdvancedGroup = new ParamGroup(16, "Advanced");
+        // Step 59: TWO MCM pages. The PLAYER page ("Trax Combat Enhancements", MCM's main page and the top of config.json): the
+        // master switch and six short groups a player reads at a glance - 20 settings. The ADVANCED page ("Trax Combat
+        // Enhancements - Advanced"): every other setting, grouped by system as before step 59, the logging and test tools last.
+        // A group's Order runs across both pages (the file's order); each page shows its own groups in that order.
+        public static readonly ParamGroup MasterGroup = new ParamGroup(0, "Master switch", SettingsPage.Player);
+        public static readonly ParamGroup PlayerDamageGroup = new ParamGroup(1, "How hard hits land", SettingsPage.Player);
+        public static readonly ParamGroup PlayerTiredGroup = new ParamGroup(2, "Tiredness (Athletics)", SettingsPage.Player);
+        public static readonly ParamGroup PlayerAiGroup = new ParamGroup(3, "How the AI fights", SettingsPage.Player);
+        public static readonly ParamGroup PlayerImpactGroup = new ParamGroup(4, "Staggers and knockdowns", SettingsPage.Player);
+        public static readonly ParamGroup PlayerSprintGroup = new ParamGroup(5, "Sprinting", SettingsPage.Player);
+        public static readonly ParamGroup PlayerScreenGroup = new ParamGroup(6, "On screen", SettingsPage.Player);
+        public static readonly ParamGroup DamageGroup = new ParamGroup(7, "Damage");
+        public static readonly ParamGroup AthleticsGroup = new ParamGroup(8, "Athletics");
+        public static readonly ParamGroup TiredGroup = new ParamGroup(9, "Tired fighters");
+        public static readonly ParamGroup StepBackGroup = new ParamGroup(10, "Tired fighters step back");
+        public static readonly ParamGroup BattlePaceGroup = new ParamGroup(11, "Battle pace (AI)");
+        public static readonly ParamGroup BraceGroup = new ParamGroup(12, "Brace by orders (AI)");
+        public static readonly ParamGroup SprintGroup = new ParamGroup(13, "Sprint");
+        public static readonly ParamGroup FeverGroup = new ParamGroup(14, "Aggression and fever (AI)"); // step 43
+        public static readonly ParamGroup CourageGroup = new ParamGroup(15, "Courage and cohesion (AI)"); // step 49 - after the fever (the AI's behaviour groups together)
+        public static readonly ParamGroup CavalryFlockGroup = new ParamGroup(16, "Cavalry flocking (AI)"); // step 55 - after courage (the AI's behaviour groups together)
+        public static readonly ParamGroup ImpactGroup = new ParamGroup(17, "Impact: staggers, shield drops, knockdowns"); // step 48 (IMPACT I2) - after the combat behaviour groups
+        public static readonly ParamGroup RefillGroup = new ParamGroup(18, "Refill");
+        public static readonly ParamGroup PlayerBarGroup = new ParamGroup(19, "Your Athletics bar");
+        public static readonly ParamGroup OrderStripGroup = new ParamGroup(20, "Orders menu strip");
+        public static readonly ParamGroup AltMarkersGroup = new ParamGroup(21, "Hold ALT: formation markers, Athletics and fever bars"); // step 44 renamed it (was "Formation markers (hold ALT)"), step 46 again (was "... and fever marks")
+        public static readonly ParamGroup AdvancedGroup = new ParamGroup(22, "Advanced"); // the logging and test tools (the spike) - last
 
         // ------------------------------------------------------------------ master switch
 
@@ -57,15 +67,103 @@ namespace TraxCombat.Core
             "Mod enabled",
             "Turn the whole mod off and every battle is plain vanilla: no damage rolls or reduction, no Athletics, no pauses between attacks, no step backs, no bars. The log still records each battle (its summary says mod ON or OFF), so the same battle can be fought both ways and compared. Switched back on, everyone starts with a full Athletics bar.");
 
-        // ------------------------------------------------------------------ damage randomness
+        // ------------------------------------------------------------------ the player page (step 59)
+        // Anton, 2026-10-18: "reorganise the MCM menu ... leave a few options for me and the players". The settings a player
+        // understands and reaches for - the master switch, how hard hits land, how fast men tire, how the AI fights, the impact system
+        // on / off, the sprint and its key, what the screen shows - in a few plainly named groups, on MCM's main page and at the top of
+        // config.json. Every other setting is on the Advanced page, grouped by system as before. A NEW setting goes to Advanced unless a
+        // player needs it to set up his game (CLAUDE.md). Keys never move between pages without a reason: a key's page is not stored
+        // anywhere, so moving one is free (no config migration).
+
+        public static readonly ParamDef DamageRandomPercent = Int("DamageRandomPercent", 0, 100, PlayerDamageGroup,
+            "Damage roll (± %)",
+            "Every hit that lands deals a random share of its normal damage - this far up or down, rolled fresh on every hit. 50: a 50-damage hit lands for anything from 25 to 75. 0 = no roll. Which hits roll: Advanced page, Damage.");
+
+        // Step 25 (Anton, 2026-10-10): every hit weaker, after the roll - slower fights.
+        public static readonly ParamDef DamageReductionPercent = Int("DamageReductionPercent", 0, DamageReduction.MaxPercent, PlayerDamageGroup,
+            "Damage reduction (%)",
+            "Every hit deals this much less damage, after the random roll - on people, horses and shields alike, from any weapon, arrow, kick or horse charge, and whether the roll is on or off. 25: an average 100-damage hit lands for 75, so it takes about a third more hits to bring a man down. A hit never drops below 1. Falls and hits on doors and siege engines keep the game's damage. 0 = the game's damage.");
+
+        public static readonly ParamDef AthleticsEnabled = Bool("AthleticsEnabled", PlayerTiredGroup,
+            "Athletics (stamina)",
+            "On: every fighter has an Athletics bar - his stamina, as big as his Athletics skill - that his attacks and blocks drain and rest refills. At or above the peak line (the white mark) he fights at full strength; below it the top of his damage roll, his attack speed and his run speed fall - down to long pauses between attacks and a slow run when it is empty - and tired AI fighters step back. Off: no Athletics at all - no costs, no slowing, no step backs, no bars (and no sprint, aggression by tiredness or staggers).");
+
+        public static readonly ParamDef CostPerBlow = Float("CostPerBlow", 0, 100, PlayerTiredGroup,
+            "Cost per swing (points)",
+            "How fast men tire: the Athletics points one attack costs a common soldier, whatever the size of his bar - so a bigger Athletics skill means more blows. At 7 a recruit (a 50-point bar) is empty after 8 blows, a legionary (130) after 19. Higher = everyone tires sooner. 0 = attacks are free. Kicks, bashes and blocks have their own costs: Advanced page, Athletics.");
+
+        public static readonly ParamDef HeroCostMultiplier = Float("HeroCostMultiplier", 0, 2, PlayerTiredGroup,
+            "Heroes' cost (x)",
+            "Heroes (lords, companions and you) pay every Athletics cost - blows, kicks, bashes, blocks - times this, so they last longer than common soldiers. 0.75 = a quarter less. 1 = the same as anyone.");
+
+        public static readonly ParamDef AiAggressionFreshPercent = Int("AiAggressionFreshPercent", 0, FeverMath.MaxPercent, PlayerAiGroup,
+            "AI aggression when fresh (%)",
+            "How eagerly an AI soldier on foot with a FULL Athletics bar decides to start an attack (and to strike back after a parry), in percent of the game's own AI. It slides in a straight line to the next setting as his bar empties - the more tired he is, the less he swings. 60: a charging man's 14% chance becomes 8.6%. Tournaments and duels too. Never you, never riders (their swings come with each pass), never archers' shooting. 100 with the next at 100 = the game's own AI.");
+
+        public static readonly ParamDef AiAggressionExhaustedPercent = Int("AiAggressionExhaustedPercent", 0, FeverMath.MaxPercent, PlayerAiGroup,
+            "AI aggression when exhausted (%)",
+            "The same at an EMPTY bar: 20 = a fifth of the game's eagerness (a charging man's 14% becomes 2.9%). A wounded man's bar is capped by his wounds, so he is less eager too. On top of the pause after each attack - a tired man has both brakes.");
+
+        public static readonly ParamDef FeverEnabled = Bool("FeverEnabled", PlayerAiGroup,
+            "Fever on a charge or advance order",
+            "When an AI formation gets a NEW charge or advance order - yours or its own general's - each of its soldiers on foot gets a FEVER: for a while he attacks with a surge of eagerness, then calms down again. The fever's clock starts only when he first comes near an enemy. A hold, move or retreat order ends it. Never you, never riders; tournaments and duels have no orders, so no fever. Off: every man's eagerness follows his bar alone. How strong and how long: Advanced page, Aggression and fever.");
+
+        // Step 41 (Anton, 2026-10-17: a fresh shield wall waiting for the enemy - "men step 2-3 m forward out of the wall to swing at
+        // an enemy, then walk back to their slot ... keep their slot, the way RBM does it"): WallMath, AI_NOTES "Step 41", RESEARCH §O.
+        public static readonly ParamDef ShieldWallHoldsSlots = Bool("ShieldWallHoldsSlots", PlayerAiGroup,
+            "Shield walls hold their slots",
+            "AI soldiers on foot in a shield wall, square or circle keep their place in the formation instead of stepping out of it at the enemy they fight - they still fight whatever reaches them, so the wall stays a wall. Under any order but a charge or a retreat; a man far behind his place may still run to rejoin. Both sides, never you, never riders, a siege's attackers or naval battles. Off: the game's own way - each man may walk a few steps out at his enemy and back.");
+
+        // Step 42 (Anton, 2026-10-17, his playtest of step 41: held men "looked many times like they were about to reach to hit but
+        // stopped, maybe as the enemy took a few steps back" - "give them just a bit of a step if the enemy moves a small step back, but
+        // not as far"): the leash, LeashMath, AI_NOTES "Step 42".
+        public static readonly ParamDef ShieldWallStepOutMetres = Float("ShieldWallStepOutMetres", 0, LeashMath.MaxMetres, PlayerAiGroup,
+            "Shield walls: a step out to strike (m)",
+            "With \"Shield walls hold their slots\" on: a held soldier may step up to this many metres out of his place at an enemy close in front of it (one who backed off just out of reach), strike, then he is held again and walks back to his place - he may step out again once he is back. 0 = no step at all: they stand fast and fight only what reaches them. Does nothing while \"hold their slots\" is off.");
+
+        public static readonly ParamDef CourageEnabled = Bool("CourageEnabled", PlayerAiGroup,
+            "Courage and cohesion",
+            "Every AI soldier on foot in a formation weighs his mates against the enemies near him - by how tough each one is (armour, level, wounds). Short of courage he is TIMID: far from his mates he walks back to a bigger group of his side, facing the enemy (sprinting when it is far); among them he holds and strikes only what comes within reach - no lone man circling your shield wall, no exhausted man standing among four enemies. A big enough crowd stays brave and wraps around a line as a mass. Never you, never riders, never men held in a shield wall. Works without the Athletics system (then tiredness does not count). Off: the game's own bravery - the log still measures, so flipping it mid-battle compares the two.");
+
+        public static readonly ParamDef CavalryFlockEnabled = Bool("CavalryFlockEnabled", PlayerAiGroup,
+            "Cavalry flocking",
+            "AI riders on a charge stop going in one by one. A fresh, eager rider charges again and again as in the game; the more tired he gets, the more he looks for riders of his own kind in his formation - horse archers with horse archers, skirmishers with skirmishers, lancers with lancers - and the bigger the group he wants before he attacks again: 4-5 when half tired, most of his kind when exhausted. The flock never sits: it keeps riding, drifting toward the unit's centre while its riders are tired and bending toward the enemy as its most rested riders lead, and when it is big enough it charges together, as a wave. Both sides, never you; only riders whose formation is on a CHARGE (hold, move, follow and advance keep them in their slots). Works without courage. Off: the game's own riders - the log still measures, so flipping it mid-battle compares the two.");
+
+        public static readonly ParamDef ImpactEnabled = Bool("ImpactEnabled", PlayerImpactGroup,
+            "Staggers, shield drops, knockdowns",
+            "Kicks, shield bashes, blocks and clean hits can stagger a man, make him drop his shield or knock him down - more likely the more tired he is and the more he is outmatched (both men's CURRENT Athletics, the weapon and its swing, the guard, both men's skill). Two fresh, even men: never. Needs the Athletics system on. Off: the game's own reactions only. Each kind on its own and every chance: Advanced page, Impact.");
+
+        public static readonly ParamDef ImpactOnPlayerPercent = Int("ImpactOnPlayerPercent", 0, 100, PlayerImpactGroup,
+            "Against you (%)",
+            "Every chance of a stagger, a dropped shield or a knockdown against YOU is this percent of the AI's. 100 = the same rules as everyone; 0 = you are never staggered, disarmed of your shield or knocked down by it.");
+
+        // Step 33 (Anton, 2026-10-12: "a short burst of speed, meant to feel a little like a dodge, and for the AI to make charges
+        // sharper"): Core SprintMath, AI_NOTES "Step 33".
+        public static readonly ParamDef SprintEnabled = Bool("SprintEnabled", PlayerSprintGroup,
+            "Sprint",
+            "Every fighter on foot has a sprint: a short burst of speed stored in seconds - the more Athletics he has left, the longer (150 points = 7.5 s; empty = none). Hold the sprint key to run faster; the AI sprints when its formation gets a new charge or advance order. While sprinting his Athletics does not refill. Never on a horse. Off: no sprint, speeds back to normal at once. How fast and how long: Advanced page, Sprint.");
+
+        public static readonly ParamDef SprintKey = Key("SprintKey", PlayerSprintGroup,
+            "Sprint key",
+            "Hold this key to sprint (on foot, in a fight). Type its name: " + KeyNames.ListText + ". Left Control is free in the game's default keys (Left Shift is zoom, Z crouch, Caps Lock walk, Left Alt the formation markers).");
+
+        public static readonly ParamDef ShowPlayerBar = Bool("ShowPlayerBar", PlayerScreenGroup,
+            "Your Athletics bar",
+            "Your Athletics bar, bottom right under your health bar: the Athletics you have left and your whole bar (\"132 / 180\"), a white mark at the peak line, the fill in the colour of your strength (green at full strength, then blue, yellow, orange, red) and the part your wounds hold shown dark. The attack recovery and sprint bars above it show with it.");
+
+        public static readonly ParamDef AltMarksEveryone = Bool("AltMarksEveryone", PlayerScreenGroup,
+            "Hold ALT: bars on every man",
+            "While you hold ALT (or the orders menu is open), small Athletics and fever bars float above the soldiers. Off (the default): only on the few men you look at - the ones nearest the centre of the screen and close to the camera; the formations' averages are under their markers. On: every man on the screen gets his bars (at most a cap, the nearest first). How many and how far: Advanced page, Hold ALT.");
+
+        public static readonly ParamDef ImpactShowMessages = Bool("ImpactShowMessages", PlayerScreenGroup,
+            "On-screen lines: knocked down, shield lost",
+            "A short line in the game's message feed when YOU are knocked down, knocked off your horse, lose your shield or reel from a riposte - and when you knock someone down, off his horse, break his guard or knock his shield away. At most one line every few seconds, several things at once merged into one. Never in shadow mode (nothing really happens there).");
+
+        // ------------------------------------------------------------------ damage randomness (the Advanced page from here on)
 
         public static readonly ParamDef DamageRandomEnabled = Bool("DamageRandomEnabled", DamageGroup,
             "Damage randomness",
-            "On: every hit that lands deals a random share of its normal damage (see Spread). Off: no roll - every hit deals the game's own damage (less the damage reduction below); the rest of the mod still runs.");
-
-        public static readonly ParamDef DamageRandomPercent = Int("DamageRandomPercent", 0, 100, DamageGroup,
-            "Spread (± %)",
-            "How far a hit's damage may swing up or down, in percent. 50: a 50-damage hit lands for anything from 25 to 75, rolled fresh on every hit. 0 turns the randomness off.");
+            "On: every hit that lands deals a random share of its normal damage (the Damage roll on the main page). Off: no roll - every hit deals the game's own damage (less the damage reduction); the rest of the mod still runs.");
 
         public static readonly ParamDef DamageRandomMelee = Bool("DamageRandomMelee", DamageGroup,
             "Randomize melee hits",
@@ -83,16 +181,7 @@ namespace TraxCombat.Core
             "Randomize shield damage",
             "Also randomize the damage a shield takes when it blocks a blow. Off: shields wear down at the game's usual pace (less the damage reduction below).");
 
-        // Step 25 (Anton, 2026-10-10): every hit weaker, after the roll - slower fights.
-        public static readonly ParamDef DamageReductionPercent = Int("DamageReductionPercent", 0, DamageReduction.MaxPercent, DamageGroup,
-            "Damage reduction (%)",
-            "Every hit deals this much less damage, after the random roll - on people, horses and shields alike, from any weapon, arrow, kick or horse charge, and whether the roll is on or off. 25: an average 100-damage hit lands for 75, so it takes about a third more hits to bring a man down. A hit never drops below 1. Falls and hits on doors and siege engines keep the game's damage. 0 = the game's damage.");
-
-        // ------------------------------------------------------------------ Athletics
-
-        public static readonly ParamDef AthleticsEnabled = Bool("AthleticsEnabled", AthleticsGroup,
-            "Athletics",
-            "On: every fighter has an Athletics bar - his stamina, as big as his Athletics skill - that his attacks and blocks drain and rest refills. At or above the peak line he fights at full strength; below it his damage upside, attack speed and run speed fall - down to long pauses between attacks and a slow run when it is empty - and tired AI fighters step back. Off: no Athletics at all - no costs, no slowing, no step backs, no bars.");
+        // ------------------------------------------------------------------ Athletics (its switch, CostPerBlow and HeroCostMultiplier on the player page - step 59)
 
         public static readonly ParamDef AthleticsPoolFloor = Int("AthleticsPoolFloor", 0, 1000, AthleticsGroup,
             "Smallest bar (points)",
@@ -109,10 +198,6 @@ namespace TraxCombat.Core
         public static readonly ParamDef HealthCapsAthletics = Bool("HealthCapsAthletics", AthleticsGroup,
             "Wounds cap the bar",
             "On: a wounded fighter can only use the share of his bar that matches the health he has left - at 75% health, 75% of the bar; the rest is cut at once and does not refill while the wound lasts. The peak line stays where it was, so a badly wounded fighter never gets back to full strength.");
-
-        public static readonly ParamDef CostPerBlow = Float("CostPerBlow", 0, 100, AthleticsGroup,
-            "Cost per blow (points)",
-            "Athletics points one attack costs a common soldier, whatever the size of his bar - so a bigger Athletics skill means more blows. At 7 a recruit (a 50-point bar) is empty after 8 blows, a legionary (130) after 19. 0 = attacks are free.");
 
         // Step 18 (Anton, 2026-09-28): kicks and shield bashes cost too - their own price, the blow's multipliers.
         public static readonly ParamDef CostPerKickOrBash = Float("CostPerKickOrBash", 0, 20, AthleticsGroup,
@@ -141,10 +226,6 @@ namespace TraxCombat.Core
         public static readonly ParamDef CostOnMiss = Bool("CostOnMiss", AthleticsGroup,
             "Misses cost too",
             "On: every attack costs Athletics, landed or not. Off: only attacks that hit something (a body, a shield, a parrying weapon) cost.");
-
-        public static readonly ParamDef HeroCostMultiplier = Float("HeroCostMultiplier", 0, 2, AthleticsGroup,
-            "Hero cost (x)",
-            "Heroes (lords, companions and you) pay the cost per blow times this. 0.75 = a quarter less than a common soldier.");
 
         public static readonly ParamDef PartyLeaderCostMultiplier = Float("PartyLeaderCostMultiplier", 0, 2, AthleticsGroup,
             "Party leader cost (x)",
@@ -281,19 +362,7 @@ namespace TraxCombat.Core
             "Crossbowmen: extra wait after each shot (s)",
             "AI crossbowmen wait this many seconds more after each shot, on top of any tired pause. At 2.5 they fire about 30% fewer bolts a minute (a fresh AI crossbowman shoots about once every 6 seconds, the long reload included). Thrown weapons and slings have no extra wait. Never you. 0 = off. A change applies at each crossbowman's next shot.");
 
-        // Step 41 (Anton, 2026-10-17: a fresh shield wall waiting for the enemy - "men step 2-3 m forward out of the wall to swing at
-        // an enemy, then walk back to their slot ... keep their slot, the way RBM does it"): WallMath, AI_NOTES "Step 41", RESEARCH §O.
-        // In this group: it is the same aim as the rest of it - a more defensive, more tactical AI infantry.
-        public static readonly ParamDef ShieldWallHoldsSlots = Bool("ShieldWallHoldsSlots", BattlePaceGroup,
-            "Shield walls hold their slots",
-            "AI soldiers on foot in a shield wall, square or circle keep their place in the formation instead of stepping out of it at the enemy they fight - they still fight whatever reaches them, so the wall stays a wall. Under any order but a charge or a retreat; a man far behind his place may still run to rejoin. Both sides, never you, never riders, a siege's attackers or naval battles. Off: the game's own way - each man may walk a few steps out at his enemy and back.");
-
-        // Step 42 (Anton, 2026-10-17, his playtest of step 41: held men "looked many times like they were about to reach to hit but
-        // stopped, maybe as the enemy took a few steps back" - "give them just a bit of a step if the enemy moves a small step back, but
-        // not as far"): the leash, LeashMath, AI_NOTES "Step 42".
-        public static readonly ParamDef ShieldWallStepOutMetres = Float("ShieldWallStepOutMetres", 0, LeashMath.MaxMetres, BattlePaceGroup,
-            "Shield walls: a step out to strike (m)",
-            "With \"Shield walls hold their slots\" on: a held soldier may step up to this many metres out of his place at an enemy close in front of it (one who backed off just out of reach), strike, then he is held again and walks back to his place - he may step out again once he is back. 0 = no step at all: they stand fast and fight only what reaches them. Does nothing while \"hold their slots\" is off.");
+        // Steps 41 / 42's ShieldWallHoldsSlots and ShieldWallStepOutMetres were here; on the player page since step 59.
 
         // ------------------------------------------------------------------ brace by orders (step 23)
 
@@ -348,14 +417,7 @@ namespace TraxCombat.Core
 
         // Step 33 (Anton, 2026-10-12: "a short burst of speed, meant to feel a little like a dodge, and for the AI to make charges
         // sharper"): Core SprintMath, AI_NOTES "Step 33". The store in seconds = current Athletics points ÷ SprintPointsPerSecond.
-        public static readonly ParamDef SprintEnabled = Bool("SprintEnabled", SprintGroup,
-            "Sprint",
-            "Every fighter on foot has a sprint: a short burst of speed stored in seconds - his Athletics points now divided by the points per second below (150 points = 7.5 s; empty = none). Hold the sprint key to run faster; the AI sprints when its formation gets a new charge or advance order. While sprinting his Athletics does not refill. Never on a horse. Off: no sprint, speeds back to normal at once.");
-
-        public static readonly ParamDef SprintKey = Key("SprintKey", SprintGroup,
-            "Sprint key",
-            "Hold this key to sprint (on foot, in a fight). Type its name: " + KeyNames.ListText + ". Left Control is free in the game's default keys (Left Shift is zoom, Z crouch, Caps Lock walk, Left Alt the formation markers).");
-
+        // Step 59: SprintEnabled and SprintKey are on the player page.
         public static readonly ParamDef SprintPointsPerSecond = Float("SprintPointsPerSecond", 5, 100, SprintGroup,
             "Athletics points per sprint second (points)",
             "The sprint store holds his CURRENT Athletics points divided by this, in seconds: 150 points = 7.5 s at 20, 50 points = 2.5 s. When his points drop (a blow, a wound) the stored seconds drop with them. Lower = longer sprints.");
@@ -424,19 +486,8 @@ namespace TraxCombat.Core
         // turns to them and says NOW!, everybody surges ... the more experienced they are the longer they follow that order, and the
         // more tired they are the shorter they fight hard"; then: "a man at work doesn't hold a pace until he drops; the more tired he
         // is, the less he swings"): FeverMath, AI_NOTES "Step 43". The game's own two attack-decision chances x a share that follows
-        // his bar; the fever lifts it to an absolute peak, fading back as the store burns.
-        public static readonly ParamDef AiAggressionFreshPercent = Int("AiAggressionFreshPercent", 0, FeverMath.MaxPercent, FeverGroup,
-            "AI aggression at a full bar (%)",
-            "How eagerly an AI soldier on foot with a FULL Athletics bar decides to start an attack (and to strike back after a parry), in percent of the game's own AI. It slides in a straight line to the next setting as his bar empties - the more tired he is, the less he swings. 60: a charging man's 14% chance becomes 8.6%. Tournaments and duels too. Never you, never riders (their swings come with each pass), never archers' shooting. 100 with the next at 100 = the game's own AI.");
-
-        public static readonly ParamDef AiAggressionExhaustedPercent = Int("AiAggressionExhaustedPercent", 0, FeverMath.MaxPercent, FeverGroup,
-            "AI aggression at an empty bar (%)",
-            "The same at an EMPTY bar: 20 = a fifth of the game's eagerness (a charging man's 14% becomes 2.9%). A wounded man's bar is capped by his wounds, so he is less eager too. On top of the pause after each attack - a tired man has both brakes.");
-
-        public static readonly ParamDef FeverEnabled = Bool("FeverEnabled", FeverGroup,
-            "Fever on a charge or advance order",
-            "When an AI formation gets a NEW charge or advance order - yours or its own general's - each of its soldiers on foot gets a FEVER: for a while he attacks as eagerly as the peak below says, then calms down again. The fever's clock starts only when he first comes near an enemy. A hold, move or retreat order ends it. Never you, never riders; tournaments and duels have no orders, so no fever. Off: every man's eagerness follows his bar alone.");
-
+        // his bar; the fever lifts it to an absolute peak, fading back as the store burns. Step 59: the two aggression percents and
+        // FeverEnabled are on the player page.
         public static readonly ParamDef FeverPointsPerSecond = Float("FeverPointsPerSecond", 1, 50, FeverGroup,
             "Athletics points per fever second (points)",
             "A man's fever lasts his CURRENT Athletics points divided by this, in seconds: 100 points = 10 s at 10, a tired man at 40 points only 4 s. Veterans have bigger Athletics pools, so they surge longer; tired men surge shorter. Lower = longer fevers. Read when the order comes.");
@@ -476,11 +527,8 @@ namespace TraxCombat.Core
         // ------------------------------------------------------------------ courage and cohesion (step 49)
         // Anton, 2026-10-17 night: AI men are unrealistically brave - a lone man circles a shield wall, stands exhausted among four enemies.
         // Each AI man on foot weighs his side against the enemy near him by TOUGHNESS; short of courage he walks back to a bigger group of
-        // his side and only strikes what comes within reach (Core CourageMath, AI_NOTES "Step 49").
-
-        public static readonly ParamDef CourageEnabled = Bool("CourageEnabled", CourageGroup,
-            "Courage and cohesion",
-            "Every AI soldier on foot in a formation weighs his mates against the enemies near him - by how tough each one is (armour, level, wounds). Short of courage he is TIMID: far from his mates he walks back to a bigger group of his side, facing the enemy (sprinting when it is far); among them he holds and strikes only what comes within reach - no lone man circling your shield wall, no exhausted man standing among four enemies. A big enough crowd stays brave and wraps around a line as a mass. Never you, never riders, never men held in a shield wall. Works without the Athletics system (then tiredness does not count). Off: the game's own bravery - the log still measures, so flipping it mid-battle compares the two.");
+        // his side and only strikes what comes within reach (Core CourageMath, AI_NOTES "Step 49"). Its switch CourageEnabled is on the
+        // player page (step 59).
 
         public static readonly ParamDef CourageRadiusMetres = Float("CourageRadiusMetres", CourageMath.MinRadiusMetres, CourageMath.MaxRadiusMetres, CourageGroup,
             "Courage: looks around him (m)",
@@ -597,11 +645,7 @@ namespace TraxCombat.Core
         // ------------------------------------------------------------------ cavalry flocking (step 55)
         // Anton, 2026-10-18: fresh, eager riders dance as in vanilla; the more tired a rider, the bigger the group of his own kind he wants
         // before he attacks again - the flock rides on, pulled toward the unit's centre by its tired riders and toward the goal by its rested
-        // ones, and FLIPS into a charge as one (Core FlockMath, AI_NOTES "Step 55").
-
-        public static readonly ParamDef CavalryFlockEnabled = Bool("CavalryFlockEnabled", CavalryFlockGroup,
-            "Cavalry flocking",
-            "AI riders on a charge stop going in one by one. A fresh, eager rider charges again and again as in the game; the more tired he gets, the more he looks for riders of his own kind in his formation - horse archers with horse archers, skirmishers with skirmishers, lancers with lancers - and the bigger the group he wants before he attacks again: 4-5 when half tired, most of his kind when exhausted. The flock never sits: it keeps riding, drifting toward the unit's centre while its riders are tired and bending toward the enemy as its most rested riders lead, and when it is big enough it charges together, as a wave. Both sides, never you; only riders whose formation is on a CHARGE (hold, move, follow and advance keep them in their slots). Works without courage. Off: the game's own riders - the log still measures, so flipping it mid-battle compares the two.");
+        // ones, and FLIPS into a charge as one (Core FlockMath, AI_NOTES "Step 55"). Its switch CavalryFlockEnabled is on the player page (step 59).
 
         public static readonly ParamDef CavalryFlockFreeEagerPercent = Int("CavalryFlockFreeEagerPercent", 10, 100, CavalryFlockGroup,
             "Riders charge alone above (%)",
@@ -660,10 +704,7 @@ namespace TraxCombat.Core
         // Athletics, the weapon, the swing and the skill. One number - the PRESSURE x on the man who takes the blow - and for each
         // outcome a ceiling and an S-curve (Core ImpactMath). Order here: the switches, Anton's anchors (the ceilings), how long, the
         // limits, who - then the model's inner numbers (pressure, weapon, skill, guard, curve) a player rarely touches.
-
-        public static readonly ParamDef ImpactEnabled = Bool("ImpactEnabled", ImpactGroup,
-            "Impact system",
-            "Kicks, shield bashes, blocks and clean hits can stagger a man, make him drop his shield or knock him down - more likely the more tired he is and the more he is outmatched (both men's CURRENT Athletics, the weapon and its swing, the guard, both men's skill). Two fresh, even men: never. Needs the Athletics system on. Off: the game's own reactions only.");
+        // Step 59: the master switch ImpactEnabled and ImpactOnPlayerPercent are on the player page.
 
         public static readonly ParamDef ImpactKicksEnabled = Bool("ImpactKicksEnabled", ImpactGroup,
             "Impact from kicks and bashes",
@@ -801,10 +842,6 @@ namespace TraxCombat.Core
             "Dropped shield: no pickup for (s)",
             "A dropped shield lies on the ground and can be picked up again the game's way (the AI only when no enemy is within 20 m; you with the use key). Above 0: nobody picks a dropped shield up for this many seconds. 0 = the game's own.");
 
-        public static readonly ParamDef ImpactOnPlayerPercent = Int("ImpactOnPlayerPercent", 0, 100, ImpactGroup,
-            "Impact against you (%)",
-            "Every chance of a stagger, a dropped shield or a knockdown against YOU is this percent of the AI's. 100 = the same rules as everyone; 0 = you are never staggered, disarmed of your shield or knocked down by it.");
-
         public static readonly ParamDef ImpactRiderDismountPercent = Int("ImpactRiderDismountPercent", 0, 100, ImpactGroup,
             "Rider knocked off his horse (% of a knockdown)",
             "A rider is never staggered (the horse shares the move); a \"knockdown\" on a rider knocks him OFF his horse instead, at this percent of the knockdown chance. Horses themselves are the game's own.");
@@ -841,10 +878,7 @@ namespace TraxCombat.Core
             "Momentum: a rider's full bonus from (m/s)",
             "From this horse speed into the blow (metres a second) a rider adds the whole rider bonus - a good horse gallops at about 9-11 m/s.");
 
-        public static readonly ParamDef ImpactShowMessages = Bool("ImpactShowMessages", ImpactGroup,
-            "On-screen lines: knocked down, shield lost",
-            "Step 53: a short line in the game's message feed when YOU are knocked down, knocked off your horse, lose your shield or reel from a riposte - and when you knock someone down, off his horse, break his guard or knock his shield away. At most one line every few seconds (below), several things at once merged into one. Never in shadow mode (nothing really happens there).");
-
+        // Step 53's on-screen lines: their switch ImpactShowMessages is on the player page since step 59.
         public static readonly ParamDef ImpactMessagesIncludeYourMen = Bool("ImpactMessagesIncludeYourMen", ImpactGroup,
             "On-screen lines: your side's heroes too",
             "Off: only what happens to you and what you do. On: also when a man of your side knocks an enemy HERO down or off his horse, or when a hero of your side is knocked down or off his horse.");
@@ -1000,11 +1034,7 @@ namespace TraxCombat.Core
             "Hideout boss fight: your side starts fresh",
             "In a hideout, the moment the fight with the boss begins - the duel or all against all - you and every man of yours still standing refill to a full Athletics bar (wounds still cap it) and any pause or step back running on you ends: the boss and his men come fresh, and so do you. In a duel your men stand aside, so only you refill. Off: you face the boss as tired as the first fight left you.");
 
-        // ------------------------------------------------------------------ your Athletics bar (step 6)
-
-        public static readonly ParamDef ShowPlayerBar = Bool("ShowPlayerBar", PlayerBarGroup,
-            "Your Athletics bar",
-            "Your Athletics bar, bottom right under your health bar: the Athletics you have left and your whole bar (\"132 / 180\"), a white mark at the peak line, the fill in the colour of your strength (green at full strength, then blue, yellow, orange, red) and the part your wounds hold shown dark.");
+        // ------------------------------------------------------------------ your Athletics bar (step 6; its switch ShowPlayerBar on the player page since step 59)
 
         // Step 12 (Anton's playtest: no bar in the training field - it runs in the game's walk-about
         // mode, not a battle mode). HudGate's outside-a-battle rule; the orders strip stays fights-only.
@@ -1127,10 +1157,7 @@ namespace TraxCombat.Core
 
         // Step 58 (Anton, 2026-10-18: "only show them on up to 5 soldiers that I'm directly looking at and are really close, making it work in
         // tournaments too") - the per-man bars on the few men nearest the screen's centre and close to the camera (AI_NOTES "Step 58").
-        public static readonly ParamDef AltMarksEveryone = Bool("AltMarksEveryone", AltMarkersGroup,
-            "Bars on every man (the old view)",
-            "Off (the default): the Athletics and fever bars show only on the few men you look at - the ones nearest the centre of the screen and close to the camera (the next two settings); the formations' averages are under their markers. On: every man on the screen gets his bars, as before (at most the cap below, the nearest first).");
-
+        // Its switch AltMarksEveryone is on the player page since step 59.
         public static readonly ParamDef AltNearMarksMax = Int("AltNearMarksMax", 1, 50, AltMarkersGroup,
             "Bars on the men you look at: how many",
             "How many men get their bars at most - the ones nearest the centre of the screen (where you look), among the men close to the camera. In a tournament or a duel this is your opponent.");
@@ -1288,45 +1315,52 @@ namespace TraxCombat.Core
         public static readonly IReadOnlyList<ParamDef> All = new[]
         {
             ModEnabled,
-            DamageRandomEnabled, DamageRandomPercent, DamageRandomMelee, DamageRandomRanged,
-            DamageRandomOnMounts, DamageRandomOnShields, DamageReductionPercent,
-            AthleticsEnabled, AthleticsPoolFloor, AthleticsPoolPerSkill, AthleticsPeakPercent, HealthCapsAthletics,
-            CostPerBlow, CostPerKickOrBash, CostPerShieldBlock, CostPerWrongSideShieldBlock, CostPerWeaponParry, OnlyWrongSideBlocksStopRefill, CostOnMiss, HeroCostMultiplier, PartyLeaderCostMultiplier,
+            // the player page's six groups (step 59)
+            DamageRandomPercent, DamageReductionPercent,
+            AthleticsEnabled, CostPerBlow, HeroCostMultiplier,
+            AiAggressionFreshPercent, AiAggressionExhaustedPercent, FeverEnabled, ShieldWallHoldsSlots, ShieldWallStepOutMetres, CourageEnabled, CavalryFlockEnabled,
+            ImpactEnabled, ImpactOnPlayerPercent,
+            SprintEnabled, SprintKey,
+            ShowPlayerBar, AltMarksEveryone, ImpactShowMessages,
+            // the Advanced page
+            DamageRandomEnabled, DamageRandomMelee, DamageRandomRanged,
+            DamageRandomOnMounts, DamageRandomOnShields,
+            AthleticsPoolFloor, AthleticsPoolPerSkill, AthleticsPeakPercent, HealthCapsAthletics,
+            CostPerKickOrBash, CostPerShieldBlock, CostPerWrongSideShieldBlock, CostPerWeaponParry, OnlyWrongSideBlocksStopRefill, CostOnMiss, PartyLeaderCostMultiplier,
             ExhaustedAttackSpeedPercent, AttackRatePlayerTimer, AttackRatePaceHold, AttackRatePaceByInput, AiHoldRaiseGuard, AttackRateAiDecisions, AttackAnimationMinPercent,
             SwingStackEnabled, SwingStackPointsPerSwing, SwingStackMinimum, KicksUseSwings,
             MinMoveSpeedMultiplier, MountMinSpeedMultiplier, DamageBonusFollowsAthletics, TiredBlockRandomPercent,
             StepBackEnabled, StepBackBackpedal, StepBackMaxChancePercent, StepBackDistance, StepBackSeconds, StepBackEnemyRange,
             StepBackHoldAttacks, StepBackMaxAtOnce,
             ShieldInfantrySwingsLessPercent, FootMeleeSwingsLessPercent, AiMeleeGapSeconds, ExtraPauseAfterBowShotSeconds, ExtraPauseAfterCrossbowShotSeconds,
-            ShieldWallHoldsSlots, ShieldWallStepOutMetres,
             BraceEnabled, BraceFloorChargePercent, BraceFloorAdvancePercent, BraceFloorHoldPercent, BraceFloorNoFormationPercent, BraceFloorSpreadPercent,
             BraceRecoverPercent, BraceRecoverSpreadPercent,
             BraceWieldShield, BraceRaiseShield,
-            SprintEnabled, SprintKey, SprintPointsPerSecond, SprintMinSeconds, SprintMinStartPercent, SprintMaxMultiplier, SprintMinMultiplier, SprintFullSpeedSharePercent,
+            SprintPointsPerSecond, SprintMinSeconds, SprintMinStartPercent, SprintMaxMultiplier, SprintMinMultiplier, SprintFullSpeedSharePercent,
             SprintTopSpeedReachSeconds,
             SprintRefillSeconds, SprintRefillMovingFactor, SprintRefillExhaustedFactor, SprintAiEnabled, SprintAiChargeKeepPercent,
             SprintAiAdvanceKeepPercent, SprintAiMoveKeepPercent, SprintOnRout,
-            AiAggressionFreshPercent, AiAggressionExhaustedPercent, FeverEnabled, FeverPointsPerSecond, FeverAggressionPercent, FeverContactMetres, FeverShieldDurationMultiplier,
+            FeverPointsPerSecond, FeverAggressionPercent, FeverContactMetres, FeverShieldDurationMultiplier,
             FeverSprintToClose, FeverSprintMinMetres, FeverSprintMaxMetres, FeverSprintCheckSeconds, FeverSprintChancePercent,
-            CourageEnabled, CourageRadiusMetres, CourageBaseOddsPercent, CourageArmourWeightPercent, CourageLevelWeightPercent, CourageHealthWeightPercent,
+            CourageRadiusMetres, CourageBaseOddsPercent, CourageArmourWeightPercent, CourageLevelWeightPercent, CourageHealthWeightPercent,
             CourageHeavyWeaponPercent, CourageTiredWeightPercent, CourageMoraleWeightPercent, CourageShockSeconds, CourageShockWeightPercent, CourageFeverPercent,
             CourageHeroPercent, CourageHysteresisPercent, CourageMinTimidSeconds, CourageSurgeChancePercent, CourageSurgeSeconds, CourageRegroupRadiusMetres, CourageRegroupMates, CourageFlockRadiusMetres,
             CourageFlockMinMen, CourageSprintBack, CourageSprintMetres, CourageSprintEnemies, CourageSprintKeepPercent, CouragePanicOddsPercent,
             CouragePanicSprintKeepPercent, CourageTightenWeights, CourageTimidMeleeMetres,
-            CavalryFlockEnabled, CavalryFlockFreeEagerPercent, CavalryFlockHysteresisPercent, CavalryFlockMidEagerPercent, CavalryFlockMidGroupSize,
+            CavalryFlockFreeEagerPercent, CavalryFlockHysteresisPercent, CavalryFlockMidEagerPercent, CavalryFlockMidGroupSize,
             CavalryFlockExhaustedSharePercent, CavalryFlockTimid, CavalryFlockTimidRadiusMetres, CavalryFlockGatherRadiusMetres, CavalryFlockSeparationMetres,
             CavalryFlockLeadSeconds, CavalryFlockTightenWeights, CavalryFlockWaveSeconds, CavalryFlockMaxSeconds,
-            ImpactEnabled, ImpactKicksEnabled, ImpactBlocksEnabled, ImpactHitsEnabled, ImpactRiposteEnabled, ImpactShadowMode,
+            ImpactKicksEnabled, ImpactBlocksEnabled, ImpactHitsEnabled, ImpactRiposteEnabled, ImpactShadowMode,
             KickShieldDropMaxPercent, KickKnockdownMaxPercent, RightBlockStaggerMaxPercent, RightBlockShieldDropMaxPercent, RightBlockKnockdownMaxPercent,
             ParryStaggerMaxPercent, ParryKnockdownMaxPercent, WrongBlockStaggerMaxPercent, WrongBlockShieldDropMaxPercent, WrongBlockKnockdownMaxPercent,
             HitStaggerMaxPercent, HitKnockdownMaxPercent, RiposteStaggerMaxPercent, CorrectBlockTiredWeightPercent, RiposteBlockerTiredPercent,
             StaggerBaseSeconds, StaggerTiredExtraPercent, StaggerMaxSeconds, KickReelTiredExtraPercent, GetUpMaxSlowdown, BlockStunTiredExtraPercent,
             RiposteStunMaxSeconds, ImpactRandomPercent, ImpactStunCapSeconds,
             ImpactStaggerImmunitySeconds, ImpactKnockdownImmunitySeconds, ImpactDiminishWindowSeconds, ImpactDiminishFactor, ShieldPickupLockSeconds,
-            ImpactOnPlayerPercent, ImpactRiderDismountPercent, ImpactTiredNeverShrugsOff,
+            ImpactRiderDismountPercent, ImpactTiredNeverShrugsOff,
             ImpactMomentumEnabled, ImpactMomentumPercent, ImpactMomentumWalkMetresPerSecond, ImpactMomentumSprintMetresPerSecond,
             ImpactMomentumRiderPercent, ImpactMomentumRiderWalkMetresPerSecond, ImpactMomentumRiderGallopMetresPerSecond,
-            ImpactShowMessages, ImpactMessagesIncludeYourMen, ImpactMessageMinSeconds,
+            ImpactMessagesIncludeYourMen, ImpactMessageMinSeconds,
             ImpactPunishEnabled, ImpactPunishAggressionPercent, ImpactPunishGraceSeconds, ImpactPunishRangeMetres,
             ImpactMismatchWeight, ImpactEvenBandDoublings, ImpactBodyExponent, ImpactBodyFloorPoints, ImpactStaggeredBonus, ImpactDamageWeight,
             ImpactRefWeightKg, ImpactWeightExponent, ImpactRefSwingSpeed, ImpactSpeedExponent, ImpactBluntFactor, ImpactCutFactor, ImpactPierceFactor,
@@ -1335,11 +1369,11 @@ namespace TraxCombat.Core
             ImpactStaggerFrom, ImpactShieldDropFrom, ImpactKnockdownFrom,
             RegenDelayBlowTimes, BlowTimeSeconds, FullRegenSecondsStanding, RegenRateNearFullPercent, RegenMultiplierAtFullRun,
             WalkEffortFraction, HideoutBossFightRefill,
-            ShowPlayerBar, ShowPlayerBarOutsideBattles, ShowAttackRecoveryBar, FlashBarOnEarlyAttack, ShowSprintBar,
+            ShowPlayerBarOutsideBattles, ShowAttackRecoveryBar, FlashBarOnEarlyAttack, ShowSprintBar,
             BarYellowBelowPercent, BarOrangeBelowPercent, BarRedBelowPercent,
             ShowInOrderMenu, ShowFormationHealth, ShowFormationSpread, FormationSpreadStdDevs, ShowReadyCount, ReadyYellowBelowPercent, ReadyRedBelowPercent, OrderStripUnderCards,
             ShowAltMarkerStats, AltMarkersShowEnemy, ShowFeverOnLabels, ShowFeverMarks, FeverMarksShowEnemy, ShowAthleticsMarks, AthleticsMarksShowEnemy,
-            AltMarksEveryone, AltNearMarksMax, AltNearMarksMetres, FeverMarkMax,
+            AltNearMarksMax, AltNearMarksMetres, FeverMarkMax,
             HudRefreshSeconds, PlayerBarWidth, PlayerBarHeight, PlayerBarOffsetRight, PlayerBarOffsetBottom,
             RecoveryBarWidth, RecoveryBarHeight, RecoveryBarOffsetAbove, SprintBarOffsetAbove,
             OrderStripTextSize, OrderStripTextOffset, OrderStripBarOffset, OrderStripBarHeight, OrderStripReadyOffset, OrderStripSideMargin,
@@ -1349,11 +1383,38 @@ namespace TraxCombat.Core
             FormationStatsRefreshSeconds, ImpactSpike, VerboseLogging, LogMaxMegabytes,
         };
 
-        /// <summary>The groups in order.</summary>
+        /// <summary>The groups in order - the player page's first (step 59), then the Advanced page's.</summary>
         public static readonly IReadOnlyList<ParamGroup> Groups = new[]
         {
-            MasterGroup, DamageGroup, AthleticsGroup, TiredGroup, StepBackGroup, BattlePaceGroup, BraceGroup, SprintGroup, FeverGroup, CourageGroup, CavalryFlockGroup, ImpactGroup, RefillGroup, PlayerBarGroup, OrderStripGroup, AltMarkersGroup, AdvancedGroup,
+            MasterGroup, PlayerDamageGroup, PlayerTiredGroup, PlayerAiGroup, PlayerImpactGroup, PlayerSprintGroup, PlayerScreenGroup,
+            DamageGroup, AthleticsGroup, TiredGroup, StepBackGroup, BattlePaceGroup, BraceGroup, SprintGroup, FeverGroup, CourageGroup, CavalryFlockGroup, ImpactGroup, RefillGroup, PlayerBarGroup, OrderStripGroup, AltMarkersGroup, AdvancedGroup,
         };
+
+        /// <summary>Step 59: the groups of one MCM page, in order.</summary>
+        public static IReadOnlyList<ParamGroup> GroupsOn(SettingsPage page)
+        {
+            var list = new List<ParamGroup>();
+            foreach (var g in Groups)
+                if (g.Page == page) list.Add(g);
+            return list;
+        }
+
+        /// <summary>Step 59: the settings of one MCM page, in order.</summary>
+        public static IReadOnlyList<ParamDef> OnPage(SettingsPage page)
+        {
+            var list = new List<ParamDef>();
+            foreach (var g in Groups)
+                if (g.Page == page)
+                    list.AddRange(InGroup(g));
+            return list;
+        }
+
+        /// <summary>Step 59: the player page's settings (the short main page), in order.</summary>
+        public static IReadOnlyList<ParamDef> PlayerPage => OnPage(SettingsPage.Player);
+
+        /// <summary>Step 59: what MCM calls each page - the player page is the mod's name.</summary>
+        public static string PageTitle(SettingsPage page) =>
+            page == SettingsPage.Player ? "Trax Combat Enhancements" : "Trax Combat Enhancements - Advanced";
 
         private static readonly Dictionary<string, ParamDef> ByKey = BuildIndex();
 

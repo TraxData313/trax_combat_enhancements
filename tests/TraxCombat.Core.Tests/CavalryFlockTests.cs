@@ -32,7 +32,8 @@ public class CavalryFlockTests
     {
         Assert.Equal(SettingsSchema.CourageGroup.Order + 1, SettingsSchema.CavalryFlockGroup.Order);
         Assert.Equal(SettingsSchema.CavalryFlockGroup.Order + 1, SettingsSchema.ImpactGroup.Order);
-        Assert.Equal(Keys, SettingsSchema.InGroup(SettingsSchema.CavalryFlockGroup).Select(p => p.Key).ToArray());
+        Assert.Equal(Keys.Skip(1), SettingsSchema.InGroup(SettingsSchema.CavalryFlockGroup).Select(p => p.Key).ToArray()); // the switch: the player page (step 59)
+        Assert.Same(SettingsSchema.PlayerAiGroup, SettingsSchema.CavalryFlockEnabled.Group);
         foreach (var k in Keys)
         {
             Assert.True(SettingsSchema.TryGet(k, out var p), k);

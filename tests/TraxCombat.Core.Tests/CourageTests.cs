@@ -372,8 +372,9 @@ public class CourageTests
         Assert.Equal(SettingsSchema.FeverGroup.Order + 1, SettingsSchema.CourageGroup.Order);
         Assert.Equal(SettingsSchema.CourageGroup.Order + 1, SettingsSchema.CavalryFlockGroup.Order); // step 55: cavalry flocking right after courage
         var keys = SettingsSchema.InGroup(SettingsSchema.CourageGroup).Select(p => p.Key).ToList();
-        Assert.Equal(29, keys.Count);
-        Assert.Equal("CourageEnabled", keys[0]);
+        Assert.Equal(28, keys.Count);                                           // the 29th, CourageEnabled, on the player page (step 59)
+        Assert.Equal("CourageRadiusMetres", keys[0]);
+        Assert.Same(SettingsSchema.PlayerAiGroup, SettingsSchema.CourageEnabled.Group);
         Assert.All(SettingsSchema.InGroup(SettingsSchema.CourageGroup), p => Assert.Equal(ApplyTiming.Live, p.Timing));
     }
 

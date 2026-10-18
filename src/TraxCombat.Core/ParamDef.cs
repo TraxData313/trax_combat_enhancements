@@ -85,17 +85,31 @@ namespace TraxCombat.Core
         NextBattle,
     }
 
+    /// <summary>Step 59 (Anton, 2026-10-18: "leave a few options for me and the players"): which MCM page a group sits on.
+    /// <see cref="Player"/> = the short main page a player reads ("Trax Combat Enhancements"); <see cref="Advanced"/> = every
+    /// other setting, grouped by system ("Trax Combat Enhancements - Advanced"). The config file follows the same split:
+    /// the player groups first. A NEW setting goes to Advanced unless it is one a player needs (CLAUDE.md).</summary>
+    public enum SettingsPage
+    {
+        Player,
+        Advanced,
+    }
+
     /// <summary>A block of related settings: one MCM group, one section of the config file.</summary>
     public sealed class ParamGroup
     {
-        public ParamGroup(int order, string title)
+        public ParamGroup(int order, string title, SettingsPage page = SettingsPage.Advanced)
         {
             Order = order;
             Title = title;
+            Page = page;
         }
 
-        /// <summary>Position in MCM and in the file (0 first).</summary>
+        /// <summary>Position in MCM and in the file (0 first). The player page's groups come first (step 59).</summary>
         public int Order { get; }
+
+        /// <summary>Step 59: the MCM page this group is on (the config file's section too).</summary>
+        public SettingsPage Page { get; }
 
         /// <summary>The MCM group name and the config-file section heading. No '/' - MCM reads
         /// that as a sub-group delimiter.</summary>

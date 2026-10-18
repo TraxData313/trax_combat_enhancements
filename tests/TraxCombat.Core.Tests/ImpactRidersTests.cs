@@ -82,7 +82,9 @@ public class ImpactRidersTests
             "ImpactMomentumRiderPercent", "ImpactMomentumRiderWalkMetresPerSecond", "ImpactMomentumRiderGallopMetresPerSecond",
             "ImpactShowMessages", "ImpactMessagesIncludeYourMen", "ImpactMessageMinSeconds",
         };
-        Assert.Equal(mine, keys.Skip(i + 1).Take(6));
+        // Step 59: the lines' switch ImpactShowMessages is on the player page ("On screen"); the other five stay here in order.
+        Assert.Equal(mine.Where(k => k != "ImpactShowMessages"), keys.Skip(i + 1).Take(5));
+        Assert.Same(SettingsSchema.PlayerScreenGroup, SettingsSchema.ImpactShowMessages.Group);
         foreach (var k in mine)
         {
             Assert.True(SettingsSchema.TryGet(k, out var p));

@@ -228,7 +228,7 @@ public class ShieldWallLeashTests
         Assert.Equal(0.0, WallRules.From(s).Leash);
         var all = SettingsSchema.All.ToList();
         Assert.Same(SettingsSchema.ShieldWallStepOutMetres, all[all.IndexOf(SettingsSchema.ShieldWallHoldsSlots) + 1]);
-        Assert.Equal(SettingsSchema.BattlePaceGroup, SettingsSchema.ShieldWallStepOutMetres.Group);
+        Assert.Equal(SettingsSchema.PlayerAiGroup, SettingsSchema.ShieldWallStepOutMetres.Group); // the player page since step 59
         Assert.Equal(ParamType.Float, SettingsSchema.ShieldWallStepOutMetres.Type);
         Assert.Equal(ApplyTiming.Live, SettingsSchema.ShieldWallStepOutMetres.Timing);
         Assert.Equal(0.0, SettingsSchema.ShieldWallStepOutMetres.Min);

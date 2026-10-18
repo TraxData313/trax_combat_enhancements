@@ -127,8 +127,12 @@ public class ImpactTests
             "ImpactStaggerFrom", "ImpactShieldDropFrom", "ImpactKnockdownFrom",
         };
         Assert.Equal(76, keys.Length); // step 48's 60 + step 52's momentum 4 + step 53's rider momentum 3 and on-screen lines 3 + step 54's punish 4 + step 56's 2
+        // Step 59: three of them on the player page - the switch and "against you" ("Staggers and knockdowns"), the on-screen lines
+        // ("On screen"); the other 73 stay in this group in order.
+        var player = new[] { "ImpactEnabled", "ImpactOnPlayerPercent", "ImpactShowMessages" };
         var inGroup = SettingsSchema.InGroup(SettingsSchema.ImpactGroup).Select(p => p.Key).ToList();
-        Assert.Equal(keys, inGroup);
+        Assert.Equal(keys.Where(k => !player.Contains(k)), inGroup);
+        Assert.All(player, k => { SettingsSchema.TryGet(k, out var p); Assert.Equal(SettingsPage.Player, p.Group.Page); });
         foreach (var k in keys)
         {
             Assert.True(SettingsSchema.TryGet(k, out var p), k);

@@ -216,7 +216,7 @@ public class ShieldWallTests
         s.Set(SettingsSchema.ModEnabled, false, "test");
         Assert.Equal(WallVerdict.ModOff, WallMath.Decide(WallRules.From(s), Held()));
         Assert.False(WallRules.From(s).SameAs(On));
-        Assert.Equal(SettingsSchema.BattlePaceGroup, SettingsSchema.ShieldWallHoldsSlots.Group);
+        Assert.Equal(SettingsSchema.PlayerAiGroup, SettingsSchema.ShieldWallHoldsSlots.Group); // the player page since step 59
     }
 
     [Fact]

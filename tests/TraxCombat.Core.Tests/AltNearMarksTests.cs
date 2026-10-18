@@ -185,14 +185,15 @@ public class AltNearMarksTests
         r = AltNearRules.From(t);
         Assert.True(r.Everyone);
         Assert.Equal(200, r.Cap);
-        foreach (var p in new[] { SettingsSchema.ShowFeverOnLabels, SettingsSchema.AltMarksEveryone, SettingsSchema.AltNearMarksMax, SettingsSchema.AltNearMarksMetres })
+        foreach (var p in new[] { SettingsSchema.ShowFeverOnLabels, SettingsSchema.AltNearMarksMax, SettingsSchema.AltNearMarksMetres })
         {
             Assert.Same(SettingsSchema.AltMarkersGroup, p.Group);
             Assert.Equal(ApplyTiming.Live, p.Timing);
         }
+        Assert.Same(SettingsSchema.PlayerScreenGroup, SettingsSchema.AltMarksEveryone.Group);                        // the player page since step 59
+        Assert.Equal(ApplyTiming.Live, SettingsSchema.AltMarksEveryone.Timing);
         Assert.Equal(SettingsSchema.AltMarkersShowEnemy.Index + 1, SettingsSchema.ShowFeverOnLabels.Index);        // with the labels
-        Assert.Equal(SettingsSchema.AthleticsMarksShowEnemy.Index + 1, SettingsSchema.AltMarksEveryone.Index);     // after the bars' switches
-        Assert.Equal(SettingsSchema.AltMarksEveryone.Index + 1, SettingsSchema.AltNearMarksMax.Index);
+        Assert.Equal(SettingsSchema.AthleticsMarksShowEnemy.Index + 1, SettingsSchema.AltNearMarksMax.Index);      // after the bars' switches
         Assert.Equal(SettingsSchema.AltNearMarksMax.Index + 1, SettingsSchema.AltNearMarksMetres.Index);
         Assert.Equal(SettingsSchema.AltNearMarksMetres.Index + 1, SettingsSchema.FeverMarkMax.Index);              // the ceiling last
     }

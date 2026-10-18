@@ -161,10 +161,17 @@ namespace TraxCombat.Core
         internal static void AppendSettings(StringBuilder sb, IReadOnlyDictionary<string, double>? values, Func<ParamDef, string> tail, bool afterAnEntry)
         {
             bool needComma = afterAnEntry;
+            SettingsPage? page = null;
             foreach (var group in SettingsSchema.Groups)
             {
                 if (needComma) sb.Append(',').Append(Nl).Append(Nl);
                 needComma = true;
+                if (page != group.Page)
+                {
+                    // Step 59: a banner where each MCM page begins - the player page's settings first, then the Advanced page's.
+                    page = group.Page;
+                    sb.Append("  // ######## ").Append(PageBanner(group.Page)).Append(" ########").Append(Nl).Append(Nl);
+                }
                 sb.Append("  // ==================== ").Append(group.Title).Append(" ====================");
                 bool first = true;
                 foreach (var p in SettingsSchema.InGroup(group))
@@ -181,6 +188,12 @@ namespace TraxCombat.Core
                 }
             }
         }
+
+        /// <summary>Step 59: the banner above each MCM page's settings in config.json and defaults.json.</summary>
+        public static string PageBanner(SettingsPage page) =>
+            page == SettingsPage.Player
+                ? "THE MAIN SETTINGS - MCM page \"" + SettingsSchema.PageTitle(page) + "\""
+                : "ADVANCED - for tuning: MCM page \"" + SettingsSchema.PageTitle(page) + "\"";
 
         private static void WriteHeader(StringBuilder sb)
         {
@@ -201,14 +214,17 @@ namespace TraxCombat.Core
                 "  press Done. Your hand edits of other values are kept when MCM writes the file.",
                 "- A number outside its range is clamped into it; a key the mod does not know is ignored",
                 "  and reported in the log. Your own // comments are not kept when the file is rewritten.",
+                "- The main settings come first (MCM's page \"Trax Combat Enhancements\"); everything",
+                "  else follows under ADVANCED (MCM's page \"Trax Combat Enhancements - Advanced\").",
                 "",
                 "Back to the defaults (the mod's defaults.json, built into it):",
                 "- one setting: delete its line (the key and its value) - it takes its default at the next",
                 "  battle start and is written back in;",
                 "- everything: delete this file - every setting takes its default at the next battle start",
                 "  (or game start) and a fresh file is written;",
-                "- with MCM: Mod Options > Trax Combat Enhancements > Defaults > \"Revert all to defaults\"",
-                "  (applies at once, even mid-battle, and rewrites this file).",
+                "- with MCM: Mod Options > Trax Combat Enhancements (or ... - Advanced) > Defaults >",
+                "  \"Revert all to defaults\" - every setting of BOTH pages (applies at once, even",
+                "  mid-battle, and rewrites this file).",
             };
             foreach (var line in header)
                 sb.Append("// ").Append(line).TrimEndSpaces().Append(Nl);
