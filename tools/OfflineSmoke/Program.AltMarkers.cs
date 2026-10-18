@@ -77,7 +77,7 @@ namespace TraxCombat.Tools
 
             /// <summary>One marker (and its widget, 60 x 108 UI px, at its point) at <paramref name="scale"/>.</summary>
             public void Add(int teamIndex, int teamType, int k, float x, float y, int men, double mean, double std, double f, double health,
-                float alpha = 1f, int wSign = 1, bool widget = true, float scale = 1f, int bracing = 0)
+                float alpha = 1f, int wSign = 1, bool widget = true, float scale = 1f, int bracing = 0, int inFever = 0)
             {
                 var m = new AltMarker
                 {
@@ -89,7 +89,7 @@ namespace TraxCombat.Tools
                     WSign = wSign,
                     Distance = 80,
                     Men = men,
-                    Stats = new FormationAthleticsStats(men, mean * 100, std * 100, mean, std, 0, f, 0, health, bracing),
+                    Stats = new FormationAthleticsStats(men, mean * 100, std * 100, mean, std, 0, f, 0, health, bracing, inFever),
                 };
                 Markers.Add(m);
                 if (!widget) return;
