@@ -386,8 +386,9 @@ none when it is gone). He spends only the sprint he holds above his order's rese
 
 A bracing man (section 8) still does not attack, fever or not.
 
-**See it: hold ALT.** Every man in a fever — yours and the enemy's — gets a small bar above his head while
-you hold ALT (or the orders menu is open): **bright orange** and full while he runs at the enemy, shrinking
+**See it: hold ALT.** Each formation's numbers under its marker say how many of its men surge —
+**"fever 12/40"** in orange — and the few men you look at (the ones nearest the centre of the screen, close
+to you) get a small bar above their heads: **bright orange** and full while he runs at the enemy, shrinking
 and turning **yellow** as the fever burns after the clash, gone when it is spent (section 15).
 
 <sub>Settings: `AiAggressionFreshPercent` 60, `AiAggressionExhaustedPercent` 20 (both 100 = the base game's AI),
@@ -962,7 +963,16 @@ yellow while you sprint.
 **The orders menu** shows, under each formation card: the men's average Athletics with its ± spread,
 their average health, and **"ready 34/50"** — how many are ready to fight (not bracing).
 
-**Hold ALT** for the same numbers under the game's own formation markers, yours **and the enemy's**.
+**Hold ALT** for the same numbers under the game's own formation markers, yours **and the enemy's** —
+the whole group at a glance:
+
+```
+        (the game's marker: 40, the icon, 85 m)
+              72% ± 8   HP 81%        the men's average Athletics ± spread (its colour = their strength), health
+              [██████▒▒░░|░░]         the same as a bar, the white tick at the peak line
+              ready 34/40             how many are ready to fight (not bracing)
+              fever 12/40             how many surge in a fever (orange) - only while someone does
+```
 
 | "ready" colour | When |
 |---|---|
@@ -970,11 +980,15 @@ their average health, and **"ready 34/50"** — how many are ready to fight (not
 | Yellow | 75% or fewer ready |
 | Red | 50% or fewer ready — this line is spent |
 
-**Athletics bars over the men** (hold ALT, or the orders menu open): a small bar above **every soldier's**
-head — yours, your allies' and the enemy's (not yours: you have your own) — his own Athletics bar in
-miniature: its length is the Athletics he has left, its colour the bar's colour (green at full strength,
-blue just below the peak line, then yellow, orange, red), the part his wounds hold dark red. Watch a line
-go from green to red as the fight goes on, and pick the tired enemy to charge.
+**Athletics bars over the men you look at** (hold ALT, or the orders menu open): the **five men nearest the
+centre of the screen**, within **15 m** of the camera, get a small bar above their heads — yours, your
+allies' or the enemy's (not yours: you have your own) — his own Athletics bar in miniature: its length is
+the Athletics he has left, its colour the bar's colour (green at full strength, blue just below the peak
+line, then yellow, orange, red), the part his wounds hold dark red. Turn the camera onto the man you want
+to read; the group's averages are on the markers. **In a tournament, an arena fight or a duel** (no
+formation markers there) hold ALT the same way: your opponent's bars show — how tired he is, and whether
+he is in a fever. The crowd in the stands never gets one. Want the old view, a bar over every soldier on
+the screen? Switch `AltMarksEveryone` on.
 
 ```
      a fresh man:            a tired man in a charge:
@@ -993,8 +1007,9 @@ fever or not, so nothing jumps.
 | Faint yellow, short | nearly spent — he is about to calm down |
 | No mark | calm (no fever), or you |
 
-Close to the camera the bars fade out (none closer than 1.5 m), far away they are a little smaller, a
-rider's sit a little higher, and in a huge battle only the 200 nearest men on the screen get them.
+The bars of the men you look at stay bright however close they are (none closer than 1.5 m to the camera),
+and a rider's sit a little higher. With `AltMarksEveryone` on, close bars fade out like the game's own icons,
+far ones are a little smaller, and in a huge battle only the 200 nearest men on the screen get them.
 
 **Lines in the message feed** (section 11c): red when you are knocked down, knocked off your horse, lose your
 shield or reel from a riposte; purple when you knock a man down or off his horse, break his guard or knock his
@@ -1002,7 +1017,8 @@ shield away — the colours the game uses for its own couched-lance lines. At mo
 
 <sub>Settings: `ShowPlayerBar`, `ShowAttackRecoveryBar`, `ShowSprintBar`, `ShowInOrderMenu`, `ShowAltMarkerStats`,
 `AltMarkersShowEnemy`, `ShowReadyCount`, `Bar*BelowPercent`, `Ready*BelowPercent`, `ShowAthleticsMarks`, `AthleticsMarksShowEnemy`,
-`ShowFeverMarks`, `FeverMarksShowEnemy`, `FeverMarkMax` 200 (men marked, both bars), `ImpactShowMessages`, `ImpactMessagesIncludeYourMen`,
+`ShowFeverMarks`, `FeverMarksShowEnemy`, `ShowFeverOnLabels`, `AltMarksEveryone` off, `AltNearMarksMax` 5, `AltNearMarksMetres` 15,
+`FeverMarkMax` 200 (men marked, both bars - the every-man view's cap and the ceiling), `ImpactShowMessages`, `ImpactMessagesIncludeYourMen`,
 `ImpactMessageMinSeconds` 1.5, and the HUD's sizes and offsets
 (`AthleticsMarkWidth` 22, `AthleticsMarkHeight` 5, `AthleticsMarkGap` 2, `FeverMarkWidth` 22, `FeverMarkHeight` 5,
 `FeverMarkHeightMetres` 2.5).</sub>

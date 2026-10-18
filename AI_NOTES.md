@@ -5202,3 +5202,62 @@ you / a rider never, SprintOnRout / SprintAiEnabled / ModEnabled off = none (liv
 **Unverified until D26:** that the engine lets a routing agent run at the raised speed (a routing agent's own movement is native retreat mode -
 `MaxSpeedMultiplier` should apply as for anyone; the sprint speed check covers it); that `OnAgentFleeing` reaches a MissionLogic added by a
 mod in every mission type (it is a plain MissionBehavior virtual - it should).
+
+## Step 58 — the ALT view decluttered (DONE 2026-10-18, built, not installed)
+
+**Anton (2026-10-18)**: "this ALT view is too cluttered. Maybe add those lines as some averages on the group, and only show them on up to 5
+soldiers that I'm directly looking at and are really close, making it work in tournaments too."
+
+**What his log said first** (trax_combat.log, arena_sturgia_a 2026-10-18 08:59, a TournamentFightMissionController mission): the ALT bars were
+ALREADY shown in the arena - no MissionFormationMarker layer there (vanilla adds its marker view to battle-type missions only, step 20), so step 44's
+view copies vanilla's rule (HudFrame.ShowIndicatorsKey = game key 5) and the copy works: `shown 12x`, `men marked a frame: mean 52.2, max 93`. The
+clutter was the CROWD: `most men looked at 143 (yours and allies 3, enemy 140)` - a round of 4 × 4 has 12 opponents. The spectators are location
+characters (`MissionAgentHandler.SpawnLocationCharacter`: CharacterRelation Neutral → `Team.Invalid`), tracked like anyone, and `Team.Invalid`
+(Mission null) is neither `IsPlayerTeam` nor `IsPlayerAlly` → our "enemy". Fix: `GameFeverMarks.Locate` returns false for `!team.IsValid`
+(`MBTeam.IsValid` = Index >= 0, managed) - never placed in any view ("not on the field" in the log).
+
+**The design (DESIGN §3 item 3d, decision 50 - Claude's calls, Anton can overturn any)**
+- **"Looking at" = the angle from the combat camera's forward** (`AltNearMath.Facing` = cos, `CentreKey` = 1 − cos, smaller first) - not the
+  screen distance from the centre: it needs no projection before the pick (the screen distance would project every candidate), it is the screen's
+  centre at any aspect (Anton's 3440 × 1440) and FOV, it follows RTS Camera's free camera (it moves CombatCamera). Computed in `Locate` with the
+  distance (`FeverMark.Facing`; the smoke's pinhole sets it too).
+- **"Really close" = `AltNearMarksMetres` (15) from the CAMERA** to the bar's point (feet + 2.5 m) - the same point and origin as the angle and
+  step 44's distance; works with you down / in the orders view / free camera; the third-person camera sits ~3 m behind you. A new skip
+  `FeverMarkSkip.TooFar` ("beyond the near range"), inserted BEFORE OffScreen / Capped (the enum renumbered - the one test that built a skip array
+  by position now builds it by name).
+- **The pick** = step 46's `PickOnScreen` unchanged, fed a different key: `FeverMarkFrame.Elect(index, key)` - the distance (every-man view) or
+  `CentreKey(Facing)` (near view); the cap `AltNearRules.Cap` = min(`AltNearMarksMax` 5, `FeverMarkMax`) in the near view, `FeverMarkMax` in the
+  every-man view. Sorted only when the cap bites, projected in rank order until full, an off-screen man takes no slot - so ~5 projections a frame.
+- **`FeverMarkMax` kept** (no migration): the every-man view's cap and the near view's ceiling. **`AltMarksEveryone`** (off) = step 46's view: a
+  bool because the schema has no choice type; the step 44 / 46 smoke pins it ON (`FeverMarkDefaults`) so their exact checks stay theirs.
+- **No distance fade in the near view** (`AltNearMath.Fade`): vanilla's 1.5 → 8 m icon fade would dim the close opponent; under 1.5 m still skipped.
+- **The group's fever share**: the formation pass (`RefreshFormationStats`, every FormationStatsRefreshSeconds) counts `FeverOf(st)` per slot
+  (only while `_feverRunning > 0`) → `FormationAthleticsStats.InFever` (a new optional last ctor / From parameter, clamped to the count) →
+  `AltMarkerView.PushValues` → `AltMarkerLabelVM.SetFever` → the prefab's "Fever" TextWidget under "Ready": `fever 12/40`, the ready count's brush /
+  size, a literal `#FF8C1AFF` (the fever bar's orange), `IsVisible="@FeverShown"`. Hidden (`FeverLabelMath.HiddenFor`): ModOff, AthleticsOff,
+  FeverOff, ShowFeverOnLabels off, no men, NOBODY IN A FEVER (less noise; the line is last, so nothing jumps). The "72% ± 8" line is unchanged.
+- **Tournaments**: nothing new in the WHEN - the copied rule already shows the view under ALT; the crowd fix makes the near bars the fighters'.
+  Teammates in a team round compete for the same 5 slots (the enemy switches still apply).
+
+**Built** (file map in CLAUDE.md "Layout"). Core `AltNearMarks.cs`: AltNearRules (live: Everyone, NearMax, NearMetres, HardMax, Cap, ModeName,
+Describe), AltNearMath (Facing, CentreKey, AngleDegrees, InRange, Fade), FeverLabelHidden / FeverLabelRules / FeverLabelMath (Text, ColorHex,
+HiddenFor, HiddenName) / FeverLabelStats (+ the [summary] "fever share" line). `FeverMarks.cs`: FeverMark.Facing, FeverMarkSkip.TooFar,
+FeverMarkFrame.Elect(index, key), FeverMarkStats.NoteMode + the summary's "mode (step 58)" clause (only once a frame noted a mode). `SpreadStats.cs`:
+InFever. Module: FeverMarkView (the range skip, the key, the cap, the fade, the first-bars line: the near cap sentence, each man's "N° off the
+centre", the mode sentence at the end), GameFeverMarks.Locate (IsValid, Facing), AltMarkerView (PushValues' fever line, FeverStats, the values
+line's "fever 12/40" and the rules' sentence), AltMarkersVM (FeverText, FeverShown, SetFever, ShownInFever), AthleticsLogic.Api (`_formationInFever`),
+TraxAltMarkers.xml (the Fever widget). Settings 271 → 275: `ShowFeverOnLabels` (after AltMarkersShowEnemy), `AltMarksEveryone`,
+`AltNearMarksMax`, `AltNearMarksMetres` (after AthleticsMarksShowEnemy, before FeverMarkMax) - all Live, the ALT group.
+
+**Tests / smoke.** AltNearMarksTests (21): 852 → 873 (the angle, the key, the range, the fade, the pick - five by angle, an off-screen central man
+takes no slot, the nearest man at the edge waits -, the every-man ranking, the cap / ceiling theory, the settings live / grouped / ordered / near by
+default, the sentences, the label text / clamp / hide order, both summaries); FeverMarkTests / AthleticsMarkTests index checks moved (+1 / +3).
+Smoke 127 → 131 (Program.NearMarks.cs): the near view through the real view (5 of 8 candidates, TooFar 1, Capped 3, 5 projections, no fade, the
+enemy switch, the cap / range live, FeverMarkMax the ceiling, AltMarksEveryone = 7 drawn with vanilla's fade, the master switch, the log, the
+summary); a tournament (the flag unreadable: nothing until ALT, then the opponent first, bright orange; gone on release); the ALT labels' fever share
+(12/40, 60/80, none when calm, the switches, the surge over, the master switch, the values line, the summary); the cost - 1000 men on the screen,
+389 within 15 m: 0.11 ms a frame, 0 bytes, 5.0 projections a frame (step 46's every-man view: 0.15 ms, 200 projections).
+
+**Unverified until D27:** that the arena's crowd really has `Team.Invalid` (the first-bars line's `enemy` should drop to the opponents and `not on
+the field` count the crowd); that the angle pick feels like "the men I look at" with the third-person camera (the crosshair is the screen's centre);
+that the formation pass's `fever 12/40` appears on a charging formation within FormationStatsRefreshSeconds; the label's literal Brush.FontColor.

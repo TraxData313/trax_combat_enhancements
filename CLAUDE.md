@@ -104,7 +104,12 @@ that gets to red"): the same view (the log's "ALT bars") draws a stack per man -
 dark red, BarMath's band colours) above his fever bar, the fever bar's place kept so it never jumps; every tracked man but you (riders 1 m
 higher, heroes too), the enemy's behind `AthleticsMarksShowEnemy`; ONE cap (`FeverMarkMax` = men marked); the pick sorts and projects
 nearest first until the cap is full (an off-screen man never takes a slot) - 0.07 ms a frame, 0 bytes, 200 projections for 1000 men all
-on the screen (smoke). `CostPerBlow` 7 in defaults.json since step 46 (Anton's playtest; config format 9 moves a format-8 file's 3 once). THE IMPACT
+on the screen (smoke). THE ALT VIEW DECLUTTERED (step 58, Anton 2026-10-18: "too cluttered ... only show them on up to 5 soldiers that I'm
+directly looking at and are really close, making it work in tournaments too"): by default those bars go only on the `AltNearMarksMax` 5 men nearest
+the screen's CENTRE (the angle from the combat camera's forward) within `AltNearMarksMetres` 15 m of the camera, no distance fade (`FeverMarkMax`
+the ceiling; `AltMarksEveryone` = step 46's view); the formation labels add the group's `fever 12/40` under `ready 34/50` (`ShowFeverOnLabels`);
+men with no valid team (an arena's crowd) are never marked, so in a tournament ALT shows your opponent's bars - 0.11 ms a frame, 0 bytes, ~5
+projections (smoke). `CostPerBlow` 7 in defaults.json since step 46 (Anton's playtest; config format 9 moves a format-8 file's 3 once). THE IMPACT
 SYSTEM (docs/IMPACT.md - staggers, dropped shields, knockdowns by both men's Athletics; Anton approved it 2026-10-17, steps 47-53) starts with
 step 47's SPIKE (Advanced `ImpactSpike`, off - a TEST TOOL): fixed loud values prove the six engine levers in a real battle - a kick's
 KnockDown decision, the block stun x3 with the cap 2 s, a reaction at speed 0.5, a forced `act_stagger_backward`, a queued shield drop,
@@ -322,7 +327,7 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               its Default comes from defaults.json (DefaultsFile), never code; step 33: ParamType.Key +
                               KeyNames (a key by NAME, stored as its index; FormatJson writes "LeftControl"; the
                               file / defaults.json read the name, MCM a text box)
-  SettingsSchema.cs           EVERY setting of DESIGN's table (271 - step 57's SprintOnRout after SprintAiMoveKeepPercent; step 56's CorrectBlockTiredWeightPercent and RiposteBlockerTiredPercent right after RiposteStaggerMaxPercent; step 55's 14 in "Cavalry flocking (AI)" after courage; step 54's 4 punish settings after the on-screen lines; step 53's 3 rider-momentum + 3 on-screen-line settings after the momentum ones; step 52's 4 momentum settings after ImpactTiredNeverShrugsOff; step 47's ImpactSpike in Advanced, before VerboseLogging; step 48's 60 in
+  SettingsSchema.cs           EVERY setting of DESIGN's table (275 - step 58's ShowFeverOnLabels after AltMarkersShowEnemy and AltMarksEveryone, AltNearMarksMax, AltNearMarksMetres after AthleticsMarksShowEnemy (before FeverMarkMax); step 57's SprintOnRout after SprintAiMoveKeepPercent; step 56's CorrectBlockTiredWeightPercent and RiposteBlockerTiredPercent right after RiposteStaggerMaxPercent; step 55's 14 in "Cavalry flocking (AI)" after courage; step 54's 4 punish settings after the on-screen lines; step 53's 3 rider-momentum + 3 on-screen-line settings after the momentum ones; step 52's 4 momentum settings after ImpactTiredNeverShrugsOff; step 47's ImpactSpike in Advanced, before VerboseLogging; step 48's 60 in
                               "Impact: staggers, shield drops, knockdowns" - after the courage group, before Refill; step 49's 29 (49b's two surge settings) in "Courage and
                               cohesion (AI)" - after the fever), in file + MCM order, 17 groups
                               ("Master switch" first, "Damage" second - step 25 renamed it from
@@ -331,8 +336,8 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               "Brace by orders (AI)" - step 23 - after it, "Sprint" - step 33 - after that, "Aggression and
                               fever (AI)" - step 43 - after the sprint,
                               "Hold ALT: formation markers, Athletics and fever bars" - step 20, renamed by steps 44 and 46 (was
-                              "Formation markers (hold ALT)"; + ShowFeverMarks, FeverMarksShowEnemy, step 46's ShowAthleticsMarks,
-                              AthleticsMarksShowEnemy, then FeverMarkMax; Advanced + AthleticsMarkWidth / Height / Gap) - before
+                              "Formation markers (hold ALT)"; + step 58's ShowFeverOnLabels, ShowFeverMarks, FeverMarksShowEnemy, step 46's ShowAthleticsMarks,
+                              AthleticsMarksShowEnemy, step 58's AltMarksEveryone / AltNearMarksMax / AltNearMarksMetres, then FeverMarkMax; Advanced + AthleticsMarkWidth / Height / Gap) - before
                               "Advanced" last; step 10b's one vocabulary and
                               units in its header comment) — the one place a setting is declared
                               (a test parses DESIGN.md: keys + types); NO default values. The LATER
@@ -650,6 +655,13 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               can show for his side - then behind / too close), Read (fill = points ÷ FULL pool, the wound cap,
                               BarMath.Band), Layout (the stack: the Athletics bar, the gap, the fever bar; only the fever bar =
                               step 44's mark), BandColor, ParseHex, Wounded, DescribeBar / DescribeMan, HiddenName
+  AltNearMarks.cs             step 58, the ALT view decluttered pure (AI_NOTES "Step 58"): AltNearRules (live: AltMarksEveryone, AltNearMarksMax,
+                              AltNearMarksMetres, FeverMarkMax; Cap = min(near max, FeverMarkMax) / FeverMarkMax, ModeName, Describe), AltNearMath
+                              (Facing = cos of the angle from the camera's forward, CentreKey = 1 − cos - the pick's key, AngleDegrees, InRange, Fade -
+                              none in the near view), FeverLabelHidden / FeverLabelRules (ModOff FIRST) / FeverLabelMath ("fever 12/40", the fever
+                              orange, HiddenFor - nobody in a fever = hidden) / FeverLabelStats (+ the [summary] "fever share" line). Also step 58:
+                              FeverMark.Facing, FeverMarkSkip.TooFar (before OffScreen), FeverMarkFrame.Elect(index, key), FeverMarkStats.NoteMode
+                              + the summary's "mode (step 58)" clause; FormationAthleticsStats.InFever (SpreadStats.cs)
   ImpactSpike.cs              step 47, IMPACT I1 pure (AI_NOTES "Step 47", RESEARCH §R10): SpikeLever (the six), SpikeVerdict (Unseen /
                               Works / Fails), StaggerKind, ForceRefusal (Gone, NotHuman, Mounted, GameObject, Water, Down - in the
                               order asked), WatchKind / WatchEvent, ActionRead (both channels' type + index), SpikeHit (one collision),
@@ -1221,16 +1233,20 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               no widgets, no layer → own projection for the show) once per show, the first of
                               each in full; [hud] first-show line (technique, markers, labels, no-label reasons),
                               values line, the [summary] line (AltMarkerStats); step 24: the ready count in
-                              PushValues (every side; ReadyStats + its [summary] line)
+                              PushValues (every side; ReadyStats + its [summary] line); step 58: the fever share in PushValues
+                              ("fever 12/40" from FormationAthleticsStats.InFever, FeverLabelMath.HiddenFor; FeverStats + its [summary]
+                              line; the values line's "fever 12/40" and the rules' sentence)
   Hud/AltMarkersVM.cs         its ViewModels: the root + a GROW-ONLY MBBindingList of AltMarkerLabelVM keyed by
                               team + formation (a label never swaps formations when vanilla re-sorts); step 24:
-                              ReadyText / ReadyColor / ReadyShown, SetReady
+                              ReadyText / ReadyColor / ReadyShown, SetReady; step 58: FeverText / FeverShown, SetFever
   Hud/FeverMarkSource.cs      step 44's engine seam: IFeverMarkSource (TryReadShown = vanilla's "markers shown" flag, NewShow,
                               BeginFrame - the camera, the screen in pixels and the UI scale -, Locate - side, the feet +
                               FeverMarkHeightMetres, distance, in front -, Project, Describe; the smoke plays it); GameFeverMarks
                               (step 20's GauntletFormationMarkers for the flag, CombatCamera Position / Direction, Agent.Team /
                               IsActive / Position, MBWindowManager.WorldToScreen; the scale from our own layer's UIContext);
-                              step 46: Locate sets Mounted (Agent.MountAgent, managed) and lifts a rider RiderLiftMetres
+                              step 46: Locate sets Mounted (Agent.MountAgent, managed) and lifts a rider RiderLiftMetres; step 58: Locate
+                              sets Facing (the angle from the camera's forward) and refuses a man with no valid team (Team.IsValid - an
+                              arena's crowd, Team.Invalid)
   Hud/FeverMarkView.cs        step 44, DESIGN §3 item 3b (hold ALT): shown exactly while vanilla shows its markers (FeverEnabled
                               FIRST in the condition, then its flag, else ALT / the orders menu copied; NeedsPlayer false); every
                               frame: the logic's fevers walked (TryGetFeverAt), Locate, PreSkip, Project + on screen, Pick the
@@ -1241,13 +1257,20 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               (FeverEnabled or the Athletics bars) then the flag; the walk = every man (TryGetMarkAt) with the bars
                               on, AthleticsMarkMath.Decide, PickOnScreen through a struct Projector, Layout (the stack), the band /
                               wound / fever colours × the fade; the first-bars line (men looked at, in a fever, marked, bars by
-                              colour, the first drawn - "calm" / "armed"), "… (the Athletics bars stay)"
+                              colour, the first drawn - "calm" / "armed"), "… (the Athletics bars stay)". STEP 58 (§3 item 3d): the
+                              NEAR view by default (AltNearRules) - a candidate beyond AltNearMarksMetres skipped TooFar, the rest
+                              elected by CentreKey(Facing), the cap min(AltNearMarksMax, FeverMarkMax), no fade (AltNearMath.Fade);
+                              AltMarksEveryone = step 46's ranking by distance; MarkStats.NoteMode; the first-bars line's near cap,
+                              "N° off the centre" per man and the mode sentence at its end
   Hud/FeverMarksVM.cs         its ViewModels: the root + a GROW-ONLY POOL (MBBindingList of FeverMarkVM - mark i = the i-th
                               drawn this frame, the rest hidden); FeverMarkVM: IsShown, PositionX / Y, Width / Height (Scaled*
                               pixels), Fill, FillColor, FrameColor (the fade's alpha baked in); step 46: the box (PositionX / Y =
                               its top-left, BoxWidth / BoxHeight), FeverShown, the Athletics bar - BarShown, BarWidth, BarHeight,
                               BarFill, BarUsable, BarColor, BarFrameColor, BarWoundColor
-tests/TraxCombat.Core.Tests/  net8.0 xUnit (852 - step 57: + RoutSprintTests - the setting placed / on / live, the whole store once with no reserve and
+tests/TraxCombat.Core.Tests/  net8.0 xUnit (873 - step 58: + AltNearMarksTests - the angle from the camera's forward and its key, the range, no fade in
+                              the near view, THE NEAR PICK (five by angle, an off-screen central man takes no slot, the nearest man at the edge waits), the
+                              every-man ranking, the cap under FeverMarkMax, the settings live / grouped / ordered / near by default, the sentences, the
+                              label's "fever 12/40" / clamp / hide order with the master switch first, both summaries; step 57: + RoutSprintTests - the setting placed / on / live, the whole store once with no reserve and
                               below the start gate, an empty store / no store refused, the rout mark cleared by other starts, every switch with the
                               master switch first, the summary line; step 56: + RightBlocksTests - two EMPTY even men: a correct block ≤ 5 % on the blocker and the
                               riposte at 70 %, the wrong side at 90 / 50 / 40; two fresh men nothing; a tired attacker into a good guard; the stick vs
@@ -1398,7 +1421,8 @@ module/GUI/Prefabs/           the HUD movies - file name = movie name, `Trax…`
                               would resolve against the list), TraxAltMarkers.xml (step 20: {Labels}
                               ItemTemplate - a centring box per formation placed by Scaled* pixel bindings,
                               the numbers in vanilla's own marker brush NameMarker.Distance.Text, the
-                              strip's bar; step 24: + "ready 34/50" under the bar, centred), both with
+                              strip's bar; step 24: + "ready 34/50" under the bar, centred; step 58: + "fever 12/40" under it,
+                              the fever orange as a literal Brush.FontColor, @FeverShown), both with
                               step 24's ready TextWidget (Brush.FontColor bound; the strip's under its
                               bar at @ReadyMarginTop, the panel's after the health), TraxFeverMarks.xml (step 44:
                               {Marks} ItemTemplate - one small bar per mark placed and sized by Scaled* pixel
@@ -1668,7 +1692,13 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               the step-48 block model (ImpactModelDefaults → Step48BlockModel); step 57 (Program.RoutSprint.cs): the real logic's
                               OnAgentFleeing - a routing man's whole 5 s store, never ended near an enemy, run dry, empty on a second call, a running
                               move sprint handed over, you / a rider never, SprintOnRout / SprintAiEnabled / the master switch off = none, the first-rout
-                              line and the summary (127 steps; the config checks work for any tuned default)
+                              line and the summary; step 58 (Program.NearMarks.cs): the real FeverMarkView in the NEAR view - the five men
+                              nearest the screen's centre within 15 m (a closer man at the edge waits, a dead-centre man at 25 m never counts,
+                              5 projections), no fade, the enemy switch, the cap / range live, FeverMarkMax the ceiling, AltMarksEveryone = step 46
+                              exactly, the master switch, the log, the summary; a TOURNAMENT (the flag unreadable: the near bars only while ALT is
+                              held, the opponent first); the real ALT labels' "fever 12/40" (the switches, the surge over, the summary); the cost -
+                              1000 men on the screen, 389 within 15 m, 0.11 ms a frame, 0 bytes, 5 projections; the step 44 / 46 checks pin the
+                              every-man view (FeverMarkDefaults) (131 steps; the config checks work for any tuned default)
                               TRAX_SMOKE_KEEP=1 keeps its temp folder + log to read
 tools/DefaultsTool/           defaults.json upkeep: refresh (rewrite comments/order, keep every
                               value) | check; --file <path> for an exported one

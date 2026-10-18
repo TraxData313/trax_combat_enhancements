@@ -950,6 +950,17 @@ above EVERY soldier's head - the fever bar of 3b stays under it while he is in a
 - Vanilla's fade and the smaller size far away as 3b. Shown with the master switch, Athletics and `ShowAthleticsMarks` on
   (`ShowFeverMarks` off and the fever off do not hide it); the layer goes only when there is nothing to draw. All live.
 
+**3d. The ALT view decluttered (step 58, decision 50 - Anton 2026-10-18: "this ALT view is too cluttered. Maybe add those lines as some averages on
+the group, and only show them on up to 5 soldiers that I'm directly looking at and are really close, making it work in tournaments too"):**
+- **The near view** (the default; `AltMarksEveryone` off): 3b's and 3c's bars only on the men you LOOK AT - the candidates (in front of the camera,
+  1.5 m to `AltNearMarksMetres` 15 m from the camera, their side switched on) ranked by the angle from the camera's forward (= nearest the screen's
+  centre), the first `AltNearMarksMax` (5) on the screen drawn (`FeverMarkMax` the ceiling); the rest are never projected. No distance fade. The
+  enemy switches as before. `AltMarksEveryone` on = 3c exactly.
+- **The group on the label**: under `ready 34/50`, `fever 12/40` - the formation's men in a fever of its men, the fever bar's orange, shown while at
+  least one surges (`ShowFeverOnLabels`), on every side the labels show.
+- **Tournaments, arenas, duels** (no formation markers): the view shows while the game's ALT key is held (the copied rule, step 20) - the near bars
+  on your opponent; men with no valid team (the arena's crowd) are never marked, in any view.
+
 Bars show in fights (battle, duel, tournament and stealth modes — step 6 added stealth:
 a stealth mission's fights cost Athletics too), with the player on the field, never while the
 game's "hide battle UI" or photo mode is on, and never while the master switch or Athletics is
@@ -1944,6 +1955,24 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     man running IN); (e) a running order / regroup sprint is handed over (`SprintEnd.Routed`) - the rest of his store goes into the get-away;
     (f) behind `SprintAiEnabled` (it is an AI sprint) as well as its own switch; never the player (his own key), never a rider (the sprint is on
     foot only); (g) no migration (a new key - a file without it gets the default).
+50. **The ALT view decluttered** (step 58, Anton 2026-10-18: "this ALT view is too cluttered. Maybe add those lines as some averages on the group,
+    and only show them on up to 5 soldiers that I'm directly looking at and are really close, making it work in tournaments too"; Claude's calls -
+    AI_NOTES "Step 58"): (a) "LOOKING AT" = the ANGLE between the combat camera's forward and the line to the bar's point (1 − cos as the pick's key):
+    it is the screen's centre at any resolution, aspect (Anton's 3440 × 1440) and field of view, it needs no projection before the pick (only the
+    picked are projected - ~5 a frame), and it follows RTS Camera's free camera; the screen distance from the crosshair would need every candidate
+    projected first; (b) "REALLY CLOSE" = `AltNearMarksMetres` 15 m from the CAMERA, not the player: the angle is measured from the camera, the view works
+    with you down / in the orders view / under a free camera, and the default third-person camera sits ~3 m behind you (15 m = the men in front of you
+    and the next rank); (c) a NEW key `AltNearMarksMax` (5) and `FeverMarkMax` KEPT - the every-man view's cap and the near view's ceiling
+    (min of the two), its default and meaning unchanged, so no migration; (d) the old view behind `AltMarksEveryone` (off) - a bool, the schema has no
+    choice type, and "on = the old view" reads plainly in MCM; (e) NO distance fade in the near view: vanilla's icon fade (0 at 1.5 m, full at 8 m)
+    would dim exactly the close opponent you look at; under 1.5 m still skipped; (f) the GROUP: the formation pass counts each formation's men in a
+    fever (`FormationAthleticsStats.InFever`) → `fever 12/40` under `ready 34/50`, the ready count's brush and size, the fever bar's orange, shown only
+    while someone surges (less noise; it sits last, so nothing jumps); the average Athletics ± spread line is unchanged ("72% ± 8" in the colour of
+    their f, the bar under it) - it already reads as the group's average; (g) TOURNAMENTS: there are no formation markers (no MissionFormationMarker
+    layer), so the view already copies vanilla's rule (the game's ShowIndicators key, ALT) - Anton's arena log showed it WORKING but marking 140
+    "enemy" men: the crowd. Men with no valid team (`Team.IsValid` false - MissionAgentHandler spawns neutral location characters with
+    `Team.Invalid`) are now never placed, so in an arena the near bars are the fighters' - your opponent nearest the centre first; teammates in a
+    team tournament compete for the same five slots (the enemy switches still apply); (h) no migration: new keys only.
 
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),

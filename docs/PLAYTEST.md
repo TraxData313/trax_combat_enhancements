@@ -1434,6 +1434,24 @@ started M (whole store avg … s), of them taking over a running order sprint �
 horse …, yours …` - `routs seen` should match the battle's routed men (riders show up under `on a horse`). **Broken - tell Claude**: `routs seen 0`
 in a battle with a rout (the callback not reached); routers never visibly faster (the speed check in `sprint speed check`).
 
+**D27. THE ALT VIEW DECLUTTERED (step 58, ~10 min - a field battle, then a tournament round).** Your point: "this ALT view is too cluttered.
+Maybe add those lines as some averages on the group, and only show them on up to 5 soldiers that I'm directly looking at and are really close,
+making it work in tournaments too". Defaults: *Bars on every man (the old view)* OFF, *Bars on the men you look at: how many* 5, *how close* 15 m,
+*Fever share under the formation markers* ON (MCM → *Hold ALT …*). **In a battle**: hold ALT after a charge order - under each marker, below
+`ready 34/40`, an orange `fever 12/40` while the men surge (gone when nobody does; the enemy's too); the per-man bars only on the **five men nearest
+the centre of the screen within 15 m** - swing the camera across a line and the five bars follow the centre; a man close but at the screen's edge
+gets none while five are nearer the centre; the bars do NOT fade when a man is close. *Bars on every man* ON = step 46's view back at once.
+**In a tournament / the arena / a duel**: hold ALT - your opponent's bars over his head (how tired, in a fever), the stands' crowd NONE.
+**Lines**: `[hud] ALT bars: first bars drawn at … - N men looked at (yours and allies …, enemy …) …; 5 men marked (the 5 nearest the screen's
+centre of M candidates within 15.0 m - AltNearMarksMax) …; skipped: …, beyond the near range …, beyond the cap …; … the first drawn: … , 2° off the
+centre | …; source: …; mode near: up to 5 men nearest the screen's centre …`; in the arena the first line's `enemy` should be the opponents only (was
+140 with the crowd - step 58 skips men with no valid team) and `not on the field` should count the crowd; the values line `… ready 34/40 (40 men,
+f 0.90) fever 12/40 | …, fever share on …`; **[summary]**: `hud: ALT bars - … cost … µs a frame …; mode (step 58): near N frames (men marked a frame:
+mean …, max 5 - up to 5 nearest the screen's centre within 15.0 m of the camera at the first), everyone 0 frames` and `hud: ALT markers - fever share
+(step 58): shown Nx, the most in a fever 30/40 (75%, …); hidden …`. **Broken - tell Claude**: the five bars not on the men in the middle of the
+screen (the angle is measured from the combat camera's forward - with RTS Camera's free camera too); the crowd still marked in the arena (`enemy`
+~140 again: the spectators have a valid team after all); no `fever 12/40` on a charging formation (the formation pass counts the men's fevers).
+
 ---
 
 ## E. Your Athletics bar, the orders-menu strip and the ALT markers (20 min)
