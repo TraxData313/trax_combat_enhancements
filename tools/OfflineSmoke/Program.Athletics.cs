@@ -1151,6 +1151,9 @@ namespace TraxCombat.Tools
             // --- step 49: courage - off = every timid man let go at once (its own logic), back on = looked at again
             CourageFollowsTheMasterSwitch();
 
+            // --- step 55: cavalry flocking - off = every flocking rider let go at once, back on = flocking again
+            FlockFollowsTheMasterSwitch();
+
             // --- the HUD (step 6): the Athletics bar goes the moment the switch goes, and comes back
             HudFollowsTheMasterSwitch(a.Agent);
         }
