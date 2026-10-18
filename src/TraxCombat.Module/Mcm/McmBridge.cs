@@ -55,29 +55,52 @@ namespace TraxCombat.Mcm
     /// (<see cref="UseModuleList"/>, from the load) says MCM's module is off - one line; after a "not
     /// ready" the tick retries once a second, at most <see cref="McmPlan.MaxRetries"/> times - then one
     /// line and silence. The mod runs on config.json in every one of these cases.
+    ///
+    /// TWO PAGES (step 59, Anton 2026-10-18: "leave a few options for me and the players"): MCM lists every registered
+    /// settings object by its id as its own entry in Mod Options (MCMv5 5.12.3: FluentGlobalSettingsContainer keeps them in a
+    /// dictionary by <c>Id</c>), so the mod registers two - the PLAYER page (<see cref="SettingsId"/>, the old id, named
+    /// "Trax Combat Enhancements": the 20 settings of <see cref="SettingsPage.Player"/>'s groups, then the Defaults group with
+    /// "Revert all to defaults") and the ADVANCED page (<see cref="AdvancedSettingsId"/>, "Trax Combat Enhancements - Advanced":
+    /// every other setting grouped by system, the Defaults group with both buttons just above Advanced, which stays last).
+    /// Each setting is on exactly one page; both pages share the one live settings object, config.json and the Done path;
+    /// each has its own "default" preset holding its own settings; a revert refreshes both.
     /// </summary>
     internal static class McmBridge
     {
+        /// <summary>The player page - MCM's entry "Trax Combat Enhancements" (the id the mod always had).</summary>
         public const string SettingsId = "TraxCombatEnhancements_v1";
-        public const string DisplayName = "Trax Combat Enhancements";
+        /// <summary>Step 59: the Advanced page - MCM's entry "Trax Combat Enhancements - Advanced".</summary>
+        public const string AdvancedSettingsId = "TraxCombatEnhancements_Advanced_v1";
+        public static readonly string DisplayName = SettingsSchema.PageTitle(SettingsPage.Player);
+        public static readonly string AdvancedDisplayName = SettingsSchema.PageTitle(SettingsPage.Advanced);
         private const string McmAssemblyName = "MCMv5";
         /// <summary>MCM's own id for the preset its Reset buttons apply (BaseSettings.DefaultPresetId).</summary>
         private const string DefaultPresetId = "default";
 
-        /// <summary>The buttons' group (not a schema group - no settings): after every settings group
-        /// but Advanced, which stays last (step 10b). MCM's group order is 2 × the schema's
-        /// <see cref="ParamGroup.Order"/>, the buttons one less than Advanced's.</summary>
+        /// <summary>The buttons' group (not a schema group - no settings). On the player page: last, "Revert all to
+        /// defaults" only. On the Advanced page: after every settings group but Advanced, which stays last (step 10b), both
+        /// buttons. MCM's group order is 2 × the schema's <see cref="ParamGroup.Order"/>; the buttons sit at an odd number.</summary>
         public const string DefaultsGroupTitle = "Defaults";
         public const string RevertButtonId = "TraxRevertAllToDefaults";
         public const string RevertButtonName = "Revert all to defaults";
         public const string ExportButtonId = "TraxSaveDefaultsFile";
         public const string ExportButtonName = "Save current values as a defaults file";
 
-        /// <summary>A settings group's place on the MCM page: 2 × its schema order, leaving a gap.</summary>
+        /// <summary>A settings group's place on its MCM page: 2 × its schema order, leaving a gap.</summary>
         public static int GroupOrder(ParamGroup group) => 2 * group.Order;
 
-        /// <summary>The Defaults buttons' place: just before Advanced (the last group).</summary>
-        public static int DefaultsGroupOrder => GroupOrder(SettingsSchema.AdvancedGroup) - 1;
+        /// <summary>The Defaults buttons' place on a page: the player page's after its last group; the Advanced page's just
+        /// before Advanced (the last group).</summary>
+        public static int DefaultsGroupOrder(SettingsPage page)
+        {
+            var groups = SettingsSchema.GroupsOn(page);
+            return page == SettingsPage.Player
+                ? GroupOrder(groups[groups.Count - 1]) + 1
+                : GroupOrder(SettingsSchema.AdvancedGroup) - 1;
+        }
+
+        /// <summary>Step 59: the export button is a tuning tool - on the Advanced page only.</summary>
+        public static bool HasExportButton(SettingsPage page) => page == SettingsPage.Advanced;
 
         /// <summary>What the page raises after a revert so MCM re-reads every value (anything but SAVE_TRIGGERED).</summary>
         private const string RefreshEvent = "TRAX_VALUES_RESET";
@@ -92,8 +115,11 @@ namespace TraxCombat.Mcm
         /// <summary>The enabled modules at load (null = not known - then the bridge just tries).</summary>
         private static IReadOnlyCollection<string>? _modules;
 
-        /// <summary>The built FluentGlobalSettings - deliberately typed object (see the class doc).</summary>
+        /// <summary>The built player page's FluentGlobalSettings - deliberately typed object (see the class doc).</summary>
         private static object? _settings;
+
+        /// <summary>Step 59: the built Advanced page - typed object too.</summary>
+        private static object? _advanced;
 
         public static bool IsRegistered => _settings != null;
 
@@ -130,11 +156,13 @@ namespace TraxCombat.Mcm
                 if (Build())
                 {
                     Stop();
-                    TraxLog.Info("mcm", "settings page registered at " + when + " (attempt " + _attempts + "): MCM "
-                        + Version(mcm) + ", page \"" + DisplayName + "\", " + SettingsSchema.All.Count
-                        + " settings in " + SettingsSchema.Groups.Count + " groups, format \"none\" (config.json is the only store), "
-                        + "Default preset = the mod's defaults (defaults.json); group \"" + DefaultsGroupTitle + "\": buttons \""
-                        + RevertButtonName + "\" and \"" + ExportButtonName + "\".");
+                    TraxLog.Info("mcm", "settings pages registered at " + when + " (attempt " + _attempts + "): MCM "
+                        + Version(mcm) + ", page \"" + DisplayName + "\" (" + SettingsSchema.OnPage(SettingsPage.Player).Count + " settings in "
+                        + SettingsSchema.GroupsOn(SettingsPage.Player).Count + " groups; group \"" + DefaultsGroupTitle + "\": \"" + RevertButtonName
+                        + "\") and page \"" + AdvancedDisplayName + "\" (" + SettingsSchema.OnPage(SettingsPage.Advanced).Count + " settings in "
+                        + SettingsSchema.GroupsOn(SettingsPage.Advanced).Count + " groups; group \"" + DefaultsGroupTitle + "\": \"" + RevertButtonName
+                        + "\" and \"" + ExportButtonName + "\") - " + SettingsSchema.All.Count + " settings in all, format \"none\" (config.json is "
+                        + "the only store), Default presets = the mod's defaults (defaults.json).");
                     return;
                 }
 
@@ -153,6 +181,7 @@ namespace TraxCombat.Mcm
             {
                 Stop();
                 _settings = null;
+                _advanced = null;
                 TraxLog.Error("mcm.register", e);
                 TraxLog.Info("mcm", "the settings page could not be built - the mod runs on config.json alone.");
             }
@@ -182,33 +211,53 @@ namespace TraxCombat.Mcm
             AppDomain.CurrentDomain.GetAssemblies()
                 .FirstOrDefault(a => string.Equals(a.GetName().Name, McmAssemblyName, StringComparison.OrdinalIgnoreCase));
 
-        /// <summary>The only method that NAMES MCM types (plus the fillers' bodies below). Never
-        /// inlined, called only after the MCM assembly is confirmed loaded - so the JIT never
-        /// resolves an MCM type on a machine without MCM.</summary>
+        /// <summary>Builds and registers both pages (step 59) - false while MCM's services are not up (nothing registered then).
+        /// Never inlined, called only after the MCM assembly is confirmed loaded - so the JIT never resolves an MCM type on a
+        /// machine without MCM.</summary>
         [MethodImpl(MethodImplOptions.NoInlining)]
         private static bool Build()
         {
-            var builder = MCM.Abstractions.FluentBuilder.BaseSettingsBuilder.Create(SettingsId, DisplayName);
-            if (builder == null) return false; // MCM's services are not up yet - retry later
+            var player = BuildPage(SettingsPage.Player);
+            if (player == null) return false; // MCM's services are not up yet - retry later
+            var advanced = BuildPage(SettingsPage.Advanced);
+            if (advanced == null) return false;
+            Register(player);
+            Register(advanced);
+            _settings = player;
+            _advanced = advanced;
+            return true;
+        }
+
+        /// <summary>One page, built but not registered (null = MCM not ready). Returns the FluentGlobalSettings as
+        /// <c>object</c> - no MCM type in a signature. With <see cref="Register"/>, the only methods that NAME MCM types
+        /// (plus the fillers' bodies below).</summary>
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static object? BuildPage(SettingsPage page)
+        {
+            var builder = MCM.Abstractions.FluentBuilder.BaseSettingsBuilder.Create(
+                page == SettingsPage.Player ? SettingsId : AdvancedSettingsId,
+                page == SettingsPage.Player ? DisplayName : AdvancedDisplayName);
+            if (builder == null) return null;
 
             builder = builder
                 .SetFormat("none")
                 .SetFolderName(ModPaths.FolderName)
                 .SetOnPropertyChanged(OnSettingsPropertyChanged);
 
-            foreach (var group in SettingsSchema.Groups)
+            foreach (var group in SettingsSchema.GroupsOn(page))
                 builder = builder.CreateGroup(group.Title, (Action<object>)new GroupFiller(group).Fill);
-            builder = builder.CreateGroup(DefaultsGroupTitle, (Action<object>)new DefaultsButtons().Fill);
+            builder = builder.CreateGroup(DefaultsGroupTitle, (Action<object>)new DefaultsButtons(page).Fill);
 
             // Fills the EXISTING "default" preset (the name argument is ignored for it) before
             // BuildAsGlobal would fill it with the current values - first value per key wins.
-            builder = builder.CreatePreset(DefaultPresetId, "Default", (Action<object>)new PresetFiller().Fill);
+            builder = builder.CreatePreset(DefaultPresetId, "Default", (Action<object>)new PresetFiller(page).Fill);
 
-            var settings = builder.BuildAsGlobal();
-            settings.Register();
-            _settings = settings;
-            return true;
+            return builder.BuildAsGlobal();
         }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static void Register(object settings) =>
+            ((MCM.Abstractions.Base.Global.FluentGlobalSettings)settings).Register();
 
         /// <summary>MCM's notifications: "SAVE_TRIGGERED" after Done (write the file);
         /// "LOADING_COMPLETE" once at registration (nothing to do - format "none" loads nothing).</summary>
@@ -269,12 +318,14 @@ namespace TraxCombat.Mcm
         }
 
         /// <summary>Every SettingsPropertyVM re-reads its value when the settings object raises
-        /// PropertyChanged with any name but SAVE_TRIGGERED (MCM.UI 5.12.3).</summary>
+        /// PropertyChanged with any name but SAVE_TRIGGERED (MCM.UI 5.12.3). Both pages (step 59) - a revert changes both.</summary>
         [MethodImpl(MethodImplOptions.NoInlining)]
         private static void RefreshPage()
         {
             if (_settings is MCM.Abstractions.Base.BaseSettings settings)
                 settings.OnPropertyChanged(RefreshEvent);
+            if (_advanced is MCM.Abstractions.Base.BaseSettings advanced)
+                advanced.OnPropertyChanged(RefreshEvent);
         }
 
         private static void Notify(string text, bool failed)
@@ -290,18 +341,26 @@ namespace TraxCombat.Mcm
             }
         }
 
-        /// <summary>The "Defaults" group: the two buttons. Each value is a ProxyRef&lt;Action&gt; whose
-        /// getter hands MCM the click handler (instance methods - no MCM-typed lambdas).</summary>
+        /// <summary>The "Defaults" group: the buttons of one page (step 59: Revert on both, the export on the Advanced page only).
+        /// Each value is a ProxyRef&lt;Action&gt; whose getter hands MCM the click handler (instance methods - no MCM-typed lambdas).</summary>
         private sealed class DefaultsButtons
         {
+            private readonly SettingsPage _page;
+
+            public DefaultsButtons(SettingsPage page)
+            {
+                _page = page;
+            }
+
             public void Fill(object groupBuilder)
             {
                 var g = (MCM.Abstractions.FluentBuilder.ISettingsPropertyGroupBuilder)groupBuilder;
-                g.SetGroupOrder(DefaultsGroupOrder);
+                g.SetGroupOrder(DefaultsGroupOrder(_page));
                 g.AddButton(RevertButtonId, RevertButtonName, new MCM.Common.ProxyRef<Action>(RevertAction, null), "Revert",
                     (Action<object>)ConfigureRevert);
-                g.AddButton(ExportButtonId, ExportButtonName, new MCM.Common.ProxyRef<Action>(ExportAction, null), "Save",
-                    (Action<object>)ConfigureExport);
+                if (HasExportButton(_page))
+                    g.AddButton(ExportButtonId, ExportButtonName, new MCM.Common.ProxyRef<Action>(ExportAction, null), "Save",
+                        (Action<object>)ConfigureExport);
             }
 
             private Action RevertAction() => RevertPressed;
@@ -310,7 +369,8 @@ namespace TraxCombat.Mcm
 
             public void ConfigureRevert(object b) =>
                 ((MCM.Abstractions.FluentBuilder.Models.ISettingsPropertyButtonBuilder)b).SetOrder(0).SetRequireRestart(false).SetHintText(
-                    "Puts EVERY setting back to its default - the values in the mod's defaults.json - at once, even mid-battle, "
+                    "Puts EVERY setting - on this page and on the " + (_page == SettingsPage.Player ? "Advanced page" : "main page")
+                    + " - back to its default (the values in the mod's defaults.json) at once, even mid-battle, "
                     + "and rewrites config.json. Cancel does not undo it.");
 
             public void ConfigureExport(object b) =>
@@ -447,10 +507,18 @@ namespace TraxCombat.Mcm
         /// ProxyRef expects (MCM silently ignores a value of the wrong type).</summary>
         private sealed class PresetFiller
         {
+            private readonly SettingsPage _page;
+
+            public PresetFiller(SettingsPage page)
+            {
+                _page = page;
+            }
+
+            /// <summary>Only this page's settings (step 59) - MCM's Reset on a page resets that page.</summary>
             public void Fill(object presetBuilder)
             {
                 var b = (MCM.Abstractions.FluentBuilder.ISettingsPresetBuilder)presetBuilder;
-                foreach (var p in SettingsSchema.All)
+                foreach (var p in SettingsSchema.OnPage(_page))
                 {
                     object value = p.Type switch
                     {

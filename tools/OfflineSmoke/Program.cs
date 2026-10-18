@@ -202,12 +202,12 @@ namespace TraxCombat.Tools
             _allowMcm = true;
             Step("MCM's DLL loaded by another mod, MCM's module not enabled (step 12): one line, no page, no attempt, no retry", McmModuleNotEnabled);
             Step("MCM's module on but MCM never ready (step 12): no try before the main menu, the first + " + McmPlan.MaxRetries + " retries, then one line and silence", McmNeverReadyIsCapped);
-            Step("MCM present: the settings page builds through MCM's real fluent builder", McmPageBuilds);
-            Step("MCM page: every setting, right type, range, hint, group", McmPageMatchesSchema);
-            Step("MCM sliders write the live settings at once (hot swap)", McmSlidersAreLive);
-            Step("MCM Reset (the 'default' preset) restores the mod's defaults (defaults.json), not the values at build time", McmPresetRestoresDefaults);
+            Step("MCM present: both settings pages (the player page and Advanced - step 59) build through MCM's real fluent builder", McmPageBuilds);
+            Step("MCM pages: every setting on exactly one page, right type, range, hint, group; each page's group order and buttons", McmPageMatchesSchema);
+            Step("MCM sliders on both pages write the live settings at once (hot swap)", McmSlidersAreLive);
+            Step("MCM Reset (each page's 'default' preset) restores the mod's defaults (defaults.json) for that page's settings, not the values at build time", McmPresetRestoresDefaults);
             Step("MCM Done writes config.json", McmDoneWritesFile);
-            Step("MCM buttons: \"Save current values as a defaults file\" writes a clean defaults.json beside config.json; \"Revert all to defaults\" is live, logged, rewrites config.json, refreshes the page", McmButtons);
+            Step("MCM buttons: \"Save current values as a defaults file\" (Advanced) writes a clean defaults.json beside config.json; \"Revert all to defaults\" (the player page) is live, logged, rewrites config.json, refreshes both pages", McmButtons);
 
             // Step 11 - LAST (it claims the one-copy slot for good and runs a game start).
             Step("two copies enabled (dev + release): the second SubModule stands down - no log line, no model, no mission logic, no message; the running one registers ONE decorator of each kind and reports the other once ([compat] + one message)", TwoCopiesOneRuns);
@@ -613,22 +613,32 @@ namespace TraxCombat.Tools
             // Precondition for the Reset check: a non-default value is live while the page is
             // built (MCM would otherwise bake it into its "default" preset).
             Check(TraxSettings.Shared.DamageRandomPercent != (int)SettingsSchema.DamageRandomPercent.Default, "precondition: expected a non-default value before the build");
+            // Step 59: and one on the Advanced page, so its preset is checked the same way.
+            var kick = SettingsSchema.CostPerKickOrBash;
+            TraxSettings.Shared.Set(kick, kick.Default == 5 ? 6 : 5, "smoke");
             Assembly.LoadFrom(Path.Combine(_mcmBin, "MCMv5.dll"));
             McmHarness.InstallServices();
             ResetMcmBridge(null); // phase 1 and the step-12 checks stood it down; the module list unknown = just try
             McmBridge.TryRegister("smoke with MCM");
             Check(McmBridge.IsRegistered, "page not registered with MCM present");
-            LogHas("[mcm] settings page registered at smoke with MCM (attempt 1): MCM 5.");
+            Check(GetStatic(typeof(McmBridge), "_advanced") != null, "the Advanced page was not built");
+            LogHas("[mcm] settings pages registered at smoke with MCM (attempt 1): MCM 5.");
+            LogHas("page \"Trax Combat Enhancements\" (" + SettingsSchema.PlayerPage.Count + " settings in 7 groups; group \"Defaults\": \"Revert all to defaults\") "
+                + "and page \"Trax Combat Enhancements - Advanced\" (" + SettingsSchema.OnPage(SettingsPage.Advanced).Count + " settings in 16 groups");
         }
 
-        private static void McmPageMatchesSchema() => McmHarness.PageMatchesSchema(GetStatic(typeof(McmBridge), "_settings")!);
+        private static object PlayerPage => GetStatic(typeof(McmBridge), "_settings")!;
 
-        private static void McmSlidersAreLive() => McmHarness.SlidersAreLive(GetStatic(typeof(McmBridge), "_settings")!, LogHas);
+        private static object AdvancedPage => GetStatic(typeof(McmBridge), "_advanced")!;
 
-        private static void McmPresetRestoresDefaults() => McmHarness.PresetRestoresDefaults(GetStatic(typeof(McmBridge), "_settings")!);
+        private static void McmPageMatchesSchema() => McmHarness.PagesMatchSchema(PlayerPage, AdvancedPage);
+
+        private static void McmSlidersAreLive() => McmHarness.SlidersAreLive(PlayerPage, AdvancedPage, LogHas);
+
+        private static void McmPresetRestoresDefaults() => McmHarness.PresetRestoresDefaults(PlayerPage, AdvancedPage);
 
         private static void McmButtons() =>
-            McmHarness.Buttons(GetStatic(typeof(McmBridge), "_settings")!, ConfigPath, _dir, LogHas);
+            McmHarness.Buttons(PlayerPage, AdvancedPage, ConfigPath, _dir, LogHas);
 
         private static void McmDoneWritesFile()
         {
@@ -650,37 +660,80 @@ namespace TraxCombat.Tools
                     .SetValue(null, new MiniProvider());
             }
 
+            /// <summary>Step 59: both pages - ids and names, every setting on exactly one page (its own), each page's group order and
+            /// buttons; then every setting checked on its page.</summary>
             [MethodImpl(MethodImplOptions.NoInlining)]
-            public static void PageMatchesSchema(object settingsObject)
+            public static void PagesMatchSchema(object playerObject, object advancedObject)
             {
-                var settings = (MCM.Abstractions.Base.BaseSettings)settingsObject;
-                Check(settings.Id == McmBridge.SettingsId, "settings id " + settings.Id);
-                Check(settings.FormatType == "none", "format is " + settings.FormatType + ", not none");
+                var player = (MCM.Abstractions.Base.BaseSettings)playerObject;
+                var advanced = (MCM.Abstractions.Base.BaseSettings)advancedObject;
+                Check(player.Id == McmBridge.SettingsId && player.DisplayName == "Trax Combat Enhancements", "the player page is " + player.Id + " / " + player.DisplayName);
+                Check(advanced.Id == McmBridge.AdvancedSettingsId && advanced.DisplayName == "Trax Combat Enhancements - Advanced",
+                    "the Advanced page is " + advanced.Id + " / " + advanced.DisplayName);
+                int total = 0;
+                foreach (var (settings, page) in new[] { (player, SettingsPage.Player), (advanced, SettingsPage.Advanced) })
+                {
+                    total += PageMatchesSchema(settings, page);
+                    // a setting of the OTHER page never shows here
+                    var ids = new HashSet<string>(MCM.Abstractions.BaseSettingsExtensions.GetAllSettingPropertyDefinitions(settings).Select(d => d.Id));
+                    foreach (var p in SettingsSchema.All)
+                        if (p.Group.Page != page) Check(!ids.Contains(p.Key), p.Key + " is on the " + page + " page too");
+                }
+                Check(total == SettingsSchema.All.Count, "the two pages hold " + total + " settings, the schema " + SettingsSchema.All.Count);
+                // The player page is short (Anton: "a few options for me and the players").
+                Check(SettingsSchema.PlayerPage.Count >= 12 && SettingsSchema.PlayerPage.Count <= 20, "the player page has " + SettingsSchema.PlayerPage.Count + " settings");
+            }
+
+            /// <summary>One page: returns how many settings it holds.</summary>
+            [MethodImpl(MethodImplOptions.NoInlining)]
+            private static int PageMatchesSchema(MCM.Abstractions.Base.BaseSettings settings, SettingsPage page)
+            {
+                Check(settings.FormatType == "none", page + ": format is " + settings.FormatType + ", not none");
                 var all = MCM.Abstractions.BaseSettingsExtensions.GetAllSettingPropertyDefinitions(settings).ToList();
                 var defs = all.Where(d => d.SettingType != MCM.Abstractions.SettingType.Button).ToList();
-                Check(defs.Count == SettingsSchema.All.Count, "MCM page has " + defs.Count + " settings, schema " + SettingsSchema.All.Count);
-                // DESIGN 2c: the "Defaults" group with its two buttons, after every settings group.
+                var mine = SettingsSchema.OnPage(page);
+                Check(defs.Count == mine.Count, page + " page has " + defs.Count + " settings, the schema " + mine.Count);
+                // DESIGN 2c: the "Defaults" group - step 59: "Revert all to defaults" on both pages, the export on Advanced only.
                 var buttons = all.Where(d => d.SettingType == MCM.Abstractions.SettingType.Button).ToList();
-                Check(buttons.Count == 2, "MCM page has " + buttons.Count + " buttons, expected 2");
+                int expectedButtons = McmBridge.HasExportButton(page) ? 2 : 1;
+                Check(buttons.Count == expectedButtons, page + " page has " + buttons.Count + " buttons, expected " + expectedButtons);
                 var revert = buttons.FirstOrDefault(b => b.Id == McmBridge.RevertButtonId);
                 var export = buttons.FirstOrDefault(b => b.Id == McmBridge.ExportButtonId);
                 Check(revert != null && revert.DisplayName == McmBridge.RevertButtonName && revert.Content == "Revert"
-                    && revert.GroupName == McmBridge.DefaultsGroupTitle && revert.HintText.Contains("defaults.json"), "the revert button is missing or wrong");
-                Check(export != null && export.DisplayName == McmBridge.ExportButtonName && export.Content == "Save"
-                    && export.GroupName == McmBridge.DefaultsGroupTitle && export.HintText.Contains("defaults.json"), "the export button is missing or wrong");
-                Check(buttons.All(b => b.PropertyReference.Value is Action), "a button does not hand MCM an Action to invoke");
+                    && revert.GroupName == McmBridge.DefaultsGroupTitle && revert.HintText.Contains("defaults.json")
+                    && revert.HintText.Contains(page == SettingsPage.Player ? "Advanced page" : "main page"), page + ": the revert button is missing or wrong");
+                if (McmBridge.HasExportButton(page))
+                    Check(export != null && export.DisplayName == McmBridge.ExportButtonName && export.Content == "Save"
+                        && export.GroupName == McmBridge.DefaultsGroupTitle && export.HintText.Contains("defaults.json"), "the export button is missing or wrong");
+                else
+                    Check(export == null, "the export button is on the " + page + " page");
+                Check(buttons.All(b => b.PropertyReference.Value is Action), page + ": a button does not hand MCM an Action to invoke");
                 // Step 10b: the page's group order. MCM's UI (Bannerlord.MBOptionScreen for 1.4.8,
-                // UISettingsUtils.SettingsPropertyGroupVMComparer) shows groups by Order ASCENDING:
-                // Master switch first, the schema's order, the Defaults buttons, Advanced last.
+                // UISettingsUtils.SettingsPropertyGroupVMComparer) shows groups by Order ASCENDING. Step 59: the player page -
+                // Master switch first, its six groups, Defaults last; the Advanced page - the schema's order, the Defaults buttons,
+                // Advanced last.
                 var groupOrder = MCM.Abstractions.BaseSettingsExtensions.GetSettingPropertyGroups(settings)
                     .OrderBy(g => g.Order).Select(g => g.GroupName).ToList();
-                var expectedGroups = SettingsSchema.Groups.Select(g => g.Title).ToList();
-                expectedGroups.Insert(expectedGroups.Count - 1, McmBridge.DefaultsGroupTitle);
-                Check(groupOrder.SequenceEqual(expectedGroups), "MCM group order is " + string.Join(", ", groupOrder) + " - expected " + string.Join(", ", expectedGroups));
-                foreach (var p in SettingsSchema.All)
+                var expectedGroups = SettingsSchema.GroupsOn(page).Select(g => g.Title).ToList();
+                if (page == SettingsPage.Player) expectedGroups.Add(McmBridge.DefaultsGroupTitle);
+                else expectedGroups.Insert(expectedGroups.Count - 1, McmBridge.DefaultsGroupTitle);
+                Check(groupOrder.SequenceEqual(expectedGroups), page + ": MCM group order is " + string.Join(", ", groupOrder) + " - expected " + string.Join(", ", expectedGroups));
+                if (page == SettingsPage.Player)
+                    Check(groupOrder[0] == SettingsSchema.MasterGroup.Title, "the player page does not start with the master switch");
+                else
+                    Check(groupOrder[groupOrder.Count - 1] == SettingsSchema.AdvancedGroup.Title, "Advanced is not last on the Advanced page");
+                // the settings inside each group in schema order (MCM sorts a group's properties by their Order)
+                foreach (var g in MCM.Abstractions.BaseSettingsExtensions.GetSettingPropertyGroups(settings))
+                {
+                    var schemaGroup = SettingsSchema.GroupsOn(page).FirstOrDefault(x => x.Title == g.GroupName);
+                    if (schemaGroup == null) continue; // the Defaults buttons
+                    var shown = g.SettingProperties.OrderBy(sp => sp.Order).Select(sp => sp.Id).ToList();
+                    Check(shown.SequenceEqual(SettingsSchema.InGroup(schemaGroup).Select(p => p.Key)), page + ": group " + g.GroupName + " is out of order: " + string.Join(", ", shown));
+                }
+                foreach (var p in mine)
                 {
                     var d = defs.FirstOrDefault(x => x.Id == p.Key);
-                    if (d == null) { Failures.Add("MCM page lacks " + p.Key); continue; }
+                    if (d == null) { Failures.Add("MCM " + page + " page lacks " + p.Key); continue; }
                     var expected = p.Type switch
                     {
                         ParamType.Bool => MCM.Abstractions.SettingType.Bool,
@@ -703,13 +756,23 @@ namespace TraxCombat.Tools
                     if (p.Type != ParamType.Bool)
                         Check((double)d.MinValue == p.Min && (double)d.MaxValue == p.Max, p.Key + ": range " + d.MinValue + ".." + d.MaxValue);
                 }
+                return defs.Count;
             }
 
             [MethodImpl(MethodImplOptions.NoInlining)]
-            public static void SlidersAreLive(object settingsObject, Action<string> logHas)
+            public static void SlidersAreLive(object settingsObject, object advancedObject, Action<string> logHas)
             {
                 var settings = (MCM.Abstractions.Base.BaseSettings)settingsObject;
                 var defs = MCM.Abstractions.BaseSettingsExtensions.GetAllSettingPropertyDefinitions(settings).ToDictionary(d => d.Id);
+
+                // Step 59: a slider on the Advanced page reaches the same live settings.
+                var advanced = MCM.Abstractions.BaseSettingsExtensions.GetAllSettingPropertyDefinitions((MCM.Abstractions.Base.BaseSettings)advancedObject).ToDictionary(d => d.Id);
+                float oldParry = TraxSettings.Shared.CostPerWeaponParry;
+                float parry = Math.Abs(oldParry - 4f) < 1e-6 ? 3f : 4f;
+                advanced["CostPerWeaponParry"].PropertyReference.Value = parry;
+                Check(Math.Abs(TraxSettings.Shared.CostPerWeaponParry - parry) < 1e-6, "an Advanced-page slider did not reach the live settings");
+                logHas("[config] CostPerWeaponParry: ");
+                advanced["CostPerWeaponParry"].PropertyReference.Value = oldParry;
 
                 int oldPercent = TraxSettings.Shared.DamageRandomPercent;
                 int slid = oldPercent == 40 ? 45 : 40;
@@ -737,16 +800,27 @@ namespace TraxCombat.Tools
             }
 
             [MethodImpl(MethodImplOptions.NoInlining)]
-            public static void PresetRestoresDefaults(object settingsObject)
+            public static void PresetRestoresDefaults(object playerObject, object advancedObject)
             {
-                var settings = (MCM.Abstractions.Base.BaseSettings)settingsObject;
-                var presets = settings.GetBuiltInPresets().ToList();
-                // MCM.UI's Reset = ChangePreset("default"): the preset with that id, applied onto the page.
-                var reset = presets.SingleOrDefault(p => p.Id == "default");
-                if (reset == null) { Failures.Add("no \"default\" preset - MCM's Reset buttons would do nothing"); return; }
-                MCM.Abstractions.SettingsUtils.OverrideValues(settings, reset.LoadPreset());
+                // Step 59: each page's Reset resets that page's settings - the player page first: its own back to the defaults,
+                // the Advanced page's non-default value (McmPageBuilds) untouched until the Advanced page's own Reset.
+                var kick = SettingsSchema.CostPerKickOrBash;
+                Check(Math.Abs(TraxSettings.Shared.Get(kick) - kick.Default) > 1e-6, "precondition: an Advanced setting off its default");
+                foreach (var (settingsObject, page) in new[] { (playerObject, SettingsPage.Player), (advancedObject, SettingsPage.Advanced) })
+                {
+                    var settings = (MCM.Abstractions.Base.BaseSettings)settingsObject;
+                    var presets = settings.GetBuiltInPresets().ToList();
+                    // MCM.UI's Reset = ChangePreset("default"): the preset with that id, applied onto the page.
+                    var reset = presets.SingleOrDefault(p => p.Id == "default");
+                    if (reset == null) { Failures.Add(page + ": no \"default\" preset - MCM's Reset buttons would do nothing"); return; }
+                    MCM.Abstractions.SettingsUtils.OverrideValues(settings, reset.LoadPreset());
+                    foreach (var p in SettingsSchema.OnPage(page))
+                        Check(Math.Abs(TraxSettings.Shared.Get(p) - p.Default) < 1e-6, page + " preset left " + p.Key + " at " + p.Format(TraxSettings.Shared.Get(p)));
+                    if (page == SettingsPage.Player)
+                        Check(Math.Abs(TraxSettings.Shared.Get(kick) - kick.Default) > 1e-6, "the player page's Reset reset an Advanced setting");
+                }
                 foreach (var p in SettingsSchema.All)
-                    Check(Math.Abs(TraxSettings.Shared.Get(p) - p.Default) < 1e-6, "preset left " + p.Key + " at " + p.Format(TraxSettings.Shared.Get(p)));
+                    Check(Math.Abs(TraxSettings.Shared.Get(p) - p.Default) < 1e-6, "the presets left " + p.Key + " at " + p.Format(TraxSettings.Shared.Get(p)));
             }
 
             /// <summary>Clicks a button the way MCM.UI does (SettingsPropertyVM.OnValueClick).</summary>
@@ -758,19 +832,22 @@ namespace TraxCombat.Tools
             }
 
             [MethodImpl(MethodImplOptions.NoInlining)]
-            public static void Buttons(object settingsObject, string configPath, string dir, Action<string> logHas)
+            public static void Buttons(object settingsObject, object advancedObject, string configPath, string dir, Action<string> logHas)
             {
                 var settings = (MCM.Abstractions.Base.BaseSettings)settingsObject;
+                var advanced = (MCM.Abstractions.Base.BaseSettings)advancedObject;
                 var defs = MCM.Abstractions.BaseSettingsExtensions.GetAllSettingPropertyDefinitions(settings).ToDictionary(d => d.Id);
+                var advancedDefs = MCM.Abstractions.BaseSettingsExtensions.GetAllSettingPropertyDefinitions(advanced).ToDictionary(d => d.Id);
                 var s = TraxSettings.Shared;
 
-                // A tuning found in game: two sliders moved away from the defaults.
+                // A tuning found in game: two sliders on the player page moved away from the defaults, one on the Advanced page.
                 int pct = (int)SettingsSchema.DamageRandomPercent.Default == 35 ? 45 : 35;
                 defs["DamageRandomPercent"].PropertyReference.Value = pct;
                 defs["ShowPlayerBar"].PropertyReference.Value = SettingsSchema.ShowPlayerBar.Default == 0;
+                advancedDefs["DamageRandomOnShields"].PropertyReference.Value = SettingsSchema.DamageRandomOnShields.Default == 0;
 
-                // --- Save current values as a defaults file
-                Click(settings, McmBridge.ExportButtonId);
+                // --- Save current values as a defaults file (the Advanced page's tuning tool - step 59)
+                Click(advanced, McmBridge.ExportButtonId);
                 string exported = Path.Combine(dir, DefaultsFile.FileName);
                 Check(File.Exists(exported), "no defaults.json beside config.json after the export");
                 var check = DefaultsFile.Check(File.Exists(exported) ? File.ReadAllText(exported, Encoding.UTF8) : string.Empty);
@@ -786,11 +863,17 @@ namespace TraxCombat.Tools
                 var disk = ConfigFile.Read(File.ReadAllText(configPath, Encoding.UTF8));
                 double hero = SettingsSchema.HeroCostMultiplier.Default == 0.5 ? 0.6 : 0.5;
                 File.WriteAllText(configPath, ConfigFile.Write(new Dictionary<string, double>(disk.Values) { ["HeroCostMultiplier"] = hero }), Encoding.UTF8);
-                bool refreshed = false;
+                bool refreshed = false, advancedRefreshed = false;
                 System.ComponentModel.PropertyChangedEventHandler onChanged = (o, e) => { if (e.PropertyName != "SAVE_TRIGGERED") refreshed = true; };
+                System.ComponentModel.PropertyChangedEventHandler onAdvanced = (o, e) => { if (e.PropertyName != "SAVE_TRIGGERED") advancedRefreshed = true; };
                 settings.PropertyChanged += onChanged;
-                Click(settings, McmBridge.RevertButtonId);
+                advanced.PropertyChanged += onAdvanced;
+                Click(settings, McmBridge.RevertButtonId); // the player page's button reverts BOTH pages
                 settings.PropertyChanged -= onChanged;
+                advanced.PropertyChanged -= onAdvanced;
+                Check(advancedRefreshed, "the Advanced page was not told to re-read its values after the revert");
+                Check(Convert.ToBoolean(advancedDefs["DamageRandomOnShields"].PropertyReference.Value) == (SettingsSchema.DamageRandomOnShields.Default != 0),
+                    "the Advanced page reads a stale value after the player page's revert");
 
                 foreach (var p in SettingsSchema.All)
                     Check(Math.Abs(s.Get(p) - p.Default) < 1e-9, "revert left " + p.Key + " at " + p.Format(s.Get(p)));
@@ -804,7 +887,7 @@ namespace TraxCombat.Tools
                 logHas("[config] wrote config.json (reverted to defaults): every value as it is in effect now");
                 logHas("[config] reverted all " + SettingsSchema.All.Count + " settings to their defaults (defaults.json (embedded in TraxCombat.Core.dll)): ");
 
-                Click(settings, McmBridge.RevertButtonId); // nothing left to change
+                Click(advanced, McmBridge.RevertButtonId); // the Advanced page's own button: nothing left to change
                 logHas("settings to their defaults (defaults.json (embedded in TraxCombat.Core.dll)): 0 changed, applied live");
             }
 
