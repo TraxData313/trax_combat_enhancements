@@ -1014,6 +1014,7 @@ Claude the `[summary] impact …` block of every battle.
 | 4 | **D21 step 4 - the SHOCK CHARGE** (a fresh two-hander unit into the flank of a tired line, then into a fresh reserve, then once with Momentum OFF) | 15 | `impact momentum` - `sprinting` vs `standing`, most of all `on men below half a bar` | sprinting far above standing on tired men; the fresh reserve barely moves | `sprinting 0` although they clearly sprinted (the speed read is wrong) |
 | 5 | **D22 - the CAVALRY CHARGE and riders** (a fresh cavalry unit into a tired line; your own horse; a rider you fight on foot) | 15 | `impact riders …`, `impact riders' shields and limits`, the momentum line's `RIDERS` part, `impact messages` | `SEEN off the horse` ≈ APPLIED; riders never stagger; galloping above standing | `still mounted` ≈ applied (the engine ignores our dismount - tell Claude) |
 | 6 | **D23 - the AI PUNISHES a window** (a 50 v 50 shield battle ground to orange / red, a few minutes of it with *The AI punishes a staggered or downed man* OFF, then ON again; let a tired enemy break YOUR guard) | 10 | `impact punish windows`, `impact punish proof` (ON vs OFF), `impact punish men` | ON: `target reeling / down` well above `target not`, and above the OFF row's; a good share of windows `PUNISHED`; you get hit while you reel | ON = OFF (the native AI ignores the raised eagerness in that moment - tell Claude: the fallback is a direct attack wish through the input hook) |
+| 7 | **D24 - CAVALRY FLOCKING** (step 55 - only once the step-55 build is installed): mixed cavalry on both sides into an infantry fight; watch them tire, wheel off and come back in groups; *Cavalry flocking* OFF for 2-3 min, then ON | 15 | `cavalry flocking`, `cavalry flips`, `cavalry time between passes`, `cavalry lone passes`, `cavalry lever` | fresh: the game's dance; later small waves of 3-5, late big waves; lone passes ON well below OFF; the time between passes ON growing with tiredness | tired riders keep charging alone with `points sent` high (the engine ignores the scripted point on a charging rider - tell Claude) or many `gave up` (riders never rest enough to lead) |
 
 Then play normally (parts E-G). Your gut on each family - too many / about right / too few - is the most useful thing to send.
 
@@ -1360,6 +1361,41 @@ in within* 3 m).
 **Broken — tell Claude** (D23): ON = OFF in the proof line (the native AI does not react to the raised eagerness within a short window - the
 fallback is a direct attack wish through step 16's input hook); `seen 0` with windows opened (the target read finds nobody - the AI's
 target is not the man it fights); `target reads` far above `looks` / 4 (a cost leak); `[error] fever.poll` lines.
+
+**D24. CAVALRY FLOCKING - tired riders gather with their own kind and go in as waves (step 55, ~15 min; built 2026-10-18, installed after
+the 46-54 test run).** Your point: "when they tire they won't still go in to charge one by one ... like a flock of birds ... the flock FLIPS from
+flocking up to going after its target as a flock". Defaults (MCM → *Cavalry flocking (AI)*): *Cavalry flocking* ON, a rider charges alone at
+**75%** eagerness (his bar) or more; below it he wants a group of his kind: 3 at ~57%, **4 at 40%**, about 9 of a 20-rider kind at 20%, **65%** of
+his kind when empty; a flock goes in when it has the size its riders' average wants AND its most rested rider is at least half as eager as a free
+one; the wave charges for 10 s; a flocker gives up after 45 s.
+1. **A custom battle with MIXED cavalry on both sides** (horse archers, javelin riders and lancers - e.g. Khuzait or Aserai vs Vlandia, ~60
+   riders a side + infantry): charge your cavalry (F1 + F3) into the enemy (or let the AI charge). The first passes are the game's - every rider
+   on his own. Hold ALT now and then (the Athletics bars above the riders).
+2. **As they tire** (bars yellow / orange): riders wheel off and ride TOGETHER - lancers with lancers, horse archers with horse archers - a group
+   that keeps moving (not a blob standing still), drifting back toward the unit, then bending toward the enemy and going in as **a group of 3-5**.
+   Late in the battle, with everyone orange / red, bigger groups and longer gaps between charges.
+3. **Switch it OFF** (Escape → MCM → *Cavalry flocking*) for 2-3 min - the game's trickle of single riders again - then ON. The summary compares.
+4. **Your own held cavalry** (F1 + F1 hold / F2 move): untouched - they keep their slots. You on a horse: never flocked.
+- **The lines**: `[cavalry] mission start: cavalry flocking: every AI rider under a CHARGE order …; lever: Agent.SetScriptedPosition …`; `[cavalry]
+  first rider flocking this battle: <him> (melee riders) at … s - tired: eagerness 62% (bar 62%) below the free line 75%; his flock has N riders of
+  his kind; slot N`; `[cavalry] first FLIP this battle at … s: 4 melee riders go in together - 4 flocking within 25 m, their mean eagerness 55%
+  wants 3; the leader's eagerness 64% (ready 85%), the goal's share of the pull 70%; a wave for 10.0 s`; `[cavalry] CavalryFlockEnabled switched
+  OFF mid-mission at … s: N flocking riders let go at once`.
+- **The [summary] lines** (send them): `cavalry flocking: N AI riders seen (melee riders a, horse archers b, skirmishers c) … rider time ON: FREE x%,
+  FLOCKING y%, IN A WAVE z%; flocks started … ended: the wave (flipped) …, rested (free again) …, gave up …`; `cavalry flips (a flock released at
+  once toward its goal - a wave): N (… a minute) of M riders, max …; wave size by the flock's mean eagerness: <25% … riders, 25-50% …, 50-75% …,
+  75%+ …; the leader's eagerness mean …`; `cavalry time between passes per rider …: ON <25% … s, 25-50% … s, … ; OFF …`; `cavalry lone passes (a
+  pass with fewer than 3 of his kind within 30 m): ON a of b (x%) … OFF …`; `cavalry spread …`; `cavalry lever: Agent.SetScriptedPosition … - points
+  sent N (… re-sent as the flock moved), refused (no ground there) N, released N, errors N; … cost … ms a census`.
+- **What to read first**: (a) LONE PASSES ON well below OFF - the proof against "one by one"; (b) the wave sizes growing toward the tired bands
+  (small fresh, big tired); (c) the time between passes ON growing as the bands fall; (d) `gave up` a small share of the ends (else the riders
+  never rest enough for a leader - tell Claude, the leader threshold becomes a setting); (e) `points sent` ≈ flocks started × a few and
+  `errors 0`.
+- **Your gut**: does it LOOK like a flock (moving together, not stacked, not standing)? Do the waves feel like real cavalry charges? Too much
+  hanging back (lower *Riders charge alone above*, e.g. to 60, or *Group size: half-tired wants* to 3) or still too much trickling (raise them)?
+**Broken — tell Claude** (D24): tired riders keep charging alone while `points sent` climbs (the engine does not follow a scripted point on a
+charging rider - the fallback is our own steering through the input hook); riders frozen or circling one spot (the point sent is unreachable -
+`refused (no ground there)`); a flock that never flips (`gave up` most of the ends); `[error] cavalry.*` lines.
 
 ---
 

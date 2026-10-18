@@ -1420,6 +1420,34 @@ behaviour against a `readonly` contract, hidden from every reader. Not worth it.
    `WeaponComponentData.IsTwoHanded` (123: melee + NotUsableWithOneHand) / `IsPolearm` (95: melee + WideGrip); `Agent.Health` (managed field)
    ÷ `HealthLimit`.
 
+## T. Cavalry flocking - riding an AI rider (step 55, verified in the v1.4.8 decompile `%TEMP%\trax_decomp\` 2026-10-18)
+
+1. **The lever: `Agent.SetScriptedPosition(ref WorldPosition, bool addHumanLikeDelay, AIScriptedFrameFlags)`** (Agent.cs 2426-2433; the native
+   `IMBAgent.SetScriptedPosition`, IMBAgent.cs 381). Vanilla rides MOUNTED AI agents with it: `SandBox.Tournaments.AgentControllers.TownHorseRaceAgentController`
+   53 / 70 / 83 (each checkpoint of an AI racer, flag 8 = NeverSlowDown) and `JoustingAgentController` 264 / 270 / 283 / 293 (the AI jouster's
+   corners; 310 with GoWithoutMount = 0x20 to make him dismount). The flags (Agent.cs 163-176): GoToPosition 1, NoAttack 2, ConsiderRotation 4,
+   NeverSlowDown 8, DoNotRun 0x10, GoWithoutMount 0x20. Release: `DisableScriptedMovement` (4284); vanilla's own "may I script him" gate:
+   `CanBeAssignedForScriptedMovement` (3208-3215: active, AI, not detached, not running away, no GoToPosition yet, no game object, no ladder queue).
+   Vanilla also clears it on a machine (3995) and after a timed frame (HumanAIComponent.cs 283-289).
+2. **Why not the input hook**: a rider's movement input (the player rides with the same input) is throttle and turn for the native rider - the
+   managed side never steers an AI horse by a world vector; a per-frame steering loop of our own would be the alternative (not built).
+3. **Why not the weights alone**: under a charge a rider has no formation frame - `HumanAIComponent.GetFormationFrame` (Charge state, 637-640:
+   the result = `formationPosition.IsValid`) with `MovementOrder.MovementState` (MovementOrder.cs 128-149: Charge / ChargeToTarget without a
+   position = `MovementStateEnum.Charge`; every other order = Hold, slotted) - GoToPos has nothing to go to. `AdjustSpeedLimit` (662) limits the
+   rider and his mount alike.
+4. **Vanilla's cavalry weights** (`SetBehaviorValueSet`, HumanAIComponent.cs 718-790): Default / Charge / DefaultDetached ChargeHorseback 2 at
+   0 m, 5 at 25 m, 5 at 30 m+ (a far enemy as attractive as a near one - the lone pass and turn); Charge RangedHorseback 0 / 3 at 10 m / 6 at 20 m;
+   DefaultMove ChargeHorseback 100 / 10 at 3 m / 0.1 at 15 m; DefensiveArrangementMove and Follow 0.
+5. **The formation's goal**: `MovementOrder.TargetFormation` (MovementOrder.cs 91; set for `ChargeToTarget`, 192), `Formation.TargetFormation`
+   (Formation.cs 230, `SetTargetFormation` 827), `Formation.CachedClosestEnemyFormation` (263; `CacheClosestEnemyFormation` 1361-1385 - the nearest
+   enemy formation by median position; `BehaviorCharge.CalculateCurrentOrder` 17-20 charges it). Team / formation indices: `Team.TeamIndex`
+   (Team.cs 108), `Formation.FormationIndex` (Formation.cs 102).
+6. **The kit**: `WeaponClass` (TaleWorlds.Core WeaponClass.cs: Arrow 17, Bolt 18, SlingStone 19, Bow 21, Crossbow 22, Sling 23, ThrowingAxe 26,
+   ThrowingKnife 27, Javelin 28); `MissionWeapon.Amount` (MissionWeapon.cs 114) - ammo / throws left.
+7. **RBM** (public source, read for the idea only): `RBMBehaviorCavalryCharge` - a formation behaviour: Charging → ChargingPast (a reform point
+   ~140 m beyond the target, 70 for an embolon) → Reforming (a Move order there until cohesive, ended early by a threat within 35 m) → recharge
+   (≥ 100 m run-up). Ours keeps vanilla's behaviour and acts per rider and per kind.
+
 ---
 
 ## UNVERIFIED — to check in the named step
@@ -1462,3 +1490,6 @@ behaviour against a `readonly` contract, hidden from every reader. Not worth it.
 | 34 | The engine honours a REGROUP input vector (step 16's backpedal through `OnAIInputSet`) for many seconds, the man keeps facing his target while he walks back, and he does not fight the formation's own pull back to its slot (§S; PLAYTEST D18: `courage regroup` arrived / among mates vs "gave up after 15 s") | 49 |
 | 35 | Tightened Melee / GoToPos weights stop a timid man hunting beyond ~2 m in a holding line; under a CHARGE order (no slot) GoToPos does not walk him INTO the enemy (§S1-3; PLAYTEST D18, `CourageTightenWeights` as the A/B) | 49 |
 | 36 | `OnAgentHit` fires for landed blows only (a blocked one does not shock) and every landed hit reaches it (§S; PLAYTEST D18: `caused by SHOCK` against the fight's size) | 49 |
+| 37 | `SetScriptedPosition` rides a CHARGING AI rider to the point and he keeps to it while his formation's charge runs (vanilla rides racers and jousters, not chargers); `DisableScriptedMovement` hands him back to the charge at once (§T1; PLAYTEST D24: `cavalry lever` points sent / released, tired riders wheel off together) | 55 |
+| 38 | The lowered ChargeHorseback / RangedHorseback weights keep a flocking rider from breaking off for a target while scripted (§T4; PLAYTEST D24, `CavalryFlockTightenWeights` as the A/B) | 55 |
+| 39 | `Formation.CachedClosestEnemyFormation` / the order's `TargetFormation` give a charging AI formation a sensible goal (§T5; PLAYTEST D24: `no goal read` small, flocks bending toward the enemy as they rest) | 55 |

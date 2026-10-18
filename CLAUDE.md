@@ -165,7 +165,17 @@ back when brave; shocked men want twice the mates and pack in. Step 49b: a man i
 first clash happens; shock beats fever), and a timid, unhit man among his mates SURGES in now and then (`CourageSurgeChancePercent` 5 × his
 bar a look, 4 s); the summary measures the STANDOFF. Never you, riders, walled men, a siege's attackers, no formation. Works
 without Athletics. The looks run ON and OFF: the `[courage]` summary compares isolated men and their distance from the formation's centre
-both ways (PLAYTEST D18). The bar for the
+both ways (PLAYTEST D18). CAVALRY FLOCKING (step 55, `CavalryFlockEnabled`, Anton 2026-10-18 + his refinement the same morning: "fresh and
+eager riders do the vanilla dance ... the more tired a rider gets, the more he goes to meet others of his own kind ... the flock FLIPS"): a
+census every 0.5 s of every AI rider whose formation is on a CHARGE (both sides, never you, never a busy rider; hold / move / follow / advance
+keep slots); his KIND read once (horse archer / skirmisher / melee) - each kind of each formation its own flock; his EAGERNESS = his bar (x0.5
+when courage's odds within 15 m say he is alone); at 75% or more he is FREE (vanilla); below it he FLOCKS: ridden by `Agent.SetScriptedPosition`
+(vanilla's own way of riding an AI horse - the horse race, the joust) to his GROUP's centre (the flocking riders of his kind within 25 m, a hash
+grid) led 2 s ahead along a heading the rested riders pull toward the formation's goal and the tired ones toward the unit's centre, in a fixed
+sunflower slot 3.5 m apart, his horseback weights lowered; the GROUP-SIZE CURVE wants 1 at 75%, 4 at 40%, 65% of his kind at 0; the group FLIPS
+when it has the size its MEAN eagerness wants and its leader (most eager) is half ready - all released at once, a WAVE (10 s of the game's charge),
+then each decides again; the [cavalry] summary: rider time free / flocking / in a wave, flips and wave size by eagerness, time between passes and
+LONE PASSES ON vs OFF (PLAYTEST D24). The bar for the
 fighter you look at is LATER (DESIGN §3; its settings wait in DESIGN's "Planned parameters"). Words:
 the pool/bar/points are "Athletics", the character-screen skill is "the Athletics skill" (it
 used to be called "endurance"), the "peak line" is the white mark at the top quarter of the bar,
@@ -262,7 +272,7 @@ die at any moment (tokens run out) and the next one loses nothing.
   file, capped at `LogMaxMegabytes` (8); a trim cuts ONLY the oldest verbose lines (marked `~`
   before the tag) and keeps every other line - summaries, first-time lines, settings, errors
   (step 10b, Core `LogTrim`). Timestamped lines tagged by area (`[config]`, `[mcm]`, `[mission]`,
-  `[damage]`, `[athletics]`, `[speed]`, `[rate]`, `[stepback]`, `[brace]`, `[guard]`, `[sprint]`, `[wall]`, `[fever]`, `[courage]`, `[impact]`, `[hud]`, `[error]`). Always logged: mod/game version
+  `[damage]`, `[athletics]`, `[speed]`, `[rate]`, `[stepback]`, `[brace]`, `[guard]`, `[sprint]`, `[wall]`, `[fever]`, `[courage]`, `[cavalry]`, `[impact]`, `[hud]`, `[error]`). Always logged: mod/game version
   at load, every parameter value on load and on change, each mission start/end (type,
   scene, agent counts), which behaviors/views attached, and every caught exception with its
   stack. Per-battle SUMMARY at mission end (damage rolls: count, min/avg/max factor;
@@ -304,9 +314,9 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               its Default comes from defaults.json (DefaultsFile), never code; step 33: ParamType.Key +
                               KeyNames (a key by NAME, stored as its index; FormatJson writes "LeftControl"; the
                               file / defaults.json read the name, MCM a text box)
-  SettingsSchema.cs           EVERY setting of DESIGN's table (254 - step 54's 4 punish settings after the on-screen lines; step 53's 3 rider-momentum + 3 on-screen-line settings after the momentum ones; step 52's 4 momentum settings after ImpactTiredNeverShrugsOff; step 47's ImpactSpike in Advanced, before VerboseLogging; step 48's 60 in
+  SettingsSchema.cs           EVERY setting of DESIGN's table (268 - step 55's 14 in "Cavalry flocking (AI)" after courage; step 54's 4 punish settings after the on-screen lines; step 53's 3 rider-momentum + 3 on-screen-line settings after the momentum ones; step 52's 4 momentum settings after ImpactTiredNeverShrugsOff; step 47's ImpactSpike in Advanced, before VerboseLogging; step 48's 60 in
                               "Impact: staggers, shield drops, knockdowns" - after the courage group, before Refill; step 49's 29 (49b's two surge settings) in "Courage and
-                              cohesion (AI)" - after the fever), in file + MCM order, 16 groups
+                              cohesion (AI)" - after the fever), in file + MCM order, 17 groups
                               ("Master switch" first, "Damage" second - step 25 renamed it from
                               "Damage randomness", "Battle pace (AI)" - step 21 - after the step back (step 41's
                               ShieldWallHoldsSlots and step 42's ShieldWallStepOutMetres at its end),
@@ -711,6 +721,16 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
   CourageStats.cs             step 49 per-mission: isolated / in-contact man-seconds ON vs OFF, the distance histogram (mean, p90), odds bands in contact and
                               out of the formation, skips, ends, walks' ends + time to regroup, sprints + refusals, shock vs odds, flock vs centre, panic,
                               compression (a walk's distance start → end by shock), toughness, weights, cost + the 10 [summary] "courage" lines
+  CavalryFlock.cs             step 55 pure (AI_NOTES "Step 55", RESEARCH §T): RiderKind, FlockSkip, RiderFlockState (free / flocking / wave), FlockReason,
+                              FlockEnd, FlockRules (live; ModEnabled FIRST, CavalryFlockEnabled; TimidOn = its switch && CourageEnabled; Describe),
+                              FlockMath (KindOf, Key = team x formation x kind, Eagerness, IsFree + hysteresis, Readiness, GroupNeeded - THE CURVE, Heading
+                              - THE BLEND, Unit, GoalVote, Flips, SlotOffset - the sunflower, SteerPoint, Reissue, Velocity, LonePass, EagerBand; plumbing
+                              CensusSeconds 0.5, TimidEagerFactor 0.5, LeaderReadyShare 0.5, MinFlockSeconds 3, MinLeadSpeed 4, the weight curves ...),
+                              RiderFlock (one rider: kind, key, state, slot, wave, census position / velocity, the point sent, passes), FlockTable (per
+                              flock: riders, centre, the goal / centre of mass read once a census, slots), FlockGrid ("who is with me" - a hash grid)
+  CavalryFlockStats.cs        step 55 per-mission: riders by kind, rider time FREE / FLOCKING / WAVE, starts / ends, flips + wave size by mean eagerness +
+                              the leader's, time between passes by eagerness ON / OFF, lone passes ON / OFF, spread, the lever, cost + the 7 [summary]
+                              "cavalry" lines
   SpreadStats.cs              MeanStd (Welford, population std), FormationAthleticsStats (squad
                               mean ± std, band, mean f, at full strength, mean health - step 9; step 23:
                               Bracing / Ready / Total - the next step's "ready men"),
@@ -992,6 +1012,16 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               the panic reserve), SteerWalkers (arrived on the way, the edge, the vector into AiInputState.Regroup*), the weights (re-applied
                               every look, the game's back), EndTimid on every path, CourageLeftField, CourageHitTaken (OnAgentHit - the shock window),
                               CloseCourage, WriteCourageSummary
+  Missions/FlockBody.cs       step 55: IFlockBody (the smoke plays it) + GameFlockBody (MissionAllows, the gate - AI, formation, busy, a CHARGE order;
+                              ReadKind - bow / crossbow / sling with ammo, throwing weapons; Key - TeamIndex / FormationIndex; the goal - the order's
+                              TargetFormation, Formation.TargetFormation, CachedClosestEnemyFormation; CanStart = CanBeAssignedForScriptedMovement; MoveTo =
+                              Agent.SetScriptedPosition (no navmesh = false); Release = DisableScriptedMovement while GoToPosition is on; Tighten / Restore
+                              the horseback weights), FlockBodyDefault
+  Missions/AthleticsLogic.Flock.cs  step 55: StartFlock / NoteFlockSettings (the [cavalry] lines), TickFlock (switched off → EndAllFlocking; the census every
+                              0.5 s ON and OFF), Census (pass 1: riders, kinds, flocks, the spread; pass 2: DecideRider - the timid look, eagerness, free /
+                              flock / rested / gave up, BeginFlocking; pass 3: the grid, GroupLook - the group, the heading, the curve, Flip or Issue), the
+                              weights, EndFlocking on every path, FlockLeftField, NoteFlockAttack (StartRelease / OnAgentShootMissile: passes, lone, the gap),
+                              CloseFlock, WriteFlockSummary; TrackedAgent.Flock (Core RiderFlock)
   Missions/AthleticsLogic.Impact.cs  step 47, THE SPIKE (docs/IMPACT.md §7 I1): StartImpact (the deciders plugged into ImpactHooks, the cap
                               raised while on, the [impact] start line), TickImpact (from OnMissionTick, own try: the switch - master switch
                               first, off = the cap back and everything let go -, lever 2's worker-thread failure, the queued calls ≤ 20 a
@@ -1206,7 +1236,9 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               pixels), Fill, FillColor, FrameColor (the fade's alpha baked in); step 46: the box (PositionX / Y =
                               its top-left, BoxWidth / BoxHeight), FeverShown, the Athletics bar - BarShown, BarWidth, BarHeight,
                               BarFill, BarUsable, BarColor, BarFrameColor, BarWoundColor
-tests/TraxCombat.Core.Tests/  net8.0 xUnit (817 - step 54: + ImpactPunishTests - the four settings placed / live, the gates (the master switch first, no
+tests/TraxCombat.Core.Tests/  net8.0 xUnit (830 - step 55: + CavalryFlockTests - the 14 settings, the master switch, kinds / keys, eagerness + the free
+                              line's hysteresis, THE GROUP-SIZE CURVE, THE HEADING BLEND, the flip, a mixed-eagerness flock that flips only when its rested
+                              rider leads, the sunflower slots / steer point, a rider's spell and wave, the grid, the table, the summary; step 54: + ImpactPunishTests - the four settings placed / live, the gates (the master switch first, no
                               window in shadow / the spike / every family off, measured with the punish off), the window (reeling / down + the grace,
                               a measured early get-up closes it, nothing = never), the share raised never lowered / never the player / 0.05 steps / off,
                               the timid press by range and panic, a real decision on an exhausted blocker opens one (a fresh one none), the summary;
@@ -1607,8 +1639,14 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               broken block (the real decision) opens a 2.1 s window; the man fighting him 0.6 → 1.0 (the game's 0.144 / 0.080 written),
                               his attack punishes it once; you / a rider never; a timid man at 4 m keeps away, at 2.5 m steps in; the switch live; back
                               to 0.6 after end + grace; YOUR window pressed and punished; shadow none; the summary; the cost - 1000 men, half facing a
-                              reeling target, 0.011 ms a tick, 0 bytes; the master-switch step's punish part (122 steps; the config checks work for any
-                              tuned default)
+                              reeling target, 0.011 ms a tick, 0 bytes; the master-switch step's punish part; step 55 (Program.Flock.cs): the lever's game
+                              side (SetScriptedPosition / DisableScriptedMovement / CanBeAssignedForScriptedMovement, GoToPosition 1, the goal reads); the
+                              stand-in flock body for EVERY logic; CAVALRY FLOCKING through the real logic - a tiring unit of 20 lancers: the dance
+                              untouched, five at 55-60% flip as ONE wave of 5 after 3 s, flock again after the 10 s wave, the whole unit exhausted in two
+                              clusters: no flip without a leader, the heading leaning to the unit's centre, one rested rider = a wave of 10; a mixed
+                              formation = two waves of 4; a lone fresh rider among legionaries flocks (timid); held cavalry / you untouched; give-up;
+                              no ground; lone passes / pass gaps ON and OFF; the switch; the summary; the cost - 1000 men, 500 riders, 0.022 ms a tick,
+                              0 bytes; the master-switch step's flocking part (125 steps; the config checks work for any tuned default)
                               TRAX_SMOKE_KEEP=1 keeps its temp folder + log to read
 tools/DefaultsTool/           defaults.json upkeep: refresh (rewrite comments/order, keep every
                               value) | check; --file <path> for an exported one

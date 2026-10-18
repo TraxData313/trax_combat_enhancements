@@ -22,6 +22,7 @@ Want the formulas and every parameter? [DESIGN.md](DESIGN.md) is the full contra
 10. [Battle pace](#10-battle-pace)
 11. [Eagerness, and the fever of a charge](#11-eagerness-and-the-fever-of-a-charge)
 11b. [Courage: men keep to their group](#11b-courage-men-keep-to-their-group)
+11b2. [Cavalry flocking: riders go in as waves](#11b2-cavalry-flocking-riders-go-in-as-waves)
 11c. [Staggers, shield drops and knockdowns](#11c-staggers-shield-drops-and-knockdowns)
 12. [Damage](#12-damage)
 13. [Heroes, and the hideout boss](#13-heroes-and-the-hideout-boss)
@@ -474,6 +475,52 @@ count).
 `CourageRegroupRadiusMetres` 5, `CourageRegroupMates` 4, `CourageFlockRadiusMetres` 20, `CourageFlockMinMen` 6, `CourageSprintBack` on,
 `CourageSprintMetres` 12, `CourageSprintEnemies` 3, `CourageSprintKeepPercent` 50, `CouragePanicOddsPercent` 50,
 `CouragePanicSprintKeepPercent` 0, `CourageTightenWeights` on, `CourageTimidMeleeMetres` 2.</sub>
+
+## 11b2. Cavalry flocking: riders go in as waves
+
+In the base game a charging rider picks a target, rides through, turns and goes again — every rider on his
+own, so a tired cavalry unit ends up trickling into the enemy **one by one**. With this mod:
+
+**Fresh riders dance.** A rider whose **eagerness** — his Athletics bar — is **75% or more** charges as in the
+game, again and again.
+
+**Tired riders look for their own kind.** Below 75% he rides back to the riders of **his own kind** in his
+formation — horse archers with horse archers, skirmishers (javelins) with skirmishers, lancers and swordsmen
+with each other — and waits for a group before he attacks again. **The more tired, the bigger the group:**
+
+| His eagerness | The group he wants (his kind, him included) |
+|---|---|
+| 75% or more | none — he charges alone (the game's dance) |
+| about 57% | 3 |
+| 40% | 4 |
+| 20% | about 9 (of a 20-rider kind) |
+| empty | 65% of his kind |
+
+A flock goes in when it has the size its riders' **average** eagerness wants **and** its most rested rider —
+the **leader** — has at least half the eagerness of a free rider. Then **all of it goes at once**: a wave, the
+game's own charge for 10 s; after that each rider decides again — the eager ones dance on, the tired ones
+flock again. Fresh: small waves, often. Tired: big waves, rarely — the time between charges stretches by itself.
+
+**The flock never sits.** It keeps riding, each rider in his own place about 3.5 m from the next: while its
+riders are tired it drifts toward the **centre of your unit**; as they rest it bends toward the **enemy** the
+formation is charging — the rested riders pull it there, and when it is big enough it flips into the charge.
+
+**A rider alone among many enemies** (courage's odds, section 11b) counts at half his eagerness, so even a
+fresh rider looks for his kind when he finds himself alone. A wounded rider counts by his bar like anyone —
+a flock never waits for health.
+
+Only riders whose formation is on a **charge** (F1 + F3, or the AI's charge). On hold, move, follow or advance
+your riders keep their places in the formation anyway. Never you. Not tournaments or naval battles.
+
+**Watch for it:** a charge of your cavalry into a big infantry fight. The first pass is the game's; after a few
+passes the riders wheel off in twos and threes, ride together, and come back in groups — and late in the battle
+the whole squadron gathers and goes in as one. Flip "Cavalry flocking" off in MCM mid-battle to see the
+game's trickle again.
+
+<sub>Settings ("Cavalry flocking (AI)"): `CavalryFlockEnabled` on, `CavalryFlockFreeEagerPercent` 75, `CavalryFlockHysteresisPercent` 5,
+`CavalryFlockMidEagerPercent` 40, `CavalryFlockMidGroupSize` 4, `CavalryFlockExhaustedSharePercent` 65, `CavalryFlockTimid` on,
+`CavalryFlockTimidRadiusMetres` 15, `CavalryFlockGatherRadiusMetres` 25, `CavalryFlockSeparationMetres` 3.5, `CavalryFlockLeadSeconds` 2,
+`CavalryFlockTightenWeights` on, `CavalryFlockWaveSeconds` 10, `CavalryFlockMaxSeconds` 45.</sub>
 
 ## 11c. Staggers, shield drops and knockdowns
 

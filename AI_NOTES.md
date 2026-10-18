@@ -5008,3 +5008,116 @@ decides without a TickImpact first decides at time 0 (its windows closed long ag
 2. `GetTargetAgent()` is the man he fights (`seen` ≈ windows opened in a dense melee; `seen 0` = the read finds nobody).
 3. The tired line does not collapse too fast once a few men stagger (Anton's eye; the knobs: the percent, the grace).
 4. Cost in a 400-1000 man battle (`impact punish men … target reads N in N looks, cost`).
+
+## Step 55 — cavalry flocking: tired riders flock with their kind and go in as a wave (DONE 2026-10-18; built, NOT installed until Anton's test run of 46-54 ends)
+
+**Anton's wish (2026-10-18 morning)**: tired riders stop charging in one by one as in vanilla; they find the riders of their own kind (horse
+archers, skirmishers and lancers apart) "like a flock of birds" and only attack again together. **His refinement the same morning (via the
+manager - it REPLACED the first draft's "gather 70 % within 25 m, rest to tired + 15, release all" rule)**: "don't wait for all of the cavalry to be
+rested ... fresh and eager riders do the vanilla dance ... the more tired a rider gets, the more he goes to meet others of his own kind, so they
+gather in groups of 4-5 and attack together ... the flock is never a mass sitting somewhere ... very tired, they gather a bigger share before
+charging ... the charges are started by the more rested riders ... very tired riders pull toward the unit's centre of mass ... the flock FLIPS from
+flocking up to going after its target as a flock".
+
+**Verified in the v1.4.8 decompile (`%TEMP%\trax_decomp\`; RESEARCH §T, file + line there)**
+- **The steering lever = `Agent.SetScriptedPosition(ref WorldPosition, addHumanLikeDelay, AIScriptedFrameFlags)`** (Agent.cs 2426-2433) on the
+  RIDER. Vanilla rides AI horses exactly so: `TownHorseRaceAgentController` (53 / 70 / 83 - the AI racer's checkpoints, flag NeverSlowDown) and
+  `JoustingAgentController` (264 / 270 / 283 / 293 - the AI jouster's corners) call it on a mounted agent. The native call sets the GoToPosition
+  scripted flag (enum Agent.cs 163-176); `CanBeAssignedForScriptedMovement` (3208-3215: active, AI, not detached, not running away, no GoToPosition
+  already, no game object, no ladder queue) is vanilla's own "may I script him" gate; `DisableScriptedMovement` (4284) releases. We send no flags
+  (he slows at the point - our point moves) and no NoAttack (he still strikes what reaches him).
+- **Not chosen**: (a) the input hook (step 16's `OnAIInputSet` move bits): a rider's movement vector is read by the native rider controller as
+  throttle and turn (the player rides with the same input), so a world direction would need our own steering loop every frame - and vanilla never
+  steers an AI rider that way; (b) the behaviour weights alone with GoToPos: under a charge a rider's formation frame is invalid
+  (`HumanAIComponent.GetFormationFrame`, 637-640: `MovementState.Charge` → `result = formationPosition.IsValid`; `MovementOrder.MovementState`,
+  MovementOrder.cs 128-149: a charge without a position = Charge) - GoToPos has nothing to go to; (c) RBM's way (described only - none of its
+  code here): `RBMBehaviorCavalryCharge` is a FORMATION behaviour (a state machine Charging → ChargingPast ~140 m beyond the target → Reforming with
+  a Move order at a reform point until cohesive → recharge) - it replaces the formation's behaviour; ours keeps vanilla's behaviour and acts per
+  rider.
+- **Vanilla's cavalry weights** (HumanAIComponent.cs 718-790): Default / DefaultDetached ChargeHorseback 2 at 0 m → 5 at 25 m → 5 at 30 m and
+  beyond (a far enemy is as attractive as a near one - the "one by one" pass and turn); Charge the same, RangedHorseback 0 → 3 (10 m) → 6 (20 m);
+  DefaultMove ChargeHorseback 100 at 0 m → 10 at 3 m → 0.1 at 15 m (under a move a rider fights only what is beside him); DefensiveArrangement /
+  Follow 0. `OverrideBehaviorParams` / `RefreshBehaviorValues` as in step 49 (RESEARCH §S 1-3).
+- **The goal** = the formation's target: `MovementOrder.TargetFormation` (MovementOrder.cs 91, set by `MovementOrderChargeToTarget` 192), else
+  `Formation.TargetFormation` (Formation.cs 230), else `Formation.CachedClosestEnemyFormation` (263; the nearest enemy formation by median
+  position, `CacheClosestEnemyFormation` 1361-1385 - what vanilla's `BehaviorCharge` charges, 19) - its `CachedAveragePosition`. The unit's centre
+  of mass = the rider's formation's `CachedAveragePosition` (step 49).
+- **Who is free under a charge**: `BehaviorCharge.CalculateCurrentOrder` (19) gives the formation `MovementOrderCharge` /
+  `ChargeToTarget(closest enemy)`; `BehaviorMountedSkirmish` (114-170) alternates Charge and Move; so AI horse archers under skirmish's MOVE keep
+  their slots (untouched - the charge gate) and flock only when their formation charges.
+
+**The model (Claude's calls - Anton can overturn any; DESIGN decision 47)** - Core `CavalryFlock.cs` (`FlockRules`, `FlockMath`, `RiderFlock`,
+`FlockTable`, `FlockGrid`), `CavalryFlockStats.cs`; Module `Missions/FlockBody.cs`, `Missions/AthleticsLogic.Flock.cs`.
+1. **Who**: AI riders whose formation's order is CHARGE / CHARGE TO TARGET (both sides; any formation - riders mixed into infantry flock with
+   their own kind of that formation); never the player or a rider he took over; busy riders skipped (detached, a machine, a ladder, routing, a
+   scripted walk the game set - GoToPosition already on); battle missions, no tournament / arena / naval; sieges yes. Under hold / move / follow /
+   advance the formation keeps slots - untouched (a flocker whose order changes is let go at once: `FlockEnd.Excluded`).
+2. **Kind** (read once from his kit, `GameFlockBody.ReadKind`): a bow / crossbow / sling WITH ammo = horse archer; else throwing weapons with some
+   left (javelin, throwing axe / knife) = skirmisher; else melee. **Flock** = (team index, formation index, kind) → a key into fixed arrays
+   (8 × 16 × 3).
+3. **Eagerness** e = his bar (points ÷ FULL pool; a wound counts through the cap - "do not hold a flock waiting for health"; 1 with Athletics off) ×
+   0.5 (`TimidEagerFactor`) when TIMID: courage's odds (step 49's toughness sums within `CavalryFlockTimidRadiusMetres` 15, the required odds with
+   tiredness / morale / shock / hero; one proximity query at most every 1 s; `CavalryFlockTimid` AND `CourageEnabled`). **No fever for riders**:
+   step 43 never touches a rider (his decision values stay the game's), so Anton's "fresh fever arm" at a flip is the WAVE window itself.
+4. **Free / flocking**: e ≥ `CavalryFlockFreeEagerPercent` 75 = FREE - vanilla's dance, nothing written. Below = he FLOCKS (if vanilla's gate lets
+   us script him): his horseback weights lowered (`CavalryFlockTightenWeights`: ChargeHorseback 2 → 0.5 at 4 m → 0.01 at 15 m, RangedHorseback
+   1 → 0.5 at 15 m → 0.1 at 30 m - re-applied every census, the game resets them on orders), a sunflower slot. Free again at e ≥ free +
+   `CavalryFlockHysteresisPercent` 5.
+5. **His group** = the FLOCKING riders of his flock within `CavalryFlockGatherRadiusMetres` 25 (him included) - a hash grid of 25 m cells over the
+   census's flockers (free dancers galloping past are not "with him"). Its centre, mean velocity, mean eagerness, LEADER = its most eager rider.
+6. **The heading** (Anton's (c)): H = normalize(Σ readiness × unit(centre → goal) + Σ (1 − readiness) × unit(centre → the unit's centre of mass)),
+   readiness = e ÷ the free line - a tired flock drifts home while it gathers, a resting one bends toward the enemy as its riders recover (the
+   leader, the most rested, pulls hardest). No goal read = the unit's centre alone (counted); neither = his group's own velocity.
+7. **The ride**: to the group's centre + H × max(the group's speed, `MinLeadSpeed` 4 m/s) × `CavalryFlockLeadSeconds` 2 + his slot - the flock is
+   always on the move (Anton: "never a mass sitting somewhere"). The point is re-sent when it moved 2 m or after 2 s; no navmesh there = the
+   group's centre; none = nothing sent (counted). **Separation** = the sunflower (Vogel's spiral): slot i at radius c√i, angle i × the golden angle,
+   c = separation ÷ √π → neighbours ~`CavalryFlockSeparationMetres` 3.5 apart, the disc filling evenly (40 riders ≈ a 12 m disc); the slot is
+   fixed for his spell, so no per-frame noise. **Alignment** = the shared heading and lead.
+8. **The group-size curve** (Anton's (b)): N(e) = 1 at the free line, `CavalryFlockMidGroupSize` 4 at `CavalryFlockMidEagerPercent` 40,
+   `CavalryFlockExhaustedSharePercent` 65 % of his kind's riders at 0 (never below the middle size), straight lines, rounded up, never more than
+   the kind has - and capped at the kind's FLOCKERS (Claude's call: otherwise an exhausted rider of a kind whose others are all dancing could never
+   go in). Examples (a 20-rider kind): 57 % → 3, 40 % → 4, 20 % → 9, 10 % → 11, 0 → 13.
+9. **The flip** (Anton's (d)/(e)): his group's count ≥ N(its MEAN e) AND the leader's readiness ≥ `LeaderReadyShare` 0.5 (a group of exhausted
+   riders keeps riding until somebody among them has rested a little - "the charges are started by the more rested riders") AND he has flocked ≥
+   `MinFlockSeconds` 3 (the flip's hysteresis) → every flocking rider of the group released AT ONCE (scripted walk off, the game's weights back) -
+   a WAVE: `CavalryFlockWaveSeconds` 10 of the game's own charge, no flock meanwhile; then each decides again from his eagerness (the eager dance on,
+   the tired flock again). The goal's share of the pull (the "vote") is LOGGED at each flip, not a condition - the heading already bends toward the
+   goal as readiness grows. A flocker who never flips is released after `CavalryFlockMaxSeconds` 45 (a wave of one).
+10. **Measured ON and OFF** from the same census (riders, spread, passes).
+
+**Plumbing constants (Core `FlockMath`, documented, not settings)**: `CensusSeconds` 0.5, the table 8 teams × 16 formations × 3 kinds,
+`TimidEagerFactor` 0.5, `LeaderReadyShare` 0.5, `MinFlockSeconds` 3, `MinLeadSpeed` 4 m/s, `LonePassMetres` 30 / `LonePassMates` 3, `PassGapSeconds`
+4, `ReissueMetres` 2 / `ReissueSeconds` 2, `TimidLookSeconds` 1, `MaxVelocityGapSeconds` 2 / `MaxSpeed` 20, the weight curves, the grid's 1024
+buckets, the group buffer 256.
+
+**Settings** (14, Live, a new MCM group "Cavalry flocking (AI)" after courage - its own switch, so courage off does not stop it): 254 → 268. The new
+group moved Impact and the later groups one place down (11-16).
+
+**Measured ([cavalry] tag)**: mission start (the sentence + the lever), settings changes, the first rider flocking in full (reason, eagerness, bar,
+odds when timid, his flock's size, slot), the first FLIP in full (size, how many with him, the mean eagerness and the size it wants, the leader's
+eagerness and readiness, the goal's share of the pull), switched off. [summary] (7 lines): settings; riders by kind, rider time ON FREE / FLOCKING /
+IN A WAVE, starts by reason and kind, ends by reason, spell length, refused by vanilla's gate, skips; FLIPS a minute, wave size by the flock's mean
+eagerness band (<25 / 25-50 / 50-75 / 75+ - small fresh, big tired), the leader's eagerness; TIME BETWEEN PASSES per rider by his eagerness band
+ON vs OFF (a pass = a melee release or shot by an AI rider after 4 s of none); LONE PASSES (fewer than 3 of his kind within 30 m at the census)
+ON vs OFF; spread ON vs OFF; the lever (points sent / re-sent / no ground / released / errors, weights, goal missing, timid looks, cost).
+
+**Built**: tests 817 → 830 (`CavalryFlockTests` 13: the settings, the master switch, kinds / keys, eagerness + hysteresis + a fresh rider free, the
+group-size curve, the heading blend, the flip, a mixed-eagerness flock that flips only when its rested rider leads, the slots / steer point, a
+rider's spell and wave, the grid, the table, the summary). Smoke 122 → 125 steps (`Program.Flock.cs`: the lever's game side; through the real
+logic - a tiring unit of 20 lancers: the dance untouched → five at 55-60 % flip as ONE wave of 5 after 3 s → back to flocking after the 10 s wave
+→ the whole unit exhausted in two clusters: no flip without a leader, the heading leaning to the unit's centre, one rider rested to 45 % = a wave
+of 10 while the other cluster rides on; a mixed formation goes in as two waves of 4; a lone fresh rider among 4 legionaries flocks (timid), free
+again with courage off; the player's held cavalry and the player untouched, a hold lets a flocker go at once; give-up after 45 s; no ground;
+lone passes / pass gaps ON and OFF; the switch; Athletics off; the summary; + the master-switch step; the cost - 1000 men, 500 riders of three
+kinds, a third tired, 0.022 ms a tick on average, 0 bytes). AssemblyGuard + smoke green. **Not installed** - Anton was playtesting 46-54.
+
+**UNVERIFIED — only the game can tell (PLAYTEST D24)**
+1. The engine rides a CHARGING AI rider to a scripted point and he follows it while his formation's charge runs (vanilla's horse race proves the
+   riding; whether the charge's native AI fights the point for a target we only lowered is the question) - `cavalry lever` points sent vs released,
+   Anton's eyes: tired riders wheel off and ride together.
+2. The flips read as waves: `cavalry flips` sizes grow as the battle goes on (the band table), lone passes ON well below OFF, the time between
+   passes ON growing with tiredness.
+3. Riders regain Athletics while flocking fast enough that the leaders appear (else many give-ups - `ended: gave up`); the knobs: the free line,
+   the curve, the leader threshold (a constant - make it a setting if Anton wants to tune it).
+4. The lowered horseback weights stop a flocker from breaking off for a target (A/B: `CavalryFlockTightenWeights` off).
+5. Cost in a 400-1000 man battle (`cavalry lever ... cost`).

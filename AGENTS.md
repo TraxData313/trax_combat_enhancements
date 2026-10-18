@@ -129,7 +129,17 @@ back when brave; shocked men want twice the mates and pack in. Step 49b: a man i
 first clash happens; shock beats fever), and a timid, unhit man among his mates SURGES in now and then (`CourageSurgeChancePercent` 5 × his
 bar a look, 4 s); the summary measures the STANDOFF. Never you, riders, walled men, a siege's attackers, no formation. Works
 without Athletics. The looks run ON and OFF: the `[courage]` summary compares isolated men and their distance from the formation's centre
-both ways (PLAYTEST D18). The bar for the
+both ways (PLAYTEST D18). CAVALRY FLOCKING (step 55, `CavalryFlockEnabled`, Anton 2026-10-18 + his refinement the same morning: "fresh and
+eager riders do the vanilla dance ... the more tired a rider gets, the more he goes to meet others of his own kind ... the flock FLIPS"): a
+census every 0.5 s of every AI rider whose formation is on a CHARGE (both sides, never you, never a busy rider; hold / move / follow / advance
+keep slots); his KIND read once (horse archer / skirmisher / melee) - each kind of each formation its own flock; his EAGERNESS = his bar (x0.5
+when courage's odds within 15 m say he is alone); at 75% or more he is FREE (vanilla); below it he FLOCKS: ridden by `Agent.SetScriptedPosition`
+(vanilla's own way of riding an AI horse - the horse race, the joust) to his GROUP's centre (the flocking riders of his kind within 25 m, a hash
+grid) led 2 s ahead along a heading the rested riders pull toward the formation's goal and the tired ones toward the unit's centre, in a fixed
+sunflower slot 3.5 m apart, his horseback weights lowered; the GROUP-SIZE CURVE wants 1 at 75%, 4 at 40%, 65% of his kind at 0; the group FLIPS
+when it has the size its MEAN eagerness wants and its leader (most eager) is half ready - all released at once, a WAVE (10 s of the game's charge),
+then each decides again; the [cavalry] summary: rider time free / flocking / in a wave, flips and wave size by eagerness, time between passes and
+LONE PASSES ON vs OFF (PLAYTEST D24). The bar for the
 fighter you look at is LATER (DESIGN §3; its settings wait in DESIGN's "Planned parameters"). Words:
 the pool/bar/points are "Athletics", the character-screen skill is "the Athletics skill" (it
 used to be called "endurance"), the "peak line" is the white mark at the top quarter of the bar,
@@ -226,7 +236,7 @@ die at any moment (tokens run out) and the next one loses nothing.
   file, capped at `LogMaxMegabytes` (8); a trim cuts ONLY the oldest verbose lines (marked `~`
   before the tag) and keeps every other line - summaries, first-time lines, settings, errors
   (step 10b, Core `LogTrim`). Timestamped lines tagged by area (`[config]`, `[mcm]`, `[mission]`,
-  `[damage]`, `[athletics]`, `[speed]`, `[rate]`, `[stepback]`, `[brace]`, `[guard]`, `[sprint]`, `[wall]`, `[fever]`, `[courage]`, `[impact]`, `[hud]`, `[error]`). Always logged: mod/game version
+  `[damage]`, `[athletics]`, `[speed]`, `[rate]`, `[stepback]`, `[brace]`, `[guard]`, `[sprint]`, `[wall]`, `[fever]`, `[courage]`, `[cavalry]`, `[impact]`, `[hud]`, `[error]`). Always logged: mod/game version
   at load, every parameter value on load and on change, each mission start/end (type,
   scene, agent counts), which behaviors/views attached, and every caught exception with its
   stack. Per-battle SUMMARY at mission end (damage rolls: count, min/avg/max factor;
@@ -260,9 +270,9 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
   ParamDef.cs                 one setting: key, type, range, group, label, plain-words
                               description, apply timing (Live / NextBattle); Normalize, Format;
                               its Default comes from defaults.json (DefaultsFile), never code
-  SettingsSchema.cs           EVERY setting of DESIGN's table (254 - step 54's 4 punish settings; step 53's 3 rider-momentum + 3 on-screen-line settings; step 52's 4 momentum settings; step 47's ImpactSpike in Advanced; step 48's 60 in "Impact: staggers,
+  SettingsSchema.cs           EVERY setting of DESIGN's table (268 - step 55's 14 in "Cavalry flocking (AI)" after courage; step 54's 4 punish settings; step 53's 3 rider-momentum + 3 on-screen-line settings; step 52's 4 momentum settings; step 47's ImpactSpike in Advanced; step 48's 60 in "Impact: staggers,
                               shield drops, knockdowns" after the courage group; step 49's 29 in "Courage and cohesion (AI)" after the fever),
-                              in file + MCM order, 16 groups
+                              in file + MCM order, 17 groups
                               ("Master switch" first, "Damage" second - step 25 renamed it from
                               "Damage randomness", "Battle pace (AI)" - step 21 - after the step back,
                               "Brace by orders (AI)" - step 23 - after it,
@@ -543,6 +553,9 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
   CourageStats.cs             step 49 per-mission: isolated / in-contact man-seconds ON vs OFF, the distance histogram (mean, p90), odds bands in contact and
                               out of the formation, skips, ends, walks' ends + time to regroup, sprints + refusals, shock vs odds, flock vs centre, panic,
                               compression (a walk's distance start → end by shock), toughness, weights, cost + the 10 [summary] "courage" lines
+  CavalryFlock.cs             step 55 pure: RiderKind, FlockRules, FlockMath (eagerness, THE GROUP-SIZE CURVE, THE HEADING BLEND, the flip, the
+                              sunflower slots, the steer point), RiderFlock, FlockTable, FlockGrid
+  CavalryFlockStats.cs        step 55 per-mission + the 7 [summary] "cavalry" lines
   SpreadStats.cs              MeanStd (Welford, population std), FormationAthleticsStats (squad
                               mean ± std, band, mean f, at full strength, mean health - step 9; step 23:
                               Bracing / Ready / Total - the next step's "ready men"),
@@ -741,6 +754,9 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               the panic reserve), SteerWalkers (arrived on the way, the edge, the vector into AiInputState.Regroup*), the weights (re-applied
                               every look, the game's back), EndTimid on every path, CourageLeftField, CourageHitTaken (OnAgentHit - the shock window),
                               CloseCourage, WriteCourageSummary
+  Missions/FlockBody.cs       step 55: IFlockBody + GameFlockBody (Agent.SetScriptedPosition / DisableScriptedMovement, the charge gate, the kit, the goal)
+  Missions/AthleticsLogic.Flock.cs  step 55: the census every 0.5 s (ON and OFF), eagerness → free / flocking, the groups, the heading, the flip, the
+                              passes, every end path, the summary
   Missions/AthleticsLogic.Impact.cs  step 47, the spike: StartImpact, TickImpact (the switch, the queued calls, the watches, the
                               shields), the deciders, ImpactHit (OnMeleeHit), DisableLever (one lever off after an error),
                               WriteImpactSummary; fixed pools of structs; step 48: KnockDownOnBlow = the spike's OR the model's answer
@@ -897,7 +913,7 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
   Hud/FeverMarksVM.cs         its ViewModels: a GROW-ONLY POOL of FeverMarkVM (IsShown, PositionX / Y, Width / Height in pixels,
                               Fill, FillColor, FrameColor; step 46: BoxWidth / BoxHeight, FeverShown, BarShown, BarWidth / Height,
                               BarFill, BarUsable, BarColor, BarFrameColor, BarWoundColor)
-tests/TraxCombat.Core.Tests/  net8.0 xUnit (817 - step 54: + ImpactPunishTests; step 53: + ImpactRidersTests; step 52: + ImpactHitsTests; step 51: + ImpactBlocksTests; step 50: + ImpactLiveTests; step 49 / 49b: + CourageTests; step 44: + FeverMarkTests; step 46: + AthleticsMarkTests, the format-9 migration; step 47: + ImpactSpikeTests; step 48: + ImpactTests - every IMPACT §4 worked example) — schema vs DESIGN.md (keys + types), one copy
+tests/TraxCombat.Core.Tests/  net8.0 xUnit (830 - step 55: + CavalryFlockTests; step 54: + ImpactPunishTests; step 53: + ImpactRidersTests; step 52: + ImpactHitsTests; step 51: + ImpactBlocksTests; step 50: + ImpactLiveTests; step 49 / 49b: + CourageTests; step 44: + FeverMarkTests; step 46: + AthleticsMarkTests, the format-9 migration; step 47: + ImpactSpikeTests; step 48: + ImpactTests - every IMPACT §4 worked example) — schema vs DESIGN.md (keys + types), one copy
                               runs (SingleCopyTests: claims on private slots, copies, texts), when
                               MCM is tried and when it stops (McmPlanTests - step 12),
                               defaults.json (DefaultsFileTests), master switch, settings, config
@@ -1113,7 +1129,8 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               rider's momentum, the on-screen lines (merged, colours, never in shadow), THE CAVALRY CHARGE (a 40 % line: standing
                               3 % down, a gallop 10 %; a fresh line 0), the cost 0.04 ms, 0 bytes; step 54 (Program.ImpactPunish.cs): the AI
                               presses a window - an exhausted blocker's broken block opens one, the man fighting him 0.6 → 1.0 and punishes it, a
-                              timid man steps in at 2.5 m (not at 4), YOUR window pressed, shadow none, the cost 0.011 ms, 0 bytes (122 steps; the config
+                              timid man steps in at 2.5 m (not at 4), YOUR window pressed, shadow none, the cost 0.011 ms, 0 bytes; step 55 (Program.Flock.cs): cavalry flocking through the real logic - the dance, a wave of 5, a wave of
+                              10 led by its rested rider, kinds apart, timid, held cavalry, the cost 0.022 ms, 0 bytes (125 steps; the config
                               checks work for any tuned default);
                               TRAX_SMOKE_KEEP=1 keeps its temp folder + log to read
 tools/DefaultsTool/           defaults.json upkeep: refresh (rewrite comments/order, keep every
