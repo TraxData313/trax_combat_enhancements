@@ -667,15 +667,15 @@ namespace TraxCombat.Core
 
         public static readonly ParamDef ImpactBlocksEnabled = Bool("ImpactBlocksEnabled", ImpactGroup,
             "Impact on blocks and parries",
-            "A blow blocked with a shield (on the right or the wrong side) or parried may stagger the tired blocker, knock him down, or (on the wrong side) make him drop his shield; his guard is held longer the more tired he is. Off: blocks are the game's own.");
+            "A blow blocked on the WRONG side may stagger the tired blocker, knock him down or make him drop his shield; a correct block (right-side shield, parry) breaks him mainly on a big mismatch - it is mostly the attacker's risk (the riposte). Off: blocks are the game's own.");
 
         public static readonly ParamDef ImpactHitsEnabled = Bool("ImpactHitsEnabled", ImpactGroup,
             "Impact from clean hits",
             "A weapon blow that lands unblocked may stagger a tired man longer or knock him down. Off: hits are the game's own.");
 
         public static readonly ParamDef ImpactRiposteEnabled = Bool("ImpactRiposteEnabled", ImpactGroup,
-            "Riposte: a fresh blocker staggers a tired attacker",
-            "A FRESH man who blocks on the right side or parries may stagger the attacker who swung at him - more likely the more tired and outmatched the attacker is: a window to strike back.");
+            "Riposte: a good guard staggers a tired attacker",
+            "A man who blocks on the right side or parries may stagger the attacker who swung at him - more likely the more tired and outmatched the attacker is: a tired man flailing into a good guard opens himself up, a window to strike back.");
 
         public static readonly ParamDef ImpactShadowMode = Bool("ImpactShadowMode", ImpactGroup,
             "Shadow mode: decide and log only",
@@ -691,7 +691,7 @@ namespace TraxCombat.Core
 
         public static readonly ParamDef RightBlockStaggerMaxPercent = Int("RightBlockStaggerMaxPercent", 0, 100, ImpactGroup,
             "Right-side block: staggered, at most (%)",
-            "The highest chance that a man who blocks a blow with his shield on the RIGHT side staggers back - an opening for the attacker, longer the more tired he is.");
+            "The highest chance that a man who blocks a blow with his shield on the RIGHT side staggers back - reached only on a BIG mismatch (his own tiredness counts as little as the correct-block setting below says), longer the more tired he is.");
 
         public static readonly ParamDef RightBlockShieldDropMaxPercent = Int("RightBlockShieldDropMaxPercent", 0, 100, ImpactGroup,
             "Right-side block: shield dropped, at most (%)",
@@ -699,15 +699,15 @@ namespace TraxCombat.Core
 
         public static readonly ParamDef RightBlockKnockdownMaxPercent = Int("RightBlockKnockdownMaxPercent", 0, 100, ImpactGroup,
             "Right-side block: knocked down, at most (%)",
-            "The highest chance that a RIGHT-side shield block still knocks him down - a huge mismatch (a peasant's stick against a berserker's axe) or an exhausted blocker.");
+            "The highest chance that a RIGHT-side shield block still knocks him down - a huge mismatch (a peasant's stick against a berserker's axe), hardly his own tiredness.");
 
         public static readonly ParamDef ParryStaggerMaxPercent = Int("ParryStaggerMaxPercent", 0, 100, ImpactGroup,
             "Parry: staggered, at most (%)",
-            "The highest chance that a man who parries a blow with his weapon staggers back.");
+            "The highest chance that a man who parries a blow with his weapon staggers back - a parry is a correct block: reached only on a BIG mismatch.");
 
         public static readonly ParamDef ParryKnockdownMaxPercent = Int("ParryKnockdownMaxPercent", 0, 100, ImpactGroup,
             "Parry: knocked down, at most (%)",
-            "The highest chance that a parry still knocks the parrying man down.");
+            "The highest chance that a parry still knocks the parrying man down - a huge mismatch, hardly his own tiredness.");
 
         public static readonly ParamDef WrongBlockStaggerMaxPercent = Int("WrongBlockStaggerMaxPercent", 0, 100, ImpactGroup,
             "Wrong-side block: staggered, at most (%)",
@@ -731,7 +731,15 @@ namespace TraxCombat.Core
 
         public static readonly ParamDef RiposteStaggerMaxPercent = Int("RiposteStaggerMaxPercent", 0, 100, ImpactGroup,
             "Riposte: attacker staggered, at most (%)",
-            "The highest chance that a fresh man's right-side block or parry staggers the ATTACKER - for an empty, outmatched attacker against a defender at full strength (a tired defender ripostes less).");
+            "The highest chance that a right-side block or parry staggers the ATTACKER - for an empty or outmatched attacker swinging into a good guard: a tired man flailing into a correct block opens himself up, whoever holds it (the next setting lets the blocker's own tiredness lower it).");
+
+        public static readonly ParamDef CorrectBlockTiredWeightPercent = Int("CorrectBlockTiredWeightPercent", 0, 100, ImpactGroup,
+            "Correct block: blocker's own tiredness counts (%)",
+            "On a CORRECT block (right-side shield or a parry) the blocker's own tiredness counts only this much toward staggering or knocking him down - a correct block breaks him mainly on a BIG mismatch (a peasant's stick against a berserker's axe), so skill pays. 100: his tiredness counts in full, as on a wrong-side block or a clean hit.");
+
+        public static readonly ParamDef RiposteBlockerTiredPercent = Int("RiposteBlockerTiredPercent", 0, 100, ImpactGroup,
+            "Riposte: lowered by the blocker's tiredness (%)",
+            "How much the BLOCKER's own tiredness lowers the riposte: its chance × (1 − this × his tiredness). 0: a tired man's correct block still makes a tired attacker reel. 100: only a blocker in the green ripostes at full chance, an empty one never.");
 
         public static readonly ParamDef StaggerBaseSeconds = Float("StaggerBaseSeconds", 0.1, 3, ImpactGroup,
             "Stagger length, fresh (s)",
@@ -755,7 +763,7 @@ namespace TraxCombat.Core
 
         public static readonly ParamDef BlockStunTiredExtraPercent = Int("BlockStunTiredExtraPercent", 0, 500, ImpactGroup,
             "Blocker's guard held longer when exhausted (+%)",
-            "After every block or parry the blocker cannot act for a moment (the game's own stun); an exhausted blocker's lasts this much longer (100: twice as long at an empty bar).");
+            "After every block or parry the blocker cannot act for a moment (the game's own stun); an exhausted blocker's lasts this much longer (100: twice as long at an empty bar). 0 (the default since the spike's playtest): the game's own stun - lengthening it changed nothing the engine plays; the stagger is the window.");
 
         public static readonly ParamDef RiposteStunMaxSeconds = Float("RiposteStunMaxSeconds", 0, 3, ImpactGroup,
             "Riposte: attacker's recoil, at most (s)",
@@ -1287,7 +1295,7 @@ namespace TraxCombat.Core
             ImpactEnabled, ImpactKicksEnabled, ImpactBlocksEnabled, ImpactHitsEnabled, ImpactRiposteEnabled, ImpactShadowMode,
             KickShieldDropMaxPercent, KickKnockdownMaxPercent, RightBlockStaggerMaxPercent, RightBlockShieldDropMaxPercent, RightBlockKnockdownMaxPercent,
             ParryStaggerMaxPercent, ParryKnockdownMaxPercent, WrongBlockStaggerMaxPercent, WrongBlockShieldDropMaxPercent, WrongBlockKnockdownMaxPercent,
-            HitStaggerMaxPercent, HitKnockdownMaxPercent, RiposteStaggerMaxPercent,
+            HitStaggerMaxPercent, HitKnockdownMaxPercent, RiposteStaggerMaxPercent, CorrectBlockTiredWeightPercent, RiposteBlockerTiredPercent,
             StaggerBaseSeconds, StaggerTiredExtraPercent, StaggerMaxSeconds, KickReelTiredExtraPercent, GetUpMaxSlowdown, BlockStunTiredExtraPercent,
             RiposteStunMaxSeconds, ImpactRandomPercent, ImpactStunCapSeconds,
             ImpactStaggerImmunitySeconds, ImpactKnockdownImmunitySeconds, ImpactDiminishWindowSeconds, ImpactDiminishFactor, ShieldPickupLockSeconds,

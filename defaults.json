@@ -875,9 +875,9 @@
   // (true or false)
   "ImpactKicksEnabled": true,
 
-  // A blow blocked with a shield (on the right or the wrong side) or parried may stagger the
-  // tired blocker, knock him down, or (on the wrong side) make him drop his shield; his guard
-  // is held longer the more tired he is. Off: blocks are the game's own.
+  // A blow blocked on the WRONG side may stagger the tired blocker, knock him down or make him
+  // drop his shield; a correct block (right-side shield, parry) breaks him mainly on a big
+  // mismatch - it is mostly the attacker's risk (the riposte). Off: blocks are the game's own.
   // (true or false)
   "ImpactBlocksEnabled": true,
 
@@ -886,8 +886,9 @@
   // (true or false)
   "ImpactHitsEnabled": true,
 
-  // A FRESH man who blocks on the right side or parries may stagger the attacker who swung at
-  // him - more likely the more tired and outmatched the attacker is: a window to strike back.
+  // A man who blocks on the right side or parries may stagger the attacker who swung at him -
+  // more likely the more tired and outmatched the attacker is: a tired man flailing into a good
+  // guard opens himself up, a window to strike back.
   // (true or false)
   "ImpactRiposteEnabled": true,
 
@@ -907,9 +908,10 @@
   "KickKnockdownMaxPercent": 80,
 
   // The highest chance that a man who blocks a blow with his shield on the RIGHT side staggers
-  // back - an opening for the attacker, longer the more tired he is.
+  // back - reached only on a BIG mismatch (his own tiredness counts as little as the
+  // correct-block setting below says), longer the more tired he is.
   // (range 0 to 100)
-  "RightBlockStaggerMaxPercent": 80,
+  "RightBlockStaggerMaxPercent": 30,
 
   // The highest chance that a RIGHT-side shield block makes him drop his shield. 0: a clean
   // block is the reward for skill - only kicks and wrong-side blocks drop shields.
@@ -917,17 +919,19 @@
   "RightBlockShieldDropMaxPercent": 0,
 
   // The highest chance that a RIGHT-side shield block still knocks him down - a huge mismatch
-  // (a peasant's stick against a berserker's axe) or an exhausted blocker.
+  // (a peasant's stick against a berserker's axe), hardly his own tiredness.
   // (range 0 to 100)
-  "RightBlockKnockdownMaxPercent": 40,
+  "RightBlockKnockdownMaxPercent": 10,
 
-  // The highest chance that a man who parries a blow with his weapon staggers back.
+  // The highest chance that a man who parries a blow with his weapon staggers back - a parry is
+  // a correct block: reached only on a BIG mismatch.
   // (range 0 to 100)
-  "ParryStaggerMaxPercent": 80,
+  "ParryStaggerMaxPercent": 30,
 
-  // The highest chance that a parry still knocks the parrying man down.
+  // The highest chance that a parry still knocks the parrying man down - a huge mismatch,
+  // hardly his own tiredness.
   // (range 0 to 100)
-  "ParryKnockdownMaxPercent": 40,
+  "ParryKnockdownMaxPercent": 10,
 
   // The highest chance that a man who blocks with his shield on the WRONG side staggers back.
   // (range 0 to 100)
@@ -950,11 +954,25 @@
   // (range 0 to 100)
   "HitKnockdownMaxPercent": 50,
 
-  // The highest chance that a fresh man's right-side block or parry staggers the ATTACKER - for
-  // an empty, outmatched attacker against a defender at full strength (a tired defender
-  // ripostes less).
+  // The highest chance that a right-side block or parry staggers the ATTACKER - for an empty or
+  // outmatched attacker swinging into a good guard: a tired man flailing into a correct block
+  // opens himself up, whoever holds it (the next setting lets the blocker's own tiredness lower
+  // it).
   // (range 0 to 100)
-  "RiposteStaggerMaxPercent": 50,
+  "RiposteStaggerMaxPercent": 70,
+
+  // On a CORRECT block (right-side shield or a parry) the blocker's own tiredness counts only
+  // this much toward staggering or knocking him down - a correct block breaks him mainly on a
+  // BIG mismatch (a peasant's stick against a berserker's axe), so skill pays. 100: his
+  // tiredness counts in full, as on a wrong-side block or a clean hit.
+  // (range 0 to 100)
+  "CorrectBlockTiredWeightPercent": 25,
+
+  // How much the BLOCKER's own tiredness lowers the riposte: its chance × (1 − this × his
+  // tiredness). 0: a tired man's correct block still makes a tired attacker reel. 100: only a
+  // blocker in the green ripostes at full chance, an empty one never.
+  // (range 0 to 100)
+  "RiposteBlockerTiredPercent": 0,
 
   // How long a stagger lasts on a man in the green, in seconds. It grows with his tiredness by
   // the next setting.
@@ -983,9 +1001,11 @@
   "GetUpMaxSlowdown": 2.0,
 
   // After every block or parry the blocker cannot act for a moment (the game's own stun); an
-  // exhausted blocker's lasts this much longer (100: twice as long at an empty bar).
+  // exhausted blocker's lasts this much longer (100: twice as long at an empty bar). 0 (the
+  // default since the spike's playtest): the game's own stun - lengthening it changed nothing
+  // the engine plays; the stagger is the window.
   // (range 0 to 500)
-  "BlockStunTiredExtraPercent": 100,
+  "BlockStunTiredExtraPercent": 0,
 
   // A riposted attacker recoils for up to this many seconds - half of it when he is fresh, all
   // of it when he is empty.

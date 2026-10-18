@@ -46,9 +46,14 @@ public class ImpactTests
     private static readonly Weapon Stick = new(0.6, 95, ImpactDamageType.Blunt);
     private static readonly Weapon Mace = new(1.8, 85, ImpactDamageType.Blunt);
 
+    /// <summary>Step 56: IMPACT §4's worked examples are the STEP-48 model - a correct block counted the blocker's tiredness in full and the
+    /// riposte was × his f - so these tests pin <c>CorrectBlockTiredWeightPercent</c> and <c>RiposteBlockerTiredPercent</c> at 100 (step
+    /// 48 exactly); step 56's model has its own tests (RightBlocksTests).</summary>
     private static ImpactRules Rules(Action<TraxSettings>? tune = null)
     {
         var s = new TraxSettings();
+        s.Set(SettingsSchema.CorrectBlockTiredWeightPercent, 100, "test");
+        s.Set(SettingsSchema.RiposteBlockerTiredPercent, 100, "test");
         tune?.Invoke(s);
         return ImpactRules.From(s);
     }
@@ -105,7 +110,9 @@ public class ImpactTests
             "ImpactEnabled", "ImpactKicksEnabled", "ImpactBlocksEnabled", "ImpactHitsEnabled", "ImpactRiposteEnabled", "ImpactShadowMode",
             "KickShieldDropMaxPercent", "KickKnockdownMaxPercent", "RightBlockStaggerMaxPercent", "RightBlockShieldDropMaxPercent", "RightBlockKnockdownMaxPercent",
             "ParryStaggerMaxPercent", "ParryKnockdownMaxPercent", "WrongBlockStaggerMaxPercent", "WrongBlockShieldDropMaxPercent", "WrongBlockKnockdownMaxPercent",
-            "HitStaggerMaxPercent", "HitKnockdownMaxPercent", "RiposteStaggerMaxPercent", "StaggerBaseSeconds", "StaggerTiredExtraPercent", "StaggerMaxSeconds",
+            "HitStaggerMaxPercent", "HitKnockdownMaxPercent", "RiposteStaggerMaxPercent",
+            "CorrectBlockTiredWeightPercent", "RiposteBlockerTiredPercent", // step 56
+            "StaggerBaseSeconds", "StaggerTiredExtraPercent", "StaggerMaxSeconds",
             "KickReelTiredExtraPercent", "GetUpMaxSlowdown", "BlockStunTiredExtraPercent", "RiposteStunMaxSeconds", "ImpactRandomPercent", "ImpactStunCapSeconds",
             "ImpactStaggerImmunitySeconds", "ImpactKnockdownImmunitySeconds", "ImpactDiminishWindowSeconds", "ImpactDiminishFactor", "ShieldPickupLockSeconds",
             "ImpactOnPlayerPercent", "ImpactRiderDismountPercent", "ImpactTiredNeverShrugsOff",
@@ -119,7 +126,7 @@ public class ImpactTests
             "ImpactSkillMinFactor", "ImpactSkillMaxFactor", "ImpactGuardShieldRight", "ImpactGuardParry", "ImpactGuardShieldWrong", "ImpactGuardNone",
             "ImpactStaggerFrom", "ImpactShieldDropFrom", "ImpactKnockdownFrom",
         };
-        Assert.Equal(74, keys.Length); // step 48's 60 + step 52's momentum 4 + step 53's rider momentum 3 and on-screen lines 3 + step 54's punish 4
+        Assert.Equal(76, keys.Length); // step 48's 60 + step 52's momentum 4 + step 53's rider momentum 3 and on-screen lines 3 + step 54's punish 4 + step 56's 2
         var inGroup = SettingsSchema.InGroup(SettingsSchema.ImpactGroup).Select(p => p.Key).ToList();
         Assert.Equal(keys, inGroup);
         foreach (var k in keys)

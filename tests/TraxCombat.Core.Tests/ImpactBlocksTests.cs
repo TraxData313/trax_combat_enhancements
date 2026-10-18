@@ -126,27 +126,35 @@ public class ImpactBlocksTests
     // ------------------------------------------------------------------ the riposte
 
     [Fact]
-    public void The_riposte_turns_the_roles_the_attackers_T_the_defenders_guard_times_the_defenders_f()
+    public void The_riposte_turns_the_roles_the_attackers_T_the_defenders_guard_times_1_minus_k_T_D()
     {
-        // a fresh veteran (200 points, skill 200) blocks a recruit at 40 % (50 points) - IMPACT §3.6: 50 %
+        // a fresh veteran (200 points, skill 200) blocks a recruit at 40 % (50 points) - IMPACT §3.6: 50 % (DESIGN's initial ceiling)
         var f = Block(ImpactEvent.RightBlock, 1.0, attackerBar: 0.4, attackerPool: 50, defenderPool: 200, attackerSkill: 40, defenderSkill: 200);
         f.AttackerAnimation = 1; // as the doc's script
         var d = Decide(in f);
         Pct(50, d.Riposte.Chance, "the veteran ripostes the recruit");
         Assert.Equal(1 - 0.4 / 0.75, d.TAttacker, 9); // the ATTACKER's tiredness
+        Assert.Equal(1.0, d.RiposteBlockerFactor, 9);
         Assert.Equal(0, d.Stagger.Chance); // the fresh veteran himself: nothing
-        // the same block by the veteran at 37.5 % (f 0.5): the chance x his f
+        // the same block by the veteran at 37.5 % (f 0.5): step 56 (RiposteBlockerTiredPercent 0) - his own tiredness does not save the
+        // recruit (his smaller body only, and it is still far bigger); step 48 (100) - the chance x his f
         var tired = f;
         tired.DefenderBar = 0.375;
         tired.DefenderF = 0.5;
         tired.DefenderPoints = 75;
-        Assert.True(Decide(in tired).Riposte.Chance < d.Riposte.Chance * 0.75);
-        // an exhausted defender never ripostes; a wrong-side block never; a clean hit never
+        Assert.InRange(Decide(in tired).Riposte.Chance, 0.45, 0.5); // 48 % - his smaller body takes a little off, never × his f
+        var step48 = Rules(s => s.Set(SettingsSchema.RiposteBlockerTiredPercent, 100, "test"));
+        var tired48 = Decide(in tired, step48);
+        Assert.Equal(0.5, tired48.RiposteBlockerFactor, 9);
+        Assert.True(tired48.Riposte.Chance < d.Riposte.Chance * 0.75);
+        // an exhausted defender: step 56 - an exhausted recruit at 40 % still reels off his guard; step 48 - never; a wrong-side block never;
+        // a clean hit never
         var empty = f;
         empty.DefenderBar = 0;
         empty.DefenderF = 0;
         empty.DefenderPoints = 0;
-        Assert.Equal(0, Decide(in empty).Riposte.Chance);
+        Assert.True(Decide(in empty).Riposte.Chance > 0.05);
+        Assert.Equal(0, Decide(in empty, step48).Riposte.Chance);
         Assert.False(Decide(Block(ImpactEvent.WrongBlock, 1.0, attackerBar: 0)).Riposte.InRow);
         Assert.True(Decide(Block(ImpactEvent.Parry, 1.0, attackerBar: 0)).Riposte.InRow);
         // it happens: the ATTACKER's record reels (once), the blocker's is untouched
@@ -190,9 +198,15 @@ public class ImpactBlocksTests
     // ------------------------------------------------------------------ exhaustion never cancels (IMPACT §4 A, live)
 
     [Fact]
-    public void Two_EMPTY_even_men_stay_at_the_ceilings_LIVE_every_mistake_counts()
+    public void Two_EMPTY_even_men_stay_at_the_ceilings_LIVE_every_mistake_counts_in_the_step_48_model()
     {
-        var r = Rules();
+        // step 56: this is the STEP-48 model (a correct block counted the blocker's T in full, the riposte × f_D) - step 56's own
+        // answer for two empty men is RightBlocksTests.Two_EMPTY_even_men_a_correct_block_reels_the_ATTACKER_a_wrong_one_breaks_the_blocker
+        var r = Rules(s =>
+        {
+            s.Set(SettingsSchema.CorrectBlockTiredWeightPercent, 100, "test");
+            s.Set(SettingsSchema.RiposteBlockerTiredPercent, 100, "test");
+        });
         Assert.True(r.Applies(ImpactFamily.Blocks) && r.Applies(ImpactFamily.Riposte)); // live, not shadow
         // both men EMPTY: the attacker's tired swing (85 % animation) against a 2 kg shield, a parrying sword, a 4 kg shield on the wrong side
         var light = Block(ImpactEvent.RightBlock, 0.0, attackerBar: 0.0);
@@ -203,7 +217,7 @@ public class ImpactBlocksTests
         foreach (var d in new[] { parry, wrong })
         {
             Assert.Equal(1.0, d.X, 9); // T 1, the bodies even (both at the floor), the blow inside the even band: nothing cancels
-            Assert.Equal(2.0, d.StunFactor, 9);
+            Assert.Equal(2.0, d.StunFactor, 9); // DESIGN's initial BlockStunTiredExtraPercent 100 (defaults.json 0 since step 56)
         }
         Assert.True(right.X > 0.98 && right.X <= 1.0, "x " + right.X);
         Pct(80, right.Stagger.Chance, "right-side stagger");

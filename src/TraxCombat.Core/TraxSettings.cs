@@ -375,6 +375,8 @@ namespace TraxCombat.Core
         public int HitStaggerMaxPercent => GetInt(SettingsSchema.HitStaggerMaxPercent);
         public int HitKnockdownMaxPercent => GetInt(SettingsSchema.HitKnockdownMaxPercent);
         public int RiposteStaggerMaxPercent => GetInt(SettingsSchema.RiposteStaggerMaxPercent);
+        public int CorrectBlockTiredWeightPercent => GetInt(SettingsSchema.CorrectBlockTiredWeightPercent);
+        public int RiposteBlockerTiredPercent => GetInt(SettingsSchema.RiposteBlockerTiredPercent);
         public float StaggerBaseSeconds => GetFloat(SettingsSchema.StaggerBaseSeconds);
         public int StaggerTiredExtraPercent => GetInt(SettingsSchema.StaggerTiredExtraPercent);
         public float StaggerMaxSeconds => GetFloat(SettingsSchema.StaggerMaxSeconds);

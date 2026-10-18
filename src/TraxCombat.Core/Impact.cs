@@ -262,6 +262,10 @@ namespace TraxCombat.Core
         /// mismatch R and log₂ R, the part of it beyond the even band × the weight, reeling (the bonus given), the damage term, x.</summary>
         public double T, Bar, BodyA, BodyD, Impact, Guard, SkillA, SkillD, R, Log2R, MismatchPart, DamagePart, X;
 
+        /// <summary>Step 56: the share of T that entered x (1 = all of it; a CORRECT block - right-side shield or parry - counts
+        /// <c>CorrectBlockTiredWeightPercent</c> of it) and the part it gave (TiredWeight × T).</summary>
+        public double TiredWeight, TiredPart;
+
         /// <summary>Step 52: the attacker's speed into the blow (m/s) and the momentum factor it gave the impact (1 = none; a rider 1).</summary>
         public double AttackerSpeed, Momentum;
 
@@ -269,8 +273,9 @@ namespace TraxCombat.Core
 
         public ImpactRoll Knockdown, ShieldDrop, Stagger, Riposte;
 
-        /// <summary>The riposte's pressure on the attacker (NaN = not asked) and his tiredness.</summary>
-        public double XRiposte, TAttacker;
+        /// <summary>The riposte's pressure on the attacker (NaN = not asked), his tiredness, and (step 56) the factor the blocker's own
+        /// tiredness left on its chance: 1 − <c>RiposteBlockerTiredPercent</c> × T_D (1 at the default 0; step 48's f_D at 100).</summary>
+        public double XRiposte, TAttacker, RiposteBlockerFactor;
 
         /// <summary>A rider's knockdown = knocked OFF his horse (at <c>ImpactRiderDismountPercent</c> of the chance).</summary>
         public bool Dismount;
@@ -325,6 +330,8 @@ namespace TraxCombat.Core
             HitStagger = s.HitStaggerMaxPercent / 100.0;
             HitKnockdown = s.HitKnockdownMaxPercent / 100.0;
             RiposteMax = s.RiposteStaggerMaxPercent / 100.0;
+            CorrectBlockTiredWeight = s.CorrectBlockTiredWeightPercent / 100.0;
+            RiposteBlockerTired = s.RiposteBlockerTiredPercent / 100.0;
             StaggerBase = s.StaggerBaseSeconds;
             StaggerExtra = s.StaggerTiredExtraPercent / 100.0;
             StaggerMax = s.StaggerMaxSeconds;
@@ -400,6 +407,12 @@ namespace TraxCombat.Core
         public double HitStagger { get; }
         public double HitKnockdown { get; }
         public double RiposteMax { get; }
+        /// <summary>Step 56: the share of the blocker's tiredness in x on a CORRECT block (right-side shield or parry) - 0.25 by default, 1 =
+        /// step 48 (his tiredness alone staggered a correct blocker).</summary>
+        public double CorrectBlockTiredWeight { get; }
+        /// <summary>Step 56: how much the blocker's own tiredness lowers the riposte (chance × (1 − this × T_D)) - 0 by default, 1 = step 48's
+        /// × f_D (only a fresh blocker riposted).</summary>
+        public double RiposteBlockerTired { get; }
         public double StaggerBase { get; }
         public double StaggerExtra { get; }
         public double StaggerMax { get; }
@@ -517,6 +530,7 @@ namespace TraxCombat.Core
                    + "; a parry: stagger " + P(ParryStagger) + " / down " + P(ParryKnockdown)
                    + "; the wrong side: stagger " + P(WrongStagger) + " / shield " + P(WrongShieldDrop) + " / down " + P(WrongKnockdown)
                    + "; a clean hit: stagger " + P(HitStagger) + " / down " + P(HitKnockdown) + "; the riposte " + P(RiposteMax)
+                   + " (step 56: a correct block counts " + F0(100 * CorrectBlockTiredWeight) + "% of the blocker's tiredness, the riposte x (1 - " + F0(100 * RiposteBlockerTired) + "% of his T))"
                    + "; two even fresh men: 0% always (the even band ±" + F2(EvenBand) + " doublings, " + F2(MismatchWeight) + " a doubling beyond it, reeling +" + F2(StaggeredBonus)
                    + ", damage x" + F2(DamageWeight) + "); the S-curves from x " + F2(StaggerFrom) + " / " + F2(ShieldDropFrom) + " / " + F2(KnockdownFrom)
                    + "; a stagger " + F2(StaggerBase) + " s fresh → " + F2(StaggerBase * (1 + StaggerExtra)) + " s empty (± " + F0(100 * Random) + "% x T, at most " + F1(StaggerMax) + " s)"
@@ -545,7 +559,8 @@ namespace TraxCombat.Core
     /// Step 48 - IMPACT I2, THE MODEL (docs/IMPACT.md §3; AI_NOTES "Step 48"). Pure: x = T_D + w × band(log₂ R) + (reeling ? bonus : 0) +
     /// d × damage ÷ max health, R = (B_A ÷ B_D)^e × (I_A × K_A) ÷ (G_D × K_D); chance = ceiling × S((x − from) ÷ (1 − from)) × factor^n (×
     /// the player's share; a rider's knockdown × the dismount share), S(t) = 3t² − 2t³; one die per outcome, knockdown → shield → stagger,
-    /// the knockdown replacing the stagger; the riposte with the roles turned × the defender's f. Lengths = base × (1 + extra × T) × a roll
+    /// the knockdown replacing the stagger; the riposte with the roles turned × (1 − k T_D). Step 56: on a CORRECT block (right-side
+    /// shield, parry) T_D enters x × <c>CorrectBlockTiredWeightPercent</c> (0.25) - a correct block is mostly the ATTACKER's risk. Lengths = base × (1 + extra × T) × a roll
     /// in [1 − r T, 1 + r T]. The dice are injected (<see cref="IRandomSource"/>).
     /// </summary>
     public static class ImpactMath
@@ -844,9 +859,16 @@ namespace TraxCombat.Core
             d.DamagePart = IsLanded(f.Event) && f.DefenderMaxHealth > 0 && f.Damage > 0
                 ? r.DamageWeight * Math.Min(1, f.Damage / f.DefenderMaxHealth)
                 : 0;
-            d.X = d.T + d.MismatchPart + (reeling ? r.StaggeredBonus : 0) + d.DamagePart;
+            // step 56 (Anton 2026-10-18: "right blocks a possible penalty for the ATTACKER"): on a correct block the blocker's own tiredness
+            // counts only CorrectBlockTiredWeightPercent of itself - he is broken mainly by a big mismatch (the stick against the axe)
+            d.TiredWeight = IsCorrectBlock(f.Event) ? Math.Max(0, Math.Min(1, r.CorrectBlockTiredWeight)) : 1;
+            d.TiredPart = d.TiredWeight * d.T;
+            d.X = d.TiredPart + d.MismatchPart + (reeling ? r.StaggeredBonus : 0) + d.DamagePart;
             return d.X;
         }
+
+        /// <summary>Step 56: a CORRECT block - a right-side shield block or a weapon parry (the events that can riposte).</summary>
+        public static bool IsCorrectBlock(ImpactEvent e) => CanRiposte(e);
 
         /// <summary>The riposte's pressure on the ATTACKER (IMPACT §3.6): x_r = T_A + w × band(log₂ R_r), R_r = (B_D ÷ B_A)^e × (G_D × K_D) ÷
         /// (I_A × K_A) - the defender's guard against the attacker's blow, the roles turned. Call after <see cref="Pressure"/>.</summary>
@@ -913,6 +935,7 @@ namespace TraxCombat.Core
                 Riposte = ImpactRoll.None,
                 XRiposte = double.NaN,
                 TAttacker = double.NaN,
+                RiposteBlockerFactor = double.NaN,
                 StaggerSeconds = double.NaN,
                 ReelFactor = double.NaN,
                 GetUpFactor = double.NaN,
@@ -953,15 +976,17 @@ namespace TraxCombat.Core
                     : defender.StaggerImmune(now) ? ImpactRefusal.StaggerImmune
                     : ImpactRefusal.None, dice);
 
-            // the riposte: a right-side block or a parry, the roles turned, × the defender's f
+            // the riposte: a right-side block or a parry, the roles turned (x_r = T_A + the mismatch turned), × (1 − k T_D) - step 56: k 0 by
+            // default, so a tired man flailing into a good guard reels whoever holds it (step 48 was × f_D, k = 1)
             if (CanRiposte(f.Event) && r.RiposteOn && r.RiposteMax > 0 && !down)
             {
                 double xr = RipostePressure(in r, in f, ref d);
                 int na = attacker.Recent(now, r.DiminishWindow);
                 double dimA = na > 0 ? Math.Pow(r.DiminishFactor, na) : 1;
                 double scaleA = f.AttackerIsPlayer ? Math.Max(0, r.OnPlayer) : 1;
-                double fD = Math.Max(0, Math.Min(1, double.IsNaN(f.DefenderF) ? 1 : f.DefenderF));
-                d.Riposte = Roll(r.RiposteMax, RawChance(r.RiposteMax, xr, r.StaggerFrom) * fD, na, dimA * scaleA,
+                double k = Math.Max(0, Math.Min(1, r.RiposteBlockerTired));
+                d.RiposteBlockerFactor = 1 - k * d.T;
+                d.Riposte = Roll(r.RiposteMax, RawChance(r.RiposteMax, xr, r.StaggerFrom) * d.RiposteBlockerFactor, na, dimA * scaleA,
                     attacker.Down(now) ? ImpactRefusal.Down
                     : d.Knockdown.Happens || d.Stagger.Happens ? ImpactRefusal.Replaced
                     : f.AttackerMounted ? ImpactRefusal.Rider
@@ -1080,7 +1105,8 @@ namespace TraxCombat.Core
             string what = IsAlternative(d.Event) ? attacker + "'s " + EventName(d.Event) + " on " + defender
                 : IsBlock(d.Event) ? defender + "'s " + EventName(d.Event) + " of " + attacker + "'s blow"
                 : attacker + "'s " + EventName(d.Event) + " on " + defender;
-            string s = what + " (" + mode + "): " + defender + " bar " + (100 * d.Bar).ToString("0", c) + "% (T " + d.T.ToString("0.00", c) + ")"
+            string s = what + " (" + mode + "): " + defender + " bar " + (100 * d.Bar).ToString("0", c) + "% (T " + d.T.ToString("0.00", c)
+                       + (d.TiredWeight < 0.9999 ? ", counted x" + d.TiredWeight.ToString("0.00", c) + " on a correct block" : string.Empty) + ")"
                        + "; points " + f.AttackerPoints.ToString("0", c) + " vs " + f.DefenderPoints.ToString("0", c) + " (bodies " + d.BodyA.ToString("0", c) + " / " + d.BodyD.ToString("0", c) + ")"
                        + "; impact " + d.Impact.ToString("0.00", c) + BlowText(in f)
                        + (d.Momentum > 1.0001 ? " incl. momentum x" + d.Momentum.ToString("0.00", c) + " (" + (f.AttackerMounted ? "his horse at " : string.Empty) + d.AttackerSpeed.ToString("0.0", c) + " m/s into the blow)"
@@ -1093,7 +1119,8 @@ namespace TraxCombat.Core
             s += RollText(" knocked down" + (d.DefenderMounted ? " (off his horse)" : string.Empty), in d.Knockdown);
             s += RollText(" shield dropped", in d.ShieldDrop);
             s += RollText(" staggered", in d.Stagger);
-            if (!double.IsNaN(d.XRiposte)) s += RollText(" riposte (x_r " + d.XRiposte.ToString("0.00", c) + ")", in d.Riposte);
+            if (!double.IsNaN(d.XRiposte)) s += RollText(" riposte (x_r " + d.XRiposte.ToString("0.00", c)
+                + (d.RiposteBlockerFactor < 0.9999 ? ", x" + d.RiposteBlockerFactor.ToString("0.00", c) + " for the blocker's tiredness" : string.Empty) + ")", in d.Riposte);
             if (!double.IsNaN(d.ReelFactor)) s += " reel x" + d.ReelFactor.ToString("0.00", c) + ";";
             if (!double.IsNaN(d.StunFactor)) s += " block stun x" + d.StunFactor.ToString("0.00", c) + ";";
             if (!double.IsNaN(d.GetUpFactor)) s += " gets up x" + d.GetUpFactor.ToString("0.00", c) + " slower;";

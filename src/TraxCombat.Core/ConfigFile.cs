@@ -94,8 +94,11 @@ namespace TraxCombat.Core
         /// drops by <see cref="Migrate(ConfigReadResult, Func{ParamDef, double})"/> for a file of any format), 8 = step 43 (Anton: cheaper
         /// swings and wrong-side blocks - CostPerBlow 10 → 3 and CostPerWrongSideShieldBlock 5 → 2 in any older file still holding them),
         /// 9 = step 46 (Anton's playtest: CostPerBlow 3 → 7 in a format-8 file still holding step 43's default; a tuned value kept and
-        /// noted; an older file's 10 goes straight to 7 through step 43's move).</summary>
-        public const int FormatVersion = 9;
+        /// noted; an older file's 10 goes straight to 7 through step 43's move), 10 = step 56 (Anton's tournament: right blocks favour the
+        /// defender - RightBlockStaggerMaxPercent 80 → 30, RightBlockKnockdownMaxPercent 40 → 10, ParryStaggerMaxPercent 80 → 30,
+        /// ParryKnockdownMaxPercent 40 → 10, RiposteStaggerMaxPercent 50 → 70 and BlockStunTiredExtraPercent 100 → 0 - the spike's lever 2
+        /// failed - in an older file still holding them; a tuned value kept and noted).</summary>
+        public const int FormatVersion = 10;
 
         /// <summary>The meta key holding <see cref="FormatVersion"/> - not a setting.</summary>
         public const string VersionKey = "ConfigVersion";
@@ -400,6 +403,20 @@ namespace TraxCombat.Core
                 if (!MoveOldDefault(read, SettingsSchema.CostPerBlow, 3, why, from, defaultOf))
                     KeptTuned(read, SettingsSchema.CostPerBlow, 3, why, from, defaultOf);
             }
+            if (from < 10)
+            {
+                // step 56: the impact keys came with step 48 (format 9), so only a format-9 file can hold them - an older file without
+                // the key simply gets the new default; a hand-set value is kept and said once
+                const string block = "step 56, Anton's tournament: a correct block is mostly the ATTACKER's risk - the blocker is broken only on a big mismatch";
+                MoveOrKeep(read, SettingsSchema.RightBlockStaggerMaxPercent, 80, block, from, defaultOf);
+                MoveOrKeep(read, SettingsSchema.RightBlockKnockdownMaxPercent, 40, block, from, defaultOf);
+                MoveOrKeep(read, SettingsSchema.ParryStaggerMaxPercent, 80, block, from, defaultOf);
+                MoveOrKeep(read, SettingsSchema.ParryKnockdownMaxPercent, 40, block, from, defaultOf);
+                MoveOrKeep(read, SettingsSchema.RiposteStaggerMaxPercent, 50,
+                    "step 56, Anton's tournament: a tired man flailing into a good guard reels - the riposte up to 70%", from, defaultOf);
+                MoveOrKeep(read, SettingsSchema.BlockStunTiredExtraPercent, 100,
+                    "step 56: the impact spike's lever 2 FAILED - a longer block stun changes nothing the engine plays; the stagger is the window", from, defaultOf);
+            }
             // steps 36 / 37: the retired AI sprint keys - in ANY format (they are only ever steps 33-36's, and a hand-pasted one
             // goes the same way)
             DropRetiredSprintKeys(read, from);
@@ -438,6 +455,13 @@ namespace TraxCombat.Core
                 read.Unknown.RemoveAt(i);
                 read.Migrated.Add(pair.Key + " " + pair.Value + " dropped (format " + from + " → " + FormatVersion + "; " + why + ")");
             }
+        }
+
+        /// <summary>Step 56: <see cref="MoveOldDefault"/>, else <see cref="KeptTuned"/>.</summary>
+        private static void MoveOrKeep(ConfigReadResult read, ParamDef p, double oldDefault, string why, int from, Func<ParamDef, double> defaultOf)
+        {
+            if (!MoveOldDefault(read, p, oldDefault, why, from, defaultOf))
+                KeptTuned(read, p, oldDefault, why, from, defaultOf);
         }
 
         /// <returns>True when the value was moved.</returns>

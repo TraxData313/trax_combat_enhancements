@@ -1253,23 +1253,25 @@ says (§2c).
 | `ImpactShadowMode` | false | Step 48: true = decide and LOG every event, change nothing. Default false - Claude's call 2026-10-17 night (decision 40; IMPACT §7 planned true until I3): Anton could not playtest the spike first and wants to see it live in the morning; every family keeps its own switch and this one turns ALL effects into logging only. The spike (`ImpactSpike` on) forces shadow. Live. |
 | `KickShieldDropMaxPercent` | 90 | Step 48: the kick / bash row's shield-drop ceiling (Anton's anchor). Range 0-100. |
 | `KickKnockdownMaxPercent` | 80 | Step 48: the kick / bash row's knockdown ceiling (Anton's anchor). Range 0-100. |
-| `RightBlockStaggerMaxPercent` | 80 | Step 48: the right-side shield block's stagger ceiling (Anton's anchor). Range 0-100. |
+| `RightBlockStaggerMaxPercent` | 80 | Step 48: the right-side shield block's stagger ceiling (Anton's anchor). Step 56 (decision 48): 30 in defaults.json - a correct block breaks a man only on a big mismatch (config format 10 moves an old 80 once). Range 0-100. |
 | `RightBlockShieldDropMaxPercent` | 0 | Step 48: the right-side shield block's shield-drop ceiling - 0 (IMPACT §8 q7: a clean block is the reward for skill). Range 0-100. |
-| `RightBlockKnockdownMaxPercent` | 40 | Step 48: the right-side shield block's knockdown ceiling. Range 0-100. |
-| `ParryStaggerMaxPercent` | 80 | Step 48: the weapon parry's stagger ceiling. Range 0-100. |
-| `ParryKnockdownMaxPercent` | 40 | Step 48: the weapon parry's knockdown ceiling. Range 0-100. |
+| `RightBlockKnockdownMaxPercent` | 40 | Step 48: the right-side shield block's knockdown ceiling. Step 56 (decision 48): 10 in defaults.json (format 10 moves an old 40 once). Range 0-100. |
+| `ParryStaggerMaxPercent` | 80 | Step 48: the weapon parry's stagger ceiling. Step 56 (decision 48): 30 in defaults.json - a parry is a correct block (format 10 moves an old 80 once). Range 0-100. |
+| `ParryKnockdownMaxPercent` | 40 | Step 48: the weapon parry's knockdown ceiling. Step 56 (decision 48): 10 in defaults.json (format 10 moves an old 40 once). Range 0-100. |
 | `WrongBlockStaggerMaxPercent` | 90 | Step 48: the wrong-side shield block's stagger ceiling. Range 0-100. |
 | `WrongBlockShieldDropMaxPercent` | 50 | Step 48: the wrong-side shield block's shield-drop ceiling. Range 0-100. |
 | `WrongBlockKnockdownMaxPercent` | 40 | Step 48: the wrong-side shield block's knockdown ceiling. Range 0-100. |
 | `HitStaggerMaxPercent` | 80 | Step 48: the clean hit's stagger (a lengthened flinch) ceiling. Range 0-100. |
 | `HitKnockdownMaxPercent` | 50 | Step 48: the clean hit's knockdown ceiling. Range 0-100. |
-| `RiposteStaggerMaxPercent` | 50 | Step 48: the riposte ceiling - × S(x_r) × the DEFENDER's f (IMPACT §3.6, §8 q8). Range 0-100. |
+| `RiposteStaggerMaxPercent` | 50 | Step 48: the riposte ceiling - × S(x_r) × the DEFENDER's f (IMPACT §3.6, §8 q8). Step 56 (decision 48): 70 in defaults.json (config format 10 moves an old 50 once), × (1 − `RiposteBlockerTiredPercent` × T_D) in place of × f_D. Range 0-100. |
+| `CorrectBlockTiredWeightPercent` | 25 | Step 56 (decision 48, Anton 2026-10-18: "right blocks a possible penalty for the ATTACKER"): on a CORRECT block (right-side shield, parry) the blocker's T enters x × this % - x = this × T_D + the mismatch (+ reeling, damage); a wrong-side block, a kick and a clean hit keep T in full. 100 = step 48. Range 0-100. |
+| `RiposteBlockerTiredPercent` | 0 | Step 56 (decision 48): the riposte's chance × (1 − this % × T_D) - 0 = the blocker's own tiredness does not save a tired attacker; 100 = step 48's × f_D. Range 0-100. |
 | `StaggerBaseSeconds` | 0.6 | Step 48: a stagger's length at T 0, s (IMPACT §3.7). Step 51: live - the forced stagger played at the speed for it. Range 0.1-3. |
 | `StaggerTiredExtraPercent` | 150 | Step 48: the stagger × (1 + this % × T) - 0.6 → 1.5 s empty. Range 0-500. |
 | `StaggerMaxSeconds` | 2.0 | Step 48: no stagger longer, whatever the roll. Range 0.2-5. |
 | `KickReelTiredExtraPercent` | 150 | Step 48: the kicked man's vanilla reel × (1 + this % × T) (× 2.5 empty). Step 50: live - his reel played at 1 ÷ that factor, measured. Range 0-500. |
 | `GetUpMaxSlowdown` | 2.0 | Step 48: the knocked-down man's fall-and-rise × (1 + (this − 1) × T), never above this. Step 50: live for a kick's knockdown - played at 1 ÷ that factor, measured. Range 1-4. |
-| `BlockStunTiredExtraPercent` | 100 | Step 48: every block's defender stun × (1 + this % × T). Step 51: live - the decorator's stun seam, no die (the game's stun held at its own cap first). Range 0-500. |
+| `BlockStunTiredExtraPercent` | 100 | Step 48: every block's defender stun × (1 + this % × T). Step 51: live - the decorator's stun seam, no die (the game's stun held at its own cap first). Step 56 (decision 48): 0 in defaults.json - the spike's lever 2 FAILED (the longer stun changes nothing the engine plays); the seam stays, factor 1 = the game's stun (format 10 moves an old 100 once). Range 0-500. |
 | `RiposteStunMaxSeconds` | 1.0 | Step 48: the riposted attacker's recoil = this × (0.5 + 0.5 T_A), s, never above `ImpactStunCapSeconds`. Step 51: live - the length of the attacker's forced stagger. Range 0-3. |
 | `ImpactRandomPercent` | 30 | Step 48: every length × a roll in [1 − r, 1 + r], r = this % × T (none in the green). Range 0-100. |
 | `ImpactStunCapSeconds` | 2.0 | Step 48: the game's `StunPeriodMax` 0.8 raised to this while the system lengthens stuns (every other stun clamped to the game's 0.8). Step 51: raised while blocks are live, given back when they stop. Range 0.8-5. |
