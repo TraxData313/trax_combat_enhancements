@@ -52,8 +52,9 @@ namespace TraxCombat.Core
     public readonly struct FormationAthleticsStats
     {
         public FormationAthleticsStats(int count, double meanPoints, double stdPoints, double meanFraction, double stdFraction, int exhausted,
-            double meanPeakShare = double.NaN, int inPeak = 0, double meanHealth = double.NaN, int bracing = 0)
+            double meanPeakShare = double.NaN, int inPeak = 0, double meanHealth = double.NaN, int bracing = 0, int inFever = 0)
         {
+            InFever = inFever < 0 ? 0 : inFever > count ? count : inFever;
             Bracing = bracing < 0 ? 0 : bracing > count ? count : bracing;
             Count = count;
             MeanPoints = meanPoints;
@@ -74,8 +75,11 @@ namespace TraxCombat.Core
             new FormationAthleticsStats(points.Count, points.Mean, points.StdDev, fractions.Mean, fractions.StdDev, exhausted, peakShares.Mean, inPeak);
 
         /// <summary>With the men's health left (0..1 each) too - the strip's "HP 81%" (step 9); step 23: how many brace now.</summary>
-        public static FormationAthleticsStats From(in MeanStd points, in MeanStd fractions, in MeanStd peakShares, in MeanStd health, int exhausted, int inPeak, int bracing = 0) =>
-            new FormationAthleticsStats(points.Count, points.Mean, points.StdDev, fractions.Mean, fractions.StdDev, exhausted, peakShares.Mean, inPeak, health.Mean, bracing);
+        public static FormationAthleticsStats From(in MeanStd points, in MeanStd fractions, in MeanStd peakShares, in MeanStd health, int exhausted, int inPeak, int bracing = 0, int inFever = 0) =>
+            new FormationAthleticsStats(points.Count, points.Mean, points.StdDev, fractions.Mean, fractions.StdDev, exhausted, peakShares.Mean, inPeak, health.Mean, bracing, inFever);
+
+        /// <summary>Step 58: how many of <see cref="Count"/> are in a FEVER now (step 43: armed or burning - AI men only) - the ALT label's "fever 12/40".</summary>
+        public int InFever { get; }
 
         /// <summary>Step 23: how many of <see cref="Count"/> brace now (no melee attacks, guard up - AI men only).</summary>
         public int Bracing { get; }

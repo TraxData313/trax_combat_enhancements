@@ -1434,6 +1434,12 @@
   // (true or false)
   "AltMarkersShowEnemy": true,
 
+  // Each formation's numbers under its marker also say how many of its men are in a FEVER (the
+  // surge after a charge or advance order), "fever 12/40" in orange, under the ready count -
+  // the group's surge at a glance. Shown only while at least one of its men is in a fever.
+  // (true or false)
+  "ShowFeverOnLabels": true,
+
   // While the game shows its markers (you hold ALT, or the orders menu is open), a small bar
   // above each man in a FEVER (the surge after a charge or advance order - Aggression and
   // fever): bright orange while he still runs at the enemy, fading through yellow as the fever
@@ -1460,9 +1466,26 @@
   // (true or false)
   "AthleticsMarksShowEnemy": true,
 
-  // At most this many men get their bars (Athletics and fever) in one frame - the men nearest
-  // to the camera first. A big battle has hundreds of men on the screen; fewer cost less and
-  // clutter less.
+  // Off (the default): the Athletics and fever bars show only on the few men you look at - the
+  // ones nearest the centre of the screen and close to the camera (the next two settings); the
+  // formations' averages are under their markers. On: every man on the screen gets his bars, as
+  // before (at most the cap below, the nearest first).
+  // (true or false)
+  "AltMarksEveryone": false,
+
+  // How many men get their bars at most - the ones nearest the centre of the screen (where you
+  // look), among the men close to the camera. In a tournament or a duel this is your opponent.
+  // (range 1 to 50)
+  "AltNearMarksMax": 5,
+
+  // Only men at most this far from the camera get their bars, in metres. The camera sits a few
+  // metres behind you, so 15 m is about the men in front of you and the next rank.
+  // (range 2.0 to 100.0)
+  "AltNearMarksMetres": 15.0,
+
+  // At most this many men get their bars (Athletics and fever) in one frame - with bars on
+  // every man, the men nearest to the camera first; it also caps the men you look at. A big
+  // battle has hundreds of men on the screen; fewer cost less and clutter less.
   // (range 1 to 1000)
   "FeverMarkMax": 200,
 

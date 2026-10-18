@@ -264,7 +264,7 @@ public class AthleticsMarkTests
         Assert.Same(SettingsSchema.AltMarkersGroup, SettingsSchema.AthleticsMarksShowEnemy.Group);
         Assert.Same(SettingsSchema.AdvancedGroup, SettingsSchema.AthleticsMarkGap.Group);
         Assert.Equal(SettingsSchema.FeverMarksShowEnemy.Index + 1, SettingsSchema.ShowAthleticsMarks.Index);
-        Assert.Equal(SettingsSchema.ShowAthleticsMarks.Index + 2, SettingsSchema.FeverMarkMax.Index);      // the one cap last
+        Assert.Equal(SettingsSchema.ShowAthleticsMarks.Index + 5, SettingsSchema.FeverMarkMax.Index);      // the one cap last (step 58's three near settings before it)
         Assert.Equal(SettingsSchema.FeverMarkHeightMetres.Index + 1, SettingsSchema.AthleticsMarkWidth.Index);
         Assert.Equal(ApplyTiming.Live, SettingsSchema.ShowAthleticsMarks.Timing);
         Assert.Equal(ApplyTiming.Live, SettingsSchema.AthleticsMarkGap.Timing);

@@ -76,6 +76,9 @@ namespace TraxCombat.Hud
         /// <summary>Step 24: this mission's ready counts ([summary]).</summary>
         internal ReadyCountStats ReadyStats { get; } = new ReadyCountStats();
 
+        /// <summary>Step 58: this mission's fever shares ([summary]).</summary>
+        internal FeverLabelStats FeverStats { get; } = new FeverLabelStats();
+
         /// <summary>This show uses our own projection.</summary>
         internal bool Projecting => _projecting;
 
@@ -133,6 +136,7 @@ namespace TraxCombat.Hud
         {
             lines.Add(MarkerStats.SummaryLine(Stats.Errors));
             lines.Add(ReadyStats.SummaryLine(ViewName));
+            lines.Add(FeverStats.SummaryLine(ViewName));
         }
 
         // ------------------------------------------------------------------ every frame: read, pair, place
@@ -279,6 +283,19 @@ namespace TraxCombat.Hud
                 label.SetReady(false, 0, 0, ReadyBand.Plain);
                 ReadyStats.NoteHidden(hidden);
             }
+            // step 58: the group's fever share under the ready count ("fever 12/40") - only while one of its men is in a fever
+            var fever = FeverLabelRules.From(s);
+            var feverHidden = FeverLabelMath.HiddenFor(in fever, in st);
+            if (feverHidden == FeverLabelHidden.None)
+            {
+                label.SetFever(true, st.InFever, st.Total);
+                FeverStats.NoteShown(st.InFever, st.Total, m.FormationIndex, m.TeamType);
+            }
+            else
+            {
+                label.SetFever(false, 0, 0);
+                FeverStats.NoteHidden(feverHidden);
+            }
             label.PushedStats = version;
             label.PushedSettings = s.Version;
         }
@@ -315,7 +332,8 @@ namespace TraxCombat.Hud
                 var s = TraxSettings.Shared;
                 TraxLog.Limited("hud", ViewName + ": values at " + S1(f.Now) + " s (show #" + _showNo + "): " + DescribeValues()
                     + " - ± is " + (s.ShowFormationSpread ? F2(s.FormationSpreadStdDevs) + " std" : "off (ShowFormationSpread)")
-                    + ", health " + (s.ShowFormationHealth ? "on" : "off (ShowFormationHealth)") + ", enemy " + (s.AltMarkersShowEnemy ? "on" : "off (AltMarkersShowEnemy)") + ", " + ReadyRules.From(s).Describe(), "hud-alt-values");
+                    + ", health " + (s.ShowFormationHealth ? "on" : "off (ShowFormationHealth)") + ", enemy " + (s.AltMarkersShowEnemy ? "on" : "off (AltMarkersShowEnemy)") + ", " + ReadyRules.From(s).Describe()
+                    + ", " + FeverLabelRules.From(s).Describe(), "hud-alt-values");
             }
             else if (first && TraxLog.VerboseWants("hud-alt-values"))
             {
@@ -387,6 +405,7 @@ namespace TraxCombat.Hud
                 var label = FindLabel(vm, m.Key);
                 if (label == null) continue;
                 sb.Append(sb.Length > 0 ? " | " : string.Empty).Append(AltMarkerMath.DescribeValues(in m, label.ShownMean, label.ShownSpread, label.ShownHealth, label.ShownReady, label.ShownTotal));
+                if (label.ShownInFever >= 0) sb.Append(' ').Append(FeverLabelMath.Text(label.ShownInFever, label.ShownFeverTotal)); // step 58
             }
             return sb.Length == 0 ? "no labelled formation" : sb.ToString();
         }

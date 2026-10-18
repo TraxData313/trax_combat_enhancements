@@ -6,7 +6,8 @@
     colour of their average f) and "HP 81%", then an optional slim bar (@BarShown): the mean fill in that
     colour, a translucent ± band (@BandLow → @BandHigh) and a thin tick at the peak line - the strip's bar.
     Step 24: under the bar, "ready 34/50" - the men not bracing (@ReadyShown: ShowReadyCount on and bracing
-    possible), plain / yellow / red by the share ready.
+    possible), plain / yellow / red by the share ready. Step 58: under it, "fever 12/40" - the men in a fever
+    (@FeverShown: ShowFeverOnLabels on, the fever on, at least one man in a fever), in the fever bar's orange.
     Each label is a centring box placed in SCREEN PIXELS (ScaledPositionXOffset / ScaledPositionYOffset /
     ScaledSuggestedWidth take pixels) from the vanilla marker read live every frame; the rest is in UI
     pixels of the 1080p layout (AltMarker* settings), so the game's UI scale applies. The text brush is the
@@ -62,6 +63,9 @@
 
                 <!-- step 24: "ready 34/50" (men not bracing), centred under the bar; plain / yellow / red by the share ready -->
                 <TextWidget Id="Ready" WidthSizePolicy="CoverChildren" HeightSizePolicy="CoverChildren" HorizontalAlignment="Center" MarginTop="1" Brush="NameMarker.Distance.Text" Brush.FontSize="@TextSize" Brush.FontColor="@ReadyColor" Text="@ReadyText" IsVisible="@ReadyShown" DoNotAcceptEvents="true" />
+
+                <!-- step 58: "fever 12/40" (men in a fever), centred under the ready count, in the fever bar's orange; only while a man is in a fever -->
+                <TextWidget Id="Fever" WidthSizePolicy="CoverChildren" HeightSizePolicy="CoverChildren" HorizontalAlignment="Center" MarginTop="1" Brush="NameMarker.Distance.Text" Brush.FontSize="@TextSize" Brush.FontColor="#FF8C1AFF" Text="@FeverText" IsVisible="@FeverShown" DoNotAcceptEvents="true" />
 
               </Children>
             </ListPanel>

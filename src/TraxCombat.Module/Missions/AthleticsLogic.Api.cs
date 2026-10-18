@@ -48,6 +48,7 @@ namespace TraxCombat.Missions
         private readonly int[] _formationExhausted = new int[StatSlots];
         private readonly int[] _formationInPeak = new int[StatSlots];
         private readonly int[] _formationBracing = new int[StatSlots];
+        private readonly int[] _formationInFever = new int[StatSlots]; // step 58: the ALT label's "fever 12/40"
         private readonly FormationAthleticsStats[] _formationSnapshot = new FormationAthleticsStats[StatSlots];
         private double _formationRefreshedAt = double.NegativeInfinity;
         private int _formationVersion;
@@ -215,6 +216,7 @@ namespace TraxCombat.Missions
                 _formationExhausted[k] = 0;
                 _formationInPeak[k] = 0;
                 _formationBracing[k] = 0;
+                _formationInFever[k] = 0;
             }
             int skipped = 0;
             for (int i = 0; i < _count; i++)
@@ -240,11 +242,12 @@ namespace TraxCombat.Missions
                 if (AthleticsMath.IsExhausted(in r, st)) _formationExhausted[k]++;
                 var bs = st.Brace;
                 if (bs != null && bs.Active) _formationBracing[k]++; // step 23: the ready count = Count - Bracing
+                if (_feverRunning > 0 && FeverOf(st, out _, out _)) _formationInFever[k]++; // step 58: the fever share (the switches read inside)
             }
             _formationTeamsSkipped = skipped;
             for (int k = 0; k < _formationSnapshot.Length; k++)
                 _formationSnapshot[k] = FormationAthleticsStats.From(in _formationPoints[k], in _formationFractions[k], in _formationPeakShares[k],
-                    in _formationHealth[k], _formationExhausted[k], _formationInPeak[k], _formationBracing[k]);
+                    in _formationHealth[k], _formationExhausted[k], _formationInPeak[k], _formationBracing[k], _formationInFever[k]);
             _formationVersion++;
         }
 

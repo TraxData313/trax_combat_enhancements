@@ -465,6 +465,10 @@ namespace TraxCombat.Core
         public bool FeverMarksShowEnemy => GetBool(SettingsSchema.FeverMarksShowEnemy);
         public bool ShowAthleticsMarks => GetBool(SettingsSchema.ShowAthleticsMarks); // step 46
         public bool AthleticsMarksShowEnemy => GetBool(SettingsSchema.AthleticsMarksShowEnemy);
+        public bool ShowFeverOnLabels => GetBool(SettingsSchema.ShowFeverOnLabels); // step 58
+        public bool AltMarksEveryone => GetBool(SettingsSchema.AltMarksEveryone);
+        public int AltNearMarksMax => GetInt(SettingsSchema.AltNearMarksMax);
+        public float AltNearMarksMetres => GetFloat(SettingsSchema.AltNearMarksMetres);
         public int FeverMarkMax => GetInt(SettingsSchema.FeverMarkMax);
 
         public float HudRefreshSeconds => GetFloat(SettingsSchema.HudRefreshSeconds);

@@ -222,7 +222,7 @@ public class FeverMarkTests
         Assert.Same(SettingsSchema.AltMarkersGroup, SettingsSchema.ShowFeverMarks.Group);
         Assert.Same(SettingsSchema.AltMarkersGroup, SettingsSchema.FeverMarkMax.Group);
         Assert.Same(SettingsSchema.AdvancedGroup, SettingsSchema.FeverMarkWidth.Group);
-        Assert.Equal(SettingsSchema.AltMarkersShowEnemy.Index + 1, SettingsSchema.ShowFeverMarks.Index);
+        Assert.Equal(SettingsSchema.AltMarkersShowEnemy.Index + 2, SettingsSchema.ShowFeverMarks.Index);    // step 58's ShowFeverOnLabels between
         Assert.Equal(ApplyTiming.Live, SettingsSchema.ShowFeverMarks.Timing);
         Assert.Equal(ApplyTiming.Live, SettingsSchema.FeverMarkHeightMetres.Timing);
     }
@@ -233,7 +233,10 @@ public class FeverMarkTests
         Assert.Equal("marks 22 x 5 UI px (smaller far away; the game's UI scale applies), 2.5 m above his feet, at most 200 a frame (FeverMarkMax - the nearest to the camera), the enemy's too",
             Rules().Describe());
         Assert.EndsWith("yours and your allies' only (FeverMarksShowEnemy off)", Rules(enemy: false).Describe());
-        Assert.Equal("behind the camera 3, beyond the cap 12", FeverMarkMath.DescribeSkips(new[] { 0, 0, 0, 3, 0, 0, 12 }));
+        var skips = new int[(int)FeverMarkSkip.Count];                                       // by name: step 58 put TooFar before OffScreen
+        skips[(int)FeverMarkSkip.Behind] = 3;
+        skips[(int)FeverMarkSkip.Capped] = 12;
+        Assert.Equal("behind the camera 3, beyond the cap 12", FeverMarkMath.DescribeSkips(skips));
         Assert.Equal("none", FeverMarkMath.DescribeSkips(new int[7]));
         var m = Man(17, (int)MarkerTeam.Yours, 12.34f, armed: false, share: 0.4f);
         m.ScreenX = 950;

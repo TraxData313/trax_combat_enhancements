@@ -35,6 +35,12 @@ namespace TraxCombat.Hud
     /// and sized (the UI scale, smaller far away), coloured (the band, the fever, vanilla's icon fade) and written into a reused pool of marks.
     /// Nothing allocated per frame once the pool has grown to the most men marked at once.
     ///
+    /// STEP 58 (Anton, 2026-10-18: "this ALT view is too cluttered ... only show them on up to 5 soldiers that I'm directly looking at and are
+    /// really close, making it work in tournaments too"): by default the NEAR view - the candidates within AltNearMarksMetres of the camera are
+    /// ranked by the angle from the camera's forward (= nearest the screen's centre) instead of the distance, the cap is min(AltNearMarksMax,
+    /// FeverMarkMax), no distance fade; AltMarksEveryone = the step-46 view above. Spectators (no valid team) are never placed. In a tournament /
+    /// arena / duel (no formation markers) the game's ALT key shows the view (the copied rule) - your opponent's bars.
+    ///
     /// Log: [hud] the first bars drawn per mission in full (men looked at by side, in a fever, marked, the bars by colour, the cap, skipped by
     /// reason, the nearest), FeverEnabled switched off while shown, the [summary] line (<see cref="FeverMarkStats"/>). Showing and hiding with
     /// the key is quiet after the first.
@@ -187,6 +193,7 @@ namespace TraxCombat.Hud
             var s = TraxSettings.Shared;
             var r = FeverMarkRules.From(s);
             var a = AthleticsMarkRules.From(s);
+            var near = AltNearRules.From(s); // step 58: the near view (the men nearest the screen's centre, close to the camera) or every man
             bool everyone = a.On;
             bool feverOn = r.Hidden == FeverMarksHidden.None;
             var athletics = AthleticsRules.From(s);
@@ -218,24 +225,27 @@ namespace TraxCombat.Hud
                     if (m.Side == (int)MarkerTeam.Enemy) enemy++;
                     else yours++;
                     var skip = AthleticsMarkMath.Decide(ref m, in r, in a);
+                    if (skip == FeverMarkSkip.None && near.Near && !AltNearMath.InRange(m.Distance, near.NearMetres)) skip = FeverMarkSkip.TooFar;
                     if (skip != FeverMarkSkip.None)
                     {
                         frame.SkipAt(index, skip);
                         continue;
                     }
-                    frame.Elect(index);
+                    // the every-man view ranks by the camera distance (step 46), the near view by the angle from the screen's centre (step 58)
+                    frame.Elect(index, near.Near ? AltNearMath.CentreKey(m.Facing) : m.Distance);
                 }
-                // the nearest on the screen: sorted only when the cap bites, projected nearest first until it is full (an off-screen man takes no slot)
+                // the first by rank ON THE SCREEN: sorted only when the cap bites, projected in rank order until it is full (an off-screen man takes no slot)
                 var projector = new Projector { Source = _source, Frame = frame, Fever = r, Bars = a };
-                int picked = FeverMarkMath.PickOnScreen(frame, r.Max, ref projector);
-                int most = Math.Min(r.Max, PoolMax);
+                int cap = near.Cap;
+                int picked = FeverMarkMath.PickOnScreen(frame, cap, ref projector);
+                int most = Math.Min(cap, PoolMax);
                 for (int k = 0; k < picked; k++)
                 {
                     ref var m = ref frame.Marks[frame.Order[k]];
                     AthleticsMarkMath.Layout(in r, in a, frame.Scale, m.Distance, m.HasBar, m.HasFever, m.FeverSlot, m.ScreenX, m.ScreenY, out var box);
                     var mark = vm.MarkAt(drawn, most);
                     if (mark == null) break;
-                    float fade = FeverMarkMath.Fade(m.Distance);
+                    float fade = AltNearMath.Fade(near.Near, m.Distance); // the near view: no distance fade (the close man you look at stays bright)
                     Color fill = default, frameColor = default, barColor = default, barFrame = default, barWound = default;
                     if (m.HasFever)
                     {
@@ -265,16 +275,17 @@ namespace TraxCombat.Hud
             _feverBarsNow = feverBars;
             double ms = (Stopwatch.GetTimestamp() - start) * TicksToMs;
             MarkStats.NoteBars(bars, _bands, wounded, feverBars);
-            MarkStats.NoteFrame(f.Dt, drawn, looked, inFever, yours, enemy, frame.Skipped[(int)FeverMarkSkip.Capped] > 0, r.Max, frame.Skipped, ms);
-            if (!_firstLogged && drawn > 0) LogFirstMarks(in f, in r, in a, looked, inFever, yours, enemy, drawn, bars, wounded, feverBars);
+            MarkStats.NoteMode(near.Near, drawn, near.Cap, near.NearMetres);
+            MarkStats.NoteFrame(f.Dt, drawn, looked, inFever, yours, enemy, frame.Skipped[(int)FeverMarkSkip.Capped] > 0, near.Cap, frame.Skipped, ms);
+            if (!_firstLogged && drawn > 0) LogFirstMarks(in f, in r, in a, in near, looked, inFever, yours, enemy, drawn, bars, wounded, feverBars);
         }
 
         protected override bool Refresh(in HudFrame f, bool first) => _vm != null;
 
         // ------------------------------------------------------------------ log text (allocates - once per mission)
 
-        private void LogFirstMarks(in HudFrame f, in FeverMarkRules r, in AthleticsMarkRules a, int looked, int inFever, int yours, int enemy, int drawn,
-            int bars, int wounded, int feverBars)
+        private void LogFirstMarks(in HudFrame f, in FeverMarkRules r, in AthleticsMarkRules a, in AltNearRules near, int looked, int inFever, int yours, int enemy,
+            int drawn, int bars, int wounded, int feverBars)
         {
             _firstLogged = true;
             var nearest = new StringBuilder();
@@ -285,6 +296,7 @@ namespace TraxCombat.Hud
                 if (m.Skip != FeverMarkSkip.None) continue;
                 nearest.Append(nearest.Length > 0 ? " | " : string.Empty).Append(AthleticsMarkMath.DescribeMan(in m));
                 if (m.InFever && !m.HasFever) nearest.Append(" (his fever bar off)");
+                if (near.Near) nearest.Append(", ").Append(AltNearMath.AngleDegrees(m.Facing).ToString("0", System.Globalization.CultureInfo.InvariantCulture)).Append("° off the centre");
                 shownNearest++;
             }
             int armed = 0;
@@ -296,13 +308,16 @@ namespace TraxCombat.Hud
             bool capped = _frame.Skipped[(int)FeverMarkSkip.Capped] > 0;
             TraxLog.Limited("hud", ViewName + ": first bars drawn at " + S1(f.Now) + " s (show #" + _showNo + ") - " + looked + (looked == 1 ? " man" : " men")
                 + " looked at (yours and allies " + yours + ", enemy " + enemy + "), " + inFever + " in a fever (armed " + armed + ", burning " + (inFever - armed) + "); "
-                + drawn + (drawn == 1 ? " man" : " men") + " marked" + (capped ? " (the nearest " + r.Max + " on the screen of " + _frame.Eligible + " candidates - FeverMarkMax)" : string.Empty)
+                + drawn + (drawn == 1 ? " man" : " men") + " marked"
+                + (!capped ? string.Empty
+                   : near.Near ? " (the " + near.Cap + " nearest the screen's centre of " + _frame.Eligible + " candidates within " + S1(near.NearMetres) + " m - AltNearMarksMax)"
+                   : " (the nearest " + near.Cap + " on the screen of " + _frame.Eligible + " candidates - FeverMarkMax)")
                 + ": " + bars + " Athletics bars (" + colours + "; wounded " + wounded + "), " + feverBars + " fever bars"
                 + "; skipped: " + FeverMarkMath.DescribeSkips(_frame.Skipped)
                 + "; screen " + OrderStripMath.Px(_frame.ScreenWidth) + " x " + OrderStripMath.Px(_frame.ScreenHeight) + " px, UI scale " + F2(_frame.Scale)
                 + "; " + (a.On ? a.Describe() : "Athletics bars off (" + AthleticsMarkMath.HiddenName(a.Hidden) + ")")
                 + "; fever " + (r.Hidden == FeverMarksHidden.None ? r.Describe() : "bars off (" + FeverMarkMath.HiddenName(r.Hidden) + ")")
-                + "; the first drawn: " + nearest + "; source: " + _source!.Describe(), "hud-fever");
+                + "; the first drawn: " + nearest + "; source: " + _source!.Describe() + "; " + near.Describe(), "hud-fever");
         }
     }
 }

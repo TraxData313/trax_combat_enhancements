@@ -74,6 +74,7 @@ namespace TraxCombat.Tools
                 float dx = m.WorldX - CameraX, dy = m.WorldY, dz = m.WorldZ - CameraZ;
                 m.Distance = (float)Math.Sqrt(dx * dx + dy * dy + dz * dz);
                 m.InFront = dy > 0f;
+                m.Facing = AltNearMath.Facing(dx, dy, dz, 0f, 1f, 0f);                         // step 58: the pinhole looks along +y
                 return true;
             }
 
@@ -100,6 +101,9 @@ namespace TraxCombat.Tools
             S.Set(SettingsSchema.FeverMarkHeightMetres, 2.5, SettingSources.File);
             S.Set(SettingsSchema.HudRefreshSeconds, 0.1, SettingSources.File);
             S.Set(SettingsSchema.ShowAthleticsMarks, false, SettingSources.File);             // step 44's checks run without step 46's bars
+            S.Set(SettingsSchema.AltMarksEveryone, true, SettingSources.File);                // ... and in the every-man view (step 58's near view has its own step)
+            S.Set(SettingsSchema.AltNearMarksMax, 5, SettingSources.File);
+            S.Set(SettingsSchema.AltNearMarksMetres, 15.0, SettingSources.File);
         }
 
         private static class FeverColors

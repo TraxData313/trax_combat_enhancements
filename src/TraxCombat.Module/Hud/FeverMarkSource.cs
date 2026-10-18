@@ -102,7 +102,9 @@ namespace TraxCombat.Hud
         public bool Locate(Agent agent, float heightMetres, ref FeverMark m)
         {
             var team = agent.Team; // managed first; IsActive reads the engine's state
-            if (team == null || !agent.IsActive()) return false;
+            // step 58: no valid team = not a fighter on either side - a tournament's / arena's SPECTATORS (MissionAgentHandler spawns neutral
+            // location characters with Team.Invalid; Anton's arena log: 140 "enemy" men looked at, 12 of them opponents) - never marked
+            if (team == null || !team.IsValid || !agent.IsActive()) return false;
             m.Key = agent.Index;
             m.Side = team.IsPlayerTeam ? (int)MarkerTeam.Yours : team.IsPlayerAlly ? (int)MarkerTeam.Ally : (int)MarkerTeam.Enemy;
             m.Mounted = agent.MountAgent != null; // step 46: managed (the cached mount); a rider's Position is the ground under his horse
@@ -114,6 +116,7 @@ namespace TraxCombat.Hud
             var d = p - _cameraPosition;
             m.Distance = d.Length;
             m.InFront = Vec3.DotProduct(d, _cameraDirection) > 0f;
+            m.Facing = AltNearMath.Facing(d.x, d.y, d.z, _cameraDirection.x, _cameraDirection.y, _cameraDirection.z); // step 58: the screen's centre
             return true;
         }
 

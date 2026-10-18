@@ -1099,6 +1099,12 @@ namespace TraxCombat.Core
             "Enemy formations too",
             "The enemy's formation markers get the numbers too - see which of their lines is tired before you charge it. Off: yours and your allies' only.");
 
+        // Step 58 (Anton, 2026-10-18: "this ALT view is too cluttered. Maybe add those lines as some averages on the group") - the formation's
+        // FEVER share on its label, under "ready 34/50" (AI_NOTES "Step 58").
+        public static readonly ParamDef ShowFeverOnLabels = Bool("ShowFeverOnLabels", AltMarkersGroup,
+            "Fever share under the formation markers",
+            "Each formation's numbers under its marker also say how many of its men are in a FEVER (the surge after a charge or advance order), \"fever 12/40\" in orange, under the ready count - the group's surge at a glance. Shown only while at least one of its men is in a fever.");
+
         // Step 44 (Anton, 2026-10-17): "which soldiers are in FEVER" while the game shows its ALT icons - our own small mark above each
         // man in a fever (FeverMarkView, AI_NOTES "Step 44"), shown exactly with the formation markers above.
         public static readonly ParamDef ShowFeverMarks = Bool("ShowFeverMarks", AltMarkersGroup,
@@ -1119,9 +1125,23 @@ namespace TraxCombat.Core
             "Enemy Athletics bars too",
             "The enemy's soldiers get their Athletics bar too - see who is spent before you charge. Off: yours and your allies' only.");
 
+        // Step 58 (Anton, 2026-10-18: "only show them on up to 5 soldiers that I'm directly looking at and are really close, making it work in
+        // tournaments too") - the per-man bars on the few men nearest the screen's centre and close to the camera (AI_NOTES "Step 58").
+        public static readonly ParamDef AltMarksEveryone = Bool("AltMarksEveryone", AltMarkersGroup,
+            "Bars on every man (the old view)",
+            "Off (the default): the Athletics and fever bars show only on the few men you look at - the ones nearest the centre of the screen and close to the camera (the next two settings); the formations' averages are under their markers. On: every man on the screen gets his bars, as before (at most the cap below, the nearest first).");
+
+        public static readonly ParamDef AltNearMarksMax = Int("AltNearMarksMax", 1, 50, AltMarkersGroup,
+            "Bars on the men you look at: how many",
+            "How many men get their bars at most - the ones nearest the centre of the screen (where you look), among the men close to the camera. In a tournament or a duel this is your opponent.");
+
+        public static readonly ParamDef AltNearMarksMetres = Float("AltNearMarksMetres", 2, 100, AltMarkersGroup,
+            "Bars on the men you look at: how close (m)",
+            "Only men at most this far from the camera get their bars, in metres. The camera sits a few metres behind you, so 15 m is about the men in front of you and the next rank.");
+
         public static readonly ParamDef FeverMarkMax = Int("FeverMarkMax", 1, 1000, AltMarkersGroup,
             "Most men marked at once",
-            "At most this many men get their bars (Athletics and fever) in one frame - the men nearest to the camera first. A big battle has hundreds of men on the screen; fewer cost less and clutter less.");
+            "At most this many men get their bars (Athletics and fever) in one frame - with bars on every man, the men nearest to the camera first; it also caps the men you look at. A big battle has hundreds of men on the screen; fewer cost less and clutter less.");
 
         // ------------------------------------------------------------------ advanced
 
@@ -1318,7 +1338,8 @@ namespace TraxCombat.Core
             ShowPlayerBar, ShowPlayerBarOutsideBattles, ShowAttackRecoveryBar, FlashBarOnEarlyAttack, ShowSprintBar,
             BarYellowBelowPercent, BarOrangeBelowPercent, BarRedBelowPercent,
             ShowInOrderMenu, ShowFormationHealth, ShowFormationSpread, FormationSpreadStdDevs, ShowReadyCount, ReadyYellowBelowPercent, ReadyRedBelowPercent, OrderStripUnderCards,
-            ShowAltMarkerStats, AltMarkersShowEnemy, ShowFeverMarks, FeverMarksShowEnemy, ShowAthleticsMarks, AthleticsMarksShowEnemy, FeverMarkMax,
+            ShowAltMarkerStats, AltMarkersShowEnemy, ShowFeverOnLabels, ShowFeverMarks, FeverMarksShowEnemy, ShowAthleticsMarks, AthleticsMarksShowEnemy,
+            AltMarksEveryone, AltNearMarksMax, AltNearMarksMetres, FeverMarkMax,
             HudRefreshSeconds, PlayerBarWidth, PlayerBarHeight, PlayerBarOffsetRight, PlayerBarOffsetBottom,
             RecoveryBarWidth, RecoveryBarHeight, RecoveryBarOffsetAbove, SprintBarOffsetAbove,
             OrderStripTextSize, OrderStripTextOffset, OrderStripBarOffset, OrderStripBarHeight, OrderStripReadyOffset, OrderStripSideMargin,

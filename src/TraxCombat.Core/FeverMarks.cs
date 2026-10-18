@@ -22,13 +22,17 @@ namespace TraxCombat.Core
         /// <summary>Closer to the camera than <see cref="FeverMarkMath.NearMetres"/> (vanilla's own icon is gone there too).</summary>
         TooClose = 4,
 
+        /// <summary>Step 58: the near view - farther from the camera than AltNearMarksMetres.</summary>
+        TooFar = 5,
+
         /// <summary>Projected, but outside the screen (checked BEFORE the pick, so he takes no slot from a man on it).</summary>
-        OffScreen = 5,
+        OffScreen = 6,
 
-        /// <summary>More men in fever on the screen than FeverMarkMax - the farthest wait.</summary>
-        Capped = 6,
+        /// <summary>More candidates on the screen than the cap - the farthest (the every-man view) or the farthest from the screen's centre (the
+        /// near view, step 58) wait.</summary>
+        Capped = 7,
 
-        Count = 7,
+        Count = 8,
     }
 
     /// <summary>Step 44: why no fever mark shows at all - in the order the rules are read, the master switch FIRST.</summary>
@@ -71,6 +75,10 @@ namespace TraxCombat.Core
         public float Distance;
 
         public bool InFront;
+
+        /// <summary>Step 58: the cosine of the angle between the camera's forward and the line to the mark's point (1 = the screen's centre) -
+        /// <see cref="AltNearMath.Facing"/>, set by the source with the distance.</summary>
+        public float Facing;
 
         /// <summary>The projected point, screen pixels (valid once projected).</summary>
         public float ScreenX;
@@ -176,10 +184,14 @@ namespace TraxCombat.Core
         }
 
         /// <summary>A mark that passed the first skips joins the pick.</summary>
-        public void Elect(int index)
+        public void Elect(int index) => Elect(index, Marks[index].Distance);
+
+        /// <summary>Step 58: a candidate ranked by <paramref name="key"/> (smaller = picked first): the camera distance in the every-man view, the
+        /// angle from the screen's centre (<see cref="AltNearMath.CentreKey"/>) in the near view.</summary>
+        public void Elect(int index, float key)
         {
             Order[Eligible] = index;
-            Keys[Eligible] = Marks[index].Distance;
+            Keys[Eligible] = key;
             Eligible++;
         }
 
@@ -416,6 +428,7 @@ namespace TraxCombat.Core
             FeverMarkSkip.EnemyOff => "enemy (its bars switched off)",
             FeverMarkSkip.Behind => "behind the camera",
             FeverMarkSkip.TooClose => "closer than " + F1(NearMetres) + " m",
+            FeverMarkSkip.TooFar => "beyond the near range",
             FeverMarkSkip.Capped => "beyond the cap",
             FeverMarkSkip.OffScreen => "off the screen",
             _ => s.ToString(),
@@ -484,6 +497,38 @@ namespace TraxCombat.Core
         public int Grown { get; set; }
 
         public void NoteShown() => Shows++;
+
+        // ---- step 58: the view's mode per frame (the near view: the men nearest the screen's centre, close to the camera)
+
+        public long NearFrames { get; private set; }
+        public long NearMarks { get; private set; }
+        public int MostNear { get; private set; }
+        public long EveryoneFrames { get; private set; }
+
+        /// <summary>The near view's cap and range at its first frame (the summary names them).</summary>
+        public int NearCap { get; private set; } = -1;
+
+        public double NearMetres { get; private set; }
+
+        public double MeanNear => NearFrames > 0 ? (double)NearMarks / NearFrames : 0;
+
+        /// <summary>Step 58: this frame's mode - near (with the men marked, the cap and the range) or everyone.</summary>
+        public void NoteMode(bool near, int drawn, int cap, double metres)
+        {
+            if (!near)
+            {
+                EveryoneFrames++;
+                return;
+            }
+            NearFrames++;
+            NearMarks += drawn;
+            if (drawn > MostNear) MostNear = drawn;
+            if (NearCap < 0)
+            {
+                NearCap = cap;
+                NearMetres = metres;
+            }
+        }
 
         /// <summary>Step 46: this frame's bars - the Athletics bars drawn (by band; <paramref name="bands"/> indexed by <see cref="BarBand"/>), how many
         /// of them show a wound cap, the fever bars drawn. Call before <see cref="NoteFrame"/> of the same frame (any order works).</summary>
@@ -568,6 +613,14 @@ namespace TraxCombat.Core
             sb.Append("; cost ").Append((MeanCostMs * 1000).ToString("0", CultureInfo.InvariantCulture)).Append(" µs a frame (most ")
               .Append((MostCostMs * 1000).ToString("0", CultureInfo.InvariantCulture)).Append(" µs)");
             if (Grown > 0) sb.Append(", the frame's arrays grew ").Append(Grown).Append('x');
+            if (NearFrames + EveryoneFrames > 0)
+            {
+                sb.Append("; mode (step 58): near ").Append(NearFrames).Append(" frames");
+                if (NearFrames > 0)
+                    sb.Append(" (men marked a frame: mean ").Append(FeverMarkMath.F1(MeanNear)).Append(", max ").Append(MostNear).Append(" - up to ").Append(NearCap)
+                      .Append(" nearest the screen's centre within ").Append(FeverMarkMath.F1(NearMetres)).Append(" m of the camera at the first)");
+                sb.Append(", everyone ").Append(EveryoneFrames).Append(" frames");
+            }
             return sb.Append("; errors ").Append(errors).ToString();
         }
     }

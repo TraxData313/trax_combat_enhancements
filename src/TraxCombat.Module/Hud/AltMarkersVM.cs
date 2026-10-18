@@ -94,6 +94,10 @@ namespace TraxCombat.Hud
         private bool _readyShown;
         private int _ready = -1;
         private int _total = -1;
+        private string _feverText = string.Empty;
+        private bool _feverShown;
+        private int _inFever = -1;
+        private int _feverTotal = -1;
 
         public AltMarkerLabelVM(int index)
         {
@@ -119,6 +123,11 @@ namespace TraxCombat.Hud
         internal int ShownReady => _readyShown ? _ready : -1;
 
         internal int ShownTotal => _readyShown ? _total : -1;
+
+        /// <summary>Step 58: the fever share now shown (-1 while hidden).</summary>
+        internal int ShownInFever => _feverShown ? _inFever : -1;
+
+        internal int ShownFeverTotal => _feverShown ? _feverTotal : -1;
 
         /// <summary>Seen with a marker this frame (the view hides the rest).</summary>
         internal bool SeenThisFrame { get; set; }
@@ -175,6 +184,45 @@ namespace TraxCombat.Hud
                 _ready = ready;
                 _total = total;
                 ReadyText = ReadyMath.Text(ready, total);
+            }
+        }
+
+        /// <summary>Step 58: the fever share ("fever 12/40", the fever bar's orange) - the text rebuilt only when a number changes.</summary>
+        internal void SetFever(bool shown, int inFever, int total)
+        {
+            FeverShown = shown;
+            if (!shown) return;
+            if (inFever != _inFever || total != _feverTotal)
+            {
+                _inFever = inFever;
+                _feverTotal = total;
+                FeverText = FeverLabelMath.Text(inFever, total);
+            }
+        }
+
+        /// <summary>Step 58: "fever 12/40" - men in a fever of the formation.</summary>
+        [DataSourceProperty]
+        public string FeverText
+        {
+            get => _feverText;
+            set
+            {
+                if (value == _feverText) return;
+                _feverText = value;
+                OnPropertyChangedWithValue(value, nameof(FeverText));
+            }
+        }
+
+        /// <summary>Step 58: ShowFeverOnLabels on, the fever on, and a man of the formation in a fever (FeverLabelRules).</summary>
+        [DataSourceProperty]
+        public bool FeverShown
+        {
+            get => _feverShown;
+            set
+            {
+                if (value == _feverShown) return;
+                _feverShown = value;
+                OnPropertyChangedWithValue(value, nameof(FeverShown));
             }
         }
 
