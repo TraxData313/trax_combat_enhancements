@@ -1,6 +1,6 @@
 # Releasing on the Steam Workshop
 
-**Status: v1.1.1 live since 2026-10-14 (v1.1.0 2026-10-12, v1.0.0 2026-10-10) — Public, with the short description of step 31.** Every later release:
+**Status: v1.2.0 live since 2026-10-18 (v1.1.1 2026-10-14, v1.1.0 2026-10-12, v1.0.0 2026-10-10) — Public, with step 60's description (sent by make_workshop_update.py with the upload).** Every later release:
 "Every release after the first" below; publishing stays Anton's call (`docs/PLAYTEST.md`).
 
 Item: **3817259431** — https://steamcommunity.com/sharedfiles/filedetails/?id=3817259431 (also in

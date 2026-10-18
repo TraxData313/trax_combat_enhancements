@@ -20,7 +20,7 @@
     </GetItem>
     <UpdateItem>
         <ModuleFolder Value="C:\Users\Asus ROG\Documents\BannerlordMods\trax_combat_enhancements\dist\TraxCombatEnhancements"/>
-        <ChangeNotes Value="v1.1.1 - The sprint now works in towns and villages too, so you have it in street fights. Its bar shows there when you draw a weapon or while it refills." />
+        <ChangeNotes Value="v1.2.0 - The big battle update: shield walls hold, careful men and the fever of a charge, courage and cohesion, cavalry flocking, staggers / shield drops / knockdowns on tired men, the ALT view, a short settings page." />
         <Tags>
             <Tag Value="Utility" />
             <Tag Value="UI" />
