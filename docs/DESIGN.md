@@ -643,7 +643,8 @@ regen.)
   2 s stagger immunity from it); **a wrong-side shield drop** = step 50's queued drop from the tick; **a blocker knocked down** = a blow of our
   own from the tick (vanilla's drowning-blow recipe, KnockDown | KnockBack, 1 damage, owned by the attacker - the spike's lever 6), its Fall
   watched and slowed by the get-up factor (as a kick's), the 5 s immunity from the measured get-up; **the riposte** (a fresh blocker's
-  right-side block or parry, IMPACT §3.6, at most 50%) = a forced stagger of the ATTACKER from the tick, its length the decision's recoil
+  right-side block or parry, IMPACT §3.6, at most 50%; step 56 - decision 48: any blocker's, up to 70%, driven by the attacker's T and the
+  turned mismatch, while the correct blocker himself counts a quarter of his T at 30 / 10, and the stun's lengthening is off) = a forced stagger of the ATTACKER from the tick, its length the decision's recoil
   (`RiposteStunMaxSeconds` x (0.5 + 0.5 T_A) ± the spread), watched the same way. `ImpactBlocksEnabled` off with `ImpactRiposteEnabled` on =
   the riposte alone. An outcome the dice gave that is not played (its lever off, the pool full, refused at the tick, the engine refusing)
   leaves no reeling / ground time on his record. Courage: each live outcome is ONE shock (our own blow's hit is not a second). You: the same
@@ -1909,6 +1910,24 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     hysteresis); the goal vote is LOGGED, not a condition (the heading already bends toward the goal as readiness grows); (g) the flock never
     sits: its lead is at least 4 m/s along the heading; (h) the SLOT is a sunflower (Vogel's spiral) fixed per rider - separation without pairwise
     reads and without per-frame noise; ALIGNMENT is the shared heading + lead; (i) the measurements run ON and OFF from the same census.
+48. **Right blocks favour the defender** (step 56, Anton's tournament and battle of 2026-10-18: "a block in the right direction I think got
+    me staggered ... make sure right blocks are a possible penalty for the ATTACKER - now I felt them as a penalty for the defender, so it makes
+    swinging as much as you can the goal, not the skill"; Claude's calls - Anton can overturn any - AI_NOTES "Step 56", IMPACT §3.5 / §3.6 / §4 H):
+    (a) what Anton felt that morning was the SPIKE (ImpactSpike on = the model in shadow, levers 4 / 6 forcing staggers / knockdowns on blockers),
+    but the model's own right-block ceilings 80 / 40 would have punished a correct blocker the same way - his point stands; (b) a CORRECT block =
+    a right-side shield block OR a parry (the events that can riposte); (c) the blocker's x on it = `CorrectBlockTiredWeightPercent` (25 %) ×
+    T_D + the mismatch (+ reeling, + damage) - tiredness weighted LOW, not zero: at 0 an exhausted blocker facing a fresh attacker would
+    rest on the body ratio alone, and a quarter keeps a tired man's correct block a little less safe (two empty even men: ≤ 5 % staggered,
+    never down; a fresh attacker on an empty guard 8 % right side / 21 % parry - a sword is a worse guard than a 4 kg shield); the ceilings
+    30 / 10 (both rows), so even the stick against the axe tops out at 30 / 10 - it STILL staggers (17 % fresh, 26 % at half a bar); (d) the
+    riposte = 70 % × S(x_r) × (1 − `RiposteBlockerTiredPercent` × T_D), the parameter at 0: x_r = T_A + the turned mismatch already holds "the
+    attacker's tiredness and his impact against the guard's stability"; the blocker's own freshness enters only through his body - two
+    empty even men 70 %, two fresh 0-1 %, a fresh attacker into any guard 0; (e) the WRONG side unchanged (90 / 50 / 40, T in full, no
+    riposte) - the direction of the block is what pays; (f) the block stun's lengthening is OFF, not removed: `BlockStunTiredExtraPercent` 0
+    (the spike's lever 2 FAILED - "the stun does not lengthen what the engine plays"); the seam, the cap and the setting stay for a later
+    experiment; at 0 the factor is 1 and the game's stun is untouched (the cap is still raised while blocks are live - harmless: every stun we
+    do not lengthen is held at the game's 0.8); (g) config format 10 moves a file still holding 80 / 40 / 80 / 40 / 50 / 100 once, a tuned value
+    kept and noted; DESIGN's Default column keeps the initial values; IMPACT §4 A-G stay the step-48 model (their tests pin it).
 
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),

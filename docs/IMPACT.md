@@ -27,7 +27,11 @@ behind a switch, at most one per 1.5 s, merged, never in shadow; docs/HOW-IT-WOR
 IMPACT MORNING SCRIPT + D22; AI_NOTES "Step 53", DESIGN decision 45); step 54 = I7, **THE AI PUNISHES A WINDOW** (2026-10-18, §8 q14 answered yes -
 Anton: "otherwise it's a player-only weapon": an AI man on foot whose target reels or lies down - the player's windows too - decides to attack at
 `ImpactPunishAggressionPercent` 100 % of the game's AI for the window + 0.5 s, step 43's lever, checked at the fever's ~0.25 s look; a timid man
-within 3 m steps in like a surge; AI_NOTES "Step 54", DESIGN decision 46, PLAYTEST D23). **All seven I-steps (I1-I7) are built.**
+within 3 m steps in like a surge; AI_NOTES "Step 54", DESIGN decision 46, PLAYTEST D23). **All seven I-steps (I1-I7) are built.** Step 56 (2026-10-18, Anton's tournament: "make sure right blocks are a possible
+penalty for the ATTACKER - now I felt them as a penalty for the defender"): **a correct block is the attacker's risk** - §3.2's T counts
+only `CorrectBlockTiredWeightPercent` (25 %) on a right-side block or a parry, their ceilings 30 / 10, the riposte (§3.6) × (1 −
+`RiposteBlockerTiredPercent` (0) × T_D) instead of × f_D, up to 70 %; the wrong side unchanged; the block stun's lengthening off
+(`BlockStunTiredExtraPercent` 0 - the spike's lever 2 FAILED); §4 H has the numbers; DESIGN decision 48, AI_NOTES "Step 56".
 Every number in this plan is a model - the playtest decides.**
 (Written as a plan in step 45:) The game-side facts behind every line are in
 `docs/RESEARCH.md` §R (file + line in the v1.4.8 decompile); the short version is in `AI_NOTES.md` "Step 45". The build order
@@ -161,12 +165,18 @@ above) — the smooth S-curve: slow near the green, steep in the middle, flat at
 | Event (how we know it) | Always (no dice) | Stagger | Shield dropped | Knockdown |
 |---|---|---|---|---|
 | **Kick / bash lands** (landed alternative attack) | the vanilla knock-back reel, ×(1 + 1.5 T_D × the roll) longer (point 3) | — (the reel IS the stagger) | `KickShieldDropMaxPercent` 90 | `KickKnockdownMaxPercent` 80 |
-| **Right-side shield block** | the blocker's stun ×(1 + T_D) | `RightBlockStaggerMaxPercent` 80 | `RightBlockShieldDropMaxPercent` 0 | `RightBlockKnockdownMaxPercent` 40 |
-| **Weapon parry** | the parrier's stun ×(1 + T_D) | `ParryStaggerMaxPercent` 80 | — | `ParryKnockdownMaxPercent` 40 |
+| **Right-side shield block** | the blocker's stun ×(1 + T_D) | `RightBlockStaggerMaxPercent` 80 (step 56: 30) | `RightBlockShieldDropMaxPercent` 0 | `RightBlockKnockdownMaxPercent` 40 (step 56: 10) |
+| **Weapon parry** | the parrier's stun ×(1 + T_D) | `ParryStaggerMaxPercent` 80 (step 56: 30) | — | `ParryKnockdownMaxPercent` 40 (step 56: 10) |
 | **Wrong-side shield block** | the blocker's stun ×(1 + T_D) | `WrongBlockStaggerMaxPercent` 90 | `WrongBlockShieldDropMaxPercent` 50 | `WrongBlockKnockdownMaxPercent` 40 |
 | **Clean hit lands** (weapon, not blocked) | a tired man never shrugs a blow off (the threshold × f) | `HitStaggerMaxPercent` 80 (his flinch lengthened) | — | `HitKnockdownMaxPercent` 50 |
 | **Any of these on a man reeling from an impact stagger** | — | (immune — §3.9) | as its row, x + 0.75 | as its row, x + 0.75 |
-| **Riposte** (a right-side block or parry, §3.6) | — | `RiposteStaggerMaxPercent` 50 — the ATTACKER | — | — |
+| **Riposte** (a right-side block or parry, §3.6) | — | `RiposteStaggerMaxPercent` 50 (step 56: 70) — the ATTACKER | — | — |
+
+**Step 56 - a CORRECT block (right-side shield, parry) is the attacker's risk.** For these two rows only, x = `CorrectBlockTiredWeightPercent`
+(0.25) × T_D + w × band(log₂ R) (+ reeling, + damage): the blocker is broken mainly by a BIG mismatch (§4 C's stick against the axe still
+staggers), never by his own tiredness alone; the WRONG-side row, kicks and clean hits keep T_D in full - the direction of the block is what pays.
+The "always" column's stun lengthening is OFF since step 56 (`BlockStunTiredExtraPercent` 0: the spike's lever 2 FAILED - "the stun does not
+lengthen what the engine plays"); the seam remains, x 1 = the game's stun. The numbers: §4 H.
 
 How each outcome is MADE (RESEARCH §R): a stagger on a block = `act_stagger_*` on channel 0 (the direction from the blow) at the
 speed that gives the rolled length; a stagger on a clean hit = the engine's own flinch, slowed; the kick's reel = the engine's
@@ -182,6 +192,15 @@ veteran"). Made by the attacker's recoil stun (`CalculateDefendedBlowStunMultipl
 recoil grows to `RiposteStunMaxSeconds` × (0.5 + 0.5 T_A) — up to 1.0 s for an empty attacker — the worse his condition, the
 longer (Anton). Examples: a veteran (200 at 100%, skill 200) blocking a recruit (50 at 40%) 50%; the same recruit fresh 20%; two
 even fresh men 0%; a fresh man parrying an equal at 20% 45%.
+
+**Step 56 (Anton's tournament, 2026-10-18) - the riposte is driven by the ATTACKER:** chance = `RiposteStaggerMaxPercent` (70) × S(x_r) ×
+(1 − `RiposteBlockerTiredPercent` (0) × T_D), x_r as above (T_A + the mismatch turned - his impact against the guard's stability, both bodies,
+both skills). The blocker's own tiredness no longer saves a tired attacker (it still enters through his smaller body); 100 gives step 48's ×
+f_D back. Two EMPTY even men: x_r = 1 → **70%**, the blocker himself ≤ 5% staggered, never down; a fresh attacker into any guard ~0 (1% off
+a 4 kg shield). Made since step 51 by a forced stagger of the attacker (`act_stagger_backward`), its length the recoil above. The numbers
+(the game's tired swing 0.85 + 0.15 f; swords 1.2 kg at 92, a 4 kg shield): the veteran blocking the recruit at 40% **70%**, the recruit
+fresh 28%, a fresh man parrying an equal at 20% 66%, the veteran himself at 50% still 70%; the attacker at 50% / 25% / 0% into a FRESH guard
+41% / 70% / 70%, into a guard as tired as he is 28% / 62% / 70%, into an EMPTY guard 18% / 52% / 70%.
 
 ### 3.7 How long (the randomness grows with tiredness — points 2, 3, 4)
 
@@ -302,6 +321,28 @@ skill 20; the peasant parries with a 0.6 kg stick)
 34%; at 50% — a kick 80% (shield 90%), a sword or a mace 50%.
 
 **G. The riposte**: see §3.6 (50% / 20% / 0% / 45%).
+
+(A-G are the STEP-48 model - a correct block counting T_D in full, its ceilings 80 / 40, the riposte 50 % × f_D; `ImpactTests` keeps
+them with those weights pinned. Step 56's answer follows.)
+
+**H. Step 56 - right blocks favour the defender** (defaults.json: right block / parry 30 / 10, riposte 70, a correct block counting 25 % of
+T_D, the riposte not lowered by T_D; the attacker's tired swing 0.85 + 0.15 f as the game plays it; Core `ImpactMath`, `RightBlocksTests`):
+
+| Two even men | Right-side block: stagger / down — riposte | Parry: stagger / down — riposte | Wrong side: stagger / shield / down |
+|---|---|---|---|
+| attacker fresh, blocker at 50% | 1% / 0 — 0 | 2% / 0 — 0 | 39 / 12 / 3% |
+| attacker fresh, blocker at 25% | 2% / 0 — 0 | 10% / 0 — 0 | 88 / 48 / 38% |
+| attacker fresh, blocker EMPTY | 8% / 0 — 0 | 21% / 4% — 0 | 90 / 50 / 40% |
+| both at 50% | 0 / 0 — 28% | 1% / 0 — 18% | 23 / 4 / 0% |
+| both at 25% | 0 / 0 — 62% | 2% / 0 — 52% | 67 / 31 / 19% |
+| both EMPTY | 1% / 0 — **70%** | 5% / 0 — **70%** | 90 / 50 / 40% |
+| both fresh | 0 / 0 — 1% | 0 / 0 — 0 | 0 / 0 / 0 |
+
+The king and the man (§4 B): the king's blow on the man's right-side block 17% / 2% (was 80 / 40); the man's swing on the fresh king's
+shield - the king ripostes 70%. You at 40% blocking the 220 king: right side staggered 2%, never down (was 43% / 7%); the WRONG side 85% /
+shield 46% / down 35%. **The stick and the axe (§4 C) still staggers:** the axe on the fresh peasant's parry 17% / 2% (x 0.55 - all of it the
+mismatch), at half a bar 26% / 7%, empty 30% / 10% (the ceilings); the stick on the fresh berserker's shield - he ripostes 30%. A rider (§3.8):
+a right-side block never knocks him off (x below the knockdown's 0.35 start).
 
 ---
 

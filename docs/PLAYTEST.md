@@ -1002,6 +1002,10 @@ held; `[error] … hud.` lines or `ALT bars: … DISABLED`.
 
 ### THE IMPACT MORNING SCRIPT (steps 47-54 - read this first; D16-D23 below are the detail)
 
+> **Turn ImpactSpike OFF after D16** (MCM → Advanced → *Impact test (spike)*). While it is on, the model is in SHADOW and the spike itself
+> forces staggers (lever 4, the first block every 10 s) and knockdowns (lever 6, a block every 20 s) on BLOCKERS - a correct block will feel
+> punished. That is what Anton felt on 2026-10-18 morning; step 56 (D25) is the model's own answer.
+
 Everything from D16 to D23 was built in one night on assumptions only the game can confirm. Do them **in this order** - each one says
 whether the next one can be trusted. After each battle open `trax_combat.log` (beside config.json) and read the lines named here; send
 Claude the `[summary] impact …` block of every battle.
@@ -1015,6 +1019,7 @@ Claude the `[summary] impact …` block of every battle.
 | 5 | **D22 - the CAVALRY CHARGE and riders** (a fresh cavalry unit into a tired line; your own horse; a rider you fight on foot) | 15 | `impact riders …`, `impact riders' shields and limits`, the momentum line's `RIDERS` part, `impact messages` | `SEEN off the horse` ≈ APPLIED; riders never stagger; galloping above standing | `still mounted` ≈ applied (the engine ignores our dismount - tell Claude) |
 | 6 | **D23 - the AI PUNISHES a window** (a 50 v 50 shield battle ground to orange / red, a few minutes of it with *The AI punishes a staggered or downed man* OFF, then ON again; let a tired enemy break YOUR guard) | 10 | `impact punish windows`, `impact punish proof` (ON vs OFF), `impact punish men` | ON: `target reeling / down` well above `target not`, and above the OFF row's; a good share of windows `PUNISHED`; you get hit while you reel | ON = OFF (the native AI ignores the raised eagerness in that moment - tell Claude: the fallback is a direct attack wish through the input hook) |
 | 7 | **D24 - CAVALRY FLOCKING** (step 55 - only once the step-55 build is installed): mixed cavalry on both sides into an infantry fight; watch them tire, wheel off and come back in groups; *Cavalry flocking* OFF for 2-3 min, then ON | 15 | `cavalry flocking`, `cavalry flips`, `cavalry time between passes`, `cavalry lone passes`, `cavalry lever` | fresh: the game's dance; later small waves of 3-5, late big waves; lone passes ON well below OFF; the time between passes ON growing with tiredness | tired riders keep charging alone with `points sent` high (the engine ignores the scripted point on a charging rider - tell Claude) or many `gave up` (riders never rest enough to lead) |
+| 8 | **D25 - RIGHT BLOCKS FAVOUR THE DEFENDER** (step 56, the spike OFF): a tournament round to orange / red - block on the right side, then on the wrong side on purpose | 15 | `impact live … blocks …` (by kind × band, the riposte by the attacker's band) | right-side blocks / parries in the red band: a few % staggered; ripostes climbing with the attacker's tiredness; wrong side at 90 / 50 / 40 | a correct blocker staggered often with the spike off; ripostes decided but never applied |
 
 Then play normally (parts E-G). Your gut on each family - too many / about right / too few - is the most useful thing to send.
 
@@ -1396,6 +1401,28 @@ one; the wave charges for 10 s; a flocker gives up after 45 s.
 **Broken — tell Claude** (D24): tired riders keep charging alone while `points sent` climbs (the engine does not follow a scripted point on a
 charging rider - the fallback is our own steering through the input hook); riders frozen or circling one spot (the point sent is unreachable -
 `refused (no ground there)`); a flock that never flips (`gave up` most of the ends); `[error] cavalry.*` lines.
+
+**D25. RIGHT BLOCKS FAVOUR THE DEFENDER (step 56, ~15 min; the spike OFF).** Your point: "make sure right blocks are a possible penalty for the
+ATTACKER - now I felt them as a penalty for the defender". Defaults (MCM → *Impact*): a right-side block / parry staggers the BLOCKER at most
+**30%** and knocks him down at most **10%** - and his own tiredness counts only **25%** (*Correct block: blocker's own tiredness counts*), so it
+takes a big mismatch (a stick against a two-handed axe); the **riposte** - the ATTACKER reels - up to **70%**, by the attacker's tiredness and
+how outmatched he is, whoever holds the guard (*Riposte: lowered by the blocker's tiredness* 0); the WRONG side unchanged (90 / 50 / 40); the
+block stun's lengthening off (*Blocker's guard held longer* 0 - the spike's lever 2 failed). An old config.json moves once (`migrated config.json
+… format 9 → 10`; a value you set yourself is kept and named).
+1. **A tournament round, swords and shields**: fight until both of you are orange / red (ALT). Block his swings on the RIGHT side - you should
+   (almost) never be staggered or knocked down by a correct block; HE should reel off your guard more and more as he tires (the purple "you
+   break X's guard" / the YOU line "X blocked you ... you reel (riposte" when it is you swinging into a good guard). Then block on the WRONG side on
+   purpose: staggered, shield knocked away, knocked down - your mistake.
+2. **A 30 v 30 infantry battle**: tired lines swinging into raised shields should be the ones reeling; the AI presses those windows (step 54).
+- **The lines**: `[impact] mission start: … a block on the right side: stagger 30% / down 10% … the riposte 70% (step 56: a correct block counts
+  25% of the blocker's tiredness, the riposte x (1 - 0% of his T))`; per decision (verbose / YOU): `… bar 5% (T 1.00, counted x0.25 on a correct
+  block) … x 0.25: … riposte (x_r 1.00) …`.
+- **The [summary] lines**: `impact live … blocks …` - per block kind × the blocker's band: right-side blocks / parries in the red band with a few %
+  staggered, never many knocked down; the riposte by the ATTACKER's band climbing to the tired bands; wrong-side blocks at the old rates.
+- **Your gut**: does skill pay now - the right direction safe, a flail into a good guard punished? Tired duels still not a staring contest?
+  Too safe (raise *Correct block: blocker's own tiredness counts*, e.g. 50) or the riposte too much (lower *Riposte: attacker staggered, at most*)?
+**Broken - tell Claude** (D25): a correct blocker still staggered often in the red band with the spike OFF; no ripostes on tired attackers
+(`riposte` decided but never applied - the forced-stagger lever); the config not migrated.
 
 ---
 

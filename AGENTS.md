@@ -270,7 +270,7 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
   ParamDef.cs                 one setting: key, type, range, group, label, plain-words
                               description, apply timing (Live / NextBattle); Normalize, Format;
                               its Default comes from defaults.json (DefaultsFile), never code
-  SettingsSchema.cs           EVERY setting of DESIGN's table (268 - step 55's 14 in "Cavalry flocking (AI)" after courage; step 54's 4 punish settings; step 53's 3 rider-momentum + 3 on-screen-line settings; step 52's 4 momentum settings; step 47's ImpactSpike in Advanced; step 48's 60 in "Impact: staggers,
+  SettingsSchema.cs           EVERY setting of DESIGN's table (270 - step 56's 2 after RiposteStaggerMaxPercent; step 55's 14 in "Cavalry flocking (AI)" after courage; step 54's 4 punish settings; step 53's 3 rider-momentum + 3 on-screen-line settings; step 52's 4 momentum settings; step 47's ImpactSpike in Advanced; step 48's 60 in "Impact: staggers,
                               shield drops, knockdowns" after the courage group; step 49's 29 in "Courage and cohesion (AI)" after the fever),
                               in file + MCM order, 17 groups
                               ("Master switch" first, "Damage" second - step 25 renamed it from
@@ -292,7 +292,8 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
   ConfigFile.cs               config.json TEXT: commented writer (header incl. how to revert +
                               // above each key; AppendSettings shared with defaults.json),
                               tolerant reader (comments, trailing commas, casing, "0,75"), Apply;
-                              FormatVersion 9 + Migrate (step 46: a format-8 file's CostPerBlow 3 → 7 once, a tuned value
+                              FormatVersion 10 + Migrate (step 56: an older file's right block / parry 80 / 40 → 30 / 10, the riposte
+                              50 → 70, BlockStunTiredExtraPercent 100 → 0 once, tuned values kept + noted; step 46: a format-8 file's CostPerBlow 3 → 7 once, a tuned value
                               kept and noted; step 13: a format-1 file's old defaults -
                               AttackRateAiDecisions true, PlayerBarOffsetBottom 54 - get the new ones once;
                               step 14: a format-2 file's MinMoveSpeedMultiplier 0.3 → the default once;
@@ -913,7 +914,7 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
   Hud/FeverMarksVM.cs         its ViewModels: a GROW-ONLY POOL of FeverMarkVM (IsShown, PositionX / Y, Width / Height in pixels,
                               Fill, FillColor, FrameColor; step 46: BoxWidth / BoxHeight, FeverShown, BarShown, BarWidth / Height,
                               BarFill, BarUsable, BarColor, BarFrameColor, BarWoundColor)
-tests/TraxCombat.Core.Tests/  net8.0 xUnit (830 - step 55: + CavalryFlockTests; step 54: + ImpactPunishTests; step 53: + ImpactRidersTests; step 52: + ImpactHitsTests; step 51: + ImpactBlocksTests; step 50: + ImpactLiveTests; step 49 / 49b: + CourageTests; step 44: + FeverMarkTests; step 46: + AthleticsMarkTests, the format-9 migration; step 47: + ImpactSpikeTests; step 48: + ImpactTests - every IMPACT §4 worked example) — schema vs DESIGN.md (keys + types), one copy
+tests/TraxCombat.Core.Tests/  net8.0 xUnit (843 - step 56: + RightBlocksTests (ImpactTests pin the step-48 weights for IMPACT §4 A-G); step 55: + CavalryFlockTests; step 54: + ImpactPunishTests; step 53: + ImpactRidersTests; step 52: + ImpactHitsTests; step 51: + ImpactBlocksTests; step 50: + ImpactLiveTests; step 49 / 49b: + CourageTests; step 44: + FeverMarkTests; step 46: + AthleticsMarkTests, the format-9 migration; step 47: + ImpactSpikeTests; step 48: + ImpactTests - every IMPACT §4 worked example) — schema vs DESIGN.md (keys + types), one copy
                               runs (SingleCopyTests: claims on private slots, copies, texts), when
                               MCM is tried and when it stops (McmPlanTests - step 12),
                               defaults.json (DefaultsFileTests), master switch, settings, config
@@ -1130,7 +1131,9 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               3 % down, a gallop 10 %; a fresh line 0), the cost 0.04 ms, 0 bytes; step 54 (Program.ImpactPunish.cs): the AI
                               presses a window - an exhausted blocker's broken block opens one, the man fighting him 0.6 → 1.0 and punishes it, a
                               timid man steps in at 2.5 m (not at 4), YOUR window pressed, shadow none, the cost 0.011 ms, 0 bytes; step 55 (Program.Flock.cs): cavalry flocking through the real logic - the dance, a wave of 5, a wave of
-                              10 led by its rested rider, kinds apart, timid, held cavalry, the cost 0.022 ms, 0 bytes (125 steps; the config
+                              10 led by its rested rider, kinds apart, timid, held cavalry, the cost 0.022 ms, 0 bytes; step 56 (Program.RightBlocks.cs): the
+                              embedded step-56 defaults through the real logic - two empty even men: the blocker stands, the attacker reels 70 %, the
+                              wrong side 90 / 50 / 40, two fresh men nothing; the steps 48-55 checks pin the step-48 block model (126 steps; the config
                               checks work for any tuned default);
                               TRAX_SMOKE_KEEP=1 keeps its temp folder + log to read
 tools/DefaultsTool/           defaults.json upkeep: refresh (rewrite comments/order, keep every

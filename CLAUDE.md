@@ -151,7 +151,11 @@ GetTargetAgent, else ImmediateEnemy - only while some window is open anywhere) a
 `ImpactPunishAggressionPercent` 100 (step 43's recompute path, never lowered); a man within `ImpactPunishRangeMetres` 3 gets courage's surge clock
 (a timid one steps in - `CourageEnd.PunishWindow`; never in a panic); never the player as attacker, never a rider, never in shadow; the
 `[summary] impact punish` lines (windows opened / seen / PUNISHED / wasted; attacks per man-minute against a target in a window vs not, ON vs
-OFF) - PLAYTEST D23, DESIGN decision 46. All seven IMPACT steps are built. COURAGE AND COHESION (step 49, `CourageEnabled`, Anton 2026-10-17 night: "AI men are
+OFF) - PLAYTEST D23, DESIGN decision 46. All seven IMPACT steps are built. RIGHT BLOCKS FAVOUR THE DEFENDER (step 56, Anton's
+tournament 2026-10-18: "make sure right blocks are a possible penalty for the ATTACKER"): on a CORRECT block (right-side shield, parry) the
+blocker's T counts `CorrectBlockTiredWeightPercent` 25 % in x, the ceilings 30 / 10 (defaults.json); the riposte = 70 % × S(x_r) × (1 −
+`RiposteBlockerTiredPercent` 0 × T_D) - two empty even men: the blocker ≤ 5 %, the attacker reels 70 %; the wrong side unchanged;
+`BlockStunTiredExtraPercent` 0 (the spike's lever 2 failed); config format 10 (PLAYTEST D25, DESIGN decision 48). COURAGE AND COHESION (step 49, `CourageEnabled`, Anton 2026-10-17 night: "AI men are
 unrealistically brave" - a lone man circles a shield wall, stands exhausted among four enemies; + his three additions: shock, flocking,
 panic): every AI man on foot in a formation is looked at every ~0.5 s (staggered; one `Mission.GetNearbyAgents` into a reused list): his
 side's TOUGHNESS vs the enemy's within `CourageRadiusMetres` 6 m (toughness = armour, level, wounds - a looter 1.35, a legionary 5.97 =
@@ -314,7 +318,7 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               its Default comes from defaults.json (DefaultsFile), never code; step 33: ParamType.Key +
                               KeyNames (a key by NAME, stored as its index; FormatJson writes "LeftControl"; the
                               file / defaults.json read the name, MCM a text box)
-  SettingsSchema.cs           EVERY setting of DESIGN's table (268 - step 55's 14 in "Cavalry flocking (AI)" after courage; step 54's 4 punish settings after the on-screen lines; step 53's 3 rider-momentum + 3 on-screen-line settings after the momentum ones; step 52's 4 momentum settings after ImpactTiredNeverShrugsOff; step 47's ImpactSpike in Advanced, before VerboseLogging; step 48's 60 in
+  SettingsSchema.cs           EVERY setting of DESIGN's table (270 - step 56's CorrectBlockTiredWeightPercent and RiposteBlockerTiredPercent right after RiposteStaggerMaxPercent; step 55's 14 in "Cavalry flocking (AI)" after courage; step 54's 4 punish settings after the on-screen lines; step 53's 3 rider-momentum + 3 on-screen-line settings after the momentum ones; step 52's 4 momentum settings after ImpactTiredNeverShrugsOff; step 47's ImpactSpike in Advanced, before VerboseLogging; step 48's 60 in
                               "Impact: staggers, shield drops, knockdowns" - after the courage group, before Refill; step 49's 29 (49b's two surge settings) in "Courage and
                               cohesion (AI)" - after the fever), in file + MCM order, 17 groups
                               ("Master switch" first, "Damage" second - step 25 renamed it from
@@ -340,7 +344,10 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
   ConfigFile.cs               config.json TEXT: commented writer (header incl. how to revert +
                               // above each key; AppendSettings shared with defaults.json),
                               tolerant reader (comments, trailing commas, casing, "0,75"), Apply;
-                              FormatVersion 9 + Migrate (step 46: a format-8 file's CostPerBlow 3 → 7 once, a tuned value
+                              FormatVersion 10 + Migrate (step 56: an older file's RightBlockStaggerMaxPercent 80 → 30,
+                              RightBlockKnockdownMaxPercent 40 → 10, ParryStaggerMaxPercent 80 → 30, ParryKnockdownMaxPercent 40 → 10,
+                              RiposteStaggerMaxPercent 50 → 70, BlockStunTiredExtraPercent 100 → 0 once, tuned values kept + noted -
+                              MoveOrKeep; step 46: a format-8 file's CostPerBlow 3 → 7 once, a tuned value
                               kept and noted - KeptTuned; step 13: a format-1 file's old defaults -
                               AttackRateAiDecisions true, PlayerBarOffsetBottom 54 - get the new ones once;
                               step 14: a format-2 file's MinMoveSpeedMultiplier 0.3 → the default once;
@@ -1236,7 +1243,10 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               pixels), Fill, FillColor, FrameColor (the fade's alpha baked in); step 46: the box (PositionX / Y =
                               its top-left, BoxWidth / BoxHeight), FeverShown, the Athletics bar - BarShown, BarWidth, BarHeight,
                               BarFill, BarUsable, BarColor, BarFrameColor, BarWoundColor
-tests/TraxCombat.Core.Tests/  net8.0 xUnit (830 - step 55: + CavalryFlockTests - the 14 settings, the master switch, kinds / keys, eagerness + the free
+tests/TraxCombat.Core.Tests/  net8.0 xUnit (843 - step 56: + RightBlocksTests - two EMPTY even men: a correct block ≤ 5 % on the blocker and the
+                              riposte at 70 %, the wrong side at 90 / 50 / 40; two fresh men nothing; a tired attacker into a good guard; the stick vs
+                              the axe still staggers; 100 / 100 = step 48; the decision line; the format-10 migration (old defaults moved, tuned kept and
+                              said, format 10 untouched) - and ImpactTests pin the step-48 weights for IMPACT §4 A-G; step 55: + CavalryFlockTests - the 14 settings, the master switch, kinds / keys, eagerness + the free
                               line's hysteresis, THE GROUP-SIZE CURVE, THE HEADING BLEND, the flip, a mixed-eagerness flock that flips only when its rested
                               rider leads, the sunflower slots / steer point, a rider's spell and wave, the grid, the table, the summary; step 54: + ImpactPunishTests - the four settings placed / live, the gates (the master switch first, no
                               window in shadow / the spike / every family off, measured with the punish off), the window (reeling / down + the grace,
@@ -1646,7 +1656,10 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               clusters: no flip without a leader, the heading leaning to the unit's centre, one rested rider = a wave of 10; a mixed
                               formation = two waves of 4; a lone fresh rider among legionaries flocks (timid); held cavalry / you untouched; give-up;
                               no ground; lone passes / pass gaps ON and OFF; the switch; the summary; the cost - 1000 men, 500 riders, 0.022 ms a tick,
-                              0 bytes; the master-switch step's flocking part (125 steps; the config checks work for any tuned default)
+                              0 bytes; the master-switch step's flocking part; step 56 (Program.RightBlocks.cs): the embedded step-56 defaults through the real logic -
+                              two EMPTY even men: a right-side block / parry leaves the blocker standing, the ATTACKER reels (70 %, his forced
+                              stagger from the tick), the wrong side 90 / 50 / 40, two fresh men nothing, the game's stun; the steps 48-55 checks pin
+                              the step-48 block model (ImpactModelDefaults → Step48BlockModel) (126 steps; the config checks work for any tuned default)
                               TRAX_SMOKE_KEEP=1 keeps its temp folder + log to read
 tools/DefaultsTool/           defaults.json upkeep: refresh (rewrite comments/order, keep every
                               value) | check; --file <path> for an exported one

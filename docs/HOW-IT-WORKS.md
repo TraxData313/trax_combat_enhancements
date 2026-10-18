@@ -535,7 +535,7 @@ nothing changes.
 Every kick, shield bash, block and clean hit is weighed once: the **impact** of the blow against the
 **stability** of the man who takes it.
 
-- **How tired he is** decides most of it. In the green (his bar at or above the peak line, 75%) a blow does
+- **How tired he is** decides most of it (except on a block in the right direction — see the ceilings). In the green (his bar at or above the peak line, 75%) a blow does
   nothing more than in the base game; the emptier he gets, the more it does — an empty man is at the top of
   every table below.
 - **How you two compare** comes next: both men's **current** Athletics (how big the bar is AND how full — a
@@ -553,11 +553,17 @@ The most each blow can do — reached on an exhausted man, or on a fresh man by 
 | The blow | Staggered | Shield knocked away | Knocked down | Always, the more tired he is |
 |---|---:|---:|---:|---|
 | A **kick** or **shield bash** that lands | (his reel IS the stagger) | 90% | 80% | he reels up to ×2.5 longer |
-| A blow he blocks on the **right side** with his shield | 80% | — | 40% | his guard frozen up to ×2 longer |
-| A blow he **parries** with his weapon | 80% | — | 40% | his guard frozen up to ×2 longer |
-| A blow he blocks on the **WRONG side** | 90% | 50% | 40% | his guard frozen up to ×2 longer |
+| A blow he blocks on the **right side** with his shield | 30% — only on a big mismatch | — | 10% | — |
+| A blow he **parries** with his weapon | 30% — only on a big mismatch | — | 10% | — |
+| A blow he blocks on the **WRONG side** | 90% | 50% | 40% | — |
 | A **clean hit** (it lands) | 80% (his flinch, longer) | — | 50% | he never shrugs it off |
-| **The riposte**: a fresh man's right-side block or parry staggers the ATTACKER | 50% | — | — | the attacker reels up to 1 s |
+| **The riposte**: a right-side block or parry staggers the ATTACKER | 70% | — | — | the attacker reels up to 1 s |
+
+**A correct block is the attacker's risk, a wrong one the defender's.** On a right-side block or a parry the
+blocker's own tiredness counts only a quarter — he is broken mainly by a **big mismatch** (a peasant's stick
+against a berserker's two-handed axe), and the man who swung into a good guard **reels** the more tired and
+outmatched he is, however tired the blocker. On the WRONG side the blocker's tiredness counts in full. So the
+direction of your block is what pays — swinging as much as you can into a good guard is a mistake.
 
 A knocked-down man always gets up slower (up to ×2 when empty); a knockdown replaces the stagger, and a
 knockdown and a lost shield can come together (the exhausted turtle broken).
@@ -570,22 +576,36 @@ the blow at the bar shown:
 | His bar | Kick: shield / down | Right-side block: staggered / down | Parry: staggered / down | WRONG side: staggered / shield / down | Clean hit: staggered / down |
 |---|---:|---:|---:|---:|---:|
 | 100% – 75% (green) | 0% / 0% | 0% / 0% | 0% / 0% | 0% / 0% / 0% | 0% / 0% |
-| 50% | 14% / 1% | 21% / 0% | 31% / 1% | 39% / 12% / 3% | 21% / 0% |
-| 25% | 82% / 70% | 59% / 19% | 77% / 36% | 88% / 48% / 38% | 68% / 35% |
-| 10% | 90% / 80% | 79% / 39% | 80% / 40% | 90% / 50% / 40% | 80% / 50% |
-| 0% (empty) | 90% / 80% | 80% / 40% | 80% / 40% | 90% / 50% / 40% | 80% / 50% |
+| 50% | 14% / 1% | 1% / 0% | 2% / 0% | 39% / 12% / 3% | 21% / 0% |
+| 25% | 82% / 70% | 2% / 0% | 10% / 0% | 88% / 48% / 38% | 68% / 35% |
+| 10% | 90% / 80% | 6% / 0% | 19% / 3% | 90% / 50% / 40% | 80% / 50% |
+| 0% (empty) | 90% / 80% | 8% / 0% | 21% / 4% | 90% / 50% / 40% | 80% / 50% |
+
+(A fresh man's blow on an exhausted guard: a good guard holds — the WRONG side breaks.)
 
 **Two fresh men**: nothing, ever — whatever they do to each other. **Two men equally tired** (both at the bar
 shown) — exhaustion never cancels out:
 
-| Both at | Kick: shield / down | Right-side block: staggered / down | Parry: staggered / down | WRONG side: staggered / shield / down | Clean hit: staggered / down |
+| Both at | Kick: shield / down | Right-side block: staggered / down — **the attacker reels** | Parry: staggered / down — **the attacker reels** | WRONG side: staggered / shield / down | Clean hit: staggered / down |
 |---|---:|---:|---:|---:|---:|
-| 75% and above | 0% / 0% | 0% / 0% | 0% / 0% | 0% / 0% / 0% | 0% / 0% |
-| 50% | 7% / 0% | 11% / 0% | 21% / 0% | 23% / 4% / 0% | 21% / 0% |
-| 25% | 56% / 38% | 45% / 9% | 59% / 19% | 67% / 31% / 19% | 59% / 24% |
-| 0% (both empty) | 90% / 80% | 76% / 35% | 80% / 40% | 90% / 50% / 40% | 80% / 50% |
+| 75% and above | 0% / 0% | 0% / 0% — 1% | 0% / 0% — 0% | 0% / 0% / 0% | 0% / 0% |
+| 50% | 7% / 0% | 0% / 0% — 28% | 1% / 0% — 18% | 23% / 4% / 0% | 21% / 0% |
+| 25% | 56% / 38% | 0% / 0% — 62% | 2% / 0% — 52% | 67% / 31% / 19% | 59% / 24% |
+| 0% (both empty) | 90% / 80% | 1% / 0% — 70% | 5% / 0% — 70% | 90% / 50% / 40% | 80% / 50% |
 
-At the end of a long fight every blow tells, and a wrong-side block is clearly worse than a right one.
+At the end of a long fight every blow tells — and **every missed blow counts**: a swing into a good guard
+leaves the attacker reeling (an opening for the blocker), a wrong-side block leaves the blocker broken.
+
+**The riposte, by the attacker's bar** (two men of a kind, a right-side block with a 4 kg shield):
+
+| The attacker's bar | Into a fresh guard | Into a guard as tired as he is | Into an empty guard |
+|---|---:|---:|---:|
+| 75% and above | 1–4% | 1% | 0% |
+| 50% | 41% | 28% | 18% |
+| 25% | 70% | 62% | 52% |
+| 0% (empty) | 70% | 70% | 70% |
+
+A fresh attacker never reels; a tired one flailing into a good guard opens himself up, whoever holds it.
 
 ### The mismatch: big against small
 
@@ -595,11 +615,11 @@ At the end of a long fight every blow tells, and a wrong-side block is clearly w
 | What | Staggered | Shield | Knocked down |
 |---|---:|---:|---:|
 | The king kicks the man | (reels ×2.1) | 90% | 80% |
-| The king swings, the man blocks on the right side | 80% | — | 40% |
+| The king swings, the man blocks on the right side | 17% (a giant against a dwarf) | — | 2% |
 | … the man blocks on the WRONG side | 90% | 50% | 40% |
 | The king's blow lands on the man | 80% | — | 50% |
 | The man kicks the FRESH king | (a normal push) | 0% | 0% |
-| The man swings, the fresh king blocks | 0% — and the king **ripostes** 50% | — | 0% |
+| The man swings, the fresh king blocks | 0% — and the king **ripostes** 70% | — | 0% |
 | The man kicks the king at 30% | (reels ×1.9) | 9% | 0% |
 | The man kicks the king at 0% | — | 90% | 80% — an empty king is as weak as anyone |
 
@@ -613,22 +633,24 @@ At the end of a long fight every blow tells, and a wrong-side block is clearly w
 | You kick the king at 10% | 90% | 80% — tire him first, then break him |
 | The king kicks you, fresh | 0% | 0% |
 | The king kicks you at 40% | 76% | 62% |
-| The king swings, you block on the right side at 40% | — | 7% (staggered 43%) |
+| The king swings, you block on the right side at 40% | — | 0% (staggered 2%) |
+| The king swings, you block on the WRONG side at 40% | 46% | 35% (staggered 85%) |
 
 **The stick and the axe.** A peasant (50 Athletics, skill 20) parrying a veteran berserker's two-handed axe
 (180 Athletics, skill 200) with a 0.6 kg stick — the mismatch counts even on a good block:
 
 | What | Staggered | Knocked down |
 |---|---:|---:|
-| The axe on the FRESH peasant's parry | 46% | 9% |
-| The axe on his parry at half a bar | 80% | 40% |
+| The axe on the FRESH peasant's parry | 17% | 2% |
+| The axe on his parry at half a bar | 26% | 7% |
+| The axe on his parry, empty | 30% | 10% (the ceilings) |
 | The axe lands clean on the fresh peasant | 18% | 0% |
-| The peasant's stick on the fresh berserker's shield | 0% | 0% (the berserker ripostes 21%) |
+| The peasant's stick on the fresh berserker's shield | 0% | 0% (the berserker ripostes 30%) |
 
-**The riposte** — a **fresh, skilful** blocker turns a blow round and staggers the attacker: a fresh veteran
-blocking a recruit at 40% — 50%; the same recruit fresh — 21%; a fresh man parrying an equal at 20% — 47%; two
-fresh even men — about 1%. A tired blocker ripostes less (the chance × how fresh he is); the more tired the
-attacker, the longer he reels (0.5 s → 1 s).
+**The riposte** — a good guard turns a blow round and staggers the attacker: a fresh veteran blocking a
+recruit at 40% — 70%; the same recruit fresh — 28%; a fresh man parrying an equal at 20% — 66%; two fresh even
+men — about 1%. The blocker's own tiredness does not save the attacker (the veteran at half a bar: still 70%);
+the more tired the attacker, the longer he reels (0.5 s → 1 s).
 
 ### A man already reeling is easy prey
 
@@ -695,10 +717,10 @@ foot's. A fresh attacker on foot against a rider at the bar shown:
 |---|---:|---:|---:|---:|
 | 100% – 75% | 0% / 0% | 0% | 0% / 0% | 0% |
 | 50% | 1% / 14% | 0% | 1% / 12% | 0% |
-| 25% | 35% / 82% | 10% | 19% / 48% | 17% |
-| 0% (empty) | 40% / 90% | 20% | 20% / 50% | 25% |
+| 25% | 35% / 82% | 0% | 19% / 48% | 17% |
+| 0% (empty) | 40% / 90% | 0% | 20% / 50% | 25% |
 
-A blocking rider's guard freezes longer when he is tired, like anyone's. Horses themselves are the game's own
+A blocking rider's guard is like anyone's. Horses themselves are the game's own
 (they rear as before).
 
 ### How long
@@ -706,17 +728,20 @@ A blocking rider's guard freezes longer when he is tired, like anyone's. Horses 
 The more tired he is, the longer — and the more **random** (± up to 30% when empty: a fresh man's timing is
 predictable, an exhausted man's is not):
 
-| His bar | A stagger lasts | A kicked man reels | He gets up | His guard frozen on a block | A riposted attacker reels |
-|---|---|---|---|---|---|
-| 75% and above | 0.6 s | as normal | as normal | as normal | 0.5 s |
-| about 56% | 0.8 s (0.8–0.9) | ×1.4 | ×1.25 slower | ×1.25 | 0.6 s |
-| about 38% | 1.05 s (0.9–1.2) | ×1.75 | ×1.5 slower | ×1.5 | 0.75 s |
-| about 19% | 1.3 s (1.0–1.6) | ×2.1 | ×1.75 slower | ×1.75 | 0.9 s |
-| 0% (empty) | 1.5 s (1.05–1.95) | ×2.5 | ×2 slower | ×2 | 1 s |
+| His bar | A stagger lasts | A kicked man reels | He gets up | A riposted attacker reels |
+|---|---|---|---|---|
+| 75% and above | 0.6 s | as normal | as normal | 0.5 s |
+| about 56% | 0.8 s (0.8–0.9) | ×1.4 | ×1.25 slower | 0.6 s |
+| about 38% | 1.05 s (0.9–1.2) | ×1.75 | ×1.5 slower | 0.75 s |
+| about 19% | 1.3 s (1.0–1.6) | ×2.1 | ×1.75 slower | 0.9 s |
+| 0% (empty) | 1.5 s (1.05–1.95) | ×2.5 | ×2 slower | 1 s |
+
+A blocker's guard after a block is the game's own (a longer one changed nothing you could see in a playtest —
+`BlockStunTiredExtraPercent`, 0); the stagger is the window.
 
 ### Nobody is stun-locked to death
 
-- After a stagger ends, **no new stagger for 2 seconds** (his guard can still be frozen — that is a block).
+- After a stagger ends, **no new stagger for 2 seconds** (he can still block).
 - After he gets up, **no new knockdown for 5 seconds**; a man on the ground is not knocked down again.
 - Every stagger, knockdown or lost shield **halves** the next chance against the same man for **8 seconds**.
 - A kick still costs you Athletics and a stored swing (sections 4 and 6), so spamming it empties you.
@@ -760,11 +785,12 @@ down. Every outcome you give or take is also in the log (`[impact] YOU: ...`).
 
 <sub>Settings ("Impact: staggers, shield drops, knockdowns"): `ImpactEnabled` on, `ImpactKicksEnabled` / `ImpactBlocksEnabled` /
 `ImpactHitsEnabled` / `ImpactRiposteEnabled` on, `ImpactShadowMode` off (on = decide and log only); the ceilings `KickShieldDropMaxPercent` 90,
-`KickKnockdownMaxPercent` 80, `RightBlockStaggerMaxPercent` 80, `RightBlockShieldDropMaxPercent` 0, `RightBlockKnockdownMaxPercent` 40,
-`ParryStaggerMaxPercent` 80, `ParryKnockdownMaxPercent` 40, `WrongBlockStaggerMaxPercent` 90, `WrongBlockShieldDropMaxPercent` 50,
-`WrongBlockKnockdownMaxPercent` 40, `HitStaggerMaxPercent` 80, `HitKnockdownMaxPercent` 50, `RiposteStaggerMaxPercent` 50; the lengths
+`KickKnockdownMaxPercent` 80, `RightBlockStaggerMaxPercent` 30, `RightBlockShieldDropMaxPercent` 0, `RightBlockKnockdownMaxPercent` 10,
+`ParryStaggerMaxPercent` 30, `ParryKnockdownMaxPercent` 10, `WrongBlockStaggerMaxPercent` 90, `WrongBlockShieldDropMaxPercent` 50,
+`WrongBlockKnockdownMaxPercent` 40, `HitStaggerMaxPercent` 80, `HitKnockdownMaxPercent` 50, `RiposteStaggerMaxPercent` 70; a correct block
+`CorrectBlockTiredWeightPercent` 25, `RiposteBlockerTiredPercent` 0; the lengths
 `StaggerBaseSeconds` 0.6, `StaggerTiredExtraPercent` 150, `StaggerMaxSeconds` 2, `KickReelTiredExtraPercent` 150, `GetUpMaxSlowdown` 2,
-`BlockStunTiredExtraPercent` 100, `RiposteStunMaxSeconds` 1, `ImpactRandomPercent` 30, `ImpactStunCapSeconds` 2; the limits
+`BlockStunTiredExtraPercent` 0, `RiposteStunMaxSeconds` 1, `ImpactRandomPercent` 30, `ImpactStunCapSeconds` 2; the limits
 `ImpactStaggerImmunitySeconds` 2, `ImpactKnockdownImmunitySeconds` 5, `ImpactDiminishWindowSeconds` 8, `ImpactDiminishFactor` 0.5,
 `ShieldPickupLockSeconds` 0; who `ImpactOnPlayerPercent` 100, `ImpactRiderDismountPercent` 50, `ImpactTiredNeverShrugsOff` on; momentum
 `ImpactMomentumEnabled` on, `ImpactMomentumPercent` 60, `ImpactMomentumWalkMetresPerSecond` 2, `ImpactMomentumSprintMetresPerSecond` 7,
@@ -999,7 +1025,7 @@ shield away — the colours the game uses for its own couched-lance lines. At mo
 - **Don't let your hero swing himself empty.** Watch your bar; step out, block on the right side, and
   let it climb before you go again.
 - **Block on the right side.** Clean blocks and parries let your bar refill while you defend; a
-  wrong-side block stops it.
+  wrong-side block stops it. And a tired man who swings into your good guard reels — strike then.
 - **Read the enemy.** "ready 12/48" in red under an enemy marker is an invitation.
 - **Sprint to get out, not to get in tired.** A short Ctrl-dodge saves a cornered hero; a long sprint into
   a fight arrives with a bar that has not refilled. Charge orders make your men sprint by themselves —

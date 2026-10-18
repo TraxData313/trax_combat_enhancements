@@ -5121,3 +5121,53 @@ kinds, a third tired, 0.022 ms a tick on average, 0 bytes). AssemblyGuard + smok
    the curve, the leader threshold (a constant - make it a setting if Anton wants to tune it).
 4. The lowered horseback weights stop a flocker from breaking off for a target (A/B: `CavalryFlockTightenWeights` off).
 5. Cost in a 400-1000 man battle (`cavalry lever ... cost`).
+
+## Step 56 — right blocks favour the defender (DONE 2026-10-18)
+
+**Why.** Anton's tournament + battle of 2026-10-18 morning: "a block in the right direction I think got me staggered, and a few times I even
+got knocked down ... make sure right blocks are a possible penalty for the ATTACKER - now I felt them as a penalty for the defender, so it makes
+swinging as much as you can the goal, not the skill." The manager read his log (missions 08:31 and 08:40): `ImpactSpike` was ON, so the model
+was in SHADOW and the staggers / knockdowns on his correct blocks came from the spike's lever 4 (a forced stagger on the first block every
+10 s) and lever 6 (our own knockdown blow on a block every 20 s). But the model's own right-block ceilings (80 / 40, T_D in full) would have
+done the same once live - two empty even men: right block 80 % / 40 %, parry 80 / 40, the riposte 0 (× f_D = 0). Spike verdicts that day:
+lever 1 KnockDown WORKS, 2 block stun x3 FAILS ("the stun does not lengthen what the engine plays"), 3 SetCurrentActionSpeed WORKS, 4 forced
+stagger WORKS (accepted 18/18, 0 blocks from inside), 5 shield drop WORKS, 6 own knockdown blow WORKS (10/10 falls).
+
+**The model (Core `ImpactMath.Pressure` / `Decide`).**
+- A CORRECT block = `ImpactMath.IsCorrectBlock(e)` = right-side shield or parry (= `CanRiposte`).
+- The blocker on a correct block: x = w_T × T_D + 0.25 × band(log₂ R) (+ reeling 0.75, + damage), w_T = `CorrectBlockTiredWeightPercent`
+  (25 → 0.25); the decision records `TiredWeight` / `TiredPart`; every other event w_T = 1. Ceilings (defaults.json) 30 / 10 for both rows.
+  Why 25 and not 0: at 0 an exhausted man's correct block against a fresh attacker rests on the body ratio alone (x 0.29 → 6 %); a quarter keeps
+  it a little less safe (8 % right / 21 % parry - a 1.2 kg sword is a poorer guard than a 4 kg shield) while two empty even men stay at x 0.25
+  (≤ 5 %, never down: the knockdown curve starts at 0.35).
+- The riposte: chance = `RiposteStaggerMaxPercent` (70) × S(x_r) × (1 − k × T_D), k = `RiposteBlockerTiredPercent` (0); x_r unchanged (T_A + the
+  turned mismatch: the attacker's impact against the guard × both skills × the bodies). Recorded `RiposteBlockerFactor`. k 100 = step 48's
+  × f_D exactly (a unit test checks the identity).
+- `BlockStunTiredExtraPercent` 0 - the lengthening switched OFF, not removed (lever 2 failed): factor 1 → `LengthenedStun` returns the game's
+  stun; the cap raise while blocks are live stays (harmless: untouched stuns are held at the game's 0.8).
+- The wrong side, kicks, clean hits: unchanged.
+
+**Numbers (the real Core, defaults.json, the game's tired swing 0.85 + 0.15 f; swords 1.2 kg at 92, 4 kg shields, pool 100 / skill 100):**
+two EMPTY even men - right block 1 % / 0 + riposte 70 %, parry 5 % / 0 + riposte 70 %, wrong side 90 / 50 / 40; two fresh - 0 / 0, riposte 1 %
+(the 4 kg shield just past the even band); the attacker at 50 / 25 / 0 % into a FRESH guard - riposte 41 / 70 / 70 %, into an equally tired
+guard 28 / 62 / 70 %, into an EMPTY guard 18 / 52 / 70 %; a fresh attacker into an empty guard - right 8 % / 0, parry 21 % / 4 %, riposte 0;
+the stick vs the axe (§4 C) - the axe on the fresh peasant's parry 17 % / 2 % (x 0.55, all mismatch; step 48: 46 / 9), at half a bar 26 / 7,
+empty 30 / 10; the stick on the berserker's shield - he ripostes 30 %; the king's blow on the 50-at-20 % man's right block 17 / 2 (was 80 / 40);
+you at 40 % blocking the 220 king - 2 % / 0 (was 43 / 7). A scratch console (`ImpactRules.From(new TraxSettings())` over the embedded
+defaults) reproduced every old HOW-IT-WORKS figure with the step-48 values first, then gave these.
+
+**Config format 10** (`ConfigFile.Migrate`, `MoveOrKeep` = MoveOldDefault else KeptTuned): any older file (the keys exist only since step 48 =
+format 9) holding 80 / 40 / 80 / 40 / 50 / 100 gets 30 / 10 / 30 / 10 / 70 / 0 once; a value of his own is kept and said once. DESIGN's
+Default column keeps the initial values (the unit tests run on them): IMPACT §4 A-G stay the step-48 model and `ImpactTests.Rules()` pins
+`CorrectBlockTiredWeightPercent` / `RiposteBlockerTiredPercent` at 100; `RightBlocksTests` set defaults.json's ceilings themselves; the smoke's
+`ImpactModelDefaults` pins the step-48 block model (`Step48BlockModel`) for the step 48-55 checks, `RightBlocksFavourTheDefender` restores the
+embedded defaults (`Step56BlockModel`).
+
+**Gotchas.** (1) Smart App Control blocked the rebuilt OfflineSmoke.exe (Win32 error 4551 / "Permission denied") until the work was committed
+and rebuilt - the same cure as before. (2) `tools/deploy.ps1` defaulted to D:\ paths from the old PC; without -GameFolder / -McmBinFolder it now
+reads Directory.Build.props.user, then Directory.Build.props (the first existing folder), then the C: Steam library. (3) Anton's game was
+running: build, tests, guard and smoke green; the install hit the DLL lock (not installed).
+
+**Unverified until D25:** that the riposte at 70 % does not make tired duels a riposte festival (the knob: `RiposteStaggerMaxPercent`); that
+correct blockers in the red band really stand (with the spike OFF); the AI's tired random block direction (step 30) now matters more - more
+wrong-side blocks = more broken guards, fewer ripostes.
