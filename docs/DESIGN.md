@@ -561,6 +561,30 @@ regen.)
   `CourageSurgeChancePercent` × his bar at each look for a `CourageSurgeSeconds` SURGE (brave, the game's weights, no walk); the timid Melee
   weight is 10 flat to his reach (full within it); the summary adds fever presses, surges and the STANDOFF (timid men 3-8 m from an enemy,
   no attack by either in 10 s).
+- **Cavalry flocking** (step 55, AI_NOTES "Step 55", decision 47; `Missions/AthleticsLogic.Flock.cs`, `Missions/FlockBody.cs`, Core
+  `CavalryFlock.cs`; Anton 2026-10-18: "fresh and eager riders do the vanilla dance ... the more tired a rider gets, the more he goes to meet
+  others of his own kind ... the flock is never a mass sitting somewhere ... it FLIPS from flocking up to going after its target as a flock"):
+  every AI rider whose formation's order is a CHARGE (charge / charge to target - hold, move, follow and advance keep riders in slots), both
+  sides, never the player, never a busy / detached / routing rider or one the game scripts itself, no tournaments / arenas / naval, is in a
+  CENSUS every 0.5 s. His KIND is read once from his kit (a bow / crossbow / sling with ammo = horse archer; throwing weapons left = skirmisher;
+  else melee); his FLOCK = (team, formation, kind). His EAGERNESS e = his bar (points ÷ FULL pool - a wound counts through the cap; 1 with
+  Athletics off) × 0.5 when courage's odds within `CavalryFlockTimidRadiusMetres` say he is alone among enemies (`CavalryFlockTimid`, courage
+  on). e ≥ `CavalryFlockFreeEagerPercent` (75) = FREE: vanilla's dance, untouched. Below it he FLOCKS: the game lets us script him
+  (`CanBeAssignedForScriptedMovement`), his horseback weights lowered (`CavalryFlockTightenWeights`); his GROUP = the flocking riders of his
+  flock within `CavalryFlockGatherRadiusMetres` (25 m, him included); its centre, mean velocity, mean eagerness, LEADER (its most eager rider);
+  its HEADING = Σ readiness × the unit vector to the formation's GOAL (the charge-to-target order's target formation, else
+  `Formation.TargetFormation`, else the game's cached closest enemy formation - its centre) + Σ (1 − readiness) × the unit vector to the
+  unit's centre of mass (`CachedAveragePosition`), readiness = e ÷ the free line; he rides (`Agent.SetScriptedPosition`, re-sent when the point
+  moved 2 m or after 2 s) to the centre + the heading × max(the group's speed, 4 m/s) × `CavalryFlockLeadSeconds` + his sunflower slot
+  (`CavalryFlockSeparationMetres` apart). THE GROUP-SIZE CURVE: N(e) = 1 at the free line, `CavalryFlockMidGroupSize` (4) at
+  `CavalryFlockMidEagerPercent` (40), `CavalryFlockExhaustedSharePercent` (65%) of his kind's riders at 0 (never below the middle size), lines
+  between, rounded up, capped at his kind's flockers. THE FLIP: the group's count ≥ N(its MEAN e), its leader's readiness ≥ 0.5 and he has
+  flocked ≥ 3 s → every flocking rider of the group released at once (the scripted walk off, the game's weights back) - a WAVE that charges as
+  the game's own riders for `CavalryFlockWaveSeconds` (10), then each decides again from his eagerness. A flocker free again at free +
+  `CavalryFlockHysteresisPercent`; released after `CavalryFlockMaxSeconds` (45) without a flip. Master switch FIRST, then `CavalryFlockEnabled`:
+  off = every flocker let go at once; the census still MEASURES. The `[summary]` "cavalry" lines: the share of rider time FREE / FLOCKING / IN A
+  WAVE, flips a minute and wave size by the flock's mean eagerness (small fresh, big tired) + the leader's eagerness, the TIME BETWEEN PASSES per
+  rider by eagerness band ON vs OFF, LONE PASSES (a pass with fewer than 3 of his kind within 30 m) ON vs OFF, the spread, the lever, the cost.
 - **Impact - staggers, dropped shields, knockdowns** (IMPACT I1-I7 = steps 47-53, the whole design in `docs/IMPACT.md`; step 48 =
   I2, THE MODEL, decision 40): every kick / bash that lands, every block (right side, parry, wrong side) and every clean weapon hit on
   a man we track is decided ONCE by Core `ImpactMath.Decide`: the pressure x on the man who takes it = his tiredness T = 1 − f +
@@ -1207,6 +1231,20 @@ says (§2c).
 | `CouragePanicSprintKeepPercent` | 0 | Step 49: a panic sprint keeps only this share of his store (below his order's reserve). Range 0-100. |
 | `CourageTightenWeights` | true | Step 49: while timid his `HumanAIComponent.OverrideBehaviorParams`: Melee 10 → 6.5 at `CourageTimidMeleeMetres` → 0.01 1.5 m further, GoToPos 5 → 6 (7 m) → 6 - re-applied at every look (the game's `RefreshBehaviorValues` resets them on orders); brave again = `Agent.RefreshBehaviorValues(order, arrangement)` (the game's own set). Live. |
 | `CourageTimidMeleeMetres` | 2.0 | Step 49: a timid man's reach - his Melee weight stays above his GoToPos up to here. Range 0.5-6. |
+| `CavalryFlockEnabled` | true | Step 55 (Anton, 2026-10-18; §2 "Cavalry flocking", decision 47): every AI rider whose formation is on a CHARGE (charge / charge to target; both sides; never the player, a busy / detached / routing rider; no tournaments, arenas, naval) is in a census every 0.5 s: eager = FREE (vanilla), below the free line he FLOCKS with his kind and his flock FLIPS into a wave. Gate: `ModEnabled` FIRST, then this; works without courage and without Athletics (then everyone is eager - only the timid flock). Off = every flocker let go at once (the scripted walk off, the game's weights back); the census still measures. Live. |
+| `CavalryFlockFreeEagerPercent` | 75 | Step 55: a rider's EAGERNESS = his bar (points ÷ FULL pool; 1 with Athletics off) × 0.5 when timid; at or above this % he is FREE (the vanilla dance). Range 10-100. |
+| `CavalryFlockHysteresisPercent` | 5 | Step 55: a flocker is free again only at free + this. Range 0-30. |
+| `CavalryFlockMidEagerPercent` | 40 | Step 55: the group-size curve's middle point (eagerness %). Range 5-95 (below the free line). |
+| `CavalryFlockMidGroupSize` | 4 | Step 55: riders of his kind (him included) a rider at the middle eagerness wants with him before he attacks; 1 at the free line, a line between. Range 1-20. |
+| `CavalryFlockExhaustedSharePercent` | 65 | Step 55: at eagerness 0 he wants this % of his kind's riders in his formation (never fewer than the middle size); a line from the middle point; rounded up; never more than his kind has flocking. Range 0-100. |
+| `CavalryFlockTimid` | true | Step 55: a rider whose courage odds (step 49's toughness sums within `CavalryFlockTimidRadiusMetres`, the required odds with tiredness / morale / shock / hero) are below what he needs counts at half his eagerness. Needs `CourageEnabled`. Live. |
+| `CavalryFlockTimidRadiusMetres` | 15.0 | Step 55: the rider's courage circle (one proximity query at most every 1 s). Range 5-40. |
+| `CavalryFlockGatherRadiusMetres` | 25.0 | Step 55: the flocking riders of his kind within this distance are his GROUP ("with me"; a hash grid of this cell size). Range 5-100. |
+| `CavalryFlockSeparationMetres` | 3.5 | Step 55: each flocker's own sunflower slot around the group's centre, about this far from the next (fixed for his spell). Range 1-10. |
+| `CavalryFlockLeadSeconds` | 2.0 | Step 55: a flocker rides to his group's centre + the heading × the group's speed (at least 4 m/s) × this + his slot - the flock never sits. Range 0-5. |
+| `CavalryFlockTightenWeights` | true | Step 55: while flocking his `OverrideBehaviorParams` ChargeHorseback 2 → 0.5 (4 m) → 0.01 (15 m), RangedHorseback 1 → 0.5 (15 m) → 0.1 (30 m) - re-applied every census (the game resets them on orders); the game's back with `Agent.RefreshBehaviorValues`. Live. |
+| `CavalryFlockWaveSeconds` | 10.0 | Step 55: after a FLIP (or a give-up) the riders charge as the game's own for this long, then decide again by their eagerness. Range 0-60. |
+| `CavalryFlockMaxSeconds` | 45.0 | Step 55: a flocker who never flips is released after this long (a wave of one). Range 5-180. |
 | `ImpactEnabled` | true | Step 48, IMPACT I2 (docs/IMPACT.md, §2 "Impact" below): the impact system - kicks / bashes, blocks and clean hits may stagger, drop a shield, knock down, by the PRESSURE x on the man who takes the blow (Core `ImpactMath`). Gate: `ModEnabled` FIRST, `AthleticsEnabled`, this. Live. |
 | `ImpactKicksEnabled` | true | Step 48: the kick / bash family (knockdown, shield drop, the longer reel, the slower get-up). Live. |
 | `ImpactBlocksEnabled` | true | Step 48: the block family - right-side shield block, weapon parry, wrong-side shield block (stagger, knockdown, wrong-side shield drop, the blocker's stun by tiredness). Step 51: LIVE (off with the riposte on = the riposte alone). Live. |
@@ -1851,6 +1889,24 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     would waste every window otherwise) - only a PANIC keeps him away; (g) in contact only (an enemy within `FeverContactMetres` 5 m) - beyond it
     the decision chances do not matter; (h) THE PROOF is measured with the punish ON and OFF alike (the OFF row = the AI's own reaction to a
     staggered man): attack starts by the target of the man's last look, its state at the release.
+47. **Cavalry flocking** (step 55, Anton 2026-10-18 - his wish, then his refinement the same morning that replaced a "gather to 70 %, rest,
+    release" rule with a continuous one; Claude's calls - Anton can overturn any - AI_NOTES "Step 55"): (a) THE LEVER: `Agent.SetScriptedPosition`
+    on the rider - vanilla's own way of riding an AI horse (the horse race and the joust drive mounted AI agents with it); not the input hook (a
+    rider's move vector is read as throttle and turn by the native rider, a world direction would need our own steering loop every frame) and not
+    the weights alone (under a charge a rider has no formation slot, so GoToPos has nothing to go to); fail-safe: a point with no navmesh is not
+    sent (the group's centre is tried), a throw = one [error], the rider stays the game's; (b) WHO: riders under a CHARGE order only (both
+    controllers) - under hold / move / follow / advance their formation already keeps slots, and the player's own riders are steered by his
+    orders; riders mixed into any formation flock with their own kind OF THAT FORMATION; never the player; no naval / tournament / arena; sieges
+    yes (a rider on a machine or a ladder is busy); (c) its OWN switch - courage off does not stop it; courage only lends its odds to the timid
+    factor (and needs courage on for it); (d) EAGERNESS = the bar (a wound counts through the cap; Anton: "do not hold a flock waiting for
+    health"), × 0.5 when timid; NO fever for riders - step 43's aggression and fever stay foot-only (riders keep the game's decision values), so
+    a wave's "fresh fever" is the wave window itself: `CavalryFlockWaveSeconds` of the game's own charge before anyone decides again; (e) the
+    GROUP counts FLOCKING riders of his kind only - free dancers galloping past are not "with him"; the exhausted share is capped at the kind's
+    flockers so a flock can always go in; (f) the FLIP needs the leader's readiness ≥ 0.5 (a group of exhausted riders keeps riding until
+    somebody among them has rested a little - Anton's "charges are started by the more rested riders") and 3 s of flocking (the flip's
+    hysteresis); the goal vote is LOGGED, not a condition (the heading already bends toward the goal as readiness grows); (g) the flock never
+    sits: its lead is at least 4 m/s along the heading; (h) the SLOT is a sunflower (Vogel's spiral) fixed per rider - separation without pairwise
+    reads and without per-frame noise; ALIGNMENT is the shared heading + lead; (i) the measurements run ON and OFF from the same census.
 
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),

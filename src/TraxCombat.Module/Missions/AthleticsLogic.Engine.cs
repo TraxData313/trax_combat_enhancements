@@ -162,6 +162,7 @@ namespace TraxCombat.Missions
             StartFever(); // step 43
             StartPunish(); // step 54
             StartCourage(); // step 49
+            StartFlock(); // step 55
             StartImpact(); // step 47
         }
 
@@ -337,6 +338,7 @@ namespace TraxCombat.Missions
             SprintLeftField(st); // step 33
             FeverLeftField(st); // step 43
             CourageLeftField(st); // step 49
+            FlockLeftField(st); // step 55
             ImpactLeftField(st); // step 47
             RemoveFromLoop(st);
         }
@@ -551,6 +553,16 @@ namespace TraxCombat.Missions
                 Failed("courage.tick", e);
             }
 
+            // Step 55: cavalry flocking - a census of every AI rider every 0.5 s (ON and OFF - the OFF census measures): free / flocking / the flip.
+            try
+            {
+                TickFlock(now);
+            }
+            catch (Exception e)
+            {
+                Failed("cavalry.tick", e);
+            }
+
             // Step 13: your timer - switched off or not you any more = released at once (the input gate
             // does the frame work; this is the tick's safety net).
             try
@@ -676,6 +688,7 @@ namespace TraxCombat.Missions
             StepBackSwingStarted(st);
             NoteFeverAttack(st, mounted); // step 43: an AI melee attack on foot in contact, counted by group and bar band
             NotePunishAttack(st, mounted, now); // step 54: against a target in a window or not; a window punished
+            NoteFlockAttack(st, mounted, now); // step 55: a rider's pass - lone or with his kind, the time since his last
 
             // the cycle since the last release ran at the multiplier set after that release's charge
             int binNow = AthleticsMath.PeakBin(AthleticsMath.PeakShare(in r, st));
@@ -1082,6 +1095,7 @@ namespace TraxCombat.Missions
                 NoteSprintSettings(settings);     // step 33: the sprint (switching it off ends every sprint in the next tick)
                 NoteFeverSettings(settings);      // step 43: aggression and fever (the decision factors re-targeted below with the speeds)
                 NoteCourageSettings(settings);    // step 49: courage (applied at every man's next look)
+                NoteFlockSettings(settings);      // step 55: cavalry flocking (at the next census)
                 NotePunishSettings(settings);     // step 54: the AI punishing a window (the factors re-targeted below)
 
                 if (r.PoolFloor != _seenPoolFloor || r.PoolPerSkill != _seenPoolPerSkill)
@@ -1525,6 +1539,7 @@ namespace TraxCombat.Missions
                 if (st == null) return;
                 var r = Rules;
                 double now = Mission.CurrentTime;
+                NoteFlockAttack(st, shooterAgent.MountAgent != null, now); // step 55: a rider's pass (a shot) - measured whatever the switches
                 if (!r.Enabled)
                 {
                     _stats.AttacksWhileOff++;

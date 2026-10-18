@@ -778,6 +778,90 @@
   // (range 0.5 to 6.0)
   "CourageTimidMeleeMetres": 2.0,
 
+  // ==================== Cavalry flocking (AI) ====================
+  // AI riders on a charge stop going in one by one. A fresh, eager rider charges again and
+  // again as in the game; the more tired he gets, the more he looks for riders of his own kind
+  // in his formation - horse archers with horse archers, skirmishers with skirmishers, lancers
+  // with lancers - and the bigger the group he wants before he attacks again: 4-5 when half
+  // tired, most of his kind when exhausted. The flock never sits: it keeps riding, drifting
+  // toward the unit's centre while its riders are tired and bending toward the enemy as its
+  // most rested riders lead, and when it is big enough it charges together, as a wave. Both
+  // sides, never you; only riders whose formation is on a CHARGE (hold, move, follow and
+  // advance keep them in their slots). Works without courage. Off: the game's own riders - the
+  // log still measures, so flipping it mid-battle compares the two.
+  // (true or false)
+  "CavalryFlockEnabled": true,
+
+  // A rider's EAGERNESS is his Athletics bar (halved when he is alone among enemies, below). At
+  // or above this he is free - the game's own charging, again and again. Below it he flocks
+  // with his kind. With the Athletics system off everyone is at 100%.
+  // (range 10 to 100)
+  "CavalryFlockFreeEagerPercent": 75,
+
+  // A flocking rider charges alone again only once his eagerness is this far above the line -
+  // so he does not flicker between flocking and charging at the edge.
+  // (range 0 to 30)
+  "CavalryFlockHysteresisPercent": 5,
+
+  // The group-size curve's middle point: a rider at this eagerness wants the group size below
+  // before he attacks again. At the free line he wants 1 (himself); between, a straight line.
+  // (range 5 to 95)
+  "CavalryFlockMidEagerPercent": 40,
+
+  // How many riders of his kind (him included) a half-tired rider wants within reach before he
+  // attacks again.
+  // (range 1 to 20)
+  "CavalryFlockMidGroupSize": 4,
+
+  // An exhausted rider wants this share of his kind's riders in his formation before he attacks
+  // again (never fewer than the half-tired size); a straight line from the middle point down to
+  // empty. A flock goes in when the group has the size its riders' AVERAGE eagerness wants.
+  // (range 0 to 100)
+  "CavalryFlockExhaustedSharePercent": 65,
+
+  // A rider alone among many enemies - courage's odds (Courage and cohesion: the toughness of
+  // his side against the enemy's near him, with tiredness, morale, shock and heroes) - counts
+  // at half his eagerness, so he looks for his kind even when he is fresh. Needs Courage and
+  // cohesion on (its numbers are used).
+  // (true or false)
+  "CavalryFlockTimid": true,
+
+  // The circle a rider weighs his side against the enemy in - wider than a man on foot's, a
+  // horse covers ground fast.
+  // (range 5.0 to 40.0)
+  "CavalryFlockTimidRadiusMetres": 15.0,
+
+  // The flocking riders of his kind this close to him are "with him" - his group.
+  // (range 5.0 to 100.0)
+  "CavalryFlockGatherRadiusMetres": 25.0,
+
+  // Each flocking rider rides to his own place in the flock, about this far from the next -
+  // horses never stack on one point.
+  // (range 1.0 to 10.0)
+  "CavalryFlockSeparationMetres": 3.5,
+
+  // A flocking rider rides to his group's centre led this many seconds ahead along the flock's
+  // heading (at the flock's speed, at least a canter) - the flock keeps moving instead of
+  // converging on a still dot. 0 = the centre itself.
+  // (range 0.0 to 5.0)
+  "CavalryFlockLeadSeconds": 2.0,
+
+  // While flocking a rider's own AI strikes only what is right beside him and does not ride off
+  // for a target - the game's per-rider behaviour weights, re-applied after every order (the
+  // game resets them). Back in: the game's own. Off: the ride with the flock alone.
+  // (true or false)
+  "CavalryFlockTightenWeights": true,
+
+  // When a flock goes in, its riders charge as the game's own riders for this long before each
+  // one decides again by his eagerness - the eager ones dance on, the tired ones flock again.
+  // (range 0.0 to 60.0)
+  "CavalryFlockWaveSeconds": 10.0,
+
+  // A rider who has flocked this long without his flock going in is released on his own (a wave
+  // of one).
+  // (range 5.0 to 180.0)
+  "CavalryFlockMaxSeconds": 45.0,
+
   // ==================== Impact: staggers, shield drops, knockdowns ====================
   // Kicks, shield bashes, blocks and clean hits can stagger a man, make him drop his shield or
   // knock him down - more likely the more tired he is and the more he is outmatched (both men's

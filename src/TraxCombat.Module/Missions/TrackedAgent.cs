@@ -289,6 +289,9 @@ namespace TraxCombat.Missions
         /// <summary>Step 49: his last landed hits (OnAgentHit) - the SHOCK window reads them (a struct mutated in place through this field).</summary>
         public ShockTimes Hits;
 
+        /// <summary>Step 55: his cavalry flocking - kind, flock, eagerness, free / flocking / in a wave, his slot, the scripted point, his passes.</summary>
+        public readonly RiderFlock Flock = new RiderFlock();
+
         public void RememberMissile(int index)
         {
             switch (MissileNext)

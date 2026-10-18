@@ -340,6 +340,21 @@ namespace TraxCombat.Core
         public int CouragePanicSprintKeepPercent => GetInt(SettingsSchema.CouragePanicSprintKeepPercent);
         public bool CourageTightenWeights => GetBool(SettingsSchema.CourageTightenWeights);
         public float CourageTimidMeleeMetres => GetFloat(SettingsSchema.CourageTimidMeleeMetres);
+        // step 55: cavalry flocking
+        public bool CavalryFlockEnabled => GetBool(SettingsSchema.CavalryFlockEnabled);
+        public int CavalryFlockFreeEagerPercent => GetInt(SettingsSchema.CavalryFlockFreeEagerPercent);
+        public int CavalryFlockHysteresisPercent => GetInt(SettingsSchema.CavalryFlockHysteresisPercent);
+        public int CavalryFlockMidEagerPercent => GetInt(SettingsSchema.CavalryFlockMidEagerPercent);
+        public int CavalryFlockMidGroupSize => GetInt(SettingsSchema.CavalryFlockMidGroupSize);
+        public int CavalryFlockExhaustedSharePercent => GetInt(SettingsSchema.CavalryFlockExhaustedSharePercent);
+        public bool CavalryFlockTimid => GetBool(SettingsSchema.CavalryFlockTimid);
+        public float CavalryFlockTimidRadiusMetres => GetFloat(SettingsSchema.CavalryFlockTimidRadiusMetres);
+        public float CavalryFlockGatherRadiusMetres => GetFloat(SettingsSchema.CavalryFlockGatherRadiusMetres);
+        public float CavalryFlockSeparationMetres => GetFloat(SettingsSchema.CavalryFlockSeparationMetres);
+        public float CavalryFlockLeadSeconds => GetFloat(SettingsSchema.CavalryFlockLeadSeconds);
+        public bool CavalryFlockTightenWeights => GetBool(SettingsSchema.CavalryFlockTightenWeights);
+        public float CavalryFlockWaveSeconds => GetFloat(SettingsSchema.CavalryFlockWaveSeconds);
+        public float CavalryFlockMaxSeconds => GetFloat(SettingsSchema.CavalryFlockMaxSeconds);
         // step 48: the impact model (docs/IMPACT.md §5; Core ImpactRules reads them all at once)
         public bool ImpactEnabled => GetBool(SettingsSchema.ImpactEnabled);
         public bool ImpactKicksEnabled => GetBool(SettingsSchema.ImpactKicksEnabled);

@@ -136,6 +136,15 @@ namespace TraxCombat.Missions
             {
                 Failed("courage.close", e);
             }
+            // Step 55: every flocking rider let go (the scripted walk off, the game's weights back while the agents live) before the summary.
+            try
+            {
+                CloseFlock(agentsAlive);
+            }
+            catch (Exception e)
+            {
+                Failed("cavalry.close", e);
+            }
 
             // the lowest any hero reached (heroes' records outlive their removal from the loop)
             TrackedAgent? lowest = null;
@@ -283,6 +292,16 @@ namespace TraxCombat.Missions
             catch (Exception e)
             {
                 Failed("courage.summary", e);
+            }
+
+            // Step 55: cavalry flocking - free / flocking / wave shares, flips by eagerness, time between passes, lone passes and spread ON vs OFF. Own try.
+            try
+            {
+                WriteFlockSummary();
+            }
+            catch (Exception e)
+            {
+                Failed("cavalry.summary", e);
             }
         }
 

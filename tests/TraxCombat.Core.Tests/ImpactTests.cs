@@ -127,7 +127,7 @@ public class ImpactTests
             Assert.True(SettingsSchema.TryGet(k, out var p), k);
             Assert.Equal(ApplyTiming.Live, p.Timing);
         }
-        Assert.Equal(SettingsSchema.FeverGroup.Order + 2, SettingsSchema.ImpactGroup.Order); // step 49: courage between them
+        Assert.Equal(SettingsSchema.FeverGroup.Order + 3, SettingsSchema.ImpactGroup.Order); // step 49: courage between them; step 55: cavalry flocking after it
         Assert.Equal(SettingsSchema.ImpactGroup.Order + 1, SettingsSchema.RefillGroup.Order);
         Assert.Same(SettingsSchema.AdvancedGroup, SettingsSchema.Groups[SettingsSchema.Groups.Count - 1]);
     }

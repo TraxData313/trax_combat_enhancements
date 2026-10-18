@@ -370,7 +370,7 @@ public class CourageTests
     public void The_settings_sit_in_their_group_after_the_fever_and_are_live()
     {
         Assert.Equal(SettingsSchema.FeverGroup.Order + 1, SettingsSchema.CourageGroup.Order);
-        Assert.Equal(SettingsSchema.CourageGroup.Order + 1, SettingsSchema.ImpactGroup.Order);
+        Assert.Equal(SettingsSchema.CourageGroup.Order + 1, SettingsSchema.CavalryFlockGroup.Order); // step 55: cavalry flocking right after courage
         var keys = SettingsSchema.InGroup(SettingsSchema.CourageGroup).Select(p => p.Key).ToList();
         Assert.Equal(29, keys.Count);
         Assert.Equal("CourageEnabled", keys[0]);

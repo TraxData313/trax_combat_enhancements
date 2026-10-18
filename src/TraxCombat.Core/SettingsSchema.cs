@@ -41,12 +41,13 @@ namespace TraxCombat.Core
         public static readonly ParamGroup SprintGroup = new ParamGroup(7, "Sprint");
         public static readonly ParamGroup FeverGroup = new ParamGroup(8, "Aggression and fever (AI)"); // step 43
         public static readonly ParamGroup CourageGroup = new ParamGroup(9, "Courage and cohesion (AI)"); // step 49 - after the fever (the AI's behaviour groups together)
-        public static readonly ParamGroup ImpactGroup = new ParamGroup(10, "Impact: staggers, shield drops, knockdowns"); // step 48 (IMPACT I2) - after the combat behaviour groups
-        public static readonly ParamGroup RefillGroup = new ParamGroup(11, "Refill");
-        public static readonly ParamGroup PlayerBarGroup = new ParamGroup(12, "Your Athletics bar");
-        public static readonly ParamGroup OrderStripGroup = new ParamGroup(13, "Orders menu strip");
-        public static readonly ParamGroup AltMarkersGroup = new ParamGroup(14, "Hold ALT: formation markers, Athletics and fever bars"); // step 44 renamed it (was "Formation markers (hold ALT)"), step 46 again (was "... and fever marks")
-        public static readonly ParamGroup AdvancedGroup = new ParamGroup(15, "Advanced");
+        public static readonly ParamGroup CavalryFlockGroup = new ParamGroup(10, "Cavalry flocking (AI)"); // step 55 - after courage (the AI's behaviour groups together)
+        public static readonly ParamGroup ImpactGroup = new ParamGroup(11, "Impact: staggers, shield drops, knockdowns"); // step 48 (IMPACT I2) - after the combat behaviour groups
+        public static readonly ParamGroup RefillGroup = new ParamGroup(12, "Refill");
+        public static readonly ParamGroup PlayerBarGroup = new ParamGroup(13, "Your Athletics bar");
+        public static readonly ParamGroup OrderStripGroup = new ParamGroup(14, "Orders menu strip");
+        public static readonly ParamGroup AltMarkersGroup = new ParamGroup(15, "Hold ALT: formation markers, Athletics and fever bars"); // step 44 renamed it (was "Formation markers (hold ALT)"), step 46 again (was "... and fever marks")
+        public static readonly ParamGroup AdvancedGroup = new ParamGroup(16, "Advanced");
 
         // ------------------------------------------------------------------ master switch
 
@@ -588,6 +589,67 @@ namespace TraxCombat.Core
         public static readonly ParamDef CourageTimidMeleeMetres = Float("CourageTimidMeleeMetres", CourageMath.MinMeleeMetres, CourageMath.MaxMeleeMetres, CourageGroup,
             "Timid men strike within (m)",
             "A timid man still fights an enemy this close - beyond it his own place wins. 2 m is about a sword's reach.");
+
+        // ------------------------------------------------------------------ cavalry flocking (step 55)
+        // Anton, 2026-10-18: fresh, eager riders dance as in vanilla; the more tired a rider, the bigger the group of his own kind he wants
+        // before he attacks again - the flock rides on, pulled toward the unit's centre by its tired riders and toward the goal by its rested
+        // ones, and FLIPS into a charge as one (Core FlockMath, AI_NOTES "Step 55").
+
+        public static readonly ParamDef CavalryFlockEnabled = Bool("CavalryFlockEnabled", CavalryFlockGroup,
+            "Cavalry flocking",
+            "AI riders on a charge stop going in one by one. A fresh, eager rider charges again and again as in the game; the more tired he gets, the more he looks for riders of his own kind in his formation - horse archers with horse archers, skirmishers with skirmishers, lancers with lancers - and the bigger the group he wants before he attacks again: 4-5 when half tired, most of his kind when exhausted. The flock never sits: it keeps riding, drifting toward the unit's centre while its riders are tired and bending toward the enemy as its most rested riders lead, and when it is big enough it charges together, as a wave. Both sides, never you; only riders whose formation is on a CHARGE (hold, move, follow and advance keep them in their slots). Works without courage. Off: the game's own riders - the log still measures, so flipping it mid-battle compares the two.");
+
+        public static readonly ParamDef CavalryFlockFreeEagerPercent = Int("CavalryFlockFreeEagerPercent", 10, 100, CavalryFlockGroup,
+            "Riders charge alone above (%)",
+            "A rider's EAGERNESS is his Athletics bar (halved when he is alone among enemies, below). At or above this he is free - the game's own charging, again and again. Below it he flocks with his kind. With the Athletics system off everyone is at 100%.");
+
+        public static readonly ParamDef CavalryFlockHysteresisPercent = Int("CavalryFlockHysteresisPercent", 0, 30, CavalryFlockGroup,
+            "Free again above the line by (%)",
+            "A flocking rider charges alone again only once his eagerness is this far above the line - so he does not flicker between flocking and charging at the edge.");
+
+        public static readonly ParamDef CavalryFlockMidEagerPercent = Int("CavalryFlockMidEagerPercent", 5, 95, CavalryFlockGroup,
+            "Group size: half-tired at (%)",
+            "The group-size curve's middle point: a rider at this eagerness wants the group size below before he attacks again. At the free line he wants 1 (himself); between, a straight line.");
+
+        public static readonly ParamDef CavalryFlockMidGroupSize = Int("CavalryFlockMidGroupSize", 1, 20, CavalryFlockGroup,
+            "Group size: half-tired wants (riders)",
+            "How many riders of his kind (him included) a half-tired rider wants within reach before he attacks again.");
+
+        public static readonly ParamDef CavalryFlockExhaustedSharePercent = Int("CavalryFlockExhaustedSharePercent", 0, 100, CavalryFlockGroup,
+            "Group size: exhausted wants (% of his kind)",
+            "An exhausted rider wants this share of his kind's riders in his formation before he attacks again (never fewer than the half-tired size); a straight line from the middle point down to empty. A flock goes in when the group has the size its riders' AVERAGE eagerness wants.");
+
+        public static readonly ParamDef CavalryFlockTimid = Bool("CavalryFlockTimid", CavalryFlockGroup,
+            "Lone riders flock sooner",
+            "A rider alone among many enemies - courage's odds (Courage and cohesion: the toughness of his side against the enemy's near him, with tiredness, morale, shock and heroes) - counts at half his eagerness, so he looks for his kind even when he is fresh. Needs Courage and cohesion on (its numbers are used).");
+
+        public static readonly ParamDef CavalryFlockTimidRadiusMetres = Float("CavalryFlockTimidRadiusMetres", 5, 40, CavalryFlockGroup,
+            "Lone rider: looks around him (m)",
+            "The circle a rider weighs his side against the enemy in - wider than a man on foot's, a horse covers ground fast.");
+
+        public static readonly ParamDef CavalryFlockGatherRadiusMetres = Float("CavalryFlockGatherRadiusMetres", 5, 100, CavalryFlockGroup,
+            "Riders with him within (m)",
+            "The flocking riders of his kind this close to him are \"with him\" - his group.");
+
+        public static readonly ParamDef CavalryFlockSeparationMetres = Float("CavalryFlockSeparationMetres", 1, 10, CavalryFlockGroup,
+            "Flock: room between riders (m)",
+            "Each flocking rider rides to his own place in the flock, about this far from the next - horses never stack on one point.");
+
+        public static readonly ParamDef CavalryFlockLeadSeconds = Float("CavalryFlockLeadSeconds", 0, 5, CavalryFlockGroup,
+            "Flock: rides ahead (s)",
+            "A flocking rider rides to his group's centre led this many seconds ahead along the flock's heading (at the flock's speed, at least a canter) - the flock keeps moving instead of converging on a still dot. 0 = the centre itself.");
+
+        public static readonly ParamDef CavalryFlockTightenWeights = Bool("CavalryFlockTightenWeights", CavalryFlockGroup,
+            "Flocking riders stop picking targets",
+            "While flocking a rider's own AI strikes only what is right beside him and does not ride off for a target - the game's per-rider behaviour weights, re-applied after every order (the game resets them). Back in: the game's own. Off: the ride with the flock alone.");
+
+        public static readonly ParamDef CavalryFlockWaveSeconds = Float("CavalryFlockWaveSeconds", 0, 60, CavalryFlockGroup,
+            "A wave charges for (s)",
+            "When a flock goes in, its riders charge as the game's own riders for this long before each one decides again by his eagerness - the eager ones dance on, the tired ones flock again.");
+
+        public static readonly ParamDef CavalryFlockMaxSeconds = Float("CavalryFlockMaxSeconds", 5, 180, CavalryFlockGroup,
+            "Give up flocking after (s)",
+            "A rider who has flocked this long without his flock going in is released on his own (a wave of one).");
 
         // ------------------------------------------------------------------ impact (step 48 = IMPACT I2, docs/IMPACT.md §3 / §5)
         // Anton, 2026-10-17: kicks, bashes, blocks and clean hits may stagger, drop a shield or knock down, by both men's CURRENT
@@ -1219,6 +1281,9 @@ namespace TraxCombat.Core
             CourageHeroPercent, CourageHysteresisPercent, CourageMinTimidSeconds, CourageSurgeChancePercent, CourageSurgeSeconds, CourageRegroupRadiusMetres, CourageRegroupMates, CourageFlockRadiusMetres,
             CourageFlockMinMen, CourageSprintBack, CourageSprintMetres, CourageSprintEnemies, CourageSprintKeepPercent, CouragePanicOddsPercent,
             CouragePanicSprintKeepPercent, CourageTightenWeights, CourageTimidMeleeMetres,
+            CavalryFlockEnabled, CavalryFlockFreeEagerPercent, CavalryFlockHysteresisPercent, CavalryFlockMidEagerPercent, CavalryFlockMidGroupSize,
+            CavalryFlockExhaustedSharePercent, CavalryFlockTimid, CavalryFlockTimidRadiusMetres, CavalryFlockGatherRadiusMetres, CavalryFlockSeparationMetres,
+            CavalryFlockLeadSeconds, CavalryFlockTightenWeights, CavalryFlockWaveSeconds, CavalryFlockMaxSeconds,
             ImpactEnabled, ImpactKicksEnabled, ImpactBlocksEnabled, ImpactHitsEnabled, ImpactRiposteEnabled, ImpactShadowMode,
             KickShieldDropMaxPercent, KickKnockdownMaxPercent, RightBlockStaggerMaxPercent, RightBlockShieldDropMaxPercent, RightBlockKnockdownMaxPercent,
             ParryStaggerMaxPercent, ParryKnockdownMaxPercent, WrongBlockStaggerMaxPercent, WrongBlockShieldDropMaxPercent, WrongBlockKnockdownMaxPercent,
@@ -1254,7 +1319,7 @@ namespace TraxCombat.Core
         /// <summary>The groups in order.</summary>
         public static readonly IReadOnlyList<ParamGroup> Groups = new[]
         {
-            MasterGroup, DamageGroup, AthleticsGroup, TiredGroup, StepBackGroup, BattlePaceGroup, BraceGroup, SprintGroup, FeverGroup, CourageGroup, ImpactGroup, RefillGroup, PlayerBarGroup, OrderStripGroup, AltMarkersGroup, AdvancedGroup,
+            MasterGroup, DamageGroup, AthleticsGroup, TiredGroup, StepBackGroup, BattlePaceGroup, BraceGroup, SprintGroup, FeverGroup, CourageGroup, CavalryFlockGroup, ImpactGroup, RefillGroup, PlayerBarGroup, OrderStripGroup, AltMarkersGroup, AdvancedGroup,
         };
 
         private static readonly Dictionary<string, ParamDef> ByKey = BuildIndex();
