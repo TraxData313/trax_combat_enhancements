@@ -912,8 +912,12 @@ above it, and nothing once he is at or below it:
 | **Advance** (F1 F4 "engage", or the AI's advance) | 50% | 50% | 40% | 10% |
 | **Move** (F1 F1, move to a position) | 80% | 20% | 10% | none |
 | Hold, retreat, fall back, follow | — | none | none | none |
+| **He routs** (his morale breaks — the game's own rout, not a retreat order) | 0% | all of it, once | all of it | all of it |
 
-(A man with a 5 s store: a move from full sprints 1 s, an advance 2.5 s, a charge 5 s.)
+(A man with a 5 s store: a move from full sprints 1 s, an advance 2.5 s, a charge 5 s.) **A man who breaks and
+routs** spends his whole store for the first get-away, once, at the moment he breaks — and does not stop when an
+enemy is close (he is running away). The rout is the game's; only the speed is ours. So a broken line scatters
+fast — and the men who spent their sprint charging have little left to flee with.
 
 A man stops early when an enemy is within 3 m or the order changes again. Give a formation a new charge order
 and watch it surge — tired men too, off their 2 s floor. In their fever (section 11) men may also sprint again
@@ -929,7 +933,7 @@ X1MouseButton, X2MouseButton), `SprintPointsPerSecond` 20, `SprintMinSeconds` 2,
 `SprintMaxMultiplier` 2.0, `SprintMinMultiplier` 1.1, `SprintFullSpeedSharePercent` 30,
 `SprintTopSpeedReachSeconds` 1, `SprintRefillSeconds` 7, `SprintRefillMovingFactor` 0.5,
 `SprintRefillExhaustedFactor` 0.5, `SprintAiEnabled` on, `SprintAiChargeKeepPercent` 0,
-`SprintAiAdvanceKeepPercent` 50, `SprintAiMoveKeepPercent` 80. The run-now column comes from tiredness: `MinMoveSpeedMultiplier` 0.3 at an empty
+`SprintAiAdvanceKeepPercent` 50, `SprintAiMoveKeepPercent` 80, `SprintOnRout` on. The run-now column comes from tiredness: `MinMoveSpeedMultiplier` 0.3 at an empty
 bar, `AthleticsPeakPercent` 75.</sub>
 
 ## 15. What you see on screen

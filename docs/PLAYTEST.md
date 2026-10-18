@@ -1424,6 +1424,16 @@ block stun's lengthening off (*Blocker's guard held longer* 0 - the spike's leve
 **Broken - tell Claude** (D25): a correct blocker still staggered often in the red band with the spike OFF; no ripostes on tired attackers
 (`riposte` decided but never applied - the forced-stagger lever); the config not migrated.
 
+**D26. ROUTING MEN SPRINT AWAY (step 57, ~5 min - in any battle you win).** Your point: "when they are broken and begin to rout, use their
+available sprint for the first get-away". Default *AI sprint when a man routs* ON (MCM → *Sprint*). Break an enemy line (a big battle against
+looters or a crushed flank): the moment a man turns to flee he should **burst away** at a sprint for a few seconds (men who charged with
+everything flee slower - their store is spent), then run on at his tired pace. A formation you ORDER to retreat does not burst (that is not a
+rout). **Lines**: `[sprint] first ROUT sprint this battle: <him> broke and routs at … s (the game's own rout - MissionBehavior.OnAgentFleeing) -
+he sprints his WHOLE store … s of … s for the get-away …`; **[summary]**: `sprint on rout (step 57, SprintOnRout on): routs seen N, sprints
+started M (whole store avg … s), of them taking over a running order sprint …; refused: empty store …, already sprinting …, switched off …, on a
+horse …, yours …` - `routs seen` should match the battle's routed men (riders show up under `on a horse`). **Broken - tell Claude**: `routs seen 0`
+in a battle with a rout (the callback not reached); routers never visibly faster (the speed check in `sprint speed check`).
+
 ---
 
 ## E. Your Athletics bar, the orders-menu strip and the ALT markers (20 min)

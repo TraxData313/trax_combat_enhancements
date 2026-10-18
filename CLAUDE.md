@@ -155,7 +155,11 @@ OFF) - PLAYTEST D23, DESIGN decision 46. All seven IMPACT steps are built. RIGHT
 tournament 2026-10-18: "make sure right blocks are a possible penalty for the ATTACKER"): on a CORRECT block (right-side shield, parry) the
 blocker's T counts `CorrectBlockTiredWeightPercent` 25 % in x, the ceilings 30 / 10 (defaults.json); the riposte = 70 % × S(x_r) × (1 −
 `RiposteBlockerTiredPercent` 0 × T_D) - two empty even men: the blocker ≤ 5 %, the attacker reels 70 %; the wrong side unchanged;
-`BlockStunTiredExtraPercent` 0 (the spike's lever 2 failed); config format 10 (PLAYTEST D25, DESIGN decision 48). COURAGE AND COHESION (step 49, `CourageEnabled`, Anton 2026-10-17 night: "AI men are
+`BlockStunTiredExtraPercent` 0 (the spike's lever 2 failed); config format 10 (PLAYTEST D25, DESIGN decision 48). ROUTING MEN SPRINT
+AWAY (step 57, `SprintOnRout`, Anton: "use their available sprint for the first get-away"): the game's own rout calls
+`MissionBehavior.OnAgentFleeing` once per broken man (never for a Retreat order) - an AI man on foot spends his WHOLE sprint store once
+(`SprintStore.TryStartRout`: no reserve, no end near an enemy; a running order sprint handed over); behind SprintAiEnabled / SprintEnabled / the
+master switch; the [summary] "sprint on rout" line (PLAYTEST D26, DESIGN decision 49). COURAGE AND COHESION (step 49, `CourageEnabled`, Anton 2026-10-17 night: "AI men are
 unrealistically brave" - a lone man circles a shield wall, stands exhausted among four enemies; + his three additions: shock, flocking,
 panic): every AI man on foot in a formation is looked at every ~0.5 s (staggered; one `Mission.GetNearbyAgents` into a reused list): his
 side's TOUGHNESS vs the enemy's within `CourageRadiusMetres` 6 m (toughness = armour, level, wounds - a looter 1.35, a legionary 5.97 =
@@ -318,7 +322,7 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               its Default comes from defaults.json (DefaultsFile), never code; step 33: ParamType.Key +
                               KeyNames (a key by NAME, stored as its index; FormatJson writes "LeftControl"; the
                               file / defaults.json read the name, MCM a text box)
-  SettingsSchema.cs           EVERY setting of DESIGN's table (270 - step 56's CorrectBlockTiredWeightPercent and RiposteBlockerTiredPercent right after RiposteStaggerMaxPercent; step 55's 14 in "Cavalry flocking (AI)" after courage; step 54's 4 punish settings after the on-screen lines; step 53's 3 rider-momentum + 3 on-screen-line settings after the momentum ones; step 52's 4 momentum settings after ImpactTiredNeverShrugsOff; step 47's ImpactSpike in Advanced, before VerboseLogging; step 48's 60 in
+  SettingsSchema.cs           EVERY setting of DESIGN's table (271 - step 57's SprintOnRout after SprintAiMoveKeepPercent; step 56's CorrectBlockTiredWeightPercent and RiposteBlockerTiredPercent right after RiposteStaggerMaxPercent; step 55's 14 in "Cavalry flocking (AI)" after courage; step 54's 4 punish settings after the on-screen lines; step 53's 3 rider-momentum + 3 on-screen-line settings after the momentum ones; step 52's 4 momentum settings after ImpactTiredNeverShrugsOff; step 47's ImpactSpike in Advanced, before VerboseLogging; step 48's 60 in
                               "Impact: staggers, shield drops, knockdowns" - after the courage group, before Refill; step 49's 29 (49b's two surge settings) in "Courage and
                               cohesion (AI)" - after the fever), in file + MCM order, 17 groups
                               ("Master switch" first, "Damage" second - step 25 renamed it from
@@ -1243,7 +1247,9 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               pixels), Fill, FillColor, FrameColor (the fade's alpha baked in); step 46: the box (PositionX / Y =
                               its top-left, BoxWidth / BoxHeight), FeverShown, the Athletics bar - BarShown, BarWidth, BarHeight,
                               BarFill, BarUsable, BarColor, BarFrameColor, BarWoundColor
-tests/TraxCombat.Core.Tests/  net8.0 xUnit (843 - step 56: + RightBlocksTests - two EMPTY even men: a correct block ≤ 5 % on the blocker and the
+tests/TraxCombat.Core.Tests/  net8.0 xUnit (852 - step 57: + RoutSprintTests - the setting placed / on / live, the whole store once with no reserve and
+                              below the start gate, an empty store / no store refused, the rout mark cleared by other starts, every switch with the
+                              master switch first, the summary line; step 56: + RightBlocksTests - two EMPTY even men: a correct block ≤ 5 % on the blocker and the
                               riposte at 70 %, the wrong side at 90 / 50 / 40; two fresh men nothing; a tired attacker into a good guard; the stick vs
                               the axe still staggers; 100 / 100 = step 48; the decision line; the format-10 migration (old defaults moved, tuned kept and
                               said, format 10 untouched) - and ImpactTests pin the step-48 weights for IMPACT §4 A-G; step 55: + CavalryFlockTests - the 14 settings, the master switch, kinds / keys, eagerness + the free
@@ -1659,7 +1665,10 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               0 bytes; the master-switch step's flocking part; step 56 (Program.RightBlocks.cs): the embedded step-56 defaults through the real logic -
                               two EMPTY even men: a right-side block / parry leaves the blocker standing, the ATTACKER reels (70 %, his forced
                               stagger from the tick), the wrong side 90 / 50 / 40, two fresh men nothing, the game's stun; the steps 48-55 checks pin
-                              the step-48 block model (ImpactModelDefaults → Step48BlockModel) (126 steps; the config checks work for any tuned default)
+                              the step-48 block model (ImpactModelDefaults → Step48BlockModel); step 57 (Program.RoutSprint.cs): the real logic's
+                              OnAgentFleeing - a routing man's whole 5 s store, never ended near an enemy, run dry, empty on a second call, a running
+                              move sprint handed over, you / a rider never, SprintOnRout / SprintAiEnabled / the master switch off = none, the first-rout
+                              line and the summary (127 steps; the config checks work for any tuned default)
                               TRAX_SMOKE_KEEP=1 keeps its temp folder + log to read
 tools/DefaultsTool/           defaults.json upkeep: refresh (rewrite comments/order, keep every
                               value) | check; --file <path> for an exported one

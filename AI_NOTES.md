@@ -5171,3 +5171,34 @@ running: build, tests, guard and smoke green; the install hit the DLL lock (not 
 **Unverified until D25:** that the riposte at 70 % does not make tired duels a riposte festival (the knob: `RiposteStaggerMaxPercent`); that
 correct blockers in the red band really stand (with the spike OFF); the AI's tired random block direction (step 30) now matters more - more
 wrong-side blocks = more broken guards, fewer ripostes.
+
+## Step 57 — routing men sprint away (DONE 2026-10-18)
+
+**Why.** Anton, 2026-10-18: "when they are broken and begin to rout, use their available sprint for the first get-away".
+
+**Which flag marks a rout (v1.4.8, decompiled with ilspycmd this session - the old `..\reference\` decompile is not on this PC).**
+- `CommonAIComponent.OnTickParallel`: morale below 0.01 and `CanPanic()` → `_panicTriggered`; `OnTick` → `Panic()`: `IsPanicked = true`,
+  `Mission.OnAgentPanicked(agent)` → `MissionAgentPanicHandler` queues him; its `OnPreMissionTick` calls `CommonAIComponent.Retreat()` (IsRetreating
+  true, `Agent.Retreat(fleePos)` = native SetRetreatMode) and then **`Mission.OnAgentFleeing(agent)`** → every `MissionBehavior.OnAgentFleeing`,
+  then `agent.OnFleeing()` (formation and captaincy dropped).
+- `Mission.OnAgentFleeing` has ONE caller (the panic handler). A formation's Retreat ORDER (`MovementOrder.RetreatAux`, `OnUnitJoinOrLeave`) calls
+  `CommonAIComponent.Retreat()` too - so `IsRetreating` / native `Agent.IsRetreating()` / `Agent.IsRunningAway` (the native "AI performing retreat
+  behaviour" callback) are ALSO true for an ordered retreat. Chosen: the `OnAgentFleeing` override - a rout only, an event (no polling), main
+  thread, once per man. (Mounted routers reach it too - counted, never sprinted.)
+
+**Built.** Core: `SprintOnRout` (Sprint group, after the AI reserves, on, Live); `SprintRules.OnRout` / `RoutOn` (= AiOn && OnRout - the master
+switch, Athletics, SprintEnabled, SprintAiEnabled first); `SprintStore.TryStartRout` - the WHOLE store (Length = Stored after the clamp), no
+SprintMinStartPercent gate, nothing below `AiMinSeconds` (BelowMinimum = "empty store"), `Rout` mark (no melee end; other starts clear it),
+Order None; `SprintEnd.Routed` (a running order / regroup sprint handed over); `SprintStats` rout counters + the 5th [summary] line ("sprint on
+rout ... routs seen, sprints started (whole store avg), taking over ..., refused: empty store, already sprinting, switched off, on a horse,
+yours"). Module: `AthleticsLogic.OnAgentFleeing` override → `RoutSprint` (try / Failed("sprint.rout")): the player / not AI → skipped; switches →
+Off; a rider → Mounted; a running non-rout AI sprint ended (Routed); TryStartRout → BeginSprint (its first-AI-order line skipped for a rout) + the
+"first ROUT sprint this battle" line; `RunSprint` skips the melee check for `Rout`.
+
+**Tests / smoke.** RoutSprintTests (9): 843 → 852; SprintTests' summary line counts 4 → 5. Smoke `RoutSprintThroughTheLogic` (126 → 127): a
+routing man's whole 5 s store with an enemy at 1.5 m (no InMelee end), run dry, a second call = empty, a MOVE sprint handed over (> 4 s, Routed 1),
+you / a rider never, SprintOnRout / SprintAiEnabled / ModEnabled off = none (live), back on = it starts, the lines.
+
+**Unverified until D26:** that the engine lets a routing agent run at the raised speed (a routing agent's own movement is native retreat mode -
+`MaxSpeedMultiplier` should apply as for anyone; the sprint speed check covers it); that `OnAgentFleeing` reaches a MissionLogic added by a
+mod in every mission type (it is a plain MissionBehavior virtual - it should).
