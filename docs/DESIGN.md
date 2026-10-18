@@ -774,7 +774,8 @@ ranges, groups and wording — no default values). So the first-run config file,
 from config.json, MCM's Default preset (its Reset buttons), the "Revert all to defaults"
 button and the "(default …)" in comments, MCM hints and the log all show the file's values.
 
-- **MCM, group "Defaults"**: **Revert all to defaults** puts every setting back to its
+- **MCM, group "Defaults"** (step 59: *Revert* on both pages and reverting both, *Save* on the Advanced page only):
+  **Revert all to defaults** puts every setting back to its
   defaults.json value at once — live, even mid-battle; each change is logged
   `(source: defaults)` and config.json is rewritten. **Save current values as a defaults
   file** writes the values in play as `defaults.json`, comments and all, next to config.json
@@ -1045,7 +1046,11 @@ Every parameter lives in two places that stay in sync:
 file, in this order — *Master switch, Damage randomness, Athletics, Tired fighters, Tired fighters step
 back, Battle pace (AI), Refill, Your Athletics bar, Orders menu strip, Hold ALT: formation markers, Athletics and fever bars (step 46's name; step 44's was "... and fever marks", step 20 called it Formation markers (hold ALT)), Advanced* (later steps added Damage reduction's rename, Brace, Sprint, Aggression and fever - 14 groups since step 43); MCM shows
 its *Defaults* buttons (§2c) just above
-*Advanced*, which stays last. One vocabulary: the pool, the bar and its points are *Athletics*; the
+*Advanced*, which stays last. **Since step 59 (decision 51) MCM shows TWO pages**: *Trax Combat Enhancements* - the
+short player page: *Master switch* and six plain groups, 20 settings (the list: Parameters), then *Defaults* with
+"Revert all to defaults" - and *Trax Combat Enhancements - Advanced* - every other setting in the groups above (Damage
+first, the Defaults buttons, Advanced last). Each setting on exactly one page; the file's sections in the same order, the
+player page's first. One vocabulary: the pool, the bar and its points are *Athletics*; the
 character-screen skill is *the Athletics skill*; the *peak line* is the white mark on the bar
 (`AthleticsPeakPercent`) — at or above it a fighter is at full strength; *empty* = 0 Athletics.
 Every label carries its unit — (points) (%) (x) (m) (s) (px) (MB). Every MCM hint ends
@@ -1121,6 +1126,14 @@ of it, and a trim never loses the lines the playtest is read from (step 10b, rev
 
 The Default column is the INITIAL value; the shipped default is whatever `defaults.json`
 says (§2c).
+
+**MCM pages (step 59, decision 51).** The PLAYER page ("Trax Combat Enhancements" - the file's first sections) holds exactly these
+20, in this order: `ModEnabled`; *How hard hits land* `DamageRandomPercent`, `DamageReductionPercent`; *Tiredness (Athletics)*
+`AthleticsEnabled`, `CostPerBlow`, `HeroCostMultiplier`; *How the AI fights* `AiAggressionFreshPercent`, `AiAggressionExhaustedPercent`,
+`FeverEnabled`, `ShieldWallHoldsSlots`, `ShieldWallStepOutMetres`, `CourageEnabled`, `CavalryFlockEnabled`; *Staggers and knockdowns*
+`ImpactEnabled`, `ImpactOnPlayerPercent`; *Sprinting* `SprintEnabled`, `SprintKey`; *On screen* `ShowPlayerBar`, `AltMarksEveryone`,
+`ImpactShowMessages`. Every other key is on the ADVANCED page ("Trax Combat Enhancements - Advanced"), in its system's group. A new
+row goes to the Advanced page unless a player needs it to set up his game (CLAUDE.md).
 
 | Key | Default (initial) | What it does |
 |---|---|---|
@@ -1973,6 +1986,27 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     "enemy" men: the crowd. Men with no valid team (`Team.IsValid` false - MissionAgentHandler spawns neutral location characters with
     `Team.Invalid`) are now never placed, so in an arena the near bars are the fighters' - your opponent nearest the centre first; teammates in a
     team tournament compete for the same five slots (the enemy switches still apply); (h) no migration: new keys only.
+51. **The MCM menu reorganised** (step 59, Anton 2026-10-18: "reorganise the MCM menu - only you now know the details - leave a few options for
+    me and the players"; 275 settings in 17 groups were a wall). Claude's calls: (a) TWO MCM PAGES, not one page with a header group - MCM v5 lists
+    every registered settings object by its id as its own Mod Options entry (FluentGlobalSettingsContainer keeps them by `Id`), so the player page
+    keeps the mod's old id and name ("Trax Combat Enhancements") and every other setting goes to "Trax Combat Enhancements - Advanced", listed right
+    under it; (b) the PLAYER PAGE = 20 settings in the master switch + six plainly named groups - what a player reaches for to set up HIS game: the
+    master switch; how hard hits land (the damage roll's size - 0 = off, so no separate switch -, the reduction); tiredness (Athletics on / off, the
+    swing cost = "how fast men tire" - the one number that scales every bar's length -, the heroes' cost - the hero-centred lean in one number); how
+    the AI fights (aggression fresh / exhausted, the fever, the shield wall's hold + its step out, courage, cavalry flocking - each system's own
+    switch, never its inner numbers); staggers and knockdowns (on / off + `ImpactOnPlayerPercent` "Against you" - an existing, real difficulty knob;
+    no new "how hard" multiplier on the ceilings: 13 per-outcome ceilings are not one clean number, and the step was not to invent systems); the
+    sprint + its key; on screen (your bar - the recovery and sprint bars follow it -, the ALT view near / everyone, the on-screen lines); (c) left
+    OFF the player page: everything a player would only touch to tune (the costs of kicks / blocks, the brace floors, the step back, the battle pace,
+    the impact ceilings, the bar layout, the orders strip, the logging) and the test tools (the spike, shadow mode, verbose logging) - the Advanced
+    page, grouped by system as before, its last group "Advanced" (layout, logging, the spike); (d) each setting on EXACTLY ONE page (a test) - a
+    setting on both would be two sliders for one value; the player settings moved to new player-page groups (`ParamGroup.Page`), their keys,
+    values and behaviour unchanged, so NO config migration; (e) the BUTTONS: "Revert all to defaults" on both pages (it reverts every setting of both
+    - a player who broke his game finds it on the short page), "Save current values as a defaults file" on the Advanced page only (a tuning tool);
+    each page's MCM Reset resets only its own settings (its own "default" preset); (f) config.json follows the pages: the player page's sections
+    first under a `THE MAIN SETTINGS` banner, then `ADVANCED - for tuning`, the header naming both pages; (g) the labels and hints on the player page
+    say what a player sees ("Cost per swing", "AI aggression when fresh", "Against you"), and a hint that pointed at a neighbouring setting now
+    names the Advanced page's group instead; (h) a NEW setting goes to the Advanced page unless a player needs it to set up his game (CLAUDE.md).
 
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),

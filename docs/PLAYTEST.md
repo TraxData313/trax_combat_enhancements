@@ -112,15 +112,21 @@ end it (win or retreat).
 **A4. Now WITH MCM (and RTS Camera, as you usually play).** Quit. Enable *Mod Configuration Menu v5*
 (with Harmony, ButterLib, UIExtenderEx) and RTS Camera + Command System. Start.
 - You see: *"… loaded - settings in Mod Options."*
-- Log: `[mcm] settings page registered at main menu (attempt 1): MCM 5.…, page "Trax Combat Enhancements", 86 settings in 11 groups, format "none" (config.json is the only store), Default preset = the mod's defaults (defaults.json); group "Defaults": buttons "Revert all to defaults" and "Save current values as a defaults file".`
+- Log (step 59 - two pages): `[mcm] settings pages registered at main menu (attempt 1): MCM 5.…, page "Trax Combat Enhancements" (20 settings in 7 groups; group "Defaults": "Revert all to defaults") and page "Trax Combat Enhancements - Advanced" (255 settings in 16 groups; group "Defaults": "Revert all to defaults" and "Save current values as a defaults file") - 275 settings in all, format "none" (config.json is the only store), Default presets = the mod's defaults (defaults.json).`
   (`at retry (attempt 2)` is fine — MCM woke a moment after us; the first try is now always at the
   main menu, where MCM builds its services — step 12); the settings dump shows
   `VerboseLogging = true (default false)`.
 - Broken: `[mcm] MCM … never became ready - gave up after 31 attempts …` with MCM enabled (the page
   is missing — send the `[mcm]` lines); a `not ready yet` line with no `registered` or `gave up` after it.
 
-**A5. The MCM page.** Options → Mod Options → *Trax Combat Enhancements*.
-- You see: the same 11 groups — *Master switch* (Mod enabled) on top, *Battle pace (AI)* (step 21) after
+**A5. The MCM pages (step 59).** Options → Mod Options → *Trax Combat Enhancements*: the SHORT page - *Master switch*, *How
+hard hits land*, *Tiredness (Athletics)*, *How the AI fights*, *Staggers and knockdowns*, *Sprinting*, *On screen*, then *Defaults*
+with one button (*Revert all to defaults*) - 20 settings you can read at a glance, plain labels, nothing about seams or levers.
+Then *Trax Combat Enhancements - Advanced* right under it in the list: every other setting, by system (Damage first, Advanced last,
+the two Defaults buttons just above it). Revert on either page reverts BOTH pages (the other page shows the defaults when you open it).
+- Broken: a setting on both pages or on neither (compare with config.json - main settings first, then the `ADVANCED - for tuning` banner);
+  the short page longer than one screen.
+- (Before step 59, one page:) the same 11 groups — *Master switch* (Mod enabled) on top, *Battle pace (AI)* (step 21) after
   *Tired fighters step back*, *Hold ALT: formation markers, Athletics and fever bars* (step 20; steps 44 and 46 renamed it) just before *Advanced* at the bottom, and
   just above Advanced a *Defaults* group with two buttons. Checkboxes for switches, sliders for
   numbers (their ends are the file's ranges), each label with its unit (points, %, x, m, s, px, MB).
@@ -1028,7 +1034,7 @@ steps 48-53 were built the same night on its assumptions).** The impact system (
 by both men's Athletics) pulls six engine levers no mod of ours has pulled before. The spike pulls each one with a LOUD fixed value and
 measures what the engine really did, each against its own untouched control in the same battle. It is a TEST TOOL, not gameplay: men
 will fall over and drop shields for no good reason while it is on.
-1. **Switch it on.** Escape → Mod Options (MCM) → Trax Combat Enhancements → *Advanced* → **Impact test (spike) - not gameplay** ON.
+1. **Switch it on.** Escape → Mod Options (MCM) → Trax Combat Enhancements - Advanced → *Advanced* (the last group) → **Impact test (spike) - not gameplay** ON.
    (With the impact system's own switches from step 48 on, leave them as they are - the spike runs on its own.) The log's next battle
    starts with `[impact] mission start: SPIKE ON (ImpactSpike - a test tool, not gameplay): … the game's stun cap (StunPeriodMax) 0.80 →
    2.00 s`.

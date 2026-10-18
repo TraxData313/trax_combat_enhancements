@@ -242,6 +242,15 @@ die at any moment (tokens run out) and the next one loses nothing.
 - **Every number is a parameter.** All values in DESIGN's parameter table live in the config
   file (created on first run, a plain-words explanation beside each value) AND in MCM.
   A new number means a new row in DESIGN's table, same commit.
+- **Which MCM page (step 59, Anton 2026-10-18: "leave a few options for me and the players").** MCM has two pages:
+  the short PLAYER page "Trax Combat Enhancements" (20 settings: the master switch, how hard hits land, how fast men tire,
+  how the AI fights - each system's own switch -, staggers on / off + against you, the sprint + its key, what the screen
+  shows) and "Trax Combat Enhancements - Advanced" (everything else, by system). **A new setting goes to the Advanced page
+  by default** (its system's group). It goes to the player page only if a player needs it to set up HIS game - a new
+  system's on / off switch, or one number that changes how the game feels - never an inner number, a layout pixel or a
+  test tool; and the page stays short (SettingsPagesTests pins its exact list: change it there on purpose). Player-page
+  labels / hints in a player's words (no "f", seam, lever, step numbers); a hint that points at another setting names
+  the page and group it is on.
 - **MCM is truly optional.** The sibling mod learned this the expensive way (its MCM
   settings class has an MCM base type, so the mod will not load without MCM): the game calls
   `Assembly.GetTypes()` on our DLL at startup, and ANY type whose base type, interface or
@@ -323,13 +332,18 @@ docs/PLAYTEST.md              THE script of Anton's one playtest session (step 1
                               parts A-G, ~2 h; appendix L1-L8 = every log line and summary block)
 src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-tested:
   ParamDef.cs                 one setting: key, type, range, group, label, plain-words
-                              description, apply timing (Live / NextBattle); Normalize, Format;
+                              description, apply timing (Live / NextBattle); Normalize, Format; step 59: SettingsPage
+                              (Player / Advanced) + ParamGroup.Page - the MCM page a group sits on;
                               its Default comes from defaults.json (DefaultsFile), never code; step 33: ParamType.Key +
                               KeyNames (a key by NAME, stored as its index; FormatJson writes "LeftControl"; the
                               file / defaults.json read the name, MCM a text box)
-  SettingsSchema.cs           EVERY setting of DESIGN's table (275 - step 58's ShowFeverOnLabels after AltMarkersShowEnemy and AltMarksEveryone, AltNearMarksMax, AltNearMarksMetres after AthleticsMarksShowEnemy (before FeverMarkMax); step 57's SprintOnRout after SprintAiMoveKeepPercent; step 56's CorrectBlockTiredWeightPercent and RiposteBlockerTiredPercent right after RiposteStaggerMaxPercent; step 55's 14 in "Cavalry flocking (AI)" after courage; step 54's 4 punish settings after the on-screen lines; step 53's 3 rider-momentum + 3 on-screen-line settings after the momentum ones; step 52's 4 momentum settings after ImpactTiredNeverShrugsOff; step 47's ImpactSpike in Advanced, before VerboseLogging; step 48's 60 in
+  SettingsSchema.cs           EVERY setting of DESIGN's table (275 - STEP 59: two MCM pages - the PLAYER page's 20 declared
+                              FIRST (ModEnabled, then six player groups: "How hard hits land", "Tiredness (Athletics)", "How the AI
+                              fights", "Staggers and knockdowns", "Sprinting", "On screen" - Orders 0-6), the Advanced page's 16 groups
+                              after (Orders 7-22, "Damage" first, "Advanced" last); GroupsOn / OnPage / PlayerPage / PageTitle; the
+                              moved 19 left their old groups (the notes below name their OLD places); step 58's ShowFeverOnLabels after AltMarkersShowEnemy and AltMarksEveryone, AltNearMarksMax, AltNearMarksMetres after AthleticsMarksShowEnemy (before FeverMarkMax); step 57's SprintOnRout after SprintAiMoveKeepPercent; step 56's CorrectBlockTiredWeightPercent and RiposteBlockerTiredPercent right after RiposteStaggerMaxPercent; step 55's 14 in "Cavalry flocking (AI)" after courage; step 54's 4 punish settings after the on-screen lines; step 53's 3 rider-momentum + 3 on-screen-line settings after the momentum ones; step 52's 4 momentum settings after ImpactTiredNeverShrugsOff; step 47's ImpactSpike in Advanced, before VerboseLogging; step 48's 60 in
                               "Impact: staggers, shield drops, knockdowns" - after the courage group, before Refill; step 49's 29 (49b's two surge settings) in "Courage and
-                              cohesion (AI)" - after the fever), in file + MCM order, 17 groups
+                              cohesion (AI)" - after the fever), in file + MCM order, 23 groups (7 player + 16 Advanced)
                               ("Master switch" first, "Damage" second - step 25 renamed it from
                               "Damage randomness", "Battle pace (AI)" - step 21 - after the step back (step 41's
                               ShieldWallHoldsSlots and step 42's ShieldWallStepOutMetres at its end),
@@ -351,7 +365,8 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
   TraxSettings.cs             THE live settings object (TraxSettings.Shared), read at use time:
                               typed properties, Set(key, value, source), Version, Changed event
   ConfigFile.cs               config.json TEXT: commented writer (header incl. how to revert +
-                              // above each key; AppendSettings shared with defaults.json),
+                              // above each key; AppendSettings shared with defaults.json - step 59: a
+                              PageBanner where the MCM page changes, the player page's sections first),
                               tolerant reader (comments, trailing commas, casing, "0,75"), Apply;
                               FormatVersion 10 + Migrate (step 56: an older file's RightBlockStaggerMaxPercent 80 → 30,
                               RightBlockKnockdownMaxPercent 40 → 10, ParryStaggerMaxPercent 80 → 30, ParryKnockdownMaxPercent 40 → 10,
@@ -791,13 +806,18 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               Error (stack, rate-limited, in-game notice); ONE handle kept open
                               (AutoFlush, shared read/write/delete - read it with FileShare.ReadWrite),
                               Release() at every mission end and at unload (step 10a)
-  Mcm/McmBridge.cs            the MCM page — fluent builder, MCM types in METHOD BODIES ONLY,
+  Mcm/McmBridge.cs            the MCM PAGES — fluent builder, MCM types in METHOD BODIES ONLY,
                               no MCM-typed lambdas (read its class doc before touching it);
                               step 12: first try at the main menu (MCM builds its services there), none
                               with MCM's module off, retries 1/s capped by Core McmPlan;
-                              group "Defaults": the Revert / Save-defaults-file BUTTONS
-                              (ProxyRef<Action>, page refresh via PropertyChanged), just above
-                              Advanced (MCM order = 2 x the schema's; MCM's UI sorts ascending)
+                              step 59: TWO pages (BuildPage returns object; MCM keeps settings by Id) - the
+                              player page (SettingsId, the old id, "Trax Combat Enhancements": 20 settings,
+                              7 groups, then "Defaults" with Revert) = _settings, the Advanced page
+                              (AdvancedSettingsId, "... - Advanced": 255 settings, 16 groups) = _advanced;
+                              each its own "default" preset (its own settings); group "Defaults": the Revert
+                              (both pages, reverts both) / Save-defaults-file (Advanced only) BUTTONS
+                              (ProxyRef<Action>, both pages refreshed via PropertyChanged), on Advanced just
+                              above Advanced (MCM order = 2 x the schema's; MCM's UI sorts ascending)
   Models/TraxDamageModel.cs   AgentApplyDamageModel DECORATOR — forwards everything; overrides
                               ApplyGeneralDamageModifiers: BaseModel first, then the roll
                               (our exceptions → the game's value); step 47: DecideAgentKnockedDownByBlow = the base's answer OR
@@ -1267,7 +1287,10 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               pixels), Fill, FillColor, FrameColor (the fade's alpha baked in); step 46: the box (PositionX / Y =
                               its top-left, BoxWidth / BoxHeight), FeverShown, the Athletics bar - BarShown, BarWidth, BarHeight,
                               BarFill, BarUsable, BarColor, BarFrameColor, BarWoundColor
-tests/TraxCombat.Core.Tests/  net8.0 xUnit (873 - step 58: + AltNearMarksTests - the angle from the camera's forward and its key, the range, no fade in
+tests/TraxCombat.Core.Tests/  net8.0 xUnit (878 - step 59: + SettingsPagesTests - every setting on exactly one MCM page and no key lost,
+                              the player page's exact list / labels / groups in order (12-20), the groups player page first and Advanced
+                              last with unique titles, plain words on the player page, config.json / defaults.json player page first
+                              under a banner per page; step 58: + AltNearMarksTests - the angle from the camera's forward and its key, the range, no fade in
                               the near view, THE NEAR PICK (five by angle, an off-screen central man takes no slot, the nearest man at the edge waits), the
                               every-man ranking, the cap under FeverMarkMax, the settings live / grouped / ordered / near by default, the sentences, the
                               label's "fever 12/40" / clamp / hide order with the master switch first, both summaries; step 57: + RoutSprintTests - the setting placed / on / live, the whole store once with no reserve and
@@ -1519,10 +1542,13 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               labels under the markers at UI scale 1 and 4/3, a re-sort, colours / values,
                               the enemy switch, behind / faded / not laid out / pinned, live settings, every
                               fallback incl. our own projection, the gates, the master switch, summary, fail safe),
-                              defaults read from the embedded defaults.json, the MCM page built
-                              by MCM's real builder (its group order: Master switch first, the
-                              Defaults buttons above Advanced, Advanced last) and its two buttons
-                              clicked; step 12: MCM's DLL loaded with its module off (one line, no
+                              defaults read from the embedded defaults.json, the MCM pages built
+                              by MCM's real builder (step 59: BOTH - every setting on exactly one; the player
+                              page Master switch first, its six groups, Defaults (Revert) last; Advanced: the
+                              schema's order, the Defaults buttons above Advanced, Advanced last; each group's
+                              settings in order; each page's Reset only its own settings; an Advanced slider
+                              live) and the buttons clicked (the export on Advanced, the player page's revert
+                              refreshing both); step 12: MCM's DLL loaded with its module off (one line, no
                               try) and MCM never ready (31 attempts, one give-up line); step 10a: the log writer (readable while held, new path,
                               release) and stale records forgotten; step 10b: the trim at a 1 MB cap
                               keeps a summary, a first-time line and an error with its stack through

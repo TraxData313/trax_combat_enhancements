@@ -5261,3 +5261,47 @@ summary); a tournament (the flag unreadable: nothing until ALT, then the opponen
 **Unverified until D27:** that the arena's crowd really has `Team.Invalid` (the first-bars line's `enemy` should drop to the opponents and `not on
 the field` count the crowd); that the angle pick feels like "the men I look at" with the third-person camera (the crosshair is the screen's centre);
 that the formation pass's `fever 12/40` appears on a charging formation within FormationStatsRefreshSeconds; the label's literal Brush.FontColor.
+
+## Step 59 — the MCM menu reorganised: a short player page + Advanced (DONE 2026-10-18)
+
+**Anton (2026-10-18)**: "reorganise the MCM menu - only you now know the details - leave a few options for me and the players." 275 settings in
+17 groups on one page.
+
+**MCM supports several pages per mod - verified** (MCMv5 5.12.3, decompiled into the scratchpad): `FluentGlobalSettings.Register()` →
+`FluentGlobalSettingsContainer.Register` → `BaseSettingsContainer.RegisterSettings`, which keeps `LoadedSettings` by `settings.Id`; Mod Options
+lists every loaded settings object as its own entry by DisplayName. So two `BaseSettingsBuilder.Create(id, name)` → two entries. Format "none" on
+both (no file of MCM's own; the folder name shared, harmless). Each has its own "default" preset (MCM's page Reset = that preset), its own
+SetOnPropertyChanged → the same `OnSettingsPropertyChanged` (Done on either page writes the whole config.json by the merge rule - EditTracker
+holds every key MCM touched, from either page).
+
+**The layout** (DESIGN decision 51; the list in DESIGN's Parameters note and SettingsPagesTests):
+- `ParamGroup.Page` (`SettingsPage.Player` / `Advanced`, Core ParamDef.cs). Seven player groups at Orders 0-6 (Master switch 0, then *How hard
+  hits land*, *Tiredness (Athletics)*, *How the AI fights*, *Staggers and knockdowns*, *Sprinting*, *On screen*), the 16 old groups at 7-22 (Damage
+  first, Advanced last). The 19 moved settings were cut from their old groups and DECLARED at the top of SettingsSchema (after ModEnabled), with
+  `All` reordered to match (`Index` = declaration order - `BuildIndex` throws otherwise). Keys unchanged; `Index` is only the value array's slot
+  (nothing persists it) - so NO config migration and no FormatVersion bump.
+- Group titles must stay unique across BOTH pages: config.json is one file and the tests find a section by its heading
+  (`==================== Title ====================`) - hence "How hard hits land" / "Sprinting" / "Staggers and knockdowns", not a second
+  "Damage" / "Sprint".
+- McmBridge: `BuildPage(page)` returns the FluentGlobalSettings as `object` (no MCM type in any signature), `Register(object)` casts in its
+  body; `_settings` = the player page (the smoke reads it by name), `_advanced` = Advanced. `DefaultsGroupOrder(page)`: the player page's after its
+  last group (2 × 6 + 1), the Advanced page's 2 × Advanced − 1 (as before). `HasExportButton(page)` = Advanced only. `RefreshPage` raises the
+  refresh on both pages (a revert changes both).
+- ConfigFile.AppendSettings writes a banner where the page changes (`// ######## THE MAIN SETTINGS - MCM page "…" ########` /
+  `ADVANCED - for tuning: …`) - shared with defaults.json (DefaultsFile.Check compares the shape with Write, so `DefaultsTool refresh` put the
+  banners in). The header's revert line names both pages.
+- Wording: the player page's hints that pointed at "below" / "the next two settings" now name the Advanced page's group ("How many and how far:
+  Advanced page, Hold ALT."); `ImpactShowMessages` lost its "Step 53:" prefix; CostPerBlow's label "Cost per swing (points)", HeroCostMultiplier's
+  "Heroes' cost (x)" (its hint now says EVERY cost - it always multiplied kicks / blocks too), the aggression pair "AI aggression when fresh /
+  exhausted (%)", ImpactEnabled "Staggers, shield drops, knockdowns", ImpactOnPlayerPercent "Against you (%)", AltMarksEveryone "Hold ALT: bars
+  on every man". A Description must still END with "." (SchemaTests) - a closing ")" fails it.
+
+**Not done, on purpose**: no new "impact strength" multiplier (13 per-outcome ceilings; `ImpactOnPlayerPercent` is the real one-number knob that
+exists); `ImpactShadowMode` stays in the Impact group (it is the impact system's own test switch, beside its family switches) - the spike and the
+logging are in Advanced, last.
+
+**Tests**: SettingsPagesTests (5 - one page each / no key lost, the exact player list + labels + groups, the group order, plain words, the files'
+order with the banners); 10 older tests re-pointed at the moved settings' new groups. 873 → 878. OfflineSmoke's MCM steps (same 131 steps, now
+over both pages): ids / names, every setting on exactly one page, each page's group order AND in-group order, the buttons per page (1 / 2), an
+Advanced slider live, each page's Reset only its own settings (an Advanced value set off its default before the build survives the player page's
+Reset), the export from Advanced, the player page's revert refreshing both pages.

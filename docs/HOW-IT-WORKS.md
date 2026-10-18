@@ -1057,6 +1057,30 @@ Every number above is a setting: in **MCM** (optional) or in the commented `conf
 log. Changes apply at once, even mid-battle — nothing needs a restart. Each feature has its own switch,
 and a **master switch** turns the whole mod off mid-battle, so you can play the same fight both ways.
 
+MCM shows **two pages** (Mod Options):
+
+- **Trax Combat Enhancements** — the short page, the 20 settings most players want:
+
+  | Group | Settings |
+  |---|---|
+  | Master switch | Mod enabled |
+  | How hard hits land | Damage roll (± %), Damage reduction (%) |
+  | Tiredness (Athletics) | Athletics (stamina) on / off, Cost per swing — how fast men tire, Heroes' cost (x) |
+  | How the AI fights | AI aggression when fresh / when exhausted (%), Fever on a charge or advance order, Shield walls hold their slots + a step out to strike (m), Courage and cohesion, Cavalry flocking |
+  | Staggers and knockdowns | Staggers, shield drops, knockdowns on / off, Against you (%) |
+  | Sprinting | Sprint on / off, Sprint key |
+  | On screen | Your Athletics bar, Hold ALT: bars on every man, On-screen lines (knocked down, shield lost) |
+  | Defaults | **Revert all to defaults** — every setting of both pages |
+
+- **Trax Combat Enhancements - Advanced** — everything else, for tuning: every system's own group
+  (damage, Athletics costs, tired fighters, the step back, battle pace, brace, sprint, aggression and
+  fever, courage, cavalry flocking, impact, the refill, the bars, the orders strip, hold ALT), the
+  Defaults buttons (*Revert all to defaults* and *Save current values as a defaults file*), and the
+  logging and test tools last.
+
+`config.json` holds the same settings in the same order: the main ones first, then the advanced ones under
+an `ADVANCED - for tuning` banner. The key names below are the file's.
+
 - Too slow? Lower `DamageReductionPercent`, `ShieldInfantrySwingsLessPercent` or the brace floors, or raise
   `AiAggressionFreshPercent` / `AiAggressionExhaustedPercent`.
 - Want the old fighting, everyone flailing? `AiAggressionFreshPercent` and `AiAggressionExhaustedPercent` 100 (the base

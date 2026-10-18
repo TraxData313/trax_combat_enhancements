@@ -196,6 +196,15 @@ die at any moment (tokens run out) and the next one loses nothing.
 - **Every number is a parameter.** All values in DESIGN's parameter table live in the config
   file (created on first run, a plain-words explanation beside each value) AND in MCM.
   A new number means a new row in DESIGN's table, same commit.
+- **Which MCM page (step 59, Anton 2026-10-18: "leave a few options for me and the players").** MCM has two pages:
+  the short PLAYER page "Trax Combat Enhancements" (20 settings: the master switch, how hard hits land, how fast men tire,
+  how the AI fights - each system's own switch -, staggers on / off + against you, the sprint + its key, what the screen
+  shows) and "Trax Combat Enhancements - Advanced" (everything else, by system). **A new setting goes to the Advanced page
+  by default** (its system's group). It goes to the player page only if a player needs it to set up HIS game - a new
+  system's on / off switch, or one number that changes how the game feels - never an inner number, a layout pixel or a
+  test tool; and the page stays short (SettingsPagesTests pins its exact list: change it there on purpose). Player-page
+  labels / hints in a player's words (no "f", seam, lever, step numbers); a hint that points at another setting names
+  the page and group it is on.
 - **MCM is truly optional.** The sibling mod learned this the expensive way (its MCM
   settings class has an MCM base type, so the mod will not load without MCM): the game calls
   `Assembly.GetTypes()` on our DLL at startup, and ANY type whose base type, interface or
@@ -272,10 +281,13 @@ docs/PLAYTEST.md              THE script of Anton's one playtest session (step 1
 src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-tested:
   ParamDef.cs                 one setting: key, type, range, group, label, plain-words
                               description, apply timing (Live / NextBattle); Normalize, Format;
-                              its Default comes from defaults.json (DefaultsFile), never code
-  SettingsSchema.cs           EVERY setting of DESIGN's table (275 - step 58's ShowFeverOnLabels, AltMarksEveryone, AltNearMarksMax, AltNearMarksMetres in the ALT group; step 57's SprintOnRout after SprintAiMoveKeepPercent; step 56's 2 after RiposteStaggerMaxPercent; step 55's 14 in "Cavalry flocking (AI)" after courage; step 54's 4 punish settings; step 53's 3 rider-momentum + 3 on-screen-line settings; step 52's 4 momentum settings; step 47's ImpactSpike in Advanced; step 48's 60 in "Impact: staggers,
+                              its Default comes from defaults.json (DefaultsFile), never code; step 59:
+                              SettingsPage (Player / Advanced) + ParamGroup.Page
+  SettingsSchema.cs           EVERY setting of DESIGN's table (275 - STEP 59: two MCM pages - the PLAYER page's 20 declared FIRST
+                              (ModEnabled + six player groups, Orders 0-6), the Advanced page's 16 groups after (7-22, "Damage" first,
+                              "Advanced" last); GroupsOn / OnPage / PlayerPage / PageTitle; the moved 19 left their old groups; step 58's ShowFeverOnLabels, AltMarksEveryone, AltNearMarksMax, AltNearMarksMetres in the ALT group; step 57's SprintOnRout after SprintAiMoveKeepPercent; step 56's 2 after RiposteStaggerMaxPercent; step 55's 14 in "Cavalry flocking (AI)" after courage; step 54's 4 punish settings; step 53's 3 rider-momentum + 3 on-screen-line settings; step 52's 4 momentum settings; step 47's ImpactSpike in Advanced; step 48's 60 in "Impact: staggers,
                               shield drops, knockdowns" after the courage group; step 49's 29 in "Courage and cohesion (AI)" after the fever),
-                              in file + MCM order, 17 groups
+                              in file + MCM order, 23 groups (7 player + 16 Advanced)
                               ("Master switch" first, "Damage" second - step 25 renamed it from
                               "Damage randomness", "Battle pace (AI)" - step 21 - after the step back,
                               "Brace by orders (AI)" - step 23 - after it,
@@ -601,13 +613,18 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               Error (stack, rate-limited, in-game notice); ONE handle kept open
                               (AutoFlush, shared read/write/delete - read it with FileShare.ReadWrite),
                               Release() at every mission end and at unload (step 10a)
-  Mcm/McmBridge.cs            the MCM page — fluent builder, MCM types in METHOD BODIES ONLY,
+  Mcm/McmBridge.cs            the MCM PAGES — fluent builder, MCM types in METHOD BODIES ONLY,
                               no MCM-typed lambdas (read its class doc before touching it);
                               step 12: first try at the main menu (MCM builds its services there), none
                               with MCM's module off, retries 1/s capped by Core McmPlan;
-                              group "Defaults": the Revert / Save-defaults-file BUTTONS
-                              (ProxyRef<Action>, page refresh via PropertyChanged), just above
-                              Advanced (MCM order = 2 x the schema's; MCM's UI sorts ascending)
+                              step 59: TWO pages (BuildPage returns object; MCM keeps settings by Id) - the
+                              player page (SettingsId, "Trax Combat Enhancements": 20 settings, 7 groups,
+                              Defaults with Revert) = _settings, the Advanced page (AdvancedSettingsId,
+                              "... - Advanced": 255 settings, 16 groups) = _advanced; each its own "default"
+                              preset; group "Defaults": the Revert (both pages, reverts both) /
+                              Save-defaults-file (Advanced only) BUTTONS (ProxyRef<Action>, both pages
+                              refreshed via PropertyChanged), on Advanced just above Advanced (MCM order =
+                              2 x the schema's; MCM's UI sorts ascending)
   Models/TraxDamageModel.cs   AgentApplyDamageModel DECORATOR — forwards everything; overrides
                               ApplyGeneralDamageModifiers: BaseModel first, then the roll
                               (our exceptions → the game's value); step 47: DecideAgentKnockedDownByBlow and
@@ -924,7 +941,7 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
   Hud/FeverMarksVM.cs         its ViewModels: a GROW-ONLY POOL of FeverMarkVM (IsShown, PositionX / Y, Width / Height in pixels,
                               Fill, FillColor, FrameColor; step 46: BoxWidth / BoxHeight, FeverShown, BarShown, BarWidth / Height,
                               BarFill, BarUsable, BarColor, BarFrameColor, BarWoundColor)
-tests/TraxCombat.Core.Tests/  net8.0 xUnit (873 - step 58: + AltNearMarksTests; step 57: + RoutSprintTests; step 56: + RightBlocksTests (ImpactTests pin the step-48 weights for IMPACT §4 A-G); step 55: + CavalryFlockTests; step 54: + ImpactPunishTests; step 53: + ImpactRidersTests; step 52: + ImpactHitsTests; step 51: + ImpactBlocksTests; step 50: + ImpactLiveTests; step 49 / 49b: + CourageTests; step 44: + FeverMarkTests; step 46: + AthleticsMarkTests, the format-9 migration; step 47: + ImpactSpikeTests; step 48: + ImpactTests - every IMPACT §4 worked example) — schema vs DESIGN.md (keys + types), one copy
+tests/TraxCombat.Core.Tests/  net8.0 xUnit (878 - step 59: + SettingsPagesTests; step 58: + AltNearMarksTests; step 57: + RoutSprintTests; step 56: + RightBlocksTests (ImpactTests pin the step-48 weights for IMPACT §4 A-G); step 55: + CavalryFlockTests; step 54: + ImpactPunishTests; step 53: + ImpactRidersTests; step 52: + ImpactHitsTests; step 51: + ImpactBlocksTests; step 50: + ImpactLiveTests; step 49 / 49b: + CourageTests; step 44: + FeverMarkTests; step 46: + AthleticsMarkTests, the format-9 migration; step 47: + ImpactSpikeTests; step 48: + ImpactTests - every IMPACT §4 worked example) — schema vs DESIGN.md (keys + types), one copy
                               runs (SingleCopyTests: claims on private slots, copies, texts), when
                               MCM is tried and when it stops (McmPlanTests - step 12),
                               defaults.json (DefaultsFileTests), master switch, settings, config
@@ -1076,10 +1093,12 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               labels under the markers at UI scale 1 and 4/3, a re-sort, colours / values,
                               the enemy switch, behind / faded / not laid out / pinned, live settings, every
                               fallback incl. our own projection, the gates, the master switch, summary, fail safe),
-                              defaults read from the embedded defaults.json, the MCM page built
-                              by MCM's real builder (its group order: Master switch first, the
-                              Defaults buttons above Advanced, Advanced last) and its two buttons
-                              clicked; step 12: MCM's DLL loaded with its module off (one line, no
+                              defaults read from the embedded defaults.json, the MCM pages built
+                              by MCM's real builder (step 59: BOTH - every setting on exactly one; the player
+                              page Master switch first, Defaults (Revert) last; Advanced: the Defaults buttons
+                              above Advanced, Advanced last; each group's settings in order; each page's Reset
+                              only its own) and the buttons clicked (the export on Advanced, the player page's
+                              revert refreshing both); step 12: MCM's DLL loaded with its module off (one line, no
                               try) and MCM never ready (31 attempts, one give-up line); step 10a: the log writer (readable while held, new path,
                               release) and stale records forgotten; step 10b: the trim at a 1 MB cap
                               keeps a summary, a first-time line and an error with its stack through
