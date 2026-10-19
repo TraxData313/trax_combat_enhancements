@@ -39,6 +39,16 @@ namespace TraxCombat.Core
         private readonly double[] _upAllowedSum = new double[UpsideBins];
         private int _aboveCeiling;
 
+        // Step 62, the uncapped critical: charging melee blows rolled with the full upside - count, factor sum / max, the upside their
+        // attacker's tiredness would have allowed; and every other melee roll's factor (the comparison).
+        private int _chargeRolls;
+        private double _chargeFactorSum;
+        private float _chargeFactorMax;
+        private double _chargeWouldSum;
+        private int _chargeLifted;
+        private int _otherMelee;
+        private double _otherMeleeSum;
+
         // Step 25: the overall damage reduction - hits reduced by kind, the game's value → after the
         // roll → landed (rounded, what the player saw), the percents used, skips by reason.
         private static readonly int ReductionReasonCount = Enum.GetValues(typeof(ReductionSkipReason)).Length;
@@ -114,6 +124,9 @@ namespace TraxCombat.Core
                 Array.Clear(_upFactorMax, 0, _upFactorMax.Length);
                 Array.Clear(_upAllowedSum, 0, _upAllowedSum.Length);
                 _aboveCeiling = 0;
+                _chargeRolls = _chargeLifted = _otherMelee = 0;
+                _chargeFactorSum = _chargeWouldSum = _otherMeleeSum = 0;
+                _chargeFactorMax = 0f;
                 Array.Clear(_reduced, 0, _reduced.Length);
                 _reduceGame = _reduceBefore = _reduceAfter = 0;
                 _reduceMinPercent = _reduceMaxPercent = 0;
@@ -226,6 +239,50 @@ namespace TraxCombat.Core
                 _upAllowedSum[up] += roll.Upside;
                 if (above) _aboveCeiling++;
             }
+        }
+
+        /// <summary>Step 62: one MELEE roll on a person - a charging attacker's with the full upside (<paramref name="charging"/>; the upside his
+        /// tiredness would have allowed in <paramref name="wouldUpside"/>), or any other melee roll (the comparison).</summary>
+        public void AddMeleeCharge(in RollOutcome roll, bool charging, double wouldUpside)
+        {
+            lock (_gate)
+            {
+                if (!charging)
+                {
+                    _otherMelee++;
+                    _otherMeleeSum += roll.Factor;
+                    return;
+                }
+                _chargeRolls++;
+                _chargeFactorSum += roll.Factor;
+                if (_chargeRolls == 1 || roll.Factor > _chargeFactorMax) _chargeFactorMax = roll.Factor;
+                double would = double.IsNaN(wouldUpside) ? 1 : wouldUpside;
+                _chargeWouldSum += would;
+                if (would < 0.9999) _chargeLifted++;
+            }
+        }
+
+        /// <summary>Step 62: the charging melee rolls so far (the smoke reads them) and their mean factor.</summary>
+        public int ChargeRolls(out double meanFactor, out int lifted)
+        {
+            lock (_gate)
+            {
+                meanFactor = _chargeRolls > 0 ? _chargeFactorSum / _chargeRolls : double.NaN;
+                lifted = _chargeLifted;
+                return _chargeRolls;
+            }
+        }
+
+        /// <summary>Step 62's [summary] line (inside the lock).</summary>
+        private string ChargeLine()
+        {
+            var c = CultureInfo.InvariantCulture;
+            string s = "damage critical (step 62 - SprintFullCritical: a CHARGING attacker's melee blow rolls the full upside whatever his tiredness): " + _chargeRolls + " charging melee hits";
+            if (_chargeRolls > 0)
+                s += ", avg x" + F3(_chargeFactorSum / _chargeRolls) + " (max x" + F2(_chargeFactorMax) + "); the upside their tiredness would have allowed "
+                     + (_chargeWouldSum / _chargeRolls * 100).ToString("0", c) + "% on average (" + _chargeLifted + " lifted above it)";
+            s += " | every other melee hit " + _otherMelee + (_otherMelee > 0 ? ", avg x" + F3(_otherMeleeSum / _otherMelee) : string.Empty);
+            return s;
         }
 
         /// <summary>Rolls in one upside bin (0-3 = the attacker's f bin, 4 = no pool) and their average
@@ -413,6 +470,7 @@ namespace TraxCombat.Core
                     }
                     up.Append("; rolls above their allowed top: ").Append(_aboveCeiling);
                     lines.Add(up.ToString());
+                    lines.Add(ChargeLine()); // step 62
                 }
 
                 int vanilla = 0;

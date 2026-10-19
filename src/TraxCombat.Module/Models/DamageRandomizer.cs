@@ -96,10 +96,14 @@ namespace TraxCombat.Models
             }
 
             double attackerF = AttackerPeakShare(in ai);
-            var roll = DamageRoll.Roll(damage, rules.Percent, Rng, DamageRoll.Upside(in rules, attackerF));
+            // step 62, THE UNCAPPED CRITICAL: a charging attacker's melee blow rolls the full upside whatever his tiredness
+            bool melee = facts.Category == DamageCategory.Melee;
+            bool charging = melee && rules.SprintFullCritical && AttackerCharging(in ai);
+            var roll = DamageRoll.Roll(damage, rules.Percent, Rng, DamageRoll.ChargeUpside(in rules, attackerF, charging, facts.Missile));
             int thread = Environment.CurrentManagedThreadId;
             bool offMain = _mainThreadId != 0 && thread != _mainThreadId;
             Stats.AddRoll(facts.Category, in roll, offMain, attackerF);
+            if (melee) Stats.AddMeleeCharge(in roll, charging, DamageRoll.Upside(in rules, attackerF));
             float final = Reduce(in ai, in cd, in facts, in rules, damage, roll.After); // step 25: AFTER the roll
 
             bool first = Volatile.Read(ref _firstRollLogged) == 0 && Interlocked.CompareExchange(ref _firstRollLogged, 1, 0) == 0;
@@ -141,6 +145,15 @@ namespace TraxCombat.Models
             var attacker = ai.AttackerAgent;
             if (attacker != null && ai.IsAttackerAgentMount) attacker = attacker.RiderAgent;
             return attacker != null && Missions.AthleticsLogic.TryGetPeakShare(attacker, out double f) ? f : double.NaN;
+        }
+
+        /// <summary>Step 62: the attacker (a man on foot - never a horse's charge) CHARGES now (the impact model's charge: sprinting, or his
+        /// first blow within ImpactChargeCarrySeconds after a sprint) - read, never spent here (the impact decision spends it).</summary>
+        private static bool AttackerCharging(in AttackInformation ai)
+        {
+            if (ai.IsAttackerAgentNull || ai.IsAttackerAgentMount) return false;
+            var attacker = ai.AttackerAgent;
+            return attacker != null && Missions.AthleticsLogic.TryGetCharging(attacker);
         }
 
         /// <summary>A caught exception in the damage path: the FIRST per site per mission goes to

@@ -181,6 +181,10 @@ namespace TraxCombat.Core
             "Randomize shield damage",
             "Also randomize the damage a shield takes when it blocks a blow. Off: shields wear down at the game's usual pace (less the damage reduction below).");
 
+        public static readonly ParamDef SprintFullCritical = Bool("SprintFullCritical", DamageGroup,
+            "A charge rolls the full damage bonus",
+            "Step 62: a man who CHARGES - sprinting into the blow, or his first blow just after a sprint - rolls the whole damage bonus however tired he is (the bonus otherwise shrinks with his Athletics). Off: his tiredness counts as for any blow.");
+
         // ------------------------------------------------------------------ Athletics (its switch, CostPerBlow and HeroCostMultiplier on the player page - step 59)
 
         public static readonly ParamDef AthleticsPoolFloor = Int("AthleticsPoolFloor", 0, 1000, AthleticsGroup,
@@ -1373,7 +1377,7 @@ namespace TraxCombat.Core
             ShowPlayerBar, AltMarksEveryone, ImpactShowMessages,
             // the Advanced page
             DamageRandomEnabled, DamageRandomMelee, DamageRandomRanged,
-            DamageRandomOnMounts, DamageRandomOnShields,
+            DamageRandomOnMounts, DamageRandomOnShields, SprintFullCritical,
             AthleticsPoolFloor, AthleticsPoolPerSkill, AthleticsPeakPercent, HealthCapsAthletics,
             CostPerKickOrBash, CostPerShieldBlock, CostPerWrongSideShieldBlock, CostPerWeaponParry, OnlyWrongSideBlocksStopRefill, CostOnMiss, PartyLeaderCostMultiplier,
             ExhaustedAttackSpeedPercent, AttackRatePlayerTimer, AttackRatePaceHold, AttackRatePaceByInput, AiHoldRaiseGuard, AttackRateAiDecisions, AttackAnimationMinPercent,

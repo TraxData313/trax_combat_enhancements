@@ -107,8 +107,9 @@ namespace TraxCombat.Core
     public readonly struct DamageRules
     {
         public DamageRules(bool enabled, int percent, bool melee, bool ranged, bool onMounts, bool onShields, bool modEnabled = true,
-            bool upsideFollowsAthletics = false, int reductionPercent = 0)
+            bool upsideFollowsAthletics = false, int reductionPercent = 0, bool sprintFullCritical = false)
         {
+            SprintFullCritical = sprintFullCritical;
             Enabled = enabled;
             Percent = percent;
             Melee = melee;
@@ -127,6 +128,10 @@ namespace TraxCombat.Core
         /// <summary>DamageBonusFollowsAthletics (DESIGN §2): the upside of the roll shrinks with the
         /// attacker's f - see <see cref="DamageRoll.Upside"/>.</summary>
         public bool UpsideFollowsAthletics { get; }
+
+        /// <summary>Step 62, SprintFullCritical: a CHARGING attacker's melee blow (sprinting, or the first blow after a sprint - the impact
+        /// model's charge) rolls the FULL upside whatever his tiredness - see <see cref="DamageRoll.ChargeUpside"/>.</summary>
+        public bool SprintFullCritical { get; }
 
         /// <summary>The master switch (ModEnabled). Off: nothing rolls - see <see cref="DamageSkipReason.ModOff"/>.</summary>
         public bool ModEnabled { get; }
@@ -148,7 +153,7 @@ namespace TraxCombat.Core
         /// <summary>The live values, read now.</summary>
         public static DamageRules From(TraxSettings s) => new DamageRules(
             s.DamageRandomEnabled, s.DamageRandomPercent, s.DamageRandomMelee, s.DamageRandomRanged,
-            s.DamageRandomOnMounts, s.DamageRandomOnShields, s.ModEnabled, s.DamageBonusFollowsAthletics, s.DamageReductionPercent);
+            s.DamageRandomOnMounts, s.DamageRandomOnShields, s.ModEnabled, s.DamageBonusFollowsAthletics, s.DamageReductionPercent, s.SprintFullCritical);
     }
 
     /// <summary>One roll: the game's value, ours, and the dice.</summary>
@@ -256,6 +261,18 @@ namespace TraxCombat.Core
         {
             if (!rules.UpsideFollowsAthletics || double.IsNaN(attackerPeakShare)) return 1.0;
             return attackerPeakShare >= 1 ? 1.0 : attackerPeakShare <= 0 ? 0.0 : attackerPeakShare;
+        }
+
+        /// <summary>
+        /// Step 62, THE UNCAPPED CRITICAL (Anton 2026-10-19: "a sprinting attack has its full critical chance"): a CHARGING attacker's MELEE
+        /// blow rolls the full upside (1) whatever his tiredness while <c>SprintFullCritical</c> is on; anything else
+        /// <see cref="Upside"/>. <paramref name="charging"/> = the impact model's charge (sprinting, or the first blow within
+        /// <c>ImpactChargeCarrySeconds</c> after a sprint); a missile never.
+        /// </summary>
+        public static double ChargeUpside(in DamageRules rules, double attackerPeakShare, bool charging, bool missile)
+        {
+            if (rules.SprintFullCritical && charging && !missile) return 1.0;
+            return Upside(in rules, attackerPeakShare);
         }
 
         /// <summary>

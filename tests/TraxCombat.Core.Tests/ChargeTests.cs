@@ -179,6 +179,46 @@ public class ChargeTests
         Assert.Contains("landed from BEHIND 1: the defender staggered ", line);
     }
 
+    // ------------------------------------------------------------------ the uncapped critical
+
+    [Fact]
+    public void A_charging_melee_blow_rolls_the_full_upside_however_tired_never_a_missile_or_with_the_switch_off()
+    {
+        var s = new TraxSettings();
+        Assert.True(s.SprintFullCritical);
+        Assert.Same(SettingsSchema.DamageGroup, SettingsSchema.SprintFullCritical.Group);
+        Assert.Equal(SettingsSchema.DamageRandomOnShields.Index + 1, SettingsSchema.SprintFullCritical.Index);
+        var rules = DamageRules.From(s);
+        Assert.True(rules.UpsideFollowsAthletics);
+        Assert.Equal(0.2, DamageRoll.Upside(in rules, 0.2), 9);                              // a tired man's upside shrinks
+        Assert.Equal(1.0, DamageRoll.ChargeUpside(in rules, 0.2, charging: true, missile: false), 9); // ... not when he charges
+        Assert.Equal(0.2, DamageRoll.ChargeUpside(in rules, 0.2, charging: true, missile: true), 9);
+        Assert.Equal(0.2, DamageRoll.ChargeUpside(in rules, 0.2, charging: false, missile: false), 9);
+        s.Set(SettingsSchema.SprintFullCritical, false, SettingSources.Mcm);
+        var off = DamageRules.From(s);
+        Assert.Equal(0.2, DamageRoll.ChargeUpside(in off, 0.2, charging: true, missile: false), 9);
+        // the roll itself: an empty man's charge can reach 1.5 (±50 %), his ordinary blow never above 1.0
+        Assert.Equal(1.5f, DamageRoll.Factor(0.9999999, 0.5, DamageRoll.ChargeUpside(in rules, 0.0, true, false)), 4);
+        Assert.Equal(1.0f, DamageRoll.Factor(0.9999999, 0.5, DamageRoll.Upside(in rules, 0.0)), 4);
+    }
+
+    [Fact]
+    public void The_damage_critical_line_compares_the_charging_melee_rolls_with_the_rest()
+    {
+        var stats = new DamageStats();
+        var charge = DamageRoll.Roll(40f, 50, new ScriptDice(0.99), 1.0);
+        var other = DamageRoll.Roll(40f, 50, new ScriptDice(0.5), 0.3);
+        stats.AddRoll(DamageCategory.Melee, in charge);
+        stats.AddMeleeCharge(in charge, true, 0.3);
+        stats.AddRoll(DamageCategory.Melee, in other);
+        stats.AddMeleeCharge(in other, false, 0.3);
+        Assert.Equal(1, stats.ChargeRolls(out double mean, out int lifted));
+        Assert.Equal(1, lifted);
+        Assert.True(mean > 1.45, "mean " + mean);
+        Assert.Contains(stats.SummaryLines(), l => l.StartsWith("damage critical (step 62") && l.Contains("1 charging melee hits, avg x1.490") && l.Contains("would have allowed 30%")
+                                                    && l.Contains("every other melee hit 1, avg x"));
+    }
+
     // ------------------------------------------------------------------ direction
 
     [Fact]

@@ -1144,6 +1144,7 @@ row goes to the Advanced page unless a player needs it to set up his game (CLAUD
 | `DamageRandomRanged` | true | Randomize arrows, bolts and thrown weapons. |
 | `DamageRandomOnMounts` | true | Randomize hits that land on horses too. |
 | `DamageRandomOnShields` | false | Randomize the damage a shield takes when it blocks. |
+| `SprintFullCritical` | true | Step 62 (decision 52), THE UNCAPPED CRITICAL: a CHARGING attacker's MELEE blow on foot (the impact model's charge - sprinting, or his first blow within `ImpactChargeCarrySeconds` after a sprint; read, never spent, by the damage decorator) rolls the ±p roll's FULL upside whatever his f (`DamageBonusFollowsAthletics` does not shrink it). Missiles and riders never. Live. |
 | `DamageReductionPercent` | 25 | Step 25 (Anton): every hit on a person, a horse or a shield deals this % less, AFTER the roll (an average 100 hit lands 75) - melee, ranged, kicks, bashes, charges, whether the roll is on or off; falls and objects never. A positive hit never below 1. 0 = the game's damage; range 0-90. |
 | `AthleticsEnabled` | true | Switch for Athletics (the stamina bar). |
 | `AthleticsPoolFloor` | 50 | Smallest possible Athletics pool (for anyone with a low Athletics skill; 0 = none, never below 1 point). |

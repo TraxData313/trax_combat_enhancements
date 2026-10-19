@@ -211,6 +211,12 @@
   // (true or false)
   "DamageRandomOnShields": false,
 
+  // Step 62: a man who CHARGES - sprinting into the blow, or his first blow just after a sprint
+  // - rolls the whole damage bonus however tired he is (the bonus otherwise shrinks with his
+  // Athletics). Off: his tiredness counts as for any blow.
+  // (true or false)
+  "SprintFullCritical": true,
+
   // ==================== Athletics ====================
   // No fighter's Athletics bar is smaller than this, whatever his Athletics skill - so a
   // recruit with Athletics skill 20 still gets a 50-point bar (5 blows). 0 = no floor: the bar

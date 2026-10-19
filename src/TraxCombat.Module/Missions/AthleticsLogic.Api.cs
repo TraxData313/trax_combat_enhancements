@@ -87,6 +87,17 @@ namespace TraxCombat.Missions
             return true;
         }
 
+        /// <summary>Step 62: does this man CHARGE now (sprinting toward the enemy, or within <c>ImpactChargeCarrySeconds</c> after such a sprint,
+        /// the carry not spent yet)? The damage decorator's full critical reads it (never spends it). False for a man not tracked or mounted.</summary>
+        public static bool TryGetCharging(Agent agent)
+        {
+            var logic = _current;
+            if (logic == null || agent == null) return false;
+            var st = logic.Get(agent);
+            if (st == null || st.Removed || logic.ImpactBody.IsMounted(st)) return false;
+            return IsCharging(st, logic.SpikeNow, TraxSettings.Shared.ImpactChargeCarrySeconds, out _);
+        }
+
         /// <summary>The last snapshot of one formation (any team). See the class doc.</summary>
         public static bool TryGetFormationStats(Formation formation, out FormationAthleticsStats stats)
         {
