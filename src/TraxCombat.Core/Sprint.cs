@@ -75,6 +75,9 @@ namespace TraxCombat.Core
         /// <summary>Step 64: a charge / fever sprint that ran into contact ended when he stopped moving (<see cref="SprintMath.StoppedEndSeconds"/>).</summary>
         Stopped,
 
+        /// <summary>Step 70: a charge / fever sprint into contact ended because it carried him away from his mates or past the enemy's front (a lone runner).</summary>
+        LoneRunner,
+
         Count,
     }
 
@@ -511,6 +514,7 @@ namespace TraxCombat.Core
             SprintEnd.Routed => "handed to his rout's sprint",
             SprintEnd.Attacked => "his first attack (into contact)",
             SprintEnd.Stopped => "he stopped moving (into contact)",
+            SprintEnd.LoneRunner => "alone or past the enemy's front (step 70)",
             _ => e.ToString(),
         };
     }

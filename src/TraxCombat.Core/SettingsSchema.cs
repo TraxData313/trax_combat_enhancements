@@ -830,6 +830,55 @@ namespace TraxCombat.Core
             "Charging: mop-up when winning (%)",
             "A charging unit whose men in contact win at least this much on average (the few or broken enemy left) is mopping up: its frightened men are no longer held near the mass and go for the kill. 0 = never.");
 
+        // Step 70 (Toni's 30 v 50 looters 2026-10-19 15:59: the frightened looters stood as a column ~15 men deep facing his line - "it needs to be
+        // 4-5-6 men deep", a wide mass, a few stepping forward to swing; and a few looters ran round BEHIND his line alone after the first charge):
+        // the flock's shelter is a wide BAND along the enemy's front, not a point (Core FearBandMath / FearUnits.BandPlace), front men are let go to
+        // strike within reach, and a LONE RUNNER - alone, out beyond his line - is pulled back (Core LoneRunnerMath, AI_NOTES "Step 70").
+
+        public static readonly ParamDef FearBandEnabled = Bool("FearBandEnabled", CourageGroup,
+            "Fear flock: a wide band, not a point",
+            "Frightened men gather in a wide, shallow band along the enemy's front - each keeps his place along the line and only closes up in depth, a few ranks deep (below); men behind a full file slide out to the band's ends. Off: they draw to one point behind the unit's centre (deep columns).");
+
+        public static readonly ParamDef FearBandRanksMin = Int("FearBandRanksMin", 1, 20, CourageGroup,
+            "Fear band: ranks deep, a little afraid",
+            "How many men deep the frightened mass stands at a small pull; it deepens in a straight line to the next setting at the full pull.");
+
+        public static readonly ParamDef FearBandRanksMax = Int("FearBandRanksMax", 1, 20, CourageGroup,
+            "Fear band: ranks deep, terrified",
+            "How many men deep the frightened mass stands at the full pull (never below the setting above). A file deeper than this sends its rear men out to the band's ends.");
+
+        public static readonly ParamDef FearBandFileMetres = Float("FearBandFileMetres", 0.5, 3, CourageGroup,
+            "Fear band: file width (m)",
+            "The width one file of men takes in the band - the band's width from its men is men ÷ ranks × this.");
+
+        public static readonly ParamDef FearBandRankMetres = Float("FearBandRankMetres", 0.5, 3, CourageGroup,
+            "Fear band: rank depth (m)",
+            "The depth one rank takes in the band - its depth is the ranks × this.");
+
+        public static readonly ParamDef FearBandMaxWidthMetres = Float("FearBandMaxWidthMetres", 5, 150, CourageGroup,
+            "Fear band: at most this wide (m)",
+            "The band is as wide as the enemy's front it faces, or its men in ranks, whichever is wider - but never wider than this.");
+
+        public static readonly ParamDef FearBandGapMetres = Float("FearBandGapMetres", 0, 10, CourageGroup,
+            "Fear band: front stands off the enemy (m)",
+            "The band's front stands this far short of the enemy's front; the more afraid the unit, the further back it is pushed (the shelter's metres above), creeping back at the drift above.");
+
+        public static readonly ParamDef FearStrikeReachMetres = Float("FearStrikeReachMetres", 0, 6, CourageGroup,
+            "Fear flock: front men strike within (m)",
+            "A frightened man in the band's front rank (nobody between him and the enemy) with an enemy this close is let go to step in and swing; he is walked back once he is further ahead of his place than the next setting. 0 = the flock never lets them go.");
+
+        public static readonly ParamDef FearStrikeLeashMetres = Float("FearStrikeLeashMetres", 0.5, 10, CourageGroup,
+            "Fear flock: back to the mass beyond (m)",
+            "A front man let go to strike is walked back to his place in the band once he stands this far ahead of it.");
+
+        public static readonly ParamDef LoneRunnerEnabled = Bool("LoneRunnerEnabled", CourageGroup,
+            "Lone runners come back",
+            "A man alone (fewer than two mates near, an enemy close) out beyond his line - ahead of his unit's front (below) or past the enemy's front - is no longer sent on by his fever, his charge sprint ends, and he walks back to his group - unless he is chasing a beaten enemy. Never you, never riders. Off: measured only.");
+
+        public static readonly ParamDef LoneRunnerAheadMetres = Float("LoneRunnerAheadMetres", 0, 30, CourageGroup,
+            "Lone runner: ahead of his line (m)",
+            "A man alone counts as a lone runner when he stands more than this far ahead of his own unit's front toward the enemy (or anywhere past the enemy's front).");
+
         // ------------------------------------------------------------------ cavalry flocking (step 55)
         // Anton, 2026-10-18: fresh, eager riders dance as in vanilla; the more tired a rider, the bigger the group of his own kind he wants
         // before he attacks again - the flock rides on, pulled toward the unit's centre by its tired riders and toward the goal by its rested
@@ -1738,6 +1787,8 @@ namespace TraxCombat.Core
             FearShelterBackMetres, FearShelterMaxMetres, FearDriftMetresPerMinute, FearDriftHoldPercent, FearCoverWidthMetres, FearAnchorFreshPercent,
             FearAnchorSeconds, FearSprintMetres, FearSprintChancePercent, FearSprintKeepPercent, FearWallBreakMorale, FearChargeLooseMetres,
             FearWinCalms, FearWinEvenOddsPercent, FearWinClearOddsPercent, FearWinShakenPercent, FearThreatMetres, FearMopUpWinPercent,
+            FearBandEnabled, FearBandRanksMin, FearBandRanksMax, FearBandFileMetres, FearBandRankMetres, FearBandMaxWidthMetres, FearBandGapMetres,
+            FearStrikeReachMetres, FearStrikeLeashMetres, LoneRunnerEnabled, LoneRunnerAheadMetres,
             CavalryFlockFreeEagerPercent, CavalryFlockHysteresisPercent, CavalryFlockMidEagerPercent, CavalryFlockMidGroupSize,
             CavalryFlockExhaustedSharePercent, CavalryFlockTimid, CavalryFlockTimidRadiusMetres, CavalryFlockGatherRadiusMetres, CavalryFlockSeparationMetres,
             CavalryFlockLeadSeconds, CavalryFlockTightenWeights, CavalryFlockWaveSeconds, CavalryFlockMaxSeconds,

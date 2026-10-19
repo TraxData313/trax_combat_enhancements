@@ -26,6 +26,9 @@ namespace TraxCombat.Core
         private readonly long[] _flockLooksByOrder = new long[(int)FearOrder.Count];
         private MeanStd _anchorSeconds;
 
+        /// <summary>Step 70: the band measured (the [summary] "fear flock band" line).</summary>
+        public readonly FearBandStats Band = new FearBandStats();
+
         public int MenLooked;
         public int Spells;
         public int SpellMen;

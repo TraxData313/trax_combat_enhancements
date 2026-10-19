@@ -1094,6 +1094,65 @@
   // (range 0 to 100)
   "FearMopUpWinPercent": 50,
 
+  // Frightened men gather in a wide, shallow band along the enemy's front - each keeps his
+  // place along the line and only closes up in depth, a few ranks deep (below); men behind a
+  // full file slide out to the band's ends. Off: they draw to one point behind the unit's
+  // centre (deep columns).
+  // (true or false)
+  "FearBandEnabled": true,
+
+  // How many men deep the frightened mass stands at a small pull; it deepens in a straight line
+  // to the next setting at the full pull.
+  // (range 1 to 20)
+  "FearBandRanksMin": 4,
+
+  // How many men deep the frightened mass stands at the full pull (never below the setting
+  // above). A file deeper than this sends its rear men out to the band's ends.
+  // (range 1 to 20)
+  "FearBandRanksMax": 6,
+
+  // The width one file of men takes in the band - the band's width from its men is men ÷ ranks
+  // × this.
+  // (range 0.5 to 3.0)
+  "FearBandFileMetres": 1.0,
+
+  // The depth one rank takes in the band - its depth is the ranks × this.
+  // (range 0.5 to 3.0)
+  "FearBandRankMetres": 1.0,
+
+  // The band is as wide as the enemy's front it faces, or its men in ranks, whichever is wider
+  // - but never wider than this.
+  // (range 5.0 to 150.0)
+  "FearBandMaxWidthMetres": 40.0,
+
+  // The band's front stands this far short of the enemy's front; the more afraid the unit, the
+  // further back it is pushed (the shelter's metres above), creeping back at the drift above.
+  // (range 0.0 to 10.0)
+  "FearBandGapMetres": 1.5,
+
+  // A frightened man in the band's front rank (nobody between him and the enemy) with an enemy
+  // this close is let go to step in and swing; he is walked back once he is further ahead of
+  // his place than the next setting. 0 = the flock never lets them go.
+  // (range 0.0 to 6.0)
+  "FearStrikeReachMetres": 2.5,
+
+  // A front man let go to strike is walked back to his place in the band once he stands this
+  // far ahead of it.
+  // (range 0.5 to 10.0)
+  "FearStrikeLeashMetres": 2.0,
+
+  // A man alone (fewer than two mates near, an enemy close) out beyond his line - ahead of his
+  // unit's front (below) or past the enemy's front - is no longer sent on by his fever, his
+  // charge sprint ends, and he walks back to his group - unless he is chasing a beaten enemy.
+  // Never you, never riders. Off: measured only.
+  // (true or false)
+  "LoneRunnerEnabled": true,
+
+  // A man alone counts as a lone runner when he stands more than this far ahead of his own
+  // unit's front toward the enemy (or anywhere past the enemy's front).
+  // (range 0.0 to 30.0)
+  "LoneRunnerAheadMetres": 4.0,
+
   // ==================== Cavalry flocking (AI) ====================
   // A rider's EAGERNESS is his Athletics bar (halved when he is alone among enemies, below). At
   // or above this he is free - the game's own charging, again and again. Below it he flocks

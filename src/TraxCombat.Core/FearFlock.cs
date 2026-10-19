@@ -87,7 +87,8 @@ namespace TraxCombat.Core
             double driftMetresPerMinute = 6, int driftHoldPercent = 25, double coverWidthMetres = 0.9, int anchorFreshPercent = 60, double anchorSeconds = 20,
             double sprintMetres = 8, int sprintChancePercent = 10, int sprintKeepPercent = 50, int wallBreakMorale = 30, double chargeLooseMetres = 12,
             bool winCalms = true, int winEvenOddsPercent = 100, int winClearOddsPercent = 200, int winShakenPercent = 50, double threatMetres = 12,
-            int mopUpWinPercent = 50)
+            int mopUpWinPercent = 50, bool bandEnabled = true, int bandRanksMin = 4, int bandRanksMax = 6, double bandFileMetres = 1.0, double bandRankMetres = 1.0,
+            double bandMaxWidthMetres = 40, double bandGapMetres = 1.5, double strikeReachMetres = 2.5, double strikeLeashMetres = 2.0)
         {
             ModEnabled = modEnabled;
             FlockEnabled = enabled;
@@ -122,6 +123,15 @@ namespace TraxCombat.Core
             WinShakenPercent = Pct(winShakenPercent);
             ThreatMetres = Clamp(threatMetres, 0, 60);
             MopUpWinPercent = Pct(mopUpWinPercent);
+            BandEnabled = bandEnabled;
+            BandRanksMin = bandRanksMin < 1 ? 1 : bandRanksMin > 20 ? 20 : bandRanksMin;
+            BandRanksMax = bandRanksMax < BandRanksMin ? BandRanksMin : bandRanksMax > 20 ? 20 : bandRanksMax;
+            BandFileMetres = Clamp(bandFileMetres, 0.5, 3);
+            BandRankMetres = Clamp(bandRankMetres, 0.5, 3);
+            BandMaxWidthMetres = Clamp(bandMaxWidthMetres, 5, 150);
+            BandGapMetres = Clamp(bandGapMetres, 0, 10);
+            StrikeReachMetres = Clamp(strikeReachMetres, 0, 6);
+            StrikeLeashMetres = Clamp(strikeLeashMetres, 0.5, 10);
         }
 
         private static int Pct(int v) => v < 0 ? 0 : v > 100 ? 100 : v;
@@ -133,7 +143,9 @@ namespace TraxCombat.Core
             s.FearUnitSharePercent, s.FearThinLinePercent, s.FearStartPercent, s.FearFullPercent, s.FearShelterBackMetres, s.FearShelterMaxMetres,
             s.FearDriftMetresPerMinute, s.FearDriftHoldPercent, s.FearCoverWidthMetres, s.FearAnchorFreshPercent, s.FearAnchorSeconds, s.FearSprintMetres,
             s.FearSprintChancePercent, s.FearSprintKeepPercent, s.FearWallBreakMorale, s.FearChargeLooseMetres,
-            s.FearWinCalms, s.FearWinEvenOddsPercent, s.FearWinClearOddsPercent, s.FearWinShakenPercent, s.FearThreatMetres, s.FearMopUpWinPercent);
+            s.FearWinCalms, s.FearWinEvenOddsPercent, s.FearWinClearOddsPercent, s.FearWinShakenPercent, s.FearThreatMetres, s.FearMopUpWinPercent,
+            s.FearBandEnabled, s.FearBandRanksMin, s.FearBandRanksMax, s.FearBandFileMetres, s.FearBandRankMetres, s.FearBandMaxWidthMetres, s.FearBandGapMetres,
+            s.FearStrikeReachMetres, s.FearStrikeLeashMetres);
 
         public bool ModEnabled { get; }
 
@@ -192,6 +204,32 @@ namespace TraxCombat.Core
         /// <summary>Step 69: a charging unit whose men win at least this (its mean win, %) is in its MOP-UP - no loose-mass leash (0 = never).</summary>
         public int MopUpWinPercent { get; }
 
+        /// <summary>Step 70: FearBandEnabled - the flock's place is a wide BAND along the enemy's front (men keep their place along it, compressed
+        /// only in depth, at most the ranks below); off = step 67's point shelter.</summary>
+        public bool BandEnabled { get; }
+
+        /// <summary>Step 70: the band's depth in ranks - <see cref="BandRanksMin"/> at a small pull, a line to <see cref="BandRanksMax"/> at the full pull.</summary>
+        public int BandRanksMin { get; }
+
+        public int BandRanksMax { get; }
+
+        /// <summary>Step 70: the width of one file (m) and the depth of one rank (m) in the band.</summary>
+        public double BandFileMetres { get; }
+
+        public double BandRankMetres { get; }
+
+        /// <summary>Step 70: the band is never wider than this (m).</summary>
+        public double BandMaxWidthMetres { get; }
+
+        /// <summary>Step 70: the band's front stands this far short of the enemy's front (m); the pull pushes it back further (ShelterBackMetres × pull).</summary>
+        public double BandGapMetres { get; }
+
+        /// <summary>Step 70: a front man (nobody covering him) with an enemy within this (m) is let go to strike - his AI steps in and swings
+        /// (0 = never); walked back once more than <see cref="StrikeLeashMetres"/> ahead of his place.</summary>
+        public double StrikeReachMetres { get; }
+
+        public double StrikeLeashMetres { get; }
+
         private static string N(double v, string f = "0.##") => v.ToString(f, CultureInfo.InvariantCulture);
 
         /// <summary>The settings sentence for the mission-start line, a change and the summary - with the worked example's anchors.</summary>
@@ -209,7 +247,24 @@ namespace TraxCombat.Core
                 + " m a minute (" + DriftHoldPercent + "% under a hold / a wall); cover within " + N(CoverWidthMetres, "0.0#") + " m of the line, a comrade above "
                 + AnchorFreshPercent + "% of his bar anchors " + N(AnchorSeconds, "0") + " s; sprint back beyond " + N(SprintMetres, "0") + " m or alone (+" + SprintChancePercent
                 + "% a look beyond 3 m), keeping " + SprintKeepPercent + "%; walls break below morale " + WallBreakMorale + "; a charge's men roam " + N(ChargeLooseMetres, "0")
-                + " m x (1 - the pull)" + DescribeWin();
+                + " m x (1 - the pull)" + DescribeWin() + DescribeBand();
+        }
+
+        /// <summary>Step 70's clause of the sentence.</summary>
+        public string DescribeBand()
+        {
+            string band = BandEnabled
+                ? "; a WIDE BAND (step 70) along the enemy's front, not a point: as wide as the enemy's frontage or his men in ranks of " + N(BandFileMetres, "0.0#")
+                  + " m files, whichever is wider (at most " + N(BandMaxWidthMetres, "0") + " m), " + BandRanksMin + " ranks deep at a small pull to " + BandRanksMax
+                  + " at the full pull (" + N(BandRankMetres, "0.0#") + " m a rank), its front " + N(BandGapMetres, "0.0#")
+                  + " m short of the enemy + the pull's push back; each man keeps his place along the front and is compressed only in depth; in a full file the men "
+                  + "behind its ranks slide out toward the band's ends"
+                : "; the point shelter of step 67 (FearBandEnabled off)";
+            string strike = StrikeReachMetres > 0
+                ? "; a front man with an enemy within " + N(StrikeReachMetres, "0.0#") + " m is let go to strike, walked back beyond " + N(StrikeLeashMetres, "0.0#")
+                  + " m ahead of his place"
+                : "; front men never let go to strike (FearStrikeReachMetres 0)";
+            return band + strike;
         }
 
         /// <summary>Step 69's clause of the sentence.</summary>
@@ -630,6 +685,14 @@ namespace TraxCombat.Core
 
         public FearEnd LastEnd = FearEnd.Count;
 
+        /// <summary>Step 70: he slid out of a full file toward the band's ends - his place's lateral stays there for the spell (a world point on
+        /// that file's line; the unit it was decided in); the last look's band verdict; let go to strike now.</summary>
+        public bool HasSlide;
+        public double SlideX, SlideY;
+        public int SlideKey = -1;
+        public FearBandPlaceKind BandKind = FearBandPlaceKind.NoBand;
+        public bool Striking;
+
         /// <summary>The last look's facts (the log).</summary>
         public bool Covered, SomebodyBehind, InContact;
 
@@ -646,6 +709,9 @@ namespace TraxCombat.Core
             HasTarget = Wish = Moving = Loose = SprintOurs = false;
             AnchorSince = double.NaN;
             AnchorSpent = false;
+            HasSlide = Striking = false;
+            SlideKey = -1;
+            BandKind = FearBandPlaceKind.NoBand;
         }
     }
 
@@ -654,7 +720,7 @@ namespace TraxCombat.Core
     /// the enemy he sees and where he stands; every <see cref="FearMath.PublishSeconds"/> the means are published, the SHELTER moved (its
     /// backward drift capped by order) and the unit's shape / spread / drift sampled into the stats.
     /// </summary>
-    public sealed class FearUnits
+    public sealed partial class FearUnits
     {
         private const int N = FearMath.UnitCount;
 
@@ -703,12 +769,14 @@ namespace TraxCombat.Core
                 PublishedAt[k] = double.NaN;
             }
             _nextPublish = _lastPublish = double.NaN;
+            ResetBand(); // step 70
         }
 
         private void ClearPeriod(int k)
         {
             _n[k] = _moraleN[k] = _en[k] = _winN[k] = 0;
             _fear[k] = _pull[k] = _morale[k] = _fresh[k] = _ex[k] = _ey[k] = _along2[k] = _across2[k] = _dist[k] = _cx[k] = _cy[k] = _win[k] = 0;
+            ClearBandPeriod(k); // step 70
         }
 
         /// <summary>Step 69: the unit's mean win (NaN = not known / none in contact).</summary>
@@ -726,7 +794,7 @@ namespace TraxCombat.Core
         /// where he stands against the unit's centre and facing (a unit vector or 0); step 69: his own win (NaN = no enemy in courage's radius -
         /// not counted in the unit's mean). <paramref name="fear"/> is his fear BEFORE the win (the unit's mean feeds the next looks' mix).</summary>
         public void Note(int key, double fear, double pull, double morale, double fresh, bool enemy, double ex, double ey, double cx, double cy, double fx, double fy,
-            double px, double py, FearOrder order, double win = double.NaN)
+            double px, double py, FearOrder order, double win = double.NaN, int man = -1, double binX = double.NaN, double binY = double.NaN)
         {
             if (key < 0 || key >= N) return;
             _n[key]++;
@@ -761,6 +829,7 @@ namespace TraxCombat.Core
                 _cy[key] += cy;
             }
             _order[key] = order;
+            NoteBand(key, px, py, fx, fy, man, binX, binY); // step 70: his position (and who he is, where he is bound) for the band's moments, files and ranks
         }
 
         /// <summary>Time to publish (the first call arms the clock).</summary>
@@ -852,6 +921,7 @@ namespace TraxCombat.Core
                         stats.AddDrift(on, FearMath.DriftGroup(_order[k]), moved, dt);
                     }
                 }
+                PublishBand(k, now, dt, in r, stats, on, enemy, ax, ay); // step 70: the band, its files, the shape in ranks
                 PublishedAt[k] = now;
                 ClearPeriod(k);
             }

@@ -582,6 +582,16 @@ namespace TraxCombat.Core
         /// </summary>
         public static bool Direction(double toX, double toY, double awayX, double awayY, out double dx, out double dy)
         {
+            int side = 0;
+            return Direction(toX, toY, awayX, awayY, ref side, out dx, out dy);
+        }
+
+        /// <summary>
+        /// Step 70: the same, with the side he goes ROUND the enemy on kept for the walk (<paramref name="side"/>: 0 = not chosen yet, +1 left of
+        /// "away", −1 right) - a man whose group stands straight behind the enemy's line no longer flips sides look by look (he went nowhere).
+        /// </summary>
+        public static bool Direction(double toX, double toY, double awayX, double awayY, ref int side, out double dx, out double dy)
+        {
             dx = dy = 0;
             bool hasTo = Unit(ref toX, ref toY);
             bool hasAway = Unit(ref awayX, ref awayY);
@@ -592,8 +602,8 @@ namespace TraxCombat.Core
             {
                 // the centre lies behind the enemies: go round them - the perpendicular of "away" on the centre's side
                 double lx = -awayY, ly = awayX; // left of away
-                double side = lx * toX + ly * toY;
-                if (side < -1e-9)
+                if (side == 0) side = lx * toX + ly * toY < -1e-9 ? -1 : 1; // the centre's side, chosen once (left on a tie)
+                if (side < 0)
                 {
                     lx = -lx;
                     ly = -ly;
@@ -743,6 +753,9 @@ namespace TraxCombat.Core
         /// <summary>The walk's target - his formation's centre at the last look - and "away from the enemies" (a unit vector; 0 = none).</summary>
         public double CentreX, CentreY, AwayX, AwayY;
 
+        /// <summary>Step 70: the side this walk goes round the enemy on (0 = not chosen yet; ±1) - kept for the walk.</summary>
+        public int RoundSide;
+
         /// <summary>The world direction last steered (a unit vector).</summary>
         public double DirX, DirY;
 
@@ -776,19 +789,20 @@ namespace TraxCombat.Core
         /// required odds × (1 + hysteresis) after the minimum hold; a walk ends at the centre, among mates or after
         /// <see cref="CourageMath.MaxMovingSeconds"/>; a holding man left alone far out walks again.
         /// </summary>
-        public CourageStep Look(in CourageRules r, double now, double odds, double required, double distance, int mates, bool shocked = false)
+        public CourageStep Look(in CourageRules r, double now, double odds, double required, double distance, int mates, bool shocked = false, bool lone = false)
         {
             Odds = odds;
             Required = required;
             LastLook = now;
             if (Phase == CouragePhase.Brave)
             {
-                if (!CourageMath.Timid(odds, required)) return CourageStep.None;
+                // step 70: a LONE RUNNER (alone, out beyond his line) is timid whatever the odds and walks back to his group
+                if (!lone && !CourageMath.Timid(odds, required)) return CourageStep.None;
                 Flip(now);
                 Since = now;
                 EverTimid = true;
                 SprintAsked = false;
-                if (CourageMath.WantsToMove(in r, distance, mates, shocked))
+                if (lone || CourageMath.WantsToMove(in r, distance, mates, shocked))
                 {
                     Phase = CouragePhase.Moving;
                     MovingSince = now;
@@ -806,13 +820,13 @@ namespace TraxCombat.Core
                 if (now - MovingSince >= CourageMath.MaxMovingSeconds) return StopMoving(RegroupEnd.TookTooLong, now);
                 return CourageStep.None;
             }
-            if (CourageMath.BraveAgain(in r, odds, required, now - Since))
+            if (!lone && CourageMath.BraveAgain(in r, odds, required, now - Since))
             {
                 Phase = CouragePhase.Brave;
                 Flip(now);
                 return CourageStep.Brave;
             }
-            if (CourageMath.MovesAgain(in r, distance, mates, shocked))
+            if (lone || CourageMath.MovesAgain(in r, distance, mates, shocked))
             {
                 Phase = CouragePhase.Moving;
                 MovingSince = now;

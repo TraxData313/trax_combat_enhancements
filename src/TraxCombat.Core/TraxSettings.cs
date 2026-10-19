@@ -387,6 +387,17 @@ namespace TraxCombat.Core
         public int FearWinShakenPercent => GetInt(SettingsSchema.FearWinShakenPercent);
         public float FearThreatMetres => GetFloat(SettingsSchema.FearThreatMetres);
         public int FearMopUpWinPercent => GetInt(SettingsSchema.FearMopUpWinPercent);
+        public bool FearBandEnabled => GetBool(SettingsSchema.FearBandEnabled); // step 70: the band, the strike, the lone runner
+        public int FearBandRanksMin => GetInt(SettingsSchema.FearBandRanksMin);
+        public int FearBandRanksMax => GetInt(SettingsSchema.FearBandRanksMax);
+        public float FearBandFileMetres => GetFloat(SettingsSchema.FearBandFileMetres);
+        public float FearBandRankMetres => GetFloat(SettingsSchema.FearBandRankMetres);
+        public float FearBandMaxWidthMetres => GetFloat(SettingsSchema.FearBandMaxWidthMetres);
+        public float FearBandGapMetres => GetFloat(SettingsSchema.FearBandGapMetres);
+        public float FearStrikeReachMetres => GetFloat(SettingsSchema.FearStrikeReachMetres);
+        public float FearStrikeLeashMetres => GetFloat(SettingsSchema.FearStrikeLeashMetres);
+        public bool LoneRunnerEnabled => GetBool(SettingsSchema.LoneRunnerEnabled);
+        public float LoneRunnerAheadMetres => GetFloat(SettingsSchema.LoneRunnerAheadMetres);
         // step 55: cavalry flocking
         public bool CavalryFlockEnabled => GetBool(SettingsSchema.CavalryFlockEnabled);
         public int CavalryFlockFreeEagerPercent => GetInt(SettingsSchema.CavalryFlockFreeEagerPercent);
