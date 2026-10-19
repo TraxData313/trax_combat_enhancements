@@ -1183,6 +1183,9 @@ namespace TraxCombat.Tools
             // --- step 68: the wall pushes as one - off = every paced man given the game's own frame back at once (with step 41's release); on = paced again
             WallPaceFollowsTheMasterSwitch();
 
+            // --- step 69: winners don't hang back - off = the flock let go at once (winning or not); the idle diagnostic keeps measuring; on = again
+            Step69FollowsTheMasterSwitch();
+
             // --- the HUD (step 6): the Athletics bar goes the moment the switch goes, and comes back
             HudFollowsTheMasterSwitch(a.Agent);
         }

@@ -46,6 +46,14 @@ namespace TraxCombat.Tools
             S.Set(SettingsSchema.FearSprintKeepPercent, 50, SettingSources.File);
             S.Set(SettingsSchema.FearWallBreakMorale, 30, SettingSources.File);
             S.Set(SettingsSchema.FearChargeLooseMetres, 12.0, SettingSources.File);
+            // step 69: winning calms stays ON here (every step-67 world below is a LOSING one - its numbers must not move); the threat line and
+            // the mop-up are pinned off (some worlds have no enemy at all) - Program.Step69.cs has its own
+            S.Set(SettingsSchema.FearWinCalms, true, SettingSources.File);
+            S.Set(SettingsSchema.FearWinEvenOddsPercent, 100, SettingSources.File);
+            S.Set(SettingsSchema.FearWinClearOddsPercent, 200, SettingSources.File);
+            S.Set(SettingsSchema.FearWinShakenPercent, 50, SettingSources.File);
+            S.Set(SettingsSchema.FearThreatMetres, 0.0, SettingSources.File);
+            S.Set(SettingsSchema.FearMopUpWinPercent, 0, SettingSources.File);
         }
 
         /// <summary>A fresh fear world: Athletics, the sprint, the fever, courage (OFF unless <paramref name="courage"/> - the flock decides
