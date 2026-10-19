@@ -110,7 +110,7 @@ public class Step69Tests
         Near(0.68889, FearMath.Calmed(0.68889, 0));
     }
 
-    /// <summary>THE WORKED EXAMPLE (MECHANICS §11b2, AI_NOTES "Step 69"): a TIRED man (30% of his bar) at morale 50 - a green looter (level 5,
+    /// <summary>THE WORKED EXAMPLE (MECHANICS §11b1 "Winners don't hang back", AI_NOTES "Step 69"): a TIRED man (30% of his bar) at morale 50 - a green looter (level 5,
     /// discipline 0) and a veteran legionary (level 26, discipline 0.7) - at his side's local odds 0.5 / 1 / 1.5 / 2 / 3, his unit feeling and
     /// winning as he does, somebody behind him, no shaken enemy: fear / pull. Losing and even = step 67's numbers exactly.</summary>
     [Theory]

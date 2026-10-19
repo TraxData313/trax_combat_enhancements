@@ -182,6 +182,10 @@ comrade in front steadies a man for a while; a shield wall holds until its moral
 coming: each soldier you look at shows his **morale** in blue under his bars, and the nearest formations say
 "morale 64, fresh 41%".
 
+**Winning calms.** Fear only grips men who are losing: a man whose side clearly outnumbers or outclasses the enemy
+around him (two to one), or faces a broken one, forgets his fear and goes in - tired winners finish the fight instead
+of hanging back, and a charge that is mopping up is not held near its mass; with no enemy near, nobody is pulled back.
+
 Numbers: [MECHANICS §11b](MECHANICS.md#11b-courage-men-keep-to-their-group) (the toughness table, the odds,
 four worked fights), the fear flock [§11b1](MECHANICS.md#11b1-the-fear-flock-frightened-men-become-a-herd), the rout sprint
 [§14](MECHANICS.md#14-the-sprint).

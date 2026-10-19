@@ -1032,6 +1032,7 @@ Claude the `[summary] impact …` block of every battle.
 | 11 | **D30 - THE WALL'S BLOCKS COUNT, THE CHARGE HITS AT SPEED** (step 64): your ~20 men in a shield wall + a reserve against ~50 charging looters (your 12:47 battle again) | 15 | `shield front arc`, `AI guard by f WITH a shield`, `sprint - AI` (ends), `sprint into contact`, `impact charges` | the game's WRONG side mostly turned right (front arc); looters reel and fall off the shields; charges well above 14 of 160, `sprinting at the blow` above 0; ends `his first attack` many, `an enemy within 3 m` few | `turned` 0 (the angle read is wrong); looters still slowing before the wall; `sprinting at the blow 0` and `carried` low |
 | 13 | **D32 - MORALE EYES AND THE FEAR FLOCK** (step 67): green troops in a thin hold line vs veterans in one; a long grind (watch the blobs form and drift, ALT for the blue morale); the fear flock OFF for a minute mid-battle, then ON | 25 | `fear flock shape`, `fear flock drift`, `fear flock cover`, `fear flock by discipline`, `fear flock spells`, `fear flock vs courage and walls`, `hud: ALT bars` (morale clause), `hud: ALT markers - morale line` | ON: spread below OFF, depth ÷ width above it; drift back small under a hold (≤ 1.5 m a minute); green units afraid well before veterans; anchors and sprints seen; the blue bars falling with the fight | men frozen in place with enemies at their shields (the zero-vector stand), a unit sliding back without end, men walking backwards through their own mates |
 | 14 | **D33 - THE WALL PUSHES AS ONE, KICKS THROUGH THE IMPACT MODEL, MEN TIRE MORE** (step 68): your shield wall ordered to ADVANCE (F1, F4) into an enemy line, ~100 v 100; a minute with *Shield walls: advance as one line* OFF, then ON | 25 | `wall slots ON by order`, `wall advance as one`, `wall pulled back` (its step-68 clause), `ai kicks` (whom they landed on, a friend in the way), `impact kicks / bashes landed vs decided`, `Athletics settings at the end` (cost per blow 8.0, right 2.00 / wrong 5.00) | the ADVANCE in-contact leak near the standing one (a few %), not 15%; the wall moving forward as one line and pushing; `unaccounted 0`, decided ≈ landed − on a FRIEND; the lines tiring visibly sooner after the first clash | men standing still in an advancing wall that never closes on the enemy (the step too small), the wall stretching anyway (the frame not honoured), `unaccounted` above 0, `on a FRIEND` still about two thirds of the landed |
+| 15 | **D34 - WINNERS DON'T HANG BACK** (step 69): your 100 v 100 again, a battle you WIN with green / mixed infantry (charge once the lines meet); then a losing one (looters into your wall) | 20 | `fear flock and winning`, `idle men`, `fear flock by discipline`, `fear flock spells` (sprints by chance) | the losing band's fear before = after, the clear band's after 0; your tired winners go in, no knot standing back; `idle men` OURS small (the standing ones ranged or the game's); sprints by chance far below 163 | the idle line's OURS large with the fear flock / courage after a win (tell Claude the line), the losing band changed |
 
 Then play normally (parts E-G). Your gut on each family - too many / about right / too few - is the most useful thing to send.
 
@@ -1678,6 +1679,37 @@ now - *Cost per swing* back to 7 (player page).
 **Broken - tell Claude**: an advancing wall that stops dead short of the enemy and never closes (the paced frame inside the engine's stop
 tolerance), the ADVANCE leak as high as before (the engine does not walk a held man to our frame - the fallback is the integrity position
 itself), `unaccounted` above 0 in the kicks line, `pace … errors` above 0.
+
+**D34. WINNERS DON'T HANG BACK (step 69, ~20 min - two battles; the defaults).** Your battles of 2026-10-19 15:5x / 16:0x: you loved the
+looters flocking and backing up, but your screenshot showed a few of your men standing 10-20 m off while your charging infantry finished the
+enemy (maybe skirmishers throwing / a crossbowman - fine). The log: fear came from morale and tiredness only, never from who was winning - your
+green men averaged pull 0.30 (afraid 67%), 163 'by chance' sprints back, 24269 flocking looks on a charge. Now: a man's fear FADES as his side
+wins around him (courage's local odds: unchanged at even, gone at 2 : 1; a broken / routing enemy near him calms him more), a winning unit
+relaxes together, nobody is pulled back with no enemy within 12 m, and a charge whose men are winning (half or more) is MOPPING UP - nobody held
+near the mass. Losing men flock exactly as before. Settings: Advanced, "Courage and cohesion (AI)" - *Fear: winning calms*, *winning from odds*,
+*no fear at odds*, *a broken enemy calms*, *Fear flock: only with an enemy within (m)*, *Charging: mop-up when winning*.
+1. **Your 100 v 100 again - you win** (a field battle where your infantry, green or mixed, beats the enemy; charge F1 F3 once the lines meet).
+   **What you should see**: as the enemy thins and breaks your tired men go in - no knot of your infantry standing back while the rest kill;
+   your skirmishers / archers still stand off to throw and shoot (normal). **[summary]** `fear flock and winning (step 69) by his side's local
+   odds: losing (odds below 1.0) N looks: win 0.00, fear a → a (UNCHANGED) …; even to clear (1.0-2.0) …: fear a → b; clear (2.0+) …: fear a →
+   0.00, afraid …% → 0.0% …; calmed by winning N looks (spells ended …); no enemy within 12 m N looks …; a charge's MOP-UP (its men's win 50%+) N
+   looks` - **the losing band's before = after, the clear band's after 0**; `fear flock by discipline: green …` - the green pull well below your
+   0.30 in a won battle; `fear flock spells: … sprints back … (… by chance N …)` - far below 163. **[fear]** the first spell line may say
+   `calmed by winning … (his odds …) to …`.
+2. **THE IDLE LINE - who holds the men standing off** (the same battle): **[summary]** `idle men (step 69 - AI men on foot on a charge / advance,
+   an enemy within 25 m and none within 3 m, standing (below 0.5 m/s) more than 5 s; …): OURS N man-s - the fear flock (step 67) … man-s (… men,
+   the enemy … m), courage timid (step 49) …, the brace - guard only (step 23) …, the wall hold (step 41) …; the game itself (none of ours) …; a
+   ranged weapon in hand / a ranged or skirmisher formation (NORMAL) …`. **[fear]** `first IDLE man held by … (step 69): (name) at … s - his
+   unit on charge, the nearest enemy … m (none within 3 m), standing (… m/s) for … s; fear … → … (win …), pull …, flock …; courage …; brace …;
+   wall …; his bar …%` - one per holder, the first time. **This line proves the cause**: OURS small = the standing men were the game's or your
+   ranged men; the fear flock / courage large = tell Claude with the line.
+3. **A losing fight - they still flock** (looters into your shield wall, or your green line against veterans): the looters bunch up and back off
+   exactly as you liked - `fear flock and winning … losing … fear a → a`, spells ending `calm again` / the fever, not `winning`.
+**Too much / too little**: winners still hang back - *no fear at odds* 150; men now too bold when barely ahead - *winning from odds* 120,
+*no fear at odds* 300; the mop-up too early - *mop-up when winning* 70; rear ranks of a losing line standing too still - *only with an enemy
+within* 20 (0 = the old pull without a threat).
+**Broken - tell Claude**: the losing band's fear changed (before ≠ after), `fear … errors` above 0, `idle men … errors` above 0, the idle line's
+`OURS` large with the fear flock or courage after the win.
 
 ---
 

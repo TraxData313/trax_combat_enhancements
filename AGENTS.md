@@ -211,7 +211,16 @@ keeps it, every let-go / the switch / the master switch gives the game's frame b
 man kicking his own front man - the game cancels it, step 63) - `AiKickFriendClearMetres` 0.5 holds a kick with a mate on the line to the
 enemy (the decision waits); every landed kick / bash on an enemy is decided once (into a raised shield: not decided - the shield stopped it);
 the costs `CostPerBlow` 7 → 8, a right-side shield block 1 → 2, a wrong-side block 2 → 5 (the kick 5 and the parry 2 kept); the [summary]
-lines "wall slots ON by order", "wall advance as one", the kicks' victims and "impact kicks / bashes landed vs decided" (PLAYTEST D33). The bar for the
+lines "wall slots ON by order", "wall advance as one", the kicks' victims and "impact kicks / bashes landed vs decided" (PLAYTEST D33).
+WINNERS DON'T HANG BACK (step 69, Toni's battles of 2026-10-19 15:5x / 16:0x - a few of his men standing 10-20 m off while his charge finished the
+enemy; the 100 v 100's green men pull 0.30, afraid 67 %, 163 'by chance' sprints back - DESIGN decision 62, AI_NOTES "Step 69", 6 Advanced settings,
+no migration): the fear flock's fear ignored who was winning; now at courage's look his WIN (`FearMath.Win`: 0 below even local odds - losing men
+keep every step-67 number -, 1 at `FearWinClearOddsPercent` 200 = 2 : 1, + `FearWinShakenPercent` 50 % × the enemy near him shaken on the fear's
+morale lines; the unit's mean win of its men in contact when better) calms it - fear × (1 − win), the unit table still fed the fear before the
+win; no enemy within `FearThreatMetres` 12 = no pull (one enemy read beyond courage's 8 m); a CHARGING unit whose men win `FearMopUpWinPercent` 50 %+
+is MOPPING UP - no loose-mass leash; spells end "winning" / "no enemy near"; THE IDLE-MEN DIAGNOSTIC (Core `IdleMen.cs`, measurement only): AI men
+of a charge / advance standing > 5 s with an enemy within 25 m and none within 3 m, by who holds them (ranged - normal -, the wall, the fear
+flock, courage, the brace, the game) - the [summary] "fear flock and winning" and "idle men" lines (PLAYTEST D34). The bar for the
 fighter you look at is LATER (DESIGN §3; its settings wait in DESIGN's "Planned parameters"). Words:
 the pool/bar/points are "Athletics", the character-screen skill is "the Athletics skill" (it
 used to be called "endurance"), the "peak line" is the white mark at the top quarter of the bar,
@@ -359,7 +368,8 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               description, apply timing (Live / NextBattle); Normalize, Format;
                               its Default comes from defaults.json (DefaultsFile), never code; step 59:
                               SettingsPage (Player / Advanced) + ParamGroup.Page
-  SettingsSchema.cs           EVERY setting of DESIGN's table (357 - step 68's ShieldWallAdvanceAsOne / ShieldWallAdvanceStepMetres / ShieldWallAdvanceNearMetres /
+  SettingsSchema.cs           EVERY setting of DESIGN's table (363 - step 69's FearWinCalms / FearWinEvenOddsPercent / FearWinClearOddsPercent /
+                              FearWinShakenPercent / FearThreatMetres / FearMopUpWinPercent after FearChargeLooseMetres, all Advanced; 357 - step 68's ShieldWallAdvanceAsOne / ShieldWallAdvanceStepMetres / ShieldWallAdvanceNearMetres /
                               ShieldWallKickReturnMetres after ShieldWallPullBackSeconds and AiKickFriendClearMetres after AiBashCooldownSeconds, all Advanced;
                               352 - step 67's 25 fear-flock settings after CourageTimidMeleeMetres
                               (courage's group) and 4 morale-eyes settings after FeverMarkMax (the ALT group), all Advanced; 323 - step 66's 5 after the brace, Advanced; 318 - step 65's 21 in the Impact group, Advanced; 297 - step 64's 5 on the Advanced page (2 in Athletics after the refill rule, 3 in
@@ -700,7 +710,13 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
   FearFlockStats.cs           step 67 per-mission: FearStats - looks / contact / covered / nobody behind / alone ON vs OFF, spread and depth ÷ width ON vs
                               OFF, the centre's drift by order group ON vs OFF, fear / pull / afraid by discipline band, spells and ends, anchors, steps
                               behind a comrade, sprints, courage's yields, walls broken, the loose mass, near-slot looks, steering, cost + the 7 [summary]
-                              "fear flock" lines
+                              "fear flock" lines; step 69: AddWin by odds band (losing / even to clear / clear / the unit's), calmed by winning, no
+                              threat, the mop-up, the threat reads + AddWinLines (the [summary] "fear flock and winning" line)
+  IdleMen.cs                  step 69 (AI_NOTES "Step 69", DESIGN decision 62) - THE IDLE-MEN DIAGNOSTIC, measurement only: IdleHolder (ranged - normal -,
+                              the wall hold, the fear flock, courage timid, the brace, the game), IdleMind (per man: the last look's place / time, standing
+                              since, the holders counted), IdleMath (EnemyMetres 25, ContactMetres 3, StandMetresPerSecond 0.5, Seconds 5, MaxGapSeconds 2;
+                              Gap / Idle / Advance / Holder / MovingOrder), IdleStats (man-seconds, men and the enemy's distance by holder + the [summary]
+                              "idle men" line)
   MoraleEyes.cs               step 67 pure: MoraleMarkRules (ModEnabled FIRST, ShowMoraleMarks, the enemy by AthleticsMarksShowEnemy; Off), MoraleMarkMath
                               (the blue #4C9BFF, Fill = morale ÷ 100, Known), MoraleLabelRules / MoraleLabelHidden / MoraleLabelMath (the nearest
                               MoraleLabelMax within MoraleLabelMetres, "morale 64, fresh 41%"), MoraleLabelStats (+ the [summary] "morale line" line);
@@ -937,8 +953,13 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               CloseCourage, WriteCourageSummary
   Missions/FearBody.cs        step 67: IFearBody (the smoke plays it - its courage stand-in) + GameFearBody (Unit: the table key from Team.TeamIndex /
                               FormationIndex, the order by GameBraceBody.KindOf + a wall arrangement, CachedAveragePosition, CurrentDirection; Slot =
-                              GetCurrentGlobalPositionOfUnit(agent, true)), FearBodyDefault
-  Missions/AthleticsLogic.Fear.cs  step 67, THE FEAR FLOCK: StartFear / NoteFearSettings (the [fear] lines), TickFearSwitch (the master switch first - off =
+                              GetCurrentGlobalPositionOfUnit(agent, true)), FearBodyDefault; step 69: OrderKind (step 23's KindOf), NearestEnemy
+                              (Mission.GetNearbyEnemyAgents into a reused MBList), Ranged (a ranged weapon in hand - thrown too -, a ranged / horse-archer /
+                              skirmisher formation by its index or PhysicalClass)
+  Missions/AthleticsLogic.Fear.cs  step 69: FearLookCore's WIN (FearNear.Odds / Shaken from courage's look - FearMath.Win / WinMixed / Calmed, the unit
+                              table fed the fear BEFORE the win and his own win), the threat line (one NearestEnemy beyond the scan), the charge's
+                              mop-up (no leash / anchor / step-in), FearEnd.Winning / NoThreat; IdleLook (from FearLookCore and a held wall man's
+                              FearSkipped) + the first IDLE line per holder; WriteFearSummary adds the winning and idle lines. Step 67, THE FEAR FLOCK: StartFear / NoteFearSettings (the [fear] lines), TickFearSwitch (the master switch first - off =
                               EndAllFear at once) and TickFearUnits (the table published every 0.5 s, the walls' break re-armed) from TickCourage,
                               FearScan (courage's scan read once more before it is cleared: the nearest enemy, cover, behind, the spot behind a
                               comrade), FearSkipped (a held wall man noted in his unit; other gates end a spell), FearLook (every courage path: Off /
@@ -1110,7 +1131,9 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
   Hud/FeverMarksVM.cs         its ViewModels: a GROW-ONLY POOL of FeverMarkVM (IsShown, PositionX / Y, Width / Height in pixels,
                               Fill, FillColor, FrameColor; step 46: BoxWidth / BoxHeight, FeverShown, BarShown, BarWidth / Height,
                               BarFill, BarUsable, BarColor, BarFrameColor, BarWoundColor)
-tests/TraxCombat.Core.Tests/  net8.0 xUnit (1004 - step 68: + Step68Tests.cs - the five settings, the pace, the by-order and pace lines, the walk
+tests/TraxCombat.Core.Tests/  net8.0 xUnit (1027 - step 69: + Step69Tests.cs - the six settings, the win, the unit's win, the
+                              worked example (a tired green / veteran at odds 0.5-3), losing = step 67, the threat line, the mop-up, the idle watch and its
+                              line, the winning line; 1004 - step 68: + Step68Tests.cs - the five settings, the pace, the by-order and pace lines, the walk
                               back after a kick, no kick through a friend and whom a kick hit, the kick coverage line, the costs and format 14; the
                               older format tests → 14; 991 - step 67: + Step67Tests.cs - the 29 settings placed / live, the master switch first, the fear's two dangers,
                               discipline by level, THE WORKED EXAMPLE (looters vs legionaries at fresh / half / spent × morale 80 / 50 / 20 → fear and
@@ -1357,6 +1380,8 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               step 67 (Program.Step67.cs): the fear flock through the real logic (a frightened rank draws into its mass, the shelter's
                               creep, an anchor, courage first, a sprint back, a wall that breaks, a charge's loose mass), the A / B (spread ON 1.94 vs
                               OFF 3.01 m), the cost (1000 men ~0.2 ms, 0 bytes), the morale eyes through the real views
+                              step 69 (Program.Step69.cs): winners don't hang back (calmed / mop-up / losing = step 67 / no threat), idle men by
+                              holder, the cost (1000 men 0.31 ms a tick, 0 bytes), the master-switch part (160 steps);
                               step 68 (Program.Step68.cs): the wall pushes as one through the real logic + its cost (1000 men 0.041 ms a tick,
                               0 bytes), back to the line after a kick, no kick through a friend, kicks landed vs decided through the real seams, the
                               master-switch part (157 steps; the config checks work for any tuned default);

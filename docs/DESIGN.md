@@ -616,6 +616,21 @@ regen.)
   tournaments, arenas, naval. Works without the Athletics system (no tiredness, no sprint) and with courage off. Master switch FIRST, then
   `FearFlockEnabled`: off = every spell let go at once (their formation places again); the looks still MEASURE - the summary's 7 "fear flock"
   lines compare the units' spread, depth ÷ width, drift back by order and the men covered ON vs OFF.
+- **Winners don't hang back** (step 69, Toni's battles 2026-10-19 - AI_NOTES "Step 69", decision 62; the fear flock's `FearLookCore`, Core
+  `FearMath.Win` / `IdleMen.cs`): the fear flock's fear came from morale and tiredness only, never from who is winning - a tired green WINNER kept
+  his shelter behind his unit's centre. Now, at the same look: his WIN = 0 below `FearWinEvenOddsPercent` 100 (courage's toughness-weighted
+  local odds - losing: every step-67 number kept), else 1 − (1 − w)(1 − `FearWinShakenPercent` 50 % × s), w = clamp((odds − 1) ÷
+  (`FearWinClearOddsPercent` 200 % − 1)), s = the enemy near him SHAKEN (the toughness-weighted mean of their morale shares on `FearMoraleCalm` /
+  `FearMoraleBroken`; a routing man's morale is spent); no enemy in courage's radius = his unit's mean win (its men in contact); with one, the
+  better of his own and (1 − u) his own + u the unit's (`FearUnitSharePercent`). His fear × (1 − win) - the unit's table still feeds on the
+  fear before the win, its mean pull (the shelter) on the pull after it. NO PULL WITHOUT A THREAT: no enemy within `FearThreatMetres` 12 m
+  (courage's scan; beyond its 8 m one enemy read, only for an afraid man) = no pull - he follows his order; the morale and bars still show.
+  THE MOP-UP: a CHARGING unit whose men in contact win `FearMopUpWinPercent` 50 %+ on average drops the loose-mass leash (no anchor, no
+  stepping in) - his AI's charge drives him. Spells end "winning" / "no enemy near". THE IDLE-MEN DIAGNOSTIC (measurement only, ON and OFF):
+  an AI man on foot whose unit charges / advances (a wall's advance too), an enemy within 25 m and none within 3 m, standing (below 0.5 m/s
+  between two looks) more than 5 s - the man-seconds and men by who held him: a ranged weapon in hand / a ranged or skirmisher formation
+  (NORMAL, apart), the wall hold, the fear flock's steering, courage's timidity, the brace, else the game itself; the [summary] "idle men" line
+  and the first of each in full.
 - **Cavalry flocking** (step 55, AI_NOTES "Step 55", decision 47; `Missions/AthleticsLogic.Flock.cs`, `Missions/FlockBody.cs`, Core
   `CavalryFlock.cs`; Anton 2026-10-18: "fresh and eager riders do the vanilla dance ... the more tired a rider gets, the more he goes to meet
   others of his own kind ... the flock is never a mass sitting somewhere ... it FLIPS from flocking up to going after its target as a flock"):
@@ -2380,6 +2395,29 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     bar (MECHANICS §6); config format 14 moves a file's 7 / 2 / 1 once, a tuned value kept and said; (j) all five new settings on the
     Advanced page (the brief): the wall's four in "Battle pace (AI)" after `ShieldWallPullBackSeconds`, the friend clearance in the
     impact group after `AiBashCooldownSeconds`; all live.
+
+62. **Winners don't hang back** (step 69, Toni's battles 2026-10-19 15:5x and 16:0x - the second the 100 v 100 on
+    battle_terrain_biome_048, 279 s; his screenshot: a few of his men standing 10-20 m off while his charging infantry finished the
+    enemy - on a second look perhaps skirmishers throwing / a crossbowman; he loved the looters flocking and backing up. The log:
+    `fear flock by discipline: green … fear 0.31, pull 0.30, afraid 67.3%`, `sprints back 222 of 235 asked (… by chance 163 …)`,
+    `flocking looks by order hold / move 5825, charge 24269`; `courage by local odds, in contact: >= 2: 2% timid of 21063`). Claude's
+    calls: (a) THE GAP: fear was morale × tiredness × discipline - never the fight around him; a tired green winner (green 67 % afraid)
+    kept his shelter behind the centre and, on a charge, his leash of 12 m × (1 − p); (b) WINNING = courage's OWN local odds
+    (toughness-weighted, the same look, no new scan): 0 at even (1:1) - "at even odds unchanged" -, 1 at 2:1 ("clear odds", a setting),
+    a line between; plus the enemy near him SHAKEN on the fear's own morale lines × 50 % (a routing man's morale is spent - no separate
+    rout read per neighbour); (c) LOSING IS UNTOUCHED: below even odds the win is 0 whatever the enemy's morale (Toni: losing men must
+    flock exactly as now; the smoke proves every position equal) - only the threat line can change a loser (a man 12 m+ from every enemy);
+    (d) THE UNIT'S PICTURE: the unit's mean win over its men IN CONTACT (an enemy in courage's radius - rear men with nobody near would
+    read ∞ and dilute a losing front); a man with no enemy in his radius takes it whole, one with his own takes the better of his own and
+    the mix by `FearUnitSharePercent` - a winning mass relaxes together, a losing unit gives nothing; the table keeps averaging the fear
+    BEFORE the win (step 67's loop unchanged), the shelter follows the pull after it; (e) NO THREAT, NO PULL at 12 m (beyond courage's
+    8 m scan one `GetNearbyEnemyAgents` read, only for a man who would be afraid, only while the flock is on); (f) THE MOP-UP: the unit's
+    win ≥ 50 % = "few or broken"; no leash, no anchor, no step behind a comrade - the charge takes them; (g) THE IDLE DIAGNOSTIC rides the
+    same look (no new poll): his speed from his displacement between two looks (no native velocity read), the enemy from courage's scan
+    (one read beyond 8 m, only for a standing man of a charge / advance), counted only past 5 s and then whole; holders in priority -
+    ranged (normal) > wall > fear flock steering > courage timid > brace > the game; thresholds are measurement constants (Core
+    `IdleMath`), not settings; (h) six Advanced settings in "Courage and cohesion (AI)" after `FearChargeLooseMetres`, all live, new keys
+    only - no config migration (FormatVersion 14 stays).
 
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),

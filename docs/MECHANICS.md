@@ -585,6 +585,37 @@ Athletics system off (then tiredness adds no fear) and with courage off.
 `FearAnchorSeconds` 20, `FearSprintMetres` 8, `FearSprintChancePercent` 10, `FearSprintKeepPercent` 50, `FearWallBreakMorale` 30,
 `FearChargeLooseMetres` 12.</sub>
 
+### Winners don't hang back (step 69)
+
+Fear used to come from morale and tiredness alone - never from **who is winning**. A tired green man whose side was
+clearly beating the enemy around him still kept back behind his unit's centre, and on a charge he was held near the
+mass while his mates finished the fight. Now **winning calms**:
+
+- Each look, his side's strength near him is weighed against the enemy's - the same **local odds** courage counts
+  (toughness-weighted, within 6 m). **Below even odds he is losing: nothing changes** - a losing unit flocks and backs
+  up exactly as before.
+- From even odds (1 : 1) his fear fades in a straight line and is **gone at two to one**. An enemy near him whose
+  morale is broken (routing men included) calms him up to 50% more, but only when he is not losing.
+- His unit's picture counts too: a man with no enemy near takes his unit's win; a winning unit relaxes together.
+- **No enemy within 12 m = no pull** at all: he follows his order. His morale and bars still show.
+- **The mop-up:** when a charging unit's men are winning on average by half or more (the enemy near it few or broken),
+  nobody is held near the mass any more - they go in for the kill.
+
+A tired man (30% of his bar) at morale 50, his unit feeling and winning as he does - fear / pull:
+
+| His side's local odds | 0.5 (losing) | 1 (even) | 1.5 | 2 | 3 |
+|---|---|---|---|---|---|
+| **Green looter** (no discipline) | 0.69 - **0.83** | 0.69 - **0.83** | 0.34 - **0.30** | 0.00 - 0.00 | 0.00 - 0.00 |
+| **Veteran legionary** (discipline 0.7) | 0.21 - **0.09** | 0.21 - **0.09** | 0.10 - 0.00 | 0.00 - 0.00 | 0.00 - 0.00 |
+
+The battle summary gains two lines: **"fear flock and winning"** (fear before → after by odds band - the losing
+band must read unchanged) and **"idle men"** - AI men of a charge or advance standing still for more than 5 s with an
+enemy within 25 m but none within 3 m, counted by who holds them: the fear flock, courage, the brace, the shield
+wall, a bow / crossbow / javelin (normal - skirmishers stand off to throw) or the game itself.
+
+<sub>Settings ("Courage and cohesion (AI)"): `FearWinCalms` on, `FearWinEvenOddsPercent` 100, `FearWinClearOddsPercent` 200,
+`FearWinShakenPercent` 50, `FearThreatMetres` 12, `FearMopUpWinPercent` 50.</sub>
+
 ## 11b2. Cavalry flocking: riders go in as waves
 
 In the base game a charging rider picks a target, rides through, turns and goes again — every rider on his

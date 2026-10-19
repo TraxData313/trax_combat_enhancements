@@ -6093,3 +6093,91 @@ master-switch step's `WallPaceFollowsTheMasterSwitch`); the older wall steps pin
 4. The lines tire sooner after the first clash (8 a swing, 2 / 5 a block) without feeling sluggish.
 
 **DEPLOY**: `tools\deploy.ps1` ran whole (build, the AssemblyGuard OK, the offline smoke exe - all passed), installed as Modules\TraxCombatEnhancements.Dev; `tools\SmartAppControl\loadcheck.ps1`: both installed DLLs LOADED (`1.2.0+0ca03871…`): TraxCombatEnhancements.dll SHA-256 0CD6F109…66F5, TraxCombat.Core.dll 30211053…CD44. The Bannerlord launcher was open during the build (not the game) and had closed before the deploy - no DLL locked, nothing killed. Tests (1004) and the step's smoke ran in memory (`run_tests.fsx`, `run_smoke.ps1`); `refresh_defaults.fsx` once (Smart App Control blocked DefaultsTool's fresh Core DLL). Windows security untouched.
+
+## Step 69 — winners don't hang back (DONE 2026-10-19; dev build only, not uploaded)
+
+**Toni's battles (2026-10-19 15:5x on battle_terrain_001, 258 s, and 16:0x - the 100 v 100 on battle_terrain_biome_048, 279 s; screenshots Steam
+20261019160513 / 160520)**: he loved the looters flocking and backing up; the screenshot showed a few of his men standing 10-20 m off while his
+charging infantry finished the enemy - on a second look perhaps skirmishers throwing javelins / a crossbowman, so possibly fine. The log still
+showed the gap: `fear flock by discipline: green (discipline < 0.25): 30857 looks, fear 0.31, pull 0.30, afraid 67.3%`; `sprints back 222 of 235
+asked (alone 3, by chance 163 …)`; `flocking looks by order hold / move 5825, charge 24269`; `charge men left to their AI inside the loose mass
+17032 looks`; courage's `by local odds, in contact … >= 2: 2% timid of 21063` (58% of the in-contact looks at 2 : 1 or better). Fear = morale ×
+tiredness × (1 − discipline), never the fight around him: a tired green WINNER kept his shelter behind the unit's centre and, on a charge, stayed
+within 12 m × (1 − p) of it.
+
+**THE WIN (Core `FearMath.Win / WinMixed / Calmed / Threatened / MopUp / ShakenShare`, DESIGN decision 62, MECHANICS §11b1 "Winners don't hang back")**
+- Courage's look already sums his side's and the enemy's toughness (weighted to 6 m) - `odds`; step 69 adds, in the same loop, the enemy SHAKEN
+  = Σ te × `MoraleShare(o.Morale)` ÷ Σ te (the fear's own lines 60 / 15; `o.Morale` is the tracked record's - refreshed at the formation-stats
+  refresh and at every look - so no native read per neighbour; a routing man's morale is spent → 1). `FearNear.Odds` = odds when an enemy weighs
+  in the radius, else NaN; `Shaken`; `ScanMetres` = the scan's reach (max(radius, 8)).
+- win = 0 below `FearWinEvenOddsPercent` 100 (LOSING: every step-67 number - the smoke compares every position / fear with all step-69 rules off,
+  max difference 0); else 1 − (1 − w)(1 − `FearWinShakenPercent` 50 % × s), w = clamp((odds − even) ÷ (`FearWinClearOddsPercent` 200 % − even)),
+  ∞ = 1; NaN odds = NaN. The switch `FearWinCalms` off = 0 everywhere.
+- The unit: `FearUnits.Note(…, win)` - only men with a win of their own (in contact) feed `Win[k]` (NaN = none); rear men with nobody near would
+  read ∞ and dilute a losing front. `WinMixed`: no own = the unit's whole; own = max(own, (1 − u) own + u unit) - a winning mass relaxes
+  together, a losing unit gives nothing.
+- fear = base × (1 − winMix); the table keeps averaging the BASE fear (step 67's feedback loop untouched); `fm.Pull` (after the win) feeds the
+  unit's mean pull, so a winning unit's shelter slides forward to its centre (free forward). afraidBefore (base) vs afraid → `CalmedByWinLooks`,
+  the spell ends `FearEnd.Winning` (appended after Error - old indexes kept).
+- NO THREAT, NO PULL: an afraid man (only) checks the nearest enemy - courage's scan when it had one, else (only while the flock is on, and only when
+  `FearThreatMetres` > the scan's reach) one `IFearBody.NearestEnemy` = `Mission.GetNearbyEnemyAgents` into a reused MBList; none within 12 m =
+  pull 0, `FearEnd.NoThreat`; still measured (fear, morale, the bars).
+- THE MOP-UP: order Charge && `MopUp` (the unit's win ≥ `FearMopUpWinPercent` 50 %) → loose regardless of the radius, no anchor (a running one
+  ended, counted), no step behind a comrade - `MopUpLooks` (apart from LooseLooks).
+
+**THE WORKED EXAMPLE (Step69Tests theory - a tired man, 30 % of his bar, morale 50, his unit feeling and winning as he does, no shaken enemy)**
+
+| odds | 0.5 | 1 | 1.5 | 2 | 3 |
+|---|---|---|---|---|---|
+| green looter (d 0) | 0.69 / 0.83 | 0.69 / 0.83 | 0.34 / 0.30 | 0 / 0 | 0 / 0 |
+| veteran legionary (d 0.7) | 0.21 / 0.09 | 0.21 / 0.09 | 0.10 / 0 | 0 / 0 | 0 / 0 |
+
+(fear / pull). At even odds a broken enemy near him (morale ≤ 15) gives win 0.5: the green 0.34 / 0.30.
+
+**THE IDLE-MEN DIAGNOSTIC (Core `IdleMen.cs`: IdleHolder, IdleMind, IdleMath, IdleStats; Module `AthleticsLogic.Fear.cs` IdleLook)**
+- Rides the same look (FearLookCore - every courage-looked man, ON and OFF; and a held wall man's FearSkipped): speed = his displacement since
+  his last look ÷ the gap (≤ 2 s - no native velocity read); a moving order = FearOrder Charge / Advance, or Wall with `IFearBody.OrderKind`
+  charge / advance (`IdleMath.MovingOrder`); standing (< 0.5 m/s); the nearest enemy from courage's scan, else (only for a standing man of a
+  moving order) one `NearestEnemy(25)`; idle = within 25 m, not within 3 m; counted once his stand passes 5 s (the whole stand once, then each
+  gap). Holder in priority: `IFearBody.Ranged` (a ranged weapon in hand - `WieldedWeapon.CurrentUsageItem.IsRangedWeapon`, thrown usages too -,
+  or a Ranged / HorseArcher / Skirmisher formation by `FormationIndex` or `PhysicalClass`) = NORMAL; `st.Wall.Held`; `fm.Wish` (the fear flock
+  owns his feet); `st.Courage.Timid`; `st.Brace.Active`; else the game. Ranged men also held by ours are summed apart (`RangedOursSeconds`).
+- Measurement constants (not settings - the precedent of courage's standoff): `EnemyMetres` 25, `ContactMetres` 3, `StandMetresPerSecond` 0.5,
+  `Seconds` 5, `MaxGapSeconds` 2.
+
+**Settings (6, all Advanced, all Live; 357 → 363; the courage group 53 → 59; no migration - FormatVersion 14 stays)**: "Courage and cohesion (AI)"
+after `FearChargeLooseMetres` - `FearWinCalms` (true), `FearWinEvenOddsPercent` (100, 0-1000), `FearWinClearOddsPercent` (200, 1-1000),
+`FearWinShakenPercent` (50, 0-100), `FearThreatMetres` (12, 0-60), `FearMopUpWinPercent` (50, 0-100).
+
+**Measured ([fear] tag)**: the mission-start / change sentence's step-69 clause (`; WINNING calms (step 69): …; no pull without an enemy within 12 m;
+a charge's MOP-UP …`); the first spell line's `calmed by winning W (his odds O) to F`; `first IDLE man held by <holder> (step 69): … his unit on
+charge, the nearest enemy … m (none within 3 m), standing (… m/s) for … s; fear … → … (win …), pull …, flock …; courage …; brace …; wall …; his bar
+…%` once per holder. [summary] (after the 7 fear-flock lines): `fear flock and winning (step 69) by his side's local odds: losing (odds below 1.0)
+N looks: win, fear before → after, afraid before → after; even to clear …; clear (2.0+) …; no enemy in his radius (the unit's win) …; calmed by
+winning N looks (spells ended …); no enemy within 12 m N looks (spells ended …, enemy reads …); a charge's MOP-UP … N looks` and `idle men (step 69
+- …): OURS N man-s - the fear flock …, courage timid …, the brace …, the wall hold …; the game itself …; a ranged weapon … (NORMAL) … - of it held
+by ours too …; looks …, enemy reads beyond courage's scan …; errors …`.
+
+**Built / measured offline**: tests 1004 → 1027 (Step69Tests.cs: 13 facts + the 10-row worked example; SettingsPagesTests 363, CourageTests'
+group 59). Smoke 157 → 160 (Program.Step69.cs: WinnersDontHangBack - 12 tired greens charging 2 broken looters: the front green's fear 0.74 → 0
+(win 1), nobody flocks, the roamer left alone; OFF flocks / pulls the roamer, ON live ends the spells 'winning'; a partial win (clear 4 : 1, the
+unit's win 0.31) keeps them afraid (the roamer 0.74 → 0.51) but MOPS UP - the roamer 12 m out not leashed, 0 live = pulled; a losing rank equal to
+the metre; the enemy at 20 m no pull, 10 m flock, 25 m ended 'no enemy near', 0 live = step 67 -, IdleMenDiagnostic - six holders, 7 man-s each,
+never a walker / fighter / hold, 98 enemy reads -, Step69CostStaysFlat - 1000 men charging, 0.31 ms a tick, 0 bytes over 300 ticks -, the
+master-switch step's step-69 part). `FearDefaults` (the step-67 worlds) pins `FearThreatMetres` 0 / `FearMopUpWinPercent` 0 (some have no enemy
+at all) and keeps winning on - those worlds are losing ones and pass unchanged.
+
+**Gotchas**
+- The cost check allocated 8 KB the first time: the idle men pass 5 s INSIDE the measured ticks and their first-time lines are strings - the
+  warm-up is now 7 s.
+- Smart App Control let the fresh OfflineSmoke.exe run once, then blocked the next build - `tools\SmartAppControl\run_smoke.ps1` ran it from bytes.
+- A `git stash` / `pop` rewrites the touched files with CRLF (autocrlf true) while most of the working tree is LF - `dos2unix` put them back (the
+  index is LF either way).
+- `CouragePhase Phase` has a private setter - the smoke's idle check sets a timid man by reflection (courage off, so the phase stays).
+
+**UNVERIFIED — only the game can tell (PLAYTEST D34)**
+1. Whether Toni's standing men were ours at all: the `idle men` line's OURS against the game / ranged columns.
+2. Winners go in: the `clear (2.0+)` band's fear after 0 and the green pull far below 0.30 in a won battle; 'by chance' sprints far below 163.
+3. Losing units flock as before: the `losing` band's before = after (by construction) and Toni's eyes on the looters.
+4. The mop-up does not release a unit too early (50 % of its men's win) - the charge does not scatter before the enemy breaks.
+5. Cost: `fear flock vs courage and walls … cost` with the extra reads (`enemy reads` in the two lines).
