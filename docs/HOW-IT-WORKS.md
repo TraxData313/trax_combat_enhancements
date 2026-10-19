@@ -232,9 +232,11 @@ knockdown or stagger decided for that blow now plays anyway, the moment it lands
 start, the man is put on the ground a fifth of a second later. A friend's blow — a man in the second rank swinging
 into his own front man — never knocks anyone down.
 
-**Kicks and shield bashes.** The AI now kicks and shield-bashes now and then — most of all a man who hides behind
-his guard, and more in the fever of a charge; veterans more than recruits, tired men not at all. And a kick is no longer a
-free push: a fresh, well-armoured veteran **braces** and barely moves — a looter's kick staggers a fresh legionary for a moment
+**Kicks and shield bashes.** The AI now kicks and shield-bashes. A man without a shield kicks about once a minute
+while he fights — more against a man who hides behind his guard and in the fever of a charge, veterans more than
+recruits, tired men not at all. A man with a shield bashes about as often as he swings while he is fresh, less as he
+tires. They are not free: a kick or a bash costs 5 Athletics points (a swing 7), so a shieldman who bashes a lot tires
+sooner — and so do you if you kick a lot. And a kick is no longer a free push: a fresh, well-armoured veteran **braces** and barely moves — a looter's kick staggers a fresh legionary for a moment
 perhaps one time in eight, and never knocks him down. Tire him first: a spent man cannot brace, and then kicks and bashes
 throw him about. The same goes for you, both ways.
 

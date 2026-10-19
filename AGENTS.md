@@ -21,7 +21,7 @@ swing (step 5d) - since step 16 a BACKPEDAL through the AI's own input, facing t
 pause survives it (one per-man `AgentComponent` on `OnAIInputSet` does both; A/B switches keep the old ways).
 Heroes and party leaders pay less per blow (and big-skill heroes have
 big bars), so the game leans hero-centred. Kicks and shield bashes cost a little too (step 18:
-`CostPerKickOrBash` 3 × the same multipliers, once each, never an attack pause). DEFENDING costs too (step 22):
+`CostPerKickOrBash` 3 - 5 since step 66 - × the same multipliers, once each, never an attack pause). DEFENDING costs too (step 22):
 every melee blow a fighter BLOCKS costs HIM - `CostPerShieldBlock` 1 (shield, right side), `CostPerWrongSideShieldBlock`
 5, `CostPerWeaponParry` 2 - × the same multipliers, once per blocked blow (OnMeleeHit's collision data, Core `BlockMath` /
 `BlockTracker`); a paid block restarts the refill delay; never an attack pause or a step back; missiles into a shield
@@ -147,6 +147,16 @@ it (`IAiKickBody`); the cost = step 18's; the [summary] "ai kicks" lines. THE BR
 kick's own pressure x (`KickBraceFromPressure` −0.7 / `ToPressure` 1.0), none below 20% of his bar; braced = no knockdown / drop, the knock-back
 REFUSED in the damage decorator's `DecideAgentKnockedBackByBlow` (`IKnockBackDecider`), the leftover reaction at 5 x; failed = step 50 with the reel
 × (0.4 + 0.6 T); you alike; the [summary] "kick brace" lines. A fresh looter's kick on a fresh legionary: a short reel one in eight, 0 falls (PLAYTEST D31).
+Step 66: MORE AI KICKS AND BASHES, EACH COSTING MORE (step 66, Anton's looter battle 2026-10-19 14:16 - "ai kicks: asked 0" in 49.4
+man-minutes of contact - DESIGN decision 59, AI_NOTES "Step 66", 5 Advanced settings, config format 13): `CostPerKickOrBash` 3 → 5 (you
+too); A WAIT FOR REACH - a decision with the enemy he fights within `AiKickWaitMetres` 5 but beyond 1.6 m / out of front waits up to
+`AiKickWaitSeconds` 3 (no new die, the engine read each look; step 65's die mostly came at a weapon's length and was lost), so the rates
+are per minute in contact; a man WITHOUT a shield kicks at `AiKicksPerMinute` 1.2 (0.1 before) × the factors, `AiKickCooldownSeconds` 8 apart
+(a fresh looter 0.71 a minute, an average man 1.03, a legionary 1.17; ×3 vs a turtle, ×2 in a fever); a SHIELDMAN bashes WITH HIS SWINGS
+(Anton: "as frequent as swings") - each melee release of an AI shield-infantry man earns `AiBashShareOfSwingsPercent` 100 % of a bash
+(`TrackedAgent.BashCredit`, at most 2), spent ~`AiBashDelaySeconds` 1.5 s ÷ the bar factor later, `AiBashCooldownSeconds` 2 apart - the
+model: 0.95 bashes a swing at 100-75 % of the bar, 0.60 at 75-50, 0.20 at 50-25, none below 35 %; the [summary] "ai kicks - bashes per
+swing and the wait for reach" line (PLAYTEST D31).
 (Steps 25-40 -
 the swing stack, the sprint, the tired block direction and the rest - are described in CLAUDE.md, the fuller copy of this
 file.) The bar for the
@@ -322,7 +332,7 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               description, apply timing (Live / NextBattle); Normalize, Format;
                               its Default comes from defaults.json (DefaultsFile), never code; step 59:
                               SettingsPage (Player / Advanced) + ParamGroup.Page
-  SettingsSchema.cs           EVERY setting of DESIGN's table (318 - step 65's 21 in the Impact group, Advanced; 297 - step 64's 5 on the Advanced page (2 in Athletics after the refill rule, 3 in
+  SettingsSchema.cs           EVERY setting of DESIGN's table (323 - step 66's 5 after the brace, Advanced; 318 - step 65's 21 in the Impact group, Advanced; 297 - step 64's 5 on the Advanced page (2 in Athletics after the refill rule, 3 in
                               Sprint after SprintOnRout); 292 - step 63's 3 on the Advanced page; 289 - step 62's 14 on the Advanced page; STEP 59: two MCM pages - the PLAYER page's 20 declared FIRST
                               (ModEnabled + six player groups, Orders 0-6), the Advanced page's 16 groups after (7-22, "Damage" first,
                               "Advanced" last); GroupsOn / OnPage / PlayerPage / PageTitle; the moved 19 left their old groups; step 58's ShowFeverOnLabels, AltMarksEveryone, AltNearMarksMax, AltNearMarksMetres in the ALT group; step 57's SprintOnRout after SprintAiMoveKeepPercent; step 56's 2 after RiposteStaggerMaxPercent; step 55's 14 in "Cavalry flocking (AI)" after courage; step 54's 4 punish settings; step 53's 3 rider-momentum + 3 on-screen-line settings; step 52's 4 momentum settings; step 47's ImpactSpike in Advanced; step 48's 60 in "Impact: staggers,
@@ -347,7 +357,8 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
   ConfigFile.cs               config.json TEXT: commented writer (header incl. how to revert +
                               // above each key; AppendSettings shared with defaults.json),
                               tolerant reader (comments, trailing commas, casing, "0,75"), Apply;
-                              FormatVersion 12 + Migrate (step 64: a format-11 file's FeverSprintMinMetres 3 → 4, FeverSprintMaxMetres 12 → 8,
+                              FormatVersion 13 + Migrate (step 66: a format-12 file's CostPerKickOrBash 3 → 5, AiKicksPerMinute 0.1 → 1.2, AiKickCooldownSeconds 10 → 8;
+                              step 64: a format-11 file's FeverSprintMinMetres 3 → 4, FeverSprintMaxMetres 12 → 8,
                               ImpactChargeCarrySeconds 1.5 → 3 once; step 63: a format-10 file's ImpactFallBackupSeconds 0.5 → 0.2, ImpactRearPercent
                               200 → 100, ImpactFlankPercent 140 → 100 once; step 56: an older file's right block / parry 80 / 40 → 30 / 10, the riposte
                               50 → 70, BlockStunTiredExtraPercent 100 → 0 once, tuned values kept + noted; step 46: a format-8 file's CostPerBlow 3 → 7 once, a tuned value
@@ -502,7 +513,9 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               Stopped, the charge rules, SprintMath.IntoContact / ChargeWaits, SprintStore.IntoContact, the "sprint into contact" line
   AiKicks.cs                  step 65 pure (AI_NOTES "Step 65"): AiKickRules (ModEnabled FIRST, Athletics, AiKicksEnabled), AiKickMath (the rate's
                               factors, LookChance, KindFor, the phases and their input Frame - the Kick event bit, DefendUp -, IsBusyAction, the turtle
-                              memory), AiKickStats (asked → played → landed, ends, why not + the [summary] "ai kicks" lines)
+                              memory), AiKickStats (asked → played → landed, ends, why not + the [summary] "ai kicks" lines); step 66: the wait (WaitSeconds / WaitMetres,
+                              Waits, AiKickSkip.Waiting), the bash credit (BashShare / BashDelay / BashCooldown, BashCreditCap 2, AddBashCredit,
+                              BashPerMinute, CooldownFor), WithCooldown, MaxAttempts 256, the 5th [summary] line
   KickBrace.cs                step 65 pure: KickBraceRules / Math (FailChance S on x, Spent, ReelCut, Classify, TierBand) / Stats (the [summary] "kick
                               brace" lines); Impact.cs: the brace inside Decide (BraceRoll), ImpactRefusal.Braced; ImpactLive.cs: ImpactWatchPurpose.Brace,
                               FastSpeedFor ≤ 8 x
@@ -676,7 +689,7 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               step 59: TWO pages (BuildPage returns object; MCM keeps settings by Id) - the
                               player page (SettingsId, "Trax Combat Enhancements": 20 settings, 7 groups,
                               Defaults with Revert) = _settings, the Advanced page (AdvancedSettingsId,
-                              "... - Advanced": 298 settings since step 65, 16 groups) = _advanced; each its own "default"
+                              "... - Advanced": 303 settings since step 66, 16 groups) = _advanced; each its own "default"
                               preset; group "Defaults": the Revert (both pages, reverts both) /
                               Save-defaults-file (Advanced only) BUTTONS (ProxyRef<Action>, both pages
                               refreshed via PropertyChanged), on Advanced just above Advanced (MCM order =
@@ -814,7 +827,9 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
   Missions/AthleticsLogic.AiKicks.cs  step 65: TickAiKicks (off ends every attempt; the attempts advanced every tick - PLAYED by step 18's tracker;
                               a staggered look), LookAiKick (the gates, one die, IAiKickBody's reads under it), Begin / EndAiKick, AiKickHit (OnMeleeHit),
                               NoteTurtleBlock (BlockHitTaken), NoteAiKickCost (ChargeKickOrBash), the summary; Missions/AiKickBody.cs IAiKickBody /
-                              GameAiKickBody; AiInputHook.cs: the KickPhase wish, SetKick, ApplyKick (written last)
+                              GameAiKickBody; AiInputHook.cs: the KickPhase wish, SetKick, ApplyKick (written last); step 66: the wait for reach
+                              (TrackedAgent.AiKickWaitUntil / Since / Chance), a shieldman's die = his earned bash (BashCredit), NoteAiBashSwing
+                              (StartRelease), the cooldown by kind
   Missions/AthleticsLogic.KickBrace.cs  step 65: the IKnockBackDecider (a braced man's knock-back refused - the blow decided at the knock-back
                               question), NoteBrace, the Brace watch (the cut reaction played faster), the summary; ImpactHooks.IKnockBackDecider,
                               TraxDamageModel.DecideAgentKnockedBackByBlow
@@ -1007,7 +1022,8 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
   Hud/FeverMarksVM.cs         its ViewModels: a GROW-ONLY POOL of FeverMarkVM (IsShown, PositionX / Y, Width / Height in pixels,
                               Fill, FillColor, FrameColor; step 46: BoxWidth / BoxHeight, FeverShown, BarShown, BarWidth / Height,
                               BarFill, BarUsable, BarColor, BarFrameColor, BarWoundColor)
-tests/TraxCombat.Core.Tests/  net8.0 xUnit (947 - step 65: + Step65Tests.cs - AiKickTests, KickBraceTests, Step65ExamplesTests (the worked
+tests/TraxCombat.Core.Tests/  net8.0 xUnit (955 - step 66: + Step66Tests.cs - Step66Tests, Step66ExamplesTests (kicks a minute; a shieldman's swings and bashes by
+                              bar band); the format strings → 13; 947 - step 65: + Step65Tests.cs - AiKickTests, KickBraceTests, Step65ExamplesTests (the worked
                               example); 929 - step 64: + Step64Tests.cs - ShieldFrontArcTests, ChargeIntoContactTests, Step64ExamplesTests (the worked example); 913 - step 63: + FallsOnTheHitTests, RearBlowTests (the worked examples), WallPullTests; 900 - step 62: + ChargeTests, ChargeExamplesTests; step 59: + SettingsPagesTests; step 58: + AltNearMarksTests; step 57: + RoutSprintTests; step 56: + RightBlocksTests (ImpactTests pin the step-48 weights for IMPACT §4 A-G); step 55: + CavalryFlockTests; step 54: + ImpactPunishTests; step 53: + ImpactRidersTests; step 52: + ImpactHitsTests; step 51: + ImpactBlocksTests; step 50: + ImpactLiveTests; step 49 / 49b: + CourageTests; step 44: + FeverMarkTests; step 46: + AthleticsMarkTests, the format-9 migration; step 47: + ImpactSpikeTests; step 48: + ImpactTests - every IMPACT §4 worked example) — schema vs DESIGN.md (keys + types), one copy
                               runs (SingleCopyTests: claims on private slots, copies, texts), when
                               MCM is tried and when it stops (McmPlanTests - step 12),
@@ -1241,8 +1257,9 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               step 64 (Program.Step64.cs): the shield front arc through the logic's OnMeleeHit parts, the charge sprint into
                               contact and the waiting small store, the charge carried by an attack begun in it, the master-switch part;
                               step 65 (Program.Step65.cs): the AI kicks through the real look / attempt / hook filter, a clash (5.2 a minute;
-                              0.004 ms, 0 bytes for 1000 men), the brace through the real decorator's knock-back question, the master-switch part
-                              (145 steps; the config checks work for any tuned default);
+                              0.004 ms, 0 bytes for 1000 men), the brace through the real decorator's knock-back question, the master-switch part;
+                              step 66 (Program.Step66.cs): the earned bash, the wait for reach, a clash (0.98 bashes a swing, kicks at the model)
+                              (147 steps; the config checks work for any tuned default);
                               TRAX_SMOKE_KEEP=1 keeps its temp folder + log to read
 tools/DefaultsTool/           defaults.json upkeep: refresh (rewrite comments/order, keep every
                               value) | check; --file <path> for an exported one

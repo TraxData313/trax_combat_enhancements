@@ -1028,7 +1028,7 @@ Claude the `[summary] impact …` block of every battle.
 | 8 | **D25 - RIGHT BLOCKS FAVOUR THE DEFENDER** (step 56, the spike OFF): a tournament round to orange / red - block on the right side, then on the wrong side on purpose | 15 | `impact live … blocks …` (by kind × band, the riposte by the attacker's band) | right-side blocks / parries in the red band: a few % staggered; ripostes climbing with the attacker's tiredness; wrong side at 90 / 50 / 40 | a correct blocker staggered often with the spike off; ripostes decided but never applied |
 | 9 | **D28 - MORE MEN FALL, THE CHARGE MATTERS** (step 62): looters into your shield wall; heavy infantry into archers' backs; you sprinting into a heavy shieldman's right block | 30 | `impact falls`, `impact direction`, `impact toughness`, `impact charges`, `damage critical` | falls played (game + backup) ≈ decided; rear down well above front; looters thrown back ~1 in 3 sprinting; your red "thrown back" line now and then | `played by the game` ~0 (the backup does all the work); `sprinting at the blow 0`; the archers' rear no higher than front |
 | 10 | **D29 - FALLS ON THE HIT, A STRONG REAR BLOW, THE WALL PULLS MEN BACK** (step 63): a shield-wall battle with a deep wall of yours; a unit round the enemy's flank into its back | 20 | `impact falls`, `impact` (header: `a FRIEND's blow`), `impact direction`, `wall slots ON`, `wall pulled back` | falls played by the game ≈ decided, backups few and ~0.2 s; rear down well above front (+0.50 pressure); in contact > 1 m ahead back near 1-3 %; the time back after an impact ~3-4 s | backups still most of the falls; rear ≈ front; `wall pulled back` many spells `still out`; men walking backwards out of the fight |
-| 12 | **D31 - THE AI KICKS AND BASHES, THE KICKED MAN BRACES** (step 65): a 50 v 50 shield battle (watch the front for kicks / bashes); then a tournament or a fight as a looter-tier character kicking a fresh heavy shieldman | 20 | `ai kicks`, `ai kicks by reason`, `ai kicks - ends`, `kick brace` (the 4 lines), `impact messages` | asked a few a minute, PLAYED ≈ asked, landed a good share; your kicks on a fresh heavy man braced ~85 %, a short stagger now and then, never a fall | `PLAYED 0` (the engine ignores the injected input - tell Claude); men standing still with nothing played; a fresh heavy man thrown about by kicks |
+| 12 | **D31 - THE AI KICKS AND BASHES, THE KICKED MAN BRACES** (step 65): a 50 v 50 shield battle (watch the front for kicks / bashes); then a tournament or a fight as a looter-tier character kicking a fresh heavy shieldman | 20 | `ai kicks`, `ai kicks by reason`, `ai kicks - ends`, `ai kicks - bashes per swing and the wait for reach` (step 66), `kick brace` (the 4 lines), `impact messages` | since step 66: ~0.6-1 bash a shieldman's swing, kicks ~0.3-1 a man-minute of contact (≈ 80-200 asked in a ~50 man-minute battle), PLAYED ≈ asked, waits mostly kicked, landed a good share; your kicks on a fresh heavy man braced ~85 %, a short stagger now and then, never a fall | `PLAYED 0` (the engine ignores the injected input - tell Claude); men standing still with nothing played; a fresh heavy man thrown about by kicks |
 | 11 | **D30 - THE WALL'S BLOCKS COUNT, THE CHARGE HITS AT SPEED** (step 64): your ~20 men in a shield wall + a reserve against ~50 charging looters (your 12:47 battle again) | 15 | `shield front arc`, `AI guard by f WITH a shield`, `sprint - AI` (ends), `sprint into contact`, `impact charges` | the game's WRONG side mostly turned right (front arc); looters reel and fall off the shields; charges well above 14 of 160, `sprinting at the blow` above 0; ends `his first attack` many, `an enemy within 3 m` few | `turned` 0 (the angle read is wrong); looters still slowing before the wall; `sprinting at the blow 0` and `carried` low |
 
 Then play normally (parts E-G). Your gut on each family - too many / about right / too few - is the most useful thing to send.
@@ -1559,15 +1559,23 @@ staggered by looters (should be ~0).
 **D31. THE AI KICKS AND BASHES, THE KICKED MAN BRACES (step 65, ~20 min - two battles; the defaults).** You: "make the AI do a few shield bashes
 and kicks now and then - the game has it but the NPCs never use them" and "make sure a looter kicking a heavy shielded troop doesn't do too much -
 maybe now and then a lucky kick can stagger him for a fast bit". Now an AI soldier in reach of the enemy he fights kicks him (no shield) or bashes
-him (a shield; a raised shield facing him is kicked) about once every ten minutes of contact - more against a man behind his guard, in a charge's
-fever, for a veteran; never below a third of his bar - through his own input (the game's kick key). And every landed kick / bash asks a BRACE: a
+him (a shield; a raised shield facing him is kicked) - through his own input (the game's kick key). STEP 66 (your looter battle of 14:16: "ai kicks:
+asked 0" in 49 man-minutes of contact; "say 5 pts each"; "maybe make them as frequent as swings when the man has a shield"): a man WITHOUT a shield
+kicks about once a minute of contact (a fresh looter 0.7, a legionary 1.2; ×3 against a man behind his guard, ×2 in a charge's fever; 8 s apart);
+a SHIELDMAN bashes about as often as he swings while fresh (~0.95 a swing at the top of his bar, ~0.6 at 75-50%, ~0.2 at 50-35%, none below 35%);
+a man who decides to kick with the enemy within 5 m waits up to 3 s for him to come in reach; each kick or bash costs 5 Athletics (was 3), you too. And every landed kick / bash asks a BRACE: a
 fresh heavy veteran mostly takes it standing (no knock-back, a twitch), a lucky kick staggers him briefly, a spent man cannot brace. Settings:
 Advanced, "Impact: staggers, shield drops, knockdowns" - *AI soldiers kick and shield-bash*, *The kicked man braces* and their numbers.
 1. **A 50 v 50 shield-infantry battle** (both sides with shields; let the lines meet and grind 3-5 min; watch the front, hold ALT now and then).
-   **What you should see**: now and then an AI man kicks or shield-bashes the man in front of him - a few a minute along the whole line, not
-   constantly; a fresh shieldman mostly stands it; tired men later get pushed around by them. **[summary]** `ai kicks (step 65): ON - …`; `ai kicks:
+   **What you should see** (step 66): the shieldmen in the front ranks shield-bash about as often as they swing while fresh - bash, swing, bash -
+   fewer as their bars fall; the men without shields kick now and then (about once a minute each); a fresh shieldman mostly stands it; tired men
+   later get pushed around by them, and the bashing lines tire sooner. For a battle like the 14:16 one (~50 man-minutes in contact, ~30
+   shieldmen): **roughly 80-200 asked, most of them bashes**. **[summary]** `ai kicks (step 65): ON - …`; `ai kicks:
    asked N (kicks K, bashes B) → PLAYED P (…%), seen … s after the ask → landed on the man L, into a shield S; … asked a man-minute in contact …;
-   Athletics spent on them …` - **P close to N** (the engine plays the injected key) and **N a few a minute** for the battle's length; `ai kicks by
+   Athletics spent on them …` - **P close to N** (the engine plays the injected key) and **~2-4 asked a man-minute in contact** (step 66);
+   `ai kicks - bashes per swing and the wait for reach (step 66): the shieldmen's melee swings (AI, on foot) N earned … → bashes asked B = 0.6-1.0
+   a swing; decisions that waited for reach W → kicked / bashed D (… s after the decision), ran out E, dropped …` - **D well above E** (if most waits
+   run out, the men never come within 1.6 m - tell Claude: `AiKickReachMetres` / `AiKickWaitSeconds`); `ai kicks by
    reason …: vs a turtle … | in a fever … | turtle + fever … | plain …`; `ai kicks - ends: played …, NOT played … , interrupted …; why not at a look
    (… looks): cooldown …, too tired …, the dice …` - `NOT played` small. The first-time lines `[impact] first AI kick asked at …`, `[impact] first AI
    kick PLAYED at … - the engine took the injected input`, `[impact] first AI kick LANDED at …`. `kick brace (step 65): N landed kicks / bashes
@@ -1582,6 +1590,8 @@ Advanced, "Impact: staggers, shield drops, knockdowns" - *AI soldiers kick and s
    bar orange / red) and kick again: the braces fail more and more; below a fifth of his bar no brace at all - he reels long and can fall.
 3. **The AI kicks you**: stand behind your shield against an AI man - now and then he kicks your guard open (you reel briefly, or you brace: red
    "You brace against X's kick").
+**Too much / too little (step 66 knobs)**: shieldmen bashing so much they hardly swing or the lines tire too fast - `AiBashShareOfSwingsPercent`
+50 (one bash in two swings) or `AiBashDelaySeconds` higher; still no kicks - `AiKicksPerMinute` higher, and check the waits line.
 **Broken - tell Claude**: `PLAYED 0` with many asked (the engine ignores the injected kick key for an AI agent - send the `[impact] first AI kick`
 lines; the fallback is setting the agent's event flag from the tick, as the player's controller does); AI men freezing for a second and a half
 in front of an enemy with nothing played (the commit holding them); `played as the other kind` large (bashes come out as kicks or the other way);

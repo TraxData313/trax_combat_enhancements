@@ -5720,3 +5720,96 @@ no config-format change (no default moved).
 `tools\SmartAppControl\loadcheck.ps1`: both installed DLLs LOADED (`1.2.0+59ea7337…`): TraxCombatEnhancements.dll SHA-256 A8E7268A…F72D,
 TraxCombat.Core.dll 71FEC749…6F03. The game and the launcher were not running. Tests (947) and the smoke ran in memory (`run_tests.fsx`,
 `run_smoke.ps1`) during the step; the deploy's own smoke ran from the exe this time.
+
+## Step 66 — more AI kicks and bashes, each costing more (DONE 2026-10-19; dev build only, not uploaded)
+
+**Anton's looter battle (2026-10-19, mission 14:16, the summary 14:19:59)**: no AI kick or bash seen. The log: `ai kicks: asked 0 (kicks 0,
+bashes 0) … 0.00 asked a man-minute in contact (49.4 man-minutes)`; why not at a look (58154 looks): the dice 44761, too tired 9429, busy
+3520, no stored swing 175, staggered 216, mounted 5, a ranged weapon 14, no enemy target 16, target out of reach 18; native reads 54. His words:
+"this is actually not a bad idea, for men to kick and bash more, this is a nice way to supplement all that killing for more defensive stuff,
+kicking or bashing, disturbing. Can you make the kick/bash also a bit more taking of the energy, say 5 pts each." Then (through the manager):
+"and shield bashes, maybe make them as frequent as swings when the man has a shield".
+
+**What the log says beyond the rate**
+- Step 65's die was rolled at EVERY look of every AI man (242 man-minutes of looks for 49.4 in contact) and the reach was checked only under
+  it: of the 54 reads, 19 found an enemy target and 18 of those stood beyond `AiKickReachMetres` 1.6 (0 not in front). Men fight at a weapon's
+  length - an AI swordsman's target stands ~1.6-2.5 m off - so a die that came while he was not pressed close was lost. Even at 1.0 a minute
+  most decisions would have died on the reach.
+- The same battle's fever proof (in a formation, no fever): 8.07 / 16.47 / 11.35 / 3.67 AI melee attacks a man-minute in contact by bar band
+  100-75 / 75-50 / 50-25 / 25-0 % (363 attacks over 40.9 man-minutes); battle pace: shield infantry 250 attacks by 29 men, other foot melee
+  205 by 46.
+
+**66.1 THE WAIT FOR REACH (Core `AiKicks.cs`, Module `AthleticsLogic.AiKicks.cs`)**
+- `AiKickWaitSeconds` 3 / `AiKickWaitMetres` 5 (the fever's contact): when the die says yes and the enemy he fights stands within 5 m but beyond
+  the reach or outside the facing, the decision WAITS (`TrackedAgent.AiKickWaitUntil / AiKickWaitSince / AiKickWaitChance`) - every later look
+  skips the die, reads the engine (hands, target) and begins the kick / bash the moment the enemy is in reach and in front; it runs out (counted
+  at the next look past the deadline), or is DROPPED (`DropAiKickWait`: the target gone / down / beyond 5 m, mounted, a ranged weapon,
+  routing). The other gates (cooldown, bar, Athletics, a stored swing, staggered, busy) just hold it while they hold. `AiKickSkip.Waiting`
+  (appended - the old indexes kept). So the rates are per minute IN CONTACT now, as DESIGN always said.
+- Cost: a waiting man reads the engine each look (~4 a second a man while waiting) - a handful of men at a time.
+
+**66.2 THE RATES (defaults.json; config format 13)**
+- `CostPerKickOrBash` 3 → 5 (everyone, you too; the hero / leader multipliers kept: 3.75 / 2.81).
+- A man WITHOUT a shield kicks at `AiKicksPerMinute` 1.2 × skill (0.5 + 1.5 × skill/300) × bar (0 below 35 %, a line to 75 %) × turtle (to 3) ×
+  fever (2), `AiKickCooldownSeconds` 8 apart. In steady contact the cooldown caps it: 1 ÷ (8/60 + 1/rate) a minute (`AiKickMath.WithCooldown`).
+  Claude's pick 1.2 (not the brief's 1.0): with the 8 s cooldown an AVERAGE man (skill 100, factor 1.0) lands at 1.03 a minute - "about once a
+  minute"; 1.0 would give 0.88.
+- A SHIELDMAN bashes WITH HIS SWINGS (Anton's "as frequent as swings"): `AiBashShareOfSwingsPercent` 100 - each melee release of an AI man on
+  foot whose class is shield infantry (step 21's `ReadAttackClass` runs just before `StartRelease` → `NoteAiBashSwing`) earns 1.0 bash
+  (`TrackedAgent.BashCredit`, `AiKickMath.BashCreditCap` 2). With a whole one earned his die is the bash's: `BashPerMinute` = 60 × the bar
+  factor ÷ `AiBashDelaySeconds` 1.5 (a mean wait of 1.5 s fresh, longer as he tires, none below 35 %); the credit is spent on the decision (a
+  decision later dropped loses it). `AiBashCooldownSeconds` 2 after a bash (the kicks' 8 s would cap the bashes below his swings). No skill /
+  turtle / fever factor on bashes - his own swings already carry his skill, the fever (x1.76 in the proof) and his target. A shieldman never
+  kicks at the per-minute rate (his die is the earned bash's; with none earned the exact chance is 0); a raised shield facing him still turns
+  the bash into a kick (`AiKickKicksARaisedShield`).
+- One die per look against the best of the two (a kick at a full turtle, the earned bash); the engine read only under it; the exact chance by
+  what he holds (a shield → the bash's, else the kick's with the target's turtle share) takes the same die - step 65's pattern.
+- `AiKickRules.Enabled` = the master switch, Athletics, `AiKicksEnabled` and a kick rate OR a bash share above 0.
+- `AiKickMinBarPercent` 35 KEPT: the bashes at 100-75 % already cost the man ~35 points a minute on top of his swings and the bar factor slows
+  them from 75 % down (0.60 a swing at 75-50, 0.20 at 50-35); a higher gate would take them where Anton wants them, a lower one lets spent men
+  bash. The step-32 stack is not the brake at the top of the bar (a fresh shieldman's refill ~1 s - step 21's share alone -, the 14:16 log's
+  average fill 100 % at the peak, 87 % at f 0.5-1).
+- `AiKickMath.MaxAttempts` 64 → 256 (plumbing): a 1000-man battle with shieldmen bashing several times a minute runs ~100 attempts at once.
+
+**THE WORKED EXAMPLES (Core `Step66ExamplesTests` - MECHANICS §11c "The AI kicks and bashes")**
+- Kicks a minute in steady contact (the 8 s cooldown in): a fresh looter (Athletics 30) 0.71, an average man (100) 1.03, a legionary (130)
+  1.17; at half a bar 0.28 / 0.48; vs a full turtle 1.78 / 2.67; in a fever 1.29 / 2.02; both 2.88 / 3.94; below 35 % none. Step 65's for the
+  fresh looter: 0.064.
+- A shieldman in steady contact (a seeded walk through `AddBashCredit` / `BashPerMinute` / `LookChance` / `CooldownFor`: looks every 0.25 s,
+  his swings from the fever proof, each swing 1.3 s of his time, each bash 1.2 s): 100-75 % - 7.1 swings, 6.7 bashes a minute (0.95 a swing;
+  8.1 swings without bashes); 75-50 % - 13.8 / 8.3 (0.60; 16.5); 50-25 % - 10.8 / 2.2 (0.20; 11.4); 25-0 % - 3.6 / 0. A fresh WALL man (swings
+  30 % less): 5.5 / 5.3. `AiBashShareOfSwingsPercent` 50: 7.5 / 3.7 (0.50).
+- Toni's battle again (~49 man-minutes in contact, ~29 shieldmen with 250 swings, ~46 others): roughly 80-200 asked, most of them bashes;
+  the cost of 5 and the bar factor pull it to the low end once the lines tire. More than the brief's "a few dozen" - the bashes are Anton's
+  later ask.
+
+**THE WORRY (Claude, said to Anton)**: as often as swings is a lot. A fresh shield line spends about half its actions bashing; its swings drop
+by ~an eighth (the bash's own time) and its Athletics drains faster (5 a bash); a bash mostly braces a fresh man (step 65), so the fight
+looks busier and slower. If it reads as spam: `AiBashShareOfSwingsPercent` 50 (one bash in two swings) is the knob, `AiBashDelaySeconds`
+higher the softer one, `AiBashCooldownSeconds` the hard cap.
+
+**Config format 13** (`ConfigFile.Migrate`, `MoveOrKeep`): `CostPerKickOrBash` 3 → 5 in a file of any older format still holding it (the key
+since step 18), `AiKicksPerMinute` 0.1 → 1.2 and `AiKickCooldownSeconds` 10 → 8 (the keys since step 65's format 12); a hand-set value kept
+and said once ("… kept - your own value (format 12 → 13; the new default …)"); a file without a key gets the default (no note).
+
+**Measured**: tests 947 → 955 (Step66Tests.cs: Step66Tests 6, Step66ExamplesTests 2; the format strings → 13; the settings count 323, the impact
+group 117; Step65Tests: the off reason needs both rates at 0, the summary's 5 lines). Smoke 145 → 147 (Program.Step66.cs: AiBashesAndTheWait,
+AiBashesInAClash - 20 shieldmen 1200 swings / 1171 bashes asked = 0.98 a swing; 20 kickers whose enemy is in reach 1 s in 4: 20.1 kicks a minute
+against the model's 20.7 always in reach, waits 160 → 145 kicked, 15 ran out); the step-65 smoke on the new defaults (the bashers given an
+earned bash, the gates checked with the wait at 0, the clash 47.3 a minute for 40 men, the model 52.5). Settings 318 → 323 (all Advanced: 298
+→ 303). AssemblyGuard OK.
+
+**Gotchas**
+- The smoke's `AthleticsDefaults` pins step 18's `CostPerKickOrBash` 3 for the older steps - step 66's own checks set it back to the default.
+- The unit tests run on DESIGN's INITIAL values (3 / 0.1 / 10): the examples hand in the shipped 5 / 1.2 / 8 (`Step66Tests.Ship`).
+- `in` arguments cannot take a call's result (`in Rules(…)` - CS8156): a local first.
+- The bash credit accrues at the RELEASE (a swing whiffing at air counts) and is spent at the decision; a man who leaves contact with credit
+  bashes at his next contact (at most 2).
+
+**UNVERIFIED — only the game can tell (PLAYTEST D31)**
+1. The waits turn into kicks / bashes (`decisions that waited for reach W → kicked / bashed D`, D well above `ran out`) - if most run out the AI
+   never comes within 1.6 m: `AiKickReachMetres` up (a kick that starts at 2 m may whiff) or the wait longer.
+2. The shieldmen's `bashes asked … a swing` ~0.6-1.0, and PLAYED ≈ asked (step 65's open question - the engine taking the injected key - now
+   with ~100 attempts a battle instead of 0).
+3. How it LOOKS: a line that bashes and swings, not one that only bashes; the lines tiring sooner, but not frozen; you as a shieldman get bashed
+   a lot by fresh men - fair, or too much.

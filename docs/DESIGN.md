@@ -86,6 +86,7 @@ regen.)
 - **Kicks and shield bashes cost too — less** (Anton, 2026-09-28; built in step 18): each costs
   `CostPerKickOrBash` (3) POINTS × the same hero and party-leader multipliers as a blow — 3 for a
   soldier, 2.25 for a hero, about 1.7 (1.69) for a party leader; 0 = free, as they were until step 18.
+  Step 66 (Anton: "a bit more taking of the energy, say 5 pts each"): 5 in defaults.json - 5 / 3.75 / 2.81 (decision 59).
   Charged ONCE per kick or bash, the moment it starts, landed or not (`CostOnMiss` is for blows);
   the AI's and yours alike. Otherwise it is paid like a blow: the curves follow, it can take a
   fighter below his peak line or empty him, and it restarts the refill delay. It is **not a blow**:
@@ -2170,6 +2171,31 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     alike - your failure × `ImpactOnPlayerPercent`; an on-screen line for yours ("You brace against X's kick" / "A lucky kick - X staggers for a
     moment"); (g) `KickBraceRefusesKnockBack` off = the knock-back plays, only cut short; (h) measured: braced / short / full / down by the kicked
     man's tier (toughness band) and bar band, the knock-backs refused, the cut reactions seen and timed.
+59. **More AI kicks and bashes, each costing more** (step 66, Anton's looter battle of 2026-10-19 14:16 - "ai kicks: asked 0" in 49.4
+    man-minutes of contact; why not, of 58154 looks: the dice 44761, too tired 9429, busy 3520; of the 19 reads under the die that found an
+    enemy target 18 stood beyond 1.6 m. Anton: "this is actually not a bad idea, for men to kick and bash more, this is a nice way to
+    supplement all that killing for more defensive stuff, kicking or bashing, disturbing. Can you make the kick/bash also a bit more taking of
+    the energy, say 5 pts each", and "and shield bashes, maybe make them as frequent as swings when the man has a shield"). Claude's calls:
+    (a) `CostPerKickOrBash` 3 → **5** for everyone, you too, the hero / leader multipliers kept (3.75 / 2.81); (b) THE WAIT FOR REACH: step 65's
+    rate was per minute of LOOK time and only a die that came while the enemy stood within 1.6 m turned into a kick - men fight at a weapon's
+    length, so most never did; a decision with the enemy he fights within `AiKickWaitMetres` 5 (the fever's contact) WAITS up to
+    `AiKickWaitSeconds` 3 for reach (no new die, the engine read each look) - the rates are per minute IN CONTACT; (c) A MAN WITHOUT A SHIELD
+    KICKS at `AiKicksPerMinute` **1.2** × skill × bar × turtle × fever, `AiKickCooldownSeconds` **8** apart - a fresh average man (skill 100)
+    ~1.0 a minute of contact, a looter 0.71, a legionary 1.17; half a bar 0.28 / 0.48; vs a full turtle 1.78 / 2.67; in a fever 1.29 / 2.02;
+    (d) A SHIELDMAN BASHES WITH HIS SWINGS (Anton's "as frequent as swings"): based on his OWN swings, not a number a minute - each melee
+    release of an AI shield-infantry man on foot (step 21's class) earns `AiBashShareOfSwingsPercent` 100 % of a bash (at most 2 saved), spent
+    within ~`AiBashDelaySeconds` 1.5 s ÷ the bar factor, `AiBashCooldownSeconds` **2** apart (the kicks' 8 s would cap the bashes below his
+    swings); no skill / turtle / fever factor - his swings already carry them; a shieldman never kicks at the per-minute rate (his kicks are
+    bashes turned on a raised shield); (e) the bar gate stays at **35 %** (`AiKickMinBarPercent`): the model's seeded walk (Step66ExamplesTests,
+    his swings from the fever proof) - 100-75 % 0.95 bashes a swing (7.1 swings, 6.7 bashes a minute; the bashes' own time takes ~1 swing in
+    8), 75-50 % 0.60 (13.8 / 8.3), 50-25 % 0.20 (10.8 / 2.2), below 35 % none; the cost of 5 already drains a bashing man (~35 points a minute
+    fresh) and the bar factor slows his bashes from 75 % down - a higher gate would cut them where Anton wants them, a lower one would let
+    spent men bash; the swing stack (step 32) never starves his swings at the top of the bar (refill ~1 s, the stack ~100 % full); (f) THE
+    WORRY (said to Anton): as often as swings is a lot - a fresh shield line spends half its actions bashing, its damage per minute drops by
+    roughly an eighth and it tires faster; if the lines look busy rather than fighting, `AiBashShareOfSwingsPercent` 50 (one bash in two swings)
+    is the knob, `AiBashDelaySeconds` the softer one; (g) config format 13 moves a file's 3 / 0.1 / 10 once, a tuned value kept and said;
+    (h) measured: the [summary] line "ai kicks - bashes per swing and the wait for reach" (the shieldmen's swings, the bashes they earned / lost
+    at the cap, the bashes asked a swing; the waits started → kicked / ran out / dropped).
 
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),

@@ -182,7 +182,7 @@ Every melee blow a man **blocks** costs him a little. Missiles into a shield are
 | Shield, on the right side | 1 | 0.75 | 0.56 | No — the refill keeps running |
 | Weapon parry | 2 | 1.5 | 1.13 | No — the refill keeps running |
 | Shield, held on the **wrong** side | 2 | 1.5 | 1.13 | **Yes** — the 3 s wait starts again |
-| A kick or shield bash he makes | 3 | 2.25 | 1.69 | Yes (it is an attack) |
+| A kick or shield bash he makes | 5 | 3.75 | 2.81 | Yes (it is an attack) |
 
 So a skilful defender can catch his breath **while** defending. Can a man who is already empty climb
 back while parrying a blow every 1.5 seconds (a steady duel), standing still?
@@ -215,7 +215,7 @@ A **tired** AI man still misjudges his share (section 7): that share of his fron
 | a tired AI man's guessed share (section 7's table: 33% at half a bar, all of them when empty) | wrong | wrong |
 
 <sub>Settings: `CostPerShieldBlock` 1, `CostPerWeaponParry` 2, `CostPerWrongSideShieldBlock` 2,
-`CostPerKickOrBash` 3, `OnlyWrongSideBlocksStopRefill` on, `ShieldFrontArcIsCorrect` on, `ShieldFrontArcDegrees` 60.</sub>
+`CostPerKickOrBash` 5 (3 until step 66), `OnlyWrongSideBlocksStopRefill` on, `ShieldFrontArcIsCorrect` on, `ShieldFrontArcDegrees` 60.</sub>
 
 ## 7. Tired AI guess their blocks
 
@@ -913,26 +913,47 @@ decision 0.144):
 
 He still decides himself — the opening makes him eager, not certain. Riders keep the game's own timing.
 
-### The AI kicks and bashes (step 65)
+### The AI kicks and bashes (steps 65-66)
 
-The game's AI never kicks; now it does, now and then. An AI soldier on foot with the enemy he fights **within 1.6 m and in front of him**
-(40°) **kicks** him — or, with a shield in his hand, **shield-bashes** him (a shieldman facing a **raised shield** kicks instead: a raised
-shield stops a bash, not a kick). How often, per man per minute in reach (`AiKicksPerMinute` 0.1 × the factors):
+The game's AI never kicks; now it does. An AI soldier on foot with the enemy he fights **within 1.6 m and in front of him** (40°)
+**kicks** him — or, with a shield in his hand, **shield-bashes** him (a shieldman facing a **raised shield** kicks instead: a raised shield
+stops a bash, not a kick). Step 66 (Anton's looter battle of 2026-10-19: not one kick in 49 man-minutes of contact): men fight at a
+weapon's length, so a man who decides to kick while that enemy is **within 5 m** but not yet in reach **waits up to 3 s** and kicks the
+moment he is — the rates below are **per minute in contact**.
 
-| He is | × | A man a minute |
-|---|---:|---:|
-| a looter (Athletics 30), fresh | 0.65 | 0.065 |
-| a legionary (Athletics 130), fresh | 1.15 | 0.115 |
-| a 300-Athletics hero, fresh | 2.0 | 0.2 |
-| … at half his bar (55%) | × 0.5 | |
-| … below 35% of his bar | × 0 | never |
-| … his enemy a full **turtle** (2 blocks in the last ~4 s; his guard up now counts one) | × 3 | |
-| … in the **fever** of a charge | × 2 | |
+**A man without a shield kicks** at `AiKicksPerMinute` 1.2 a minute × the factors, at least **8 s** apart (the table: in steady contact,
+the cooldown in — Core `Step66ExamplesTests`):
 
-At least **10 s** between two kicks of one man. **A 50 v 50 clash** (40 men in reach, half of each kind, a quarter of the targets
-turtling): about **5-6 a minute** across the fight (the smoke's seeded clash: 5.2 a minute, the model's 5.9). Never you (your E key is yours),
-never a rider, never a man staggered, down, routing, with a bow in hand, or without the Athletics or a stored swing for it. Each costs a
-kick's price — `CostPerKickOrBash` 3 × his multipliers and a stored swing (sections 4, 6), like yours.
+| He is | × | Fresh | Half his bar (50%) | vs a full **turtle** (× 3) | In the **fever** (× 2) | Turtle + fever |
+|---|---:|---:|---:|---:|---:|---:|
+| a looter (Athletics 30) | 0.65 | **0.71** | 0.28 | 1.78 | 1.29 | 2.88 |
+| an average man (Athletics 100) | 1.0 | **1.03** | | | | |
+| a legionary (Athletics 130) | 1.15 | **1.17** | 0.48 | 2.67 | 2.02 | 3.94 |
+| … below 35% of his bar | × 0 | never | | | | |
+
+(A turtle = 2 blocks in the last ~4 s, his guard up now counting one; the bar factor is a straight line from 35% to 75%. Step 65 asked
+0.1 a minute and 10 s apart: a fresh looter 0.064 — one kick in 16 minutes of contact.)
+
+**A shieldman bashes as often as he swings** (Anton: "maybe make them as frequent as swings when the man has a shield"): each of his
+melee swings earns a bash (`AiBashShareOfSwingsPercent` 100; at most 2 saved), and he spends it about **1.5 s** later at a full bar —
+longer as he tires (÷ the bar factor), never below 35% — at least **2 s** after his last bash. A shieldman never kicks at the per-minute
+rate; his kicks are the bashes he turns on a raised shield. What a shieldman in steady contact does, a minute (a seeded walk through the
+real rules; his swings without bashes from the 14:16 battle's fever proof, each swing 1.3 s of his time, each bash 1.2 s):
+
+| His bar | Swings without bashes | Swings | Bashes | Bashes a swing |
+|---|---:|---:|---:|---:|
+| 100-75% | 8.1 | 7.1 | 6.7 | **0.95** |
+| 75-50% | 16.5 | 13.8 | 8.3 | 0.60 |
+| 50-25% | 11.4 | 10.8 | 2.2 | 0.20 |
+| 25-0% | 3.7 | 3.6 | 0 | 0 |
+| a fresh wall man (swings 30% less, step 21) | 6.0 | 5.5 | 5.3 | 0.96 |
+
+The bashes' own time takes about one swing in eight from a fresh man; his stored swings (step 32) are never the brake at the top of the
+bar (a fresh man's refill ~1 s; the stack ~100% full there). What brakes a tired shieldman is his price: **each kick or bash costs
+`CostPerKickOrBash` 5** × his multipliers (3.75 a hero, 2.81 a hero party leader) and a stored swing (sections 4, 6), like yours — a
+fresh shieldman bashing 7 times a minute spends ~35 points a minute on it on top of his swings, and below 75% he bashes less, below 35%
+never. Never you (your E key is yours), never a rider, never a man staggered, down, routing, with a bow in hand, or without the
+Athletics or a stored swing for it. `AiBashShareOfSwingsPercent` 50 = one bash in two swings (0.50 a swing fresh, 7.5 swings and 3.7 bashes a minute).
 
 ### The kicked man braces (step 65)
 
@@ -966,11 +987,12 @@ Two fresh legionaries, one bashing (a 4 kg shield): x +0.03, the brace fails 40%
 kick (× `ImpactOnPlayerPercent`), and an AI man braces against yours: a short line says so (**red** "You brace against X's kick" / "X's kick
 staggers you for a moment"; **purple** "X braces against your kick" / "A lucky kick - X staggers for a moment").
 
-<sub>Settings (Advanced, "Impact: staggers, shield drops, knockdowns"): `AiKicksEnabled` on, `AiKicksPerMinute` 0.1, `AiKickReachMetres` 1.6,
-`AiKickFacingDegrees` 40, `AiKickCooldownSeconds` 10, `AiKickTurtleMultiplier` 3, `AiKickTurtleSeconds` 4, `AiKickTurtleBlocks` 2,
+<sub>Settings (Advanced, "Impact: staggers, shield drops, knockdowns"): `AiKicksEnabled` on, `AiKicksPerMinute` 1.2 (0.1 until step 66),
+`AiKickReachMetres` 1.6, `AiKickFacingDegrees` 40, `AiKickCooldownSeconds` 8 (10 until step 66), `AiKickTurtleMultiplier` 3, `AiKickTurtleSeconds` 4, `AiKickTurtleBlocks` 2,
 `AiKickFeverMultiplier` 2, `AiKickSkillLowPercent` 50, `AiKickSkillHighPercent` 200, `AiKickMinBarPercent` 35, `AiKickFullBarPercent` 75,
 `AiKickKicksARaisedShield` on; `KickBraceEnabled` on, `KickBraceFromPressure` −0.7, `KickBraceToPressure` 1.0, `KickBraceMinBarPercent` 20,
-`KickBraceReelPercent` 20, `KickShortReelPercent` 40, `KickBraceRefusesKnockBack` on.</sub>
+`KickBraceReelPercent` 20, `KickShortReelPercent` 40, `KickBraceRefusesKnockBack` on; step 66: `AiKickWaitSeconds` 3, `AiKickWaitMetres` 5,
+`AiBashShareOfSwingsPercent` 100, `AiBashDelaySeconds` 1.5, `AiBashCooldownSeconds` 2, `CostPerKickOrBash` 5.</sub>
 
 ### You
 
