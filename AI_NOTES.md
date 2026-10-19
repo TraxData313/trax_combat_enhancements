@@ -6181,3 +6181,5 @@ at all) and keeps winning on - those worlds are losing ones and pass unchanged.
 3. Losing units flock as before: the `losing` band's before = after (by construction) and Toni's eyes on the looters.
 4. The mop-up does not release a unit too early (50 % of its men's win) - the charge does not scatter before the enemy breaks.
 5. Cost: `fear flock vs courage and walls … cost` with the extra reads (`enemy reads` in the two lines).
+
+**DEPLOY**: `tools\deploy.ps1` built HEAD 784f6df; Smart App Control blocked the freshly built AssemblyGuard.dll, so the rest of deploy.ps1 ran in memory - `tools\SmartAppControl\run_guard.fsx` (OK, no forbidden assembly), `run_smoke.ps1` (all 160 passed), `install_dev.ps1` (Modules\TraxCombatEnhancements.Dev; TraxCombatEnhancements.dll SHA-256 C6EE039F…E2F1, TraxCombat.Core.dll E8A23831…39A3); `loadcheck.ps1`: both installed DLLs LOADED (`1.2.0+784f6df8…`). The game and the launcher were not running. Tests (1027) ran with `dotnet test` directly; `dotnet run --project tools/DefaultsTool -- refresh` ran directly. Windows security untouched.
