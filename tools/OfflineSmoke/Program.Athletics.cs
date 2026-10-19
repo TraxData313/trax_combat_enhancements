@@ -1180,6 +1180,9 @@ namespace TraxCombat.Tools
             // --- step 67: the fear flock - off = every flocking man let go at once (his formation place again), the hook writes nothing; back on = flocking again
             FearFollowsTheMasterSwitch();
 
+            // --- step 68: the wall pushes as one - off = every paced man given the game's own frame back at once (with step 41's release); on = paced again
+            WallPaceFollowsTheMasterSwitch();
+
             // --- the HUD (step 6): the Athletics bar goes the moment the switch goes, and comes back
             HudFollowsTheMasterSwitch(a.Agent);
         }
