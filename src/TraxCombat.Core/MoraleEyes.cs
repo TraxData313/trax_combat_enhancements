@@ -112,7 +112,7 @@ namespace TraxCombat.Core
         public bool On => ModEnabled && Show;
 
         public string Describe() => !ModEnabled ? "morale line off (ModEnabled)" : !Show ? "morale line off (ShowMoraleOnLabels)"
-            : "morale line (\"morale 64, fresh 41%\") on the nearest " + Max + " formations within " + Metres.ToString("0", CultureInfo.InvariantCulture) + " m";
+            : "morale line (\"morale 64, fresh 41%\") on the nearest " + (Max == 1 ? "formation" : Max + " formations") + " within " + Metres.ToString("0", CultureInfo.InvariantCulture) + " m";
     }
 
     /// <summary>Step 67: the morale line's rules - who gets it (the nearest within the range), its words.</summary>

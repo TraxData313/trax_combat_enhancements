@@ -344,12 +344,12 @@ public class Step67Tests
         Assert.True(units.HasEnemy[key]);
         Near(0, units.AwayX[key]);
         Near(-1, units.AwayY[key]);                                       // away from the enemy = south
-        Near(-2.4, units.ShelterY[key]);                                  // the first publish: 4 m x 0.6 behind at once
-        // the next round wants it 2.4 m further back (the centre moved back 2.4 m): capped under a hold
+        Near(0, units.ShelterY[key]);                                     // the first publish: at the centre (no jump)
+        // the next round wants it 4 m x 0.6 behind the centre, which moved back 2.4 m: its step back capped under a hold
         for (int i = 0; i < 10; i++)
             units.Note(key, 0.6, 0.6, 40, 0.5, true, i - 4.5, 1.6, 0, -2.4, 0, 1, i - 4.5, -2.4, FearOrder.Hold);
         units.Publish(1.0, in r, stats, true);
-        Near(-2.4 - 6.0 / 60 * 0.5 * 0.25, units.ShelterY[key]);
+        Near(-6.0 / 60 * 0.5 * 0.25, units.ShelterY[key]);
         Near(2.4 * 60 / 0.5, stats.DriftPerMinute(true, 0), 1e-6);        // the centre moved 2.4 m back in 0.5 s
         Assert.True(stats.DepthPerWidth(true) < 0.01);                    // a single rank: no depth
         Assert.True(stats.MeanSpread(true) > 2);

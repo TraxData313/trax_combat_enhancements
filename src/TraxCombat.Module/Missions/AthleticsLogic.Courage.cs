@@ -239,7 +239,12 @@ namespace TraxCombat.Missions
             _courageStats.AddDistance(on, dist);
             if (!on)
             {
-                FearLook(st, now, in near, FearCourage.Off); // step 67: courage measures only - the flock decides alone
+                // step 67: courage measures only - the flock decides alone; a fever without shock still sends him in (courage's 49b rule)
+                var fvOff = st.Fever;
+                var frOff = FeverRules.From(TraxSettings.Shared);
+                double feverOff = frOff.Enabled ? CourageMath.FeverShare(fvOff.Phase, fvOff.Left, fvOff.Full) : 0;
+                bool shockedOff = CourageMath.ShockShare(in cr, ShockEvents(st, now, in cr, impactLive)) > 0;
+                FearLook(st, now, in near, CourageMath.FeverPresses(feverOff, shockedOff) ? FearCourage.FeverPress : FearCourage.Off);
                 return;
             }
 

@@ -697,8 +697,9 @@ namespace TraxCombat.Core
                 FearMath.ShelterWanted(in r, cx, cy, ax, ay, Pull[k], out double wx, out double wy);
                 if (!HasShelter[k] || !had)
                 {
-                    ShelterX[k] = wx;
-                    ShelterY[k] = wy;
+                    // a unit first seen (or seen again after a gap): the shelter starts at its centre and drifts back from there - never a jump
+                    ShelterX[k] = cx;
+                    ShelterY[k] = cy;
                     HasShelter[k] = true;
                 }
                 else

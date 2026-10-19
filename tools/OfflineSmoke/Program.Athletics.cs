@@ -1177,6 +1177,9 @@ namespace TraxCombat.Tools
             // --- step 55: cavalry flocking - off = every flocking rider let go at once, back on = flocking again
             FlockFollowsTheMasterSwitch();
 
+            // --- step 67: the fear flock - off = every flocking man let go at once (his formation place again), the hook writes nothing; back on = flocking again
+            FearFollowsTheMasterSwitch();
+
             // --- the HUD (step 6): the Athletics bar goes the moment the switch goes, and comes back
             HudFollowsTheMasterSwitch(a.Agent);
         }
