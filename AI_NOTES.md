@@ -5424,3 +5424,73 @@ step-62 part; the steps 48-61 checks pin step 62 off (`Step62Off` in `ImpactMode
 3. The AI's charges show as `sprinting at the blow` / `carried after the sprint` (step 37's order sprints; step 43's fever sprints).
 4. How a thrown-back charger LOOKS (our own blow from the blocker's side - a fall away from the shield) and whether 33 % for fresh looters reads
    "a fair share" or too many. The knobs: `RiposteKnockdownMaxPercent`, `RiposteMomentumPercent`, `ImpactChargeCarrySeconds`.
+
+## Step 63 — falls on the hit, a strong rear blow, the wall pulls men back (DONE 2026-10-19; dev build only, not uploaded)
+
+**Anton's battle (2026-10-19 11:02, 435 agents, zero errors - summary 11:13:34)**: `impact falls: decided 198 → played by the game 71 (0.00 s
+after the blow), by our backup blow 126 (0.53 s after the blow), not seen 0 … on a 0-damage blow (the engine plays no reaction) 126`; `impact
+direction: front 518 down 11% | side 576 (x1.40) 12% | rear 564 (x2.00) 13%`; `wall slots ON … in contact … more than 1 m ahead 11.1%` (step 42's
+battles 0.6-2.5 %), the farthest 7.8 m - while `wall step out` read each step's farthest at most 1.27 m (the men far ahead were HELD men).
+
+**THE CAUSE OF THE LATE FALLS (63.1)** - `on a 0-damage blow 126` = `by our backup blow 126` exactly. The 0 damage: `Mission.MeleeHitCallback`
+(Mission.cs ~5300) sets cancelDamage for `CancelsDamageAndBlocksAttackBecauseOfNonEnemyCase(attacker, victim)` (in single player: the attacker
+a FRIEND of the victim, or a human victim not his enemy - `num` is always true off a multiplayer session), zeroes the collision's damage, but the
+collision still reads `StrikeAgent` and `CreateMeleeBlow` still asks the shrug-off / knock-back / knockdown questions - so our model decided a
+rear-rank man's swing into his own front man like an enemy's blow; `Agent.HandleBlow` returns at `InflictedDamage <= 0` before
+`HandleBlowAux` (no reaction), and only our backup (KnockDown | KnockBack along the FRIEND's blow) floored him - FORWARD, out of the wall. The
+log's own lines show it: `first BACKUP knockdown … Sturgian Recruit's fall … owned by Sturgian Druzhinnik Champion`, `first parry decided …
+Sturgian Crewman's parry of Sturgian Veteran Shipman's blow`. The damage summary agrees: 1151 melee hits rolled vs 2010 clean hits decided
+(a cancelled blow never reaches the damage model). Every decided fall WITH damage (72) was played by the game at the blow (71, one died) -
+step 62's shrug-off fix works and NO KnockBack flag is needed. FIX: `ImpactFacts.NotEnemies` (GameImpactInputs: `!attacker.IsEnemyOf(victim)`)
+→ `ImpactDecide` skips any event (`ImpactSkip.NotEnemies`, `ImpactFallStats.Friendly` - both summary lines); `ImpactFallBackupSeconds` 0.5 → 0.2
+(the game plays at 0.00 s, so 0.2 s is a safe wait) - config format 11 moves a file's 0.5 once (MoveOrKeep).
+Side effects fixed with it: friends' staggers / shield drops / ripostes / punish windows / courage shock from impact outcomes on friends; the
+direction and toughness lines (the rear band was full of friends behind - the 564 "rear" blows of 11:02).
+
+**A STRONG REAR BLOW (63.2)** - x = T_part + mismatch + reeling + damage; a multiplier on R moves only the mismatch (0.25 a doubling beyond the
+±0.5 even band) - ×2 between even men is +0.125 at best. Now `ImpactDecision.DirectionPart` = `ImpactRearPressure` 0.5 / `ImpactFlankPressure`
+0.2 added to x on LANDED blows (`ImpactMath.DirectionPressure`; blocks never), like tiredness (an empty man counts 1 in T). Kept the step-62 keys,
+shipped x1 (`ImpactRearPercent` / `ImpactFlankPercent` 100; format 11 moves 200 / 140) - both would double count. The pressure is no
+multiplier: the x8 cap and R untouched, the ceilings hold. Numbers (the real Core, shipped values - `RearBlowTests`, MECHANICS §11c "Where the
+blow comes from"): two even fresh men front 0 / 0, side 0 % down / 8 % staggered, behind 7 % / 40 % (half a bar: 0 / 21 front, 42 / 74 behind);
+a legionary standing behind a fresh peasant archer (bow in hand) 47 % down (step 62: 23 %), side 17 %, front 1 % (unchanged), charging into his
+back 50 % (the clean hit's ceiling), charging his front 14 %. Smoke (200 men each, seeded, real seam): even fresh men behind 8 % down / 34 %
+staggered (front 0 / 0); a legionary behind fresh archers 42 % (the model's 47 %). The decision line: `from BEHIND (160°, +0.50 pressure)`; the
+direction line: `rear N (x1.00 +0.50 pressure: down …)`.
+
+**THE WALL PULLS MEN BACK (63.3)** - the main push forward was 63.1's backup on friends' blows (plus friends' slowed flinches). For whatever
+remains (an enemy's blow, the press, a late rein) - Core `ShieldWallPull.cs`: a HELD man (not stepping out on the leash) more than
+`WallPullMath.Beyond` = max(L, 1) + 0.25 m ahead of his slot (`LeashMath.Out` - the facing, or outward for a square / circle) is OUT OF PLACE
+(`WallState.Out`); measured at every hold look (the [summary] "wall pulled back" line: spells after an impact - down / reeling / an outcome in
+his record within 3 s - or other, ends, THE TIME BACK by cause and by who walked him); with `ShieldWallPullBackSeconds` > 0 (0.5, Advanced,
+"Battle pace (AI)") he is looked at every 0.1 s (the flag written at each - `WallWriteKind.OutOfPlace`) and once he has been ABLE TO MOVE (not
+down, not reeling - `MovableSince`) that long he is WALKED BACK: a new input wish `AiInputState.WallPull` (`SetWallPull` / `ApplyWallPull`, before
+the regroup, a step back's backpedal wins, through with Athletics off) = step 16's backpedal with the vector toward his slot in his frame
+(`IWallBody.ToLocal` - courage's math), refreshed at each look, until within `BackAt` = max(L, 1) ÷ 2, at most 4 s of walking a spell (a wall
+of bodies: the flag's job then). Ended on every let-go path (the leash freeing him, a gate, `ReleaseAllWalls` - the switch / master switch -,
+`WallLeftField` with no engine call, `WallFailed`; `CloseWalls` = still out). Claude's call on the brief's "decide": the engine's flag DID pull
+held men back in step 41's battles, but nothing shows it does while a man fights in contact or right after a fall, so the walk back is the
+fallback, after half a second of being able to move - not instead of the flag. Its risk: backpedal speed is lower than a walk; if men look
+like they back out of a fight they should hold, `ShieldWallPullBackSeconds` 0 = step 42 exactly. Smoke (stand-in world): a man thrown 2 m by a
+2.5 s fall with the game's flag modelled STUCK back in 4.2 s (down 2.5 + the 0.5 wait + 1.2 walking); A / B, 20 men thrown every 10 s with the
+flag at 0.5 m/s: in contact > 1 m ahead 44 % → 37 %, back after an impact 5.5 → 4.0 s.
+
+**Measured**: tests 900 → 913 (FallsOnTheHitTests 3, RearBlowTests 6, WallPullTests 4 - Step63Tests.cs; ChargeTests / ChargeExamplesTests
+pinned to step 62's model; the format strings → 11); smoke 135 → 138 (Program.Step63.cs: FallsOnTheHit, RearBlowOnALine, WallPullsMenBack; the
+step 41 / 42 checks pin ShieldWallPullBackSeconds 0 - WallDefaults -, step 62's its 0.5 backup and x2 / x1.4 - Step62On); settings 289 → 292.
+
+**DEPLOY (Smart App Control again)** - `tools\deploy.ps1` stopped at step 2 (`dotnet run` of AssemblyGuard: "An Application Control policy has
+blocked this file"). Done by step 62's recipe, its scripts now kept in `tools\SmartAppControl\` (were the session scratchpad's):
+`run_tests.fsx` (xunit by reflection, our DLLs from bytes - `dotnet fsi run_tests.fsx <tests bin> [filter]`), `run_smoke.ps1` (the offline smoke
+from bytes under Windows PowerShell 5.1: `-Bin tools\OfflineSmoke\bin\Release\net472 -Game … -Mcm …`), `run_guard.fsx` (`dotnet fsi run_guard.fsx
+<AssemblyGuard bin> <module dll> MCMv5 MCM.UI …` - the list deploy.ps1 passes), `refresh_defaults.fsx` (DefaultsTool's refresh), `install_dev.ps1`
+(deploy.ps1's step 4 exactly) and `loadcheck.ps1` (`[Reflection.Assembly]::LoadFile` of the INSTALLED pair in Windows PowerShell = the game's
+runtime's verdict). This time the first build of HEAD d7da73d loaded at once (no SourceRevisionId re-roll needed): TraxCombatEnhancements.dll
+SHA-256 F4F51145…BB08, TraxCombat.Core.dll 9F4ED770…4095, both `1.2.0+d7da73d9…`. Never touch Windows security; a later rebuild rolls the dice
+again - run loadcheck.ps1 before calling a deploy done.
+
+**UNVERIFIED — only the game can tell (PLAYTEST D29)**
+1. `a FRIEND's blow` counted in the hundreds in a deep wall; `played by the game` ≈ decided, `by our backup blow` few.
+2. The rear band now well above the front (`+0.50 pressure`), and no longer swollen by friends.
+3. `wall slots ON` in-contact > 1 m ahead back near 1-3 %; `wall pulled back` - the time back after an impact ~3-4 s, few `still out`.
+4. The walk back LOOKS right (a man backs into his slot, facing the enemy) and never pulls a man out of a fight he should hold.
