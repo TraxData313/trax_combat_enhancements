@@ -49,30 +49,30 @@ Want the formulas and every parameter with its range? [DESIGN.md](DESIGN.md) is 
 ## 2. The Athletics bar
 
 A fighter's bar is as big as his **Athletics skill** (the one on the character screen), never smaller
-than 50 points. One attack — a swing, thrust, shot or throw — costs 8 points, missed or not (7 until step 68:
-Toni, "tire the men more to slow down the combat again a bit after the first impact").
+than 50 points. One attack — a swing, thrust, shot or throw — costs 10 points, missed or not (7 until step 68, 8 until
+step 71: Toni, "they need to tire faster still").
 
 | Athletics skill | Bar (points) | Attacks from full to empty: soldier | hero | hero who leads his party |
 |---:|---:|---:|---:|---:|
-| 0–50 | 50 | 6 | 8 | 11 |
-| 100 | 100 | 13 | 17 | 22 |
-| 150 | 150 | 19 | 25 | 33 |
-| 200 | 200 | 25 | 33 | 44 |
-| 300 | 300 | 38 | 50 | 67 |
+| 0–50 | 50 | 5 | 7 | 9 |
+| 100 | 100 | 10 | 13 | 18 |
+| 150 | 150 | 15 | 20 | 27 |
+| 200 | 200 | 20 | 27 | 36 |
+| 300 | 300 | 30 | 40 | 53 |
 
-(Bar ÷ cost, rounded; the attack that empties the bar is one more - a recruit's 50 points are gone at his 7th swing.)
+(Bar ÷ cost, rounded - a recruit's 50 points are gone at his 5th swing, a legionary's 130 at his 13th.)
 Heroes (lords, companions, you) pay a quarter less per attack; a hero who leads a party pays a quarter
-less again (8 → 6 → 4.5 points). Attacks are cheap because the AI is careful (section 11): it decides
+less again (10 → 7.5 → 5.6 points). Attacks are cheap because the AI is careful (section 11): it decides
 to swing far less often than the base game's AI, so each swing need not cost much for a long fight to wear men down.
 
 **The peak line.** The white mark on the bar sits at **75%**. Above it a man is at full strength;
 the first quarter of his bar is "free". Below it the effects in the next section start. A 50-point
-recruit spends his free quarter in about two swings; a 150-skill hero who leads his party gets about
-eight.
+recruit spends his free quarter in his second swing; a 150-skill hero who leads his party gets about
+seven.
 
 **Wounds cap the bar.** A man at half health can only refill to half his bar.
 
-<sub>Settings: `AthleticsPoolPerSkill` 1.0, `AthleticsPoolFloor` 50, `CostPerBlow` 8 (7 until step 68), `CostOnMiss` on,
+<sub>Settings: `AthleticsPoolPerSkill` 1.0, `AthleticsPoolFloor` 50, `CostPerBlow` 10 (7 until step 68, 8 until step 71), `CostOnMiss` on,
 `HeroCostMultiplier` 0.75, `PartyLeaderCostMultiplier` 0.75, `AthleticsPeakPercent` 75,
 `HealthCapsAthletics` on.</sub>
 
@@ -131,8 +131,8 @@ Stored swings at most (his points ÷ 20, rounded half up, at least 2):
 
 The count follows his points as they fall: each attack also costs Athletics, so a burst shrinks the
 stack's size too. *Example:* a 150-skill hero at half his bar holds 4 — he can strike 4 times back to
-back (5.25 points each) — and by then his bar is at 36% and he holds 3 at most, so each next one takes
-about 0.6 s to come back.
+back (7.5 points each) — and by then his bar is at 30% and he holds 2 at most, so each next one takes
+about 0.75 s to come back.
 
 How long the swings take to come back, after a 0.8 s swing, standing back from the fight:
 
@@ -181,26 +181,27 @@ Every melee blow a man **blocks** costs him a little. Missiles into a shield are
 
 | Block | Cost (soldier) | Hero | Hero party leader | Stops his refill? |
 |---|---:|---:|---:|---|
-| Shield, on the right side | 2 | 1.5 | 1.13 | No — the refill keeps running |
-| Weapon parry | 2 | 1.5 | 1.13 | No — the refill keeps running |
-| Shield, held on the **wrong** side | 5 | 3.75 | 2.81 | **Yes** — the 3 s wait starts again |
-| A kick or shield bash he makes | 5 | 3.75 | 2.81 | Yes (it is an attack) |
+| Shield, on the right side | 3 | 2.25 | 1.69 | No — the refill keeps running |
+| Weapon parry | 3 | 2.25 | 1.69 | No — the refill keeps running |
+| Shield, held on the **wrong** side | 6 | 4.5 | 3.38 | **Yes** — the 3 s wait starts again |
+| A kick or shield bash he makes | 6 | 4.5 | 3.38 | Yes (it is an attack) |
 
-(Step 68, Toni: "tire the men more ... after the first impact" — a right-side block 1 → 2, a wrong-side block 2 → 5; the
-parry and the kick unchanged.) So a skilful defender can catch his breath **while** defending. Can a man who is already empty
+(Step 68, Toni: "tire the men more ... after the first impact" — a right-side block 1 → 2, a wrong-side block 2 → 5. Step 71,
+Toni: "they need to tire faster still" — a right-side block and a parry 2 → 3, a wrong-side block and a kick or bash 5 → 6.) So a skilful defender can catch his breath **while** defending. Can a man who is already empty
 climb back while blocking a blow every 1.5 seconds (a steady duel), standing still?
 
 | Bar size | Soldier, parrying or a right-side shield block | Hero | Hero party leader |
 |---:|---|---|---|
-| 50 | sinks (−30 a minute) | sinks (−10) | climbs slowly (+5) |
-| 80 | holds even | climbs (+20) | climbs (+35) |
-| 100 | climbs (+20) | climbs (+40) | climbs (+55) |
-| 150 | climbs (+70) | climbs (+90) | climbs (+105) |
-| 200 | climbs (+120) | climbs (+140) | climbs (+155) |
+| 50 | sinks (−70 a minute) | sinks (−40) | sinks (−18) |
+| 80 | sinks (−40) | sinks slowly (−10) | climbs slowly (+13) |
+| 100 | sinks (−20) | climbs slowly (+10) | climbs (+33) |
+| 150 | climbs (+30) | climbs (+60) | climbs (+83) |
+| 200 | climbs (+80) | climbs (+110) | climbs (+133) |
 
-Points per minute, net (the refill: his bar a minute; 40 blocks a minute × the price). A right-side shield block now costs
-what a parry does — before step 68 it always climbed. Moving fast while fighting refills slower (section 5), and a
-wrong-side block every 1.5 s holds anyone at the bottom — by its price (5 points) and because each one stops the refill.
+Points per minute, net (the refill: his bar a minute; 40 blocks a minute × the price). A right-side shield block costs
+what a parry does — before step 68 it always climbed; since step 71 (3 a block) a soldier holds even only on a 120-point
+bar. Moving fast while fighting refills slower (section 5), and a wrong-side block every 1.5 s holds anyone at the
+bottom — by its price (6 points) and because each one stops the refill.
 
 **What counts as the right side (step 64).** A raised shield facing the blow covers it: a shield block whose
 attacker stands within **60°** of the blocker's facing (the front third of a circle) is a **right-side** block for
@@ -217,8 +218,8 @@ A **tired** AI man still misjudges his share (section 7): that share of his fron
 | wrong side (39.0%) | wrong | **right** |
 | a tired AI man's guessed share (section 7's table: 33% at half a bar, all of them when empty) | wrong | wrong |
 
-<sub>Settings: `CostPerShieldBlock` 2 (1 until step 68), `CostPerWeaponParry` 2, `CostPerWrongSideShieldBlock` 5 (2 from step 43 to step 68),
-`CostPerKickOrBash` 5 (3 until step 66), `OnlyWrongSideBlocksStopRefill` on, `ShieldFrontArcIsCorrect` on, `ShieldFrontArcDegrees` 60.</sub>
+<sub>Settings: `CostPerShieldBlock` 3 (1 until step 68, 2 until step 71), `CostPerWeaponParry` 3 (2 until step 71), `CostPerWrongSideShieldBlock` 6
+(2 from step 43 to step 68, 5 until step 71), `CostPerKickOrBash` 6 (3 until step 66, 5 until step 71), `OnlyWrongSideBlocksStopRefill` on, `ShieldFrontArcIsCorrect` on, `ShieldFrontArcDegrees` 60.</sub>
 
 ## 7. Tired AI guess their blocks
 
@@ -239,7 +240,7 @@ For a skilled fighter (one who never guesses in vanilla):
 | 0% | 100% | 75% (3 in 4) |
 
 **Shields are more forgiving.** A shield is a big thing: a wrong guess usually still catches the blow,
-but on the wrong side — which costs him 2 points and stops his refill (section 6). So a tired shield
+but on the wrong side — which costs him 6 points and stops his refill (section 6). So a tired shield
 man doesn't just take the hit; he stops recovering. Since step 64 a shield block from the front counts as the
 right side (section 6) — except this table's guessed share: a tired man's guesses stay wrong-side blocks even
 from the front, so a worn-out wall still breaks (section 11c).
@@ -1117,8 +1118,8 @@ real rules; his swings without bashes from the 14:16 battle's fever proof, each 
 
 The bashes' own time takes about one swing in eight from a fresh man; his stored swings (step 32) are never the brake at the top of the
 bar (a fresh man's refill ~1 s; the stack ~100% full there). What brakes a tired shieldman is his price: **each kick or bash costs
-`CostPerKickOrBash` 5** × his multipliers (3.75 a hero, 2.81 a hero party leader) and a stored swing (sections 4, 6), like yours — a
-fresh shieldman bashing 7 times a minute spends ~35 points a minute on it on top of his swings, and below 75% he bashes less, below 35%
+`CostPerKickOrBash` 6** × his multipliers (4.5 a hero, 3.38 a hero party leader) and a stored swing (sections 4, 6), like yours — a
+fresh shieldman bashing 7 times a minute spends ~42 points a minute on it on top of his swings, and below 75% he bashes less, below 35%
 never. Never you (your E key is yours), never a rider, never a man staggered, down, routing, with a bow in hand, or without the
 Athletics or a stored swing for it. `AiBashShareOfSwingsPercent` 50 = one bash in two swings (0.50 a swing fresh, 7.5 swings and 3.7 bashes a minute).
 
@@ -1169,7 +1170,7 @@ staggers you for a moment"; **purple** "X braces against your kick" / "A lucky k
 `AiKickFeverMultiplier` 2, `AiKickSkillLowPercent` 50, `AiKickSkillHighPercent` 200, `AiKickMinBarPercent` 35, `AiKickFullBarPercent` 75,
 `AiKickKicksARaisedShield` on; `KickBraceEnabled` on, `KickBraceFromPressure` −0.7, `KickBraceToPressure` 1.0, `KickBraceMinBarPercent` 20,
 `KickBraceReelPercent` 20, `KickShortReelPercent` 40, `KickBraceRefusesKnockBack` on; step 66: `AiKickWaitSeconds` 3, `AiKickWaitMetres` 5,
-`AiBashShareOfSwingsPercent` 100, `AiBashDelaySeconds` 1.5, `AiBashCooldownSeconds` 2, `CostPerKickOrBash` 5.</sub>
+`AiBashShareOfSwingsPercent` 100, `AiBashDelaySeconds` 1.5, `AiBashCooldownSeconds` 2, `CostPerKickOrBash` 6 (5 until step 71).</sub>
 
 ### You
 

@@ -21,9 +21,9 @@ swing (step 5d) - since step 16 a BACKPEDAL through the AI's own input, facing t
 pause survives it (one per-man `AgentComponent` on `OnAIInputSet` does both; A/B switches keep the old ways).
 Heroes and party leaders pay less per blow (and big-skill heroes have
 big bars), so the game leans hero-centred. Kicks and shield bashes cost a little too (step 18:
-`CostPerKickOrBash` 3 - 5 since step 66 - × the same multipliers, once each, never an attack pause). DEFENDING costs too (step 22):
-every melee blow a fighter BLOCKS costs HIM - `CostPerShieldBlock` 1 (2 since step 68; shield, right side), `CostPerWrongSideShieldBlock`
-5 (2 since step 43, 5 again since step 68), `CostPerWeaponParry` 2 - × the same multipliers, once per blocked blow (OnMeleeHit's collision data, Core `BlockMath` /
+`CostPerKickOrBash` 3 - 5 since step 66, 6 since step 71 - × the same multipliers, once each, never an attack pause). DEFENDING costs too (step 22):
+every melee blow a fighter BLOCKS costs HIM - `CostPerShieldBlock` 1 (2 since step 68, 3 since step 71; shield, right side), `CostPerWrongSideShieldBlock`
+5 (2 since step 43, 5 again since step 68, 6 since step 71), `CostPerWeaponParry` 2 (3 since step 71) - × the same multipliers, once per blocked blow (OnMeleeHit's collision data, Core `BlockMath` /
 `BlockTracker`); since step 29 only a WRONG-side shield block restarts the refill delay (`OnlyWrongSideBlocksStopRefill`,
 Anton: a skilful defender recovers on the defence - a clean block or parry costs, the refill runs on underneath; off =
 every paid block, step 22); never an attack pause or a step back; missiles into a shield
@@ -109,7 +109,7 @@ directly looking at and are really close, making it work in tournaments too"): b
 the screen's CENTRE (the angle from the combat camera's forward) within `AltNearMarksMetres` 15 m of the camera, no distance fade (`FeverMarkMax`
 the ceiling; `AltMarksEveryone` = step 46's view); the formation labels add the group's `fever 12/40` under `ready 34/50` (`ShowFeverOnLabels`);
 men with no valid team (an arena's crowd) are never marked, so in a tournament ALT shows your opponent's bars - 0.11 ms a frame, 0 bytes, ~5
-projections (smoke). `CostPerBlow` 7 in defaults.json since step 46 (Anton's playtest; config format 9 moves a format-8 file's 3 once), 8 since step 68 (Toni; config format 14). THE IMPACT
+projections (smoke). `CostPerBlow` 7 in defaults.json since step 46 (Anton's playtest; config format 9 moves a format-8 file's 3 once), 8 since step 68 (Toni; config format 14), 10 again since step 71 (Toni; config format 15). THE IMPACT
 SYSTEM (docs/IMPACT.md - staggers, dropped shields, knockdowns by both men's Athletics; Anton approved it 2026-10-17, steps 47-53) starts with
 step 47's SPIKE (Advanced `ImpactSpike`, off - a TEST TOOL): fixed loud values prove the six engine levers in a real battle - a kick's
 KnockDown decision, the block stun x3 with the cap 2 s, a reaction at speed 0.5, a forced `act_stagger_backward`, a queued shield drop,
@@ -297,7 +297,9 @@ RUNNER (Core `LoneRunner.cs`): an AI man on foot alone (fewer than 2 mates near,
 ahead of his unit's front or past the enemy's front - counted by cause (sprint into contact / punish / surge / fever / chasing a target behind
 the front - you, a hero - / the game); `LoneRunnerEnabled`: the fever no longer presses a man alone, a sprint into contact ends alone or past
 the enemy's front (`SprintEnd.LoneRunner`), a lone runner walks back (courage's walk, its side round the enemy kept, never turned round by his
-fever) unless he chases a beaten enemy; the [summary] "fear flock band" and "lone runners" lines (PLAYTEST D35). The bar for the
+fever) unless he chases a beaten enemy; the [summary] "fear flock band" and "lone runners" lines (PLAYTEST D35). MEN TIRE FASTER STILL (step 71, Toni 2026-10-19: "back to 10 for the swings ... they need to tire faster still" -
+DESIGN decision 65, AI_NOTES "Step 71", config format 15): `CostPerBlow` 8 → 10, `CostPerKickOrBash` 5 → 6, `CostPerWrongSideShieldBlock` 5 → 6,
+`CostPerShieldBlock` 2 → 3, `CostPerWeaponParry` 2 → 3; heroes / party leaders keep their × 0.75 each, the refill unchanged (60 s) (PLAYTEST D36). The bar for the
 fighter you look at is LATER (DESIGN §3; its settings wait in DESIGN's "Planned parameters"). Words:
 the pool/bar/points are "Athletics", the character-screen skill is "the Athletics skill" (it
 used to be called "endurance"), the "peak line" is the white mark at the top quarter of the bar,
@@ -502,7 +504,8 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               // above each key; AppendSettings shared with defaults.json - step 59: a
                               PageBanner where the MCM page changes, the player page's sections first),
                               tolerant reader (comments, trailing commas, casing, "0,75"), Apply;
-                              FormatVersion 14 + Migrate (step 68: CostPerBlow 7 → 8 (a format 9+ file), CostPerWrongSideShieldBlock 2 → 5 (8+), CostPerShieldBlock 1 → 2
+                              FormatVersion 15 + Migrate (step 71: CostPerBlow 8 → 10, CostPerWrongSideShieldBlock 5 → 6, CostPerShieldBlock 2 → 3 (a format 14 file),
+                              CostPerKickOrBash 5 → 6 (13+), CostPerWeaponParry 2 → 3 once, a tuned value kept and said - MoveOrKeepIfMoved; step 68: CostPerBlow 7 → 8 (a format 9+ file), CostPerWrongSideShieldBlock 2 → 5 (8+), CostPerShieldBlock 1 → 2
                               once, a tuned value kept and said; step 66: a format-12 file's CostPerKickOrBash 3 → 5, AiKicksPerMinute 0.1 → 1.2,
                               AiKickCooldownSeconds 10 → 8 once, tuned values kept + noted; step 64: a format-11 file's FeverSprintMinMetres 3 → 4, FeverSprintMaxMetres
                               12 → 8, ImpactChargeCarrySeconds 1.5 → 3 once, tuned values kept + noted;
@@ -1613,7 +1616,8 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               pixels), Fill, FillColor, FrameColor (the fade's alpha baked in); step 46: the box (PositionX / Y =
                               its top-left, BoxWidth / BoxHeight), FeverShown, the Athletics bar - BarShown, BarWidth, BarHeight,
                               BarFill, BarUsable, BarColor, BarFrameColor, BarWoundColor
-tests/TraxCombat.Core.Tests/  net8.0 xUnit (1042 - step 70: + Step70Tests.cs - the 11 settings placed / live, the master switch first and the sentences, the band's
+tests/TraxCombat.Core.Tests/  net8.0 xUnit (1045 - step 71: + Step71Tests.cs - the new costs with the multipliers and the hint's 5 / 13 blows, format 15 - move,
+                              keep, the chains through steps 66 / 68, a default that never moved; the older format tests → 15; 1042 - step 70: + Step70Tests.cs - the 11 settings placed / live, the master switch first and the sentences, the band's
                               ranks / width / lateral centre / files / front creep, the slide rule and the free file, the band facing his line, a man's place kept
                               along the front, THE 40-MAN LOOTER EXAMPLE (step 67's point 1 file of 40 vs the band 9 files, the deepest 5), the band line, alone /
                               out / the lone runner, the cause order, the three fixes, courage's forced walk, the lone line, SprintEnd.LoneRunner; 1027 - step 69: + Step69Tests.cs - the six settings placed / live, the master switch first and the
@@ -2119,7 +2123,7 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               spent man; your lines; the switches), the master-switch part; the older steps pin the AI kicks and the brace off
                               (AthleticsDefaults); since step 66 the clash at 1.2 a minute (47.3 a minute for 40 men, the model 52.5); step 66
                               (Program.Step66.cs): a shieldman's swing earning his bash (asked with the 2 s cooldown, the credit spent; none without
-                              one), a decision at 2.5 m waiting and kicking at 1.2 m, a wait run out / dropped, 6 m never waited for, the kick's 5;
+                              one), a decision at 2.5 m waiting and kicking at 1.2 m, a wait run out / dropped, 6 m never waited for, the kick's 5 (6 since step 71);
                               a clash - 20 shieldmen 0.98 bashes a swing, 20 kickers 20.1 a minute (the model 20.7); step 67
                               (Program.Step67.cs): THE FEAR FLOCK through the real logic with courage's stand-in world (it plays IFearBody) - a fresh
                               line obeys, a frightened single rank draws into its mass and the shelter creeps back at the hold's cap, the input frame,

@@ -90,7 +90,7 @@ namespace TraxCombat.Core
 
         public static readonly ParamDef CostPerBlow = Float("CostPerBlow", 0, 100, PlayerTiredGroup,
             "Cost per swing (points)",
-            "How fast men tire: the Athletics points one attack costs a common soldier, whatever the size of his bar - so a bigger Athletics skill means more blows. At 8 a recruit (a 50-point bar) is empty after 7 blows, a legionary (130) after 17. Higher = everyone tires sooner. 0 = attacks are free. Kicks, bashes and blocks have their own costs: Advanced page, Athletics.");
+            "How fast men tire: the Athletics points one attack costs a common soldier, whatever the size of his bar - so a bigger Athletics skill means more blows. At 10 a recruit (a 50-point bar) is empty after 5 blows, a legionary (130) after 13. Higher = everyone tires sooner. 0 = attacks are free. Kicks, bashes and blocks have their own costs: Advanced page, Athletics.");
 
         public static readonly ParamDef HeroCostMultiplier = Float("HeroCostMultiplier", 0, 2, PlayerTiredGroup,
             "Heroes' cost (x)",
@@ -206,7 +206,7 @@ namespace TraxCombat.Core
         // Step 18 (Anton, 2026-09-28): kicks and shield bashes cost too - their own price, the blow's multipliers.
         public static readonly ParamDef CostPerKickOrBash = Float("CostPerKickOrBash", 0, 20, AthleticsGroup,
             "Cost per kick or shield bash (points)",
-            "Athletics points one kick or one shield bash costs a common soldier - yours and the AI's alike. Heroes pay it times the hero cost and party leaders times both, just like a blow: 3 costs a hero 2.25 and a party leader about 1.7. Paid once, when the kick or bash starts, landed or not. It never starts the pause between attacks. 0 = kicks and bashes are free.");
+            "Athletics points one kick or one shield bash costs a common soldier - yours and the AI's alike. Heroes pay it times the hero cost and party leaders times both, just like a blow: 6 costs a hero 4.5 and a party leader about 3.4. Paid once, when the kick or bash starts, landed or not. It never starts the pause between attacks. 0 = kicks and bashes are free.");
 
         // Step 22 (Anton, 2026-09-29): defending costs too - the DEFENDER pays for every melee blow he blocks, by how.
         public static readonly ParamDef CostPerShieldBlock = Float("CostPerShieldBlock", 0, 20, AthleticsGroup,

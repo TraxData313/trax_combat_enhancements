@@ -661,7 +661,7 @@ public class SprintTests
     [Fact]
     public void Step37_a_format_6_config_drops_the_use_keys_and_moves_the_old_reserve_defaults_once()
     {
-        Assert.Equal(14, ConfigFile.FormatVersion);
+        Assert.Equal(15, ConfigFile.FormatVersion);
         // a step 36 file at its defaults
         string six = "{ \"ConfigVersion\": 6, \"SprintAiChargeUsePercent\": 100, \"SprintAiChargeKeepPercent\": 0, \"SprintAiAdvanceUsePercent\": 50, "
                      + "\"SprintAiAdvanceKeepPercent\": 0, \"SprintAiMoveUsePercent\": 20, \"SprintAiMoveKeepPercent\": 70, \"Typo\": 1 }";
@@ -669,18 +669,18 @@ public class SprintTests
         Assert.Equal(4, read.Unknown.Count);
         var notes = ConfigFile.Migrate(read);
         Assert.Equal(5, notes.Count);
-        Assert.Contains("SprintAiChargeUsePercent 100 dropped (format 6 → 14; step 37, Anton: one number per order - he sprints everything above the order's reserve (its KeepPercent))", notes);
-        Assert.Contains(notes, n => n.StartsWith("SprintAiAdvanceUsePercent 50 dropped (format 6 → 14; step 37", StringComparison.Ordinal));
-        Assert.Contains(notes, n => n.StartsWith("SprintAiMoveUsePercent 20 dropped (format 6 → 14; step 37", StringComparison.Ordinal));
-        Assert.Contains(notes, n => n.StartsWith("SprintAiAdvanceKeepPercent: 0 → 50 (format 6 → 14, the old default; step 37", StringComparison.Ordinal));
-        Assert.Contains(notes, n => n.StartsWith("SprintAiMoveKeepPercent: 70 → 80 (format 6 → 14, the old default; step 37", StringComparison.Ordinal));
+        Assert.Contains("SprintAiChargeUsePercent 100 dropped (format 6 → 15; step 37, Anton: one number per order - he sprints everything above the order's reserve (its KeepPercent))", notes);
+        Assert.Contains(notes, n => n.StartsWith("SprintAiAdvanceUsePercent 50 dropped (format 6 → 15; step 37", StringComparison.Ordinal));
+        Assert.Contains(notes, n => n.StartsWith("SprintAiMoveUsePercent 20 dropped (format 6 → 15; step 37", StringComparison.Ordinal));
+        Assert.Contains(notes, n => n.StartsWith("SprintAiAdvanceKeepPercent: 0 → 50 (format 6 → 15, the old default; step 37", StringComparison.Ordinal));
+        Assert.Contains(notes, n => n.StartsWith("SprintAiMoveKeepPercent: 70 → 80 (format 6 → 15, the old default; step 37", StringComparison.Ordinal));
         Assert.Equal(0, read.Values["SprintAiChargeKeepPercent"]);     // the charge's reserve was already 0
         Assert.Equal(50, read.Values["SprintAiAdvanceKeepPercent"]);
         Assert.Equal(80, read.Values["SprintAiMoveKeepPercent"]);
         Assert.Equal("Typo", Assert.Single(read.Unknown).Key);         // the typo stays reported
         var rewritten = ConfigFile.Write(read.Values, read.Unknown);
         Assert.DoesNotContain("UsePercent", rewritten);
-        Assert.Contains("\"ConfigVersion\": 14", rewritten);
+        Assert.Contains("\"ConfigVersion\": 15", rewritten);
         Assert.Contains("\"SprintAiMoveKeepPercent\": 80", rewritten);
         // idempotent: the rewritten file migrates to nothing
         Assert.Empty(ConfigFile.Migrate(ConfigFile.Read(rewritten)));
@@ -688,7 +688,7 @@ public class SprintTests
         // user values kept: a reserve he set himself stays, his use keys still go
         var mine = ConfigFile.Read("{ \"ConfigVersion\": 6, \"SprintAiAdvanceKeepPercent\": 20, \"SprintAiMoveKeepPercent\": 60, \"SprintAiMoveUsePercent\": 35 }");
         var mineNotes = ConfigFile.Migrate(mine);
-        Assert.Equal("SprintAiMoveUsePercent 35 dropped (format 6 → 14; step 37, Anton: one number per order - he sprints everything above the order's reserve (its KeepPercent))",
+        Assert.Equal("SprintAiMoveUsePercent 35 dropped (format 6 → 15; step 37, Anton: one number per order - he sprints everything above the order's reserve (its KeepPercent))",
             Assert.Single(mineNotes));
         Assert.Equal(20, mine.Values["SprintAiAdvanceKeepPercent"]);
         Assert.Equal(60, mine.Values["SprintAiMoveKeepPercent"]);
@@ -709,8 +709,8 @@ public class SprintTests
         Assert.Equal(3, read.Unknown.Count);
         var notes = ConfigFile.Migrate(read);
         Assert.Equal(2, notes.Count);
-        Assert.Contains(notes, n => n.StartsWith("SprintAiChargeSharePercent 90 dropped (format 5 → 14; step 33's charge share", StringComparison.Ordinal));
-        Assert.Contains(notes, n => n.StartsWith("SprintAiMoveSharePercent 50 dropped (format 5 → 14; step 33's advance-and-move share", StringComparison.Ordinal));
+        Assert.Contains(notes, n => n.StartsWith("SprintAiChargeSharePercent 90 dropped (format 5 → 15; step 33's charge share", StringComparison.Ordinal));
+        Assert.Contains(notes, n => n.StartsWith("SprintAiMoveSharePercent 50 dropped (format 5 → 15; step 33's advance-and-move share", StringComparison.Ordinal));
         Assert.Equal("Typo", Assert.Single(read.Unknown).Key);
         Assert.False(read.Values.ContainsKey("SprintAiMoveKeepPercent")); // the reserves take their defaults
         Assert.Equal(2, ConfigFile.Migrate(read).Count);                 // idempotent: nothing new the second time

@@ -84,6 +84,10 @@ regen.)
     decision 61): defaults.json ships `CostPerBlow` **8** (8 / 6 / 4.5 - a recruit's 50-point bar empty after 7 blows, a
     legionary's 130 after 17). Config format 14 moves a file still holding 7 once (a tuned value is kept and noted); an older
     file's 10 goes straight to 8.
+  - Step 71 (Toni, 2026-10-19: "bump up how fast they tire, back to 10 for the swings ... they need to tire faster still";
+    decision 65): defaults.json ships `CostPerBlow` **10** again (10 / 7.5 / 5.63 - a recruit's 50-point bar empty after 5
+    blows, a legionary's 130 after 13). Config format 15 moves a file still holding 8 once (a tuned value is kept and noted); an
+    older file's 7 goes straight to 10. The refill is unchanged.
 - **What is a blow**: a melee swing or thrust, a shot, a throw. A couched lance or braced
   spear hit has no swing, so it costs one blow when it LANDS. Siege engines (ballista, onager)
   cost nothing.
@@ -91,6 +95,7 @@ regen.)
   `CostPerKickOrBash` (3) POINTS × the same hero and party-leader multipliers as a blow — 3 for a
   soldier, 2.25 for a hero, about 1.7 (1.69) for a party leader; 0 = free, as they were until step 18.
   Step 66 (Anton: "a bit more taking of the energy, say 5 pts each"): 5 in defaults.json - 5 / 3.75 / 2.81 (decision 59).
+  Step 71 (Toni: "they need to tire faster still"): 6 - 6 / 4.5 / 3.38 (decision 65; config format 15 moves a file's 5 once).
   Charged ONCE per kick or bash, the moment it starts, landed or not (`CostOnMiss` is for blows);
   the AI's and yours alike. Otherwise it is paid like a blow: the curves follow, it can take a
   fighter below his peak line or empty him, and it restarts the refill delay. It is **not a blow**:
@@ -106,7 +111,9 @@ regen.)
   blow (1 / 5 / 2 for a soldier, 0.75 / 3.75 / 1.5 for a hero, 0.56 / 2.81 / 1.13 for a party leader); 0 =
   free. (defaults.json: step 43 shipped the wrong side at 2; step 68 - Toni, decision 61 - ships the right side **2** and
   the wrong side **5** again, the parry 2: a soldier 2 / 5 / 2, a hero 1.5 / 3.75 / 1.5, a hero party leader 1.13 / 2.81 /
-  1.13; config format 14 moves a file's 1 / 2 once.) The AI's and yours alike, on foot or mounted. Charged ONCE per blocked blow (a swing touching the
+  1.13; config format 14 moves a file's 1 / 2 once; step 71 - Toni, decision 65 - ships the right side **3**, the wrong side **6**
+  and the parry **3**: a soldier 3 / 6 / 3, a hero 2.25 / 4.5 / 2.25, a hero party leader 1.69 / 3.38 / 1.69; config format 15
+  moves a file's 2 / 5 / 2 once.) The AI's and yours alike, on foot or mounted. Charged ONCE per blocked blow (a swing touching the
   guard twice is one blow). Paid like a kick: the curves follow, it can take a man below his peak line or
   empty him. **The refill delay** (step 29, Anton 2026-10-12, after a tournament 1v1 where both men sat at
   empty for good: "a skilful defender should recover while staying on the defence"): with
@@ -1260,11 +1267,11 @@ row goes to the Advanced page unless a player needs it to set up his game (CLAUD
 | `AthleticsPoolPerSkill` | 1.0 | Pool per point of Athletics skill (1.0 → the bar tops at the skill). |
 | `AthleticsPeakPercent` | 75 | At or above this % of their own pool a fighter is at full strength (green); below it they weaken in a straight line to 0. |
 | `HealthCapsAthletics` | true | Health left caps the usable pool. |
-| `CostPerBlow` | 10 | Athletics points one blow costs before multipliers (points, whatever the pool). defaults.json 3 since step 43 (Anton: the AI's eagerness now follows its bar; config format 8 moves a file's old 10 once), 7 since step 46 (Anton's playtest; config format 9 moves a format-8 file's 3 once), 8 since step 68 (Toni's 100 v 100 of 2026-10-19: "tire the men more to slow down the combat again a bit after the first impact" - a recruit's 50-point bar empty after 7 blows, a legionary's 130 after 17; hero 6 / party leader 4.5; config format 14 moves a file's 7 once, a tuned value kept and said; decision 61). |
-| `CostPerKickOrBash` | 3 | Step 18 (Anton): Athletics points one kick or shield bash costs before the hero and party-leader multipliers (3 / 2.25 / 1.7), once, when it starts, landed or not; never starts the attack pause. 0 = free (steps 5-17). Step 66 (Anton 2026-10-19: "make the kick/bash also a bit more taking of the energy, say 5 pts each"): 5 in defaults.json (5 / 3.75 / 2.8 - you and the AI alike; config format 13 moves a file's 3 once). |
-| `CostPerShieldBlock` | 1 | Step 22 (Anton): Athletics points the DEFENDER pays for a melee blow he blocks with his shield on the correct side, before the hero and party-leader multipliers (1 / 0.75 / 0.56); once per blocked blow; does not restart the refill delay while `OnlyWrongSideBlocksStopRefill` is on (step 29); never an attack pause or a step back. 0 = free (steps 5-21). Step 68 (Toni, decision 61): 2 in defaults.json (2 / 1.5 / 1.13; config format 14 moves a file's 1 once). |
-| `CostPerWrongSideShieldBlock` | 5 | Step 22 (Anton): the same for a blow his shield stops on the WRONG side (the engine's `CorrectSideShieldBlock` false) - 5 / 3.75 / 2.81. 0 = free. defaults.json 2 since step 43 (Anton; config format 8 moves a file's old 5 once), 5 again since step 68 (Toni, decision 61: a clumsy block tires - 5 / 3.75 / 2.81; config format 14 moves a file's 2 once). |
-| `CostPerWeaponParry` | 2 | Step 22 (Anton): the same for a blow he blocks or parries with a weapon, no shield (a chamber block too) - 2 / 1.5 / 1.13. 0 = free. |
+| `CostPerBlow` | 10 | Athletics points one blow costs before multipliers (points, whatever the pool). defaults.json 3 since step 43 (Anton: the AI's eagerness now follows its bar; config format 8 moves a file's old 10 once), 7 since step 46 (Anton's playtest; config format 9 moves a format-8 file's 3 once), 8 since step 68 (Toni's 100 v 100 of 2026-10-19: "tire the men more to slow down the combat again a bit after the first impact" - a recruit's 50-point bar empty after 7 blows, a legionary's 130 after 17; hero 6 / party leader 4.5; config format 14 moves a file's 7 once, a tuned value kept and said; decision 61), 10 again since step 71 (Toni 2026-10-19: "back to 10 for the swings ... they need to tire faster still" - a recruit's 50-point bar empty after 5 blows, a legionary's 130 after 13; hero 7.5 / party leader 5.63; config format 15 moves a file's 8 once, a tuned value kept and said; decision 65). |
+| `CostPerKickOrBash` | 3 | Step 18 (Anton): Athletics points one kick or shield bash costs before the hero and party-leader multipliers (3 / 2.25 / 1.7), once, when it starts, landed or not; never starts the attack pause. 0 = free (steps 5-17). Step 66 (Anton 2026-10-19: "make the kick/bash also a bit more taking of the energy, say 5 pts each"): 5 in defaults.json (5 / 3.75 / 2.8 - you and the AI alike; config format 13 moves a file's 3 once). Step 71 (Toni, decision 65): 6 (6 / 4.5 / 3.38; config format 15 moves a file's 5 once). |
+| `CostPerShieldBlock` | 1 | Step 22 (Anton): Athletics points the DEFENDER pays for a melee blow he blocks with his shield on the correct side, before the hero and party-leader multipliers (1 / 0.75 / 0.56); once per blocked blow; does not restart the refill delay while `OnlyWrongSideBlocksStopRefill` is on (step 29); never an attack pause or a step back. 0 = free (steps 5-21). Step 68 (Toni, decision 61): 2 in defaults.json (2 / 1.5 / 1.13; config format 14 moves a file's 1 once). Step 71 (Toni, decision 65): 3 (3 / 2.25 / 1.69; config format 15 moves a file's 2 once). |
+| `CostPerWrongSideShieldBlock` | 5 | Step 22 (Anton): the same for a blow his shield stops on the WRONG side (the engine's `CorrectSideShieldBlock` false) - 5 / 3.75 / 2.81. 0 = free. defaults.json 2 since step 43 (Anton; config format 8 moves a file's old 5 once), 5 again since step 68 (Toni, decision 61: a clumsy block tires - 5 / 3.75 / 2.81; config format 14 moves a file's 2 once), 6 since step 71 (Toni, decision 65: 6 / 4.5 / 3.38; config format 15 moves a file's 5 once). |
+| `CostPerWeaponParry` | 2 | Step 22 (Anton): the same for a blow he blocks or parries with a weapon, no shield (a chamber block too) - 2 / 1.5 / 1.13. 0 = free. Step 71 (Toni, decision 65): 3 in defaults.json (3 / 2.25 / 1.69; config format 15 moves a file's 2 once). |
 | `OnlyWrongSideBlocksStopRefill` | true | Step 29 (Anton): true = only a WRONG-side shield block restarts the refill delay (and ends a refill run); a right-side shield block and a weapon parry still cost but the refill keeps running underneath. false = every paid block restarts it (step 22). Attacks, kicks and bashes restart it either way. Live. |
 | `ShieldFrontArcIsCorrect` | true | Step 64 (decision 55, Anton's looter battles 2026-10-19: ~85% of an AI shieldman's blocks read WRONG side even fresh - the native AI guesses its guard direction, a wall's poses are fixed): a melee SHIELD block whose attacker stands within `ShieldFrontArcDegrees` of the blocker's facing (step 62's angle) counts as a RIGHT-SIDE block for every system of ours - the block cost and the refill rule (steps 22 / 29), the guard lines (30 / 34), the impact model's event (the correct block's ceilings, the riposte, the thrown back) - whatever the engine's `CorrectSideShieldBlock`; outside it the engine's verdict stands. The arc corrects the GAME's own guess, not step 30's: a tired AI man's share w = `TiredBlockRandomPercent` × (1 − f) (his `BlockRandomWeight`) of front blocks keeps the engine's verdict (a stateless roll per blow - `ShieldArcMath.TiredRoll` of both men and the swing - so every system agrees), so an exhausted wall still breaks (an empty legionary's front block: 40% down / 90% staggered as before; a fresh one's right-side). Weapon parries keep the engine's direction. You and the AI alike. The engine's own shield damage untouched. The [summary] "shield front arc" line counts the engine's verdict against ours. Live. |
 | `ShieldFrontArcDegrees` | 60 | Step 64: the front arc's half-angle - the attacker within this many degrees left or right of the blocker's facing. Range 0-180. Live. |
@@ -2505,6 +2512,16 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     "winning" in the smoke); (g) never you, never riders (courage's gate); courage off = no walk (it measures only) - fixes 1 and 2 still run;
     (h) 11 Advanced settings in "Courage and cohesion (AI)" after `FearMopUpWinPercent` (9 band / strike, 2 lone runner), all live, new keys
     only - no config migration (FormatVersion 14 stays).
+65. **Men tire faster still** (step 71, Toni 2026-10-19: "bump up how fast they tire, back to 10 for the swings and suggest for the rest
+    tiring moves, they need to tire faster still"). Claude's calls (the manager's numbers): (a) every paid move a step up, the swing the
+    most - `CostPerBlow` 8 → **10** (step 5c's original), `CostPerKickOrBash` 5 → **6**, `CostPerWrongSideShieldBlock` 5 → **6**,
+    `CostPerShieldBlock` 2 → **3**, `CostPerWeaponParry` 2 → **3** - the right-side block and the parry stay equal, the wrong-side block and
+    the kick stay twice them; (b) heroes × 0.75 and party leaders × 0.75 again kept (a blow 10 / 7.5 / 5.63, a kick or a wrong-side block 6 /
+    4.5 / 3.38, a right block or a parry 3 / 2.25 / 1.69); (c) the refill unchanged (`FullRegenSecondsStanding` 60) - a soldier blocking every
+    1.5 s now sinks on any bar below 120 points (MECHANICS §6); (d) config format 15 moves each untouched old value once (the swing's 8, the
+    blocks' 5 / 2 - format 14's -, the kick's 5 - format 13+ -, the parry's 2 - any format), a hand-set value kept and said once; a default
+    that did not move says nothing (`MoveOrKeepIfMoved`); (e) the player page's *Cost per swing* hint: "At 10 a recruit (a 50-point bar) is
+    empty after 5 blows, a legionary (130) after 13".
 
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),

@@ -1034,6 +1034,7 @@ Claude the `[summary] impact …` block of every battle.
 | 14 | **D33 - THE WALL PUSHES AS ONE, KICKS THROUGH THE IMPACT MODEL, MEN TIRE MORE** (step 68): your shield wall ordered to ADVANCE (F1, F4) into an enemy line, ~100 v 100; a minute with *Shield walls: advance as one line* OFF, then ON | 25 | `wall slots ON by order`, `wall advance as one`, `wall pulled back` (its step-68 clause), `ai kicks` (whom they landed on, a friend in the way), `impact kicks / bashes landed vs decided`, `Athletics settings at the end` (cost per blow 8.0, right 2.00 / wrong 5.00) | the ADVANCE in-contact leak near the standing one (a few %), not 15%; the wall moving forward as one line and pushing; `unaccounted 0`, decided ≈ landed − on a FRIEND; the lines tiring visibly sooner after the first clash | men standing still in an advancing wall that never closes on the enemy (the step too small), the wall stretching anyway (the frame not honoured), `unaccounted` above 0, `on a FRIEND` still about two thirds of the landed |
 | 15 | **D34 - WINNERS DON'T HANG BACK** (step 69): your 100 v 100 again, a battle you WIN with green / mixed infantry (charge once the lines meet); then a losing one (looters into your wall) | 20 | `fear flock and winning`, `idle men`, `fear flock by discipline`, `fear flock spells` (sprints by chance) | the losing band's fear before = after, the clear band's after 0; your tired winners go in, no knot standing back; `idle men` OURS small (the standing ones ranged or the game's); sprints by chance far below 163 | the idle line's OURS large with the fear flock / courage after a win (tell Claude the line), the losing band changed |
 | 16 | **D35 - THE FLOCK IS A WIDE BAND, NO LONE RUNNER BEHIND THE LINE** (step 70): your ~30 men in a shield line against ~50 looters (your 15:59 battle again); stay on your horse right behind your line | 15 | `fear flock band`, `lone runners`, `fear flock shape`, `sprint into contact` | the looters stand as a WIDE, shallow mass along your line, 4-6 deep (`fear flock band … ON` men per file ~4-6, width near your line's), a few step in to swing and go back; no looter alone behind your line - `lone runners` small, the fixes' walks / sprints ended counted | a deep column again (men per file above 8, width 2-3 m), lone runners standing behind your line - tell Claude the two lines |
+| 17 | **D36 - MEN TIRE FASTER STILL** (step 71): any 50 v 50 or 100 v 100 melee (the same kind as D33's) | 5 | `Athletics settings at the end` (cost per blow 10.0 / hero 7.5 / party leader 5.6; a kick or bash 6.00; shield right side 3.00 / wrong side 6.00; the parry 3.00), `[config] migrated config.json` (once, format 14 → 15) | lines visibly orange / red sooner after the first clash than in D33, the AI's swings thinning out; a recruit empty after about 5 swings | the old 8.0 / 2.00 / 5.00 still in the line (your config.json kept a hand-set value - the migration line says which); men empty so fast that the fight stalls (tell Claude) |
 
 Then play normally (parts E-G). Your gut on each family - too many / about right / too few - is the most useful thing to send.
 
@@ -1750,6 +1751,17 @@ men cannot get out to the ends - tell Claude); too far off your line - *front st
 within* 3; lone runners walked back too eagerly from a mass's edge - *Lone runner: ahead of his line* 6.
 **Broken - tell Claude**: `fear … errors` / `lone runners … errors` above 0; the band's men per file above 8 with the band on; a looter standing
 behind your line for many seconds with `lone runners` near 0 (the geometry missed him).
+
+**D36. MEN TIRE FASTER STILL (step 71, ~5 min - watch any big melee; the defaults).** Toni after D33: "they need to tire faster still". Every
+paid move costs a step more: a swing or shot **10** (8 before; 7.5 for a hero, 5.6 for a hero who leads his party), a kick or a shield bash **6**
+(5), a wrong-side shield block **6** (5), a right-side shield block **3** (2), a weapon parry **3** (2). The refill is unchanged (60 s from empty
+to full at rest). A recruit is now empty after 5 swings (7 before), a legionary after 13 (17). Your config.json moves once: the first start
+logs `[config] migrated config.json at …: CostPerBlow: 8.0 → 10.0 (format 14 → 15, the old default; step 71, Toni: the men tire faster still - a
+swing or shot costs 10)` and one line for each other cost still at its old value; a value you set by hand stays and is said once (`… kept - your
+own value …`). **What you should see**: the lines go orange / red sooner after the first clash; a soldier who only blocks / parries now sinks unless
+his bar is big (120+). **[summary]** `Athletics settings at the end: … cost per blow 10.0 / hero 7.5 / party leader 5.6 points; a kick or shield bash
+6.00 / …; a blocked blow costs the defender: shield right side 3.00 / wrong side 6.00 …`. **Too much**: *Cost per swing* (the player page) back to 8,
+or the block costs on the Advanced page, Athletics.
 
 ---
 

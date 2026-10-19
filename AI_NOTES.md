@@ -6310,3 +6310,43 @@ Modules\TraxCombatEnhancements.Dev; `tools\SmartAppControl\loadcheck.ps1`: both 
 C05936B7…080A, TraxCombat.Core.dll 9F27D5EE…50EE. The game and the launcher were not running. During the step Smart App Control blocked the fresh Core DLL
 under `dotnet test` - the tests (1042) ran in memory (`run_tests.fsx`) and the smoke in memory (`run_smoke.ps1`) while iterating;
 `dotnet run --project tools/DefaultsTool -- refresh` ran directly (twice). Windows security untouched.
+
+## Step 71 — men tire faster still (DONE 2026-10-19; dev build only, not uploaded)
+
+**Toni (2026-10-19)**: "bump up how fast they tire, back to 10 for the swings and suggest for the rest tiring moves, they need to tire faster
+still". The manager's numbers (DESIGN decision 65): `CostPerBlow` 8 → **10** (10 / 7.5 / 5.63), `CostPerKickOrBash` 5 → **6** (6 / 4.5 / 3.38),
+`CostPerWrongSideShieldBlock` 5 → **6**, `CostPerShieldBlock` 2 → **3** (3 / 2.25 / 1.69), `CostPerWeaponParry` 2 → **3**; heroes × 0.75 and party
+leaders × 0.75 again kept; the refill UNCHANGED (`FullRegenSecondsStanding` 60 - a slower refill was asked for mid-step and then cancelled).
+The player page's *Cost per swing* hint: "At 10 a recruit (a 50-point bar) is empty after 5 blows, a legionary (130) after 13" (was 7 / 17); the
+kick hint's example 3 / 2.25 / 1.7 → 6 / 4.5 / 3.4.
+
+**CONFIG FORMAT 15 (`ConfigFile.Migrate` `from < 15`)**: `MoveOrKeepIfMoved` (new - MoveOrKeep only when today's default is not the old one) for
+CostPerBlow 8, CostPerWrongSideShieldBlock 5, CostPerShieldBlock 2 (a format-14 file - format 13 and older went through step 68 straight to today's
+values), CostPerKickOrBash 5 (format 13+; older went through step 66), CostPerWeaponParry 2 (any format). Untouched → moved, hand-set → kept and said
+once. Why the new helper: plain `KeptTuned` says "kept - your own value; the new default X" even when X is the old default (an earlier step's lambda
+in the tests, DESIGN's initial values) - Step68Tests' format-14 file with a 7 would have read as a second "kept". A global guard in KeptTuned broke
+FeverTests' format-8 check (step 46's note on a lambda whose default equals step 46's old one), so the guard lives in step 71's helper only.
+Known wording wrinkle (as step 68's): an older file moved by an earlier block straight to today's value keeps that block's reason text (a format-7
+file's wrong-side 5 → 6 is said with step 43's reason).
+
+**Measured offline**: tests 1042 → 1045 (Step71Tests.cs: the costs with the multipliers and the hint's 5 / 13; format 15 - five moves, idempotent,
+three kept, nothing for new values / no keys / a format-15 file, the refill untouched; the chains - format 13 (step 68's 7 → 10 and step 71's kick /
+parry, one note each), format 12 (the kick's 3 → 6 through step 66 alone), a format-13 hand-set 8 said once, a default that never moved silent); the
+older format tests → 15 (`Equal(15, FormatVersion)`, "→ 15" in the notes, SprintTests' rewritten `"ConfigVersion": 15`). Smoke 163, all passed
+(Program.Step66.cs pins the shipped kick 6 - it read 5). DESIGN's Default column keeps the INITIAL values (10 / 3 / 1 / 5 / 2).
+
+**Docs**: MECHANICS §2 (attacks per bar: 5 / 7 / 9 at 50 points … 30 / 40 / 53 at 300; the free quarter), §4's example (7.5 a swing, 30%, 2 held,
+~0.75 s), §6 (the cost table; "can a parrying man climb": a soldier at 3 a block now sinks below a 120-point bar - −70 / −40 / −18 a minute at 50),
+§7 (a wrong-side block 6), §11c (a bash 6, ~42 points a minute); HOW-IT-WORKS (attacks per bar 5 / 9, 10 / 18, 20 / 36; a wrong-side block costs
+twice a clean one); PLAYTEST D36; IMPACT.md quotes no cost number - untouched.
+
+**Gotchas**
+- `ParamDef` has `Description` (and `HintText`), no `Hint`.
+- DefaultsTool's fresh `TraxCombat.Core.dll` blocked by Smart App Control → `refresh_defaults.fsx` - it needs ABSOLUTE paths (a relative bin path
+  fails in its resolver: "is not an absolute path").
+- Python is available on this PC now; the docs are LF in the working tree (autocrlf; Git Bash's `grep -c $'\r$'` misreports them) - edited
+  byte-level with Python, endings kept. `dotnet test` and the smoke (`run_smoke.ps1`) ran.
+
+**UNVERIFIED — only the game can tell (PLAYTEST D36)**
+1. The lines tire visibly sooner after the first clash without the fight stalling (men empty and braced everywhere).
+2. The first start logs `[config] migrated config.json …` once (format 14 → 15) and `Athletics settings at the end` reads 10.0 / 6.00 / 3.00 / 6.00.

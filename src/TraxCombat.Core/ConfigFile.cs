@@ -105,8 +105,11 @@ namespace TraxCombat.Core
         /// ImpactChargeCarrySeconds 1.5 → 3 - to a slow swing's blow; a tuned value kept and noted), 13 = step 66 (Anton's looter battle of 2026-10-19 14:16 - no AI kick seen: CostPerKickOrBash
         /// 3 → 5, AiKicksPerMinute 0.1 → 1.2, AiKickCooldownSeconds 10 → 8 in a file still holding them; a tuned value kept and noted), 14 = step 68
         /// (Toni's 100 v 100 of 2026-10-19 - "tire the men more to slow down the combat again a bit after the first impact": CostPerBlow 7 → 8,
-        /// CostPerWrongSideShieldBlock 2 → 5, CostPerShieldBlock 1 → 2 in a file still holding them; a tuned value kept and noted).</summary>
-        public const int FormatVersion = 14;
+        /// CostPerWrongSideShieldBlock 2 → 5, CostPerShieldBlock 1 → 2 in a file still holding them; a tuned value kept and noted), 15 = step 71
+        /// (Toni, 2026-10-19 - "they need to tire faster still": CostPerBlow 8 → 10, CostPerKickOrBash 5 → 6, CostPerWrongSideShieldBlock 5 → 6,
+        /// CostPerShieldBlock 2 → 3, CostPerWeaponParry 2 → 3 in a file still holding them; a tuned value kept and noted; the refill
+        /// unchanged).</summary>
+        public const int FormatVersion = 15;
 
         /// <summary>The meta key holding <see cref="FormatVersion"/> - not a setting.</summary>
         public const string VersionKey = "ConfigVersion";
@@ -480,6 +483,22 @@ namespace TraxCombat.Core
                 if (from >= 8) MoveOrKeep(read, SettingsSchema.CostPerWrongSideShieldBlock, 2, tire + " - a wrong-side shield block costs 5 (a clumsy block tires)", from, defaultOf);
                 MoveOrKeep(read, SettingsSchema.CostPerShieldBlock, 1, tire + " - a right-side shield block costs 2", from, defaultOf);
             }
+            if (from < 15)
+            {
+                // step 71: CostPerBlow's 8, CostPerWrongSideShieldBlock's 5 and CostPerShieldBlock's 2 are the defaults since format 14 (an older
+                // file's 7 / 2 / 1 went through step 68 above straight to today's values); CostPerKickOrBash's 5 since format 13 (an older file's 3
+                // went through step 66 above); CostPerWeaponParry's 2 since step 22, in every format - a file without a key simply gets the new
+                // default; a hand-set value is kept and said once; the refill (FullRegenSecondsStanding) is not touched
+                const string faster = "step 71, Toni: the men tire faster still";
+                if (from >= 14)
+                {
+                    MoveOrKeepIfMoved(read, SettingsSchema.CostPerBlow, 8, faster + " - a swing or shot costs 10", from, defaultOf);
+                    MoveOrKeepIfMoved(read, SettingsSchema.CostPerWrongSideShieldBlock, 5, faster + " - a wrong-side shield block costs 6", from, defaultOf);
+                    MoveOrKeepIfMoved(read, SettingsSchema.CostPerShieldBlock, 2, faster + " - a right-side shield block costs 3", from, defaultOf);
+                }
+                if (from >= 13) MoveOrKeepIfMoved(read, SettingsSchema.CostPerKickOrBash, 5, faster + " - a kick or a shield bash costs 6", from, defaultOf);
+                MoveOrKeepIfMoved(read, SettingsSchema.CostPerWeaponParry, 2, faster + " - a weapon parry costs 3", from, defaultOf);
+            }
             // steps 36 / 37: the retired AI sprint keys - in ANY format (they are only ever steps 33-36's, and a hand-pasted one
             // goes the same way)
             DropRetiredSprintKeys(read, from);
@@ -518,6 +537,15 @@ namespace TraxCombat.Core
                 read.Unknown.RemoveAt(i);
                 read.Migrated.Add(pair.Key + " " + pair.Value + " dropped (format " + from + " → " + FormatVersion + "; " + why + ")");
             }
+        }
+
+        /// <summary>Step 71: <see cref="MoveOrKeep"/> only when today's default is not the old one - a default that never moved (DESIGN's initial
+        /// values in the tests, an earlier step's shipped values) says nothing about a hand-set value.</summary>
+        private static void MoveOrKeepIfMoved(ConfigReadResult read, ParamDef p, double oldDefault, string why, int from, Func<ParamDef, double> defaultOf)
+        {
+            double now = defaultOf(p);
+            if (double.IsNaN(now) || Math.Abs(now - oldDefault) < 1e-9) return;
+            MoveOrKeep(read, p, oldDefault, why, from, defaultOf);
         }
 
         /// <summary>Step 56: <see cref="MoveOldDefault"/>, else <see cref="KeptTuned"/>.</summary>

@@ -29,8 +29,8 @@ namespace TraxCombat.Tools
                 ImpactModelDefaults();
                 AiKickDefaults();
                 S.Set(SettingsSchema.KickBraceEnabled, false, SettingSources.File);
-                S.Set(SettingsSchema.CostPerKickOrBash, SettingsSchema.CostPerKickOrBash.Default, SettingSources.File); // AthleticsDefaults pins step 18's 3
-                Check(Math.Abs(S.CostPerKickOrBash - 5) < 1e-6 && S.AiBashShareOfSwingsPercent == 100 && Math.Abs(S.AiKickCooldownSeconds - 8) < 1e-6
+                S.Set(SettingsSchema.CostPerKickOrBash, SettingsSchema.CostPerKickOrBash.Default, SettingSources.File); // AthleticsDefaults pins step 18's 3; the shipped kick 6 since step 71 (5 at step 66)
+                Check(Math.Abs(S.CostPerKickOrBash - 6) < 1e-6 && S.AiBashShareOfSwingsPercent == 100 && Math.Abs(S.AiKickCooldownSeconds - 8) < 1e-6
                       && Math.Abs(S.AiBashCooldownSeconds - 2) < 1e-6 && Math.Abs(S.AiKickWaitSeconds - 3) < 1e-6,
                     "step 66's defaults: cost " + S.CostPerKickOrBash + ", share " + S.AiBashShareOfSwingsPercent + ", cooldowns " + S.AiKickCooldownSeconds + " / " + S.AiBashCooldownSeconds
                     + ", wait " + S.AiKickWaitSeconds);
@@ -96,7 +96,7 @@ namespace TraxCombat.Tools
                       && Math.Abs(kicker.AiKickNext - (t + 8)) < 1e-6,
                     "the waiting man did not kick once in reach (phase " + kicker.AiKickPhase + ", done " + st.WaitsDone + ")");
                 Check(Math.Abs(st.WaitSeconds - 1.0) < 1e-6, "the wait's time: " + st.WaitSeconds);
-                Check(Math.Abs(AthleticsMath.KickOrBashCostPoints(Rules, kicker) - 5) < 1e-6, "a common man's kick does not cost 5: " + AthleticsMath.KickOrBashCostPoints(Rules, kicker));
+                Check(Math.Abs(AthleticsMath.KickOrBashCostPoints(Rules, kicker) - 6) < 1e-6, "a common man's kick does not cost 6 (5 at step 66, 6 since step 71): " + AthleticsMath.KickOrBashCostPoints(Rules, kicker));
 
                 // ---- 4. a wait that runs out, one dropped, an enemy too far to wait for
                 logic.AiKickDice = new FixedDice(0.0);

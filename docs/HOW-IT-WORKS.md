@@ -56,9 +56,9 @@ effects begin. **Wounds cap the bar**: a man at half health can only refill to h
 
 | A bar of… | Attacks from full to empty: a soldier | a hero who leads his party |
 |---:|---:|---:|
-| 50 (a recruit) | 6 | 11 |
-| 100 | 13 | 22 |
-| 200 (a veteran hero) | 25 | 44 |
+| 50 (a recruit) | 5 | 9 |
+| 100 | 10 | 18 |
+| 200 (a veteran hero) | 20 | 36 |
 
 Numbers: [MECHANICS §2](MECHANICS.md#2-the-athletics-bar).
 
@@ -87,7 +87,7 @@ so a formation pulled back and walked about recovers.
 
 **A skilful defender recovers on the defence.** A clean block on the right side, or a parry, costs a
 little but lets the refill run on underneath. A block on the **wrong** side (the shield caught the blow
-off-side) costs more than twice as much, stops the refill and starts the wait again. So a man who reads his enemy can
+off-side) costs twice as much, stops the refill and starts the wait again. So a man who reads his enemy can
 catch his breath while defending — and a man who keeps guessing wrong stays at the bottom. **A raised shield facing the blow covers
 it:** a shield block against a man in front of you counts as the right side, whichever way the game says you held
 it — the same for the AI. From the side or behind, the side still matters, and so does it for a weapon parry. A
