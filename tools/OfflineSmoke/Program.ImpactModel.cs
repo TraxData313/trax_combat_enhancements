@@ -42,6 +42,7 @@ namespace TraxCombat.Tools
             public readonly HashSet<int> RangedInHand = new HashSet<int>(); // step 62: a bow in his hand
             public readonly Dictionary<int, double> Angles = new Dictionary<int, double>(); // step 62: the defender's angle to the attacker (°)
             public bool Fatal; // step 62: the next blows kill
+            public bool NotEnemies; // step 63: the next blows are a friend's (the engine cancels their damage)
             public int KitReads;
 
             public void Kit(Agent a, out double armour, out int level)
@@ -71,6 +72,7 @@ namespace TraxCombat.Tools
                 f.AttackerPassive = f.AttackerMounted && Couched.Contains(attacker.Index);
                 f.TwoHanded = TwoHanded.Contains(attacker.Index);
                 f.Fatal = Fatal && ImpactMath.IsLanded(f.Event);
+                f.NotEnemies = NotEnemies;
                 f.DefenderRangedInHand = ImpactMath.IsLanded(f.Event) && RangedInHand.Contains(victim.Index);
                 f.AttackAngleDegrees = ImpactMath.IsLanded(f.Event) && Angles.TryGetValue(victim.Index, out var angle) ? angle : 0;
                 if (f.Event != ImpactEvent.Kick && Weapons.TryGetValue(attacker.Index, out var w))
@@ -150,6 +152,14 @@ namespace TraxCombat.Tools
         }
 
         private static void Step62On()
+        {
+            foreach (var p in Step62Keys) S.Set(p, p.Default, SettingSources.File);
+            // step 63 moved step 62's shipped backup 0.5 → 0.2 s - the step-62 checks keep the values they were written on
+            S.Set(SettingsSchema.ImpactFallBackupSeconds, 0.5, SettingSources.File);
+        }
+
+        /// <summary>Step 63: every step-62 / step-63 key at the embedded defaults (step 63's own checks).</summary>
+        private static void Step63On()
         {
             foreach (var p in Step62Keys) S.Set(p, p.Default, SettingSources.File);
         }

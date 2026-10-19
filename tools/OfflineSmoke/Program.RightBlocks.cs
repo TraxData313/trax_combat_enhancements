@@ -36,7 +36,7 @@ namespace TraxCombat.Tools
                       && SettingsSchema.CorrectBlockTiredWeightPercent.Default == 25 && SettingsSchema.RiposteBlockerTiredPercent.Default == 0,
                     "the embedded defaults are not step 56's: right " + SettingsSchema.RightBlockStaggerMaxPercent.Default + " / " + SettingsSchema.RightBlockKnockdownMaxPercent.Default
                     + ", riposte " + SettingsSchema.RiposteStaggerMaxPercent.Default + ", stun " + SettingsSchema.BlockStunTiredExtraPercent.Default);
-                Check(ConfigFile.FormatVersion == 10, "the config format is not 10: " + ConfigFile.FormatVersion);
+                Check(ConfigFile.FormatVersion >= 10, "the config format is below 10: " + ConfigFile.FormatVersion); // step 63: 11
                 var inputs = new FakeImpactInputs();
                 var body = new FakeImpactBody();
                 var logic = NewPaceLogic(new FakePaceBody(), new FakeWeaponFacts());

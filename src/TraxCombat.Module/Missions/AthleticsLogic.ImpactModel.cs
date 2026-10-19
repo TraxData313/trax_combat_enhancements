@@ -265,6 +265,12 @@ namespace TraxCombat.Missions
             d = default;
             knockDown = false;
             if (!ImpactGate(a, v, f.Event, out var r)) return false;
+            if (f.NotEnemies) // step 63: a FRIEND's blow / block - the engine cancels its damage and plays nothing; never decided
+            {
+                _impact.Skip(ImpactSkip.NotEnemies, f.Event);
+                if (ImpactMath.IsLanded(f.Event)) _falls.Friendly++;
+                return false;
+            }
             long t0 = Stopwatch.GetTimestamp();
             var ar = Rules;
             double fA = AthleticsMath.PeakShare(in ar, a!);

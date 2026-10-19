@@ -97,8 +97,10 @@ namespace TraxCombat.Core
         /// noted; an older file's 10 goes straight to 7 through step 43's move), 10 = step 56 (Anton's tournament: right blocks favour the
         /// defender - RightBlockStaggerMaxPercent 80 → 30, RightBlockKnockdownMaxPercent 40 → 10, ParryStaggerMaxPercent 80 → 30,
         /// ParryKnockdownMaxPercent 40 → 10, RiposteStaggerMaxPercent 50 → 70 and BlockStunTiredExtraPercent 100 → 0 - the spike's lever 2
-        /// failed - in an older file still holding them; a tuned value kept and noted).</summary>
-        public const int FormatVersion = 10;
+        /// failed - in an older file still holding them; a tuned value kept and noted), 11 = step 63 (Anton's battle of 2026-10-19 11:02:
+        /// ImpactFallBackupSeconds 0.5 → 0.2 - the game plays its falls at the blow, so the backup comes sooner - in a file still holding
+        /// step 62's default; a tuned value kept and noted).</summary>
+        public const int FormatVersion = 11;
 
         /// <summary>The meta key holding <see cref="FormatVersion"/> - not a setting.</summary>
         public const string VersionKey = "ConfigVersion";
@@ -432,6 +434,13 @@ namespace TraxCombat.Core
                     "step 56, Anton's tournament: a tired man flailing into a good guard reels - the riposte up to 70%", from, defaultOf);
                 MoveOrKeep(read, SettingsSchema.BlockStunTiredExtraPercent, 100,
                     "step 56: the impact spike's lever 2 FAILED - a longer block stun changes nothing the engine plays; the stagger is the window", from, defaultOf);
+            }
+            if (from < 11)
+            {
+                // step 63: step 62's keys came in format 10 (no format bump then), so only a format-10 file can hold them - an older file
+                // without the key simply gets the new default; a hand-set value is kept and said once
+                MoveOrKeep(read, SettingsSchema.ImpactFallBackupSeconds, 0.5,
+                    "step 63, Anton's battle: the game plays a decided fall at the blow itself (friends' blows are no longer decided) - the backup comes after 0.2 s", from, defaultOf);
             }
             // steps 36 / 37: the retired AI sprint keys - in ANY format (they are only ever steps 33-36's, and a hand-pasted one
             // goes the same way)

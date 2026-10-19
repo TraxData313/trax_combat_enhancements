@@ -149,6 +149,12 @@ namespace TraxCombat.Core
         /// <c>ImpactChargeCarrySeconds</c> ago (an AI sprint ends 3 m from the enemy - the first swing carries the charge) - his speed into
         /// the blow counts at least the sprint reference (momentum, the reflected charge, the full critical).</summary>
         public bool AttackerCharging;
+
+        /// <summary>Step 63: the two men are NOT ENEMIES - a friend's blow (a rear-rank man's swing into his own front rank). The engine
+        /// CANCELS its damage (<c>Mission.MeleeHitCallback</c>: <c>CancelsDamageAndBlocksAttackBecauseOfNonEnemyCase</c> → 0 damage) and a
+        /// 0-damage blow plays no reaction (<c>Agent.HandleBlow</c>) - never decided (Anton's battle of 2026-10-19 11:02: 126 of 198
+        /// decided falls were friends' blows, all left to our backup blow, which threw men forward out of their walls).</summary>
+        public bool NotEnemies;
     }
 
     /// <summary>

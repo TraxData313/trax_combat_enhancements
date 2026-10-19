@@ -41,6 +41,7 @@ namespace TraxCombat.Missions
     {
         public void Fill(Agent attacker, Agent victim, in AttackCollisionData cd, ref ImpactFacts f)
         {
+            f.NotEnemies = !attacker.IsEnemyOf(victim); // step 63: a friend's blow - the engine cancels its damage, nothing plays
             f.AttackerMounted = attacker.MountAgent != null;
             f.DefenderMounted = victim.MountAgent != null;
             // step 52: MOMENTUM; step 53: a rider's = his horse's (vanilla's rider velocity), never a couched lance's (a passive attack)

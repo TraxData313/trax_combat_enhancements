@@ -1206,7 +1206,7 @@
   // play within this many seconds, the man is knocked down by a blow of our own - once. 0 = no
   // backup.
   // (range 0.0 to 3.0)
-  "ImpactFallBackupSeconds": 0.5,
+  "ImpactFallBackupSeconds": 0.2,
 
   // How much both men's TOUGHNESS - armour, rank and the health left, the courage settings'
   // measure - weighs in who staggers or knocks down whom: the mismatch × (attacker's toughness

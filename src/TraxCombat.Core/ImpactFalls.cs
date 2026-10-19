@@ -67,6 +67,10 @@ namespace TraxCombat.Core
         /// <summary>Landed blows not decided: they killed the man (nothing to fall - he dies).</summary>
         public int Fatal;
 
+        /// <summary>Step 63: landed blows not decided - a FRIEND's (the two men not enemies): the engine cancels their damage and plays nothing,
+        /// so a fall decided on one was only ever played by our backup blow (Anton's battle of 2026-10-19 11:02: 126 of 198).</summary>
+        public int Friendly;
+
         /// <summary>A decided fall's watch taken over by a newer reaction on the same man before the Fall showed.</summary>
         public int Replaced;
 
@@ -116,7 +120,7 @@ namespace TraxCombat.Core
             var c = CultureInfo.InvariantCulture;
             var s = new StringBuilder("impact falls (step 62 - every knockdown decided on a landed blow and what became of it; the target: seen = decided): ");
             int decided = Total(Decided);
-            if (decided == 0 && ShrugRefusedForStagger == 0 && Fatal == 0)
+            if (decided == 0 && ShrugRefusedForStagger == 0 && Fatal == 0 && Friendly == 0)
             {
                 s.Append(live ? "no knockdown decided on a landed blow this mission" : "not live this mission");
             }
@@ -148,7 +152,8 @@ namespace TraxCombat.Core
             s.Append("; the game's shrug-off REFUSED for a decided fall ").Append(ShrugRefusedForFall.ToString(c)).Append(" / stagger ").Append(ShrugRefusedForStagger.ToString(c))
                 .Append(", decided at the shrug-off with nothing ").Append(ShrugDecidedNothing.ToString(c))
                 .Append(" (ImpactShrugOffYieldsToImpact ").Append(shrugYields ? "on" : "OFF").Append("; taken by the KnockDown seam ").Append(TakenFromShrugSeam.ToString(c)).Append(")");
-            s.Append("; landed blows not decided because they KILLED ").Append(Fatal.ToString(c));
+            s.Append("; landed blows not decided because they KILLED ").Append(Fatal.ToString(c))
+                .Append(", because a FRIEND struck them (step 63 - the game cancels a friend's damage: nothing to play) ").Append(Friendly.ToString(c));
             return s.ToString();
         }
     }
