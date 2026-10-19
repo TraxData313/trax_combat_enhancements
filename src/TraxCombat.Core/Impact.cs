@@ -637,7 +637,12 @@ namespace TraxCombat.Core
                    + "; momentum (the attacker's run into the blow) " + (MomentumOn && MomentumWeight > 0
                        ? "+" + F0(100 * MomentumWeight) + "% impact at " + F1(MomentumSprint) + " m/s and faster, none at " + F1(MomentumWalk) + " m/s or slower; a rider's horse +"
                          + F0(100 * RiderMomentumWeight) + "% at " + F1(RiderMomentumGallop) + " m/s, none at " + F1(RiderMomentumWalk) + " m/s (a couched lance never)"
-                       : "OFF");
+                       : "OFF")
+                   + "; step 62: a decided fall / stagger refuses the game's shrug-off " + OnOff(ShrugOffYields) + ", a fall not seen in " + F1(FallBackupSeconds) + " s = our blow"
+                   + (FallBackupSeconds > 0 ? string.Empty : " (OFF)") + "; toughness ^" + F2(ToughnessWeight) + ", a ranged man in melee x" + F2(RangedInHand)
+                   + "; from behind (> " + F0(RearDegrees) + "°) x" + F2(RearFactor) + ", from the side (" + F0(FlankDegrees) + "°+) x" + F2(FlankFactor)
+                   + "; a charge carries " + F1(ChargeCarrySeconds) + " s after the sprint; a charge into a right-side shield block thrown back up to " + P(RiposteKnockdownMax)
+                   + " (his momentum against him +" + F0(100 * RiposteMomentumWeight) + "%); the multipliers together at most x" + F1(MultiplierCap);
         }
 
         private static string OnOff(bool on) => on ? "on" : "OFF";

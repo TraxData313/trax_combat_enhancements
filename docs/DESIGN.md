@@ -2021,6 +2021,29 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     first under a `THE MAIN SETTINGS` banner, then `ADVANCED - for tuning`, the header naming both pages; (g) the labels and hints on the player page
     say what a player sees ("Cost per swing", "AI aggression when fresh", "Against you"), and a hint that pointed at a neighbouring setting now
     names the Advanced page's group instead; (h) a NEW setting goes to the Advanced page unless a player needs it to set up his game (CLAUDE.md).
+52. **More men fall, and the charge matters** (step 62, Anton 2026-10-19 after his battle of 09:30: "more people falling when troops clash,
+    especially when high-tier troops attack low-tier troops ... hits from the BACK ... that first charge sprint + swing must matter - met by a wall
+    of shields and blocked the right way, the ATTACKER is staggered ... even a chance to fall back ... the critical not capped when the unit
+    sprints ... even for the player"). Claude's calls: (a) THE LOST FALLS first - his log had 35 clean-hit knockdowns decided, 7 Falls seen, 13
+    not seen, 14 answered on a blow the game had SHRUGGED OFF: `Mission.CreateMeleeBlow` asks the shrug-off FIRST (5555), then knock-back (5571),
+    then knockdown (5575), and a weapon blow flagged ShrugOff plays no reaction (a kick's does - `Blow.NoIgnore` is set for alternative attacks);
+    so the shrug-off question now DECIDES the blow (the attacker = the blow's `OwnerId`) and refuses the shrug-off for a decided knockdown or
+    stagger, the KnockDown seam taking the same decision (one per blow); a decided fall still not seen after `ImpactFallBackupSeconds` (0.5) =
+    our own knockdown blow (lever 6, proven 10/10) from the tick, once; a blow that KILLS is never decided (`Agent.HandleBlow` plays his death,
+    and a 0-damage blow plays nothing - both used to read "not seen"); (b) TOUGHNESS = courage's measure (armour, level, health left - shared code,
+    the weights live), R × (t_A ÷ t_D)^0.5: a legionary on a looter x2.1 (one doubling, +0.25 x), strongly, not absolutely; an archer caught in
+    melee with his bow in hand x1.3 (a shieldless man's weaker guard already shows as more clean hits - he cannot block); (c) DIRECTION from the
+    victim's body facing: behind (> 120°) x2, the side (60-120°) x1.4, landed blows only; (d) THE CHARGE = sprinting now, or the FIRST blow within
+    1.5 s after a sprint (the AI's sprint ends 3 m from the enemy, so his log's momentum line had "sprinting 0" of 683 blows) - its speed counts at
+    least the sprint reference, the momentum's full x1.6; (e) THE REFLECTED CHARGE: on a correct block the riposte reads his blow WITHOUT its
+    momentum and his momentum turned AGAINST him (x2 at a full sprint), the blocker's toughness against his; a charge into a RIGHT-SIDE SHIELD block
+    (never a parry - a sword does not stop a running man's mass the way a planted shield does) can THROW HIM BACK, up to 40 % × S(x_r) × his
+    charge's share (0 at a walk - a walking man only reels), our own blow on him owned by the shieldman, you too (× "Against you") with the red line;
+    the reel grows with the comparison (max(T_A, x_r)); (f) THE UNCAPPED CRITICAL: a charging man's melee blow rolls the full ±50 % upside
+    whatever his tiredness (`SprintFullCritical`, the Damage group); (g) THE CAP: the multipliers together at most x8 (and at least 1/8); a fresh,
+    tough shieldman facing a charge and blocking right stays near-unshakeable; two fresh even men stay at 0; (h) every new setting on the ADVANCED
+    page (14, 275 → 289 - no player-page switch: "Against you" already scales the thrown-back on you, and `RiposteKnockdownMaxPercent` 0 turns it off); no
+    existing default changed, so no config migration (format 10 stays).
 
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),

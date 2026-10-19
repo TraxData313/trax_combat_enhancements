@@ -88,7 +88,7 @@ public class ImpactHitsTests
         }
         Assert.Contains("momentum (the attacker's run into the blow) +60% impact at 7.0 m/s and faster, none at 2.0 m/s or slower; a rider's horse +30% at 10.0 m/s, none at 3.0 m/s (a couched lance never)", r.Describe());
         Assert.Contains("tired men always flinch on", r.Describe());
-        Assert.EndsWith("momentum (the attacker's run into the blow) OFF", Rules(s => s.Set(SettingsSchema.ImpactMomentumEnabled, false, "test")).Describe());
+        Assert.Contains("momentum (the attacker's run into the blow) OFF; step 62: ", Rules(s => s.Set(SettingsSchema.ImpactMomentumEnabled, false, "test")).Describe()); // step 62 appends its own
     }
 
     // ------------------------------------------------------------------ the momentum factor
