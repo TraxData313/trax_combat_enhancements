@@ -85,6 +85,27 @@ namespace TraxCombat.Hud
         private Color _barColor = Hidden;
         private Color _barFrameColor = Hidden;
         private Color _barWoundColor = Hidden;
+        private bool _moraleShown;
+        private float _moraleWidth = 1f;
+        private float _moraleHeight = 1f;
+        private float _moraleFill;
+        private Color _moraleColor = Hidden;
+        private Color _moraleFrameColor = Hidden;
+        private float _feverOffsetY;
+
+        /// <summary>Step 67: this frame's morale bar (at the box's bottom - the fever bar lifted above it by <paramref name="feverLift"/>).
+        /// <paramref name="shown"/> false with a place kept = no morale known for him (a tournament).</summary>
+        internal void SetMorale(bool shown, in MarkBox box, float fill, Color color, Color frameColor)
+        {
+            MoraleShown = shown;
+            MoraleWidth = box.MoraleWidth > 0f ? box.MoraleWidth : 1f;
+            MoraleHeight = box.MoraleHeight > 0f ? box.MoraleHeight : 1f;
+            FeverOffsetY = -box.FeverLift;
+            if (!shown) return;
+            MoraleFill = fill;
+            MoraleColor = color;
+            MoraleFrameColor = frameColor;
+        }
 
         /// <summary>One frame's values (the colours with the fade's alpha baked in).</summary>
         internal void Set(in MarkBox box, bool hasFever, float fill, Color fillColor, Color frameColor,
@@ -350,6 +371,97 @@ namespace TraxCombat.Hud
                 if (value == _barFrameColor) return;
                 _barFrameColor = value;
                 OnPropertyChangedWithValue(value, nameof(BarFrameColor));
+            }
+        }
+
+        // ------------------------------------------------------------------ the morale bar (step 67)
+
+        /// <summary>Step 67: his morale bar drawn (ShowMoraleMarks, his side, a morale known).</summary>
+        [DataSourceProperty]
+        public bool MoraleShown
+        {
+            get => _moraleShown;
+            set
+            {
+                if (value == _moraleShown) return;
+                _moraleShown = value;
+                OnPropertyChangedWithValue(value, nameof(MoraleShown));
+            }
+        }
+
+        /// <summary>The morale bar, screen pixels - the Athletics bar's size.</summary>
+        [DataSourceProperty]
+        public float MoraleWidth
+        {
+            get => _moraleWidth;
+            set
+            {
+                if (value == _moraleWidth) return;
+                _moraleWidth = value;
+                OnPropertyChangedWithValue(value, nameof(MoraleWidth));
+            }
+        }
+
+        [DataSourceProperty]
+        public float MoraleHeight
+        {
+            get => _moraleHeight;
+            set
+            {
+                if (value == _moraleHeight) return;
+                _moraleHeight = value;
+                OnPropertyChangedWithValue(value, nameof(MoraleHeight));
+            }
+        }
+
+        /// <summary>His morale ÷ 100, 0..1.</summary>
+        [DataSourceProperty]
+        public float MoraleFill
+        {
+            get => _moraleFill;
+            set
+            {
+                if (value == _moraleFill) return;
+                _moraleFill = value;
+                OnPropertyChangedWithValue(value, nameof(MoraleFill));
+            }
+        }
+
+        /// <summary>The morale blue, faded like the others.</summary>
+        [DataSourceProperty]
+        public Color MoraleColor
+        {
+            get => _moraleColor;
+            set
+            {
+                if (value == _moraleColor) return;
+                _moraleColor = value;
+                OnPropertyChangedWithValue(value, nameof(MoraleColor));
+            }
+        }
+
+        [DataSourceProperty]
+        public Color MoraleFrameColor
+        {
+            get => _moraleFrameColor;
+            set
+            {
+                if (value == _moraleFrameColor) return;
+                _moraleFrameColor = value;
+                OnPropertyChangedWithValue(value, nameof(MoraleFrameColor));
+            }
+        }
+
+        /// <summary>The fever bar lifted above the morale bar (screen pixels, negative = up; 0 without a morale bar).</summary>
+        [DataSourceProperty]
+        public float FeverOffsetY
+        {
+            get => _feverOffsetY;
+            set
+            {
+                if (value == _feverOffsetY) return;
+                _feverOffsetY = value;
+                OnPropertyChangedWithValue(value, nameof(FeverOffsetY));
             }
         }
 

@@ -8,6 +8,8 @@
     Step 24: under the bar, "ready 34/50" - the men not bracing (@ReadyShown: ShowReadyCount on and bracing
     possible), plain / yellow / red by the share ready. Step 58: under it, "fever 12/40" - the men in a fever
     (@FeverShown: ShowFeverOnLabels on, the fever on, at least one man in a fever), in the fever bar's orange.
+    Step 67: "morale 64, fresh 41%" under it (@MoraleShown: ShowMoraleOnLabels on, a morale known, among the nearest
+    MoraleLabelMax formations within MoraleLabelMetres), in the morale blue.
     Each label is a centring box placed in SCREEN PIXELS (ScaledPositionXOffset / ScaledPositionYOffset /
     ScaledSuggestedWidth take pixels) from the vanilla marker read live every frame; the rest is in UI
     pixels of the 1080p layout (AltMarker* settings), so the game's UI scale applies. The text brush is the
@@ -66,6 +68,9 @@
 
                 <!-- step 58: "fever 12/40" (men in a fever), centred under the ready count, in the fever bar's orange; only while a man is in a fever -->
                 <TextWidget Id="Fever" WidthSizePolicy="CoverChildren" HeightSizePolicy="CoverChildren" HorizontalAlignment="Center" MarginTop="1" Brush="NameMarker.Distance.Text" Brush.FontSize="@TextSize" Brush.FontColor="#FF8C1AFF" Text="@FeverText" IsVisible="@FeverShown" DoNotAcceptEvents="true" />
+
+                <!-- step 67: "morale 64, fresh 41%" (the men's mean morale and mean Athletics), in the morale blue; only on the nearest formations -->
+                <TextWidget Id="Morale" WidthSizePolicy="CoverChildren" HeightSizePolicy="CoverChildren" HorizontalAlignment="Center" MarginTop="1" Brush="NameMarker.Distance.Text" Brush.FontSize="@TextSize" Brush.FontColor="#8CC0FFFF" Text="@MoraleText" IsVisible="@MoraleShown" DoNotAcceptEvents="true" />
 
               </Children>
             </ListPanel>

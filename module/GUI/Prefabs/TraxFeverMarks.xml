@@ -11,6 +11,8 @@
         the bar's band colour by f (green at the peak line, blue just below, yellow / orange / red);
       at its BOTTOM his FEVER BAR (step 44, @FeverShown): a dark frame (@FrameColor) with the fill inside (@Fill =
         the fever left, 1 while armed) in @FillColor - bright orange armed and at the burn's start, through yellow.
+    Step 67: at the very BOTTOM his MORALE BAR (@MoraleShown - a dark frame @MoraleFrameColor, the fill @MoraleFill = his
+    morale / 100 in @MoraleColor, blue), the Athletics bar's size; the fever bar then sits above it (@FeverOffsetY).
     The fever bar's PLACE stays in the box while he has no fever (its widget hidden), so his Athletics bar keeps its
     height; the gap between the two is in the box's height (AthleticsMarkGap). Every colour carries the alpha of
     vanilla's own ALT-icon distance fade (and the fever's), baked in by the view. The view sizes each bar from its UI
@@ -51,11 +53,22 @@
                 </Widget>
 
                 <!-- step 44: his fever bar, at the bottom of the box (its place kept while hidden) -->
-                <Widget Id="FeverMark" WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" HorizontalAlignment="Center" VerticalAlignment="Bottom" ScaledSuggestedWidth="@Width" ScaledSuggestedHeight="@Height" IsVisible="@FeverShown" Sprite="BlankWhiteSquare_9" Color="@FrameColor" DoNotAcceptEvents="true">
+                <Widget Id="FeverMark" WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" HorizontalAlignment="Center" VerticalAlignment="Bottom" ScaledSuggestedWidth="@Width" ScaledSuggestedHeight="@Height" ScaledPositionYOffset="@FeverOffsetY" IsVisible="@FeverShown" Sprite="BlankWhiteSquare_9" Color="@FrameColor" DoNotAcceptEvents="true">
                   <Children>
                     <FillBarWidget Id="Fever" WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" MarginLeft="1" MarginRight="1" MarginTop="1" MarginBottom="1" FillWidget="FeverFill" MaxAmountAsFloat="1" InitialAmountAsFloat="@Fill" DoNotAcceptEvents="true">
                       <Children>
                         <Widget Id="FeverFill" WidthSizePolicy="Fixed" HeightSizePolicy="StretchToParent" HorizontalAlignment="Left" Sprite="BlankWhiteSquare_9" Color="@FillColor" DoNotAcceptEvents="true" />
+                      </Children>
+                    </FillBarWidget>
+                  </Children>
+                </Widget>
+
+                <!-- step 67: his MORALE bar, at the very bottom of the box (the fever bar lifted above it by @FeverOffsetY) -->
+                <Widget Id="MoraleMark" WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" HorizontalAlignment="Center" VerticalAlignment="Bottom" ScaledSuggestedWidth="@MoraleWidth" ScaledSuggestedHeight="@MoraleHeight" IsVisible="@MoraleShown" Sprite="BlankWhiteSquare_9" Color="@MoraleFrameColor" DoNotAcceptEvents="true">
+                  <Children>
+                    <FillBarWidget Id="Morale" WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" MarginLeft="1" MarginRight="1" MarginTop="1" MarginBottom="1" FillWidget="MoraleFill" MaxAmountAsFloat="1" InitialAmountAsFloat="@MoraleFill" DoNotAcceptEvents="true">
+                      <Children>
+                        <Widget Id="MoraleFill" WidthSizePolicy="Fixed" HeightSizePolicy="StretchToParent" HorizontalAlignment="Left" Sprite="BlankWhiteSquare_9" Color="@MoraleColor" DoNotAcceptEvents="true" />
                       </Children>
                     </FillBarWidget>
                   </Children>

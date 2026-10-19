@@ -45,6 +45,7 @@ namespace TraxCombat.Hud
 
         private readonly AltMarkerFrame _frame = new AltMarkerFrame();
         private readonly MarkerSight[] _sights = new MarkerSight[AltMarkerFrame.MaxMarkers];
+        private readonly AltMarkerLabelVM?[] _labelAt = new AltMarkerLabelVM?[AltMarkerFrame.MaxMarkers]; // step 67: this frame's label per marker
         private readonly bool[] _fallbackLoggedEver = new bool[FallbackKinds];
         private readonly bool[] _fallbackThisShow = new bool[FallbackKinds];
         private IFormationMarkerSource? _live;
@@ -78,6 +79,9 @@ namespace TraxCombat.Hud
 
         /// <summary>Step 58: this mission's fever shares ([summary]).</summary>
         internal FeverLabelStats FeverStats { get; } = new FeverLabelStats();
+
+        /// <summary>Step 67: the morale line's numbers.</summary>
+        internal MoraleLabelStats MoraleStats { get; } = new MoraleLabelStats();
 
         /// <summary>This show uses our own projection.</summary>
         internal bool Projecting => _projecting;
@@ -137,6 +141,7 @@ namespace TraxCombat.Hud
             lines.Add(MarkerStats.SummaryLine(Stats.Errors));
             lines.Add(ReadyStats.SummaryLine(ViewName));
             lines.Add(FeverStats.SummaryLine(ViewName));
+            lines.Add(MoraleStats.SummaryLine(ViewName));
         }
 
         // ------------------------------------------------------------------ every frame: read, pair, place
@@ -226,10 +231,12 @@ namespace TraxCombat.Hud
                 ref var m = ref _frame.Markers[i];
                 var sight = AltMarkerMath.Sight(in m, showEnemy, _frame.ScreenWidth, _frame.ScreenHeight);
                 _sights[i] = sight;
+                _labelAt[i] = null;
                 if (sight == MarkerSight.NotLaidOut) notLaidOut = true;
                 if (sight != MarkerSight.Shown && sight != MarkerSight.Pinned) continue;
                 var label = vm.LabelFor(m.Key, in layout, _frame.Scale, out _);
                 if (label == null) continue;
+                _labelAt[i] = label;
                 AltMarkerMath.Place(in m, sight, in layout, _frame.Scale, out float x, out float y, out float w);
                 label.Place(x, y, w);
                 if (label.PushedStats != version || label.PushedSettings != s.Version)
@@ -245,6 +252,7 @@ namespace TraxCombat.Hud
             }
             for (int i = 0; i < labels.Count; i++)
                 if (!labels[i].SeenThisFrame) labels[i].IsShown = false;
+            PlaceMoraleLines(s);
             if (pushed && version != _countedVersion)
             {
                 _countedVersion = version;
@@ -257,6 +265,43 @@ namespace TraxCombat.Hud
             if (_firstLogged) return;
             _waited += f.Dt;
             if ((shown > 0 && !notLaidOut) || _waited > FirstLogGraceSeconds) LogFirstShow(in f, vm, in layout, shown);
+        }
+
+        /// <summary>Step 67: the morale line on the nearest MoraleLabelMax formations within MoraleLabelMetres (their marker's distance) - every
+        /// frame (the near set follows the camera), at most 64 markers, no allocation (a text only when a number changes).</summary>
+        private void PlaceMoraleLines(TraxSettings s)
+        {
+            var r = MoraleLabelRules.From(s);
+            int shown = 0;
+            for (int i = 0; i < _frame.Count; i++)
+            {
+                var label = _labelAt[i];
+                if (label == null) continue;
+                ref var m = ref _frame.Markers[i];
+                double morale = m.Stats.MeanMorale;
+                int nearer = 0;
+                if (MoraleLabelMath.Eligible(in r, morale, m.Distance))
+                {
+                    for (int j = 0; j < _frame.Count; j++)
+                    {
+                        if (j == i || _labelAt[j] == null) continue;
+                        ref var o = ref _frame.Markers[j];
+                        if (!MoraleLabelMath.Eligible(in r, o.Stats.MeanMorale, o.Distance)) continue;
+                        if (o.Distance < m.Distance || (o.Distance == m.Distance && j < i)) nearer++;
+                    }
+                }
+                var hidden = MoraleLabelMath.HiddenFor(in r, morale, m.Distance, nearer);
+                bool show = hidden == MoraleLabelHidden.None;
+                int mo = MoraleLabelMath.Round(morale), fresh = MoraleLabelMath.Round(100 * m.Stats.MeanFraction);
+                bool wasShown = label.ShownMorale >= 0;
+                if (label.SetMorale(show, mo, fresh))
+                {
+                    if (show) MoraleStats.NoteShown(mo, fresh, m.FormationIndex, m.TeamType);
+                    else if (wasShown) MoraleStats.NoteHidden(hidden);
+                }
+                if (show) shown++;
+            }
+            MoraleStats.NoteFrame(shown);
         }
 
         private void PushValues(AltMarkerLabelVM label, in AltMarker m, TraxSettings s, int version)
@@ -333,7 +378,7 @@ namespace TraxCombat.Hud
                 TraxLog.Limited("hud", ViewName + ": values at " + S1(f.Now) + " s (show #" + _showNo + "): " + DescribeValues()
                     + " - ± is " + (s.ShowFormationSpread ? F2(s.FormationSpreadStdDevs) + " std" : "off (ShowFormationSpread)")
                     + ", health " + (s.ShowFormationHealth ? "on" : "off (ShowFormationHealth)") + ", enemy " + (s.AltMarkersShowEnemy ? "on" : "off (AltMarkersShowEnemy)") + ", " + ReadyRules.From(s).Describe()
-                    + ", " + FeverLabelRules.From(s).Describe(), "hud-alt-values");
+                    + ", " + FeverLabelRules.From(s).Describe() + ", " + MoraleLabelRules.From(s).Describe(), "hud-alt-values");
             }
             else if (first && TraxLog.VerboseWants("hud-alt-values"))
             {

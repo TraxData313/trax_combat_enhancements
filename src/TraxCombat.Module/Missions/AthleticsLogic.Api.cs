@@ -49,6 +49,7 @@ namespace TraxCombat.Missions
         private readonly int[] _formationInPeak = new int[StatSlots];
         private readonly int[] _formationBracing = new int[StatSlots];
         private readonly int[] _formationInFever = new int[StatSlots]; // step 58: the ALT label's "fever 12/40"
+        private readonly MeanStd[] _formationMorale = new MeanStd[StatSlots]; // step 67: the ALT label's "morale 64, fresh 41%"
         private readonly FormationAthleticsStats[] _formationSnapshot = new FormationAthleticsStats[StatSlots];
         private double _formationRefreshedAt = double.NegativeInfinity;
         private int _formationVersion;
@@ -179,6 +180,7 @@ namespace TraxCombat.Missions
             m.InFever = fever;
             m.Armed = armed;
             m.Share = (float)share;
+            m.Morale = double.IsNaN(st.Morale) || st.Morale < 0 ? -1f : (float)st.Morale; // step 67: read at the formation-stats refresh
             if (everyone)
                 AthleticsMarkMath.Read(ref m, in bands, rules.Enabled ? st.Fraction : 1.0, AthleticsMath.UsableFraction(in rules, st),
                     AthleticsMath.PeakShare(in rules, st));
@@ -197,6 +199,20 @@ namespace TraxCombat.Missions
             armed = fv.Phase == FeverPhase.Armed;
             share = armed ? 1.0 : fv.Share;
             return armed || share > 0;
+        }
+
+        /// <summary>Step 67: his morale through courage's body (the game's <c>Agent.GetMorale()</c>; the smoke's stand-in) - −1 on a failing read.</summary>
+        private double MoraleOf(TrackedAgent st)
+        {
+            try
+            {
+                double m = CourageBody.Morale(st);
+                return double.IsNaN(m) ? -1 : m;
+            }
+            catch
+            {
+                return -1;
+            }
         }
 
         /// <summary>Bumps each time the formation snapshot is refreshed.</summary>
@@ -228,6 +244,7 @@ namespace TraxCombat.Missions
                 _formationInPeak[k] = 0;
                 _formationBracing[k] = 0;
                 _formationInFever[k] = 0;
+                _formationMorale[k].Clear();
             }
             int skipped = 0;
             for (int i = 0; i < _count; i++)
@@ -235,7 +252,12 @@ namespace TraxCombat.Missions
                 var st = _dense[i];
                 var a = st.Agent;
                 var formation = a.Formation; // managed reads first; IsActive reads the engine's state
-                if (formation == null) continue;
+                if (formation == null)
+                {
+                    // step 67: a man in no formation (a tournament, an arena, a duel) still gets his morale read for his ALT bar - when the game keeps one
+                    if (!IsPlayer(st) && !st.Removed && CourageBody.IsActive(st)) st.Morale = MoraleOf(st);
+                    continue;
+                }
                 int k = StatSlot(a.Team, (int)formation.FormationIndex);
                 if (k < 0)
                 {
@@ -254,11 +276,13 @@ namespace TraxCombat.Missions
                 var bs = st.Brace;
                 if (bs != null && bs.Active) _formationBracing[k]++; // step 23: the ready count = Count - Bracing
                 if (_feverRunning > 0 && FeverOf(st, out _, out _)) _formationInFever[k]++; // step 58: the fever share (the switches read inside)
+                double morale = st.Morale = MoraleOf(st); // step 67: the morale eyes (the man's bar reads it too)
+                if (morale >= 0) _formationMorale[k].Add(morale);
             }
             _formationTeamsSkipped = skipped;
             for (int k = 0; k < _formationSnapshot.Length; k++)
                 _formationSnapshot[k] = FormationAthleticsStats.From(in _formationPoints[k], in _formationFractions[k], in _formationPeakShares[k],
-                    in _formationHealth[k], _formationExhausted[k], _formationInPeak[k], _formationBracing[k], _formationInFever[k]);
+                    in _formationHealth[k], _formationExhausted[k], _formationInPeak[k], _formationBracing[k], _formationInFever[k], in _formationMorale[k]);
             _formationVersion++;
         }
 

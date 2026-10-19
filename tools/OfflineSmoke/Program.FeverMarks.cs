@@ -104,6 +104,7 @@ namespace TraxCombat.Tools
             S.Set(SettingsSchema.AltMarksEveryone, true, SettingSources.File);                // ... and in the every-man view (step 58's near view has its own step)
             S.Set(SettingsSchema.AltNearMarksMax, 5, SettingSources.File);
             S.Set(SettingsSchema.AltNearMarksMetres, 15.0, SettingSources.File);
+            S.Set(SettingsSchema.ShowMoraleMarks, false, SettingSources.File);                 // step 67: the older checks see the stack without the morale bar
         }
 
         private static class FeverColors

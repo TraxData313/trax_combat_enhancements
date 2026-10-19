@@ -97,6 +97,10 @@ namespace TraxCombat.Hud
         private string _feverText = string.Empty;
         private bool _feverShown;
         private int _inFever = -1;
+        private string _moraleText = string.Empty;
+        private bool _moraleShown;
+        private int _morale = -1;
+        private int _fresh = -1;
         private int _feverTotal = -1;
 
         public AltMarkerLabelVM(int index)
@@ -128,6 +132,11 @@ namespace TraxCombat.Hud
         internal int ShownInFever => _feverShown ? _inFever : -1;
 
         internal int ShownFeverTotal => _feverShown ? _feverTotal : -1;
+
+        /// <summary>Step 67: the morale line now shown (-1 while hidden).</summary>
+        internal int ShownMorale => _moraleShown ? _morale : -1;
+
+        internal int ShownFresh => _moraleShown ? _fresh : -1;
 
         /// <summary>Seen with a marker this frame (the view hides the rest).</summary>
         internal bool SeenThisFrame { get; set; }
@@ -197,6 +206,49 @@ namespace TraxCombat.Hud
                 _inFever = inFever;
                 _feverTotal = total;
                 FeverText = FeverLabelMath.Text(inFever, total);
+            }
+        }
+
+        /// <summary>Step 67: the morale line ("morale 64, fresh 41%", blue) - the text rebuilt only when a number changes. True when it changed
+        /// (shown, hidden or new numbers) - the view counts it.</summary>
+        internal bool SetMorale(bool shown, int morale, int fresh)
+        {
+            bool changed = shown != _moraleShown;
+            MoraleShown = shown;
+            if (!shown) return changed;
+            if (morale != _morale || fresh != _fresh)
+            {
+                _morale = morale;
+                _fresh = fresh;
+                MoraleText = MoraleLabelMath.Text(morale, fresh);
+                changed = true;
+            }
+            return changed;
+        }
+
+        /// <summary>Step 67: "morale 64, fresh 41%" - the formation's mean morale and mean Athletics.</summary>
+        [DataSourceProperty]
+        public string MoraleText
+        {
+            get => _moraleText;
+            set
+            {
+                if (value == _moraleText) return;
+                _moraleText = value;
+                OnPropertyChangedWithValue(value, nameof(MoraleText));
+            }
+        }
+
+        /// <summary>Step 67: ShowMoraleOnLabels on, a morale known, the formation among the nearest MoraleLabelMax within MoraleLabelMetres.</summary>
+        [DataSourceProperty]
+        public bool MoraleShown
+        {
+            get => _moraleShown;
+            set
+            {
+                if (value == _moraleShown) return;
+                _moraleShown = value;
+                OnPropertyChangedWithValue(value, nameof(MoraleShown));
             }
         }
 

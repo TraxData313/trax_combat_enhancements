@@ -66,6 +66,9 @@ namespace TraxCombat.Hud
 
         private static readonly float WoundR, WoundG, WoundB;
 
+        /// <summary>Step 67: the morale bar's blue (<see cref="MoraleMarkMath.ColorHex"/>).</summary>
+        private static readonly float MoraleR, MoraleG, MoraleB;
+
         private readonly FeverMarkFrame _frame = new FeverMarkFrame();
         private readonly int[] _bands = new int[BarMath.BandCount];
         private IFeverMarkSource? _source;
@@ -77,10 +80,12 @@ namespace TraxCombat.Hud
         private int _drawnNow;
         private int _barsNow;
         private int _feverBarsNow;
+        private int _moraleBarsNow;
 
         static FeverMarkView()
         {
             AthleticsMarkMath.ParseHex(AthleticsMarkMath.WoundHex, out WoundR, out WoundG, out WoundB, out _);
+            AthleticsMarkMath.ParseHex(MoraleMarkMath.ColorHex, out MoraleR, out MoraleG, out MoraleB, out _);
         }
 
         public FeverMarkView()
@@ -106,6 +111,9 @@ namespace TraxCombat.Hud
 
         internal int FeverBarsNow => _feverBarsNow;
 
+        /// <summary>Step 67: morale bars drawn in the last frame.</summary>
+        internal int MoraleBarsNow => _moraleBarsNow;
+
         /// <summary>The engine side (real: the attach; the smoke: a stand-in).</summary>
         internal void UseSource(IFeverMarkSource source) => _source = source;
 
@@ -116,7 +124,7 @@ namespace TraxCombat.Hud
         protected override bool QuietConditionToggles => true;
 
         /// <summary>Either switch: the Athletics bars (step 46) or the fever bars (step 44).</summary>
-        protected override bool ToggleOn(TraxSettings s) => s.ShowAthleticsMarks || s.ShowFeverMarks;
+        protected override bool ToggleOn(TraxSettings s) => s.ShowAthleticsMarks || s.ShowFeverMarks || s.ShowMoraleMarks; // step 67: or the morale bars
 
         protected override string ViewConditionText => _nothingToDraw
             ? "nothing to draw (FeverEnabled off and ShowAthleticsMarks off)"
@@ -136,7 +144,7 @@ namespace TraxCombat.Hud
                     TraxLog.Limited("hud", ViewName + ": FeverEnabled switched off at " + S1(f.Now) + " s - no fevers, the fever bars go"
                         + (s.ShowAthleticsMarks ? " (the Athletics bars stay)" : string.Empty), "hud-fever");
             }
-            _nothingToDraw = !feverOn && !s.ShowAthleticsMarks;
+            _nothingToDraw = !feverOn && !s.ShowAthleticsMarks && !s.ShowMoraleMarks; // step 67: the morale bars are something to draw
             if (_nothingToDraw) return false;
             if (_source != null && _source.TryReadShown(out bool shown)) return shown;
             return f.ShowIndicatorsKey || f.OrderMenuOpen;
@@ -180,7 +188,7 @@ namespace TraxCombat.Hud
             public bool ProjectOnScreen(ref FeverMark m)
             {
                 if (!Source.Project(ref m)) return false;
-                AthleticsMarkMath.Layout(in Fever, in Bars, Frame.Scale, m.Distance, m.HasBar, m.HasFever, m.FeverSlot, m.ScreenX, m.ScreenY, out var box);
+                AthleticsMarkMath.Layout(in Fever, in Bars, Frame.Scale, m.Distance, m.HasBar, m.HasFever, m.FeverSlot, m.HasMorale, m.ScreenX, m.ScreenY, out var box);
                 return FeverMarkMath.OnScreen(box.Left, box.Top, box.Width, box.Height, Frame.ScreenWidth, Frame.ScreenHeight);
             }
         }
@@ -194,14 +202,16 @@ namespace TraxCombat.Hud
             var r = FeverMarkRules.From(s);
             var a = AthleticsMarkRules.From(s);
             var near = AltNearRules.From(s); // step 58: the near view (the men nearest the screen's centre, close to the camera) or every man
-            bool everyone = a.On;
+            var mo = MoraleMarkRules.From(s); // step 67: the morale bars
+            bool everyone = a.On || mo.On;
             bool feverOn = r.Hidden == FeverMarksHidden.None;
             var athletics = AthleticsRules.From(s);
             var bands = BarRules.From(s);
             var frame = _frame;
             frame.Clear();
             Array.Clear(_bands, 0, _bands.Length);
-            int drawn = 0, looked = 0, inFever = 0, yours = 0, enemy = 0, bars = 0, feverBars = 0, wounded = 0;
+            int drawn = 0, looked = 0, inFever = 0, yours = 0, enemy = 0, bars = 0, feverBars = 0, wounded = 0, moraleBars = 0;
+            double moraleSum = 0;
             if ((everyone || feverOn) && _source!.BeginFrame(frame))
             {
                 float height = (float)r.HeightMetres;
@@ -224,7 +234,7 @@ namespace TraxCombat.Hud
                     }
                     if (m.Side == (int)MarkerTeam.Enemy) enemy++;
                     else yours++;
-                    var skip = AthleticsMarkMath.Decide(ref m, in r, in a);
+                    var skip = AthleticsMarkMath.Decide(ref m, in r, in a, in mo);
                     if (skip == FeverMarkSkip.None && near.Near && !AltNearMath.InRange(m.Distance, near.NearMetres)) skip = FeverMarkSkip.TooFar;
                     if (skip != FeverMarkSkip.None)
                     {
@@ -242,7 +252,7 @@ namespace TraxCombat.Hud
                 for (int k = 0; k < picked; k++)
                 {
                     ref var m = ref frame.Marks[frame.Order[k]];
-                    AthleticsMarkMath.Layout(in r, in a, frame.Scale, m.Distance, m.HasBar, m.HasFever, m.FeverSlot, m.ScreenX, m.ScreenY, out var box);
+                    AthleticsMarkMath.Layout(in r, in a, frame.Scale, m.Distance, m.HasBar, m.HasFever, m.FeverSlot, m.HasMorale, m.ScreenX, m.ScreenY, out var box);
                     var mark = vm.MarkAt(drawn, most);
                     if (mark == null) break;
                     float fade = AltNearMath.Fade(near.Near, m.Distance); // the near view: no distance fade (the close man you look at stays bright)
@@ -266,6 +276,14 @@ namespace TraxCombat.Hud
                         if (AthleticsMarkMath.Wounded(in m)) wounded++;
                     }
                     mark.Set(in box, m.HasFever, m.Armed ? 1f : m.Share, fill, frameColor, m.HasBar, m.BarFill, m.BarUsable, barColor, barFrame, barWound);
+                    bool moraleShown = m.HasMorale && MoraleMarkMath.Known(m.Morale); // step 67: the place kept when the game keeps no morale
+                    if (moraleShown)
+                    {
+                        moraleBars++;
+                        moraleSum += m.Morale;
+                    }
+                    mark.SetMorale(moraleShown, in box, MoraleMarkMath.Fill(m.Morale), new Color(MoraleR, MoraleG, MoraleB, fade),
+                        new Color(FrameGrey, FrameGrey, FrameGrey, BarFrameAlpha * fade));
                     drawn++;
                 }
             }
@@ -274,7 +292,8 @@ namespace TraxCombat.Hud
             _barsNow = bars;
             _feverBarsNow = feverBars;
             double ms = (Stopwatch.GetTimestamp() - start) * TicksToMs;
-            MarkStats.NoteBars(bars, _bands, wounded, feverBars);
+            MarkStats.NoteBars(bars, _bands, wounded, feverBars, moraleBars, moraleSum);
+            _moraleBarsNow = moraleBars;
             MarkStats.NoteMode(near.Near, drawn, near.Cap, near.NearMetres);
             MarkStats.NoteFrame(f.Dt, drawn, looked, inFever, yours, enemy, frame.Skipped[(int)FeverMarkSkip.Capped] > 0, near.Cap, frame.Skipped, ms);
             if (!_firstLogged && drawn > 0) LogFirstMarks(in f, in r, in a, in near, looked, inFever, yours, enemy, drawn, bars, wounded, feverBars);
@@ -317,7 +336,8 @@ namespace TraxCombat.Hud
                 + "; screen " + OrderStripMath.Px(_frame.ScreenWidth) + " x " + OrderStripMath.Px(_frame.ScreenHeight) + " px, UI scale " + F2(_frame.Scale)
                 + "; " + (a.On ? a.Describe() : "Athletics bars off (" + AthleticsMarkMath.HiddenName(a.Hidden) + ")")
                 + "; fever " + (r.Hidden == FeverMarksHidden.None ? r.Describe() : "bars off (" + FeverMarkMath.HiddenName(r.Hidden) + ")")
-                + "; the first drawn: " + nearest + "; source: " + _source!.Describe() + "; " + near.Describe(), "hud-fever");
+                + "; the first drawn: " + nearest + "; source: " + _source!.Describe() + "; " + near.Describe()
+                + (MoraleMarkRules.From(TraxSettings.Shared).On ? "; " + MoraleMarkRules.From(TraxSettings.Shared).Describe() + " - " + _moraleBarsNow + " drawn" : string.Empty), "hud-fever");
         }
     }
 }

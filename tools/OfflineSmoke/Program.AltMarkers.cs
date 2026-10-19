@@ -128,6 +128,7 @@ namespace TraxCombat.Tools
             S.Set(SettingsSchema.ShowAltMarkerStats, true, SettingSources.File);
             S.Set(SettingsSchema.AltMarkersShowEnemy, true, SettingSources.File);
             S.Set(SettingsSchema.ShowReadyCount, false, SettingSources.File); // step 24 has its own step (Program.Ready.cs): the older checks see step 20-23's labels
+            S.Set(SettingsSchema.ShowMoraleOnLabels, false, SettingSources.File); // step 67 has its own step (Program.Step67.cs)
             S.Set(SettingsSchema.ShowFormationHealth, true, SettingSources.File);
             S.Set(SettingsSchema.ShowFormationSpread, true, SettingSources.File);
             S.Set(SettingsSchema.FormationSpreadStdDevs, 1.0, SettingSources.File);
