@@ -144,6 +144,10 @@ namespace TraxCombat.Missions
             var cm = st.Courage;
             if (!PunishMath.TimidPresses(in pr, cm.Panic, distance)) return;
             if (!CourageRules.From(TraxSettings.Shared).Enabled) return;
+            if (st.Lone.Lone || st.Lone.Forced) // step 70: a lone runner (or one walking back to his group) does not step into a window
+            {
+                if (LoneRunnerRules.From(TraxSettings.Shared).Enabled) return;
+            }
             double until = PunishMath.WindowEnd(in target.Impact) + pr.GraceSeconds;
             if (until > cm.SurgeUntil) cm.SurgeUntil = until;
             if (!cm.Timid) return;

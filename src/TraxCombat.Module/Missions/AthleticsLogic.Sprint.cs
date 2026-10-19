@@ -579,6 +579,16 @@ namespace TraxCombat.Missions
             }
             // step 49 / 57: a sprint back or a rout is getting AWAY from the enemy; step 64: a charge's / fever's sprint runs INTO contact (ended by
             // his first attack - AttackBegan - or by standing still in Advance)
+            // step 70: a sprint INTO contact ends when it carried him away from his mates or past the enemy's front (a lone runner)
+            if (sp.IntoContact && !sp.ByKey && now >= st.SprintNextMelee)
+            {
+                st.SprintNextMelee = now + SprintMath.MeleeCheckSeconds;
+                if (LoneSprintEnds(st, now))
+                {
+                    EndSprint(st, SprintEnd.LoneRunner, now);
+                    return;
+                }
+            }
             if (!sp.ByKey && !sp.Regroup && !sp.Rout && !sp.IntoContact && now >= st.SprintNextMelee)
             {
                 st.SprintNextMelee = now + SprintMath.MeleeCheckSeconds;

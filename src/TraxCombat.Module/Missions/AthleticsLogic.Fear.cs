@@ -229,7 +229,7 @@ namespace TraxCombat.Missions
             double fraction = r.AthleticsEnabled ? st.Fraction : 1.0;
             double d = FearMath.Discipline(in r, st.CourageLevel < 0 ? 0 : st.CourageLevel, st.IsHero);
             double fear = FearMath.Mixed(in r, FearMath.Own(in r, morale, fraction, d), _fearUnits.FearOf(key, now));
-            _fearUnits.Note(key, fear, 0, morale, fraction, false, double.NaN, double.NaN, cx, cy, fx, fy, px, py, order);
+            _fearUnits.Note(key, fear, 0, morale, fraction, false, double.NaN, double.NaN, cx, cy, fx, fy, px, py, order, double.NaN, st.AgentIndex);
             IdleLook(st, now, px, py, order, double.NaN); // step 69: a held wall man standing off counts too (no scan: one enemy read)
         }
 
@@ -270,6 +270,7 @@ namespace TraxCombat.Missions
                 fm.Seen = true;
                 _fearStats.MenLooked++;
             }
+            if (_fearUnits.EnemyFrontDue(key, now)) ReadEnemyFront(st, key, now); // step 70: the band's frontage, once a unit a period (ON and OFF)
             double morale = st.Morale = CourageBody.Morale(st);
             double fraction = r.AthleticsEnabled ? st.Fraction : 1.0;
             double discipline = fm.Discipline = FearMath.Discipline(in r, st.CourageLevel < 0 ? 0 : st.CourageLevel, st.IsHero);
@@ -309,7 +310,8 @@ namespace TraxCombat.Missions
             fm.SomebodyBehind = near.Behind;
             fm.InContact = near.InContact;
             bool alone = near.Foes > 0 && near.Mates < FearMath.AloneMates;
-            _fearUnits.Note(key, baseFear, fm.Pull, morale, fraction, near.HasMass, near.MassX, near.MassY, cx, cy, fx, fy, near.Px, near.Py, order, win);
+            _fearUnits.Note(key, baseFear, fm.Pull, morale, fraction, near.HasMass, near.MassX, near.MassY, cx, cy, fx, fy, near.Px, near.Py, order, win, st.AgentIndex,
+                fm.HasSlide && fm.SlideKey == key ? fm.SlideX : double.NaN, fm.HasSlide && fm.SlideKey == key ? fm.SlideY : double.NaN); // step 70: a slid man counts in his file
             _fearStats.AddLook(on, near.InContact, near.Covered, near.Behind, alone);
             _fearStats.AddFear(discipline, fear, fm.Pull, afraidNow);
             _fearStats.AddWin(in r, near.Odds, winMix, baseFear, fear, afraidBefore, afraidNow);
@@ -377,14 +379,31 @@ namespace TraxCombat.Missions
             // step 69: a charging unit whose men win (the enemy near it few or broken) is MOPPING UP - no leash, they go for the kill
             bool mopUp = order == FearOrder.Charge && FearMath.MopUp(in r, unitWin);
             fm.MopUp = mopUp;
+            // step 70: THE BAND - his place along the enemy's front kept, compressed only in depth; out of a full file toward the ends
+            bool band = r.BandEnabled && _fearUnits.BandLive(key, now);
+            var bandKind = FearBandPlaceKind.NoBand;
+            bool fileFull = false;
             if (order == FearOrder.Charge)
             {
                 double radius = FearMath.LooseRadius(in r, pull);
-                double ds = Math.Sqrt((sx - px) * (sx - px) + (sy - py) * (sy - py));
                 bool pulled = fm.Wish && !fm.Loose;
-                loose = mopUp || (pulled ? ds <= radius : ds <= radius + FearMath.ChargeAgainMetres);
-                tx = sx;
-                ty = sy;
+                if (band)
+                {
+                    // no slot: his own place along the front; loose while his depth is within the loose radius of the band and he stands in his file
+                    bandKind = _fearUnits.BandPlace(in r, key, now, px, py, px, py, fm, out tx, out ty, out _, out fileFull, st.AgentIndex);
+                    double ux = _fearUnits.BandUX[key], uy = _fearUnits.BandUY[key];
+                    double dAlong = Math.Abs((tx - px) * ux + (ty - py) * uy), dSide = Math.Abs((tx - px) * -uy + (ty - py) * ux);
+                    double again = pulled ? 0 : FearMath.ChargeAgainMetres;
+                    loose = mopUp || (dAlong <= radius + again && dSide <= FearMath.MinLooseMetres + again);
+                    if (loose && !mopUp) _fearStats.Band.ChargeLooseInBand++;
+                }
+                else
+                {
+                    double ds = Math.Sqrt((sx - px) * (sx - px) + (sy - py) * (sy - py));
+                    loose = mopUp || (pulled ? ds <= radius : ds <= radius + FearMath.ChargeAgainMetres);
+                    tx = sx;
+                    ty = sy;
+                }
             }
             else
             {
@@ -393,8 +412,23 @@ namespace TraxCombat.Missions
                     slotX = px;
                     slotY = py;
                 }
-                FearMath.Place(in r, slotX, slotY, sx, sy, pull, out tx, out ty);
+                if (band)
+                {
+                    bandKind = _fearUnits.BandPlace(in r, key, now, slotX, slotY, px, py, fm, out double qx, out double qy, out double lateral, out fileFull, st.AgentIndex);
+                    FearMath.Place(in r, slotX, slotY, qx, qy, pull, out tx, out ty);
+                    if (bandKind == FearBandPlaceKind.Slid)
+                    {
+                        // a slid man goes the whole way along the front (only his depth blends with the pull)
+                        double ex = -_fearUnits.BandUY[key], ey = _fearUnits.BandUX[key];
+                        double off = lateral - (tx * ex + ty * ey);
+                        tx += off * ex;
+                        ty += off * ey;
+                    }
+                }
+                else FearMath.Place(in r, slotX, slotY, sx, sy, pull, out tx, out ty);
             }
+            fm.BandKind = bandKind;
+            if (band) _fearStats.Band.AddKind(bandKind);
 
             // ---- the cover: a FRESH comrade in front anchors him a while; uncovered, he steps in behind the nearest comrade
             var phase = FearPhase.Flocking;
@@ -457,10 +491,18 @@ namespace TraxCombat.Missions
                     fm.AnchorSpent = false; // a new cover may anchor him again
                     if (near.HasSpot && pull > 0)
                     {
-                        tx += (near.SpotX - tx) * pull;
-                        ty += (near.SpotY - ty) * pull;
-                        loose = false;
-                        _fearStats.CoverSeeks++;
+                        if (band && (fileFull || bandKind == FearBandPlaceKind.Slid))
+                        {
+                            _fearStats.Band.StepInsRefused++; // step 70: his file is full - no stepping in behind (the files stacked); he slides instead
+                        }
+                        else
+                        {
+                            tx += (near.SpotX - tx) * pull;
+                            ty += (near.SpotY - ty) * pull;
+                            loose = false;
+                            _fearStats.CoverSeeks++;
+                            if (band) _fearStats.Band.StepInsKept++;
+                        }
                     }
                 }
             }
@@ -475,6 +517,22 @@ namespace TraxCombat.Missions
             fm.TargetY = ty;
             fm.HasTarget = true;
             fm.Loose = loose;
+            // step 70: A FRONT MAN STRIKES - nobody between him and the enemy, an enemy within reach: let go (his AI steps in and swings), unless he
+            // stands past the leash ahead of his place (then walked back)
+            fm.Striking = false;
+            if (r.StrikeReachMetres > 0 && near.InContact && !near.Covered && phase == FearPhase.Flocking && near.EnemyDist <= r.StrikeReachMetres && near.EnemyDist > 1e-6)
+            {
+                double ux = (near.EnemyX - px) / near.EnemyDist, uy = (near.EnemyY - py) / near.EnemyDist;
+                double ahead = (px - tx) * ux + (py - ty) * uy;
+                if (ahead <= r.StrikeLeashMetres)
+                {
+                    fm.Striking = true;
+                    _fearStats.Band.StrikeLooks++;
+                    if (fm.Wish) StopFlockInput(st, now, native: true);
+                    return;
+                }
+                _fearStats.Band.StrikeLeashed++;
+            }
             if (phase == FearPhase.Flocking && order != FearOrder.Charge && FearMath.NearSlot(tx, ty, slotX, slotY))
             {
                 // a small pull: his place is near his slot - the game's own AI keeps him (no tug of war with its walk to the slot)
@@ -511,6 +569,9 @@ namespace TraxCombat.Missions
                     + (winMix > 0 ? ", calmed by winning " + F2(winMix) + " (his odds " + (double.IsNaN(near.Odds) ? "-" : F2(near.Odds)) + ") to " + F2(fear) : string.Empty) + ", pull " + F2(pull) + " (" + r.StartPercent + "-" + r.FullPercent
                     + "%); order " + FearMath.OrderName(order) + "; his place " + F1(dist) + " m from him, the shelter "
                     + F1(Math.Sqrt((sx - cx) * (sx - cx) + (sy - cy) * (sy - cy))) + " m behind the unit's centre"
+                    + (band ? "; THE BAND (step 70) " + F1(_fearUnits.BandWidth[key]) + " m wide, " + _fearUnits.BandRanks[key] + " ranks (" + _fearUnits.BandFiles[key]
+                              + " files), its front " + F1(_fearUnits.BandFront[key] - (px * _fearUnits.BandUX[key] + py * _fearUnits.BandUY[key])) + " m from him - "
+                              + FearBandMath.KindName(bandKind) : string.Empty)
                     + (phase == FearPhase.Anchored ? " - ANCHORED behind a fresh comrade" : near.Covered ? " - covered" : near.HasSpot ? " - stepping in behind a comrade" : string.Empty)
                     + (st.Sprint.Active && fm.SprintOurs ? ", sprinting " + F2(st.Sprint.Length) + " s" : string.Empty));
             }
@@ -518,6 +579,23 @@ namespace TraxCombat.Missions
             {
                 TraxLog.Verbose("fear", Name(st) + " flocks at " + Sec(now) + " s (fear " + F2(fear) + ", pull " + F2(pull) + ", " + F1(dist) + " m to his place"
                     + (phase == FearPhase.Anchored ? ", anchored" : string.Empty) + ")", "fear");
+            }
+        }
+
+        /// <summary>Step 70: the enemy formation his unit faces, once a unit a publish period (the band's frontage and direction).</summary>
+        private void ReadEnemyFront(TrackedAgent st, int key, double now)
+        {
+            try
+            {
+                if (FearBody.EnemyFront(st, out double x, out double y, out double gx, out double gy, out double width, out double depth))
+                    _fearUnits.NoteEnemyFront(key, now, x, y, gx, gy, width, depth);
+                else _fearUnits.NoEnemyFront(key, now);
+            }
+            catch (Exception e)
+            {
+                _fearUnits.NoEnemyFront(key, now);
+                _fearStats.Errors++;
+                Failed("fear.enemy-front", e);
             }
         }
 
@@ -784,6 +862,11 @@ namespace TraxCombat.Missions
             _fearStats.AddSummaryLines(lines, in r);
             _fearStats.AddWinLines(lines, in r); // step 69
             if (_fearStats.MenLooked > 0) _idleStats.AddSummaryLines(lines); // step 69
+            if (_fearStats.MenLooked > 0)
+            {
+                _fearStats.Band.AddSummaryLines(lines, in r); // step 70: the band
+                _loneStats.AddSummaryLines(lines, LoneRunnerRules.From(TraxSettings.Shared)); // step 70: the lone runners
+            }
             foreach (var line in lines) TraxLog.Info("summary", line);
         }
 

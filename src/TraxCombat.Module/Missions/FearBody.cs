@@ -30,6 +30,14 @@ namespace TraxCombat.Missions
         /// <summary>Step 69: a ranged weapon in his hand (a bow, a crossbow, a throwing weapon), or his formation a ranged / horse-archer /
         /// skirmisher one (its class or its slot) - standing off is NORMAL for him.</summary>
         bool Ranged(TrackedAgent st);
+
+        /// <summary>Step 70: the enemy formation his unit faces (<c>CachedClosestEnemyFormation</c>): its centre of mass, its facing (a unit
+        /// vector or 0), its frontage and depth (m). False = none.</summary>
+        bool EnemyFront(TrackedAgent st, out double x, out double y, out double gx, out double gy, out double width, out double depth);
+
+        /// <summary>Step 70: his AI's target (<c>GetTargetAgent</c>, an active man) - where it stands and whom (you / a hero / another man);
+        /// <see cref="LoneTarget.None"/> = none. Asked only for a lone runner.</summary>
+        LoneTarget Target(TrackedAgent st, out double x, out double y);
     }
 
     /// <summary>The engine side (AI_NOTES "Step 67"): managed reads of his formation - <c>Team.TeamIndex</c>, <c>FormationIndex</c>, step 23's
@@ -117,6 +125,39 @@ namespace TraxCombat.Missions
         }
 
         private static bool RangedClass(FormationClass c) => c == FormationClass.Ranged || c == FormationClass.HorseArcher || c == FormationClass.Skirmisher;
+
+        /// <summary>Step 70: <c>Formation.CachedClosestEnemyFormation</c>'s formation - <c>CachedAveragePosition</c>, <c>CurrentDirection</c>,
+        /// <c>Width</c>, <c>Depth</c> (managed reads; once a unit a publish period).</summary>
+        public bool EnemyFront(TrackedAgent st, out double x, out double y, out double gx, out double gy, out double width, out double depth)
+        {
+            x = y = gx = gy = width = depth = double.NaN;
+            var f = st.Agent.Formation;
+            var enemy = f?.CachedClosestEnemyFormation?.Formation;
+            if (enemy == null || enemy.CountOfUnits <= 0) return false;
+            var c = enemy.CachedAveragePosition;
+            if (!c.IsValid) return false;
+            x = c.x;
+            y = c.y;
+            var d = enemy.CurrentDirection;
+            double len = System.Math.Sqrt(d.x * d.x + d.y * d.y);
+            gx = len > 1e-6 ? d.x / len : 0;
+            gy = len > 1e-6 ? d.y / len : 0;
+            width = enemy.Width;
+            depth = enemy.Depth;
+            return true;
+        }
+
+        /// <summary>Step 70: <c>Agent.GetTargetAgent()</c> - an active man; you (<c>IsMainAgent</c>), a hero (<c>IsHero</c>) or another.</summary>
+        public LoneTarget Target(TrackedAgent st, out double x, out double y)
+        {
+            x = y = double.NaN;
+            var t = st.Agent.GetTargetAgent();
+            if (t == null || !t.IsActive()) return LoneTarget.None;
+            var p = t.Position;
+            x = p.x;
+            y = p.y;
+            return t.IsMainAgent ? LoneTarget.Player : t.IsHero ? LoneTarget.Hero : LoneTarget.Other;
+        }
     }
 
     /// <summary>The fear body every new <see cref="AthleticsLogic"/> starts with - the game's; the offline smoke swaps in its stand-in once,

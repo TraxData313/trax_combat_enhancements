@@ -57,12 +57,14 @@ namespace TraxCombat.Missions
             TraxLog.Info("courage", "mission start: " + _seenCourageText + " - read live; every AI man looked at about every " + F1(CourageMath.PollSeconds)
                 + " s; the [summary] \"courage\" lines compare isolated men and their distance from the formation's centre with courage ON and OFF");
             StartFear(); // step 67: the fear flock rides these looks
+            StartLoneRunners(); // step 70
         }
 
         /// <summary>A courage setting changed (from ApplySettingsChange): one line; applied at every man's next look.</summary>
         private void NoteCourageSettings(TraxSettings s)
         {
             NoteFearSettings(s); // step 67
+            NoteLoneSettings(s); // step 70
             string now = CourageText(s);
             if (now == _seenCourageText) return;
             _seenCourageText = now;
@@ -236,28 +238,38 @@ namespace TraxCombat.Missions
             bool hasCentre = body.FormationCentre(st, out double cx, out double cy);
             double dist = hasCentre ? Math.Sqrt((cx - px) * (cx - px) + (cy - py) * (cy - py)) : double.NaN;
 
-            // ---- the measurement (ON and OFF)
-            bool on = cr.Enabled;
-            _courageStats.AddLook(on, gap, foes > 0 && mates < CourageMath.IsolatedMates, foes > 0);
-            _courageStats.AddDistance(on, dist);
-            if (!on)
-            {
-                // step 67: courage measures only - the flock decides alone; a fever without shock still sends him in (courage's 49b rule)
-                var fvOff = st.Fever;
-                var frOff = FeverRules.From(TraxSettings.Shared);
-                double feverOff = frOff.Enabled ? CourageMath.FeverShare(fvOff.Phase, fvOff.Left, fvOff.Full) : 0;
-                bool shockedOff = CourageMath.ShockShare(in cr, ShockEvents(st, now, in cr, impactLive)) > 0;
-                FearLook(st, now, in near, CourageMath.FeverPresses(feverOff, shockedOff) ? FearCourage.FeverPress : FearCourage.Off);
-                return;
-            }
-
-            // ---- the decision
+            // ---- the fever and the shock (both ways)
             var fv = st.Fever;
             var fr = FeverRules.From(TraxSettings.Shared);
             double fever = fr.Enabled ? CourageMath.FeverShare(fv.Phase, fv.Left, fv.Full) : 0;
             int shockEvents = ShockEvents(st, now, in cr, impactLive);
             double shock = CourageMath.ShockShare(in cr, shockEvents);
             bool shocked = shock > 0;
+            bool feverPresses = CourageMath.FeverPresses(fever, shocked);
+
+            // ---- step 70: THE LONE RUNNER - alone (fewer than 2 mates near, an enemy within 8 m) and out beyond his line (ON and OFF)
+            var lr = LoneRunnerRules.From(TraxSettings.Shared);
+            bool alone = LoneRunnerMath.Alone(mates, nearest);
+            bool lone = LoneLook(st, now, in lr, px, py, alone, near.Odds, near.Shaken, feverPresses);
+            bool forceWalk = LoneRunnerMath.ForcesWalk(in lr, lone, LoneRunnerMath.Winning(near.Odds, TraxSettings.Shared.FearWinClearOddsPercent, near.Shaken));
+            // a lone runner's walk back runs to its end (back with his group): out of the enemy's reach he is no longer "alone", but his fever
+            // must not turn him round halfway
+            if (st.Lone.Forced && st.Courage.Phase != CouragePhase.Moving) st.Lone.Forced = false;
+            bool forcedWalking = lr.Enabled && st.Lone.Forced;
+            bool presses = LoneRunnerMath.FeverPresses(in lr, feverPresses, alone || forcedWalking); // FIX 1: no fever press for a man alone
+
+            // ---- the measurement (ON and OFF)
+            bool on = cr.Enabled;
+            _courageStats.AddLook(on, gap, foes > 0 && mates < CourageMath.IsolatedMates, foes > 0);
+            _courageStats.AddDistance(on, dist);
+            if (!on)
+            {
+                // step 67: courage measures only - the flock decides alone; a fever without shock still sends him in (courage's 49b rule; step 70: not a man alone)
+                FearLook(st, now, in near, presses ? FearCourage.FeverPress : FearCourage.Off);
+                return;
+            }
+
+            // ---- the decision
             double required = CourageMath.Required(in cr, st.Fraction, body.Morale(st), fever, st.IsHero, shock, out var parts);
             double awayX = 0, awayY = 0;
             if (ew > 0)
@@ -266,6 +278,12 @@ namespace TraxCombat.Missions
                 awayY = py - ey / ew;
             }
             // ---- step 49b: a surge running = brave, left alone; a fever without shock = he presses whatever the odds
+            // step 70: a lone runner's surge / punish step-in ends - he walks back (FIX 3)
+            if ((forceWalk || forcedWalking) && cm.Surging(now))
+            {
+                cm.SurgeUntil = double.NegativeInfinity;
+                _loneStats.SurgesEnded++;
+            }
             if (cm.Surging(now))
             {
                 if (cm.Timid) EndTimid(st, CourageEnd.Surge, now, native: true);
@@ -274,7 +292,8 @@ namespace TraxCombat.Missions
                 FearLook(st, now, in near, FearCourage.Surge); // step 67: a surge sends him in - the flock lets go
                 return;
             }
-            if (CourageMath.FeverPresses(fever, shocked))
+            if (feverPresses && !presses) NoteFeverRefused(st, now); // step 70: alone - courage decides him, not his fever
+            if (presses)
             {
                 double calm = CourageMath.Required(in cr, st.Fraction, body.Morale(st), 0, st.IsHero, 0, out _);
                 if (CourageMath.Timid(odds, calm)) _courageStats.FeverPressLooks++;
@@ -297,7 +316,8 @@ namespace TraxCombat.Missions
             }
             int wobblesBefore = cm.Wobbles;
             bool everBefore = cm.EverTimid;
-            var step = cm.Look(in cr, now, odds, required, lookDistance, mates, shocked);
+            var step = cm.Look(in cr, now, odds, required, lookDistance, mates, shocked, forceWalk);
+            bool forcedWalk = forceWalk && (step == CourageStep.TimidMoving || step == CourageStep.StartMoving); // step 70: FIX 3
             _courageStats.Wobbles += cm.Wobbles - wobblesBefore;
             if (!everBefore && cm.EverTimid) _courageStats.TimidMen++;
             bool panic = CourageMath.Panic(in cr, shock, odds, required);
@@ -333,6 +353,7 @@ namespace TraxCombat.Missions
                     EndTimidCommon(st, CourageEnd.Brave, now, native: true);
                     break;
             }
+            if (forcedWalk) NoteForcedWalk(st, now);
             // ---- step 49b: now and then a timid man among his mates steps in (a SURGE); the standoff measure
             if (CourageMath.SurgeEligible(in cr, cm.Timid, shocked, mates, nearest))
             {
@@ -435,6 +456,7 @@ namespace TraxCombat.Missions
             SetAway(cm, awayX, awayY);
             cm.DistanceAtStart = dist;
             cm.SprintAsked = false;
+            cm.RoundSide = 0; // step 70: a new walk chooses its side round the enemy once
             cm.Panic = panic;
             if (panic) _courageStats.PanicWalks++;
             cm.NextEdgeCheck = now + AiInputMath.EdgeCheckSeconds;
@@ -573,7 +595,7 @@ namespace TraxCombat.Missions
         /// <summary>This frame's vector: toward the target + a little away from the enemies (round them when they stand between).</summary>
         private void Steer(TrackedAgent st, CourageMind cm, double px, double py)
         {
-            if (!CourageMath.Direction(cm.CentreX - px, cm.CentreY - py, cm.AwayX, cm.AwayY, out double dx, out double dy)) return;
+            if (!CourageMath.Direction(cm.CentreX - px, cm.CentreY - py, cm.AwayX, cm.AwayY, ref cm.RoundSide, out double dx, out double dy)) return;
             cm.DirX = dx;
             cm.DirY = dy;
             var s = st.Input;
