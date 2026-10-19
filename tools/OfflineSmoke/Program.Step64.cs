@@ -129,6 +129,129 @@ namespace TraxCombat.Tools
             }
         }
 
+        /// <summary>
+        /// THE AI CHARGE HITS AT SPEED (step 64) through the real logic with the stand-in sprint body: a legionary's big store sprints at the
+        /// charge order and runs INTO contact (no end at 3 m), ended by his first attack (the carry's clock from then); a looter's small store
+        /// WAITS until an enemy is within 10 m, then sprints into contact and ends when he stands still; a new order drops a wait; the switch off
+        /// = step 62 (an end at 3 m); the wait at 0 = a looter sprints at the order; the first lines and the summary's line.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static void ChargeSprintIntoContact()
+        {
+            var keep = _logic;
+            try
+            {
+                AthleticsDefaults();
+                SprintDefaults();
+                S.Set(SettingsSchema.SprintMinSeconds, 2.0, SettingSources.File);
+                S.Set(SettingsSchema.SprintRefillSeconds, 120, SettingSources.File);
+                foreach (var p in new[] { SettingsSchema.SprintChargeIntoContact, SettingsSchema.SprintChargeWaitBelowSeconds, SettingsSchema.SprintChargeWaitMetres })
+                    S.Set(p, p.Default, SettingSources.File);
+                Check(S.SprintChargeIntoContact && Math.Abs(S.SprintChargeWaitBelowSeconds - 3) < 1e-6 && Math.Abs(S.SprintChargeWaitMetres - 10) < 1e-6,
+                    "the step-64 sprint defaults are not on / 3 s / 10 m");
+                var body = new FakeSprintBody();
+                var logic = NewSprintLogic(body);
+                var stats = logic.SprintStats;
+                double t = 64500;
+                void Tick(float dt = 0.1f)
+                {
+                    t += dt;
+                    logic.TickSprint(dt, t, Rules);
+                }
+                void Order(int slot, BraceOrderKind kind)
+                {
+                    body.Orders[slot] = kind;
+                    t += 0.3;
+                    Tick();
+                }
+                TrackedAgent Man(int index, int skill, int slot)
+                {
+                    var m = logic.Track(FakeAgent(index))!;
+                    m.AthleticsSkill = skill;
+                    body.Slots[index] = slot;
+                    body.Speeds[index] = 3.5f;
+                    return m;
+                }
+                var legionary = Man(6410, 130, 5); // 130 points = 6.5 s
+                var looter = Man(6411, 30, 5);     // the pool's floor 50 points = 2.5 s
+                body.EnemyAt[6410] = 30;
+                body.EnemyAt[6411] = 30;
+                body.Orders[5] = BraceOrderKind.Stop;
+                t += 0.3;
+                Tick();
+
+                // ---- 1. the charge order 30 m out: the legionary sprints at once INTO contact, the looter's 2.5 s WAITS
+                Order(5, BraceOrderKind.Charge);
+                Check(legionary.Sprint.Active && legionary.Sprint.IntoContact && legionary.Sprint.Order == SprintOrder.Charge,
+                    "the legionary's charge sprint did not start into contact: active " + legionary.Sprint.Active + ", into contact " + legionary.Sprint.IntoContact);
+                Check(!looter.Sprint.Active && looter.ChargeSprintWaiting && stats.ChargeWaited == 1, "the looter's small store did not wait: active " + looter.Sprint.Active);
+                LogHas("[sprint] first charge sprint WAITING this battle (step 64): (agent 6411) at ");
+                LogHas("his sprint 2.50 s is below 3.0 s (SprintChargeWaitBelowSeconds) and no enemy within 10.0 m");
+
+                // ---- 2. the legionary reaches the enemy: 2 m - no end at 3 m; his first attack ends it, the carry's clock from then
+                body.EnemyAt[6410] = 2;
+                for (int i = 0; i < 5; i++) Tick();
+                Check(legionary.Sprint.Active, "the charge sprint ended at an enemy within 3 m (it should run into contact)");
+                CallPrivate(logic, "SprintAttackBegan", legionary, t);
+                Check(!legionary.Sprint.Active && Math.Abs(legionary.SprintEndedAt - t) < 1e-9 && stats.Ends(false, SprintEnd.Attacked) == 1,
+                    "his first attack did not end the sprint into contact (the carry's clock): ended at " + legionary.SprintEndedAt);
+                LogHas("[sprint] first sprint INTO contact ended by an attack this battle (step 64): (agent 6410) at ");
+
+                // ---- 3. the looter: an enemy at 9 m - he sprints now, into contact; he is stopped in the press - ended 0.5 s later
+                body.EnemyAt[6411] = 9;
+                Tick();
+                Tick();
+                Tick();
+                Check(looter.Sprint.Active && looter.Sprint.IntoContact && !looter.ChargeSprintWaiting && stats.ChargeWaitStarted == 1,
+                    "the waiting looter did not sprint at 9 m: active " + looter.Sprint.Active);
+                LogHas("[sprint] first WAITING charge sprint started this battle (step 64): (agent 6411) at ");
+                body.EnemyAt[6411] = 1.5f;
+                Tick();
+                Check(looter.Sprint.Active, "the looter's sprint ended at an enemy within 3 m");
+                body.Speeds[6411] = 0.2f;
+                for (int i = 0; i < 3; i++) Tick();
+                Check(looter.Sprint.Active, "the looter's sprint ended before 0.5 s standing still");
+                for (int i = 0; i < 4 && looter.Sprint.Active; i++) Tick();
+                Check(!looter.Sprint.Active && stats.Ends(false, SprintEnd.Stopped) == 1, "standing still did not end the sprint into contact");
+                body.Speeds[6411] = 3.5f;
+
+                // ---- 4. a new order drops a wait
+                var other = Man(6412, 30, 6);
+                body.EnemyAt[6412] = 30;
+                body.Orders[6] = BraceOrderKind.Stop;
+                t += 0.3;
+                Tick();
+                Order(6, BraceOrderKind.Charge);
+                Check(other.ChargeSprintWaiting, "precondition: the second looter did not wait");
+                Order(6, BraceOrderKind.Stop);
+                Check(!other.ChargeSprintWaiting && stats.ChargeWaitDropped == 1, "a new order did not drop the wait: dropped " + stats.ChargeWaitDropped);
+
+                // ---- 5. the switch off (live): a charge sprint ends at 3 m again; the wait at 0: a small store sprints at the order
+                S.Set(SettingsSchema.SprintChargeIntoContact, false, SettingSources.Mcm);
+                S.Set(SettingsSchema.SprintChargeWaitBelowSeconds, 0.0, SettingSources.Mcm);
+                for (int i = 0; i < 200; i++) Tick(); // the stores refill
+                body.EnemyAt[6412] = 30;
+                Order(6, BraceOrderKind.Charge);
+                Check(other.Sprint.Active && !other.Sprint.IntoContact && !other.ChargeSprintWaiting, "the wait at 0 / the switch off: the looter did not sprint at the order, or into contact");
+                body.EnemyAt[6412] = 2;
+                for (int i = 0; i < 4 && other.Sprint.Active; i++) Tick();
+                Check(!other.Sprint.Active && stats.Ends(false, SprintEnd.InMelee) >= 1, "the switch off: the sprint did not end at 3 m");
+
+                var lines = new System.Collections.Generic.List<string>();
+                stats.AddSummaryLines(lines, SprintRules.From(S), "LeftControl");
+                string line = lines[lines.Count - 1];
+                Check(line.Contains("sprints run into contact 2 (ended by his first attack 1, he stopped 1") && line.Contains("charge sprints that WAITED for the enemy 2: started within 10.0 m 1"),
+                    "the summary's into-contact line: " + line);
+                Console.WriteLine("        step 64 charge sprint: " + line);
+            }
+            finally
+            {
+                _logic = keep;
+                SetStatic(typeof(AthleticsLogic), "_current", keep);
+                AthleticsDefaults();
+            }
+        }
+
         /// <summary>The master-switch step's step-64 part: off = the game's block verdict at once (no angle read), on = the front arc again.</summary>
         private static void ShieldArcFollowsTheMasterSwitch()
         {

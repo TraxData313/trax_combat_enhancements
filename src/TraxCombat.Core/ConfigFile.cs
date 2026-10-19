@@ -100,8 +100,9 @@ namespace TraxCombat.Core
         /// failed - in an older file still holding them; a tuned value kept and noted), 11 = step 63 (Anton's battle of 2026-10-19 11:02:
         /// ImpactFallBackupSeconds 0.5 → 0.2 - the game plays its falls at the blow, so the backup comes sooner - in a file still holding
         /// step 62's default; ImpactRearPercent 200 → 100 and ImpactFlankPercent 140 → 100 - direction is pressure now, ImpactRearPressure /
-        /// ImpactFlankPressure; a tuned value kept and noted).</summary>
-        public const int FormatVersion = 11;
+        /// ImpactFlankPressure; a tuned value kept and noted), 12 = step 64 (Anton's looter battles of 2026-10-19: the fever sprint starts
+        /// nearer - FeverSprintMinMetres 3 → 4, FeverSprintMaxMetres 12 → 8 - so a small store lasts to the enemy; a tuned value kept and noted).</summary>
+        public const int FormatVersion = 12;
 
         /// <summary>The meta key holding <see cref="FormatVersion"/> - not a setting.</summary>
         public const string VersionKey = "ConfigVersion";
@@ -445,6 +446,13 @@ namespace TraxCombat.Core
                 const string rear = "step 63, Anton's battle: a blow from behind now adds PRESSURE straight (ImpactRearPressure / ImpactFlankPressure) - the multiplier at x1, or the direction counts twice";
                 MoveOrKeep(read, SettingsSchema.ImpactRearPercent, 200, rear, from, defaultOf);
                 MoveOrKeep(read, SettingsSchema.ImpactFlankPercent, 140, rear, from, defaultOf);
+            }
+            if (from < 12)
+            {
+                // step 64: a fever sprint from 12 m spent a looter's 2 s store before the enemy's line - it starts at 4-8 m now (and runs into contact)
+                const string fever = "step 64, Anton's looter battles: a fever sprint starts nearer, so a small store lasts to the enemy (and runs into contact)";
+                MoveOrKeep(read, SettingsSchema.FeverSprintMinMetres, 3, fever, from, defaultOf);
+                MoveOrKeep(read, SettingsSchema.FeverSprintMaxMetres, 12, fever, from, defaultOf);
             }
             // steps 36 / 37: the retired AI sprint keys - in ANY format (they are only ever steps 33-36's, and a hand-pasted one
             // goes the same way)

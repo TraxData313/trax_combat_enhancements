@@ -159,6 +159,12 @@ namespace TraxCombat.Tools
             S.Set(SettingsSchema.CostPerWeaponParry, 2, SettingSources.File);
             S.Set(SettingsSchema.OnlyWrongSideBlocksStopRefill, false, SettingSources.File); // step 29: the older steps check step 22's rule (every paid block restarts the delay) - BlocksLetTheRefillRun has its own
             S.Set(SettingsSchema.ShieldFrontArcIsCorrect, false, SettingSources.File); // step 64: the older steps check the game's own block verdict - ShieldFrontArc has its own
+            // step 64: the older steps check steps 33-63's AI sprint (every one ends at 3 m, a charge sprints at the order, the fever at 3-12 m) -
+            // ChargeIntoContact has its own
+            S.Set(SettingsSchema.SprintChargeIntoContact, false, SettingSources.File);
+            S.Set(SettingsSchema.SprintChargeWaitBelowSeconds, 0.0, SettingSources.File);
+            S.Set(SettingsSchema.FeverSprintMinMetres, 3.0, SettingSources.File);
+            S.Set(SettingsSchema.FeverSprintMaxMetres, 12.0, SettingSources.File);
             S.Set(SettingsSchema.CostOnMiss, true, SettingSources.File);
             S.Set(SettingsSchema.HeroCostMultiplier, 0.75, SettingSources.File);
             S.Set(SettingsSchema.PartyLeaderCostMultiplier, 0.75, SettingSources.File);

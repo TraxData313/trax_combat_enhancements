@@ -69,6 +69,12 @@ namespace TraxCombat.Core
         /// <summary>Step 57: a running AI order sprint handed over to his rout's sprint (the whole store).</summary>
         Routed,
 
+        /// <summary>Step 64: a charge / fever sprint that ran into contact ended at his first attack (the blow carries the charge).</summary>
+        Attacked,
+
+        /// <summary>Step 64: a charge / fever sprint that ran into contact ended when he stopped moving (<see cref="SprintMath.StoppedEndSeconds"/>).</summary>
+        Stopped,
+
         Count,
     }
 
@@ -105,9 +111,13 @@ namespace TraxCombat.Core
         public SprintRules(bool modEnabled, bool athleticsEnabled, bool sprintEnabled, bool aiEnabled, double pointsPerSecond, int minStartPercent,
             double maxMultiplier, double minMultiplier, int fullSpeedSharePercent, double refillSeconds, double refillMovingFactor,
             double refillExhaustedFactor, int aiChargeKeepPercent, int aiAdvanceKeepPercent, int aiMoveKeepPercent, double minSeconds = 0,
-            double topSpeedReachSeconds = 0, bool onRout = false)
+            double topSpeedReachSeconds = 0, bool onRout = false, bool chargeIntoContact = false, double chargeWaitBelowSeconds = 0,
+            double chargeWaitMetres = 10)
         {
             OnRout = onRout;
+            ChargeIntoContact = chargeIntoContact;
+            ChargeWaitBelowSeconds = double.IsNaN(chargeWaitBelowSeconds) || chargeWaitBelowSeconds < 0 ? 0 : chargeWaitBelowSeconds;
+            ChargeWaitMetres = double.IsNaN(chargeWaitMetres) || chargeWaitMetres < 1 ? 1 : chargeWaitMetres;
             ModEnabled = modEnabled;
             AthleticsEnabled = athleticsEnabled;
             SprintEnabled = sprintEnabled;
@@ -186,6 +196,17 @@ namespace TraxCombat.Core
         /// <summary>Step 57: a routing AI man sprints his whole store now (the master switch, Athletics, the sprint, the AI's sprint, then this).</summary>
         public bool RoutOn => AiOn && OnRout;
 
+        /// <summary>Step 64, SprintChargeIntoContact: a charge order's sprint and a fever sprint run on into contact (no end at 3 m) until his
+        /// first attack or until he stops moving.</summary>
+        public bool ChargeIntoContact { get; }
+
+        /// <summary>Step 64, SprintChargeWaitBelowSeconds: on a charge order an AI man who would sprint less than this waits for an enemy
+        /// within <see cref="ChargeWaitMetres"/> (0 = never wait).</summary>
+        public double ChargeWaitBelowSeconds { get; }
+
+        /// <summary>Step 64, SprintChargeWaitMetres (at least 1).</summary>
+        public double ChargeWaitMetres { get; }
+
         /// <summary>Which switch holds it off ("ModEnabled", "AthleticsEnabled", "SprintEnabled"), null while on.</summary>
         public string? OffBecause => !ModEnabled ? "ModEnabled" : !AthleticsEnabled ? "AthleticsEnabled" : !SprintEnabled ? "SprintEnabled" : null;
 
@@ -199,7 +220,7 @@ namespace TraxCombat.Core
             new SprintRules(s.ModEnabled, s.AthleticsEnabled, s.SprintEnabled, s.SprintAiEnabled, s.SprintPointsPerSecond, s.SprintMinStartPercent,
                 s.SprintMaxMultiplier, s.SprintMinMultiplier, s.SprintFullSpeedSharePercent, s.SprintRefillSeconds, s.SprintRefillMovingFactor,
                 s.SprintRefillExhaustedFactor, s.SprintAiChargeKeepPercent, s.SprintAiAdvanceKeepPercent, s.SprintAiMoveKeepPercent, s.SprintMinSeconds,
-                s.SprintTopSpeedReachSeconds, s.SprintOnRout);
+                s.SprintTopSpeedReachSeconds, s.SprintOnRout, s.SprintChargeIntoContact, s.SprintChargeWaitBelowSeconds, s.SprintChargeWaitMetres);
 
         /// <summary>The settings sentence of the mission-start line, a change and the summary.</summary>
         public string Describe(string keyName)
@@ -221,7 +242,21 @@ namespace TraxCombat.Core
                    + " s standing at full strength, x" + RefillMovingFactor.ToString("0.##", ci)
                    + " moving, x" + RefillExhaustedFactor.ToString("0.##", ci) + " at an empty bar (straight line from the peak line), never while sprinting; no Athletics refill "
                    + "while sprinting; AI " + (AiEnabled ? "ON - " + AiOrdersText() : "OFF (SprintAiEnabled)")
-                   + "; a routing AI man " + (RoutOn ? "sprints his WHOLE store once at the rout's start (SprintOnRout)" : "does not sprint (" + (!OnRout ? "SprintOnRout" : "SprintAiEnabled") + " off)");
+                   + "; a routing AI man " + (RoutOn ? "sprints his WHOLE store once at the rout's start (SprintOnRout)" : "does not sprint (" + (!OnRout ? "SprintOnRout" : "SprintAiEnabled") + " off)")
+                   + "; " + ChargeText();
+        }
+
+        /// <summary>Step 64: the charge sprint's sentence.</summary>
+        public string ChargeText()
+        {
+            var ci = CultureInfo.InvariantCulture;
+            return (ChargeIntoContact
+                       ? "a charge's (and a fever's) sprint runs INTO contact - ended by his first attack or when he stops moving (SprintChargeIntoContact)"
+                       : "a charge's sprint ends at an enemy within " + SprintMath.MeleeRangeMetres.ToString("0.#", ci) + " m (SprintChargeIntoContact off)")
+                   + (ChargeWaitBelowSeconds > 0
+                       ? ", a charge sprint shorter than " + ChargeWaitBelowSeconds.ToString("0.0#", ci) + " s waits for an enemy within "
+                         + ChargeWaitMetres.ToString("0.#", ci) + " m (SprintChargeWaitBelowSeconds / SprintChargeWaitMetres)"
+                       : ", a charge sprints at the order whatever its store (SprintChargeWaitBelowSeconds 0)");
         }
 
         /// <summary>Step 37: "on a NEW order he sprints what he holds above the order's reserve (stored - keep x his full store), ...:
@@ -363,6 +398,20 @@ namespace TraxCombat.Core
             return stored - keep * capacity < AiMinSeconds - 1e-9;
         }
 
+        /// <summary>Step 64: a sprint that runs INTO contact (no end at <see cref="MeleeRangeMetres"/>; ended by his first attack or by standing
+        /// still) - a charge order's or a fever's, while SprintChargeIntoContact is on. Advance / move sprints, yours, a sprint back and a rout's
+        /// never.</summary>
+        public static bool IntoContact(in SprintRules s, SprintOrder order, bool fever) => s.ChargeIntoContact && (fever || order == SprintOrder.Charge);
+
+        /// <summary>Step 64: a charge order's sprint of <paramref name="amount"/> seconds waits for an enemy within SprintChargeWaitMetres - below
+        /// SprintChargeWaitBelowSeconds (a weak man's small store would be spent far from the enemy: a looter's 2 s floor covers ~15 m).</summary>
+        public static bool ChargeWaits(in SprintRules s, SprintOrder order, double amount) =>
+            order == SprintOrder.Charge && s.ChargeWaitBelowSeconds > 0 && amount > 0 && amount < s.ChargeWaitBelowSeconds - 1e-9;
+
+        /// <summary>Step 64: a sprint into contact ends after this many seconds below <see cref="MovingMetresPerSecond"/> (he stopped: pressed in,
+        /// blocked by his own ranks, at the enemy). Plumbing.</summary>
+        public const double StoppedEndSeconds = 0.5;
+
         /// <summary>A formation's order kind (step 23's read) → its sprint share group.</summary>
         public static SprintOrder Group(BraceOrderKind kind) => kind switch
         {
@@ -460,6 +509,8 @@ namespace TraxCombat.Core
             SprintEnd.Error => "an error",
             SprintEnd.Regrouped => "back with his group",
             SprintEnd.Routed => "handed to his rout's sprint",
+            SprintEnd.Attacked => "his first attack (into contact)",
+            SprintEnd.Stopped => "he stopped moving (into contact)",
             _ => e.ToString(),
         };
     }
@@ -499,6 +550,13 @@ namespace TraxCombat.Core
 
         /// <summary>Step 57: a routing man's get-away sprint (his whole store; it does not end at 3 m from an enemy - he is running AWAY).</summary>
         public bool Rout { get; private set; }
+
+        /// <summary>Step 64: this sprint runs INTO contact (a charge order's or a fever's - <see cref="SprintMath.IntoContact"/>): no end at
+        /// 3 m from an enemy; ended by his first attack or after <see cref="SprintMath.StoppedEndSeconds"/> standing still.</summary>
+        public bool IntoContact { get; private set; }
+
+        /// <summary>Step 64: a sprint into contact's seconds below the moving speed in a row (<see cref="Advance"/>).</summary>
+        public double StillFor { get; private set; }
 
         /// <summary>Pulls the store down to <paramref name="capacity"/> (his points dropped, or the first look). True when it moved
         /// below what it held (not counting the first look's +∞).</summary>
@@ -547,15 +605,18 @@ namespace TraxCombat.Core
             ByKey = byKey;
             Regroup = false;
             Rout = false;
+            IntoContact = false;
+            StillFor = 0;
             return SprintStart.Started;
         }
 
         /// <summary>
         /// Step 36 / 37: an AI order sprint - <see cref="SprintMath.AiAmount"/> seconds (all he holds above the order's reserve), no
         /// SprintMinStartPercent gate (the reserve replaces it). Off: the switches or an order that never sprints; ReserveKept: his store is at or
-        /// below the order's keep share; BelowMinimum: less than <see cref="SprintMath.AiMinSeconds"/> to sprint.
+        /// below the order's keep share; BelowMinimum: less than <see cref="SprintMath.AiMinSeconds"/> to sprint. Step 64:
+        /// <paramref name="intoContact"/> = it runs into contact (<see cref="SprintMath.IntoContact"/>).
         /// </summary>
-        public SprintStart TryStartAi(in SprintRules s, double now, double capacity, SprintOrder order)
+        public SprintStart TryStartAi(in SprintRules s, double now, double capacity, SprintOrder order, bool intoContact = false)
         {
             if (Active) return SprintStart.Running;
             if (!s.AiOn || !SprintMath.AiSprints(order)) return SprintStart.Off;
@@ -573,6 +634,8 @@ namespace TraxCombat.Core
             ByKey = false;
             Regroup = false;
             Rout = false;
+            IntoContact = intoContact;
+            StillFor = 0;
             return SprintStart.Started;
         }
 
@@ -596,6 +659,8 @@ namespace TraxCombat.Core
             ByKey = false;
             Regroup = true;
             Rout = false;
+            IntoContact = false;
+            StillFor = 0;
             return SprintStart.Started;
         }
 
@@ -622,12 +687,16 @@ namespace TraxCombat.Core
             ByKey = false;
             Regroup = false;
             Rout = true;
+            IntoContact = false;
+            StillFor = 0;
             return SprintStart.Started;
         }
 
         /// <summary>
         /// Runs a sprint over <paramref name="dt"/>: while <paramref name="moving"/> the clock advances and the store drains 1 s a
-        /// second (never past the sprint's length or below 0). True when the sprint is over (the store dry, or its length used).
+        /// second (never past the sprint's length or below 0). True when the sprint is over (the store dry, or its length used). Step 64: a
+        /// sprint INTO contact also ends once he has stood still <see cref="SprintMath.StoppedEndSeconds"/> in a row after he began to move
+        /// (<see cref="SprintEnd.Stopped"/> - a man slow to start after the order is not ended before he runs).
         /// </summary>
         public bool Advance(double dt, bool moving, out SprintEnd end)
         {
@@ -638,6 +707,16 @@ namespace TraxCombat.Core
                 double use = Math.Min(dt, Math.Max(0, Length - Elapsed));
                 Elapsed += use;
                 Stored = Math.Max(0, Stored - use);
+                StillFor = 0;
+            }
+            else if (IntoContact && Elapsed > 0 && dt > 0)
+            {
+                StillFor += dt;
+                if (StillFor >= SprintMath.StoppedEndSeconds - 1e-9)
+                {
+                    end = SprintEnd.Stopped;
+                    return true;
+                }
             }
             if (Stored <= SprintMath.EmptySeconds)
             {
@@ -768,6 +847,17 @@ namespace TraxCombat.Core
         public int RoutOff;
         public int RoutEmpty;
         public int RoutRunning;
+
+        /// <summary>Step 64: charge sprints that ran INTO contact (started so - a charge order's / a fever's), charge sprints that WAITED for an
+        /// enemy within SprintChargeWaitMetres (their store below SprintChargeWaitBelowSeconds), those started at that distance (and the
+        /// enemy's distance then is not read - the wait's own radius), those never started (a new order, mounted, gone, switched off).</summary>
+        public int IntoContactStarted;
+        public int ChargeWaited;
+        public int ChargeWaitStarted;
+        public int ChargeWaitDropped;
+
+        /// <summary>Step 64: a waiting charge sprint's seconds at its start (the small stores).</summary>
+        public double ChargeWaitSeconds;
 
         /// <summary>Step 57: a routing man's sprint started with <paramref name="stored"/> seconds.</summary>
         public void AddRoutStart(double stored)
@@ -910,6 +1000,11 @@ namespace TraxCombat.Core
                       + RoutsSeen + ", sprints started " + RoutStarted + (RoutStarted > 0 ? " (whole store avg " + F2(RoutSeconds / RoutStarted) + " s)" : string.Empty)
                       + ", of them taking over a running order sprint " + RoutReplaced + "; refused: empty store " + RoutEmpty + ", already sprinting " + RoutRunning
                       + ", switched off " + RoutOff + ", on a horse " + RoutSkippedMounted + ", yours " + RoutSkippedPlayer);
+            lines.Add("sprint into contact (step 64): " + s.ChargeText() + " - sprints run into contact " + IntoContactStarted + " (ended by his first attack "
+                      + Ends(false, SprintEnd.Attacked) + ", he stopped " + Ends(false, SprintEnd.Stopped) + ", an enemy within " + F1(SprintMath.MeleeRangeMetres) + " m "
+                      + Ends(false, SprintEnd.InMelee) + " - the advance / move ones); charge sprints that WAITED for the enemy " + ChargeWaited + ": started within "
+                      + F1(s.ChargeWaitMetres) + " m " + ChargeWaitStarted + (ChargeWaitStarted > 0 ? " (avg " + F2(ChargeWaitSeconds / ChargeWaitStarted) + " s each)" : string.Empty)
+                      + ", never (a new order, mounted, gone, switched off) " + ChargeWaitDropped);
         }
 
         private string EndsText(bool you)

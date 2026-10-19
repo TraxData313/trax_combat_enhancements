@@ -309,6 +309,7 @@ namespace TraxCombat.Missions
         /// </summary>
         private void AttackBegan(TrackedAgent st, bool player, double now, bool isReady)
         {
+            SprintAttackBegan(st, now); // step 64: a sprint into contact ends at his first attack (the blow carries the charge)
             if (st.TimerPending)
             {
                 st.TimerPending = false;

@@ -98,7 +98,7 @@ public class RoutSprintTests
         stats.AddRoutRefused(SprintStart.Off);
         var lines = new List<string>();
         stats.AddSummaryLines(lines, Sprint(), "LeftControl");
-        Assert.Equal(5, lines.Count);
+        Assert.Equal(6, lines.Count); // step 64: + the into-contact line after it
         Assert.Equal("sprint on rout (step 57, SprintOnRout on): routs seen 7, sprints started 2 (whole store avg 4.00 s), of them taking over a running order sprint 1; "
                      + "refused: empty store 2, already sprinting 1, switched off 1, on a horse 1, yours 0", lines[4]);
         var off = new List<string>();

@@ -306,6 +306,7 @@ namespace TraxCombat.Missions
                 return;
             }
             if (sp.Active && !sp.ByKey) EndSprint(st, SprintEnd.OrderChanged, now);
+            if (st.ChargeSprintWaiting) DropChargeWait(st); // step 64: a new order ends the wait
             var group = SprintMath.Group(kind);
             if (!SprintMath.AiSprints(group)) return;
             if (body.IsMounted(st))
@@ -315,7 +316,28 @@ namespace TraxCombat.Missions
             }
             // step 37: everything above the order's reserve (stored - keep x his full store) - no SprintMinStartPercent gate for the AI
             double cap = SprintMath.Capacity(in s, in r, st);
-            var res = sp.TryStartAi(in s, now, cap, group);
+            // step 64: a small charge store waits for an enemy within SprintChargeWaitMetres (spent from far away it ends short of the line)
+            if (group == SprintOrder.Charge && s.AiOn && s.ChargeWaitBelowSeconds > 0)
+            {
+                sp.Clamp(cap);
+                double amount = SprintMath.AiAmount(in s, group, sp.Stored, cap);
+                if (SprintMath.ChargeWaits(in s, group, amount) && !body.EnemyWithin(st, (float)s.ChargeWaitMetres))
+                {
+                    st.ChargeSprintWaiting = true;
+                    st.SprintNextMelee = now + SprintMath.MeleeCheckSeconds;
+                    _sprintStats.ChargeWaited++;
+                    if (!_firstChargeWaitLogged)
+                    {
+                        _firstChargeWaitLogged = true;
+                        TraxLog.Info("sprint", "first charge sprint WAITING this battle (step 64): " + Name(st) + " at " + Sec(now) + " s - a new charge order, his sprint "
+                            + F2(amount) + " s is below " + F1(s.ChargeWaitBelowSeconds) + " s (SprintChargeWaitBelowSeconds) and no enemy within " + F1(s.ChargeWaitMetres)
+                            + " m: he keeps it until one is (SprintChargeWaitMetres), so it lasts to the enemy's line");
+                    }
+                    return;
+                }
+            }
+            var res = sp.TryStartAi(in s, now, cap, group, SprintMath.IntoContact(in s, group, fever: false));
+            if (res == SprintStart.Started && sp.IntoContact) _sprintStats.IntoContactStarted++;
             if (res == SprintStart.Started)
             {
                 _sprintStats.AddAiStart(group);
@@ -424,6 +446,67 @@ namespace TraxCombat.Missions
             }
         }
 
+        // ------------------------------------------------------------------ the charge into contact (step 64)
+
+        private bool _firstChargeWaitLogged, _firstChargeWaitStartLogged, _firstIntoContactEndLogged;
+
+        /// <summary>Step 64: a waiting charge sprint's look (every <see cref="SprintMath.MeleeCheckSeconds"/> from the pass): an enemy within
+        /// SprintChargeWaitMetres starts it (into contact); a gate that no longer holds (the AI sprint off, mounted, yours, gone) drops the wait.</summary>
+        private void ChargeWaitLook(TrackedAgent st, SprintStore sp, double now, in SprintRules s, in AthleticsRules r, double cap)
+        {
+            st.SprintNextMelee = now + SprintMath.MeleeCheckSeconds;
+            var body = SprintBody;
+            if (!s.AiOn || st.Removed || !body.IsActive(st) || IsPlayer(st) || !body.IsAiControlled(st) || body.IsMounted(st))
+            {
+                DropChargeWait(st);
+                return;
+            }
+            _sprintStats.MeleeChecks++;
+            if (!body.EnemyWithin(st, (float)s.ChargeWaitMetres)) return;
+            st.ChargeSprintWaiting = false;
+            var res = sp.TryStartAi(in s, now, cap, SprintOrder.Charge, SprintMath.IntoContact(in s, SprintOrder.Charge, fever: false));
+            if (res != SprintStart.Started)
+            {
+                _sprintStats.ChargeWaitDropped++;
+                return;
+            }
+            _sprintStats.ChargeWaitStarted++;
+            _sprintStats.ChargeWaitSeconds += sp.Length;
+            _sprintStats.AddAiStart(SprintOrder.Charge);
+            if (sp.IntoContact) _sprintStats.IntoContactStarted++;
+            BeginSprint(st, now, in s, in r, cap);
+            if (!_firstChargeWaitStartLogged)
+            {
+                _firstChargeWaitStartLogged = true;
+                TraxLog.Info("sprint", "first WAITING charge sprint started this battle (step 64): " + Name(st) + " at " + Sec(now) + " s - an enemy within "
+                    + F1(s.ChargeWaitMetres) + " m: he sprints " + F2(sp.Length) + " s" + (sp.IntoContact ? ", into contact (until his first attack)" : string.Empty));
+            }
+        }
+
+        /// <summary>Step 64: a waiting charge sprint that never started (a new order, a gate) - counted.</summary>
+        private void DropChargeWait(TrackedAgent st)
+        {
+            st.ChargeSprintWaiting = false;
+            _sprintStats.ChargeWaitDropped++;
+        }
+
+        /// <summary>Step 64: his attack began (AttackBegan, AI or you): a sprint INTO contact ends here - the blow carries the charge (step 62's
+        /// carry from <see cref="TrackedAgent.SprintEndedAt"/>); a waiting charge sprint is dropped (he is fighting already).</summary>
+        private void SprintAttackBegan(TrackedAgent st, double now)
+        {
+            if (st.ChargeSprintWaiting) DropChargeWait(st);
+            var sp = st.Sprint;
+            if (!sp.Active || !sp.IntoContact) return;
+            double ran = sp.Elapsed;
+            EndSprint(st, SprintEnd.Attacked, now);
+            if (!_firstIntoContactEndLogged)
+            {
+                _firstIntoContactEndLogged = true;
+                TraxLog.Info("sprint", "first sprint INTO contact ended by an attack this battle (step 64): " + Name(st) + " at " + Sec(now) + " s after " + F2(ran)
+                    + " s of sprinting - his blow is a charge (the carry from now)");
+            }
+        }
+
         // ------------------------------------------------------------------ the pass
 
         /// <summary>Every <see cref="RegenStepSeconds"/>: each store clamped to his points; a running sprint advanced (its clock and
@@ -444,6 +527,11 @@ namespace TraxCombat.Missions
                     {
                         RunSprint(st, sp, step, now, in s, in r);
                         continue;
+                    }
+                    if (st.ChargeSprintWaiting && now >= st.SprintNextMelee) // step 64: a small charge store waiting for the enemy
+                    {
+                        ChargeWaitLook(st, sp, now, in s, in r, cap);
+                        if (sp.Active) continue;
                     }
                     if (sp.Stored >= cap - 1e-9) continue; // full: nothing to do, no native call
                     if (!body.IsActive(st)) continue;
@@ -489,7 +577,9 @@ namespace TraxCombat.Missions
                 EndSprint(st, end, now);
                 return;
             }
-            if (!sp.ByKey && !sp.Regroup && !sp.Rout && now >= st.SprintNextMelee) // step 49 / 57: a sprint back or a rout is getting AWAY from the enemy
+            // step 49 / 57: a sprint back or a rout is getting AWAY from the enemy; step 64: a charge's / fever's sprint runs INTO contact (ended by
+            // his first attack - AttackBegan - or by standing still in Advance)
+            if (!sp.ByKey && !sp.Regroup && !sp.Rout && !sp.IntoContact && now >= st.SprintNextMelee)
             {
                 st.SprintNextMelee = now + SprintMath.MeleeCheckSeconds;
                 _sprintStats.MeleeChecks++;
@@ -569,7 +659,9 @@ namespace TraxCombat.Missions
                         + " s (stored - keep x " + F2(cap) + "; left after it " + F0(100 * (sp.StoredAtStart - sp.Length) / Math.Max(1e-9, cap))
                         + "%): x" + F2(s.MaxMultiplier) + " of the fresh run (run x" + F2(run) + " → x" + F2(m) + ") until "
                         + F2(sp.Length * s.FullSpeedShare) + " s, then to x" + F2(s.MinMultiplier) + " of his current run (x" + F2(s.MinMultiplier * run) + "); " + reachText
-                        + "; ends early on an enemy within " + F1(SprintMath.MeleeRangeMetres) + " m or a new order");
+                        + (sp.IntoContact
+                            ? "; runs INTO contact (step 64) - ends at his first attack, when he stops moving or on a new order"
+                            : "; ends early on an enemy within " + F1(SprintMath.MeleeRangeMetres) + " m or a new order"));
                 }
                 else if (TraxLog.VerboseWants("sprint-ai"))
                 {
@@ -629,6 +721,7 @@ namespace TraxCombat.Missions
             for (int i = 0; i < _count; i++)
             {
                 var st = _dense[i];
+                if (st.ChargeSprintWaiting) DropChargeWait(st); // step 64: a waiting charge sprint goes with them
                 if (!st.Sprint.Active || (aiOnly && st.Sprint.ByKey)) continue;
                 try
                 {

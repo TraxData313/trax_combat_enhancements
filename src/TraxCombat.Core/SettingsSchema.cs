@@ -482,7 +482,7 @@ namespace TraxCombat.Core
 
         public static readonly ParamDef SprintAiEnabled = Bool("SprintAiEnabled", SprintGroup,
             "AI soldiers sprint on new orders",
-            "When an AI formation gets a NEW movement order - yours or its own general's - each of its soldiers on foot sprints once: everything he holds above that order's reserve below (a charge all of it, an advance down to half, a move only a little). He stops early once an enemy is within a few metres or the order changes again. Hold, retreat, fall back and follow never start one. Never you, never a hero you drive.");
+            "When an AI formation gets a NEW movement order - yours or its own general's - each of its soldiers on foot sprints once: everything he holds above that order's reserve below (a charge all of it, an advance down to half, a move only a little). An advance or move sprint stops once an enemy is within a few metres, a charge's runs into contact (the settings below); any ends when the order changes again. Hold, retreat, fall back and follow never start one. Never you, never a hero you drive.");
 
         public static readonly ParamDef SprintAiChargeKeepPercent = Int("SprintAiChargeKeepPercent", 0, 100, SprintGroup,
             "AI sprint on a charge: keeps (% of the store)",
@@ -499,6 +499,20 @@ namespace TraxCombat.Core
         public static readonly ParamDef SprintOnRout = Bool("SprintOnRout", SprintGroup,
             "AI sprint when a man routs",
             "When an AI soldier on foot breaks and ROUTS (the game's own rout - his morale gone), he spends his WHOLE sprint store once, at the rout's start, for the first get-away (no order reserve, it does not end near an enemy). The rout itself stays the game's - only the speed is added. Needs the AI sprint on. Off: routing men run at their normal tired speed.");
+
+        // Step 64 (Anton's looter battles 2026-10-19: looters sprinted early, slowed before the wall, nobody bounced): the AI's charge sprints
+        // carry INTO contact.
+        public static readonly ParamDef SprintChargeIntoContact = Bool("SprintChargeIntoContact", SprintGroup,
+            "AI charge sprints run into contact",
+            "On: an AI soldier's sprint on a CHARGE order, and a feverish man's sprint at a near enemy, do not stop a few metres short - they run on until his first attack (that blow lands as a charge) or until he stops moving. Off: they end once an enemy is within 3 m (advance and move sprints always do).");
+
+        public static readonly ParamDef SprintChargeWaitBelowSeconds = Float("SprintChargeWaitBelowSeconds", 0, 10, SprintGroup,
+            "AI charge sprint: a small store waits (s)",
+            "On a new CHARGE order an AI soldier who would sprint less than this many seconds (a weak man's small store) does not spend it at once from far away: he waits until an enemy is within the distance below, then sprints. A bigger store sprints at the order, as before. 0 = never wait.");
+
+        public static readonly ParamDef SprintChargeWaitMetres = Float("SprintChargeWaitMetres", 1, 40, SprintGroup,
+            "AI charge sprint: a waiting man goes at (m)",
+            "A charging AI soldier whose small store waits (the setting above) starts his sprint once an enemy is within this many metres - near enough that it lasts to the enemy's line.");
 
         // ------------------------------------------------------------------ aggression and fever (step 43)
 
@@ -534,7 +548,7 @@ namespace TraxCombat.Core
 
         public static readonly ParamDef FeverSprintMaxMetres = Float("FeverSprintMaxMetres", 1, 40, FeverGroup,
             "Fever sprint: enemy at most (m)",
-            "A fever sprint starts only with an enemy within this many metres. It ends by itself once an enemy is within a few metres.");
+            "A fever sprint starts only with an enemy within this many metres - near enough that a small store lasts to him. It runs into contact (until his first attack) while \"AI charge sprints run into contact\" (Sprint) is on, else it ends once an enemy is within a few metres.");
 
         public static readonly ParamDef FeverSprintCheckSeconds = Float("FeverSprintCheckSeconds", 0.1, 10, FeverGroup,
             "Fever sprint: a roll every (s)",
@@ -1423,7 +1437,7 @@ namespace TraxCombat.Core
             SprintPointsPerSecond, SprintMinSeconds, SprintMinStartPercent, SprintMaxMultiplier, SprintMinMultiplier, SprintFullSpeedSharePercent,
             SprintTopSpeedReachSeconds,
             SprintRefillSeconds, SprintRefillMovingFactor, SprintRefillExhaustedFactor, SprintAiEnabled, SprintAiChargeKeepPercent,
-            SprintAiAdvanceKeepPercent, SprintAiMoveKeepPercent, SprintOnRout,
+            SprintAiAdvanceKeepPercent, SprintAiMoveKeepPercent, SprintOnRout, SprintChargeIntoContact, SprintChargeWaitBelowSeconds, SprintChargeWaitMetres,
             FeverPointsPerSecond, FeverAggressionPercent, FeverContactMetres, FeverShieldDurationMultiplier,
             FeverSprintToClose, FeverSprintMinMetres, FeverSprintMaxMetres, FeverSprintCheckSeconds, FeverSprintChancePercent,
             CourageRadiusMetres, CourageBaseOddsPercent, CourageArmourWeightPercent, CourageLevelWeightPercent, CourageHealthWeightPercent,

@@ -299,7 +299,8 @@ namespace TraxCombat.Missions
                 _feverStats.AddRefusal(FeverSprintRefusal.MissedRoll);
                 return;
             }
-            var res = sp.TryStartAi(in s, now, cap, fv.Order);
+            var res = sp.TryStartAi(in s, now, cap, fv.Order, SprintMath.IntoContact(in s, fv.Order, fever: true)); // step 64: runs into contact
+            if (res == SprintStart.Started && sp.IntoContact) _sprintStats.IntoContactStarted++;
             if (res != SprintStart.Started)
             {
                 _feverStats.AddRefusal(res == SprintStart.ReserveKept ? FeverSprintRefusal.ReserveKept : res == SprintStart.Running ? FeverSprintRefusal.Sprinting

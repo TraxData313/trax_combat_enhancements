@@ -632,9 +632,10 @@
 
   // When an AI formation gets a NEW movement order - yours or its own general's - each of its
   // soldiers on foot sprints once: everything he holds above that order's reserve below (a
-  // charge all of it, an advance down to half, a move only a little). He stops early once an
-  // enemy is within a few metres or the order changes again. Hold, retreat, fall back and
-  // follow never start one. Never you, never a hero you drive.
+  // charge all of it, an advance down to half, a move only a little). An advance or move sprint
+  // stops once an enemy is within a few metres, a charge's runs into contact (the settings
+  // below); any ends when the order changes again. Hold, retreat, fall back and follow never
+  // start one. Never you, never a hero you drive.
   // (true or false)
   "SprintAiEnabled": true,
 
@@ -665,6 +666,25 @@
   // is added. Needs the AI sprint on. Off: routing men run at their normal tired speed.
   // (true or false)
   "SprintOnRout": true,
+
+  // On: an AI soldier's sprint on a CHARGE order, and a feverish man's sprint at a near enemy,
+  // do not stop a few metres short - they run on until his first attack (that blow lands as a
+  // charge) or until he stops moving. Off: they end once an enemy is within 3 m (advance and
+  // move sprints always do).
+  // (true or false)
+  "SprintChargeIntoContact": true,
+
+  // On a new CHARGE order an AI soldier who would sprint less than this many seconds (a weak
+  // man's small store) does not spend it at once from far away: he waits until an enemy is
+  // within the distance below, then sprints. A bigger store sprints at the order, as before. 0
+  // = never wait.
+  // (range 0.0 to 10.0)
+  "SprintChargeWaitBelowSeconds": 3.0,
+
+  // A charging AI soldier whose small store waits (the setting above) starts his sprint once an
+  // enemy is within this many metres - near enough that it lasts to the enemy's line.
+  // (range 1.0 to 40.0)
+  "SprintChargeWaitMetres": 10.0,
 
   // ==================== Aggression and fever (AI) ====================
   // A man's fever lasts his CURRENT Athletics points divided by this, in seconds: 100 points =
@@ -704,12 +724,13 @@
   // A fever sprint starts only with the nearest enemy at least this far away - closer is
   // already melee.
   // (range 0.0 to 10.0)
-  "FeverSprintMinMetres": 3.0,
+  "FeverSprintMinMetres": 4.0,
 
-  // A fever sprint starts only with an enemy within this many metres. It ends by itself once an
-  // enemy is within a few metres.
+  // A fever sprint starts only with an enemy within this many metres - near enough that a small
+  // store lasts to him. It runs into contact (until his first attack) while "AI charge sprints
+  // run into contact" (Sprint) is on, else it ends once an enemy is within a few metres.
   // (range 1.0 to 40.0)
-  "FeverSprintMaxMetres": 12.0,
+  "FeverSprintMaxMetres": 8.0,
 
   // How often a feverish man who could sprint at an enemy rolls for it, in seconds.
   // (range 0.1 to 10.0)

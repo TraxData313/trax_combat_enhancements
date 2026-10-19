@@ -292,6 +292,10 @@ namespace TraxCombat.Missions
         /// blow) - his first blow within <c>ImpactChargeCarrySeconds</c> after it is a charge. A sprint back or a rout never sets it.</summary>
         public double SprintEndedAt = double.NaN;
 
+        /// <summary>Step 64: a charge order's sprint WAITS for an enemy within SprintChargeWaitMetres (his store was below
+        /// SprintChargeWaitBelowSeconds) - looked at every <c>SprintMath.MeleeCheckSeconds</c> by the sprint pass; a new order ends the wait.</summary>
+        public bool ChargeSprintWaiting;
+
         /// <summary>Step 49: looked at for courage at least once (the summary's men).</summary>
         public bool CourageSeen;
 
