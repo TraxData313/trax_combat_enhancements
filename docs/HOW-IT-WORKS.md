@@ -168,8 +168,17 @@ losing men need better odds.
 - **Routing men run for it.** When a man's morale breaks, he spends his whole sprint on the first get-away —
   so a broken line scatters fast, and men who spent their sprint charging have little left to flee with.
 
+**Fear makes a herd.** As a unit loses its morale and its breath, its men care less about their places in the line
+and more about being **among their own** - behind a comrade if they can. A frightened unit draws in on itself and
+edges back from you: a blob instead of a formation, easy to wrap round. Green troops do it early - a looter line
+with nobody behind it thickens by itself - while veterans hold their shape until they are truly spent. A fresh
+comrade in front steadies a man for a while; a shield wall holds until its morale breaks. Hold ALT to see it
+coming: each soldier you look at shows his **morale** in blue under his bars, and the nearest formations say
+"morale 64, fresh 41%".
+
 Numbers: [MECHANICS §11b](MECHANICS.md#11b-courage-men-keep-to-their-group) (the toughness table, the odds,
-four worked fights), the rout sprint [§14](MECHANICS.md#14-the-sprint).
+four worked fights), the fear flock [§11b1](MECHANICS.md#11b1-the-fear-flock-frightened-men-become-a-herd), the rout sprint
+[§14](MECHANICS.md#14-the-sprint).
 
 ## Cavalry comes in waves
 
@@ -302,7 +311,10 @@ Numbers: [MECHANICS §14](MECHANICS.md#14-the-sprint).
 - **Hold ALT**: the same numbers under the game's own formation markers, **yours and the enemy's**, plus how many
   men are in a fever. "ready 12/48" in red under an enemy marker is an invitation.
 - **Hold ALT and look at a man**: the five men nearest the centre of your screen, close by, get a small bar over
-  their heads — his Athletics, and his fever under it. Works in tournaments too.
+  their heads — his Athletics, his fever under it, and his **morale** in blue at the bottom. Works in tournaments too
+  (no morale there).
+- **Hold ALT near a formation**: the nearest few also say **"morale 64, fresh 41%"** — their average morale and
+  Athletics. Low morale and a low bar: that unit is about to become a herd.
 
 Numbers and colours: [MECHANICS §15](MECHANICS.md#15-what-you-see-on-screen).
 

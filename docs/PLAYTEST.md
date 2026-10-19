@@ -1030,6 +1030,7 @@ Claude the `[summary] impact …` block of every battle.
 | 10 | **D29 - FALLS ON THE HIT, A STRONG REAR BLOW, THE WALL PULLS MEN BACK** (step 63): a shield-wall battle with a deep wall of yours; a unit round the enemy's flank into its back | 20 | `impact falls`, `impact` (header: `a FRIEND's blow`), `impact direction`, `wall slots ON`, `wall pulled back` | falls played by the game ≈ decided, backups few and ~0.2 s; rear down well above front (+0.50 pressure); in contact > 1 m ahead back near 1-3 %; the time back after an impact ~3-4 s | backups still most of the falls; rear ≈ front; `wall pulled back` many spells `still out`; men walking backwards out of the fight |
 | 12 | **D31 - THE AI KICKS AND BASHES, THE KICKED MAN BRACES** (step 65): a 50 v 50 shield battle (watch the front for kicks / bashes); then a tournament or a fight as a looter-tier character kicking a fresh heavy shieldman | 20 | `ai kicks`, `ai kicks by reason`, `ai kicks - ends`, `ai kicks - bashes per swing and the wait for reach` (step 66), `kick brace` (the 4 lines), `impact messages` | since step 66: ~0.6-1 bash a shieldman's swing, kicks ~0.3-1 a man-minute of contact (≈ 80-200 asked in a ~50 man-minute battle), PLAYED ≈ asked, waits mostly kicked, landed a good share; your kicks on a fresh heavy man braced ~85 %, a short stagger now and then, never a fall | `PLAYED 0` (the engine ignores the injected input - tell Claude); men standing still with nothing played; a fresh heavy man thrown about by kicks |
 | 11 | **D30 - THE WALL'S BLOCKS COUNT, THE CHARGE HITS AT SPEED** (step 64): your ~20 men in a shield wall + a reserve against ~50 charging looters (your 12:47 battle again) | 15 | `shield front arc`, `AI guard by f WITH a shield`, `sprint - AI` (ends), `sprint into contact`, `impact charges` | the game's WRONG side mostly turned right (front arc); looters reel and fall off the shields; charges well above 14 of 160, `sprinting at the blow` above 0; ends `his first attack` many, `an enemy within 3 m` few | `turned` 0 (the angle read is wrong); looters still slowing before the wall; `sprinting at the blow 0` and `carried` low |
+| 13 | **D32 - MORALE EYES AND THE FEAR FLOCK** (step 67): green troops in a thin hold line vs veterans in one; a long grind (watch the blobs form and drift, ALT for the blue morale); the fear flock OFF for a minute mid-battle, then ON | 25 | `fear flock shape`, `fear flock drift`, `fear flock cover`, `fear flock by discipline`, `fear flock spells`, `fear flock vs courage and walls`, `hud: ALT bars` (morale clause), `hud: ALT markers - morale line` | ON: spread below OFF, depth ÷ width above it; drift back small under a hold (≤ 1.5 m a minute); green units afraid well before veterans; anchors and sprints seen; the blue bars falling with the fight | men frozen in place with enemies at their shields (the zero-vector stand), a unit sliding back without end, men walking backwards through their own mates |
 
 Then play normally (parts E-G). Your gut on each family - too many / about right / too few - is the most useful thing to send.
 
@@ -1597,6 +1598,43 @@ lines; the fallback is setting the agent's event flag from the tick, as the play
 in front of an enemy with nothing played (the commit holding them); `played as the other kind` large (bashes come out as kicks or the other way);
 a fresh heavy man knocked back by every kick (`the knock-back REFUSED` 0 while braced is high); braced men looking odd (a jerky twitch - the
 5 x speed; tell Claude, `KickBraceReelPercent` higher softens it).
+
+**D32. MORALE EYES AND THE FEAR FLOCK (step 67, ~25 min - two battles; the defaults).** You: "give me eyes on their morale too: ALT to see the
+average morale of the whole group, and the same 5 closest guys' morale too", and "as troops lose their morale and freshness, they tend to flock
+less to their formation position and more to the centre of their unit's mass, but pushed back away from the enemy mass ... stepping behind their
+comrades ... this will also make it harder for non-professional men to keep a thin line". Now every AI soldier on foot feels FEAR from low morale
+and a spent bar, less the higher his tier (a looter all of it, a legionary 30%), half of it his unit's; above 15% fear his place slides from his
+slot toward his unit's SHELTER (its centre, pushed back from the enemy near it, creeping back at most 6 m a minute - 1.5 m under a hold / a
+wall), behind a comrade if nobody covers him; a FRESH comrade in front anchors him 20 s; far or alone he sprints back. A shield wall holds until
+its men's morale falls below 30. Settings: Advanced, "Courage and cohesion (AI)" - *Fear flock: afraid men bunch up and fall back* and its
+numbers; "Hold ALT ..." - *Morale bars above the men*, *Morale and freshness under the near formations*.
+1. **Hold ALT in any battle**: look at a soldier - under his Athletics bar (and his fever bar's place) a BLUE bar, his morale (full = 100). The
+   formation markers near you (the 4 nearest within 60 m) say "morale 64, fresh 41%" in blue under the fever line. Watch them fall as a side
+   loses men. In a tournament: no blue bar (the game keeps no morale there). **[summary]** `hud: ALT bars - … ; morale bars a frame (step 67): mean
+   …, max … (their morale … mean)`; `hud: ALT markers - morale line (step 67): pushed N x, … formations a frame on the screen; the lowest morale …
+   (enemy …, fresh …%)`.
+2. **Green troops in a thin line vs veterans in a thin line** (a custom battle or a field battle with recruits / looters on one side, high-tier
+   infantry on the other; order both into a single-rank line - F3 line, wide - and hold). **What you should see**: the green line's ENDS draw in
+   toward its middle once the enemy is close (nobody behind them: the thin-line fear) and the line thickens by itself; the veterans keep their
+   rank. **[fear]** `first fear-flock spell this battle: … level 6 (discipline 0.00), an enemy … m off, NOBODY behind him → his own fear …,
+   the unit's … → fear …, pull … (15-80%); order hold / move; his place … m from him, the shelter … m behind the unit's centre`.
+3. **A long grind** (50 v 50 infantry, both sides holding then charging; let it run 5-8 min until the bars are orange / red and morale drops).
+   **What you should see**: the tired, shaken units lose their formation shape and become BLOBS around their centre, edging slowly back from the
+   enemy; men step in behind comrades; a man alone sprints back to the mass; the enemy can wrap round such a blob. Veteran units keep their
+   shape far longer. A shield wall stays a wall until its men's morale (ALT) goes under 30, then it breaks into a blob.
+   **[summary]** `fear flock shape …: spread … ON … m, OFF … m; depth ÷ width in contact ON …, OFF …` - **ON tighter / deeper than OFF**;
+   `fear flock drift …: hold / wall ON … / OFF …; advance …; charge …` - small and positive (back) ON, never runaway; `fear flock cover …: a comrade
+   between him and the nearest enemy ON …% … OFF …%` - ON above OFF; `fear flock by discipline: green … afraid …%; … veteran … afraid …%` - green
+   far above veteran; `fear flock spells: N by M of … men looked; ends …; ANCHORED behind a fresh comrade …; stepped in behind a comrade …; sprints
+   back …`; `fear flock vs courage and walls: courage's walk back took the man … looks; walls broken … times; … cost … ms a tick; errors 0`.
+4. **The fear flock OFF for a minute mid-battle** (MCM → Advanced → Courage and cohesion (AI) → *Fear flock: afraid men bunch up and fall back*
+   off, then on again): the blobs stretch back out toward their slots at once; on again, they draw in. `[fear] FearFlockEnabled switched OFF
+   mid-mission at … s: N flocking men let go at once`. The OFF minute fills the summary's OFF columns.
+**Too much / too little**: units collapsing into blobs too early - `FearStartPercent` up (20-25) or `DisciplineMaxPercent` up; the drift too fast /
+too slow - `FearDriftMetresPerMinute`; green lines not thickening - `FearThinLinePercent` up; walls breaking too soon - `FearWallBreakMorale` down.
+**Broken - tell Claude**: frightened men FROZEN with an enemy at their shield and never stepping in to strike (the stand-in-place vector - the
+`standing` updates far above `walking`); a unit sliding back without end (drift ON far above 1.5 m a minute under a hold); men walking backwards
+through their own mates or into walls (the ground check); the blobs flickering between blob and line every second (the near-slot dead zone).
 
 ---
 

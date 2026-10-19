@@ -562,6 +562,33 @@ regen.)
   `CourageSurgeChancePercent` × his bar at each look for a `CourageSurgeSeconds` SURGE (brave, the game's weights, no walk); the timid Melee
   weight is 10 flat to his reach (full within it); the summary adds fever presses, surges and the STANDOFF (timid men 3-8 m from an enemy,
   no attack by either in 10 s).
+- **The fear flock** (step 67, Anton 2026-10-19 - AI_NOTES "Step 67", decision 60; `Missions/AthleticsLogic.Fear.cs`, `Missions/FearBody.cs`,
+  Core `FearFlock.cs` / `FearFlockStats.cs`): courage's evolution - it rides courage's look (every AI man on foot in a formation, ~0.5 s,
+  staggered) and its scan. His FEAR = 1 − (1 − `FearMoraleWeightPercent` × m)(1 − `FearTiredWeightPercent` × t) - m = (`FearMoraleCalm` 60 −
+  morale) ÷ (60 − `FearMoraleBroken` 15), t = (`FearFreshPercent` 75 % − his bar) ÷ 75 %, both clamped 0-1 (Athletics off: t = 0; no morale: m =
+  0) - × (1 − DISCIPLINE), DISCIPLINE = `DisciplineMaxPercent` 70 % × clamp((level − `DisciplineLevelLow` 6) ÷ (`DisciplineLevelHigh` 26 − 6)) (a
+  hero the full 70 %), + `FearThinLinePercent` 25 % × (1 − d) while an enemy is within 8 m and no comrade stands behind him (0.3-3 m back along
+  the line from the nearest enemy, 1.5 m aside); mixed (1 − u) his own + u his unit's mean (`FearUnitSharePercent` 50, the last 0.5 s of looks).
+  The PULL p = clamp((fear − `FearStartPercent` 15 %) ÷ (`FearFullPercent` 80 % − 15 %)) - below the start nothing (a flocking man calms below
+  10 %). The unit's SHELTER (a table of 8 teams × 16 formations, published every 0.5 s) starts at its centre of mass and moves toward the centre +
+  away-from-the-enemy-near-the-unit × `FearShelterBackMetres` 4 × the unit's mean pull - freely forward and sideways, backward at most
+  `FearDriftMetresPerMinute` 6 m a minute (× `FearDriftHoldPercent` 25 % under a hold / move / follow or in a shield wall, square or circle).
+  His PLACE = his slot + p × (the shelter − his slot), never more than `FearShelterMaxMetres` 12 from the slot; with no comrade between him and the
+  nearest enemy (within `FearCoverWidthMetres` 0.9 of the line) it leans p of the way to the spot 1 m behind the nearest comrade in front of him; a
+  covering comrade with at least `FearAnchorFreshPercent` 60 % of his bar ANCHORS him - he holds his spot `FearAnchorSeconds` 20 (once per cover;
+  the comrade tiring below the line ends it); a place within 1 m of his slot leaves him to his own AI (small fear, no tug of war with the game's
+  walk to the slot). Under a CHARGE (no slots) he is left to his AI within (1 − p) × `FearChargeLooseMetres` 12 of the shelter (at least 1.5 m)
+  and pulled in beyond it + 2 m. THE LEVER is courage's: a fifth movement wish on step 16's input hook (`AiInputState.Flock` - his own move bits
+  out, the vector toward his place, slower within 2.5 m; 0, 0 = he stands; he faces his AI's target and strikes what reaches him); the ground
+  ahead checked every 0.25 s. WHO STEERS: a step back's backpedal, then the wall's pull (step 63), then COURAGE'S WALK BACK, then the flock; a
+  fever press (armed / burning and not shocked - with courage off too) or a surge ends a spell. THE SPRINT BACK (courage's regroup sprint, what he
+  holds above `FearSprintKeepPercent` 50 %, at most every 10 s): farther than `FearSprintMetres` 8 from his place, ALONE (fewer than 2 mates in
+  courage's circle with an enemy in it), or a `FearSprintChancePercent` 10 % roll a look beyond 3 m. WALLS: a shield wall / square / circle keeps
+  its men while its men's mean morale is at least `FearWallBreakMorale` 30 - below it step 41's held men are let go (`WallVerdict.Breaking`) and
+  the frightened flock. Never the player, riders, busy / detached / routing men, a siege's attackers, no formation, a retreat order; no
+  tournaments, arenas, naval. Works without the Athletics system (no tiredness, no sprint) and with courage off. Master switch FIRST, then
+  `FearFlockEnabled`: off = every spell let go at once (their formation places again); the looks still MEASURE - the summary's 7 "fear flock"
+  lines compare the units' spread, depth ÷ width, drift back by order and the men covered ON vs OFF.
 - **Cavalry flocking** (step 55, AI_NOTES "Step 55", decision 47; `Missions/AthleticsLogic.Flock.cs`, `Missions/FlockBody.cs`, Core
   `CavalryFlock.cs`; Anton 2026-10-18: "fresh and eager riders do the vanilla dance ... the more tired a rider gets, the more he goes to meet
   others of his own kind ... the flock is never a mass sitting somewhere ... it FLIPS from flocking up to going after its target as a flock"):
@@ -962,6 +989,18 @@ the group, and only show them on up to 5 soldiers that I'm directly looking at a
   least one surges (`ShowFeverOnLabels`), on every side the labels show.
 - **Tournaments, arenas, duels** (no formation markers): the view shows while the game's ALT key is held (the copied rule, step 20) - the near bars
   on your opponent; men with no valid team (the arena's crowd) are never marked, in any view.
+
+**3e. The morale eyes (step 67, decision 60 - Anton 2026-10-19: "give me eyes on their morale too: ALT to see the average morale of the whole group,
+and the same 5 closest guys' morale too"):**
+- **A morale bar on the men you look at** (`ShowMoraleMarks`): under ALT, at the BOTTOM of each marked man's stack (3d's near view - the same up to 5
+  men; 3c's every-man view too), a third bar the Athletics bar's size (`AthleticsMarkWidth` × `AthleticsMarkHeight`, `AthleticsMarkGap` above it),
+  a dark frame and a clear BLUE fill (#4C9BFF) = his morale ÷ 100 (the game's `Agent.GetMorale()`, 0-100, read at every formation-stats refresh -
+  also for men in no formation); the fever bar's place and the Athletics bar stand on it. No morale known (the game keeps none - e.g. a tournament)
+  = no bar, its place kept. The enemy's follow `AthleticsMarksShowEnemy`. With only the morale bars on the men are still marked. The [summary] "ALT
+  bars" line adds "morale bars a frame (step 67)".
+- **The group's morale on the near labels** (`ShowMoraleOnLabels`): under `fever 12/40`, `morale 64, fresh 41%` in a lighter blue (#8CC0FF) - its
+  men's mean morale and mean Athletics (the label bar's fill) - only on the nearest `MoraleLabelMax` (4) formations whose marker distance is at most
+  `MoraleLabelMetres` (60 m), re-picked every frame (at most 64 markers, nothing allocated). The [summary] "morale line" line.
 
 Bars show in fights (battle, duel, tournament and stealth modes — step 6 added stealth:
 a stealth mission's fights cost Athletics too), with the player on the field, never while the
@@ -2225,6 +2264,34 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     is the knob, `AiBashDelaySeconds` the softer one; (g) config format 13 moves a file's 3 / 0.1 / 10 once, a tuned value kept and said;
     (h) measured: the [summary] line "ai kicks - bashes per swing and the wait for reach" (the shieldmen's swings, the bashes they earned / lost
     at the cap, the bashes asked a swing; the waits started → kicked / ran out / dropped).
+60. **Morale eyes + the fear flock** (step 67, Anton 2026-10-19: "give me eyes on their morale too: ALT to see the average morale of the whole
+    group, and the same 5 closest guys' morale too"; "a system where, as troops lose their morale and freshness, they tend to flock less to their
+    formation position and more to the centre of their unit's mass, but pushed back away from the enemy mass ... increase their wanting to go that
+    way until they are with their people around them on all sides, thus stepping behind their comrades. If their comrade is fresh they will keep
+    that position for a while, but as the mass loses morale and freshness they flock more and more into that mass. If they are far away, or
+    sometimes when not running, use the sprint ... it will also make it harder for non-professional men to keep a thin line"). Claude's calls:
+    (a) FEAR = two dangers, 1 − (1 − m)(1 − t): either frightens a man, both more - a sum would pass 1, a product would need both; (b) DISCIPLINE
+    by troop LEVEL alone (0 to level 6, 70 % from level 26, a hero 70 %): armour is courage's (iron makes a man brave in the fight), discipline is
+    drill; at 70 % a spent legionary at morale 20 feels 0.30 - the pull 0.23, a quarter of the way: veterans hold until truly spent, 100 % would
+    freeze elites; (c) the unit's share 50 %: the mass moves together, one shaken man does not run while his mates stand; (d) THE THIN LINE only
+    with an enemy within 8 m and nobody behind him, × (1 − d): a fresh looter rank facing an enemy gets 0.25 (the pull 0.15 - its ends draw in), a
+    legionary 0.075 (nothing); (e) THE LEVER is courage's input (a fifth wish), NOT `SetScriptedPosition` (step 55's rider lever): a scripted walk
+    turns a man's back (step 16 left it for that), the input keeps him facing his AI's target, his guard and attacks his own; standing = 0, 0; the
+    behaviour weights are not touched (the input owns his feet; courage still tightens a timid man's); (f) WHO STEERS: backpedal > wall pull >
+    courage's walk back > the flock; a fever press or a surge ends a spell (courage's 49b rules hold for the flock, with courage off too); (g) the
+    SHELTER starts at the unit's centre (no jump) and only CREEPS back - 6 m a minute, a quarter under a hold / a wall (1.5 m a minute), a man's
+    place never more than 12 m from his slot: no endless shuffle; at the extreme the game's own rout takes over; (h) a place within 1 m of his slot
+    = his own AI: small fear does nothing visible, and no tug of war with the game's walk to the slot; (i) THE ANCHOR: a comrade between him and the
+    nearest enemy with ≥ 60 % of his bar holds him 20 s, once per cover; (j) CHARGES have no slot: a loose mass, radius (1 − p) × 12 m (≥ 1.5 m) -
+    the more afraid, the tighter; (k) WALLS hold above morale 30 (the men's mean); below it step 41's held men are let go (`WallVerdict.Breaking`,
+    appended - the old verdicts keep their indexes); (l) the sprint reuses courage's regroup sprint above a 50 % reserve, 10 s apart; (m) THE MORALE
+    EYES: the bar at the BOTTOM of the stack (the fever bar keeps its place, the Athletics bar its look), blue, the Athletics bar's size; the morale
+    line on the nearest 4 formations within 60 m (their marker's distance); "fresh" = the label bar's mean Athletics; (n) all 29 settings on the
+    Advanced page (the brief), the flock's 25 in "Courage and cohesion (AI)" (one system with courage), the eyes' 4 in the ALT group; no config
+    migration (new keys only - FormatVersion 13 stays); (o) measured: the 7 [summary] "fear flock" lines (settings; shape - spread and depth ÷ width
+    ON vs OFF; drift back a minute by order ON vs OFF; cover / nobody behind / alone ON vs OFF; fear, pull and afraid share by discipline band;
+    spells, ends, anchors, steps in behind a comrade, sprints; courage's yields, walls broken, the loose mass, near-slot looks, the steering and
+    its cost), the [fear] first-time lines, the HUD's morale clauses.
 
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),

@@ -502,6 +502,65 @@ count).
 `CourageSprintMetres` 12, `CourageSprintEnemies` 3, `CourageSprintKeepPercent` 50, `CouragePanicOddsPercent` 50,
 `CouragePanicSprintKeepPercent` 0, `CourageTightenWeights` on, `CourageTimidMeleeMetres` 2.</sub>
 
+## 11b1. The fear flock: frightened men become a herd
+
+Courage (above) is a man looking at the odds around him. **Fear** is slower and goes deeper: as a soldier's
+**morale** falls (the game's own - his side losing men, his officers falling) and his **Athletics** runs out, he
+stops caring about his place in the formation and wants to be **among his own**, ideally **behind a comrade**.
+How much he feels depends on his **discipline** - his troop level:
+
+| Man | Level | Discipline | Feels of the fear |
+|---|---|---|---|
+| A looter, a recruit | 5-6 | 0 | all of it |
+| A tier-3 man | 16 | 0.35 | 65% |
+| An imperial legionary, a hero | 26+ | 0.70 | 30% |
+
+**Fear** = 1 − (1 − morale fear)(1 − tiredness fear), × (1 − discipline):
+
+- **morale fear**: 0 at morale 60 or more, a straight line to 1 at 15;
+- **tiredness fear**: 0 at 75% of his bar or more, a straight line to 1 at an empty bar;
+- **nobody behind him** (a single rank, a wide spread, an enemy within 8 m): + 25% × (1 − discipline);
+- half of it is **his unit's average** - the mass moves together.
+
+Below **15%** fear he keeps his slot exactly (a fresh unit obeys exactly). From 15% to **80%** the **pull** grows
+from 0 to 1: his place slides from his slot toward the unit's **shelter** - its centre of mass, pushed back from
+the enemy near it (4 m × the unit's pull), and that shelter **creeps back** at most **6 m a minute** (1.5 m a minute
+under a hold or in a shield wall). Uncovered, he leans toward the spot **behind the nearest comrade**; a
+**fresh** comrade in front (60% of his bar or more) **anchors** him - he holds that spot for **20 s** - and when
+that comrade tires, the pull takes him again. Far from his place (8 m+) or **alone** among enemies he **sprints**
+back (half his sprint store). Under a **charge** there are no slots: a frightened unit becomes a loose mass around
+its shelter, tighter the more afraid it is.
+
+**The worked example** - his own fear, and his pull toward the shelter (the unit feeling as he does, someone behind him):
+
+| | morale 80 | morale 50 | morale 20 |
+|---|---|---|---|
+| **Looter, fresh** | fear 0.00 - pull 0.00 | 0.22 - **0.11** | 0.89 - **1.00** |
+| **Looter, half a bar** | 0.33 - **0.28** | 0.48 - **0.51** | 0.93 - **1.00** |
+| **Looter, spent** | 1.00 - **1.00** | 1.00 - **1.00** | 1.00 - **1.00** |
+| **Legionary, fresh** | 0.00 - 0.00 | 0.07 - 0.00 | 0.27 - **0.18** |
+| **Legionary, half a bar** | 0.10 - 0.00 | 0.14 - 0.00 | 0.28 - **0.20** |
+| **Legionary, spent** | 0.30 - **0.23** | 0.30 - **0.23** | 0.30 - **0.23** |
+
+So a looter band that has lost its nerve or its breath becomes a **herd** - a blob drawn in on itself, edging back
+from you, easy to wrap round - while legionaries keep their lines until they are spent and broken, and even then
+only drift a quarter of the way. A fresh looter line facing an enemy with nobody behind it already feels 0.25: the
+ends of a thin line draw in toward its middle.
+
+**Shield walls hold** while their men's average morale is **30 or more**; below it the wall breaks and its
+frightened men join the flock. A man walking back by courage (alone among enemies) goes first; a man in the fever of
+a charge, or surging in, is left alone.
+
+Never you, never riders, not a siege's attackers, not tournaments or duels, not a retreat order. Works with the
+Athletics system off (then tiredness adds no fear) and with courage off.
+
+<sub>Settings ("Courage and cohesion (AI)"): `FearFlockEnabled` on, `FearMoraleCalm` 60, `FearMoraleBroken` 15, `FearFreshPercent` 75,
+`FearMoraleWeightPercent` 100, `FearTiredWeightPercent` 100, `DisciplineLevelLow` 6, `DisciplineLevelHigh` 26, `DisciplineMaxPercent` 70,
+`FearUnitSharePercent` 50, `FearThinLinePercent` 25, `FearStartPercent` 15, `FearFullPercent` 80, `FearShelterBackMetres` 4,
+`FearShelterMaxMetres` 12, `FearDriftMetresPerMinute` 6, `FearDriftHoldPercent` 25, `FearCoverWidthMetres` 0.9, `FearAnchorFreshPercent` 60,
+`FearAnchorSeconds` 20, `FearSprintMetres` 8, `FearSprintChancePercent` 10, `FearSprintKeepPercent` 50, `FearWallBreakMorale` 30,
+`FearChargeLooseMetres` 12.</sub>
+
 ## 11b2. Cavalry flocking: riders go in as waves
 
 In the base game a charging rider picks a target, rides through, turns and goes again — every rider on his
@@ -1213,6 +1272,7 @@ the whole group at a glance:
               [██████▒▒░░|░░]         the same as a bar, the white tick at the peak line
               ready 34/40             how many are ready to fight (not bracing)
               fever 12/40             how many surge in a fever (orange) - only while someone does
+              morale 64, fresh 41%    the men's average morale and Athletics (blue) - the 4 nearest formations within 60 m
 ```
 
 | "ready" colour | When |
@@ -1235,7 +1295,12 @@ the screen? Switch `AltMarksEveryone` on.
      a fresh man:            a tired man in a charge:
         [██████████]            [█████░░░░░]   his Athletics bar (green / yellow)
                                 [▓▓▓▓▓▓▓▓▓▓]   his fever bar under it (orange)
+        [██████░░░░]            [███░░░░░░░]   his morale at the bottom (blue, 0-100)
 ```
+
+**Morale bars** (step 67): at the bottom of the same men's bars, a **blue** bar - his morale, full = 100 (the
+game's own number: a man starts at about 35-65 and loses it as his side loses men; below about 15 he may rout). In a
+tournament there is no morale, so no bar.
 
 **Fever marks**: under that bar, a second small bar on each man in a **fever** (section 11) — yours and
 the enemy's. Its length is the fever left. His Athletics bar stays at the same height whether he is in a
@@ -1258,7 +1323,7 @@ shield away — the colours the game uses for its own couched-lance lines. At mo
 
 <sub>Settings: `ShowPlayerBar`, `ShowAttackRecoveryBar`, `ShowSprintBar`, `ShowInOrderMenu`, `ShowAltMarkerStats`,
 `AltMarkersShowEnemy`, `ShowReadyCount`, `Bar*BelowPercent`, `Ready*BelowPercent`, `ShowAthleticsMarks`, `AthleticsMarksShowEnemy`,
-`ShowFeverMarks`, `FeverMarksShowEnemy`, `ShowFeverOnLabels`, `AltMarksEveryone` off, `AltNearMarksMax` 5, `AltNearMarksMetres` 15,
+`ShowFeverMarks`, `FeverMarksShowEnemy`, `ShowFeverOnLabels`, `ShowMoraleMarks`, `ShowMoraleOnLabels`, `MoraleLabelMetres` 60, `MoraleLabelMax` 4, `AltMarksEveryone` off, `AltNearMarksMax` 5, `AltNearMarksMetres` 15,
 `FeverMarkMax` 200 (men marked, both bars - the every-man view's cap and the ceiling), `ImpactShowMessages`, `ImpactMessagesIncludeYourMen`,
 `ImpactMessageMinSeconds` 1.5, and the HUD's sizes and offsets
 (`AthleticsMarkWidth` 22, `AthleticsMarkHeight` 5, `AthleticsMarkGap` 2, `FeverMarkWidth` 22, `FeverMarkHeight` 5,

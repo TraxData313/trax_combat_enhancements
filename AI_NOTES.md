@@ -5819,3 +5819,149 @@ earned bash, the gates checked with the wait at 0, the clash 47.3 a minute for 4
 that build: all 147 passed), `tools\SmartAppControl\install_dev.ps1` (Modules\TraxCombatEnhancements.Dev), `loadcheck.ps1`: both installed DLLs
 LOADED (`1.2.0+14a0dd97…`): TraxCombatEnhancements.dll SHA-256 299ACB17…0E90, TraxCombat.Core.dll B06B06A7…E30C. The game and the launcher
 were not running. Windows security untouched.
+
+## Step 67 — morale eyes + the fear flock (DONE 2026-10-19; dev build only, not uploaded)
+
+**Anton (2026-10-19, through the manager)**: "Give me eyes on their morale too: ALT to see the average morale of the whole group, and the same 5
+closest guys' morale too." And: "A system where, as troops lose their morale and freshness, they tend to flock less to their formation position
+and more to the centre of their unit's mass, but pushed back away from the enemy mass. So they flock into a mass instead of a formation, and the
+mass pulls back more and more, as their instinct suggests ... Increase their wanting to go that way until they are with their people around them
+on all sides, thus stepping behind their comrades. If their comrade is fresh they will keep that position for a while, but as the mass loses
+morale and freshness they flock more and more into that mass. If they are far away, or sometimes when not running, use the sprint ... This will
+also make it harder for non-professional men to keep a thin line; they will want to thicken it." The manager's agreed brief: morale eyes (a blue
+bar under the near men's bars, the near units' "morale / fresh" line), FEAR × (1 − discipline by tier), the unit's share, the fear flock as
+courage's evolution on courage's lever, the guard rails (drift cap by order, walls hold until broken, fresh units obey, the exclusions), the
+logging ON vs OFF, tests with a worked example, the docs.
+
+**The reads (all managed, the ones steps 41 / 49 already use - RESEARCH §O / §S)**: `Agent.GetMorale()` (CommonAIComponent.Morale, 0-100, −1
+without it); `Formation.CachedAveragePosition` (the centre of mass), `Formation.CurrentDirection` (the facing), `Formation.GetCurrentGlobalPosition
+OfUnit(agent, true)` (vanilla's slot point - step 41's), `ArrangementOrder.OrderEnum`, step 23's `GameBraceBody.KindOf` (the order),
+`Team.TeamIndex` / `FormationIndex` (the unit key). The morale is read through courage's body (`ICourageBody.Morale` - the smoke's stand-in plays
+it) at every formation-stats refresh (`RefreshFormationStats` - every man, men in no formation too) into `TrackedAgent.Morale`, and at each fear
+look.
+
+**THE FEAR (Core `FearMath`, DESIGN decision 60, MECHANICS §11b1)**
+- m = clamp((`FearMoraleCalm` 60 − morale) ÷ (60 − `FearMoraleBroken` 15)), no morale = 0; t = clamp((`FearFreshPercent` 75 % − bar) ÷ 75 %),
+  Athletics off = 0; raw = 1 − (1 − `FearMoraleWeightPercent` × m)(1 − `FearTiredWeightPercent` × t) - two dangers, either frightens.
+- DISCIPLINE d = `DisciplineMaxPercent` 70 % × clamp((level − `DisciplineLevelLow` 6) ÷ (`DisciplineLevelHigh` 26 − 6)), a hero 70 %. Level only
+  (courage's kit read now keeps it: `TrackedAgent.CourageLevel`): armour is courage's toughness, discipline is drill.
+- His own = clamp(raw × (1 − d) + THIN LINE), the thin line = `FearThinLinePercent` 25 % × (1 − d) while an enemy is within courage's scan (8 m)
+  and NOBODY stands behind him (a comrade 0.3-3 m back along the line from the nearest enemy, within 1.5 m of it).
+- fear = (1 − u) × his own + u × his unit's mean of the last 0.5 s (`FearUnitSharePercent` 50; unknown = his own).
+- The PULL p = clamp((fear − `FearStartPercent` 15 %) ÷ (`FearFullPercent` 80 % − 15 %)); a flocking man calms below start − 5 %.
+
+**THE WORKED EXAMPLE (Step67Tests theory - his own fear = the unit's; someone behind him)**
+
+| | morale 80 | morale 50 | morale 20 |
+|---|---|---|---|
+| looter (level 5, d 0), fresh | 0.00 / 0.00 | 0.22 / 0.11 | 0.89 / 1.00 |
+| looter, half a bar | 0.33 / 0.28 | 0.48 / 0.51 | 0.93 / 1.00 |
+| looter, spent | 1.00 / 1.00 | 1.00 / 1.00 | 1.00 / 1.00 |
+| legionary (level 26, d 0.7), fresh | 0.00 / 0.00 | 0.07 / 0.00 | 0.27 / 0.18 |
+| legionary, half a bar | 0.10 / 0.00 | 0.14 / 0.00 | 0.28 / 0.20 |
+| legionary, spent | 0.30 / 0.23 | 0.30 / 0.23 | 0.30 / 0.23 |
+
+(fear / pull). The thin line: a fresh looter at morale 80 with nobody behind him and an enemy near 0.25 / 0.15; a legionary 0.075 / 0.
+
+**THE FLOCK (Module `AthleticsLogic.Fear.cs`, `FearBody.cs`; Core `FearUnits`)**
+- It rides COURAGE'S LOOK (`PollCourage`, every man ~0.5 s staggered, courage's scan - one more pass over the reused arrays before they are
+  cleared: the nearest enemy, a comrade COVERING him (on the line to the nearest enemy, 0.3 m past him, short of the enemy, within
+  `FearCoverWidthMetres` 0.9), somebody BEHIND him, the spot 1 m behind the nearest comrade in front). `FearLook` is called on every courage path
+  with what courage decided (Off / Free / Walking / Surge / FeverPress); a held wall man's look (courage's WallHeld skip) still notes him into his
+  unit (`FearSkipped`) - its morale breaks the wall.
+- THE UNIT TABLE (`FearUnits`, 8 teams × 16 formations, fixed arrays): every look adds fear, pull, morale, fresh, the enemy centroid he sees,
+  his position against the centre and facing; every 0.5 s `Publish` - the means, "away" (centre − the enemy centroid, a unit vector), THE
+  SHELTER (starts at the centre - no jump; moves toward centre + away × `FearShelterBackMetres` 4 × the mean pull, `DriftStep`: free forward /
+  sideways, back at most `FearDriftMetresPerMinute` 6 m a minute × `FearDriftHoldPercent` 25 % under a hold / move / follow / a wall arrangement),
+  and the stats' samples (spread, depth ÷ width in contact, the centre's drift by order group). Stale after 2 s without a look.
+- HIS PLACE = slot + p × (shelter − slot), at most `FearShelterMaxMetres` 12 from the slot. Uncovered (in contact) → leans p of the way to the
+  spot behind the nearest comrade in front ("stepping behind their comrades"). Covered by a comrade with ≥ `FearAnchorFreshPercent` 60 % of his
+  bar → ANCHORED: the place = where he stands for `FearAnchorSeconds` 20, once per cover (`AnchorSpent` until he is uncovered); the comrade
+  tiring below the line ends it early (counted "let go early"). A place within `SlotToleranceMetres` 1 of his slot (not anchored) = his own AI
+  (the dead zone - small fear does nothing, no tug of war with vanilla's walk to the slot). A CHARGE (no slot): left to his AI within
+  `LooseRadius` = max(1.5, (1 − p) × `FearChargeLooseMetres` 12) of the shelter, pulled in beyond it + 2 m (the hysteresis).
+- THE LEVER = courage's: a fifth movement wish `AiInputState.Flock` (FlockX / FlockY in his own frame - courage's `ToLocal`) applied by the input
+  component AFTER the backpedal, the wall's pull and courage's walk back (`ApplyFlock` - the master switch and `FearFlockEnabled` read live, a
+  `Regroup` with courage on wins); his own move bits out; the stick full beyond 2.5 m, down to 0.35 near his place; within 0.7 m he STANDS (0, 0
+  - else the AI walks him back to his slot); again beyond 1.5 m. The vector refreshed every 0.1 s per flocker (`SteerFlockers`, his frame read
+  then), the ground ahead every 0.25 s (courage's `GroundOk` - a bad edge = he stands). Not `SetScriptedPosition`: a scripted walk turns his
+  back (step 16's reason to leave it); the input keeps him facing his AI's target, his guard and attacks his own. The behaviour weights are not
+  touched (the input owns his feet).
+- WHO STEERS: backpedal > wall pull > COURAGE'S WALK BACK (the flock's wish is turned off while it runs - `YieldedLooks`, the spell goes on) >
+  the flock. A fever press (armed / burning and not shocked - checked by the flock itself when courage is off) or a surge / punish window
+  ENDS a spell. A retreat order ends it; a wall whose morale holds ends it (`WallHolds`).
+- THE SPRINT BACK: courage's `TryStartRegroup` with what he holds above `FearSprintKeepPercent` 50 % of his full store, at most every 10 s:
+  his place farther than `FearSprintMetres` 8, or ALONE (fewer than 2 mates in courage's circle with an enemy in it), or a
+  `FearSprintChancePercent` 10 % roll a look beyond 3 m (courage's dice). Ended on arrival / whenever the flock stops steering him / with the spell
+  (`FearMind.SprintOurs`).
+- WALLS: `FearWallBreaks(st)` = the switch && `FearWallBreakMorale` > 0 && his unit's published mean morale < it; step 41's `LookWall` turns a
+  Hold into `WallVerdict.Breaking` (appended after FarBehind - old indexes kept) and lets him go (vanilla's value back); `NoteWallBreakMan` counts
+  the men and a unit's break once (re-armed when its morale is back above the line). Back above it, step 41 holds them again.
+- Who: AI men on foot in a formation (courage's gate) - never the player or a man he took over, riders, busy / detached / routing men, a siege's
+  attackers, no formation; battle missions only (courage's MissionAllows). Works without Athletics (fresh = 1, no sprint) and with courage OFF
+  (courage's looks still run and measure; the flock decides alone).
+
+**THE MORALE EYES (Core `MoraleEyes.cs`; Module `FeverMarkView` / `FeverMarksVM` / `TraxFeverMarks.xml`, `AltMarkerView` / `AltMarkersVM` /
+`TraxAltMarkers.xml`)**
+- The bar: `FeverMark.Morale` (from `TrackedAgent.Morale` in `TryGetMarkAt` - no per-frame native read), `AthleticsMarkMath.Decide(…, in
+  MoraleMarkRules)` sets `HasMorale` (the switch, his side by `AthleticsMarksShowEnemy`; a man with only a morale place is still marked) and
+  `Layout(…, hasMorale, …)` puts it at the BOTTOM: `MarkBox.MoraleWidth / MoraleHeight` (the Athletics bar's size), the gap above it,
+  `FeverLift` = its height + the gap; the prefab's fever bar is lifted by `ScaledPositionYOffset="@FeverOffsetY"` (− FeverLift), the morale bar
+  `MoraleMark` at the bottom (@MoraleShown / @MoraleWidth / @MoraleHeight / @MoraleFill / @MoraleColor / @MoraleFrameColor). The old 7-argument
+  Layout and 3-argument Decide = step 46 / 58 exactly. Morale −1 = the place kept, no bar. `ToggleOn` = any of the three bar switches.
+- The label: `FormationAthleticsStats.MeanMorale` (the refresh's `_formationMorale`), `PlaceMoraleLines` every frame after the labels are
+  placed: eligible = the switch, a morale known, the marker's `Distance` ≤ `MoraleLabelMetres` 60; ranked by distance (O(n²), n ≤ 64), the first
+  `MoraleLabelMax` 4 shown; `AltMarkerLabelVM.SetMorale` rebuilds "morale 64, fresh 41%" only when a number changes; the prefab's `Morale`
+  TextWidget in #8CC0FF under the fever line.
+
+**Settings (29, all Advanced; 323 → 352; no config migration - FormatVersion 13 stays)**: in "Courage and cohesion (AI)" after
+`CourageTimidMeleeMetres` - `FearFlockEnabled`, `FearMoraleCalm`, `FearMoraleBroken`, `FearFreshPercent`, `FearMoraleWeightPercent`,
+`FearTiredWeightPercent`, `DisciplineLevelLow`, `DisciplineLevelHigh`, `DisciplineMaxPercent`, `FearUnitSharePercent`, `FearThinLinePercent`,
+`FearStartPercent`, `FearFullPercent`, `FearShelterBackMetres`, `FearShelterMaxMetres`, `FearDriftMetresPerMinute`, `FearDriftHoldPercent`,
+`FearCoverWidthMetres`, `FearAnchorFreshPercent`, `FearAnchorSeconds`, `FearSprintMetres`, `FearSprintChancePercent`, `FearSprintKeepPercent`,
+`FearWallBreakMorale`, `FearChargeLooseMetres`; in "Hold ALT …" after `FeverMarkMax` - `ShowMoraleMarks`, `ShowMoraleOnLabels`,
+`MoraleLabelMetres`, `MoraleLabelMax`. All Live. The courage group 28 → 53 (CourageTests pins it).
+
+**Plumbing constants (Core `FearMath`, documented, not settings)**: `CalmHysteresis` 0.05, `CoverMinAlongMetres` 0.3, `BehindDepthMetres` 3 /
+`BehindWidthMetres` 1.5, `BehindSpotMetres` 1, `ArriveMetres` 0.7 / `MoveAgainMetres` 1.5, `SlotToleranceMetres` 1, `SlowMetres` 2.5 /
+`MinStick` 0.35, `SteerSeconds` 0.1, `SprintCooldownSeconds` 10, `ChanceSprintMetres` 3, `AloneMates` 2, `MinLooseMetres` 1.5 /
+`ChargeAgainMetres` 2, the table 8 × 16, `PublishSeconds` 0.5, `StaleSeconds` 2, `ShapeMinMen` 6, 3 discipline bands; the morale colours
+`MoraleMarkMath.ColorHex` #4C9BFFFF / `LabelColorHex` #8CC0FFFF.
+
+**Measured ([fear] tag)**: the mission start (the sentence with the looter / legionary anchors), settings changes, the first spell in full (morale,
+bar, level / discipline, the enemy, nobody behind, own → unit → fear → pull, the order, his place, the shelter, anchored / covered / stepping in,
+a sprint), the first anchor, the first sprint back, the first wall broken, switched off. [summary] (7 lines): settings; SHAPE - spread ON / OFF,
+depth ÷ width in contact ON / OFF (the thickening); DRIFT - the centre's metres a minute away from the enemy by hold / wall, advance, charge ON /
+OFF + the shelters' total step back; COVER - a comrade between him and the nearest enemy, nobody behind, alone, ON / OFF (in contact); BY
+DISCIPLINE - looks, fear, pull, afraid share (green / trained / veteran); SPELLS - ends by reason, flocking looks by order, anchors (held, let
+go early), steps in behind a comrade, sprints (alone / by chance / refused); VS COURAGE AND WALLS - courage's yields, walls broken / men let go,
+the loose mass, near-slot looks, steering walking / standing, cost, errors. The HUD: "ALT bars" + "morale bars a frame (step 67)", the
+labels' "morale line (step 67)" line, the values line's "morale line (…)" clause.
+
+**Built / measured offline**: tests 955 → 991 (Step67Tests.cs: 18 facts + the 18-row worked example; CourageTests' group count 53,
+SettingsPagesTests 352). Smoke 147 → 152 (Program.Step67.cs: FearFlockThroughTheLogic, FearFlockOnAndOff - a frightened single rank of 12
+looters for 30 s, the units' spread ON 1.94 m vs OFF 3.01 m -, FearCostStaysFlat - 1000 men, 500 flocking, courage on: 0.19-0.23 ms a tick
+with the stand-in's O(n) scan, 0 bytes over 300 ticks -, MoraleBarsThroughTheView, MoraleLineUnderTheMarkers; the master-switch step's fear
+part). The stand-in `FakeCourageBody` plays `IFearBody` (a unit = team × formation, orders / facing per formation, slots per man). The older
+smoke steps pin `FearFlockEnabled`, `ShowMoraleMarks`, `ShowMoraleOnLabels` off (AthleticsDefaults, CourageDefaults, FeverMarkDefaults,
+AltMarkerDefaults).
+
+**Gotchas**
+- `AthleticsLogic.FlockingNow` was already the cavalry flock's - the fear flock's are `FearNow` / `FearSteeringNow`.
+- The stand-in's `FormationCentre` averages every man of a FORMATION INDEX regardless of team - the fear smoke builds one body per scenario.
+- `TrackedAgent.Fraction` has an internal setter (Core) - the smoke sets it by reflection (`SetBar`).
+- Without the dead zone a man with a small pull was pinned to his slot by our zero vector (the AI could not step out to strike) - hence
+  `SlotToleranceMetres`; the flock's sprint must end whenever its steering stops (a released man's sprint never drained in the stand-in world).
+- The shelter's first publish once put it 4 m × the pull behind the centre at once - a jump; it now starts at the centre and only creeps.
+
+**UNVERIFIED — only the game can tell (PLAYTEST D32)**
+1. The engine walks a man along a flock vector among his mates (collision avoidance) and a zero vector keeps him standing - the blobs form
+   instead of men grinding into each other; `steering updates … walking / … standing` and Anton's eyes.
+2. Standing frightened men still STRIKE what reaches them (their attack bits are untouched) - if they look frozen with an enemy at their
+   shield, the stand needs an exception (tell Claude).
+3. The drift is felt but slow (`fear flock drift` ON ≤ ~1.5 m a minute under a hold), never a runaway slide; the game's rout takes over at
+   the end.
+4. Green units afraid well before veterans (`by discipline`), the thin line thickening (`depth ÷ width` ON above OFF), anchors and sprints seen.
+5. `Agent.GetMorale()` moves in a real battle as we expect (the blue bars fall; the labels' means) - and the 30 wall break comes at a sensible
+   time.
+6. Cost in a 400-1000 man battle (`fear flock vs courage and walls … cost … ms a tick`).

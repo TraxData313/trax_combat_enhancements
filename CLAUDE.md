@@ -245,7 +245,21 @@ grid) led 2 s ahead along a heading the rested riders pull toward the formation'
 sunflower slot 3.5 m apart, his horseback weights lowered; the GROUP-SIZE CURVE wants 1 at 75%, 4 at 40%, 65% of his kind at 0; the group FLIPS
 when it has the size its MEAN eagerness wants and its leader (most eager) is half ready - all released at once, a WAVE (10 s of the game's charge),
 then each decides again; the [cavalry] summary: rider time free / flocking / in a wave, flips and wave size by eagerness, time between passes and
-LONE PASSES ON vs OFF (PLAYTEST D24). The bar for the
+LONE PASSES ON vs OFF (PLAYTEST D24). MORALE EYES + THE FEAR FLOCK (step 67, Anton 2026-10-19: "give me eyes on their
+morale too" and "as troops lose their morale and freshness, they flock less to their formation position and more to the centre of their unit's
+mass, but pushed back away from the enemy mass ... stepping behind their comrades" - DESIGN decision 60, AI_NOTES "Step 67", 29 Advanced
+settings: 25 in "Courage and cohesion (AI)", 4 in the ALT group; no config-format change): under ALT a BLUE morale bar (`Agent.GetMorale()` ÷ 100,
+read at the formation-stats refresh) at the bottom of the near men's stacks (`ShowMoraleMarks`; the fever bar lifted above it) and "morale 64,
+fresh 41%" under the nearest `MoraleLabelMax` 4 formations within `MoraleLabelMetres` 60 m (`ShowMoraleOnLabels`); THE FEAR FLOCK
+(`FearFlockEnabled`, courage's evolution - it rides courage's look and its input lever): FEAR = 1 − (1 − m)(1 − t) (morale below `FearMoraleCalm`
+60, full at 15; the bar below `FearFreshPercent` 75 %) × (1 − DISCIPLINE by level: 0 to level 6, 70 % from level 26, a hero 70 %) + 25 % × (1 − d)
+with an enemy near and nobody behind him, half his unit's; the PULL from 15 % to 80 % fear blends his place from his slot to his unit's SHELTER
+(its centre pushed back from the enemy near it × 4 m × the unit's pull, starting at the centre and creeping back at most 6 m a minute - a quarter
+under a hold / a wall), at most 12 m from his slot, behind a comrade when uncovered, held 20 s behind a FRESH comrade (60 %+ of his bar - an
+ANCHOR), sprinting back when 8 m+ off or alone (half his store); a place within 1 m of his slot = his own AI; a charge = a loose mass of (1 − p)
+× 12 m; walls hold while their men's morale is 30+, step 41's men let go below it (`WallVerdict.Breaking`); a fifth input wish `Flock` - backpedal
+> wall pull > courage's walk back > the flock; a fever press / surge ends a spell; never you, riders, a siege's attackers, no formation, a retreat;
+the `[fear]` lines and the 7 `[summary] fear flock` lines ON vs OFF (PLAYTEST D32). The bar for the
 fighter you look at is LATER (DESIGN §3; its settings wait in DESIGN's "Planned parameters"). Words:
 the pool/bar/points are "Athletics", the character-screen skill is "the Athletics skill" (it
 used to be called "endurance"), the "peak line" is the white mark at the top quarter of the bar,
@@ -351,7 +365,7 @@ die at any moment (tokens run out) and the next one loses nothing.
   file, capped at `LogMaxMegabytes` (8); a trim cuts ONLY the oldest verbose lines (marked `~`
   before the tag) and keeps every other line - summaries, first-time lines, settings, errors
   (step 10b, Core `LogTrim`). Timestamped lines tagged by area (`[config]`, `[mcm]`, `[mission]`,
-  `[damage]`, `[athletics]`, `[speed]`, `[rate]`, `[stepback]`, `[brace]`, `[guard]`, `[sprint]`, `[wall]`, `[fever]`, `[courage]`, `[cavalry]`, `[impact]`, `[hud]`, `[error]`). Always logged: mod/game version
+  `[damage]`, `[athletics]`, `[speed]`, `[rate]`, `[stepback]`, `[brace]`, `[guard]`, `[sprint]`, `[wall]`, `[fever]`, `[courage]`, `[fear]`, `[cavalry]`, `[impact]`, `[hud]`, `[error]`). Always logged: mod/game version
   at load, every parameter value on load and on change, each mission start/end (type,
   scene, agent counts), which behaviors/views attached, and every caught exception with its
   stack. Per-battle SUMMARY at mission end (damage rolls: count, min/avg/max factor;
@@ -406,7 +420,8 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               its Default comes from defaults.json (DefaultsFile), never code; step 33: ParamType.Key +
                               KeyNames (a key by NAME, stored as its index; FormatJson writes "LeftControl"; the
                               file / defaults.json read the name, MCM a text box)
-  SettingsSchema.cs           EVERY setting of DESIGN's table (323 - step 66's AiKickWaitSeconds / AiKickWaitMetres / AiBashShareOfSwingsPercent /
+  SettingsSchema.cs           EVERY setting of DESIGN's table (352 - step 67's 25 fear-flock settings after CourageTimidMeleeMetres
+                              (courage's group) and 4 morale-eyes settings after FeverMarkMax (the ALT group), all Advanced; 323 - step 66's AiKickWaitSeconds / AiKickWaitMetres / AiBashShareOfSwingsPercent /
                               AiBashDelaySeconds / AiBashCooldownSeconds after KickBraceRefusesKnockBack, all Advanced; 318 - step 65's 14 AiKick* + 7 KickBrace* / KickShortReelPercent in the
                               Impact group after ImpactMultiplierCapPercent, all Advanced; 297 - step 64's ShieldFrontArcIsCorrect / ShieldFrontArcDegrees after
                               OnlyWrongSideBlocksStopRefill and SprintChargeIntoContact / SprintChargeWaitBelowSeconds / SprintChargeWaitMetres after
@@ -890,6 +905,25 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
   CourageStats.cs             step 49 per-mission: isolated / in-contact man-seconds ON vs OFF, the distance histogram (mean, p90), odds bands in contact and
                               out of the formation, skips, ends, walks' ends + time to regroup, sprints + refusals, shock vs odds, flock vs centre, panic,
                               compression (a walk's distance start → end by shock), toughness, weights, cost + the 10 [summary] "courage" lines
+  FearFlock.cs                step 67 pure (AI_NOTES "Step 67", DESIGN decision 60): FearOrder (hold / wall / advance / charge / retreat), FearPhase
+                              (calm / flocking / anchored), FearEnd, FearRules (live; ModEnabled FIRST, FearFlockEnabled; Athletics only for the
+                              tiredness term; Describe with the looter / legionary anchors), FearMath (MoraleShare, TiredShare, Raw = 1 − (1 − m)(1 − t),
+                              Discipline by level, ThinLine, Own, Mixed, Pull, Afraid + the hysteresis, OrderOf, DriftCap / DriftStep - the shelter's
+                              backward cap, ShelterWanted, Place, AlongAcross / Covers / Behind / BehindSpot, Anchors / AnchorRunning, LooseRadius,
+                              NearSlot (the 1 m dead zone), SprintWanted / SprintAmount, Stick, WallBreaks, UnitKey; plumbing ArriveMetres 0.7,
+                              MoveAgainMetres 1.5, SteerSeconds 0.1, the table 8 × 16, PublishSeconds 0.5 …), FearMind (one man: phase, fear / pull,
+                              his place, the wish, the anchor, the sprint), FearUnits (THE UNIT TABLE: Note per look, Publish every 0.5 s - the means,
+                              "away", the SHELTER starting at the centre and creeping back by order, the shape / drift samples)
+  FearFlockStats.cs           step 67 per-mission: FearStats - looks / contact / covered / nobody behind / alone ON vs OFF, spread and depth ÷ width ON vs
+                              OFF, the centre's drift by order group ON vs OFF, fear / pull / afraid by discipline band, spells and ends, anchors, steps
+                              behind a comrade, sprints, courage's yields, walls broken, the loose mass, near-slot looks, steering, cost + the 7 [summary]
+                              "fear flock" lines
+  MoraleEyes.cs               step 67 pure: MoraleMarkRules (ModEnabled FIRST, ShowMoraleMarks, the enemy by AthleticsMarksShowEnemy; Off), MoraleMarkMath
+                              (the blue #4C9BFF, Fill = morale ÷ 100, Known), MoraleLabelRules / MoraleLabelHidden / MoraleLabelMath (the nearest
+                              MoraleLabelMax within MoraleLabelMetres, "morale 64, fresh 41%"), MoraleLabelStats (+ the [summary] "morale line" line);
+                              AthleticsMarks.cs: Decide(…, MoraleMarkRules) / Layout(…, hasMorale, …) - the morale bar at the stack's bottom
+                              (MarkBox.MoraleWidth / MoraleHeight / FeverLift); FeverMarks.cs: FeverMark.Morale / HasMorale, FeverMarkStats' morale clause;
+                              SpreadStats.cs: FormationAthleticsStats.MeanMorale; ShieldWall.cs: WallVerdict.Breaking
   CavalryFlock.cs             step 55 pure (AI_NOTES "Step 55", RESEARCH §T): RiderKind, FlockSkip, RiderFlockState (free / flocking / wave), FlockReason,
                               FlockEnd, FlockRules (live; ModEnabled FIRST, CavalryFlockEnabled; TimidOn = its switch && CourageEnabled; Describe),
                               FlockMath (KindOf, Key = team x formation x kind, Eagerness, IsFree + hysteresis, Readiness, GroupNeeded - THE CURVE, Heading
@@ -944,7 +978,7 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               step 59: TWO pages (BuildPage returns object; MCM keeps settings by Id) - the
                               player page (SettingsId, the old id, "Trax Combat Enhancements": 20 settings,
                               7 groups, then "Defaults" with Revert) = _settings, the Advanced page
-                              (AdvancedSettingsId, "... - Advanced": 303 settings since step 66, 16 groups) = _advanced;
+                              (AdvancedSettingsId, "... - Advanced": 332 settings since step 67, 16 groups) = _advanced;
                               each its own "default" preset (its own settings); group "Defaults": the Revert
                               (both pages, reverts both) / Save-defaults-file (Advanced only) BUTTONS
                               (ProxyRef<Action>, both pages refreshed via PropertyChanged), on Advanced just
@@ -1229,6 +1263,18 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               the panic reserve), SteerWalkers (arrived on the way, the edge, the vector into AiInputState.Regroup*), the weights (re-applied
                               every look, the game's back), EndTimid on every path, CourageLeftField, CourageHitTaken (OnAgentHit - the shock window),
                               CloseCourage, WriteCourageSummary
+  Missions/FearBody.cs        step 67: IFearBody (the smoke plays it - its courage stand-in) + GameFearBody (Unit: the table key from Team.TeamIndex /
+                              FormationIndex, the order by GameBraceBody.KindOf + a wall arrangement, CachedAveragePosition, CurrentDirection; Slot =
+                              GetCurrentGlobalPositionOfUnit(agent, true)), FearBodyDefault
+  Missions/AthleticsLogic.Fear.cs  step 67, THE FEAR FLOCK: StartFear / NoteFearSettings (the [fear] lines), TickFearSwitch (the master switch first - off =
+                              EndAllFear at once) and TickFearUnits (the table published every 0.5 s, the walls' break re-armed) from TickCourage,
+                              FearScan (courage's scan read once more before it is cleared: the nearest enemy, cover, behind, the spot behind a
+                              comrade), FearSkipped (a held wall man noted in his unit; other gates end a spell), FearLook (every courage path: Off /
+                              Free / Walking / Surge / FeverPress - the fear into the table and the stats ON and OFF, the gates, the spell, his place,
+                              the anchor, the loose mass, the 1 m dead zone, StartFlockInput / SteerFlocker / StopFlockInput - the Flock wish on step
+                              16's hook, AskFearSprint), FearWallBreaks / NoteWallBreakMan (step 41's LookWall asks them), EndFear on every path,
+                              FearLeftField, CloseFear, WriteFearSummary (after courage's lines); TrackedAgent.Fear / Morale / CourageLevel;
+                              AiInputHook.cs: AiInputState.Flock (FlockX / Y), SetFlock, ApplyFlock (after the wall's pull and the walk back)
   Missions/FlockBody.cs       step 55: IFlockBody (the smoke plays it) + GameFlockBody (MissionAllows, the gate - AI, formation, busy, a CHARGE order;
                               ReadKind - bow / crossbow / sling with ammo, throwing weapons; Key - TeamIndex / FormationIndex; the goal - the order's
                               TargetFormation, Formation.TargetFormation, CachedClosestEnemyFormation; CanStart = CanBeAssignedForScriptedMovement; MoveTo =
@@ -1461,7 +1507,12 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               pixels), Fill, FillColor, FrameColor (the fade's alpha baked in); step 46: the box (PositionX / Y =
                               its top-left, BoxWidth / BoxHeight), FeverShown, the Athletics bar - BarShown, BarWidth, BarHeight,
                               BarFill, BarUsable, BarColor, BarFrameColor, BarWoundColor
-tests/TraxCombat.Core.Tests/  net8.0 xUnit (955 - step 66: + Step66Tests.cs - Step66Tests (the five settings, the bashes keep the feature on without kicks,
+tests/TraxCombat.Core.Tests/  net8.0 xUnit (991 - step 67: + Step67Tests.cs - the 29 settings placed / live, the master switch first, the fear's two dangers,
+                              discipline by level, THE WORKED EXAMPLE (looters vs legionaries at fresh / half / spent × morale 80 / 50 / 20 → fear and
+                              pull), the thin line, the unit's share and the hysteresis, his place, the shelter's creep by order, cover / behind / the
+                              spot behind a comrade, the anchor, the charge's loose mass, the sprint, the 1 m dead zone, the wall's break, the unit
+                              table, the summary; the morale bar at the stack's bottom, the morale line, the HUD clause; CourageTests' group 53;
+                              955 - step 66: + Step66Tests.cs - Step66Tests (the five settings, the bashes keep the feature on without kicks,
                               the credit and its cap, the wait and the capped rate, the format-13 migration, the summary line), Step66ExamplesTests
                               (THE WORKED EXAMPLES - kicks a minute for a looter / an average man / a legionary fresh, at half a bar, vs a turtle, in a
                               fever; a shieldman's swings and bashes by bar band in a seeded walk through the real rules); the format strings → 13;
@@ -1953,8 +2004,13 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               (AthleticsDefaults); since step 66 the clash at 1.2 a minute (47.3 a minute for 40 men, the model 52.5); step 66
                               (Program.Step66.cs): a shieldman's swing earning his bash (asked with the 2 s cooldown, the credit spent; none without
                               one), a decision at 2.5 m waiting and kicking at 1.2 m, a wait run out / dropped, 6 m never waited for, the kick's 5;
-                              a clash - 20 shieldmen 0.98 bashes a swing, 20 kickers 20.1 a minute (the model 20.7) (147 steps; the config
-                              checks work for any tuned default)
+                              a clash - 20 shieldmen 0.98 bashes a swing, 20 kickers 20.1 a minute (the model 20.7); step 67
+                              (Program.Step67.cs): THE FEAR FLOCK through the real logic with courage's stand-in world (it plays IFearBody) - a fresh
+                              line obeys, a frightened single rank draws into its mass and the shelter creeps back at the hold's cap, the input frame,
+                              a fever press, the switch, an anchor and its break, courage's walk back first, a sprint back, a wall that holds at morale
+                              40 and breaks at 25, a charge's loose mass; the A / B (spread ON 1.94 m vs OFF 3.01 m); the cost (1000 men, 500 flocking,
+                              ~0.2 ms a tick, 0 bytes); THE MORALE EYES through the real views (the bar, the line); the master-switch part; the older
+                              steps pin the flock and the eyes off (152 steps; the config checks work for any tuned default)
                               TRAX_SMOKE_KEEP=1 keeps its temp folder + log to read
 tools/DefaultsTool/           defaults.json upkeep: refresh (rewrite comments/order, keep every
                               value) | check; --file <path> for an exported one
