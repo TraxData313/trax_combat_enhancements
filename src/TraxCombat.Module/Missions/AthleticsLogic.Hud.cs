@@ -53,6 +53,8 @@ namespace TraxCombat.Missions
             fever.UseSource(new GameFeverMarks(screen, new GauntletFormationMarkers(screen), FeverMarkView.Movie));
             AttachHudView(screen, fever);
             // step 7 (LATER): AttachHudView(screen, new TargetAthleticsView());
+            // step 72: the order-click guard - a layerless view after the game's targeting handler (no accidental charge orders)
+            AttachOrderClicks(screen);
         }
 
         private MissionScreen? FindMissionScreen()

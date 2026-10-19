@@ -578,6 +578,11 @@ namespace TraxCombat.Core
         public float MoraleLabelMetres => GetFloat(SettingsSchema.MoraleLabelMetres);
         public int MoraleLabelMax => GetInt(SettingsSchema.MoraleLabelMax);
 
+        // step 72: no accidental charge orders
+        public bool OrderNoAccidentalCharge => GetBool(SettingsSchema.OrderNoAccidentalCharge);
+        public int OrderChargeDragPixels => GetInt(SettingsSchema.OrderChargeDragPixels);
+        public int OrderChargeIconPixels => GetInt(SettingsSchema.OrderChargeIconPixels);
+
         public float HudRefreshSeconds => GetFloat(SettingsSchema.HudRefreshSeconds);
         public int PlayerBarWidth => GetInt(SettingsSchema.PlayerBarWidth);
         public int PlayerBarHeight => GetInt(SettingsSchema.PlayerBarHeight);

@@ -22,6 +22,7 @@ ends with a link to its numbers there. Every number is a setting you can change,
 - [Damage](#damage)
 - [Heroes, duels and tournaments](#heroes-duels-and-tournaments)
 - [The sprint](#the-sprint)
+- [Your orders: a click charges, a drag never does](#your-orders-a-click-charges-a-drag-never-does)
 - [What you see on screen](#what-you-see-on-screen)
 - [Tactics](#tactics)
 - [Settings](#settings)
@@ -314,6 +315,16 @@ all the way **into** the enemy and its first blow lands at speed; a man with onl
 until the enemy is close, so he still has it when he hits the line.
 
 Numbers: [MECHANICS §14](MECHANICS.md#14-the-sprint).
+
+## Your orders: a click charges, a drag never does
+
+A click on an enemy unit's banner orders a charge at it; a drag never does. In the orders menu, press and let go with the cursor right
+on the floating banner icon of an enemy unit and your selected men charge it, as in the game. Anything else - dragging out a line for
+your men, even across or onto an enemy banner, or a click near a banner or over the enemy's men - places your men where you pointed,
+and they keep their sprint for the charge you really mean. The F-key charge works as it always did. You can switch it off on the
+Advanced page (*Orders: no accidental charges*).
+
+Numbers: [MECHANICS §14b](MECHANICS.md#14b-your-orders-a-click-charges-a-drag-never-does).
 
 ## What you see on screen
 

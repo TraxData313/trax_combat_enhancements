@@ -6355,3 +6355,88 @@ twice a clean one); PLAYTEST D36; IMPACT.md quotes no cost number - untouched.
 Modules\TraxCombatEnhancements.Dev; `tools\SmartAppControl\loadcheck.ps1`: both installed DLLs LOADED (`1.2.0+1a54eaaf…`): TraxCombatEnhancements.dll SHA-256
 4848C8DC…CDC1, TraxCombat.Core.dll 8DCD1E85…A14D. The game and the launcher were not running. Tests (1045) ran with `dotnet test`, the smoke in memory
 (`run_smoke.ps1`) while iterating; `refresh_defaults.fsx` once (Smart App Control blocked DefaultsTool's fresh Core DLL). Windows security untouched.
+
+## Step 72 — no accidental charge orders (built 2026-10-19; dev build only, not uploaded)
+
+**Toni (2026-10-19)**: in a battle's order mode, placing a formation with a click or a click-and-drag, the cursor crossing another
+formation's floating banner (or its men) made the game issue a CHARGE at that formation instead of the move - his men sprint off and waste
+their sprint. "The unit only goes after another unit on charge when my cursor is directly over their icon and when I click it, not click
+and drag etc."
+
+**How vanilla decides (v1.4.8, decompiled to %TEMP%\trax_decomp\ - View, VMC = ViewModelCollection, GUI = Native's GauntletUI, NavalDLC.*)**
+- `MissionFormationTargetSelectionHandler` (View, a MissionView in every SandBox battle's view list): every frame in its
+  `OnPreDisplayMissionTick` it walks the NON-ally teams' formations with men: a formation whose median is within **10 m** of the camera (2D)
+  gets "distance 0" (focused whatever the screen says, unless its point is behind the camera); otherwise its median ground point **+3 m**
+  is projected (`MBWindowManager.WorldToScreenInsideUsableArea(ActiveCamera, …)`) and measured to the **SCREEN CENTRE** (not the mouse):
+  the nearest within `MaxDistanceToCenterForFocus` = 70 × RealScreenResolutionHeight / 1080 px; 1000 m+ never. Its list = the distance-0
+  ones (iteration order) + the nearest; it fires `OnFormationFocused(list or null)`. Public `SetIsFormationTargetingDisabled(bool)`: off =
+  clears and fires null every frame (only War Sails' `MissionGauntletNavalOrderUIHandler` calls it - a captain's single ship).
+- `GauntletOrderUIHandler.TickInput` (GUI, base of `MissionGauntletSingleplayerOrderUIHandler`, which caches the handler's list in
+  `_focusedFormationsCache`): with the orders menu shown, on **IsKeyReleased(LeftMouseButton / 255)** and `CursorState` 0 (move): a non-empty
+  focus → `GetChargeOrder().ExecuteAction(params with Formation = focus[0])` → `ChargeVisualOrder` → **`OrderController.SetOrderWithFormation
+  (OrderType.Charge, unit)`** (`MovementOrderCharge` + `SetTargetFormation`; `FireOnOrderIssued(Charge, selected, controller, unit)`), then
+  `SetSuspendTroopPlacer(true)`. NO drag test, NO mouse test: any release while a unit is focused charges it.
+- `OrderTroopPlacer` (View; made by `ViewCreator.CreateOrderTroopPlacerView` through ViewCreatorManager - not replaceable without patching)
+  issues the move on the same release when its cursor state was Ground (`SetOrderWithTwoPositions(MoveToLineSegment / …HorizontalLayout,
+  start, end)` - the dragged frontage). Its own click / drag test: < 10 px (mouse visible) or < 0.3 s = a click. It never targets
+  formations (its `OrderableEntity` state is siege weapons). The charge wins either way (issued after, or the placer suspended first).
+- The F keys (`IsGameKeyPressed(69…)`) execute the selected order with the SAME execution parameters - an F-key charge while a unit is
+  focused is a targeted charge too.
+- Markers: `MissionGauntletFormationMarker` places each `MissionFormationMarkerTargetVM` at the same median + 3 m (`ScreenPosition`, public)
+  and shows `SetTargetedState` from the same focus list; there is no mouse-hover state anywhere - "hover" is the centre focus. The icon
+  (FormationMarker.xml `TeamTypeWidget`) is 50 × 50 UI px.
+
+**The lever (no Harmony)**: (a) - the handler's own public `SetIsFormationTargetingDisabled`. A layerless `OrderClickView` (Module,
+Missions/OrderClickView.cs) joins the screen on the logic's first tick (`MissionScreen.AddMissionView`, after the handler in
+`Mission.MissionBehaviors`); behaviours pre-display-tick from the END, so its `OnPreDisplayMissionTick` runs BEFORE the handler's each frame
+(the attach line logs both indices). It replicates vanilla's focus pick (Core `OrderClickMath.VanillaPick`) to know the unit a release
+would charge and measures, in screen pixels, the cursor (the mouse if `MissionScreen.MouseVisible`, else the centre - the placer's point)
+→ that unit's icon point and → the PRESS point (the order flag's ground point at the press, re-projected every frame, the press-frame
+offset cancelled - so a camera turn with the mouse hidden is a drag too). Core `OrderClickTracker`: from the press to the release frame,
+targeting OFF = dragged (≥ `OrderChargeDragPixels`, sticky) || pressed off the icon (> `OrderChargeIconPixels` or no unit) || off it now;
+the last held frame's decision stands through the release frame (whichever comes first in a frame - the views' screen tick or the
+mission's pre-display tick - the release reads a focus computed after our latest decision); the next frame the click is counted and the
+targeting given back. So the release finds no unit and the placer's own move (the dragged frontage) is the only order: nothing is
+re-issued, no charge ever starts, so there is no sprint / fever arming to cancel (AthleticsLogic arms them from a formation's NEW movement
+order - none happens). Option (b) (re-issuing a move after the charge) was not needed: it would have needed the placer's private drawing
+data and a same-tick cancel of a charge that had already fired `OnOrderIssued`. Idle (no button) = the game's targeting untouched - the
+F-key targeted charge and the markers' highlight as vanilla (the highlight goes out the moment a hold would not charge: feedback). Stands
+down (vanilla): ModEnabled / OrderNoAccidentalCharge off (read live, targeting given back at once), the gamepad (`Input.IsGamepadActive` -
+its confirm path executes the radial's selected order with the focus), naval battles (War Sails drives the same switch), a mission without
+the handler. The player's `OrderController.OnOrderIssued` (re-subscribed if his team changes) counts targeted charges and moves against the
+click in progress: a targeted charge during a converted click = the FAILURE line.
+
+**Settings** (Advanced page, new group "Orders: no accidental charges", Order 22 - "Advanced" 23; decision 66 - a fix that should just work,
+on by default): `OrderNoAccidentalCharge` true, `OrderChargeDragPixels` 12 (1-200; vanilla's own click tolerance 10), `OrderChargeIconPixels`
+30 (1-200; the icon 50 across; vanilla's reach 70 - more widens nothing). 1080p UI px scaled by `Screen.RealScreenResolutionHeight / 1080`.
+New keys only - no config migration (FormatVersion 15 stays). 377 settings, 17 Advanced groups.
+
+**Log**: `[orders] mission start: no accidental charge orders (step 72) … - ON`; `[orders] attached: the order-click guard (step 72) -
+guarding: the game's targeting handler at N, this view at M of K (pre-display-ticks BEFORE it - same-frame)`; first-time lines (targeting
+held OFF, a deliberate charge KEPT, a charge turned into a MOVE - drag / off the icon, with whether the placer's move was seen, the FAILURE);
+`settings changed mid-mission`; `[summary] order clicks (step 72): N clicks … K deliberate charges kept, C charges turned into moves (D drags,
+O clicks off the icon; the placer's move seen after …), P plain moves, L charges SLIPPED THROUGH, A cut short, E errors; targeted charges
+the game issued …; targeting held off F frames; switch ON` (or "not guarded this battle - why").
+
+**Measured offline**: tests 1045 → 1057 (Step72Tests.cs: the settings placed / live / defaults, the master switch first + the sentence,
+the scaling and thresholds, vanilla's pick - 10 m first, nearest within 70 px, 2160p's 140, behind / 1000 m -, a click on the icon kept,
+a drag across a banner held off through the release and counted, a drag that starts on the icon, near / slid off / walked under, a plain
+move, the leak, the menu / switch off mid-hold, a quick second click, the summary line; SettingsPagesTests 377 / 17 groups). Smoke 163 →
+164 (Program.Step72.cs: the real guard with a stand-in world and a stand-in of vanilla's release, both frame orders; the MCM page check's
+17 groups).
+
+**Gotchas**
+- `MissionMode` is in TaleWorlds.Core; `Input` inside a MissionView is the layer's IInputContext - the static one is
+  `TaleWorlds.InputSystem.Input.IsGamepadActive`.
+- The mouse-visible case (deployment, the free cursor): vanilla's focus is still the screen CENTRE, so a click with the mouse ON another unit's
+  icon while the centre focuses a different one is held off (a move) - we cannot redirect the charge without issuing orders ourselves.
+- While a press is held off, an order-bar button clicked with the mouse (deployment) executes with no focus - a general charge instead of
+  vanilla's targeted one. Rare; left as is.
+
+**UNVERIFIED — only the game can tell (PLAYTEST D37)**
+1. That the engine's order of `OnPreDisplayMissionTick`, the input frame and the views' screen tick makes the release read our decision (the
+   design holds for either order, the smoke runs both; the attach line's indices show we pre-tick first).
+2. That a drag across / onto an enemy banner now MOVES (the placer's move "went out" in the first-time line) and a click on the icon still
+   CHARGES; that 30 px feels like "directly over the icon" at Toni's resolution; that `GetOrderFlagPosition` at the press tracks the cursor's
+   ground point closely enough for a 12 px drag test with the mouse hidden (the camera turning).
+3. That the order flag / cursor shows no charge look while held off (the UI's cursor state comes from the same focus list).

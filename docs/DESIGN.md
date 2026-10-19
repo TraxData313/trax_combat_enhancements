@@ -1596,6 +1596,9 @@ row goes to the Advanced page unless a player needs it to set up his game (CLAUD
 | `ShowMoraleOnLabels` | true | Step 67: "morale 64, fresh 41%" in blue under the near formations' ALT labels - the men's mean morale and mean Athletics (the bar's fill). Live. |
 | `MoraleLabelMetres` | 60.0 | Step 67: only formations whose marker distance is at most this get the line. Range 5-500. Live. |
 | `MoraleLabelMax` | 4 | Step 67: at most this many - the nearest - get it. Range 1-16. Live. |
+| `OrderNoAccidentalCharge` | true | Step 72 (decision 66): in the orders menu a left-button release charges an enemy unit only after a CLICK with the cursor ON its banner icon - within `OrderChargeIconPixels` at the press AND through the hold - and no drag (`OrderChargeDragPixels`); otherwise the game's own unit targeting (`MissionFormationTargetSelectionHandler.SetIsFormationTargetingDisabled`, public) is held OFF from the press through the release frame, so the release finds no unit and the game's troop placer places its move (the dragged frontage kept). Idle = the game's targeting untouched (the F-key targeted charge as vanilla); the gamepad and naval battles: vanilla. Gate: `ModEnabled` FIRST. Off = vanilla (a release while an enemy banner is within 70 px of the screen centre, or an enemy unit within 10 m of the camera, charges it). Advanced, group "Orders: no accidental charges". Live. |
+| `OrderChargeDragPixels` | 12 | Step 72: the cursor this far (UI px of a 1080-high screen, scaled by the real height like vanilla's 70) from the press point - the order flag's ground point at the press, followed on the screen as the camera turns - makes the click a DRAG for the rest of the hold: never a charge. Vanilla's own click tolerance is 10. Range 1-200. Live. |
+| `OrderChargeIconPixels` | 30 | Step 72: the cursor within this (UI px of a 1080-high screen, scaled) of the game's focused unit's banner icon (its median point 3 m up - where the marker's 50-px icon sits) is ON it. Vanilla's reach is 70 around the screen CENTRE, so more than 70 widens nothing. Range 1-200. Live. |
 | `HudRefreshSeconds` | 0.1 | (Advanced) How often the player bar, the orders-menu strip and the formation markers' numbers update (the markers' numbers follow the markers every frame). |
 | `PlayerBarWidth` | 205 | (Advanced) Length of your bar in UI pixels of the 1920 × 1080 layout (the game's UI scale applies); 205 = the inside of the vanilla health bar. |
 | `PlayerBarHeight` | 12 | (Advanced) Thickness of your bar, UI pixels. |
@@ -2522,6 +2525,25 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     blocks' 5 / 2 - format 14's -, the kick's 5 - format 13+ -, the parry's 2 - any format), a hand-set value kept and said once; a default
     that did not move says nothing (`MoveOrKeepIfMoved`); (e) the player page's *Cost per swing* hint: "At 10 a recruit (a 50-point bar) is
     empty after 5 blows, a legionary (130) after 13".
+66. **No accidental charge orders** (step 72, Toni 2026-10-19: placing a unit with a click or a click-and-drag, the cursor crossing another
+    unit's floating banner turned the move into a charge at that unit - his men sprinted off and wasted their sprint; "the unit only goes after
+    another unit on charge when my cursor is directly over their icon and when I click it, not click and drag"). What vanilla does (v1.4.8,
+    decompiled): `MissionFormationTargetSelectionHandler` FOCUSES every enemy formation within 10 m of the camera, else the one whose median
+    point 3 m up projects nearest the SCREEN CENTRE within 70 px × height / 1080 (not the mouse); `GauntletOrderUIHandler.TickInput` charges
+    the first focused unit on ANY left-button release in the orders menu (`ChargeVisualOrder` → `SetOrderWithFormation(Charge, unit)`),
+    drag or not, and suspends the troop placer - its move is lost. Claude's calls: (a) the lever is the handler's own PUBLIC
+    `SetIsFormationTargetingDisabled` - no Harmony, no order re-issued (so no charge, no sprint, no fever ever starts), the placer's move
+    with the dragged frontage simply stands; (b) a layerless `MissionView` joined on the logic's first tick - AFTER the handler in the
+    behaviour list, so its `OnPreDisplayMissionTick` runs first each frame; it replicates vanilla's focus rule to know the unit a release
+    would charge and holds the targeting OFF while the left button is down unless the press was ON that unit's icon
+    (`OrderChargeIconPixels` 30 - the icon is 50 across), the cursor is still on it and no drag (`OrderChargeDragPixels` 12 - the press
+    point's screen distance, so a camera turn counts too); the decision of the last held frame stands through the release frame; (c) idle
+    = vanilla's targeting untouched, so the F-key charge at the unit you look at still targets it, and the markers' highlight shows as
+    vanilla until you press (it goes out the moment a hold would not charge - the feedback); (d) the gamepad (its own confirm path) and
+    naval battles (War Sails drives the same switch itself for a captain's ship) stay vanilla; (e) the player's `OnOrderIssued` counts
+    what really went out - a targeted charge during a converted click is a FAILURE line; (f) three settings in a new Advanced group
+    "Orders: no accidental charges" before "Advanced" - a fix that should simply work, on by default (CLAUDE.md "Which MCM page"); new keys
+    only - no config migration (FormatVersion 15 stays).
 
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),

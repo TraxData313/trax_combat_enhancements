@@ -57,7 +57,8 @@ namespace TraxCombat.Core
         public static readonly ParamGroup PlayerBarGroup = new ParamGroup(19, "Your Athletics bar");
         public static readonly ParamGroup OrderStripGroup = new ParamGroup(20, "Orders menu strip");
         public static readonly ParamGroup AltMarkersGroup = new ParamGroup(21, "Hold ALT: formation markers, Athletics and fever bars"); // step 44 renamed it (was "Formation markers (hold ALT)"), step 46 again (was "... and fever marks")
-        public static readonly ParamGroup AdvancedGroup = new ParamGroup(22, "Advanced"); // the logging and test tools (the spike) - last
+        public static readonly ParamGroup OrderClickGroup = new ParamGroup(22, "Orders: no accidental charges"); // step 72 - before "Advanced"
+        public static readonly ParamGroup AdvancedGroup = new ParamGroup(23, "Advanced"); // the logging and test tools (the spike) - last
 
         // ------------------------------------------------------------------ master switch
 
@@ -1603,6 +1604,23 @@ namespace TraxCombat.Core
             "Formation morale: at most (formations)",
             "At most this many formations - the nearest - get the morale line, so the screen stays uncluttered.");
 
+        // ------------------------------------------------------------------ orders: no accidental charges (step 72)
+        // Toni (2026-10-19): placing a unit with a click or a drag, the cursor crossing another unit's floating banner turned the move into a
+        // charge at that unit - his men sprinted off and wasted their sprint; "the unit only goes after another unit on charge when my cursor is
+        // directly over their icon and when I click it, not click and drag". Core OrderClickMath / OrderClickTracker, AI_NOTES "Step 72".
+
+        public static readonly ParamDef OrderNoAccidentalCharge = Bool("OrderNoAccidentalCharge", OrderClickGroup,
+            "No accidental charge orders",
+            "In the orders menu, a left click charges an enemy unit only when the cursor is ON its banner icon - when you press AND when you let go - and you did not drag. A drag (placing a unit with its frontage) or a click near a banner or over the men places the move order instead, so your men never sprint off at a unit you only swept across. The F-key orders and the gamepad are the game's own. Off: the game's own rule - letting go of the button anywhere near an enemy banner (or close to an enemy unit) charges it.");
+
+        public static readonly ParamDef OrderChargeDragPixels = Int("OrderChargeDragPixels", 1, 200, OrderClickGroup,
+            "Charge click: a drag from (px)",
+            "With \"No accidental charge orders\" on: the cursor this far from where you pressed the button (the ground point you pressed on, as the camera turns) makes the click a DRAG - it never charges. In UI pixels of a 1080-pixel-high screen, scaled to yours. The game's own click tolerance is 10.");
+
+        public static readonly ParamDef OrderChargeIconPixels = Int("OrderChargeIconPixels", 1, 200, OrderClickGroup,
+            "Charge click: on the banner within (px)",
+            "With \"No accidental charge orders\" on: the cursor within this distance of an enemy unit's banner icon counts as ON it - a click there charges the unit. In UI pixels of a 1080-pixel-high screen, scaled to yours; the icon is 50 across. The game's own reach is 70 around the screen centre, so more than 70 changes nothing.");
+
         // ------------------------------------------------------------------ advanced
 
         public static readonly ParamDef HudRefreshSeconds = Float("HudRefreshSeconds", 0.02, 1, AdvancedGroup,
@@ -1824,6 +1842,7 @@ namespace TraxCombat.Core
             ShowInOrderMenu, ShowFormationHealth, ShowFormationSpread, FormationSpreadStdDevs, ShowReadyCount, ReadyYellowBelowPercent, ReadyRedBelowPercent, OrderStripUnderCards,
             ShowAltMarkerStats, AltMarkersShowEnemy, ShowFeverOnLabels, ShowFeverMarks, FeverMarksShowEnemy, ShowAthleticsMarks, AthleticsMarksShowEnemy,
             AltNearMarksMax, AltNearMarksMetres, FeverMarkMax, ShowMoraleMarks, ShowMoraleOnLabels, MoraleLabelMetres, MoraleLabelMax,
+            OrderNoAccidentalCharge, OrderChargeDragPixels, OrderChargeIconPixels,
             HudRefreshSeconds, PlayerBarWidth, PlayerBarHeight, PlayerBarOffsetRight, PlayerBarOffsetBottom,
             RecoveryBarWidth, RecoveryBarHeight, RecoveryBarOffsetAbove, SprintBarOffsetAbove,
             OrderStripTextSize, OrderStripTextOffset, OrderStripBarOffset, OrderStripBarHeight, OrderStripReadyOffset, OrderStripSideMargin,
@@ -1837,7 +1856,7 @@ namespace TraxCombat.Core
         public static readonly IReadOnlyList<ParamGroup> Groups = new[]
         {
             MasterGroup, PlayerDamageGroup, PlayerTiredGroup, PlayerAiGroup, PlayerImpactGroup, PlayerSprintGroup, PlayerScreenGroup,
-            DamageGroup, AthleticsGroup, TiredGroup, StepBackGroup, BattlePaceGroup, BraceGroup, SprintGroup, FeverGroup, CourageGroup, CavalryFlockGroup, ImpactGroup, RefillGroup, PlayerBarGroup, OrderStripGroup, AltMarkersGroup, AdvancedGroup,
+            DamageGroup, AthleticsGroup, TiredGroup, StepBackGroup, BattlePaceGroup, BraceGroup, SprintGroup, FeverGroup, CourageGroup, CavalryFlockGroup, ImpactGroup, RefillGroup, PlayerBarGroup, OrderStripGroup, AltMarkersGroup, OrderClickGroup, AdvancedGroup,
         };
 
         /// <summary>Step 59: the groups of one MCM page, in order.</summary>

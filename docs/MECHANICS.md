@@ -31,6 +31,7 @@ Want the formulas and every parameter with its range? [DESIGN.md](DESIGN.md) is 
 12. [Damage](#12-damage)
 13. [Heroes, and the hideout boss](#13-heroes-and-the-hideout-boss)
 14. [The sprint](#14-the-sprint)
+14b. [Your orders: a click charges, a drag never does](#14b-your-orders-a-click-charges-a-drag-never-does)
 15. [What you see on screen](#15-what-you-see-on-screen)
 16. [Where the settings live](#16-where-the-settings-live)
 
@@ -1356,6 +1357,26 @@ X1MouseButton, X2MouseButton), `SprintPointsPerSecond` 20, `SprintMinSeconds` 2,
 `SprintChargeWaitBelowSeconds` 3, `SprintChargeWaitMetres` 10. The run-now column comes from tiredness: `MinMoveSpeedMultiplier` 0.3 at an empty
 bar, `AthleticsPeakPercent` 75.</sub>
 
+## 14b. Your orders: a click charges, a drag never does
+
+In the orders menu the game charges an enemy unit whenever you let go of the left button while that unit is "in your sights" - its
+banner within about 70 px of the centre of the screen, or the unit within 10 m of the camera - even if you were dragging out a
+line for your own men. Step 72 narrows that:
+
+| Your click | What your men do |
+|---|---|
+| Press ON an enemy banner icon (within 30 px), let go there, no drag | **Charge that unit** (the game's own targeted charge) |
+| Drag (the cursor 12 px or more from where you pressed - a camera turn counts) | **Move** to the dragged line, its frontage kept - never a charge, even released on a banner |
+| Click near a banner, over the men, or press off the icon and let go on it | **Move** to the point |
+| F keys (F1, F3 …) - no click | The game's own: an F-key charge still goes for the unit you look at |
+
+Nothing is re-ordered: while your click is not a deliberate one the game's unit targeting is switched off, so the game's own move
+order is the only one that goes out - no charge starts, so no sprint and no fever is spent. The pixels are those of a 1080-high screen,
+scaled to yours. The gamepad and naval battles keep the game's own rule.
+
+<sub>Settings (Advanced page, *Orders: no accidental charges*): `OrderNoAccidentalCharge` (on), `OrderChargeDragPixels` 12,
+`OrderChargeIconPixels` 30.</sub>
+
 ## 15. What you see on screen
 
 **Your Athletics bar** sits under your health, with the white peak line at 75%. Its colour:
@@ -1473,7 +1494,8 @@ MCM shows **two pages** (Mod Options):
 
 - **Trax Combat Enhancements - Advanced** — everything else, for tuning: every system's own group
   (damage, Athletics costs, tired fighters, the step back, battle pace, brace, sprint, aggression and
-  fever, courage, cavalry flocking, impact, the refill, the bars, the orders strip, hold ALT), the
+  fever, courage, cavalry flocking, impact, the refill, the bars, the orders strip, hold ALT, no accidental
+  charge orders), the
   Defaults buttons (*Revert all to defaults* and *Save current values as a defaults file*), and the
   logging and test tools last.
 

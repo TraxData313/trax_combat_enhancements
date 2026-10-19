@@ -299,7 +299,14 @@ the front - you, a hero - / the game); `LoneRunnerEnabled`: the fever no longer 
 the enemy's front (`SprintEnd.LoneRunner`), a lone runner walks back (courage's walk, its side round the enemy kept, never turned round by his
 fever) unless he chases a beaten enemy; the [summary] "fear flock band" and "lone runners" lines (PLAYTEST D35). MEN TIRE FASTER STILL (step 71, Toni 2026-10-19: "back to 10 for the swings ... they need to tire faster still" -
 DESIGN decision 65, AI_NOTES "Step 71", config format 15): `CostPerBlow` 8 → 10, `CostPerKickOrBash` 5 → 6, `CostPerWrongSideShieldBlock` 5 → 6,
-`CostPerShieldBlock` 2 → 3, `CostPerWeaponParry` 2 → 3; heroes / party leaders keep their × 0.75 each, the refill unchanged (60 s) (PLAYTEST D36). The bar for the
+`CostPerShieldBlock` 2 → 3, `CostPerWeaponParry` 2 → 3; heroes / party leaders keep their × 0.75 each, the refill unchanged (60 s) (PLAYTEST D36). NO ACCIDENTAL CHARGE ORDERS (step 72, Toni 2026-10-19: a click or a drag that crossed
+another unit's floating banner became a charge at it - his men wasted their sprint; DESIGN decision 66, AI_NOTES "Step 72"): vanilla charges the
+FOCUSED enemy unit (banner within 70 px of the SCREEN CENTRE, or within 10 m of the camera) on ANY left release in the orders menu; a layerless
+`OrderClickView` (joined on the logic's first tick, after the game's `MissionFormationTargetSelectionHandler`, so its OnPreDisplayMissionTick runs
+first) holds that handler's PUBLIC targeting switch (`SetIsFormationTargetingDisabled`) OFF while the button is down unless the press is ON the
+focused unit's icon (`OrderChargeIconPixels` 30), still on it and no drag (`OrderChargeDragPixels` 12) - the release finds no unit, the game's
+placer's move (the dragged frontage) stands; nothing re-issued, so no charge / sprint / fever starts; idle = vanilla (F keys), gamepad and naval vanilla;
+`OrderNoAccidentalCharge` on, Advanced group "Orders: no accidental charges"; the [summary] "order clicks" line (PLAYTEST D37). The bar for the
 fighter you look at is LATER (DESIGN §3; its settings wait in DESIGN's "Planned parameters"). Words:
 the pool/bar/points are "Athletics", the character-screen skill is "the Athletics skill" (it
 used to be called "endurance"), the "peak line" is the white mark at the top quarter of the bar,
@@ -405,7 +412,7 @@ die at any moment (tokens run out) and the next one loses nothing.
   file, capped at `LogMaxMegabytes` (8); a trim cuts ONLY the oldest verbose lines (marked `~`
   before the tag) and keeps every other line - summaries, first-time lines, settings, errors
   (step 10b, Core `LogTrim`). Timestamped lines tagged by area (`[config]`, `[mcm]`, `[mission]`,
-  `[damage]`, `[athletics]`, `[speed]`, `[rate]`, `[stepback]`, `[brace]`, `[guard]`, `[sprint]`, `[wall]`, `[fever]`, `[courage]`, `[fear]`, `[cavalry]`, `[impact]`, `[hud]`, `[error]`). Always logged: mod/game version
+  `[damage]`, `[athletics]`, `[speed]`, `[rate]`, `[stepback]`, `[brace]`, `[guard]`, `[sprint]`, `[wall]`, `[fever]`, `[courage]`, `[fear]`, `[cavalry]`, `[impact]`, `[orders]`, `[hud]`, `[error]`). Always logged: mod/game version
   at load, every parameter value on load and on change, each mission start/end (type,
   scene, agent counts), which behaviors/views attached, and every caught exception with its
   stack. Per-battle SUMMARY at mission end (damage rolls: count, min/avg/max factor;
@@ -460,7 +467,8 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               its Default comes from defaults.json (DefaultsFile), never code; step 33: ParamType.Key +
                               KeyNames (a key by NAME, stored as its index; FormatJson writes "LeftControl"; the
                               file / defaults.json read the name, MCM a text box)
-  SettingsSchema.cs           EVERY setting of DESIGN's table (374 - step 70's FearBandEnabled / FearBandRanksMin / FearBandRanksMax / FearBandFileMetres /
+  SettingsSchema.cs           EVERY setting of DESIGN's table (377 - step 72's OrderNoAccidentalCharge / OrderChargeDragPixels / OrderChargeIconPixels after MoraleLabelMax
+                              in their own Advanced group "Orders: no accidental charges" (Order 22, "Advanced" 23); 374 - step 70's FearBandEnabled / FearBandRanksMin / FearBandRanksMax / FearBandFileMetres /
                               FearBandRankMetres / FearBandMaxWidthMetres / FearBandGapMetres / FearStrikeReachMetres / FearStrikeLeashMetres / LoneRunnerEnabled /
                               LoneRunnerAheadMetres after FearMopUpWinPercent, all Advanced; 363 - step 69's FearWinCalms / FearWinEvenOddsPercent / FearWinClearOddsPercent /
                               FearWinShakenPercent / FearThreatMetres / FearMopUpWinPercent after FearChargeLooseMetres, all Advanced; 357 - step 68's ShieldWallAdvanceAsOne / ShieldWallAdvanceStepMetres / ShieldWallAdvanceNearMetres /
@@ -994,6 +1002,12 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               BandPlace - his lateral kept, depth by rank, the slide reserved; Fronts / PastEnemyFront - the lone runner's geometry;
                               NoteEnemyFront), FearBandStats (men per occupied file - the depth in RANKS - / the deepest / the width mean and p90 ON vs OFF,
                               files over the ranks, places by kind, steps in kept / refused, strikes + the [summary] "fear flock band" line)
+  OrderClick.cs               step 72 (DESIGN decision 66) - NO ACCIDENTAL CHARGE ORDERS: OrderClickRules (ModEnabled FIRST, OrderNoAccidentalCharge,
+                              DragPixels / IconPixels at 1080p; Describe), OrderClickMath (Scaled by height like vanilla's 70, IsDrag, OnIcon, VanillaPick -
+                              vanilla's focus rule replicated: a unit within 10 m of the camera first, else the banner nearest the screen centre within 70 px),
+                              OrderClickTracker (per click: Idle / Holding / Released; Disable = dragged (sticky) || pressed off the icon || off it now; the
+                              hold's decision stands through the release frame; NoteOrder; outcome ChargeKept / ConvertedDrag / ConvertedOffIcon / PlainMove /
+                              Leak / Aborted), OrderClickStats (the [summary] "order clicks" line)
   LoneRunner.cs               step 70 (DESIGN decision 64) - THE LONE RUNNER: LoneCause (sprint into contact / punish / surge / fever press / chasing a target
                               behind the front / the game), LoneTarget (you / a hero / another), LoneRunnerRules (ModEnabled FIRST, LoneRunnerEnabled,
                               AheadMetres; Describe), LoneRunnerMath (Alone, Beyond, IsLone, Winning - the BEATEN: odds at the clear line and the enemy shaken
@@ -1375,6 +1389,12 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               16's hook, AskFearSprint), FearWallBreaks / NoteWallBreakMan (step 41's LookWall asks them), EndFear on every path,
                               FearLeftField, CloseFear, WriteFearSummary (after courage's lines); TrackedAgent.Fear / Morale / CourageLevel;
                               AiInputHook.cs: AiInputState.Flock (FlockX / Y), SetFlock, ApplyFlock (after the wall's pull and the walk back)
+  Missions/OrderClickGuard.cs  step 72: IOrderClickWorld (the order mode, the button, Look - the game's pick, cursor → icon / press point px -,
+                              SetTargetingDisabled) and OrderClickGuard (engine-free; Tick once a frame, OnOrder, the [orders] first-time lines, Release);
+                              Missions/OrderClickView.cs: the layerless MissionView - Prepare (naval / no handler = stand down; its index vs the handler's),
+                              OnPreDisplayMissionTick → the guard, the engine reads (MBWindowManager.WorldToScreenInsideUsableArea, the order flag at the
+                              press, Screen.RealScreenResolution*), the player's OrderController.OnOrderIssued; AthleticsLogic.Orders.cs: AttachOrderClicks
+                              (from AttachHud) and the summary
   Missions/AthleticsLogic.LoneRunner.cs  step 70: StartLoneRunners / NoteLoneSettings (the [courage] lines), LoneLook (at courage's look, ON and OFF:
                               alone, out by the band's frame, the cause, IFearBody.Target for lone men only, the first of each cause in full), NoteFeverRefused,
                               NoteForcedWalk (LoneMind.Forced), LoneSprintEnds (RunSprint's 0.25 s check of a sprint into contact - SprintEnd.LoneRunner);
@@ -1616,7 +1636,9 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               pixels), Fill, FillColor, FrameColor (the fade's alpha baked in); step 46: the box (PositionX / Y =
                               its top-left, BoxWidth / BoxHeight), FeverShown, the Athletics bar - BarShown, BarWidth, BarHeight,
                               BarFill, BarUsable, BarColor, BarFrameColor, BarWoundColor
-tests/TraxCombat.Core.Tests/  net8.0 xUnit (1045 - step 71: + Step71Tests.cs - the new costs with the multipliers and the hint's 5 / 13 blows, format 15 - move,
+tests/TraxCombat.Core.Tests/  net8.0 xUnit (1057 - step 72: + Step72Tests.cs - the 3 settings placed / live, the master switch first, the scaling, vanilla's pick, the
+                              click / drag / near / off-the-icon / plain / leak / abort / quick-second-click decisions, the summary line; 377 settings, 17 Advanced
+                              groups; 1045 - step 71: + Step71Tests.cs - the new costs with the multipliers and the hint's 5 / 13 blows, format 15 - move,
                               keep, the chains through steps 66 / 68, a default that never moved; the older format tests → 15; 1042 - step 70: + Step70Tests.cs - the 11 settings placed / live, the master switch first and the sentences, the band's
                               ranks / width / lateral centre / files / front creep, the slide rule and the free file, the band facing his line, a man's place kept
                               along the front, THE 40-MAN LOOTER EXAMPLE (step 67's point 1 file of 40 vs the band 9 files, the deepest 5), the band line, alone /
@@ -2139,6 +2161,10 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               behind a legionary line: fixes OFF held by his fever and counted, ON walked round the line's end to his group; his sprint into contact
                               ended alone while a charging mass kept its sprints), the cost (1000 men 0.20 ms a tick, 0 bytes), the master-switch part;
                               FearDefaults / CourageDefaults pin the band, the strike and the lone-runner fixes off (163 steps);
+                              step 72 (Program.Step72.cs): NO ACCIDENTAL CHARGE ORDERS through the real OrderClickGuard with a stand-in world and a
+                              stand-in of the game's release, in both frame orders (a drag onto a banner = a move, a click on the icon = the charge, near = a
+                              move, no button = untouched, the menu / switch off mid-hold, ModEnabled off = vanilla, a naval stand-down, the FAILURE line;
+                              the MCM page count 17 Advanced groups) (164 steps);
                               step 68 (Program.Step68.cs): THE WALL PUSHES AS ONE through the real logic (an advancing man near the enemy sent 1 m
                               toward the game's slot 6 m ahead, a stop / a march / a slot within the step left alone, after vanilla's update, the leash
                               keeps it, a charge / the switch / the step live, the samples by order, the lines), its cost (1000 men 0.041 ms a tick,

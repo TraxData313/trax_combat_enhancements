@@ -1035,6 +1035,7 @@ Claude the `[summary] impact …` block of every battle.
 | 15 | **D34 - WINNERS DON'T HANG BACK** (step 69): your 100 v 100 again, a battle you WIN with green / mixed infantry (charge once the lines meet); then a losing one (looters into your wall) | 20 | `fear flock and winning`, `idle men`, `fear flock by discipline`, `fear flock spells` (sprints by chance) | the losing band's fear before = after, the clear band's after 0; your tired winners go in, no knot standing back; `idle men` OURS small (the standing ones ranged or the game's); sprints by chance far below 163 | the idle line's OURS large with the fear flock / courage after a win (tell Claude the line), the losing band changed |
 | 16 | **D35 - THE FLOCK IS A WIDE BAND, NO LONE RUNNER BEHIND THE LINE** (step 70): your ~30 men in a shield line against ~50 looters (your 15:59 battle again); stay on your horse right behind your line | 15 | `fear flock band`, `lone runners`, `fear flock shape`, `sprint into contact` | the looters stand as a WIDE, shallow mass along your line, 4-6 deep (`fear flock band … ON` men per file ~4-6, width near your line's), a few step in to swing and go back; no looter alone behind your line - `lone runners` small, the fixes' walks / sprints ended counted | a deep column again (men per file above 8, width 2-3 m), lone runners standing behind your line - tell Claude the two lines |
 | 17 | **D36 - MEN TIRE FASTER STILL** (step 71): any 50 v 50 or 100 v 100 melee (the same kind as D33's) | 5 | `Athletics settings at the end` (cost per blow 10.0 / hero 7.5 / party leader 5.6; a kick or bash 6.00; shield right side 3.00 / wrong side 6.00; the parry 3.00), `[config] migrated config.json` (once, format 14 → 15) | lines visibly orange / red sooner after the first clash than in D33, the AI's swings thinning out; a recruit empty after about 5 swings | the old 8.0 / 2.00 / 5.00 still in the line (your config.json kept a hand-set value - the migration line says which); men empty so fast that the fight stalls (tell Claude) |
+| 18 | **D37 - NO ACCIDENTAL CHARGE ORDERS** (step 72): any field battle with an enemy in view; the orders menu (hold the order key), your infantry selected | 5 | `[orders] first accidental charge turned into a MOVE`, `[orders] first deliberate charge KEPT`, `[summary] order clicks (step 72)` | a drag across / onto an enemy banner places your men (they walk / keep their sprint); a plain click ON the banner icon charges it; F1 F3 still charges what you look at | a drag still charging (`charges SLIPPED THROUGH` above 0, or `turned into moves` 0 after your drags) - tell Claude the line; a click right on the icon that does not charge (raise *Charge click: on the banner within* - Advanced page) |
 
 Then play normally (parts E-G). Your gut on each family - too many / about right / too few - is the most useful thing to send.
 
@@ -1762,6 +1763,22 @@ own value …`). **What you should see**: the lines go orange / red sooner after
 his bar is big (120+). **[summary]** `Athletics settings at the end: … cost per blow 10.0 / hero 7.5 / party leader 5.6 points; a kick or shield bash
 6.00 / …; a blocked blow costs the defender: shield right side 3.00 / wrong side 6.00 …`. **Too much**: *Cost per swing* (the player page) back to 8,
 or the block costs on the Advanced page, Athletics.
+
+**D37. NO ACCIDENTAL CHARGE ORDERS (step 72, ~5 min - one field battle; the defaults).** Toni 2026-10-19: placing a unit with a click or a
+drag, the cursor crossing another unit's floating banner turned the order into a charge at that unit, and his men sprinted off. Now only a
+plain CLICK with the cursor ON an enemy banner icon (when you press and when you let go) charges it. In the orders menu, your infantry
+selected: (1) **drag** a line for them that starts on open ground and sweeps across an enemy unit's banner, and let go ON the banner -
+they **move** to the line (the dragged frontage), no charge, no sprint; (2) **click** on open ground right beside an enemy banner (near,
+not on it) - they move there; (3) **click right on** the banner icon - they **charge** that unit (the game's own targeted charge); (4) F1
+F3 while looking at an enemy - the game's charge as before. While you hold the button off the icon the enemy marker's "targeted" look goes
+out - that is the guard at work. **Log**: `[orders] attached: the order-click guard (step 72) - guarding: the game's targeting handler at
+N, this view at M …` (M above N = same frame), `[orders] first time the game's unit targeting was held OFF during a click …`, `[orders]
+first accidental charge turned into a MOVE at … a drag across a unit … its troop placer's move went out`, `[orders] first deliberate charge
+KEPT at …`. **[summary]** `order clicks (step 72): N clicks in the orders menu - K deliberate charges kept (a click on the banner), C charges
+turned into moves (D drags, O clicks off the icon; the placer's move seen after …), P plain moves …, 0 charges SLIPPED THROUGH …`.
+**Wrong**: a `FAILURE … a targeted charge went out although the click was being turned into a move` line, or the placer's move "NOT seen"
+- tell Claude. **Too strict** (a click on the icon does not charge): *Charge click: on the banner within (px)* up (Advanced page, Orders:
+no accidental charges); **off**: *No accidental charge orders*.
 
 ---
 

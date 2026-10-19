@@ -2073,6 +2073,30 @@
   // (range 1 to 16)
   "MoraleLabelMax": 4,
 
+  // ==================== Orders: no accidental charges ====================
+  // In the orders menu, a left click charges an enemy unit only when the cursor is ON its
+  // banner icon - when you press AND when you let go - and you did not drag. A drag (placing a
+  // unit with its frontage) or a click near a banner or over the men places the move order
+  // instead, so your men never sprint off at a unit you only swept across. The F-key orders and
+  // the gamepad are the game's own. Off: the game's own rule - letting go of the button
+  // anywhere near an enemy banner (or close to an enemy unit) charges it.
+  // (true or false)
+  "OrderNoAccidentalCharge": true,
+
+  // With "No accidental charge orders" on: the cursor this far from where you pressed the
+  // button (the ground point you pressed on, as the camera turns) makes the click a DRAG - it
+  // never charges. In UI pixels of a 1080-pixel-high screen, scaled to yours. The game's own
+  // click tolerance is 10.
+  // (range 1 to 200)
+  "OrderChargeDragPixels": 12,
+
+  // With "No accidental charge orders" on: the cursor within this distance of an enemy unit's
+  // banner icon counts as ON it - a click there charges the unit. In UI pixels of a
+  // 1080-pixel-high screen, scaled to yours; the icon is 50 across. The game's own reach is 70
+  // around the screen centre, so more than 70 changes nothing.
+  // (range 1 to 200)
+  "OrderChargeIconPixels": 30,
+
   // ==================== Advanced ====================
   // How often your Athletics bar, the orders-menu strip and the numbers under the formation
   // markers update, in seconds. Lower is smoother and costs a little more. The markers' numbers

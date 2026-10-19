@@ -391,6 +391,15 @@ namespace TraxCombat.Missions
             {
                 Failed("hud.summary", e);
             }
+            // Step 72: the order clicks - deliberate charges kept, accidental ones turned into moves. Own try.
+            try
+            {
+                WriteOrderClickSummary();
+            }
+            catch (Exception e)
+            {
+                Failed("orders.summary", e);
+            }
             TraxLog.Info("summary", "errors logged during this mission: " + (TraxLog.ErrorCount - _errorsAtStart));
             TraxLog.FlushSuppressedCounts();
             TraxLog.Info("summary", "==== end of summary ====");
