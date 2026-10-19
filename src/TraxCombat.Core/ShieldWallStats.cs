@@ -80,6 +80,10 @@ namespace TraxCombat.Core
         /// gone).</summary>
         Leash,
 
+        /// <summary>Step 63: a held man out of place (beyond the leash ahead of his slot) held again at his
+        /// <see cref="LeashMath.LookSeconds"/> look.</summary>
+        OutOfPlace,
+
         Count,
     }
 
@@ -115,6 +119,9 @@ namespace TraxCombat.Core
 
         /// <summary>Step 42: the steps out of the wall (the leash).</summary>
         public readonly WallLeashStats Leash = new WallLeashStats();
+
+        /// <summary>Step 63: held men out of place and walked back.</summary>
+        public readonly WallPullStats Pull = new WallPullStats();
 
         public int Looks(WallVerdict v) => _looks[(int)v];
         public int Releases(WallVerdict v) => _releases[(int)v];
@@ -166,7 +173,8 @@ namespace TraxCombat.Core
         }
 
         /// <summary>The [summary] "wall" lines.</summary>
-        public List<string> SummaryLines(in WallRules r)
+        /// <param name="pullSeconds">Step 63: <c>ShieldWallPullBackSeconds</c> now - given, the "wall pulled back" line follows the leash's.</param>
+        public List<string> SummaryLines(in WallRules r, double pullSeconds = double.NaN)
         {
             var lines = new List<string>(5);
             lines.Add("shield wall holds its slots (step 41): " + r.Describe()
@@ -180,7 +188,7 @@ namespace TraxCombat.Core
                       + ", left to vanilla: " + ReasonsText(_looks, skipHold: true));
             lines.Add("wall writes: " + WritesTotal + " \"keep your slot\" writes - right after vanilla's own update " + Writes(WallWriteKind.AfterVanilla)
                       + ", by the " + F2(WallMath.PollSeconds) + " s look " + Writes(WallWriteKind.Poll) + ", by the fallback " + Writes(WallWriteKind.Fallback)
-                      + ", by the step-out leash " + Writes(WallWriteKind.Leash)
+                      + ", by the step-out leash " + Writes(WallWriteKind.Leash) + ", by the out-of-place look (step 63) " + Writes(WallWriteKind.OutOfPlace)
                       + "; vanilla's own updates seen on held men " + VanillaUpdates
                       + (VanillaIntervals > 0 ? " (one every " + F2(VanillaIntervalSum / VanillaIntervals) + " s per man - the game's timer is 0.45-0.55 s)" : string.Empty)
                       + ", men whose update timer could not be read " + MenWithoutTimer + " (should be 0 - else the fallback)"
@@ -190,6 +198,7 @@ namespace TraxCombat.Core
             lines.Add("wall slots ON: " + On.Text());
             lines.Add("wall slots OFF (vanilla): " + Off.Text() + " - compare with the ON line: the hold works when ON's \"more than 1 m ahead\" (in contact above all) is well below OFF's");
             lines.Add(Leash.SummaryLine(r.StepOutMetres));
+            if (!double.IsNaN(pullSeconds)) lines.Add(Pull.SummaryLine(pullSeconds, r.StepOutMetres));
             return lines;
         }
 

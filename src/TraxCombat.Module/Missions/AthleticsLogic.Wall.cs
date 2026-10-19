@@ -55,7 +55,8 @@ namespace TraxCombat.Missions
             _wallOffBecause = _seenWall.OffBecause;
             if (_seenWall.Leash > 0) _wallStats.Leash.EverOn = true;
             _wallStarted = true;
-            TraxLog.Info("wall", "mission start: " + _seenWall.Describe() + " - read live; written right after vanilla's own update of each man (his ~0.5 s timer) and at a look every "
+            TraxLog.Info("wall", "mission start: " + _seenWall.Describe() + "; step 63: " + WallPullMath.Describe(PullSeconds(in _seenWall), _seenWall.StepOutMetres)
+                + " - read live; written right after vanilla's own update of each man (his ~0.5 s timer) and at a look every "
                 + F2(WallMath.PollSeconds) + " s; the [summary] \"wall\" lines say how far the men of a holding shield wall / square / circle stood ahead of their slots, ON vs OFF");
         }
 
@@ -111,6 +112,7 @@ namespace TraxCombat.Missions
             {
                 _wallStats.Leash.HeldSeconds += dt * _walled.Count;
                 var body = WallBody;
+                bool outLooks = PullSeconds(in r) > 0; // step 63: a man out of place looked at every 0.1 s (0 = step 42 exactly)
                 for (int i = _walled.Count - 1; i >= 0; i--)
                 {
                     if (i >= _walled.Count) continue; // a look below may have dropped more than one
@@ -123,18 +125,25 @@ namespace TraxCombat.Missions
                             if (now >= ws.NextLeashLook) LookWall(st, ws, now, in r, WallWriteKind.Leash, sample: false);
                             continue;
                         }
+                        bool looked = false;
                         if (body.TryStamp(st, ws, out float stamp))
                         {
-                            if (stamp == ws.LastStamp) continue;
-                            double gap = double.IsNaN(ws.LastVanillaAt) ? double.NaN : now - ws.LastVanillaAt;
-                            ws.LastVanillaAt = now;
-                            _wallStats.AddVanillaUpdate(gap);
-                            LookWall(st, ws, now, in r, WallWriteKind.AfterVanilla, sample: false);
+                            if (stamp != ws.LastStamp)
+                            {
+                                double gap = double.IsNaN(ws.LastVanillaAt) ? double.NaN : now - ws.LastVanillaAt;
+                                ws.LastVanillaAt = now;
+                                _wallStats.AddVanillaUpdate(gap);
+                                LookWall(st, ws, now, in r, WallWriteKind.AfterVanilla, sample: false);
+                                looked = true;
+                            }
                         }
                         else if (now >= ws.NextRewrite)
                         {
                             LookWall(st, ws, now, in r, WallWriteKind.Fallback, sample: false);
+                            looked = true;
                         }
+                        // step 63: a man out of place - held again at his 0.1 s look (and walked back from it)
+                        if (!looked && outLooks && ws.Out.Out && ws.Held && now >= ws.NextLeashLook) LookWall(st, ws, now, in r, WallWriteKind.OutOfPlace, sample: false);
                     }
                     catch (Exception e)
                     {
@@ -187,6 +196,7 @@ namespace TraxCombat.Missions
             {
                 // step 42: the leash - only while it is above 0 or a man is still out (at 0 this is step 41's path exactly: no read)
                 double leash = r.StepOutMetres;
+                double outNow = f.HasPositions ? LeashMath.Out(in f) : double.NaN; // step 63: out of place?
                 if (leash > 0 || ws.Leash.Free)
                 {
                     double outM = f.HasPositions ? LeashMath.Out(in f) : 0;
@@ -206,6 +216,7 @@ namespace TraxCombat.Missions
                         // his enemy; nothing is written until the leash or his enemy ends the step
                         ws.NextLeashLook = now + LeashMath.LookSeconds;
                         if (move == LeashMove.Freed && ws.Held) body.Release(st);
+                        if (move == LeashMove.Freed) EndOutOfPlace(st, ws, WallOutEnd.LetGo, now, engine: true); // step 63: the leash has him now
                         if (!ws.Held) Manage(st, ws);
                         goto Sample;
                     }
@@ -213,6 +224,7 @@ namespace TraxCombat.Missions
 
                 body.Hold(st, in f);
                 _wallStats.AddWrite(kind);
+                OutOfPlaceLook(st, ws, in f, outNow, now, in r); // step 63
                 if (body.TryStamp(st, ws, out float stamp))
                 {
                     ws.LastStamp = stamp; // vanilla's next update moves it again
@@ -237,6 +249,7 @@ namespace TraxCombat.Missions
             else if (ws.Held)
             {
                 if (ws.Leash.Free) EndStep(st, ws, LeashEnd.LetGo, ws.Leash.MaxOut, now, r.StepOutMetres);
+                EndOutOfPlace(st, ws, WallOutEnd.LetGo, now, engine: true); // step 63
                 ws.Leash = default;
                 Unwall(st, ws);
                 body.Release(st);
@@ -365,6 +378,7 @@ namespace TraxCombat.Missions
                 ws.ListIndex = -1;
                 if (ws.Leash.Free) EndStep(st, ws, LeashEnd.LetGo, ws.Leash.MaxOut, now, _seenWall.StepOutMetres);
                 ws.Leash = default;
+                EndOutOfPlace(st, ws, WallOutEnd.LetGo, now, engine: !st.Removed); // step 63: the walk back's wish off at once
                 try
                 {
                     if (!st.Removed && WallBody.IsActive(st))
@@ -391,6 +405,7 @@ namespace TraxCombat.Missions
             if (ws == null || !ws.Held) return;
             if (ws.Leash.Free) EndStep(st, ws, LeashEnd.LeftField, ws.Leash.MaxOut, _wallLastTick, _seenWall.StepOutMetres);
             ws.Leash = default;
+            EndOutOfPlace(st, ws, WallOutEnd.LeftField, _wallLastTick, engine: false); // step 63: no engine call for a man gone
             Unwall(st, ws);
             _wallStats.LeftFieldHeld++;
         }
@@ -403,6 +418,14 @@ namespace TraxCombat.Missions
             if (ws == null || !ws.Held) return;
             if (ws.Leash.Free) _wallStats.Leash.AddEnd(LeashEnd.LetGo, ws.Leash.MaxOut, now - ws.Leash.StartedAt, _seenWall.StepOutMetres);
             ws.Leash = default;
+            try
+            {
+                EndOutOfPlace(st, ws, WallOutEnd.LetGo, now, engine: !st.Removed); // step 63
+            }
+            catch
+            {
+                // already counted - stay safe
+            }
             Unwall(st, ws);
             try
             {
@@ -426,6 +449,13 @@ namespace TraxCombat.Missions
                     if (st.Wall.Leash.Free)
                         _wallStats.Leash.AddEnd(LeashEnd.StillOut, st.Wall.Leash.MaxOut, _wallLastTick - st.Wall.Leash.StartedAt, _seenWall.StepOutMetres);
                     st.Wall.Leash = default;
+                    if (st.Wall.Out.Out) // step 63: still out at the end - the wish dropped with the mission (no engine call)
+                    {
+                        st.Wall.Out.Out = false;
+                        _wallStats.Pull.Ended(in st.Wall.Out, WallOutEnd.StillOut, _wallLastTick);
+                        if (st.Wall.Out.Pulling && st.Input != null) st.Input.WallPull = false;
+                        st.Wall.Out.Pulling = false;
+                    }
                     st.Wall.Held = false;
                     st.Wall.ListIndex = -1;
                 }
@@ -435,8 +465,147 @@ namespace TraxCombat.Missions
         internal void WriteWallSummary()
         {
             CloseWalls();
-            foreach (var line in _wallStats.SummaryLines(WallRules.From(TraxSettings.Shared)))
+            foreach (var line in _wallStats.SummaryLines(WallRules.From(TraxSettings.Shared), TraxSettings.Shared.ShieldWallPullBackSeconds))
                 TraxLog.Info("summary", line);
+        }
+
+        // ------------------------------------------------------------------ step 63: the wall pulls men back
+
+        /// <summary>Step 63: <c>ShieldWallPullBackSeconds</c> while the hold is on, else 0.</summary>
+        private static double PullSeconds(in WallRules r)
+        {
+            if (!r.Enabled) return 0;
+            double s = TraxSettings.Shared.ShieldWallPullBackSeconds;
+            return double.IsNaN(s) || s < 0 ? 0 : s;
+        }
+
+        private bool _firstOutLogged, _firstPullLogged, _firstBackLogged;
+
+        /// <summary>
+        /// Step 63, from a HOLD look (the flag just written): is he out of place - more than <see cref="WallPullMath.Beyond"/> ahead of his
+        /// slot - and, once that has lasted <c>ShieldWallPullBackSeconds</c> while he can move (not down, not reeling from an impact), walk
+        /// him back: a backpedal toward his slot through step 16's input hook, the vector refreshed at each 0.1 s look. Measured always (the
+        /// summary's "wall pulled back" line); the extra looks and the walk only with the setting above 0.
+        /// </summary>
+        private void OutOfPlaceLook(TrackedAgent st, WallState ws, in WallFacts f, double outM, double now, in WallRules r)
+        {
+            double dt = double.IsNaN(ws.LastOutLook) || now < ws.LastOutLook ? 0 : now - ws.LastOutLook;
+            ws.LastOutLook = now;
+            if (double.IsNaN(outM)) return;
+            double pull = PullSeconds(in r);
+            var imp = st.Impact;
+            bool down = imp.Down(now), reeling = imp.Reeling(now);
+            bool impact = down || reeling || imp.Recent(now, WallPullMath.ImpactWindowSeconds) > 0;
+            bool wasPulling = ws.Out.Pulling;
+            var move = WallPullMath.Step(ref ws.Out, r.StepOutMetres, outM, !down && !reeling, impact, pull, now, dt);
+            switch (move)
+            {
+                case WallOutMove.Began:
+                    _wallStats.Pull.Began(impact);
+                    if (!_firstOutLogged)
+                    {
+                        _firstOutLogged = true;
+                        TraxLog.Info("wall", "first man OUT OF PLACE this mission (step 63): " + Name(st) + " at " + Sec(now) + " s stands " + F2(outM) + " m ahead of his slot (beyond "
+                            + F2(WallPullMath.Beyond(r.StepOutMetres)) + " m)" + (impact ? " - after an impact (" + (down ? "down" : reeling ? "reeling" : "an outcome within " + F1(WallPullMath.ImpactWindowSeconds) + " s") + ")" : string.Empty)
+                            + "; held again, looked at every " + F2(LeashMath.LookSeconds) + " s" + (pull > 0 ? ", walked back if still out after " + F1(pull) + " s able to move" : " (ShieldWallPullBackSeconds 0: the game's pull alone)"));
+                    }
+                    break;
+                case WallOutMove.Back:
+                    _wallStats.Pull.Ended(in ws.Out, WallOutEnd.Back, now);
+                    if (wasPulling) StopWallPull(st, now, engine: true);
+                    if (!_firstBackLogged)
+                    {
+                        _firstBackLogged = true;
+                        TraxLog.Info("wall", "first man back in place (step 63): " + Name(st) + " at " + Sec(now) + " s, " + F2(now - ws.Out.Since) + " s after he stood out (the farthest "
+                            + F2(ws.Out.MaxOut) + " m)" + (ws.Out.Pulled ? " - walked back by us" : " - by the game's flag alone"));
+                    }
+                    break;
+                case WallOutMove.PullStarted:
+                    if (!StartWallPull(st, ws, in f, now))
+                    {
+                        ws.Out.Pulling = false; // not hooked = no walk (the flag pulls him)
+                        ws.Out.PullSeconds = WallPullMath.MaxPullSeconds;
+                    }
+                    break;
+                case WallOutMove.PullStopped:
+                    StopWallPull(st, now, engine: true);
+                    break;
+            }
+            if (!ws.Out.Out) return;
+            ws.NextLeashLook = now + LeashMath.LookSeconds;
+            if (ws.Out.Pulling) SteerWallPull(st, in f);
+        }
+
+        /// <summary>The walk back's wish on: the input hook, the vector.</summary>
+        private bool StartWallPull(TrackedAgent st, WallState ws, in WallFacts f, double now)
+        {
+            EnsureInput(st);
+            try
+            {
+                NoteHooked(st, WallBody.Hook(st));
+            }
+            catch (Exception e)
+            {
+                Failed("wall.pull-hook", e);
+                return false;
+            }
+            AiInputHook.SetWallPull(st, true, now);
+            _wallStats.Pull.Pulls++;
+            SteerWallPull(st, in f);
+            if (!_firstPullLogged)
+            {
+                _firstPullLogged = true;
+                TraxLog.Info("wall", "first man WALKED BACK to his slot (step 63): " + Name(st) + " at " + Sec(now) + " s, out of place " + F2(now - ws.Out.Since) + " s, "
+                    + F2(LeashMath.Out(in f)) + " m ahead - a backpedal toward his slot, facing the enemy (step 16's input hook), until within "
+                    + F2(WallPullMath.BackAt(_seenWall.StepOutMetres)) + " m (at most " + F1(WallPullMath.MaxPullSeconds) + " s)");
+            }
+            return true;
+        }
+
+        /// <summary>The vector toward his slot in his own frame (from the look's facts).</summary>
+        private void SteerWallPull(TrackedAgent st, in WallFacts f)
+        {
+            var s = st.Input;
+            if (s == null || !s.WallPull) return;
+            double dx = f.SlotX - f.AgentX, dy = f.SlotY - f.AgentY;
+            if (WallBody.ToLocal(st, dx, dy, out float lx, out float ly))
+            {
+                s.WallPullX = lx;
+                s.WallPullY = ly;
+            }
+        }
+
+        /// <summary>The walk back's wish off (the callback released if he is idle - never for a man gone).</summary>
+        private void StopWallPull(TrackedAgent st, double now, bool engine)
+        {
+            var s = st.Input;
+            if (s == null || !s.WallPull) return;
+            _wallStats.Pull.PullFrames += (int)Math.Min(int.MaxValue, s.WallPullFrames);
+            s.WallPullFrames = 0;
+            AiInputHook.SetWallPull(st, false, now);
+            if (engine && !st.Removed)
+            {
+                try
+                {
+                    WallBody.ReleaseInput(st);
+                }
+                catch (Exception e)
+                {
+                    Failed("wall.pull-release", e);
+                }
+            }
+            DrainInputError(st);
+        }
+
+        /// <summary>A spell out of place ended by a let-go path (freed on the leash, a gate, the switch, he left) - counted, the wish off.</summary>
+        private void EndOutOfPlace(TrackedAgent st, WallState ws, WallOutEnd how, double now, bool engine)
+        {
+            if (!ws.Out.Out) return;
+            bool pulling = ws.Out.Pulling;
+            ws.Out.Out = false;
+            ws.Out.Pulling = false;
+            _wallStats.Pull.Ended(in ws.Out, how, now);
+            if (pulling) StopWallPull(st, now, engine);
         }
 
         /// <summary>A held man in words: who, his formation and order, his slot, where he stands, the formation's numbers.</summary>

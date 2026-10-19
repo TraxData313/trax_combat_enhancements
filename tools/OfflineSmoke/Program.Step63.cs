@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Globalization;
 using System.Runtime.CompilerServices;
 using TaleWorlds.Core;
 using TaleWorlds.MountAndBlade;
@@ -114,6 +116,188 @@ namespace TraxCombat.Tools
                 ImpactHooks.ShrugOff = null;
                 ManagedParameters.SetParameter(ManagedParametersEnum.DamageInterruptAttackThresholdCut, thresholdKeep);
                 ImpactModelDefaults();
+                AthleticsDefaults();
+            }
+        }
+
+        /// <summary>
+        /// THE WALL PULLS MEN BACK (step 63) through the REAL logic with step 41's stand-in body: men thrown forward out of their slots (a
+        /// fall from an impact, a shove), the game's own flag modelled as a slow walk back (<paramref name="gameSpeed"/>), our walk back
+        /// through the real <see cref="AiInputHook.ApplyWallPull"/> at 1.2 m/s.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static void WallPullsMenBack()
+        {
+            var keep = _logic;
+            try
+            {
+                AthleticsDefaults();
+                WallDefaults();
+                S.Set(SettingsSchema.ShieldWallStepOutMetres, 1.0, SettingSources.File);
+                S.Set(SettingsSchema.ShieldWallPullBackSeconds, 0.5, SettingSources.File);
+                Check(Math.Abs(SettingsSchema.ShieldWallPullBackSeconds.Default - 0.5) < 1e-6, "ShieldWallPullBackSeconds is not 0.5 by default: " + SettingsSchema.ShieldWallPullBackSeconds.Default);
+                var body = new FakeWallBody();
+                var logic = NewPaceLogic(new FakePaceBody(), new FakeWeaponFacts());
+                logic.WallBody = body;
+                var pull = logic.WallStats.Pull;
+                LogHas("step 63: a held man more than 1.25 m ahead of his slot (beyond the leash - thrown forward by a blow, pushed by the press) is looked at every 0.1 s and held again at each look, and walked back to within 0.50 m");
+                double t = 16300;
+                const double gameSpeed = 0.0; // the worst case: the game's flag does not move him (in contact, fighting where he stands)
+                const double ourSpeed = 1.2;
+                var men = new Dictionary<int, TrackedAgent>();
+                var outs = new Dictionary<int, double>();
+                void Man(int i, double outM)
+                {
+                    men[i] = logic.Track(FakeAgent(i))!;
+                    outs[i] = outM;
+                    body.Facts[i] = WallMan(ahead: outM);
+                    body.Contact.Add(i);
+                }
+                void Frame()
+                {
+                    t += 1.0 / 60;
+                    logic.TickWall(t);
+                    foreach (var kv in men)
+                    {
+                        var st = kv.Value;
+                        int i = kv.Key;
+                        double o = outs[i];
+                        if (!st.Impact.Down(t) && !st.Impact.Reeling(t))
+                        {
+                            uint flags = 0;
+                            float vx = 0, vy = 0;
+                            if (st.Input != null && AiInputHook.ApplyWallPull(st.Input, ref flags, ref vx, ref vy)) o += vy * ourSpeed / 60; // vy < 0: back toward his slot
+                            else if (o > 0) o = Math.Max(0, o - gameSpeed / 60);
+                        }
+                        outs[i] = o;
+                        body.Facts[i] = WallMan(ahead: o);
+                    }
+                }
+                void Run(double seconds)
+                {
+                    double end = t + seconds;
+                    while (t < end) Frame();
+                }
+                Man(6600, 0.1);
+                Man(6601, 0.1);
+                Man(6602, 0.1);
+                Run(0.6); // everyone held
+
+                // ---- 1. a man thrown 2 m forward by a FALL (an impact outcome on his record): out of place at once, looked at every 0.1 s, never
+                // walked while down, walked back 0.5 s after he is up, the wish off and his callback released once he is back
+                var thrown = men[6600];
+                thrown.Impact.KnockedDown(t, t + 2.5, 5);
+                thrown.Impact.NoteOutcome(t);
+                outs[6600] = 2.0;
+                int outLooks = logic.WallStats.Writes(WallWriteKind.OutOfPlace);
+                double thrownAt = t;
+                Run(1.0);
+                Check(pull.Spells == 1 && pull.SpellsAfterImpact == 1 && thrown.Wall!.Out.Out, "the thrown man not out of place after an impact: spells " + pull.Spells + " / " + pull.SpellsAfterImpact);
+                int looks1s = logic.WallStats.Writes(WallWriteKind.OutOfPlace) - outLooks;
+                Check(looks1s >= 5 && looks1s <= 11, "the out-of-place look is not every 0.1 s: " + looks1s + " in ~1 s (the spell begins at the next 0.25 s look)");
+                Check(thrown.Input == null || !thrown.Input.WallPull, "walked while on the ground");
+                Run(1.9); // up at 2.5 s, the 0.5 s wait - not yet
+                Check(thrown.Input == null || !thrown.Input.WallPull, "walked back before 0.5 s of being able to move? (" + F2s(t - thrownAt) + " s)");
+                Run(0.4);
+                Check(thrown.Input != null && thrown.Input.WallPull && thrown.Input.WallPullY < 0 && body.Hooks >= 1, "not walked back 0.5 s after he got up");
+                LogHas("[wall] first man WALKED BACK to his slot (step 63): ");
+                Run(2.0);
+                Check(!thrown.Wall!.Out.Out && !thrown.Input!.WallPull && body.InputReleases >= 1 && outs[6600] <= 0.5,
+                    "the thrown man not back / the wish still on: out " + F2s(outs[6600]) + ", wish " + thrown.Input!.WallPull + ", releases " + body.InputReleases);
+                Check(pull.Ends(WallOutEnd.Back) == 1 && pull.BackAfterImpact.Count == 1 && pull.BackPulled.Count == 1,
+                    "the time back not counted: " + pull.SummaryLine(0.5, 1.0));
+                double backAfterFall = pull.BackAfterImpact.Mean;
+                LogHas("[wall] first man back in place (step 63): ");
+
+                // ---- 2. ShieldWallPullBackSeconds 0: the game's flag alone - no extra look, no walk; set back live: walked at once
+                S.Set(SettingsSchema.ShieldWallPullBackSeconds, 0.0, SettingSources.Mcm);
+                outs[6601] = 1.6; // a shove: no impact on him
+                outLooks = logic.WallStats.Writes(WallWriteKind.OutOfPlace);
+                int hooks = body.Hooks;
+                Run(2.0);
+                Check(men[6601].Wall!.Out.Out && !men[6601].Wall!.Out.AfterImpact && logic.WallStats.Writes(WallWriteKind.OutOfPlace) == outLooks && body.Hooks == hooks,
+                    "pull 0: extra looks " + (logic.WallStats.Writes(WallWriteKind.OutOfPlace) - outLooks) + ", hooks " + (body.Hooks - hooks) + " (both 0)");
+                S.Set(SettingsSchema.ShieldWallPullBackSeconds, 0.5, SettingSources.Mcm);
+                Run(0.4);
+                Check(men[6601].Input != null && men[6601].Input!.WallPull, "the pull set back to 0.5 live: not walked back");
+
+                // ---- 3. a man reined by the leash just past it (1.1 m) is not out of place
+                outs[6602] = 1.1;
+                Run(0.5);
+                Check(!men[6602].Wall!.Out.Out, "a man just past the leash counted out of place");
+                outs[6602] = 0.1;
+
+                // ---- 4. the master switch mid-walk: the wish off at once, his callback released, the spell let go
+                int releases = body.InputReleases;
+                S.Set(SettingsSchema.ModEnabled, false, SettingSources.Mcm);
+                Run(0.1);
+                Check(!men[6601].Input!.WallPull && body.InputReleases > releases && pull.Ends(WallOutEnd.LetGo) >= 1, "the master switch left the walk back on");
+                S.Set(SettingsSchema.ModEnabled, true, SettingSources.Mcm);
+                Run(0.3);
+                logic.WriteWallSummary();
+                LogHas("[summary] wall pulled back (step 63 - a held man more than 1.25 m ahead of his slot; ShieldWallPullBackSeconds 0.5 s): ");
+                LogHas("THE TIME BACK - after an impact ");
+                LogHas(", by the out-of-place look (step 63) ");
+
+                // ---- 5. A / B in the stand-in world: 20 men in contact, each thrown 2 m forward by a 2.5 s fall every 10 s (staggered), the game's
+                // flag a slow 0.5 m/s walk back - the in-contact share more than 1 m ahead with the walk back off vs on
+                const double gameFlag = 0.5;
+                double Share(double pullSeconds, out double meanBack)
+                {
+                    S.Set(SettingsSchema.ShieldWallPullBackSeconds, pullSeconds, SettingSources.File);
+                    var b = new FakeWallBody();
+                    var lg = NewPaceLogic(new FakePaceBody(), new FakeWeaponFacts());
+                    lg.WallBody = b;
+                    var ms = new List<TrackedAgent>();
+                    var o = new double[20];
+                    for (int k = 0; k < 20; k++)
+                    {
+                        var st = lg.Track(FakeAgent(6700 + k))!;
+                        ms.Add(st);
+                        b.Facts[6700 + k] = WallMan(ahead: 0.1);
+                        b.Contact.Add(6700 + k);
+                        o[k] = 0.1;
+                    }
+                    double tt = 17000;
+                    for (int frame = 0; frame < 90 * 60; frame++)
+                    {
+                        tt += 1.0 / 60;
+                        lg.TickWall(tt);
+                        for (int k = 0; k < 20; k++)
+                        {
+                            var st = ms[k];
+                            if (frame % 600 == k * 30) // each man thrown every 10 s
+                            {
+                                st.Impact.KnockedDown(tt, tt + 2.5, 0);
+                                st.Impact.NoteOutcome(tt);
+                                o[k] = 2.0;
+                            }
+                            if (!st.Impact.Down(tt))
+                            {
+                                uint fl = 0;
+                                float vx = 0, vy = 0;
+                                if (st.Input != null && AiInputHook.ApplyWallPull(st.Input, ref fl, ref vx, ref vy)) o[k] = Math.Max(0, o[k] + vy * ourSpeed / 60);
+                                else if (o[k] > 0.1) o[k] = Math.Max(0.1, o[k] - gameFlag / 60);
+                            }
+                            b.Facts[6700 + k] = WallMan(ahead: o[k]);
+                        }
+                    }
+                    meanBack = lg.WallStats.Pull.BackAfterImpact.Mean;
+                    return lg.WallStats.On.ContactShareNear;
+                }
+                double off = Share(0, out double backOff);
+                double on = Share(0.5, out double backOn);
+                Console.WriteLine("        step 63 the wall pulls men back: a man thrown 2 m by a 2.5 s fall back in " + F2s(backAfterFall) + " s (the game's flag modelled stuck); A/B, 20 men thrown every 10 s, the game's flag 0.5 m/s - in contact more than 1 m ahead "
+                                  + (100 * off).ToString("0.0", CultureInfo.InvariantCulture) + "% with the walk back off (back after an impact in " + F2s(backOff) + " s) vs "
+                                  + (100 * on).ToString("0.0", CultureInfo.InvariantCulture) + "% on (" + F2s(backOn) + " s)");
+                Check(on < off && backOn < backOff, "the walk back did not shorten the time out: " + off + " → " + on + ", " + backOff + " → " + backOn + " s");
+            }
+            finally
+            {
+                _logic = keep;
+                SetStatic(typeof(AthleticsLogic), "_current", keep);
+                S.Set(SettingsSchema.ModEnabled, true, SettingSources.File);
+                WallDefaults();
                 AthleticsDefaults();
             }
         }

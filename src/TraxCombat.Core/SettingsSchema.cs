@@ -368,6 +368,12 @@ namespace TraxCombat.Core
 
         // Steps 41 / 42's ShieldWallHoldsSlots and ShieldWallStepOutMetres were here; on the player page since step 59.
 
+        // Step 63 (Anton's battle 2026-10-19 11:02: wall men in contact more than 1 m ahead of their slots 11.1%, step 42's 0.6-2.5%):
+        // WallPullMath, AI_NOTES "Step 63".
+        public static readonly ParamDef ShieldWallPullBackSeconds = Float("ShieldWallPullBackSeconds", 0, WallPullMath.MaxSeconds, BattlePaceGroup,
+            "Shield walls: walk a man back after (s)",
+            "With \"Shield walls hold their slots\" on (player page, How the AI fights): a soldier of a held wall who stands beyond his step out ahead of his place - thrown forward by a blow, pushed by the press - is held again at once, and if he has not started back on his own after this many seconds (and is not on the ground or reeling) he backs off to his place, facing the enemy. 0 = the game's own pull only.");
+
         // ------------------------------------------------------------------ brace by orders (step 23)
 
         // Step 23 (Anton, 2026-09-29: "make soldiers not swing but only defend when they have reached a certain floor, that
@@ -1399,6 +1405,7 @@ namespace TraxCombat.Core
             StepBackEnabled, StepBackBackpedal, StepBackMaxChancePercent, StepBackDistance, StepBackSeconds, StepBackEnemyRange,
             StepBackHoldAttacks, StepBackMaxAtOnce,
             ShieldInfantrySwingsLessPercent, FootMeleeSwingsLessPercent, AiMeleeGapSeconds, ExtraPauseAfterBowShotSeconds, ExtraPauseAfterCrossbowShotSeconds,
+            ShieldWallPullBackSeconds,
             BraceEnabled, BraceFloorChargePercent, BraceFloorAdvancePercent, BraceFloorHoldPercent, BraceFloorNoFormationPercent, BraceFloorSpreadPercent,
             BraceRecoverPercent, BraceRecoverSpreadPercent,
             BraceWieldShield, BraceRaiseShield,

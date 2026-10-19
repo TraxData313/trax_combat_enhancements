@@ -51,8 +51,15 @@ namespace TraxCombat.Missions
         public float RegroupX, RegroupY = -1f;
         public long RegroupFrames;
 
+        /// <summary>Step 63: a shield-wall man out of place is walked back to his slot: <see cref="WallPullX"/>, <see cref="WallPullY"/>
+        /// replace the AI's movement input (his own frame, refreshed at each 0.1 s look). A step back's backpedal wins (walls never step back -
+        /// belt and braces). Works with the Athletics system off (the wall hold does not need it).</summary>
+        public bool WallPull;
+        public float WallPullX, WallPullY = -1f;
+        public long WallPullFrames;
+
         /// <summary>Any wish at all - a man is held while ANY of them wants him held (one ending never lifts another).</summary>
-        public bool Active => HoldAttacks || StepHoldAttacks || Backpedal || BraceHoldAttacks || Regroup;
+        public bool Active => HoldAttacks || StepHoldAttacks || Backpedal || BraceHoldAttacks || Regroup || WallPull;
 
         /// <summary>Since when the state has been active (mission time), for the calls-per-second figure.</summary>
         public double ActiveSince = -1;
@@ -131,7 +138,7 @@ namespace TraxCombat.Missions
                 s.Calls++;
                 var settings = TraxSettings.Shared;
                 if (!settings.ModEnabled) return; // the master switch first (the tick clears the wishes too)
-                if (!settings.AthleticsEnabled && !(s.Regroup && settings.CourageEnabled)) return; // step 49: courage works without Athletics
+                if (!settings.AthleticsEnabled && !(s.Regroup && settings.CourageEnabled) && !(s.WallPull && settings.ShieldWallHoldsSlots)) return; // steps 49 / 63: courage and the wall work without Athletics
                 if (Agent.IsMainAgent || !Agent.IsAIControlled)
                 {
                     s.NotAi++; // the player's agent, or a soldier the player took over (RTS Camera): never touched
@@ -141,7 +148,7 @@ namespace TraxCombat.Missions
                 {
                     uint only = (uint)movementFlag;
                     float ox = inputVector.x, oy = inputVector.y;
-                    if (AiInputHook.ApplyRegroup(s, ref only, ref ox, ref oy))
+                    if (AiInputHook.ApplyWallPull(s, ref only, ref ox, ref oy) || AiInputHook.ApplyRegroup(s, ref only, ref ox, ref oy))
                     {
                         movementFlag = (Agent.MovementControlFlag)only;
                         inputVector = new Vec2(ox, oy);
@@ -157,7 +164,7 @@ namespace TraxCombat.Missions
                 float vx = inputVector.x, vy = inputVector.y;
                 AiInputHook.Apply(_st, s, settings.AiHoldRaiseGuard, ref flags, ref vx, ref vy, settings.BraceRaiseShield);
                 movementFlag = (Agent.MovementControlFlag)flags;
-                if (s.Backpedal || (s.Regroup && settings.CourageEnabled)) inputVector = new Vec2(vx, vy);
+                if (s.Backpedal || (s.Regroup && settings.CourageEnabled) || (s.WallPull && settings.ShieldWallHoldsSlots)) inputVector = new Vec2(vx, vy);
             }
             catch (Exception e)
             {
@@ -315,6 +322,34 @@ namespace TraxCombat.Missions
             return true;
         }
 
+        /// <summary>Step 63: turns the wall's walk-back wish on or off (the other wishes are left as they are).</summary>
+        internal static void SetWallPull(TrackedAgent st, bool on, double now)
+        {
+            var s = st.Input ??= new AiInputState();
+            bool was = s.Active;
+            s.WallPull = on;
+            if (!on)
+            {
+                s.WallPullX = 0f;
+                s.WallPullY = -1f;
+            }
+            Account(s, was, now);
+        }
+
+        /// <summary>Step 63: a wall man's walk back - his own move bits out, the vector in (never while a step back's backpedal runs; never with
+        /// the master switch or ShieldWallHoldsSlots off). True when it wrote. Managed - the smoke drives it.</summary>
+        internal static bool ApplyWallPull(AiInputState s, ref uint flags, ref float vx, ref float vy)
+        {
+            if (!s.WallPull || s.Backpedal) return false;
+            var settings = TraxSettings.Shared;
+            if (!settings.ModEnabled || !settings.ShieldWallHoldsSlots) return false;
+            flags = AiInputMath.Backpedal(flags);
+            vx = s.WallPullX;
+            vy = s.WallPullY;
+            s.WallPullFrames++;
+            return true;
+        }
+
         /// <summary>Step 23: turns the brace's wish on or off (the timer's and the step back's are left as they are).</summary>
         internal static void SetBrace(TrackedAgent st, bool on, double now)
         {
@@ -408,7 +443,7 @@ namespace TraxCombat.Missions
                 vy = s.BackY;
                 s.BackpedalFrames++;
             }
-            else
+            else if (!ApplyWallPull(s, ref flags, ref vx, ref vy)) // step 63: a wall man out of place walked back
             {
                 ApplyRegroup(s, ref flags, ref vx, ref vy); // step 49: the walk back (a step back's backpedal wins while it runs)
             }

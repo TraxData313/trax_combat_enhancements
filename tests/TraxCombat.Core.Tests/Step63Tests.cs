@@ -262,3 +262,98 @@ public class RearBlowTests
         Assert.Empty(ConfigFile.Migrate(ConfigFile.Read("{ \"ConfigVersion\": 11, \"ImpactRearPercent\": 200 }"), Shipped63));
     }
 }
+
+/// <summary>
+/// Step 63 - THE WALL PULLS MEN BACK (Anton's battle 2026-10-19 11:02: wall men in contact more than 1 m ahead 11.1%, step 42's 0.6-2.5%;
+/// AI_NOTES "Step 63"): a held man more than max(L, 1) + 0.25 m ahead of his slot is out of place; once he has stood out
+/// ShieldWallPullBackSeconds able to move he is walked back to within max(L, 1) / 2.
+/// </summary>
+public class WallPullTests
+{
+    [Fact]
+    public void The_setting_sits_in_battle_pace_on_the_Advanced_page_live_after_the_crossbows()
+    {
+        var all = SettingsSchema.All.ToList();
+        Assert.Same(SettingsSchema.ShieldWallPullBackSeconds, all[all.IndexOf(SettingsSchema.ExtraPauseAfterCrossbowShotSeconds) + 1]);
+        Assert.Same(SettingsSchema.BattlePaceGroup, SettingsSchema.ShieldWallPullBackSeconds.Group);
+        Assert.Equal(SettingsPage.Advanced, SettingsSchema.ShieldWallPullBackSeconds.Group.Page);
+        Assert.Equal(ApplyTiming.Live, SettingsSchema.ShieldWallPullBackSeconds.Timing);
+        Assert.Equal(0.5, new TraxSettings().ShieldWallPullBackSeconds, 6);
+        Assert.Equal(3.0, SettingsSchema.ShieldWallPullBackSeconds.Max, 6);
+    }
+
+    [Fact]
+    public void Out_of_place_beyond_the_leash_plus_a_quarter_metre_back_within_half_of_it()
+    {
+        Assert.Equal(1.25, WallPullMath.Beyond(1.0), 9);
+        Assert.Equal(1.25, WallPullMath.Beyond(0), 9);    // the hard hold: step 41's 1 m mark
+        Assert.Equal(2.25, WallPullMath.Beyond(2.0), 9);
+        Assert.Equal(0.5, WallPullMath.BackAt(1.0), 9);
+        Assert.Equal(1.0, WallPullMath.BackAt(2.0), 9);
+        var s = default(WallOutOfPlace);
+        Assert.Equal(WallOutMove.None, WallPullMath.Step(ref s, 1.0, 1.1, true, false, 0.5, 10, 0.1)); // reined just past the leash: not out
+        Assert.Equal(WallOutMove.None, WallPullMath.Step(ref s, 1.0, double.NaN, true, false, 0.5, 10, 0.1));
+        Assert.Equal(WallOutMove.Began, WallPullMath.Step(ref s, 1.0, 1.6, true, true, 0.5, 10, 0.1));
+        Assert.True(s.Out && s.AfterImpact);
+        Assert.Equal(WallOutMove.None, WallPullMath.Step(ref s, 1.0, 0.8, true, false, 0.5, 10.1, 0.1)); // coming back: not yet within 0.5
+        Assert.Equal(WallOutMove.Back, WallPullMath.Step(ref s, 1.0, 0.5, true, false, 0.5, 10.2, 0.1));
+        Assert.False(s.Out);
+        Assert.Equal(1.6, s.MaxOut, 9);
+    }
+
+    [Fact]
+    public void Walked_back_only_after_standing_out_the_setting_able_to_move_never_while_down_at_most_four_seconds()
+    {
+        var s = default(WallOutOfPlace);
+        WallPullMath.Step(ref s, 1.0, 2.0, false, true, 0.5, 100, 0);                      // thrown forward, on the ground
+        for (double t = 100.1; t < 102.5; t += 0.1)
+            Assert.Equal(WallOutMove.None, WallPullMath.Step(ref s, 1.0, 2.0, false, true, 0.5, t, 0.1)); // down: never
+        Assert.Equal(WallOutMove.None, WallPullMath.Step(ref s, 1.0, 2.0, true, true, 0.5, 102.6, 0.1)); // up: the wait counts from here
+        Assert.Equal(WallOutMove.None, WallPullMath.Step(ref s, 1.0, 2.0, true, true, 0.5, 103.0, 0.1));
+        Assert.Equal(WallOutMove.PullStarted, WallPullMath.Step(ref s, 1.0, 2.0, true, true, 0.5, 103.1, 0.1));
+        Assert.True(s.Pulling && s.Pulled);
+        Assert.Equal(WallOutMove.PullStopped, WallPullMath.Step(ref s, 1.0, 1.8, false, true, 0.5, 103.2, 0.1)); // reels again: paused
+        Assert.Equal(WallOutMove.None, WallPullMath.Step(ref s, 1.0, 1.8, true, true, 0.5, 103.3, 0.1));
+        Assert.Equal(WallOutMove.PullStarted, WallPullMath.Step(ref s, 1.0, 1.8, true, true, 0.5, 103.8, 0.1));
+        // he cannot get back (a wall of bodies): the walk stops after 4 s of it, the game's flag keeps him
+        double t2 = 103.8;
+        WallOutMove last = WallOutMove.None;
+        for (int i = 0; i < 60 && last != WallOutMove.PullStopped; i++)
+        {
+            t2 += 0.1;
+            last = WallPullMath.Step(ref s, 1.0, 1.8, true, true, 0.5, t2, 0.1);
+        }
+        Assert.Equal(WallOutMove.PullStopped, last);
+        Assert.InRange(s.PullSeconds, WallPullMath.MaxPullSeconds, WallPullMath.MaxPullSeconds + 0.11);
+        Assert.Equal(WallOutMove.None, WallPullMath.Step(ref s, 1.0, 1.8, true, true, 0.5, t2 + 1, 0.1));
+        // the setting at 0: never walked
+        var z = default(WallOutOfPlace);
+        WallPullMath.Step(ref z, 1.0, 2.0, true, false, 0, 200, 0);
+        for (double t = 200.1; t < 205; t += 0.1) Assert.Equal(WallOutMove.None, WallPullMath.Step(ref z, 1.0, 2.0, true, false, 0, t, 0.1));
+    }
+
+    [Fact]
+    public void The_summary_counts_spells_ends_and_the_time_back_by_cause_and_by_who_walked_him()
+    {
+        var p = new WallPullStats();
+        Assert.Contains("no held man stood out of place this battle", p.SummaryLine(0.5, 1.0));
+        var a = new WallOutOfPlace { Out = false, Since = 10, AfterImpact = true, Pulled = true, MaxOut = 2.2 };
+        p.Began(true);
+        p.Ended(in a, WallOutEnd.Back, 14.0);
+        var b = new WallOutOfPlace { Since = 20, MaxOut = 1.5 };
+        p.Began(false);
+        p.Ended(in b, WallOutEnd.Back, 21.0);
+        var c = new WallOutOfPlace { Since = 30, MaxOut = 1.4 };
+        p.Began(false);
+        p.Ended(in c, WallOutEnd.LetGo, 31);
+        p.Pulls = 1;
+        string line = p.SummaryLine(0.5, 1.0);
+        Assert.StartsWith("wall pulled back (step 63 - a held man more than 1.25 m ahead of his slot; ShieldWallPullBackSeconds 0.5 s): 3 spells out of place (after an impact 1, other 2), the farthest 2.20 m", line);
+        Assert.Contains("ended: back 2, freed / let go 1, fell or left 0, still out at the end 0", line);
+        Assert.Contains("THE TIME BACK - after an impact 4.00 s (n 1), other 1.00 s (n 1), the longest 4.00 s", line);
+        Assert.Contains("back with our walk 4.00 s (n 1), by the game's flag alone 1.00 s (n 1)", line);
+        Assert.Contains("ShieldWallPullBackSeconds 0 - the game's pull only", p.SummaryLine(0, 1.0));
+        Assert.Contains("walked back to within 0.50 m of his slot", WallPullMath.Describe(0.5, 1.0));
+        Assert.Contains("never walked back by us", WallPullMath.Describe(0, 1.0));
+    }
+}

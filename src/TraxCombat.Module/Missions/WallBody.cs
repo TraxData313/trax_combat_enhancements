@@ -44,6 +44,11 @@ namespace TraxCombat.Missions
         public WallLeash Leash;
         public double NextLeashLook;
         public bool EverStepped;
+
+        /// <summary>Step 63: out of place (held, beyond the leash ahead of his slot) and our walk back; the last look's time (the pull's
+        /// budget).</summary>
+        public WallOutOfPlace Out;
+        public double LastOutLook = double.NaN;
     }
 
     /// <summary>
@@ -74,6 +79,15 @@ namespace TraxCombat.Missions
         /// <summary>Step 42: the enemy he fights - the native AI's target, else his immediate enemy - and where he stands (the
         /// scene's x / y); false = none (or not an active enemy).</summary>
         bool TryEnemy(TrackedAgent st, out double x, out double y);
+
+        /// <summary>Step 63: a world direction (the scene's x / y) as the backpedal's input in his own frame (false = no frame).</summary>
+        bool ToLocal(TrackedAgent st, double dx, double dy, out float lx, out float ly);
+
+        /// <summary>Step 63: step 16's input hook on him (the walk back's wish needs it).</summary>
+        AiInputHook.HookResult Hook(TrackedAgent st);
+
+        /// <summary>Step 63: the walk back's wish is off - the callback goes off if he is idle and it was ours.</summary>
+        void ReleaseInput(TrackedAgent st);
     }
 
     /// <summary>
@@ -241,6 +255,26 @@ namespace TraxCombat.Missions
         }
 
         private static bool IsEnemy(Agent a, Agent? e) => e != null && e.IsActive() && a.IsEnemyOf(e);
+
+        /// <summary>Step 63: his body frame (step 16's / courage's way).</summary>
+        public bool ToLocal(TrackedAgent st, double dx, double dy, out float lx, out float ly)
+        {
+            lx = 0f;
+            ly = 0f;
+            var rot = st.Agent.Frame.rotation;
+            if (!AiInputMath.BackpedalVector(dx, dy, rot.s.x, rot.s.y, rot.f.x, rot.f.y, AiInputMath.BackpedalInput, out double x, out double y)) return false;
+            lx = (float)x;
+            ly = (float)y;
+            return true;
+        }
+
+        public AiInputHook.HookResult Hook(TrackedAgent st) => AiInputHook.Hook(st);
+
+        public void ReleaseInput(TrackedAgent st)
+        {
+            if (st.Removed || !st.Agent.IsActive()) return;
+            AiInputHook.UnhookIfIdle(st);
+        }
     }
 
     /// <summary>The wall body every new <see cref="AthleticsLogic"/> starts with - the game's; the offline smoke swaps in its

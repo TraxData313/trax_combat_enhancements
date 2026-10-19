@@ -277,7 +277,7 @@ public class ShieldWallTests
         Assert.Equal(6, lines.Count);
         Assert.Contains("switched 1 time(s) during this battle", lines[0]);
         Assert.Equal("wall: 40 men looked at, 30 held in their slots at some point; looks - held 100, left to vanilla: detached 1, another arrangement 1, far from his slot and behind the line 1", lines[1]);
-        Assert.StartsWith("wall writes: 3 \"keep your slot\" writes - right after vanilla's own update 2, by the 0.25 s look 1, by the fallback 0, by the step-out leash 0; vanilla's own updates seen on held men 4 (one every 0.45 s per man", lines[2]);
+        Assert.StartsWith("wall writes: 3 \"keep your slot\" writes - right after vanilla's own update 2, by the 0.25 s look 1, by the fallback 0, by the step-out leash 0, by the out-of-place look (step 63) 0; vanilla's own updates seen on held men 4 (one every 0.45 s per man", lines[2]);
         Assert.Contains("released to vanilla's own value 1 (switched off 1)", lines[2]);
         Assert.StartsWith("wall slots ON: 1 samples", lines[3]);
         Assert.Contains("more than 1 m ahead of his slot 0.0%", lines[3]);

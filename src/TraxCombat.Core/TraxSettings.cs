@@ -266,6 +266,7 @@ namespace TraxCombat.Core
         // step 41: the shield wall holds its slots
         public bool ShieldWallHoldsSlots => GetBool(SettingsSchema.ShieldWallHoldsSlots);
         public float ShieldWallStepOutMetres => GetFloat(SettingsSchema.ShieldWallStepOutMetres);   // step 42: the leash
+        public float ShieldWallPullBackSeconds => GetFloat(SettingsSchema.ShieldWallPullBackSeconds); // step 63: a man out of place walked back
 
         // step 23: brace by orders
         public bool BraceEnabled => GetBool(SettingsSchema.BraceEnabled);

@@ -86,6 +86,27 @@ namespace TraxCombat.Tools
                 x = y = double.NaN;
                 return false;
             }
+
+            /// <summary>Step 63: the walk back's hook and the vector (his frame = the world's here).</summary>
+            public int Hooks, InputReleases;
+            public bool HookThrows;
+
+            public bool ToLocal(TrackedAgent st, double dx, double dy, out float lx, out float ly)
+            {
+                double len = Math.Sqrt(dx * dx + dy * dy);
+                lx = len > 1e-9 ? (float)(dx / len) : 0f;
+                ly = len > 1e-9 ? (float)(dy / len) : -1f;
+                return true;
+            }
+
+            public AiInputHook.HookResult Hook(TrackedAgent st)
+            {
+                if (HookThrows) throw new InvalidOperationException("smoke: the input hook failed");
+                Hooks++;
+                return AiInputHook.HookResult.FirstHookTurnedOn;
+            }
+
+            public void ReleaseInput(TrackedAgent st) => InputReleases++;
         }
 
         /// <summary>An AI man on foot in a halted shield wall facing +y, <paramref name="ahead"/> m ahead of his slot (0, 0), the
@@ -121,6 +142,7 @@ namespace TraxCombat.Tools
         {
             S.Set(SettingsSchema.ShieldWallHoldsSlots, true, SettingSources.File);
             S.Set(SettingsSchema.ShieldWallStepOutMetres, 0.0, SettingSources.File);
+            S.Set(SettingsSchema.ShieldWallPullBackSeconds, 0.0, SettingSources.File); // step 63 off: steps 41 / 42 exactly (no extra looks, no walk back)
         }
 
         /// <summary>
