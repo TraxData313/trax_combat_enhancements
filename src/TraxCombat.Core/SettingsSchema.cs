@@ -903,6 +903,15 @@ namespace TraxCombat.Core
             "Punish: a timid man steps in within (m)",
             "A TIMID soldier (courage) whose enemy reels or lies down within this many metres of him steps in for the opening, like a surge - brave until it closes. Farther away he keeps his distance. 0 = timid men never do.");
 
+        // Step 62 (Anton 2026-10-19: more men fall, and the charge matters) - all on the Advanced page, this group.
+        public static readonly ParamDef ImpactShrugOffYieldsToImpact = Bool("ImpactShrugOffYieldsToImpact", ImpactGroup,
+            "A decided knockdown or stagger always plays",
+            "The game lets a man shrug a light blow off (no reaction at all) BEFORE it asks whether he falls - so a knockdown decided on such a blow was lost. On: the blow is decided first, and a knockdown or stagger refuses the shrug-off, so it plays. Off: the game's shrug-off wins (as before step 62).");
+
+        public static readonly ParamDef ImpactFallBackupSeconds = Float("ImpactFallBackupSeconds", 0, ImpactFallMath.MaxBackupSeconds, ImpactGroup,
+            "Knockdown not seen: knock him down after (s)",
+            "If a knockdown decided on a landed blow (a kick, a bash, a clean hit) has not started to play within this many seconds, the man is knocked down by a blow of our own - once. 0 = no backup.");
+
         public static readonly ParamDef ImpactMismatchWeight = Float("ImpactMismatchWeight", 0, 2, ImpactGroup,
             "Mismatch weight (pressure per doubling)",
             "How much an outmatched man suffers: every doubling of the mismatch beyond the even band adds this to the pressure on him (0.25: an enemy four times stronger counts as much as being about a third tired). 0 = only tiredness counts.");
@@ -1362,6 +1371,7 @@ namespace TraxCombat.Core
             ImpactMomentumRiderPercent, ImpactMomentumRiderWalkMetresPerSecond, ImpactMomentumRiderGallopMetresPerSecond,
             ImpactMessagesIncludeYourMen, ImpactMessageMinSeconds,
             ImpactPunishEnabled, ImpactPunishAggressionPercent, ImpactPunishGraceSeconds, ImpactPunishRangeMetres,
+            ImpactShrugOffYieldsToImpact, ImpactFallBackupSeconds,
             ImpactMismatchWeight, ImpactEvenBandDoublings, ImpactBodyExponent, ImpactBodyFloorPoints, ImpactStaggeredBonus, ImpactDamageWeight,
             ImpactRefWeightKg, ImpactWeightExponent, ImpactRefSwingSpeed, ImpactSpeedExponent, ImpactBluntFactor, ImpactCutFactor, ImpactPierceFactor,
             ImpactKickFactor, ImpactBashFactor, ImpactSkillMinFactor, ImpactSkillMaxFactor,

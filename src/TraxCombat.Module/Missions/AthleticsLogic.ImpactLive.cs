@@ -19,6 +19,14 @@ namespace TraxCombat.Missions
         public double Asked;
         public float Speed;
         public ImpactEvent Event;
+
+        /// <summary>Step 62: a knockdown decided on a LANDED blow (a kick's / a clean hit's fall) - counted in the falls' stats; who struck it
+        /// (our backup blow's owner), when (the blow), and whether our backup blow was sent.</summary>
+        public bool Fall;
+        public TrackedAgent? By;
+        public double At;
+        public bool Backup;
+        public bool BackupTried;
     }
 
     /// <summary>Step 50: a shield drop decided in a hit callback, made from the tick (step 51: a wrong-side block's too - <see cref="Block"/>).</summary>
@@ -102,7 +110,7 @@ namespace TraxCombat.Missions
                     knockDown = true;
                     _live.NoteApplied(ImpactOutcome.Knockdown, d.Bar);
                 }
-                if (knockDown) AddLiveWatch(v, ImpactWatchPurpose.GetUp, WatchKind.Fall, now, ImpactLiveMath.FallAppearSeconds, d.GetUpFactor);
+                if (knockDown) AddFallWatch(v, a, ImpactWatchPurpose.GetUp, now, d.GetUpFactor, d.Event, d.Damage); // step 62: a fall - backed up if not seen
                 else v.Impact.GotUp(now, 0); // not on the ground after all: no ground time, no immunity from it
             }
             else if (!double.IsNaN(d.ReelFactor))
@@ -166,8 +174,13 @@ namespace TraxCombat.Missions
             {
                 if (!replace) return false;
                 CountWatch(_liveWatches[i].Purpose, -1);
+                if (_liveWatches[i].Fall && !_liveWatches[i].W.Appeared) _falls.Replaced++; // step 62: a decided fall not seen yet, its watch taken by a newer reaction
             }
             ref var w = ref _liveWatches[i];
+            w.Fall = false;
+            w.By = null;
+            w.At = now;
+            w.Backup = false;
             w.St = st;
             w.Purpose = purpose;
             w.Factor = double.IsNaN(factor) ? 1 : factor;
@@ -179,6 +192,64 @@ namespace TraxCombat.Missions
             w.Event = ev;
             w.W.Begin(kind, now, appearWithin, expectIndex);
             CountWatch(purpose, +1);
+            return true;
+        }
+
+        /// <summary>Step 62: the watch of a knockdown decided on a LANDED blow (a kick's get-up, a clean hit's) - counted in the falls' stats,
+        /// its attacker kept for our backup blow. False = not watched (counted with the old reasons by the caller).</summary>
+        private bool AddFallWatch(TrackedAgent v, TrackedAgent a, ImpactWatchPurpose purpose, double now, double getUpFactor, ImpactEvent ev, double damage)
+        {
+            if (!AddLiveWatch(v, purpose, WatchKind.Fall, now, ImpactLiveMath.FallAppearSeconds, getUpFactor, ev: ev)) return false;
+            for (int i = 0; i < _liveWatchCount; i++)
+            {
+                if (!ReferenceEquals(_liveWatches[i].St, v)) continue;
+                ref var w = ref _liveWatches[i];
+                w.Fall = true;
+                w.By = a;
+                w.At = now;
+                break;
+            }
+            _falls.NoteDecided(ev, damage);
+            return true;
+        }
+
+        /// <summary>
+        /// Step 62, THE BACKUP: a decided fall not seen within <c>ImpactFallBackupSeconds</c> - our own knockdown blow on him from the tick
+        /// (lever 6, owned by the attacker), once; the watch begins again for its Fall. False = not sent (the setting at 0, the lever off,
+        /// refused before any engine call, or the engine refused it - counted). Own try: an error disables the OwnBlow lever alone.
+        /// </summary>
+        private bool TryFallBackup(ref ImpactLiveWatch w, double now)
+        {
+            var r = ImpactRules.From(TraxSettings.Shared);
+            if (!(r.FallBackupSeconds > 0) || w.Backup || w.BackupTried || _live.Disabled(ImpactLever.OwnBlow) || !r.Applies(ImpactMath.Family(w.Event))) return false;
+            w.BackupTried = true; // once
+            try
+            {
+                if (ImpactBody.CanForce(w.St) != ForceRefusal.None)
+                {
+                    _falls.BackupsRefused++;
+                    return false;
+                }
+                var by = w.By != null && !w.By.Removed ? w.By : null;
+                if (!ImpactBody.OwnKnockdownBlow(w.St, by, SpikeMath.OwnBlowDamage))
+                {
+                    _falls.BackupsFailed++;
+                    return false;
+                }
+            }
+            catch (Exception e)
+            {
+                _falls.BackupsFailed++;
+                DisableImpactLever(ImpactLever.OwnBlow, "impact.fall-backup", e);
+                return false;
+            }
+            _falls.BackupsSent++;
+            w.Backup = true;
+            w.W.Begin(WatchKind.Fall, now, ImpactLiveMath.FallAppearSeconds);
+            if (LiveFirst(20))
+                TraxLog.Info("impact", "live: first BACKUP knockdown (step 62) at " + Sec(now) + " s - " + Name(w.St) + "'s fall decided " + F2(now - w.At) + " s ago on a "
+                    + ImpactMath.EventName(w.Event) + " had not shown (channel 0 " + ImpactActions.Name(_liveRead.Type0) + ", channel 1 " + ImpactActions.Name(_liveRead.Type1)
+                    + ") - our own blow (KnockDown | KnockBack, " + SpikeMath.OwnBlowDamage + " damage) from the tick, owned by " + (w.By != null ? Name(w.By) : "nobody"));
             return true;
         }
 
@@ -385,6 +456,7 @@ namespace TraxCombat.Missions
                 if (st == null || st.Removed || !ImpactBody.IsActive(st))
                 {
                     _live.LeftField++;
+                    if (w.Fall && !w.W.Appeared) _falls.NoteLeftField(w.Event); // step 62: died / left before his fall showed
                     RemoveLiveWatch(i--);
                     continue;
                 }
@@ -400,6 +472,14 @@ namespace TraxCombat.Missions
                     DisableImpactLever(ImpactLever.Watch, "impact.live-watch", e); // the states keep the model's estimates
                     return;
                 }
+                if (w.Fall && ev == WatchEvent.None && ImpactFallMath.BackupDue(now, w.At, TraxSettings.Shared.ImpactFallBackupSeconds, w.W.Appeared, w.Backup || w.BackupTried))
+                {
+                    TryFallBackup(ref w, now); // step 62: not seen in time - our own blow (or counted why not; the watch runs on to its window)
+                    continue;
+                }
+                if (w.Fall && ev == WatchEvent.NeverAppeared && TryFallBackup(ref w, now)) continue; // step 62: a backup wait past the window
+                if (w.Fall && ev == WatchEvent.Appeared) _falls.NotePlayed(w.Event, w.Backup, now - w.At);
+                if (w.Fall && ev == WatchEvent.NeverAppeared) _falls.NoteNotSeen(w.Event);
                 switch (ev)
                 {
                     case WatchEvent.Appeared:
@@ -618,8 +698,11 @@ namespace TraxCombat.Missions
             {
                 if (!ReferenceEquals(_liveWatches[i].St, st)) continue;
                 _live.LeftField++;
+                if (_liveWatches[i].Fall && !_liveWatches[i].W.Appeared) _falls.NoteLeftField(_liveWatches[i].Event); // step 62
                 RemoveLiveWatch(i--);
             }
+            for (int i = 0; i < _liveWatchCount; i++)
+                if (ReferenceEquals(_liveWatches[i].By, st)) _liveWatches[i].By = null; // step 62: our backup blow then has no owner
             int keep = 0;
             for (int i = 0; i < _liveDropCount; i++)
             {
@@ -656,6 +739,7 @@ namespace TraxCombat.Missions
             foreach (var line in _live.SummaryLines(r.Applies(ImpactFamily.Kicks), r.ModeText())) TraxLog.Info("summary", line);
             foreach (var line in _blocks.SummaryLines(r.Applies(ImpactFamily.Blocks) || r.Applies(ImpactFamily.Riposte), r.ModeText(), _live.LeversText())) TraxLog.Info("summary", line);
             foreach (var line in _hits.SummaryLines(r.Applies(ImpactFamily.Hits), r.ModeText(), _live.LeversText())) TraxLog.Info("summary", line); // step 52 (+ the momentum of every family)
+            TraxLog.Info("summary", _falls.SummaryLine(r.Applies(ImpactFamily.Kicks) || r.Applies(ImpactFamily.Hits), r.FallBackupSeconds, r.ShrugOffYields)); // step 62
             WriteRidersSummary(in r); // step 53: the riders, the on-screen lines
             WritePunishSummary(); // step 54: the AI punishing a window
         }

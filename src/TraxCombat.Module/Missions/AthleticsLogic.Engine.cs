@@ -212,6 +212,14 @@ namespace TraxCombat.Missions
             return st != null && ReferenceEquals(st.Agent, agent) ? st : null;
         }
 
+        /// <summary>Step 62: the record of the agent with this index (a blow's <c>OwnerId</c>), or null (none, gone, a stale record).</summary>
+        private TrackedAgent? GetByIndex(int index)
+        {
+            if (index < 0 || index >= _byIndex.Length) return null;
+            var st = _byIndex[index];
+            return st != null && !st.Removed && st.AgentIndex == index ? st : null;
+        }
+
         /// <summary>The rider whose Athletics slows this horse now (the mount table, managed only), or null.</summary>
         private TrackedAgent? MountOwner(Agent? horse)
         {

@@ -38,6 +38,20 @@ namespace TraxCombat.Missions
         private ImpactEvent _pendingEvent;
         private double _pendingAt;
 
+        // step 62: the pending blow's decision and its answers - the shrug-off seam (CreateMeleeBlow's FIRST question) may decide it, the
+        // KnockDown seam then takes these answers instead of deciding again
+        private bool _pendingDecided;
+        private bool _pendingKnockDown;
+        private bool _pendingStaggered;
+
+        // step 62: the clean hit just applied played a stagger (ApplyHit sets it - the shrug-off seam refuses the shrug-off for it)
+        private bool _applyStaggered;
+
+        private readonly ImpactFallStats _falls = new ImpactFallStats();
+
+        /// <summary>Step 62: this mission's decided falls and what became of them (the smoke reads them).</summary>
+        internal ImpactFallStats ImpactFallStats => _falls;
+
         /// <summary>This mission's impact decisions (the smoke reads them).</summary>
         internal ImpactStats ImpactModelStats => _impact;
 
@@ -126,14 +140,28 @@ namespace TraxCombat.Missions
                 double now = SpikeNow;
                 var a = Get(attacker);
                 var v = Get(victim);
+                // step 62: the shrug-off seam already decided THIS blow (the first of CreateMeleeBlow's questions) - its answer, never a second decision
+                // (asked there and refused by a gate: not asked twice - one count per blow)
+                if (_impactPending && ReferenceEquals(_pendingAttacker, a) && ReferenceEquals(_pendingVictim, v) && _pendingEvent == ev && Math.Abs(_pendingAt - now) < 1e-6)
+                {
+                    if (_pendingDecided) _falls.TakenFromShrugSeam++;
+                    return _pendingKnockDown;
+                }
                 // seen here: OnMeleeHit takes it as it is (decided, or counted as not decided) - never a second decision or count
                 _impactPending = true;
                 _pendingAttacker = a;
                 _pendingVictim = v;
                 _pendingEvent = ev;
                 _pendingAt = now;
+                _pendingDecided = false;
+                _pendingKnockDown = false;
+                _pendingStaggered = false;
+                _applyStaggered = false;
                 if (!ImpactDecideEvent(a, v, ev, attacker, victim, in cd, now, true, out _, out bool knockDown)) return false;
                 _impact.FromDecorator++;
+                _pendingDecided = true;
+                _pendingKnockDown = knockDown;
+                _pendingStaggered = _applyStaggered;
                 return knockDown;
             }
             catch (Exception e)
@@ -180,6 +208,12 @@ namespace TraxCombat.Missions
             {
                 Failed("impact.read", e);
                 _impact.Skip(ImpactSkip.ReadFailed, ev);
+                return false;
+            }
+            if (f.Fatal && ImpactMath.IsLanded(ev)) // step 62: he dies of it - his death plays, not our fall (a decided fall was counted "not seen")
+            {
+                _impact.Skip(ImpactSkip.Fatal, ev);
+                _falls.Fatal++;
                 return false;
             }
             try

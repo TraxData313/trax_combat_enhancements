@@ -19,6 +19,9 @@ namespace TraxCombat.Core
 
         /// <summary>The engine read of the weapon / guard failed (one [error], counted after).</summary>
         ReadFailed,
+
+        /// <summary>Step 62: a landed blow that KILLS him - nothing to decide (he plays his death, not our fall).</summary>
+        Fatal,
     }
 
     /// <summary>
@@ -41,7 +44,7 @@ namespace TraxCombat.Core
         public readonly double[] RiposteChance = new double[B];
         public readonly int[] RiposteHappened = new int[B];
         public readonly int[] Refused = new int[ImpactMath.RefusalCount];
-        public readonly int[] Skipped = new int[4];
+        public readonly int[] Skipped = new int[5];
         public readonly int[] SkippedByEvent = new int[E];
         public int Halved;
         public long Halvings;
@@ -204,7 +207,8 @@ namespace TraxCombat.Core
             }
             head.Append("; YOU took ").Append(I(OnPlayer)).Append(", dealt ").Append(I(ByPlayer));
             head.Append("; not decided: off ").Append(I(Skipped[(int)ImpactSkip.Off])).Append(", its family switched off ").Append(I(Skipped[(int)ImpactSkip.FamilyOff]))
-                .Append(", not tracked (a horse, a man gone) ").Append(I(Skipped[(int)ImpactSkip.NotTracked])).Append(", the engine read failed ").Append(I(Skipped[(int)ImpactSkip.ReadFailed]));
+                .Append(", not tracked (a horse, a man gone) ").Append(I(Skipped[(int)ImpactSkip.NotTracked])).Append(", the engine read failed ").Append(I(Skipped[(int)ImpactSkip.ReadFailed]))
+                .Append(", the blow killed him (step 62) ").Append(I(Skipped[(int)ImpactSkip.Fatal]));
             if (FromDecorator > 0) head.Append("; ").Append(I(FromDecorator)).Append(" landed blows decided in the damage decorator's KnockDown seam (one decision per event)");
             if (Switches > 0) head.Append("; switched ").Append(I(Switches)).Append("x, on ").Append(F0(OnSeconds)).Append(" s / off ").Append(F0(OffSeconds)).Append(" s");
             lines.Add(head.ToString());

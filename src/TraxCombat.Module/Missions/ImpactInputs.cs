@@ -45,6 +45,7 @@ namespace TraxCombat.Missions
             f.DefenderHasShield = shield;
             f.Damage = cd.InflictedDamage;
             f.DefenderMaxHealth = victim.HealthLimit;
+            f.Fatal = ImpactMath.IsLanded(f.Event) && ImpactFallMath.Fatal(victim.Health, cd.InflictedDamage); // step 62: he dies of it
             f.DamageType = TypeOf(cd.DamageType);
             int slot = cd.AffectorWeaponSlotOrMissileIndex;
             if (f.Event == ImpactEvent.Bash)

@@ -1189,6 +1189,19 @@
   // (range 0.0 to 10.0)
   "ImpactPunishRangeMetres": 3.0,
 
+  // The game lets a man shrug a light blow off (no reaction at all) BEFORE it asks whether he
+  // falls - so a knockdown decided on such a blow was lost. On: the blow is decided first, and
+  // a knockdown or stagger refuses the shrug-off, so it plays. Off: the game's shrug-off wins
+  // (as before step 62).
+  // (true or false)
+  "ImpactShrugOffYieldsToImpact": true,
+
+  // If a knockdown decided on a landed blow (a kick, a bash, a clean hit) has not started to
+  // play within this many seconds, the man is knocked down by a blow of our own - once. 0 = no
+  // backup.
+  // (range 0.0 to 3.0)
+  "ImpactFallBackupSeconds": 0.5,
+
   // How much an outmatched man suffers: every doubling of the mismatch beyond the even band
   // adds this to the pressure on him (0.25: an enemy four times stronger counts as much as
   // being about a third tired). 0 = only tiredness counts.

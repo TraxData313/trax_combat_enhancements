@@ -40,11 +40,44 @@ namespace TraxCombat.Missions
 
         // ------------------------------------------------------------------ the shrug-off seam (MAIN thread)
 
-        bool IShrugOffDecider.ShrugOffKept(Agent victim, in AttackCollisionData collision, float gameThreshold)
+        bool IShrugOffDecider.ShrugOffKept(Agent victim, in AttackCollisionData collision, in Blow blow, float gameThreshold)
         {
             if (!_spikeStarted || _spikeClosed || victim == null) return true;
-            if (!ImpactEventOf(in collision, out var ev) || ev != ImpactEvent.CleanHit) return true; // a clean melee hit only (never a missile, a kick, a block)
-            return ShrugOffKept(Get(victim), collision.InflictedDamage, gameThreshold, SpikeNow);
+            if (!ImpactEventOf(in collision, out var ev) || ImpactMath.IsBlock(ev)) return true; // a landed blow only (never a missile, a block)
+            var v = Get(victim);
+            if (ShrugSeamRefuses(victim, v, in collision, blow.OwnerId)) return false; // step 62: a decided knockdown / stagger must play
+            if (ev != ImpactEvent.CleanHit) return true; // step 52's tired rule: clean hits only (a kick's reaction plays anyway)
+            return ShrugOffKept(v, collision.InflictedDamage, gameThreshold, SpikeNow);
+        }
+
+        /// <summary>
+        /// Step 62, THE LOST FALLS (<c>ImpactShrugOffYieldsToImpact</c>): the game said "shrugged off" - and a weapon blow so flagged plays NO
+        /// reaction, so a knockdown answered later in the KnockDown seam was thrown away (Anton's log: 14 of 35). The shrug-off is the FIRST of
+        /// <c>Mission.CreateMeleeBlow</c>'s questions (Mission.cs 5555, before KnockBack 5571 and KnockDown 5575): the model decides the blow
+        /// HERE (the same <see cref="ImpactModelOnLandedBlow"/> - the KnockDown seam then takes this decision, one per blow) and the shrug-off
+        /// is refused when it knocks him down or staggers him. Men on foot (a rider's is the dismount seam's), the attacker by the blow's
+        /// owner. True = refuse.
+        /// </summary>
+        internal bool ShrugSeamRefuses(Agent victim, TrackedAgent? v, in AttackCollisionData cd, int ownerIndex)
+        {
+            try
+            {
+                if (!TraxSettings.Shared.ImpactShrugOffYieldsToImpact || _live.Disabled(ImpactLever.ShrugOff) || v == null || v.Removed || ImpactBody.IsMounted(v)) return false;
+                var a = GetByIndex(ownerIndex);
+                if (a == null) return false;
+                _seamShrugOff = false; // decided before the flag: a knockdown here refuses it
+                bool down = ImpactModelOnLandedBlow(a.Agent, victim, in cd);
+                if (!_pendingDecided) return false;
+                if (down) _falls.ShrugRefusedForFall++;
+                else if (_pendingStaggered) _falls.ShrugRefusedForStagger++;
+                else _falls.ShrugDecidedNothing++;
+                return down || _pendingStaggered;
+            }
+            catch (Exception e)
+            {
+                DisableImpactLever(ImpactLever.ShrugOff, "impact.shrug-off-decide", e);
+                return false;
+            }
         }
 
         /// <summary>
@@ -102,7 +135,7 @@ namespace TraxCombat.Missions
                 }
                 if (knockDown)
                 {
-                    if (!AddLiveWatch(v, ImpactWatchPurpose.HitGetUp, WatchKind.Fall, now, ImpactLiveMath.FallAppearSeconds, d.GetUpFactor, ev: ImpactEvent.CleanHit)) _hits.WatchesFull++;
+                    if (!AddFallWatch(v, a, ImpactWatchPurpose.HitGetUp, now, d.GetUpFactor, ImpactEvent.CleanHit, d.Damage)) _hits.WatchesFull++; // step 62: backed up if not seen
                 }
                 else v.Impact.GotUp(now, 0); // not on the ground after all: no ground time, no immunity from it
             }
@@ -126,6 +159,7 @@ namespace TraxCombat.Missions
             {
                 AddLiveWatch(v, ImpactWatchPurpose.HitControl, WatchKind.Reaction, now, ImpactHitMath.FlinchAppearSeconds, 1, replace: false, ev: ImpactEvent.CleanHit);
             }
+            _applyStaggered = staggered; // step 62: the shrug-off seam refuses the shrug-off for it (the flinch must play)
             if (knockDown) ImpactMessage(ImpactMessageKind.KnockedDown, a, v); // step 53: the on-screen line
             if (knockDown || staggered) _hits.ShockGiven++;
             if ((knockDown || staggered) && (d.AttackerIsPlayer || d.DefenderIsPlayer)) YouHitLine(a, v, in d, knockDown);

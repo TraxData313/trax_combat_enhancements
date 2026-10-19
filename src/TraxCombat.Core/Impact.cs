@@ -129,6 +129,9 @@ namespace TraxCombat.Core
         /// <summary>Step 52: the attacker's weapon is two-handed (a great axe, a two-handed sword or a polearm held in both hands) - the clean
         /// hits' summary class.</summary>
         public bool TwoHanded;
+
+        /// <summary>Step 62: this landed blow KILLS him (health − damage &lt; 1) - nothing is decided (he plays his death, not our fall).</summary>
+        public bool Fatal;
     }
 
     /// <summary>
@@ -286,6 +289,9 @@ namespace TraxCombat.Core
 
         public bool DefenderIsPlayer, AttackerIsPlayer, DefenderMounted;
 
+        /// <summary>Step 62: the landed blow's damage (0 = the engine plays no reaction to it - the falls' summary counts those).</summary>
+        public double Damage;
+
         /// <summary>Anything happens (a rolled outcome came up).</summary>
         public bool AnyOutcome => Knockdown.Happens || ShieldDrop.Happens || Stagger.Happens || Riposte.Happens;
 
@@ -380,6 +386,8 @@ namespace TraxCombat.Core
             RiderMomentumWeight = s.ImpactMomentumRiderPercent / 100.0;
             RiderMomentumWalk = s.ImpactMomentumRiderWalkMetresPerSecond;
             RiderMomentumGallop = s.ImpactMomentumRiderGallopMetresPerSecond;
+            ShrugOffYields = s.ImpactShrugOffYieldsToImpact;
+            FallBackupSeconds = Math.Max(0, Math.Min(ImpactFallMath.MaxBackupSeconds, (double)s.ImpactFallBackupSeconds));
         }
 
         public static ImpactRules From(TraxSettings s) => new ImpactRules(s);
@@ -467,6 +475,13 @@ namespace TraxCombat.Core
         public double RiderMomentumWeight { get; }
         public double RiderMomentumWalk { get; }
         public double RiderMomentumGallop { get; }
+
+        /// <summary>Step 62, THE LOST FALLS: the game's shrug-off yields to the model - the shrug-off question (asked FIRST in
+        /// <c>Mission.CreateMeleeBlow</c>) decides the blow and refuses the shrug-off when it knocks him down or staggers him.</summary>
+        public bool ShrugOffYields { get; }
+
+        /// <summary>Step 62: a decided fall not seen within this many seconds = our own knockdown blow from the tick, once (0 = no backup).</summary>
+        public double FallBackupSeconds { get; }
 
         /// <summary>The model runs (decides and logs): the master switch FIRST, Athletics, the impact switch.</summary>
         public bool Enabled => ModEnabled && AthleticsOn && ImpactOn;
@@ -944,6 +959,7 @@ namespace TraxCombat.Core
                 DefenderIsPlayer = f.DefenderIsPlayer,
                 AttackerIsPlayer = f.AttackerIsPlayer,
                 DefenderMounted = f.DefenderMounted,
+                Damage = f.Damage,
             };
             bool reeling = defender.Reeling(now);
             double x = Pressure(in r, in f, reeling, ref d);

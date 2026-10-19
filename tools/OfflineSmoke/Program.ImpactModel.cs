@@ -106,6 +106,27 @@ namespace TraxCombat.Tools
             S.Set(SettingsSchema.ImpactSpike, false, SettingSources.File);
             S.Set(SettingsSchema.VerboseLogging, false, SettingSources.File);
             Step48BlockModel();
+            Step62Off();
+        }
+
+        /// <summary>Step 62: the steps 48-61 checks were written before step 62 - the game's shrug-off won, no backup blow (a decided fall
+        /// whose stand-in never plays one would be backed up), no toughness / direction / charge / thrown-back factors - so they pin it all
+        /// off here; step 62's own checks (Program.ImpactCharge.cs) put the embedded defaults back with <see cref="Step62On"/>.</summary>
+        private static readonly ParamDef[] Step62Keys =
+        {
+            SettingsSchema.ImpactShrugOffYieldsToImpact, SettingsSchema.ImpactFallBackupSeconds,
+        };
+
+        private static readonly double[] Step62OffValues = { 0, 0 };
+
+        private static void Step62Off()
+        {
+            for (int i = 0; i < Step62Keys.Length; i++) S.Set(Step62Keys[i], Step62OffValues[i], SettingSources.File);
+        }
+
+        private static void Step62On()
+        {
+            foreach (var p in Step62Keys) S.Set(p, p.Default, SettingSources.File);
         }
 
         /// <summary>Step 56: the steps 48-55 checks were written on the STEP-48 block model - a correct block counted the blocker's T in

@@ -25,7 +25,7 @@ namespace TraxCombat.Tools
         /// <summary>A shrug-off decider that throws (the hook's fail-safe).</summary>
         private sealed class ThrowingShrugOff : IShrugOffDecider
         {
-            public bool ShrugOffKept(Agent victim, in AttackCollisionData collision, float gameThreshold) => throw new InvalidOperationException("smoke: the shrug-off decider failed");
+            public bool ShrugOffKept(Agent victim, in AttackCollisionData collision, in Blow blow, float gameThreshold) => throw new InvalidOperationException("smoke: the shrug-off decider failed");
         }
 
         private static AttackCollisionData CleanHitDealing(int damage)

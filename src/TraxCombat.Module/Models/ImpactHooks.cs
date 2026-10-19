@@ -41,11 +41,13 @@ namespace TraxCombat.Models
     /// Step 52: <c>ImpactTiredNeverShrugsOff</c> - asked by <see cref="TraxDamageModel.DecideAgentShrugOffBlow"/> only when the game says the
     /// blow is SHRUGGED OFF (no flinch). MAIN thread (inside <c>Mission.CreateMeleeBlow</c> of the engine's <c>MeleeHitCallback</c> - checked
     /// in the decompile, Mission.cs 5555; the missile path 5861 is the main thread too and never ours). <paramref name="gameThreshold"/> = the
-    /// base model's own threshold for this blow. True = he still shrugs it off; false = refused (a tired man flinches).
+    /// base model's own threshold for this blow. True = he still shrugs it off; false = refused (a tired man flinches). Step 62: the blow
+    /// itself too (its <c>OwnerId</c> = the attacker) - the shrug-off is the FIRST question of <c>CreateMeleeBlow</c>, so the impact model
+    /// decides the blow here and refuses the shrug-off when it knocks him down or staggers him (else the engine plays no reaction).
     /// </summary>
     internal interface IShrugOffDecider
     {
-        bool ShrugOffKept(Agent victim, in AttackCollisionData collision, float gameThreshold);
+        bool ShrugOffKept(Agent victim, in AttackCollisionData collision, in Blow blow, float gameThreshold);
     }
 
     /// <summary>
@@ -112,7 +114,7 @@ namespace TraxCombat.Models
             if (d == null || victim == null || baseModel == null) return true;
             try
             {
-                return d.ShrugOffKept(victim, in collision, baseModel.CalculateStaggerThresholdDamage(victim, in blow));
+                return d.ShrugOffKept(victim, in collision, in blow, baseModel.CalculateStaggerThresholdDamage(victim, in blow));
             }
             catch (Exception e)
             {
