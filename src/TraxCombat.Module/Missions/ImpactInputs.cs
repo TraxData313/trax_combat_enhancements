@@ -1,3 +1,4 @@
+using System;
 using TaleWorlds.Core;
 using TaleWorlds.Library;
 using TaleWorlds.MountAndBlade;
@@ -76,6 +77,7 @@ namespace TraxCombat.Missions
             {
                 var held = victim.WieldedWeapon.CurrentUsageItem;
                 f.DefenderRangedInHand = held != null && held.IsRangedWeapon && !held.IsConsumable;
+                f.AttackAngleDegrees = AngleFrom(victim, attacker); // step 62: front / side / behind
             }
             switch (f.Event)
             {
@@ -138,6 +140,24 @@ namespace TraxCombat.Missions
             float len = to.Normalize();
             if (!(len > 1e-4f)) return 0;
             return Vec2.DotProduct(v, to);
+        }
+
+        /// <summary>
+        /// Step 62, DIRECTION: the angle (degrees, 0-180) between the victim's body facing (<c>GetMovementDirection()</c> - the direction his
+        /// body turns to, from the native <c>MovementDirectionAsAngle</c>) and the line from him to the attacker: 0 = struck from the front,
+        /// 180 = from straight behind. Engine reads, main thread; 0 when either line is degenerate.
+        /// </summary>
+        internal static double AngleFrom(Agent victim, Agent attacker)
+        {
+            Vec2 facing = victim.GetMovementDirection();
+            Vec2 to = attacker.Position.AsVec2 - victim.Position.AsVec2;
+            float len = to.Normalize();
+            float fl = facing.Normalize();
+            if (!(len > 1e-4f) || !(fl > 1e-4f)) return 0;
+            double cos = Vec2.DotProduct(facing, to);
+            if (cos > 1) cos = 1;
+            if (cos < -1) cos = -1;
+            return Math.Acos(cos) * 180.0 / Math.PI;
         }
 
         private static double WeightOf(MissionWeapon w) => w.Item != null ? w.Item.Weight : 0;

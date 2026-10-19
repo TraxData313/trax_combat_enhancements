@@ -48,6 +48,10 @@ namespace TraxCombat.Missions
         private bool _applyStaggered;
 
         private readonly ImpactFallStats _falls = new ImpactFallStats();
+        private readonly ImpactChargeStats _charge = new ImpactChargeStats();
+
+        /// <summary>Step 62: the landed blows by direction / toughness, the charges (the smoke reads them).</summary>
+        internal ImpactChargeStats ImpactChargeStats => _charge;
 
         /// <summary>Step 62: this mission's decided falls and what became of them (the smoke reads them).</summary>
         internal ImpactFallStats ImpactFallStats => _falls;
@@ -300,6 +304,7 @@ namespace TraxCombat.Missions
             _impact.Note(in d, r.ShadowNow, applied || riposteLive || riderLive, ms, attackerBand);
             // step 52: every decided blow by the attacker's speed into it; step 53: a rider's by his horse's, a couched lance apart
             _hits.NoteMomentum(in d, f.AttackerMounted ? ImpactMath.RiderSpeedBand(in r, d.AttackerSpeed) : ImpactMath.SpeedBand(in r, d.AttackerSpeed), f.AttackerMounted, f.AttackerPassive);
+            _charge.NoteDecision(in d); // step 62: by direction, by toughness
             if (block && (applied || riderLive)) _riders.NoteRiposteOnRider(in d);
             LastImpact = d;
             NoteImpactLines(a, v, in d, in f, in r, !(applied || riposteLive || riderLive));

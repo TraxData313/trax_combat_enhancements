@@ -53,6 +53,7 @@ public class ChargeTests
             AttackerToughness = tA,
             DefenderToughness = tD,
             DefenderRangedInHand = ranged,
+            AttackAngleDegrees = angle,
         };
     }
 
@@ -62,6 +63,57 @@ public class ChargeTests
         var d = default(ImpactState);
         var a = default(ImpactState);
         return ImpactMath.Decide(in r, in f, ref d, ref a, 100, new Dice());
+    }
+
+    // ------------------------------------------------------------------ direction
+
+    [Fact]
+    public void A_blow_from_behind_counts_twice_from_the_side_x1_4_a_block_never()
+    {
+        var r = Rules();
+        Assert.Equal(0, ImpactMath.DirectionOf(in r, 0));
+        Assert.Equal(0, ImpactMath.DirectionOf(in r, 59.9));
+        Assert.Equal(1, ImpactMath.DirectionOf(in r, 60));
+        Assert.Equal(1, ImpactMath.DirectionOf(in r, 120));
+        Assert.Equal(2, ImpactMath.DirectionOf(in r, 120.1));
+        Assert.Equal(2, ImpactMath.DirectionOf(in r, 180));
+        Assert.Equal(0, ImpactMath.DirectionOf(in r, double.NaN));
+        Assert.Equal(2.0, ImpactMath.DirectionFactor(in r, ImpactEvent.CleanHit, 170), 6);
+        Assert.Equal(1.4, ImpactMath.DirectionFactor(in r, ImpactEvent.Kick, 90), 6);
+        Assert.Equal(1.0, ImpactMath.DirectionFactor(in r, ImpactEvent.CleanHit, 20), 6);
+        Assert.Equal(1.0, ImpactMath.DirectionFactor(in r, ImpactEvent.WrongBlock, 170), 6);
+        var front = Decide(Facts(ImpactEvent.CleanHit, 0.5));
+        var rear = Decide(Facts(ImpactEvent.CleanHit, 0.5, angle: 160));
+        Assert.Equal(1.0, rear.Log2R - front.Log2R, 3);
+        Assert.Equal(2, rear.Direction);
+        Assert.Contains("from BEHIND (160°, x2.00)", ImpactMath.Describe(in rear, Facts(ImpactEvent.CleanHit, 0.5, angle: 160), "A", "B", "LIVE"));
+        // live, and the side never past the rear's angle
+        var tuned = Rules(s =>
+        {
+            s.Set(SettingsSchema.ImpactRearPercent, 300, SettingSources.Mcm);
+            s.Set(SettingsSchema.ImpactFlankDegrees, 150, SettingSources.Mcm);
+        });
+        Assert.Equal(3.0, ImpactMath.DirectionFactor(in tuned, ImpactEvent.CleanHit, 170), 6);
+        Assert.Equal(120, tuned.FlankDegrees);
+        Assert.Equal(1.0, ImpactMath.DirectionFactor(Rules(s => s.Set(SettingsSchema.ImpactRearPercent, 100, SettingSources.Mcm)), ImpactEvent.CleanHit, 170), 6);
+    }
+
+    [Fact]
+    public void The_direction_and_toughness_lines_count_landed_blows_on_men_on_foot()
+    {
+        var stats = new ImpactChargeStats();
+        var r = Rules();
+        for (int i = 0; i < 4; i++) stats.NoteDecision(Decide(Facts(ImpactEvent.CleanHit, 0.1, angle: 170, tA: Legionary, tD: Looter)));
+        stats.NoteDecision(Decide(Facts(ImpactEvent.CleanHit, 0.9)));
+        stats.NoteDecision(Decide(Facts(ImpactEvent.RightBlock, 0.9, angle: 170))); // a block: not counted
+        Assert.Equal(new[] { 1, 0, 4 }, stats.DirBlows);
+        Assert.Equal(4, stats.ToughBlows[3]);
+        Assert.Equal(1, stats.ToughUnknown);
+        var lines = stats.SummaryLines();
+        Assert.Contains("impact direction (step 62", lines[0]);
+        Assert.Contains("| rear 4 (x2.00: down ", lines[0]);
+        Assert.Contains("much tougher 3x+ 4 (x2.10: down ", lines[1]);
+        Assert.Contains("not counted (toughness off / unknown) 1", lines[1]);
     }
 
     // ------------------------------------------------------------------ toughness, a ranged man in melee

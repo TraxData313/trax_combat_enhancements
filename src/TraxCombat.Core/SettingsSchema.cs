@@ -920,6 +920,22 @@ namespace TraxCombat.Core
             "Archer caught in melee: hit harder (%)",
             "A blow that lands on a man holding a bow, crossbow or sling counts this much stronger - both hands busy, no guard (130: x1.3). 100 = like anyone.");
 
+        public static readonly ParamDef ImpactRearPercent = Int("ImpactRearPercent", 100, 500, ImpactGroup,
+            "Hit from behind: counts (%)",
+            "A blow that lands on a man from BEHIND counts this much stronger toward staggering or knocking him down (200: twice) - a well-led charge into the back of a unit throws men to the ground. 100 = like a blow from the front.");
+
+        public static readonly ParamDef ImpactFlankPercent = Int("ImpactFlankPercent", 100, 500, ImpactGroup,
+            "Hit from the side: counts (%)",
+            "A blow that lands on a man from the SIDE counts this much stronger (140: x1.4). 100 = like a blow from the front.");
+
+        public static readonly ParamDef ImpactRearDegrees = Int("ImpactRearDegrees", 90, 180, ImpactGroup,
+            "From behind: beyond (degrees)",
+            "A blow counts as from behind when the attacker stands more than this many degrees from where the man faces (120: the back third of a circle).");
+
+        public static readonly ParamDef ImpactFlankDegrees = Int("ImpactFlankDegrees", 0, 180, ImpactGroup,
+            "From the side: from (degrees)",
+            "A blow counts as from the side from this many degrees off his facing up to the 'from behind' angle (60: between 60 and 120). Never above the 'from behind' angle.");
+
         public static readonly ParamDef ImpactMismatchWeight = Float("ImpactMismatchWeight", 0, 2, ImpactGroup,
             "Mismatch weight (pressure per doubling)",
             "How much an outmatched man suffers: every doubling of the mismatch beyond the even band adds this to the pressure on him (0.25: an enemy four times stronger counts as much as being about a third tired). 0 = only tiredness counts.");
@@ -1380,6 +1396,7 @@ namespace TraxCombat.Core
             ImpactMessagesIncludeYourMen, ImpactMessageMinSeconds,
             ImpactPunishEnabled, ImpactPunishAggressionPercent, ImpactPunishGraceSeconds, ImpactPunishRangeMetres,
             ImpactShrugOffYieldsToImpact, ImpactFallBackupSeconds, ImpactToughnessWeight, ImpactRangedInHandPercent,
+            ImpactRearPercent, ImpactFlankPercent, ImpactRearDegrees, ImpactFlankDegrees,
             ImpactMismatchWeight, ImpactEvenBandDoublings, ImpactBodyExponent, ImpactBodyFloorPoints, ImpactStaggeredBonus, ImpactDamageWeight,
             ImpactRefWeightKg, ImpactWeightExponent, ImpactRefSwingSpeed, ImpactSpeedExponent, ImpactBluntFactor, ImpactCutFactor, ImpactPierceFactor,
             ImpactKickFactor, ImpactBashFactor, ImpactSkillMinFactor, ImpactSkillMaxFactor,

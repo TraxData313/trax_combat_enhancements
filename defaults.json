@@ -1215,6 +1215,27 @@
   // (range 100 to 300)
   "ImpactRangedInHandPercent": 130,
 
+  // A blow that lands on a man from BEHIND counts this much stronger toward staggering or
+  // knocking him down (200: twice) - a well-led charge into the back of a unit throws men to
+  // the ground. 100 = like a blow from the front.
+  // (range 100 to 500)
+  "ImpactRearPercent": 200,
+
+  // A blow that lands on a man from the SIDE counts this much stronger (140: x1.4). 100 = like
+  // a blow from the front.
+  // (range 100 to 500)
+  "ImpactFlankPercent": 140,
+
+  // A blow counts as from behind when the attacker stands more than this many degrees from
+  // where the man faces (120: the back third of a circle).
+  // (range 90 to 180)
+  "ImpactRearDegrees": 120,
+
+  // A blow counts as from the side from this many degrees off his facing up to the 'from
+  // behind' angle (60: between 60 and 120). Never above the 'from behind' angle.
+  // (range 0 to 180)
+  "ImpactFlankDegrees": 60,
+
   // How much an outmatched man suffers: every doubling of the mismatch beyond the even band
   // adds this to the pressure on him (0.25: an enemy four times stronger counts as much as
   // being about a third tired). 0 = only tiredness counts.

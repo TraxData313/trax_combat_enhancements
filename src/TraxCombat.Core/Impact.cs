@@ -140,6 +140,10 @@ namespace TraxCombat.Core
         /// <summary>Step 62: the defender holds a bow, crossbow or sling in his hand (a ranged man caught in melee - both hands busy, no
         /// guard).</summary>
         public bool DefenderRangedInHand;
+
+        /// <summary>Step 62, DIRECTION: the angle (degrees, 0-180) between the defender's facing and the line from him to the attacker - 0 =
+        /// struck from the front (the default), 180 = from straight behind.</summary>
+        public double AttackAngleDegrees;
     }
 
     /// <summary>
@@ -284,6 +288,11 @@ namespace TraxCombat.Core
         /// EXTRA = every step-62 factor on R beyond the step-48 mismatch (toughness × ranged × direction, the cap applied with the momentum).</summary>
         public double ToughnessRatio, ToughnessFactor, RangedFactor, Extra;
 
+        /// <summary>Step 62: where the blow came from (0 front, 1 side, 2 behind - <see cref="ImpactMath.DirectionOf"/>), the angle, and the
+        /// factor it gave a landed blow (1 for blocks).</summary>
+        public int Direction;
+        public double AttackAngle, DirectionFactor;
+
         public bool Reeling;
 
         public ImpactRoll Knockdown, ShieldDrop, Stagger, Riposte;
@@ -402,6 +411,10 @@ namespace TraxCombat.Core
             FallBackupSeconds = Math.Max(0, Math.Min(ImpactFallMath.MaxBackupSeconds, (double)s.ImpactFallBackupSeconds));
             ToughnessWeight = Math.Max(0, (double)s.ImpactToughnessWeight);
             RangedInHand = Math.Max(1, s.ImpactRangedInHandPercent / 100.0);
+            RearFactor = Math.Max(1, s.ImpactRearPercent / 100.0);
+            FlankFactor = Math.Max(1, s.ImpactFlankPercent / 100.0);
+            RearDegrees = s.ImpactRearDegrees;
+            FlankDegrees = Math.Min(s.ImpactFlankDegrees, s.ImpactRearDegrees);
         }
 
         public static ImpactRules From(TraxSettings s) => new ImpactRules(s);
@@ -503,6 +516,13 @@ namespace TraxCombat.Core
 
         /// <summary>Step 62: a landed blow on a man with a bow, crossbow or sling in his hand - R × this (1 = off).</summary>
         public double RangedInHand { get; }
+
+        /// <summary>Step 62, DIRECTION: a landed blow from BEHIND (the angle above <see cref="RearDegrees"/>) × this, from the SIDE (from
+        /// <see cref="FlankDegrees"/>) × <see cref="FlankFactor"/>; the front 1.</summary>
+        public double RearFactor { get; }
+        public double FlankFactor { get; }
+        public double RearDegrees { get; }
+        public double FlankDegrees { get; }
 
         /// <summary>The model runs (decides and logs): the master switch FIRST, Athletics, the impact switch.</summary>
         public bool Enabled => ModEnabled && AthleticsOn && ImpactOn;
@@ -860,6 +880,39 @@ namespace TraxCombat.Core
             return Math.Pow(attacker / defender, r.ToughnessWeight);
         }
 
+        /// <summary>Step 62's direction bands: 0 the front, 1 the side, 2 behind.</summary>
+        public const int DirectionCount = 3;
+
+        /// <summary>Step 62: where a blow came from - the angle between his facing and the line to the attacker: above
+        /// <c>ImpactRearDegrees</c> (120) behind, from <c>ImpactFlankDegrees</c> (60) the side, else the front (NaN = the front).</summary>
+        public static int DirectionOf(in ImpactRules r, double angleDegrees)
+        {
+            if (double.IsNaN(angleDegrees)) return 0;
+            if (angleDegrees > r.RearDegrees) return 2;
+            if (angleDegrees >= r.FlankDegrees) return 1;
+            return 0;
+        }
+
+        public static string DirectionName(int band) => band switch
+        {
+            0 => "front",
+            1 => "side",
+            _ => "rear",
+        };
+
+        /// <summary>Step 62: a LANDED blow's factor by where it came from (<c>ImpactRearPercent</c> / <c>ImpactFlankPercent</c>; the front 1); a
+        /// block 1 (a blocked blow met the guard - and a blow from behind is never blocked).</summary>
+        public static double DirectionFactor(in ImpactRules r, ImpactEvent e, double angleDegrees)
+        {
+            if (!IsLanded(e)) return 1;
+            return DirectionOf(in r, angleDegrees) switch
+            {
+                2 => r.RearFactor,
+                1 => r.FlankFactor,
+                _ => 1,
+            };
+        }
+
         /// <summary>Step 62: a LANDED blow on a man with a bow, crossbow or sling in his hand - <c>ImpactRangedInHandPercent</c>; else 1.</summary>
         public static double RangedFactor(in ImpactRules r, ImpactEvent e, bool rangedInHand) => rangedInHand && IsLanded(e) ? r.RangedInHand : 1;
 
@@ -903,7 +956,10 @@ namespace TraxCombat.Core
             d.ToughnessRatio = f.AttackerToughness > 0 && f.DefenderToughness > 0 ? f.AttackerToughness / f.DefenderToughness : double.NaN;
             d.ToughnessFactor = ToughnessFactor(in r, f.AttackerToughness, f.DefenderToughness);
             d.RangedFactor = RangedFactor(in r, f.Event, f.DefenderRangedInHand);
-            d.Extra = d.ToughnessFactor * d.RangedFactor;
+            d.AttackAngle = f.AttackAngleDegrees;
+            d.Direction = DirectionOf(in r, f.AttackAngleDegrees);
+            d.DirectionFactor = DirectionFactor(in r, f.Event, f.AttackAngleDegrees);
+            d.Extra = d.ToughnessFactor * d.RangedFactor * d.DirectionFactor;
             d.R *= d.Extra;
             d.Log2R = d.R > 0 ? Math.Log(d.R, 2) : 0;
             d.MismatchPart = r.MismatchWeight * Band(in r, d.Log2R);
@@ -1192,6 +1248,8 @@ namespace TraxCombat.Core
             if (Math.Abs(d.ToughnessFactor - 1) > 1e-4)
                 s += "; toughness " + f.AttackerToughness.ToString("0.00", c) + " vs " + f.DefenderToughness.ToString("0.00", c) + " (x" + d.ToughnessFactor.ToString("0.00", c) + ")";
             if (Math.Abs(d.RangedFactor - 1) > 1e-4) s += "; a ranged weapon in his hand (x" + d.RangedFactor.ToString("0.00", c) + ")";
+            if (Math.Abs(d.DirectionFactor - 1) > 1e-4)
+                s += "; from " + (d.Direction == 2 ? "BEHIND" : "the side") + " (" + d.AttackAngle.ToString("0", c) + "°, x" + d.DirectionFactor.ToString("0.00", c) + ")";
             return s;
         }
 

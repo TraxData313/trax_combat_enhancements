@@ -72,6 +72,7 @@ namespace TraxCombat.Tools
                 f.TwoHanded = TwoHanded.Contains(attacker.Index);
                 f.Fatal = Fatal && ImpactMath.IsLanded(f.Event);
                 f.DefenderRangedInHand = ImpactMath.IsLanded(f.Event) && RangedInHand.Contains(victim.Index);
+                f.AttackAngleDegrees = ImpactMath.IsLanded(f.Event) && Angles.TryGetValue(victim.Index, out var angle) ? angle : 0;
                 if (f.Event != ImpactEvent.Kick && Weapons.TryGetValue(attacker.Index, out var w))
                 {
                     f.WeaponWeight = w.Kg;
@@ -137,9 +138,10 @@ namespace TraxCombat.Tools
         private static readonly ParamDef[] Step62Keys =
         {
             SettingsSchema.ImpactShrugOffYieldsToImpact, SettingsSchema.ImpactFallBackupSeconds, SettingsSchema.ImpactToughnessWeight, SettingsSchema.ImpactRangedInHandPercent,
+            SettingsSchema.ImpactRearPercent, SettingsSchema.ImpactFlankPercent,
         };
 
-        private static readonly double[] Step62OffValues = { 0, 0, 0, 100 };
+        private static readonly double[] Step62OffValues = { 0, 0, 0, 100, 100, 100 };
 
         private static void Step62Off()
         {
