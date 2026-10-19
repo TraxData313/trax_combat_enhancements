@@ -5715,3 +5715,8 @@ no config-format change (no default moved).
    LOOKS (Toni's eye: a fresh legionary barely moving; a 5 x twitch not jerky - `KickBraceReelPercent` softens it).
 4. `SetCurrentActionSpeed` above 1 holds on the engine's reaction (the braced / short reels measured shorter than untouched ones).
 5. The feel: a few kicks a minute along a line, not constant; nobody frozen in the commit (`NOT played` small); turtles kicked more (`vs a turtle`).
+
+**DEPLOY**: `tools\deploy.ps1` ran whole (build, AssemblyGuard OK, the offline smoke all 145 passed, installed as `Modules\TraxCombatEnhancements.Dev`);
+`tools\SmartAppControl\loadcheck.ps1`: both installed DLLs LOADED (`1.2.0+59ea7337…`): TraxCombatEnhancements.dll SHA-256 A8E7268A…F72D,
+TraxCombat.Core.dll 71FEC749…6F03. The game and the launcher were not running. Tests (947) and the smoke ran in memory (`run_tests.fsx`,
+`run_smoke.ps1`) during the step; the deploy's own smoke ran from the exe this time.
