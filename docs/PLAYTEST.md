@@ -1033,6 +1033,7 @@ Claude the `[summary] impact …` block of every battle.
 | 13 | **D32 - MORALE EYES AND THE FEAR FLOCK** (step 67): green troops in a thin hold line vs veterans in one; a long grind (watch the blobs form and drift, ALT for the blue morale); the fear flock OFF for a minute mid-battle, then ON | 25 | `fear flock shape`, `fear flock drift`, `fear flock cover`, `fear flock by discipline`, `fear flock spells`, `fear flock vs courage and walls`, `hud: ALT bars` (morale clause), `hud: ALT markers - morale line` | ON: spread below OFF, depth ÷ width above it; drift back small under a hold (≤ 1.5 m a minute); green units afraid well before veterans; anchors and sprints seen; the blue bars falling with the fight | men frozen in place with enemies at their shields (the zero-vector stand), a unit sliding back without end, men walking backwards through their own mates |
 | 14 | **D33 - THE WALL PUSHES AS ONE, KICKS THROUGH THE IMPACT MODEL, MEN TIRE MORE** (step 68): your shield wall ordered to ADVANCE (F1, F4) into an enemy line, ~100 v 100; a minute with *Shield walls: advance as one line* OFF, then ON | 25 | `wall slots ON by order`, `wall advance as one`, `wall pulled back` (its step-68 clause), `ai kicks` (whom they landed on, a friend in the way), `impact kicks / bashes landed vs decided`, `Athletics settings at the end` (cost per blow 8.0, right 2.00 / wrong 5.00) | the ADVANCE in-contact leak near the standing one (a few %), not 15%; the wall moving forward as one line and pushing; `unaccounted 0`, decided ≈ landed − on a FRIEND; the lines tiring visibly sooner after the first clash | men standing still in an advancing wall that never closes on the enemy (the step too small), the wall stretching anyway (the frame not honoured), `unaccounted` above 0, `on a FRIEND` still about two thirds of the landed |
 | 15 | **D34 - WINNERS DON'T HANG BACK** (step 69): your 100 v 100 again, a battle you WIN with green / mixed infantry (charge once the lines meet); then a losing one (looters into your wall) | 20 | `fear flock and winning`, `idle men`, `fear flock by discipline`, `fear flock spells` (sprints by chance) | the losing band's fear before = after, the clear band's after 0; your tired winners go in, no knot standing back; `idle men` OURS small (the standing ones ranged or the game's); sprints by chance far below 163 | the idle line's OURS large with the fear flock / courage after a win (tell Claude the line), the losing band changed |
+| 16 | **D35 - THE FLOCK IS A WIDE BAND, NO LONE RUNNER BEHIND THE LINE** (step 70): your ~30 men in a shield line against ~50 looters (your 15:59 battle again); stay on your horse right behind your line | 15 | `fear flock band`, `lone runners`, `fear flock shape`, `sprint into contact` | the looters stand as a WIDE, shallow mass along your line, 4-6 deep (`fear flock band … ON` men per file ~4-6, width near your line's), a few step in to swing and go back; no looter alone behind your line - `lone runners` small, the fixes' walks / sprints ended counted | a deep column again (men per file above 8, width 2-3 m), lone runners standing behind your line - tell Claude the two lines |
 
 Then play normally (parts E-G). Your gut on each family - too many / about right / too few - is the most useful thing to send.
 
@@ -1710,6 +1711,45 @@ near the mass. Losing men flock exactly as before. Settings: Advanced, "Courage 
 within* 20 (0 = the old pull without a threat).
 **Broken - tell Claude**: the losing band's fear changed (before ≠ after), `fear … errors` above 0, `idle men … errors` above 0, the idle line's
 `OURS` large with the fear flock or courage after the win.
+
+**D35. THE FLOCK IS A WIDE BAND, NO LONE RUNNER BEHIND THE LINE (step 70, ~15 min - one battle, two looks; the defaults).** Your 30 v 50 looters of
+2026-10-19 15:59: the frightened looters stood as a deep, narrow column (~15 men deep - the log's `depth ÷ width in contact 1.44, 3.5 m deep, 2.6 m
+wide`, `stepped in behind a comrade 1394 looks`) where you wanted a wide, shallow mass along your whole line, 4-6 deep, a few stepping forward to
+swing and back; and right after the first charge a few looters came round BEHIND your line alone - one stood next to you on your horse. The cause
+of the column: the flock's shelter was a POINT (a charge pulled its men right onto it), and stepping in behind a comrade stacked the files. Now
+the shelter is a BAND along your front: as wide as your line (or their men in ranks), 4 ranks deep a little afraid to 6 terrified, its front 1.5
+m off yours pushed back by fear; each man keeps his place along the front and only closes up from behind; men too deep in a file slide out to
+its ends; front men within 2.5 m of you are let go to swing and walked back past 2 m. And a man ALONE (fewer than 2 mates near, an enemy within 8
+m) out beyond his line (4 m ahead of his unit's front, or past yours) is a LONE RUNNER: his fever no longer sends him in alone, his charge / fever
+sprint ends, and he walks back round your line to his group (unless he runs down a beaten enemy). Settings: Advanced, "Courage and cohesion (AI)"
+- *Fear flock: a wide band, not a point*, *Fear band: ranks deep …* (two), *file width*, *rank depth*, *at most this wide*, *front stands off the
+enemy*, *Fear flock: front men strike within*, *back to the mass beyond*, *Lone runners come back*, *Lone runner: ahead of his line*.
+1. **Looters into your wall** (your ~30 men in a shield line or a plain line, ~50 looters; let them charge, then let it grind). **What you should
+   see**: after the first clash the looters back off a little into a WIDE mass facing your whole line, 4-6 men deep - no tall column - with a man
+   now and then stepping in to swing and going back. **[summary]** `fear flock band (step 70 - a wide band along the enemy's front, 4-6 ranks) -
+   in contact, each unit's men per occupied 1.0 m file (the depth in RANKS): ON a men per file (p90 b), the deepest file c, width d m (p90 e), files
+   over the band's ranks f% (… samples) | OFF …; places: no band yet (the point) …, in the band as he was …, compressed in depth …, slid out of a
+   full file …, a full file, no room in the band …; steps in behind a comrade kept …, refused (his file full - he slides instead) …; a charge's men
+   left to their AI inside the band …; front men let go to STRIKE N looks …, walked back past the leash … M` - **a 4-6, d near your line's width,
+   f small, N above 0**. The step-67 line `fear flock shape … depth ÷ width in contact ON` well below your 1.44. **[fear]** the first spell line
+   may end `; THE BAND (step 70) 20.0 m wide, 5 ranks (20 files), its front … m from him - …`.
+2. **Stay on your horse right behind your line** during the first charge. **What you should see**: no looter alone behind your line - one who
+   breaks through stops sprinting and walks back round the end of your line to his mates. **[summary]** `lone runners (step 70 - the fixes ON; …):
+   fixes ON N man-s (M men), OFF … - by cause: the sprint into contact (step 64) …, the punish step-in (step 54) …, a courage surge (step 49b) …,
+   the fever press (step 49b) …, chasing a target behind the enemy's front …, the game itself …; his target behind the enemy's front: you (the
+   player) …, a hero …, another man …; …; THE FIXES: the fever's press refused for a man alone …, walks back forced …, surges / punish step-ins
+   ended …, sprints into contact ended …` - **N small (a few man-seconds), the forced walks and the sprints ended counted**; the cause columns
+   tell which suspect it was (your 15:59 log could not - send this line). **[courage]** `first LONE RUNNER by … (step 70): (name) at … s - … m ahead
+   of his unit's front, … m past the enemy's front, alone …; his target you (the player) BEHIND the enemy's front …`; `first LONE RUNNER walked back
+   this battle (step 70) …`; **[sprint]** `first sprint INTO contact ended for a lone runner this battle (step 70) …`; `sprint into contact` ends
+   `alone or past the enemy's front (step 70) N`.
+3. **The A / B** (optional, the same fight again): *Fear flock: a wide band, not a point* OFF = step 67's point (the column back; `fear flock band …
+   OFF` side filled); *Lone runners come back* OFF = measured only (the `lone runners` OFF column grows).
+**Too much / too little**: the mass too thin and wide - *ranks deep* up (5 / 7); still too deep - check `files over the band's ranks` (high = the
+men cannot get out to the ends - tell Claude); too far off your line - *front stands off the enemy* 0.5; front men never swing - *front men strike
+within* 3; lone runners walked back too eagerly from a mass's edge - *Lone runner: ahead of his line* 6.
+**Broken - tell Claude**: `fear … errors` / `lone runners … errors` above 0; the band's men per file above 8 with the band on; a looter standing
+behind your line for many seconds with `lone runners` near 0 (the geometry missed him).
 
 ---
 

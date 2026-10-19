@@ -616,6 +616,59 @@ wall, a bow / crossbow / javelin (normal - skirmishers stand off to throw) or th
 <sub>Settings ("Courage and cohesion (AI)"): `FearWinCalms` on, `FearWinEvenOddsPercent` 100, `FearWinClearOddsPercent` 200,
 `FearWinShakenPercent` 50, `FearThreatMetres` 12, `FearMopUpWinPercent` 50.</sub>
 
+### A wide band, not a column (step 70)
+
+The frightened used to draw toward **one point** behind their unit's centre - every man slid toward it sideways as
+much as backwards - so a looter unit facing your shield wall became a deep, narrow column, ~15 men deep. Now the
+point is a **band** laid along the enemy's front:
+
+- **Its direction** is the enemy's front line (the enemy formation's own facing when it faces them).
+- **Its width** is the frontage they face - your line - or their men in ranks of 1 m files, whichever is wider, at
+  most 40 m.
+- **Its depth** grows with fear: **4 ranks** a little afraid, **5** at a middle pull, **6** terrified (1 m a rank).
+- **Its front** stands 1.5 m short of your front, pushed back up to 4 m more by fear, creeping back no faster than
+  the drift above.
+- **Each man keeps his place along the front** and only closes up in depth. In a file deeper than the band's ranks,
+  the men behind them **slide out toward the band's ends** - the mass widens instead of deepening. Nobody steps in
+  behind a comrade where the file is already full.
+- **Front men still fight:** a frightened man in the front rank with an enemy within 2.5 m steps in and swings; if
+  he ends up more than 2 m ahead of his place he is walked back to the mass.
+
+| Fear pull | 0 - 0.24 | 0.25 - 0.74 | 0.75 - 1 |
+|---|---|---|---|
+| **Ranks deep** | 4 | 5 | 6 |
+
+Worked example (the battle that asked for it): 40 green looters, pull 0.61, in a column 3 wide and 14 deep before a
+20 m shield line. The old point shelter squeezed them into **one file of 40**; the band gives **9 files of about 4-5,
+the deepest 5** - a wide, shallow mass, 9 m across. 120 terrified men before the same line fill it 6 deep; 300 fill
+the 40 m cap and the rest stand where their depth puts them.
+
+The summary's **"fear flock band"** line gives, in contact, men per occupied 1 m file (the depth in ranks) and the
+deepest file, the width - mean and p90, ON vs OFF - and how many files are deeper than the band's ranks.
+
+<sub>Settings ("Courage and cohesion (AI)"): `FearBandEnabled` on, `FearBandRanksMin` 4, `FearBandRanksMax` 6, `FearBandFileMetres` 1,
+`FearBandRankMetres` 1, `FearBandMaxWidthMetres` 40, `FearBandGapMetres` 1.5, `FearStrikeReachMetres` 2.5, `FearStrikeLeashMetres` 2.</sub>
+
+### No lone runner behind your line (step 70)
+
+A **lone runner** is an AI man on foot (never you, never riders) with **fewer than 2 mates** near him and an enemy
+within 8 m, who stands **more than 4 m ahead of his own unit's front** or **past the enemy's front**. Men charge in -
+but they do not break up like that:
+
+- **The fever of a charge no longer sends a man in alone.** With mates around him it still presses against bad odds
+  (the first clash happens); alone, courage decides him.
+- **A charge's or a fever's sprint ends** the moment he is alone or past the enemy's front - the mass keeps its
+  sprint and its punch.
+- **A lone runner walks back to his group** (courage's own walk back, round the end of the enemy's line if it stands
+  between, on one side), whatever the odds - unless he is chasing a **beaten** enemy (his side two to one around him
+  and the enemy near him broken).
+
+The summary's **"lone runners"** line counts them - man-seconds and men - by what put them there: a sprint into
+contact, a punish step-in, a courage surge, the fever's press, chasing a target behind the enemy's front (and whom:
+you, a hero, another man) or the game itself, with the fixes ON and OFF.
+
+<sub>Settings ("Courage and cohesion (AI)"): `LoneRunnerEnabled` on, `LoneRunnerAheadMetres` 4.</sub>
+
 ## 11b2. Cavalry flocking: riders go in as waves
 
 In the base game a charging rider picks a target, rides through, turns and goes again — every rider on his

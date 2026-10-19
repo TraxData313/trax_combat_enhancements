@@ -170,13 +170,17 @@ losing men need better odds.
   there — about two men for every defender. Thirty looters against your twenty-man wall stand in an arc in
   front of it.
 - **The charge still goes in.** A man in his fever who has not been hit attacks whatever the odds: the first
-  clash always happens.
+  clash always happens - but only with his mates around him. A man who ends up **alone past your line** (his
+  sprint carried him through, or he chased you on your horse) no longer stays there: his sprint stops and he
+  walks back round your line to his group, unless he is running down a beaten enemy.
 - **Routing men run for it.** When a man's morale breaks, he spends his whole sprint on the first get-away —
   so a broken line scatters fast, and men who spent their sprint charging have little left to flee with.
 
 **Fear makes a herd.** As a unit loses its morale and its breath, its men care less about their places in the line
-and more about being **among their own** - behind a comrade if they can. A frightened unit draws in on itself and
-edges back from you: a blob instead of a formation, easy to wrap round. Green troops do it early - a looter line
+and more about being **among their own**. A frightened unit closes up and edges back from you - not into a deep
+column, but into a **wide, shallow mass** along your line, four to six men deep: each man keeps his place along the
+front and only closes up from behind; men who would stand too deep slip out to its ends. Its front men still step
+forward to swing at what is in reach and come back to the mass. Green troops do it early - a looter line
 with nobody behind it thickens by itself - while veterans hold their shape until they are truly spent. A fresh
 comrade in front steadies a man for a while; a shield wall holds until its morale breaks. Hold ALT to see it
 coming: each soldier you look at shows his **morale** in blue under his bars, and the nearest formations say

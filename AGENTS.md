@@ -220,7 +220,23 @@ morale lines; the unit's mean win of its men in contact when better) calms it - 
 win; no enemy within `FearThreatMetres` 12 = no pull (one enemy read beyond courage's 8 m); a CHARGING unit whose men win `FearMopUpWinPercent` 50 %+
 is MOPPING UP - no loose-mass leash; spells end "winning" / "no enemy near"; THE IDLE-MEN DIAGNOSTIC (Core `IdleMen.cs`, measurement only): AI men
 of a charge / advance standing > 5 s with an enemy within 25 m and none within 3 m, by who holds them (ranged - normal -, the wall, the fear
-flock, courage, the brace, the game) - the [summary] "fear flock and winning" and "idle men" lines (PLAYTEST D34). The bar for the
+flock, courage, the brace, the game) - the [summary] "fear flock and winning" and "idle men" lines (PLAYTEST D34).
+ THE FLOCK IS A WIDE BAND + NO LONE RUNNER BEHIND THE LINE (step 70, Toni's 30 v 50 looters of 2026-10-19 15:59 - the
+frightened looters stood as a column ~15 deep (`depth ÷ width in contact 1.44`, 3.5 m deep, 2.6 m wide, `stepped in behind a comrade 1394 looks`)
+where he wanted a wide mass 4-6 deep along his line; and a few looters ran round BEHIND his line alone - DESIGN decisions 63 / 64, AI_NOTES "Step 70",
+11 Advanced settings, no migration): the cause - step 67's shelter was a POINT (a hold's place slid toward it sideways as much as back, a charge
+pulled its men onto it) and stepping in behind a comrade stacked the files; now a BAND per unit (Core `FearBand.cs`): along the enemy's front (the
+enemy its men see, aligned with the enemy formation's own facing - `IFearBody.EnemyFront`), as wide as that frontage or the men in ranks of
+`FearBandFileMetres` 1 m (at most `FearBandMaxWidthMetres` 40), `FearBandRanksMin` 4 to `FearBandRanksMax` 6 ranks deep by the pull, its front
+`FearBandGapMetres` 1.5 m short of the enemy pushed back 4 m × the pull at step 67's drift cap; a man keeps his place ALONG the front and is
+compressed in depth by his rank in his file (ranks by id at each publish); the men behind a full file slide to the nearest file with room
+(toward the ends; reserved; kept for the spell); no stepping in behind a comrade in a full file; a front man with an enemy within
+`FearStrikeReachMetres` 2.5 is let go to strike, walked back past `FearStrikeLeashMetres` 2 (`FearBandEnabled` off = the point); THE LONE
+RUNNER (Core `LoneRunner.cs`): an AI man on foot alone (fewer than 2 mates near, an enemy within 8 m) more than `LoneRunnerAheadMetres` 4
+ahead of his unit's front or past the enemy's front - counted by cause (sprint into contact / punish / surge / fever / chasing a target behind
+the front - you, a hero - / the game); `LoneRunnerEnabled`: the fever no longer presses a man alone, a sprint into contact ends alone or past
+the enemy's front (`SprintEnd.LoneRunner`), a lone runner walks back (courage's walk, its side round the enemy kept, never turned round by his
+fever) unless he chases a beaten enemy; the [summary] "fear flock band" and "lone runners" lines (PLAYTEST D35). The bar for the
 fighter you look at is LATER (DESIGN §3; its settings wait in DESIGN's "Planned parameters"). Words:
 the pool/bar/points are "Athletics", the character-screen skill is "the Athletics skill" (it
 used to be called "endurance"), the "peak line" is the white mark at the top quarter of the bar,
@@ -368,7 +384,9 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               description, apply timing (Live / NextBattle); Normalize, Format;
                               its Default comes from defaults.json (DefaultsFile), never code; step 59:
                               SettingsPage (Player / Advanced) + ParamGroup.Page
-  SettingsSchema.cs           EVERY setting of DESIGN's table (363 - step 69's FearWinCalms / FearWinEvenOddsPercent / FearWinClearOddsPercent /
+  SettingsSchema.cs           EVERY setting of DESIGN's table (374 - step 70's FearBandEnabled / FearBandRanksMin / FearBandRanksMax / FearBandFileMetres /
+                              FearBandRankMetres / FearBandMaxWidthMetres / FearBandGapMetres / FearStrikeReachMetres / FearStrikeLeashMetres / LoneRunnerEnabled /
+                              LoneRunnerAheadMetres after FearMopUpWinPercent, all Advanced; 363 - step 69's FearWinCalms / FearWinEvenOddsPercent / FearWinClearOddsPercent /
                               FearWinShakenPercent / FearThreatMetres / FearMopUpWinPercent after FearChargeLooseMetres, all Advanced; 357 - step 68's ShieldWallAdvanceAsOne / ShieldWallAdvanceStepMetres / ShieldWallAdvanceNearMetres /
                               ShieldWallKickReturnMetres after ShieldWallPullBackSeconds and AiKickFriendClearMetres after AiBashCooldownSeconds, all Advanced;
                               352 - step 67's 25 fear-flock settings after CourageTimidMeleeMetres
@@ -717,6 +735,22 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               since, the holders counted), IdleMath (EnemyMetres 25, ContactMetres 3, StandMetresPerSecond 0.5, Seconds 5, MaxGapSeconds 2;
                               Gap / Idle / Advance / Holder / MovingOrder), IdleStats (man-seconds, men and the enemy's distance by holder + the [summary]
                               "idle men" line)
+  FearBand.cs                 step 70 (AI_NOTES "Step 70", DESIGN decision 63) - THE WIDE BAND: FearBandPlaceKind (no band / kept / compressed / slid /
+                              full), FearBandMath (Ranks by the pull, Width = max(the enemy frontage, men ÷ ranks × the file) capped, LateralCentre - along
+                              the enemy's front, FrontWanted / FrontStep - short of the enemy, pushed back by the pull, the drift cap back, Files, RankOf,
+                              Slides, FreeFile - toward the ends on a tie; MaxFiles 64, MaxSamples 512, AlignCosine −0.5), the FearUnits partial (each
+                              period's moments and samples with ids and bin points - a slid man's file; PublishBand - the direction (the enemy seen, the enemy
+                              formation's facing), own / enemy front, the band's front point, depth, width, centre, files, each man's RANK in his file by id;
+                              BandPlace - his lateral kept, depth by rank, the slide reserved; Fronts / PastEnemyFront - the lone runner's geometry;
+                              NoteEnemyFront), FearBandStats (men per occupied file - the depth in RANKS - / the deepest / the width mean and p90 ON vs OFF,
+                              files over the ranks, places by kind, steps in kept / refused, strikes + the [summary] "fear flock band" line)
+  LoneRunner.cs               step 70 (DESIGN decision 64) - THE LONE RUNNER: LoneCause (sprint into contact / punish / surge / fever press / chasing a target
+                              behind the front / the game), LoneTarget (you / a hero / another), LoneRunnerRules (ModEnabled FIRST, LoneRunnerEnabled,
+                              AheadMetres; Describe), LoneRunnerMath (Alone, Beyond, IsLone, Winning - the BEATEN: odds at the clear line and the enemy shaken
+                              0.5+, Cause, FeverPresses / ForcesWalk / SprintEnds - the three fixes; EnemyMetres 8, PastFrontMetres 1), LoneMind (per man:
+                              alone and when, lone, the cause, Forced - a walk back running), LoneRunnerStats (man-seconds and men by cause ON / OFF, targets
+                              by whom, the fixes' counts + the [summary] "lone runners" line); Courage.cs: CourageMind.Look(…, lone), RoundSide,
+                              CourageMath.Direction(…, ref side) - the side round the enemy kept for a walk; Sprint.cs: SprintEnd.LoneRunner
   MoraleEyes.cs               step 67 pure: MoraleMarkRules (ModEnabled FIRST, ShowMoraleMarks, the enemy by AthleticsMarksShowEnemy; Off), MoraleMarkMath
                               (the blue #4C9BFF, Fill = morale ÷ 100, Known), MoraleLabelRules / MoraleLabelHidden / MoraleLabelMath (the nearest
                               MoraleLabelMax within MoraleLabelMetres, "morale 64, fresh 41%"), MoraleLabelStats (+ the [summary] "morale line" line);
@@ -955,7 +989,8 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               FormationIndex, the order by GameBraceBody.KindOf + a wall arrangement, CachedAveragePosition, CurrentDirection; Slot =
                               GetCurrentGlobalPositionOfUnit(agent, true)), FearBodyDefault; step 69: OrderKind (step 23's KindOf), NearestEnemy
                               (Mission.GetNearbyEnemyAgents into a reused MBList), Ranged (a ranged weapon in hand - thrown too -, a ranged / horse-archer /
-                              skirmisher formation by its index or PhysicalClass)
+                              skirmisher formation by its index or PhysicalClass); step 70: EnemyFront (CachedClosestEnemyFormation - its centre, facing,
+                              Width, Depth; once a unit a period), Target (GetTargetAgent - you / a hero / another; lone runners only)
   Missions/AthleticsLogic.Fear.cs  step 69: FearLookCore's WIN (FearNear.Odds / Shaken from courage's look - FearMath.Win / WinMixed / Calmed, the unit
                               table fed the fear BEFORE the win and his own win), the threat line (one NearestEnemy beyond the scan), the charge's
                               mop-up (no leash / anchor / step-in), FearEnd.Winning / NoThreat; IdleLook (from FearLookCore and a held wall man's
@@ -968,6 +1003,13 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               16's hook, AskFearSprint), FearWallBreaks / NoteWallBreakMan (step 41's LookWall asks them), EndFear on every path,
                               FearLeftField, CloseFear, WriteFearSummary (after courage's lines); TrackedAgent.Fear / Morale / CourageLevel;
                               AiInputHook.cs: AiInputState.Flock (FlockX / Y), SetFlock, ApplyFlock (after the wall's pull and the walk back)
+  Missions/AthleticsLogic.LoneRunner.cs  step 70: StartLoneRunners / NoteLoneSettings (the [courage] lines), LoneLook (at courage's look, ON and OFF:
+                              alone, out by the band's frame, the cause, IFearBody.Target for lone men only, the first of each cause in full), NoteFeverRefused,
+                              NoteForcedWalk (LoneMind.Forced), LoneSprintEnds (RunSprint's 0.25 s check of a sprint into contact - SprintEnd.LoneRunner);
+                              AthleticsLogic.Courage.cs: the fever / shock once before ON / OFF, FIX 1 (no fever press alone or on a forced walk), FIX 3
+                              (Look(…, lone), a surge cancelled, the walk's side kept), AthleticsLogic.ImpactPunish.cs: no punish step-in for a lone / forced man;
+                              AthleticsLogic.Fear.cs: ReadEnemyFront, the band place (a hold blends, a slid man the whole way, a charge loose in the band), no
+                              step-in in a full file, FRONT MEN STRIKE; TrackedAgent.Lone
   Missions/FlockBody.cs       step 55: IFlockBody + GameFlockBody (Agent.SetScriptedPosition / DisableScriptedMovement, the charge gate, the kit, the goal)
   Missions/AthleticsLogic.Flock.cs  step 55: the census every 0.5 s (ON and OFF), eagerness → free / flocking, the groups, the heading, the flip, the
                               passes, every end path, the summary
@@ -1131,7 +1173,10 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
   Hud/FeverMarksVM.cs         its ViewModels: a GROW-ONLY POOL of FeverMarkVM (IsShown, PositionX / Y, Width / Height in pixels,
                               Fill, FillColor, FrameColor; step 46: BoxWidth / BoxHeight, FeverShown, BarShown, BarWidth / Height,
                               BarFill, BarUsable, BarColor, BarFrameColor, BarWoundColor)
-tests/TraxCombat.Core.Tests/  net8.0 xUnit (1027 - step 69: + Step69Tests.cs - the six settings, the win, the unit's win, the
+tests/TraxCombat.Core.Tests/  net8.0 xUnit (1042 - step 70: + Step70Tests.cs - the 11 settings placed / live, the master switch first and the sentences, the band's
+                              ranks / width / lateral centre / files / front creep, the slide rule and the free file, the band facing his line, a man's place kept
+                              along the front, THE 40-MAN LOOTER EXAMPLE (step 67's point 1 file of 40 vs the band 9 files, the deepest 5), the band line, alone /
+                              out / the lone runner, the cause order, the three fixes, courage's forced walk, the lone line, SprintEnd.LoneRunner; 1027 - step 69: + Step69Tests.cs - the six settings, the win, the unit's win, the
                               worked example (a tired green / veteran at odds 0.5-3), losing = step 67, the threat line, the mop-up, the idle watch and its
                               line, the winning line; 1004 - step 68: + Step68Tests.cs - the five settings, the pace, the by-order and pace lines, the walk
                               back after a kick, no kick through a friend and whom a kick hit, the kick coverage line, the costs and format 14; the
@@ -1381,7 +1426,10 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               creep, an anchor, courage first, a sprint back, a wall that breaks, a charge's loose mass), the A / B (spread ON 1.94 vs
                               OFF 3.01 m), the cost (1000 men ~0.2 ms, 0 bytes), the morale eyes through the real views
                               step 69 (Program.Step69.cs): winners don't hang back (calmed / mop-up / losing = step 67 / no threat), idle men by
-                              holder, the cost (1000 men 0.31 ms a tick, 0 bytes), the master-switch part (160 steps);
+                              holder, the cost (1000 men 0.31 ms a tick, 0 bytes), the master-switch part (160 steps); step 70 (Program.Step70.cs): the
+                              band (a looter column before a 20 m line - the deepest file 6 over 8; OFF 25 deep), front men strike, no lone runner behind the line
+                              (fixes OFF held by his fever, ON walked round the line to his group; his sprint ended alone, a mass keeps its), the cost (1000 men
+                              0.20 ms a tick, 0 bytes), the master-switch part (163 steps);
                               step 68 (Program.Step68.cs): the wall pushes as one through the real logic + its cost (1000 men 0.041 ms a tick,
                               0 bytes), back to the line after a kick, no kick through a friend, kicks landed vs decided through the real seams, the
                               master-switch part (157 steps; the config checks work for any tuned default);

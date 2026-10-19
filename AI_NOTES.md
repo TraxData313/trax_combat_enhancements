@@ -6183,3 +6183,124 @@ at all) and keeps winning on - those worlds are losing ones and pass unchanged.
 5. Cost: `fear flock vs courage and walls … cost` with the extra reads (`enemy reads` in the two lines).
 
 **DEPLOY**: `tools\deploy.ps1` built HEAD 784f6df; Smart App Control blocked the freshly built AssemblyGuard.dll, so the rest of deploy.ps1 ran in memory - `tools\SmartAppControl\run_guard.fsx` (OK, no forbidden assembly), `run_smoke.ps1` (all 160 passed), `install_dev.ps1` (Modules\TraxCombatEnhancements.Dev; TraxCombatEnhancements.dll SHA-256 C6EE039F…E2F1, TraxCombat.Core.dll E8A23831…39A3); `loadcheck.ps1`: both installed DLLs LOADED (`1.2.0+784f6df8…`). The game and the launcher were not running. Tests (1027) ran with `dotnet test` directly; `dotnet run --project tools/DefaultsTool -- refresh` ran directly. Windows security untouched.
+
+
+## Step 70 — the flock is a wide band + no lone runner behind the line (DONE 2026-10-19; dev build only, not uploaded)
+
+**Toni's 30 v 50 looters (2026-10-19 15:59, battle_terrain_001, 258 s, played on the step 67 build - before steps 68 / 69)**: the screenshot - the
+looter mass facing his shield line a deep, narrow column ~15 men deep; his sketches - NOW a narrow, tall blob above a wide line, WANTED a wide, shallow
+mass along the whole line, 4-6 men deep, a few stepping forward to swing and back. And right after the first charge a few looters came round BEHIND his
+line, alone, far from their formation and mates - one stood next to him on his horse right behind his line: "they will charge, but they won't break up
+like that, 1. so far from their formation and line, and 2. from the rest of their comrades". The summary: `fear flock shape … depth ÷ width in contact ON
+1.44 (depth 3.5 m, width 2.6 m)`; `stepped in behind a comrade 1394 looks`; `green … pull 0.61, afraid 93.8%`; `flocking looks by order hold / move 146,
+charge 9705`; `charge men left to their AI inside the loose mass 4609 looks`; `courage fever and surges: fever presses overriding timidity 450 looks`;
+`sprint into contact … 168 (ended by his first attack 88, he stopped 61 …)`; `fever sprints: started 38`; `courage isolated … 9 s`. The first spell
+line: `Looter at 10.4 s - morale 34, bar 100% … no enemy near → … pull 0.65; order charge; his place 8.0 m from him, the shelter 0.0 m behind the unit's
+centre, sprinting 1.25 s` - fear from the looters' low morale before any contact, under a charge.
+
+**THE CAUSE OF THE COLUMN (the code)**
+- `FearMath.Place` = slot + p × (shelter − slot): every man's place slid toward ONE point - sideways as much as backwards; a 3-wide column became
+  ×(1 − p) narrower.
+- A CHARGE (no slot): a man beyond `LooseRadius` = (1 − p) × 12 m of the shelter was pulled ONTO it (`tx = sx`). Under the looters' charge order (54 s
+  from the order to contact - `fever contact … mean 18.8 s`), the frightened unit (morale 34 → pull 0.65 before contact; step 69's threat line now stops
+  that beyond 12 m) was drawn into a ball around its centre before it met the line.
+- "Uncovered → lean p of the way to the spot 1 m behind the nearest comrade in front" (`CoverSeeks`, 1394 looks) stacked men into files.
+
+**70.1 THE BAND (Core `FearBand.cs`: FearBandMath, the `FearUnits` partial, FearBandStats; DESIGN decision 63)**
+- The unit table also keeps each period's POSITIONS: moments (Σx, Σy, Σxx, Σxy, Σyy - the men's mean and covariance, projected on any direction), up to
+  `MaxSamples` 512 samples per unit with each man's id and his BIN point (his position, or a slid man's file - `Note(…, man, binX, binY)`); the arrays
+  allocated once per unit and battle, the first time it is seen.
+- Every publish (`PublishBand`, after the shelter): u = toward the enemy (−"away" from the enemy his men in contact see; else the enemy formation's
+  centre - `IFearBody.EnemyFront` = `CachedClosestEnemyFormation`'s `CachedAveragePosition` / `CurrentDirection` / `Width` / `Depth`, read once a unit a
+  period in `FearLookCore`, ON and OFF; aligned with that formation's facing g when g·u < −0.5; else the unit's facing); e = perp(u). The men's own front
+  = mean·u + √3 σ_u (a uniform spread's half extent); the CONTACT = the seen enemy centroid along u, else the enemy formation's front (centre − depth / 2);
+  ranks = round(`FearBandRanksMin` 4 + (`FearBandRanksMax` 6 − 4) × the unit's mean pull); depth = ranks × `FearBandRankMetres` 1; the front WANTS contact
+  − `FearBandGapMetres` 1.5 − `FearShelterBackMetres` 4 × pull (no contact: the men's own front − 4 p), starts at the men's own front (no jump), steps
+  forward freely and back at most `DriftCap` (step 67's 6 m a minute, a quarter under a hold / wall) - kept as a world point so it survives u turning;
+  width = max(the enemy frontage, men ÷ ranks × `FearBandFileMetres` 1), at most `FearBandMaxWidthMetres` 40; the lateral centre = the men's own, slid to
+  lie along the enemy's front (inside it when narrower, covering it when wider - `LateralCentre`); files = ceil(width ÷ the file) ≤ 64.
+- The FILES: each sample binned by its bin point; `FileCount` / `FileFront` (its front-most man); each man's RANK = 1 + the men of his file ahead of him
+  (ties by sample order) - O(n²) per unit per publish (500 men = 250 k comparisons every 0.5 s); published with his id (`_pubId` / `_pubFile` / `_pubRank`).
+- `BandPlace(r, key, now, base, his position, fm, out place, out lateral, out fileFull, man)`: his file / rank by id (else from his position and the
+  file's front-most man - `RankOf`); his lateral = the base's (a slid man's file) clamped into the band; his depth: ahead of the front = the front,
+  behind the rear = front − (min(rank, ranks) − 0.5) × the rank (never all onto the rear line), inside = kept; `Slides(count, ranks, rank)` (count >
+  ranks and rank > ranks + 0.5) → `FreeFile` (the nearest file with fewer than ranks men; a tie → the side farther from the middle - toward the ends),
+  the count moved at once (a reservation the next men see), his place there = front − (its men + 0.5) × the rank; `fm.HasSlide` + `SlideX / Y` for
+  the spell (`FearMind.End` clears it); a slid man moves on only if his new file overfills behind him; no room anywhere = `Full`.
+- The module (`FearLookCore`): band on and live → a hold: `Place(slot, the band place, pull)` (the 12 m cap kept), a slid man's lateral replaced by the
+  slide's (the whole way along the front - only the depth blends); a charge: the band place from his own position, LOOSE while |Δ depth| ≤ the loose
+  radius (+2 m hysteresis) and |Δ lateral| ≤ 1.5 m (+2 m) - else pulled; "step in behind a comrade" only when his file has room (else counted
+  `StepInsRefused`); the mop-up / the anchor / the dead zone / the walls as before.
+- FRONT MEN STRIKE (`FearStrikeReachMetres` 2.5 / `FearStrikeLeashMetres` 2): a flocking man nobody covers with the nearest enemy within the reach and
+  not more than the leash ahead of his place (along the line to that enemy) - `fm.Striking`, the flock's input off (his AI steps in and swings; the
+  stand at 0, 0 pinned him - step 67's UNVERIFIED #2); beyond the leash he is walked back. Works with the band off too (the older smoke pins the reach 0).
+- The [summary] "fear flock band" line (`FearStats.Band`): in contact (the enemy seen), per unit per publish, measured over the men's REAL span in
+  `FearBandFileMetres` files (its own bins - ON and OFF): men per occupied file (the depth in RANKS) mean / p90, the deepest file, the width (occupied
+  files × the file) mean / p90, the files over the band's ranks; the places by kind; steps in kept / refused; the charge's loose men; strikes / leashed.
+
+**70.2 THE LONE RUNNER (Core `LoneRunner.cs`; Module `AthleticsLogic.LoneRunner.cs`, `AthleticsLogic.Courage.cs`; DESIGN decision 64)**
+- The suspects against the code: (1) step 49b's fever press `return`s before courage's decision (`CourageMath.FeverPresses` → `EndTimid(FeverPress)`),
+  so a feverish man alone was never walked back - 450 looks of it in the log; (2) step 64's sprint into contact ends only at his first attack / standing
+  still - a sprint at a target behind the front runs through a gap until he swings; (3) the game's target choice (you on a horse, a hero) - invisible
+  to our code: the diagnostic reads `GetTargetAgent` for lone men only. The 15:59 log had no lone measure, so it cannot rank them - the new line will.
+- `PollCourage` computes the fever / shock once before the ON / OFF split; `LoneLook` (ON and OFF): ALONE = `LoneRunnerMath.Alone(mates, nearest)` (fewer
+  than `FearMath.AloneMates` 2 mates in courage's weighted circle, an enemy within the 8 m scan); OUT = `FearUnits.Fronts(key, …)` - more than
+  `LoneRunnerAheadMetres` 4 ahead of his unit's own front or more than 1 m (`PastFrontMetres`) past the enemy's front (the band frame - no new reads);
+  the cause (`Cause`: sprint into contact > punish (`st.Punishing`) > surge (`Courage.Surging`) > fever press > a target behind the enemy's front
+  (`IFearBody.Target`) > the game), man-seconds by cause ON / OFF and men, the target by whom (you / a hero / another), the "winning" seconds; the first
+  of each cause in full.
+- FIX 1: `presses = FeverPresses(lr, feverPresses, alone || forcedWalking)` - with the fixes on, the fever's override ends for a man alone (courage's odds
+  - the fever still in the required odds - and walk decide him); with mates he still presses (the first clash).
+- FIX 3: `forceWalk = ForcesWalk(lr, lone, Winning(odds, FearWinClearOddsPercent, shaken))` → `CourageMind.Look(…, lone: true)` (timid whatever the odds,
+  walks whatever the distance / mates, never brave again while lone); a surge / punish step-in cancelled (`SurgeUntil = −∞`; `PunishTimid` skips a lone /
+  forced man); `LoneMind.Forced` from the forced walk's start to its end - his fever never turns him round halfway (out of 8 m of the enemy he is no
+  longer "alone": the first smoke run caught him walking 2 m and charging back). The walk is courage's own (`PickTarget`: the nearest bigger group, else
+  the formation's centre; round the enemy when it stands between; the sprint back when far).
+- `CourageMath.Direction(…, ref side)` + `CourageMind.RoundSide` (reset at each `BeginWalk`): the side round the enemy chosen ONCE per walk - a man whose
+  group stood straight behind the enemy's line flipped left / right look by look and went nowhere (the smoke).
+- THE EXCEPTION (`Winning`): a lone chaser of the BEATEN - his side's local odds ≥ `FearWinClearOddsPercent` AND the enemy near him shaken ≥ 0.5
+  (`BeatenShaken`, the fear's morale lines; routing = 1). The odds alone excused a looter 5.7 m from one legionary (courage weighs him 11 %) in the smoke.
+- FIX 2: `RunSprint` - a sprint INTO contact checked every 0.25 s (`SprintNextMelee`, unused by it before): `LoneSprintEnds` - the last look's ALONE
+  (`LoneMind.AloneNow`, at most 1 s old) or his position past the enemy's front (one `CourageBody.Position`) → `SprintEnd.LoneRunner` (appended - old
+  indexes kept).
+- Never you / riders / a siege's attackers / no formation (courage's gate comes before all of it). Courage off = no walk (it measures); fixes 1-2 still run.
+
+**Settings (11, all Advanced, all Live; 363 → 374; the courage group 59 → 70; no migration - FormatVersion 14 stays)**: "Courage and cohesion (AI)"
+after `FearMopUpWinPercent` - `FearBandEnabled` (true), `FearBandRanksMin` (4, 1-20), `FearBandRanksMax` (6, 1-20), `FearBandFileMetres` (1, 0.5-3),
+`FearBandRankMetres` (1, 0.5-3), `FearBandMaxWidthMetres` (40, 5-150), `FearBandGapMetres` (1.5, 0-10), `FearStrikeReachMetres` (2.5, 0-6),
+`FearStrikeLeashMetres` (2, 0.5-10), `LoneRunnerEnabled` (true), `LoneRunnerAheadMetres` (4, 0-30).
+
+**Plumbing constants**: `FearBandMath.MaxFiles` 64 / `MaxSamples` 512 / `AlignCosine` −0.5 / `SlideRankSlack` 0.5 / `MeasureFiles` 160 / √3;
+`LoneRunnerMath.EnemyMetres` 8 (= `CourageMath.SurgeEnemyMetres`) / `PastFrontMetres` 1 / `MaxGapSeconds` 2 / `AloneStaleSeconds` 1 / `BeatenShaken` 0.5.
+
+**THE WORKED EXAMPLE (Step70Tests, the unit table alone - men walking 1.5 m/s to their places for 30 s)**: 40 looters 3 wide and 14 deep (13.3 a file),
+pull 0.61 (5 ranks), facing a 20 m line 10 m off - step 67's point (a hold) → ONE file of 40, 1 m wide; the band → 9 files, 4.4 men a file, the deepest
+5 - under a hold and a charge alike.
+
+**Built / measured offline**: tests 1027 → 1042 (Step70Tests.cs: 15 facts - the 11 settings placed / live, the master switch and the sentences, the
+ranks / width / lateral centre / files, the front's creep, the slide rule and the free file, the band facing his line, a man's place kept along the
+front, THE 40-MAN EXAMPLE, the band line, alone / out / the lone runner, the cause order, the three fixes, courage's forced walk, the lone line, the
+sprint end's name; SettingsPagesTests 374, CourageTests' group 70). Smoke 160 → 163 (Program.Step70.cs: FearBandAlongTheLine - 40 frightened looters in
+a column before a 20 m line: the band's own files the deepest 6 over 8 files (the 1 m measure 5.7 a file, 7 m wide - men stop within 0.7 m of their
+places), FearBandEnabled OFF 25 deep / 2 m, ON live a band, a front man let go at 1.5 m and walked back past the leash -; NoLoneRunnerBehindTheLine - a
+feverish looter alone 3 m behind a legionary line: fixes OFF held by his fever (the fever press; his target you, 6 m past the front; a calm chaser of a
+hero), ON his press refused and walked round the line's end to his group (17.5 → 6.3 m in 30 s); his sprint into contact ended alone while a charging
+mass 7 m away kept its sprints and fever -; Step70CostStaysFlat - 1000 men, 0.20 ms a tick, 0 bytes -; the master-switch step's part). FearDefaults (the
+step 67 / 69 worlds) and CourageDefaults pin the band, the strike and the lone-runner fixes off.
+
+**Gotchas**
+- Ranks from depth alone were degenerate: men compressed onto one line all read rank 1 and nobody slid - hence the ranks by id.
+- Without the bound file, slid men still walking were counted in the column and their target files read empty - files overfilled (10 deep in the smoke).
+- A forced walk ended halfway: out of the enemy's 8 m he was not "alone", the fever pressed again - hence `LoneMind.Forced`.
+- `sed -i` in Git Bash rewrote `defaults.json` with LF (the index is LF anyway - no diff); `TASKS_DONE.md` is CRLF (appended with `printf … \r\n`).
+- `FearBandMath.LateralCentre` with a band wider than the enemy's front covers his line - it is not centred on it.
+- Python is not installed on this PC; a bash heredoc of this section failed - written with the editor and appended.
+
+**UNVERIFIED — only the game can tell (PLAYTEST D35)**
+1. The engine walks men to band places among their mates and they form a wide mass, not a jam at the rear line (`fear flock band … ON` men per file 4-6,
+   width near the enemy's; `files over the band's ranks` small).
+2. `CachedClosestEnemyFormation` is the line they face (its `Width` the frontage) - a cavalry unit nearby could be picked; the seen enemy sets the direction.
+3. Front men let go strike and come back (`front men let go to STRIKE`, `walked back past the leash`) - not a slow drift into the enemy.
+4. Which cause made the lone runners (`lone runners … by cause`) - and that the forced walks bring them back (`walks back forced`, a few man-seconds ON).
+5. A charging mass keeps its punch: `sprint into contact` ends `alone or past the enemy's front` a small share; the first clash as before.
+6. Cost in a 400-1000 man battle (`fear flock vs courage and walls … cost`).
