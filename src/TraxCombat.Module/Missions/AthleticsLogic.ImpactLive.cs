@@ -185,7 +185,8 @@ namespace TraxCombat.Missions
             w.Purpose = purpose;
             w.Factor = double.IsNaN(factor) ? 1 : factor;
             w.Slow = (purpose == ImpactWatchPurpose.Reel || purpose == ImpactWatchPurpose.GetUp || purpose == ImpactWatchPurpose.BlockGetUp
-                      || purpose == ImpactWatchPurpose.HitFlinch || purpose == ImpactWatchPurpose.HitGetUp) // step 52: a clean hit's flinch / fall
+                      || purpose == ImpactWatchPurpose.HitFlinch || purpose == ImpactWatchPurpose.HitGetUp // step 52: a clean hit's flinch / fall
+                      || purpose == ImpactWatchPurpose.ThrownBack) // step 62: a charger thrown back - his get-up
                      && ImpactLiveMath.NeedsSlow(factor) && !_live.Disabled(ImpactLever.SlowReaction);
             w.Asked = asked;
             w.Speed = speed;

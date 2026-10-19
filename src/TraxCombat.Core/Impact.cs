@@ -144,6 +144,11 @@ namespace TraxCombat.Core
         /// <summary>Step 62, DIRECTION: the angle (degrees, 0-180) between the defender's facing and the line from him to the attacker - 0 =
         /// struck from the front (the default), 180 = from straight behind.</summary>
         public double AttackAngleDegrees;
+
+        /// <summary>Step 62, THE CHARGE: the attacker is sprinting (step 33's store) or his sprint ended less than
+        /// <c>ImpactChargeCarrySeconds</c> ago (an AI sprint ends 3 m from the enemy - the first swing carries the charge) - his speed into
+        /// the blow counts at least the sprint reference (momentum, the reflected charge, the full critical).</summary>
+        public bool AttackerCharging;
     }
 
     /// <summary>
@@ -293,6 +298,17 @@ namespace TraxCombat.Core
         public int Direction;
         public double AttackAngle, DirectionFactor;
 
+        /// <summary>Step 62, THE CHARGE: the attacker charged (sprinting, or the carry after it); his MEASURED speed into the blow
+        /// (<see cref="AttackerSpeed"/> is the one the momentum used - at least the sprint reference for a charge); his charge's share 0-1
+        /// (the momentum share of that speed); the riposte's reflected-momentum factor.</summary>
+        public bool Charging;
+        public double MeasuredSpeed, ChargeShare, RiposteMomentum;
+
+        /// <summary>Step 62, THE REFLECTED CHARGE: the attacker THROWN BACK (knocked down by the shieldman's block) - rolled before the riposte's
+        /// reel, which it replaces; his get-up factor.</summary>
+        public ImpactRoll ThrownBack;
+        public double ThrownBackGetUpFactor;
+
         public bool Reeling;
 
         public ImpactRoll Knockdown, ShieldDrop, Stagger, Riposte;
@@ -314,7 +330,7 @@ namespace TraxCombat.Core
         public double Damage;
 
         /// <summary>Anything happens (a rolled outcome came up).</summary>
-        public bool AnyOutcome => Knockdown.Happens || ShieldDrop.Happens || Stagger.Happens || Riposte.Happens;
+        public bool AnyOutcome => Knockdown.Happens || ShieldDrop.Happens || Stagger.Happens || Riposte.Happens || ThrownBack.Happens;
 
         public ImpactRoll Outcome(ImpactOutcome o) => o switch
         {
@@ -415,6 +431,10 @@ namespace TraxCombat.Core
             FlankFactor = Math.Max(1, s.ImpactFlankPercent / 100.0);
             RearDegrees = s.ImpactRearDegrees;
             FlankDegrees = Math.Min(s.ImpactFlankDegrees, s.ImpactRearDegrees);
+            ChargeCarrySeconds = Math.Max(0, (double)s.ImpactChargeCarrySeconds);
+            RiposteKnockdownMax = s.RiposteKnockdownMaxPercent / 100.0;
+            RiposteKnockdownFrom = s.RiposteKnockdownFrom;
+            RiposteMomentumWeight = Math.Max(0, s.RiposteMomentumPercent / 100.0);
         }
 
         public static ImpactRules From(TraxSettings s) => new ImpactRules(s);
@@ -523,6 +543,19 @@ namespace TraxCombat.Core
         public double FlankFactor { get; }
         public double RearDegrees { get; }
         public double FlankDegrees { get; }
+
+        /// <summary>Step 62, THE CHARGE: a sprint that ended this many seconds ago still carries its charge into the first blow (0 = only a
+        /// running sprint counts).</summary>
+        public double ChargeCarrySeconds { get; }
+
+        /// <summary>Step 62, THE REFLECTED CHARGE: on a RIGHT-SIDE SHIELD block the charging attacker is THROWN BACK (knocked down) at most this
+        /// (0-1) × S((x_r − from) ÷ (1 − from)) × his charge's share (0 walking, 1 at the sprint reference) - never on a parry.</summary>
+        public double RiposteKnockdownMax { get; }
+        public double RiposteKnockdownFrom { get; }
+
+        /// <summary>Step 62: the attacker's momentum turned against him on a correct block - the riposte's R_r × (1 + this × his charge's
+        /// share) (1.0 = twice at a full sprint).</summary>
+        public double RiposteMomentumWeight { get; }
 
         /// <summary>The model runs (decides and logs): the master switch FIRST, Athletics, the impact switch.</summary>
         public bool Enabled => ModEnabled && AthleticsOn && ImpactOn;
@@ -849,7 +882,16 @@ namespace TraxCombat.Core
 
         /// <summary>The blow's impact I (IMPACT §3.3): a kick's factor, a bash = the shield's weight factor × the bash factor, else the swing -
         /// step 52: × the MOMENTUM of the attacker's speed into the blow (<see cref="MomentumFactor"/>, 1 standing).</summary>
-        public static double Impact(in ImpactRules r, in ImpactFacts f) => BlowImpact(in r, in f) * MomentumFactor(in r, f.AttackerSpeed, f.AttackerMounted, f.AttackerPassive);
+        public static double Impact(in ImpactRules r, in ImpactFacts f) => BlowImpact(in r, in f) * MomentumFactor(in r, EffectiveSpeed(in r, in f), f.AttackerMounted, f.AttackerPassive);
+
+        /// <summary>Step 62, THE CHARGE: the speed the momentum counts - a charging man on foot (sprinting, or within the carry after it) at
+        /// least the sprint reference; else his measured speed into the blow.</summary>
+        public static double EffectiveSpeed(in ImpactRules r, in ImpactFacts f)
+        {
+            double v = f.AttackerSpeed;
+            if (!f.AttackerCharging || f.AttackerMounted) return v;
+            return double.IsNaN(v) || v < r.MomentumSprint ? r.MomentumSprint : v;
+        }
 
         /// <summary>The blow's own impact, before the momentum: a kick's factor, a bash = the shield's weight factor × the bash factor, else the swing.</summary>
         public static double BlowImpact(in ImpactRules r, in ImpactFacts f) => f.Event switch
@@ -945,8 +987,11 @@ namespace TraxCombat.Core
             d.Bar = f.DefenderBar;
             d.BodyA = Body(in r, f.AttackerPoints);
             d.BodyD = Body(in r, f.DefenderPoints);
-            d.AttackerSpeed = f.AttackerSpeed;
-            d.Momentum = MomentumFactor(in r, f.AttackerSpeed, f.AttackerMounted, f.AttackerPassive);
+            d.MeasuredSpeed = f.AttackerSpeed;
+            d.Charging = f.AttackerCharging && !f.AttackerMounted;
+            d.AttackerSpeed = EffectiveSpeed(in r, in f); // step 62: a charge counts at least the sprint reference
+            d.ChargeShare = f.AttackerMounted || !r.MomentumOn ? 0 : MomentumShare(d.AttackerSpeed, r.MomentumWalk, r.MomentumSprint);
+            d.Momentum = MomentumFactor(in r, d.AttackerSpeed, f.AttackerMounted, f.AttackerPassive);
             d.Impact = BlowImpact(in r, in f) * d.Momentum;
             d.Guard = Guard(in r, f.Event, f.GuardWeight);
             d.SkillA = SkillFactor(in r, f.AttackerSkill);
@@ -983,8 +1028,12 @@ namespace TraxCombat.Core
         public static double RipostePressure(in ImpactRules r, in ImpactFacts f, ref ImpactDecision d)
         {
             d.TAttacker = Tired(f.AttackerF);
-            double rr = Math.Pow(d.BodyD / d.BodyA, r.BodyExponent) * (d.Guard * d.SkillD) / (d.Impact * d.SkillA);
-            rr /= d.ToughnessFactor > 0 ? d.ToughnessFactor : 1; // step 62: the blocker's toughness against his
+            // step 62, THE REFLECTED CHARGE: his blow's own impact (no momentum) against the guard - his momentum turned AGAINST him (x (1 +
+            // RiposteMomentumPercent x his charge's share); at a walk = step 52's exactly), the blocker's toughness against his
+            double blow = d.Momentum > 0 ? d.Impact / d.Momentum : d.Impact;
+            d.RiposteMomentum = 1 + r.RiposteMomentumWeight * d.ChargeShare;
+            double rr = Math.Pow(d.BodyD / d.BodyA, r.BodyExponent) * (d.Guard * d.SkillD) / (blow * d.SkillA);
+            rr *= d.RiposteMomentum / (d.ToughnessFactor > 0 ? d.ToughnessFactor : 1);
             double log2 = rr > 0 ? Math.Log(rr, 2) : 0;
             d.XRiposte = d.TAttacker + r.MismatchWeight * Band(in r, log2);
             return d.XRiposte;
@@ -1042,6 +1091,9 @@ namespace TraxCombat.Core
                 ShieldDrop = ImpactRoll.None,
                 Stagger = ImpactRoll.None,
                 Riposte = ImpactRoll.None,
+                ThrownBack = ImpactRoll.None,
+                ThrownBackGetUpFactor = double.NaN,
+                RiposteMomentum = double.NaN,
                 XRiposte = double.NaN,
                 TAttacker = double.NaN,
                 RiposteBlockerFactor = double.NaN,
@@ -1088,7 +1140,8 @@ namespace TraxCombat.Core
 
             // the riposte: a right-side block or a parry, the roles turned (x_r = T_A + the mismatch turned), × (1 − k T_D) - step 56: k 0 by
             // default, so a tired man flailing into a good guard reels whoever holds it (step 48 was × f_D, k = 1)
-            if (CanRiposte(f.Event) && r.RiposteOn && r.RiposteMax > 0 && !down)
+            bool throwBack = f.Event == ImpactEvent.RightBlock && r.RiposteKnockdownMax > 0 && d.ChargeShare > 0; // step 62: a shield, never a parry
+            if (CanRiposte(f.Event) && r.RiposteOn && (r.RiposteMax > 0 || throwBack) && !down)
             {
                 double xr = RipostePressure(in r, in f, ref d);
                 int na = attacker.Recent(now, r.DiminishWindow);
@@ -1096,12 +1149,22 @@ namespace TraxCombat.Core
                 double scaleA = f.AttackerIsPlayer ? Math.Max(0, r.OnPlayer) : 1;
                 double k = Math.Max(0, Math.Min(1, r.RiposteBlockerTired));
                 d.RiposteBlockerFactor = 1 - k * d.T;
-                d.Riposte = Roll(r.RiposteMax, RawChance(r.RiposteMax, xr, r.StaggerFrom) * d.RiposteBlockerFactor, na, dimA * scaleA,
-                    attacker.Down(now) ? ImpactRefusal.Down
-                    : d.Knockdown.Happens || d.Stagger.Happens ? ImpactRefusal.Replaced
-                    : f.AttackerMounted ? ImpactRefusal.Rider
-                    : attacker.StaggerImmune(now) ? ImpactRefusal.StaggerImmune
-                    : ImpactRefusal.None, dice);
+                // step 62, THE REFLECTED CHARGE: a charging man into a right-side shield block can be THROWN BACK - knocked down - at the
+                // thrown-back ceiling x S from its own start x his charge's share (0 at a walk: a walking man only reels); it replaces the reel
+                if (throwBack)
+                    d.ThrownBack = Roll(r.RiposteKnockdownMax, RawChance(r.RiposteKnockdownMax, xr, r.RiposteKnockdownFrom) * d.ChargeShare * d.RiposteBlockerFactor, na, dimA * scaleA,
+                        attacker.Down(now) ? ImpactRefusal.Down
+                        : d.Knockdown.Happens || d.Stagger.Happens ? ImpactRefusal.Replaced
+                        : f.AttackerMounted ? ImpactRefusal.Rider
+                        : attacker.KnockdownImmune(now) ? ImpactRefusal.KnockdownImmune
+                        : ImpactRefusal.None, dice);
+                if (r.RiposteMax > 0)
+                    d.Riposte = Roll(r.RiposteMax, RawChance(r.RiposteMax, xr, r.StaggerFrom) * d.RiposteBlockerFactor, na, dimA * scaleA,
+                        attacker.Down(now) ? ImpactRefusal.Down
+                        : d.Knockdown.Happens || d.Stagger.Happens || d.ThrownBack.Happens ? ImpactRefusal.Replaced
+                        : f.AttackerMounted ? ImpactRefusal.Rider
+                        : attacker.StaggerImmune(now) ? ImpactRefusal.StaggerImmune
+                        : ImpactRefusal.None, dice);
             }
 
             // lengths (the randomness grows with T) and the state
@@ -1129,9 +1192,18 @@ namespace TraxCombat.Core
             if (d.Riposte.Happens)
             {
                 double ta = d.TAttacker;
-                double s = r.RiposteStunMax * (0.5 + 0.5 * ta) * Spread(r.Random, ta, dice.NextDouble());
+                // step 62: longer with the comparison - half the most for a fresh even man, all of it from x_r 1 (his tiredness or the mismatch)
+                double weight = Math.Max(0, Math.Min(1, Math.Max(ta, double.IsNaN(d.XRiposte) ? 0 : d.XRiposte)));
+                double s = r.RiposteStunMax * (0.5 + 0.5 * weight) * Spread(r.Random, ta, dice.NextDouble());
                 d.RiposteStunSeconds = Math.Max(0, Math.Min(Math.Max(0, r.StunCap), s));
                 attacker.Reel(now + d.RiposteStunSeconds, r.StaggerImmunity);
+                attacker.NoteOutcome(now);
+            }
+            if (d.ThrownBack.Happens) // step 62: the charging attacker on the ground - his get-up by his own tiredness
+            {
+                double ta = d.TAttacker;
+                d.ThrownBackGetUpFactor = Math.Max(1, Math.Min(r.GetUpMax, Lengthen(r.GetUpMax - 1, ta, r.Random, dice.NextDouble())));
+                attacker.KnockedDown(now, now + VanillaFallRiseSeconds * d.ThrownBackGetUpFactor, r.KnockdownImmunity);
                 attacker.NoteOutcome(now);
             }
             return d;
@@ -1219,7 +1291,8 @@ namespace TraxCombat.Core
                        + (d.TiredWeight < 0.9999 ? ", counted x" + d.TiredWeight.ToString("0.00", c) + " on a correct block" : string.Empty) + ")"
                        + "; points " + f.AttackerPoints.ToString("0", c) + " vs " + f.DefenderPoints.ToString("0", c) + " (bodies " + d.BodyA.ToString("0", c) + " / " + d.BodyD.ToString("0", c) + ")"
                        + "; impact " + d.Impact.ToString("0.00", c) + BlowText(in f)
-                       + (d.Momentum > 1.0001 ? " incl. momentum x" + d.Momentum.ToString("0.00", c) + " (" + (f.AttackerMounted ? "his horse at " : string.Empty) + d.AttackerSpeed.ToString("0.0", c) + " m/s into the blow)"
+                       + (d.Momentum > 1.0001 ? " incl. momentum x" + d.Momentum.ToString("0.00", c) + " (" + (f.AttackerMounted ? "his horse at " : string.Empty) + d.AttackerSpeed.ToString("0.0", c) + " m/s into the blow"
+                          + (d.Charging ? " - a CHARGE, measured " + d.MeasuredSpeed.ToString("0.0", c) + " m/s" : string.Empty) + ")"
                           : f.AttackerMounted && f.AttackerPassive ? " (a couched lance - no momentum)" : string.Empty)
                        + " vs guard " + d.Guard.ToString("0.00", c) + " (" + GuardText(d.Event, f.GuardWeight) + ")"
                        + "; skill " + f.AttackerSkill.ToString("0", c) + " vs " + f.DefenderSkill.ToString("0", c) + " (x" + d.SkillA.ToString("0.00", c) + " / x" + d.SkillD.ToString("0.00", c) + ")"
@@ -1230,8 +1303,15 @@ namespace TraxCombat.Core
             s += RollText(" knocked down" + (d.DefenderMounted ? " (off his horse)" : string.Empty), in d.Knockdown);
             s += RollText(" shield dropped", in d.ShieldDrop);
             s += RollText(" staggered", in d.Stagger);
-            if (!double.IsNaN(d.XRiposte)) s += RollText(" riposte (x_r " + d.XRiposte.ToString("0.00", c)
-                + (d.RiposteBlockerFactor < 0.9999 ? ", x" + d.RiposteBlockerFactor.ToString("0.00", c) + " for the blocker's tiredness" : string.Empty) + ")", in d.Riposte);
+            if (!double.IsNaN(d.XRiposte))
+            {
+                string why = " (x_r " + d.XRiposte.ToString("0.00", c)
+                    + (d.RiposteBlockerFactor < 0.9999 ? ", x" + d.RiposteBlockerFactor.ToString("0.00", c) + " for the blocker's tiredness" : string.Empty)
+                    + (d.RiposteMomentum > 1.0001 ? ", his charge turned against him x" + d.RiposteMomentum.ToString("0.00", c) : string.Empty) + ")";
+                s += RollText(" THROWN BACK" + why, in d.ThrownBack);
+                s += RollText(" riposte" + why, in d.Riposte);
+            }
+            if (!double.IsNaN(d.ThrownBackGetUpFactor)) s += " the attacker gets up x" + d.ThrownBackGetUpFactor.ToString("0.00", c) + " slower;";
             if (!double.IsNaN(d.ReelFactor)) s += " reel x" + d.ReelFactor.ToString("0.00", c) + ";";
             if (!double.IsNaN(d.StunFactor)) s += " block stun x" + d.StunFactor.ToString("0.00", c) + ";";
             if (!double.IsNaN(d.GetUpFactor)) s += " gets up x" + d.GetUpFactor.ToString("0.00", c) + " slower;";

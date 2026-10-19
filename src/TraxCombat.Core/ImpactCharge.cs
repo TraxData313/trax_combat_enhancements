@@ -31,6 +31,72 @@ namespace TraxCombat.Core
         /// <summary>Landed blows on a man with a ranged weapon in hand / of them knocked down.</summary>
         public int RangedBlows, RangedDown;
 
+        /// <summary>THE CHARGE's kinds: 0 into a right-side shield block, 1 into a parry, 2 into a wrong-side block, 3 landed from the front,
+        /// 4 landed from the side, 5 landed from behind.</summary>
+        public const int ChargeKindCount = 6;
+
+        /// <summary>Every decided event (any family), and of them the CHARGING ones (sprinting now / carried after it).</summary>
+        public int Decided, Charging, ChargingNow, Carried;
+
+        /// <summary>The charging blows [kind]: count, the ATTACKER reeled (riposte) / thrown back, the DEFENDER staggered / knocked down.</summary>
+        public readonly int[] ChargeBlows = new int[ChargeKindCount];
+        public readonly int[] ChargeReeled = new int[ChargeKindCount];
+        public readonly int[] ChargeThrown = new int[ChargeKindCount];
+        public readonly int[] ChargeStaggered = new int[ChargeKindCount];
+        public readonly int[] ChargeDown = new int[ChargeKindCount];
+
+        /// <summary>The same for the blows that did NOT charge (the comparison).</summary>
+        public readonly int[] OtherBlows = new int[ChargeKindCount];
+        public readonly int[] OtherReeled = new int[ChargeKindCount];
+        public readonly int[] OtherDown = new int[ChargeKindCount];
+
+        /// <summary>Thrown back - applied (our blow registered on the attacker) / its Fall seen / not seen / not applied (refused, lever off,
+        /// he left, a rider); YOU thrown back.</summary>
+        public int ThrownApplied, ThrownSeen, ThrownNotSeen, ThrownNotApplied, ThrownYou;
+
+        public static int ChargeKind(in ImpactDecision d)
+        {
+            switch (d.Event)
+            {
+                case ImpactEvent.RightBlock: return 0;
+                case ImpactEvent.Parry: return 1;
+                case ImpactEvent.WrongBlock: return 2;
+            }
+            return 3 + Math.Max(0, Math.Min(2, d.Direction));
+        }
+
+        public static string ChargeKindName(int k) => k switch
+        {
+            0 => "into a right-side shield block",
+            1 => "into a parry",
+            2 => "into a WRONG-side block",
+            3 => "landed from the front",
+            4 => "landed from the side",
+            _ => "landed from BEHIND",
+        };
+
+        /// <summary>THE CHARGE: one decided event's charge (every family; a rider's never charges).</summary>
+        public void NoteCharge(in ImpactDecision d, bool sprintingNow)
+        {
+            Decided++;
+            int k = ChargeKind(in d);
+            if (!d.Charging)
+            {
+                OtherBlows[k]++;
+                if (d.Riposte.Happens || d.ThrownBack.Happens) OtherReeled[k]++;
+                if (d.Knockdown.Happens) OtherDown[k]++;
+                return;
+            }
+            Charging++;
+            if (sprintingNow) ChargingNow++;
+            else Carried++;
+            ChargeBlows[k]++;
+            if (d.Riposte.Happens) ChargeReeled[k]++;
+            if (d.ThrownBack.Happens) ChargeThrown[k]++;
+            if (d.Stagger.Happens) ChargeStaggered[k]++;
+            if (d.Knockdown.Happens) ChargeDown[k]++;
+        }
+
         public static int ToughBand(double ratio)
         {
             if (ratio < 0.67) return 0;
@@ -99,6 +165,21 @@ namespace TraxCombat.Core
             }
             s.Append(" | not counted (toughness off / unknown) ").Append(ToughUnknown.ToString(c));
             s.Append("; on a man with a ranged weapon in his hand ").Append(RangedBlows.ToString(c)).Append(" (down ").Append(Pct(RangedDown, RangedBlows)).Append(')');
+            lines.Add(s.ToString());
+            s = new StringBuilder("impact charges (step 62 - a CHARGE = the attacker sprinting, or his first blow within ImpactChargeCarrySeconds after a sprint): ");
+            s.Append(Charging.ToString(c)).Append(" of ").Append(Decided.ToString(c)).Append(" decided events (sprinting at the blow ").Append(ChargingNow.ToString(c))
+                .Append(", carried after the sprint ").Append(Carried.ToString(c)).Append(')');
+            for (int k = 0; k < ChargeKindCount; k++)
+            {
+                if (ChargeBlows[k] == 0 && OtherBlows[k] == 0) continue;
+                s.Append(" | ").Append(ChargeKindName(k)).Append(' ').Append(ChargeBlows[k].ToString(c));
+                if (k <= 1) s.Append(": the attacker reeled ").Append(Pct(ChargeReeled[k], ChargeBlows[k])).Append(", THROWN BACK ").Append(Pct(ChargeThrown[k], ChargeBlows[k]));
+                else s.Append(": the defender staggered ").Append(Pct(ChargeStaggered[k], ChargeBlows[k])).Append(", DOWN ").Append(Pct(ChargeDown[k], ChargeBlows[k]));
+                s.Append(" (not charging ").Append(OtherBlows[k].ToString(c)).Append(": ")
+                    .Append(k <= 1 ? "reeled " + Pct(OtherReeled[k], OtherBlows[k]) : "down " + Pct(OtherDown[k], OtherBlows[k])).Append(')');
+            }
+            s.Append("; thrown back applied ").Append(ThrownApplied.ToString(c)).Append(" → Fall seen ").Append(ThrownSeen.ToString(c)).Append(", not seen ").Append(ThrownNotSeen.ToString(c))
+                .Append(", not applied ").Append(ThrownNotApplied.ToString(c)).Append("; YOU thrown back ").Append(ThrownYou.ToString(c));
             lines.Add(s.ToString());
             return lines;
         }

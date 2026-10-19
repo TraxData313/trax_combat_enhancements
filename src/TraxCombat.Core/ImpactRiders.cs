@@ -224,6 +224,9 @@ namespace TraxCombat.Core
 
         /// <summary>The riposte: a fresh blocker staggers the attacker.</summary>
         Riposte,
+
+        /// <summary>Step 62, the reflected charge: a charging attacker thrown back (knocked down) by a right-side shield block.</summary>
+        ThrownBack,
     }
 
     /// <summary>Step 53: whose line it is - done to you, done by you, or a notable moment of your men's (the game's colours differ).</summary>
@@ -267,6 +270,7 @@ namespace TraxCombat.Core
                         ImpactMessageKind.KnockedOff => "You are knocked off your horse",
                         ImpactMessageKind.ShieldLost => "Your shield is knocked from your hand",
                         ImpactMessageKind.GuardBroken => "Your guard breaks",
+                        ImpactMessageKind.ThrownBack => "You are thrown back by " + a + "'s shield",
                         _ => a + " ripostes - you reel",
                     };
                 case ImpactMessageRole.ByYou:
@@ -276,6 +280,7 @@ namespace TraxCombat.Core
                         ImpactMessageKind.KnockedOff => "You knock " + v + " off his horse",
                         ImpactMessageKind.ShieldLost => "You knock the shield from " + v + "'s hand",
                         ImpactMessageKind.GuardBroken => "You break " + v + "'s guard",
+                        ImpactMessageKind.ThrownBack => "Your shield throws " + v + " back",
                         _ => "Your riposte - " + v + " reels",
                     };
                 default:
@@ -285,6 +290,7 @@ namespace TraxCombat.Core
                         ImpactMessageKind.ShieldLost => a + " knocks the shield from " + v + "'s hand",
                         ImpactMessageKind.GuardBroken => a + " breaks " + v + "'s guard",
                         ImpactMessageKind.Riposte => v + " reels from " + a + "'s riposte",
+                        ImpactMessageKind.ThrownBack => v + " is thrown back by " + a + "'s shield",
                         _ => a + " knocks " + v + " down",
                     };
             }
@@ -333,7 +339,7 @@ namespace TraxCombat.Core
         public readonly int[] ByRole = new int[3];
 
         /// <summary>Parts offered by kind.</summary>
-        public readonly int[] ByKind = new int[5];
+        public readonly int[] ByKind = new int[6];
 
         public int Waiting => _count + _extra;
 
@@ -401,7 +407,7 @@ namespace TraxCombat.Core
             var c = CultureInfo.InvariantCulture;
             return "impact messages (step 53 - on-screen lines, " + (on ? "ImpactShowMessages on" : "ImpactShowMessages OFF") + ", " + (yourMen ? "yours + your side's heroes" : "only yours")
                    + ", at most one every " + minGap.ToString("0.0", c) + " s): offered " + Offered + " (to you " + ByRole[0] + ", by you " + ByRole[1] + ", your men " + ByRole[2]
-                   + "; knocked down " + ByKind[0] + ", knocked off a horse " + ByKind[1] + ", shields " + ByKind[2] + ", guards broken " + ByKind[3] + ", ripostes " + ByKind[4]
+                   + "; knocked down " + ByKind[0] + ", knocked off a horse " + ByKind[1] + ", shields " + ByKind[2] + ", guards broken " + ByKind[3] + ", ripostes " + ByKind[4] + ", thrown back " + ByKind[5]
                    + ") → lines SHOWN " + Shown + ", parts MERGED into a line " + Merged + " (beyond " + ImpactMessageMath.MaxParts + " a line: " + Overflow + "), the same part twice " + Duplicates
                    + ", unshown at the end / switched off " + Discarded;
         }

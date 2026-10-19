@@ -105,6 +105,9 @@ namespace TraxCombat.Core
         /// <summary>Step 52: an untouched flinch of a clean hit with no outcome - the control the stagger's lengths compare against and
         /// the flinch's own length is learned from (a few at a time).</summary>
         HitControl,
+
+        /// <summary>Step 62: a charging attacker THROWN BACK by a right-side shield block (our own blow on him) - his fall-and-rise.</summary>
+        ThrownBack,
     }
 
     /// <summary>

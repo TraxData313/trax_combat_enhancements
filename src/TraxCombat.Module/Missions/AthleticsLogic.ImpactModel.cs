@@ -283,6 +283,8 @@ namespace TraxCombat.Missions
                 f.AttackerToughness = ImpactToughness(a!);
                 f.DefenderToughness = ImpactToughness(v);
             }
+            bool sprintingNow = false;
+            if (!f.AttackerMounted) f.AttackerCharging = IsCharging(a!, now, r.ChargeCarrySeconds, out sprintingNow); // step 62: THE CHARGE
             var family = ImpactMath.Family(f.Event);
             bool block = ImpactMath.IsBlock(f.Event);
             // step 50: what applies writes the states; shadow keeps "would"; a family decided live with no effect built yet decides on
@@ -305,6 +307,8 @@ namespace TraxCombat.Missions
             // step 52: every decided blow by the attacker's speed into it; step 53: a rider's by his horse's, a couched lance apart
             _hits.NoteMomentum(in d, f.AttackerMounted ? ImpactMath.RiderSpeedBand(in r, d.AttackerSpeed) : ImpactMath.SpeedBand(in r, d.AttackerSpeed), f.AttackerMounted, f.AttackerPassive);
             _charge.NoteDecision(in d); // step 62: by direction, by toughness
+            _charge.NoteCharge(in d, sprintingNow); // step 62: the charges
+            if (d.Charging && !sprintingNow) a.SprintEndedAt = double.NaN; // the carried charge spent on its first blow
             if (block && (applied || riderLive)) _riders.NoteRiposteOnRider(in d);
             LastImpact = d;
             NoteImpactLines(a, v, in d, in f, in r, !(applied || riposteLive || riderLive));
@@ -322,6 +326,20 @@ namespace TraxCombat.Missions
                 if (keepAttacker) NotePunishWindow(a, now);
             }
             return true;
+        }
+
+        /// <summary>
+        /// Step 62, THE CHARGE: he sprints toward the enemy now (step 33's store - never a sprint back or a rout), or his sprint ended at most
+        /// <paramref name="carry"/> seconds ago and no blow spent it yet. Main thread (the hit callback); the damage decorator's full critical
+        /// asks the same through <see cref="TryGetCharging"/>.
+        /// </summary>
+        private static bool IsCharging(TrackedAgent st, double now, double carry, out bool sprintingNow)
+        {
+            var sp = st.Sprint;
+            sprintingNow = sp.Active && !sp.Regroup && !sp.Rout;
+            if (sprintingNow) return true;
+            double ended = st.SprintEndedAt;
+            return carry > 0 && !double.IsNaN(ended) && now >= ended && now - ended <= carry;
         }
 
         /// <summary>Step 62: a man's toughness now - courage's measure (CourageMath, shared): his kit read once through the inputs (armour,

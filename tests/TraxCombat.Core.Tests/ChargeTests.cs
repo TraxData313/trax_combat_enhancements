@@ -65,6 +65,120 @@ public class ChargeTests
         return ImpactMath.Decide(in r, in f, ref d, ref a, 100, new Dice());
     }
 
+    // ------------------------------------------------------------------ the charge, the reflected charge
+
+    private sealed class ScriptDice : IRandomSource
+    {
+        private readonly double[] _v;
+        private int _i;
+
+        public ScriptDice(params double[] v) => _v = v;
+
+        public double NextDouble() => _i < _v.Length ? _v[_i++] : 0.999;
+    }
+
+    [Fact]
+    public void A_charge_counts_at_least_the_sprint_reference_whatever_speed_was_measured_never_a_rider()
+    {
+        var r = Rules();
+        Assert.Equal(1.5, r.ChargeCarrySeconds, 6);
+        var f = Facts(ImpactEvent.CleanHit, 0.5, speed: 2.5);
+        Assert.Equal(2.5, ImpactMath.EffectiveSpeed(in r, in f), 9);
+        f.AttackerCharging = true;
+        Assert.Equal(7.0, ImpactMath.EffectiveSpeed(in r, in f), 6);
+        f.AttackerSpeed = 9;
+        Assert.Equal(9.0, ImpactMath.EffectiveSpeed(in r, in f), 9);
+        f.AttackerMounted = true;
+        Assert.Equal(9.0, ImpactMath.EffectiveSpeed(in r, in f), 9);
+        var g = Facts(ImpactEvent.CleanHit, 0.5, speed: 1.0);
+        g.AttackerCharging = true;
+        var d = Decide(in g);
+        Assert.True(d.Charging);
+        Assert.Equal(1.6, d.Momentum, 6);
+        Assert.Equal(1.0, d.ChargeShare, 6);
+        Assert.Equal(1.0, d.MeasuredSpeed, 9);
+        Assert.Contains("a CHARGE, measured 1.0 m/s", ImpactMath.Describe(in d, in g, "A", "D", "LIVE"));
+    }
+
+    [Fact]
+    public void A_charge_into_a_right_side_shield_block_can_be_thrown_back_a_walking_man_or_a_parry_never()
+    {
+        // a tired man (bar 30%) charging into a fresh shieldman's right-side block
+        var walk = Facts(ImpactEvent.RightBlock, 1.0, attackerBar: 0.3, speed: 1.0);
+        var charge = walk;
+        charge.AttackerCharging = true;
+        var dw = Decide(in walk);
+        var dc = Decide(in charge);
+        Assert.False(dw.ThrownBack.InRow);                    // a walking attacker only reels
+        Assert.True(dc.ThrownBack.InRow && dc.ThrownBack.Chance > 0.3, "thrown back " + dc.ThrownBack.Chance);
+        Assert.True(dc.XRiposte > dw.XRiposte, "his charge not turned against him: " + dc.XRiposte + " vs " + dw.XRiposte);
+        Assert.Equal(2.0, dc.RiposteMomentum, 6);
+        var parry = Facts(ImpactEvent.Parry, 1.0, attackerBar: 0.3, speed: 1.0);
+        parry.AttackerCharging = true;
+        Assert.False(Decide(in parry).ThrownBack.InRow);        // a sword parry never throws a charger
+        Assert.False(Decide(in charge, Rules(s => s.Set(SettingsSchema.RiposteKnockdownMaxPercent, 0, SettingSources.Mcm))).ThrownBack.InRow);
+        // it happens: he is DOWN (his record), the reel replaced, his get-up by his own tiredness
+        var r = Rules();
+        var dState = new ImpactState();
+        var aState = new ImpactState();
+        var d = ImpactMath.Decide(in r, in charge, ref dState, ref aState, 100, new ScriptDice(0.0, 0.0, 0.5));
+        Assert.True(d.ThrownBack.Happens);
+        Assert.False(d.Riposte.Happens);
+        Assert.Equal(ImpactRefusal.Replaced, d.Riposte.Refusal);
+        Assert.True(aState.Down(100.5) && !double.IsNaN(d.ThrownBackGetUpFactor) && d.AnyOutcome);
+        Assert.Contains("THROWN BACK (x_r ", ImpactMath.Describe(in d, in charge, "A", "D", "LIVE"));
+        // ... and a man still down / just up is not thrown again
+        var again = ImpactMath.Decide(in r, in charge, ref dState, ref aState, 101, new ScriptDice(0.0, 0.0, 0.5));
+        Assert.Equal(ImpactRefusal.Down, again.ThrownBack.Refusal);
+    }
+
+    [Fact]
+    public void The_riposte_reel_grows_with_the_comparison_half_for_a_fresh_even_man()
+    {
+        var r = Rules(s => s.Set(SettingsSchema.ImpactRandomPercent, 0, SettingSources.Mcm));
+        // two fresh even men: x_r about 0 (the 4 kg shield a little more) → about half the most
+        var even = Facts(ImpactEvent.RightBlock, 1.0, attackerBar: 1.0);
+        var dState = new ImpactState();
+        var aState = new ImpactState();
+        var d = ImpactMath.Decide(in r, in even, ref dState, ref aState, 100, new ScriptDice(0.0, 0.5));
+        Assert.True(d.Riposte.Happens && d.XRiposte < 0.1, "x_r " + d.XRiposte);
+        Assert.Equal(r.RiposteStunMax * (0.5 + 0.5 * d.XRiposte), d.RiposteStunSeconds, 6);
+        // a tired, outmatched man (x_r above 1): all of it
+        var tired = Facts(ImpactEvent.RightBlock, 1.0, attackerBar: 0.05, tA: Looter, tD: Legionary);
+        dState = new ImpactState();
+        aState = new ImpactState();
+        var t = ImpactMath.Decide(in r, in tired, ref dState, ref aState, 100, new ScriptDice(0.0, 0.5));
+        Assert.True(t.Riposte.Happens);
+        Assert.Equal(Math.Min(r.StunCap, r.RiposteStunMax), t.RiposteStunSeconds, 3);
+    }
+
+    [Fact]
+    public void The_charges_line_compares_charging_blows_with_the_rest()
+    {
+        var stats = new ImpactChargeStats();
+        var charge = Facts(ImpactEvent.RightBlock, 1.0, attackerBar: 0.3, speed: 1.0);
+        charge.AttackerCharging = true;
+        var r = Rules();
+        var dState = new ImpactState();
+        var aState = new ImpactState();
+        stats.NoteCharge(ImpactMath.Decide(in r, in charge, ref dState, ref aState, 100, new ScriptDice(0.0, 0.0, 0.5)), true);
+        stats.NoteCharge(Decide(Facts(ImpactEvent.RightBlock, 1.0, attackerBar: 0.3, speed: 1.0)), false);
+        var rear = Facts(ImpactEvent.CleanHit, 0.3, angle: 170);
+        rear.AttackerCharging = true;
+        stats.NoteCharge(Decide(in rear), false);
+        Assert.Equal(3, stats.Decided);
+        Assert.Equal(2, stats.Charging);
+        Assert.Equal(1, stats.ChargingNow);
+        Assert.Equal(1, stats.Carried);
+        Assert.Equal(1, stats.ChargeThrown[0]);
+        Assert.Equal(1, stats.ChargeBlows[5]);
+        string line = stats.SummaryLines()[2];
+        Assert.Contains("impact charges (step 62", line);
+        Assert.Contains("2 of 3 decided events (sprinting at the blow 1, carried after the sprint 1)", line);
+        Assert.Contains("into a right-side shield block 1: the attacker reeled 0%, THROWN BACK 100% (not charging 1: reeled ", line);
+        Assert.Contains("landed from BEHIND 1: the defender staggered ", line);
+    }
+
     // ------------------------------------------------------------------ direction
 
     [Fact]

@@ -288,6 +288,10 @@ namespace TraxCombat.Missions
         public double ImpactArmour = double.NaN;
         public int ImpactLevel;
 
+        /// <summary>Step 62, THE CHARGE: when his last sprint toward the enemy ended (mission seconds; NaN = none, or its carry was spent on a
+        /// blow) - his first blow within <c>ImpactChargeCarrySeconds</c> after it is a charge. A sprint back or a rout never sets it.</summary>
+        public double SprintEndedAt = double.NaN;
+
         /// <summary>Step 49: looked at for courage at least once (the summary's men).</summary>
         public bool CourageSeen;
 

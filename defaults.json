@@ -1236,6 +1236,32 @@
   // (range 0 to 180)
   "ImpactFlankDegrees": 60,
 
+  // A man who was sprinting strikes his first blow within this many seconds after the sprint as
+  // a CHARGE - its full momentum (and the full damage roll, if that switch is on), even though
+  // he slowed down to swing (the AI's sprint ends a few metres from the enemy). Only the first
+  // blow; while he still sprints, every blow. 0 = only a blow struck while sprinting.
+  // (range 0.0 to 5.0)
+  "ImpactChargeCarrySeconds": 1.5,
+
+  // A CHARGING man (sprinting into the blow) whose blow is blocked on the RIGHT side of a
+  // shield can be thrown to the ground - at most this chance, for a full sprint by a weaker or
+  // tired man into a fresh, tougher shieldman; nothing for a walking attacker (he only reels).
+  // You too. 0 = never.
+  // (range 0 to 100)
+  "RiposteKnockdownMaxPercent": 40,
+
+  // Where the thrown-back chance starts on the pressure scale of the riposte (0 = any mismatch
+  // against the charger counts, 1 = an empty, outmatched attacker). The other curves: a stagger
+  // from 0, a knockdown from 0.35.
+  // (range 0.0 to 0.95)
+  "RiposteKnockdownFrom": 0.0,
+
+  // On a right-side block or a parry, the attacker's own speed into the blow is turned against
+  // him - the riposte (he reels, or is thrown back) counts this much more at a full sprint
+  // (100: twice). 0 = his speed does not count on a correct block.
+  // (range 0 to 300)
+  "RiposteMomentumPercent": 100,
+
   // How much an outmatched man suffers: every doubling of the mismatch beyond the even band
   // adds this to the pressure on him (0.25: an enemy four times stronger counts as much as
   // being about a third tired). 0 = only tiredness counts.

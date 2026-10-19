@@ -123,13 +123,14 @@ public class ImpactTests
             "ImpactShrugOffYieldsToImpact", "ImpactFallBackupSeconds", // step 62: the lost falls
             "ImpactToughnessWeight", "ImpactRangedInHandPercent", // step 62: toughness, a ranged man in melee
             "ImpactRearPercent", "ImpactFlankPercent", "ImpactRearDegrees", "ImpactFlankDegrees", // step 62: direction
+            "ImpactChargeCarrySeconds", "RiposteKnockdownMaxPercent", "RiposteKnockdownFrom", "RiposteMomentumPercent", // step 62: the charge
             "ImpactMismatchWeight", "ImpactEvenBandDoublings",
             "ImpactBodyExponent", "ImpactBodyFloorPoints", "ImpactStaggeredBonus", "ImpactDamageWeight", "ImpactRefWeightKg", "ImpactWeightExponent",
             "ImpactRefSwingSpeed", "ImpactSpeedExponent", "ImpactBluntFactor", "ImpactCutFactor", "ImpactPierceFactor", "ImpactKickFactor", "ImpactBashFactor",
             "ImpactSkillMinFactor", "ImpactSkillMaxFactor", "ImpactGuardShieldRight", "ImpactGuardParry", "ImpactGuardShieldWrong", "ImpactGuardNone",
             "ImpactStaggerFrom", "ImpactShieldDropFrom", "ImpactKnockdownFrom",
         };
-        Assert.Equal(84, keys.Length); // step 48's 60 + step 52's momentum 4 + step 53's rider momentum 3 and on-screen lines 3 + step 54's punish 4 + step 56's 2 + step 62's
+        Assert.Equal(88, keys.Length); // step 48's 60 + step 52's momentum 4 + step 53's rider momentum 3 and on-screen lines 3 + step 54's punish 4 + step 56's 2 + step 62's
         // Step 59: three of them on the player page - the switch and "against you" ("Staggers and knockdowns"), the on-screen lines
         // ("On screen"); the other 73 stay in this group in order.
         var player = new[] { "ImpactEnabled", "ImpactOnPlayerPercent", "ImpactShowMessages" };
@@ -550,7 +551,8 @@ public class ImpactTests
         Assert.False(Decide(Facts(ImpactEvent.CleanHit, rec, vet)).Riposte.InRow);
         Pct(50 * (0.5 / 0.75), Decide(Facts(ImpactEvent.RightBlock, rec, vet with { Bar = 0.5 }, Sword, 4.0)).Riposte.Chance, "the veteran at 50% (f 0.67)");
         Assert.False(Decide(Facts(ImpactEvent.RightBlock, rec, vet, Sword, 4.0), Rules(s => s.Set(SettingsSchema.ImpactRiposteEnabled, false, "test"))).Riposte.InRow);
-        // it happens: the attacker recoils RiposteStunMaxSeconds × (0.5 + 0.5 T_A) and is reeling from then on
+        // it happens: the attacker recoils RiposteStunMaxSeconds × (0.5 + 0.5 × max(T_A, x_r) clamped to 1) - step 62: longer with the
+        // comparison (step 48: × (0.5 + 0.5 T_A)) - and is reeling from then on
         var r = Rules();
         var dState = new ImpactState();
         var aState = new ImpactState();
@@ -558,7 +560,8 @@ public class ImpactTests
         var dec = ImpactMath.Decide(in r, in f, ref dState, ref aState, 100, new Dice(0.0, 0.5, 0.5)); // the riposte's die (his own outcomes have no chance - not rolled), the stun's, the recoil's
         Assert.True(dec.Riposte.Happens);
         double ta = 1 - 0.4 / 0.75;
-        Near(1.0 * (0.5 + 0.5 * ta), dec.RiposteStunSeconds, 0.2 * ta + 1e-6);
+        Assert.True(dec.XRiposte > 1, "x_r " + dec.XRiposte); // the recruit at 40% into the veteran's shield: outmatched
+        Near(1.0 * (0.5 + 0.5 * 1.0), dec.RiposteStunSeconds, 0.2 * ta + 1e-6);
         Assert.True(aState.Reeling(100.1) && aState.StaggerImmune(100 + dec.RiposteStunSeconds + 1.9));
     }
 

@@ -139,9 +139,10 @@ namespace TraxCombat.Tools
         {
             SettingsSchema.ImpactShrugOffYieldsToImpact, SettingsSchema.ImpactFallBackupSeconds, SettingsSchema.ImpactToughnessWeight, SettingsSchema.ImpactRangedInHandPercent,
             SettingsSchema.ImpactRearPercent, SettingsSchema.ImpactFlankPercent,
+            SettingsSchema.ImpactChargeCarrySeconds, SettingsSchema.RiposteKnockdownMaxPercent, SettingsSchema.RiposteMomentumPercent,
         };
 
-        private static readonly double[] Step62OffValues = { 0, 0, 0, 100, 100, 100 };
+        private static readonly double[] Step62OffValues = { 0, 0, 0, 100, 100, 100, 0, 0, 0 };
 
         private static void Step62Off()
         {

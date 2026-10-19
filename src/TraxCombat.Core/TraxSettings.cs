@@ -417,6 +417,10 @@ namespace TraxCombat.Core
         public int ImpactFlankPercent => GetInt(SettingsSchema.ImpactFlankPercent);
         public int ImpactRearDegrees => GetInt(SettingsSchema.ImpactRearDegrees);
         public int ImpactFlankDegrees => GetInt(SettingsSchema.ImpactFlankDegrees);
+        public float ImpactChargeCarrySeconds => GetFloat(SettingsSchema.ImpactChargeCarrySeconds);
+        public int RiposteKnockdownMaxPercent => GetInt(SettingsSchema.RiposteKnockdownMaxPercent);
+        public float RiposteKnockdownFrom => GetFloat(SettingsSchema.RiposteKnockdownFrom);
+        public int RiposteMomentumPercent => GetInt(SettingsSchema.RiposteMomentumPercent);
         public float ImpactMismatchWeight => GetFloat(SettingsSchema.ImpactMismatchWeight);
         public float ImpactEvenBandDoublings => GetFloat(SettingsSchema.ImpactEvenBandDoublings);
         public float ImpactBodyExponent => GetFloat(SettingsSchema.ImpactBodyExponent);

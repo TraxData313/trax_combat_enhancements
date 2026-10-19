@@ -148,10 +148,13 @@ public class ImpactHitsTests
             Assert.True(sprinting.X >= standing.X, e + ": x " + sprinting.X + " < " + standing.X);
             Assert.Equal(ImpactMath.BlowImpact(in r, Facts(e, 0.5)), standing.Impact, 9);
         }
-        // the riposte: a fresh blocker turns a STANDING tired attacker's blow round more easily than a charging one's
+        // the riposte: step 62 (THE REFLECTED CHARGE) - a correct block turns the charging attacker's own momentum AGAINST him (step 52 had
+        // it the other way: the charge's bigger impact made it harder to turn round); at RiposteMomentumPercent 0 his speed does not count
         var still = Decide(Facts(ImpactEvent.Parry, 1.0, attackerBar: 0.3, speed: 0), r);
         var charge = Decide(Facts(ImpactEvent.Parry, 1.0, attackerBar: 0.3, speed: 8), r);
-        Assert.True(charge.XRiposte <= still.XRiposte && charge.Riposte.Chance <= still.Riposte.Chance, "the riposte against a charge: " + charge.Riposte.Chance + " vs " + still.Riposte.Chance);
+        Assert.True(charge.XRiposte > still.XRiposte && charge.Riposte.Chance >= still.Riposte.Chance, "the riposte against a charge: " + charge.Riposte.Chance + " vs " + still.Riposte.Chance);
+        var off = Rules(s => s.Set(SettingsSchema.RiposteMomentumPercent, 0, "test"));
+        Assert.Equal(Decide(Facts(ImpactEvent.Parry, 1.0, attackerBar: 0.3, speed: 0), off).XRiposte, Decide(Facts(ImpactEvent.Parry, 1.0, attackerBar: 0.3, speed: 8), off).XRiposte, 9);
         // step 53: a rider's speed counts at the RIDER settings (8 m/s: 5 of the 7 between 3 and 10 → x1.21), a couched lance never
         var rider = Facts(ImpactEvent.CleanHit, 0.5, speed: 8);
         rider.AttackerMounted = true;

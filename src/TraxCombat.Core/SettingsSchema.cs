@@ -936,6 +936,22 @@ namespace TraxCombat.Core
             "From the side: from (degrees)",
             "A blow counts as from the side from this many degrees off his facing up to the 'from behind' angle (60: between 60 and 120). Never above the 'from behind' angle.");
 
+        public static readonly ParamDef ImpactChargeCarrySeconds = Float("ImpactChargeCarrySeconds", 0, 5, ImpactGroup,
+            "Charge: a sprint carries into the first blow for (s)",
+            "A man who was sprinting strikes his first blow within this many seconds after the sprint as a CHARGE - its full momentum (and the full damage roll, if that switch is on), even though he slowed down to swing (the AI's sprint ends a few metres from the enemy). Only the first blow; while he still sprints, every blow. 0 = only a blow struck while sprinting.");
+
+        public static readonly ParamDef RiposteKnockdownMaxPercent = Int("RiposteKnockdownMaxPercent", 0, 100, ImpactGroup,
+            "Charge into a good shield block: thrown back, at most (%)",
+            "A CHARGING man (sprinting into the blow) whose blow is blocked on the RIGHT side of a shield can be thrown to the ground - at most this chance, for a full sprint by a weaker or tired man into a fresh, tougher shieldman; nothing for a walking attacker (he only reels). You too. 0 = never.");
+
+        public static readonly ParamDef RiposteKnockdownFrom = Float("RiposteKnockdownFrom", 0, 0.95, ImpactGroup,
+            "Thrown back: starts at pressure",
+            "Where the thrown-back chance starts on the pressure scale of the riposte (0 = any mismatch against the charger counts, 1 = an empty, outmatched attacker). The other curves: a stagger from 0, a knockdown from 0.35.");
+
+        public static readonly ParamDef RiposteMomentumPercent = Int("RiposteMomentumPercent", 0, 300, ImpactGroup,
+            "Charge into a good block: his momentum against him (+%)",
+            "On a right-side block or a parry, the attacker's own speed into the blow is turned against him - the riposte (he reels, or is thrown back) counts this much more at a full sprint (100: twice). 0 = his speed does not count on a correct block.");
+
         public static readonly ParamDef ImpactMismatchWeight = Float("ImpactMismatchWeight", 0, 2, ImpactGroup,
             "Mismatch weight (pressure per doubling)",
             "How much an outmatched man suffers: every doubling of the mismatch beyond the even band adds this to the pressure on him (0.25: an enemy four times stronger counts as much as being about a third tired). 0 = only tiredness counts.");
@@ -1397,6 +1413,7 @@ namespace TraxCombat.Core
             ImpactPunishEnabled, ImpactPunishAggressionPercent, ImpactPunishGraceSeconds, ImpactPunishRangeMetres,
             ImpactShrugOffYieldsToImpact, ImpactFallBackupSeconds, ImpactToughnessWeight, ImpactRangedInHandPercent,
             ImpactRearPercent, ImpactFlankPercent, ImpactRearDegrees, ImpactFlankDegrees,
+            ImpactChargeCarrySeconds, RiposteKnockdownMaxPercent, RiposteKnockdownFrom, RiposteMomentumPercent,
             ImpactMismatchWeight, ImpactEvenBandDoublings, ImpactBodyExponent, ImpactBodyFloorPoints, ImpactStaggeredBonus, ImpactDamageWeight,
             ImpactRefWeightKg, ImpactWeightExponent, ImpactRefSwingSpeed, ImpactSpeedExponent, ImpactBluntFactor, ImpactCutFactor, ImpactPierceFactor,
             ImpactKickFactor, ImpactBashFactor, ImpactSkillMinFactor, ImpactSkillMaxFactor,

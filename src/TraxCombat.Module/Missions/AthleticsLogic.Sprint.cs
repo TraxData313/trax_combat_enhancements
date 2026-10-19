@@ -593,6 +593,7 @@ namespace TraxCombat.Missions
         {
             var sp = st.Sprint;
             if (!sp.Active) return;
+            st.SprintEndedAt = sp.Regroup || sp.Rout ? double.NaN : now; // step 62: the charge carries into his first blow (never a sprint away)
             double ran = sp.Stop();
             if (_sprintingNow > 0) _sprintingNow--;
             _sprintStats.AddEnd(sp.ByKey, sp.Order, sp.Length, ran, end);

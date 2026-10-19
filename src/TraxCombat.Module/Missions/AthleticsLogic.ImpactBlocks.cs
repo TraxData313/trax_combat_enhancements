@@ -17,6 +17,9 @@ namespace TraxCombat.Missions
 
         /// <summary>The blocker knocked down: a blow of our own (lever 6).</summary>
         OwnBlow,
+
+        /// <summary>Step 62, the reflected charge: the charging ATTACKER thrown back - a blow of our own on him (lever 6), owned by the blocker.</summary>
+        ThrownBack,
     }
 
     /// <summary>Step 51: a block's outcome decided in the hit callback, made from the next tick - a struct in the logic's fixed pool.</summary>
@@ -277,6 +280,11 @@ namespace TraxCombat.Missions
                 shock++;
                 QueueBlock(ImpactBlockAction.Riposte, a, v, in d, now, d.RiposteStunSeconds, attackerBand);
             }
+            if (riposteApplied && d.ThrownBack.Happens) // step 62: the charging attacker thrown back - our blow on him from the tick
+            {
+                shock++;
+                QueueBlock(ImpactBlockAction.ThrownBack, a, v, in d, now, d.ThrownBackGetUpFactor, attackerBand);
+            }
             _blocks.ShockGiven += shock; // each = one ImpactState.NoteOutcome in the decision: courage counts it once
             if (shock > 0 && (d.AttackerIsPlayer || d.DefenderIsPlayer)) YouBlockLine(a, v, in d, blocksApplied, riposteApplied);
         }
@@ -288,6 +296,7 @@ namespace TraxCombat.Missions
             if (_live.Disabled(lever))
             {
                 _blocks.NoteNotApplied(outcome, ImpactNotApplied.LeverOff);
+                if (action == ImpactBlockAction.ThrownBack) _charge.ThrownNotApplied++;
                 FixState(action, st, now);
                 return;
             }
@@ -295,6 +304,7 @@ namespace TraxCombat.Missions
             {
                 _blocks.PoolFull++;
                 _blocks.NoteNotApplied(outcome, ImpactNotApplied.PoolFull);
+                if (action == ImpactBlockAction.ThrownBack) _charge.ThrownNotApplied++;
                 FixState(action, st, now);
                 return;
             }
@@ -308,16 +318,17 @@ namespace TraxCombat.Missions
         {
             ImpactBlockAction.OwnBlow => ImpactOutcome.Knockdown,
             ImpactBlockAction.Riposte => ImpactOutcome.Riposte,
+            ImpactBlockAction.ThrownBack => ImpactOutcome.Riposte, // step 62: the riposte's family (the attacker's outcome)
             _ => ImpactOutcome.Stagger,
         };
 
-        private static ImpactLever LeverOf(ImpactBlockAction a) => a == ImpactBlockAction.OwnBlow ? ImpactLever.OwnBlow : ImpactLever.ForcedStagger;
+        private static ImpactLever LeverOf(ImpactBlockAction a) => a == ImpactBlockAction.OwnBlow || a == ImpactBlockAction.ThrownBack ? ImpactLever.OwnBlow : ImpactLever.ForcedStagger;
 
         /// <summary>An outcome the dice gave that will not be played: his record no longer says he reels / lies on the ground (no immunity
         /// from what did not happen; the halving and the shock stay - the outcome was decided).</summary>
         private static void FixState(ImpactBlockAction action, TrackedAgent st, double now)
         {
-            if (action == ImpactBlockAction.OwnBlow) st.Impact.GotUp(now, 0);
+            if (action == ImpactBlockAction.OwnBlow || action == ImpactBlockAction.ThrownBack) st.Impact.GotUp(now, 0);
             else if (st.Impact.Reeling(now)) st.Impact.EndReel(now, 0);
         }
 
@@ -345,6 +356,14 @@ namespace TraxCombat.Missions
                     : "your " + kind + " of " + Name(a) + "'s " + blow + ": he reels (your riposte, " + Pct0(d.Riposte.Chance) + ")";
                 TraxLog.Info("impact", "YOU: " + s + " - " + d.RiposteStunSeconds.ToString("0.00", c) + " s (x_r " + d.XRiposte.ToString("0.00", c) + ")");
             }
+            if (riposteApplied && d.ThrownBack.Happens) // step 62
+            {
+                string s = d.AttackerIsPlayer
+                    ? "you charged into " + Name(v) + "'s shield: THROWN BACK (" + Pct0(d.ThrownBack.Chance) + ")"
+                    : "your shield threw " + Name(a) + " back - his charge (" + Pct0(d.ThrownBack.Chance) + ")";
+                TraxLog.Info("impact", "YOU: " + s + " - gets up x" + d.ThrownBackGetUpFactor.ToString("0.00", c) + " slower (x_r " + d.XRiposte.ToString("0.00", c)
+                    + ", his charge x" + d.RiposteMomentum.ToString("0.00", c) + ")");
+            }
         }
 
         private static void AddOutcome(ref string outc, bool you, ImpactOutcome o, in ImpactRoll roll)
@@ -370,6 +389,7 @@ namespace TraxCombat.Missions
                 if (_live.Disabled(lever) || failed)
                 {
                     _blocks.NoteNotApplied(outcome, ImpactNotApplied.LeverOff);
+                    if (p.Action == ImpactBlockAction.ThrownBack) _charge.ThrownNotApplied++;
                     if (p.St != null) FixState(p.Action, p.St, now);
                     continue;
                 }
@@ -383,6 +403,7 @@ namespace TraxCombat.Missions
                 {
                     _blocks.LeftField++;
                     _blocks.NoteNotApplied(outcome, ImpactNotApplied.LeftField);
+                    if (p.Action == ImpactBlockAction.ThrownBack) _charge.ThrownNotApplied++;
                     continue;
                 }
                 try
@@ -390,10 +411,12 @@ namespace TraxCombat.Missions
                     if (ImpactBody.CanForce(p.St) != ForceRefusal.None)
                     {
                         _blocks.NoteNotApplied(outcome, ImpactNotApplied.CannotForce); // never a rider / horse - no engine call
+                        if (p.Action == ImpactBlockAction.ThrownBack) _charge.ThrownNotApplied++;
                         FixState(p.Action, p.St, now);
                         continue;
                     }
                     if (p.Action == ImpactBlockAction.OwnBlow) RunOwnBlow(in p, now, ref calls);
+                    else if (p.Action == ImpactBlockAction.ThrownBack) RunThrownBack(in p, now, ref calls); // step 62
                     else RunStagger(in p, now, ref calls);
                 }
                 catch (Exception e)
@@ -463,6 +486,29 @@ namespace TraxCombat.Missions
                     + F2(double.IsNaN(p.Asked) ? 1 : p.Asked));
         }
 
+        /// <summary>Step 62, THE REFLECTED CHARGE: the charging attacker THROWN BACK - our own knockdown blow on HIM (lever 6), owned by the
+        /// shieldman; his Fall watched and slowed by his get-up factor (a <see cref="ImpactWatchPurpose.ThrownBack"/> watch); the on-screen line.</summary>
+        private void RunThrownBack(in ImpactBlockPending p, double now, ref int calls)
+        {
+            calls++;
+            var by = p.Other != null && !p.Other.Removed ? p.Other : null;
+            if (!ImpactBody.OwnKnockdownBlow(p.St, by, SpikeMath.OwnBlowDamage))
+            {
+                _blocks.NoteNotApplied(ImpactOutcome.Riposte, ImpactNotApplied.EngineRefused);
+                _charge.ThrownNotApplied++;
+                FixState(p.Action, p.St, now);
+                return;
+            }
+            _charge.ThrownApplied++;
+            if (IsPlayer(p.St)) _charge.ThrownYou++;
+            ImpactMessage(ImpactMessageKind.ThrownBack, by, p.St);
+            AddLiveWatch(p.St, ImpactWatchPurpose.ThrownBack, WatchKind.Fall, now, ImpactLiveMath.FallAppearSeconds, p.Asked, ev: p.Event);
+            if (LiveFirst(21))
+                TraxLog.Info("impact", "live: first CHARGE THROWN BACK (step 62) at " + Sec(now) + " s - " + Name(p.St) + " charged into " + (by != null ? Name(by) : "(someone)")
+                    + "'s right-side shield block: our own blow (KnockDown | KnockBack, " + SpikeMath.OwnBlowDamage + " damage, owned by the shieldman) from the tick, "
+                    + F2(now - p.At) + " s after the block; his fall-and-rise to be slowed x" + F2(double.IsNaN(p.Asked) ? 1 : p.Asked));
+        }
+
         // ------------------------------------------------------------------ the watches (from TickLiveWatches)
 
         private void BlockWatchAppeared(ref ImpactLiveWatch w, double now)
@@ -477,6 +523,9 @@ namespace TraxCombat.Missions
                     break;
                 case ImpactWatchPurpose.Riposte:
                     _blocks.RiposteSeen++;
+                    break;
+                case ImpactWatchPurpose.ThrownBack: // step 62
+                    _charge.ThrownSeen++;
                     break;
                 case ImpactWatchPurpose.BlockGetUp:
                     _blocks.NoteSeen(w.Event, ImpactOutcome.Knockdown);
@@ -506,6 +555,9 @@ namespace TraxCombat.Missions
                     _blocks.BlockGetUpMeasured.Add(length);
                     w.St.Impact.GotUp(now, r.KnockdownImmunity);
                     break;
+                case ImpactWatchPurpose.ThrownBack: // step 62: up again - the 5 s immunity from it
+                    w.St.Impact.GotUp(now, r.KnockdownImmunity);
+                    break;
                 case ImpactWatchPurpose.Guard:
                     _blocks.NoteGuard(w.Factor, length);
                     break;
@@ -529,6 +581,10 @@ namespace TraxCombat.Missions
                     break;
                 case ImpactWatchPurpose.BlockGetUp:
                     _blocks.BlockerFallNotSeen++;
+                    w.St.Impact.GotUp(now, 0);
+                    break;
+                case ImpactWatchPurpose.ThrownBack: // step 62
+                    _charge.ThrownNotSeen++;
                     w.St.Impact.GotUp(now, 0);
                     break;
                 case ImpactWatchPurpose.Guard:
@@ -561,7 +617,7 @@ namespace TraxCombat.Missions
             for (int i = 0; i < _blockPendingCount; i++)
             {
                 var p = _blockPending[i];
-                bool live = p.Action == ImpactBlockAction.Riposte ? riposte : blocks;
+                bool live = p.Action == ImpactBlockAction.Riposte || p.Action == ImpactBlockAction.ThrownBack ? riposte : blocks;
                 if (live)
                 {
                     _blockPending[keep++] = p;
@@ -579,7 +635,7 @@ namespace TraxCombat.Missions
             {
                 var pu = _liveWatches[i].Purpose;
                 bool block = pu == ImpactWatchPurpose.Stagger || pu == ImpactWatchPurpose.BlockGetUp || pu == ImpactWatchPurpose.Guard;
-                bool rip = pu == ImpactWatchPurpose.Riposte;
+                bool rip = pu == ImpactWatchPurpose.Riposte || pu == ImpactWatchPurpose.ThrownBack;
                 if ((block && !blocks) || (rip && !riposte))
                 {
                     RemoveLiveWatch(i--);
