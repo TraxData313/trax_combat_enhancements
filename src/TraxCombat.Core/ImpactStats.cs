@@ -49,6 +49,14 @@ namespace TraxCombat.Core
         public readonly int[] Refused = new int[ImpactMath.RefusalCount];
         public readonly int[] Skipped = new int[6];
         public readonly int[] SkippedByEvent = new int[E];
+
+        /// <summary>Step 68: every melee collision of a kick / bash (index 0 kick, 1 bash): LANDED on a man (the impact model's event), into a
+        /// SHIELD (blocked - IMPACT §3.5 has no row for it), other (the world, a miss); of the landed, by YOU; the landed ones NOT decided by reason.</summary>
+        public readonly int[] KickLanded = new int[2];
+        public readonly int[] KickIntoShield = new int[2];
+        public readonly int[] KickOther = new int[2];
+        public int KickLandedByPlayer;
+        public readonly int[] KickSkipped = new int[6];
         public int Halved;
         public long Halvings;
         public int Dismounts;
@@ -180,7 +188,46 @@ namespace TraxCombat.Core
         public void Skip(ImpactSkip why, ImpactEvent e)
         {
             Skipped[(int)why]++;
+            if (e == ImpactEvent.Kick || e == ImpactEvent.Bash) KickSkipped[(int)why]++; // step 68
             if (why == ImpactSkip.FamilyOff) SkippedByEvent[(int)e]++;
+        }
+
+        /// <summary>Step 68: one kick / bash collision as OnMeleeHit saw it.</summary>
+        public void NoteKickHit(bool bash, bool landed, bool intoShield, bool byPlayer)
+        {
+            int k = bash ? 1 : 0;
+            if (landed)
+            {
+                KickLanded[k]++;
+                if (byPlayer) KickLandedByPlayer++;
+            }
+            else if (intoShield) KickIntoShield[k]++;
+            else KickOther[k]++;
+        }
+
+        /// <summary>Step 68: the [summary] line - every LANDED kick / bash against the decisions made on them, the rest by reason (the gap must be 0:
+        /// one decision or one reason per landed kick).</summary>
+        public string KickCoverageLine()
+        {
+            int landed = KickLanded[0] + KickLanded[1];
+            int decided = DecidedOf(ImpactEvent.Kick) + DecidedOf(ImpactEvent.Bash);
+            int skipped = 0;
+            foreach (int v in KickSkipped) skipped += v;
+            int gap = landed - decided - skipped;
+            var sb = new StringBuilder("impact kicks / bashes landed vs decided (step 68): landed on a man ");
+            sb.Append(I(landed)).Append(" (kicks ").Append(I(KickLanded[0])).Append(", bashes ").Append(I(KickLanded[1])).Append("; by you ").Append(I(KickLandedByPlayer))
+              .Append(") → DECIDED ").Append(I(decided)).Append(" (kicks ").Append(I(DecidedOf(ImpactEvent.Kick))).Append(", bashes ").Append(I(DecidedOf(ImpactEvent.Bash)))
+              .Append("); not decided: on a FRIEND (the game cancels it, nothing plays - step 63) ").Append(I(KickSkipped[(int)ImpactSkip.NotEnemies]))
+              .Append(", on a horse / a man not tracked ").Append(I(KickSkipped[(int)ImpactSkip.NotTracked]))
+              .Append(", it killed him ").Append(I(KickSkipped[(int)ImpactSkip.Fatal]))
+              .Append(", the model off ").Append(I(KickSkipped[(int)ImpactSkip.Off]))
+              .Append(", the kicks' family off ").Append(I(KickSkipped[(int)ImpactSkip.FamilyOff]))
+              .Append(", the engine read failed ").Append(I(KickSkipped[(int)ImpactSkip.ReadFailed]))
+              .Append("; unaccounted ").Append(I(gap)).Append(gap == 0 ? " (every landed kick / bash on an enemy decided)" : " (should be 0 - tell Claude)")
+              .Append(" | into a raised shield ").Append(I(KickIntoShield[0] + KickIntoShield[1])).Append(" (kicks ").Append(I(KickIntoShield[0])).Append(", bashes ")
+              .Append(I(KickIntoShield[1])).Append(") - not decided: the shield stopped it (IMPACT §3.5 decides a kick that reaches the man; DESIGN decision 61)")
+              .Append(", other (the world, a miss) ").Append(I(KickOther[0] + KickOther[1]));
+            return sb.ToString();
         }
 
         // ------------------------------------------------------------------ the [summary] lines

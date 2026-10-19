@@ -384,6 +384,25 @@ namespace TraxCombat.Core
             "Shield walls: walk a man back after (s)",
             "With \"Shield walls hold their slots\" on (player page, How the AI fights): a soldier of a held wall who stands beyond his step out ahead of his place - thrown forward by a blow, pushed by the press - is held again at once, and if he has not started back on his own after this many seconds (and is not on the ground or reeling) he backs off to his place, facing the enemy. 0 = the game's own pull only.");
 
+        // Step 68 (Toni's 100 v 100 of 2026-10-19: a shield wall ordered forward (F1 then F4 = advance) had 15.4% of its men in contact more than
+        // 1 m ahead of their slots - the game's advance sends every man to a slot AT the enemy's line; "they need to hold the wall and push the whole
+        // wall, not to break up"): WallPaceMath, AI_NOTES "Step 68", DESIGN decision 61.
+        public static readonly ParamDef ShieldWallAdvanceAsOne = Bool("ShieldWallAdvanceAsOne", BattlePaceGroup,
+            "Shield walls: advance as one line",
+            "With \"Shield walls hold their slots\" on (player page, How the AI fights): a shield wall, square or circle ordered to advance (or moved, falling back, following) near the enemy walks forward as ONE line - each soldier only a short step ahead of his place in the line as it stands, instead of to the game's place at the enemy's line - so the whole wall pushes together and nobody runs ahead of it. A charge still lets them go. Off: the game's own advance (men in front walk into the enemy while their mates fight).");
+
+        public static readonly ParamDef ShieldWallAdvanceStepMetres = Float("ShieldWallAdvanceStepMetres", WallPaceMath.MinStepMetres, WallPaceMath.MaxStepMetres, BattlePaceGroup,
+            "Shield walls: advance step (m)",
+            "How far ahead of his place in the line a soldier of an advancing wall is sent each moment (the setting above). Smaller = a slower, tighter push; larger = a faster push that lets the line stretch a little.");
+
+        public static readonly ParamDef ShieldWallAdvanceNearMetres = Float("ShieldWallAdvanceNearMetres", 0, WallPaceMath.MaxNearMetres, BattlePaceGroup,
+            "Shield walls: advance as one within (m)",
+            "The advance-as-one line (above) begins when the wall's front is this close to the front of the nearest enemy formation; farther away the game's own march. 0 = only in contact.");
+
+        public static readonly ParamDef ShieldWallKickReturnMetres = Float("ShieldWallKickReturnMetres", 0, WallPullMath.MaxKickReturnMetres, BattlePaceGroup,
+            "Shield walls: back to the line after a kick (m)",
+            "With \"Shield walls hold their slots\" on: a soldier of a held wall who kicked or shield-bashed (or stepped in at a staggered enemy) and stands more than this ahead of his place walks straight back to it, facing the enemy, as soon as he can move - no wait. 0 = off (only the walk back above, past his step out).");
+
         // ------------------------------------------------------------------ brace by orders (step 23)
 
         // Step 23 (Anton, 2026-09-29: "make soldiers not swing but only defend when they have reached a certain floor, that
@@ -1215,6 +1234,12 @@ namespace TraxCombat.Core
             "AI shield bashes: at least this long between two (s)",
             "After a shield bash an AI soldier waits at least this many seconds before his next kick or bash (kept short, so bashes can keep up with his swings).");
 
+        // Step 68 (Toni's 100 v 100 of 2026-10-19: 92 AI kicks / bashes landed "on the man" but the impact model decided 33 - a kick or bash that lands
+        // on a FRIEND is cancelled by the game and never decided: a rear-rank man kicking the enemy past his own front-rank mate). AiKickMath.FriendInPath.
+        public static readonly ParamDef AiKickFriendClearMetres = Float("AiKickFriendClearMetres", 0, 2, ImpactGroup,
+            "AI kicks: not through a friend (m)",
+            "An AI soldier does not kick or bash the enemy he fights while one of his own side stands between them within this many metres of the line from him to that enemy (his kick would land on his mate) - he waits for a clear line instead. 0 = off.");
+
         public static readonly ParamDef ImpactMismatchWeight = Float("ImpactMismatchWeight", 0, 2, ImpactGroup,
             "Mismatch weight (pressure per doubling)",
             "How much an outmatched man suffers: every doubling of the mismatch beyond the even band adds this to the pressure on him (0.25: an enemy four times stronger counts as much as being about a third tired). 0 = only tiredness counts.");
@@ -1664,7 +1689,7 @@ namespace TraxCombat.Core
             StepBackEnabled, StepBackBackpedal, StepBackMaxChancePercent, StepBackDistance, StepBackSeconds, StepBackEnemyRange,
             StepBackHoldAttacks, StepBackMaxAtOnce,
             ShieldInfantrySwingsLessPercent, FootMeleeSwingsLessPercent, AiMeleeGapSeconds, ExtraPauseAfterBowShotSeconds, ExtraPauseAfterCrossbowShotSeconds,
-            ShieldWallPullBackSeconds,
+            ShieldWallPullBackSeconds, ShieldWallAdvanceAsOne, ShieldWallAdvanceStepMetres, ShieldWallAdvanceNearMetres, ShieldWallKickReturnMetres,
             BraceEnabled, BraceFloorChargePercent, BraceFloorAdvancePercent, BraceFloorHoldPercent, BraceFloorNoFormationPercent, BraceFloorSpreadPercent,
             BraceRecoverPercent, BraceRecoverSpreadPercent,
             BraceWieldShield, BraceRaiseShield,
@@ -1705,7 +1730,7 @@ namespace TraxCombat.Core
             AiKickTurtleBlocks, AiKickFeverMultiplier, AiKickSkillLowPercent, AiKickSkillHighPercent, AiKickMinBarPercent, AiKickFullBarPercent,
             AiKickKicksARaisedShield, KickBraceEnabled, KickBraceFromPressure, KickBraceToPressure, KickBraceMinBarPercent, KickBraceReelPercent,
             KickShortReelPercent, KickBraceRefusesKnockBack,
-            AiKickWaitSeconds, AiKickWaitMetres, AiBashShareOfSwingsPercent, AiBashDelaySeconds, AiBashCooldownSeconds,
+            AiKickWaitSeconds, AiKickWaitMetres, AiBashShareOfSwingsPercent, AiBashDelaySeconds, AiBashCooldownSeconds, AiKickFriendClearMetres,
             ImpactMismatchWeight, ImpactEvenBandDoublings, ImpactBodyExponent, ImpactBodyFloorPoints, ImpactStaggeredBonus, ImpactDamageWeight,
             ImpactRefWeightKg, ImpactWeightExponent, ImpactRefSwingSpeed, ImpactSpeedExponent, ImpactBluntFactor, ImpactCutFactor, ImpactPierceFactor,
             ImpactKickFactor, ImpactBashFactor, ImpactSkillMinFactor, ImpactSkillMaxFactor,

@@ -103,8 +103,10 @@ namespace TraxCombat.Core
         /// ImpactFlankPressure; a tuned value kept and noted), 12 = step 64 (Anton's looter battles of 2026-10-19: the fever sprint starts
         /// nearer - FeverSprintMinMetres 3 → 4, FeverSprintMaxMetres 12 → 8 - so a small store lasts to the enemy; the charge carries longer -
         /// ImpactChargeCarrySeconds 1.5 → 3 - to a slow swing's blow; a tuned value kept and noted), 13 = step 66 (Anton's looter battle of 2026-10-19 14:16 - no AI kick seen: CostPerKickOrBash
-        /// 3 → 5, AiKicksPerMinute 0.1 → 1.2, AiKickCooldownSeconds 10 → 8 in a file still holding them; a tuned value kept and noted).</summary>
-        public const int FormatVersion = 13;
+        /// 3 → 5, AiKicksPerMinute 0.1 → 1.2, AiKickCooldownSeconds 10 → 8 in a file still holding them; a tuned value kept and noted), 14 = step 68
+        /// (Toni's 100 v 100 of 2026-10-19 - "tire the men more to slow down the combat again a bit after the first impact": CostPerBlow 7 → 8,
+        /// CostPerWrongSideShieldBlock 2 → 5, CostPerShieldBlock 1 → 2 in a file still holding them; a tuned value kept and noted).</summary>
+        public const int FormatVersion = 14;
 
         /// <summary>The meta key holding <see cref="FormatVersion"/> - not a setting.</summary>
         public const string VersionKey = "ConfigVersion";
@@ -467,6 +469,16 @@ namespace TraxCombat.Core
                 const string kicks = "step 66, Anton's looter battle: no AI kick was ever seen at 0.1 a minute - a fresh man in contact now kicks about once a minute (shieldmen bash with their swings)";
                 MoveOrKeep(read, SettingsSchema.AiKicksPerMinute, 0.1, kicks, from, defaultOf);
                 MoveOrKeep(read, SettingsSchema.AiKickCooldownSeconds, 10, kicks, from, defaultOf);
+            }
+            if (from < 14)
+            {
+                // step 68: CostPerBlow's 7 is the default since format 9 (an older file's 10 / 3 went through steps 43 / 46 above, and a format-8
+                // file's own value was said there already); CostPerWrongSideShieldBlock's 2 since format 8 (an older file's 5 is today's default
+                // again); CostPerShieldBlock's 1 since step 22 - a file without a key simply gets the new default; a hand-set value is kept and said once
+                const string tire = "step 68, Toni: tire the men more to slow the combat again a bit after the first impact";
+                if (from >= 9) MoveOrKeep(read, SettingsSchema.CostPerBlow, 7, tire + " - a swing or shot costs 8", from, defaultOf);
+                if (from >= 8) MoveOrKeep(read, SettingsSchema.CostPerWrongSideShieldBlock, 2, tire + " - a wrong-side shield block costs 5 (a clumsy block tires)", from, defaultOf);
+                MoveOrKeep(read, SettingsSchema.CostPerShieldBlock, 1, tire + " - a right-side shield block costs 2", from, defaultOf);
             }
             // steps 36 / 37: the retired AI sprint keys - in ANY format (they are only ever steps 33-36's, and a hand-pasted one
             // goes the same way)

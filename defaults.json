@@ -57,7 +57,7 @@
   // = attacks are free. Kicks, bashes and blocks have their own costs: Advanced page,
   // Athletics.
   // (range 0.0 to 100.0)
-  "CostPerBlow": 7.0,
+  "CostPerBlow": 8.0,
 
   // Heroes (lords, companions and you) pay every Athletics cost - blows, kicks, bashes, blocks
   // - times this, so they last longer than common soldiers. 0.75 = a quarter less. 1 = the same
@@ -257,13 +257,13 @@
   // not stop your refill unless the switch below is off. Blocking is never held or slowed.
   // Arrows and bolts stopped by a shield are free. 0 = free.
   // (range 0.0 to 20.0)
-  "CostPerShieldBlock": 1.0,
+  "CostPerShieldBlock": 2.0,
 
   // Athletics points a common soldier pays for each melee blow his shield stops while held to
   // the wrong side - the blow came from another direction than his guard, and the game counts
   // it as a clumsy block. Heroes and party leaders pay less, like a blow. 0 = free.
   // (range 0.0 to 20.0)
-  "CostPerWrongSideShieldBlock": 2.0,
+  "CostPerWrongSideShieldBlock": 5.0,
 
   // Athletics points a common soldier pays for each melee blow he blocks or parries with his
   // weapon (no shield) - a chamber block too. Heroes and party leaders pay less, like a blow. 0
@@ -508,6 +508,33 @@
   // facing the enemy. 0 = the game's own pull only.
   // (range 0.0 to 3.0)
   "ShieldWallPullBackSeconds": 0.5,
+
+  // With "Shield walls hold their slots" on (player page, How the AI fights): a shield wall,
+  // square or circle ordered to advance (or moved, falling back, following) near the enemy
+  // walks forward as ONE line - each soldier only a short step ahead of his place in the line
+  // as it stands, instead of to the game's place at the enemy's line - so the whole wall pushes
+  // together and nobody runs ahead of it. A charge still lets them go. Off: the game's own
+  // advance (men in front walk into the enemy while their mates fight).
+  // (true or false)
+  "ShieldWallAdvanceAsOne": true,
+
+  // How far ahead of his place in the line a soldier of an advancing wall is sent each moment
+  // (the setting above). Smaller = a slower, tighter push; larger = a faster push that lets the
+  // line stretch a little.
+  // (range 0.3 to 3.0)
+  "ShieldWallAdvanceStepMetres": 1.0,
+
+  // The advance-as-one line (above) begins when the wall's front is this close to the front of
+  // the nearest enemy formation; farther away the game's own march. 0 = only in contact.
+  // (range 0.0 to 60.0)
+  "ShieldWallAdvanceNearMetres": 10.0,
+
+  // With "Shield walls hold their slots" on: a soldier of a held wall who kicked or
+  // shield-bashed (or stepped in at a staggered enemy) and stands more than this ahead of his
+  // place walks straight back to it, facing the enemy, as soon as he can move - no wait. 0 =
+  // off (only the walk back above, past his step out).
+  // (range 0.0 to 3.0)
+  "ShieldWallKickReturnMetres": 0.5,
 
   // ==================== Brace by orders (AI) ====================
   // An AI soldier whose Athletics bar falls to his formation's order floor (the settings below)
@@ -1609,6 +1636,12 @@
   // bash (kept short, so bashes can keep up with his swings).
   // (range 0.0 to 60.0)
   "AiBashCooldownSeconds": 2.0,
+
+  // An AI soldier does not kick or bash the enemy he fights while one of his own side stands
+  // between them within this many metres of the line from him to that enemy (his kick would
+  // land on his mate) - he waits for a clear line instead. 0 = off.
+  // (range 0.0 to 2.0)
+  "AiKickFriendClearMetres": 0.5,
 
   // How much an outmatched man suffers: every doubling of the mismatch beyond the even band
   // adds this to the pressure on him (0.25: an enemy four times stronger counts as much as

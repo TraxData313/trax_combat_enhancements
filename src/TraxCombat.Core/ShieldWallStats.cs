@@ -123,6 +123,9 @@ namespace TraxCombat.Core
         /// <summary>Step 63: held men out of place and walked back.</summary>
         public readonly WallPullStats Pull = new WallPullStats();
 
+        /// <summary>Step 68: the samples by order group and the advance as one line.</summary>
+        public readonly WallPaceStats Pace = new WallPaceStats();
+
         public int Looks(WallVerdict v) => _looks[(int)v];
         public int Releases(WallVerdict v) => _releases[(int)v];
         public int Writes(WallWriteKind k) => _writes[(int)k];

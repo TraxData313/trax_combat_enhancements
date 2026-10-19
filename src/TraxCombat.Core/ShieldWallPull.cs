@@ -17,6 +17,10 @@ namespace TraxCombat.Core
         /// record) - the step-63 question.</summary>
         public bool AfterImpact;
 
+        /// <summary>Step 68: it began within <see cref="WallPullMath.KickWindowSeconds"/> of his OWN kick / bash or while he pressed a punish window
+        /// (step 54) - walked back at once, from <c>ShieldWallKickReturnMetres</c> out.</summary>
+        public bool AfterOwnKick;
+
         /// <summary>The farthest out (m) at the looks.</summary>
         public double MaxOut;
 
@@ -93,6 +97,13 @@ namespace TraxCombat.Core
         /// Plumbing.</summary>
         public const double ImpactWindowSeconds = 3.0;
 
+        /// <summary>Step 68: his own kick / bash (its start - step 18's tracker) at most this long ago makes a spell "after his own kick" (a kick /
+        /// bash plays ~1-1.5 s). Plumbing.</summary>
+        public const double KickWindowSeconds = 2.5;
+
+        /// <summary>Step 68: the setting's range (m) - <c>ShieldWallKickReturnMetres</c>.</summary>
+        public const double MaxKickReturnMetres = 3.0;
+
         /// <summary>One spell's walk back stops after this many seconds of pulling (a man who cannot get back - a wall of bodies - is left
         /// to the game's flag). Plumbing.</summary>
         public const double MaxPullSeconds = 4.0;
@@ -111,26 +122,39 @@ namespace TraxCombat.Core
         /// reeling, <paramref name="impact"/> = an impact outcome on him lately, <paramref name="pullSeconds"/> = the setting (0 = never pull).
         /// <paramref name="dt"/> = seconds since the last look (the pull's budget). Returns what changed.
         /// </summary>
-        public static WallOutMove Step(ref WallOutOfPlace s, double leash, double outM, bool canMove, bool impact, double pullSeconds, double now, double dt)
+        public static WallOutMove Step(ref WallOutOfPlace s, double leash, double outM, bool canMove, bool impact, double pullSeconds, double now, double dt) =>
+            Step(ref s, leash, outM, canMove, impact, pullSeconds, now, dt, 0, false);
+
+        /// <summary>
+        /// Step 68: the same with THE RETURN AFTER HIS OWN KICK: <paramref name="ownKick"/> = his own kick / bash began within
+        /// <see cref="KickWindowSeconds"/> (or he presses a punish window - step 54's step-in); <paramref name="kickReturnMetres"/> =
+        /// <c>ShieldWallKickReturnMetres</c> (0 = off). Such a man is out of place from that many metres ahead (not the leash's 1.25), back within
+        /// half of it, and walked back AT ONCE once he can move (no <c>ShieldWallPullBackSeconds</c> wait - it works with that setting at 0 too).
+        /// </summary>
+        public static WallOutMove Step(ref WallOutOfPlace s, double leash, double outM, bool canMove, bool impact, double pullSeconds, double now, double dt,
+            double kickReturnMetres, bool ownKick)
         {
             if (double.IsNaN(outM)) return WallOutMove.None;
+            bool kickOn = kickReturnMetres > 0;
             if (!s.Out)
             {
-                if (!(outM > Beyond(leash))) return WallOutMove.None;
-                s = new WallOutOfPlace { Out = true, Since = now, AfterImpact = impact, MaxOut = outM, MovableSince = canMove ? now : double.NaN };
+                bool kick = kickOn && ownKick && outM > kickReturnMetres;
+                if (!kick && !(outM > Beyond(leash))) return WallOutMove.None;
+                s = new WallOutOfPlace { Out = true, Since = now, AfterImpact = impact, AfterOwnKick = kickOn && ownKick, MaxOut = outM, MovableSince = canMove ? now : double.NaN };
                 return WallOutMove.Began;
             }
             if (outM > s.MaxOut) s.MaxOut = outM;
             if (!canMove) s.MovableSince = double.NaN;
             else if (double.IsNaN(s.MovableSince)) s.MovableSince = now;
             if (s.Pulling && dt > 0 && !double.IsNaN(dt)) s.PullSeconds += dt;
-            if (outM <= BackAt(leash))
+            bool kickSpell = s.AfterOwnKick && kickOn;
+            if (outM <= (kickSpell ? Math.Min(BackAt(leash), kickReturnMetres / 2) : BackAt(leash)))
             {
                 s.Out = false;
                 s.Pulling = false;
                 return WallOutMove.Back;
             }
-            bool want = pullSeconds > 0 && canMove && now - s.MovableSince >= pullSeconds && s.PullSeconds < MaxPullSeconds;
+            bool want = (kickSpell || pullSeconds > 0) && canMove && now - s.MovableSince >= (kickSpell ? 0 : pullSeconds) && s.PullSeconds < MaxPullSeconds;
             if (want && !s.Pulling)
             {
                 s.Pulling = true;
@@ -174,6 +198,10 @@ namespace TraxCombat.Core
         private readonly int[] _ends = new int[(int)WallOutEnd.Count];
 
         public int Spells, SpellsAfterImpact;
+
+        /// <summary>Step 68: spells after his own kick / bash or a punish press, and their time back.</summary>
+        public int SpellsAfterKick;
+        public MeanStd BackAfterKick;
         public int Pulls, PullFrames;
         public MeanStd BackAfterImpact, BackOther, BackPulled, BackUnpulled;
         public double BackMax;
@@ -181,10 +209,14 @@ namespace TraxCombat.Core
 
         public int Ends(WallOutEnd e) => _ends[(int)e];
 
-        public void Began(bool afterImpact)
+        public void Began(bool afterImpact) => Began(afterImpact, false);
+
+        /// <summary>Step 68: a spell began - after an impact on him, after his own kick / bash (a punish press), or other.</summary>
+        public void Began(bool afterImpact, bool afterOwnKick)
         {
             Spells++;
             if (afterImpact) SpellsAfterImpact++;
+            if (afterOwnKick) SpellsAfterKick++;
         }
 
         /// <summary>A spell ended - how, and (back) after how long.</summary>
@@ -197,6 +229,7 @@ namespace TraxCombat.Core
             if (double.IsNaN(secs) || secs < 0) return;
             if (s.AfterImpact) BackAfterImpact.Add(secs); // MeanStd is a struct: never through a ternary (a copy)
             else BackOther.Add(secs);
+            if (s.AfterOwnKick) BackAfterKick.Add(secs); // step 68
             if (s.Pulled) BackPulled.Add(secs);
             else BackUnpulled.Add(secs);
             if (secs > BackMax) BackMax = secs;
@@ -213,7 +246,8 @@ namespace TraxCombat.Core
                    + LeashMath.F2(MaxOut) + " m; ended: back " + Ends(WallOutEnd.Back) + ", freed / let go " + Ends(WallOutEnd.LetGo) + ", fell or left " + Ends(WallOutEnd.LeftField)
                    + ", still out at the end " + Ends(WallOutEnd.StillOut) + "; THE TIME BACK - after an impact " + Secs(in BackAfterImpact) + ", other " + Secs(in BackOther)
                    + ", the longest " + BackMax.ToString("0.00", c) + " s; walked back by us " + Pulls + " times (" + PullFrames + " input frames) - back with our walk "
-                   + Secs(in BackPulled) + ", by the game's flag alone " + Secs(in BackUnpulled);
+                   + Secs(in BackPulled) + ", by the game's flag alone " + Secs(in BackUnpulled)
+                   + "; step 68 - after his OWN kick / bash or a punish press " + SpellsAfterKick + " (back in " + Secs(in BackAfterKick) + ")";
         }
 
         private static string Secs(in MeanStd m) =>

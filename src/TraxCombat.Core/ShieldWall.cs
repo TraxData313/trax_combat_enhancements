@@ -105,6 +105,15 @@ namespace TraxCombat.Core
         public double AvgSpeed;
         public double VelX, VelY;
         public double Deviation;
+
+        /// <summary>Step 68: the game's ORDER slot of this man (<c>Formation.GetOrderPositionOfUnit</c> - where vanilla walks him: under an
+        /// advance it lies at the enemy's line) - read for a man of a held MOVING order only (not a stop / hold).</summary>
+        public bool HasOrderSlot;
+        public double OrderX, OrderY;
+
+        /// <summary>Step 68: the gap (m) between his formation's front and the front of the closest enemy formation (their centres' distance
+        /// less half of each one's depth); NaN = no enemy formation known.</summary>
+        public double EnemyGap;
     }
 
     /// <summary>

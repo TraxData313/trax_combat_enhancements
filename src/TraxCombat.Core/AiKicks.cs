@@ -77,6 +77,28 @@ namespace TraxCombat.Core
 
         /// <summary>Step 66: decided, waiting for the enemy to come in reach / in front (<c>AiKickWaitSeconds</c>).</summary>
         Waiting,
+
+        /// <summary>Step 68: one of his own side stands on the line to the enemy (<c>AiKickFriendClearMetres</c>) - his kick would land on his mate;
+        /// the decision waits like one out of reach.</summary>
+        FriendInTheWay,
+    }
+
+    /// <summary>Step 68: whom an AI kick / bash's first hit LANDED on (the [summary] "ai kicks" line - the step-68 question).</summary>
+    public enum AiKickVictim : byte
+    {
+        /// <summary>The enemy he kicked at.</summary>
+        Target,
+
+        /// <summary>Another enemy (a man in the way, a neighbour).</summary>
+        OtherEnemy,
+
+        /// <summary>One of his own side - the game cancels it, nothing is decided (step 63's rule).</summary>
+        Friend,
+
+        /// <summary>A horse, or a man the mod does not track.</summary>
+        Untracked,
+
+        Count,
     }
 
     /// <summary>Step 65: how an attempt ended.</summary>
@@ -111,8 +133,9 @@ namespace TraxCombat.Core
         public AiKickRules(bool modEnabled, bool athleticsEnabled, bool enabled, double perMinute, double reachMetres, double facingDegrees, double cooldownSeconds,
             double turtleMultiplier, double turtleSeconds, double turtleBlocks, double feverMultiplier, int skillLowPercent, int skillHighPercent,
             int minBarPercent, int fullBarPercent, bool kicksARaisedShield, double waitSeconds = 0, double waitMetres = 0, int bashSharePercent = 0,
-            double bashDelaySeconds = 1, double bashCooldownSeconds = 0)
+            double bashDelaySeconds = 1, double bashCooldownSeconds = 0, double friendClearMetres = 0)
         {
+            FriendClear = Pos(friendClearMetres);
             ModEnabled = modEnabled;
             AthleticsEnabled = athleticsEnabled;
             KicksEnabled = enabled;
@@ -139,7 +162,7 @@ namespace TraxCombat.Core
         public static AiKickRules From(TraxSettings s) => new AiKickRules(s.ModEnabled, s.AthleticsEnabled, s.AiKicksEnabled, s.AiKicksPerMinute, s.AiKickReachMetres,
             s.AiKickFacingDegrees, s.AiKickCooldownSeconds, s.AiKickTurtleMultiplier, s.AiKickTurtleSeconds, s.AiKickTurtleBlocks, s.AiKickFeverMultiplier,
             s.AiKickSkillLowPercent, s.AiKickSkillHighPercent, s.AiKickMinBarPercent, s.AiKickFullBarPercent, s.AiKickKicksARaisedShield,
-            s.AiKickWaitSeconds, s.AiKickWaitMetres, s.AiBashShareOfSwingsPercent, s.AiBashDelaySeconds, s.AiBashCooldownSeconds);
+            s.AiKickWaitSeconds, s.AiKickWaitMetres, s.AiBashShareOfSwingsPercent, s.AiBashDelaySeconds, s.AiBashCooldownSeconds, s.AiKickFriendClearMetres);
 
         public bool ModEnabled { get; }
         public bool AthleticsEnabled { get; }
@@ -176,6 +199,10 @@ namespace TraxCombat.Core
         /// <summary>Step 66: at least this long after a BASH before his next kick or bash (a kick keeps <see cref="Cooldown"/>).</summary>
         public double BashCooldown { get; }
 
+        /// <summary>Step 68: no kick / bash while a man of his own side stands within this many metres of the line to the enemy, between them
+        /// (<c>AiKickFriendClearMetres</c>; 0 = no check).</summary>
+        public double FriendClear { get; }
+
         public string? OffBecause => !ModEnabled ? "ModEnabled" : !AthleticsEnabled ? "AthleticsEnabled" : !KicksEnabled ? "AiKicksEnabled"
             : !(PerMinute > 0) && !(BashShare > 0) ? "AiKicksPerMinute 0 and AiBashShareOfSwingsPercent 0" : null;
 
@@ -200,6 +227,7 @@ namespace TraxCombat.Core
                    + "; a decision with that enemy within " + AiKickMath.F1(WaitMetres) + " m but not yet in reach waits up to " + AiKickMath.F1(WaitSeconds)
                    + " s for it; never staggered, down, routing, mounted, with a ranged weapon, without the Athletics or a stored swing for it"
                    + (KicksARaisedShield ? "; a shieldman KICKS a raised shield facing him" : string.Empty)
+                   + (FriendClear > 0 ? "; never through a friend (one of his side within " + AiKickMath.F1(FriendClear) + " m of the line to the enemy - he waits for a clear line)" : string.Empty)
                    + " - through the AI's own input (the engine's kick key; a bash = the kick key with the guard up)";
         }
     }
@@ -230,12 +258,35 @@ namespace TraxCombat.Core
         /// <summary>A raised shield facing the kicker within this angle is kicked, not bashed (RBM's ShieldFacingCosine 0.5 = 60°).</summary>
         public const double RaisedShieldDegrees = 60;
 
-        public const int SkipCount = 15;
+        public const int SkipCount = 16;
         public const int EndCount = 6;
 
         /// <summary>His own action (channel 1) keeps him busy: a ready / release of a melee or ranged attack, a reload, a kick / bash, a weapon
         /// change (the engine's <c>ActionCodeType</c> 15-20, 28-31, 33-34) - taking his attack bits out mid-ready would RELEASE the blow (step 16).</summary>
         public static bool IsBusyAction(int action) => (action >= 15 && action <= 20) || (action >= 28 && action <= 31) || action == 33 || action == 34;
+
+        /// <summary>
+        /// Step 68: does a man of his own side stand IN THE WAY of a kick from (<paramref name="ax"/>, <paramref name="ay"/>) at the enemy at
+        /// (<paramref name="tx"/>, <paramref name="ty"/>)? The friend at (<paramref name="fx"/>, <paramref name="fy"/>) is in the way when he stands
+        /// between them along the line (more than <see cref="FriendPathMinAlong"/> m past the kicker, short of the enemy) and within
+        /// <paramref name="clear"/> m of it. 0 = never.
+        /// </summary>
+        public static bool FriendInPath(double ax, double ay, double tx, double ty, double fx, double fy, double clear)
+        {
+            if (!(clear > 0)) return false;
+            double dx = tx - ax, dy = ty - ay;
+            double len = Math.Sqrt(dx * dx + dy * dy);
+            if (!(len > 1e-6)) return false;
+            double ux = dx / len, uy = dy / len;
+            double along = (fx - ax) * ux + (fy - ay) * uy;
+            if (!(along > FriendPathMinAlong) || !(along < len)) return false;
+            double side = Math.Abs(-(fx - ax) * uy + (fy - ay) * ux);
+            return side <= clear;
+        }
+
+        /// <summary>Step 68: a friend counts as in the way only this far past the kicker along the line (m) - a man shoulder to shoulder beside
+        /// him is not in front of his foot. Plumbing.</summary>
+        public const double FriendPathMinAlong = 0.2;
 
         /// <summary>The skill factor: low + (high − low) × min(1, skill ÷ 300).</summary>
         public static double SkillFactor(in AiKickRules r, double skill)
@@ -398,6 +449,7 @@ namespace TraxCombat.Core
             AiKickSkip.TooFar => "target out of reach",
             AiKickSkip.NotFacing => "target not in front",
             AiKickSkip.Waiting => "waiting for reach",
+            AiKickSkip.FriendInTheWay => "a friend in the way (step 68)",
             _ => "the attempt pool full",
         };
 
@@ -412,6 +464,14 @@ namespace TraxCombat.Core
         };
 
         public static string KindName(AiKickKind k) => k == AiKickKind.Bash ? "shield bash" : "kick";
+
+        public static string VictimName(AiKickVictim v) => v switch
+        {
+            AiKickVictim.Target => "on his target",
+            AiKickVictim.OtherEnemy => "on another enemy",
+            AiKickVictim.Friend => "on a FRIEND (the game cancels it - never decided)",
+            _ => "on a horse / a man not tracked",
+        };
 
         internal static string F0(double v) => v.ToString("0", CultureInfo.InvariantCulture);
 
@@ -446,6 +506,15 @@ namespace TraxCombat.Core
 
         /// <summary>Played as the other kind (asked a bash, the engine kicked - or the other way round).</summary>
         public int PlayedOtherKind;
+
+        /// <summary>Step 68: whom the landed ones landed on (<see cref="AiKickVictim"/>).</summary>
+        public readonly int[] Victims = new int[(int)AiKickVictim.Count];
+
+        public void NoteVictim(AiKickVictim v) => Victims[(int)v]++;
+
+        /// <summary>Step 68: the friend-in-the-way reads (in reach and in front): a mate on the line - held; the line clear.</summary>
+        public int FriendChecksBlocked;
+        public int FriendChecksClear;
 
         /// <summary>Step 66: the shieldmen's melee swings (AI, on foot) that earned bash credit, the credit earned, the credit lost at the cap.</summary>
         public int ShieldSwings;
@@ -508,6 +577,17 @@ namespace TraxCombat.Core
             return n;
         }
 
+        /// <summary>Step 68: " (on his target a, on another enemy b, on a FRIEND c, on a horse / untracked d)" - nothing when none was noted.</summary>
+        public string VictimsText()
+        {
+            int n = 0;
+            foreach (int v in Victims) n += v;
+            if (n == 0) return string.Empty;
+            var parts = new List<string>();
+            for (int i = 0; i < (int)AiKickVictim.Count; i++) parts.Add(AiKickMath.VictimName((AiKickVictim)i) + " " + Victims[i]);
+            return " (step 68: " + string.Join(", ", parts) + ")";
+        }
+
         public IEnumerable<string> SummaryLines(in AiKickRules r)
         {
             var lines = new List<string>();
@@ -520,7 +600,7 @@ namespace TraxCombat.Core
             lines.Add("ai kicks (step 65): " + r.Describe());
             lines.Add("ai kicks: asked " + asked + " (kicks " + AskedCount(AiKickKind.Kick) + ", bashes " + AskedCount(AiKickKind.Bash) + ") → PLAYED " + played
                       + (asked > 0 ? " (" + (100.0 * played / asked).ToString("0", c) + "%)" : string.Empty) + (PlayedDelayCount > 0 ? ", seen " + (PlayedDelay / PlayedDelayCount).ToString("0.00", c) + " s after the ask" : string.Empty)
-                      + " → landed on the man " + landed + ", into a shield " + blocked + (PlayedOtherKind > 0 ? "; played as the other kind " + PlayedOtherKind : string.Empty)
+                      + " → landed on the man " + landed + VictimsText() + ", into a shield " + blocked + (PlayedOtherKind > 0 ? "; played as the other kind " + PlayedOtherKind : string.Empty)
                       + "; " + (minutes > 0 ? (asked / minutes).ToString("0.00", c) + " asked a man-minute in contact (" + minutes.ToString("0.0", c) + " man-minutes)" : "no man-minute in contact measured (the fever's look off)")
                       + "; Athletics spent on them " + PointsSpent.ToString("0", c));
             var sb = new System.Text.StringBuilder("ai kicks by reason (asked → played → landed / into a shield): ");
@@ -548,6 +628,9 @@ namespace TraxCombat.Core
             }
             if (first) sb.Append("none");
             sb.Append("; native reads ").Append(NativeReads).Append(", the look's cost ").Append(CostMs.ToString("0.000", c)).Append(" ms");
+            if (r.FriendClear > 0 || FriendChecksBlocked + FriendChecksClear > 0)
+                sb.Append("; step 68 - a friend on the line to the enemy (within ").Append(AiKickMath.F1(r.FriendClear)).Append(" m): held ").Append(FriendChecksBlocked)
+                  .Append(", clear ").Append(FriendChecksClear);
             lines.Add(sb.ToString());
             int bashes = AskedCount(AiKickKind.Bash);
             lines.Add("ai kicks - bashes per swing and the wait for reach (step 66): the shieldmen's melee swings (AI, on foot) " + ShieldSwings + " earned "

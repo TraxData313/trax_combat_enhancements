@@ -272,6 +272,10 @@ namespace TraxCombat.Core
         public bool ShieldWallHoldsSlots => GetBool(SettingsSchema.ShieldWallHoldsSlots);
         public float ShieldWallStepOutMetres => GetFloat(SettingsSchema.ShieldWallStepOutMetres);   // step 42: the leash
         public float ShieldWallPullBackSeconds => GetFloat(SettingsSchema.ShieldWallPullBackSeconds); // step 63: a man out of place walked back
+        public bool ShieldWallAdvanceAsOne => GetBool(SettingsSchema.ShieldWallAdvanceAsOne);                 // step 68: the wall pushes as one
+        public float ShieldWallAdvanceStepMetres => GetFloat(SettingsSchema.ShieldWallAdvanceStepMetres);
+        public float ShieldWallAdvanceNearMetres => GetFloat(SettingsSchema.ShieldWallAdvanceNearMetres);
+        public float ShieldWallKickReturnMetres => GetFloat(SettingsSchema.ShieldWallKickReturnMetres);       // step 68: back to the line after a kick
 
         // step 23: brace by orders
         public bool BraceEnabled => GetBool(SettingsSchema.BraceEnabled);
@@ -490,6 +494,7 @@ namespace TraxCombat.Core
         public int AiBashShareOfSwingsPercent => GetInt(SettingsSchema.AiBashShareOfSwingsPercent);
         public float AiBashDelaySeconds => GetFloat(SettingsSchema.AiBashDelaySeconds);
         public float AiBashCooldownSeconds => GetFloat(SettingsSchema.AiBashCooldownSeconds);
+        public float AiKickFriendClearMetres => GetFloat(SettingsSchema.AiKickFriendClearMetres); // step 68: no kick through a friend
         public float ImpactMismatchWeight => GetFloat(SettingsSchema.ImpactMismatchWeight);
         public float ImpactEvenBandDoublings => GetFloat(SettingsSchema.ImpactEvenBandDoublings);
         public float ImpactBodyExponent => GetFloat(SettingsSchema.ImpactBodyExponent);
