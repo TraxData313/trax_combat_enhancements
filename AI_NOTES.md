@@ -6091,3 +6091,5 @@ master-switch step's `WallPaceFollowsTheMasterSwitch`); the older wall steps pin
 3. `impact kicks / bashes landed vs decided … unaccounted 0`, and `on a FRIEND` far below the 59 of 92 now that the friend check holds them; the
    `ai kicks` victims clause confirms the FRIEND hypothesis (most of the old gap on friends).
 4. The lines tire sooner after the first clash (8 a swing, 2 / 5 a block) without feeling sluggish.
+
+**DEPLOY**: `tools\deploy.ps1` ran whole (build, the AssemblyGuard OK, the offline smoke exe - all passed), installed as Modules\TraxCombatEnhancements.Dev; `tools\SmartAppControl\loadcheck.ps1`: both installed DLLs LOADED (`1.2.0+0ca03871…`): TraxCombatEnhancements.dll SHA-256 0CD6F109…66F5, TraxCombat.Core.dll 30211053…CD44. The Bannerlord launcher was open during the build (not the game) and had closed before the deploy - no DLL locked, nothing killed. Tests (1004) and the step's smoke ran in memory (`run_tests.fsx`, `run_smoke.ps1`); `refresh_defaults.fsx` once (Smart App Control blocked DefaultsTool's fresh Core DLL). Windows security untouched.
