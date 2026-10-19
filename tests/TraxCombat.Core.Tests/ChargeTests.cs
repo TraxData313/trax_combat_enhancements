@@ -444,3 +444,167 @@ public class ChargeTests
         Assert.Contains("ImpactShrugOffYieldsToImpact OFF", f.SummaryLine(true, 0, false));
     }
 }
+
+/// <summary>
+/// Step 62's WORKED EXAMPLES (docs/MECHANICS.md §11 "The charge", AI_NOTES "Step 62") on the SHIPPED values - DESIGN's initial values with
+/// defaults.json's step-56 block model (right block / parry 30 / 10, the riposte 70, the stun's lengthening 0). The troops (the game's own
+/// spnpccharacters.xml / bandits.xml): an IMPERIAL LEGIONARY - Athletics 130 (pool 130), one-handed 130, a 1.3 kg sword at 92, a 4 kg shield,
+/// armour 110, level 26 (toughness 5.97); a LOOTER - Athletics 30 (pool 50, the floor), a 1.5 kg club at 85 (blunt), skill 30, armour 8, level 5
+/// (1.35); a PEASANT ARCHER - Athletics 40 (pool 50), a bow in his hand, armour 15, level 11 (1.78); YOU - a pool of 120, skill 150, a 1.4 kg
+/// sword at 95, armour 80, level 20 (4.33). Every swing at the game's tired animation (0.85 + 0.15 f).
+/// </summary>
+public class ChargeExamplesTests
+{
+    private sealed class Never : IRandomSource
+    {
+        public double NextDouble() => 0.999;
+    }
+
+    private readonly record struct Troop(double Pool, double Skill, double Kg, double Speed, ImpactDamageType Type, double Armour, int Level)
+    {
+        public double Toughness => CourageMath.BaseToughness(200, 100, Armour, Level);
+    }
+
+    private static readonly Troop Legionary = new(130, 130, 1.3, 92, ImpactDamageType.Cut, 110, 26);
+    private static readonly Troop Looter = new(50, 30, 1.5, 85, ImpactDamageType.Blunt, 8, 5);
+    private static readonly Troop Archer = new(50, 40, 1.3, 92, ImpactDamageType.Cut, 15, 11);
+    private static readonly Troop You = new(120, 150, 1.4, 95, ImpactDamageType.Cut, 80, 20);
+
+    private static ImpactRules Shipped()
+    {
+        var s = new TraxSettings();
+        s.Set(SettingsSchema.RightBlockStaggerMaxPercent, 30, "test");
+        s.Set(SettingsSchema.RightBlockKnockdownMaxPercent, 10, "test");
+        s.Set(SettingsSchema.ParryStaggerMaxPercent, 30, "test");
+        s.Set(SettingsSchema.ParryKnockdownMaxPercent, 10, "test");
+        s.Set(SettingsSchema.RiposteStaggerMaxPercent, 70, "test");
+        s.Set(SettingsSchema.BlockStunTiredExtraPercent, 0, "test");
+        return ImpactRules.From(s);
+    }
+
+    private static ImpactFacts Blow(ImpactEvent e, Troop a, double aBar, Troop d, double dBar, bool charging = false, double angle = 0, bool bow = false, bool you = false)
+    {
+        double fA = Math.Min(1, aBar / 0.75);
+        return new ImpactFacts
+        {
+            Event = e,
+            AttackerPoints = a.Pool * aBar,
+            AttackerF = fA,
+            AttackerAnimation = 0.85 + 0.15 * fA,
+            AttackerSkill = a.Skill,
+            DefenderPoints = d.Pool * dBar,
+            DefenderBar = dBar,
+            DefenderF = Math.Min(1, dBar / 0.75),
+            DefenderSkill = d.Skill,
+            WeaponWeight = a.Kg,
+            SwingSpeed = a.Speed,
+            DamageType = a.Type,
+            GuardWeight = ImpactMath.IsBlock(e) ? 4.0 : 0,
+            DefenderHasShield = ImpactMath.IsBlock(e),
+            DefenderMaxHealth = 100,
+            AttackerSpeed = charging ? 3.0 : 1.0, // he slowed to swing - the charge carries it
+            AttackerCharging = charging,
+            AttackAngleDegrees = angle,
+            DefenderRangedInHand = bow,
+            AttackerToughness = a.Toughness,
+            DefenderToughness = d.Toughness,
+            AttackerIsPlayer = you,
+        };
+    }
+
+    private static ImpactDecision Decide(in ImpactFacts f)
+    {
+        var r = Shipped();
+        var d = default(ImpactState);
+        var a = default(ImpactState);
+        return ImpactMath.Decide(in r, in f, ref d, ref a, 100, new Never());
+    }
+
+    private static void Near(double expected, double actual, double tol, string what) =>
+        Assert.True(Math.Abs(expected - actual) <= tol, what + ": " + (100 * actual).ToString("0.0") + "% vs " + (100 * expected).ToString("0") + "%");
+
+    [Fact]
+    public void A_legionary_charging_into_a_peasant_archers_back_throws_him_down()
+    {
+        Assert.Equal(1.78, Archer.Toughness, 2);
+        // standing, from the front: the fresh archer staggered often, rarely down
+        var front = Decide(Blow(ImpactEvent.CleanHit, Legionary, 1.0, Archer, 1.0, bow: true));
+        Near(0.01, front.Knockdown.Chance, 0.015, "standing, front, a fresh archer - down");
+        Near(0.29, front.Stagger.Chance, 0.03, "standing, front, a fresh archer - staggered");
+        // the charge into his BACK: a fresh archer down 41 %, a tired one (40 %) at the clean hit's ceiling, 50 %
+        var fresh = Decide(Blow(ImpactEvent.CleanHit, Legionary, 1.0, Archer, 1.0, charging: true, angle: 160, bow: true));
+        Near(0.41, fresh.Knockdown.Chance, 0.02, "charging into a fresh archer's back - down");
+        Assert.False(fresh.Capped); // x7.6 in all - under the cap of 8
+        var tired = Decide(Blow(ImpactEvent.CleanHit, Legionary, 1.0, Archer, 0.4, charging: true, angle: 160, bow: true));
+        Near(0.50, tired.Knockdown.Chance, 0.001, "charging into a tired (40 %) archer's back - down");
+        // standing behind him: 23 % fresh
+        Near(0.23, Decide(Blow(ImpactEvent.CleanHit, Legionary, 1.0, Archer, 1.0, angle: 160, bow: true)).Knockdown.Chance, 0.02, "standing, from behind, fresh - down");
+    }
+
+    [Fact]
+    public void Looters_charging_a_fresh_legionary_shield_wall_bounce_many_reel_a_fair_share_thrown_back()
+    {
+        var charge = Decide(Blow(ImpactEvent.RightBlock, Looter, 1.0, Legionary, 1.0, charging: true));
+        Near(0.33, charge.ThrownBack.Chance, 0.02, "a fresh looter's charge - thrown back");
+        Near(0.58, charge.Riposte.Chance, 0.02, "a fresh looter's charge - the reel's chance (when not thrown)");
+        Assert.Equal(0, charge.Knockdown.Chance);
+        Assert.Equal(0, charge.Stagger.Chance);                 // the legionary does not move
+        var tired = Decide(Blow(ImpactEvent.RightBlock, Looter, 0.6, Legionary, 1.0, charging: true));
+        Near(0.40, tired.ThrownBack.Chance, 0.005, "a looter at 60 % charging - thrown back (the ceiling)");
+        var walk = Decide(Blow(ImpactEvent.RightBlock, Looter, 1.0, Legionary, 1.0));
+        Assert.False(walk.ThrownBack.InRow);                     // walking: never thrown
+        Near(0.34, walk.Riposte.Chance, 0.02, "a fresh looter walking in - reels");
+        // twenty looters into twenty fresh legionaries, each blocked right (seeded): many reel, a fair share on the ground
+        var r = Shipped();
+        var dice = new SeededRandom(62);
+        int thrown = 0, reeled = 0;
+        for (int i = 0; i < 20; i++)
+        {
+            var f = Blow(ImpactEvent.RightBlock, Looter, 1.0, Legionary, 1.0, charging: true);
+            var ds = default(ImpactState);
+            var a = default(ImpactState);
+            var d = ImpactMath.Decide(in r, in f, ref ds, ref a, 100, dice);
+            if (d.ThrownBack.Happens) thrown++;
+            else if (d.Riposte.Happens) reeled++;
+        }
+        Assert.InRange(thrown, 3, 12);
+        Assert.InRange(thrown + reeled, 8, 20);
+    }
+
+    [Fact]
+    public void You_charging_into_a_fresh_high_tier_shieldman_blocking_right_can_be_thrown_back()
+    {
+        Assert.Equal(4.33, You.Toughness, 2);
+        var fresh = Decide(Blow(ImpactEvent.RightBlock, You, 1.0, Legionary, 1.0, charging: true, you: true));
+        Near(0.12, fresh.ThrownBack.Chance, 0.02, "you fresh, charging - thrown back");
+        var half = Decide(Blow(ImpactEvent.RightBlock, You, 0.5, Legionary, 1.0, charging: true, you: true));
+        Near(0.37, half.ThrownBack.Chance, 0.02, "you at half a bar, charging - thrown back");
+        var walk = Decide(Blow(ImpactEvent.RightBlock, You, 1.0, Legionary, 1.0, you: true));
+        Assert.False(walk.ThrownBack.InRow);
+        Assert.True(walk.Riposte.Chance < 0.03, "you walking in fresh - reel " + walk.Riposte.Chance);
+        // "Against you" 50 % halves it
+        var s = new TraxSettings();
+        s.Set(SettingsSchema.RiposteStaggerMaxPercent, 70, "test");
+        s.Set(SettingsSchema.ImpactOnPlayerPercent, 50, "test");
+        var r = ImpactRules.From(s);
+        var f = Blow(ImpactEvent.RightBlock, You, 0.5, Legionary, 1.0, charging: true, you: true);
+        var ds = default(ImpactState);
+        var a = default(ImpactState);
+        Near(half.ThrownBack.Chance / 2, ImpactMath.Decide(in r, in f, ref ds, ref a, 100, new Never()).ThrownBack.Chance, 0.005, "against you 50 %");
+    }
+
+    [Fact]
+    public void Two_fresh_even_men_and_a_walking_man_into_an_even_right_block_stay_at_nothing()
+    {
+        var hit = Decide(Blow(ImpactEvent.CleanHit, Legionary, 1.0, Legionary, 1.0));
+        Assert.Equal(0, hit.Knockdown.Chance);
+        Assert.Equal(0, hit.Stagger.Chance);
+        var walk = Decide(Blow(ImpactEvent.RightBlock, Legionary, 1.0, Legionary, 1.0));
+        Assert.False(walk.ThrownBack.InRow);
+        Assert.True(walk.Riposte.Chance < 0.02 && walk.Stagger.Chance == 0 && walk.Knockdown.Chance == 0, "walking into an even block: reel " + walk.Riposte.Chance);
+        // the same man SPRINTING into the even block risks being thrown back (10 %) - the blocker still never moves
+        var sprint = Decide(Blow(ImpactEvent.RightBlock, Legionary, 1.0, Legionary, 1.0, charging: true));
+        Near(0.10, sprint.ThrownBack.Chance, 0.02, "an even man charging into a right block - thrown back");
+        Assert.Equal(0, sprint.Stagger.Chance);
+    }
+}
