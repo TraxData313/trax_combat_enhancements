@@ -352,6 +352,31 @@ namespace TraxCombat.Core
         public int CouragePanicSprintKeepPercent => GetInt(SettingsSchema.CouragePanicSprintKeepPercent);
         public bool CourageTightenWeights => GetBool(SettingsSchema.CourageTightenWeights);
         public float CourageTimidMeleeMetres => GetFloat(SettingsSchema.CourageTimidMeleeMetres);
+        public bool FearFlockEnabled => GetBool(SettingsSchema.FearFlockEnabled); // step 67: the fear flock
+        public int FearMoraleCalm => GetInt(SettingsSchema.FearMoraleCalm);
+        public int FearMoraleBroken => GetInt(SettingsSchema.FearMoraleBroken);
+        public int FearFreshPercent => GetInt(SettingsSchema.FearFreshPercent);
+        public int FearMoraleWeightPercent => GetInt(SettingsSchema.FearMoraleWeightPercent);
+        public int FearTiredWeightPercent => GetInt(SettingsSchema.FearTiredWeightPercent);
+        public int DisciplineLevelLow => GetInt(SettingsSchema.DisciplineLevelLow);
+        public int DisciplineLevelHigh => GetInt(SettingsSchema.DisciplineLevelHigh);
+        public int DisciplineMaxPercent => GetInt(SettingsSchema.DisciplineMaxPercent);
+        public int FearUnitSharePercent => GetInt(SettingsSchema.FearUnitSharePercent);
+        public int FearThinLinePercent => GetInt(SettingsSchema.FearThinLinePercent);
+        public int FearStartPercent => GetInt(SettingsSchema.FearStartPercent);
+        public int FearFullPercent => GetInt(SettingsSchema.FearFullPercent);
+        public float FearShelterBackMetres => GetFloat(SettingsSchema.FearShelterBackMetres);
+        public float FearShelterMaxMetres => GetFloat(SettingsSchema.FearShelterMaxMetres);
+        public float FearDriftMetresPerMinute => GetFloat(SettingsSchema.FearDriftMetresPerMinute);
+        public int FearDriftHoldPercent => GetInt(SettingsSchema.FearDriftHoldPercent);
+        public float FearCoverWidthMetres => GetFloat(SettingsSchema.FearCoverWidthMetres);
+        public int FearAnchorFreshPercent => GetInt(SettingsSchema.FearAnchorFreshPercent);
+        public float FearAnchorSeconds => GetFloat(SettingsSchema.FearAnchorSeconds);
+        public float FearSprintMetres => GetFloat(SettingsSchema.FearSprintMetres);
+        public int FearSprintChancePercent => GetInt(SettingsSchema.FearSprintChancePercent);
+        public int FearSprintKeepPercent => GetInt(SettingsSchema.FearSprintKeepPercent);
+        public int FearWallBreakMorale => GetInt(SettingsSchema.FearWallBreakMorale);
+        public float FearChargeLooseMetres => GetFloat(SettingsSchema.FearChargeLooseMetres);
         // step 55: cavalry flocking
         public bool CavalryFlockEnabled => GetBool(SettingsSchema.CavalryFlockEnabled);
         public int CavalryFlockFreeEagerPercent => GetInt(SettingsSchema.CavalryFlockFreeEagerPercent);
@@ -526,6 +551,10 @@ namespace TraxCombat.Core
         public int AltNearMarksMax => GetInt(SettingsSchema.AltNearMarksMax);
         public float AltNearMarksMetres => GetFloat(SettingsSchema.AltNearMarksMetres);
         public int FeverMarkMax => GetInt(SettingsSchema.FeverMarkMax);
+        public bool ShowMoraleMarks => GetBool(SettingsSchema.ShowMoraleMarks); // step 67: morale eyes
+        public bool ShowMoraleOnLabels => GetBool(SettingsSchema.ShowMoraleOnLabels);
+        public float MoraleLabelMetres => GetFloat(SettingsSchema.MoraleLabelMetres);
+        public int MoraleLabelMax => GetInt(SettingsSchema.MoraleLabelMax);
 
         public float HudRefreshSeconds => GetFloat(SettingsSchema.HudRefreshSeconds);
         public int PlayerBarWidth => GetInt(SettingsSchema.PlayerBarWidth);

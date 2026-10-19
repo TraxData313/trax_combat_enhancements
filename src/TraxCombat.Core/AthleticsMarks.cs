@@ -78,6 +78,12 @@ namespace TraxCombat.Core
         public float BarHeight;
         public float FeverWidth;
         public float FeverHeight;
+
+        /// <summary>Step 67: the morale bar at the very bottom (0 = no place for it) and how far the fever bar sits above the box's bottom
+        /// (the morale bar + the gap - 0 without a morale bar).</summary>
+        public float MoraleWidth;
+        public float MoraleHeight;
+        public float FeverLift;
     }
 
     /// <summary>
@@ -108,13 +114,19 @@ namespace TraxCombat.Core
         /// <see cref="FeverMarkSkip.None"/> = he joins the pick. The fever bar needs the fever marks on (master switch, Athletics, FeverEnabled,
         /// ShowFeverMarks) and him in a fever; its PLACE is kept under his Athletics bar whenever fever bars can show for his side.
         /// </summary>
-        public static FeverMarkSkip Decide(ref FeverMark m, in FeverMarkRules fever, in AthleticsMarkRules bars)
+        public static FeverMarkSkip Decide(ref FeverMark m, in FeverMarkRules fever, in AthleticsMarkRules bars) =>
+            Decide(ref m, in fever, in bars, MoraleMarkRules.Off);
+
+        /// <summary>Step 67: the same with the MORALE bar - its place at the bottom of the stack whenever morale bars can show for his side
+        /// (<see cref="FeverMark.HasMorale"/>; drawn when he has a morale), so a man with only a morale bar is still marked.</summary>
+        public static FeverMarkSkip Decide(ref FeverMark m, in FeverMarkRules fever, in AthleticsMarkRules bars, in MoraleMarkRules morale)
         {
             bool enemy = m.Side == (int)MarkerTeam.Enemy;
             m.HasBar = bars.On && (!enemy || bars.ShowEnemy);
             m.FeverSlot = fever.Hidden == FeverMarksHidden.None && (!enemy || fever.ShowEnemy);
             m.HasFever = m.FeverSlot && m.InFever;
-            if (!m.HasBar && !m.HasFever) return FeverMarkSkip.EnemyOff; // only the enemy can have neither: the walk asks for the rest
+            m.HasMorale = morale.On && (!enemy || morale.ShowEnemy);
+            if (!m.HasBar && !m.HasFever && !m.HasMorale) return FeverMarkSkip.EnemyOff; // only the enemy can have none: the walk asks for the rest
             if (!m.InFront) return FeverMarkSkip.Behind;
             if (!(m.Distance >= FeverMarkMath.NearMetres)) return FeverMarkSkip.TooClose;
             return FeverMarkSkip.None;
@@ -137,7 +149,12 @@ namespace TraxCombat.Core
         /// (scaled like the bars). Only the fever bar: exactly step 44's mark.
         /// </summary>
         public static void Layout(in FeverMarkRules fever, in AthleticsMarkRules bars, float scale, float distance, bool hasBar, bool hasFever, bool feverSlot,
-            float x, float y, out MarkBox box)
+            float x, float y, out MarkBox box) => Layout(in fever, in bars, scale, distance, hasBar, hasFever, feverSlot, false, x, y, out box);
+
+        /// <summary>Step 67: the stack with the MORALE bar at its very bottom (<paramref name="hasMorale"/> - the Athletics bar's size, the same gap
+        /// above it); the fever bar (or its kept place) and the Athletics bar stand on it. Without it: step 46's stack exactly.</summary>
+        public static void Layout(in FeverMarkRules fever, in AthleticsMarkRules bars, float scale, float distance, bool hasBar, bool hasFever, bool feverSlot,
+            bool hasMorale, float x, float y, out MarkBox box)
         {
             if (!(scale > 0f)) scale = 1f;
             float k = scale * FeverMarkMath.SizeFactor(distance);
@@ -154,8 +171,16 @@ namespace TraxCombat.Core
                 box.BarHeight = Math.Max(1f, bars.Height * k);
             }
             float gap = slot && hasBar ? bars.Gap * k : 0f;
-            box.Width = Math.Max(box.BarWidth, box.FeverWidth);
-            box.Height = box.BarHeight + gap + box.FeverHeight;
+            float moraleGap = 0f;
+            if (hasMorale)
+            {
+                box.MoraleWidth = Math.Max(1f, bars.Width * k);
+                box.MoraleHeight = Math.Max(1f, bars.Height * k);
+                moraleGap = slot || hasBar ? bars.Gap * k : 0f;
+                box.FeverLift = box.MoraleHeight + moraleGap;
+            }
+            box.Width = Math.Max(Math.Max(box.BarWidth, box.FeverWidth), box.MoraleWidth);
+            box.Height = box.BarHeight + gap + box.FeverHeight + moraleGap + box.MoraleHeight;
             box.Left = x - box.Width / 2f;
             box.Top = y - box.Height;
         }

@@ -110,6 +110,15 @@ namespace TraxCombat.Core
 
         /// <summary>The fever bar's place kept under his Athletics bar (fever bars can show for his side) - so his Athletics bar never jumps.</summary>
         public bool FeverSlot;
+
+        // ---- step 67: his morale bar (the morale eyes)
+
+        /// <summary>His morale as the game keeps it (0-100; −1 = none - tournaments, arenas), read at the formation-stats refresh.</summary>
+        public float Morale;
+
+        /// <summary>Set by <see cref="AthleticsMarkMath.Decide(ref FeverMark, in FeverMarkRules, in AthleticsMarkRules, in MoraleMarkRules)"/>: a morale
+        /// bar's place at the bottom of his stack (the switch, his side); drawn when he has a morale.</summary>
+        public bool HasMorale;
     }
 
     /// <summary>
@@ -498,6 +507,16 @@ namespace TraxCombat.Core
 
         public void NoteShown() => Shows++;
 
+        // ---- step 67: the morale bars drawn (the morale eyes)
+
+        public long MoraleBarsDrawn { get; private set; }
+        public int MostMoraleBars { get; private set; }
+        public double MoraleSum { get; private set; }
+
+        public double MeanMoraleBars => Frames > 0 ? (double)MoraleBarsDrawn / Frames : 0;
+
+        public double MeanMoraleShown => MoraleBarsDrawn > 0 ? MoraleSum / MoraleBarsDrawn : double.NaN;
+
         // ---- step 58: the view's mode per frame (the near view: the men nearest the screen's centre, close to the camera)
 
         public long NearFrames { get; private set; }
@@ -532,8 +551,11 @@ namespace TraxCombat.Core
 
         /// <summary>Step 46: this frame's bars - the Athletics bars drawn (by band; <paramref name="bands"/> indexed by <see cref="BarBand"/>), how many
         /// of them show a wound cap, the fever bars drawn. Call before <see cref="NoteFrame"/> of the same frame (any order works).</summary>
-        public void NoteBars(int bars, int[] bands, int wounded, int feverBars)
+        public void NoteBars(int bars, int[] bands, int wounded, int feverBars, int moraleBars = 0, double moraleSum = 0)
         {
+            MoraleBarsDrawn += moraleBars; // step 67
+            if (moraleBars > MostMoraleBars) MostMoraleBars = moraleBars;
+            MoraleSum += moraleSum;
             BarsDrawn += bars;
             if (bars > MostBars) MostBars = bars;
             for (int i = 0; i < _bands.Length && i < bands.Length; i++) _bands[i] += bands[i];
@@ -621,6 +643,9 @@ namespace TraxCombat.Core
                       .Append(" nearest the screen's centre within ").Append(FeverMarkMath.F1(NearMetres)).Append(" m of the camera at the first)");
                 sb.Append(", everyone ").Append(EveryoneFrames).Append(" frames");
             }
+            if (MoraleBarsDrawn > 0)
+                sb.Append("; morale bars a frame (step 67): mean ").Append(FeverMarkMath.F1(MeanMoraleBars)).Append(", max ").Append(MostMoraleBars)
+                  .Append(" (their morale ").Append(FeverMarkMath.F1(MeanMoraleShown)).Append(" mean)");
             return sb.Append("; errors ").Append(errors).ToString();
         }
     }

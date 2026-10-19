@@ -676,6 +676,112 @@ namespace TraxCombat.Core
             "Timid men strike within (m)",
             "A timid man still fights an enemy this close - beyond it his own place wins. 2 m is about a sword's reach.");
 
+        // ------------------------------------------------------------------ the fear flock (step 67, courage's evolution)
+        // Anton, 2026-10-19: "as troops lose their morale and freshness, they flock less to their formation position and more to the centre of
+        // their unit's mass, pushed back away from the enemy mass ... stepping behind their comrades". FEAR per AI man on foot = low morale and
+        // lost freshness x (1 - his discipline), mixed with his unit's; it blends his place from his slot toward a SHELTER behind the unit's centre
+        // (Core FearMath, AI_NOTES "Step 67"). In courage's group: the same looks, the same walk-back lever, one system.
+
+        public static readonly ParamDef FearFlockEnabled = Bool("FearFlockEnabled", CourageGroup,
+            "Fear flock: afraid men bunch up and fall back",
+            "As an AI soldier on foot loses MORALE and Athletics his fear grows - less for disciplined, high-tier troops. A fearful man leaves his place in the formation for a spot among his mates, behind a comrade if he can, and the frightened mass edges back from the enemy: green troops thicken a thin line, a spent unit becomes a herd that is easy to surround. A fresh unit obeys exactly. Courage's walk back (a man alone among enemies) goes first. Off: men keep their formation places (courage still works).");
+
+        public static readonly ParamDef FearMoraleCalm = Int("FearMoraleCalm", 0, 100, CourageGroup,
+            "Fear: morale calm at (0-100)",
+            "At or above this morale (the game's own, 0-100 - a man starts about 35-65 and loses it as his side loses men) morale adds no fear.");
+
+        public static readonly ParamDef FearMoraleBroken = Int("FearMoraleBroken", 0, 100, CourageGroup,
+            "Fear: morale broken at (0-100)",
+            "At or below this morale, morale alone is full fear; between the two a straight line.");
+
+        public static readonly ParamDef FearFreshPercent = Int("FearFreshPercent", 1, 100, CourageGroup,
+            "Fear: fresh above (% of his bar)",
+            "With at least this share of his Athletics bar a man's tiredness adds no fear; below it a straight line to full fear at an empty bar. With the Athletics system off tiredness never adds fear.");
+
+        public static readonly ParamDef FearMoraleWeightPercent = Int("FearMoraleWeightPercent", 0, 100, CourageGroup,
+            "Fear: from low morale (%)",
+            "How much of the morale fear counts. Morale and tiredness add up like two dangers: either can frighten a man; both together more.");
+
+        public static readonly ParamDef FearTiredWeightPercent = Int("FearTiredWeightPercent", 0, 100, CourageGroup,
+            "Fear: from tiredness (%)",
+            "How much of the tiredness fear counts.");
+
+        public static readonly ParamDef DisciplineLevelLow = Int("DisciplineLevelLow", 0, 60, CourageGroup,
+            "Discipline: none up to level",
+            "A man's DISCIPLINE comes from his troop level (his tier): at or below this level he has none - looters, recruits. His fear is multiplied by (1 - discipline).");
+
+        public static readonly ParamDef DisciplineLevelHigh = Int("DisciplineLevelHigh", 1, 62, CourageGroup,
+            "Discipline: full at level",
+            "At or above this level a man has the full discipline below (26 is a top-tier imperial legionary); between the two a straight line. Heroes always have it.");
+
+        public static readonly ParamDef DisciplineMaxPercent = Int("DisciplineMaxPercent", 0, 100, CourageGroup,
+            "Discipline: the most (%)",
+            "The discipline of the best troops: at 70 a veteran feels 30% of the fear a looter would - he holds his place until he is truly spent. 100 = elite men never flock.");
+
+        public static readonly ParamDef FearUnitSharePercent = Int("FearUnitSharePercent", 0, 100, CourageGroup,
+            "Fear: the unit's share (%)",
+            "A man's fear is his own mixed with his unit's average by this share - so the mass moves together and one shaken man does not run while his mates stand.");
+
+        public static readonly ParamDef FearThinLinePercent = Int("FearThinLinePercent", 0, 100, CourageGroup,
+            "Fear: nobody behind him (+%)",
+            "A man with an enemy near and NO comrade behind him (a single rank, a wide spread) feels this much more fear, times (1 - his discipline): green troops thicken a thin line by themselves, veterans hold it.");
+
+        public static readonly ParamDef FearStartPercent = Int("FearStartPercent", 0, 95, CourageGroup,
+            "Fear flock: starts at (% fear)",
+            "Below this fear a man keeps exactly to his formation place - a fresh unit obeys exactly.");
+
+        public static readonly ParamDef FearFullPercent = Int("FearFullPercent", 5, 100, CourageGroup,
+            "Fear flock: all the way at (% fear)",
+            "At this fear a man's place has moved all the way from his slot to the shelter behind his unit's centre; between the start and this a straight line.");
+
+        public static readonly ParamDef FearShelterBackMetres = Float("FearShelterBackMetres", 0, 20, CourageGroup,
+            "Shelter: behind the centre (m)",
+            "The SHELTER is his unit's centre of mass pushed back from the enemy near the unit by this many metres times the unit's own fear - a frightened mass edges back from the enemy.");
+
+        public static readonly ParamDef FearShelterMaxMetres = Float("FearShelterMaxMetres", 1, 50, CourageGroup,
+            "Shelter: at most from his slot (m)",
+            "A fearful man's place is never farther than this from his formation slot.");
+
+        public static readonly ParamDef FearDriftMetresPerMinute = Float("FearDriftMetresPerMinute", 0, 60, CourageGroup,
+            "Shelter: drifts back at most (m a minute)",
+            "However frightened, the shelter moves back from the enemy at most this fast - no endless shuffle; at the extreme the game's own rout takes over.");
+
+        public static readonly ParamDef FearDriftHoldPercent = Int("FearDriftHoldPercent", 0, 100, CourageGroup,
+            "Shelter: drift under hold / shield wall (%)",
+            "Under a hold order or in a shield wall, square or circle the drift above is only this share - such units stay nearly in place.");
+
+        public static readonly ParamDef FearCoverWidthMetres = Float("FearCoverWidthMetres", 0.3, 3, CourageGroup,
+            "Cover: a comrade within (m of the line)",
+            "A comrade COVERS a man when he stands between him and the nearest enemy, at most this far to the side of the line between them. An uncovered fearful man steps in behind the nearest comrade.");
+
+        public static readonly ParamDef FearAnchorFreshPercent = Int("FearAnchorFreshPercent", 0, 100, CourageGroup,
+            "Cover: a fresh comrade anchors (% of his bar)",
+            "A covering comrade with at least this share of his Athletics bar ANCHORS the man behind him: he keeps that spot (for the time below) instead of drifting on. As the comrade tires, the pull comes back.");
+
+        public static readonly ParamDef FearAnchorSeconds = Float("FearAnchorSeconds", 0, 120, CourageGroup,
+            "Cover: anchored for (s)",
+            "How long a fresh comrade in front keeps a fearful man in his spot before the pull of the mass takes him again. 0 = never anchored.");
+
+        public static readonly ParamDef FearSprintMetres = Float("FearSprintMetres", 0, 50, CourageGroup,
+            "Fear flock: sprint back farther than (m)",
+            "A fearful man farther than this from his place among his mates - or alone with an enemy near - sprints back to it, spending only what he holds above the reserve below. Needs the sprint and \"AI soldiers sprint on new orders\" on.");
+
+        public static readonly ParamDef FearSprintChancePercent = Int("FearSprintChancePercent", 0, 100, CourageGroup,
+            "Fear flock: sprint now and then (%)",
+            "A fearful man a few metres from his place and not running rolls this chance about every half second to sprint there anyway.");
+
+        public static readonly ParamDef FearSprintKeepPercent = Int("FearSprintKeepPercent", 0, 100, CourageGroup,
+            "Fear flock: sprint reserve kept (%)",
+            "The fear flock's sprint spends only what a man holds above this share of his full sprint store.");
+
+        public static readonly ParamDef FearWallBreakMorale = Int("FearWallBreakMorale", 0, 100, CourageGroup,
+            "Shield walls break below morale (0-100)",
+            "A shield wall, square or circle keeps its men in their slots while its men's average morale is at least this; below it the wall breaks and its frightened men join the flock. 0 = a wall never breaks.");
+
+        public static readonly ParamDef FearChargeLooseMetres = Float("FearChargeLooseMetres", 2, 50, CourageGroup,
+            "Charging: a calm man roams within (m)",
+            "Under a charge there are no slots: a fearful man may roam this far from his unit's shelter times (1 - his flock pull) - the more afraid, the tighter the mass; beyond it he is pulled back in.");
+
         // ------------------------------------------------------------------ cavalry flocking (step 55)
         // Anton, 2026-10-18: fresh, eager riders dance as in vanilla; the more tired a rider, the bigger the group of his own kind he wants
         // before he attacks again - the flock rides on, pulled toward the unit's centre by its tired riders and toward the goal by its rested
@@ -1376,6 +1482,24 @@ namespace TraxCombat.Core
             "Most men marked at once",
             "At most this many men get their bars (Athletics and fever) in one frame - with bars on every man, the men nearest to the camera first; it also caps the men you look at. A big battle has hundreds of men on the screen; fewer cost less and clutter less.");
 
+        // Step 67 (Anton, 2026-10-19: "give me eyes on their morale too: ALT to see the average morale of the whole group, and the same 5
+        // closest guys' morale too") - a morale bar under the men's bars, the unit's morale and freshness on the near formations' labels.
+        public static readonly ParamDef ShowMoraleMarks = Bool("ShowMoraleMarks", AltMarkersGroup,
+            "Morale bars above the men",
+            "While you hold ALT, a small BLUE bar under the Athletics and fever bars of the men who get them: his morale (the game's own, 0-100 - full = 100). The enemy's follow \"Enemy Athletics bars too\". No bar where the game keeps no morale (tournaments, arenas).");
+
+        public static readonly ParamDef ShowMoraleOnLabels = Bool("ShowMoraleOnLabels", AltMarkersGroup,
+            "Morale and freshness under the near formations",
+            "The formations nearest you also say \"morale 64, fresh 41%\" in blue under their marker: their men's average morale and average Athletics.");
+
+        public static readonly ParamDef MoraleLabelMetres = Float("MoraleLabelMetres", 5, 500, AltMarkersGroup,
+            "Formation morale: within (m)",
+            "Only formations at most this far away (the distance their marker shows) get the morale line.");
+
+        public static readonly ParamDef MoraleLabelMax = Int("MoraleLabelMax", 1, 16, AltMarkersGroup,
+            "Formation morale: at most (formations)",
+            "At most this many formations - the nearest - get the morale line, so the screen stays uncluttered.");
+
         // ------------------------------------------------------------------ advanced
 
         public static readonly ParamDef HudRefreshSeconds = Float("HudRefreshSeconds", 0.02, 1, AdvancedGroup,
@@ -1555,6 +1679,10 @@ namespace TraxCombat.Core
             CourageHeroPercent, CourageHysteresisPercent, CourageMinTimidSeconds, CourageSurgeChancePercent, CourageSurgeSeconds, CourageRegroupRadiusMetres, CourageRegroupMates, CourageFlockRadiusMetres,
             CourageFlockMinMen, CourageSprintBack, CourageSprintMetres, CourageSprintEnemies, CourageSprintKeepPercent, CouragePanicOddsPercent,
             CouragePanicSprintKeepPercent, CourageTightenWeights, CourageTimidMeleeMetres,
+            FearFlockEnabled, FearMoraleCalm, FearMoraleBroken, FearFreshPercent, FearMoraleWeightPercent, FearTiredWeightPercent,
+            DisciplineLevelLow, DisciplineLevelHigh, DisciplineMaxPercent, FearUnitSharePercent, FearThinLinePercent, FearStartPercent, FearFullPercent,
+            FearShelterBackMetres, FearShelterMaxMetres, FearDriftMetresPerMinute, FearDriftHoldPercent, FearCoverWidthMetres, FearAnchorFreshPercent,
+            FearAnchorSeconds, FearSprintMetres, FearSprintChancePercent, FearSprintKeepPercent, FearWallBreakMorale, FearChargeLooseMetres,
             CavalryFlockFreeEagerPercent, CavalryFlockHysteresisPercent, CavalryFlockMidEagerPercent, CavalryFlockMidGroupSize,
             CavalryFlockExhaustedSharePercent, CavalryFlockTimid, CavalryFlockTimidRadiusMetres, CavalryFlockGatherRadiusMetres, CavalryFlockSeparationMetres,
             CavalryFlockLeadSeconds, CavalryFlockTightenWeights, CavalryFlockWaveSeconds, CavalryFlockMaxSeconds,
@@ -1589,7 +1717,7 @@ namespace TraxCombat.Core
             BarYellowBelowPercent, BarOrangeBelowPercent, BarRedBelowPercent,
             ShowInOrderMenu, ShowFormationHealth, ShowFormationSpread, FormationSpreadStdDevs, ShowReadyCount, ReadyYellowBelowPercent, ReadyRedBelowPercent, OrderStripUnderCards,
             ShowAltMarkerStats, AltMarkersShowEnemy, ShowFeverOnLabels, ShowFeverMarks, FeverMarksShowEnemy, ShowAthleticsMarks, AthleticsMarksShowEnemy,
-            AltNearMarksMax, AltNearMarksMetres, FeverMarkMax,
+            AltNearMarksMax, AltNearMarksMetres, FeverMarkMax, ShowMoraleMarks, ShowMoraleOnLabels, MoraleLabelMetres, MoraleLabelMax,
             HudRefreshSeconds, PlayerBarWidth, PlayerBarHeight, PlayerBarOffsetRight, PlayerBarOffsetBottom,
             RecoveryBarWidth, RecoveryBarHeight, RecoveryBarOffsetAbove, SprintBarOffsetAbove,
             OrderStripTextSize, OrderStripTextOffset, OrderStripBarOffset, OrderStripBarHeight, OrderStripReadyOffset, OrderStripSideMargin,

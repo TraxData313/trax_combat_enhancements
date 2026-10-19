@@ -68,6 +68,9 @@ namespace TraxCombat.Core
         /// <summary>The escape (RBM's, vanilla's catch-up radius): far from his slot AND behind the line - left free to rejoin.</summary>
         FarBehind,
 
+        /// <summary>Step 67: the wall BROKE - its men's mean morale fell below FearWallBreakMorale; the fear flock takes the frightened.</summary>
+        Breaking,
+
         Count,
     }
 
@@ -281,6 +284,7 @@ namespace TraxCombat.Core
             WallVerdict.NoOrder => "no order",
             WallVerdict.Retreating => "fleeing",
             WallVerdict.FarBehind => "far from his slot and behind the line",
+            WallVerdict.Breaking => "the wall broke (its morale)",
             _ => v.ToString(),
         };
 

@@ -902,6 +902,138 @@
   // (range 0.5 to 6.0)
   "CourageTimidMeleeMetres": 2.0,
 
+  // As an AI soldier on foot loses MORALE and Athletics his fear grows - less for disciplined,
+  // high-tier troops. A fearful man leaves his place in the formation for a spot among his
+  // mates, behind a comrade if he can, and the frightened mass edges back from the enemy: green
+  // troops thicken a thin line, a spent unit becomes a herd that is easy to surround. A fresh
+  // unit obeys exactly. Courage's walk back (a man alone among enemies) goes first. Off: men
+  // keep their formation places (courage still works).
+  // (true or false)
+  "FearFlockEnabled": true,
+
+  // At or above this morale (the game's own, 0-100 - a man starts about 35-65 and loses it as
+  // his side loses men) morale adds no fear.
+  // (range 0 to 100)
+  "FearMoraleCalm": 60,
+
+  // At or below this morale, morale alone is full fear; between the two a straight line.
+  // (range 0 to 100)
+  "FearMoraleBroken": 15,
+
+  // With at least this share of his Athletics bar a man's tiredness adds no fear; below it a
+  // straight line to full fear at an empty bar. With the Athletics system off tiredness never
+  // adds fear.
+  // (range 1 to 100)
+  "FearFreshPercent": 75,
+
+  // How much of the morale fear counts. Morale and tiredness add up like two dangers: either
+  // can frighten a man; both together more.
+  // (range 0 to 100)
+  "FearMoraleWeightPercent": 100,
+
+  // How much of the tiredness fear counts.
+  // (range 0 to 100)
+  "FearTiredWeightPercent": 100,
+
+  // A man's DISCIPLINE comes from his troop level (his tier): at or below this level he has
+  // none - looters, recruits. His fear is multiplied by (1 - discipline).
+  // (range 0 to 60)
+  "DisciplineLevelLow": 6,
+
+  // At or above this level a man has the full discipline below (26 is a top-tier imperial
+  // legionary); between the two a straight line. Heroes always have it.
+  // (range 1 to 62)
+  "DisciplineLevelHigh": 26,
+
+  // The discipline of the best troops: at 70 a veteran feels 30% of the fear a looter would -
+  // he holds his place until he is truly spent. 100 = elite men never flock.
+  // (range 0 to 100)
+  "DisciplineMaxPercent": 70,
+
+  // A man's fear is his own mixed with his unit's average by this share - so the mass moves
+  // together and one shaken man does not run while his mates stand.
+  // (range 0 to 100)
+  "FearUnitSharePercent": 50,
+
+  // A man with an enemy near and NO comrade behind him (a single rank, a wide spread) feels
+  // this much more fear, times (1 - his discipline): green troops thicken a thin line by
+  // themselves, veterans hold it.
+  // (range 0 to 100)
+  "FearThinLinePercent": 25,
+
+  // Below this fear a man keeps exactly to his formation place - a fresh unit obeys exactly.
+  // (range 0 to 95)
+  "FearStartPercent": 15,
+
+  // At this fear a man's place has moved all the way from his slot to the shelter behind his
+  // unit's centre; between the start and this a straight line.
+  // (range 5 to 100)
+  "FearFullPercent": 80,
+
+  // The SHELTER is his unit's centre of mass pushed back from the enemy near the unit by this
+  // many metres times the unit's own fear - a frightened mass edges back from the enemy.
+  // (range 0.0 to 20.0)
+  "FearShelterBackMetres": 4.0,
+
+  // A fearful man's place is never farther than this from his formation slot.
+  // (range 1.0 to 50.0)
+  "FearShelterMaxMetres": 12.0,
+
+  // However frightened, the shelter moves back from the enemy at most this fast - no endless
+  // shuffle; at the extreme the game's own rout takes over.
+  // (range 0.0 to 60.0)
+  "FearDriftMetresPerMinute": 6.0,
+
+  // Under a hold order or in a shield wall, square or circle the drift above is only this share
+  // - such units stay nearly in place.
+  // (range 0 to 100)
+  "FearDriftHoldPercent": 25,
+
+  // A comrade COVERS a man when he stands between him and the nearest enemy, at most this far
+  // to the side of the line between them. An uncovered fearful man steps in behind the nearest
+  // comrade.
+  // (range 0.3 to 3.0)
+  "FearCoverWidthMetres": 0.9,
+
+  // A covering comrade with at least this share of his Athletics bar ANCHORS the man behind
+  // him: he keeps that spot (for the time below) instead of drifting on. As the comrade tires,
+  // the pull comes back.
+  // (range 0 to 100)
+  "FearAnchorFreshPercent": 60,
+
+  // How long a fresh comrade in front keeps a fearful man in his spot before the pull of the
+  // mass takes him again. 0 = never anchored.
+  // (range 0.0 to 120.0)
+  "FearAnchorSeconds": 20.0,
+
+  // A fearful man farther than this from his place among his mates - or alone with an enemy
+  // near - sprints back to it, spending only what he holds above the reserve below. Needs the
+  // sprint and "AI soldiers sprint on new orders" on.
+  // (range 0.0 to 50.0)
+  "FearSprintMetres": 8.0,
+
+  // A fearful man a few metres from his place and not running rolls this chance about every
+  // half second to sprint there anyway.
+  // (range 0 to 100)
+  "FearSprintChancePercent": 10,
+
+  // The fear flock's sprint spends only what a man holds above this share of his full sprint
+  // store.
+  // (range 0 to 100)
+  "FearSprintKeepPercent": 50,
+
+  // A shield wall, square or circle keeps its men in their slots while its men's average morale
+  // is at least this; below it the wall breaks and its frightened men join the flock. 0 = a
+  // wall never breaks.
+  // (range 0 to 100)
+  "FearWallBreakMorale": 30,
+
+  // Under a charge there are no slots: a fearful man may roam this far from his unit's shelter
+  // times (1 - his flock pull) - the more afraid, the tighter the mass; beyond it he is pulled
+  // back in.
+  // (range 2.0 to 50.0)
+  "FearChargeLooseMetres": 12.0,
+
   // ==================== Cavalry flocking (AI) ====================
   // A rider's EAGERNESS is his Athletics bar (halved when he is alone among enemies, below). At
   // or above this he is free - the game's own charging, again and again. Below it he flocks
@@ -1794,6 +1926,27 @@
   // battle has hundreds of men on the screen; fewer cost less and clutter less.
   // (range 1 to 1000)
   "FeverMarkMax": 200,
+
+  // While you hold ALT, a small BLUE bar under the Athletics and fever bars of the men who get
+  // them: his morale (the game's own, 0-100 - full = 100). The enemy's follow "Enemy Athletics
+  // bars too". No bar where the game keeps no morale (tournaments, arenas).
+  // (true or false)
+  "ShowMoraleMarks": true,
+
+  // The formations nearest you also say "morale 64, fresh 41%" in blue under their marker:
+  // their men's average morale and average Athletics.
+  // (true or false)
+  "ShowMoraleOnLabels": true,
+
+  // Only formations at most this far away (the distance their marker shows) get the morale
+  // line.
+  // (range 5.0 to 500.0)
+  "MoraleLabelMetres": 60.0,
+
+  // At most this many formations - the nearest - get the morale line, so the screen stays
+  // uncluttered.
+  // (range 1 to 16)
+  "MoraleLabelMax": 4,
 
   // ==================== Advanced ====================
   // How often your Athletics bar, the orders-menu strip and the numbers under the formation
