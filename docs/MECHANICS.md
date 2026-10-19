@@ -199,8 +199,23 @@ Points per minute, net. A shield on the right side always climbs. Moving fast wh
 slower (section 5), and a wrong-side block every 1.5 s holds anyone at the bottom — not by its price
 (2 points) but because each one stops the refill.
 
+**What counts as the right side (step 64).** A raised shield facing the blow covers it: a shield block whose
+attacker stands within **60°** of the blocker's facing (the front third of a circle) is a **right-side** block for
+everything in this mod — its cost, the refill, and the staggers and bounces of section 11c — whatever side the
+game says the shield was held to. From the side or behind, the game's own verdict. Why: the game decides "right
+side" by the guard's DIRECTION against the attack's, and an AI man's guard direction is mostly a dice roll (a
+150-skill legionary on realistic guesses 89% of his guards; a shield wall's front rank holds a fixed pose) — in
+Anton's looter battle 85% of a FRESH shieldman's blocks read "wrong side". Weapon parries keep the game's direction.
+A **tired** AI man still misjudges his share (section 7): that share of his front blocks keeps the game's verdict.
+
+| A fresh shieldman, blows from the front | The game said | Counts now |
+|---|---|---|
+| right side (7.3% of the blows that reached him in Anton's battle) | right | right |
+| wrong side (39.0%) | wrong | **right** |
+| a tired AI man's guessed share (section 7's table: 33% at half a bar, all of them when empty) | wrong | wrong |
+
 <sub>Settings: `CostPerShieldBlock` 1, `CostPerWeaponParry` 2, `CostPerWrongSideShieldBlock` 2,
-`CostPerKickOrBash` 3, `OnlyWrongSideBlocksStopRefill` on.</sub>
+`CostPerKickOrBash` 3, `OnlyWrongSideBlocksStopRefill` on, `ShieldFrontArcIsCorrect` on, `ShieldFrontArcDegrees` 60.</sub>
 
 ## 7. Tired AI guess their blocks
 
@@ -222,7 +237,9 @@ For a skilled fighter (one who never guesses in vanilla):
 
 **Shields are more forgiving.** A shield is a big thing: a wrong guess usually still catches the blow,
 but on the wrong side — which costs him 2 points and stops his refill (section 6). So a tired shield
-man doesn't just take the hit; he stops recovering.
+man doesn't just take the hit; he stops recovering. Since step 64 a shield block from the front counts as the
+right side (section 6) — except this table's guessed share: a tired man's guesses stay wrong-side blocks even
+from the front, so a worn-out wall still breaks (section 11c).
 
 Low-skill troops (recruits, levies) already guess a lot in the vanilla game; for them the mod changes
 little. It matters most for the elite: veterans, lords and tournament opponents. You are never
@@ -388,7 +405,7 @@ his tired eagerness itself keeps sinking as he fights:
 A hold, move or retreat order ends the fever at once (the general called them back). A second charge or
 advance while it runs does not start it over — unless a fresh fever would be longer than what is left.
 
-**They sprint the last metres.** A man in his fever with an enemy 3–12 m away may sprint at him: every
+**They sprint the last metres.** A man in his fever with an enemy 4–8 m away (3–12 m before step 64) may sprint at him — into contact, until his first attack: every
 second he has a 50% chance at the fever's start, sliding down with the fever (half the fever, 25%;
 none when it is gone). He spends only the sprint he holds above his order's reserve (section 14).
 
@@ -401,7 +418,7 @@ and turning **yellow** as the fever burns after the clash, gone when it is spent
 
 <sub>Settings: `AiAggressionFreshPercent` 60, `AiAggressionExhaustedPercent` 20 (both 100 = the base game's AI),
 `FeverEnabled` on, `FeverPointsPerSecond` 10, `FeverAggressionPercent` 80, `FeverContactMetres` 5,
-`FeverShieldDurationMultiplier` 0.7, `FeverSprintToClose` on, `FeverSprintMinMetres` 3, `FeverSprintMaxMetres` 12,
+`FeverShieldDurationMultiplier` 0.7, `FeverSprintToClose` on, `FeverSprintMinMetres` 4, `FeverSprintMaxMetres` 8 (step 64; 3 / 12 before),
 `FeverSprintCheckSeconds` 1, `FeverSprintChancePercent` 50.</sub>
 
 ## 11b. Courage: men keep to their group
@@ -737,8 +754,10 @@ can be knocked down.
 faster) the blow's impact is **×1.6**, in between a straight line — kicks, shield bashes and weapon blows alike,
 blocked or not. Only his speed TOWARD the man he strikes counts. Since step 62 a **charge** counts as a full
 sprint whatever speed was measured at the blow: a man sprinting (section 14), or the **first** blow he strikes
-within **1.5 s** after his sprint ended (the AI's sprint ends 3 m from the enemy and men slow down to swing — Anton's
-battle of 2026-10-19 had no blow at all in the sprinting band before). A charging man's blow also rolls the
+within **3 s** after his sprint ended (1.5 s before step 64), or the blow of an attack he **began** while sprinting or
+within those 3 s, however long the swing (step 64; men slow down to swing — Anton's battle of 2026-10-19 had no blow at
+all in the sprinting band before). A **running** man who is not charging counts by his speed: a 4.5 m/s blow is half
+a sprint, in the momentum and in the bounce off a shield alike. A charging man's blow also rolls the
 **full damage range** however tired he is (section 12). **The shock charge** — a fresh attacker into a
 line at 40% of its bar:
 
@@ -781,6 +800,24 @@ The legionary himself never moves (staggered 0%). So looters rushing a fresh shi
 most of the rest reel — and a player who sprints head-on into a high-tier shieldman can land on his back ("You
 are thrown back by …'s shield", red). Charge the flank, the back, or a tired line. (Smoke, 200 looters seeded:
 charging - thrown back 30%, reel 43%; walking - 0% / 30%.)
+
+**The wall's blocks count, and the looters hit it at speed (step 64).** Anton's looter battles of 2026-10-19 showed
+none of this happening: 85% of a fresh legionary's blocks were "wrong side" by the game (section 6) — and a wrong-side
+block never bounces anyone — and only 14 of 160 blows were charges (the looters spent their small sprint far out and
+stopped 3 m short). Now a block from the front is a right-side block, the charge sprint runs into contact (section 14)
+and the charge carries to the blow. Of the looters' blows that reach a fresh legionary wall's shieldmen (46% of them
+blocked, as in that battle; the rest land):
+
+| A looter's blow into the wall | Before step 64 | Now |
+|---|---:|---:|
+| his FIRST blow (charging): he reels or is thrown back | 2.7% (all blows) | **33%** |
+| … of it THROWN BACK (on the ground) | under 1% | **15%** |
+| a later blow (walking): he reels | 2.7% (all blows) | **16%** |
+| the legionary staggered or down (fresh) | 0% | 0% |
+
+A tired wall is another matter: its men's guessed blocks stay wrong-side (section 7), and a wrong-side block from a
+looter on an EMPTY legionary floors him 40% / staggers him 90% (a right-side one: 0% / 4%). Two fresh even men and a
+walking blow into a right block are unchanged (riposte 1%, never thrown; charging: thrown back 10%).
 
 **The cap.** Momentum × toughness × direction × a bow in hand together count at most ×8 (and at least ⅛): a
 sprinting legionary into a peasant archer's back reaches ×7.6 — under it; a lord charging a looter archer's back
@@ -910,7 +947,7 @@ down. Every outcome you give or take is also in the log (`[impact] YOU: ...`).
 `ImpactPunishAggressionPercent` 100, `ImpactPunishGraceSeconds` 0.5, `ImpactPunishRangeMetres` 3; step 62 `ImpactShrugOffYieldsToImpact` on,
 `ImpactFallBackupSeconds` 0.2 (step 63; 0.5 before), `ImpactToughnessWeight` 0.5 (with `CourageArmourWeightPercent` 200, `CourageLevelWeightPercent` 100,
 `CourageHealthWeightPercent` 50), `ImpactRangedInHandPercent` 130, `ImpactRearPercent` 100 and `ImpactFlankPercent` 100 (step 63; 200 / 140
-before), `ImpactRearDegrees` 120, `ImpactFlankDegrees` 60, step 63 `ImpactRearPressure` 0.5 and `ImpactFlankPressure` 0.2, `ImpactChargeCarrySeconds` 1.5, `RiposteKnockdownMaxPercent` 40, `RiposteKnockdownFrom` 0, `RiposteMomentumPercent` 100,
+before), `ImpactRearDegrees` 120, `ImpactFlankDegrees` 60, step 63 `ImpactRearPressure` 0.5 and `ImpactFlankPressure` 0.2, `ImpactChargeCarrySeconds` 3 (step 64; 1.5 before), `RiposteKnockdownMaxPercent` 40, `RiposteKnockdownFrom` 0, `RiposteMomentumPercent` 100,
 `ImpactMultiplierCapPercent` 800 (and `SprintFullCritical` on, section 12); the pressure `ImpactMismatchWeight` 0.25,
 `ImpactEvenBandDoublings` 0.5, `ImpactStaggeredBonus` 0.75 and the weapon / guard / skill factors (DESIGN's table).</sub>
 
@@ -932,8 +969,8 @@ What an average 100-damage hit actually lands:
 | Empty | 38 | 75 | 56 |
 | Empty, but **charging** (step 62) | 38 | 113 | 75 |
 
-A **charging** man — sprinting into his melee blow, or striking the first blow within 1.5 s after a sprint (section
-11c) — rolls the whole range however tired he is: the sprint's critical is never capped. Hits on a shield are not
+A **charging** man — sprinting into his melee blow, or striking the first blow within 3 s after a sprint, or the blow
+of an attack begun in the charge (section 11c) — rolls the whole range however tired he is: the sprint's critical is never capped. Hits on a shield are not
 rolled by default (still reduced). A hit never drops below 1.
 
 <sub>Settings: `DamageRandomPercent` 50, `DamageReductionPercent` 25, `DamageRandomOnShields` off,
@@ -1037,9 +1074,14 @@ routs** spends his whole store for the first get-away, once, at the moment he br
 enemy is close (he is running away). The rout is the game's; only the speed is ours. So a broken line scatters
 fast — and the men who spent their sprint charging have little left to flee with.
 
-A man stops early when an enemy is within 3 m or the order changes again. Give a formation a new charge order
-and watch it surge — tired men too, off their 2 s floor. In their fever (section 11) men may also sprint again
-at an enemy a few metres off, with what they hold above the reserve.
+An advance or move sprint stops early when an enemy is within 3 m or the order changes again. A **charge** sprint
+runs **into contact** (step 64): it ends with his first attack — that blow lands as a charge (section 11c) — or when he
+is stopped (half a second standing still in the press). And a man whose charge sprint would be **shorter than 3 s**
+(a looter's 2 s floor) does not spend it at the order from far away: he **waits** until an enemy is within **10 m**, then
+sprints — a 2 s sprint covers about 12-15 m, so it lasts to the line. A fresh legionary's 6.5 s still goes at the order.
+Give a formation a new charge order and watch it surge — tired men too, off their 2 s floor. In their fever (section
+11) men may also sprint again at an enemy **4-8 m** off (3-12 m before step 64), with what they hold above the reserve —
+into contact as well.
 
 **Tip — shock troops.** Move your shock infantry round behind the enemy with plain **move** orders: the first
 move costs them a little sprint and none of them touches the last 80%. When you give the real **charge**, they
@@ -1051,7 +1093,8 @@ X1MouseButton, X2MouseButton), `SprintPointsPerSecond` 20, `SprintMinSeconds` 2,
 `SprintMaxMultiplier` 2.0, `SprintMinMultiplier` 1.1, `SprintFullSpeedSharePercent` 30,
 `SprintTopSpeedReachSeconds` 1, `SprintRefillSeconds` 7, `SprintRefillMovingFactor` 0.5,
 `SprintRefillExhaustedFactor` 0.5, `SprintAiEnabled` on, `SprintAiChargeKeepPercent` 0,
-`SprintAiAdvanceKeepPercent` 50, `SprintAiMoveKeepPercent` 80, `SprintOnRout` on. The run-now column comes from tiredness: `MinMoveSpeedMultiplier` 0.3 at an empty
+`SprintAiAdvanceKeepPercent` 50, `SprintAiMoveKeepPercent` 80, `SprintOnRout` on, step 64 `SprintChargeIntoContact` on,
+`SprintChargeWaitBelowSeconds` 3, `SprintChargeWaitMetres` 10. The run-now column comes from tiredness: `MinMoveSpeedMultiplier` 0.3 at an empty
 bar, `AthleticsPeakPercent` 75.</sub>
 
 ## 15. What you see on screen

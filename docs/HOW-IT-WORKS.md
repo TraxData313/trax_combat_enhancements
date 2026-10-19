@@ -88,7 +88,10 @@ so a formation pulled back and walked about recovers.
 **A skilful defender recovers on the defence.** A clean block on the right side, or a parry, costs a
 little but lets the refill run on underneath. A block on the **wrong** side (the shield caught the blow
 off-side) stops the refill and starts the wait again. So a man who reads his enemy can catch his breath
-while defending — and a man who keeps guessing wrong stays at the bottom.
+while defending — and a man who keeps guessing wrong stays at the bottom. **A raised shield facing the blow covers
+it:** a shield block against a man in front of you counts as the right side, whichever way the game says you held
+it — the same for the AI. From the side or behind, the side still matters, and so does it for a weapon parry. A
+tired soldier still misjudges some of his blocks, so a worn-out wall can still be broken.
 
 Numbers: [MECHANICS §5](MECHANICS.md#5-resting-and-the-refill), [§6](MECHANICS.md#6-defending-costs-too).
 
@@ -210,14 +213,16 @@ from behind, one blow in fifteen does, and two in five stagger him. A unit that 
 throws men to the ground, and archers caught there go down one blow in two.
 
 **The charge.** A man running into his blow hits harder; at a full sprint, much harder. The sprint carries into
-the **first** blow he strikes just after it (men slow down to swing), and a sprinting blow rolls the **full damage
+the **first** blow he strikes just after it — and a swing he began at a sprint lands as a charge however long it
+takes (men slow down to swing) — and a sprinting blow rolls the **full damage
 bonus** however tired he is. A rider carries his horse's speed. So **a fresh shock unit charging a tired line throws
 men around** — staggered, knocked down, shields and riders knocked off — and every man who reels is easier to drop
 with the next blow. Into a fresh line the same charge only trades blows.
 
 **A charge into a good shield wall bounces.** Sprint into a shield that blocks you on the **right** side and your own
 speed is turned against you: you reel, and the faster you came, the more tired you are and the tougher the shieldman,
-the likelier you are **thrown back to the ground** — looters rushing a fresh legionary wall go down one in three.
+the likelier you are **thrown back to the ground** — looters rushing a fresh legionary wall go down one in three,
+and most of the rest reel off the shields. Every shield facing the charge counts, so the wall's front holds.
 A walking man only reels; a parry never throws anyone. This goes for **you** too: charge a high-tier shieldman
 head-on and you can land on your back ("You are thrown back by …'s shield"). Charge the flank, the back, or a
 tired line — not a fresh wall.
@@ -271,7 +276,9 @@ a shield wall's flank. It reaches full speed in a second and fades back to your 
 sprint, but even an empty bar keeps a two-second dodge. While you sprint your Athletics bar does not refill.
 
 **The AI sprints too**, once per new order: on a charge everything they have, on an advance all but half a full store,
-on a move only a little — so men moved into position still have their sprint for the real charge.
+on a move only a little — so men moved into position still have their sprint for the real charge. A **charge** runs
+all the way **into** the enemy and its first blow lands at speed; a man with only a little sprint (a looter) keeps it
+until the enemy is close, so he still has it when he hits the line.
 
 Numbers: [MECHANICS §14](MECHANICS.md#14-the-sprint).
 

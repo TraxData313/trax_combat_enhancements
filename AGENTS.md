@@ -130,6 +130,14 @@ A landed blow from behind adds `ImpactRearPressure` 0.5 to x straight, the side 
 fresh man"); step 62's multipliers ship at x1. A held wall man more than max(L, 1) + 0.25 m ahead of his slot is OUT OF PLACE: looked at every
 0.1 s, held again, and after `ShieldWallPullBackSeconds` 0.5 able to move WALKED BACK (step 16's input hook, the `WallPull` wish); the [summary]
 "wall pulled back" line (PLAYTEST D29).
+Step 64: THE WALL'S BLOCKS COUNT, THE CHARGE HITS AT SPEED (Anton's looter battles 2026-10-19 12:44 / 12:47 - DESIGN decisions 55 / 56, AI_NOTES
+"Step 64", 5 Advanced settings, config format 12): the engine's `CorrectSideShieldBlock` is native (the guard's direction against the attack's)
+and the AI guesses its guard direction most of the time, so ~85% of a fresh shieldman's blocks read WRONG side: a SHIELD block whose attacker
+stands within `ShieldFrontArcDegrees` 60 of the blocker's facing counts as RIGHT-side for every system of ours (`ShieldFrontArcIsCorrect`; Core
+`ShieldArcMath`, `AthleticsLogic.BlockKindOf`), you too, parries the engine's, a tired AI man's step-30 share kept wrong; the [summary] "shield
+front arc" line. Charge-order and fever sprints run INTO contact (`SprintChargeIntoContact` - his first attack ends it, or 0.5 s still); a charge
+sprint under `SprintChargeWaitBelowSeconds` 3 waits for an enemy within `SprintChargeWaitMetres` 10; the fever sprint at 4-8 m; the carry 3 s and
+an attack begun in the charge stays one to its blow; the [summary] "sprint into contact" line (PLAYTEST D30).
 (Steps 25-40 -
 the swing stack, the sprint, the tired block direction and the rest - are described in CLAUDE.md, the fuller copy of this
 file.) The bar for the
@@ -305,7 +313,8 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               description, apply timing (Live / NextBattle); Normalize, Format;
                               its Default comes from defaults.json (DefaultsFile), never code; step 59:
                               SettingsPage (Player / Advanced) + ParamGroup.Page
-  SettingsSchema.cs           EVERY setting of DESIGN's table (292 - step 63's 3 on the Advanced page; 289 - step 62's 14 on the Advanced page; STEP 59: two MCM pages - the PLAYER page's 20 declared FIRST
+  SettingsSchema.cs           EVERY setting of DESIGN's table (297 - step 64's 5 on the Advanced page (2 in Athletics after the refill rule, 3 in
+                              Sprint after SprintOnRout); 292 - step 63's 3 on the Advanced page; 289 - step 62's 14 on the Advanced page; STEP 59: two MCM pages - the PLAYER page's 20 declared FIRST
                               (ModEnabled + six player groups, Orders 0-6), the Advanced page's 16 groups after (7-22, "Damage" first,
                               "Advanced" last); GroupsOn / OnPage / PlayerPage / PageTitle; the moved 19 left their old groups; step 58's ShowFeverOnLabels, AltMarksEveryone, AltNearMarksMax, AltNearMarksMetres in the ALT group; step 57's SprintOnRout after SprintAiMoveKeepPercent; step 56's 2 after RiposteStaggerMaxPercent; step 55's 14 in "Cavalry flocking (AI)" after courage; step 54's 4 punish settings; step 53's 3 rider-momentum + 3 on-screen-line settings; step 52's 4 momentum settings; step 47's ImpactSpike in Advanced; step 48's 60 in "Impact: staggers,
                               shield drops, knockdowns" after the courage group; step 49's 29 in "Courage and cohesion (AI)" after the fever),
@@ -329,7 +338,8 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
   ConfigFile.cs               config.json TEXT: commented writer (header incl. how to revert +
                               // above each key; AppendSettings shared with defaults.json),
                               tolerant reader (comments, trailing commas, casing, "0,75"), Apply;
-                              FormatVersion 11 + Migrate (step 63: a format-10 file's ImpactFallBackupSeconds 0.5 → 0.2, ImpactRearPercent
+                              FormatVersion 12 + Migrate (step 64: a format-11 file's FeverSprintMinMetres 3 → 4, FeverSprintMaxMetres 12 → 8,
+                              ImpactChargeCarrySeconds 1.5 → 3 once; step 63: a format-10 file's ImpactFallBackupSeconds 0.5 → 0.2, ImpactRearPercent
                               200 → 100, ImpactFlankPercent 140 → 100 once; step 56: an older file's right block / parry 80 / 40 → 30 / 10, the riposte
                               50 → 70, BlockStunTiredExtraPercent 100 → 0 once, tuned values kept + noted; step 46: a format-8 file's CostPerBlow 3 → 7 once, a tuned value
                               kept and noted; step 13: a format-1 file's old defaults -
@@ -476,6 +486,11 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               the share, the cycle (a minute per man while fighting), the AI's own gap after a
                               pause, the model's cycle at 0 and with the setting (foot melee), the archers'
                               share inside a cycle + the 7 [summary] "battle pace" lines
+  ShieldArc.cs                step 64 pure (AI_NOTES "Step 64"): ShieldArcRules (ModEnabled FIRST, ShieldFrontArcIsCorrect, the degrees),
+                              ShieldArcMath (NeedsAngle, InArc, Resolve - a wrong-side shield block in the front arc → right, a tired AI man's
+                              step-30 share kept by TiredRoll - a stateless hash of both men and the swing; the angle bands), ShieldArcStats
+                              (the game's verdict against ours + the [summary] "shield front arc" line). Sprint.cs step 64: SprintEnd.Attacked /
+                              Stopped, the charge rules, SprintMath.IntoContact / ChargeWaits, SprintStore.IntoContact, the "sprint into contact" line
   Brace.cs                    step 23 pure (AI_NOTES "Step 23"): BraceOrderKind (the game's movement orders + the
                               AI's advance / tactical charge on a Move), BraceOrder (charge / advance / hold), BraceEnd,
                               ShieldStep, HandFacts, BraceBand, BraceRules (live; Enabled = ModEnabled && AthleticsEnabled
@@ -646,7 +661,7 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               step 59: TWO pages (BuildPage returns object; MCM keeps settings by Id) - the
                               player page (SettingsId, "Trax Combat Enhancements": 20 settings, 7 groups,
                               Defaults with Revert) = _settings, the Advanced page (AdvancedSettingsId,
-                              "... - Advanced": 272 settings since step 63, 16 groups) = _advanced; each its own "default"
+                              "... - Advanced": 277 settings since step 64, 16 groups) = _advanced; each its own "default"
                               preset; group "Defaults": the Revert (both pages, reverts both) /
                               Save-defaults-file (Advanced only) BUTTONS (ProxyRef<Action>, both pages
                               refreshed via PropertyChanged), on Advanced just above Advanced (MCM order =
@@ -970,7 +985,7 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
   Hud/FeverMarksVM.cs         its ViewModels: a GROW-ONLY POOL of FeverMarkVM (IsShown, PositionX / Y, Width / Height in pixels,
                               Fill, FillColor, FrameColor; step 46: BoxWidth / BoxHeight, FeverShown, BarShown, BarWidth / Height,
                               BarFill, BarUsable, BarColor, BarFrameColor, BarWoundColor)
-tests/TraxCombat.Core.Tests/  net8.0 xUnit (913 - step 63: + FallsOnTheHitTests, RearBlowTests (the worked examples), WallPullTests; 900 - step 62: + ChargeTests, ChargeExamplesTests; step 59: + SettingsPagesTests; step 58: + AltNearMarksTests; step 57: + RoutSprintTests; step 56: + RightBlocksTests (ImpactTests pin the step-48 weights for IMPACT §4 A-G); step 55: + CavalryFlockTests; step 54: + ImpactPunishTests; step 53: + ImpactRidersTests; step 52: + ImpactHitsTests; step 51: + ImpactBlocksTests; step 50: + ImpactLiveTests; step 49 / 49b: + CourageTests; step 44: + FeverMarkTests; step 46: + AthleticsMarkTests, the format-9 migration; step 47: + ImpactSpikeTests; step 48: + ImpactTests - every IMPACT §4 worked example) — schema vs DESIGN.md (keys + types), one copy
+tests/TraxCombat.Core.Tests/  net8.0 xUnit (929 - step 64: + Step64Tests.cs - ShieldFrontArcTests, ChargeIntoContactTests, Step64ExamplesTests (the worked example); 913 - step 63: + FallsOnTheHitTests, RearBlowTests (the worked examples), WallPullTests; 900 - step 62: + ChargeTests, ChargeExamplesTests; step 59: + SettingsPagesTests; step 58: + AltNearMarksTests; step 57: + RoutSprintTests; step 56: + RightBlocksTests (ImpactTests pin the step-48 weights for IMPACT §4 A-G); step 55: + CavalryFlockTests; step 54: + ImpactPunishTests; step 53: + ImpactRidersTests; step 52: + ImpactHitsTests; step 51: + ImpactBlocksTests; step 50: + ImpactLiveTests; step 49 / 49b: + CourageTests; step 44: + FeverMarkTests; step 46: + AthleticsMarkTests, the format-9 migration; step 47: + ImpactSpikeTests; step 48: + ImpactTests - every IMPACT §4 worked example) — schema vs DESIGN.md (keys + types), one copy
                               runs (SingleCopyTests: claims on private slots, copies, texts), when
                               MCM is tried and when it stops (McmPlanTests - step 12),
                               defaults.json (DefaultsFileTests), master switch, settings, config
@@ -1199,8 +1214,10 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               (Program.ImpactCharge.cs): the lost falls through the real shrug-off hook (decided there, one decision, the backup blow),
                               the charge (toughness, direction, the carry, you thrown back, the full critical), the charge on a line, the cost 0.07 ms,
                               0 bytes; step 63 (Program.Step63.cs): falls on the hit (a friend's blow never decided, the backup at 0.2 s),
-                              the rear blow on a line, the wall pulls men back (thrown, held, walked back through the real ApplyWallPull, A / B)
-                              (138 steps; the config checks work for any tuned default);
+                              the rear blow on a line, the wall pulls men back (thrown, held, walked back through the real ApplyWallPull, A / B);
+                              step 64 (Program.Step64.cs): the shield front arc through the logic's OnMeleeHit parts, the charge sprint into
+                              contact and the waiting small store, the charge carried by an attack begun in it, the master-switch part
+                              (141 steps; the config checks work for any tuned default);
                               TRAX_SMOKE_KEEP=1 keeps its temp folder + log to read
 tools/DefaultsTool/           defaults.json upkeep: refresh (rewrite comments/order, keep every
                               value) | check; --file <path> for an exported one

@@ -1028,6 +1028,7 @@ Claude the `[summary] impact …` block of every battle.
 | 8 | **D25 - RIGHT BLOCKS FAVOUR THE DEFENDER** (step 56, the spike OFF): a tournament round to orange / red - block on the right side, then on the wrong side on purpose | 15 | `impact live … blocks …` (by kind × band, the riposte by the attacker's band) | right-side blocks / parries in the red band: a few % staggered; ripostes climbing with the attacker's tiredness; wrong side at 90 / 50 / 40 | a correct blocker staggered often with the spike off; ripostes decided but never applied |
 | 9 | **D28 - MORE MEN FALL, THE CHARGE MATTERS** (step 62): looters into your shield wall; heavy infantry into archers' backs; you sprinting into a heavy shieldman's right block | 30 | `impact falls`, `impact direction`, `impact toughness`, `impact charges`, `damage critical` | falls played (game + backup) ≈ decided; rear down well above front; looters thrown back ~1 in 3 sprinting; your red "thrown back" line now and then | `played by the game` ~0 (the backup does all the work); `sprinting at the blow 0`; the archers' rear no higher than front |
 | 10 | **D29 - FALLS ON THE HIT, A STRONG REAR BLOW, THE WALL PULLS MEN BACK** (step 63): a shield-wall battle with a deep wall of yours; a unit round the enemy's flank into its back | 20 | `impact falls`, `impact` (header: `a FRIEND's blow`), `impact direction`, `wall slots ON`, `wall pulled back` | falls played by the game ≈ decided, backups few and ~0.2 s; rear down well above front (+0.50 pressure); in contact > 1 m ahead back near 1-3 %; the time back after an impact ~3-4 s | backups still most of the falls; rear ≈ front; `wall pulled back` many spells `still out`; men walking backwards out of the fight |
+| 11 | **D30 - THE WALL'S BLOCKS COUNT, THE CHARGE HITS AT SPEED** (step 64): your ~20 men in a shield wall + a reserve against ~50 charging looters (your 12:47 battle again) | 15 | `shield front arc`, `AI guard by f WITH a shield`, `sprint - AI` (ends), `sprint into contact`, `impact charges` | the game's WRONG side mostly turned right (front arc); looters reel and fall off the shields; charges well above 14 of 160, `sprinting at the blow` above 0; ends `his first attack` many, `an enemy within 3 m` few | `turned` 0 (the angle read is wrong); looters still slowing before the wall; `sprinting at the blow 0` and `carried` low |
 
 Then play normally (parts E-G). Your gut on each family - too many / about right / too few - is the most useful thing to send.
 
@@ -1522,6 +1523,37 @@ is a KnockBack flag with it); the `a FRIEND's blow` count 0 in a deep wall (the 
 in the verbose decision line); `wall pulled back` with many `still out at the end` or `the longest` above 8 s (the walk back does not move him - the
 input hook on walled men); men in a held wall walking backwards out of a fight they should hold (the pull fires on men who are not out - send the
 `[wall]` first lines); the in-contact > 1 m share still ~10 % with few spells (something else pushes them - send the log).
+
+**D30. THE WALL'S BLOCKS COUNT, THE CHARGE HITS AT SPEED (step 64, ~15 min - your looter battle again; the defaults).** Your battles of
+2026-10-19 12:44 / 12:47: ~20 men in a shield wall + a dozen in reserve against ~50 charging looters - looters sprinted early, slowed before the
+wall, and nobody fell or bounced off the shields; at the peak a shieldman's blocks read right side 7.3 % / WRONG side 39.0 % (the game decides
+"right side" by the guard's direction, and the AI guesses its direction most of the time), only 14 of 160 blows were charges, and the AI's charge
+sprints ended `store empty 100, an enemy within 3 m 65`. Now a shield block from the FRONT (within 60° of the shieldman's facing - *A shield facing
+the blow blocks it right*, Advanced, Athletics group) is a right-side block - except a tired man's guessed share; the charge sprint runs INTO the
+enemy and ends at the first attack (*AI charge sprints run into contact*, Advanced, Sprint); a looter's small sprint waits until the enemy is 10 m
+off; the fever sprint starts at 4-8 m; the charge carries 3 s and to the blow of a swing begun in it.
+1. **The same battle** (your infantry in a shield wall, hold; the reserve behind; let the looters charge): watch the wall's front. **What you should
+   see**: the looters arrive running hard - not slowing a few metres short - and **many reel back off the shields, about one in seven of their
+   first blows on the ground** ("thrown back"); later blows still bounce now and then; the wall itself does not move (fresh men). **[summary]**
+   `shield front arc (step 64, on, ±60°): AI men's shield blocks N: the game right A (…%) / WRONG B → ours right C (…%) / WRONG D - T wrong-side
+   blocks from the front counted right | the game's WRONG side by the attacker's angle off the blocker's facing (turned right): 0-15° … (…), …` - **C
+   far above A** (most of B turned), the angle bands mostly under 60° for a wall facing the charge (if many sit at 60-90° the arc could be wider);
+   `AI guard by f WITH a shield in hand`: the peak band's `shield right side` now the bigger part; `impact charges (step 62 …): X of Y decided events
+   (sprinting at the blow S, carried after the sprint C) - of the carried, by an attack begun in the charge (step 64) K | into a right-side shield
+   block …: the attacker reeled …%, THROWN BACK …%` - **X well above 14 of 160**, S above 0, the right-side row's THROWN BACK ~15-35 %; `sprint - AI:
+   … ends: …, his first attack (into contact) …, he stopped moving (into contact) …, an enemy within 3 m …` - the first attack the most common end
+   of a charge (the 3 m end only for advance / move sprints); `sprint into contact (step 64): … - sprints run into contact R (ended by his first
+   attack …, he stopped …); charge sprints that WAITED for the enemy W: started within 10.0 m …` - W ≈ the looters on a charge order; the first-time
+   lines `[guard] first shield block from the front counted RIGHT this battle (step 64): …`, `[sprint] first charge sprint WAITING this battle (step
+   64): …`, `[sprint] first WAITING charge sprint started …`, `[sprint] first sprint INTO contact ended by an attack …`.
+2. **Your reserve's flank charge** (as at 12:47): it still knocks a few down - and now the looters' own charge into the wall bounces too.
+3. **Optional - a tired wall** (let your wall grind to orange / red, hold ALT): its guessed blocks stay wrong-side - the `shield front arc` line's `kept
+   WRONG by the blocker's tiredness` grows - and the tired wall CAN break.
+**Broken - tell Claude**: `T 0` / `turned` empty with many WRONG blocks (the facing read - send the verbose `[guard]` lines); looters still slowing
+before the wall with `an enemy within 3 m` the main end of charge sprints (the into-contact mark is not set - send `[sprint]` first lines);
+`sprinting at the blow 0` and few charges (the AI starts its attack before contact - then the carry is all there is); men sprinting INTO the wall and
+standing there (`he stopped moving` high and the attack never comes - tell Claude: the end at contact may need a time limit); a FRESH wall now
+staggered by looters (should be ~0).
 
 ---
 

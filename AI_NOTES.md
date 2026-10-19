@@ -5494,3 +5494,120 @@ again - run loadcheck.ps1 before calling a deploy done.
 2. The rear band now well above the front (`+0.50 pressure`), and no longer swollen by friends.
 3. `wall slots ON` in-contact > 1 m ahead back near 1-3 %; `wall pulled back` - the time back after an impact ~3-4 s, few `still out`.
 4. The walk back LOOKS right (a man backs into his slot, facing the enemy) and never pulls a man out of a fight he should hold.
+
+## Step 64 — the wall's blocks count, the charge hits at speed (DONE 2026-10-19; dev build only, not uploaded)
+
+**Anton's looter battles (2026-10-19, missions 12:44 / 12:47)**: ~20 men in a shield wall + a dozen in reserve against ~50 charging looters.
+He saw looters sprint early, slow before the wall, and nobody fell or bounced off the shields; the reserve's flank charge knocked a few down. The
+second battle's summary: `AI guard by f WITH a shield in hand` at the PEAK - blocked 46.3 % = right side 7.3 %, WRONG side 39.0 % (~85 % of a
+FRESH shieldman's blocks wrong, in the wall and elsewhere); `impact`: right-side blocks 6, parries 14, wrong-side blocks 39, clean hits 101;
+`impact charges`: 14 of 160 decided events (sprinting at the blow 0, carried 14), into a right-side shield block 1 (thrown back 1/1);
+`sprint - AI`: charge sprints 153 men avg 1.39 s, ends: store empty 100, an enemy within 3 m 65.
+
+**Why the AI's shield blocks are "wrong side" (the decompile)**
+- `AttackCollisionData.CorrectSideShieldBlock` is a private field set only by the struct's constructor - the engine hands the struct to
+  `Mission.MeleeHitCallback`; managed code only READS it (`MissionCombatMechanicsHelper` ~556: `ShieldCorrectSideBlockDamageMultiplier` on the
+  shield's damage; `SandboxAgentApplyDamageModel` 570). The verdict is NATIVE: the shield's guard direction against the attack's direction.
+- The AI's guard direction is a dice roll most of the time: `AgentStatCalculateModel.SetAiRelatedProperties` writes
+  `AiRandomizedDefendDirectionChance = 1 − num³`, num = clamp01(melee skill ÷ 300 × 0.1 / 0.32 / 0.96 by difficulty) × the AI-level multiplier -
+  a 150-skill legionary on realistic: num 0.48 → 0.89; on normal (0.32): ~0.995; a looter ~1. A random pick of four is right 1 in 4 → ~75 % wrong.
+- A shield wall's poses are FIXED (`ArrangementOrder.GetShieldDirectionOfUnit`, pushed by `Agent.EnforceShieldUsage` at `OnApply` and in
+  `Agent`'s formation update): the front rank DefendDown (forward / low), the edge men DefendLeft / DefendRight, every inner rank AttackEnd (=
+  DefendUp, overhead); square / circle: the front rank DefendDown, the rest overhead. A fixed pose matches one attack direction of four.
+- Step 16's raised guard (`AiHoldRaiseGuard`) and the brace's (step 23) are DefendDown too. Step 30 adds to the guess only below the peak.
+- So 39 / 46.3 = 84 % wrong at the peak is the game's own behaviour, not ours - and every correct-block rule of ours (step 29's refill running
+  on, step 51 / 56's riposte, step 62's thrown back) keyed on it never fired against a wall.
+
+**64.1 THE FRONT ARC (Core `ShieldArc.cs`, Module `AthleticsLogic.ShieldArc.cs`)**
+- `ShieldArcRules` (ModEnabled FIRST, `ShieldFrontArcIsCorrect` on, `ShieldFrontArcDegrees` 60 - the half-angle; both Advanced, the Athletics group
+  after `OnlyWrongSideBlocksStopRefill`). `ShieldArcMath.Resolve`: the ENGINE's wrong-side SHIELD block with the attacker within the arc of the
+  blocker's facing → a right-side block; everything else (the engine's right side, parries, landed blows, outside the arc, an unknown angle) the
+  engine's. The angle = step 62's `GameImpactInputs.AngleFrom` (the victim's `GetMovementDirection()` against the line to the attacker), through a
+  new `IImpactInputs.FacingAngle` (the smoke's stand-in answers 180 unless set - the older steps keep their wrong-side blocks).
+- `AthleticsLogic.BlockKindOf(attacker, victim, cd)` = OUR kind of one collision, used by every system: `BlockHitTaken` (the cost and step 29's
+  refill rule), `TiredGuardHit` (the guard lines - it takes the attacker now), the impact model's `ImpactEventOf(cd, block, …)` in
+  `ImpactModelHitTaken` (the decorator seams only decide landed blows - the side does not matter there). Read only when it can change something
+  (the rule on, the engine's wrong side with a shield, BOTH men tracked - an untracked attacker, a horse, makes no native read). The spike (a test
+  tool) keeps the engine's.
+- THE TIRED GUESS KEPT (Claude's call, 64.3's commit): the arc corrects the GAME's guess (skill-based, ~1), not step 30's. Without it an exhausted
+  wall became unbreakable: a fresh looter's walking blow on an EMPTY legionary - wrong side 40 % down / 90 % staggered, right side 0 / 4 %. So a
+  tired AI man's share w = his `Fighter.BlockRandomWeight` (= `TiredBlockRandomPercent` × (1 − f), 0 for you, fresh men, the setting 0) of front
+  blocks keeps the engine's verdict - rolled by `ShieldArcMath.TiredRoll(attacker, blocker, the attacker's ReleaseSerial)`, a stateless FNV-style
+  hash, so every system that asks about the same blow gets the same answer (no cache, no allocation; uniform - 4000 blows: half below 0.5).
+- Both verdicts counted ONCE per collision (`ShieldArcHitTaken`, first in OnMeleeHit, own try): `ShieldArcStats` - the game right / WRONG → ours
+  right / WRONG for the AI's men and for you, the turned count, the engine's wrong side by the attacker's angle band (0-15 / 15-30 / 30-45 / 45-60 /
+  60-90 / 90-120 / 120-180°, turned in brackets - to tune the arc), not looked at, kept by tiredness → the [summary] "shield front arc" line (after
+  the guard lines); the mission-start / settings-change `[guard]` sentence; the first turned block in full, the rest verbose ("guard-arc").
+- Claude's calls: (a) 60° - a raised shield covers what it faces; a wall's neighbours cover the rest; the angle bands will say if more is needed;
+  (b) the PLAYER too - the rules are the same for both sides, and "a shield held toward the enemy covers the front in any game sense"; (c) parries
+  keep the engine's direction (skill still matters there); (d) the engine's own shield damage (`ShieldCorrectSideBlockDamageMultiplier`) untouched -
+  the mod changes only its own systems.
+
+**64.2 THE AI CHARGE HITS AT SPEED (Core `Sprint.cs`, Module `AthleticsLogic.Sprint.cs` / `.Fever.cs` / `.AttackRate.cs`)**
+- `SprintChargeIntoContact` (on): a CHARGE order's sprint and a FEVER sprint are started INTO contact (`SprintMath.IntoContact`,
+  `SprintStore.TryStartAi(…, intoContact)` → `IntoContact`): `RunSprint` skips the 3 m end for them; they end at his FIRST ATTACK
+  (`AttackBegan` → `SprintAttackBegan` → `SprintEnd.Attacked` - `SprintEndedAt` = then, so step 62's carry starts at the swing) or when he has
+  stood still (below 0.5 m/s) `SprintMath.StoppedEndSeconds` 0.5 s in a row AFTER he began to move (`SprintStore.StillFor` in `Advance`;
+  `SprintEnd.Stopped` - the press, his own ranks; a man slow to start after the order is never ended before he runs). Advance / move sprints, yours,
+  a sprint back (step 49) and a rout (step 57) unchanged.
+- `SprintChargeWaitBelowSeconds` 3 / `SprintChargeWaitMetres` 10: on a new CHARGE order, an AI man whose sprint (`AiAmount` - above the charge's
+  reserve) would be shorter than 3 s and with no enemy within 10 m WAITS (`TrackedAgent.ChargeSprintWaiting`); the sprint pass looks every 0.25 s
+  (`ChargeWaitLook`: the gates again - AI on, active, his, on foot -, then `EnemyWithin(10)` → `TryStartAi` into contact → `BeginSprint`); a new
+  order, a gate, `EndAllSprints` (the switches) and his first attack drop the wait (`DropChargeWait`). Why 3 s / 10 m: a looter's 2 s floor at x2
+  → x1.1 of his run (~5.5 m/s fresh) covers ~12-15 m - spent at the order 30 m out it ended short of the wall (the log's `store empty 100`); a fresh
+  legionary's 6.5 s covers ~45 m and still sprints at the order (step 37's arrival as one block); a 10 m start lasts a 2 s store to the line.
+- The fever sprint starts nearer: `FeverSprintMinMetres` 3 → 4, `FeverSprintMaxMetres` 12 → 8 (defaults.json; config format 12 moves a file's old
+  values once, tuned values kept and said - `ConfigFile.Migrate`, `MoveOrKeep`).
+- The [summary] "sprint into contact" line (the 6th sprint line): sprints run into contact, their ends (first attack / stopped / 3 m for the
+  advance / move ones), the waiting charges (started within 10 m + their avg length, dropped); the first-time `[sprint]` lines (a charge WAITING, a
+  waiting charge started, a sprint into contact ended by an attack); the first AI order sprint's line says "runs INTO contact" when it does.
+
+**64.3 THE CHARGE CARRIES TO THE BLOW (Module `AthleticsLogic.ImpactModel.cs`)**
+- `ImpactChargeCarrySeconds` 1.5 → 3 (defaults.json; format 12).
+- `MarkChargeAttack` at `AttackBegan` (before a sprint into contact ends there): an attack begun while he is CHARGING (sprinting, or within the
+  carry) sets `TrackedAgent.ChargeAttack`; `IsCharging(…, out byAttack)` counts it; spent with the carry on the decided blow; cleared at `AttackEnded`
+  (struck, blocked or missed) and at the next attack's start. The damage decorator's `TryGetCharging` reads the same (the full critical). Momentum
+  of a carried blow = the sprint reference (step 62, unchanged).
+- A RUNNING blow (2-7 m/s) is already proportional - `ImpactDecision.ChargeShare = MomentumShare(EffectiveSpeed)` drives both the momentum factor and
+  the reflected charge (`RiposteMomentum` and the thrown-back gate × share): a looter at 4.5 m/s (not charging) into a fresh legionary's right
+  block - share 0.5, thrown back 14 %, reels 56 % in all (charging 33 % / 72 %, walking 0 / 34 %). Nothing to change.
+- `ImpactChargeStats.CarriedByAttack` → the charges line: "- of the carried, by an attack begun in the charge (step 64) N".
+
+**THE WORKED EXAMPLE (Core `Step64ExamplesTests`, the real model, the shipped values - MECHANICS §11c "The wall's blocks count")**: 50 looters
+(pool 50, a 1.5 kg club at 85, skill 30, toughness 1.35) charging a FRESH 20-man legionary wall (pool 130, skill 130, a 4 kg shield, 5.97).
+Per blow into a right-side block: charging - thrown back 33.1 %, else reel 58.0 % → bounced 71.9 %; walking - reel 33.6 %, never thrown; into a
+WRONG-side block nothing on either man. Of the looters' blows into the wall's shieldmen (46.3 % shield blocks as in the 12:47 battle):
+**before** - 7.3 % right, 9 % of blows charging → **2.7 %** bounced (thrown back 0.2 %); **now** (the front arc turns the 39 %; each looter's first
+blow charges) - **the first blow 33 %** bounced (thrown back **15 %**), every later walking blow **16 %**. The fresh legionary never moves either way
+(staggered 0 %). Unchanged: two fresh even men - a walking blow into a right block riposte 1.4 %, never thrown; charging thrown back 10.4 %. A tired
+wall: an EMPTY legionary's front blocks stay wrong-side (step 30's share 1 at TiredBlockRandomPercent 100) - a looter's walking blow 40 % down /
+90 % staggered, as before. Assumptions: the 46.3 % block share holds (fresh men at the peak - the arc changes only the side, never whether the
+shield caught it); all blows on the wall come from the front arc.
+
+**Measured**: tests 913 → 929 (Step64Tests.cs: ShieldFrontArcTests 6, ChargeIntoContactTests 6, Step64ExamplesTests 4; the format strings →
+12, the sprint summary's 6 lines, the settings count 297); smoke 138 → 141 (Program.Step64.cs: ShieldFrontArc, ChargeSprintIntoContact,
+ChargeCarriesToTheBlow) + the master-switch step's arc part; the older smoke steps pin the arc and the step-64 sprint off (AthleticsDefaults),
+step 62's its 1.5 s carry (Step62On). Settings 292 → 297 (all Advanced: 277 on that page).
+
+**DEPLOY**: `tools\deploy.ps1` ran whole this time (build, AssemblyGuard OK, the offline smoke all passed, installed as
+`Modules\TraxCombatEnhancements.Dev`) - Smart App Control did not refuse the fresh tool exes. `tools\SmartAppControl\loadcheck.ps1`: both
+installed DLLs LOADED (`1.2.0+76b8c0ad…`): TraxCombatEnhancements.dll SHA-256 C57C8562…366D, TraxCombat.Core.dll 7E11C6A9…281C. The game was not
+running.
+
+**Gotchas**
+- `BlockKindOf` is asked three times per collision (cost, guard, impact) - it must give one answer: hence the stateless `TiredRoll` (a dice
+  would disagree between the asks; a cache keyed by time breaks the smoke's live-setting checks at one timestamp).
+- The smoke cannot drive `OnMeleeHit` with a TRACKED attacker (its attacker part reads `MountAgent`, `IsDoingPassiveAttack`,
+  `GetCurrentActionType` - native on a stand-in agent): the step-64 checks call the logic's parts (`ShieldArcHitTaken`, `BlockKindOf`,
+  `TiredGuardHit`, `ImpactModelHitTaken`) and `SprintAttackBegan` / `MarkChargeAttack` by reflection.
+- `AthleticsMath.PeakBin` 0 is the PEAK band (f 1), not the last.
+
+**UNVERIFIED — only the game can tell (PLAYTEST D30)**
+1. `GetMovementDirection()` is the BLOCKER's facing at the block (the angle bands of the "shield front arc" line mostly under 60° for a wall facing
+   a charge; many at 60-90° = widen the arc or the read is the movement, not the facing).
+2. The AI's charge really runs into contact (the `sprint - AI` ends: `his first attack` the most common for charges, `an enemy within 3 m` only for
+   advance / move) and `impact charges` well above 14 of 160 with `sprinting at the blow` above 0.
+3. Men sprinting INTO a wall do not stand pressed against it doing nothing (`he stopped moving` vs `his first attack`); the waiting looters do
+   start at ~10 m (`charge sprints that WAITED … started within 10.0 m`).
+4. How it LOOKS: looters reeling and thrown off the shields (~1 in 7 first blows on the ground) - a fair share, or too many (the knobs:
+   `RiposteKnockdownMaxPercent`, `RiposteMomentumPercent`, `ShieldFrontArcDegrees`).

@@ -2080,6 +2080,36 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     settings are on the player page; this is an inner number); (f) the [summary] "wall pulled back" line measures it all: spells after an impact
     / other, ends, THE TIME BACK by cause and by who walked him - the in-contact "> 1 m ahead" share of the "wall slots ON" line is the target
     (back near step 42's 0.6-2.5 %).
+55. **The wall's blocks count** (step 64, Anton's looter battles of 2026-10-19 12:44 / 12:47: ~20 shieldmen in a wall + a reserve against ~50
+    charging looters - "nobody fell or bounced off the shields"; the guard log at the PEAK: a shieldman blocked 46.3 % - right side 7.3 %, WRONG side
+    39.0 %). Claude's calls: (a) WHY: `CorrectSideShieldBlock` is decided natively (the managed code only builds `AttackCollisionData` from the
+    engine's struct) - the shield's guard DIRECTION against the attack's. An AI man's guard direction is mostly a dice roll: `SetAiRelatedProperties`
+    writes `AiRandomizedDefendDirectionChance` = 1 − (skill ÷ 300 × 0.1 / 0.32 / 0.96 by difficulty)³ - 0.89 for a 150-skill legionary on
+    realistic, ~1 on normal (right 1 in 4 by luck) - and a shield wall's poses are fixed (`ArrangementOrder.GetShieldDirectionOfUnit`: the front
+    rank DefendDown, inner ranks overhead, the edges left / right), so ~85 % of a fresh shieldman's blocks read wrong and every correct-block rule
+    of ours (the riposte, the thrown back, the cheap cost, the refill running on) almost never fired; (b) the rule: a SHIELD block whose attacker
+    stands within `ShieldFrontArcDegrees` (60 - the front third of a circle: a raised shield covers what it faces, and a wall's neighbours cover
+    the rest) of the blocker's facing counts as a RIGHT-SIDE block for every system of ours, outside it the engine's verdict; (c) the PLAYER too -
+    a shield held toward the enemy covers the front in any game sense, and the rules must be the same for both sides ("you and the AI alike" is
+    the mod's habit); (d) weapon PARRIES keep the engine's direction - skill still matters there; (e) the arc corrects the GAME's guess, not
+    step 30's: a tired AI man's share w = `TiredBlockRandomPercent` × (1 − f) of front blocks keeps the engine's verdict (one stateless roll per
+    blow), or an exhausted wall would turn unbreakable (an empty legionary's front block: 40 % down / 90 % staggered as a wrong-side block, 0 / 4 %
+    as a right-side one); (f) an untracked attacker (a horse) keeps the engine's verdict - no native read for him; the spike (a test tool) too;
+    (g) both verdicts are logged - the [summary] "shield front arc" line, the engine's wrong side by the attacker's angle band (to tune the arc).
+56. **The AI charge hits at speed** (step 64, the same battles: "charge sprints 153 men avg 1.39 s; ends: store empty 100, an enemy within 3 m 65";
+    14 of 160 decided blows were charges, none sprinting at the blow). Claude's calls: (a) a CHARGE order's sprint and a FEVER sprint run INTO
+    contact (`SprintChargeIntoContact`) - no end at 3 m: the end is his FIRST ATTACK (the blow then carries the charge) or standing still 0.5 s
+    after he began to move (the press, his own ranks); advance / move sprints still end at 3 m (they position men, they are no charge); (b) a
+    charge order's sprint SHORTER than `SprintChargeWaitBelowSeconds` (3 s) WAITS until an enemy is within `SprintChargeWaitMetres` (10 m), then
+    sprints: a looter's 2 s floor at x2 → x1.1 of his run covers ~12-15 m - spent 30 m out at the order it was gone before the wall; a fresh
+    legionary's 6.5 s covers ~45 m and keeps sprinting at the order (step 37's arrival as one block); (c) the fever sprint starts nearer - 4-8 m
+    (was 3-12; config format 12 moves the old values once) - so a small store lasts to the man it aims at; (d) the CARRY: `ImpactChargeCarrySeconds`
+    1.5 → 3 (format 12), and an attack BEGUN while charging (sprinting or inside the carry) stays a charge until it ends or its blow is decided - a
+    slow swing's blow keeps the charge; the momentum of a carried blow stays the sprint reference (step 62); (e) a RUNNING blow (2-7 m/s) is
+    already proportional in both the momentum and the reflected charge (`MomentumShare`) - nothing to change; (f) the worked example (Core
+    `Step64ExamplesTests`, MECHANICS §11c): of the looters' blows into a fresh legionary wall, before 2.7 % bounced (7.3 % right blocks, 9 % of
+    blows charging); now a looter's FIRST (charging) blow 33 % (thrown back 15 %), every later walking blow 16 %; two fresh even men and a walking
+    blow into a right block unchanged.
 
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),

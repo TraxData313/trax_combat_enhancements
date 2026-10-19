@@ -187,7 +187,19 @@ front), the side `ImpactFlankPressure` 0.2; step 62's multipliers ship at x1 (`I
 200 / 140). THE WALL PULLS MEN BACK: a held wall man more than max(L, 1) + 0.25 m ahead of his slot is OUT OF PLACE - looked at every 0.1 s
 and held again at each look; once out `ShieldWallPullBackSeconds` (0.5, Advanced, "Battle pace (AI)") able to move he is WALKED BACK (a
 backpedal toward his slot facing the enemy - step 16's input hook, its own `WallPull` wish) to within max(L, 1) ÷ 2, at most 4 s; the
-[summary] "wall pulled back" line (spells after an impact / other, THE TIME BACK) (PLAYTEST D29). COURAGE AND COHESION (step 49, `CourageEnabled`, Anton 2026-10-17 night: "AI men are
+[summary] "wall pulled back" line (spells after an impact / other, THE TIME BACK) (PLAYTEST D29). THE WALL'S BLOCKS COUNT, THE CHARGE HITS
+AT SPEED (step 64, Anton's looter battles 2026-10-19 12:44 / 12:47 - DESIGN decisions 55 / 56, AI_NOTES "Step 64", 5 Advanced settings, config format
+12): `CorrectSideShieldBlock` is native - the guard's direction against the attack's - and the AI guesses its guard direction most of the time (the
+game's `AiRandomizedDefendDirectionChance` = 1 − (skill-level)³, ~0.9-1; a wall's poses fixed), so ~85% of a fresh shieldman's blocks read WRONG
+side and no correct-block rule fired: a SHIELD block whose attacker stands within `ShieldFrontArcDegrees` 60 of the blocker's facing counts as a
+RIGHT-side block for every system of ours (`ShieldFrontArcIsCorrect`; cost / refill, guard lines, the impact model's event; Core `ShieldArcMath`,
+`AthleticsLogic.BlockKindOf` - one verdict per collision), you too, parries the engine's, except a tired AI man's step-30 share w of front blocks
+(a stateless roll per blow - a worn-out wall still breaks); the [summary] "shield front arc" line (the game's verdict against ours). A CHARGE order's
+and a FEVER sprint run INTO contact (`SprintChargeIntoContact`: no end at 3 m - his first attack ends it, or 0.5 s standing still); a charge sprint
+shorter than `SprintChargeWaitBelowSeconds` 3 WAITS for an enemy within `SprintChargeWaitMetres` 10; the fever sprint at 4-8 m (was 3-12); the
+carry `ImpactChargeCarrySeconds` 1.5 → 3 and an attack BEGUN in the charge stays one to its blow (`TrackedAgent.ChargeAttack`); the [summary]
+"sprint into contact" line. Worked example: a looter's first (charging) blow into a fresh legionary wall bounces 33% (thrown back 15%), a later one
+16% - before 2.7% (PLAYTEST D30). COURAGE AND COHESION (step 49, `CourageEnabled`, Anton 2026-10-17 night: "AI men are
 unrealistically brave" - a lone man circles a shield wall, stands exhausted among four enemies; + his three additions: shock, flocking,
 panic): every AI man on foot in a formation is looked at every ~0.5 s (staggered; one `Mission.GetNearbyAgents` into a reused list): his
 side's TOUGHNESS vs the enemy's within `CourageRadiusMetres` 6 m (toughness = armour, level, wounds - a looter 1.35, a legionary 5.97 =
@@ -372,7 +384,9 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               its Default comes from defaults.json (DefaultsFile), never code; step 33: ParamType.Key +
                               KeyNames (a key by NAME, stored as its index; FormatJson writes "LeftControl"; the
                               file / defaults.json read the name, MCM a text box)
-  SettingsSchema.cs           EVERY setting of DESIGN's table (292 - step 63's ImpactRearPressure / ImpactFlankPressure after ImpactFlankDegrees
+  SettingsSchema.cs           EVERY setting of DESIGN's table (297 - step 64's ShieldFrontArcIsCorrect / ShieldFrontArcDegrees after
+                              OnlyWrongSideBlocksStopRefill and SprintChargeIntoContact / SprintChargeWaitBelowSeconds / SprintChargeWaitMetres after
+                              SprintOnRout, all Advanced; 292 - step 63's ImpactRearPressure / ImpactFlankPressure after ImpactFlankDegrees
                               and ShieldWallPullBackSeconds in "Battle pace (AI)" after ExtraPauseAfterCrossbowShotSeconds, all Advanced; 289 -
                               step 62's 13 in the Impact group after ImpactPunishRangeMetres and
                               SprintFullCritical after DamageRandomOnShields; STEP 59: two MCM pages - the PLAYER page's 20 declared
@@ -406,7 +420,9 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               // above each key; AppendSettings shared with defaults.json - step 59: a
                               PageBanner where the MCM page changes, the player page's sections first),
                               tolerant reader (comments, trailing commas, casing, "0,75"), Apply;
-                              FormatVersion 11 + Migrate (step 63: a format-10 file's ImpactFallBackupSeconds 0.5 → 0.2,
+                              FormatVersion 12 + Migrate (step 64: a format-11 file's FeverSprintMinMetres 3 → 4, FeverSprintMaxMetres
+                              12 → 8, ImpactChargeCarrySeconds 1.5 → 3 once, tuned values kept + noted;
+                              step 63: a format-10 file's ImpactFallBackupSeconds 0.5 → 0.2,
                               ImpactRearPercent 200 → 100, ImpactFlankPercent 140 → 100 once, tuned values kept + noted;
                               step 56: an older file's RightBlockStaggerMaxPercent 80 → 30,
                               RightBlockKnockdownMaxPercent 40 → 10, ParryStaggerMaxPercent 80 → 30, ParryKnockdownMaxPercent 40 → 10,
@@ -583,7 +599,17 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               Stored - full until the first Clamp -, Refill, TryStart, Advance - drains only moving -, Stop,
                               Share; step 35: RunFactor; step 36: TryStartAi - no 20% gate), SprintReading (the bar), SprintStats
                               (+ the 4 [summary] "sprint" lines; step 36: by order kind with its reserve ("keeps N%"), reserve kept;
-                              step 35: off-the-floor starts, the acceleration game → ours, the speed check × the fresh run)
+                              step 35: off-the-floor starts, the acceleration game → ours, the speed check × the fresh run);
+                              step 64: SprintEnd.Attacked / Stopped, SprintRules.ChargeIntoContact / ChargeWaitBelowSeconds /
+                              ChargeWaitMetres + ChargeText, SprintMath.IntoContact / ChargeWaits / StoppedEndSeconds 0.5, SprintStore.IntoContact /
+                              StillFor (TryStartAi(…, intoContact), Advance ends a sprint into contact after 0.5 s still once he moved),
+                              SprintStats' into-contact / waiting counts + the 6th [summary] line "sprint into contact"
+  ShieldArc.cs                step 64 pure (AI_NOTES "Step 64"): ShieldArcRules (live: ModEnabled FIRST, ShieldFrontArcIsCorrect, the
+                              degrees 0-180; Describe), ShieldArcMath (NeedsAngle - the rule on and the ENGINE's wrong-side shield block, InArc,
+                              Resolve - in the arc → a right-side block unless a tired AI man's step-30 share w keeps the engine's (TiredRoll:
+                              a stateless hash of both men and the swing, so every system agrees), Band / BandName - 0-15 … 120-180°),
+                              ShieldArcStats (the game's verdict against ours by AI / you, turned, the engine's wrong side by angle band, not
+                              looked at, kept by tiredness + the [summary] "shield front arc" line)
   Brace.cs                    step 23 pure (AI_NOTES "Step 23"): BraceOrderKind (the game's movement orders + the
                               AI's advance / tactical charge on a Move), BraceOrder (charge / advance / hold / no formation -
                               step 28), BraceEnd,
@@ -808,7 +834,8 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               direction / toughness / charges" lines; DamageStats.AddMeleeCharge + the "damage critical" line (DamageRoll.ChargeUpside);
                               step 63: DirPressure (the direction line's "+0.50 pressure"). Impact.cs step 63: ImpactFacts.NotEnemies (a friend's
                               blow - never decided, ImpactSkip.NotEnemies, ImpactFallStats.Friendly), ImpactDecision.DirectionPart,
-                              ImpactRules.RearPressure / FlankPressure, ImpactMath.DirectionPressure (x += it on landed blows)
+                              ImpactRules.RearPressure / FlankPressure, ImpactMath.DirectionPressure (x += it on landed blows); step 64:
+                              ImpactChargeStats.CarriedByAttack (NoteCharge(…, byAttack) - the charges line's "by an attack begun in the charge")
   Courage.cs                  step 49 pure (AI_NOTES "Step 49", RESEARCH §S): CouragePhase (brave / walking back / holding), CourageSkip (in the
                               order asked), CourageEnd, RegroupEnd, CourageStep, CourageSprintRefusal, ShockTimes (his last 4 landed hits), CourageRequired
                               (the terms), CourageRules (live; ModEnabled FIRST, CourageEnabled; Athletics only for the tiredness term; Describe with the
@@ -874,7 +901,7 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               step 59: TWO pages (BuildPage returns object; MCM keeps settings by Id) - the
                               player page (SettingsId, the old id, "Trax Combat Enhancements": 20 settings,
                               7 groups, then "Defaults" with Revert) = _settings, the Advanced page
-                              (AdvancedSettingsId, "... - Advanced": 272 settings since step 63, 16 groups) = _advanced;
+                              (AdvancedSettingsId, "... - Advanced": 277 settings since step 64, 16 groups) = _advanced;
                               each its own "default" preset (its own settings); group "Defaults": the Revert
                               (both pages, reverts both) / Save-defaults-file (Advanced only) BUTTONS
                               (ProxyRef<Action>, both pages refreshed via PropertyChanged), on Advanced just
@@ -1057,7 +1084,19 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               TiredBlockApplied (the decorator's write counted by f band, the first in full),
                               TiredGuardHit → GuardTaken (OnMeleeHit, before the block's charge: the AI's guard by f
                               band; you never; step 34: ShieldInHand = step 21's IWeaponFacts read at the blow and
-                              at the recompute, a failing read = one [error], counted without), WriteTiredBlockSummary
+                              at the recompute, a failing read = one [error], counted without), WriteTiredBlockSummary;
+                              step 64: TiredGuardHit takes the attacker (our verdict), the start / change / summary call the arc's
+  Missions/AthleticsLogic.ShieldArc.cs  step 64, THE WALL'S BLOCKS COUNT: BlockKindOf(attacker, victim, cd) = OUR block kind of one collision
+                              for every system (BlockHitTaken's cost / refill, TiredGuardHit, the impact model's ImpactEventOf) - the engine's,
+                              turned right for a wrong-side shield block in the front arc (IImpactInputs.FacingAngle = step 62's AngleFrom; both
+                              men tracked - an untracked attacker no native read; a tired AI man's step-30 share kept by ShieldArcMath.TiredRoll);
+                              ShieldArcHitTaken (OnMeleeHit FIRST, own try: both verdicts counted once, the first turned block in full, verbose
+                              "guard-arc"), StartShieldArc / NoteShieldArcSettings / WriteShieldArcSummary. Step 64's sprint: AthleticsLogic.Sprint.cs
+                              (OrderChangedFor - a small charge store WAITS: TrackedAgent.ChargeSprintWaiting, ChargeWaitLook from the pass,
+                              DropChargeWait; TryStartAi(…, intoContact) for charges and fevers; RunSprint skips the 3 m end for a sprint into
+                              contact; SprintAttackBegan from AttackBegan ends it - SprintEnd.Attacked), AthleticsLogic.ImpactModel.cs
+                              (MarkChargeAttack at AttackBegan → TrackedAgent.ChargeAttack, IsCharging(…, out byAttack), spent with the carry,
+                              cleared at AttackEnded)
   Missions/WallBody.cs        step 41: WallState (held, his list slot, vanilla's timer + its last StartTime, the fallback's
                               next rewrite, the next sample), IWallBody (the smoke plays it), GameWallBody (the facts by managed
                               reads + IsRetreating; the slot GetCurrentGlobalPositionOfUnit(agent, true), CurrentDirection,
@@ -1357,7 +1396,13 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               pixels), Fill, FillColor, FrameColor (the fade's alpha baked in); step 46: the box (PositionX / Y =
                               its top-left, BoxWidth / BoxHeight), FeverShown, the Athletics bar - BarShown, BarWidth, BarHeight,
                               BarFill, BarUsable, BarColor, BarFrameColor, BarWoundColor
-tests/TraxCombat.Core.Tests/  net8.0 xUnit (913 - step 63: + Step63Tests.cs - FallsOnTheHitTests (the format-11 migration, the 0.2 s backup,
+tests/TraxCombat.Core.Tests/  net8.0 xUnit (929 - step 64: + Step64Tests.cs - ShieldFrontArcTests (the settings, the verdict in / out of the
+                              arc, parries and the game's right side never touched, the master switch, a tired man's step-30 share and the
+                              stateless roll, the summary line, the correct-block rules it brings), ChargeIntoContactTests (the settings, charge
+                              / fever into contact - advance / move never, the 0.5 s still end only after he moved, the small store's wait, the
+                              format-12 fever move, the summary line), Step64ExamplesTests (the carry 3 s migration, the charges line's
+                              carried-by-an-attack, a RUNNING blow proportional, THE WORKED EXAMPLE - looters into a fresh legionary wall
+                              before / after, even men unchanged); the format strings → 12, the sprint summary's 6 lines; 913 - step 63: + Step63Tests.cs - FallsOnTheHitTests (the format-11 migration, the 0.2 s backup,
                               a friend's blow counted in both lines), RearBlowTests (the settings, pressure straight into x on landed blows only, THE
                               WORKED EXAMPLES on the shipped values - even fresh men front 0 / side 8 % staggered / behind 7 % down 40 % staggered, a
                               legionary standing behind a fresh peasant archer 47 %, charging 50 %, the front unchanged -, the cap / ceilings, the
@@ -1817,7 +1862,15 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               a fall: out of place, the 0.1 s look, never walked while down, walked back 0.5 s after he is up through the real
                               ApplyWallPull, the wish off and released once back; 0 = no look, no walk; the master switch; A / B in the
                               stand-in world); the step 41 / 42 checks pin ShieldWallPullBackSeconds 0 (WallDefaults), step 62's its 0.5 backup
-                              and x2 / x1.4 (Step62On) (138 steps; the config checks work for any tuned default)
+                              and x2 / x1.4 (Step62On); step 64 (Program.Step64.cs): THE WALL'S BLOCKS COUNT through the logic's OnMeleeHit
+                              parts (a wrong-side block from 20° → the impact model's RightBlock, the guard line and the arc's count; a charging
+                              looter thrown back; an exhausted man's front block kept wrong, half at w 0.5 and every system agreeing; 100° the
+                              game's; an untracked attacker no read; live; the summary), THE AI CHARGE HITS AT SPEED (a legionary's charge sprint
+                              into contact ended by his first attack, a looter's small store waiting to 10 m then ended standing still, a new
+                              order dropping a wait, the switches live, the summary line), THE CHARGE CARRIES TO THE BLOW (an attack begun 2.5 s
+                              after the sprint strikes at 4 s as a charge, spent; 3.2 s none), the master-switch step's arc part; the older steps
+                              pin the arc off and the step-64 sprint off (AthleticsDefaults), step 62's its 1.5 s carry (141 steps; the config
+                              checks work for any tuned default)
                               TRAX_SMOKE_KEEP=1 keeps its temp folder + log to read
 tools/DefaultsTool/           defaults.json upkeep: refresh (rewrite comments/order, keep every
                               value) | check; --file <path> for an exported one
