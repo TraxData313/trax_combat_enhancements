@@ -912,6 +912,14 @@ namespace TraxCombat.Core
             "Knockdown not seen: knock him down after (s)",
             "If a knockdown decided on a landed blow (a kick, a bash, a clean hit) has not started to play within this many seconds, the man is knocked down by a blow of our own - once. 0 = no backup.");
 
+        public static readonly ParamDef ImpactToughnessWeight = Float("ImpactToughnessWeight", 0, 2, ImpactGroup,
+            "Toughness: armour and rank count (power)",
+            "How much both men's TOUGHNESS - armour, rank and the health left, the courage settings' measure - weighs in who staggers or knocks down whom: the mismatch × (attacker's toughness ÷ defender's) to this power. 0.5: a legionary (4.4 times as tough as a looter) hits as if twice as strong, and the looter's blows on him half as strong. 0 = only tiredness, weapons and skill count.");
+
+        public static readonly ParamDef ImpactRangedInHandPercent = Int("ImpactRangedInHandPercent", 100, 300, ImpactGroup,
+            "Archer caught in melee: hit harder (%)",
+            "A blow that lands on a man holding a bow, crossbow or sling counts this much stronger - both hands busy, no guard (130: x1.3). 100 = like anyone.");
+
         public static readonly ParamDef ImpactMismatchWeight = Float("ImpactMismatchWeight", 0, 2, ImpactGroup,
             "Mismatch weight (pressure per doubling)",
             "How much an outmatched man suffers: every doubling of the mismatch beyond the even band adds this to the pressure on him (0.25: an enemy four times stronger counts as much as being about a third tired). 0 = only tiredness counts.");
@@ -1371,7 +1379,7 @@ namespace TraxCombat.Core
             ImpactMomentumRiderPercent, ImpactMomentumRiderWalkMetresPerSecond, ImpactMomentumRiderGallopMetresPerSecond,
             ImpactMessagesIncludeYourMen, ImpactMessageMinSeconds,
             ImpactPunishEnabled, ImpactPunishAggressionPercent, ImpactPunishGraceSeconds, ImpactPunishRangeMetres,
-            ImpactShrugOffYieldsToImpact, ImpactFallBackupSeconds,
+            ImpactShrugOffYieldsToImpact, ImpactFallBackupSeconds, ImpactToughnessWeight, ImpactRangedInHandPercent,
             ImpactMismatchWeight, ImpactEvenBandDoublings, ImpactBodyExponent, ImpactBodyFloorPoints, ImpactStaggeredBonus, ImpactDamageWeight,
             ImpactRefWeightKg, ImpactWeightExponent, ImpactRefSwingSpeed, ImpactSpeedExponent, ImpactBluntFactor, ImpactCutFactor, ImpactPierceFactor,
             ImpactKickFactor, ImpactBashFactor, ImpactSkillMinFactor, ImpactSkillMaxFactor,

@@ -40,7 +40,7 @@ public class SettingsPagesTests
     {
         var player = SettingsSchema.OnPage(SettingsPage.Player);
         var advanced = SettingsSchema.OnPage(SettingsPage.Advanced);
-        Assert.Equal(277, SettingsSchema.All.Count); // step 62: + 2 (the lost falls)
+        Assert.Equal(279, SettingsSchema.All.Count); // step 62: + 2 (the lost falls) + 2 (toughness, a ranged man in melee)
         Assert.Equal(SettingsSchema.All.Count, player.Count + advanced.Count);
         Assert.Empty(player.Intersect(advanced));
         Assert.Equal(SettingsSchema.All.OrderBy(p => p.Key), player.Concat(advanced).OrderBy(p => p.Key));

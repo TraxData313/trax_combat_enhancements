@@ -440,22 +440,29 @@ namespace TraxCombat.Core
         /// body + legs + arms (read once - it does not change in a battle). Why both: armour is what a blow meets, the level is his skill
         /// and experience (the troop tree); a looter in rags ≈ 1.35, an armoured tier-5 man ≈ 6 at the defaults - the "4-5 looters per
         /// armoured man" Anton asked for.</summary>
-        public static double BaseToughness(in CourageRules r, double armour, int level)
+        public static double BaseToughness(in CourageRules r, double armour, int level) => BaseToughness(r.ArmourWeightPercent, r.LevelWeightPercent, armour, level);
+
+        /// <summary>The same measure from the two weights alone (step 62: the impact model's mismatch shares it - one toughness for courage
+        /// and for who knocks whom down).</summary>
+        public static double BaseToughness(double armourWeightPercent, double levelWeightPercent, double armour, int level)
         {
             if (double.IsNaN(armour) || armour < 0) armour = 0;
             if (level < 0) level = 0;
             if (level > LevelCap) level = LevelCap;
-            return (1 + r.ArmourWeightPercent / 100.0 * armour / ArmourUnit) * (1 + r.LevelWeightPercent / 100.0 * level / LevelUnit);
+            return (1 + armourWeightPercent / 100.0 * armour / ArmourUnit) * (1 + levelWeightPercent / 100.0 * level / LevelUnit);
         }
 
         /// <summary>His toughness NOW: the base × (1 − h × the health share he lost) - a man at half health with h 50% counts 0.75.</summary>
-        public static double Toughness(in CourageRules r, double baseToughness, double healthShare)
+        public static double Toughness(in CourageRules r, double baseToughness, double healthShare) => Toughness(r.HealthWeightPercent, baseToughness, healthShare);
+
+        /// <summary>The same from the health weight alone (step 62 shares it).</summary>
+        public static double Toughness(double healthWeightPercent, double baseToughness, double healthShare)
         {
             if (double.IsNaN(baseToughness) || baseToughness <= 0) return 0;
             if (double.IsNaN(healthShare)) healthShare = 1;
             if (healthShare < 0) healthShare = 0;
             if (healthShare > 1) healthShare = 1;
-            return baseToughness * (1 - r.HealthWeightPercent / 100.0 * (1 - healthShare));
+            return baseToughness * (1 - healthWeightPercent / 100.0 * (1 - healthShare));
         }
 
         /// <summary>An ENEMY's toughness × CourageHeavyWeaponPercent when he carries a two-handed weapon or polearm and no shield (read once

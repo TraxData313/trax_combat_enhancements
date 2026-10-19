@@ -274,6 +274,11 @@ namespace TraxCombat.Missions
             if (f.Event == ImpactEvent.Kick || f.Event == ImpactEvent.Bash || f.Event == ImpactEvent.CleanHit) f.DefenderSkill = v.AthleticsSkill;
             f.AttackerIsPlayer = IsPlayer(a!);
             f.DefenderIsPlayer = IsPlayer(v);
+            if (r.ToughnessWeight > 0) // step 62: both men's toughness (courage's measure) in the mismatch
+            {
+                f.AttackerToughness = ImpactToughness(a!);
+                f.DefenderToughness = ImpactToughness(v);
+            }
             var family = ImpactMath.Family(f.Event);
             bool block = ImpactMath.IsBlock(f.Event);
             // step 50: what applies writes the states; shadow keeps "would"; a family decided live with no effect built yet decides on
@@ -312,6 +317,39 @@ namespace TraxCombat.Missions
                 if (keepAttacker) NotePunishWindow(a, now);
             }
             return true;
+        }
+
+        /// <summary>Step 62: a man's toughness now - courage's measure (CourageMath, shared): his kit read once through the inputs (armour,
+        /// level), the weights read live, his health now. A failing read = one [error] and a man in rags (toughness from level 0, armour 0).</summary>
+        private double ImpactToughness(TrackedAgent st)
+        {
+            if (double.IsNaN(st.ImpactArmour))
+            {
+                double armour = 0;
+                int level = 0;
+                try
+                {
+                    ImpactInputs.Kit(st.Agent, out armour, out level);
+                }
+                catch (Exception e)
+                {
+                    Failed("impact.kit", e);
+                }
+                st.ImpactArmour = armour;
+                st.ImpactLevel = level;
+            }
+            var s = TraxSettings.Shared;
+            double b = CourageMath.BaseToughness(s.CourageArmourWeightPercent, s.CourageLevelWeightPercent, st.ImpactArmour, st.ImpactLevel);
+            double health = 1;
+            try
+            {
+                health = ImpactInputs.HealthShare(st.Agent);
+            }
+            catch (Exception e)
+            {
+                Failed("impact.health", e);
+            }
+            return CourageMath.Toughness(s.CourageHealthWeightPercent, b, health);
         }
 
         /// <summary>The first decision of each event kind and the first of each outcome in full (IMPACT §6), the rest verbose (bucket

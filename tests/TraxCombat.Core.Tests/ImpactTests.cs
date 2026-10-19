@@ -121,13 +121,14 @@ public class ImpactTests
             "ImpactShowMessages", "ImpactMessagesIncludeYourMen", "ImpactMessageMinSeconds", // step 53
             "ImpactPunishEnabled", "ImpactPunishAggressionPercent", "ImpactPunishGraceSeconds", "ImpactPunishRangeMetres", // step 54
             "ImpactShrugOffYieldsToImpact", "ImpactFallBackupSeconds", // step 62: the lost falls
+            "ImpactToughnessWeight", "ImpactRangedInHandPercent", // step 62: toughness, a ranged man in melee
             "ImpactMismatchWeight", "ImpactEvenBandDoublings",
             "ImpactBodyExponent", "ImpactBodyFloorPoints", "ImpactStaggeredBonus", "ImpactDamageWeight", "ImpactRefWeightKg", "ImpactWeightExponent",
             "ImpactRefSwingSpeed", "ImpactSpeedExponent", "ImpactBluntFactor", "ImpactCutFactor", "ImpactPierceFactor", "ImpactKickFactor", "ImpactBashFactor",
             "ImpactSkillMinFactor", "ImpactSkillMaxFactor", "ImpactGuardShieldRight", "ImpactGuardParry", "ImpactGuardShieldWrong", "ImpactGuardNone",
             "ImpactStaggerFrom", "ImpactShieldDropFrom", "ImpactKnockdownFrom",
         };
-        Assert.Equal(78, keys.Length); // step 48's 60 + step 52's momentum 4 + step 53's rider momentum 3 and on-screen lines 3 + step 54's punish 4 + step 56's 2 + step 62's
+        Assert.Equal(80, keys.Length); // step 48's 60 + step 52's momentum 4 + step 53's rider momentum 3 and on-screen lines 3 + step 54's punish 4 + step 56's 2 + step 62's
         // Step 59: three of them on the player page - the switch and "against you" ("Staggers and knockdowns"), the on-screen lines
         // ("On screen"); the other 73 stay in this group in order.
         var player = new[] { "ImpactEnabled", "ImpactOnPlayerPercent", "ImpactShowMessages" };

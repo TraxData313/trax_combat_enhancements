@@ -132,6 +132,14 @@ namespace TraxCombat.Core
 
         /// <summary>Step 62: this landed blow KILLS him (health − damage &lt; 1) - nothing is decided (he plays his death, not our fall).</summary>
         public bool Fatal;
+
+        /// <summary>Step 62, TOUGHNESS in the mismatch: both men's toughness - courage's measure (step 49: armour, level, the health he has
+        /// left; a looter ≈ 1.35, a legionary ≈ 5.97). 0 or less = unknown (counts as even).</summary>
+        public double AttackerToughness, DefenderToughness;
+
+        /// <summary>Step 62: the defender holds a bow, crossbow or sling in his hand (a ranged man caught in melee - both hands busy, no
+        /// guard).</summary>
+        public bool DefenderRangedInHand;
     }
 
     /// <summary>
@@ -272,6 +280,10 @@ namespace TraxCombat.Core
         /// <summary>Step 52: the attacker's speed into the blow (m/s) and the momentum factor it gave the impact (1 = none; a rider 1).</summary>
         public double AttackerSpeed, Momentum;
 
+        /// <summary>Step 62: the toughness ratio (attacker ÷ defender; NaN = unknown) and the factor it gave R; the ranged-man-in-melee factor;
+        /// EXTRA = every step-62 factor on R beyond the step-48 mismatch (toughness × ranged × direction, the cap applied with the momentum).</summary>
+        public double ToughnessRatio, ToughnessFactor, RangedFactor, Extra;
+
         public bool Reeling;
 
         public ImpactRoll Knockdown, ShieldDrop, Stagger, Riposte;
@@ -388,6 +400,8 @@ namespace TraxCombat.Core
             RiderMomentumGallop = s.ImpactMomentumRiderGallopMetresPerSecond;
             ShrugOffYields = s.ImpactShrugOffYieldsToImpact;
             FallBackupSeconds = Math.Max(0, Math.Min(ImpactFallMath.MaxBackupSeconds, (double)s.ImpactFallBackupSeconds));
+            ToughnessWeight = Math.Max(0, (double)s.ImpactToughnessWeight);
+            RangedInHand = Math.Max(1, s.ImpactRangedInHandPercent / 100.0);
         }
 
         public static ImpactRules From(TraxSettings s) => new ImpactRules(s);
@@ -482,6 +496,13 @@ namespace TraxCombat.Core
 
         /// <summary>Step 62: a decided fall not seen within this many seconds = our own knockdown blow from the tick, once (0 = no backup).</summary>
         public double FallBackupSeconds { get; }
+
+        /// <summary>Step 62: TOUGHNESS in the mismatch - R × (toughness_A ÷ toughness_D)^this (0 = off; 0.5: a legionary against a looter,
+        /// 4.4 times as tough, counts x2.1).</summary>
+        public double ToughnessWeight { get; }
+
+        /// <summary>Step 62: a landed blow on a man with a bow, crossbow or sling in his hand - R × this (1 = off).</summary>
+        public double RangedInHand { get; }
 
         /// <summary>The model runs (decides and logs): the master switch FIRST, Athletics, the impact switch.</summary>
         public bool Enabled => ModEnabled && AthleticsOn && ImpactOn;
@@ -832,6 +853,16 @@ namespace TraxCombat.Core
             return Math.Max(0.01, g);
         }
 
+        /// <summary>Step 62: (toughness_A ÷ toughness_D)^<c>ImpactToughnessWeight</c> - 1 when off or either is unknown (0 or less).</summary>
+        public static double ToughnessFactor(in ImpactRules r, double attacker, double defender)
+        {
+            if (!(r.ToughnessWeight > 0) || !(attacker > 0) || !(defender > 0)) return 1;
+            return Math.Pow(attacker / defender, r.ToughnessWeight);
+        }
+
+        /// <summary>Step 62: a LANDED blow on a man with a bow, crossbow or sling in his hand - <c>ImpactRangedInHandPercent</c>; else 1.</summary>
+        public static double RangedFactor(in ImpactRules r, ImpactEvent e, bool rangedInHand) => rangedInHand && IsLanded(e) ? r.RangedInHand : 1;
+
         /// <summary>The body: his current points, never below the floor.</summary>
         public static double Body(in ImpactRules r, double points) => Math.Max(r.BodyFloor, double.IsNaN(points) ? 0 : points);
 
@@ -868,6 +899,12 @@ namespace TraxCombat.Core
             d.SkillA = SkillFactor(in r, f.AttackerSkill);
             d.SkillD = SkillFactor(in r, f.DefenderSkill);
             d.R = Math.Pow(d.BodyA / d.BodyD, r.BodyExponent) * (d.Impact * d.SkillA) / (d.Guard * d.SkillD);
+            // step 62: both men's toughness (courage's measure), a ranged man caught in melee
+            d.ToughnessRatio = f.AttackerToughness > 0 && f.DefenderToughness > 0 ? f.AttackerToughness / f.DefenderToughness : double.NaN;
+            d.ToughnessFactor = ToughnessFactor(in r, f.AttackerToughness, f.DefenderToughness);
+            d.RangedFactor = RangedFactor(in r, f.Event, f.DefenderRangedInHand);
+            d.Extra = d.ToughnessFactor * d.RangedFactor;
+            d.R *= d.Extra;
             d.Log2R = d.R > 0 ? Math.Log(d.R, 2) : 0;
             d.MismatchPart = r.MismatchWeight * Band(in r, d.Log2R);
             d.Reeling = reeling;
@@ -891,6 +928,7 @@ namespace TraxCombat.Core
         {
             d.TAttacker = Tired(f.AttackerF);
             double rr = Math.Pow(d.BodyD / d.BodyA, r.BodyExponent) * (d.Guard * d.SkillD) / (d.Impact * d.SkillA);
+            rr /= d.ToughnessFactor > 0 ? d.ToughnessFactor : 1; // step 62: the blocker's toughness against his
             double log2 = rr > 0 ? Math.Log(rr, 2) : 0;
             d.XRiposte = d.TAttacker + r.MismatchWeight * Band(in r, log2);
             return d.XRiposte;
@@ -1129,6 +1167,7 @@ namespace TraxCombat.Core
                           : f.AttackerMounted && f.AttackerPassive ? " (a couched lance - no momentum)" : string.Empty)
                        + " vs guard " + d.Guard.ToString("0.00", c) + " (" + GuardText(d.Event, f.GuardWeight) + ")"
                        + "; skill " + f.AttackerSkill.ToString("0", c) + " vs " + f.DefenderSkill.ToString("0", c) + " (x" + d.SkillA.ToString("0.00", c) + " / x" + d.SkillD.ToString("0.00", c) + ")"
+                       + ExtraText(in d, in f)
                        + " → R " + d.R.ToString("0.00", c) + " (log2 " + d.Log2R.ToString("+0.00;-0.00", c) + ", " + d.MismatchPart.ToString("+0.00;-0.00", c) + " beyond the band)"
                        + (d.Reeling ? ", reeling +" : string.Empty) + (d.DamagePart > 0 ? ", damage +" + d.DamagePart.ToString("0.00", c) : string.Empty)
                        + " → x " + d.X.ToString("0.00", c) + ":";
@@ -1143,6 +1182,17 @@ namespace TraxCombat.Core
             if (!double.IsNaN(d.StaggerSeconds)) s += " stagger " + d.StaggerSeconds.ToString("0.00", c) + " s;";
             if (!double.IsNaN(d.RiposteStunSeconds)) s += " the attacker recoils " + d.RiposteStunSeconds.ToString("0.00", c) + " s;";
             return s.TrimEnd(';');
+        }
+
+        /// <summary>Step 62's factors in words (empty when none moved R).</summary>
+        private static string ExtraText(in ImpactDecision d, in ImpactFacts f)
+        {
+            var c = CultureInfo.InvariantCulture;
+            string s = string.Empty;
+            if (Math.Abs(d.ToughnessFactor - 1) > 1e-4)
+                s += "; toughness " + f.AttackerToughness.ToString("0.00", c) + " vs " + f.DefenderToughness.ToString("0.00", c) + " (x" + d.ToughnessFactor.ToString("0.00", c) + ")";
+            if (Math.Abs(d.RangedFactor - 1) > 1e-4) s += "; a ranged weapon in his hand (x" + d.RangedFactor.ToString("0.00", c) + ")";
+            return s;
         }
 
         private static string BlowText(in ImpactFacts f)

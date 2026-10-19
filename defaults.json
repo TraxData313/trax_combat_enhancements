@@ -1202,6 +1202,19 @@
   // (range 0.0 to 3.0)
   "ImpactFallBackupSeconds": 0.5,
 
+  // How much both men's TOUGHNESS - armour, rank and the health left, the courage settings'
+  // measure - weighs in who staggers or knocks down whom: the mismatch × (attacker's toughness
+  // ÷ defender's) to this power. 0.5: a legionary (4.4 times as tough as a looter) hits as if
+  // twice as strong, and the looter's blows on him half as strong. 0 = only tiredness, weapons
+  // and skill count.
+  // (range 0.0 to 2.0)
+  "ImpactToughnessWeight": 0.5,
+
+  // A blow that lands on a man holding a bow, crossbow or sling counts this much stronger -
+  // both hands busy, no guard (130: x1.3). 100 = like anyone.
+  // (range 100 to 300)
+  "ImpactRangedInHandPercent": 130,
+
   // How much an outmatched man suffers: every doubling of the mismatch beyond the even band
   // adds this to the pressure on him (0.25: an enemy four times stronger counts as much as
   // being about a third tired). 0 = only tiredness counts.

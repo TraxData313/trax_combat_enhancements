@@ -283,6 +283,11 @@ namespace TraxCombat.Missions
         public double CourageBase = double.NaN;
         public bool CourageHeavy;
 
+        /// <summary>Step 62: his toughness kit for the impact model (armour sum, level) - read once (NaN = not yet); the toughness itself is
+        /// computed at each decision from courage's weights (live) and his health now.</summary>
+        public double ImpactArmour = double.NaN;
+        public int ImpactLevel;
+
         /// <summary>Step 49: looked at for courage at least once (the summary's men).</summary>
         public bool CourageSeen;
 

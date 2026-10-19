@@ -19,6 +19,12 @@ namespace TraxCombat.Missions
         /// <summary>Step 51: what the attacker struck with, in words, for a YOU line ("Sturgian Axe"; null = unknown). Asked only when a YOU
         /// line may be written (it allocates the name's string).</summary>
         string? BlowName(Agent attacker, in AttackCollisionData cd);
+
+        /// <summary>Step 62: a man's toughness kit (courage's measure - his armour sum and level; read once a man, cached by the logic).</summary>
+        void Kit(Agent a, out double armour, out int level);
+
+        /// <summary>Step 62: his health ÷ its limit now (the toughness's health term).</summary>
+        double HealthShare(Agent a);
     }
 
     /// <summary>
@@ -66,6 +72,11 @@ namespace TraxCombat.Missions
                     if (skill != null) f.AttackerSkill = Skill(attacker, skill);
                 }
             }
+            if (ImpactMath.IsLanded(f.Event)) // step 62: a ranged man caught in melee (a bow / crossbow / sling in his hand - not a thrown weapon)
+            {
+                var held = victim.WieldedWeapon.CurrentUsageItem;
+                f.DefenderRangedInHand = held != null && held.IsRangedWeapon && !held.IsConsumable;
+            }
             switch (f.Event)
             {
                 case ImpactEvent.RightBlock:
@@ -85,6 +96,10 @@ namespace TraxCombat.Missions
                     break;
             }
         }
+
+        public void Kit(Agent a, out double armour, out int level) => GameCourageBody.ArmourAndLevel(a, out armour, out level);
+
+        public double HealthShare(Agent a) => GameCourageBody.HealthShareOf(a);
 
         public string? BlowName(Agent attacker, in AttackCollisionData cd)
         {

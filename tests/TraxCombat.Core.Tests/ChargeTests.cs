@@ -10,11 +10,116 @@ namespace TraxCombat.Core.Tests;
 /// </summary>
 public class ChargeTests
 {
+    private sealed class Dice : IRandomSource
+    {
+        public double NextDouble() => 0.999;
+    }
+
     private static ImpactRules Rules(Action<TraxSettings>? tune = null)
     {
         var s = new TraxSettings();
         tune?.Invoke(s);
         return ImpactRules.From(s);
+    }
+
+    /// <summary>Courage's toughness of the worked examples' troops (step 49): a looter 1.35, an imperial legionary 5.97.</summary>
+    private static readonly double Looter = CourageMath.BaseToughness(200, 100, CourageMath.ExampleLooterArmour, CourageMath.ExampleLooterLevel);
+
+    private static readonly double Legionary = CourageMath.BaseToughness(200, 100, CourageMath.ExampleLegionaryArmour, CourageMath.ExampleLegionaryLevel);
+
+    /// <summary>One event between two men of pool 100 and skill 100 (a 1.2 kg sword at 92, a 4 kg shield / a 1.2 kg parrying sword), the
+    /// peak line at 75 %, the attacker's tired swing (0.85 + 0.15 f) - with step 62's inputs.</summary>
+    private static ImpactFacts Facts(ImpactEvent e, double bar, double attackerBar = 1.0, double tA = 0, double tD = 0, double speed = 0,
+        bool ranged = false, double angle = 0, bool charging = false)
+    {
+        double fA = Math.Min(1, attackerBar / 0.75);
+        return new ImpactFacts
+        {
+            Event = e,
+            AttackerPoints = 100 * attackerBar,
+            AttackerF = fA,
+            AttackerAnimation = 0.85 + 0.15 * fA,
+            AttackerSkill = 100,
+            DefenderPoints = 100 * bar,
+            DefenderBar = bar,
+            DefenderF = Math.Min(1, bar / 0.75),
+            DefenderSkill = 100,
+            WeaponWeight = 1.2,
+            SwingSpeed = 92,
+            GuardWeight = e == ImpactEvent.Parry ? 1.2 : ImpactMath.IsBlock(e) ? 4.0 : 0,
+            DefenderHasShield = e != ImpactEvent.Parry,
+            DefenderMaxHealth = 100,
+            AttackerSpeed = speed,
+            AttackerToughness = tA,
+            DefenderToughness = tD,
+            DefenderRangedInHand = ranged,
+        };
+    }
+
+    private static ImpactDecision Decide(in ImpactFacts f, ImpactRules? rules = null)
+    {
+        var r = rules ?? Rules();
+        var d = default(ImpactState);
+        var a = default(ImpactState);
+        return ImpactMath.Decide(in r, in f, ref d, ref a, 100, new Dice());
+    }
+
+    // ------------------------------------------------------------------ toughness, a ranged man in melee
+
+    [Fact]
+    public void Toughness_counts_strongly_not_absolutely_a_legionary_on_a_looter_x2_and_the_looter_on_him_half()
+    {
+        Assert.Equal(1.35, Looter, 2);
+        Assert.Equal(5.97, Legionary, 2);
+        var r = Rules();
+        Assert.Equal(0.5, r.ToughnessWeight, 6);
+        Assert.Equal(2.10, ImpactMath.ToughnessFactor(in r, Legionary, Looter), 2);
+        Assert.Equal(1 / 2.10, ImpactMath.ToughnessFactor(in r, Looter, Legionary), 2);
+        Assert.Equal(1.0, ImpactMath.ToughnessFactor(in r, Legionary, Legionary), 9);
+        Assert.Equal(1.0, ImpactMath.ToughnessFactor(in r, 0, Looter), 9);                 // unknown = even
+        Assert.Equal(1.0, ImpactMath.ToughnessFactor(Rules(s => s.Set(SettingsSchema.ImpactToughnessWeight, 0.0, SettingSources.Mcm)), Legionary, Looter), 9);
+        // in R: one doubling more (+0.25 x at the shipped mismatch weight) - the same blow, with and without
+        var even = Decide(Facts(ImpactEvent.CleanHit, 0.5));
+        var tough = Decide(Facts(ImpactEvent.CleanHit, 0.5, tA: Legionary, tD: Looter));
+        Assert.Equal(Math.Log(2.10, 2), tough.Log2R - even.Log2R, 2);
+        Assert.Equal(2.10, tough.ToughnessFactor, 2);
+        Assert.Equal(Legionary / Looter, tough.ToughnessRatio, 6);
+        Assert.True(double.IsNaN(even.ToughnessRatio));
+        Assert.True(tough.X > even.X + 0.2, "x " + tough.X + " vs " + even.X);
+    }
+
+    [Fact]
+    public void Two_fresh_men_of_the_same_toughness_still_never_stagger_each_other()
+    {
+        var d = Decide(Facts(ImpactEvent.CleanHit, 1.0, tA: Legionary, tD: Legionary));
+        Assert.Equal(0, d.Knockdown.Chance);
+        Assert.True(d.Stagger.Chance < 0.005, "stagger " + d.Stagger.Chance);
+        var p = Decide(Facts(ImpactEvent.CleanHit, 1.0, tA: Looter, tD: Looter));
+        Assert.Equal(0, p.Knockdown.Chance);
+    }
+
+    [Fact]
+    public void The_riposte_reads_toughness_turned_round_a_tough_blocker_reels_a_weak_attacker_more()
+    {
+        var weakIntoTough = Decide(Facts(ImpactEvent.RightBlock, 1.0, attackerBar: 0.5, tA: Looter, tD: Legionary));
+        var even = Decide(Facts(ImpactEvent.RightBlock, 1.0, attackerBar: 0.5));
+        Assert.True(weakIntoTough.XRiposte > even.XRiposte + 0.2, "x_r " + weakIntoTough.XRiposte + " vs " + even.XRiposte);
+        Assert.True(weakIntoTough.X <= even.X, "the tough blocker was pressed harder");
+    }
+
+    [Fact]
+    public void A_man_with_a_bow_in_his_hand_takes_a_landed_blow_harder_never_a_block()
+    {
+        var r = Rules();
+        Assert.Equal(1.3, r.RangedInHand, 6);
+        Assert.Equal(1.3, ImpactMath.RangedFactor(in r, ImpactEvent.CleanHit, true), 6);
+        Assert.Equal(1.3, ImpactMath.RangedFactor(in r, ImpactEvent.Kick, true), 6);
+        Assert.Equal(1.0, ImpactMath.RangedFactor(in r, ImpactEvent.Parry, true), 6);
+        Assert.Equal(1.0, ImpactMath.RangedFactor(in r, ImpactEvent.CleanHit, false), 6);
+        Assert.Equal(1.0, ImpactMath.RangedFactor(Rules(s => s.Set(SettingsSchema.ImpactRangedInHandPercent, 100, SettingSources.Mcm)), ImpactEvent.CleanHit, true), 6);
+        var archer = Decide(Facts(ImpactEvent.CleanHit, 0.5, ranged: true));
+        var plain = Decide(Facts(ImpactEvent.CleanHit, 0.5));
+        Assert.Equal(Math.Log(1.3, 2), archer.Log2R - plain.Log2R, 3);
     }
 
     // ------------------------------------------------------------------ the lost falls

@@ -411,6 +411,8 @@ namespace TraxCombat.Core
         public float ImpactPunishRangeMetres => GetFloat(SettingsSchema.ImpactPunishRangeMetres);
         public bool ImpactShrugOffYieldsToImpact => GetBool(SettingsSchema.ImpactShrugOffYieldsToImpact);
         public float ImpactFallBackupSeconds => GetFloat(SettingsSchema.ImpactFallBackupSeconds);
+        public float ImpactToughnessWeight => GetFloat(SettingsSchema.ImpactToughnessWeight);
+        public int ImpactRangedInHandPercent => GetInt(SettingsSchema.ImpactRangedInHandPercent);
         public float ImpactMismatchWeight => GetFloat(SettingsSchema.ImpactMismatchWeight);
         public float ImpactEvenBandDoublings => GetFloat(SettingsSchema.ImpactEvenBandDoublings);
         public float ImpactBodyExponent => GetFloat(SettingsSchema.ImpactBodyExponent);

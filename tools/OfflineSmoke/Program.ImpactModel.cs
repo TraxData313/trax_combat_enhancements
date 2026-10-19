@@ -37,6 +37,26 @@ namespace TraxCombat.Tools
             public double Damage { get; set; }
             public bool Throw;
             public int Calls;
+            public readonly Dictionary<int, (double Armour, int Level)> Kits = new Dictionary<int, (double, int)>(); // step 62: the toughness kit
+            public readonly Dictionary<int, double> Health = new Dictionary<int, double>(); // step 62: health ÷ its limit (1 unless set)
+            public readonly HashSet<int> RangedInHand = new HashSet<int>(); // step 62: a bow in his hand
+            public readonly Dictionary<int, double> Angles = new Dictionary<int, double>(); // step 62: the defender's angle to the attacker (°)
+            public bool Fatal; // step 62: the next blows kill
+            public int KitReads;
+
+            public void Kit(Agent a, out double armour, out int level)
+            {
+                KitReads++;
+                armour = 0;
+                level = 0;
+                if (Kits.TryGetValue(a.Index, out var k))
+                {
+                    armour = k.Armour;
+                    level = k.Level;
+                }
+            }
+
+            public double HealthShare(Agent a) => Health.TryGetValue(a.Index, out var h) ? h : 1;
 
             public void Fill(Agent attacker, Agent victim, in AttackCollisionData cd, ref ImpactFacts f)
             {
@@ -50,6 +70,8 @@ namespace TraxCombat.Tools
                 f.AttackerSpeed = Speeds.TryGetValue(attacker.Index, out var v) ? v : 0; // step 53: a rider's = his horse's
                 f.AttackerPassive = f.AttackerMounted && Couched.Contains(attacker.Index);
                 f.TwoHanded = TwoHanded.Contains(attacker.Index);
+                f.Fatal = Fatal && ImpactMath.IsLanded(f.Event);
+                f.DefenderRangedInHand = ImpactMath.IsLanded(f.Event) && RangedInHand.Contains(victim.Index);
                 if (f.Event != ImpactEvent.Kick && Weapons.TryGetValue(attacker.Index, out var w))
                 {
                     f.WeaponWeight = w.Kg;
@@ -114,10 +136,10 @@ namespace TraxCombat.Tools
         /// off here; step 62's own checks (Program.ImpactCharge.cs) put the embedded defaults back with <see cref="Step62On"/>.</summary>
         private static readonly ParamDef[] Step62Keys =
         {
-            SettingsSchema.ImpactShrugOffYieldsToImpact, SettingsSchema.ImpactFallBackupSeconds,
+            SettingsSchema.ImpactShrugOffYieldsToImpact, SettingsSchema.ImpactFallBackupSeconds, SettingsSchema.ImpactToughnessWeight, SettingsSchema.ImpactRangedInHandPercent,
         };
 
-        private static readonly double[] Step62OffValues = { 0, 0 };
+        private static readonly double[] Step62OffValues = { 0, 0, 0, 100 };
 
         private static void Step62Off()
         {

@@ -164,13 +164,8 @@ namespace TraxCombat.Missions
         public void ReadKit(TrackedAgent st, out double armour, out int level, out bool heavy)
         {
             var a = st.Agent;
-            armour = 0;
-            level = 0;
             heavy = false;
-            var spawn = a.SpawnEquipment;
-            if (spawn != null) armour = spawn.GetHeadArmorSum() + spawn.GetHumanBodyArmorSum() + spawn.GetLegArmorSum() + spawn.GetArmArmorSum();
-            var c = a.Character;
-            if (c != null) level = c.Level;
+            ArmourAndLevel(a, out armour, out level);
             var eq = a.Equipment;
             if (eq == null) return;
             bool shield = false, big = false;
@@ -194,11 +189,25 @@ namespace TraxCombat.Missions
             heavy = big && !shield;
         }
 
-        public double HealthShare(TrackedAgent st)
+        public double HealthShare(TrackedAgent st) => HealthShareOf(st.Agent);
+
+        /// <summary>Step 62 shares it (the impact model's toughness): health ÷ its limit (managed fields).</summary>
+        internal static double HealthShareOf(Agent a)
         {
-            var a = st.Agent;
             float limit = a.HealthLimit;
             return limit > 0 ? a.Health / limit : 1;
+        }
+
+        /// <summary>His toughness's kit - the spawn equipment's head + body + legs + arms armour and his character's level (managed reads;
+        /// step 62's impact toughness shares it).</summary>
+        internal static void ArmourAndLevel(Agent a, out double armour, out int level)
+        {
+            armour = 0;
+            level = 0;
+            var spawn = a.SpawnEquipment;
+            if (spawn != null) armour = spawn.GetHeadArmorSum() + spawn.GetHumanBodyArmorSum() + spawn.GetLegArmorSum() + spawn.GetArmArmorSum();
+            var c = a.Character;
+            if (c != null) level = c.Level;
         }
 
         public double Morale(TrackedAgent st) => st.Agent.GetMorale();
