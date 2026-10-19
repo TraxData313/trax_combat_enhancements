@@ -22,6 +22,9 @@ namespace TraxCombat.Core
         public readonly int[] DirAny = new int[D];
         public readonly double[] DirFactor = new double[D];
 
+        /// <summary>Step 63: the pressure the direction added to x, summed (÷ the blows = the mean).</summary>
+        public readonly double[] DirPressure = new double[D];
+
         public readonly int[] ToughBlows = new int[ToughBandCount];
         public readonly int[] ToughDown = new int[ToughBandCount];
         public readonly int[] ToughAny = new int[ToughBandCount];
@@ -125,6 +128,7 @@ namespace TraxCombat.Core
             bool down = d.Knockdown.Happens, any = d.AnyOutcome;
             DirBlows[dir]++;
             DirFactor[dir] += d.DirectionFactor;
+            DirPressure[dir] += d.DirectionPart; // step 63
             if (down) DirDown[dir]++;
             if (any) DirAny[dir]++;
             if (double.IsNaN(d.ToughnessRatio)) ToughUnknown++;
@@ -154,7 +158,9 @@ namespace TraxCombat.Core
                 if (i > 0) s.Append(" | ");
                 s.Append(ImpactMath.DirectionName(i)).Append(' ').Append(DirBlows[i].ToString(c));
                 if (DirBlows[i] > 0)
-                    s.Append(" (x").Append((DirFactor[i] / DirBlows[i]).ToString("0.00", c)).Append(": down ").Append(Pct(DirDown[i], DirBlows[i]))
+                    s.Append(" (x").Append((DirFactor[i] / DirBlows[i]).ToString("0.00", c))
+                        .Append(DirPressure[i] > 1e-9 ? " +" + (DirPressure[i] / DirBlows[i]).ToString("0.00", c) + " pressure" : string.Empty)
+                        .Append(": down ").Append(Pct(DirDown[i], DirBlows[i]))
                         .Append(", an outcome ").Append(Pct(DirAny[i], DirBlows[i])).Append(')');
             }
             lines.Add(s.ToString());

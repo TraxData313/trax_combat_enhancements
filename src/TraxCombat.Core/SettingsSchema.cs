@@ -926,11 +926,11 @@ namespace TraxCombat.Core
 
         public static readonly ParamDef ImpactRearPercent = Int("ImpactRearPercent", 100, 500, ImpactGroup,
             "Hit from behind: counts (%)",
-            "A blow that lands on a man from BEHIND counts this much stronger toward staggering or knocking him down (200: twice) - a well-led charge into the back of a unit throws men to the ground. 100 = like a blow from the front.");
+            "A blow that lands on a man from BEHIND counts this much stronger in the strength comparison (200: as if twice as strong). Since step 63 a blow from behind presses him straight instead ('Hit from behind: extra pressure') and this stays at 100 - both together count the direction twice. 100 = like a blow from the front.");
 
         public static readonly ParamDef ImpactFlankPercent = Int("ImpactFlankPercent", 100, 500, ImpactGroup,
             "Hit from the side: counts (%)",
-            "A blow that lands on a man from the SIDE counts this much stronger (140: x1.4). 100 = like a blow from the front.");
+            "A blow that lands on a man from the SIDE counts this much stronger in the strength comparison (140: x1.4). Since step 63 'Hit from the side: extra pressure' carries it and this stays at 100. 100 = like a blow from the front.");
 
         public static readonly ParamDef ImpactRearDegrees = Int("ImpactRearDegrees", 90, 180, ImpactGroup,
             "From behind: beyond (degrees)",
@@ -939,6 +939,15 @@ namespace TraxCombat.Core
         public static readonly ParamDef ImpactFlankDegrees = Int("ImpactFlankDegrees", 0, 180, ImpactGroup,
             "From the side: from (degrees)",
             "A blow counts as from the side from this many degrees off his facing up to the 'from behind' angle (60: between 60 and 120). Never above the 'from behind' angle.");
+
+        // Step 63 (Anton's battle 2026-10-19 11:02: from behind 13% down vs the front 11%) - a strong rear blow, on the Advanced page, this group.
+        public static readonly ParamDef ImpactRearPressure = Float("ImpactRearPressure", 0, 2, ImpactGroup,
+            "Hit from behind: extra pressure",
+            "A blow that lands on a man from BEHIND presses him this much more toward a stagger or a fall, the way tiredness does (an empty man counts 1). 0.5: a fresh man struck in the back reels like a half-exhausted one, and a blow from behind can floor even a fresh man. 0 = like a blow from the front.");
+
+        public static readonly ParamDef ImpactFlankPressure = Float("ImpactFlankPressure", 0, 2, ImpactGroup,
+            "Hit from the side: extra pressure",
+            "A blow that lands on a man from the SIDE presses him this much more toward a stagger or a fall (0.2: a fresh man struck from the side reels a little more often). 0 = like a blow from the front.");
 
         public static readonly ParamDef ImpactChargeCarrySeconds = Float("ImpactChargeCarrySeconds", 0, 5, ImpactGroup,
             "Charge: a sprint carries into the first blow for (s)",
@@ -1420,7 +1429,7 @@ namespace TraxCombat.Core
             ImpactMessagesIncludeYourMen, ImpactMessageMinSeconds,
             ImpactPunishEnabled, ImpactPunishAggressionPercent, ImpactPunishGraceSeconds, ImpactPunishRangeMetres,
             ImpactShrugOffYieldsToImpact, ImpactFallBackupSeconds, ImpactToughnessWeight, ImpactRangedInHandPercent,
-            ImpactRearPercent, ImpactFlankPercent, ImpactRearDegrees, ImpactFlankDegrees,
+            ImpactRearPercent, ImpactFlankPercent, ImpactRearDegrees, ImpactFlankDegrees, ImpactRearPressure, ImpactFlankPressure,
             ImpactChargeCarrySeconds, RiposteKnockdownMaxPercent, RiposteKnockdownFrom, RiposteMomentumPercent, ImpactMultiplierCapPercent,
             ImpactMismatchWeight, ImpactEvenBandDoublings, ImpactBodyExponent, ImpactBodyFloorPoints, ImpactStaggeredBonus, ImpactDamageWeight,
             ImpactRefWeightKg, ImpactWeightExponent, ImpactRefSwingSpeed, ImpactSpeedExponent, ImpactBluntFactor, ImpactCutFactor, ImpactPierceFactor,

@@ -142,9 +142,10 @@ namespace TraxCombat.Tools
             SettingsSchema.ImpactShrugOffYieldsToImpact, SettingsSchema.ImpactFallBackupSeconds, SettingsSchema.ImpactToughnessWeight, SettingsSchema.ImpactRangedInHandPercent,
             SettingsSchema.ImpactRearPercent, SettingsSchema.ImpactFlankPercent,
             SettingsSchema.ImpactChargeCarrySeconds, SettingsSchema.RiposteKnockdownMaxPercent, SettingsSchema.RiposteMomentumPercent,
+            SettingsSchema.ImpactRearPressure, SettingsSchema.ImpactFlankPressure, // step 63
         };
 
-        private static readonly double[] Step62OffValues = { 0, 0, 0, 100, 100, 100, 0, 0, 0 };
+        private static readonly double[] Step62OffValues = { 0, 0, 0, 100, 100, 100, 0, 0, 0, 0, 0 };
 
         private static void Step62Off()
         {
@@ -154,8 +155,13 @@ namespace TraxCombat.Tools
         private static void Step62On()
         {
             foreach (var p in Step62Keys) S.Set(p, p.Default, SettingSources.File);
-            // step 63 moved step 62's shipped backup 0.5 → 0.2 s - the step-62 checks keep the values they were written on
+            // step 63 moved step 62's shipped backup 0.5 → 0.2 s and direction from the multipliers x2 / x1.4 to pressure - the step-62 checks
+            // keep the values they were written on
             S.Set(SettingsSchema.ImpactFallBackupSeconds, 0.5, SettingSources.File);
+            S.Set(SettingsSchema.ImpactRearPercent, 200, SettingSources.File);
+            S.Set(SettingsSchema.ImpactFlankPercent, 140, SettingSources.File);
+            S.Set(SettingsSchema.ImpactRearPressure, 0.0, SettingSources.File);
+            S.Set(SettingsSchema.ImpactFlankPressure, 0.0, SettingSources.File);
         }
 
         /// <summary>Step 63: every step-62 / step-63 key at the embedded defaults (step 63's own checks).</summary>

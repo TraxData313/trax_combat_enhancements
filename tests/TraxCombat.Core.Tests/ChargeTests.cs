@@ -18,6 +18,9 @@ public class ChargeTests
     private static ImpactRules Rules(Action<TraxSettings>? tune = null)
     {
         var s = new TraxSettings();
+        // step 63's direction pressure off: these are step 62's rules (the multipliers x2 / x1.4 carried direction then)
+        s.Set(SettingsSchema.ImpactRearPressure, 0, "test");
+        s.Set(SettingsSchema.ImpactFlankPressure, 0, "test");
         tune?.Invoke(s);
         return ImpactRules.From(s);
     }
@@ -479,6 +482,11 @@ public class ChargeExamplesTests
         s.Set(SettingsSchema.ParryKnockdownMaxPercent, 10, "test");
         s.Set(SettingsSchema.RiposteStaggerMaxPercent, 70, "test");
         s.Set(SettingsSchema.BlockStunTiredExtraPercent, 0, "test");
+        // step 62 as shipped: direction by the multipliers (x2 / x1.4), no pressure - step 63's own examples are Step63ExamplesTests
+        s.Set(SettingsSchema.ImpactRearPercent, 200, "test");
+        s.Set(SettingsSchema.ImpactFlankPercent, 140, "test");
+        s.Set(SettingsSchema.ImpactRearPressure, 0, "test");
+        s.Set(SettingsSchema.ImpactFlankPressure, 0, "test");
         return ImpactRules.From(s);
     }
 

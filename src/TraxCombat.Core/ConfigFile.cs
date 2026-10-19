@@ -99,7 +99,8 @@ namespace TraxCombat.Core
         /// ParryKnockdownMaxPercent 40 → 10, RiposteStaggerMaxPercent 50 → 70 and BlockStunTiredExtraPercent 100 → 0 - the spike's lever 2
         /// failed - in an older file still holding them; a tuned value kept and noted), 11 = step 63 (Anton's battle of 2026-10-19 11:02:
         /// ImpactFallBackupSeconds 0.5 → 0.2 - the game plays its falls at the blow, so the backup comes sooner - in a file still holding
-        /// step 62's default; a tuned value kept and noted).</summary>
+        /// step 62's default; ImpactRearPercent 200 → 100 and ImpactFlankPercent 140 → 100 - direction is pressure now, ImpactRearPressure /
+        /// ImpactFlankPressure; a tuned value kept and noted).</summary>
         public const int FormatVersion = 11;
 
         /// <summary>The meta key holding <see cref="FormatVersion"/> - not a setting.</summary>
@@ -441,6 +442,9 @@ namespace TraxCombat.Core
                 // without the key simply gets the new default; a hand-set value is kept and said once
                 MoveOrKeep(read, SettingsSchema.ImpactFallBackupSeconds, 0.5,
                     "step 63, Anton's battle: the game plays a decided fall at the blow itself (friends' blows are no longer decided) - the backup comes after 0.2 s", from, defaultOf);
+                const string rear = "step 63, Anton's battle: a blow from behind now adds PRESSURE straight (ImpactRearPressure / ImpactFlankPressure) - the multiplier at x1, or the direction counts twice";
+                MoveOrKeep(read, SettingsSchema.ImpactRearPercent, 200, rear, from, defaultOf);
+                MoveOrKeep(read, SettingsSchema.ImpactFlankPercent, 140, rear, from, defaultOf);
             }
             // steps 36 / 37: the retired AI sprint keys - in ANY format (they are only ever steps 33-36's, and a hand-pasted one
             // goes the same way)

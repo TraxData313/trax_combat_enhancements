@@ -117,5 +117,105 @@ namespace TraxCombat.Tools
                 AthleticsDefaults();
             }
         }
+
+        /// <summary>
+        /// A STRONG REAR BLOW (step 63) on a line, 200 men each, seeded, through the real decorator's KnockDown seam and the real logic: even
+        /// FRESH men struck from the front / the side / behind (the front 0 - two fresh even men -, behind a real share down); a legionary
+        /// standing behind fresh peasant archers (bow in hand) vs in front of them; the decision line's "+0.50 pressure"; the direction line.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static void RearBlowOnALine()
+        {
+            var keep = _logic;
+            try
+            {
+                AthleticsDefaults();
+                ImpactModelDefaults();
+                Step56BlockModel();
+                Step63On();
+                Check(Math.Abs(TraxSettings.Shared.ImpactRearPressure - 0.5) < 1e-6 && Math.Abs(TraxSettings.Shared.ImpactFlankPressure - 0.2) < 1e-6
+                      && TraxSettings.Shared.ImpactRearPercent == 100 && TraxSettings.Shared.ImpactFlankPercent == 100,
+                    "the embedded step-63 direction defaults: +" + TraxSettings.Shared.ImpactRearPressure + " / +" + TraxSettings.Shared.ImpactFlankPressure + ", x" + TraxSettings.Shared.ImpactRearPercent + " / x" + TraxSettings.Shared.ImpactFlankPercent);
+                var inputs = new FakeImpactInputs();
+                var body = new FakeImpactBody { Record = false };
+                var logic = NewPaceLogic(new FakePaceBody(), new FakeWeaponFacts());
+                logic.ImpactBody = body;
+                logic.ImpactInputs = inputs;
+                logic.ImpactDice = new SeededRandom(63);
+                var model = SpikeDamageModel();
+                double t = 63500;
+                logic.TickImpact(t);
+                int next = 63500;
+                TrackedAgent Man(int skill, double bar, double armour, int level)
+                {
+                    var m = logic.Track(FakeAgent(next++))!;
+                    m.AthleticsSkill = skill;
+                    SetBar(m, bar);
+                    if (armour >= 0) inputs.Kits[m.AgentIndex] = (armour, level);
+                    return m;
+                }
+                var swordsman = Man(125, 1.0, -1, 0);
+                inputs.Weapons[swordsman.AgentIndex] = (1.2, 92, ImpactDamageType.Cut, 125);
+                var legionary = Man(130, 1.0, 110, 26);
+                inputs.Weapons[legionary.AgentIndex] = (1.3, 92, ImpactDamageType.Cut, 130);
+                inputs.Kits[swordsman.AgentIndex] = (40, 15);
+
+                double chanceSum = 0;
+                (double Down, double Staggered) Line(TrackedAgent a, double angle, bool archers)
+                {
+                    int down = 0, staggered = 0;
+                    chanceSum = 0;
+                    var cd = CleanHitDealing(20);
+                    for (int i = 0; i < 200; i++)
+                    {
+                        var v = archers ? Man(40, 1.0, 15, 11) : Man(125, 1.0, 40, 15);
+                        if (archers) inputs.RangedInHand.Add(v.AgentIndex);
+                        inputs.Angles[v.AgentIndex] = angle;
+                        var blow = new Blow(a.AgentIndex);
+                        if (model.DecideAgentKnockedDownByBlow(a.Agent, v.Agent, in cd, null!, in blow)) down++;
+                        logic.ImpactModelHitTaken(a.Agent, v.Agent, in cd);
+                        if (logic.LastImpact.Stagger.Happens) staggered++;
+                        chanceSum += logic.LastImpact.Knockdown.Chance;
+                        if ((i & 7) == 7) logic.TickImpact(t += 1.0 / 60);
+                    }
+                    return (down / 200.0, staggered / 200.0);
+                }
+                var evenFront = Line(swordsman, 0, false);
+                var evenSide = Line(swordsman, 90, false);
+                var evenRear = Line(swordsman, 160, false);
+                double evenRearChance = chanceSum / 200;
+                var lastRear = logic.LastImpact;
+                var archFront = Line(legionary, 0, true);
+                var archRear = Line(legionary, 160, true);
+                double archRearChance = chanceSum / 200;
+                string P(double v) => (100 * v).ToString("0", System.Globalization.CultureInfo.InvariantCulture) + "%";
+                Console.WriteLine("        step 63 A STRONG REAR BLOW (200 men each, seeded): even FRESH men - front down " + P(evenFront.Down) + " / staggered " + P(evenFront.Staggered)
+                                  + ", side " + P(evenSide.Down) + " / " + P(evenSide.Staggered) + ", BEHIND " + P(evenRear.Down) + " / " + P(evenRear.Staggered) + " (the model's down "
+                                  + P(evenRearChance) + ") | a legionary into fresh peasant archers - front down " + P(archFront.Down) + ", standing BEHIND " + P(archRear.Down)
+                                  + " (the model's " + P(archRearChance) + ")");
+                Check(evenFront.Down == 0 && evenFront.Staggered == 0, "two fresh even men from the front were not 0: " + P(evenFront.Down) + " / " + P(evenFront.Staggered));
+                Check(evenSide.Down == 0 && evenSide.Staggered > 0 && evenSide.Staggered < 0.2, "the side on a fresh even man: " + P(evenSide.Down) + " / " + P(evenSide.Staggered));
+                Check(evenRear.Down > 0.02 && evenRear.Down < 0.15 && evenRear.Staggered > 0.25, "behind a fresh even man: " + P(evenRear.Down) + " / " + P(evenRear.Staggered));
+                Check(Math.Abs(lastRear.DirectionPart - 0.5) < 1e-6 && lastRear.Direction == 2 && Math.Abs(lastRear.DirectionFactor - 1) < 1e-9,
+                    "the rear decision: pressure " + lastRear.DirectionPart + ", band " + lastRear.Direction + ", x" + lastRear.DirectionFactor);
+                Check(archFront.Down < 0.05 && archRear.Down > 0.35, "a legionary behind fresh archers: front " + P(archFront.Down) + ", behind " + P(archRear.Down));
+                logic.WriteImpactSummary();
+                LogHas("from behind (> 120°) +0.50 pressure, from the side (60°+) +0.20");
+                LogHas("| side 200 (x1.00 +0.20 pressure: down ");
+                LogHas("| rear 400 (x1.00 +0.50 pressure: down ");
+            }
+            finally
+            {
+                _logic = keep;
+                SetStatic(typeof(AthleticsLogic), "_current", keep);
+                ImpactHooks.RestoreStunCap();
+                ImpactHooks.KnockDown = null;
+                ImpactHooks.BlockStun = null;
+                ImpactHooks.PickupLock = null;
+                ImpactHooks.ShrugOff = null;
+                ImpactModelDefaults();
+                AthleticsDefaults();
+            }
+        }
     }
 }

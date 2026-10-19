@@ -299,6 +299,11 @@ namespace TraxCombat.Core
         /// EXTRA = every step-62 factor on R beyond the step-48 mismatch (toughness × ranged × direction, the cap applied with the momentum).</summary>
         public double ToughnessRatio, ToughnessFactor, RangedFactor, Extra;
 
+        /// <summary>Step 63: the PRESSURE a landed blow's direction added to x straight (<c>ImpactRearPressure</c> from behind,
+        /// <c>ImpactFlankPressure</c> from the side, 0 from the front or on a block) - like tiredness: a blow from behind hits a fresh man like
+        /// a half-exhausted one.</summary>
+        public double DirectionPart;
+
         /// <summary>Step 62: where the blow came from (0 front, 1 side, 2 behind - <see cref="ImpactMath.DirectionOf"/>), the angle, and the
         /// factor it gave a landed blow (1 for blocks).</summary>
         public int Direction;
@@ -438,6 +443,8 @@ namespace TraxCombat.Core
             RangedInHand = Math.Max(1, s.ImpactRangedInHandPercent / 100.0);
             RearFactor = Math.Max(1, s.ImpactRearPercent / 100.0);
             FlankFactor = Math.Max(1, s.ImpactFlankPercent / 100.0);
+            RearPressure = Math.Max(0, (double)s.ImpactRearPressure);
+            FlankPressure = Math.Max(0, (double)s.ImpactFlankPressure);
             RearDegrees = s.ImpactRearDegrees;
             FlankDegrees = Math.Min(s.ImpactFlankDegrees, s.ImpactRearDegrees);
             ChargeCarrySeconds = Math.Max(0, (double)s.ImpactChargeCarrySeconds);
@@ -550,6 +557,13 @@ namespace TraxCombat.Core
         /// <summary>Step 62, DIRECTION: a landed blow from BEHIND (the angle above <see cref="RearDegrees"/>) × this, from the SIDE (from
         /// <see cref="FlankDegrees"/>) × <see cref="FlankFactor"/>; the front 1.</summary>
         public double RearFactor { get; }
+
+        /// <summary>Step 63, A STRONG REAR BLOW: a landed blow from BEHIND adds this to the pressure x straight (0.5: a fresh man hit from
+        /// behind is pressed like a half-exhausted one); from the SIDE <see cref="FlankPressure"/>. Since step 63 these carry direction and
+        /// <see cref="RearFactor"/> / <see cref="FlankFactor"/> ship at x1 (both together would count the direction twice).</summary>
+        public double RearPressure { get; }
+
+        public double FlankPressure { get; }
         public double FlankFactor { get; }
         public double RearDegrees { get; }
         public double FlankDegrees { get; }
@@ -646,7 +660,8 @@ namespace TraxCombat.Core
                        : "OFF")
                    + "; step 62: a decided fall / stagger refuses the game's shrug-off " + OnOff(ShrugOffYields) + ", a fall not seen in " + F1(FallBackupSeconds) + " s = our blow"
                    + (FallBackupSeconds > 0 ? string.Empty : " (OFF)") + "; toughness ^" + F2(ToughnessWeight) + ", a ranged man in melee x" + F2(RangedInHand)
-                   + "; from behind (> " + F0(RearDegrees) + "°) x" + F2(RearFactor) + ", from the side (" + F0(FlankDegrees) + "°+) x" + F2(FlankFactor)
+                   + "; from behind (> " + F0(RearDegrees) + "°) +" + F2(RearPressure) + " pressure" + (RearFactor > 1.0001 ? " x" + F2(RearFactor) : string.Empty)
+                   + ", from the side (" + F0(FlankDegrees) + "°+) +" + F2(FlankPressure) + (FlankFactor > 1.0001 ? " x" + F2(FlankFactor) : string.Empty)
                    + "; a charge carries " + F1(ChargeCarrySeconds) + " s after the sprint; a charge into a right-side shield block thrown back up to " + P(RiposteKnockdownMax)
                    + " (his momentum against him +" + F0(100 * RiposteMomentumWeight) + "%); the multipliers together at most x" + F1(MultiplierCap);
         }
@@ -984,6 +999,21 @@ namespace TraxCombat.Core
             };
         }
 
+        /// <summary>Step 63, A STRONG REAR BLOW: the pressure a LANDED blow's direction adds to x straight - <c>ImpactRearPressure</c> from
+        /// behind, <c>ImpactFlankPressure</c> from the side, 0 from the front; a block 0 (a blow from behind is never blocked). Like tiredness
+        /// (T is 0-1 in x), so it moves the chances of a FRESH even man too - the multiplier only nudged the mismatch term (weight 0.25 a
+        /// doubling, beyond the even band): Anton's battle read 13% down from behind vs 11% from the front.</summary>
+        public static double DirectionPressure(in ImpactRules r, ImpactEvent e, double angleDegrees)
+        {
+            if (!IsLanded(e)) return 0;
+            return DirectionOf(in r, angleDegrees) switch
+            {
+                2 => r.RearPressure,
+                1 => r.FlankPressure,
+                _ => 0,
+            };
+        }
+
         /// <summary>Step 62: a LANDED blow on a man with a bow, crossbow or sling in his hand - <c>ImpactRangedInHandPercent</c>; else 1.</summary>
         public static double RangedFactor(in ImpactRules r, ImpactEvent e, bool rangedInHand) => rangedInHand && IsLanded(e) ? r.RangedInHand : 1;
 
@@ -1049,7 +1079,8 @@ namespace TraxCombat.Core
             // counts only CorrectBlockTiredWeightPercent of itself - he is broken mainly by a big mismatch (the stick against the axe)
             d.TiredWeight = IsCorrectBlock(f.Event) ? Math.Max(0, Math.Min(1, r.CorrectBlockTiredWeight)) : 1;
             d.TiredPart = d.TiredWeight * d.T;
-            d.X = d.TiredPart + d.MismatchPart + (reeling ? r.StaggeredBonus : 0) + d.DamagePart;
+            d.DirectionPart = DirectionPressure(in r, f.Event, f.AttackAngleDegrees); // step 63: a blow from behind presses like tiredness
+            d.X = d.TiredPart + d.MismatchPart + (reeling ? r.StaggeredBonus : 0) + d.DamagePart + d.DirectionPart;
             return d.X;
         }
 
@@ -1361,8 +1392,10 @@ namespace TraxCombat.Core
             if (Math.Abs(d.ToughnessFactor - 1) > 1e-4)
                 s += "; toughness " + f.AttackerToughness.ToString("0.00", c) + " vs " + f.DefenderToughness.ToString("0.00", c) + " (x" + d.ToughnessFactor.ToString("0.00", c) + ")";
             if (Math.Abs(d.RangedFactor - 1) > 1e-4) s += "; a ranged weapon in his hand (x" + d.RangedFactor.ToString("0.00", c) + ")";
-            if (Math.Abs(d.DirectionFactor - 1) > 1e-4)
-                s += "; from " + (d.Direction == 2 ? "BEHIND" : "the side") + " (" + d.AttackAngle.ToString("0", c) + "°, x" + d.DirectionFactor.ToString("0.00", c) + ")";
+            if (Math.Abs(d.DirectionFactor - 1) > 1e-4 || d.DirectionPart > 1e-6)
+                s += "; from " + (d.Direction == 2 ? "BEHIND" : "the side") + " (" + d.AttackAngle.ToString("0", c) + "°"
+                     + (Math.Abs(d.DirectionFactor - 1) > 1e-4 ? ", x" + d.DirectionFactor.ToString("0.00", c) : string.Empty)
+                     + (d.DirectionPart > 1e-6 ? ", +" + d.DirectionPart.ToString("0.00", c) + " pressure" : string.Empty) + ")";
             if (d.Capped) s += "; CAPPED at x" + (d.Extra * d.Momentum).ToString("0.00", c) + " in all";
             return s;
         }

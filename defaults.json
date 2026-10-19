@@ -1221,16 +1221,18 @@
   // (range 100 to 300)
   "ImpactRangedInHandPercent": 130,
 
-  // A blow that lands on a man from BEHIND counts this much stronger toward staggering or
-  // knocking him down (200: twice) - a well-led charge into the back of a unit throws men to
-  // the ground. 100 = like a blow from the front.
+  // A blow that lands on a man from BEHIND counts this much stronger in the strength comparison
+  // (200: as if twice as strong). Since step 63 a blow from behind presses him straight instead
+  // ('Hit from behind: extra pressure') and this stays at 100 - both together count the
+  // direction twice. 100 = like a blow from the front.
   // (range 100 to 500)
-  "ImpactRearPercent": 200,
+  "ImpactRearPercent": 100,
 
-  // A blow that lands on a man from the SIDE counts this much stronger (140: x1.4). 100 = like
-  // a blow from the front.
+  // A blow that lands on a man from the SIDE counts this much stronger in the strength
+  // comparison (140: x1.4). Since step 63 'Hit from the side: extra pressure' carries it and
+  // this stays at 100. 100 = like a blow from the front.
   // (range 100 to 500)
-  "ImpactFlankPercent": 140,
+  "ImpactFlankPercent": 100,
 
   // A blow counts as from behind when the attacker stands more than this many degrees from
   // where the man faces (120: the back third of a circle).
@@ -1241,6 +1243,19 @@
   // behind' angle (60: between 60 and 120). Never above the 'from behind' angle.
   // (range 0 to 180)
   "ImpactFlankDegrees": 60,
+
+  // A blow that lands on a man from BEHIND presses him this much more toward a stagger or a
+  // fall, the way tiredness does (an empty man counts 1). 0.5: a fresh man struck in the back
+  // reels like a half-exhausted one, and a blow from behind can floor even a fresh man. 0 =
+  // like a blow from the front.
+  // (range 0.0 to 2.0)
+  "ImpactRearPressure": 0.5,
+
+  // A blow that lands on a man from the SIDE presses him this much more toward a stagger or a
+  // fall (0.2: a fresh man struck from the side reels a little more often). 0 = like a blow
+  // from the front.
+  // (range 0.0 to 2.0)
+  "ImpactFlankPressure": 0.2,
 
   // A man who was sprinting strikes his first blow within this many seconds after the sprint as
   // a CHARGE - its full momentum (and the full damage roll, if that switch is on), even though
