@@ -5813,3 +5813,9 @@ earned bash, the gates checked with the wait at 0, the clash 47.3 a minute for 4
    with ~100 attempts a battle instead of 0).
 3. How it LOOKS: a line that bashes and swings, not one that only bashes; the lines tiring sooner, but not frozen; you as a shieldman get bashed
    a lot by fresh men - fair, or too much.
+
+**DEPLOY**: `tools\deploy.ps1` built HEAD 14a0dd9 and passed the AssemblyGuard, then Smart App Control refused the fresh `OfflineSmoke.exe`
+("An Application Control policy has blocked this file") - not deployed by it. Done by step 63's recipe: the smoke in memory (`run_smoke.ps1` on
+that build: all 147 passed), `tools\SmartAppControl\install_dev.ps1` (Modules\TraxCombatEnhancements.Dev), `loadcheck.ps1`: both installed DLLs
+LOADED (`1.2.0+14a0dd97…`): TraxCombatEnhancements.dll SHA-256 299ACB17…0E90, TraxCombat.Core.dll B06B06A7…E30C. The game and the launcher
+were not running. Windows security untouched.
