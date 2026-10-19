@@ -913,6 +913,65 @@ decision 0.144):
 
 He still decides himself — the opening makes him eager, not certain. Riders keep the game's own timing.
 
+### The AI kicks and bashes (step 65)
+
+The game's AI never kicks; now it does, now and then. An AI soldier on foot with the enemy he fights **within 1.6 m and in front of him**
+(40°) **kicks** him — or, with a shield in his hand, **shield-bashes** him (a shieldman facing a **raised shield** kicks instead: a raised
+shield stops a bash, not a kick). How often, per man per minute in reach (`AiKicksPerMinute` 0.1 × the factors):
+
+| He is | × | A man a minute |
+|---|---:|---:|
+| a looter (Athletics 30), fresh | 0.65 | 0.065 |
+| a legionary (Athletics 130), fresh | 1.15 | 0.115 |
+| a 300-Athletics hero, fresh | 2.0 | 0.2 |
+| … at half his bar (55%) | × 0.5 | |
+| … below 35% of his bar | × 0 | never |
+| … his enemy a full **turtle** (2 blocks in the last ~4 s; his guard up now counts one) | × 3 | |
+| … in the **fever** of a charge | × 2 | |
+
+At least **10 s** between two kicks of one man. **A 50 v 50 clash** (40 men in reach, half of each kind, a quarter of the targets
+turtling): about **5-6 a minute** across the fight (the smoke's seeded clash: 5.2 a minute, the model's 5.9). Never you (your E key is yours),
+never a rider, never a man staggered, down, routing, with a bow in hand, or without the Athletics or a stored swing for it. Each costs a
+kick's price — `CostPerKickOrBash` 3 × his multipliers and a stored swing (sections 4, 6), like yours.
+
+### The kicked man braces (step 65)
+
+A landed kick or bash no longer always knocks a man back. Before anything else the man **braces** — and a fresh, heavy, high-tier, skilled
+man mostly takes it standing. The brace fails along the same **pressure x** as everything in this section (his tiredness, both men's
+Athletics, armour and rank, skill, a bash's shield, a blow from behind): never below x −0.7, always from x 1.0, an S-curve between. A man
+below **20%** of his bar never braces.
+
+- **Braced**: no knock-back (the game's is refused), no knockdown, no lost shield; whatever twitch is left plays at **5×** speed.
+- **The brace fails, he is fresh**: a **short reel** — **40%** of the game's knock-back ("a fast bit"); still never a knockdown or a lost
+  shield on a fresh man.
+- **The brace fails, he is tired**: the reel grows with his tiredness — at an empty bar the full step-50 behaviour (the long reel, the
+  falls, the lost shields).
+
+**The worked example** (Core `Step65ExamplesTests`, 20 000 seeded kicks a row; a looter = pool 50, Athletics 30, toughness 1.35; a
+legionary = pool 130, Athletics 130, toughness 5.97; even men = pool 100, Athletics 100, toughness 3.0):
+
+| Kicker → kicked man | x | Brace fails | Braced | Short reel | Full reel | Knocked down | Shield lost |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| fresh looter → **fresh legionary** | −0.32 | 12.9% | **87%** | **13%** (×0.40) | 0 | **0** | **0** |
+| looter at 60% → fresh legionary | −0.41 | 7.8% | 92% | 8% | 0 | 0 | 0 |
+| fresh looter → legionary at half his bar | +0.14 | 49% | 51% | 49% (×0.90) | 0 | 0 | 0 |
+| fresh looter → legionary at 30% | +0.50 | 79% | 21% | 0 | 70% | 9% | 23% |
+| fresh looter → legionary at 10% (no brace) | +0.87 | — | 0 | 0 | 29% | 71% | 84% |
+| two fresh even men | 0.00 | 37% | 63% | 37% (×0.40) | 0 | 0 | 0 |
+| fresh → even man at half his bar | +0.40 | 71% | 29% | 70% (×0.90) | 0 | 1% | 10% |
+| fresh legionary → fresh looter | +0.45 | 75% | 25% | 71% | 0 | 4% | — |
+| fresh legionary → an EMPTY man (no brace) | +1.55 | — | 0 | 0 | 21% | **79%** | 90% |
+
+Two fresh legionaries, one bashing (a 4 kg shield): x +0.03, the brace fails 40%. The same for you — the brace guards you against an AI's
+kick (× `ImpactOnPlayerPercent`), and an AI man braces against yours: a short line says so (**red** "You brace against X's kick" / "X's kick
+staggers you for a moment"; **purple** "X braces against your kick" / "A lucky kick - X staggers for a moment").
+
+<sub>Settings (Advanced, "Impact: staggers, shield drops, knockdowns"): `AiKicksEnabled` on, `AiKicksPerMinute` 0.1, `AiKickReachMetres` 1.6,
+`AiKickFacingDegrees` 40, `AiKickCooldownSeconds` 10, `AiKickTurtleMultiplier` 3, `AiKickTurtleSeconds` 4, `AiKickTurtleBlocks` 2,
+`AiKickFeverMultiplier` 2, `AiKickSkillLowPercent` 50, `AiKickSkillHighPercent` 200, `AiKickMinBarPercent` 35, `AiKickFullBarPercent` 75,
+`AiKickKicksARaisedShield` on; `KickBraceEnabled` on, `KickBraceFromPressure` −0.7, `KickBraceToPressure` 1.0, `KickBraceMinBarPercent` 20,
+`KickBraceReelPercent` 20, `KickShortReelPercent` 40, `KickBraceRefusesKnockBack` on.</sub>
+
 ### You
 
 The same rules apply to you — every chance against you × `ImpactOnPlayerPercent` (100%). A short line in the

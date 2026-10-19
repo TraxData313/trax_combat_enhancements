@@ -5611,3 +5611,107 @@ running.
    start at ~10 m (`charge sprints that WAITED … started within 10.0 m`).
 4. How it LOOKS: looters reeling and thrown off the shields (~1 in 7 first blows on the ground) - a fair share, or too many (the knobs:
    `RiposteKnockdownMaxPercent`, `RiposteMomentumPercent`, `ShieldFrontArcDegrees`).
+
+## Step 65 — the AI kicks and bashes, the kicked man braces (DONE 2026-10-19; dev build only, not uploaded)
+
+**Anton (2026-10-19)**: "Make the AI do a few shield bashes and kicks now and then. The game has it but the NPCs never use them." Then: "Make
+sure a looter kicking a heavy shielded troop doesn't do too much. Maybe now and then a lucky kick can stagger him for a fast bit."
+
+**The decompile (v1.4.8) + RBM's prior art**
+- `Agent.EventControlFlag.Kick` = 0x8000. Vanilla's `MissionMainAgentController` (MissionViews, ~772): `if (Input.IsGameKeyPressed(16) &&
+  (mainAgent.KickClear() || mainAgent.MountAgent != null)) mainAgent.EventControlFlags |= 0x8000` - the player's kick is an EVENT flag. The engine's
+  input is CONTEXTUAL: the kick key while the guard is up is a bash (shield / weapon) - `Mission.CreateMeleeBlow` 5503: `AttackType = attackerWeapon.IsEmpty
+  ? Kick : Bash` (a kick = an alternative attack with no weapon).
+- `AgentDrivenProperties.AiKick` is written by `AgentStatCalculateModel.SetAiRelatedProperties` (187: `-0.1 + min(num, 0.4)`), but RBM's
+  `AiModule/Agents/AiKickBash.cs` (public source, shallow-cloned to the scratchpad) states "The native AI never does: the AiKick driven property has
+  no effect in game" - and Anton sees the same. RBM injects the input through `AgentComponent.OnAIInputSet` (event + movement flags by ref, before the
+  engine uses them): a bash holds a guard DIRECTION (`DefendUp` - "DefendBlock alone does not raise the guard") 0.4 s, then `eventFlag = Kick` for
+  0.15 s, then a commit - the native AI's own attack / event input cancels the move before the hit frame, so it is dropped (and the man stands still)
+  until the action has played out, 1.5 s at most. RBM: "a raised shield stops a bash but not a kick".
+- `Agent.OnAIInputSet` (1626) runs every component's `OnAIInputSet` - our step-16 `AiInputComponent` already sits there.
+- `MissionCombatMechanicsHelper.DecideAgentKnockedBackByBlow` (48): an alternative attack → `true` always (a horse charge by its angle, a weapon by
+  the knock-back penetration vs resistance). `Mission.CreateMeleeBlow` asks ShrugOff (5555) → KnockBack (5571) → KnockDown (5575); `blow.NoIgnore =
+  IsAlternativeAttack` (5513) - a kick's blow plays a reaction whatever the flags (step 62's finding).
+
+**65.1 / 65.2 THE AI KICKS (Core `AiKicks.cs`, Module `AthleticsLogic.AiKicks.cs`, `AiKickBody.cs`, `AiInputHook.cs`)**
+- THE LEVER: RBM's way through OUR hook - a fifth input wish `AiInputState.KickPhase` / `KickKind` (`Active` includes it); `AiInputHook.ApplyKick`
+  = Core `AiKickMath.Frame`: every phase takes his own attack / guard bits and event flags out; Guard = `DefendUp`; Press = the Kick event bit (+
+  `DefendUp` for a bash); Commit = nothing of his own and the input vector zeroed (his own move bits out) - unless a backpedal / walk back moves him.
+  Written LAST in the component (after `Apply` and step 32's `HoldKick`); the key is never pressed while step 32 holds his kick (no stored swing -
+  counted `KickHeldNoSwing`). Only with `AiKicksEnabled` (the component reads it live) and the master switch (its first line).
+- THE LOOK (`TickAiKicks` from `TickAthletics`, after the fever): the running attempts advanced every tick; a staggered slice so every man is looked
+  at ~every 0.25 s. `LookAiKick`: never you / a man the AI does not drive; the gates on our own records first - the cooldown (`AiKickNext`), his bar
+  (`BarFactor` 0 below `AiKickMinBarPercent`), the Athletics for the cost (`Points < KickOrBashCostPoints`), a stored swing (`Input.HoldKicks &&
+  HoldAttacks`), staggered / down (`Impact.Reeling / Down`, a strike / fall action on either channel), busy (his own ready / release / reload / kick /
+  weapon change - `AiKickMath.IsBusyAction`; a backpedal / regroup / wall walk) - then ONE die against his BEST chance (a full turtle); only under it
+  the engine is read (`IAiKickBody.Hands`: horse, rout, a ranged weapon, a shield; `Target`: `GetTargetAgent()` else `ImmediateEnemy`, an enemy on
+  foot, the distance and the angle off his facing = step 62's `AngleFrom`); the exact chance with the target's TURTLE share (our own records: his
+  paid blocks faded over `AiKickTurtleSeconds` - `TrackedAgent.TurtleBlocks` noted in `BlockHitTaken` - + 1 while his channel-1 action is a defend)
+  takes the same die. The kind: a shield = a bash unless the target's `DefendShield` faces the kicker within 60° (`AiKickKicksARaisedShield`).
+- THE ATTEMPT: `BeginAiKick` - EnsureInput, `SetKick`, the body's `Hook` (step 16's), the cooldown from the ask. `AdvanceAiKicks`: gone / not AI →
+  ended (Gone); PLAYED = step 18's `KickBashTracker` shows a kick / bash (Running, or DecidedAt after the ask) - its kind checked against the ask;
+  struck before it showed → Interrupted; the commit ends when the action is over; Guard → Press → Commit by time; past the watch → Played / NotPlayed.
+  `EndAiKick` on every path (the body's `Release` = UnhookIfIdle - never for a man gone), `AiKickLeftField`, `EndAllAiKicks` (the switch / master
+  switch / mission end - no engine call at the end).
+- THE COST is step 18's: the action seen by the poll → `ChargeKickOrBash` (`CostPerKickOrBash` × his multipliers + a stored swing) - counted for
+  the AI kicks (`NoteAiKickCost`) while an attempt runs. The hit: OnMeleeHit's alternative-attack path → `AiKickHit` (landed / into a shield, once).
+- Claude's calls (DESIGN decision 57): the input way (RBM's evidence) over raising `AiKick`; the rate per man-minute with factors (skill, bar, turtle,
+  fever) rather than a per-target opening rule; Athletics required (the cost and the sight of the action); never a rider; RBM's plumbing numbers
+  (0.4 / 0.15 / 1.5 s) as documented constants; no friend-in-the-way check (a friend's kick does nothing - step 63 - and costs only Athletics).
+
+**65.1 / 65.2 THE BRACE (Core `KickBrace.cs` + `Impact.cs`, Module `AthleticsLogic.KickBrace.cs`, `ImpactHooks`, `TraxDamageModel`)**
+- In `ImpactMath.Decide` (`BraceRoll`, before the knockdown / drop rolls - one more die only when the failure chance is strictly between 0 and 1):
+  a landed kick / bash on a man on foot, not down, the brace on (`KickBraceRules.On` - the master switch first). A SPENT man (bar below
+  `KickBraceMinBarPercent`) - no brace, no die, the decision exactly step 50's. Else the failure = S((x − FromPressure) ÷ (To − From)) on the kick's
+  own x (× `ImpactOnPlayerPercent` against you). BRACED: the knockdown / drop rolls refused (`ImpactRefusal.Braced` - `RefusalCount` 8), the reel
+  factor = `KickBraceReelPercent` (no die, never a reeling state); FAILED: step 50's rolls, the reel × `ReelCut` = short + (1 − short) × T. Classified
+  braced / short (the factor below 1) / full / down.
+- THE KNOCK-BACK: a new seam `ImpactHooks.IKnockBackDecider` asked by `TraxDamageModel.DecideAgentKnockedBackByBlow` after the base's YES. The logic
+  (`KnockBackKept`) decides the blow there through `ImpactModelOnLandedBlow` (`_inKnockBackSeam` - the pending slot remembers `_pendingBraced` and
+  `_pendingFromKnockBack`, so the KnockDown seam's later ask takes the same decision and is not counted as "taken from the shrug seam") - or takes the
+  shrug-off seam's decision of the same blow - and REFUSES the knock-back for a braced man while `KickBraceRefusesKnockBack` (only when the kicks'
+  family applies - never in shadow).
+- THE CUT REACTION: `ApplyKick` watches a factor below 1 with `ImpactWatchPurpose.Brace` (`ImpactLiveWatch.Braced` marks a braced one); `LiveSlow`
+  plays it at `ImpactLiveMath.FastSpeedFor` = 1 ÷ factor, at most `MaxSpeed` 8 (`SetCurrentActionSpeed` - step 50's lever, now faster); appeared /
+  measured / never shown counted apart (`KickBraceStats`); step 50's reel stats keep only real reels (fewer untouched controls now - most fresh men's
+  reels are cut).
+- `NoteBrace` (from ApplyKick): counted by the kicked man's tier (toughness band: light < 2, medium 2-4, heavy 4-7, elite 7+) and bar band, the first
+  of each outcome in full, the on-screen line for yours (`ImpactMessageKind` Braced / ShortReel / BashBraced / BashShortReel - red / purple; your men's
+  never), the YOU line's "BRACED (failure 13%)" / "the brace failed".
+- Claude's calls (DESIGN decision 58): the pressure x itself, no new scale; −0.7 / 1.0 calibrated so a fresh looter's kick on a fresh legionary fails
+  12.9%; the knock-back refused AND the leftover sped up (the refused flag alone may still leave a flinch - NoIgnore); a failed brace on a fresh man
+  never falls (step 50's thresholds 0.2 / 0.35 already give 0); no reeling state for a cut reel - no kick chains on a fresh man.
+
+**THE WORKED EXAMPLE (Core `Step65ExamplesTests`, 20 000 seeded kicks a row - MECHANICS §11c "The kicked man braces")**: a fresh looter (pool 50,
+Athletics 30, toughness 1.35) kicking a fresh legionary (pool 130, Athletics 130, toughness 5.97): x −0.32, the brace fails 12.9% - braced 87.2%,
+a short reel (×0.40) 12.8%, 0 falls, 0 lost shields; the looter at 60%: 7.6% short; the legionary at half his bar: 49% short (×0.90), 0 falls; at
+30%: braced 21%, full reel 70%, down 9%, shield 23%; at 10% (spent): no brace - down 71%, shield 84%. Two fresh even men: fails 37%, braced 63%.
+A fresh legionary kicking an EMPTY man: no brace - down 79%, shield 90% (step 50's ceiling). The rate (AiKickTests): 40 men in reach, half
+Athletics 30 / half 130, a quarter of the targets turtling, a third in a fever: 3-10 a minute.
+
+**Measured**: tests 929 → 947 (Step65Tests.cs: AiKickTests 9, KickBraceTests 6, Step65ExamplesTests 3; ImpactTests / ImpactLiveTests pin the
+brace off - their IMPACT §4 kicks are step 48 / 50's; the impact group's key list and the settings count 318). Smoke 141 → 145 (Program.Step65.cs:
+UseFakeAiKickBody, AiKicksThroughTheLogic, AiKicksInAClash, KickBraceThroughTheLogic) + the master-switch step's part; AthleticsDefaults pins the AI
+kicks and the brace off for the older steps. The seeded CLASH: 40 men in reach 10 minutes - 52 asked (5.2 a minute; the model's 5.9), 23 against a
+turtle; the COST: 1000 men looked at with the rate x50, 0.004 ms a tick, 0 bytes; THE BRACE through the real decorator: a looter's kick on a fresh
+legionary braced (the knock-back refused, ONE decision across the knock-back / KnockDown / OnMeleeHit, the leftover reaction at 5 x), a lucky kick
+(kept, 2.5 x), 200 seeded kicks - 27 short (13.5%), 0 falls, 0 shields, 173 knock-backs refused. Settings 297 → 318 (all Advanced: 277 → 298);
+no config-format change (no default moved).
+
+**Gotchas**
+- The pending slot's "taken from the shrug seam" count: the knock-back seam decides first now - `_pendingFromKnockBack` keeps that count honest.
+- `_braceStats` already exists (step 23's brace by orders) - the kick brace's is `_kickBraceStats`.
+- The smoke's looks at one moment: `LookGap` is 0 between two looks at the same time (no chance) - the smoke sets each man's last look a look ago.
+- The step-16 hook's `Hook` / `UnhookIfIdle` call the engine - routed through `IAiKickBody` so the smoke's agents (no native side) can play it.
+- The cost check: the first-time lines (asked / NOT played) allocate their strings once - warmed up before the count.
+- Float settings: `KickBraceFromPressure` −0.7 is a float (−0.699999988) - tests compare at 6 places.
+
+**UNVERIFIED — only the game can tell (PLAYTEST D31)**
+1. The engine plays the injected Kick event for an AI agent (RBM ships exactly this - proven in RBM's release, not by us): `ai kicks: asked N →
+   PLAYED P`, P ≈ N. If P ≈ 0: the fallback is setting `agent.EventControlFlags |= Kick` from the tick (the player controller's way), or the
+   movement flags' `Action` bit.
+2. A bash = the guard up 0.4 s + the kick key: `played as the other kind` ≈ 0 and the bashes' `landed` share.
+3. What the engine plays for a kick whose knock-back we refused (nothing, or a light flinch): `braced reactions seen` vs `none shown` - and how it
+   LOOKS (Toni's eye: a fresh legionary barely moving; a 5 x twitch not jerky - `KickBraceReelPercent` softens it).
+4. `SetCurrentActionSpeed` above 1 holds on the engine's reaction (the braced / short reels measured shorter than untouched ones).
+5. The feel: a few kicks a minute along a line, not constant; nobody frozen in the commit (`NOT played` small); turtles kicked more (`vs a turtle`).

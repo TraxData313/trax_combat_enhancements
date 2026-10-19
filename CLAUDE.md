@@ -199,7 +199,20 @@ and a FEVER sprint run INTO contact (`SprintChargeIntoContact`: no end at 3 m - 
 shorter than `SprintChargeWaitBelowSeconds` 3 WAITS for an enemy within `SprintChargeWaitMetres` 10; the fever sprint at 4-8 m (was 3-12); the
 carry `ImpactChargeCarrySeconds` 1.5 → 3 and an attack BEGUN in the charge stays one to its blow (`TrackedAgent.ChargeAttack`); the [summary]
 "sprint into contact" line. Worked example: a looter's first (charging) blow into a fresh legionary wall bounces 33% (thrown back 15%), a later one
-16% - before 2.7% (PLAYTEST D30). COURAGE AND COHESION (step 49, `CourageEnabled`, Anton 2026-10-17 night: "AI men are
+16% - before 2.7% (PLAYTEST D30). THE AI KICKS AND BASHES, THE KICKED MAN BRACES (step 65, Anton 2026-10-19 - DESIGN decisions 57 / 58,
+AI_NOTES "Step 65", 21 Advanced settings in the Impact group, no config-format change): the engine's kick is an EVENT flag
+(`EventControlFlag.Kick`, contextual - with the guard up a bash) and the AI's own `AiKick` tendency does nothing, so an AI man on foot with the
+enemy he fights within `AiKickReachMetres` 1.6 / `AiKickFacingDegrees` 40 KICKS (no shield) or BASHES (a shield; a raised shield facing him is
+kicked) through step 16's input hook (a fifth wish, `AiInputState.KickPhase`: the guard 0.4 s for a bash, the kick key 0.15 s, then his own input
+held off until it plays out ≤ 1.5 s - RBM's phases) at `AiKicksPerMinute` 0.1 a man-minute × skill (0.5-2) × bar (0 below 35%) × up to 3 against a
+TURTLE (`TrackedAgent.TurtleBlocks` + his guard up now) × 2 in a fever, 10 s apart; a look every ~0.25 s, one die against the best case, the engine
+read only under it (`IAiKickBody`); the cost = step 18's (seen by the poll); the [summary] "ai kicks" lines (asked → PLAYED → landed). THE BRACE:
+inside the impact model's one kick decision - failure = S((x + 0.7) ÷ 1.7) on the kick's own pressure (`KickBraceFromPressure` / `ToPressure`); a
+man below `KickBraceMinBarPercent` 20 never braces; braced = no knockdown / drop (`ImpactRefusal.Braced`), the game's knock-back REFUSED in the
+damage decorator's `DecideAgentKnockedBackByBlow` (`ImpactHooks.IKnockBackDecider` - the blow decided there, the KnockDown seam takes it), the
+leftover reaction at 5 x (`ImpactWatchPurpose.Brace`, `ImpactLiveMath.FastSpeedFor` ≤ 8 x); failed = step 50 with the reel × (0.4 + 0.6 T); you
+alike, on-screen lines for yours; the [summary] "kick brace" lines by tier / bar band. Worked example: a fresh looter's kick on a fresh legionary
+fails 12.9% - a short reel (×0.40) one in eight, 0 falls, 0 shields; two fresh even men brace 63% (PLAYTEST D31). COURAGE AND COHESION (step 49, `CourageEnabled`, Anton 2026-10-17 night: "AI men are
 unrealistically brave" - a lone man circles a shield wall, stands exhausted among four enemies; + his three additions: shock, flocking,
 panic): every AI man on foot in a formation is looked at every ~0.5 s (staggered; one `Mission.GetNearbyAgents` into a reused list): his
 side's TOUGHNESS vs the enemy's within `CourageRadiusMetres` 6 m (toughness = armour, level, wounds - a looter 1.35, a legionary 5.97 =
@@ -384,7 +397,8 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               its Default comes from defaults.json (DefaultsFile), never code; step 33: ParamType.Key +
                               KeyNames (a key by NAME, stored as its index; FormatJson writes "LeftControl"; the
                               file / defaults.json read the name, MCM a text box)
-  SettingsSchema.cs           EVERY setting of DESIGN's table (297 - step 64's ShieldFrontArcIsCorrect / ShieldFrontArcDegrees after
+  SettingsSchema.cs           EVERY setting of DESIGN's table (318 - step 65's 14 AiKick* + 7 KickBrace* / KickShortReelPercent in the
+                              Impact group after ImpactMultiplierCapPercent, all Advanced; 297 - step 64's ShieldFrontArcIsCorrect / ShieldFrontArcDegrees after
                               OnlyWrongSideBlocksStopRefill and SprintChargeIntoContact / SprintChargeWaitBelowSeconds / SprintChargeWaitMetres after
                               SprintOnRout, all Advanced; 292 - step 63's ImpactRearPressure / ImpactFlankPressure after ImpactFlankDegrees
                               and ShieldWallPullBackSeconds in "Battle pace (AI)" after ExtraPauseAfterCrossbowShotSeconds, all Advanced; 289 -
@@ -610,6 +624,20 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               a stateless hash of both men and the swing, so every system agrees), Band / BandName - 0-15 … 120-180°),
                               ShieldArcStats (the game's verdict against ours by AI / you, turned, the engine's wrong side by angle band, not
                               looked at, kept by tiredness + the [summary] "shield front arc" line)
+  AiKicks.cs                  step 65 pure (AI_NOTES "Step 65"): AiKickKind / AiKickPhase (Guard / Press / Commit) / AiKickSkip / AiKickEnd,
+                              AiKickRules (live: ModEnabled FIRST, AthleticsEnabled, AiKicksEnabled, a rate; Describe), AiKickMath (SkillFactor,
+                              BarFactor, TurtleShare / TurtleFactor, PerMinute, LookChance = 1 − e^(−rate dt), LookGap, KindFor, FirstPhase / Next /
+                              PhaseEnd, Frame - a phase's input bits (the Kick event bit, DefendUp), IsBusyAction, Faded / NoteBlock - the turtle
+                              memory; plumbing LookSeconds 0.25, BashLeadSeconds 0.4, PressSeconds 0.15, WatchSeconds 1.5, MaxAttempts 64 - RBM's),
+                              AiKickStats (asked → played → landed by kind × reason, ends, why not, Athletics spent, cost + the 4 [summary] lines)
+  KickBrace.cs                step 65 pure: KickBraceOutcome (braced / short reel / full reel / down), KickBraceRules (live: ModEnabled FIRST,
+                              KickBraceEnabled, From / ToPressure, MinBar, BraceReel, ShortReel, RefusesKnockBack; Describe), KickBraceMath (FailChance
+                              = S on x, Spent, ReelCut = short + (1 − short) T, Classify, TierBand by toughness), KickBraceStats (by tier × bar band,
+                              spent, the knock-back seam's counts, the cut reactions seen / timed, you + the 5 [summary] "kick brace" lines); Impact.cs:
+                              ImpactRules.Brace, ImpactDecision.Brace / BraceFail / BraceDie / BraceCut / BraceSpent / DefenderToughness, ImpactRefusal.Braced
+                              (RefusalCount 8), Decide's BraceRoll before the knockdown / drop rolls; ImpactLive.cs: ImpactWatchPurpose.Brace,
+                              ImpactLiveMath.MaxSpeed 8 / NeedsFast / FastSpeedFor; ImpactRiders.cs: ImpactMessageKind Braced / ShortReel / BashBraced /
+                              BashShortReel; ImpactSpike.cs: ImpactActions.DefendShield
   Brace.cs                    step 23 pure (AI_NOTES "Step 23"): BraceOrderKind (the game's movement orders + the
                               AI's advance / tactical charge on a Move), BraceOrder (charge / advance / hold / no formation -
                               step 28), BraceEnd,
@@ -901,7 +929,7 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               step 59: TWO pages (BuildPage returns object; MCM keeps settings by Id) - the
                               player page (SettingsId, the old id, "Trax Combat Enhancements": 20 settings,
                               7 groups, then "Defaults" with Revert) = _settings, the Advanced page
-                              (AdvancedSettingsId, "... - Advanced": 277 settings since step 64, 16 groups) = _advanced;
+                              (AdvancedSettingsId, "... - Advanced": 298 settings since step 65, 16 groups) = _advanced;
                               each its own "default" preset (its own settings); group "Defaults": the Revert
                               (both pages, reverts both) / Save-defaults-file (Advanced only) BUTTONS
                               (ProxyRef<Action>, both pages refreshed via PropertyChanged), on Advanced just
@@ -1097,6 +1125,24 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               contact; SprintAttackBegan from AttackBegan ends it - SprintEnd.Attacked), AthleticsLogic.ImpactModel.cs
                               (MarkChargeAttack at AttackBegan → TrackedAgent.ChargeAttack, IsCharging(…, out byAttack), spent with the carry,
                               cleared at AttackEnded)
+  Missions/AthleticsLogic.AiKicks.cs  step 65, THE AI KICKS AND BASHES: TickAiKicks (from TickAthletics: off - master switch first - ends every
+                              attempt; AdvanceAiKicks every tick - gone / struck ended, PLAYED when step 18's KickBashTracker shows it, the phases by
+                              time, the commit ended when over or after 1.5 s; a staggered slice of looks), LookAiKick (the gates on our records, ONE
+                              die against the best case, IAiKickBody's reads only under it, the target's turtle memory + guard, the kind, BeginAiKick -
+                              EnsureInput, AiInputHook.SetKick, the body's Hook), EndAiKick (every path, the body's Release - never for a man gone),
+                              AiKickLeftField, AiKickHit (OnMeleeHit's alternative-attack path, once an attempt), NoteTurtleBlock (BlockHitTaken),
+                              NoteAiKickCost (ChargeKickOrBash), WriteAiKickSummary (after the brace's lines); TrackedAgent's AiKick* fields +
+                              TurtleBlocks / TurtleBlocksAt; AiInputHook.cs: AiInputState.KickPhase / KickKind (Active includes it), SetKick, ApplyKick
+                              (Core Frame - written LAST in the component, the kick key never past step 32's no-swing hold, still in the commit)
+  Missions/AiKickBody.cs      step 65: IAiKickBody (the smoke plays it) - IsActive, IsAiControlled, Hands (horse, rout, a ranged weapon, a shield), Target
+                              (GetTargetAgent, else ImmediateEnemy - an enemy on foot; the distance, the angle off his facing = GameImpactInputs.AngleFrom),
+                              FacingTo, Hook / Release (step 16's hook); GameAiKickBody, AiKickBodyDefault
+  Missions/AthleticsLogic.KickBrace.cs  step 65, THE KICKED MAN BRACES: the IKnockBackDecider (the damage decorator's DecideAgentKnockedBackByBlow → a
+                              landed kick / bash decided there through ImpactModelOnLandedBlow - _inKnockBackSeam, the pending slot's _pendingBraced -,
+                              a braced man's knock-back REFUSED while KickBraceRefusesKnockBack), NoteBrace (from ApplyKick: counted, the first lines, the
+                              on-screen lines), the Brace watch's Appeared / Measured / NeverAppeared (ApplyKick watches a cut reaction with
+                              ImpactWatchPurpose.Brace - LiveSlow plays it at FastSpeedFor), Start / NoteKickBraceSettings, WriteKickBraceSummary;
+                              Models/ImpactHooks.cs IKnockBackDecider + KnockBack / KnockBackOnBlow; Models/TraxDamageModel.cs DecideAgentKnockedBackByBlow
   Missions/WallBody.cs        step 41: WallState (held, his list slot, vanilla's timer + its last StartTime, the fallback's
                               next rewrite, the next sample), IWallBody (the smoke plays it), GameWallBody (the facts by managed
                               reads + IsRetreating; the slot GetCurrentGlobalPositionOfUnit(agent, true), CurrentDirection,
@@ -1396,7 +1442,12 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               pixels), Fill, FillColor, FrameColor (the fade's alpha baked in); step 46: the box (PositionX / Y =
                               its top-left, BoxWidth / BoxHeight), FeverShown, the Athletics bar - BarShown, BarWidth, BarHeight,
                               BarFill, BarUsable, BarColor, BarFrameColor, BarWoundColor
-tests/TraxCombat.Core.Tests/  net8.0 xUnit (929 - step 64: + Step64Tests.cs - ShieldFrontArcTests (the settings, the verdict in / out of the
+tests/TraxCombat.Core.Tests/  net8.0 xUnit (947 - step 65: + Step65Tests.cs - AiKickTests (the settings, the master switch first, the rate's
+                              factors, a clash a few a minute, the kind, every phase's input bits, the busy actions, the turtle memory, the summary),
+                              KickBraceTests (the settings, the failure curve and the cut, a braced man never down / disarmed and no reeling state, a
+                              spent man = step 50 exactly, you x ImpactOnPlayerPercent, the summary), Step65ExamplesTests (THE WORKED EXAMPLE - a looter
+                              on a fresh legionary 12.9% / ~13% short, 0 falls / drops; even fresh men ~63% braced; a fresh kicker on an empty man step
+                              50); ImpactTests / ImpactLiveTests pin the brace off; 929 - step 64: + Step64Tests.cs - ShieldFrontArcTests (the settings, the verdict in / out of the
                               arc, parries and the game's right side never touched, the master switch, a tired man's step-30 share and the
                               stateless roll, the summary line, the correct-block rules it brings), ChargeIntoContactTests (the settings, charge
                               / fever into contact - advance / move never, the 0.5 s still end only after he moved, the small store's wait, the
@@ -1869,7 +1920,14 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               into contact ended by his first attack, a looter's small store waiting to 10 m then ended standing still, a new
                               order dropping a wait, the switches live, the summary line), THE CHARGE CARRIES TO THE BLOW (an attack begun 2.5 s
                               after the sprint strikes at 4 s as a charge, spent; 3.2 s none), the master-switch step's arc part; the older steps
-                              pin the arc off and the step-64 sprint off (AthleticsDefaults), step 62's its 1.5 s carry (141 steps; the config
+                              pin the arc off and the step-64 sprint off (AthleticsDefaults), step 62's its 1.5 s carry; step 65 (Program.Step65.cs):
+                              the stand-in AI kick body for EVERY logic (the Kick bit, DefendUp, DefendShield, the busy codes = the game's), THE AI KICKS
+                              through the real look / attempt and the real hook filter (asked, the frames, PLAYED by step 18's poll, the cost, the hit,
+                              the cooldown, a bash's guard first, a raised shield kicked, NOT played, every gate, the turtle, the switches), A CLASH (40
+                              men 10 min: 5.2 a minute; 1000 men 0.004 ms a tick, 0 bytes), THE BRACE through the real decorator's knock-back + KnockDown
+                              questions (braced - refused, one decision, 5 x; lucky - 2.5 x; 200 seeded looter kicks: 13.5% short, 0 falls / drops; a
+                              spent man; your lines; the switches), the master-switch part; the older steps pin the AI kicks and the brace off
+                              (AthleticsDefaults) (145 steps; the config
                               checks work for any tuned default)
                               TRAX_SMOKE_KEEP=1 keeps its temp folder + log to read
 tools/DefaultsTool/           defaults.json upkeep: refresh (rewrite comments/order, keep every

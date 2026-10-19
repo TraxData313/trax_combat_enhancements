@@ -232,6 +232,12 @@ knockdown or stagger decided for that blow now plays anyway, the moment it lands
 start, the man is put on the ground a fifth of a second later. A friend's blow — a man in the second rank swinging
 into his own front man — never knocks anyone down.
 
+**Kicks and shield bashes.** The AI now kicks and shield-bashes now and then — most of all a man who hides behind
+his guard, and more in the fever of a charge; veterans more than recruits, tired men not at all. And a kick is no longer a
+free push: a fresh, well-armoured veteran **braces** and barely moves — a looter's kick staggers a fresh legionary for a moment
+perhaps one time in eight, and never knocks him down. Tire him first: a spent man cannot brace, and then kicks and bashes
+throw him about. The same goes for you, both ways.
+
 **The enemy goes for the opening.** When a man reels or lies on the ground — you included — the men fighting
 him press it at once.
 

@@ -181,6 +181,11 @@ above) — the smooth S-curve: slow near the green, steep in the middle, flat at
 | **Any of these on a man reeling from an impact stagger** | — | (immune — §3.9) | as its row, x + 0.75 | as its row, x + 0.75 |
 | **Riposte** (a right-side block or parry, §3.6) | — | `RiposteStaggerMaxPercent` 50 (step 56: 70) — the ATTACKER | — | — |
 
+**Step 65 - the kicked man BRACES.** The kick / bash row's "always" knock-back is now asked first: the brace fails with S((x + 0.7) ÷ 1.7) on
+the kick's own x (`KickBraceFromPressure` / `ToPressure`); braced = no knockdown, no shield drop, the knock-back refused, the leftover reaction
+×0.2; failed = the row as before, the reel × (0.4 + 0.6 T_D); below 20% of his bar no brace (DESIGN decision 58, MECHANICS §11c). The AI now
+kicks and bashes too (decision 57).
+
 **Step 56 - a CORRECT block (right-side shield, parry) is the attacker's risk.** For these two rows only, x = `CorrectBlockTiredWeightPercent`
 (0.25) × T_D + w × band(log₂ R) (+ reeling, + damage): the blocker is broken mainly by a BIG mismatch (§4 C's stick against the axe still
 staggers), never by his own tiredness alone; the WRONG-side row, kicks and clean hits keep T_D in full - the direction of the block is what pays.

@@ -2131,6 +2131,40 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     `Step64ExamplesTests`, MECHANICS §11c): of the looters' blows into a fresh legionary wall, before 2.7 % bounced (7.3 % right blocks, 9 % of
     blows charging); now a looter's FIRST (charging) blow 33 % (thrown back 15 %), every later walking blow 16 %; two fresh even men and a walking
     blow into a right block unchanged.
+57. **The AI kicks and bashes** (step 65, Anton 2026-10-19: "make the AI do a few shield bashes and kicks now and then - the game has it but the
+    NPCs never use them"). Claude's calls: (a) THE LEVER - the engine performs a kick from the agent's EVENT flags (`EventControlFlag.Kick`, the bit
+    vanilla's `MissionMainAgentController` sets for your kick key), and the input is contextual: the kick key while the guard is up is a BASH. The
+    native AI's own kick tendency (`AgentDrivenProperties.AiKick`, written by `SetAiRelatedProperties`) has no effect in game (RBM's finding - its
+    AiKickBash ships the input way) - so the kick is INJECTED through step 16's `OnAIInputSet` hook, RBM's three phases: a bash holds `DefendUp`
+    0.4 s first, then the kick key 0.15 s (+ the guard for a bash), then a COMMIT - his own attack / guard / event input held off and his movement
+    stopped until the action has played out (≤ 1.5 s; the native AI would cancel it before the hit frame); (b) WHO: an AI man on foot whose target
+    (`GetTargetAgent()`, else his immediate enemy - on foot, an enemy) is within `AiKickReachMetres` 1.6 and `AiKickFacingDegrees` 40 of his
+    facing; a shield in his off hand = a bash, else a kick - but a shieldman whose target holds a RAISED shield toward him (within 60°) KICKS (a
+    raised shield stops a bash, not a kick - RBM; `AiKickKicksARaisedShield`); (c) HOW OFTEN: `AiKicksPerMinute` 0.1 a man a minute × his
+    Athletics skill (50% at 0 → 200% at 300) × his bar (none below 35%, full from 75%) × up to `AiKickTurtleMultiplier` 3 against a TURTLE (his
+    target's paid blocks of the last ~4 s, faded, + his guard up now, ÷ 2 blocks) × `AiKickFeverMultiplier` 2 in a fever; at least
+    `AiKickCooldownSeconds` 10 between two; the worked rate: 40 men in reach, half looter-like, a quarter of the targets turtling - ~5-6 a minute
+    ("a few a minute, not constant"); (d) THE LOOK: every AI man every ~0.25 s (staggered); the cheap gates on our own records first (cooldown,
+    bar, the Athletics for the cost, a stored swing, staggered / down, busy in his own attack / kick / step back), then ONE die against his best
+    case - only a man under it reads the engine (horse, rout, hands, target) and the exact chance takes the same die; (e) THE COST is step 18's: the
+    kick is SEEN by the action poll like yours (`CostPerKickOrBash` + a stored swing, step 32) - no attempt without them; needs `AthleticsEnabled`
+    (the cost and the sight of the action); (f) never you, never a rider; (g) measured: asked → PLAYED (the action seen) → landed / into a shield,
+    by kind and reason (turtle / fever), why not, the Athletics spent.
+58. **The kicked man braces** (step 65, the same day: "make sure a looter kicking a heavy shielded troop doesn't do too much - maybe now and then a
+    lucky kick can stagger him for a fast bit"). Claude's calls: (a) the brace is part of the impact model's ONE decision of a landed kick / bash -
+    no parallel scale: the failure chance = S((x − `KickBraceFromPressure`) ÷ (`KickBraceToPressure` − from)) on the kick's OWN pressure x (his
+    tiredness T_D, both men's points, step 62's toughness - armour, rank, health -, skill, a bash's shield weight, reeling, a blow from behind);
+    (b) −0.7 / 1.0 calibrated on Anton's case: a fresh looter's kick on a fresh legionary (x −0.32) fails 12.9% - a short reel one time in eight,
+    0 falls, 0 shields - two fresh even men brace ~63%, a legionary at half his bar ~51%; (c) a SPENT man (below `KickBraceMinBarPercent` 20 of his
+    bar) never braces - step 50 in full; (d) BRACED: no knockdown, no shield drop (refused "braced"), the game's KNOCK-BACK refused - the damage
+    decorator's `DecideAgentKnockedBackByBlow` (vanilla: always YES for a kick; the engine asks it after the shrug-off question and before the
+    knockdown one, so the model decides the blow there and the KnockDown seam takes the same decision) - and, since a kick's blow is NoIgnore (the
+    engine plays a reaction whatever the flags - step 62), whatever reaction still shows is played at 1 ÷ `KickBraceReelPercent` 20 % = 5 x
+    (`SetCurrentActionSpeed`, never above 8 x); no reeling state - no chain; (e) FAILED: step 50's rolls as before (0 on a fresh man), the reel ×
+    (`KickShortReelPercent` 40 + 60 × T_D %) - a short reel fresh ("a fast bit", 2.5 x speed), step 50's full tired reel empty; (f) you and the AI
+    alike - your failure × `ImpactOnPlayerPercent`; an on-screen line for yours ("You brace against X's kick" / "A lucky kick - X staggers for a
+    moment"); (g) `KickBraceRefusesKnockBack` off = the knock-back plays, only cut short; (h) measured: braced / short / full / down by the kicked
+    man's tier (toughness band) and bar band, the knock-backs refused, the cut reactions seen and timed.
 
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),
