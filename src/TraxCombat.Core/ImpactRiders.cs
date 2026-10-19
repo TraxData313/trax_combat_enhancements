@@ -227,6 +227,16 @@ namespace TraxCombat.Core
 
         /// <summary>Step 62, the reflected charge: a charging attacker thrown back (knocked down) by a right-side shield block.</summary>
         ThrownBack,
+
+        /// <summary>Step 65: the kicked man BRACED (no knock-back).</summary>
+        Braced,
+
+        /// <summary>Step 65: the brace failed on a man still fresh - a lucky kick, a SHORT reel.</summary>
+        ShortReel,
+
+        /// <summary>Step 65: the same two for a shield BASH.</summary>
+        BashBraced,
+        BashShortReel,
     }
 
     /// <summary>Step 53: whose line it is - done to you, done by you, or a notable moment of your men's (the game's colours differ).</summary>
@@ -271,6 +281,10 @@ namespace TraxCombat.Core
                         ImpactMessageKind.ShieldLost => "Your shield is knocked from your hand",
                         ImpactMessageKind.GuardBroken => "Your guard breaks",
                         ImpactMessageKind.ThrownBack => "You are thrown back by " + a + "'s shield",
+                        ImpactMessageKind.Braced => "You brace against " + a + "'s kick",
+                        ImpactMessageKind.ShortReel => a + "'s kick staggers you for a moment",
+                        ImpactMessageKind.BashBraced => "You brace against " + a + "'s shield bash",
+                        ImpactMessageKind.BashShortReel => a + "'s shield bash staggers you for a moment",
                         _ => a + " ripostes - you reel",
                     };
                 case ImpactMessageRole.ByYou:
@@ -281,6 +295,10 @@ namespace TraxCombat.Core
                         ImpactMessageKind.ShieldLost => "You knock the shield from " + v + "'s hand",
                         ImpactMessageKind.GuardBroken => "You break " + v + "'s guard",
                         ImpactMessageKind.ThrownBack => "Your shield throws " + v + " back",
+                        ImpactMessageKind.Braced => v + " braces against your kick",
+                        ImpactMessageKind.ShortReel => "A lucky kick - " + v + " staggers for a moment",
+                        ImpactMessageKind.BashBraced => v + " braces against your shield bash",
+                        ImpactMessageKind.BashShortReel => "A lucky bash - " + v + " staggers for a moment",
                         _ => "Your riposte - " + v + " reels",
                     };
                 default:
@@ -291,6 +309,10 @@ namespace TraxCombat.Core
                         ImpactMessageKind.GuardBroken => a + " breaks " + v + "'s guard",
                         ImpactMessageKind.Riposte => v + " reels from " + a + "'s riposte",
                         ImpactMessageKind.ThrownBack => v + " is thrown back by " + a + "'s shield",
+                        ImpactMessageKind.Braced => v + " braces against " + a + "'s kick",
+                        ImpactMessageKind.ShortReel => a + "'s kick staggers " + v + " for a moment",
+                        ImpactMessageKind.BashBraced => v + " braces against " + a + "'s shield bash",
+                        ImpactMessageKind.BashShortReel => a + "'s shield bash staggers " + v + " for a moment",
                         _ => a + " knocks " + v + " down",
                     };
             }
@@ -339,7 +361,7 @@ namespace TraxCombat.Core
         public readonly int[] ByRole = new int[3];
 
         /// <summary>Parts offered by kind.</summary>
-        public readonly int[] ByKind = new int[6];
+        public readonly int[] ByKind = new int[10]; // step 65: + Braced, ShortReel, BashBraced, BashShortReel
 
         public int Waiting => _count + _extra;
 
@@ -408,6 +430,7 @@ namespace TraxCombat.Core
             return "impact messages (step 53 - on-screen lines, " + (on ? "ImpactShowMessages on" : "ImpactShowMessages OFF") + ", " + (yourMen ? "yours + your side's heroes" : "only yours")
                    + ", at most one every " + minGap.ToString("0.0", c) + " s): offered " + Offered + " (to you " + ByRole[0] + ", by you " + ByRole[1] + ", your men " + ByRole[2]
                    + "; knocked down " + ByKind[0] + ", knocked off a horse " + ByKind[1] + ", shields " + ByKind[2] + ", guards broken " + ByKind[3] + ", ripostes " + ByKind[4] + ", thrown back " + ByKind[5]
+                   + (ByKind[6] + ByKind[7] + ByKind[8] + ByKind[9] > 0 ? ", braced " + (ByKind[6] + ByKind[8]) + ", short reels " + (ByKind[7] + ByKind[9]) : string.Empty) // step 65
                    + ") → lines SHOWN " + Shown + ", parts MERGED into a line " + Merged + " (beyond " + ImpactMessageMath.MaxParts + " a line: " + Overflow + "), the same part twice " + Duplicates
                    + ", unshown at the end / switched off " + Discarded;
         }

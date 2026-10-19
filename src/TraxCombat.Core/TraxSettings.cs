@@ -435,6 +435,29 @@ namespace TraxCombat.Core
         public float RiposteKnockdownFrom => GetFloat(SettingsSchema.RiposteKnockdownFrom);
         public int RiposteMomentumPercent => GetInt(SettingsSchema.RiposteMomentumPercent);
         public int ImpactMultiplierCapPercent => GetInt(SettingsSchema.ImpactMultiplierCapPercent);
+
+        // step 65: the AI kicks and bashes, the kicked man braces
+        public bool AiKicksEnabled => GetBool(SettingsSchema.AiKicksEnabled);
+        public float AiKicksPerMinute => GetFloat(SettingsSchema.AiKicksPerMinute);
+        public float AiKickReachMetres => GetFloat(SettingsSchema.AiKickReachMetres);
+        public int AiKickFacingDegrees => GetInt(SettingsSchema.AiKickFacingDegrees);
+        public float AiKickCooldownSeconds => GetFloat(SettingsSchema.AiKickCooldownSeconds);
+        public float AiKickTurtleMultiplier => GetFloat(SettingsSchema.AiKickTurtleMultiplier);
+        public float AiKickTurtleSeconds => GetFloat(SettingsSchema.AiKickTurtleSeconds);
+        public float AiKickTurtleBlocks => GetFloat(SettingsSchema.AiKickTurtleBlocks);
+        public float AiKickFeverMultiplier => GetFloat(SettingsSchema.AiKickFeverMultiplier);
+        public int AiKickSkillLowPercent => GetInt(SettingsSchema.AiKickSkillLowPercent);
+        public int AiKickSkillHighPercent => GetInt(SettingsSchema.AiKickSkillHighPercent);
+        public int AiKickMinBarPercent => GetInt(SettingsSchema.AiKickMinBarPercent);
+        public int AiKickFullBarPercent => GetInt(SettingsSchema.AiKickFullBarPercent);
+        public bool AiKickKicksARaisedShield => GetBool(SettingsSchema.AiKickKicksARaisedShield);
+        public bool KickBraceEnabled => GetBool(SettingsSchema.KickBraceEnabled);
+        public float KickBraceFromPressure => GetFloat(SettingsSchema.KickBraceFromPressure);
+        public float KickBraceToPressure => GetFloat(SettingsSchema.KickBraceToPressure);
+        public int KickBraceMinBarPercent => GetInt(SettingsSchema.KickBraceMinBarPercent);
+        public int KickBraceReelPercent => GetInt(SettingsSchema.KickBraceReelPercent);
+        public int KickShortReelPercent => GetInt(SettingsSchema.KickShortReelPercent);
+        public bool KickBraceRefusesKnockBack => GetBool(SettingsSchema.KickBraceRefusesKnockBack);
         public float ImpactMismatchWeight => GetFloat(SettingsSchema.ImpactMismatchWeight);
         public float ImpactEvenBandDoublings => GetFloat(SettingsSchema.ImpactEvenBandDoublings);
         public float ImpactBodyExponent => GetFloat(SettingsSchema.ImpactBodyExponent);

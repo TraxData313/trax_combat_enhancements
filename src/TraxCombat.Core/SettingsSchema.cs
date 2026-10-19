@@ -999,6 +999,93 @@ namespace TraxCombat.Core
             "Charge, toughness, direction together: at most (%)",
             "The momentum of a charge, the toughness difference, a blow from behind and an archer caught in melee multiply each other - together they never count more than this (800: x8), nor less than its inverse, so no stack of them becomes a cheat.");
 
+        // Step 65 (Anton 2026-10-19: "make the AI do a few shield bashes and kicks now and then - the game has it but the NPCs never use them";
+        // "a looter kicking a heavy shielded troop shouldn't do too much - maybe now and then a lucky kick staggers him for a fast bit"):
+        // AI kicks and bashes through step 16's input hook; the kicked man BRACES (the impact model's pressure decides it).
+        public static readonly ParamDef AiKicksEnabled = Bool("AiKicksEnabled", ImpactGroup,
+            "AI soldiers kick and shield-bash",
+            "On: now and then an AI soldier on foot in melee with an enemy kicks him (no shield in hand) or bashes him with his shield - more often against a man hiding behind his guard, in the fever of a charge and for a skilled man, less as he tires. Each costs Athletics and a stored swing, like yours. Off: the game's AI, which never kicks.");
+
+        public static readonly ParamDef AiKicksPerMinute = Float("AiKicksPerMinute", 0, 20, ImpactGroup,
+            "AI kicks: chance per man per minute",
+            "How often an AI soldier in melee contact kicks or bashes, per minute of contact, before the reasons below raise or lower it (0.1: one a man every ten minutes of fighting - a few a minute across a 50 against 50 clash). 0 = never.");
+
+        public static readonly ParamDef AiKickReachMetres = Float("AiKickReachMetres", 0.5, 4, ImpactGroup,
+            "AI kicks: reach (m)",
+            "An AI soldier kicks or bashes only the enemy he fights, and only within this many metres (a kick reaches about a pace).");
+
+        public static readonly ParamDef AiKickFacingDegrees = Int("AiKickFacingDegrees", 0, 180, ImpactGroup,
+            "AI kicks: the enemy in front within (degrees)",
+            "The enemy must stand within this many degrees of where the AI soldier faces - a kick goes forward.");
+
+        public static readonly ParamDef AiKickCooldownSeconds = Float("AiKickCooldownSeconds", 0, 60, ImpactGroup,
+            "AI kicks: at least this long between two (s)",
+            "After a kick or bash an AI soldier waits at least this many seconds before the next.");
+
+        public static readonly ParamDef AiKickTurtleMultiplier = Float("AiKickTurtleMultiplier", 1, 10, ImpactGroup,
+            "AI kicks: x against a man behind his guard",
+            "The chance is this many times higher against an enemy who keeps blocking - his guard up now and his blocks of the last seconds (below) - a kick is the answer to a turtle. 1 = no difference.");
+
+        public static readonly ParamDef AiKickTurtleSeconds = Float("AiKickTurtleSeconds", 0.5, 15, ImpactGroup,
+            "AI kicks: blocks remembered for (s)",
+            "How long an enemy's blocks count toward 'he keeps blocking' (they fade over this time).");
+
+        public static readonly ParamDef AiKickTurtleBlocks = Float("AiKickTurtleBlocks", 0.5, 10, ImpactGroup,
+            "AI kicks: blocks that make a turtle",
+            "How many recent blocks (his guard up right now counts as one) make an enemy a full turtle - the multiplier above in full; fewer give part of it.");
+
+        public static readonly ParamDef AiKickFeverMultiplier = Float("AiKickFeverMultiplier", 1, 10, ImpactGroup,
+            "AI kicks: x in the fever of a charge",
+            "The chance is this many times higher while the AI soldier is in the fever of a charge (Aggression and fever). 1 = no difference.");
+
+        public static readonly ParamDef AiKickSkillLowPercent = Int("AiKickSkillLowPercent", 0, 500, ImpactGroup,
+            "AI kicks: x at Athletics skill 0 (%)",
+            "The chance for a man with no Athletics skill, in % of the base (50: half). It rises in a straight line to the next setting at skill 300 - a veteran kicks more than a recruit.");
+
+        public static readonly ParamDef AiKickSkillHighPercent = Int("AiKickSkillHighPercent", 0, 500, ImpactGroup,
+            "AI kicks: x at Athletics skill 300 (%)",
+            "The chance for a man with 300 Athletics skill, in % of the base (200: twice).");
+
+        public static readonly ParamDef AiKickMinBarPercent = Int("AiKickMinBarPercent", 0, 100, ImpactGroup,
+            "AI kicks: none below this Athletics (%)",
+            "Below this much of his Athletics bar an AI soldier never kicks or bashes - a tired man saves his breath. Between this and the next setting the chance rises in a straight line.");
+
+        public static readonly ParamDef AiKickFullBarPercent = Int("AiKickFullBarPercent", 0, 100, ImpactGroup,
+            "AI kicks: full chance from this Athletics (%)",
+            "At or above this much of his Athletics bar an AI soldier kicks at the full chance.");
+
+        public static readonly ParamDef AiKickKicksARaisedShield = Bool("AiKickKicksARaisedShield", ImpactGroup,
+            "AI kicks: a raised shield is kicked, not bashed",
+            "On: an AI shieldman whose enemy holds his own shield up toward him KICKS instead of bashing (a raised shield stops a bash, not a kick). Off: a man with a shield always bashes.");
+
+        public static readonly ParamDef KickBraceEnabled = Bool("KickBraceEnabled", ImpactGroup,
+            "The kicked man braces",
+            "On: a fresh, well-armoured, skilled man mostly braces against a kick or shield bash - no knock-back, his guard kept; a lucky kick gives him only a short stagger. The brace fails more often as he tires and the stronger the kicker (his own strength, rank, Athletics, a heavy shield for a bash); a man near the end of his Athletics never braces. You and the AI alike. Off: every kick that lands knocks a man back, as in the game.");
+
+        public static readonly ParamDef KickBraceFromPressure = Float("KickBraceFromPressure", -3, 2, ImpactGroup,
+            "Brace: fails from this pressure",
+            "The brace fails more often the more pressure the kick puts on him - the same pressure that decides staggers and knockdowns (his tiredness, the strength, rank and skill of both men, a blow from behind). Below this pressure he always braces; the failure chance grows along a smooth curve to the next setting. -0.7: a looter's kick on a fresh legionary fails about one time in eight.");
+
+        public static readonly ParamDef KickBraceToPressure = Float("KickBraceToPressure", -2, 3, ImpactGroup,
+            "Brace: always fails from this pressure",
+            "At or above this pressure the brace always fails (1: an empty man, or a much stronger kicker on a tired one).");
+
+        public static readonly ParamDef KickBraceMinBarPercent = Int("KickBraceMinBarPercent", 0, 100, ImpactGroup,
+            "Brace: never below this Athletics (%)",
+            "A man with less than this much of his Athletics bar left never braces - a spent man takes the kick in full (knocked back, and the staggers and knockdowns of a tired man).");
+
+        public static readonly ParamDef KickBraceReelPercent = Int("KickBraceReelPercent", 5, 100, ImpactGroup,
+            "Brace: what is left of the knock-back (%)",
+            "A braced man's reaction to the kick plays this fast: what is left of its length, in % (20: a fifth - barely a twitch). The fastest the game is asked to play anything is 8 times its speed.");
+
+        public static readonly ParamDef KickShortReelPercent = Int("KickShortReelPercent", 5, 100, ImpactGroup,
+            "Brace failed: a fresh man's reel (%)",
+            "When the brace fails on a FRESH man he reels for only this much of the game's knock-back (40: a short stagger, 'a fast bit'); the more tired he is the closer to the full knock-back - and a tired man's lengthened reel - it gets.");
+
+        public static readonly ParamDef KickBraceRefusesKnockBack = Bool("KickBraceRefusesKnockBack", ImpactGroup,
+            "Brace: no knock-back at all",
+            "On: a braced man is not knocked back at all (the game's knock-back is refused for that kick, and whatever reaction is left plays fast). Off: the knock-back plays, only cut short.");
+
         public static readonly ParamDef ImpactMismatchWeight = Float("ImpactMismatchWeight", 0, 2, ImpactGroup,
             "Mismatch weight (pressure per doubling)",
             "How much an outmatched man suffers: every doubling of the mismatch beyond the even band adds this to the pressure on him (0.25: an enemy four times stronger counts as much as being about a third tired). 0 = only tiredness counts.");
@@ -1463,6 +1550,10 @@ namespace TraxCombat.Core
             ImpactShrugOffYieldsToImpact, ImpactFallBackupSeconds, ImpactToughnessWeight, ImpactRangedInHandPercent,
             ImpactRearPercent, ImpactFlankPercent, ImpactRearDegrees, ImpactFlankDegrees, ImpactRearPressure, ImpactFlankPressure,
             ImpactChargeCarrySeconds, RiposteKnockdownMaxPercent, RiposteKnockdownFrom, RiposteMomentumPercent, ImpactMultiplierCapPercent,
+            AiKicksEnabled, AiKicksPerMinute, AiKickReachMetres, AiKickFacingDegrees, AiKickCooldownSeconds, AiKickTurtleMultiplier, AiKickTurtleSeconds,
+            AiKickTurtleBlocks, AiKickFeverMultiplier, AiKickSkillLowPercent, AiKickSkillHighPercent, AiKickMinBarPercent, AiKickFullBarPercent,
+            AiKickKicksARaisedShield, KickBraceEnabled, KickBraceFromPressure, KickBraceToPressure, KickBraceMinBarPercent, KickBraceReelPercent,
+            KickShortReelPercent, KickBraceRefusesKnockBack,
             ImpactMismatchWeight, ImpactEvenBandDoublings, ImpactBodyExponent, ImpactBodyFloorPoints, ImpactStaggeredBonus, ImpactDamageWeight,
             ImpactRefWeightKg, ImpactWeightExponent, ImpactRefSwingSpeed, ImpactSpeedExponent, ImpactBluntFactor, ImpactCutFactor, ImpactPierceFactor,
             ImpactKickFactor, ImpactBashFactor, ImpactSkillMinFactor, ImpactSkillMaxFactor,

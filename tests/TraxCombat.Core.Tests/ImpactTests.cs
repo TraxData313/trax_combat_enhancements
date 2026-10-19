@@ -54,6 +54,7 @@ public class ImpactTests
         var s = new TraxSettings();
         s.Set(SettingsSchema.CorrectBlockTiredWeightPercent, 100, "test");
         s.Set(SettingsSchema.RiposteBlockerTiredPercent, 100, "test");
+        s.Set(SettingsSchema.KickBraceEnabled, false, "test"); // step 65: the IMPACT §4 kicks are step 48 / 50's (the brace has its own tests - Step65Tests)
         tune?.Invoke(s);
         return ImpactRules.From(s);
     }
@@ -126,13 +127,18 @@ public class ImpactTests
             "ImpactRearPressure", "ImpactFlankPressure", // step 63: direction as pressure
             "ImpactChargeCarrySeconds", "RiposteKnockdownMaxPercent", "RiposteKnockdownFrom", "RiposteMomentumPercent", // step 62: the charge
             "ImpactMultiplierCapPercent", // step 62: the cap
+            "AiKicksEnabled", "AiKicksPerMinute", "AiKickReachMetres", "AiKickFacingDegrees", "AiKickCooldownSeconds", "AiKickTurtleMultiplier", // step 65: the AI kicks
+            "AiKickTurtleSeconds", "AiKickTurtleBlocks", "AiKickFeverMultiplier", "AiKickSkillLowPercent", "AiKickSkillHighPercent", "AiKickMinBarPercent",
+            "AiKickFullBarPercent", "AiKickKicksARaisedShield",
+            "KickBraceEnabled", "KickBraceFromPressure", "KickBraceToPressure", "KickBraceMinBarPercent", "KickBraceReelPercent", "KickShortReelPercent", // step 65: the brace
+            "KickBraceRefusesKnockBack",
             "ImpactMismatchWeight", "ImpactEvenBandDoublings",
             "ImpactBodyExponent", "ImpactBodyFloorPoints", "ImpactStaggeredBonus", "ImpactDamageWeight", "ImpactRefWeightKg", "ImpactWeightExponent",
             "ImpactRefSwingSpeed", "ImpactSpeedExponent", "ImpactBluntFactor", "ImpactCutFactor", "ImpactPierceFactor", "ImpactKickFactor", "ImpactBashFactor",
             "ImpactSkillMinFactor", "ImpactSkillMaxFactor", "ImpactGuardShieldRight", "ImpactGuardParry", "ImpactGuardShieldWrong", "ImpactGuardNone",
             "ImpactStaggerFrom", "ImpactShieldDropFrom", "ImpactKnockdownFrom",
         };
-        Assert.Equal(91, keys.Length); // step 63's 2 + step 48's 60 + step 52's momentum 4 + step 53's rider momentum 3 and on-screen lines 3 + step 54's punish 4 + step 56's 2 + step 62's
+        Assert.Equal(112, keys.Length); // step 65's 21; step 63's 2 + step 48's 60 + step 52's momentum 4 + step 53's rider momentum 3 and on-screen lines 3 + step 54's punish 4 + step 56's 2 + step 62's
         // Step 59: three of them on the player page - the switch and "against you" ("Staggers and knockdowns"), the on-screen lines
         // ("On screen"); the other 73 stay in this group in order.
         var player = new[] { "ImpactEnabled", "ImpactOnPlayerPercent", "ImpactShowMessages" };

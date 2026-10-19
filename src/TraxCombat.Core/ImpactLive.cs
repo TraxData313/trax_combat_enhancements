@@ -108,6 +108,9 @@ namespace TraxCombat.Core
 
         /// <summary>Step 62: a charging attacker THROWN BACK by a right-side shield block (our own blow on him) - his fall-and-rise.</summary>
         ThrownBack,
+
+        /// <summary>Step 65: a kicked man's reaction CUT SHORT - he braced (what is left of it) or a lucky kick's short reel - played FASTER.</summary>
+        Brace,
     }
 
     /// <summary>
@@ -140,6 +143,22 @@ namespace TraxCombat.Core
 
         /// <summary>A factor this close to 1 is not slowed (a fresh man's reel - the control).</summary>
         public const double SlowFrom = 1.001;
+
+        /// <summary>Step 65: the fastest speed we ever ask (a braced man's leftover reaction, a short reel) - 8 x the game's.</summary>
+        public const float MaxSpeed = 8f;
+
+        /// <summary>Step 65: a factor below this needs the engine to play the reaction FASTER (a braced man, a short reel).</summary>
+        public const double FastBelow = 0.999;
+
+        /// <summary>Step 65: the factor asks for a faster reaction.</summary>
+        public static bool NeedsFast(double factor) => !double.IsNaN(factor) && factor < FastBelow;
+
+        /// <summary>Step 65: the ABSOLUTE playback speed for a SHORTER reaction: 1 ÷ factor, at most <see cref="MaxSpeed"/>; 1 when it needs none.</summary>
+        public static float FastSpeedFor(double factor)
+        {
+            if (!NeedsFast(factor)) return 1f;
+            return (float)Math.Min(MaxSpeed, 1.0 / Math.Max(1e-3, factor));
+        }
 
         /// <summary>The shield followed for at most 180 s after it left the hand (picked up again? - the spike's window).</summary>
         public const double PickupWindowSeconds = SpikeMath.PickupWindowSeconds;

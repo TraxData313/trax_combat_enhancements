@@ -181,6 +181,9 @@ namespace TraxCombat.Core
     {
         public const int DefendFirst = 1;
         public const int DefendLast = 14;
+
+        /// <summary>Step 65: <c>ActionCodeType.DefendShield</c> - his shield raised (a bash cannot get past it; a kick can).</summary>
+        public const int DefendShield = 2;
         public const int ParriedMelee = 21;
         public const int BlockedMelee = 22;
         public const int Fall = 23;

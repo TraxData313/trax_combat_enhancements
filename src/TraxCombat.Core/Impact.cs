@@ -78,6 +78,9 @@ namespace TraxCombat.Core
         /// <summary>This blow already knocked him down (the knockdown replaces the stagger), or the defender was staggered / knocked down (no
         /// riposte from him).</summary>
         Replaced,
+
+        /// <summary>Step 65: he BRACED against the kick / bash - no knockdown, no shield drop (<see cref="KickBraceOutcome.Braced"/>).</summary>
+        Braced,
     }
 
     /// <summary>
@@ -343,6 +346,16 @@ namespace TraxCombat.Core
         /// <summary>Step 62: the landed blow's damage (0 = the engine plays no reaction to it - the falls' summary counts those).</summary>
         public double Damage;
 
+        /// <summary>Step 65, THE BRACE (a landed kick / bash on a man on foot, <c>KickBraceEnabled</c>): the outcome, the failure chance (NaN = not
+        /// asked), its die (NaN = not rolled - a sure brace or a sure failure), a SPENT man (below <c>KickBraceMinBarPercent</c>: no brace at all),
+        /// the cut on a failed brace's reel (NaN = none), the kicked man's toughness (the summary's tier band; 0 = unknown).</summary>
+        public KickBraceOutcome Brace;
+        public double BraceFail, BraceDie, BraceCut, DefenderToughness;
+        public bool BraceSpent;
+
+        /// <summary>Step 65: he braced (no knock-back, the reaction cut).</summary>
+        public bool Braced => Brace == KickBraceOutcome.Braced;
+
         /// <summary>Anything happens (a rolled outcome came up).</summary>
         public bool AnyOutcome => Knockdown.Happens || ShieldDrop.Happens || Stagger.Happens || Riposte.Happens || ThrownBack.Happens;
 
@@ -452,7 +465,11 @@ namespace TraxCombat.Core
             RiposteKnockdownFrom = s.RiposteKnockdownFrom;
             RiposteMomentumWeight = Math.Max(0, s.RiposteMomentumPercent / 100.0);
             MultiplierCap = Math.Max(1, s.ImpactMultiplierCapPercent / 100.0);
+            Brace = KickBraceRules.From(s);
         }
+
+        /// <summary>Step 65: the kicked man's brace (the master switch first, then KickBraceEnabled).</summary>
+        public KickBraceRules Brace { get; }
 
         public static ImpactRules From(TraxSettings s) => new ImpactRules(s);
 
@@ -689,7 +706,7 @@ namespace TraxCombat.Core
     {
         public const int EventCount = 6;
         public const int OutcomeCount = 4;
-        public const int RefusalCount = 7;
+        public const int RefusalCount = 8;
 
         /// <summary>The summary's bar bands: 100-75 / 75-50 / 50-25 / 25-0 % (the defender's bar = points ÷ his FULL pool).</summary>
         public const int BandCount = 4;
@@ -1170,10 +1187,15 @@ namespace TraxCombat.Core
                 AttackerIsPlayer = f.AttackerIsPlayer,
                 DefenderMounted = f.DefenderMounted,
                 Damage = f.Damage,
+                BraceFail = double.NaN,
+                BraceDie = double.NaN,
+                BraceCut = double.NaN,
+                DefenderToughness = f.DefenderToughness,
             };
             bool reeling = defender.Reeling(now);
             double x = Pressure(in r, in f, reeling, ref d);
             Ceilings(in r, f.Event, out double kdCeil, out double sdCeil, out double stCeil);
+            bool braced = BraceRoll(in r, in f, ref d, defender.Down(now), dice); // step 65: before the knockdown / drop rolls
             bool blockOutcomes = !IsBlock(f.Event) || r.Blocks; // step 51: blocks off, the riposte on = only the riposte is rolled
             if (!blockOutcomes) kdCeil = sdCeil = stCeil = 0;
             double scale = f.DefenderIsPlayer ? Math.Max(0, r.OnPlayer) : 1;
@@ -1181,18 +1203,18 @@ namespace TraxCombat.Core
             double dim = n > 0 ? Math.Pow(r.DiminishFactor, n) : 1;
             bool down = defender.Down(now);
 
-            // knockdown (a rider: knocked OFF, at the dismount share)
+            // knockdown (a rider: knocked OFF, at the dismount share; step 65: never a braced man)
             if (kdCeil > 0)
             {
                 double extra = f.DefenderMounted ? Math.Max(0, r.RiderDismount) : 1;
                 d.Knockdown = Roll(kdCeil, RawChance(kdCeil, x, r.KnockdownFrom), n, dim * scale * extra,
-                    down ? ImpactRefusal.Down : defender.KnockdownImmune(now) ? ImpactRefusal.KnockdownImmune : ImpactRefusal.None, dice);
+                    down ? ImpactRefusal.Down : braced ? ImpactRefusal.Braced : defender.KnockdownImmune(now) ? ImpactRefusal.KnockdownImmune : ImpactRefusal.None, dice);
                 d.Dismount = f.DefenderMounted && d.Knockdown.Happens;
             }
-            // shield dropped (needs a shield in his hand)
+            // shield dropped (needs a shield in his hand; step 65: never a braced man)
             if (sdCeil > 0)
                 d.ShieldDrop = Roll(sdCeil, RawChance(sdCeil, x, r.ShieldDropFrom), n, dim * scale,
-                    down ? ImpactRefusal.Down : !f.DefenderHasShield ? ImpactRefusal.NoShield : ImpactRefusal.None, dice);
+                    down ? ImpactRefusal.Down : braced ? ImpactRefusal.Braced : !f.DefenderHasShield ? ImpactRefusal.NoShield : ImpactRefusal.None, dice);
             // stagger (never a rider; immune while reeling and after; a knockdown replaces it)
             if (stCeil > 0)
                 d.Stagger = Roll(stCeil, RawChance(stCeil, x, r.StaggerFrom), n, dim * scale,
@@ -1235,9 +1257,15 @@ namespace TraxCombat.Core
             double T = d.T;
             if (IsAlternative(f.Event) && !d.Knockdown.Happens)
             {
-                d.ReelFactor = Math.Max(1, Lengthen(r.ReelExtra, T, r.Random, dice.NextDouble()));
+                if (braced) d.ReelFactor = r.Brace.BraceReel; // step 65: a braced man's reaction cut short, no die, never an impact stagger
+                else
+                {
+                    d.ReelFactor = Math.Max(1, Lengthen(r.ReelExtra, T, r.Random, dice.NextDouble()));
+                    if (!double.IsNaN(d.BraceCut)) d.ReelFactor *= d.BraceCut; // step 65: a failed brace - short fresh, the full (tired) reel empty
+                }
                 if (d.ReelFactor > 1 && !f.DefenderMounted) defender.Reel(now + VanillaReelSeconds * d.ReelFactor, r.StaggerImmunity); // a lengthened reel = an impact stagger
             }
+            if (d.Brace != KickBraceOutcome.NotAsked) d.Brace = KickBraceMath.Classify(braced, d.Knockdown.Happens, d.ReelFactor);
             if (IsBlock(f.Event) && blockOutcomes)
                 d.StunFactor = BlockStunFactor(in r, T); // step 51: no die - the decorator's worker-thread seam applies this very number
             if (d.Knockdown.Happens)
@@ -1274,6 +1302,38 @@ namespace TraxCombat.Core
         }
 
         /// <summary>One outcome: the raw chance × the limits' factor (the halvings, the player's share, a rider's share), rolled unless refused.</summary>
+        /// <summary>
+        /// Step 65, THE BRACE: a landed kick / bash on a man on foot (not down) with the brace on (the master switch first) - a SPENT man (below
+        /// <c>KickBraceMinBarPercent</c>) never braces; else the failure chance S((x − from) ÷ (to − from)) (x your share,
+        /// <c>ImpactOnPlayerPercent</c>, when you are the kicked man), one die when it is neither 0 nor 1. Braced = true. A failed brace's reel cut
+        /// (short + (1 − short) × T) is set for the reel below. Not asked = the decision as step 50 made it (no die drawn).
+        /// </summary>
+        private static bool BraceRoll(in ImpactRules r, in ImpactFacts f, ref ImpactDecision d, bool down, IRandomSource dice)
+        {
+            var b = r.Brace;
+            if (!IsAlternative(f.Event) || !b.On || f.DefenderMounted || down) return false;
+            d.Brace = KickBraceOutcome.FullReel; // asked - classified at the end
+            if (KickBraceMath.Spent(in b, f.DefenderBar))
+            {
+                d.BraceSpent = true;
+                d.BraceFail = 1;
+                return false; // the full step 50 behaviour, no cut
+            }
+            double fail = KickBraceMath.FailChance(in b, d.X);
+            if (f.DefenderIsPlayer) fail = Math.Min(1, fail * Math.Max(0, r.OnPlayer));
+            d.BraceFail = fail;
+            bool braced;
+            if (!(fail > 0)) braced = true;
+            else if (fail >= 1) braced = false;
+            else
+            {
+                d.BraceDie = dice.NextDouble();
+                braced = d.BraceDie >= fail;
+            }
+            if (!braced) d.BraceCut = KickBraceMath.ReelCut(in b, d.T);
+            return braced;
+        }
+
         private static ImpactRoll Roll(double ceiling, double raw, int halvings, double factor, ImpactRefusal refusal, IRandomSource dice)
         {
             var o = new ImpactRoll
@@ -1329,6 +1389,7 @@ namespace TraxCombat.Core
             ImpactRefusal.NoShield => "no shield in hand",
             ImpactRefusal.Rider => "a rider (never staggered)",
             ImpactRefusal.Replaced => "replaced (knocked down / staggered instead)",
+            ImpactRefusal.Braced => "he braced (step 65)",
             _ => "none",
         };
 
@@ -1376,6 +1437,11 @@ namespace TraxCombat.Core
                 s += RollText(" riposte" + why, in d.Riposte);
             }
             if (!double.IsNaN(d.ThrownBackGetUpFactor)) s += " the attacker gets up x" + d.ThrownBackGetUpFactor.ToString("0.00", c) + " slower;";
+            if (d.Brace != KickBraceOutcome.NotAsked)
+                s += " BRACE (step 65): " + (d.BraceSpent ? "none - a spent man (below the brace's bar)"
+                     : "fails " + (100 * d.BraceFail).ToString("0.#", c) + "%" + (double.IsNaN(d.BraceDie) ? " (sure)" : " → rolled " + d.BraceDie.ToString("0.00", c))
+                       + " → " + (d.Braced ? "BRACED (no knock-back)" : "failed (the reel cut x" + d.BraceCut.ToString("0.00", c) + ")"))
+                     + " - " + KickBraceMath.OutcomeName(d.Brace) + ";";
             if (!double.IsNaN(d.ReelFactor)) s += " reel x" + d.ReelFactor.ToString("0.00", c) + ";";
             if (!double.IsNaN(d.StunFactor)) s += " block stun x" + d.StunFactor.ToString("0.00", c) + ";";
             if (!double.IsNaN(d.GetUpFactor)) s += " gets up x" + d.GetUpFactor.ToString("0.00", c) + " slower;";

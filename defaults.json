@@ -1336,6 +1336,119 @@
   // (range 100 to 2000)
   "ImpactMultiplierCapPercent": 800,
 
+  // On: now and then an AI soldier on foot in melee with an enemy kicks him (no shield in hand)
+  // or bashes him with his shield - more often against a man hiding behind his guard, in the
+  // fever of a charge and for a skilled man, less as he tires. Each costs Athletics and a
+  // stored swing, like yours. Off: the game's AI, which never kicks.
+  // (true or false)
+  "AiKicksEnabled": true,
+
+  // How often an AI soldier in melee contact kicks or bashes, per minute of contact, before the
+  // reasons below raise or lower it (0.1: one a man every ten minutes of fighting - a few a
+  // minute across a 50 against 50 clash). 0 = never.
+  // (range 0.0 to 20.0)
+  "AiKicksPerMinute": 0.1,
+
+  // An AI soldier kicks or bashes only the enemy he fights, and only within this many metres (a
+  // kick reaches about a pace).
+  // (range 0.5 to 4.0)
+  "AiKickReachMetres": 1.6,
+
+  // The enemy must stand within this many degrees of where the AI soldier faces - a kick goes
+  // forward.
+  // (range 0 to 180)
+  "AiKickFacingDegrees": 40,
+
+  // After a kick or bash an AI soldier waits at least this many seconds before the next.
+  // (range 0.0 to 60.0)
+  "AiKickCooldownSeconds": 10.0,
+
+  // The chance is this many times higher against an enemy who keeps blocking - his guard up now
+  // and his blocks of the last seconds (below) - a kick is the answer to a turtle. 1 = no
+  // difference.
+  // (range 1.0 to 10.0)
+  "AiKickTurtleMultiplier": 3.0,
+
+  // How long an enemy's blocks count toward 'he keeps blocking' (they fade over this time).
+  // (range 0.5 to 15.0)
+  "AiKickTurtleSeconds": 4.0,
+
+  // How many recent blocks (his guard up right now counts as one) make an enemy a full turtle -
+  // the multiplier above in full; fewer give part of it.
+  // (range 0.5 to 10.0)
+  "AiKickTurtleBlocks": 2.0,
+
+  // The chance is this many times higher while the AI soldier is in the fever of a charge
+  // (Aggression and fever). 1 = no difference.
+  // (range 1.0 to 10.0)
+  "AiKickFeverMultiplier": 2.0,
+
+  // The chance for a man with no Athletics skill, in % of the base (50: half). It rises in a
+  // straight line to the next setting at skill 300 - a veteran kicks more than a recruit.
+  // (range 0 to 500)
+  "AiKickSkillLowPercent": 50,
+
+  // The chance for a man with 300 Athletics skill, in % of the base (200: twice).
+  // (range 0 to 500)
+  "AiKickSkillHighPercent": 200,
+
+  // Below this much of his Athletics bar an AI soldier never kicks or bashes - a tired man
+  // saves his breath. Between this and the next setting the chance rises in a straight line.
+  // (range 0 to 100)
+  "AiKickMinBarPercent": 35,
+
+  // At or above this much of his Athletics bar an AI soldier kicks at the full chance.
+  // (range 0 to 100)
+  "AiKickFullBarPercent": 75,
+
+  // On: an AI shieldman whose enemy holds his own shield up toward him KICKS instead of bashing
+  // (a raised shield stops a bash, not a kick). Off: a man with a shield always bashes.
+  // (true or false)
+  "AiKickKicksARaisedShield": true,
+
+  // On: a fresh, well-armoured, skilled man mostly braces against a kick or shield bash - no
+  // knock-back, his guard kept; a lucky kick gives him only a short stagger. The brace fails
+  // more often as he tires and the stronger the kicker (his own strength, rank, Athletics, a
+  // heavy shield for a bash); a man near the end of his Athletics never braces. You and the AI
+  // alike. Off: every kick that lands knocks a man back, as in the game.
+  // (true or false)
+  "KickBraceEnabled": true,
+
+  // The brace fails more often the more pressure the kick puts on him - the same pressure that
+  // decides staggers and knockdowns (his tiredness, the strength, rank and skill of both men, a
+  // blow from behind). Below this pressure he always braces; the failure chance grows along a
+  // smooth curve to the next setting. -0.7: a looter's kick on a fresh legionary fails about
+  // one time in eight.
+  // (range -3.0 to 2.0)
+  "KickBraceFromPressure": -0.7,
+
+  // At or above this pressure the brace always fails (1: an empty man, or a much stronger
+  // kicker on a tired one).
+  // (range -2.0 to 3.0)
+  "KickBraceToPressure": 1.0,
+
+  // A man with less than this much of his Athletics bar left never braces - a spent man takes
+  // the kick in full (knocked back, and the staggers and knockdowns of a tired man).
+  // (range 0 to 100)
+  "KickBraceMinBarPercent": 20,
+
+  // A braced man's reaction to the kick plays this fast: what is left of its length, in % (20:
+  // a fifth - barely a twitch). The fastest the game is asked to play anything is 8 times its
+  // speed.
+  // (range 5 to 100)
+  "KickBraceReelPercent": 20,
+
+  // When the brace fails on a FRESH man he reels for only this much of the game's knock-back
+  // (40: a short stagger, 'a fast bit'); the more tired he is the closer to the full knock-back
+  // - and a tired man's lengthened reel - it gets.
+  // (range 5 to 100)
+  "KickShortReelPercent": 40,
+
+  // On: a braced man is not knocked back at all (the game's knock-back is refused for that
+  // kick, and whatever reaction is left plays fast). Off: the knock-back plays, only cut short.
+  // (true or false)
+  "KickBraceRefusesKnockBack": true,
+
   // How much an outmatched man suffers: every doubling of the mismatch beyond the even band
   // adds this to the pressure on him (0.25: an enemy four times stronger counts as much as
   // being about a third tired). 0 = only tiredness counts.

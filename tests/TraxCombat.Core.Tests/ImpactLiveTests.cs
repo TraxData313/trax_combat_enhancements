@@ -27,6 +27,7 @@ public class ImpactLiveTests
     private static ImpactRules Rules(Action<TraxSettings>? tune = null)
     {
         var s = new TraxSettings();
+        s.Set(SettingsSchema.KickBraceEnabled, false, "test"); // step 65: step 50's reel (the brace has its own tests - Step65Tests)
         tune?.Invoke(s);
         return ImpactRules.From(s);
     }
