@@ -77,6 +77,28 @@ namespace TraxCombat.Tools
                 Check(logic.LastImpact.Event == ImpactEvent.RightBlock && logic.LastImpact.Charging && logic.LastImpact.ThrownBack.Happens,
                     "a charging looter into a front-arc block not thrown back: " + logic.LastImpact.Event + ", charging " + logic.LastImpact.Charging + ", thrown " + logic.LastImpact.ThrownBack.Chance);
 
+                // ---- 2b. an EXHAUSTED legionary (step 30's w 1 - every guard a guess): his front block keeps the game's WRONG side (a tired wall
+                // still breaks); at w 0.5 about half of many blows turn right, each blow's verdict the same for every system that asks
+                var tired = Man(6403, 0.0, 130);
+                inputs.Guards[6403] = (4.0, 130);
+                inputs.Shields.Add(6403);
+                inputs.BlockAngles[6403] = 10;
+                tired.BlockRandomWeight = 1f;
+                Check(logic.BlockKindOf(looter.Agent, tired.Agent, in wrong) == BlockKind.ShieldWrongSide, "an exhausted man's front block (w 1) was counted right");
+                logic.ShieldArcHitTaken(looter.Agent, tired.Agent, in wrong);
+                Check(arc.KeptByTiredness == 1, "the tired block was not counted as kept by tiredness: " + arc.KeptByTiredness);
+                tired.BlockRandomWeight = 0.5f;
+                int rightHalf = 0;
+                for (int i = 0; i < 400; i++)
+                {
+                    looter.ReleaseSerial = 1000 + i;
+                    var k1 = logic.BlockKindOf(looter.Agent, tired.Agent, in wrong);
+                    var k2 = logic.BlockKindOf(looter.Agent, tired.Agent, in wrong);
+                    Check(k1 == k2, "the same blow's verdict differed between two asks");
+                    if (k1 == BlockKind.ShieldRightSide) rightHalf++;
+                }
+                Check(rightHalf > 160 && rightHalf < 240, "w 0.5: " + rightHalf + " of 400 front blocks right (about half expected)");
+
                 // ---- 3. from 100° (the side): the game's WRONG side stands; the engine's right side stays right from behind
                 var flank = Man(6402, 1.0, 130);
                 inputs.Guards[6402] = (4.0, 130);
@@ -111,8 +133,9 @@ namespace TraxCombat.Tools
 
                 // ---- 6. the summary line: the game's verdict against ours
                 logic.WriteShieldArcSummary();
-                LogHas("shield front arc (step 64, on, ±60°): AI men's shield blocks 4: the game right 1 (25%) / WRONG 3 → ours right 2 (50%) / WRONG 2 - 1 wrong-side blocks from the front counted right");
-                LogHas("15-30° 1 (1), 90-120° 1, not looked at 1");
+                LogHas("shield front arc (step 64, on, ±60°): AI men's shield blocks 5: the game right 1 (20%) / WRONG 4 → ours right 2 (40%) / WRONG 3 - 1 wrong-side blocks from the front counted right");
+                LogHas("0-15° 1, 15-30° 1 (1), 90-120° 1, not looked at 1");
+                LogHas("from the front but kept WRONG by the blocker's tiredness (step 30's guessed share of a tired man's guard) 1");
                 Console.WriteLine("        step 64 front arc: a wrong-side block from 20° → right (the impact model's RightBlock; a charging looter thrown back), from 100° the game's; " + arc.SummaryLine(ShieldArcRules.From(S)));
             }
             finally
@@ -248,6 +271,77 @@ namespace TraxCombat.Tools
             {
                 _logic = keep;
                 SetStatic(typeof(AthleticsLogic), "_current", keep);
+                AthleticsDefaults();
+            }
+        }
+
+        /// <summary>
+        /// THE CHARGE CARRIES TO THE BLOW (step 64) through the real logic and the impact model: the carry is 3 s by default; an attack BEGUN
+        /// within it stays a charge until its blow is decided, however long after (a slow swing); that blow spends it; an attack begun after the
+        /// carry is no charge; the damage decorator's read (TryGetCharging) agrees; the charges line counts the carried-by-an-attack blow.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static void ChargeCarriesToTheBlow()
+        {
+            var keep = _logic;
+            try
+            {
+                AthleticsDefaults();
+                ImpactModelDefaults();
+                Step63On();
+                Step56BlockModel();
+                Check(Math.Abs(S.ImpactChargeCarrySeconds - 3.0) < 1e-6, "ImpactChargeCarrySeconds is not 3 by default: " + S.ImpactChargeCarrySeconds);
+                var inputs = new FakeImpactInputs();
+                var logic = NewPaceLogic(new FakePaceBody(), new FakeWeaponFacts());
+                logic.ImpactBody = new FakeImpactBody();
+                logic.ImpactInputs = inputs;
+                logic.ImpactDice = new ScriptDice();
+                double t = 64800;
+                logic.TickImpact(t);
+                var legionary = logic.Track(FakeAgent(6420))!;
+                legionary.AthleticsSkill = 130;
+                inputs.Guards[6420] = (4.0, 130);
+                inputs.Shields.Add(6420);
+                var looter = logic.Track(FakeAgent(6421))!;
+                looter.AthleticsSkill = 30;
+                inputs.Weapons[6421] = (1.5, 85, ImpactDamageType.Blunt, 30);
+                var block = RightBlock();
+
+                // within the 3 s carry (2.5 s after the sprint): a charge
+                looter.SprintEndedAt = t - 2.5;
+                Check(AthleticsLogic.TryGetCharging(looter.Agent), "2.5 s after a sprint is no charge with the 3 s carry");
+                // his attack begins now (inside the carry) - its blow comes 1.5 s later, 4 s after the sprint: still a charge, carried by the attack
+                CallPrivate(logic, "MarkChargeAttack", looter, t);
+                Check(looter.ChargeAttack && logic.ChargeAttacksMarked == 1, "an attack begun inside the carry was not marked a charge");
+                logic.TickImpact(t += 1.5);
+                Check(AthleticsLogic.TryGetCharging(looter.Agent), "the damage decorator's read lost the attack begun in the charge");
+                logic.ImpactModelHitTaken(looter.Agent, legionary.Agent, in block);
+                Check(logic.LastImpact.Charging && logic.LastImpact.ChargeShare > 0.999, "the slow swing's blow was not a charge: " + logic.LastImpact.Charging);
+                Check(!looter.ChargeAttack && double.IsNaN(looter.SprintEndedAt), "the carried charge was not spent on its blow");
+                double thrown = logic.LastImpact.ThrownBack.Chance;
+                logic.TickImpact(t += 0.5);
+                logic.ImpactModelHitTaken(looter.Agent, legionary.Agent, in block);
+                Check(!logic.LastImpact.Charging, "a second blow after the spent charge still charged");
+
+                // an attack begun AFTER the carry: no charge
+                looter.SprintEndedAt = t - 3.2;
+                CallPrivate(logic, "MarkChargeAttack", looter, t);
+                Check(!looter.ChargeAttack && !AthleticsLogic.TryGetCharging(looter.Agent), "an attack begun 3.2 s after the sprint was marked a charge");
+                logic.WriteImpactSummary();
+                LogHas("of the carried, by an attack begun in the charge (step 64) 1");
+                Console.WriteLine("        step 64 carry: an attack begun 2.5 s after the sprint struck at 4 s as a CHARGE into a fresh legionary's right block (thrown back "
+                                  + (100 * thrown).ToString("0") + "%), then spent; an attack begun at 3.2 s: none");
+            }
+            finally
+            {
+                _logic = keep;
+                SetStatic(typeof(AthleticsLogic), "_current", keep);
+                ImpactHooks.RestoreStunCap();
+                ImpactHooks.KnockDown = null;
+                ImpactHooks.BlockStun = null;
+                ImpactHooks.PickupLock = null;
+                ImpactHooks.ShrugOff = null;
+                ImpactModelDefaults();
                 AthleticsDefaults();
             }
         }

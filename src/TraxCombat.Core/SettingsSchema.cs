@@ -231,7 +231,7 @@ namespace TraxCombat.Core
         // random guard direction most of the time and a shield wall's poses are fixed): a shield block from the FRONT counts as a correct one.
         public static readonly ParamDef ShieldFrontArcIsCorrect = Bool("ShieldFrontArcIsCorrect", AthleticsGroup,
             "A shield facing the blow blocks it right",
-            "On: a melee blow stopped by a shield whose bearer FACES the attacker (within the angle below) counts as a right-side block for this mod - its cost, the refill, the staggers and the attacker's reel or fall off the shield - whatever side the game says the shield was held to. A raised shield facing the blow covers it. From the side or behind the game's own verdict stands. Weapon parries keep the game's direction (skill still matters there). You and the AI alike. Off: the game's verdict always.");
+            "On: a melee blow stopped by a shield whose bearer FACES the attacker (within the angle below) counts as a right-side block for this mod - its cost, the refill, the staggers and the attacker's reel or fall off the shield - whatever side the game says the shield was held to. A raised shield facing the blow covers it. A TIRED AI man still misjudges a share of his blocks - the share \"Tired AI blocks in a random direction\" gives him - so a worn-out wall can still be broken. From the side or behind the game's own verdict stands. Weapon parries keep the game's direction (skill still matters there). You and the AI alike. Off: the game's verdict always.");
 
         public static readonly ParamDef ShieldFrontArcDegrees = Int("ShieldFrontArcDegrees", 0, 180, AthleticsGroup,
             "Shield front arc (degrees each side)",
@@ -981,7 +981,7 @@ namespace TraxCombat.Core
 
         public static readonly ParamDef ImpactChargeCarrySeconds = Float("ImpactChargeCarrySeconds", 0, 5, ImpactGroup,
             "Charge: a sprint carries into the first blow for (s)",
-            "A man who was sprinting strikes his first blow within this many seconds after the sprint as a CHARGE - its full momentum (and the full damage roll, if that switch is on), even though he slowed down to swing (the AI's sprint ends a few metres from the enemy). Only the first blow; while he still sprints, every blow. 0 = only a blow struck while sprinting.");
+            "A man who was sprinting strikes his first blow within this many seconds after the sprint as a CHARGE - its full momentum (and the full damage roll, if that switch is on), even though he slowed down to swing. An attack he BEGAN while sprinting or within this time stays a charge until it ends, however long the swing. Only the first blow; while he still sprints, every blow. 0 = only a blow struck while sprinting (or an attack begun while sprinting).");
 
         public static readonly ParamDef RiposteKnockdownMaxPercent = Int("RiposteKnockdownMaxPercent", 0, 100, ImpactGroup,
             "Charge into a good shield block: thrown back, at most (%)",

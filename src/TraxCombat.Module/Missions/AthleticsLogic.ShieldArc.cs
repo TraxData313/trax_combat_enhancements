@@ -23,17 +23,22 @@ namespace TraxCombat.Missions
         internal ShieldArcStats ShieldArcStatsForSmoke => _shieldArc;
 
         /// <summary>OUR block kind of one melee collision (<see cref="BlockKind.None"/> = not a block) - see the class.</summary>
-        internal BlockKind BlockKindOf(Agent? attacker, Agent? victim, in AttackCollisionData cd) => ResolveBlock(attacker, victim, in cd, out _, out _);
+        internal BlockKind BlockKindOf(Agent? attacker, Agent? victim, in AttackCollisionData cd) => ResolveBlock(attacker, victim, in cd, out _, out _, out _);
 
-        /// <summary>The engine's kind and ours; <paramref name="angle"/> = the attacker's angle off the blocker's facing when it was read, else NaN.</summary>
-        private BlockKind ResolveBlock(Agent? attacker, Agent? victim, in AttackCollisionData cd, out BlockKind engine, out double angle)
+        /// <summary>The engine's kind and ours; <paramref name="angle"/> = the attacker's angle off the blocker's facing when it was read, else NaN;
+        /// <paramref name="keptByTiredness"/> = in the arc but left wrong by the blocker's tiredness (step 30's guessed share of his guard - the
+        /// same stateless roll for every system that asks about this blow: <see cref="ShieldArcMath.TiredRoll"/> of both men and the swing).</summary>
+        private BlockKind ResolveBlock(Agent? attacker, Agent? victim, in AttackCollisionData cd, out BlockKind engine, out double angle, out bool keptByTiredness)
         {
             angle = double.NaN;
+            keptByTiredness = false;
             engine = BlockMath.KindOf(cd.IsMissile, cd.IsAlternativeAttack, cd.IsHorseCharge, cd.CollidedWithShieldOnBack,
                 cd.AttackBlockedWithShield, cd.CorrectSideShieldBlock, (int)cd.CollisionResult);
             var r = ShieldArcRules.From(TraxSettings.Shared);
             if (!ShieldArcMath.NeedsAngle(in r, engine) || attacker == null || victim == null) return engine;
-            if (Get(attacker) == null || Get(victim) == null) return engine; // a horse, a stand-in: no native read, the game's verdict
+            var a = Get(attacker);
+            var v = Get(victim);
+            if (a == null || v == null) return engine; // a horse, a stand-in: no native read, the game's verdict
             try
             {
                 angle = ImpactInputs.FacingAngle(victim, attacker);
@@ -43,7 +48,9 @@ namespace TraxCombat.Missions
                 Failed("shieldarc.angle", e);
                 angle = double.NaN;
             }
-            return ShieldArcMath.Resolve(in r, engine, angle);
+            double w = IsPlayer(v) ? 0 : v.BlockRandomWeight;
+            double roll = w > 0 ? ShieldArcMath.TiredRoll(a.AgentIndex, v.AgentIndex, a.ReleaseSerial) : 1;
+            return ShieldArcMath.Resolve(in r, engine, angle, w, roll, out keptByTiredness);
         }
 
         /// <summary>OnMeleeHit (first, its own try): both verdicts of a SHIELD block on a tracked man, counted once per collision; the
@@ -51,12 +58,12 @@ namespace TraxCombat.Missions
         internal void ShieldArcHitTaken(Agent? attacker, Agent? victim, in AttackCollisionData cd)
         {
             if (victim == null || !cd.AttackBlockedWithShield || cd.IsMissile) return;
-            var ours = ResolveBlock(attacker, victim, in cd, out var engine, out double angle);
+            var ours = ResolveBlock(attacker, victim, in cd, out var engine, out double angle, out bool kept);
             if (engine != BlockKind.ShieldRightSide && engine != BlockKind.ShieldWrongSide) return;
             var st = Get(victim);
             if (st == null) return;
             bool you = IsPlayer(st);
-            _shieldArc.Note(you, engine, ours, angle);
+            _shieldArc.Note(you, engine, ours, angle, kept);
             if (engine == ours) return;
             if (!_shieldArcFirstLogged)
             {

@@ -169,6 +169,7 @@ namespace TraxCombat.Tools
             // step 63 moved step 62's shipped backup 0.5 → 0.2 s and direction from the multipliers x2 / x1.4 to pressure - the step-62 checks
             // keep the values they were written on
             S.Set(SettingsSchema.ImpactFallBackupSeconds, 0.5, SettingSources.File);
+            S.Set(SettingsSchema.ImpactChargeCarrySeconds, 1.5, SettingSources.File); // step 64 moved it to 3
             S.Set(SettingsSchema.ImpactRearPercent, 200, SettingSources.File);
             S.Set(SettingsSchema.ImpactFlankPercent, 140, SettingSources.File);
             S.Set(SettingsSchema.ImpactRearPressure, 0.0, SettingSources.File);

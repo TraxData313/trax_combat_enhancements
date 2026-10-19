@@ -296,6 +296,10 @@ namespace TraxCombat.Missions
         /// SprintChargeWaitBelowSeconds) - looked at every <c>SprintMath.MeleeCheckSeconds</c> by the sprint pass; a new order ends the wait.</summary>
         public bool ChargeSprintWaiting;
 
+        /// <summary>Step 64: the attack he is making BEGAN while he charged (sprinting, or within <c>ImpactChargeCarrySeconds</c> after a sprint) -
+        /// its blow is a charge however long the swing; cleared when the attack ends or its blow is decided.</summary>
+        public bool ChargeAttack;
+
         /// <summary>Step 49: looked at for courage at least once (the summary's men).</summary>
         public bool CourageSeen;
 

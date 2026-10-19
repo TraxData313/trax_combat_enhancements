@@ -82,8 +82,15 @@ namespace TraxCombat.Core
         };
 
         /// <summary>THE CHARGE: one decided event's charge (every family; a rider's never charges).</summary>
-        public void NoteCharge(in ImpactDecision d, bool sprintingNow)
+        public void NoteCharge(in ImpactDecision d, bool sprintingNow) => NoteCharge(in d, sprintingNow, false);
+
+        /// <summary>Step 64: of the carried charges, the ones an attack BEGUN in the charge carried (its blow after the carry's seconds).</summary>
+        public int CarriedByAttack;
+
+        /// <summary>Step 64: <paramref name="byAttack"/> = carried only by an attack begun while sprinting / within the carry.</summary>
+        public void NoteCharge(in ImpactDecision d, bool sprintingNow, bool byAttack)
         {
+            if (d.Charging && !sprintingNow && byAttack) CarriedByAttack++;
             Decided++;
             int k = ChargeKind(in d);
             if (!d.Charging)
@@ -180,6 +187,7 @@ namespace TraxCombat.Core
             s = new StringBuilder("impact charges (step 62 - a CHARGE = the attacker sprinting, or his first blow within ImpactChargeCarrySeconds after a sprint): ");
             s.Append(Charging.ToString(c)).Append(" of ").Append(Decided.ToString(c)).Append(" decided events (sprinting at the blow ").Append(ChargingNow.ToString(c))
                 .Append(", carried after the sprint ").Append(Carried.ToString(c)).Append(')');
+            if (CarriedByAttack > 0) s.Append(" - of the carried, by an attack begun in the charge (step 64) ").Append(CarriedByAttack.ToString(c));
             for (int k = 0; k < ChargeKindCount; k++)
             {
                 if (ChargeBlows[k] == 0 && OtherBlows[k] == 0) continue;

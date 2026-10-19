@@ -309,6 +309,7 @@ namespace TraxCombat.Missions
         /// </summary>
         private void AttackBegan(TrackedAgent st, bool player, double now, bool isReady)
         {
+            MarkChargeAttack(st, now);  // step 64: an attack begun in a charge stays one to its blow (before the sprint ends just below)
             SprintAttackBegan(st, now); // step 64: a sprint into contact ends at his first attack (the blow carries the charge)
             if (st.TimerPending)
             {
@@ -387,6 +388,7 @@ namespace TraxCombat.Missions
         /// </summary>
         private void AttackEnded(TrackedAgent st, double now, int next, in AthleticsRules r)
         {
+            st.ChargeAttack = false; // step 64: the attack begun in a charge is over (struck, blocked or missed)
             try
             {
                 var kind = st.EndedKind;

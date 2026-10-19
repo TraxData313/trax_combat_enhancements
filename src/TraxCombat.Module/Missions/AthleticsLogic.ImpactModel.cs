@@ -293,8 +293,8 @@ namespace TraxCombat.Missions
                 f.AttackerToughness = ImpactToughness(a!);
                 f.DefenderToughness = ImpactToughness(v);
             }
-            bool sprintingNow = false;
-            if (!f.AttackerMounted) f.AttackerCharging = IsCharging(a!, now, r.ChargeCarrySeconds, out sprintingNow); // step 62: THE CHARGE
+            bool sprintingNow = false, byAttack = false;
+            if (!f.AttackerMounted) f.AttackerCharging = IsCharging(a!, now, r.ChargeCarrySeconds, out sprintingNow, out byAttack); // step 62: THE CHARGE (64: + the attack begun in it)
             var family = ImpactMath.Family(f.Event);
             bool block = ImpactMath.IsBlock(f.Event);
             // step 50: what applies writes the states; shadow keeps "would"; a family decided live with no effect built yet decides on
@@ -317,8 +317,12 @@ namespace TraxCombat.Missions
             // step 52: every decided blow by the attacker's speed into it; step 53: a rider's by his horse's, a couched lance apart
             _hits.NoteMomentum(in d, f.AttackerMounted ? ImpactMath.RiderSpeedBand(in r, d.AttackerSpeed) : ImpactMath.SpeedBand(in r, d.AttackerSpeed), f.AttackerMounted, f.AttackerPassive);
             _charge.NoteDecision(in d); // step 62: by direction, by toughness
-            _charge.NoteCharge(in d, sprintingNow); // step 62: the charges
-            if (d.Charging && !sprintingNow) a.SprintEndedAt = double.NaN; // the carried charge spent on its first blow
+            _charge.NoteCharge(in d, sprintingNow, byAttack); // step 62: the charges
+            if (d.Charging && !sprintingNow) // the carried charge spent on its first blow (step 64: the attack begun in it too)
+            {
+                a.SprintEndedAt = double.NaN;
+                a.ChargeAttack = false;
+            }
             if (block && (applied || riderLive)) _riders.NoteRiposteOnRider(in d);
             LastImpact = d;
             NoteImpactLines(a, v, in d, in f, in r, !(applied || riposteLive || riderLive));
@@ -343,14 +347,36 @@ namespace TraxCombat.Missions
         /// <paramref name="carry"/> seconds ago and no blow spent it yet. Main thread (the hit callback); the damage decorator's full critical
         /// asks the same through <see cref="TryGetCharging"/>.
         /// </summary>
-        private static bool IsCharging(TrackedAgent st, double now, double carry, out bool sprintingNow)
+        private static bool IsCharging(TrackedAgent st, double now, double carry, out bool sprintingNow) => IsCharging(st, now, carry, out sprintingNow, out _);
+
+        /// <summary>Step 64: ... or an attack he BEGAN while charging (<see cref="TrackedAgent.ChargeAttack"/>) has not ended or struck yet -
+        /// <paramref name="byAttack"/> = only that carried it (a slow swing's blow after the carry's seconds).</summary>
+        private static bool IsCharging(TrackedAgent st, double now, double carry, out bool sprintingNow, out bool byAttack)
         {
+            byAttack = false;
             var sp = st.Sprint;
             sprintingNow = sp.Active && !sp.Regroup && !sp.Rout;
             if (sprintingNow) return true;
             double ended = st.SprintEndedAt;
-            return carry > 0 && !double.IsNaN(ended) && now >= ended && now - ended <= carry;
+            if (carry > 0 && !double.IsNaN(ended) && now >= ended && now - ended <= carry) return true;
+            byAttack = st.ChargeAttack;
+            return byAttack;
         }
+
+        /// <summary>Step 64 (from AttackBegan, BEFORE a sprint into contact ends there): an attack begun while he charges stays a charge until it
+        /// ends or its blow is decided - the carry reaches his blow however long the wind-up. Never on a horse (a rider's charge is his horse's).</summary>
+        private void MarkChargeAttack(TrackedAgent st, double now)
+        {
+            st.ChargeAttack = false; // a new attack: the last one's mark never chains on
+            if (st.Removed || !TraxSettings.Shared.ModEnabled) return;
+            st.ChargeAttack = IsCharging(st, now, TraxSettings.Shared.ImpactChargeCarrySeconds, out _, out _);
+            if (st.ChargeAttack) _chargeAttacksMarked++;
+        }
+
+        /// <summary>Step 64: attacks begun in a charge this mission (the smoke reads it).</summary>
+        private int _chargeAttacksMarked;
+
+        internal int ChargeAttacksMarked => _chargeAttacksMarked;
 
         /// <summary>Step 62: a man's toughness now - courage's measure (CourageMath, shared): his kit read once through the inputs (armour,
         /// level), the weights read live, his health now. A failing read = one [error] and a man in rags (toughness from level 0, armour 0).</summary>

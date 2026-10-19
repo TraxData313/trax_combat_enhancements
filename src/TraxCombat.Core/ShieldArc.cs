@@ -43,7 +43,8 @@ namespace TraxCombat.Core
         /// <summary>The settings sentence (mission start, summary).</summary>
         public string Describe() => Enabled
             ? "shield front arc: on - a shield block whose attacker stands within " + ShieldArcMath.F0(Degrees) + "° of the blocker's facing counts as a RIGHT-side block "
-              + "(the cost, the refill, the impact model's correct block: the riposte, the thrown back), whatever side the game says; outside it the game's verdict; "
+              + "(the cost, the refill, the impact model's correct block: the riposte, the thrown back), whatever side the game says - except a tired AI man's "
+              + "guessed share (step 30's w = TiredBlockRandomPercent × (1 − f)), which keeps the game's verdict; outside it the game's verdict; "
               + "weapon parries keep the game's direction; you and the AI alike (ShieldFrontArcIsCorrect, ShieldFrontArcDegrees " + ShieldArcMath.F0(Degrees) + ")"
             : "shield front arc: off (" + OffBecause + ") - the game's own right / wrong side for every shield block";
     }
@@ -63,8 +64,44 @@ namespace TraxCombat.Core
         public static bool InArc(in ShieldArcRules r, double angleDegrees) => !double.IsNaN(angleDegrees) && angleDegrees <= r.Degrees + 1e-9;
 
         /// <summary>OUR verdict: a wrong-side SHIELD block from within the front arc → a right-side block; anything else the engine's.</summary>
-        public static BlockKind Resolve(in ShieldArcRules r, BlockKind engine, double angleDegrees) =>
-            NeedsAngle(in r, engine) && InArc(in r, angleDegrees) ? BlockKind.ShieldRightSide : engine;
+        public static BlockKind Resolve(in ShieldArcRules r, BlockKind engine, double angleDegrees) => Resolve(in r, engine, angleDegrees, 0, 1, out _);
+
+        /// <summary>
+        /// OUR verdict with step 30 kept: the arc corrects the GAME's own guess of the guard direction (skill-based, ~1 for most troops), not
+        /// OURS - a tired AI man's guard is partly a guess on purpose (<c>TiredBlockRandomPercent</c>: w = % × (1 − f), his
+        /// <c>Fighter.BlockRandomWeight</c>), so that share of his front blocks keeps the engine's wrong side: turned right only when
+        /// <paramref name="roll"/> (<see cref="TiredRoll"/>, 0-1) ≥ <paramref name="tiredWeight"/>. A fresh man (w 0), you (0) and the setting at 0:
+        /// every front block right; an empty man at 100 %: the engine's verdict, as before step 64 (a tired wall still breaks).
+        /// <paramref name="keptByTiredness"/> = in the arc but kept wrong by that share.
+        /// </summary>
+        public static BlockKind Resolve(in ShieldArcRules r, BlockKind engine, double angleDegrees, double tiredWeight, double roll, out bool keptByTiredness)
+        {
+            keptByTiredness = false;
+            if (!NeedsAngle(in r, engine) || !InArc(in r, angleDegrees)) return engine;
+            if (tiredWeight > 0 && !(roll >= tiredWeight))
+            {
+                keptByTiredness = true;
+                return engine;
+            }
+            return BlockKind.ShieldRightSide;
+        }
+
+        /// <summary>A stateless roll in [0, 1) for one blow - the same for every system that asks about the same collision (the attacker, the
+        /// blocker, the attacker's swing number), so the cost, the guard line and the impact model always agree. No allocation, no shared state.</summary>
+        public static double TiredRoll(int attackerIndex, int blockerIndex, int swing)
+        {
+            unchecked
+            {
+                uint h = 2166136261u;
+                h = (h ^ (uint)attackerIndex) * 16777619u;
+                h = (h ^ (uint)blockerIndex) * 16777619u;
+                h = (h ^ (uint)swing) * 16777619u;
+                h ^= h >> 15;
+                h *= 2246822519u;
+                h ^= h >> 13;
+                return (h & 0xFFFFFF) / (double)0x1000000;
+            }
+        }
 
         /// <summary>The summary band of an angle (0..<see cref="BandCount"/> − 1).</summary>
         public static int Band(double angleDegrees)
@@ -98,9 +135,14 @@ namespace TraxCombat.Core
         /// <summary>Engine wrong-side blocks the rule did not look at (off, the master switch, an untracked attacker, a failed read).</summary>
         public int NotLooked { get; private set; }
 
-        /// <summary>One shield block: the engine's kind, ours, the angle (NaN = not read), <paramref name="you"/> = the blocker is you.</summary>
-        public void Note(bool you, BlockKind engine, BlockKind ours, double angleDegrees)
+        /// <summary>Front blocks left WRONG by the blocker's tiredness (step 30's share of his guard that is a guess - see <see cref="ShieldArcMath.Resolve(in ShieldArcRules, BlockKind, double, double, double, out bool)"/>).</summary>
+        public int KeptByTiredness { get; private set; }
+
+        /// <summary>One shield block: the engine's kind, ours, the angle (NaN = not read), <paramref name="you"/> = the blocker is you;
+        /// <paramref name="keptByTiredness"/> = in the arc but kept wrong by his tiredness.</summary>
+        public void Note(bool you, BlockKind engine, BlockKind ours, double angleDegrees, bool keptByTiredness = false)
         {
+            if (keptByTiredness) KeptByTiredness++;
             if (engine != BlockKind.ShieldRightSide && engine != BlockKind.ShieldWrongSide) return;
             int w = you ? 1 : 0;
             if (engine == BlockKind.ShieldRightSide) _engineRight[w]++;
@@ -151,6 +193,8 @@ namespace TraxCombat.Core
                     first = false;
                 }
                 if (NotLooked > 0) t.Append(first ? " " : ", ").Append("not looked at ").Append(NotLooked).Append(" (the rule off / an untracked attacker)");
+                if (KeptByTiredness > 0)
+                    t.Append("; from the front but kept WRONG by the blocker's tiredness (step 30's guessed share of a tired man's guard) ").Append(KeptByTiredness);
             }
             return t.ToString();
         }

@@ -101,7 +101,8 @@ namespace TraxCombat.Core
         /// ImpactFallBackupSeconds 0.5 → 0.2 - the game plays its falls at the blow, so the backup comes sooner - in a file still holding
         /// step 62's default; ImpactRearPercent 200 → 100 and ImpactFlankPercent 140 → 100 - direction is pressure now, ImpactRearPressure /
         /// ImpactFlankPressure; a tuned value kept and noted), 12 = step 64 (Anton's looter battles of 2026-10-19: the fever sprint starts
-        /// nearer - FeverSprintMinMetres 3 → 4, FeverSprintMaxMetres 12 → 8 - so a small store lasts to the enemy; a tuned value kept and noted).</summary>
+        /// nearer - FeverSprintMinMetres 3 → 4, FeverSprintMaxMetres 12 → 8 - so a small store lasts to the enemy; the charge carries longer -
+        /// ImpactChargeCarrySeconds 1.5 → 3 - to a slow swing's blow; a tuned value kept and noted).</summary>
         public const int FormatVersion = 12;
 
         /// <summary>The meta key holding <see cref="FormatVersion"/> - not a setting.</summary>
@@ -453,6 +454,8 @@ namespace TraxCombat.Core
                 const string fever = "step 64, Anton's looter battles: a fever sprint starts nearer, so a small store lasts to the enemy (and runs into contact)";
                 MoveOrKeep(read, SettingsSchema.FeverSprintMinMetres, 3, fever, from, defaultOf);
                 MoveOrKeep(read, SettingsSchema.FeverSprintMaxMetres, 12, fever, from, defaultOf);
+                MoveOrKeep(read, SettingsSchema.ImpactChargeCarrySeconds, 1.5,
+                    "step 64, Anton's looter battles: the charge carries 3 s after a sprint (and an attack begun in it stays a charge to its blow)", from, defaultOf);
             }
             // steps 36 / 37: the retired AI sprint keys - in ANY format (they are only ever steps 33-36's, and a hand-pasted one
             // goes the same way)
