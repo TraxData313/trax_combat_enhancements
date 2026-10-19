@@ -69,6 +69,19 @@ namespace TraxCombat.Tools
             }
 
             public void Release(TrackedAgent st) => Releases++;
+
+            /// <summary>Step 68: the men with a friend on the line to their target; the men who are FRIENDS of each other (by index pairs).</summary>
+            public readonly HashSet<int> FriendBlocks = new HashSet<int>();
+            public readonly HashSet<(int, int)> Friends = new HashSet<(int, int)>();
+            public int FriendReads;
+
+            public bool FriendInTheWay(TrackedAgent st, Agent target, double clear)
+            {
+                FriendReads++;
+                return FriendBlocks.Contains(st.AgentIndex);
+            }
+
+            public bool IsEnemy(TrackedAgent st, TrackedAgent other) => !Friends.Contains((st.AgentIndex, other.AgentIndex)) && !Friends.Contains((other.AgentIndex, st.AgentIndex));
         }
 
         /// <summary>Step 65: every logic built from here on reads the AI kick's engine side through the stand-in (the game's reads native agents).</summary>

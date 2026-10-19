@@ -117,6 +117,7 @@ namespace TraxCombat.Missions
         private void WriteImpactModelSummary()
         {
             foreach (var line in _impact.SummaryLines(ImpactRules.From(TraxSettings.Shared))) TraxLog.Info("summary", line);
+            TraxLog.Info("summary", _impact.KickCoverageLine()); // step 68: every landed kick / bash against the decisions
         }
 
         // ------------------------------------------------------------------ the events
@@ -192,6 +193,12 @@ namespace TraxCombat.Missions
         internal void ImpactModelHitTaken(Agent attacker, Agent victim, in AttackCollisionData cd)
         {
             if (!_spikeStarted || _spikeClosed || attacker == null || victim == null) return;
+            if (cd.IsAlternativeAttack && !cd.IsMissile && !cd.IsHorseCharge) // step 68: every kick / bash collision - landed, into a shield, other
+            {
+                var ka = Get(attacker);
+                _impact.NoteKickHit(cd.AffectorWeaponSlotOrMissileIndex >= 0, SpikeMath.KickLanded(true, cd.AttackBlockedWithShield, (int)cd.CollisionResult),
+                    cd.AttackBlockedWithShield, ka != null && IsPlayer(ka));
+            }
             if (!ImpactEventOf(in cd, BlockKindOf(attacker, victim, in cd), out var ev)) return; // step 64: our block verdict
             var a = Get(attacker);
             var v = Get(victim);

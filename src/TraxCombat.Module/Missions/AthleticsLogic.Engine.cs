@@ -1494,7 +1494,7 @@ namespace TraxCombat.Missions
                         int lower = (int)attacker.GetCurrentActionType(0);
                         if (lower != st.PrevLowerAction) ObserveLowerAction(st, lower, now, in r);
                     }
-                    if (st.AiKickPhase != AiKickPhase.None) AiKickHit(st, collisionData.AttackBlockedWithShield || (int)collisionData.CollisionResult != ImpactActions.ResultStrikeAgent); // step 65
+                    if (st.AiKickPhase != AiKickPhase.None) AiKickHit(st, collisionData.AttackBlockedWithShield || (int)collisionData.CollisionResult != ImpactActions.ResultStrikeAgent, victim); // step 65 (68: whom)
                     KickOrBashHit(st, now, in r, onHorse);
                     return;
                 }

@@ -49,6 +49,10 @@ namespace TraxCombat.Missions
         /// budget).</summary>
         public WallOutOfPlace Out;
         public double LastOutLook = double.NaN;
+
+        /// <summary>Step 68: the engine walks him to OUR paced frame now (not the game's order slot); ever paced this mission.</summary>
+        public bool Paced;
+        public bool EverPaced;
     }
 
     /// <summary>
@@ -88,6 +92,13 @@ namespace TraxCombat.Missions
 
         /// <summary>Step 63: the walk back's wish is off - the callback goes off if he is idle and it was ours.</summary>
         void ReleaseInput(TrackedAgent st);
+
+        /// <summary>Step 68: the frame the engine walks him to = the point (<paramref name="x"/>, <paramref name="y"/>) with the game's own
+        /// direction (instead of the game's order slot); false = the game gave no frame (nothing written).</summary>
+        bool Pace(TrackedAgent st, double x, double y);
+
+        /// <summary>Step 68: the game's own frame given back now (its order slot - what its next ~0.5 s update writes anyway).</summary>
+        void Unpace(TrackedAgent st);
     }
 
     /// <summary>
@@ -170,6 +181,22 @@ namespace TraxCombat.Missions
             f.VelX = integrity.AverageVelocityExcludeFarAgents.x;
             f.VelY = integrity.AverageVelocityExcludeFarAgents.y;
             f.Deviation = integrity.DeviationOfPositionsExcludeFarAgents;
+            f.EnemyGap = double.NaN;
+            if (WallPaceMath.Paces(f.Order))
+            {
+                // step 68: the game's ORDER slot (where vanilla walks him - under an advance at the enemy's line) and the gap to the enemy's front
+                var order = form.GetOrderPositionOfUnit(a);
+                if (order.IsValid)
+                {
+                    var o = order.AsVec2;
+                    f.HasOrderSlot = true;
+                    f.OrderX = o.x;
+                    f.OrderY = o.y;
+                }
+                var enemy = form.CachedClosestEnemyFormation?.Formation;
+                if (enemy != null)
+                    f.EnemyGap = WallPaceMath.FrontGap(form.CachedMedianPosition.AsVec2.Distance(enemy.CachedMedianPosition.AsVec2), form.Depth, enemy.Depth);
+            }
             return f;
         }
 
@@ -274,6 +301,26 @@ namespace TraxCombat.Missions
         {
             if (st.Removed || !st.Agent.IsActive()) return;
             AiInputHook.UnhookIfIdle(st);
+        }
+
+        /// <summary>Step 68: vanilla's own call (<c>HumanAIComponent.ParallelUpdateFormationMovement</c> → <c>Agent.TrySetFormationFrame</c>) with OUR
+        /// point - his world position moved there (<c>WorldPosition.SetVec2</c>, vanilla's own way in <c>MovementOrder.GetPositionAux</c>) and the
+        /// game's direction for his place (<c>GetBaseFormationFrame</c>). Main thread (the pre-tick - no agent job runs then).</summary>
+        public bool Pace(TrackedAgent st, double x, double y)
+        {
+            var a = st.Agent;
+            if (st.Removed || !a.IsActive() || !a.GetBaseFormationFrame(out _, out var dir)) return false;
+            var wp = a.GetWorldPosition();
+            wp.SetVec2(new Vec2((float)x, (float)y));
+            return a.TrySetFormationFrame(in wp, in dir);
+        }
+
+        public void Unpace(TrackedAgent st)
+        {
+            var a = st.Agent;
+            if (st.Removed || !a.IsActive()) return;
+            if (a.GetBaseFormationFrame(out var pos, out var dir)) a.TrySetFormationFrame(in pos, in dir);
+            else a.SetFormationFrameDisabled();
         }
     }
 

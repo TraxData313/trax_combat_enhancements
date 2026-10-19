@@ -107,6 +107,25 @@ namespace TraxCombat.Tools
             }
 
             public void ReleaseInput(TrackedAgent st) => InputReleases++;
+
+            /// <summary>Step 68: the paced frames written (the last point per man) and the game's frames given back.</summary>
+            public readonly Dictionary<int, (double X, double Y)> Paced = new Dictionary<int, (double X, double Y)>();
+            public int PaceCalls, UnpaceCalls;
+            public bool PaceRefused;
+
+            public bool Pace(TrackedAgent st, double x, double y)
+            {
+                if (PaceRefused) return false;
+                PaceCalls++;
+                if (Record) Paced[st.AgentIndex] = (x, y);
+                return true;
+            }
+
+            public void Unpace(TrackedAgent st)
+            {
+                UnpaceCalls++;
+                if (Record) Paced.Remove(st.AgentIndex);
+            }
         }
 
         /// <summary>An AI man on foot in a halted shield wall facing +y, <paramref name="ahead"/> m ahead of his slot (0, 0), the
@@ -143,6 +162,8 @@ namespace TraxCombat.Tools
             S.Set(SettingsSchema.ShieldWallHoldsSlots, true, SettingSources.File);
             S.Set(SettingsSchema.ShieldWallStepOutMetres, 0.0, SettingSources.File);
             S.Set(SettingsSchema.ShieldWallPullBackSeconds, 0.0, SettingSources.File); // step 63 off: steps 41 / 42 exactly (no extra looks, no walk back)
+            S.Set(SettingsSchema.ShieldWallKickReturnMetres, 0.0, SettingSources.File); // step 68 off: the walk back after a kick (its 0.1 s looks too)
+            S.Set(SettingsSchema.ShieldWallAdvanceAsOne, false, SettingSources.File);   // step 68 off: the game's own frames (Program.Step68.cs runs them)
         }
 
         /// <summary>

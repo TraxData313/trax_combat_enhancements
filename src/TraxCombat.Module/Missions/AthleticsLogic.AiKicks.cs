@@ -210,6 +210,27 @@ namespace TraxCombat.Missions
                 if (shield) st.BashCredit = Math.Max(0, st.BashCredit - 1); // the earned bash is spent on the decision
             }
             else chance = st.AiKickWaitChance;
+            // step 68: a man of his own side on the line to the enemy - the kick would land on his mate (the game cancels it, nothing decided):
+            // the decision waits for a clear line like one out of reach (read only in reach and in front - a handful of reads a second)
+            bool friendInWay = distance <= r.Reach && off <= r.Facing && r.FriendClear > 0 && body.FriendInTheWay(st, targetAgent!, r.FriendClear);
+            if (friendInWay)
+            {
+                _aiKickStats.FriendChecksBlocked++;
+                if (!waiting && AiKickMath.Waits(in r, distance))
+                {
+                    st.AiKickWaitUntil = now + r.WaitSeconds;
+                    st.AiKickWaitSince = now;
+                    st.AiKickWaitChance = chance;
+                    _aiKickStats.WaitsStarted++;
+                }
+                Skip(AiKickSkip.FriendInTheWay);
+                if (AiKickFirst(4))
+                    TraxLog.Info("impact", "first AI kick / bash HELD for a friend in the way at " + Sec(now) + " s (step 68) - " + Name(st) + " at " + Name(target) + " " + F2(distance)
+                        + " m off: one of his own side stands within " + F2(r.FriendClear) + " m of the line between them (AiKickFriendClearMetres) - "
+                        + (!double.IsNaN(st.AiKickWaitUntil) ? "the decision waits for a clear line" : "no kick"));
+                return;
+            }
+            if (r.FriendClear > 0 && distance <= r.Reach && off <= r.Facing) _aiKickStats.FriendChecksClear++;
             if (!(distance <= r.Reach) || !(off <= r.Facing))
             {
                 if (waiting)
@@ -413,14 +434,27 @@ namespace TraxCombat.Missions
         // ------------------------------------------------------------------ the hits (OnMeleeHit)
 
         /// <summary>A kick / bash of his LANDED or hit a shield (OnMeleeHit's attacker part): counted once per attempt.</summary>
-        internal void AiKickHit(TrackedAgent st, bool intoShield)
+        internal void AiKickHit(TrackedAgent st, bool intoShield) => AiKickHit(st, intoShield, null);
+
+        /// <summary>Step 68: ... and WHOM it landed on (his target, another enemy, a FRIEND - the game cancels it, a horse / a man not tracked).</summary>
+        internal void AiKickHit(TrackedAgent st, bool intoShield, Agent? victim)
         {
             if (st.AiKickPhase == AiKickPhase.None || st.AiKickLanded) return;
             st.AiKickLanded = true;
             _aiKickStats.Landed(st.AiKickKind, st.AiKickReason, intoShield);
+            if (!intoShield && victim != null) _aiKickStats.NoteVictim(AiKickVictimOf(st, victim));
             if (!intoShield && AiKickFirst(3))
                 TraxLog.Info("impact", "first AI " + AiKickMath.KindName(st.AiKickKind) + " LANDED at " + Sec(SafeNow()) + " s - " + Name(st)
                     + (st.AiKickTarget != null ? " on " + Name(st.AiKickTarget) : string.Empty) + " (the impact model and the brace decide what it does)");
+        }
+
+        /// <summary>Step 68: whom a landed kick / bash hit - the victim against the kicker (a native IsEnemyOf, once per landed kick).</summary>
+        private AiKickVictim AiKickVictimOf(TrackedAgent st, Agent victim)
+        {
+            var v = Get(victim);
+            if (v == null || v.Removed) return AiKickVictim.Untracked;
+            if (ReferenceEquals(v, st.AiKickTarget)) return AiKickVictim.Target;
+            return AiKickBody.IsEnemy(st, v) ? AiKickVictim.OtherEnemy : AiKickVictim.Friend;
         }
 
         /// <summary>A block by <paramref name="st"/> (BlockHitTaken - a paid block): the turtle memory one more.</summary>
