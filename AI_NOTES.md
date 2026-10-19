@@ -6440,3 +6440,8 @@ move, the leak, the menu / switch off mid-hold, a quick second click, the summar
    CHARGES; that 30 px feels like "directly over the icon" at Toni's resolution; that `GetOrderFlagPosition` at the press tracks the cursor's
    ground point closely enough for a 12 px drag test with the mouse hidden (the camera turning).
 3. That the order flag / cursor shows no charge look while held off (the UI's cursor state comes from the same focus list).
+
+**DEPLOY**: `tools\deploy.ps1` ran whole (build, the AssemblyGuard OK - no forbidden assembly, the offline smoke - all 164 passed), installed as
+Modules\TraxCombatEnhancements.Dev; `tools\SmartAppControl\loadcheck.ps1`: both installed DLLs LOADED (`1.2.0+4e8c05d1…`): TraxCombatEnhancements.dll
+SHA-256 94691A79…85A2, TraxCombat.Core.dll C3405EA8…B210. The game and the launcher were not running. Tests (1057) ran with `dotnet test`, the smoke
+in memory (`run_smoke.ps1`) while iterating; DefaultsTool's `refresh` ran directly (not blocked this time). Windows security untouched.
