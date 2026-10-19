@@ -5965,3 +5965,5 @@ AltMarkerDefaults).
 5. `Agent.GetMorale()` moves in a real battle as we expect (the blue bars fall; the labels' means) - and the 30 wall break comes at a sensible
    time.
 6. Cost in a 400-1000 man battle (`fear flock vs courage and walls … cost … ms a tick`).
+
+**DEPLOY**: `tools\deploy.ps1` built HEAD 6a313e3, the AssemblyGuard OK, the offline smoke (the exe this time - Smart App Control let it run) all 152 passed, installed as Modules\TraxCombatEnhancements.Dev; `tools\SmartAppControl\loadcheck.ps1`: both installed DLLs LOADED (`1.2.0+6a313e3e…`): TraxCombatEnhancements.dll SHA-256 4F871268…DE4C, TraxCombat.Core.dll 97836662…CBD8. The game and the launcher were not running. Tests (991) ran in memory (`run_tests.fsx`), the step's smoke runs in memory (`run_smoke.ps1`); `dotnet run --project tools/DefaultsTool -- refresh` ran directly. Windows security untouched.
