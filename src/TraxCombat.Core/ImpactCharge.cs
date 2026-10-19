@@ -31,6 +31,9 @@ namespace TraxCombat.Core
         /// <summary>Landed blows on a man with a ranged weapon in hand / of them knocked down.</summary>
         public int RangedBlows, RangedDown;
 
+        /// <summary>Decisions (any family) whose step-62 multipliers the cap held back.</summary>
+        public int Capped;
+
         /// <summary>THE CHARGE's kinds: 0 into a right-side shield block, 1 into a parry, 2 into a wrong-side block, 3 landed from the front,
         /// 4 landed from the side, 5 landed from behind.</summary>
         public const int ChargeKindCount = 6;
@@ -116,6 +119,7 @@ namespace TraxCombat.Core
         /// <summary>One decided event (any family; only LANDED blows on a man on foot are counted here).</summary>
         public void NoteDecision(in ImpactDecision d)
         {
+            if (d.Capped) Capped++;
             if (!ImpactMath.IsLanded(d.Event) || d.DefenderMounted) return;
             int dir = Math.Max(0, Math.Min(D - 1, d.Direction));
             bool down = d.Knockdown.Happens, any = d.AnyOutcome;
@@ -165,6 +169,7 @@ namespace TraxCombat.Core
             }
             s.Append(" | not counted (toughness off / unknown) ").Append(ToughUnknown.ToString(c));
             s.Append("; on a man with a ranged weapon in his hand ").Append(RangedBlows.ToString(c)).Append(" (down ").Append(Pct(RangedDown, RangedBlows)).Append(')');
+            s.Append("; decisions held back by the cap (ImpactMultiplierCapPercent) ").Append(Capped.ToString(c));
             lines.Add(s.ToString());
             s = new StringBuilder("impact charges (step 62 - a CHARGE = the attacker sprinting, or his first blow within ImpactChargeCarrySeconds after a sprint): ");
             s.Append(Charging.ToString(c)).Append(" of ").Append(Decided.ToString(c)).Append(" decided events (sprinting at the blow ").Append(ChargingNow.ToString(c))

@@ -956,6 +956,10 @@ namespace TraxCombat.Core
             "Charge into a good block: his momentum against him (+%)",
             "On a right-side block or a parry, the attacker's own speed into the blow is turned against him - the riposte (he reels, or is thrown back) counts this much more at a full sprint (100: twice). 0 = his speed does not count on a correct block.");
 
+        public static readonly ParamDef ImpactMultiplierCapPercent = Int("ImpactMultiplierCapPercent", 100, 2000, ImpactGroup,
+            "Charge, toughness, direction together: at most (%)",
+            "The momentum of a charge, the toughness difference, a blow from behind and an archer caught in melee multiply each other - together they never count more than this (800: x8), nor less than its inverse, so no stack of them becomes a cheat.");
+
         public static readonly ParamDef ImpactMismatchWeight = Float("ImpactMismatchWeight", 0, 2, ImpactGroup,
             "Mismatch weight (pressure per doubling)",
             "How much an outmatched man suffers: every doubling of the mismatch beyond the even band adds this to the pressure on him (0.25: an enemy four times stronger counts as much as being about a third tired). 0 = only tiredness counts.");
@@ -1417,7 +1421,7 @@ namespace TraxCombat.Core
             ImpactPunishEnabled, ImpactPunishAggressionPercent, ImpactPunishGraceSeconds, ImpactPunishRangeMetres,
             ImpactShrugOffYieldsToImpact, ImpactFallBackupSeconds, ImpactToughnessWeight, ImpactRangedInHandPercent,
             ImpactRearPercent, ImpactFlankPercent, ImpactRearDegrees, ImpactFlankDegrees,
-            ImpactChargeCarrySeconds, RiposteKnockdownMaxPercent, RiposteKnockdownFrom, RiposteMomentumPercent,
+            ImpactChargeCarrySeconds, RiposteKnockdownMaxPercent, RiposteKnockdownFrom, RiposteMomentumPercent, ImpactMultiplierCapPercent,
             ImpactMismatchWeight, ImpactEvenBandDoublings, ImpactBodyExponent, ImpactBodyFloorPoints, ImpactStaggeredBonus, ImpactDamageWeight,
             ImpactRefWeightKg, ImpactWeightExponent, ImpactRefSwingSpeed, ImpactSpeedExponent, ImpactBluntFactor, ImpactCutFactor, ImpactPierceFactor,
             ImpactKickFactor, ImpactBashFactor, ImpactSkillMinFactor, ImpactSkillMaxFactor,

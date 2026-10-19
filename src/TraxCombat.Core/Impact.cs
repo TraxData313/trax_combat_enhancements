@@ -298,6 +298,9 @@ namespace TraxCombat.Core
         public int Direction;
         public double AttackAngle, DirectionFactor;
 
+        /// <summary>Step 62: the cap (<c>ImpactMultiplierCapPercent</c>) held the multipliers back on this blow.</summary>
+        public bool Capped;
+
         /// <summary>Step 62, THE CHARGE: the attacker charged (sprinting, or the carry after it); his MEASURED speed into the blow
         /// (<see cref="AttackerSpeed"/> is the one the momentum used - at least the sprint reference for a charge); his charge's share 0-1
         /// (the momentum share of that speed); the riposte's reflected-momentum factor.</summary>
@@ -435,6 +438,7 @@ namespace TraxCombat.Core
             RiposteKnockdownMax = s.RiposteKnockdownMaxPercent / 100.0;
             RiposteKnockdownFrom = s.RiposteKnockdownFrom;
             RiposteMomentumWeight = Math.Max(0, s.RiposteMomentumPercent / 100.0);
+            MultiplierCap = Math.Max(1, s.ImpactMultiplierCapPercent / 100.0);
         }
 
         public static ImpactRules From(TraxSettings s) => new ImpactRules(s);
@@ -556,6 +560,9 @@ namespace TraxCombat.Core
         /// <summary>Step 62: the attacker's momentum turned against him on a correct block - the riposte's R_r × (1 + this × his charge's
         /// share) (1.0 = twice at a full sprint).</summary>
         public double RiposteMomentumWeight { get; }
+
+        /// <summary>Step 62, THE CAP: the step-62 multipliers together at most this (and at least its inverse) - 8 = x8.</summary>
+        public double MultiplierCap { get; }
 
         /// <summary>The model runs (decides and logs): the master switch FIRST, Athletics, the impact switch.</summary>
         public bool Enabled => ModEnabled && AthleticsOn && ImpactOn;
@@ -922,6 +929,17 @@ namespace TraxCombat.Core
             return Math.Pow(attacker / defender, r.ToughnessWeight);
         }
 
+        /// <summary>Step 62, THE CAP: the step-62 multipliers together (momentum × toughness × ranged × direction; the riposte's reflected
+        /// momentum ÷ toughness) clamped to [1 ÷ cap, cap], cap = <c>ImpactMultiplierCapPercent</c> (8 = x8) - no stack of them becomes a cheat.</summary>
+        public static double CapMultiplier(in ImpactRules r, double total)
+        {
+            if (double.IsNaN(total) || total <= 0) return 1;
+            double cap = Math.Max(1, r.MultiplierCap);
+            if (total > cap) return cap;
+            if (total < 1 / cap) return 1 / cap;
+            return total;
+        }
+
         /// <summary>Step 62's direction bands: 0 the front, 1 the side, 2 behind.</summary>
         public const int DirectionCount = 3;
 
@@ -1004,7 +1022,11 @@ namespace TraxCombat.Core
             d.AttackAngle = f.AttackAngleDegrees;
             d.Direction = DirectionOf(in r, f.AttackAngleDegrees);
             d.DirectionFactor = DirectionFactor(in r, f.Event, f.AttackAngleDegrees);
-            d.Extra = d.ToughnessFactor * d.RangedFactor * d.DirectionFactor;
+            // step 62, THE CAP: momentum × toughness × ranged × direction together never past ImpactMultiplierCapPercent (nor below its inverse)
+            double total = d.Momentum * d.ToughnessFactor * d.RangedFactor * d.DirectionFactor;
+            double capped = CapMultiplier(in r, total);
+            d.Capped = Math.Abs(capped - total) > 1e-9;
+            d.Extra = d.Momentum > 0 ? capped / d.Momentum : capped;
             d.R *= d.Extra;
             d.Log2R = d.R > 0 ? Math.Log(d.R, 2) : 0;
             d.MismatchPart = r.MismatchWeight * Band(in r, d.Log2R);
@@ -1033,7 +1055,7 @@ namespace TraxCombat.Core
             double blow = d.Momentum > 0 ? d.Impact / d.Momentum : d.Impact;
             d.RiposteMomentum = 1 + r.RiposteMomentumWeight * d.ChargeShare;
             double rr = Math.Pow(d.BodyD / d.BodyA, r.BodyExponent) * (d.Guard * d.SkillD) / (blow * d.SkillA);
-            rr *= d.RiposteMomentum / (d.ToughnessFactor > 0 ? d.ToughnessFactor : 1);
+            rr *= CapMultiplier(in r, d.RiposteMomentum / (d.ToughnessFactor > 0 ? d.ToughnessFactor : 1)); // the same cap
             double log2 = rr > 0 ? Math.Log(rr, 2) : 0;
             d.XRiposte = d.TAttacker + r.MismatchWeight * Band(in r, log2);
             return d.XRiposte;
@@ -1330,6 +1352,7 @@ namespace TraxCombat.Core
             if (Math.Abs(d.RangedFactor - 1) > 1e-4) s += "; a ranged weapon in his hand (x" + d.RangedFactor.ToString("0.00", c) + ")";
             if (Math.Abs(d.DirectionFactor - 1) > 1e-4)
                 s += "; from " + (d.Direction == 2 ? "BEHIND" : "the side") + " (" + d.AttackAngle.ToString("0", c) + "°, x" + d.DirectionFactor.ToString("0.00", c) + ")";
+            if (d.Capped) s += "; CAPPED at x" + (d.Extra * d.Momentum).ToString("0.00", c) + " in all";
             return s;
         }
 

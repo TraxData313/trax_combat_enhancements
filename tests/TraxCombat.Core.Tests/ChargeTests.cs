@@ -179,6 +179,47 @@ public class ChargeTests
         Assert.Contains("landed from BEHIND 1: the defender staggered ", line);
     }
 
+    // ------------------------------------------------------------------ the cap
+
+    [Fact]
+    public void The_multipliers_together_never_pass_the_cap_either_way()
+    {
+        var r = Rules();
+        Assert.Equal(8.0, r.MultiplierCap, 6);
+        Assert.Equal(8.0, ImpactMath.CapMultiplier(in r, 12), 9);
+        Assert.Equal(0.125, ImpactMath.CapMultiplier(in r, 0.05), 9);
+        Assert.Equal(3.3, ImpactMath.CapMultiplier(in r, 3.3), 9);
+        Assert.Equal(1.0, ImpactMath.CapMultiplier(in r, double.NaN), 9);
+        // a sprinting man of nine times the toughness into an archer's back: x1.6 × 3 × 1.3 × 2 = 12.5 → held at 8
+        var f = Facts(ImpactEvent.CleanHit, 0.5, tA: 9, tD: 1, ranged: true, angle: 170);
+        f.AttackerCharging = true;
+        var d = Decide(in f);
+        Assert.True(d.Capped);
+        Assert.Equal(8.0, d.Extra * d.Momentum, 6);
+        var open = Decide(in f, Rules(s => s.Set(SettingsSchema.ImpactMultiplierCapPercent, 2000, SettingSources.Mcm)));
+        Assert.False(open.Capped);
+        Assert.Equal(Math.Log(12.48 / 8, 2), open.Log2R - d.Log2R, 2);
+        Assert.Contains("CAPPED at x8.00 in all", ImpactMath.Describe(in d, in f, "A", "D", "LIVE"));
+    }
+
+    [Fact]
+    public void A_fresh_tough_shieldman_facing_a_charge_and_blocking_right_stays_near_unshakeable()
+    {
+        // a fresh legionary SPRINTING into a fresh legionary's right-side block: the blocker barely moves; the charger risks his own skin
+        var f = Facts(ImpactEvent.RightBlock, 1.0, attackerBar: 1.0, tA: Legionary, tD: Legionary);
+        f.AttackerCharging = true;
+        var d = Decide(in f);
+        Assert.Equal(0, d.Knockdown.Chance);
+        Assert.True(d.Stagger.Chance < 0.02, "blocker staggered " + d.Stagger.Chance);
+        Assert.True(d.ThrownBack.Chance > 0.05 && d.ThrownBack.Chance < 0.2, "thrown back " + d.ThrownBack.Chance);
+        // ... and a looter sprinting into him: nothing at all on the blocker
+        var g = Facts(ImpactEvent.RightBlock, 1.0, attackerBar: 1.0, tA: Looter, tD: Legionary);
+        g.AttackerCharging = true;
+        var e = Decide(in g);
+        Assert.Equal(0, e.Knockdown.Chance);
+        Assert.Equal(0, e.Stagger.Chance);
+    }
+
     // ------------------------------------------------------------------ the uncapped critical
 
     [Fact]

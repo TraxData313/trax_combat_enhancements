@@ -1268,6 +1268,12 @@
   // (range 0 to 300)
   "RiposteMomentumPercent": 100,
 
+  // The momentum of a charge, the toughness difference, a blow from behind and an archer caught
+  // in melee multiply each other - together they never count more than this (800: x8), nor less
+  // than its inverse, so no stack of them becomes a cheat.
+  // (range 100 to 2000)
+  "ImpactMultiplierCapPercent": 800,
+
   // How much an outmatched man suffers: every doubling of the mismatch beyond the even band
   // adds this to the pressure on him (0.25: an enemy four times stronger counts as much as
   // being about a third tired). 0 = only tiredness counts.
