@@ -6350,3 +6350,8 @@ twice a clean one); PLAYTEST D36; IMPACT.md quotes no cost number - untouched.
 **UNVERIFIED — only the game can tell (PLAYTEST D36)**
 1. The lines tire visibly sooner after the first clash without the fight stalling (men empty and braced everywhere).
 2. The first start logs `[config] migrated config.json …` once (format 14 → 15) and `Athletics settings at the end` reads 10.0 / 6.00 / 3.00 / 6.00.
+
+**DEPLOY**: `tools\deploy.ps1` ran whole (build, the AssemblyGuard OK - no forbidden assembly, the offline smoke exe - all passed), installed as
+Modules\TraxCombatEnhancements.Dev; `tools\SmartAppControl\loadcheck.ps1`: both installed DLLs LOADED (`1.2.0+1a54eaaf…`): TraxCombatEnhancements.dll SHA-256
+4848C8DC…CDC1, TraxCombat.Core.dll 8DCD1E85…A14D. The game and the launcher were not running. Tests (1045) ran with `dotnet test`, the smoke in memory
+(`run_smoke.ps1`) while iterating; `refresh_defaults.fsx` once (Smart App Control blocked DefaultsTool's fresh Core DLL). Windows security untouched.
