@@ -159,6 +159,9 @@ namespace TraxCombat.Tools
             S.Set(SettingsSchema.CostPerWeaponParry, 2, SettingSources.File);
             S.Set(SettingsSchema.OnlyWrongSideBlocksStopRefill, false, SettingSources.File); // step 29: the older steps check step 22's rule (every paid block restarts the delay) - BlocksLetTheRefillRun has its own
             S.Set(SettingsSchema.ShieldFrontArcIsCorrect, false, SettingSources.File); // step 64: the older steps check the game's own block verdict - ShieldFrontArc has its own
+            // step 65: the older steps check a world where the AI never kicks and every landed kick knocks back (step 50) - Program.Step65.cs has its own
+            S.Set(SettingsSchema.AiKicksEnabled, false, SettingSources.File);
+            S.Set(SettingsSchema.KickBraceEnabled, false, SettingSources.File);
             // step 64: the older steps check steps 33-63's AI sprint (every one ends at 3 m, a charge sprints at the order, the fever at 3-12 m) -
             // ChargeIntoContact has its own
             S.Set(SettingsSchema.SprintChargeIntoContact, false, SettingSources.File);
@@ -1160,6 +1163,9 @@ namespace TraxCombat.Tools
 
             // --- step 64: the shield front arc - off = the game's block verdict at once, on = the front arc again
             ShieldArcFollowsTheMasterSwitch();
+
+            // --- step 65: the AI kicks and the brace - off = a running attempt ended (its input given back), the game's knock-back; on = asked again
+            AiKicksFollowTheMasterSwitch();
 
             // --- step 49: courage - off = every timid man let go at once (its own logic), back on = looked at again
             CourageFollowsTheMasterSwitch();

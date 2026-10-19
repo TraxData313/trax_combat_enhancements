@@ -24,6 +24,12 @@ namespace TraxCombat.Missions
         /// <summary>The angle (degrees) between <paramref name="st"/>'s facing and the line to <paramref name="other"/> (is his raised shield
         /// toward the kicker?).</summary>
         float FacingTo(TrackedAgent st, TrackedAgent other);
+
+        /// <summary>Step 16's hook on him (the component + the engine's callback) - from the tick.</summary>
+        AiInputHook.HookResult Hook(TrackedAgent st);
+
+        /// <summary>His callback released if no wish is left (never for a man gone).</summary>
+        void Release(TrackedAgent st);
     }
 
     /// <summary>The game's side: native reads (the AI's own target, positions, the facing), managed equipment reads; main thread.</summary>
@@ -58,6 +64,13 @@ namespace TraxCombat.Missions
         }
 
         public float FacingTo(TrackedAgent st, TrackedAgent other) => (float)GameImpactInputs.AngleFrom(st.Agent, other.Agent);
+
+        public AiInputHook.HookResult Hook(TrackedAgent st) => AiInputHook.Hook(st);
+
+        public void Release(TrackedAgent st)
+        {
+            if (!st.Removed) AiInputHook.UnhookIfIdle(st);
+        }
 
         private static bool IsEnemyOnFoot(Agent a, Agent? e) => e != null && e.IsActive() && e.IsHuman && e.MountAgent == null && a.IsEnemyOf(e);
     }

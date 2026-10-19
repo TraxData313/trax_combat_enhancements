@@ -161,7 +161,7 @@ namespace TraxCombat.Missions
         }
 
         /// <summary>The summary's turn (after the punish lines).</summary>
-        private void WriteKickBraceSummary()
+        internal void WriteKickBraceSummary()
         {
             foreach (var line in _kickBraceStats.SummaryLines(KickBraceRules.From(TraxSettings.Shared))) TraxLog.Info("summary", line);
         }

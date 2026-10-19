@@ -235,7 +235,7 @@ namespace TraxCombat.Missions
             _aiKickers[_aiKickCount++] = st;
             EnsureInput(st);
             AiInputHook.SetKick(st, st.AiKickPhase, kind, now);
-            NoteHooked(st, AiInputHook.Hook(st));
+            NoteHooked(st, AiKickBody.Hook(st));
             _aiKickStats.Asked(kind, reason);
             if (AiKickFirst(0))
                 TraxLog.Info("impact", "first AI " + AiKickMath.KindName(kind) + " asked at " + Sec(now) + " s - " + Name(st) + " (bar " + Pct0(st.Fraction) + ", Athletics skill "
@@ -319,7 +319,7 @@ namespace TraxCombat.Missions
             {
                 try
                 {
-                    AiInputHook.UnhookIfIdle(st);
+                    AiKickBody.Release(st);
                 }
                 catch (Exception e)
                 {
@@ -383,7 +383,7 @@ namespace TraxCombat.Missions
         }
 
         /// <summary>The summary's turn (after the brace's lines): the running attempts ended first (no engine call - the mission ends).</summary>
-        private void WriteAiKickSummary()
+        internal void WriteAiKickSummary()
         {
             EndAllAiKicks(AiKickEnd.MissionEnd, SafeNow(), null);
             foreach (var line in _aiKickStats.SummaryLines(AiKickRules.From(TraxSettings.Shared))) TraxLog.Info("summary", line);
