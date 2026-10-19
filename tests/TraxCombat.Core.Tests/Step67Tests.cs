@@ -307,6 +307,8 @@ public class Step67Tests
         Near(0.5, FearMath.Stick(1.25));
         Near(FearMath.MinStick, FearMath.Stick(0.1));
         Near(2.5, FearMath.SprintAmount(in r, 5, 5));                  // keeps 50%
+        Assert.True(FearMath.NearSlot(0.5, 0.5, 0, 0));                 // a small pull: his own AI keeps him at his slot
+        Assert.False(FearMath.NearSlot(0, 1.2, 0, 0));
         Near(0, FearMath.SprintAmount(in r, 2, 5));
     }
 

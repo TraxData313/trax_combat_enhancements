@@ -341,6 +341,7 @@ namespace TraxCombat.Missions
             double px = near.Px, py = near.Py;
             double tx, ty;
             bool loose = false;
+            double slotX = double.NaN, slotY = double.NaN;
             if (order == FearOrder.Charge)
             {
                 double radius = FearMath.LooseRadius(in r, pull);
@@ -352,7 +353,7 @@ namespace TraxCombat.Missions
             }
             else
             {
-                if (!FearBody.Slot(st, out double slotX, out double slotY))
+                if (!FearBody.Slot(st, out slotX, out slotY))
                 {
                     slotX = px;
                     slotY = py;
@@ -429,6 +430,13 @@ namespace TraxCombat.Missions
             fm.TargetY = ty;
             fm.HasTarget = true;
             fm.Loose = loose;
+            if (phase == FearPhase.Flocking && order != FearOrder.Charge && FearMath.NearSlot(tx, ty, slotX, slotY))
+            {
+                // a small pull: his place is near his slot - the game's own AI keeps him (no tug of war with its walk to the slot)
+                _fearStats.NearSlotLooks++;
+                if (fm.Wish) StopFlockInput(st, now, native: true);
+                return;
+            }
             if (loose)
             {
                 // a charging man inside the loose mass: his AI's charge drives him
@@ -498,6 +506,13 @@ namespace TraxCombat.Missions
             fm.Wish = false;
             fm.Moving = false;
             _flocking.Remove(st);
+            if (fm.SprintOurs)
+            {
+                // the flock no longer steers him: its sprint ends with it (courage's walk back may ask its own)
+                fm.SprintOurs = false;
+                if (st.Sprint.Active && st.Sprint.Regroup && st.Courage.Phase != CouragePhase.Moving)
+                    EndSprint(st, native ? SprintEnd.Regrouped : SprintEnd.LeftField, now);
+            }
             if (st.Input != null && st.Input.Flock)
             {
                 AiInputHook.SetFlock(st, false, now);

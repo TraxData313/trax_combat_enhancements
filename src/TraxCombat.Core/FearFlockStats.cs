@@ -41,6 +41,7 @@ namespace TraxCombat.Core
         public long SteerUpdates;
         public long StandUpdates;
         public long LooseLooks;
+        public long NearSlotLooks;
         public long CoverSeeks;
         public double ShelterBackMetres;
         public double LookCostMs;
@@ -218,7 +219,8 @@ namespace TraxCombat.Core
             double perTick = Ticks > 0 ? (LookCostMs + SteerCostMs) / Ticks : double.NaN;
             lines.Add("fear flock vs courage and walls: courage's walk back took the man " + YieldedLooks + " looks (it goes first); walls broken (morale below "
                       + r.WallBreakMorale + ") " + WallsBroken + " times, " + WallBreakMen + " men let go into the flock; charge men left to their AI inside the loose mass "
-                      + LooseLooks + " looks; steering updates " + SteerUpdates + " walking, " + StandUpdates + " standing; cost " + N(LookCostMs, "0.0") + " ms looks + "
+                      + LooseLooks + " looks, men whose place is within " + N(FearMath.SlotToleranceMetres, "0.#") + " m of their slot left to their AI " + NearSlotLooks
+                      + " looks; steering updates " + SteerUpdates + " walking, " + StandUpdates + " standing; cost " + N(LookCostMs, "0.0") + " ms looks + "
                       + N(SteerCostMs, "0.0") + " ms steering (" + N(perTick, "0.000") + " ms a tick); errors " + Errors);
         }
     }

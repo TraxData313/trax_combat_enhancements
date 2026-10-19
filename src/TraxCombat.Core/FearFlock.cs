@@ -209,6 +209,14 @@ namespace TraxCombat.Core
 
         public const double MoveAgainMetres = 1.5;
 
+        /// <summary>A place within this of his slot leaves his feet to his own AI (a small pull - the slot is near enough; no tug of war with the
+        /// game's own walk to the slot). An anchored man keeps the hold.</summary>
+        public const double SlotToleranceMetres = 1.0;
+
+        /// <summary>His place is near enough his slot for the game's own AI to keep him (see <see cref="SlotToleranceMetres"/>).</summary>
+        public static bool NearSlot(double tx, double ty, double slotX, double slotY) =>
+            (tx - slotX) * (tx - slotX) + (ty - slotY) * (ty - slotY) < SlotToleranceMetres * SlotToleranceMetres;
+
         /// <summary>The stick: full beyond this distance, down to <see cref="MinStick"/> near his place (a walk, not a dash).</summary>
         public const double SlowMetres = 2.5;
 
