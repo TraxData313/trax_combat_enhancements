@@ -51,6 +51,17 @@ namespace TraxCombat.Models
     }
 
     /// <summary>
+    /// Step 65: THE BRACE - asked by <see cref="TraxDamageModel.DecideAgentKnockedBackByBlow"/> after the base model, only when the game says
+    /// KNOCKED BACK (every landed kick / bash, a horse charge, a weapon that knocks back). MAIN thread (inside <c>Mission.CreateMeleeBlow</c> of
+    /// the engine's <c>MeleeHitCallback</c> - Mission.cs 5571, after the shrug-off question and before the knockdown one). True = keep the
+    /// game's knock-back; false = refuse it (a braced man).
+    /// </summary>
+    internal interface IKnockBackDecider
+    {
+        bool KnockBackKept(Agent attacker, Agent victim, in AttackCollisionData collision, in Blow blow);
+    }
+
+    /// <summary>
     /// Step 50: the AI's pickup of a dropped SHIELD - asked by <see cref="TraxItemPickupModel.IsItemAvailableForAgent"/> after the base model
     /// (MAIN thread: HumanAIComponent.ItemPickupTick runs in OnTick). True = refuse this pickup (<c>ShieldPickupLockSeconds</c> after a live
     /// kick / bash made his shield leave his hand). The player picks items up with the use key - no model asked, so never locked.
@@ -145,6 +156,32 @@ namespace TraxCombat.Models
             catch (Exception e)
             {
                 TraxCombat.Missions.AthleticsLogic.Failed("impact.dismount-hook", e);
+                return gameSays;
+            }
+        }
+
+        private static volatile IKnockBackDecider? _knockBack;
+
+        /// <summary>Step 65: the running logic while it runs (the damage decorator's knock-back question asks it).</summary>
+        internal static IKnockBackDecider? KnockBack
+        {
+            get => _knockBack;
+            set => _knockBack = value;
+        }
+
+        /// <summary>Step 65: the decorator's knock-back question: the game's NO stands; a YES asked of the decider (a braced man's refused). A
+        /// throwing decider = the game's answer, logged by the logic's fail-safe.</summary>
+        internal static bool KnockBackOnBlow(Agent attacker, Agent victim, in AttackCollisionData collision, in Blow blow, bool gameSays)
+        {
+            var d = _knockBack;
+            if (!gameSays || d == null || victim == null || attacker == null) return gameSays;
+            try
+            {
+                return d.KnockBackKept(attacker, victim, in collision, in blow);
+            }
+            catch (Exception e)
+            {
+                TraxCombat.Missions.AthleticsLogic.Failed("impact.knockback-hook", e);
                 return gameSays;
             }
         }

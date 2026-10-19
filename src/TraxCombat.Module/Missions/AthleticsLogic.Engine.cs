@@ -164,6 +164,8 @@ namespace TraxCombat.Missions
             StartCourage(); // step 49
             StartFlock(); // step 55
             StartImpact(); // step 47
+            StartKickBrace(); // step 65
+            StartAiKicks(); // step 65
         }
 
         private void StopAthletics()
@@ -347,6 +349,7 @@ namespace TraxCombat.Missions
             FeverLeftField(st); // step 43
             CourageLeftField(st); // step 49
             FlockLeftField(st); // step 55
+            AiKickLeftField(st); // step 65
             ImpactLeftField(st); // step 47
             RemoveFromLoop(st);
         }
@@ -549,6 +552,16 @@ namespace TraxCombat.Missions
             catch (Exception e)
             {
                 Failed("fever.tick", e);
+            }
+
+            // Step 65: the AI kicks and bashes - the running attempts every tick, every AI man looked at about every 0.25 s (staggered); off ends them all.
+            try
+            {
+                TickAiKicks(now);
+            }
+            catch (Exception e)
+            {
+                Failed("aikick.tick", e);
             }
 
             // Step 49: courage and cohesion - every AI man looked at about every 0.5 s (staggered; ON and OFF - the OFF looks measure); the walkers steered.
@@ -759,6 +772,7 @@ namespace TraxCombat.Missions
                 return;
             }
             _stats.AddKickOrBashCharge(kind, mounted, o.Before - o.After);
+            NoteAiKickCost(st, o.Before - o.After); // step 65: an AI kick of ours
             if (IsPlayer(st)) LogPlayerKickOrBash(st, kind, in o, now, in r);
             else if (TraxLog.VerboseWants("athletics-kick")) LogBlow(st, KickBashName(kind), in o, mounted, "athletics-kick");
             AfterCharge(st, in o, now, in r);
@@ -785,6 +799,7 @@ namespace TraxCombat.Missions
                 if (a != null && !attacker.IsDoingPassiveAttack) swing = a.ReleaseSerial;
             }
             var r = Rules;
+            NoteTurtleBlock(st, Mission.CurrentTime); // step 65: his turtle memory (the AI's kicks look at it)
             BlockTaken(st, kind, attackerIndex, swing, Mission.CurrentTime, in r, victim.MountAgent != null);
         }
 
@@ -1104,6 +1119,8 @@ namespace TraxCombat.Missions
                 NoteCourageSettings(settings);    // step 49: courage (applied at every man's next look)
                 NoteFlockSettings(settings);      // step 55: cavalry flocking (at the next census)
                 NotePunishSettings(settings);     // step 54: the AI punishing a window (the factors re-targeted below)
+                NoteKickBraceSettings(settings);  // step 65: the kicked man braces
+                NoteAiKickSettings(settings);     // step 65: the AI kicks and bashes
 
                 if (r.PoolFloor != _seenPoolFloor || r.PoolPerSkill != _seenPoolPerSkill)
                 {
@@ -1476,6 +1493,7 @@ namespace TraxCombat.Missions
                         int lower = (int)attacker.GetCurrentActionType(0);
                         if (lower != st.PrevLowerAction) ObserveLowerAction(st, lower, now, in r);
                     }
+                    if (st.AiKickPhase != AiKickPhase.None) AiKickHit(st, collisionData.AttackBlockedWithShield || (int)collisionData.CollisionResult != ImpactActions.ResultStrikeAgent); // step 65
                     KickOrBashHit(st, now, in r, onHorse);
                     return;
                 }

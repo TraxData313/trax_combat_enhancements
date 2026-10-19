@@ -309,6 +309,23 @@ namespace TraxCombat.Missions
         /// <summary>Step 55: his cavalry flocking - kind, flock, eagerness, free / flocking / in a wave, his slot, the scripted point, his passes.</summary>
         public readonly RiderFlock Flock = new RiderFlock();
 
+        /// <summary>Step 65: his AI kick / bash attempt - the phase (None = none), the kind, when it began, the phase's end, the reason column
+        /// (turtle / fever), the action seen (played), landed (a hit counted), the target; the cooldown's end; his last look.</summary>
+        public AiKickPhase AiKickPhase;
+        public AiKickKind AiKickKind;
+        public double AiKickStart = double.NaN;
+        public double AiKickPhaseEnd = double.NaN;
+        public int AiKickReason;
+        public bool AiKickSeen;
+        public bool AiKickLanded;
+        public TrackedAgent? AiKickTarget;
+        public double AiKickNext = double.NegativeInfinity;
+        public double AiKickLastLook = double.NaN;
+
+        /// <summary>Step 65: his TURTLE memory - the blocks he made, faded over <c>AiKickTurtleSeconds</c> (Core AiKickMath.Faded), as of when.</summary>
+        public double TurtleBlocks;
+        public double TurtleBlocksAt = double.NaN;
+
         public void RememberMissile(int index)
         {
             switch (MissileNext)

@@ -58,8 +58,14 @@ namespace TraxCombat.Missions
         public float WallPullX, WallPullY = -1f;
         public long WallPullFrames;
 
+        /// <summary>Step 65: an AI kick / bash attempt's phase (Core <see cref="AiKickPhase"/> - None = none) and kind: the hook writes the kick
+        /// key / the guard / the commit (Core <see cref="AiKickMath.Frame"/>) - only with Athletics on (the logic ends attempts otherwise).</summary>
+        public AiKickPhase KickPhase;
+        public AiKickKind KickKind;
+        public long KickFrames, KickPresses, KickHeldNoSwing;
+
         /// <summary>Any wish at all - a man is held while ANY of them wants him held (one ending never lifts another).</summary>
-        public bool Active => HoldAttacks || StepHoldAttacks || Backpedal || BraceHoldAttacks || Regroup || WallPull;
+        public bool Active => HoldAttacks || StepHoldAttacks || Backpedal || BraceHoldAttacks || Regroup || WallPull || KickPhase != AiKickPhase.None;
 
         /// <summary>Since when the state has been active (mission time), for the calls-per-second figure.</summary>
         public double ActiveSince = -1;
@@ -163,8 +169,15 @@ namespace TraxCombat.Missions
                 }
                 float vx = inputVector.x, vy = inputVector.y;
                 AiInputHook.Apply(_st, s, settings.AiHoldRaiseGuard, ref flags, ref vx, ref vy, settings.BraceRaiseShield);
+                bool moved = s.Backpedal || (s.Regroup && settings.CourageEnabled) || (s.WallPull && settings.ShieldWallHoldsSlots);
+                if (s.KickPhase != AiKickPhase.None && settings.AiKicksEnabled) // step 65: the kick / bash written LAST (after a held man's kick-out)
+                {
+                    uint ev = (uint)eventFlag;
+                    if (AiInputHook.ApplyKick(s, ref ev, ref flags, ref vx, ref vy)) moved = true;
+                    eventFlag = (Agent.EventControlFlag)ev;
+                }
                 movementFlag = (Agent.MovementControlFlag)flags;
-                if (s.Backpedal || (s.Regroup && settings.CourageEnabled) || (s.WallPull && settings.ShieldWallHoldsSlots)) inputVector = new Vec2(vx, vy);
+                if (moved) inputVector = new Vec2(vx, vy);
             }
             catch (Exception e)
             {
@@ -360,6 +373,45 @@ namespace TraxCombat.Missions
             Account(s, was, now);
         }
 
+        /// <summary>Step 65: turns an AI kick attempt's wish to <paramref name="phase"/> (None = off; the other wishes are left as they are).</summary>
+        internal static void SetKick(TrackedAgent st, AiKickPhase phase, AiKickKind kind, double now)
+        {
+            var s = st.Input ??= new AiInputState();
+            bool was = s.Active;
+            s.KickPhase = phase;
+            s.KickKind = phase == AiKickPhase.None ? AiKickKind.None : kind;
+            Account(s, was, now);
+        }
+
+        /// <summary>
+        /// Step 65: one frame of a man's kick attempt (managed - the smoke drives it): <see cref="AiKickMath.Frame"/> - his own attack / guard
+        /// bits and event flags out, the guard up for a bash, the kick key in the Press phase (NOT while step 32 holds his kick - no stored
+        /// swing; counted), standing still in the Commit (his movement left alone while a backpedal / walk back moves him). True = the movement
+        /// vector was rewritten.
+        /// </summary>
+        internal static bool ApplyKick(AiInputState s, ref uint eventFlags, ref uint flags, ref float vx, ref float vy)
+        {
+            if (s.KickPhase == AiKickPhase.None) return false;
+            uint ev = eventFlags;
+            flags = AiKickMath.Frame(s.KickPhase, s.KickKind, flags, ref ev, out bool stop);
+            if ((ev & AiKickMath.KickEventBit) != 0)
+            {
+                if (s.HoldKicks && s.HoldAttacks)
+                {
+                    ev &= ~AiKickMath.KickEventBit;
+                    s.KickHeldNoSwing++;
+                }
+                else s.KickPresses++;
+            }
+            eventFlags = ev;
+            s.KickFrames++;
+            if (!stop || s.Backpedal || s.Regroup || s.WallPull) return false;
+            flags = AiInputMath.Backpedal(flags); // his own move bits out
+            vx = 0f;
+            vy = 0f;
+            return true;
+        }
+
         /// <summary>The engine's kick event bit (<c>Agent.EventControlFlag.Kick</c>; the smoke checks it).</summary>
         internal const uint KickEventBit = (uint)Agent.EventControlFlag.Kick;
 
@@ -380,6 +432,8 @@ namespace TraxCombat.Missions
             if (s == null) return;
             bool was = s.Active;
             s.HoldAttacks = s.StepHoldAttacks = s.Backpedal = s.BraceHoldAttacks = s.HoldKicks = s.Regroup = false;
+            s.KickPhase = AiKickPhase.None; // step 65
+            s.KickKind = AiKickKind.None;
             Account(s, was, now);
         }
 

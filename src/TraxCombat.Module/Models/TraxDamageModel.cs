@@ -135,8 +135,13 @@ namespace TraxCombat.Models
             return ImpactHooks.DismountOnBlow(attackerAgent, victimAgent, in collisionData, in blow, game);
         }
 
+        /// <summary>Step 65: vanilla's answer first; a YES asked again of the impact seam (<c>KickBraceRefusesKnockBack</c> - a man who BRACED
+        /// against a kick / bash is not knocked back) - main thread (Mission.CreateMeleeBlow); a throwing decider = vanilla's answer.</summary>
         public override bool DecideAgentKnockedBackByBlow(Agent attackerAgent, Agent victimAgent, in AttackCollisionData collisionData, WeaponComponentData attackerWeapon, in Blow blow)
-            => BaseModel.DecideAgentKnockedBackByBlow(attackerAgent, victimAgent, in collisionData, attackerWeapon, in blow);
+        {
+            bool game = BaseModel.DecideAgentKnockedBackByBlow(attackerAgent, victimAgent, in collisionData, attackerWeapon, in blow);
+            return ImpactHooks.KnockBackOnBlow(attackerAgent, victimAgent, in collisionData, in blow, game);
+        }
 
         /// <summary>Step 47: vanilla's answer first, then the impact seam OR-ed on top (the spike's KnockDown on a landed kick; I3 / I5's
         /// model) - main thread; a throwing decider = vanilla's answer.</summary>

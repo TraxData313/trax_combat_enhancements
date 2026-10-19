@@ -44,6 +44,11 @@ namespace TraxCombat.Missions
         private bool _pendingKnockDown;
         private bool _pendingStaggered;
 
+        // step 65: the pending kick's brace (the knock-back seam refuses the game's knock-back for it) and whether the knock-back seam decided it
+        private bool _pendingBraced;
+        private bool _pendingFromKnockBack;
+        private bool _inKnockBackSeam;
+
         // step 62: the clean hit just applied played a stagger (ApplyHit sets it - the shrug-off seam refuses the shrug-off for it)
         private bool _applyStaggered;
 
@@ -152,7 +157,7 @@ namespace TraxCombat.Missions
                 // (asked there and refused by a gate: not asked twice - one count per blow)
                 if (_impactPending && ReferenceEquals(_pendingAttacker, a) && ReferenceEquals(_pendingVictim, v) && _pendingEvent == ev && Math.Abs(_pendingAt - now) < 1e-6)
                 {
-                    if (_pendingDecided) _falls.TakenFromShrugSeam++;
+                    if (_pendingDecided && !_pendingFromKnockBack && !_inKnockBackSeam) _falls.TakenFromShrugSeam++;
                     return _pendingKnockDown;
                 }
                 // seen here: OnMeleeHit takes it as it is (decided, or counted as not decided) - never a second decision or count
@@ -164,12 +169,15 @@ namespace TraxCombat.Missions
                 _pendingDecided = false;
                 _pendingKnockDown = false;
                 _pendingStaggered = false;
+                _pendingBraced = false;
+                _pendingFromKnockBack = _inKnockBackSeam;
                 _applyStaggered = false;
-                if (!ImpactDecideEvent(a, v, ev, attacker, victim, in cd, now, true, out _, out bool knockDown)) return false;
+                if (!ImpactDecideEvent(a, v, ev, attacker, victim, in cd, now, true, out var dd, out bool knockDown)) return false;
                 _impact.FromDecorator++;
                 _pendingDecided = true;
                 _pendingKnockDown = knockDown;
                 _pendingStaggered = _applyStaggered;
+                _pendingBraced = dd.Braced && ImpactRules.From(TraxSettings.Shared).Applies(ImpactFamily.Kicks); // step 65: only a LIVE brace refuses the knock-back
                 return knockDown;
             }
             catch (Exception e)

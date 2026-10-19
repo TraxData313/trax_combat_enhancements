@@ -27,6 +27,9 @@ namespace TraxCombat.Missions
         public double At;
         public bool Backup;
         public bool BackupTried;
+
+        /// <summary>Step 65: a cut reaction's watch (<see cref="ImpactWatchPurpose.Brace"/>) - he BRACED (else a lucky kick's short reel).</summary>
+        public bool Braced;
     }
 
     /// <summary>Step 50: a shield drop decided in a hit callback, made from the tick (step 51: a wrong-side block's too - <see cref="Block"/>).</summary>
@@ -115,8 +118,23 @@ namespace TraxCombat.Missions
             }
             else if (!double.IsNaN(d.ReelFactor))
             {
-                AddLiveWatch(v, ImpactWatchPurpose.Reel, WatchKind.Reaction, now, ImpactLiveMath.ReelAppearSeconds, d.ReelFactor);
+                // step 65: a braced man's leftover reaction / a lucky kick's short reel is played FASTER (its own purpose and stats)
+                if (ImpactLiveMath.NeedsFast(d.ReelFactor))
+                {
+                    if (!AddLiveWatch(v, ImpactWatchPurpose.Brace, WatchKind.Reaction, now, ImpactLiveMath.ReelAppearSeconds, d.ReelFactor)) _kickBraceStats.NotWatched++;
+                    else if (d.Braced)
+                    {
+                        for (int i = 0; i < _liveWatchCount; i++)
+                            if (ReferenceEquals(_liveWatches[i].St, v))
+                            {
+                                _liveWatches[i].Braced = true;
+                                break;
+                            }
+                    }
+                }
+                else AddLiveWatch(v, ImpactWatchPurpose.Reel, WatchKind.Reaction, now, ImpactLiveMath.ReelAppearSeconds, d.ReelFactor);
             }
+            NoteBrace(a, v, in d); // step 65: counted, the first lines, the on-screen line
             if (d.ShieldDrop.Happens)
             {
                 if (_live.Disabled(ImpactLever.ShieldDrop)) _live.NoteNotApplied(ImpactOutcome.ShieldDrop, ImpactNotApplied.LeverOff);
@@ -147,6 +165,9 @@ namespace TraxCombat.Missions
                        + "), shield kept (" + (d.ShieldDrop.Refusal == ImpactRefusal.NoShield ? "no shield in hand" : Pct0(d.ShieldDrop.Chance)) + ")";
             if (!double.IsNaN(d.GetUpFactor) && knockDown) outc += " - gets up x" + d.GetUpFactor.ToString("0.00", c) + " slower";
             else if (!double.IsNaN(d.ReelFactor)) outc += " - reels x" + d.ReelFactor.ToString("0.00", c);
+            if (d.Brace != KickBraceOutcome.NotAsked) // step 65
+                outc += d.BraceSpent ? " - no brace (" + (d.DefenderIsPlayer ? "your" : "his") + " bar below the brace's)"
+                    : " - " + (d.Braced ? "BRACED" : "the brace failed") + " (failure " + Pct0(d.BraceFail) + ")";
             TraxLog.Info("impact", s + outc);
         }
 
@@ -177,6 +198,7 @@ namespace TraxCombat.Missions
                 if (_liveWatches[i].Fall && !_liveWatches[i].W.Appeared) _falls.Replaced++; // step 62: a decided fall not seen yet, its watch taken by a newer reaction
             }
             ref var w = ref _liveWatches[i];
+            w.Braced = false;
             w.Fall = false;
             w.By = null;
             w.At = now;
@@ -187,7 +209,8 @@ namespace TraxCombat.Missions
             w.Slow = (purpose == ImpactWatchPurpose.Reel || purpose == ImpactWatchPurpose.GetUp || purpose == ImpactWatchPurpose.BlockGetUp
                       || purpose == ImpactWatchPurpose.HitFlinch || purpose == ImpactWatchPurpose.HitGetUp // step 52: a clean hit's flinch / fall
                       || purpose == ImpactWatchPurpose.ThrownBack) // step 62: a charger thrown back - his get-up
-                     && ImpactLiveMath.NeedsSlow(factor) && !_live.Disabled(ImpactLever.SlowReaction);
+                     && ImpactLiveMath.NeedsSlow(factor) && !_live.Disabled(ImpactLever.SlowReaction)
+                     || purpose == ImpactWatchPurpose.Brace && ImpactLiveMath.NeedsFast(factor) && !_live.Disabled(ImpactLever.SlowReaction); // step 65: FASTER
             w.Asked = asked;
             w.Speed = speed;
             w.Event = ev;
@@ -346,7 +369,7 @@ namespace TraxCombat.Missions
             for (int i = 0; i < _liveWatchCount; i++)
             {
                 var p = _liveWatches[i].Purpose;
-                bool kick = p == ImpactWatchPurpose.Reel || p == ImpactWatchPurpose.GetUp;
+                bool kick = p == ImpactWatchPurpose.Reel || p == ImpactWatchPurpose.GetUp || p == ImpactWatchPurpose.Brace; // step 65
                 if (kick != kicks) continue;
                 RemoveLiveWatch(i--);
                 n++;
@@ -495,6 +518,7 @@ namespace TraxCombat.Missions
                         {
                             if (ImpactActions.IsFall(w.W.FirstType)) _live.FellInstead++;
                         }
+                        else if (w.Purpose == ImpactWatchPurpose.Brace) BraceWatchAppeared(ref w, now); // step 65
                         else if (IsHitPurpose(w.Purpose)) HitWatchAppeared(ref w, now); // step 52
                         else BlockWatchAppeared(ref w, now); // step 51
                         if (w.Slow) LiveSlow(ref w, now);
@@ -527,8 +551,14 @@ namespace TraxCombat.Missions
             }
             try
             {
-                float speed = ImpactLiveMath.SpeedFor(w.Factor);
+                bool fast = w.Purpose == ImpactWatchPurpose.Brace; // step 65: a cut reaction played FASTER
+                float speed = fast ? ImpactLiveMath.FastSpeedFor(w.Factor) : ImpactLiveMath.SpeedFor(w.Factor);
                 ImpactBody.SlowReaction(w.St, w.W.Channel, speed);
+                if (fast)
+                {
+                    _kickBraceStats.SpeedCalls++;
+                    return true;
+                }
                 _live.SlowCalls++;
                 if (LiveFirst(2))
                     TraxLog.Info("impact", "live: first " + (w.Purpose == ImpactWatchPurpose.Reel ? "reel" : w.Purpose == ImpactWatchPurpose.HitFlinch ? "clean-hit flinch" : "fall-and-rise") + " slowed at " + Sec(now) + " s - " + Name(w.St) + "'s "
@@ -549,6 +579,11 @@ namespace TraxCombat.Missions
         {
             var r = ImpactRules.From(TraxSettings.Shared);
             bool slowed = w.Slow && ImpactLiveMath.NeedsSlow(w.Factor);
+            if (w.Purpose == ImpactWatchPurpose.Brace)
+            {
+                BraceWatchMeasured(ref w, length, now); // step 65
+                return;
+            }
             if (IsHitPurpose(w.Purpose))
             {
                 HitWatchMeasured(ref w, length, now, in r, slowed); // step 52
@@ -578,6 +613,11 @@ namespace TraxCombat.Missions
 
         private void LiveNeverAppeared(ref ImpactLiveWatch w, double now)
         {
+            if (w.Purpose == ImpactWatchPurpose.Brace)
+            {
+                BraceWatchNeverAppeared(ref w, now); // step 65
+                return;
+            }
             if (IsHitPurpose(w.Purpose))
             {
                 HitWatchNeverAppeared(ref w, now); // step 52
@@ -744,6 +784,8 @@ namespace TraxCombat.Missions
             foreach (var line in _charge.SummaryLines()) TraxLog.Info("summary", line); // step 62: direction, toughness
             WriteRidersSummary(in r); // step 53: the riders, the on-screen lines
             WritePunishSummary(); // step 54: the AI punishing a window
+            WriteKickBraceSummary(); // step 65: the kicked man braces
+            WriteAiKickSummary(); // step 65: the AI kicks and bashes
         }
 
         /// <summary>The first of each of the live part's first-time lines (true once).</summary>

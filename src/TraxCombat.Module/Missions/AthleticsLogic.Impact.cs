@@ -129,6 +129,7 @@ namespace TraxCombat.Missions
             ImpactHooks.PickupLock = this; // step 50: the AI's shield pickup lock
             ImpactHooks.ShrugOff = this; // step 52: tired men always flinch
             ImpactHooks.Dismount = this; // step 53: a rider knocked off his horse
+            ImpactHooks.KnockBack = this; // step 65: the kicked man braces
             if (_seenSpike.Enabled) SpikeSwitchedOn(Mission != null ? Mission.CurrentTime : 0, atStart: true);
             else TraxLog.Info("impact", "mission start: spike " + _seenSpike.Describe() + " - read live");
             StartImpactModel(); // step 48: the model (its own line)
@@ -142,6 +143,7 @@ namespace TraxCombat.Missions
             if (ReferenceEquals(ImpactHooks.PickupLock, this)) ImpactHooks.PickupLock = null;
             if (ReferenceEquals(ImpactHooks.ShrugOff, this)) ImpactHooks.ShrugOff = null;
             if (ReferenceEquals(ImpactHooks.Dismount, this)) ImpactHooks.Dismount = null;
+            if (ReferenceEquals(ImpactHooks.KnockBack, this)) ImpactHooks.KnockBack = null;
             if (_spikeStarted && ImpactHooks.RestoreStunCap()) _spike.CapRestores++;
         }
 
