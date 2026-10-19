@@ -187,8 +187,9 @@ namespace TraxCombat.Missions
 
             // ---- the circle: his side's toughness vs the enemy's, weighted by distance
             double self = CourageToughness(st, in cr);
-            double allies = self, enemies = 0, ex = 0, ey = 0, ew = 0;
+            double allies = self, enemies = 0, ex = 0, ey = 0, ew = 0, shaken = 0;
             int mates = 0, foes = 0;
+            var fearRules = _fearRules; // step 69: the enemy's morale on the fear's lines (this tick's rules)
             // step 49b: the scan reaches 8 m at least (the surge's and the standoff's nearest enemy); the odds still count within the radius
             float radius = (float)Math.Max(cr.RadiusMetres, CourageMath.SurgeEnemyMetres);
             double nearest = double.NaN;
@@ -216,6 +217,7 @@ namespace TraxCombat.Missions
                     ex += te * _courageScan.X[i];
                     ey += te * _courageScan.Y[i];
                     ew += te;
+                    shaken += te * FearMath.ShakenShare(in fearRules, o.Morale); // step 69: a routing man's morale is spent
                     foes++;
                 }
                 else
@@ -226,10 +228,11 @@ namespace TraxCombat.Missions
             }
             body.Position(st, out double px, out double py);
             // step 67: the fear flock reads the same scan (the nearest enemy, a comrade covering him, somebody behind, the spot behind a comrade)
-            var near = new FearNear { Px = px, Py = py, Mates = mates, Foes = foes };
+            double odds = CourageMath.Odds(allies, enemies);
+            // step 69: his side's local odds (no enemy within the radius = no picture of his own) and the enemy near him shaken
+            var near = new FearNear { Px = px, Py = py, Mates = mates, Foes = foes, Odds = enemies > 0 ? odds : double.NaN, Shaken = ew > 0 ? shaken / ew : 0, ScanMetres = radius };
             FearScan(ref near, nearestIndex, ex, ey, ew);
             _courageScan.Clear();
-            double odds = CourageMath.Odds(allies, enemies);
             bool hasCentre = body.FormationCentre(st, out double cx, out double cy);
             double dist = hasCentre ? Math.Sqrt((cx - px) * (cx - px) + (cy - py) * (cy - py)) : double.NaN;
 

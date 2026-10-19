@@ -90,6 +90,12 @@ namespace TraxCombat.Core
             return gap;
         }
 
+        /// <summary>His unit's order is a CHARGE (charge, charge a target, attack an object, the AI's charge) or an ADVANCE (the player's, the AI's) -
+        /// a shield wall's advance too.</summary>
+        public static bool MovingOrder(BraceOrderKind order) =>
+            order == BraceOrderKind.Charge || order == BraceOrderKind.ChargeToTarget || order == BraceOrderKind.AttackEntity || order == BraceOrderKind.AiCharge
+            || order == BraceOrderKind.Advance || order == BraceOrderKind.AiAdvance;
+
         /// <summary>The idle test: on a charge / advance, standing, an enemy within <see cref="EnemyMetres"/> but not within <see cref="ContactMetres"/>.</summary>
         public static bool Idle(bool chargeOrAdvance, double speed, double nearestEnemy) =>
             chargeOrAdvance && !double.IsNaN(speed) && speed < StandMetresPerSecond && !double.IsNaN(nearestEnemy)

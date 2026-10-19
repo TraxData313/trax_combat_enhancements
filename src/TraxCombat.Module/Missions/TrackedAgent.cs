@@ -289,6 +289,9 @@ namespace TraxCombat.Missions
         /// <summary>Step 67: his fear-flock state - calm / flocking / anchored, his place, the steering.</summary>
         public readonly FearMind Fear = new FearMind();
 
+        /// <summary>Step 69: his idle watch (the idle-men diagnostic - standing off while his unit charges; measurement only).</summary>
+        public readonly IdleMind Idle = new IdleMind();
+
         /// <summary>Step 67: his morale as the game keeps it (0-100; −1 none; NaN = not read yet) - read at every formation-stats refresh
         /// (the ALT morale bar and the labels' mean) and at courage's looks.</summary>
         public double Morale = double.NaN;

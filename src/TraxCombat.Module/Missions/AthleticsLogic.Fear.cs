@@ -60,6 +60,10 @@ namespace TraxCombat.Missions
             public int Mates, Foes;
             public bool HasMass;
             public double MassX, MassY;
+
+            /// <summary>Step 69: courage's local odds (NaN = no enemy within its radius), the enemy near him shaken (0..1), the scan's reach (m).</summary>
+            public double Odds, Shaken;
+            public float ScanMetres;
         }
 
         /// <summary>What courage decided at this look (who steers).</summary>
@@ -226,6 +230,7 @@ namespace TraxCombat.Missions
             double d = FearMath.Discipline(in r, st.CourageLevel < 0 ? 0 : st.CourageLevel, st.IsHero);
             double fear = FearMath.Mixed(in r, FearMath.Own(in r, morale, fraction, d), _fearUnits.FearOf(key, now));
             _fearUnits.Note(key, fear, 0, morale, fraction, false, double.NaN, double.NaN, cx, cy, fx, fy, px, py, order);
+            IdleLook(st, now, px, py, order, double.NaN); // step 69: a held wall man standing off counts too (no scan: one enemy read)
         }
 
         /// <summary>
@@ -270,20 +275,47 @@ namespace TraxCombat.Missions
             double discipline = fm.Discipline = FearMath.Discipline(in r, st.CourageLevel < 0 ? 0 : st.CourageLevel, st.IsHero);
             double own = FearMath.Own(in r, morale, fraction, discipline, near.InContact, near.Behind);
             double unitFear = _fearUnits.FearOf(key, now);
-            double fear = FearMath.Mixed(in r, own, unitFear);
+            double baseFear = FearMath.Mixed(in r, own, unitFear); // step 67's fear (the unit's table feeds on it)
+            // ---- step 69: WINNING CALMS - his side's local odds and the enemy near him shaken, the unit's win when better; losing = unchanged
+            double win = FearMath.Win(in r, near.Odds, near.Shaken);
+            double unitWin = _fearUnits.WinOf(key, now);
+            double winMix = FearMath.WinMixed(in r, win, unitWin);
+            double fear = FearMath.Calmed(baseFear, winMix);
             double pull = FearMath.Pull(in r, fear);
+            bool afraidBefore = FearMath.Afraid(in r, baseFear, fm.Flocking);
             bool afraid = FearMath.Afraid(in r, fear, fm.Flocking);
+            bool on = r.Enabled;
+            // ---- step 69: NO PULL WITHOUT A THREAT - an enemy within FearThreatMetres (courage's scan; beyond its reach one more read, only
+            // for an afraid man while the flock is on)
+            bool threat = true;
+            if (afraid && r.ThreatMetres > 0)
+            {
+                double nearest = near.InContact ? near.EnemyDist : double.NaN;
+                if (double.IsNaN(nearest) && on && r.ThreatMetres > near.ScanMetres)
+                {
+                    nearest = FearBody.NearestEnemy(st, (float)r.ThreatMetres);
+                    _fearStats.ThreatReads++;
+                }
+                threat = FearMath.Threatened(in r, nearest);
+            }
+            bool afraidNow = afraid && threat;
             fm.Own = own;
+            fm.BaseFear = baseFear;
+            fm.Win = winMix;
+            fm.Threat = threat;
             fm.Fear = fear;
-            fm.Pull = afraid ? pull : 0;
+            fm.Pull = afraidNow ? pull : 0;
             fm.Covered = near.Covered;
             fm.SomebodyBehind = near.Behind;
             fm.InContact = near.InContact;
             bool alone = near.Foes > 0 && near.Mates < FearMath.AloneMates;
-            _fearUnits.Note(key, fear, fm.Pull, morale, fraction, near.HasMass, near.MassX, near.MassY, cx, cy, fx, fy, near.Px, near.Py, order);
-            bool on = r.Enabled;
+            _fearUnits.Note(key, baseFear, fm.Pull, morale, fraction, near.HasMass, near.MassX, near.MassY, cx, cy, fx, fy, near.Px, near.Py, order, win);
             _fearStats.AddLook(on, near.InContact, near.Covered, near.Behind, alone);
-            _fearStats.AddFear(discipline, fear, fm.Pull, afraid);
+            _fearStats.AddFear(discipline, fear, fm.Pull, afraidNow);
+            _fearStats.AddWin(in r, near.Odds, winMix, baseFear, fear, afraidBefore, afraidNow);
+            if (afraidBefore && !afraid) _fearStats.CalmedByWinLooks++;
+            if (afraid && !threat) _fearStats.NoThreatLooks++;
+            IdleLook(st, now, near.Px, near.Py, order, near.InContact ? near.EnemyDist : double.NaN); // step 69: the idle-men diagnostic (ON and OFF)
             if (!on)
             {
                 if (fm.Flocking) EndFear(st, FearEnd.SwitchedOff, now, native: true);
@@ -306,9 +338,9 @@ namespace TraxCombat.Missions
                 if (fm.Flocking) EndFear(st, FearEnd.WallHolds, now, native: true);
                 return;
             }
-            if (!afraid)
+            if (!afraidNow)
             {
-                if (fm.Flocking) EndFear(st, FearEnd.Calm, now, native: true);
+                if (fm.Flocking) EndFear(st, !threat ? FearEnd.NoThreat : afraidBefore ? FearEnd.Winning : FearEnd.Calm, now, native: true);
                 return;
             }
             if (!fm.Flocking)
@@ -342,12 +374,15 @@ namespace TraxCombat.Missions
             double tx, ty;
             bool loose = false;
             double slotX = double.NaN, slotY = double.NaN;
+            // step 69: a charging unit whose men win (the enemy near it few or broken) is MOPPING UP - no leash, they go for the kill
+            bool mopUp = order == FearOrder.Charge && FearMath.MopUp(in r, unitWin);
+            fm.MopUp = mopUp;
             if (order == FearOrder.Charge)
             {
                 double radius = FearMath.LooseRadius(in r, pull);
                 double ds = Math.Sqrt((sx - px) * (sx - px) + (sy - py) * (sy - py));
                 bool pulled = fm.Wish && !fm.Loose;
-                loose = pulled ? ds <= radius : ds <= radius + FearMath.ChargeAgainMetres;
+                loose = mopUp || (pulled ? ds <= radius : ds <= radius + FearMath.ChargeAgainMetres);
                 tx = sx;
                 ty = sy;
             }
@@ -363,7 +398,17 @@ namespace TraxCombat.Missions
 
             // ---- the cover: a FRESH comrade in front anchors him a while; uncovered, he steps in behind the nearest comrade
             var phase = FearPhase.Flocking;
-            if (near.InContact)
+            if (mopUp)
+            {
+                // the mop-up: no anchor, no stepping in behind a comrade - his AI's charge drives him
+                if (!double.IsNaN(fm.AnchorSince))
+                {
+                    _fearStats.AddAnchorEnd(now - fm.AnchorSince, broken: false);
+                    fm.AnchorSince = double.NaN;
+                }
+                fm.AnchorSpent = false;
+            }
+            else if (near.InContact)
             {
                 if (near.Covered)
                 {
@@ -439,8 +484,9 @@ namespace TraxCombat.Missions
             }
             if (loose)
             {
-                // a charging man inside the loose mass: his AI's charge drives him
-                _fearStats.LooseLooks++;
+                // a charging man inside the loose mass (or the unit mopping up - step 69): his AI's charge drives him
+                if (mopUp) _fearStats.MopUpLooks++;
+                else _fearStats.LooseLooks++;
                 if (fm.Wish) StopFlockInput(st, now, native: true);
                 return;
             }
@@ -461,7 +507,8 @@ namespace TraxCombat.Missions
                 TraxLog.Info("fear", "first fear-flock spell this battle: " + Name(st) + " at " + Sec(now) + " s - morale " + F0(morale) + ", bar " + F0(100 * fraction)
                     + "%, level " + st.CourageLevel + " (discipline " + F2(discipline) + ")" + (near.InContact ? ", an enemy " + F1(near.EnemyDist) + " m off" : ", no enemy near")
                     + (near.InContact && !near.Behind ? ", NOBODY behind him" : string.Empty) + " → his own fear " + F2(own) + ", the unit's "
-                    + (double.IsNaN(unitFear) ? "- (first look)" : F2(unitFear)) + " → fear " + F2(fear) + ", pull " + F2(pull) + " (" + r.StartPercent + "-" + r.FullPercent
+                    + (double.IsNaN(unitFear) ? "- (first look)" : F2(unitFear)) + " → fear " + F2(baseFear)
+                    + (winMix > 0 ? ", calmed by winning " + F2(winMix) + " (his odds " + (double.IsNaN(near.Odds) ? "-" : F2(near.Odds)) + ") to " + F2(fear) : string.Empty) + ", pull " + F2(pull) + " (" + r.StartPercent + "-" + r.FullPercent
                     + "%); order " + FearMath.OrderName(order) + "; his place " + F1(dist) + " m from him, the shelter "
                     + F1(Math.Sqrt((sx - cx) * (sx - cx) + (sy - cy) * (sy - cy))) + " m behind the unit's centre"
                     + (phase == FearPhase.Anchored ? " - ANCHORED behind a fresh comrade" : near.Covered ? " - covered" : near.HasSpot ? " - stepping in behind a comrade" : string.Empty)
@@ -732,9 +779,80 @@ namespace TraxCombat.Missions
 
         internal void WriteFearSummary()
         {
-            var lines = new List<string>(8);
-            _fearStats.AddSummaryLines(lines, FearRules.From(TraxSettings.Shared));
+            var lines = new List<string>(10);
+            var r = FearRules.From(TraxSettings.Shared);
+            _fearStats.AddSummaryLines(lines, in r);
+            _fearStats.AddWinLines(lines, in r); // step 69
+            if (_fearStats.MenLooked > 0) _idleStats.AddSummaryLines(lines); // step 69
             foreach (var line in lines) TraxLog.Info("summary", line);
+        }
+
+        // ------------------------------------------------------------------ step 69: the idle-men diagnostic
+
+        private readonly IdleStats _idleStats = new IdleStats();
+        private readonly bool[] _firstIdleLogged = new bool[(int)IdleHolder.Count];
+
+        /// <summary>This mission's idle-men numbers (the offline smoke reads them).</summary>
+        internal IdleStats IdleStats => _idleStats;
+
+        /// <summary>
+        /// Step 69 (measurement only - it changes nothing): at his look, an AI man on foot whose unit charges / advances, standing (his
+        /// displacement since the last look below 0.5 m/s), an enemy within 25 m and none within 3 m (courage's scan within its reach; beyond
+        /// it one enemy read, only for a standing man of a moving order), for more than 5 s - counted by who held him: a ranged weapon / formation
+        /// (normal), the wall's hold, the fear flock's steering, courage's timidity, the brace, else the game. The first of each in full.
+        /// </summary>
+        private void IdleLook(TrackedAgent st, double now, double px, double py, FearOrder order, double nearestInScan)
+        {
+            try
+            {
+                var m = st.Idle;
+                var stats = _idleStats;
+                stats.Looks++;
+                double gap = IdleMath.Gap(m, now, px, py, out double speed);
+                bool moving = order == FearOrder.Charge || order == FearOrder.Advance || (order == FearOrder.Wall && IdleMath.MovingOrder(FearBody.OrderKind(st)));
+                if (!moving)
+                {
+                    m.Reset();
+                    return;
+                }
+                stats.MovingOrderLooks++;
+                if (double.IsNaN(gap) || !(speed < IdleMath.StandMetresPerSecond))
+                {
+                    m.Reset();
+                    return;
+                }
+                double nearest = nearestInScan;
+                if (double.IsNaN(nearest))
+                {
+                    nearest = FearBody.NearestEnemy(st, (float)IdleMath.EnemyMetres);
+                    stats.EnemyReads++;
+                }
+                double add = IdleMath.Advance(m, now, gap, IdleMath.Idle(true, speed, nearest));
+                if (!(add > 0)) return;
+                bool wall = st.Wall != null && st.Wall.Held;
+                var fm = st.Fear;
+                bool fear = fm.Wish;
+                bool timid = st.Courage.Timid;
+                bool brace = st.Brace != null && st.Brace.Active;
+                var h = IdleMath.Holder(FearBody.Ranged(st), wall, fear, timid, brace);
+                stats.Add(m, h, add, nearest);
+                if (h == IdleHolder.Ranged && (wall || fear || timid || brace)) stats.RangedOursSeconds += add;
+                int i = (int)h;
+                if (_firstIdleLogged[i]) return;
+                _firstIdleLogged[i] = true;
+                TraxLog.Info("fear", "first IDLE man held by " + IdleMath.HolderName(h) + " (step 69): " + Name(st) + " at " + Sec(now) + " s - his unit on "
+                    + FearMath.OrderName(order) + (order == FearOrder.Wall ? " (" + FearBody.OrderKind(st) + ")" : string.Empty) + ", the nearest enemy " + F1(nearest)
+                    + " m (none within " + F0(IdleMath.ContactMetres) + " m), standing (" + F2(speed) + " m/s) for " + F1(now - m.Since) + " s; fear " + F2(fm.BaseFear)
+                    + " → " + F2(fm.Fear) + " (win " + F2(fm.Win) + (fm.Threat ? string.Empty : ", no threat") + "), pull " + F2(fm.Pull) + ", flock "
+                    + (fm.Flocking ? fm.Phase + (fm.Wish ? " steering" : fm.Loose ? " loose" : " near his slot") : "calm") + (fm.MopUp ? ", MOP-UP" : string.Empty)
+                    + "; courage " + (timid ? "TIMID (" + st.Courage.Phase + ")" : "brave") + "; brace " + (brace ? "ON" : "off") + "; wall " + (wall ? "HELD" : "no")
+                    + "; his bar " + F0(100 * st.Fraction) + "%");
+            }
+            catch (Exception e)
+            {
+                _idleStats.Errors++;
+                Failed("fear.idle", e);
+            }
         }
     }
 }

@@ -241,6 +241,15 @@ public class Step69Tests
     }
 
     [Fact]
+    public void A_charge_or_an_advance_is_a_moving_order()
+    {
+        foreach (var k in new[] { BraceOrderKind.Charge, BraceOrderKind.ChargeToTarget, BraceOrderKind.AttackEntity, BraceOrderKind.AiCharge, BraceOrderKind.Advance, BraceOrderKind.AiAdvance })
+            Assert.True(IdleMath.MovingOrder(k), k.ToString());
+        foreach (var k in new[] { BraceOrderKind.Stop, BraceOrderKind.Move, BraceOrderKind.Retreat, BraceOrderKind.FallBack, BraceOrderKind.Follow, BraceOrderKind.NoOrder, BraceOrderKind.NoFormation })
+            Assert.False(IdleMath.MovingOrder(k), k.ToString());
+    }
+
+    [Fact]
     public void The_holder_is_named_in_priority_and_counted_by_men()
     {
         Assert.Equal(IdleHolder.Ranged, IdleMath.Holder(true, true, true, true, true));

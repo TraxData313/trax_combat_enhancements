@@ -26,6 +26,7 @@ namespace TraxCombat.Tools
             public double Morale = 50;
             public CourageSkip Gate = CourageSkip.Count;
             public double SlotX = double.NaN, SlotY = double.NaN; // step 67: his formation slot (NaN = none - a charge)
+            public bool Ranged; // step 69: a bow / javelin in his hand (the idle diagnostic's NORMAL column)
         }
 
         /// <summary>Step 67: the stand-in plays the fear flock's reads too (<see cref="IFearBody"/>) - a unit = team x formation, its order and facing
@@ -59,6 +60,37 @@ namespace TraxCombat.Tools
                 y = me.SlotY;
                 return true;
             }
+
+            /// <summary>Step 69: the raw order per formation (a wall's advance); else from the flock's order.</summary>
+            public readonly Dictionary<int, BraceOrderKind> Kinds = new Dictionary<int, BraceOrderKind>();
+            public int EnemyReads;
+
+            public BraceOrderKind OrderKind(TrackedAgent st)
+            {
+                if (!ByIndex.TryGetValue(st.AgentIndex, out var me)) return BraceOrderKind.NoFormation;
+                if (Kinds.TryGetValue(me.Formation, out var k)) return k;
+                if (!Orders.TryGetValue(me.Formation, out var o)) return BraceOrderKind.Stop;
+                return o == FearOrder.Charge ? BraceOrderKind.Charge : o == FearOrder.Advance ? BraceOrderKind.Advance : o == FearOrder.Retreat ? BraceOrderKind.Retreat
+                    : BraceOrderKind.Stop;
+            }
+
+            public double NearestEnemy(TrackedAgent st, float radius)
+            {
+                EnemyReads++;
+                var me = ByIndex[st.AgentIndex];
+                double best = double.NaN;
+                for (int i = 0; i < Men.Count; i++)
+                {
+                    var m = Men[i];
+                    if (m.Team == me.Team) continue;
+                    double d = Math.Sqrt((m.X - me.X) * (m.X - me.X) + (m.Y - me.Y) * (m.Y - me.Y));
+                    if (d <= radius && (double.IsNaN(best) || d < best)) best = d;
+                }
+                return best;
+            }
+
+            public bool Ranged(TrackedAgent st) => ByIndex.TryGetValue(st.AgentIndex, out var m) && m.Ranged;
+
             public bool Allows = true;
             public bool Edge;
             public int Tightened, Restored, Hooks, Releases, KitReads, Scans;
