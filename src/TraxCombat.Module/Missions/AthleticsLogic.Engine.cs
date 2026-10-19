@@ -773,8 +773,7 @@ namespace TraxCombat.Missions
         private void BlockHitTaken(Agent? attacker, Agent? victim, in AttackCollisionData cd)
         {
             if (victim == null) return;
-            var kind = BlockMath.KindOf(cd.IsMissile, cd.IsAlternativeAttack, cd.IsHorseCharge, cd.CollidedWithShieldOnBack,
-                cd.AttackBlockedWithShield, cd.CorrectSideShieldBlock, (int)cd.CollisionResult);
+            var kind = BlockKindOf(attacker, victim, in cd); // step 64: our verdict (a shield block from the front counts right)
             if (kind == BlockKind.None) return;
             var st = Get(victim);
             if (st == null) return; // a horse, an agent we do not track
@@ -1393,6 +1392,14 @@ namespace TraxCombat.Missions
         {
             try
             {
+                ShieldArcHitTaken(attacker, victim, in collisionData); // step 64: the game's block verdict against ours, counted once
+            }
+            catch (Exception e)
+            {
+                Failed("shieldarc.hit", e);
+            }
+            try
+            {
                 ImpactHitTaken(attacker, victim, in collisionData); // step 47: the impact spike's kicks and blocks (nothing while it is off)
             }
             catch (Exception e)
@@ -1441,7 +1448,7 @@ namespace TraxCombat.Missions
             }
             try
             {
-                TiredGuardHit(victim, in collisionData); // step 30: the AI's guard by f band (before the block's charge moves f)
+                TiredGuardHit(attacker, victim, in collisionData); // step 30: the AI's guard by f band (before the block's charge moves f)
             }
             catch (Exception e)
             {

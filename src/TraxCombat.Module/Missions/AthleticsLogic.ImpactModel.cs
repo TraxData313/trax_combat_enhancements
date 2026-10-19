@@ -117,7 +117,12 @@ namespace TraxCombat.Missions
         // ------------------------------------------------------------------ the events
 
         /// <summary>Which of the six events one melee collision is (none: a missile, a horse charge, a kick into a shield, a blow into nothing).</summary>
-        private static bool ImpactEventOf(in AttackCollisionData cd, out ImpactEvent e)
+        private static bool ImpactEventOf(in AttackCollisionData cd, out ImpactEvent e) =>
+            ImpactEventOf(in cd, BlockMath.KindOf(cd.IsMissile, cd.IsAlternativeAttack, cd.IsHorseCharge, cd.CollidedWithShieldOnBack, cd.AttackBlockedWithShield,
+                cd.CorrectSideShieldBlock, (int)cd.CollisionResult), out e);
+
+        /// <summary>Step 64: the event with OUR block kind (<see cref="BlockKindOf"/> - a shield block from the front is a right-side block).</summary>
+        private static bool ImpactEventOf(in AttackCollisionData cd, BlockKind block, out ImpactEvent e)
         {
             e = ImpactEvent.CleanHit;
             if (cd.IsMissile || cd.IsHorseCharge) return false;
@@ -125,7 +130,6 @@ namespace TraxCombat.Missions
             bool landed = alt
                 ? SpikeMath.KickLanded(true, cd.AttackBlockedWithShield, (int)cd.CollisionResult)
                 : !cd.AttackBlockedWithShield && (int)cd.CollisionResult == ImpactActions.ResultStrikeAgent;
-            var block = BlockMath.KindOf(cd.IsMissile, alt, cd.IsHorseCharge, cd.CollidedWithShieldOnBack, cd.AttackBlockedWithShield, cd.CorrectSideShieldBlock, (int)cd.CollisionResult);
             return ImpactMath.EventOf(alt, alt && cd.AffectorWeaponSlotOrMissileIndex >= 0, landed, block, out e);
         }
 
@@ -180,7 +184,7 @@ namespace TraxCombat.Missions
         internal void ImpactModelHitTaken(Agent attacker, Agent victim, in AttackCollisionData cd)
         {
             if (!_spikeStarted || _spikeClosed || attacker == null || victim == null) return;
-            if (!ImpactEventOf(in cd, out var ev)) return;
+            if (!ImpactEventOf(in cd, BlockKindOf(attacker, victim, in cd), out var ev)) return; // step 64: our block verdict
             var a = Get(attacker);
             var v = Get(victim);
             double now = SpikeNow;

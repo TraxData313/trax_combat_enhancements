@@ -26,6 +26,10 @@ namespace TraxCombat.Missions
 
         /// <summary>Step 62: his health ÷ its limit now (the toughness's health term).</summary>
         double HealthShare(Agent a);
+
+        /// <summary>Step 64: the angle (degrees, 0-180) between <paramref name="victim"/>'s facing and the line to <paramref name="attacker"/>
+        /// (step 62's <see cref="GameImpactInputs.AngleFrom"/>) - asked for a wrong-side shield block, the front arc's verdict.</summary>
+        double FacingAngle(Agent victim, Agent attacker);
     }
 
     /// <summary>
@@ -148,6 +152,8 @@ namespace TraxCombat.Missions
         /// body turns to, from the native <c>MovementDirectionAsAngle</c>) and the line from him to the attacker: 0 = struck from the front,
         /// 180 = from straight behind. Engine reads, main thread; 0 when either line is degenerate.
         /// </summary>
+        public double FacingAngle(Agent victim, Agent attacker) => AngleFrom(victim, attacker);
+
         internal static double AngleFrom(Agent victim, Agent attacker)
         {
             Vec2 facing = victim.GetMovementDirection();

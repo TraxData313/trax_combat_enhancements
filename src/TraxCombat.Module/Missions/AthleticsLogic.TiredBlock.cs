@@ -28,12 +28,14 @@ namespace TraxCombat.Missions
             _seenTiredBlock = TiredBlockRules.From(TraxSettings.Shared);
             TraxLog.Info("guard", "mission start: " + _seenTiredBlock.Describe() + " - read live; the [summary] \"tired block direction\" and"
                 + " \"AI guard by f\" lines say how much it was raised and how well the AI blocked by f band");
+            StartShieldArc(); // step 64
         }
 
         /// <summary>The setting or a switch changed (from ApplySettingsChange): one line; everyone is re-targeted by the same
         /// handler and recomputed over the next ticks.</summary>
         private void NoteTiredBlockSettings(TraxSettings s)
         {
+            NoteShieldArcSettings(s); // step 64
             var now = TiredBlockRules.From(s);
             if (now.Percent == _seenTiredBlock.Percent && now.Enabled == _seenTiredBlock.Enabled) return;
             _seenTiredBlock = now;
@@ -88,13 +90,12 @@ namespace TraxCombat.Missions
         /// <summary>OnMeleeHit, BEFORE the defender's block charge (so f is his bar when the blow came): a melee blow that reached
         /// an AI man - blocked by kind or landed - by his f band. Kicks, bashes, horse charges and missiles left out; the player
         /// never; a hit that struck neither him nor his guard (the world) left out.</summary>
-        private void TiredGuardHit(Agent? victim, in AttackCollisionData cd)
+        internal void TiredGuardHit(Agent? attacker, Agent? victim, in AttackCollisionData cd)
         {
             if (victim == null || cd.IsMissile || cd.IsAlternativeAttack || cd.IsHorseCharge) return;
             var st = Get(victim);
             if (st == null) return;
-            var kind = BlockMath.KindOf(cd.IsMissile, cd.IsAlternativeAttack, cd.IsHorseCharge, cd.CollidedWithShieldOnBack,
-                cd.AttackBlockedWithShield, cd.CorrectSideShieldBlock, (int)cd.CollisionResult);
+            var kind = BlockKindOf(attacker, victim, in cd); // step 64: our verdict (a shield block from the front counts right)
             if (kind == BlockKind.None && cd.CollisionResult != CombatCollisionResult.StrikeAgent && !cd.CollidedWithShieldOnBack) return;
             var r = Rules;
             GuardTaken(st, kind, in r);
@@ -131,6 +132,7 @@ namespace TraxCombat.Missions
         {
             foreach (var line in _tiredBlockStats.SummaryLines(TiredBlockRules.From(TraxSettings.Shared)))
                 TraxLog.Info("summary", line);
+            WriteShieldArcSummary(); // step 64: the game's block verdict against ours
         }
     }
 }

@@ -227,6 +227,16 @@ namespace TraxCombat.Core
             "Only wrong-side blocks stop the refill",
             "On: a shield block on the right side and a weapon parry still cost their points, but the bar keeps refilling underneath - a good blocker can win his breath back while he stays on the defence. Only a block with the shield held to the wrong side (and your own attacks, kicks and bashes) restarts the wait before the refill. Off: every paid block restarts that wait, so a man under constant attack never refills.");
 
+        // Step 64 (Anton's looter battles 2026-10-19: ~85% of an AI shieldman's blocks were "wrong side" even fresh - the native AI picks a
+        // random guard direction most of the time and a shield wall's poses are fixed): a shield block from the FRONT counts as a correct one.
+        public static readonly ParamDef ShieldFrontArcIsCorrect = Bool("ShieldFrontArcIsCorrect", AthleticsGroup,
+            "A shield facing the blow blocks it right",
+            "On: a melee blow stopped by a shield whose bearer FACES the attacker (within the angle below) counts as a right-side block for this mod - its cost, the refill, the staggers and the attacker's reel or fall off the shield - whatever side the game says the shield was held to. A raised shield facing the blow covers it. From the side or behind the game's own verdict stands. Weapon parries keep the game's direction (skill still matters there). You and the AI alike. Off: the game's verdict always.");
+
+        public static readonly ParamDef ShieldFrontArcDegrees = Int("ShieldFrontArcDegrees", 0, 180, AthleticsGroup,
+            "Shield front arc (degrees each side)",
+            "How far off a shieldman's facing the attacker may stand for a shield block to count as a right-side block (60: within 60 degrees left or right of where he faces - the front third of a circle). 0 = only dead ahead; 180 = from anywhere.");
+
         public static readonly ParamDef CostOnMiss = Bool("CostOnMiss", AthleticsGroup,
             "Misses cost too",
             "On: every attack costs Athletics, landed or not. Off: only attacks that hit something (a body, a shield, a parrying weapon) cost.");
@@ -1398,7 +1408,8 @@ namespace TraxCombat.Core
             DamageRandomEnabled, DamageRandomMelee, DamageRandomRanged,
             DamageRandomOnMounts, DamageRandomOnShields, SprintFullCritical,
             AthleticsPoolFloor, AthleticsPoolPerSkill, AthleticsPeakPercent, HealthCapsAthletics,
-            CostPerKickOrBash, CostPerShieldBlock, CostPerWrongSideShieldBlock, CostPerWeaponParry, OnlyWrongSideBlocksStopRefill, CostOnMiss, PartyLeaderCostMultiplier,
+            CostPerKickOrBash, CostPerShieldBlock, CostPerWrongSideShieldBlock, CostPerWeaponParry, OnlyWrongSideBlocksStopRefill,
+            ShieldFrontArcIsCorrect, ShieldFrontArcDegrees, CostOnMiss, PartyLeaderCostMultiplier,
             ExhaustedAttackSpeedPercent, AttackRatePlayerTimer, AttackRatePaceHold, AttackRatePaceByInput, AiHoldRaiseGuard, AttackRateAiDecisions, AttackAnimationMinPercent,
             SwingStackEnabled, SwingStackPointsPerSwing, SwingStackMinimum, KicksUseSwings,
             MinMoveSpeedMultiplier, MountMinSpeedMultiplier, DamageBonusFollowsAthletics, TiredBlockRandomPercent,

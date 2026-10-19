@@ -225,6 +225,11 @@ namespace TraxCombat.Core
 
         /// <summary>Step 29: on = only a wrong-side shield block restarts the refill delay (a clean block / parry still costs).</summary>
         public bool OnlyWrongSideBlocksStopRefill => GetBool(SettingsSchema.OnlyWrongSideBlocksStopRefill);
+
+        /// <summary>Step 64: a shield block from the FRONT arc counts as a right-side block (Core <see cref="ShieldArcMath"/>).</summary>
+        public bool ShieldFrontArcIsCorrect => GetBool(SettingsSchema.ShieldFrontArcIsCorrect);
+
+        public int ShieldFrontArcDegrees => GetInt(SettingsSchema.ShieldFrontArcDegrees);
         public bool CostOnMiss => GetBool(SettingsSchema.CostOnMiss);
         public float HeroCostMultiplier => GetFloat(SettingsSchema.HeroCostMultiplier);
         public float PartyLeaderCostMultiplier => GetFloat(SettingsSchema.PartyLeaderCostMultiplier);

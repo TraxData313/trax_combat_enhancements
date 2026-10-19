@@ -59,6 +59,17 @@ namespace TraxCombat.Tools
 
             public double HealthShare(Agent a) => Health.TryGetValue(a.Index, out var h) ? h : 1;
 
+            /// <summary>Step 64: the blocker's angle to the attacker for the front arc (°) - 180 unless set, so every older step's wrong-side
+            /// block stays the game's.</summary>
+            public readonly Dictionary<int, double> BlockAngles = new Dictionary<int, double>();
+            public int AngleReads;
+
+            public double FacingAngle(Agent victim, Agent attacker)
+            {
+                AngleReads++;
+                return BlockAngles.TryGetValue(victim.Index, out var a) ? a : 180;
+            }
+
             public void Fill(Agent attacker, Agent victim, in AttackCollisionData cd, ref ImpactFacts f)
             {
                 Calls++;

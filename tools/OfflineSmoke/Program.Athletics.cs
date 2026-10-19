@@ -158,6 +158,7 @@ namespace TraxCombat.Tools
             S.Set(SettingsSchema.CostPerWrongSideShieldBlock, 5, SettingSources.File);
             S.Set(SettingsSchema.CostPerWeaponParry, 2, SettingSources.File);
             S.Set(SettingsSchema.OnlyWrongSideBlocksStopRefill, false, SettingSources.File); // step 29: the older steps check step 22's rule (every paid block restarts the delay) - BlocksLetTheRefillRun has its own
+            S.Set(SettingsSchema.ShieldFrontArcIsCorrect, false, SettingSources.File); // step 64: the older steps check the game's own block verdict - ShieldFrontArc has its own
             S.Set(SettingsSchema.CostOnMiss, true, SettingSources.File);
             S.Set(SettingsSchema.HeroCostMultiplier, 0.75, SettingSources.File);
             S.Set(SettingsSchema.PartyLeaderCostMultiplier, 0.75, SettingSources.File);
@@ -1150,6 +1151,9 @@ namespace TraxCombat.Tools
 
             // --- step 62: the lost falls and the charge - off = the shrug-off the game's, no backup blow, no charge read; on = live again
             ImpactChargeFollowsTheMasterSwitch();
+
+            // --- step 64: the shield front arc - off = the game's block verdict at once, on = the front arc again
+            ShieldArcFollowsTheMasterSwitch();
 
             // --- step 49: courage - off = every timid man let go at once (its own logic), back on = looked at again
             CourageFollowsTheMasterSwitch();
