@@ -1031,6 +1031,7 @@ Claude the `[summary] impact …` block of every battle.
 | 12 | **D31 - THE AI KICKS AND BASHES, THE KICKED MAN BRACES** (step 65): a 50 v 50 shield battle (watch the front for kicks / bashes); then a tournament or a fight as a looter-tier character kicking a fresh heavy shieldman | 20 | `ai kicks`, `ai kicks by reason`, `ai kicks - ends`, `ai kicks - bashes per swing and the wait for reach` (step 66), `kick brace` (the 4 lines), `impact messages` | since step 66: ~0.6-1 bash a shieldman's swing, kicks ~0.3-1 a man-minute of contact (≈ 80-200 asked in a ~50 man-minute battle), PLAYED ≈ asked, waits mostly kicked, landed a good share; your kicks on a fresh heavy man braced ~85 %, a short stagger now and then, never a fall | `PLAYED 0` (the engine ignores the injected input - tell Claude); men standing still with nothing played; a fresh heavy man thrown about by kicks |
 | 11 | **D30 - THE WALL'S BLOCKS COUNT, THE CHARGE HITS AT SPEED** (step 64): your ~20 men in a shield wall + a reserve against ~50 charging looters (your 12:47 battle again) | 15 | `shield front arc`, `AI guard by f WITH a shield`, `sprint - AI` (ends), `sprint into contact`, `impact charges` | the game's WRONG side mostly turned right (front arc); looters reel and fall off the shields; charges well above 14 of 160, `sprinting at the blow` above 0; ends `his first attack` many, `an enemy within 3 m` few | `turned` 0 (the angle read is wrong); looters still slowing before the wall; `sprinting at the blow 0` and `carried` low |
 | 13 | **D32 - MORALE EYES AND THE FEAR FLOCK** (step 67): green troops in a thin hold line vs veterans in one; a long grind (watch the blobs form and drift, ALT for the blue morale); the fear flock OFF for a minute mid-battle, then ON | 25 | `fear flock shape`, `fear flock drift`, `fear flock cover`, `fear flock by discipline`, `fear flock spells`, `fear flock vs courage and walls`, `hud: ALT bars` (morale clause), `hud: ALT markers - morale line` | ON: spread below OFF, depth ÷ width above it; drift back small under a hold (≤ 1.5 m a minute); green units afraid well before veterans; anchors and sprints seen; the blue bars falling with the fight | men frozen in place with enemies at their shields (the zero-vector stand), a unit sliding back without end, men walking backwards through their own mates |
+| 14 | **D33 - THE WALL PUSHES AS ONE, KICKS THROUGH THE IMPACT MODEL, MEN TIRE MORE** (step 68): your shield wall ordered to ADVANCE (F1, F4) into an enemy line, ~100 v 100; a minute with *Shield walls: advance as one line* OFF, then ON | 25 | `wall slots ON by order`, `wall advance as one`, `wall pulled back` (its step-68 clause), `ai kicks` (whom they landed on, a friend in the way), `impact kicks / bashes landed vs decided`, `Athletics settings at the end` (cost per blow 8.0, right 2.00 / wrong 5.00) | the ADVANCE in-contact leak near the standing one (a few %), not 15%; the wall moving forward as one line and pushing; `unaccounted 0`, decided ≈ landed − on a FRIEND; the lines tiring visibly sooner after the first clash | men standing still in an advancing wall that never closes on the enemy (the step too small), the wall stretching anyway (the frame not honoured), `unaccounted` above 0, `on a FRIEND` still about two thirds of the landed |
 
 Then play normally (parts E-G). Your gut on each family - too many / about right / too few - is the most useful thing to send.
 
@@ -1635,6 +1636,48 @@ too slow - `FearDriftMetresPerMinute`; green lines not thickening - `FearThinLin
 **Broken - tell Claude**: frightened men FROZEN with an enemy at their shield and never stepping in to strike (the stand-in-place vector - the
 `standing` updates far above `walking`); a unit sliding back without end (drift ON far above 1.5 m a minute under a hold); men walking backwards
 through their own mates or into walls (the ground check); the blobs flickering between blob and line every second (the near-slot dead zone).
+
+**D33. THE WALL PUSHES AS ONE, KICKS THROUGH THE IMPACT MODEL, MEN TIRE MORE (step 68, ~25 min - one big battle, two short ones; the
+defaults).** Your 100 v 100 of 2026-10-19: your shield wall, ordered forward with F1 then F4 (that is ADVANCE), had 15% of its men in contact
+more than 1 m ahead of their places (standing, it was 1%); the AI's kicks and bashes landed 92 times, 33 were decided. You: "they need to hold
+the wall and push the whole wall, not to break up", and "tire the men more to slow down the combat again a bit after the first impact". Now:
+under an advance (or a move, fall back, follow) within 10 m of the enemy's front each held man is sent only 1 m ahead of his place in the line
+as it stands, not to the game's place at the enemy's line - the wall walks and pushes as one; a man who kicked or bashed walks straight back
+to his place; no AI man kicks through his own mate; a swing costs 8 (was 7), a right-side shield block 2 (was 1), a wrong-side block 5 (was 2).
+Settings: Advanced, "Battle pace (AI)" - *Shield walls: advance as one line*, *advance step (m)*, *advance as one within (m)*, *back to the line
+after a kick (m)*; the impact group - *AI kicks: not through a friend (m)*.
+1. **An advancing shield wall into an enemy line** (a field battle ~100 v 100 with shield infantry on both sides; put your infantry in a
+   shield wall - F2 form, shield wall - and order F1, F4: advance). **What you should see**: the wall walks forward as one line, meets the
+   enemy and pushes; the front fights, the ranks behind close up; nobody runs out ahead of the wall into the enemy; when the enemy gives
+   ground the whole line follows a step at a time. A charge order (F1, F3) still breaks it into a melee. **[wall]** `first man of a moving wall
+   sent AS ONE LINE (step 68): … under the order advance; the game's order slot lay … m from his slot in the line (the enemy's front … m away) -
+   sent 1.00 m toward it instead`. **[summary]** `wall slots ON by order (step 68 - the in-contact samples …): standing (stop / hold) …: more
+   than 1 m ahead …% | ADVANCE (yours or the AI's) …: more than 1 m ahead …%, more than 2 m …% … | moving …` - **the ADVANCE column near the
+   standing one (a few %), far below your 15.4%**; `wall advance as one (step 68): ON … - N paced writes on M men (advance …); the game's order
+   slot lay … m on average from his slot in the line …` - the order slot several metres ahead in contact (that was the leak).
+2. **The same with the advance as one OFF for a minute** (MCM → Advanced → Battle pace (AI) → *Shield walls: advance as one line* off, then on):
+   OFF the advancing wall stretches again (men walking on into the enemy); `[wall] advance as one (step 68) changed mid-mission at … s: OFF … - N
+   men given the game's own frame back at once`. Compare the two halves by eye (the summary's by-order line holds the whole battle).
+3. **Kicks and bashes** (the same battle - watch the front ranks): `[impact] first AI kick / bash HELD for a friend in the way at … (step 68) - …
+   one of his own side stands within 0.50 m of the line between them`. **[summary]** `ai kicks: … → landed on the man N (step 68: on his target
+   …, on another enemy …, on a FRIEND (the game cancels it - never decided) …, on a horse / a man not tracked …)` - **on a FRIEND small now**;
+   `ai kicks - ends: … a friend in the way (step 68) …; … step 68 - a friend on the line to the enemy (within 0.5 m): held …, clear …`;
+   `impact kicks / bashes landed vs decided (step 68): landed on a man N (kicks …, bashes …; by you …) → DECIDED D …; not decided: on a FRIEND …,
+   … unaccounted 0 (every landed kick / bash on an enemy decided) | into a raised shield … - not decided: the shield stopped it` - **D = N − the
+   named ones, unaccounted 0**; `kick brace: … landed kicks / bashes decided` ≈ that D (less any on riders). **[wall]** `first held man out of
+   place after his OWN kick / bash or a step-in (step 68): … stands … m ahead of his slot (more than 0.50 m) - walked straight back`;
+   `wall pulled back …; step 68 - after his OWN kick / bash or a punish press N (back in … s)` - about a second.
+4. **Men tire more** (any battle; MCM → Tiredness: *Cost per swing* shows 8): the lines reach orange a little sooner after the first clash;
+   a right-side shield block costs 2 now, a parry 2, a wrong-side block 5. **[athletics]** mission start: `cost per blow 8.0 / hero 6.0 / party
+   leader 4.5 points; a kick or shield bash 5.00 …; a blocked blow costs the defender: shield right side 2.00 / wrong side 5.00 / weapon parry 2.00
+   points`. Your config.json (if it held the old defaults) was moved once: `[config] … CostPerBlow: 7.0 → 8.0 (format 13 → 14, the old default;
+   step 68, Toni …)` and the two block costs; a value you set yourself is kept (`… kept - your own value (format 13 → 14; …)`).
+**Too much / too little**: the advancing wall too slow to close or push - *advance step* 1.5-2; it still stretches - *advance step* 0.5-0.7;
+it starts pacing too far out - *advance as one within* lower; men still kicking their mates - *not through a friend* 0.7; the battles too slow
+now - *Cost per swing* back to 7 (player page).
+**Broken - tell Claude**: an advancing wall that stops dead short of the enemy and never closes (the paced frame inside the engine's stop
+tolerance), the ADVANCE leak as high as before (the engine does not walk a held man to our frame - the fallback is the integrity position
+itself), `unaccounted` above 0 in the kicks line, `pace … errors` above 0.
 
 ---
 

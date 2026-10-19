@@ -22,8 +22,8 @@ pause survives it (one per-man `AgentComponent` on `OnAIInputSet` does both; A/B
 Heroes and party leaders pay less per blow (and big-skill heroes have
 big bars), so the game leans hero-centred. Kicks and shield bashes cost a little too (step 18:
 `CostPerKickOrBash` 3 - 5 since step 66 - × the same multipliers, once each, never an attack pause). DEFENDING costs too (step 22):
-every melee blow a fighter BLOCKS costs HIM - `CostPerShieldBlock` 1 (shield, right side), `CostPerWrongSideShieldBlock`
-5, `CostPerWeaponParry` 2 - × the same multipliers, once per blocked blow (OnMeleeHit's collision data, Core `BlockMath` /
+every melee blow a fighter BLOCKS costs HIM - `CostPerShieldBlock` 1 (2 since step 68; shield, right side), `CostPerWrongSideShieldBlock`
+5 (2 since step 43, 5 again since step 68), `CostPerWeaponParry` 2 - × the same multipliers, once per blocked blow (OnMeleeHit's collision data, Core `BlockMath` /
 `BlockTracker`); a paid block restarts the refill delay; never an attack pause or a step back; missiles into a shield
 free. Step 22 also shipped the refill a straight line again (`RegenRateNearFullPercent` 100) and the run floor 0.3
 (config format 5 migrates both once). A hideout's boss
@@ -82,7 +82,7 @@ so it never jumps; every tracked man but you, the enemy's behind `AthleticsMarks
 the pick projects nearest first until the cap is full. THE ALT VIEW DECLUTTERED (step 58): by default those bars only on the
 `AltNearMarksMax` 5 men nearest the screen's centre (the angle from the camera's forward) within `AltNearMarksMetres` 15 m of the camera, no
 fade (`FeverMarkMax` the ceiling; `AltMarksEveryone` = step 46's view); the labels add `fever 12/40` (`ShowFeverOnLabels`); men with no
-valid team (an arena's crowd) never marked - in a tournament ALT shows your opponent's bars. `CostPerBlow` 7 since step 46 (Anton's playtest; config format 9).
+valid team (an arena's crowd) never marked - in a tournament ALT shows your opponent's bars. `CostPerBlow` 7 since step 46 (Anton's playtest; config format 9), 8 since step 68 (Toni; config format 14).
 THE IMPACT SYSTEM (docs/IMPACT.md, steps 47-53) starts with step 47's SPIKE (Advanced `ImpactSpike`, off - a test tool): fixed loud
 values prove six engine levers (a kick's KnockDown decision, the block stun x3 / cap 2 s, a reaction at speed 0.5, a forced stagger, a
 queued shield drop, a knockdown blow of our own), each against its own control in the same battle; the `[summary] impact spike` lines
@@ -198,7 +198,20 @@ under a hold / a wall), at most 12 m from his slot, behind a comrade when uncove
 ANCHOR), sprinting back when 8 m+ off or alone (half his store); a place within 1 m of his slot = his own AI; a charge = a loose mass of (1 − p)
 × 12 m; walls hold while their men's morale is 30+, step 41's men let go below it (`WallVerdict.Breaking`); a fifth input wish `Flock` - backpedal
 > wall pull > courage's walk back > the flock; a fever press / surge ends a spell; never you, riders, a siege's attackers, no formation, a retreat;
-the `[fear]` lines and the 7 `[summary] fear flock` lines ON vs OFF (PLAYTEST D32). The bar for the
+the `[fear]` lines and the 7 `[summary] fear flock` lines ON vs OFF (PLAYTEST D32). THE WALL PUSHES AS ONE + KICKS THROUGH THE IMPACT MODEL + MEN TIRE MORE (step 68, Toni's 100 v 100 of 2026-10-19:
+his shield wall ordered forward - F1 → F4 = ADVANCE - had 15.4 % of its men in contact more than 1 m ahead of their slots (standing 0.8 %);
+92 AI kicks / bashes "landed on the man", 33 decided; "they need to hold the wall and push the whole wall, not to break up"; "tire the men
+more ... after the first impact" - DESIGN decision 61, AI_NOTES "Step 68", 5 Advanced settings, config format 14): the cause - under an
+advance the game's ORDER slot of each man lies at the enemy's line and every AI man walks to it (`Agent.TrySetFormationFrame`), while step
+41's flag holds him to his slot in the line as it stands; now a held man of a moving order (advance - yours or the AI's -, move, fall back,
+follow; never a stop, a charge still releases) within `ShieldWallAdvanceNearMetres` 10 m of the enemy's front walks to his slot in the line +
+`ShieldWallAdvanceStepMetres` 1 m toward the game's slot (`ShieldWallAdvanceAsOne`; vanilla's own call right after vanilla's update, the leash
+keeps it, every let-go / the switch / the master switch gives the game's frame back) - the line advances as one; a held man's OWN kick / bash
+(or a punish press) = out of place from `ShieldWallKickReturnMetres` 0.5 m, walked back at once; the undecided kicks were FRIENDS (a rear-rank
+man kicking his own front man - the game cancels it, step 63) - `AiKickFriendClearMetres` 0.5 holds a kick with a mate on the line to the
+enemy (the decision waits); every landed kick / bash on an enemy is decided once (into a raised shield: not decided - the shield stopped it);
+the costs `CostPerBlow` 7 → 8, a right-side shield block 1 → 2, a wrong-side block 2 → 5 (the kick 5 and the parry 2 kept); the [summary]
+lines "wall slots ON by order", "wall advance as one", the kicks' victims and "impact kicks / bashes landed vs decided" (PLAYTEST D33). The bar for the
 fighter you look at is LATER (DESIGN §3; its settings wait in DESIGN's "Planned parameters"). Words:
 the pool/bar/points are "Athletics", the character-screen skill is "the Athletics skill" (it
 used to be called "endurance"), the "peak line" is the white mark at the top quarter of the bar,
@@ -346,7 +359,9 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               description, apply timing (Live / NextBattle); Normalize, Format;
                               its Default comes from defaults.json (DefaultsFile), never code; step 59:
                               SettingsPage (Player / Advanced) + ParamGroup.Page
-  SettingsSchema.cs           EVERY setting of DESIGN's table (352 - step 67's 25 fear-flock settings after CourageTimidMeleeMetres
+  SettingsSchema.cs           EVERY setting of DESIGN's table (357 - step 68's ShieldWallAdvanceAsOne / ShieldWallAdvanceStepMetres / ShieldWallAdvanceNearMetres /
+                              ShieldWallKickReturnMetres after ShieldWallPullBackSeconds and AiKickFriendClearMetres after AiBashCooldownSeconds, all Advanced;
+                              352 - step 67's 25 fear-flock settings after CourageTimidMeleeMetres
                               (courage's group) and 4 morale-eyes settings after FeverMarkMax (the ALT group), all Advanced; 323 - step 66's 5 after the brace, Advanced; 318 - step 65's 21 in the Impact group, Advanced; 297 - step 64's 5 on the Advanced page (2 in Athletics after the refill rule, 3 in
                               Sprint after SprintOnRout); 292 - step 63's 3 on the Advanced page; 289 - step 62's 14 on the Advanced page; STEP 59: two MCM pages - the PLAYER page's 20 declared FIRST
                               (ModEnabled + six player groups, Orders 0-6), the Advanced page's 16 groups after (7-22, "Damage" first,
@@ -372,7 +387,8 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
   ConfigFile.cs               config.json TEXT: commented writer (header incl. how to revert +
                               // above each key; AppendSettings shared with defaults.json),
                               tolerant reader (comments, trailing commas, casing, "0,75"), Apply;
-                              FormatVersion 13 + Migrate (step 66: a format-12 file's CostPerKickOrBash 3 → 5, AiKicksPerMinute 0.1 → 1.2, AiKickCooldownSeconds 10 → 8;
+                              FormatVersion 14 + Migrate (step 68: CostPerBlow 7 → 8 (a format 9+ file), CostPerWrongSideShieldBlock 2 → 5 (8+), CostPerShieldBlock 1 → 2
+                              once, a tuned value kept and said; step 66: a format-12 file's CostPerKickOrBash 3 → 5, AiKicksPerMinute 0.1 → 1.2, AiKickCooldownSeconds 10 → 8;
                               step 64: a format-11 file's FeverSprintMinMetres 3 → 4, FeverSprintMaxMetres 12 → 8,
                               ImpactChargeCarrySeconds 1.5 → 3 once; step 63: a format-10 file's ImpactFallBackupSeconds 0.5 → 0.2, ImpactRearPercent
                               200 → 100, ImpactFlankPercent 140 → 100 once; step 56: an older file's right block / parry 80 / 40 → 30 / 10, the riposte
@@ -531,6 +547,9 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               memory), AiKickStats (asked → played → landed, ends, why not + the [summary] "ai kicks" lines); step 66: the wait (WaitSeconds / WaitMetres,
                               Waits, AiKickSkip.Waiting), the bash credit (BashShare / BashDelay / BashCooldown, BashCreditCap 2, AddBashCredit,
                               BashPerMinute, CooldownFor), WithCooldown, MaxAttempts 256, the 5th [summary] line
+                              step 68: AiKickSkip.FriendInTheWay (appended - SkipCount 16), AiKickRules.FriendClear (AiKickFriendClearMetres), AiKickMath.FriendInPath
+                              (a man of his side > 0.2 m past him along the line to the enemy, within the clearance of it), AiKickVictim (target / another enemy /
+                              FRIEND / untracked) + AiKickStats.Victims / NoteVictim / VictimsText and FriendChecksBlocked / Clear (the summary's clauses)
   KickBrace.cs                step 65 pure: KickBraceRules / Math (FailChance S on x, Spent, ReelCut, Classify, TierBand) / Stats (the [summary] "kick
                               brace" lines); Impact.cs: the brace inside Decide (BraceRoll), ImpactRefusal.Braced; ImpactLive.cs: ImpactWatchPurpose.Brace,
                               FastSpeedFor ≤ 8 x
@@ -555,6 +574,15 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
   ShieldWallPull.cs           step 63 pure (AI_NOTES "Step 63"): WallOutOfPlace, WallOutEnd, WallOutMove, WallPullMath (out beyond max(L, 1)
                               + 0.25, back within half, the walk back after the setting able to move, never while down, 4 s at most),
                               WallPullStats + the [summary] "wall pulled back" line
+                              step 68: Step(…, kickReturnMetres, ownKick) - his OWN kick / bash (KickWindowSeconds 2.5) or a punish press = out of place from
+                              ShieldWallKickReturnMetres, back within half of it, walked back at once (no wait; works with the pull at 0); WallOutOfPlace.AfterOwnKick;
+                              WallPullStats.SpellsAfterKick / BackAfterKick (the line's step-68 clause)
+  ShieldWallPace.cs           step 68 pure (AI_NOTES "Step 68", DESIGN decision 61): WallOrderGroup (standing / advance / moving), WallPaceRules
+                              (ModEnabled FIRST, ShieldWallHoldsSlots, ShieldWallAdvanceAsOne; the step clamped 0.3-3 m, near), WallPaceMath (GroupOf, Paces - every
+                              held order but a stop, FrontGap - the centres' distance less half of each depth, Engaged, OrderLead, Pace - his slot in the line + at most
+                              the step toward the game's order slot when it lies farther and the fronts are near, Why - off / standing / no order slot / far / within the
+                              step), WallPaceSkip, WallPaceStats (WallAheadSamples by order group ON, paced writes / men by group, the order slot's lead, the gap, skips,
+                              restored, errors + the [summary] "wall slots ON by order" and "wall advance as one" lines; WallStats.Pace)
   ShieldWallLeash.cs          step 42 pure (AI_NOTES "Step 42"): WallLeash (free / armed / returning, the step's start and
                               farthest out), LeashMove, LeashEnd, LeashMath - Out (the facing; a square / circle: away from
                               the centre), EnemyCloseInFront (within L + StrikeReach 2 m of the slot, + 0.5 m while out),
@@ -631,6 +659,8 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               + Blocks | Riposte since step 51, + Hits since step 52; step 51: DecidesEvent, BlockStunFactor - no die -,
                               LengthenedStun; step 52: ImpactFacts.AttackerSpeed / TwoHanded, MomentumShare / MomentumFactor / SpeedBand, BlowImpact)
   ImpactStats.cs              step 48: by event × the defender's bar band + the [summary] "impact" lines ("did" per applied event, step 50)
+                              step 68: KickLanded / KickIntoShield / KickOther by kick / bash, KickLandedByPlayer, KickSkipped by reason (Skip counts a kick's
+                              own), NoteKickHit, KickCoverageLine - the [summary] "impact kicks / bashes landed vs decided" line (unaccounted must be 0)
   ImpactLive.cs               step 50 pure (AI_NOTES "Step 50"): ImpactLever, ImpactNotApplied, ImpactWatchPurpose, ImpactLiveMath (SpeedFor =
                               1 ÷ factor, PickupLocked, the plumbing), ImpactLiveStats (+ the 4 [summary] "impact live" lines); step 51: the
                               levers BlockStun / ForcedStagger / OwnBlow, CannotForce / EngineRefused, the block watch purposes; step 52: the
@@ -723,7 +753,7 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               step 59: TWO pages (BuildPage returns object; MCM keeps settings by Id) - the
                               player page (SettingsId, "Trax Combat Enhancements": 20 settings, 7 groups,
                               Defaults with Revert) = _settings, the Advanced page (AdvancedSettingsId,
-                              "... - Advanced": 332 settings since step 67, 16 groups) = _advanced; each its own "default"
+                              "... - Advanced": 337 settings since step 68, 16 groups) = _advanced; each its own "default"
                               preset; group "Defaults": the Revert (both pages, reverts both) /
                               Save-defaults-file (Advanced only) BUTTONS (ProxyRef<Action>, both pages
                               refreshed via PropertyChanged), on Advanced just above Advanced (MCM order =
@@ -864,6 +894,8 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               GameAiKickBody; AiInputHook.cs: the KickPhase wish, SetKick, ApplyKick (written last); step 66: the wait for reach
                               (TrackedAgent.AiKickWaitUntil / Since / Chance), a shieldman's die = his earned bash (BashCredit), NoteAiBashSwing
                               (StartRelease), the cooldown by kind
+                              step 68: in reach and in front, a friend on the line (AiKickFriendClearMetres; AiKickBody.FriendInTheWay - the game's proximity search into a reused list) = FriendInTheWay - the decision waits
+                              like one out of reach (one first-time line); AiKickHit(st, intoShield, victim) - whom it landed on (AiKickVictimOf)
   Missions/AthleticsLogic.KickBrace.cs  step 65: the IKnockBackDecider (a braced man's knock-back refused - the blow decided at the knock-back
                               question), NoteBrace, the Brace watch (the cut reaction played faster), the summary; ImpactHooks.IKnockBackDecider,
                               TraxDamageModel.DecideAgentKnockedBackByBlow
@@ -872,12 +904,20 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               vanilla's own formula, vanilla's private update timer read once per man; step 42: TryEnemy =
                               GetTargetAgent, else ImmediateEnemy; WallState.Leash; step 63: WallState.Out, ToLocal / Hook /
                               ReleaseInput for the walk back), WallBodyDefault
+                              step 68: WallState.Paced / EverPaced; WallFacts' HasOrderSlot / OrderX / OrderY (Formation.GetOrderPositionOfUnit) and EnemyGap
+                              (CachedClosestEnemyFormation's CachedMedianPosition, Depth) read for a held moving order; IWallBody.Pace (Agent.TrySetFormationFrame
+                              with his GetWorldPosition moved by SetVec2 and GetBaseFormationFrame's direction) / Unpace (the game's own frame back)
   Missions/AthleticsLogic.Wall.cs  step 41: TickWall from OnPreMissionTick - each held man rewritten right after vanilla's
                               update (his timer moved), a staggered look every 0.25 s (hold / let go / sample), off = vanilla's
                               value back at once; WallLeftField, WriteWallSummary; step 42: the leash in LookWall (a man out =
                               vanilla's value, nothing written, looked at every 0.1 s), Manage, NoteLeash, EndStep; step 63:
                               OutOfPlaceLook (a held man beyond the leash: the 0.1 s look, the walk back through the WallPull wish),
                               Start / Steer / StopWallPull, EndOutOfPlace on every let-go path
+                              step 68: PaceLook at every hold write and at a stepping man's 0.1 s look (WallPaceMath.Pace → body.Pace; else the
+                              game's frame back when ours was on him), Unpace on every let-go path (a gate, ReleaseAllWalls, WallFailed; none for a man gone
+                              or at the mission's end), UnpaceAll when the switch goes off, the pace / kick-return change lines; the ON samples by order
+                              group; OutOfPlaceLook's kick return (KickBash running / begun within 2.5 s / AiKickPhase / Punishing; never walked while
+                              kicking); WriteWallSummary + the two step-68 lines; the outLooks run with the pull OR the kick return
   Missions/ImpactBody.cs      step 47: IImpactBody - one method per lever (Read, SlowReaction, ForceStagger, DropShield queued,
                               OwnKnockdownBlow, CanForce - never a horse / rider / siege engine / water / down); GameImpactBody
   Missions/PunishBody.cs      step 54: IPunishBody (the smoke plays it) - his target (GetTargetAgent, else ImmediateEnemy) and the distance; GamePunishBody
@@ -917,6 +957,8 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               seam decides a landed blow, remembered), ImpactModelHitTaken (OnMeleeHit takes it or decides a block), the
                               gates (master switch first), ImpactDecide (both men's Athletics, Decide on COPIES of TrackedAgent.Impact, kept
                               when KeepsState; step 50: ApplyKick when the kicks apply; step 52: ApplyHit, NoteMomentum for every decision), the lines
+                              step 68: ImpactModelHitTaken counts every kick / bash collision (landed / into a shield / other, by you) first;
+                              WriteImpactModelSummary adds the coverage line
   Missions/AthleticsLogic.ImpactLive.cs  step 50, kicks live: ApplyKick, TickImpactLive (drops from the tick, the reel / fall watches with
                               SlowReaction, the measured ends into ImpactState, the shields), the pickup lock, DisableImpactLever, the summary;
                               step 51: per-family let-go, TickBlocksSwitch, RunBlockPending from the tick
@@ -1068,7 +1110,9 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
   Hud/FeverMarksVM.cs         its ViewModels: a GROW-ONLY POOL of FeverMarkVM (IsShown, PositionX / Y, Width / Height in pixels,
                               Fill, FillColor, FrameColor; step 46: BoxWidth / BoxHeight, FeverShown, BarShown, BarWidth / Height,
                               BarFill, BarUsable, BarColor, BarFrameColor, BarWoundColor)
-tests/TraxCombat.Core.Tests/  net8.0 xUnit (991 - step 67: + Step67Tests.cs - the 29 settings placed / live, the master switch first, the fear's two dangers,
+tests/TraxCombat.Core.Tests/  net8.0 xUnit (1004 - step 68: + Step68Tests.cs - the five settings, the pace, the by-order and pace lines, the walk
+                              back after a kick, no kick through a friend and whom a kick hit, the kick coverage line, the costs and format 14; the
+                              older format tests → 14; 991 - step 67: + Step67Tests.cs - the 29 settings placed / live, the master switch first, the fear's two dangers,
                               discipline by level, THE WORKED EXAMPLE (looters vs legionaries at fresh / half / spent × morale 80 / 50 / 20 → fear and
                               pull), the thin line, the unit's share and the hysteresis, his place, the shelter's creep by order, cover / behind / the
                               spot behind a comrade, the anchor, the charge's loose mass, the sprint, the 1 m dead zone, the wall's break, the unit
@@ -1313,7 +1357,9 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               step 67 (Program.Step67.cs): the fear flock through the real logic (a frightened rank draws into its mass, the shelter's
                               creep, an anchor, courage first, a sprint back, a wall that breaks, a charge's loose mass), the A / B (spread ON 1.94 vs
                               OFF 3.01 m), the cost (1000 men ~0.2 ms, 0 bytes), the morale eyes through the real views
-                              (152 steps; the config checks work for any tuned default);
+                              step 68 (Program.Step68.cs): the wall pushes as one through the real logic + its cost (1000 men 0.041 ms a tick,
+                              0 bytes), back to the line after a kick, no kick through a friend, kicks landed vs decided through the real seams, the
+                              master-switch part (157 steps; the config checks work for any tuned default);
                               TRAX_SMOKE_KEEP=1 keeps its temp folder + log to read
 tools/DefaultsTool/           defaults.json upkeep: refresh (rewrite comments/order, keep every
                               value) | check; --file <path> for an exported one

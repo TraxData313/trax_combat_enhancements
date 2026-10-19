@@ -49,28 +49,30 @@ Want the formulas and every parameter with its range? [DESIGN.md](DESIGN.md) is 
 ## 2. The Athletics bar
 
 A fighter's bar is as big as his **Athletics skill** (the one on the character screen), never smaller
-than 50 points. One attack — a swing, thrust, shot or throw — costs 7 points, missed or not.
+than 50 points. One attack — a swing, thrust, shot or throw — costs 8 points, missed or not (7 until step 68:
+Toni, "tire the men more to slow down the combat again a bit after the first impact").
 
 | Athletics skill | Bar (points) | Attacks from full to empty: soldier | hero | hero who leads his party |
 |---:|---:|---:|---:|---:|
-| 0–50 | 50 | 7 | 10 | 13 |
-| 100 | 100 | 14 | 19 | 25 |
-| 150 | 150 | 21 | 29 | 38 |
-| 200 | 200 | 29 | 38 | 51 |
-| 300 | 300 | 43 | 57 | 76 |
+| 0–50 | 50 | 6 | 8 | 11 |
+| 100 | 100 | 13 | 17 | 22 |
+| 150 | 150 | 19 | 25 | 33 |
+| 200 | 200 | 25 | 33 | 44 |
+| 300 | 300 | 38 | 50 | 67 |
 
+(Bar ÷ cost, rounded; the attack that empties the bar is one more - a recruit's 50 points are gone at his 7th swing.)
 Heroes (lords, companions, you) pay a quarter less per attack; a hero who leads a party pays a quarter
-less again (7 → 5.25 → 3.94 points). Attacks are cheap because the AI is careful (section 11): it decides
+less again (8 → 6 → 4.5 points). Attacks are cheap because the AI is careful (section 11): it decides
 to swing far less often than the base game's AI, so each swing need not cost much for a long fight to wear men down.
 
 **The peak line.** The white mark on the bar sits at **75%**. Above it a man is at full strength;
 the first quarter of his bar is "free". Below it the effects in the next section start. A 50-point
 recruit spends his free quarter in about two swings; a 150-skill hero who leads his party gets about
-ten.
+eight.
 
 **Wounds cap the bar.** A man at half health can only refill to half his bar.
 
-<sub>Settings: `AthleticsPoolPerSkill` 1.0, `AthleticsPoolFloor` 50, `CostPerBlow` 7, `CostOnMiss` on,
+<sub>Settings: `AthleticsPoolPerSkill` 1.0, `AthleticsPoolFloor` 50, `CostPerBlow` 8 (7 until step 68), `CostOnMiss` on,
 `HeroCostMultiplier` 0.75, `PartyLeaderCostMultiplier` 0.75, `AthleticsPeakPercent` 75,
 `HealthCapsAthletics` on.</sub>
 
@@ -179,25 +181,26 @@ Every melee blow a man **blocks** costs him a little. Missiles into a shield are
 
 | Block | Cost (soldier) | Hero | Hero party leader | Stops his refill? |
 |---|---:|---:|---:|---|
-| Shield, on the right side | 1 | 0.75 | 0.56 | No — the refill keeps running |
+| Shield, on the right side | 2 | 1.5 | 1.13 | No — the refill keeps running |
 | Weapon parry | 2 | 1.5 | 1.13 | No — the refill keeps running |
-| Shield, held on the **wrong** side | 2 | 1.5 | 1.13 | **Yes** — the 3 s wait starts again |
+| Shield, held on the **wrong** side | 5 | 3.75 | 2.81 | **Yes** — the 3 s wait starts again |
 | A kick or shield bash he makes | 5 | 3.75 | 2.81 | Yes (it is an attack) |
 
-So a skilful defender can catch his breath **while** defending. Can a man who is already empty climb
-back while parrying a blow every 1.5 seconds (a steady duel), standing still?
+(Step 68, Toni: "tire the men more ... after the first impact" — a right-side block 1 → 2, a wrong-side block 2 → 5; the
+parry and the kick unchanged.) So a skilful defender can catch his breath **while** defending. Can a man who is already empty
+climb back while blocking a blow every 1.5 seconds (a steady duel), standing still?
 
-| Bar size | Soldier, parrying | Hero, parrying | Hero party leader, parrying | Anyone, clean shield blocks |
-|---:|---|---|---|---|
-| 50 | sinks (−30 a minute) | sinks (−10) | climbs slowly (+5) | climbs |
-| 80 | holds even | climbs (+20) | climbs (+35) | climbs |
-| 100 | climbs (+20) | climbs (+40) | climbs (+55) | climbs |
-| 150 | climbs (+70) | climbs (+90) | climbs (+105) | climbs |
-| 200 | climbs (+120) | climbs (+140) | climbs (+155) | climbs |
+| Bar size | Soldier, parrying or a right-side shield block | Hero | Hero party leader |
+|---:|---|---|---|
+| 50 | sinks (−30 a minute) | sinks (−10) | climbs slowly (+5) |
+| 80 | holds even | climbs (+20) | climbs (+35) |
+| 100 | climbs (+20) | climbs (+40) | climbs (+55) |
+| 150 | climbs (+70) | climbs (+90) | climbs (+105) |
+| 200 | climbs (+120) | climbs (+140) | climbs (+155) |
 
-Points per minute, net. A shield on the right side always climbs. Moving fast while fighting refills
-slower (section 5), and a wrong-side block every 1.5 s holds anyone at the bottom — not by its price
-(2 points) but because each one stops the refill.
+Points per minute, net (the refill: his bar a minute; 40 blocks a minute × the price). A right-side shield block now costs
+what a parry does — before step 68 it always climbed. Moving fast while fighting refills slower (section 5), and a
+wrong-side block every 1.5 s holds anyone at the bottom — by its price (5 points) and because each one stops the refill.
 
 **What counts as the right side (step 64).** A raised shield facing the blow covers it: a shield block whose
 attacker stands within **60°** of the blocker's facing (the front third of a circle) is a **right-side** block for
@@ -214,7 +217,7 @@ A **tired** AI man still misjudges his share (section 7): that share of his fron
 | wrong side (39.0%) | wrong | **right** |
 | a tired AI man's guessed share (section 7's table: 33% at half a bar, all of them when empty) | wrong | wrong |
 
-<sub>Settings: `CostPerShieldBlock` 1, `CostPerWeaponParry` 2, `CostPerWrongSideShieldBlock` 2,
+<sub>Settings: `CostPerShieldBlock` 2 (1 until step 68), `CostPerWeaponParry` 2, `CostPerWrongSideShieldBlock` 5 (2 from step 43 to step 68),
 `CostPerKickOrBash` 5 (3 until step 66), `OnlyWrongSideBlocksStopRefill` on, `ShieldFrontArcIsCorrect` on, `ShieldFrontArcDegrees` 60.</sub>
 
 ## 7. Tired AI guess their blocks
@@ -345,9 +348,30 @@ half a second after he can move again (up from a fall, done reeling), he backs o
 
 (With a longer step the marks grow: 2 m → out beyond 2.25 m, back within 1 m.)
 
+**Back to the line after a kick** (step 68). A held man who kicked or shield-bashed — or stepped in at a staggered enemy
+(section 11c, "The enemy goes for the opening") — and stands more than **0.5 m** ahead of his place walks straight back as soon
+as his kick is over: no half-second wait, back to within 0.25 m.
+
+**The wall pushes as one** (step 68, Toni's 100 v 100: his wall ordered forward — F1 then F4, **advance** — had 15% of its men
+in contact more than 1 m ahead of their places; standing, 1%). Under an advance the game sends every man to a place AT the enemy's
+line, so the men free to move walk on into the enemy while their mates fight, and the line stretches. Now, within 10 m of the
+enemy's front, each man of a held shield wall, square or circle under a moving order is sent only **1 m** ahead of his place in
+the line as it stands — every man the same step, so the whole wall walks forward together, pushes at the pace its fighting
+front allows, and nobody runs ahead of it:
+
+| The wall's order, near the enemy | Where each man walks |
+|---|---|
+| Hold / stop | his place (the game's own) |
+| **Advance** (yours or the AI's), move, fall back, follow | his place in the line + 1 m toward the game's place for him — the line advances as one |
+| Charge | released — the game's own melee (the charge breaks the wall on purpose) |
+| Any order, farther than 10 m from the enemy's front | the game's own march |
+
+The step out to strike still works inside the push. A wall whose morale breaks (section 11b1) still breaks.
+
 <sub>Settings: `ShieldWallHoldsSlots` on (live — switch it off mid-battle to see the difference); `ShieldWallStepOutMetres`
 1.0 m (0 = they stand fast and fight only what reaches them; 2-3 = a looser wall; live); `ShieldWallPullBackSeconds` 0.5 (Advanced,
-"Battle pace (AI)"; 0 = the game's own pull only; live).</sub>
+"Battle pace (AI)"; 0 = the game's own pull only; live); step 68 (Advanced, "Battle pace (AI)", live): `ShieldWallAdvanceAsOne` on,
+`ShieldWallAdvanceStepMetres` 1.0 (0.3-3), `ShieldWallAdvanceNearMetres` 10 (0-60), `ShieldWallKickReturnMetres` 0.5 (0 = off).</sub>
 
 ## 11. Eagerness, and the fever of a charge
 
@@ -1013,6 +1037,16 @@ bar (a fresh man's refill ~1 s; the stack ~100% full there). What brakes a tired
 fresh shieldman bashing 7 times a minute spends ~35 points a minute on it on top of his swings, and below 75% he bashes less, below 35%
 never. Never you (your E key is yours), never a rider, never a man staggered, down, routing, with a bow in hand, or without the
 Athletics or a stored swing for it. `AiBashShareOfSwingsPercent` 50 = one bash in two swings (0.50 a swing fresh, 7.5 swings and 3.7 bashes a minute).
+
+**Never through a friend; every landed kick decided** (step 68). In Toni's 100 v 100 the AI's kicks and bashes "landed on the
+man" 92 times but only 33 were decided: the rest hit one of the kicker's OWN side — a rear-rank man kicking at the enemy past
+his own front-rank mate. The game cancels a friend's kick (nothing plays), and the mod never decides it. Now an AI man does not
+kick or bash while a man of his side stands between him and his enemy (within **0.5 m** of the line between them) — he waits
+for a clear line, up to the same 3 s as for reach. Every kick or bash that lands on an enemy — the AI's and yours — gets its one
+decision (the brace, the knockdown, the lost shield); a kick into a **raised shield** is stopped by the shield and decides nothing
+(the shield did its job).
+
+<sub>Settings: `AiKickFriendClearMetres` 0.5 (Advanced, impact group; 0 = no check; live).</sub>
 
 ### The kicked man braces (step 65)
 

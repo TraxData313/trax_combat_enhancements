@@ -90,7 +90,7 @@ namespace TraxCombat.Core
 
         public static readonly ParamDef CostPerBlow = Float("CostPerBlow", 0, 100, PlayerTiredGroup,
             "Cost per swing (points)",
-            "How fast men tire: the Athletics points one attack costs a common soldier, whatever the size of his bar - so a bigger Athletics skill means more blows. At 7 a recruit (a 50-point bar) is empty after 8 blows, a legionary (130) after 19. Higher = everyone tires sooner. 0 = attacks are free. Kicks, bashes and blocks have their own costs: Advanced page, Athletics.");
+            "How fast men tire: the Athletics points one attack costs a common soldier, whatever the size of his bar - so a bigger Athletics skill means more blows. At 8 a recruit (a 50-point bar) is empty after 7 blows, a legionary (130) after 17. Higher = everyone tires sooner. 0 = attacks are free. Kicks, bashes and blocks have their own costs: Advanced page, Athletics.");
 
         public static readonly ParamDef HeroCostMultiplier = Float("HeroCostMultiplier", 0, 2, PlayerTiredGroup,
             "Heroes' cost (x)",

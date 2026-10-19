@@ -56,9 +56,9 @@ effects begin. **Wounds cap the bar**: a man at half health can only refill to h
 
 | A bar of… | Attacks from full to empty: a soldier | a hero who leads his party |
 |---:|---:|---:|
-| 50 (a recruit) | 7 | 13 |
-| 100 | 14 | 25 |
-| 200 (a veteran hero) | 29 | 51 |
+| 50 (a recruit) | 6 | 11 |
+| 100 | 13 | 22 |
+| 200 (a veteran hero) | 25 | 44 |
 
 Numbers: [MECHANICS §2](MECHANICS.md#2-the-athletics-bar).
 
@@ -87,8 +87,8 @@ so a formation pulled back and walked about recovers.
 
 **A skilful defender recovers on the defence.** A clean block on the right side, or a parry, costs a
 little but lets the refill run on underneath. A block on the **wrong** side (the shield caught the blow
-off-side) stops the refill and starts the wait again. So a man who reads his enemy can catch his breath
-while defending — and a man who keeps guessing wrong stays at the bottom. **A raised shield facing the blow covers
+off-side) costs more than twice as much, stops the refill and starts the wait again. So a man who reads his enemy can
+catch his breath while defending — and a man who keeps guessing wrong stays at the bottom. **A raised shield facing the blow covers
 it:** a shield block against a man in front of you counts as the right side, whichever way the game says you held
 it — the same for the AI. From the side or behind, the side still matters, and so does it for a weapon parry. A
 tired soldier still misjudges some of his blocks, so a worn-out wall can still be broken.
@@ -142,8 +142,14 @@ man does it, and the wall bulges and breaks. With this mod a man in a shield wal
 his place and fights whatever reaches him. When the enemy in front of him backs off just out of reach, he
 takes one short step out after him, strikes, and walks back to his place. A man thrown out of the wall by a
 blow or shoved out by the press is held again at once and, as soon as he is back on his feet, backs off into his
-place facing the enemy — the wall closes up. On a charge the wall breaks on purpose; loose lines and columns keep
-the game's own behaviour.
+place facing the enemy — the wall closes up; a man who kicked or bashed walks straight back after it. On a charge the
+wall breaks on purpose; loose lines and columns keep the game's own behaviour.
+
+**The wall pushes as one.** Order a shield wall to **advance** (F1, then F4) and in the base game its men each walk to
+a place at the enemy's line — the ones free to move walk on into the enemy while their mates fight, and the wall breaks
+up. Now, close to the enemy, every man of the wall is sent only a short step ahead of his place in the line, all
+together: the whole wall walks forward as one, pushes at the pace its fighting front allows, and nobody runs ahead of
+it. Moving, falling back and following work the same way; a charge still lets the men go.
 
 Numbers: [MECHANICS §10](MECHANICS.md#10-battle-pace) (the end of it).
 
@@ -244,10 +250,12 @@ into his own front man — never knocks anyone down.
 **Kicks and shield bashes.** The AI now kicks and shield-bashes. A man without a shield kicks about once a minute
 while he fights — more against a man who hides behind his guard and in the fever of a charge, veterans more than
 recruits, tired men not at all. A man with a shield bashes about as often as he swings while he is fresh, less as he
-tires. They are not free: a kick or a bash costs 5 Athletics points (a swing 7), so a shieldman who bashes a lot tires
+tires. They are not free: a kick or a bash costs 5 Athletics points (a swing 8), so a shieldman who bashes a lot tires
 sooner — and so do you if you kick a lot. And a kick is no longer a free push: a fresh, well-armoured veteran **braces** and barely moves — a looter's kick staggers a fresh legionary for a moment
 perhaps one time in eight, and never knocks him down. Tire him first: a spent man cannot brace, and then kicks and bashes
-throw him about. The same goes for you, both ways.
+throw him about. The same goes for you, both ways. A man never kicks through his own mate: a soldier in the second rank
+waits until nobody of his side stands between him and the enemy.
+
 
 **The enemy goes for the opening.** When a man reels or lies on the ground — you included — the men fighting
 him press it at once.

@@ -5967,3 +5967,127 @@ AltMarkerDefaults).
 6. Cost in a 400-1000 man battle (`fear flock vs courage and walls … cost … ms a tick`).
 
 **DEPLOY**: `tools\deploy.ps1` built HEAD 6a313e3, the AssemblyGuard OK, the offline smoke (the exe this time - Smart App Control let it run) all 152 passed, installed as Modules\TraxCombatEnhancements.Dev; `tools\SmartAppControl\loadcheck.ps1`: both installed DLLs LOADED (`1.2.0+6a313e3e…`): TraxCombatEnhancements.dll SHA-256 4F871268…DE4C, TraxCombat.Core.dll 97836662…CBD8. The game and the launcher were not running. Tests (991) ran in memory (`run_tests.fsx`), the step's smoke runs in memory (`run_smoke.ps1`); `dotnet run --project tools/DefaultsTool -- refresh` ran directly. Windows security untouched.
+
+## Step 68 — the wall pushes as one, kicks through the impact model, men tire more (DONE 2026-10-19; dev build only, not uploaded)
+
+**Toni's 100 v 100 (2026-10-19, battle_terrain_biome_048, 177 s, the summary 14:59:30)**: `wall slots ON … in contact 8124 samples: more than
+1 m ahead 15.4%, more than 2 m 5.8%, mean ahead 0.45 m, the farthest 6.2 m` (the looter battle 14:54 before it, the wall standing: 0.8%);
+`wall writes: … released to vanilla's own value 224 (another arrangement 162, a charge order 62)`; `wall pulled back: 257 spells out of place
+(after an impact 4, other 253) … walked back by us 229 times`; `ai kicks: asked 155 → PLAYED 147 → landed on the man 92, into a shield 39`
+against `impact … 637 decisions - kicks 21, shield bashes 12 … a FRIEND's blow 734` and `kick brace … 32 landed kicks / bashes decided`; the
+looter battle: 32 landed, 6 bashes decided. Toni: the wall ordered forward with F1 then F4 ("engage"); "they need to hold the wall and push the
+whole wall, not to break up, so your call"; "tire the men more to slow down the combat again a bit after the first impact".
+
+**F1 → F4 in v1.4.8** (`View/…/VisualOrders/DefaultVisualOrderProvider.cs`, both the default and the legacy layout): F1 = the Movement set,
+its 4th order `AdvanceVisualOrder` → `OrderController.SetOrder(OrderType.Advance)` → `MovementOrder.MovementOrderAdvance`. So: ADVANCE, which step
+41 always HELD (`WallMath.OrderVerdict` - advance is no charge).
+
+**THE CAUSE OF THE LEAK (the decompile)**
+- `MovementOrder.GetPositionAux` (Advance): the order position = the closest enemy formation's `CachedMedianPosition` less 2 m along the line
+  between the formations (0.1 m against a much weaker one) - the formation's FRONT ordered onto the enemy's line (its median is ~half its depth
+  behind its front).
+- `HumanAIComponent.GetFormationFrame` (MovementState Hold - an advance) → `Agent.GetBaseFormationFrame` → `Formation.GetOrderPositionOfUnit`
+  (`GetOrderPositionOfUnitAux` - his slot in the ORDER frame) → `Agent.TrySetFormationFrame` every ~0.5 s per man (his
+  `_cachedAndFormationValuesUpdateTimer`, the same update step 41 follows) - THE POINT HE WALKS TO. Under a stop (`StandGround`)
+  `GetOrderPositionOfUnit` returns his own position - he stands where he is (why a standing wall leaks ~1%).
+- Step 41's flag position and the "ahead" measure use `GetCurrentGlobalPositionOfUnit(agent, true)` = `CurrentPosition` (=
+  `CachedAveragePosition` + the facing × −`OrderLocalAveragePosition`) + his place: his slot in the line AS IT STANDS.
+- `GetDesiredSpeedInFormation` only slows a man ahead of his current slot to 0.7-1.1 × (never stops him).
+So under an advance every man keeps walking to a slot at the enemy's line; the men free to move (no enemy on their blade, a gap in front) walk
+on while those fighting stand - the line stretches and bulges, and the measure (relative to the line's own average) reads them ahead.
+The other candidates, against the log: a CHARGE releases the man (the 62 releases and the 162 arrangement changes - mostly the AI's formations -
+take men OUT of the samples, which count held men only); the fear flock broke no wall (no `the wall broke` release); courage never looks at a
+held wall man (`not looked at: … held in a shield wall 11013`), so no surge; step 54's punish only raises the attack decision (and the timid
+step-in is courage's, skipped); spells "after an impact" 4 of 257. A man's own kick / bash lunge is real but below step 63's 1.25 m mark.
+UNMEASURED in this log: the leak by order (no such line) - step 68 adds it.
+
+**68.1 / 68.2 THE WALL PUSHES AS ONE (Core `ShieldWallPace.cs`; Module `AthleticsLogic.Wall.cs`, `WallBody.cs`)**
+- `WallFacts` + `HasOrderSlot / OrderX / OrderY` (`Formation.GetOrderPositionOfUnit`) and `EnemyGap` (`CachedClosestEnemyFormation`'s median
+  distance less half of each formation's `Depth` - `WallPaceMath.FrontGap`), read by `GameWallBody.Read` only for a held MOVING order
+  (`WallPaceMath.Paces`: advance, the AI's advance, move, fall back, follow, follow an entity - every held order but a stop).
+- `WallPaceMath.Pace`: the rules on (ModEnabled FIRST, `ShieldWallHoldsSlots`, `ShieldWallAdvanceAsOne`), a moving order, the order slot known
+  and farther than `ShieldWallAdvanceStepMetres` (1 m, clamped 0.3-3) from his slot in the line, `EnemyGap` ≤ `ShieldWallAdvanceNearMetres`
+  (10 m) → the point = his slot + the step toward the order slot. `Why` names the rest (off / standing / no order slot / far / within the step).
+- `PaceLook` (after `body.Hold` at every hold write - after vanilla's update, the 0.25 s look, the 0.1 s out-of-place look - and at a stepping
+  man's 0.1 s leash look, so the leash keeps the paced frame): `IWallBody.Pace` = `Agent.TrySetFormationFrame` with `GetWorldPosition()` moved by
+  `WorldPosition.SetVec2` (vanilla's own way in `GetPositionAux`) and `GetBaseFormationFrame`'s direction; not paced any more → `Unpace`
+  (`GetBaseFormationFrame` + `TrySetFormationFrame`, or `SetFormationFrameDisabled` - vanilla's own). Every let-go path gives the game's frame back
+  (a gate - a charge -, `ReleaseAllWalls` for the switch / the master switch, `WallFailed`); `WallLeftField` and `CloseWalls` no engine call;
+  the pace switch off = `UnpaceAll` at once. Step 67's `Breaking` verdict comes first (a broken wall's man is let go and unpaced).
+- Measured: `WallPaceStats` - the ON samples by order group (`AddSample(f.Order, …)` beside step 41's) → `[summary] wall slots ON by order (step
+  68 …): standing … | ADVANCE … | moving …`; `[summary] wall advance as one (step 68): …` (paced writes / men by group, the order slot's lead mean /
+  max, the enemy gap, the looks not paced by reason, frames given back, errors); `[wall]` first paced man, the change lines.
+- Claude's calls (DESIGN decision 61 b-d, f): pace the frame, not the order (the player's order stays an advance; no Harmony); the same step for
+  every man (the frame is relative to the line's average - a line walking together reads ~0 ahead); 1 m (the engine's stop tolerance below
+  ~0.3 m; 2-3 m stretches again); 10 m between the fronts (the game's march untouched farther out - its speed limits keep a marching formation
+  together); a stop / hold keeps the game's frame.
+
+**68.2 BACK TO THE LINE AFTER A KICK (Core `WallPullMath.Step(…, kickReturnMetres, ownKick)`)**: his own kick / bash running or begun within
+`KickWindowSeconds` 2.5 (`KickBashTracker.DecidedAt`), an AI kick attempt, or a punish press (`st.Punishing`) = out of place from
+`ShieldWallKickReturnMetres` 0.5 (step 63: max(L, 1) + 0.25), back within half of it (≤ the step-63 back mark), walked back at once (no
+`ShieldWallPullBackSeconds` wait; works with that at 0) and never while kicking (canMove false - his kick's input would be fought). The out-of-place
+0.1 s looks run with the pull OR the kick return. `WallPullStats.SpellsAfterKick / BackAfterKick` → the "wall pulled back" line's step-68 clause.
+
+**THE UNDECIDED KICKS (68.1 / 68.2)**
+- Every landed kick / bash on a TRACKED ENEMY already reached the one decision: the knock-back seam (step 65 - asked for every alternative attack
+  the base says yes to: 169 asks = 131 OnMeleeHit kick collisions + 38 more from `Mission.OnAgentHitBlocked`, which also builds a melee blow for a
+  BLOCKED kick), else the KnockDown seam, else OnMeleeHit's own (`ImpactModelHitTaken` - one decision per event). No different blow path: a kick
+  that hits an ARM is skipped by the engine before anything (`Mission.MeleeHitCallback`: an alternative attack on an arm bone = ContinueChecking -
+  no blow, no OnMeleeHit, no count either); the bash's flags (`AttackType = Bash` when a weapon slot is set) change nothing for the seams.
+- The gap was the COUNT: `AiKickHit` counted the first collision of each attempt as "landed on the man" whoever it hit, and the model never
+  decides a FRIEND's blow (step 63: the game cancels it - 0 damage, no reaction). A rear-rank wall man's target stands ~1.6 m off past his own
+  front-rank mate (the kick waits for reach up to 3 s - step 66 - so it fires when the enemy is close enough THROUGH the mate). The impact header's
+  `a FRIEND's blow 734` held them (no per-event split then). The looter battle (the wall bashing, 32 landed / 6 decided) fits the same.
+- FIX: `AiKickFriendClearMetres` 0.5 - in reach and in front, `IAiKickBody.FriendInTheWay` (`Mission.GetNearbyAllyAgents` around him, radius the
+  distance + the clearance, into a REUSED `MBList` - no allocation; `AiKickMath.FriendInPath`: a man of his side more than 0.2 m past him along
+  the line to the enemy, short of the enemy, within the clearance of the line) holds the kick: `AiKickSkip.FriendInTheWay` (appended, SkipCount
+  16), the decision WAITS like one out of reach (`AiKickWaitSeconds`); counted held / clear. `AiKickHit(st, intoShield, victim)` → `AiKickVictim`
+  (his target / another enemy / a FRIEND / a horse or untracked) - the "ai kicks" line's step-68 clause.
+- THE COVERAGE LINE: `ImpactModelHitTaken` counts every kick / bash collision first (landed = step 50's `KickLanded`; into a shield; other; by
+  you), `ImpactStats.Skip` counts a kick's / bash's skips apart → `[summary] impact kicks / bashes landed vs decided (step 68): landed on a man N
+  … → DECIDED D …; not decided: on a FRIEND …, on a horse / untracked …, it killed him …, the model off …, the kicks' family off …, read failed …;
+  unaccounted U (must be 0) | into a raised shield S - not decided …`.
+- KICKS INTO A RAISED SHIELD (decision 61 h): not decided - IMPACT §3.5's kick row is a kick / bash that LANDS; the shield stopped it (the engine's
+  block); a decision would need its own effect (our own blow on the blocker) for an event the design gives none. Counted apart.
+
+**68.1 THE COSTS (defaults.json; config format 14)**: `CostPerBlow` 7 → 8 (8 / 6 / 4.5), `CostPerShieldBlock` 1 → 2, `CostPerWrongSideShieldBlock`
+2 → 5 (step 22's original); `CostPerKickOrBash` 5 and `CostPerWeaponParry` 2 unchanged; `ConfigFile.Migrate` `from < 14`: `MoveOrKeep` CostPerBlow 7
+only for a format ≥ 9 file (7 became the default in format 9; a format-8 file's own value was already said by step 46's block), the wrong side 2
+for ≥ 8 (step 43's default since format 8; an older file's 5 is today's default again), the right side 1 for any. The player page's *Cost per swing*
+hint: "At 8 a recruit (a 50-point bar) is empty after 7 blows, a legionary (130) after 17". A right-side block now costs what a parry does: a
+soldier blocking every 1.5 s on a 50-point bar sinks (−30 a minute) instead of climbing (MECHANICS §6).
+
+**Settings (5, all Advanced, all Live; 352 → 357; Advanced 332 → 337)**: "Battle pace (AI)" after `ShieldWallPullBackSeconds` - `ShieldWallAdvanceAsOne`
+(true), `ShieldWallAdvanceStepMetres` (1.0, 0.3-3), `ShieldWallAdvanceNearMetres` (10, 0-60), `ShieldWallKickReturnMetres` (0.5, 0-3); the impact
+group after `AiBashCooldownSeconds` - `AiKickFriendClearMetres` (0.5, 0-2).
+
+**Plumbing constants**: `WallPaceMath.MinStepMetres` 0.3 / `MaxStepMetres` 3 / `MaxNearMetres` 60; `WallPullMath.KickWindowSeconds` 2.5 /
+`MaxKickReturnMetres` 3; `AiKickMath.FriendPathMinAlong` 0.2.
+
+**Measured offline**: tests 991 → 1004 (Step68Tests.cs 13: the settings placed / live, the order groups, the capped point / the gap / why not, the
+master switch first, the two summary lines, the kick return and its stats, the friend geometry and the victims line, the coverage line with
+Toni's numbers in miniature, the new costs with the multipliers, format 14 - move, keep, the chains, idempotent); the older format tests → 14
+(FeverTests' format-8 file filters step 68's own note - its lambda's step-43 default; Step63Tests' "no key" check uses another key; ImpactTests'
+group 118; SettingsPagesTests 357). Smoke 152 → 157 (Program.Step68.cs: WallAdvancesAsOne, WallPaceCostStaysFlat - 1000 men of an advancing
+wall 0.041 ms a tick, 0 bytes, 6 paced frames a man a second -, WallWalksBackAfterAKick, AiKickNotThroughAFriend, KicksLandedVsDecided; the
+master-switch step's `WallPaceFollowsTheMasterSwitch`); the older wall steps pin `ShieldWallKickReturnMetres` 0 and `ShieldWallAdvanceAsOne` off
+(`WallDefaults`) - with the kick return on, step 63's "pull 0 = no extra looks" check saw 14 extra looks.
+
+**Gotchas**
+- `AthleticsLogic` already had a `_seenPace` (battle pace) - the wall's is `_seenWallPace`.
+- `AthleticsLogic.Get` is private - the smoke keeps the `TrackedAgent` from `Track` (a second `FakeAgent(i)` is a new object).
+- A `[wall]` change line logs at the NEXT `TickWall`, not at `Set`.
+- `WallFacts.EnemyGap` defaults to 0 (a struct): a stand-in fact without an order slot is never paced (`HasOrderSlot` false), so the older smoke
+  facts stay step 41-67's.
+- Smart App Control blocked the freshly built `TraxCombat.Core.dll` under `tools/DefaultsTool/bin` this time (the first refresh of the step ran);
+  `tools\SmartAppControl\refresh_defaults.fsx` did the second.
+- The session scratchpad holds earlier sessions' helper files (design.py …) - name a step's own files apart.
+
+**UNVERIFIED — only the game can tell (PLAYTEST D33)**
+1. The engine walks a held man to the paced frame (`TrySetFormationFrame` with a point 1 m ahead of his slot in the line): `wall slots ON by order`
+   ADVANCE in contact near the standing column (a few %), not 15%. If it stays high: the engine ignored the frame (or the native "keep" position
+   wins) - the next lever is the integrity POSITION itself (step 42's untried alternative), tell Claude.
+2. The wall does not stall short of the enemy (the 1 m step inside the engine's stop tolerance would freeze it) and does push when the enemy gives.
+3. `impact kicks / bashes landed vs decided … unaccounted 0`, and `on a FRIEND` far below the 59 of 92 now that the friend check holds them; the
+   `ai kicks` victims clause confirms the FRIEND hypothesis (most of the old gap on friends).
+4. The lines tire sooner after the first clash (8 a swing, 2 / 5 a block) without feeling sluggish.

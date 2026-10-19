@@ -80,6 +80,10 @@ regen.)
     5 → 2); a tuned value is kept.
   - Step 46 (Anton's playtest, 2026-10-17): defaults.json ships `CostPerBlow` **7** (7 / 5.25 / 3.94). Config format 9 moves a
     format-8 file still holding 3 to 7 once (a tuned value is kept and noted); an older file's 10 goes straight to 7.
+  - Step 68 (Toni's 100 v 100, 2026-10-19: "tire the men more to slow down the combat again a bit after the first impact";
+    decision 61): defaults.json ships `CostPerBlow` **8** (8 / 6 / 4.5 - a recruit's 50-point bar empty after 7 blows, a
+    legionary's 130 after 17). Config format 14 moves a file still holding 7 once (a tuned value is kept and noted); an older
+    file's 10 goes straight to 8.
 - **What is a blow**: a melee swing or thrust, a shot, a throw. A couched lance or braced
   spear hit has no swing, so it costs one blow when it LANDS. Siege engines (ballista, onager)
   cost nothing.
@@ -100,7 +104,9 @@ regen.)
   judges the side and weakens such a block itself), `CostPerWeaponParry` (2) when he blocks or parries it
   with a weapon, no shield (a chamber block too) — each × the same hero and party-leader multipliers as a
   blow (1 / 5 / 2 for a soldier, 0.75 / 3.75 / 1.5 for a hero, 0.56 / 2.81 / 1.13 for a party leader); 0 =
-  free. The AI's and yours alike, on foot or mounted. Charged ONCE per blocked blow (a swing touching the
+  free. (defaults.json: step 43 shipped the wrong side at 2; step 68 - Toni, decision 61 - ships the right side **2** and
+  the wrong side **5** again, the parry 2: a soldier 2 / 5 / 2, a hero 1.5 / 3.75 / 1.5, a hero party leader 1.13 / 2.81 /
+  1.13; config format 14 moves a file's 1 / 2 once.) The AI's and yours alike, on foot or mounted. Charged ONCE per blocked blow (a swing touching the
   guard twice is one blow). Paid like a kick: the curves follow, it can take a man below his peak line or
   empty him. **The refill delay** (step 29, Anton 2026-10-12, after a tournament 1v1 where both men sat at
   empty for good: "a skilful defender should recover while staying on the defence"): with
@@ -323,6 +329,27 @@ regen.)
         L); held men as above. 0 = the hard hold exactly. Live: a new L applies at the next look (≤ 0.1 s for a man out). Measured:
         the summary's "wall step out" line - steps by men, a man's steps a minute while held, each step's farthest out, how the
         steps ended, the overshoot past L, back in the slot, and in-contact samples past L and past L + 0.5 m.
+      - **the wall pushes as one** (step 68, Toni's 100 v 100 of 2026-10-19: his shield wall ordered forward with F1 → F4 =
+        ADVANCE had 15.4% of its men in contact more than 1 m ahead of their slots, the farthest 6.2 m - the looter battle with the
+        wall standing 0.8%; "they need to hold the wall and push the whole wall, not to break up"; AI_NOTES "Step 68", decision
+        61; `ShieldWallAdvanceAsOne`, on): under an advance the game's ORDER slot of each man lies at the enemy's line
+        (`MovementOrder.GetPositionAux`: the nearest enemy formation's median less 2 m), and every AI man walks to his order slot
+        (`HumanAIComponent.GetFormationFrame` → `Agent.TrySetFormationFrame`, every ~0.5 s) - while step 41's flag and the
+        "ahead" measure use his slot in the line AS IT STANDS (the men's average + his place). Under a stop the two are the same
+        point; under an advance the men free to move walk on into the enemy while their mates fight, and the line stretches. So
+        for a held man under a MOVING order (advance - yours or the AI's -, move, fall back, follow; never a stop / hold; a charge
+        still lets the wall go) whose formation's front is within `ShieldWallAdvanceNearMetres` (10 m) of the nearest enemy
+        formation's front, the frame the engine walks him to is his slot in the line + at most `ShieldWallAdvanceStepMetres`
+        (1 m) toward the game's order slot - every man the same step, so the line advances as one body at the pace its fighting
+        front allows; written with vanilla's own call right after vanilla's own update and at step 41's looks (a man stepping out
+        on the leash keeps it; the leash still lets him strike); off, a let-go, the hold off or the master switch = the game's
+        own frame back at once. Farther from the enemy the game's own march. Measured: the [summary] "wall slots ON by order"
+        line (the in-contact leak for standing / ADVANCE / moving) and "wall advance as one" (paced writes and men, how far the
+        game's slot lay, the looks not paced by reason, frames given back).
+      - **back to the line after a kick** (step 68; `ShieldWallKickReturnMetres` 0.5 m): a held man whose OWN kick / bash began
+        within 2.5 s, or who presses a punish window (step 54's step-in), is out of place from 0.5 m ahead of his slot (step 63's
+        mark is 1.25 m) and walked back AT ONCE - step 63's backpedal, no 0.5 s wait - as soon as he can move (not down, reeling,
+        or in his kick), to within 0.25 m. 0 = step 63's rule only. The "wall pulled back" line counts these spells apart.
     - **Brace by orders — tired AI men stop swinging and defend** (Anton, 2026-09-29: "soldiers get to 0% athletics
       but they still swing as much as they can - make soldiers not swing but only defend when they have reached a
       certain floor, that depends on their current orders, until they have replenished the floor +20%" ... "when
@@ -2297,6 +2324,56 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     ON vs OFF; drift back a minute by order ON vs OFF; cover / nobody behind / alone ON vs OFF; fear, pull and afraid share by discipline band;
     spells, ends, anchors, steps in behind a comrade, sprints; courage's yields, walls broken, the loose mass, near-slot looks, the steering and
     its cost), the [fear] first-time lines, the HUD's morale clauses.
+
+61. **The wall pushes as one, kicks through the impact model, men tire more** (step 68, Toni's 100 v 100 of 2026-10-19,
+    battle_terrain_biome_048, 177 s: `wall slots ON` in contact more than 1 m ahead 15.4 %, more than 2 m 5.8 %, the farthest 6.2 m -
+    the looter battle before it 0.8 %; the wall ordered forward with F1 then F4 - in v1.4.8's order menu (both layouts) F1 = Movement,
+    F4 = ADVANCE; `wall writes: released to vanilla 224 (another arrangement 162, a charge order 62)`; `ai kicks: PLAYED 147 → landed
+    on the man 92, into a shield 39` against `impact … kicks 21, shield bashes 12` and `kick brace … 32`; Toni: "they need to hold the
+    wall and push the whole wall, not to break up, so your call" and "tire the men more to slow down the combat again a bit after the
+    first impact"). Claude's calls:
+    (a) THE CAUSE OF THE LEAK - the advance itself: the game's order slot under an advance lies at the enemy's line and every AI man
+    walks to it (§2 "the wall pushes as one"); the other candidates do not fit the log - the charge-order releases (62) and arrangement
+    changes (162) take men OUT of the samples (only held men are sampled), the fear flock broke no wall (no "the wall broke" release),
+    courage never looks at a held wall man (11013 skips), the spells out of place "after an impact" were 4 of 257, and a punish press only
+    raises his attack decisions. A man's own kick / bash lunge is real but small (step 63's 1.25 m mark cannot see it) - (e) handles it.
+    The log could not split the leak by order (no such line) - step 68 adds it;
+    (b) THE FIX - pace the frame, not a new order: a held man of a moving order near the enemy walks to his slot in the line + one
+    `ShieldWallAdvanceStepMetres` (1 m) toward the game's order slot. Every man the same step: the line advances as one body at the
+    pace its fighting front allows (the frame is relative to the line's own average, so a line moving together reads ~0 ahead, a man
+    who runs ahead of it reads ahead); the leash (step 42) still lets a man step out to strike, and keeps the paced frame while he is
+    out. 1 m: below ~0.3 m the engine's own stop tolerance may never walk him; 2-3 m lets the line stretch again. Near =
+    `ShieldWallAdvanceNearMetres` 10 m between the fronts: the game's own march farther away (its speed limits already keep a
+    marching formation together), the pace for the last 10 m and the push; (c) WHICH ORDERS: advance (yours and the AI's), move,
+    fall back, follow - "other moving orders that keep the arrangement"; a stop / hold keeps the game's own frame (its order slot
+    there is where the man stands); a charge still releases the wall to vanilla's melee (step 41's gate, unchanged); (d) THE LEVER:
+    `Agent.TrySetFormationFrame` (public, vanilla's own call in `HumanAIComponent.ParallelUpdateFormationMovement`) with his world
+    position moved to the paced point and the game's own direction for his place - written on the main thread right after vanilla's
+    update (step 41's timer) and at the staggered looks; no Harmony, no order changed, the player's order stays an advance; (e) BACK
+    TO THE LINE AFTER A KICK: his own kick / bash within 2.5 s (or a punish press - step 54's "step-in") makes him out of place from
+    `ShieldWallKickReturnMetres` 0.5 m (step 63: 1.25 m) and walks him back at once (no 0.5 s wait), never while the kick plays (its
+    input would be fought); (f) STEP 67's RULE KEPT: a wall whose men's mean morale is below `FearWallBreakMorale` still breaks into
+    the flock (step 41's verdict `Breaking` comes before the pace - a broken man is let go and his frame given back);
+    (g) THE UNDECIDED KICKS - a FRIEND filter: every landed kick / bash on a tracked enemy already reached the one decision (the
+    decorator's knock-back / KnockDown seams, else OnMeleeHit - its own fall-back); the gap is `ai kicks`' "landed on the man", which
+    counted the FIRST collision of each attempt whoever it hit. The game cancels a friend's blow (step 63) and the model never decides
+    it - and a rear-rank man in a wall, his target 1.6 m off past his own front-rank mate, kicks or bashes his mate (the impact
+    header's "a FRIEND's blow 734" holds them; it had no per-event split). Not a different blow path: a kick hitting an ARM makes the
+    engine skip the callback altogether (`Mission.MeleeHitCallback` - ContinueChecking), never reaching OnMeleeHit; a 0-damage friend's
+    kick reaches OnMeleeHit and is named. So: no kick THROUGH a friend - `AiKickFriendClearMetres` 0.5: a man of his own side more
+    than 0.2 m past him along the line to the enemy and within 0.5 m of it holds the kick (the decision waits for a clear line, like
+    one out of reach; the game's proximity search into a reused list, read only in reach and in front); measured: whom each landed
+    kick hit (his target / another enemy / a FRIEND / a horse or untracked) and every landed kick / bash against the decisions with the
+    reasons for the rest (`unaccounted` must be 0); (h) KICKS INTO A RAISED SHIELD are NOT decided: IMPACT §3.5's kick row is "a kick /
+    bash LANDS" - the shield stopped it, the engine plays a block (no knock-back on the man), and a decision would need an effect of
+    its own (our own blow on a blocker - step 51's lever) for an event the design gives none; counted apart in the coverage line - if
+    Toni wants a bash into a shield to rock the blocker, it is a new row; (i) THE COSTS (Toni): `CostPerBlow` 7 → **8**, a WRONG-side
+    shield block 2 → **5** (step 22's original - a clumsy block tires), a right-side block 1 → **2**; the kick / bash stays 5, the
+    weapon parry 2; heroes × 0.75 and party leaders × 0.75 again kept (a blow 8 / 6 / 4.5, a right block 2 / 1.5 / 1.13, a wrong block
+    5 / 3.75 / 2.81); a right-side block now costs what a parry does, so a soldier blocking every 1.5 s no longer climbs on a small
+    bar (MECHANICS §6); config format 14 moves a file's 7 / 2 / 1 once, a tuned value kept and said; (j) all five new settings on the
+    Advanced page (the brief): the wall's four in "Battle pace (AI)" after `ShieldWallPullBackSeconds`, the friend clearance in the
+    impact group after `AiBashCooldownSeconds`; all live.
 
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),
