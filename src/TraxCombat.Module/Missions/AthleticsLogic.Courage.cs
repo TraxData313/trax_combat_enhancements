@@ -56,11 +56,13 @@ namespace TraxCombat.Missions
             _seenCourageText = CourageText(TraxSettings.Shared);
             TraxLog.Info("courage", "mission start: " + _seenCourageText + " - read live; every AI man looked at about every " + F1(CourageMath.PollSeconds)
                 + " s; the [summary] \"courage\" lines compare isolated men and their distance from the formation's centre with courage ON and OFF");
+            StartFear(); // step 67: the fear flock rides these looks
         }
 
         /// <summary>A courage setting changed (from ApplySettingsChange): one line; applied at every man's next look.</summary>
         private void NoteCourageSettings(TraxSettings s)
         {
+            NoteFearSettings(s); // step 67
             string now = CourageText(s);
             if (now == _seenCourageText) return;
             _seenCourageText = now;
@@ -76,6 +78,7 @@ namespace TraxCombat.Missions
         {
             var cr = CourageRules.From(TraxSettings.Shared);
             if (!cr.Enabled && _timidNow > 0) EndAllTimid(CourageEnd.SwitchedOff, now, native: true, cr.OffBecause);
+            TickFearSwitch(now); // step 67: the fear flock's switch (the master switch first) - every spell let go at once when off
             var body = CourageBody;
             if (!body.MissionAllows())
             {
@@ -83,6 +86,7 @@ namespace TraxCombat.Missions
                 return;
             }
             _courageStats.Ticks++;
+            TickFearUnits(now); // step 67: the unit table published every 0.5 s (the shelters, the shape / drift samples)
             double dt = double.IsNaN(_courageLastTick) || now < _courageLastTick ? CourageMath.PollSeconds : now - _courageLastTick;
             _courageLastTick = now;
             if (dt > CourageMath.PollSeconds) dt = CourageMath.PollSeconds;
@@ -114,6 +118,7 @@ namespace TraxCombat.Missions
             _courageStats.PollCostMs += (mid - start) * 1000.0 / Stopwatch.Frequency;
             if (cr.Enabled && _walking.Count > 0) SteerWalkers(now, in cr);
             _courageStats.SteerCostMs += (Stopwatch.GetTimestamp() - mid) * 1000.0 / Stopwatch.Frequency;
+            if (_fearRules.Enabled) SteerFlockers(now); // step 67
         }
 
         /// <summary>An impact family changes the battle now (then its outcomes are shock too) - once a tick.</summary>
@@ -150,6 +155,7 @@ namespace TraxCombat.Missions
                 }
                 o.CourageBase = CourageMath.BaseToughness(in cr, armour, level);
                 o.CourageHeavy = heavy;
+                o.CourageLevel = level; // step 67: his discipline
                 _courageStats.AddToughness(o.CourageBase);
             }
             return CourageMath.Toughness(in cr, o.CourageBase, CourageBody.HealthShare(o));
@@ -170,6 +176,7 @@ namespace TraxCombat.Missions
             {
                 _courageStats.AddSkip(skip);
                 if (cm.Timid) EndTimid(st, CourageEnd.Excluded, now, native: true);
+                FearSkipped(st, skip, now); // step 67: a held wall man still counts in his unit (its morale breaks the wall); any other gate ends his spell
                 return;
             }
             if (!st.CourageSeen)
@@ -186,6 +193,7 @@ namespace TraxCombat.Missions
             float radius = (float)Math.Max(cr.RadiusMetres, CourageMath.SurgeEnemyMetres);
             double nearest = double.NaN;
             TrackedAgent? nearestFoe = null;
+            int nearestIndex = -1;
             body.Scan(st, radius, _courageScan);
             if (_courageScan.Truncated) _courageStats.ScanTruncated++;
             for (int i = 0; i < _courageScan.Count; i++)
@@ -196,6 +204,7 @@ namespace TraxCombat.Missions
                 {
                     nearest = _courageScan.Dist[i];
                     nearestFoe = o;
+                    nearestIndex = i;
                 }
                 double w = CourageMath.Weight(_courageScan.Dist[i], cr.RadiusMetres);
                 if (!(w > 0)) continue;
@@ -215,9 +224,12 @@ namespace TraxCombat.Missions
                     mates++;
                 }
             }
+            body.Position(st, out double px, out double py);
+            // step 67: the fear flock reads the same scan (the nearest enemy, a comrade covering him, somebody behind, the spot behind a comrade)
+            var near = new FearNear { Px = px, Py = py, Mates = mates, Foes = foes };
+            FearScan(ref near, nearestIndex, ex, ey, ew);
             _courageScan.Clear();
             double odds = CourageMath.Odds(allies, enemies);
-            body.Position(st, out double px, out double py);
             bool hasCentre = body.FormationCentre(st, out double cx, out double cy);
             double dist = hasCentre ? Math.Sqrt((cx - px) * (cx - px) + (cy - py) * (cy - py)) : double.NaN;
 
@@ -225,7 +237,11 @@ namespace TraxCombat.Missions
             bool on = cr.Enabled;
             _courageStats.AddLook(on, gap, foes > 0 && mates < CourageMath.IsolatedMates, foes > 0);
             _courageStats.AddDistance(on, dist);
-            if (!on) return;
+            if (!on)
+            {
+                FearLook(st, now, in near, FearCourage.Off); // step 67: courage measures only - the flock decides alone
+                return;
+            }
 
             // ---- the decision
             var fv = st.Fever;
@@ -247,6 +263,7 @@ namespace TraxCombat.Missions
                 if (cm.Timid) EndTimid(st, CourageEnd.Surge, now, native: true);
                 if (cm.WeightsSet) RestoreWeights(st, cm);
                 if (foes > 0) _courageStats.AddOdds(odds, false, dist > cr.RegroupRadiusMetres * CourageMath.OutOfFormationRadii);
+                FearLook(st, now, in near, FearCourage.Surge); // step 67: a surge sends him in - the flock lets go
                 return;
             }
             if (CourageMath.FeverPresses(fever, shocked))
@@ -260,6 +277,7 @@ namespace TraxCombat.Missions
                 }
                 if (cm.WeightsSet) RestoreWeights(st, cm);
                 if (foes > 0) _courageStats.AddOdds(odds, false, dist > cr.RegroupRadiusMetres * CourageMath.OutOfFormationRadii);
+                FearLook(st, now, in near, FearCourage.FeverPress); // step 67: the fever presses - the flock lets go
                 return;
             }
             var before = cm.Phase;
@@ -316,6 +334,7 @@ namespace TraxCombat.Missions
                     cm.SurgeUntil = now + cr.SurgeSeconds;
                     _courageStats.Surges++;
                     EndTimid(st, CourageEnd.Surge, now, native: true);
+                    FearLook(st, now, in near, FearCourage.Surge); // step 67
                     if (!_firstSurgeLogged)
                     {
                         _firstSurgeLogged = true;
@@ -349,6 +368,9 @@ namespace TraxCombat.Missions
             // ---- the behaviour weights: on (re-applied every look - the game resets them on orders) while timid, the game's when brave
             if (cm.Timid && cr.TightenWeights) TightenWeights(st, cm, in cr);
             else if (cm.WeightsSet) RestoreWeights(st, cm);
+
+            // ---- step 67: the fear flock - courage's walk back goes first (it steers while it runs), else the flock may steer
+            FearLook(st, now, in near, cm.Phase == CouragePhase.Moving ? FearCourage.Walking : FearCourage.Free);
         }
 
         // ------------------------------------------------------------------ the walk
@@ -714,6 +736,7 @@ namespace TraxCombat.Missions
             {
                 Failed("courage.left", e);
             }
+            FearLeftField(st); // step 67
         }
 
         /// <summary>A landed hit on him (OnAgentHit): his shock window.</summary>
@@ -730,6 +753,7 @@ namespace TraxCombat.Missions
             if (_courageClosed) return;
             _courageClosed = true;
             if (_timidNow > 0) EndAllTimid(CourageEnd.MissionEnd, SafeNow(), agentsAlive, null);
+            CloseFear(agentsAlive); // step 67
         }
 
         internal void WriteCourageSummary()
@@ -737,6 +761,7 @@ namespace TraxCombat.Missions
             var lines = new List<string>(11);
             _courageStats.AddSummaryLines(lines, CourageRules.From(TraxSettings.Shared));
             foreach (var line in lines) TraxLog.Info("summary", line);
+            WriteFearSummary(); // step 67
         }
     }
 }

@@ -25,12 +25,40 @@ namespace TraxCombat.Tools
             public double Health = 1;
             public double Morale = 50;
             public CourageSkip Gate = CourageSkip.Count;
+            public double SlotX = double.NaN, SlotY = double.NaN; // step 67: his formation slot (NaN = none - a charge)
         }
 
-        private sealed class FakeCourageBody : ICourageBody
+        /// <summary>Step 67: the stand-in plays the fear flock's reads too (<see cref="IFearBody"/>) - a unit = team x formation, its order and facing
+        /// set per formation (a hold facing north by default), its centre the mean of its men, each man's slot his own.</summary>
+        private sealed class FakeCourageBody : ICourageBody, IFearBody
         {
             public readonly List<FakeCourageMan> Men = new List<FakeCourageMan>();
             public readonly Dictionary<int, FakeCourageMan> ByIndex = new Dictionary<int, FakeCourageMan>();
+            public readonly Dictionary<int, FearOrder> Orders = new Dictionary<int, FearOrder>();
+            public double FacingX = 0, FacingY = 1;
+
+            public bool Unit(TrackedAgent st, out int key, out FearOrder order, out double cx, out double cy, out double fx, out double fy)
+            {
+                key = -1;
+                order = FearOrder.Hold;
+                cx = cy = 0;
+                fx = FacingX;
+                fy = FacingY;
+                if (!ByIndex.TryGetValue(st.AgentIndex, out var me)) return false;
+                key = FearMath.UnitKey(me.Team, me.Formation);
+                if (key < 0) return false;
+                if (Orders.TryGetValue(me.Formation, out var o)) order = o;
+                return FormationCentre(st, out cx, out cy);
+            }
+
+            public bool Slot(TrackedAgent st, out double x, out double y)
+            {
+                x = y = double.NaN;
+                if (!ByIndex.TryGetValue(st.AgentIndex, out var me) || double.IsNaN(me.SlotX)) return false;
+                x = me.SlotX;
+                y = me.SlotY;
+                return true;
+            }
             public bool Allows = true;
             public bool Edge;
             public int Tightened, Restored, Hooks, Releases, KitReads, Scans;
@@ -60,7 +88,7 @@ namespace TraxCombat.Tools
 
             public double HealthShare(TrackedAgent st) => ByIndex[st.AgentIndex].Health;
 
-            public double Morale(TrackedAgent st) => ByIndex[st.AgentIndex].Morale;
+            public double Morale(TrackedAgent st) => ByIndex.TryGetValue(st.AgentIndex, out var m) ? m.Morale : -1; // step 67: the formation-stats refresh asks every man
 
             public bool Position(TrackedAgent st, out double x, out double y)
             {
@@ -153,6 +181,10 @@ namespace TraxCombat.Tools
             Check(CourageBodyDefault.Current is GameCourageBody, "the default courage body is not the game's: " + CourageBodyDefault.Current.GetType().Name);
             CourageBodyDefault.Current = new FakeCourageBody { Allows = false };
             Check(new AthleticsLogic().CourageBody == CourageBodyDefault.Current, "a new logic does not start with the default courage body");
+            // step 67: the fear flock's reads (the game's read native formations) - the same stand-in
+            Check(FearBodyDefault.Current is GameFearBody, "the default fear body is not the game's: " + FearBodyDefault.Current.GetType().Name);
+            FearBodyDefault.Current = (FakeCourageBody)CourageBodyDefault.Current;
+            Check(new AthleticsLogic().FearBody == FearBodyDefault.Current, "a new logic does not start with the default fear body");
         }
 
         private static void CourageDefaults()
@@ -184,6 +216,7 @@ namespace TraxCombat.Tools
             S.Set(SettingsSchema.CouragePanicSprintKeepPercent, 0, SettingSources.File);
             S.Set(SettingsSchema.CourageTightenWeights, true, SettingSources.File);
             S.Set(SettingsSchema.CourageTimidMeleeMetres, 2.0, SettingSources.File);
+            S.Set(SettingsSchema.FearFlockEnabled, false, SettingSources.File); // step 67: courage's checks run without the fear flock (Program.Step67.cs has its own)
         }
 
         private const double LooterArmour = 8, LegionaryArmour = 110;
@@ -193,6 +226,7 @@ namespace TraxCombat.Tools
         {
             var logic = NewSprintLogic(new FakeSprintBody());
             logic.CourageBody = body;
+            logic.FearBody = body; // step 67
             logic.CourageDice = new FixedDice(0.99); // step 49b: no surge unless a check asks for one
             return logic;
         }

@@ -196,6 +196,10 @@ namespace TraxCombat.Tools
             SwingStackOff(); // step 32: the older steps check one pause after EVERY attack (Program.SwingStack.cs has its own)
             SprintOff(); // step 33: the older steps predate the sprint (Program.Sprint.cs has its own)
             FeverOff(); // step 43: the older steps count the game's AI values and recomputes without the aggression share (Program.Fever.cs has its own)
+            // step 67: the older steps check a world without the fear flock and the morale eyes (Program.Step67.cs has its own)
+            S.Set(SettingsSchema.FearFlockEnabled, false, SettingSources.File);
+            S.Set(SettingsSchema.ShowMoraleMarks, false, SettingSources.File);
+            S.Set(SettingsSchema.ShowMoraleOnLabels, false, SettingSources.File);
         }
 
         // ------------------------------------------------------------------ checks

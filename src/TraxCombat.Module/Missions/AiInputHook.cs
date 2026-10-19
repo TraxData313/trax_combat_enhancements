@@ -58,6 +58,13 @@ namespace TraxCombat.Missions
         public float WallPullX, WallPullY = -1f;
         public long WallPullFrames;
 
+        /// <summary>Step 67: a fearful man walks to (or stands at) his place in the FEAR FLOCK: <see cref="FlockX"/>, <see cref="FlockY"/> replace
+        /// the AI's movement input (his own frame; 0, 0 = he stands where he is). Courage's walk back, the wall's pull and a step back's backpedal
+        /// win while they run. Works with the Athletics system off.</summary>
+        public bool Flock;
+        public float FlockX, FlockY;
+        public long FlockFrames;
+
         /// <summary>Step 65: an AI kick / bash attempt's phase (Core <see cref="AiKickPhase"/> - None = none) and kind: the hook writes the kick
         /// key / the guard / the commit (Core <see cref="AiKickMath.Frame"/>) - only with Athletics on (the logic ends attempts otherwise).</summary>
         public AiKickPhase KickPhase;
@@ -65,7 +72,7 @@ namespace TraxCombat.Missions
         public long KickFrames, KickPresses, KickHeldNoSwing;
 
         /// <summary>Any wish at all - a man is held while ANY of them wants him held (one ending never lifts another).</summary>
-        public bool Active => HoldAttacks || StepHoldAttacks || Backpedal || BraceHoldAttacks || Regroup || WallPull || KickPhase != AiKickPhase.None;
+        public bool Active => HoldAttacks || StepHoldAttacks || Backpedal || BraceHoldAttacks || Regroup || WallPull || Flock || KickPhase != AiKickPhase.None;
 
         /// <summary>Since when the state has been active (mission time), for the calls-per-second figure.</summary>
         public double ActiveSince = -1;
@@ -144,7 +151,7 @@ namespace TraxCombat.Missions
                 s.Calls++;
                 var settings = TraxSettings.Shared;
                 if (!settings.ModEnabled) return; // the master switch first (the tick clears the wishes too)
-                if (!settings.AthleticsEnabled && !(s.Regroup && settings.CourageEnabled) && !(s.WallPull && settings.ShieldWallHoldsSlots)) return; // steps 49 / 63: courage and the wall work without Athletics
+                if (!settings.AthleticsEnabled && !(s.Regroup && settings.CourageEnabled) && !(s.WallPull && settings.ShieldWallHoldsSlots) && !(s.Flock && settings.FearFlockEnabled)) return; // steps 49 / 63 / 67: courage, the wall and the flock work without Athletics
                 if (Agent.IsMainAgent || !Agent.IsAIControlled)
                 {
                     s.NotAi++; // the player's agent, or a soldier the player took over (RTS Camera): never touched
@@ -154,7 +161,7 @@ namespace TraxCombat.Missions
                 {
                     uint only = (uint)movementFlag;
                     float ox = inputVector.x, oy = inputVector.y;
-                    if (AiInputHook.ApplyWallPull(s, ref only, ref ox, ref oy) || AiInputHook.ApplyRegroup(s, ref only, ref ox, ref oy))
+                    if (AiInputHook.ApplyWallPull(s, ref only, ref ox, ref oy) || AiInputHook.ApplyRegroup(s, ref only, ref ox, ref oy) || AiInputHook.ApplyFlock(s, ref only, ref ox, ref oy))
                     {
                         movementFlag = (Agent.MovementControlFlag)only;
                         inputVector = new Vec2(ox, oy);
@@ -169,7 +176,7 @@ namespace TraxCombat.Missions
                 }
                 float vx = inputVector.x, vy = inputVector.y;
                 AiInputHook.Apply(_st, s, settings.AiHoldRaiseGuard, ref flags, ref vx, ref vy, settings.BraceRaiseShield);
-                bool moved = s.Backpedal || (s.Regroup && settings.CourageEnabled) || (s.WallPull && settings.ShieldWallHoldsSlots);
+                bool moved = s.Backpedal || (s.Regroup && settings.CourageEnabled) || (s.WallPull && settings.ShieldWallHoldsSlots) || (s.Flock && settings.FearFlockEnabled);
                 if (s.KickPhase != AiKickPhase.None && settings.AiKicksEnabled) // step 65: the kick / bash written LAST (after a held man's kick-out)
                 {
                     uint ev = (uint)eventFlag;
@@ -363,6 +370,36 @@ namespace TraxCombat.Missions
             return true;
         }
 
+        /// <summary>Step 67: turns the fear flock's wish on or off (the other wishes are left as they are).</summary>
+        internal static void SetFlock(TrackedAgent st, bool on, double now)
+        {
+            var s = st.Input ??= new AiInputState();
+            bool was = s.Active;
+            s.Flock = on;
+            if (!on)
+            {
+                s.FlockX = 0f;
+                s.FlockY = 0f;
+            }
+            Account(s, was, now);
+        }
+
+        /// <summary>Step 67: a flocking man's frame - his own move bits out, the flock's vector in (0, 0 = he stands); never while a step back's
+        /// backpedal, the wall's pull or courage's walk back runs (they win), never with the master switch or FearFlockEnabled off. True when it
+        /// wrote. Managed - the smoke drives it.</summary>
+        internal static bool ApplyFlock(AiInputState s, ref uint flags, ref float vx, ref float vy)
+        {
+            if (!s.Flock || s.Backpedal || s.WallPull) return false;
+            var settings = TraxSettings.Shared;
+            if (!settings.ModEnabled || !settings.FearFlockEnabled) return false;
+            if (s.Regroup && settings.CourageEnabled) return false;
+            flags = AiInputMath.Backpedal(flags);
+            vx = s.FlockX;
+            vy = s.FlockY;
+            s.FlockFrames++;
+            return true;
+        }
+
         /// <summary>Step 23: turns the brace's wish on or off (the timer's and the step back's are left as they are).</summary>
         internal static void SetBrace(TrackedAgent st, bool on, double now)
         {
@@ -405,7 +442,7 @@ namespace TraxCombat.Missions
             }
             eventFlags = ev;
             s.KickFrames++;
-            if (!stop || s.Backpedal || s.Regroup || s.WallPull) return false;
+            if (!stop || s.Backpedal || s.Regroup || s.WallPull || s.Flock) return false;
             flags = AiInputMath.Backpedal(flags); // his own move bits out
             vx = 0f;
             vy = 0f;
@@ -431,7 +468,7 @@ namespace TraxCombat.Missions
             var s = st.Input;
             if (s == null) return;
             bool was = s.Active;
-            s.HoldAttacks = s.StepHoldAttacks = s.Backpedal = s.BraceHoldAttacks = s.HoldKicks = s.Regroup = false;
+            s.HoldAttacks = s.StepHoldAttacks = s.Backpedal = s.BraceHoldAttacks = s.HoldKicks = s.Regroup = s.Flock = false;
             s.KickPhase = AiKickPhase.None; // step 65
             s.KickKind = AiKickKind.None;
             Account(s, was, now);
@@ -499,7 +536,8 @@ namespace TraxCombat.Missions
             }
             else if (!ApplyWallPull(s, ref flags, ref vx, ref vy)) // step 63: a wall man out of place walked back
             {
-                ApplyRegroup(s, ref flags, ref vx, ref vy); // step 49: the walk back (a step back's backpedal wins while it runs)
+                if (!ApplyRegroup(s, ref flags, ref vx, ref vy)) // step 49: the walk back (a step back's backpedal wins while it runs)
+                    ApplyFlock(s, ref flags, ref vx, ref vy); // step 67: the fear flock - courage's walk back goes first
             }
             if (s.Capture && !s.CapturedAttack && (edit & InputEdit.AttackCleared) != 0)
             {

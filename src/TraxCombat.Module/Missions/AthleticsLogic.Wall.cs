@@ -191,6 +191,7 @@ namespace TraxCombat.Missions
             var f = body.Read(st);
             if (IsPlayer(st)) f.Ai = false;
             var v = WallMath.Decide(in r, in f);
+            if (v == WallVerdict.Hold && FearWallBreaks(st, now)) v = WallVerdict.Breaking; // step 67: a frightened wall breaks
             _wallStats.AddLook(v);
             if (v == WallVerdict.Hold)
             {
@@ -254,6 +255,7 @@ namespace TraxCombat.Missions
                 Unwall(st, ws);
                 body.Release(st);
                 _wallStats.AddRelease(v);
+                if (v == WallVerdict.Breaking) NoteWallBreakMan(st, now); // step 67
                 if (TraxLog.VerboseWants("wall"))
                     TraxLog.Verbose("wall", Name(st) + " let go at " + Sec(now) + " s: " + WallMath.Name(v) + " - vanilla's own value given back", "wall");
             }

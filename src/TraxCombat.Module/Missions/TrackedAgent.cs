@@ -283,6 +283,16 @@ namespace TraxCombat.Missions
         public double CourageBase = double.NaN;
         public bool CourageHeavy;
 
+        /// <summary>Step 67: his troop level from the same kit read (−1 until read) - his DISCIPLINE.</summary>
+        public int CourageLevel = -1;
+
+        /// <summary>Step 67: his fear-flock state - calm / flocking / anchored, his place, the steering.</summary>
+        public readonly FearMind Fear = new FearMind();
+
+        /// <summary>Step 67: his morale as the game keeps it (0-100; −1 none; NaN = not read yet) - read at every formation-stats refresh
+        /// (the ALT morale bar and the labels' mean) and at courage's looks.</summary>
+        public double Morale = double.NaN;
+
         /// <summary>Step 62: his toughness kit for the impact model (armour sum, level) - read once (NaN = not yet); the toughness itself is
         /// computed at each decision from courage's weights (live) and his health now.</summary>
         public double ImpactArmour = double.NaN;
