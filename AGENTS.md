@@ -115,6 +115,14 @@ live impact outcome (the player's windows too) gets his aggression share raised 
 anywhere); a man within `ImpactPunishRangeMetres` 3 gets courage's surge clock (a timid one steps in); never the player as attacker, never a
 rider, never in shadow; the `[summary] impact punish` lines (windows punished / wasted; attacks per man-minute vs a target in a window or not,
 ON vs OFF) - PLAYTEST D23, DESIGN decision 46.
+Step 62: MORE MEN FALL, AND THE CHARGE MATTERS (Anton 2026-10-19 - DESIGN decision 52, AI_NOTES "Step 62", 14 Advanced settings): THE LOST
+FALLS - the engine asks the shrug-off FIRST in `Mission.CreateMeleeBlow` and a weapon blow flagged ShrugOff plays no reaction; the
+decorator's shrug-off seam now decides the blow (the blow's OwnerId = the attacker) and refuses the shrug-off for a decided knockdown /
+stagger, the KnockDown seam takes that same decision; a decided fall not seen in 0.5 s = our own knockdown blow (lever 6); a killing blow
+never decided. TOUGHNESS (courage's measure, R × (t_A ÷ t_D)^0.5), a bow in hand ×1.3, DIRECTION (behind ×2, side ×1.4), THE CHARGE
+(sprinting or the first blow within 1.5 s after a sprint = the full momentum), THE REFLECTED CHARGE (a correct block turns the charger's
+momentum against him; a charge into a right-side SHIELD block THROWN BACK up to 40 % - you too, the red line), THE UNCAPPED CRITICAL
+(`SprintFullCritical`), THE CAP (×8); the [summary] "impact falls / direction / toughness / charges" and "damage critical" lines (PLAYTEST D28).
 (Steps 25-40 -
 the swing stack, the sprint, the tired block direction and the rest - are described in CLAUDE.md, the fuller copy of this
 file.) The bar for the
@@ -290,7 +298,7 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               description, apply timing (Live / NextBattle); Normalize, Format;
                               its Default comes from defaults.json (DefaultsFile), never code; step 59:
                               SettingsPage (Player / Advanced) + ParamGroup.Page
-  SettingsSchema.cs           EVERY setting of DESIGN's table (275 - STEP 59: two MCM pages - the PLAYER page's 20 declared FIRST
+  SettingsSchema.cs           EVERY setting of DESIGN's table (289 - step 62's 14 on the Advanced page; STEP 59: two MCM pages - the PLAYER page's 20 declared FIRST
                               (ModEnabled + six player groups, Orders 0-6), the Advanced page's 16 groups after (7-22, "Damage" first,
                               "Advanced" last); GroupsOn / OnPage / PlayerPage / PageTitle; the moved 19 left their old groups; step 58's ShowFeverOnLabels, AltMarksEveryone, AltNearMarksMax, AltNearMarksMetres in the ALT group; step 57's SprintOnRout after SprintAiMoveKeepPercent; step 56's 2 after RiposteStaggerMaxPercent; step 55's 14 in "Cavalry flocking (AI)" after courage; step 54's 4 punish settings; step 53's 3 rider-momentum + 3 on-screen-line settings; step 52's 4 momentum settings; step 47's ImpactSpike in Advanced; step 48's 60 in "Impact: staggers,
                               shield drops, knockdowns" after the courage group; step 49's 29 in "Courage and cohesion (AI)" after the fever),
@@ -627,7 +635,7 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               step 59: TWO pages (BuildPage returns object; MCM keeps settings by Id) - the
                               player page (SettingsId, "Trax Combat Enhancements": 20 settings, 7 groups,
                               Defaults with Revert) = _settings, the Advanced page (AdvancedSettingsId,
-                              "... - Advanced": 255 settings, 16 groups) = _advanced; each its own "default"
+                              "... - Advanced": 269 settings since step 62, 16 groups) = _advanced; each its own "default"
                               preset; group "Defaults": the Revert (both pages, reverts both) /
                               Save-defaults-file (Advanced only) BUTTONS (ProxyRef<Action>, both pages
                               refreshed via PropertyChanged), on Advanced just above Advanced (MCM order =
@@ -948,7 +956,7 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
   Hud/FeverMarksVM.cs         its ViewModels: a GROW-ONLY POOL of FeverMarkVM (IsShown, PositionX / Y, Width / Height in pixels,
                               Fill, FillColor, FrameColor; step 46: BoxWidth / BoxHeight, FeverShown, BarShown, BarWidth / Height,
                               BarFill, BarUsable, BarColor, BarFrameColor, BarWoundColor)
-tests/TraxCombat.Core.Tests/  net8.0 xUnit (878 - step 59: + SettingsPagesTests; step 58: + AltNearMarksTests; step 57: + RoutSprintTests; step 56: + RightBlocksTests (ImpactTests pin the step-48 weights for IMPACT §4 A-G); step 55: + CavalryFlockTests; step 54: + ImpactPunishTests; step 53: + ImpactRidersTests; step 52: + ImpactHitsTests; step 51: + ImpactBlocksTests; step 50: + ImpactLiveTests; step 49 / 49b: + CourageTests; step 44: + FeverMarkTests; step 46: + AthleticsMarkTests, the format-9 migration; step 47: + ImpactSpikeTests; step 48: + ImpactTests - every IMPACT §4 worked example) — schema vs DESIGN.md (keys + types), one copy
+tests/TraxCombat.Core.Tests/  net8.0 xUnit (900 - step 62: + ChargeTests, ChargeExamplesTests; step 59: + SettingsPagesTests; step 58: + AltNearMarksTests; step 57: + RoutSprintTests; step 56: + RightBlocksTests (ImpactTests pin the step-48 weights for IMPACT §4 A-G); step 55: + CavalryFlockTests; step 54: + ImpactPunishTests; step 53: + ImpactRidersTests; step 52: + ImpactHitsTests; step 51: + ImpactBlocksTests; step 50: + ImpactLiveTests; step 49 / 49b: + CourageTests; step 44: + FeverMarkTests; step 46: + AthleticsMarkTests, the format-9 migration; step 47: + ImpactSpikeTests; step 48: + ImpactTests - every IMPACT §4 worked example) — schema vs DESIGN.md (keys + types), one copy
                               runs (SingleCopyTests: claims on private slots, copies, texts), when
                               MCM is tried and when it stops (McmPlanTests - step 12),
                               defaults.json (DefaultsFileTests), master switch, settings, config
@@ -1173,8 +1181,10 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               wrong side 90 / 50 / 40, two fresh men nothing; the steps 48-55 checks pin the step-48 block model; step 57 (Program.RoutSprint.cs): a routing man's whole store through the
                               real OnAgentFleeing, a running move sprint handed over, you / a rider / the switches never; step 58 (Program.NearMarks.cs):
                               the near view through the real view (the five nearest the screen's centre within 15 m, no fade, the switches, AltMarksEveryone
-                              = step 46), a tournament under ALT, the labels' "fever 12/40", the cost 0.11 ms, 0 bytes, 5 projections (131 steps; the config
-                              checks work for any tuned default);
+                              = step 46), a tournament under ALT, the labels' "fever 12/40", the cost 0.11 ms, 0 bytes, 5 projections; step 62
+                              (Program.ImpactCharge.cs): the lost falls through the real shrug-off hook (decided there, one decision, the backup blow),
+                              the charge (toughness, direction, the carry, you thrown back, the full critical), the charge on a line, the cost 0.07 ms,
+                              0 bytes (135 steps; the config checks work for any tuned default);
                               TRAX_SMOKE_KEEP=1 keeps its temp folder + log to read
 tools/DefaultsTool/           defaults.json upkeep: refresh (rewrite comments/order, keep every
                               value) | check; --file <path> for an exported one

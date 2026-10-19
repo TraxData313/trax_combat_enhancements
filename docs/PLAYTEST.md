@@ -1026,6 +1026,7 @@ Claude the `[summary] impact …` block of every battle.
 | 6 | **D23 - the AI PUNISHES a window** (a 50 v 50 shield battle ground to orange / red, a few minutes of it with *The AI punishes a staggered or downed man* OFF, then ON again; let a tired enemy break YOUR guard) | 10 | `impact punish windows`, `impact punish proof` (ON vs OFF), `impact punish men` | ON: `target reeling / down` well above `target not`, and above the OFF row's; a good share of windows `PUNISHED`; you get hit while you reel | ON = OFF (the native AI ignores the raised eagerness in that moment - tell Claude: the fallback is a direct attack wish through the input hook) |
 | 7 | **D24 - CAVALRY FLOCKING** (step 55 - only once the step-55 build is installed): mixed cavalry on both sides into an infantry fight; watch them tire, wheel off and come back in groups; *Cavalry flocking* OFF for 2-3 min, then ON | 15 | `cavalry flocking`, `cavalry flips`, `cavalry time between passes`, `cavalry lone passes`, `cavalry lever` | fresh: the game's dance; later small waves of 3-5, late big waves; lone passes ON well below OFF; the time between passes ON growing with tiredness | tired riders keep charging alone with `points sent` high (the engine ignores the scripted point on a charging rider - tell Claude) or many `gave up` (riders never rest enough to lead) |
 | 8 | **D25 - RIGHT BLOCKS FAVOUR THE DEFENDER** (step 56, the spike OFF): a tournament round to orange / red - block on the right side, then on the wrong side on purpose | 15 | `impact live … blocks …` (by kind × band, the riposte by the attacker's band) | right-side blocks / parries in the red band: a few % staggered; ripostes climbing with the attacker's tiredness; wrong side at 90 / 50 / 40 | a correct blocker staggered often with the spike off; ripostes decided but never applied |
+| 9 | **D28 - MORE MEN FALL, THE CHARGE MATTERS** (step 62): looters into your shield wall; heavy infantry into archers' backs; you sprinting into a heavy shieldman's right block | 30 | `impact falls`, `impact direction`, `impact toughness`, `impact charges`, `damage critical` | falls played (game + backup) ≈ decided; rear down well above front; looters thrown back ~1 in 3 sprinting; your red "thrown back" line now and then | `played by the game` ~0 (the backup does all the work); `sprinting at the blow 0`; the archers' rear no higher than front |
 
 Then play normally (parts E-G). Your gut on each family - too many / about right / too few - is the most useful thing to send.
 
@@ -1457,6 +1458,42 @@ mean …, max 5 - up to 5 nearest the screen's centre within 15.0 m of the camer
 (step 58): shown Nx, the most in a fever 30/40 (75%, …); hidden …`. **Broken - tell Claude**: the five bars not on the men in the middle of the
 screen (the angle is measured from the combat camera's forward - with RTS Camera's free camera too); the crowd still marked in the arena (`enemy`
 ~140 again: the spectators have a valid team after all); no `fever 12/40` on a charging formation (the formation pass counts the men's fevers).
+
+**D28. MORE MEN FALL, AND THE CHARGE MATTERS (step 62, ~30 min - three battles; the spike OFF, the defaults).** Your points (2026-10-19): "more
+people falling when troops clash, especially when high-tier troops attack low-tier troops ... the shock troop sprinting when hitting them should
+knock them down more ... hits from the BACK ... that first charge sprint + swing must matter - met by a wall of shields and blocked the right way,
+the ATTACKER is staggered ... even a chance to fall back ... looters' unorganised charges against my shield wall hitting the ground ... even for the
+player". Every new number is on MCM → *Trax Combat Enhancements - Advanced* → *Impact: staggers, shield drops, knockdowns* (nothing on the short page;
+*Against you* there still scales what happens to you).
+1. **Looters into YOUR shield wall** (a hideout / bandit party fight with a shield infantry formation of yours, hold / shield wall, the looters
+   charging in): watch the first contact - many looters bounce off the shields (reel back), about one in three of the sprinting ones lands on his
+   back. **Lines**: `[impact] live: first CHARGE THROWN BACK (step 62) at … - (looter) charged into (your man)'s right-side shield block: our own
+   blow …`; **[summary]** `impact charges (step 62 - …): N of M decided events (sprinting at the blow …, carried after the sprint …) | into a
+   right-side shield block K: the attacker reeled …%, THROWN BACK …% (not charging …: reeled …%) …; thrown back applied … → Fall seen …`.
+2. **A heavy unit charging peasant archers' backs** (a field battle: your legionaries / heavy infantry round the flank into an enemy archer
+   formation - or let the enemy's do it to yours): the archers caught with their bows out should drop - about four in ten of the fresh ones on the
+   first sprinting blow from behind, half the tired ones. **[summary]** `impact direction (step 62 - …): front … | side … | rear N (x2.00: down
+   …%, an outcome …%)` - rear's down well above front's; `impact toughness (step 62 - …): … much tougher 3x+ … (x2.10: down …%)` -
+   the tougher-attacker bands above `even`; `…; on a man with a ranged weapon in his hand N (down …%)`; the `impact momentum` line's `sprinting`
+   band no longer 0.
+3. **You sprinting into a high-tier shieldman** (a tournament / an arena round against a heavy shield fighter, or a battle): Left Ctrl and swing
+   into his shield while he blocks on the RIGHT side - fresh, then again when your bar is orange. Fresh: you mostly bounce (reel) and now and then
+   (about one in eight) land on your back with the red line **"You are thrown back by …'s shield"**; at half a bar about one in three. Walk in and
+   you only reel; parried, never thrown. **Lines**: `[impact] YOU: you charged into …'s shield: THROWN BACK (…%) - gets up x… slower (x_r …,
+   his charge x2.00)`; `[impact] on screen at … (#D65252FF): You are thrown back by …'s shield`.
+4. **The falls that were lost** (in any of the three): **[summary]** `impact falls (step 62 - every knockdown decided on a landed blow and what
+   became of it; the target: seen = decided): decided N (kicks / bashes …, clean hits …) → played by the game G (…), by our backup blow B (…),
+   STILL NOT SEEN S, the man left the field / died first L, its watch taken by a newer reaction R; …; the game's shrug-off REFUSED for a decided
+   fall F / stagger St …; landed blows not decided because they KILLED K` - **G + B ≈ N** (the target; on 2026-10-19 it was 7 of 35), S near 0,
+   F about the old `knockdowns answered on a blow the game had shrugged off` (14) and that old count now ~0. And `damage critical (step 62 - …): N
+   charging melee hits, avg x1.0 (max x1.5); the upside their tiredness would have allowed …%` - a tired man's charge rolls the whole range.
+**Broken - tell Claude**: `by our backup blow` ≈ `decided` and `played by the game` ~0 (the engine ignores our KnockDown even unshrugged - then a
+KnockBack flag with it is the next lever); `STILL NOT SEEN` high (the backup refused - `refused (down / a siege engine / water)`); `thrown back
+applied` but `Fall seen 0` (our blow on a charger is not played); `sprinting at the blow 0` and `carried after the sprint 0` although the units
+clearly sprinted (the sprint store is not running on the AI's charge - check `[sprint]`); the looters never thrown back but often `reeled` (raise
+`RiposteKnockdownMaxPercent` / `RiposteMomentumPercent`); the archers' `rear` down no higher than `front` (the facing read is wrong - the angle
+in the decision line, `from BEHIND (…°, x2.00)`, with VerboseLogging); a shield wall that now breaks under a fresh charge (it should stand -
+`impact live right-side shield blocks` staggered ~0 in the 100-75 band).
 
 ---
 

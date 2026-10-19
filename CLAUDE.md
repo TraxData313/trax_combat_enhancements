@@ -164,7 +164,20 @@ blocker's T counts `CorrectBlockTiredWeightPercent` 25 % in x, the ceilings 30 /
 AWAY (step 57, `SprintOnRout`, Anton: "use their available sprint for the first get-away"): the game's own rout calls
 `MissionBehavior.OnAgentFleeing` once per broken man (never for a Retreat order) - an AI man on foot spends his WHOLE sprint store once
 (`SprintStore.TryStartRout`: no reserve, no end near an enemy; a running order sprint handed over); behind SprintAiEnabled / SprintEnabled / the
-master switch; the [summary] "sprint on rout" line (PLAYTEST D26, DESIGN decision 49). COURAGE AND COHESION (step 49, `CourageEnabled`, Anton 2026-10-17 night: "AI men are
+master switch; the [summary] "sprint on rout" line (PLAYTEST D26, DESIGN decision 49). MORE MEN FALL, AND THE CHARGE MATTERS (step 62,
+Anton 2026-10-19 - DESIGN decision 52, AI_NOTES "Step 62", 14 Advanced settings in the Impact group + `SprintFullCritical` in Damage): THE LOST
+FALLS - the engine asks the SHRUG-OFF first (`Mission.CreateMeleeBlow` 5555, then knock-back, then knockdown) and a weapon blow flagged ShrugOff
+plays no reaction (14 of his 35 decided falls): the decorator's shrug-off seam now DECIDES the blow (`IShrugOffDecider` gets the blow - its
+OwnerId is the attacker) and refuses the shrug-off for a decided knockdown / stagger (`ImpactShrugOffYieldsToImpact`), the KnockDown seam takes
+that same decision; a decided fall not seen within `ImpactFallBackupSeconds` 0.5 = our own knockdown blow (lever 6) from the tick, once; a
+killing blow is never decided; the [summary] "impact falls" line. TOUGHNESS (courage's measure, shared: R × (t_A ÷ t_D)^`ImpactToughnessWeight`
+0.5 - a legionary on a looter ×2.1; the kit read once a man), a bow in the defender's hand ×1.3, DIRECTION (a landed blow from behind ×2, the
+side ×1.4 - the victim's body facing), THE CHARGE (sprinting, or the first blow within `ImpactChargeCarrySeconds` 1.5 after a sprint - the
+AI's sprint ends 3 m from the enemy: his log had no blow at all in the sprinting band) counts the full momentum, THE REFLECTED CHARGE (a correct
+block reads the blow without its momentum and the charger's momentum against him; a charge into a RIGHT-SIDE SHIELD block THROWN BACK - our
+blow on him - up to `RiposteKnockdownMaxPercent` 40 × his charge's share, you too: "You are thrown back by X's shield"), THE UNCAPPED CRITICAL
+(a charging man's melee blow rolls the full ±50 %), THE CAP (the multipliers together ×8); the [summary] "impact direction / toughness /
+charges" and "damage critical" lines (PLAYTEST D28). COURAGE AND COHESION (step 49, `CourageEnabled`, Anton 2026-10-17 night: "AI men are
 unrealistically brave" - a lone man circles a shield wall, stands exhausted among four enemies; + his three additions: shock, flocking,
 panic): every AI man on foot in a formation is looked at every ~0.5 s (staggered; one `Mission.GetNearbyAgents` into a reused list): his
 side's TOUGHNESS vs the enemy's within `CourageRadiusMetres` 6 m (toughness = armour, level, wounds - a looter 1.35, a legionary 5.97 =
@@ -349,7 +362,8 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               its Default comes from defaults.json (DefaultsFile), never code; step 33: ParamType.Key +
                               KeyNames (a key by NAME, stored as its index; FormatJson writes "LeftControl"; the
                               file / defaults.json read the name, MCM a text box)
-  SettingsSchema.cs           EVERY setting of DESIGN's table (275 - STEP 59: two MCM pages - the PLAYER page's 20 declared
+  SettingsSchema.cs           EVERY setting of DESIGN's table (289 - step 62's 13 in the Impact group after ImpactPunishRangeMetres and
+                              SprintFullCritical after DamageRandomOnShields; STEP 59: two MCM pages - the PLAYER page's 20 declared
                               FIRST (ModEnabled, then six player groups: "How hard hits land", "Tiredness (Athletics)", "How the AI
                               fights", "Staggers and knockdowns", "Sprinting", "On screen" - Orders 0-6), the Advanced page's 16 groups
                               after (Orders 7-22, "Damage" first, "Advanced" last); GroupsOn / OnPage / PlayerPage / PageTitle; the
@@ -760,6 +774,18 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               TimidPresses within the range / not in a panic, AnyWindowSlackSeconds 1), PunishStats (windows opened / seen / punished by
                               victim - AI men / you -, attacks and man-seconds by punish on / off x target in a window / not, raised / ended / timid
                               presses, target reads, cost + the 4 [summary] "impact punish" lines); Courage.cs: CourageEnd.PunishWindow
+  ImpactFalls.cs              step 62 pure (AI_NOTES "Step 62"): ImpactFallMath (BackupDue, Fatal - health − damage < 1, MaxBackupSeconds 3),
+                              ImpactFallStats (decided by kind - kicks / clean hits -, played by the game / by our backup blow with their delays, still
+                              not seen, left the field first, watch replaced, 0-damage blows, backups sent / refused / failed, the shrug-offs refused for a
+                              fall / a stagger / decided with nothing, taken by the KnockDown seam, killed + the [summary] "impact falls" line); Impact.cs:
+                              step 62's facts (Fatal, both toughnesses, a ranged weapon in hand, AttackAngleDegrees, AttackerCharging), rules, decision
+                              fields (ToughnessRatio / Factor, RangedFactor, Direction / DirectionFactor, Extra, Capped, Charging / MeasuredSpeed /
+                              ChargeShare / RiposteMomentum, ThrownBack + its get-up, Damage), EffectiveSpeed, ToughnessFactor, RangedFactor,
+                              DirectionOf / DirectionFactor, CapMultiplier, the riposte's reflected momentum and recoil by max(T_A, x_r), the thrown back
+  ImpactCharge.cs             step 62: ImpactChargeStats - landed blows by direction and by toughness band (+ men with a bow, the capped decisions), the
+                              CHARGES by what they met (a right block / parry / wrong block / landed front / side / rear: the attacker reeled / thrown
+                              back, the defender staggered / down; vs the blows that did not charge), thrown back applied / seen + the [summary] "impact
+                              direction / toughness / charges" lines; DamageStats.AddMeleeCharge + the "damage critical" line (DamageRoll.ChargeUpside)
   Courage.cs                  step 49 pure (AI_NOTES "Step 49", RESEARCH §S): CouragePhase (brave / walking back / holding), CourageSkip (in the
                               order asked), CourageEnd, RegroupEnd, CourageStep, CourageSprintRefusal, ShockTimes (his last 4 landed hits), CourageRequired
                               (the terms), CourageRules (live; ModEnabled FIRST, CourageEnabled; Athletics only for the tiredness term; Describe with the
@@ -825,7 +851,7 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               step 59: TWO pages (BuildPage returns object; MCM keeps settings by Id) - the
                               player page (SettingsId, the old id, "Trax Combat Enhancements": 20 settings,
                               7 groups, then "Defaults" with Revert) = _settings, the Advanced page
-                              (AdvancedSettingsId, "... - Advanced": 255 settings, 16 groups) = _advanced;
+                              (AdvancedSettingsId, "... - Advanced": 269 settings since step 62, 16 groups) = _advanced;
                               each its own "default" preset (its own settings); group "Defaults": the Revert
                               (both pages, reverts both) / Save-defaults-file (Advanced only) BUTTONS
                               (ProxyRef<Action>, both pages refreshed via PropertyChanged), on Advanced just
@@ -1299,7 +1325,10 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               pixels), Fill, FillColor, FrameColor (the fade's alpha baked in); step 46: the box (PositionX / Y =
                               its top-left, BoxWidth / BoxHeight), FeverShown, the Athletics bar - BarShown, BarWidth, BarHeight,
                               BarFill, BarUsable, BarColor, BarFrameColor, BarWoundColor
-tests/TraxCombat.Core.Tests/  net8.0 xUnit (878 - step 59: + SettingsPagesTests - every setting on exactly one MCM page and no key lost,
+tests/TraxCombat.Core.Tests/  net8.0 xUnit (900 - step 62: + ChargeTests (the lost falls' rules and line, toughness, direction, the charge and
+                              the thrown back, the reel by the comparison, the cap, the critical, the lines) and ChargeExamplesTests (the worked
+                              examples on the shipped values - a legionary charging a peasant archer's back, looters into a legionary shield
+                              wall, you into a shieldman, even men); step 59: + SettingsPagesTests - every setting on exactly one MCM page and no key lost,
                               the player page's exact list / labels / groups in order (12-20), the groups player page first and Advanced
                               last with unique titles, plain words on the player page, config.json / defaults.json player page first
                               under a banner per page; step 58: + AltNearMarksTests - the angle from the camera's forward and its key, the range, no fade in
@@ -1737,7 +1766,14 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               exactly, the master switch, the log, the summary; a TOURNAMENT (the flag unreadable: the near bars only while ALT is
                               held, the opponent first); the real ALT labels' "fever 12/40" (the switches, the surge over, the summary); the cost -
                               1000 men on the screen, 389 within 15 m, 0.11 ms a frame, 0 bytes, 5 projections; the step 44 / 46 checks pin the
-                              every-man view (FeverMarkDefaults) (131 steps; the config checks work for any tuned default)
+                              every-man view (FeverMarkDefaults); step 62 (Program.ImpactCharge.cs): THE LOST FALLS through the real shrug-off hook,
+                              the KnockDown seam and OnMeleeHit (decided at the shrug-off, refused, one decision, played; the backup blow after 0.5 s
+                              once; refused in the water; a stagger refuses too; a killing blow never decided; the switch off; no backup at 0; a
+                              kick's fall); THE CHARGE (toughness from the kit read once, behind / side / a bow, the carry into the first blow only,
+                              a running sprint, a rout never, YOU thrown back by a shieldman with the red line, a parry never, an empty man's charge
+                              rolling 0.5-1.5 through the real damage decorator); THE CHARGE ON A LINE (200 men seeded); the cost - 1000 men, 20 hits
+                              + 20 blocks a tick, 0.07 ms, 0 bytes; the master-switch step's part; the steps 48-61 checks pin step 62 off
+                              (Step62Off) (135 steps; the config checks work for any tuned default)
                               TRAX_SMOKE_KEEP=1 keeps its temp folder + log to read
 tools/DefaultsTool/           defaults.json upkeep: refresh (rewrite comments/order, keep every
                               value) | check; --file <path> for an exported one

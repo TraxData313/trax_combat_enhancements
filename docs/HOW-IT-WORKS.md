@@ -198,10 +198,29 @@ the weapon (heavy, fast, blunt), the guard (a big shield, a stick), both men's s
 kicks a spent recruit off his feet; the recruit's kick barely moves a fresh king — but an empty king is as weak
 as anyone. Tire him first, then break him.
 
-**Momentum.** A man running into his blow hits harder; at a full sprint, much harder. A rider carries his horse's
-speed. So **a fresh shock unit charging a tired line throws men around** — staggered, knocked down, shields and
-riders knocked off — and every man who reels is easier to drop with the next blow. Into a fresh line the same
-charge only trades blows.
+**Armour and rank count.** A heavily armoured veteran is far harder to move than a looter in rags — and his blows
+move the looter far more. A legionary hits a looter as if twice as strong; the looter's blows on him count half.
+An archer caught in melee with his bow still in his hands is easier to knock over.
+
+**Hit from behind.** A blow in the back counts **twice**, from the side half as much again. A well-led unit that
+reaches the back of an engaged line throws men to the ground.
+
+**The charge.** A man running into his blow hits harder; at a full sprint, much harder. The sprint carries into
+the **first** blow he strikes just after it (men slow down to swing), and a sprinting blow rolls the **full damage
+bonus** however tired he is. A rider carries his horse's speed. So **a fresh shock unit charging a tired line throws
+men around** — staggered, knocked down, shields and riders knocked off — and every man who reels is easier to drop
+with the next blow. Into a fresh line the same charge only trades blows.
+
+**A charge into a good shield wall bounces.** Sprint into a shield that blocks you on the **right** side and your own
+speed is turned against you: you reel, and the faster you came, the more tired you are and the tougher the shieldman,
+the likelier you are **thrown back to the ground** — looters rushing a fresh legionary wall go down one in three.
+A walking man only reels; a parry never throws anyone. This goes for **you** too: charge a high-tier shieldman
+head-on and you can land on your back ("You are thrown back by …'s shield"). Charge the flank, the back, or a
+tired line — not a fresh wall.
+
+**Every fall plays.** When the game would have let a blow slip off a man without a reaction, a knockdown or
+stagger decided for that blow now plays anyway; if a decided fall still does not start, the man is put on the
+ground a moment later.
 
 **The enemy goes for the opening.** When a man reels or lies on the ground — you included — the men fighting
 him press it at once.
@@ -213,13 +232,15 @@ You get a short line in the message feed when it matters: **red** when it happen
 it.
 
 Numbers: [MECHANICS §11c](MECHANICS.md#11c-staggers-shield-drops-and-knockdowns) — every chance by tiredness,
-the king and the man, the stick and the axe, the shock charge, the cavalry charge, riders, how long.
+the king and the man, the stick and the axe, armour and rank, blows from behind, the shock charge, a charge into a
+shield wall, the cavalry charge, riders, how long.
 
 ## Damage
 
 Every landed hit rolls its damage — anywhere from half to one and a half times the game's — so no two blows
-are the same; a tired attacker loses the top of that range. Then every hit lands **a quarter lighter**, so
-fights last longer.
+are the same; a tired attacker loses the top of that range — unless he **charges**: a sprinting blow (or the first
+blow just after a sprint) rolls the whole range, however tired he is. Then every hit lands **a quarter lighter**,
+so fights last longer.
 
 Numbers: [MECHANICS §12](MECHANICS.md#12-damage).
 
@@ -275,7 +296,10 @@ Numbers and colours: [MECHANICS §15](MECHANICS.md#15-what-you-see-on-screen).
 - **Hold, then charge.** A holding shield wall keeps its shape and its strength while the enemy wears itself out
   on it. When their markers go red (hold ALT), order the charge.
 - **Fresh shock troops into tired lines.** Hold a fresh reserve back, place it on the flank or behind a tired,
-  engaged enemy line, and charge at the right moment — at a run, or with cavalry at a gallop.
+  engaged enemy line, and charge at the right moment — at a run, or with cavalry at a gallop. A charge into their
+  **backs** throws men to the ground; archers caught with bows in their hands go over most easily.
+- **Never charge a fresh shield wall head-on.** Its right-side blocks throw your sprinting men back — the charge
+  bounces. Let it come to you, or tire it first, or go round it.
 - **Move, then charge.** Move your shock infantry round with plain move orders: they keep most of their sprint for
   the real charge.
 - **Rotate.** Pull a spent formation back, let it walk for a minute, put it back in.

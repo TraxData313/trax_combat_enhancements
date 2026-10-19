@@ -539,8 +539,11 @@ Every kick, shield bash, block and clean hit is weighed once: the **impact** of 
   fast or blunt weapon hits harder, a kick hard, a shield bash with its shield's weight), what he guarded with
   (a big shield, a parrying weapon, nothing), and both men's skill with it. A mismatch inside a factor of about
   1.4 counts as an even match — so two men of a kind in the green are **always** safe.
+- **Armour and rank** (step 62): both men's **toughness** — the courage system's measure of armour, level and the
+  health left — weighs in too: a legionary hits a looter as if twice as strong (below).
+- **Where the blow comes from** (step 62): from behind it counts twice, from the side ×1.4 (below).
 - **A man already reeling** from one of these staggers is far easier to drop (below).
-- **A man running into his blow** hits harder — the charge (below).
+- **A man running into his blow** hits harder — the charge (below); a charge into a good shield block **bounces**.
 
 ### What each blow can do (the ceilings)
 
@@ -605,6 +608,9 @@ A fresh attacker never reels; a tired one flailing into a good guard opens himse
 
 ### The mismatch: big against small
 
+(The tables of this part weigh Athletics, weapons, guards and skill - both men of the same armour and rank;
+step 62's **toughness** adds to them: the next part.)
+
 **The king and the man.** A king with 200 Athletics, full (skill 250), against a man with 50, down to 20%
 (skill 60), both with 3.5 kg shields:
 
@@ -648,6 +654,42 @@ recruit at 40% — 70%; the same recruit fresh — 28%; a fresh man parrying an 
 men — about 1%. The blocker's own tiredness does not save the attacker (the veteran at half a bar: still 70%);
 the more tired the attacker, the longer he reels (0.5 s → 1 s).
 
+### Armour and rank: toughness
+
+Since step 62 both men's **toughness** — the same measure courage uses (section 11b): (1 + 2 × armour ÷ 100) ×
+(1 + level ÷ 30, the level counted up to 60) × (1 − half the health he has lost) — weighs in every blow: the
+mismatch × (the striker's toughness ÷ the struck man's) to the power ½. Strongly, not absolutely: a legionary
+against a looter (4.4 times as tough) counts **×2.1** — about as much as a quarter of a bar of tiredness — and the
+looter's blows on him **×0.48**. Two men of the same toughness: nothing changes.
+
+| Troop | armour | level | toughness | a legionary's blow on him | his blow on a legionary |
+|---|---:|---:|---:|---:|---:|
+| a looter | 8 | 5 | 1.35 | ×2.10 | ×0.48 |
+| a peasant archer | 15 | 11 | 1.78 | ×1.83 | ×0.55 |
+| you (a level-20 hero, armour 80) | 80 | 20 | 4.33 | ×1.17 | ×0.85 |
+| an imperial legionary | 110 | 26 | 5.97 | ×1.00 | ×1.00 |
+| a lord in plate | 200 | 30 | 10.00 | ×0.77 | ×1.29 |
+
+A man who still holds his **bow, crossbow or sling** when the blow lands takes it ×1.3 (both hands busy, no
+guard). A shieldless man's weaker guard shows on its own: he cannot block, so every blow that reaches him is a
+clean hit.
+
+### Where the blow comes from
+
+Since step 62 a blow that lands from **behind** (the attacker more than 120° off where the man faces) counts
+**twice**, from the **side** (60–120°) ×1.4 — kicks, bashes and clean hits; a blocked blow met the guard (and a
+blow from behind is never blocked). A fresh legionary's sword (1.3 kg, skill 130, Athletics 130) on a **peasant
+archer** with his bow in his hands (Athletics 40), knocked **down** (staggered when not):
+
+| The archer's bar | front | side | behind | charging, front | charging, behind |
+|---|---:|---:|---:|---:|---:|
+| 100% (fresh) | 1% (29%) | 9% (43%) | 23% (58%) | 14% (49%) | **41%** (73%) |
+| 60% | 27% (62%) | 40% (73%) | 49% (79%) | 44% (76%) | 50% (80%) |
+| 40% and below | 50% (80%) | 50% (80%) | 50% (80%) | 50% (80%) | 50% (80%) — the clean hit's ceilings |
+
+So **a well-led charge into the back of a unit throws its men to the ground** — and archers caught with their
+bows out go first. (Two fresh legionaries, from behind: staggered 3%, never down.)
+
 ### A man already reeling is easy prey
 
 While a man reels from any stagger of this system — a kick's long reel, a block's stagger, a riposte, a clean
@@ -665,7 +707,11 @@ can be knocked down.
 
 **A man running into his blow hits harder.** Up to a walk (2 m/s) nothing changes; at a full sprint (7 m/s and
 faster) the blow's impact is **×1.6**, in between a straight line — kicks, shield bashes and weapon blows alike,
-blocked or not. Only his speed TOWARD the man he strikes counts. **The shock charge** — a fresh attacker into a
+blocked or not. Only his speed TOWARD the man he strikes counts. Since step 62 a **charge** counts as a full
+sprint whatever speed was measured at the blow: a man sprinting (section 14), or the **first** blow he strikes
+within **1.5 s** after his sprint ended (the AI's sprint ends 3 m from the enemy and men slow down to swing — Anton's
+battle of 2026-10-19 had no blow at all in the sprinting band before). A charging man's blow also rolls the
+**full damage range** however tired he is (section 12). **The shock charge** — a fresh attacker into a
 line at 40% of its bar:
 
 | The attacker | Staggered | Knocked down |
@@ -684,6 +730,33 @@ right moment**: the tired men are thrown around — staggered, knocked down, the
 every man who reels is easier to drop for the next blow. A charge into a **fresh** line is something else:
 momentum alone hardly moves a fresh man (a sprinting swordsman on a fresh equal: nothing; a sprinting
 two-handed axe: 4% staggered, never down).
+
+**A charge into a good shield wall bounces** (step 62). On a **correct** block (right side, or a parry) the
+charger's own momentum turns against him: his blow counts without its momentum, and his speed multiplies the
+riposte (×2 at a full sprint) — the shieldman's toughness against his counts too. On a **right-side shield
+block** a charging man can be **THROWN BACK** — knocked to the ground (up to 40%, more the faster he came, the
+more tired and the weaker he is against the shieldman); a walking man only reels, a parry never throws anyone.
+Into a FRESH legionary's right-side block (a 4 kg shield):
+
+| The attacker | walking in: reels | charging: THROWN BACK | charging: reels (when not thrown) |
+|---|---:|---:|---:|
+| a looter, fresh | 34% | 33% | 39% |
+| a looter at 60% | 62% | 40% | 42% |
+| a looter at 30% | 70% | 40% | 42% |
+| you, fresh (a level-20 hero) | 2% | 12% | 18% |
+| you at 50% | 44% | 37% | 41% |
+| you at 20% | 70% | 40% | 42% |
+| a legionary, fresh (an even man) | 1% | 10% | 15% |
+| a legionary at 50% | 40% | 36% | 40% |
+
+The legionary himself never moves (staggered 0%). So looters rushing a fresh shield wall go down one in three and
+most of the rest reel — and a player who sprints head-on into a high-tier shieldman can land on his back ("You
+are thrown back by …'s shield", red). Charge the flank, the back, or a tired line. (Smoke, 200 looters seeded:
+charging - thrown back 30%, reel 43%; walking - 0% / 30%.)
+
+**The cap.** Momentum × toughness × direction × a bow in hand together count at most ×8 (and at least ⅛): a
+sprinting legionary into a peasant archer's back reaches ×7.6 — under it; a lord charging a looter archer's back
+×12.5 is held at 8.
 
 **The cavalry charge.** A rider's blow carries his **horse's** speed — half a sprinting man's bonus (×1.3 at a
 full gallop of 10 m/s, nothing at a walk of 3 m/s or slower), so a cavalry charge into a tired line throws men
@@ -733,7 +806,17 @@ predictable, an exhausted man's is not):
 | 0% (empty) | 1.5 s (1.05–1.95) | ×2.5 | ×2 slower | 1 s |
 
 A blocker's guard after a block is the game's own (a longer one changed nothing you could see in a playtest —
-`BlockStunTiredExtraPercent`, 0); the stagger is the window.
+`BlockStunTiredExtraPercent`, 0); the stagger is the window. Since step 62 a riposted attacker reels by his
+tiredness **or** by how outmatched he is, whichever is more (a fresh looter into a legionary's shield reels the
+whole second).
+
+### Every decided fall plays
+
+Before step 62 a knockdown decided on a light blow was often lost: the game decides first whether a man **shrugs
+a blow off** (no reaction at all), and only then whether he falls — Anton's battle of 2026-10-19: 35 knockdowns
+decided, 7 falls seen, 14 on shrugged-off blows. Now the blow is weighed at that first question, and a decided
+knockdown or stagger refuses the shrug-off; a decided fall that still has not started half a second later is
+played by a knockdown of our own. A blow that kills is never weighed (he dies, he does not fall).
 
 ### Nobody is stun-locked to death
 
@@ -792,7 +875,11 @@ down. Every outcome you give or take is also in the log (`[impact] YOU: ...`).
 `ImpactMomentumEnabled` on, `ImpactMomentumPercent` 60, `ImpactMomentumWalkMetresPerSecond` 2, `ImpactMomentumSprintMetresPerSecond` 7,
 `ImpactMomentumRiderPercent` 30, `ImpactMomentumRiderWalkMetresPerSecond` 3, `ImpactMomentumRiderGallopMetresPerSecond` 10; the lines
 `ImpactShowMessages` on, `ImpactMessagesIncludeYourMen` off, `ImpactMessageMinSeconds` 1.5; the opening `ImpactPunishEnabled` on,
-`ImpactPunishAggressionPercent` 100, `ImpactPunishGraceSeconds` 0.5, `ImpactPunishRangeMetres` 3; the pressure `ImpactMismatchWeight` 0.25,
+`ImpactPunishAggressionPercent` 100, `ImpactPunishGraceSeconds` 0.5, `ImpactPunishRangeMetres` 3; step 62 `ImpactShrugOffYieldsToImpact` on,
+`ImpactFallBackupSeconds` 0.5, `ImpactToughnessWeight` 0.5 (with `CourageArmourWeightPercent` 200, `CourageLevelWeightPercent` 100,
+`CourageHealthWeightPercent` 50), `ImpactRangedInHandPercent` 130, `ImpactRearPercent` 200, `ImpactFlankPercent` 140, `ImpactRearDegrees` 120,
+`ImpactFlankDegrees` 60, `ImpactChargeCarrySeconds` 1.5, `RiposteKnockdownMaxPercent` 40, `RiposteKnockdownFrom` 0, `RiposteMomentumPercent` 100,
+`ImpactMultiplierCapPercent` 800 (and `SprintFullCritical` on, section 12); the pressure `ImpactMismatchWeight` 0.25,
 `ImpactEvenBandDoublings` 0.5, `ImpactStaggeredBonus` 0.75 and the weapon / guard / skill factors (DESIGN's table).</sub>
 
 ## 12. Damage
@@ -811,11 +898,14 @@ What an average 100-damage hit actually lands:
 | Fresh (at or above the peak line) | 38 | 113 | 75 |
 | Half way to empty (bar 38%) | 38 | 94 | 66 |
 | Empty | 38 | 75 | 56 |
+| Empty, but **charging** (step 62) | 38 | 113 | 75 |
 
-Hits on a shield are not rolled by default (still reduced). A hit never drops below 1.
+A **charging** man — sprinting into his melee blow, or striking the first blow within 1.5 s after a sprint (section
+11c) — rolls the whole range however tired he is: the sprint's critical is never capped. Hits on a shield are not
+rolled by default (still reduced). A hit never drops below 1.
 
 <sub>Settings: `DamageRandomPercent` 50, `DamageReductionPercent` 25, `DamageRandomOnShields` off,
-`DamageRandomMelee` / `Ranged` / `OnMounts` on.</sub>
+`DamageRandomMelee` / `Ranged` / `OnMounts` on, `SprintFullCritical` on.</sub>
 
 ## 13. Heroes, and the hideout boss
 

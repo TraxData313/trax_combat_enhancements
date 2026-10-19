@@ -32,6 +32,15 @@ penalty for the ATTACKER - now I felt them as a penalty for the defender"): **a 
 only `CorrectBlockTiredWeightPercent` (25 %) on a right-side block or a parry, their ceilings 30 / 10, the riposte (§3.6) × (1 −
 `RiposteBlockerTiredPercent` (0) × T_D) instead of × f_D, up to 70 %; the wrong side unchanged; the block stun's lengthening off
 (`BlockStunTiredExtraPercent` 0 - the spike's lever 2 FAILED); §4 H has the numbers; DESIGN decision 48, AI_NOTES "Step 56".
+Step 62 (2026-10-19, Anton after his battle of 09:30: "more men fall ... the charge matters"): **THE LOST FALLS** - the engine asks the
+shrug-off FIRST in `Mission.CreateMeleeBlow` and a weapon blow flagged ShrugOff plays no reaction (14 of his 35 decided falls): the
+shrug-off question now decides the blow and refuses itself for a decided knockdown / stagger, a decided fall not seen in 0.5 s = our own
+blow (lever 6), a killing blow never decided; §3.3's R × **TOUGHNESS** (t_A ÷ t_D)^0.5 (courage's measure) × a ranged man in melee 1.3 ×
+**DIRECTION** (a landed blow from behind ×2, the side ×1.4) - with the momentum at most ×8 together; **THE CHARGE** = sprinting or the first
+blow within 1.5 s after a sprint, its speed at least the sprint reference; §3.6's riposte reads the blow WITHOUT its momentum and the
+charger's momentum against him (×2 at a sprint), the blocker's toughness against his, its recoil `RiposteStunMaxSeconds` × (0.5 + 0.5 ×
+max(T_A, x_r)); a charge into a RIGHT-SIDE SHIELD block THROWN BACK (our blow on him) up to 40 % × S(x_r) × his charge's share; a charging
+man's melee blow rolls the full damage upside. DESIGN decision 52, AI_NOTES "Step 62", MECHANICS §11c.
 Every number in this plan is a model - the playtest decides.**
 (Written as a plan in step 45:) The game-side facts behind every line are in
 `docs/RESEARCH.md` §R (file + line in the v1.4.8 decompile); the short version is in `AI_NOTES.md` "Step 45". The build order
