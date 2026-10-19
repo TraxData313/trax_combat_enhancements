@@ -1027,6 +1027,7 @@ Claude the `[summary] impact …` block of every battle.
 | 7 | **D24 - CAVALRY FLOCKING** (step 55 - only once the step-55 build is installed): mixed cavalry on both sides into an infantry fight; watch them tire, wheel off and come back in groups; *Cavalry flocking* OFF for 2-3 min, then ON | 15 | `cavalry flocking`, `cavalry flips`, `cavalry time between passes`, `cavalry lone passes`, `cavalry lever` | fresh: the game's dance; later small waves of 3-5, late big waves; lone passes ON well below OFF; the time between passes ON growing with tiredness | tired riders keep charging alone with `points sent` high (the engine ignores the scripted point on a charging rider - tell Claude) or many `gave up` (riders never rest enough to lead) |
 | 8 | **D25 - RIGHT BLOCKS FAVOUR THE DEFENDER** (step 56, the spike OFF): a tournament round to orange / red - block on the right side, then on the wrong side on purpose | 15 | `impact live … blocks …` (by kind × band, the riposte by the attacker's band) | right-side blocks / parries in the red band: a few % staggered; ripostes climbing with the attacker's tiredness; wrong side at 90 / 50 / 40 | a correct blocker staggered often with the spike off; ripostes decided but never applied |
 | 9 | **D28 - MORE MEN FALL, THE CHARGE MATTERS** (step 62): looters into your shield wall; heavy infantry into archers' backs; you sprinting into a heavy shieldman's right block | 30 | `impact falls`, `impact direction`, `impact toughness`, `impact charges`, `damage critical` | falls played (game + backup) ≈ decided; rear down well above front; looters thrown back ~1 in 3 sprinting; your red "thrown back" line now and then | `played by the game` ~0 (the backup does all the work); `sprinting at the blow 0`; the archers' rear no higher than front |
+| 10 | **D29 - FALLS ON THE HIT, A STRONG REAR BLOW, THE WALL PULLS MEN BACK** (step 63): a shield-wall battle with a deep wall of yours; a unit round the enemy's flank into its back | 20 | `impact falls`, `impact` (header: `a FRIEND's blow`), `impact direction`, `wall slots ON`, `wall pulled back` | falls played by the game ≈ decided, backups few and ~0.2 s; rear down well above front (+0.50 pressure); in contact > 1 m ahead back near 1-3 %; the time back after an impact ~3-4 s | backups still most of the falls; rear ≈ front; `wall pulled back` many spells `still out`; men walking backwards out of the fight |
 
 Then play normally (parts E-G). Your gut on each family - too many / about right / too few - is the most useful thing to send.
 
@@ -1494,6 +1495,33 @@ clearly sprinted (the sprint store is not running on the AI's charge - check `[s
 `RiposteKnockdownMaxPercent` / `RiposteMomentumPercent`); the archers' `rear` down no higher than `front` (the facing read is wrong - the angle
 in the decision line, `from BEHIND (…°, x2.00)`, with VerboseLogging); a shield wall that now breaks under a fresh charge (it should stand -
 `impact live right-side shield blocks` staggered ~0 in the 100-75 band).
+
+**D29. FALLS ON THE HIT, A STRONG REAR BLOW, THE WALL PULLS MEN BACK (step 63, ~20 min - one or two battles; the defaults).** Your battle of
+2026-10-19 11:02: 198 falls decided, 71 played by the game at the blow, 126 by our backup 0.53 s later - all 126 on a FRIEND's blow (a rear-rank
+swing into his own front man: the game cancels that damage and plays nothing, so our backup threw the front man forward, out of his wall); rear
+13 % down vs front 11 %; wall men in contact more than 1 m ahead 11.1 %. Now a friend's blow is never weighed, a blow from behind presses like half
+an empty bar (*Hit from behind: extra pressure* 0.5, *from the side* 0.2 - Advanced, Impact group; the old ×2 / ×1.4 at ×1), and a wall man thrown
+out is held again at once and backs off to his place (*Shield walls: walk a man back after* 0.5 s - Advanced, Battle pace (AI)).
+1. **A shield-wall battle** (your infantry in a shield wall, hold, a deep formation - two or three ranks - against an infantry enemy): watch the
+   front rank in contact. Men knocked down fall at the blow, not a beat later; nobody tumbles forward out of the wall from behind; a man thrown
+   out gets up and backs into his place within a few seconds. **[summary]** `impact (step 48 - …): …; not decided: … a FRIEND's blow (step 63 - the
+   game cancels its damage, nothing plays) N` - N in the hundreds in a deep wall (the 126 of 11:02 and more); `impact falls (…): decided D → played by
+   the game G (0.00 s after the blow), by our backup blow B (0.2x s after the blow) …; landed blows not decided because they KILLED …, because a FRIEND
+   struck them (step 63 …) N` - **G ≈ D, B small**; `wall slots ON: … in contact (an enemy within 5 m) … more than 1 m ahead X%` - **X back near
+   1-3 %** (11.1 % at 11:02); `wall pulled back (step 63 - a held man more than 1.25 m ahead of his slot; ShieldWallPullBackSeconds 0.5 s): S spells
+   out of place (after an impact I, other O), the farthest … m; ended: back …, freed / let go …, fell or left …, still out at the end …; THE TIME BACK
+   - after an impact …s, other …s, the longest …s; walked back by us P times (…) - back with our walk …s, by the game's flag alone …s`; the first-time
+   lines `[wall] first man OUT OF PLACE this mission (step 63): …`, `[wall] first man WALKED BACK to his slot (step 63): …`, `[wall] first man back in
+   place (step 63): …`.
+2. **Into their backs** (send a unit of yours round the enemy's flank into the back of its engaged line - no sprint needed): men struck from behind
+   go down far more than face to face, even fresh ones. **[summary]** `impact direction (step 62 - …): front … (x1.00: down …%) | side … (x1.00 +0.20
+   pressure: down …%) | rear … (x1.00 +0.50 pressure: down …%)` - **rear's down well above front's** (between even fresh men ~7 % vs 0, archers
+   ~1 in 2); the decision line with VerboseLogging: `from BEHIND (…°, +0.50 pressure)`.
+**Broken - tell Claude**: `by our backup blow` still most of the falls (then the engine refuses our KnockDown on enemies' blows too - the next lever
+is a KnockBack flag with it); the `a FRIEND's blow` count 0 in a deep wall (the enemy check reads wrong); rear ≈ front (the facing read - the angle
+in the verbose decision line); `wall pulled back` with many `still out at the end` or `the longest` above 8 s (the walk back does not move him - the
+input hook on walled men); men in a held wall walking backwards out of a fight they should hold (the pull fires on men who are not out - send the
+`[wall]` first lines); the in-contact > 1 m share still ~10 % with few spells (something else pushes them - send the log).
 
 ---
 

@@ -2047,6 +2047,34 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     tough shieldman facing a charge and blocking right stays near-unshakeable; two fresh even men stay at 0; (h) every new setting on the ADVANCED
     page (14, 275 → 289 - no player-page switch: "Against you" already scales the thrown-back on you, and `RiposteKnockdownMaxPercent` 0 turns it off); no
     existing default changed, so no config migration (format 10 stays).
+53. **Falls on the hit, a strong rear blow** (step 63, Anton's battle of 2026-10-19 11:02: falls decided 198 → played by the game 71 at the blow,
+    by our backup 126 0.53 s later; from behind 13 % down vs the front 11 %). Claude's calls: (a) THE CAUSE of the late falls: every one of the 126
+    was a 0-DAMAGE blow - a FRIEND's (a rear-rank swing into his own front man): `Mission.MeleeHitCallback` cancels a non-enemy's damage
+    (`CancelsDamageAndBlocksAttackBecauseOfNonEnemyCase`) but the collision still reads StrikeAgent and asks every model question, and a
+    0-damage blow plays no reaction (`Agent.HandleBlow`), so only our backup floored him - along the friend's blow, forward. Every decided fall
+    WITH damage was played by the game at the blow (71 of 72, one died), so no KnockBack flag is added: a FRIEND's blow or block is simply never
+    decided (`ImpactFacts.NotEnemies`; any event; counted in both summary lines); (b) the backup stays for what the engine still refuses (a 0-damage
+    enemy blow, a lost reaction) and comes sooner - `ImpactFallBackupSeconds` 0.5 → 0.2 (config format 11, a tuned value kept); (c) DIRECTION AS
+    PRESSURE: a multiplier on R only moves the mismatch term (0.25 a doubling beyond the ±0.5 even band) - between even men almost nothing; a
+    landed blow from behind now adds `ImpactRearPressure` 0.5 to x straight (a fresh man struck in the back is pressed like a half-exhausted one -
+    "a blow from behind can floor even a fresh man"), from the side `ImpactFlankPressure` 0.2; blocks never; (d) the step-62 multipliers ship at
+    x1 (`ImpactRearPercent` / `ImpactFlankPercent` 100 - format 11 moves 200 / 140 once): both would count the direction twice; the keys stay for
+    tuning; (e) the pressure is no multiplier - the x8 cap never sees it, the ceilings hold (a clean hit 50 % down / 80 % staggered at most). The
+    numbers: two fresh even men - front 0, side 0 % down / 8 % staggered, behind 7 % / 40 % (half a bar: 42 / 74 vs the front's 0 / 21); a
+    legionary standing behind a fresh peasant archer 47 % down (step 62: 23 %), charging into his back 50 %, the front unchanged at 1 %.
+54. **The wall pulls men back** (step 63, the same battle: wall men in contact more than 1 m ahead of their slots 11.1 %, step 42's battles
+    0.6-2.5 %, the farthest 7.8 m - while the leash's own steps ended at 1.27 m at most: the far men were HELD men thrown forward). Claude's calls:
+    (a) the root is 53 (a): our backup blows on friends' hits threw front men forward (KnockDown | KnockBack along the friend's blow), friends'
+    staggers pushed them - gone with friends' blows; (b) any man still out - an enemy's blow, the press, a late rein - is OUT OF PLACE when held
+    (not stepping out) and more than max(L, 1) + 0.25 m ahead (a man reined just past L is not): looked at every 0.1 s and the flag written at each
+    look; (c) the engine's flag pulled men back in step 41's battles, but nothing says it does while he fights in contact, so a fallback: once he
+    has stood out `ShieldWallPullBackSeconds` (0.5) ABLE TO MOVE (not down, not reeling - a fall has to end first) he is WALKED BACK - a backpedal
+    toward his slot facing the enemy through step 16's input hook (its own wish, `WallPull`, the courage walk's channel; it works with Athletics
+    off), until within max(L, 1) ÷ 2, at most 4 s a spell; (d) every let-go path ends it (the leash freeing him, a gate, the switch, the master
+    switch, he leaves); 0 = the game's flag alone and no extra looks (step 42 exactly); (e) Advanced page, "Battle pace (AI)" (the wall's own two
+    settings are on the player page; this is an inner number); (f) the [summary] "wall pulled back" line measures it all: spells after an impact
+    / other, ends, THE TIME BACK by cause and by who walked him - the in-contact "> 1 m ahead" share of the "wall slots ON" line is the target
+    (back near step 42's 0.6-2.5 %).
 
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),

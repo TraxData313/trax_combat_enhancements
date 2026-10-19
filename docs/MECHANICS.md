@@ -316,8 +316,21 @@ walks back to his place. He steps again only once he is back. Nobody chases far.
 | farther off, beside or behind his place | stays in his place |
 | (square, circle) out to the side or the back | steps OUTWARDS on that side — each face of the square fights its own way |
 
+**Thrown out, walked back** (step 63). A held man who ends up beyond his step ahead of his place — thrown forward
+by a blow, shoved by the press — is held again at once (looked at ten times a second), and if he has not come back
+half a second after he can move again (up from a fall, done reeling), he backs off to his place facing the enemy:
+
+| He stands… | What happens |
+|---|---|
+| up to 1.25 m ahead of his place (the step + a margin) | nothing more — the step and its end |
+| more than 1.25 m ahead, on the ground or reeling | held; he gets up / recovers where he is |
+| more than 1.25 m ahead, able to move, for 0.5 s | backs off to within 0.5 m of his place (at most 4 s) |
+
+(With a longer step the marks grow: 2 m → out beyond 2.25 m, back within 1 m.)
+
 <sub>Settings: `ShieldWallHoldsSlots` on (live — switch it off mid-battle to see the difference); `ShieldWallStepOutMetres`
-1.0 m (0 = they stand fast and fight only what reaches them; 2-3 = a looser wall; live).</sub>
+1.0 m (0 = they stand fast and fight only what reaches them; 2-3 = a looser wall; live); `ShieldWallPullBackSeconds` 0.5 (Advanced,
+"Battle pace (AI)"; 0 = the game's own pull only; live).</sub>
 
 ## 11. Eagerness, and the fever of a charge
 
@@ -541,7 +554,8 @@ Every kick, shield bash, block and clean hit is weighed once: the **impact** of 
   1.4 counts as an even match — so two men of a kind in the green are **always** safe.
 - **Armour and rank** (step 62): both men's **toughness** — the courage system's measure of armour, level and the
   health left — weighs in too: a legionary hits a looter as if twice as strong (below).
-- **Where the blow comes from** (step 62): from behind it counts twice, from the side ×1.4 (below).
+- **Where the blow comes from** (step 63): a blow from behind presses a man like half an empty bar on top of his own
+  tiredness, from the side a fifth of one (below) — **a blow from behind can floor even a fresh man**.
 - **A man already reeling** from one of these staggers is far easier to drop (below).
 - **A man running into his blow** hits harder — the charge (below); a charge into a good shield block **bounces**.
 
@@ -676,19 +690,33 @@ clean hit.
 
 ### Where the blow comes from
 
-Since step 62 a blow that lands from **behind** (the attacker more than 120° off where the man faces) counts
-**twice**, from the **side** (60–120°) ×1.4 — kicks, bashes and clean hits; a blocked blow met the guard (and a
-blow from behind is never blocked). A fresh legionary's sword (1.3 kg, skill 130, Athletics 130) on a **peasant
-archer** with his bow in his hands (Athletics 40), knocked **down** (staggered when not):
+Since step 63 a blow that lands from **behind** (the attacker more than 120° off where the man faces) adds **0.5**
+to the pressure — as if he had half an empty bar on top of his own tiredness —, from the **side** (60–120°) **0.2**;
+kicks, bashes and clean hits; a blocked blow met the guard (and a blow from behind is never blocked). (Step 62
+multiplied the strength comparison instead — ×2 behind, ×1.4 the side — which between even men did almost nothing:
+Anton's battle read 13% down from behind vs 11% from the front.) **A blow from behind can floor even a fresh man.**
+Two even men (pool 100, skill 100, a 1.2 kg sword), the chance he is knocked **down** (staggered when not):
+
+| The man's bar | front | side | behind |
+|---|---:|---:|---:|
+| 100% / 75% (fresh) | 0% (0%) | 0% (8%) | **7% (40%)** |
+| 50% | 0% (21%) | 10% (44%) | **42% (74%)** |
+| 25% | 35% (68%) | 49% (80%) | 50% (80%) |
+| empty | 50% (80%) | 50% (80%) | 50% (80%) — the clean hit's ceilings |
+
+A fresh legionary's sword (1.3 kg, skill 130, Athletics 130) on a **peasant archer** with his bow in his hands
+(Athletics 40):
 
 | The archer's bar | front | side | behind | charging, front | charging, behind |
 |---|---:|---:|---:|---:|---:|
-| 100% (fresh) | 1% (29%) | 9% (43%) | 23% (58%) | 14% (49%) | **41%** (73%) |
-| 60% | 27% (62%) | 40% (73%) | 49% (79%) | 44% (76%) | 50% (80%) |
+| 100% (fresh) | 1% (29%) | 17% (52%) | **47%** (78%) | 14% (49%) | **50%** (80%) |
+| 60% | 27% (62%) | 47% (78%) | 50% (80%) | 44% (76%) | 50% (80%) |
 | 40% and below | 50% (80%) | 50% (80%) | 50% (80%) | 50% (80%) | 50% (80%) — the clean hit's ceilings |
 
-So **a well-led charge into the back of a unit throws its men to the ground** — and archers caught with their
-bows out go first. (Two fresh legionaries, from behind: staggered 3%, never down.)
+So **a unit that reaches the back of an engaged line throws its men to the ground** — standing or charging — and
+archers caught with their bows out go first. Two fresh legionaries, from behind: down 7%, staggered 40% (step 62:
+never down). The pressure is no multiplier: the ×8 cap of the step-62 factors never sees it, and nothing passes the
+ceilings.
 
 ### A man already reeling is easy prey
 
@@ -815,8 +843,12 @@ whole second).
 Before step 62 a knockdown decided on a light blow was often lost: the game decides first whether a man **shrugs
 a blow off** (no reaction at all), and only then whether he falls — Anton's battle of 2026-10-19: 35 knockdowns
 decided, 7 falls seen, 14 on shrugged-off blows. Now the blow is weighed at that first question, and a decided
-knockdown or stagger refuses the shrug-off; a decided fall that still has not started half a second later is
-played by a knockdown of our own. A blow that kills is never weighed (he dies, he does not fall).
+knockdown or stagger refuses the shrug-off; a decided fall that still has not started a moment later (0.2 s since
+step 63, 0.5 before) is played by a knockdown of our own. A blow that kills is never weighed (he dies, he does not
+fall). Since step 63 a **friend's** blow — a rear-rank man's swing into his own front man — is never weighed
+either: the game cancels its damage and plays nothing, and in Anton's battle of 11:02 those were 126 of the 198
+decided falls, every one played only by our knockdown (which threw the front man forward, out of his wall). Every
+fall decided on an enemy's blow was played by the game at the blow itself.
 
 ### Nobody is stun-locked to death
 
@@ -876,9 +908,9 @@ down. Every outcome you give or take is also in the log (`[impact] YOU: ...`).
 `ImpactMomentumRiderPercent` 30, `ImpactMomentumRiderWalkMetresPerSecond` 3, `ImpactMomentumRiderGallopMetresPerSecond` 10; the lines
 `ImpactShowMessages` on, `ImpactMessagesIncludeYourMen` off, `ImpactMessageMinSeconds` 1.5; the opening `ImpactPunishEnabled` on,
 `ImpactPunishAggressionPercent` 100, `ImpactPunishGraceSeconds` 0.5, `ImpactPunishRangeMetres` 3; step 62 `ImpactShrugOffYieldsToImpact` on,
-`ImpactFallBackupSeconds` 0.5, `ImpactToughnessWeight` 0.5 (with `CourageArmourWeightPercent` 200, `CourageLevelWeightPercent` 100,
-`CourageHealthWeightPercent` 50), `ImpactRangedInHandPercent` 130, `ImpactRearPercent` 200, `ImpactFlankPercent` 140, `ImpactRearDegrees` 120,
-`ImpactFlankDegrees` 60, `ImpactChargeCarrySeconds` 1.5, `RiposteKnockdownMaxPercent` 40, `RiposteKnockdownFrom` 0, `RiposteMomentumPercent` 100,
+`ImpactFallBackupSeconds` 0.2 (step 63; 0.5 before), `ImpactToughnessWeight` 0.5 (with `CourageArmourWeightPercent` 200, `CourageLevelWeightPercent` 100,
+`CourageHealthWeightPercent` 50), `ImpactRangedInHandPercent` 130, `ImpactRearPercent` 100 and `ImpactFlankPercent` 100 (step 63; 200 / 140
+before), `ImpactRearDegrees` 120, `ImpactFlankDegrees` 60, step 63 `ImpactRearPressure` 0.5 and `ImpactFlankPressure` 0.2, `ImpactChargeCarrySeconds` 1.5, `RiposteKnockdownMaxPercent` 40, `RiposteKnockdownFrom` 0, `RiposteMomentumPercent` 100,
 `ImpactMultiplierCapPercent` 800 (and `SprintFullCritical` on, section 12); the pressure `ImpactMismatchWeight` 0.25,
 `ImpactEvenBandDoublings` 0.5, `ImpactStaggeredBonus` 0.75 and the weapon / guard / skill factors (DESIGN's table).</sub>
 

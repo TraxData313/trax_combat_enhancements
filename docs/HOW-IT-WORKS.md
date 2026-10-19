@@ -137,8 +137,10 @@ Numbers: [MECHANICS §11](MECHANICS.md#11-eagerness-and-the-fever-of-a-charge).
 In the base game a man in a shield wall walks a few steps out to swing at the enemy and walks back — every
 man does it, and the wall bulges and breaks. With this mod a man in a shield wall, square or circle keeps
 his place and fights whatever reaches him. When the enemy in front of him backs off just out of reach, he
-takes one short step out after him, strikes, and walks back to his place. On a charge the wall breaks on
-purpose; loose lines and columns keep the game's own behaviour.
+takes one short step out after him, strikes, and walks back to his place. A man thrown out of the wall by a
+blow or shoved out by the press is held again at once and, as soon as he is back on his feet, backs off into his
+place facing the enemy — the wall closes up. On a charge the wall breaks on purpose; loose lines and columns keep
+the game's own behaviour.
 
 Numbers: [MECHANICS §10](MECHANICS.md#10-battle-pace) (the end of it).
 
@@ -202,8 +204,10 @@ as anyone. Tire him first, then break him.
 move the looter far more. A legionary hits a looter as if twice as strong; the looter's blows on him count half.
 An archer caught in melee with his bow still in his hands is easier to knock over.
 
-**Hit from behind.** A blow in the back counts **twice**, from the side half as much again. A well-led unit that
-reaches the back of an engaged line throws men to the ground.
+**Hit from behind.** A blow from behind can floor even a fresh man: it hits him as if he were already half
+exhausted, and a blow from the side a little. Two fresh men of a kind never knock each other down face to face —
+from behind, one blow in fifteen does, and two in five stagger him. A unit that reaches the back of an engaged line
+throws men to the ground, and archers caught there go down one blow in two.
 
 **The charge.** A man running into his blow hits harder; at a full sprint, much harder. The sprint carries into
 the **first** blow he strikes just after it (men slow down to swing), and a sprinting blow rolls the **full damage
@@ -218,9 +222,10 @@ A walking man only reels; a parry never throws anyone. This goes for **you** too
 head-on and you can land on your back ("You are thrown back by …'s shield"). Charge the flank, the back, or a
 tired line — not a fresh wall.
 
-**Every fall plays.** When the game would have let a blow slip off a man without a reaction, a knockdown or
-stagger decided for that blow now plays anyway; if a decided fall still does not start, the man is put on the
-ground a moment later.
+**Every fall plays, on the blow.** When the game would have let a blow slip off a man without a reaction, a
+knockdown or stagger decided for that blow now plays anyway, the moment it lands; if a decided fall still does not
+start, the man is put on the ground a fifth of a second later. A friend's blow — a man in the second rank swinging
+into his own front man — never knocks anyone down.
 
 **The enemy goes for the opening.** When a man reels or lies on the ground — you included — the men fighting
 him press it at once.
