@@ -53,7 +53,9 @@ public class AiKickTests
         Assert.Equal("ModEnabled", Rules(s => { s.Set(SettingsSchema.ModEnabled, false, "t"); s.Set(SettingsSchema.AiKicksEnabled, false, "t"); }).OffBecause);
         Assert.Equal("AthleticsEnabled", Rules(s => { s.Set(SettingsSchema.AthleticsEnabled, false, "t"); s.Set(SettingsSchema.AiKicksEnabled, false, "t"); }).OffBecause);
         Assert.Equal("AiKicksEnabled", Rules(s => s.Set(SettingsSchema.AiKicksEnabled, false, "t")).OffBecause);
-        Assert.Equal("AiKicksPerMinute 0", Rules(s => s.Set(SettingsSchema.AiKicksPerMinute, 0.0, "t")).OffBecause);
+        Assert.Null(Rules(s => s.Set(SettingsSchema.AiKicksPerMinute, 0.0, "t")).OffBecause); // step 66: the shieldmen still bash
+        Assert.Equal("AiKicksPerMinute 0 and AiBashShareOfSwingsPercent 0",
+            Rules(s => { s.Set(SettingsSchema.AiKicksPerMinute, 0.0, "t"); s.Set(SettingsSchema.AiBashShareOfSwingsPercent, 0, "t"); }).OffBecause);
         Assert.Null(Rules().OffBecause);
         Assert.StartsWith("OFF (ModEnabled)", Rules(s => s.Set(SettingsSchema.ModEnabled, false, "t")).Describe(), StringComparison.Ordinal);
         Assert.Contains("the engine's kick key; a bash = the kick key with the guard up", Rules().Describe(), StringComparison.Ordinal);
@@ -199,7 +201,7 @@ public class AiKickTests
         st.ContactManSeconds = 120;
         st.PointsSpent = 9;
         var lines = st.SummaryLines(Rules()).ToList();
-        Assert.Equal(4, lines.Count);
+        Assert.Equal(5, lines.Count); // step 66: + the bashes per swing and the wait for reach
         Assert.StartsWith("ai kicks (step 65): ON", lines[0], StringComparison.Ordinal);
         Assert.Contains("ai kicks: asked 3 (kicks 1, bashes 2) → PLAYED 2 (67%), seen 0.30 s after the ask → landed on the man 1, into a shield 1", lines[1], StringComparison.Ordinal);
         Assert.Contains("1.50 asked a man-minute in contact (2.0 man-minutes)", lines[1], StringComparison.Ordinal);

@@ -1086,6 +1086,29 @@ namespace TraxCombat.Core
             "Brace: no knock-back at all",
             "On: a braced man is not knocked back at all (the game's knock-back is refused for that kick, and whatever reaction is left plays fast). Off: the knock-back plays, only cut short.");
 
+        // Step 66 (Anton's looter battle 2026-10-19 14:16 - no AI kick seen, asked 0 in 49 man-minutes of contact: "not a bad idea for men to kick
+        // and bash more - a defensive supplement to all that killing, disturbing"; "and shield bashes, maybe make them as frequent as swings when the
+        // man has a shield"): a kick waits for reach; a shieldman's swings earn his bashes.
+        public static readonly ParamDef AiKickWaitSeconds = Float("AiKickWaitSeconds", 0, 10, ImpactGroup,
+            "AI kicks: wait this long to get in reach (s)",
+            "When an AI soldier decides to kick or bash while the enemy he fights is close (next setting) but not yet in reach or not in front, he keeps the wish this many seconds and kicks the moment the enemy is in reach. 0 = only an enemy already in reach.");
+
+        public static readonly ParamDef AiKickWaitMetres = Float("AiKickWaitMetres", 1, 10, ImpactGroup,
+            "AI kicks: close enough to wait for (m)",
+            "The enemy he fights must stand within this many metres for the AI soldier to wait for reach (above) - farther away the wish is dropped.");
+
+        public static readonly ParamDef AiBashShareOfSwingsPercent = Int("AiBashShareOfSwingsPercent", 0, 300, ImpactGroup,
+            "AI shield bashes: per swing (%)",
+            "An AI soldier with a shield bashes about this many times per 100 of his own melee swings (100: one bash per swing - as often as he swings). Each of his swings earns this share of a bash, spent soon after when the enemy is in reach. A raised shield facing him is kicked instead. Men without a shield kick at the rate per minute above. 0 = shieldmen never bash.");
+
+        public static readonly ParamDef AiBashDelaySeconds = Float("AiBashDelaySeconds", 0.1, 10, ImpactGroup,
+            "AI shield bashes: after his swing within about (s)",
+            "On average this many seconds after the swing that earned it the AI soldier bashes (at a full Athletics bar; longer as he tires, never below the 'none below' Athletics). If he swings again first the bash waits - at most two are saved up.");
+
+        public static readonly ParamDef AiBashCooldownSeconds = Float("AiBashCooldownSeconds", 0, 60, ImpactGroup,
+            "AI shield bashes: at least this long between two (s)",
+            "After a shield bash an AI soldier waits at least this many seconds before his next kick or bash (kept short, so bashes can keep up with his swings).");
+
         public static readonly ParamDef ImpactMismatchWeight = Float("ImpactMismatchWeight", 0, 2, ImpactGroup,
             "Mismatch weight (pressure per doubling)",
             "How much an outmatched man suffers: every doubling of the mismatch beyond the even band adds this to the pressure on him (0.25: an enemy four times stronger counts as much as being about a third tired). 0 = only tiredness counts.");
@@ -1554,6 +1577,7 @@ namespace TraxCombat.Core
             AiKickTurtleBlocks, AiKickFeverMultiplier, AiKickSkillLowPercent, AiKickSkillHighPercent, AiKickMinBarPercent, AiKickFullBarPercent,
             AiKickKicksARaisedShield, KickBraceEnabled, KickBraceFromPressure, KickBraceToPressure, KickBraceMinBarPercent, KickBraceReelPercent,
             KickShortReelPercent, KickBraceRefusesKnockBack,
+            AiKickWaitSeconds, AiKickWaitMetres, AiBashShareOfSwingsPercent, AiBashDelaySeconds, AiBashCooldownSeconds,
             ImpactMismatchWeight, ImpactEvenBandDoublings, ImpactBodyExponent, ImpactBodyFloorPoints, ImpactStaggeredBonus, ImpactDamageWeight,
             ImpactRefWeightKg, ImpactWeightExponent, ImpactRefSwingSpeed, ImpactSpeedExponent, ImpactBluntFactor, ImpactCutFactor, ImpactPierceFactor,
             ImpactKickFactor, ImpactBashFactor, ImpactSkillMinFactor, ImpactSkillMaxFactor,

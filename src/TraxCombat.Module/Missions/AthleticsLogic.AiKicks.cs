@@ -124,6 +124,11 @@ namespace TraxCombat.Missions
             st.AiKickLastLook = now;
             _aiKickStats.Looks++;
             if (st.FeverContact) _aiKickStats.ContactManSeconds += gap;
+            if (!double.IsNaN(st.AiKickWaitUntil) && now > st.AiKickWaitUntil)
+            {
+                _aiKickStats.WaitsExpired++; // step 66: the enemy never came in reach in time
+                ClearAiKickWait(st);
+            }
             if (now < st.AiKickNext)
             {
                 Skip(AiKickSkip.Cooldown);
@@ -157,55 +162,76 @@ namespace TraxCombat.Missions
                 Skip(AiKickSkip.Busy);
                 return;
             }
+            // step 66: a decision already taken waits for reach - no die, the engine read every look until he is in reach or it runs out
+            bool waiting = !double.IsNaN(st.AiKickWaitUntil);
             bool fever = st.Fever.Running;
-            double best = AiKickMath.LookChance(AiKickMath.PerMinute(in r, st.AthleticsSkill, st.Fraction, fever, 1.0), gap);
-            double u = AiKickDice.NextDouble();
-            if (u >= best)
+            double u = 0, bashChance = 0;
+            if (!waiting)
             {
-                Skip(AiKickSkip.Dice);
-                return;
+                // ONE die against his best case: a kick against a full turtle (a man without a shield) or the bash his swings earned (a shieldman)
+                double kickBest = r.PerMinute > 0 ? AiKickMath.LookChance(AiKickMath.PerMinute(in r, st.AthleticsSkill, st.Fraction, fever, 1.0), gap) : 0;
+                bashChance = AiKickMath.LookChance(AiKickMath.BashPerMinute(in r, st.BashCredit, st.Fraction), gap);
+                u = AiKickDice.NextDouble();
+                if (u >= Math.Max(kickBest, bashChance))
+                {
+                    Skip(AiKickSkip.Dice);
+                    return;
+                }
             }
-            // under the best case: the engine's reads
+            // under the best case (or waiting): the engine's reads
             _aiKickStats.NativeReads++;
             body.Hands(st, out bool mounted, out bool routing, out bool ranged, out bool shield);
-            if (mounted)
+            if (mounted || routing || ranged)
             {
-                Skip(AiKickSkip.Mounted);
-                return;
-            }
-            if (routing)
-            {
-                Skip(AiKickSkip.Routing);
-                return;
-            }
-            if (ranged)
-            {
-                Skip(AiKickSkip.Ranged);
+                DropAiKickWait(st);
+                Skip(mounted ? AiKickSkip.Mounted : routing ? AiKickSkip.Routing : AiKickSkip.Ranged);
                 return;
             }
             var targetAgent = body.Target(st, out float distance, out float off);
             var target = targetAgent != null ? Get(targetAgent) : null;
             if (target == null || target.Removed || target.Impact.Down(now) || ImpactActions.IsFall(target.PrevLowerAction))
             {
+                DropAiKickWait(st);
                 Skip(AiKickSkip.NoTarget);
-                return;
-            }
-            if (!(distance <= r.Reach))
-            {
-                Skip(AiKickSkip.TooFar);
-                return;
-            }
-            if (!(off <= r.Facing))
-            {
-                Skip(AiKickSkip.NotFacing);
                 return;
             }
             bool guardUp = ImpactActions.IsDefend(target.PrevAction);
             double turtle = AiKickMath.TurtleShare(in r, AiKickMath.Faded(target.TurtleBlocks, target.TurtleBlocksAt, now, r.TurtleSeconds), guardUp);
-            double chance = AiKickMath.LookChance(AiKickMath.PerMinute(in r, st.AthleticsSkill, st.Fraction, fever, turtle), gap);
-            if (u >= chance)
+            double chance;
+            if (!waiting)
             {
-                Skip(AiKickSkip.Dice);
+                // the exact chance for the same die: a shieldman's earned bash, else the kick by the target's turtling
+                chance = shield ? bashChance : AiKickMath.LookChance(AiKickMath.PerMinute(in r, st.AthleticsSkill, st.Fraction, fever, turtle), gap);
+                if (u >= chance)
+                {
+                    Skip(AiKickSkip.Dice);
+                    return;
+                }
+                if (shield) st.BashCredit = Math.Max(0, st.BashCredit - 1); // the earned bash is spent on the decision
+            }
+            else chance = st.AiKickWaitChance;
+            if (!(distance <= r.Reach) || !(off <= r.Facing))
+            {
+                if (waiting)
+                {
+                    if (!(distance <= r.WaitMetres))
+                    {
+                        DropAiKickWait(st);
+                        Skip(AiKickSkip.TooFar);
+                    }
+                    else Skip(AiKickSkip.Waiting);
+                    return;
+                }
+                if (AiKickMath.Waits(in r, distance))
+                {
+                    st.AiKickWaitUntil = now + r.WaitSeconds;
+                    st.AiKickWaitSince = now;
+                    st.AiKickWaitChance = chance;
+                    _aiKickStats.WaitsStarted++;
+                    Skip(AiKickSkip.Waiting);
+                    return;
+                }
+                Skip(!(distance <= r.Reach) ? AiKickSkip.TooFar : AiKickSkip.NotFacing);
                 return;
             }
             bool raisedFacing = false;
@@ -216,10 +242,44 @@ namespace TraxCombat.Missions
                 Skip(AiKickSkip.PoolFull);
                 return;
             }
-            BeginAiKick(st, target, kind, AiKickStats.Reason(turtle >= 0.5, fever), now, r.Cooldown, turtle, chance);
+            if (waiting)
+            {
+                _aiKickStats.WaitsDone++;
+                _aiKickStats.WaitSeconds += now - st.AiKickWaitSince;
+                ClearAiKickWait(st);
+            }
+            BeginAiKick(st, target, kind, AiKickStats.Reason(turtle >= 0.5, fever), now, AiKickMath.CooldownFor(in r, kind), turtle, chance);
         }
 
         private void Skip(AiKickSkip why) => _aiKickStats.Skips[(int)why]++;
+
+        /// <summary>Step 66: a waiting decision dropped (the enemy gone or too far, mounted, a ranged weapon, routing) - counted once.</summary>
+        private void DropAiKickWait(TrackedAgent st)
+        {
+            if (double.IsNaN(st.AiKickWaitUntil)) return;
+            _aiKickStats.WaitsDropped++;
+            ClearAiKickWait(st);
+        }
+
+        private static void ClearAiKickWait(TrackedAgent st)
+        {
+            st.AiKickWaitUntil = double.NaN;
+            st.AiKickWaitSince = double.NaN;
+        }
+
+        /// <summary>Step 66 (StartRelease, after the class read): an AI shieldman's melee swing on foot earns AiBashShareOfSwingsPercent of a bash
+        /// (at most AiKickMath.BashCreditCap saved) - "as often as he swings".</summary>
+        internal void NoteAiBashSwing(TrackedAgent st, bool mounted)
+        {
+            if (mounted || st.AttackClass != AttackClass.ShieldInfantry || IsPlayer(st)) return;
+            var r = AiKickRules.From(TraxSettings.Shared);
+            if (!r.Enabled || !(r.BashShare > 0)) return;
+            double before = st.BashCredit;
+            st.BashCredit = AiKickMath.AddBashCredit(in r, before);
+            _aiKickStats.ShieldSwings++;
+            _aiKickStats.CreditEarned += st.BashCredit - before;
+            _aiKickStats.CreditLost += Math.Max(0, r.BashShare - (st.BashCredit - before));
+        }
 
         private void BeginAiKick(TrackedAgent st, TrackedAgent target, AiKickKind kind, int reason, double now, double cooldown, double turtle, double chance)
         {

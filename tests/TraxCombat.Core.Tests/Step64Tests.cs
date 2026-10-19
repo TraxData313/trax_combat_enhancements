@@ -268,18 +268,18 @@ public class ChargeIntoContactTests
     public void A_format_11_file_at_the_old_fever_sprint_distances_gets_4_and_8_once_tuned_kept()
     {
         static double Shipped(ParamDef p) => p == SettingsSchema.FeverSprintMinMetres ? 4.0 : p == SettingsSchema.FeverSprintMaxMetres ? 8.0 : p.Default;
-        Assert.Equal(12, ConfigFile.FormatVersion);
+        Assert.Equal(13, ConfigFile.FormatVersion);
         var read = ConfigFile.Read("{ \"ConfigVersion\": 11, \"FeverSprintMinMetres\": 3.0, \"FeverSprintMaxMetres\": 12.0 }");
         var notes = ConfigFile.Migrate(read, Shipped);
         Assert.Equal(2, notes.Count);
-        Assert.StartsWith("FeverSprintMinMetres: 3.0 → 4.0 (format 11 → 12, the old default; step 64, Anton's looter battles", notes[0], StringComparison.Ordinal);
-        Assert.StartsWith("FeverSprintMaxMetres: 12.0 → 8.0 (format 11 → 12, the old default; step 64", notes[1], StringComparison.Ordinal);
+        Assert.StartsWith("FeverSprintMinMetres: 3.0 → 4.0 (format 11 → 13, the old default; step 64, Anton's looter battles", notes[0], StringComparison.Ordinal);
+        Assert.StartsWith("FeverSprintMaxMetres: 12.0 → 8.0 (format 11 → 13, the old default; step 64", notes[1], StringComparison.Ordinal);
         Assert.Equal(4, read.Values["FeverSprintMinMetres"], 9);
         Assert.Equal(8, read.Values["FeverSprintMaxMetres"], 9);
         var mine = ConfigFile.Read("{ \"ConfigVersion\": 11, \"FeverSprintMaxMetres\": 15.0 }");
         var kept = ConfigFile.Migrate(mine, Shipped);
         Assert.Single(kept);
-        Assert.StartsWith("FeverSprintMaxMetres: 15.0 kept - your own value (format 11 → 12; the new default 8.0", kept[0], StringComparison.Ordinal);
+        Assert.StartsWith("FeverSprintMaxMetres: 15.0 kept - your own value (format 11 → 13; the new default 8.0", kept[0], StringComparison.Ordinal);
         Assert.Empty(ConfigFile.Migrate(ConfigFile.Read("{ \"ConfigVersion\": 12, \"FeverSprintMaxMetres\": 12.0 }"), Shipped));
     }
 
@@ -388,7 +388,7 @@ public class Step64ExamplesTests
         var read = ConfigFile.Read("{ \"ConfigVersion\": 11, \"ImpactChargeCarrySeconds\": 1.5 }");
         var notes = ConfigFile.Migrate(read, Shipped64);
         Assert.Single(notes);
-        Assert.StartsWith("ImpactChargeCarrySeconds: 1.5 → 3.0 (format 11 → 12, the old default; step 64, Anton's looter battles: the charge carries 3 s", notes[0], StringComparison.Ordinal);
+        Assert.StartsWith("ImpactChargeCarrySeconds: 1.5 → 3.0 (format 11 → 13, the old default; step 64, Anton's looter battles: the charge carries 3 s", notes[0], StringComparison.Ordinal);
         var mine = ConfigFile.Read("{ \"ConfigVersion\": 11, \"ImpactChargeCarrySeconds\": 2.0 }");
         Assert.StartsWith("ImpactChargeCarrySeconds: 2.0 kept - your own value", ConfigFile.Migrate(mine, Shipped64).Single(), StringComparison.Ordinal);
         Assert.Equal(3.0, Shipped().ChargeCarrySeconds, 9);

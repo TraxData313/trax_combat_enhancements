@@ -74,6 +74,9 @@ namespace TraxCombat.Core
 
         /// <summary>The attempt pool is full (plumbing - <see cref="AiKickMath.MaxAttempts"/>).</summary>
         PoolFull,
+
+        /// <summary>Step 66: decided, waiting for the enemy to come in reach / in front (<c>AiKickWaitSeconds</c>).</summary>
+        Waiting,
     }
 
     /// <summary>Step 65: how an attempt ended.</summary>
@@ -107,7 +110,8 @@ namespace TraxCombat.Core
     {
         public AiKickRules(bool modEnabled, bool athleticsEnabled, bool enabled, double perMinute, double reachMetres, double facingDegrees, double cooldownSeconds,
             double turtleMultiplier, double turtleSeconds, double turtleBlocks, double feverMultiplier, int skillLowPercent, int skillHighPercent,
-            int minBarPercent, int fullBarPercent, bool kicksARaisedShield)
+            int minBarPercent, int fullBarPercent, bool kicksARaisedShield, double waitSeconds = 0, double waitMetres = 0, int bashSharePercent = 0,
+            double bashDelaySeconds = 1, double bashCooldownSeconds = 0)
         {
             ModEnabled = modEnabled;
             AthleticsEnabled = athleticsEnabled;
@@ -125,18 +129,24 @@ namespace TraxCombat.Core
             MinBar = Math.Max(0, Math.Min(100, minBarPercent)) / 100.0;
             FullBar = Math.Max(0, Math.Min(100, fullBarPercent)) / 100.0;
             KicksARaisedShield = kicksARaisedShield;
+            WaitSeconds = Pos(waitSeconds);
+            WaitMetres = Pos(waitMetres);
+            BashShare = Math.Max(0, bashSharePercent) / 100.0;
+            BashDelay = Math.Max(0.1, double.IsNaN(bashDelaySeconds) ? 1 : bashDelaySeconds);
+            BashCooldown = Pos(bashCooldownSeconds);
         }
 
         public static AiKickRules From(TraxSettings s) => new AiKickRules(s.ModEnabled, s.AthleticsEnabled, s.AiKicksEnabled, s.AiKicksPerMinute, s.AiKickReachMetres,
             s.AiKickFacingDegrees, s.AiKickCooldownSeconds, s.AiKickTurtleMultiplier, s.AiKickTurtleSeconds, s.AiKickTurtleBlocks, s.AiKickFeverMultiplier,
-            s.AiKickSkillLowPercent, s.AiKickSkillHighPercent, s.AiKickMinBarPercent, s.AiKickFullBarPercent, s.AiKickKicksARaisedShield);
+            s.AiKickSkillLowPercent, s.AiKickSkillHighPercent, s.AiKickMinBarPercent, s.AiKickFullBarPercent, s.AiKickKicksARaisedShield,
+            s.AiKickWaitSeconds, s.AiKickWaitMetres, s.AiBashShareOfSwingsPercent, s.AiBashDelaySeconds, s.AiBashCooldownSeconds);
 
         public bool ModEnabled { get; }
         public bool AthleticsEnabled { get; }
         public bool KicksEnabled { get; }
 
-        /// <summary>The AI kicks: the master switch FIRST, Athletics, AiKicksEnabled, and a rate above 0.</summary>
-        public bool Enabled => ModEnabled && AthleticsEnabled && KicksEnabled && PerMinute > 0;
+        /// <summary>The AI kicks: the master switch FIRST, Athletics, AiKicksEnabled, and a kick rate or a bash share above 0 (step 66).</summary>
+        public bool Enabled => ModEnabled && AthleticsEnabled && KicksEnabled && (PerMinute > 0 || BashShare > 0);
 
         public double PerMinute { get; }
         public double Reach { get; }
@@ -152,8 +162,22 @@ namespace TraxCombat.Core
         public double FullBar { get; }
         public bool KicksARaisedShield { get; }
 
+        /// <summary>Step 66: a decision taken with the enemy he fights within <see cref="WaitMetres"/> but not yet in reach / in front waits
+        /// this long for it (0 = only an enemy already in reach).</summary>
+        public double WaitSeconds { get; }
+        public double WaitMetres { get; }
+
+        /// <summary>Step 66: a shieldman's bashes per melee swing (AiBashShareOfSwingsPercent ÷ 100) - each swing earns this much of a bash.</summary>
+        public double BashShare { get; }
+
+        /// <summary>Step 66: the mean wait (s) from an earned bash to the bash at a full bar (÷ the bar factor as he tires).</summary>
+        public double BashDelay { get; }
+
+        /// <summary>Step 66: at least this long after a BASH before his next kick or bash (a kick keeps <see cref="Cooldown"/>).</summary>
+        public double BashCooldown { get; }
+
         public string? OffBecause => !ModEnabled ? "ModEnabled" : !AthleticsEnabled ? "AthleticsEnabled" : !KicksEnabled ? "AiKicksEnabled"
-            : !(PerMinute > 0) ? "AiKicksPerMinute 0" : null;
+            : !(PerMinute > 0) && !(BashShare > 0) ? "AiKicksPerMinute 0 and AiBashShareOfSwingsPercent 0" : null;
 
         private static double Pos(double v) => double.IsNaN(v) || v < 0 ? 0 : v;
 
@@ -161,12 +185,21 @@ namespace TraxCombat.Core
         public string Describe()
         {
             if (!Enabled) return "OFF (" + OffBecause + ") - the game's AI, which never kicks";
-            return "ON - an AI man on foot within " + AiKickMath.F1(Reach) + " m of the enemy he fights (within " + AiKickMath.F0(Facing) + "° of his facing) kicks him (no shield) or "
-                   + "shield-bashes him at " + AiKickMath.F2(PerMinute) + " a minute of contact x his Athletics skill (" + AiKickMath.P0(SkillLow) + " at 0 → " + AiKickMath.P0(SkillHigh)
-                   + " at 300) x his bar (none below " + AiKickMath.P0(MinBar) + ", full from " + AiKickMath.P0(FullBar) + ") x up to " + AiKickMath.F1(Turtle)
-                   + " against a TURTLE (" + AiKickMath.F1(TurtleBlocks) + " blocks in the last ~" + AiKickMath.F1(TurtleSeconds) + " s, his guard up now counting one) x "
-                   + AiKickMath.F1(Fever) + " in a fever; at least " + AiKickMath.F1(Cooldown) + " s between two; never staggered, down, routing, mounted, with a ranged weapon, "
-                   + "without the Athletics or a stored swing for it" + (KicksARaisedShield ? "; a shieldman KICKS a raised shield facing him" : string.Empty)
+            string kicks = PerMinute > 0
+                ? "KICKS him (no shield in hand) at " + AiKickMath.F2(PerMinute) + " a minute of contact x his Athletics skill (" + AiKickMath.P0(SkillLow) + " at 0 → "
+                  + AiKickMath.P0(SkillHigh) + " at 300) x his bar (none below " + AiKickMath.P0(MinBar) + ", full from " + AiKickMath.P0(FullBar) + ") x up to "
+                  + AiKickMath.F1(Turtle) + " against a TURTLE (" + AiKickMath.F1(TurtleBlocks) + " blocks in the last ~" + AiKickMath.F1(TurtleSeconds)
+                  + " s, his guard up now counting one) x " + AiKickMath.F1(Fever) + " in a fever, at least " + AiKickMath.F1(Cooldown) + " s between two"
+                : "never kicks a man without a shield (AiKicksPerMinute 0)";
+            string bashes = BashShare > 0
+                ? "a SHIELDMAN bashes him " + AiKickMath.P0(BashShare) + " as often as he swings (each of his melee swings earns " + AiKickMath.F2(BashShare)
+                  + " of a bash, at most " + AiKickMath.F0(AiKickMath.BashCreditCap) + " saved, spent within ~" + AiKickMath.F1(BashDelay) + " s at a full bar - slower as he tires, "
+                  + "the same bar gate), at least " + AiKickMath.F1(BashCooldown) + " s after a bash"
+                : "a shieldman never bashes (AiBashShareOfSwingsPercent 0)";
+            return "ON - an AI man on foot within " + AiKickMath.F1(Reach) + " m of the enemy he fights (within " + AiKickMath.F0(Facing) + "° of his facing) " + kicks + "; " + bashes
+                   + "; a decision with that enemy within " + AiKickMath.F1(WaitMetres) + " m but not yet in reach waits up to " + AiKickMath.F1(WaitSeconds)
+                   + " s for it; never staggered, down, routing, mounted, with a ranged weapon, without the Athletics or a stored swing for it"
+                   + (KicksARaisedShield ? "; a shieldman KICKS a raised shield facing him" : string.Empty)
                    + " - through the AI's own input (the engine's kick key; a bash = the kick key with the guard up)";
         }
     }
@@ -188,8 +221,8 @@ namespace TraxCombat.Core
         /// <summary>His own input held off at most this long after the press, waiting for the action to play out (RBM's WatchSeconds).</summary>
         public const double WatchSeconds = 1.5;
 
-        /// <summary>Attempts at once (a 1000-man battle at 0.1 a minute has a handful; a full pool refuses - counted).</summary>
-        public const int MaxAttempts = 64;
+        /// <summary>Attempts at once (a 1000-man battle has a few dozen at a time; a full pool refuses - counted).</summary>
+        public const int MaxAttempts = 256; // step 66: shieldmen bash as often as they swing - a 1000-man battle can run ~100 at once
 
         /// <summary>The skill at which the skill factor reaches <c>AiKickSkillHighPercent</c>.</summary>
         public const double SkillCap = 300;
@@ -197,7 +230,7 @@ namespace TraxCombat.Core
         /// <summary>A raised shield facing the kicker within this angle is kicked, not bashed (RBM's ShieldFacingCosine 0.5 = 60°).</summary>
         public const double RaisedShieldDegrees = 60;
 
-        public const int SkipCount = 14;
+        public const int SkipCount = 15;
         public const int EndCount = 6;
 
         /// <summary>His own action (channel 1) keeps him busy: a ready / release of a melee or ranged attack, a reload, a kick / bash, a weapon
@@ -257,6 +290,40 @@ namespace TraxCombat.Core
 
         /// <summary>The first phase of an attempt: a bash holds the guard first, a kick presses at once.</summary>
         public static AiKickPhase FirstPhase(AiKickKind kind) => kind == AiKickKind.Bash ? AiKickPhase.Guard : AiKickPhase.Press;
+
+        // ---- step 66: a shieldman's swings earn his bashes; a decision waits for reach
+
+        /// <summary>The most bashes a man can have saved up (plumbing: a burst of swings does not become a burst of bashes).</summary>
+        public const double BashCreditCap = 2;
+
+        /// <summary>His bash credit after one of his melee swings: + the share, at most <see cref="BashCreditCap"/>.</summary>
+        public static double AddBashCredit(in AiKickRules r, double credit)
+        {
+            double c = double.IsNaN(credit) || credit < 0 ? 0 : credit;
+            return Math.Min(BashCreditCap, c + r.BashShare);
+        }
+
+        /// <summary>A shieldman's bash rate a minute now: with a whole bash earned, 60 × his bar factor ÷ <c>AiBashDelaySeconds</c> (the mean wait
+        /// from the swing - longer as he tires, none below the bar gate); nothing earned = 0.</summary>
+        public static double BashPerMinute(in AiKickRules r, double credit, double bar)
+        {
+            if (!(r.BashShare > 0) || !(credit >= 1 - 1e-9)) return 0;
+            return 60.0 * BarFactor(in r, bar) / r.BashDelay;
+        }
+
+        /// <summary>The cooldown after an attempt of this kind (a bash its own, short one).</summary>
+        public static double CooldownFor(in AiKickRules r, AiKickKind kind) => kind == AiKickKind.Bash ? r.BashCooldown : r.Cooldown;
+
+        /// <summary>A rate a minute with a cooldown after each (from the ask): 1 ÷ (cooldown + 1 ÷ rate) a minute - what a man in steady contact
+        /// really does (the model of the summary and the examples).</summary>
+        public static double WithCooldown(double perMinute, double cooldownSeconds)
+        {
+            if (!(perMinute > 0)) return 0;
+            return 1.0 / (Math.Max(0, cooldownSeconds) / 60.0 + 1.0 / perMinute);
+        }
+
+        /// <summary>Does a decision with the enemy at <paramref name="distance"/> m (out of reach or not in front) wait for reach?</summary>
+        public static bool Waits(in AiKickRules r, double distance) => r.WaitSeconds > 0 && distance <= r.WaitMetres;
 
         /// <summary>The end of a phase begun at <paramref name="start"/>.</summary>
         public static double PhaseEnd(AiKickPhase phase, double start) => phase switch
@@ -330,6 +397,7 @@ namespace TraxCombat.Core
             AiKickSkip.NoTarget => "no enemy target",
             AiKickSkip.TooFar => "target out of reach",
             AiKickSkip.NotFacing => "target not in front",
+            AiKickSkip.Waiting => "waiting for reach",
             _ => "the attempt pool full",
         };
 
@@ -378,6 +446,19 @@ namespace TraxCombat.Core
 
         /// <summary>Played as the other kind (asked a bash, the engine kicked - or the other way round).</summary>
         public int PlayedOtherKind;
+
+        /// <summary>Step 66: the shieldmen's melee swings (AI, on foot) that earned bash credit, the credit earned, the credit lost at the cap.</summary>
+        public int ShieldSwings;
+        public double CreditEarned;
+        public double CreditLost;
+
+        /// <summary>Step 66: decisions that waited for reach - started, kicked / bashed after it (their wait), ran out, dropped (the enemy gone or
+        /// beyond <c>AiKickWaitMetres</c>, he got on a horse / took a ranged weapon / broke).</summary>
+        public int WaitsStarted;
+        public int WaitsDone;
+        public double WaitSeconds;
+        public int WaitsExpired;
+        public int WaitsDropped;
 
         /// <summary>Athletics spent on the AI's kicks (points), the native reads made, the look's cost (ms).</summary>
         public double PointsSpent;
@@ -468,6 +549,15 @@ namespace TraxCombat.Core
             if (first) sb.Append("none");
             sb.Append("; native reads ").Append(NativeReads).Append(", the look's cost ").Append(CostMs.ToString("0.000", c)).Append(" ms");
             lines.Add(sb.ToString());
+            int bashes = AskedCount(AiKickKind.Bash);
+            lines.Add("ai kicks - bashes per swing and the wait for reach (step 66): the shieldmen's melee swings (AI, on foot) " + ShieldSwings + " earned "
+                      + CreditEarned.ToString("0.0", c) + " bashes (AiBashShareOfSwingsPercent " + AiKickMath.P0(r.BashShare) + "; lost at the cap of "
+                      + AiKickMath.F0(AiKickMath.BashCreditCap) + " " + CreditLost.ToString("0.0", c) + ") → bashes asked " + bashes
+                      + (ShieldSwings > 0 ? " = " + ((double)bashes / ShieldSwings).ToString("0.00", c) + " a swing" : string.Empty)
+                      + "; decisions that waited for reach " + WaitsStarted + " → kicked / bashed " + WaitsDone
+                      + (WaitsDone > 0 ? " (" + (WaitSeconds / WaitsDone).ToString("0.00", c) + " s after the decision)" : string.Empty)
+                      + ", ran out (" + AiKickMath.F1(r.WaitSeconds) + " s) " + WaitsExpired + ", dropped (the enemy gone or beyond " + AiKickMath.F1(r.WaitMetres)
+                      + " m, mounted, a ranged weapon, routing) " + WaitsDropped);
             return lines;
         }
     }

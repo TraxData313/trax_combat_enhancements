@@ -102,8 +102,9 @@ namespace TraxCombat.Core
         /// step 62's default; ImpactRearPercent 200 → 100 and ImpactFlankPercent 140 → 100 - direction is pressure now, ImpactRearPressure /
         /// ImpactFlankPressure; a tuned value kept and noted), 12 = step 64 (Anton's looter battles of 2026-10-19: the fever sprint starts
         /// nearer - FeverSprintMinMetres 3 → 4, FeverSprintMaxMetres 12 → 8 - so a small store lasts to the enemy; the charge carries longer -
-        /// ImpactChargeCarrySeconds 1.5 → 3 - to a slow swing's blow; a tuned value kept and noted).</summary>
-        public const int FormatVersion = 12;
+        /// ImpactChargeCarrySeconds 1.5 → 3 - to a slow swing's blow; a tuned value kept and noted), 13 = step 66 (Anton's looter battle of 2026-10-19 14:16 - no AI kick seen: CostPerKickOrBash
+        /// 3 → 5, AiKicksPerMinute 0.1 → 1.2, AiKickCooldownSeconds 10 → 8 in a file still holding them; a tuned value kept and noted).</summary>
+        public const int FormatVersion = 13;
 
         /// <summary>The meta key holding <see cref="FormatVersion"/> - not a setting.</summary>
         public const string VersionKey = "ConfigVersion";
@@ -456,6 +457,16 @@ namespace TraxCombat.Core
                 MoveOrKeep(read, SettingsSchema.FeverSprintMaxMetres, 12, fever, from, defaultOf);
                 MoveOrKeep(read, SettingsSchema.ImpactChargeCarrySeconds, 1.5,
                     "step 64, Anton's looter battles: the charge carries 3 s after a sprint (and an attack begun in it stays a charge to its blow)", from, defaultOf);
+            }
+            if (from < 13)
+            {
+                // step 66: CostPerKickOrBash came with step 18 (any older file may hold its 3); the AI kick keys came with step 65 (format 12, no
+                // bump then) - a file without a key simply gets the new default; a hand-set value is kept and said once
+                MoveOrKeep(read, SettingsSchema.CostPerKickOrBash, 3,
+                    "step 66, Anton: a kick or a shield bash takes more of the energy - 5 Athletics points", from, defaultOf);
+                const string kicks = "step 66, Anton's looter battle: no AI kick was ever seen at 0.1 a minute - a fresh man in contact now kicks about once a minute (shieldmen bash with their swings)";
+                MoveOrKeep(read, SettingsSchema.AiKicksPerMinute, 0.1, kicks, from, defaultOf);
+                MoveOrKeep(read, SettingsSchema.AiKickCooldownSeconds, 10, kicks, from, defaultOf);
             }
             // steps 36 / 37: the retired AI sprint keys - in ANY format (they are only ever steps 33-36's, and a hand-pasted one
             // goes the same way)

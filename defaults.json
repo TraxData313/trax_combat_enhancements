@@ -249,7 +249,7 @@
   // costs a hero 2.25 and a party leader about 1.7. Paid once, when the kick or bash starts,
   // landed or not. It never starts the pause between attacks. 0 = kicks and bashes are free.
   // (range 0.0 to 20.0)
-  "CostPerKickOrBash": 3.0,
+  "CostPerKickOrBash": 5.0,
 
   // Athletics points a common soldier pays for each melee blow he blocks with his shield held
   // on the right side - yours and the AI's alike, on foot or mounted. Heroes pay it times the
@@ -1347,7 +1347,7 @@
   // reasons below raise or lower it (0.1: one a man every ten minutes of fighting - a few a
   // minute across a 50 against 50 clash). 0 = never.
   // (range 0.0 to 20.0)
-  "AiKicksPerMinute": 0.1,
+  "AiKicksPerMinute": 1.2,
 
   // An AI soldier kicks or bashes only the enemy he fights, and only within this many metres (a
   // kick reaches about a pace).
@@ -1361,7 +1361,7 @@
 
   // After a kick or bash an AI soldier waits at least this many seconds before the next.
   // (range 0.0 to 60.0)
-  "AiKickCooldownSeconds": 10.0,
+  "AiKickCooldownSeconds": 8.0,
 
   // The chance is this many times higher against an enemy who keeps blocking - his guard up now
   // and his blocks of the last seconds (below) - a kick is the answer to a turtle. 1 = no
@@ -1448,6 +1448,35 @@
   // kick, and whatever reaction is left plays fast). Off: the knock-back plays, only cut short.
   // (true or false)
   "KickBraceRefusesKnockBack": true,
+
+  // When an AI soldier decides to kick or bash while the enemy he fights is close (next
+  // setting) but not yet in reach or not in front, he keeps the wish this many seconds and
+  // kicks the moment the enemy is in reach. 0 = only an enemy already in reach.
+  // (range 0.0 to 10.0)
+  "AiKickWaitSeconds": 3.0,
+
+  // The enemy he fights must stand within this many metres for the AI soldier to wait for reach
+  // (above) - farther away the wish is dropped.
+  // (range 1.0 to 10.0)
+  "AiKickWaitMetres": 5.0,
+
+  // An AI soldier with a shield bashes about this many times per 100 of his own melee swings
+  // (100: one bash per swing - as often as he swings). Each of his swings earns this share of a
+  // bash, spent soon after when the enemy is in reach. A raised shield facing him is kicked
+  // instead. Men without a shield kick at the rate per minute above. 0 = shieldmen never bash.
+  // (range 0 to 300)
+  "AiBashShareOfSwingsPercent": 100,
+
+  // On average this many seconds after the swing that earned it the AI soldier bashes (at a
+  // full Athletics bar; longer as he tires, never below the 'none below' Athletics). If he
+  // swings again first the bash waits - at most two are saved up.
+  // (range 0.1 to 10.0)
+  "AiBashDelaySeconds": 1.5,
+
+  // After a shield bash an AI soldier waits at least this many seconds before his next kick or
+  // bash (kept short, so bashes can keep up with his swings).
+  // (range 0.0 to 60.0)
+  "AiBashCooldownSeconds": 2.0,
 
   // How much an outmatched man suffers: every doubling of the mismatch beyond the even band
   // adds this to the pressure on him (0.25: an enemy four times stronger counts as much as

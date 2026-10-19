@@ -100,6 +100,8 @@ namespace TraxCombat.Tools
                          SettingsSchema.AiKickFullBarPercent, SettingsSchema.AiKickKicksARaisedShield,
                          SettingsSchema.KickBraceEnabled, SettingsSchema.KickBraceFromPressure, SettingsSchema.KickBraceToPressure, SettingsSchema.KickBraceMinBarPercent,
                          SettingsSchema.KickBraceReelPercent, SettingsSchema.KickShortReelPercent, SettingsSchema.KickBraceRefusesKnockBack,
+                         SettingsSchema.AiKickWaitSeconds, SettingsSchema.AiKickWaitMetres, SettingsSchema.AiBashShareOfSwingsPercent, SettingsSchema.AiBashDelaySeconds,
+                         SettingsSchema.AiBashCooldownSeconds, // step 66
                      })
                 S.Set(p, p.Default, SettingSources.File);
         }
@@ -139,7 +141,7 @@ namespace TraxCombat.Tools
                 ImpactModelDefaults();
                 AiKickDefaults();
                 S.Set(SettingsSchema.KickBraceEnabled, false, SettingSources.File); // the brace has its own step
-                Check(S.AiKicksEnabled && Math.Abs(S.AiKicksPerMinute - 0.1) < 1e-6, "the AI kicks are not on at 0.1 a minute by default");
+                Check(S.AiKicksEnabled && Math.Abs(S.AiKicksPerMinute - 1.2) < 1e-6, "the AI kicks are not on at 1.2 a minute by default (step 66)");
                 var body = new FakeAiKickBody();
                 var logic = NewPaceLogic(new FakePaceBody(), new FakeWeaponFacts());
                 logic.AiKickBody = body;
@@ -215,6 +217,7 @@ namespace TraxCombat.Tools
                 // ---- 2. a shieldman's BASH: the guard up 0.4 s first, then the key + the guard; a WeaponBash seen
                 var basher = Man(6502, 100);
                 body.Shield.Add(6502);
+                basher.BashCredit = 1; // step 66: a shieldman bashes with the bash his swing earned
                 body.Targets[6502] = (Man(6503, 100), 1.0f, 0f);
                 Look(basher);
                 Check(basher.AiKickKind == AiKickKind.Bash && basher.AiKickPhase == AiKickPhase.Guard, "a shieldman was not asked a bash with the guard first: " + basher.AiKickKind + " / " + basher.AiKickPhase);
@@ -237,6 +240,7 @@ namespace TraxCombat.Tools
                 // ---- 3. a shieldman facing a RAISED shield turned toward him kicks it (a bash would be stopped)
                 var wallman = Man(6504, 100);
                 body.Shield.Add(6504);
+                wallman.BashCredit = 1; // step 66
                 var turtle = Man(6505, 100);
                 turtle.PrevAction = ImpactActions.DefendShield;
                 body.FacingToward[6505] = 20f;
@@ -253,14 +257,15 @@ namespace TraxCombat.Tools
                 Check(ignored.AiKickPhase == AiKickPhase.None && st.Ends[(int)AiKickEnd.NotPlayed] >= 1, "an attempt the engine never played did not end NOT played");
                 LogHas("[impact] first AI kick NOT played at ");
 
-                // ---- 5. the gates, each counted
+                // ---- 5. the gates, each counted (step 66's wait for reach off here - its own step checks it)
+                S.Set(SettingsSchema.AiKickWaitSeconds, 0.0, SettingSources.Mcm);
                 int Skips(AiKickSkip s) => st.Skips[(int)s];
                 var m6 = Man(6510, 100, 0.3);
                 body.Targets[6510] = (Man(6511, 100), 1.0f, 0f);
                 Look(m6);
                 Check(Skips(AiKickSkip.Tired) == 1 && m6.AiKickPhase == AiKickPhase.None, "a man at 30% of his bar was asked a kick");
                 S.Set(SettingsSchema.AiKickMinBarPercent, 0, SettingSources.Mcm);
-                SetBar(m6, 0.01); // half a point: less than a kick's 3
+                SetBar(m6, 0.01); // one point: less than a kick's 5 (step 66)
                 Look(m6);
                 Check(Skips(AiKickSkip.NoAthletics) == 1, "a man without the Athletics for it was asked a kick");
                 S.Set(SettingsSchema.AiKickMinBarPercent, 35, SettingSources.Mcm);
@@ -292,6 +297,7 @@ namespace TraxCombat.Tools
                 body.Targets[6512] = (body.Targets[6512].Target, 1.0f, 70f);
                 Look(m7);
                 Check(Skips(AiKickSkip.NotFacing) == 1, "a target 70° off his facing was kicked");
+                S.Set(SettingsSchema.AiKickWaitSeconds, SettingsSchema.AiKickWaitSeconds.Default, SettingSources.Mcm);
                 body.Targets.Remove(6512);
                 int noTarget = Skips(AiKickSkip.NoTarget); // (the tick's slice looked at the targets too - none of their own)
                 Look(m7);
@@ -402,10 +408,10 @@ namespace TraxCombat.Tools
                 double perMinute = asked / 10.0;
                 var r = AiKickRules.From(S);
                 double model = 0;
-                for (int i = 0; i < 40; i++) model += AiKickMath.PerMinute(in r, men[i].AthleticsSkill, 1.0, false, i % 4 == 1 ? 1 : 0);
+                for (int i = 0; i < 40; i++) model += AiKickMath.WithCooldown(AiKickMath.PerMinute(in r, men[i].AthleticsSkill, 1.0, false, i % 4 == 1 ? 1 : 0), r.Cooldown); // step 66: the cooldown in
                 Console.WriteLine("        step 65 a clash: 40 men in reach for 10 minutes - asked " + asked + " (" + perMinute.ToString("0.0", CultureInfo.InvariantCulture)
                                   + " a minute; the model's " + model.ToString("0.0", CultureInfo.InvariantCulture) + "), vs a turtle " + st.AskedFor(0));
-                Check(perMinute > 2 && perMinute < 10, "a clash: " + perMinute + " AI kicks a minute - not \"a few a minute\"");
+                Check(perMinute > 30 && perMinute < 90, "a clash: " + perMinute + " AI kicks a minute - not about one a man a minute or more (step 66)");
                 Check(Math.Abs(perMinute - model) < model * 0.35, "a clash: " + perMinute + " a minute against the model's " + model);
 
                 // the cost: 1000 men looked at, every 50th asking, 0 bytes
@@ -424,7 +430,7 @@ namespace TraxCombat.Tools
                     all.Add(m);
                 }
                 for (int i = 0; i < many; i++) body2.Targets[20000 + i] = (all[(i + 1) % many], 1.2f, 10f);
-                S.Set(SettingsSchema.AiKicksPerMinute, 5.0, SettingSources.Mcm); // fifty times the default: the pool and the reads busy
+                S.Set(SettingsSchema.AiKicksPerMinute, 5.0, SettingSources.Mcm); // four times the default: the pool and the reads busy
                 double t2 = 67000;
                 for (int k = 0; k < 150; k++) logic2.TickAiKicks(t2 += 1.0 / 60); // 2.5 s: the first-time lines (asked, NOT played) written before the count
                 const int ticks = 300;

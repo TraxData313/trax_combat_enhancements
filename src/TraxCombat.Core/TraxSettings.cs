@@ -458,6 +458,13 @@ namespace TraxCombat.Core
         public int KickBraceReelPercent => GetInt(SettingsSchema.KickBraceReelPercent);
         public int KickShortReelPercent => GetInt(SettingsSchema.KickShortReelPercent);
         public bool KickBraceRefusesKnockBack => GetBool(SettingsSchema.KickBraceRefusesKnockBack);
+
+        // step 66: a kick waits for reach; a shieldman's swings earn his bashes
+        public float AiKickWaitSeconds => GetFloat(SettingsSchema.AiKickWaitSeconds);
+        public float AiKickWaitMetres => GetFloat(SettingsSchema.AiKickWaitMetres);
+        public int AiBashShareOfSwingsPercent => GetInt(SettingsSchema.AiBashShareOfSwingsPercent);
+        public float AiBashDelaySeconds => GetFloat(SettingsSchema.AiBashDelaySeconds);
+        public float AiBashCooldownSeconds => GetFloat(SettingsSchema.AiBashCooldownSeconds);
         public float ImpactMismatchWeight => GetFloat(SettingsSchema.ImpactMismatchWeight);
         public float ImpactEvenBandDoublings => GetFloat(SettingsSchema.ImpactEvenBandDoublings);
         public float ImpactBodyExponent => GetFloat(SettingsSchema.ImpactBodyExponent);

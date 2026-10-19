@@ -326,6 +326,13 @@ namespace TraxCombat.Missions
         public double TurtleBlocks;
         public double TurtleBlocksAt = double.NaN;
 
+        /// <summary>Step 66: the bashes his melee swings earned (a shieldman's - Core AiKickMath.AddBashCredit, at most 2); a decision WAITING for
+        /// reach - until when (NaN = none), since when, its chance (the first line's).</summary>
+        public double BashCredit;
+        public double AiKickWaitUntil = double.NaN;
+        public double AiKickWaitSince = double.NaN;
+        public double AiKickWaitChance;
+
         public void RememberMissile(int index)
         {
             switch (MissileNext)
