@@ -1186,6 +1186,9 @@ namespace TraxCombat.Tools
             // --- step 69: winners don't hang back - off = the flock let go at once (winning or not); the idle diagnostic keeps measuring; on = again
             Step69FollowsTheMasterSwitch();
 
+            // --- step 70: the lone runner - off = his walk back stopped at once (courage off), the fever presses again; the diagnostic keeps measuring; on = again
+            Step70FollowsTheMasterSwitch();
+
             // --- the HUD (step 6): the Athletics bar goes the moment the switch goes, and comes back
             HudFollowsTheMasterSwitch(a.Agent);
         }

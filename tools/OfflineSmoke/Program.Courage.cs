@@ -91,6 +91,34 @@ namespace TraxCombat.Tools
 
             public bool Ranged(TrackedAgent st) => ByIndex.TryGetValue(st.AgentIndex, out var m) && m.Ranged;
 
+            /// <summary>Step 70: the enemy formation each formation faces (centre, facing, frontage, depth) - none unless set.</summary>
+            public readonly Dictionary<int, (double X, double Y, double GX, double GY, double Width, double Depth)> EnemyFronts =
+                new Dictionary<int, (double, double, double, double, double, double)>();
+
+            /// <summary>Step 70: a man's AI target (where, whom) - none unless set.</summary>
+            public readonly Dictionary<int, (double X, double Y, LoneTarget Kind)> Targets = new Dictionary<int, (double, double, LoneTarget)>();
+
+            public int EnemyFrontReads, TargetReads;
+
+            public bool EnemyFront(TrackedAgent st, out double x, out double y, out double gx, out double gy, out double width, out double depth)
+            {
+                EnemyFrontReads++;
+                x = y = gx = gy = width = depth = double.NaN;
+                if (!ByIndex.TryGetValue(st.AgentIndex, out var me) || !EnemyFronts.TryGetValue(me.Formation, out var e)) return false;
+                (x, y, gx, gy, width, depth) = e;
+                return true;
+            }
+
+            public LoneTarget Target(TrackedAgent st, out double x, out double y)
+            {
+                TargetReads++;
+                x = y = double.NaN;
+                if (!Targets.TryGetValue(st.AgentIndex, out var t)) return LoneTarget.None;
+                x = t.X;
+                y = t.Y;
+                return t.Kind;
+            }
+
             public bool Allows = true;
             public bool Edge;
             public int Tightened, Restored, Hooks, Releases, KitReads, Scans;
@@ -249,6 +277,7 @@ namespace TraxCombat.Tools
             S.Set(SettingsSchema.CourageTightenWeights, true, SettingSources.File);
             S.Set(SettingsSchema.CourageTimidMeleeMetres, 2.0, SettingSources.File);
             S.Set(SettingsSchema.FearFlockEnabled, false, SettingSources.File); // step 67: courage's checks run without the fear flock (Program.Step67.cs has its own)
+            S.Set(SettingsSchema.LoneRunnerEnabled, false, SettingSources.File); // step 70: courage's checks run without the lone-runner fixes (Program.Step70.cs has its own)
         }
 
         private const double LooterArmour = 8, LegionaryArmour = 110;

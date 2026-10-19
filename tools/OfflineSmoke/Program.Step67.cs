@@ -54,6 +54,10 @@ namespace TraxCombat.Tools
             S.Set(SettingsSchema.FearWinShakenPercent, 50, SettingSources.File);
             S.Set(SettingsSchema.FearThreatMetres, 0.0, SettingSources.File);
             S.Set(SettingsSchema.FearMopUpWinPercent, 0, SettingSources.File);
+            // step 70: the band, the strike and the lone-runner fixes pinned off here (step 67 / 69's point worlds) - Program.Step70.cs has its own
+            S.Set(SettingsSchema.FearBandEnabled, false, SettingSources.File);
+            S.Set(SettingsSchema.FearStrikeReachMetres, 0.0, SettingSources.File);
+            S.Set(SettingsSchema.LoneRunnerEnabled, false, SettingSources.File);
         }
 
         /// <summary>A fresh fear world: Athletics, the sprint, the fever, courage (OFF unless <paramref name="courage"/> - the flock decides
