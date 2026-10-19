@@ -64,6 +64,13 @@ namespace TraxCombat.Core
         LeftField,
         MissionEnd,
         Error,
+
+        /// <summary>Step 69: his side wins near him - the fear his morale and tiredness gave him is calmed away.</summary>
+        Winning,
+
+        /// <summary>Step 69: no enemy within FearThreatMetres - he follows his order.</summary>
+        NoThreat,
+
         Count,
     }
 
@@ -78,7 +85,9 @@ namespace TraxCombat.Core
             int moraleWeightPercent = 100, int tiredWeightPercent = 100, int disciplineLevelLow = 6, int disciplineLevelHigh = 26, int disciplineMaxPercent = 70,
             int unitSharePercent = 50, int thinLinePercent = 25, int startPercent = 15, int fullPercent = 80, double shelterBackMetres = 4, double shelterMaxMetres = 12,
             double driftMetresPerMinute = 6, int driftHoldPercent = 25, double coverWidthMetres = 0.9, int anchorFreshPercent = 60, double anchorSeconds = 20,
-            double sprintMetres = 8, int sprintChancePercent = 10, int sprintKeepPercent = 50, int wallBreakMorale = 30, double chargeLooseMetres = 12)
+            double sprintMetres = 8, int sprintChancePercent = 10, int sprintKeepPercent = 50, int wallBreakMorale = 30, double chargeLooseMetres = 12,
+            bool winCalms = true, int winEvenOddsPercent = 100, int winClearOddsPercent = 200, int winShakenPercent = 50, double threatMetres = 12,
+            int mopUpWinPercent = 50)
         {
             ModEnabled = modEnabled;
             FlockEnabled = enabled;
@@ -107,6 +116,12 @@ namespace TraxCombat.Core
             SprintKeepPercent = Pct(sprintKeepPercent);
             WallBreakMorale = Pct(wallBreakMorale);
             ChargeLooseMetres = Clamp(chargeLooseMetres, 2, 50);
+            WinCalms = winCalms;
+            WinEvenOddsPercent = winEvenOddsPercent < 0 ? 0 : winEvenOddsPercent > 1000 ? 1000 : winEvenOddsPercent;
+            WinClearOddsPercent = winClearOddsPercent < 1 ? 1 : winClearOddsPercent > 1000 ? 1000 : winClearOddsPercent;
+            WinShakenPercent = Pct(winShakenPercent);
+            ThreatMetres = Clamp(threatMetres, 0, 60);
+            MopUpWinPercent = Pct(mopUpWinPercent);
         }
 
         private static int Pct(int v) => v < 0 ? 0 : v > 100 ? 100 : v;
@@ -117,7 +132,8 @@ namespace TraxCombat.Core
             s.FearFreshPercent, s.FearMoraleWeightPercent, s.FearTiredWeightPercent, s.DisciplineLevelLow, s.DisciplineLevelHigh, s.DisciplineMaxPercent,
             s.FearUnitSharePercent, s.FearThinLinePercent, s.FearStartPercent, s.FearFullPercent, s.FearShelterBackMetres, s.FearShelterMaxMetres,
             s.FearDriftMetresPerMinute, s.FearDriftHoldPercent, s.FearCoverWidthMetres, s.FearAnchorFreshPercent, s.FearAnchorSeconds, s.FearSprintMetres,
-            s.FearSprintChancePercent, s.FearSprintKeepPercent, s.FearWallBreakMorale, s.FearChargeLooseMetres);
+            s.FearSprintChancePercent, s.FearSprintKeepPercent, s.FearWallBreakMorale, s.FearChargeLooseMetres,
+            s.FearWinCalms, s.FearWinEvenOddsPercent, s.FearWinClearOddsPercent, s.FearWinShakenPercent, s.FearThreatMetres, s.FearMopUpWinPercent);
 
         public bool ModEnabled { get; }
 
@@ -158,6 +174,24 @@ namespace TraxCombat.Core
         public int WallBreakMorale { get; }
         public double ChargeLooseMetres { get; }
 
+        /// <summary>Step 69: FearWinCalms - his side winning near him fades his fear (off = step 67 exactly).</summary>
+        public bool WinCalms { get; }
+
+        /// <summary>Step 69: the local odds (courage's, ×100) at which winning starts to calm him; below it he is losing - step 67 exactly.</summary>
+        public int WinEvenOddsPercent { get; }
+
+        /// <summary>Step 69: the local odds (×100) at which his fear is gone.</summary>
+        public int WinClearOddsPercent { get; }
+
+        /// <summary>Step 69: how much a broken enemy near him (morale at the broken line, routing) calms him at even odds or better.</summary>
+        public int WinShakenPercent { get; }
+
+        /// <summary>Step 69: no enemy within this many metres = no pull (0 = always a threat - step 67).</summary>
+        public double ThreatMetres { get; }
+
+        /// <summary>Step 69: a charging unit whose men win at least this (its mean win, %) is in its MOP-UP - no loose-mass leash (0 = never).</summary>
+        public int MopUpWinPercent { get; }
+
         private static string N(double v, string f = "0.##") => v.ToString(f, CultureInfo.InvariantCulture);
 
         /// <summary>The settings sentence for the mission-start line, a change and the summary - with the worked example's anchors.</summary>
@@ -175,7 +209,19 @@ namespace TraxCombat.Core
                 + " m a minute (" + DriftHoldPercent + "% under a hold / a wall); cover within " + N(CoverWidthMetres, "0.0#") + " m of the line, a comrade above "
                 + AnchorFreshPercent + "% of his bar anchors " + N(AnchorSeconds, "0") + " s; sprint back beyond " + N(SprintMetres, "0") + " m or alone (+" + SprintChancePercent
                 + "% a look beyond 3 m), keeping " + SprintKeepPercent + "%; walls break below morale " + WallBreakMorale + "; a charge's men roam " + N(ChargeLooseMetres, "0")
-                + " m x (1 - the pull)";
+                + " m x (1 - the pull)" + DescribeWin();
+        }
+
+        /// <summary>Step 69's clause of the sentence.</summary>
+        public string DescribeWin()
+        {
+            string win = WinCalms
+                ? "; WINNING calms (step 69): his fear x (1 - win), win 0 at local odds " + N(WinEvenOddsPercent / 100.0, "0.0#") + " (losing below: unchanged) to 1 at "
+                  + N(WinClearOddsPercent / 100.0, "0.0#") + ", a broken / routing enemy near him " + WinShakenPercent + "% more, the unit's win " + UnitSharePercent + "%"
+                : "; winning calms OFF (FearWinCalms)";
+            string threat = ThreatMetres > 0 ? "; no pull without an enemy within " + N(ThreatMetres, "0.#") + " m" : "; a pull without an enemy near too (FearThreatMetres 0)";
+            string mop = MopUpWinPercent > 0 && WinCalms ? "; a charge's MOP-UP (its men's win " + MopUpWinPercent + "%+) - no loose-mass leash" : "; no charge mop-up";
+            return win + threat + mop;
         }
     }
 
@@ -318,6 +364,60 @@ namespace TraxCombat.Core
         /// <summary>He starts flocking above the start; a flocking man calms only below the start − <see cref="CalmHysteresis"/>.</summary>
         public static bool Afraid(in FearRules r, double fear, bool flocking) =>
             flocking ? fear > r.StartPercent / 100.0 - CalmHysteresis : fear > r.StartPercent / 100.0;
+
+        // ---- step 69: winning calms, no pull without a threat, the charge's mop-up
+
+        /// <summary>The win from the odds alone: 0 at or below the even line, 1 at or above the clear line, a line between (∞ = 1).</summary>
+        public static double OddsWin(in FearRules r, double odds)
+        {
+            if (double.IsNaN(odds)) return 0;
+            double even = r.WinEvenOddsPercent / 100.0, clear = r.WinClearOddsPercent / 100.0;
+            if (double.IsPositiveInfinity(odds)) return 1;
+            if (clear <= even) return odds >= clear ? 1 : 0;
+            return Clamp01((odds - even) / (clear - even));
+        }
+
+        /// <summary>
+        /// HIS WIN (0..1): his side's local odds (courage's toughness-weighted sums in the same look) at or above the even line - the odds' win,
+        /// and the enemy near him SHAKEN (the toughness-weighted mean of their morale shares on the fear's own lines: a routing man's morale is
+        /// spent) × WinShakenPercent on top: 1 − (1 − oddsWin)(1 − s × shaken). Below the even line (losing) 0 - step 67 exactly. NaN odds (no
+        /// enemy in courage's radius) = NaN (he has no picture of his own: the unit's is used).
+        /// </summary>
+        public static double Win(in FearRules r, double odds, double enemyShaken)
+        {
+            if (!r.WinCalms) return 0;
+            if (double.IsNaN(odds)) return double.NaN;
+            if (odds < r.WinEvenOddsPercent / 100.0) return 0;
+            double w = OddsWin(in r, odds);
+            double s = r.WinShakenPercent / 100.0 * Clamp01(enemyShaken);
+            return Clamp01(1 - (1 - w) * (1 - s));
+        }
+
+        /// <summary>The win that calms him: his own, or - when the unit's picture is better - his own mixed with the unit's mean by
+        /// FearUnitSharePercent (a winning unit's mass relaxes together; a losing unit gives nothing). No own picture = the unit's; none = 0.</summary>
+        public static double WinMixed(in FearRules r, double own, double unitWin)
+        {
+            if (!r.WinCalms) return 0;
+            bool hasOwn = !double.IsNaN(own), hasUnit = !double.IsNaN(unitWin);
+            if (!hasOwn) return hasUnit ? Clamp01(unitWin) : 0;
+            if (!hasUnit) return Clamp01(own);
+            double u = r.UnitSharePercent / 100.0;
+            return Clamp01(Math.Max(own, (1 - u) * own + u * unitWin));
+        }
+
+        /// <summary>The fear after the win: fear × (1 − win).</summary>
+        public static double Calmed(double fear, double win) => Clamp01(Clamp01(fear) * (1 - Clamp01(win)));
+
+        /// <summary>A threat near him: an enemy within ThreatMetres (NaN = none known); ThreatMetres 0 = always (step 67).</summary>
+        public static bool Threatened(in FearRules r, double nearestEnemy) =>
+            !(r.ThreatMetres > 0) || (!double.IsNaN(nearestEnemy) && nearestEnemy <= r.ThreatMetres);
+
+        /// <summary>A charging unit in its MOP-UP: its men's mean win known and at least MopUpWinPercent (0 = never; winning calms off = never).</summary>
+        public static bool MopUp(in FearRules r, double unitWin) =>
+            r.WinCalms && r.MopUpWinPercent > 0 && !double.IsNaN(unitWin) && unitWin >= r.MopUpWinPercent / 100.0;
+
+        /// <summary>The fear of an enemy near him as the win reads it: his morale share on the fear's lines (−1 / NaN = 0).</summary>
+        public static double ShakenShare(in FearRules r, double enemyMorale) => MoraleShare(in r, enemyMorale);
 
         public static int DisciplineBand(double d) => d < 0.25 ? 0 : d < 0.5 ? 1 : 2;
 
@@ -470,6 +570,8 @@ namespace TraxCombat.Core
             FearEnd.LeftField => "left the field",
             FearEnd.MissionEnd => "mission end",
             FearEnd.Error => "error",
+            FearEnd.Winning => "winning (step 69)",
+            FearEnd.NoThreat => "no enemy near (step 69)",
             _ => e.ToString(),
         };
 
@@ -488,6 +590,11 @@ namespace TraxCombat.Core
 
         /// <summary>The last look's numbers.</summary>
         public double Own, Fear, Pull;
+
+        /// <summary>Step 69: the last look's fear BEFORE the win (step 67's), the win that calmed it (0..1), a threat near him, the charge's mop-up.</summary>
+        public double BaseFear, Win;
+        public bool Threat = true;
+        public bool MopUp;
 
         /// <summary>His discipline (NaN until his kit is read).</summary>
         public double Discipline = double.NaN;
@@ -560,6 +667,8 @@ namespace TraxCombat.Core
         private readonly double[] _along2 = new double[N], _across2 = new double[N], _dist = new double[N];
         private readonly double[] _cx = new double[N], _cy = new double[N];
         private readonly FearOrder[] _order = new FearOrder[N];
+        private readonly double[] _win = new double[N]; // step 69: the men with a win of their own (an enemy in courage's radius)
+        private readonly int[] _winN = new int[N];
 
         // published
         public readonly int[] Men = new int[N];
@@ -571,6 +680,9 @@ namespace TraxCombat.Core
         public readonly double[] CentreX = new double[N], CentreY = new double[N];
         public readonly FearOrder[] Order = new FearOrder[N];
         public readonly double[] PublishedAt = new double[N];
+
+        /// <summary>Step 69: the unit's mean WIN over its men in contact (NaN = none of them had an enemy in courage's radius).</summary>
+        public readonly double[] Win = new double[N];
 
         private double _nextPublish = double.NaN;
         private double _lastPublish = double.NaN;
@@ -586,7 +698,7 @@ namespace TraxCombat.Core
             {
                 ClearPeriod(k);
                 Men[k] = 0;
-                Fear[k] = Pull[k] = Morale[k] = Fresh[k] = double.NaN;
+                Fear[k] = Pull[k] = Morale[k] = Fresh[k] = Win[k] = double.NaN;
                 HasEnemy[k] = HasShelter[k] = false;
                 PublishedAt[k] = double.NaN;
             }
@@ -595,9 +707,12 @@ namespace TraxCombat.Core
 
         private void ClearPeriod(int k)
         {
-            _n[k] = _moraleN[k] = _en[k] = 0;
-            _fear[k] = _pull[k] = _morale[k] = _fresh[k] = _ex[k] = _ey[k] = _along2[k] = _across2[k] = _dist[k] = _cx[k] = _cy[k] = 0;
+            _n[k] = _moraleN[k] = _en[k] = _winN[k] = 0;
+            _fear[k] = _pull[k] = _morale[k] = _fresh[k] = _ex[k] = _ey[k] = _along2[k] = _across2[k] = _dist[k] = _cx[k] = _cy[k] = _win[k] = 0;
         }
+
+        /// <summary>Step 69: the unit's mean win (NaN = not known / none in contact).</summary>
+        public double WinOf(int key, double now) => Live(key, now) ? Win[key] : double.NaN;
 
         /// <summary>The unit is known now (published within <see cref="FearMath.StaleSeconds"/>).</summary>
         public bool Live(int key, double now) => key >= 0 && key < N && Men[key] > 0 && !double.IsNaN(PublishedAt[key]) && now - PublishedAt[key] <= FearMath.StaleSeconds;
@@ -608,12 +723,18 @@ namespace TraxCombat.Core
         public double MoraleOf(int key, double now) => Live(key, now) ? Morale[key] : double.NaN;
 
         /// <summary>One look at one man of unit <paramref name="key"/>: his numbers, the enemy centroid he sees (when <paramref name="enemy"/>),
-        /// where he stands against the unit's centre and facing (a unit vector or 0).</summary>
+        /// where he stands against the unit's centre and facing (a unit vector or 0); step 69: his own win (NaN = no enemy in courage's radius -
+        /// not counted in the unit's mean). <paramref name="fear"/> is his fear BEFORE the win (the unit's mean feeds the next looks' mix).</summary>
         public void Note(int key, double fear, double pull, double morale, double fresh, bool enemy, double ex, double ey, double cx, double cy, double fx, double fy,
-            double px, double py, FearOrder order)
+            double px, double py, FearOrder order, double win = double.NaN)
         {
             if (key < 0 || key >= N) return;
             _n[key]++;
+            if (!double.IsNaN(win))
+            {
+                _win[key] += win;
+                _winN[key]++;
+            }
             _fear[key] += fear;
             _pull[key] += pull;
             if (!double.IsNaN(morale) && morale >= 0)
@@ -678,6 +799,7 @@ namespace TraxCombat.Core
                 Pull[k] = _pull[k] / n;
                 Morale[k] = _moraleN[k] > 0 ? _morale[k] / _moraleN[k] : double.NaN;
                 Fresh[k] = _fresh[k] / n;
+                Win[k] = _winN[k] > 0 ? _win[k] / _winN[k] : double.NaN;
                 CentreX[k] = cx;
                 CentreY[k] = cy;
                 Order[k] = _order[k];

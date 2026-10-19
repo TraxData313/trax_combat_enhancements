@@ -40,7 +40,7 @@ public class SettingsPagesTests
     {
         var player = SettingsSchema.OnPage(SettingsPage.Player);
         var advanced = SettingsSchema.OnPage(SettingsPage.Advanced);
-        Assert.Equal(357, SettingsSchema.All.Count); // step 68: + 4 (the wall advances as one, the walk back after a kick) + 1 (no kick through a friend); step 67: + 25 (the fear flock) + 4 (the morale eyes); step 66: + 5 (the wait for reach, the bashes per swing); step 65: + 14 (the AI kicks) + 7 (the brace); step 64: + 2 (the shield front arc) + 3 (the charge sprint into contact); step 63: + 2 (the rear / flank pressure) + 1 (the wall's walk back); step 62: + 2 (the lost falls) + 2 (toughness, a ranged man in melee) + 4 (direction) + 4 (the charge) + 1 (the critical) + 1 (the cap)
+        Assert.Equal(363, SettingsSchema.All.Count); // step 69: + 6 (winning calms, the threat line, the mop-up); step 68: + 4 (the wall advances as one, the walk back after a kick) + 1 (no kick through a friend); step 67: + 25 (the fear flock) + 4 (the morale eyes); step 66: + 5 (the wait for reach, the bashes per swing); step 65: + 14 (the AI kicks) + 7 (the brace); step 64: + 2 (the shield front arc) + 3 (the charge sprint into contact); step 63: + 2 (the rear / flank pressure) + 1 (the wall's walk back); step 62: + 2 (the lost falls) + 2 (toughness, a ranged man in melee) + 4 (direction) + 4 (the charge) + 1 (the critical) + 1 (the cap)
         Assert.Equal(SettingsSchema.All.Count, player.Count + advanced.Count);
         Assert.Empty(player.Intersect(advanced));
         Assert.Equal(SettingsSchema.All.OrderBy(p => p.Key), player.Concat(advanced).OrderBy(p => p.Key));

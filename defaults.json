@@ -1061,6 +1061,39 @@
   // (range 2.0 to 50.0)
   "FearChargeLooseMetres": 12.0,
 
+  // A man whose side is clearly winning around him (the same local odds courage weighs, and the
+  // enemy near him shaken or routing) loses the fear his morale and tiredness gave him, so
+  // tired winners go in for the kill instead of hanging back; a winning unit relaxes together.
+  // Losing men flock exactly as before. Off: fear ignores who is winning.
+  // (true or false)
+  "FearWinCalms": true,
+
+  // His side's local odds (toughness-weighted, as courage counts them; 100 = even) at which
+  // winning starts to calm him. Below it he is losing and his fear is untouched.
+  // (range 0 to 1000)
+  "FearWinEvenOddsPercent": 100,
+
+  // At these local odds (200 = two to one) his fear is gone; between the line above and this a
+  // straight line.
+  // (range 1 to 1000)
+  "FearWinClearOddsPercent": 200,
+
+  // At even odds or better, an enemy near him whose morale is broken (routing men included)
+  // calms him by up to this much more - the enemy's morale read on the fear's own lines above.
+  // (range 0 to 100)
+  "FearWinShakenPercent": 50,
+
+  // With no enemy this close a man is not pulled anywhere by his fear - he follows his order
+  // (his morale and bars still show). 0 = fear pulls him even with no enemy near.
+  // (range 0.0 to 60.0)
+  "FearThreatMetres": 12.0,
+
+  // A charging unit whose men in contact win at least this much on average (the few or broken
+  // enemy left) is mopping up: its frightened men are no longer held near the mass and go for
+  // the kill. 0 = never.
+  // (range 0 to 100)
+  "FearMopUpWinPercent": 50,
+
   // ==================== Cavalry flocking (AI) ====================
   // A rider's EAGERNESS is his Athletics bar (halved when he is alone among enemies, below). At
   // or above this he is free - the game's own charging, again and again. Below it he flocks

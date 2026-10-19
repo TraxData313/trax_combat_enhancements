@@ -49,6 +49,64 @@ namespace TraxCombat.Core
         public long Ticks;
         public int Errors;
 
+        // ---- step 69: winning calms, no pull without a threat, the mop-up
+        private const int WinBands = 4; // [0] losing (below even), [1] even to clear, [2] clear and up, [3] no enemy in his radius (the unit's win)
+        private readonly long[] _winLooks = new long[WinBands], _winAfraidBefore = new long[WinBands], _winAfraidAfter = new long[WinBands];
+        private readonly double[] _winBase = new double[WinBands], _winFear = new double[WinBands], _winSum = new double[WinBands];
+
+        /// <summary>Looks where the base fear was afraid and the win calmed it below the start; looks with no enemy within the threat line that
+        /// would have been afraid; a charge's mop-up looks (no leash); the extra enemy reads for the threat line.</summary>
+        public long CalmedByWinLooks;
+        public long NoThreatLooks;
+        public long MopUpLooks;
+        public long ThreatReads;
+
+        /// <summary>Step 69: one look's win against his odds band: the fear before / after, afraid before / after.</summary>
+        public void AddWin(in FearRules r, double odds, double win, double baseFear, double fear, bool afraidBefore, bool afraidAfter)
+        {
+            int b = double.IsNaN(odds) ? 3 : odds < r.WinEvenOddsPercent / 100.0 ? 0 : odds < r.WinClearOddsPercent / 100.0 ? 1 : 2;
+            _winLooks[b]++;
+            _winBase[b] += baseFear;
+            _winFear[b] += fear;
+            _winSum[b] += double.IsNaN(win) ? 0 : win;
+            if (afraidBefore) _winAfraidBefore[b]++;
+            if (afraidAfter) _winAfraidAfter[b]++;
+        }
+
+        public long WinLooks(int band) => _winLooks[band];
+
+        public double WinFearBefore(int band) => _winLooks[band] > 0 ? _winBase[band] / _winLooks[band] : double.NaN;
+
+        public double WinFearAfter(int band) => _winLooks[band] > 0 ? _winFear[band] / _winLooks[band] : double.NaN;
+
+        public double WinAfraidAfter(int band) => Share(_winAfraidAfter[band], _winLooks[band]);
+
+        private static string WinBandName(in FearRules r, int b) => b switch
+        {
+            0 => "losing (odds below " + N(r.WinEvenOddsPercent / 100.0, "0.0#") + ")",
+            1 => "even to clear (" + N(r.WinEvenOddsPercent / 100.0, "0.0#") + "-" + N(r.WinClearOddsPercent / 100.0, "0.0#") + ")",
+            2 => "clear (" + N(r.WinClearOddsPercent / 100.0, "0.0#") + "+)",
+            _ => "no enemy in his radius (the unit's win)",
+        };
+
+        /// <summary>Step 69's [summary] line (apart from step 67's seven).</summary>
+        public void AddWinLines(List<string> lines, in FearRules r)
+        {
+            if (MenLooked == 0) return;
+            var sb = new StringBuilder();
+            for (int b = 0; b < WinBands; b++)
+            {
+                if (b > 0) sb.Append("; ");
+                sb.Append(WinBandName(in r, b)).Append(' ').Append(_winLooks[b]).Append(" looks: win ").Append(N(_winLooks[b] > 0 ? _winSum[b] / _winLooks[b] : double.NaN, "0.00"))
+                  .Append(", fear ").Append(N(WinFearBefore(b), "0.00")).Append(" → ").Append(N(WinFearAfter(b), "0.00")).Append(", afraid ")
+                  .Append(P(Share(_winAfraidBefore[b], _winLooks[b]))).Append(" → ").Append(P(WinAfraidAfter(b)));
+            }
+            lines.Add("fear flock and winning (step 69" + (r.WinCalms ? string.Empty : " - FearWinCalms OFF, measured only") + ") by his side's local odds: " + sb
+                      + "; calmed by winning " + CalmedByWinLooks + " looks (spells ended " + Ended(FearEnd.Winning) + "); no enemy within " + N(r.ThreatMetres, "0.#")
+                      + " m " + NoThreatLooks + " looks (spells ended " + Ended(FearEnd.NoThreat) + ", enemy reads " + ThreatReads + "); a charge's MOP-UP (its men's win "
+                      + r.MopUpWinPercent + "%+) " + MopUpLooks + " looks - no loose-mass leash");
+        }
+
         public void AddLook(bool on, bool inContact, bool covered, bool somebodyBehind, bool alone)
         {
             int i = on ? 1 : 0;

@@ -801,6 +801,35 @@ namespace TraxCombat.Core
             "Charging: a calm man roams within (m)",
             "Under a charge there are no slots: a fearful man may roam this far from his unit's shelter times (1 - his flock pull) - the more afraid, the tighter the mass; beyond it he is pulled back in.");
 
+        // Step 69 (Toni 2026-10-19: "some of my men are sitting there in distance while my soldiers are finishing the enemy off"): fear came from
+        // morale and tiredness only, never from who is winning - a tired green WINNER kept his shelter behind his unit's centre. Winning near him
+        // now calms it (courage's own local odds, the enemy's morale), no enemy near = no pull, a charge's mop-up drops the loose-mass leash
+        // (Core FearMath.Win / Threatened / MopUp, AI_NOTES "Step 69"). Losing men flock exactly as before.
+
+        public static readonly ParamDef FearWinCalms = Bool("FearWinCalms", CourageGroup,
+            "Fear: winning calms",
+            "A man whose side is clearly winning around him (the same local odds courage weighs, and the enemy near him shaken or routing) loses the fear his morale and tiredness gave him, so tired winners go in for the kill instead of hanging back; a winning unit relaxes together. Losing men flock exactly as before. Off: fear ignores who is winning.");
+
+        public static readonly ParamDef FearWinEvenOddsPercent = Int("FearWinEvenOddsPercent", 0, 1000, CourageGroup,
+            "Fear: winning from odds (%)",
+            "His side's local odds (toughness-weighted, as courage counts them; 100 = even) at which winning starts to calm him. Below it he is losing and his fear is untouched.");
+
+        public static readonly ParamDef FearWinClearOddsPercent = Int("FearWinClearOddsPercent", 1, 1000, CourageGroup,
+            "Fear: no fear at odds (%)",
+            "At these local odds (200 = two to one) his fear is gone; between the line above and this a straight line.");
+
+        public static readonly ParamDef FearWinShakenPercent = Int("FearWinShakenPercent", 0, 100, CourageGroup,
+            "Fear: a broken enemy calms (%)",
+            "At even odds or better, an enemy near him whose morale is broken (routing men included) calms him by up to this much more - the enemy's morale read on the fear's own lines above.");
+
+        public static readonly ParamDef FearThreatMetres = Float("FearThreatMetres", 0, 60, CourageGroup,
+            "Fear flock: only with an enemy within (m)",
+            "With no enemy this close a man is not pulled anywhere by his fear - he follows his order (his morale and bars still show). 0 = fear pulls him even with no enemy near.");
+
+        public static readonly ParamDef FearMopUpWinPercent = Int("FearMopUpWinPercent", 0, 100, CourageGroup,
+            "Charging: mop-up when winning (%)",
+            "A charging unit whose men in contact win at least this much on average (the few or broken enemy left) is mopping up: its frightened men are no longer held near the mass and go for the kill. 0 = never.");
+
         // ------------------------------------------------------------------ cavalry flocking (step 55)
         // Anton, 2026-10-18: fresh, eager riders dance as in vanilla; the more tired a rider, the bigger the group of his own kind he wants
         // before he attacks again - the flock rides on, pulled toward the unit's centre by its tired riders and toward the goal by its rested
@@ -1708,6 +1737,7 @@ namespace TraxCombat.Core
             DisciplineLevelLow, DisciplineLevelHigh, DisciplineMaxPercent, FearUnitSharePercent, FearThinLinePercent, FearStartPercent, FearFullPercent,
             FearShelterBackMetres, FearShelterMaxMetres, FearDriftMetresPerMinute, FearDriftHoldPercent, FearCoverWidthMetres, FearAnchorFreshPercent,
             FearAnchorSeconds, FearSprintMetres, FearSprintChancePercent, FearSprintKeepPercent, FearWallBreakMorale, FearChargeLooseMetres,
+            FearWinCalms, FearWinEvenOddsPercent, FearWinClearOddsPercent, FearWinShakenPercent, FearThreatMetres, FearMopUpWinPercent,
             CavalryFlockFreeEagerPercent, CavalryFlockHysteresisPercent, CavalryFlockMidEagerPercent, CavalryFlockMidGroupSize,
             CavalryFlockExhaustedSharePercent, CavalryFlockTimid, CavalryFlockTimidRadiusMetres, CavalryFlockGatherRadiusMetres, CavalryFlockSeparationMetres,
             CavalryFlockLeadSeconds, CavalryFlockTightenWeights, CavalryFlockWaveSeconds, CavalryFlockMaxSeconds,

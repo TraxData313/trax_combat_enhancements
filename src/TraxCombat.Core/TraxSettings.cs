@@ -381,6 +381,12 @@ namespace TraxCombat.Core
         public int FearSprintKeepPercent => GetInt(SettingsSchema.FearSprintKeepPercent);
         public int FearWallBreakMorale => GetInt(SettingsSchema.FearWallBreakMorale);
         public float FearChargeLooseMetres => GetFloat(SettingsSchema.FearChargeLooseMetres);
+        public bool FearWinCalms => GetBool(SettingsSchema.FearWinCalms); // step 69: winners don't hang back
+        public int FearWinEvenOddsPercent => GetInt(SettingsSchema.FearWinEvenOddsPercent);
+        public int FearWinClearOddsPercent => GetInt(SettingsSchema.FearWinClearOddsPercent);
+        public int FearWinShakenPercent => GetInt(SettingsSchema.FearWinShakenPercent);
+        public float FearThreatMetres => GetFloat(SettingsSchema.FearThreatMetres);
+        public int FearMopUpWinPercent => GetInt(SettingsSchema.FearMopUpWinPercent);
         // step 55: cavalry flocking
         public bool CavalryFlockEnabled => GetBool(SettingsSchema.CavalryFlockEnabled);
         public int CavalryFlockFreeEagerPercent => GetInt(SettingsSchema.CavalryFlockFreeEagerPercent);
