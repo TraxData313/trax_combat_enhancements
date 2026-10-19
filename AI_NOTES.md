@@ -6304,3 +6304,9 @@ step 67 / 69 worlds) and CourageDefaults pin the band, the strike and the lone-r
 4. Which cause made the lone runners (`lone runners … by cause`) - and that the forced walks bring them back (`walks back forced`, a few man-seconds ON).
 5. A charging mass keeps its punch: `sprint into contact` ends `alone or past the enemy's front` a small share; the first clash as before.
 6. Cost in a 400-1000 man battle (`fear flock vs courage and walls … cost`).
+
+**DEPLOY**: `tools\deploy.ps1` ran whole this time (build, the AssemblyGuard OK - no forbidden assembly, the offline smoke exe - all 163 passed), installed as
+Modules\TraxCombatEnhancements.Dev; `tools\SmartAppControl\loadcheck.ps1`: both installed DLLs LOADED (`1.2.0+839ae1be…`): TraxCombatEnhancements.dll SHA-256
+C05936B7…080A, TraxCombat.Core.dll 9F27D5EE…50EE. The game and the launcher were not running. During the step Smart App Control blocked the fresh Core DLL
+under `dotnet test` - the tests (1042) ran in memory (`run_tests.fsx`) and the smoke in memory (`run_smoke.ps1`) while iterating;
+`dotnet run --project tools/DefaultsTool -- refresh` ran directly (twice). Windows security untouched.
