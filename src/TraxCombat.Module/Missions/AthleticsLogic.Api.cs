@@ -92,7 +92,7 @@ namespace TraxCombat.Missions
         public static bool TryGetCharging(Agent agent)
         {
             var logic = _current;
-            if (logic == null || agent == null) return false;
+            if (logic == null || agent == null || !TraxSettings.Shared.ModEnabled) return false; // the master switch first
             var st = logic.Get(agent);
             if (st == null || st.Removed || logic.ImpactBody.IsMounted(st)) return false;
             return IsCharging(st, logic.SpikeNow, TraxSettings.Shared.ImpactChargeCarrySeconds, out _);

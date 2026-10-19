@@ -1148,6 +1148,9 @@ namespace TraxCombat.Tools
             // --- step 54: the AI punishing a window - off = the game's values at once, no window opened; on = pressed again
             ImpactPunishFollowsTheMasterSwitch();
 
+            // --- step 62: the lost falls and the charge - off = the shrug-off the game's, no backup blow, no charge read; on = live again
+            ImpactChargeFollowsTheMasterSwitch();
+
             // --- step 49: courage - off = every timid man let go at once (its own logic), back on = looked at again
             CourageFollowsTheMasterSwitch();
 
