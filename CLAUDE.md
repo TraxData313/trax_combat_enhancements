@@ -1821,6 +1821,11 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               TRAX_SMOKE_KEEP=1 keeps its temp folder + log to read
 tools/DefaultsTool/           defaults.json upkeep: refresh (rewrite comments/order, keep every
                               value) | check; --file <path> for an exported one
+tools/SmartAppControl/        steps 62-63: when Windows' Smart App Control refuses the freshly built tool exes / DLLs (this PC):
+                              run_tests.fsx, run_smoke.ps1, run_guard.fsx, refresh_defaults.fsx load OUR assemblies from bytes
+                              (never mapped, never checked); install_dev.ps1 = deploy.ps1's step 4; loadcheck.ps1 = the installed
+                              pair's LoadFile under Windows PowerShell (the game's runtime) - run it before calling a deploy done
+                              (AI_NOTES "Step 62" / "Step 63"). Never change Windows security settings
 ```
 
 ## Build & deploy
