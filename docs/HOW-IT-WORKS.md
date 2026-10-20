@@ -326,6 +326,19 @@ Advanced page (*Orders: no accidental charges*).
 
 Numbers: [MECHANICS §14b](MECHANICS.md#14b-your-orders-a-click-charges-a-drag-never-does).
 
+## Green troops cannot hold a thin line
+
+A long, thin line takes discipline. Each man's training sets how few ranks he can stand in - peasants and looters 6, recruits 5, tier-2
+men 4, tier-3 men 3, tier-4 men 2, veterans and elites 1 (lords, companions and you count as elites) - and a foot formation's line is never
+thinner than the average of its men. So 120 recruits stand at most 24 wide and 5 deep, where the game would have spread them 48 wide and
+barely 2 deep; 60 veterans may stand in one long rank if you ask; a mix of 3.5 gives a 4th rank about half full. The AI's lines keep to it
+whatever their general wants - no more green mass two men deep wrapping round your army - and as men fall the line closes up to stay deep
+enough. Yours keep to it too: drag a line wider than your men can hold and it simply stops growing at their limit, with a line on screen
+saying why. Cavalry, squares and circles are left alone. You can turn it off for your own units on the main page (*Line discipline: your
+units too*); the ranks per tier are on the Advanced page (*Line discipline by tier*).
+
+Numbers: [MECHANICS §14c](MECHANICS.md#14c-line-discipline-green-troops-cannot-hold-a-thin-line).
+
 ## What you see on screen
 
 - **Your Athletics bar**, under your health, with the white mark at three quarters. Green at full strength,
@@ -375,7 +388,7 @@ Everything works out of the box. If you have the **Mod Configuration Menu** (MCM
 two pages:
 
 - **Trax Combat Enhancements** — the short page: the master switch, how hard hits land, how fast men tire, each AI
-  system's own switch (aggression and the fever, shield walls, courage, cavalry flocking), staggers on or off and
+  system's own switch (aggression and the fever, shield walls, courage, cavalry flocking), line discipline for your units, staggers on or off and
   how much they apply to you, the sprint and its key, what the screen shows, and *Revert all to defaults*.
 - **Trax Combat Enhancements - Advanced** — every other number, by system, for tuning.
 

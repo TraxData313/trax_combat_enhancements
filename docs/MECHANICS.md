@@ -1377,6 +1377,52 @@ scaled to yours. The gamepad and naval battles keep the game's own rule.
 <sub>Settings (Advanced page, *Orders: no accidental charges*): `OrderNoAccidentalCharge` (on), `OrderChargeDragPixels` 12,
 `OrderChargeIconPixels` 30.</sub>
 
+## 14c. Line discipline: green troops cannot hold a thin line
+
+Toni's battle (2026-10-20): his 60 tier-5 men against 120 tier-1 recruits - the recruits came on a front about two men deep, wider than his whole
+army, and wrapped round him. In the game an AI line on the advance forms round(√(men ÷ 16)) × 16 men wide - 48 for 120 men, 2.5 deep. Since
+step 73 every foot formation - infantry, archers and skirmishers - in a line, shield wall, loose or scatter arrangement stretches no thinner
+than its men can hold. Each man's tier gives his minimum ranks:
+
+| Tier | Typical men | Minimum ranks |
+|---|---|---|
+| 0 | peasants, looters, villagers | 6 |
+| 1 | recruits | 5 |
+| 2 | | 4 |
+| 3 | trained men | 3 |
+| 4 | | 2 |
+| 5 | veterans | 1 |
+| 6 (and any higher tier a mod adds) | elites | 1 |
+| a hero | lords, companions, you | as tier 6 |
+
+The formation's minimum depth **D** is the AVERAGE over its men, and its line is at most **ceil(men ÷ D)** men wide (rounded up - never
+narrower than the game's own √men), at its own spacing. Rounding up gives a partly filled last rank by itself:
+
+| The unit | D | At most | Its shape |
+|---|---|---|---|
+| 120 recruits (T1) | 5.0 | 24 men wide | 5 full ranks (the game's advance wanted 48 wide, 2.5 deep) |
+| the same after 20 fall | 5.0 | 20 men wide | 5 full ranks - narrowed again at once |
+| 60 veterans (T5) | 1.0 | 60 men wide | never narrowed |
+| 100 men, half T2 and half T3 | 3.5 | 29 men wide | 3 full ranks + 13 (the 4th rank 45 % full) |
+| 70 T1 + 30 T3 + 20 T5 | 3.83 | 32 men wide | 3 full ranks + 24 |
+| 60 looters (T0) | 6.0 | 10 men wide | 6 full ranks |
+
+- **The AI**: whenever the game or its AI makes a line wider - its wide and wider form orders, an envelop, the line re-forming as men fall -
+  it is narrowed back in the same frame, before the men move to their new places; losses or a change of D shrink it back the same way. D is
+  recounted every second and at once when men fall, join or leave.
+- **You** (on by default): your own formations keep to it too. Drag a line wider than your men can hold in the orders menu and the preview
+  STOPS GROWING at the limit; the order keeps to it, and a line on screen says so: *"your Infantry: these men hold no thinner than 5 deep -
+  24 men wide at most"*.
+- **Left alone**: cavalry and horse archers, squares, circles, columns and wedges; naval battles; sieges and sally-outs (unless switched on -
+  the walls and streets set the width there).
+- **With the rest of the mod**: the fear flock (§11b1) and its band move frightened men from the places the narrowed line gives them - a
+  deeper block simply has more ranks to compress; the shield wall (§10) holds the narrowed slots.
+
+<sub>Settings: *Line discipline: your units too* (player page, How the AI fights) = `LineDisciplineForPlayer` (on); Advanced page, *Line
+discipline by tier*: `LineDisciplineEnabled` (on), `LineDisciplineRanksT0`-`LineDisciplineRanksT6` 6 / 5 / 4 / 3 / 2 / 1 / 1,
+`LineDisciplineHeroTier` 6, `LineDisciplineRangedToo` (on), `LineDisciplineInSieges` (off), `LineDisciplinePreviewCap` (on),
+`LineDisciplineShowMessage` (on), `LineDisciplinePollSeconds` 1.</sub>
+
 ## 15. What you see on screen
 
 **Your Athletics bar** sits under your health, with the white peak line at 75%. Its colour:
@@ -1479,14 +1525,14 @@ and a **master switch** turns the whole mod off mid-battle, so you can play the 
 
 MCM shows **two pages** (Mod Options):
 
-- **Trax Combat Enhancements** — the short page, the 20 settings most players want:
+- **Trax Combat Enhancements** — the short page, the 21 settings most players want:
 
   | Group | Settings |
   |---|---|
   | Master switch | Mod enabled |
   | How hard hits land | Damage roll (± %), Damage reduction (%) |
   | Tiredness (Athletics) | Athletics (stamina) on / off, Cost per swing — how fast men tire, Heroes' cost (x) |
-  | How the AI fights | AI aggression when fresh / when exhausted (%), Fever on a charge or advance order, Shield walls hold their slots + a step out to strike (m), Courage and cohesion, Cavalry flocking |
+  | How the AI fights | AI aggression when fresh / when exhausted (%), Fever on a charge or advance order, Shield walls hold their slots + a step out to strike (m), Courage and cohesion, Cavalry flocking, Line discipline: your units too |
   | Staggers and knockdowns | Staggers, shield drops, knockdowns on / off, Against you (%) |
   | Sprinting | Sprint on / off, Sprint key |
   | On screen | Your Athletics bar, Hold ALT: bars on every man, On-screen lines (knocked down, shield lost) |
@@ -1495,7 +1541,7 @@ MCM shows **two pages** (Mod Options):
 - **Trax Combat Enhancements - Advanced** — everything else, for tuning: every system's own group
   (damage, Athletics costs, tired fighters, the step back, battle pace, brace, sprint, aggression and
   fever, courage, cavalry flocking, impact, the refill, the bars, the orders strip, hold ALT, no accidental
-  charge orders), the
+  charge orders, line discipline by tier), the
   Defaults buttons (*Revert all to defaults* and *Save current values as a defaults file*), and the
   logging and test tools last.
 

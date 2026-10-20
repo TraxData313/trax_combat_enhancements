@@ -245,7 +245,20 @@ FOCUSED enemy unit (banner within 70 px of the SCREEN CENTRE, or within 10 m of 
 first) holds that handler's PUBLIC targeting switch (`SetIsFormationTargetingDisabled`) OFF while the button is down unless the press is ON the
 focused unit's icon (`OrderChargeIconPixels` 30), still on it and no drag (`OrderChargeDragPixels` 12) - the release finds no unit, the game's
 placer's move (the dragged frontage) stands; nothing re-issued, so no charge / sprint / fever starts; idle = vanilla (F keys), gamepad and naval vanilla;
-`OrderNoAccidentalCharge` on, Advanced group "Orders: no accidental charges"; the [summary] "order clicks" line (PLAYTEST D37). The bar for the
+`OrderNoAccidentalCharge` on, Advanced group "Orders: no accidental charges"; the [summary] "order clicks" line (PLAYTEST D37). LINE DISCIPLINE BY TIER (step 73, Toni 2026-10-20: 120 tier-1 recruits came at his 60 tier-5 men on a front ~2 deep and wrapped round
+him - the AI's FormOrder Wide = round(√(men ÷ 16)) × 16 files, 48 for 120 men; DESIGN decision 67, AI_NOTES "Step 73"): a man's minimum ranks by
+his tier (`GetBattleTier`, 7 → 6; heroes as `LineDisciplineHeroTier` 6) from `LineDisciplineRanksT0`-`T6` 6 / 5 / 4 / 3 / 2 / 1 / 1, D = the
+formation's MEAN, its line at most ceil(men ÷ D) files (never below the game's √men; a fractional D = a partly filled last rank - 100 at 3.5 → 29
+files, the 4th rank 45 %); every line / shield wall / loose / scatter formation (not mounted, squares, circles, columns, wedges; ranged by
+`LineDisciplineRangedToo`; never naval; sieges by `LineDisciplineInSieges`) wider than that is narrowed in the logic's PRE-TICK (right after the
+team tick where the AI's behaviours set their widths, before the wall) with the game's own `SetFormOrder(FormOrderCustom(width))` - a WIDENING or
+an AUTO-SHRINK (losses / a new D; D recounted every `LineDisciplinePollSeconds` 1 s and on a count change; a clamp the game does not take
+retried after 1 s); the PLAYER's formations too (`LineDisciplineForPlayer`, the PLAYER page - 21 settings) and, `LineDisciplinePreviewCap`,
+they carry `DisciplinedLineFormation` - the game's plain `LineFormation` whose virtual `MaximumWidth` answers the cap (`Clone` keeps the type),
+put in with the game's own `Formation.Rearrange` (a line → line transfer shares the unit tables), again after the game's next arrangement order:
+vanilla's order drag and its move clamp each width to `formation.MaximumWidth`, so the drag preview STOPS GROWING at the cap; his line orders
+counted (OnOrderIssued) and said on screen (`LineDisciplineShowMessage`); off = the game's form orders given back, the capped arrangements out;
+Advanced group "Line discipline by tier"; the [summary] "line discipline" lines (PLAYTEST D38). The bar for the
 fighter you look at is LATER (DESIGN §3; its settings wait in DESIGN's "Planned parameters"). Words:
 the pool/bar/points are "Athletics", the character-screen skill is "the Athletics skill" (it
 used to be called "endurance"), the "peak line" is the white mark at the top quarter of the bar,
@@ -300,7 +313,7 @@ die at any moment (tokens run out) and the next one loses nothing.
   file (created on first run, a plain-words explanation beside each value) AND in MCM.
   A new number means a new row in DESIGN's table, same commit.
 - **Which MCM page (step 59, Anton 2026-10-18: "leave a few options for me and the players").** MCM has two pages:
-  the short PLAYER page "Trax Combat Enhancements" (20 settings: the master switch, how hard hits land, how fast men tire,
+  the short PLAYER page "Trax Combat Enhancements" (21 settings since step 73: the master switch, how hard hits land, how fast men tire,
   how the AI fights - each system's own switch -, staggers on / off + against you, the sprint + its key, what the screen
   shows) and "Trax Combat Enhancements - Advanced" (everything else, by system). **A new setting goes to the Advanced page
   by default** (its system's group). It goes to the player page only if a player needs it to set up HIS game - a new
@@ -393,7 +406,9 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               description, apply timing (Live / NextBattle); Normalize, Format;
                               its Default comes from defaults.json (DefaultsFile), never code; step 59:
                               SettingsPage (Player / Advanced) + ParamGroup.Page
-  SettingsSchema.cs           EVERY setting of DESIGN's table (377 - step 72's OrderNoAccidentalCharge / OrderChargeDragPixels / OrderChargeIconPixels after MoraleLabelMax
+  SettingsSchema.cs           EVERY setting of DESIGN's table (392 - step 73's LineDisciplineForPlayer after CavalryFlockEnabled (the player page, 21) and 14
+                              LineDiscipline* after OrderChargeIconPixels in their own Advanced group "Line discipline by tier" (Order 23, "Advanced" 24);
+                              377 - step 72's OrderNoAccidentalCharge / OrderChargeDragPixels / OrderChargeIconPixels after MoraleLabelMax
                               in their own Advanced group "Orders: no accidental charges" (Order 22, "Advanced" 23); 374 - step 70's FearBandEnabled / FearBandRanksMin / FearBandRanksMax / FearBandFileMetres /
                               FearBandRankMetres / FearBandMaxWidthMetres / FearBandGapMetres / FearStrikeReachMetres / FearStrikeLeashMetres / LoneRunnerEnabled /
                               LoneRunnerAheadMetres after FearMopUpWinPercent, all Advanced; 363 - step 69's FearWinCalms / FearWinEvenOddsPercent / FearWinClearOddsPercent /
@@ -761,6 +776,12 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               OrderClickTracker (per click: Idle / Holding / Released; Disable = dragged (sticky) || pressed off the icon || off it now; the
                               hold's decision stands through the release frame; NoteOrder; outcome ChargeKept / ConvertedDrag / ConvertedOffIcon / PlainMove /
                               Leak / Aborted), OrderClickStats (the [summary] "order clicks" line)
+  LineDiscipline.cs           step 73 (DESIGN decision 67) - LINE DISCIPLINE BY TIER: LineDisciplineRules (ModEnabled FIRST, LineDisciplineEnabled,
+                              ForPlayer, the map T0-T6, HeroTier, RangedToo, InSieges, PreviewCap, ShowMessage, PollSeconds; Same, Describe),
+                              LineShape / LineMission / LineSkip / LineFacts, LineDisciplineMath (TierOf, MinDepth = the mean, MaxFiles = ceil(men ÷ D),
+                              GameMinFiles √men, CapFiles, Width / CapWidth (+ 0.05 m slack) / FilesOf = the game's FlankWidth and its floor, Ranks,
+                              LastRankMen, Verdict in gate order, ShapeText), LineClampCause (Widened / AutoShrink), LineRecord, LineSideStats,
+                              LineDisciplineStats (the [summary] "line discipline" lines, PreviewVerdict)
   LoneRunner.cs               step 70 (DESIGN decision 64) - THE LONE RUNNER: LoneCause (sprint into contact / punish / surge / fever press / chasing a target
                               behind the front / the game), LoneTarget (you / a hero / another), LoneRunnerRules (ModEnabled FIRST, LoneRunnerEnabled,
                               AheadMetres; Describe), LoneRunnerMath (Alone, Beyond, IsLone, Winning - the BEATEN: odds at the clear line and the enemy shaken
@@ -818,7 +839,7 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               step 12: first try at the main menu (MCM builds its services there), none
                               with MCM's module off, retries 1/s capped by Core McmPlan;
                               step 59: TWO pages (BuildPage returns object; MCM keeps settings by Id) - the
-                              player page (SettingsId, "Trax Combat Enhancements": 20 settings, 7 groups,
+                              player page (SettingsId, "Trax Combat Enhancements": 21 settings since step 73, 7 groups,
                               Defaults with Revert) = _settings, the Advanced page (AdvancedSettingsId,
                               "... - Advanced": 337 settings since step 68, 16 groups) = _advanced; each its own "default"
                               preset; group "Defaults": the Revert (both pages, reverts both) /
@@ -1026,6 +1047,15 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               OnPreDisplayMissionTick → the guard, the engine reads (MBWindowManager.WorldToScreenInsideUsableArea, the order flag at the
                               press, Screen.RealScreenResolution*), the player's OrderController.OnOrderIssued; AthleticsLogic.Orders.cs: AttachOrderClicks
                               (from AttachHud) and the summary
+  Missions/LineDiscipline.cs  step 73: ILineWorld (Mission, BeginLook, Read, Ranks, Clamp → taken, GiveBack, SetPreview → PreviewChange,
+                              PreviewCapReads, Name, Show) and LineDiscipline (engine-free: Tick from the pre-tick - the verdict, D recounted, the
+                              clamp + its cause, the retry, the preview per slot, the [lines] first-time lines, switch changes / give-backs;
+                              NotePlayerLineOrder - asked vs the cap, AT THE CAP or too wide, the on-screen line; SummaryLines);
+                              Missions/LineWorld.cs: GameLineWorld (slots team × 8, LineFacts from the formation and its QuerySystem, GetBattleTier
+                              over GetAllUnits, SetFormOrder(FormOrderCustom) + read back, the replaced form order kept and given back, the
+                              arrangement swap); Missions/DisciplinedLineFormation.cs: the game's LineFormation with MaximumWidth = the cap (CapReads)
+                              and Clone of its own type; AthleticsLogic.LineDiscipline.cs: StartLines (AfterStart), TickLines (OnPreMissionTick,
+                              before the wall), the player's OnOrderIssued (each formation's share of the dragged line), the summary
   Missions/AthleticsLogic.LoneRunner.cs  step 70: StartLoneRunners / NoteLoneSettings (the [courage] lines), LoneLook (at courage's look, ON and OFF:
                               alone, out by the band's frame, the cause, IFearBody.Target for lone men only, the first of each cause in full), NoteFeverRefused,
                               NoteForcedWalk (LoneMind.Forced), LoneSprintEnds (RunSprint's 0.25 s check of a sprint into contact - SprintEnd.LoneRunner);
@@ -1196,7 +1226,10 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
   Hud/FeverMarksVM.cs         its ViewModels: a GROW-ONLY POOL of FeverMarkVM (IsShown, PositionX / Y, Width / Height in pixels,
                               Fill, FillColor, FrameColor; step 46: BoxWidth / BoxHeight, FeverShown, BarShown, BarWidth / Height,
                               BarFill, BarUsable, BarColor, BarFrameColor, BarWoundColor)
-tests/TraxCombat.Core.Tests/  net8.0 xUnit (1057 - step 72: + Step72Tests.cs - the 3 settings placed / live, the master switch first, the scaling, vanilla's pick, the
+tests/TraxCombat.Core.Tests/  net8.0 xUnit (1066 - step 73: + Step73Tests.cs - the 15 settings placed (the player page 21, the group before Advanced) / live / defaults, the
+                              master switch first then the system then yours, which formations count, the tier clamp and heroes, the mean depth, the
+                              width math (ceil; the narrowest line no thinner than D for every D and men; the game's floor of the cap width), Toni's
+                              battle, the summary lines; 392 settings, 18 Advanced groups; 1057 - step 72: + Step72Tests.cs - the 3 settings placed / live, the master switch first, the scaling, vanilla's pick, the
                               click / drag / near / off-the-icon / plain / leak / abort / quick-second-click decisions, the summary line; 377 settings, 17 Advanced
                               groups; 1045 - step 71: + Step71Tests.cs - the new costs with the multipliers and the hint's 5 / 13 blows, format 15 - move,
                               keep, the chains through steps 66 / 68, a default that never moved; the older format tests → 15; 1042 - step 70: + Step70Tests.cs - the 11 settings placed / live, the master switch first and the sentences, the band's
@@ -1460,6 +1493,13 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               stand-in of the game's release, in both frame orders (a drag onto a banner = a move, a click on the icon = the charge, near = a
                               move, no button = untouched, the menu / switch off mid-hold, ModEnabled off = vanilla, a naval stand-down, the FAILURE line;
                               the MCM page count 17 Advanced groups) (164 steps);
+                              step 73 (Program.Step73.cs): LINE DISCIPLINE BY TIER through the real LineDiscipline with a stand-in world (Toni's
+                              recruits 48 → 24 files, the veterans untouched, a mixed unit 32, an auto-shrink, the AI re-widening narrowed, your drag
+                              stopped at the capped maximum width and counted at the cap with the on-screen line, the preview cap / your switch off
+                              and on, a re-install, a clamp not taken retried after 1 s, naval / sieges, a skipped arrangement, the lines), the REAL
+                              DisciplinedLineFormation over a stand-in IFormation (the game's own LineFormation code: the cap answered, the game's
+                              floor of it = exactly the cap's files, the clone's type), the cost (20 formations / 1000 men 0.4 µs a look), the
+                              master-switch part; the MCM page counts 21 / 18 groups (167 steps);
                               step 68 (Program.Step68.cs): the wall pushes as one through the real logic + its cost (1000 men 0.041 ms a tick,
                               0 bytes), back to the line after a kick, no kick through a friend, kicks landed vs decided through the real seams, the
                               master-switch part (157 steps; the config checks work for any tuned default);

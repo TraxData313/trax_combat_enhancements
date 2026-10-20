@@ -6445,3 +6445,156 @@ move, the leak, the menu / switch off mid-hold, a quick second click, the summar
 Modules\TraxCombatEnhancements.Dev; `tools\SmartAppControl\loadcheck.ps1`: both installed DLLs LOADED (`1.2.0+4e8c05d1…`): TraxCombatEnhancements.dll
 SHA-256 94691A79…85A2, TraxCombat.Core.dll C3405EA8…B210. The game and the launcher were not running. Tests (1057) ran with `dotnet test`, the smoke
 in memory (`run_smoke.ps1`) while iterating; DefaultsTool's `refresh` ran directly (not blocked this time). Windows security untouched.
+
+## Step 73 — line discipline by tier (built 2026-10-20; dev build only, not uploaded)
+
+**Toni (2026-10-20)**: 60 tier-5 men against 120 tier-1 recruits - the recruits attacked on a very broad front, about 2 deep, wider than his
+whole army, and engulfed him (the fear discipline of steps 67 / 70 did not stop it - it shapes frightened men, not the formation's width).
+"I imagine a low tier untrained troop to not be able to keep that disciplined line all the way and execute that encircling ... make a map
+like tier_line_discipline_map: {T0: 6, T1: 5, T2: 4, T3: 3, T4: 2, T5: 1, T6: 1} ... the average line discipline that formation can support
+... cannot stretch thinner than 5 lines deep. Make the AI follow that limit, and a toggleable, by-default-ON switch for the player ... If the
+number is 3.5, maybe make it 4 lines deep where the 4th line is at most 1/2 ... auto-shrink it". Follow-ups: infantry AND archers /
+skirmishers count; cavalry and squares / circles left out; "show me physically that I can't stretch it further" - the drag preview capped.
+
+**Verified in the v1.4.8 source (`%TEMP%\trax_decomp\TaleWorlds.MountAndBlade\TaleWorlds.MountAndBlade\`, View's
+`TaleWorlds.MountAndBlade.View.MissionViews.Order\OrderTroopPlacer.cs`)**
+- WIDTH = the formation's FORM ORDER (`FormOrder.cs`): `Formation.SetFormOrder(order)` → `FormOrder.OnApply` → for a `LineFormation`
+  `FormFromFlankWidth(GetMaxFileCountAux(order, men))` (Wide = max(round(√(men ÷ 16)), 1) × 16 files - 120 men → 48, 2.5 deep: TONI'S FRONT;
+  Wider × 64; Deep × 4) or, for `FormOrderCustom(w)`, `lineFormation.FlankWidth = w`. `LineFormation.FlankWidth` (set) =
+  `GetFileCountFromWidth(w)` = max((int)((w − d) ÷ (i + d) + 1e-5) + 1, MinimumFileCount = max(1, (int)√men)) → Widen / Narrow. `Formation
+  .ReapplyFormOrder` re-applies it on unit-count changes (a Custom keeps the current `FlankWidth`).
+- WHO SETS IT: the AI's behaviours (`Behavior*.cs`) - `OnBehaviorActivatedAux` of Advance, CautiousAdvance, Defend, PullBack, Skirmish,
+  SallyOut, DefendKeyPosition … `SetFormOrder(FormOrderWide)`; Reserve / SkirmishLine / SkirmishBehindFormation `FormOrderWider`; Defend /
+  DefendSiegeWeapon / ScreenedSkirmish / SkirmishLine / ShootFromCastleWalls a `FormOrderCustom(width)` in `TickOccasionally` too. The tactics
+  read `formation.MaximumWidth` only for scoring (TacticDefensiveLine, TacticHoldChokePoint).
+- WHEN: `Mission.TickAgentsAndTeamsImp` runs the agents' parallel tick, then `team.Tick` (the team AI → the behaviours), then
+  `tickCompleted`; the next frame's `Mission.OnPreTick` waits for it and calls `OnPreMissionTick` - our write point (step 41's), so a width the
+  AI set is narrowed BEFORE the next agent tick reads any slot.
+- THE PLAYER'S DRAG: `OrderTroopPlacer.UpdateFormationDrawingForMovementOrder` → `OrderController.SimulateNewOrderWithPositionAndDirection`
+  (the preview's agent frames) and, on release, `SetOrderWithTwoPositions(MoveToLineSegment…)` → `MoveToLineSegment` → the SAME simulation
+  (formation changes) → `SetFormOrder(FormOrderCustom(item3))`. Both layouts clamp each formation's width with
+  `a = MathF.Min(a, formation.MaximumWidth)` (vertical: `SimulateNewOrderWithVerticalLayout`, horizontal: `…HorizontalLayout`; the custom
+  width order `SimulateNewCustomWidthOrder` too). `Formation.MaximumWidth => Arrangement.MaximumWidth`; `LineFormation.MaximumWidth` is
+  VIRTUAL (one rank at `MaximumInterval`). So v1.4.8 DOES clamp the drag to a formation's max width - the lever is to make that number the cap.
+- The simulation formations clone the arrangement: `Formation.GetUnitPositionWithIndexAccordingToNewOrder` resets its simulation formation
+  whenever `simulationFormation.Arrangement.GetType() != arrangement.GetType()` (per unit index!), then `Rearrange(arrangement.Clone(sim))`
+  - `Clone` is virtual: ours returns its own type (no cap), so the simulation is reset once, not every unit of every frame.
+- SWAPPING THE ARRANGEMENT: `Formation.Arrangement` has a public setter; `Formation.Rearrange(arr)` (public) does nothing for the same type,
+  else `Arrangement = arr; old.RearrangeTo(arr); arr.RearrangeFrom(old); old.RearrangeTransferUnits(arr); ReapplyFormOrder();
+  _movementOrder.OnArrangementChanged(this)`; `LineFormation.RearrangeTransferUnits` into another `LineFormation` (not a
+  `TransposedLineFormation`) hands over `_units2D`, `_allUnits`, the availabilities, the global positions and the unpositioned units BY
+  REFERENCE and calls `OnFormationFrameChanged` - the path vanilla uses for column → line. The game replaces the arrangement only in
+  `ArrangementOrder.Rearrange` / `TransposeLineFormation` (an arrangement ORDER change - `GetArrangement` makes `new LineFormation(formation)`
+  for line, shield wall, loose and scatter) - never per tick. Every other check in the game is `is LineFormation` (Agent, ColumnFormation,
+  FormOrder, MovementOrder, DefaultFormationArrangementModel) - a subclass passes.
+- TIERS: `BasicCharacterObject.GetBattleTier()` (virtual, not overridden by CampaignSystem's CharacterObject) = 7 for a hero, else
+  min(max(ceil((level − 5) ÷ 5), 0), 7); CharacterObject.Tier = `CharacterStatsModel.GetTier` - the same formula, max 6 - needs CampaignSystem
+  (custom battles have no campaign), so we read `GetBattleTier()` and clamp to 6; heroes by `Agent.IsHero`.
+- Team formations: `Team.FormationsIncludingEmpty` (MBList, 8 regular); the player's own = his team and `!formation.IsAIControlled`
+  (vanilla: `SetControlledByAI(this != PlayerTeam || !IsPlayerGeneral)`, a captain via `PlayerOwner`, and every order of his =
+  `SetControlledByAI(false)`).
+
+**The rule (Core `LineDisciplineMath`, DESIGN decision 67 a)**: a man's ranks = the map at `TierOf` (a hero = `LineDisciplineHeroTier` 6, else
+his battle tier clamped 0-6); D = the mean over the men in the formation's arrangement (detached men are not in it); the cap F =
+max(ceil(men ÷ D − 1e-9), the game's own √men, 1) files; its width (F − 1) × (interval + a man's width) + a man's width at the formation's
+current spacing, + 0.05 m (`WidthSlackMetres`) so the game's own floor gives exactly F. The line's depth men ÷ F never exceeds D and F − 1
+files would: the narrowest line no thinner than D, rounded to whole files - a fractional D gives a partly filled last rank (100 at 3.5 → 29
+files, 3 ranks + 13 = 45 %; the 4th rank is never more than D's fraction full). Toni's examples: 120 T1 → D 5 → 24 files × 5; 60 T5 → D 1 →
+60 files (never narrowed - the game's Wide gives 32); mixed 70 T1 + 30 T3 + 20 T5 → D 3.83 → 32 files (3 ranks + 24).
+
+**The AI (Module `LineDiscipline` + `GameLineWorld`, from `AthleticsLogic.OnPreMissionTick` BEFORE the wall)**: every look, every formation
+of every team (slots team × 8 + index) - counted when a line / shield wall / loose / scatter arrangement whose arrangement object is a
+`LineFormation` but not a `TransposedLineFormation`, not mounted (`IsCavalryFormationReadOnly || IsRangedCavalryFormationReadOnly`), ranged
+(`IsRangedFormationReadOnly`) by `LineDisciplineRangedToo`, the player's own by `LineDisciplineForPlayer`; not naval; sieges / sally-outs by
+`LineDisciplineInSieges`. D recounted every `LineDisciplinePollSeconds` (1 s) and at once when the arrangement's unit count changes (the
+units' `GetAllUnits()` list - no allocation). A line wider than F → `SetFormOrder(FormOrderCustom(cap width))` (the order the player's own
+drag gives - `_desiredFileCount` kept, so a later arrangement change keeps about F files), read back: still wider = NOT TAKEN (a line
+transforming) → retried after `NotTakenRetrySeconds` 1 s, not every frame (a taken clamp never delays the next one). Cause: WIDENED (wider
+than at the last look - an order, the AI's behaviour) or AUTO-SHRINK (the cap fell - losses, a new D). The form order our first clamp
+replaced is kept per slot; off (the master switch, `LineDisciplineEnabled`; his switch for his formations) gives it back if ours still stands
+(a custom order within 0.25 m of our width - the game re-applies a custom order at the line's exact width, ours less the slack).
+
+**The player (`DisciplinedLineFormation`, DESIGN decision 67 c)**: his counted formations, while `LineDisciplinePreviewCap` is on and their
+cap is below their men (D > 1), get `DisciplinedLineFormation : LineFormation` - the base ctor `(IFormation, isStaggered)` + `DeepCopyFrom`
+(the staggering, IsTransforming), its `CapWidth` written every look, `MaximumWidth` = the cap when below the game's (never below
+`MinimumWidth`), counting the reads that returned it (`CapReads` - Interlocked; the summary's proof the drag / the move read it); `Clone` =
+its own type with no cap. Put in with `Formation.Rearrange` only over the game's PLAIN `LineFormation` (`GetType() == typeof(LineFormation)`
+- a column, another mod's arrangement: SKIPPED, said once, narrowed after each order instead); the game's next arrangement order puts its own
+plain line back → ours again at the next look (`PreviewReinstalls`); taken out (a plain `LineFormation` + `DeepCopyFrom` + `Rearrange`) when
+D ≤ 1, the formation stops counting, a switch goes off. His line orders: `OrderController.OnOrderIssued` (MoveToLineSegment /
+…WithHorizontalLayout, the two `WorldPosition`s): each formation's share of the dragged line as the game splits it (side by side: by
+`MinimumWidth`, 1.5 m between; one behind another: the whole), a click without a drag skipped - asked wider than F = counted, AT THE CAP or
+still too wide (narrowed at the next look), and `LineDisciplineShowMessage`'s line on screen ("your Infantry: these men hold no thinner than
+5 deep - 24 men wide at most"), at most once in 2 s per formation (also on a player clamp of a widened line).
+
+**Why not subclassing a model / Harmony**: the house rule ("decorate game models, never subclass them") is about `AddModel`, which replaces
+by base type and drops other mods' models. An ARRANGEMENT is a per-formation object the game itself creates and replaces on every
+arrangement order; nobody registers one globally. Ours keeps every behaviour of the game's (it IS the game's code) except one number. No
+Harmony, no reflection, no private field touched.
+
+**Interactions**: the shield wall (step 41) writes the slots of the narrowed line (the lines tick first in the pre-tick); its advance pacing
+(step 68) uses `GetOrderPositionOfUnit` - the same narrowed slots. The fear flock (step 67) / its band (step 70) move frightened men from their
+slots toward a band along the enemy front by their own input wish - a deeper block gives more ranks to compress; the band's width
+(`FearBandMaxWidthMetres` 40, men ÷ ranks files) is its own, unchanged. Courage, the fever, the brace: per man, untouched. RBM changes widths
+too (declared incompatible already).
+
+**Settings (15, all Live; 377 → 392)**: the PLAYER page "How the AI fights" after `CavalryFlockEnabled` - `LineDisciplineForPlayer` (true; the
+page 20 → 21 - SettingsPagesTests' cap and the smoke's on purpose); the new Advanced group "Line discipline by tier" (Order 23, "Advanced" 24)
+after `OrderChargeIconPixels` - `LineDisciplineEnabled` (true), `LineDisciplineRanksT0`-`T6` (6 / 5 / 4 / 3 / 2 / 1 / 1, 1-12),
+`LineDisciplineHeroTier` (6, 0-6), `LineDisciplineRangedToo` (true), `LineDisciplineInSieges` (false), `LineDisciplinePreviewCap` (true),
+`LineDisciplineShowMessage` (true), `LineDisciplinePollSeconds` (1.0, 0.25-10). New keys only - no config migration (FormatVersion 15).
+
+**Plumbing constants**: `LineDisciplineMath.WidthSlackMetres` 0.05, `MinRanks` 1 / `MaxRanks` 12, `MinPollSeconds` 0.25 / `MaxPollSeconds` 10;
+`LineDiscipline.NotTakenRetrySeconds` 1.0; the on-screen line's 2 s spacing; `GameLineWorld.PerTeam` 8, the give-back match 0.25 m.
+
+**Log**: `[lines] mission start: line discipline by tier (step 73): … - ON for the AI; your own formations too (…)` (+ " - a NAVAL battle:
+never here" / " - a SIEGE: not here"); first-time lines - the first formation counted (its tiers, D, the cap, its width), the first clamp of
+an AI line, of YOUR line, the first AUTO-SHRINK (each with its shape "24 files x 5 ranks, 5.0 deep"), the first capped arrangement, the first
+time the game read a capped maximum width ("the PREVIEW IS CAPPED"), the first order of yours asked wider ("AT THE CAP" or "wider: narrowed
+at the next look"), a skipped arrangement; settings changed mid-mission; switched OFF / ON; your formations let go. **[summary]** four lines:
+`line discipline (step 73): ON at the end - the map …; looks N, cost avg … ms a tick (max …), clamps the game had not taken yet …, errors …`;
+`line discipline, your side (step 73): …` and `…, the other side (step 73): N formations counted, K capped - <name>: men, D → max F files W m vs
+asked up to A files W m, clamps (auto-shrinks); at the end … | clamps applied: by the AI's own widening …, on your orders … | auto-shrinks
+(losses / the depth changed): AI …, yours … | errors …`; `line discipline - your orders (step 73): … PREVIEW CAPPED / not installed /
+installed but never read at a cap (…)`.
+
+**Measured offline**: tests 1057 → 1066 (Step73Tests.cs 9: the settings placed / live / defaults, the master switch first then the system
+then the player's, which formations count, the tier clamp and heroes, the mean depth, the width math - ceil, the narrowest line no thinner
+than D for every D 1-6 and 1-300 men, the game's floor of the cap width for 5 spacings and 1-200 files, Toni's battle, the summary lines;
+SettingsPagesTests 392 / 21 / 18 Advanced groups, Step72Tests' group index). Smoke 164 → 167 (Program.Step73.cs: the real `LineDiscipline`
+with a stand-in world - Toni's recruits 48 → 24 files, the veterans untouched, the mixed unit 32, cavalry / square / column untouched, an
+auto-shrink after losses, the AI re-widening narrowed, the depth recounted, your drag stopped at the capped maximum width (12 files) and
+counted AT THE CAP with the on-screen line, the preview cap off = narrowed after, a re-install after the game's arrangement order, your switch
+off / on, a clamp not taken retried after 1 s while a re-widening after a taken clamp is narrowed at once, naval never / a siege by its
+switch, a skipped arrangement, the lines and the summary; the REAL `DisciplinedLineFormation` over a stand-in `IFormation` - the game's own
+`LineFormation` code builds offline: no cap = the game's maximum width, the cap answered and counted, the game's `GetFileCountFromWidth` of the
+cap width = exactly 24, a 60 m drag clamped by the game's rule = 24 files, never below the minimum, the clone's type, the staggering copied;
+the cost - 20 formations / 1000 men, 0.4 µs a look, 8 KB over 600 looks = the on-screen lines' strings only; the master-switch step's
+`LinesFollowTheMasterSwitch`; the MCM page check 21 settings / 18 Advanced groups). The smoke project references TaleWorlds.Engine now (the
+stand-in `IFormation`'s signatures carry `WorldPosition`).
+
+**Gotchas**
+- Smart App Control blocked the freshly built `OfflineSmoke.exe` (`dotnet run`) and `AssemblyGuard.dll` (deploy.ps1 step 2) this time - the
+  smoke ran with `run_smoke.ps1`, the guard with `run_guard.fsx`, the install with `install_dev.ps1`; `dotnet test` and DefaultsTool's
+  refresh ran directly.
+- Git Bash's heredoc choked twice on long Python edit scripts with backticks / quotes inside ("unexpected EOF while looking for matching");
+  the edit scripts went to the scratchpad as files (`s73_*.py`) and ran with `python -I`.
+- `TASKS_DONE.md` is CRLF in the working tree (the other docs LF): appended with `printf '…\r\n' >>`.
+- `LineDisciplineRules.Describe()` builds a sentence - the live change check compares the rules by value (`Same`) so a look allocates nothing.
+
+**UNVERIFIED — only the game can tell (PLAYTEST D38)**
+1. The AI's lines really stay narrowed: `clamps applied: by the AI's own widening` in the tens, the recruits a ~5-deep block on screen, not a
+   2-deep front. If the block "breathes" (wide for half a second, then narrow) the behaviours' write lands after our pre-tick in some frame
+   order - tell Claude (the next lever: the same clamp from OnMissionTick too).
+2. The drag preview STOPS GROWING at the cap (`PREVIEW CAPPED`, `the game asked it for its maximum width and got the cap N` in the hundreds
+   after a few drags) and the order lands at the cap (`came out at the cap` = `asked wider`). If the preview grows but the order lands capped,
+   the placer read another number - say so.
+3. The arrangement swap is invisible: no men shuffling or a jolt when ours goes in at the battle's start / after an arrangement order (a line
+   → shield wall → line), no `[error]` with `lines.`; `clamps the game had not taken yet` near 0.
+4. The narrowed AI lines still fight sensibly (they envelop less; a deep block may lap round a short line - that is the mass, not a thin
+   front), and the fear flock's band still forms along the enemy front.
+
+**DEPLOY**: `tools\deploy.ps1` built and stopped at step 2 - Smart App Control blocked `AssemblyGuard.dll` (0x800711C7). Done by the recipe:
+`run_guard.fsx` (OK - no forbidden assembly), the smoke in memory (`run_smoke.ps1`, all 167 passed), `install_dev.ps1` → Modules\TraxCombatEnhancements.Dev;
+`loadcheck.ps1`: both installed DLLs LOADED (`1.2.0+29a0354f…`): TraxCombatEnhancements.dll SHA-256 0310CFD3…2393, TraxCombat.Core.dll 1B691E57…B323.
+The game and the launcher were not running. Windows security untouched.

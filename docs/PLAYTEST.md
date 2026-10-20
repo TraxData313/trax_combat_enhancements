@@ -1036,6 +1036,7 @@ Claude the `[summary] impact …` block of every battle.
 | 16 | **D35 - THE FLOCK IS A WIDE BAND, NO LONE RUNNER BEHIND THE LINE** (step 70): your ~30 men in a shield line against ~50 looters (your 15:59 battle again); stay on your horse right behind your line | 15 | `fear flock band`, `lone runners`, `fear flock shape`, `sprint into contact` | the looters stand as a WIDE, shallow mass along your line, 4-6 deep (`fear flock band … ON` men per file ~4-6, width near your line's), a few step in to swing and go back; no looter alone behind your line - `lone runners` small, the fixes' walks / sprints ended counted | a deep column again (men per file above 8, width 2-3 m), lone runners standing behind your line - tell Claude the two lines |
 | 17 | **D36 - MEN TIRE FASTER STILL** (step 71): any 50 v 50 or 100 v 100 melee (the same kind as D33's) | 5 | `Athletics settings at the end` (cost per blow 10.0 / hero 7.5 / party leader 5.6; a kick or bash 6.00; shield right side 3.00 / wrong side 6.00; the parry 3.00), `[config] migrated config.json` (once, format 14 → 15) | lines visibly orange / red sooner after the first clash than in D33, the AI's swings thinning out; a recruit empty after about 5 swings | the old 8.0 / 2.00 / 5.00 still in the line (your config.json kept a hand-set value - the migration line says which); men empty so fast that the fight stalls (tell Claude) |
 | 18 | **D37 - NO ACCIDENTAL CHARGE ORDERS** (step 72): any field battle with an enemy in view; the orders menu (hold the order key), your infantry selected | 5 | `[orders] first accidental charge turned into a MOVE`, `[orders] first deliberate charge KEPT`, `[summary] order clicks (step 72)` | a drag across / onto an enemy banner places your men (they walk / keep their sprint); a plain click ON the banner icon charges it; F1 F3 still charges what you look at | a drag still charging (`charges SLIPPED THROUGH` above 0, or `turned into moves` 0 after your drags) - tell Claude the line; a click right on the icon that does not charge (raise *Charge click: on the banner within* - Advanced page) |
+| 19 | **D38 - LINE DISCIPLINE BY TIER** (step 73): Toni's battle again - your ~60 tier-5 men against ~120 tier-1 recruits in a field battle; then a unit of your own recruits in the orders menu | 10 | `[lines] first clamp of an AI line`, `[lines] first capped arrangement`, `[lines] first time the game read a capped maximum width`, `[summary] line discipline` (3 lines + your orders) | the recruits come as a block about 5 deep (24 wide), never a 2-deep front wider than yours; dragging your own recruits wider, the line stops growing at their limit and a line on screen says so | the recruits still a thin wide front (`clamps applied` 0 on the other side - tell Claude the line); the drag still growing (`PREVIEW … installed but never read at a cap` after a wide drag - the order then narrowed after it: tell Claude) |
 
 Then play normally (parts E-G). Your gut on each family - too many / about right / too few - is the most useful thing to send.
 
@@ -1779,6 +1780,30 @@ turned into moves (D drags, O clicks off the icon; the placer's move seen after 
 **Wrong**: a `FAILURE … a targeted charge went out although the click was being turned into a move` line, or the placer's move "NOT seen"
 - tell Claude. **Too strict** (a click on the icon does not charge): *Charge click: on the banner within (px)* up (Advanced page, Orders:
 no accidental charges); **off**: *No accidental charge orders*.
+
+**D38. LINE DISCIPLINE BY TIER (step 73, ~10 min - one field battle; the defaults).** Toni 2026-10-20: his 60 tier-5 men against 120
+tier-1 recruits - the recruits attacked on a very broad front about 2 deep, wider than his whole army, and engulfed him. Now each man's tier
+gives his minimum ranks (T0 6, T1 5, T2 4, T3 3, T4 2, T5 1, T6 1, heroes as T6) and a foot formation's line is at most ceil(men ÷ the mean)
+wide. (1) **The same battle**: ~60 of your veterans against ~120 recruits (a custom battle or the campaign). Watch the recruits come: a BLOCK
+about 5 deep and ~24 wide (hold ALT, look from above), not a 2-deep front wider than yours; as they lose men the block narrows, staying 5
+deep. Your veterans may still stand one rank long. (2) **Your own recruits**: put ~40-60 tier-1 men in one formation, open the orders menu
+and DRAG a long line for them (much wider than 10-12 men) - the drawn line of men should STOP GROWING at their limit while you keep dragging;
+let go: they form at the limit, 5 deep, and a line on screen says *"your Infantry: these men hold no thinner than 5 deep - 12 men wide at
+most"*. (3) Turn *Line discipline: your units too* off (the player page, How the AI fights) and drag again: any width, no line on screen;
+back on: the line closes up at once. **Log**: `[lines] mission start: line discipline by tier (step 73): … - ON for the AI; your own
+formations too (the order drag's preview stops at the cap, a line on screen when you ask wider)`, `[lines] first formation counted at … s:
+the enemy's Infantry - 120 men (120 T1) → D 5.0 → at most 24 files …`, `[lines] first clamp of an AI line at … s: the enemy's Infantry (the
+other side) stood 48 files … → narrowed to … m: 24 files x 5 ranks, 5.0 deep (it was made wider - an order or the AI's behaviour)`, `[lines]
+first AUTO-SHRINK at …`, `[lines] first capped arrangement at … s: your Infantry now tells the game its maximum width is …`, `[lines] first
+time the game read a capped maximum width … - the PREVIEW IS CAPPED`, `[lines] first line order of yours wider than the men hold at … - AT
+THE CAP …`. **[summary]** `line discipline (step 73): ON at the end - the map T0 6.0 / T1 5.0 / …; looks …, cost avg … ms a tick …`;
+`line discipline, your side (step 73): N formations counted, K capped - … | clamps applied: by the AI's own widening …, on your orders … |
+auto-shrinks …`; `line discipline, the other side (step 73): … the enemy's Infantry: 120 men, D 5.0 → max 24 files … vs asked up to 48
+files …`; `line discipline - your orders (step 73): … PREVIEW CAPPED (the drag stops growing at the cap) (… the game asked it for its maximum
+width and got the cap N times)`. **Wrong**: the recruits still a thin wide front with `clamps applied` 0 on the other side; `clamps the game
+had not taken yet` in the hundreds; the drag still growing while `PREVIEW … installed but never read at a cap` (then the order is narrowed
+right after you let go - say so); any `[error]` with `lines.` - tell Claude the line. **Too strict / too loose**: the ranks per tier on the
+Advanced page (*Line discipline by tier*); **off**: *Line discipline: your units too* (yours) or *Line discipline by tier* (everyone).
 
 ---
 
