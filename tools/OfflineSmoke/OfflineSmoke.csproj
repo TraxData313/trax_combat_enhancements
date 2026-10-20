@@ -59,6 +59,11 @@
       <HintPath>$(GameFolder)\Modules\Native\bin\Win64_Shipping_Client\TaleWorlds.MountAndBlade.View.dll</HintPath>
       <Private>false</Private>
     </Reference>
+    <!-- Step 73: the real DisciplinedLineFormation over a stand-in IFormation (its signatures carry WorldPosition). -->
+    <Reference Include="TaleWorlds.Engine">
+      <HintPath>$(GameFolder)\bin\Win64_Shipping_Client\TaleWorlds.Engine.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
     <!-- Step 33: the sprint key's names are checked against the game's InputKey enum. -->
     <Reference Include="TaleWorlds.InputSystem">
       <HintPath>$(GameFolder)\bin\Win64_Shipping_Client\TaleWorlds.InputSystem.dll</HintPath>

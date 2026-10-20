@@ -104,6 +104,12 @@ namespace TraxCombat.Core
             }
         }
 
+        /// <summary>The same rules (a live change check without building a sentence every look).</summary>
+        public bool Same(in LineDisciplineRules o) =>
+            ModEnabled == o.ModEnabled && Enabled == o.Enabled && ForPlayer == o.ForPlayer && T0 == o.T0 && T1 == o.T1 && T2 == o.T2 && T3 == o.T3
+            && T4 == o.T4 && T5 == o.T5 && T6 == o.T6 && HeroTier == o.HeroTier && RangedToo == o.RangedToo && InSieges == o.InSieges
+            && PreviewCap == o.PreviewCap && ShowMessage == o.ShowMessage && PollSeconds == o.PollSeconds;
+
         public string MapText()
         {
             var sb = new StringBuilder();
@@ -369,7 +375,7 @@ namespace TraxCombat.Core
         /// <summary>Widths given back when the switch went off (the game's own form order restored).</summary>
         public int GivenBack;
 
-        /// <summary>Looks where the game had not taken our last clamp yet (retried after a second).</summary>
+        /// <summary>Clamps the game did not take (its line could not narrow - a transformation): retried after a second, not every frame.</summary>
         public int ClampsNotTaken;
 
         public long Ticks;

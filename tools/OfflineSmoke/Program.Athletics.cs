@@ -1189,6 +1189,9 @@ namespace TraxCombat.Tools
             // --- step 70: the lone runner - off = his walk back stopped at once (courage off), the fever presses again; the diagnostic keeps measuring; on = again
             Step70FollowsTheMasterSwitch();
 
+            // --- step 73: the line discipline - off = every width it set given back (the game's form order) and every capped arrangement out; on = held again
+            LinesFollowTheMasterSwitch();
+
             // --- the HUD (step 6): the Athletics bar goes the moment the switch goes, and comes back
             HudFollowsTheMasterSwitch(a.Agent);
         }

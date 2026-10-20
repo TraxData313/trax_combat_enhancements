@@ -86,6 +86,8 @@ namespace TraxCombat.Missions
             {
                 Failed("athletics.mission-start", e);
             }
+            // Step 73: the line discipline - its rules in one [lines] sentence (its own try inside).
+            StartLines();
         }
 
         public override void OnMissionTick(float dt)
@@ -151,6 +153,16 @@ namespace TraxCombat.Missions
         /// </summary>
         public override void OnPreMissionTick(float dt)
         {
+            // Step 73: the line discipline first - the AI's behaviours set their widths in the team tick that just ran; narrowed here,
+            // before the wall's writes and before any man reads his slot.
+            try
+            {
+                TickLines(Mission.CurrentTime);
+            }
+            catch (Exception e)
+            {
+                Failed("lines.tick", e);
+            }
             try
             {
                 TickWall(Mission.CurrentTime);
@@ -399,6 +411,15 @@ namespace TraxCombat.Missions
             catch (Exception e)
             {
                 Failed("orders.summary", e);
+            }
+            // Step 73: the line discipline - per side, the formations capped, the clamps, the player's orders and the preview. Own try.
+            try
+            {
+                WriteLineSummary();
+            }
+            catch (Exception e)
+            {
+                Failed("lines.summary", e);
             }
             TraxLog.Info("summary", "errors logged during this mission: " + (TraxLog.ErrorCount - _errorsAtStart));
             TraxLog.FlushSuppressedCounts();
