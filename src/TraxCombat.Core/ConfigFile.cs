@@ -109,7 +109,7 @@ namespace TraxCombat.Core
         /// (Toni, 2026-10-19 - "they need to tire faster still": CostPerBlow 8 → 10, CostPerKickOrBash 5 → 6, CostPerWrongSideShieldBlock 5 → 6,
         /// CostPerShieldBlock 2 → 3, CostPerWeaponParry 2 → 3 in a file still holding them; a tuned value kept and noted; the refill
         /// unchanged).</summary>
-        public const int FormatVersion = 15;
+        public const int FormatVersion = 16;
 
         /// <summary>The meta key holding <see cref="FormatVersion"/> - not a setting.</summary>
         public const string VersionKey = "ConfigVersion";
@@ -498,6 +498,19 @@ namespace TraxCombat.Core
                 }
                 if (from >= 13) MoveOrKeepIfMoved(read, SettingsSchema.CostPerKickOrBash, 5, faster + " - a kick or a shield bash costs 6", from, defaultOf);
                 MoveOrKeepIfMoved(read, SettingsSchema.CostPerWeaponParry, 2, faster + " - a weapon parry costs 3", from, defaultOf);
+            }
+            if (from < 16)
+            {
+                // step 74: the line-discipline map one rank deeper below T6 (Toni 2026-10-20: T0 7, T1 6, T2 5, T3 4, T4 3, T5 2, T6 1 - T6 stays);
+                // the keys exist since format 15 (step 73 added them with no migration) - a file without a key simply gets the new default; a
+                // hand-set value is kept and said once
+                const string deeper = "step 74, Toni: the tier map one rank deeper (T6 stays 1)";
+                MoveOrKeepIfMoved(read, SettingsSchema.LineDisciplineRanksT0, 6, deeper + " - a tier-0 man holds 7 ranks", from, defaultOf);
+                MoveOrKeepIfMoved(read, SettingsSchema.LineDisciplineRanksT1, 5, deeper + " - a recruit holds 6 ranks (120 recruits: at most 20 files)", from, defaultOf);
+                MoveOrKeepIfMoved(read, SettingsSchema.LineDisciplineRanksT2, 4, deeper + " - a tier-2 man holds 5 ranks", from, defaultOf);
+                MoveOrKeepIfMoved(read, SettingsSchema.LineDisciplineRanksT3, 3, deeper + " - a tier-3 man holds 4 ranks", from, defaultOf);
+                MoveOrKeepIfMoved(read, SettingsSchema.LineDisciplineRanksT4, 2, deeper + " - a tier-4 man holds 3 ranks", from, defaultOf);
+                MoveOrKeepIfMoved(read, SettingsSchema.LineDisciplineRanksT5, 1, deeper + " - a veteran holds 2 ranks (60 of them: at most 30 files)", from, defaultOf);
             }
             // steps 36 / 37: the retired AI sprint keys - in ANY format (they are only ever steps 33-36's, and a hand-pasted one
             // goes the same way)

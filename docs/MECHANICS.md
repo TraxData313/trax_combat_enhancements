@@ -1382,16 +1382,16 @@ scaled to yours. The gamepad and naval battles keep the game's own rule.
 Toni's battle (2026-10-20): his 60 tier-5 men against 120 tier-1 recruits - the recruits came on a front about two men deep, wider than his whole
 army, and wrapped round him. In the game an AI line on the advance forms round(√(men ÷ 16)) × 16 men wide - 48 for 120 men, 2.5 deep. Since
 step 73 every foot formation - infantry, archers and skirmishers - in a line, shield wall, loose or scatter arrangement stretches no thinner
-than its men can hold. Each man's tier gives his minimum ranks:
+than its men can hold. Each man's tier gives his minimum ranks (one rank deeper below tier 6 since step 74 - Toni 2026-10-20):
 
 | Tier | Typical men | Minimum ranks |
 |---|---|---|
-| 0 | peasants, looters, villagers | 6 |
-| 1 | recruits | 5 |
-| 2 | | 4 |
-| 3 | trained men | 3 |
-| 4 | | 2 |
-| 5 | veterans | 1 |
+| 0 | peasants, looters, villagers | 7 |
+| 1 | recruits | 6 |
+| 2 | | 5 |
+| 3 | trained men | 4 |
+| 4 | | 3 |
+| 5 | veterans | 2 |
 | 6 (and any higher tier a mod adds) | elites | 1 |
 | a hero | lords, companions, you | as tier 6 |
 
@@ -1400,26 +1400,28 @@ narrower than the game's own √men), at its own spacing. Rounding up gives a pa
 
 | The unit | D | At most | Its shape |
 |---|---|---|---|
-| 120 recruits (T1) | 5.0 | 24 men wide | 5 full ranks (the game's advance wanted 48 wide, 2.5 deep) |
-| the same after 20 fall | 5.0 | 20 men wide | 5 full ranks - narrowed again at once |
-| 60 veterans (T5) | 1.0 | 60 men wide | never narrowed |
-| 100 men, half T2 and half T3 | 3.5 | 29 men wide | 3 full ranks + 13 (the 4th rank 45 % full) |
-| 70 T1 + 30 T3 + 20 T5 | 3.83 | 32 men wide | 3 full ranks + 24 |
-| 60 looters (T0) | 6.0 | 10 men wide | 6 full ranks |
+| 120 recruits (T1) | 6.0 | 20 men wide | 6 full ranks (the game's advance wanted 48 wide, 2.5 deep) |
+| 180 recruits (Toni's 20:30 battle) | 6.0 | 30 men wide | 6 full ranks |
+| the 120 after 20 fall | 6.0 | 17 men wide | 5 full ranks + 15 - narrowed again at once |
+| 60 veterans (T5) | 2.0 | 30 men wide | 2 full ranks |
+| 60 elites (T6) | 1.0 | 60 men wide | never narrowed |
+| 100 men, half T2 and half T3 | 4.5 | 23 men wide | 4 full ranks + 8 (the 5th rank 35 % full) |
+| 70 T1 + 30 T3 + 20 T5 | 4.83 | 25 men wide | 4 full ranks + 20 |
+| 60 looters (T0) | 7.0 | 9 men wide | 6 full ranks + 6 |
 
 - **The AI**: whenever the game or its AI makes a line wider - its wide and wider form orders, an envelop, the line re-forming as men fall -
   it is narrowed back in the same frame, before the men move to their new places; losses or a change of D shrink it back the same way. D is
   recounted every second and at once when men fall, join or leave.
 - **You** (on by default): your own formations keep to it too. Drag a line wider than your men can hold in the orders menu and the preview
-  STOPS GROWING at the limit; the order keeps to it, and a line on screen says so: *"your Infantry: these men hold no thinner than 5 deep -
-  24 men wide at most"*.
+  STOPS GROWING at the limit; the order keeps to it, and a line on screen says so: *"your Infantry: these men hold no thinner than 6 deep -
+  20 men wide at most"*.
 - **Left alone**: cavalry and horse archers, squares, circles, columns and wedges; naval battles; sieges and sally-outs (unless switched on -
   the walls and streets set the width there).
 - **With the rest of the mod**: the fear flock (§11b1) and its band move frightened men from the places the narrowed line gives them - a
   deeper block simply has more ranks to compress; the shield wall (§10) holds the narrowed slots.
 
 <sub>Settings: *Line discipline: your units too* (player page, How the AI fights) = `LineDisciplineForPlayer` (on); Advanced page, *Line
-discipline by tier*: `LineDisciplineEnabled` (on), `LineDisciplineRanksT0`-`LineDisciplineRanksT6` 6 / 5 / 4 / 3 / 2 / 1 / 1,
+discipline by tier*: `LineDisciplineEnabled` (on), `LineDisciplineRanksT0`-`LineDisciplineRanksT6` 7 / 6 / 5 / 4 / 3 / 2 / 1 (step 74; step 73 shipped 6 / 5 / 4 / 3 / 2 / 1 / 1),
 `LineDisciplineHeroTier` 6, `LineDisciplineRangedToo` (on), `LineDisciplineInSieges` (off), `LineDisciplinePreviewCap` (on),
 `LineDisciplineShowMessage` (on), `LineDisciplinePollSeconds` 1.</sub>
 

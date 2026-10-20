@@ -1643,7 +1643,7 @@ namespace TraxCombat.Core
 
         public static readonly ParamDef LineDisciplineRanksT1 = Float("LineDisciplineRanksT1", LineDisciplineMath.MinRanks, LineDisciplineMath.MaxRanks, LineDisciplineGroup,
             "Tier 1: minimum ranks",
-            "The fewest ranks a tier-1 man (a recruit) can hold. 120 recruits at 5 make a line at most 24 men wide.");
+            "The fewest ranks a tier-1 man (a recruit) can hold. 120 recruits at 6 make a line at most 20 men wide.");
 
         public static readonly ParamDef LineDisciplineRanksT2 = Float("LineDisciplineRanksT2", LineDisciplineMath.MinRanks, LineDisciplineMath.MaxRanks, LineDisciplineGroup,
             "Tier 2: minimum ranks",

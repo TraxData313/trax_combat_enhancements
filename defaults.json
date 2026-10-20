@@ -2125,29 +2125,29 @@
   // The fewest ranks a tier-0 man (a peasant, a looter, a villager) can hold in a line. The
   // formation's minimum depth is the average over its men. 1 = no limit of his own.
   // (range 1.0 to 12.0)
-  "LineDisciplineRanksT0": 6.0,
+  "LineDisciplineRanksT0": 7.0,
 
-  // The fewest ranks a tier-1 man (a recruit) can hold. 120 recruits at 5 make a line at most
-  // 24 men wide.
+  // The fewest ranks a tier-1 man (a recruit) can hold. 120 recruits at 6 make a line at most
+  // 20 men wide.
   // (range 1.0 to 12.0)
-  "LineDisciplineRanksT1": 5.0,
+  "LineDisciplineRanksT1": 6.0,
 
   // The fewest ranks a tier-2 man can hold.
   // (range 1.0 to 12.0)
-  "LineDisciplineRanksT2": 4.0,
+  "LineDisciplineRanksT2": 5.0,
 
   // The fewest ranks a tier-3 man can hold.
   // (range 1.0 to 12.0)
-  "LineDisciplineRanksT3": 3.0,
+  "LineDisciplineRanksT3": 4.0,
 
   // The fewest ranks a tier-4 man can hold.
   // (range 1.0 to 12.0)
-  "LineDisciplineRanksT4": 2.0,
+  "LineDisciplineRanksT4": 3.0,
 
   // The fewest ranks a tier-5 man (a veteran) can hold. At 1 a formation of them is never
   // narrowed.
   // (range 1.0 to 12.0)
-  "LineDisciplineRanksT5": 1.0,
+  "LineDisciplineRanksT5": 2.0,
 
   // The fewest ranks a tier-6 man (an elite) can hold - also any higher tier a mod adds.
   // (range 1.0 to 12.0)

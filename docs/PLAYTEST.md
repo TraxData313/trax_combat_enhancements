@@ -1783,22 +1783,22 @@ no accidental charges); **off**: *No accidental charge orders*.
 
 **D38. LINE DISCIPLINE BY TIER (step 73, ~10 min - one field battle; the defaults).** Toni 2026-10-20: his 60 tier-5 men against 120
 tier-1 recruits - the recruits attacked on a very broad front about 2 deep, wider than his whole army, and engulfed him. Now each man's tier
-gives his minimum ranks (T0 6, T1 5, T2 4, T3 3, T4 2, T5 1, T6 1, heroes as T6) and a foot formation's line is at most ceil(men ÷ the mean)
+gives his minimum ranks (T0 7, T1 6, T2 5, T3 4, T4 3, T5 2, T6 1 since step 74 - step 73 shipped one rank less below T6; heroes as T6) and a foot formation's line is at most ceil(men ÷ the mean)
 wide. (1) **The same battle**: ~60 of your veterans against ~120 recruits (a custom battle or the campaign). Watch the recruits come: a BLOCK
-about 5 deep and ~24 wide (hold ALT, look from above), not a 2-deep front wider than yours; as they lose men the block narrows, staying 5
-deep. Your veterans may still stand one rank long. (2) **Your own recruits**: put ~40-60 tier-1 men in one formation, open the orders menu
-and DRAG a long line for them (much wider than 10-12 men) - the drawn line of men should STOP GROWING at their limit while you keep dragging;
-let go: they form at the limit, 5 deep, and a line on screen says *"your Infantry: these men hold no thinner than 5 deep - 12 men wide at
-most"*. (3) Turn *Line discipline: your units too* off (the player page, How the AI fights) and drag again: any width, no line on screen;
+about 6 deep and ~20 wide (hold ALT, look from above), not a 2-deep front wider than yours; as they lose men the block narrows, staying 6
+deep. Your veterans hold at least 2 deep (60 of them at most 30 wide). (2) **Your own recruits**: put ~40-60 tier-1 men in one formation, open the orders menu
+and DRAG a long line for them (much wider than 8-10 men) - the drawn line of men should STOP GROWING at their limit while you keep dragging;
+let go: they form at the limit, 6 deep, and a line on screen says *"your Infantry: these men hold no thinner than 6 deep - 10 men wide at
+most"* (60 recruits). (3) Turn *Line discipline: your units too* off (the player page, How the AI fights) and drag again: any width, no line on screen;
 back on: the line closes up at once. **Log**: `[lines] mission start: line discipline by tier (step 73): … - ON for the AI; your own
 formations too (the order drag's preview stops at the cap, a line on screen when you ask wider)`, `[lines] first formation counted at … s:
-the enemy's Infantry - 120 men (120 T1) → D 5.0 → at most 24 files …`, `[lines] first clamp of an AI line at … s: the enemy's Infantry (the
-other side) stood 48 files … → narrowed to … m: 24 files x 5 ranks, 5.0 deep (it was made wider - an order or the AI's behaviour)`, `[lines]
+the enemy's Infantry - 120 men (120 T1) → D 6.0 → at most 20 files …`, `[lines] first clamp of an AI line at … s: the enemy's Infantry (the
+other side) stood 48 files … → narrowed to … m: 20 files x 6 ranks, 6.0 deep (it was made wider - an order or the AI's behaviour)`, `[lines]
 first AUTO-SHRINK at …`, `[lines] first capped arrangement at … s: your Infantry now tells the game its maximum width is …`, `[lines] first
 time the game read a capped maximum width … - the PREVIEW IS CAPPED`, `[lines] first line order of yours wider than the men hold at … - AT
-THE CAP …`. **[summary]** `line discipline (step 73): ON at the end - the map T0 6.0 / T1 5.0 / …; looks …, cost avg … ms a tick …`;
+THE CAP …`. **[summary]** `line discipline (step 73): ON at the end - the map T0 7.0 / T1 6.0 / …; looks …, cost avg … ms a tick …`;
 `line discipline, your side (step 73): N formations counted, K capped - … | clamps applied: by the AI's own widening …, on your orders … |
-auto-shrinks …`; `line discipline, the other side (step 73): … the enemy's Infantry: 120 men, D 5.0 → max 24 files … vs asked up to 48
+auto-shrinks …`; `line discipline, the other side (step 73): … the enemy's Infantry: 120 men, D 6.0 → max 20 files … vs asked up to 48
 files …`; `line discipline - your orders (step 73): … PREVIEW CAPPED (the drag stops growing at the cap) (… the game asked it for its maximum
 width and got the cap N times)`. **Wrong**: the recruits still a thin wide front with `clamps applied` 0 on the other side; `clamps the game
 had not taken yet` in the hundreds; the drag still growing while `PREVIEW … installed but never read at a cap` (then the order is narrowed

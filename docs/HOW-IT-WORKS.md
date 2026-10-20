@@ -328,10 +328,10 @@ Numbers: [MECHANICS §14b](MECHANICS.md#14b-your-orders-a-click-charges-a-drag-n
 
 ## Green troops cannot hold a thin line
 
-A long, thin line takes discipline. Each man's training sets how few ranks he can stand in - peasants and looters 6, recruits 5, tier-2
-men 4, tier-3 men 3, tier-4 men 2, veterans and elites 1 (lords, companions and you count as elites) - and a foot formation's line is never
-thinner than the average of its men. So 120 recruits stand at most 24 wide and 5 deep, where the game would have spread them 48 wide and
-barely 2 deep; 60 veterans may stand in one long rank if you ask; a mix of 3.5 gives a 4th rank about half full. The AI's lines keep to it
+A long, thin line takes discipline. Each man's training sets how few ranks he can stand in - peasants and looters 7, recruits 6, tier-2
+men 5, tier-3 men 4, tier-4 men 3, veterans 2, elites 1 (lords, companions and you count as elites) - and a foot formation's line is never
+thinner than the average of its men. So 120 recruits stand at most 20 wide and 6 deep, where the game would have spread them 48 wide and
+barely 2 deep; 60 veterans no thinner than 2 deep; elites may stand in one long rank if you ask; a mix of 4.5 gives a 5th rank about a third full. The AI's lines keep to it
 whatever their general wants - no more green mass two men deep wrapping round your army - and as men fall the line closes up to stay deep
 enough. Yours keep to it too: drag a line wider than your men can hold and it simply stops growing at their limit, with a line on screen
 saying why. Cavalry, squares and circles are left alone. You can turn it off for your own units on the main page (*Line discipline: your

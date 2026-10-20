@@ -247,7 +247,7 @@ focused unit's icon (`OrderChargeIconPixels` 30), still on it and no drag (`Orde
 placer's move (the dragged frontage) stands; nothing re-issued, so no charge / sprint / fever starts; idle = vanilla (F keys), gamepad and naval vanilla;
 `OrderNoAccidentalCharge` on, Advanced group "Orders: no accidental charges"; the [summary] "order clicks" line (PLAYTEST D37). LINE DISCIPLINE BY TIER (step 73, Toni 2026-10-20: 120 tier-1 recruits came at his 60 tier-5 men on a front ~2 deep and wrapped round
 him - the AI's FormOrder Wide = round(√(men ÷ 16)) × 16 files, 48 for 120 men; DESIGN decision 67, AI_NOTES "Step 73"): a man's minimum ranks by
-his tier (`GetBattleTier`, 7 → 6; heroes as `LineDisciplineHeroTier` 6) from `LineDisciplineRanksT0`-`T6` 6 / 5 / 4 / 3 / 2 / 1 / 1, D = the
+his tier (`GetBattleTier`, 7 → 6; heroes as `LineDisciplineHeroTier` 6) from `LineDisciplineRanksT0`-`T6` 6 / 5 / 4 / 3 / 2 / 1 / 1 (7 / 6 / 5 / 4 / 3 / 2 / 1 since step 74 - config format 16), D = the
 formation's MEAN, its line at most ceil(men ÷ D) files (never below the game's √men; a fractional D = a partly filled last rank - 100 at 3.5 → 29
 files, the 4th rank 45 %); every line / shield wall / loose / scatter formation (not mounted, squares, circles, columns, wedges; ranged by
 `LineDisciplineRangedToo`; never naval; sieges by `LineDisciplineInSieges`) wider than that is narrowed in the logic's PRE-TICK (right after the
