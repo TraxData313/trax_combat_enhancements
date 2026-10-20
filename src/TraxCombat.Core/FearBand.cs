@@ -176,6 +176,28 @@ namespace TraxCombat.Core
 
         private readonly int[] _measure = new int[FearBandMath.MeasureFiles];
 
+        // step 74: the block the band must sit in (its centre as a world point, its half-width; NaN time = none)
+        private readonly double[] _blkAt = new double[Nb], _blkX = new double[Nb], _blkY = new double[Nb], _blkHalf = new double[Nb];
+
+        /// <summary>Step 74: the band publishes that were narrowed / moved to sit inside their unit's block.</summary>
+        public long BandBlockClamps;
+
+        /// <summary>Step 74: the unit's block (the block hold's frame): the band sits inside its width around its centre line.</summary>
+        public void SetBlock(int key, double now, double cx, double cy, double halfWidth)
+        {
+            if (key < 0 || key >= Nb || double.IsNaN(cx) || double.IsNaN(cy) || !(halfWidth > 0)) return;
+            _blkAt[key] = now;
+            _blkX[key] = cx;
+            _blkY[key] = cy;
+            _blkHalf[key] = halfWidth;
+        }
+
+        /// <summary>Step 74: no block for this unit (not held, off).</summary>
+        public void ClearBlock(int key)
+        {
+            if (key >= 0 && key < Nb) _blkAt[key] = double.NaN;
+        }
+
         // published
         public readonly bool[] BandValid = new bool[Nb];
         public readonly double[] BandUX = new double[Nb], BandUY = new double[Nb];
@@ -196,6 +218,7 @@ namespace TraxCombat.Core
             {
                 ClearBandPeriod(k);
                 _efAt[k] = double.NaN;
+                _blkAt[k] = double.NaN; // step 74
                 _hasFront[k] = false;
                 BandValid[k] = false;
                 OwnFront[k] = EnemyFrontAlong[k] = double.NaN;
@@ -347,6 +370,29 @@ namespace TraxCombat.Core
             double frontage = ef ? _efw[k] : double.NaN;
             double width = FearBandMath.Width(in r, Men[k], ranks, frontage);
             double centre = ef ? FearBandMath.LateralCentre(mE, _efx[k] * ex + _efy[k] * ey, frontage, width) : mE;
+            if (!double.IsNaN(_blkAt[k]) && now - _blkAt[k] <= FearMath.StaleSeconds && now >= _blkAt[k] - 1e-9 && _blkHalf[k] > 0)
+            {
+                // step 74: the frightened band sits INSIDE its block - never wider than the block, never beyond its sides
+                double hw = _blkHalf[k], bc = _blkX[k] * ex + _blkY[k] * ey;
+                bool clamped = false;
+                if (width > 2 * hw)
+                {
+                    width = 2 * hw;
+                    clamped = true;
+                }
+                double room = hw - width / 2;
+                if (centre < bc - room)
+                {
+                    centre = bc - room;
+                    clamped = true;
+                }
+                else if (centre > bc + room)
+                {
+                    centre = bc + room;
+                    clamped = true;
+                }
+                if (clamped) BandBlockClamps++;
+            }
             int files = FearBandMath.Files(width, r.BandFileMetres);
             double fileW = width / files;
             BandValid[k] = true;

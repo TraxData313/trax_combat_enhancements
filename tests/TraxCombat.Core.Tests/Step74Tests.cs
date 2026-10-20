@@ -93,3 +93,258 @@ public class Step74MapTests
         Assert.Equal(OldMap[1], SettingsSchema.LineDisciplineRanksT1.Default, 9); // DESIGN's initial value stays step 73's
     }
 }
+
+/// <summary>
+/// Step 74 - part 2: THE BLOCK HOLD (a formation of low line discipline keeps its block in a charge and the last metres of an advance) and THE
+/// BLOCK DIAGNOSTIC: the settings, the switches (the master switch first, step 73's, the hold's own), the strength by D, the rule (across, ahead,
+/// behind, the striker, the hysteresis), the unit table's frame (the median centre line a trail cannot drag, the percentiles, the speed, the
+/// first contact), the diagnostic's bins and the summary lines.
+/// </summary>
+public class Step74BlockHoldTests
+{
+    private static readonly ParamDef[] New =
+    {
+        SettingsSchema.LineBlockHoldEnabled, SettingsSchema.LineBlockSlackMetres, SettingsSchema.LineBlockFullAtDepth, SettingsSchema.LineBlockLooseMetres,
+        SettingsSchema.LineBlockRankMetres, SettingsSchema.LineBlockAheadMetres, SettingsSchema.LineBlockStrikeReachMetres, SettingsSchema.LineBlockStrikeLeashMetres,
+        SettingsSchema.LineBlockNearMetres, SettingsSchema.LineBlockLeadMetres, SettingsSchema.LineBlockMopUpWinPercent,
+    };
+
+    private static BlockHoldRules Rules(Action<TraxSettings>? tune = null)
+    {
+        var s = new TraxSettings();
+        tune?.Invoke(s);
+        return BlockHoldRules.From(s);
+    }
+
+    [Fact]
+    public void The_eleven_settings_sit_after_the_line_discipline_ones_on_the_Advanced_page_all_live()
+    {
+        var all = SettingsSchema.All.ToList();
+        int first = all.IndexOf(SettingsSchema.LineDisciplinePollSeconds) + 1;
+        for (int i = 0; i < New.Length; i++)
+        {
+            Assert.Equal(first + i, all.IndexOf(New[i]));
+            Assert.Same(SettingsSchema.LineDisciplineGroup, New[i].Group);
+            Assert.Equal(SettingsPage.Advanced, New[i].Group.Page);
+            Assert.Equal(ApplyTiming.Live, New[i].Timing);
+            Assert.DoesNotContain(New[i], SettingsSchema.PlayerPage);
+        }
+        var r = Rules();
+        Assert.True(r.On);
+        Assert.Equal(2, r.SlackMetres, 9);
+        Assert.Equal(3, r.FullAtDepth, 9);
+        Assert.Equal(10, r.LooseMetres, 9);
+        Assert.Equal(1.2, r.RankMetres, 5);
+        Assert.Equal(3, r.AheadMetres, 9);
+        Assert.Equal(2.5, r.StrikeReachMetres, 9);
+        Assert.Equal(2, r.StrikeLeashMetres, 9);
+        Assert.Equal(30, r.NearMetres, 9);
+        Assert.Equal(1.5, r.LeadMetres, 9);
+        Assert.Equal(50, r.MopUpWinPercent, 9);
+        var s = new TraxSettings();
+        s.Set(SettingsSchema.LineBlockSlackMetres, 5.0, "test");
+        Assert.Equal(5, BlockHoldRules.From(s).SlackMetres, 9); // live: the next rules read it
+    }
+
+    [Fact]
+    public void The_master_switch_first_then_step_73s_then_its_own()
+    {
+        var off = Rules(s => s.Set(SettingsSchema.ModEnabled, false, "test"));
+        Assert.False(off.On);
+        Assert.Equal("ModEnabled", off.OffBecause);
+        var lines = Rules(s => s.Set(SettingsSchema.LineDisciplineEnabled, false, "test"));
+        Assert.False(lines.On);
+        Assert.Equal("LineDisciplineEnabled", lines.OffBecause);
+        var own = Rules(s => s.Set(SettingsSchema.LineBlockHoldEnabled, false, "test"));
+        Assert.False(own.On);
+        Assert.Equal("LineBlockHoldEnabled", own.OffBecause);
+        var mine = Rules(s => s.Set(SettingsSchema.LineDisciplineForPlayer, false, "test"));
+        Assert.True(mine.On);
+        Assert.False(mine.PlayerOn);
+        Assert.Contains("- OFF (LineBlockHoldEnabled)", own.Describe(), StringComparison.Ordinal);
+        Assert.EndsWith("- ON", Rules().Describe(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void The_hold_scales_with_D_elites_free()
+    {
+        var r = Rules();
+        Assert.Equal(0, BlockHoldMath.Strength(in r, 1.0), 9);
+        Assert.Equal(0, BlockHoldMath.Strength(in r, double.NaN), 9);
+        Assert.Equal(0.5, BlockHoldMath.Strength(in r, 2.0), 9); // veterans on the new map
+        Assert.Equal(1, BlockHoldMath.Strength(in r, 3.0), 9);
+        Assert.Equal(1, BlockHoldMath.Strength(in r, 6.0), 9); // recruits
+        Assert.Equal(27 + 2, BlockHoldMath.Allowance(in r, 27, 1), 9);
+        Assert.Equal(27 + 2 + 5, BlockHoldMath.Allowance(in r, 27, 0.5), 9);
+        Assert.Equal(27 + 2 + 10, BlockHoldMath.Allowance(in r, 27, 0), 9);
+        Assert.Equal(6, BlockHoldMath.Ranks(180, 30)); // 180 men in 30 files = 6 ranks x 1.2 m
+        Assert.Equal(7.2, BlockHoldMath.Depth(in r, 180, 30), 5);
+        Assert.Equal(6, BlockHoldMath.Ranks(176, 30)); // a partly filled last rank counts
+    }
+
+    [Fact]
+    public void Tonis_recruits_the_flank_runner_the_one_ahead_the_straggler_and_the_fighters()
+    {
+        var r = Rules();
+        double half = 22, depth = 7.2; // 180 T1 at D 6: 30 files, ~44 m at 1.5 m a file
+        Assert.Equal(BlockPull.None, BlockHoldMath.Decide(in r, 1, half, depth, 20, 0, double.NaN, false, out _, out _, out bool st0));
+        Assert.False(st0);
+        // round the right flank, 30 m out: pulled back to 23 m (the allowance 24 less the 1 m inside)
+        Assert.Equal(BlockPull.Lateral, BlockHoldMath.Decide(in r, 1, half, depth, 30, 2, double.NaN, false, out double l1, out double a1, out _));
+        Assert.Equal(23, l1, 9);
+        Assert.Equal(2, a1, 9);
+        Assert.Equal(BlockPull.Lateral, BlockHoldMath.Decide(in r, 1, half, depth, -40, 0, double.NaN, false, out double l2, out _, out _));
+        Assert.Equal(-23, l2, 9);
+        // 10 m ahead of the median (the front 3.6 + 3): held back to 5.6
+        Assert.Equal(BlockPull.Ahead, BlockHoldMath.Decide(in r, 1, half, depth, 0, 10, double.NaN, false, out _, out double a3, out _));
+        Assert.Equal(5.6, a3, 9);
+        // ... but with an enemy at 2 m he fights
+        Assert.Equal(BlockPull.None, BlockHoldMath.Decide(in r, 1, half, depth, 0, 8, 2.0, false, out _, out _, out bool st4));
+        Assert.True(st4);
+        // a fighter on the flank just past the allowance (24 + 1.5) fights; 6 m past it (round the flank) is walked back
+        Assert.Equal(BlockPull.None, BlockHoldMath.Decide(in r, 1, half, depth, 25.5, 0, 2.0, false, out _, out _, out bool st5));
+        Assert.True(st5);
+        Assert.Equal(BlockPull.Lateral, BlockHoldMath.Decide(in r, 1, half, depth, 30, 0, 2.0, false, out _, out _, out bool st6));
+        Assert.False(st6);
+        // a straggler 12 m behind the median (the rear 3.6 + 2): pulled forward to -4.6
+        Assert.Equal(BlockPull.Behind, BlockHoldMath.Decide(in r, 1, half, depth, 0, -12, double.NaN, false, out _, out double a7, out _));
+        Assert.Equal(-4.6, a7, 9);
+        // the hysteresis: a man being pulled is let go only 1 m inside the allowance
+        Assert.Equal(BlockPull.Lateral, BlockHoldMath.Decide(in r, 1, half, depth, 23.5, 0, double.NaN, true, out _, out _, out _));
+        Assert.Equal(BlockPull.None, BlockHoldMath.Decide(in r, 1, half, depth, 22.9, 0, double.NaN, true, out _, out _, out _));
+        Assert.Equal(BlockPull.None, BlockHoldMath.Decide(in r, 1, half, depth, 23.5, 0, double.NaN, false, out _, out _, out _));
+        // a looser block (veterans, s 0.5) lets the same man stand
+        Assert.Equal(BlockPull.None, BlockHoldMath.Decide(in r, 0.5, half, depth, 27, 0, double.NaN, false, out _, out _, out _));
+        var never = Rules(s => s.Set(SettingsSchema.LineBlockStrikeReachMetres, 0.0, "test"));
+        Assert.Equal(BlockPull.Ahead, BlockHoldMath.Decide(in never, 1, half, depth, 0, 8, 1.0, false, out _, out _, out _));
+        // the lead: only while the block moves forward
+        Assert.Equal(1.5, BlockHoldMath.Lead(in r, 3), 9);
+        Assert.Equal(0, BlockHoldMath.Lead(in r, 0.1), 9);
+    }
+
+    private static void Man(BlockUnits t, int key, double x, double y, double slot = double.NaN, double enemy = double.NaN) => t.Note(key, x, y, 0, 1, slot, enemy);
+
+    [Fact]
+    public void The_unit_table_a_median_centre_line_a_trail_cannot_drag_the_spread_the_speed_the_first_contact()
+    {
+        var r = Rules();
+        var t = new BlockUnits();
+        int key = FearMath.UnitKey(1, 0);
+        var pub = new int[FearMath.UnitCount];
+        Assert.False(t.Due(0)); // arms the clock
+        // 150 men in a 30 x 5 block (x -21.75..21.75) and a trail of 30 to the east (x 30..59)
+        for (int f = 0; f < 30; f++)
+            for (int k = 0; k < 5; k++) Man(t, key, -21.75 + f * 1.5, -k * 1.2, slot: 0.5);
+        for (int i = 0; i < 30; i++) Man(t, key, 30 + i, -2, slot: 10);
+        t.NoteCap(key, 0.5, true, 6, 30, 44, 180, false, true);
+        Assert.True(t.Due(0.5));
+        Assert.Equal(1, t.Publish(0.5, in r, null, pub));
+        Assert.Equal(key, pub[0]);
+        Assert.True(t.Live(key, 0.5));
+        Assert.Equal(180, t.Men[key]);
+        Assert.Equal(1, t.UY[key], 9); // the facing (no band): north
+        // the lateral = position . e, e = (-uy, ux) = (-1, 0): the block alone would centre at 0; the trail shifts the median by under 5 m (the mean: 6.5 m)
+        Assert.InRange(t.CentreLat[key], -5, 0);
+        Assert.InRange(t.LatMax[key] - t.LatMin[key], 80, 82);
+        Assert.Equal(30 / 180.0, t.OutOfSlot[key], 9);
+        Assert.False(t.InContact[key]);
+        Assert.True(double.IsNaN(t.FirstContact[key]));
+        t.Frame(key, 0.5, 59, -2, out double lat, out _);
+        Assert.True(Math.Abs(lat) > 50); // the trail's last man far beyond any allowance
+        // the next period: the block and its trail walked 2 m north (4 m/s), one man in contact
+        for (int f = 0; f < 30; f++)
+            for (int k = 0; k < 5; k++) Man(t, key, -21.75 + f * 1.5, 2 - k * 1.2, enemy: f == 15 && k == 0 ? 1.5 : double.NaN);
+        for (int i = 0; i < 30; i++) Man(t, key, 30 + i, 0);
+        Assert.Equal(1, t.Publish(1.0, in r, null, pub));
+        Assert.Equal(4, t.Speed[key], 1);
+        Assert.True(t.InContact[key]);
+        Assert.Equal(1.0, t.FirstContact[key], 9);
+        Assert.True(t.Near[key]);
+        // a place moves with the block (extrapolated by its speed)
+        t.World(key, 1.0, 0, 0, out double x0, out double y0);
+        t.World(key, 1.5, 0, 0, out double x1, out double y1);
+        Assert.Equal(2, y1 - y0, 6);
+        Assert.Equal(0, x1 - x0, 6);
+        // too few men: no frame
+        var small = new BlockUnits();
+        small.Due(0);
+        for (int i = 0; i < 4; i++) Man(small, key, i, 0);
+        small.Publish(0.5, in r, null, pub);
+        Assert.False(small.Live(key, 0.5));
+    }
+
+    [Fact]
+    public void Quantiles_of_sorted_values()
+    {
+        var v = new double[] { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
+        Assert.Equal(5, BlockHoldMath.Quantile(v, 11, 0.5), 9);
+        Assert.Equal(1, BlockHoldMath.Quantile(v, 11, 0.1), 9);
+        Assert.Equal(9, BlockHoldMath.Quantile(v, 11, 0.9), 9);
+        Assert.Equal(0.5, BlockHoldMath.Quantile(new double[] { 0, 1 }, 2, 0.5), 9);
+        Assert.True(double.IsNaN(BlockHoldMath.Quantile(v, 0, 0.5)));
+    }
+
+    [Fact]
+    public void The_diagnostic_bins_by_the_time_from_first_contact_and_says_the_order_and_behaviour()
+    {
+        Assert.Equal(0, BlockShapeStats.BinOf(-30));
+        Assert.Equal(3, BlockShapeStats.BinOf(-1));
+        Assert.Equal(4, BlockShapeStats.BinOf(0));
+        Assert.Equal(8, BlockShapeStats.BinOf(100));
+        Assert.Equal("-5..0 s", BlockShapeStats.BinName(3));
+        Assert.Equal("0..+5 s", BlockShapeStats.BinName(4));
+        Assert.Equal("after +60 s", BlockShapeStats.BinName(8));
+        var r = Rules();
+        var t = new BlockUnits();
+        var shape = new BlockShapeStats();
+        int key = FearMath.UnitKey(1, 0);
+        var pub = new int[FearMath.UnitCount];
+        t.Due(0);
+        double now = 0;
+        for (int step = 0; step < 40; step++)
+        {
+            now += 0.5;
+            bool charge = now > 9.5;
+            double wide = charge ? 2.4 : 1.5; // the charge spreads them
+            for (int f = 0; f < 30; f++)
+                for (int k = 0; k < 6; k++) Man(t, key, (f - 15) * wide, now - k * 1.2, slot: charge ? 5 : 0.5, enemy: now >= 12 && f == 15 && k == 0 ? 1 : double.NaN);
+            t.NoteCap(key, now, true, 6, 30, 44, 180, false, true);
+            t.NoteFormation(key, now, charge ? "Charge" : "Move", charge ? "BehaviorTacticalCharge" : "BehaviorAdvance", "Line", 44);
+            t.Publish(now, in r, null, pub);
+            var u = shape.For(key, "the enemy's Infantry", false, true)!;
+            shape.Add(u, t, key, now);
+        }
+        var lines = new System.Collections.Generic.List<string>();
+        shape.AddSummaryLines(lines);
+        Assert.Equal(2, lines.Count);
+        Assert.StartsWith("block shape (step 74 diagnostic", lines[0], StringComparison.Ordinal);
+        Assert.Contains("block shape, the enemy's Infantry (the other side, AI): first contact at 12.0 s", lines[1], StringComparison.Ordinal);
+        Assert.Contains("-5..0 s: Move / BehaviorAdvance / Line 60%, Charge / BehaviorTacticalCharge / Line 40%", lines[1], StringComparison.Ordinal);
+        Assert.Contains("0..+5 s: Charge / BehaviorTacticalCharge / Line 100%; width 55.7 m", lines[1], StringComparison.Ordinal);
+        Assert.Contains("the game's 44.0 m vs the cap 44.0 m, out of slots 100%", lines[1], StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void The_summary_lines_both_sides_ON_and_OFF_before_and_after_contact()
+    {
+        var stats = new BlockHoldStats();
+        var them = stats.Side(false);
+        for (int i = 0; i < 90; i++) them.AddOffset(true, false, i % 2 == 0 ? 10 : -10, 22, 24);
+        for (int i = 0; i < 10; i++) them.AddOffset(true, false, 30, 22, 24);
+        them.Pulls[(int)BlockPull.Lateral] = 12;
+        them.PulledMen = 9;
+        them.PulledSeconds = 20.5;
+        them.Ends[(int)BlockEnd.BackInside] = 11;
+        them.LookKinds[(int)BlockLookKind.Inside] = 88;
+        Assert.Equal(12, them.MeanOffset(true, false), 9);
+        Assert.Equal(0.1, them.BeyondShare(true, false), 9);
+        var lines = new System.Collections.Generic.List<string>();
+        stats.AddSummaryLines(lines, Rules());
+        Assert.Equal(3, lines.Count);
+        Assert.StartsWith("block hold (step 74): ON at the end", lines[0], StringComparison.Ordinal);
+        Assert.StartsWith("block hold (step 74), your side", lines[1], StringComparison.Ordinal);
+        Assert.Contains("ON before contact mean 12.0 m of 22.0 m, p90 0.50 x the half-width, the farthest 30.0 m, beyond the allowance 10.0% (100 looks)", lines[2], StringComparison.Ordinal);
+        Assert.Contains("PULLED IN 12 times by 9 men (round the flank 12, ahead of the front 0, behind the rear 0), 20.5 man-s; ends: back inside 11;", lines[2], StringComparison.Ordinal);
+        Assert.Contains("OFF before - (no looks)", lines[2], StringComparison.Ordinal);
+    }
+}

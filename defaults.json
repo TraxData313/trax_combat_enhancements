@@ -2185,6 +2185,67 @@
   // (range 0.25 to 10.0)
   "LineDisciplinePollSeconds": 1.0,
 
+  // A formation held to a minimum depth here (green troops - the depth above 1) keeps its BLOCK
+  // when it charges and in the last metres of an advance: each man stays within the block's
+  // width (its men at the limit above x their spacing) across its front and within its depth,
+  // around its centre line toward the enemy. A man who runs round the flank, trails along the
+  // edge, runs ahead or straggles is walked back by his own input, facing the enemy - the block
+  // still goes into contact at its own pace, and its front men fight. Elites (a depth of 1) are
+  // free. Both sides; your units by "Line discipline: your units too" (the player page). Off:
+  // the game's own charge - every man runs at his own target.
+  // (true or false)
+  "LineBlockHoldEnabled": true,
+
+  // How far a man may stand past the block's half-width across its front (and behind its rear)
+  // before he is walked back - at the full hold (a depth of 3 and more).
+  // (range 0.0 to 20.0)
+  "LineBlockSlackMetres": 2.0,
+
+  // The minimum depth at which the hold is full; between 1 (free) and this the block is looser
+  // (see the next setting). 3: recruits and tier-2 / tier-3 men are held fully, tier-4 men (3)
+  // fully, veterans (2) half.
+  // (range 1.5 to 12.0)
+  "LineBlockFullAtDepth": 3.0,
+
+  // The extra room of a block that is only just held (a depth just above 1), shrinking to 0 at
+  // the full-hold depth: a looser block for better troops.
+  // (range 0.0 to 60.0)
+  "LineBlockLooseMetres": 10.0,
+
+  // The depth of one rank of the block: it is ranks x this deep (its men ÷ its files).
+  // (range 0.5 to 3.0)
+  "LineBlockRankMetres": 1.2,
+
+  // How far a man may run ahead of the block's front with no enemy within reach before he is
+  // held back for the block to come up.
+  // (range 0.0 to 20.0)
+  "LineBlockAheadMetres": 3.0,
+
+  // A man with an enemy this close fights as the game has him - unless he stands more than the
+  // next setting beyond the block. 0 = never free.
+  // (range 0.0 to 6.0)
+  "LineBlockStrikeReachMetres": 2.5,
+
+  // A fighting man is left to fight while he stands no more than this beyond the block's room;
+  // farther out (round the flank, behind the enemy) he is walked back.
+  // (range 0.0 to 10.0)
+  "LineBlockStrikeLeashMetres": 2.0,
+
+  // An advance, move or hold is held as a block once the enemy's front is this close (a charge
+  // always).
+  // (range 0.0 to 200.0)
+  "LineBlockNearMetres": 30.0,
+
+  // A man walked back aims this far ahead of his place while the block advances, so he keeps
+  // pace with it instead of stopping.
+  // (range 0.0 to 6.0)
+  "LineBlockLeadMetres": 1.5,
+
+  // The block lets its men go when they win this much (the fear flock's win: 100% = 2 : 1 local
+  // odds or a broken enemy) - they chase the beaten.
+  // (range 0.0 to 100.0)
+  "LineBlockMopUpWinPercent": 50.0,
+
   // ==================== Advanced ====================
   // How often your Athletics bar, the orders-menu strip and the numbers under the formation
   // markers update, in seconds. Lower is smoother and costs a little more. The markers' numbers

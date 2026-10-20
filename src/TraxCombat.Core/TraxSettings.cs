@@ -599,6 +599,17 @@ namespace TraxCombat.Core
         public bool LineDisciplinePreviewCap => GetBool(SettingsSchema.LineDisciplinePreviewCap);
         public bool LineDisciplineShowMessage => GetBool(SettingsSchema.LineDisciplineShowMessage);
         public float LineDisciplinePollSeconds => GetFloat(SettingsSchema.LineDisciplinePollSeconds);
+        public bool LineBlockHoldEnabled => GetBool(SettingsSchema.LineBlockHoldEnabled);
+        public float LineBlockSlackMetres => GetFloat(SettingsSchema.LineBlockSlackMetres);
+        public float LineBlockFullAtDepth => GetFloat(SettingsSchema.LineBlockFullAtDepth);
+        public float LineBlockLooseMetres => GetFloat(SettingsSchema.LineBlockLooseMetres);
+        public float LineBlockRankMetres => GetFloat(SettingsSchema.LineBlockRankMetres);
+        public float LineBlockAheadMetres => GetFloat(SettingsSchema.LineBlockAheadMetres);
+        public float LineBlockStrikeReachMetres => GetFloat(SettingsSchema.LineBlockStrikeReachMetres);
+        public float LineBlockStrikeLeashMetres => GetFloat(SettingsSchema.LineBlockStrikeLeashMetres);
+        public float LineBlockNearMetres => GetFloat(SettingsSchema.LineBlockNearMetres);
+        public float LineBlockLeadMetres => GetFloat(SettingsSchema.LineBlockLeadMetres);
+        public float LineBlockMopUpWinPercent => GetFloat(SettingsSchema.LineBlockMopUpWinPercent);
 
         public float HudRefreshSeconds => GetFloat(SettingsSchema.HudRefreshSeconds);
         public int PlayerBarWidth => GetInt(SettingsSchema.PlayerBarWidth);

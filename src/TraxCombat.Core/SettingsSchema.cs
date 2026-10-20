@@ -1689,6 +1689,53 @@ namespace TraxCombat.Core
             "Recount the depth every (s)",
             "How often each formation's minimum depth is recounted from its men's tiers; at once anyway when men fall, join or leave it. The width itself is checked every frame.");
 
+        // step 74: THE BLOCK HOLD - a formation of low line discipline keeps its block in a charge and the last metres of an advance (Toni's battle
+        // 2026-10-20 20:30). Core BlockHoldMath, AI_NOTES "Step 74", DESIGN decision 68.
+
+        public static readonly ParamDef LineBlockHoldEnabled = Bool("LineBlockHoldEnabled", LineDisciplineGroup,
+            "The block holds into contact",
+            "A formation held to a minimum depth here (green troops - the depth above 1) keeps its BLOCK when it charges and in the last metres of an advance: each man stays within the block's width (its men at the limit above x their spacing) across its front and within its depth, around its centre line toward the enemy. A man who runs round the flank, trails along the edge, runs ahead or straggles is walked back by his own input, facing the enemy - the block still goes into contact at its own pace, and its front men fight. Elites (a depth of 1) are free. Both sides; your units by \"Line discipline: your units too\" (the player page). Off: the game's own charge - every man runs at his own target.");
+
+        public static readonly ParamDef LineBlockSlackMetres = Float("LineBlockSlackMetres", 0, 20, LineDisciplineGroup,
+            "Block: room past its width (m)",
+            "How far a man may stand past the block's half-width across its front (and behind its rear) before he is walked back - at the full hold (a depth of 3 and more).");
+
+        public static readonly ParamDef LineBlockFullAtDepth = Float("LineBlockFullAtDepth", 1.5, 12, LineDisciplineGroup,
+            "Block: full hold from depth",
+            "The minimum depth at which the hold is full; between 1 (free) and this the block is looser (see the next setting). 3: recruits and tier-2 / tier-3 men are held fully, tier-4 men (3) fully, veterans (2) half.");
+
+        public static readonly ParamDef LineBlockLooseMetres = Float("LineBlockLooseMetres", 0, 60, LineDisciplineGroup,
+            "Block: extra room when barely held (m)",
+            "The extra room of a block that is only just held (a depth just above 1), shrinking to 0 at the full-hold depth: a looser block for better troops.");
+
+        public static readonly ParamDef LineBlockRankMetres = Float("LineBlockRankMetres", 0.5, 3, LineDisciplineGroup,
+            "Block: one rank deep (m)",
+            "The depth of one rank of the block: it is ranks x this deep (its men ÷ its files).");
+
+        public static readonly ParamDef LineBlockAheadMetres = Float("LineBlockAheadMetres", 0, 20, LineDisciplineGroup,
+            "Block: run ahead at most (m)",
+            "How far a man may run ahead of the block's front with no enemy within reach before he is held back for the block to come up.");
+
+        public static readonly ParamDef LineBlockStrikeReachMetres = Float("LineBlockStrikeReachMetres", 0, 6, LineDisciplineGroup,
+            "Block: free to fight within (m)",
+            "A man with an enemy this close fights as the game has him - unless he stands more than the next setting beyond the block. 0 = never free.");
+
+        public static readonly ParamDef LineBlockStrikeLeashMetres = Float("LineBlockStrikeLeashMetres", 0, 10, LineDisciplineGroup,
+            "Block: a fighter beyond it at most (m)",
+            "A fighting man is left to fight while he stands no more than this beyond the block's room; farther out (round the flank, behind the enemy) he is walked back.");
+
+        public static readonly ParamDef LineBlockNearMetres = Float("LineBlockNearMetres", 0, 200, LineDisciplineGroup,
+            "Block: hold an advance within (m)",
+            "An advance, move or hold is held as a block once the enemy's front is this close (a charge always).");
+
+        public static readonly ParamDef LineBlockLeadMetres = Float("LineBlockLeadMetres", 0, 6, LineDisciplineGroup,
+            "Block: a walked-back man leads it by (m)",
+            "A man walked back aims this far ahead of his place while the block advances, so he keeps pace with it instead of stopping.");
+
+        public static readonly ParamDef LineBlockMopUpWinPercent = Float("LineBlockMopUpWinPercent", 0, 100, LineDisciplineGroup,
+            "Block: let go when winning (%)",
+            "The block lets its men go when they win this much (the fear flock's win: 100% = 2 : 1 local odds or a broken enemy) - they chase the beaten.");
+
         // ------------------------------------------------------------------ advanced
 
         public static readonly ParamDef HudRefreshSeconds = Float("HudRefreshSeconds", 0.02, 1, AdvancedGroup,
@@ -1913,6 +1960,7 @@ namespace TraxCombat.Core
             OrderNoAccidentalCharge, OrderChargeDragPixels, OrderChargeIconPixels,
             LineDisciplineEnabled, LineDisciplineRanksT0, LineDisciplineRanksT1, LineDisciplineRanksT2, LineDisciplineRanksT3, LineDisciplineRanksT4, LineDisciplineRanksT5,
             LineDisciplineRanksT6, LineDisciplineHeroTier, LineDisciplineRangedToo, LineDisciplineInSieges, LineDisciplinePreviewCap, LineDisciplineShowMessage, LineDisciplinePollSeconds,
+            LineBlockHoldEnabled, LineBlockSlackMetres, LineBlockFullAtDepth, LineBlockLooseMetres, LineBlockRankMetres, LineBlockAheadMetres, LineBlockStrikeReachMetres, LineBlockStrikeLeashMetres, LineBlockNearMetres, LineBlockLeadMetres, LineBlockMopUpWinPercent,
             HudRefreshSeconds, PlayerBarWidth, PlayerBarHeight, PlayerBarOffsetRight, PlayerBarOffsetBottom,
             RecoveryBarWidth, RecoveryBarHeight, RecoveryBarOffsetAbove, SprintBarOffsetAbove,
             OrderStripTextSize, OrderStripTextOffset, OrderStripBarOffset, OrderStripBarHeight, OrderStripReadyOffset, OrderStripSideMargin,
