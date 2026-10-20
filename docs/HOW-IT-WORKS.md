@@ -335,7 +335,9 @@ barely 2 deep; 60 veterans no thinner than 2 deep; elites may stand in one long 
 whatever their general wants - no more green mass two men deep wrapping round your army - and as men fall the line closes up to stay deep
 enough. Yours keep to it too: drag a line wider than your men can hold and it simply stops growing at their limit, with a line on screen
 saying why. Cavalry, squares and circles are left alone. You can turn it off for your own units on the main page (*Line discipline: your
-units too*); the ranks per tier are on the Advanced page (*Line discipline by tier*).
+units too*); the ranks per tier are on the Advanced page (*Line discipline by tier*). And the block holds right into the clash: when the AI
+throws such a formation into its final charge, its men no longer scatter into a wide crowd or trail round your flank - a man who runs out
+of the block is walked back into it, while its front still hits you at full speed.
 
 Numbers: [MECHANICS §14c](MECHANICS.md#14c-line-discipline-green-troops-cannot-hold-a-thin-line).
 

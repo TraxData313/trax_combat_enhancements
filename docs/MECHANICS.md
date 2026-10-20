@@ -1420,10 +1420,31 @@ narrower than the game's own √men), at its own spacing. Rounding up gives a pa
 - **With the rest of the mod**: the fear flock (§11b1) and its band move frightened men from the places the narrowed line gives them - a
   deeper block simply has more ranks to compress; the shield wall (§10) holds the narrowed slots.
 
+**The block holds into contact (step 74).** When the game's AI goes for the last rush it gives a formation wider than the enemy a CHARGE
+order, and under a charge the formation's places hold nobody - every man runs at his own target, the flank men round the enemy's ends. A
+formation held to a depth above 1 now keeps its BLOCK in a charge, and in an advance once the enemy is within 30 m: each man stays within the
+block's width (the limit above at its spacing) and its depth, around its centre line toward the enemy; a man beyond it is walked back facing the
+enemy, his place moving with the block - so the block still arrives at its own speed and its front men fight.
+
+| The block | D | The hold | A man is walked back beyond (across the front, from the centre line) | Ahead of its front | Behind its rear |
+|---|---|---|---|---|---|
+| 180 recruits (T1), 30 files at 1.5 m = 44 m | 6.0 | full | 24 m (22 + 2) | 3 m (+ 3.6 m half its 6 ranks of 1.2 m) | 2 m |
+| 120 recruits, 20 files = 29 m | 6.0 | full | 16.5 m | 3 m | 2 m |
+| 60 veterans (T5), 30 files = 44 m | 2.0 | half | 29 m (22 + 2 + 5) | 8 m | 7 m |
+| 60 elites (T6) | 1.0 | none | never held | - | - |
+
+- **Who still moves freely**: every man inside the block (the game's charge drives him); a man with an enemy within 2.5 m fights, unless he
+  stands more than 2 m beyond the block (round the flank, behind the enemy); everyone once the block is winning clearly (the enemy beaten).
+- **Who comes first**: a step back, the shield wall, courage's walk back and the fear flock move a man before the block does - and the fear
+  flock's band now sits inside the block's width.
+- **Both sides**, your units too while *Line discipline: your units too* is on; never you yourself.
+
 <sub>Settings: *Line discipline: your units too* (player page, How the AI fights) = `LineDisciplineForPlayer` (on); Advanced page, *Line
 discipline by tier*: `LineDisciplineEnabled` (on), `LineDisciplineRanksT0`-`LineDisciplineRanksT6` 7 / 6 / 5 / 4 / 3 / 2 / 1 (step 74; step 73 shipped 6 / 5 / 4 / 3 / 2 / 1 / 1),
 `LineDisciplineHeroTier` 6, `LineDisciplineRangedToo` (on), `LineDisciplineInSieges` (off), `LineDisciplinePreviewCap` (on),
-`LineDisciplineShowMessage` (on), `LineDisciplinePollSeconds` 1.</sub>
+`LineDisciplineShowMessage` (on), `LineDisciplinePollSeconds` 1; step 74: `LineBlockHoldEnabled` (on), `LineBlockSlackMetres` 2,
+`LineBlockFullAtDepth` 3, `LineBlockLooseMetres` 10, `LineBlockRankMetres` 1.2, `LineBlockAheadMetres` 3, `LineBlockStrikeReachMetres` 2.5,
+`LineBlockStrikeLeashMetres` 2, `LineBlockNearMetres` 30, `LineBlockLeadMetres` 1.5, `LineBlockMopUpWinPercent` 50.</sub>
 
 ## 15. What you see on screen
 

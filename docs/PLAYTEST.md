@@ -1038,6 +1038,8 @@ Claude the `[summary] impact …` block of every battle.
 | 18 | **D37 - NO ACCIDENTAL CHARGE ORDERS** (step 72): any field battle with an enemy in view; the orders menu (hold the order key), your infantry selected | 5 | `[orders] first accidental charge turned into a MOVE`, `[orders] first deliberate charge KEPT`, `[summary] order clicks (step 72)` | a drag across / onto an enemy banner places your men (they walk / keep their sprint); a plain click ON the banner icon charges it; F1 F3 still charges what you look at | a drag still charging (`charges SLIPPED THROUGH` above 0, or `turned into moves` 0 after your drags) - tell Claude the line; a click right on the icon that does not charge (raise *Charge click: on the banner within* - Advanced page) |
 | 19 | **D38 - LINE DISCIPLINE BY TIER** (step 73): Toni's battle again - your ~60 tier-5 men against ~120 tier-1 recruits in a field battle; then a unit of your own recruits in the orders menu | 10 | `[lines] first clamp of an AI line`, `[lines] first capped arrangement`, `[lines] first time the game read a capped maximum width`, `[summary] line discipline` (3 lines + your orders) | the recruits come as a block about 5 deep (24 wide), never a 2-deep front wider than yours; dragging your own recruits wider, the line stops growing at their limit and a line on screen says so | the recruits still a thin wide front (`clamps applied` 0 on the other side - tell Claude the line); the drag still growing (`PREVIEW … installed but never read at a cap` after a wide drag - the order then narrowed after it: tell Claude) |
 
+| 20 | **D39 - THE GREEN BLOCK STAYS A BLOCK INTO CONTACT** (step 74): Toni's 20:30 battle again - ~180 tier-1 recruits charging your shorter line, ideally by a rock / on a slope; then the same on open ground | 10 | `[block] order / behaviour change of the enemy's Infantry`, `[block] FIRST CONTACT`, `[summary] block shape`, `[summary] block hold … the other side` | the recruits arrive as a ~6-deep block about 30 wide and hit your line as one; no trail round your flank; the [block] lines name what the AI did a few seconds before contact | a wide crowd again / a trail round the flank (`block hold … ON after contact` p90 well above 1.0 x the half-width - tell Claude the lines); the block stops short of your line (a stall) |
+
 Then play normally (parts E-G). Your gut on each family - too many / about right / too few - is the most useful thing to send.
 
 **D16. The impact spike - does the game follow each lever? (step 47, IMPACT I1, ~25 min - a DIAGNOSTIC, do it FIRST in the morning:
@@ -1804,6 +1806,26 @@ width and got the cap N times)`. **Wrong**: the recruits still a thin wide front
 had not taken yet` in the hundreds; the drag still growing while `PREVIEW … installed but never read at a cap` (then the order is narrowed
 right after you let go - say so); any `[error]` with `lines.` - tell Claude the line. **Too strict / too loose**: the ranks per tier on the
 Advanced page (*Line discipline by tier*); **off**: *Line discipline: your units too* (yours) or *Line discipline by tier* (everyone).
+
+**D39. THE GREEN BLOCK STAYS A BLOCK INTO CONTACT (step 74, ~10 min - one or two field battles; the defaults).** Toni 2026-10-20 20:30: the
+recruits came as a 5-deep block, then just before contact spread into a wide loose crowd with a trail wrapping round his right along a rock.
+The cause in the game's code: near contact the AI general's tactic switches the infantry from its advance to a TACTICAL CHARGE, and a
+formation wider than its enemy then gets a plain CHARGE order - no formation places, every man at his own target. Now a formation of low
+line discipline keeps its block anyway. (1) **The same battle**: ~180 tier-1 recruits against your ~100 infantry (a shorter line) + archers,
+the same map or any with a rock / slope on a flank. Watch the last 10 s before contact from above: the block keeps its ~6-deep shape and its
+width (~30 men, ~44 m), men drifting out sidestep back into it facing you, nobody trails round your flank; it hits your line at full pace.
+(2) **Open ground**: the same armies on a flat map (your second battle) - the block as before. (3) Optional A / B: *The block holds into
+contact* off (Advanced, *Line discipline by tier*) - the old crowd. **Log**: `[lines] mission start: the block hold (step 74): … - ON`;
+`[block] first look at the enemy's Infantry (the other side, AI) at … s (no contact yet): - → Move / BehaviorAdvance / Line - 180 men … m wide
+…`; THE CAUSE: `[block] order / behaviour change of the enemy's Infantry … (−N s from its first contact): Move / BehaviorAdvance / … → Charge /
+BehaviorTacticalCharge / …` (or a Loose arrangement, or nothing - say which); `[block] FIRST CONTACT of …`; `[block] first man walked back
+into his block …`. **[summary]** `block hold (step 74): ON at the end - …`; `block hold (step 74), the other side - … ON before contact mean …
+m of … m, p90 … x the half-width …, beyond the allowance …% | ON after contact … ; PULLED IN N times by M men (round the flank …)`; `block
+shape, the enemy's Infantry (the other side, AI): first contact at … s | −10..−5 s: Move / BehaviorAdvance / Line 100%; width … | −5..0 s: … |
+0..+5 s: Charge / BehaviorTacticalCharge / Line …; width …, out of slots …%`. **Wrong**: a trail round your flank with `PULLED IN` near 0 (the
+block not counted - `looks: not held by step 73` high: tell Claude); `ON after contact` p90 far above 1 with many pulls (the engine ignores the
+vector in a charge - tell Claude); the block stalling before your line; any `[error]` with `block.`. **Too strict / too loose**: *Block: room
+past its width*, *Block: full hold from depth* (Advanced, *Line discipline by tier*).
 
 ---
 

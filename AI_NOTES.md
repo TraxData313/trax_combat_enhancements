@@ -6598,3 +6598,143 @@ stand-in `IFormation`'s signatures carry `WorldPosition`).
 `run_guard.fsx` (OK - no forbidden assembly), the smoke in memory (`run_smoke.ps1`, all 167 passed), `install_dev.ps1` → Modules\TraxCombatEnhancements.Dev;
 `loadcheck.ps1`: both installed DLLs LOADED (`1.2.0+29a0354f…`): TraxCombatEnhancements.dll SHA-256 0310CFD3…2393, TraxCombat.Core.dll 1B691E57…B323.
 The game and the launcher were not running. Windows security untouched.
+
+## Step 74 — the green block stays a block into contact (built 2026-10-20; dev build only, not uploaded)
+
+**Toni's battle (2026-10-20 20:30, battle_terrain_b, 399 s; the step 73 build)**: 180 T1 recruits (D 5.0 on step 73's map, capped 48 → 36 files /
+54 m; 25 clamps, 23 auto-shrinks) against his 99 infantry + 50 archers + riders. Line discipline worked - they advanced as a ~5-deep block - but his
+screenshot shows them spread into a wide loose crowd just before contact, a trail wrapping round his right flank along a rock. The log:
+`fever armed: 287 (charge 107 - by you 107 / by the AI general 0; advance 180 - by you 0 / by the AI general 180); a different aggressive order on a
+running fever: … kept (more left than a fresh one) 174`; `sprint - AI: new orders seen - charge 5, advance 1, move 5`; `fear flock spells … flocking
+looks by order hold / move 1205, advance 6, charge 17286`; idle men the game 919 man-s, courage timid 407, fear flock 225; fear flock shape depth ÷
+width 0.45; the band 2.7 men a file; lone runners 39 man-s chasing a target behind the front. Toni's second battle on open ground (same evening):
+the recruits did NOT spread - the coordinator's note: terrain (the rock, the slope) or the tactic may decide it.
+
+**WHAT DISSOLVES THE BLOCK - proven from the v1.4.8 code (`%TEMP%\trax_decomp\TaleWorlds.MountAndBlade\TaleWorlds.MountAndBlade\`)**
+- `TacticFullScaleAttack.Advance()` gives the main infantry `BehaviorAdvance` (weight 1) - a plain `MovementOrderMove` to the enemy formation's
+  median + its depth ÷ 2 (its front): our order poll reads that as the AI's ADVANCE (`GameBraceBody.KindOf`: a Move under BehaviorAdvance) -
+  the log's "advance 180 by the AI general". The slots still hold the men: the block marches.
+- `HasBattleBeenJoined()` (distance ÷ the enemy's top speed ≤ 5 s, 10 s once joined) switches it to `Attack()`: `BehaviorAdvance` 1 AND
+  `BehaviorTacticalCharge` 1 (+ the defaults `BehaviorCharge` / `PullBack` / `Stop` / `Reserve`). `BehaviorTacticalCharge.GetAiWeight` = lerp(0.8, 1.0)
+  by the time to reach (10 → 4 s) × 1.2 (1.5-4 s out) × 1.2 (the enemy not targeting it) × the slope → above Advance's 1.0 in the last seconds.
+- Its CHARGING state (`CalculateCurrentOrder`): an infantry formation at least as wide as the enemy's (× 1.1 when not charging yet) gets
+  **`MovementOrder.MovementOrderCharge`**, else a Move to the enemy's median. The recruits' block (54 m) against Toni's infantry (≈ 25 m) → CHARGE.
+  `MovementOrderCharge` with no position = `MovementStateEnum.Charge`: `Formation.GetOrderPositionOfUnit` returns the order's position (no
+  arrangement slot), `OnApply` re-applies every agent's behaviour values for a charge (`RefreshBehaviorValues(Charge, …)`), each AI man runs at his
+  own target: THE SLOTS NO LONGER HOLD ANYONE - the block becomes a crowd. Step 73's width clamp has nothing to bite on (the line's width no longer
+  places men). In the log this charge is the 174 "kept" re-arms (a new aggressive order on a running fever is counted as kept, not armed - so
+  "charge by the AI general 0" did NOT mean no charge), the 5 new charge orders the sprint saw, and 17286 flock looks under a charge.
+- A second widener just before: `BehaviorAdvance.TickOccasionally` under RANGED FIRE (Toni's 50 archers) within 80 m of the enemy switches a melee
+  infantry formation WITHOUT shields to `ArrangementOrderLoose` (with shields: a shield wall) - a looser spacing, so step 73's cap (files × the
+  CURRENT spacing) gets wider in metres. The diagnostic logs the arrangement and the game's width beside the cap.
+- Then the men themselves: in a charge each AI man's target is his own (the nearest / a free enemy) - the flank men go round the enemy's ends,
+  the engine's avoidance and the navmesh (a rock, a slope) steer a stream along the obstacle: the TRAIL. Not readable from managed code; the
+  diagnostic's out-of-slot share and width per bin will show how much of it is the charge (on open ground the second battle did not spread - a
+  narrower enemy line or another tactic would not trigger the charge branch; the diagnostic will name the tactic's behaviour either way).
+- Not the cause: our courage / surge / fear flock / punish / sprint move men toward their own group or into contact, never sideways round a
+  flank (the lone-runner fix already caught "chasing a target behind the front"); the team's tactic class itself is protected
+  (`TeamAIComponent.CurrentTactic`) - not read (no reflection); the formation's ACTIVE BEHAVIOUR names it well enough.
+
+**74.0 THE MAP ONE RANK DEEPER (Toni, mid-step)**: `LineDisciplineRanksT0`-`T6` 7 / 6 / 5 / 4 / 3 / 2 / 1 in defaults.json (T6 stays 1); config
+format 16 moves only the untouched step-73 values (`MoveOrKeepIfMoved`), a hand-set one kept and said once. 120 T1 → D 6 → 20 files; 180 T1 → 30;
+60 T5 → D 2 → 30; 60 T6 → 60 (never narrowed); 70 T1 + 30 T3 + 20 T5 → D 4.83 → 25 files (4 ranks + 20); 60 looters → D 7 → 9 files. DESIGN's
+Default column keeps step 73's initial map (the house rule); the tests run on it, Step74MapTests on the shipped one.
+
+**74.1 THE BLOCK HOLD (Core `BlockHold.cs`; Module `AthleticsLogic.BlockHold.cs`, `BlockBody.cs`; DESIGN decision 68)**
+- WHO: every formation step 73 holds (`LineDiscipline.TryCap` - the last look's D, cap files, cap width at its spacing, men, side, the player's)
+  with D above 1, both sides; the player's formations only while step 73 counts them (`LineDisciplineForPlayer`); never the player himself, riders,
+  walls (held men are courage-skipped), busy / detached men, no formation (courage's gate).
+- WHEN: a CHARGE order always; an advance / move / hold once the enemy is near (`LineBlockNearMetres` 30 - the fear band's enemy front within it of
+  the block's 90th-percentile front, or a man of it with an enemy in courage's scan); never a retreat or a wall arrangement; released when the
+  unit's mean WIN (step 69's) reaches `LineBlockMopUpWinPercent` 50 (the enemy beaten - they chase).
+- THE FRAME (`BlockUnits`, published every 0.5 s right after the fear flock's table): u = the fear band's direction toward the enemy when live,
+  else the formation's facing; the CENTRE LINE = the MEDIAN of the men's lateral places (a trail of 30 drags it under 5 m where the mean moves
+  6.5), the median along, the 10th / 90th percentiles across and along, the block's speed (the median's move along u), first contact. A man's
+  place is extrapolated by the block's speed between frames (a charge at 4-5 m/s moves 2 m in a frame).
+- THE RULE (`BlockHoldMath.Decide`): the hold s = (D − 1) ÷ (`LineBlockFullAtDepth` 3 − 1) clamped 0-1 (recruits D 6 → 1; veterans D 2 → 0.5;
+  elites D 1 → 0 = free); the room loose = (1 − s) × `LineBlockLooseMetres` 10. ACROSS: |lateral| ≤ cap width ÷ 2 + `LineBlockSlackMetres` 2 +
+  loose; AHEAD: along ≤ the block's half depth (ceil(men ÷ files) ranks × `LineBlockRankMetres` 1.2 ÷ 2) + `LineBlockAheadMetres` 3 + loose; BEHIND:
+  along ≥ −(half depth + 2 + loose). Outside → pulled (lateral wins the name); his place clamped 1 m inside (`BackInsideMetres` - the hysteresis: a
+  pulled man is let go only 1 m inside) + `LineBlockLeadMetres` 1.5 along while the block moves forward (> 0.3 m/s). A man with an enemy within
+  `LineBlockStrikeReachMetres` 2.5 FIGHTS unless he stands more than `LineBlockStrikeLeashMetres` 2 beyond the room (across or ahead) - the
+  front men and the flank men in the fight are free, a man round the flank behind the enemy is not.
+- Toni's numbers on the new map: 180 T1, D 6, 30 files at 1.5 m = 44.05 m: a man is pulled beyond 24 m from the centre line (22 + 2), held to
+  23 m; 6 ranks = 7.2 m deep: ahead beyond 6.6 m of the median (3.6 + 3), behind beyond 5.6 m. Veterans (D 2): + 5 m everywhere.
+- THE LEVER: a sixth input wish `AiInputState.Block` (`BlockX / Y`, `SetBlock`, `ApplyBlock`) on step 16's component - his move bits out, our
+  vector in, his facing, guard and attacks his own (he sidesteps / backpedals facing the enemy, still swings at what reaches him). Steered every
+  0.1 s (`SteerBlockers`) toward his place in the moving frame, the stick slower near it (`FearMath.Stick`), standing within 0.7 m, the ground
+  ahead checked every 0.25 s (step 16's edge - the rock: he stands rather than walk off it). Works with Athletics off (the component's gate).
+- PRIORITY (decided): (1) a step back's backpedal, (2) the wall's pull, (3) courage's walk back (its target is the group / the centre - inside),
+  (4) the fear flock (its band is clamped INSIDE the block: `FearUnits.SetBlock` - the band never wider than the cap and never past its sides,
+  `BandBlockClamps` counted), (5) the block hold - LAST in `AiInputHook.Apply` and `ApplyBlock` (a look of a man courage walks or the flock steers
+  = Yielded, his block wish ended). A surge / a punish step-in / a fever press / a sprint into contact are not ended: inside the block or within
+  strike reach they are free; beyond the room + the leash the block's vector takes his movement (his surge's aggression stays). The lone-runner
+  fix (step 70) still walks a man alone behind the enemy's front back to his group; the block hold catches the man who is not yet alone - the
+  trail. The shield wall holds its own (a wall arrangement = released).
+- The master switch FIRST (`TickBlockSwitch` every tick, `ApplyBlock` reads it live), then `LineDisciplineEnabled`, then `LineBlockHoldEnabled`:
+  off = every wish ended at once, the looks keep measuring (ON / OFF columns).
+
+**74.2 THE DIAGNOSTIC (`BlockShapeStats`, the `[block]` tag)**: every frame, per formation step 73 counts (both sides, yours marked) from its
+first time near the enemy: its movement order (`MovementOrderEnum`), its active behaviour's type name ("(your orders)" for yours), its
+arrangement, its men's width (10th-90th and all) and depth (10th-90th), the game's width vs the cap, the share of its men more than 3 m from their
+arrangement slot (`GetCurrentGlobalPositionOfUnit`, `BlockHoldMath.OutOfSlotMetres`), contact (a man within 3 m of an enemy). Logged AS IT
+HAPPENS: `[block] first look at …` and `order / behaviour change of the enemy's Infantry (the other side, AI) at 312.5 s (−1.5 s from its first
+contact): Move / BehaviorAdvance / Line → Charge / BehaviorTacticalCharge / Line - 180 men 41.2 m wide (10th-90th; all 52.0 m), 7.1 m deep, the
+game's width 44.0 m vs step 73's cap 44.1 m (D 6.00, 30 files), out of their slots 12%, moving 3.8 m/s, the enemy near` (16 a formation, 120 a
+battle), `[block] FIRST CONTACT of …`, `[block] first man walked back into his block …`. [summary] `block shape, <name> (side, AI | yours): first
+contact at T s | before −20 s: … | −20..−10 s: … | −10..−5 | −5..0 | 0..+5 | +5..+10 | +10..+20 | +20..+60 | after +60` - each bin: the shares of
+order / behaviour / arrangement, width, depth, the game's width vs the cap, out of slots.
+
+**Settings (11, Advanced, "Line discipline by tier" after `LineDisciplinePollSeconds`, all Live; 392 → 403; new keys - format 16 is the map's)**:
+`LineBlockHoldEnabled` (true), `LineBlockSlackMetres` (2, 0-20), `LineBlockFullAtDepth` (3, 1.5-12), `LineBlockLooseMetres` (10, 0-60),
+`LineBlockRankMetres` (1.2, 0.5-3), `LineBlockAheadMetres` (3, 0-20), `LineBlockStrikeReachMetres` (2.5, 0-6), `LineBlockStrikeLeashMetres` (2,
+0-10), `LineBlockNearMetres` (30, 0-200), `LineBlockLeadMetres` (1.5, 0-6), `LineBlockMopUpWinPercent` (50, 0-100).
+
+**Plumbing constants**: `BlockHoldMath.MinFullAtDepth` 1.5, `FreeDepth` 1.0001, `BackInsideMetres` 1, `MovingSpeed` 0.3, `MaxSpeed` 8,
+`StaleSeconds` 2, `PublishSeconds` 0.5, `MaxSamples` 512, `MinMen` 6, `OutOfSlotMetres` 3, `ContactMetres` 3; `BlockShapeStats.Capacity` 2400 (20 min),
+`MaxUnits` 16, the bins; the change lines 16 / 120.
+
+**Log**: `[lines] mission start: the block hold (step 74): …`, settings changed, switched OFF; `[block]` above. **[summary]** `block hold (step 74):
+ON at the end - …; the fear band clamped to the block N times; steering …; cost …`; `block hold (step 74), your side / the other side - each man's
+lateral offset from his block's centre line vs its half-width …: ON before contact mean … m of … m, p90 … x the half-width, the farthest … m, beyond
+the allowance …% | ON after contact … | OFF before … | OFF after …; PULLED IN N times by M men (round the flank, ahead of the front, behind the
+rear), … man-s; ends: …; looks: inside, pulled, striking (free), elites D 1 (free), not held by step 73, the enemy far, a retreat / a wall, the
+mop-up, courage's walk / the flock first, no frame yet`; the `block shape` lines.
+
+**Measured offline**: tests 1066 → 1077 (Step74Tests.cs: Step74MapTests 3 - the shipped map and Toni's examples, format 16 move / keep / T6;
+Step74BlockHoldTests 8 - the settings placed / live / defaults, the switches in order, the strength by D and the room, Toni's recruits (the flank
+runner, the man ahead, the straggler, the fighters, the leash, the hysteresis, a looser veteran block), the unit table (a trail cannot drag the
+median, the percentiles, the speed, first contact, the moving place), quantiles, the diagnostic's bins and line, the summary lines; the format-15
+expectations → 16 in ten older test files; SettingsPagesTests 403). Smoke 167 → 170 (Program.Step74.cs: the stand-in block body for every logic;
+THE BLOCK HOLD - 180 recruits D 6 (30 files, 44 m) charging a 28.5 m line under a stand-in of the game's charge (each man at his nearest enemy,
+the flank men round the line's ends, six right-hand files heading 36 m out round the right flank): OFF 50.3 m wide (10th-90th), the widest 35.4 m
+from the median, 36 men beyond 26.5 m; ON 37.9 m, the widest 23.7 m at the end (26.3 m at worst - a man runs ~2 m in the 0.5 s between his looks),
+0 beyond, pulled 210 times by 90 men (72 round the flank), 221 striking looks free, contact at +9.8 s both ways (no stall); the live switch; the
+[block] and [summary] lines; a D 1 elite unit never touched (5580 elite looks, 0 pulled); the input frame's priority; THE COST - 1000 men (500
+recruits with 100 trailing far out, 500 legionaries) 0.23 ms a tick for courage + fear + block, 0 bytes over 300 ticks; the master-switch part).
+
+**Gotchas**
+- `TrackedAgent.Block` already exists (step 22's BlockTracker): the hold's state is `TrackedAgent.BlockHold`.
+- Git Bash heredocs choked again on apostrophes ("enemy's") inside a `cd … && cat >> … <<'EOF'` - the long edits went to the scratchpad as
+  Python files (`s74_*.py`) run with `python -I`.
+- `FormationClass.GetName()` is an extension in `TaleWorlds.Core`.
+- The stand-in's first trail (an outward drift) was too tame to dissolve the block (men converge on the nearest enemy); the trail now heads round
+  the flank to the enemy's rear - closer to the screenshot.
+- Smart App Control: `dotnet test` and the plain smoke exe ran directly this time; deploy.ps1's smoke step was refused (0x800711C7) - the smoke ran
+  in memory (`run_smoke.ps1`, 170 passed), `install_dev.ps1`, `loadcheck.ps1`: the first module DLL REFUSED, one rebuild with
+  `-p:SourceRevisionId=<HEAD>.sac1` loaded.
+
+**UNVERIFIED — only the game can tell (PLAYTEST D39)**
+1. The cause: `[block] order / behaviour change … → Charge / BehaviorTacticalCharge` a few seconds before `FIRST CONTACT` and the `block shape`
+   bins' width / out-of-slots jumping there (OFF) - or, if the spread comes under a Move / BehaviorAdvance / Loose, the arrangement and the
+   game's width vs the cap (the Loose spacing) or the men's own targets (out of slots under a Move).
+2. The engine honours the block's vector in a charge (as it honours courage's walk): `block hold … the other side - ON after contact` p90 near
+   or under 1.0 x the half-width, beyond the allowance a few %, Toni's eyes: no trail round the flank.
+3. No stall: the block reaches his line as one (the first clash as hard as before), the front fights (striking looks).
+4. The rock: a man walked back toward a rock stands (the edge check) - a trail stuck against it would show as long pulls (man-s) on the summary.
+5. Cost in a 400-1000 man battle (`block hold … cost`).
+
+**DEPLOY**: `tools\deploy.ps1` built, the AssemblyGuard passed, its smoke exe was refused by Smart App Control (0x800711C7); the smoke in memory
+(`run_smoke.ps1`) all 170 passed; `install_dev.ps1` → Modules\TraxCombatEnhancements.Dev; `loadcheck.ps1` REFUSED the first module DLL, a rebuild
+with `-p:SourceRevisionId=28cecc13….sac1` loaded both (`1.2.0+28cecc137cc20242ed05dc6071ca8491aba35698.sac1`): TraxCombatEnhancements.dll SHA-256
+7EE41A28…7921, TraxCombat.Core.dll 0F318FCF…46EF. The game and the launcher were not running at the install. Windows security untouched.

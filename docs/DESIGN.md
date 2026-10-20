@@ -2609,6 +2609,35 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     before "Advanced"; new keys only - no config migration (FormatVersion 15 stays). (g) Step 67's fear flock and step 70's band keep
     working inside the new shape: they move men toward a band / a shelter by their own input wish, from the slots the narrowed line gives -
     a deeper block simply has more ranks to compress.
+68. **The green block stays a block into contact** (step 74, Toni's battle 2026-10-20 20:30: 180 T1 recruits held ~5 deep by step 73 advanced
+    as a block, then just before contact spread into a wide loose crowd with a trail wrapping round his right flank along a rock; AI_NOTES "Step
+    74"). What vanilla does (v1.4.8): `TacticFullScaleAttack` walks the infantry in with `BehaviorAdvance` (a Move to the enemy's front - the slots
+    hold the block) and, once the battle is joined (≤ 5 s from the enemy), weights `BehaviorTacticalCharge`, which beats the advance in the last
+    seconds and - for an infantry formation at least as wide as the enemy's (× 1.1) - gives `MovementOrderCharge`: the Charge movement state has
+    NO slots (`GetOrderPositionOfUnit` returns the order's position, every man's behaviour values are a charge's) and each man runs at his own
+    target, the flank men round the enemy's ends, the engine's avoidance and the ground (a rock) shaping a trail. Before it, under ranged fire
+    within 80 m, `BehaviorAdvance` turns a shieldless infantry formation to LOOSE (a wider spacing). Claude's calls: (a) THE MAP one rank deeper
+    (Toni, mid-step): T0 7 / T1 6 / T2 5 / T3 4 / T4 3 / T5 2 / T6 1 in defaults.json (this table's Default column keeps step 73's initial map),
+    config format 16 moving only untouched values - 120 recruits at most 20 files, 60 veterans 30, elites never narrowed. (b) THE HOLD - a formation
+    step 73 holds with D above 1 keeps its BLOCK under a charge (always) and an advance / move / hold within `LineBlockNearMetres`: in its frame (u
+    toward the enemy - the fear band's direction, else its facing; the centre line the MEDIAN of its men across it, so a trail cannot drag it; its
+    depth ceil(men ÷ files) ranks), a man beyond the cap's half-width + `LineBlockSlackMetres` across, `LineBlockAheadMetres` past its front with no
+    enemy in reach, or the slack behind its rear is WALKED BACK through step 16's input hook (a sixth wish, his own facing, guard and swings kept -
+    never scripted movement that turns his back), his place moving with the block and leading it by `LineBlockLeadMetres` - no stall: the men
+    inside keep the game's charge, the block arrives at its own speed. (c) IT SCALES WITH D: the hold s = (D − 1) ÷ (`LineBlockFullAtDepth` − 1),
+    the room + (1 − s) × `LineBlockLooseMetres` - recruits (D 6) and trained men held fully, veterans (D 2) half, elites (D 1) free. (d) THE FIGHT:
+    a man with an enemy within `LineBlockStrikeReachMetres` fights unless he stands more than `LineBlockStrikeLeashMetres` beyond the room (the
+    front and the edge fight, a man round the flank behind the enemy is walked back); the block lets go when its men win
+    `LineBlockMopUpWinPercent` (step 69's win - the enemy beaten). (e) PRIORITY: a step back's backpedal > the wall's pull > courage's walk back >
+    the fear flock > the block hold (the last wish; a look of a man courage walks or the flock steers yields) - and the fear flock's band is
+    clamped INSIDE the block (never wider than the cap, never past its sides), courage's targets lie inside it; a surge, a punish step-in, a
+    fever press or a sprint is free inside the block and within strike reach, the block's vector takes his movement only beyond the room; the
+    lone-runner fix (step 70) still walks a man alone behind the enemy's front home; walls hold their own. (f) Both sides, under step 73's
+    switches (the master switch first, `LineDisciplineEnabled`, the player's formations by `LineDisciplineForPlayer`) and its own
+    `LineBlockHoldEnabled`; never the player himself. (g) THE DIAGNOSTIC (measurement only): per formation step 73 holds, every 0.5 s its
+    movement order, active behaviour, arrangement, width (10th-90th / all), depth, the game's width vs the cap and the share of men more than 3 m
+    from their slots, binned by the time from its first contact; every order / behaviour change logged as it happens - the next battle names
+    the cause whichever it is. 11 Advanced settings in "Line discipline by tier"; new keys need no migration.
 
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),

@@ -258,7 +258,18 @@ they carry `DisciplinedLineFormation` - the game's plain `LineFormation` whose v
 put in with the game's own `Formation.Rearrange` (a line → line transfer shares the unit tables), again after the game's next arrangement order:
 vanilla's order drag and its move clamp each width to `formation.MaximumWidth`, so the drag preview STOPS GROWING at the cap; his line orders
 counted (OnOrderIssued) and said on screen (`LineDisciplineShowMessage`); off = the game's form orders given back, the capped arrangements out;
-Advanced group "Line discipline by tier"; the [summary] "line discipline" lines (PLAYTEST D38). The bar for the
+Advanced group "Line discipline by tier"; the [summary] "line discipline" lines (PLAYTEST D38). THE GREEN BLOCK STAYS A BLOCK INTO CONTACT
+(step 74, Toni's battle 2026-10-20 20:30 - 180 T1 recruits held 5 deep spread into a wide crowd just before contact, a trail round his right along
+a rock; DESIGN decision 68, AI_NOTES "Step 74"): the cause in v1.4.8 - `TacticFullScaleAttack` swaps `BehaviorAdvance` for `BehaviorTacticalCharge`
+near contact, which gives a formation at least as wide as its enemy `MovementOrderCharge` (no slots: every man at his own target); the map one
+rank deeper (T0 7 … T5 2, T6 1; config format 16); a formation step 73 holds with D above 1 keeps its BLOCK in a charge and an advance within
+`LineBlockNearMetres` 30: in its frame (the median centre line, the fear band's direction) a man beyond the cap's half-width + `LineBlockSlackMetres`
+2, `LineBlockAheadMetres` 3 past its front or the slack behind is walked back by a sixth input wish (`AiInputState.Block` - the LAST: backpedal >
+wall pull > courage's walk > the flock > the block), his place moving with the block + `LineBlockLeadMetres`; the hold by D (`LineBlockFullAtDepth`
+3, + `LineBlockLooseMetres` 10 × (1 − s); elites free); strikers within `LineBlockStrikeReachMetres` 2.5 free (leash 2); released at
+`LineBlockMopUpWinPercent` 50; the fear band clamped inside the block; THE DIAGNOSTIC - per held formation its order / behaviour / arrangement /
+spread / men out of their slots every 0.5 s, the `[block]` change and FIRST CONTACT lines, the [summary] "block hold" and "block shape" lines
+(PLAYTEST D39). The bar for the
 fighter you look at is LATER (DESIGN §3; its settings wait in DESIGN's "Planned parameters"). Words:
 the pool/bar/points are "Athletics", the character-screen skill is "the Athletics skill" (it
 used to be called "endurance"), the "peak line" is the white mark at the top quarter of the bar,
@@ -406,7 +417,8 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               description, apply timing (Live / NextBattle); Normalize, Format;
                               its Default comes from defaults.json (DefaultsFile), never code; step 59:
                               SettingsPage (Player / Advanced) + ParamGroup.Page
-  SettingsSchema.cs           EVERY setting of DESIGN's table (392 - step 73's LineDisciplineForPlayer after CavalryFlockEnabled (the player page, 21) and 14
+  SettingsSchema.cs           EVERY setting of DESIGN's table (403 - step 74's 11 LineBlock* after LineDisciplinePollSeconds (Advanced, "Line discipline
+                              by tier"); 392 - step 73's LineDisciplineForPlayer after CavalryFlockEnabled (the player page, 21) and 14
                               LineDiscipline* after OrderChargeIconPixels in their own Advanced group "Line discipline by tier" (Order 23, "Advanced" 24);
                               377 - step 72's OrderNoAccidentalCharge / OrderChargeDragPixels / OrderChargeIconPixels after MoraleLabelMax
                               in their own Advanced group "Orders: no accidental charges" (Order 22, "Advanced" 23); 374 - step 70's FearBandEnabled / FearBandRanksMin / FearBandRanksMax / FearBandFileMetres /
@@ -440,7 +452,8 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
   ConfigFile.cs               config.json TEXT: commented writer (header incl. how to revert +
                               // above each key; AppendSettings shared with defaults.json),
                               tolerant reader (comments, trailing commas, casing, "0,75"), Apply;
-                              FormatVersion 15 + Migrate (step 71: CostPerBlow 8 → 10, CostPerWrongSideShieldBlock 5 → 6, CostPerShieldBlock 2 → 3 (a format 14 file),
+                              FormatVersion 16 + Migrate (step 74: LineDisciplineRanksT0-T5 6/5/4/3/2/1 → 7/6/5/4/3/2 (a format 15 file), a tuned value kept
+                              and said - MoveOrKeepIfMoved, T6 never; step 71: CostPerBlow 8 → 10, CostPerWrongSideShieldBlock 5 → 6, CostPerShieldBlock 2 → 3 (a format 14 file),
                               CostPerKickOrBash 5 → 6 (13+), CostPerWeaponParry 2 → 3 once, a tuned value kept and said - MoveOrKeepIfMoved; step 68: CostPerBlow 7 → 8 (a format 9+ file), CostPerWrongSideShieldBlock 2 → 5 (8+), CostPerShieldBlock 1 → 2
                               once, a tuned value kept and said; step 66: a format-12 file's CostPerKickOrBash 3 → 5, AiKicksPerMinute 0.1 → 1.2, AiKickCooldownSeconds 10 → 8;
                               step 64: a format-11 file's FeverSprintMinMetres 3 → 4, FeverSprintMaxMetres 12 → 8,
@@ -782,6 +795,14 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               GameMinFiles √men, CapFiles, Width / CapWidth (+ 0.05 m slack) / FilesOf = the game's FlankWidth and its floor, Ranks,
                               LastRankMen, Verdict in gate order, ShapeText), LineClampCause (Widened / AutoShrink), LineRecord, LineSideStats,
                               LineDisciplineStats (the [summary] "line discipline" lines, PreviewVerdict)
+  BlockHold.cs                step 74 (DESIGN decision 68) - THE BLOCK HOLD + THE BLOCK DIAGNOSTIC: BlockHoldRules (ModEnabled FIRST,
+                              LineDisciplineEnabled, LineBlockHoldEnabled, the numbers; Describe), BlockPull / BlockLookKind / BlockEnd, BlockHoldMath
+                              (Strength by D, Loose, Ranks / Depth, Allowance, Decide - across / ahead / behind, the striker's leash, the hysteresis -, Lead,
+                              Quantile; plumbing), BlockMind (per man), BlockUnits (the unit table: per period his place, slot distance, nearest enemy, step 73's
+                              cap, the formation's reads; Publish - u from the fear band, the MEDIAN centre line, 10th / 90th spread, speed, near, first
+                              contact; Frame / World extrapolated by the speed), BlockSideStats / BlockHoldStats (the [summary] "block hold" lines),
+                              BlockShapeStats (the diagnostic's ring per formation, binned by the time from first contact - the "block shape" lines);
+                              FearBand.cs: FearUnits.SetBlock / ClearBlock / BandBlockClamps - the band clamped inside its block
   LoneRunner.cs               step 70 (DESIGN decision 64) - THE LONE RUNNER: LoneCause (sprint into contact / punish / surge / fever press / chasing a target
                               behind the front / the game), LoneTarget (you / a hero / another), LoneRunnerRules (ModEnabled FIRST, LoneRunnerEnabled,
                               AheadMetres; Describe), LoneRunnerMath (Alone, Beyond, IsLone, Winning - the BEATEN: odds at the clear line and the enemy shaken
@@ -1056,6 +1077,15 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               arrangement swap); Missions/DisciplinedLineFormation.cs: the game's LineFormation with MaximumWidth = the cap (CapReads)
                               and Clone of its own type; AthleticsLogic.LineDiscipline.cs: StartLines (AfterStart), TickLines (OnPreMissionTick,
                               before the wall), the player's OnOrderIssued (each formation's share of the dragged line), the summary
+  Missions/AthleticsLogic.BlockHold.cs  step 74: StartBlock / NoteBlockSettings, TickBlockSwitch (the master switch first - every pull let go),
+                              TickBlockUnits (the frames published after the fear band's, the diagnostic sampled, the [block] change / FIRST CONTACT lines,
+                              the fear band told the block - FearUnits.SetBlock), BlockLook (from FearLook on every courage path, ON and OFF: the unit table
+                              fed - step 73's cap and the formation's reads once a period, his slot distance -, the measurement, the gates, BlockHoldMath
+                              .Decide, the Block wish on step 16's hook), SteerBlockers / SteerBlocker (every 0.1 s, the place extrapolated with the block),
+                              EndBlockPull on every path, BlockSkipped (a held wall man still sampled), CloseBlock, WriteBlockSummary (after the fear's);
+                              Missions/BlockBody.cs: IBlockBody (Cap via LineDiscipline.TryCap, Formation - the order / behaviour / arrangement names, cached
+                              -, Name), GameBlockBody, BlockBodyDefault; LineDiscipline.TryCap (the last look's cap per slot); AiInputHook.cs: AiInputState
+                              .Block (BlockX / Y), SetBlock, ApplyBlock, BlockOn - the last wish; TrackedAgent.BlockHold (Core BlockMind)
   Missions/AthleticsLogic.LoneRunner.cs  step 70: StartLoneRunners / NoteLoneSettings (the [courage] lines), LoneLook (at courage's look, ON and OFF:
                               alone, out by the band's frame, the cause, IFearBody.Target for lone men only, the first of each cause in full), NoteFeverRefused,
                               NoteForcedWalk (LoneMind.Forced), LoneSprintEnds (RunSprint's 0.25 s check of a sprint into contact - SprintEnd.LoneRunner);
@@ -1226,7 +1256,10 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
   Hud/FeverMarksVM.cs         its ViewModels: a GROW-ONLY POOL of FeverMarkVM (IsShown, PositionX / Y, Width / Height in pixels,
                               Fill, FillColor, FrameColor; step 46: BoxWidth / BoxHeight, FeverShown, BarShown, BarWidth / Height,
                               BarFill, BarUsable, BarColor, BarFrameColor, BarWoundColor)
-tests/TraxCombat.Core.Tests/  net8.0 xUnit (1066 - step 73: + Step73Tests.cs - the 15 settings placed (the player page 21, the group before Advanced) / live / defaults, the
+tests/TraxCombat.Core.Tests/  net8.0 xUnit (1077 - step 74: + Step74Tests.cs - Step74MapTests (the shipped map, Toni's examples on it, format 16 move / keep) and
+                              Step74BlockHoldTests (the 11 settings, the switches, the strength by D, the rule - across / ahead / behind / the fighters / the
+                              leash / the hysteresis -, the unit table's median frame, quantiles, the diagnostic's bins, the summary lines); the format-15
+                              expectations → 16; 403 settings; 1066 - step 73: + Step73Tests.cs - the 15 settings placed (the player page 21, the group before Advanced) / live / defaults, the
                               master switch first then the system then yours, which formations count, the tier clamp and heroes, the mean depth, the
                               width math (ceil; the narrowest line no thinner than D for every D and men; the game's floor of the cap width), Toni's
                               battle, the summary lines; 392 settings, 18 Advanced groups; 1057 - step 72: + Step72Tests.cs - the 3 settings placed / live, the master switch first, the scaling, vanilla's pick, the
@@ -1500,6 +1533,11 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               DisciplinedLineFormation over a stand-in IFormation (the game's own LineFormation code: the cap answered, the game's
                               floor of it = exactly the cap's files, the clone's type), the cost (20 formations / 1000 men 0.4 µs a look), the
                               master-switch part; the MCM page counts 21 / 18 groups (167 steps);
+                              step 74 (Program.Step74.cs): THE BLOCK HOLD through the real logic with courage's stand-in world and a stand-in block body (every
+                              logic gets it: nothing counted unless a step-74 check sets a cap) - 180 recruits D 6 charging a 28.5 m line under a stand-in of
+                              the game's charge (a trail heading round the right flank): OFF 35 m from the median, 36 men beyond; ON within 24 m (26 at worst
+                              between looks), contact as fast, men walked back, fighters free; the live switch; the [block] / [summary] lines; a D 1 elite
+                              unit untouched; the input frame's priority; the cost (1000 men 0.23 ms a tick, 0 bytes); the master-switch part (170 steps);
                               step 68 (Program.Step68.cs): the wall pushes as one through the real logic + its cost (1000 men 0.041 ms a tick,
                               0 bytes), back to the line after a kick, no kick through a friend, kicks landed vs decided through the real seams, the
                               master-switch part (157 steps; the config checks work for any tuned default);
