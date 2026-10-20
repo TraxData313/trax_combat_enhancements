@@ -1599,6 +1599,21 @@ row goes to the Advanced page unless a player needs it to set up his game (CLAUD
 | `OrderNoAccidentalCharge` | true | Step 72 (decision 66): in the orders menu a left-button release charges an enemy unit only after a CLICK with the cursor ON its banner icon - within `OrderChargeIconPixels` at the press AND through the hold - and no drag (`OrderChargeDragPixels`); otherwise the game's own unit targeting (`MissionFormationTargetSelectionHandler.SetIsFormationTargetingDisabled`, public) is held OFF from the press through the release frame, so the release finds no unit and the game's troop placer places its move (the dragged frontage kept). Idle = the game's targeting untouched (the F-key targeted charge as vanilla); the gamepad and naval battles: vanilla. Gate: `ModEnabled` FIRST. Off = vanilla (a release while an enemy banner is within 70 px of the screen centre, or an enemy unit within 10 m of the camera, charges it). Advanced, group "Orders: no accidental charges". Live. |
 | `OrderChargeDragPixels` | 12 | Step 72: the cursor this far (UI px of a 1080-high screen, scaled by the real height like vanilla's 70) from the press point - the order flag's ground point at the press, followed on the screen as the camera turns - makes the click a DRAG for the rest of the hold: never a charge. Vanilla's own click tolerance is 10. Range 1-200. Live. |
 | `OrderChargeIconPixels` | 30 | Step 72: the cursor within this (UI px of a 1080-high screen, scaled) of the game's focused unit's banner icon (its median point 3 m up - where the marker's 50-px icon sits) is ON it. Vanilla's reach is 70 around the screen CENTRE, so more than 70 widens nothing. Range 1-200. Live. |
+| `LineDisciplineForPlayer` | true | Step 73 (Toni 2026-10-20, decision 67): the PLAYER's own formations (his team, not left to the AI) keep to the line discipline too - his line orders, the game's own widening and losses are capped like the AI's, and (`LineDisciplinePreviewCap`) the order drag's preview stops growing at the cap. Needs `LineDisciplineEnabled`. Gate: `ModEnabled` FIRST. Off = his lines as wide as he drags them (his clamped widths given back). PLAYER page, "How the AI fights". Live. |
+| `LineDisciplineEnabled` | true | Step 73 (decision 67): LINE DISCIPLINE BY TIER - every AI formation in a line, shield wall, loose or scatter arrangement (not cavalry / horse archers; ranged by `LineDisciplineRangedToo`; not squares, circles, columns, wedges; not naval; sieges by `LineDisciplineInSieges`) is at most F = ceil(men ÷ D) files wide (at least the game's own √men), D = the mean of its men's map ranks (`LineDisciplineRanksT0`-`T6`, a hero as `LineDisciplineHeroTier`; the tier = `BasicCharacterObject.GetBattleTier()`, 7 → 6); a line wider than F (the AI's FormOrder Wide / Wider / Custom, an envelop, the game's re-forming, the player's order) or too thin after losses is narrowed to F at once in the logic's pre-tick (`Formation.SetFormOrder(FormOrderCustom(width))`). Gate: `ModEnabled` FIRST. Off = the game's own form orders given back. Advanced, group "Line discipline by tier". Live. |
+| `LineDisciplineRanksT0` | 6.0 | Step 73: the minimum ranks a tier-0 man holds (peasants, looters, villagers). Range 1-12. Live. |
+| `LineDisciplineRanksT1` | 5.0 | Step 73: a tier-1 man (a recruit) - 120 recruits → D 5 → at most 24 files. Range 1-12. Live. |
+| `LineDisciplineRanksT2` | 4.0 | Step 73: a tier-2 man. Range 1-12. Live. |
+| `LineDisciplineRanksT3` | 3.0 | Step 73: a tier-3 man. Range 1-12. Live. |
+| `LineDisciplineRanksT4` | 2.0 | Step 73: a tier-4 man. Range 1-12. Live. |
+| `LineDisciplineRanksT5` | 1.0 | Step 73: a tier-5 man (a veteran) - at 1 a formation of them is never narrowed (F = men). Range 1-12. Live. |
+| `LineDisciplineRanksT6` | 1.0 | Step 73: a tier-6 man (an elite) and any higher tier a mod adds. Range 1-12. Live. |
+| `LineDisciplineHeroTier` | 6 | Step 73: a hero (`Agent.IsHero` - a lord, a companion, the player) counts as a man of this tier whatever his level. Range 0-6. Live. |
+| `LineDisciplineRangedToo` | true | Step 73: archer and skirmisher formations (`FormationQuerySystem.IsRangedFormation`) are held to their depth too; off = infantry and mixed foot formations only. Live. |
+| `LineDisciplineInSieges` | false | Step 73: sieges and sally-outs too; off = there the walls, gates and streets set the width (the AI's siege behaviours give custom widths to fit them). Live. |
+| `LineDisciplinePreviewCap` | true | Step 73 (decision 67 c): the player's formations carry the cap as their arrangement's `MaximumWidth` (`DisciplinedLineFormation`, the game's plain `LineFormation` with that one override, put in with the game's own `Formation.Rearrange`) - vanilla's order drag preview and its move clamp each formation's width to `formation.MaximumWidth`, so the drag stops growing at the cap. Off = the drag shows any width; the formation is narrowed at the next look after the order. Live. |
+| `LineDisciplineShowMessage` | true | Step 73: a line on screen when the player's line order asked wider than his men hold ("your Infantry: these men hold no thinner than 5 deep - 24 men wide at most"), at most once in 2 s per formation. Live. |
+| `LineDisciplinePollSeconds` | 1.0 | Step 73: each formation's D is recounted from its men this often, and at once when its count changes; the width is checked every look (every frame). Range 0.25-10. Live. |
 | `HudRefreshSeconds` | 0.1 | (Advanced) How often the player bar, the orders-menu strip and the formation markers' numbers update (the markers' numbers follow the markers every frame). |
 | `PlayerBarWidth` | 205 | (Advanced) Length of your bar in UI pixels of the 1920 × 1080 layout (the game's UI scale applies); 205 = the inside of the vanilla health bar. |
 | `PlayerBarHeight` | 12 | (Advanced) Thickness of your bar, UI pixels. |
@@ -2544,6 +2559,45 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     what really went out - a targeted charge during a converted click is a FAILURE line; (f) three settings in a new Advanced group
     "Orders: no accidental charges" before "Advanced" - a fix that should simply work, on by default (CLAUDE.md "Which MCM page"); new keys
     only - no config migration (FormatVersion 15 stays).
+67. **Line discipline by tier** (step 73, Toni 2026-10-20: 60 tier-5 men against 120 tier-1 recruits - the recruits attacked on a very broad
+    front about 2 deep, wider than his whole army, and engulfed him; "I imagine a low tier untrained troop to not be able to keep that
+    disciplined line all the way and execute that encircling"; his map {T0 6, T1 5, T2 4, T3 3, T4 2, T5 1, T6 1}; infantry AND archers /
+    skirmishers count, cavalry and squares / circles left out; "show me physically that I can't stretch it further"). What vanilla does
+    (v1.4.8, decompiled): the AI's behaviours set a formation's width by its FORM ORDER - `BehaviorAdvance`, `BehaviorDefend`, `BehaviorSkirmish`,
+    `BehaviorPullBack`, … `SetFormOrder(FormOrder.FormOrderWide)` = round(√(men ÷ 16)) × 16 files (120 men → 48 files, 2.5 deep - Toni's
+    front), `BehaviorReserve` / `BehaviorSkirmishLine` / `BehaviorSkirmishBehindFormation` `FormOrderWider` (× 64), some a custom width in
+    their `TickOccasionally`; the game re-applies the form order as men fall (`ReapplyFormOrder`). The player's drag (`OrderTroopPlacer` →
+    `OrderController.SimulateNewOrderWithPositionAndDirection`) and the move it issues (`MoveToLineSegment` - the same simulation, then
+    `SetFormOrder(FormOrderCustom(width))`) both clamp each formation's width to `formation.MaximumWidth` = `Arrangement.MaximumWidth`, a
+    VIRTUAL property of `LineFormation`. Claude's calls: (a) THE RULE - a man's ranks = the map at his tier (`GetBattleTier()`: ceil((level − 5)
+    ÷ 5) clamped 0-7 - the campaign's troop tier for a soldier, also in custom battles; 7 counts as 6), a HERO as `LineDisciplineHeroTier` 6
+    (a lord, a companion, the player: few, and they hold their place); D = the MEAN over the men in the formation's line (detached men out);
+    the cap F = ceil(men ÷ D), at least the game's own √men (it never forms narrower) and 1; its width the game's own (F − 1) × (interval +
+    a man's width) + a man's width at the formation's current spacing (+ 0.05 m so the game's own floor gives exactly F). A fractional D gives
+    a partly filled last rank by itself: 100 men at D 3.5 → 29 files, 3 full ranks + 13 (the 4th 45 % full - Toni's "the 4th at most 1/2");
+    120 T1 → D 5 → 24 files × 5; 60 T5 → D 1 → 60 files = never narrowed; 70 T1 + 30 T3 + 20 T5 → D 3.83 → 32 files, 3 ranks + 24.
+    (b) THE AI - the lever is the game's own `SetFormOrder(FormOrderCustom(cap width))` (the order the player's own drag gives) in the logic's
+    PRE-TICK: the AI's behaviours run in the team tick at the end of the frame's agent job, our pre-tick is the next managed point (step 41's
+    timing), before any man reads his slot - a widened line never reaches the men; a line too thin after losses or a new D shrinks back the
+    same way (AUTO-SHRINK); D recounted every `LineDisciplinePollSeconds` (1 s) and at once when the formation's count changes, the width
+    checked every frame (~20 formations - cheap). No Harmony: the behaviours keep setting their form orders and we narrow the result; a
+    clamp the game did not take (a line mid-transformation) is retried after 1 s, not every frame. (c) THE PLAYER - `LineDisciplineForPlayer`
+    (on, the PLAYER page: Toni's own toggle) holds his formations (his team, not left to the AI) to the same cap, and `LineDisciplinePreviewCap`
+    gives each of them `DisciplinedLineFormation` - the game's plain `LineFormation` whose `MaximumWidth` answers the cap (and whose `Clone`
+    keeps its type for the game's simulation formations, which reset whenever the types differ): vanilla's own clamp then stops the drag's
+    preview and the move at the cap - the line PHYSICALLY stops growing. Not a game MODEL (the house rule is about `AddModel`): a
+    per-formation object the game swaps itself on every arrangement order; ours goes in with the game's own `Formation.Rearrange` (a line →
+    line transfer hands the unit tables over by reference - nothing rebuilt), only over the game's PLAIN line (never a column's
+    `TransposedLineFormation` or another mod's), and is put in again after the game's next arrangement order puts its own back; the summary
+    counts the times the game asked it and got the cap (the proof the drag read it). A line on screen when his order asked wider
+    (`LineDisciplineShowMessage`). (d) Off (the master switch, `LineDisciplineEnabled`, or his switch for his formations) gives every width
+    we set back (the game's form order our first clamp replaced, if ours still stands) and takes every capped arrangement out. (e) Naval
+    battles never (ship decks); sieges off by default (`LineDisciplineInSieges` - the walls and streets set the width). (f) 15 settings: the
+    player's switch on the PLAYER page (21 settings - the page's pinned limit 20 → 21 on purpose: a system the player feels on every drag;
+    the system's own switch stays Advanced - the AI should simply keep to it), the rest in a new Advanced group "Line discipline by tier"
+    before "Advanced"; new keys only - no config migration (FormatVersion 15 stays). (g) Step 67's fear flock and step 70's band keep
+    working inside the new shape: they move men toward a band / a shelter by their own input wish, from the slots the narrowed line gives -
+    a deeper block simply has more ranks to compress.
 
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),

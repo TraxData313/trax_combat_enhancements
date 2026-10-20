@@ -131,6 +131,17 @@
   // (true or false)
   "CavalryFlockEnabled": true,
 
+  // Green troops cannot hold a long, thin line: a foot formation stretches no thinner than its
+  // men's training allows - recruits at least 5 deep, trained men 3, veterans and elites 1 (the
+  // average over its men). The AI's formations always keep to it. On: yours too - when you drag
+  // a line wider than your men can hold, the line stops growing at their limit (you see it in
+  // the drag) and the order keeps to it; as men fall the line shrinks back to stay deep enough.
+  // Cavalry, squares and circles are left alone. Off: your own lines are as wide as you drag
+  // them. The ranks per tier and the system's own switch: Advanced page, Line discipline by
+  // tier.
+  // (true or false)
+  "LineDisciplineForPlayer": true,
+
   // ==================== Staggers and knockdowns ====================
   // Kicks, shield bashes, blocks and clean hits can stagger a man, make him drop his shield or
   // knock him down - more likely the more tired he is and the more he is outmatched (both men's
@@ -2096,6 +2107,83 @@
   // around the screen centre, so more than 70 changes nothing.
   // (range 1 to 200)
   "OrderChargeIconPixels": 30,
+
+  // ==================== Line discipline by tier ====================
+  // A foot formation (infantry, and archers / skirmishers - see below) in a line, shield wall,
+  // loose or scatter arrangement stretches no thinner than its men can hold: each man's tier
+  // gives his minimum ranks (the next seven settings), the formation's minimum depth D is their
+  // average, recomputed as men fall or move, and its line is at most men / D files wide
+  // (rounded up - 3.5 deep gives a 4th rank about half full). Whenever the game or its AI makes
+  // a line wider (its wide form orders, an envelop, the line spreading) or losses make it too
+  // thin, it is narrowed back at once, before the men move. Cavalry, horse archers, squares,
+  // circles, columns and wedges are left alone; naval battles never. Your own formations follow
+  // "Line discipline: your units too" (the player page, How the AI fights). Off: the game's own
+  // widths.
+  // (true or false)
+  "LineDisciplineEnabled": true,
+
+  // The fewest ranks a tier-0 man (a peasant, a looter, a villager) can hold in a line. The
+  // formation's minimum depth is the average over its men. 1 = no limit of his own.
+  // (range 1.0 to 12.0)
+  "LineDisciplineRanksT0": 6.0,
+
+  // The fewest ranks a tier-1 man (a recruit) can hold. 120 recruits at 5 make a line at most
+  // 24 men wide.
+  // (range 1.0 to 12.0)
+  "LineDisciplineRanksT1": 5.0,
+
+  // The fewest ranks a tier-2 man can hold.
+  // (range 1.0 to 12.0)
+  "LineDisciplineRanksT2": 4.0,
+
+  // The fewest ranks a tier-3 man can hold.
+  // (range 1.0 to 12.0)
+  "LineDisciplineRanksT3": 3.0,
+
+  // The fewest ranks a tier-4 man can hold.
+  // (range 1.0 to 12.0)
+  "LineDisciplineRanksT4": 2.0,
+
+  // The fewest ranks a tier-5 man (a veteran) can hold. At 1 a formation of them is never
+  // narrowed.
+  // (range 1.0 to 12.0)
+  "LineDisciplineRanksT5": 1.0,
+
+  // The fewest ranks a tier-6 man (an elite) can hold - also any higher tier a mod adds.
+  // (range 1.0 to 12.0)
+  "LineDisciplineRanksT6": 1.0,
+
+  // A hero in a formation - a lord, a companion, you - counts as a man of this tier (whatever
+  // his level): 6 = an elite, he holds his place.
+  // (range 0 to 6)
+  "LineDisciplineHeroTier": 6,
+
+  // On: archer and skirmisher formations keep the same minimum depth as infantry. Off: only
+  // infantry formations are held to it.
+  // (true or false)
+  "LineDisciplineRangedToo": true,
+
+  // On: sieges and sally-outs too. Off: there the walls, gates and streets set the width, as in
+  // the game.
+  // (true or false)
+  "LineDisciplineInSieges": false,
+
+  // With your units under the line discipline: your formation tells the game its own maximum
+  // width is the limit, so when you drag its line in the orders menu the preview stops growing
+  // there and the order keeps to it. Off: the drag shows any width and the formation is
+  // narrowed right after the order.
+  // (true or false)
+  "LineDisciplinePreviewCap": true,
+
+  // A short line on screen when your line order asked wider than your men can hold, e.g.
+  // "Infantry: these men hold no thinner than 5 deep - 24 men wide at most".
+  // (true or false)
+  "LineDisciplineShowMessage": true,
+
+  // How often each formation's minimum depth is recounted from its men's tiers; at once anyway
+  // when men fall, join or leave it. The width itself is checked every frame.
+  // (range 0.25 to 10.0)
+  "LineDisciplinePollSeconds": 1.0,
 
   // ==================== Advanced ====================
   // How often your Athletics bar, the orders-menu strip and the numbers under the formation

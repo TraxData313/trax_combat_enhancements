@@ -583,6 +583,23 @@ namespace TraxCombat.Core
         public int OrderChargeDragPixels => GetInt(SettingsSchema.OrderChargeDragPixels);
         public int OrderChargeIconPixels => GetInt(SettingsSchema.OrderChargeIconPixels);
 
+        // step 73: line discipline by tier
+        public bool LineDisciplineForPlayer => GetBool(SettingsSchema.LineDisciplineForPlayer);
+        public bool LineDisciplineEnabled => GetBool(SettingsSchema.LineDisciplineEnabled);
+        public float LineDisciplineRanksT0 => GetFloat(SettingsSchema.LineDisciplineRanksT0);
+        public float LineDisciplineRanksT1 => GetFloat(SettingsSchema.LineDisciplineRanksT1);
+        public float LineDisciplineRanksT2 => GetFloat(SettingsSchema.LineDisciplineRanksT2);
+        public float LineDisciplineRanksT3 => GetFloat(SettingsSchema.LineDisciplineRanksT3);
+        public float LineDisciplineRanksT4 => GetFloat(SettingsSchema.LineDisciplineRanksT4);
+        public float LineDisciplineRanksT5 => GetFloat(SettingsSchema.LineDisciplineRanksT5);
+        public float LineDisciplineRanksT6 => GetFloat(SettingsSchema.LineDisciplineRanksT6);
+        public int LineDisciplineHeroTier => GetInt(SettingsSchema.LineDisciplineHeroTier);
+        public bool LineDisciplineRangedToo => GetBool(SettingsSchema.LineDisciplineRangedToo);
+        public bool LineDisciplineInSieges => GetBool(SettingsSchema.LineDisciplineInSieges);
+        public bool LineDisciplinePreviewCap => GetBool(SettingsSchema.LineDisciplinePreviewCap);
+        public bool LineDisciplineShowMessage => GetBool(SettingsSchema.LineDisciplineShowMessage);
+        public float LineDisciplinePollSeconds => GetFloat(SettingsSchema.LineDisciplinePollSeconds);
+
         public float HudRefreshSeconds => GetFloat(SettingsSchema.HudRefreshSeconds);
         public int PlayerBarWidth => GetInt(SettingsSchema.PlayerBarWidth);
         public int PlayerBarHeight => GetInt(SettingsSchema.PlayerBarHeight);

@@ -58,7 +58,8 @@ namespace TraxCombat.Core
         public static readonly ParamGroup OrderStripGroup = new ParamGroup(20, "Orders menu strip");
         public static readonly ParamGroup AltMarkersGroup = new ParamGroup(21, "Hold ALT: formation markers, Athletics and fever bars"); // step 44 renamed it (was "Formation markers (hold ALT)"), step 46 again (was "... and fever marks")
         public static readonly ParamGroup OrderClickGroup = new ParamGroup(22, "Orders: no accidental charges"); // step 72 - before "Advanced"
-        public static readonly ParamGroup AdvancedGroup = new ParamGroup(23, "Advanced"); // the logging and test tools (the spike) - last
+        public static readonly ParamGroup LineDisciplineGroup = new ParamGroup(23, "Line discipline by tier"); // step 73 - before "Advanced"
+        public static readonly ParamGroup AdvancedGroup = new ParamGroup(24, "Advanced"); // the logging and test tools (the spike) - last
 
         // ------------------------------------------------------------------ master switch
 
@@ -129,6 +130,12 @@ namespace TraxCombat.Core
         public static readonly ParamDef CavalryFlockEnabled = Bool("CavalryFlockEnabled", PlayerAiGroup,
             "Cavalry flocking",
             "AI riders on a charge stop going in one by one. A fresh, eager rider charges again and again as in the game; the more tired he gets, the more he looks for riders of his own kind in his formation - horse archers with horse archers, skirmishers with skirmishers, lancers with lancers - and the bigger the group he wants before he attacks again: 4-5 when half tired, most of his kind when exhausted. The flock never sits: it keeps riding, drifting toward the unit's centre while its riders are tired and bending toward the enemy as its most rested riders lead, and when it is big enough it charges together, as a wave. Both sides, never you; only riders whose formation is on a CHARGE (hold, move, follow and advance keep them in their slots). Works without courage. Off: the game's own riders - the log still measures, so flipping it mid-battle compares the two.");
+
+        // Step 73 (Toni 2026-10-20: 120 tier-1 recruits came at his 60 tier-5 men on a front ~2 deep and wrapped round him; he wants a switch
+        // "so I can feel that I can't stretch that line longer"): the player's own formations under the line discipline - DESIGN decision 67.
+        public static readonly ParamDef LineDisciplineForPlayer = Bool("LineDisciplineForPlayer", PlayerAiGroup,
+            "Line discipline: your units too",
+            "Green troops cannot hold a long, thin line: a foot formation stretches no thinner than its men's training allows - recruits at least 5 deep, trained men 3, veterans and elites 1 (the average over its men). The AI's formations always keep to it. On: yours too - when you drag a line wider than your men can hold, the line stops growing at their limit (you see it in the drag) and the order keeps to it; as men fall the line shrinks back to stay deep enough. Cavalry, squares and circles are left alone. Off: your own lines are as wide as you drag them. The ranks per tier and the system's own switch: Advanced page, Line discipline by tier.");
 
         public static readonly ParamDef ImpactEnabled = Bool("ImpactEnabled", PlayerImpactGroup,
             "Staggers, shield drops, knockdowns",
@@ -1621,6 +1628,67 @@ namespace TraxCombat.Core
             "Charge click: on the banner within (px)",
             "With \"No accidental charge orders\" on: the cursor within this distance of an enemy unit's banner icon counts as ON it - a click there charges the unit. In UI pixels of a 1080-pixel-high screen, scaled to yours; the icon is 50 across. The game's own reach is 70 around the screen centre, so more than 70 changes nothing.");
 
+        // ------------------------------------------------------------------ line discipline by tier (step 73)
+        // Toni (2026-10-20): 60 tier-5 men against 120 tier-1 recruits - the recruits attacked on a very broad front about 2 deep, wider than
+        // his army, and engulfed him; "a low tier untrained troop cannot keep that disciplined line all the way and execute that encircling".
+        // Core LineDisciplineMath (D = the men's mean ranks, at most ceil(men / D) files), AI_NOTES "Step 73", DESIGN decision 67.
+
+        public static readonly ParamDef LineDisciplineEnabled = Bool("LineDisciplineEnabled", LineDisciplineGroup,
+            "Line discipline by tier",
+            "A foot formation (infantry, and archers / skirmishers - see below) in a line, shield wall, loose or scatter arrangement stretches no thinner than its men can hold: each man's tier gives his minimum ranks (the next seven settings), the formation's minimum depth D is their average, recomputed as men fall or move, and its line is at most men / D files wide (rounded up - 3.5 deep gives a 4th rank about half full). Whenever the game or its AI makes a line wider (its wide form orders, an envelop, the line spreading) or losses make it too thin, it is narrowed back at once, before the men move. Cavalry, horse archers, squares, circles, columns and wedges are left alone; naval battles never. Your own formations follow \"Line discipline: your units too\" (the player page, How the AI fights). Off: the game's own widths.");
+
+        public static readonly ParamDef LineDisciplineRanksT0 = Float("LineDisciplineRanksT0", LineDisciplineMath.MinRanks, LineDisciplineMath.MaxRanks, LineDisciplineGroup,
+            "Tier 0: minimum ranks",
+            "The fewest ranks a tier-0 man (a peasant, a looter, a villager) can hold in a line. The formation's minimum depth is the average over its men. 1 = no limit of his own.");
+
+        public static readonly ParamDef LineDisciplineRanksT1 = Float("LineDisciplineRanksT1", LineDisciplineMath.MinRanks, LineDisciplineMath.MaxRanks, LineDisciplineGroup,
+            "Tier 1: minimum ranks",
+            "The fewest ranks a tier-1 man (a recruit) can hold. 120 recruits at 5 make a line at most 24 men wide.");
+
+        public static readonly ParamDef LineDisciplineRanksT2 = Float("LineDisciplineRanksT2", LineDisciplineMath.MinRanks, LineDisciplineMath.MaxRanks, LineDisciplineGroup,
+            "Tier 2: minimum ranks",
+            "The fewest ranks a tier-2 man can hold.");
+
+        public static readonly ParamDef LineDisciplineRanksT3 = Float("LineDisciplineRanksT3", LineDisciplineMath.MinRanks, LineDisciplineMath.MaxRanks, LineDisciplineGroup,
+            "Tier 3: minimum ranks",
+            "The fewest ranks a tier-3 man can hold.");
+
+        public static readonly ParamDef LineDisciplineRanksT4 = Float("LineDisciplineRanksT4", LineDisciplineMath.MinRanks, LineDisciplineMath.MaxRanks, LineDisciplineGroup,
+            "Tier 4: minimum ranks",
+            "The fewest ranks a tier-4 man can hold.");
+
+        public static readonly ParamDef LineDisciplineRanksT5 = Float("LineDisciplineRanksT5", LineDisciplineMath.MinRanks, LineDisciplineMath.MaxRanks, LineDisciplineGroup,
+            "Tier 5: minimum ranks",
+            "The fewest ranks a tier-5 man (a veteran) can hold. At 1 a formation of them is never narrowed.");
+
+        public static readonly ParamDef LineDisciplineRanksT6 = Float("LineDisciplineRanksT6", LineDisciplineMath.MinRanks, LineDisciplineMath.MaxRanks, LineDisciplineGroup,
+            "Tier 6: minimum ranks",
+            "The fewest ranks a tier-6 man (an elite) can hold - also any higher tier a mod adds.");
+
+        public static readonly ParamDef LineDisciplineHeroTier = Int("LineDisciplineHeroTier", 0, LineDisciplineMath.MaxTier, LineDisciplineGroup,
+            "Heroes count as tier",
+            "A hero in a formation - a lord, a companion, you - counts as a man of this tier (whatever his level): 6 = an elite, he holds his place.");
+
+        public static readonly ParamDef LineDisciplineRangedToo = Bool("LineDisciplineRangedToo", LineDisciplineGroup,
+            "Archers and skirmishers too",
+            "On: archer and skirmisher formations keep the same minimum depth as infantry. Off: only infantry formations are held to it.");
+
+        public static readonly ParamDef LineDisciplineInSieges = Bool("LineDisciplineInSieges", LineDisciplineGroup,
+            "In sieges too",
+            "On: sieges and sally-outs too. Off: there the walls, gates and streets set the width, as in the game.");
+
+        public static readonly ParamDef LineDisciplinePreviewCap = Bool("LineDisciplinePreviewCap", LineDisciplineGroup,
+            "Your order drag stops at the limit",
+            "With your units under the line discipline: your formation tells the game its own maximum width is the limit, so when you drag its line in the orders menu the preview stops growing there and the order keeps to it. Off: the drag shows any width and the formation is narrowed right after the order.");
+
+        public static readonly ParamDef LineDisciplineShowMessage = Bool("LineDisciplineShowMessage", LineDisciplineGroup,
+            "Say so on screen",
+            "A short line on screen when your line order asked wider than your men can hold, e.g. \"Infantry: these men hold no thinner than 5 deep - 24 men wide at most\".");
+
+        public static readonly ParamDef LineDisciplinePollSeconds = Float("LineDisciplinePollSeconds", LineDisciplineMath.MinPollSeconds, LineDisciplineMath.MaxPollSeconds, LineDisciplineGroup,
+            "Recount the depth every (s)",
+            "How often each formation's minimum depth is recounted from its men's tiers; at once anyway when men fall, join or leave it. The width itself is checked every frame.");
+
         // ------------------------------------------------------------------ advanced
 
         public static readonly ParamDef HudRefreshSeconds = Float("HudRefreshSeconds", 0.02, 1, AdvancedGroup,
@@ -1769,7 +1837,7 @@ namespace TraxCombat.Core
             // the player page's six groups (step 59)
             DamageRandomPercent, DamageReductionPercent,
             AthleticsEnabled, CostPerBlow, HeroCostMultiplier,
-            AiAggressionFreshPercent, AiAggressionExhaustedPercent, FeverEnabled, ShieldWallHoldsSlots, ShieldWallStepOutMetres, CourageEnabled, CavalryFlockEnabled,
+            AiAggressionFreshPercent, AiAggressionExhaustedPercent, FeverEnabled, ShieldWallHoldsSlots, ShieldWallStepOutMetres, CourageEnabled, CavalryFlockEnabled, LineDisciplineForPlayer,
             ImpactEnabled, ImpactOnPlayerPercent,
             SprintEnabled, SprintKey,
             ShowPlayerBar, AltMarksEveryone, ImpactShowMessages,
@@ -1843,6 +1911,8 @@ namespace TraxCombat.Core
             ShowAltMarkerStats, AltMarkersShowEnemy, ShowFeverOnLabels, ShowFeverMarks, FeverMarksShowEnemy, ShowAthleticsMarks, AthleticsMarksShowEnemy,
             AltNearMarksMax, AltNearMarksMetres, FeverMarkMax, ShowMoraleMarks, ShowMoraleOnLabels, MoraleLabelMetres, MoraleLabelMax,
             OrderNoAccidentalCharge, OrderChargeDragPixels, OrderChargeIconPixels,
+            LineDisciplineEnabled, LineDisciplineRanksT0, LineDisciplineRanksT1, LineDisciplineRanksT2, LineDisciplineRanksT3, LineDisciplineRanksT4, LineDisciplineRanksT5,
+            LineDisciplineRanksT6, LineDisciplineHeroTier, LineDisciplineRangedToo, LineDisciplineInSieges, LineDisciplinePreviewCap, LineDisciplineShowMessage, LineDisciplinePollSeconds,
             HudRefreshSeconds, PlayerBarWidth, PlayerBarHeight, PlayerBarOffsetRight, PlayerBarOffsetBottom,
             RecoveryBarWidth, RecoveryBarHeight, RecoveryBarOffsetAbove, SprintBarOffsetAbove,
             OrderStripTextSize, OrderStripTextOffset, OrderStripBarOffset, OrderStripBarHeight, OrderStripReadyOffset, OrderStripSideMargin,
@@ -1856,7 +1926,7 @@ namespace TraxCombat.Core
         public static readonly IReadOnlyList<ParamGroup> Groups = new[]
         {
             MasterGroup, PlayerDamageGroup, PlayerTiredGroup, PlayerAiGroup, PlayerImpactGroup, PlayerSprintGroup, PlayerScreenGroup,
-            DamageGroup, AthleticsGroup, TiredGroup, StepBackGroup, BattlePaceGroup, BraceGroup, SprintGroup, FeverGroup, CourageGroup, CavalryFlockGroup, ImpactGroup, RefillGroup, PlayerBarGroup, OrderStripGroup, AltMarkersGroup, OrderClickGroup, AdvancedGroup,
+            DamageGroup, AthleticsGroup, TiredGroup, StepBackGroup, BattlePaceGroup, BraceGroup, SprintGroup, FeverGroup, CourageGroup, CavalryFlockGroup, ImpactGroup, RefillGroup, PlayerBarGroup, OrderStripGroup, AltMarkersGroup, OrderClickGroup, LineDisciplineGroup, AdvancedGroup,
         };
 
         /// <summary>Step 59: the groups of one MCM page, in order.</summary>

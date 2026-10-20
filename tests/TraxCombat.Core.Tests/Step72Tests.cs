@@ -40,7 +40,7 @@ public class Step72Tests
             Assert.DoesNotContain(New[i], SettingsSchema.PlayerPage);
         }
         var groups = SettingsSchema.Groups;
-        Assert.Equal(groups.Count - 2, groups.ToList().IndexOf(SettingsSchema.OrderClickGroup)); // right before "Advanced"
+        Assert.Equal(groups.Count - 3, groups.ToList().IndexOf(SettingsSchema.OrderClickGroup)); // right before step 73's "Line discipline by tier", then "Advanced"
         var r = Rules();
         Assert.True(r.On);
         Assert.Equal(12, r.DragPixels);

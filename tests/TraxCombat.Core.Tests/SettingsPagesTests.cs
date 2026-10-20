@@ -26,6 +26,7 @@ public class SettingsPagesTests
         ("How the AI fights", "ShieldWallStepOutMetres", "Shield walls: a step out to strike (m)"),
         ("How the AI fights", "CourageEnabled", "Courage and cohesion"),
         ("How the AI fights", "CavalryFlockEnabled", "Cavalry flocking"),
+        ("How the AI fights", "LineDisciplineForPlayer", "Line discipline: your units too"), // step 73 - Toni's own toggle (DESIGN decision 67 f)
         ("Staggers and knockdowns", "ImpactEnabled", "Staggers, shield drops, knockdowns"),
         ("Staggers and knockdowns", "ImpactOnPlayerPercent", "Against you (%)"),
         ("Sprinting", "SprintEnabled", "Sprint"),
@@ -40,7 +41,7 @@ public class SettingsPagesTests
     {
         var player = SettingsSchema.OnPage(SettingsPage.Player);
         var advanced = SettingsSchema.OnPage(SettingsPage.Advanced);
-        Assert.Equal(377, SettingsSchema.All.Count); // step 72: + 3 (no accidental charge orders); step 70: + 9 (the band, the strike) + 2 (the lone runner); step 69: + 6 (winning calms, the threat line, the mop-up); step 68: + 4 (the wall advances as one, the walk back after a kick) + 1 (no kick through a friend); step 67: + 25 (the fear flock) + 4 (the morale eyes); step 66: + 5 (the wait for reach, the bashes per swing); step 65: + 14 (the AI kicks) + 7 (the brace); step 64: + 2 (the shield front arc) + 3 (the charge sprint into contact); step 63: + 2 (the rear / flank pressure) + 1 (the wall's walk back); step 62: + 2 (the lost falls) + 2 (toughness, a ranged man in melee) + 4 (direction) + 4 (the charge) + 1 (the critical) + 1 (the cap)
+        Assert.Equal(392, SettingsSchema.All.Count); // step 73: + 15 (line discipline by tier - 1 on the player page); step 72: + 3 (no accidental charge orders); step 70: + 9 (the band, the strike) + 2 (the lone runner); step 69: + 6 (winning calms, the threat line, the mop-up); step 68: + 4 (the wall advances as one, the walk back after a kick) + 1 (no kick through a friend); step 67: + 25 (the fear flock) + 4 (the morale eyes); step 66: + 5 (the wait for reach, the bashes per swing); step 65: + 14 (the AI kicks) + 7 (the brace); step 64: + 2 (the shield front arc) + 3 (the charge sprint into contact); step 63: + 2 (the rear / flank pressure) + 1 (the wall's walk back); step 62: + 2 (the lost falls) + 2 (toughness, a ranged man in melee) + 4 (direction) + 4 (the charge) + 1 (the critical) + 1 (the cap)
         Assert.Equal(SettingsSchema.All.Count, player.Count + advanced.Count);
         Assert.Empty(player.Intersect(advanced));
         Assert.Equal(SettingsSchema.All.OrderBy(p => p.Key), player.Concat(advanced).OrderBy(p => p.Key));
@@ -55,7 +56,7 @@ public class SettingsPagesTests
     public void The_player_page_is_short_and_exactly_this_list_in_this_order()
     {
         var page = SettingsSchema.PlayerPage;
-        Assert.InRange(page.Count, 12, 20);                                      // Anton: "a few options" - not a wall
+        Assert.InRange(page.Count, 12, 21);                                      // Anton: "a few options" - not a wall (step 73: 20 → 21 on purpose, the line discipline's switch for your units)
         Assert.Equal(PlayerPage.Select(r => r.Key), page.Select(p => p.Key));
         Assert.Equal(PlayerPage.Select(r => r.Label), page.Select(p => p.Label));
         Assert.Equal(PlayerPage.Select(r => r.Group), page.Select(p => p.Group.Title));
@@ -71,7 +72,7 @@ public class SettingsPagesTests
         var players = SettingsSchema.GroupsOn(SettingsPage.Player);
         var advanced = SettingsSchema.GroupsOn(SettingsPage.Advanced);
         Assert.Equal(7, players.Count);
-        Assert.Equal(17, advanced.Count);                                         // every group of before step 59 but the master switch, + step 72's orders group
+        Assert.Equal(18, advanced.Count);                                         // every group of before step 59 but the master switch, + step 72's orders group, + step 73's line discipline
         Assert.Equal(groups.Take(players.Count), players);
         Assert.Equal(groups.Skip(players.Count), advanced);
         Assert.Same(SettingsSchema.MasterGroup, groups[0]);
