@@ -214,6 +214,7 @@ namespace TraxCombat.Missions
         /// any other gate ends his spell.</summary>
         private void FearSkipped(TrackedAgent st, CourageSkip skip, double now)
         {
+            BlockSkipped(st, skip, now); // step 74
             var fm = st.Fear;
             if (skip != CourageSkip.WallHeld)
             {
@@ -252,6 +253,7 @@ namespace TraxCombat.Missions
                 SafeEndFear(st, now);
             }
             _fearStats.LookCostMs += (Stopwatch.GetTimestamp() - start) * 1000.0 / Stopwatch.Frequency;
+            BlockLook(st, now, in near, courage); // step 74: the block hold decides last (it yields to courage's walk and the flock)
         }
 
         private void FearLookCore(TrackedAgent st, double now, in FearNear near, FearCourage courage)

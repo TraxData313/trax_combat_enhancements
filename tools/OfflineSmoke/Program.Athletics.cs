@@ -1192,6 +1192,9 @@ namespace TraxCombat.Tools
             // --- step 73: the line discipline - off = every width it set given back (the game's form order) and every capped arrangement out; on = held again
             LinesFollowTheMasterSwitch();
 
+            // --- step 74: the block hold - off = every man walked back into his block let go at once; on = held again
+            BlockFollowsTheMasterSwitch();
+
             // --- the HUD (step 6): the Athletics bar goes the moment the switch goes, and comes back
             HudFollowsTheMasterSwitch(a.Agent);
         }

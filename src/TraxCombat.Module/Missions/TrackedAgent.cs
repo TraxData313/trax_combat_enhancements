@@ -295,6 +295,9 @@ namespace TraxCombat.Missions
         /// <summary>Step 70: his lone-runner watch (alone at the last look, out beyond his line, the cause).</summary>
         public readonly LoneMind Lone = new LoneMind();
 
+        /// <summary>Step 74: his block-hold state (walked back into his block or not, his place in it).</summary>
+        public readonly BlockMind BlockHold = new BlockMind();
+
         /// <summary>Step 67: his morale as the game keeps it (0-100; −1 none; NaN = not read yet) - read at every formation-stats refresh
         /// (the ALT morale bar and the labels' mean) and at courage's looks.</summary>
         public double Morale = double.NaN;

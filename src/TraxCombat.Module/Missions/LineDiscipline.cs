@@ -87,6 +87,13 @@ namespace TraxCombat.Missions
         private double[] _lastMessage = Array.Empty<double>();
         private LineRecord?[] _records = Array.Empty<LineRecord?>();
 
+        // step 74: the last look's cap per slot (the block hold reads it)
+        private int[] _capFiles = Array.Empty<int>();
+        private double[] _capWidth = Array.Empty<double>();
+        private int[] _capMen = Array.Empty<int>();
+        private bool[] _capSide = Array.Empty<bool>();
+        private bool[] _capPlayer = Array.Empty<bool>();
+
         private bool _started;
         private bool _wasOn;
         private bool _wasPlayerOn;
@@ -217,6 +224,11 @@ namespace TraxCombat.Missions
             int cap = LineDisciplineMath.CapFiles(men, depth);
             double capWidth = LineDisciplineMath.CapWidth(cap, _facts.Interval, _facts.Diameter);
             int files = LineDisciplineMath.FilesOf(_facts.Width, _facts.Interval, _facts.Diameter);
+            _capFiles[slot] = cap; // step 74
+            _capWidth[slot] = capWidth;
+            _capMen[slot] = men;
+            _capSide[slot] = _facts.PlayerSide;
+            _capPlayer[slot] = _facts.PlayerOrdered;
 
             if (files > cap && now < _retryAt[slot])
             {
@@ -330,6 +342,25 @@ namespace TraxCombat.Missions
                 _stats.Errors++;
                 AthleticsLogic.Failed("lines.order", e);
             }
+        }
+
+        /// <summary>
+        /// Step 74: the cap step 73 holds this slot to (the last look's): its mean depth D, the cap's files and width (m) at its spacing, its men, its
+        /// side and whether the player orders it. False = not counted now (cavalry, a square, the switches, never looked at).
+        /// </summary>
+        public bool TryCap(int slot, out double depth, out int capFiles, out double capWidth, out int men, out bool playerSide, out bool playerOrdered)
+        {
+            depth = capWidth = double.NaN;
+            capFiles = men = 0;
+            playerSide = playerOrdered = false;
+            if (slot < 0 || slot >= _counted.Length || !_counted[slot] || _capFiles[slot] <= 0) return false;
+            depth = _depth[slot];
+            capFiles = _capFiles[slot];
+            capWidth = _capWidth[slot];
+            men = _capMen[slot];
+            playerSide = _capSide[slot];
+            playerOrdered = _capPlayer[slot];
+            return true;
         }
 
         /// <summary>The mission ends: every width / arrangement stays (the mission is over); the summary lines.</summary>
@@ -554,6 +585,11 @@ namespace TraxCombat.Missions
             Array.Resize(ref _lastMessage, n);
             for (int i = old; i < n; i++) _lastMessage[i] = double.NegativeInfinity;
             Array.Resize(ref _records, n);
+            Array.Resize(ref _capFiles, n); // step 74
+            Array.Resize(ref _capWidth, n);
+            Array.Resize(ref _capMen, n);
+            Array.Resize(ref _capSide, n);
+            Array.Resize(ref _capPlayer, n);
         }
 
         private static string Sec(double t) => t.ToString("0.0", CultureInfo.InvariantCulture);
