@@ -1261,6 +1261,71 @@ staggers you for a moment"; **purple** "X braces against your kick" / "A lucky k
 `KickBraceReelPercent` 20, `KickShortReelPercent` 40, `KickBraceRefusesKnockBack` on; step 66: `AiKickWaitSeconds` 3, `AiKickWaitMetres` 5,
 `AiBashShareOfSwingsPercent` 100, `AiBashDelaySeconds` 1.5, `AiBashCooldownSeconds` 2, `CostPerKickOrBash` 6 (5 until step 71).</sub>
 
+### Meeting a kick or a bash (step 82)
+
+A shield bash comes from the basher's left hand to the defender's **right**; a kick comes **low**. Met the right way, the blow turns on the man
+who threw it (Toni: "if met properly the initiator should be caught off balance"):
+
+| Met by… | Who risks it | Stagger | Fall | Shield drop |
+|---|---|---:|---:|---:|
+| a bash - a shield, guard **right** | the **basher** | 70% | 30% | — |
+| a bash - a weapon, guard **right** | the **basher** | 45% | 15% | — |
+| a bash - a shield, wrong guard | the blocker | 85% | 40% | 35% |
+| a bash - a weapon, wrong guard | the blocker | 95% | 50% | — |
+| a bash - no guard, or mid-swing | the man | 98% | 60% | 45% (with a shield) |
+| a kick - a shield, guard **down** | the **kicker** | 60% | 25% | — |
+| a kick - a weapon, guard **down** | the **kicker** | 50% | 30% | — |
+| a kick - any other guard, or none | the kicked man | as "The kicked man braces" above | | |
+
+These are ceilings - each chance rises along the same pressure as everything else. A correct meet leaves the defender standing (no knock-back);
+the **attacker's** chance follows **his own** tiredness and how outmatched his blow is against the guard (body, skill, the guard's weight -
+a shield guards better than a sword). A bash that lands gets through at its ceiling × the brace's curve; held, nothing at all.
+
+**The attacker's risk on a correct meet** (a 100-pool man, skill 100, into a fresh 100-pool guard; staggered or down, the fall in brackets):
+
+| His bar | 100% | 56% | 38% | 19% | 0% |
+|---|---:|---:|---:|---:|---:|
+| bash → a shield guarding right | 0 | 11% | 45% (7) | 78% (29) | 79% (30) |
+| bash → a weapon guarding right | 0 | 4% | 24% (2) | 44% (10) | 53% (15) |
+| kick → a shield guarding down | 0 | 16% | 51% (12) | 70% (25) | 70% (25) |
+| kick → a weapon guarding down | 0 | 8% | 28% (4) | 54% (20) | 65% (30) |
+
+An average man (80 pool, skill 60) at half his bar into a skilled fresh guard (200 pool, skill 250): a bash 47% staggered / 11% down, a kick
+49% / 15% - a fresh veteran punishes a tired man's bash.
+
+**The defender's risk on a wrong meet** (a fresh 100 basher; staggered - for a landed bash, knocked back - by the defender's bar):
+
+| His bar | 100% | 56% | 38% | 19% | 0% |
+|---|---:|---:|---:|---:|---:|
+| a shield, wrong guard (the bash stopped) | 1% | 31% | 70% (25 down) | 85% (40 down) | 85% (40 down) |
+| a weapon, wrong guard | 39% | 69% | 89% | 95% | 95% |
+| no guard, or mid-swing | 41% | 71% | 91% | 98% | 98% |
+
+(Once a landed bash gets through, a fall at 0 / 1 / 37 / 60 / 60% for no guard.)
+
+**The AI reads it.** An AI soldier a kick or bash is aimed at reads it - once, as it starts - about as often as he blocks a swing in the right
+direction, and then raises the right guard (right for a bash, down for a kick) a reaction time later (0.15 s) until it lands:
+
+| The game's realistic difficulty | His bar 100% | 56% | 38% | 19% | 0% |
+|---|---:|---:|---:|---:|---:|
+| a looter (skill 20) | 16% | 16% | 16% | 16% | 16% |
+| a recruit (60) | 18% | 18% | 18% | 18% | 18% |
+| a legionary (130) | 25% | 24% | 23% | 22% | 20% |
+| a veteran (200) | 40% | 35% | 31% | 27% | 22% |
+| a lord (300) | 90% | 73% | 57% | 41% | 25% |
+
+Shieldmen bashing (the smoke, 400 bashes each - an average shieldman at half his bar into a skilled shieldman): a FRESH defender reads 59%, the basher
+reels 24% and falls 6%, the defender is never moved; a TIRED one (10%) reads 28% and is staggered 35%, knocked down 30%, loses his shield 24%.
+An AI basher who sees a raised shield guarding right kicks it instead; guarding any other way, he bashes. You are judged by your own guard at the
+moment of the hit - the AI never steers you.
+
+<sub>Settings: `ImpactMeetRulesEnabled` on (the player page, "Staggers and knockdowns"); Advanced, "Impact: staggers, shield drops, knockdowns":
+`MeetBashShieldRightStaggerPercent` 70, `MeetBashShieldRightFallPercent` 30, `MeetBashWeaponRightStaggerPercent` 45, `MeetBashWeaponRightFallPercent` 15,
+`MeetBashShieldWrongStaggerPercent` 85, `MeetBashShieldWrongFallPercent` 40, `MeetBashShieldWrongShieldDropPercent` 35, `MeetBashWeaponWrongStaggerPercent` 95,
+`MeetBashWeaponWrongFallPercent` 50, `MeetBashOpenStaggerPercent` 98, `MeetBashOpenFallPercent` 60, `MeetBashOpenShieldDropPercent` 45,
+`MeetKickShieldDownStaggerPercent` 60, `MeetKickShieldDownFallPercent` 25, `MeetKickWeaponDownStaggerPercent` 50, `MeetKickWeaponDownFallPercent` 30,
+`MeetAiReadScalePercent` 100, `MeetAiReadReactionSeconds` 0.15, `MeetAiReadMaxHoldSeconds` 1.5.</sub>
+
 ### You
 
 The same rules apply to you — every chance against you × `ImpactOnPlayerPercent` (100%). A short line in the

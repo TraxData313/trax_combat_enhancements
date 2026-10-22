@@ -280,6 +280,12 @@ front of his foot or shield: a soldier in the second rank never kicks past his f
 from his enemy, or with a mate stepping across, swings instead.
 
 
+**Meet a kick or a bash the right way.** A shield bash comes at you from the basher's left hand - at your **right** side; a kick comes **low**.
+Guard to the right against a bash, or down against a kick, and you take it standing - and the man who threw it is caught off balance: the more
+tired he is, the likelier he reels or goes down. Guard the wrong way, or get caught mid-swing, and you are the one thrown about - especially when
+you are tired. The AI reads a coming kick or bash about as well as it blocks a swing (a fresh veteran often, a tired one or a recruit seldom) and
+raises the right guard; so do you, with your own guard.
+
 **The enemy goes for the opening.** When a man reels or lies on the ground — you included — the men fighting
 him press it at once.
 

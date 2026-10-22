@@ -3104,6 +3104,33 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     `CostPerKickOrBash` 6 → 8 (a format 15-18 file), `AiKickCooldownSeconds` 8 → 2 (a format 13-18 file) - untouched values moved, hand-set ones kept and
     said once. (i) UNVERIFIED in game (PLAYTEST D46): the guard-then-kick plays as a KICK (not a bash) and is not dropped (`played as the other kind`, `NOT
     played`); the cancelled wind-up looks natural; the measured shares in Toni's next log.
+78. **Meeting a bash or a kick the right way** (step 82, Toni 2026-10-22: "a valid way to transfer your body's kinetic energy ... if met properly the
+    initiator should be caught off balance"; then "more about staggers and men thrown off balance" - the ceilings raised). A shield bash comes from the
+    basher's LEFT hand to the defender's RIGHT side - a RIGHT guard is the correct meet; a kick's is a DOWN guard. (a) THE SPIKE (AI_NOTES "Step 82"): the
+    engine stops a bash with ANY raised shield (`AttackBlockedWithShield`, Blocked - not registered, no knock-back) and LANDS every kick and every bash into a
+    weapon guard (Toni's logs: kicks into a shield 0, "other" 0 in 8 battles); no collision field tells a guard direction for an alternative attack, so the
+    guard is read OURSELVES at contact (channel 1's action - a weapon guard's action names its side, Forward = down -, its direction, the engine's defend
+    flag; Core `ImpactMeetMath.GuardOf`), in the same decision (the decorator's seams for a landed one, OnMeleeHit for a stopped one). (b) THE ROWS (the
+    pressure, the S-curve, tiredness, skill, toughness, direction and the halving unchanged): a CORRECT meet - the defender takes nothing (a landed one held:
+    the knock-back refused, the reaction cut), the ATTACKER rolls fall then stagger on the riposte's pressure x_r (his tiredness, the defender's body / guard
+    / skill against his blow): bash on a shield right **70 / 30**, a weapon right **45 / 15**, kick on a shield down **60 / 25**, a weapon down **50 / 30**
+    (stagger / fall); a bash the shield STOPPED with a wrong guard - the blocker's rows on x in full (a block's), **85 / 40 / drop 35**; a bash that LANDED -
+    weapon wrong **95 / 50**, no guard or mid-swing **98 / 60 / drop 45** - the knock-back gets through at the ceiling × step 65's brace curve (held = braced,
+    no fall / drop) - Claude's call: the bare S(x) from 0 would never knock back a fresh unguarded man; a kick met any other way = step 65 exactly. Made by
+    the levers already proven: the riposte's forced stagger and step 62's own blow on the attacker, step 51's stagger / blow / drop on a stopped bash's
+    blocker, step 50 / 65's live kick on a landed one. (c) THE AI READS IT: an AI man targeted by a starting kick / bash (an AI attempt at its start; any
+    other - yours - when the poll sees it) rolls once at `MeetAiReadScalePercent` × the chance he blocks a swing correctly (the game's
+    `AIBlockOnDecideAbility` × the right-direction share of `AiRandomizedDefendDirectionChance`, step 30's tired guess inside: a legionary ~25 %, a lord
+    90 % falling to 25 % empty); read = the correct guard (DefendRight / DefendDown) through step 16's input hook from `MeetAiReadReactionSeconds` 0.15 s
+    after the start until the hit (`MeetAiReadMaxHoldSeconds` 1.5 at most); a hit sooner = too late. The player is judged the same way, never steered. (d)
+    STEP 81's RAISED-SHIELD SWAP kept only where right: the AI basher kicks a raised shield guarding RIGHT (the bash would be met) and keeps the bash on one
+    guarding any other way (the AI's own raised guard is DOWN - the blocker is at risk); a kick into a DOWN guard is now the kicker's risk, so the old blanket
+    swap is gone. (e) SETTINGS: `ImpactMeetRulesEnabled` (the player page, 28) + 19 Advanced in the Impact group after `AiKickRearRankMetres` (the 16
+    ceilings, the read's scale / reaction / hold), all live; no config-format change. (f) MEASURED: the [summary] "impact meets" lines (each meeting by row,
+    outcomes on the attacker vs the defender, the guard read and the engine's own verdict on stopped ones, the AI's reads by bar band, too late). SMOKE:
+    an average shieldman at half his bar bashing a skilled shieldman 400 times - FRESH: read 59 %, the basher staggered 24 % / down 6 %, the defender never;
+    TIRED (10 %): read 28 %, the defender staggered 35 % / down 30 % / shield 24 %; 1000 men 0.037 ms a tick, 0 bytes. (g) UNVERIFIED in game (PLAYTEST D47):
+    the shield guard's direction read at contact, DefendRight honoured in AI input, how it looks, the read's timing.
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),
 `HudRefreshSeconds`, `FormationStatsRefreshSeconds` came out of step 2's research

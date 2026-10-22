@@ -7644,3 +7644,129 @@ page (three inner numbers; the player page's list is pinned); the stack's refusa
    man-minute; the smoke's grind 4.3).
 
 **DEPLOY**: tools\deploy.ps1 ran normally (Smart App Control off): the build, the AssemblyGuard, the offline smoke - all 191 passed -, installed as Modules\TraxCombatEnhancements.Dev; the game and the launcher were not running. `tools\SmartAppControl\loadcheck.ps1`: both DLLs LOADED (`1.2.0+d5916c7f…`). Not uploaded.
+
+## Step 82 — meeting a bash or a kick the right way (built 2026-10-22; dev build only, not uploaded)
+
+**Toni (2026-10-22)**: "a valid way to transfer your body's kinetic energy ... if met properly the initiator should be caught off balance". A shield bash
+comes from the basher's LEFT hand to the defender's RIGHT side - a RIGHT guard is the correct meet (the basher's own weight turns against him); a kick's
+correct meet is a DOWN guard (he saw it coming and braced). Then (the same day): "battles more about staggers and men thrown off balance" - the ceilings
+raised to the shipped values below.
+
+**82.0 THE SPIKE (the decompile at `%TEMP%\trax_decomp`, v1.4.8, and Toni's logs of 2026-10-22)**
+1. *How do we read the defender's guard at the hit?* `AttackCollisionData` carries `AttackBlockedWithShield`, `CorrectSideShieldBlock` (native, the guard's
+   direction against the ATTACK's direction - step 64) and `CollisionResult` (None / StrikeAgent / HitWorld / Blocked / Parried / ChamberBlocked), plus
+   `AttackDirection` (a `UsageDirection`). For an alternative attack none of them is a guard direction we can trust: the engine has no attack direction
+   for a kick / bash that a guard could be "right" against. So the guard is read OURSELVES at contact from the defender: `Agent.GetCurrentActionType(1)`
+   (`ActionCodeType` DefendShield 2, DefendFist 1, Defend{Forward,Up,Right,Left}{2h,1h,Staff} 3-14 - a weapon guard's action NAMES its side; Forward =
+   the low / thrust guard = DOWN), `GetCurrentActionDirection(1)` (a `UsageDirection`, DefendUp 4 / Down 5 / Left 6 / Right 7) and `GetDefendMovementFlag()`
+   (the `MovementControlFlag` Defend* bit) as the shield's direction fallback - Core `ImpactMeetMath.GuardOf`; his own wind-up / release / kick / bash /
+   shot = mid-swing. The read happens in the SAME decision as everything else (the decorator's knock-back / KnockDown seams for a landed kick / bash,
+   OnMeleeHit for a stopped one) - no tick read, no cache. UNVERIFIED: that `GetCurrentActionDirection(1)` gives the shield's side (the "guard read"
+   summary line counts guards with no direction read; the stopped bashes' `CorrectSideShieldBlock` and `AttackDirection` are counted beside our verdict).
+2. *How does the engine resolve them?* `Mission.MeleeHitCallback` (5297): every collision builds a blow (`CreateMeleeBlow` - the shrug-off, knock-back and
+   KnockDown questions are asked for a collider agent) and calls every behaviour's `OnMeleeHit`; only a collision that is NOT Blocked / Parried /
+   ChamberBlocked is REGISTERED (`RegisterBlow` - the damage, the knock-back, the reaction). Toni's logs (8 battles, step 68's coverage line): kicks
+   into a raised shield 0 of ~430 kicks; bashes into a raised shield 98 / 148 / 45 / 39 / 45 / 212 / 156 (AttackBlockedWithShield, not registered - no
+   knock-back, nothing plays); "other (the world, a miss)" 0 in every battle - so a kick against ANY guard and a bash against a WEAPON guard LAND
+   (StrikeAgent, registered: the knock-back plays). RBM's note agrees ("a raised shield stops a bash but not a kick"). So: a bash into a raised shield (any
+   direction) = a blocked blow with no knock-back, decided in OnMeleeHit; a bash on a weapon guard / no guard and every kick = a landed blow, decided in the
+   decorator's seams where the knock-back and knockdown can still be answered.
+3. *Can we write a guard direction into AI input?* Yes - `AgentComponent.OnAIInputSet(ref EventControlFlag, ref MovementControlFlag, ref Vec2)` (step 16's
+   hook) already writes DefendDown (step 16 / 23's raised guard) and DefendUp (step 65's bash guard, which the engine honours: step 65 / 81's "PLAYED" counts).
+   DefendRight (0x800) / DefendDown (0x2000) are the same Defend* bits; RBM's AiKickBash says "DefendBlock alone does not raise the guard" - a DIRECTION bit
+   does. UNVERIFIED in game for DefendRight specifically (PLAYTEST D47: the guard reads of readers).
+
+**82.1 THE ROWS (Core `ImpactMeet.cs`, `Impact.cs` `DecideMeet`)** - `ImpactMeetMath.Classify(bash, stopped, kind, dir)`: a bash the shield stopped = a shield
+meet whatever the read (right = correct, else wrong); a bash otherwise by the read (shield / weapon right = correct, other directions = wrong, none /
+mid-swing / unknown = open); a kick: shield / weapon DOWN = correct, anything else = `KickOther` (step 65 exactly). The ceilings (shipped - Toni's second
+numbers): bash shield right BASHER 70 / 30, weapon right BASHER 45 / 15, shield wrong blocker 85 / 40 / drop 35, weapon wrong 95 / 50, open 98 / 60 / drop
+45 (with a shield); kick shield down KICKER 60 / 25, weapon down KICKER 50 / 30.
+- CORRECT MEET: the defender takes nothing (a landed one = braced: `d.Brace = Braced`, the reaction cut to `KickBraceReelPercent`, the knock-back refused
+  in the knock-back seam - `_pendingMeetHeld`, whatever `KickBraceRefusesKnockBack` / `KickBraceEnabled` say); the ATTACKER: x_r = `RipostePressure` (T_A +
+  0.25 × band(log₂ R_r), R_r = (B_D ÷ B_A)^0.5 × (G_D × K_D) ÷ (I_A × K_A) × the reflected charge) with G_D = `ImpactMeetMath.Guard` (the shield's right-side
+  guard × its weight factor, a weapon = the parry's × its weight) and K_D = the guarding item's skill (`ImpactFacts.MeetGuardSkill`); fall = ceiling ×
+  Curve(x_r, `ImpactKnockdownFrom`) → `ThrownBack`, stagger = ceiling × Curve(x_r, `ImpactStaggerFrom`) → `Riposte` (replaced by a fall), × (1 −
+  `RiposteBlockerTiredPercent` × T_D), × his halvings, × your share when he is you; his stagger's length = §3.7's on HIS tiredness.
+- A BASH THE SHIELD STOPPED, WRONG GUARD: a block's rows on the blocker - fall / drop / stagger on x in full (T_D whole, the kick / bash row's pressure:
+  guard none, his Athletics skill) - made from the tick like a block's (`QueueBlock` Stagger / OwnBlow, the drop pool).
+- A BASH THAT LANDED (weapon wrong, open): the knock-back gets through at the row's stagger × step 65's brace curve S((x + 0.7) ÷ 1.7) (a spent man: the
+  ceiling) - "stagger" on a landed alternative attack has been the brace failing since step 65; held = braced (no knock-back, no fall, no drop); through
+  = fall / drop on x, the reel as a failed brace's (`ReelCut`). Claude's call: the pure S(x) from 0 would have given a fresh unguarded man 0 % - never
+  knocked back by a bash - where today's brace gives 37 %; Toni's 98 is meant as "almost surely staggered".
+- `KickOther` and NotJudged = step 65's `Decide` path untouched. Riders never judged. `ImpactMeetRulesEnabled` off (or the master switch) = step 65 exactly.
+
+**82.2 THE MODULE (`AthleticsLogic.ImpactMeet.cs`, `MeetBody.cs`, `ImpactModel.cs`, `KickBrace.cs`)** - `FillMeet` after `ImpactInputs.Fill` (a kick / bash on a
+man on foot, the rules on): `IMeetBody.Guard`, counted, classified; the first meet of each row in full (the raw action / direction / flag). OnMeleeHit:
+a kick / bash with `AttackBlockedWithShield` and the rules on → `ImpactDecideEvent(..., altBlocked: true)` (a stopped kick met any other way = nothing,
+as before - `BlockedKicksNotJudged`); the engine's `CorrectSideShieldBlock` and `AttackDirection` of every stopped one counted beside our verdict.
+`ImpactDecide`: a landed one → `ApplyKick` (step 50 / 65's live kick), then `ApplyMeet` → the attacker's fall (`ThrownBack` = our own blow on him) or
+stagger (`Riposte` = the forced stagger) from the tick through step 51's queue; a stopped one's blocker outcomes the same way. The YOU line and the first
+outcome per row.
+
+**82.3 THE AI READS IT** - the chance = `ImpactMeetMath.ReadChance` = `MeetAiReadScalePercent` × the game's `AIBlockOnDecideAbility` (`SetAiRelatedProperties`:
+lerp(0.5, 0.99, √num), num = skill ÷ 300 × the difficulty × the AI level) × `TiredBlockMath.RightShare(AiRandomizedDefendDirectionChance)` (1 − num³, raised
+by step 30's tired weight in the stat decorator) - the chance he blocks a swing in the right direction, read off his own driven properties at the roll.
+On realistic: a looter 16 %, a recruit 18 %, a legionary 25 → 20 % as he tires, a veteran (200) 40 → 22 %, a lord (300) 90 → 25 %. Rolled ONCE per start
+(`MeetReadRolledFor`): an AI attempt of ours at `BeginAiKick` (the target), any other kick / bash when step 18's poll sees it start (`MeetKickSeen` -
+`IMeetBody.Aim`: the nearest enemy on foot within `AiKickReachMetres` / `AiKickFacingDegrees` - your kick / bash). Never you, a rider, a man down /
+reeling / in his own kick / reading already. Read = a reader in a fixed pool (128): after `MeetAiReadReactionSeconds` 0.15 s his input gets the guard
+(`AiInputState.MeetGuard`, written in the component after the holds' frame, before a kick's - `ImpactMeetMath.GuardFrame`: his attack bits and his own
+guard out, DefendRight / DefendDown in; `Active` includes it), held until the hit (`MeetReadHitTaken` from OnMeleeHit - in time / TOO LATE / met
+correctly, by his bar band) or `MeetAiReadMaxHoldSeconds` 1.5; gone / taken over / the switch off = let go (`EndMeetRead` - the callback released if
+idle). An AI bash's guard lead is 0.4 s, a kick's 0.15 s - a kick started by the AI comes ~0.3-0.45 s after its start: most reads are in time; a kick
+seen only when its action starts (yours) may come sooner - the summary's TOO LATE says how often.
+
+**82.4 STEP 81's RAISED-SHIELD RULE** (a rolled bash into a raised shield facing him = a kick): KEPT only where it is still right. With the meet rules on,
+the AI basher reads the shield's guard (`IMeetBody.Guard`): guarding RIGHT (the bash would be met correctly - the basher pays) → he kicks instead
+(`SwapsToKick`); guarding any other way (the AI's own raised guard is DOWN - step 16 / 23, the wall's front rank) → he KEEPS the bash: the shield stops it
+with a wrong guard and the blocker is at risk (`BashesKeptIntoWrongShield`). Why: the old swap turned every bash on a raised shield into a kick, and a kick
+into a DOWN guard is now the KICKER's risk - the swap would have walked him into the correct meet. No kick → bash swap was added (a kick never meets a raised
+shield's stop; a DOWN-guarded man meets it correctly - the next step's call if the logs show many).
+
+**82.5 SETTINGS** (20; 478 → 498; no config-format change - nothing old moved): `ImpactMeetRulesEnabled` (the player page "Staggers and knockdowns", on - the page
+28); Advanced, the Impact group after `AiKickRearRankMetres`: the 16 ceilings `MeetBash{ShieldRight,WeaponRight,ShieldWrong,WeaponWrong,Open}{Stagger,Fall}Percent`,
+`MeetBashShieldWrongShieldDropPercent`, `MeetBashOpenShieldDropPercent`, `MeetKick{ShieldDown,WeaponDown}{Stagger,Fall}Percent`; `MeetAiReadScalePercent` 100,
+`MeetAiReadReactionSeconds` 0.15, `MeetAiReadMaxHoldSeconds` 1.5. All live.
+
+**82.6 THE SUMMARY (Core `ImpactMeetStats`)** - three [summary] lines after the model's: "impact meets (step 82) - each kick / bash by how it was met": per row
+the count → the ATTACKER staggered / down and the defender held (correct rows) or the defender staggered / down / shield dropped / held, by a reader, you in;
+the bashes / kicks the shield stopped. "- the guard read at contact": no guard / mid-swing / shield / weapon / not read, the stopped ones the ENGINE called
+correct-side (ours correct too, ours correct where it said wrong), their attack direction, guards with no direction read, reads failed. "- the AI reads an
+incoming kick / bash": by the reader's bar band rolled (the mean chance) → READ, of the reads hit in time / TOO LATE / met correctly; not rolled busy /
+pool full; guards raised (frames written); reads ended by the hit / the hold / gone; the AI bashes swapped to a kick vs kept into a wrong-guarded shield.
+
+**Measured offline**: tests 1153 → 1165 (Step82Tests 12: the settings placed / live / shipped, the master switch first, the guard read, the row selection
+and Toni's ceilings, the correct meet - nothing on the defender, the attacker by his own tiredness (fresh 0, empty 30 / 70) -, the attacker-side pressure
+(the mismatch turned round, the shield's guard and skill, a weapon weaker, your share, his halving), the stopped wrong-guard bash (the blocker's ceilings at
+x 1, fresh ~0), the landed bash (ceiling × the brace curve, spent = the ceiling, held = no fall / drop), a kick met otherwise = step 65, the read chance by
+bar, the reaction cut and the frame, the summary lines; SettingsPages / Impact tests' counts). Smoke 191 → 196 (Program.Step82.cs): the engine's codes behind
+the guard read; THE ROWS through the real seams and OnMeleeHit (a spent basher staggered from the tick 70 %, a weapon-right bash's knock-back refused with
+the brace OFF, an exhausted blocker staggered 85 %, a spent kicker thrown down by our blow, a kick with no guard = the brace, a stopped kick otherwise
+nothing, YOU, the switches); THE AI READS IT (once per start, the guard after 0.15 s, met and ended at the hit, too late at 0.1 s, a kick = DOWN, the hold,
+never you / a kicking man, your bash seen by the poll, the master switch); SHIELDMEN BASHING FRESH VS TIRED DEFENDERS (400 seeded each: an average shieldman
+at half his bar into a skilled shieldman whose own guard is DOWN - FRESH: read 59.0 %, the basher staggered 24.3 % / down 6.0 %, the defender 0 / 0 / 0;
+TIRED at 10 %: read 27.8 %, the basher 5.0 % / 0, the defender staggered 34.8 % / down 30.3 % / shield 24.3 %); THE COST (1000 men, 8 starts and 20 stopped
+bashes decided a tick: 0.037 ms a tick, **0 bytes**). AthleticsDefaults pins the rules off for the older steps.
+
+**Worked numbers (the shipped values; Core `ImpactMath.Decide`; a 100-pool man, skill 100, toughness even)** - a correct meet by the ATTACKER's bar 100 / 56 /
+38 / 19 / 0 % into a fresh 100-pool guard: bash on a shield right - stagger or fall 0 / 11 / 45 / 78 / 79 % (falls 0 / 0 / 7 / 29 / 30); weapon right 0 / 4 / 24
+/ 44 / 53 %; kick on a shield down 0 / 16 / 51 / 70 / 70 %; weapon down 0 / 8 / 28 / 54 / 65 %. An average man (80 pool, skill 60) at half his bar into a
+skilled fresh guard (200 pool, skill 250): bash 47 % staggered / 11 % down, kick 49 / 15. The defender at risk, a fresh 100 basher by the DEFENDER's bar
+100 / 56 / 38 / 19 / 10 / 0 %: shield wrong (stopped) staggered 1 / 31 / 70 / 85 / 85 / 85 %, down 0 / 1 / 25 / 40 %; weapon wrong (landed) through 39 / 69 /
+89 / 95 %; no guard 41 / 71 / 91 / 98 % (the falls 0 / 1 / 37 / 60 % once through).
+
+**Gotchas**
+- The heredoc in the Bash tool broke twice on long Python bodies ("unexpected EOF while looking for matching `'`") - write the scripts with the Write tool.
+- A blocked collision also reaches the decorator's seams (CreateMeleeBlow asks them for any collider agent) - `ImpactModelOnLandedBlow` returns at
+  `EventOf` (a not-landed alternative attack is no event), so a stopped bash is decided ONCE, in OnMeleeHit.
+- `ApplyBlock` would count a bash as a block in step 51's lines - the meet queues through `QueueBlock` directly; the attacker's stagger is the riposte's
+  lever and is counted as a riposte applied there too.
+
+**UNVERIFIED — only the game can tell (PLAYTEST D47)**
+1. The guard's direction at contact: the "guard read" line's "a guard with NO direction read" small, and shield guards read as right / down / up / left in a
+   believable mix (if all are "(direction unknown)": `GetCurrentActionDirection(1)` is not the shield's side - the fallback flag decides; tell Claude).
+2. The engine honours DefendRight in the AI's input (a reader's stopped bash meets as "shield, guard right" - `met correctly` near `in time`).
+3. How it looks: a basher reeling off a shield he bashed, a kicker thrown down by a braced shield, a tired blocker staggered by a bash.
+4. The read's timing in a real fight: `TOO LATE` small for AI kicks / bashes; how often the player's bash is read.
+
+**DEPLOY**: (filled in by 82 (3/3)).

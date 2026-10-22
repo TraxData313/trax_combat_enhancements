@@ -192,6 +192,27 @@ staggers), never by his own tiredness alone; the WRONG-side row, kicks and clean
 The "always" column's stun lengthening is OFF since step 56 (`BlockStunTiredExtraPercent` 0: the spike's lever 2 FAILED - "the stun does not
 lengthen what the engine plays"); the seam remains, x 1 = the game's stun. The numbers: §4 H.
 
+**Step 82 - meeting a kick or a bash (Toni 2026-10-22, DESIGN decision 78).** A bash comes from the basher's left hand to the defender's RIGHT: a
+RIGHT guard is the correct meet; a kick's is a DOWN guard. The guard is read at contact (the defender's channel-1 action, its direction, the defend flag -
+the engine stops a bash with any raised shield and lands every kick and every bash on a weapon). New rows, the rest of the model unchanged
+(`ImpactMeetRulesEnabled`; the ceilings below, all parameters):
+
+| Met by… | Who risks it | Stagger | Fall | Shield drop | Pressure |
+|---|---|---|---|---|---|
+| a bash - a shield, guard right | the BASHER | `MeetBashShieldRightStaggerPercent` 70 | `…FallPercent` 30 | — | x_r (§3.6: his T, the guard / body / skill turned against his blow) |
+| a bash - a weapon, guard right | the BASHER | `MeetBashWeaponRightStaggerPercent` 45 | 15 | — | x_r |
+| a bash - a shield, wrong guard (stopped) | the blocker | `MeetBashShieldWrongStaggerPercent` 85 | 40 | `MeetBashShieldWrongShieldDropPercent` 35 | x (the kick / bash row's, T in full) |
+| a bash - a weapon, wrong guard (lands) | the blocker | `MeetBashWeaponWrongStaggerPercent` 95 × the brace curve | 50 | — | x |
+| a bash - no guard, or mid-swing (lands) | the man | `MeetBashOpenStaggerPercent` 98 × the brace curve | 60 | `MeetBashOpenShieldDropPercent` 45 (with a shield) | x |
+| a kick - a shield, guard down | the KICKER | `MeetKickShieldDownStaggerPercent` 60 | 25 | — | x_r |
+| a kick - a weapon, guard down | the KICKER | `MeetKickWeaponDownStaggerPercent` 50 | 30 | — | x_r |
+| a kick - any other guard, or none | the kicked man | as above (step 65's brace, then the reel / fall / shield drop) | | | x |
+
+A correct meet leaves the defender untouched (a landed one braced: the knock-back refused, the reaction cut); the attacker's fall = our own blow on him,
+his stagger = the forced stagger (§3.6's lever), its length §3.7's on HIS tiredness, his halvings. On a bash that lands, "stagger" = the knock-back getting
+through (the row's ceiling × step 65's brace curve S((x + 0.7) ÷ 1.7); held = no fall, no drop). The AI reads an incoming kick / bash at the chance it
+blocks a swing correctly (`MeetAiReadScalePercent`) and raises the right guard after `MeetAiReadReactionSeconds`.
+
 How each outcome is MADE (RESEARCH §R): a stagger on a block = `act_stagger_*` on channel 0 (the direction from the blow) at the
 speed that gives the rolled length; a stagger on a clean hit = the engine's own flinch, slowed; the kick's reel = the engine's
 own knock-back, slowed; a knockdown on a landed blow = the KnockDown flag (plus KnockBack); a knockdown on a BLOCK = a blow of
