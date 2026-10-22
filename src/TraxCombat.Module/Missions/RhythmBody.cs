@@ -8,8 +8,11 @@ namespace TraxCombat.Missions
     /// </summary>
     internal interface IRhythmBody
     {
-        /// <summary>His unit is the player's (his team is the player's team) - a lull of it only while LullForPlayerUnits.</summary>
+        /// <summary>His unit is the player's (his team is the player's team) - step 78c's gap diagnostic counts by side.</summary>
         bool PlayerUnit(TrackedAgent st);
+
+        /// <summary>Step 78c: where he LOOKS on the ground (the engine's look direction, unit length) - a resting man must face the enemy. False = unknown.</summary>
+        bool Facing(TrackedAgent st, out double fx, out double fy);
 
         /// <summary>The two men's slots can be swapped: the same formation, neither detached, both with a place in its arrangement.</summary>
         bool CanSwap(TrackedAgent a, TrackedAgent b);
@@ -32,6 +35,17 @@ namespace TraxCombat.Missions
             var a = st.Agent;
             var m = Mission.Current;
             return m != null && a.Team != null && ReferenceEquals(a.Team, m.PlayerTeam);
+        }
+
+        public bool Facing(TrackedAgent st, out double fx, out double fy)
+        {
+            var d = st.Agent.LookDirection;
+            double len = System.Math.Sqrt(d.x * d.x + d.y * d.y);
+            fx = fy = 0;
+            if (!(len > 1e-6)) return false;
+            fx = d.x / len;
+            fy = d.y / len;
+            return true;
         }
 
         public bool CanSwap(TrackedAgent a, TrackedAgent b)

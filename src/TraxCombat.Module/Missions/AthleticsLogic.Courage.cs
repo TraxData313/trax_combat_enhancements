@@ -100,7 +100,7 @@ namespace TraxCombat.Missions
             TickFearUnits(now); // step 67: the unit table published every 0.5 s (the shelters, the shape / drift samples)
             TickBlockUnits(now); // step 74: the blocks' frames (after the band - its direction), the diagnostic, the band told the block
             TickPressLines(now); // step 77: the enemy lines' fronts (after the blocks - a held block is a line)
-            TickRhythmUnits(now); // step 78: the units' fronts and the lulls
+            TickRhythmUnits(now); // step 78: the units' fronts (step 78c: and the natural gap - a diagnostic)
             double dt = double.IsNaN(_courageLastTick) || now < _courageLastTick ? CourageMath.PollSeconds : now - _courageLastTick;
             _courageLastTick = now;
             if (dt > CourageMath.PollSeconds) dt = CourageMath.PollSeconds;

@@ -228,7 +228,7 @@ namespace TraxCombat.Missions
             var body = WallBody;
             var f = body.Read(st);
             if (IsPlayer(st)) f.Ai = false;
-            bool rhythm = RhythmWallSlot(st, ref f, now); // step 78: a swap's place / a lull's slot shifted back
+            bool rhythm = RhythmWallSlot(st, ref f, now); // step 78: a swap's place
             var v = WallMath.Decide(in r, in f);
             if (v == WallVerdict.Hold && FearWallBreaks(st, now)) v = WallVerdict.Breaking; // step 67: a frightened wall breaks
             _wallStats.AddLook(v);
@@ -236,7 +236,7 @@ namespace TraxCombat.Missions
             if (v == WallVerdict.Hold)
             {
                 // step 42: the leash - only while it is above 0 or a man is still out (at 0 this is step 41's path exactly: no read); 0 while he stands firm (step 75)
-                double leash = StandFirmMath.Leash(firm, r.StepOutMetres);
+                double leash = StandFirmMath.Leash(firm || RestingInWall(st), r.StepOutMetres); // step 78c: a man resting in the wall never steps out of it
                 double outNow = f.HasPositions ? LeashMath.Out(in f) : double.NaN; // step 63: out of place?
                 ws.FirmOut = outNow;
                 if (firm) FirmWouldStep(st, ws, in f, r.StepOutMetres, now); // step 75: the steps refused

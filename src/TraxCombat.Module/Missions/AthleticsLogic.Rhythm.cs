@@ -12,9 +12,9 @@ namespace TraxCombat.Missions
     /// ROTATION - a tired front man in contact and a fresher mate right behind him SWAP: the fresh man walks up beside him while the tired one holds and
     /// guards (an eighth input wish, <see cref="AiInputState.Rhythm"/>), then the game's own <c>Formation.SwitchUnitLocations</c> swaps their slots and the
     /// tired man backs into the fresh man's place facing the enemy; a held wall man's slot follows the swap's places (<see cref="RhythmWallSlot"/>), so the
-    /// wall hold and stand firm agree with it. THE LULL - the unit table (<see cref="RhythmUnits"/>, every 0.5 s) pairs facing units; both fronts spent =
-    /// each eases back to its lull line (a held wall's slots shifted back, everyone else walked back and clamped at it), the tired swap to the back, until a
-    /// front recovers, a new charge order, a side breaks or time. The master switch FIRST, then Athletics, then each part's switch.
+    /// wall hold and stand firm agree with it. Step 78c removed 78 / 78b's unit-wide LULL (Toni: "remove that scripted event"); each man's own REST rides
+    /// the same look and wish (AthleticsLogic.Rest.cs). The unit table (<see cref="RhythmUnits"/>, every 0.5 s) only measures now: the fronts (the rest's
+    /// "behind his own front") and the natural gap between engaged fronts. The master switch FIRST, then Athletics, then each part's switch.
     /// </summary>
     public sealed partial class AthleticsLogic
     {
@@ -27,16 +27,14 @@ namespace TraxCombat.Missions
         private readonly bool[] _rhythmPlayer = new bool[FearMath.UnitCount];
         private RhythmRules _rhythmRules = new RhythmRules(false, false, false, false);
         private string _seenRhythmText = string.Empty;
-        private bool _firstSwapAsked, _firstSwapBeside, _firstSwapDone, _firstSwapOff, _firstChanceOff, _firstRefusal, _firstLull, _firstLullEnd, _firstSlotShift,
-            _firstLullWalk, _firstLullRotation, _firstLullOpened, _firstLineStep, _firstChargeDeferred;
-        private long _lineStepsSeen, _chargeDeferredSeen;
+        private bool _firstSwapAsked, _firstSwapBeside, _firstSwapDone, _firstSwapOff, _firstChanceOff, _firstRefusal;
         private bool _rhythmClosed;
 
         internal RhythmUnits RhythmUnits => _rhythmUnits;
 
         internal RhythmStats RhythmStats => _rhythmStats;
 
-        /// <summary>Men with a rhythm wish now (a swap, a lull's line, a rest).</summary>
+        /// <summary>Men with a rhythm wish now (a swap, the rest after it, step 78c's own rest).</summary>
         internal int RhythmMenNow => _rhythmMen.Count;
 
         /// <summary>The engine side of the rhythm's own calls (the offline smoke swaps in a stand-in).</summary>
@@ -50,13 +48,16 @@ namespace TraxCombat.Missions
             for (int k = 0; k < _rhythmUnitAt.Length; k++) _rhythmUnitAt[k] = double.NegativeInfinity;
             _rhythmRules = RhythmRules.From(TraxSettings.Shared);
             _seenRhythmText = RhythmText(TraxSettings.Shared);
+            _rhythmUnits.GapSink = _restStats;
             TraxLog.Info("rhythm", "mission start: " + _seenRhythmText + " - read live; it rides courage's looks (every " + F1(CourageMath.PollSeconds)
-                + " s), the units' fronts every " + F1(RhythmMath.PublishSeconds) + " s; the [rhythm] lines log the first chance, swap, lull (its trigger and the gap from the men), the gap opened, a line stepped back and the wall shift; the three [summary] \"battle rhythm\" lines");
+                + " s), the units' fronts every " + F1(RhythmMath.PublishSeconds) + " s; the [rhythm] lines log the first chance and swap; the [summary] \"battle rhythm\" line");
+            StartRest();
         }
 
         private void NoteRhythmSettings(TraxSettings s)
         {
             string now = RhythmText(s);
+            NoteRestSettings(s);
             if (now == _seenRhythmText) return;
             _seenRhythmText = now;
             TraxLog.Info("rhythm", "settings changed mid-mission at " + Sec(SafeNow()) + " s: " + now + " - at every man's next look");
@@ -64,20 +65,19 @@ namespace TraxCombat.Missions
 
         // ------------------------------------------------------------------ the tick (from TickCourage)
 
-        /// <summary>The switches, every tick: the rotation off → every swap ends at once; both off → every wish let go (a lull ends at the next publish).</summary>
+        /// <summary>The switches, every tick: the rotation off → every swap ends at once; the rest off → every rest ends at once; both off → every wish let go.</summary>
         private void TickRhythmSwitch(double now)
         {
             var r = RhythmRules.From(TraxSettings.Shared);
-            bool rotWas = _rhythmRules.RotationOn, lullWas = _rhythmRules.LullOn;
+            bool rotWas = _rhythmRules.RotationOn;
             _rhythmRules = r;
             if (rotWas && !r.RotationOn)
                 TraxLog.Info("rhythm", "the rotation switched OFF at " + Sec(now) + " s (" + r.RotationOffBecause + "): " + EndAllSwaps(RotationEnd.SwitchedOff, now) + " swaps ended at once");
-            if (lullWas && !r.LullOn)
-                TraxLog.Info("rhythm", "the lull switched OFF at " + Sec(now) + " s (" + r.LullOffBecause + "): the walls' slots back at their next look, the lull lines let go now");
+            TickRestSwitch(now);
             if (!r.AnyOn && _rhythmMen.Count > 0) EndAllRhythm(RotationEnd.SwitchedOff, now, native: true);
         }
 
-        /// <summary>The unit table published every 0.5 s - the lulls' starts and ends noted and logged.</summary>
+        /// <summary>The unit table published every 0.5 s - the fronts and step 78c's gap diagnostic (it moves nobody).</summary>
         private void TickRhythmUnits(double now)
         {
             _rhythmStats.Ticks++;
@@ -85,9 +85,8 @@ namespace TraxCombat.Missions
             long t0 = Stopwatch.GetTimestamp();
             try
             {
-                var r = _rhythmRules;
-                _rhythmUnits.Publish(now, in r);
-                NoteLullEvents(now);
+                _rhythmUnits.GapDiagnosticMetres = _restRules.GapDiagnosticMetres;
+                _rhythmUnits.Publish(now);
             }
             catch (Exception e)
             {
@@ -95,91 +94,6 @@ namespace TraxCombat.Missions
                 Failed("rhythm.publish", e);
             }
             _rhythmStats.PublishCostMs += (Stopwatch.GetTimestamp() - t0) * 1000.0 / Stopwatch.Frequency;
-        }
-
-        private void NoteLullEvents(double now)
-        {
-            var u = _rhythmUnits;
-            var r = _rhythmRules;
-            for (int i = 0; i < u.StartedN; i++)
-            {
-                int a = u.Started[i], b = u.LullPartner[a];
-                _rhythmStats.Lulls++;
-                _rhythmStats.LullUnits += 2;
-                _rhythmStats.AddStartBar(u.LullStartBar[a]);
-                if (b >= 0) _rhythmStats.AddStartBar(u.LullStartBar[b]);
-                _rhythmStats.AddLullStart(u.LullTriggerOf[a], u.LullStartRate[a], u.LullStartRatePeak[a], u.LullStartContact[a]);
-                if (_firstLull) continue;
-                _firstLull = true;
-                TraxLog.Info("rhythm", "first LULL at " + Sec(now) + " s - " + RhythmMath.TriggerName(u.LullTriggerOf[a]) + " (after " + F1(u.LullStartContact[a]) + " s in contact, the clock "
-                    + F1(u.ClockAt[a]) + " s): " + PressUnitName(a) + " (" + BraceMath.Name(u.Kind[a]) + ", the unit's bar " + RhythmStats.Pct(u.LullStartBar[a]) + " over " + u.UnitMen[a]
-                    + " men in the fight, its front men " + RhythmStats.Pct(u.FrontBar[a]) + ") and " + (b >= 0 ? PressUnitName(b) + " (" + BraceMath.Name(u.Kind[b]) + ", the unit's bar "
-                    + RhythmStats.Pct(u.LullStartBar[b]) + " over " + u.UnitMen[b] + " men, its front men " + RhythmStats.Pct(u.FrontBar[b]) + ")" : "?") + "; the blows in contact "
-                    + F1(u.LullStartRate[a]) + " a man-minute (the spell's peak " + F1(u.LullStartRatePeak[a]) + "); THE GAP from the men: mean " + F1(u.GapMean[a]) + " m (p10 "
-                    + F1(u.GapQ10[a]) + ", p90 " + F1(u.GapQ90[a]) + ") - each side backs to its line: " + PressUnitName(a) + " " + F1(u.LullEase[a]) + " m behind its nearest men, "
-                    + (b >= 0 ? PressUnitName(b) + " " + F1(u.LullEase[b]) + " m" : "?") + ", for a clear gap of " + F1(r.GapMetres) + " m");
-            }
-            u.StartedN = 0;
-            for (int i = 0; i < u.OpenedN; i++)
-            {
-                int a = u.Opened[i];
-                if (_firstLullOpened) break;
-                _firstLullOpened = true;
-                TraxLog.Info("rhythm", "first lull GAP OPENED at " + Sec(now) + " s: " + PressUnitName(a) + " and " + PressUnitName(u.LullPartner[a]) + " after " + F1(u.LullOpenedAfter[a])
-                    + " s - the gap from the men mean " + F1(u.GapMean[a]) + " m (p10 " + F1(u.GapQ10[a]) + ", p90 " + F1(u.GapQ90[a]) + "), wanted " + F1(r.GapMetres) + " m");
-            }
-            u.OpenedN = 0;
-            if (u.LineSteps > _lineStepsSeen)
-            {
-                _lineStepsSeen = u.LineSteps;
-                if (!_firstLineStep)
-                {
-                    _firstLineStep = true;
-                    TraxLog.Info("rhythm", "first lull LINE STEPPED BACK at " + Sec(now) + " s: the gap did not hold after " + F1(RhythmMath.SettleSeconds) + " s (the hold quantile below "
-                        + F1(r.GapMetres - RhythmMath.GapSlackMetres) + " m) - a side standing at its line steps it back " + F1(RhythmMath.LineStepMetres) + " m a publish, at most "
-                        + F1(r.MaxBackMetres) + " m");
-                }
-            }
-            if (u.ChargeDeferred > _chargeDeferredSeen)
-            {
-                _chargeDeferredSeen = u.ChargeDeferred;
-                if (!_firstChargeDeferred)
-                {
-                    _firstChargeDeferred = true;
-                    TraxLog.Info("rhythm", "first CHARGE ORDER in a lull's first " + F1(r.ChargeGraceSeconds) + " s at " + Sec(now) + " s - deferred: it ends the lull only once "
-                        + F1(r.ChargeGraceSeconds) + " s of it have passed, if it still stands");
-                }
-            }
-            for (int i = 0; i < u.EndedN; i++)
-            {
-                var why = u.EndedWhy[i];
-                _rhythmStats.AddLullEnd(why, u.EndedSeconds[i], u.EndedOpened[i], u.EndedOpenedAfter[i]);
-                if (_firstLullEnd) continue;
-                _firstLullEnd = true;
-                TraxLog.Info("rhythm", "first lull ENDED at " + Sec(now) + " s: " + PressUnitName(u.Ended[i]) + " - " + RhythmMath.LullEndName(why) + " after " + F1(u.EndedSeconds[i])
-                    + " s (" + RhythmMath.TriggerName(u.EndedTrigger[i]) + "), the gap opened by " + F1(u.EndedOpened[i]) + " m"
-                    + (double.IsNaN(u.EndedOpenedAfter[i]) ? " - it never held" : ", held after " + F1(u.EndedOpenedAfter[i]) + " s")
-                    + "; the lines let go, the next lull of the pair no sooner than " + F1(r.LullCooldownSeconds) + " s, its clock from the next contact");
-            }
-            u.EndedN = 0;
-        }
-
-        /// <summary>Step 78b: an AI man's melee attack on foot (StartRelease) - counted in his unit's attack rate when he was in contact at his last look
-        /// (within the stale time). ON and OFF (the OFF looks measure).</summary>
-        internal void NoteRhythmAttack(TrackedAgent st, bool mounted, double now)
-        {
-            if (mounted || IsPlayer(st)) return;
-            var m = st.Rhythm;
-            if (!m.Contact || m.Key < 0 || double.IsNaN(m.LookedAt) || now - m.LookedAt > RhythmMath.MateFreshSeconds) return;
-            _rhythmUnits.NoteAttack(m.Key);
-        }
-
-        /// <summary>Step 79's seam: a wave ends its unit's lull (and its partner's) now. False = no lull.</summary>
-        internal bool EndLullByWave(int key, double now)
-        {
-            if (!_rhythmUnits.EndLull(key, LullEnd.Wave, now)) return false;
-            NoteLullEvents(now);
-            return true;
         }
 
         /// <summary>Every tick while on: each man with a rhythm wish steered every 0.1 s.</summary>
@@ -197,6 +111,7 @@ namespace TraxCombat.Missions
                     if (st.Removed || !CourageBody.IsActive(st))
                     {
                         if (m.InSwap) EndSwap(st, RotationEnd.LeftField, now);
+                        if (m.Resting) EndRest(st, RestIn.LeftField, now, native: false);
                         ReleaseRhythmWish(st, now, native: false);
                         continue;
                     }
@@ -224,23 +139,24 @@ namespace TraxCombat.Missions
                 RhythmSkipped(st, now);
                 return;
             }
-            RhythmLookAt(st, now, key, near.Px, near.Py, near.InContact, near.InContact ? near.EnemyDist : double.NaN, near.EnemyX, near.EnemyY, near.FoeKey, held: false);
+            RhythmLookAt(st, now, key, near.Px, near.Py, near.InContact, near.InContact ? near.EnemyDist : double.NaN, near.EnemyX, near.EnemyY, near.FoeKey, held: false,
+                pressing: st.Input != null && st.Input.Press && st.Input.PressFront);
         }
 
         /// <summary>A held wall man (courage never looks at him): noted in his unit, his contact from the rotation's own scan only when he is tired.</summary>
         private void RhythmLookHeld(TrackedAgent st, double now, int key, double px, double py) =>
-            RhythmLookAt(st, now, key, px, py, false, double.NaN, double.NaN, double.NaN, -1, held: true);
+            RhythmLookAt(st, now, key, px, py, false, double.NaN, double.NaN, double.NaN, -1, held: true, pressing: false);
 
-        /// <summary>A man courage's gates left out (fled, the player took him, a rider...): his swap and his lull wish end.</summary>
+        /// <summary>A man courage's gates left out (fled, routed, the player took him, a rider...): his swap and his rest end (fear and the rout win).</summary>
         private void RhythmSkipped(TrackedAgent st, double now)
         {
             var m = st.Rhythm;
             m.Eligible = false;
-            if (!m.InSwap && !m.LullWish) return;
+            if (!m.InSwap && !m.Resting && !m.Wish) return;
             try
             {
                 if (m.InSwap) EndSwap(st, RotationEnd.Excluded, now);
-                m.LullWish = false;
+                if (m.Resting) EndRest(st, RestIn.Excluded, now, native: true);
                 m.RestUntil = double.NegativeInfinity;
                 ReleaseRhythmWish(st, now, native: true);
             }
@@ -252,12 +168,13 @@ namespace TraxCombat.Missions
             }
         }
 
-        private void RhythmLookAt(TrackedAgent st, double now, int key, double px, double py, bool contactKnown, double enemyDist, double ex, double ey, int foeKey, bool held)
+        private void RhythmLookAt(TrackedAgent st, double now, int key, double px, double py, bool contactKnown, double enemyDist, double ex, double ey, int foeKey, bool held,
+            bool pressing)
         {
             long start = Stopwatch.GetTimestamp();
             try
             {
-                RhythmLookCore(st, now, key, px, py, contactKnown, enemyDist, ex, ey, foeKey, held);
+                RhythmLookCore(st, now, key, px, py, contactKnown, enemyDist, ex, ey, foeKey, held, pressing);
             }
             catch (Exception e)
             {
@@ -299,7 +216,8 @@ namespace TraxCombat.Missions
             return BraceMath.Floor(in br, BraceMath.Group(kind == BraceOrderKind.Count ? BraceOrderKind.Stop : kind), st.Brace?.FloorUnit ?? 0);
         }
 
-        private void RhythmLookCore(TrackedAgent st, double now, int key, double px, double py, bool contactKnown, double enemyDist, double ex, double ey, int foeKey, bool held)
+        private void RhythmLookCore(TrackedAgent st, double now, int key, double px, double py, bool contactKnown, double enemyDist, double ex, double ey, int foeKey, bool held,
+            bool pressing)
         {
             var r = _rhythmRules;
             var m = st.Rhythm;
@@ -313,30 +231,23 @@ namespace TraxCombat.Missions
             double bar = r.AthleticsEnabled ? st.Fraction : 1.0;
             bool contact = contactKnown && !double.IsNaN(enemyDist) && enemyDist <= r.ContactMetres;
             m.Contact = contact;
-            u.Note(key, px, py, bar, contact, foeKey, kind, player, held);
+            u.Note(key, px, py, bar, contact, foeKey, kind, player, held, contactKnown ? ex : double.NaN, contactKnown ? ey : double.NaN);
             if (!r.ModEnabled || !r.AthleticsEnabled) return; // no bars - nothing tires, nothing to measure
             if (contact) _rhythmStats.AddContact(r.RotationOn, bar);
 
-            // ---- the lull: his unit's line holds him (a held wall man through his slot)
-            bool lull = u.LullApplies(key, in r);
-            if (lull && !held && !m.LullWish)
+            // ---- the rotation first: a fresher mate right behind takes a tired front man's place when there is one (the rest yields to the swap)
+            if (!m.InSwap && now >= m.NextRotation && (contact || held))
             {
-                m.LullWish = true;
-                m.LullKey = key;
-                if (!m.InSwap) EnsureRhythmWish(st, now);
+                double floor = RhythmBraceFloor(st, kind);
+                if (RhythmMath.IsTired(in r, bar, floor)) FindMate(st, m, now, key, px, py, bar, contact, ex, ey, held);
             }
 
-            // ---- the rotation
-            if (m.InSwap || now < m.NextRotation) return;
-            bool lullFront = lull && r.LullRotates && u.IsFrontMan(key, px, py, r.LullFrontDepthMetres, now);
-            if (!contact && !lullFront && !held) return;
-            double floor = RhythmBraceFloor(st, kind);
-            if (!RhythmMath.IsTired(in r, bar, floor)) return;
-            FindMate(st, m, now, key, px, py, bar, contact || lullFront, ex, ey, lull && lullFront, held);
+            // ---- step 78c: his own rest
+            RestLook(st, m, now, key, px, py, contactKnown ? enemyDist : double.NaN, ex, ey, held, pressing, kind, bar);
         }
 
         /// <summary>A tired front man: one scan of his neighbours - contact (a held man), the direction to the enemy, the freshest mate right behind him.</summary>
-        private void FindMate(TrackedAgent st, RhythmMind m, double now, int key, double px, double py, double bar, bool front, double ex, double ey, bool inLull, bool held)
+        private void FindMate(TrackedAgent st, RhythmMind m, double now, int key, double px, double py, double bar, bool front, double ex, double ey, bool held)
         {
             var r = _rhythmRules;
             float radius = (float)Math.Max(r.ContactMetres, r.BehindMetres + r.FileMetres) + 0.2f;
@@ -441,7 +352,7 @@ namespace TraxCombat.Missions
                     Refuse(st, RotationRefusal.NoSlots, now);
                     return;
                 }
-                StartSwap(st, best, ux, uy, inLull, now);
+                StartSwap(st, best, ux, uy, now);
             }
             finally
             {
@@ -460,7 +371,7 @@ namespace TraxCombat.Missions
 
         // ------------------------------------------------------------------ the swap
 
-        private void StartSwap(TrackedAgent t, TrackedAgent f, double ux, double uy, bool inLull, double now)
+        private void StartSwap(TrackedAgent t, TrackedAgent f, double ux, double uy, double now)
         {
             var r = _rhythmRules;
             var mt = t.Rhythm;
@@ -469,8 +380,10 @@ namespace TraxCombat.Missions
             CourageBody.Position(f, out double fx, out double fy);
             RhythmMath.AlongAcross(tx, ty, ux, uy, fx, fy, out _, out double across);
             int side = RhythmMath.SideOf(across);
-            Begin(mt, RotationPhase.Hold, f, true, now, ux, uy, side, tx, ty, fx, fy, inLull);
-            Begin(mf, RotationPhase.Approach, t, false, now, ux, uy, side, tx, ty, fx, fy, inLull);
+            if (mt.Resting) EndRest(t, RestIn.Rotated, now, native: false); // a fresher man takes his place - no rest needed
+            if (mf.Resting) EndRest(f, RestIn.Rotated, now, native: false);
+            Begin(mt, RotationPhase.Hold, f, true, now, ux, uy, side, tx, ty, fx, fy);
+            Begin(mf, RotationPhase.Approach, t, false, now, ux, uy, side, tx, ty, fx, fy);
             if (mt.Held)
             {
                 mt.SlotOverride = true;
@@ -492,26 +405,19 @@ namespace TraxCombat.Missions
             _rhythmStats.Started++;
             _rhythmStats.TiredBarSum += t.Fraction;
             _rhythmStats.FreshBarSum += f.Fraction;
-            if (inLull) _rhythmStats.InLull++;
             if (!_firstSwapAsked)
             {
                 _firstSwapAsked = true;
                 TraxLog.Info("rhythm", "first SWAP asked at " + Sec(now) + " s: " + Name(t) + " (" + RhythmStats.Pct(t.Fraction) + (mt.Held ? ", a held wall man" : "") + ") at the front"
-                    + (inLull ? " in a lull" : " in contact") + ", " + Name(f) + " (" + RhythmStats.Pct(f.Fraction) + ") right behind him - he steps up " + F1(r.BesideMetres)
+                    + " in contact, " + Name(f) + " (" + RhythmStats.Pct(f.Fraction) + ") right behind him - he steps up " + F1(r.BesideMetres)
                     + " m beside him while the tired man holds and guards");
-            }
-            if (inLull && !_firstLullRotation)
-            {
-                _firstLullRotation = true;
-                TraxLog.Info("rhythm", "first swap DURING A LULL at " + Sec(now) + " s: " + Name(t) + " (" + RhythmStats.Pct(t.Fraction) + ") goes to the back, " + Name(f) + " ("
-                    + RhythmStats.Pct(f.Fraction) + ") comes forward - no enemy in reach");
             }
             SteerSwap(t, mt, now);
             RelookWall(t, now);
             RelookWall(f, now);
         }
 
-        private static void Begin(RhythmMind m, RotationPhase phase, Fighter partner, bool tired, double now, double ux, double uy, int side, double tx, double ty, double fx, double fy, bool inLull)
+        private static void Begin(RhythmMind m, RotationPhase phase, Fighter partner, bool tired, double now, double ux, double uy, int side, double tx, double ty, double fx, double fy)
         {
             m.Phase = phase;
             m.Partner = partner;
@@ -524,7 +430,6 @@ namespace TraxCombat.Missions
             m.TiredY = ty;
             m.FreshX = fx;
             m.FreshY = fy;
-            m.DuringLull = inLull;
             m.Swapped = m.Arrived = false;
             m.SlotOverride = false;
             m.ToX = m.ToY = double.NaN;
@@ -659,34 +564,45 @@ namespace TraxCombat.Missions
         }
 
         /// <summary>His walk this steer toward a point (his own frame), slower near it, standing when the ground ahead ends or he is there.</summary>
-        private void WalkTo(TrackedAgent st, RhythmMind m, AiInputState s, double px, double py, double tx, double ty, double now)
+        private void WalkTo(TrackedAgent st, RhythmMind m, AiInputState s, double px, double py, double tx, double ty, double now) =>
+            WalkTo(st, m, s, px, py, tx, ty, now, rest: false);
+
+        private void WalkTo(TrackedAgent st, RhythmMind m, AiInputState s, double px, double py, double tx, double ty, double now, bool rest)
         {
             double dx = tx - px, dy = ty - py, dist = Math.Sqrt(dx * dx + dy * dy);
-            s.RhythmMove = true;
-            if (dist <= RhythmMath.ArriveMetres * 0.5 || !(dist > 1e-6))
+            float ox = 0f, oy = 0f;
+            if (dist > RhythmMath.ArriveMetres * 0.5 && dist > 1e-6)
             {
-                s.RhythmX = s.RhythmY = 0f;
-                return;
-            }
-            dx /= dist;
-            dy /= dist;
-            if (now >= m.NextEdge)
-            {
-                m.NextEdge = now + AiInputMath.EdgeCheckSeconds;
-                if (!CourageBody.GroundOk(st, dx, dy))
+                dx /= dist;
+                dy /= dist;
+                bool ground = true;
+                if (now >= m.NextEdge)
                 {
-                    s.RhythmX = s.RhythmY = 0f;
-                    return;
+                    m.NextEdge = now + AiInputMath.EdgeCheckSeconds;
+                    ground = CourageBody.GroundOk(st, dx, dy);
+                }
+                if (ground && CourageBody.ToLocal(st, dx, dy, out float lx, out float ly))
+                {
+                    // step 78c: a resting man WALKS back (a part of the stick - never a run)
+                    float k = (float)(rest ? Math.Min(FearMath.Stick(dist), RestMath.WalkStick) : FearMath.Stick(dist));
+                    ox = lx * k;
+                    oy = ly * k;
+                    if (rest) _restStats.Steers++;
+                    else _rhythmStats.Steers++;
                 }
             }
-            if (CourageBody.ToLocal(st, dx, dy, out float lx, out float ly))
+            if (rest)
             {
-                float k = (float)FearMath.Stick(dist);
-                s.RhythmX = lx * k;
-                s.RhythmY = ly * k;
-                _rhythmStats.Steers++;
+                s.RestMove = true;
+                s.RestX = ox;
+                s.RestY = oy;
             }
-            else s.RhythmX = s.RhythmY = 0f;
+            else
+            {
+                s.RhythmMove = true;
+                s.RhythmX = ox;
+                s.RhythmY = oy;
+            }
         }
 
         /// <summary>The swap ends for both men (counted once): the cooldown, the tired man's rest after a done swap, the walls' slots back.</summary>
@@ -763,9 +679,10 @@ namespace TraxCombat.Missions
             return n;
         }
 
-        // ------------------------------------------------------------------ a man's wish: the lull's line and the rest
+        // ------------------------------------------------------------------ a man's wish: the rest after a swap, his own rest
 
-        /// <summary>Not in a swap: his lull line (walked back to it, clamped at it) and his rest after going back (clamped at his new place).</summary>
+        /// <summary>Not in a swap: his own rest (step 78c - walked back out of reach, then held back facing the enemy) or his rest after going back in a
+        /// swap (clamped at his new place).</summary>
         private void SteerRhythmMan(TrackedAgent st, RhythmMind m, double now)
         {
             var s = st.Input;
@@ -778,17 +695,11 @@ namespace TraxCombat.Missions
             {
                 if (m.Tired) SteerSwap(st, m, now);
                 else if (!(m.Partner is TrackedAgent p) || !p.Rhythm.InSwap) EndSwap(st, RotationEnd.LeftField, now);
-                if (m.InSwap)
-                {
-                    LullClamp(st, m, s, now); // the lull's line still holds a swapping pair back
-                    return;
-                }
+                if (m.InSwap) return;
             }
             var r = _rhythmRules;
-            var u = _rhythmUnits;
-            if (m.LullWish && (m.Held || !u.LullApplies(m.LullKey, in r))) m.LullWish = false;
-            bool rest = now < m.RestUntil && r.RotationOn && !m.Held && !double.IsNaN(m.RestLine);
-            if (!m.LullWish && !rest)
+            bool swapRest = now < m.RestUntil && r.RotationOn && !m.Held && !double.IsNaN(m.RestLine);
+            if (!m.Resting && !swapRest)
             {
                 ReleaseRhythmWish(st, now, native: true);
                 return;
@@ -796,56 +707,17 @@ namespace TraxCombat.Missions
             CourageBody.Position(st, out double px, out double py);
             s.RhythmMove = false;
             s.RhythmClamp = false;
-            if (m.LullWish)
+            if (m.Resting)
             {
-                int k = m.LullKey;
-                double ahead = u.AheadOfLullLine(k, px, py);
-                int act = RhythmMath.LullAction(ahead);
-                if (act == 2)
-                {
-                    if (!m.LullCounted)
-                    {
-                        m.LullCounted = true;
-                        _rhythmStats.MenWalkedBack++;
-                    }
-                    if (!m.EverWalkedBack) m.EverWalkedBack = true;
-                    double ux = u.LullUX[k], uy = u.LullUY[k];
-                    WalkTo(st, m, s, px, py, px - ux * ahead, py - uy * ahead, now);
-                    if (!_firstLullWalk)
-                    {
-                        _firstLullWalk = true;
-                        TraxLog.Info("rhythm", "first man WALKED BACK in a lull at " + Sec(now) + " s: " + Name(st) + " of " + PressUnitName(k) + ", " + F1(ahead)
-                            + " m ahead of his unit's lull line - backing to it facing the enemy, then held there");
-                    }
-                }
-                else if (act == 1) SetClamp(st, s, u.LullUX[k], u.LullUY[k]);
-            }
-            if (rest && !s.RhythmClamp && !s.RhythmMove)
-            {
-                double a = px * m.UX + py * m.UY - m.RestLine;
-                if (a > -RhythmMath.LookaheadMetres)
-                {
-                    SetClamp(st, s, m.UX, m.UY);
-                    _rhythmStats.RestClamps++;
-                }
-            }
-        }
-
-        /// <summary>A swapping man of a unit in a lull: the lull's clamp at its line (the walk is the swap's).</summary>
-        private void LullClamp(TrackedAgent st, RhythmMind m, AiInputState s, double now)
-        {
-            s.RhythmClamp = false;
-            if (!m.LullWish) return;
-            var r = _rhythmRules;
-            var u = _rhythmUnits;
-            if (!u.LullApplies(m.LullKey, in r))
-            {
-                m.LullWish = false;
+                SteerRest(st, m, s, px, py, now);
                 return;
             }
-            CourageBody.Position(st, out double px, out double py);
-            double ahead = u.AheadOfLullLine(m.LullKey, px, py);
-            if (ahead > -RhythmMath.LookaheadMetres) SetClamp(st, s, u.LullUX[m.LullKey], u.LullUY[m.LullKey]);
+            double a = px * m.UX + py * m.UY - m.RestLine;
+            if (a > -RhythmMath.LookaheadMetres)
+            {
+                SetClamp(st, s, m.UX, m.UY);
+                _rhythmStats.RestClamps++;
+            }
         }
 
         private void SetClamp(TrackedAgent st, AiInputState s, double ux, double uy)
@@ -881,6 +753,8 @@ namespace TraxCombat.Missions
             m.MoveAtStart = s.RhythmMoveFrames;
             m.ClampAtStart = s.RhythmClampFrames;
             m.HeldAtStart = s.RhythmHeldFrames;
+            m.RestMoveAtStart = s.RestMoveFrames;
+            m.RestHeldAtStart = s.RestHeldFrames;
             m.Wish = true;
             m.NextSteer = now;
             m.NextEdge = now;
@@ -891,7 +765,6 @@ namespace TraxCombat.Missions
         private void ReleaseRhythmWish(TrackedAgent st, double now, bool native)
         {
             var m = st.Rhythm;
-            m.LullCounted = false;
             if (!m.Wish) return;
             m.Wish = false;
             _rhythmMen.Remove(st);
@@ -900,6 +773,8 @@ namespace TraxCombat.Missions
             _rhythmStats.MoveFrames += s.RhythmMoveFrames - m.MoveAtStart;
             _rhythmStats.ClampFrames += s.RhythmClampFrames - m.ClampAtStart;
             _rhythmStats.HoldFrames += s.RhythmHeldFrames - m.HeldAtStart;
+            _restStats.MoveFrames += s.RestMoveFrames - m.RestMoveAtStart;
+            _restStats.HeldFrames += s.RestHeldFrames - m.RestHeldAtStart;
             if (!s.Rhythm) return;
             AiInputHook.SetRhythm(st, false, now);
             if (native && !st.Removed)
@@ -922,29 +797,34 @@ namespace TraxCombat.Missions
             {
                 var m = st.Rhythm;
                 if (m.InSwap) EndSwap(st, RotationEnd.Error, now);
-                m.LullWish = false;
+                if (m.Resting) EndRest(st, RestIn.Error, now, native: true);
                 m.RestUntil = double.NegativeInfinity;
                 ReleaseRhythmWish(st, now, native: true);
             }
             catch
             {
                 st.Rhythm.EndSwap();
+                st.Rhythm.EndRest();
                 st.Rhythm.Wish = false;
                 _rhythmMen.Remove(st);
-                if (st.Input != null) st.Input.Rhythm = st.Input.RhythmMove = st.Input.RhythmClamp = st.Input.RhythmHoldAttacks = false;
+                if (st.Input != null)
+                {
+                    st.Input.Rhythm = st.Input.RhythmMove = st.Input.RhythmClamp = st.Input.RhythmHoldAttacks = false;
+                    st.Input.RestMove = st.Input.RestHoldAttacks = false;
+                }
             }
         }
 
         private void EndAllRhythm(RotationEnd why, double now, bool native)
         {
             EndAllSwaps(why, now);
+            EndAllRests(why == RotationEnd.MissionEnd ? RestIn.MissionEnd : RestIn.SwitchedOff, now, native);
             for (int i = _rhythmMen.Count - 1; i >= 0; i--)
             {
                 if (i >= _rhythmMen.Count) continue;
                 var st = _rhythmMen[i];
                 try
                 {
-                    st.Rhythm.LullWish = false;
                     st.Rhythm.RestUntil = double.NegativeInfinity;
                     ReleaseRhythmWish(st, now, native && !st.Removed);
                 }
@@ -961,8 +841,8 @@ namespace TraxCombat.Missions
 
         /// <summary>
         /// A held wall man's slot as the rhythm wants it (from LookWall, right after the facts are read): in a swap his slot is the swap's place (beside
-        /// the tired man / the other's start) - the wall hold, stand firm's pinned frame and the walk back all agree with the swap; in a lull his slot moves
-        /// back by the lull's ease along his unit's direction to the enemy - stand firm walks him back to it, facing the enemy. True = changed.
+        /// the tired man / the other's start) - the wall hold, stand firm's pinned frame and the walk back all agree with the swap. Step 78c: a resting wall
+        /// man's slot is never moved (he rests IN it). True = changed.
         /// </summary>
         private bool RhythmWallSlot(TrackedAgent st, ref WallFacts f, double now)
         {
@@ -976,20 +856,7 @@ namespace TraxCombat.Missions
                 f.SlotY = m.SlotY;
                 return true;
             }
-            int k = m.Key;
-            var u = _rhythmUnits;
-            if (k < 0 || !u.LullApplies(k, in r)) return false;
-            double e = u.LullEase[k];
-            f.SlotX -= u.LullUX[k] * e;
-            f.SlotY -= u.LullUY[k] * e;
-            _rhythmStats.SlotShifts++;
-            if (!_firstSlotShift)
-            {
-                _firstSlotShift = true;
-                TraxLog.Info("rhythm", "first WALL SLOT shifted back in a lull at " + Sec(now) + " s: " + Name(st) + " of " + PressUnitName(k) + " - his slot " + F1(e)
-                    + " m back toward his side; the wall hold and stand firm walk him to it facing the enemy");
-            }
-            return true;
+            return false;
         }
 
         /// <summary>The engine's walk target pinned to the rhythm's slot (step 68's call) - not a stand-firm man (his own pin does it).</summary>
@@ -1031,7 +898,7 @@ namespace TraxCombat.Missions
                 double now = SafeNow();
                 var m = st.Rhythm;
                 if (m.InSwap) EndSwap(st, RotationEnd.LeftField, now);
-                m.LullWish = false;
+                if (m.Resting) EndRest(st, RestIn.LeftField, now, native: false);
                 m.RestUntil = double.NegativeInfinity;
                 m.Eligible = false;
                 ReleaseRhythmWish(st, now, native: false);
@@ -1048,14 +915,13 @@ namespace TraxCombat.Missions
             _rhythmClosed = true;
             double now = SafeNow();
             EndAllRhythm(RotationEnd.MissionEnd, now, agentsAlive);
-            _rhythmUnits.EndAll(LullEnd.MissionEnd, now);
-            NoteLullEvents(now);
         }
 
         internal void WriteRhythmSummary()
         {
             var lines = new List<string>(3);
             _rhythmStats.AddSummaryLines(lines, RhythmRules.From(TraxSettings.Shared), _rhythmUnits);
+            _restStats.AddSummaryLines(lines, RestRules.From(TraxSettings.Shared)); // step 78c
             foreach (var line in lines) TraxLog.Info("summary", line);
         }
     }

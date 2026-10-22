@@ -6,28 +6,24 @@ using TraxCombat.Core;
 namespace TraxCombat.Core.Tests;
 
 /// <summary>
-/// Step 78 (Toni 2026-10-22, sketch 1-4: two packs that won't be reckless and won't back down - the grind, then a lull; AI_NOTES "Step 78", DESIGN
-/// decision 72) - THE BATTLE'S RHYTHM, part 1: the settings (three on the player page, twenty-four Advanced), the master switch first then Athletics then
-/// each part, tired / fresher / right behind / covered / beside, the busy actions, the lull's thresholds by order, the unit table (fronts, front bars,
-/// the enemy unit - a held wall paired by its attackers' votes), the lull's start (contact time, both spent, cooldown, your units), its lines, its ends
-/// (recovered, a new charge order, broken, too long, a wave - step 79's seam), the summary lines.
+/// Step 78 (Toni 2026-10-22, sketch 1-4: two packs that won't be reckless and won't back down; AI_NOTES "Step 78", DESIGN decision 72) - THE BATTLE'S
+/// RHYTHM's ROTATION: the settings (its switch on the player page, eleven Advanced), the master switch first then Athletics then each part, tired /
+/// fresher / right behind / covered / beside, the busy actions, the unit table (fronts, front bars, the enemy unit - a held wall paired by its attackers'
+/// votes), the summary line. Step 78c removed the lull and its tests (Step78cTests holds the rest's).
 /// </summary>
 public class Step78Tests
 {
-    private static readonly ParamDef[] Player = { SettingsSchema.RotationEnabled, SettingsSchema.LullEnabled, SettingsSchema.LullForPlayerUnits };
+    private static readonly ParamDef[] Player = { SettingsSchema.RotationEnabled, SettingsSchema.RestEnabled };
 
     private static readonly ParamDef[] Advanced =
     {
         SettingsSchema.RotationTiredPercent, SettingsSchema.RotationUseBraceFloor, SettingsSchema.RotationFresherPercent, SettingsSchema.RotationBehindMetres,
         SettingsSchema.RotationFileMetres, SettingsSchema.RotationContactMetres, SettingsSchema.RotationBesideMetres, SettingsSchema.RotationApproachSeconds,
-        SettingsSchema.RotationMaxSeconds, SettingsSchema.RotationCooldownSeconds, SettingsSchema.RotationRestSeconds, SettingsSchema.LullContactMen,
-        SettingsSchema.LullMinContactSeconds, SettingsSchema.LullStartChargePercent, SettingsSchema.LullStartAdvancePercent, SettingsSchema.LullStartHoldPercent,
-        SettingsSchema.LullRecoverChargePercent, SettingsSchema.LullRecoverAdvancePercent, SettingsSchema.LullRecoverHoldPercent, SettingsSchema.LullEaseMetres,
-        SettingsSchema.LullFrontDepthMetres, SettingsSchema.LullMaxSeconds, SettingsSchema.LullCooldownSeconds, SettingsSchema.LullRotates,
+        SettingsSchema.RotationMaxSeconds, SettingsSchema.RotationCooldownSeconds, SettingsSchema.RotationRestSeconds,
     };
 
-    private static RhythmRules Rules(bool rotation = true, bool lull = true, bool player = true, bool mod = true, bool athletics = true, double minContact = 10) =>
-        new RhythmRules(mod, athletics, rotation, lull, player, lullMinContactSeconds: minContact);
+    private static RhythmRules Rules(bool rotation = true, bool rest = true, bool mod = true, bool athletics = true) =>
+        new RhythmRules(mod, athletics, rotation, rest);
 
     [Fact]
     public void The_switches_are_on_the_player_page_after_the_press_and_the_numbers_on_Advanced_after_it()
@@ -51,23 +47,23 @@ public class Step78Tests
         var r = RhythmRules.From(new TraxSettings());
         Assert.Equal(35, r.TiredPercent);
         Assert.Equal(25, r.FresherPercent);
-        Assert.Equal(2.0, r.LullEaseMetres, 9);
-        Assert.Equal(30, r.LullStartChargePercent);
-        Assert.Equal(50, r.LullStartHoldPercent);
+        Assert.True(r.RestEnabled);
     }
 
     [Fact]
     public void The_master_switch_first_then_Athletics_then_each_part()
     {
-        Assert.True(Rules().RotationOn && Rules().LullOn);
+        Assert.True(Rules().RotationOn && Rules().RestOn);
         Assert.Equal("ModEnabled", Rules(mod: false).RotationOffBecause);
-        Assert.Equal("ModEnabled", Rules(mod: false, athletics: false).LullOffBecause);
+        Assert.False(Rules(mod: false).RestOn);
+        Assert.False(Rules(athletics: false).RestOn);
         Assert.Equal("AthleticsEnabled", Rules(athletics: false).RotationOffBecause);
         Assert.Equal("RotationEnabled", Rules(rotation: false).RotationOffBecause);
-        Assert.True(Rules(rotation: false).LullOn && Rules(rotation: false).AnyOn);
-        Assert.False(Rules(rotation: false, lull: false).AnyOn);
-        Assert.Contains("OFF (LullEnabled)", Rules(lull: false).Describe());
+        Assert.True(Rules(rotation: false).RestOn && Rules(rotation: false).AnyOn);
+        Assert.False(Rules(rotation: false, rest: false).AnyOn);
+        Assert.Contains("OFF (RotationEnabled)", Rules(rotation: false).Describe());
         Assert.Contains("SwitchUnitLocations", Rules().Describe());
+        Assert.DoesNotContain("LULL", Rules().Describe());
     }
 
     [Fact]
@@ -136,27 +132,6 @@ public class Step78Tests
     }
 
     [Fact]
-    public void The_lull_later_and_shorter_under_a_charge_sooner_under_a_hold()
-    {
-        var r = Rules();
-        Assert.True(RhythmMath.LullStart(in r, BraceOrder.Charge) < RhythmMath.LullStart(in r, BraceOrder.Advance));
-        Assert.True(RhythmMath.LullStart(in r, BraceOrder.Advance) < RhythmMath.LullStart(in r, BraceOrder.Hold));
-        Assert.True(RhythmMath.LullRecover(in r, BraceOrder.Charge) < RhythmMath.LullRecover(in r, BraceOrder.Hold));
-        Assert.True(RhythmMath.Spent(in r, 0.29, BraceOrder.Charge, 0.49, BraceOrder.Hold));
-        Assert.False(RhythmMath.Spent(in r, 0.31, BraceOrder.Charge, 0.20, BraceOrder.Hold));   // the charging front not spent yet
-        Assert.False(RhythmMath.Spent(in r, 0.20, BraceOrder.Charge, double.NaN, BraceOrder.Hold));
-        Assert.True(RhythmMath.Recovered(in r, 0.30, 0.20, BraceOrder.Charge));
-        Assert.False(RhythmMath.Recovered(in r, 0.30, 0.20, BraceOrder.Hold));
-        Assert.Equal(2, RhythmMath.LullAction(1.0));   // ahead of his line: walked back
-        Assert.Equal(1, RhythmMath.LullAction(0.1));   // at it: clamped
-        Assert.Equal(0, RhythmMath.LullAction(-1.0));  // well behind: free
-        Assert.True(RhythmMath.NewCharge(BraceOrderKind.Stop, BraceOrderKind.Charge));
-        Assert.True(RhythmMath.NewCharge(BraceOrderKind.Advance, BraceOrderKind.AiCharge));
-        Assert.False(RhythmMath.NewCharge(BraceOrderKind.Charge, BraceOrderKind.AiCharge));
-        Assert.False(RhythmMath.NewCharge(BraceOrderKind.Count, BraceOrderKind.Charge)); // the first look is no new order
-    }
-
-    [Fact]
     public void A_units_front_is_its_front_rank_and_its_bar_the_front_mens()
     {
         // three ranks along +y at 0, -1, -2 (4 men each): the front 0, the front men within 1.5 = two ranks
@@ -174,7 +149,7 @@ public class Step78Tests
     }
 
     /// <summary>Two lines facing each other: unit A (team 0) at y ≤ 0 facing north, unit B (team 1) from y = gap facing south; 3 ranks of 10.</summary>
-    private static void Note(RhythmUnits t, int a, int b, double gap, double barA, double barB, BraceOrderKind ka, BraceOrderKind kb, bool heldB = false,
+    internal static void Note(RhythmUnits t, int a, int b, double gap, double barA, double barB, BraceOrderKind ka, BraceOrderKind kb, bool heldB = false,
         bool playerA = false, int menB = 10)
     {
         for (int k = 0; k < 3; k++)
@@ -185,17 +160,17 @@ public class Step78Tests
             }
     }
 
-    private static int A => FearMath.UnitKey(0, 1);
-    private static int B => FearMath.UnitKey(1, 2);
+    internal static int A => FearMath.UnitKey(0, 1);
+    internal static int B => FearMath.UnitKey(1, 2);
 
-    private static double Run(RhythmUnits t, in RhythmRules r, double now, double seconds, double gap, double barA, double barB, BraceOrderKind ka, BraceOrderKind kb,
+    internal static double Run(RhythmUnits t, double now, double seconds, double gap, double barA, double barB, BraceOrderKind ka, BraceOrderKind kb,
         bool heldB = false, bool playerA = false, int menB = 10)
     {
         for (double s = 0; s < seconds - 1e-9; s += 0.5)
         {
             now += 0.5;
             Note(t, A, B, gap, barA, barB, ka, kb, heldB, playerA, menB);
-            if (t.Due(now)) t.Publish(now, in r);
+            if (t.Due(now)) t.Publish(now);
         }
         return now;
     }
@@ -204,8 +179,7 @@ public class Step78Tests
     public void The_table_pairs_a_held_wall_by_its_attackers_votes_and_reads_both_fronts()
     {
         var t = new RhythmUnits();
-        var r = Rules();
-        Run(t, in r, 100, 2, 1.0, 0.8, 0.8, BraceOrderKind.Charge, BraceOrderKind.Stop, heldB: true);
+        Run(t, 100, 2, 1.0, 0.8, 0.8, BraceOrderKind.Charge, BraceOrderKind.Stop, heldB: true);
         Assert.Equal(B, t.Enemy[A]);
         Assert.Equal(A, t.Enemy[B]);       // the wall's men voted for nobody - its attackers' votes pair it
         Assert.Equal(10, t.ContactMen[A]);
@@ -214,114 +188,9 @@ public class Step78Tests
         Assert.Equal(0, t.UX[A], 6);
         Assert.Equal(1, t.UY[A], 6);
         Assert.Equal(-1, t.UY[B], 6);
-        Assert.Equal(1.0, t.GapBetween(A, B), 6);
         Assert.Equal(0.8, t.FrontBar[A], 6);
-        Assert.True(t.IsFrontMan(A, 3, 0, 1.5, 102.0));
-        Assert.False(t.IsFrontMan(A, 3, -2, 1.5, 102.0));
-    }
-
-    [Fact]
-    public void A_lull_starts_after_the_contact_time_when_both_fronts_are_spent_and_eases_each_back()
-    {
-        var t = new RhythmUnits();
-        var r = Rules();
-        double now = Run(t, in r, 100, 6, 1.0, 0.2, 0.2, BraceOrderKind.Charge, BraceOrderKind.Charge);
-        Assert.False(t.InLull[A]);                          // not 10 s of contact yet
-        Assert.True(t.SpentLooks > 0);
-        now = Run(t, in r, now, 5, 1.0, 0.2, 0.2, BraceOrderKind.Charge, BraceOrderKind.Charge);
-        Assert.True(t.InLull[A] && t.InLull[B]);
-        Assert.Equal(B, t.LullPartner[A]);
-        Assert.Equal(0.2, t.LullStartBar[A], 6);
-        // each line 2 m behind its front: A's front at y 0 → its line at y −2 (along +y); B's front at y 1 → its line at y 3 (along −y: −1 − 2 = −3)
-        Assert.Equal(-2, t.LullLine[A], 6);
-        Assert.Equal(-3, t.LullLine[B], 6);
-        Assert.Equal(2.0, t.AheadOfLullLine(A, 5, 0), 6);
-        Assert.Equal(2.0, t.AheadOfLullLine(B, 5, 1), 6);
-        Assert.True(t.LullApplies(A, in r));
-        Assert.False(t.LullApplies(A, Rules(lull: false)));
-        // OFF: counted, never started
-        var off = new RhythmUnits();
-        var ro = Rules(lull: false);
-        Run(off, in ro, 100, 12, 1.0, 0.2, 0.2, BraceOrderKind.Charge, BraceOrderKind.Charge);
-        Assert.False(off.InLull[A]);
-        Assert.Equal(1, off.WouldStart);
-        Assert.True(off.SpentLooksBy[0] > 0);
-        // one front not spent: none
-        var fresh = new RhythmUnits();
-        Run(fresh, in r, 100, 12, 1.0, 0.2, 0.5, BraceOrderKind.Charge, BraceOrderKind.Charge);
-        Assert.False(fresh.InLull[A]);
-        // a hold lulls at 45% (below its 50), a charge not
-        var hold = new RhythmUnits();
-        Run(hold, in r, 100, 12, 1.0, 0.45, 0.45, BraceOrderKind.Stop, BraceOrderKind.Stop);
-        Assert.True(hold.InLull[A]);
-        var charge = new RhythmUnits();
-        Run(charge, in r, 100, 12, 1.0, 0.45, 0.45, BraceOrderKind.Charge, BraceOrderKind.Charge);
-        Assert.False(charge.InLull[A]);
-    }
-
-    [Fact]
-    public void A_lull_ends_on_recovery_a_new_charge_a_break_time_or_a_wave_then_the_cooldown()
-    {
-        var r = Rules(minContact: 0);
-        // recovery: a charge's +10 points
-        var t = new RhythmUnits();
-        double now = Run(t, in r, 100, 2, 1.0, 0.2, 0.2, BraceOrderKind.Charge, BraceOrderKind.Charge);
-        Assert.True(t.InLull[A]);
-        now = Run(t, in r, now, 1, 4.0, 0.25, 0.2, BraceOrderKind.Charge, BraceOrderKind.Charge);
-        Assert.True(t.InLull[A]);
-        now = Run(t, in r, now, 1, 4.0, 0.31, 0.2, BraceOrderKind.Charge, BraceOrderKind.Charge);
-        Assert.False(t.InLull[A] || t.InLull[B]);
-        Assert.Equal(LullEnd.Recovered, t.EndedWhy[0]);
-        Assert.True(t.EndedOpened[0] > 2.5);                 // the gap 1 → 4 m
-        Assert.True(t.CooldownUntil[A] > now);
-        Run(t, in r, now, 5, 1.0, 0.2, 0.2, BraceOrderKind.Charge, BraceOrderKind.Charge);
-        Assert.False(t.InLull[A]);                           // the cooldown
-        // a new charge order (a hold → a charge)
-        t = new RhythmUnits();
-        now = Run(t, in r, 100, 2, 1.0, 0.3, 0.3, BraceOrderKind.Stop, BraceOrderKind.Stop);
-        Assert.True(t.InLull[A]);
-        now = Run(t, in r, now, 0.5, 1.0, 0.3, 0.3, BraceOrderKind.Charge, BraceOrderKind.Stop);
-        Assert.True(t.InLull[A]);                            // step 78b: in the lull's first 3 s the charge order waits ...
-        Assert.Equal(1, t.ChargeDeferred);
-        Run(t, in r, now, 3, 1.0, 0.3, 0.3, BraceOrderKind.Charge, BraceOrderKind.Stop);
-        Assert.False(t.InLull[A] || t.InLull[B]);            // ... then ends it
-        Assert.Equal(LullEnd.ChargeOrder, t.EndedWhy[0]);
-        // a side breaks (its men looked at below half)
-        t = new RhythmUnits();
-        now = Run(t, in r, 100, 2, 1.0, 0.2, 0.2, BraceOrderKind.Charge, BraceOrderKind.Charge);
-        Run(t, in r, now, 1, 1.0, 0.2, 0.2, BraceOrderKind.Charge, BraceOrderKind.Charge, menB: 3);
-        Assert.False(t.InLull[A]);
-        Assert.Equal(LullEnd.Broken, t.EndedWhy[0]);
-        // too long
-        t = new RhythmUnits();
-        now = Run(t, in r, 100, 2, 1.0, 0.2, 0.2, BraceOrderKind.Charge, BraceOrderKind.Charge);
-        Run(t, in r, now, 31, 1.0, 0.2, 0.2, BraceOrderKind.Charge, BraceOrderKind.Charge);
-        Assert.Contains(LullEnd.Timeout, t.EndedWhy);
-        // step 79's seam: a wave ends both
-        t = new RhythmUnits();
-        now = Run(t, in r, 100, 2, 1.0, 0.2, 0.2, BraceOrderKind.Charge, BraceOrderKind.Charge);
-        Assert.True(t.EndLull(B, LullEnd.Wave, now));
-        Assert.False(t.InLull[A] || t.InLull[B]);
-        Assert.Equal(LullEnd.Wave, t.EndedWhy[t.EndedN - 1]);
-        Assert.False(t.EndLull(B, LullEnd.Wave, now));
-    }
-
-    [Fact]
-    public void Your_units_ease_back_only_with_their_switch()
-    {
-        var r = Rules(player: false, minContact: 0);
-        var t = new RhythmUnits();
-        Run(t, in r, 100, 3, 1.0, 0.2, 0.2, BraceOrderKind.Charge, BraceOrderKind.Charge, playerA: true);
-        Assert.False(t.InLull[A]);
-        Assert.True(t.RefusedPlayer >= 1);
-        var on = Rules(minContact: 0);
-        t = new RhythmUnits();
-        double now = Run(t, in on, 100, 3, 1.0, 0.2, 0.2, BraceOrderKind.Charge, BraceOrderKind.Charge, playerA: true);
-        Assert.True(t.InLull[A]);
-        Assert.False(t.LullApplies(A, in r));               // switched off mid-lull: the line lets go at once ...
-        Run(t, in r, now, 0.5, 1.0, 0.2, 0.2, BraceOrderKind.Charge, BraceOrderKind.Charge, playerA: true);
-        Assert.False(t.InLull[A]);                          // ... and the lull ends at the next publish
-        Assert.Equal(LullEnd.SwitchedOff, t.EndedWhy[0]);
+        Assert.Equal(0, t.BehindFront(A, 3, 0, 102.0), 6);   // step 78c: a front-rank man stands at his front
+        Assert.Equal(2, t.BehindFront(A, 3, -2, 102.0), 6);  // ... the third rank 2 m behind it
     }
 
     [Fact]
@@ -339,24 +208,18 @@ public class Step78Tests
         s.FreshBarSum = 25 * 0.8;
         s.AddContact(true, 0.6);
         s.AddContact(false, 0.4);
-        s.Lulls = 2;
-        s.AddStartBar(0.2);
-        s.AddLullEnd(LullEnd.Recovered, 12, 3.4);
         var lines = new List<string>();
         s.AddSummaryLines(lines, Rules(), t);
-        Assert.Equal(3, lines.Count); // step 78b: + the trigger and the gap
+        Assert.Single(lines); // step 78c: the lull's lines are gone
         Assert.Contains("ROTATION ON", lines[0]);
         Assert.Contains("swaps asked 25, done 22", lines[0]);
         Assert.Contains("never beside (called off) 3", lines[0]);
         Assert.Contains("nobody fresher behind 10", lines[0]);
         Assert.Contains("tired 30% vs fresh 80%", lines[0]);
         Assert.Contains("IN CONTACT ON 60%", lines[0]);
-        Assert.Contains("LULLS ON: started 2", lines[1]);
-        Assert.Contains("recovered (the unit's bar) 1", lines[1]);
-        Assert.Contains("opened mean 3.4 m", lines[1]);
+        Assert.DoesNotContain("lull", lines[0], StringComparison.OrdinalIgnoreCase);
         var off = new List<string>();
-        s.AddSummaryLines(off, Rules(rotation: false, lull: false), t);
+        s.AddSummaryLines(off, Rules(rotation: false, rest: false), t);
         Assert.Contains("ROTATION OFF (RotationEnabled)", off[0]);
-        Assert.Contains("LULLS OFF (LullEnabled)", off[1]);
     }
 }

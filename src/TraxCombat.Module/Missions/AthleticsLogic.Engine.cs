@@ -727,7 +727,6 @@ namespace TraxCombat.Missions
             NoteFirmAttack(st, mounted, now); // step 75: a man of a standing wall strikes - from his slot or not, ON vs OFF
             NoteSpearAttack(st, mounted); // step 76: a man with a spear and a sidearm attacks - holding which, from a back rank
             NoteFlockAttack(st, mounted, now); // step 55: a rider's pass - lone or with his kind, the time since his last
-            NoteRhythmAttack(st, mounted, now); // step 78b: a blow in contact - the pair's attack rate (the lull's clock)
 
             // the cycle since the last release ran at the multiplier set after that release's charge
             int binNow = AthleticsMath.PeakBin(AthleticsMath.PeakShare(in r, st));

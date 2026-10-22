@@ -111,7 +111,8 @@ namespace TraxCombat.Core
         /// unchanged), 16 = step 74 (the line-discipline map one rank deeper), 17 = step 78b (Toni's 225 v 229 battle of 2026-10-22 - "between the
         /// two fronts, never, not for a sec": a lull lasts until the unit's men in the fight have regained more - LullRecoverChargePercent 10 → 20,
         /// LullRecoverAdvancePercent 15 → 25, LullRecoverHoldPercent 20 → 30 in a file still holding them; a tuned value kept and noted; the wrap's
-        /// own switch PressWrapAllowed is a new key, off).</summary>
+        /// own switch PressWrapAllowed is a new key, off). Step 78c removed the lull and its 29 keys without a new format: the reader ignores an
+        /// unknown key anyway, and <c>DropRetiredLullKeys</c> drops them from any file (one note each) - nothing to move.</summary>
         public const int FormatVersion = 17;
 
         /// <summary>The meta key holding <see cref="FormatVersion"/> - not a setting.</summary>
@@ -515,19 +516,13 @@ namespace TraxCombat.Core
                 MoveOrKeepIfMoved(read, SettingsSchema.LineDisciplineRanksT4, 2, deeper + " - a tier-4 man holds 3 ranks", from, defaultOf);
                 MoveOrKeepIfMoved(read, SettingsSchema.LineDisciplineRanksT5, 1, deeper + " - a veteran holds 2 ranks (60 of them: at most 30 files)", from, defaultOf);
             }
-            if (from < 17)
-            {
-                // step 78b: a lull lasts until the unit's men in the fight have regained more (Toni 2026-10-22: the lull never showed); the keys exist
-                // since format 16 (step 78 added them with no migration) - a file without a key simply gets the new default; a hand-set value is kept
-                // and said once
-                const string breather = "step 78b, Toni: the lull must show - a breather lasts until the men in the fight have caught more breath";
-                MoveOrKeepIfMoved(read, SettingsSchema.LullRecoverChargePercent, 10, breather + " - a charging unit regains 20 points", from, defaultOf);
-                MoveOrKeepIfMoved(read, SettingsSchema.LullRecoverAdvancePercent, 15, breather + " - an advancing unit regains 25 points", from, defaultOf);
-                MoveOrKeepIfMoved(read, SettingsSchema.LullRecoverHoldPercent, 20, breather + " - a holding unit regains 30 points", from, defaultOf);
-            }
+            // format 17 (step 78b) moved the lull's LullRecover*Percent 10 / 15 / 20 → 20 / 25 / 30; step 78c removed the lull and its keys, so a
+            // format 16 file's are dropped below with the rest of them - nothing to move any more (FormatVersion stays 17)
             // steps 36 / 37: the retired AI sprint keys - in ANY format (they are only ever steps 33-36's, and a hand-pasted one
             // goes the same way)
             DropRetiredSprintKeys(read, from);
+            // step 78c: the lull's keys (steps 78 / 78b) - in ANY format (they are only ever formats 16-17's)
+            DropRetiredLullKeys(read, from);
             return read.Migrated;
         }
 
@@ -562,6 +557,38 @@ namespace TraxCombat.Core
                 if (why == null) continue;
                 read.Unknown.RemoveAt(i);
                 read.Migrated.Add(pair.Key + " " + pair.Value + " dropped (format " + from + " → " + FormatVersion + "; " + why + ")");
+            }
+        }
+
+        /// <summary>Step 78c: the retired keys of 78 / 78b's unit-wide lull (Toni: "remove that scripted event") - each man rests on his own now
+        /// (RestEnabled and the Rest* numbers).</summary>
+        public static readonly string[] RetiredLullKeys =
+        {
+            "LullEnabled", "LullForPlayerUnits", "LullContactMen", "LullMinContactSeconds", "LullStartChargePercent", "LullStartAdvancePercent",
+            "LullStartHoldPercent", "LullRecoverChargePercent", "LullRecoverAdvancePercent", "LullRecoverHoldPercent", "LullEaseMetres", "LullFrontDepthMetres",
+            "LullMaxSeconds", "LullCooldownSeconds", "LullRotates", "LullClockChargeMinSeconds", "LullClockChargeMaxSeconds", "LullClockAdvanceMinSeconds",
+            "LullClockAdvanceMaxSeconds", "LullClockHoldMinSeconds", "LullClockHoldMaxSeconds", "LullClockChargePercent", "LullClockAdvancePercent",
+            "LullClockHoldPercent", "LullAttackRateFallenPercent", "LullUnitDepthMetres", "LullChargeGraceSeconds", "LullGapMetres", "LullMaxBackMetres",
+        };
+
+        /// <summary>
+        /// Step 78c: the lull's retired keys leave <see cref="ConfigReadResult.Unknown"/> - one note each - so the rewrite does not carry them under
+        /// "Not recognised" forever (the reader already ignores an unknown key: a file holding them loads as before). No format change: the drop is
+        /// idempotent, like the sprint's (steps 36 / 37).
+        /// </summary>
+        private static void DropRetiredLullKeys(ConfigReadResult read, int from)
+        {
+            for (int i = read.Unknown.Count - 1; i >= 0; i--)
+            {
+                var pair = read.Unknown[i];
+                bool retired = false;
+                foreach (var k in RetiredLullKeys)
+                    if (string.Equals(pair.Key, k, StringComparison.OrdinalIgnoreCase))
+                        retired = true;
+                if (!retired) continue;
+                read.Unknown.RemoveAt(i);
+                read.Migrated.Add(pair.Key + " " + pair.Value + " dropped (format " + from + " → " + FormatVersion
+                                  + "; step 78c, Toni: no scripted lull - each tired man steps back and rests on his own: RestEnabled and the Rest* settings)");
             }
         }
 
