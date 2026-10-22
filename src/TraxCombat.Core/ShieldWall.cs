@@ -114,6 +114,12 @@ namespace TraxCombat.Core
         /// <summary>Step 68: the gap (m) between his formation's front and the front of the closest enemy formation (their centres' distance
         /// less half of each one's depth); NaN = no enemy formation known.</summary>
         public double EnemyGap;
+
+        /// <summary>Step 75: the formation's own place (<c>Formation.CurrentPosition</c>) and its ORDER position (<c>Formation.OrderPosition</c>) - read
+        /// for a held man under a Move only (the "at its place" rule, <see cref="StandFirmMath.Conditions"/>).</summary>
+        public bool HasFormationOrder;
+        public double FormationX, FormationY;
+        public double FormationOrderX, FormationOrderY;
     }
 
     /// <summary>

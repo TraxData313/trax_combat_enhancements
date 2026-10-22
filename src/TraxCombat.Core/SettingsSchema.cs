@@ -123,6 +123,12 @@ namespace TraxCombat.Core
             "Shield walls: a step out to strike (m)",
             "With \"Shield walls hold their slots\" on: a held soldier may step up to this many metres out of his place at an enemy close in front of it (one who backed off just out of reach), strike, then he is held again and walks back to his place - he may step out again once he is back. 0 = no step at all: they stand fast and fight only what reaches them. Does nothing while \"hold their slots\" is off.");
 
+        // Step 75 (Toni 2026-10-22: "the men in the shield wall still step forward even when on a standing order, they take a few steps to strike at an
+        // enemy, then fall back" - a switch to test on and off): StandFirmMath, AI_NOTES "Step 75", DESIGN decision 69.
+        public static readonly ParamDef ShieldWallStandFirm = Bool("ShieldWallStandFirm", PlayerAiGroup,
+            "Shield walls stand firm on a hold order",
+            "With \"Shield walls hold their slots\" on: a shield wall, square or circle you (or the enemy's general) ordered to STOP - or moved to a place it has reached and stands on - never leaves its ground. Each soldier keeps his place whatever happens: no step out to strike, no sprint; if a kick, a shove or a blow carries him a little forward he backs straight into his place, facing the enemy. He still blocks and strikes - and kicks or bashes - whatever comes within his reach, so an enemy who pushes at the wall tires himself on it. Not while the wall advances, charges, follows or falls back; a wall whose courage breaks still breaks. Both sides, never you. Off: the step out above and the game's own small steps.");
+
         public static readonly ParamDef CourageEnabled = Bool("CourageEnabled", PlayerAiGroup,
             "Courage and cohesion",
             "Every AI soldier on foot in a formation weighs his mates against the enemies near him - by how tough each one is (armour, level, wounds). Short of courage he is TIMID: far from his mates he walks back to a bigger group of his side, facing the enemy (sprinting when it is far); among them he holds and strikes only what comes within reach - no lone man circling your shield wall, no exhausted man standing among four enemies. A big enough crowd stays brave and wraps around a line as a mass. Never you, never riders, never men held in a shield wall. Works without the Athletics system (then tiredness does not count). Off: the game's own bravery - the log still measures, so flipping it mid-battle compares the two.");
@@ -410,6 +416,27 @@ namespace TraxCombat.Core
         public static readonly ParamDef ShieldWallKickReturnMetres = Float("ShieldWallKickReturnMetres", 0, WallPullMath.MaxKickReturnMetres, BattlePaceGroup,
             "Shield walls: back to the line after a kick (m)",
             "With \"Shield walls hold their slots\" on: a soldier of a held wall who kicked or shield-bashed (or stepped in at a staggered enemy) and stands more than this ahead of his place walks straight back to it, facing the enemy, as soon as he can move - no wait. 0 = off (only the walk back above, past his step out).");
+
+        // Step 75 (Toni 2026-10-22): the stand-firm wall's numbers and its two engine levers - StandFirmMath, AI_NOTES "Step 75", DESIGN decision 69.
+        public static readonly ParamDef ShieldWallStandFirmSlackMetres = Float("ShieldWallStandFirmSlackMetres", StandFirmMath.MinSlackMetres, StandFirmMath.MaxSlackMetres, BattlePaceGroup,
+            "Stand firm: walked back beyond (m)",
+            "With \"Shield walls stand firm on a hold order\" on (player page, How the AI fights): a soldier of a standing wall who is more than this ahead of his place - carried by his own kick or bash, the press, a blow - backs straight into it (to within half of it), facing the enemy, as soon as he can move. Also the tolerance the game is told for the wall. Smaller = a stiffer wall.");
+
+        public static readonly ParamDef ShieldWallStandFirmArrivedMetres = Float("ShieldWallStandFirmArrivedMetres", StandFirmMath.MinArrivedMetres, StandFirmMath.MaxArrivedMetres, BattlePaceGroup,
+            "Stand firm: a moved wall is at its place within (m)",
+            "A wall MOVED to a place stands firm once it stands within this many metres of the place it was ordered to (and has stopped moving - the next setting); a Stop order stands firm at once. It stays so until it is ordered elsewhere or pushed more than twice this far from its place.");
+
+        public static readonly ParamDef ShieldWallStandFirmStillMetresPerSecond = Float("ShieldWallStandFirmStillMetresPerSecond", 0, StandFirmMath.MaxStillMetresPerSecond, BattlePaceGroup,
+            "Stand firm: a moved wall has stopped below (m/s)",
+            "A moved wall counts as standing at its place only once its soldiers' average speed is at most this (metres a second) - so a wall still walking in is not frozen early.");
+
+        public static readonly ParamDef ShieldWallStandFirmPinFrame = Bool("ShieldWallStandFirmPinFrame", BattlePaceGroup,
+            "Stand firm: the game walks each man to his place",
+            "On: the place the game walks each soldier of a standing wall to is his own place in the wall (on a Stop the game's is wherever he happens to stand, so a man who drifted out stays out). Off: the game's own.");
+
+        public static readonly ParamDef ShieldWallStandFirmTightTolerance = Bool("ShieldWallStandFirmTightTolerance", BattlePaceGroup,
+            "Stand firm: a tight tolerance for the game",
+            "On: the game is told the standing wall's men may be no more than \"walked back beyond\" (above) away from their places, instead of the formation's own looser spread. Off: the formation's own.");
 
         // ------------------------------------------------------------------ brace by orders (step 23)
 
@@ -1884,7 +1911,7 @@ namespace TraxCombat.Core
             // the player page's six groups (step 59)
             DamageRandomPercent, DamageReductionPercent,
             AthleticsEnabled, CostPerBlow, HeroCostMultiplier,
-            AiAggressionFreshPercent, AiAggressionExhaustedPercent, FeverEnabled, ShieldWallHoldsSlots, ShieldWallStepOutMetres, CourageEnabled, CavalryFlockEnabled, LineDisciplineForPlayer,
+            AiAggressionFreshPercent, AiAggressionExhaustedPercent, FeverEnabled, ShieldWallHoldsSlots, ShieldWallStepOutMetres, ShieldWallStandFirm, CourageEnabled, CavalryFlockEnabled, LineDisciplineForPlayer,
             ImpactEnabled, ImpactOnPlayerPercent,
             SprintEnabled, SprintKey,
             ShowPlayerBar, AltMarksEveryone, ImpactShowMessages,
@@ -1901,6 +1928,7 @@ namespace TraxCombat.Core
             StepBackHoldAttacks, StepBackMaxAtOnce,
             ShieldInfantrySwingsLessPercent, FootMeleeSwingsLessPercent, AiMeleeGapSeconds, ExtraPauseAfterBowShotSeconds, ExtraPauseAfterCrossbowShotSeconds,
             ShieldWallPullBackSeconds, ShieldWallAdvanceAsOne, ShieldWallAdvanceStepMetres, ShieldWallAdvanceNearMetres, ShieldWallKickReturnMetres,
+            ShieldWallStandFirmSlackMetres, ShieldWallStandFirmArrivedMetres, ShieldWallStandFirmStillMetresPerSecond, ShieldWallStandFirmPinFrame, ShieldWallStandFirmTightTolerance,
             BraceEnabled, BraceFloorChargePercent, BraceFloorAdvancePercent, BraceFloorHoldPercent, BraceFloorNoFormationPercent, BraceFloorSpreadPercent,
             BraceRecoverPercent, BraceRecoverSpreadPercent,
             BraceWieldShield, BraceRaiseShield,

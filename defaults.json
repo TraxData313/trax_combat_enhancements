@@ -107,6 +107,17 @@
   // (range 0.0 to 3.0)
   "ShieldWallStepOutMetres": 1.0,
 
+  // With "Shield walls hold their slots" on: a shield wall, square or circle you (or the
+  // enemy's general) ordered to STOP - or moved to a place it has reached and stands on - never
+  // leaves its ground. Each soldier keeps his place whatever happens: no step out to strike, no
+  // sprint; if a kick, a shove or a blow carries him a little forward he backs straight into
+  // his place, facing the enemy. He still blocks and strikes - and kicks or bashes - whatever
+  // comes within his reach, so an enemy who pushes at the wall tires himself on it. Not while
+  // the wall advances, charges, follows or falls back; a wall whose courage breaks still
+  // breaks. Both sides, never you. Off: the step out above and the game's own small steps.
+  // (true or false)
+  "ShieldWallStandFirm": true,
+
   // Every AI soldier on foot in a formation weighs his mates against the enemies near him - by
   // how tough each one is (armour, level, wounds). Short of courage he is TIMID: far from his
   // mates he walks back to a bigger group of his side, facing the enemy (sprinting when it is
@@ -546,6 +557,38 @@
   // off (only the walk back above, past his step out).
   // (range 0.0 to 3.0)
   "ShieldWallKickReturnMetres": 0.5,
+
+  // With "Shield walls stand firm on a hold order" on (player page, How the AI fights): a
+  // soldier of a standing wall who is more than this ahead of his place - carried by his own
+  // kick or bash, the press, a blow - backs straight into it (to within half of it), facing the
+  // enemy, as soon as he can move. Also the tolerance the game is told for the wall. Smaller =
+  // a stiffer wall.
+  // (range 0.1 to 1.5)
+  "ShieldWallStandFirmSlackMetres": 0.3,
+
+  // A wall MOVED to a place stands firm once it stands within this many metres of the place it
+  // was ordered to (and has stopped moving - the next setting); a Stop order stands firm at
+  // once. It stays so until it is ordered elsewhere or pushed more than twice this far from its
+  // place.
+  // (range 0.5 to 20.0)
+  "ShieldWallStandFirmArrivedMetres": 2.0,
+
+  // A moved wall counts as standing at its place only once its soldiers' average speed is at
+  // most this (metres a second) - so a wall still walking in is not frozen early.
+  // (range 0.0 to 3.0)
+  "ShieldWallStandFirmStillMetresPerSecond": 0.5,
+
+  // On: the place the game walks each soldier of a standing wall to is his own place in the
+  // wall (on a Stop the game's is wherever he happens to stand, so a man who drifted out stays
+  // out). Off: the game's own.
+  // (true or false)
+  "ShieldWallStandFirmPinFrame": true,
+
+  // On: the game is told the standing wall's men may be no more than "walked back beyond"
+  // (above) away from their places, instead of the formation's own looser spread. Off: the
+  // formation's own.
+  // (true or false)
+  "ShieldWallStandFirmTightTolerance": true,
 
   // ==================== Brace by orders (AI) ====================
   // An AI soldier whose Athletics bar falls to his formation's order floor (the settings below)

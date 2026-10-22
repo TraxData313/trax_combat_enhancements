@@ -21,6 +21,11 @@ namespace TraxCombat.Core
         /// (step 54) - walked back at once, from <c>ShieldWallKickReturnMetres</c> out.</summary>
         public bool AfterOwnKick;
 
+        /// <summary>Step 75: it began while he STOOD FIRM (from <c>ShieldWallStandFirmSlackMetres</c>, walked back at once) - and whether his own kick /
+        /// bash or a punish press was on him then (the stand-firm line's lever).</summary>
+        public bool StandFirm;
+        public bool OwnKick;
+
         /// <summary>The farthest out (m) at the looks.</summary>
         public double MaxOut;
 
@@ -132,15 +137,26 @@ namespace TraxCombat.Core
         /// half of it, and walked back AT ONCE once he can move (no <c>ShieldWallPullBackSeconds</c> wait - it works with that setting at 0 too).
         /// </summary>
         public static WallOutMove Step(ref WallOutOfPlace s, double leash, double outM, bool canMove, bool impact, double pullSeconds, double now, double dt,
-            double kickReturnMetres, bool ownKick)
+            double kickReturnMetres, bool ownKick) =>
+            Step(ref s, leash, outM, canMove, impact, pullSeconds, now, dt, kickReturnMetres, ownKick, 0);
+
+        /// <summary>
+        /// Step 75: the same for a man STANDING FIRM (<paramref name="standFirmMetres"/> = <c>ShieldWallStandFirmSlackMetres</c> while he stands firm, else
+        /// 0): out of place from that many metres ahead whatever moved him (not the leash's 1.25 m), back within half of it, walked back AT ONCE once he can
+        /// move (no <c>ShieldWallPullBackSeconds</c> wait - it works with that setting at 0 too); never while his kick plays (<paramref name="canMove"/>).
+        /// </summary>
+        public static WallOutMove Step(ref WallOutOfPlace s, double leash, double outM, bool canMove, bool impact, double pullSeconds, double now, double dt,
+            double kickReturnMetres, bool ownKick, double standFirmMetres)
         {
             if (double.IsNaN(outM)) return WallOutMove.None;
             bool kickOn = kickReturnMetres > 0;
+            bool firm = standFirmMetres > 0;
             if (!s.Out)
             {
                 bool kick = kickOn && ownKick && outM > kickReturnMetres;
-                if (!kick && !(outM > Beyond(leash))) return WallOutMove.None;
-                s = new WallOutOfPlace { Out = true, Since = now, AfterImpact = impact, AfterOwnKick = kickOn && ownKick, MaxOut = outM, MovableSince = canMove ? now : double.NaN };
+                bool firmOut = firm && outM > standFirmMetres;
+                if (!kick && !firmOut && !(outM > Beyond(leash))) return WallOutMove.None;
+                s = new WallOutOfPlace { Out = true, Since = now, AfterImpact = impact, AfterOwnKick = kickOn && ownKick, StandFirm = firm, OwnKick = ownKick, MaxOut = outM, MovableSince = canMove ? now : double.NaN };
                 return WallOutMove.Began;
             }
             if (outM > s.MaxOut) s.MaxOut = outM;
@@ -148,13 +164,16 @@ namespace TraxCombat.Core
             else if (double.IsNaN(s.MovableSince)) s.MovableSince = now;
             if (s.Pulling && dt > 0 && !double.IsNaN(dt)) s.PullSeconds += dt;
             bool kickSpell = s.AfterOwnKick && kickOn;
-            if (outM <= (kickSpell ? Math.Min(BackAt(leash), kickReturnMetres / 2) : BackAt(leash)))
+            double back = kickSpell ? Math.Min(BackAt(leash), kickReturnMetres / 2) : BackAt(leash);
+            if (firm) back = Math.Min(back, standFirmMetres / 2);
+            if (outM <= back)
             {
                 s.Out = false;
                 s.Pulling = false;
                 return WallOutMove.Back;
             }
-            bool want = (kickSpell || pullSeconds > 0) && canMove && now - s.MovableSince >= (kickSpell ? 0 : pullSeconds) && s.PullSeconds < MaxPullSeconds;
+            bool atOnce = kickSpell || firm;
+            bool want = (atOnce || pullSeconds > 0) && canMove && now - s.MovableSince >= (atOnce ? 0 : pullSeconds) && s.PullSeconds < MaxPullSeconds;
             if (want && !s.Pulling)
             {
                 s.Pulling = true;

@@ -78,6 +78,9 @@ namespace TraxCombat.Core
         /// <summary>Step 70: a charge / fever sprint into contact ended because it carried him away from his mates or past the enemy's front (a lone runner).</summary>
         LoneRunner,
 
+        /// <summary>Step 75: his shield wall STANDS FIRM on a hold order (ShieldWallStandFirm) - a running AI sprint ended: he never leaves his slot.</summary>
+        StandFirm,
+
         Count,
     }
 
@@ -515,6 +518,7 @@ namespace TraxCombat.Core
             SprintEnd.Attacked => "his first attack (into contact)",
             SprintEnd.Stopped => "he stopped moving (into contact)",
             SprintEnd.LoneRunner => "alone or past the enemy's front (step 70)",
+            SprintEnd.StandFirm => "his shield wall stands firm (step 75)",
             _ => e.ToString(),
         };
     }

@@ -276,6 +276,12 @@ namespace TraxCombat.Core
         public float ShieldWallAdvanceStepMetres => GetFloat(SettingsSchema.ShieldWallAdvanceStepMetres);
         public float ShieldWallAdvanceNearMetres => GetFloat(SettingsSchema.ShieldWallAdvanceNearMetres);
         public float ShieldWallKickReturnMetres => GetFloat(SettingsSchema.ShieldWallKickReturnMetres);       // step 68: back to the line after a kick
+        public bool ShieldWallStandFirm => GetBool(SettingsSchema.ShieldWallStandFirm);                       // step 75: a standing wall never leaves its slot
+        public float ShieldWallStandFirmSlackMetres => GetFloat(SettingsSchema.ShieldWallStandFirmSlackMetres);
+        public float ShieldWallStandFirmArrivedMetres => GetFloat(SettingsSchema.ShieldWallStandFirmArrivedMetres);
+        public float ShieldWallStandFirmStillMetresPerSecond => GetFloat(SettingsSchema.ShieldWallStandFirmStillMetresPerSecond);
+        public bool ShieldWallStandFirmPinFrame => GetBool(SettingsSchema.ShieldWallStandFirmPinFrame);
+        public bool ShieldWallStandFirmTightTolerance => GetBool(SettingsSchema.ShieldWallStandFirmTightTolerance);
 
         // step 23: brace by orders
         public bool BraceEnabled => GetBool(SettingsSchema.BraceEnabled);
