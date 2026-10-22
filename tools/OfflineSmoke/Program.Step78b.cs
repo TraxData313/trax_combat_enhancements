@@ -10,51 +10,27 @@ using TraxCombat.Missions;
 namespace TraxCombat.Tools
 {
     /// <summary>
-    /// Step 78b (Toni's 225 v 229 battle 2026-10-22: 2 lulls in 435 s, "between the two fronts, never, not for a sec"; the enemy's 69 m of recruits went
-    /// round both ends of his ~31 m line): THE LULL THAT SHOWS - a meshed six-minute grind through the real logic with courage's stand-in world and the
-    /// REAL input filter gets its breathers from the clock, each opening a clear gap measured from the men; NO WRAPPING - a 69 m unit charging a 31 m
-    /// held line under a stand-in of the game's charge that sends every man beyond the line's end round it: nobody goes round, the wings stand off the
-    /// ends behind the bent front; a unit ordered there still goes; the cost at 1000 men. What it cannot check: how the engine walks the men (PLAYTEST
-    /// D43b).
+    /// Step 78b (Toni's 225 v 229 battle 2026-10-22: the enemy's 69 m of recruits went round both ends of his ~31 m line): NO WRAPPING - a 69 m unit
+    /// charging a 31 m held line under a stand-in of the game's charge that sends every man beyond the line's end round it: nobody goes round, the wings
+    /// stand off the ends behind the bent front; a unit ordered there still goes. Step 78c removed 78b's lull and its smoke; the stand-in grind and the
+    /// smoke's own gap measure stay here for Program.Step78c.cs. What it cannot check: how the engine walks the men (PLAYTEST D43b).
     /// </summary>
     internal static partial class Program
     {
-        /// <summary>The shipped step-78b values (defaults.json).</summary>
+        /// <summary>The shipped step-78b press values (defaults.json): no wrapping, the wing's bend.</summary>
         private static void Step78bDefaults()
         {
-            S.Set(SettingsSchema.LullUnitDepthMetres, 8.0, SettingSources.File);
-            S.Set(SettingsSchema.LullClockChargeMinSeconds, 30.0, SettingSources.File);
-            S.Set(SettingsSchema.LullClockChargeMaxSeconds, 60.0, SettingSources.File);
-            S.Set(SettingsSchema.LullClockAdvanceMinSeconds, 25.0, SettingSources.File);
-            S.Set(SettingsSchema.LullClockAdvanceMaxSeconds, 50.0, SettingSources.File);
-            S.Set(SettingsSchema.LullClockHoldMinSeconds, 20.0, SettingSources.File);
-            S.Set(SettingsSchema.LullClockHoldMaxSeconds, 40.0, SettingSources.File);
-            S.Set(SettingsSchema.LullClockChargePercent, 55, SettingSources.File);
-            S.Set(SettingsSchema.LullClockAdvancePercent, 60, SettingSources.File);
-            S.Set(SettingsSchema.LullClockHoldPercent, 65, SettingSources.File);
-            S.Set(SettingsSchema.LullAttackRateFallenPercent, 60, SettingSources.File);
-            S.Set(SettingsSchema.LullChargeGraceSeconds, 3.0, SettingSources.File);
-            S.Set(SettingsSchema.LullGapMetres, 3.5, SettingSources.File);
-            S.Set(SettingsSchema.LullMaxBackMetres, 8.0, SettingSources.File);
-            S.Set(SettingsSchema.LullRecoverChargePercent, 20, SettingSources.File);
-            S.Set(SettingsSchema.LullRecoverAdvancePercent, 25, SettingSources.File);
-            S.Set(SettingsSchema.LullRecoverHoldPercent, 30, SettingSources.File);
             S.Set(SettingsSchema.PressWrapAllowed, false, SettingSources.File);
             S.Set(SettingsSchema.PressWingBendDegrees, 30.0, SettingSources.File);
         }
 
-        private static AthleticsLogic NewStep78bLogic(FakeCourageBody body, FakeRhythmBody rhythm, int seed)
-        {
-            var logic = NewStep78Logic(body, rhythm, rotation: true, lull: true);
-            Step78bDefaults();
-            logic.RhythmUnits.Dice = new SeededRandom(seed);
-            return logic;
-        }
-
-        /// <summary>The stand-in grind: the game walks each man at his nearest enemy until within 1.2 m (a charge); in contact (an enemy within 2.5 m) his
-        /// bar drains <paramref name="drain"/> a second and he swings about every 2 s × his bar (the attack rate's notes), out of contact it refills (full in
-        /// 60 s); every vector through the REAL input filter whenever a wish of ours is on him; 1.5 m/s.</summary>
-        private static double RunGrind(AthleticsLogic logic, FakeCourageBody body, double t, double seconds, double drain, Random dice, Action<double>? each = null)
+        /// <summary>The stand-in grind: the game walks each man at his nearest enemy until within 1.2 m (a charge - <paramref name="charging"/>, everyone by
+        /// default); in contact (an enemy within 2.5 m) his bar drains <paramref name="drain"/> a second, out of contact it refills (full in 60 s); every vector
+        /// through the REAL input filter whenever a wish of ours is on him (<paramref name="frame"/> sees each man's written vector); 1.5 m/s. Step 78c:
+        /// <paramref name="lines"/> = a line's charge - team 0 pushes north, team 1 south, straight, and only at an enemy AHEAD of him (the game's slots and
+        /// collisions keep a line a line; the plain stand-in has men chase single enemies through the other side's ranks).</summary>
+        private static double RunGrind(AthleticsLogic logic, FakeCourageBody body, double t, double seconds, double drain, Random dice, Action<double>? each = null,
+            Func<FakeCourageMan, bool>? charging = null, Action<FakeCourageMan, float, float>? frame = null, bool lines = false)
         {
             const double speed = 1.5, dt = 0.1;
             for (double s = 0; s < seconds - 1e-9; s += dt)
@@ -75,7 +51,11 @@ namespace TraxCombat.Tools
                     }
                     float vx = 0, vy = 0;
                     double dist = Math.Sqrt(best);
-                    if (near != null && dist > 1.2)
+                    if (lines)
+                    {
+                        if (near != null && dist > 1.2 && (charging == null || charging(m)) && (near.Y - m.Y) * (m.Team == 0 ? 1 : -1) > 0) vy = m.Team == 0 ? 1f : -1f;
+                    }
+                    else if (near != null && dist > 1.2 && (charging == null || charging(m)))
                     {
                         double dx = near.X - m.X, dy = near.Y - m.Y;
                         vx = (float)(dx / dist);
@@ -86,13 +66,13 @@ namespace TraxCombat.Tools
                     {
                         uint flags = 0;
                         AiInputHook.Apply(m.St, input, false, ref flags, ref vx, ref vy);
+                        frame?.Invoke(m, vx, vy);
                     }
                     m.X += vx * speed * dt;
                     m.Y += vy * speed * dt;
                     if (near != null && dist <= 2.5)
                     {
                         SetBar(m.St, Math.Max(0, m.St.Fraction - drain * dt));
-                        if (dice.NextDouble() < dt * 0.5 * m.St.Fraction) logic.NoteRhythmAttack(m.St, false, t);
                     }
                     else SetBar(m.St, Math.Min(1.0, m.St.Fraction + dt / 60.0));
                 }
@@ -117,82 +97,6 @@ namespace TraxCombat.Tools
             if (gaps.Count == 0) return double.NaN;
             gaps.Sort();
             return gaps[gaps.Count / 2];
-        }
-
-        [MethodImpl(MethodImplOptions.NoInlining)]
-        private static void MeshedGrindGetsItsBreathers()
-        {
-            var keep = _logic;
-            try
-            {
-                var body = new FakeCourageBody();
-                var rhythm = new FakeRhythmBody();
-                var logic = NewStep78bLogic(body, rhythm, 781);
-                body.Orders[1] = body.Orders[2] = FearOrder.Charge;
-                double t = 101000;
-                // two 14 x 3 lines MESHED by a metre (Toni's first lull: "the gap between the fronts -20.7 m"): the south front at y 0, the north front at y −1,
-                // its files half a metre over
-                var a = new List<FakeCourageMan>();
-                var b = new List<FakeCourageMan>();
-                for (int k = 0; k < 3; k++)
-                    for (int f = 0; f < 14; f++)
-                    {
-                        a.Add(body.ByIndex[FearMan(logic, body, 44000 + k * 14 + f, -6.5 + f, -k * 1.0, 0, 1, legionary: true, morale: 70, bar: 1.0).AgentIndex]);
-                        b.Add(body.ByIndex[FearMan(logic, body, 44100 + k * 14 + f, -6.0 + f, -1.0 + k * 1.0, 1, 2, legionary: true, morale: 70, bar: 1.0).AgentIndex]);
-                    }
-                double startGap = MenGap(a, b);
-                var dice = new Random(78);
-                var u = logic.RhythmUnits;
-                int ka = FearMath.UnitKey(0, 1);
-                var perLull = new List<double>();
-                var perLullSmoke = new List<double>();
-                double lullMax = double.NaN, smokeMax = double.NaN;
-                bool was = false;
-                double lullSeconds = 0;
-                t = RunGrind(logic, body, t, 360, 0.008, dice, now =>
-                {
-                    bool inLull = u.InLull[ka];
-                    if (inLull)
-                    {
-                        lullSeconds += 0.1;
-                        if (!double.IsNaN(u.GapMean[ka]) && (double.IsNaN(lullMax) || u.GapMean[ka] > lullMax)) lullMax = u.GapMean[ka];
-                        double g = MenGap(a, b);
-                        if (!double.IsNaN(g) && (double.IsNaN(smokeMax) || g > smokeMax)) smokeMax = g;
-                    }
-                    else if (was)
-                    {
-                        perLull.Add(lullMax);
-                        perLullSmoke.Add(smokeMax);
-                        lullMax = smokeMax = double.NaN;
-                    }
-                    was = inLull;
-                });
-                var rs = logic.RhythmStats;
-                Console.WriteLine("        step 78b a MESHED six-minute grind (14 x 3 a side, meshed by 1 m - the gap from the men " + F2s(startGap) + " m): lulls "
-                                  + rs.Lulls + " (the clock " + rs.LullsBy[(int)LullTrigger.Clock] + ", both spent " + rs.LullsBy[(int)LullTrigger.Tired] + "), "
-                                  + F2s(lullSeconds) + " s in lulls, the gap at its widest in each (the logic's measure) " + string.Join(" / ", perLull.Select(F2s))
-                                  + " m, (the smoke's own) " + string.Join(" / ", perLullSmoke.Select(F2s)) + " m; opened after mean "
-                                  + F2s(rs.OpenedSecondsN > 0 ? rs.OpenedSecondsSum / rs.OpenedSecondsN : double.NaN) + " s, never " + rs.NeverOpened + "; ends "
-                                  + string.Join(", ", Enumerable.Range(0, (int)LullEnd.Count).Where(i => rs.LullEnds[i] > 0).Select(i => RhythmMath.LullEndName((LullEnd)i) + " " + rs.LullEnds[i]))
-                                  + "; lines stepped back " + u.LineSteps + ", men walked back " + rs.MenWalkedBack);
-                Check(startGap < 0, "precondition: the grind is not meshed (" + startGap + ")");
-                Check(rs.Lulls >= 2, "a six-minute grind got only " + rs.Lulls + " lulls (step 78b wants 2+)");
-                Check(rs.LullsBy[(int)LullTrigger.Clock] >= 1, "no lull came from the breather clock");
-                Check(perLull.Count(g => g >= 3.0) >= 2, "fewer than two lulls opened a 3 m gap (the logic's measure): " + string.Join(" / ", perLull.Select(F2s)));
-                Check(perLullSmoke.Count(g => g >= 3.0) >= 2, "fewer than two lulls opened a 3 m gap (the smoke's own measure): " + string.Join(" / ", perLullSmoke.Select(F2s)));
-                Check(rs.OpenedSecondsN >= 2, "the gap was not seen to hold (opened " + rs.OpenedSecondsN + ")");
-                LogHas("[rhythm] first LULL at ");
-                LogHas("the breather clock");
-                LogHas("[rhythm] first lull GAP OPENED at ");
-                logic.WriteRhythmSummary();
-                LogHas("[summary] battle rhythm (step 78b) - THE LULL'S TRIGGER AND GAP: started by the breather clock");
-            }
-            finally
-            {
-                _logic = keep;
-                SetStatic(typeof(AthleticsLogic), "_current", keep);
-                AthleticsDefaults();
-            }
         }
 
         private const double WideLineHalf = 15.6; // the line's men at x = −15.2..15.2 (39 files at 0.8 m - 31 m), its front rank at y = 0 facing SOUTH
@@ -374,54 +278,6 @@ namespace TraxCombat.Tools
                 Check(ordered >= 10 && logic.PressStats.Actions[1, (int)PressAction.Ordered] > 0, "a unit ORDERED round the line was held back (" + ordered + ")");
                 Check(wide.Count(m => m.Y > 0.95 && Math.Abs(m.X) <= WideLineHalf - 1) == 0, "an ordered unit walked through the line's middle");
                 LogHas("[press] first man of a unit ORDERED beside / behind a line at ");
-            }
-            finally
-            {
-                _logic = keep;
-                SetStatic(typeof(AthleticsLogic), "_current", keep);
-                AthleticsDefaults();
-            }
-        }
-
-        /// <summary>The cost: 1000 men - two 500-man blocks in contact, both spent, a lull running (the gap measured from all 1000 men every 0.5 s, the lines,
-        /// the walk back), every man looked at - small, no bytes.</summary>
-        [MethodImpl(MethodImplOptions.NoInlining)]
-        private static void Step78bCostStaysFlat()
-        {
-            var keep = _logic;
-            try
-            {
-                var body = new FakeCourageBody();
-                var rhythm = new FakeRhythmBody();
-                var logic = NewStep78bLogic(body, rhythm, 7810);
-                body.Orders[1] = body.Orders[2] = FearOrder.Charge;
-                double t0 = 104000;
-                for (int k = 0; k < 20; k++)
-                    for (int f = 0; f < 25; f++)
-                    {
-                        FearMan(logic, body, 49000 + k * 25 + f, f - 12, -k * 1.0, 0, 1, legionary: true, morale: 70, bar: 0.2);
-                        FearMan(logic, body, 50000 + k * 25 + f, f - 12, 1.0 + k * 1.0, 1, 2, legionary: true, morale: 70, bar: 0.2);
-                    }
-                for (int k = 0; k < 24; k++) logic.TickCourage(t0 += 0.5); // 12 s: both spent after 10 s of contact - the lull runs
-                var u = logic.RhythmUnits;
-                Check(u.InLull[FearMath.UnitKey(0, 1)], "cost: no lull between the spent blocks");
-                const int ticks = 300;
-                AppDomain.MonitoringIsEnabled = true;
-                long bytes = AppDomain.CurrentDomain.MonitoringTotalAllocatedMemorySize;
-                var rs = logic.RhythmStats;
-                double c0 = rs.LookCostMs + rs.SteerCostMs + rs.PublishCostMs;
-                long t0Ticks = rs.Ticks, gap0 = u.GapLooks;
-                var sw = Stopwatch.StartNew();
-                for (int k = 1; k <= ticks; k++) logic.TickCourage(t0 + k / 60.0);
-                sw.Stop();
-                long allocated = AppDomain.CurrentDomain.MonitoringTotalAllocatedMemorySize - bytes;
-                double own = (rs.LookCostMs + rs.SteerCostMs + rs.PublishCostMs - c0) / Math.Max(1, rs.Ticks - t0Ticks);
-                Console.WriteLine("        step 78b cost: 1000 men in a lull (" + logic.RhythmMenNow + " with a rhythm wish, the gap measured " + (u.GapLooks - gap0) + " times) - the courage tick "
-                                  + (sw.Elapsed.TotalMilliseconds / ticks).ToString("0.000", CultureInfo.InvariantCulture) + " ms (the stand-in's scans are plain loops), the rhythm's own "
-                                  + own.ToString("0.000", CultureInfo.InvariantCulture) + " ms a tick, " + allocated + " bytes over " + ticks + " ticks");
-                Check(u.GapLooks - gap0 >= 5, "cost: the gap was not measured in the lull (" + (u.GapLooks - gap0) + ")");
-                Check(own < 0.5, "cost: the rhythm's own " + own + " ms a tick (budget 0.5)");
-                Check(allocated < 256 * 1024, "cost: step 78b allocates - " + allocated + " bytes over " + ticks + " ticks");
             }
             finally
             {

@@ -11,10 +11,10 @@ using TraxCombat.Missions;
 namespace TraxCombat.Tools
 {
     /// <summary>
-    /// Step 78 (Toni 2026-10-22, sketch 1-4: the grind, then a lull): THE BATTLE'S RHYTHM through the real logic with courage's stand-in world and the
-    /// REAL input filter (AiInputHook.Apply) - two lines grinding: the tired front rank swaps with the fresh men right behind it, the fresh man beside before
-    /// the tired one backs off (the line never opens); both fronts spent: each eases back to its lull line, a gap opens, and closes on recovery / a new charge
-    /// order; a held wall man's slot follows the swap and the lull; the cost at 1000 men. What it cannot check: how the engine walks the men (PLAYTEST D43).
+    /// Step 78 (Toni 2026-10-22, sketch 1-4: the grind): THE BATTLE'S RHYTHM's ROTATION through the real logic with courage's stand-in world and the REAL
+    /// input filter (AiInputHook.Apply) - two lines grinding: the tired front rank swaps with the fresh men right behind it, the fresh man beside before the
+    /// tired one backs off (the line never opens); a held wall man's slot follows the swap; the cost at 1000 men. Step 78c removed the lull and its smoke
+    /// (Program.Step78c.cs runs each man's rest). What it cannot check: how the engine walks the men (PLAYTEST D43).
     /// </summary>
     internal static partial class Program
     {
@@ -27,6 +27,25 @@ namespace TraxCombat.Tools
             public int Swaps;
 
             public bool PlayerUnit(TrackedAgent st) => World != null && World.ByIndex.TryGetValue(st.AgentIndex, out var m) && m.Team == PlayerTeam;
+
+            /// <summary>Step 78c: the stand-in AI looks at its nearest enemy (the engine's AI faces its target) - a man with nobody near looks north.</summary>
+            public bool Facing(TrackedAgent st, out double fx, out double fy)
+            {
+                fx = 0;
+                fy = 1;
+                if (World == null || !World.ByIndex.TryGetValue(st.AgentIndex, out var me)) return false;
+                double best = double.MaxValue;
+                foreach (var e in World.Men)
+                {
+                    if (e.Team == me.Team) continue;
+                    double d = (e.X - me.X) * (e.X - me.X) + (e.Y - me.Y) * (e.Y - me.Y);
+                    if (d >= best || d < 1e-9) continue;
+                    best = d;
+                    fx = (e.X - me.X) / Math.Sqrt(d);
+                    fy = (e.Y - me.Y) / Math.Sqrt(d);
+                }
+                return true;
+            }
 
             public bool CanSwap(TrackedAgent a, TrackedAgent b)
             {
@@ -63,11 +82,10 @@ namespace TraxCombat.Tools
             Check(m != null && m.IsPublic, "Formation.SwitchUnitLocations(Agent, Agent) is not public any more (step 78's swap lever)");
         }
 
-        private static void Step78Defaults(bool rotation = true, bool lull = true)
+        private static void Step78Defaults(bool rotation = true, bool rest = false)
         {
             S.Set(SettingsSchema.RotationEnabled, rotation, SettingSources.File);
-            S.Set(SettingsSchema.LullEnabled, lull, SettingSources.File);
-            S.Set(SettingsSchema.LullForPlayerUnits, true, SettingSources.File);
+            S.Set(SettingsSchema.RestEnabled, rest, SettingSources.File); // step 78c: the rotation's checks without the rest (Program.Step78c.cs runs it)
             S.Set(SettingsSchema.RotationTiredPercent, 35, SettingSources.File);
             S.Set(SettingsSchema.RotationUseBraceFloor, true, SettingSources.File);
             S.Set(SettingsSchema.RotationFresherPercent, 25, SettingSources.File);
@@ -79,38 +97,9 @@ namespace TraxCombat.Tools
             S.Set(SettingsSchema.RotationMaxSeconds, 6.0, SettingSources.File);
             S.Set(SettingsSchema.RotationCooldownSeconds, 12.0, SettingSources.File);
             S.Set(SettingsSchema.RotationRestSeconds, 6.0, SettingSources.File);
-            S.Set(SettingsSchema.LullContactMen, 3, SettingSources.File);
-            S.Set(SettingsSchema.LullMinContactSeconds, 10.0, SettingSources.File);
-            S.Set(SettingsSchema.LullStartChargePercent, 30, SettingSources.File);
-            S.Set(SettingsSchema.LullStartAdvancePercent, 40, SettingSources.File);
-            S.Set(SettingsSchema.LullStartHoldPercent, 50, SettingSources.File);
-            S.Set(SettingsSchema.LullRecoverChargePercent, 10, SettingSources.File);
-            S.Set(SettingsSchema.LullRecoverAdvancePercent, 15, SettingSources.File);
-            S.Set(SettingsSchema.LullRecoverHoldPercent, 20, SettingSources.File);
-            S.Set(SettingsSchema.LullEaseMetres, 2.0, SettingSources.File);
-            S.Set(SettingsSchema.LullFrontDepthMetres, 1.5, SettingSources.File);
-            S.Set(SettingsSchema.LullMaxSeconds, 30.0, SettingSources.File);
-            S.Set(SettingsSchema.LullCooldownSeconds, 20.0, SettingSources.File);
-            S.Set(SettingsSchema.LullRotates, true, SettingSources.File);
-            // step 78b: step 78's own lull - no clock, the front men's bar (the first two ranks), a charge order at once; the gap and the
-            // back-step as shipped (Program.Step78b.cs runs the clock)
-            S.Set(SettingsSchema.LullClockChargeMinSeconds, 600.0, SettingSources.File);
-            S.Set(SettingsSchema.LullClockChargeMaxSeconds, 600.0, SettingSources.File);
-            S.Set(SettingsSchema.LullClockAdvanceMinSeconds, 600.0, SettingSources.File);
-            S.Set(SettingsSchema.LullClockAdvanceMaxSeconds, 600.0, SettingSources.File);
-            S.Set(SettingsSchema.LullClockHoldMinSeconds, 600.0, SettingSources.File);
-            S.Set(SettingsSchema.LullClockHoldMaxSeconds, 600.0, SettingSources.File);
-            S.Set(SettingsSchema.LullClockChargePercent, 55, SettingSources.File);
-            S.Set(SettingsSchema.LullClockAdvancePercent, 60, SettingSources.File);
-            S.Set(SettingsSchema.LullClockHoldPercent, 65, SettingSources.File);
-            S.Set(SettingsSchema.LullAttackRateFallenPercent, 0, SettingSources.File);
-            S.Set(SettingsSchema.LullUnitDepthMetres, 1.5, SettingSources.File);
-            S.Set(SettingsSchema.LullChargeGraceSeconds, 0.0, SettingSources.File);
-            S.Set(SettingsSchema.LullGapMetres, 3.5, SettingSources.File);
-            S.Set(SettingsSchema.LullMaxBackMetres, 8.0, SettingSources.File);
         }
 
-        private static AthleticsLogic NewStep78Logic(FakeCourageBody body, FakeRhythmBody rhythm, bool rotation = true, bool lull = true)
+        private static AthleticsLogic NewStep78Logic(FakeCourageBody body, FakeRhythmBody rhythm, bool rotation = true, bool rest = false)
         {
             AthleticsDefaults();
             SprintDefaults();
@@ -120,7 +109,7 @@ namespace TraxCombat.Tools
             Step70Defaults();
             Step74Defaults();
             Step77Defaults();
-            Step78Defaults(rotation, lull); // before the logic: its mission-start line says step 78
+            Step78Defaults(rotation, rest); // before the logic: its mission-start line says step 78
             S.Set(SettingsSchema.CourageEnabled, false, SettingSources.File); // the rhythm alone (courage measures)
             S.Set(SettingsSchema.FearFlockEnabled, false, SettingSources.File);
             S.Set(SettingsSchema.PressDontPass, false, SettingSources.File);
@@ -202,7 +191,7 @@ namespace TraxCombat.Tools
                 // ---- OFF: the chances counted, nobody moves
                 var body = new FakeCourageBody();
                 var rhythm = new FakeRhythmBody();
-                var logic = NewStep78Logic(body, rhythm, rotation: false, lull: false);
+                var logic = NewStep78Logic(body, rhythm, rotation: false);
                 double t = 97000;
                 var a = RhythmLine(logic, body, 39000, 0, 1, 12, 3, 0, -1, 0.25, 0.85);
                 var b = RhythmLine(logic, body, 39100, 1, 2, 12, 3, 1.0, 1, 0.9, 0.9);
@@ -216,7 +205,7 @@ namespace TraxCombat.Tools
                 // ---- ON: the tired front rank swaps with the fresh second rank; the line never opens
                 body = new FakeCourageBody();
                 rhythm = new FakeRhythmBody();
-                logic = NewStep78Logic(body, rhythm, rotation: true, lull: false);
+                logic = NewStep78Logic(body, rhythm, rotation: true);
                 t = 97100;
                 a = RhythmLine(logic, body, 39200, 0, 1, 12, 3, 0, -1, 0.25, 0.85);
                 b = RhythmLine(logic, body, 39300, 1, 2, 12, 3, 1.0, 1, 0.9, 0.9);
@@ -289,10 +278,10 @@ namespace TraxCombat.Tools
                 s.RhythmClamp = false;
                 s.Rhythm = was;
 
-                // ---- a held wall man: his slot follows the swap (the wall hold's walk target), the lull's shift
+                // ---- a held wall man: his slot follows the swap (the wall hold's walk target)
                 var wallBody = new FakeCourageBody();
                 var wallRhythm = new FakeRhythmBody();
-                var wl = NewStep78Logic(wallBody, wallRhythm, rotation: true, lull: true);
+                var wl = NewStep78Logic(wallBody, wallRhythm, rotation: true);
                 t = 97500;
                 var wa = RhythmLine(wl, wallBody, 39400, 0, 1, 6, 2, 0, -1, 0.25, 0.9);
                 foreach (var m in wa) m.Gate = CourageSkip.WallHeld;
@@ -325,125 +314,6 @@ namespace TraxCombat.Tools
             return r;
         }
 
-        /// <summary>The gap between two lines' fronts (unit 1 faces north at y up to its front, unit 2 south).</summary>
-        private static double Gap(List<FakeCourageMan> south, List<FakeCourageMan> north)
-        {
-            double sf = south.OrderByDescending(m => m.Y).Take(Math.Max(1, south.Count / 3)).Average(m => m.Y);
-            double nf = north.OrderBy(m => m.Y).Take(Math.Max(1, north.Count / 3)).Average(m => m.Y);
-            return nf - sf;
-        }
-
-        [MethodImpl(MethodImplOptions.NoInlining)]
-        private static void LullBetweenSpentFronts()
-        {
-            var keep = _logic;
-            try
-            {
-                // ---- OFF: both fronts spent - counted, nothing moves
-                var body = new FakeCourageBody();
-                var rhythm = new FakeRhythmBody();
-                var logic = NewStep78Logic(body, rhythm, rotation: true, lull: false);
-                body.Orders[1] = body.Orders[2] = FearOrder.Charge;
-                double t = 98000;
-                var a = RhythmLine(logic, body, 40000, 0, 1, 12, 3, 0, -1, 0.2, 0.22);
-                var b = RhythmLine(logic, body, 40100, 1, 2, 12, 3, 1.0, 1, 0.2, 0.22);
-                t = RunRhythm(logic, body, t, 14, _ => true);
-                Check(logic.RhythmUnits.WouldStart >= 1 && logic.RhythmStats.Lulls == 0, "lull OFF: would start " + logic.RhythmUnits.WouldStart + ", lulls " + logic.RhythmStats.Lulls);
-                double offGap = Gap(a, b);
-
-                // ---- ON: a lull opens a gap, the men face each other behind their lines; recovery closes it
-                body = new FakeCourageBody();
-                rhythm = new FakeRhythmBody();
-                logic = NewStep78Logic(body, rhythm, rotation: true, lull: true);
-                body.Orders[1] = body.Orders[2] = FearOrder.Charge;
-                t = 98100;
-                a = RhythmLine(logic, body, 40200, 0, 1, 12, 3, 0, -1, 0.2, 0.22);
-                b = RhythmLine(logic, body, 40300, 1, 2, 12, 3, 1.0, 1, 0.2, 0.22);
-                double startGap = Gap(a, b);
-                t = RunRhythm(logic, body, t, 9.5, _ => true);
-                Check(logic.RhythmStats.Lulls == 0, "lull ON: a lull before the contact time (10 s)");
-                double maxGap = 0, atStart = double.NaN, lullSince = double.NaN;
-                t = RunRhythm(logic, body, t, 6, _ => true, each: now =>
-                {
-                    if (logic.RhythmStats.Lulls > 0 && double.IsNaN(lullSince))
-                    {
-                        lullSince = now;
-                        atStart = Gap(a, b);
-                    }
-                    maxGap = Math.Max(maxGap, Gap(a, b));
-                });
-                var u = logic.RhythmUnits;
-                Check(logic.RhythmStats.Lulls == 1, "lull ON: no lull after 15 s of two spent fronts (" + logic.RhythmStats.Lulls + ")");
-                Check(maxGap >= startGap + 3.0, "lull ON: the gap opened only to " + maxGap.ToString("0.00", CultureInfo.InvariantCulture) + " m from " + startGap.ToString("0.00", CultureInfo.InvariantCulture));
-                Check(maxGap <= startGap + 2 * 2.0 + 1.0, "lull ON: the fronts eased back too far - " + maxGap);
-                Check(logic.RhythmStats.MenWalkedBack > 20, "lull ON: men walked back " + logic.RhythmStats.MenWalkedBack);
-                LogHas("first LULL");
-                LogHas("first man WALKED BACK in a lull");
-                double lullGap = Gap(a, b);
-                // recovery: the men refill out of contact - the lull ends, the stand-in charge closes the gap
-                t = RunRhythm(logic, body, t, 12, _ => true, refill: 1.0 / 60);
-                Check(logic.RhythmStats.LullEnds[(int)LullEnd.Recovered] == 1, "lull ON: not ended by recovery (" + string.Join("/", logic.RhythmStats.LullEnds) + ")");
-                t = RunRhythm(logic, body, t, 4, _ => true);
-                double closed = Gap(a, b);
-                Console.WriteLine("        step 78 lull: the gap " + startGap.ToString("0.0", CultureInfo.InvariantCulture) + " m in contact (OFF after 14 s " + offGap.ToString("0.0", CultureInfo.InvariantCulture)
-                                  + " m), in the lull up to " + maxGap.ToString("0.0", CultureInfo.InvariantCulture) + " m (" + lullGap.ToString("0.0", CultureInfo.InvariantCulture)
-                                  + " m held), after the recovery " + closed.ToString("0.0", CultureInfo.InvariantCulture) + " m; men walked back " + logic.RhythmStats.MenWalkedBack
-                                  + ", lull lasted " + (logic.RhythmStats.LullSecondsSum).ToString("0.0", CultureInfo.InvariantCulture) + " s");
-                Check(closed <= startGap + 0.6, "lull ON: the gap did not close after the recovery (" + closed + ")");
-                Check(a.Concat(b).All(m => m.St.Input == null || !m.St.Input.RhythmClamp), "lull ended: a clamp still on");
-                LogHas("first lull ENDED");
-
-                // ---- a NEW charge order ends a holding pair's lull at once; a rotation during the lull
-                body = new FakeCourageBody();
-                rhythm = new FakeRhythmBody();
-                logic = NewStep78Logic(body, rhythm, rotation: true, lull: true);
-                body.Orders[1] = body.Orders[2] = FearOrder.Hold;
-                t = 98400;
-                a = RhythmLine(logic, body, 40400, 0, 1, 12, 3, 0, -1, 0.3, 0.3);
-                b = RhythmLine(logic, body, 40500, 1, 2, 12, 3, 1.0, 1, 0.3, 0.3);
-                foreach (var m in a.Where(m => m.Y < -1.5)) SetBar(m.St, 0.95); // a fresh third rank of the south line
-                t = RunRhythm(logic, body, t, 13, _ => false);
-                Check(logic.RhythmStats.Lulls == 1, "a holding pair: no lull (hold's 50%) - " + logic.RhythmStats.Lulls);
-                t = RunRhythm(logic, body, t, 6, _ => false);
-                Check(logic.RhythmStats.InLull >= 1, "a lull: no swap during it (the fresh third rank) - " + logic.RhythmStats.InLull);
-                LogHas("first swap DURING A LULL");
-                Check(logic.RhythmStats.LullEnds[(int)LullEnd.Recovered] == 1, "a lull with a fresh rank: the swaps did not bring its front back (" + string.Join("/", logic.RhythmStats.LullEnds) + ")");
-                body = new FakeCourageBody();
-                rhythm = new FakeRhythmBody();
-                logic = NewStep78Logic(body, rhythm, rotation: false, lull: true);
-                body.Orders[1] = body.Orders[2] = FearOrder.Hold;
-                t = 98550;
-                a = RhythmLine(logic, body, 40800, 0, 1, 12, 3, 0, -1, 0.3, 0.3);
-                b = RhythmLine(logic, body, 40900, 1, 2, 12, 3, 1.0, 1, 0.3, 0.3);
-                t = RunRhythm(logic, body, t, 13, _ => false);
-                Check(logic.RhythmStats.Lulls == 1, "a holding pair: no lull - " + logic.RhythmStats.Lulls);
-                body.Kinds[1] = BraceOrderKind.Charge;
-                t = RunRhythm(logic, body, t, 1.2, _ => false);
-                Check(logic.RhythmStats.LullEnds[(int)LullEnd.ChargeOrder] == 1, "a new charge order did not end the lull (" + string.Join("/", logic.RhythmStats.LullEnds) + ")");
-
-                // ---- your units: LullForPlayerUnits off = no lull for a pair with yours (counted)
-                body = new FakeCourageBody();
-                rhythm = new FakeRhythmBody { PlayerTeam = 0 };
-                logic = NewStep78Logic(body, rhythm, rotation: false, lull: true);
-                S.Set(SettingsSchema.LullForPlayerUnits, false, SettingSources.File);
-                body.Orders[1] = body.Orders[2] = FearOrder.Hold;
-                t = 98700;
-                a = RhythmLine(logic, body, 40600, 0, 1, 12, 3, 0, -1, 0.3, 0.3);
-                b = RhythmLine(logic, body, 40700, 1, 2, 12, 3, 1.0, 1, 0.3, 0.3);
-                t = RunRhythm(logic, body, t, 12, _ => false);
-                Check(logic.RhythmStats.Lulls == 0 && logic.RhythmUnits.RefusedPlayer >= 1, "your units off: lulls " + logic.RhythmStats.Lulls + ", refused " + logic.RhythmUnits.RefusedPlayer);
-                logic.WriteRhythmSummary();
-                LogHas("[summary] battle rhythm (step 78) - ROTATION");
-                LogHas("[summary] battle rhythm (step 78) - LULLS");
-            }
-            finally
-            {
-                _logic = keep;
-                SetStatic(typeof(AthleticsLogic), "_current", keep);
-                AthleticsDefaults();
-            }
-        }
-
         [MethodImpl(MethodImplOptions.NoInlining)]
         private static void Step78CostStaysFlat()
         {
@@ -452,7 +322,7 @@ namespace TraxCombat.Tools
             {
                 var body = new FakeCourageBody();
                 var rhythm = new FakeRhythmBody();
-                var logic = NewStep78Logic(body, rhythm, rotation: true, lull: true);
+                var logic = NewStep78Logic(body, rhythm, rotation: true);
                 double t0 = 99000;
                 // 1000 men: two 500-man blocks (25 files x 20 ranks) in contact, the front ranks tired, a fresh rank behind
                 for (int k = 0; k < 20; k++)
@@ -496,7 +366,7 @@ namespace TraxCombat.Tools
             {
                 var body = new FakeCourageBody();
                 var rhythm = new FakeRhythmBody();
-                var logic = NewStep78Logic(body, rhythm, rotation: true, lull: true);
+                var logic = NewStep78Logic(body, rhythm, rotation: true);
                 double t = 99500;
                 var a = RhythmLine(logic, body, 43000, 0, 1, 8, 3, 0, -1, 0.25, 0.9);
                 RhythmLine(logic, body, 43100, 1, 2, 8, 3, 1.0, 1, 0.9, 0.9);
