@@ -6829,3 +6829,8 @@ memory only (`run_tests.fsx`, `run_smoke.ps1` - Toni sees a Windows Security pop
 3. The tight tolerance changes nothing visible or helps (A / B `ShieldWallStandFirmTightTolerance`); a wall that jitters = raise the slack.
 4. A moved wall stands firm on arrival (`first man STANDING FIRM … under the order Move (at its place: … m …)`), and an AI general's
    defending formations too (the enemy's walls should hold as well).
+
+**DEPLOY**: NOT installed - `TaleWorlds.MountAndBlade.exe` (Bannerlord) was running at the install step (the dev module's DLLs may be locked;
+nothing killed). Done before it: the build at HEAD, the AssemblyGuard in memory (`run_guard.fsx`: OK, no forbidden assembly), the tests (1085)
+and the smoke (172) in memory. To finish once the game is closed: `powershell -ExecutionPolicy Bypass -File tools\SmartAppControl\install_dev.ps1`,
+then `tools\SmartAppControl\loadcheck.ps1` (a refused DLL = rebuild with `-p:SourceRevisionId=<HEAD>.sacN`, as step 74). Windows security untouched.
