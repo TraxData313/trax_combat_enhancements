@@ -418,7 +418,16 @@ wall's pull and the fear flock win; routing / excluded men's rests end at once; 
 new order never drags resting men in. Core `Rest.cs`, Module `AthleticsLogic.Rest.cs` (+ `IRhythmBody.Facing`, `AiInputState.RestMove /
 RestHoldAttacks`); the `[rhythm]` first REST / WALKED BACK / REST IN A WALL SLOT / BACK IN / IN BY CONTAGION lines and the two [summary] "rest (step
 78c)" lines (rests, how long, back in by own mark / contagion, stepped back mean / p90, behind the front, TURNED AWAY, WALL men out of their slots,
-the marks; THE NATURAL GAP of 2 m+ between engaged fronts by side - `RestGapDiagnosticMetres`, a diagnostic only) (PLAYTEST D43c). The bar for the
+the marks; THE NATURAL GAP of 2 m+ between engaged fronts by side - `RestGapDiagnosticMetres`, a diagnostic only) (PLAYTEST D43c). WAR CRIES ONLY (step 79, Toni 2026-10-22: battles that
+sound alive; DESIGN decision 75, AI_NOTES "Step 79"): SOUND ONLY - `Agent.MakeVoice` (Yell on foot, HorseRally on a horse - vanilla's own yell's choice),
+never a change to movement, readiness, the rest marks, morale or orders (the smoke's grind: rests identical on and off). `WarCriesEnabled` (PLAYER page, 27
+settings, on) + 10 `WarCry*` Advanced in "Courage and cohesion (AI)": a rested man going back in by his own ready mark shouts 35 %, a mate going in by
+contagion answers 20 % (0-1 s later); a formation's NEW charge order (the order poll - yours or the AI general's; vanilla yells only on yours, morale x
+0.33 % a man) makes 40 % of its men roar, at most 12 a unit (shared out when many units charge at once: ceil(16 x 1.5 / units)), staggered 0-1.5 s, one
+roar a unit per 15 s; limits checked when a cry is due - one cry a man per 8 s, 8 a unit and 16 a battle in any 1 s (Core `WarCryLimiter`, sliding
+windows) - over a limit = dropped; never you, the routed / fleeing, the dead; queued from the rest's look / the order poll and played from the tick
+(`TickWarCries`), never in a callback; fixed arrays. Core `WarCry.cs`, Module `AthleticsLogic.WarCry.cs` / `WarCryBody.cs`; the `[warcry]` first-time
+lines and the [summary] "war cries (step 79)" line (cries by cause, dropped by each limit, the peak in any 1 s, one man's shortest gap) (PLAYTEST D44). The bar for the
 fighter you look at is LATER (DESIGN §3; its settings wait in DESIGN's "Planned parameters"). Words:
 the pool/bar/points are "Athletics", the character-screen skill is "the Athletics skill" (it
 used to be called "endurance"), the "peak line" is the white mark at the top quarter of the bar,
@@ -579,7 +588,7 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               its Default comes from defaults.json (DefaultsFile), never code; step 33: ParamType.Key +
                               KeyNames (a key by NAME, stored as its index; FormatJson writes "LeftControl"; the
                               file / defaults.json read the name, MCM a text box)
-  SettingsSchema.cs           EVERY setting of DESIGN's table (476 - step 78c: the lull's 29 out (LullEnabled / LullForPlayerUnits on the player page, 27 Lull*), RestEnabled after RotationEnabled (the player page, 26) and 15 Rest* after RotationRestSeconds (Advanced, "Courage and cohesion (AI)"); 489 - step 78b's PressWrapAllowed / PressWingBendDegrees after PressEndSlackMetres and 14 Lull* (the clock, the unit's bar, the grace, the gap) after LullRotates, all Advanced; 473 - step 78's RotationEnabled / LullEnabled / LullForPlayerUnits after PressDontPass
+  SettingsSchema.cs           EVERY setting of DESIGN's table (487 - step 79: WarCriesEnabled after RestEnabled (the player page, 27) and 10 WarCry* after RestGapDiagnosticMetres (Advanced, "Courage and cohesion (AI)"); 476 - step 78c: the lull's 29 out (LullEnabled / LullForPlayerUnits on the player page, 27 Lull*), RestEnabled after RotationEnabled (the player page, 26) and 15 Rest* after RotationRestSeconds (Advanced, "Courage and cohesion (AI)"); 489 - step 78b's PressWrapAllowed / PressWingBendDegrees after PressEndSlackMetres and 14 Lull* (the clock, the unit's bar, the grace, the gap) after LullRotates, all Advanced; 473 - step 78's RotationEnabled / LullEnabled / LullForPlayerUnits after PressDontPass
                               (the player page, 27) and 24 Rotation* / Lull* after PressEndSlackMetres (Advanced, "Courage and cohesion (AI)"); 446 - step 77's PressDontPass after SpearPreferenceEnabled (the player page,
                               24) and 15 Press* after LoneRunnerAheadMetres (Advanced, "Courage and cohesion (AI)"); 430 - step 76's SpearPreferenceEnabled after ShieldWallStandFirm (the player
                               page, 23) and 17 Spear* + ThrustsPassFriends / ThrustsPassPolearmsOnly / FriendlyHitStunSeconds after
@@ -1175,6 +1184,11 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               Condition, Step - the timers, Favors, HeldOf, NextLook - the jitter, WieldRewrite), SpearStats (the 2 [summary] "spears"
                               lines); ThrustVerdict / ThrustFacts / ThrustPassRules / ThrustPassMath (Decide in gate order, StunWanted, the vanilla 0.4)
                               / ThrustPassStats (the [summary] "thrusts past friends" line)
+  WarCry.cs                   step 79 (DESIGN decision 75) - WAR CRIES, SOUND ONLY: WarCryRules (ModEnabled FIRST, WarCriesEnabled, 10 numbers;
+                              Describe), WarCryCause (back in / answer / charge), WarCryGate (ok / man / unit / battle / gone / switched off / queue),
+                              WarCryMath (Chance, Rolls, Delay, ManReady / NextAllowed, ChargeRoars - the unit's cooldown, ChargeShoutersPerUnit - the
+                              battle's cap shared over the stagger), CryWindow (a fixed ring of the last 1 s), WarCryLimiter (the man's limit, the unit's
+                              and the battle's caps, the peaks), WarCryQueue<T> (fixed arrays, swap-remove), WarCryStats (+ the [summary] "war cries" line)
   Rest.cs                     step 78c (DESIGN decision 74) - EACH MAN RESTS ON HIS OWN: RestRules (ModEnabled FIRST, AthleticsEnabled, RestEnabled,
                               15 numbers; Describe), RestIn (own mark / contagion / rotated / excluded / ...), RestMath (TiredMark / ReadyMark by order,
                               CappedReady - the wound cap, Starts, Ready, ContagionChance, WalkBack - the walk-back limit from his start and behind his front,
@@ -1608,6 +1622,12 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               Missions/BlockBody.cs: IBlockBody (Cap via LineDiscipline.TryCap, Formation - the order / behaviour / arrangement names, cached
                               -, Name), GameBlockBody, BlockBodyDefault; LineDiscipline.TryCap (the last look's cap per slot); AiInputHook.cs: AiInputState
                               .Block (BlockX / Y), SetBlock, ApplyBlock, BlockOn - the last wish; TrackedAgent.BlockHold (Core BlockMind)
+  Missions/AthleticsLogic.WarCry.cs  step 79: StartWarCries / NoteWarCrySettings, WarCryEvent (from GoIn: back in by his own mark; from the
+                              contagion: an answer), NoteChargeOrder / ChargeRoars (from PollOrders - a kind newly a charge; the poll runs while the
+                              war cries are on too), Enqueue, TickWarCries (from TickAthletics after TickSprint: off = every waiting cry dropped; each
+                              due cry through the limiter, then IWarCryBody.Shout), WriteWarCrySummary (after the rhythm's); Missions/WarCryBody.cs:
+                              IWarCryBody (MayShout - active, AI, not you, not running away / retreating; IsMounted; Shout = Agent.MakeVoice Yell /
+                              HorseRally, NoPrediction), GameWarCryBody, WarCryBodyDefault; TrackedAgent.WarCryNext / WarCryLast / WarCryQueued
   Missions/AthleticsLogic.Rest.cs  step 78c: StartRest / NoteRestSettings / TickRestSwitch, RestLook (from RhythmLookCore after the rotation: the marks,
                               the start, the facing / behind-front / wall-slot samples, ready → GoIn), BeginRest, SteerRest (every 0.1 s: the walk back along
                               his unit's axis, the stand + clamp, the attack hold; a wall man guard only), GoIn + CONTAGION (one reused queue), EndRest /
@@ -1870,7 +1890,9 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               pixels), Fill, FillColor, FrameColor (the fade's alpha baked in); step 46: the box (PositionX / Y =
                               its top-left, BoxWidth / BoxHeight), FeverShown, the Athletics bar - BarShown, BarWidth, BarHeight,
                               BarFill, BarUsable, BarColor, BarFrameColor, BarWoundColor
-tests/TraxCombat.Core.Tests/  net8.0 xUnit (1132 - step 78c: + Step78cTests.cs (10 - the settings placed / live, the master switch first, the marks by order and the wound cap, the start, the contagion chance, the walk-back limit and the hold, the attack hold, the lull's keys dropped from an old config, the natural gap by side, the summary lines), the lull's tests out of Step78Tests / Step78bTests; 476 settings; step 78b: + Step78bTests.cs - the 16 settings placed / live, format 17 (moved / kept), the clock (the roll by order, worn / slowed / spent), the whole unit's bar under a fresh rotated front, the blows slowing, the gap from the men (bins, the plane, the lines from a meshed fight, opened, stepped back, the cap), the charge grace, the bent front and the wing, no wrap / ordered, the summary lines; 489 settings; 1121 - step 78: + Step78Tests.cs - the 27 settings placed (the player page 27), the switches, tired /
+tests/TraxCombat.Core.Tests/  net8.0 xUnit (1144 - step 79: + Step79Tests.cs (12 - the settings placed / live, the master switch first, the chances and a
+                              seeded 10 000 rolls, the delays, the man's limit, the unit's cap, the battle's cap at 1000 men in 80 units, the window
+                              sliding / cleared, the charge roar's cooldown, the shouters shared out, the queue, the summary line); 487 settings; 1132 - step 78c: + Step78cTests.cs (10 - the settings placed / live, the master switch first, the marks by order and the wound cap, the start, the contagion chance, the walk-back limit and the hold, the attack hold, the lull's keys dropped from an old config, the natural gap by side, the summary lines), the lull's tests out of Step78Tests / Step78bTests; 476 settings; step 78b: + Step78bTests.cs - the 16 settings placed / live, format 17 (moved / kept), the clock (the roll by order, worn / slowed / spent), the whole unit's bar under a fresh rotated front, the blows slowing, the gap from the men (bins, the plane, the lines from a meshed fight, opened, stepped back, the cap), the charge grace, the bent front and the wing, no wrap / ordered, the summary lines; 489 settings; 1121 - step 78: + Step78Tests.cs - the 27 settings placed (the player page 27), the switches, tired /
                               fresher / behind / covered / beside, busy actions, the lull by order, the unit table, the lull's start / lines / ends,
                               your units, the summary lines; 473 settings; 1109 - step 77: + Step77Tests.cs - the 16 settings placed (the player page 24) / live / defaults, the
                               master switch first, the line test, Toni's wall's front segment (its ends, no gap, its rear face, a man stepped out),
@@ -2448,6 +2470,11 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               begun in any 2 s, back in by own mark 46 / contagion 74, backed at most 3.85 m, never toward the enemy's side, 0 turned away);
                               both sides tired = a gap 1.0 → 3.2 m by itself; one side tired = the fresh side presses; a 12 x 2 shield wall: 0 men more than
                               0.5 m out of their slots because of resting; the input frame; the switches; 1000 men 0.026 ms a tick, 0 bytes (187 steps);
+                              step 79 (Program.Step79.cs): WAR CRIES through the real order poll and queue with a COUNTING voice stand-in (every logic
+                              gets it; the older steps pin the cries off) - a 1000-man charge (10 units): 30 queued, 20 played over +0.15..+1.50 s, the
+                              battle's peak 16 in any 1 s, a unit's 3, no routed / dead / you, riders yes; the roar cooling 15 s; a charge 5 s later 5 men
+                              held by their own 8 s; the shortest gap 8.65 s; 0 bytes; the switches drop what waits; step 78c's grind with the cries on
+                              and off - rests identical, back-in cries 15 of 28, answers 8 of 52 (190 steps);
                               step 78b (Program.Step78b.cs; its lull smoke removed by step 78c): THE LULL THAT SHOWS - a MESHED six-minute grind (14 x 3 a side) through the real logic and
                               the REAL input filter: 7 lulls (2 by the breather clock), each gap 4.0-4.4 m from the men, held after 2.8 s; NO WRAPPING -
                               a 69 m unit on a 31 m held line under a stand-in charge that sends every man beyond the ends round them: step 77's wrap 80

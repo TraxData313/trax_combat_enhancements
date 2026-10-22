@@ -7380,3 +7380,56 @@ own (the rest inside) 0.026 ms a tick, 0 bytes over 300 ticks.
 **DEPLOY**: `tools\deploy.ps1` ran normally (Smart App Control off): the build, the AssemblyGuard (OK), the offline smoke (187 passed), installed as
 Modules\TraxCombatEnhancements.Dev "Trax Combat Enhancements (dev)" - the game and the launcher were not running. `tools\SmartAppControl\loadcheck.ps1`:
 both DLLs LOADED (`1.2.0+801e46b8416231969e9fc631c02f9dd3c5423c06`). Not uploaded. Windows security untouched.
+
+## Step 79 — war cries only (built 2026-10-22; dev build only, not uploaded)
+
+**Toni (2026-10-22)**: battles should sound alive - a rested man going back in may shout, mates going in with him may answer, a charge order makes the
+unit roar like vanilla's cheer on F1 F3. SOUND ONLY: never movement, readiness, the rest marks, morale or orders. Rate-limited per man, per unit and per
+battle so 1000 men never make a choir or a sound-engine flood. (The old plan for 79 - "scripted waves" ending a lull - died with 78c's lull.)
+
+**How vanilla cheers (decompile, `%TEMP%\trax_decomp`)**:
+- `Agent.MakeVoice(SkinVoiceManager.SkinVoiceType, SkinVoiceManager.CombatVoiceNetworkPredictionType)` → `MBAPI.IMBAgent.MakeVoice(ptr, type.Index, pred)`.
+  The types are static fields of `SkinVoiceManager.VoiceType` (Grunt, Jump, Yell, Pain, Death, Stun, Fear, Climb, Focus, Debacle, Victory, HorseStop,
+  HorseRally, Drown, the order words Charge / Advance / Move / Stop / ...). A `SkinVoiceType`'s constructor asks the engine for its index (so the smoke
+  only reflects the fields - touching them would run the engine).
+- `OrderController.SetOrder` → `PlayOrderGestures(orderType)` when it has an Owner and gestures are on (the PLAYER's orders): the owner says the order
+  (`VoiceType.Charge` for Charge / ChargeWithTarget), each selected formation's median man plays `event:/alerts/nods/attack`, and - at most once per 30 s
+  per controller (`_yellingAfterChargeOrderTimer`) - every unit runs `Agent.YellingBehaviour()`: an AI man yells with chance `GetMorale() x 0.0033`
+  (morale 70 → 23 %) via the native `YellAfterDelay(1.5 + rand)`.
+- The managed yell (`SetWantsToYell` → `OnTickParallel`) plays `HorseRally` on a horse, `Yell` on foot, NoPrediction - ours copies that choice.
+- The AI general's charges (its tactics / behaviours set the movement order directly) never pass PlayOrderGestures: SILENT in vanilla.
+- AgentVictoryLogic's cheers (Yell / Victory) are the end-of-battle ones; not touched.
+
+**Built**: Core `WarCry.cs` (rules, math, `CryWindow`, `WarCryLimiter`, `WarCryQueue<T>`, `WarCryStats`), Module `AthleticsLogic.WarCry.cs` + `WarCryBody.cs`,
+three hooks: `GoIn` (own mark → BackIn), the contagion loop (→ Answer), `PollOrders` (a slot's kind newly in SprintMath's Charge group → `NoteChargeOrder`;
+after the read `ChargeRoars`). `PollOrdersFor` now also runs while the war cries are on (it used to forget the last look when the AI sprint and the
+fever were both off). `TickWarCries` from TickAthletics after TickSprint. `TrackedAgent.WarCryNext / WarCryLast / WarCryQueued`.
+
+**Settings (11; 476 → 487)**: PLAYER page "How the AI fights" after `RestEnabled`: `WarCriesEnabled` (on) - the page 26 → 27; Advanced "Courage and
+cohesion (AI)" after `RestGapDiagnosticMetres`: `WarCryBackInPercent` 35, `WarCryAnswerPercent` 20, `WarCryAnswerDelaySeconds` 1.0 (0-3),
+`WarCryChargeSharePercent` 40, `WarCryChargeMaxMen` 12 (0-60), `WarCryChargeStaggerSeconds` 1.5 (0-5), `WarCryChargeUnitCooldownSeconds` 15 (0-120),
+`WarCryManCooldownSeconds` 8 (0-60), `WarCryUnitPerSecond` 8 (1-30), `WarCryBattlePerSecond` 16 (1-60). Plumbing: the window 1 s, the queue 512, the
+windows sized for the caps' maxima (30 / 60), units = 8 teams x the formation classes + one spare. No config-format change.
+
+**Measured offline**: tests 1132 → 1144 (Step79Tests 12). Smoke 187 → 190 (Program.Step79.cs): a 1000-man charge order (10 units of 100, both armies)
+queued 30, played 20 over +0.15..+1.50 s, the battle's peak 16 in any 1 s (cap 16), one unit's 3, 0 routed / dead / you, riders 3; the same units
+flipped back to a charge 3 s later: cooling, 0 cries; with the unit cooldown 0 a charge 5 s after the roar: 5 men held by their own 8 s; over 3 more
+roars the shortest gap 8.65 s, 0 bytes over 300 ticks, 0.0006 ms a tick; WarCriesEnabled off / the master switch dropped 30 waiting cries each, 0
+played. Step 78c's meshed grind 240 s with the cries on and off: rests 225 / 225, own-mark ends 28 / 28, contagion 52 / 52 (sound only); back-in cries
+15 of 28 events, answers 8 of 52, nobody twice within 8 s.
+
+**Gotchas**
+- THE BURST: the first charge smoke queued 10 x 12 = 120 cries for a 16-a-second battle - the first 16 played within 0.2 s and 88 were dropped: a burst,
+  not a staggered roar. `WarCryMath.ChargeShoutersPerUnit` shares the battle's 16 x max(1, stagger) among the units roaring at once (10 units → 3 each).
+- The older smoke steps' sprint check "turning the AI sprint back on fired an order given while it was off" broke because the poll no longer forgets
+  while the cries are on and the order was flipped inside one 0.25 s poll window; `AthleticsDefaults` pins `WarCriesEnabled` off for them.
+- A flip inside one poll window (two 0.05 s ticks) is never seen by the order poll - the smoke ticks 0.3 s.
+- The cries ride the poll (0.25 s): a charge order's roar starts up to 0.25 s after the order, then 0-1.5 s.
+
+**UNVERIFIED — only the game can tell (PLAYTEST D44)**
+1. How it SOUNDS: Yell / HorseRally on many men, whether 16 a second reads as a roar or a mess, whether the engine has its own voice limit.
+2. On YOUR charge vanilla's own yells (morale x 0.33 % a man, 1.5-2.5 s later) come on top of ours - too much? `WarCryChargeSharePercent` lower.
+3. `IsRunningAway || IsRetreating()` keeps routed / fleeing men quiet; a man killed while his cry waits is dropped (`gone`).
+4. The AI's tactical charge flickering at contact (step 74's BehaviorTacticalCharge) - the 15 s unit cooldown should make it one roar.
+
+**DEPLOY**: see the end of this section after the deploy.

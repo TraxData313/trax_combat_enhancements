@@ -3003,6 +3003,31 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     them from any file, one note each - FormatVersion stays 17), `RestEnabled` on the PLAYER page (27 → 26) and 15 `Rest*` Advanced after
     `RotationRestSeconds`. (k) UNVERIFIED in game (PLAYTEST D43c): that the engine walks a man backwards facing his target (the backpedal's way),
     that the clamp holds against the native charge, the numbers against real grinds (how long rests last, how often a gap shows).
+75. **War cries only** (step 79, Toni 2026-10-22: battles should sound alive). SOUND ONLY - a cry never changes movement, readiness, the rest marks,
+    morale or orders (the smoke runs step 78c's grind with the cries on and off: the rests are identical). (a) THE VOICE: `Agent.MakeVoice(VoiceType.Yell,
+    NoPrediction)` on foot, `HorseRally` on a horse - exactly what vanilla's own yell plays (`Agent.OnTickParallel`'s `_wantsToYell`). HOW VANILLA CHEERS:
+    when the PLAYER's `OrderController` issues a charge (F1 F3 - `PlayOrderGestures`), the ordering hero says "Charge!" (`VoiceType.Charge`), the
+    formation's median man plays the `event:/alerts/nods/attack` sound, and at most once per 30 s per controller every unit of the formation runs
+    `Agent.YellingBehaviour()` - an AI man yells with chance morale x 0.33 % (morale 70 → 23 %) after 1.5-2.5 s (`YellAfterDelay`, native). The AI
+    general's charges (its tactics set `MovementOrderCharge` directly) are SILENT in vanilla. Ours adds to vanilla's yell for your orders and gives the
+    AI's charges a voice. (b) CAUSES: a rested man going back in by his own ready mark (78c's `GoIn` - not a swap, not by contagion) rolls
+    `WarCryBackInPercent` 35; a mate going in with him by contagion rolls `WarCryAnswerPercent` 20 and answers 0-`WarCryAnswerDelaySeconds` 1 s later; a
+    formation whose order poll kind became a CHARGE (charge / charge a target / attack an entity / the AI's tactical charge) from anything that was not
+    one - yours or the AI general's - roars: each eligible man rolls `WarCryChargeSharePercent` 40, at most `WarCryChargeMaxMen` 12 a unit, each cry
+    0-`WarCryChargeStaggerSeconds` 1.5 s after (uniform), one roar a unit per `WarCryChargeUnitCooldownSeconds` 15 s (an AI charge flickering on and off
+    roars once); the pass over the men starts at a random man so the cap does not always pick the same ones. (c) LIMITS, checked when a cry is DUE:
+    one cry a man per `WarCryManCooldownSeconds` 8 (and one waiting at a time), `WarCryUnitPerSecond` 8 a unit and `WarCryBattlePerSecond` 16 a battle in
+    any 1 s (sliding windows over the cries played, Core `WarCryLimiter`); a cry over a limit is DROPPED (counted), never delayed. DECIDED: a charge by
+    many units at once shares the battle's budget - each roaring unit queues at most ceil(16 x max(1, 1.5) / units) shouters (`ChargeShoutersPerUnit`):
+    without it ten units queued 120 cries, the first 16 played in 0.2 s and the rest were dropped (a burst, not a staggered roar). (d) WHO: never the
+    player, never a man running away / retreating (routed, fleeing), never the dead; riders on a charge; the rest's causes are men on foot anyway.
+    (e) WHEN: queued from the rest's look and the order poll, played from the logic's tick (`TickWarCries`, after the poll) - never in an engine callback;
+    off (or the master switch) = every waiting cry dropped at once. (f) MEASURED: the [warcry] first-time lines (the first cry of each cause, the first
+    drop by each limit, the first charge roar) and the [summary] "war cries (step 79)" line - cries by cause (riders), rolls / queued / not eligible,
+    DROPPED by each limit, the charge orders (roared / cooling / past the shouter cap), the PEAK cries in any 1 s (the battle's, one unit's) and one
+    man's shortest gap. (g) SETTINGS: `WarCriesEnabled` on the PLAYER page (26 → 27) after `RestEnabled`, 10 `WarCry*` Advanced in "Courage and cohesion
+    (AI)" after `RestGapDiagnosticMetres` (476 → 487), no config-format change (a missing key takes its default). (h) UNVERIFIED in game (PLAYTEST D44):
+    how it sounds - whether Yell / HorseRally carry, whether 16 a second is a roar or too much, whether the engine itself limits voices.
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),
 `HudRefreshSeconds`, `FormationStatsRefreshSeconds` came out of step 2's research

@@ -1623,6 +1623,29 @@ live: `RestTiredMinPercent` 20 / `RestTiredMaxPercent` 45, `RestReadyChargeMinPe
 its min = the min), `RestReachMetres` 3 (1-8), `RestMaxBackMetres` 4 (0-10), `RestDefendMetres` 2 (0-5), `RestContagionMetres` 3 (0-10),
 `RestContagionMaxPercent` 60 (0-100), `RestContagionFloorPoints` 10 (0-100), `RestGapDiagnosticMetres` 2 (0.5-10, the log only).</sub>
 
+**War cries (step 79).** Sound only - a cry changes nothing about how anyone fights.
+
+| When | Who shouts | How often |
+|---|---|---|
+| A rested man goes back in at his own ready mark | he does | 35% |
+| A resting mate goes in with him (contagion) | the mate answers | 20%, 0-1 s later |
+| A unit gets a NEW charge order (yours or the AI general's) | 40% of its men, at most 12 a unit | each 0-1.5 s after the order; one roar a unit per 15 s |
+
+| Limits (a cry over one is dropped, never delayed) | |
+|---|---|
+| One man | one cry in 8 s |
+| One unit | 8 cries in any 1 s |
+| The whole battle | 16 cries in any 1 s |
+| Many units charging at once | they share the battle's 16 x 1.5 s = 24 cries: 2 units 12 each, 3 units 8, 10 units 3 |
+
+Never you, a routed or fleeing man, the dead. Riders shout on a charge (the game's rally shout); men on foot the game's yell. Vanilla also yells
+on YOUR charge orders (each man morale x 0.33%, 1.5-2.5 s later, once per 30 s) - ours comes on top; the AI general's charges are silent in vanilla.
+
+<sub>Settings: *War cries* = `WarCriesEnabled` (player page, How the AI fights; on; live); Advanced page, *Courage and cohesion (AI)*, live:
+`WarCryBackInPercent` 35, `WarCryAnswerPercent` 20 (0-100), `WarCryAnswerDelaySeconds` 1 (0-3), `WarCryChargeSharePercent` 40 (0-100),
+`WarCryChargeMaxMen` 12 (0-60), `WarCryChargeStaggerSeconds` 1.5 (0-5), `WarCryChargeUnitCooldownSeconds` 15 (0-120), `WarCryManCooldownSeconds` 8
+(0-60), `WarCryUnitPerSecond` 8 (1-30), `WarCryBattlePerSecond` 16 (1-60).</sub>
+
 ## 15. What you see on screen
 
 **Your Athletics bar** sits under your health, with the white peak line at 75%. Its colour:
