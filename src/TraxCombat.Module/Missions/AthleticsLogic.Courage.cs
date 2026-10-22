@@ -60,6 +60,7 @@ namespace TraxCombat.Missions
             StartLoneRunners(); // step 70
             StartBlock(); // step 74
             StartPress(); // step 77
+            StartRhythm(); // step 78
         }
 
         /// <summary>A courage setting changed (from ApplySettingsChange): one line; applied at every man's next look.</summary>
@@ -69,6 +70,7 @@ namespace TraxCombat.Missions
             NoteLoneSettings(s); // step 70
             NoteBlockSettings(s); // step 74
             NotePressSettings(s); // step 77
+            NoteRhythmSettings(s); // step 78
             string now = CourageText(s);
             if (now == _seenCourageText) return;
             _seenCourageText = now;
@@ -87,6 +89,7 @@ namespace TraxCombat.Missions
             TickFearSwitch(now); // step 67: the fear flock's switch (the master switch first) - every spell let go at once when off
             TickBlockSwitch(now); // step 74: the block hold's switches (the master switch first) - every pull let go at once when off
             TickPressSwitch(now); // step 77: press, don't pass's switches (the master switch first) - every wish let go at once when off
+            TickRhythmSwitch(now); // step 78: the rhythm's switches (the master switch first, Athletics) - swaps / wishes let go at once when off
             var body = CourageBody;
             if (!body.MissionAllows())
             {
@@ -97,6 +100,7 @@ namespace TraxCombat.Missions
             TickFearUnits(now); // step 67: the unit table published every 0.5 s (the shelters, the shape / drift samples)
             TickBlockUnits(now); // step 74: the blocks' frames (after the band - its direction), the diagnostic, the band told the block
             TickPressLines(now); // step 77: the enemy lines' fronts (after the blocks - a held block is a line)
+            TickRhythmUnits(now); // step 78: the units' fronts and the lulls
             double dt = double.IsNaN(_courageLastTick) || now < _courageLastTick ? CourageMath.PollSeconds : now - _courageLastTick;
             _courageLastTick = now;
             if (dt > CourageMath.PollSeconds) dt = CourageMath.PollSeconds;
@@ -131,6 +135,7 @@ namespace TraxCombat.Missions
             if (_fearRules.Enabled) SteerFlockers(now); // step 67
             if (_blockRules.On) SteerBlockers(now); // step 74
             if (_pressRules.On) SteerPressers(now); // step 77
+            if (_rhythmRules.AnyOn) SteerRhythm(now); // step 78
         }
 
         /// <summary>An impact family changes the battle now (then its outcomes are shock too) - once a tick.</summary>
@@ -782,6 +787,7 @@ namespace TraxCombat.Missions
             FearLeftField(st); // step 67
             BlockLeftField(st); // step 74
             PressLeftField(st); // step 77
+            RhythmLeftField(st); // step 78
         }
 
         /// <summary>A landed hit on him (OnAgentHit): his shock window.</summary>
@@ -801,6 +807,7 @@ namespace TraxCombat.Missions
             CloseFear(agentsAlive); // step 67
             CloseBlock(agentsAlive); // step 74
             ClosePress(agentsAlive); // step 77
+            CloseRhythm(agentsAlive); // step 78
         }
 
         internal void WriteCourageSummary()
@@ -811,6 +818,7 @@ namespace TraxCombat.Missions
             WriteFearSummary(); // step 67
             WriteBlockSummary(); // step 74
             WritePressSummary(); // step 77
+            WriteRhythmSummary(); // step 78
         }
     }
 }

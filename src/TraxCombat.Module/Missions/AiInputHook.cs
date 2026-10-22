@@ -82,6 +82,17 @@ namespace TraxCombat.Missions
         public float PressNX, PressNY, PressSX, PressSY, PressX, PressY;
         public long PressClampFrames, PressSideFrames, PressMoveFrames;
 
+        /// <summary>Step 78: THE BATTLE'S RHYTHM - an eighth wish. <see cref="RhythmMove"/> = a swap's walk (the fresh man up beside the tired one, the
+        /// tired one back into the fresh man's place) or a lull's walk back to his unit's lull line: <see cref="RhythmX"/>, <see cref="RhythmY"/> replace the
+        /// AI's movement (his own frame; 0, 0 = he stands) - after a step back's backpedal, the wall's pull and the press's walk, BEFORE courage's walk back,
+        /// the fear flock and the block hold. <see cref="RhythmClamp"/> = the part of his final movement along <see cref="RhythmNX"/>, <see cref="RhythmNY"/>
+        /// (toward the enemy) taken out - after the press's clamp (a lull's line, a rested man's place). <see cref="RhythmHoldAttacks"/> = the tired man of a swap
+        /// holds his melee attacks and guards. Needs the Athletics system (the hook's Athletics-off path never writes it).</summary>
+        public bool Rhythm;
+        public bool RhythmMove, RhythmClamp, RhythmHoldAttacks;
+        public float RhythmX, RhythmY, RhythmNX, RhythmNY;
+        public long RhythmMoveFrames, RhythmClampFrames, RhythmHeldFrames;
+
         /// <summary>Step 65: an AI kick / bash attempt's phase (Core <see cref="AiKickPhase"/> - None = none) and kind: the hook writes the kick
         /// key / the guard / the commit (Core <see cref="AiKickMath.Frame"/>) - only with Athletics on (the logic ends attempts otherwise).</summary>
         public AiKickPhase KickPhase;
@@ -96,7 +107,7 @@ namespace TraxCombat.Missions
         public long SpearRewrites;
 
         /// <summary>Any wish at all - a man is held while ANY of them wants him held (one ending never lifts another).</summary>
-        public bool Active => HoldAttacks || StepHoldAttacks || Backpedal || BraceHoldAttacks || Regroup || WallPull || Flock || Block || SpearWield || Press || KickPhase != AiKickPhase.None;
+        public bool Active => HoldAttacks || StepHoldAttacks || Backpedal || BraceHoldAttacks || Regroup || WallPull || Flock || Block || SpearWield || Press || Rhythm || KickPhase != AiKickPhase.None;
 
         /// <summary>Since when the state has been active (mission time), for the calls-per-second figure.</summary>
         public double ActiveSince = -1;
@@ -209,7 +220,8 @@ namespace TraxCombat.Missions
                 float vx = inputVector.x, vy = inputVector.y;
                 AiInputHook.Apply(_st, s, settings.AiHoldRaiseGuard, ref flags, ref vx, ref vy, settings.BraceRaiseShield);
                 bool moved = s.Backpedal || (s.Regroup && settings.CourageEnabled) || (s.WallPull && settings.ShieldWallHoldsSlots) || (s.Flock && settings.FearFlockEnabled) || (s.Block && AiInputHook.BlockOn(settings))
-                             || (s.Press && AiInputHook.PressOn(settings)); // step 77: the press's walk or clamp
+                             || (s.Press && AiInputHook.PressOn(settings)) // step 77: the press's walk or clamp
+                             || (s.Rhythm && AiInputHook.RhythmOn(settings)); // step 78: a swap's / a lull's walk or clamp
                 if (s.KickPhase != AiKickPhase.None && settings.AiKicksEnabled) // step 65: the kick / bash written LAST (after a held man's kick-out)
                 {
                     uint ev = (uint)eventFlag;
@@ -518,6 +530,48 @@ namespace TraxCombat.Missions
             return did;
         }
 
+        /// <summary>Step 78: the rhythm's switches - the master switch FIRST, the Athletics system, then either part's own.</summary>
+        internal static bool RhythmOn(TraxSettings settings) => settings.ModEnabled && settings.AthleticsEnabled && (settings.RotationEnabled || settings.LullEnabled);
+
+        /// <summary>Step 78: turns the rhythm's wish on or off (the other wishes are left as they are); off clears its walk, clamp and attack hold.</summary>
+        internal static void SetRhythm(TrackedAgent st, bool on, double now)
+        {
+            var s = st.Input ??= new AiInputState();
+            bool was = s.Active;
+            s.Rhythm = on;
+            if (!on)
+            {
+                s.RhythmMove = s.RhythmClamp = s.RhythmHoldAttacks = false;
+                s.RhythmX = s.RhythmY = 0f;
+            }
+            Account(s, was, now);
+        }
+
+        /// <summary>Step 78: a swap's / a lull's walk - his own move bits out, the vector in; never while a step back's backpedal or the wall's pull runs
+        /// (they win - a held wall man's slot already agrees with the swap), never with the rhythm's switches off. True when it wrote. Managed - the smoke drives it.</summary>
+        internal static bool ApplyRhythmMove(AiInputState s, ref uint flags, ref float vx, ref float vy)
+        {
+            if (!s.Rhythm || !s.RhythmMove || s.Backpedal || s.WallPull) return false;
+            if (!RhythmOn(TraxSettings.Shared)) return false;
+            flags = AiInputMath.Backpedal(flags);
+            vx = s.RhythmX;
+            vy = s.RhythmY;
+            s.RhythmMoveFrames++;
+            return true;
+        }
+
+        /// <summary>Step 78: the lull's / the rest's clamp - the part of his final movement toward the enemy taken out (after the press's clamp); his move
+        /// bits out when it bit. True when it bit. Managed - the smoke drives it.</summary>
+        internal static bool ApplyRhythmClamp(AiInputState s, ref uint flags, ref float vx, ref float vy)
+        {
+            if (!s.Rhythm || !s.RhythmClamp) return false;
+            if (!RhythmOn(TraxSettings.Shared)) return false;
+            if (!PressMath.ClampVector(ref vx, ref vy, s.RhythmNX, s.RhythmNY)) return false;
+            s.RhythmClampFrames++;
+            flags = AiInputMath.Backpedal(flags);
+            return true;
+        }
+
         /// <summary>Step 76: turns the wield fallback's wish on (with his polearm's slot and his sidearms) or off.</summary>
         internal static void SetSpearWield(TrackedAgent st, bool on, int polearmSlot, int sidearmMask, double now)
         {
@@ -586,7 +640,7 @@ namespace TraxCombat.Missions
             }
             eventFlags = ev;
             s.KickFrames++;
-            if (!stop || s.Backpedal || s.Regroup || s.WallPull || s.Flock || s.Block || (s.Press && s.PressMove)) return false;
+            if (!stop || s.Backpedal || s.Regroup || s.WallPull || s.Flock || s.Block || (s.Press && s.PressMove) || (s.Rhythm && s.RhythmMove)) return false;
             flags = AiInputMath.Backpedal(flags); // his own move bits out
             vx = 0f;
             vy = 0f;
@@ -614,6 +668,7 @@ namespace TraxCombat.Missions
             bool was = s.Active;
             s.HoldAttacks = s.StepHoldAttacks = s.Backpedal = s.BraceHoldAttacks = s.HoldKicks = s.Regroup = s.Flock = s.Block = s.SpearWield = false;
             s.Press = s.PressFront = s.PressSide = s.PressMove = false; // step 77
+            s.Rhythm = s.RhythmMove = s.RhythmClamp = s.RhythmHoldAttacks = false; // step 78
             s.KickPhase = AiKickPhase.None; // step 65
             s.KickKind = AiKickKind.None;
             Account(s, was, now);
@@ -650,10 +705,12 @@ namespace TraxCombat.Missions
                 if (!ranged) braceMelee = true;
                 else if ((flags & AiInputMath.AttackMask) != 0) s.BraceRangedPassed++;
             }
-            if (s.HoldAttacks || s.StepHoldAttacks || braceMelee)
+            bool rhythmHold = s.Rhythm && s.RhythmHoldAttacks && RhythmOn(TraxSettings.Shared); // step 78: a swap's tired man guards only
+            if (s.HoldAttacks || s.StepHoldAttacks || braceMelee || rhythmHold)
             {
                 bool inReady = action == ActReadyMelee || action == ActReadyRanged;
-                flags = AiInputMath.HoldAttacks(flags, raiseGuard, inReady, out edit);
+                flags = AiInputMath.HoldAttacks(flags, raiseGuard || rhythmHold, inReady, out edit);
+                if (rhythmHold && (edit & InputEdit.AttackCleared) != 0) s.RhythmHeldFrames++;
                 if ((edit & InputEdit.AttackCleared) != 0)
                 {
                     s.AttackCleared++;
@@ -683,14 +740,18 @@ namespace TraxCombat.Missions
             {
                 if (!ApplyPressMove(s, ref flags, ref vx, ref vy)) // step 77: walked back out of an enemy line / round its end
                 {
-                    if (!ApplyRegroup(s, ref flags, ref vx, ref vy)) // step 49: the walk back (a step back's backpedal wins while it runs)
+                    if (!ApplyRhythmMove(s, ref flags, ref vx, ref vy)) // step 78: a swap's walk / a lull's walk back
                     {
-                        if (!ApplyFlock(s, ref flags, ref vx, ref vy)) // step 67: the fear flock - courage's walk back goes first
-                            ApplyBlock(s, ref flags, ref vx, ref vy); // step 74: the block hold - the last movement wish
+                        if (!ApplyRegroup(s, ref flags, ref vx, ref vy)) // step 49: the walk back (a step back's backpedal wins while it runs)
+                        {
+                            if (!ApplyFlock(s, ref flags, ref vx, ref vy)) // step 67: the fear flock - courage's walk back goes first
+                                ApplyBlock(s, ref flags, ref vx, ref vy); // step 74: the block hold - the last movement wish
+                        }
                     }
                 }
             }
             ApplyPressClamp(s, ref flags, ref vx, ref vy); // step 77: the clamp LAST - never past an enemy line's front, whoever moves him
+            ApplyRhythmClamp(s, ref flags, ref vx, ref vy); // step 78: a lull's line / a rested man's place - after the press's clamp
             if (s.Capture && !s.CapturedAttack && (edit & InputEdit.AttackCleared) != 0)
             {
                 s.CapturedAttack = true;

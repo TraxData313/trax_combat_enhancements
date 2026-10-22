@@ -337,6 +337,11 @@ namespace TraxCombat.Core
         public static bool Behind(in RhythmRules r, double along, double across) =>
             along <= -MinBehindMetres && along >= -r.BehindMetres - 1e-9 && Math.Abs(across) <= r.FileMetres + 1e-9;
 
+        /// <summary>A mate COVERS him (he is not a front-rank man): standing in front of him toward the enemy, short of the enemy (<paramref name="reach"/>),
+        /// within half the file's width to the side.</summary>
+        public static bool Covers(in RhythmRules r, double along, double across, double reach) =>
+            along >= MinBehindMetres && along < reach && Math.Abs(across) <= 0.5 * r.FileMetres + 0.1;
+
         /// <summary>The engine's action codes a man is BUSY in: an attack (ready / release / parried / blocked), a fall, a kick or bash, a strike
         /// reaction (the stagger family). The game's <c>Agent.ActionCodeType</c>.</summary>
         public const int ActReadyMelee = 19, ActFall = 23, ActKick = 28, ActWeaponBash = 31, ActStrikeLight = 48, ActMountStrike = 52;
@@ -1060,10 +1065,10 @@ namespace TraxCombat.Core
             lines.Add(sb.ToString());
         }
 
-        internal static string Pct(double v) => double.IsNaN(v) ? "-" : (100 * v).ToString("0", CultureInfo.InvariantCulture) + "%";
+        public static string Pct(double v) => double.IsNaN(v) ? "-" : (100 * v).ToString("0", CultureInfo.InvariantCulture) + "%";
 
-        internal static string F1(double v) => double.IsNaN(v) ? "-" : v.ToString("0.0", CultureInfo.InvariantCulture);
+        public static string F1(double v) => double.IsNaN(v) ? "-" : v.ToString("0.0", CultureInfo.InvariantCulture);
 
-        internal static string F2(double v) => double.IsNaN(v) ? "-" : v.ToString("0.00", CultureInfo.InvariantCulture);
+        public static string F2(double v) => double.IsNaN(v) ? "-" : v.ToString("0.00", CultureInfo.InvariantCulture);
     }
 }

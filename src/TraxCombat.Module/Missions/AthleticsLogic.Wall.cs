@@ -228,6 +228,7 @@ namespace TraxCombat.Missions
             var body = WallBody;
             var f = body.Read(st);
             if (IsPlayer(st)) f.Ai = false;
+            bool rhythm = RhythmWallSlot(st, ref f, now); // step 78: a swap's place / a lull's slot shifted back
             var v = WallMath.Decide(in r, in f);
             if (v == WallVerdict.Hold && FearWallBreaks(st, now)) v = WallVerdict.Breaking; // step 67: a frightened wall breaks
             _wallStats.AddLook(v);
@@ -277,6 +278,7 @@ namespace TraxCombat.Missions
                 }
                 _wallStats.AddWrite(kind);
                 if (firm) FirmFrameLook(st, ws, in f, now); // step 75: the engine's walk target = his slot
+                else if (rhythm) RhythmFrameLook(st, ws, in f); // step 78: the engine's walk target = the rhythm's slot
                 else PaceLook(st, ws, in f, now); // step 68: a moving wall walks as one
                 OutOfPlaceLook(st, ws, in f, outNow, now, in r, firm ? _seenFirm.SlackMetres : 0); // step 63 (step 75: from the slack, at once)
                 if (body.TryStamp(st, ws, out float stamp))

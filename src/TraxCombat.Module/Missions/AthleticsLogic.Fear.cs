@@ -224,6 +224,7 @@ namespace TraxCombat.Missions
             if (skip != CourageSkip.WallHeld)
             {
                 if (fm.Flocking) EndFear(st, FearEnd.Excluded, now, native: true);
+                RhythmSkipped(st, now); // step 78
                 return;
             }
             if (fm.Flocking) EndFear(st, FearEnd.WallHolds, now, native: true);
@@ -237,6 +238,7 @@ namespace TraxCombat.Missions
             double fear = FearMath.Mixed(in r, FearMath.Own(in r, morale, fraction, d), _fearUnits.FearOf(key, now));
             _fearUnits.Note(key, fear, 0, morale, fraction, false, double.NaN, double.NaN, cx, cy, fx, fy, px, py, order, double.NaN, st.AgentIndex);
             IdleLook(st, now, px, py, order, double.NaN); // step 69: a held wall man standing off counts too (no scan: one enemy read)
+            RhythmLookHeld(st, now, key, px, py); // step 78: a held wall man in his unit - his swap through his slot
         }
 
         /// <summary>
@@ -260,6 +262,7 @@ namespace TraxCombat.Missions
             _fearStats.LookCostMs += (Stopwatch.GetTimestamp() - start) * 1000.0 / Stopwatch.Frequency;
             BlockLook(st, now, in near, courage); // step 74: the block hold decides last (it yields to courage's walk and the flock)
             PressLook(st, now, in near, courage); // step 77: press, don't pass - the clamp filters whatever moves him
+            RhythmLook(st, now, in near); // step 78: the battle's rhythm - the swap and the lull
         }
 
         private void FearLookCore(TrackedAgent st, double now, in FearNear near, FearCourage courage)
