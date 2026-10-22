@@ -32,6 +32,7 @@ namespace TraxCombat.Tools
             public readonly HashSet<int> Contact = new HashSet<int>();
             public readonly Dictionary<int, int> Holds = new Dictionary<int, int>();
             public readonly List<int> Released = new List<int>();
+            public readonly Dictionary<int, double> Deviations = new Dictionary<int, double>();
             public int HoldCalls;
             public int ReleaseCalls;
             public bool Record = true;
@@ -58,6 +59,7 @@ namespace TraxCombat.Tools
             {
                 HoldCalls++;
                 if (Record) Holds[st.AgentIndex] = Held(st.AgentIndex) + 1;
+                if (Record) Deviations[st.AgentIndex] = f.Deviation; // step 75: the tolerance handed to the engine
             }
 
             public int Held(int index) => Holds.TryGetValue(index, out var n) ? n : 0;
@@ -164,6 +166,7 @@ namespace TraxCombat.Tools
             S.Set(SettingsSchema.ShieldWallPullBackSeconds, 0.0, SettingSources.File); // step 63 off: steps 41 / 42 exactly (no extra looks, no walk back)
             S.Set(SettingsSchema.ShieldWallKickReturnMetres, 0.0, SettingSources.File); // step 68 off: the walk back after a kick (its 0.1 s looks too)
             S.Set(SettingsSchema.ShieldWallAdvanceAsOne, false, SettingSources.File);   // step 68 off: the game's own frames (Program.Step68.cs runs them)
+            S.Set(SettingsSchema.ShieldWallStandFirm, false, SettingSources.File);      // step 75 off: a halted wall keeps steps 41-68 (Program.Step75.cs runs it)
         }
 
         /// <summary>

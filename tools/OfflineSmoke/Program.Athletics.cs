@@ -198,6 +198,7 @@ namespace TraxCombat.Tools
             FeverOff(); // step 43: the older steps count the game's AI values and recomputes without the aggression share (Program.Fever.cs has its own)
             // step 67: the older steps check a world without the fear flock and the morale eyes (Program.Step67.cs has its own)
             S.Set(SettingsSchema.FearFlockEnabled, false, SettingSources.File);
+            S.Set(SettingsSchema.ShieldWallStandFirm, false, SettingSources.File); // step 75: the older steps' halted walls keep the leash (Program.Step75.cs runs it)
             S.Set(SettingsSchema.ShowMoraleMarks, false, SettingSources.File);
             S.Set(SettingsSchema.ShowMoraleOnLabels, false, SettingSources.File);
         }
