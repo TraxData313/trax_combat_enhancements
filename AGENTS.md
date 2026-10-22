@@ -312,7 +312,20 @@ a rear-rank man never more than 1 m sideways past the end; a broken line or his 
 the wall's pull, before courage's walk, the flock and the block; his attacks untouched; the fear band never wider than its enemy line + 1 m
 a side (its surplus deeper - Toni's 27 m → 25 m in 5 ranks); the block hold's sideways room within the enemy line's ends in contact
 (`BlockHoldMath.DecideRange`). Core `PressDontPass.cs`, Module `AthleticsLogic.Press.cs`; the `[press]` lines and the two [summary] "press,
-don't pass" lines (crossings by where and cause, ON vs OFF) (PLAYTEST D42). The bar for the
+don't pass" lines (crossings by where and cause, ON vs OFF) (PLAYTEST D42). THE BATTLE'S RHYTHM, PART 1 - ROTATION AND THE LULL (step 78, Toni 2026-10-22, sketch 1-4: "two packs of dogs - they don't want to get
+hurt but they won't back down"; DESIGN decision 72, AI_NOTES "Step 78"): `RotationEnabled` / `LullEnabled` / `LullForPlayerUnits` (PLAYER page, 27
+settings, on) + 24 Advanced in "Courage and cohesion (AI)" - riding courage's looks (a held wall man through FearSkipped), both need Athletics:
+a FRONT man in contact (an enemy within 2.5 m, no mate in front of him) whose bar is at or below 35% or his brace floor swaps with the freshest
+mate 0.3-1.5 m right behind him in his file who is 25 points fresher - the fresh man walks up 0.7 m BESIDE him while the tired man holds and
+guards (an eighth input wish, `AiInputState.Rhythm` - the walk after the press's walk, before courage / the flock / the block; the clamp after the
+press's), then the game's public `Formation.SwitchUnitLocations` swaps their slots and the tired man backs into the fresh man's place facing the
+enemy and rests there 6 s; never in a swing / stagger, one swap per man per 12 s; a held wall man's slot IS the swap's place (LookWall), so
+stand firm agrees; THE LULL - `RhythmUnits` pairs facing units every 0.5 s (a held wall by its attackers' votes); after 10 s in contact with BOTH
+fronts' mean bar below charge 30 / advance 40 / hold 50 % each eases back 2 m to its lull line facing the enemy (walked back, clamped there; a
+held wall's slots shifted back), the tired swap to the back during it; it ends when a front regains 10 / 15 / 20 points, a new charge order, a
+side breaks, 30 s - then 20 s for the pair; your units only with their switch; step 79's waves end it via `EndLull(key, LullEnd.Wave)`. Core
+`Rhythm.cs`, Module `AthleticsLogic.Rhythm.cs` / `RhythmBody.cs`; the `[rhythm]` lines and the two [summary] "battle rhythm" lines (swaps by
+end / refusal, the bar of men in contact ON vs OFF, lulls by end, the gap opened) (PLAYTEST D43). The bar for the
 fighter you look at is LATER (DESIGN §3; its settings wait in DESIGN's "Planned parameters"). Words:
 the pool/bar/points are "Athletics", the character-screen skill is "the Athletics skill" (it
 used to be called "endurance"), the "peak line" is the white mark at the top quarter of the bar,
@@ -460,7 +473,8 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               description, apply timing (Live / NextBattle); Normalize, Format;
                               its Default comes from defaults.json (DefaultsFile), never code; step 59:
                               SettingsPage (Player / Advanced) + ParamGroup.Page
-  SettingsSchema.cs           EVERY setting of DESIGN's table (446 - step 77's PressDontPass after SpearPreferenceEnabled (the player page,
+  SettingsSchema.cs           EVERY setting of DESIGN's table (473 - step 78's RotationEnabled / LullEnabled / LullForPlayerUnits after PressDontPass
+                              (the player page, 27) and 24 Rotation* / Lull* after PressEndSlackMetres (Advanced, "Courage and cohesion (AI)"); 446 - step 77's PressDontPass after SpearPreferenceEnabled (the player page,
                               24) and 15 Press* after LoneRunnerAheadMetres (Advanced, "Courage and cohesion (AI)"); 430 - step 76's SpearPreferenceEnabled after ShieldWallStandFirm (the player
                               page, 23) and 17 Spear* + ThrustsPassFriends / ThrustsPassPolearmsOnly / FriendlyHitStunSeconds after
                               ShieldWallStandFirmTightTolerance (Advanced, "Battle pace (AI)"); 409 - step 75's ShieldWallStandFirm after ShieldWallStepOutMetres (the player
@@ -874,6 +888,10 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               Condition, Step - the timers, Favors, HeldOf, NextLook - the jitter, WieldRewrite), SpearStats (the 2 [summary] "spears"
                               lines); ThrustVerdict / ThrustFacts / ThrustPassRules / ThrustPassMath (Decide in gate order, StunWanted, the vanilla 0.4)
                               / ThrustPassStats (the [summary] "thrusts past friends" line)
+  Rhythm.cs                   step 78 (DESIGN decision 72) - THE BATTLE'S RHYTHM: RhythmRules (ModEnabled FIRST, AthleticsEnabled, the two
+                              switches, 24 numbers), RhythmMath (tired / fresher / behind / covers / beside / busy codes / the lull by order), RhythmMind,
+                              RhythmUnits (the unit table: fronts, front bars, the enemy unit, the lulls' start / lines / ends; EndLull - 79's wave),
+                              RhythmStats (the two [summary] "battle rhythm" lines)
   PressDontPass.cs            step 77 (DESIGN decision 71) - PRESS, DON'T PASS: PressRules (ModEnabled FIRST, PressDontPass, 15 numbers; Describe),
                               PressLineKind (none / slots / wall / block / ring), PressAction (no line / far / CLAMP / PUSH / RETURN / through / wrap /
                               broken / winning), PressCause (courage / fear / block / charge target / the game), PressEnd, PressOrder; PressMath (LineKind
@@ -1175,6 +1193,12 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               Missions/BlockBody.cs: IBlockBody (Cap via LineDiscipline.TryCap, Formation - the order / behaviour / arrangement names, cached
                               -, Name), GameBlockBody, BlockBodyDefault; LineDiscipline.TryCap (the last look's cap per slot); AiInputHook.cs: AiInputState
                               .Block (BlockX / Y), SetBlock, ApplyBlock, BlockOn - the last wish; TrackedAgent.BlockHold (Core BlockMind)
+  Missions/AthleticsLogic.Rhythm.cs  step 78: the swap (FindMate - one scan for a tired front man, StartSwap / SteerSwap - hold, beside,
+                              Formation.SwitchUnitLocations, back), the lull (the unit table published from TickCourage, each man walked back /
+                              clamped at his unit's line), RhythmWallSlot (LookWall: a held man's slot = the swap's place / shifted back), the
+                              [rhythm] lines, EndLullByWave (79); Missions/RhythmBody.cs: IRhythmBody (PlayerUnit, CanSwap, SwapSlots); AiInputHook.cs:
+                              the eighth wish AiInputState.Rhythm (RhythmMove / RhythmClamp / RhythmHoldAttacks), RhythmOn, SetRhythm, ApplyRhythmMove,
+                              ApplyRhythmClamp; TrackedAgent.Rhythm (Core RhythmMind)
   Missions/AthleticsLogic.Press.cs  step 77: StartPress / NotePressSettings (the [press] lines), TickPressSwitch (the master switch first -
                               every wish let go), TickPressLines (after the blocks' frames: a held block / a ring / its body width per unit, the
                               table published, the first line / gap lines), PressLook (from FearLook after the block's, ON and OFF: the vote, his line
@@ -1356,7 +1380,9 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
   Hud/FeverMarksVM.cs         its ViewModels: a GROW-ONLY POOL of FeverMarkVM (IsShown, PositionX / Y, Width / Height in pixels,
                               Fill, FillColor, FrameColor; step 46: BoxWidth / BoxHeight, FeverShown, BarShown, BarWidth / Height,
                               BarFill, BarUsable, BarColor, BarFrameColor, BarWoundColor)
-tests/TraxCombat.Core.Tests/  net8.0 xUnit (1109 - step 77: + Step77Tests.cs - the 16 settings placed (the player page 24) / live / defaults, the
+tests/TraxCombat.Core.Tests/  net8.0 xUnit (1121 - step 78: + Step78Tests.cs - the 27 settings placed (the player page 27), the switches, tired /
+                              fresher / behind / covered / beside, busy actions, the lull by order, the unit table, the lull's start / lines / ends,
+                              your units, the summary lines; 473 settings; 1109 - step 77: + Step77Tests.cs - the 16 settings placed (the player page 24) / live / defaults, the
                               master switch first, the line test, Toni's wall's front segment (its ends, no gap, its rear face, a man stepped out),
                               the gaps (four files fallen 2.8 m, two 1.2 m none, a rear man stepping up none, a loose line), the verdicts (clamp /
                               push / round the nearest end / broken / winning), through and the wrap (26.6 m on 23.6 m never, 60 m with 5 mates),
@@ -1659,6 +1685,10 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               through the REAL damage decorator over CustomAgentApplyDamageModel (ContinueChecking / a swing Bounced / polearms
                               only, the follow-up hit, the flinch, the stun 0.4 -> 0.1 s and back); the cost (1000 men 0.004 ms a tick, 0 bytes);
                               every logic starts with a NOT-ready stand-in spear body (176 steps);
+                              step 78 (Program.Step78.cs): THE BATTLE'S RHYTHM through the real logic with courage's stand-in world and the REAL input
+                              filter - two lines grinding: 12 of 12 swaps, the front 25% → 85%, 0 file-frames without a front man; two spent fronts: the
+                              gap 1.0 → 4.4 m, closed on recovery, a new charge order ends a lull; a held wall man's slot; the cost (1000 men 0.004 ms a
+                              tick, 0 bytes); the older steps pin both switches off (183 steps);
                               step 77 (Program.Step77.cs): PRESS, DON'T PASS through the real logic with courage's stand-in world (a per-formation
                               facing) and the REAL input filter (AiInputHook.Apply) - Toni's 108 recruits (D 6, 18 files, 26.6 m) charging his 23 m
                               two-deep held wall with half their rear ranks dancing round its ends: OFF 34 behind the wall, 36 crossings; ON 0 past

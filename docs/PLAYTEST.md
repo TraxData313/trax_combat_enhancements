@@ -1042,6 +1042,7 @@ Claude the `[summary] impact …` block of every battle.
 | 21 | **D40 - A STANDING WALL STANDS FIRM** (step 75): your shield wall on STOP (F1, then F2 - or moved to a spot and arrived) against an enemy push; mid-battle the switch OFF, then ON again | 10 | `[wall] stand firm (step 75): ON …`, `[wall] first man STANDING FIRM`, `[wall] first lever refused … the step out (leash)`, `[summary] wall stands firm` | ON: nobody steps forward to strike - the front swings, blocks and bashes from the line, a man a kick carries out backs straight in; OFF: the old 1 m steps out and back; the summary's ON in-contact "more than 0.5 m" far below OFF's, strikes a man-minute ON not far below OFF's | men frozen and not swinging at enemies in reach (strikes ON ≪ OFF); the wall drifting / bulging ON; jerky back-and-forth from the walk back (raise *Stand firm: walked back beyond*) |
 | 22 | **D41 - SPEARMEN KEEP THEIR SPEARS, THE SECOND RANK THRUSTS PAST** (step 76): your spearmen (spear + sword + shield - e.g. Vlandian / Sturgian spearmen) in a shield wall on STOP against ~40 looters; then the switch OFF and ON | 15 | `[spears] mission start …`, `[spears] first back-rank man`, `[spears] first THRUST past a friend`, `[summary] spears`, `[summary] thrusts past friends` | the front rank holds spears until the looters press in, then swords; the second rank keeps spears and thrusts over the front man; looters fall to second-rank thrusts; OFF: swords at once | everyone still on swords ON (the favors not honoured - try *Spears: force the spear while nothing is close*); second-rank spears still stopping on the front man (`… then an enemy hit … 0 of N`); men flinching as their mates thrust through them |
 | 23 | **D42 - PRESS, DON'T PASS** (step 77): Toni's battle again - ~100 recruits against your shield wall (~60 veterans) on STOP; then the switch OFF mid-battle and ON again | 15 | `[press] mission start …`, `[press] first enemy LINE`, `[press] first man PRESSING`, `[press] first man CROSSED … ON / OFF`, `[summary] press, don't pass` (two lines) | ON: the recruits pile up against your wall's front, nobody walks round its ends or in behind it; men come through only where your men fell; OFF: the dance round the ends again; the crossings ON ≈ 0 (not allowed), OFF many "round an end" | recruits frozen at the wall and not fighting; men still circling the ends ON (the clamp not honoured); men stuck behind the wall never walked back; a gap read where there is none |
+| 24 | **D43 - THE BATTLE'S RHYTHM: SWAPS AND LULLS** (step 78): two infantry lines of ~60 each grinding (your shield wall on STOP against the enemy's infantry); watch the front; then two charging lines that both tire (both on F1 F3 charge) | 20 | `[rhythm] first SWAP asked / BESIDE / DONE`, `[rhythm] first LULL`, `[rhythm] first lull ENDED`, `[summary] battle rhythm` (two lines) | the tired front men step back one by one as a fresh man comes up beside each - the front never thins; when both fronts are spent a gap of ~3-4 m opens for 10-30 s, the men face each other, then one side comes on again | swaps that leave a hole in the front; men walking out of the wall; a lull with no gap (the native charge pushing through the clamp); a lull that never ends; men turning their backs |
 
 Then play normally (parts E-G). Your gut on each family - too many / about right / too few - is the most useful thing to send.
 
@@ -1904,6 +1905,32 @@ recruits still swinging at the wall (the impact / attack lines as before); the f
 and its "slid out of a full file" far below 3730. **Wrong**: men still walking round the ends ON (the engine ignores the clamped vector -
 tell Claude); recruits standing off the wall not fighting; a man stuck behind the wall for long (`walked round` count high, crossings
 still rising); `[press] first GAP` on an unbroken wall; any `[error]` with `press.`.
+
+**D43. THE BATTLE'S RHYTHM: SWAPS AND LULLS (step 78, ~20 min - two field battles; the defaults).** Toni 2026-10-22: "two packs of dogs - they
+don't want to get hurt but they won't back down" - the clash, the grind (the tired front men hold while fresher men come up), then a lull with
+a gap, the most tired going to the back. (1) **THE GRIND**: your ~60 infantry in a shield wall on STOP (F1, F2) against ~60 enemy infantry (not
+looters - they need a few ranks). After the first clash, watch one file of your wall: a tired front man should stand and guard while the man behind
+him steps up BESIDE him, then he backs into the second rank, facing the enemy. The front should never show a hole for it. The enemy's line does it
+too. (2) **THE LULL**: a battle where both sides charge (F1 F3) with mid-tier infantry and nobody breaks quickly. When both fronts are worn out
+(the ALT bars mostly orange / red at the front) both should ease back ~2 m each, facing each other - a gap of ~3-4 m - for 10-30 s; the tired go
+to the back; then one side comes on again (it recovered, or you gave a new charge order - try F1 F3 in a lull: it should end at once). (3) Optional:
+Escape → MCM → player page → *Lulls: your units ease back too* off - your men keep at it, and so does the enemy facing them. **Log**: `[rhythm]
+mission start: the battle's rhythm (step 78): ROTATION: … - ON; LULL: … - ON`; `[rhythm] first SWAP asked at … s: <tired> (25%) at the front in
+contact, <fresh> (85%) right behind him …`; `[rhythm] first fresh man BESIDE the tired one at … s after … s: … the slots swapped
+(Formation.SwitchUnitLocations) …`; `[rhythm] first SWAP DONE at … s in … s …`; `[rhythm] first tired front man who could not swap … - nobody
+right behind / nobody fresher behind / …`; `[rhythm] first LULL at … s: <unit> (Charge, front bar 22%, …) and <unit> (…) - both fronts spent after
+… s in contact; each eases back 2.0 m (the gap between the fronts … m now)`; `[rhythm] first man WALKED BACK in a lull …`; `[rhythm] first WALL SLOT
+shifted back in a lull …` (a held wall); `[rhythm] first swap DURING A LULL …`; `[rhythm] first lull ENDED at … s: … - a front recovered / a new
+charge order / … after … s, the gap opened by … m`. **[summary]** `battle rhythm (step 78) - ROTATION ON: tired front men looked at ON … | OFF …;
+chances …; swaps asked …, done … (slots swapped …), ended: done …, never beside …, refused: …; the bar at the swap: tired …% vs fresh …%; the tired
+man held until the fresh one was beside him: mean … s; men rotated …, during lulls …; the bar of men IN CONTACT ON …% | OFF …%; input frames …` and
+`battle rhythm (step 78) - LULLS ON: started … (front bars at the start mean …%), lasted mean … s, the gap opened mean … m, ended: …; men walked
+back …, wall slots shifted …; both fronts SPENT in contact ON … | OFF …; would have started OFF …; …; cost …`. **Right**: swaps done most of those
+asked (the "never beside" few); the bar of men in contact ON higher than OFF (flip *Tired front men swap with fresh ones* off in a second battle
+to compare); lulls 1-3 in a long grind, 10-30 s each, the gap opened 2.5-4 m, ended mostly "a front recovered"; the walls' men walking back and
+forward again with their slots. **Wrong**: holes in the front during swaps (the fresh man not coming up - "never beside" most of the swaps); men
+swapping back and forth every few seconds; a lull with no gap (the gap opened ~0 - the engine ignored the clamp in a charge: tell Claude); a lull
+that only ends at 30 s every time (the thresholds); men turning their backs; any `[error]` with `rhythm.`.
 
 ---
 

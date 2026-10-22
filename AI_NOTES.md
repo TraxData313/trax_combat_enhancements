@@ -7051,3 +7051,105 @@ ticks). The older smoke steps pin `PressDontPass` off (AthleticsDefaults); the s
 AssemblyGuard (OK), the offline smoke (179 passed), installed as Modules\TraxCombatEnhancements.Dev "Trax Combat Enhancements (dev)"; the game and
 the launcher were not running. `tools\SmartAppControl\loadcheck.ps1`: both DLLs LOADED (`1.2.0+9c1ef28ea6286284108adc5ab80384f5c64fe81b`):
 TraxCombatEnhancements.dll SHA-256 1BD7E573…473A, TraxCombat.Core.dll E024188C…0D2B. Not uploaded. Windows security untouched.
+
+## Step 78 — the battle's rhythm, part 1: rotation and the lull (built 2026-10-22; dev build only, not uploaded)
+
+**Toni (2026-10-22, sketch 1-4, condensed)**: two packs of dogs - they don't want to get hurt but they won't back down, and they won't do reckless
+things like flanking or breaking up. 1. fresh lines clash at full might (as now); 2. THE GRIND - the tired front men stay, neither pushing nor backing,
+while fresher men from behind move forward to pass them and hit; 3. THE LULL - when the surge is spent and nobody routs a distance forms, they back up
+a bit to catch their breath, the more aggressive the order the more they tire first, the most tired go to the back; 4. waves - step 79.
+
+**The swap lever (the v1.4.8 decompile, `%TEMP%\trax_decomp\`)**: `Formation.SwitchUnitLocations(Agent firstUnit, Agent secondUnit)` is PUBLIC
+(Formation.cs 2245): both not detached and at least one positioned → `Arrangement.SwitchUnitLocations` (`LineFormation` 2154: the two swap cells in
+`_units2D`, `ReconstructUnitsFromUnits2D`, the file / rank indexes swapped) or `SwitchUnitLocationsWithUnpositionedUnit`. The game itself uses it
+(BannerBearerLogic, `SwitchFrontUnitTypesToFrontRows`, `TurnBackwards`). `IFormationUnit.FormationFileIndex` is an explicit interface member (cast).
+DECIDED: the slots by the game's call, the WALK by an eighth input wish - the slot swap alone sends both men at once through each other (the line
+opens, the engine's avoidance pushes them sideways). Order: the fresh man up BESIDE first (the tired man held), THEN the swap, then both walk to the
+other's start; the held wall men's slots follow the same places (below), so the wall hold / stand firm / the pull all walk them the same way.
+
+**Built - Core `Rhythm.cs`**: RhythmRules (the master switch FIRST, `AthleticsEnabled`, `RotationEnabled` / `LullEnabled`, 24 numbers; RotationOn /
+LullOn / AnyOn; Describe), RotationPhase (Hold / Approach / Back / In), RotationRefusal, RotationEnd, LullEnd (`Wave` = step 79's seam), RhythmMath
+(TiredBar = max(setting, brace floor), Fresher, AlongAcross, Behind, Covers, the busy action codes - the smoke checks them against
+`Agent.ActionCodeType` -, SideOf, BesidePoint, IsBeside, LullStart / LullRecover by `BraceOrder`, Spent, Recovered, LullAction (walk / clamp / free),
+NewCharge, FrontOf; plumbing MinBehind 0.3, BesideDepth 0.4, BesideSlack 0.6, Arrive 0.4, LullSlack 0.3, Lookahead = PressMath's 0.6, MateFresh 1.5 s,
+Publish 0.5 s, Stale 2 s, ContactGrace 2 s, FrontQuantile 0.9, BrokenShare 0.5), RhythmMind (per man: his last look - key, time, eligible, held -, the
+swap - phase, partner (a `Fighter`), the start places, u, the side, the walk target, a held man's slot override -, the cooldown, the rest, the lull
+wish), RhythmUnits (THE UNIT TABLE: Note per look - place, bar, contact, the foe's unit, the order kind, the player's or not, held; Publish every
+0.5 s - centroid, men, contact men, the ENEMY UNIT by votes else a unit voting for it (a held wall sees none), u toward it (a lull's frozen), the FRONT
+(q90 of the men along u, a world scalar) and the FRONT MEN's mean bar; then each pair once: contact clock, both spent → a lull (each unit's LULL LINE
+= front − ease along its own u, its start bar / men / order group; OFF = WouldStart once a spell), a running lull's ends; GapBetween; LullApplies;
+AheadOfLullLine; IsFrontMan; EndLull (public - the wave seam) / EndAll; Started / Ended event arrays the module reads), RhythmStats (+ the two
+[summary] lines).
+
+**Built - Module**: `AthleticsLogic.Rhythm.cs` - StartRhythm / NoteRhythmSettings (`[rhythm]` lines), TickRhythmSwitch (the rotation off ends every
+swap; both off lets every wish go), TickRhythmUnits (publish + NoteLullEvents - stats and first lines), SteerRhythm (every 0.1 s a man), RhythmLook
+(from FearLook after the press - courage's FearNear: contact = `EnemyDist` ≤ the contact distance, the foe's unit), RhythmLookHeld (from FearSkipped's
+WallHeld note), RhythmSkipped (other gates), RhythmLookCore (the unit's order and player flag read once a unit a period - `FearBody.OrderKind`,
+`IRhythmBody.PlayerUnit`; Note; the lull wish for a non-held man of a unit in a lull; a tired FRONT man → FindMate), FindMate (ONE `CourageBody.Scan`
+of max(contact, behind + file) + 0.2 m into its own `CourageScan` - only for a tired front man off cooldown: a held man's contact, the direction to the
+enemy (courage's nearest enemy, else the scan's, else the unit's u), COVERED by a mate in front = not a front man (no count), the freshest mate right
+behind; OFF = a chance counted), StartSwap / SteerSwap / WalkTo / EndSwap / Finish, SteerRhythmMan (the lull's walk back / clamp, the rest's clamp,
+the release), RhythmWallSlot + RhythmFrameLook (from LookWall), RelookWall (a held man's slot written at once), EndLullByWave (79), RhythmLeftField,
+CloseRhythm, WriteRhythmSummary. `RhythmBody.cs` - IRhythmBody (PlayerUnit, CanSwap, SwapSlots), GameRhythmBody, RhythmBodyDefault. `AiInputHook.cs`
+- the eighth wish `AiInputState.Rhythm` (RhythmMove / X / Y, RhythmClamp / NX / NY, RhythmHoldAttacks, the frame counts), RhythmOn (ModEnabled FIRST,
+AthleticsEnabled, either switch), SetRhythm, ApplyRhythmMove (after the press's walk, before courage / flock / block), ApplyRhythmClamp (after the
+press's clamp), the attack hold + guard in Apply, ApplyKick stands aside for it, Active / Clear. Hooks: Courage.cs (start, settings, the switch, the
+table after the press's, the steer, left field, close, the summary after the press's), Fear.cs (FearLook, FearSkipped), Wall.cs (LookWall: the slot
+right after `Read`, the rhythm's frame pin instead of step 68's pace when not standing firm). TrackedAgent.Rhythm.
+
+**The rules in numbers**: TIRED = bar ≤ max(35 %, his brace floor - charge 20, advance 40, hold 60 ± his roll) - a holding line swaps sooner; FRONT =
+an enemy within 2.5 m and no mate of his within 0.5 × file + 0.1 m sideways in front of him short of the enemy; the MATE = 0.3-1.5 m behind along the
+line to his enemy, within 1 m of his file, 25 points fresher and not tired himself, not busy / walked / swapping / cooling - the freshest; HOLD until
+BESIDE (≥ −0.4 m of his depth, ≤ 1.3 m sideways) - else called off at 3 s; the whole swap ≤ 6 s; rest 6 s; cooldown 12 s. THE LULL: a pair in contact
+(3+ men of both within 2.5 m) for 10 s (a 2 s grace), both fronts' bars below charge 30 / advance 40 / hold 50 % (each its own order) → each line 2 m
+behind its front; the walk back beyond 0.3 m, the clamp within 0.6 m of it; ends - either front + charge 10 / advance 15 / hold 20 points, a new
+charge order, half a side gone (broken), the pair turned elsewhere (lost), 30 s, switched off (your units' switch too) - then 20 s for the pair.
+
+**Priorities (decided)**: backpedal > the wall's pull > the press's walk > the RHYTHM's walk > courage's walk > the flock > the block; clamps: the
+press's, then the rhythm's. The press always wins (never past an enemy line). Stand firm agrees through the slot (a swap's places, the lull's shifted
+slot: its walk back IS the rhythm's move). The brace: the swap's tired man guards only (attacks held + guard; the brace may hold him too). Courage: a
+man walked back is never picked; a surge / punish step-in runs into the lull's clamp - the lull touches MOVEMENT only, attacks never (punish only
+raises the attack decision - a man swings only with an enemy in reach). The fever: a new charge (it arms the fever) ends the lull; its sprint runs
+into the clamp. The fear band / the block hold: overridden for the swap's / the lull's seconds.
+
+**Settings (27; 446 → 473; new keys, no migration - FormatVersion stays 16)**: PLAYER page "How the AI fights" after `PressDontPass`: `RotationEnabled`,
+`LullEnabled`, `LullForPlayerUnits` (all on) - the page 24 → 27 (SettingsPagesTests' list and range 12-27, the smoke's page check; CourageTests' group
+count 85 → 109); Advanced "Courage and cohesion (AI)" after `PressEndSlackMetres`: `RotationTiredPercent` 35, `RotationUseBraceFloor` on,
+`RotationFresherPercent` 25, `RotationBehindMetres` 1.5, `RotationFileMetres` 1.0, `RotationContactMetres` 2.5, `RotationBesideMetres` 0.7,
+`RotationApproachSeconds` 3, `RotationMaxSeconds` 6, `RotationCooldownSeconds` 12, `RotationRestSeconds` 6, `LullContactMen` 3, `LullMinContactSeconds`
+10, `LullStartChargePercent` 30, `LullStartAdvancePercent` 40, `LullStartHoldPercent` 50, `LullRecoverChargePercent` 10, `LullRecoverAdvancePercent`
+15, `LullRecoverHoldPercent` 20, `LullEaseMetres` 2, `LullFrontDepthMetres` 1.5, `LullMaxSeconds` 30, `LullCooldownSeconds` 20, `LullRotates` on.
+
+**Measured offline**: tests 1109 → 1121 (Step78Tests.cs 12). Smoke 179 → 183 (Program.Step78.cs: UseFakeRhythmBody - the action codes, the swap
+lever public; ROTATION - two 12 x 3 lines 1 m apart, the south front at 25 %, its second rank 85 %: OFF chances counted, nobody moves; ON 12 of 12
+swaps done and slotted, the front 0.25 → 0.85, 0 of 1440 file-frames without a man at the front (the line never opened), the tired man held 1.30 s for
+the fresh one; the input frame; a held wall man's slot = beside / his place; THE LULL - two charging lines at 20 %: OFF would-start 1, the gap stays;
+ON no lull before 10 s, then the gap 1.0 → 4.4 m, held, men walked back 72, closed to 1.1 m after refilling (ended "recovered", 11.5 s); a holding
+pair with a fresh third rank - the swaps during the lull brought its front back (recovered); another holding pair ended at once by a NEW charge order;
+your units off = no lull, refused counted; THE COST - 1000 men, 50 swaps: the rhythm's own 0.004 ms a tick, 0 bytes over 300 ticks; the master-switch
+part). The older smoke steps pin both switches off (AthleticsDefaults).
+
+**Seams left for step 79 (waves, readiness, war cries)**: `RhythmUnits.EndLull(key, LullEnd.Wave, now)` / `AthleticsLogic.EndLullByWave(key, now)` -
+a wave ends its unit's lull (counted "a wave" in the summary); the unit table publishes per unit what readiness needs - `FrontBar`, `FrontMen`,
+`ContactMen`, `Enemy`, `UX` / `UY` / `Front`, `Kind`, `InLull` / `LullSince` / `LullLine` - and `RhythmMath.NewCharge` already marks a NEW charge order
+(79's big wave); the per-man `RhythmMind` (his unit, his last look, `NextRotation`, `RestUntil`) - a man resting / just rotated is the natural "not
+ready"; the eighth wish's walk (`RhythmMove`) and clamp are the levers a wave's walk-in can reuse (a wave = lifting the lull's clamp for its men);
+war cries: nothing yet (`Agent.MakeVoice` is 79's).
+
+**Gotchas**
+- Git Bash heredocs with apostrophes again: the long edits went to scratchpad Python files written with the Write tool (`s78_*.py`), CRLF-aware
+  (AiInputHook.cs, defaults.json, TASKS_DONE.md are CRLF; the rest LF).
+- SettingsSchema's insert must find the declaration's END by `");` - a description holds ");" (step 77's "(men fallen);").
+- Courage's scan is CLEARED before FearLook runs - the rotation does its own small scan (only for a tired front man).
+- A second-rank man is within 2.5 m of the enemy too - without the COVERED test he swapped again to the third rank.
+- `RhythmUnits.Live` refuses a time before its last publish (the tests read at the last publish's time).
+
+**UNVERIFIED — only the game can tell (PLAYTEST D43)**
+1. The engine walks the fresh man up BESIDE the tired one in a tight press (the AI's collision avoidance may shove him sideways): `ended: never beside`
+   few against done. Many = widen `RotationBesideMetres` or lengthen `RotationApproachSeconds`.
+2. The wall's slot swap: held men change places cleanly (`slots swapped` = done; no "walked out" men).
+3. A lull's gap holds against the native charge AI (the clamp, as the press's): `the gap opened` 2.5-4 m. ~0 = the clamp not honoured in a charge.
+4. The thresholds against real fronts: lulls 1-3 in a long grind, 10-30 s; ended mostly "a front recovered", not "too long".
+5. The bar of men IN CONTACT ON above OFF (a second battle with the rotation off).
+
+**DEPLOY**: see the TASKS_DONE entry (deploy.ps1 + loadcheck.ps1 results).

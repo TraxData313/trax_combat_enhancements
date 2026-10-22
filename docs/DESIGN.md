@@ -2849,6 +2849,62 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     honours a clamped vector in a charge (as it honours courage's walk and the block's), that the pressing men still fight (strikes in
     contact), that the wall's faces and gaps read right from real men (the [press] lines), the cost in a 1000-man battle.
 
+72. **The battle's rhythm, part 1 - rotation and the lull** (step 78, Toni 2026-10-22, his sketch 1-4: "two packs of dogs - they don't want to
+    get hurt but they won't back down, and they won't do reckless things like flanking or breaking up": 1. fresh lines clash at full might; 2. THE
+    GRIND - the tired front men stay, neither pushing nor backing, while fresher men from behind come forward to pass them and hit; 3. THE LULL -
+    when the surge is spent and nobody routs a distance forms, both back up a bit to catch their breath, the more aggressive the order the more
+    they tire first, the most tired go to the back; 4. waves - step 79). (a) WHO: every AI man on foot courage looks at (both sides; never you,
+    riders, no formation) and every held wall man (step 41 - through the fear flock's FearSkipped note); both parts need the Athletics system (a
+    bar to read). (b) ROTATION (`RotationEnabled`, player page): a FRONT man (an enemy within `RotationContactMetres` 2.5, no mate of his file in
+    front of him short of the enemy - `RhythmMath.Covers`) who is TIRED (bar at or below `RotationTiredPercent` 35 or his own brace floor -
+    `RotationUseBraceFloor`: charge 20, advance 40, hold 60 ± his roll - so a holding line rotates sooner) and a mate of his unit RIGHT BEHIND him
+    (0.3 to `RotationBehindMetres` 1.5 m back along the line to his enemy, within `RotationFileMetres` 1 m of his file) who is `RotationFresherPercent`
+    25 points fresher and not tired, not swinging / staggered / kicking, not walked by another system, not in a swap or its cooldown - the freshest
+    such mate. THE LEVER (decided): the game's PUBLIC `Formation.SwitchUnitLocations(Agent, Agent)` (Formation.cs 2245 → the arrangement's swap -
+    the game uses it for banner bearers and to keep front-unit types in front) for the SLOTS, plus an EIGHTH input wish (`AiInputState.Rhythm`) for
+    the walk - the swap alone would send both men walking at once and open the line. THE STEPS: HOLD - the tired man stands (his movement 0, his
+    melee attacks held, the guard raised) while the fresh man walks to `RotationBesideMetres` 0.7 m beside him at his depth (the side he stands on);
+    BESIDE (no more than 0.4 m behind the tired man's depth, within 0.7 + 0.6 m sideways) - the slots swap and the tired man backs into the fresh man's
+    start facing the enemy (the AI keeps facing its target; the vector is in his own frame) while the fresh man steps into the tired man's; DONE when
+    the tired man is there; he then RESTS `RotationRestSeconds` 6 s (his movement toward the enemy clamped at his new place); neither swaps again for
+    `RotationCooldownSeconds` 12 s. Not beside within `RotationApproachSeconds` 3 = called off (the tired man never left); a whole swap at most
+    `RotationMaxSeconds` 6; the fresh man staggered on the way = called off. THE LINE NEVER OPENS: the front keeps its man at every moment (smoke:
+    0 of 1440 file-frames empty). A held WALL man: his slot (what step 41 writes, stand firm pins and the pull walks him to) IS the swap's place -
+    beside the tired man / the other's start - so the wall hold and the swap agree (`RhythmWallSlot`; the slots swap, nobody walks out); no slots to
+    swap = no swap for a held man. (c) THE LULL (`LullEnabled`, player page): the UNIT TABLE (`RhythmUnits`, every 0.5 s from the same looks): each
+    unit's centroid, its ENEMY UNIT (the one its men see nearest; a held wall sees none - its attackers' votes pair it), the direction to it, its FRONT
+    (the 90th percentile of its men toward it) and its FRONT MEN (within `LullFrontDepthMetres` 1.5) and their mean bar. A PAIR (two units pointing at
+    each other) in contact (`LullContactMen` 3+ men of both in contact) for `LullMinContactSeconds` 10 s (a contact lost under 2 s does not restart it)
+    whose fronts are BOTH spent - below `LullStartChargePercent` 30 / `LullStartAdvancePercent` 40 / `LullStartHoldPercent` 50 by EACH unit's own
+    order (later under a charge, sooner under a hold) - starts a LULL: each unit's LULL LINE = its front − `LullEaseMetres` 2 along its direction to
+    the enemy; a man ahead of it (0.3 m slack) walks back to it facing the enemy, a man at it is clamped (his final movement toward the enemy taken
+    out), the back ranks free to come up to it; a held wall's SLOTS shift back by the ease (stand firm walks its men there facing the enemy; the engine's
+    frame pinned with step 68's call); the gap between the fronts opens ~3.5 m (smoke 1.0 → 4.4 m). DURING it (`LullRotates`) a tired front man swaps
+    with a fresher man behind him with no enemy in reach. IT ENDS when either front regains `LullRecoverChargePercent` 10 / `LullRecoverAdvancePercent`
+    15 / `LullRecoverHoldPercent` 20 points above its start bar (shorter under a charge), on a NEW charge order (the order kind turning into the charge
+    group), a side BROKEN (its men looked at below half the start - a rout), the pair dissolved (one faces another unit), `LullMaxSeconds` 30, the
+    switch off - then `LullCooldownSeconds` 20 s for that pair; step 79's waves end it through `EndLull(key, LullEnd.Wave)` (the seam). YOUR units take
+    part only while `LullForPlayerUnits` (player page, on); you yourself are never moved. Never sprinting, never a back turned: the walk is a backpedal
+    in his own frame, and the ease is never cumulative (each lull from where its front stands, at most the ease). (d) PRIORITIES (decided): a step
+    back's backpedal > the wall's pull > the press's walk > THE RHYTHM'S WALK (a swap, a lull's walk back) > courage's walk back > the fear flock > the
+    block hold; the clamps last - the press's, then the rhythm's (a lull's line, a rested man's place); so the press always wins (nobody walks past an
+    enemy line), a swap or a lull overrides the fear band and the block hold for its seconds. Stand firm: the slots agree (the swap's places, the
+    lull's shifted slot) - its walk back takes him exactly where the rhythm wants him. The brace: the tired man of a swap guards only (his melee
+    attacks held, the guard up - the brace may already hold him). Courage: a man courage walks back is never picked (`OwnWish`); a surge or a punish
+    step-in toward the enemy is CLAMPED at the lull line - the lull governs only MOVEMENT, attacks are never touched: punish's raised eagerness makes a
+    man swing only when an enemy is in reach. The fever: a new charge order (which arms it) ends the lull; a fever sprint runs into the clamp.
+    (e) 27 settings: `RotationEnabled`, `LullEnabled`, `LullForPlayerUnits` on the PLAYER page (27 settings), 24 Advanced in "Courage and cohesion
+    (AI)"; new keys, no migration (FormatVersion stays 16). Gate: `ModEnabled` FIRST, `AthleticsEnabled`, then each part's switch; off = every swap
+    ended and every wish let go at once, a lull ended at the next publish, the looks still measure (chances, spent pairs, would-start). (f) THE LOG:
+    `[rhythm]` first-time lines (mission start, the first chance OFF, the first swap asked / beside / done / not finished, the first refusal, the first
+    LULL, the first man walked back, the first wall slot shifted, the first swap during a lull, the first lull ended) and two [summary] "battle rhythm"
+    lines (rotation: tired front men looked at ON | OFF, chances, swaps asked / done / slots swapped / ended by / refused by reason, the bar of tired vs
+    fresh, the hold's wait, men rotated and during lulls, the bar of men IN CONTACT ON vs OFF, input frames; lulls: started, front bars at the start,
+    duration, the gap opened, ends by reason, men walked back, wall slot shifts, both fronts spent ON vs OFF, would-start OFF, refused for your units,
+    cost). (g) UNVERIFIED in game: that the engine walks a man by the swap's vector in a tight press (the AI's collision avoidance), that the slot swap
+    makes the wall's men change places cleanly, that a lull's gap holds against the native charge AI (the clamp), the front bars' thresholds against
+    real battles - PLAYTEST D43.
+
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),
 `HudRefreshSeconds`, `FormationStatsRefreshSeconds` came out of step 2's research

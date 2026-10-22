@@ -153,6 +153,7 @@ spear's reach for a moment, and the men in the back ranks of a wall keep their s
 their spears*). **Thrusts pass a friend:** a spear thrust that touches a comrade carries on to the enemy behind him instead of stopping
 on him - swings still stop (Advanced page, *Battle pace (AI)*).
 **Press, don't pass:** soldiers fighting an enemy line press against its front instead of walking round its ends or through it - they go round only when their own unit is clearly wider and moves as a mass, through only where a real gap has opened, and a man who got behind it walks back round its end (player page: *Press, don't pass*).
+**The battle's rhythm:** in the grind a worn-out man at the front swaps places with a fresher mate right behind him - the fresh man steps up beside him first, so the line never opens - and when the front men of BOTH sides are spent and nobody breaks, both fronts ease back a couple of metres, face each other and catch their breath while the tired go to the back; it ends when one side has recovered or gets a new charge order (player page: *Tired front men swap with fresh ones*, *Lulls when both fronts are spent*, *Lulls: your units ease back too*).
 
 **The wall pushes as one.** Order a shield wall to **advance** (F1, then F4) and in the base game its men each walk to
 a place at the enemy's line — the ones free to move walk on into the enemy while their mates fight, and the wall breaks

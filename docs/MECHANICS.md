@@ -1545,6 +1545,47 @@ its men sideways within the enemy line's ends: Toni's recruits ±15.3 m → ±11
 `PressRoundEndMetres` 2 (0.5-10), `PressWinPercent` 50 (0-100), `PressLineMinMen` 8 (3-200), `PressLineInSlotPercent` 60 (0-100),
 `PressBandMarginMetres` 1 (0-10), `PressBlockEndMetres` 0 (0-10), `PressEndSlackMetres` 1 (0-10).</sub>
 
+**The battle's rhythm (step 78).** Two packs of dogs: they don't want to get hurt, they won't back down, and they won't do reckless things. In
+THE GRIND a worn-out front man swaps with a fresher mate right behind him; when the men at the front of two units fighting each other are BOTH
+spent and nobody breaks, a LULL: both fronts ease back a couple of metres, facing each other, and catch their breath while the tired go to the back.
+
+| The swap | |
+|---|---|
+| Who | an AI man on foot at the FRONT (an enemy within 2.5 m, no mate of his in front of him), tired: his bar at or below 35% or his brace floor (charge 20, advance 40, hold 60 ± his roll) |
+| With whom | the freshest mate of his unit 0.3-1.5 m right behind him (within 1 m of his file), 25+ points fresher, not tired, not swinging / staggered / walked by another system |
+| How | the tired man HOLDS and guards (no swings) while the fresh man steps up 0.7 m beside him; then the slots swap (the game's own call) and the tired man backs into the fresh man's place facing the enemy |
+| Never | in a swing or a stagger; for you or a rider; more than once per man per 12 s; the tired man walks forward past his new place for 6 s |
+| Called off | the fresh man not beside within 3 s (the tired man never left), a whole swap over 6 s, the fresh man staggered |
+| Shield walls | the slots swap - the wall hold and stand firm walk each man to his new place; nobody walks out |
+
+| The lull | charge | advance | hold |
+|---|---|---|---|
+| Starts when BOTH fronts' mean bar (the front men: within 1.5 m of the front) is below | 30% | 40% | 50% |
+| ... after the pair has fought at least | 10 s | 10 s | 10 s |
+| Ends when a front has regained | +10 points | +15 | +20 |
+| Each front eases back | 2 m | 2 m | 2 m |
+
+Each side uses its own order. A lull also ends on a NEW charge order, when a side breaks (half its men gone), after 30 s, or when the two units turn
+to other enemies; the same pair waits 20 s before the next. During it the tired front men swap with fresher men behind them (no enemy in reach
+needed). In the smoke two charging lines at 20% opened from 1.0 m to 4.4 m and closed again when they refilled. Your own units ease back too unless
+you turn it off; you yourself are never moved.
+
+| Who wins when they disagree | |
+|---|---|
+| Press, don't pass | always - nobody walks past an enemy line |
+| A step back, the wall's pull | win (a held wall man's slot already agrees with the swap and the lull) |
+| The swap / the lull's walk back | win over courage's walk back, the fear band and the block hold for their seconds |
+| Attacks | never touched by the lull; the tired man of a swap only defends |
+
+<sub>Settings: *Tired front men swap with fresh ones* = `RotationEnabled`, *Lulls when both fronts are spent* = `LullEnabled`, *Lulls: your units
+ease back too* = `LullForPlayerUnits` (player page, How the AI fights; on; live); Advanced page, *Courage and cohesion (AI)*, live:
+`RotationTiredPercent` 35 (0-100), `RotationUseBraceFloor` (on), `RotationFresherPercent` 25 (5-100), `RotationBehindMetres` 1.5 (0.5-4),
+`RotationFileMetres` 1 (0.2-3), `RotationContactMetres` 2.5 (1-6), `RotationBesideMetres` 0.7 (0.3-2), `RotationApproachSeconds` 3 (0.5-10),
+`RotationMaxSeconds` 6 (2-20), `RotationCooldownSeconds` 12 (1-120), `RotationRestSeconds` 6 (0-30), `LullContactMen` 3 (1-50),
+`LullMinContactSeconds` 10 (0-120), `LullStartChargePercent` 30, `LullStartAdvancePercent` 40, `LullStartHoldPercent` 50 (0-100),
+`LullRecoverChargePercent` 10, `LullRecoverAdvancePercent` 15, `LullRecoverHoldPercent` 20 (1-100), `LullEaseMetres` 2 (0.5-8),
+`LullFrontDepthMetres` 1.5 (0.5-5), `LullMaxSeconds` 30 (5-180), `LullCooldownSeconds` 20 (0-300), `LullRotates` (on).</sub>
+
 ## 15. What you see on screen
 
 **Your Athletics bar** sits under your health, with the white peak line at 75%. Its colour:
