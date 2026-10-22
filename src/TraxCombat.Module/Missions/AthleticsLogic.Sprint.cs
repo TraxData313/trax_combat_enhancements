@@ -204,7 +204,7 @@ namespace TraxCombat.Missions
         private void PollOrdersFor(double now, in SprintRules s, in AthleticsRules r, bool sprintAi)
         {
             var fr = FeverRules.From(TraxSettings.Shared);
-            if (!sprintAi && !fr.Enabled)
+            if (!sprintAi && !fr.Enabled && !WarCryRules.From(TraxSettings.Shared).On) // step 79: the war cries read the same poll
             {
                 ForgetOrders();
                 return;
@@ -240,6 +240,7 @@ namespace TraxCombat.Missions
                 _slotKind[slot] = kind;
                 _slotChanged[slot] = true;
                 any = true;
+                if (SprintMath.Group(kind) == SprintOrder.Charge && SprintMath.Group(was) != SprintOrder.Charge) NoteChargeOrder(slot, now); // step 79
                 var group = SprintMath.Group(kind);
                 _sprintStats.AddOrderSeen(group);
                 if (!_firstOrderLogged)
@@ -280,6 +281,14 @@ namespace TraxCombat.Missions
                 {
                     Failed("fever.order", e);
                 }
+            }
+            try
+            {
+                ChargeRoars(now); // step 79: the units that got a new charge order roar (sound only)
+            }
+            catch (Exception e)
+            {
+                Failed("warcry.charge", e);
             }
             for (int k = 0; k < _slotChanged.Length; k++) _slotChanged[k] = false;
         }

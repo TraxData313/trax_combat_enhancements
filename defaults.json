@@ -166,6 +166,15 @@
   // (true or false)
   "RestEnabled": true,
 
+  // Soldiers shout in battle: a man who has caught his breath and goes back into the fight may
+  // give a war cry, and the mates who go in with him may answer; when a unit gets a charge
+  // order - yours or the enemy general's - part of it roars, staggered, never all together.
+  // Limited per man, per unit and for the whole battle, so a big battle never becomes a choir.
+  // Sound only: it changes nothing about how anyone fights. Never you, the fleeing or the dead.
+  // The numbers: Advanced page, Courage and cohesion (AI).
+  // (true or false)
+  "WarCriesEnabled": true,
+
   // Every AI soldier on foot in a formation weighs his mates against the enemies near him - by
   // how tough each one is (armour, level, wounds). Short of courage he is TIMID: far from his
   // mates he walks back to a bigger group of his side, facing the enemy (sprinting when it is
@@ -1577,6 +1586,51 @@
   // fight, by side. It never moves anybody.
   // (range 0.5 to 10.0)
   "RestGapDiagnosticMetres": 2.0,
+
+  // With "War cries" on (player page): the chance a rested man shouts when he goes back into
+  // the fight by his own ready mark.
+  // (range 0 to 100)
+  "WarCryBackInPercent": 35,
+
+  // The chance a resting mate who goes back in with him ("a mate going in") answers his cry.
+  // (range 0 to 100)
+  "WarCryAnswerPercent": 20,
+
+  // An answer comes at a random moment between 0 and this many seconds after - never in sync.
+  // (range 0.0 to 3.0)
+  "WarCryAnswerDelaySeconds": 1.0,
+
+  // When a unit gets a new charge order (yours or the enemy general's), each of its men has
+  // this chance to be one of its shouters.
+  // (range 0 to 100)
+  "WarCryChargeSharePercent": 40,
+
+  // A unit's shouters on one charge order at most, however big it is. 0 = no roar on a charge.
+  // (range 0 to 60)
+  "WarCryChargeMaxMen": 12,
+
+  // Each shouter's cry comes at a random moment between 0 and this many seconds after the order
+  // - a ragged roar, not one voice.
+  // (range 0.0 to 5.0)
+  "WarCryChargeStaggerSeconds": 1.5,
+
+  // A unit roars on a charge order at most once in this many seconds (an order flipped back and
+  // forth roars once).
+  // (range 0.0 to 120.0)
+  "WarCryChargeUnitCooldownSeconds": 15.0,
+
+  // One soldier shouts at most once in this many seconds, whatever the reason.
+  // (range 0.0 to 60.0)
+  "WarCryManCooldownSeconds": 8.0,
+
+  // One unit's cries in any one second at most; the rest stay silent.
+  // (range 1 to 30)
+  "WarCryUnitPerSecond": 8,
+
+  // The whole battle's cries in any one second at most - a thousand men never make a choir or
+  // flood the sound.
+  // (range 1 to 60)
+  "WarCryBattlePerSecond": 16,
 
   // ==================== Cavalry flocking (AI) ====================
   // A rider's EAGERNESS is his Athletics bar (halved when he is alone among enemies, below). At

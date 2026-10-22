@@ -289,6 +289,7 @@ namespace TraxCombat.Missions
         private void GoIn(TrackedAgent st, RestIn why, double now)
         {
             EndRest(st, why, now, native: true);
+            if (why == RestIn.OwnMark) WarCryEvent(st, WarCryCause.BackIn, now); // step 79: sound only - he may shout going back in
             if (!_firstRestIn)
             {
                 _firstRestIn = true;
@@ -335,6 +336,7 @@ namespace TraxCombat.Missions
                                 + RestStats.Pct(om.ReadyCapped) + ", the chance " + RestStats.Pct(p) + ") went in with " + Name(src) + " " + F1(Math.Sqrt(dx * dx + dy * dy)) + " m away");
                         }
                         EndRest(o, RestIn.Contagion, now, native: true);
+                        WarCryEvent(o, WarCryCause.Answer, now); // step 79: he may answer
                         _restGoIn.Add(o);
                     }
                 }

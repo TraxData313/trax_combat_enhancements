@@ -476,6 +476,18 @@ namespace TraxCombat.Core
         public int RestContagionMaxPercent => GetInt(SettingsSchema.RestContagionMaxPercent);
         public int RestContagionFloorPoints => GetInt(SettingsSchema.RestContagionFloorPoints);
         public float RestGapDiagnosticMetres => GetFloat(SettingsSchema.RestGapDiagnosticMetres);
+        // step 79: war cries
+        public bool WarCriesEnabled => GetBool(SettingsSchema.WarCriesEnabled);
+        public int WarCryBackInPercent => GetInt(SettingsSchema.WarCryBackInPercent);
+        public int WarCryAnswerPercent => GetInt(SettingsSchema.WarCryAnswerPercent);
+        public float WarCryAnswerDelaySeconds => GetFloat(SettingsSchema.WarCryAnswerDelaySeconds);
+        public int WarCryChargeSharePercent => GetInt(SettingsSchema.WarCryChargeSharePercent);
+        public int WarCryChargeMaxMen => GetInt(SettingsSchema.WarCryChargeMaxMen);
+        public float WarCryChargeStaggerSeconds => GetFloat(SettingsSchema.WarCryChargeStaggerSeconds);
+        public float WarCryChargeUnitCooldownSeconds => GetFloat(SettingsSchema.WarCryChargeUnitCooldownSeconds);
+        public float WarCryManCooldownSeconds => GetFloat(SettingsSchema.WarCryManCooldownSeconds);
+        public int WarCryUnitPerSecond => GetInt(SettingsSchema.WarCryUnitPerSecond);
+        public int WarCryBattlePerSecond => GetInt(SettingsSchema.WarCryBattlePerSecond);
         // step 55: cavalry flocking
         public bool CavalryFlockEnabled => GetBool(SettingsSchema.CavalryFlockEnabled);
         public int CavalryFlockFreeEagerPercent => GetInt(SettingsSchema.CavalryFlockFreeEagerPercent);

@@ -372,7 +372,7 @@ public class CourageTests
         Assert.Equal(SettingsSchema.FeverGroup.Order + 1, SettingsSchema.CourageGroup.Order);
         Assert.Equal(SettingsSchema.CourageGroup.Order + 1, SettingsSchema.CavalryFlockGroup.Order); // step 55: cavalry flocking right after courage
         var keys = SettingsSchema.InGroup(SettingsSchema.CourageGroup).Select(p => p.Key).ToList();
-        Assert.Equal(113, keys.Count);                                           // the 29th, CourageEnabled, on the player page (step 59); step 67: + 25 (the fear flock); step 69: + 6 (winning calms); step 70: + 11 (the band, the strike, the lone runner); step 77: + 15 (press, don't pass); step 78: + 24 (the rotation and the lull); step 78b: + 16 (the clock, the gap, no wrapping); step 78c: - 27 (the lull's) + 15 (the rest's)
+        Assert.Equal(123, keys.Count);                                           // the 29th, CourageEnabled, on the player page (step 59); step 67: + 25 (the fear flock); step 69: + 6 (winning calms); step 70: + 11 (the band, the strike, the lone runner); step 77: + 15 (press, don't pass); step 78: + 24 (the rotation and the lull); step 78b: + 16 (the clock, the gap, no wrapping); step 78c: - 27 (the lull's) + 15 (the rest's); step 79: + 10 (war cries)
         Assert.Equal("CourageRadiusMetres", keys[0]);
         Assert.Same(SettingsSchema.PlayerAiGroup, SettingsSchema.CourageEnabled.Group);
         Assert.All(SettingsSchema.InGroup(SettingsSchema.CourageGroup), p => Assert.Equal(ApplyTiming.Live, p.Timing));

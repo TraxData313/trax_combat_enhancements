@@ -154,6 +154,11 @@ namespace TraxCombat.Core
             "Tired men step back and rest",
             "Each AI soldier on foot decides for himself: when his Athletics falls below his own tired mark in the fight he stops pushing and backs a few steps out of the enemy's reach - walking backwards, facing the enemy, guard up, striking only at an enemy who comes close - and waits until he has his breath back (his own ready mark), then goes in again. Every man rolls his own marks, so they never move together; if a mate right beside him goes back in, he may go with him a little early. When both sides are spent a gap opens by itself; when only one side is, the fresh side presses. A man in a shield wall rests in his place - he never leaves the wall. Nothing is scripted for a whole unit, and your orders do not drag resting men in. Both sides, never you, never riders; needs the Athletics system. Off: the game's own - the log still measures. The numbers: Advanced page, Courage and cohesion (AI).");
 
+        // Step 79 (Toni 2026-10-22: battles that sound alive): WarCryMath, AI_NOTES "Step 79", DESIGN decision 75 - SOUND ONLY.
+        public static readonly ParamDef WarCriesEnabled = Bool("WarCriesEnabled", PlayerAiGroup,
+            "War cries",
+            "Soldiers shout in battle: a man who has caught his breath and goes back into the fight may give a war cry, and the mates who go in with him may answer; when a unit gets a charge order - yours or the enemy general's - part of it roars, staggered, never all together. Limited per man, per unit and for the whole battle, so a big battle never becomes a choir. Sound only: it changes nothing about how anyone fights. Never you, the fleeing or the dead. The numbers: Advanced page, Courage and cohesion (AI).");
+
         public static readonly ParamDef CourageEnabled = Bool("CourageEnabled", PlayerAiGroup,
             "Courage and cohesion",
             "Every AI soldier on foot in a formation weighs his mates against the enemies near him - by how tough each one is (armour, level, wounds). Short of courage he is TIMID: far from his mates he walks back to a bigger group of his side, facing the enemy (sprinting when it is far); among them he holds and strikes only what comes within reach - no lone man circling your shield wall, no exhausted man standing among four enemies. A big enough crowd stays brave and wraps around a line as a mass. Never you, never riders, never men held in a shield wall. Works without the Athletics system (then tiredness does not count). Off: the game's own bravery - the log still measures, so flipping it mid-battle compares the two.");
@@ -1199,6 +1204,47 @@ namespace TraxCombat.Core
             "Rest: the log counts gaps of (m)",
             "The log only: how often a natural gap at least this wide stood between two fronts in a fight, by side. It never moves anybody.");
 
+        // Step 79: war cries (WarCryMath) - sound only.
+        public static readonly ParamDef WarCryBackInPercent = Int("WarCryBackInPercent", 0, 100, CourageGroup,
+            "War cries: back in after a rest (%)",
+            "With \"War cries\" on (player page): the chance a rested man shouts when he goes back into the fight by his own ready mark.");
+
+        public static readonly ParamDef WarCryAnswerPercent = Int("WarCryAnswerPercent", 0, 100, CourageGroup,
+            "War cries: a mate answers (%)",
+            "The chance a resting mate who goes back in with him (\"a mate going in\") answers his cry.");
+
+        public static readonly ParamDef WarCryAnswerDelaySeconds = Float("WarCryAnswerDelaySeconds", 0, 3, CourageGroup,
+            "War cries: answers within (s)",
+            "An answer comes at a random moment between 0 and this many seconds after - never in sync.");
+
+        public static readonly ParamDef WarCryChargeSharePercent = Int("WarCryChargeSharePercent", 0, 100, CourageGroup,
+            "War cries: on a charge order, share that roars (%)",
+            "When a unit gets a new charge order (yours or the enemy general's), each of its men has this chance to be one of its shouters.");
+
+        public static readonly ParamDef WarCryChargeMaxMen = Int("WarCryChargeMaxMen", 0, 60, CourageGroup,
+            "War cries: shouters per charge at most",
+            "A unit's shouters on one charge order at most, however big it is. 0 = no roar on a charge.");
+
+        public static readonly ParamDef WarCryChargeStaggerSeconds = Float("WarCryChargeStaggerSeconds", 0, 5, CourageGroup,
+            "War cries: charge roar spread over (s)",
+            "Each shouter's cry comes at a random moment between 0 and this many seconds after the order - a ragged roar, not one voice.");
+
+        public static readonly ParamDef WarCryChargeUnitCooldownSeconds = Float("WarCryChargeUnitCooldownSeconds", 0, 120, CourageGroup,
+            "War cries: one charge roar a unit per (s)",
+            "A unit roars on a charge order at most once in this many seconds (an order flipped back and forth roars once).");
+
+        public static readonly ParamDef WarCryManCooldownSeconds = Float("WarCryManCooldownSeconds", 0, 60, CourageGroup,
+            "War cries: one cry a man per (s)",
+            "One soldier shouts at most once in this many seconds, whatever the reason.");
+
+        public static readonly ParamDef WarCryUnitPerSecond = Int("WarCryUnitPerSecond", 1, 30, CourageGroup,
+            "War cries: a unit's cries a second at most",
+            "One unit's cries in any one second at most; the rest stay silent.");
+
+        public static readonly ParamDef WarCryBattlePerSecond = Int("WarCryBattlePerSecond", 1, 60, CourageGroup,
+            "War cries: the battle's cries a second at most",
+            "The whole battle's cries in any one second at most - a thousand men never make a choir or flood the sound.");
+
         // ------------------------------------------------------------------ cavalry flocking (step 55)
         // Anton, 2026-10-18: fresh, eager riders dance as in vanilla; the more tired a rider, the bigger the group of his own kind he wants
         // before he attacks again - the flock rides on, pulled toward the unit's centre by its tired riders and toward the goal by its rested
@@ -2196,7 +2242,7 @@ namespace TraxCombat.Core
             // the player page's six groups (step 59)
             DamageRandomPercent, DamageReductionPercent,
             AthleticsEnabled, CostPerBlow, HeroCostMultiplier,
-            AiAggressionFreshPercent, AiAggressionExhaustedPercent, FeverEnabled, ShieldWallHoldsSlots, ShieldWallStepOutMetres, ShieldWallStandFirm, SpearPreferenceEnabled, PressDontPass, RotationEnabled, RestEnabled, CourageEnabled, CavalryFlockEnabled, LineDisciplineForPlayer,
+            AiAggressionFreshPercent, AiAggressionExhaustedPercent, FeverEnabled, ShieldWallHoldsSlots, ShieldWallStepOutMetres, ShieldWallStandFirm, SpearPreferenceEnabled, PressDontPass, RotationEnabled, RestEnabled, WarCriesEnabled, CourageEnabled, CavalryFlockEnabled, LineDisciplineForPlayer,
             ImpactEnabled, ImpactOnPlayerPercent,
             SprintEnabled, SprintKey,
             ShowPlayerBar, AltMarksEveryone, ImpactShowMessages,
@@ -2246,6 +2292,8 @@ namespace TraxCombat.Core
             RestTiredMinPercent, RestTiredMaxPercent, RestReadyChargeMinPercent, RestReadyChargeMaxPercent, RestReadyAdvanceMinPercent, RestReadyAdvanceMaxPercent,
             RestReadyHoldMinPercent, RestReadyHoldMaxPercent, RestReachMetres, RestMaxBackMetres, RestDefendMetres, RestContagionMetres, RestContagionMaxPercent,
             RestContagionFloorPoints, RestGapDiagnosticMetres,
+            WarCryBackInPercent, WarCryAnswerPercent, WarCryAnswerDelaySeconds, WarCryChargeSharePercent, WarCryChargeMaxMen, WarCryChargeStaggerSeconds,
+            WarCryChargeUnitCooldownSeconds, WarCryManCooldownSeconds, WarCryUnitPerSecond, WarCryBattlePerSecond,
             CavalryFlockFreeEagerPercent, CavalryFlockHysteresisPercent, CavalryFlockMidEagerPercent, CavalryFlockMidGroupSize,
             CavalryFlockExhaustedSharePercent, CavalryFlockTimid, CavalryFlockTimidRadiusMetres, CavalryFlockGatherRadiusMetres, CavalryFlockSeparationMetres,
             CavalryFlockLeadSeconds, CavalryFlockTightenWeights, CavalryFlockWaveSeconds, CavalryFlockMaxSeconds,

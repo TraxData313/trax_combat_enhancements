@@ -304,6 +304,10 @@ namespace TraxCombat.Missions
         /// <summary>Step 78: his rhythm - his last look (unit, time), his swap, his rest, his lull wish (Core <see cref="RhythmMind"/>).</summary>
         public readonly RhythmMind Rhythm = new RhythmMind();
 
+        /// <summary>Step 79: he may shout again from this time on (his own war-cry limit), when he last shouted, and a cry of his waits in the queue.</summary>
+        public double WarCryNext = double.NegativeInfinity, WarCryLast = double.NaN;
+        public bool WarCryQueued;
+
         /// <summary>Step 76: his spear preference (RBM's two timers, his loadout, his look clock) - the stat decorator reads <c>Spear.Favored</c> /
         /// <c>Spear.Close</c>.</summary>
         public SpearMind Spear = SpearMind.Fresh;

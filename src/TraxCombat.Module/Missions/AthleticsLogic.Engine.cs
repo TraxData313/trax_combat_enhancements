@@ -167,6 +167,7 @@ namespace TraxCombat.Missions
             StartKickBrace(); // step 65
             StartAiKicks(); // step 65
             StartSpears(); // step 76
+            StartWarCries(); // step 79
         }
 
         private void StopAthletics()
@@ -443,6 +444,7 @@ namespace TraxCombat.Missions
             {
                 Failed("sprint.tick", e);
             }
+            TickWarCries(now); // step 79: the queued cries due now (its own try) - after the order poll queued a charge's
 
             int polled = 0;
             int budget = MaxRecomputesPerTick;
@@ -1138,6 +1140,7 @@ namespace TraxCombat.Missions
                 NotePunishSettings(settings);     // step 54: the AI punishing a window (the factors re-targeted below)
                 NoteKickBraceSettings(settings);  // step 65: the kicked man braces
                 NoteAiKickSettings(settings);     // step 65: the AI kicks and bashes
+                NoteWarCrySettings(settings);     // step 79: war cries
 
                 if (r.PoolFloor != _seenPoolFloor || r.PoolPerSkill != _seenPoolPerSkill)
                 {

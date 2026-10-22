@@ -819,6 +819,7 @@ namespace TraxCombat.Missions
             WriteBlockSummary(); // step 74
             WritePressSummary(); // step 77
             WriteRhythmSummary(); // step 78
+            WriteWarCrySummary(); // step 79
         }
     }
 }
