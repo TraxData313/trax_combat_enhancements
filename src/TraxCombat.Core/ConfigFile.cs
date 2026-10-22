@@ -108,8 +108,11 @@ namespace TraxCombat.Core
         /// CostPerWrongSideShieldBlock 2 → 5, CostPerShieldBlock 1 → 2 in a file still holding them; a tuned value kept and noted), 15 = step 71
         /// (Toni, 2026-10-19 - "they need to tire faster still": CostPerBlow 8 → 10, CostPerKickOrBash 5 → 6, CostPerWrongSideShieldBlock 5 → 6,
         /// CostPerShieldBlock 2 → 3, CostPerWeaponParry 2 → 3 in a file still holding them; a tuned value kept and noted; the refill
-        /// unchanged).</summary>
-        public const int FormatVersion = 16;
+        /// unchanged), 16 = step 74 (the line-discipline map one rank deeper), 17 = step 78b (Toni's 225 v 229 battle of 2026-10-22 - "between the
+        /// two fronts, never, not for a sec": a lull lasts until the unit's men in the fight have regained more - LullRecoverChargePercent 10 → 20,
+        /// LullRecoverAdvancePercent 15 → 25, LullRecoverHoldPercent 20 → 30 in a file still holding them; a tuned value kept and noted; the wrap's
+        /// own switch PressWrapAllowed is a new key, off).</summary>
+        public const int FormatVersion = 17;
 
         /// <summary>The meta key holding <see cref="FormatVersion"/> - not a setting.</summary>
         public const string VersionKey = "ConfigVersion";
@@ -511,6 +514,16 @@ namespace TraxCombat.Core
                 MoveOrKeepIfMoved(read, SettingsSchema.LineDisciplineRanksT3, 3, deeper + " - a tier-3 man holds 4 ranks", from, defaultOf);
                 MoveOrKeepIfMoved(read, SettingsSchema.LineDisciplineRanksT4, 2, deeper + " - a tier-4 man holds 3 ranks", from, defaultOf);
                 MoveOrKeepIfMoved(read, SettingsSchema.LineDisciplineRanksT5, 1, deeper + " - a veteran holds 2 ranks (60 of them: at most 30 files)", from, defaultOf);
+            }
+            if (from < 17)
+            {
+                // step 78b: a lull lasts until the unit's men in the fight have regained more (Toni 2026-10-22: the lull never showed); the keys exist
+                // since format 16 (step 78 added them with no migration) - a file without a key simply gets the new default; a hand-set value is kept
+                // and said once
+                const string breather = "step 78b, Toni: the lull must show - a breather lasts until the men in the fight have caught more breath";
+                MoveOrKeepIfMoved(read, SettingsSchema.LullRecoverChargePercent, 10, breather + " - a charging unit regains 20 points", from, defaultOf);
+                MoveOrKeepIfMoved(read, SettingsSchema.LullRecoverAdvancePercent, 15, breather + " - an advancing unit regains 25 points", from, defaultOf);
+                MoveOrKeepIfMoved(read, SettingsSchema.LullRecoverHoldPercent, 20, breather + " - a holding unit regains 30 points", from, defaultOf);
             }
             // steps 36 / 37: the retired AI sprint keys - in ANY format (they are only ever steps 33-36's, and a hand-pasted one
             // goes the same way)

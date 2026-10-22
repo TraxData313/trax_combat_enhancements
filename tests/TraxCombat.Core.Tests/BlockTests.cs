@@ -213,15 +213,15 @@ public class BlockTests
     [Fact]
     public void A_format_4_file_holding_the_old_refill_curve_and_run_floor_gets_the_new_ones_once()
     {
-        Assert.Equal(16, ConfigFile.FormatVersion);
+        Assert.Equal(17, ConfigFile.FormatVersion);
         // Anton's config.json of 2026-09-29 (read only): format 4, the run floor 0.6, the curve 50, the animation 85
         string old = "{ \"ConfigVersion\": 4, \"MinMoveSpeedMultiplier\": 0.6, \"RegenRateNearFullPercent\": 50, \"AttackAnimationMinPercent\": 85, "
                      + "\"MountMinSpeedMultiplier\": 0.6, \"CostPerKickOrBash\": 3.0, \"DamageRandomPercent\": 40 }";
         var read = ConfigFile.Read(old);
         var notes = ConfigFile.Migrate(read, Shipped22);
         Assert.Equal(2, notes.Count);
-        Assert.Contains("RegenRateNearFullPercent: 50 → 100 (format 4 → 16, the old default; step 22, Anton for slower battles: the refill is a straight line again - empty to full in the refill time at a walk, no faster when low)", notes);
-        Assert.Contains("MinMoveSpeedMultiplier: 0.6 → 0.3 (format 4 → 16, the old default; step 22, Anton for slower battles: an empty man runs at 30% of his pace again)", notes);
+        Assert.Contains("RegenRateNearFullPercent: 50 → 100 (format 4 → 17, the old default; step 22, Anton for slower battles: the refill is a straight line again - empty to full in the refill time at a walk, no faster when low)", notes);
+        Assert.Contains("MinMoveSpeedMultiplier: 0.6 → 0.3 (format 4 → 17, the old default; step 22, Anton for slower battles: an empty man runs at 30% of his pace again)", notes);
         Assert.Equal(0.3, read.Values["MinMoveSpeedMultiplier"], 9);
         Assert.Equal(100, read.Values["RegenRateNearFullPercent"]);
         Assert.Equal(85, read.Values["AttackAnimationMinPercent"]);      // format 4 is past step 20b

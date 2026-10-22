@@ -140,7 +140,7 @@ namespace TraxCombat.Core
         // the middle): PressMath, AI_NOTES "Step 77", DESIGN decision 71.
         public static readonly ParamDef PressDontPass = Bool("PressDontPass", PlayerAiGroup,
             "Press, don't pass",
-            "AI soldiers on foot fighting an enemy LINE - a shield wall, a line or a block whose men hold their places - press against its front instead of walking past it: no stepping round its ends or through it to come at it from behind. They go round an end only when their own unit is clearly wider than the enemy line and they move with it as a mass, and through it only where a real gap has opened (men fallen); a man who got behind it anyway walks back round its nearest end. The back ranks stay behind their own front rank, and frightened men bunch deeper instead of spreading wider than the line they face. Both sides, never you, never riders; they still fight whatever is in reach. Off: the game's own - the log still measures, so flipping it mid-battle compares the two. The numbers: Advanced page, Courage and cohesion (AI).");
+            "AI soldiers on foot fighting an enemy LINE - a shield wall, a line or a block whose men hold their places - press against its front instead of walking past it: no stepping round its ends or through it to come at it from behind. They never go round its ends - the wings of a wider unit bend toward the enemy's end and stand off there, facing it - and go through it only where a real gap has opened (men fallen); a man who got behind it anyway walks back round its nearest end. A unit you (or the enemy general) order to a place beside the line still goes there. The back ranks stay behind their own front rank, and frightened men bunch deeper instead of spreading wider than the line they face. Both sides, never you, never riders; they still fight whatever is in reach. Off: the game's own - the log still measures, so flipping it mid-battle compares the two. The numbers: Advanced page, Courage and cohesion (AI).");
 
         // Step 78 (Toni 2026-10-22, sketch 1-4: two packs that won't be reckless and won't back down - the grind, then a lull): RhythmMath,
         // AI_NOTES "Step 78", DESIGN decision 72.
@@ -150,7 +150,7 @@ namespace TraxCombat.Core
 
         public static readonly ParamDef LullEnabled = Bool("LullEnabled", PlayerAiGroup,
             "Lulls when both fronts are spent",
-            "When the men at the front of two units fighting each other are BOTH mostly spent and nobody breaks, both fronts ease back a couple of metres, facing each other, and catch their breath; meanwhile the tired go to the back and the fresher come forward. Under a charge it comes later and ends sooner, under a hold sooner. It ends when one front has recovered, on a new charge order, or when a side breaks. Your own units too unless you switch that off (the next setting); you yourself are never moved. Needs the Athletics system. Off: the game's own - the log still measures. The numbers: Advanced page, Courage and cohesion (AI).");
+            "When two units have fought each other for a while (half a minute to a minute under a charge, sooner under a hold) and both are worn - or their blows have slowed - and nobody breaks, both sides back off until a clear gap of a few metres opens between them, facing each other, and catch their breath; meanwhile the tired go to the back and the fresher come forward. Under a charge it comes later and ends sooner, under a hold sooner. It ends when one front has recovered, on a new charge order, or when a side breaks. Your own units too unless you switch that off (the next setting); you yourself are never moved. Needs the Athletics system. Off: the game's own - the log still measures. The numbers: Advanced page, Courage and cohesion (AI).");
 
         public static readonly ParamDef LullForPlayerUnits = Bool("LullForPlayerUnits", PlayerAiGroup,
             "Lulls: your units ease back too",
@@ -1084,6 +1084,16 @@ namespace TraxCombat.Core
             "Press: back ranks past a line's end (m)",
             "A soldier of a back rank may drift sideways at most this far past an enemy line's end - the back ranks stay behind their own front rank and press on.");
 
+        // Step 78b (Toni's 225 v 229 battle 2026-10-22: the enemy's wide wings went round both his ends - "packs of dogs ... they want to stay in
+        // their pack"): no wrapping by default, a wing bends toward the enemy's end and stands off there (PressMath.Decide, AI_NOTES "Step 78b").
+        public static readonly ParamDef PressWrapAllowed = Bool("PressWrapAllowed", CourageGroup,
+            "Press: a wider unit may go round the ends",
+            "On: step 77's wrap - a unit clearly wider than the enemy line (Press: wider by to go round) may send its wings round the line's ends as a mass. Off (the default): nobody goes round; an overlapping wing bends toward the enemy line's end and stands off there, facing it.");
+
+        public static readonly ParamDef PressWingBendDegrees = Float("PressWingBendDegrees", 0, 80, CourageGroup,
+            "Press: a wing bends back by (degrees)",
+            "Past an enemy line's end (plus the back ranks' slack) the front a soldier may not cross bends back toward his own side by this angle - an overlapping wing curls toward the enemy's end and stands off it, facing it (a refused flank), never level with the line's flank or behind it. 0 = a straight front, as wide as you like.");
+
         // Step 78: the battle's rhythm, part 1 - rotation and the lull (RhythmMath, AI_NOTES "Step 78", DESIGN decision 72).
         public static readonly ParamDef RotationTiredPercent = Int("RotationTiredPercent", 0, 100, CourageGroup,
             "Rotation: tired at or below (%)",
@@ -1139,7 +1149,7 @@ namespace TraxCombat.Core
 
         public static readonly ParamDef LullStartChargePercent = Int("LullStartChargePercent", 0, 100, CourageGroup,
             "Lull: a charging front spent below (%)",
-            "A unit on a charge counts as spent when the mean Athletics bar of its front men is below this. Lower = the lull comes later.");
+            "A unit on a charge counts as spent - a lull at once, whatever the clock - when the mean Athletics bar of its men in the fight (Lull: a unit's men in the fight within) is below this. Lower = later.");
 
         public static readonly ParamDef LullStartAdvancePercent = Int("LullStartAdvancePercent", 0, 100, CourageGroup,
             "Lull: an advancing front spent below (%)",
@@ -1151,7 +1161,7 @@ namespace TraxCombat.Core
 
         public static readonly ParamDef LullRecoverChargePercent = Int("LullRecoverChargePercent", 1, 100, CourageGroup,
             "Lull: a charging front recovered by (points)",
-            "The lull ends when a charging unit's front men have regained this many points (of 100) above their bar at its start. Fewer = a shorter lull.");
+            "The lull ends when a charging unit's men in the fight have regained this many points (of 100) above their bar at its start. Fewer = a shorter lull.");
 
         public static readonly ParamDef LullRecoverAdvancePercent = Int("LullRecoverAdvancePercent", 1, 100, CourageGroup,
             "Lull: an advancing front recovered by (points)",
@@ -1163,7 +1173,7 @@ namespace TraxCombat.Core
 
         public static readonly ParamDef LullEaseMetres = Float("LullEaseMetres", 0.5, 8, CourageGroup,
             "Lull: each front eases back (m)",
-            "In a lull each front backs off this far from where it stood, facing the enemy (a shield wall's places move back with it), so a gap of about twice this opens.");
+            "In a lull each side backs off at least this far from where its nearest men stood, facing the enemy (a shield wall's places move back with it) - and further until the clear gap (Lull: the clear gap) holds.");
 
         public static readonly ParamDef LullFrontDepthMetres = Float("LullFrontDepthMetres", 0.5, 5, CourageGroup,
             "Lull: a unit's front men within (m)",
@@ -1180,6 +1190,65 @@ namespace TraxCombat.Core
         public static readonly ParamDef LullRotates = Bool("LullRotates", CourageGroup,
             "Lull: the tired go to the back",
             "During a lull the tired front men swap with fresher men behind them even with no enemy in reach (needs the swap's switch on the player page).");
+
+        // Step 78b (Toni's 225 v 229 battle 2026-10-22: "between the two fronts [a lull], never, not for a sec" - 2 lulls in 435 s, the rotation kept
+        // the front men's bars up, the fronts meshed): the breather clock and the whole unit's bar, a clear gap measured from the men (RhythmUnits,
+        // AI_NOTES "Step 78b").
+        public static readonly ParamDef LullClockChargeMinSeconds = Float("LullClockChargeMinSeconds", 0, 600, CourageGroup,
+            "Lull clock: a charge after at least (s)",
+            "The breather clock: two charging units in continuous contact for a time rolled between this and the next setting (rolled anew for each spell) take a breather, once both are worn (the clock's bar settings below) or their blows have slowed.");
+
+        public static readonly ParamDef LullClockChargeMaxSeconds = Float("LullClockChargeMaxSeconds", 0, 600, CourageGroup,
+            "Lull clock: a charge after at most (s)",
+            "... and at most this long (the roll's other end).");
+
+        public static readonly ParamDef LullClockAdvanceMinSeconds = Float("LullClockAdvanceMinSeconds", 0, 600, CourageGroup,
+            "Lull clock: an advance after at least (s)",
+            "The same clock when the more aggressive of the two units is on an advance.");
+
+        public static readonly ParamDef LullClockAdvanceMaxSeconds = Float("LullClockAdvanceMaxSeconds", 0, 600, CourageGroup,
+            "Lull clock: an advance after at most (s)",
+            "... and at most this long.");
+
+        public static readonly ParamDef LullClockHoldMinSeconds = Float("LullClockHoldMinSeconds", 0, 600, CourageGroup,
+            "Lull clock: a hold after at least (s)",
+            "The same clock when neither unit charges or advances (a hold, a shield wall's stand, a move) - sooner.");
+
+        public static readonly ParamDef LullClockHoldMaxSeconds = Float("LullClockHoldMaxSeconds", 0, 600, CourageGroup,
+            "Lull clock: a hold after at most (s)",
+            "... and at most this long.");
+
+        public static readonly ParamDef LullClockChargePercent = Int("LullClockChargePercent", 0, 100, CourageGroup,
+            "Lull clock: a charging unit worn below (%)",
+            "When the clock has run, a charging unit counts as worn once the mean Athletics bar of its men in the fight (the next settings' depth) is below this - the whole unit, so swapping fresh men to the front does not hide it.");
+
+        public static readonly ParamDef LullClockAdvancePercent = Int("LullClockAdvancePercent", 0, 100, CourageGroup,
+            "Lull clock: an advancing unit worn below (%)",
+            "The same for a unit on an advance.");
+
+        public static readonly ParamDef LullClockHoldPercent = Int("LullClockHoldPercent", 0, 100, CourageGroup,
+            "Lull clock: a holding unit worn below (%)",
+            "The same for a holding unit.");
+
+        public static readonly ParamDef LullAttackRateFallenPercent = Int("LullAttackRateFallenPercent", 0, 100, CourageGroup,
+            "Lull clock: or the blows slowed to (%)",
+            "When the clock has run, the breather also comes once the pair's blows in contact (a minute per man in contact, smoothed) have fallen to this share of their peak in this spell, however full the bars. 0 = the bars alone.");
+
+        public static readonly ParamDef LullUnitDepthMetres = Float("LullUnitDepthMetres", 0.5, 40, CourageGroup,
+            "Lull: a unit's men in the fight within (m)",
+            "A unit's bar for the lull (the clock's and the spent test's - \"a front spent below\" above - and the recovery) is the mean bar of its men within this of its front: the men in the fight, the rotated ones included.");
+
+        public static readonly ParamDef LullChargeGraceSeconds = Float("LullChargeGraceSeconds", 0, 15, CourageGroup,
+            "Lull: a charge order in its first (s) waits",
+            "A new charge order given in a lull's first seconds ends it only once this much of it has passed - the general's reflex at the sight of men easing back does not cancel the breather at once.");
+
+        public static readonly ParamDef LullGapMetres = Float("LullGapMetres", 0.5, 10, CourageGroup,
+            "Lull: the clear gap (m)",
+            "In a lull both sides back off until this much empty ground lies between the nearest men of the two sides all along the contact - measured from the men themselves, so a meshed fight separates.");
+
+        public static readonly ParamDef LullMaxBackMetres = Float("LullMaxBackMetres", 0.5, 30, CourageGroup,
+            "Lull: a side backs at most (m)",
+            "While the gap does not hold (the other side presses, men are stuck), a side that stands at its line steps it back further - at most this far beyond where the lull first put it.");
 
         // ------------------------------------------------------------------ cavalry flocking (step 55)
         // Anton, 2026-10-18: fresh, eager riders dance as in vanilla; the more tired a rider, the bigger the group of his own kind he wants
@@ -2222,11 +2291,14 @@ namespace TraxCombat.Core
             FearStrikeReachMetres, FearStrikeLeashMetres, LoneRunnerEnabled, LoneRunnerAheadMetres,
             PressToleranceMetres, PressWatchMetres, PressGapMetres, PressManWidthMetres, PressFrontDepthMetres, PressWrapMarginMetres, PressWrapMates,
             PressWrapMatesMetres, PressRoundEndMetres, PressWinPercent, PressLineMinMen, PressLineInSlotPercent, PressBandMarginMetres, PressBlockEndMetres,
-            PressEndSlackMetres,
+            PressEndSlackMetres, PressWrapAllowed, PressWingBendDegrees,
             RotationTiredPercent, RotationUseBraceFloor, RotationFresherPercent, RotationBehindMetres, RotationFileMetres, RotationContactMetres, RotationBesideMetres,
             RotationApproachSeconds, RotationMaxSeconds, RotationCooldownSeconds, RotationRestSeconds, LullContactMen, LullMinContactSeconds, LullStartChargePercent,
             LullStartAdvancePercent, LullStartHoldPercent, LullRecoverChargePercent, LullRecoverAdvancePercent, LullRecoverHoldPercent, LullEaseMetres,
             LullFrontDepthMetres, LullMaxSeconds, LullCooldownSeconds, LullRotates,
+            LullClockChargeMinSeconds, LullClockChargeMaxSeconds, LullClockAdvanceMinSeconds, LullClockAdvanceMaxSeconds, LullClockHoldMinSeconds,
+            LullClockHoldMaxSeconds, LullClockChargePercent, LullClockAdvancePercent, LullClockHoldPercent, LullAttackRateFallenPercent, LullUnitDepthMetres,
+            LullChargeGraceSeconds, LullGapMetres, LullMaxBackMetres,
             CavalryFlockFreeEagerPercent, CavalryFlockHysteresisPercent, CavalryFlockMidEagerPercent, CavalryFlockMidGroupSize,
             CavalryFlockExhaustedSharePercent, CavalryFlockTimid, CavalryFlockTimidRadiusMetres, CavalryFlockGatherRadiusMetres, CavalryFlockSeparationMetres,
             CavalryFlockLeadSeconds, CavalryFlockTightenWeights, CavalryFlockWaveSeconds, CavalryFlockMaxSeconds,

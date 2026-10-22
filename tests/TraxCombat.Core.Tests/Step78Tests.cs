@@ -41,7 +41,7 @@ public class Step78Tests
             Assert.Equal(1, Player[i].Default, 9);
             Assert.DoesNotMatch(@"[Ss]tep \d", Player[i].Description);
         }
-        int first = all.IndexOf(SettingsSchema.PressEndSlackMetres) + 1;
+        int first = all.IndexOf(SettingsSchema.PressWingBendDegrees) + 1; // step 78b: the wrap's switch and the wing's bend after the press's slack
         for (int i = 0; i < Advanced.Length; i++)
         {
             Assert.Equal(first + i, all.IndexOf(Advanced[i]));
@@ -280,8 +280,11 @@ public class Step78Tests
         t = new RhythmUnits();
         now = Run(t, in r, 100, 2, 1.0, 0.3, 0.3, BraceOrderKind.Stop, BraceOrderKind.Stop);
         Assert.True(t.InLull[A]);
-        Run(t, in r, now, 0.5, 1.0, 0.3, 0.3, BraceOrderKind.Charge, BraceOrderKind.Stop);
-        Assert.False(t.InLull[A] || t.InLull[B]);
+        now = Run(t, in r, now, 0.5, 1.0, 0.3, 0.3, BraceOrderKind.Charge, BraceOrderKind.Stop);
+        Assert.True(t.InLull[A]);                            // step 78b: in the lull's first 3 s the charge order waits ...
+        Assert.Equal(1, t.ChargeDeferred);
+        Run(t, in r, now, 3, 1.0, 0.3, 0.3, BraceOrderKind.Charge, BraceOrderKind.Stop);
+        Assert.False(t.InLull[A] || t.InLull[B]);            // ... then ends it
         Assert.Equal(LullEnd.ChargeOrder, t.EndedWhy[0]);
         // a side breaks (its men looked at below half)
         t = new RhythmUnits();
@@ -341,7 +344,7 @@ public class Step78Tests
         s.AddLullEnd(LullEnd.Recovered, 12, 3.4);
         var lines = new List<string>();
         s.AddSummaryLines(lines, Rules(), t);
-        Assert.Equal(2, lines.Count);
+        Assert.Equal(3, lines.Count); // step 78b: + the trigger and the gap
         Assert.Contains("ROTATION ON", lines[0]);
         Assert.Contains("swaps asked 25, done 22", lines[0]);
         Assert.Contains("never beside (called off) 3", lines[0]);
@@ -349,7 +352,7 @@ public class Step78Tests
         Assert.Contains("tired 30% vs fresh 80%", lines[0]);
         Assert.Contains("IN CONTACT ON 60%", lines[0]);
         Assert.Contains("LULLS ON: started 2", lines[1]);
-        Assert.Contains("a front recovered 1", lines[1]);
+        Assert.Contains("recovered (the unit's bar) 1", lines[1]);
         Assert.Contains("opened mean 3.4 m", lines[1]);
         var off = new List<string>();
         s.AddSummaryLines(off, Rules(rotation: false, lull: false), t);

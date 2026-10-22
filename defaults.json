@@ -130,12 +130,13 @@
 
   // AI soldiers on foot fighting an enemy LINE - a shield wall, a line or a block whose men
   // hold their places - press against its front instead of walking past it: no stepping round
-  // its ends or through it to come at it from behind. They go round an end only when their own
-  // unit is clearly wider than the enemy line and they move with it as a mass, and through it
-  // only where a real gap has opened (men fallen); a man who got behind it anyway walks back
-  // round its nearest end. The back ranks stay behind their own front rank, and frightened men
-  // bunch deeper instead of spreading wider than the line they face. Both sides, never you,
-  // never riders; they still fight whatever is in reach. Off: the game's own - the log still
+  // its ends or through it to come at it from behind. They never go round its ends - the wings
+  // of a wider unit bend toward the enemy's end and stand off there, facing it - and go through
+  // it only where a real gap has opened (men fallen); a man who got behind it anyway walks back
+  // round its nearest end. A unit you (or the enemy general) order to a place beside the line
+  // still goes there. The back ranks stay behind their own front rank, and frightened men bunch
+  // deeper instead of spreading wider than the line they face. Both sides, never you, never
+  // riders; they still fight whatever is in reach. Off: the game's own - the log still
   // measures, so flipping it mid-battle compares the two. The numbers: Advanced page, Courage
   // and cohesion (AI).
   // (true or false)
@@ -152,13 +153,15 @@
   // (true or false)
   "RotationEnabled": true,
 
-  // When the men at the front of two units fighting each other are BOTH mostly spent and nobody
-  // breaks, both fronts ease back a couple of metres, facing each other, and catch their
-  // breath; meanwhile the tired go to the back and the fresher come forward. Under a charge it
-  // comes later and ends sooner, under a hold sooner. It ends when one front has recovered, on
-  // a new charge order, or when a side breaks. Your own units too unless you switch that off
-  // (the next setting); you yourself are never moved. Needs the Athletics system. Off: the
-  // game's own - the log still measures. The numbers: Advanced page, Courage and cohesion (AI).
+  // When two units have fought each other for a while (half a minute to a minute under a
+  // charge, sooner under a hold) and both are worn - or their blows have slowed - and nobody
+  // breaks, both sides back off until a clear gap of a few metres opens between them, facing
+  // each other, and catch their breath; meanwhile the tired go to the back and the fresher come
+  // forward. Under a charge it comes later and ends sooner, under a hold sooner. It ends when
+  // one front has recovered, on a new charge order, or when a side breaks. Your own units too
+  // unless you switch that off (the next setting); you yourself are never moved. Needs the
+  // Athletics system. Off: the game's own - the log still measures. The numbers: Advanced page,
+  // Courage and cohesion (AI).
   // (true or false)
   "LullEnabled": true,
 
@@ -1439,6 +1442,19 @@
   // (range 0.0 to 10.0)
   "PressEndSlackMetres": 1.0,
 
+  // On: step 77's wrap - a unit clearly wider than the enemy line (Press: wider by to go round)
+  // may send its wings round the line's ends as a mass. Off (the default): nobody goes round;
+  // an overlapping wing bends toward the enemy line's end and stands off there, facing it.
+  // (true or false)
+  "PressWrapAllowed": false,
+
+  // Past an enemy line's end (plus the back ranks' slack) the front a soldier may not cross
+  // bends back toward his own side by this angle - an overlapping wing curls toward the enemy's
+  // end and stands off it, facing it (a refused flank), never level with the line's flank or
+  // behind it. 0 = a straight front, as wide as you like.
+  // (range 0.0 to 80.0)
+  "PressWingBendDegrees": 30.0,
+
   // With "Tired front men swap with fresh ones" on (player page): a front man in contact whose
   // Athletics bar is at or below this (or at his brace floor - next setting) wants a fresher
   // man to take his place.
@@ -1502,8 +1518,9 @@
   // (range 0.0 to 120.0)
   "LullMinContactSeconds": 10.0,
 
-  // A unit on a charge counts as spent when the mean Athletics bar of its front men is below
-  // this. Lower = the lull comes later.
+  // A unit on a charge counts as spent - a lull at once, whatever the clock - when the mean
+  // Athletics bar of its men in the fight (Lull: a unit's men in the fight within) is below
+  // this. Lower = later.
   // (range 0 to 100)
   "LullStartChargePercent": 30,
 
@@ -1516,21 +1533,22 @@
   // (range 0 to 100)
   "LullStartHoldPercent": 50,
 
-  // The lull ends when a charging unit's front men have regained this many points (of 100)
-  // above their bar at its start. Fewer = a shorter lull.
+  // The lull ends when a charging unit's men in the fight have regained this many points (of
+  // 100) above their bar at its start. Fewer = a shorter lull.
   // (range 1 to 100)
-  "LullRecoverChargePercent": 10,
+  "LullRecoverChargePercent": 20,
 
   // The same for a unit on an advance.
   // (range 1 to 100)
-  "LullRecoverAdvancePercent": 15,
+  "LullRecoverAdvancePercent": 25,
 
   // The same for a holding unit.
   // (range 1 to 100)
-  "LullRecoverHoldPercent": 20,
+  "LullRecoverHoldPercent": 30,
 
-  // In a lull each front backs off this far from where it stood, facing the enemy (a shield
-  // wall's places move back with it), so a gap of about twice this opens.
+  // In a lull each side backs off at least this far from where its nearest men stood, facing
+  // the enemy (a shield wall's places move back with it) - and further until the clear gap
+  // (Lull: the clear gap) holds.
   // (range 0.5 to 8.0)
   "LullEaseMetres": 2.0,
 
@@ -1550,6 +1568,76 @@
   // reach (needs the swap's switch on the player page).
   // (true or false)
   "LullRotates": true,
+
+  // The breather clock: two charging units in continuous contact for a time rolled between this
+  // and the next setting (rolled anew for each spell) take a breather, once both are worn (the
+  // clock's bar settings below) or their blows have slowed.
+  // (range 0.0 to 600.0)
+  "LullClockChargeMinSeconds": 30.0,
+
+  // ... and at most this long (the roll's other end).
+  // (range 0.0 to 600.0)
+  "LullClockChargeMaxSeconds": 60.0,
+
+  // The same clock when the more aggressive of the two units is on an advance.
+  // (range 0.0 to 600.0)
+  "LullClockAdvanceMinSeconds": 25.0,
+
+  // ... and at most this long.
+  // (range 0.0 to 600.0)
+  "LullClockAdvanceMaxSeconds": 50.0,
+
+  // The same clock when neither unit charges or advances (a hold, a shield wall's stand, a
+  // move) - sooner.
+  // (range 0.0 to 600.0)
+  "LullClockHoldMinSeconds": 20.0,
+
+  // ... and at most this long.
+  // (range 0.0 to 600.0)
+  "LullClockHoldMaxSeconds": 40.0,
+
+  // When the clock has run, a charging unit counts as worn once the mean Athletics bar of its
+  // men in the fight (the next settings' depth) is below this - the whole unit, so swapping
+  // fresh men to the front does not hide it.
+  // (range 0 to 100)
+  "LullClockChargePercent": 55,
+
+  // The same for a unit on an advance.
+  // (range 0 to 100)
+  "LullClockAdvancePercent": 60,
+
+  // The same for a holding unit.
+  // (range 0 to 100)
+  "LullClockHoldPercent": 65,
+
+  // When the clock has run, the breather also comes once the pair's blows in contact (a minute
+  // per man in contact, smoothed) have fallen to this share of their peak in this spell,
+  // however full the bars. 0 = the bars alone.
+  // (range 0 to 100)
+  "LullAttackRateFallenPercent": 60,
+
+  // A unit's bar for the lull (the clock's and the spent test's - "a front spent below" above -
+  // and the recovery) is the mean bar of its men within this of its front: the men in the
+  // fight, the rotated ones included.
+  // (range 0.5 to 40.0)
+  "LullUnitDepthMetres": 8.0,
+
+  // A new charge order given in a lull's first seconds ends it only once this much of it has
+  // passed - the general's reflex at the sight of men easing back does not cancel the breather
+  // at once.
+  // (range 0.0 to 15.0)
+  "LullChargeGraceSeconds": 3.0,
+
+  // In a lull both sides back off until this much empty ground lies between the nearest men of
+  // the two sides all along the contact - measured from the men themselves, so a meshed fight
+  // separates.
+  // (range 0.5 to 10.0)
+  "LullGapMetres": 3.5,
+
+  // While the gap does not hold (the other side presses, men are stuck), a side that stands at
+  // its line steps it back further - at most this far beyond where the lull first put it.
+  // (range 0.5 to 30.0)
+  "LullMaxBackMetres": 8.0,
 
   // ==================== Cavalry flocking (AI) ====================
   // A rider's EAGERNESS is his Athletics bar (halved when he is alone among enemies, below). At

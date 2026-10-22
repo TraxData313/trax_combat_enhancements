@@ -14,7 +14,8 @@ namespace TraxCombat.Core
     {
         public PressRules(bool modEnabled, bool enabled, double toleranceMetres = 0.5, double watchMetres = 4, double gapMetres = 2, double manWidthMetres = 1.2,
             double frontDepthMetres = 1.5, double wrapMarginMetres = 6, int wrapMates = 5, double wrapMatesMetres = 4, double roundEndMetres = 2, double winPercent = 50,
-            int lineMinMen = 8, double lineInSlotPercent = 60, double bandMarginMetres = 1, double blockEndMetres = 0, double endSlackMetres = 1)
+            int lineMinMen = 8, double lineInSlotPercent = 60, double bandMarginMetres = 1, double blockEndMetres = 0, double endSlackMetres = 1,
+            bool wrapAllowed = true, double wingBendDegrees = 0)
         {
             ModEnabled = modEnabled;
             Enabled = enabled;
@@ -33,12 +34,14 @@ namespace TraxCombat.Core
             BandMarginMetres = Clamp(bandMarginMetres, 0, 10);
             BlockEndMetres = Clamp(blockEndMetres, 0, 10);
             EndSlackMetres = Clamp(endSlackMetres, 0, 10);
+            WrapAllowed = wrapAllowed;
+            WingBendDegrees = Clamp(wingBendDegrees, 0, 80);
         }
 
         public static PressRules From(TraxSettings s) =>
             new PressRules(s.ModEnabled, s.PressDontPass, s.PressToleranceMetres, s.PressWatchMetres, s.PressGapMetres, s.PressManWidthMetres, s.PressFrontDepthMetres,
                 s.PressWrapMarginMetres, s.PressWrapMates, s.PressWrapMatesMetres, s.PressRoundEndMetres, s.PressWinPercent, s.PressLineMinMen, s.PressLineInSlotPercent,
-                s.PressBandMarginMetres, s.PressBlockEndMetres, s.PressEndSlackMetres);
+                s.PressBandMarginMetres, s.PressBlockEndMetres, s.PressEndSlackMetres, s.PressWrapAllowed, s.PressWingBendDegrees);
 
         public bool ModEnabled { get; }
 
@@ -90,6 +93,14 @@ namespace TraxCombat.Core
         /// <summary>PressEndSlackMetres: a rear-rank man may drift this far sideways past the enemy line's end, no farther.</summary>
         public double EndSlackMetres { get; }
 
+        /// <summary>Step 78b - PressWrapAllowed: step 77's wrap (a clearly wider unit's wings round the ends as a mass). Off (the default since step 78b):
+        /// nobody goes round.</summary>
+        public bool WrapAllowed { get; }
+
+        /// <summary>Step 78b - PressWingBendDegrees: past a line's end (+ <see cref="EndSlackMetres"/>) the front a man may not cross bends back toward his
+        /// side by this angle - an overlapping wing curls toward the end and stands off it (a refused flank). 0 = step 77's straight front.</summary>
+        public double WingBendDegrees { get; }
+
         /// <summary>The master switch FIRST, then the system's own.</summary>
         public bool On => ModEnabled && Enabled;
 
@@ -101,8 +112,11 @@ namespace TraxCombat.Core
                           + F(LineInSlotPercent) + "%+ in their slots under a hold / move / advance) never walks past its front - within " + F(WatchMetres)
                           + " m of it his movement toward it stops at it (+ " + F(ToleranceMetres) + " m), past it he is walked back out, behind it round its nearest end ("
                           + F(RoundEndMetres) + " m beyond it); THROUGH only at a gap of " + F(GapMetres) + " m+ in its front (a front man covers " + F(ManWidthMetres)
-                          + " m, the front " + F(FrontDepthMetres) + " m deep); ROUND an end only when his unit is " + F(WrapMarginMetres) + " m+ wider than the line and he has "
-                          + WrapMates + "+ mates within " + F(WrapMatesMetres) + " m; rear-rank men no more than " + F(EndSlackMetres) + " m past its ends; his unit winning "
+                          + " m, the front " + F(FrontDepthMetres) + " m deep); " + (WrapAllowed ? "ROUND an end only when his unit is " + F(WrapMarginMetres)
+                          + " m+ wider than the line and he has " + WrapMates + "+ mates within " + F(WrapMatesMetres) + " m" : "NEVER round an end (PressWrapAllowed off)")
+                          + (WingBendDegrees > 0 ? "; past an end + " + F(EndSlackMetres) + " m the front bends back " + F(WingBendDegrees) + " degrees - an overlapping wing stands off the end, facing it"
+                              : "") + "; a unit ORDERED to a place beside the line (a move) goes there; rear-rank and wing men no more than " + F(EndSlackMetres)
+                          + " m past its ends; his unit winning "
                           + F(WinPercent) + "% lets go; the fear band never wider than the line + " + F(BandMarginMetres) + " m a side (its surplus deeper); the block hold's "
                           + "sideways room within the line's ends + " + F(BlockEndMetres) + " m in contact; both sides, never you or riders; his attacks his own";
             if (!On) return what + " - OFF (" + OffBecause + "): measured only";
@@ -165,6 +179,12 @@ namespace TraxCombat.Core
         /// <summary>His unit is winning (the line is beaten) - left alone.</summary>
         Winning,
 
+        /// <summary>Step 78b: beside the line's end, on his side of the BENT front (a wing standing off the end): his movement across it clamped.</summary>
+        Wing,
+
+        /// <summary>Step 78b: beside the line's end or behind it, his unit ORDERED there (a move) - free, the order's own.</summary>
+        Ordered,
+
         Count,
     }
 
@@ -215,6 +235,9 @@ namespace TraxCombat.Core
 
         /// <summary>A walk's place: d in front of the face (positive = his side), l along it.</summary>
         public double ToD, ToL;
+
+        /// <summary>Step 78b: the front he is held at / walked back to is BENT past this end (+1 the high end, −1 the low end, 0 = the straight front).</summary>
+        public int Wing;
     }
 
     /// <summary>
@@ -366,7 +389,27 @@ namespace TraxCombat.Core
             !double.IsNaN(unitWidth) && !double.IsNaN(lineWidth) && unitWidth - lineWidth >= r.WrapMarginMetres;
 
         /// <summary>He goes round with his mass: his unit wraps and he has enough mates near.</summary>
-        public static bool ManWraps(in PressRules r, bool unitWraps, int mates) => unitWraps && mates >= r.WrapMates;
+        public static bool ManWraps(in PressRules r, bool unitWraps, int mates) => r.WrapAllowed && unitWraps && mates >= r.WrapMates;
+
+        /// <summary>Step 78b: past an end by <paramref name="past"/> (m, lateral), how far in front of the face (his side) the BENT front stands:
+        /// tan(bend) x (past − the end slack), 0 within the slack.</summary>
+        public static double WingPlane(in PressRules r, double past)
+        {
+            if (!(r.WingBendDegrees > 0) || !(past > r.EndSlackMetres)) return 0;
+            return Math.Tan(r.WingBendDegrees * Math.PI / 180.0) * (past - r.EndSlackMetres);
+        }
+
+        /// <summary>Step 78b: his signed distance in front of the (bent) front at his place: (d − the plane) x cos(bend) past an end, d elsewhere;
+        /// <paramref name="endSide"/> = +1 past the high end, −1 past the low end, 0 within the ends.</summary>
+        public static double FrontDistance(in PressRules r, double d, double l, double lo, double hi, out int endSide)
+        {
+            endSide = l > hi ? 1 : l < lo ? -1 : 0;
+            if (endSide == 0 || !(r.WingBendDegrees > 0)) return d;
+            double past = endSide > 0 ? l - hi : lo - l;
+            double plane = WingPlane(in r, past);
+            if (!(plane > 0)) return d;
+            return (d - plane) * Math.Cos(r.WingBendDegrees * Math.PI / 180.0);
+        }
 
         /// <summary>
         /// One look at a man of a unit fighting a line (its face: <paramref name="lo"/>..<paramref name="hi"/> across, <paramref name="depth"/> deep):
@@ -377,7 +420,7 @@ namespace TraxCombat.Core
         /// line (a gap) = left, else walked ROUND the nearest end (sideways beyond it first, behind the line; then forward).
         /// </summary>
         public static PressOrder Decide(in PressRules r, double d, double l, double lo, double hi, double depth, bool inGap, bool unitWraps, int mates,
-            bool broken, bool winning, bool rearRank, bool unitNear)
+            bool broken, bool winning, bool rearRank, bool unitNear, bool ordered = false)
         {
             var o = new PressOrder { Action = PressAction.Far, ToD = d, ToL = l };
             if (winning)
@@ -387,7 +430,20 @@ namespace TraxCombat.Core
             }
             bool beside = l < lo || l > hi;
             bool wrap = ManWraps(in r, unitWraps, mates);
-            if (d >= -r.ToleranceMetres)
+            double body = Math.Max(MinDepth, depth) + BehindExtraMetres;
+            // step 78b: a unit ORDERED to a place beside the line or behind it (a move - yours or the AI general's) goes there; the rule is about
+            // the men's own movement, not the orders
+            if (ordered && !wrap && (beside || d < -body))
+            {
+                o.Action = PressAction.Ordered;
+                return o;
+            }
+            // step 78b: past an end (not wrapping) the front bends back - his distance in front of the BENT front
+            double fd = wrap ? d : FrontDistance(in r, d, l, lo, hi, out int endSide);
+            bool wing = !wrap && beside && fd != d;
+            if (!wing) endSide = 0;
+            else endSide = l > hi ? 1 : -1;
+            if (fd >= -r.ToleranceMetres)
             {
                 if (inGap)
                 {
@@ -399,13 +455,14 @@ namespace TraxCombat.Core
                     o.Action = PressAction.Wrap;
                     return o;
                 }
-                o.ClampFront = d <= r.WatchMetres;
-                if (rearRank && unitNear && !wrap)
+                o.ClampFront = fd <= r.WatchMetres;
+                if ((rearRank || (beside && r.WingBendDegrees > 0)) && unitNear && !wrap)
                 {
                     if (l > hi + r.EndSlackMetres) o.Side = 1;
                     else if (l < lo - r.EndSlackMetres) o.Side = -1;
                 }
-                o.Action = o.ClampFront || o.Side != 0 ? PressAction.Clamp : PressAction.Far;
+                o.Wing = endSide;
+                o.Action = !(o.ClampFront || o.Side != 0) ? PressAction.Far : wing ? PressAction.Wing : PressAction.Clamp;
                 return o;
             }
             if (inGap)
@@ -418,11 +475,12 @@ namespace TraxCombat.Core
                 o.Action = PressAction.Wrap;
                 return o;
             }
-            double body = Math.Max(MinDepth, depth) + BehindExtraMetres;
             if (d >= -body)
             {
+                // past the (bent) front, in the line's body or beside its end: walked straight back out to just in front of it
                 o.Action = PressAction.Push;
-                o.ToD = PushToMetres;
+                o.Wing = endSide;
+                o.ToD = (wing ? WingPlane(in r, l > hi ? l - hi : lo - l) : 0) + PushToMetres;
                 o.ToL = l;
                 return o;
             }
@@ -443,7 +501,8 @@ namespace TraxCombat.Core
             double outLo = lo - r.RoundEndMetres, outHi = hi + r.RoundEndMetres;
             if (l <= outLo || l >= outHi)
             {
-                toD = ReturnFrontMetres;
+                // step 78b: forward to his side - in front of the BENT front there (a wing's place, never level with the line's flank)
+                toD = Math.Max(ReturnFrontMetres, WingPlane(in r, l >= outHi ? l - hi : lo - l) + PushToMetres);
                 toL = l;
                 return;
             }
@@ -552,6 +611,8 @@ namespace TraxCombat.Core
             PressAction.Wrap => "round the end with his mass",
             PressAction.Broken => "behind a broken line - left",
             PressAction.Winning => "his side winning - free",
+            PressAction.Wing => "a wing held at the bent front past an end",
+            PressAction.Ordered => "ordered beside / behind the line - free",
             _ => a.ToString(),
         };
 
@@ -594,6 +655,10 @@ namespace TraxCombat.Core
         public int Side;
         public double ToD, ToL;
 
+        /// <summary>Step 78b: his front is bent past this end (+1 high, −1 low, 0 straight); he ever stood as a wing.</summary>
+        public int Wing;
+        public bool EverWing, EverWingPushed;
+
         public double Since = double.NaN, NextSteer, NextEdge;
         public bool Moving;
 
@@ -612,6 +677,7 @@ namespace TraxCombat.Core
             Moving = false;
             ClampFront = false;
             Side = 0;
+            Wing = 0;
             Action = PressAction.NoLine;
             Since = double.NaN;
         }
@@ -1030,6 +1096,11 @@ namespace TraxCombat.Core
 
         public readonly long[] Ends = new long[(int)PressEnd.Count];
         public long Wishes, Men, PushedMen, ReturnedMen;
+
+        /// <summary>Step 78b: wing men walked back to the bent front (men), looks past an end on his side by side of the line, the deepest a wing stood
+        /// beside an end (m past it, ON).</summary>
+        public long WingPushedMen, WingMen;
+        public double WingPastMax;
         public long ClampFrames, SideFrames, MoveFrames;
         public double WishSeconds;
         public long BandClamps, BandExtraRanks, BlockRangeLooks;
@@ -1069,6 +1140,16 @@ namespace TraxCombat.Core
              .Append(" m past it, on its side at the look before): ON ").Append(CrossText(1)).Append(" | OFF ").Append(CrossText(0))
              .Append("; men past a front at a look (of the looks near a line): ON ").Append(Share(1)).Append(" | OFF ").Append(Share(0));
             lines.Add(c.ToString());
+
+            var w = new StringBuilder();
+            w.Append("press, don't pass (step 78b) - NO WRAPPING: ").Append(r.WrapAllowed ? "the wrap ALLOWED (PressWrapAllowed on - step 77's rule)" : "the wrap off (PressWrapAllowed)")
+             .Append(", the front past an end bent back ").Append(F1(r.WingBendDegrees)).Append(" degrees beyond ").Append(F1(r.EndSlackMetres)).Append(" m; WINGS held at an end (looks) ON ")
+             .Append(Actions[1, (int)PressAction.Wing]).Append(" | OFF ").Append(Actions[0, (int)PressAction.Wing]).Append(" by ").Append(WingMen).Append(" men (the farthest ")
+             .Append(F1(WingPastMax)).Append(" m past an end), walked back to the bent front ").Append(WingPushedMen).Append(" men; CROSSED round an end ON ").Append(Where(1, 0))
+             .Append(" | OFF ").Append(Where(0, 0)).Append("; the old wrap - looks let round the end with his mass ").Append(Actions[1, (int)PressAction.Wrap])
+             .Append(" (0 with the wrap off), crossings allowed by a wrap ").Append(AllowedBy[1, 1]).Append("; units ordered beside / behind a line - their men free ")
+             .Append(Actions[1, (int)PressAction.Ordered]).Append(" looks");
+            lines.Add(w.ToString());
         }
 
         private void AppendActions(StringBuilder sb, int o)

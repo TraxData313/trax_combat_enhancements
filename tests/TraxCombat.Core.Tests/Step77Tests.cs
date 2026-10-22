@@ -22,9 +22,12 @@ public class Step77Tests
         SettingsSchema.PressBandMarginMetres, SettingsSchema.PressBlockEndMetres, SettingsSchema.PressEndSlackMetres,
     };
 
+    /// <summary>Step 77's rules - step 78b's wrap switch on and no bend (its own tests: Step78bTests).</summary>
     private static PressRules Rules(Action<TraxSettings>? tune = null)
     {
         var s = new TraxSettings();
+        s.Set(SettingsSchema.PressWrapAllowed, true, SettingSources.File);
+        s.Set(SettingsSchema.PressWingBendDegrees, 0.0, SettingSources.File);
         tune?.Invoke(s);
         return PressRules.From(s);
     }
@@ -425,7 +428,7 @@ public class Step77Tests
         s.ClampFrames = 900;
         var lines = new List<string>();
         s.AddSummaryLines(lines, Rules(), new PressLines());
-        Assert.Equal(2, lines.Count);
+        Assert.Equal(3, lines.Count); // step 78b: + the no-wrapping line
         Assert.StartsWith("press, don't pass (step 77): ON at the end - lines published 0", lines[0]);
         Assert.Contains("pressing (clamped) 40", lines[0]);
         Assert.Contains("CLAMPS applied 900 input frames", lines[0]);
