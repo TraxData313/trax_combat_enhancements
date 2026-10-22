@@ -1044,6 +1044,7 @@ Claude the `[summary] impact …` block of every battle.
 | 23 | **D42 - PRESS, DON'T PASS** (step 77): Toni's battle again - ~100 recruits against your shield wall (~60 veterans) on STOP; then the switch OFF mid-battle and ON again | 15 | `[press] mission start …`, `[press] first enemy LINE`, `[press] first man PRESSING`, `[press] first man CROSSED … ON / OFF`, `[summary] press, don't pass` (two lines) | ON: the recruits pile up against your wall's front, nobody walks round its ends or in behind it; men come through only where your men fell; OFF: the dance round the ends again; the crossings ON ≈ 0 (not allowed), OFF many "round an end" | recruits frozen at the wall and not fighting; men still circling the ends ON (the clamp not honoured); men stuck behind the wall never walked back; a gap read where there is none |
 | 24 | **D43 - THE BATTLE'S RHYTHM: SWAPS AND LULLS** (step 78): two infantry lines of ~60 each grinding (your shield wall on STOP against the enemy's infantry); watch the front; then two charging lines that both tire (both on F1 F3 charge) | 20 | `[rhythm] first SWAP asked / BESIDE / DONE`, `[rhythm] first LULL`, `[rhythm] first lull ENDED`, `[summary] battle rhythm` (two lines) | the tired front men step back one by one as a fresh man comes up beside each - the front never thins; when both fronts are spent a gap of ~3-4 m opens for 10-30 s, the men face each other, then one side comes on again | swaps that leave a hole in the front; men walking out of the wall; a lull with no gap (the native charge pushing through the clamp); a lull that never ends; men turning their backs |
 | 25 | **D43b - THE LULL THAT SHOWS, NO WRAPPING** (step 78b): Toni's 225 v 229 again - your ~225 against ~229 recruits on battle_terrain_b, a long grind; watch between the fronts and both your ends | 20 | `[rhythm] first LULL … - the breather clock`, `[rhythm] first lull GAP OPENED`, `[press] first WING man held at an end`, `[summary] battle rhythm (step 78b) - THE LULL'S TRIGGER AND GAP`, `[summary] press, don't pass (step 78b) - NO WRAPPING` | every 45-90 s of grinding both fronts back off until 3-4 m of empty ground shows between them for 10-20 s, facing each other, then come on again; the recruits' wide wings stand off your ends (curled toward them), never round them | no gap in a lull (the gap measured ~0 / never held); a lull ended at once by a charge; men still round your ends; a wing frozen far out doing nothing for minutes |
+| 26 | **D43c - EACH MAN RESTS ON HIS OWN** (step 78c - the lull of D43 / D43b is gone): Toni's 225 v 229 again (a long grind, both charging), then your shield wall on STOP against a fresh enemy until your men tire | 20 | `[rhythm] first REST`, `[rhythm] first resting man WALKED BACK`, `[rhythm] first man BACK IN`, `[rhythm] first man IN BY CONTAGION`, `[rhythm] first REST IN A WALL SLOT`, `[summary] rest (step 78c)` (two lines) | worn-out men step back a couple of metres one by one, facing the enemy, stand and guard, then go back in - never a whole unit at once, never a long walk away, never a back turned; when both sides are spent a gap of a few metres shows by itself; your wall's men stay in their places | a whole unit walking off; men 5 m+ behind their front (`rests more than 5 m behind it` high); `TURNED AWAY` above 0; `WALL men … more than 0.5 m out of the slot` above 0; men resting forever (lasted mean over ~60 s); resting men dragged in by the charge (no gap ever) |
 
 Then play normally (parts E-G). Your gut on each family - too many / about right / too few - is the most useful thing to send.
 
@@ -1956,6 +1957,32 @@ round an end ON near 0; the wings' farthest metres ≈ the overlap (Toni's ~19 m
 native charge pushing through the clamp - tell Claude); lulls only by "both units spent" (the clock's bars too low - tune *Lull clock: a charging
 unit worn below*); lulls ending at 30 s every time; men round your ends; your own ordered flank move held back.
 
+
+**D43c. EACH MAN RESTS ON HIS OWN (step 78c, ~20 min; the defaults).** Toni 2026-10-22 after playing 78b: "this doesnt work at all ... they are at it
+the whole time, then they like for some reason all just turn their backs and walk away very far off, then they are at it again ... only per men
+rule, if tired - step back and wait to recover". The lull of D43 / D43b is GONE (skip their lull parts; the swaps and no-wrapping stay). (1) **THE
+GRIND**: Toni's 225 v 229 again (or any long infantry grind, both charging). Watch the front with ALT: when a man's bar goes orange / red he should
+step back 2-4 m - WALKING backwards, still facing the enemy, guard up - and stand there, not swinging unless an enemy comes right up to him; after
+20-40 s he goes back in. Men should do it one at a time, at different moments - never a whole unit; sometimes a resting man goes in together with
+the man beside him. When both sides are worn out a gap of 2-4 m should show here and there by itself; when only the enemy is spent, your fresh men
+should push on into them. (2) **A NEW ORDER**: give your charging unit F1 F3 again while some of its men rest: they must not all rush in at once.
+(3) **THE WALL**: your shield wall on STOP against a fresh enemy until your men tire - the tired men must stay in their places (guarding, not
+striking forward), never step back out of the wall; the wall moves only as one. (4) Optional: Escape → MCM → player page → *Tired men step back and
+rest* off and on mid-battle (every rest ends at once; on again = the next tired men rest). **Log**: `[rhythm] mission start: the rest (step 78c): an
+AI man on foot at the fight … - ON`; `[rhythm] first REST at … s: <man> at 31% (his tired mark 38%, Charge) with an enemy 1.2 m off - he backs out of
+reach (3 m, at most 4 m) facing the enemy, guard up, and waits for his ready mark 74%`; `[rhythm] first resting man WALKED BACK at …`; `[rhythm] first
+REST IN A WALL SLOT at …`; `[rhythm] first man BACK IN after a rest at … - his own ready mark`; `[rhythm] first man IN BY CONTAGION at … - … went in
+with <man> 1.8 m away`; warnings that should NOT appear: `first resting man TURNED AWAY`, `first resting WALL man more than 0.5 m out of his slot`,
+`first resting man more than 5 m behind his own front`. **[summary]** `rest (step 78c) - EACH MAN ON HIS OWN ON: rests started N (in a wall slot …),
+lasted mean … s; went back in: by his own mark …, by contagion … (rolls …), other ends: rotated …; stepped back from his start mean … m, p90 … m,
+max … m (limit 4.0 m); the farthest behind his own front … m, rests more than 5.0 m behind it …; men TURNED AWAY while resting 0 of …; WALL men
+resting in their slots: … looks, more than 0.5 m out of the slot 0 …; the marks rolled …` and `rest (step 78c) - THE NATURAL GAP between engaged
+fronts (a diagnostic only …): your team a gap of 2.0 m+ in …% of … unit looks …, the gap mean … m; the other sides …`. **Right**: many rests
+spread over the battle, lasting ~20-40 s; back in mostly by own mark with some contagion; stepped back mean ~2 m, p90 ≤ 4 m; TURNED AWAY 0; WALL out 0;
+rests more than 5 m behind the front few; the natural gap shows in some share of the looks when both sides are spent. **Wrong**: men walking away
+far, or a whole unit backing at once; turned backs (`TURNED AWAY` > 0 - tell Claude: the engine turned them); resting men pulled straight back in by
+the charge (stepped back mean ~0, no gap ever); a wall man stepping out; men resting for minutes (lower the ready marks); no rests at all (the
+tired marks too low for your battles).
 ---
 
 ## E. Your Athletics bar, the orders-menu strip and the ALT markers (20 min)

@@ -1560,8 +1560,9 @@ ORDERED to a place beside or behind the line (a move - yours or the enemy genera
 round as a mass), `PressWingBendDegrees` 30 (0-80; 0 = a straight front).</sub>
 
 **The battle's rhythm (step 78).** Two packs of dogs: they don't want to get hurt, they won't back down, and they won't do reckless things. In
-THE GRIND a worn-out front man swaps with a fresher mate right behind him; when the men at the front of two units fighting each other are BOTH
-spent and nobody breaks, a LULL: both fronts ease back a couple of metres, facing each other, and catch their breath while the tired go to the back.
+THE GRIND a worn-out front man swaps with a fresher mate right behind him. (Steps 78 / 78b also had a unit-wide LULL - both fronts backing off
+together on a clock; Toni: "it looks crazy ... they all just turn their backs and walk away" - step 78c removed it. Each man now rests on his
+own - below.)
 
 | The swap | |
 |---|---|
@@ -1572,56 +1573,55 @@ spent and nobody breaks, a LULL: both fronts ease back a couple of metres, facin
 | Called off | the fresh man not beside within 3 s (the tired man never left), a whole swap over 6 s, the fresh man staggered |
 | Shield walls | the slots swap - the wall hold and stand firm walk each man to his new place; nobody walks out |
 
-| The lull | charge | advance | hold |
+<sub>Settings: *Tired front men swap with fresh ones* = `RotationEnabled` (player page, How the AI fights; on; live); Advanced page, *Courage and
+cohesion (AI)*, live: `RotationTiredPercent` 35 (0-100), `RotationUseBraceFloor` (on), `RotationFresherPercent` 25 (5-100), `RotationBehindMetres` 1.5
+(0.5-4), `RotationFileMetres` 1 (0.2-3), `RotationContactMetres` 2.5 (1-6), `RotationBesideMetres` 0.7 (0.3-2), `RotationApproachSeconds` 3 (0.5-10),
+`RotationMaxSeconds` 6 (2-20), `RotationCooldownSeconds` 12 (1-120), `RotationRestSeconds` 6 (0-30).</sub>
+
+**Each man rests on his own (step 78c).** Toni: "only per men rule, if tired - step back and wait to recover, so that if all are tired they should
+naturally keep distance". Nothing is decided for a unit - every number below is one man's.
+
+| A man's rest | |
+|---|---|
+| Who | an AI man on foot at the fight: an enemy within 3 m, or pressing an enemy line (both sides; never you, never riders) |
+| Goes to rest | his bar falls below his own TIRED mark - rolled each rest between 20% and 45% |
+| Steps back | straight back toward his own side, WALKING (never a run), facing the enemy, until his nearest enemy is 3 m (+ 0.3) away - at most 4 m from where he began and never more than 4 m behind his own front |
+| Waits | standing there (the game's charge does not drag him in), guard up; he starts no attack unless an enemy comes within 2 m - then he fights as usual |
+| If his line moves on | an enemy more than 4 m off, or his own front 4.5 m+ ahead of him: his own AI keeps him with his line |
+| Goes back in | at his own READY mark (below), or with a mate (contagion) |
+| In a shield wall | he rests IN his slot: no step back, no step out, guard only - the wall moves only as one; a swap may still move him |
+
+| His ready mark (rolled each rest) | charge | advance | hold |
 |---|---|---|---|
-| Starts when BOTH fronts' mean bar (the front men: within 1.5 m of the front) is below | 30% | 40% | 50% |
-| ... after the pair has fought at least | 10 s | 10 s | 10 s |
-| Ends when a front has regained (step 78b: the unit, +20 / +25 / +30 - below) | +10 points | +15 | +20 |
-| Each front eases back | 2 m | 2 m | 2 m |
+| between | 55-95% | 60-95% | 65-95% |
+| a man rolling the middle, from a 32% tired mark, refilling 1.7% a second out of reach | ~26 s | ~27 s | ~29 s |
 
-Each side uses its own order. A lull also ends on a NEW charge order, when a side breaks (half its men gone), after 30 s, or when the two units turn
-to other enemies; the same pair waits 20 s before the next. During it the tired front men swap with fresher men behind them (no enemy in reach
-needed). In the smoke two charging lines at 20% opened from 1.0 m to 4.4 m and closed again when they refilled. Your own units ease back too unless
-you turn it off; you yourself are never moved.
+His wounds cap it: a man with 60% health goes back in at 58%. A man whose wounds leave him less than 5 points above his tired mark does not rest.
 
-**The lull that shows (step 78b).** Toni's battle: 2 lulls in 7 minutes - "never, not for a sec". The swaps kept the FRONT men's bars up, the
-fronts were meshed, and easing a meshed front back 2 m opened nothing. Now:
+| Contagion - a mate within 3 m of his unit goes back in | the chance he goes with him |
+|---|---|
+| his bar below his tired mark + 10 points | 0 |
+| half way from there to his ready mark | 30% |
+| at his ready mark | 60% |
 
-| The breather clock | charge | advance | hold |
-|---|---|---|---|
-| After continuous contact of (rolled per spell, the more aggressive order of the two) | 30-60 s | 25-50 s | 20-40 s |
-| ... a lull once BOTH units' bar is below | 55% | 60% | 65% |
-| ... or the pair's blows in contact have fallen to | 60% of their peak | 60% | 60% |
-| At once (after 10 s) when both units are spent below | 30% | 40% | 50% |
-| It ends when a unit has regained | +20 points | +25 | +30 |
-
-A UNIT's bar = the mean bar of its men within 8 m of its front - the fresh men rotated forward AND the tired men behind them. THE GAP is
-measured from the men: in 2 m strips along the contact, each side's nearest men; each side backs off until 3.5 m of empty ground lies between
-them (at least 2 m from where its own nearest men stood) - a meshed fight separates about its middle. If the gap does not hold after 3 s, a side
-standing at its line steps it back half a metre a second, at most 8 m more. A new charge order in a lull's first 3 s ends it only once those 3 s
-have passed. A 6-minute grind between two lines sees about 4-7 breathers of ~10-20 s (the smoke: 7 in a meshed 6-minute grind, the gap 4.0-4.4 m).
-
-<sub>Settings: Advanced page, *Courage and cohesion (AI)*, live: `LullClockChargeMinSeconds` 30 / `LullClockChargeMaxSeconds` 60,
-`LullClockAdvanceMinSeconds` 25 / `LullClockAdvanceMaxSeconds` 50, `LullClockHoldMinSeconds` 20 / `LullClockHoldMaxSeconds` 40 (0-600),
-`LullClockChargePercent` 55, `LullClockAdvancePercent` 60, `LullClockHoldPercent` 65 (0-100), `LullAttackRateFallenPercent` 60 (0-100; 0 = the bars
-alone), `LullUnitDepthMetres` 8 (0.5-40), `LullChargeGraceSeconds` 3 (0-15), `LullGapMetres` 3.5 (0.5-10), `LullMaxBackMetres` 8 (0.5-30); the
-recovery `LullRecover*Percent` 20 / 25 / 30 since step 78b (config format 17 moves an untouched 10 / 15 / 20).</sub>
+A man who goes in by contagion may take his own neighbours along - each rolls his own chance. When both fronts are spent both step back and a gap
+of ~3 m opens by itself (the smoke: 1.0 → 3.2 m); when only one is, the fresh side follows and presses (3.75 m in the smoke) and the tired men stand
+4 m back and defend. The log counts how often a natural gap of 2 m+ stood between two fronts in a fight, for your team and the others - it never
+moves anybody.
 
 | Who wins when they disagree | |
 |---|---|
-| Press, don't pass | always - nobody walks past an enemy line |
-| A step back, the wall's pull | win (a held wall man's slot already agrees with the swap and the lull) |
-| The swap / the lull's walk back | win over courage's walk back, the fear band and the block hold for their seconds |
-| Attacks | never touched by the lull; the tired man of a swap only defends |
+| A step back after a swing, the wall's pull, the fear flock, a rout | win over the rest |
+| The rest's walk / stand | wins over press-don't-pass's walk, the swap's walk, courage's walk back and the block hold |
+| Press, don't pass | its clamp still bites last - nobody walks past an enemy line |
+| The swap | first: a tired front man with a fresher mate behind swaps instead of resting |
+| Your orders | work as always; a new charge does not force resting men in - they go at their mark or with a mate |
 
-<sub>Settings: *Tired front men swap with fresh ones* = `RotationEnabled`, *Lulls when both fronts are spent* = `LullEnabled`, *Lulls: your units
-ease back too* = `LullForPlayerUnits` (player page, How the AI fights; on; live); Advanced page, *Courage and cohesion (AI)*, live:
-`RotationTiredPercent` 35 (0-100), `RotationUseBraceFloor` (on), `RotationFresherPercent` 25 (5-100), `RotationBehindMetres` 1.5 (0.5-4),
-`RotationFileMetres` 1 (0.2-3), `RotationContactMetres` 2.5 (1-6), `RotationBesideMetres` 0.7 (0.3-2), `RotationApproachSeconds` 3 (0.5-10),
-`RotationMaxSeconds` 6 (2-20), `RotationCooldownSeconds` 12 (1-120), `RotationRestSeconds` 6 (0-30), `LullContactMen` 3 (1-50),
-`LullMinContactSeconds` 10 (0-120), `LullStartChargePercent` 30, `LullStartAdvancePercent` 40, `LullStartHoldPercent` 50 (0-100),
-`LullRecoverChargePercent` 10, `LullRecoverAdvancePercent` 15, `LullRecoverHoldPercent` 20 (1-100), `LullEaseMetres` 2 (0.5-8),
-`LullFrontDepthMetres` 1.5 (0.5-5), `LullMaxSeconds` 30 (5-180), `LullCooldownSeconds` 20 (0-300), `LullRotates` (on).</sub>
+<sub>Settings: *Tired men step back and rest* = `RestEnabled` (player page, How the AI fights; on; live); Advanced page, *Courage and cohesion (AI)*,
+live: `RestTiredMinPercent` 20 / `RestTiredMaxPercent` 45, `RestReadyChargeMinPercent` 55 / `RestReadyChargeMaxPercent` 95,
+`RestReadyAdvanceMinPercent` 60 / `RestReadyAdvanceMaxPercent` 95, `RestReadyHoldMinPercent` 65 / `RestReadyHoldMaxPercent` 95 (0-100; a max below
+its min = the min), `RestReachMetres` 3 (1-8), `RestMaxBackMetres` 4 (0-10), `RestDefendMetres` 2 (0-5), `RestContagionMetres` 3 (0-10),
+`RestContagionMaxPercent` 60 (0-100), `RestContagionFloorPoints` 10 (0-100), `RestGapDiagnosticMetres` 2 (0.5-10, the log only).</sub>
 
 ## 15. What you see on screen
 

@@ -7276,3 +7276,103 @@ wave on a new charge order should end the lull itself through `EndLull(…, Wave
 **DEPLOY**: `tools\deploy.ps1` ran normally (Smart App Control off): the build, the AssemblyGuard (OK), the offline smoke (186 passed), installed as
 Modules\TraxCombatEnhancements.Dev "Trax Combat Enhancements (dev)" - the game and the launcher were not running. `tools\SmartAppControl\loadcheck.ps1`:
 both DLLs LOADED (`1.2.0+e6d362628c30da255e8ef63241117324545c43b8`). Not uploaded. Windows security untouched.
+
+## Step 78c — each man rests on his own, the lull removed (built 2026-10-22; dev build only, not uploaded)
+
+**Toni (2026-10-22, after playing 78b)**: "this doesnt work at all, dont add this dance move, it looks crazy, they are at it the whole time, then they
+like for some reason all just turn their backs and walk away very far off, then they are at it again. Leave on the simple stuff, remove that scripted
+event … just when they are tired make them step back and not push, dont script for all of them to walk away or to push into each other, only per men
+rule, if tired - step back and wait to recover, so that if all are tired they should naturally keep distance. Then, dont make events making them to
+rush into each other, just the standard ones, if guy next to you rushes, there is a chance to make you go in too before waiting your full counter to
+recover." His screenshot: both armies 15-20 m apart, men walking away with their backs turned. Same day, via the coordinator: "a man in a shield wall
+must never leave it to rest" - every wall state.
+
+**Removed (all of it, not switched off)**: steps 78 / 78b's LULL - RhythmRules' lull half, `LullEnd`, `LullTrigger`, RhythmMath's LullStart / Recover /
+Spent / Recovered / LullAction / NewCharge / PairGroup / ClockSeconds / ClockBar / Worn / RateFallen / Trigger / MeanWithin / GapHolds / StartLines /
+the names, RhythmUnits' lull state (InLull, partners, lines, ease, the clock, the attack rate, the charge grace, the steps back, the start / end events,
+EndLull / EndAll), RhythmStats' two lull lines, RhythmMind's lull wish; the module's NoteLullEvents, NoteRhythmAttack (StartRelease), EndLullByWave,
+LullClamp, the lull walk in SteerRhythmMan, the wall slot shift; 29 settings (`LullEnabled`, `LullForPlayerUnits` on the player page, 27 `Lull*`
+Advanced); their tests (Step78Tests' lull facts, Step78bTests' clock / gap-line / grace / migration facts) and smoke (step 78's LullBetweenSpentFronts,
+78b's MeshedGrindGetsItsBreathers and its cost). The `LullEnd.Wave` seam for step 79 is gone with it - 79 has to be re-thought anyway (Toni: no unit
+events making men rush in).
+
+**Kept**: step 78's ROTATION (it never needed the lull - `LullRotates` only let it run with no enemy in reach); 78b.3 (no wrapping, the wing's bend);
+step 77's press; the unit table (`RhythmUnits` - fronts, front bars, the enemy unit, now also the men's mean axis and `BehindFront`) and 78b's
+`MeasureGap` / `MeasurePair` - both only MEASURE now (the rest's "behind his front" and the natural-gap diagnostic).
+
+**Config**: the reader already ignores an unknown key (it lands in `ConfigReadResult.Unknown`, kept under "Not recognised" by the rewrite), so Toni's
+config.json with the lull keys loads unchanged. `ConfigFile.DropRetiredLullKeys` (any format, idempotent, like steps 36 / 37's sprint keys) drops the 29
+from Unknown with one note each, so the next rewrite does not carry them. NO format change: FormatVersion stays 17 - nothing has to move (format 17's
+LullRecover* move had nothing left to move; its branch is a comment now).
+
+**The rest (Core `Rest.cs`, Module `AthleticsLogic.Rest.cs`)** - it rides RhythmLookCore (courage's look ~0.5 s; a held wall man via FearSkipped) AFTER
+the rotation's FindMate (a swap first; a swap ends a rest as `RestIn.Rotated`), and the rhythm's input wish:
+- AT THE FIGHT = courage's nearest enemy within `RestReachMetres` 3, or step 77's front clamp on him (pressing an enemy line), or a held wall man.
+- TIRED MARK rolled once per rest (`RestDice`; afresh after each rest) from 20-45 %; READY MARK rolled at the start by his unit's order group (charge
+  / no formation 55-95, advance 60-95, hold 65-95 - eager men go back sooner, a holding line waits longest), `CappedReady` = 2 points under his wound
+  cap (re-read each look); no rest when that leaves under 5 points above the tired mark (`NoBand`).
+- THE WALK (SteerRest every 0.1 s): from the last look's nearest enemy distance, `WalkBack` = out of reach + 0.3 m, at most `RestMaxBackMetres` 4 from
+  where the rest began AND at most 4 m behind his unit's front; the direction = STRAIGHT BACK along his unit's axis (`RhythmUnits.UX/UY` - since 78c
+  the mean of its men's unit vectors to their nearest enemies when they agree, `AxisAgreement` 0.5, else the centroids'), away from that enemy only
+  when the table has no axis; the stick at most 0.6 (`WalkStick` - a walk); the vector in his own frame (ToLocal) while his AI keeps looking at its
+  target - a backpedal, never a turned back.
+- THE STAND: out of reach but within reach + 1 m (`HoldsBack`, `ClampMarginMetres`) he STANDS - the rest's own zero vector over the game's movement
+  (+ step 78's clamp for when a stronger wish moves him); farther off, or more than 4.5 m behind his front (`FollowSlackMetres` - his line moved on), his
+  own AI has him, so he keeps up with his unit. DECIDED: a plain forward clamp (step 77's way, as asked) was tried first - in the smoke's meshed grind
+  the stand-in charge then slid men sideways through the other side's ranks (a 12.9 m drift in one rest); the stand is the clamp's stronger form.
+- ATTACKS: held with the guard up (`RestHoldAttacks`) unless an enemy is within `RestDefendMetres` 2 (`HoldsAttacks`); a wall man always held.
+- BACK IN: at his own ready mark (`GoIn`) - then CONTAGION: every resting man of the same unit key within `RestContagionMetres` 3 (their last steer
+  places) rolls `ContagionChance` = 60 % × (bar − floor) ÷ (ready − floor), floor = his tired mark + 10 points (0 below it, the max at / above his mark);
+  those who go are queued and take their own neighbours (one reused List, `_restGoInBusy` - no recursion, no allocation).
+- A SHIELD WALL: a held man rests IN his slot - no walk, no clamp (the wall's pull must still walk him back to his slot), step 42's leash 0 for him
+  (`LookWall`: `StandFirmMath.Leash(firm || RestingInWall(st), …)`), his attacks held; a look that finds the wall let him go turns it into an open rest
+  from where he stands. The rotation may still swap him.
+- PRIORITIES (AiInputHook.Apply): backpedal > the wall's pull > THE REST'S WALK / STAND (`ApplyRestMove`, which also yields to `s.Flock`) > the press's
+  walk > the swap's walk > courage > the flock > the block; the press's clamp then the rhythm's clamp last. A kick's commit stands aside for it.
+- THE PLAYER never; orders untouched; a new charge order changes nothing for a resting man (he goes at his mark or by contagion).
+- Ends: own mark, contagion, rotated, excluded (courage's gates - fled / routed / taken over / a rider), left the field, switched off (RestEnabled,
+  Athletics or the master switch - `TickRestSwitch` every tick, all at once), mission end, error.
+
+**THE LOG**: `[rhythm]` mission start (the rest's sentence), first REST / resting man WALKED BACK / REST IN A WALL SLOT / man BACK IN / man IN BY
+CONTAGION, warnings first TURNED AWAY / WALL man out of his slot / more than 5 m behind his own front, first tired man with the rest OFF; the two
+[summary] lines `rest (step 78c) - EACH MAN ON HIS OWN` (rests, in a wall slot, OFF would-rest looks, too wounded, lasted mean / max, back in by own
+mark / contagion (rolls, below the floor) / other ends, stepped back from his start mean / p90 / max (a 0.25 m histogram), the farthest behind his own
+front + rests more than 5 m behind it, TURNED AWAY of the facing samples (`IRhythmBody.Facing` = `Agent.LookDirection` against the nearest enemy, each
+look), WALL looks more than 0.5 m out of the slot (`IFearBody.Slot`) + the farthest, the marks rolled, frames, cost) and `rest (step 78c) - THE NATURAL
+GAP between engaged fronts` (RhythmUnits.Publish: each pair with contact in the last 10 s and its gap's 25th percentile under 15 m - per side, your team
+vs the others: looks, looks with `RestGapDiagnosticMetres` 2 m+, the mean gap; a diagnostic only). The rotation keeps its one [summary] line.
+
+**Settings (16; 489 → 476)**: PLAYER page "How the AI fights" after `RotationEnabled`: `RestEnabled` (on) - the page 27 → 26; Advanced "Courage and
+cohesion (AI)" after `RotationRestSeconds`: `RestTiredMinPercent` 20 / `RestTiredMaxPercent` 45, `RestReadyChargeMinPercent` 55 / `...MaxPercent` 95,
+`RestReadyAdvanceMinPercent` 60 / 95, `RestReadyHoldMinPercent` 65 / 95, `RestReachMetres` 3 (1-8), `RestMaxBackMetres` 4 (0-10), `RestDefendMetres` 2
+(0-5), `RestContagionMetres` 3 (0-10), `RestContagionMaxPercent` 60, `RestContagionFloorPoints` 10, `RestGapDiagnosticMetres` 2 (0.5-10). Plumbing
+(`RestMath`): WoundSlack 0.02, MinBand 0.05, WalkStick 0.6, ReachSlackMetres 0.3, ClampMarginMetres 1, FollowSlackMetres 0.5, WallSlotSlackMetres 0.5,
+FarBehindFrontMetres 5, the histogram 0.25 m x 80; `RhythmUnits`: FrontDepthMetres 1.5, EngagedSeconds 10, EngagedGapMetres 15, AxisAgreement 0.5.
+
+**Measured offline**: tests 1132 → 1132 (Step78cTests 10 new; the lull's 10 out of Step78Tests / Step78bTests). Smoke 186 → 187 (3 lull steps out, 4 in
+Program.Step78c.cs): the MESHED six-minute grind (14 x 3 a side, a metre into each other, a line-charge stand-in - see the gotcha): 316 rests by all 84
+men, at most 12 begun in any 2 s, lasted mean 24 s, back in by own mark 46 / contagion 74 (359 rolls) / rotated 136, stepped back mean 2.25 / p90
+3.85 / max 3.85 m, 0 walk frames toward the enemy's side or while 4 m+ behind the front, 0 running, 0 turned away (the stand-in looks at its nearest
+enemy - the real proof is the game's), a new charge order at 180 s: 54 resting → 56 a second later; BOTH SIDES TIRED: the gap 1.0 → 3.2 m with no unit
+rule, the diagnostic 20 of 21 looks 2 m+ for both sides; ONE SIDE TIRED: the fresh front 3.75 m forward, the tired backed at most 3.83 m; A SHIELD WALL
+(12 x 2 held, a fresh enemy for 150 s): 24 rests in the slots, 0 men more than 0.5 m out of their slots because of resting (0 of 4429 logic looks),
+0 rest walks, the leash 0; the input frame; RestEnabled / the master switch off end every rest at once; THE COST: 1000 men, 150 resting - the rhythm's
+own (the rest inside) 0.026 ms a tick, 0 bytes over 300 ticks.
+
+**Gotchas**
+- The plain stand-in grind (78b's) walks every man at his nearest single enemy with no collisions: once men rest, fresh men chase single enemies
+  through the other side's ranks and the "front" (q90) reads a penetrator. `RunGrind(…, lines: true)` = a line's charge (north / south, only at an
+  enemy ahead) - closer to the game's slots and collisions. Even so 2.7 % of resting looks stood 5-7 m behind the nearest own front man (an enemy
+  broke into the line in front of a man already at his limit) - never by the rest's own walk (checked: 0 frames).
+- Walking "away from the nearest enemy" in a mesh took men sideways and through (that enemy stood beside them); the unit's axis fixed it - and the
+  unit's axis needed the men's own directions (two meshed units' centroids sit on top of each other).
+- Heredocs with apostrophes in Git Bash again: the long edits went to scratchpad Python files written with the Write tool (`s78c\*.py`), run with
+  `python -I`.
+
+**UNVERIFIED — only the game can tell (PLAYTEST D43c)**
+1. The engine walks a man backwards facing his target when the rest writes a backwards vector (step 16's backpedal says yes) - `TURNED AWAY` 0.
+2. The stand (a zero vector over the AI's movement) holds against the native charge - "stepped back mean" ~2 m, not ~0; gaps show when both are spent.
+3. The numbers against real grinds: rests ~20-40 s, many, staggered; the ready marks vs the refill in contact (blocking costs - a man who cannot get out
+   of reach may rest long).
+4. The unit axis from the men's directions in a real crowd (a man never walks sideways along the line).
+

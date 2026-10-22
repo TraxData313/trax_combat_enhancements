@@ -337,7 +337,27 @@ plane ± `LullGapMetres` 3.5 ÷ 2 (at least the 2 m ease from each side's own ne
 the bins' 25th percentile reaches 3 m, else a side standing at its line steps it back 0.5 m/s (at most 8 m); NO WRAPPING - `PressWrapAllowed` off,
 past a line's end + 1 m the front BENDS back `PressWingBendDegrees` 30 (an overlapping wing curls toward the end and stands off it facing it, a
 man forward of it walked back), a unit ORDERED there (a Move) free; the `[rhythm]` / `[press]` first-time lines and a third [summary] line each
-(the lull's trigger and gap; no wrapping - wings held, the old wrap counter 0) (PLAYTEST D43b). The bar for the
+(the lull's trigger and gap; no wrapping - wings held, the old wrap counter 0) (PLAYTEST D43b). EACH MAN RESTS ON HIS OWN - THE LULL REMOVED (step 78c,
+Toni 2026-10-22 after playing 78b: "they are at it the whole time, then they like for some reason all just turn their backs and walk away very far off
+... only per men rule, if tired - step back and wait to recover"; DESIGN decision 74, AI_NOTES "Step 78c"): steps 78 / 78b's unit-wide LULL is GONE -
+its code, its 29 settings (`LullEnabled`, `LullForPlayerUnits`, 27 `Lull*`; an old config.json's keys dropped with one note each, no format change -
+FormatVersion stays 17), its tests and smoke; the rotation, 78b's no wrapping and the unit table (now only measuring) stay. `RestEnabled` (PLAYER page,
+26 settings, on) + 15 `Rest*` Advanced in "Courage and cohesion (AI)": an AI man on foot at the fight (an enemy within `RestReachMetres` 3, or
+pressing an enemy line) whose bar falls below his OWN tired mark (rolled each rest, `RestTiredMinPercent` 20 - `RestTiredMaxPercent` 45) walks
+straight back toward his own side (his unit's axis - the mean of its men's directions to their nearest enemies) out of reach, facing the enemy,
+at most `RestMaxBackMetres` 4 from where his rest began and behind his own front, never running (stick 0.6), then STANDS within reach + 1 m (the
+rest's own zero vector + step 78's clamp - the game's charge never drags him in; farther off, or 4.5 m+ behind his front, his own AI keeps him with
+his line), guard up - he strikes only at an enemy within `RestDefendMetres` 2 - until his OWN ready mark (rolled each rest by his unit's order:
+charge 55-95, advance 60-95, hold 65-95 %, 2 points under his wound cap); CONTAGION, the only social rule: each time a man of his unit within
+`RestContagionMetres` 3 goes back in, a resting man rolls `RestContagionMaxPercent` 60 % × his way from his tired mark + `RestContagionFloorPoints`
+10 to his ready mark (0 below that floor) - a cascade through one reused queue, still each man's own roll; no unit-wide event, no shared clock. A
+SHIELD WALL man (step 41 held - a stop, step 68's advance as one, stand firm) rests IN his slot: no walk, step 42's leash 0, guard only; the rotation
+may still swap him. The rest's walk sits after the wall's pull and BEFORE the press's, the swap's, courage's and the block's; a step back, the
+wall's pull and the fear flock win; routing / excluded men's rests end at once; the rotation first (a swap ends a rest - "rotated"); you never; a
+new order never drags resting men in. Core `Rest.cs`, Module `AthleticsLogic.Rest.cs` (+ `IRhythmBody.Facing`, `AiInputState.RestMove /
+RestHoldAttacks`); the `[rhythm]` first REST / WALKED BACK / REST IN A WALL SLOT / BACK IN / IN BY CONTAGION lines and the two [summary] "rest (step
+78c)" lines (rests, how long, back in by own mark / contagion, stepped back mean / p90, behind the front, TURNED AWAY, WALL men out of their slots,
+the marks; THE NATURAL GAP of 2 m+ between engaged fronts by side - `RestGapDiagnosticMetres`, a diagnostic only) (PLAYTEST D43c). The bar for the
 fighter you look at is LATER (DESIGN §3; its settings wait in DESIGN's "Planned parameters"). Words:
 the pool/bar/points are "Athletics", the character-screen skill is "the Athletics skill" (it
 used to be called "endurance"), the "peak line" is the white mark at the top quarter of the bar,
@@ -485,7 +505,7 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               description, apply timing (Live / NextBattle); Normalize, Format;
                               its Default comes from defaults.json (DefaultsFile), never code; step 59:
                               SettingsPage (Player / Advanced) + ParamGroup.Page
-  SettingsSchema.cs           EVERY setting of DESIGN's table (489 - step 78b's PressWrapAllowed / PressWingBendDegrees after PressEndSlackMetres and 14 Lull* (the clock, the unit's bar, the grace, the gap) after LullRotates, all Advanced; 473 - step 78's RotationEnabled / LullEnabled / LullForPlayerUnits after PressDontPass
+  SettingsSchema.cs           EVERY setting of DESIGN's table (476 - step 78c: the lull's 29 out (LullEnabled / LullForPlayerUnits on the player page, 27 Lull*), RestEnabled after RotationEnabled (the player page, 26) and 15 Rest* after RotationRestSeconds (Advanced, "Courage and cohesion (AI)"); 489 - step 78b's PressWrapAllowed / PressWingBendDegrees after PressEndSlackMetres and 14 Lull* (the clock, the unit's bar, the grace, the gap) after LullRotates, all Advanced; 473 - step 78's RotationEnabled / LullEnabled / LullForPlayerUnits after PressDontPass
                               (the player page, 27) and 24 Rotation* / Lull* after PressEndSlackMetres (Advanced, "Courage and cohesion (AI)"); 446 - step 77's PressDontPass after SpearPreferenceEnabled (the player page,
                               24) and 15 Press* after LoneRunnerAheadMetres (Advanced, "Courage and cohesion (AI)"); 430 - step 76's SpearPreferenceEnabled after ShieldWallStandFirm (the player
                               page, 23) and 17 Spear* + ThrustsPassFriends / ThrustsPassPolearmsOnly / FriendlyHitStunSeconds after
@@ -525,7 +545,8 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
   ConfigFile.cs               config.json TEXT: commented writer (header incl. how to revert +
                               // above each key; AppendSettings shared with defaults.json),
                               tolerant reader (comments, trailing commas, casing, "0,75"), Apply;
-                              FormatVersion 17 + Migrate (step 78b: LullRecoverChargePercent / Advance / Hold 10 / 15 / 20 → 20 / 25 / 30 (a format 16 file), a tuned value kept and said - MoveOrKeepIfMoved; step 74: LineDisciplineRanksT0-T5 6/5/4/3/2/1 → 7/6/5/4/3/2 (a format 15 file), a tuned value kept
+                              FormatVersion 17 + Migrate (step 78c: DropRetiredLullKeys - the lull's 29 keys leave Unknown in any format, one note each, no format change; step 78b's move below has nothing left to move;
+                              step 78b: LullRecoverChargePercent / Advance / Hold 10 / 15 / 20 → 20 / 25 / 30 (a format 16 file), a tuned value kept and said - MoveOrKeepIfMoved; step 74: LineDisciplineRanksT0-T5 6/5/4/3/2/1 → 7/6/5/4/3/2 (a format 15 file), a tuned value kept
                               and said - MoveOrKeepIfMoved, T6 never; step 71: CostPerBlow 8 → 10, CostPerWrongSideShieldBlock 5 → 6, CostPerShieldBlock 2 → 3 (a format 14 file),
                               CostPerKickOrBash 5 → 6 (13+), CostPerWeaponParry 2 → 3 once, a tuned value kept and said - MoveOrKeepIfMoved; step 68: CostPerBlow 7 → 8 (a format 9+ file), CostPerWrongSideShieldBlock 2 → 5 (8+), CostPerShieldBlock 1 → 2
                               once, a tuned value kept and said; step 66: a format-12 file's CostPerKickOrBash 3 → 5, AiKicksPerMinute 0.1 → 1.2, AiKickCooldownSeconds 10 → 8;
@@ -900,7 +921,15 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               Condition, Step - the timers, Favors, HeldOf, NextLook - the jitter, WieldRewrite), SpearStats (the 2 [summary] "spears"
                               lines); ThrustVerdict / ThrustFacts / ThrustPassRules / ThrustPassMath (Decide in gate order, StunWanted, the vanilla 0.4)
                               / ThrustPassStats (the [summary] "thrusts past friends" line)
-  Rhythm.cs                   step 78 (DESIGN decision 72) - THE BATTLE'S RHYTHM: RhythmRules (ModEnabled FIRST, AthleticsEnabled, the two
+  Rest.cs                     step 78c (DESIGN decision 74) - EACH MAN RESTS ON HIS OWN: RestRules (ModEnabled FIRST, AthleticsEnabled, RestEnabled,
+                              15 numbers; Describe), RestIn (own mark / contagion / rotated / excluded / ...), RestMath (TiredMark / ReadyMark by order,
+                              CappedReady - the wound cap, Starts, Ready, ContagionChance, WalkBack - the walk-back limit from his start and behind his front,
+                              HoldsBack - within reach + 1 m and not 4.5 m+ behind his front, HoldsAttacks; plumbing WalkStick 0.6, the wall slot slack 0.5,
+                              5 m far behind), RestStats (+ the two [summary] "rest (step 78c)" lines; GapLooks / GapClear by side - the natural-gap
+                              diagnostic RhythmUnits feeds)
+  Rhythm.cs                   step 78c: the lull REMOVED (its rules, math, unit-table parts, stats); RhythmRules = the rotation + RestEnabled (RestOn,
+                              AnyOn), RhythmMind + the rest's per-man state, RhythmUnits = fronts / front bars / BehindFront / the men's mean axis / the
+                              natural gap of engaged pairs (MeasurePair - a diagnostic). Before - step 78 (DESIGN decision 72) - THE BATTLE'S RHYTHM: RhythmRules (ModEnabled FIRST, AthleticsEnabled, the two
                               switches, 24 numbers), RhythmMath (tired / fresher / behind / covers / beside / busy codes / the lull by order), RhythmMind,
                               RhythmUnits (the unit table: fronts, front bars, the enemy unit, the lulls' start / lines / ends; EndLull - 79's wave),
                               RhythmStats (the two [summary] "battle rhythm" lines); step 78b (decision 73): LullTrigger, THE BREATHER CLOCK (PairGroup,
@@ -1210,6 +1239,10 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               Missions/BlockBody.cs: IBlockBody (Cap via LineDiscipline.TryCap, Formation - the order / behaviour / arrangement names, cached
                               -, Name), GameBlockBody, BlockBodyDefault; LineDiscipline.TryCap (the last look's cap per slot); AiInputHook.cs: AiInputState
                               .Block (BlockX / Y), SetBlock, ApplyBlock, BlockOn - the last wish; TrackedAgent.BlockHold (Core BlockMind)
+  Missions/AthleticsLogic.Rest.cs  step 78c: StartRest / NoteRestSettings / TickRestSwitch, RestLook (from RhythmLookCore after the rotation: the marks,
+                              the start, the facing / behind-front / wall-slot samples, ready → GoIn), BeginRest, SteerRest (every 0.1 s: the walk back along
+                              his unit's axis, the stand + clamp, the attack hold; a wall man guard only), GoIn + CONTAGION (one reused queue), EndRest /
+                              EndAllRests; RestingInWall (LookWall's leash 0); the [rhythm] rest lines. Step 78c removed the lull from
   Missions/AthleticsLogic.Rhythm.cs  step 78: the swap (FindMate - one scan for a tired front man, StartSwap / SteerSwap - hold, beside,
                               Formation.SwitchUnitLocations, back), the lull (the unit table published from TickCourage, each man walked back /
                               clamped at his unit's line), RhythmWallSlot (LookWall: a held man's slot = the swap's place / shifted back), the
@@ -1397,7 +1430,7 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
   Hud/FeverMarksVM.cs         its ViewModels: a GROW-ONLY POOL of FeverMarkVM (IsShown, PositionX / Y, Width / Height in pixels,
                               Fill, FillColor, FrameColor; step 46: BoxWidth / BoxHeight, FeverShown, BarShown, BarWidth / Height,
                               BarFill, BarUsable, BarColor, BarFrameColor, BarWoundColor)
-tests/TraxCombat.Core.Tests/  net8.0 xUnit (1132 - step 78b: + Step78bTests.cs - the 16 settings placed / live, format 17 (moved / kept), the clock (the roll by order, worn / slowed / spent), the whole unit's bar under a fresh rotated front, the blows slowing, the gap from the men (bins, the plane, the lines from a meshed fight, opened, stepped back, the cap), the charge grace, the bent front and the wing, no wrap / ordered, the summary lines; 489 settings; 1121 - step 78: + Step78Tests.cs - the 27 settings placed (the player page 27), the switches, tired /
+tests/TraxCombat.Core.Tests/  net8.0 xUnit (1132 - step 78c: + Step78cTests.cs (10 - the settings placed / live, the master switch first, the marks by order and the wound cap, the start, the contagion chance, the walk-back limit and the hold, the attack hold, the lull's keys dropped from an old config, the natural gap by side, the summary lines), the lull's tests out of Step78Tests / Step78bTests; 476 settings; step 78b: + Step78bTests.cs - the 16 settings placed / live, format 17 (moved / kept), the clock (the roll by order, worn / slowed / spent), the whole unit's bar under a fresh rotated front, the blows slowing, the gap from the men (bins, the plane, the lines from a meshed fight, opened, stepped back, the cap), the charge grace, the bent front and the wing, no wrap / ordered, the summary lines; 489 settings; 1121 - step 78: + Step78Tests.cs - the 27 settings placed (the player page 27), the switches, tired /
                               fresher / behind / covered / beside, busy actions, the lull by order, the unit table, the lull's start / lines / ends,
                               your units, the summary lines; 473 settings; 1109 - step 77: + Step77Tests.cs - the 16 settings placed (the player page 24) / live / defaults, the
                               master switch first, the line test, Toni's wall's front segment (its ends, no gap, its rear face, a man stepped out),
@@ -1706,7 +1739,11 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               filter - two lines grinding: 12 of 12 swaps, the front 25% → 85%, 0 file-frames without a front man; two spent fronts: the
                               gap 1.0 → 4.4 m, closed on recovery, a new charge order ends a lull; a held wall man's slot; the cost (1000 men 0.004 ms a
                               tick, 0 bytes); the older steps pin both switches off (183 steps);
-                              step 78b (Program.Step78b.cs): THE LULL THAT SHOWS - a MESHED six-minute grind (14 x 3 a side) through the real logic and
+                              step 78c (Program.Step78c.cs): EACH MAN RESTS ON HIS OWN - a meshed six-minute grind (316 rests by all 84 men, at most 12
+                              begun in any 2 s, back in by own mark 46 / contagion 74, backed at most 3.85 m, never toward the enemy's side, 0 turned away);
+                              both sides tired = a gap 1.0 → 3.2 m by itself; one side tired = the fresh side presses; a 12 x 2 shield wall: 0 men more than
+                              0.5 m out of their slots because of resting; the input frame; the switches; 1000 men 0.026 ms a tick, 0 bytes (187 steps);
+                              step 78b (Program.Step78b.cs; its lull smoke removed by step 78c): THE LULL THAT SHOWS - a MESHED six-minute grind (14 x 3 a side) through the real logic and
                               the REAL input filter: 7 lulls (2 by the breather clock), each gap 4.0-4.4 m from the men, held after 2.8 s; NO WRAPPING -
                               a 69 m unit on a 31 m held line under a stand-in charge that sends every man beyond the ends round them: step 77's wrap 80
                               men past the front, the wrap off 0 (every wing man at an end, behind the bent front); the same unit ORDERED there goes round;
