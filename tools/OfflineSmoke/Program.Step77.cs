@@ -40,6 +40,8 @@ namespace TraxCombat.Tools
             S.Set(SettingsSchema.PressBandMarginMetres, 1.0, SettingSources.File);
             S.Set(SettingsSchema.PressBlockEndMetres, 0.0, SettingSources.File);
             S.Set(SettingsSchema.PressEndSlackMetres, 1.0, SettingSources.File);
+            S.Set(SettingsSchema.PressWrapAllowed, true, SettingSources.File);   // step 78b: step 77's own wrap (78b's smoke turns it off)
+            S.Set(SettingsSchema.PressWingBendDegrees, 0.0, SettingSources.File); // step 78b: step 77's straight front
         }
 
         private static AthleticsLogic NewStep77Logic(FakeCourageBody body, FakeBlockBody block, bool press)

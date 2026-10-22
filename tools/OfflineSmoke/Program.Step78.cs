@@ -92,6 +92,22 @@ namespace TraxCombat.Tools
             S.Set(SettingsSchema.LullMaxSeconds, 30.0, SettingSources.File);
             S.Set(SettingsSchema.LullCooldownSeconds, 20.0, SettingSources.File);
             S.Set(SettingsSchema.LullRotates, true, SettingSources.File);
+            // step 78b: step 78's own lull - no clock, the front men's bar (the first two ranks), a charge order at once; the gap and the
+            // back-step as shipped (Program.Step78b.cs runs the clock)
+            S.Set(SettingsSchema.LullClockChargeMinSeconds, 600.0, SettingSources.File);
+            S.Set(SettingsSchema.LullClockChargeMaxSeconds, 600.0, SettingSources.File);
+            S.Set(SettingsSchema.LullClockAdvanceMinSeconds, 600.0, SettingSources.File);
+            S.Set(SettingsSchema.LullClockAdvanceMaxSeconds, 600.0, SettingSources.File);
+            S.Set(SettingsSchema.LullClockHoldMinSeconds, 600.0, SettingSources.File);
+            S.Set(SettingsSchema.LullClockHoldMaxSeconds, 600.0, SettingSources.File);
+            S.Set(SettingsSchema.LullClockChargePercent, 55, SettingSources.File);
+            S.Set(SettingsSchema.LullClockAdvancePercent, 60, SettingSources.File);
+            S.Set(SettingsSchema.LullClockHoldPercent, 65, SettingSources.File);
+            S.Set(SettingsSchema.LullAttackRateFallenPercent, 0, SettingSources.File);
+            S.Set(SettingsSchema.LullUnitDepthMetres, 1.5, SettingSources.File);
+            S.Set(SettingsSchema.LullChargeGraceSeconds, 0.0, SettingSources.File);
+            S.Set(SettingsSchema.LullGapMetres, 3.5, SettingSources.File);
+            S.Set(SettingsSchema.LullMaxBackMetres, 8.0, SettingSources.File);
         }
 
         private static AthleticsLogic NewStep78Logic(FakeCourageBody body, FakeRhythmBody rhythm, bool rotation = true, bool lull = true)
