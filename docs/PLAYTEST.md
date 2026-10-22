@@ -1047,6 +1047,7 @@ Claude the `[summary] impact …` block of every battle.
 | 27 | **D44 - WAR CRIES** (step 79, sound only): a field battle of a few hundred a side - give F1 F3 to your infantry, watch the enemy charge, then the long grind | 10 | `[warcry] mission start`, `[warcry] first CHARGE ROAR`, `[warcry] first WAR CRY (charge order / back in / contagion answer)`, `[summary] war cries (step 79)` | on your charge part of the unit roars, ragged over a second or two; the enemy's charge roars too; now and then a man stepping back into the grind shouts and a mate answers | silence; a wall of sound every few seconds; the same man shouting again and again; cries from fleeing men |
 | 26 | **D43c - EACH MAN RESTS ON HIS OWN** (step 78c - the lull of D43 / D43b is gone): Toni's 225 v 229 again (a long grind, both charging), then your shield wall on STOP against a fresh enemy until your men tire | 20 | `[rhythm] first REST`, `[rhythm] first resting man WALKED BACK`, `[rhythm] first man BACK IN`, `[rhythm] first man IN BY CONTAGION`, `[rhythm] first REST IN A WALL SLOT`, `[summary] rest (step 78c)` (two lines) | worn-out men step back a couple of metres one by one, facing the enemy, stand and guard, then go back in - never a whole unit at once, never a long walk away, never a back turned; when both sides are spent a gap of a few metres shows by itself; your wall's men stay in their places | a whole unit walking off; men 5 m+ behind their front (`rests more than 5 m behind it` high); `TURNED AWAY` above 0; `WALL men … more than 0.5 m out of the slot` above 0; men resting forever (lasted mean over ~60 s); resting men dragged in by the charge (no gap ever) |
 | 28 | **D45 - KICKS AND BASHES LAND ON ENEMIES, NOT FRIENDS** (step 80): a field battle of ~100 a side, infantry two or more deep with shields on both sides; let the lines grind 3-5 minutes | 10 | `[impact] first AI kick / shield bash REFUSED - behind a friend (rear rank)`, `… a friend first in his strike path`, `[impact] first AI shield bash ENDED before its key`, `[summary] ai kicks - whom they hit and the strike path (step 80)`, `ai kicks` (its step-68 victims), `impact kicks / bashes landed vs decided`, `[config] migrated config.json` (once, AiKickFriendClearMetres 0.5 → 0.6, format 17 → 18) | front-rank men kicking and bashing the man in front of them; the second rank not kicking at all; friends a few % of the hits (was 55-64%); `on a FRIEND` in the impact coverage line near 0 | second-rank men still kicking into their front mates; friends above ~10% of the hits; almost no kicks at all (the enemy hits a man-minute far below the old ~0.12-0.13) |
+| 29 | **D46 - KICKS AND BASHES AS A SHARE OF THE MELEE MOVES** (step 81): a field battle of ~100 a side, shield infantry and two-handed shock troops (or a looter mob) against your infantry; grind 3-5 minutes, then let it run on until the lines tire | 10 | `[config] migrated config.json` (once: SwingStackMinimum 2 → 3, CostPerKickOrBash 6 → 8, AiKickCooldownSeconds 8 → 2, the 14 old kick keys dropped - format 18 → 19), `[impact] mission start, the AI kicks and bashes (steps 65 / 81): ON - each melee move ...`, `[impact] first AI kick asked ... in place of the swing he was winding up (step 81)`, `[summary] ai kicks - shares of the melee moves in kick reach (step 81)`, `ai kicks: asked ...`, `ai kicks - ends ...` | shieldmen in contact kicking and bashing about half their moves, men without shields kicking about a third; spearmen thrusting at a spear's length, kicking only once the enemy is close; the lines tiring sooner; tired men only swinging | rolled shares far from 20 / 35 / 45 and 35 / 65; DONE far below rolled with `stack empty` or `safety` big while fresh; `NOT played` large (the guard-then-kick does not play); `played as the other kind` large for kicks (the kick turned into a bash by the guard) |
 
 Then play normally (parts E-G). Your gut on each family - too many / about right / too few - is the most useful thing to send.
 
@@ -1607,8 +1608,9 @@ Advanced, "Impact: staggers, shield drops, knockdowns" - *AI soldiers kick and s
    bar orange / red) and kick again: the braces fail more and more; below a fifth of his bar no brace at all - he reels long and can fall.
 3. **The AI kicks you**: stand behind your shield against an AI man - now and then he kicks your guard open (you reel briefly, or you brace: red
    "You brace against X's kick").
-**Too much / too little (step 66 knobs)**: shieldmen bashing so much they hardly swing or the lines tire too fast - `AiBashShareOfSwingsPercent`
-50 (one bash in two swings) or `AiBashDelaySeconds` higher; still no kicks - `AiKicksPerMinute` higher, and check the waits line.
+**Too much / too little (step 81's knobs - steps 65 / 66's rate, bash credit and wait are retired, D46)**: shieldmen kicking / bashing so much they
+hardly swing or the lines tire too fast - `AiShieldmanKickPercent` / `AiShieldmanBashPercent` lower (Advanced → Impact); too few kicks from men
+without a shield - `AiNoShieldKickPercent` higher.
 **Broken - tell Claude**: `PLAYED 0` with many asked (the engine ignores the injected kick key for an AI agent - send the `[impact] first AI kick`
 lines; the fallback is setting the agent's event flag from the tick, as the player's controller does); AI men freezing for a second and a half
 in front of an enemy with nothing played (the commit holding them); `played as the other kind` large (bashes come out as kicks or the other way);
@@ -2024,6 +2026,30 @@ near the old ~0.12-0.13 (was 256 / 2120.7 man-minutes at 17:18 - body hits only)
 strike path`; the second rank never kicking. **Wrong**: friends above ~10% (the engine's kick or bash is wider than 0.6 / 0.75 - raise them); almost
 no kicks or bashes left (send the line - the dice can come up, see AI_NOTES "Step 80"); `MISSED` large (the path narrower than the engine's reach -
 the kicks fire at enemies they cannot reach).
+
+**D46. KICKS AND BASHES AS A SHARE OF THE MELEE MOVES (step 81, ~10 min; the defaults).** Toni (2026-10-22): "since they add good disturbance to the
+battle and also dont do much damage I want to try increase them: shielded men kick 20% of the time, shield bash 35% and swing the rest ... Unshielded -
+35% kick and the rest swing". Now each time an AI man on foot starts a melee attack (his wind-up) with the enemy within kick reach (1.6 m) in front of
+him, the move is rolled - a shieldman kick 20 / bash 35 / swing 45 %, no shield kick 35 / swing 65 % - and a kick or bash takes the place of that
+swing: his guard comes up (cancelling the wind-up; 0.15 s for a kick, 0.4 s for a bash), then the kick key. Refused (he swings) when staggered, without
+the 8 Athletics points or a stored swing, within 2 s of his last, or off his strike path (D45). The old rate, its factors, the "none below 35%" gate, the
+wait for reach and the bash credit are gone; the swing stack holds at least 3; a kick or bash costs 8. (1) A field battle of ~100 a side: shield infantry
+and two-handed shock troops (Sturgian or Battanian two-handers, or a looter mob) against your infantry; let the lines grind 3-5 minutes; then let it run
+until they tire. (2) Watch a spear wall: spearmen thrust at a spear's length and kick or bash only once an enemy is close. **Log**: `[config] migrated
+config.json … SwingStackMinimum: 2 → 3 …, CostPerKickOrBash: 6.0 → 8.0 …, AiKickCooldownSeconds: 8.0 → 2.0 … (format 18 → 19, the old default; step 81
+…)` and `AiKicksPerMinute 1.2 dropped (format 18 → 19; step 81 …)` for each old key (once; a value you set yourself is kept and said); `[impact] first
+AI kick asked at … - … in place of the swing he was winding up (step 81) - through his own input: the guard up 0.15 s (his wind-up cancelled), then the
+kick key 0.15 s …`. **[summary]** `ai kicks - shares of the melee moves in kick reach (step 81): shieldmen N moves - rolled kick ~20% / bash ~35% / swing
+~45% (target 20% / 35% / 45%) → DONE kick … / bash … / swing …; refused safety …, stack empty …, cooldown …, path … | no shield M moves - rolled kick ~35%
+/ swing ~65% … → DONE …| kicks K and bashes B asked = R a man-minute in contact …; a raised shield kicked instead of bashed …; refused by reason: …;
+Athletics spent on them P` (P ≈ 8 × the played ones for common soldiers); `ai kicks: asked … → PLAYED …` (played near asked), `played as the other kind`
+(near 0), `ai kicks - ends: … NOT played …` and `at the decision point (step 81 - W AI melee wind-ups): not a move in reach - the enemy beyond kick
+reach …` (the moves out of reach - spearmen and men closing). **Right**: rolled within a few points of the targets; DONE below rolled mostly by `path`
+(rear ranks) while fresh and by `safety` (no Athletics for it) as the lines tire; R several a man-minute while fresh (the 17:18 battle: 0.39);
+shieldmen visibly kicking and bashing, shock troops throwing men about; the lines tiring sooner than before. **Wrong**: rolled far off the targets;
+`NOT played` large or `played as the other kind` large for kicks (the 0.15 s guard before a kick turns it into a bash, or the engine drops the key -
+send the lines, the lead is plumbing, AI_NOTES "Step 81"); `stack empty` large while fresh (the AI attacking through his stack's hold); men standing
+frozen after a cancelled wind-up.
 ---
 
 ## E. Your Athletics bar, the orders-menu strip and the ALT markers (20 min)

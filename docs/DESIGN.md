@@ -3046,6 +3046,44 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     1.62, 2.25. (f) SETTINGS: 2 Advanced in the Impact group after `AiKickFriendClearMetres` (487 → 489), live; config format 18 moves a format 14-17
     file's untouched 0.5 once (a hand-set value kept and said). (g) UNVERIFIED in game (PLAYTEST D45): the friend share in Toni's next log, how many fewer
     kicks / bashes start, whether 0.6 / 0.75 match the engine's real kick and bash.
+77. **AI kicks and bashes as a share of the melee moves** (step 81, Toni 2026-10-22: "since they add good disturbance to the battle and also dont do
+    much damage I want to try increase them: shielded men kick 20% of the time, shield bash 35% and swing the rest. If they have a spear prefer holding
+    ground with it like now, and if the enemy comes close then use the other skills. Unshielded - 35% kick and the rest swing, this will make shockers
+    throw people around more. Also make the min swing stack from 2 to 3 ... make sure kicks and bashes use it. Then make all those moves take 8
+    athletics each". His 17:18 log: shieldmen 5407 swings / 458 bashes, unshielded 5554 swings, 318 kicks in all; the brakes were the bash credit's cap
+    of 2 (2545 earned bashes lost), the bar gate (269750 refused looks), the dice, the 2 s bash cooldown). (a) THE DECISION POINT = the AI's own decision
+    to attack - his melee WIND-UP (the engine's `ReadyMelee` on channel 1), which step 13's phases already see on the action poll: `NoteAiMeleeReady`
+    queues it (the phases may run inside a hit callback - no engine read there), the logic's tick rolls it the same frame (`DecideAiMove`). Chosen over
+    (1) the input hook's rising attack edge (the hook only runs for men we have hooked; hooking every man in contact for every frame to catch an edge
+    costs a callback per man per frame) and (2) keeping the look's per-minute die (a rate cannot "take the place of a swing" - Toni's shares are of his
+    MOVES). (b) THE ROLL (`AiKickMath.Roll`): the enemy he fights (his target, else his immediate enemy) within `AiKickReachMetres` 1.6 and
+    `AiKickFacingDegrees` 40 (`AiKickMath.InReach`) - a shieldman (a shield in hand, `IAiKickBody.Hands`) kick `AiShieldmanKickPercent` **20** / bash
+    `AiShieldmanBashPercent` **35** / swing the rest; no shield kick `AiNoShieldKickPercent` **35** / swing the rest; the shieldman's kick + bash never over
+    100 (the bash cut to 100 − kick, `ShieldSharesCut`, said in the describe line). A rolled bash into a RAISED shield facing him is a kick
+    (`AiKickKicksARaisedShield` kept - folded into the roll). Beyond kick reach nothing is rolled: a spearman keeps his ground and thrusts (step 76's
+    preference untouched), the shares start once the enemy is close. (c) TAKES THE PLACE OF THE SWING: the attempt's first phase is the guard for BOTH
+    kinds now (`AiKickMath.FirstPhase`) - his attack bits out WITH a guard = step 16's ready cancel (out without one would RELEASE the blow); a kick's lead
+    `AiKickMath.KickLeadSeconds` 0.15 s (plumbing), a bash's 0.4 s; then the kick key (a kick with the guard down). A swing rolled = nothing touched. (d)
+    THE REFUSALS (he swings instead), by group: SAFETY - staggered / down / his kick still playing / fewer points than the cost / the pool full; STACK
+    EMPTY - `KicksUseSwings`: no stored swing (a man the stack holds, or his stack's count 0); COOLDOWN - within `AiKickCooldownSeconds` (now THE one
+    minimum between two kicks OR bashes, 8 → **2** s; step 66's `AiBashCooldownSeconds` retired); PATH - step 80's strike path (no waiting any more: a
+    friend first / the enemy off the path = he swings). Riders, routing men, a ranged weapon, no target, out of reach / not in front = not a move in reach
+    (counted apart). (e) RETIRED as frequency controls (14 keys - `ConfigFile.DropRetiredKickKeys` drops them from any config.json with one note each, 78c's
+    pattern): `AiKicksPerMinute` and its factors (`AiKickTurtleMultiplier` / `Seconds` / `Blocks`, `AiKickFeverMultiplier`, `AiKickSkillLowPercent` /
+    `HighPercent`), the bar gate (`AiKickMinBarPercent` / `FullBarPercent` - none below 35%), the wait for reach (`AiKickWaitSeconds` / `Metres`), the bash
+    credit (`AiBashShareOfSwingsPercent`, `AiBashDelaySeconds`, its cap of 2) and `AiBashCooldownSeconds`. The brakes now: the swing stack
+    (`SwingStackMinimum` 2 → **3**; a kick / bash spends one and cannot start at 0 - unchanged) and the price (`CostPerKickOrBash` 6 → **8** × the hero /
+    leader multipliers: 8 / 6 / 4.5; a swing stays 10). (f) MEASURED: the [summary] "ai kicks - shares of the melee moves in kick reach (step 81)" line -
+    per man type the moves, the shares ROLLED and DONE against the targets, the refusals by group; kicks and bashes asked a man-minute in contact; a raised
+    shield kicked; the refusals by reason; the Athletics spent. The "ai kicks" lines' reason columns are the man types now (shieldmen / no shield); the
+    "why not at a look" clause = "at the decision point" (wind-ups, not a move in reach). (g) SMOKE (step 80's two two-deep lines driven by the men's own
+    swings, the stack on, 3 minutes): fresh - shieldmen rolled 21.0 / 33.4 / 45.6 % → done 17.3 / 20.8 / 61.9 % (the path 134 - rear-rank bashes, the
+    cooldown 17), no shield 34.0 / 66.0 → 28.1 / 71.9 % (the path 56), 4.28 asked a man-minute in contact, the stack never refused (it holds the man - all
+    his moves - at 0, never the share); tiring (no refill) - done 4.3 / 5.3 / 90.4 % and 7.8 / 92.2 % (no Athletics for it 371); 0 kicks / bashes at an
+    empty stack; 1000 men winding up ~8 swings a tick 0.004 ms a tick, 0 bytes. (h) CONFIG FORMAT 19: `SwingStackMinimum` 2 → 3 (any older file),
+    `CostPerKickOrBash` 6 → 8 (a format 15-18 file), `AiKickCooldownSeconds` 8 → 2 (a format 13-18 file) - untouched values moved, hand-set ones kept and
+    said once. (i) UNVERIFIED in game (PLAYTEST D46): the guard-then-kick plays as a KICK (not a bash) and is not dropped (`played as the other kind`, `NOT
+    played`); the cancelled wind-up looks natural; the measured shares in Toni's next log.
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),
 `HudRefreshSeconds`, `FormationStatsRefreshSeconds` came out of step 2's research

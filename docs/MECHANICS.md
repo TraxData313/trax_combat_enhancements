@@ -111,7 +111,7 @@ Horses are not slowed by their rider's bar by default.
 ## 4. The swing stack
 
 The pause after an attack does not come after **every** attack. Each fighter stores swings — one for
-every 20 points of Athletics he has **right now**, never fewer than 2. An attack (a swing, a thrust, a
+every 20 points of Athletics he has **right now**, never fewer than 3 (2 until step 81). An attack (a swing, a thrust, a
 shot, a throw — or a kick or shield bash) spends one. While he has one stored, he attacks with no wait
 at all. With none left, he waits the pause of section 3 for the next one.
 
@@ -120,19 +120,19 @@ So over a whole fight he attacks just as often as before — but a man who holds
 up and then strike several in a row. One slow, telegraphed swing every few seconds is easy to read; a
 burst of four is not.
 
-Stored swings at most (his points ÷ 20, rounded half up, at least 2):
+Stored swings at most (his points ÷ 20, rounded half up, at least 3 - step 81, Toni: "to stack up a bit more"):
 
 | Bar size | Full (100%) | 75% | 50% | 25% | Empty |
 |---:|---:|---:|---:|---:|---:|
-| 50 | 3 | 2 | 2 | 2 | 2 |
-| 100 | 5 | 4 | 3 | 2 | 2 |
-| 150 | 8 | 6 | 4 | 2 | 2 |
-| 200 | 10 | 8 | 5 | 3 | 2 |
-| 300 | 15 | 11 | 8 | 4 | 2 |
+| 50 | 3 | 3 | 3 | 3 | 3 |
+| 100 | 5 | 4 | 3 | 3 | 3 |
+| 150 | 8 | 6 | 4 | 3 | 3 |
+| 200 | 10 | 8 | 5 | 3 | 3 |
+| 300 | 15 | 11 | 8 | 4 | 3 |
 
 The count follows his points as they fall: each attack also costs Athletics, so a burst shrinks the
 stack's size too. *Example:* a 150-skill hero at half his bar holds 4 — he can strike 4 times back to
-back (7.5 points each) — and by then his bar is at 30% and he holds 2 at most, so each next one takes
+back (7.5 points each) — and by then his bar is at 30% and he holds 3 at most (the minimum), so each next one takes
 about 0.75 s to come back.
 
 How long the swings take to come back, after a 0.8 s swing, standing back from the fight:
@@ -142,22 +142,24 @@ How long the swings take to come back, after a 0.8 s swing, standing back from t
 | 75–100% | at once | at once |
 | 60% | 0.15 s | 0.8 s (5 swings) |
 | 50% | 0.29 s | 1.2 s (4) |
-| 30% | 0.74 s | 1.5 s (2) |
-| 15% | 1.42 s | 2.8 s (2) |
-| 0% (empty) | 3.20 s | 6.4 s (2) |
+| 30% | 0.74 s | 2.2 s (3) |
+| 15% | 1.42 s | 4.3 s (3) |
+| 0% (empty) | 3.20 s | 9.6 s (3) |
 
 (His bar refills meanwhile, so the real wait is a little shorter.) AI soldiers' battle-pace waits
 (section 10) come on top of their refill, and an AI swordsman's own breather between swings doesn't
 count as rest — so the stack never makes the AI attack more often than before.
 
 **Kicks and shield bashes** spend a stored swing too (they never start a pause of their own). With
-none stored, your kick key does nothing until one is back — no more kicking through your pause.
+none stored, your kick key does nothing until one is back — no more kicking through your pause. The AI's kicks and bashes
+(section 11c) spend one the same way and never start at 0 — a kick or bash takes the place of a swing, so it never adds a move
+to his rhythm.
 
 Your **Attack recovery bar** (section 15) shows the stack: **"Swings 4/8"**, and the bar filling toward
 the next one.
 
 <sub>Settings: `SwingStackEnabled` on (off = a pause after every attack below the peak line),
-`SwingStackPointsPerSwing` 20, `SwingStackMinimum` 2, `KicksUseSwings` on.</sub>
+`SwingStackPointsPerSwing` 20, `SwingStackMinimum` 3 (2 until step 81), `KicksUseSwings` on.</sub>
 
 ## 5. Resting and the refill
 
@@ -185,10 +187,11 @@ Every melee blow a man **blocks** costs him a little. Missiles into a shield are
 | Shield, on the right side | 3 | 2.25 | 1.69 | No — the refill keeps running |
 | Weapon parry | 3 | 2.25 | 1.69 | No — the refill keeps running |
 | Shield, held on the **wrong** side | 6 | 4.5 | 3.38 | **Yes** — the 3 s wait starts again |
-| A kick or shield bash he makes | 6 | 4.5 | 3.38 | Yes (it is an attack) |
+| A kick or shield bash he makes | 8 | 6 | 4.5 | Yes (it is an attack) |
 
 (Step 68, Toni: "tire the men more ... after the first impact" — a right-side block 1 → 2, a wrong-side block 2 → 5. Step 71,
-Toni: "they need to tire faster still" — a right-side block and a parry 2 → 3, a wrong-side block and a kick or bash 5 → 6.) So a skilful defender can catch his breath **while** defending. Can a man who is already empty
+Toni: "they need to tire faster still" — a right-side block and a parry 2 → 3, a wrong-side block and a kick or bash 5 → 6. Step 81, Toni:
+"make all those moves take 8 athletics each" — a kick or bash 6 → 8; a swing stays 10.) So a skilful defender can catch his breath **while** defending. Can a man who is already empty
 climb back while blocking a blow every 1.5 seconds (a steady duel), standing still?
 
 | Bar size | Soldier, parrying or a right-side shield block | Hero | Hero party leader |
@@ -220,7 +223,7 @@ A **tired** AI man still misjudges his share (section 7): that share of his fron
 | a tired AI man's guessed share (section 7's table: 33% at half a bar, all of them when empty) | wrong | wrong |
 
 <sub>Settings: `CostPerShieldBlock` 3 (1 until step 68, 2 until step 71), `CostPerWeaponParry` 3 (2 until step 71), `CostPerWrongSideShieldBlock` 6
-(2 from step 43 to step 68, 5 until step 71), `CostPerKickOrBash` 6 (3 until step 66, 5 until step 71), `OnlyWrongSideBlocksStopRefill` on, `ShieldFrontArcIsCorrect` on, `ShieldFrontArcDegrees` 60.</sub>
+(2 from step 43 to step 68, 5 until step 71), `CostPerKickOrBash` 8 (3 until step 66, 5 until step 71, 6 until step 81), `OnlyWrongSideBlocksStopRefill` on, `ShieldFrontArcIsCorrect` on, `ShieldFrontArcDegrees` 60.</sub>
 
 ## 7. Tired AI guess their blocks
 
@@ -1145,53 +1148,54 @@ decision 0.144):
 
 He still decides himself — the opening makes him eager, not certain. Riders keep the game's own timing.
 
-### The AI kicks and bashes (steps 65-66)
+### The AI kicks and bashes (steps 65, 81)
 
-The game's AI never kicks; now it does. An AI soldier on foot with the enemy he fights **within 1.6 m and in front of him** (40°)
-**kicks** him — or, with a shield in his hand, **shield-bashes** him (a shieldman facing a **raised shield** kicks instead: a raised shield
-stops a bash, not a kick). Step 66 (Anton's looter battle of 2026-10-19: not one kick in 49 man-minutes of contact): men fight at a
-weapon's length, so a man who decides to kick while that enemy is **within 5 m** but not yet in reach **waits up to 3 s** and kicks the
-moment he is — the rates below are **per minute in contact**.
+The game's AI never kicks; now it does. Since step 81 (Toni 2026-10-22: "since they add good disturbance to the battle and also dont do
+much damage I want to try increase them") a kick or a shield bash is one of the **moves** an AI soldier makes, not an extra: each time he
+starts a melee attack (his wind-up) with the enemy he fights **within 1.6 m and in front of him** (40°), the move is rolled:
 
-**A man without a shield kicks** at `AiKicksPerMinute` 1.2 a minute × the factors, at least **8 s** apart (the table: in steady contact,
-the cooldown in — Core `Step66ExamplesTests`):
+| He has | Kick | Shield bash | Swing (his own attack goes on) |
+|---|---:|---:|---:|
+| a shield in hand | **20%** | **35%** | 45% |
+| no shield (a two-hander, a polearm, a sword alone) | **35%** | — | 65% |
 
-| He is | × | Fresh | Half his bar (50%) | vs a full **turtle** (× 3) | In the **fever** (× 2) | Turtle + fever |
-|---|---:|---:|---:|---:|---:|---:|
-| a looter (Athletics 30) | 0.65 | **0.71** | 0.28 | 1.78 | 1.29 | 2.88 |
-| an average man (Athletics 100) | 1.0 | **1.03** | | | | |
-| a legionary (Athletics 130) | 1.15 | **1.17** | 0.48 | 2.67 | 2.02 | 3.94 |
-| … below 35% of his bar | × 0 | never | | | | |
+A rolled kick or bash **takes the place of that swing**: his raised guard cancels the wind-up (0.4 s for a bash, 0.15 s for a kick), then
+the kick key. A shieldman whose enemy holds a **raised shield** toward him kicks instead of bashing (a raised shield stops a bash, not a
+kick). With the enemy **beyond kick reach** nothing is rolled — a spearman keeps his ground and thrusts with his spear (section 10's
+preference), and the shares start only once the enemy is close.
 
-(A turtle = 2 blocks in the last ~4 s, his guard up now counting one; the bar factor is a straight line from 35% to 75%. Step 65 asked
-0.1 a minute and 10 s apart: a fresh looter 0.064 — one kick in 16 minutes of contact.)
+A rolled kick or bash is **refused — he swings instead** — when:
 
-**A shieldman bashes as often as he swings** (Anton: "maybe make them as frequent as swings when the man has a shield"): each of his
-melee swings earns a bash (`AiBashShareOfSwingsPercent` 100; at most 2 saved), and he spends it about **1.5 s** later at a full bar —
-longer as he tires (÷ the bar factor), never below 35% — at least **2 s** after his last bash. A shieldman never kicks at the per-minute
-rate; his kicks are the bashes he turns on a raised shield. What a shieldman in steady contact does, a minute (a seeded walk through the
-real rules; his swings without bashes from the 14:16 battle's fever proof, each swing 1.3 s of his time, each bash 1.2 s):
+| Refused because | Group |
+|---|---|
+| he is staggered or down, his last kick still plays, he lacks the Athletics for it (8 points × his multipliers), the attempts are full | safety |
+| he has **no stored swing** (section 4 - a kick or bash spends one, like yours) | stack empty |
+| his last kick or bash was less than **2 s** ago | cooldown |
+| the enemy is not the first body in his strike path (below) | path |
 
-| His bar | Swings without bashes | Swings | Bashes | Bashes a swing |
-|---|---:|---:|---:|---:|
-| 100-75% | 8.1 | 7.1 | 6.7 | **0.95** |
-| 75-50% | 16.5 | 13.8 | 8.3 | 0.60 |
-| 50-25% | 11.4 | 10.8 | 2.2 | 0.20 |
-| 25-0% | 3.7 | 3.6 | 0 | 0 |
-| a fresh wall man (swings 30% less, step 21) | 6.0 | 5.5 | 5.3 | 0.96 |
+Never you (your E key is yours), never a rider, a routing man or one with a bow in hand. What the limits leave (the offline smoke - two
+two-deep lines of 12 files grinding 3 minutes, every man swinging on his own rhythm, the swing stack on):
 
-The bashes' own time takes about one swing in eight from a fresh man; his stored swings (step 32) are never the brake at the top of the
-bar (a fresh man's refill ~1 s; the stack ~100% full there). What brakes a tired shieldman is his price: **each kick or bash costs
-`CostPerKickOrBash` 6** × his multipliers (4.5 a hero, 3.38 a hero party leader) and a stored swing (sections 4, 6), like yours — a
-fresh shieldman bashing 7 times a minute spends ~42 points a minute on it on top of his swings, and below 75% he bashes less, below 35%
-never. Never you (your E key is yours), never a rider, never a man staggered, down, routing, with a bow in hand, or without the
-Athletics or a stored swing for it. `AiBashShareOfSwingsPercent` 50 = one bash in two swings (0.50 a swing fresh, 7.5 swings and 3.7 bashes a minute).
+| | Rolled (kick / bash / swing) | Done | What took them |
+|---|---|---|---|
+| shieldmen, kept fresh | 21.0 / 33.4 / 45.6% | **17.3 / 20.8 / 61.9%** | the strike path 134 (mostly rear-rank bashes), the cooldown 17 |
+| no shield, kept fresh | 34.0 / — / 66.0% | **28.1 / — / 71.9%** | the strike path 56 |
+| shieldmen, tiring (no refill) | 20.8 / 36.7 / 42.5% | 4.3 / 5.3 / 90.4% | no Athletics for it 235 |
+| no shield, tiring | 34.0 / — / 66.0% | 7.8 / — / 92.2% | no Athletics for it 136 |
+
+Fresh, that is **4.3 kicks and bashes a man-minute in contact** (the 17:18 battle under the old rate: 0.39). The swing stack never refused
+one there: an AI man at 0 is held by it (he does not wind up), so it brakes ALL his moves together and leaves the shares alone. As his bar
+empties, the 8-point price takes them: an empty man only swings.
+
+(Steps 65-66 had a rate instead - `AiKicksPerMinute` 1.2 a minute × his skill, bar, a turtle and the fever, 8 s apart, a shieldman's bash
+earned by each swing, none below 35% of his bar, a decision waiting up to 3 s for reach; Toni's 17:18 log showed 5407 swings and 458 bashes
+from the shieldmen. Step 81 retired all of it.)
 
 **Never through a friend; every landed kick decided** (step 68). In Toni's 100 v 100 the AI's kicks and bashes "landed on the
 man" 92 times but only 33 were decided: the rest hit one of the kicker's OWN side — a rear-rank man kicking at the enemy past
 his own front-rank mate. The game cancels a friend's kick (nothing plays), and the mod never decides it. Now an AI man does not
-kick or bash while a man of his side stands between him and his enemy (within **0.5 m** of the line between them) — he waits
-for a clear line, up to the same 3 s as for reach. Every kick or bash that lands on an enemy — the AI's and yours — gets its one
+kick or bash while a man of his side stands between him and his enemy (within **0.5 m** of the line between them) — he waited
+for a clear line (step 68); since step 81 he swings instead. Every kick or bash that lands on an enemy — the AI's and yours — gets its one
 decision (the brace, the knockdown, the lost shield); a kick into a **raised shield** is stopped by the shield and decides nothing
 (the shield did its job).
 
@@ -1205,12 +1209,12 @@ path is a strip along his facing, as long as his reach, and:
 |---|---:|---:|
 | the path's half-width either side of his facing line (a body centre that close is touched) | **0.6 m** | **0.75 m** |
 | its length | 1.6 m | 1.6 m |
-| the enemy he fights must stand IN it | yes — else he waits (up to 3 s), like an enemy not yet in front | yes |
-| a man of his side in it, closer than the enemy | he waits for a clear path (up to 3 s) | he waits |
-| … within **1.2 m** of him (a rear-rank man behind his front mate) | **never** — no kick, no wait | never |
+| the enemy he fights must stand IN it | yes — else refused (he swings; step 80 waited up to 3 s) | yes |
+| a man of his side in it, closer than the enemy | refused (he swings) | refused |
+| … within **1.2 m** of him (a rear-rank man behind his front mate) | **never** | never |
 | read again just before the key | (the kick's key comes at once) | after its 0.4 s raised guard — not clear = no bash |
 
-The rates above are unchanged; fewer kicks and bashes START (a man turned away from his enemy waits, a rear-rank man never kicks).
+Step 80 left the rates unchanged; fewer kicks and bashes STARTED (a man turned away from his enemy waits, a rear-rank man never kicks).
 In the smoke's two two-deep lines the friends' share of the hits fell from 27% to 4%, the enemy hits a man-minute from 1.62 to 1.12
 (−31%). The [summary] line "ai kicks - whom they hit and the strike path" splits every played kick and bash into enemy / friend /
 missed and counts what the path refused.

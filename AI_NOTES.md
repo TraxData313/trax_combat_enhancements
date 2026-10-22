@@ -7529,3 +7529,118 @@ the dice, not the path.
 **DEPLOY**: `tools\deploy.ps1` ran normally (Smart App Control off): the build, the AssemblyGuard (OK), the offline smoke (all passed - 191 steps), installed
 as Modules\TraxCombatEnhancements.Dev "Trax Combat Enhancements (dev)" - the game and the launcher were not running. `tools\SmartAppControl\loadcheck.ps1`:
 both DLLs LOADED (`1.2.0+3a69439c775df2a9a123a686d6a99280b57cefad`). Not uploaded. Windows security untouched.
+
+## Step 81 — kicks and bashes as a share of the melee moves (built 2026-10-22; dev build only, not uploaded)
+
+**Toni (2026-10-22)**: "Since they add good disturbance to the battle and also dont do much damage I want to try increase them: shielded men kick 20%
+of the time, shield bash 35% and swing the rest. If they have a spear prefer holding ground with it like now, and if the enemy comes close then use
+the other skills. Unshielded - 35% kick and the rest swing, this will make shockers throw people around more. Also make the min swing stack from 2 to
+3, to stack up a bit more, but make sure kicks and bashes use it. Then make all those moves take 8 athletics each."
+
+**The baseline (his 17:18 log)**: AI shieldmen 5407 swings / 458 bashes, unshielded 5554 swings, 318 kicks in all; the brakes - the bash credit's cap
+of 2 (2545 earned bashes lost), the bar gate (none below 35%: 269750 refused looks), the dice, the 2 s bash cooldown.
+
+**81.1 THE DECISION POINT (Module `AthleticsLogic.AiKicks.cs` `NoteAiMeleeReady` / `DecideAiMove`; `AthleticsLogic.AttackRate.cs`)**
+- The AI's own decision to attack = his melee WIND-UP: the engine's `ReadyMelee` on channel 1, which step 13's phases (`PhasesOnAction`) already see on
+  the action poll. Right after `AttackBegan(…, isReady: true)` a melee wind-up of an AI man calls `NoteAiMeleeReady` - QUEUED only (a fixed array of
+  `AiKickMath.MaxPendingMoves` 256, `TrackedAgent.AiMoveQueued` against doubles): the phases may run inside a hit callback, where no engine read
+  belongs. `TickAiKicks` rolls the queue the same frame (the poll runs in TickAthletics before it).
+- Why not the input hook's rising attack edge: `OnAIInputSet` runs only for men we have hooked; catching an edge for every man in contact = a
+  managed callback per man per frame. Why not the old look's die turned per-attack: a rate cannot take the place of a swing; Toni's shares are of
+  his MOVES. The wind-up is seen within a frame of its start - nothing of the swing has landed.
+- `DecideAiMove`: gone / you / not AI = nothing; his `PrevAction` no longer `ReadyMelee` (released before the tick looked) = `ReadyOver`; the engine
+  reads (`IAiKickBody.Hands` - horse, rout, a ranged weapon, a shield; `Target`) - a rider / routing / a ranged weapon / no enemy target (gone, down,
+  falling) / `AiKickMath.InReach` false (beyond 1.6 m - OutOfReach, a spearman keeps his ground; beyond 40° - NotFacing) = NOT A MOVE IN REACH
+  (`AiKickMath.GroupOf` 0, counted, he swings or thrusts as the game wants). Else THE ROLL (`AiKickMath.Roll` on `AiKickDice`): a shieldman u < 0.20
+  kick, < 0.55 bash, else swing; no shield u < 0.35 kick, else swing (`AiKickStats.NoteMove(type, rolled)` - type 0 shieldman, 1 no shield). A swing =
+  nothing touched. A rolled bash into a raised shield facing him (`DefendShield`, within 60°) = a kick (`RaisedShieldKicks`).
+- THE REFUSALS (he swings - `Refuse` counts the reason and its group): SAFETY - reeling / down / a strike or fall action (`Staggered`), his kick still
+  playing (`Busy` - `KickBash.Running`), fewer points than `KickOrBashCostPoints` (`NoAthletics`), the pool full (`PoolFull`); STACK EMPTY - `NoStoredSwing`:
+  held for the stack (`HoldKicks && HoldAttacks`) or `KicksOn` and `Swings.Count(cap)` < 1 (the clock was advanced at this very action change by
+  `StackOnAction`); COOLDOWN - `now < AiKickNext` (`AiKickCooldownSeconds` - both kinds); PATH - step 80's `StrikePathOf` (the cheap gate, then the probe):
+  `TargetOffPath` / `FriendInTheWay` / `BehindFriend` - no waiting any more. Else `BeginAiKick` (the cooldown from the ask).
+- TAKES THE PLACE OF THE SWING: `AiKickMath.FirstPhase` = Guard for BOTH kinds; `Frame`'s Guard phase sets DefendUp for a kick too - his attack bits out
+  WITH a guard = step 16's ready cancel (`AiInputMath.HoldAttacks`' inReady rule: out without a guard RELEASES the blow). A kick's lead
+  `AiKickMath.KickLeadSeconds` 0.15 (plumbing; `PhaseEnd(phase, start, kind)`), a bash's 0.4; then the press (a kick with the guard DOWN, a bash with it up)
+  and the commit as before. A kick's press is not re-read (its decision 0.15 s earlier is the press); a bash's is (step 80).
+
+**81.2 THE SHARES (Core `AiKicks.cs` `AiKickRules`)**: `AiShieldmanKickPercent` 20, `AiShieldmanBashPercent` 35, `AiNoShieldKickPercent` 35 (Int 0-100,
+Advanced, the Impact group right after `AiKicksEnabled`, live). The constructor clamps each to 0-100 and cuts the bash to 100 − kick when the two go over
+100 (`ShieldSharesCut` - the describe line says it); `SwingShare(shield)`. `Enabled` = the master switch, Athletics, `AiKicksEnabled` and any share above 0.
+
+**81.3 REMOVED (14 settings; 489 → 478 with the 3 new)**: `AiKicksPerMinute`, `AiKickTurtleMultiplier`, `AiKickTurtleSeconds`, `AiKickTurtleBlocks`,
+`AiKickFeverMultiplier`, `AiKickSkillLowPercent`, `AiKickSkillHighPercent`, `AiKickMinBarPercent`, `AiKickFullBarPercent`, `AiKickWaitSeconds`,
+`AiKickWaitMetres`, `AiBashShareOfSwingsPercent`, `AiBashDelaySeconds`, `AiBashCooldownSeconds` - and their code: the staggered look's die (`LookAiKick`,
+`LookChance`, `LookGap`, `PerMinute` and its factors), the turtle memory (`TrackedAgent.TurtleBlocks`, `NoteTurtleBlock` from BlockHitTaken), the bash
+credit (`TrackedAgent.BashCredit`, `NoteAiBashSwing` from StartRelease, `AddBashCredit`, `BashPerMinute`, `BashCreditCap`), the wait for reach
+(`TrackedAgent.AiKickWait*`, `Waits`, `DropAiKickWait`), `WithCooldown`, `CooldownFor`. `ConfigFile.RetiredKickKeys` + `DropRetiredKickKeys` drop them
+from any config.json, one note each (78c's `DropRetiredLullKeys` pattern). `AiKickSkip` rebuilt around the decision point (16 values: OutOfReach,
+NotFacing, NoTarget, Mounted, Routing, Ranged, Staggered, Busy, NoAthletics, PoolFull, NoSwing, Cooldown, TargetOffPath, FriendInTheWay, BehindFriend,
+ReadyOver); `AiKickMath.GroupOf` / `GroupName` (0 not a move, 1 safety, 2 stack empty, 3 cooldown, 4 path). The contact man-minutes: a staggered slice
+in `TickAiKicks` still samples `st.FeverContact` (our records only, ~every 0.25 s a man).
+
+**KEPT**: every safety (never you, a rider, a routing man, a ranged weapon, staggered / down); step 80's strike path; the attempt's phases and the commit;
+the minimum seconds between two kicks or bashes - `AiKickCooldownSeconds`, now for both kinds, 8 → **2** in defaults.json; the raised-shield kick.
+
+**81.4 THE STACK AND THE COST (defaults.json)**: `SwingStackMinimum` 2 → **3** (an empty man still saves up three); `KicksUseSwings` unchanged - a kick /
+bash spends one at its charge (step 18's poll → `ChargeKickOrBash` → `SpendSwing(kick: true)`) and cannot start at 0 (the refusal above);
+`CostPerKickOrBash` 6 → **8** (a hero 6, a hero party leader 4.5); `CostPerBlow` stays 10.
+
+**81.5 CONFIG FORMAT 19** (`ConfigFile.Migrate`, `from < 19`): `SwingStackMinimum` 2 → 3 (any older file), `CostPerKickOrBash` 6 → 8 (a format 15-18 file -
+an older file's 3 / 5 goes through steps 66 / 71 straight to today's 8), `AiKickCooldownSeconds` 8 → 2 (a format 13-18 file - a format-12 file's 10
+goes through step 66's block to today's 2); `MoveOrKeepIfMoved` - a hand-set value kept and said once; the step-66 block no longer moves
+`AiKicksPerMinute` (retired). The older format tests → 19 (mechanical "→ 18" → "→ 19").
+
+**81.6 THE SUMMARY (Core `AiKickStats`)**: the reason columns are the man types (`ReasonCount` 2 - shieldmen / no shield); new `SharesLine` = the 5th
+[summary] line `ai kicks - shares of the melee moves in kick reach (step 81): shieldmen N moves - rolled kick / bash / swing (target …) → DONE kick / bash
+/ swing; refused safety, stack empty, cooldown, path | no shield … | kicks K and bashes B asked = R a man-minute in contact (M man-minutes); a raised shield
+kicked instead of bashed …; refused by reason: …; Athletics spent on them P` (DONE = asked; a swing = moves − asked); the ends line's "why not at a look"
+= "at the decision point (step 81 - W AI melee wind-ups): not a move in reach - …" (+ the queue full); step 66's bashes-per-swing line gone; the first
+asked line says "in place of the swing he was winding up (step 81)", a path refusal "he swings instead (step 81)".
+
+**Measured offline**: tests 1144 → 1153 (Step81Tests 9: the shares placed / live / shipped 20 35 35 and the shipped stack 3, cost 8, cooldown 2, swing 10
+in the embedded defaults.json, the retired keys gone from it; the cut over 100; the roll's split; 100 000 seeded rolls 20.0 / 35.0 / 45.0 and 35 / 65
+within ±0.5; the spear rule - nothing rolled beyond 1.6 m or 40°; the refusal groups; the stack minimum 3 and the cost 8 / 6 / 4.5; format 19 move / keep /
+drop / idempotent / the chains; the shares line). Step65Tests' AiKickTests rebuilt (the settings, the master switch, the kind, both kinds' guard first,
+the summary by man type); Step66Tests down to the format-13 migration (the rate's tests and its worked examples went with it); Step68 / 80 / Impact /
+SettingsPages tests adjusted. Smoke 191 → 191 (step 66's two smokes out; Program.Step81.cs `SharesInAGrind` and `TheStackGatesTheKick` in; step 65's
+look smoke rebuilt on the decision point, its clash = the cost check; step 68's no-kick-through-a-friend = refused then kicked; step 80's two lines now
+driven by the men's own swings through the real phases):
+- **the shares in a grind** (step 80's two two-deep lines of 12 files, half shieldmen, 3 minutes, every man winding up 1.0-1.6 s after his last move -
+  the stand-in AI waits at 0 like the stack's hold -, the stack on at its minimum 3, the regen pass's stack part every 0.1 s, the bars reset every 8 s):
+  shieldmen 929 moves - rolled 21.0 / 33.4 / 45.6 % → DONE 17.3 / 20.8 / 61.9 % (refused: the path 134 - mostly rear-rank bashes -, the cooldown 17);
+  no shield 953 moves - rolled 34.0 / 66.0 → DONE 28.1 / 71.9 % (the path 56); 4.28 kicks and bashes asked a man-minute in contact; 594 spent from the
+  stack, **0 at an empty stack**, the fewest stored at a wind-up 3; friends 1.9 % of the hits.
+- **tiring** (the same lines, no refill at all): shieldmen 529 moves → DONE 4.3 / 5.3 / 90.4 %, no shield 524 → 7.8 / 92.2 % (no Athletics for it
+  371); 0.63 asked a man-minute; still 0 at an empty stack.
+- **what the limits do**: the swing stack never refused a kick in the grind - an AI man at 0 is held by it (he does not wind up at all), so it brakes ALL
+  his moves together and leaves the shares alone (a kick / bash spends one like a swing). The 2 s cooldown takes a few (a shieldman's back-to-back
+  rolls). The strike path takes most while fresh (rear ranks). The 8-point price takes nearly all of them as the bars empty - an empty man only swings.
+- **step 80 again**: the path ON friends 1.7 % of the hits (10 of 597), OFF 10.4 % (80 of 770) - lower than step 80's 27 % OFF because a rear-rank
+  man's enemy now usually stands beyond kick reach, so he rolls nothing; the check is now OFF > 8 % and ON < OFF ÷ 3 (and ON < 5 %).
+- **the stack gate**: a man at 30 % of his bar holds the minimum 3; a played kick spends one (3 → 2, `KicksSpent` 1); at 0 the rolled kick is REFUSED
+  ("stack empty", counted as a swing done); one back after the regen pass = kicked.
+- **the cost**: 1000 men winding up ~8 swings a tick, a third with shields: 0.004 ms a tick, **0 bytes** over 300 ticks (4541 moves rolled, 1360 asked,
+  the pool's 256 full).
+
+**Claude's calls (DESIGN decision 77)**: the wind-up as the decision point (above); a kick's own 0.15 s guard lead (the only clean way to drop a wind-up
+the engine has begun - the alternative, waiting for his NEXT idle frame, would add a move instead of replacing one); the cooldown kept as one setting
+for both kinds at 2 s (Toni's "minimum seconds between two kicks or bashes"; the old 8 s kick cooldown would have capped a man without a shield far
+below 35 %); no waiting on a refused path (the shares replace the wait - he swings this move, his next move rolls again); the shares on the Advanced
+page (three inner numbers; the player page's list is pinned); the stack's refusal kept as a gate even though the AI's hold makes it rare.
+
+**Gotchas**
+- `AiKicks.cs` was written LF by the first edit script (the repo's working copy is CRLF, core.autocrlf on) - rewritten CRLF; every later edit read with
+  universal newlines and wrote CRLF.
+- The smoke's `FightTwoLines` must drop a cancelled wind-up itself (`ObserveAction(m, 35)`) - the stand-in engine has no guard animation.
+- `DecideAiMove` returns before `Looks++` for you / a man the AI does not drive (the smoke's "you" check counts on it).
+
+**UNVERIFIED — only the game can tell (PLAYTEST D46)**
+1. The guard-then-kick plays as a KICK: the guard 0.15 s, then the kick key with the guard down - if the engine still reads the guard and plays a
+   bash, `played as the other kind` grows for kicks (then: a longer kick lead, or no DefendUp - DefendDown - in a kick's lead).
+2. The engine takes the key after a cancelled wind-up (`NOT played` small).
+3. How it looks: the wind-up dropping into a kick / bash - natural, or a visible twitch.
+4. The real shares in Toni's next log (`ai kicks - shares of the melee moves in kick reach`) and the rate in contact (the 17:18 battle: 0.39 asked a
+   man-minute; the smoke's grind 4.3).
+
+**DEPLOY**: see TASKS_DONE.

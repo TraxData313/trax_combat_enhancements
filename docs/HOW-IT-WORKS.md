@@ -69,7 +69,7 @@ Under the white mark every effect slides in a straight line to its worst at an e
 
 - **He attacks less often.** After an attack he waits before the next — at an empty bar he attacks once
   where he used to attack five times. Blocking, moving and turning are never held.
-- **But he can save swings up.** Everyone stores a few swings (more with a fuller bar) and can strike them
+- **But he can save swings up.** Everyone stores a few swings (at least three, more with a fuller bar) and can strike them
   back to back with no wait; the wait comes once the stored swings run out. One slow swing every few
   seconds is easy to read — a burst of four is not.
 - **He runs slower** — at an empty bar about a third of his fresh speed.
@@ -267,15 +267,17 @@ knockdown or stagger decided for that blow now plays anyway, the moment it lands
 start, the man is put on the ground a fifth of a second later. A friend's blow — a man in the second rank swinging
 into his own front man — never knocks anyone down.
 
-**Kicks and shield bashes.** The AI now kicks and shield-bashes. A man without a shield kicks about once a minute
-while he fights — more against a man who hides behind his guard and in the fever of a charge, veterans more than
-recruits, tired men not at all. A man with a shield bashes about as often as he swings while he is fresh, less as he
-tires. They are not free: a kick or a bash costs 6 Athletics points (a swing 10), so a shieldman who bashes a lot tires
-sooner — and so do you if you kick a lot. And a kick is no longer a free push: a fresh, well-armoured veteran **braces** and barely moves — a looter's kick staggers a fresh legionary for a moment
+**Kicks and shield bashes.** The AI now kicks and shield-bashes — they shove, disturb and break up a fight more than
+they hurt. Once his enemy is close enough to kick, an AI soldier picks each move he makes: a man with a shield kicks about
+one move in five, bashes about one in three and swings the rest; a man without one kicks about one move in three — shock
+troops with big two-handers throw people around. A kick or a bash is one of his moves, never an extra, and it uses one of
+his stored swings. A spearman keeps his enemy at the spear's length and thrusts; only when the enemy gets close does he
+kick and bash too. They are not free: a kick or a bash costs 8 Athletics points (a swing 10), so a man who has run dry
+only swings — and so do you if you kick a lot. And a kick is no longer a free push: a fresh, well-armoured veteran **braces** and barely moves — a looter's kick staggers a fresh legionary for a moment
 perhaps one time in eight, and never knocks him down. Tire him first: a spent man cannot brace, and then kicks and bashes
 throw him about. The same goes for you, both ways. A man kicks or bashes only when the enemy is the first man straight in
 front of his foot or shield: a soldier in the second rank never kicks past his front-rank mate, and a man turned a little away
-from his enemy, or with a mate stepping across, waits until the way is clear.
+from his enemy, or with a mate stepping across, swings instead.
 
 
 **The enemy goes for the opening.** When a man reels or lies on the ground — you included — the men fighting
