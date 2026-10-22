@@ -7272,3 +7272,7 @@ wave on a new charge order should end the lull itself through `EndLull(…, Wave
    clock's bars or raise the blows' share).
 4. The wings stand at the bent front (curled toward the end) rather than jostle at it; `WINGS held at an end` large, crossings round an end ~0.
 5. An ordered flank move (yours) still goes round the end.
+
+**DEPLOY**: `tools\deploy.ps1` ran normally (Smart App Control off): the build, the AssemblyGuard (OK), the offline smoke (186 passed), installed as
+Modules\TraxCombatEnhancements.Dev "Trax Combat Enhancements (dev)" - the game and the launcher were not running. `tools\SmartAppControl\loadcheck.ps1`:
+both DLLs LOADED (`1.2.0+e6d362628c30da255e8ef63241117324545c43b8`). Not uploaded. Windows security untouched.
