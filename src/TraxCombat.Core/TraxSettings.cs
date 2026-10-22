@@ -427,6 +427,24 @@ namespace TraxCombat.Core
         public float FearStrikeLeashMetres => GetFloat(SettingsSchema.FearStrikeLeashMetres);
         public bool LoneRunnerEnabled => GetBool(SettingsSchema.LoneRunnerEnabled);
         public float LoneRunnerAheadMetres => GetFloat(SettingsSchema.LoneRunnerAheadMetres);
+
+        // step 77: press, don't pass
+        public bool PressDontPass => GetBool(SettingsSchema.PressDontPass);
+        public float PressToleranceMetres => GetFloat(SettingsSchema.PressToleranceMetres);
+        public float PressWatchMetres => GetFloat(SettingsSchema.PressWatchMetres);
+        public float PressGapMetres => GetFloat(SettingsSchema.PressGapMetres);
+        public float PressManWidthMetres => GetFloat(SettingsSchema.PressManWidthMetres);
+        public float PressFrontDepthMetres => GetFloat(SettingsSchema.PressFrontDepthMetres);
+        public float PressWrapMarginMetres => GetFloat(SettingsSchema.PressWrapMarginMetres);
+        public int PressWrapMates => GetInt(SettingsSchema.PressWrapMates);
+        public float PressWrapMatesMetres => GetFloat(SettingsSchema.PressWrapMatesMetres);
+        public float PressRoundEndMetres => GetFloat(SettingsSchema.PressRoundEndMetres);
+        public float PressWinPercent => GetFloat(SettingsSchema.PressWinPercent);
+        public int PressLineMinMen => GetInt(SettingsSchema.PressLineMinMen);
+        public float PressLineInSlotPercent => GetFloat(SettingsSchema.PressLineInSlotPercent);
+        public float PressBandMarginMetres => GetFloat(SettingsSchema.PressBandMarginMetres);
+        public float PressBlockEndMetres => GetFloat(SettingsSchema.PressBlockEndMetres);
+        public float PressEndSlackMetres => GetFloat(SettingsSchema.PressEndSlackMetres);
         // step 55: cavalry flocking
         public bool CavalryFlockEnabled => GetBool(SettingsSchema.CavalryFlockEnabled);
         public int CavalryFlockFreeEagerPercent => GetInt(SettingsSchema.CavalryFlockFreeEagerPercent);

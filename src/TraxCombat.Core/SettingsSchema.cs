@@ -136,6 +136,12 @@ namespace TraxCombat.Core
             "Spearmen keep their spears",
             "AI soldiers who carry a spear (or another polearm) AND a sword, axe or mace fight with the spear while no enemy is close, and draw the sidearm only once an enemy has stood within the spear's reach for a moment (how close depends on how long the spear is); a few seconds after the last close enemy the spear comes back. A man in the back ranks of a shield wall, square or halted line keeps his spear whatever is close - he thrusts over the man in front - and a man facing only spears keeps his. Both sides, never you. Off: the game's own choice (most men draw their sword at once). The numbers: Advanced page, Battle pace (AI).");
 
+        // Step 77 (Toni's battles 2026-10-22: 108 recruits' rear ranks walked round his shield wall's ends and behind it, "dancing", then through
+        // the middle): PressMath, AI_NOTES "Step 77", DESIGN decision 71.
+        public static readonly ParamDef PressDontPass = Bool("PressDontPass", PlayerAiGroup,
+            "Press, don't pass",
+            "AI soldiers on foot fighting an enemy LINE - a shield wall, a line or a block whose men hold their places - press against its front instead of walking past it: no stepping round its ends or through it to come at it from behind. They go round an end only when their own unit is clearly wider than the enemy line and they move with it as a mass, and through it only where a real gap has opened (men fallen); a man who got behind it anyway walks back round its nearest end. The back ranks stay behind their own front rank, and frightened men bunch deeper instead of spreading wider than the line they face. Both sides, never you, never riders; they still fight whatever is in reach. Off: the game's own - the log still measures, so flipping it mid-battle compares the two. The numbers: Advanced page, Courage and cohesion (AI).");
+
         public static readonly ParamDef CourageEnabled = Bool("CourageEnabled", PlayerAiGroup,
             "Courage and cohesion",
             "Every AI soldier on foot in a formation weighs his mates against the enemies near him - by how tough each one is (armour, level, wounds). Short of courage he is TIMID: far from his mates he walks back to a bigger group of his side, facing the enemy (sprinting when it is far); among them he holds and strikes only what comes within reach - no lone man circling your shield wall, no exhausted man standing among four enemies. A big enough crowd stays brave and wraps around a line as a mass. Never you, never riders, never men held in a shield wall. Works without the Athletics system (then tiredness does not count). Off: the game's own bravery - the log still measures, so flipping it mid-battle compares the two.");
@@ -1002,6 +1008,67 @@ namespace TraxCombat.Core
         public static readonly ParamDef LoneRunnerAheadMetres = Float("LoneRunnerAheadMetres", 0, 30, CourageGroup,
             "Lone runner: ahead of his line (m)",
             "A man alone counts as a lone runner when he stands more than this far ahead of his own unit's front toward the enemy (or anywhere past the enemy's front).");
+
+        // Step 77 (Toni 2026-10-22): press, don't pass - its numbers (PressMath, AI_NOTES "Step 77", DESIGN decision 71).
+        public static readonly ParamDef PressToleranceMetres = Float("PressToleranceMetres", 0, 3, CourageGroup,
+            "Press: carried past a line's front (m)",
+            "With \"Press, don't pass\" on (player page): a soldier carried more than this past an enemy line's front (a shove, a blow) walks straight back out of it, facing it.");
+
+        public static readonly ParamDef PressWatchMetres = Float("PressWatchMetres", 0.5, 20, CourageGroup,
+            "Press: watched within (m)",
+            "Within this many metres of an enemy line's front a soldier's movement toward it stops at the front - he presses and fights, he does not walk past.");
+
+        public static readonly ParamDef PressGapMetres = Float("PressGapMetres", 0.5, 10, CourageGroup,
+            "Press: a real gap is at least (m)",
+            "Soldiers may go THROUGH an enemy line only where an empty stretch of its front at least this wide has opened (its front men fallen, nobody stepping up).");
+
+        public static readonly ParamDef PressManWidthMetres = Float("PressManWidthMetres", 0.4, 3, CourageGroup,
+            "Press: one front man covers (m)",
+            "How much of a line's front one front-rank soldier closes - a gap is the stretch between front men that nobody covers.");
+
+        public static readonly ParamDef PressFrontDepthMetres = Float("PressFrontDepthMetres", 0.5, 5, CourageGroup,
+            "Press: a line's front rank is (m deep)",
+            "A man standing within this behind a line's front holds it (the rear man who steps up into a fallen man's place closes the gap); also a man more than this behind his own unit's front is in its back ranks.");
+
+        public static readonly ParamDef PressWrapMarginMetres = Float("PressWrapMarginMetres", 0, 60, CourageGroup,
+            "Press: wider by to go round (m)",
+            "A unit may go round an enemy line's ends only when its men spread at least this much wider than the line - a real overlap, not a few stragglers.");
+
+        public static readonly ParamDef PressWrapMates = Int("PressWrapMates", 0, 30, CourageGroup,
+            "Press: mates near to go round",
+            "... and a soldier goes round with it only when at least this many of his mates are close to him (next setting) - he moves as part of the mass; a lone man or a small group never goes round.");
+
+        public static readonly ParamDef PressWrapMatesMetres = Float("PressWrapMatesMetres", 1, 8, CourageGroup,
+            "Press: mates near within (m)",
+            "How close those mates must be for a soldier to go round an enemy line's end with them.");
+
+        public static readonly ParamDef PressRoundEndMetres = Float("PressRoundEndMetres", 0.5, 10, CourageGroup,
+            "Press: walked round an end by (m)",
+            "A soldier who got behind an enemy line anyway (and may not be there) walks back round its nearest end, passing this far beyond it, then forward to his side.");
+
+        public static readonly ParamDef PressWinPercent = Float("PressWinPercent", 0, 100, CourageGroup,
+            "Press: lets go when winning (%)",
+            "When a soldier's unit is winning this much (the same measure as \"winners don't hang back\": the local odds and the enemy's broken morale) the enemy line counts as beaten - its men go where they like.");
+
+        public static readonly ParamDef PressLineMinMen = Int("PressLineMinMen", 3, 200, CourageGroup,
+            "Press: a line has at least (men)",
+            "An enemy formation counts as a line to press against only with at least this many men on foot.");
+
+        public static readonly ParamDef PressLineInSlotPercent = Float("PressLineInSlotPercent", 0, 100, CourageGroup,
+            "Press: a line's men in their places (%)",
+            "A formation that is not a held shield wall or a held block counts as a line only while at least this share of its men stand within 3 m of their places (a hold, move or advance - never a charge or a retreat).");
+
+        public static readonly ParamDef PressBandMarginMetres = Float("PressBandMarginMetres", 0, 10, CourageGroup,
+            "Press: frightened men no wider than the line + (m)",
+            "Frightened soldiers bunching into their band never spread wider than the enemy line they face plus this on each side; the men who do not fit stand deeper, in more ranks, instead of out at the sides.");
+
+        public static readonly ParamDef PressBlockEndMetres = Float("PressBlockEndMetres", 0, 10, CourageGroup,
+            "Press: a block's sides at the enemy's ends + (m)",
+            "In contact a green unit's block (line discipline) keeps its men sideways within the enemy line's ends plus this - not out round them.");
+
+        public static readonly ParamDef PressEndSlackMetres = Float("PressEndSlackMetres", 0, 10, CourageGroup,
+            "Press: back ranks past a line's end (m)",
+            "A soldier of a back rank may drift sideways at most this far past an enemy line's end - the back ranks stay behind their own front rank and press on.");
 
         // ------------------------------------------------------------------ cavalry flocking (step 55)
         // Anton, 2026-10-18: fresh, eager riders dance as in vanilla; the more tired a rider, the bigger the group of his own kind he wants
@@ -2000,7 +2067,7 @@ namespace TraxCombat.Core
             // the player page's six groups (step 59)
             DamageRandomPercent, DamageReductionPercent,
             AthleticsEnabled, CostPerBlow, HeroCostMultiplier,
-            AiAggressionFreshPercent, AiAggressionExhaustedPercent, FeverEnabled, ShieldWallHoldsSlots, ShieldWallStepOutMetres, ShieldWallStandFirm, SpearPreferenceEnabled, CourageEnabled, CavalryFlockEnabled, LineDisciplineForPlayer,
+            AiAggressionFreshPercent, AiAggressionExhaustedPercent, FeverEnabled, ShieldWallHoldsSlots, ShieldWallStepOutMetres, ShieldWallStandFirm, SpearPreferenceEnabled, PressDontPass, CourageEnabled, CavalryFlockEnabled, LineDisciplineForPlayer,
             ImpactEnabled, ImpactOnPlayerPercent,
             SprintEnabled, SprintKey,
             ShowPlayerBar, AltMarksEveryone, ImpactShowMessages,
@@ -2042,6 +2109,9 @@ namespace TraxCombat.Core
             FearWinCalms, FearWinEvenOddsPercent, FearWinClearOddsPercent, FearWinShakenPercent, FearThreatMetres, FearMopUpWinPercent,
             FearBandEnabled, FearBandRanksMin, FearBandRanksMax, FearBandFileMetres, FearBandRankMetres, FearBandMaxWidthMetres, FearBandGapMetres,
             FearStrikeReachMetres, FearStrikeLeashMetres, LoneRunnerEnabled, LoneRunnerAheadMetres,
+            PressToleranceMetres, PressWatchMetres, PressGapMetres, PressManWidthMetres, PressFrontDepthMetres, PressWrapMarginMetres, PressWrapMates,
+            PressWrapMatesMetres, PressRoundEndMetres, PressWinPercent, PressLineMinMen, PressLineInSlotPercent, PressBandMarginMetres, PressBlockEndMetres,
+            PressEndSlackMetres,
             CavalryFlockFreeEagerPercent, CavalryFlockHysteresisPercent, CavalryFlockMidEagerPercent, CavalryFlockMidGroupSize,
             CavalryFlockExhaustedSharePercent, CavalryFlockTimid, CavalryFlockTimidRadiusMetres, CavalryFlockGatherRadiusMetres, CavalryFlockSeparationMetres,
             CavalryFlockLeadSeconds, CavalryFlockTightenWeights, CavalryFlockWaveSeconds, CavalryFlockMaxSeconds,

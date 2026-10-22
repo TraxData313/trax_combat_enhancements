@@ -128,6 +128,19 @@
   // (true or false)
   "SpearPreferenceEnabled": true,
 
+  // AI soldiers on foot fighting an enemy LINE - a shield wall, a line or a block whose men
+  // hold their places - press against its front instead of walking past it: no stepping round
+  // its ends or through it to come at it from behind. They go round an end only when their own
+  // unit is clearly wider than the enemy line and they move with it as a mass, and through it
+  // only where a real gap has opened (men fallen); a man who got behind it anyway walks back
+  // round its nearest end. The back ranks stay behind their own front rank, and frightened men
+  // bunch deeper instead of spreading wider than the line they face. Both sides, never you,
+  // never riders; they still fight whatever is in reach. Off: the game's own - the log still
+  // measures, so flipping it mid-battle compares the two. The numbers: Advanced page, Courage
+  // and cohesion (AI).
+  // (true or false)
+  "PressDontPass": true,
+
   // Every AI soldier on foot in a formation weighs his mates against the enemies near him - by
   // how tough each one is (armour, level, wounds). Short of courage he is TIMID: far from his
   // mates he walks back to a bigger group of his side, facing the enemy (sprinting when it is
@@ -1320,6 +1333,85 @@
   // unit's front toward the enemy (or anywhere past the enemy's front).
   // (range 0.0 to 30.0)
   "LoneRunnerAheadMetres": 4.0,
+
+  // With "Press, don't pass" on (player page): a soldier carried more than this past an enemy
+  // line's front (a shove, a blow) walks straight back out of it, facing it.
+  // (range 0.0 to 3.0)
+  "PressToleranceMetres": 0.5,
+
+  // Within this many metres of an enemy line's front a soldier's movement toward it stops at
+  // the front - he presses and fights, he does not walk past.
+  // (range 0.5 to 20.0)
+  "PressWatchMetres": 4.0,
+
+  // Soldiers may go THROUGH an enemy line only where an empty stretch of its front at least
+  // this wide has opened (its front men fallen, nobody stepping up).
+  // (range 0.5 to 10.0)
+  "PressGapMetres": 2.0,
+
+  // How much of a line's front one front-rank soldier closes - a gap is the stretch between
+  // front men that nobody covers.
+  // (range 0.4 to 3.0)
+  "PressManWidthMetres": 1.2,
+
+  // A man standing within this behind a line's front holds it (the rear man who steps up into a
+  // fallen man's place closes the gap); also a man more than this behind his own unit's front
+  // is in its back ranks.
+  // (range 0.5 to 5.0)
+  "PressFrontDepthMetres": 1.5,
+
+  // A unit may go round an enemy line's ends only when its men spread at least this much wider
+  // than the line - a real overlap, not a few stragglers.
+  // (range 0.0 to 60.0)
+  "PressWrapMarginMetres": 6.0,
+
+  // ... and a soldier goes round with it only when at least this many of his mates are close to
+  // him (next setting) - he moves as part of the mass; a lone man or a small group never goes
+  // round.
+  // (range 0 to 30)
+  "PressWrapMates": 5,
+
+  // How close those mates must be for a soldier to go round an enemy line's end with them.
+  // (range 1.0 to 8.0)
+  "PressWrapMatesMetres": 4.0,
+
+  // A soldier who got behind an enemy line anyway (and may not be there) walks back round its
+  // nearest end, passing this far beyond it, then forward to his side.
+  // (range 0.5 to 10.0)
+  "PressRoundEndMetres": 2.0,
+
+  // When a soldier's unit is winning this much (the same measure as "winners don't hang back":
+  // the local odds and the enemy's broken morale) the enemy line counts as beaten - its men go
+  // where they like.
+  // (range 0.0 to 100.0)
+  "PressWinPercent": 50.0,
+
+  // An enemy formation counts as a line to press against only with at least this many men on
+  // foot.
+  // (range 3 to 200)
+  "PressLineMinMen": 8,
+
+  // A formation that is not a held shield wall or a held block counts as a line only while at
+  // least this share of its men stand within 3 m of their places (a hold, move or advance -
+  // never a charge or a retreat).
+  // (range 0.0 to 100.0)
+  "PressLineInSlotPercent": 60.0,
+
+  // Frightened soldiers bunching into their band never spread wider than the enemy line they
+  // face plus this on each side; the men who do not fit stand deeper, in more ranks, instead of
+  // out at the sides.
+  // (range 0.0 to 10.0)
+  "PressBandMarginMetres": 1.0,
+
+  // In contact a green unit's block (line discipline) keeps its men sideways within the enemy
+  // line's ends plus this - not out round them.
+  // (range 0.0 to 10.0)
+  "PressBlockEndMetres": 0.0,
+
+  // A soldier of a back rank may drift sideways at most this far past an enemy line's end - the
+  // back ranks stay behind their own front rank and press on.
+  // (range 0.0 to 10.0)
+  "PressEndSlackMetres": 1.0,
 
   // ==================== Cavalry flocking (AI) ====================
   // A rider's EAGERNESS is his Athletics bar (halved when he is alone among enemies, below). At

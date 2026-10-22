@@ -99,6 +99,9 @@ namespace TraxCombat.Core
             return Math.Max(wanted, front - back);
         }
 
+        /// <summary>Step 77: the ranks a band of <paramref name="files"/> files needs for all its men (never fewer than <paramref name="ranks"/>).</summary>
+        public static int RanksFor(int men, int files, int ranks) => PressMath.BandRanks(men, files, ranks);
+
         /// <summary>The band's files: its width in files of BandFileMetres, 1 to <see cref="MaxFiles"/>.</summary>
         public static int Files(double width, double fileMetres)
         {
@@ -181,6 +184,13 @@ namespace TraxCombat.Core
 
         /// <summary>Step 74: the band publishes that were narrowed / moved to sit inside their unit's block.</summary>
         public long BandBlockClamps;
+
+        /// <summary>Step 77 (press, don't pass): the band's margin beyond the enemy formation's frontage on each side (NaN = off - the module sets it
+        /// every tick from PressDontPass / PressBandMarginMetres): the band never wider than the line it faces, its surplus men deeper.</summary>
+        public double PressBandMarginMetres = double.NaN;
+
+        /// <summary>Step 77: the band publishes narrowed to their enemy line, and the ranks added beyond the band's own (its surplus deeper).</summary>
+        public long PressBandClamps, PressBandExtraRanks;
 
         /// <summary>Step 74: the unit's block (the block hold's frame): the band sits inside its width around its centre line.</summary>
         public void SetBlock(int key, double now, double cx, double cy, double halfWidth)
@@ -369,6 +379,16 @@ namespace TraxCombat.Core
             _hasFront[k] = true;
             double frontage = ef ? _efw[k] : double.NaN;
             double width = FearBandMath.Width(in r, Men[k], ranks, frontage);
+            if (!double.IsNaN(PressBandMarginMetres) && !double.IsNaN(frontage) && frontage > 0)
+            {
+                // step 77: never wider than the enemy line it faces (+ the margin a side) - not out round its ends
+                double cap = frontage + 2 * PressBandMarginMetres;
+                if (width > cap)
+                {
+                    width = Math.Max(r.BandFileMetres, cap);
+                    PressBandClamps++;
+                }
+            }
             double centre = ef ? FearBandMath.LateralCentre(mE, _efx[k] * ex + _efy[k] * ey, frontage, width) : mE;
             if (!double.IsNaN(_blkAt[k]) && now - _blkAt[k] <= FearMath.StaleSeconds && now >= _blkAt[k] - 1e-9 && _blkHalf[k] > 0)
             {
@@ -395,6 +415,17 @@ namespace TraxCombat.Core
             }
             int files = FearBandMath.Files(width, r.BandFileMetres);
             double fileW = width / files;
+            if (!double.IsNaN(PressBandMarginMetres))
+            {
+                // step 77: the men who do not fit the narrower band stand DEEPER - its ranks enough for all of them (beyond FearBandRanksMax)
+                int more = FearBandMath.RanksFor(Men[k], files, ranks);
+                if (more > ranks)
+                {
+                    PressBandExtraRanks += more - ranks;
+                    ranks = more;
+                    depth = ranks * r.BandRankMetres;
+                }
+            }
             BandValid[k] = true;
             BandUX[k] = ux;
             BandUY[k] = uy;

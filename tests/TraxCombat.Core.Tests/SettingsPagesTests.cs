@@ -26,6 +26,7 @@ public class SettingsPagesTests
         ("How the AI fights", "ShieldWallStepOutMetres", "Shield walls: a step out to strike (m)"),
         ("How the AI fights", "ShieldWallStandFirm", "Shield walls stand firm on a hold order"), // step 75 - Toni's own toggle to test on and off (DESIGN decision 69)
         ("How the AI fights", "SpearPreferenceEnabled", "Spearmen keep their spears"), // step 76 - a new AI system's switch (DESIGN decision 70)
+        ("How the AI fights", "PressDontPass", "Press, don't pass"), // step 77 - a new AI system's switch Toni tests on and off (DESIGN decision 71)
         ("How the AI fights", "CourageEnabled", "Courage and cohesion"),
         ("How the AI fights", "CavalryFlockEnabled", "Cavalry flocking"),
         ("How the AI fights", "LineDisciplineForPlayer", "Line discipline: your units too"), // step 73 - Toni's own toggle (DESIGN decision 67 f)
@@ -43,7 +44,7 @@ public class SettingsPagesTests
     {
         var player = SettingsSchema.OnPage(SettingsPage.Player);
         var advanced = SettingsSchema.OnPage(SettingsPage.Advanced);
-        Assert.Equal(430, SettingsSchema.All.Count); // step 76: + 21 (the spear preference - 1 on the player page, 17 Advanced - and thrusts past a friend, 3 Advanced); step 75: + 6 (a standing wall stands firm - 1 on the player page, 5 Advanced); step 74: + 11 (the block hold, Advanced "Line discipline by tier"); step 73: + 15 (line discipline by tier - 1 on the player page); step 72: + 3 (no accidental charge orders); step 70: + 9 (the band, the strike) + 2 (the lone runner); step 69: + 6 (winning calms, the threat line, the mop-up); step 68: + 4 (the wall advances as one, the walk back after a kick) + 1 (no kick through a friend); step 67: + 25 (the fear flock) + 4 (the morale eyes); step 66: + 5 (the wait for reach, the bashes per swing); step 65: + 14 (the AI kicks) + 7 (the brace); step 64: + 2 (the shield front arc) + 3 (the charge sprint into contact); step 63: + 2 (the rear / flank pressure) + 1 (the wall's walk back); step 62: + 2 (the lost falls) + 2 (toughness, a ranged man in melee) + 4 (direction) + 4 (the charge) + 1 (the critical) + 1 (the cap)
+        Assert.Equal(446, SettingsSchema.All.Count); // step 77: + 16 (press, don't pass - 1 on the player page, 15 Advanced in "Courage and cohesion (AI)"); step 76: + 21 (the spear preference - 1 on the player page, 17 Advanced - and thrusts past a friend, 3 Advanced); step 75: + 6 (a standing wall stands firm - 1 on the player page, 5 Advanced); step 74: + 11 (the block hold, Advanced "Line discipline by tier"); step 73: + 15 (line discipline by tier - 1 on the player page); step 72: + 3 (no accidental charge orders); step 70: + 9 (the band, the strike) + 2 (the lone runner); step 69: + 6 (winning calms, the threat line, the mop-up); step 68: + 4 (the wall advances as one, the walk back after a kick) + 1 (no kick through a friend); step 67: + 25 (the fear flock) + 4 (the morale eyes); step 66: + 5 (the wait for reach, the bashes per swing); step 65: + 14 (the AI kicks) + 7 (the brace); step 64: + 2 (the shield front arc) + 3 (the charge sprint into contact); step 63: + 2 (the rear / flank pressure) + 1 (the wall's walk back); step 62: + 2 (the lost falls) + 2 (toughness, a ranged man in melee) + 4 (direction) + 4 (the charge) + 1 (the critical) + 1 (the cap)
         Assert.Equal(SettingsSchema.All.Count, player.Count + advanced.Count);
         Assert.Empty(player.Intersect(advanced));
         Assert.Equal(SettingsSchema.All.OrderBy(p => p.Key), player.Concat(advanced).OrderBy(p => p.Key));
@@ -58,7 +59,7 @@ public class SettingsPagesTests
     public void The_player_page_is_short_and_exactly_this_list_in_this_order()
     {
         var page = SettingsSchema.PlayerPage;
-        Assert.InRange(page.Count, 12, 23);                                      // Anton: "a few options" - not a wall (step 73: 20 → 21 on purpose, the line discipline's switch for your units; step 75: 22, the stand-firm switch Toni tests on and off; step 76: 23, the spear preference - a new AI system's switch)
+        Assert.InRange(page.Count, 12, 24);                                      // Anton: "a few options" - not a wall (step 73: 20 → 21 on purpose, the line discipline's switch for your units; step 75: 22, the stand-firm switch Toni tests on and off; step 76: 23, the spear preference - a new AI system's switch; step 77: 24, press, don't pass)
         Assert.Equal(PlayerPage.Select(r => r.Key), page.Select(p => p.Key));
         Assert.Equal(PlayerPage.Select(r => r.Label), page.Select(p => p.Label));
         Assert.Equal(PlayerPage.Select(r => r.Group), page.Select(p => p.Group.Title));

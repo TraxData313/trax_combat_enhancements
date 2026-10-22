@@ -253,28 +253,44 @@ namespace TraxCombat.Core
         public static BlockPull Decide(in BlockHoldRules r, double s, double halfWidth, double depth, double lateral, double along, double enemy, bool pulling,
             out double toLateral, out double toAlong, out bool striking)
         {
+            double side = Allowance(in r, halfWidth, s);
+            return DecideRange(in r, s, -side, side, depth, lateral, along, enemy, pulling, out toLateral, out toAlong, out striking);
+        }
+
+        /// <summary>
+        /// Step 77: <see cref="Decide"/> with the lateral allowance as a RANGE (<paramref name="latLo"/> .. <paramref name="latHi"/> across the block's
+        /// frame, the slack and the looseness included) - in contact press, don't pass cuts it to the enemy line's ends. A symmetric range = step 74
+        /// exactly.
+        /// </summary>
+        public static BlockPull DecideRange(in BlockHoldRules r, double s, double latLo, double latHi, double depth, double lateral, double along, double enemy, bool pulling,
+            out double toLateral, out double toAlong, out bool striking)
+        {
             toLateral = lateral;
             toAlong = along;
             striking = false;
             double loose = Loose(in r, s);
-            double side = Allowance(in r, halfWidth, s);
             double front = depth / 2 + r.AheadMetres + loose;
             double rear = -depth / 2 - r.SlackMetres - loose;
             double back = pulling ? BackInsideMetres : 0;
-            double latOut = Math.Abs(lateral) - (side - back);
+            double latOut = Math.Max((latLo + back) - lateral, lateral - (latHi - back));
             double aheadOut = along - (front - back);
             double behindOut = (rear + back) - along;
             if (latOut <= 0 && aheadOut <= 0 && behindOut <= 0) return BlockPull.None;
             // an enemy within reach: he fights - unless he stands more than the leash beyond the allowance (round the flank, behind the enemy)
             if (r.StrikeReachMetres > 0 && !double.IsNaN(enemy) && enemy <= r.StrikeReachMetres
-                && Math.Abs(lateral) - side <= r.StrikeLeashMetres && along - front <= r.StrikeLeashMetres)
+                && Math.Max(latLo - lateral, lateral - latHi) <= r.StrikeLeashMetres && along - front <= r.StrikeLeashMetres)
             {
                 striking = true;
                 return BlockPull.None;
             }
-            double inSide = Math.Max(0, side - BackInsideMetres);
-            if (toLateral > inSide) toLateral = inSide;
-            else if (toLateral < -inSide) toLateral = -inSide;
+            double inLo = latLo + BackInsideMetres, inHi = latHi - BackInsideMetres;
+            if (inLo > inHi)
+            {
+                double mid = 0.5 * (latLo + latHi);
+                inLo = inHi = mid;
+            }
+            if (toLateral > inHi) toLateral = inHi;
+            else if (toLateral < inLo) toLateral = inLo;
             double hi = Math.Max(rear + BackInsideMetres, front - BackInsideMetres);
             double lo = Math.Min(hi, rear + BackInsideMetres);
             if (toAlong > hi) toAlong = hi;
