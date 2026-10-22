@@ -53,6 +53,17 @@ namespace TraxCombat.Missions
         /// <summary>Step 68: the engine walks him to OUR paced frame now (not the game's order slot); ever paced this mission.</summary>
         public bool Paced;
         public bool EverPaced;
+
+        /// <summary>Step 75: he STANDS FIRM now (held, his formation on a stop or a move at its place, the switch on); the order conditions alone (the
+        /// log's ON / OFF compare); ever this mission; a move's "at its place" latch; the step-out leash step 42 WOULD run on him (the refused steps);
+        /// how far out he stood at his last look (the strikes "from the slot"); step 68's pace refused for him already (counted once a spell).</summary>
+        public bool Firm;
+        public bool FirmCond;
+        public bool EverFirm;
+        public StandFirmLatch FirmLatch;
+        public WallLeash FirmLeash;
+        public double FirmOut = double.NaN;
+        public bool FirmPaceRefused;
     }
 
     /// <summary>
@@ -182,6 +193,17 @@ namespace TraxCombat.Missions
             f.VelY = integrity.AverageVelocityExcludeFarAgents.y;
             f.Deviation = integrity.DeviationOfPositionsExcludeFarAgents;
             f.EnemyGap = double.NaN;
+            if (f.Order == BraceOrderKind.Move)
+            {
+                // step 75: the formation's own place against its order position (a move "at its place" stands firm)
+                var here = form.CurrentPosition;
+                var there = form.OrderPosition;
+                f.HasFormationOrder = form.OrderPositionIsValid;
+                f.FormationX = here.x;
+                f.FormationY = here.y;
+                f.FormationOrderX = there.x;
+                f.FormationOrderY = there.y;
+            }
             if (WallPaceMath.Paces(f.Order))
             {
                 // step 68: the game's ORDER slot (where vanilla walks him - under an advance at the enemy's line) and the gap to the enemy's front

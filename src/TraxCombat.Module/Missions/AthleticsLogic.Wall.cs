@@ -58,6 +58,7 @@ namespace TraxCombat.Missions
             _seenWallPace = WallPaceRules.From(TraxSettings.Shared);
             _seenKickReturn = KickReturn(in _seenWall);
             if (_seenWallPace.Enabled) _wallStats.Pace.EverOn = true;
+            StartStandFirm(); // step 75
             TraxLog.Info("wall", "mission start: " + _seenWall.Describe() + "; step 63: " + WallPullMath.Describe(PullSeconds(in _seenWall), _seenWall.StepOutMetres)
                 + "; step 68: " + _seenWallPace.Describe() + "; " + KickReturnText(_seenKickReturn)
                 + " - read live; written right after vanilla's own update of each man (his ~0.5 s timer) and at a look every "
@@ -137,6 +138,8 @@ namespace TraxCombat.Missions
                 TraxLog.Info("wall", "the walk back after a kick (step 68) changed mid-mission at " + Sec(now) + " s: " + KickReturnText(kr));
             }
 
+            TickStandFirmSettings(now); // step 75
+
             double dt = double.IsNaN(_wallLastTick) || now < _wallLastTick ? WallMath.PollSeconds : now - _wallLastTick;
             _wallLastTick = now;
             if (dt > WallMath.PollSeconds) dt = WallMath.PollSeconds;
@@ -147,7 +150,7 @@ namespace TraxCombat.Missions
             {
                 _wallStats.Leash.HeldSeconds += dt * _walled.Count;
                 var body = WallBody;
-                bool outLooks = PullSeconds(in r) > 0 || KickReturn(in r) > 0; // step 63: a man out of place looked at every 0.1 s (0 = step 42 exactly); step 68's kick return too
+                bool outLooks = PullSeconds(in r) > 0 || KickReturn(in r) > 0 || _seenFirm.Enabled; // step 63: a man out of place looked at every 0.1 s (0 = step 42 exactly); step 68's kick return and step 75's stand firm too
                 for (int i = _walled.Count - 1; i >= 0; i--)
                 {
                     if (i >= _walled.Count) continue; // a look below may have dropped more than one
@@ -228,11 +231,14 @@ namespace TraxCombat.Missions
             var v = WallMath.Decide(in r, in f);
             if (v == WallVerdict.Hold && FearWallBreaks(st, now)) v = WallVerdict.Breaking; // step 67: a frightened wall breaks
             _wallStats.AddLook(v);
+            bool firm = StandFirmLook(st, ws, in f, v, now); // step 75: a standing wall stands firm
             if (v == WallVerdict.Hold)
             {
-                // step 42: the leash - only while it is above 0 or a man is still out (at 0 this is step 41's path exactly: no read)
-                double leash = r.StepOutMetres;
+                // step 42: the leash - only while it is above 0 or a man is still out (at 0 this is step 41's path exactly: no read); 0 while he stands firm (step 75)
+                double leash = StandFirmMath.Leash(firm, r.StepOutMetres);
                 double outNow = f.HasPositions ? LeashMath.Out(in f) : double.NaN; // step 63: out of place?
+                ws.FirmOut = outNow;
+                if (firm) FirmWouldStep(st, ws, in f, r.StepOutMetres, now); // step 75: the steps refused
                 if (leash > 0 || ws.Leash.Free)
                 {
                     double outM = f.HasPositions ? LeashMath.Out(in f) : 0;
@@ -259,10 +265,20 @@ namespace TraxCombat.Missions
                     }
                 }
 
-                body.Hold(st, in f);
+                if (firm)
+                {
+                    var hf = f; // step 75: the tolerance the engine is told - at most the slack
+                    hf.Deviation = FirmTolerance(in f);
+                    body.Hold(st, in hf);
+                }
+                else
+                {
+                    body.Hold(st, in f);
+                }
                 _wallStats.AddWrite(kind);
-                PaceLook(st, ws, in f, now); // step 68: a moving wall walks as one
-                OutOfPlaceLook(st, ws, in f, outNow, now, in r); // step 63
+                if (firm) FirmFrameLook(st, ws, in f, now); // step 75: the engine's walk target = his slot
+                else PaceLook(st, ws, in f, now); // step 68: a moving wall walks as one
+                OutOfPlaceLook(st, ws, in f, outNow, now, in r, firm ? _seenFirm.SlackMetres : 0); // step 63 (step 75: from the slack, at once)
                 if (body.TryStamp(st, ws, out float stamp))
                 {
                     ws.LastStamp = stamp; // vanilla's next update moves it again
@@ -307,6 +323,7 @@ namespace TraxCombat.Missions
             _wallStats.AddSample(r.Enabled, ahead, contact);
             if (r.Enabled) _wallStats.Pace.AddSample(f.Order, ahead, contact); // step 68: the ON samples by order group
             if (contact && r.Leash > 0) _wallStats.Leash.AddSample(LeashMath.Out(in f), r.Leash); // step 42: past the leash?
+            if (ws.FirmCond) _firm.AddSample(ws.Firm, LeashMath.Out(in f), contact); // step 75: the same men ON vs OFF
         }
 
         /// <summary>Into the held list (held, or stepping out on the leash) - his first time counted.</summary>
@@ -418,6 +435,7 @@ namespace TraxCombat.Missions
                 var ws = st.Wall!;
                 ws.Held = false;
                 ws.ListIndex = -1;
+                FirmForget(ws); // step 75
                 if (ws.Leash.Free) EndStep(st, ws, LeashEnd.LetGo, ws.Leash.MaxOut, now, _seenWall.StepOutMetres);
                 ws.Leash = default;
                 EndOutOfPlace(st, ws, WallOutEnd.LetGo, now, engine: !st.Removed); // step 63: the walk back's wish off at once
@@ -451,6 +469,7 @@ namespace TraxCombat.Missions
             ws.Leash = default;
             EndOutOfPlace(st, ws, WallOutEnd.LeftField, _wallLastTick, engine: false); // step 63: no engine call for a man gone
             ws.Paced = false; // step 68: no engine call either
+            FirmForget(ws); // step 75
             Unwall(st, ws);
             _wallStats.LeftFieldHeld++;
         }
@@ -461,6 +480,7 @@ namespace TraxCombat.Missions
             _wallStats.Errors++;
             Failed("wall.look", e);
             if (ws == null || !ws.Held) return;
+            FirmForget(ws); // step 75
             if (ws.Leash.Free) _wallStats.Leash.AddEnd(LeashEnd.LetGo, ws.Leash.MaxOut, now - ws.Leash.StartedAt, _seenWall.StepOutMetres);
             ws.Leash = default;
             try
@@ -506,6 +526,7 @@ namespace TraxCombat.Missions
                     st.Wall.Held = false;
                     st.Wall.ListIndex = -1;
                     st.Wall.Paced = false; // step 68: no engine call - the agents go with the mission
+                    FirmForget(st.Wall); // step 75
                 }
             _walled.Clear();
         }
@@ -517,6 +538,7 @@ namespace TraxCombat.Missions
                 TraxLog.Info("summary", line);
             TraxLog.Info("summary", _wallStats.Pace.ByOrderLine()); // step 68: the in-contact leak by order
             TraxLog.Info("summary", _wallStats.Pace.PaceLine(WallPaceRules.From(TraxSettings.Shared)));
+            WriteStandFirmSummary(); // step 75
         }
 
         // ------------------------------------------------------------------ step 68: the wall pushes as one
@@ -617,7 +639,7 @@ namespace TraxCombat.Missions
         /// him back: a backpedal toward his slot through step 16's input hook, the vector refreshed at each 0.1 s look. Measured always (the
         /// summary's "wall pulled back" line); the extra looks and the walk only with the setting above 0.
         /// </summary>
-        private void OutOfPlaceLook(TrackedAgent st, WallState ws, in WallFacts f, double outM, double now, in WallRules r)
+        private void OutOfPlaceLook(TrackedAgent st, WallState ws, in WallFacts f, double outM, double now, in WallRules r, double firmSlack)
         {
             double dt = double.IsNaN(ws.LastOutLook) || now < ws.LastOutLook ? 0 : now - ws.LastOutLook;
             ws.LastOutLook = now;
@@ -632,11 +654,12 @@ namespace TraxCombat.Missions
             bool kicking = st.KickBash.Running || st.AiKickPhase != AiKickPhase.None;
             bool ownKick = kicking || now - st.KickBash.DecidedAt <= WallPullMath.KickWindowSeconds || st.Punishing;
             double kickReturn = KickReturn(in r);
-            var move = WallPullMath.Step(ref ws.Out, r.StepOutMetres, outM, !down && !reeling && !kicking, impact, pull, now, dt, kickReturn, ownKick);
+            var move = WallPullMath.Step(ref ws.Out, r.StepOutMetres, outM, !down && !reeling && !kicking, impact, pull, now, dt, kickReturn, ownKick, firmSlack);
             switch (move)
             {
                 case WallOutMove.Began:
                     _wallStats.Pull.Began(impact, ws.Out.AfterOwnKick);
+                    if (ws.Out.StandFirm) FirmSpellBegan(st, ws, outM, impact, now); // step 75
                     if (ws.Out.AfterOwnKick && !_firstKickReturnLogged)
                     {
                         _firstKickReturnLogged = true;
@@ -653,6 +676,7 @@ namespace TraxCombat.Missions
                     break;
                 case WallOutMove.Back:
                     _wallStats.Pull.Ended(in ws.Out, WallOutEnd.Back, now);
+                    if (ws.Out.StandFirm) FirmSpellBack(st, ws, now); // step 75
                     if (wasPulling) StopWallPull(st, now, engine: true);
                     if (!_firstBackLogged)
                     {

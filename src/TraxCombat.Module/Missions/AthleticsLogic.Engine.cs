@@ -710,6 +710,7 @@ namespace TraxCombat.Missions
             NoteFeverAttack(st, mounted); // step 43: an AI melee attack on foot in contact, counted by group and bar band
             NoteAiBashSwing(st, mounted); // step 66: a shieldman's swing earns his bash (the class read just before, at this release)
             NotePunishAttack(st, mounted, now); // step 54: against a target in a window or not; a window punished
+            NoteFirmAttack(st, mounted, now); // step 75: a man of a standing wall strikes - from his slot or not, ON vs OFF
             NoteFlockAttack(st, mounted, now); // step 55: a rider's pass - lone or with his kind, the time since his last
 
             // the cycle since the last release ran at the multiplier set after that release's charge
