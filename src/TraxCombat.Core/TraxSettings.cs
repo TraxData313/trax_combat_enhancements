@@ -445,6 +445,34 @@ namespace TraxCombat.Core
         public float PressBandMarginMetres => GetFloat(SettingsSchema.PressBandMarginMetres);
         public float PressBlockEndMetres => GetFloat(SettingsSchema.PressBlockEndMetres);
         public float PressEndSlackMetres => GetFloat(SettingsSchema.PressEndSlackMetres);
+        // step 78: the battle's rhythm - rotation and the lull
+        public bool RotationEnabled => GetBool(SettingsSchema.RotationEnabled);
+        public bool LullEnabled => GetBool(SettingsSchema.LullEnabled);
+        public bool LullForPlayerUnits => GetBool(SettingsSchema.LullForPlayerUnits);
+        public int RotationTiredPercent => GetInt(SettingsSchema.RotationTiredPercent);
+        public bool RotationUseBraceFloor => GetBool(SettingsSchema.RotationUseBraceFloor);
+        public int RotationFresherPercent => GetInt(SettingsSchema.RotationFresherPercent);
+        public float RotationBehindMetres => GetFloat(SettingsSchema.RotationBehindMetres);
+        public float RotationFileMetres => GetFloat(SettingsSchema.RotationFileMetres);
+        public float RotationContactMetres => GetFloat(SettingsSchema.RotationContactMetres);
+        public float RotationBesideMetres => GetFloat(SettingsSchema.RotationBesideMetres);
+        public float RotationApproachSeconds => GetFloat(SettingsSchema.RotationApproachSeconds);
+        public float RotationMaxSeconds => GetFloat(SettingsSchema.RotationMaxSeconds);
+        public float RotationCooldownSeconds => GetFloat(SettingsSchema.RotationCooldownSeconds);
+        public float RotationRestSeconds => GetFloat(SettingsSchema.RotationRestSeconds);
+        public int LullContactMen => GetInt(SettingsSchema.LullContactMen);
+        public float LullMinContactSeconds => GetFloat(SettingsSchema.LullMinContactSeconds);
+        public int LullStartChargePercent => GetInt(SettingsSchema.LullStartChargePercent);
+        public int LullStartAdvancePercent => GetInt(SettingsSchema.LullStartAdvancePercent);
+        public int LullStartHoldPercent => GetInt(SettingsSchema.LullStartHoldPercent);
+        public int LullRecoverChargePercent => GetInt(SettingsSchema.LullRecoverChargePercent);
+        public int LullRecoverAdvancePercent => GetInt(SettingsSchema.LullRecoverAdvancePercent);
+        public int LullRecoverHoldPercent => GetInt(SettingsSchema.LullRecoverHoldPercent);
+        public float LullEaseMetres => GetFloat(SettingsSchema.LullEaseMetres);
+        public float LullFrontDepthMetres => GetFloat(SettingsSchema.LullFrontDepthMetres);
+        public float LullMaxSeconds => GetFloat(SettingsSchema.LullMaxSeconds);
+        public float LullCooldownSeconds => GetFloat(SettingsSchema.LullCooldownSeconds);
+        public bool LullRotates => GetBool(SettingsSchema.LullRotates);
         // step 55: cavalry flocking
         public bool CavalryFlockEnabled => GetBool(SettingsSchema.CavalryFlockEnabled);
         public int CavalryFlockFreeEagerPercent => GetInt(SettingsSchema.CavalryFlockFreeEagerPercent);
