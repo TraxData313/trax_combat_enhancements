@@ -7525,3 +7525,7 @@ the dice, not the path.
 2. How many fewer kicks and bashes start (`asked … a man-minute`, `enemy hits a man-minute`) - Toni's call whether to raise the dice.
 3. `MISSED` - a large share = the path reaches farther than the engine's foot (enemies at 1.5-1.6 m in the path but out of the foot's reach).
 4. `GetMovementDirection` is the facing the kick follows (step 62's angle uses it; the foot follows the body).
+
+**DEPLOY**: `tools\deploy.ps1` ran normally (Smart App Control off): the build, the AssemblyGuard (OK), the offline smoke (all passed - 191 steps), installed
+as Modules\TraxCombatEnhancements.Dev "Trax Combat Enhancements (dev)" - the game and the launcher were not running. `tools\SmartAppControl\loadcheck.ps1`:
+both DLLs LOADED (`1.2.0+3a69439c775df2a9a123a686d6a99280b57cefad`). Not uploaded. Windows security untouched.
