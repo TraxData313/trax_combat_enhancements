@@ -7769,4 +7769,4 @@ skilled fresh guard (200 pool, skill 250): bash 47 % staggered / 11 % down, kick
 3. How it looks: a basher reeling off a shield he bashed, a kicker thrown down by a braced shield, a tired blocker staggered by a bash.
 4. The read's timing in a real fight: `TOO LATE` small for AI kicks / bashes; how often the player's bash is read.
 
-**DEPLOY**: (filled in by 82 (3/3)).
+**DEPLOY**: tools\deploy.ps1 ran normally (Smart App Control off): the build, the AssemblyGuard, the offline smoke - all 196 passed -, installed as Modules\TraxCombatEnhancements.Dev; the game and the launcher were not running. `tools\SmartAppControl\loadcheck.ps1`: both DLLs LOADED (`1.2.0+db23f241…`). Not uploaded.
