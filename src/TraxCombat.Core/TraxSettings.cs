@@ -283,6 +283,29 @@ namespace TraxCombat.Core
         public bool ShieldWallStandFirmPinFrame => GetBool(SettingsSchema.ShieldWallStandFirmPinFrame);
         public bool ShieldWallStandFirmTightTolerance => GetBool(SettingsSchema.ShieldWallStandFirmTightTolerance);
 
+        // step 76: the AI prefers the spear; thrusts pass a friend
+        public bool SpearPreferenceEnabled => GetBool(SettingsSchema.SpearPreferenceEnabled);
+        public float SpearPolearmFavor => GetFloat(SettingsSchema.SpearPolearmFavor);
+        public float SpearSidearmFavor => GetFloat(SettingsSchema.SpearSidearmFavor);
+        public float SpearSidearmAfterSeconds => GetFloat(SettingsSchema.SpearSidearmAfterSeconds);
+        public float SpearPolearmBackAfterSeconds => GetFloat(SettingsSchema.SpearPolearmBackAfterSeconds);
+        public float SpearPolearmBackMountedSeconds => GetFloat(SettingsSchema.SpearPolearmBackMountedSeconds);
+        public float SpearRidingFastMetresPerSecond => GetFloat(SettingsSchema.SpearRidingFastMetresPerSecond);
+        public bool SpearCloseFromLength => GetBool(SettingsSchema.SpearCloseFromLength);
+        public float SpearCloseBaseMetres => GetFloat(SettingsSchema.SpearCloseBaseMetres);
+        public int SpearCloseLengthPercent => GetInt(SettingsSchema.SpearCloseLengthPercent);
+        public float SpearCloseMinMetres => GetFloat(SettingsSchema.SpearCloseMinMetres);
+        public float SpearCloseMaxMetres => GetFloat(SettingsSchema.SpearCloseMaxMetres);
+        public float SpearCloseFallbackMetres => GetFloat(SettingsSchema.SpearCloseFallbackMetres);
+        public bool SpearBackRankKeeps => GetBool(SettingsSchema.SpearBackRankKeeps);
+        public bool SpearBackRankInStandingLine => GetBool(SettingsSchema.SpearBackRankInStandingLine);
+        public bool SpearKeepVsPolearm => GetBool(SettingsSchema.SpearKeepVsPolearm);
+        public float SpearLookSeconds => GetFloat(SettingsSchema.SpearLookSeconds);
+        public bool SpearWieldOverride => GetBool(SettingsSchema.SpearWieldOverride);
+        public bool ThrustsPassFriends => GetBool(SettingsSchema.ThrustsPassFriends);
+        public bool ThrustsPassPolearmsOnly => GetBool(SettingsSchema.ThrustsPassPolearmsOnly);
+        public float FriendlyHitStunSeconds => GetFloat(SettingsSchema.FriendlyHitStunSeconds);
+
         // step 23: brace by orders
         public bool BraceEnabled => GetBool(SettingsSchema.BraceEnabled);
         public int BraceFloorChargePercent => GetInt(SettingsSchema.BraceFloorChargePercent);

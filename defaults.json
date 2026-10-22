@@ -118,6 +118,16 @@
   // (true or false)
   "ShieldWallStandFirm": true,
 
+  // AI soldiers who carry a spear (or another polearm) AND a sword, axe or mace fight with the
+  // spear while no enemy is close, and draw the sidearm only once an enemy has stood within the
+  // spear's reach for a moment (how close depends on how long the spear is); a few seconds
+  // after the last close enemy the spear comes back. A man in the back ranks of a shield wall,
+  // square or halted line keeps his spear whatever is close - he thrusts over the man in front
+  // - and a man facing only spears keeps his. Both sides, never you. Off: the game's own choice
+  // (most men draw their sword at once). The numbers: Advanced page, Battle pace (AI).
+  // (true or false)
+  "SpearPreferenceEnabled": true,
+
   // Every AI soldier on foot in a formation weighs his mates against the enemies near him - by
   // how tough each one is (armour, level, wounds). Short of courage he is TIMID: far from his
   // mates he walks back to a bigger group of his side, facing the enemy (sprinting when it is
@@ -589,6 +599,110 @@
   // formation's own.
   // (true or false)
   "ShieldWallStandFirmTightTolerance": true,
+
+  // With "Spearmen keep their spears" on (player page, How the AI fights): how strongly an AI
+  // soldier with a spear and a sidearm prefers the spear while no enemy is close - the game's
+  // own weighting is 1. 35 = a clear preference (RBM's value).
+  // (range 1.0 to 100.0)
+  "SpearPolearmFavor": 35.0,
+
+  // Once an enemy has been close (the settings below), how strongly he prefers his sword, axe
+  // or mace instead - the game's own weighting is 1. 55 = RBM's value.
+  // (range 1.0 to 100.0)
+  "SpearSidearmFavor": 55.0,
+
+  // An enemy must stay within his close distance this many seconds before he draws the sidearm
+  // - a man passing by (or a rider charging through) does not make him switch.
+  // (range 0.0 to 20.0)
+  "SpearSidearmAfterSeconds": 2.0,
+
+  // This many seconds after the last close enemy he takes the spear again - so he does not
+  // switch back and forth while an enemy drifts in and out.
+  // (range 0.0 to 20.0)
+  "SpearPolearmBackAfterSeconds": 4.0,
+
+  // The same for a rider: he rides out of the melee quickly and needs his lance for the next
+  // charge.
+  // (range 0.0 to 20.0)
+  "SpearPolearmBackMountedSeconds": 2.0,
+
+  // A rider moving faster than this is riding through, not fighting where he stands: nothing
+  // counts as close, so lancers do not swap to the sword and back as they pass through a
+  // formation.
+  // (range 0.0 to 15.0)
+  "SpearRidingFastMetresPerSecond": 4.0,
+
+  // On: how close an enemy must come before the sidearm comes out depends on the length of his
+  // longest spear (the next settings) - a long pike is clumsy sooner than a short spear. Off:
+  // the same distance for every spear ("close distance when not known" below).
+  // (true or false)
+  "SpearCloseFromLength": true,
+
+  // The close distance = this + a share of the spear's length (the next setting), kept between
+  // the two limits below. 1.0 m + 60% of a 2 m spear = 2.2 m.
+  // (range 0.0 to 3.0)
+  "SpearCloseBaseMetres": 1.0,
+
+  // How much of the spear's length counts toward the close distance (above).
+  // (range 0 to 150)
+  "SpearCloseLengthPercent": 60,
+
+  // The close distance is never shorter than this, however short the spear.
+  // (range 0.5 to 6.0)
+  "SpearCloseMinMetres": 1.5,
+
+  // The close distance is never longer than this, however long the spear.
+  // (range 0.5 to 6.0)
+  "SpearCloseMaxMetres": 3.5,
+
+  // The close distance when the spear's length is not known, or with "close distance from the
+  // spear's length" off. 2.5 m = RBM's.
+  // (range 0.5 to 6.0)
+  "SpearCloseFallbackMetres": 2.5,
+
+  // On: a soldier standing behind a comrade in a shield wall, square or circle keeps his spear
+  // whatever is close - he thrusts over the man in front ("Thrusts pass a friend" below lets
+  // the thrust through). Off: he draws his sidearm like anyone.
+  // (true or false)
+  "SpearBackRankKeeps": true,
+
+  // On: the same for a soldier behind a comrade in a plain line ordered to stop. Off: only
+  // shield walls, squares and circles.
+  // (true or false)
+  "SpearBackRankInStandingLine": true,
+
+  // On: an enemy close who holds a spear (or another polearm) himself does not make him draw
+  // the sidearm - a spear against a spear. Off: every close enemy counts.
+  // (true or false)
+  "SpearKeepVsPolearm": true,
+
+  // How often each such soldier looks around him for close enemies (each look a little earlier
+  // or later, so a big army never looks all at once).
+  // (range 0.1 to 2.0)
+  "SpearLookSeconds": 0.5,
+
+  // A FALLBACK to test if the preference alone does not hold: while no enemy is close, the AI's
+  // own order to draw the sidearm is turned into drawing the spear. Off by default.
+  // (true or false)
+  "SpearWieldOverride": false,
+
+  // On: a THRUST that touches a man of the soldier's own side carries on instead of stopping on
+  // him, so a second-rank spearman can reach the enemy past the man in front of him. Swings,
+  // kicks and bashes still stop on a friend. Both sides, you too. Off: the game's own - the
+  // thrust stops on the friend and the thruster is briefly stunned.
+  // (true or false)
+  "ThrustsPassFriends": true,
+
+  // On: only a polearm's thrust passes a friend (a sword's thrust stops on him). Off: every
+  // thrust.
+  // (true or false)
+  "ThrustsPassPolearmsOnly": false,
+
+  // While "Thrusts pass a friend" is on: how long a soldier is stunned after his blow touches a
+  // friend (the game's own is 0.4 s; it applies to every friendly touch, swings too). The
+  // game's own comes back at the battle's end and when the switch goes off.
+  // (range 0.0 to 1.0)
+  "FriendlyHitStunSeconds": 0.1,
 
   // ==================== Brace by orders (AI) ====================
   // An AI soldier whose Athletics bar falls to his formation's order floor (the settings below)

@@ -725,7 +725,7 @@ namespace TraxCombat.Tools
                 }
                 Check(total == SettingsSchema.All.Count, "the two pages hold " + total + " settings, the schema " + SettingsSchema.All.Count);
                 // The player page is short (Anton: "a few options for me and the players").
-                Check(SettingsSchema.PlayerPage.Count >= 12 && SettingsSchema.PlayerPage.Count <= 22, "the player page has " + SettingsSchema.PlayerPage.Count + " settings");
+                Check(SettingsSchema.PlayerPage.Count >= 12 && SettingsSchema.PlayerPage.Count <= 23, "the player page has " + SettingsSchema.PlayerPage.Count + " settings");
             }
 
             /// <summary>One page: returns how many settings it holds.</summary>

@@ -129,6 +129,13 @@ namespace TraxCombat.Core
             "Shield walls stand firm on a hold order",
             "With \"Shield walls hold their slots\" on: a shield wall, square or circle you (or the enemy's general) ordered to STOP - or moved to a place it has reached and stands on - never leaves its ground. Each soldier keeps his place whatever happens: no step out to strike, no sprint; if a kick, a shove or a blow carries him a little forward he backs straight into his place, facing the enemy. He still blocks and strikes - and kicks or bashes - whatever comes within his reach, so an enemy who pushes at the wall tires himself on it. Not while the wall advances, charges, follows or falls back; a wall whose courage breaks still breaks. Both sides, never you. Off: the step out above and the game's own small steps.");
 
+        // Step 76 (Toni 2026-10-22: "my shield wall-ers have spears but they keep using their swords, even though the spear has a longer reach"):
+        // RBM's weapon preference + the close radius from the spear's length, the back rank, a man facing a polearm - SpearMath, AI_NOTES "Step 76",
+        // DESIGN decision 70.
+        public static readonly ParamDef SpearPreferenceEnabled = Bool("SpearPreferenceEnabled", PlayerAiGroup,
+            "Spearmen keep their spears",
+            "AI soldiers who carry a spear (or another polearm) AND a sword, axe or mace fight with the spear while no enemy is close, and draw the sidearm only once an enemy has stood within the spear's reach for a moment (how close depends on how long the spear is); a few seconds after the last close enemy the spear comes back. A man in the back ranks of a shield wall, square or halted line keeps his spear whatever is close - he thrusts over the man in front - and a man facing only spears keeps his. Both sides, never you. Off: the game's own choice (most men draw their sword at once). The numbers: Advanced page, Battle pace (AI).");
+
         public static readonly ParamDef CourageEnabled = Bool("CourageEnabled", PlayerAiGroup,
             "Courage and cohesion",
             "Every AI soldier on foot in a formation weighs his mates against the enemies near him - by how tough each one is (armour, level, wounds). Short of courage he is TIMID: far from his mates he walks back to a bigger group of his side, facing the enemy (sprinting when it is far); among them he holds and strikes only what comes within reach - no lone man circling your shield wall, no exhausted man standing among four enemies. A big enough crowd stays brave and wraps around a line as a mass. Never you, never riders, never men held in a shield wall. Works without the Athletics system (then tiredness does not count). Off: the game's own bravery - the log still measures, so flipping it mid-battle compares the two.");
@@ -437,6 +444,88 @@ namespace TraxCombat.Core
         public static readonly ParamDef ShieldWallStandFirmTightTolerance = Bool("ShieldWallStandFirmTightTolerance", BattlePaceGroup,
             "Stand firm: a tight tolerance for the game",
             "On: the game is told the standing wall's men may be no more than \"walked back beyond\" (above) away from their places, instead of the formation's own looser spread. Off: the formation's own.");
+
+        // Step 76 (Toni 2026-10-22): the spear preference's numbers (RBM's, as parameters) and its three additions; thrusts that pass a friend - SpearMath,
+        // ThrustPassMath, AI_NOTES "Step 76", DESIGN decision 70.
+        public static readonly ParamDef SpearPolearmFavor = Float("SpearPolearmFavor", SpearMath.MinFavor, SpearMath.MaxFavor, BattlePaceGroup,
+            "Spears: how strongly the spear is favoured",
+            "With \"Spearmen keep their spears\" on (player page, How the AI fights): how strongly an AI soldier with a spear and a sidearm prefers the spear while no enemy is close - the game's own weighting is 1. 35 = a clear preference (RBM's value).");
+
+        public static readonly ParamDef SpearSidearmFavor = Float("SpearSidearmFavor", SpearMath.MinFavor, SpearMath.MaxFavor, BattlePaceGroup,
+            "Spears: how strongly the sidearm is favoured up close",
+            "Once an enemy has been close (the settings below), how strongly he prefers his sword, axe or mace instead - the game's own weighting is 1. 55 = RBM's value.");
+
+        public static readonly ParamDef SpearSidearmAfterSeconds = Float("SpearSidearmAfterSeconds", 0, SpearMath.MaxDelaySeconds, BattlePaceGroup,
+            "Spears: sidearm after an enemy is close (s)",
+            "An enemy must stay within his close distance this many seconds before he draws the sidearm - a man passing by (or a rider charging through) does not make him switch.");
+
+        public static readonly ParamDef SpearPolearmBackAfterSeconds = Float("SpearPolearmBackAfterSeconds", 0, SpearMath.MaxDelaySeconds, BattlePaceGroup,
+            "Spears: the spear again after (s)",
+            "This many seconds after the last close enemy he takes the spear again - so he does not switch back and forth while an enemy drifts in and out.");
+
+        public static readonly ParamDef SpearPolearmBackMountedSeconds = Float("SpearPolearmBackMountedSeconds", 0, SpearMath.MaxDelaySeconds, BattlePaceGroup,
+            "Spears: the lance again after, mounted (s)",
+            "The same for a rider: he rides out of the melee quickly and needs his lance for the next charge.");
+
+        public static readonly ParamDef SpearRidingFastMetresPerSecond = Float("SpearRidingFastMetresPerSecond", 0, SpearMath.MaxRidingMetresPerSecond, BattlePaceGroup,
+            "Spears: a rider faster than this rides through (m/s)",
+            "A rider moving faster than this is riding through, not fighting where he stands: nothing counts as close, so lancers do not swap to the sword and back as they pass through a formation.");
+
+        public static readonly ParamDef SpearCloseFromLength = Bool("SpearCloseFromLength", BattlePaceGroup,
+            "Spears: close distance from the spear's length",
+            "On: how close an enemy must come before the sidearm comes out depends on the length of his longest spear (the next settings) - a long pike is clumsy sooner than a short spear. Off: the same distance for every spear (\"close distance when not known\" below).");
+
+        public static readonly ParamDef SpearCloseBaseMetres = Float("SpearCloseBaseMetres", 0, SpearMath.MaxCloseBaseMetres, BattlePaceGroup,
+            "Spears: close distance, the base (m)",
+            "The close distance = this + a share of the spear's length (the next setting), kept between the two limits below. 1.0 m + 60% of a 2 m spear = 2.2 m.");
+
+        public static readonly ParamDef SpearCloseLengthPercent = Int("SpearCloseLengthPercent", 0, (int)SpearMath.MaxCloseLengthPercent, BattlePaceGroup,
+            "Spears: close distance, share of the length (%)",
+            "How much of the spear's length counts toward the close distance (above).");
+
+        public static readonly ParamDef SpearCloseMinMetres = Float("SpearCloseMinMetres", SpearMath.MinCloseMetres, SpearMath.MaxCloseMetres, BattlePaceGroup,
+            "Spears: close distance, at least (m)",
+            "The close distance is never shorter than this, however short the spear.");
+
+        public static readonly ParamDef SpearCloseMaxMetres = Float("SpearCloseMaxMetres", SpearMath.MinCloseMetres, SpearMath.MaxCloseMetres, BattlePaceGroup,
+            "Spears: close distance, at most (m)",
+            "The close distance is never longer than this, however long the spear.");
+
+        public static readonly ParamDef SpearCloseFallbackMetres = Float("SpearCloseFallbackMetres", SpearMath.MinCloseMetres, SpearMath.MaxCloseMetres, BattlePaceGroup,
+            "Spears: close distance when not known (m)",
+            "The close distance when the spear's length is not known, or with \"close distance from the spear's length\" off. 2.5 m = RBM's.");
+
+        public static readonly ParamDef SpearBackRankKeeps = Bool("SpearBackRankKeeps", BattlePaceGroup,
+            "Spears: the back ranks keep their spears",
+            "On: a soldier standing behind a comrade in a shield wall, square or circle keeps his spear whatever is close - he thrusts over the man in front (\"Thrusts pass a friend\" below lets the thrust through). Off: he draws his sidearm like anyone.");
+
+        public static readonly ParamDef SpearBackRankInStandingLine = Bool("SpearBackRankInStandingLine", BattlePaceGroup,
+            "Spears: ... in a halted line too",
+            "On: the same for a soldier behind a comrade in a plain line ordered to stop. Off: only shield walls, squares and circles.");
+
+        public static readonly ParamDef SpearKeepVsPolearm = Bool("SpearKeepVsPolearm", BattlePaceGroup,
+            "Spears: keep the spear against spears",
+            "On: an enemy close who holds a spear (or another polearm) himself does not make him draw the sidearm - a spear against a spear. Off: every close enemy counts.");
+
+        public static readonly ParamDef SpearLookSeconds = Float("SpearLookSeconds", SpearMath.MinLookSeconds, SpearMath.MaxLookSeconds, BattlePaceGroup,
+            "Spears: look every (s)",
+            "How often each such soldier looks around him for close enemies (each look a little earlier or later, so a big army never looks all at once).");
+
+        public static readonly ParamDef SpearWieldOverride = Bool("SpearWieldOverride", BattlePaceGroup,
+            "Spears: force the spear while nothing is close (test)",
+            "A FALLBACK to test if the preference alone does not hold: while no enemy is close, the AI's own order to draw the sidearm is turned into drawing the spear. Off by default.");
+
+        public static readonly ParamDef ThrustsPassFriends = Bool("ThrustsPassFriends", BattlePaceGroup,
+            "Thrusts pass a friend",
+            "On: a THRUST that touches a man of the soldier's own side carries on instead of stopping on him, so a second-rank spearman can reach the enemy past the man in front of him. Swings, kicks and bashes still stop on a friend. Both sides, you too. Off: the game's own - the thrust stops on the friend and the thruster is briefly stunned.");
+
+        public static readonly ParamDef ThrustsPassPolearmsOnly = Bool("ThrustsPassPolearmsOnly", BattlePaceGroup,
+            "Thrusts pass a friend: spears only",
+            "On: only a polearm's thrust passes a friend (a sword's thrust stops on him). Off: every thrust.");
+
+        public static readonly ParamDef FriendlyHitStunSeconds = Float("FriendlyHitStunSeconds", 0, ThrustPassMath.MaxStunSeconds, BattlePaceGroup,
+            "Thrusts pass a friend: stun after hitting a friend (s)",
+            "While \"Thrusts pass a friend\" is on: how long a soldier is stunned after his blow touches a friend (the game's own is 0.4 s; it applies to every friendly touch, swings too). The game's own comes back at the battle's end and when the switch goes off.");
 
         // ------------------------------------------------------------------ brace by orders (step 23)
 
@@ -1911,7 +2000,7 @@ namespace TraxCombat.Core
             // the player page's six groups (step 59)
             DamageRandomPercent, DamageReductionPercent,
             AthleticsEnabled, CostPerBlow, HeroCostMultiplier,
-            AiAggressionFreshPercent, AiAggressionExhaustedPercent, FeverEnabled, ShieldWallHoldsSlots, ShieldWallStepOutMetres, ShieldWallStandFirm, CourageEnabled, CavalryFlockEnabled, LineDisciplineForPlayer,
+            AiAggressionFreshPercent, AiAggressionExhaustedPercent, FeverEnabled, ShieldWallHoldsSlots, ShieldWallStepOutMetres, ShieldWallStandFirm, SpearPreferenceEnabled, CourageEnabled, CavalryFlockEnabled, LineDisciplineForPlayer,
             ImpactEnabled, ImpactOnPlayerPercent,
             SprintEnabled, SprintKey,
             ShowPlayerBar, AltMarksEveryone, ImpactShowMessages,
@@ -1929,6 +2018,9 @@ namespace TraxCombat.Core
             ShieldInfantrySwingsLessPercent, FootMeleeSwingsLessPercent, AiMeleeGapSeconds, ExtraPauseAfterBowShotSeconds, ExtraPauseAfterCrossbowShotSeconds,
             ShieldWallPullBackSeconds, ShieldWallAdvanceAsOne, ShieldWallAdvanceStepMetres, ShieldWallAdvanceNearMetres, ShieldWallKickReturnMetres,
             ShieldWallStandFirmSlackMetres, ShieldWallStandFirmArrivedMetres, ShieldWallStandFirmStillMetresPerSecond, ShieldWallStandFirmPinFrame, ShieldWallStandFirmTightTolerance,
+            SpearPolearmFavor, SpearSidearmFavor, SpearSidearmAfterSeconds, SpearPolearmBackAfterSeconds, SpearPolearmBackMountedSeconds, SpearRidingFastMetresPerSecond,
+            SpearCloseFromLength, SpearCloseBaseMetres, SpearCloseLengthPercent, SpearCloseMinMetres, SpearCloseMaxMetres, SpearCloseFallbackMetres,
+            SpearBackRankKeeps, SpearBackRankInStandingLine, SpearKeepVsPolearm, SpearLookSeconds, SpearWieldOverride, ThrustsPassFriends, ThrustsPassPolearmsOnly, FriendlyHitStunSeconds,
             BraceEnabled, BraceFloorChargePercent, BraceFloorAdvancePercent, BraceFloorHoldPercent, BraceFloorNoFormationPercent, BraceFloorSpreadPercent,
             BraceRecoverPercent, BraceRecoverSpreadPercent,
             BraceWieldShield, BraceRaiseShield,
