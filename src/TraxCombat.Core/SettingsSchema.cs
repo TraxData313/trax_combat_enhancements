@@ -1680,9 +1680,19 @@ namespace TraxCombat.Core
 
         // Step 68 (Toni's 100 v 100 of 2026-10-19: 92 AI kicks / bashes landed "on the man" but the impact model decided 33 - a kick or bash that lands
         // on a FRIEND is cancelled by the game and never decided: a rear-rank man kicking the enemy past his own front-rank mate). AiKickMath.FriendInPath.
+        // Step 80 (Toni's logs since step 68: 314 of 570 landed AI kicks / bashes on a friend): the key kept, its meaning sharpened - the KICK's strike
+        // path half-width, measured from the line of his FACING (the kick goes where he faces, not along the line to the enemy). AiKickPathProbe.
         public static readonly ParamDef AiKickFriendClearMetres = Float("AiKickFriendClearMetres", 0, 2, ImpactGroup,
-            "AI kicks: not through a friend (m)",
-            "An AI soldier does not kick or bash the enemy he fights while one of his own side stands between them within this many metres of the line from him to that enemy (his kick would land on his mate) - he waits for a clear line instead. 0 = off.");
+            "AI kicks: strike path half-width (m)",
+            "An AI soldier kicks only when the enemy he fights is the FIRST body in his kick's path: straight ahead along his facing, as far as the kick reaches, and this many metres either side of that line (a body whose centre is that close is touched). The enemy must be in the path and no man of his own side may stand in it closer - else he waits. 0 = no check.");
+
+        public static readonly ParamDef AiBashPathHalfWidthMetres = Float("AiBashPathHalfWidthMetres", 0, 2, ImpactGroup,
+            "AI bashes: strike path half-width (m)",
+            "The same for a shield bash: the bash's path is this many metres either side of the line of his facing (wider than a kick's - the shield). The enemy must be the first body in it; read again after the bash's raised guard, just before the bash. 0 = no check.");
+
+        public static readonly ParamDef AiKickRearRankMetres = Float("AiKickRearRankMetres", 0, 3, ImpactGroup,
+            "AI kicks: a friend this close ahead = rear rank (m)",
+            "An AI soldier with one of his own side in his kick / bash path within this many metres of him is a rear-rank man: he never kicks or bashes from there (no waiting for the line to clear). A friend in the path farther off than this but closer than the enemy only makes him wait. 0 = always wait.");
 
         public static readonly ParamDef ImpactMismatchWeight = Float("ImpactMismatchWeight", 0, 2, ImpactGroup,
             "Mismatch weight (pressure per doubling)",
@@ -2317,6 +2327,7 @@ namespace TraxCombat.Core
             AiKickKicksARaisedShield, KickBraceEnabled, KickBraceFromPressure, KickBraceToPressure, KickBraceMinBarPercent, KickBraceReelPercent,
             KickShortReelPercent, KickBraceRefusesKnockBack,
             AiKickWaitSeconds, AiKickWaitMetres, AiBashShareOfSwingsPercent, AiBashDelaySeconds, AiBashCooldownSeconds, AiKickFriendClearMetres,
+            AiBashPathHalfWidthMetres, AiKickRearRankMetres,
             ImpactMismatchWeight, ImpactEvenBandDoublings, ImpactBodyExponent, ImpactBodyFloorPoints, ImpactStaggeredBonus, ImpactDamageWeight,
             ImpactRefWeightKg, ImpactWeightExponent, ImpactRefSwingSpeed, ImpactSpeedExponent, ImpactBluntFactor, ImpactCutFactor, ImpactPierceFactor,
             ImpactKickFactor, ImpactBashFactor, ImpactSkillMinFactor, ImpactSkillMaxFactor,

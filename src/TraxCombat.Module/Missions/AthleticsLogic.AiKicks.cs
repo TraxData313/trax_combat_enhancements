@@ -41,7 +41,7 @@ namespace TraxCombat.Missions
         private double _aiKickCarry;
         private double _aiKickLastTick = double.NaN;
         private string _seenAiKickText = string.Empty;
-        private readonly bool[] _aiKickFirst = new bool[6];
+        private readonly bool[] _aiKickFirst = new bool[8];
 
         /// <summary>This mission's AI kick numbers (the smoke reads them).</summary>
         internal AiKickStats AiKickStats => _aiKickStats;
@@ -85,7 +85,7 @@ namespace TraxCombat.Missions
                 return;
             }
             long start = Stopwatch.GetTimestamp();
-            if (_aiKickCount > 0) AdvanceAiKicks(now);
+            if (_aiKickCount > 0) AdvanceAiKicks(now, in r);
             double dt = double.IsNaN(_aiKickLastTick) || now < _aiKickLastTick ? AiKickMath.LookSeconds : now - _aiKickLastTick;
             _aiKickLastTick = now;
             if (dt > AiKickMath.LookSeconds) dt = AiKickMath.LookSeconds;
@@ -210,28 +210,44 @@ namespace TraxCombat.Missions
                 if (shield) st.BashCredit = Math.Max(0, st.BashCredit - 1); // the earned bash is spent on the decision
             }
             else chance = st.AiKickWaitChance;
-            // step 68: a man of his own side on the line to the enemy - the kick would land on his mate (the game cancels it, nothing decided):
-            // the decision waits for a clear line like one out of reach (read only in reach and in front - a handful of reads a second)
-            bool friendInWay = distance <= r.Reach && off <= r.Facing && r.FriendClear > 0 && body.FriendInTheWay(st, targetAgent!, r.FriendClear);
-            if (friendInWay)
+            // step 80 (step 68's friend check rebuilt): in reach and in front, the kind first (its strike path's width), then THE STRIKE PATH along
+            // his facing - the enemy must be in it and the first body there; a friend first = the decision waits (a clear path may come), a friend
+            // first within the rear-rank distance = a rear-rank man: no kick, no wait; the enemy off the path = waits like one not in front
+            bool inFront = distance <= r.Reach && off <= r.Facing;
+            var kind = AiKickKind.None;
+            var path = AiKickPath.Clear;
+            if (inFront)
+            {
+                bool raisedFacing = false;
+                if (shield && r.KicksARaisedShield && target.PrevAction == ImpactActions.DefendShield) raisedFacing = body.FacingTo(target, st) <= AiKickMath.RaisedShieldDegrees;
+                kind = AiKickMath.KindFor(in r, shield, raisedFacing);
+                path = StrikePathOf(st, targetAgent!, kind, distance, off, in r);
+                if (r.PathHalfWidth(kind) > 0) _aiKickStats.NotePath(kind, path);
+            }
+            if (path == AiKickPath.FriendFirst || path == AiKickPath.BehindFriend)
             {
                 _aiKickStats.FriendChecksBlocked++;
-                if (!waiting && AiKickMath.Waits(in r, distance))
+                bool rear = path == AiKickPath.BehindFriend;
+                if (rear) DropAiKickWait(st);
+                else if (!waiting && AiKickMath.Waits(in r, distance))
                 {
                     st.AiKickWaitUntil = now + r.WaitSeconds;
                     st.AiKickWaitSince = now;
                     st.AiKickWaitChance = chance;
                     _aiKickStats.WaitsStarted++;
                 }
-                Skip(AiKickSkip.FriendInTheWay);
-                if (AiKickFirst(4))
-                    TraxLog.Info("impact", "first AI kick / bash HELD for a friend in the way at " + Sec(now) + " s (step 68) - " + Name(st) + " at " + Name(target) + " " + F2(distance)
-                        + " m off: one of his own side stands within " + F2(r.FriendClear) + " m of the line between them (AiKickFriendClearMetres) - "
-                        + (!double.IsNaN(st.AiKickWaitUntil) ? "the decision waits for a clear line" : "no kick"));
+                Skip(rear ? AiKickSkip.BehindFriend : AiKickSkip.FriendInTheWay);
+                if (AiKickFirst(rear ? 5 : 4))
+                    TraxLog.Info("impact", "first AI " + AiKickMath.KindName(kind) + " REFUSED - " + AiKickMath.PathName(path) + " at " + Sec(now) + " s (step 80) - " + Name(st)
+                        + " at " + Name(target) + " " + F2(distance) + " m off, " + F1(off) + "° off his facing: one of his own side stands in his strike path (along his facing, "
+                        + F2(r.PathHalfWidth(kind)) + " m either side) closer than the enemy - "
+                        + (rear ? "within " + F1(r.RearRank) + " m of him (AiKickRearRankMetres): a rear-rank man, no kick and no wait"
+                                : !double.IsNaN(st.AiKickWaitUntil) ? "the decision waits for a clear path" : "no kick"));
                 return;
             }
-            if (r.FriendClear > 0 && distance <= r.Reach && off <= r.Facing) _aiKickStats.FriendChecksClear++;
-            if (!(distance <= r.Reach) || !(off <= r.Facing))
+            if (inFront && path == AiKickPath.Clear && r.PathHalfWidth(kind) > 0) _aiKickStats.FriendChecksClear++;
+            bool offPath = path == AiKickPath.TargetOffPath;
+            if (!inFront || offPath)
             {
                 if (waiting)
                 {
@@ -240,7 +256,7 @@ namespace TraxCombat.Missions
                         DropAiKickWait(st);
                         Skip(AiKickSkip.TooFar);
                     }
-                    else Skip(AiKickSkip.Waiting);
+                    else Skip(offPath ? AiKickSkip.TargetOffPath : AiKickSkip.Waiting);
                     return;
                 }
                 if (AiKickMath.Waits(in r, distance))
@@ -249,15 +265,12 @@ namespace TraxCombat.Missions
                     st.AiKickWaitSince = now;
                     st.AiKickWaitChance = chance;
                     _aiKickStats.WaitsStarted++;
-                    Skip(AiKickSkip.Waiting);
+                    Skip(offPath ? AiKickSkip.TargetOffPath : AiKickSkip.Waiting);
                     return;
                 }
-                Skip(!(distance <= r.Reach) ? AiKickSkip.TooFar : AiKickSkip.NotFacing);
+                Skip(offPath ? AiKickSkip.TargetOffPath : !(distance <= r.Reach) ? AiKickSkip.TooFar : AiKickSkip.NotFacing);
                 return;
             }
-            bool raisedFacing = false;
-            if (shield && r.KicksARaisedShield && target.PrevAction == ImpactActions.DefendShield) raisedFacing = body.FacingTo(target, st) <= AiKickMath.RaisedShieldDegrees;
-            var kind = AiKickMath.KindFor(in r, shield, raisedFacing);
             if (_aiKickCount >= _aiKickers.Length)
             {
                 Skip(AiKickSkip.PoolFull);
@@ -273,6 +286,30 @@ namespace TraxCombat.Missions
         }
 
         private void Skip(AiKickSkip why) => _aiKickStats.Skips[(int)why]++;
+
+        /// <summary>Step 80: the strike path for a <paramref name="kind"/> at the enemy <paramref name="distance"/> m / <paramref name="off"/>° off his
+        /// facing - off = Clear; the cheap gate on the reads he has (the enemy in the path at all), then the engine's positions and his side's men
+        /// near (<see cref="IAiKickBody.StrikePath"/>).</summary>
+        private AiKickPath StrikePathOf(TrackedAgent st, Agent target, AiKickKind kind, float distance, float off, in AiKickRules r)
+        {
+            double half = r.PathHalfWidth(kind);
+            if (!(half > 0)) return AiKickPath.Clear;
+            if (!AiKickMath.TargetInPath(distance, off, r.Reach, half)) return AiKickPath.TargetOffPath;
+            _aiKickStats.PathProbes++;
+            var v = AiKickBody.StrikePath(st, target, r.Reach, half, r.RearRank, out int looked);
+            _aiKickStats.PathFriendsLooked += looked;
+            return v;
+        }
+
+        /// <summary>Step 80: a bash's guard is over - its strike path read again just before the key (the enemy he fights now, in reach, in front,
+        /// in the path, no friend first): anything but clear ends the attempt with no key.</summary>
+        private AiKickPath PressPath(TrackedAgent st, in AiKickRules r)
+        {
+            if (!(r.PathHalfWidth(st.AiKickKind) > 0)) return AiKickPath.Clear;
+            var targetAgent = AiKickBody.Target(st, out float distance, out float off);
+            if (targetAgent == null || !(distance <= r.Reach) || !(off <= r.Facing)) return AiKickPath.TargetOffPath;
+            return StrikePathOf(st, targetAgent, st.AiKickKind, distance, off, in r);
+        }
 
         /// <summary>Step 66: a waiting decision dropped (the enemy gone or too far, mounted, a ranged weapon, routing) - counted once.</summary>
         private void DropAiKickWait(TrackedAgent st)
@@ -328,7 +365,7 @@ namespace TraxCombat.Missions
 
         /// <summary>The running attempts, every tick: gone / struck = ended; the action seen (step 18's tracker - the poll of both channels) =
         /// PLAYED; the phases by time; the commit ends when the action is over or the watch runs out.</summary>
-        private void AdvanceAiKicks(double now)
+        private void AdvanceAiKicks(double now, in AiKickRules r)
         {
             var body = AiKickBody;
             for (int i = 0; i < _aiKickCount; i++)
@@ -371,6 +408,20 @@ namespace TraxCombat.Missions
                             EndAiKick(i--, st.AiKickSeen ? AiKickEnd.Played : AiKickEnd.NotPlayed, now);
                             continue;
                         }
+                        if (next == AiKickPhase.Press && st.AiKickKind == AiKickKind.Bash)
+                        {
+                            // step 80: the bash's guard is over - its path read again before the key
+                            var pv = PressPath(st, in r);
+                            if (r.PathHalfWidth(AiKickKind.Bash) > 0) _aiKickStats.NotePressPath(pv);
+                            if (pv != AiKickPath.Clear)
+                            {
+                                if (AiKickFirst(6))
+                                    TraxLog.Info("impact", "first AI shield bash ENDED before its key at " + Sec(now) + " s (step 80) - " + Name(st) + ": after the "
+                                        + F2(AiKickMath.BashLeadSeconds) + " s guard his strike path is no longer clear (" + AiKickMath.PathName(pv) + ") - no bash");
+                                EndAiKick(i--, AiKickEnd.PathBlocked, now);
+                                continue;
+                            }
+                        }
                         st.AiKickPhase = next;
                         st.AiKickPhaseEnd = AiKickMath.PhaseEnd(next, now);
                         AiInputHook.SetKick(st, next, st.AiKickKind, now);
@@ -389,6 +440,7 @@ namespace TraxCombat.Missions
         {
             var st = _aiKickers[i]!;
             _aiKickStats.Ends[(int)why]++;
+            if (why == AiKickEnd.Played && st.AiKickSeen && !st.AiKickLanded) _aiKickStats.NoteOutcome(st.AiKickKind, AiKickOutcome.Miss); // step 80
             if (why == AiKickEnd.NotPlayed && AiKickFirst(2))
                 TraxLog.Info("impact", "first AI " + AiKickMath.KindName(st.AiKickKind) + " NOT played at " + Sec(now) + " s - " + Name(st) + ": no kick / bash showed within "
                     + F1(AiKickMath.WatchSeconds) + " s of the press (his channel 1 " + ImpactActions.Name(st.PrevAction) + ", channel 0 " + ImpactActions.Name(st.PrevLowerAction)
@@ -442,7 +494,12 @@ namespace TraxCombat.Missions
             if (st.AiKickPhase == AiKickPhase.None || st.AiKickLanded) return;
             st.AiKickLanded = true;
             _aiKickStats.Landed(st.AiKickKind, st.AiKickReason, intoShield);
-            if (!intoShield && victim != null) _aiKickStats.NoteVictim(AiKickVictimOf(st, victim));
+            var who = victim != null ? AiKickVictimOf(st, victim) : AiKickVictim.Untracked;
+            if (!intoShield && victim != null) _aiKickStats.NoteVictim(who);
+            // step 80: whom it hit first - an enemy (his body / his shield), a friend (body / shield), a horse / untracked
+            _aiKickStats.NoteOutcome(st.AiKickKind, who == AiKickVictim.Untracked ? AiKickOutcome.Untracked
+                : who == AiKickVictim.Friend ? (intoShield ? AiKickOutcome.FriendShield : AiKickOutcome.FriendBody)
+                : intoShield ? AiKickOutcome.EnemyShield : who == AiKickVictim.Target ? AiKickOutcome.EnemyTarget : AiKickOutcome.EnemyOther);
             if (!intoShield && AiKickFirst(3))
                 TraxLog.Info("impact", "first AI " + AiKickMath.KindName(st.AiKickKind) + " LANDED at " + Sec(SafeNow()) + " s - " + Name(st)
                     + (st.AiKickTarget != null ? " on " + Name(st.AiKickTarget) : string.Empty) + " (the impact model and the brace decide what it does)");

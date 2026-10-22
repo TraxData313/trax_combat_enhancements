@@ -224,23 +224,29 @@ public class Step68Tests
     [Fact]
     public void A_friend_on_the_line_to_the_enemy_holds_the_kick_a_man_beside_him_does_not()
     {
-        // the kicker at (0, 0), his enemy 1.6 m ahead at (0, 1.6)
-        Assert.True(AiKickMath.FriendInPath(0, 0, 0, 1.6, 0.0, 0.8, 0.5));   // his front-rank mate between them
-        Assert.True(AiKickMath.FriendInPath(0, 0, 0, 1.6, 0.4, 0.9, 0.5));   // a little to the side, still on the line
-        Assert.False(AiKickMath.FriendInPath(0, 0, 0, 1.6, 0.7, 0.9, 0.5));  // beyond the clearance
-        Assert.False(AiKickMath.FriendInPath(0, 0, 0, 1.6, 0.6, 0.0, 0.5));  // shoulder to shoulder beside him
-        Assert.False(AiKickMath.FriendInPath(0, 0, 0, 1.6, 0.0, -0.8, 0.5)); // behind him
-        Assert.False(AiKickMath.FriendInPath(0, 0, 0, 1.6, 0.0, 2.0, 0.5));  // beyond the enemy
-        Assert.False(AiKickMath.FriendInPath(0, 0, 0, 1.6, 0.0, 0.8, 0));    // the check off
-        Assert.False(AiKickMath.FriendInPath(0, 0, 0, 0, 0.0, 0.0, 0.5));    // no line
+        // the kicker at (0, 0) facing his enemy 1.6 m ahead at (0, 1.6) - since step 80 the probe along his FACING
+        static AiKickPath V(double fx, double fy, double clear)
+        {
+            var p = AiKickPathProbe.Begin(0, 0, 0, 1, 0, 1.6, 1.6, clear, 0);
+            p.Add(fx, fy);
+            return p.Verdict;
+        }
+        Assert.Equal(AiKickPath.FriendFirst, V(0.0, 0.8, 0.5));   // his front-rank mate between them
+        Assert.Equal(AiKickPath.FriendFirst, V(0.4, 0.9, 0.5));   // a little to the side, still on the line
+        Assert.Equal(AiKickPath.Clear, V(0.7, 0.9, 0.5));         // beyond the clearance
+        Assert.Equal(AiKickPath.Clear, V(0.6, 0.0, 0.5));         // shoulder to shoulder beside him
+        Assert.Equal(AiKickPath.Clear, V(0.0, -0.8, 0.5));        // behind him
+        Assert.Equal(AiKickPath.Clear, V(0.0, 2.0, 0.5));         // beyond the enemy
+        Assert.Equal(AiKickPath.Clear, V(0.0, 0.8, 0));           // the check off
         var s = new TraxSettings();
         s.Set(SettingsSchema.AiKickFriendClearMetres, 0.5, SettingSources.Mcm);
         var r = AiKickRules.From(s);
         Assert.Equal(0.5, r.FriendClear, 6);
-        Assert.Contains("; never through a friend (one of his side within 0.5 m of the line to the enemy - he waits for a clear line)", r.Describe(), StringComparison.Ordinal);
+        Assert.Contains("; only when the enemy is the FIRST body in his strike path along his facing (step 80: a kick's path 0.50 m", r.Describe(), StringComparison.Ordinal);
         s.Set(SettingsSchema.AiKickFriendClearMetres, 0.0, SettingSources.Mcm);
-        Assert.DoesNotContain("never through a friend", AiKickRules.From(s).Describe(), StringComparison.Ordinal);
-        Assert.Equal(16, AiKickMath.SkipCount);
+        s.Set(SettingsSchema.AiBashPathHalfWidthMetres, 0.0, SettingSources.Mcm);
+        Assert.DoesNotContain("strike path", AiKickRules.From(s).Describe(), StringComparison.Ordinal);
+        Assert.Equal(18, AiKickMath.SkipCount); // step 80 appended two
         Assert.Equal("a friend in the way (step 68)", AiKickMath.SkipName(AiKickSkip.FriendInTheWay));
         Assert.Equal(15, (int)AiKickSkip.FriendInTheWay); // appended - the old indexes kept
     }
@@ -259,7 +265,7 @@ public class Step68Tests
         s.Set(SettingsSchema.AiKickFriendClearMetres, 0.5, SettingSources.Mcm);
         var lines = st.SummaryLines(AiKickRules.From(s)).ToList();
         Assert.Contains("→ landed on the man 1 (step 68: on his target 0, on another enemy 0, on a FRIEND (the game cancels it - never decided) 1, on a horse / a man not tracked 0), into a shield 0", lines[1], StringComparison.Ordinal);
-        Assert.Contains("; step 68 - a friend on the line to the enemy (within 0.5 m): held 4, clear 9", lines[3], StringComparison.Ordinal);
+        Assert.Contains("; step 68 / 80 - a friend first in the strike path (a kick's 0.5 m either side): held 4, clear 9", lines[3], StringComparison.Ordinal);
         Assert.Equal(string.Empty, new AiKickStats().VictimsText());
     }
 
@@ -314,13 +320,13 @@ public class Step68Tests
     [Fact]
     public void Format_14_moves_the_old_costs_once_and_keeps_a_tuned_value()
     {
-        Assert.Equal(17, ConfigFile.FormatVersion);
+        Assert.Equal(18, ConfigFile.FormatVersion);
         var read = ConfigFile.Read("{ \"ConfigVersion\": 13, \"CostPerBlow\": 7.0, \"CostPerShieldBlock\": 1.0, \"CostPerWrongSideShieldBlock\": 2.0, \"CostPerWeaponParry\": 2.0, \"CostPerKickOrBash\": 5.0 }");
         var notes = ConfigFile.Migrate(read, Shipped);
         Assert.Equal(3, notes.Count);
-        Assert.StartsWith("CostPerBlow: 7.0 → 8.0 (format 13 → 17, the old default; step 68, Toni: tire the men more to slow the combat again a bit after the first impact - a swing or shot costs 8)", notes[0], StringComparison.Ordinal);
-        Assert.StartsWith("CostPerWrongSideShieldBlock: 2.0 → 5.0 (format 13 → 17, the old default; step 68", notes[1], StringComparison.Ordinal);
-        Assert.StartsWith("CostPerShieldBlock: 1.0 → 2.0 (format 13 → 17, the old default; step 68", notes[2], StringComparison.Ordinal);
+        Assert.StartsWith("CostPerBlow: 7.0 → 8.0 (format 13 → 18, the old default; step 68, Toni: tire the men more to slow the combat again a bit after the first impact - a swing or shot costs 8)", notes[0], StringComparison.Ordinal);
+        Assert.StartsWith("CostPerWrongSideShieldBlock: 2.0 → 5.0 (format 13 → 18, the old default; step 68", notes[1], StringComparison.Ordinal);
+        Assert.StartsWith("CostPerShieldBlock: 1.0 → 2.0 (format 13 → 18, the old default; step 68", notes[2], StringComparison.Ordinal);
         Assert.Equal(8, read.Values["CostPerBlow"], 9);
         Assert.Equal(2, read.Values["CostPerShieldBlock"], 9);
         Assert.Equal(5, read.Values["CostPerWrongSideShieldBlock"], 9);
@@ -331,7 +337,7 @@ public class Step68Tests
         var mine = ConfigFile.Read("{ \"ConfigVersion\": 13, \"CostPerBlow\": 6.0, \"CostPerShieldBlock\": 0.0, \"CostPerWrongSideShieldBlock\": 3.0 }");
         var kept = ConfigFile.Migrate(mine, Shipped);
         Assert.Equal(3, kept.Count);
-        Assert.StartsWith("CostPerBlow: 6.0 kept - your own value (format 13 → 17; the new default 8.0 is not pushed over it; step 68", kept[0], StringComparison.Ordinal);
+        Assert.StartsWith("CostPerBlow: 6.0 kept - your own value (format 13 → 18; the new default 8.0 is not pushed over it; step 68", kept[0], StringComparison.Ordinal);
         Assert.Equal(6, mine.Values["CostPerBlow"], 9);
         Assert.Equal(0, mine.Values["CostPerShieldBlock"], 9);
         Assert.Equal(3, mine.Values["CostPerWrongSideShieldBlock"], 9);

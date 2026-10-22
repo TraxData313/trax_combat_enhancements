@@ -2208,11 +2208,25 @@
   // (range 0.0 to 60.0)
   "AiBashCooldownSeconds": 2.0,
 
-  // An AI soldier does not kick or bash the enemy he fights while one of his own side stands
-  // between them within this many metres of the line from him to that enemy (his kick would
-  // land on his mate) - he waits for a clear line instead. 0 = off.
+  // An AI soldier kicks only when the enemy he fights is the FIRST body in his kick's path:
+  // straight ahead along his facing, as far as the kick reaches, and this many metres either
+  // side of that line (a body whose centre is that close is touched). The enemy must be in the
+  // path and no man of his own side may stand in it closer - else he waits. 0 = no check.
   // (range 0.0 to 2.0)
-  "AiKickFriendClearMetres": 0.5,
+  "AiKickFriendClearMetres": 0.6,
+
+  // The same for a shield bash: the bash's path is this many metres either side of the line of
+  // his facing (wider than a kick's - the shield). The enemy must be the first body in it; read
+  // again after the bash's raised guard, just before the bash. 0 = no check.
+  // (range 0.0 to 2.0)
+  "AiBashPathHalfWidthMetres": 0.75,
+
+  // An AI soldier with one of his own side in his kick / bash path within this many metres of
+  // him is a rear-rank man: he never kicks or bashes from there (no waiting for the line to
+  // clear). A friend in the path farther off than this but closer than the enemy only makes him
+  // wait. 0 = always wait.
+  // (range 0.0 to 3.0)
+  "AiKickRearRankMetres": 1.2,
 
   // How much an outmatched man suffers: every doubling of the mismatch beyond the even band
   // adds this to the pressure on him (0.25: an enemy four times stronger counts as much as

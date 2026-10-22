@@ -118,13 +118,13 @@ public class Step66Tests
     [Fact]
     public void Format_13_moves_the_old_kick_cost_rate_and_cooldown_once_and_keeps_a_tuned_value()
     {
-        Assert.Equal(17, ConfigFile.FormatVersion);
+        Assert.Equal(18, ConfigFile.FormatVersion);
         var read = ConfigFile.Read("{ \"ConfigVersion\": 12, \"CostPerKickOrBash\": 3.0, \"AiKicksPerMinute\": 0.1, \"AiKickCooldownSeconds\": 10.0 }");
         var notes = ConfigFile.Migrate(read, Shipped);
         Assert.Equal(3, notes.Count);
-        Assert.StartsWith("CostPerKickOrBash: 3.0 → 5.0 (format 12 → 17, the old default; step 66, Anton: a kick or a shield bash takes more of the energy", notes[0], StringComparison.Ordinal);
-        Assert.StartsWith("AiKicksPerMinute: 0.1 → 1.2 (format 12 → 17, the old default; step 66, Anton's looter battle: no AI kick was ever seen", notes[1], StringComparison.Ordinal);
-        Assert.StartsWith("AiKickCooldownSeconds: 10.0 → 8.0 (format 12 → 17, the old default; step 66", notes[2], StringComparison.Ordinal);
+        Assert.StartsWith("CostPerKickOrBash: 3.0 → 5.0 (format 12 → 18, the old default; step 66, Anton: a kick or a shield bash takes more of the energy", notes[0], StringComparison.Ordinal);
+        Assert.StartsWith("AiKicksPerMinute: 0.1 → 1.2 (format 12 → 18, the old default; step 66, Anton's looter battle: no AI kick was ever seen", notes[1], StringComparison.Ordinal);
+        Assert.StartsWith("AiKickCooldownSeconds: 10.0 → 8.0 (format 12 → 18, the old default; step 66", notes[2], StringComparison.Ordinal);
         Assert.Equal(5, read.Values["CostPerKickOrBash"], 9);
         Assert.Equal(1.2, read.Values["AiKicksPerMinute"], 9);
         Assert.Equal(8, read.Values["AiKickCooldownSeconds"], 9);
@@ -132,11 +132,11 @@ public class Step66Tests
         var mine = ConfigFile.Read("{ \"ConfigVersion\": 12, \"CostPerKickOrBash\": 4.0, \"AiKicksPerMinute\": 0.5 }");
         var kept = ConfigFile.Migrate(mine, Shipped);
         Assert.Equal(2, kept.Count);
-        Assert.StartsWith("CostPerKickOrBash: 4.0 kept - your own value (format 12 → 17; the new default 5.0", kept[0], StringComparison.Ordinal);
-        Assert.StartsWith("AiKicksPerMinute: 0.5 kept - your own value (format 12 → 17; the new default 1.2", kept[1], StringComparison.Ordinal);
+        Assert.StartsWith("CostPerKickOrBash: 4.0 kept - your own value (format 12 → 18; the new default 5.0", kept[0], StringComparison.Ordinal);
+        Assert.StartsWith("AiKicksPerMinute: 0.5 kept - your own value (format 12 → 18; the new default 1.2", kept[1], StringComparison.Ordinal);
         Assert.Equal(4, mine.Values["CostPerKickOrBash"], 9);
         var old = ConfigFile.Read("{ \"ConfigVersion\": 5, \"CostPerKickOrBash\": 3.0 }");
-        Assert.Contains(ConfigFile.Migrate(old, Shipped), n => n.StartsWith("CostPerKickOrBash: 3.0 → 5.0 (format 5 → 17", StringComparison.Ordinal));
+        Assert.Contains(ConfigFile.Migrate(old, Shipped), n => n.StartsWith("CostPerKickOrBash: 3.0 → 5.0 (format 5 → 18", StringComparison.Ordinal));
         // a format-13 file is never touched; a file without the keys gets the defaults (no note)
         Assert.Empty(ConfigFile.Migrate(ConfigFile.Read("{ \"ConfigVersion\": 13, \"CostPerKickOrBash\": 3.0, \"AiKicksPerMinute\": 0.1 }"), Shipped));
         Assert.Empty(ConfigFile.Migrate(ConfigFile.Read("{ \"ConfigVersion\": 12 }"), Shipped));
@@ -156,7 +156,7 @@ public class Step66Tests
         st.WaitsExpired = 2;
         st.WaitsDropped = 1;
         var lines = st.SummaryLines(Rules()).ToList();
-        Assert.Equal(5, lines.Count);
+        Assert.Equal(6, lines.Count); // step 80: + whom they hit and the strike path
         Assert.Equal("ai kicks - bashes per swing and the wait for reach (step 66): the shieldmen's melee swings (AI, on foot) 40 earned 38.0 bashes "
                      + "(AiBashShareOfSwingsPercent 100%; lost at the cap of 2 2.0) → bashes asked 30 = 0.75 a swing; decisions that waited for reach 12 → kicked / bashed 9 "
                      + "(0.80 s after the decision), ran out (3.0 s) 2, dropped (the enemy gone or beyond 5.0 m, mounted, a ranged weapon, routing) 1", lines[4]);

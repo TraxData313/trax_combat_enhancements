@@ -201,7 +201,7 @@ public class AiKickTests
         st.ContactManSeconds = 120;
         st.PointsSpent = 9;
         var lines = st.SummaryLines(Rules()).ToList();
-        Assert.Equal(5, lines.Count); // step 66: + the bashes per swing and the wait for reach
+        Assert.Equal(6, lines.Count); // step 66: + the bashes per swing and the wait for reach; step 80: + whom they hit and the strike path
         Assert.StartsWith("ai kicks (step 65): ON", lines[0], StringComparison.Ordinal);
         Assert.Contains("ai kicks: asked 3 (kicks 1, bashes 2) → PLAYED 2 (67%), seen 0.30 s after the ask → landed on the man 1, into a shield 1", lines[1], StringComparison.Ordinal);
         Assert.Contains("1.50 asked a man-minute in contact (2.0 man-minutes)", lines[1], StringComparison.Ordinal);

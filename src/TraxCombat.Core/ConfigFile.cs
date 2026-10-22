@@ -112,8 +112,10 @@ namespace TraxCombat.Core
         /// two fronts, never, not for a sec": a lull lasts until the unit's men in the fight have regained more - LullRecoverChargePercent 10 → 20,
         /// LullRecoverAdvancePercent 15 → 25, LullRecoverHoldPercent 20 → 30 in a file still holding them; a tuned value kept and noted; the wrap's
         /// own switch PressWrapAllowed is a new key, off). Step 78c removed the lull and its 29 keys without a new format: the reader ignores an
-        /// unknown key anyway, and <c>DropRetiredLullKeys</c> drops them from any file (one note each) - nothing to move.</summary>
-        public const int FormatVersion = 17;
+        /// unknown key anyway, and <c>DropRetiredLullKeys</c> drops them from any file (one note each) - nothing to move. 18 = step 80 (AI kicks land
+        /// on enemies, not friends: AiKickFriendClearMetres - now the kick's strike path half-width along his facing - 0.5 → 0.6 in a file of format
+        /// 14-17 still holding it; a tuned value kept and noted).</summary>
+        public const int FormatVersion = 18;
 
         /// <summary>The meta key holding <see cref="FormatVersion"/> - not a setting.</summary>
         public const string VersionKey = "ConfigVersion";
@@ -516,8 +518,15 @@ namespace TraxCombat.Core
                 MoveOrKeepIfMoved(read, SettingsSchema.LineDisciplineRanksT4, 2, deeper + " - a tier-4 man holds 3 ranks", from, defaultOf);
                 MoveOrKeepIfMoved(read, SettingsSchema.LineDisciplineRanksT5, 1, deeper + " - a veteran holds 2 ranks (60 of them: at most 30 files)", from, defaultOf);
             }
+            if (from < 18 && from >= 14)
+            {
+                // step 80: AiKickFriendClearMetres (step 68's key, since format 14) is now the KICK's strike path half-width, measured from the line
+                // of his facing - 0.5 → 0.6 (a body centre 0.6 m off his foot's line is still touched); a hand-set value is kept and said once
+                MoveOrKeepIfMoved(read, SettingsSchema.AiKickFriendClearMetres, 0.5,
+                    "step 80, Toni: AI kicks land on enemies, not friends - the kick's strike path along his facing is 0.6 m either side", from, defaultOf);
+            }
             // format 17 (step 78b) moved the lull's LullRecover*Percent 10 / 15 / 20 → 20 / 25 / 30; step 78c removed the lull and its keys, so a
-            // format 16 file's are dropped below with the rest of them - nothing to move any more (FormatVersion stays 17)
+            // format 16 file's are dropped below with the rest of them - nothing to move any more (78c kept format 17; step 80 made it 18)
             // steps 36 / 37: the retired AI sprint keys - in ANY format (they are only ever steps 33-36's, and a hand-pasted one
             // goes the same way)
             DropRetiredSprintKeys(read, from);

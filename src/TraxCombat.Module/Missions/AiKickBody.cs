@@ -32,9 +32,11 @@ namespace TraxCombat.Missions
         /// <summary>His callback released if no wish is left (never for a man gone).</summary>
         void Release(TrackedAgent st);
 
-        /// <summary>Step 68: one of his own side stands between him and <paramref name="target"/>, within <paramref name="clear"/> m of the line
-        /// (<see cref="TraxCombat.Core.AiKickMath.FriendInPath"/>) - his kick would land on his mate.</summary>
-        bool FriendInTheWay(TrackedAgent st, Agent target, double clear);
+        /// <summary>Step 80 (step 68's friend check, rebuilt): his STRIKE PATH - along his facing, <paramref name="reach"/> m long,
+        /// <paramref name="halfWidth"/> m either side (<see cref="TraxCombat.Core.AiKickPathProbe"/>): is <paramref name="target"/> in it and the first
+        /// body there, or does a man of his own side stand in it closer (within <paramref name="rearRank"/> m = a rear-rank man)?
+        /// <paramref name="looked"/> = the friends the probe looked at.</summary>
+        TraxCombat.Core.AiKickPath StrikePath(TrackedAgent st, Agent target, double reach, double halfWidth, double rearRank, out int looked);
 
         /// <summary>Step 68: is <paramref name="other"/> an enemy of <paramref name="st"/> (whom a landed kick hit)?</summary>
         bool IsEnemy(TrackedAgent st, TrackedAgent other);
@@ -82,31 +84,35 @@ namespace TraxCombat.Missions
 
         private readonly MBList<Agent> _allies = new MBList<Agent>(); // reused - no allocation per read
 
-        /// <summary>Step 68: the game's proximity search for his side within reach (<c>Mission.GetNearbyAllyAgents</c>, the list reused), each
-        /// one tested against the line to the enemy. Main thread; asked only in reach and in front.</summary>
-        public bool FriendInTheWay(TrackedAgent st, Agent target, double clear)
+        /// <summary>Step 80: his position and FACING (<c>GetMovementDirection</c> - the facing step 62's angle uses), the target's position, the
+        /// game's proximity search for his side within the path's reach (<c>Mission.GetNearbyAllyAgents</c>, the list reused), each one fed to
+        /// the Core probe - horses of his side too (a friend's horse in the way is a friend's body). Main thread; asked only in reach, in front
+        /// and with the target in the path (a handful of reads a second). No mission / team = the path refused (no kick - vanilla's own way).</summary>
+        public TraxCombat.Core.AiKickPath StrikePath(TrackedAgent st, Agent target, double reach, double halfWidth, double rearRank, out int looked)
         {
+            looked = 0;
             var a = st.Agent;
             var m = Mission.Current;
-            if (m == null || a.Team == null || target == null) return false;
+            if (m == null || a.Team == null || target == null) return TraxCombat.Core.AiKickPath.TargetOffPath;
             var p = a.Position.AsVec2;
             var t = target.Position.AsVec2;
-            float radius = p.Distance(t) + (float)clear;
-            m.GetNearbyAllyAgents(p, radius, a.Team, _allies);
-            bool blocked = false;
-            for (int i = 0; i < _allies.Count; i++)
+            var face = a.GetMovementDirection();
+            var probe = TraxCombat.Core.AiKickPathProbe.Begin(p.x, p.y, face.x, face.y, t.x, t.y, reach, halfWidth, rearRank);
+            if (probe.TargetIn && halfWidth > 0)
             {
-                var f = _allies[i];
-                if (f == null || f == a || !f.IsActive() || !f.IsHuman) continue;
-                var q = f.Position.AsVec2;
-                if (TraxCombat.Core.AiKickMath.FriendInPath(p.x, p.y, t.x, t.y, q.x, q.y, clear))
+                float radius = (float)(System.Math.Min(reach, probe.TargetAlong) + halfWidth);
+                m.GetNearbyAllyAgents(p, radius, a.Team, _allies);
+                for (int i = 0; i < _allies.Count; i++)
                 {
-                    blocked = true;
-                    break;
+                    var f = _allies[i];
+                    if (f == null || f == a || f == a.MountAgent || !f.IsActive()) continue;
+                    var q = f.Position.AsVec2;
+                    probe.Add(q.x, q.y);
                 }
+                _allies.Clear();
             }
-            _allies.Clear();
-            return blocked;
+            looked = probe.Looked;
+            return probe.Verdict;
         }
 
         public bool IsEnemy(TrackedAgent st, TrackedAgent other) => st.Agent.IsEnemyOf(other.Agent);

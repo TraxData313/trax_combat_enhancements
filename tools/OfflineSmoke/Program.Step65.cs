@@ -75,13 +75,30 @@ namespace TraxCombat.Tools
             public readonly HashSet<(int, int)> Friends = new HashSet<(int, int)>();
             public int FriendReads;
 
-            public bool FriendInTheWay(TrackedAgent st, Agent target, double clear)
+            /// <summary>Step 80: a world on a plane for the strike path - each man's place, facing and side (none = the old stand-in answers).</summary>
+            public readonly Dictionary<int, (double X, double Y, double FX, double FY, int Side)> Bodies = new Dictionary<int, (double, double, double, double, int)>();
+
+            /// <summary>Step 68's stand-in (FriendBlocks = a friend first), step 80's on <see cref="Bodies"/>: the real Core probe over every man of
+            /// his side placed there.</summary>
+            public AiKickPath StrikePath(TrackedAgent st, Agent target, double reach, double halfWidth, double rearRank, out int looked)
             {
                 FriendReads++;
-                return FriendBlocks.Contains(st.AgentIndex);
+                looked = 0;
+                if (FriendBlocks.Contains(st.AgentIndex)) return AiKickPath.FriendFirst;
+                if (!Bodies.TryGetValue(st.AgentIndex, out var me) || !Bodies.TryGetValue(target.Index, out var t)) return AiKickPath.Clear;
+                var p = AiKickPathProbe.Begin(me.X, me.Y, me.FX, me.FY, t.X, t.Y, reach, halfWidth, rearRank);
+                foreach (var kv in Bodies)
+                    if (kv.Key != st.AgentIndex && kv.Value.Side == me.Side && Math.Abs(kv.Value.X - me.X) < reach + halfWidth + 1 && Math.Abs(kv.Value.Y - me.Y) < reach + halfWidth + 1)
+                        p.Add(kv.Value.X, kv.Value.Y);
+                looked = p.Looked;
+                return p.Verdict;
             }
 
-            public bool IsEnemy(TrackedAgent st, TrackedAgent other) => !Friends.Contains((st.AgentIndex, other.AgentIndex)) && !Friends.Contains((other.AgentIndex, st.AgentIndex));
+            public bool IsEnemy(TrackedAgent st, TrackedAgent other)
+            {
+                if (Bodies.TryGetValue(st.AgentIndex, out var a) && Bodies.TryGetValue(other.AgentIndex, out var b)) return a.Side != b.Side;
+                return !Friends.Contains((st.AgentIndex, other.AgentIndex)) && !Friends.Contains((other.AgentIndex, st.AgentIndex));
+            }
         }
 
         /// <summary>Step 65: every logic built from here on reads the AI kick's engine side through the stand-in (the game's reads native agents).</summary>
