@@ -6928,4 +6928,8 @@ NOT-ready stand-in spear body (a setup step), so no older step needed pinning. R
 4. The native AI starts thrusts with a mate in front: back-rank attacks with the polearm a man-minute; ~0 = it never tries (then the data route
    above, or an attack wish of our own - not built).
 
-**DEPLOY**: see the TASKS_DONE entry (install_dev.ps1 + loadcheck.ps1).
+**DEPLOY**: NOT installed - the Bannerlord LAUNCHER (`TaleWorlds.MountAndBlade.Launcher.exe`) was open at the install step (nothing killed).
+Done before it: the build, the tests (1096) and the smoke (176) in memory, the AssemblyGuard in memory (`run_guard.fsx`: OK). To finish once the
+launcher is closed: `powershell -ExecutionPolicy Bypass -File tools\SmartAppControl\install_dev.ps1`, then `tools\SmartAppControl\loadcheck.ps1`
+(a refused DLL = rebuild with `dotnet build src\TraxCombat.Module -c Release -p:SourceRevisionId=<HEAD>.sacN`, install, loadcheck again).
+Windows security untouched.
