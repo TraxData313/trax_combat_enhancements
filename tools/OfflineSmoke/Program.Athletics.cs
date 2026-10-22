@@ -73,6 +73,7 @@ namespace TraxCombat.Tools
                 p.AIHoldingReadyMaxDuration = 0.25f;
                 p.AiRandomizedDefendDirectionChance = BlockChance;
                 p.TopSpeedReachDuration = 2.6f; // step 35: the game's foot acceleration, assigned fresh like UpdateHumanStats
+                p.AiWeaponFavorMultiplierMelee = p.AiWeaponFavorMultiplierRanged = p.AiWeaponFavorMultiplierPolearm = 1f; // step 76: SetAiRelatedProperties assigns 1 / 1 / 1
             }
 
             public override float GetDifficultyModifier() => 1f;
