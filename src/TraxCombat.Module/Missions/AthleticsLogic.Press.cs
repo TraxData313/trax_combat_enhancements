@@ -27,6 +27,7 @@ namespace TraxCombat.Missions
         private PressRules _pressRules = new PressRules(false, false);
         private string _seenPressText = string.Empty;
         private bool _firstPressLine, _firstPressClamp, _firstPressPush, _firstPressReturn, _firstPressGap, _firstPressWrap, _firstCrossOn, _firstCrossOff;
+        private bool _firstPressWing, _firstPressWingPush, _firstPressOrdered;
         private bool _pressClosed;
 
         internal PressLines PressLines => _pressLines;
@@ -240,8 +241,12 @@ namespace TraxCombat.Missions
             double unitFront = ofUnit ? t.UnitFront[key] : double.NaN;
             bool rearRank = !double.IsNaN(unitFront) && d > unitFront + r.FrontDepthMetres;
             bool unitNear = !double.IsNaN(unitFront) && unitFront <= r.WatchMetres;
+            // step 78b: a unit ORDERED to a place (a move - yours or the AI general's) goes there even beside / behind the line (its order read once
+            // a unit a period - the rhythm's cache)
+            RhythmUnitFacts(st, key, now, out var orderKind, out _);
+            bool ordered = orderKind == BraceOrderKind.Move;
             var o = ring ? PressMath.DecideRing(in r, d, winning)
-                : PressMath.Decide(in r, d, l, lo, hi, depth, inGap, unitWraps, near.PressMates, broken, winning, rearRank, unitNear);
+                : PressMath.Decide(in r, d, l, lo, hi, depth, inGap, unitWraps, near.PressMates, broken, winning, rearRank, unitNear, ordered);
             int on = r.On ? 1 : 0;
 
             // ---- the measurement (ON and OFF)
@@ -263,6 +268,30 @@ namespace TraxCombat.Missions
                 NoteCrossing(st, now, on, line, face, key, l, lo, hi, ring, o.Action);
             }
             else if (d >= 0) pm.WasFront = true;
+            if (o.Action == PressAction.Wing)
+            {
+                double past = l > hi ? l - hi : lo - l;
+                if (!pm.EverWing)
+                {
+                    pm.EverWing = true;
+                    _pressStats.WingMen++;
+                }
+                if (on == 1 && past > _pressStats.WingPastMax) _pressStats.WingPastMax = past;
+                if (r.On && !_firstPressWing)
+                {
+                    _firstPressWing = true;
+                    TraxLog.Info("press", "first WING man held at an end at " + Sec(now) + " s: " + Name(st) + " of " + PressUnitName(key) + ", " + F1(past) + " m past an end of "
+                        + PressUnitName(line) + " (" + PressFaceText(line, face) + "), " + F1(d) + " m in front of its front - past the end the front bends back "
+                        + F1(r.WingBendDegrees) + " degrees (" + F1(PressMath.WingPlane(in r, past)) + " m in front here): he stands off the end, facing it, never round it"
+                        + (t.Wraps[key] ? "; his unit is " + F1(t.UnitWidth[key]) + " m wide - " + (r.WrapAllowed ? "a wrap allowed" : "no wrap (PressWrapAllowed off)") : ""));
+                }
+            }
+            else if (o.Action == PressAction.Ordered && r.On && !_firstPressOrdered)
+            {
+                _firstPressOrdered = true;
+                TraxLog.Info("press", "first man of a unit ORDERED beside / behind a line at " + Sec(now) + " s: " + Name(st) + " of " + PressUnitName(key) + " (a move), " + F1(d)
+                    + " m in front of " + PressUnitName(line) + ", " + F1(l) + " m along it (its ends " + F1(lo) + " / " + F1(hi) + ") - free: the order's own place");
+            }
             if (r.On && !_firstPressWrap && o.Action == PressAction.Wrap)
             {
                 _firstPressWrap = true;
@@ -277,7 +306,7 @@ namespace TraxCombat.Missions
                 if (pm.Wish) EndPress(st, PressEnd.SwitchedOff, now, native: true);
                 return;
             }
-            bool wants = o.Action == PressAction.Clamp || o.Action == PressAction.Push || o.Action == PressAction.Return;
+            bool wants = o.Action == PressAction.Clamp || o.Action == PressAction.Wing || o.Action == PressAction.Push || o.Action == PressAction.Return;
             if (!wants)
             {
                 if (pm.Wish) EndPress(st, PressEnd.Free, now, native: true);
@@ -292,6 +321,7 @@ namespace TraxCombat.Missions
             pm.Side = o.Side;
             pm.ToD = o.ToD;
             pm.ToL = o.ToL;
+            pm.Wing = o.Wing;
             if (!pm.Wish && !StartPressInput(st, pm, now)) return;
             if (o.Action == PressAction.Push && before != PressAction.Push)
             {
@@ -299,6 +329,21 @@ namespace TraxCombat.Missions
                 {
                     pm.EverPushed = true;
                     _pressStats.PushedMen++;
+                }
+                if (o.Wing != 0)
+                {
+                    if (!pm.EverWingPushed)
+                    {
+                        pm.EverWingPushed = true;
+                        _pressStats.WingPushedMen++;
+                    }
+                    if (!_firstPressWingPush)
+                    {
+                        _firstPressWingPush = true;
+                        TraxLog.Info("press", "first WING man walked back from round an end at " + Sec(now) + " s: " + Name(st) + " of " + PressUnitName(key) + ", "
+                            + F1(l > hi ? l - hi : lo - l) + " m past an end of " + PressUnitName(line) + " and " + F1(d) + " m in front of its front (the bent front "
+                            + F1(o.ToD - PressMath.PushToMetres) + " m) - walked straight back to it, facing it");
+                    }
                 }
                 if (!_firstPressPush)
                 {
@@ -437,13 +482,22 @@ namespace TraxCombat.Missions
                 t.Inward(pm.Line, pm.Face, out nx, out ny);
             }
             int at = 2 * pm.Line + pm.Face;
+            // step 78b: his distance in front of the (bent) front - past an end it bends back toward his side
+            double fd = d;
+            int endSide = 0;
+            if (!pm.Ring)
+            {
+                fd = PressMath.FrontDistance(in r, d, l, t.Lo[at], t.Hi[at], out endSide);
+                if (fd == d) endSide = 0;
+            }
             if (pm.Action == PressAction.Push || pm.Action == PressAction.Return)
             {
-                if (d >= 0)
+                if (fd >= 0)
                 {
-                    pm.Action = PressAction.Clamp; // back on his side: the clamp holds him there
+                    pm.Action = endSide != 0 ? PressAction.Wing : PressAction.Clamp; // back on his side: the clamp holds him there
                     pm.ClampFront = true;
                     pm.Side = 0;
+                    pm.Wing = endSide;
                 }
                 else
                 {
@@ -457,6 +511,7 @@ namespace TraxCombat.Missions
                     else
                     {
                         if (pm.Action == PressAction.Return) PressMath.ReturnPlace(in r, d, l, t.Lo[at], t.Hi[at], t.Depth[pm.Line], out pm.ToD, out pm.ToL);
+                        else if (endSide != 0) pm.ToD = PressMath.WingPlane(in r, endSide > 0 ? l - t.Hi[at] : t.Lo[at] - l) + PressMath.PushToMetres; // the bent front
                         t.World(pm.Line, pm.Face, pm.ToD, pm.ToL, out tx, out ty);
                     }
                     double dx = tx - px, dy = ty - py, dist = Math.Sqrt(dx * dx + dy * dy);
@@ -494,7 +549,15 @@ namespace TraxCombat.Missions
             // the clamp
             s.PressMove = false;
             s.PressX = s.PressY = 0f;
-            bool front = pm.ClampFront && d <= PressMath.LookaheadMetres;
+            bool front = pm.ClampFront && fd <= PressMath.LookaheadMetres;
+            if (front && endSide != 0)
+            {
+                // the bent front's normal: cos(bend) into the line + sin(bend) outward past the end
+                double th = r.WingBendDegrees * Math.PI / 180.0;
+                t.Across(pm.Line, out double ax, out double ay);
+                nx = Math.Cos(th) * nx + Math.Sin(th) * endSide * ax;
+                ny = Math.Cos(th) * ny + Math.Sin(th) * endSide * ay;
+            }
             if (front && body.ToLocal(st, nx, ny, out float fx, out float fy))
             {
                 Normalize(ref fx, ref fy);

@@ -28,7 +28,8 @@ namespace TraxCombat.Missions
         private RhythmRules _rhythmRules = new RhythmRules(false, false, false, false);
         private string _seenRhythmText = string.Empty;
         private bool _firstSwapAsked, _firstSwapBeside, _firstSwapDone, _firstSwapOff, _firstChanceOff, _firstRefusal, _firstLull, _firstLullEnd, _firstSlotShift,
-            _firstLullWalk, _firstLullRotation;
+            _firstLullWalk, _firstLullRotation, _firstLullOpened, _firstLineStep, _firstChargeDeferred;
+        private long _lineStepsSeen, _chargeDeferredSeen;
         private bool _rhythmClosed;
 
         internal RhythmUnits RhythmUnits => _rhythmUnits;
@@ -50,7 +51,7 @@ namespace TraxCombat.Missions
             _rhythmRules = RhythmRules.From(TraxSettings.Shared);
             _seenRhythmText = RhythmText(TraxSettings.Shared);
             TraxLog.Info("rhythm", "mission start: " + _seenRhythmText + " - read live; it rides courage's looks (every " + F1(CourageMath.PollSeconds)
-                + " s), the units' fronts every " + F1(RhythmMath.PublishSeconds) + " s; the [rhythm] lines log the first chance, swap, lull and wall shift; the two [summary] \"battle rhythm\" lines");
+                + " s), the units' fronts every " + F1(RhythmMath.PublishSeconds) + " s; the [rhythm] lines log the first chance, swap, lull (its trigger and the gap from the men), the gap opened, a line stepped back and the wall shift; the three [summary] \"battle rhythm\" lines");
         }
 
         private void NoteRhythmSettings(TraxSettings s)
@@ -99,6 +100,7 @@ namespace TraxCombat.Missions
         private void NoteLullEvents(double now)
         {
             var u = _rhythmUnits;
+            var r = _rhythmRules;
             for (int i = 0; i < u.StartedN; i++)
             {
                 int a = u.Started[i], b = u.LullPartner[a];
@@ -106,24 +108,70 @@ namespace TraxCombat.Missions
                 _rhythmStats.LullUnits += 2;
                 _rhythmStats.AddStartBar(u.LullStartBar[a]);
                 if (b >= 0) _rhythmStats.AddStartBar(u.LullStartBar[b]);
+                _rhythmStats.AddLullStart(u.LullTriggerOf[a], u.LullStartRate[a], u.LullStartRatePeak[a], u.LullStartContact[a]);
                 if (_firstLull) continue;
                 _firstLull = true;
-                TraxLog.Info("rhythm", "first LULL at " + Sec(now) + " s: " + PressUnitName(a) + " (" + BraceMath.Name(u.Kind[a]) + ", front bar " + RhythmStats.Pct(u.LullStartBar[a])
-                    + ", " + u.FrontMen[a] + " front men) and " + (b >= 0 ? PressUnitName(b) + " (" + BraceMath.Name(u.Kind[b]) + ", front bar " + RhythmStats.Pct(u.LullStartBar[b]) + ", "
-                    + u.FrontMen[b] + " front men)" : "?") + " - both fronts spent after " + F1(now - u.ContactSince[a]) + " s in contact; each eases back " + F1(u.LullEase[a])
-                    + " m (the gap between the fronts " + F1(u.LullStartGap[a]) + " m now)");
+                TraxLog.Info("rhythm", "first LULL at " + Sec(now) + " s - " + RhythmMath.TriggerName(u.LullTriggerOf[a]) + " (after " + F1(u.LullStartContact[a]) + " s in contact, the clock "
+                    + F1(u.ClockAt[a]) + " s): " + PressUnitName(a) + " (" + BraceMath.Name(u.Kind[a]) + ", the unit's bar " + RhythmStats.Pct(u.LullStartBar[a]) + " over " + u.UnitMen[a]
+                    + " men in the fight, its front men " + RhythmStats.Pct(u.FrontBar[a]) + ") and " + (b >= 0 ? PressUnitName(b) + " (" + BraceMath.Name(u.Kind[b]) + ", the unit's bar "
+                    + RhythmStats.Pct(u.LullStartBar[b]) + " over " + u.UnitMen[b] + " men, its front men " + RhythmStats.Pct(u.FrontBar[b]) + ")" : "?") + "; the blows in contact "
+                    + F1(u.LullStartRate[a]) + " a man-minute (the spell's peak " + F1(u.LullStartRatePeak[a]) + "); THE GAP from the men: mean " + F1(u.GapMean[a]) + " m (p10 "
+                    + F1(u.GapQ10[a]) + ", p90 " + F1(u.GapQ90[a]) + ") - each side backs to its line: " + PressUnitName(a) + " " + F1(u.LullEase[a]) + " m behind its nearest men, "
+                    + (b >= 0 ? PressUnitName(b) + " " + F1(u.LullEase[b]) + " m" : "?") + ", for a clear gap of " + F1(r.GapMetres) + " m");
             }
             u.StartedN = 0;
+            for (int i = 0; i < u.OpenedN; i++)
+            {
+                int a = u.Opened[i];
+                if (_firstLullOpened) break;
+                _firstLullOpened = true;
+                TraxLog.Info("rhythm", "first lull GAP OPENED at " + Sec(now) + " s: " + PressUnitName(a) + " and " + PressUnitName(u.LullPartner[a]) + " after " + F1(u.LullOpenedAfter[a])
+                    + " s - the gap from the men mean " + F1(u.GapMean[a]) + " m (p10 " + F1(u.GapQ10[a]) + ", p90 " + F1(u.GapQ90[a]) + "), wanted " + F1(r.GapMetres) + " m");
+            }
+            u.OpenedN = 0;
+            if (u.LineSteps > _lineStepsSeen)
+            {
+                _lineStepsSeen = u.LineSteps;
+                if (!_firstLineStep)
+                {
+                    _firstLineStep = true;
+                    TraxLog.Info("rhythm", "first lull LINE STEPPED BACK at " + Sec(now) + " s: the gap did not hold after " + F1(RhythmMath.SettleSeconds) + " s (the hold quantile below "
+                        + F1(r.GapMetres - RhythmMath.GapSlackMetres) + " m) - a side standing at its line steps it back " + F1(RhythmMath.LineStepMetres) + " m a publish, at most "
+                        + F1(r.MaxBackMetres) + " m");
+                }
+            }
+            if (u.ChargeDeferred > _chargeDeferredSeen)
+            {
+                _chargeDeferredSeen = u.ChargeDeferred;
+                if (!_firstChargeDeferred)
+                {
+                    _firstChargeDeferred = true;
+                    TraxLog.Info("rhythm", "first CHARGE ORDER in a lull's first " + F1(r.ChargeGraceSeconds) + " s at " + Sec(now) + " s - deferred: it ends the lull only once "
+                        + F1(r.ChargeGraceSeconds) + " s of it have passed, if it still stands");
+                }
+            }
             for (int i = 0; i < u.EndedN; i++)
             {
                 var why = u.EndedWhy[i];
-                _rhythmStats.AddLullEnd(why, u.EndedSeconds[i], u.EndedOpened[i]);
+                _rhythmStats.AddLullEnd(why, u.EndedSeconds[i], u.EndedOpened[i], u.EndedOpenedAfter[i]);
                 if (_firstLullEnd) continue;
                 _firstLullEnd = true;
                 TraxLog.Info("rhythm", "first lull ENDED at " + Sec(now) + " s: " + PressUnitName(u.Ended[i]) + " - " + RhythmMath.LullEndName(why) + " after " + F1(u.EndedSeconds[i])
-                    + " s, the gap opened by " + F1(u.EndedOpened[i]) + " m; the lines let go, the next lull of the pair no sooner than " + F1(_rhythmRules.LullCooldownSeconds) + " s");
+                    + " s (" + RhythmMath.TriggerName(u.EndedTrigger[i]) + "), the gap opened by " + F1(u.EndedOpened[i]) + " m"
+                    + (double.IsNaN(u.EndedOpenedAfter[i]) ? " - it never held" : ", held after " + F1(u.EndedOpenedAfter[i]) + " s")
+                    + "; the lines let go, the next lull of the pair no sooner than " + F1(r.LullCooldownSeconds) + " s, its clock from the next contact");
             }
             u.EndedN = 0;
+        }
+
+        /// <summary>Step 78b: an AI man's melee attack on foot (StartRelease) - counted in his unit's attack rate when he was in contact at his last look
+        /// (within the stale time). ON and OFF (the OFF looks measure).</summary>
+        internal void NoteRhythmAttack(TrackedAgent st, bool mounted, double now)
+        {
+            if (mounted || IsPlayer(st)) return;
+            var m = st.Rhythm;
+            if (!m.Contact || m.Key < 0 || double.IsNaN(m.LookedAt) || now - m.LookedAt > RhythmMath.MateFreshSeconds) return;
+            _rhythmUnits.NoteAttack(m.Key);
         }
 
         /// <summary>Step 79's seam: a wave ends its unit's lull (and its partner's) now. False = no lull.</summary>
@@ -264,6 +312,7 @@ namespace TraxCombat.Missions
             RhythmUnitFacts(st, key, now, out var kind, out bool player);
             double bar = r.AthleticsEnabled ? st.Fraction : 1.0;
             bool contact = contactKnown && !double.IsNaN(enemyDist) && enemyDist <= r.ContactMetres;
+            m.Contact = contact;
             u.Note(key, px, py, bar, contact, foeKey, kind, player, held);
             if (!r.ModEnabled || !r.AthleticsEnabled) return; // no bars - nothing tires, nothing to measure
             if (contact) _rhythmStats.AddContact(r.RotationOn, bar);
@@ -1005,7 +1054,7 @@ namespace TraxCombat.Missions
 
         internal void WriteRhythmSummary()
         {
-            var lines = new List<string>(2);
+            var lines = new List<string>(3);
             _rhythmStats.AddSummaryLines(lines, RhythmRules.From(TraxSettings.Shared), _rhythmUnits);
             foreach (var line in lines) TraxLog.Info("summary", line);
         }
