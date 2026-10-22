@@ -201,6 +201,8 @@ namespace TraxCombat.Tools
             S.Set(SettingsSchema.FearFlockEnabled, false, SettingSources.File);
             S.Set(SettingsSchema.ShieldWallStandFirm, false, SettingSources.File); // step 75: the older steps' halted walls keep the leash (Program.Step75.cs runs it)
             S.Set(SettingsSchema.PressDontPass, false, SettingSources.File); // step 77: the older steps' charges walk past lines as before (Program.Step77.cs runs it)
+            S.Set(SettingsSchema.RotationEnabled, false, SettingSources.File); // step 78: the older steps' tired fronts stay where they stand (Program.Step78.cs runs it)
+            S.Set(SettingsSchema.LullEnabled, false, SettingSources.File);
             S.Set(SettingsSchema.ShowMoraleMarks, false, SettingSources.File);
             S.Set(SettingsSchema.ShowMoraleOnLabels, false, SettingSources.File);
         }
@@ -1198,6 +1200,7 @@ namespace TraxCombat.Tools
             // --- step 74: the block hold - off = every man walked back into his block let go at once; on = held again
             BlockFollowsTheMasterSwitch();
             PressFollowsTheMasterSwitch(); // step 77
+            RhythmFollowsTheMasterSwitch(); // step 78
 
             // --- the HUD (step 6): the Athletics bar goes the moment the switch goes, and comes back
             HudFollowsTheMasterSwitch(a.Agent);
