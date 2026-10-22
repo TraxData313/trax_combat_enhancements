@@ -7046,3 +7046,8 @@ ticks). The older smoke steps pin `PressDontPass` off (AthleticsDefaults); the s
    covers*).
 4. The band: `fear flock band … width … (p90 …)` ≤ his wall + 2 m, "slid out of a full file" far below 3730.
 5. Cost in a 400-1000 man battle (`press, don't pass … cost`).
+
+**DEPLOY** (step 77, with step 76 - not installed before): Smart App Control is OFF on this PC now - `tools\deploy.ps1` ran normally: the build, the
+AssemblyGuard (OK), the offline smoke (179 passed), installed as Modules\TraxCombatEnhancements.Dev "Trax Combat Enhancements (dev)"; the game and
+the launcher were not running. `tools\SmartAppControl\loadcheck.ps1`: both DLLs LOADED (`1.2.0+9c1ef28ea6286284108adc5ab80384f5c64fe81b`):
+TraxCombatEnhancements.dll SHA-256 1BD7E573…473A, TraxCombat.Core.dll E024188C…0D2B. Not uploaded. Windows security untouched.
