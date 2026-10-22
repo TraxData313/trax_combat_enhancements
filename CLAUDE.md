@@ -433,8 +433,8 @@ the pool/bar/points are "Athletics", the character-screen skill is "the Athletic
 used to be called "endurance"), the "peak line" is the white mark at the top quarter of the bar,
 "the pause" is the no-attack timer after an attack (step 13).
 
-**The full spec is `docs/DESIGN.md`. Read it before any work.** Released on **Steam Workshop
-only** (no Nexus).
+**The full spec is `docs/DESIGN.md`. Read it before any work.** Released on the **Steam Workshop and
+Nexus Mods** (mods/14198, since v1.3.0).
 
 ## Who does what
 
@@ -2567,7 +2567,7 @@ line.
 
 ## Release
 
-Live: Workshop item **3817259431** (Public, v1.2.0 since 2026-10-18 - v1.1.1 2026-10-14, v1.1.0 2026-10-12, v1.0.0 2026-10-10), GitHub releases v1.0.0, v1.1.0, v1.1.1 and v1.2.0 with the zips.
+Live: Workshop item **3817259431** (v1.3.0 uploaded 2026-10-22 - v1.2.0 2026-10-18, v1.1.1 2026-10-14, v1.1.0 2026-10-12, v1.0.0 2026-10-10; on 2026-10-22 its page did not open for a signed-out visitor - "There was a problem accessing the item"), Nexus Mods **mods/14198** (v1.3.0, published 2026-10-22 with tools/NEXUS-DESCRIPTION.bbcode, the gallery and the YouTube video), GitHub releases v1.0.0 to v1.3.0 with the zips.
 The whole loop is **`tools/WORKSHOP-UPLOAD.md`** — read it before any release. **Publishing is
 Anton's decision, after his playtest**: Claude never runs the uploader, and never posts or
 uploads anything, without his yes for that release. **The release rhythm** (the sibling's, Anton

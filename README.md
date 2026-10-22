@@ -85,7 +85,8 @@ ways.
 
 ## Install
 
-1. Subscribe on the [Steam Workshop](https://steamcommunity.com/sharedfiles/filedetails/?id=3817259431) — or
+1. Subscribe on the [Steam Workshop](https://steamcommunity.com/sharedfiles/filedetails/?id=3817259431), download it from
+   [Nexus Mods](https://www.nexusmods.com/mountandblade2bannerlord/mods/14198) — or
    take the zip from the [GitHub release](https://github.com/TraxData313/trax_combat_enhancements/releases/latest)
    and extract it into `Mount & Blade II Bannerlord\Modules\`.
 2. Enable **Trax Combat Enhancements** in the launcher.
