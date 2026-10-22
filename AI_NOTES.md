@@ -7643,4 +7643,4 @@ page (three inner numbers; the player page's list is pinned); the stack's refusa
 4. The real shares in Toni's next log (`ai kicks - shares of the melee moves in kick reach`) and the rate in contact (the 17:18 battle: 0.39 asked a
    man-minute; the smoke's grind 4.3).
 
-**DEPLOY**: see TASKS_DONE.
+**DEPLOY**: tools\deploy.ps1 ran normally (Smart App Control off): the build, the AssemblyGuard, the offline smoke - all 191 passed -, installed as Modules\TraxCombatEnhancements.Dev; the game and the launcher were not running. `tools\SmartAppControl\loadcheck.ps1`: both DLLs LOADED (`1.2.0+d5916c7f…`). Not uploaded.
