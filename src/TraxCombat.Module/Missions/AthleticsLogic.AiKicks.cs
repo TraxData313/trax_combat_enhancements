@@ -7,36 +7,40 @@ namespace TraxCombat.Missions
 {
     /// <summary>
     /// Step 65 - THE AI KICKS AND BASHES (Anton 2026-10-19: "make the AI do a few shield bashes and kicks now and then - the game has it but the
-    /// NPCs never use them"; AI_NOTES "Step 65", DESIGN decision 57).
+    /// NPCs never use them"; AI_NOTES "Step 65", DESIGN decision 57). Step 81 - AS A SHARE OF THE MELEE MOVES (Toni 2026-10-22: "shielded men kick
+    /// 20% of the time, shield bash 35% and swing the rest ... Unshielded - 35% kick and the rest swing"; AI_NOTES "Step 81", DESIGN decision 77).
     ///
     /// THE LEVER (the decompile + RBM's AiKickBash, its public source): the engine performs a kick from the agent's EVENT flags -
     /// <c>Agent.EventControlFlag.Kick</c> (0x8000), the bit vanilla's own <c>MissionMainAgentController</c> sets for your kick key; the input
     /// is CONTEXTUAL - the kick key while the guard is up is a BASH (shield or weapon), else a kick. The native AI's kick tendency
     /// (<c>AgentDrivenProperties.AiKick</c>, written by <c>SetAiRelatedProperties</c>) does nothing in game (RBM's finding; Anton: "the NPCs
     /// never use them"). So the kick is INJECTED through step 16's input hook (<see cref="AiInputComponent"/> - <c>OnAIInputSet</c>, the AI's
-    /// own input before the engine uses it): a bash holds DefendUp for 0.4 s, then the kick bit for 0.15 s (+ DefendUp), then COMMIT - his
-    /// own attack / guard / event input held off and his movement stopped until the action has played out (or 1.5 s) - the native AI's own
-    /// input would cancel it before the hit frame (RBM's phases, <see cref="AiKickMath"/>'s plumbing). Nothing else is touched.
+    /// own input before the engine uses it): the guard up (DefendUp) - 0.4 s for a bash, 0.15 s for a kick -, then the kick bit for 0.15 s (+ DefendUp
+    /// for a bash), then COMMIT - his own attack / guard / event input held off and his movement stopped until the action has played out (or 1.5 s).
     ///
-    /// WHO / HOW OFTEN: every AI man is looked at about every 0.25 s (staggered, the fever's pattern); the cheap gates on our own records
-    /// first (the cooldown, his bar, the Athletics for the cost, a stored swing, not staggered / down, not busy in his own attack / kick /
-    /// step back), then ONE die against the most he could get (a turtle target) - only a man whose die is under it reads the engine (his
-    /// horse, a rout, his hands, his target, its distance and angle) and the target's turtling (our own records: his blocks of the last
-    /// seconds, faded, + his guard up now) gives the exact chance for the same die. Never you; never a rider; a ranged weapon, a rout, an
-    /// enemy on a horse / on the ground / out of reach / not in front = none.
+    /// THE DECISION POINT (step 81): the AI's own decision to attack - the wind-up of his melee attack, which step 13's phases see on the poll of his
+    /// channel-1 action (<see cref="NoteAiMeleeReady"/>: queued only - the phases may run inside a hit callback). The tick rolls it
+    /// (<see cref="DecideAiMove"/>): an AI man on foot whose enemy (his target, else his immediate enemy) stands within kick reach in front of him
+    /// rolls his SHARES - a kick / a bash takes the place of that swing (the guard of the attempt's first phase cancels the wind-up - step 16's ready
+    /// cancel: his attack bits out WITH a guard); a swing goes on untouched. Beyond kick reach nothing is rolled (a spearman keeps his ground and thrusts).
+    /// A rolled kick / bash is REFUSED - he swings - when staggered / down / his kick still playing / without the Athletics for it / the pool full
+    /// (safety), with no stored swing (step 32's stack - KicksUseSwings), within the cooldown of his last, or when the enemy is not the first body in
+    /// his strike path (step 80). The rate, its factors, the bar gate, the wait for reach and the bash credit (steps 65 / 66) are gone.
     ///
     /// THE COST: the kick / bash is SEEN by step 18's action poll like yours and charged there - <c>CostPerKickOrBash</c> and a stored swing
     /// (step 32) - nothing of our own.
     ///
-    /// Measured: the [summary] "ai kicks" lines - asked → PLAYED (the action seen) → landed / into a shield, by kind and reason (turtle, fever),
-    /// the ends, why not, the Athletics spent, the look's cost. Master switch FIRST (<see cref="AiKickRules.Enabled"/>): off = every attempt's
-    /// wish cleared at once. Main thread; a fixed pool of attempts, no allocation per tick.
+    /// Measured: the [summary] "ai kicks" lines - asked → PLAYED (the action seen) → landed / into a shield, by kind and man type, the ends, the
+    /// decision point (wind-ups, not a move in reach), THE SHARES rolled and done per man type, the refusals, the Athletics spent. Master switch FIRST
+    /// (<see cref="AiKickRules.Enabled"/>): off = every attempt's wish cleared at once, nothing queued. Main thread; fixed pools, no allocation per tick.
     /// </summary>
     public sealed partial class AthleticsLogic
     {
         private readonly AiKickStats _aiKickStats = new AiKickStats();
         private readonly TrackedAgent?[] _aiKickers = new TrackedAgent?[AiKickMath.MaxAttempts];
         private int _aiKickCount;
+        private readonly TrackedAgent?[] _aiMoves = new TrackedAgent?[AiKickMath.MaxPendingMoves];
+        private int _aiMoveCount;
         private int _aiKickCursor;
         private double _aiKickCarry;
         private double _aiKickLastTick = double.NaN;
@@ -49,17 +53,20 @@ namespace TraxCombat.Missions
         /// <summary>Attempts running now (the smoke).</summary>
         internal int AiKicksRunning => _aiKickCount;
 
+        /// <summary>Wind-ups waiting for the tick's roll (the smoke).</summary>
+        internal int AiMovesPending => _aiMoveCount;
+
         /// <summary>The engine reads (the smoke swaps in a stand-in).</summary>
         internal IAiKickBody AiKickBody { get; set; } = AiKickBodyDefault.Current;
 
-        /// <summary>The look's dice (the smoke seeds its own).</summary>
+        /// <summary>The roll's dice (the smoke seeds its own).</summary>
         internal IRandomSource AiKickDice { get; set; } = ThreadSafeRandom.Shared;
 
         private void StartAiKicks()
         {
             _seenAiKickText = AiKickRules.From(TraxSettings.Shared).Describe();
-            TraxLog.Info("impact", "mission start, the AI kicks and bashes (step 65): " + _seenAiKickText + " - read live; looked at every ~" + F2(AiKickMath.LookSeconds)
-                + " s a man; the [summary] \"ai kicks\" lines count asked → played → landed (PLAYTEST D31)");
+            TraxLog.Info("impact", "mission start, the AI kicks and bashes (steps 65 / 81): " + _seenAiKickText + " - read live; rolled at each AI melee wind-up; the [summary] \"ai kicks\" lines count "
+                + "asked → played → landed and the shares rolled / done per man type (PLAYTEST D31 / D46)");
         }
 
         /// <summary>An AI kick setting changed (from ApplySettingsChange): one line (switching off ends every attempt in the next tick).</summary>
@@ -71,21 +78,58 @@ namespace TraxCombat.Missions
             TraxLog.Info("impact", "AI kick settings changed mid-mission at " + Sec(SafeNow()) + " s: " + now);
         }
 
+        // ------------------------------------------------------------------ the decision point
+
+        /// <summary>Step 81: an AI man's melee WIND-UP began (step 13's phases - may run inside a hit callback): queued for the tick's roll, once.</summary>
+        internal void NoteAiMeleeReady(TrackedAgent st)
+        {
+            if (st.AiMoveQueued || st.AiKickPhase != AiKickPhase.None || IsPlayer(st)) return;
+            if (!AiKickRules.From(TraxSettings.Shared).Enabled) return;
+            if (_aiMoveCount >= _aiMoves.Length)
+            {
+                _aiKickStats.QueueFull++;
+                return;
+            }
+            st.AiMoveQueued = true;
+            _aiMoves[_aiMoveCount++] = st;
+        }
+
         // ------------------------------------------------------------------ the tick
 
-        /// <summary>Every tick (from TickAthletics, own try there): off (the master switch first) = every attempt ended at once; the running
-        /// attempts advanced; a staggered slice of looks.</summary>
+        /// <summary>Every tick (from TickAthletics, own try there): off (the master switch first) = every attempt ended at once and the queue
+        /// dropped; the running attempts advanced; the queued wind-ups rolled; a staggered slice of contact samples (the man-minutes).</summary>
         internal void TickAiKicks(double now)
         {
             var r = AiKickRules.From(TraxSettings.Shared);
             if (!r.Enabled)
             {
                 if (_aiKickCount > 0) EndAllAiKicks(AiKickEnd.SwitchedOff, now, r.OffBecause);
+                ClearAiMoves();
                 _aiKickLastTick = now;
                 return;
             }
             long start = Stopwatch.GetTimestamp();
             if (_aiKickCount > 0) AdvanceAiKicks(now, in r);
+            if (_aiMoveCount > 0)
+            {
+                var ar = Rules;
+                for (int i = 0; i < _aiMoveCount; i++)
+                {
+                    var st = _aiMoves[i]!;
+                    _aiMoves[i] = null;
+                    st.AiMoveQueued = false;
+                    try
+                    {
+                        DecideAiMove(st, now, in r, in ar);
+                    }
+                    catch (Exception e)
+                    {
+                        Failed("aikick.decide", e);
+                    }
+                }
+                _aiMoveCount = 0;
+            }
+            // the contact samples (the summary's man-minutes in contact): a staggered slice, each man about every 0.25 s - our own records only
             double dt = double.IsNaN(_aiKickLastTick) || now < _aiKickLastTick ? AiKickMath.LookSeconds : now - _aiKickLastTick;
             _aiKickLastTick = now;
             if (dt > AiKickMath.LookSeconds) dt = AiKickMath.LookSeconds;
@@ -94,96 +138,50 @@ namespace TraxCombat.Missions
             _aiKickCarry -= n;
             if (_aiKickCarry < 0) _aiKickCarry = 0;
             if (n > _count) n = _count;
-            if (n > 0)
+            for (int k = 0; k < n; k++)
             {
-                var ar = Rules;
-                for (int k = 0; k < n; k++)
-                {
-                    if (_aiKickCursor >= _count) _aiKickCursor = 0;
-                    var st = _dense[_aiKickCursor++];
-                    try
-                    {
-                        LookAiKick(st, now, in r, in ar);
-                    }
-                    catch (Exception e)
-                    {
-                        Failed("aikick.look", e);
-                    }
-                }
+                if (_aiKickCursor >= _count) _aiKickCursor = 0;
+                var st = _dense[_aiKickCursor++];
+                if (st.Removed || IsPlayer(st)) continue;
+                double last = st.AiKickLastLook;
+                st.AiKickLastLook = now;
+                if (st.FeverContact) _aiKickStats.ContactManSeconds += double.IsNaN(last) || now < last || now - last > 4 * AiKickMath.LookSeconds ? AiKickMath.LookSeconds : now - last;
             }
             _aiKickStats.CostMs += (Stopwatch.GetTimestamp() - start) * 1000.0 / Stopwatch.Frequency;
         }
 
-        /// <summary>One man's look: the gates in order (cheap first), ONE die, the engine's reads only under the die's best case.</summary>
-        internal void LookAiKick(TrackedAgent st, double now, in AiKickRules r, in AthleticsRules ar)
+        private void ClearAiMoves()
+        {
+            for (int i = 0; i < _aiMoveCount; i++)
+            {
+                var st = _aiMoves[i];
+                if (st != null) st.AiMoveQueued = false;
+                _aiMoves[i] = null;
+            }
+            _aiMoveCount = 0;
+        }
+
+        /// <summary>
+        /// Step 81, ONE melee move at its wind-up: not his to roll (gone, you, not AI, the wind-up over) = nothing; a rider / a routing man / a ranged
+        /// weapon / no enemy / the enemy beyond kick reach or not in front = not a move in reach (counted; he swings or thrusts as the game wants);
+        /// else THE ROLL by his shares (a shieldman kick / bash / swing, no shield kick / swing) - a swing goes on; a kick / bash is refused (he
+        /// swings) by safety, the stack, the cooldown or the strike path, else BEGUN - its guard cancels the wind-up.
+        /// </summary>
+        internal void DecideAiMove(TrackedAgent st, double now, in AiKickRules r, in AthleticsRules ar)
         {
             if (st.Removed || st.AiKickPhase != AiKickPhase.None) return;
             var body = AiKickBody;
             if (IsPlayer(st) || !body.IsActive(st) || !body.IsAiControlled(st)) return;
-            double gap = AiKickMath.LookGap(now, st.AiKickLastLook);
-            st.AiKickLastLook = now;
             _aiKickStats.Looks++;
-            if (st.FeverContact) _aiKickStats.ContactManSeconds += gap;
-            if (!double.IsNaN(st.AiKickWaitUntil) && now > st.AiKickWaitUntil)
+            if (st.PrevAction != ActionReadyMelee)
             {
-                _aiKickStats.WaitsExpired++; // step 66: the enemy never came in reach in time
-                ClearAiKickWait(st);
-            }
-            if (now < st.AiKickNext)
-            {
-                Skip(AiKickSkip.Cooldown);
+                Skip(AiKickSkip.ReadyOver); // released / cancelled before the tick looked - nothing left to replace
                 return;
             }
-            double barF = AiKickMath.BarFactor(in r, st.Fraction);
-            if (!(barF > 0))
-            {
-                Skip(AiKickSkip.Tired);
-                return;
-            }
-            if (AthleticsMath.Points(in ar, st) < AthleticsMath.KickOrBashCostPoints(in ar, st))
-            {
-                Skip(AiKickSkip.NoAthletics);
-                return;
-            }
-            var inp = st.Input;
-            if (inp != null && inp.HoldKicks && inp.HoldAttacks)
-            {
-                Skip(AiKickSkip.NoSwing);
-                return;
-            }
-            if (st.Impact.Reeling(now) || st.Impact.Down(now) || ImpactActions.IsStrike(st.PrevAction) || ImpactActions.IsFall(st.PrevLowerAction)
-                || ImpactActions.IsStrike(st.PrevLowerAction))
-            {
-                Skip(AiKickSkip.Staggered);
-                return;
-            }
-            if (AiKickMath.IsBusyAction(st.PrevAction) || st.KickBash.Running || (inp != null && (inp.Backpedal || inp.Regroup || inp.WallPull)))
-            {
-                Skip(AiKickSkip.Busy);
-                return;
-            }
-            // step 66: a decision already taken waits for reach - no die, the engine read every look until he is in reach or it runs out
-            bool waiting = !double.IsNaN(st.AiKickWaitUntil);
-            bool fever = st.Fever.Running;
-            double u = 0, bashChance = 0;
-            if (!waiting)
-            {
-                // ONE die against his best case: a kick against a full turtle (a man without a shield) or the bash his swings earned (a shieldman)
-                double kickBest = r.PerMinute > 0 ? AiKickMath.LookChance(AiKickMath.PerMinute(in r, st.AthleticsSkill, st.Fraction, fever, 1.0), gap) : 0;
-                bashChance = AiKickMath.LookChance(AiKickMath.BashPerMinute(in r, st.BashCredit, st.Fraction), gap);
-                u = AiKickDice.NextDouble();
-                if (u >= Math.Max(kickBest, bashChance))
-                {
-                    Skip(AiKickSkip.Dice);
-                    return;
-                }
-            }
-            // under the best case (or waiting): the engine's reads
             _aiKickStats.NativeReads++;
             body.Hands(st, out bool mounted, out bool routing, out bool ranged, out bool shield);
             if (mounted || routing || ranged)
             {
-                DropAiKickWait(st);
                 Skip(mounted ? AiKickSkip.Mounted : routing ? AiKickSkip.Routing : AiKickSkip.Ranged);
                 return;
             }
@@ -191,98 +189,90 @@ namespace TraxCombat.Missions
             var target = targetAgent != null ? Get(targetAgent) : null;
             if (target == null || target.Removed || target.Impact.Down(now) || ImpactActions.IsFall(target.PrevLowerAction))
             {
-                DropAiKickWait(st);
                 Skip(AiKickSkip.NoTarget);
                 return;
             }
-            bool guardUp = ImpactActions.IsDefend(target.PrevAction);
-            double turtle = AiKickMath.TurtleShare(in r, AiKickMath.Faded(target.TurtleBlocks, target.TurtleBlocksAt, now, r.TurtleSeconds), guardUp);
-            double chance;
-            if (!waiting)
+            if (!AiKickMath.InReach(in r, distance, off, out var notInReach))
             {
-                // the exact chance for the same die: a shieldman's earned bash, else the kick by the target's turtling
-                chance = shield ? bashChance : AiKickMath.LookChance(AiKickMath.PerMinute(in r, st.AthleticsSkill, st.Fraction, fever, turtle), gap);
-                if (u >= chance)
-                {
-                    Skip(AiKickSkip.Dice);
-                    return;
-                }
-                if (shield) st.BashCredit = Math.Max(0, st.BashCredit - 1); // the earned bash is spent on the decision
-            }
-            else chance = st.AiKickWaitChance;
-            // step 80 (step 68's friend check rebuilt): in reach and in front, the kind first (its strike path's width), then THE STRIKE PATH along
-            // his facing - the enemy must be in it and the first body there; a friend first = the decision waits (a clear path may come), a friend
-            // first within the rear-rank distance = a rear-rank man: no kick, no wait; the enemy off the path = waits like one not in front
-            bool inFront = distance <= r.Reach && off <= r.Facing;
-            var kind = AiKickKind.None;
-            var path = AiKickPath.Clear;
-            if (inFront)
-            {
-                bool raisedFacing = false;
-                if (shield && r.KicksARaisedShield && target.PrevAction == ImpactActions.DefendShield) raisedFacing = body.FacingTo(target, st) <= AiKickMath.RaisedShieldDegrees;
-                kind = AiKickMath.KindFor(in r, shield, raisedFacing);
-                path = StrikePathOf(st, targetAgent!, kind, distance, off, in r);
-                if (r.PathHalfWidth(kind) > 0) _aiKickStats.NotePath(kind, path);
-            }
-            if (path == AiKickPath.FriendFirst || path == AiKickPath.BehindFriend)
-            {
-                _aiKickStats.FriendChecksBlocked++;
-                bool rear = path == AiKickPath.BehindFriend;
-                if (rear) DropAiKickWait(st);
-                else if (!waiting && AiKickMath.Waits(in r, distance))
-                {
-                    st.AiKickWaitUntil = now + r.WaitSeconds;
-                    st.AiKickWaitSince = now;
-                    st.AiKickWaitChance = chance;
-                    _aiKickStats.WaitsStarted++;
-                }
-                Skip(rear ? AiKickSkip.BehindFriend : AiKickSkip.FriendInTheWay);
-                if (AiKickFirst(rear ? 5 : 4))
-                    TraxLog.Info("impact", "first AI " + AiKickMath.KindName(kind) + " REFUSED - " + AiKickMath.PathName(path) + " at " + Sec(now) + " s (step 80) - " + Name(st)
-                        + " at " + Name(target) + " " + F2(distance) + " m off, " + F1(off) + "° off his facing: one of his own side stands in his strike path (along his facing, "
-                        + F2(r.PathHalfWidth(kind)) + " m either side) closer than the enemy - "
-                        + (rear ? "within " + F1(r.RearRank) + " m of him (AiKickRearRankMetres): a rear-rank man, no kick and no wait"
-                                : !double.IsNaN(st.AiKickWaitUntil) ? "the decision waits for a clear path" : "no kick"));
+                Skip(notInReach); // a spearman with the enemy beyond his kick keeps his ground and thrusts
                 return;
             }
-            if (inFront && path == AiKickPath.Clear && r.PathHalfWidth(kind) > 0) _aiKickStats.FriendChecksClear++;
-            bool offPath = path == AiKickPath.TargetOffPath;
-            if (!inFront || offPath)
+            // a move in kick reach: THE ROLL
+            int type = AiKickStats.TypeOf(shield);
+            var kind = AiKickMath.Roll(in r, shield, AiKickDice.NextDouble());
+            _aiKickStats.NoteMove(type, kind);
+            if (kind == AiKickKind.None) return; // a swing: his wind-up goes on untouched
+            if (kind == AiKickKind.Bash && r.KicksARaisedShield && target.PrevAction == ImpactActions.DefendShield && body.FacingTo(target, st) <= AiKickMath.RaisedShieldDegrees)
             {
-                if (waiting)
-                {
-                    if (!(distance <= r.WaitMetres))
-                    {
-                        DropAiKickWait(st);
-                        Skip(AiKickSkip.TooFar);
-                    }
-                    else Skip(offPath ? AiKickSkip.TargetOffPath : AiKickSkip.Waiting);
-                    return;
-                }
-                if (AiKickMath.Waits(in r, distance))
-                {
-                    st.AiKickWaitUntil = now + r.WaitSeconds;
-                    st.AiKickWaitSince = now;
-                    st.AiKickWaitChance = chance;
-                    _aiKickStats.WaitsStarted++;
-                    Skip(offPath ? AiKickSkip.TargetOffPath : AiKickSkip.Waiting);
-                    return;
-                }
-                Skip(offPath ? AiKickSkip.TargetOffPath : !(distance <= r.Reach) ? AiKickSkip.TooFar : AiKickSkip.NotFacing);
+                kind = AiKickKind.Kick; // a raised shield facing him stops a bash, not a kick
+                _aiKickStats.RaisedShieldKicks++;
+            }
+            // the refusals - he swings instead: safety, the stack, the cooldown, the strike path (the engine's positions last)
+            if (st.Impact.Reeling(now) || st.Impact.Down(now) || ImpactActions.IsStrike(st.PrevAction) || ImpactActions.IsFall(st.PrevLowerAction)
+                || ImpactActions.IsStrike(st.PrevLowerAction))
+            {
+                Refuse(type, AiKickSkip.Staggered);
+                return;
+            }
+            if (st.KickBash.Running)
+            {
+                Refuse(type, AiKickSkip.Busy);
+                return;
+            }
+            if (AthleticsMath.Points(in ar, st) < AthleticsMath.KickOrBashCostPoints(in ar, st))
+            {
+                Refuse(type, AiKickSkip.NoAthletics);
                 return;
             }
             if (_aiKickCount >= _aiKickers.Length)
             {
-                Skip(AiKickSkip.PoolFull);
+                Refuse(type, AiKickSkip.PoolFull);
                 return;
             }
-            if (waiting)
+            if (NoStoredSwing(st, in ar))
             {
-                _aiKickStats.WaitsDone++;
-                _aiKickStats.WaitSeconds += now - st.AiKickWaitSince;
-                ClearAiKickWait(st);
+                Refuse(type, AiKickSkip.NoSwing);
+                return;
             }
-            BeginAiKick(st, target, kind, AiKickStats.Reason(turtle >= 0.5, fever), now, AiKickMath.CooldownFor(in r, kind), turtle, chance);
+            if (now < st.AiKickNext)
+            {
+                Refuse(type, AiKickSkip.Cooldown);
+                return;
+            }
+            // step 80: the strike path along his facing - the enemy in it and the first body there
+            var path = StrikePathOf(st, targetAgent!, kind, distance, off, in r);
+            if (r.PathHalfWidth(kind) > 0) _aiKickStats.NotePath(kind, path);
+            if (path != AiKickPath.Clear)
+            {
+                bool rear = path == AiKickPath.BehindFriend;
+                if (path != AiKickPath.TargetOffPath) _aiKickStats.FriendChecksBlocked++;
+                Refuse(type, path == AiKickPath.TargetOffPath ? AiKickSkip.TargetOffPath : rear ? AiKickSkip.BehindFriend : AiKickSkip.FriendInTheWay);
+                if (path != AiKickPath.TargetOffPath && AiKickFirst(rear ? 5 : 4))
+                    TraxLog.Info("impact", "first AI " + AiKickMath.KindName(kind) + " REFUSED - " + AiKickMath.PathName(path) + " at " + Sec(now) + " s (step 80) - " + Name(st)
+                        + " at " + Name(target) + " " + F2(distance) + " m off, " + F1(off) + "° off his facing: one of his own side stands in his strike path (along his facing, "
+                        + F2(r.PathHalfWidth(kind)) + " m either side) closer than the enemy" + (rear ? " - within " + F1(r.RearRank) + " m of him (AiKickRearRankMetres): a rear-rank man" : string.Empty)
+                        + " - he swings instead (step 81)");
+                return;
+            }
+            if (r.PathHalfWidth(kind) > 0) _aiKickStats.FriendChecksClear++;
+            BeginAiKick(st, target, kind, type, now, r.Cooldown);
+        }
+
+        /// <summary>Step 81: a rolled kick / bash refused - he swings instead (counted by reason and by group).</summary>
+        private void Refuse(int type, AiKickSkip why)
+        {
+            Skip(why);
+            _aiKickStats.NoteRefused(type, why);
+        }
+
+        /// <summary>Step 32 / 81: KicksUseSwings - a kick / bash cannot start with no stored swing (a man the stack holds, or his stack at 0 now).</summary>
+        private static bool NoStoredSwing(TrackedAgent st, in AthleticsRules ar)
+        {
+            var inp = st.Input;
+            if (inp != null && inp.HoldKicks && inp.HoldAttacks) return true;
+            var sr = SwingStackRules.From(TraxSettings.Shared);
+            if (!sr.KicksOn) return false;
+            return st.Swings.Count(SwingStackMath.Cap(in sr, in ar, st)) < 1;
         }
 
         private void Skip(AiKickSkip why) => _aiKickStats.Skips[(int)why]++;
@@ -311,41 +301,13 @@ namespace TraxCombat.Missions
             return StrikePathOf(st, targetAgent, st.AiKickKind, distance, off, in r);
         }
 
-        /// <summary>Step 66: a waiting decision dropped (the enemy gone or too far, mounted, a ranged weapon, routing) - counted once.</summary>
-        private void DropAiKickWait(TrackedAgent st)
-        {
-            if (double.IsNaN(st.AiKickWaitUntil)) return;
-            _aiKickStats.WaitsDropped++;
-            ClearAiKickWait(st);
-        }
-
-        private static void ClearAiKickWait(TrackedAgent st)
-        {
-            st.AiKickWaitUntil = double.NaN;
-            st.AiKickWaitSince = double.NaN;
-        }
-
-        /// <summary>Step 66 (StartRelease, after the class read): an AI shieldman's melee swing on foot earns AiBashShareOfSwingsPercent of a bash
-        /// (at most AiKickMath.BashCreditCap saved) - "as often as he swings".</summary>
-        internal void NoteAiBashSwing(TrackedAgent st, bool mounted)
-        {
-            if (mounted || st.AttackClass != AttackClass.ShieldInfantry || IsPlayer(st)) return;
-            var r = AiKickRules.From(TraxSettings.Shared);
-            if (!r.Enabled || !(r.BashShare > 0)) return;
-            double before = st.BashCredit;
-            st.BashCredit = AiKickMath.AddBashCredit(in r, before);
-            _aiKickStats.ShieldSwings++;
-            _aiKickStats.CreditEarned += st.BashCredit - before;
-            _aiKickStats.CreditLost += Math.Max(0, r.BashShare - (st.BashCredit - before));
-        }
-
-        private void BeginAiKick(TrackedAgent st, TrackedAgent target, AiKickKind kind, int reason, double now, double cooldown, double turtle, double chance)
+        private void BeginAiKick(TrackedAgent st, TrackedAgent target, AiKickKind kind, int type, double now, double cooldown)
         {
             st.AiKickKind = kind;
             st.AiKickPhase = AiKickMath.FirstPhase(kind);
             st.AiKickStart = now;
-            st.AiKickPhaseEnd = AiKickMath.PhaseEnd(st.AiKickPhase, now);
-            st.AiKickReason = reason;
+            st.AiKickPhaseEnd = AiKickMath.PhaseEnd(st.AiKickPhase, now, kind);
+            st.AiKickReason = type;
             st.AiKickSeen = false;
             st.AiKickLanded = false;
             st.AiKickNext = now + cooldown;
@@ -354,13 +316,13 @@ namespace TraxCombat.Missions
             EnsureInput(st);
             AiInputHook.SetKick(st, st.AiKickPhase, kind, now);
             NoteHooked(st, AiKickBody.Hook(st));
-            _aiKickStats.Asked(kind, reason);
+            _aiKickStats.Asked(kind, type);
             if (AiKickFirst(0))
-                TraxLog.Info("impact", "first AI " + AiKickMath.KindName(kind) + " asked at " + Sec(now) + " s - " + Name(st) + " (bar " + Pct0(st.Fraction) + ", Athletics skill "
-                    + st.AthleticsSkill + (st.Fever.Running ? ", in a fever" : string.Empty) + ") on " + Name(target) + " (turtle " + Pct0(turtle) + ", his chance this look "
-                    + (100 * chance).ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) + "%) - through his own input: "
-                    + (kind == AiKickKind.Bash ? "the guard up " + F2(AiKickMath.BashLeadSeconds) + " s, then " : string.Empty) + "the kick key " + F2(AiKickMath.PressSeconds)
-                    + " s, then his own input held off until it plays out (" + F1(AiKickMath.WatchSeconds) + " s at most)");
+                TraxLog.Info("impact", "first AI " + AiKickMath.KindName(kind) + " asked at " + Sec(now) + " s - " + Name(st) + " (bar " + Pct0(st.Fraction) + ", "
+                    + AiKickStats.TypeName(type) + ") on " + Name(target) + " in place of the swing he was winding up (step 81) - through his own input: the guard up "
+                    + F2(kind == AiKickKind.Bash ? AiKickMath.BashLeadSeconds : AiKickMath.KickLeadSeconds) + " s (his wind-up cancelled), then the kick key "
+                    + F2(AiKickMath.PressSeconds) + " s" + (kind == AiKickKind.Bash ? " with the guard up" : string.Empty) + ", then his own input held off until it plays out ("
+                    + F1(AiKickMath.WatchSeconds) + " s at most)");
         }
 
         /// <summary>The running attempts, every tick: gone / struck = ended; the action seen (step 18's tracker - the poll of both channels) =
@@ -423,7 +385,7 @@ namespace TraxCombat.Missions
                             }
                         }
                         st.AiKickPhase = next;
-                        st.AiKickPhaseEnd = AiKickMath.PhaseEnd(next, now);
+                        st.AiKickPhaseEnd = AiKickMath.PhaseEnd(next, now, st.AiKickKind);
                         AiInputHook.SetKick(st, next, st.AiKickKind, now);
                     }
                 }
@@ -514,12 +476,6 @@ namespace TraxCombat.Missions
             return AiKickBody.IsEnemy(st, v) ? AiKickVictim.OtherEnemy : AiKickVictim.Friend;
         }
 
-        /// <summary>A block by <paramref name="st"/> (BlockHitTaken - a paid block): the turtle memory one more.</summary>
-        private void NoteTurtleBlock(TrackedAgent st, double now)
-        {
-            AiKickMath.NoteBlock(ref st.TurtleBlocks, ref st.TurtleBlocksAt, now, TraxSettings.Shared.AiKickTurtleSeconds);
-        }
-
         /// <summary>The Athletics an AI kick cost (ChargeKickOrBash, while his attempt runs).</summary>
         private void NoteAiKickCost(TrackedAgent st, double points)
         {
@@ -537,6 +493,7 @@ namespace TraxCombat.Missions
         internal void WriteAiKickSummary()
         {
             EndAllAiKicks(AiKickEnd.MissionEnd, SafeNow(), null);
+            ClearAiMoves();
             foreach (var line in _aiKickStats.SummaryLines(AiKickRules.From(TraxSettings.Shared))) TraxLog.Info("summary", line);
         }
     }

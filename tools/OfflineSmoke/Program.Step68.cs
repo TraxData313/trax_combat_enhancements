@@ -337,11 +337,7 @@ namespace TraxCombat.Tools
                     m.PrevAction = m.PrevLowerAction = 35;
                     return m;
                 }
-                void Look(TrackedAgent m)
-                {
-                    m.AiKickLastLook = t - AiKickMath.LookSeconds;
-                    logic.LookAiKick(m, t, AiKickRules.From(S), Rules);
-                }
+                void Look(TrackedAgent m) => DecideAt(logic, m, t); // step 81: his wind-up rolled (the dice 0 = a kick)
                 var rear = Man(6860);   // a rear-rank man
                 var front = Man(6861);  // his front-rank mate
                 var enemy = Man(6862);
@@ -349,20 +345,20 @@ namespace TraxCombat.Tools
                 body.Targets[6860] = (enemy, 1.4f, 5f);
                 body.FriendBlocks.Add(6860);
 
-                // ---- 1. his mate on the line: held, the decision waits for a clear line
+                // ---- 1. his mate on the line: the rolled kick refused - he swings instead (step 81: no waiting any more)
                 Look(rear);
-                Check(rear.AiKickPhase == AiKickPhase.None && st.Skips[(int)AiKickSkip.FriendInTheWay] == 1 && !double.IsNaN(rear.AiKickWaitUntil) && st.FriendChecksBlocked == 1,
-                    "a kick through his mate was not held / not waiting: phase " + rear.AiKickPhase + ", skips " + st.Skips[(int)AiKickSkip.FriendInTheWay]);
-                LogHas("[impact] first AI kick REFUSED - a friend first in his strike path at 68000.0 s (step 80) - (agent 6860) at (agent 6862) 1.40 m off, 5.0° off his facing: one of his own side stands in his strike path (along his facing, 0.60 m either side) closer than the enemy - the decision waits for a clear path");
+                Check(rear.AiKickPhase == AiKickPhase.None && st.Skips[(int)AiKickSkip.FriendInTheWay] == 1 && st.FriendChecksBlocked == 1 && st.Done(1, AiKickKind.None) == 1,
+                    "a kick through his mate was not refused: phase " + rear.AiKickPhase + ", skips " + st.Skips[(int)AiKickSkip.FriendInTheWay]);
+                LogHas("[impact] first AI kick REFUSED - a friend first in his strike path at 68000.0 s (step 80) - (agent 6860) at (agent 6862) 1.40 m off, 5.0° off his facing: one of his own side stands in his strike path (along his facing, 0.60 m either side) closer than the enemy - he swings instead (step 81)");
                 t += 0.25;
                 Look(rear);
                 Check(rear.AiKickPhase == AiKickPhase.None && st.Skips[(int)AiKickSkip.FriendInTheWay] == 2, "still blocked: kicked anyway");
 
-                // ---- 2. the line clear: the waiting decision kicks
+                // ---- 2. the line clear: his next wind-up's kick goes
                 body.FriendBlocks.Remove(6860);
                 t += 0.25;
                 Look(rear);
-                Check(rear.AiKickPhase != AiKickPhase.None && st.WaitsDone == 1 && st.FriendChecksClear >= 1, "the line clear: the waiting kick did not come (phase " + rear.AiKickPhase + ")");
+                Check(rear.AiKickPhase != AiKickPhase.None && st.FriendChecksClear >= 1, "the line clear: the kick did not come (phase " + rear.AiKickPhase + ")");
 
                 // ---- 3. whom it landed on: his mate (the check missed him - the engine's own geometry) = a FRIEND; another man's on his target
                 logic.AiKickHit(rear, false, front.Agent);
@@ -385,7 +381,7 @@ namespace TraxCombat.Tools
 
                 logic.WriteAiKickSummary();
                 LogHas(" → landed on the man 2 (step 68: on his target 1, on another enemy 0, on a FRIEND (the game cancels it - never decided) 1, on a horse / a man not tracked 0)");
-                LogHas("a friend in the way (step 68) 2");
+                LogHas("a friend first in his strike path (step 80) 2");
                 LogHas("; step 68 / 80 - a friend first in the strike path (a kick's 0.6 m either side): held 2, clear ");
             }
             finally

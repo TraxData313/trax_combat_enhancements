@@ -233,6 +233,7 @@ namespace TraxCombat.Missions
                     }
                     st.PauseFrom = -1;
                     AttackBegan(st, player, now, isReady: true);
+                    if (!player && kind == AttackKind.Melee) NoteAiMeleeReady(st); // step 81: the decision point - his move rolled by the tick
                 }
                 else if (next < 0)
                 {

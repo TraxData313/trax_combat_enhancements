@@ -114,8 +114,12 @@ namespace TraxCombat.Core
         /// own switch PressWrapAllowed is a new key, off). Step 78c removed the lull and its 29 keys without a new format: the reader ignores an
         /// unknown key anyway, and <c>DropRetiredLullKeys</c> drops them from any file (one note each) - nothing to move. 18 = step 80 (AI kicks land
         /// on enemies, not friends: AiKickFriendClearMetres - now the kick's strike path half-width along his facing - 0.5 → 0.6 in a file of format
-        /// 14-17 still holding it; a tuned value kept and noted).</summary>
-        public const int FormatVersion = 18;
+        /// 14-17 still holding it; a tuned value kept and noted), 19 = step 81 (Toni 2026-10-22 - kicks and bashes as a share of the melee moves:
+        /// SwingStackMinimum 2 → 3, CostPerKickOrBash 6 → 8 (a format 15-18 file), AiKickCooldownSeconds 8 → 2 - now the one minimum between two
+        /// kicks or bashes (a format 13-18 file) in a file still holding them; a tuned value kept and noted; the 14 retired AI-kick keys -
+        /// the rate, its factors, the bar gate, the wait for reach, the bash credit and the bash's own cooldown - dropped from any file by
+        /// <c>DropRetiredKickKeys</c>, one note each).</summary>
+        public const int FormatVersion = 19;
 
         /// <summary>The meta key holding <see cref="FormatVersion"/> - not a setting.</summary>
         public const string VersionKey = "ConfigVersion";
@@ -476,7 +480,7 @@ namespace TraxCombat.Core
                 MoveOrKeep(read, SettingsSchema.CostPerKickOrBash, 3,
                     "step 66, Anton: a kick or a shield bash takes more of the energy - 5 Athletics points", from, defaultOf);
                 const string kicks = "step 66, Anton's looter battle: no AI kick was ever seen at 0.1 a minute - a fresh man in contact now kicks about once a minute (shieldmen bash with their swings)";
-                MoveOrKeep(read, SettingsSchema.AiKicksPerMinute, 0.1, kicks, from, defaultOf);
+                // (AiKicksPerMinute 0.1 → 1.2 was moved here until step 81 retired the key - DropRetiredKickKeys below)
                 MoveOrKeep(read, SettingsSchema.AiKickCooldownSeconds, 10, kicks, from, defaultOf);
             }
             if (from < 14)
@@ -525,6 +529,16 @@ namespace TraxCombat.Core
                 MoveOrKeepIfMoved(read, SettingsSchema.AiKickFriendClearMetres, 0.5,
                     "step 80, Toni: AI kicks land on enemies, not friends - the kick's strike path along his facing is 0.6 m either side", from, defaultOf);
             }
+            if (from < 19)
+            {
+                // step 81 (Toni 2026-10-22): the swing stack holds at least 3 (SwingStackMinimum since step 32 - any older file); a kick or bash costs 8
+                // (6 since format 15 - an older file's 3 / 5 went through steps 66 / 71 above straight to today's value); AiKickCooldownSeconds (8 since
+                // format 13) is now THE minimum between two kicks or bashes, 2 s (step 66's bash cooldown, retired); a hand-set value is kept and said once
+                const string shares = "step 81, Toni: kicks and bashes as a share of the melee moves";
+                MoveOrKeepIfMoved(read, SettingsSchema.SwingStackMinimum, 2, shares + " - the swing stack holds at least 3, and kicks / bashes spend from it", from, defaultOf);
+                if (from >= 15) MoveOrKeepIfMoved(read, SettingsSchema.CostPerKickOrBash, 6, shares + " - a kick or a shield bash costs 8", from, defaultOf);
+                if (from >= 13) MoveOrKeepIfMoved(read, SettingsSchema.AiKickCooldownSeconds, 8, shares + " - at least 2 s between two kicks or bashes (the shares are the frequency now)", from, defaultOf);
+            }
             // format 17 (step 78b) moved the lull's LullRecover*Percent 10 / 15 / 20 → 20 / 25 / 30; step 78c removed the lull and its keys, so a
             // format 16 file's are dropped below with the rest of them - nothing to move any more (78c kept format 17; step 80 made it 18)
             // steps 36 / 37: the retired AI sprint keys - in ANY format (they are only ever steps 33-36's, and a hand-pasted one
@@ -532,6 +546,8 @@ namespace TraxCombat.Core
             DropRetiredSprintKeys(read, from);
             // step 78c: the lull's keys (steps 78 / 78b) - in ANY format (they are only ever formats 16-17's)
             DropRetiredLullKeys(read, from);
+            // step 81: the AI kicks' retired keys (steps 65 / 66) - in ANY format (a hand-pasted one goes the same way)
+            DropRetiredKickKeys(read, from);
             return read.Migrated;
         }
 
@@ -598,6 +614,36 @@ namespace TraxCombat.Core
                 read.Unknown.RemoveAt(i);
                 read.Migrated.Add(pair.Key + " " + pair.Value + " dropped (format " + from + " → " + FormatVersion
                                   + "; step 78c, Toni: no scripted lull - each tired man steps back and rests on his own: RestEnabled and the Rest* settings)");
+            }
+        }
+
+        /// <summary>Step 81: the retired keys of steps 65 / 66's AI kick RATE (Toni: kicks and bashes as a share of the melee moves) - the rate and its
+        /// skill / bar / turtle / fever factors, the bar gate, the wait for reach, the bash credit per swing and the bash's own cooldown. The shares
+        /// (AiShieldmanKickPercent, AiShieldmanBashPercent, AiNoShieldKickPercent), the swing stack and the cost are the brakes now.</summary>
+        public static readonly string[] RetiredKickKeys =
+        {
+            "AiKicksPerMinute", "AiKickTurtleMultiplier", "AiKickTurtleSeconds", "AiKickTurtleBlocks", "AiKickFeverMultiplier", "AiKickSkillLowPercent",
+            "AiKickSkillHighPercent", "AiKickMinBarPercent", "AiKickFullBarPercent", "AiKickWaitSeconds", "AiKickWaitMetres", "AiBashShareOfSwingsPercent",
+            "AiBashDelaySeconds", "AiBashCooldownSeconds",
+        };
+
+        /// <summary>
+        /// Step 81: the AI kick rate's retired keys leave <see cref="ConfigReadResult.Unknown"/> - one note each - so the rewrite does not carry them
+        /// under "Not recognised" forever (78c's pattern - <c>DropRetiredLullKeys</c>). Idempotent.
+        /// </summary>
+        private static void DropRetiredKickKeys(ConfigReadResult read, int from)
+        {
+            for (int i = read.Unknown.Count - 1; i >= 0; i--)
+            {
+                var pair = read.Unknown[i];
+                bool retired = false;
+                foreach (var k in RetiredKickKeys)
+                    if (string.Equals(pair.Key, k, StringComparison.OrdinalIgnoreCase))
+                        retired = true;
+                if (!retired) continue;
+                read.Unknown.RemoveAt(i);
+                read.Migrated.Add(pair.Key + " " + pair.Value + " dropped (format " + from + " → " + FormatVersion
+                                  + "; step 81, Toni: AI kicks and bashes are a share of the melee moves now - AiShieldmanKickPercent, AiShieldmanBashPercent, AiNoShieldKickPercent; the swing stack and the Athletics cost are the brakes)");
             }
         }
 

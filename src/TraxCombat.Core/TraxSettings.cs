@@ -574,18 +574,12 @@ namespace TraxCombat.Core
 
         // step 65: the AI kicks and bashes, the kicked man braces
         public bool AiKicksEnabled => GetBool(SettingsSchema.AiKicksEnabled);
-        public float AiKicksPerMinute => GetFloat(SettingsSchema.AiKicksPerMinute);
+        public int AiShieldmanKickPercent => GetInt(SettingsSchema.AiShieldmanKickPercent); // step 81
+        public int AiShieldmanBashPercent => GetInt(SettingsSchema.AiShieldmanBashPercent); // step 81
+        public int AiNoShieldKickPercent => GetInt(SettingsSchema.AiNoShieldKickPercent); // step 81
         public float AiKickReachMetres => GetFloat(SettingsSchema.AiKickReachMetres);
         public int AiKickFacingDegrees => GetInt(SettingsSchema.AiKickFacingDegrees);
         public float AiKickCooldownSeconds => GetFloat(SettingsSchema.AiKickCooldownSeconds);
-        public float AiKickTurtleMultiplier => GetFloat(SettingsSchema.AiKickTurtleMultiplier);
-        public float AiKickTurtleSeconds => GetFloat(SettingsSchema.AiKickTurtleSeconds);
-        public float AiKickTurtleBlocks => GetFloat(SettingsSchema.AiKickTurtleBlocks);
-        public float AiKickFeverMultiplier => GetFloat(SettingsSchema.AiKickFeverMultiplier);
-        public int AiKickSkillLowPercent => GetInt(SettingsSchema.AiKickSkillLowPercent);
-        public int AiKickSkillHighPercent => GetInt(SettingsSchema.AiKickSkillHighPercent);
-        public int AiKickMinBarPercent => GetInt(SettingsSchema.AiKickMinBarPercent);
-        public int AiKickFullBarPercent => GetInt(SettingsSchema.AiKickFullBarPercent);
         public bool AiKickKicksARaisedShield => GetBool(SettingsSchema.AiKickKicksARaisedShield);
         public bool KickBraceEnabled => GetBool(SettingsSchema.KickBraceEnabled);
         public float KickBraceFromPressure => GetFloat(SettingsSchema.KickBraceFromPressure);
@@ -595,12 +589,7 @@ namespace TraxCombat.Core
         public int KickShortReelPercent => GetInt(SettingsSchema.KickShortReelPercent);
         public bool KickBraceRefusesKnockBack => GetBool(SettingsSchema.KickBraceRefusesKnockBack);
 
-        // step 66: a kick waits for reach; a shieldman's swings earn his bashes
-        public float AiKickWaitSeconds => GetFloat(SettingsSchema.AiKickWaitSeconds);
-        public float AiKickWaitMetres => GetFloat(SettingsSchema.AiKickWaitMetres);
-        public int AiBashShareOfSwingsPercent => GetInt(SettingsSchema.AiBashShareOfSwingsPercent);
-        public float AiBashDelaySeconds => GetFloat(SettingsSchema.AiBashDelaySeconds);
-        public float AiBashCooldownSeconds => GetFloat(SettingsSchema.AiBashCooldownSeconds);
+        // steps 68 / 80: the strike path (step 66's wait for reach and bash credit removed by step 81)
         public float AiKickFriendClearMetres => GetFloat(SettingsSchema.AiKickFriendClearMetres); // step 68: no kick through a friend; step 80: the kick's strike path half-width
         public float AiBashPathHalfWidthMetres => GetFloat(SettingsSchema.AiBashPathHalfWidthMetres); // step 80
         public float AiKickRearRankMetres => GetFloat(SettingsSchema.AiKickRearRankMetres); // step 80

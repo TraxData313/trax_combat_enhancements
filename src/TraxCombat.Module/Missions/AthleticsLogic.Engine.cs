@@ -724,7 +724,6 @@ namespace TraxCombat.Missions
             st.ReleaseSerial++;
             StepBackSwingStarted(st);
             NoteFeverAttack(st, mounted); // step 43: an AI melee attack on foot in contact, counted by group and bar band
-            NoteAiBashSwing(st, mounted); // step 66: a shieldman's swing earns his bash (the class read just before, at this release)
             NotePunishAttack(st, mounted, now); // step 54: against a target in a window or not; a window punished
             NoteFirmAttack(st, mounted, now); // step 75: a man of a standing wall strikes - from his slot or not, ON vs OFF
             NoteSpearAttack(st, mounted); // step 76: a man with a spear and a sidearm attacks - holding which, from a back rank
@@ -818,7 +817,6 @@ namespace TraxCombat.Missions
                 if (a != null && !attacker.IsDoingPassiveAttack) swing = a.ReleaseSerial;
             }
             var r = Rules;
-            NoteTurtleBlock(st, Mission.CurrentTime); // step 65: his turtle memory (the AI's kicks look at it)
             BlockTaken(st, kind, attackerIndex, swing, Mission.CurrentTime, in r, victim.MountAgent != null);
         }
 

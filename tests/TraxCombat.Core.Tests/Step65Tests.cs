@@ -6,8 +6,8 @@ namespace TraxCombat.Core.Tests;
 
 /// <summary>
 /// Step 65 - THE AI KICKS AND BASHES (Anton 2026-10-19: "make the AI do a few shield bashes and kicks now and then - the game has it but the NPCs
-/// never use them"; AI_NOTES "Step 65", DESIGN decision 57): the rate, its factors, the per-look chance, the kind, the input frame of each phase,
-/// the turtle memory, the summary.
+/// never use them"; AI_NOTES "Step 65", DESIGN decision 57): the settings, the master switch, the kind, the input frame of each phase, the summary.
+/// Step 81 replaced the rate, its factors and the turtle memory with the shares (Step81Tests).
 /// </summary>
 public class AiKickTests
 {
@@ -19,16 +19,14 @@ public class AiKickTests
     }
 
     [Fact]
-    public void The_fourteen_settings_sit_on_the_Advanced_page_in_the_impact_group_after_the_cap_on_and_live()
+    public void The_settings_sit_on_the_Advanced_page_in_the_impact_group_after_the_cap_on_and_live()
     {
         var all = SettingsSchema.All.ToList();
         int cap = all.IndexOf(SettingsSchema.ImpactMultiplierCapPercent);
         var keys = new[]
         {
-            SettingsSchema.AiKicksEnabled, SettingsSchema.AiKicksPerMinute, SettingsSchema.AiKickReachMetres, SettingsSchema.AiKickFacingDegrees,
-            SettingsSchema.AiKickCooldownSeconds, SettingsSchema.AiKickTurtleMultiplier, SettingsSchema.AiKickTurtleSeconds, SettingsSchema.AiKickTurtleBlocks,
-            SettingsSchema.AiKickFeverMultiplier, SettingsSchema.AiKickSkillLowPercent, SettingsSchema.AiKickSkillHighPercent, SettingsSchema.AiKickMinBarPercent,
-            SettingsSchema.AiKickFullBarPercent, SettingsSchema.AiKickKicksARaisedShield,
+            SettingsSchema.AiKicksEnabled, SettingsSchema.AiShieldmanKickPercent, SettingsSchema.AiShieldmanBashPercent, SettingsSchema.AiNoShieldKickPercent,
+            SettingsSchema.AiKickReachMetres, SettingsSchema.AiKickFacingDegrees, SettingsSchema.AiKickCooldownSeconds, SettingsSchema.AiKickKicksARaisedShield,
         };
         for (int i = 0; i < keys.Length; i++)
         {
@@ -39,74 +37,23 @@ public class AiKickTests
         }
         var s = new TraxSettings();
         Assert.True(s.AiKicksEnabled);
-        Assert.Equal(0.1, s.AiKicksPerMinute, 6);
-        Assert.Equal(35, s.AiKickMinBarPercent);
-        var r = AiKickRules.From(s);
-        Assert.True(r.Enabled);
-        s.Set(SettingsSchema.AiKicksPerMinute, 0.5, SettingSources.Mcm);
-        Assert.Equal(0.5, AiKickRules.From(s).PerMinute, 6); // live
+        Assert.True(AiKickRules.From(s).Enabled);
+        s.Set(SettingsSchema.AiKickReachMetres, 2.0, SettingSources.Mcm);
+        Assert.Equal(2.0, AiKickRules.From(s).Reach, 6); // live
     }
 
     [Fact]
-    public void The_master_switch_comes_first_then_Athletics_then_the_switch_then_a_rate()
+    public void The_master_switch_comes_first_then_Athletics_then_the_switch_then_a_share()
     {
         Assert.Equal("ModEnabled", Rules(s => { s.Set(SettingsSchema.ModEnabled, false, "t"); s.Set(SettingsSchema.AiKicksEnabled, false, "t"); }).OffBecause);
         Assert.Equal("AthleticsEnabled", Rules(s => { s.Set(SettingsSchema.AthleticsEnabled, false, "t"); s.Set(SettingsSchema.AiKicksEnabled, false, "t"); }).OffBecause);
         Assert.Equal("AiKicksEnabled", Rules(s => s.Set(SettingsSchema.AiKicksEnabled, false, "t")).OffBecause);
-        Assert.Null(Rules(s => s.Set(SettingsSchema.AiKicksPerMinute, 0.0, "t")).OffBecause); // step 66: the shieldmen still bash
-        Assert.Equal("AiKicksPerMinute 0 and AiBashShareOfSwingsPercent 0",
-            Rules(s => { s.Set(SettingsSchema.AiKicksPerMinute, 0.0, "t"); s.Set(SettingsSchema.AiBashShareOfSwingsPercent, 0, "t"); }).OffBecause);
+        Assert.Null(Rules(s => s.Set(SettingsSchema.AiNoShieldKickPercent, 0, "t")).OffBecause); // the shieldmen still kick and bash
+        Assert.Equal("AiShieldmanKickPercent, AiShieldmanBashPercent and AiNoShieldKickPercent all 0",
+            Rules(s => { s.Set(SettingsSchema.AiShieldmanKickPercent, 0, "t"); s.Set(SettingsSchema.AiShieldmanBashPercent, 0, "t"); s.Set(SettingsSchema.AiNoShieldKickPercent, 0, "t"); }).OffBecause);
         Assert.Null(Rules().OffBecause);
         Assert.StartsWith("OFF (ModEnabled)", Rules(s => s.Set(SettingsSchema.ModEnabled, false, "t")).Describe(), StringComparison.Ordinal);
         Assert.Contains("the engine's kick key; a bash = the kick key with the guard up", Rules().Describe(), StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void The_rate_rises_with_skill_falls_with_the_bar_and_grows_against_a_turtle_and_in_a_fever()
-    {
-        var r = Rules();
-        Assert.Equal(0.5, AiKickMath.SkillFactor(in r, 0), 6);
-        Assert.Equal(1.25, AiKickMath.SkillFactor(in r, 150), 6);
-        Assert.Equal(2.0, AiKickMath.SkillFactor(in r, 300), 6);
-        Assert.Equal(2.0, AiKickMath.SkillFactor(in r, 400), 6);
-        Assert.Equal(0, AiKickMath.BarFactor(in r, 0.34), 6);     // none below 35%
-        Assert.Equal(0, AiKickMath.BarFactor(in r, 0.35), 6);
-        Assert.Equal(0.5, AiKickMath.BarFactor(in r, 0.55), 6);   // a straight line 35 → 75
-        Assert.Equal(1, AiKickMath.BarFactor(in r, 0.75), 6);
-        Assert.Equal(1, AiKickMath.BarFactor(in r, 1.0), 6);
-        Assert.Equal(0, AiKickMath.TurtleShare(in r, 0, false), 6);
-        Assert.Equal(0.5, AiKickMath.TurtleShare(in r, 0, true), 6); // his guard up now = one block of the two
-        Assert.Equal(1, AiKickMath.TurtleShare(in r, 3, true), 6);
-        Assert.Equal(1, AiKickMath.TurtleFactor(in r, 0), 6);
-        Assert.Equal(2, AiKickMath.TurtleFactor(in r, 0.5), 6);
-        Assert.Equal(3, AiKickMath.TurtleFactor(in r, 1), 6);
-        // a fresh legionary (Athletics 130): 0.1 x 1.15 = 0.115 a minute; vs a full turtle in a fever x 3 x 2
-        Assert.Equal(0.115, AiKickMath.PerMinute(in r, 130, 1.0, false, 0), 6);
-        Assert.Equal(0.69, AiKickMath.PerMinute(in r, 130, 1.0, true, 1), 6);
-        Assert.Equal(0, AiKickMath.PerMinute(in r, 130, 0.3, true, 1), 6);
-        // the per-look chance: 1 − e^(−rate × dt)
-        Assert.Equal(1 - Math.Exp(-0.115 / 60 * 0.25), AiKickMath.LookChance(0.115, 0.25), 12);
-        Assert.Equal(0, AiKickMath.LookChance(0, 0.25), 12);
-        Assert.Equal(0.25, AiKickMath.LookGap(10, double.NaN), 9);
-        Assert.Equal(0.3, AiKickMath.LookGap(10.3, 10), 9);
-        Assert.Equal(0.25, AiKickMath.LookGap(20, 10), 9); // a long gap = the feature was off
-    }
-
-    [Fact]
-    public void A_few_a_minute_across_a_50_against_50_clash()
-    {
-        // 40 men in reach at a time (both sides), half looter-like (skill 30), half veterans (skill 130), all fresh; a quarter of their targets
-        // turtling, a third of the men in a fever - the expected asks a minute
-        var r = Rules();
-        double perMinute = 0;
-        for (int i = 0; i < 40; i++)
-        {
-            double skill = i % 2 == 0 ? 30 : 130;
-            bool fever = i % 3 == 0;
-            double turtle = i % 4 == 0 ? 1 : 0;
-            perMinute += AiKickMath.PerMinute(in r, skill, 1.0, fever, turtle);
-        }
-        Assert.InRange(perMinute, 3, 10); // "a few a minute, not constant"
     }
 
     [Fact]
@@ -122,31 +69,35 @@ public class AiKickTests
     }
 
     [Fact]
-    public void Each_phase_writes_the_engines_own_bits_a_bash_holds_the_guard_first()
+    public void Each_phase_writes_the_engines_own_bits_both_kinds_hold_the_guard_first()
     {
         Assert.Equal(AiKickPhase.Guard, AiKickMath.FirstPhase(AiKickKind.Bash));
-        Assert.Equal(AiKickPhase.Press, AiKickMath.FirstPhase(AiKickKind.Kick));
+        Assert.Equal(AiKickPhase.Guard, AiKickMath.FirstPhase(AiKickKind.Kick)); // step 81: the guard cancels the wind-up the kick replaces
         Assert.Equal(AiKickPhase.Press, AiKickMath.Next(AiKickPhase.Guard));
         Assert.Equal(AiKickPhase.Commit, AiKickMath.Next(AiKickPhase.Press));
         Assert.Equal(AiKickPhase.None, AiKickMath.Next(AiKickPhase.Commit));
-        Assert.Equal(10.4, AiKickMath.PhaseEnd(AiKickPhase.Guard, 10), 9);
-        Assert.Equal(10.15, AiKickMath.PhaseEnd(AiKickPhase.Press, 10), 9);
-        Assert.Equal(11.5, AiKickMath.PhaseEnd(AiKickPhase.Commit, 10), 9);
+        Assert.Equal(10.4, AiKickMath.PhaseEnd(AiKickPhase.Guard, 10, AiKickKind.Bash), 9);
+        Assert.Equal(10.15, AiKickMath.PhaseEnd(AiKickPhase.Guard, 10, AiKickKind.Kick), 9);
+        Assert.Equal(10.15, AiKickMath.PhaseEnd(AiKickPhase.Press, 10, AiKickKind.Kick), 9);
+        Assert.Equal(11.5, AiKickMath.PhaseEnd(AiKickPhase.Commit, 10, AiKickKind.Kick), 9);
         uint attackDown = 0x200, defendDown = 0x2000, forward = 0x1, jump = 0x8;
-        // a bash's lead: his own attack / guard out, the guard UP, every event out, moving on
-        uint ev = jump;
-        uint f = AiKickMath.Frame(AiKickPhase.Guard, AiKickKind.Bash, attackDown | defendDown | forward, ref ev, out bool stop);
-        Assert.Equal(AiKickMath.DefendUp | forward, f);
-        Assert.Equal(0u, ev);
-        Assert.False(stop);
+        // the lead: his own attack / guard out, the guard UP (a bash's context; a kick's cancel of the wind-up), every event out, moving on
+        foreach (var kind in new[] { AiKickKind.Bash, AiKickKind.Kick })
+        {
+            uint ev0 = jump;
+            uint f0 = AiKickMath.Frame(AiKickPhase.Guard, kind, attackDown | defendDown | forward, ref ev0, out bool stop0);
+            Assert.Equal(AiKickMath.DefendUp | forward, f0);
+            Assert.Equal(0u, ev0);
+            Assert.False(stop0);
+        }
         // the press: the kick key (+ the guard for a bash)
-        ev = jump;
-        f = AiKickMath.Frame(AiKickPhase.Press, AiKickKind.Bash, attackDown, ref ev, out stop);
+        uint ev = jump;
+        uint f = AiKickMath.Frame(AiKickPhase.Press, AiKickKind.Bash, attackDown, ref ev, out bool stop);
         Assert.Equal(AiKickMath.DefendUp, f);
         Assert.Equal(AiKickMath.KickEventBit, ev);
         ev = 0;
         f = AiKickMath.Frame(AiKickPhase.Press, AiKickKind.Kick, defendDown | forward, ref ev, out stop);
-        Assert.Equal(forward, f); // a kick drops his own guard
+        Assert.Equal(forward, f); // a kick drops the guard
         Assert.Equal(AiKickMath.KickEventBit, ev);
         // the commit: nothing of his own, standing still
         ev = jump;
@@ -169,46 +120,33 @@ public class AiKickTests
     }
 
     [Fact]
-    public void The_turtle_memory_fades_and_adds_up()
-    {
-        double v = 0, at = double.NaN;
-        AiKickMath.NoteBlock(ref v, ref at, 10, 4);
-        Assert.Equal(1, v, 9);
-        AiKickMath.NoteBlock(ref v, ref at, 10, 4);
-        Assert.Equal(2, v, 9);
-        Assert.Equal(2 * Math.Exp(-1), AiKickMath.Faded(v, at, 14, 4), 9);
-        Assert.Equal(0, AiKickMath.Faded(0, double.NaN, 14, 4), 9);
-        AiKickMath.NoteBlock(ref v, ref at, 14, 4);
-        Assert.Equal(1 + 2 * Math.Exp(-1), v, 9);
-    }
-
-    [Fact]
-    public void The_summary_lines_count_asked_played_landed_by_kind_and_reason()
+    public void The_summary_lines_count_asked_played_landed_by_kind_and_man_type()
     {
         var st = new AiKickStats();
-        st.Asked(AiKickKind.Kick, AiKickStats.Reason(true, false));
-        st.Asked(AiKickKind.Bash, AiKickStats.Reason(false, true));
-        st.Asked(AiKickKind.Bash, AiKickStats.Reason(false, false));
+        st.Asked(AiKickKind.Kick, AiKickStats.TypeOf(true));
+        st.Asked(AiKickKind.Bash, AiKickStats.TypeOf(true));
+        st.Asked(AiKickKind.Kick, AiKickStats.TypeOf(false));
         st.Played(AiKickKind.Kick, 0, 0.1);
-        st.Played(AiKickKind.Bash, 1, 0.5);
+        st.Played(AiKickKind.Bash, 0, 0.5);
         st.Landed(AiKickKind.Kick, 0, false);
-        st.Landed(AiKickKind.Bash, 1, true);
+        st.Landed(AiKickKind.Bash, 0, true);
         st.Ends[(int)AiKickEnd.Played] = 2;
         st.Ends[(int)AiKickEnd.NotPlayed] = 1;
-        st.Skips[(int)AiKickSkip.Dice] = 900;
-        st.Skips[(int)AiKickSkip.Tired] = 40;
+        st.Skips[(int)AiKickSkip.OutOfReach] = 900;
+        st.Skips[(int)AiKickSkip.NotFacing] = 40;
         st.Looks = 1000;
         st.ContactManSeconds = 120;
         st.PointsSpent = 9;
         var lines = st.SummaryLines(Rules()).ToList();
-        Assert.Equal(6, lines.Count); // step 66: + the bashes per swing and the wait for reach; step 80: + whom they hit and the strike path
-        Assert.StartsWith("ai kicks (step 65): ON", lines[0], StringComparison.Ordinal);
-        Assert.Contains("ai kicks: asked 3 (kicks 1, bashes 2) → PLAYED 2 (67%), seen 0.30 s after the ask → landed on the man 1, into a shield 1", lines[1], StringComparison.Ordinal);
+        Assert.Equal(6, lines.Count); // step 80: + whom they hit and the strike path; step 81: the shares line in place of step 66's
+        Assert.StartsWith("ai kicks (step 65 / 81): ON", lines[0], StringComparison.Ordinal);
+        Assert.Contains("ai kicks: asked 3 (kicks 2, bashes 1) → PLAYED 2 (67%), seen 0.30 s after the ask → landed on the man 1, into a shield 1", lines[1], StringComparison.Ordinal);
         Assert.Contains("1.50 asked a man-minute in contact (2.0 man-minutes)", lines[1], StringComparison.Ordinal);
         Assert.Contains("Athletics spent on them 9", lines[1], StringComparison.Ordinal);
-        Assert.Contains("vs a turtle 1 → 1 → 1 / 0 | in a fever 1 → 1 → 0 / 1 |", lines[2], StringComparison.Ordinal);
+        Assert.Contains("shieldmen 2 → 2 → 1 / 1 | no shield 1 → 0 → 0 / 0", lines[2], StringComparison.Ordinal);
         Assert.Contains("played 2, NOT played (nothing showed within 1.5 s) 1", lines[3], StringComparison.Ordinal);
-        Assert.Contains("why not at a look (1000 looks): too tired 40, the dice 900", lines[3], StringComparison.Ordinal);
+        Assert.Contains("(step 81 - 1000 AI melee wind-ups): not a move in reach - the enemy beyond kick reach 900, the enemy not in front 40", lines[3], StringComparison.Ordinal);
+        Assert.StartsWith("ai kicks - shares of the melee moves in kick reach (step 81): ", lines[4], StringComparison.Ordinal);
     }
 }
 

@@ -124,16 +124,22 @@ namespace TraxCombat.Tools
         {
             foreach (var p in new[]
                      {
-                         SettingsSchema.AiKicksEnabled, SettingsSchema.AiKicksPerMinute, SettingsSchema.AiKickReachMetres, SettingsSchema.AiKickFacingDegrees,
-                         SettingsSchema.AiKickCooldownSeconds, SettingsSchema.AiKickTurtleMultiplier, SettingsSchema.AiKickTurtleSeconds, SettingsSchema.AiKickTurtleBlocks,
-                         SettingsSchema.AiKickFeverMultiplier, SettingsSchema.AiKickSkillLowPercent, SettingsSchema.AiKickSkillHighPercent, SettingsSchema.AiKickMinBarPercent,
-                         SettingsSchema.AiKickFullBarPercent, SettingsSchema.AiKickKicksARaisedShield,
+                         SettingsSchema.AiKicksEnabled, SettingsSchema.AiShieldmanKickPercent, SettingsSchema.AiShieldmanBashPercent, SettingsSchema.AiNoShieldKickPercent,
+                         SettingsSchema.AiKickReachMetres, SettingsSchema.AiKickFacingDegrees, SettingsSchema.AiKickCooldownSeconds, SettingsSchema.AiKickKicksARaisedShield,
                          SettingsSchema.KickBraceEnabled, SettingsSchema.KickBraceFromPressure, SettingsSchema.KickBraceToPressure, SettingsSchema.KickBraceMinBarPercent,
                          SettingsSchema.KickBraceReelPercent, SettingsSchema.KickShortReelPercent, SettingsSchema.KickBraceRefusesKnockBack,
-                         SettingsSchema.AiKickWaitSeconds, SettingsSchema.AiKickWaitMetres, SettingsSchema.AiBashShareOfSwingsPercent, SettingsSchema.AiBashDelaySeconds,
-                         SettingsSchema.AiBashCooldownSeconds, // step 66
                      })
                 S.Set(p, p.Default, SettingSources.File);
+        }
+
+        /// <summary>Step 81: the engine's melee wind-up code (step 13's phases see it) - a man about to swing, the decision point.</summary>
+        private const int ReadyMeleeAction = (int)Agent.ActionCodeType.ReadyMelee;
+
+        /// <summary>Step 81: his wind-up began and the tick rolls it - through the real decision (the dice the logic holds).</summary>
+        private static void DecideAt(AthleticsLogic logic, TrackedAgent m, double t)
+        {
+            m.PrevAction = ReadyMeleeAction;
+            logic.DecideAiMove(m, t, AiKickRules.From(S), Rules);
         }
 
         private static void Step65CleanUp(AthleticsLogic? keep)
@@ -153,13 +159,14 @@ namespace TraxCombat.Tools
         }
 
         /// <summary>
-        /// THE AI KICKS AND BASHES through the real logic: a kicker (no shield) asked by the dice, the input frames phase by phase through the real
-        /// hook filter (the kick key; his own attack / guard / events out; still in the commit), the engine "playing" it (step 18's poll sees a
-        /// Kick on channel 0) = PLAYED, its cost charged by step 18 and counted, its hit counted, the attempt ended when the action is over, the
-        /// cooldown; a shieldman's BASH (the guard up 0.4 s first, then the key + the guard; a WeaponBash seen); a shieldman facing a RAISED
-        /// shield kicks; an attempt the engine never plays (NOT played after 1.65 s, the first line); every gate (tired, no Athletics, no swing,
-        /// staggered, busy, mounted, routing, a ranged weapon, no target, out of reach, not in front, the cooldown); the turtle raising the
-        /// chance; the switch / the master switch mid-attempt; a clash - 40 men in contact 10 minutes at the default rate; the summary; the cost.
+        /// THE AI KICKS AND BASHES through the real logic (step 81's decision point - a man's melee WIND-UP rolled by his shares): a kicker (no shield)
+        /// rolled a kick, the input frames phase by phase through the real hook filter (the guard first - his wind-up cancelled -, the kick key with the
+        /// guard down; his own attack / events out; still in the commit), the engine "playing" it (step 18's poll sees a Kick on channel 0) = PLAYED,
+        /// its cost charged by step 18 and counted, its hit counted, the attempt ended when the action is over, the cooldown; a shieldman's rolled
+        /// BASH (the guard up 0.4 s first, then the key + the guard; a WeaponBash seen); a rolled bash into a RAISED shield kicked; an attempt the
+        /// engine never plays (NOT played); not a move in reach (mounted, routing, a ranged weapon, no target, beyond kick reach, not in front, the
+        /// wind-up already over) and the refusals (no Athletics, staggered, no stored swing, the cooldown); the die's swing; the switch / the master
+        /// switch mid-attempt; the summary.
         /// </summary>
         [MethodImpl(MethodImplOptions.NoInlining)]
         private static void AiKicksThroughTheLogic()
@@ -171,16 +178,15 @@ namespace TraxCombat.Tools
                 ImpactModelDefaults();
                 AiKickDefaults();
                 S.Set(SettingsSchema.KickBraceEnabled, false, SettingSources.File); // the brace has its own step
-                Check(S.AiKicksEnabled && Math.Abs(S.AiKicksPerMinute - 1.2) < 1e-6, "the AI kicks are not on at 1.2 a minute by default (step 66)");
+                Check(S.AiKicksEnabled && S.AiShieldmanKickPercent == 20 && S.AiShieldmanBashPercent == 35 && S.AiNoShieldKickPercent == 35,
+                    "the AI kicks are not on at 20 / 35 / 35 by default (step 81)");
                 var body = new FakeAiKickBody();
                 var logic = NewPaceLogic(new FakePaceBody(), new FakeWeaponFacts());
                 logic.AiKickBody = body;
-                var dice = new FixedDice(0.0); // every look under its chance
-                logic.AiKickDice = dice;
+                logic.AiKickDice = new FixedDice(0.0); // a kick for anyone
                 var st = logic.AiKickStats;
-                LogHas("[impact] mission start, the AI kicks and bashes (step 65): ON - an AI man on foot within 1.6 m of the enemy he fights");
+                LogHas("[impact] mission start, the AI kicks and bashes (steps 65 / 81): ON - each melee move an AI man on foot is about to make (his wind-up)");
                 double t = 65000;
-                var r = AiKickRules.From(S);
                 TrackedAgent Man(int index, int skill = 100, double bar = 1.0)
                 {
                     var m = logic.Track(FakeAgent(index))!;
@@ -190,11 +196,7 @@ namespace TraxCombat.Tools
                     m.PrevLowerAction = 35;
                     return m;
                 }
-                void Look(TrackedAgent m)
-                {
-                    m.AiKickLastLook = t - AiKickMath.LookSeconds; // a look's own gap (several looks at one moment here)
-                    logic.LookAiKick(m, t, AiKickRules.From(S), Rules);
-                }
+                void Decide(TrackedAgent m) => DecideAt(logic, m, t);
                 void Tick(double dt)
                 {
                     t += dt;
@@ -208,18 +210,24 @@ namespace TraxCombat.Tools
                     return flags;
                 }
 
-                // ---- 1. a KICK: asked, the frames, played (the poll sees a Kick), its cost, its hit, over → the cooldown
+                // ---- 1. a KICK in place of his swing: asked, the guard first (the wind-up cancelled), the key, played (the poll sees a Kick), its cost, its hit, over → the cooldown
                 var kicker = Man(6500, 130);
                 var target = Man(6501, 100);
                 body.Targets[6500] = (target, 1.2f, 10f);
                 double before = kicker.Fraction;
-                Look(kicker);
-                Check(kicker.AiKickPhase == AiKickPhase.Press && kicker.AiKickKind == AiKickKind.Kick && kicker.Input != null && kicker.Input.KickPhase == AiKickPhase.Press && body.Hooks == 1,
-                    "a kicker under the dice was not asked a kick (phase " + kicker.AiKickPhase + ", kind " + kicker.AiKickKind + ", hooks " + body.Hooks + ")");
-                LogHas("[impact] first AI kick asked at 65000.0 s - (agent 6500) (bar 100%, Athletics skill 130) on (agent 6501) (turtle 0%");
+                Decide(kicker);
+                Check(kicker.AiKickPhase == AiKickPhase.Guard && kicker.AiKickKind == AiKickKind.Kick && kicker.Input != null && kicker.Input.KickPhase == AiKickPhase.Guard && body.Hooks == 1,
+                    "a kicker's rolled kick was not asked with the guard first (phase " + kicker.AiKickPhase + ", kind " + kicker.AiKickKind + ", hooks " + body.Hooks + ")");
+                LogHas("[impact] first AI kick asked at 65000.0 s - (agent 6500) (bar 100%, no shield) on (agent 6501) in place of the swing he was winding up (step 81)");
                 uint attackDown = (uint)Agent.MovementControlFlag.AttackDown, defendDown = (uint)Agent.MovementControlFlag.DefendDown, jump = (uint)Agent.EventControlFlag.Jump;
                 uint ev = jump;
-                uint f = Frame(kicker, attackDown | defendDown | (uint)Agent.MovementControlFlag.Forward, ref ev, out float vx, out float vy);
+                uint f = Frame(kicker, attackDown | (uint)Agent.MovementControlFlag.Forward, ref ev, out float vx, out float vy);
+                Check(ev == 0 && f == ((uint)Agent.MovementControlFlag.DefendUp | (uint)Agent.MovementControlFlag.Forward),
+                    "the kick's guard frame: events " + ev + ", flags " + AiInputHook.FlagNames(f) + " (his attack out WITH the guard up - the wind-up cancelled, never released)");
+                Tick(0.16); // the kick's guard (0.15 s) is over: the press
+                Check(kicker.AiKickPhase == AiKickPhase.Press, "the kick's guard did not turn into the press after 0.15 s: " + kicker.AiKickPhase);
+                ev = jump;
+                f = Frame(kicker, attackDown | defendDown | (uint)Agent.MovementControlFlag.Forward, ref ev, out vx, out vy);
                 Check(ev == (uint)Agent.EventControlFlag.Kick && f == (uint)Agent.MovementControlFlag.Forward && Math.Abs(vy - 1f) < 1e-6,
                     "the press frame: events " + ev + ", flags " + AiInputHook.FlagNames(f) + " (the kick key, his attack / guard out, still moving)");
                 Tick(0.16); // the press is over: the commit
@@ -241,16 +249,16 @@ namespace TraxCombat.Tools
                 Tick(1.0 / 30);
                 Check(kicker.AiKickPhase == AiKickPhase.None && kicker.Input.KickPhase == AiKickPhase.None && st.Ends[(int)AiKickEnd.Played] == 1 && body.Releases == 1,
                     "the played kick did not end: phase " + kicker.AiKickPhase + ", ends " + st.Ends[(int)AiKickEnd.Played] + ", releases " + body.Releases);
-                Look(kicker);
-                Check(st.Skips[(int)AiKickSkip.Cooldown] == 1 && kicker.AiKickPhase == AiKickPhase.None, "the cooldown did not hold the next attempt");
+                Decide(kicker);
+                Check(st.Skips[(int)AiKickSkip.Cooldown] == 1 && kicker.AiKickPhase == AiKickPhase.None, "the cooldown did not refuse the next kick (he swings)");
 
-                // ---- 2. a shieldman's BASH: the guard up 0.4 s first, then the key + the guard; a WeaponBash seen
+                // ---- 2. a shieldman's rolled BASH: the guard up 0.4 s first, then the key + the guard; a WeaponBash seen
+                logic.AiKickDice = new FixedDice(0.3); // past the kick share (20), under kick + bash (55): a bash
                 var basher = Man(6502, 100);
                 body.Shield.Add(6502);
-                basher.BashCredit = 1; // step 66: a shieldman bashes with the bash his swing earned
                 body.Targets[6502] = (Man(6503, 100), 1.0f, 0f);
-                Look(basher);
-                Check(basher.AiKickKind == AiKickKind.Bash && basher.AiKickPhase == AiKickPhase.Guard, "a shieldman was not asked a bash with the guard first: " + basher.AiKickKind + " / " + basher.AiKickPhase);
+                Decide(basher);
+                Check(basher.AiKickKind == AiKickKind.Bash && basher.AiKickPhase == AiKickPhase.Guard, "a shieldman's rolled bash was not asked with the guard first: " + basher.AiKickKind + " / " + basher.AiKickPhase);
                 ev = jump;
                 f = Frame(basher, attackDown, ref ev, out vx, out vy);
                 Check(ev == 0 && f == (uint)Agent.MovementControlFlag.DefendUp, "the bash's lead frame: events " + ev + ", flags " + AiInputHook.FlagNames(f));
@@ -267,107 +275,104 @@ namespace TraxCombat.Tools
                 Tick(0.2);
                 Check(basher.AiKickPhase == AiKickPhase.None, "the bash did not end once over: " + basher.AiKickPhase);
 
-                // ---- 3. a shieldman facing a RAISED shield turned toward him kicks it (a bash would be stopped)
+                // ---- 3. a shieldman's rolled bash into a RAISED shield turned toward him becomes a kick (a bash would be stopped)
                 var wallman = Man(6504, 100);
                 body.Shield.Add(6504);
-                wallman.BashCredit = 1; // step 66
                 var turtle = Man(6505, 100);
                 turtle.PrevAction = ImpactActions.DefendShield;
                 body.FacingToward[6505] = 20f;
                 body.Targets[6504] = (turtle, 1.0f, 0f);
-                Look(wallman);
-                Check(wallman.AiKickKind == AiKickKind.Kick && wallman.AiKickPhase == AiKickPhase.Press, "a shieldman facing a raised shield bashed it");
-                Check(AiKickMath.KindFor(AiKickRules.From(S), true, true) == AiKickKind.Kick, "the raised-shield rule");
+                Decide(wallman);
+                Check(wallman.AiKickKind == AiKickKind.Kick && wallman.AiKickPhase == AiKickPhase.Guard && st.RaisedShieldKicks == 1, "a shieldman's rolled bash into a raised shield was not kicked");
 
-                // ---- 4. NOT PLAYED: nothing shows within the press + 1.5 s
+                // ---- 4. NOT PLAYED: nothing shows within the guard + the press + 1.5 s
+                logic.AiKickDice = new FixedDice(0.0);
                 var ignored = Man(6506, 100);
                 body.Targets[6506] = (Man(6507, 100), 1.0f, 0f);
-                Look(ignored);
-                for (int i = 0; i < 60; i++) Tick(1.0 / 30);
+                Decide(ignored);
+                for (int i = 0; i < 70; i++) Tick(1.0 / 30);
                 Check(ignored.AiKickPhase == AiKickPhase.None && st.Ends[(int)AiKickEnd.NotPlayed] >= 1, "an attempt the engine never played did not end NOT played");
                 LogHas("[impact] first AI kick NOT played at ");
 
-                // ---- 5. the gates, each counted (step 66's wait for reach off here - its own step checks it)
-                S.Set(SettingsSchema.AiKickWaitSeconds, 0.0, SettingSources.Mcm);
+                // ---- 5. not a move in reach (he swings or thrusts as the game wants) and the refusals (he swings instead), each counted
                 int Skips(AiKickSkip s) => st.Skips[(int)s];
                 var m6 = Man(6510, 100, 0.3);
                 body.Targets[6510] = (Man(6511, 100), 1.0f, 0f);
-                Look(m6);
-                Check(Skips(AiKickSkip.Tired) == 1 && m6.AiKickPhase == AiKickPhase.None, "a man at 30% of his bar was asked a kick");
-                S.Set(SettingsSchema.AiKickMinBarPercent, 0, SettingSources.Mcm);
-                SetBar(m6, 0.01); // one point: less than a kick's 5 (step 66)
-                Look(m6);
-                Check(Skips(AiKickSkip.NoAthletics) == 1, "a man without the Athletics for it was asked a kick");
-                S.Set(SettingsSchema.AiKickMinBarPercent, 35, SettingSources.Mcm);
+                Decide(m6);
+                Check(m6.AiKickPhase != AiKickPhase.None, "a man at 30% of his bar was not asked his rolled kick - the bar gate is gone (step 81)");
                 var m7 = Man(6512, 100);
                 body.Targets[6512] = (Man(6513, 100), 1.0f, 0f);
+                SetBar(m7, 0.01); // one point: less than a kick's 8
+                Decide(m7);
+                Check(Skips(AiKickSkip.NoAthletics) == 1 && m7.AiKickPhase == AiKickPhase.None, "a man without the Athletics for it was asked a kick");
+                SetBar(m7, 1.0);
                 m7.Impact.Reel(t + 1, 2);
-                Look(m7);
+                Decide(m7);
                 Check(Skips(AiKickSkip.Staggered) == 1, "a reeling man was asked a kick");
                 m7.Impact.Clear();
-                m7.PrevAction = (int)Agent.ActionCodeType.ReadyMelee;
-                Look(m7);
-                Check(Skips(AiKickSkip.Busy) == 1, "a man in his own wind-up was asked a kick");
                 m7.PrevAction = 35;
+                logic.DecideAiMove(m7, t, AiKickRules.From(S), Rules); // his wind-up already over when the tick looked
+                Check(Skips(AiKickSkip.ReadyOver) == 1 && m7.AiKickPhase == AiKickPhase.None, "a man whose wind-up was over was asked a kick");
                 body.Mounted.Add(6512);
-                Look(m7);
+                Decide(m7);
                 Check(Skips(AiKickSkip.Mounted) == 1, "a rider was asked a kick");
                 body.Mounted.Remove(6512);
                 body.Routing.Add(6512);
-                Look(m7);
+                Decide(m7);
                 Check(Skips(AiKickSkip.Routing) == 1, "a routing man was asked a kick");
                 body.Routing.Remove(6512);
                 body.Ranged.Add(6512);
-                Look(m7);
+                Decide(m7);
                 Check(Skips(AiKickSkip.Ranged) == 1, "a man with a bow in hand was asked a kick");
                 body.Ranged.Remove(6512);
                 body.Targets[6512] = (body.Targets[6512].Target, 2.5f, 0f);
-                Look(m7);
-                Check(Skips(AiKickSkip.TooFar) == 1, "a target 2.5 m off was kicked");
+                Decide(m7);
+                Check(Skips(AiKickSkip.OutOfReach) == 1 && m7.AiKickPhase == AiKickPhase.None, "an enemy 2.5 m off was kicked (beyond kick reach - a spearman keeps his ground)");
                 body.Targets[6512] = (body.Targets[6512].Target, 1.0f, 70f);
-                Look(m7);
-                Check(Skips(AiKickSkip.NotFacing) == 1, "a target 70° off his facing was kicked");
-                S.Set(SettingsSchema.AiKickWaitSeconds, SettingsSchema.AiKickWaitSeconds.Default, SettingSources.Mcm);
+                Decide(m7);
+                Check(Skips(AiKickSkip.NotFacing) == 1, "an enemy 70° off his facing was kicked");
                 body.Targets.Remove(6512);
-                int noTarget = Skips(AiKickSkip.NoTarget); // (the tick's slice looked at the targets too - none of their own)
-                Look(m7);
-                Check(Skips(AiKickSkip.NoTarget) == noTarget + 1 && m7.AiKickPhase == AiKickPhase.None, "a man with no target was asked a kick");
+                Decide(m7);
+                Check(Skips(AiKickSkip.NoTarget) == 1 && m7.AiKickPhase == AiKickPhase.None, "a man with no target was asked a kick");
                 var noSwing = Man(6514, 100);
+                body.Targets[6514] = (Man(6516, 100), 1.0f, 0f);
                 noSwing.Input = new AiInputState { HoldAttacks = true, HoldKicks = true };
-                Look(noSwing);
+                Decide(noSwing);
                 Check(Skips(AiKickSkip.NoSwing) == 1, "a man held for his stored swings was asked a kick");
                 body.NotAi.Add(6515);
                 var you = Man(6515, 100);
                 long looks = st.Looks;
-                Look(you);
-                Check(st.Looks == looks, "a man the AI does not drive was looked at");
+                Decide(you);
+                Check(st.Looks == looks, "a man the AI does not drive was rolled");
 
-                // ---- 6. THE TURTLE: a die between the plain chance and the turtle's - asked only against the turtle
-                var tk = Man(6520, 100);
-                var plain = Man(6521, 100);
-                body.Targets[6520] = (plain, 1.0f, 0f);
-                double p0 = AiKickMath.LookChance(AiKickMath.PerMinute(in r, 100, 1.0, false, 0), AiKickMath.LookSeconds);
-                double p1 = AiKickMath.LookChance(AiKickMath.PerMinute(in r, 100, 1.0, false, 1), AiKickMath.LookSeconds);
-                logic.AiKickDice = new FixedDice((p0 + p1) / 2);
-                tk.AiKickLastLook = t - AiKickMath.LookSeconds;
-                Look(tk);
-                Check(tk.AiKickPhase == AiKickPhase.None && Skips(AiKickSkip.Dice) >= 1, "the die between the plain and the turtle chance asked a kick on a calm man");
-                plain.TurtleBlocks = 2;
-                plain.TurtleBlocksAt = t;
-                tk.AiKickLastLook = t - AiKickMath.LookSeconds;
-                int turtleAsks = st.AskedFor(0);
-                Look(tk);
-                Check(tk.AiKickPhase != AiKickPhase.None && st.AskedFor(0) == turtleAsks + 1, "the same die did not ask a kick on a TURTLE (2 recent blocks)");
+                // ---- 6. the die's SWING: nothing asked, his wind-up untouched, the move counted
+                logic.AiKickDice = new FixedDice(0.9);
+                var swinger = Man(6520, 100);
+                body.Targets[6520] = (Man(6521, 100), 1.0f, 0f);
+                int moves = st.Moves(1), asked = st.AskedCount(AiKickKind.Kick);
+                Decide(swinger);
+                Check(swinger.AiKickPhase == AiKickPhase.None && swinger.Input == null && st.Moves(1) == moves + 1 && st.AskedCount(AiKickKind.Kick) == asked && st.Rolled(1, AiKickKind.None) >= 1,
+                    "the die's swing touched him or was not counted");
 
-                // ---- 7. the switch / the master switch mid-attempt: ended at once, the input given back
+                // ---- 7. the switch / the master switch mid-attempt: ended at once, the input given back; the queue dropped
+                logic.AiKickDice = new FixedDice(0.0);
+                var tk = Man(6522, 100);
+                body.Targets[6522] = (Man(6523, 100), 1.0f, 0f);
+                Decide(tk);
+                Check(tk.AiKickPhase != AiKickPhase.None, "precondition: no attempt");
+                tk.PrevAction = ReadyMeleeAction;
+                logic.NoteAiMeleeReady(swinger);
+                Check(logic.AiMovesPending == 1, "a wind-up was not queued for the tick");
                 S.Set(SettingsSchema.AiKicksEnabled, false, SettingSources.Mcm);
                 Tick(1.0 / 30);
-                Check(logic.AiKicksRunning == 0 && tk.Input!.KickPhase == AiKickPhase.None && st.Ends[(int)AiKickEnd.SwitchedOff] >= 1, "AiKicksEnabled off did not end the running attempt");
+                Check(logic.AiKicksRunning == 0 && tk.Input!.KickPhase == AiKickPhase.None && st.Ends[(int)AiKickEnd.SwitchedOff] >= 1 && logic.AiMovesPending == 0 && !swinger.AiMoveQueued,
+                    "AiKicksEnabled off did not end the running attempt / drop the queue");
                 LogHas("[impact] the AI kicks switched off at ");
+                logic.NoteAiMeleeReady(swinger);
+                Check(logic.AiMovesPending == 0, "AiKicksEnabled off: a wind-up was queued");
                 S.Set(SettingsSchema.AiKicksEnabled, true, SettingSources.Mcm);
-                logic.AiKickDice = new FixedDice(0.0);
                 tk.AiKickNext = double.NegativeInfinity;
-                Look(tk);
+                Decide(tk);
                 Check(tk.AiKickPhase != AiKickPhase.None, "back on: no attempt");
                 S.Set(SettingsSchema.ModEnabled, false, SettingSources.Mcm);
                 Tick(1.0 / 30);
@@ -376,11 +381,13 @@ namespace TraxCombat.Tools
 
                 // ---- 8. the summary
                 logic.WriteAiKickSummary();
-                LogHas("[summary] ai kicks (step 65): ON");
+                LogHas("[summary] ai kicks (step 65 / 81): ON");
                 LogHas("[summary] ai kicks: asked ");
-                LogHas("[summary] ai kicks by reason (asked → played → landed / into a shield): vs a turtle ");
-                LogHas("too tired 1, no Athletics for it 1, no stored swing 1, staggered / down 1");
-                Console.WriteLine("        step 65 AI kicks: " + string.Join(" | ", st.SummaryLines(AiKickRules.From(S)).Skip(1)));
+                LogHas("[summary] ai kicks by man type (asked → played → landed / into a shield): shieldmen ");
+                LogHas("not a move in reach - the enemy beyond kick reach 1, the enemy not in front 1, no enemy target 1, mounted 1, routing 1, a ranged weapon in hand 1");
+                LogHas("[summary] ai kicks - shares of the melee moves in kick reach (step 81): shieldmen ");
+                LogHas("refused by reason: staggered / down 1, no Athletics for it 1, no stored swing 1, cooldown 1");
+                Console.WriteLine("        step 65 AI kicks: " + string.Join(" | ", st.SummaryLines(AiKickRules.From(S)).Skip(1).Take(4)));
             }
             finally
             {
@@ -389,9 +396,8 @@ namespace TraxCombat.Tools
         }
 
         /// <summary>
-        /// A 50 v 50 CLASH (the stand-in world): 40 AI men in reach of an enemy for 10 minutes at the defaults (Athletics 30 / 130 alternating,
-        /// fresh, a quarter of the targets turtling, nobody in a fever), seeded dice through the real tick - the asks a minute ("a few a
-        /// minute"), the cost of the look over 1000 men, 0 bytes.
+        /// Step 81: THE COST of the decision point - 1000 AI men, every one winding up a swing about every 2 s with an enemy in reach (a third with a
+        /// shield), seeded dice through the real tick: the queue, the rolls, the attempts and the contact samples, the time a tick and 0 bytes.
         /// </summary>
         [MethodImpl(MethodImplOptions.NoInlining)]
         private static void AiKicksInAClash()
@@ -402,49 +408,7 @@ namespace TraxCombat.Tools
                 AthleticsDefaults();
                 ImpactModelDefaults();
                 AiKickDefaults();
-                var body = new FakeAiKickBody();
-                var logic = NewPaceLogic(new FakePaceBody(), new FakeWeaponFacts());
-                logic.AiKickBody = body;
-                logic.AiKickDice = new SeededRandom(65);
-                var men = new List<TrackedAgent>();
-                for (int i = 0; i < 40; i++)
-                {
-                    var m = logic.Track(FakeAgent(6600 + i))!;
-                    m.AthleticsSkill = i % 2 == 0 ? 30 : 130;
-                    m.PrevAction = m.PrevLowerAction = 35;
-                    men.Add(m);
-                }
-                for (int i = 0; i < 40; i++)
-                {
-                    var foe = men[i ^ 1];
-                    body.Targets[6600 + i] = (foe, 1.2f, 15f);
-                    if (i % 4 == 0)
-                    {
-                        foe.TurtleBlocks = 2;
-                        foe.PrevAction = ImpactActions.DefendShield;
-                    }
-                }
-                double t = 66000;
-                for (int k = 0; k < 600 * 30; k++)
-                {
-                    t += 1.0 / 30;
-                    foreach (var m in men)
-                        if (m.TurtleBlocks > 0)
-                            m.TurtleBlocksAt = t; // the turtles keep blocking
-                    logic.TickAiKicks(t);
-                }
-                var st = logic.AiKickStats;
-                int asked = st.AskedCount(AiKickKind.Kick) + st.AskedCount(AiKickKind.Bash);
-                double perMinute = asked / 10.0;
-                var r = AiKickRules.From(S);
-                double model = 0;
-                for (int i = 0; i < 40; i++) model += AiKickMath.WithCooldown(AiKickMath.PerMinute(in r, men[i].AthleticsSkill, 1.0, false, i % 4 == 1 ? 1 : 0), r.Cooldown); // step 66: the cooldown in
-                Console.WriteLine("        step 65 a clash: 40 men in reach for 10 minutes - asked " + asked + " (" + perMinute.ToString("0.0", CultureInfo.InvariantCulture)
-                                  + " a minute; the model's " + model.ToString("0.0", CultureInfo.InvariantCulture) + "), vs a turtle " + st.AskedFor(0));
-                Check(perMinute > 30 && perMinute < 90, "a clash: " + perMinute + " AI kicks a minute - not about one a man a minute or more (step 66)");
-                Check(Math.Abs(perMinute - model) < model * 0.35, "a clash: " + perMinute + " a minute against the model's " + model);
-
-                // the cost: 1000 men looked at, every 50th asking, 0 bytes
+                S.Set(SettingsSchema.KickBraceEnabled, false, SettingSources.File);
                 const int many = 1000;
                 var logic2 = NewPaceLogic(new FakePaceBody(), new FakeWeaponFacts());
                 var body2 = new FakeAiKickBody();
@@ -457,22 +421,39 @@ namespace TraxCombat.Tools
                     m.AthleticsSkill = 100;
                     m.PrevAction = m.PrevLowerAction = 35;
                     m.Input = new AiInputState(); // (his input state is made once, at his first hook - not the tick's cost)
+                    if (i % 3 == 0) body2.Shield.Add(20000 + i);
                     all.Add(m);
                 }
                 for (int i = 0; i < many; i++) body2.Targets[20000 + i] = (all[(i + 1) % many], 1.2f, 10f);
-                S.Set(SettingsSchema.AiKicksPerMinute, 5.0, SettingSources.Mcm); // four times the default: the pool and the reads busy
                 double t2 = 67000;
-                for (int k = 0; k < 150; k++) logic2.TickAiKicks(t2 += 1.0 / 60); // 2.5 s: the first-time lines (asked, NOT played) written before the count
+                int cursor = 0;
+                void Tick()
+                {
+                    t2 += 1.0 / 60;
+                    // ~1000 men / 2 s / 60 ticks = ~8 wind-ups a tick; a man in an attempt is skipped by the queue
+                    for (int k = 0; k < 8; k++)
+                    {
+                        var m = all[cursor++ % many];
+                        if (m.AiKickPhase != AiKickPhase.None) continue;
+                        m.PrevAction = ReadyMeleeAction;
+                        logic2.NoteAiMeleeReady(m);
+                    }
+                    logic2.TickAiKicks(t2);
+                }
+                for (int k = 0; k < 300; k++) Tick(); // 5 s: the first-time lines (asked, NOT played, refusals) written before the count
                 const int ticks = 300;
                 AppDomain.MonitoringIsEnabled = true;
                 long bytes = AppDomain.CurrentDomain.MonitoringTotalAllocatedMemorySize;
                 var sw = Stopwatch.StartNew();
-                for (int k = 0; k < ticks; k++) logic2.TickAiKicks(t2 += 1.0 / 60);
+                for (int k = 0; k < ticks; k++) Tick();
                 sw.Stop();
                 long allocated = AppDomain.CurrentDomain.MonitoringTotalAllocatedMemorySize - bytes;
                 double ms = sw.Elapsed.TotalMilliseconds / ticks;
-                Console.WriteLine("        step 65 cost: " + many + " men, the AI kicks' tick " + ms.ToString("0.000", CultureInfo.InvariantCulture) + " ms, " + allocated + " bytes over "
-                                  + ticks + " ticks; " + logic2.AiKicksRunning + " attempts running, " + body2.Reads + " engine reads");
+                var st = logic2.AiKickStats;
+                Console.WriteLine("        step 81 cost: " + many + " men winding up ~8 swings a tick, the AI kicks' tick " + ms.ToString("0.000", CultureInfo.InvariantCulture) + " ms, " + allocated
+                                  + " bytes over " + ticks + " ticks; " + logic2.AiKicksRunning + " attempts running, moves " + (st.Moves(0) + st.Moves(1)) + ", asked "
+                                  + (st.AskedCount(AiKickKind.Kick) + st.AskedCount(AiKickKind.Bash)) + ", " + body2.Reads + " engine reads");
+                Check(st.Moves(0) + st.Moves(1) > 1000 && st.AskedCount(AiKickKind.Kick) > 0 && st.AskedCount(AiKickKind.Bash) > 0, "cost: the wind-ups were not rolled into kicks and bashes");
                 Check(ms < 0.5, "cost: the AI kicks' tick took " + ms + " ms (budget 0.5)");
                 Check(allocated < 16 * 1024, "cost: the AI kicks' tick allocates - " + allocated + " bytes");
             }
@@ -663,7 +644,7 @@ namespace TraxCombat.Tools
                 a.AthleticsSkill = v.AthleticsSkill = 100;
                 a.PrevAction = a.PrevLowerAction = v.PrevAction = v.PrevLowerAction = 35;
                 body.Targets[6590] = (v, 1.0f, 0f);
-                logic.LookAiKick(a, 65900, AiKickRules.From(S), Rules);
+                DecideAt(logic, a, 65900);
                 Check(a.AiKickPhase != AiKickPhase.None, "precondition: no AI kick asked (step 65)");
                 S.Set(SettingsSchema.ModEnabled, false, SettingSources.Mcm);
                 logic.TickAiKicks(65900.1);
@@ -671,7 +652,7 @@ namespace TraxCombat.Tools
                 Check(logic.KnockBackKept(a.Agent, v.Agent, KickLands()), "mod off: the brace refused a knock-back (step 65)");
                 S.Set(SettingsSchema.ModEnabled, true, SettingSources.Mcm);
                 a.AiKickNext = double.NegativeInfinity;
-                logic.LookAiKick(a, 65901, AiKickRules.From(S), Rules);
+                DecideAt(logic, a, 65901);
                 Check(a.AiKickPhase != AiKickPhase.None, "mod back on: no AI kick asked (step 65)");
             }
             finally

@@ -44,15 +44,14 @@ public class Step80Tests
         Assert.Equal(Bash, r.PathHalfWidth(AiKickKind.Bash), 6);
         Assert.Equal(Rear, r.RearRank, 6);
         Assert.Contains("a kick's path 0.60 m, a bash's 0.75 m either side", r.Describe(), StringComparison.Ordinal);
-        Assert.Contains("a friend in it within 1.2 m = a rear-rank man, no kick", r.Describe(), StringComparison.Ordinal);
+        Assert.Contains("a friend in it within 1.2 m = a rear-rank man", r.Describe(), StringComparison.Ordinal);
         // the master switch still comes first - the path never turns the kicks on
         s.Set(SettingsSchema.ModEnabled, false, "test");
         Assert.False(AiKickRules.From(s).Enabled);
         Assert.Equal("ModEnabled", AiKickRules.From(s).OffBecause);
-        Assert.Equal(18, AiKickMath.SkipCount);
-        Assert.Equal(AiKickMath.SkipCount, Enum.GetValues(typeof(AiKickSkip)).Length);
-        Assert.Equal(16, (int)AiKickSkip.TargetOffPath); // appended - the old indexes kept
-        Assert.Equal(17, (int)AiKickSkip.BehindFriend);
+        Assert.Equal(AiKickMath.SkipCount, Enum.GetValues(typeof(AiKickSkip)).Length); // step 81 rebuilt the reasons (16)
+        Assert.Equal(4, AiKickMath.GroupOf(AiKickSkip.TargetOffPath)); // the path's refusals
+        Assert.Equal(4, AiKickMath.GroupOf(AiKickSkip.BehindFriend));
         Assert.Equal(7, AiKickMath.EndCount);
         Assert.Equal(AiKickMath.EndCount, Enum.GetValues(typeof(AiKickEnd)).Length);
     }
@@ -217,17 +216,17 @@ public class Step80Tests
     public void Format_18_moves_the_kicks_untouched_half_width_once_and_keeps_a_tuned_one()
     {
         static double Shipped(ParamDef p) => p == SettingsSchema.AiKickFriendClearMetres ? 0.6 : p.Default;
-        Assert.Equal(18, ConfigFile.FormatVersion);
+        Assert.Equal(19, ConfigFile.FormatVersion);
         var read = ConfigFile.Read("{ \"ConfigVersion\": 17, \"AiKickFriendClearMetres\": 0.5 }");
         var notes = ConfigFile.Migrate(read, Shipped);
         Assert.Single(notes);
-        Assert.StartsWith("AiKickFriendClearMetres: 0.5 → 0.6 (format 17 → 18, the old default; step 80", notes[0], StringComparison.Ordinal);
+        Assert.StartsWith("AiKickFriendClearMetres: 0.5 → 0.6 (format 17 → 19, the old default; step 80", notes[0], StringComparison.Ordinal);
         Assert.Equal(0.6, read.Values["AiKickFriendClearMetres"], 6);
         Assert.Single(ConfigFile.Migrate(read, Shipped)); // idempotent: the value moved, no new note
         var tuned = ConfigFile.Read("{ \"ConfigVersion\": 14, \"AiKickFriendClearMetres\": 0.8 }");
         var kept = ConfigFile.Migrate(tuned, Shipped);
         Assert.Single(kept);
-        Assert.StartsWith("AiKickFriendClearMetres: 0.8 kept - your own value (format 14 → 18; the new default 0.6", kept[0], StringComparison.Ordinal);
+        Assert.StartsWith("AiKickFriendClearMetres: 0.8 kept - your own value (format 14 → 19; the new default 0.6", kept[0], StringComparison.Ordinal);
         Assert.Equal(0.8, tuned.Values["AiKickFriendClearMetres"], 6);
         var now = ConfigFile.Read("{ \"ConfigVersion\": 18, \"AiKickFriendClearMetres\": 0.5 }");
         Assert.Empty(ConfigFile.Migrate(now, Shipped));

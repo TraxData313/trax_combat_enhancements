@@ -250,7 +250,7 @@ namespace TraxCombat.Core
         // Step 18 (Anton, 2026-09-28): kicks and shield bashes cost too - their own price, the blow's multipliers.
         public static readonly ParamDef CostPerKickOrBash = Float("CostPerKickOrBash", 0, 20, AthleticsGroup,
             "Cost per kick or shield bash (points)",
-            "Athletics points one kick or one shield bash costs a common soldier - yours and the AI's alike. Heroes pay it times the hero cost and party leaders times both, just like a blow: 6 costs a hero 4.5 and a party leader about 3.4. Paid once, when the kick or bash starts, landed or not. It never starts the pause between attacks. 0 = kicks and bashes are free.");
+            "Athletics points one kick or one shield bash costs a common soldier - yours and the AI's alike. Heroes pay it times the hero cost and party leaders times both, just like a blow: 8 costs a hero 6 and a party leader 4.5. Paid once, when the kick or bash starts, landed or not. It never starts the pause between attacks. 0 = kicks and bashes are free.");
 
         // Step 22 (Anton, 2026-09-29): defending costs too - the DEFENDER pays for every melee blow he blocks, by how.
         public static readonly ParamDef CostPerShieldBlock = Float("CostPerShieldBlock", 0, 20, AthleticsGroup,
@@ -1573,11 +1573,22 @@ namespace TraxCombat.Core
         // AI kicks and bashes through step 16's input hook; the kicked man BRACES (the impact model's pressure decides it).
         public static readonly ParamDef AiKicksEnabled = Bool("AiKicksEnabled", ImpactGroup,
             "AI soldiers kick and shield-bash",
-            "On: now and then an AI soldier on foot in melee with an enemy kicks him (no shield in hand) or bashes him with his shield - more often against a man hiding behind his guard, in the fever of a charge and for a skilled man, less as he tires. Each costs Athletics and a stored swing, like yours. Off: the game's AI, which never kicks.");
+            "On: an AI soldier on foot whose enemy is within kick reach in front of him kicks him or bashes him with his shield instead of some of his swings - by the shares below. Each costs Athletics and a stored swing, like yours. Off: the game's AI, which never kicks.");
 
-        public static readonly ParamDef AiKicksPerMinute = Float("AiKicksPerMinute", 0, 20, ImpactGroup,
-            "AI kicks: chance per man per minute",
-            "How often an AI soldier in melee contact kicks or bashes, per minute of contact, before the reasons below raise or lower it (0.1: one a man every ten minutes of fighting - a few a minute across a 50 against 50 clash). 0 = never.");
+        // Step 81 (Toni 2026-10-22: "since they add good disturbance to the battle and also dont do much damage I want to try increase them: shielded
+        // men kick 20% of the time, shield bash 35% and swing the rest ... Unshielded - 35% kick and the rest swing"): each melee move of an AI man on
+        // foot with the enemy in kick reach is rolled by these shares; a rolled kick / bash takes the place of that swing. AiKickMath.Roll.
+        public static readonly ParamDef AiShieldmanKickPercent = Int("AiShieldmanKickPercent", 0, 100, ImpactGroup,
+            "AI kicks: a shieldman kicks (% of his moves)",
+            "Of the melee moves an AI soldier WITH a shield makes while the enemy he fights is within kick reach in front of him, this share are kicks (they take the place of a swing). With the bash share below it never goes over 100 - if it does, the bash share is cut.");
+
+        public static readonly ParamDef AiShieldmanBashPercent = Int("AiShieldmanBashPercent", 0, 100, ImpactGroup,
+            "AI bashes: a shieldman bashes (% of his moves)",
+            "Of those moves of an AI soldier WITH a shield, this share are shield bashes; he swings the rest (100 minus the kick and bash shares). A raised enemy shield facing him is kicked instead.");
+
+        public static readonly ParamDef AiNoShieldKickPercent = Int("AiNoShieldKickPercent", 0, 100, ImpactGroup,
+            "AI kicks: a man without a shield kicks (% of his moves)",
+            "Of the melee moves an AI soldier WITHOUT a shield makes while the enemy he fights is within kick reach in front of him, this share are kicks; he swings the rest. Shock troops with two-handers throw people around more. A spearman with the enemy beyond kick reach keeps thrusting.");
 
         public static readonly ParamDef AiKickReachMetres = Float("AiKickReachMetres", 0.5, 4, ImpactGroup,
             "AI kicks: reach (m)",
@@ -1588,40 +1599,8 @@ namespace TraxCombat.Core
             "The enemy must stand within this many degrees of where the AI soldier faces - a kick goes forward.");
 
         public static readonly ParamDef AiKickCooldownSeconds = Float("AiKickCooldownSeconds", 0, 60, ImpactGroup,
-            "AI kicks: at least this long between two (s)",
-            "After a kick or bash an AI soldier waits at least this many seconds before the next.");
-
-        public static readonly ParamDef AiKickTurtleMultiplier = Float("AiKickTurtleMultiplier", 1, 10, ImpactGroup,
-            "AI kicks: x against a man behind his guard",
-            "The chance is this many times higher against an enemy who keeps blocking - his guard up now and his blocks of the last seconds (below) - a kick is the answer to a turtle. 1 = no difference.");
-
-        public static readonly ParamDef AiKickTurtleSeconds = Float("AiKickTurtleSeconds", 0.5, 15, ImpactGroup,
-            "AI kicks: blocks remembered for (s)",
-            "How long an enemy's blocks count toward 'he keeps blocking' (they fade over this time).");
-
-        public static readonly ParamDef AiKickTurtleBlocks = Float("AiKickTurtleBlocks", 0.5, 10, ImpactGroup,
-            "AI kicks: blocks that make a turtle",
-            "How many recent blocks (his guard up right now counts as one) make an enemy a full turtle - the multiplier above in full; fewer give part of it.");
-
-        public static readonly ParamDef AiKickFeverMultiplier = Float("AiKickFeverMultiplier", 1, 10, ImpactGroup,
-            "AI kicks: x in the fever of a charge",
-            "The chance is this many times higher while the AI soldier is in the fever of a charge (Aggression and fever). 1 = no difference.");
-
-        public static readonly ParamDef AiKickSkillLowPercent = Int("AiKickSkillLowPercent", 0, 500, ImpactGroup,
-            "AI kicks: x at Athletics skill 0 (%)",
-            "The chance for a man with no Athletics skill, in % of the base (50: half). It rises in a straight line to the next setting at skill 300 - a veteran kicks more than a recruit.");
-
-        public static readonly ParamDef AiKickSkillHighPercent = Int("AiKickSkillHighPercent", 0, 500, ImpactGroup,
-            "AI kicks: x at Athletics skill 300 (%)",
-            "The chance for a man with 300 Athletics skill, in % of the base (200: twice).");
-
-        public static readonly ParamDef AiKickMinBarPercent = Int("AiKickMinBarPercent", 0, 100, ImpactGroup,
-            "AI kicks: none below this Athletics (%)",
-            "Below this much of his Athletics bar an AI soldier never kicks or bashes - a tired man saves his breath. Between this and the next setting the chance rises in a straight line.");
-
-        public static readonly ParamDef AiKickFullBarPercent = Int("AiKickFullBarPercent", 0, 100, ImpactGroup,
-            "AI kicks: full chance from this Athletics (%)",
-            "At or above this much of his Athletics bar an AI soldier kicks at the full chance.");
+            "AI kicks / bashes: at least this long between two (s)",
+            "After a kick or a shield bash an AI soldier waits at least this many seconds before his next kick or bash (he swings meanwhile).");
 
         public static readonly ParamDef AiKickKicksARaisedShield = Bool("AiKickKicksARaisedShield", ImpactGroup,
             "AI kicks: a raised shield is kicked, not bashed",
@@ -1654,29 +1633,6 @@ namespace TraxCombat.Core
         public static readonly ParamDef KickBraceRefusesKnockBack = Bool("KickBraceRefusesKnockBack", ImpactGroup,
             "Brace: no knock-back at all",
             "On: a braced man is not knocked back at all (the game's knock-back is refused for that kick, and whatever reaction is left plays fast). Off: the knock-back plays, only cut short.");
-
-        // Step 66 (Anton's looter battle 2026-10-19 14:16 - no AI kick seen, asked 0 in 49 man-minutes of contact: "not a bad idea for men to kick
-        // and bash more - a defensive supplement to all that killing, disturbing"; "and shield bashes, maybe make them as frequent as swings when the
-        // man has a shield"): a kick waits for reach; a shieldman's swings earn his bashes.
-        public static readonly ParamDef AiKickWaitSeconds = Float("AiKickWaitSeconds", 0, 10, ImpactGroup,
-            "AI kicks: wait this long to get in reach (s)",
-            "When an AI soldier decides to kick or bash while the enemy he fights is close (next setting) but not yet in reach or not in front, he keeps the wish this many seconds and kicks the moment the enemy is in reach. 0 = only an enemy already in reach.");
-
-        public static readonly ParamDef AiKickWaitMetres = Float("AiKickWaitMetres", 1, 10, ImpactGroup,
-            "AI kicks: close enough to wait for (m)",
-            "The enemy he fights must stand within this many metres for the AI soldier to wait for reach (above) - farther away the wish is dropped.");
-
-        public static readonly ParamDef AiBashShareOfSwingsPercent = Int("AiBashShareOfSwingsPercent", 0, 300, ImpactGroup,
-            "AI shield bashes: per swing (%)",
-            "An AI soldier with a shield bashes about this many times per 100 of his own melee swings (100: one bash per swing - as often as he swings). Each of his swings earns this share of a bash, spent soon after when the enemy is in reach. A raised shield facing him is kicked instead. Men without a shield kick at the rate per minute above. 0 = shieldmen never bash.");
-
-        public static readonly ParamDef AiBashDelaySeconds = Float("AiBashDelaySeconds", 0.1, 10, ImpactGroup,
-            "AI shield bashes: after his swing within about (s)",
-            "On average this many seconds after the swing that earned it the AI soldier bashes (at a full Athletics bar; longer as he tires, never below the 'none below' Athletics). If he swings again first the bash waits - at most two are saved up.");
-
-        public static readonly ParamDef AiBashCooldownSeconds = Float("AiBashCooldownSeconds", 0, 60, ImpactGroup,
-            "AI shield bashes: at least this long between two (s)",
-            "After a shield bash an AI soldier waits at least this many seconds before his next kick or bash (kept short, so bashes can keep up with his swings).");
 
         // Step 68 (Toni's 100 v 100 of 2026-10-19: 92 AI kicks / bashes landed "on the man" but the impact model decided 33 - a kick or bash that lands
         // on a FRIEND is cancelled by the game and never decided: a rear-rank man kicking the enemy past his own front-rank mate). AiKickMath.FriendInPath.
@@ -2322,12 +2278,9 @@ namespace TraxCombat.Core
             ImpactShrugOffYieldsToImpact, ImpactFallBackupSeconds, ImpactToughnessWeight, ImpactRangedInHandPercent,
             ImpactRearPercent, ImpactFlankPercent, ImpactRearDegrees, ImpactFlankDegrees, ImpactRearPressure, ImpactFlankPressure,
             ImpactChargeCarrySeconds, RiposteKnockdownMaxPercent, RiposteKnockdownFrom, RiposteMomentumPercent, ImpactMultiplierCapPercent,
-            AiKicksEnabled, AiKicksPerMinute, AiKickReachMetres, AiKickFacingDegrees, AiKickCooldownSeconds, AiKickTurtleMultiplier, AiKickTurtleSeconds,
-            AiKickTurtleBlocks, AiKickFeverMultiplier, AiKickSkillLowPercent, AiKickSkillHighPercent, AiKickMinBarPercent, AiKickFullBarPercent,
+            AiKicksEnabled, AiShieldmanKickPercent, AiShieldmanBashPercent, AiNoShieldKickPercent, AiKickReachMetres, AiKickFacingDegrees, AiKickCooldownSeconds,
             AiKickKicksARaisedShield, KickBraceEnabled, KickBraceFromPressure, KickBraceToPressure, KickBraceMinBarPercent, KickBraceReelPercent,
-            KickShortReelPercent, KickBraceRefusesKnockBack,
-            AiKickWaitSeconds, AiKickWaitMetres, AiBashShareOfSwingsPercent, AiBashDelaySeconds, AiBashCooldownSeconds, AiKickFriendClearMetres,
-            AiBashPathHalfWidthMetres, AiKickRearRankMetres,
+            KickShortReelPercent, KickBraceRefusesKnockBack, AiKickFriendClearMetres, AiBashPathHalfWidthMetres, AiKickRearRankMetres,
             ImpactMismatchWeight, ImpactEvenBandDoublings, ImpactBodyExponent, ImpactBodyFloorPoints, ImpactStaggeredBonus, ImpactDamageWeight,
             ImpactRefWeightKg, ImpactWeightExponent, ImpactRefSwingSpeed, ImpactSpeedExponent, ImpactBluntFactor, ImpactCutFactor, ImpactPierceFactor,
             ImpactKickFactor, ImpactBashFactor, ImpactSkillMinFactor, ImpactSkillMaxFactor,
