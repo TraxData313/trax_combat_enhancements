@@ -148,6 +148,7 @@ namespace TraxCombat.Tools
         {
             S.ResetToDefaults(SettingSources.Defaults);
             S.Set(SettingsSchema.ModEnabled, true, SettingSources.File);
+            S.Set(SettingsSchema.WarCriesEnabled, false, SettingSources.File); // step 79: the older steps run without war cries (their order poll forgets while the sprint and the fever are off)
             S.Set(SettingsSchema.AthleticsEnabled, true, SettingSources.File);
             S.Set(SettingsSchema.AthleticsPoolFloor, 50, SettingSources.File);
             S.Set(SettingsSchema.AthleticsPoolPerSkill, 1.0, SettingSources.File);
