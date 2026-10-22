@@ -1545,6 +1545,20 @@ its men sideways within the enemy line's ends: Toni's recruits ±15.3 m → ±11
 `PressRoundEndMetres` 2 (0.5-10), `PressWinPercent` 50 (0-100), `PressLineMinMen` 8 (3-200), `PressLineInSlotPercent` 60 (0-100),
 `PressBandMarginMetres` 1 (0-10), `PressBlockEndMetres` 0 (0-10), `PressEndSlackMetres` 1 (0-10).</sub>
 
+**No wrapping round the ends (step 78b).** Toni's battle: the enemy's 229 recruits (69 m wide) against his ~31 m line - their wings went round
+both his ends. Now nobody goes round: past an enemy line's end (+ 1 m) the front a man may not cross BENDS back toward his own side, so an
+overlapping wing curls toward the end and stands off it, facing it - a refused flank.
+
+| A wing man ... metres past the end | 1 | 3 | 5 | 10 | 19 (Toni's) |
+|---|---|---|---|---|---|
+| stands at least this far in front of the line's front | 0 | 1.2 m | 2.3 m | 5.2 m | 10.4 m |
+
+A wing man forward of that bent front is walked straight back to it; a man who got behind the line walks round its nearest end to it. A unit
+ORDERED to a place beside or behind the line (a move - yours or the enemy general's) still goes there.
+
+<sub>Settings: Advanced page, *Courage and cohesion (AI)*, live: `PressWrapAllowed` (off - on = step 77's wrap: a unit 6 m+ wider may send its wings
+round as a mass), `PressWingBendDegrees` 30 (0-80; 0 = a straight front).</sub>
+
 **The battle's rhythm (step 78).** Two packs of dogs: they don't want to get hurt, they won't back down, and they won't do reckless things. In
 THE GRIND a worn-out front man swaps with a fresher mate right behind him; when the men at the front of two units fighting each other are BOTH
 spent and nobody breaks, a LULL: both fronts ease back a couple of metres, facing each other, and catch their breath while the tired go to the back.
@@ -1562,13 +1576,36 @@ spent and nobody breaks, a LULL: both fronts ease back a couple of metres, facin
 |---|---|---|---|
 | Starts when BOTH fronts' mean bar (the front men: within 1.5 m of the front) is below | 30% | 40% | 50% |
 | ... after the pair has fought at least | 10 s | 10 s | 10 s |
-| Ends when a front has regained | +10 points | +15 | +20 |
+| Ends when a front has regained (step 78b: the unit, +20 / +25 / +30 - below) | +10 points | +15 | +20 |
 | Each front eases back | 2 m | 2 m | 2 m |
 
 Each side uses its own order. A lull also ends on a NEW charge order, when a side breaks (half its men gone), after 30 s, or when the two units turn
 to other enemies; the same pair waits 20 s before the next. During it the tired front men swap with fresher men behind them (no enemy in reach
 needed). In the smoke two charging lines at 20% opened from 1.0 m to 4.4 m and closed again when they refilled. Your own units ease back too unless
 you turn it off; you yourself are never moved.
+
+**The lull that shows (step 78b).** Toni's battle: 2 lulls in 7 minutes - "never, not for a sec". The swaps kept the FRONT men's bars up, the
+fronts were meshed, and easing a meshed front back 2 m opened nothing. Now:
+
+| The breather clock | charge | advance | hold |
+|---|---|---|---|
+| After continuous contact of (rolled per spell, the more aggressive order of the two) | 30-60 s | 25-50 s | 20-40 s |
+| ... a lull once BOTH units' bar is below | 55% | 60% | 65% |
+| ... or the pair's blows in contact have fallen to | 60% of their peak | 60% | 60% |
+| At once (after 10 s) when both units are spent below | 30% | 40% | 50% |
+| It ends when a unit has regained | +20 points | +25 | +30 |
+
+A UNIT's bar = the mean bar of its men within 8 m of its front - the fresh men rotated forward AND the tired men behind them. THE GAP is
+measured from the men: in 2 m strips along the contact, each side's nearest men; each side backs off until 3.5 m of empty ground lies between
+them (at least 2 m from where its own nearest men stood) - a meshed fight separates about its middle. If the gap does not hold after 3 s, a side
+standing at its line steps it back half a metre a second, at most 8 m more. A new charge order in a lull's first 3 s ends it only once those 3 s
+have passed. A 6-minute grind between two lines sees about 4-7 breathers of ~10-20 s (the smoke: 7 in a meshed 6-minute grind, the gap 4.0-4.4 m).
+
+<sub>Settings: Advanced page, *Courage and cohesion (AI)*, live: `LullClockChargeMinSeconds` 30 / `LullClockChargeMaxSeconds` 60,
+`LullClockAdvanceMinSeconds` 25 / `LullClockAdvanceMaxSeconds` 50, `LullClockHoldMinSeconds` 20 / `LullClockHoldMaxSeconds` 40 (0-600),
+`LullClockChargePercent` 55, `LullClockAdvancePercent` 60, `LullClockHoldPercent` 65 (0-100), `LullAttackRateFallenPercent` 60 (0-100; 0 = the bars
+alone), `LullUnitDepthMetres` 8 (0.5-40), `LullChargeGraceSeconds` 3 (0-15), `LullGapMetres` 3.5 (0.5-10), `LullMaxBackMetres` 8 (0.5-30); the
+recovery `LullRecover*Percent` 20 / 25 / 30 since step 78b (config format 17 moves an untouched 10 / 15 / 20).</sub>
 
 | Who wins when they disagree | |
 |---|---|

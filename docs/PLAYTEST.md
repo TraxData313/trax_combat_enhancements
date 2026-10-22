@@ -1043,6 +1043,7 @@ Claude the `[summary] impact …` block of every battle.
 | 22 | **D41 - SPEARMEN KEEP THEIR SPEARS, THE SECOND RANK THRUSTS PAST** (step 76): your spearmen (spear + sword + shield - e.g. Vlandian / Sturgian spearmen) in a shield wall on STOP against ~40 looters; then the switch OFF and ON | 15 | `[spears] mission start …`, `[spears] first back-rank man`, `[spears] first THRUST past a friend`, `[summary] spears`, `[summary] thrusts past friends` | the front rank holds spears until the looters press in, then swords; the second rank keeps spears and thrusts over the front man; looters fall to second-rank thrusts; OFF: swords at once | everyone still on swords ON (the favors not honoured - try *Spears: force the spear while nothing is close*); second-rank spears still stopping on the front man (`… then an enemy hit … 0 of N`); men flinching as their mates thrust through them |
 | 23 | **D42 - PRESS, DON'T PASS** (step 77): Toni's battle again - ~100 recruits against your shield wall (~60 veterans) on STOP; then the switch OFF mid-battle and ON again | 15 | `[press] mission start …`, `[press] first enemy LINE`, `[press] first man PRESSING`, `[press] first man CROSSED … ON / OFF`, `[summary] press, don't pass` (two lines) | ON: the recruits pile up against your wall's front, nobody walks round its ends or in behind it; men come through only where your men fell; OFF: the dance round the ends again; the crossings ON ≈ 0 (not allowed), OFF many "round an end" | recruits frozen at the wall and not fighting; men still circling the ends ON (the clamp not honoured); men stuck behind the wall never walked back; a gap read where there is none |
 | 24 | **D43 - THE BATTLE'S RHYTHM: SWAPS AND LULLS** (step 78): two infantry lines of ~60 each grinding (your shield wall on STOP against the enemy's infantry); watch the front; then two charging lines that both tire (both on F1 F3 charge) | 20 | `[rhythm] first SWAP asked / BESIDE / DONE`, `[rhythm] first LULL`, `[rhythm] first lull ENDED`, `[summary] battle rhythm` (two lines) | the tired front men step back one by one as a fresh man comes up beside each - the front never thins; when both fronts are spent a gap of ~3-4 m opens for 10-30 s, the men face each other, then one side comes on again | swaps that leave a hole in the front; men walking out of the wall; a lull with no gap (the native charge pushing through the clamp); a lull that never ends; men turning their backs |
+| 25 | **D43b - THE LULL THAT SHOWS, NO WRAPPING** (step 78b): Toni's 225 v 229 again - your ~225 against ~229 recruits on battle_terrain_b, a long grind; watch between the fronts and both your ends | 20 | `[rhythm] first LULL … - the breather clock`, `[rhythm] first lull GAP OPENED`, `[press] first WING man held at an end`, `[summary] battle rhythm (step 78b) - THE LULL'S TRIGGER AND GAP`, `[summary] press, don't pass (step 78b) - NO WRAPPING` | every 45-90 s of grinding both fronts back off until 3-4 m of empty ground shows between them for 10-20 s, facing each other, then come on again; the recruits' wide wings stand off your ends (curled toward them), never round them | no gap in a lull (the gap measured ~0 / never held); a lull ended at once by a charge; men still round your ends; a wing frozen far out doing nothing for minutes |
 
 Then play normally (parts E-G). Your gut on each family - too many / about right / too few - is the most useful thing to send.
 
@@ -1931,6 +1932,29 @@ to compare); lulls 1-3 in a long grind, 10-30 s each, the gap opened 2.5-4 m, en
 forward again with their slots. **Wrong**: holes in the front during swaps (the fresh man not coming up - "never beside" most of the swaps); men
 swapping back and forth every few seconds; a lull with no gap (the gap opened ~0 - the engine ignored the clamp in a charge: tell Claude); a lull
 that only ends at 30 s every time (the thresholds); men turning their backs; any `[error]` with `rhythm.`.
+
+**D43b. THE LULL THAT SHOWS, NO WRAPPING (step 78b, ~20 min - Toni's 225 v 229 again; the defaults).** Toni 2026-10-22 16:10: "between the two
+fronts [a lull], never, not for a sec" (2 lulls in 435 s, the fronts meshed, one ended at once by a charge order) and the enemy's 69 m of recruits
+went round both ends of his ~31 m line - "they should be like packs of dogs ... they want to stay in their pack". (1) **THE BREATHER**: the same
+battle - your infantry against ~229 recruits, a long grind, nobody breaking early. Every 45-90 s of continuous fighting (sooner when you hold)
+both sides should back off until a clear gap of 3-4 m of empty ground lies between the nearest men all along the contact, facing each other, for
+10-20 s - also when the two crowds were meshed - the tired going to the back; then they come on again. Try F1 F3 (charge) right as a lull begins:
+it should hold for ~3 s, then end. (2) **NO WRAPPING**: watch both your ends - the recruits' wings should curl toward your line's end and stand off
+it (slanting back away from you the farther out they stand), never walk round it or in behind you. Then order one of YOUR units to a spot beside
+the enemy's end (a plain move): it must go there. **Log**: `[rhythm] first LULL at … s - the breather clock (after … s in contact, the clock … s):
+<unit> (…, the unit's bar …% over … men in the fight, its front men …%) and <unit> (…); the blows in contact … a man-minute (the spell's peak …);
+THE GAP from the men: mean -… m (p10 …, p90 …) - each side backs to its line …`; `[rhythm] first lull GAP OPENED at … s: … after … s - the gap
+from the men mean … m`; `[rhythm] first lull LINE STEPPED BACK …` (when one side pressed); `[rhythm] first CHARGE ORDER in a lull's first 3 s …
+- deferred`; `[rhythm] first lull ENDED at … s: … (the breather clock), … held after … s`; `[press] first WING man held at an end at … s: … m past
+an end of … - past the end the front bends back 30 degrees …`; `[press] first WING man walked back from round an end …`. **[summary]** `battle rhythm
+(step 78b) - THE LULL'S TRIGGER AND GAP: started by the breather clock …, by both units spent … ; THE GAP measured from the men in lulls (…): mean …
+m (p10 …, p90 …, the lowest … m) against 3.5 m wanted; it held … after mean … s (…), never …; lines stepped back …; charge orders … deferred …` and
+`press, don't pass (step 78b) - NO WRAPPING: the wrap off (PressWrapAllowed) …; WINGS held at an end (looks) ON … by … men (the farthest … m past
+an end), walked back to the bent front …; CROSSED round an end ON …; the old wrap - looks let round the end with his mass 0 …`. **Right**: lulls
+4-8 in a 7-minute grind, most by the clock, the gap's mean 3-4 m and "never" ~0, held within ~3-6 s; "round the end with his mass" 0, crossings
+round an end ON near 0; the wings' farthest metres ≈ the overlap (Toni's ~19 m). **Wrong**: the gap mean below ~2 m or "never" most lulls (the
+native charge pushing through the clamp - tell Claude); lulls only by "both units spent" (the clock's bars too low - tune *Lull clock: a charging
+unit worn below*); lulls ending at 30 s every time; men round your ends; your own ordered flank move held back.
 
 ---
 

@@ -2920,6 +2920,52 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     cost). (g) UNVERIFIED in game: that the engine walks a man by the swap's vector in a tight press (the AI's collision avoidance), that the slot swap
     makes the wall's men change places cleanly, that a lull's gap holds against the native charge AI (the clamp), the front bars' thresholds against
     real battles - PLAYTEST D43.
+73. **The lull that shows, no wrapping round the ends** (step 78b, Toni's 225 v 229 battle 2026-10-22 16:08-16:17, battle_terrain_b, 435 s:
+    "between the two fronts [a lull], never, not for a sec"; the enemy's 229 recruits - D 5.08, 46 files, 69 m - far wider than his ~31 m line, its
+    wings round both his ends: "they should not appear ... like packs of dogs, barking at each other after the first time they try each other ... they
+    don't want to do funny stuff like going around the other group, flanking, they want to stay in their pack"). THE EVIDENCE: 2 lulls in 435 s;
+    "both fronts SPENT in contact" on only 27 unit looks - the bar of the men in contact averaged 29% but the rotation (379 swaps) kept the FRONT men's
+    bars up, so step 78's test (the front men's bar) rarely held; at the first lull the fronts were MESHED ("the gap between the fronts -20.7 m") and
+    easing each 90th-percentile front back 2 m opened nothing visible; one of the two ended at once by a new charge order; step 77's wrap allowed
+    "round the end with his mass" on 4763 looks. (a) THE BREATHER CLOCK (decided): a pair in CONTINUOUS contact (lost under 2 s does not restart it)
+    for a time rolled once per spell (`RhythmUnits.Dice`) between `LullClock*MinSeconds` and `LullClock*MaxSeconds` of the more aggressive of the two
+    units' order groups (charge 30-60 s, advance 25-50, hold 20-40 - later under a charge, sooner under a hold) lulls once BOTH UNITS are worn -
+    `LullClockChargePercent` 55 / advance 60 / hold 65 - or the pair's BLOWS in contact have slowed to `LullAttackRateFallenPercent` 60% of their
+    peak in the spell (every AI melee release of a man in contact at his last look ÷ the men in contact, a minute, smoothed over ~6 s; the peak after
+    4 s of contact). A UNIT's bar = the mean bar of its men within `LullUnitDepthMetres` 8 of its front (the 90th percentile toward the enemy) - the
+    rotated fresh men and the tired men behind them alike, so the rotation never hides tiredness. Step 78's thresholds (`LullStart*Percent` 30 / 40
+    / 50) are the SPENT trigger now, on the same unit bar: both below after `LullMinContactSeconds` 10 = a lull at once. After a lull the clock starts
+    again with the next contact (a new roll). The recovery reads the unit bar too; `LullRecover*Percent` 10 / 15 / 20 → 20 / 25 / 30 in defaults.json
+    (a breather long enough to see - config FORMAT 17 moves a file's untouched old values once, a hand-set one kept and said). A NEW charge order in
+    a lull's first `LullChargeGraceSeconds` 3 s is deferred - it ends the lull once they have passed, if the unit is still on a charge. Expected: a
+    6-minute grind between two lines sees ~4-7 breathers (the smoke's meshed grind: 7, two by the clock), each ~10-20 s. (b) THE CLEAR GAP (decided):
+    measured from the MEN, never a percentile front - every 0.5 s the pair's men in `RhythmMath.GapBinMetres` 2 m bins along the contact (64 bins),
+    in each bin with men of both A's front-most and B's rear-most toward A; the gap there = their distance (negative = meshed); the contact PLANE = the
+    median of the bins' midpoints, each side's FRONT = the median of its nearest men. The LINES at the start: A's = min(the plane − `LullGapMetres` ÷ 2,
+    A's front − `LullEaseMetres`), B's mirrored - a meshed fight separates about its middle, a fight with a gap still backs off the ease. Men ahead of
+    their side's line walk back facing the enemy (step 78's backpedal - a man mixed into the enemy walks straight back through them, the engine's
+    avoidance steering him round), the rest are clamped at it, held walls' slots shift back by the line's distance from their nearest men. The gap
+    HOLDS when the bins' 25th percentile reaches `LullGapMetres` − 0.5 m (the time it took logged); while it does not (after 3 s) a side standing AT
+    its line (its nearest men within 0.6 m) steps it back 0.25 m a publish - at most `LullMaxBackMetres` 8 beyond where the lull first put it - a
+    side still ahead of its line keeps it. The axis is one for the pair (B's = A's turned round). (c) NO WRAPPING (decided): step 77's wrap only
+    while `PressWrapAllowed` (off - a new key, no migration). Past a line's end + `PressEndSlackMetres` the front a man may not cross BENDS back
+    toward his side by `PressWingBendDegrees` 30 - p metres past the end it stands tan 30° x (p − 1) in front of the line's front: an overlapping
+    wing is clamped along it (the clamp's normal cos 30° into the line + sin 30° outward, within 0.6 m of it), slides toward the end and stands off
+    it facing it (a refused flank) - never level with the line's flank or behind it; a wing man forward of it is walked straight back to it (a Push
+    to the bent front); a man behind the line walks round its nearest end to the bent front there; a wing man of a unit in contact is side-clamped
+    past the end + the slack like a rear-rank man. The smoke: Toni's 69 m on 31 m under a stand-in charge that sends every man beyond the ends round
+    them - step 77's wrap 80 men past the front, step 78b 0, every wing man at an end. (d) ORDERS STILL WORK (decided): the rule is about the AI men's
+    own movement - a unit ORDERED to a place (its movement order a Move - yours or the AI general's flanking) is free beside or behind the line
+    (`PressAction.Ordered`); a charge / advance / hold is the AI's own pressing. (e) 16 settings (473 → 489): `PressWrapAllowed`, `PressWingBendDegrees`
+    after `PressEndSlackMetres`; 14 `Lull*` after `LullRotates` (Advanced, "Courage and cohesion (AI)"). (f) THE LOG: `[rhythm]` first LULL (its
+    trigger, the unit bars over their men vs the front men's, the blows vs the peak, the gap from the men, each line's distance), first lull GAP
+    OPENED, first LINE STEPPED BACK, first CHARGE ORDER deferred, first lull ENDED (its trigger, held after … s); a THIRD [summary] "battle rhythm
+    (step 78b) - THE LULL'S TRIGGER AND GAP" line (by trigger, the trigger looks, the clock waiting, would-start OFF by trigger, the gap mean / p10 /
+    p90 / lowest, the time to open, never opened, lines stepped back, charges deferred); `[press]` first WING man held at an end / walked back, first
+    man ORDERED beside a line; a third [summary] "press, don't pass (step 78b) - NO WRAPPING" line (wings held ON | OFF, men, the farthest, walked
+    back; crossings round an end; the old wrap counter - 0 with the switch off; ordered looks). (g) UNVERIFIED in game (PLAYTEST D43b): that the
+    native charge AI stays behind a lull line long enough for the gap to show; that a meshed crowd backs out (men walking back through the enemy);
+    that the wings stand at the bent front rather than jostle; the clock's and the bars' numbers against real grinds.
 
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),

@@ -7155,3 +7155,120 @@ war cries: nothing yet (`Agent.MakeVoice` is 79's).
 **DEPLOY**: `tools\deploy.ps1` ran normally (Smart App Control off): the build, the AssemblyGuard (OK), the offline smoke (183 passed), installed as
 Modules\TraxCombatEnhancements.Dev "Trax Combat Enhancements (dev)" - the game and the launcher were not running. `tools\SmartAppControl\loadcheck.ps1`:
 both DLLs LOADED (`1.2.0+28532b0d1ab570d4f7923fbcdf8e68cdcbbf75bc`). Not uploaded. Windows security untouched.
+
+## Step 78b — the lull that shows, no wrapping round the ends (built 2026-10-22; dev build only, not uploaded)
+
+**Toni's 225 v 229 battle (2026-10-22 16:08-16:17, battle_terrain_b, 435 s, the last `[summary] ====` block + its `[rhythm]` lines)**:
+- "between the two fronts [a lull], never, not for a sec": `LULLS ON: started 2 (front bars at the start 22%-39%) … ended: a front recovered 1, a new
+  charge order 1 … both fronts SPENT in contact ON 27 unit looks`; the bar of men IN CONTACT averaged 29% (89901 looks) - but the rotation (379 swaps done
+  of 1127 asked) kept the FRONT men's bars up, so step 78's test (the front men's mean bar) rarely held.
+- `first LULL at 235.6 s: your Infantry (advance, front bar 39%) and the enemy's Infantry (charge, front bar 29%) - both fronts spent after 140.9 s in
+  contact; each eases back 2.0 m (the gap between the fronts -20.7 m now)` - meshed: easing a 90th-percentile front back 2 m inside a mesh opens nothing
+  visible. `first lull ENDED at 250.6 s: … a new charge order after 15.0 s`.
+- The enemy's 229 recruits (`line discipline … D 5.08 → max 46 files 69.2 m`) on his ~31 m line: `press … units WIDER than their line (wraps allowed) 4;
+  … round the end with his mass 4763` - the wings went round both his ends. Toni: they "should be like packs of dogs, barking at each other after the
+  first time they try each other … they don't want to do funny stuff like going around the other group, flanking, they want to stay in their pack".
+
+**78b.1 THE BREATHER CLOCK (Core `Rhythm.cs` - `RhythmMath.PairGroup / ClockSeconds / ClockBar / Worn / RateFallen / Trigger / MeanWithin`, `RhythmUnits`)**
+- A UNIT's bar (`RhythmUnits.UnitBar`) = the mean bar of its men within `LullUnitDepthMetres` 8 of its front (the 90th percentile toward the enemy unit -
+  step 78's front) - the rotated fresh men AND the tired men behind them: the rotation never hides tiredness. The front men's bar stays published (79).
+- The pair's CLOCK: a roll (0..1, `RhythmUnits.Dice` - the tests / smoke seed it) at each NEW spell of contact (contact lost over 2 s = a new spell); its
+  time = min + roll x (max − min) of the MORE AGGRESSIVE order group of the two (`PairGroup`: charge, else advance, else hold) - re-read every publish (live).
+- The pair's ATTACK RATE: every AI melee release on foot of a man in contact at his last look (`AthleticsLogic.NoteRhythmAttack` from StartRelease -
+  `RhythmMind.Contact`, the look ≤ 1.5 s old) → `RhythmUnits.NoteAttack(key)`; each publish (attacks of both ÷ men in contact of both) x 60 ÷ 0.5 s,
+  smoothed (EMA, τ 6 s); its PEAK in the spell after 4 s of contact.
+- `Trigger` (in order): TIRED - contact ≥ `LullMinContactSeconds` 10 and both UNIT bars below `LullStart*Percent` 30 / 40 / 50 (step 78's thresholds, now on
+  the unit bar) = at once; CLOCK - contact ≥ the clock AND (both unit bars below `LullClock*Percent` 55 / 60 / 65 (each its own order) OR the rate ≤
+  `LullAttackRateFallenPercent` 60% of the peak). The clock run with neither = `ClockWaitLooks`.
+- After a lull (`AfterLull`): ContactSince / ContactSeen / the roll / the rate NaN - the clock starts again with the next contact. OFF: one would-start
+  per spell (by trigger), the clock restarts too.
+- Recovery on the unit bar: `LullStartBar` = the unit bar; `LullRecover*Percent` 20 / 25 / 30 shipped (DESIGN's initial 10 / 15 / 20 stay the column) -
+  CONFIG FORMAT 17 (`ConfigFile.Migrate`, `from < 17`): an untouched 10 / 15 / 20 moved once, a hand-set value kept and said (MoveOrKeepIfMoved, as
+  steps 71 / 74).
+- THE CHARGE GRACE: a NEW charge order (`RhythmMath.NewCharge`) in a lull's first `LullChargeGraceSeconds` 3 → `ChargePendingAt` (counted
+  `ChargeDeferred`); at the grace's end, still a charge = ended `ChargeOrder`, else dropped.
+- EXPECTED: a 6-minute grind sees ~4-7 lulls of ~10-20 s - the clock 30-60 s (charge) + a lull ~15 s + re-closing ~3 s ≈ a minute a cycle; deeply spent
+  units (below 30 / 40 %) lull every ~35-40 s (10 s contact + the lull + the 20 s cooldown). The smoke's meshed grind (bars drain 0.8 %/s in contact,
+  refill full in 60 s out of it): 7 lulls in 360 s, 2 by the clock and 5 spent, 103 s in lulls.
+
+**78b.2 THE CLEAR GAP FROM THE MEN (`RhythmMath.MeasureGap / StartLines / GapHolds`, `RhythmUnits.MeasurePair`)**
+- Every publish of a pair (at the start and in the lull) from the period's samples (≤ 512 a unit): in the pair's frame (A's direction toward B - the
+  lull's frozen one; B's is A's turned round, set at the start), across in 2 m bins (`GapBinMetres`, 64 bins = 128 m, centred on the centroids' middle):
+  A's front-most and B's rear-most toward A; the gap of a bin = their distance (negative = meshed); out: the mean / 10th / the 25th (`GapQuantile` - the
+  hold test) / 90th, the contact PLANE (the median of the bins' midpoints), each side's FRONT (the median of its nearest men). Allocation-free (scratch
+  arrays of 64 + the period samples).
+- THE LINES at the start: A's = min(plane − `LullGapMetres` 3.5 ÷ 2, A's front − `LullEaseMetres` 2), B's = max(plane + 1.75, B's front + 2) - Toni's
+  meshed start separates about its middle; a pair with a gap still backs the ease. `LullEase[k]` = the line's distance behind the side's nearest men (a
+  held wall's slot shift - `RhythmWallSlot` unchanged). No bin with both (a wall seen only by its attackers' votes, thin samples) = step 78's lines.
+- In the lull: the measure each publish (`GapMean / GapQ10 / GapHold / GapQ90`, the sums for the summary); OPENED when the 25th percentile ≥ 3.5 − 0.5
+  (`LullOpenedAfter`, an `Opened` event); else after `SettleSeconds` 3 a side standing AT its line (its nearest men within `AtLineMetres` 0.6 of it)
+  steps it back `LineStepMetres` 0.25 a publish, at most `LullMaxBackMetres` 8 beyond `LullLine0`; a side still ahead of its line keeps it (stepping it
+  back would only push its own men). `EndedOpened` = the max measured mean − the start's.
+- The walk itself is step 78's (`SteerRhythmMan`: ahead of the line by 0.3 m → walked straight back facing the enemy; at it → clamped). A man mixed deep
+  into the enemy walks straight back too (the engine's avoidance steers him round the enemy) - decided: a routed walk round the enemy would need a
+  per-man path, and the 2 m bins already show it if a mixed man never gets out (the gap's 10th percentile).
+
+**78b.3 NO WRAPPING, THE WING (`PressDontPass.cs` - `PressRules.WrapAllowed / WingBendDegrees`, `PressMath.WingPlane / FrontDistance / Decide`)**
+- `ManWraps` = `WrapAllowed` && the unit wraps && mates - off by default (a NEW key `PressWrapAllowed`, so no migration; `PressWrapMarginMetres` untouched).
+  The table still measures who is wider (`Wraps`, `WrapUnits`).
+- THE BENT FRONT: past an end (`l` beyond lo / hi) by p > `PressEndSlackMetres` 1 the front stands `WingPlane` = tan(`PressWingBendDegrees` 30) x (p − 1)
+  in front of the line's front (his side); his distance in front of it `FrontDistance` = (d − plane) x cos 30. Decide past an end, not wrapping: in
+  front of it (≥ −0.5) = `PressAction.Wing` (the clamp within the watch, `PressOrder.Wing` = the end side) + the side clamp past the end + the slack
+  (a wing man of a unit in contact, like step 77's rear-rank man); forward of it within the line's body depth = a Push to the bent front + 0.3; behind
+  the line = step 77's Return, its last leg forward to max(1, the bent front + 0.3) there.
+- The module's steer (`SteerPresser`) recomputes the bent distance every 0.1 s: the clamp bites within 0.6 m of it with the normal cos 30 x Inward + sin
+  30 x side x Across (into the line and outward past the end); a Push / Return back on his side of the BENT front = a Wing clamp.
+- ORDERS STILL WORK: `PressLookCore` reads the unit's order kind once a period (`RhythmUnitFacts` - the rhythm's cache); a MOVE (yours, or the AI
+  general's flanking - BehaviorFlank etc. give Move; the AI's advance is AiAdvance, its tactical charge AiCharge) beside the line or behind its body =
+  `PressAction.Ordered` (free). In front of the line within its ends the step-77 clamp still holds an ordered man (never through it).
+- The smoke (Toni's 69 m on 31 m; the stand-in sends every man beyond the ends round them - first past the corner, then in behind): step 77's wrap 80 men
+  past the front; 78b 0 past, 0 crossings round an end, 0 wrap looks, wing looks 658 by 120 men, 26 walked back; the 120 wing men all at an end (the
+  stand-in has no collisions - they gather at the corner; the game's crowd spreads them along the bent front); a man running in between two looks stood
+  at most 3.9 m forward of the bent front (still short of the line's front - the look is every 0.5 s, the clamp only on a man already wishing); ordered
+  (a move) - 80 round, the middle never through.
+
+**Settings (16; 473 → 489; FormatVersion 16 → 17 for the LullRecover* defaults)**: Advanced "Courage and cohesion (AI)": after `PressEndSlackMetres` -
+`PressWrapAllowed` (false), `PressWingBendDegrees` 30 (0-80); after `LullRotates` - `LullClockChargeMinSeconds` 30 / `LullClockChargeMaxSeconds` 60,
+`LullClockAdvanceMinSeconds` 25 / `...MaxSeconds` 50, `LullClockHoldMinSeconds` 20 / `...MaxSeconds` 40 (0-600; a max below its min = the min),
+`LullClockChargePercent` 55, `LullClockAdvancePercent` 60, `LullClockHoldPercent` 65 (0-100), `LullAttackRateFallenPercent` 60 (0-100, 0 = the bars
+alone), `LullUnitDepthMetres` 8 (0.5-40), `LullChargeGraceSeconds` 3 (0-15), `LullGapMetres` 3.5 (0.5-10), `LullMaxBackMetres` 8 (0.5-30).
+defaults.json: `LullRecover*Percent` 20 / 25 / 30. The player page unchanged (27); the hints of `PressDontPass` / `LullEnabled` reworded.
+
+**Plumbing constants** (`RhythmMath`): GapBinMetres 2, GapBins 64, GapQuantile 0.25, GapSlackMetres 0.5, SettleSeconds 3, LineStepMetres 0.25,
+AtLineMetres 0.6, RateTauSeconds 6, RateWarmSeconds 4.
+
+**THE LOG**: `[rhythm]` first LULL (the trigger, after … s in contact, the clock; each unit's bar over its men in the fight vs its front men's; the blows
+vs the peak; THE GAP from the men mean / p10 / p90; each line's distance behind its nearest men), first lull GAP OPENED, first lull LINE STEPPED BACK,
+first CHARGE ORDER … deferred, first lull ENDED (its trigger, held after … s / never held); a THIRD [summary] `battle rhythm (step 78b) - THE LULL'S
+TRIGGER AND GAP` line; step 78's LULLS line reads "unit bars" and "recovered (the unit's bar)". `[press]` first WING man held at an end, first WING man
+walked back from round an end, first man of a unit ORDERED beside / behind a line; a THIRD [summary] `press, don't pass (step 78b) - NO WRAPPING` line
+(wings held ON | OFF by men and the farthest past an end, walked back; crossings round an end; the old wrap counter - 0 with the switch off; ordered).
+
+**Measured offline**: tests 1121 → 1132 (Step78bTests.cs 11; Step78Tests: the grace, the third line, the renamed recovery; Step77Tests pin step 77's
+own wrap / no bend; the format strings → 17; the counts 489 / 125). Smoke 183 → 186 (Program.Step78b.cs; step 77's smoke pins PressWrapAllowed on and
+the bend 0, step 78's pins its own lull - no clock, `LullUnitDepthMetres` 1.5, no grace). THE COST: 1000 men in a lull, the gap measured from all of
+them each publish - the rhythm's own 0.024 ms a tick, 0 bytes over 300 ticks.
+
+**Seams kept for step 79 (waves, readiness, war cries)**: unchanged - `RhythmUnits.EndLull(key, LullEnd.Wave, now)` / `AthleticsLogic.EndLullByWave`;
+the unit table publishes `FrontBar`, `FrontMen`, `ContactMen`, `Enemy`, `UX / UY / Front`, `Kind`, `InLull / LullSince / LullLine` - and now `UnitBar`
+/ `UnitMen` (readiness), `ClockAt` / `ClockRoll` (when the pair's next breather is due - a wave can wait for or pre-empt it), `RateEma / RatePeak` (the
+grind's tempo), `GapMean / GapHold` (the ground a wave must cross), `LullOpenedAfter`; `RhythmMath.NewCharge` + the grace's `ChargePendingAt` (79's big
+wave on a new charge order should end the lull itself through `EndLull(…, Wave)` before the grace runs out); the eighth wish's walk / clamp.
+
+**Gotchas**
+- Git Bash heredocs with apostrophes once more: the long edits went to scratchpad Python files written with the Write tool (`s78b_*.py`, a small
+  `eol.py` keeping each file's line endings), run with `python -I`.
+- `RhythmRules`' constructor defaults stay DESIGN's initial values (10 / 15 / 20 recovery), `PressRules`' constructor keeps step 77's (wrap on, no bend)
+  so the step-77 tests construct what they test; `PressRules.From(settings)` reads the shipped switch.
+- A smoke stand-in with no collisions stacks a whole wing at the end's corner - count the wing men by where they STARTED.
+- Once the gap holds a side stops stepping back - a "cap" check needs the other side pressing after it, and a lull longer than 30 s (`LullMaxSeconds`)
+  or the lull times out and the next one starts from a new `LullLine0`.
+
+**UNVERIFIED — only the game can tell (PLAYTEST D43b)**
+1. The native charge AI stays behind a lull line long enough for the gap to show (the clamp as step 77's / 78's): `THE GAP measured … mean` 3-4 m,
+   `never` ~0.
+2. A meshed crowd backs out: men mixed into the enemy walking back through them (the engine's avoidance) - the gap's p10 near the mean, not far below.
+3. The clock against real grinds: lulls mostly by the clock, 4-8 in a 7-minute grind; "the clock run but nobody worn or slowed" small (else lower the
+   clock's bars or raise the blows' share).
+4. The wings stand at the bent front (curled toward the end) rather than jostle at it; `WINGS held at an end` large, crossings round an end ~0.
+5. An ordered flank move (yours) still goes round the end.
