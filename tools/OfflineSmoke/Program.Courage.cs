@@ -38,6 +38,9 @@ namespace TraxCombat.Tools
             public readonly Dictionary<int, FearOrder> Orders = new Dictionary<int, FearOrder>();
             public double FacingX = 0, FacingY = 1;
 
+            /// <summary>Step 77: a formation's own facing (a line facing its attackers) - else the global one.</summary>
+            public readonly Dictionary<int, (double X, double Y)> Facings = new Dictionary<int, (double, double)>();
+
             public bool Unit(TrackedAgent st, out int key, out FearOrder order, out double cx, out double cy, out double fx, out double fy)
             {
                 key = -1;
@@ -49,6 +52,7 @@ namespace TraxCombat.Tools
                 key = FearMath.UnitKey(me.Team, me.Formation);
                 if (key < 0) return false;
                 if (Orders.TryGetValue(me.Formation, out var o)) order = o;
+                if (Facings.TryGetValue(me.Formation, out var facing)) (fx, fy) = facing;
                 return FormationCentre(st, out cx, out cy);
             }
 
