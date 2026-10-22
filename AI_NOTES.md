@@ -6738,3 +6738,94 @@ recruits with 100 trailing far out, 500 legionaries) 0.23 ms a tick for courage 
 (`run_smoke.ps1`) all 170 passed; `install_dev.ps1` → Modules\TraxCombatEnhancements.Dev; `loadcheck.ps1` REFUSED the first module DLL, a rebuild
 with `-p:SourceRevisionId=28cecc13….sac1` loaded both (`1.2.0+28cecc137cc20242ed05dc6071ca8491aba35698.sac1`): TraxCombatEnhancements.dll SHA-256
 7EE41A28…7921, TraxCombat.Core.dll 0F318FCF…46EF. The game and the launcher were not running at the install. Windows security untouched.
+
+## Step 75 — a standing shield wall never leaves its slot (built 2026-10-22; dev build only, not uploaded)
+
+**Toni (2026-10-22)**: "The men in the shield wall still step forward even when on a standing order. They take a few steps to strike at an
+enemy, then fall back. Can you make a trigger in the settings that I can test on and off: when people are in a shield wall and on a stand
+order (not move / engage / charge), when I ordered them to a place and they are there, they do not leave the wall no matter what. They strike
+from their place if they can, so they are focused at max on holding that ground and tiring out the enemy if he chooses to push at them."
+
+**What moved a held man out of a standing wall (the code and the v1.4.8 decompile, `%TEMP%\trax_decomp\`)**
+1. **Step 42's LEASH** (`ShieldWallStepOutMetres` 1.0): an enemy within L + 2 m in front of his slot FREES him - vanilla's own "keep" value
+   (false) given back, the native AI closes and swings - until he stands L out, then held and walked back; again once back within 0.3 m.
+   That IS Toni's picture ("a few steps to strike, then fall back"). Closed: the leash is 0 for a man standing firm (a running step is reined
+   at once - `LeashMove.LeashOff`); a COPY of the leash's state machine (`WallState.FirmLeash`) still runs on him so every step it would have
+   given is counted as refused (the same enemy reads the leash makes for a held man in his slot).
+2. **The game's FRAME under a Stop**: `HumanAIComponent.ParallelUpdateFormationMovement` → `Agent.TrySetFormationFrame(GetBaseFormationFrame)`
+   every ~0.5 s; `Formation.GetOrderPositionOfUnit` returns `unit.GetWorldPosition()` for `MovementStateEnum.StandGround` - the point the engine
+   walks him to is wherever he stands, so a man who drifted out is never walked back by the game. Vanilla also writes NO integrity data under a
+   Stop (`OrderEnum != Stop` gate) - only our step-41 write keeps him. Closed: the frame pinned to his slot (`GetCurrentGlobalPositionOfUnit(agent,
+   true)` - step 41's point) with step 68's own `IWallBody.Pace` call, right after vanilla's update and at every hold look
+   (`ShieldWallStandFirmPinFrame`); every let-go path gives the game's frame back (the `Paced` flag / `Unpace`, as step 68).
+3. **The integrity TOLERANCE**: vanilla hands the engine `DeviationOfPositionsExcludeFarAgents` (the formation's spread - ~1 m for a wall in
+   contact) with the flag; what native does with it is unseen. Closed (a hypothesis lever, A / B-able): at most the slack (0.3 m)
+   (`ShieldWallStandFirmTightTolerance`).
+4. **The walk-back marks**: step 63's "out of place" begins at max(L, 1) + 0.25 = 1.25 m (a lunge, the press or the native approach below that
+   was nobody's business) and step 68's kick return at 0.5 m (own kicks / punish presses only). Closed: standing firm, out of place from
+   `ShieldWallStandFirmSlackMetres` 0.3 m whatever moved him, walked back AT ONCE (no `ShieldWallPullBackSeconds` wait) to within 0.15 m, never
+   while his own kick plays (canMove) - `WallPullMath.Step(…, standFirmMetres)`, `WallOutOfPlace.StandFirm / OwnKick`; the 0.1 s out-of-place
+   look runs while the switch is on.
+5. **A running AI sprint** (a Move order's 20 %; a fever's - none under a hold: the fever ends on a hold / move): ended at the look
+   (`SprintEnd.StandFirm`, appended before Count).
+6. **Step 68's ADVANCE PACE**: a MOVE whose line was pushed back from its order slots (farther than 1 m, the enemy within 10 m) was paced 1 m
+   toward them - out of the line. Closed: no pace while standing firm (the pinned slot instead; counted once a spell).
+Already closed before this step for any held man (checked in the code): courage's surge and the fever press (`CourageSkip.WallHeld` - courage
+never looks at a held man, so no surge / timid step-in, and the punish's step-in is courage's), the fear flock and its band (`FearSkipped`), the
+block hold (`BlockSkipped`), the lone-runner walk (courage's), the step back (`StepBackRefusal.HoldingArrangement`). Step 54's punish only raises
+the attack DECISION (he swings from the slot); its walk-back mark (step 68) is now the slack.
+**Not touched (Toni: "they strike from their place")**: his attack input (no hold / brace wish is added), the behaviour weights (a blind lever
+- the DefensiveArrangementMove set already gives Melee 4 → 0 by 5 m against GoToPos 3 → 5 by 8 m; the keep flag decides), step 65's kicks /
+bashes (reach 1.6 m, a kick's lunge walked back after it plays).
+
+**"At its place" (Claude's call)**: a STOP stands at once (the place is where it stopped); a MOVE once `Formation.CurrentPosition` (the line's
+reference point as it stands) is within `ShieldWallStandFirmArrivedMetres` 2 m of `Formation.OrderPosition` AND the integrity data's average
+velocity is at most `ShieldWallStandFirmStillMetresPerSecond` 0.5 m/s; then LATCHED per man (`StandFirmLatch` - a fighting line shuffles)
+until the order position moves more than 2 m (a new move) or the formation stands more than `StandFirmMath.LeaveFactor` 2 x 2 = 4 m from it
+(pushed far: the game walks it home as a line under step 41-68's rules, then it stands again); any other order clears it. Hold-type =
+`BraceOrderKind.Stop` / `Move` only: the AI's Move under BehaviorAdvance / Cautious / Vanguard (AiAdvance) or TacticalCharge (AiCharge) never;
+advance, charges, fall back, follow, retreat never. The AI general's other Moves (defend, hold a position) count - both sides' AI formations,
+never the player himself (step 41's NotAi gate). Squares and circles too (out = outward, the leash's measure).
+
+**Settings (6, all Live; 403 → 409)**: `ShieldWallStandFirm` (true) on the PLAYER page after `ShieldWallStepOutMetres` (22 settings - Toni tests it
+on and off; SettingsPagesTests' list and range 12-22 changed on purpose, the smoke's page check too); Advanced, "Battle pace (AI)" after
+`ShieldWallKickReturnMetres`: `ShieldWallStandFirmSlackMetres` 0.3 (0.1-1.5), `ShieldWallStandFirmArrivedMetres` 2.0 (0.5-20),
+`ShieldWallStandFirmStillMetresPerSecond` 0.5 (0-3), `ShieldWallStandFirmPinFrame` true, `ShieldWallStandFirmTightTolerance` true. New keys, no
+migration (FormatVersion stays 16). Gate: `ModEnabled` FIRST, `ShieldWallHoldsSlots`, then the switch (`StandFirmRules`).
+
+**Built**: Core `ShieldWallStandFirm.cs` (StandFirmVerdict, StandFirmLever, StandFirmLatch, StandFirmRules, StandFirmMath - IsHoldOrder, FromPlace,
+Speed, Conditions, Decide, Leash, Tolerance -, StandFirmStats + the [summary] line), `ShieldWall.cs` WallFacts.HasFormationOrder / FormationX/Y /
+FormationOrderX/Y, `ShieldWallPull.cs` the 11-argument Step + WallOutOfPlace.StandFirm / OwnKick, `Sprint.cs` SprintEnd.StandFirm. Module
+`AthleticsLogic.StandFirm.cs` (StartStandFirm, TickStandFirmSettings, StandFirmLook, FirmWouldStep, FirmFrameLook, FirmTolerance, the first-lever
+lines - the text built only for the first of each kind, FirmSpellBegan / Back, NoteFirmAttack from StartRelease, FirmForget on every let-go path,
+WriteStandFirmSummary after the wall's lines); `AthleticsLogic.Wall.cs` LookWall (the look after step 41's verdict, the leash 0, the tight Hold,
+the pinned frame instead of PaceLook, OutOfPlaceLook with the slack, the ON / OFF samples), `WallBody.cs` (WallState.Firm / FirmCond / EverFirm /
+FirmLatch / FirmLeash / FirmOut / FirmPaceRefused; Read adds the formation's CurrentPosition / OrderPosition / OrderPositionIsValid for a Move).
+
+**Logs**: `[wall] stand firm (step 75): ON …` at mission start; `… changed mid-mission at … s`; `first man STANDING FIRM this mission` (his order,
+a move's distance / speed, the tolerance vs the formation's); `first lever refused for a man standing firm (step 75) - <kind>` once per kind (the
+step out, a sprint, the advance pace, his own kick / bash or a punish press, pushed / the game's approach / a blow); `first man standing firm
+back in his slot`; `first strike by a man standing firm … from his slot`. **[summary] wall stands firm (step 75 - …)**: held man-seconds (in
+contact) and men; IN CONTACT ahead of the slot (> 0.5 m, > 1 m, mean, farthest) ON vs OFF (OFF = men in the same conditions with the switch off);
+strikes from the slot / out of it ON vs OFF and a man-minute in contact; the levers refused by kind; the walks back and their time; frames pinned,
+tolerance writes; let go while standing firm (morale break / far behind / other); held looks not standing firm (not a hold order / a move not at
+its place / switched off); switch changes, errors.
+
+**Measured offline**: tests 1077 → 1085 (Step75Tests.cs 8). Smoke 170 → 172 (Program.Step75.cs - a stand-in world: ten men of a halted wall, an
+enemy 2.2 m in front of each, the leash's free men walking out 2 m/s, the walk back 1 m/s, the game's approach creeping 0.3 m/s while the frame is
+not pinned, a 0.5 m shove on each man every 4 s, swings every 1.3 s): ON mean 0.03 m ahead, beyond 0.35 m 4.1 %, beyond 0.5 m 0 %, the farthest
+0.50 m (the shove itself), 0 steps out (10 refused), 39 shoves walked back in 0.29 s, 148 of 153 strikes from the slot; OFF live mean 0.63 m,
+beyond 0.5 m 98 %, the steps out back, 151 of 153 strikes out of the slot, the frames and tolerance given back; an ADVANCE never; a MOVE only at its
+place; a sprint ended; his kick walked back after it plays; a charge / far behind / the master switch let go. Cost: 1000 men standing firm 0.08 ms
+a pre-tick; ~145 KB over 600 ticks = the one-off AiInputState of each man first walked back (step 63's EnsureInput) - steady state allocation-free.
+The older smoke steps pin `ShieldWallStandFirm` off (AthleticsDefaults, WallDefaults): their halted walls keep the leash. Tests and smoke ran in
+memory only (`run_tests.fsx`, `run_smoke.ps1` - Toni sees a Windows Security pop-up for each blocked file, so no `dotnet test` / fresh exe).
+
+**UNVERIFIED — only the game can tell (PLAYTEST D40)**
+1. The engine walks a held man to the PINNED frame under a Stop and keeps him there: `wall stands firm` ON in-contact "more than 0.5 m" a few %
+   at most, "more than 1 m" ~0, against OFF's. If ON ≈ OFF: the engine ignored the frame / the walk back - tell Claude.
+2. Men standing firm still LAND swings at enemies in reach - strikes a man-minute ON close to OFF's. Far below = the keep flag (with the leash
+   gone) too strict for the front rank; the next lever would be the behaviour weights (Melee within the weapon's reach).
+3. The tight tolerance changes nothing visible or helps (A / B `ShieldWallStandFirmTightTolerance`); a wall that jitters = raise the slack.
+4. A moved wall stands firm on arrival (`first man STANDING FIRM … under the order Move (at its place: … m …)`), and an AI general's
+   defending formations too (the enemy's walls should hold as well).

@@ -375,6 +375,27 @@ The step out to strike still works inside the push. A wall whose morale breaks (
 "Battle pace (AI)"; 0 = the game's own pull only; live); step 68 (Advanced, "Battle pace (AI)", live): `ShieldWallAdvanceAsOne` on,
 `ShieldWallAdvanceStepMetres` 1.0 (0.3-3), `ShieldWallAdvanceNearMetres` 10 (0-60), `ShieldWallKickReturnMetres` 0.5 (0 = off).</sub>
 
+**A standing wall stands firm** (step 75, Toni 2026-10-22: men of a wall on a stop order still "take a few steps to strike at an enemy,
+then fall back"). A shield wall, square or circle on a **stop** - or **moved** to a place it has reached (within 2 m of it, its men
+moving at most 0.5 m/s; it stays so until it is moved elsewhere or pushed more than 4 m off) - never leaves its ground:
+
+| What would move a man out | Standing firm |
+|---|---|
+| The step out to strike (1 m at an enemy who backs off) | refused - he strikes only what is within his reach |
+| A sprint (a move order's) | ended |
+| His own kick / bash, a shove, a blow, the game's own approach | more than **0.3 m** ahead of his place = he backs straight in (to 0.15 m), facing the enemy, as soon as he can move - never while his kick plays |
+| The game's walk target on a stop (wherever he stands) | his own place in the wall |
+| The advance-as-one step (a moved wall pushed back) | his own place in the wall |
+| Courage, the fear flock, the block hold, the step back | never touch a man held in a wall (as before) |
+| Its morale breaks / a man thrown far behind | let go, as before |
+
+He still guards, blocks, swings and kicks or bashes at whatever comes within reach - an enemy who pushes at the wall tires himself on it.
+Not while the wall advances, charges, follows, falls back or retreats.
+
+<sub>Settings: `ShieldWallStandFirm` on (player page; live - flip it mid-battle to compare); Advanced, "Battle pace (AI)", live:
+`ShieldWallStandFirmSlackMetres` 0.3 (0.1-1.5), `ShieldWallStandFirmArrivedMetres` 2.0 (0.5-20), `ShieldWallStandFirmStillMetresPerSecond`
+0.5 (0-3), `ShieldWallStandFirmPinFrame` on, `ShieldWallStandFirmTightTolerance` on.</sub>
+
 ## 11. Eagerness, and the fever of a charge
 
 Men don't want to throw their lives away, and a man at work doesn't hold a pace until he drops. In the

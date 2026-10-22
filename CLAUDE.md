@@ -330,7 +330,19 @@ wall pull > courage's walk > the flock > the block), his place moving with the b
 3, + `LineBlockLooseMetres` 10 × (1 − s); elites free); strikers within `LineBlockStrikeReachMetres` 2.5 free (leash 2); released at
 `LineBlockMopUpWinPercent` 50; the fear band clamped inside the block; THE DIAGNOSTIC - per held formation its order / behaviour / arrangement /
 spread / men out of their slots every 0.5 s, the `[block]` change and FIRST CONTACT lines, the [summary] "block hold" and "block shape" lines
-(PLAYTEST D39). The bar for the
+(PLAYTEST D39). A STANDING WALL STANDS FIRM (step 75, Toni 2026-10-22: "the men in the shield wall still step forward
+even when on a standing order, they take a few steps to strike at an enemy, then fall back" - a switch to test on and off; DESIGN decision 69,
+AI_NOTES "Step 75"): `ShieldWallStandFirm` (PLAYER page, 22 settings, on) - a man step 41 holds whose shield wall / square / circle is on a STOP,
+or on a MOVE at its place (`Formation.CurrentPosition` within `ShieldWallStandFirmArrivedMetres` 2 of `Formation.OrderPosition`, its men at most
+`ShieldWallStandFirmStillMetresPerSecond` 0.5 m/s - latched per man until the order position moves 2 m or the wall is pushed 4 m off;
+`StandFirmMath.Conditions`) never leaves his slot: step 42's leash 0 for him (every step it would give counted as refused), a running AI sprint
+ended (`SprintEnd.StandFirm`), the engine's walk target pinned to his slot (`ShieldWallStandFirmPinFrame` - under a Stop the game's frame is his
+OWN position, `StandGround`; step 68's `TrySetFormationFrame`), the integrity tolerance cut to the slack (`ShieldWallStandFirmTightTolerance`), and
+more than `ShieldWallStandFirmSlackMetres` 0.3 m ahead he is walked straight back to 0.15 m (step 63's backpedal, at once, never while his kick
+plays - `WallPullMath.Step(…, standFirmMetres)`); his attack input untouched (guard, blocks, swings and kicks / bashes in reach); never under an
+advance / charge / fall back / follow / retreat; step 67's morale break and step 41's escape still let go; courage, the fear flock, the block hold
+and the step back already skip held men. Core `ShieldWallStandFirm.cs`, Module `AthleticsLogic.StandFirm.cs`; the `[wall]` stand-firm lines and the
+[summary] "wall stands firm" line (ON vs OFF in contact, strikes from the slot, the levers refused by kind) (PLAYTEST D40). The bar for the
 fighter you look at is LATER (DESIGN §3; its settings wait in DESIGN's "Planned parameters"). Words:
 the pool/bar/points are "Athletics", the character-screen skill is "the Athletics skill" (it
 used to be called "endurance"), the "peak line" is the white mark at the top quarter of the bar,
@@ -491,7 +503,8 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               its Default comes from defaults.json (DefaultsFile), never code; step 33: ParamType.Key +
                               KeyNames (a key by NAME, stored as its index; FormatJson writes "LeftControl"; the
                               file / defaults.json read the name, MCM a text box)
-  SettingsSchema.cs           EVERY setting of DESIGN's table (403 - step 74's 11 LineBlock* after LineDisciplinePollSeconds (Advanced, "Line discipline
+  SettingsSchema.cs           EVERY setting of DESIGN's table (409 - step 75's ShieldWallStandFirm after ShieldWallStepOutMetres (the player
+                              page, 22) and 5 ShieldWallStandFirm* after ShieldWallKickReturnMetres (Advanced, "Battle pace (AI)"); 403 - step 74's 11 LineBlock* after LineDisciplinePollSeconds (Advanced, "Line discipline
                               by tier"); 392 - step 73's LineDisciplineForPlayer after CavalryFlockEnabled (the player page, 21) and 14
                               LineDiscipline* after OrderChargeIconPixels in their own Advanced group "Line discipline by tier" (Order 23, "Advanced" 24);
                               377 - step 72's OrderNoAccidentalCharge / OrderChargeDragPixels / OrderChargeIconPixels after MoraleLabelMax
@@ -1446,6 +1459,13 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               arrangement swap); Missions/DisciplinedLineFormation.cs: the game's LineFormation with MaximumWidth = the cap (CapReads)
                               and Clone of its own type; AthleticsLogic.LineDiscipline.cs: StartLines (AfterStart), TickLines (OnPreMissionTick,
                               before the wall), the player's OnOrderIssued (each formation's share of the dragged line), the summary
+  Missions/AthleticsLogic.StandFirm.cs  step 75: StartStandFirm / TickStandFirmSettings (the [wall] lines), StandFirmLook (from LookWall after step
+                              41's verdict: the order conditions ON and OFF - WallState.FirmLatch -, the decision, a running sprint ended), FirmWouldStep
+                              (the leash's step refused - a copy of step 42's state machine), FirmFrameLook (the frame pinned to his slot, step 68's pace
+                              refused), FirmTolerance, FirmSpellBegan / FirmSpellBack (from OutOfPlaceLook), NoteFirmAttack (StartRelease - strikes from
+                              the slot ON / OFF), WriteStandFirmSummary; WallBody.cs: WallState.Firm / FirmCond / FirmLatch / FirmLeash / FirmOut, the
+                              formation's CurrentPosition / OrderPosition read for a Move; Core ShieldWallStandFirm.cs: StandFirmRules / StandFirmVerdict /
+                              StandFirmLever / StandFirmLatch / StandFirmMath / StandFirmStats
   Missions/AthleticsLogic.BlockHold.cs  step 74: StartBlock / NoteBlockSettings, TickBlockSwitch (the master switch first - every pull let go),
                               TickBlockUnits (the frames published after the fear band's, the diagnostic sampled, the [block] change / FIRST CONTACT lines,
                               the fear band told the block - FearUnits.SetBlock), BlockLook (from FearLook on every courage path, ON and OFF: the unit table
@@ -1696,7 +1716,9 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               pixels), Fill, FillColor, FrameColor (the fade's alpha baked in); step 46: the box (PositionX / Y =
                               its top-left, BoxWidth / BoxHeight), FeverShown, the Athletics bar - BarShown, BarWidth, BarHeight,
                               BarFill, BarUsable, BarColor, BarFrameColor, BarWoundColor
-tests/TraxCombat.Core.Tests/  net8.0 xUnit (1077 - step 74: + Step74Tests.cs - Step74MapTests (the shipped map, Toni's examples on it, format 16 move / keep) and
+tests/TraxCombat.Core.Tests/  net8.0 xUnit (1085 - step 75: + Step75Tests.cs - the 6 settings placed (the player page 22) / live / defaults, the
+                              switches with the master switch first, the hold orders, a move at its place latched and its ways out, the leash 0 / the
+                              tolerance, the walk back from the slack, SprintEnd.StandFirm, the summary line; 409 settings; 1077 - step 74: + Step74Tests.cs - Step74MapTests (the shipped map, Toni's examples on it, format 16 move / keep) and
                               Step74BlockHoldTests (the 11 settings, the switches, the strength by D, the rule - across / ahead / behind / the fighters / the
                               leash / the hysteresis -, the unit table's median frame, quantiles, the diagnostic's bins, the summary lines); the format-15
                               expectations → 16; 403 settings; 1066 - step 73: + Step73Tests.cs - the 15 settings placed (the player page 21, the group before Advanced) / live / defaults, the
@@ -2243,6 +2265,10 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               the game's charge (a trail heading round the right flank): OFF 35 m from the median, 36 men beyond; ON within 24 m (26 at worst
                               between looks), contact as fast, men walked back, fighters free; the live switch; the [block] / [summary] lines; a D 1 elite
                               unit untouched; the input frame's priority; the cost (1000 men 0.23 ms a tick, 0 bytes); the master-switch part (170 steps);
+                              step 75 (Program.Step75.cs): A STANDING WALL STANDS FIRM through the real logic with a stand-in world (ten men of a halted
+                              wall, an enemy 2.2 m in front, shoved, swinging): ON 0 steps out (refused), the frame pinned, the tolerance 0.3, within
+                              0.03 m mean, swings from the slot; OFF live the old steps out; an advance never; a move only at its place; a sprint ended;
+                              his kick walked back; let-go paths; the cost (1000 men 0.08 ms a tick); the older steps pin the switch off (172 steps);
                               step 68 (Program.Step68.cs): THE WALL PUSHES AS ONE through the real logic (an advancing man near the enemy sent 1 m
                               toward the game's slot 6 m ahead, a stop / a march / a slot within the step left alone, after vanilla's update, the leash
                               keeps it, a charge / the switch / the step live, the samples by order, the lines), its cost (1000 men 0.041 ms a tick,

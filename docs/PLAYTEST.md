@@ -1039,6 +1039,7 @@ Claude the `[summary] impact …` block of every battle.
 | 19 | **D38 - LINE DISCIPLINE BY TIER** (step 73): Toni's battle again - your ~60 tier-5 men against ~120 tier-1 recruits in a field battle; then a unit of your own recruits in the orders menu | 10 | `[lines] first clamp of an AI line`, `[lines] first capped arrangement`, `[lines] first time the game read a capped maximum width`, `[summary] line discipline` (3 lines + your orders) | the recruits come as a block about 5 deep (24 wide), never a 2-deep front wider than yours; dragging your own recruits wider, the line stops growing at their limit and a line on screen says so | the recruits still a thin wide front (`clamps applied` 0 on the other side - tell Claude the line); the drag still growing (`PREVIEW … installed but never read at a cap` after a wide drag - the order then narrowed after it: tell Claude) |
 
 | 20 | **D39 - THE GREEN BLOCK STAYS A BLOCK INTO CONTACT** (step 74): Toni's 20:30 battle again - ~180 tier-1 recruits charging your shorter line, ideally by a rock / on a slope; then the same on open ground | 10 | `[block] order / behaviour change of the enemy's Infantry`, `[block] FIRST CONTACT`, `[summary] block shape`, `[summary] block hold … the other side` | the recruits arrive as a ~6-deep block about 30 wide and hit your line as one; no trail round your flank; the [block] lines name what the AI did a few seconds before contact | a wide crowd again / a trail round the flank (`block hold … ON after contact` p90 well above 1.0 x the half-width - tell Claude the lines); the block stops short of your line (a stall) |
+| 21 | **D40 - A STANDING WALL STANDS FIRM** (step 75): your shield wall on STOP (F1, then F2 - or moved to a spot and arrived) against an enemy push; mid-battle the switch OFF, then ON again | 10 | `[wall] stand firm (step 75): ON …`, `[wall] first man STANDING FIRM`, `[wall] first lever refused … the step out (leash)`, `[summary] wall stands firm` | ON: nobody steps forward to strike - the front swings, blocks and bashes from the line, a man a kick carries out backs straight in; OFF: the old 1 m steps out and back; the summary's ON in-contact "more than 0.5 m" far below OFF's, strikes a man-minute ON not far below OFF's | men frozen and not swinging at enemies in reach (strikes ON ≪ OFF); the wall drifting / bulging ON; jerky back-and-forth from the walk back (raise *Stand firm: walked back beyond*) |
 
 Then play normally (parts E-G). Your gut on each family - too many / about right / too few - is the most useful thing to send.
 
@@ -1826,6 +1827,26 @@ shape, the enemy's Infantry (the other side, AI): first contact at … s | −10
 block not counted - `looks: not held by step 73` high: tell Claude); `ON after contact` p90 far above 1 with many pulls (the engine ignores the
 vector in a charge - tell Claude); the block stalling before your line; any `[error]` with `block.`. **Too strict / too loose**: *Block: room
 past its width*, *Block: full hold from depth* (Advanced, *Line discipline by tier*).
+
+**D40. A STANDING WALL STANDS FIRM (step 75, ~10 min - one field battle; the defaults).** Toni 2026-10-22: "the men in the shield wall still
+step forward even when on a standing order, they take a few steps to strike at an enemy, then fall back." Now a wall on a stop never leaves
+its ground. (1) **ON**: your infantry in a shield wall (F3 → shield wall), ordered to **stop** (F1, then F2) - or moved to a spot and let it
+arrive - and let ~40-60 enemies (looters, then a real infantry unit) push at it. Watch the front from the side: nobody steps forward to swing;
+the front blocks, swings and bashes from the line; a man a kick or a shove carries a little out backs straight in, facing the enemy. (2)
+**OFF mid-battle**: Escape → MCM → player page → *Shield walls stand firm on a hold order* off: the old 1 m steps out and back return within
+a quarter second. (3) **ON again**, then order the wall to **advance** (F1, F4): it pushes as before (stand firm is only for a hold). (4)
+Optional A / B on Advanced, *Battle pace (AI)*: *Stand firm: the game walks each man to his place* and *a tight tolerance for the game* off,
+one at a time. **Log**: `[wall] stand firm (step 75): ON (ShieldWallStandFirm) - …`; `[wall] first man STANDING FIRM this mission (step 75): …
+under the order Stop (a stop stands at once) …`; `[wall] first lever refused for a man standing firm (step 75) - the step out (leash): …`
+(and `- pushed / the game's approach / a blow`, `- his own kick / bash or a punish press`, `- a sprint`); `[wall] first strike by a man standing
+firm (step 75): … from his slot`; `[wall] stand firm (step 75) changed mid-mission at … s: OFF …` and back ON. **[summary]** `wall stands firm
+(step 75 - …): held N man-s (in contact M man-s) by K men | IN CONTACT ahead of the slot - ON more than 0.5 m …%, more than 1 m …% … | OFF …
+| strikes - ON from the slot …, out of it … (… a man-minute in contact); OFF … | levers refused - the step out (leash) …, a sprint …, the
+advance pace …, his own kick / bash or a punish press …, pushed / the game's approach / a blow … ; walked back … times, back in … s; the
+engine's walk target pinned to the slot … times …`. **Right**: ON "more than 0.5 m" a few % at most and "more than 1 m" ~0 (OFF: the old
+leash's ~10-20%); strikes a man-minute ON close to OFF's; walked back in well under a second. **Wrong**: strikes ON far below OFF (men
+frozen - the engine's keep flag too strict for a stand-firm wall: tell Claude); ON ≈ OFF ahead (the engine ignores the pinned frame / the
+walk back - tell Claude); the wall sliding forward over time; any `[error]` with `wall.firm`.
 
 ---
 

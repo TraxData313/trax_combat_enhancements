@@ -145,6 +145,9 @@ takes one short step out after him, strikes, and walks back to his place. A man 
 blow or shoved out by the press is held again at once and, as soon as he is back on his feet, backs off into his
 place facing the enemy — the wall closes up; a man who kicked or bashed walks straight back after it. On a charge the
 wall breaks on purpose; loose lines and columns keep the game's own behaviour.
+**A standing wall stands firm:** order a wall to **stop** (or move it to a place and let it arrive) and nobody steps out at all — each
+man strikes, blocks and kicks only from his place, and a man a kick or a shove carries forward backs straight in (player page: *Shield
+walls stand firm on a hold order*).
 
 **The wall pushes as one.** Order a shield wall to **advance** (F1, then F4) and in the base game its men each walk to
 a place at the enemy's line — the ones free to move walk on into the enemy while their mates fight, and the wall breaks

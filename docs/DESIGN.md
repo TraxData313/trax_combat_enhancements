@@ -357,6 +357,17 @@ regen.)
         within 2.5 s, or who presses a punish window (step 54's step-in), is out of place from 0.5 m ahead of his slot (step 63's
         mark is 1.25 m) and walked back AT ONCE - step 63's backpedal, no 0.5 s wait - as soon as he can move (not down, reeling,
         or in his kick), to within 0.25 m. 0 = step 63's rule only. The "wall pulled back" line counts these spells apart.
+      - **a standing wall stands firm** (step 75, Toni 2026-10-22: "the men in the shield wall still step forward even when on a
+        standing order, they take a few steps to strike at an enemy, then fall back"; `ShieldWallStandFirm`, on, the PLAYER page;
+        decision 69): a man held above whose formation is on a STOP, or on a MOVE that has reached its place (within
+        `ShieldWallStandFirmArrivedMetres` 2 m of its order position, its men moving at most `ShieldWallStandFirmStillMetresPerSecond`
+        0.5 m/s - latched until a new place or pushed 2 x that away), never leaves his slot: the leash is 0 for him, a running sprint
+        ends, step 68's pace never applies, the engine's walk target is his slot (`ShieldWallStandFirmPinFrame`) and its tolerance
+        the slack (`ShieldWallStandFirmTightTolerance`); more than `ShieldWallStandFirmSlackMetres` 0.3 m ahead of his slot he is walked
+        straight back to within half of it (step 63's backpedal, at once, never while his kick plays). He keeps fighting from his slot:
+        guard, blocks, swings and kicks / bashes at what is in reach. Never under an advance, a charge, fall back, follow or a retreat;
+        a broken wall (step 67) and a man far behind still let go. Measured: the [summary] "wall stands firm" line (ON vs OFF in
+        contact, strikes from the slot, the levers refused by kind).
     - **Brace by orders — tired AI men stop swinging and defend** (Anton, 2026-09-29: "soldiers get to 0% athletics
       but they still swing as much as they can - make soldiers not swing but only defend when they have reached a
       certain floor, that depends on their current orders, until they have replenished the floor +20%" ... "when
@@ -2644,6 +2655,32 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     movement order, active behaviour, arrangement, width (10th-90th / all), depth, the game's width vs the cap and the share of men more than 3 m
     from their slots, binned by the time from its first contact; every order / behaviour change logged as it happens - the next battle names
     the cause whichever it is. 11 Advanced settings in "Line discipline by tier"; new keys need no migration.
+
+69. **A standing wall stands firm** (step 75, Toni 2026-10-22: "the men in the shield wall still step forward even when on a standing
+    order, they take a few steps to strike at an enemy, then fall back. Can you make a trigger in the settings that I can test on and off
+    ... they do not leave the wall no matter what. They strike from their place if they can"). (a) WHAT MOVED THEM, each lever and how it
+    is closed for a man standing firm: step 42's LEASH (a held man freed to step up to 1 m at an enemy close in front - exactly Toni's "a few
+    steps to strike, then fall back") → 0, each step it would give counted as refused; THE GAME'S FRAME under a Stop (`Formation.GetOrder
+    PositionOfUnit` returns his OWN position for `StandGround`, so the engine never walks a drifted man back; vanilla also writes no
+    integrity data under a Stop) → the frame pinned to his slot (`Agent.TrySetFormationFrame`, step 68's call, right after vanilla's
+    update); THE INTEGRITY TOLERANCE (vanilla hands the engine the formation's own spread of positions with the flag - its native use is
+    unseen) → at most the slack; step 63's mark (1.25 m) and step 68's kick return (0.5 m) let a lunge, a shove or the game's approach
+    stand → out of place from the slack (0.3 m), walked back at once whatever moved him, never while his own kick plays; a running AI
+    sprint (a move order's) → ended; step 68's ADVANCE PACE (a move pushed back from its order slot was paced 1 m toward it) → his slot
+    instead. Already closed before this step for any held man: courage's surge and the fever press (courage never looks at a held man),
+    the fear flock and the band, the block hold (they skip him), the step back (refused in a holding arrangement), the fever and its
+    sprint (a hold / move order ends the fever). The punish raise (step 54) only raises the attack decision - he swings from his slot;
+    its step-in is courage's. (b) WHAT STAYS: his attack input is never touched - guard, blocks, swings at men within his weapon's reach,
+    step 65's kicks and bashes in reach (1.6 m; a kick's lunge is walked back after it plays); step 63's pull of a man thrown out; step
+    67's morale break (`FearWallBreakMorale`) and step 41's escape (far behind) still let go. (c) "AT ITS PLACE": a Stop at once; a Move
+    once `Formation.CurrentPosition` is within `ShieldWallStandFirmArrivedMetres` (2) of `Formation.OrderPosition` and the men's average
+    velocity at most `ShieldWallStandFirmStillMetresPerSecond` (0.5) - latched per man (a fighting line shuffles) until the order position
+    moves more than 2 m (a new move) or the formation stands more than 4 m from it (pushed far back: the game walks it home as a line under
+    step 41-68's rules, then it stands again); an AI general's Move counts the same (its advance / tactical charge never). Squares and
+    circles too (outward = out, as the leash). (d) The switch on the PLAYER page (Toni tests it on and off), on by default; both sides' AI
+    formations, never the player himself. Five Advanced numbers / switches in "Battle pace (AI)"; new keys, no migration. (e) UNVERIFIED in
+    game: that the engine honours the pinned frame and the tight tolerance, that men in contact still land swings from the slot (the
+    summary's strikes a man-minute ON vs OFF), that the walk back from 0.3 m does not look jerky (raise the slack).
 
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),
