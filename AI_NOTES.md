@@ -7152,4 +7152,6 @@ war cries: nothing yet (`Agent.MakeVoice` is 79's).
 4. The thresholds against real fronts: lulls 1-3 in a long grind, 10-30 s; ended mostly "a front recovered", not "too long".
 5. The bar of men IN CONTACT ON above OFF (a second battle with the rotation off).
 
-**DEPLOY**: see the TASKS_DONE entry (deploy.ps1 + loadcheck.ps1 results).
+**DEPLOY**: `tools\deploy.ps1` ran normally (Smart App Control off): the build, the AssemblyGuard (OK), the offline smoke (183 passed), installed as
+Modules\TraxCombatEnhancements.Dev "Trax Combat Enhancements (dev)" - the game and the launcher were not running. `tools\SmartAppControl\loadcheck.ps1`:
+both DLLs LOADED (`1.2.0+28532b0d1ab570d4f7923fbcdf8e68cdcbbf75bc`). Not uploaded. Windows security untouched.
