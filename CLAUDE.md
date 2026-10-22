@@ -342,7 +342,25 @@ more than `ShieldWallStandFirmSlackMetres` 0.3 m ahead he is walked straight bac
 plays - `WallPullMath.Step(…, standFirmMetres)`); his attack input untouched (guard, blocks, swings and kicks / bashes in reach); never under an
 advance / charge / fall back / follow / retreat; step 67's morale break and step 41's escape still let go; courage, the fear flock, the block hold
 and the step back already skip held men. Core `ShieldWallStandFirm.cs`, Module `AthleticsLogic.StandFirm.cs`; the `[wall]` stand-firm lines and the
-[summary] "wall stands firm" line (ON vs OFF in contact, strikes from the slot, the levers refused by kind) (PLAYTEST D40). The bar for the
+[summary] "wall stands firm" line (ON vs OFF in contact, strikes from the slot, the levers refused by kind) (PLAYTEST D40). SPEARMEN KEEP THEIR SPEARS, THE SECOND RANK THRUSTS PAST
+(step 76, Toni 2026-10-22: "my shield wall-ers have spears but they keep using their swords, even though the spear has a longer reach";
+DESIGN decision 70, AI_NOTES "Step 76"): `SpearPreferenceEnabled` (PLAYER page, 23 settings, on) - RBM's weapon preference without Harmony: an
+AI man (both sides, never you) carrying a melee polearm AND a melee sidearm is looked at every ~`SpearLookSeconds` 0.5 from the tick (the
+game's proximity search, never inside the stat model - RBM's Agent.Build deadlock); RBM's two timers - the polearm favoured
+(`AiWeaponFavorMultiplierPolearm` x`SpearPolearmFavor` 35) while no enemy is close, the sidearm (`...Melee` x`SpearSidearmFavor` 55) once one has
+been close `SpearSidearmAfterSeconds` 2, the polearm again `SpearPolearmBackAfterSeconds` 4 (mounted 2) after the last; a flip = the tick's
+budgeted recompute, the stat decorator writes the favor after the base model (which assigns 1 / 1 / 1); CLOSE = within 1.0 m + 60% of his
+longest polearm's length (1.5-3.5 m; unknown 2.5 - RBM's), not running away, not wielding a polearm himself (`SpearKeepVsPolearm` - facing only
+polearms he keeps his); a rider faster than 4 m/s has nothing close; a BACK-RANK man (`Agent.GetFormationFileAndRankInfo` rank 1+ with a man
+of his in front - `LineFormation.GetUnit(file ± 1, rank - 1)`) of a shield wall / square / circle, or a line on a stop, keeps the polearm at
+once whatever is close; the wield fallback `SpearWieldOverride` (off) turns a sidearm Wield into the polearm's on step 16's hook. A THRUST
+PASSES A FRIEND (`ThrustsPassFriends`, Advanced, on): the damage decorator's `DecideWeaponCollisionReaction` answers `ContinueChecking` before
+the base model for a thrust (not a kick / bash) into a man of the attacker's side - vanilla bounces the friend's 0-damage blow; swings still
+bounce; the friendly-hit stun (`StunPeriodAttackerFriendlyFire`, 0.4) held at `FriendlyHitStunSeconds` 0.1 and given back at the battle's end /
+switched off. Core `Spears.cs`, Module `AthleticsLogic.Spears.cs` / `SpearBody.cs` / `Models/ThrustPass.cs`; the `[spears]` lines and the
+[summary] "spears" (time holding the polearm / the sidearm by what was close, ON vs OFF) and "thrusts past friends" lines (the same man then
+hitting an enemy within 0.5 s, the friend's flinch) (PLAYTEST D41). RBM's data route (its polearm thrust collision check from 35%) is the
+fallback, not built. The bar for the
 fighter you look at is LATER (DESIGN §3; its settings wait in DESIGN's "Planned parameters"). Words:
 the pool/bar/points are "Athletics", the character-screen skill is "the Athletics skill" (it
 used to be called "endurance"), the "peak line" is the white mark at the top quarter of the bar,
@@ -448,7 +466,7 @@ die at any moment (tokens run out) and the next one loses nothing.
   file, capped at `LogMaxMegabytes` (8); a trim cuts ONLY the oldest verbose lines (marked `~`
   before the tag) and keeps every other line - summaries, first-time lines, settings, errors
   (step 10b, Core `LogTrim`). Timestamped lines tagged by area (`[config]`, `[mcm]`, `[mission]`,
-  `[damage]`, `[athletics]`, `[speed]`, `[rate]`, `[stepback]`, `[brace]`, `[guard]`, `[sprint]`, `[wall]`, `[fever]`, `[courage]`, `[fear]`, `[cavalry]`, `[impact]`, `[orders]`, `[hud]`, `[error]`). Always logged: mod/game version
+  `[damage]`, `[athletics]`, `[speed]`, `[rate]`, `[stepback]`, `[brace]`, `[guard]`, `[sprint]`, `[wall]`, `[fever]`, `[courage]`, `[fear]`, `[cavalry]`, `[impact]`, `[orders]`, `[spears]`, `[hud]`, `[error]`). Always logged: mod/game version
   at load, every parameter value on load and on change, each mission start/end (type,
   scene, agent counts), which behaviors/views attached, and every caught exception with its
   stack. Per-battle SUMMARY at mission end (damage rolls: count, min/avg/max factor;
@@ -503,7 +521,9 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               its Default comes from defaults.json (DefaultsFile), never code; step 33: ParamType.Key +
                               KeyNames (a key by NAME, stored as its index; FormatJson writes "LeftControl"; the
                               file / defaults.json read the name, MCM a text box)
-  SettingsSchema.cs           EVERY setting of DESIGN's table (409 - step 75's ShieldWallStandFirm after ShieldWallStepOutMetres (the player
+  SettingsSchema.cs           EVERY setting of DESIGN's table (430 - step 76's SpearPreferenceEnabled after ShieldWallStandFirm (the player
+                              page, 23) and 17 Spear* + ThrustsPassFriends / ThrustsPassPolearmsOnly / FriendlyHitStunSeconds after
+                              ShieldWallStandFirmTightTolerance (Advanced, "Battle pace (AI)"); 409 - step 75's ShieldWallStandFirm after ShieldWallStepOutMetres (the player
                               page, 22) and 5 ShieldWallStandFirm* after ShieldWallKickReturnMetres (Advanced, "Battle pace (AI)"); 403 - step 74's 11 LineBlock* after LineDisciplinePollSeconds (Advanced, "Line discipline
                               by tier"); 392 - step 73's LineDisciplineForPlayer after CavalryFlockEnabled (the player page, 21) and 14
                               LineDiscipline* after OrderChargeIconPixels in their own Advanced group "Line discipline by tier" (Order 23, "Advanced" 24);
@@ -1086,6 +1106,14 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
   CavalryFlockStats.cs        step 55 per-mission: riders by kind, rider time FREE / FLOCKING / WAVE, starts / ends, flips + wave size by mean eagerness +
                               the leader's, time between passes by eagerness ON / OFF, lone passes ON / OFF, spread, the lever, cost + the 7 [summary]
                               "cavalry" lines
+  Spears.cs                   step 76 (DESIGN decision 70) - SPEARMEN KEEP THEIR SPEARS + A THRUST PASSES A FRIEND: SpearSlot / SpearLoadout
+                              (SpearMath.Classify - RBM's polearm + sidearm, thrown / consumable / ranged neither, the longest polearm), SpearContext
+                              (mounted, speed, arrangement, order, rank, a man in front, standing firm), SpearCondition (nothing close / close / a back
+                              rank / facing only polearms / riding through), SpearHeld, SpearFlip, SpearMind (per man: the loadout, Favored / Close,
+                              RBM's two timers, the look clock), SpearRules (ModEnabled FIRST; Describe), SpearMath (CloseRadius, BackRank, RidingFast,
+                              Condition, Step - the timers, Favors, HeldOf, NextLook - the jitter, WieldRewrite), SpearStats (the 2 [summary] "spears"
+                              lines); ThrustVerdict / ThrustFacts / ThrustPassRules / ThrustPassMath (Decide in gate order, StunWanted, the vanilla 0.4)
+                              / ThrustPassStats (the [summary] "thrusts past friends" line)
   SpreadStats.cs              MeanStd (Welford, population std), FormationAthleticsStats (squad
                               mean ± std, band, mean f, at full strength, mean health - step 9; step 23:
                               Bracing / Ready / Total - the next step's "ready men"),
@@ -1141,6 +1169,11 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               ImpactHooks' decider, CalculateDefendedBlowStunMultipliers = the base, then ImpactHooks (any thread); step 52:
                               DecideAgentShrugOffBlow = the base's answer, a YES asked again of ImpactHooks.ShrugOffKept (main thread); step 53:
                               DecideAgentDismountedByBlow = the base's answer OR ImpactHooks.DismountOnBlow (main thread)
+  Models/ThrustPass.cs        step 76: IThrustPassReads (IsFriendOf, a polearm in hand - the smoke plays them) and ThrustPass.Passes - the damage
+                              decorator's DecideWeaponCollisionReaction asks it BEFORE the base model: a thrust into a friend = ContinueChecking; every
+                              friendly contact and the enemy thrusts of a man who just passed one handed to the logic; HoldStun / RestoreStun (the
+                              game's StunPeriodAttackerFriendlyFire remembered once). TraxAgentStatModel.ApplySpearFavor (UpdateAgentStats and
+                              InitializeAgentStats, after everything): AthleticsLogic.SpearFavorFor - one favor from his flag
   Models/ImpactHooks.cs       step 47, the impact system's MODEL seams: IKnockDownDecider (main thread, every collision on a man on foot)
                               and IBlockStunDecider (ANY thread - reads only) plugged in by the running logic; KnockDownOnBlow (OR-ed,
                               a throw = the game's answer), AfterDefendedBlowStun (a throw = the base's stun kept, the exception handed
@@ -1466,6 +1499,15 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               the slot ON / OFF), WriteStandFirmSummary; WallBody.cs: WallState.Firm / FirmCond / FirmLatch / FirmLeash / FirmOut, the
                               formation's CurrentPosition / OrderPosition read for a Move; Core ShieldWallStandFirm.cs: StandFirmRules / StandFirmVerdict /
                               StandFirmLever / StandFirmLatch / StandFirmMath / StandFirmStats
+  Missions/AthleticsLogic.Spears.cs  step 76: StartSpears (the [spears] lines), TickSpears (from TickAthletics: the settings - off lifts every
+                              favour -, TickThrustRules - the stun held / given back -, TickFlinchWatch, each man whose look is due), LookSpear (the gate,
+                              the loadout cache, the context, the radius, the scan, the condition, the time split ON / OFF, RBM's timers, SpeedDirty on a
+                              flip, WieldWish), Unfavor / UnfavorAll / ClearWieldWishes, SpearLeftField, SpearFavorFor (the decorator's read),
+                              NoteSpearAttack (StartRelease), NoteFriendlyContact / NoteEnemyThrust (the damage decorator's), CloseSpears, WriteSpearSummary;
+                              Missions/SpearBody.cs: ISpearBody (Ready, Gate, ReadLoadout - the 4 items compared, Context - GameBraceBody.KindOf, the
+                              arrangement, GetFormationFileAndRankInfo + LineFormation.GetUnit, CloseEnemies - GetNearbyEnemyAgents into a reused MBList,
+                              WieldedSlot, Hook / Release), GameSpearBody, SpearBodyDefault; TrackedAgent.Spear / SpearItem0-3 / SpearHeldNow /
+                              ThrustPassAt; AiInputHook.cs: AiInputState.SpearWield (+ slot, mask, rewrites), SetSpearWield, ApplySpearWield
   Missions/AthleticsLogic.BlockHold.cs  step 74: StartBlock / NoteBlockSettings, TickBlockSwitch (the master switch first - every pull let go),
                               TickBlockUnits (the frames published after the fear band's, the diagnostic sampled, the [block] change / FIRST CONTACT lines,
                               the fear band told the block - FearUnits.SetBlock), BlockLook (from FearLook on every courage path, ON and OFF: the unit table
@@ -1716,7 +1758,10 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               pixels), Fill, FillColor, FrameColor (the fade's alpha baked in); step 46: the box (PositionX / Y =
                               its top-left, BoxWidth / BoxHeight), FeverShown, the Athletics bar - BarShown, BarWidth, BarHeight,
                               BarFill, BarUsable, BarColor, BarFrameColor, BarWoundColor
-tests/TraxCombat.Core.Tests/  net8.0 xUnit (1085 - step 75: + Step75Tests.cs - the 6 settings placed (the player page 22) / live / defaults, the
+tests/TraxCombat.Core.Tests/  net8.0 xUnit (1096 - step 76: + Step76Tests.cs - the 21 settings placed (the player page 23) / live / defaults, the
+                              master switch first, the loadout (RBM's), the radius from the length, RBM's timers (2 s / 4 s / 2 s mounted, a passing
+                              and a drifting enemy), the back rank and a thinned file, facing polearms, the favors, the wield bits, the collision
+                              decision, the summary lines; 430 settings; 1085 - step 75: + Step75Tests.cs - the 6 settings placed (the player page 22) / live / defaults, the
                               switches with the master switch first, the hold orders, a move at its place latched and its ways out, the leash 0 / the
                               tolerance, the walk back from the slack, SprintEnd.StandFirm, the summary line; 409 settings; 1077 - step 74: + Step74Tests.cs - Step74MapTests (the shipped map, Toni's examples on it, format 16 move / keep) and
                               Step74BlockHoldTests (the 11 settings, the switches, the strength by D, the rule - across / ahead / behind / the fighters / the
@@ -2269,6 +2314,12 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               wall, an enemy 2.2 m in front, shoved, swinging): ON 0 steps out (refused), the frame pinned, the tolerance 0.3, within
                               0.03 m mean, swings from the slot; OFF live the old steps out; an advance never; a move only at its place; a sprint ended;
                               his kick walked back; let-go paths; the cost (1000 men 0.08 ms a tick); the older steps pin the switch off (172 steps);
+                              step 76 (Program.Step76.cs): SPEARMEN KEEP THEIR SPEARS through the real looks with a stand-in body and the REAL
+                              stat decorator (x35 / x55 after 2 s / back after 4 s, the back rank, a thinned file, facing spears, the radius from
+                              the length, riders, a dropped spear, the loadout cache, the wield fallback, the switches); A THRUST PASSES A FRIEND
+                              through the REAL damage decorator over CustomAgentApplyDamageModel (ContinueChecking / a swing Bounced / polearms
+                              only, the follow-up hit, the flinch, the stun 0.4 -> 0.1 s and back); the cost (1000 men 0.004 ms a tick, 0 bytes);
+                              every logic starts with a NOT-ready stand-in spear body (176 steps);
                               step 68 (Program.Step68.cs): THE WALL PUSHES AS ONE through the real logic (an advancing man near the enemy sent 1 m
                               toward the game's slot 6 m ahead, a stop / a march / a slot within the step left alone, after vanilla's update, the leash
                               keeps it, a charge / the switch / the step live, the samples by order, the lines), its cost (1000 men 0.041 ms a tick,

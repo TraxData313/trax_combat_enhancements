@@ -1040,6 +1040,7 @@ Claude the `[summary] impact …` block of every battle.
 
 | 20 | **D39 - THE GREEN BLOCK STAYS A BLOCK INTO CONTACT** (step 74): Toni's 20:30 battle again - ~180 tier-1 recruits charging your shorter line, ideally by a rock / on a slope; then the same on open ground | 10 | `[block] order / behaviour change of the enemy's Infantry`, `[block] FIRST CONTACT`, `[summary] block shape`, `[summary] block hold … the other side` | the recruits arrive as a ~6-deep block about 30 wide and hit your line as one; no trail round your flank; the [block] lines name what the AI did a few seconds before contact | a wide crowd again / a trail round the flank (`block hold … ON after contact` p90 well above 1.0 x the half-width - tell Claude the lines); the block stops short of your line (a stall) |
 | 21 | **D40 - A STANDING WALL STANDS FIRM** (step 75): your shield wall on STOP (F1, then F2 - or moved to a spot and arrived) against an enemy push; mid-battle the switch OFF, then ON again | 10 | `[wall] stand firm (step 75): ON …`, `[wall] first man STANDING FIRM`, `[wall] first lever refused … the step out (leash)`, `[summary] wall stands firm` | ON: nobody steps forward to strike - the front swings, blocks and bashes from the line, a man a kick carries out backs straight in; OFF: the old 1 m steps out and back; the summary's ON in-contact "more than 0.5 m" far below OFF's, strikes a man-minute ON not far below OFF's | men frozen and not swinging at enemies in reach (strikes ON ≪ OFF); the wall drifting / bulging ON; jerky back-and-forth from the walk back (raise *Stand firm: walked back beyond*) |
+| 22 | **D41 - SPEARMEN KEEP THEIR SPEARS, THE SECOND RANK THRUSTS PAST** (step 76): your spearmen (spear + sword + shield - e.g. Vlandian / Sturgian spearmen) in a shield wall on STOP against ~40 looters; then the switch OFF and ON | 15 | `[spears] mission start …`, `[spears] first back-rank man`, `[spears] first THRUST past a friend`, `[summary] spears`, `[summary] thrusts past friends` | the front rank holds spears until the looters press in, then swords; the second rank keeps spears and thrusts over the front man; looters fall to second-rank thrusts; OFF: swords at once | everyone still on swords ON (the favors not honoured - try *Spears: force the spear while nothing is close*); second-rank spears still stopping on the front man (`… then an enemy hit … 0 of N`); men flinching as their mates thrust through them |
 
 Then play normally (parts E-G). Your gut on each family - too many / about right / too few - is the most useful thing to send.
 
@@ -1847,6 +1848,37 @@ engine's walk target pinned to the slot … times …`. **Right**: ON "more than
 leash's ~10-20%); strikes a man-minute ON close to OFF's; walked back in well under a second. **Wrong**: strikes ON far below OFF (men
 frozen - the engine's keep flag too strict for a stand-firm wall: tell Claude); ON ≈ OFF ahead (the engine ignores the pinned frame / the
 walk back - tell Claude); the wall sliding forward over time; any `[error]` with `wall.firm`.
+
+**D41. SPEARMEN KEEP THEIR SPEARS, THE SECOND RANK THRUSTS PAST (step 76, ~15 min - one or two field battles; the defaults).** Toni
+2026-10-22: "my shield wall-ers have spears but they keep using their swords, even though the spear has a longer reach". (1) **ON**: a
+custom battle (or a field battle) with your spearmen - men carrying a spear, a sword and a shield - in a **shield wall** (F3) on **stop**
+(F1, F2), against ~40 looters. Before contact everyone holds the spear. When the looters press in, the FRONT rank swaps to swords after a
+couple of seconds; the SECOND rank keeps its spears and thrusts over the front man's shoulder - watch whether those thrusts reach the
+looters (a looter falling to a man behind the wall) or still stop on the front man, and whether a front man FLINCHES when his mate's
+spear passes him. When the looters fall back, the front takes its spears up again within ~4 s. (2) **OFF mid-battle**: Escape → MCM →
+player page → *Spearmen keep their spears* off: the game's own choice (swords at once, Toni's complaint). (3) **ON again**; optional
+A / B on Advanced, *Battle pace (AI)*: *Thrusts pass a friend* off (the second rank's thrusts stop on the front man again), *Spears: the
+back ranks keep their spears* off. (4) If the men ignore the preference (swords everywhere ON): *Spears: force the spear while nothing
+is close* on (the wield fallback). **Log**: `[spears] mission start, the AI prefers the spear (step 76): ON (SpearPreferenceEnabled) - …`
+and `… thrusts past friends (step 76): ON (ThrustsPassFriends) - …`; `[spears] the friendly-hit stun (StunPeriodAttackerFriendlyFire) 0.40 s
+→ 0.10 s at … s`; `[spears] first AI man with a polearm AND a sidearm this mission: … close radius … m`; `[spears] first back-rank man this
+mission: … - rank 1 of a Wall under Stop, a man of his in front: he keeps the polearm whatever is close (holding the polearm)`; `[spears]
+first flip to the sidearm (an enemy close) …` / `… back to the polearm (nothing close) …`; `[spears] first man facing only polearms …`;
+`[spears] first THRUST past a friend this mission at … s: X through Y with a polearm, from a back rank - the weapon carries on`; `[spears]
+first thrust past a friend that then HIT AN ENEMY …`; `[spears] first SWING into a friend … - it bounces as in the game`; `[spears] first
+attack by a back-rank man holding his polearm …`. **[summary]** `spears (step 76 - …): N AI men carry a melee polearm AND a sidearm … |
+TIME HOLDING - ON … man-s; nothing close … s: polearm …%, sidearm …%; an enemy close … s: …; a back rank … s: …; facing only polearms …
+| OFF …`; `spears - the flips: to the sidearm …, back to the polearm …, back at once in a back rank … | the favors the decorator wrote … |
+attacks begun holding the polearm …, the sidearm …; by back-rank men … (with the polearm …, … a man-minute …) | the wield fallback …`;
+`thrusts past friends (step 76 - …): friendly melee contacts N - a thrust passed …, a swing (bounced) …, a kick / bash … | passed: with a
+polearm …, by back-rank men … | THEN AN ENEMY HIT by the same man within 0.5 s: K of P (…%; landed …, blocked …, no damage …) | the
+friend passed: flinched … no reaction … | the friendly-hit stun: 0.10 s (the game's 0.40 s …)`. **Right**: ON, "nothing close" time
+mostly the polearm, "a back rank" time ~all the polearm, "an enemy close" mostly the sidearm; OFF far more sidearm in "nothing close";
+back-rank attacks with the polearm a few a man-minute; a fair share of passes followed by an enemy hit; the friend's "no reaction" well
+above "flinched". **Wrong**: ON ≈ OFF in "nothing close" (the native AI ignores the favors - try the wield fallback, tell Claude);
+back-rank attacks ~0 (the native AI never starts a thrust with a mate in front - the next lever is RBM's thrust collision data, AI_NOTES
+"Step 76"); passes never followed by an enemy hit (ContinueChecking does not carry the spear on - the same); front men flinching at
+every pass; any `[error]` with `spears.` or `thrust.`.
 
 ---
 

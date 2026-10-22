@@ -148,6 +148,10 @@ wall breaks on purpose; loose lines and columns keep the game's own behaviour.
 **A standing wall stands firm:** order a wall to **stop** (or move it to a place and let it arrive) and nobody steps out at all — each
 man strikes, blocks and kicks only from his place, and a man a kick or a shove carries forward backs straight in (player page: *Shield
 walls stand firm on a hold order*).
+**Spearmen keep their spears:** a soldier with a spear and a sword fights with the spear until an enemy has stood within the
+spear's reach for a moment, and the men in the back ranks of a wall keep their spears whatever is close (player page: *Spearmen keep
+their spears*). **Thrusts pass a friend:** a spear thrust that touches a comrade carries on to the enemy behind him instead of stopping
+on him - swings still stop (Advanced page, *Battle pace (AI)*).
 
 **The wall pushes as one.** Order a shield wall to **advance** (F1, then F4) and in the base game its men each walk to
 a place at the enemy's line — the ones free to move walk on into the enemy while their mates fight, and the wall breaks

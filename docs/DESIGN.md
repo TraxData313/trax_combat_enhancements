@@ -368,6 +368,16 @@ regen.)
         guard, blocks, swings and kicks / bashes at what is in reach. Never under an advance, a charge, fall back, follow or a retreat;
         a broken wall (step 67) and a man far behind still let go. Measured: the [summary] "wall stands firm" line (ON vs OFF in
         contact, strikes from the slot, the levers refused by kind).
+      - **spearmen keep their spears, the second rank thrusts past** (step 76, Toni 2026-10-22: "my shield wall-ers have spears but
+        they keep using their swords, even though the spear has a longer reach"; `SpearPreferenceEnabled`, on, the PLAYER page;
+        `ThrustsPassFriends`, on, Advanced; decision 70): RBM's weapon preference without Harmony - an AI man carrying a melee polearm
+        and a melee sidearm favours the polearm x35 (`AiWeaponFavorMultiplierPolearm`) while no enemy is close and the sidearm x55
+        (`...Melee`) once one has been close 2 s, the polearm again 4 s (mounted 2 s) after the last; close = within 1.0 m + 60% of his
+        spear's length (1.5-3.5 m), not running away, not wielding a polearm himself; a back-rank man of a wall / a halted line keeps the
+        polearm; the stat decorator writes the favor from a flag the tick sets. A THRUST into a friend carries on (the damage decorator's
+        `DecideWeaponCollisionReaction` → `ContinueChecking`); swings / kicks / bashes still bounce; the friendly-hit stun 0.4 → 0.1 s.
+        Measured: the [summary] "spears" lines (time holding the polearm / the sidearm by what was close, ON vs OFF) and "thrusts past
+        friends" (the same man then hitting an enemy within 0.5 s, the friend's flinch).
     - **Brace by orders — tired AI men stop swinging and defend** (Anton, 2026-09-29: "soldiers get to 0% athletics
       but they still swing as much as they can - make soldiers not swing but only defend when they have reached a
       certain floor, that depends on their current orders, until they have replenished the floor +20%" ... "when
@@ -2702,6 +2712,45 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     formations, never the player himself. Five Advanced numbers / switches in "Battle pace (AI)"; new keys, no migration. (e) UNVERIFIED in
     game: that the engine honours the pinned frame and the tight tolerance, that men in contact still land swings from the slot (the
     summary's strikes a man-minute ON vs OFF), that the walk back from 0.3 m does not look jerky (raise the slack).
+
+70. **Spearmen keep their spears, the second rank thrusts past** (step 76, Toni 2026-10-22: "my shield wall-ers have spears but they keep
+    using their swords, even though the spear has a longer reach"; RBM fixes it, and RBM's second rank is effective - its spears not stuck
+    in the man in front). (a) THE PREFERENCE - RBM's `WeaponPreference` (its public source read) without Harmony: the game assigns
+    `AiWeaponFavorMultiplierMelee / Ranged / Polearm` = 1 in `SetAiRelatedProperties` on every recompute, so the stat decorator writes
+    after the base model, never compounding: the polearm x`SpearPolearmFavor` (35) while no enemy is close, the melee x`SpearSidearmFavor`
+    (55) once one has been close `SpearSidearmAfterSeconds` (2); back `SpearPolearmBackAfterSeconds` (4; `...MountedSeconds` 2) after the
+    last close look; a rider faster than `SpearRidingFastMetresPerSecond` (4) has nothing close. Who: an AI man (both sides, never the
+    player or a man he took over) whose four slots hold a melee polearm (a usage of a polearm weapon class) AND a melee non-polearm; a
+    thrown / consumable / ranged item is neither (RBM); the loadout re-read only when a slot's item changes. The look - the game's
+    proximity search - runs on the main thread from the logic's tick every ~`SpearLookSeconds` (0.5, jittered 0.75-1.25 by his index),
+    after deployment; a flip asks the tick's budgeted recompute (`Agent.UpdateAgentProperties`); the decorator only reads his flag (RBM's
+    lesson: a proximity query inside the stat model deadlocked `Agent.Build`). (b) CLOSE FROM THE SPEAR'S LENGTH (Toni's addition a):
+    `SpearCloseBaseMetres` 1.0 + `SpearCloseLengthPercent` 60 % of his LONGEST melee polearm's `WeaponLength`, clamped `SpearCloseMinMetres`
+    1.5 - `SpearCloseMaxMetres` 3.5 - a 1.5 m spear 1.9 m, 2.0 m 2.2 m, 2.5 m 2.5 m, 3.0 m 2.8 m; a length not known (or
+    `SpearCloseFromLength` off) = `SpearCloseFallbackMetres` 2.5 (RBM's). A longer pole is clumsy sooner; a short spear is kept closer.
+    (c) THE BACK RANK (Toni's addition b): `Agent.GetFormationFileAndRankInfo` (managed: rank 0 = the front, a square's / circle's outer
+    ring) and the arrangement's `LineFormation.GetUnit(file - 1 .. file + 1, rank - 1)` (the staggered rank in front) - a man in rank 1+
+    with a man of his own in front, in a shield wall / square / circle under any order step 41 holds (not a charge, a retreat, no order),
+    or (`SpearBackRankInStandingLine`) a plain line on a STOP or standing firm, keeps the polearm whatever is close: his sidearm spell
+    cleared and the polearm favoured AT ONCE. A man in rank 1 of a thinned file (nobody in front) is the front. (d) FACING A POLEARM
+    (Toni's addition c, `SpearKeepVsPolearm`): an enemy within the radius wielding a melee polearm himself does not count - a man facing
+    only polearms keeps his; one other enemy among them counts. (e) THE FALLBACK, only if favors alone do not hold (`SpearWieldOverride`,
+    OFF - nothing offline says they fail; PLAYTEST D41 decides): step 16's `OnAIInputSet` hook turns the AI's own `Wield` event of a
+    sidearm slot into the `Wield` of his polearm's slot while the polearm is favoured. (f) THE THRUST (`ThrustsPassFriends`): vanilla's
+    `Mission.MeleeHitCallback` cancels a friend's damage (`CancelsDamageAndBlocksAttackBecauseOfNonEnemyCase`), sets the attacker's stun to
+    `StunPeriodAttackerFriendlyFire` (0.4) and asks the damage model's `DecideWeaponCollisionReaction`, whose default answers `Bounced` for
+    a 0-damage blow; our decorator answers `ContinueChecking` BEFORE the base model for a THRUST (`StrikeType` thrust, not a kick / bash)
+    into a FRIEND (`Agent.IsFriendOf`) - everyone's, the player's too; `ThrustsPassPolearmsOnly` (off) = a polearm's only. Swings still
+    bounce. The friendly-hit stun (one global ManagedParameters value) is held at `FriendlyHitStunSeconds` 0.1 while the rule is on and
+    given back at the battle's end / switched off (step 47's `StunPeriodMax` pattern). (g) RBM's DATA ROUTE is NOT built: its
+    `RBM_spear_combat_parameters.xml` (type `animation_combat_parameters`, declared in its `ModuleData/project.mbproj`) starts the polearm
+    thrusts' collision check later - `polearm_thrust_ready` / `polearm_thrust_left_ready` / `polearm_upthrust_ready`
+    `collision_check_starting_percent` 0.35, `collision_check_ending_percent` 0.55 (vanilla 0.20 / 0.45, 0.20 / 0.45, 0.32 / 0.50) - so
+    the spear's first part of the thrust passes through the man in front without a check; the fallback if the engine's ContinueChecking
+    does not carry the spear (AI_NOTES "Step 76"). (h) 21 settings (1 player page, 20 Advanced in "Battle pace (AI)"); new keys, no
+    migration (FormatVersion stays 16). Gate: `ModEnabled` FIRST, then each switch; off lifts every favor (recomputed) and gives the stun
+    back; the looks still measure. (i) UNVERIFIED in game: that the native AI honours the favors (holds the spear), that `ContinueChecking`
+    lets the spear reach the enemy behind, whether the friend still flinches, whether the native AI starts thrusts with a mate in front.
 
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),

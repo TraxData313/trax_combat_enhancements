@@ -6834,3 +6834,98 @@ memory only (`run_tests.fsx`, `run_smoke.ps1` - Toni sees a Windows Security pop
 nothing killed). Done before it: the build at HEAD, the AssemblyGuard in memory (`run_guard.fsx`: OK, no forbidden assembly), the tests (1085)
 and the smoke (172) in memory. To finish once the game is closed: `powershell -ExecutionPolicy Bypass -File tools\SmartAppControl\install_dev.ps1`,
 then `tools\SmartAppControl\loadcheck.ps1` (a refused DLL = rebuild with `-p:SourceRevisionId=<HEAD>.sacN`, as step 74). Windows security untouched.
+
+## Step 76 — spearmen keep their spears, the second rank thrusts past (built 2026-10-22; dev build only, not uploaded)
+
+**Toni (2026-10-22)**: "my shield wall-ers have spears but they keep using their swords, even though the spear has a longer reach" - RBM fixes
+it, and RBM's second rank is effective (its spears are not stuck in the man in front).
+
+**RBM's weapon preference (its source read: `RealisticBattleAiModule/AiModule/Agents/WeaponPreference.cs`)**: who - a man whose 4 weapon slots hold a
+melee item with a `RelevantSkill == Polearm` usage AND a melee item without one; a thrown item / any consumable or ranged usage is neither; cached per
+agent keyed on the 4 slot items. A main-thread tick (HumanAIComponent) every 0.5 s x (0.75 + 0.5 x random), after deployment, AI humans with a team:
+close = `Mission.GetNearbyEnemyAgents(pos, 2.5 m)` finds one not `IsRunningAway`; mounted faster than 4 m/s = nothing close (no query); timers -
+`enemyCloseSince` (sidearm after 2 s of a close spell) / `lastEnemyCloseTime` (polearm again 4 s after the last close look, 2 s mounted); a flip =
+`agent.UpdateAgentProperties()`. `SetAiRelatedProperties` postfix: close → `AiWeaponFavorMultiplierMelee = 55`, else `...Polearm = 35`. RBM moved the
+query OUT of the stat model on 2026-09-15: inside `SetAiRelatedProperties` it deadlocked `Agent.Build` for reinforcement waves.
+
+**The game (v1.4.8 decompile, `%TEMP%\trax_decomp\`)**: `AgentStatCalculateModel.SetAiRelatedProperties` assigns `AiWeaponFavorMultiplierMelee /
+Ranged / Polearm = 1` on every recompute (line 226) - a decorator writing after the base never compounds. `Mission.MeleeHitCallback` (5297):
+`CancelsDamageAndBlocksAttackBecauseOfNonEnemyCase(attacker, victim)` (6291 - single player: a FRIEND, whatever the controller) → `cancelDamage`,
+`collisionData.AttackerStunPeriod = ManagedParameters StunPeriodAttackerFriendlyFire` (Native managed_core_parameters.xml: 0.4), the blow created
+with 0 damage and still REGISTERED on the friend (not for a block / parry), then `AgentApplyDamageModel.DecideWeaponCollisionReaction` - the
+default (`MissionCombatMechanicsHelper.DecideWeaponCollisionReaction`, 106): a thrust hit `HitWithStartOfTheAnimation` = Staggered, then
+`!IsColliderAgent || InflictedDamage <= 0` = **Bounced**. `colReaction == ContinueChecking` on entry skips the whole block (the engine's own pass for
+a kick on an arm). Strike types: `StrikeType.Thrust` = 1. The rank: `Agent.GetFormationFileAndRankInfo(out file, out rank)` (managed IFormationUnit
+fields); `LineFormation.GetLocalPositionOfUnit` puts rank r at y = -r x (Distance + UnitDiameter) - rank 0 is the FRONT (a square's / circle's
+outer ring, both LineFormation subclasses); odd ranks staggered half a file; `LineFormation.GetUnit(file, rank)` / `GetFormationInfo(out files, out
+ranks)` public and managed.
+
+**Built - THE PREFERENCE** (Core `Spears.cs`: SpearSlot / SpearLoadout / SpearContext / SpearCondition / SpearHeld / SpearFlip / SpearMind /
+SpearRules / SpearMath / SpearStats; Module `AthleticsLogic.Spears.cs`, `SpearBody.cs`, `TrackedAgent.Spear*`, `TraxAgentStatModel.ApplySpearFavor`):
+- the look from the logic's tick (TickAthletics, own try) - every tracked man whose `Spear.NextLook` is due (SpearLookSeconds 0.5 x 0.75-1.25, a
+  hash of his index and look count - no dice), `ISpearBody.Ready()` = deployment finished; the gate (active AI human with a team, never you /
+  a man you took over); the loadout re-read only when one of the 4 slot items changes (references kept on TrackedAgent); `SpearMath.Classify`
+  (the LONGEST polearm's slot and `WeaponLength`).
+- (a) THE RADIUS: 1.0 m + 60% of the polearm's length, clamped 1.5-3.5 m (1.5 m → 1.90, 2.0 → 2.20, 2.5 → 2.50, 3.0 → 2.80); unknown / off =
+  2.5 (RBM).
+- (b) THE BACK RANK: rank ≥ 1 and a unit at (file - 1 .. file + 1, rank - 1) of his `LineFormation` (the staggered rank in front; a detached man
+  or another arrangement = rank unknown = not back); a shield wall / square / circle under an order `WallMath.OrderVerdict` holds, or a plain line
+  on a Stop / a man standing firm (step 75). It wins over a close enemy: the sidearm spell cleared, the polearm AT ONCE (`ToPolearmBackRank`).
+- (c) FACING A POLEARM: `CloseEnemies` counts within the radius the enemies not running away by what they WIELD (`WieldedWeapon.CurrentUsageItem`
+  a melee polearm class); only polearms close = `FacingPolearm` (not close for the timers).
+- the condition order: riding fast (no scan) → back rank (no scan) → close → facing polearm → nothing close; RBM's timers (`SpearMath.Step`); a flip
+  (or the first look / an unfavour) = `st.SpeedDirty` → the tick's budgeted `UpdateAgentProperties` (≤ 50 a tick, shared); the decorator asks
+  `AthleticsLogic.SpearFavorFor` (reads the flag only - any thread; counts with Interlocked) and writes ONE favor after everything else
+  (UpdateAgentStats and InitializeAgentStats; works with Athletics off).
+- the master switch / `SpearPreferenceEnabled` off: every favoured man unfavoured and recomputed at once; the looks go on and measure (OFF columns).
+  A favor number changed live = every favoured man recomputed.
+- THE WIELD FALLBACK (`SpearWieldOverride`, OFF): a 7th input wish (`AiInputState.SpearWield`, works without Athletics) - while the polearm is
+  favoured the AI's own `Wield{n}` event of a sidearm slot becomes `Wield{polearm slot}` (`SpearMath.WieldRewrite`, `AiInputHook.ApplySpearWield`);
+  hooked when on, released when off. Kept off: nothing offline can say the favors fail - PLAYTEST D41 decides.
+
+**Built - THE THRUST** (Core `ThrustPassRules / ThrustPassMath / ThrustPassStats`; Module `Models/ThrustPass.cs`, `TraxDamageModel.DecideWeaponCollisionReaction`):
+before the base model - an agent collision (not a missile) with a defender who `IsFriendOf` the attacker, not an alternative attack, `StrikeType`
+thrust (`ThrustsPassPolearmsOnly` off = any weapon) → `ContinueChecking`; everything else the base model's answer (a swing into a friend still
+Bounced - the smoke proves it through the game's own CustomAgentApplyDamageModel). Every friendly contact counted by verdict; a pass sets the
+attacker's `ThrustPassAt` - an enemy THRUST by him within 0.5 s (the decorator's next enemy collision) = "the spear reached" (landed / blocked / no
+damage); the friend passed is watched 0.5 s for a Strike action on either channel (the poll's reads - Athletics on) = "he still flinched". The
+friendly-hit stun: `ThrustPass.HoldStun` (the game's value remembered once) at `FriendlyHitStunSeconds` 0.1 while the rule is on, `RestoreStun` when
+off / the master switch / the summary / `StopAthletics` (one global value - every friendly touch, swings too).
+
+**Settings (21, all Live; 409 → 430)**: `SpearPreferenceEnabled` (true) on the PLAYER page after `ShieldWallStandFirm` (23 settings - a new AI
+system's switch; SettingsPagesTests' list and range 12-23 and the smoke's page check changed on purpose); Advanced, "Battle pace (AI)" after
+`ShieldWallStandFirmTightTolerance`: `SpearPolearmFavor` 35 (1-100), `SpearSidearmFavor` 55 (1-100), `SpearSidearmAfterSeconds` 2, `SpearPolearmBackAfterSeconds`
+4, `SpearPolearmBackMountedSeconds` 2 (0-20), `SpearRidingFastMetresPerSecond` 4 (0-15), `SpearCloseFromLength` true, `SpearCloseBaseMetres` 1.0 (0-3),
+`SpearCloseLengthPercent` 60 (0-150), `SpearCloseMinMetres` 1.5, `SpearCloseMaxMetres` 3.5, `SpearCloseFallbackMetres` 2.5 (0.5-6), `SpearBackRankKeeps`
+true, `SpearBackRankInStandingLine` true, `SpearKeepVsPolearm` true, `SpearLookSeconds` 0.5 (0.1-2), `SpearWieldOverride` false, `ThrustsPassFriends` true,
+`ThrustsPassPolearmsOnly` false, `FriendlyHitStunSeconds` 0.1 (0-1). New keys, no migration (FormatVersion stays 16).
+
+**Logs**: `[spears] mission start, the AI prefers the spear (step 76): …` and `… thrusts past friends (step 76): …`; `[spears] the friendly-hit stun
+(StunPeriodAttackerFriendlyFire) 0.40 s → 0.10 s …` / `… given back …`; first-time lines - the first man with both weapons (slot, length, radius),
+the first back-rank man (rank, arrangement, order), the first man facing only polearms, the first flip of each kind, the first THRUST past a friend,
+the first pass followed by an enemy hit, the first SWING into a friend (bounced), the first back-rank attack holding the polearm; `[spears] spear
+settings changed …` / `thrust settings changed …`. **[summary]** `spears (step 76 - …)` (men, radius, TIME HOLDING the polearm / sidearm / other by
+condition ON vs OFF), `spears - the flips` (flips by kind, the favors written, attacks holding which, back-rank attacks a man-minute, the wield
+fallback, looks and cost), `thrusts past friends (step 76 - …)` (contacts by verdict, passes by weapon / shield / you / back rank, then an enemy hit
+within 0.5 s, the friend's flinch, the stun).
+
+**Measured offline**: tests 1085 → 1096 (Step76Tests.cs 11: the settings placed, the master switch first, the loadout, the radius, RBM's timers -
+2 s / 4 s / 2 s mounted, a passing enemy, a drifting enemy -, the back rank and a thinned file, facing polearms, the favors and the riding gate, the
+wield bits, the collision decision, the summary lines). Smoke 172 → 176 (Program.Step76.cs: the real looks with a stand-in body and the REAL stat
+decorator over FreshStatsModel - which now assigns the favors 1 / 1 / 1 like SetAiRelatedProperties -; the REAL damage decorator over the game's
+CustomAgentApplyDamageModel; ManagedParameters' real stun 0.4 → 0.1 → 0.4; 1000 men 0.004 ms a tick, 0 bytes). Every older logic starts with a
+NOT-ready stand-in spear body (a setup step), so no older step needed pinning. Ran in memory (`run_tests.fsx`, `run_smoke.ps1`, `run_guard.fsx` OK).
+
+**UNVERIFIED — only the game can tell (PLAYTEST D41)**
+1. The native AI honours the favors: "nothing close" time ON mostly the polearm vs OFF; if not, `SpearWieldOverride` (the wield fallback).
+2. `ContinueChecking` carries the spear past the friend to the enemy behind: "then an enemy hit … K of P" well above 0. If ~0, THE FALLBACK - RBM's
+   data route (NOT built): an `animation_combat_parameters` XML declared in `ModuleData/project.mbproj` (RBM: `<file id="soln_combat_system"
+   name="ModuleData/RBM_spear_combat_parameters.xml" type="animation_combat_parameters" />`) with `polearm_thrust_ready`, `polearm_thrust_left_ready`,
+   `polearm_upthrust_ready`: `collision_check_starting_percent` 0.35, `collision_check_ending_percent` 0.55 (vanilla Native combat_parameters.xml:
+   0.20 / 0.45, 0.20 / 0.45, 0.32 / 0.50) - the first 35% of the thrust is not checked, so the spear's shaft passes the man in front. Its risk: it
+   changes every polearm thrust in every mission (yours too) and needs a module XML (no code).
+3. The friend still flinches? "flinched" vs "no reaction" (the blow is still registered on him with 0 damage).
+4. The native AI starts thrusts with a mate in front: back-rank attacks with the polearm a man-minute; ~0 = it never tries (then the data route
+   above, or an attack wish of our own - not built).
+
+**DEPLOY**: see the TASKS_DONE entry (install_dev.ps1 + loadcheck.ps1).

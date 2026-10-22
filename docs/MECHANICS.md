@@ -396,6 +396,48 @@ Not while the wall advances, charges, follows, falls back or retreats.
 `ShieldWallStandFirmSlackMetres` 0.3 (0.1-1.5), `ShieldWallStandFirmArrivedMetres` 2.0 (0.5-20), `ShieldWallStandFirmStillMetresPerSecond`
 0.5 (0-3), `ShieldWallStandFirmPinFrame` on, `ShieldWallStandFirmTightTolerance` on.</sub>
 
+**Spearmen keep their spears** (step 76, Toni 2026-10-22: "my shield wall-ers have spears but they keep using their swords, even though
+the spear has a longer reach"). Every AI man (both sides, never you) who carries a spear (any melee polearm) AND a sword, axe or mace
+(javelins and throwing weapons count as neither) is looked at every ~0.5 s. The game weighs which weapon he wields by three favors,
+1 / 1 / 1 in the base game; the mod (RBM's numbers) writes them from what is around him:
+
+| Around him | Favour | Which he wields |
+|---|---|---|
+| No enemy within his close distance | polearm **x35** | the spear |
+| An enemy within it for **2 s** | melee (sidearm) **x55** | the sword / axe / mace |
+| No enemy within it for **4 s** (a rider **2 s**) | polearm x35 again | the spear |
+| Rank 2 or deeper of a shield wall / square / circle, or of a line on a stop, with a man of his in front | polearm x35 **at once** | the spear, whatever is close - he thrusts past the man in front |
+| Only enemies holding a polearm themselves within it | polearm x35 | the spear (spear against spear) |
+| Riding faster than 4 m/s | polearm x35 | the lance - he is riding through, nothing is close |
+
+His **close distance** = 1.0 m + 60% of his longest spear's length, kept between 1.5 and 3.5 m (a length not known: 2.5 m - RBM's
+for every spear):
+
+| Spear length | 1.5 m | 2.0 m | 2.5 m | 3.0 m | 4.0 m |
+|---|---|---|---|---|---|
+| Close distance | 1.90 m | 2.20 m | 2.50 m | 2.80 m | 3.40 m |
+
+A favor is a weight on the game's own choice, not an order: the native AI still decides (PLAYTEST D41 measures it). A test fallback,
+off by default, forces the spear while nothing is close (`SpearWieldOverride`).
+
+**Thrusts pass a friend** (step 76). In the base game a blow that touches a man of your own side does no damage and BOUNCES - the attacker
+is stunned 0.4 s - so a second-rank spear stops on its own front man. With the mod a **thrust** that touches a friend carries on past
+him (still no damage to him) and can reach the enemy behind; **swings, kicks and bashes** still stop on him. The stun after touching a
+friend is **0.1 s** (one value for every friendly touch; the game's own comes back at the battle's end or with the switch off).
+
+| A blow touches a friend | Base game | With the mod |
+|---|---|---|
+| A thrust (any weapon; spears only with `ThrustsPassPolearmsOnly`) | bounces, 0.4 s stun | carries on, 0.1 s stun |
+| A swing | bounces, 0.4 s stun | bounces, 0.1 s stun |
+| A kick / a shield bash | the game's | the game's |
+
+<sub>Settings: `SpearPreferenceEnabled` on (player page; live - flip it mid-battle to compare); Advanced, "Battle pace (AI)", live:
+`SpearPolearmFavor` 35 (1-100), `SpearSidearmFavor` 55 (1-100), `SpearSidearmAfterSeconds` 2 (0-20), `SpearPolearmBackAfterSeconds` 4 (0-20),
+`SpearPolearmBackMountedSeconds` 2 (0-20), `SpearRidingFastMetresPerSecond` 4 (0-15), `SpearCloseFromLength` on, `SpearCloseBaseMetres` 1.0 (0-3),
+`SpearCloseLengthPercent` 60 (0-150), `SpearCloseMinMetres` 1.5 / `SpearCloseMaxMetres` 3.5 (0.5-6), `SpearCloseFallbackMetres` 2.5 (0.5-6),
+`SpearBackRankKeeps` on, `SpearBackRankInStandingLine` on, `SpearKeepVsPolearm` on, `SpearLookSeconds` 0.5 (0.1-2), `SpearWieldOverride` off;
+`ThrustsPassFriends` on, `ThrustsPassPolearmsOnly` off, `FriendlyHitStunSeconds` 0.1 (0-1).</sub>
+
 ## 11. Eagerness, and the fever of a charge
 
 Men don't want to throw their lives away, and a man at work doesn't hold a pace until he drops. In the
