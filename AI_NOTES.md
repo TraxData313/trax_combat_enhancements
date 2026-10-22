@@ -7435,3 +7435,93 @@ played. Step 78c's meshed grind 240 s with the cries on and off: rests 225 / 225
 **DEPLOY**: `tools\deploy.ps1` ran normally (Smart App Control off): the build, the AssemblyGuard (OK), the offline smoke (190 passed), installed as
 Modules\TraxCombatEnhancements.Dev "Trax Combat Enhancements (dev)" - the game and the launcher were not running. `tools\SmartAppControl\loadcheck.ps1`:
 both DLLs LOADED (`1.2.0+8ba505eadd2eafb526a8542d26b1e7609b9449fa`). Not uploaded. Windows security untouched.
+
+## Step 80 — AI kicks and bashes land on enemies, not friends (built 2026-10-22; dev build only, not uploaded)
+
+**Toni (2026-10-22, through the manager)**: the logs since step 68 show most AI kick hits on a FRIEND ("224 of 275 kick hits landed on a friend"); a
+kick or bash should start only when an enemy is the first body in the man's strike path within reach; his target in front of him; rear-rank men
+behind a friend never; allocation-free at 1000 agents; the rates as they are.
+
+**The cause, from Toni's log (`trax_combat.log`, the two battles of 2026-10-22)**
+- 16:17 (435 s): `ai kicks: asked 985 (kicks 317, bashes 668) → PLAYED 958 → landed on the man 668 (on his target 176, on another enemy 64, on a
+  FRIEND 427, untracked 1), into a shield 254`; 0.55 asked a man-minute in contact (1797.6); the step-68 check `held 288, clear 985`.
+- 17:18 (690 s): `asked 818 (kicks 351, bashes 467) → PLAYED 775 → landed on the man 570 (target 193, another enemy 63, FRIEND 314)`, into a shield
+  156; 0.39 asked a man-minute (2120.7); `held 159, clear 818`. The impact coverage line agrees: `on a FRIEND 314`, `unaccounted 0`.
+- So step 68's check said CLEAR for every kick that was asked - and 55-64% of the landed ones hit a friend. The log has no per-kick geometry, so the
+  rest is the code: `AiKickMath.FriendInPath` measured a friend against the LINE FROM THE KICKER TO HIS TARGET (≤ 0.5 m off it, 0.2-len along it),
+  while the engine's kick / bash goes along his FACING (`Agent.GetMovementDirection`) and hits the first body there. The target may stand up to
+  `AiKickFacingDegrees` 40° off it (1 m beside the foot at 1.5 m); a rear-rank man's front mate stands straight ahead of him while his target (the
+  nearest enemy, half a file over in the enemy's line) is off to the side - the line to the target passes 0.5 m+ from the mate's centre; and 0.5 m
+  to a body's centre is less than a body (0.4 m round) plus a foot. The kicks also fire 0.3-0.55 s after the decision (a bash's guard 0.4 s first).
+- The vanilla kick: `MissionMainAgentController` asks `Agent.KickClear()` before the player's kick - a native call (`MBAPI.IMBAgent.KickClear`), no
+  managed geometry to copy; our widths are from bodies.
+
+**80.1 THE STRIKE PATH (Core `AiKicks.cs`: `AiKickPath`, `AiKickPathProbe`, `AiKickMath.TargetInPath`; Module `AiKickBody.cs` `StrikePath`,
+`AthleticsLogic.AiKicks.cs` `StrikePathOf` / `PressPath`)**
+- In his frame: along = (q − p)·u, side = |(q − p)×u|, u = his facing (zero → the line to the target). The enemy IN the path: 0 < along ≤
+  `AiKickReachMetres` 1.6 and side ≤ the half-width. A friend in it: 0 < along < the enemy's along, side ≤ the half-width (his side's horses too; his
+  own mount skipped). `FriendPathMinAlong` 0.2 → 0 (step 68's 0.2 let a neighbour half a step forward through - the smoke's front-rank shieldmen
+  bashed them).
+- Half-widths: a KICK = `AiKickFriendClearMetres` (the key kept, meaning sharpened) 0.5 → **0.6**; a BASH = `AiBashPathHalfWidthMetres` **0.75**.
+  0 = no check for that kind.
+- Verdicts: Clear; TargetOffPath (→ waits like an enemy not in front - `AiKickSkip.TargetOffPath`, appended 16); FriendFirst (→ waits, step 68's
+  `FriendInTheWay`); BehindFriend - the nearest friend in it within `AiKickRearRankMetres` **1.2** (→ no kick, the wait DROPPED -
+  `AiKickSkip.BehindFriend`, appended 17; SkipCount 18).
+- The look's order: in reach and in front → the KIND first (a shield, a raised shield facing him = a kick) → `TargetInPath` on the distance and
+  angle the look already has (no read) → the body's probe (one `Mission.GetNearbyAllyAgents` into the reused `MBList`, radius min(reach, the
+  enemy's along) + the half-width) → the verdict. Only in reach, in front and with the enemy in the path - a handful of reads a second.
+- THE PRESS (80.2): `AdvanceAiKicks` (now takes the rules) - a BASH's Guard → Press reads the target and the path again (`PressPath`); not clear =
+  `EndAiKick(PathBlocked)` (`AiKickEnd.PathBlocked`, EndCount 7), no key, its cooldown stands. A kick presses at the decision.
+
+**80.3 THE COUNTS (Core `AiKickStats`)**: `AiKickOutcome` (EnemyTarget / EnemyOther / EnemyShield / FriendBody / FriendShield / Untracked / Miss)
+by kind - `AiKickHit` classifies every first collision, a shield one too (step 68 named only body hits); a Miss = an attempt ended Played, seen,
+never landed. `NotePath` (the look's verdicts by kind, only with the check on), `NotePressPath`, `PathProbes` / `PathFriendsLooked`. The 6th
+[summary] line `ai kicks - whom they hit and the strike path (step 80)`: per kind enemy (target / another / shield) / friend (man / shield) / untracked
+/ MISSED and the friends' % of the hits; the ENEMY HITS A MAN-MINUTE in contact (the effective rate); the verdicts and REFUSED; the press re-reads;
+the probes. Step 68's clause renamed `step 68 / 80 - a friend first in the strike path (a kick's 0.6 m either side): held …, clear …` (held = FriendFirst
++ BehindFriend). First-time lines: `first AI kick REFUSED - a friend first in his strike path` (4), `… behind a friend (rear rank)` (5), `first AI
+shield bash ENDED before its key` (6).
+
+**Settings (2 new, Advanced, the Impact group after `AiKickFriendClearMetres`, live; 487 → 489)**: `AiBashPathHalfWidthMetres` 0.75 (0-2),
+`AiKickRearRankMetres` 1.2 (0-3); `AiKickFriendClearMetres` relabelled "AI kicks: strike path half-width (m)", 0.5 → 0.6 in defaults.json.
+**Config format 18** (`ConfigFile.Migrate`, `from < 18 && from >= 14` - the key since format 14): `MoveOrKeepIfMoved` 0.5 → 0.6, a hand-set value
+kept and said once. The older format tests → 18 (mechanical: "→ 17" → "→ 18", `FormatVersion` 18; Step78cTests' "no new format" comment).
+
+**Claude's calls (DESIGN decision 76)**: the facing, not the line to the target (that is where the foot goes); the enemy must be IN the path (a kick
+40° off would pass him - it waits instead); a rear-rank man gets no wait (he would re-read the engine every look for 3 s and almost never get a
+clear path); the bash re-read after its guard (0.4 s of men moving); widths from bodies (0.4 m) + a foot (0.12) / a shield (0.3) + a margin, not
+measured in game; the rates NOT raised (Toni).
+
+**Measured offline**: tests 1144 → 1154 (Step80Tests 10: the settings placed / live / the master switch first / the enum counts; the rear-rank man;
+the facing vs the line - step 68's miss reproduced; a bash wider than a kick; men beside / behind / beyond; the enemy behind / beyond the reach / the
+check off / no facing; the probe and the cheap gate agree on 2000 random targets, the nearest friend decides; a two-deep line - every front man clear,
+every rear man refused; the summary line; format 18 move / keep / idempotent / DESIGN's value). Step68Tests' geometry now on the probe. Smoke 190 →
+191 (Program.Step80.cs `KicksLandOnEnemiesNotFriends`): two two-deep lines of 12 files (0.9 m apart, the enemy half a file over, 1.3 m between the
+fronts), half shieldmen, each man shuffling ±0.15 m across / ±0.2 m along and turning up to ±30° off his target, 3 minutes through the REAL looks
+and attempts; a stand-in ENGINE plays each attempt in its commit and lands it 0.25 s later on the first body along the man's facing THEN (its own
+geometry: a foot 1.25 + 0.4 m out, 0.52 m (kick) / 0.7 m (bash) either side): ON - asked 193 (1.35 a man-minute), played 171, ENEMY 159 (1.115 a
+man-minute), FRIEND 7 (**4.2%**), missed 5, refused by the path 135, bashes ended after the guard 21; OFF (both half-widths 0) - asked 316 (2.25),
+ENEMY 227 (1.618), FRIEND 85 (27.2%), missed 4. The step-65 cost check (1000 men, the rate x4) still 0 bytes. The first smoke run (the shuffle ±0.3 m,
+the turn 3°/tick, `FriendPathMinAlong` 0.2) gave 7.5% - every friend hit a front-rank BASH on a neighbour half a step forward beside him; the
+neighbours at ±0.3 m came within 0.3 m of each other (bodies overlapping - not a battle), so the shuffle went to ±0.15 m, and the min-along to 0.
+
+**The effective rate (asked)**: Toni's battles - kicks and bashes asked 0.39 / 0.55 a man-minute in contact, ENEMY body hits 256 / 240 (0.12 / 0.13 a
+man-minute; plus some of the 156 / 254 into a shield - their owner not logged before). The smoke: asks −40%, enemy hits −31% (most of the refusals are
+rear-rank men and men turned off their enemy - the second rank's kicks were never enemy hits). In Toni's lines the drop in ASKS will be larger than in
+the smoke (his 55-64% friend hits mean more rear-rank kickers), the drop in ENEMY hits about the smoke's. NOT raised (Toni's rule). If his next log's
+`enemy hits a man-minute` falls well under ~0.12: `AiKicksPerMinute` 1.2 → 1.6 (×1.33 ≈ the smoke's −31% back) and `AiBashDelaySeconds` 1.5 → 1.1 -
+the dice, not the path.
+
+**Gotchas**
+- `AiKickPathProbe` is a struct with private fields - `Begin` returns it by value; feed it with `Add` on a local (never through a readonly copy).
+- The bash's press re-read calls `IAiKickBody.Target` again - the smoke's step-65 stand-in answers it from `Targets`, so its bash checks still press.
+- The smoke's FakeAiKickBody: `FriendBlocks` still forces FriendFirst (step 68's smoke), `Bodies` = a world on a plane (step 80's); `IsEnemy` by side
+  when both men are placed.
+- Step 68's first-time line (index 4) changed its words - Program.Step68.cs' LogHas follows.
+
+**UNVERIFIED — only the game can tell (PLAYTEST D45)**
+1. The friends' share of the hits in a real battle (target under 5%; was 55-64%) - if it stays above ~10% the engine's kick / bash is wider than 0.6 /
+   0.75: raise them.
+2. How many fewer kicks and bashes start (`asked … a man-minute`, `enemy hits a man-minute`) - Toni's call whether to raise the dice.
+3. `MISSED` - a large share = the path reaches farther than the engine's foot (enemies at 1.5-1.6 m in the path but out of the foot's reach).
+4. `GetMovementDirection` is the facing the kick follows (step 62's angle uses it; the foot follows the body).

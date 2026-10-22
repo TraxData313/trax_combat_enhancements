@@ -366,7 +366,7 @@ contagion answers 20 % (0-1 s later); a formation's NEW charge order (the order 
 roar a unit per 15 s; limits checked when a cry is due - one cry a man per 8 s, 8 a unit and 16 a battle in any 1 s (Core `WarCryLimiter`, sliding
 windows) - over a limit = dropped; never you, the routed / fleeing, the dead; queued from the rest's look / the order poll and played from the tick
 (`TickWarCries`), never in a callback; fixed arrays. Core `WarCry.cs`, Module `AthleticsLogic.WarCry.cs` / `WarCryBody.cs`; the `[warcry]` first-time
-lines and the [summary] "war cries (step 79)" line (cries by cause, dropped by each limit, the peak in any 1 s, one man's shortest gap) (PLAYTEST D44). The bar for the
+lines and the [summary] "war cries (step 79)" line (cries by cause, dropped by each limit, the peak in any 1 s, one man's shortest gap) (PLAYTEST D44). AI KICKS AND BASHES LAND ON ENEMIES, NOT FRIENDS (step 80, Toni's logs since step 68 - 427 of 668 landed AI kicks / bashes on a FRIEND at 16:17, 314 of 570 at 17:18 on 2026-10-22; DESIGN decision 76, AI_NOTES "Step 80", 2 Advanced settings, config format 18): step 68 measured a friend against the line to the target, but the kick goes along his FACING - now Core `AiKickPathProbe` (fed by `Mission.GetNearbyAllyAgents` into a reused list): the enemy he fights must be IN his strike path (along his facing, 0 < along ≤ `AiKickReachMetres` 1.6, within the half-width - a kick's `AiKickFriendClearMetres` 0.5 → 0.6, a bash's `AiBashPathHalfWidthMetres` 0.75) and no friend in it closer, else he waits; a friend first within `AiKickRearRankMetres` 1.2 = a rear-rank man: no kick, no wait; a bash's path read again after its 0.4 s guard (`AiKickEnd.PathBlocked`); the rates unchanged; the [summary] "ai kicks - whom they hit and the strike path" line (kick / bash hits on an enemy / a friend / missed, the enemy hits a man-minute, the refusals) (PLAYTEST D45). The bar for the
 fighter you look at is LATER (DESIGN §3; its settings wait in DESIGN's "Planned parameters"). Words:
 the pool/bar/points are "Athletics", the character-screen skill is "the Athletics skill" (it
 used to be called "endurance"), the "peak line" is the white mark at the top quarter of the bar,
@@ -514,7 +514,7 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               description, apply timing (Live / NextBattle); Normalize, Format;
                               its Default comes from defaults.json (DefaultsFile), never code; step 59:
                               SettingsPage (Player / Advanced) + ParamGroup.Page
-  SettingsSchema.cs           EVERY setting of DESIGN's table (487 - step 79: WarCriesEnabled after RestEnabled (the player page, 27) and 10 WarCry* after RestGapDiagnosticMetres (Advanced, "Courage and cohesion (AI)"); 476 - step 78c: the lull's 29 out (LullEnabled / LullForPlayerUnits on the player page, 27 Lull*), RestEnabled after RotationEnabled (the player page, 26) and 15 Rest* after RotationRestSeconds (Advanced, "Courage and cohesion (AI)"); 489 - step 78b's PressWrapAllowed / PressWingBendDegrees after PressEndSlackMetres and 14 Lull* (the clock, the unit's bar, the grace, the gap) after LullRotates, all Advanced; 473 - step 78's RotationEnabled / LullEnabled / LullForPlayerUnits after PressDontPass
+  SettingsSchema.cs           EVERY setting of DESIGN's table (489 - step 80: AiBashPathHalfWidthMetres / AiKickRearRankMetres after AiKickFriendClearMetres (Advanced, the Impact group); 487 - step 79: WarCriesEnabled after RestEnabled (the player page, 27) and 10 WarCry* after RestGapDiagnosticMetres (Advanced, "Courage and cohesion (AI)"); 476 - step 78c: the lull's 29 out (LullEnabled / LullForPlayerUnits on the player page, 27 Lull*), RestEnabled after RotationEnabled (the player page, 26) and 15 Rest* after RotationRestSeconds (Advanced, "Courage and cohesion (AI)"); 489 - step 78b's PressWrapAllowed / PressWingBendDegrees after PressEndSlackMetres and 14 Lull* (the clock, the unit's bar, the grace, the gap) after LullRotates, all Advanced; 473 - step 78's RotationEnabled / LullEnabled / LullForPlayerUnits after PressDontPass
                               (the player page, 27) and 24 Rotation* / Lull* after PressEndSlackMetres (Advanced, "Courage and cohesion (AI)"); 446 - step 77's PressDontPass after SpearPreferenceEnabled (the player page,
                               24) and 15 Press* after LoneRunnerAheadMetres (Advanced, "Courage and cohesion (AI)"); 430 - step 76's SpearPreferenceEnabled after ShieldWallStandFirm (the player
                               page, 23) and 17 Spear* + ThrustsPassFriends / ThrustsPassPolearmsOnly / FriendlyHitStunSeconds after
@@ -554,7 +554,7 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
   ConfigFile.cs               config.json TEXT: commented writer (header incl. how to revert +
                               // above each key; AppendSettings shared with defaults.json),
                               tolerant reader (comments, trailing commas, casing, "0,75"), Apply;
-                              FormatVersion 17 + Migrate (step 78c: DropRetiredLullKeys - the lull's 29 keys leave Unknown in any format, one note each, no format change; step 78b's move below has nothing left to move;
+                              FormatVersion 18 + Migrate (step 80: AiKickFriendClearMetres 0.5 → 0.6 (a format 14-17 file), a tuned value kept and said - MoveOrKeepIfMoved; step 78c: DropRetiredLullKeys - the lull's 29 keys leave Unknown in any format, one note each, no format change; step 78b's move below has nothing left to move;
                               step 78b: LullRecoverChargePercent / Advance / Hold 10 / 15 / 20 → 20 / 25 / 30 (a format 16 file), a tuned value kept and said - MoveOrKeepIfMoved; step 74: LineDisciplineRanksT0-T5 6/5/4/3/2/1 → 7/6/5/4/3/2 (a format 15 file), a tuned value kept
                               and said - MoveOrKeepIfMoved, T6 never; step 71: CostPerBlow 8 → 10, CostPerWrongSideShieldBlock 5 → 6, CostPerShieldBlock 2 → 3 (a format 14 file),
                               CostPerKickOrBash 5 → 6 (13+), CostPerWeaponParry 2 → 3 once, a tuned value kept and said - MoveOrKeepIfMoved; step 68: CostPerBlow 7 → 8 (a format 9+ file), CostPerWrongSideShieldBlock 2 → 5 (8+), CostPerShieldBlock 1 → 2
@@ -720,6 +720,11 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               step 68: AiKickSkip.FriendInTheWay (appended - SkipCount 16), AiKickRules.FriendClear (AiKickFriendClearMetres), AiKickMath.FriendInPath
                               (a man of his side > 0.2 m past him along the line to the enemy, within the clearance of it), AiKickVictim (target / another enemy /
                               FRIEND / untracked) + AiKickStats.Victims / NoteVictim / VictimsText and FriendChecksBlocked / Clear (the summary's clauses)
+                              step 80: AiKickPath (clear / the enemy off the path / a friend first / behind a friend) + AiKickPathProbe (his frame along his
+                              FACING: the enemy in the path, the nearest friend in it closer - allocation-free), AiKickMath.TargetInPath (the cheap gate),
+                              FriendPathMinAlong 0.2 → 0, AiKickRules.BashPathHalfWidth / RearRank / PathHalfWidth(kind), AiKickSkip.TargetOffPath /
+                              BehindFriend (SkipCount 18), AiKickEnd.PathBlocked (EndCount 7), AiKickOutcome + AiKickStats' outcomes by kind, the path's
+                              verdicts, PathLine - the 6th [summary] line; FriendInPath removed
   KickBrace.cs                step 65 pure: KickBraceRules / Math (FailChance S on x, Spent, ReelCut, Classify, TierBand) / Stats (the [summary] "kick
                               brace" lines); Impact.cs: the brace inside Decide (BraceRoll), ImpactRefusal.Braced; ImpactLive.cs: ImpactWatchPurpose.Brace,
                               FastSpeedFor ≤ 8 x
@@ -1156,6 +1161,10 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               (StartRelease), the cooldown by kind
                               step 68: in reach and in front, a friend on the line (AiKickFriendClearMetres; AiKickBody.FriendInTheWay - the game's proximity search into a reused list) = FriendInTheWay - the decision waits
                               like one out of reach (one first-time line); AiKickHit(st, intoShield, victim) - whom it landed on (AiKickVictimOf)
+                              step 80: in reach and in front the kind first, then StrikePathOf (TargetInPath, then the body's StrikePath) - off the path /
+                              a friend first = waits, behind a friend = dropped; AdvanceAiKicks(now, rules) - a bash's PressPath after its guard
+                              (PathBlocked); every first collision → AiKickOutcome, a played attempt that never landed = Miss; AiKickBody.StrikePath (his position,
+                              GetMovementDirection, the target; his side near fed to Core AiKickPathProbe) replaces FriendInTheWay
   Missions/AthleticsLogic.KickBrace.cs  step 65: the IKnockBackDecider (a braced man's knock-back refused - the blow decided at the knock-back
                               question), NoteBrace, the Brace watch (the cut reaction played faster), the summary; ImpactHooks.IKnockBackDecider,
                               TraxDamageModel.DecideAgentKnockedBackByBlow
@@ -1450,7 +1459,7 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
   Hud/FeverMarksVM.cs         its ViewModels: a GROW-ONLY POOL of FeverMarkVM (IsShown, PositionX / Y, Width / Height in pixels,
                               Fill, FillColor, FrameColor; step 46: BoxWidth / BoxHeight, FeverShown, BarShown, BarWidth / Height,
                               BarFill, BarUsable, BarColor, BarFrameColor, BarWoundColor)
-tests/TraxCombat.Core.Tests/  net8.0 xUnit (1144 - step 79: + Step79Tests.cs (12 - the settings placed / live, the master switch first, the chances and a
+tests/TraxCombat.Core.Tests/  net8.0 xUnit (1154 - step 80: + Step80Tests.cs (10 - the settings, the rear-rank man, the facing vs the line, a bash wider than a kick, men beside / behind / beyond, the enemy in the path, the probe vs the cheap gate, a two-deep line, the summary line, format 18); 489 settings; 1144 - step 79: + Step79Tests.cs (12 - the settings placed / live, the master switch first, the chances and a
                               seeded 10 000 rolls, the delays, the man's limit, the unit's cap, the battle's cap at 1000 men in 80 units, the window
                               sliding / cleared, the charge roar's cooldown, the shouters shared out, the queue, the summary line); 487 settings; 1132 - step 78c: + Step78cTests.cs (10 - the settings placed / live, the master switch first, the marks by order and the wound cap, the start, the contagion chance, the walk-back limit and the hold, the attack hold, the lull's keys dropped from an old config, the natural gap by side, the summary lines), the lull's tests out of Step78Tests / Step78bTests; 476 settings; step 78b: + Step78bTests.cs - the 16 settings placed / live, format 17 (moved / kept), the clock (the roll by order, worn / slowed / spent), the whole unit's bar under a fresh rotated front, the blows slowing, the gap from the men (bins, the plane, the lines from a meshed fight, opened, stepped back, the cap), the charge grace, the bent front and the wing, no wrap / ordered, the summary lines; 489 settings; 1121 - step 78: + Step78Tests.cs - the 27 settings placed (the player page 27), the switches, tired /
                               fresher / behind / covered / beside, busy actions, the lull by order, the unit table, the lull's start / lines / ends,
@@ -1770,6 +1779,9 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               battle's peak 16 in any 1 s, a unit's 3, no routed / dead / you, riders yes; the roar cooling 15 s; a charge 5 s later 5 men
                               held by their own 8 s; the shortest gap 8.65 s; 0 bytes; the switches drop what waits; step 78c's grind with the cries on
                               and off - rests identical, back-in cries 15 of 28, answers 8 of 52 (190 steps);
+                              step 80 (Program.Step80.cs): KICKS LAND ON ENEMIES - two two-deep lines of 12 files, half shieldmen, shuffling and
+                              turning, 3 minutes through the real looks with a stand-in engine finding the first body along the facing: the strike
+                              path ON friends 4.2% of the hits, enemy hits 1.12 a man-minute; OFF 27.2%, 1.62 (191 steps);
                               step 78b (Program.Step78b.cs; its lull smoke removed by step 78c): THE LULL THAT SHOWS - a MESHED six-minute grind (14 x 3 a side) through the real logic and
                               the REAL input filter: 7 lulls (2 by the breather clock), each gap 4.0-4.4 m from the men, held after 2.8 s; NO WRAPPING -
                               a 69 m unit on a 31 m held line under a stand-in charge that sends every man beyond the ends round them: step 77's wrap 80

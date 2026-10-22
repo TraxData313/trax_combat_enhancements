@@ -1195,7 +1195,28 @@ for a clear line, up to the same 3 s as for reach. Every kick or bash that lands
 decision (the brace, the knockdown, the lost shield); a kick into a **raised shield** is stopped by the shield and decides nothing
 (the shield did its job).
 
-<sub>Settings: `AiKickFriendClearMetres` 0.5 (Advanced, impact group; 0 = no check; live).</sub>
+**Only when the enemy is the first body in his strike path** (step 80). Step 68's check measured the line from the kicker to his
+enemy, but a kick or bash goes where the man FACES and hits the first body there: in Toni's battles of 2026-10-22 more than half
+the AI's landed kicks and bashes still hit a friend (427 of 668 at 16:17, 314 of 570 at 17:18) — rear-rank men whose front mate
+stood straight ahead while their enemy stood half a file aside, and men turned up to 40° off their enemy. Now the man's strike
+path is a strip along his facing, as long as his reach, and:
+
+| Rule | Kick | Shield bash |
+|---|---:|---:|
+| the path's half-width either side of his facing line (a body centre that close is touched) | **0.6 m** | **0.75 m** |
+| its length | 1.6 m | 1.6 m |
+| the enemy he fights must stand IN it | yes — else he waits (up to 3 s), like an enemy not yet in front | yes |
+| a man of his side in it, closer than the enemy | he waits for a clear path (up to 3 s) | he waits |
+| … within **1.2 m** of him (a rear-rank man behind his front mate) | **never** — no kick, no wait | never |
+| read again just before the key | (the kick's key comes at once) | after its 0.4 s raised guard — not clear = no bash |
+
+The rates above are unchanged; fewer kicks and bashes START (a man turned away from his enemy waits, a rear-rank man never kicks).
+In the smoke's two two-deep lines the friends' share of the hits fell from 27% to 4%, the enemy hits a man-minute from 1.62 to 1.12
+(−31%). The [summary] line "ai kicks - whom they hit and the strike path" splits every played kick and bash into enemy / friend /
+missed and counts what the path refused.
+
+<sub>Settings: `AiKickFriendClearMetres` 0.6 (the kick's half-width since step 80; 0.5 before - config format 18 moves an untouched one),
+`AiBashPathHalfWidthMetres` 0.75, `AiKickRearRankMetres` 1.2 (Advanced, impact group; 0 = no check / always wait; live).</sub>
 
 ### The kicked man braces (step 65)
 

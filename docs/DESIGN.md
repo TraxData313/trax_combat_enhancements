@@ -3030,6 +3030,33 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     man's shortest gap. (g) SETTINGS: `WarCriesEnabled` on the PLAYER page (26 → 27) after `RestEnabled`, 10 `WarCry*` Advanced in "Courage and cohesion
     (AI)" after `RestGapDiagnosticMetres` (476 → 487), no config-format change (a missing key takes its default). (h) UNVERIFIED in game (PLAYTEST D44):
     how it sounds - whether Yell / HorseRally carry, whether 16 a second is a roar or too much, whether the engine itself limits voices.
+76. **AI kicks and bashes land on enemies, not friends** (step 80, Toni's logs since step 68 - "224 of 275 kick hits landed on a friend"; his
+    2026-10-22 battles: 16:17 - 668 landed on a man, 427 on a FRIEND (64%), 176 on the target, 64 on another enemy; 17:18 - 570 landed, 314 on a
+    friend (55%), 193 / 63 on enemies; step 68's line check said "held 159, clear 818" there - it passed almost every kick). THE CAUSE (the code):
+    step 68 tested a friend against the LINE FROM HIM TO HIS TARGET (within 0.5 m of it), but a kick / bash goes along HIS FACING and hits the first
+    body there - the target may stand up to 40° (`AiKickFacingDegrees`) off it, 1 m beside the foot's path at 1.5 m, and a rear-rank man's front mate
+    stands straight ahead of him while his target stands half a file to the side; and 0.5 m to a body's CENTRE is closer than a body (0.4 m round)
+    lets a foot pass. (a) THE STRIKE PATH (Core `AiKickPathProbe`, allocation-free, fed one friend at a time from the game's own
+    `Mission.GetNearbyAllyAgents` into a reused list): in his own frame (`Agent.GetMovementDirection` - the facing step 62's angle uses) a strip from his
+    shoulders `AiKickReachMetres` 1.6 long and a half-width either side - a kick's `AiKickFriendClearMetres` (the key kept; now the KICK's half-width;
+    0.5 → **0.6** - a foot's 0.12 + a body's 0.4 + margin), a bash's `AiBashPathHalfWidthMetres` **0.75** (a shield's 0.3 + a body's 0.4 + margin). THE
+    ENEMY MUST BE IN IT (0 < along ≤ reach, ≤ the half-width off the line - the cheap gate on the target's distance and angle, `AiKickMath.TargetInPath`,
+    before any read), and NO FRIEND IN IT CLOSER (along > 0 - step 68's 0.2 m let a neighbour half a step forward through, whose body reaches a bash's
+    sweep -, along < the enemy's, ≤ the half-width; his side's horses count). Verdicts: CLEAR → kick; the enemy OFF THE PATH → the decision waits like one
+    not in front (`AiKickSkip.TargetOffPath`); A FRIEND FIRST → waits for a clear path (`FriendInTheWay`); a friend first within `AiKickRearRankMetres`
+    **1.2** of him = a REAR-RANK man → refused with NO wait (`BehindFriend` - he does not re-read the engine every look for 3 s). (b) THE PRESS: a bash's
+    0.4 s guard gives the men time to move - when it ends, the target and the path are read again just before the key; not clear = the attempt ends with
+    no key (`AiKickEnd.PathBlocked`, its cooldown stands). A kick's key comes at the decision, so its decision IS the press. (c) MEASURED: the [summary]
+    "ai kicks - whom they hit and the strike path (step 80)" line - each PLAYED kick and bash by whom it hit first (his target / another enemy / an
+    enemy's shield / a friend's body / a friend's shield / a horse or untracked / MISSED), the friends' share of the hits, the enemy hits a man-minute in
+    contact (the effective rate), the path's verdicts at the look by kind and at a bash's press, the probes; the first REFUSED / ENDED lines. (d)
+    CALLS (Claude): the rates are NOT raised (Toni) - fewer kicks start; the rear rank gets no wait; the path is the man's facing, not his body's line to
+    the target; widths from bodies, not from the decompile (the kick's real collision is native - `Agent.KickClear` is an engine call with no managed
+    geometry). (e) SMOKE (a stand-in engine with its own reach / widths: a foot 1.25 + 0.4 m, sides 0.52 / 0.7 m): two two-deep lines of 12 files, half
+    shieldmen, shuffling and turning, 3 minutes - ON friends 4.2% of the hits (7 of 166), enemy hits 1.12 a man-minute, asks 1.35; OFF 27.2% (85 of 312),
+    1.62, 2.25. (f) SETTINGS: 2 Advanced in the Impact group after `AiKickFriendClearMetres` (487 → 489), live; config format 18 moves a format 14-17
+    file's untouched 0.5 once (a hand-set value kept and said). (g) UNVERIFIED in game (PLAYTEST D45): the friend share in Toni's next log, how many fewer
+    kicks / bashes start, whether 0.6 / 0.75 match the engine's real kick and bash.
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),
 `HudRefreshSeconds`, `FormationStatsRefreshSeconds` came out of step 2's research

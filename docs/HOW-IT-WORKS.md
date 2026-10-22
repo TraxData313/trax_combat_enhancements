@@ -270,11 +270,12 @@ into his own front man — never knocks anyone down.
 **Kicks and shield bashes.** The AI now kicks and shield-bashes. A man without a shield kicks about once a minute
 while he fights — more against a man who hides behind his guard and in the fever of a charge, veterans more than
 recruits, tired men not at all. A man with a shield bashes about as often as he swings while he is fresh, less as he
-tires. They are not free: a kick or a bash costs 5 Athletics points (a swing 8), so a shieldman who bashes a lot tires
+tires. They are not free: a kick or a bash costs 6 Athletics points (a swing 10), so a shieldman who bashes a lot tires
 sooner — and so do you if you kick a lot. And a kick is no longer a free push: a fresh, well-armoured veteran **braces** and barely moves — a looter's kick staggers a fresh legionary for a moment
 perhaps one time in eight, and never knocks him down. Tire him first: a spent man cannot brace, and then kicks and bashes
-throw him about. The same goes for you, both ways. A man never kicks through his own mate: a soldier in the second rank
-waits until nobody of his side stands between him and the enemy.
+throw him about. The same goes for you, both ways. A man kicks or bashes only when the enemy is the first man straight in
+front of his foot or shield: a soldier in the second rank never kicks past his front-rank mate, and a man turned a little away
+from his enemy, or with a mate stepping across, waits until the way is clear.
 
 
 **The enemy goes for the opening.** When a man reels or lies on the ground — you included — the men fighting

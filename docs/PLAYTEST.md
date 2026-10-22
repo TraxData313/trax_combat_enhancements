@@ -1046,6 +1046,7 @@ Claude the `[summary] impact …` block of every battle.
 | 25 | **D43b - THE LULL THAT SHOWS, NO WRAPPING** (step 78b): Toni's 225 v 229 again - your ~225 against ~229 recruits on battle_terrain_b, a long grind; watch between the fronts and both your ends | 20 | `[rhythm] first LULL … - the breather clock`, `[rhythm] first lull GAP OPENED`, `[press] first WING man held at an end`, `[summary] battle rhythm (step 78b) - THE LULL'S TRIGGER AND GAP`, `[summary] press, don't pass (step 78b) - NO WRAPPING` | every 45-90 s of grinding both fronts back off until 3-4 m of empty ground shows between them for 10-20 s, facing each other, then come on again; the recruits' wide wings stand off your ends (curled toward them), never round them | no gap in a lull (the gap measured ~0 / never held); a lull ended at once by a charge; men still round your ends; a wing frozen far out doing nothing for minutes |
 | 27 | **D44 - WAR CRIES** (step 79, sound only): a field battle of a few hundred a side - give F1 F3 to your infantry, watch the enemy charge, then the long grind | 10 | `[warcry] mission start`, `[warcry] first CHARGE ROAR`, `[warcry] first WAR CRY (charge order / back in / contagion answer)`, `[summary] war cries (step 79)` | on your charge part of the unit roars, ragged over a second or two; the enemy's charge roars too; now and then a man stepping back into the grind shouts and a mate answers | silence; a wall of sound every few seconds; the same man shouting again and again; cries from fleeing men |
 | 26 | **D43c - EACH MAN RESTS ON HIS OWN** (step 78c - the lull of D43 / D43b is gone): Toni's 225 v 229 again (a long grind, both charging), then your shield wall on STOP against a fresh enemy until your men tire | 20 | `[rhythm] first REST`, `[rhythm] first resting man WALKED BACK`, `[rhythm] first man BACK IN`, `[rhythm] first man IN BY CONTAGION`, `[rhythm] first REST IN A WALL SLOT`, `[summary] rest (step 78c)` (two lines) | worn-out men step back a couple of metres one by one, facing the enemy, stand and guard, then go back in - never a whole unit at once, never a long walk away, never a back turned; when both sides are spent a gap of a few metres shows by itself; your wall's men stay in their places | a whole unit walking off; men 5 m+ behind their front (`rests more than 5 m behind it` high); `TURNED AWAY` above 0; `WALL men … more than 0.5 m out of the slot` above 0; men resting forever (lasted mean over ~60 s); resting men dragged in by the charge (no gap ever) |
+| 28 | **D45 - KICKS AND BASHES LAND ON ENEMIES, NOT FRIENDS** (step 80): a field battle of ~100 a side, infantry two or more deep with shields on both sides; let the lines grind 3-5 minutes | 10 | `[impact] first AI kick / shield bash REFUSED - behind a friend (rear rank)`, `… a friend first in his strike path`, `[impact] first AI shield bash ENDED before its key`, `[summary] ai kicks - whom they hit and the strike path (step 80)`, `ai kicks` (its step-68 victims), `impact kicks / bashes landed vs decided`, `[config] migrated config.json` (once, AiKickFriendClearMetres 0.5 → 0.6, format 17 → 18) | front-rank men kicking and bashing the man in front of them; the second rank not kicking at all; friends a few % of the hits (was 55-64%); `on a FRIEND` in the impact coverage line near 0 | second-rank men still kicking into their front mates; friends above ~10% of the hits; almost no kicks at all (the enemy hits a man-minute far below the old ~0.12-0.13) |
 
 Then play normally (parts E-G). Your gut on each family - too many / about right / too few - is the most useful thing to send.
 
@@ -2001,6 +2002,28 @@ queue full 0; charge orders … (roared …, the unit's roar cooling …); PEAK 
 shortest gap … s (limit 8 s)`. **Right**: a roar on every new charge (yours and the AI's), the grind's occasional single shouts, the peaks at or under
 the caps, the shortest gap 8 s or more, `gone` small (men who fled before their cry came). **Wrong**: silence (the voice did not play - tell Claude);
 the queue full above 0; a man's gap under 8 s; cries heard from fleeing men; a choir.
+
+**D45. KICKS AND BASHES LAND ON ENEMIES, NOT FRIENDS (step 80, ~10 min; the defaults).** Toni's logs since step 68: most of the AI's landed kicks
+and bashes hit one of the kicker's own side (2026-10-22: 427 of 668 at 16:17, 314 of 570 at 17:18) - a rear-rank man kicking into his own front mate,
+a man turned away from his enemy. Now a man kicks (0.6 m either side of his facing) or bashes (0.75 m) only when the enemy he fights is the FIRST body
+straight ahead of him within reach; a friend in that path within 1.2 m = a rear-rank man, who never kicks; a bash's path is checked again after its
+raised guard. (1) A field battle of ~100 a side, infantry TWO OR MORE DEEP with shields on both sides (a looter mob against your shield wall works
+too); let the lines grind 3-5 minutes; watch the second rank. (2) Optional: Escape → MCM → Advanced → Impact → *AI kicks: strike path half-width*
+and *AI bashes: strike path half-width* to 0 mid-battle (the old behaviour, minus step 68's line check) and back. **Log**: `[config] migrated
+config.json … AiKickFriendClearMetres: 0.5 → 0.6 (format 17 → 18, the old default; step 80 …)` (once; a value you set yourself is kept and said);
+`[impact] first AI kick REFUSED - behind a friend (rear rank) at … s (step 80) - … one of his own side stands in his strike path (along his facing,
+0.60 m either side) closer than the enemy - within 1.2 m of him (AiKickRearRankMetres): a rear-rank man, no kick and no wait`; the same for a friend
+first farther off ("the decision waits for a clear path"); `[impact] first AI shield bash ENDED before its key at … - after the 0.40 s guard his
+strike path is no longer clear (…)`. **[summary]** `ai kicks - whom they hit and the strike path (step 80): kicks: on an ENEMY N (his target …,
+another …, into his shield …), on a FRIEND F (the man …, his shield …), a horse / untracked …, MISSED … - friends x% of the hits | bashes: … ;
+enemy hits a man-minute in contact R | the strike path at the look (…): kicks clear …, the enemy off his strike path …, a friend first in his strike
+path …, behind a friend (rear rank) …; bashes … - REFUSED …; a bash's path again after its guard: clear …, …`; the `ai kicks: asked …` line (asked a
+man-minute in contact - was 0.39 / 0.55), its step-68 victims (`on a FRIEND` should be near 0) and the `impact kicks / bashes landed vs decided`
+line (`on a FRIEND` near 0, `unaccounted 0`). **Right**: friends a few % of the kick and bash hits (target under 5%); the enemy hits a man-minute
+near the old ~0.12-0.13 (was 256 / 2120.7 man-minutes at 17:18 - body hits only) or above; most refusals `behind a friend` and `the enemy off his
+strike path`; the second rank never kicking. **Wrong**: friends above ~10% (the engine's kick or bash is wider than 0.6 / 0.75 - raise them); almost
+no kicks or bashes left (send the line - the dice can come up, see AI_NOTES "Step 80"); `MISSED` large (the path narrower than the engine's reach -
+the kicks fire at enemies they cannot reach).
 ---
 
 ## E. Your Athletics bar, the orders-menu strip and the ALT markers (20 min)
