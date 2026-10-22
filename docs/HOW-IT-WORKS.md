@@ -152,6 +152,7 @@ walls stand firm on a hold order*).
 spear's reach for a moment, and the men in the back ranks of a wall keep their spears whatever is close (player page: *Spearmen keep
 their spears*). **Thrusts pass a friend:** a spear thrust that touches a comrade carries on to the enemy behind him instead of stopping
 on him - swings still stop (Advanced page, *Battle pace (AI)*).
+**Press, don't pass:** soldiers fighting an enemy line press against its front instead of walking round its ends or through it - they go round only when their own unit is clearly wider and moves as a mass, through only where a real gap has opened, and a man who got behind it walks back round its end (player page: *Press, don't pass*).
 
 **The wall pushes as one.** Order a shield wall to **advance** (F1, then F4) and in the base game its men each walk to
 a place at the enemy's line — the ones free to move walk on into the enemy while their mates fight, and the wall breaks

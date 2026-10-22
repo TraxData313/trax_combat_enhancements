@@ -360,7 +360,20 @@ bounce; the friendly-hit stun (`StunPeriodAttackerFriendlyFire`, 0.4) held at `F
 switched off. Core `Spears.cs`, Module `AthleticsLogic.Spears.cs` / `SpearBody.cs` / `Models/ThrustPass.cs`; the `[spears]` lines and the
 [summary] "spears" (time holding the polearm / the sidearm by what was close, ON vs OFF) and "thrusts past friends" lines (the same man then
 hitting an enemy within 0.5 s, the friend's flinch) (PLAYTEST D41). RBM's data route (its polearm thrust collision check from 35%) is the
-fallback, not built. The bar for the
+fallback, not built. PRESS, DON'T PASS (step 77, Toni's battles 2026-10-22 10:2x-10:48: 108 T1 recruits' rear ranks walked round his
+shield wall's ends and behind it, "dancing", then through the middle - stand firm off changed nothing; DESIGN decision 71, AI_NOTES "Step 77"):
+`PressDontPass` (PLAYER page, 16 settings, on) - an AI man on foot (both sides, never you, never riders - courage's look) whose unit fights an
+enemy LINE (`PressMath.LineKind`: 8+ men, not retreating, held by step 41 / a held block / 60% in their slots under no charge; a square or
+circle = a ring) never walks past its FRONT: the line's front segment every 0.5 s from its own men (`PressLines` - the median of each
+man-wide bin's front-most man, the ends, the GAPS of 2 m+ no front man covers, a rear face); within `PressWatchMetres` 4 the part of his
+FINAL movement toward it is taken out of his input (a seventh wish, `AiInputState.Press` - the CLAMP filters last, whoever wrote the vector),
+past it by `PressToleranceMetres` 0.5 he is walked straight back out, behind the whole line walked ROUND its nearest end; THROUGH only at a
+gap, ROUND only when his unit spans `PressWrapMarginMetres` 6 more than the line and he has 5 mates within 4 m (a wrap kept once begun);
+a rear-rank man never more than 1 m sideways past the end; a broken line or his unit winning 50% lets go; the walk after the backpedal and
+the wall's pull, before courage's walk, the flock and the block; his attacks untouched; the fear band never wider than its enemy line + 1 m
+a side (its surplus deeper - Toni's 27 m → 25 m in 5 ranks); the block hold's sideways room within the enemy line's ends in contact
+(`BlockHoldMath.DecideRange`). Core `PressDontPass.cs`, Module `AthleticsLogic.Press.cs`; the `[press]` lines and the two [summary] "press,
+don't pass" lines (crossings by where and cause, ON vs OFF) (PLAYTEST D42). The bar for the
 fighter you look at is LATER (DESIGN §3; its settings wait in DESIGN's "Planned parameters"). Words:
 the pool/bar/points are "Athletics", the character-screen skill is "the Athletics skill" (it
 used to be called "endurance"), the "peak line" is the white mark at the top quarter of the bar,
@@ -521,7 +534,8 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               its Default comes from defaults.json (DefaultsFile), never code; step 33: ParamType.Key +
                               KeyNames (a key by NAME, stored as its index; FormatJson writes "LeftControl"; the
                               file / defaults.json read the name, MCM a text box)
-  SettingsSchema.cs           EVERY setting of DESIGN's table (430 - step 76's SpearPreferenceEnabled after ShieldWallStandFirm (the player
+  SettingsSchema.cs           EVERY setting of DESIGN's table (446 - step 77's PressDontPass after SpearPreferenceEnabled (the player page,
+                              24) and 15 Press* after LoneRunnerAheadMetres (Advanced, "Courage and cohesion (AI)"); 430 - step 76's SpearPreferenceEnabled after ShieldWallStandFirm (the player
                               page, 23) and 17 Spear* + ThrustsPassFriends / ThrustsPassPolearmsOnly / FriendlyHitStunSeconds after
                               ShieldWallStandFirmTightTolerance (Advanced, "Battle pace (AI)"); 409 - step 75's ShieldWallStandFirm after ShieldWallStepOutMetres (the player
                               page, 22) and 5 ShieldWallStandFirm* after ShieldWallKickReturnMetres (Advanced, "Battle pace (AI)"); 403 - step 74's 11 LineBlock* after LineDisciplinePollSeconds (Advanced, "Line discipline
@@ -1114,6 +1128,19 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               Condition, Step - the timers, Favors, HeldOf, NextLook - the jitter, WieldRewrite), SpearStats (the 2 [summary] "spears"
                               lines); ThrustVerdict / ThrustFacts / ThrustPassRules / ThrustPassMath (Decide in gate order, StunWanted, the vanilla 0.4)
                               / ThrustPassStats (the [summary] "thrusts past friends" line)
+  PressDontPass.cs            step 77 (DESIGN decision 71) - PRESS, DON'T PASS: PressRules (ModEnabled FIRST, PressDontPass, 15 numbers; Describe),
+                              PressLineKind (none / slots / wall / block / ring), PressAction (no line / far / CLAMP / PUSH / RETURN / through / wrap /
+                              broken / winning), PressCause (courage / fear / block / charge target / the game), PressEnd, PressOrder; PressMath (LineKind
+                              in gate order, FrontOf - one face's front = the median of each man-wide bin's front-most man, the ends, the gaps no front
+                              man covers; InGap, UnitWraps / ManWraps, Decide / ReturnPlace / DecideRing, ClampVector - the input clamp, BandWidth /
+                              BandRanks, BlockRange, CauseOf; plumbing LookaheadMetres 0.6, CrossedMetres 1, BehindExtraMetres 1, PushToMetres 0.3,
+                              ReturnOvershootMetres 1, MaxGaps 8, the 0.5 s period), PressMind (per man: the wish, the line / face, the crossing watch),
+                              PressLines (THE LINE TABLE: Note / Vote per look, Publish - the line test and both faces (a ring's centre and radius),
+                              each unit's enemy line by its men's votes, its face with a hysteresis, its width ((q90 - q10) / 0.8, a held block's cap at
+                              most) and front, wraps kept once begun; Frame / World / Inward / Across / RingFrame / Ends), PressStats (the two [summary]
+                              "press, don't pass" lines); FearBand.cs: FearUnits.PressBandMarginMetres / PressBandClamps / PressBandExtraRanks (the
+                              band never wider than its enemy formation + the margin, its ranks enough for all its men), FearBandMath.RanksFor;
+                              BlockHold.cs: BlockHoldMath.DecideRange (an asymmetric lateral range - symmetric = Decide)
   SpreadStats.cs              MeanStd (Welford, population std), FormationAthleticsStats (squad
                               mean ± std, band, mean f, at full strength, mean health - step 9; step 23:
                               Bracing / Ready / Total - the next step's "ready men"),
@@ -1517,6 +1544,17 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               Missions/BlockBody.cs: IBlockBody (Cap via LineDiscipline.TryCap, Formation - the order / behaviour / arrangement names, cached
                               -, Name), GameBlockBody, BlockBodyDefault; LineDiscipline.TryCap (the last look's cap per slot); AiInputHook.cs: AiInputState
                               .Block (BlockX / Y), SetBlock, ApplyBlock, BlockOn - the last wish; TrackedAgent.BlockHold (Core BlockMind)
+  Missions/AthleticsLogic.Press.cs  step 77: StartPress / NotePressSettings (the [press] lines), TickPressSwitch (the master switch first -
+                              every wish let go), TickPressLines (after the blocks' frames: a held block / a ring / its body width per unit, the
+                              table published, the first line / gap lines), PressLook (from FearLook after the block's, ON and OFF: the vote, his line
+                              and face, the verdict, the measurement - looks past a front, the CROSSING watch by where and cause, one Target read per
+                              crossing -, the wish), SteerPressers / SteerPresser (every 0.1 s: the walk out / round the end, or the clamp's direction
+                              into the line within 0.6 m of it and a rear-rank man's outward side, his own frame), EndPress on every path (the hook's
+                              frames into the stats), PressLeftField, ClosePress, PressBlockRange (the block hold's range cut to the enemy line's
+                              ends after first contact), WritePressSummary (after the block's); the line table fed by BlockNoteUnit (one set of
+                              native reads; held wall men too); FearNear.FoeKey / PressMates (courage's scan); AiInputHook.cs: AiInputState.Press
+                              (PressFront / PressNX-NY, PressSide / PressSX-SY, PressMove / PressX-Y, the frame counts), PressOn, SetPress,
+                              ApplyPressMove (after the wall's pull), ApplyPressClamp (LAST, after every wish); TrackedAgent.Press (Core PressMind)
   Missions/AthleticsLogic.LoneRunner.cs  step 70: StartLoneRunners / NoteLoneSettings (the [courage] lines), LoneLook (at courage's look, ON and OFF:
                               alone, out by the band's frame, the cause, IFearBody.Target for lone men only, the first of each cause in full), NoteFeverRefused,
                               NoteForcedWalk (LoneMind.Forced), LoneSprintEnds (RunSprint's 0.25 s check of a sprint into contact - SprintEnd.LoneRunner);
@@ -1758,7 +1796,13 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               pixels), Fill, FillColor, FrameColor (the fade's alpha baked in); step 46: the box (PositionX / Y =
                               its top-left, BoxWidth / BoxHeight), FeverShown, the Athletics bar - BarShown, BarWidth, BarHeight,
                               BarFill, BarUsable, BarColor, BarFrameColor, BarWoundColor
-tests/TraxCombat.Core.Tests/  net8.0 xUnit (1096 - step 76: + Step76Tests.cs - the 21 settings placed (the player page 23) / live / defaults, the
+tests/TraxCombat.Core.Tests/  net8.0 xUnit (1109 - step 77: + Step77Tests.cs - the 16 settings placed (the player page 24) / live / defaults, the
+                              master switch first, the line test, Toni's wall's front segment (its ends, no gap, its rear face, a man stepped out),
+                              the gaps (four files fallen 2.8 m, two 1.2 m none, a rear man stepping up none, a loose line), the verdicts (clamp /
+                              push / round the nearest end / broken / winning), through and the wrap (26.6 m on 23.6 m never, 60 m with 5 mates),
+                              the rear rank's side, the input clamp, the table (the wall a line, the recruits' enemy line / face / width / front,
+                              a wider unit wraps, a unit behind attacks the rear face), the band 27 m → 25 m in 5 ranks, the block's range at the
+                              ends (= step 74 when symmetric), the cause order, the summary lines; 446 settings; 1096 - step 76: + Step76Tests.cs - the 21 settings placed (the player page 23) / live / defaults, the
                               master switch first, the loadout (RBM's), the radius from the length, RBM's timers (2 s / 4 s / 2 s mounted, a passing
                               and a drifting enemy), the back rank and a thinned file, facing polearms, the favors, the wield bits, the collision
                               decision, the summary lines; 430 settings; 1085 - step 75: + Step75Tests.cs - the 6 settings placed (the player page 22) / live / defaults, the
@@ -2320,6 +2364,13 @@ tools/OfflineSmoke/           the real DLL on .NET Framework with the game's DLL
                               through the REAL damage decorator over CustomAgentApplyDamageModel (ContinueChecking / a swing Bounced / polearms
                               only, the follow-up hit, the flinch, the stun 0.4 -> 0.1 s and back); the cost (1000 men 0.004 ms a tick, 0 bytes);
                               every logic starts with a NOT-ready stand-in spear body (176 steps);
+                              step 77 (Program.Step77.cs): PRESS, DON'T PASS through the real logic with courage's stand-in world (a per-formation
+                              facing) and the REAL input filter (AiInputHook.Apply) - Toni's 108 recruits (D 6, 18 files, 26.6 m) charging his 23 m
+                              two-deep held wall with half their rear ranks dancing round its ends: OFF 34 behind the wall, 36 crossings; ON 0 past
+                              the front at any step, 81 pressing it, the clamp bit 183 frames, 0 crossings; a man behind walked round its end; four
+                              fallen files = one 2.8 m gap: 6 of 6 through, nobody else past, nobody walked back from behind a broken line; a 60 m
+                              unit wraps as a body, a lone straggler does not; the input frame; the cost (1000 men 0.19 ms a tick, 0 bytes); the
+                              older steps pin PressDontPass off (179 steps);
                               step 68 (Program.Step68.cs): THE WALL PUSHES AS ONE through the real logic (an advancing man near the enemy sent 1 m
                               toward the game's slot 6 m ahead, a stop / a march / a slot within the step left alone, after vanilla's update, the leash
                               keeps it, a charge / the switch / the step live, the samples by order, the lines), its cost (1000 men 0.041 ms a tick,

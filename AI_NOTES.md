@@ -6933,3 +6933,116 @@ Done before it: the build, the tests (1096) and the smoke (176) in memory, the A
 launcher is closed: `powershell -ExecutionPolicy Bypass -File tools\SmartAppControl\install_dev.ps1`, then `tools\SmartAppControl\loadcheck.ps1`
 (a refused DLL = rebuild with `dotnet build src\TraxCombat.Module -c Release -p:SourceRevisionId=<HEAD>.sacN`, install, loadcheck again).
 Windows security untouched.
+
+## Step 77 — press, don't pass (built 2026-10-22; dev build only, not uploaded)
+
+**Toni's battles (2026-10-22 10:2x-10:48, battle_terrain_b, the last three `[summary] ====` blocks)**: 108 T1 recruits (D 6, 18 files, 26.6 m) against
+his 59 T5 shield wall (D 2, ~23 m wide). At first contact the recruits switch to `Charge / BehaviorTacticalCharge` (step 74's finding: the AI's
+tactical charge) and 65-85% leave their slots; his screenshots: rear-rank recruits breaking off from their mates and walking round his wall's ENDS
+and behind it, alone or in small groups ("dancing around"), then in through the MIDDLE, through gaps - a mess. Stand firm (all three options)
+OFF for the last battle changed nothing. The log: `fear flock band … width 18.7 m (p90 27.5) … slid out of a full file 3730` (wider than his
+wall - the band's width = max(the enemy's frontage, men ÷ ranks × 1 m) = 108 ÷ 4 = 27 m, and its surplus slid OUT toward the ends); `block hold
+(step 74), the other side … p90 0.95 x the half-width … PULLED IN 53 times … ahead of the front 46` (the allowance half-width + 2 m = ±15.3 m against
+his ±11.6 m - it never stops a man walking past the enemy's front); `lone runners … 2 men` (these men move in groups); `wall stands firm … OFF more
+than 0.5 m 19.1%` (his wall men out of their slots ~29% of the time with stand firm off). Real men press against the line in front of them.
+
+**77.1 THE LINE TEST AND THE FRONT SEGMENT (Core `PressDontPass.cs` - `PressMath`, `PressLines`)**
+- The table rides courage's looks: `BlockNoteUnit` (step 74's reads - one set of native reads) also notes every man into `PressLines` (his
+  position, his unit's facing and order, his slot distance, held by step 41 or not - a held wall man is noted from `BlockSkipped`); each look
+  votes for the unit of his nearest enemy in courage's scan (`FearNear.FoeKey` = that man's `Fear.Key`). Published every 0.5 s right after the
+  blocks' frames (a held block's `Counted` / D / the block hold on = a BLOCK; the arrangement name `Square` / `Circle` = a RING; a held block's
+  step-73 cap = its BODY width).
+- A LINE (in this order): ≥ `PressLineMinMen` 8 men looked at; not a retreat; held by step 41 (half its men) = WALL; a held block = BLOCK; under no
+  charge, ≥ `PressLineInSlotPercent` 60 % of the slot reads within 3 m (half its men read) = SLOTS; any of those + a square / circle = RING.
+- A FACE (`PressMath.FrontOf`, its men sorted across in the formation's facing frame): bins one man wide (`PressManWidthMetres` 1.2, each opened at a
+  man); the FRONT = the MEDIAN of the bins' front-most men (a man 2 m out of the wall never moves it); FRONT MEN = within `PressFrontDepthMetres` 1.5
+  of it (the rear rank holds it - a fallen front man with his rear man standing is no gap); ENDS = the extreme front men ± half a man; GAPS = the
+  stretches between neighbouring front men no man covers, ≥ `PressGapMetres` 2 (≤ 8 kept). The rear = a second face on the negated along axis
+  (depth = front + rear). Toni's wall (29 files x 2 at 0.8 m): front 0, ends ±11.8 (23.6 m), depth 1.0; four files fallen = one 2.8 m gap; two
+  = 1.2 m uncovered, none.
+- HIS LINE: the nearest enemy's unit when it is a line, else his unit's (`PressLines.LineOf` - the line its men's votes name; kept while still a line
+  and no man of it saw another). The unit's FACE by its mean along against the line's middle (hysteresis: half the depth + 1 m); its WIDTH across the
+  face = (q90 − q10) ÷ 0.8 of its men, at most a held block's cap (the dancers / a trail must not make the body "wider" - the first smoke run read
+  31 m for the 26.6 m block and let it round); its FRONT = q10 of its men's d; WRAPS when width − the line's front ≥ `PressWrapMarginMetres` 6 - and
+  KEEPS wrapping that line once begun (its flanks squeezing in behind narrow its spread - the smoke's 60 m unit read 29 m at the end; they must not be
+  sent back).
+
+**77.2 THE RULE (`PressMath.Decide`; d = in front of the face, his side positive; l along it)**
+- His unit winning `PressWinPercent` 50 (step 69's unit win, `FearUnits.WinOf`) = free (decided: the line is beaten - the brief's exception for the walk
+  back widened to the whole press, like the block hold's mop-up).
+- His side (d ≥ −tolerance): in a gap = THROUGH; beside an end (l outside lo..hi) with a wrapping mass (`PressWrapMates` 5 within `PressWrapMatesMetres`
+  4 - courage's scan, counted in `PollCourage`) = WRAP; d ≤ `PressWatchMetres` 4 = CLAMP; a REAR-RANK man (d > his unit's front + 1.5) of a unit in
+  contact (its front ≤ the watch), not wrapping, more than `PressEndSlackMetres` 1 past an end = his outward sideways movement clamped too.
+- Past the front by more than `PressToleranceMetres` 0.5: a gap = through; beside an end with his mass = wrap; within the line's body (depth + 1 m) =
+  PUSH (walked straight out to 0.3 m in front at his lateral); behind the whole line: broken (a gap) or wrapping = left; else RETURN - sideways behind
+  the line (at least its depth + 1 m back) to `PressRoundEndMetres` 2 + 1 m beyond the NEAREST end (`ReturnOvershootMetres` 1 > the walk's 0.7 m
+  arrival - the first smoke run stopped 0.2 m short of the switch), then forward to 1 m in front.
+- A RING: d = distance from its centre − its radius (q90): inside = pushed out radially, within the watch = clamped; no ends, gaps or wraps.
+
+**77.3 THE LEVER (decided)**: a SEVENTH input wish on step 16's component, `AiInputState.Press`:
+- THE CLAMP (`PressFront`, `PressNX / NY` - the direction INTO the line in his own frame, refreshed every 0.1 s by `SteerPressers`, only while he
+  stands within 0.6 m of the front - `PressMath.LookaheadMetres`: a 6 m/s run between two steers; `PressSide` / `PressSX / SY` for the rear rank):
+  `PressMath.ClampVector` removes the positive component of the FINAL vector - LAST in `AiInputHook.Apply` (and the Athletics-off path), after the
+  step back, the wall's pull, courage's walk back, the fear flock and the block hold, whoever wrote the vector (the game's own charge first of all);
+  his move bits cleared when it bites. He keeps moving along the line and away from it; he stands against it and fights.
+- THE WALK (`PressMove`, `PressX / Y`): PUSH / RETURN replace his movement - after a step back's backpedal and the wall's pull, BEFORE courage's walk,
+  the flock and the block (decided: inside or behind the enemy is the most wrong place to be); the stick slower near the place (`FearMath.Stick`), the
+  ground ahead checked every 0.25 s; back on his side (d ≥ 0) the clamp takes over at the next steer.
+- Works with Athletics off; the master switch FIRST, then `PressDontPass` (in the component and in every Apply). His attack input is never touched -
+  he fights whatever is in reach (the clamp only removes motion into the line).
+- The AI's movement is its input VECTOR (the log's captured frames: `input vector (0.47, 0.87)`, move bits none) - clamping the vector is enough.
+
+**77.4 THE BAND AND THE BLOCK**: `FearUnits.PressBandMarginMetres` (set by the module before each publish: the margin while on, NaN off) - the band's
+width ≤ the enemy formation's frontage (`CachedClosestEnemyFormation.Width`) + 1 m a side, then its ranks = max(its own, ceil(men ÷ files)) - beyond
+`FearBandRanksMax`, the surplus deeper (`PressBandClamps`, `PressBandExtraRanks`). Toni's recruits at pull 0: 27 m in 4 ranks → 25 m in 5. The block
+hold: from the block's first contact its lateral allowance (±(half-width + slack + loose)) is cut to its enemy line's front ends (projected into the
+block's frame) + `PressBlockEndMetres` 0, at least 2 m wide (`PressMath.BlockRange`, `BlockHoldMath.DecideRange` - a symmetric range = step 74's
+`Decide` to the bit, a unit test pins it): ±15.3 m → ±11.8 m on his wall.
+
+**77.5 THE DIAGNOSTIC (ON and OFF)**: a CROSSING = more than 1 m past a front (`CrossedMetres`) at a look after a look on its side (same line, same
+face) - by where (inside lo..hi = through the middle, else round an end; a ring = the middle), by cause (`PressMath.CauseOf`: courage's walk -
+`Input.Regroup` -, the fear flock, the block hold, his AI target past the front - one `FearBody.Target` read per crossing -, the game), allowed or
+not (through a gap / a wrap / broken or winning); the looks near a line and past a front; the looks by verdict; the hook's clamp / side / walk frames
+(added at each wish's end); men pushed / walked round; the lines by kind, the faces with gaps, the widest gap, the wrapping units; the band's clamps
+and extra ranks; the block's cut looks; cost. `[press]` first-time lines: mission start / settings / switched off, the first enemy LINE, the first
+GAP, the first man PRESSING / PUSHED / walked ROUND / let ROUND with his mass, the first CROSSING with the press ON and OFF. **[summary]** `press,
+don't pass (step 77): ON|OFF at the end - lines published …` and `press, don't pass (step 77) - men who CROSSED an enemy line's front …: ON … | OFF
+…; men past a front at a look …`.
+
+**Settings (16; 430 → 446; new keys, no migration - FormatVersion stays 16)**: `PressDontPass` (true, PLAYER page "How the AI fights" after the spears
+- a new AI system's switch Toni tests on and off); Advanced "Courage and cohesion (AI)" after `LoneRunnerAheadMetres`: `PressToleranceMetres` 0.5 (0-3),
+`PressWatchMetres` 4 (0.5-20), `PressGapMetres` 2 (0.5-10), `PressManWidthMetres` 1.2 (0.4-3), `PressFrontDepthMetres` 1.5 (0.5-5),
+`PressWrapMarginMetres` 6 (0-60), `PressWrapMates` 5 (0-30), `PressWrapMatesMetres` 4 (1-8), `PressRoundEndMetres` 2 (0.5-10), `PressWinPercent` 50
+(0-100), `PressLineMinMen` 8 (3-200), `PressLineInSlotPercent` 60 (0-100), `PressBandMarginMetres` 1 (0-10), `PressBlockEndMetres` 0 (0-10),
+`PressEndSlackMetres` 1 (0-10).
+
+**Plumbing constants** (`PressMath`): LookaheadMetres 0.6, CrossedMetres 1, BehindExtraMetres 1, PushToMetres 0.3, ReturnFrontMetres 1,
+ReturnOvershootMetres 1, MinDepth 0.5, FaceHysteresisMetres 1, RingQuantile 0.9, WidthQuantile 0.1 ((q90 − q10) ÷ 0.8), MinBlockRange 2, HeldShare
+0.5, InSlotMetres 3 (step 74's), MaxGaps 8, MaxSamples 512, Votes 4, PublishSeconds 0.5, StaleSeconds 2.
+
+**Measured offline**: tests 1096 → 1109 (Step77Tests.cs, 13). Smoke 176 → 179 (Program.Step77.cs: OFF 34 recruits behind the wall, 36 crossings round
+an end; ON 0 past the front at any step, 81 pressing within 1.5 m of it, the clamp bit 183 input frames, 0 crossings, the block's range cut 2376
+looks, the band clamped 27 times; a man put behind the wall walked round its end to (12.2, 0.5); four fallen files = one 2.80 m gap - 6 of 6 men
+through (allowed by the gap), 0 others past, 0 walked back from behind the broken wall; a 60 m unit wraps (wrap looks 1056, 73 allowed crossings),
+its middle 0 past, a lone straggler stopped at the plane beside the end; the input frame's priority, the master switch / switch off; THE COST - 1000
+men (500 recruits pressing a 500-man wall, 201 pressing) 0.19 ms a tick for courage + fear + block + press (the press 0.05 ms), 0 bytes over 300
+ticks). The older smoke steps pin `PressDontPass` off (AthleticsDefaults); the stand-in courage body has a per-formation facing.
+
+**Gotchas**
+- Git Bash heredocs again (apostrophes, `'EOF'` quoted or not): the long edits went to scratchpad Python files written with the Write tool
+  (`s77_*.py`, run with `python -I`), CRLF-aware (`AiInputHook.cs`, defaults.json, TASKS_DONE.md are CRLF).
+- `BlockNoteUnit` already had a local `order` (the movement order's NAME) - renamed `orderName` when the FearOrder came in.
+- The stand-in's "fighting" men (within 1.2 m of an enemy) must still take our wishes (a man behind the wall fights its rear rank - the game's
+  vector 0, our walk moves him).
+- A unit's width from ALL its men inflates with its own dancers (q05-q95: 31 m for the 26.6 m block → a "wider mass") - hence q10-q90, the block's
+  cap and the latch.
+
+**UNVERIFIED — only the game can tell (PLAYTEST D42)**
+1. The engine honours a clamped vector in a charge (as it honours courage's walk and the block's): `press, don't pass … ON N …` crossings not allowed
+   ≈ 0 and "men past a front" ON far below OFF; Toni's eyes - no dance round the ends.
+2. The pressing men still fight (the attack / impact lines as before; nobody frozen a metre off the wall).
+3. The faces read right from real men: `[press] first enemy LINE … its front … m wide … no gap` ≈ his wall; no false gaps on a whole wall (a 0.8 m
+   spaced wall is covered; a LOOSE line 2.6 m+ apart is not a gap at 1.2 m a man - if the game's loose spacing is wider, raise *Press: one front man
+   covers*).
+4. The band: `fear flock band … width … (p90 …)` ≤ his wall + 2 m, "slid out of a full file" far below 3730.
+5. Cost in a 400-1000 man battle (`press, don't pass … cost`).

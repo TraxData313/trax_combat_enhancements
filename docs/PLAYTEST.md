@@ -1041,6 +1041,7 @@ Claude the `[summary] impact …` block of every battle.
 | 20 | **D39 - THE GREEN BLOCK STAYS A BLOCK INTO CONTACT** (step 74): Toni's 20:30 battle again - ~180 tier-1 recruits charging your shorter line, ideally by a rock / on a slope; then the same on open ground | 10 | `[block] order / behaviour change of the enemy's Infantry`, `[block] FIRST CONTACT`, `[summary] block shape`, `[summary] block hold … the other side` | the recruits arrive as a ~6-deep block about 30 wide and hit your line as one; no trail round your flank; the [block] lines name what the AI did a few seconds before contact | a wide crowd again / a trail round the flank (`block hold … ON after contact` p90 well above 1.0 x the half-width - tell Claude the lines); the block stops short of your line (a stall) |
 | 21 | **D40 - A STANDING WALL STANDS FIRM** (step 75): your shield wall on STOP (F1, then F2 - or moved to a spot and arrived) against an enemy push; mid-battle the switch OFF, then ON again | 10 | `[wall] stand firm (step 75): ON …`, `[wall] first man STANDING FIRM`, `[wall] first lever refused … the step out (leash)`, `[summary] wall stands firm` | ON: nobody steps forward to strike - the front swings, blocks and bashes from the line, a man a kick carries out backs straight in; OFF: the old 1 m steps out and back; the summary's ON in-contact "more than 0.5 m" far below OFF's, strikes a man-minute ON not far below OFF's | men frozen and not swinging at enemies in reach (strikes ON ≪ OFF); the wall drifting / bulging ON; jerky back-and-forth from the walk back (raise *Stand firm: walked back beyond*) |
 | 22 | **D41 - SPEARMEN KEEP THEIR SPEARS, THE SECOND RANK THRUSTS PAST** (step 76): your spearmen (spear + sword + shield - e.g. Vlandian / Sturgian spearmen) in a shield wall on STOP against ~40 looters; then the switch OFF and ON | 15 | `[spears] mission start …`, `[spears] first back-rank man`, `[spears] first THRUST past a friend`, `[summary] spears`, `[summary] thrusts past friends` | the front rank holds spears until the looters press in, then swords; the second rank keeps spears and thrusts over the front man; looters fall to second-rank thrusts; OFF: swords at once | everyone still on swords ON (the favors not honoured - try *Spears: force the spear while nothing is close*); second-rank spears still stopping on the front man (`… then an enemy hit … 0 of N`); men flinching as their mates thrust through them |
+| 23 | **D42 - PRESS, DON'T PASS** (step 77): Toni's battle again - ~100 recruits against your shield wall (~60 veterans) on STOP; then the switch OFF mid-battle and ON again | 15 | `[press] mission start …`, `[press] first enemy LINE`, `[press] first man PRESSING`, `[press] first man CROSSED … ON / OFF`, `[summary] press, don't pass` (two lines) | ON: the recruits pile up against your wall's front, nobody walks round its ends or in behind it; men come through only where your men fell; OFF: the dance round the ends again; the crossings ON ≈ 0 (not allowed), OFF many "round an end" | recruits frozen at the wall and not fighting; men still circling the ends ON (the clamp not honoured); men stuck behind the wall never walked back; a gap read where there is none |
 
 Then play normally (parts E-G). Your gut on each family - too many / about right / too few - is the most useful thing to send.
 
@@ -1879,6 +1880,30 @@ above "flinched". **Wrong**: ON ≈ OFF in "nothing close" (the native AI ignore
 back-rank attacks ~0 (the native AI never starts a thrust with a mate in front - the next lever is RBM's thrust collision data, AI_NOTES
 "Step 76"); passes never followed by an enemy hit (ContinueChecking does not carry the spear on - the same); front men flinching at
 every pass; any `[error]` with `spears.` or `thrust.`.
+
+**D42. PRESS, DON'T PASS (step 77, ~15 min - one or two field battles; the defaults).** Toni 2026-10-22: 108 T1 recruits against his 59 T5
+shield wall - at contact their rear ranks broke off and walked round his wall's ends and behind it, "dancing", then came in through the
+middle; stand firm off changed nothing. (1) **ON**: the same battle - ~100 recruits (or looters) against your shield wall (F3) on **stop**
+(F1, F2). Watch the recruits at contact: they should pile up against your FRONT, the back ranks behind their own front rank - nobody walking
+round your ends or in behind the wall. Where your front men fall and nobody steps up (a gap of 2 m+), men may come through it; a man who got
+behind anyway walks back round the nearest end. (2) **OFF mid-battle**: Escape → MCM → player page → *Press, don't pass* off: the dance
+round the ends should come back. (3) **ON again**. (4) Optional: a much WIDER enemy line (60+ men in a long line against a short wall) -
+its flanks should wrap round your ends as a body, never one or two men alone. **Log**: `[press] mission start: press, don't pass (step 77):
+… - ON`; `[press] first enemy LINE at … s: your Infantry - held by step 41, N men looked at; its front … m wide (… men hold it), … m deep,
+no gap`; `[press] first man PRESSING an enemy line at … s: … m in front of your Infantry …`; `[press] first man PUSHED back out …`; `[press]
+first man walked ROUND a line's end …`; `[press] first GAP in a line …`; `[press] first man let ROUND a line's end with his mass …`; `[press]
+first man CROSSED an enemy line's front with the press ON / OFF at … s: … round an end / through the middle …, cause …, allowed / NOT
+allowed`. **[summary]** `press, don't pass (step 77): ON at the end - lines published N (held by step 41 …, a held block …, holding their
+slots …, squares / circles …), their fronts … m wide …; GAPS found …; units WIDER than their line …; looks ON: pressing (clamped) …, past
+the front - pushed back out …, behind the line - walked round its end …, through a gap …, round the end with his mass … | OFF (measured):
+…; CLAMPS applied … input frames …; the fear band clamped to its enemy line … times (+… ranks deeper); the block hold's sideways range cut
+… looks; cost …` and `press, don't pass (step 77) - men who CROSSED an enemy line's front …: ON N - round an end … (charge target …, the
+game …), through the middle …; allowed: a gap …, a wrap … | OFF …; men past a front at a look …: ON …% | OFF …%`. **Right**: ON the
+crossings not allowed ≈ 0 and "men past a front" far below OFF's; OFF many crossings "round an end" (charge target / the game); the
+recruits still swinging at the wall (the impact / attack lines as before); the fear flock band's width p90 no wider than your wall + 2 m
+and its "slid out of a full file" far below 3730. **Wrong**: men still walking round the ends ON (the engine ignores the clamped vector -
+tell Claude); recruits standing off the wall not fighting; a man stuck behind the wall for long (`walked round` count high, crossings
+still rising); `[press] first GAP` on an unbroken wall; any `[error]` with `press.`.
 
 ---
 

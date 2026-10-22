@@ -1509,6 +1509,42 @@ discipline by tier*: `LineDisciplineEnabled` (on), `LineDisciplineRanksT0`-`Line
 `LineBlockFullAtDepth` 3, `LineBlockLooseMetres` 10, `LineBlockRankMetres` 1.2, `LineBlockAheadMetres` 3, `LineBlockStrikeReachMetres` 2.5,
 `LineBlockStrikeLeashMetres` 2, `LineBlockNearMetres` 30, `LineBlockLeadMetres` 1.5, `LineBlockMopUpWinPercent` 50.</sub>
 
+**Press, don't pass (step 77).** Real men press against the line in front of them; they don't walk past it or round it unless it breaks or
+their own mass is genuinely wider. An AI soldier on foot (both sides, never you, never riders) whose unit fights an enemy LINE - a shield
+wall, a held block, or a line whose men mostly hold their places - presses its FRONT: within 4 m of it the part of his movement toward it
+is taken out of his input (whoever moves him - the game's charge, the fear flock, the block hold), so he stops at it and fights; carried
+past it he walks straight back out; already behind it he walks back round its nearest end. The front is read from the line's own men every
+0.5 s: its front rank, its two ends, any GAP where front men fell and nobody stepped up.
+
+| Where he is | What happens |
+|---|---|
+| In front of the line, more than 4 m off | his own AI |
+| In front, within 4 m | his movement toward the line stops at its front (+ 0.5 m); along it and away from it he is free |
+| A back-rank man of a unit in contact, more than 1 m sideways past the line's end | his sideways drift outward stops too (the back ranks stay behind their own front) |
+| Past the front by more than 0.5 m (in the line, or beside its end) | walked straight back out to 0.3 m in front, facing it |
+| Behind the whole line | walked round its nearest end (2 m beyond it), then forward to his side |
+| Facing a GAP (2 m+ of front no man covers) | free to go THROUGH; a man behind a broken line is left there |
+| His unit 6 m+ wider than the line and 5+ mates within 4 m, beside its end | free to go ROUND - with the mass, never alone |
+| His unit winning clearly (50%) | free - the line is beaten |
+
+| Example | The line | His unit | Verdict |
+|---|---|---|---|
+| Toni's 108 recruits (18 files, 26.6 m) on his 59-man wall | 23.6 m, no gap | 3 m wider | press - never round, never through |
+| The same wall, 4 files fallen (both ranks) | 2.8 m uncovered | - | through that stretch only |
+| The same wall, 2 files fallen | 1.2 m uncovered | - | no gap - press on |
+| The same wall, the front man of 3 files fallen, the rear men standing | covered by the rear rank | - | no gap |
+| 120 men in 40 files (60 m) on it | 23.6 m | 36 m wider | the flanks round the ends as a body; the middle presses; a lone straggler never |
+
+Frightened men bunching into their band (the fear flock) are never wider than the enemy formation they face + 1 m a side; the men who do not
+fit stand deeper: Toni's 108 recruits in 4 ranks would be 27 m wide - now 25 m in 5 ranks. And a green block (line discipline) in contact keeps
+its men sideways within the enemy line's ends: Toni's recruits ±15.3 m → ±11.8 m on his wall.
+
+<sub>Settings: *Press, don't pass* (player page, How the AI fights) = `PressDontPass` (on; live - flip it mid-battle to compare); Advanced page,
+*Courage and cohesion (AI)*, live: `PressToleranceMetres` 0.5 (0-3), `PressWatchMetres` 4 (0.5-20), `PressGapMetres` 2 (0.5-10), `PressManWidthMetres`
+1.2 (0.4-3), `PressFrontDepthMetres` 1.5 (0.5-5), `PressWrapMarginMetres` 6 (0-60), `PressWrapMates` 5 (0-30), `PressWrapMatesMetres` 4 (1-8),
+`PressRoundEndMetres` 2 (0.5-10), `PressWinPercent` 50 (0-100), `PressLineMinMen` 8 (3-200), `PressLineInSlotPercent` 60 (0-100),
+`PressBandMarginMetres` 1 (0-10), `PressBlockEndMetres` 0 (0-10), `PressEndSlackMetres` 1 (0-10).</sub>
+
 ## 15. What you see on screen
 
 **Your Athletics bar** sits under your health, with the white peak line at 75%. Its colour:
