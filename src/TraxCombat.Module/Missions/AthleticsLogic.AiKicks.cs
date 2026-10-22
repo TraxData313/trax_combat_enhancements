@@ -204,8 +204,21 @@ namespace TraxCombat.Missions
             if (kind == AiKickKind.None) return; // a swing: his wind-up goes on untouched
             if (kind == AiKickKind.Bash && r.KicksARaisedShield && target.PrevAction == ImpactActions.DefendShield && body.FacingTo(target, st) <= AiKickMath.RaisedShieldDegrees)
             {
-                kind = AiKickKind.Kick; // a raised shield facing him stops a bash, not a kick
-                _aiKickStats.RaisedShieldKicks++;
+                // step 82: with the meet rules a raised shield guarding RIGHT meets a bash correctly (the basher pays) - kick it instead; guarding
+                // any other way a bash is the better move (the blocker is at risk) - keep it. Without the rules: step 65's swap
+                bool swap = true;
+                if (ImpactMeetRules.From(TraxSettings.Shared).Enabled)
+                {
+                    var g = MeetBody.Guard(target.Agent);
+                    swap = g.Kind == MeetGuardKind.Shield && g.Dir == MeetDir.Right;
+                    if (swap) _meet.SwapsToKick++;
+                    else _meet.BashesKeptIntoWrongShield++;
+                }
+                if (swap)
+                {
+                    kind = AiKickKind.Kick; // a raised shield facing him stops a bash, not a kick
+                    _aiKickStats.RaisedShieldKicks++;
+                }
             }
             // the refusals - he swings instead: safety, the stack, the cooldown, the strike path (the engine's positions last)
             if (st.Impact.Reeling(now) || st.Impact.Down(now) || ImpactActions.IsStrike(st.PrevAction) || ImpactActions.IsFall(st.PrevLowerAction)
@@ -317,6 +330,7 @@ namespace TraxCombat.Missions
             AiInputHook.SetKick(st, st.AiKickPhase, kind, now);
             NoteHooked(st, AiKickBody.Hook(st));
             _aiKickStats.Asked(kind, type);
+            MeetReadStart(st, target, kind == AiKickKind.Bash, now); // step 82: the target may read it from its start
             if (AiKickFirst(0))
                 TraxLog.Info("impact", "first AI " + AiKickMath.KindName(kind) + " asked at " + Sec(now) + " s - " + Name(st) + " (bar " + Pct0(st.Fraction) + ", "
                     + AiKickStats.TypeName(type) + ") on " + Name(target) + " in place of the swing he was winding up (step 81) - through his own input: the guard up "

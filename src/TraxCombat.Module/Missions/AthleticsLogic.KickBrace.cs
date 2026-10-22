@@ -66,7 +66,7 @@ namespace TraxCombat.Missions
             {
                 if (!cd.IsAlternativeAttack || !_spikeStarted || _spikeClosed) return true;
                 var br = KickBraceRules.From(TraxSettings.Shared);
-                if (!br.On) return true; // the master switch first (inside On)
+                if (!br.On && !ImpactMeetRules.From(TraxSettings.Shared).Enabled) return true; // the master switch first (inside On / Enabled); step 82: a meet holds without the brace
                 var v = Get(victim);
                 if (v == null || v.Removed || ImpactBody.IsMounted(v)) return true;
                 _kickBraceStats.KnockBackAsked++;
@@ -80,7 +80,7 @@ namespace TraxCombat.Missions
                     _inKnockBackSeam = false;
                 }
                 if (!_pendingDecided || !_pendingBraced) return true;
-                if (!br.RefusesKnockBack)
+                if (!br.RefusesKnockBack && !_pendingMeetHeld)
                 {
                     _kickBraceStats.KnockBackKeptBraceOff++;
                     return true;

@@ -181,6 +181,12 @@ namespace TraxCombat.Core
             "Against you (%)",
             "Every chance of a stagger, a dropped shield or a knockdown against YOU is this percent of the AI's. 100 = the same rules as everyone; 0 = you are never staggered, disarmed of your shield or knocked down by it.");
 
+        // Step 82 (Toni 2026-10-22: "a valid way to transfer your body's kinetic energy ... if met properly the initiator should be caught
+        // off balance"): how a kick / bash was MET decides who is at risk - Core ImpactMeetRules / ImpactMeetMath, AI_NOTES "Step 82".
+        public static readonly ParamDef ImpactMeetRulesEnabled = Bool("ImpactMeetRulesEnabled", PlayerImpactGroup,
+            "Meeting kicks and bashes",
+            "On: a shield bash met with a guard to the RIGHT (the side it comes from) or a kick met with a guard DOWN throws the attacker off balance - he may stagger or fall, the defender holds. Met with the wrong guard, no guard or mid-swing, the man hit is at risk instead. The AI reads an incoming kick or bash about as well as it blocks a swing, worse when tired. Off: kicks and bashes as before. The chances: Advanced page, Impact.");
+
         // Step 33 (Anton, 2026-10-12: "a short burst of speed, meant to feel a little like a dodge, and for the AI to make charges
         // sharper"): Core SprintMath, AI_NOTES "Step 33".
         public static readonly ParamDef SprintEnabled = Bool("SprintEnabled", PlayerSprintGroup,
@@ -1650,6 +1656,83 @@ namespace TraxCombat.Core
             "AI kicks: a friend this close ahead = rear rank (m)",
             "An AI soldier with one of his own side in his kick / bash path within this many metres of him is a rear-rank man: he never kicks or bashes from there (no waiting for the line to clear). A friend in the path farther off than this but closer than the enemy only makes him wait. 0 = always wait.");
 
+        // Step 82: the meet table's ceilings (IMPACT §3.5's meet rows) and the AI's read - all live.
+        public static readonly ParamDef MeetBashShieldRightStaggerPercent = Int("MeetBashShieldRightStaggerPercent", 0, 100, ImpactGroup,
+            "Meet: bash on a shield guarding right - the BASHER staggers (%)",
+            "A shield bash met by a raised shield guarding RIGHT (the side a bash comes from - the correct meet): at most this chance the BASHER staggers, rising with his tiredness and how outmatched he is against the guard (the riposte's pressure). The blocker takes nothing.");
+
+        public static readonly ParamDef MeetBashShieldRightFallPercent = Int("MeetBashShieldRightFallPercent", 0, 100, ImpactGroup,
+            "Meet: bash on a shield guarding right - the BASHER falls (%)",
+            "The same correct meet: at most this chance the basher is knocked down (a fall replaces the stagger).");
+
+        public static readonly ParamDef MeetBashWeaponRightStaggerPercent = Int("MeetBashWeaponRightStaggerPercent", 0, 100, ImpactGroup,
+            "Meet: bash on a weapon guarding right - the BASHER staggers (%)",
+            "A shield bash met by a weapon guard to the RIGHT: at most this chance the BASHER staggers (the riposte's pressure). The defender holds his ground (the knock-back refused).");
+
+        public static readonly ParamDef MeetBashWeaponRightFallPercent = Int("MeetBashWeaponRightFallPercent", 0, 100, ImpactGroup,
+            "Meet: bash on a weapon guarding right - the BASHER falls (%)",
+            "The same correct meet: at most this chance the basher is knocked down.");
+
+        public static readonly ParamDef MeetBashShieldWrongStaggerPercent = Int("MeetBashShieldWrongStaggerPercent", 0, 100, ImpactGroup,
+            "Meet: bash on a shield guarding wrong - the blocker staggers (%)",
+            "A shield bash met by a raised shield guarding any other way: at most this chance the BLOCKER staggers (his pressure in full - his tiredness, the mismatch).");
+
+        public static readonly ParamDef MeetBashShieldWrongFallPercent = Int("MeetBashShieldWrongFallPercent", 0, 100, ImpactGroup,
+            "Meet: bash on a shield guarding wrong - the blocker falls (%)",
+            "The same meet: at most this chance the blocker is knocked down.");
+
+        public static readonly ParamDef MeetBashShieldWrongShieldDropPercent = Int("MeetBashShieldWrongShieldDropPercent", 0, 100, ImpactGroup,
+            "Meet: bash on a shield guarding wrong - the blocker drops it (%)",
+            "The same meet: at most this chance the blocker drops his shield.");
+
+        public static readonly ParamDef MeetBashWeaponWrongStaggerPercent = Int("MeetBashWeaponWrongStaggerPercent", 0, 100, ImpactGroup,
+            "Meet: bash on a weapon guarding wrong - he staggers (%)",
+            "A shield bash met by a weapon guard any other way than right: at most this chance he is knocked back (the kicked man's brace curve on his pressure x this ceiling - not knocked back = he holds).");
+
+        public static readonly ParamDef MeetBashWeaponWrongFallPercent = Int("MeetBashWeaponWrongFallPercent", 0, 100, ImpactGroup,
+            "Meet: bash on a weapon guarding wrong - he falls (%)",
+            "The same meet: at most this chance he is knocked down (only when the bash got through).");
+
+        public static readonly ParamDef MeetBashOpenStaggerPercent = Int("MeetBashOpenStaggerPercent", 0, 100, ImpactGroup,
+            "Meet: bash on no guard / mid-swing - he staggers (%)",
+            "A shield bash on a man with no guard up or caught mid-swing: at most this chance he is knocked back (the kicked man's brace curve on his pressure x this ceiling).");
+
+        public static readonly ParamDef MeetBashOpenFallPercent = Int("MeetBashOpenFallPercent", 0, 100, ImpactGroup,
+            "Meet: bash on no guard / mid-swing - he falls (%)",
+            "The same meet: at most this chance he is knocked down (only when the bash got through).");
+
+        public static readonly ParamDef MeetBashOpenShieldDropPercent = Int("MeetBashOpenShieldDropPercent", 0, 100, ImpactGroup,
+            "Meet: bash on no guard / mid-swing - he drops his shield (%)",
+            "The same meet: at most this chance he drops his shield, if he has one (only when the bash got through).");
+
+        public static readonly ParamDef MeetKickShieldDownStaggerPercent = Int("MeetKickShieldDownStaggerPercent", 0, 100, ImpactGroup,
+            "Meet: kick on a shield guarding down - the KICKER staggers (%)",
+            "A kick met by a raised shield guarding DOWN (he saw it coming and braced): at most this chance the KICKER staggers (the riposte's pressure). The kicked man holds.");
+
+        public static readonly ParamDef MeetKickShieldDownFallPercent = Int("MeetKickShieldDownFallPercent", 0, 100, ImpactGroup,
+            "Meet: kick on a shield guarding down - the KICKER falls (%)",
+            "The same correct meet: at most this chance the kicker is knocked down.");
+
+        public static readonly ParamDef MeetKickWeaponDownStaggerPercent = Int("MeetKickWeaponDownStaggerPercent", 0, 100, ImpactGroup,
+            "Meet: kick on a weapon guarding down - the KICKER staggers (%)",
+            "A kick met by a weapon guard DOWN: at most this chance the KICKER staggers. Any other guard: the kicked man braces or reels as before.");
+
+        public static readonly ParamDef MeetKickWeaponDownFallPercent = Int("MeetKickWeaponDownFallPercent", 0, 100, ImpactGroup,
+            "Meet: kick on a weapon guarding down - the KICKER falls (%)",
+            "The same correct meet: at most this chance the kicker is knocked down.");
+
+        public static readonly ParamDef MeetAiReadScalePercent = Int("MeetAiReadScalePercent", 0, 200, ImpactGroup,
+            "Meet: the AI reads a kick / bash (% of its block chance)",
+            "An AI soldier targeted by a starting kick or bash reads it with this percent of the chance he blocks a swing correctly (the game's block decision by his skill, the direction he picks - worse when tired); if he reads it he raises the right guard (right for a bash, down for a kick) until the hit. 0 = never.");
+
+        public static readonly ParamDef MeetAiReadReactionSeconds = Float("MeetAiReadReactionSeconds", 0, 1, ImpactGroup,
+            "Meet: the AI's reaction time (s)",
+            "A soldier who reads a kick or bash raises his guard this long after it began; a hit sooner is a read too late (counted in the summary).");
+
+        public static readonly ParamDef MeetAiReadMaxHoldSeconds = Float("MeetAiReadMaxHoldSeconds", 0.2, 3, ImpactGroup,
+            "Meet: the AI holds the read guard at most (s)",
+            "The read guard is let go after this long if no hit came (a miss, a kick that never played).");
+
         public static readonly ParamDef ImpactMismatchWeight = Float("ImpactMismatchWeight", 0, 2, ImpactGroup,
             "Mismatch weight (pressure per doubling)",
             "How much an outmatched man suffers: every doubling of the mismatch beyond the even band adds this to the pressure on him (0.25: an enemy four times stronger counts as much as being about a third tired). 0 = only tiredness counts.");
@@ -2209,7 +2292,7 @@ namespace TraxCombat.Core
             DamageRandomPercent, DamageReductionPercent,
             AthleticsEnabled, CostPerBlow, HeroCostMultiplier,
             AiAggressionFreshPercent, AiAggressionExhaustedPercent, FeverEnabled, ShieldWallHoldsSlots, ShieldWallStepOutMetres, ShieldWallStandFirm, SpearPreferenceEnabled, PressDontPass, RotationEnabled, RestEnabled, WarCriesEnabled, CourageEnabled, CavalryFlockEnabled, LineDisciplineForPlayer,
-            ImpactEnabled, ImpactOnPlayerPercent,
+            ImpactEnabled, ImpactOnPlayerPercent, ImpactMeetRulesEnabled,
             SprintEnabled, SprintKey,
             ShowPlayerBar, AltMarksEveryone, ImpactShowMessages,
             // the Advanced page
@@ -2281,6 +2364,10 @@ namespace TraxCombat.Core
             AiKicksEnabled, AiShieldmanKickPercent, AiShieldmanBashPercent, AiNoShieldKickPercent, AiKickReachMetres, AiKickFacingDegrees, AiKickCooldownSeconds,
             AiKickKicksARaisedShield, KickBraceEnabled, KickBraceFromPressure, KickBraceToPressure, KickBraceMinBarPercent, KickBraceReelPercent,
             KickShortReelPercent, KickBraceRefusesKnockBack, AiKickFriendClearMetres, AiBashPathHalfWidthMetres, AiKickRearRankMetres,
+            MeetBashShieldRightStaggerPercent, MeetBashShieldRightFallPercent, MeetBashWeaponRightStaggerPercent, MeetBashWeaponRightFallPercent, MeetBashShieldWrongStaggerPercent, MeetBashShieldWrongFallPercent,
+            MeetBashShieldWrongShieldDropPercent, MeetBashWeaponWrongStaggerPercent, MeetBashWeaponWrongFallPercent, MeetBashOpenStaggerPercent, MeetBashOpenFallPercent, MeetBashOpenShieldDropPercent,
+            MeetKickShieldDownStaggerPercent, MeetKickShieldDownFallPercent, MeetKickWeaponDownStaggerPercent, MeetKickWeaponDownFallPercent, MeetAiReadScalePercent, MeetAiReadReactionSeconds,
+            MeetAiReadMaxHoldSeconds,
             ImpactMismatchWeight, ImpactEvenBandDoublings, ImpactBodyExponent, ImpactBodyFloorPoints, ImpactStaggeredBonus, ImpactDamageWeight,
             ImpactRefWeightKg, ImpactWeightExponent, ImpactRefSwingSpeed, ImpactSpeedExponent, ImpactBluntFactor, ImpactCutFactor, ImpactPierceFactor,
             ImpactKickFactor, ImpactBashFactor, ImpactSkillMinFactor, ImpactSkillMaxFactor,

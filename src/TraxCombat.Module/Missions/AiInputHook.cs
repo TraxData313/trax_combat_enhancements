@@ -106,6 +106,12 @@ namespace TraxCombat.Missions
         public AiKickKind KickKind;
         public long KickFrames, KickPresses, KickHeldNoSwing;
 
+        /// <summary>Step 82: he READ an incoming kick / bash - the guard to raise (DefendRight against a bash, DefendDown against a kick) and
+        /// whether it is up now (the reaction time passed - the tick turns it on); the frames written.</summary>
+        public bool MeetGuard;
+        public uint MeetGuardFlag;
+        public long MeetFrames;
+
         /// <summary>Step 76: THE WIELD FALLBACK (SpearWieldOverride, off by default) - while his polearm is favoured, the AI's own Wield event for a
         /// sidearm slot (<see cref="SpearSidearmMask"/>) becomes the Wield of <see cref="SpearPolearmSlot"/> (Core <see cref="SpearMath.WieldRewrite"/>).
         /// Works with the Athletics system off.</summary>
@@ -114,7 +120,7 @@ namespace TraxCombat.Missions
         public long SpearRewrites;
 
         /// <summary>Any wish at all - a man is held while ANY of them wants him held (one ending never lifts another).</summary>
-        public bool Active => HoldAttacks || StepHoldAttacks || Backpedal || BraceHoldAttacks || Regroup || WallPull || Flock || Block || SpearWield || Press || Rhythm || KickPhase != AiKickPhase.None;
+        public bool Active => HoldAttacks || StepHoldAttacks || Backpedal || BraceHoldAttacks || Regroup || WallPull || Flock || Block || SpearWield || Press || Rhythm || KickPhase != AiKickPhase.None || MeetGuard;
 
         /// <summary>Since when the state has been active (mission time), for the calls-per-second figure.</summary>
         public double ActiveSince = -1;
@@ -229,6 +235,11 @@ namespace TraxCombat.Missions
                 bool moved = s.Backpedal || (s.Regroup && settings.CourageEnabled) || (s.WallPull && settings.ShieldWallHoldsSlots) || (s.Flock && settings.FearFlockEnabled) || (s.Block && AiInputHook.BlockOn(settings))
                              || (s.Press && AiInputHook.PressOn(settings)) // step 77: the press's walk or clamp
                              || (s.Rhythm && AiInputHook.RhythmOn(settings)); // step 78: a swap's walk or clamp, step 78c: a rest's walk or clamp
+                if (s.MeetGuard && settings.ImpactMeetRulesEnabled && s.KickPhase == AiKickPhase.None) // step 82: the read guard over every other wish's guard
+                {
+                    flags = ImpactMeetMath.GuardFrame(flags, s.MeetGuardFlag);
+                    s.MeetFrames++;
+                }
                 if (s.KickPhase != AiKickPhase.None && settings.AiKicksEnabled) // step 65: the kick / bash written LAST (after a held man's kick-out)
                 {
                     uint ev = (uint)eventFlag;
@@ -631,6 +642,16 @@ namespace TraxCombat.Missions
         }
 
         /// <summary>Step 65: turns an AI kick attempt's wish to <paramref name="phase"/> (None = off; the other wishes are left as they are).</summary>
+        /// <summary>Step 82: the read guard up (<paramref name="flag"/> - DefendRight / DefendDown) or down.</summary>
+        internal static void SetMeetGuard(TrackedAgent st, bool on, uint flag, double now)
+        {
+            var s = st.Input ??= new AiInputState();
+            bool was = s.Active;
+            s.MeetGuard = on;
+            s.MeetGuardFlag = on ? flag : 0u;
+            Account(s, was, now);
+        }
+
         internal static void SetKick(TrackedAgent st, AiKickPhase phase, AiKickKind kind, double now)
         {
             var s = st.Input ??= new AiInputState();

@@ -369,6 +369,16 @@ namespace TraxCombat.Missions
         public double AiKickLastLook = double.NaN;
         public bool AiMoveQueued;
 
+        /// <summary>Step 82: his READ of an incoming kick / bash - reading (rolled yes, in the readers' pool), the kind (a bash = guard right),
+        /// when it began, the guard up, the man it comes from; MeetReadRolledFor = the attacker whose start he already rolled for (once).</summary>
+        public bool MeetReading;
+        public bool MeetReadBash;
+        public bool MeetGuardUp;
+        public double MeetReadStart = double.NaN;
+        public TrackedAgent? MeetReadBy;
+        public TrackedAgent? MeetReadRolledFor;
+        public double MeetReadRolledAt = double.NaN;
+
         public void RememberMissile(int index)
         {
             switch (MissileNext)

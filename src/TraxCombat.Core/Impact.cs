@@ -158,6 +158,17 @@ namespace TraxCombat.Core
         /// 0-damage blow plays no reaction (<c>Agent.HandleBlow</c>) - never decided (Anton's battle of 2026-10-19 11:02: 126 of 198
         /// decided falls were friends' blows, all left to our backup blow, which threw men forward out of their walls).</summary>
         public bool NotEnemies;
+
+        /// <summary>Step 82: how the kick / bash was MET (the defender's guard read at contact - <see cref="ImpactMeetMath.Classify"/>);
+        /// NotJudged = step 65's decision as it was.</summary>
+        public ImpactMeet Meet;
+
+        /// <summary>Step 82: the ENGINE stopped the bash with the raised shield (<c>AttackBlockedWithShield</c>) - no knock-back plays; the
+        /// defender's outcomes are made like a block's (a forced stagger, our blow, a drop) from the tick.</summary>
+        public bool AltBlocked;
+
+        /// <summary>Step 82: on a CORRECT meet, the guarding item's skill (shield: one-handed; a weapon: its skill) - the riposte's K_D.</summary>
+        public double MeetGuardSkill;
     }
 
     /// <summary>
@@ -356,6 +367,11 @@ namespace TraxCombat.Core
         /// <summary>Step 65: he braced (no knock-back, the reaction cut).</summary>
         public bool Braced => Brace == KickBraceOutcome.Braced;
 
+        /// <summary>Step 82: the meet's row (NotJudged = step 65's decision); <see cref="MeetAttacker"/> = a correct meet - the attacker's
+        /// stagger is <see cref="Riposte"/>, his fall <see cref="ThrownBack"/>; <see cref="MeetBlocked"/> = the shield stopped the bash.</summary>
+        public ImpactMeet Meet;
+        public bool MeetAttacker, MeetBlocked;
+
         /// <summary>Anything happens (a rolled outcome came up).</summary>
         public bool AnyOutcome => Knockdown.Happens || ShieldDrop.Happens || Stagger.Happens || Riposte.Happens || ThrownBack.Happens;
 
@@ -466,7 +482,11 @@ namespace TraxCombat.Core
             RiposteMomentumWeight = Math.Max(0, s.RiposteMomentumPercent / 100.0);
             MultiplierCap = Math.Max(1, s.ImpactMultiplierCapPercent / 100.0);
             Brace = KickBraceRules.From(s);
+            Meet = ImpactMeetRules.From(s);
         }
+
+        /// <summary>Step 82: the meet rules (the master switch first, then ImpactMeetRulesEnabled).</summary>
+        public ImpactMeetRules Meet { get; }
 
         /// <summary>Step 65: the kicked man's brace (the master switch first, then KickBraceEnabled).</summary>
         public KickBraceRules Brace { get; }
@@ -1069,9 +1089,10 @@ namespace TraxCombat.Core
             d.ChargeShare = f.AttackerMounted || !r.MomentumOn ? 0 : MomentumShare(d.AttackerSpeed, r.MomentumWalk, r.MomentumSprint);
             d.Momentum = MomentumFactor(in r, d.AttackerSpeed, f.AttackerMounted, f.AttackerPassive);
             d.Impact = BlowImpact(in r, in f) * d.Momentum;
-            d.Guard = Guard(in r, f.Event, f.GuardWeight);
+            bool meetGuard = IsAlternative(f.Event) && r.Meet.Enabled && ImpactMeetMath.AttackerAtRisk(f.Meet); // step 82: a correct meet's guard
+            d.Guard = meetGuard ? ImpactMeetMath.Guard(in r, f.Meet, f.GuardWeight) : Guard(in r, f.Event, f.GuardWeight);
             d.SkillA = SkillFactor(in r, f.AttackerSkill);
-            d.SkillD = SkillFactor(in r, f.DefenderSkill);
+            d.SkillD = SkillFactor(in r, meetGuard ? f.MeetGuardSkill : f.DefenderSkill);
             d.R = Math.Pow(d.BodyA / d.BodyD, r.BodyExponent) * (d.Impact * d.SkillA) / (d.Guard * d.SkillD);
             // step 62: both men's toughness (courage's measure), a ranged man caught in melee
             d.ToughnessRatio = f.AttackerToughness > 0 && f.DefenderToughness > 0 ? f.AttackerToughness / f.DefenderToughness : double.NaN;
@@ -1192,6 +1213,11 @@ namespace TraxCombat.Core
                 BraceCut = double.NaN,
                 DefenderToughness = f.DefenderToughness,
             };
+            if (IsAlternative(f.Event) && r.Meet.Enabled && !f.DefenderMounted && f.Meet != ImpactMeet.NotJudged)
+            {
+                d.Meet = f.Meet; // step 82: recorded for every judged meet; its own rows unless "a kick met any other way" (as before)
+                if (ImpactMeetMath.HasRow(f.Meet)) return DecideMeet(in r, in f, ref defender, ref attacker, now, dice, d);
+            }
             bool reeling = defender.Reeling(now);
             double x = Pressure(in r, in f, reeling, ref d);
             Ceilings(in r, f.Event, out double kdCeil, out double sdCeil, out double stCeil);
@@ -1297,6 +1323,151 @@ namespace TraxCombat.Core
                 d.ThrownBackGetUpFactor = Math.Max(1, Math.Min(r.GetUpMax, Lengthen(r.GetUpMax - 1, ta, r.Random, dice.NextDouble())));
                 attacker.KnockedDown(now, now + VanillaFallRiseSeconds * d.ThrownBackGetUpFactor, r.KnockdownImmunity);
                 attacker.NoteOutcome(now);
+            }
+            return d;
+        }
+
+        /// <summary>
+        /// Step 82, THE MEET ROWS (IMPACT §3.5's meet table, Toni 2026-10-22). The pressure, the S-curve, tiredness, skill, toughness, direction
+        /// and the halving as everywhere else:
+        ///   - a CORRECT meet (a bash met by a guard RIGHT, a kick by a guard DOWN): the defender takes NOTHING (a landed one = braced: the
+        ///     knock-back refused, the reaction cut to <c>KickBraceReelPercent</c>); the ATTACKER rolls the row's fall (<see cref="ImpactDecision.ThrownBack"/>,
+        ///     from <c>ImpactKnockdownFrom</c>) and stagger (<see cref="ImpactDecision.Riposte"/>, from <c>ImpactStaggerFrom</c>) on the riposte's
+        ///     pressure x_r (his tiredness, the defender's body / guard / skill against his blow), × (1 − <c>RiposteBlockerTiredPercent</c> × T_D),
+        ///     halved by HIS recent outcomes, × your share when he is you; his stagger's length §3.7's on HIS tiredness;
+        ///   - a bash the SHIELD STOPPED with a wrong guard: the blocker's rows like a block's - fall / drop / stagger on x in full;
+        ///   - a bash that LANDED (a wrong weapon guard, no guard, mid-swing): the knock-back gets through with the row's stagger ceiling × step
+        ///     65's brace-failure curve (a spent man: the ceiling); held = braced (no knock-back, no fall, no drop); through = the fall and the
+        ///     drop rolled on x, the reel as a failed brace's.
+        /// </summary>
+        private static ImpactDecision DecideMeet(in ImpactRules r, in ImpactFacts f, ref ImpactState defender, ref ImpactState attacker, double now, IRandomSource dice, ImpactDecision d)
+        {
+            var m = r.Meet;
+            ImpactMeetMath.Row(in m, f.Meet, out double stCeil, out double fallCeil, out double dropCeil);
+            bool reeling = defender.Reeling(now);
+            double x = Pressure(in r, in f, reeling, ref d);
+            bool down = defender.Down(now);
+            double scale = f.DefenderIsPlayer ? Math.Max(0, r.OnPlayer) : 1;
+            int n = defender.Recent(now, r.DiminishWindow);
+            double dim = n > 0 ? Math.Pow(r.DiminishFactor, n) : 1;
+            double T = d.T;
+            d.MeetBlocked = f.AltBlocked;
+
+            if (ImpactMeetMath.AttackerAtRisk(f.Meet))
+            {
+                d.MeetAttacker = true;
+                if (!f.AltBlocked && !down)
+                {
+                    d.Brace = KickBraceOutcome.Braced; // held: the knock-back refused, his reaction cut
+                    d.ReelFactor = r.Brace.BraceReel;
+                    d.BraceFail = 0;
+                }
+                if (down) return d;
+                double xr = RipostePressure(in r, in f, ref d);
+                int na = attacker.Recent(now, r.DiminishWindow);
+                double dimA = na > 0 ? Math.Pow(r.DiminishFactor, na) : 1;
+                double scaleA = f.AttackerIsPlayer ? Math.Max(0, r.OnPlayer) : 1;
+                double k = Math.Max(0, Math.Min(1, r.RiposteBlockerTired));
+                d.RiposteBlockerFactor = 1 - k * d.T;
+                if (fallCeil > 0)
+                    d.ThrownBack = Roll(fallCeil, RawChance(fallCeil, xr, r.KnockdownFrom) * d.RiposteBlockerFactor, na, dimA * scaleA,
+                        attacker.Down(now) ? ImpactRefusal.Down
+                        : f.AttackerMounted ? ImpactRefusal.Rider
+                        : attacker.KnockdownImmune(now) ? ImpactRefusal.KnockdownImmune
+                        : ImpactRefusal.None, dice);
+                if (stCeil > 0)
+                    d.Riposte = Roll(stCeil, RawChance(stCeil, xr, r.StaggerFrom) * d.RiposteBlockerFactor, na, dimA * scaleA,
+                        attacker.Down(now) ? ImpactRefusal.Down
+                        : d.ThrownBack.Happens ? ImpactRefusal.Replaced
+                        : f.AttackerMounted ? ImpactRefusal.Rider
+                        : attacker.StaggerImmune(now) ? ImpactRefusal.StaggerImmune
+                        : ImpactRefusal.None, dice);
+                double ta = d.TAttacker;
+                if (d.Riposte.Happens)
+                {
+                    d.RiposteStunSeconds = Math.Max(0, Math.Min(r.StaggerMax, r.StaggerBase * Lengthen(r.StaggerExtra, ta, r.Random, dice.NextDouble())));
+                    attacker.Reel(now + d.RiposteStunSeconds, r.StaggerImmunity);
+                    attacker.NoteOutcome(now);
+                }
+                if (d.ThrownBack.Happens)
+                {
+                    d.ThrownBackGetUpFactor = Math.Max(1, Math.Min(r.GetUpMax, Lengthen(r.GetUpMax - 1, ta, r.Random, dice.NextDouble())));
+                    attacker.KnockedDown(now, now + VanillaFallRiseSeconds * d.ThrownBackGetUpFactor, r.KnockdownImmunity);
+                    attacker.NoteOutcome(now);
+                }
+                return d;
+            }
+
+            if (f.AltBlocked)
+            {
+                // the shield stopped it, the guard was wrong: a block's rows on the blocker (no knock-back plays)
+                if (fallCeil > 0)
+                    d.Knockdown = Roll(fallCeil, RawChance(fallCeil, x, r.KnockdownFrom), n, dim * scale,
+                        down ? ImpactRefusal.Down : defender.KnockdownImmune(now) ? ImpactRefusal.KnockdownImmune : ImpactRefusal.None, dice);
+                if (dropCeil > 0)
+                    d.ShieldDrop = Roll(dropCeil, RawChance(dropCeil, x, r.ShieldDropFrom), n, dim * scale,
+                        down ? ImpactRefusal.Down : !f.DefenderHasShield ? ImpactRefusal.NoShield : ImpactRefusal.None, dice);
+                if (stCeil > 0)
+                    d.Stagger = Roll(stCeil, RawChance(stCeil, x, r.StaggerFrom), n, dim * scale,
+                        down ? ImpactRefusal.Down
+                        : d.Knockdown.Happens ? ImpactRefusal.Replaced
+                        : defender.StaggerImmune(now) ? ImpactRefusal.StaggerImmune
+                        : ImpactRefusal.None, dice);
+            }
+            else
+            {
+                // landed: does the knock-back get through? the row's stagger × the brace's failure curve (a spent man: the ceiling)
+                var b = r.Brace;
+                bool spent = KickBraceMath.Spent(in b, f.DefenderBar);
+                d.BraceSpent = spent;
+                double curve = spent ? 1 : KickBraceMath.FailChance(in b, x);
+                double through = Math.Max(0, Math.Min(1, stCeil * curve * scale));
+                d.Stagger = new ImpactRoll { InRow = true, Ceiling = stCeil, Raw = stCeil * curve, Chance = through, Die = double.NaN, Refusal = down ? ImpactRefusal.Down : ImpactRefusal.None };
+                bool got = false;
+                if (!down)
+                {
+                    if (through >= 1) got = true;
+                    else if (through > 0)
+                    {
+                        d.Stagger.Die = dice.NextDouble();
+                        got = d.Stagger.Die < through;
+                    }
+                }
+                d.Stagger.Happens = got;
+                d.BraceFail = through;
+                d.BraceDie = d.Stagger.Die;
+                bool held = !got;
+                if (fallCeil > 0)
+                    d.Knockdown = Roll(fallCeil, RawChance(fallCeil, x, r.KnockdownFrom), n, dim * scale,
+                        down ? ImpactRefusal.Down : held ? ImpactRefusal.Braced : defender.KnockdownImmune(now) ? ImpactRefusal.KnockdownImmune : ImpactRefusal.None, dice);
+                if (dropCeil > 0)
+                    d.ShieldDrop = Roll(dropCeil, RawChance(dropCeil, x, r.ShieldDropFrom), n, dim * scale,
+                        down ? ImpactRefusal.Down : held ? ImpactRefusal.Braced : !f.DefenderHasShield ? ImpactRefusal.NoShield : ImpactRefusal.None, dice);
+                if (!down && !d.Knockdown.Happens)
+                {
+                    if (held) d.ReelFactor = b.BraceReel;
+                    else
+                    {
+                        d.BraceCut = spent ? double.NaN : KickBraceMath.ReelCut(in b, T);
+                        d.ReelFactor = Math.Max(1, Lengthen(r.ReelExtra, T, r.Random, dice.NextDouble()));
+                        if (!double.IsNaN(d.BraceCut)) d.ReelFactor *= d.BraceCut;
+                    }
+                    if (d.ReelFactor > 1) defender.Reel(now + VanillaReelSeconds * d.ReelFactor, r.StaggerImmunity);
+                }
+                d.Brace = down ? KickBraceOutcome.NotAsked : KickBraceMath.Classify(held, d.Knockdown.Happens, d.ReelFactor);
+            }
+            if (d.Knockdown.Happens)
+            {
+                d.GetUpFactor = Math.Max(1, Math.Min(r.GetUpMax, Lengthen(r.GetUpMax - 1, T, r.Random, dice.NextDouble())));
+                defender.KnockedDown(now, now + VanillaFallRiseSeconds * d.GetUpFactor, r.KnockdownImmunity);
+                defender.NoteOutcome(now);
+            }
+            if (d.ShieldDrop.Happens) defender.NoteOutcome(now);
+            if (f.AltBlocked && d.Stagger.Happens)
+            {
+                d.StaggerSeconds = Math.Max(0, Math.Min(r.StaggerMax, r.StaggerBase * Lengthen(r.StaggerExtra, T, r.Random, dice.NextDouble())));
+                defender.Reel(now + d.StaggerSeconds, r.StaggerImmunity);
+                defender.NoteOutcome(now);
             }
             return d;
         }
@@ -1442,6 +1613,7 @@ namespace TraxCombat.Core
                      : "fails " + (100 * d.BraceFail).ToString("0.#", c) + "%" + (double.IsNaN(d.BraceDie) ? " (sure)" : " → rolled " + d.BraceDie.ToString("0.00", c))
                        + " → " + (d.Braced ? "BRACED (no knock-back)" : "failed (the reel cut x" + d.BraceCut.ToString("0.00", c) + ")"))
                      + " - " + KickBraceMath.OutcomeName(d.Brace) + ";";
+            if (d.Meet != ImpactMeet.NotJudged) s += " MEET (step 82): " + ImpactMeetMath.MeetName(d.Meet) + (d.MeetAttacker ? " - the ATTACKER at risk" : d.MeetBlocked ? " - the shield stopped it" : string.Empty) + ";";
             if (!double.IsNaN(d.ReelFactor)) s += " reel x" + d.ReelFactor.ToString("0.00", c) + ";";
             if (!double.IsNaN(d.StunFactor)) s += " block stun x" + d.StunFactor.ToString("0.00", c) + ";";
             if (!double.IsNaN(d.GetUpFactor)) s += " gets up x" + d.GetUpFactor.ToString("0.00", c) + " slower;";

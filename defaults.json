@@ -225,6 +225,14 @@
   // (range 0 to 100)
   "ImpactOnPlayerPercent": 100,
 
+  // On: a shield bash met with a guard to the RIGHT (the side it comes from) or a kick met with
+  // a guard DOWN throws the attacker off balance - he may stagger or fall, the defender holds.
+  // Met with the wrong guard, no guard or mid-swing, the man hit is at risk instead. The AI
+  // reads an incoming kick or bash about as well as it blocks a swing, worse when tired. Off:
+  // kicks and bashes as before. The chances: Advanced page, Impact.
+  // (true or false)
+  "ImpactMeetRulesEnabled": true,
+
   // ==================== Sprinting ====================
   // Every fighter on foot has a sprint: a short burst of speed stored in seconds - the more
   // Athletics he has left, the longer (150 points = 7.5 s; empty = none). Hold the sprint key
@@ -2173,6 +2181,97 @@
   // wait. 0 = always wait.
   // (range 0.0 to 3.0)
   "AiKickRearRankMetres": 1.2,
+
+  // A shield bash met by a raised shield guarding RIGHT (the side a bash comes from - the
+  // correct meet): at most this chance the BASHER staggers, rising with his tiredness and how
+  // outmatched he is against the guard (the riposte's pressure). The blocker takes nothing.
+  // (range 0 to 100)
+  "MeetBashShieldRightStaggerPercent": 70,
+
+  // The same correct meet: at most this chance the basher is knocked down (a fall replaces the
+  // stagger).
+  // (range 0 to 100)
+  "MeetBashShieldRightFallPercent": 30,
+
+  // A shield bash met by a weapon guard to the RIGHT: at most this chance the BASHER staggers
+  // (the riposte's pressure). The defender holds his ground (the knock-back refused).
+  // (range 0 to 100)
+  "MeetBashWeaponRightStaggerPercent": 45,
+
+  // The same correct meet: at most this chance the basher is knocked down.
+  // (range 0 to 100)
+  "MeetBashWeaponRightFallPercent": 15,
+
+  // A shield bash met by a raised shield guarding any other way: at most this chance the
+  // BLOCKER staggers (his pressure in full - his tiredness, the mismatch).
+  // (range 0 to 100)
+  "MeetBashShieldWrongStaggerPercent": 85,
+
+  // The same meet: at most this chance the blocker is knocked down.
+  // (range 0 to 100)
+  "MeetBashShieldWrongFallPercent": 40,
+
+  // The same meet: at most this chance the blocker drops his shield.
+  // (range 0 to 100)
+  "MeetBashShieldWrongShieldDropPercent": 35,
+
+  // A shield bash met by a weapon guard any other way than right: at most this chance he is
+  // knocked back (the kicked man's brace curve on his pressure x this ceiling - not knocked
+  // back = he holds).
+  // (range 0 to 100)
+  "MeetBashWeaponWrongStaggerPercent": 95,
+
+  // The same meet: at most this chance he is knocked down (only when the bash got through).
+  // (range 0 to 100)
+  "MeetBashWeaponWrongFallPercent": 50,
+
+  // A shield bash on a man with no guard up or caught mid-swing: at most this chance he is
+  // knocked back (the kicked man's brace curve on his pressure x this ceiling).
+  // (range 0 to 100)
+  "MeetBashOpenStaggerPercent": 98,
+
+  // The same meet: at most this chance he is knocked down (only when the bash got through).
+  // (range 0 to 100)
+  "MeetBashOpenFallPercent": 60,
+
+  // The same meet: at most this chance he drops his shield, if he has one (only when the bash
+  // got through).
+  // (range 0 to 100)
+  "MeetBashOpenShieldDropPercent": 45,
+
+  // A kick met by a raised shield guarding DOWN (he saw it coming and braced): at most this
+  // chance the KICKER staggers (the riposte's pressure). The kicked man holds.
+  // (range 0 to 100)
+  "MeetKickShieldDownStaggerPercent": 60,
+
+  // The same correct meet: at most this chance the kicker is knocked down.
+  // (range 0 to 100)
+  "MeetKickShieldDownFallPercent": 25,
+
+  // A kick met by a weapon guard DOWN: at most this chance the KICKER staggers. Any other
+  // guard: the kicked man braces or reels as before.
+  // (range 0 to 100)
+  "MeetKickWeaponDownStaggerPercent": 50,
+
+  // The same correct meet: at most this chance the kicker is knocked down.
+  // (range 0 to 100)
+  "MeetKickWeaponDownFallPercent": 30,
+
+  // An AI soldier targeted by a starting kick or bash reads it with this percent of the chance
+  // he blocks a swing correctly (the game's block decision by his skill, the direction he picks
+  // - worse when tired); if he reads it he raises the right guard (right for a bash, down for a
+  // kick) until the hit. 0 = never.
+  // (range 0 to 200)
+  "MeetAiReadScalePercent": 100,
+
+  // A soldier who reads a kick or bash raises his guard this long after it began; a hit sooner
+  // is a read too late (counted in the summary).
+  // (range 0.0 to 1.0)
+  "MeetAiReadReactionSeconds": 0.15,
+
+  // The read guard is let go after this long if no hit came (a miss, a kick that never played).
+  // (range 0.2 to 3.0)
+  "MeetAiReadMaxHoldSeconds": 1.5,
 
   // How much an outmatched man suffers: every doubling of the mismatch beyond the even band
   // adds this to the pressure on him (0.25: an enemy four times stronger counts as much as

@@ -164,6 +164,7 @@ namespace TraxCombat.Tools
             // step 65: the older steps check a world where the AI never kicks and every landed kick knocks back (step 50) - Program.Step65.cs has its own
             S.Set(SettingsSchema.AiKicksEnabled, false, SettingSources.File);
             S.Set(SettingsSchema.KickBraceEnabled, false, SettingSources.File);
+            S.Set(SettingsSchema.ImpactMeetRulesEnabled, false, SettingSources.File); // step 82: the older steps check kicks / bashes as step 65 left them - Program.Step82.cs has its own
             // step 64: the older steps check steps 33-63's AI sprint (every one ends at 3 m, a charge sprints at the order, the fever at 3-12 m) -
             // ChargeIntoContact has its own
             S.Set(SettingsSchema.SprintChargeIntoContact, false, SettingSources.File);

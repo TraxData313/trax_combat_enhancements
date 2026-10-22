@@ -49,6 +49,9 @@ namespace TraxCombat.Missions
         private bool _pendingFromKnockBack;
         private bool _inKnockBackSeam;
 
+        // step 82: the pending kick / bash was met correctly - its knock-back refused whatever KickBraceRefusesKnockBack says
+        private bool _pendingMeetHeld;
+
         // step 62: the clean hit just applied played a stagger (ApplyHit sets it - the shrug-off seam refuses the shrug-off for it)
         private bool _applyStaggered;
 
@@ -86,6 +89,7 @@ namespace TraxCombat.Missions
             _impactShadowSeen = r.ShadowNow;
             _impact.EverOn = r.Enabled;
             TraxLog.Info("impact", "mission start: the model (step 48 - IMPACT I2, docs/IMPACT.md) " + r.Describe() + " - read live; the [summary] \"impact\" lines count every decision by event and bar band (PLAYTEST D17)");
+            StartImpactMeet(); // step 82
         }
 
         /// <summary>From TickImpact (own try there): the switch and the mode read live - one [impact] line per change; the on / off time.</summary>
@@ -118,6 +122,7 @@ namespace TraxCombat.Missions
         {
             foreach (var line in _impact.SummaryLines(ImpactRules.From(TraxSettings.Shared))) TraxLog.Info("summary", line);
             TraxLog.Info("summary", _impact.KickCoverageLine()); // step 68: every landed kick / bash against the decisions
+            WriteImpactMeetSummary(); // step 82
         }
 
         // ------------------------------------------------------------------ the events
@@ -171,6 +176,7 @@ namespace TraxCombat.Missions
                 _pendingKnockDown = false;
                 _pendingStaggered = false;
                 _pendingBraced = false;
+                _pendingMeetHeld = false;
                 _pendingFromKnockBack = _inKnockBackSeam;
                 _applyStaggered = false;
                 if (!ImpactDecideEvent(a, v, ev, attacker, victim, in cd, now, true, out var dd, out bool knockDown)) return false;
@@ -179,6 +185,7 @@ namespace TraxCombat.Missions
                 _pendingKnockDown = knockDown;
                 _pendingStaggered = _applyStaggered;
                 _pendingBraced = dd.Braced && ImpactRules.From(TraxSettings.Shared).Applies(ImpactFamily.Kicks); // step 65: only a LIVE brace refuses the knock-back
+                _pendingMeetHeld = _pendingBraced && ImpactMeetMath.AttackerAtRisk(dd.Meet); // step 82: a correct meet holds
                 return knockDown;
             }
             catch (Exception e)
@@ -192,12 +199,30 @@ namespace TraxCombat.Missions
         /// <summary>OnMeleeHit's part (its own try there): the event's decision - the decorator's for this blow if it made one, else made here.</summary>
         internal void ImpactModelHitTaken(Agent attacker, Agent victim, in AttackCollisionData cd)
         {
+            ImpactModelHitTakenCore(attacker, victim, in cd);
+            if (cd.IsAlternativeAttack && _meetReaderCount > 0 && attacker != null && victim != null) MeetReadHitTaken(Get(attacker), Get(victim), SpikeNow); // step 82
+        }
+
+        private void ImpactModelHitTakenCore(Agent attacker, Agent victim, in AttackCollisionData cd)
+        {
             if (!_spikeStarted || _spikeClosed || attacker == null || victim == null) return;
             if (cd.IsAlternativeAttack && !cd.IsMissile && !cd.IsHorseCharge) // step 68: every kick / bash collision - landed, into a shield, other
             {
                 var ka = Get(attacker);
                 _impact.NoteKickHit(cd.AffectorWeaponSlotOrMissileIndex >= 0, SpikeMath.KickLanded(true, cd.AttackBlockedWithShield, (int)cd.CollisionResult),
                     cd.AttackBlockedWithShield, ka != null && IsPlayer(ka));
+            }
+            if (cd.IsAlternativeAttack && cd.AttackBlockedWithShield && !cd.IsMissile && !cd.IsHorseCharge && ImpactMeetRules.From(TraxSettings.Shared).Enabled)
+            {
+                // step 82: a kick / bash the raised shield STOPPED - judged by the guard (a correct meet: the attacker at risk; a wrong guard: the blocker)
+                var ba = Get(attacker);
+                var bv = Get(victim);
+                var bev = cd.AffectorWeaponSlotOrMissileIndex >= 0 ? ImpactEvent.Bash : ImpactEvent.Kick;
+                if (bev == ImpactEvent.Bash) _meet.BlockedBashes++;
+                else _meet.BlockedKicks++;
+                bool decided = ImpactDecideEvent(ba, bv, bev, attacker, victim, in cd, SpikeNow, false, out var bd, out _, altBlocked: true);
+                _meet.NoteEngineSide(cd.CorrectSideShieldBlock, decided && (bd.Meet == ImpactMeet.BashShieldRight || bd.Meet == ImpactMeet.KickShieldDown), (int)cd.AttackDirection);
+                return;
             }
             if (!ImpactEventOf(in cd, BlockKindOf(attacker, victim, in cd), out var ev)) return; // step 64: our block verdict
             var a = Get(attacker);
@@ -215,7 +240,7 @@ namespace TraxCombat.Missions
         /// <summary>The gates (the master switch first, Athletics, ImpactEnabled, the family, both men tracked), the engine's inputs, then
         /// <see cref="ImpactDecide"/>. A failing read = one [error] and the event counted "read failed".</summary>
         private bool ImpactDecideEvent(TrackedAgent? a, TrackedAgent? v, ImpactEvent ev, Agent attacker, Agent victim, in AttackCollisionData cd, double now, bool inSeam,
-            out ImpactDecision d, out bool knockDown)
+            out ImpactDecision d, out bool knockDown, bool altBlocked = false)
         {
             d = default;
             knockDown = false;
@@ -224,6 +249,12 @@ namespace TraxCombat.Missions
             try
             {
                 ImpactInputs.Fill(attacker, victim, in cd, ref f);
+                if (ImpactMath.IsAlternative(ev) && !f.DefenderMounted && ImpactMeetRules.From(TraxSettings.Shared).Enabled) FillMeet(victim, ref f, altBlocked); // step 82
+                if (altBlocked && !ImpactMeetMath.HasRow(f.Meet)) // step 82: a kick the shield stopped, met any other way (or a rider, a failed read) - nothing, as before
+                {
+                    _meet.BlockedKicksNotJudged++;
+                    return false;
+                }
                 // step 51: the weapon's name for a YOU line about a block (asked only when you are one of the two - it allocates)
                 _youBlowName = ImpactMath.IsBlock(ev) && (IsPlayer(a!) || IsPlayer(v!)) ? ImpactInputs.BlowName(attacker, in cd) : null;
             }
@@ -341,7 +372,12 @@ namespace TraxCombat.Missions
             if (block && (applied || riderLive)) _riders.NoteRiposteOnRider(in d);
             LastImpact = d;
             NoteImpactLines(a, v, in d, in f, in r, !(applied || riposteLive || riderLive));
-            if (applied && family == ImpactFamily.Kicks) knockDown = ApplyKick(a, v, in d, inSeam, now);
+            if (applied && family == ImpactFamily.Kicks)
+            {
+                if (!d.MeetBlocked) knockDown = ApplyKick(a, v, in d, inSeam, now);
+                if (d.Meet != ImpactMeet.NotJudged) ApplyMeet(a, v, in d, now, true, attackerBand); // step 82: the attacker's outcomes, a stopped bash's blocker
+            }
+            else if (d.Meet != ImpactMeet.NotJudged && !riderLive) ApplyMeet(a, v, in d, now, false, attackerBand); // counted, nothing applied (shadow)
             else if (applied && family == ImpactFamily.Hits) knockDown = ApplyHit(a, v, in d, in f, inSeam, now); // step 52
             else if (riderLive)
             {

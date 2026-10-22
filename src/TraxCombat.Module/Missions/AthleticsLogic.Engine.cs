@@ -353,6 +353,7 @@ namespace TraxCombat.Missions
             CourageLeftField(st); // step 49
             FlockLeftField(st); // step 55
             AiKickLeftField(st); // step 65
+            MeetLeftField(st); // step 82
             SpearLeftField(st); // step 76
             ImpactLeftField(st); // step 47
             RemoveFromLoop(st);
@@ -569,6 +570,16 @@ namespace TraxCombat.Missions
                 Failed("aikick.tick", e);
             }
 
+            // Step 82: the AI's reads of an incoming kick / bash - the guard raised after the reaction time, let go at the hold's end.
+            try
+            {
+                TickMeetReads(now);
+            }
+            catch (Exception e)
+            {
+                Failed("impact.meet-tick", e);
+            }
+
             // Step 76: the AI prefers the spear - each man with a spear and a sidearm looked at every ~0.5 s (ON and OFF - the OFF looks measure); the
             // friendly-hit stun held / given back; the friends passed watched for a flinch.
             try
@@ -706,6 +717,7 @@ namespace TraxCombat.Missions
         {
             _stats.AddKickOrBashSeen(kind, lowerChannel);
             ChargeKickOrBash(st, kind, now, in r, st.Agent.MountAgent != null);
+            MeetKickSeen(st, kind, now); // step 82: the man it is aimed at may read it (an AI attempt of ours rolled at its start)
         }
 
         /// <summary>Step 18: a kick or bash LANDED (OnMeleeHit, after both channels were read): charged here

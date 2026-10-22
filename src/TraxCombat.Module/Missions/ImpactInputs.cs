@@ -167,9 +167,9 @@ namespace TraxCombat.Missions
             return Math.Acos(cos) * 180.0 / Math.PI;
         }
 
-        private static double WeightOf(MissionWeapon w) => w.Item != null ? w.Item.Weight : 0;
+        internal static double WeightOf(MissionWeapon w) => w.Item != null ? w.Item.Weight : 0;
 
-        private static double Skill(Agent a, SkillObject skill)
+        internal static double Skill(Agent a, SkillObject skill)
         {
             var c = a.Character;
             return c != null ? c.GetSkillValue(skill) : 0;
