@@ -72,6 +72,16 @@ namespace TraxCombat.Missions
         public float BlockX, BlockY;
         public long BlockFrames;
 
+        /// <summary>Step 77: PRESS, DON'T PASS - a man near an enemy line. The CLAMP (<see cref="PressFront"/>: the part of his final movement toward
+        /// the line - <see cref="PressNX"/>, <see cref="PressNY"/>, his own frame - taken out; <see cref="PressSide"/>: a rear-rank man's outward sideways
+        /// part past the line's end - <see cref="PressSX"/>, <see cref="PressSY"/>) filters the vector LAST, whoever wrote it (the game, a wish of ours);
+        /// <see cref="PressMove"/> = a walk back out of the line / round its end (<see cref="PressX"/>, <see cref="PressY"/> replace the AI's movement - after
+        /// a step back's backpedal and the wall's pull, before courage's walk back, the fear flock and the block hold). Works with the Athletics system off.</summary>
+        public bool Press;
+        public bool PressFront, PressSide, PressMove;
+        public float PressNX, PressNY, PressSX, PressSY, PressX, PressY;
+        public long PressClampFrames, PressSideFrames, PressMoveFrames;
+
         /// <summary>Step 65: an AI kick / bash attempt's phase (Core <see cref="AiKickPhase"/> - None = none) and kind: the hook writes the kick
         /// key / the guard / the commit (Core <see cref="AiKickMath.Frame"/>) - only with Athletics on (the logic ends attempts otherwise).</summary>
         public AiKickPhase KickPhase;
@@ -86,7 +96,7 @@ namespace TraxCombat.Missions
         public long SpearRewrites;
 
         /// <summary>Any wish at all - a man is held while ANY of them wants him held (one ending never lifts another).</summary>
-        public bool Active => HoldAttacks || StepHoldAttacks || Backpedal || BraceHoldAttacks || Regroup || WallPull || Flock || Block || SpearWield || KickPhase != AiKickPhase.None;
+        public bool Active => HoldAttacks || StepHoldAttacks || Backpedal || BraceHoldAttacks || Regroup || WallPull || Flock || Block || SpearWield || Press || KickPhase != AiKickPhase.None;
 
         /// <summary>Since when the state has been active (mission time), for the calls-per-second figure.</summary>
         public double ActiveSince = -1;
@@ -170,7 +180,7 @@ namespace TraxCombat.Missions
                     uint ev = (uint)eventFlag;
                     if (AiInputHook.ApplySpearWield(s, ref ev)) eventFlag = (Agent.EventControlFlag)ev;
                 }
-                if (!settings.AthleticsEnabled && !(s.Regroup && settings.CourageEnabled) && !(s.WallPull && settings.ShieldWallHoldsSlots) && !(s.Flock && settings.FearFlockEnabled) && !(s.Block && AiInputHook.BlockOn(settings))) return; // steps 49 / 63 / 67 / 74: courage, the wall, the flock and the block work without Athletics
+                if (!settings.AthleticsEnabled && !(s.Regroup && settings.CourageEnabled) && !(s.WallPull && settings.ShieldWallHoldsSlots) && !(s.Flock && settings.FearFlockEnabled) && !(s.Block && AiInputHook.BlockOn(settings)) && !(s.Press && AiInputHook.PressOn(settings))) return; // steps 49 / 63 / 67 / 74 / 77: courage, the wall, the flock, the block and the press work without Athletics
                 if (Agent.IsMainAgent || !Agent.IsAIControlled)
                 {
                     s.NotAi++; // the player's agent, or a soldier the player took over (RTS Camera): never touched
@@ -180,8 +190,10 @@ namespace TraxCombat.Missions
                 {
                     uint only = (uint)movementFlag;
                     float ox = inputVector.x, oy = inputVector.y;
-                    if (AiInputHook.ApplyWallPull(s, ref only, ref ox, ref oy) || AiInputHook.ApplyRegroup(s, ref only, ref ox, ref oy) || AiInputHook.ApplyFlock(s, ref only, ref ox, ref oy)
-                        || AiInputHook.ApplyBlock(s, ref only, ref ox, ref oy))
+                    bool wrote = AiInputHook.ApplyWallPull(s, ref only, ref ox, ref oy) || AiInputHook.ApplyPressMove(s, ref only, ref ox, ref oy)
+                                 || AiInputHook.ApplyRegroup(s, ref only, ref ox, ref oy) || AiInputHook.ApplyFlock(s, ref only, ref ox, ref oy) || AiInputHook.ApplyBlock(s, ref only, ref ox, ref oy);
+                    if (AiInputHook.ApplyPressClamp(s, ref only, ref ox, ref oy)) wrote = true; // step 77: the clamp LAST, on whatever moves him
+                    if (wrote)
                     {
                         movementFlag = (Agent.MovementControlFlag)only;
                         inputVector = new Vec2(ox, oy);
@@ -196,7 +208,8 @@ namespace TraxCombat.Missions
                 }
                 float vx = inputVector.x, vy = inputVector.y;
                 AiInputHook.Apply(_st, s, settings.AiHoldRaiseGuard, ref flags, ref vx, ref vy, settings.BraceRaiseShield);
-                bool moved = s.Backpedal || (s.Regroup && settings.CourageEnabled) || (s.WallPull && settings.ShieldWallHoldsSlots) || (s.Flock && settings.FearFlockEnabled) || (s.Block && AiInputHook.BlockOn(settings));
+                bool moved = s.Backpedal || (s.Regroup && settings.CourageEnabled) || (s.WallPull && settings.ShieldWallHoldsSlots) || (s.Flock && settings.FearFlockEnabled) || (s.Block && AiInputHook.BlockOn(settings))
+                             || (s.Press && AiInputHook.PressOn(settings)); // step 77: the press's walk or clamp
                 if (s.KickPhase != AiKickPhase.None && settings.AiKicksEnabled) // step 65: the kick / bash written LAST (after a held man's kick-out)
                 {
                     uint ev = (uint)eventFlag;
@@ -454,6 +467,57 @@ namespace TraxCombat.Missions
             return true;
         }
 
+        /// <summary>Step 77: press, don't pass's switches - the master switch FIRST, then its own.</summary>
+        internal static bool PressOn(TraxSettings settings) => settings.ModEnabled && settings.PressDontPass;
+
+        /// <summary>Step 77: turns the press wish on or off (the other wishes are left as they are); off clears the clamps and the walk.</summary>
+        internal static void SetPress(TrackedAgent st, bool on, double now)
+        {
+            var s = st.Input ??= new AiInputState();
+            bool was = s.Active;
+            s.Press = on;
+            if (!on)
+            {
+                s.PressFront = s.PressSide = s.PressMove = false;
+                s.PressX = s.PressY = 0f;
+            }
+            Account(s, was, now);
+        }
+
+        /// <summary>Step 77: a man walked back out of an enemy line / round its end - his own move bits out, the vector in; never while a step back's
+        /// backpedal or the wall's pull runs (they win), never with the press's switches off. True when it wrote. Managed - the smoke drives it.</summary>
+        internal static bool ApplyPressMove(AiInputState s, ref uint flags, ref float vx, ref float vy)
+        {
+            if (!s.Press || !s.PressMove || s.Backpedal || s.WallPull) return false;
+            if (!PressOn(TraxSettings.Shared)) return false;
+            flags = AiInputMath.Backpedal(flags);
+            vx = s.PressX;
+            vy = s.PressY;
+            s.PressMoveFrames++;
+            return true;
+        }
+
+        /// <summary>Step 77: THE CLAMP - the part of his final movement toward the enemy line (and a rear-rank man's outward sideways part past its end)
+        /// taken out, whoever wrote the vector; his move bits out when it bit. True when it bit. Managed - the smoke drives it.</summary>
+        internal static bool ApplyPressClamp(AiInputState s, ref uint flags, ref float vx, ref float vy)
+        {
+            if (!s.Press || (!s.PressFront && !s.PressSide)) return false;
+            if (!PressOn(TraxSettings.Shared)) return false;
+            bool did = false;
+            if (s.PressFront && PressMath.ClampVector(ref vx, ref vy, s.PressNX, s.PressNY))
+            {
+                s.PressClampFrames++;
+                did = true;
+            }
+            if (s.PressSide && PressMath.ClampVector(ref vx, ref vy, s.PressSX, s.PressSY))
+            {
+                s.PressSideFrames++;
+                did = true;
+            }
+            if (did) flags = AiInputMath.Backpedal(flags);
+            return did;
+        }
+
         /// <summary>Step 76: turns the wield fallback's wish on (with his polearm's slot and his sidearms) or off.</summary>
         internal static void SetSpearWield(TrackedAgent st, bool on, int polearmSlot, int sidearmMask, double now)
         {
@@ -522,7 +586,7 @@ namespace TraxCombat.Missions
             }
             eventFlags = ev;
             s.KickFrames++;
-            if (!stop || s.Backpedal || s.Regroup || s.WallPull || s.Flock || s.Block) return false;
+            if (!stop || s.Backpedal || s.Regroup || s.WallPull || s.Flock || s.Block || (s.Press && s.PressMove)) return false;
             flags = AiInputMath.Backpedal(flags); // his own move bits out
             vx = 0f;
             vy = 0f;
@@ -549,6 +613,7 @@ namespace TraxCombat.Missions
             if (s == null) return;
             bool was = s.Active;
             s.HoldAttacks = s.StepHoldAttacks = s.Backpedal = s.BraceHoldAttacks = s.HoldKicks = s.Regroup = s.Flock = s.Block = s.SpearWield = false;
+            s.Press = s.PressFront = s.PressSide = s.PressMove = false; // step 77
             s.KickPhase = AiKickPhase.None; // step 65
             s.KickKind = AiKickKind.None;
             Account(s, was, now);
@@ -616,12 +681,16 @@ namespace TraxCombat.Missions
             }
             else if (!ApplyWallPull(s, ref flags, ref vx, ref vy)) // step 63: a wall man out of place walked back
             {
-                if (!ApplyRegroup(s, ref flags, ref vx, ref vy)) // step 49: the walk back (a step back's backpedal wins while it runs)
+                if (!ApplyPressMove(s, ref flags, ref vx, ref vy)) // step 77: walked back out of an enemy line / round its end
                 {
-                    if (!ApplyFlock(s, ref flags, ref vx, ref vy)) // step 67: the fear flock - courage's walk back goes first
-                        ApplyBlock(s, ref flags, ref vx, ref vy); // step 74: the block hold - the last
+                    if (!ApplyRegroup(s, ref flags, ref vx, ref vy)) // step 49: the walk back (a step back's backpedal wins while it runs)
+                    {
+                        if (!ApplyFlock(s, ref flags, ref vx, ref vy)) // step 67: the fear flock - courage's walk back goes first
+                            ApplyBlock(s, ref flags, ref vx, ref vy); // step 74: the block hold - the last movement wish
+                    }
                 }
             }
+            ApplyPressClamp(s, ref flags, ref vx, ref vy); // step 77: the clamp LAST - never past an enemy line's front, whoever moves him
             if (s.Capture && !s.CapturedAttack && (edit & InputEdit.AttackCleared) != 0)
             {
                 s.CapturedAttack = true;

@@ -249,6 +249,10 @@ namespace TraxCombat.Core
         /// <summary>Past the line's rear by this = behind the whole line (walked round an end, not pushed through).</summary>
         public const double BehindExtraMetres = 1.0;
 
+        /// <summary>A man walked round an end aims this far beyond the PressRoundEndMetres mark (more than FearMath.ArriveMetres - he never
+        /// stops short of it).</summary>
+        public const double ReturnOvershootMetres = 1.0;
+
         /// <summary>A pushed man's place: this far in front of the face.</summary>
         public const double PushToMetres = 0.3;
 
@@ -264,8 +268,9 @@ namespace TraxCombat.Core
         /// <summary>A ring's front = this quantile of its men's distance from its centre.</summary>
         public const double RingQuantile = 0.9;
 
-        /// <summary>A unit's width from its men across the line: (q95 − q05) ÷ 0.9 (a uniform spread's full extent).</summary>
-        public const double WidthQuantile = 0.05;
+        /// <summary>A unit's width from its men across the line: (q90 − q10) ÷ 0.8 (a uniform spread's full extent - a few men trailing out at the
+        /// sides do not make the body wider).</summary>
+        public const double WidthQuantile = 0.10;
 
         /// <summary>The block hold's range against a line is at least this wide (m).</summary>
         public const double MinBlockRange = 2.0;
@@ -444,7 +449,7 @@ namespace TraxCombat.Core
             }
             double behind = -(Math.Max(MinDepth, depth) + BehindExtraMetres);
             toD = Math.Min(d, behind);
-            toL = (l - lo) <= (hi - l) ? outLo - 0.5 : outHi + 0.5;
+            toL = (l - lo) <= (hi - l) ? outLo - ReturnOvershootMetres : outHi + ReturnOvershootMetres;
         }
 
         /// <summary>A RING (square / circle): <paramref name="d"/> = his distance from its centre less its radius. Inside beyond the tolerance =
@@ -661,6 +666,7 @@ namespace TraxCombat.Core
         public long WidthN;
 
         private double _nextPublish = double.NaN;
+        private double[]? _bodyWidth;
 
         public PressLines()
         {
@@ -773,10 +779,12 @@ namespace TraxCombat.Core
         /// <summary>
         /// Publishes every unit noted this period: (1) the LINE test and, for a line, its two faces (or its ring); (2) for every unit whose men saw an
         /// enemy line, that line, its face (hysteresis), the unit's width across it ((q95 − q05) ÷ 0.9) and its front (q10 of its men's d), wrapping or
-        /// not. <paramref name="blockHeld"/> / <paramref name="ring"/> per unit (the module's). Allocation-free.
+        /// not. <paramref name="blockHeld"/> / <paramref name="ring"/> per unit (the module's); <paramref name="bodyWidth"/> = a held block's own width
+        /// (step 73's cap - its body, whatever its men trail; NaN = none): the unit's width is at most that. Allocation-free.
         /// </summary>
-        public void Publish(double now, in PressRules r, bool[] blockHeld, bool[] ring)
+        public void Publish(double now, in PressRules r, bool[] blockHeld, bool[] ring, double[]? bodyWidth = null)
         {
+            _bodyWidth = bodyWidth;
             _nextPublish = now + PressMath.PublishSeconds;
             Publishes++;
             for (int k = 0; k < N; k++)
@@ -935,9 +943,13 @@ namespace TraxCombat.Core
             Array.Sort(_lat, 0, m);
             Array.Sort(_alg, 0, m);
             double q = PressMath.WidthQuantile;
-            UnitWidth[k] = m >= 2 ? (PressMath.Quantile(_lat, m, 1 - q) - PressMath.Quantile(_lat, m, q)) / (1 - 2 * q) : 0;
+            double width = m >= 2 ? (PressMath.Quantile(_lat, m, 1 - q) - PressMath.Quantile(_lat, m, q)) / (1 - 2 * q) : 0;
+            var body = _bodyWidth;
+            if (body != null && !double.IsNaN(body[k]) && body[k] > 0 && body[k] < width) width = body[k]; // a held block's body: its cap, not its trail
+            UnitWidth[k] = width;
             UnitFront[k] = PressMath.Quantile(_alg, m, 0.1);
-            bool wraps = PressMath.UnitWraps(in r, UnitWidth[k], Hi[at] - Lo[at]);
+            // a unit that wraps this line keeps wrapping it (its flanks round the ends and in behind narrow its spread - they are not sent back)
+            bool wraps = PressMath.UnitWraps(in r, width, Hi[at] - Lo[at]) || (same && Wraps[k]);
             if (wraps && !Wraps[k]) WrapUnits++;
             Wraps[k] = wraps;
         }

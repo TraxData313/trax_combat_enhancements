@@ -59,6 +59,7 @@ namespace TraxCombat.Missions
             StartFear(); // step 67: the fear flock rides these looks
             StartLoneRunners(); // step 70
             StartBlock(); // step 74
+            StartPress(); // step 77
         }
 
         /// <summary>A courage setting changed (from ApplySettingsChange): one line; applied at every man's next look.</summary>
@@ -67,6 +68,7 @@ namespace TraxCombat.Missions
             NoteFearSettings(s); // step 67
             NoteLoneSettings(s); // step 70
             NoteBlockSettings(s); // step 74
+            NotePressSettings(s); // step 77
             string now = CourageText(s);
             if (now == _seenCourageText) return;
             _seenCourageText = now;
@@ -84,6 +86,7 @@ namespace TraxCombat.Missions
             if (!cr.Enabled && _timidNow > 0) EndAllTimid(CourageEnd.SwitchedOff, now, native: true, cr.OffBecause);
             TickFearSwitch(now); // step 67: the fear flock's switch (the master switch first) - every spell let go at once when off
             TickBlockSwitch(now); // step 74: the block hold's switches (the master switch first) - every pull let go at once when off
+            TickPressSwitch(now); // step 77: press, don't pass's switches (the master switch first) - every wish let go at once when off
             var body = CourageBody;
             if (!body.MissionAllows())
             {
@@ -93,6 +96,7 @@ namespace TraxCombat.Missions
             _courageStats.Ticks++;
             TickFearUnits(now); // step 67: the unit table published every 0.5 s (the shelters, the shape / drift samples)
             TickBlockUnits(now); // step 74: the blocks' frames (after the band - its direction), the diagnostic, the band told the block
+            TickPressLines(now); // step 77: the enemy lines' fronts (after the blocks - a held block is a line)
             double dt = double.IsNaN(_courageLastTick) || now < _courageLastTick ? CourageMath.PollSeconds : now - _courageLastTick;
             _courageLastTick = now;
             if (dt > CourageMath.PollSeconds) dt = CourageMath.PollSeconds;
@@ -126,6 +130,7 @@ namespace TraxCombat.Missions
             _courageStats.SteerCostMs += (Stopwatch.GetTimestamp() - mid) * 1000.0 / Stopwatch.Frequency;
             if (_fearRules.Enabled) SteerFlockers(now); // step 67
             if (_blockRules.On) SteerBlockers(now); // step 74
+            if (_pressRules.On) SteerPressers(now); // step 77
         }
 
         /// <summary>An impact family changes the battle now (then its outcomes are shock too) - once a tick.</summary>
@@ -195,7 +200,8 @@ namespace TraxCombat.Missions
             // ---- the circle: his side's toughness vs the enemy's, weighted by distance
             double self = CourageToughness(st, in cr);
             double allies = self, enemies = 0, ex = 0, ey = 0, ew = 0, shaken = 0;
-            int mates = 0, foes = 0;
+            int mates = 0, foes = 0, pressMates = 0;
+            double pressMatesMetres = TraxSettings.Shared.PressWrapMatesMetres; // step 77: the wrap's mates near
             var fearRules = _fearRules; // step 69: the enemy's morale on the fear's lines (this tick's rules)
             // step 49b: the scan reaches 8 m at least (the surge's and the standoff's nearest enemy); the odds still count within the radius
             float radius = (float)Math.Max(cr.RadiusMetres, CourageMath.SurgeEnemyMetres);
@@ -214,6 +220,7 @@ namespace TraxCombat.Missions
                     nearestFoe = o;
                     nearestIndex = i;
                 }
+                if (!_courageScan.Enemy[i] && _courageScan.Dist[i] <= pressMatesMetres) pressMates++;
                 double w = CourageMath.Weight(_courageScan.Dist[i], cr.RadiusMetres);
                 if (!(w > 0)) continue;
                 double t = CourageToughness(o, in cr);
@@ -237,7 +244,8 @@ namespace TraxCombat.Missions
             // step 67: the fear flock reads the same scan (the nearest enemy, a comrade covering him, somebody behind, the spot behind a comrade)
             double odds = CourageMath.Odds(allies, enemies);
             // step 69: his side's local odds (no enemy within the radius = no picture of his own) and the enemy near him shaken
-            var near = new FearNear { Px = px, Py = py, Mates = mates, Foes = foes, Odds = enemies > 0 ? odds : double.NaN, Shaken = ew > 0 ? shaken / ew : 0, ScanMetres = radius };
+            var near = new FearNear { Px = px, Py = py, Mates = mates, Foes = foes, Odds = enemies > 0 ? odds : double.NaN, Shaken = ew > 0 ? shaken / ew : 0, ScanMetres = radius,
+                FoeKey = nearestFoe != null ? nearestFoe.Fear.Key : -1, PressMates = pressMates }; // step 77
             FearScan(ref near, nearestIndex, ex, ey, ew);
             _courageScan.Clear();
             bool hasCentre = body.FormationCentre(st, out double cx, out double cy);
@@ -773,6 +781,7 @@ namespace TraxCombat.Missions
             }
             FearLeftField(st); // step 67
             BlockLeftField(st); // step 74
+            PressLeftField(st); // step 77
         }
 
         /// <summary>A landed hit on him (OnAgentHit): his shock window.</summary>
@@ -791,6 +800,7 @@ namespace TraxCombat.Missions
             if (_timidNow > 0) EndAllTimid(CourageEnd.MissionEnd, SafeNow(), agentsAlive, null);
             CloseFear(agentsAlive); // step 67
             CloseBlock(agentsAlive); // step 74
+            ClosePress(agentsAlive); // step 77
         }
 
         internal void WriteCourageSummary()
@@ -800,6 +810,7 @@ namespace TraxCombat.Missions
             foreach (var line in lines) TraxLog.Info("summary", line);
             WriteFearSummary(); // step 67
             WriteBlockSummary(); // step 74
+            WritePressSummary(); // step 77
         }
     }
 }

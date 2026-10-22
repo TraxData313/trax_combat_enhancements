@@ -228,8 +228,8 @@ namespace TraxCombat.Missions
             {
                 if (st.BlockHold.Wish) EndBlockPull(st, BlockEnd.Excluded, now, native: true);
                 if (skip != CourageSkip.WallHeld) return;
-                if (!FearBody.Unit(st, out int key, out _, out _, out _, out double fx, out double fy)) return;
-                BlockNoteUnit(st, key, now, fx, fy, double.NaN);
+                if (!FearBody.Unit(st, out int key, out var order, out _, out _, out double fx, out double fy)) return;
+                BlockNoteUnit(st, key, now, fx, fy, double.NaN, order, held: true);
             }
             catch (Exception e)
             {
@@ -238,8 +238,9 @@ namespace TraxCombat.Missions
             }
         }
 
-        /// <summary>The unit table's reads for one man (the cap and the formation once a period; his slot distance; his place).</summary>
-        private void BlockNoteUnit(TrackedAgent st, int key, double now, double fx, double fy, double enemy)
+        /// <summary>The unit table's reads for one man (the cap and the formation once a period; his slot distance; his place) - and step 77's line
+        /// table (his place, his slot distance, held by step 41 or not).</summary>
+        private void BlockNoteUnit(TrackedAgent st, int key, double now, double fx, double fy, double enemy, FearOrder order, bool held)
         {
             var t = _blockUnits;
             if (t.CapDue(key, now))
@@ -250,13 +251,14 @@ namespace TraxCombat.Missions
             }
             if (t.FormationDue(key, now))
             {
-                BlockBody.Formation(st, out string order, out string behaviour, out string arrangement, out double gameWidth);
-                t.NoteFormation(key, now, order, behaviour, arrangement, gameWidth);
+                BlockBody.Formation(st, out string orderName, out string behaviour, out string arrangement, out double gameWidth);
+                t.NoteFormation(key, now, orderName, behaviour, arrangement, gameWidth);
             }
             CourageBody.Position(st, out double px, out double py);
             double slot = double.NaN;
             if (FearBody.Slot(st, out double sx, out double sy)) slot = Math.Sqrt((sx - px) * (sx - px) + (sy - py) * (sy - py));
             t.Note(key, px, py, fx, fy, slot, enemy);
+            _pressLines.Note(key, px, py, fx, fy, order, slot, held); // step 77
         }
 
         private void BlockLookCore(TrackedAgent st, double now, in FearNear near, FearCourage courage)
@@ -269,7 +271,7 @@ namespace TraxCombat.Missions
                 return;
             }
             double enemy = near.InContact ? near.EnemyDist : double.NaN;
-            BlockNoteUnit(st, key, now, fx, fy, enemy);
+            BlockNoteUnit(st, key, now, fx, fy, enemy, order, held: false);
             var t = _blockUnits;
             var side = _blockStats.Side(t.PlayerSide[key]);
             var kind = BlockLookKind.Inside;
@@ -297,7 +299,9 @@ namespace TraxCombat.Missions
                     else
                     {
                         double depth = BlockHoldMath.Depth(in r, Math.Max(t.CapMen[key], t.Men[key]), t.CapFiles[key]);
-                        pull = BlockHoldMath.Decide(in r, s, half, depth, lateral, along, enemy, bm.Wish, out toLateral, out toAlong, out striking);
+                        double side0 = BlockHoldMath.Allowance(in r, half, s), latLo = -side0, latHi = side0;
+                        if (after && _pressRules.On) PressBlockRange(key, now, side0, ref latLo, ref latHi); // step 77: in contact, within the enemy line's ends
+                        pull = BlockHoldMath.DecideRange(in r, s, latLo, latHi, depth, lateral, along, enemy, bm.Wish, out toLateral, out toAlong, out striking);
                         kind = pull != BlockPull.None ? BlockLookKind.Pulled : striking ? BlockLookKind.Striking : BlockLookKind.Inside;
                         if (pull != BlockPull.None) toAlong += BlockHoldMath.Lead(in r, t.Speed[key]);
                     }

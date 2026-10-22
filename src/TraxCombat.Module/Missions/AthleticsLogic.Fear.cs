@@ -64,6 +64,10 @@ namespace TraxCombat.Missions
             /// <summary>Step 69: courage's local odds (NaN = no enemy within its radius), the enemy near him shaken (0..1), the scan's reach (m).</summary>
             public double Odds, Shaken;
             public float ScanMetres;
+
+            /// <summary>Step 77: the unit of his nearest enemy (−1 = none in the scan) and his mates within PressWrapMatesMetres.</summary>
+            public int FoeKey;
+            public int PressMates;
         }
 
         /// <summary>What courage decided at this look (who steers).</summary>
@@ -117,6 +121,7 @@ namespace TraxCombat.Missions
             if (!_fearUnits.Due(now)) return;
             try
             {
+                _fearUnits.PressBandMarginMetres = _pressRules.On ? _pressRules.BandMarginMetres : double.NaN; // step 77: the band never wider than its enemy line
                 _fearUnits.Publish(now, in _fearRules, _fearStats, _fearRules.Enabled);
                 NoteWallBreaks(now);
             }
@@ -254,6 +259,7 @@ namespace TraxCombat.Missions
             }
             _fearStats.LookCostMs += (Stopwatch.GetTimestamp() - start) * 1000.0 / Stopwatch.Frequency;
             BlockLook(st, now, in near, courage); // step 74: the block hold decides last (it yields to courage's walk and the flock)
+            PressLook(st, now, in near, courage); // step 77: press, don't pass - the clamp filters whatever moves him
         }
 
         private void FearLookCore(TrackedAgent st, double now, in FearNear near, FearCourage courage)

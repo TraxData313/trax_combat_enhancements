@@ -191,11 +191,11 @@ public class Step77Tests
         // behind the whole line: walked round the NEAREST end - sideways behind it first, then forward
         o = PressMath.Decide(in r, -4, 8, lo, hi, depth, false, false, 0, false, false, false, true);
         Assert.Equal(PressAction.Return, o.Action);
-        Assert.Equal(hi + r.RoundEndMetres + 0.5, o.ToL, 6);
+        Assert.Equal(hi + r.RoundEndMetres + PressMath.ReturnOvershootMetres, o.ToL, 6);
         Assert.Equal(-4, o.ToD, 6);
         o = PressMath.Decide(in r, -2.1, -8, lo, hi, depth, false, false, 0, false, false, false, true);
         Assert.Equal(PressAction.Return, o.Action);
-        Assert.Equal(lo - r.RoundEndMetres - 0.5, o.ToL, 6);
+        Assert.Equal(lo - r.RoundEndMetres - PressMath.ReturnOvershootMetres, o.ToL, 6);
         Assert.Equal(-2.1, o.ToD, 6);                                     // kept behind the rear (at least 2 m) while going sideways
         PressMath.ReturnPlace(in r, -1.5, -8, lo, hi, depth, out double behindD, out _);
         Assert.Equal(-(depth + PressMath.BehindExtraMetres), behindD, 6);
@@ -299,7 +299,7 @@ public class Step77Tests
         Assert.Equal(wallKey, t.LineOf(recruits, now));
         Assert.Equal(0, t.Face[recruits]);
         Assert.Equal(1.0, t.Depth[wallKey], 6);
-        Assert.InRange(t.UnitWidth[recruits], 25.0, 28.0);
+        Assert.InRange(t.UnitWidth[recruits], 25.0, 29.0);           // (q90 − q10) ÷ 0.8 of 18 files 1.5 m apart - under the 23.6 m wall + 6 m
         Assert.False(t.Wraps[recruits]);
         Assert.Equal(1.0, t.UnitFront[recruits], 6);           // the recruits' front rank 1 m in front of the wall's front
         t.Frame(wallKey, 0, 3, 0.4, out double d, out double l);

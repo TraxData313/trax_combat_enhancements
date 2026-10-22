@@ -298,6 +298,9 @@ namespace TraxCombat.Missions
         /// <summary>Step 74: his block-hold state (walked back into his block or not, his place in it).</summary>
         public readonly BlockMind BlockHold = new BlockMind();
 
+        /// <summary>Step 77: his press state (pressing an enemy line, pushed out of it, walked round its end; the crossing watch).</summary>
+        public readonly PressMind Press = new PressMind();
+
         /// <summary>Step 76: his spear preference (RBM's two timers, his loadout, his look clock) - the stat decorator reads <c>Spear.Favored</c> /
         /// <c>Spear.Close</c>.</summary>
         public SpearMind Spear = SpearMind.Fresh;
