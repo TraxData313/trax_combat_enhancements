@@ -7432,4 +7432,6 @@ played. Step 78c's meshed grind 240 s with the cries on and off: rests 225 / 225
 3. `IsRunningAway || IsRetreating()` keeps routed / fleeing men quiet; a man killed while his cry waits is dropped (`gone`).
 4. The AI's tactical charge flickering at contact (step 74's BehaviorTacticalCharge) - the 15 s unit cooldown should make it one roar.
 
-**DEPLOY**: see the end of this section after the deploy.
+**DEPLOY**: `tools\deploy.ps1` ran normally (Smart App Control off): the build, the AssemblyGuard (OK), the offline smoke (190 passed), installed as
+Modules\TraxCombatEnhancements.Dev "Trax Combat Enhancements (dev)" - the game and the launcher were not running. `tools\SmartAppControl\loadcheck.ps1`:
+both DLLs LOADED (`1.2.0+8ba505eadd2eafb526a8542d26b1e7609b9449fa`). Not uploaded. Windows security untouched.
