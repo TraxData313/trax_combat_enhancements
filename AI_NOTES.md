@@ -7376,3 +7376,7 @@ own (the rest inside) 0.026 ms a tick, 0 bytes over 300 ticks.
    of reach may rest long).
 4. The unit axis from the men's directions in a real crowd (a man never walks sideways along the line).
 
+
+**DEPLOY**: `tools\deploy.ps1` ran normally (Smart App Control off): the build, the AssemblyGuard (OK), the offline smoke (187 passed), installed as
+Modules\TraxCombatEnhancements.Dev "Trax Combat Enhancements (dev)" - the game and the launcher were not running. `tools\SmartAppControl\loadcheck.ps1`:
+both DLLs LOADED (`1.2.0+801e46b8416231969e9fc631c02f9dd3c5423c06`). Not uploaded. Windows security untouched.
