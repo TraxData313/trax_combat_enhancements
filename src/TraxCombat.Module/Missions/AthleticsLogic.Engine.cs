@@ -166,12 +166,14 @@ namespace TraxCombat.Missions
             StartImpact(); // step 47
             StartKickBrace(); // step 65
             StartAiKicks(); // step 65
+            StartSpears(); // step 76
         }
 
         private void StopAthletics()
         {
             if (ReferenceEquals(_current, this)) _current = null;
             ReleaseImpactHooks(); // step 47: our deciders out of the decorators, the game's stun cap back - always
+            CloseSpears(); // step 76: the game's friendly-hit stun back - always
         }
 
         /// <summary>Every tick: this mission is the one running (Mission.Current) but not the running
@@ -350,6 +352,7 @@ namespace TraxCombat.Missions
             CourageLeftField(st); // step 49
             FlockLeftField(st); // step 55
             AiKickLeftField(st); // step 65
+            SpearLeftField(st); // step 76
             ImpactLeftField(st); // step 47
             RemoveFromLoop(st);
         }
@@ -564,6 +567,17 @@ namespace TraxCombat.Missions
                 Failed("aikick.tick", e);
             }
 
+            // Step 76: the AI prefers the spear - each man with a spear and a sidearm looked at every ~0.5 s (ON and OFF - the OFF looks measure); the
+            // friendly-hit stun held / given back; the friends passed watched for a flinch.
+            try
+            {
+                TickSpears(now);
+            }
+            catch (Exception e)
+            {
+                Failed("spears.tick", e);
+            }
+
             // Step 49: courage and cohesion - every AI man looked at about every 0.5 s (staggered; ON and OFF - the OFF looks measure); the walkers steered.
             try
             {
@@ -711,6 +725,7 @@ namespace TraxCombat.Missions
             NoteAiBashSwing(st, mounted); // step 66: a shieldman's swing earns his bash (the class read just before, at this release)
             NotePunishAttack(st, mounted, now); // step 54: against a target in a window or not; a window punished
             NoteFirmAttack(st, mounted, now); // step 75: a man of a standing wall strikes - from his slot or not, ON vs OFF
+            NoteSpearAttack(st, mounted); // step 76: a man with a spear and a sidearm attacks - holding which, from a back rank
             NoteFlockAttack(st, mounted, now); // step 55: a rider's pass - lone or with his kind, the time since his last
 
             // the cycle since the last release ran at the multiplier set after that release's charge

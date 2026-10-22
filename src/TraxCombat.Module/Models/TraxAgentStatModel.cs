@@ -107,6 +107,7 @@ namespace TraxCombat.Models
         {
             SyncAiLevel();
             BaseModel.InitializeAgentStats(agent, spawnEquipment, agentDrivenProperties, agentBuildData);
+            ApplySpearFavor(agent, agentDrivenProperties); // step 76: a flag the logic set (a man not tracked yet has none)
         }
 
         /// <summary>
@@ -171,6 +172,27 @@ namespace TraxCombat.Models
             catch (Exception e)
             {
                 AthleticsLogic.Failed("speed.decorator", e);
+            }
+            ApplySpearFavor(agent, agentDrivenProperties); // step 76: after everything above (its own try)
+        }
+
+        /// <summary>
+        /// Step 76: the AI prefers the spear - RBM's SetAiRelatedProperties postfix without Harmony: the base model assigns the three weapon favors
+        /// (1 / 1 / 1) on every recompute, so a favoured man's favor written here never compounds - the polearm x SpearPolearmFavor while no enemy
+        /// is close, the sidearm (melee) x SpearSidearmFavor once one has been close. The flag is the logic's (its tick looks around him, main thread);
+        /// nothing here asks for nearby agents (RBM's deadlock inside Agent.Build). Works with Athletics off.
+        /// </summary>
+        private static void ApplySpearFavor(Agent agent, AgentDrivenProperties p)
+        {
+            try
+            {
+                if (!AthleticsLogic.SpearFavorFor(agent, out bool close, out float favor)) return;
+                if (close) p.AiWeaponFavorMultiplierMelee = favor;
+                else p.AiWeaponFavorMultiplierPolearm = favor;
+            }
+            catch (Exception e)
+            {
+                AthleticsLogic.Failed("spears.decorator", e);
             }
         }
 

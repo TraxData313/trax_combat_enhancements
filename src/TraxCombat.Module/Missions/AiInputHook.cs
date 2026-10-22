@@ -78,8 +78,15 @@ namespace TraxCombat.Missions
         public AiKickKind KickKind;
         public long KickFrames, KickPresses, KickHeldNoSwing;
 
+        /// <summary>Step 76: THE WIELD FALLBACK (SpearWieldOverride, off by default) - while his polearm is favoured, the AI's own Wield event for a
+        /// sidearm slot (<see cref="SpearSidearmMask"/>) becomes the Wield of <see cref="SpearPolearmSlot"/> (Core <see cref="SpearMath.WieldRewrite"/>).
+        /// Works with the Athletics system off.</summary>
+        public bool SpearWield;
+        public int SpearPolearmSlot = -1, SpearSidearmMask;
+        public long SpearRewrites;
+
         /// <summary>Any wish at all - a man is held while ANY of them wants him held (one ending never lifts another).</summary>
-        public bool Active => HoldAttacks || StepHoldAttacks || Backpedal || BraceHoldAttacks || Regroup || WallPull || Flock || Block || KickPhase != AiKickPhase.None;
+        public bool Active => HoldAttacks || StepHoldAttacks || Backpedal || BraceHoldAttacks || Regroup || WallPull || Flock || Block || SpearWield || KickPhase != AiKickPhase.None;
 
         /// <summary>Since when the state has been active (mission time), for the calls-per-second figure.</summary>
         public double ActiveSince = -1;
@@ -158,6 +165,11 @@ namespace TraxCombat.Missions
                 s.Calls++;
                 var settings = TraxSettings.Shared;
                 if (!settings.ModEnabled) return; // the master switch first (the tick clears the wishes too)
+                if (s.SpearWield && !Agent.IsMainAgent && Agent.IsAIControlled) // step 76: the wield fallback (works without Athletics)
+                {
+                    uint ev = (uint)eventFlag;
+                    if (AiInputHook.ApplySpearWield(s, ref ev)) eventFlag = (Agent.EventControlFlag)ev;
+                }
                 if (!settings.AthleticsEnabled && !(s.Regroup && settings.CourageEnabled) && !(s.WallPull && settings.ShieldWallHoldsSlots) && !(s.Flock && settings.FearFlockEnabled) && !(s.Block && AiInputHook.BlockOn(settings))) return; // steps 49 / 63 / 67 / 74: courage, the wall, the flock and the block work without Athletics
                 if (Agent.IsMainAgent || !Agent.IsAIControlled)
                 {
@@ -442,6 +454,32 @@ namespace TraxCombat.Missions
             return true;
         }
 
+        /// <summary>Step 76: turns the wield fallback's wish on (with his polearm's slot and his sidearms) or off.</summary>
+        internal static void SetSpearWield(TrackedAgent st, bool on, int polearmSlot, int sidearmMask, double now)
+        {
+            var s = st.Input ??= new AiInputState();
+            bool was = s.Active;
+            s.SpearWield = on;
+            s.SpearPolearmSlot = on ? polearmSlot : -1;
+            s.SpearSidearmMask = on ? sidearmMask : 0;
+            Account(s, was, now);
+        }
+
+        /// <summary>Step 76: one frame of the wield fallback (managed - the smoke drives it): never with the master switch, the preference or its own
+        /// switch off. True when a sidearm wield was turned into the polearm's.</summary>
+        internal static bool ApplySpearWield(AiInputState s, ref uint eventFlags)
+        {
+            if (!s.SpearWield) return false;
+            var settings = TraxSettings.Shared;
+            if (!settings.ModEnabled || !settings.SpearPreferenceEnabled || !settings.SpearWieldOverride) return false;
+            if (!SpearMath.WieldRewrite(ref eventFlags, s.SpearPolearmSlot, s.SpearSidearmMask)) return false;
+            s.SpearRewrites++;
+            return true;
+        }
+
+        /// <summary>The engine's Wield0 event bit (the smoke checks Core's against it).</summary>
+        internal const uint Wield0EventBit = (uint)Agent.EventControlFlag.Wield0;
+
         /// <summary>Step 23: turns the brace's wish on or off (the timer's and the step back's are left as they are).</summary>
         internal static void SetBrace(TrackedAgent st, bool on, double now)
         {
@@ -510,7 +548,7 @@ namespace TraxCombat.Missions
             var s = st.Input;
             if (s == null) return;
             bool was = s.Active;
-            s.HoldAttacks = s.StepHoldAttacks = s.Backpedal = s.BraceHoldAttacks = s.HoldKicks = s.Regroup = s.Flock = s.Block = false;
+            s.HoldAttacks = s.StepHoldAttacks = s.Backpedal = s.BraceHoldAttacks = s.HoldKicks = s.Regroup = s.Flock = s.Block = s.SpearWield = false;
             s.KickPhase = AiKickPhase.None; // step 65
             s.KickKind = AiKickKind.None;
             Account(s, was, now);

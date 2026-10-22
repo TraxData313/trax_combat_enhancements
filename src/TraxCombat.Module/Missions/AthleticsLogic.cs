@@ -421,6 +421,15 @@ namespace TraxCombat.Missions
             {
                 Failed("lines.summary", e);
             }
+            // Step 76: the spears - time holding the polearm / the sidearm by what was close, the flips, the favors; thrusts past friends. Own try.
+            try
+            {
+                WriteSpearSummary();
+            }
+            catch (Exception e)
+            {
+                Failed("spears.summary", e);
+            }
             TraxLog.Info("summary", "errors logged during this mission: " + (TraxLog.ErrorCount - _errorsAtStart));
             TraxLog.FlushSuppressedCounts();
             TraxLog.Info("summary", "==== end of summary ====");

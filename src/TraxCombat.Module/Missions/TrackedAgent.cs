@@ -298,6 +298,22 @@ namespace TraxCombat.Missions
         /// <summary>Step 74: his block-hold state (walked back into his block or not, his place in it).</summary>
         public readonly BlockMind BlockHold = new BlockMind();
 
+        /// <summary>Step 76: his spear preference (RBM's two timers, his loadout, his look clock) - the stat decorator reads <c>Spear.Favored</c> /
+        /// <c>Spear.Close</c>.</summary>
+        public SpearMind Spear = SpearMind.Fresh;
+
+        /// <summary>Step 76: the four slot items his loadout was read from (RBM's loadout cache - re-read only when one changes).</summary>
+        public object? SpearItem0, SpearItem1, SpearItem2, SpearItem3;
+
+        /// <summary>Step 76: counted in the summary's men (with both weapons / without).</summary>
+        public bool SpearCounted, SpearCountedBoth;
+
+        /// <summary>Step 76: what he held at his last spear look (an attack's weapon for the summary).</summary>
+        public SpearHeld SpearHeldNow = SpearHeld.Other;
+
+        /// <summary>Step 76: when his last thrust passed a friend (NaN = none pending) - an enemy hit by him within 0.5 s is "the spear reached".</summary>
+        public double ThrustPassAt = double.NaN;
+
         /// <summary>Step 67: his morale as the game keeps it (0-100; −1 none; NaN = not read yet) - read at every formation-stats refresh
         /// (the ALT morale bar and the labels' mean) and at courage's looks.</summary>
         public double Morale = double.NaN;

@@ -83,8 +83,18 @@ namespace TraxCombat.Models
         public override MeleeCollisionReaction DecidePassiveAttackCollisionReaction(Agent attacker, Agent defender, bool isFatalHit)
             => BaseModel.DecidePassiveAttackCollisionReaction(attacker, defender, isFatalHit);
 
+        /// <summary>Step 76: a THRUST into a FRIEND carries on (<see cref="ThrustPass.Passes"/> - ContinueChecking, asked BEFORE the base model, which
+        /// would bounce the friend's 0-damage blow); everything else - swings, kicks, bashes, enemies - the base model's answer. Main thread
+        /// (Mission.MeleeHitCallback); a throw = the base model's answer.</summary>
         public override void DecideWeaponCollisionReaction(in Blow registeredBlow, in AttackCollisionData collisionData, Agent attacker, Agent defender, in MissionWeapon attackerWeapon, bool isFatalHit, bool isShruggedOff, float momentumRemaining, out MeleeCollisionReaction colReaction)
-            => BaseModel.DecideWeaponCollisionReaction(in registeredBlow, in collisionData, attacker, defender, in attackerWeapon, isFatalHit, isShruggedOff, momentumRemaining, out colReaction);
+        {
+            if (ThrustPass.Passes(in collisionData, attacker, defender, in attackerWeapon, registeredBlow.InflictedDamage > 0))
+            {
+                colReaction = MeleeCollisionReaction.ContinueChecking;
+                return;
+            }
+            BaseModel.DecideWeaponCollisionReaction(in registeredBlow, in collisionData, attacker, defender, in attackerWeapon, isFatalHit, isShruggedOff, momentumRemaining, out colReaction);
+        }
 
         public override float CalculateShieldDamage(in AttackInformation attackInformation, float baseDamage)
             => BaseModel.CalculateShieldDamage(in attackInformation, baseDamage);
