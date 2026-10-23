@@ -7770,3 +7770,48 @@ skilled fresh guard (200 pool, skill 250): bash 47 % staggered / 11 % down, kick
 4. The read's timing in a real fight: `TOO LATE` small for AI kicks / bashes; how often the player's bash is read.
 
 **DEPLOY**: tools\deploy.ps1 ran normally (Smart App Control off): the build, the AssemblyGuard, the offline smoke - all 196 passed -, installed as Modules\TraxCombatEnhancements.Dev; the game and the launcher were not running. `tools\SmartAppControl\loadcheck.ps1`: both DLLs LOADED (`1.2.0+db23f241…`). Not uploaded.
+
+## Step 83 — small units keep a wide line (built 2026-10-23; dev build only, not uploaded)
+
+**Toni (2026-10-23)**: 20 T1 recruits at the minimum depth 6 (step 74's map) stood 6 ranks deep and 3-4 files wide - "strange, forced into a
+column". Small units must always be able to form a horizontal rectangle.
+
+**The rule (Core `LineDisciplineMath.HeldDepth`, DESIGN decision 79)**: the depth a formation is HELD to = max(1, min(D, floor(√(men ÷ r)))), D =
+step 73's tier mean, r = `LineMinWidthToDepthRatio` (2; 0 = off = step 73 exactly), men = the arrangement's men step 73 counts. The cap stays
+`CapFiles(men, held)` = max(ceil(men ÷ held), √men). Why it really is r : 1 with the remainder: held ≤ √(men ÷ r) ⇒ men ≥ r × held², so
+F = ceil(men ÷ held) ≥ r × held, and ranks = ceil(men ÷ F) ≤ ceil(men ÷ (men ÷ held)) = held ⇒ F ≥ r × ranks (a fractional D below the cap keeps
+it too - checked for r 0.5-5, D 1-12 in 0.25 steps, 1-200 men; one man is the only 1 × 1). The shipped map: 20 T1 → 3 ranks of 7 (the last 6),
+50 T1 → 5 of 10, 72 → 6 of 12, 100 T1 → the tier's 6 (17 files), 8 T0 → 2 of 4, 60 T0 → 5 of 12. `floor` gets a 1e-9 nudge (√(men ÷ r) exact
+squares - 8 ÷ 2, 50 ÷ 2).
+
+**Where (Module `LineDiscipline`)**: `_depth[slot]` keeps the TIER's D (recounted as before - every `LineDisciplinePollSeconds` and at once on a
+count change); the held depth is computed EVERY LOOK from it, the men now and the live ratio (one sqrt, no allocation), so losses, joiners and a
+mid-battle change move the cap at once. It feeds the clamp (the custom form order), the preview (`DisciplinedLineFormation.CapWidth` →
+`MaximumWidth` - the drag stops at the same files), the records / first-clamp lines, the on-screen line ("no thinner than 3 deep - 7 men wide")
+and `NotePlayerLineOrder`. `TryCap`'s depth stays the tier's D: the block hold's strength s = (D − 1) ÷ (full − 1) is DISCIPLINE, not shape; its
+width follows the wider cap through `capFiles` / `capWidth`. `DisciplinedLineFormation`, `LineWorld`, `AthleticsLogic.LineDiscipline` untouched.
+
+**Gotcha - a shrinking unit's cap can GROW**: crossing a threshold (72 → 71 T1: held 6 → 5) the cap goes 12 → 15 files. Our clamp only narrows
+(as step 73 always did when men join) - the line is ALLOWED wider and stays as it is until an order / the AI widens it. Not a regression.
+
+**Setting (1, Live; 498 → 499)**: `LineMinWidthToDepthRatio` 2.0 (0-5) in the Advanced group "Line discipline by tier" right after
+`LineDisciplinePollSeconds` (Step74Tests' block-hold index now starts after it; SettingsPagesTests 499). New key - no migration (FormatVersion 19).
+`LineDisciplineRules`' constructor takes `widthRatio` LAST with default 0, so every older caller (Step74MapTests' `ShippedRules`, …) is step 73.
+
+**Log**: the mission-start sentence names the cap ("a small unit's line at least 2.0 times as wide as deep (step 83: ...)" / "no small-unit width
+cap"); the first-counted line adds "(a small unit: held 3.0 deep - LineMinWidthToDepthRatio 2.0)"; a new first-time line `[lines] first SMALL UNIT
+at … (step 83): <name> - 20 men at D 6.0 would stand 4 files x 5 ranks, 5.0 deep; held to 3.0 deep ...: at most 7 files - 7 files x 3 ranks (the
+last 6 of 7), 2.86 deep`.
+
+**Measured offline**: tests 1165 → 1173 (Step83Tests.cs: the setting placed / live / 0-5 / clamped / Same / Describe, Toni's table as a 4-case
+theory on the shipped map, r 0 = the tier's depth, 100 → 20 always ≥ 2 : 1, every count 1-200 at every tier ≥ 2 : 1 with the ranks holding the
+men, any r and fractional D). Smoke 196 → 197 (Program.Step83.cs: 20 T1 yours and the AI's 16 → 7 files x 3 ranks, the preview cap = 7 files and
+a 40 m drag stops there, 8 looters 4 x 2, 100 T1 17 files then cut to 20 → 7, r 0 live = step 73's 4 files and the preview with it, 2 again = 7,
+the REAL `DisciplinedLineFormation` over 20 men floors the capped width to 7; the log lines). Step 73's smoke pins r 0 (`Step73Defaults`).
+
+**UNVERIFIED — only the game can tell (PLAYTEST D48)**: a small unit really stands as a short wide rectangle on the field (the game's own
+`LineFormation` lays the 7-file line out), the drag preview stops at 7 men, a big unit is unchanged.
+
+**DEPLOY**: `tools\deploy.ps1` ran through (build, AssemblyGuard, the smoke 197 passed, installed as Modules\TraxCombatEnhancements.Dev);
+`loadcheck.ps1`: both DLLs LOADED (`1.3.0+ba2c8820…`): TraxCombatEnhancements.dll SHA-256 6CDE3948…0B33, TraxCombat.Core.dll 834A9A01…5FBD. The
+game and the launcher were not running. Not uploaded; SubModule.xml stays v1.3.0.

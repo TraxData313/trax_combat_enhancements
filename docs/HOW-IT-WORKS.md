@@ -353,7 +353,8 @@ men 5, tier-3 men 4, tier-4 men 3, veterans 2, elites 1 (lords, companions and y
 thinner than the average of its men. So 120 recruits stand at most 20 wide and 6 deep, where the game would have spread them 48 wide and
 barely 2 deep; 60 veterans no thinner than 2 deep; elites may stand in one long rank if you ask; a mix of 4.5 gives a 5th rank about a third full. The AI's lines keep to it
 whatever their general wants - no more green mass two men deep wrapping round your army - and as men fall the line closes up to stay deep
-enough. Yours keep to it too: drag a line wider than your men can hold and it simply stops growing at their limit, with a line on screen
+enough. A small unit is never squeezed into a column, though: it always stands at least twice as wide as it is deep, so 20 recruits make
+3 ranks of 7 rather than 5 ranks of 4, and 8 looters 2 ranks of 4 - big units keep their full depth. Yours keep to it too: drag a line wider than your men can hold and it simply stops growing at their limit, with a line on screen
 saying why. Cavalry, squares and circles are left alone. You can turn it off for your own units on the main page (*Line discipline: your
 units too*); the ranks per tier are on the Advanced page (*Line discipline by tier*). And the block holds right into the clash: when the AI
 throws such a formation into its final charge, its men no longer scatter into a wide crowd or trail round your flank - a man who runs out

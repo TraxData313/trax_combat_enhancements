@@ -3132,6 +3132,22 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     an average shieldman at half his bar bashing a skilled shieldman 400 times - FRESH: read 59 %, the basher staggered 24 % / down 6 %, the defender never;
     TIRED (10 %): read 28 %, the defender staggered 35 % / down 30 % / shield 24 %; 1000 men 0.037 ms a tick, 0 bytes. (g) UNVERIFIED in game (PLAYTEST D47):
     the shield guard's direction read at contact, DefendRight honoured in AI input, how it looks, the read's timing.
+79. **Small units keep a wide line** (step 83, Toni 2026-10-23: 20 tier-1 recruits at the minimum depth 6 stood 6 ranks deep and 3-4 files wide -
+    "strange, forced into a column"; small units must always be able to form a horizontal rectangle). The depth decision 67 HOLDS a formation to is its
+    tier minimum D capped by its size: d = max(1, min(D, floor(√(men ÷ r)))), r = `LineMinWidthToDepthRatio` (2), men = the men step 73 counts (its
+    arrangement's). The cap is then ceil(men ÷ d) files (never below the game's √men) - the arrangement's own column and rank arithmetic: with
+    d ≤ √(men ÷ r), F = ceil(men ÷ d) ≥ men ÷ d ≥ r × d and the ranks ceil(men ÷ F) ≤ d, so F ≥ r × ranks with the partly filled last rank too (a
+    single man is one rank of one). On the shipped map (T0 7 … T6 1): 20 T1 → 3 ranks of 7 (the last 6), 50 T1 → 5 of 10, 100 T1 → the tier's own 6
+    (17 files), 8 T0 → 2 of 4, 60 T0 → 5 deep, 12 wide (was 7 deep, 9 wide). (a) READ EVERY LOOK from the tier's D (recounted as before - every
+    `LineDisciplinePollSeconds` and at once on a count change) and the men now, so losses, joiners and a live change of r move the cap at once; a
+    unit shrinking past a threshold may get a WIDER cap (shallower) - its line is never widened by us, only allowed wider. (b) BOTH the arrangement
+    (the custom form order's width) and the player's drag preview (`DisciplinedLineFormation.MaximumWidth` = the same cap) and the on-screen line
+    ("hold no thinner than 3 deep - 7 men wide at most"). (c) LEFT ALONE: cavalry, squares / circles / columns / wedges (never counted), the mean over
+    mixed tiers (the cap applies to the mean), the block hold's D - its strength by discipline stays the tier's (`TryCap`'s depth), its width follows the
+    wider cap. (d) r 0 = no cap - step 73 exactly; range 0-5; Advanced, "Line discipline by tier", live; a new key - no migration. (e) MEASURED: the
+    `[lines] first SMALL UNIT` line (the tier's shape vs the held one) and "(a small unit: held … deep)" in the first-counted line. Unit tests: the
+    table, r 0, a unit shrinking 100 → 20, every count 1-200 at every tier at least 2 : 1 (and any r 0.5-5 with fractional D); smoke: 20 T1 → 7 files
+    x 3 ranks, the preview cap the same 7 files, r 0 live = 4 files. UNVERIFIED in game (PLAYTEST D48): how a small unit looks in the field.
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),
 `HudRefreshSeconds`, `FormationStatsRefreshSeconds` came out of step 2's research

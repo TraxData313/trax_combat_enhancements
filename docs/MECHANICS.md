@@ -1560,7 +1560,7 @@ narrower than the game's own √men), at its own spacing. Rounding up gives a pa
 | 60 elites (T6) | 1.0 | 60 men wide | never narrowed |
 | 100 men, half T2 and half T3 | 4.5 | 23 men wide | 4 full ranks + 8 (the 5th rank 35 % full) |
 | 70 T1 + 30 T3 + 20 T5 | 4.83 | 25 men wide | 4 full ranks + 20 |
-| 60 looters (T0) | 7.0 | 9 men wide | 6 full ranks + 6 |
+| 60 looters (T0) | 7.0 → 5 (step 83) | 12 men wide | 5 full ranks (step 73 alone: 9 wide, 6 ranks + 6) |
 
 - **The AI**: whenever the game or its AI makes a line wider - its wide and wider form orders, an envelop, the line re-forming as men fall -
   it is narrowed back in the same frame, before the men move to their new places; losses or a change of D shrink it back the same way. D is
@@ -1570,6 +1570,22 @@ narrower than the game's own √men), at its own spacing. Rounding up gives a pa
   20 men wide at most"*.
 - **Left alone**: cavalry and horse archers, squares, circles, columns and wedges; naval battles; sieges and sally-outs (unless switched on -
   the walls and streets set the width there).
+
+**Small units keep a wide line (step 83, Toni 2026-10-23).** 20 recruits at 6 deep would stand 4 men wide - a column. So the depth a unit is
+held to is capped by its size: at most **floor(√(men ÷ 2))** ranks (`LineMinWidthToDepthRatio` 2), never more than its tier's, never below 1 -
+and the line is then at least twice as wide as it is deep, the partly filled last rank included. Big units keep their tier's depth.
+
+| The unit | Its tier's D | Held to | At most | Its shape |
+|---|---|---|---|---|
+| 8 looters (T0) | 7 | 2 | 4 men wide | 2 ranks of 4 |
+| 20 recruits (T1) | 6 | 3 | 7 men wide | 3 ranks (the last 6) - step 73 alone: 4 wide, 5 ranks |
+| 50 recruits | 6 | 5 | 10 men wide | 5 ranks of 10 |
+| 72 recruits | 6 | 6 | 12 men wide | 6 ranks of 12 |
+| 100 recruits | 6 | 6 | 17 men wide | 6 ranks (the tier's own) |
+| 60 looters (T0) | 7 | 5 | 12 men wide | 5 ranks of 12 |
+
+It follows the men: as a unit shrinks the cap follows it at once (100 recruits cut to 20 stand 7 wide, 3 deep), and the drag preview stops at
+the same width. At 3 the line is at least three times as wide as deep; 0 turns it off (the tier's depth for every size).
 - **With the rest of the mod**: the fear flock (§11b1) and its band move frightened men from the places the narrowed line gives them - a
   deeper block simply has more ranks to compress; the shield wall (§10) holds the narrowed slots.
 
@@ -1595,7 +1611,7 @@ enemy, his place moving with the block - so the block still arrives at its own s
 <sub>Settings: *Line discipline: your units too* (player page, How the AI fights) = `LineDisciplineForPlayer` (on); Advanced page, *Line
 discipline by tier*: `LineDisciplineEnabled` (on), `LineDisciplineRanksT0`-`LineDisciplineRanksT6` 7 / 6 / 5 / 4 / 3 / 2 / 1 (step 74; step 73 shipped 6 / 5 / 4 / 3 / 2 / 1 / 1),
 `LineDisciplineHeroTier` 6, `LineDisciplineRangedToo` (on), `LineDisciplineInSieges` (off), `LineDisciplinePreviewCap` (on),
-`LineDisciplineShowMessage` (on), `LineDisciplinePollSeconds` 1; step 74: `LineBlockHoldEnabled` (on), `LineBlockSlackMetres` 2,
+`LineDisciplineShowMessage` (on), `LineDisciplinePollSeconds` 1; step 83: `LineMinWidthToDepthRatio` 2 (0-5, 0 = off); step 74: `LineBlockHoldEnabled` (on), `LineBlockSlackMetres` 2,
 `LineBlockFullAtDepth` 3, `LineBlockLooseMetres` 10, `LineBlockRankMetres` 1.2, `LineBlockAheadMetres` 3, `LineBlockStrikeReachMetres` 2.5,
 `LineBlockStrikeLeashMetres` 2, `LineBlockNearMetres` 30, `LineBlockLeadMetres` 1.5, `LineBlockMopUpWinPercent` 50.</sub>
 
