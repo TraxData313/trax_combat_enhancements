@@ -106,6 +106,7 @@ namespace TraxCombat.Missions
         private bool _firstPreviewRead;
         private bool _firstOrder;
         private bool _firstSkippedPreview;
+        private bool _firstSmallUnit; // step 83
 
         public LineDiscipline(ILineWorld world)
         {
@@ -212,15 +213,20 @@ namespace TraxCombat.Missions
                 if (!_firstCounted)
                 {
                     _firstCounted = true;
+                    double held = LineDisciplineMath.HeldDepth(_depth[slot], men, rules.WidthRatio);
                     TraxLog.Info("lines", "first formation counted at " + Sec(now) + " s: " + _world.Name(slot) + " - " + TierText(counted) + " → D "
-                                          + LineDisciplineMath.F(_depth[slot]) + " → at most " + LineDisciplineMath.CapFiles(men, _depth[slot]) + " files ("
-                                          + LineDisciplineMath.M(LineDisciplineMath.Width(LineDisciplineMath.CapFiles(men, _depth[slot]), _facts.Interval, _facts.Diameter))
+                                          + LineDisciplineMath.F(_depth[slot]) + HeldText(_depth[slot], held, in rules) + " → at most " + LineDisciplineMath.CapFiles(men, held) + " files ("
+                                          + LineDisciplineMath.M(LineDisciplineMath.Width(LineDisciplineMath.CapFiles(men, held), _facts.Interval, _facts.Diameter))
                                           + " m at its spacing); it stands " + LineDisciplineMath.FilesOf(_facts.Width, _facts.Interval, _facts.Diameter) + " files ("
                                           + LineDisciplineMath.M(_facts.Width) + " m)");
                 }
             }
 
-            double depth = _depth[slot];
+            // step 83: the depth HELD - the tier's D capped so a small unit's line stays at least LineMinWidthToDepthRatio times as wide as
+            // deep; read every look, so it follows the men (losses, joiners) and the setting at once. _depth keeps the tier's D (the block hold's).
+            double tierDepth = _depth[slot];
+            double depth = LineDisciplineMath.HeldDepth(tierDepth, men, rules.WidthRatio);
+            if (depth < tierDepth - 1e-9) NoteSmallUnit(slot, now, men, tierDepth, depth, in rules);
             int cap = LineDisciplineMath.CapFiles(men, depth);
             double capWidth = LineDisciplineMath.CapWidth(cap, _facts.Interval, _facts.Diameter);
             int files = LineDisciplineMath.FilesOf(_facts.Width, _facts.Interval, _facts.Diameter);
@@ -311,7 +317,7 @@ namespace TraxCombat.Missions
                     _nextPoll[slot] = now + rules.PollSeconds;
                 }
                 _stats.PlayerLineOrders++;
-                double depth = _depth[slot];
+                double depth = LineDisciplineMath.HeldDepth(_depth[slot], _facts.Men, rules.WidthRatio); // step 83
                 int cap = LineDisciplineMath.CapFiles(_facts.Men, depth);
                 int asked = LineDisciplineMath.FilesOf(askedWidth, _facts.Interval, _facts.Diameter);
                 int got = LineDisciplineMath.FilesOf(_facts.Width, _facts.Interval, _facts.Diameter);
@@ -345,7 +351,8 @@ namespace TraxCombat.Missions
         }
 
         /// <summary>
-        /// Step 74: the cap step 73 holds this slot to (the last look's): its mean depth D, the cap's files and width (m) at its spacing, its men, its
+        /// Step 74: the cap step 73 holds this slot to (the last look's): its mean depth D (the TIER's - step 83's small-unit cap shows only in
+        /// the cap's files and width), the cap's files and width (m) at its spacing, its men, its
         /// side and whether the player orders it. False = not counted now (cavalry, a square, the switches, never looked at).
         /// </summary>
         public bool TryCap(int slot, out double depth, out int capFiles, out double capWidth, out int men, out bool playerSide, out bool playerOrdered)
@@ -552,6 +559,21 @@ namespace TraxCombat.Missions
                                   + LineDisciplineMath.M(capWidth) + " m: " + LineDisciplineMath.ShapeText(men, cap)
                                   + (cause == LineClampCause.AutoShrink ? " (the cap fell - losses or a new mean depth)" : " (it was made wider - an order or the AI's behaviour)"));
         }
+
+        /// <summary>Step 83: the first formation whose depth the small-unit cap lowered - one line a battle.</summary>
+        private void NoteSmallUnit(int slot, double now, int men, double tierDepth, double held, in LineDisciplineRules rules)
+        {
+            if (_firstSmallUnit) return;
+            _firstSmallUnit = true;
+            int cap = LineDisciplineMath.CapFiles(men, held);
+            TraxLog.Info("lines", "first SMALL UNIT at " + Sec(now) + " s (step 83): " + _world.Name(slot) + " - " + men + " men at D " + LineDisciplineMath.F(tierDepth)
+                                  + " would stand " + LineDisciplineMath.ShapeText(men, LineDisciplineMath.CapFiles(men, tierDepth)) + "; held to " + LineDisciplineMath.F(held)
+                                  + " deep so the line is at least " + LineDisciplineMath.F(rules.WidthRatio) + "x as wide as deep: at most " + cap + " files - "
+                                  + LineDisciplineMath.ShapeText(men, cap));
+        }
+
+        private static string HeldText(double tierDepth, double held, in LineDisciplineRules rules) =>
+            held < tierDepth - 1e-9 ? " (a small unit: held " + LineDisciplineMath.F(held) + " deep - LineMinWidthToDepthRatio " + LineDisciplineMath.F(rules.WidthRatio) + ")" : "";
 
         private string TierText(int men)
         {

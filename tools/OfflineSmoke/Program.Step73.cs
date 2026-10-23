@@ -184,6 +184,7 @@ namespace TraxCombat.Tools
             S.Set(SettingsSchema.LineDisciplinePreviewCap, true, SettingSources.File);
             S.Set(SettingsSchema.LineDisciplineShowMessage, true, SettingSources.File);
             S.Set(SettingsSchema.LineDisciplinePollSeconds, 1.0, SettingSources.File);
+            S.Set(SettingsSchema.LineMinWidthToDepthRatio, 0.0, SettingSources.File); // step 83's small-unit cap off: step 73 as built
         }
 
         private static string M(double v) => v.ToString("0.0", CultureInfo.InvariantCulture);
