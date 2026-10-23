@@ -1,6 +1,6 @@
 # Releasing on the Steam Workshop
 
-**Status: v1.3.1 stamped and packaged 2026-10-23 but NOT uploaded to Steam yet (Steam was not running; the command is in TASKS_TODO). v1.3.0 uploaded 2026-10-22 ("Uploading done!"; that day the page said "awaiting approval by moderators" - hidden from other users until Valve approves; the YouTube video attached to the gallery), v1.2.0 2026-10-18 (v1.1.1 2026-10-14, v1.1.0 2026-10-12, v1.0.0 2026-10-10) — Public, with step 60's description (sent by make_workshop_update.py with the upload).** Every later release:
+**Status: v1.3.1 uploaded 2026-10-23 ("Uploading done!"; the public API showed time_updated that day). v1.3.0 uploaded 2026-10-22 ("Uploading done!"; that day the page said "awaiting approval by moderators" - hidden from other users until Valve approves; the YouTube video attached to the gallery), v1.2.0 2026-10-18 (v1.1.1 2026-10-14, v1.1.0 2026-10-12, v1.0.0 2026-10-10) — Public, with step 60's description (sent by make_workshop_update.py with the upload).** Every later release:
 "Every release after the first" below; publishing stays Anton's call (`docs/PLAYTEST.md`).
 
 Item: **3817259431** — https://steamcommunity.com/sharedfiles/filedetails/?id=3817259431 (also in
