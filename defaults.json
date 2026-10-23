@@ -2712,6 +2712,13 @@
   // (range 0.25 to 10.0)
   "LineDisciplinePollSeconds": 1.0,
 
+  // A small unit's line is always at least this many times as wide as it is deep: its tier's
+  // minimum depth is lowered to fit (the depth at most the square root of men / this). At 2: 20
+  // recruits stand 3 ranks of 7, 50 stand 5 ranks of 10, 100 keep their tier's own depth. 0 =
+  // no such limit (small units stand as deep as their tier).
+  // (range 0.0 to 5.0)
+  "LineMinWidthToDepthRatio": 2.0,
+
   // A formation held to a minimum depth here (green troops - the depth above 1) keeps its BLOCK
   // when it charges and in the last metres of an advance: each man stays within the block's
   // width (its men at the limit above x their spacing) across its front and within its depth,

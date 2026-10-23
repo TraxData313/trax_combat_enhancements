@@ -120,7 +120,7 @@ public class Step74BlockHoldTests
     public void The_eleven_settings_sit_after_the_line_discipline_ones_on_the_Advanced_page_all_live()
     {
         var all = SettingsSchema.All.ToList();
-        int first = all.IndexOf(SettingsSchema.LineDisciplinePollSeconds) + 1;
+        int first = all.IndexOf(SettingsSchema.LineMinWidthToDepthRatio) + 1; // step 83's ratio sits between
         for (int i = 0; i < New.Length; i++)
         {
             Assert.Equal(first + i, all.IndexOf(New[i]));

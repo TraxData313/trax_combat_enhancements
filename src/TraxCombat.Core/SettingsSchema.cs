@@ -2096,6 +2096,13 @@ namespace TraxCombat.Core
             "Recount the depth every (s)",
             "How often each formation's minimum depth is recounted from its men's tiers; at once anyway when men fall, join or leave it. The width itself is checked every frame.");
 
+        // step 83: SMALL UNITS KEEP A WIDE LINE (Toni 2026-10-23: 20 T1 recruits at 6 deep stood 3-4 files wide - "a column"). Core
+        // LineDisciplineMath.HeldDepth, AI_NOTES "Step 83", DESIGN decision 79.
+
+        public static readonly ParamDef LineMinWidthToDepthRatio = Float("LineMinWidthToDepthRatio", LineDisciplineMath.MinWidthRatio, LineDisciplineMath.MaxWidthRatio, LineDisciplineGroup,
+            "Small units: at least this wide per rank",
+            "A small unit's line is always at least this many times as wide as it is deep: its tier's minimum depth is lowered to fit (the depth at most the square root of men / this). At 2: 20 recruits stand 3 ranks of 7, 50 stand 5 ranks of 10, 100 keep their tier's own depth. 0 = no such limit (small units stand as deep as their tier).");
+
         // step 74: THE BLOCK HOLD - a formation of low line discipline keeps its block in a charge and the last metres of an advance (Toni's battle
         // 2026-10-20 20:30). Core BlockHoldMath, AI_NOTES "Step 74", DESIGN decision 68.
 
@@ -2383,6 +2390,7 @@ namespace TraxCombat.Core
             OrderNoAccidentalCharge, OrderChargeDragPixels, OrderChargeIconPixels,
             LineDisciplineEnabled, LineDisciplineRanksT0, LineDisciplineRanksT1, LineDisciplineRanksT2, LineDisciplineRanksT3, LineDisciplineRanksT4, LineDisciplineRanksT5,
             LineDisciplineRanksT6, LineDisciplineHeroTier, LineDisciplineRangedToo, LineDisciplineInSieges, LineDisciplinePreviewCap, LineDisciplineShowMessage, LineDisciplinePollSeconds,
+            LineMinWidthToDepthRatio,
             LineBlockHoldEnabled, LineBlockSlackMetres, LineBlockFullAtDepth, LineBlockLooseMetres, LineBlockRankMetres, LineBlockAheadMetres, LineBlockStrikeReachMetres, LineBlockStrikeLeashMetres, LineBlockNearMetres, LineBlockLeadMetres, LineBlockMopUpWinPercent,
             HudRefreshSeconds, PlayerBarWidth, PlayerBarHeight, PlayerBarOffsetRight, PlayerBarOffsetBottom,
             RecoveryBarWidth, RecoveryBarHeight, RecoveryBarOffsetAbove, SprintBarOffsetAbove,

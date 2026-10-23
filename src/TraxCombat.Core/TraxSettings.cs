@@ -700,6 +700,7 @@ namespace TraxCombat.Core
         public bool LineDisciplinePreviewCap => GetBool(SettingsSchema.LineDisciplinePreviewCap);
         public bool LineDisciplineShowMessage => GetBool(SettingsSchema.LineDisciplineShowMessage);
         public float LineDisciplinePollSeconds => GetFloat(SettingsSchema.LineDisciplinePollSeconds);
+        public float LineMinWidthToDepthRatio => GetFloat(SettingsSchema.LineMinWidthToDepthRatio);
         public bool LineBlockHoldEnabled => GetBool(SettingsSchema.LineBlockHoldEnabled);
         public float LineBlockSlackMetres => GetFloat(SettingsSchema.LineBlockSlackMetres);
         public float LineBlockFullAtDepth => GetFloat(SettingsSchema.LineBlockFullAtDepth);

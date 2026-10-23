@@ -17,7 +17,8 @@ namespace TraxCombat.Core
     {
         public LineDisciplineRules(bool modEnabled, bool enabled, bool forPlayer,
             double t0 = 6, double t1 = 5, double t2 = 4, double t3 = 3, double t4 = 2, double t5 = 1, double t6 = 1,
-            int heroTier = 6, bool rangedToo = true, bool inSieges = false, bool previewCap = true, bool showMessage = true, double pollSeconds = 1)
+            int heroTier = 6, bool rangedToo = true, bool inSieges = false, bool previewCap = true, bool showMessage = true, double pollSeconds = 1,
+            double widthRatio = 0)
         {
             ModEnabled = modEnabled;
             Enabled = enabled;
@@ -36,6 +37,8 @@ namespace TraxCombat.Core
             ShowMessage = showMessage;
             PollSeconds = double.IsNaN(pollSeconds) ? 1 : pollSeconds < LineDisciplineMath.MinPollSeconds ? LineDisciplineMath.MinPollSeconds
                 : pollSeconds > LineDisciplineMath.MaxPollSeconds ? LineDisciplineMath.MaxPollSeconds : pollSeconds;
+            WidthRatio = double.IsNaN(widthRatio) || widthRatio < LineDisciplineMath.MinWidthRatio ? LineDisciplineMath.MinWidthRatio
+                : widthRatio > LineDisciplineMath.MaxWidthRatio ? LineDisciplineMath.MaxWidthRatio : widthRatio;
         }
 
         public static LineDisciplineRules From(TraxSettings s) =>
@@ -43,7 +46,7 @@ namespace TraxCombat.Core
                 s.LineDisciplineRanksT0, s.LineDisciplineRanksT1, s.LineDisciplineRanksT2, s.LineDisciplineRanksT3,
                 s.LineDisciplineRanksT4, s.LineDisciplineRanksT5, s.LineDisciplineRanksT6,
                 s.LineDisciplineHeroTier, s.LineDisciplineRangedToo, s.LineDisciplineInSieges, s.LineDisciplinePreviewCap,
-                s.LineDisciplineShowMessage, s.LineDisciplinePollSeconds);
+                s.LineDisciplineShowMessage, s.LineDisciplinePollSeconds, s.LineMinWidthToDepthRatio);
 
         public bool ModEnabled { get; }
 
@@ -81,6 +84,10 @@ namespace TraxCombat.Core
         /// <summary>LineDisciplinePollSeconds: the men's mean depth is recomputed this often (and at once when the formation's count changes).</summary>
         public double PollSeconds { get; }
 
+        /// <summary>Step 83 - LineMinWidthToDepthRatio (0-5): a small unit's line is at least this many times as wide as it is deep - the tier's
+        /// minimum depth is capped at floor(√(men ÷ ratio)). 0 = no cap (step 73 as before).</summary>
+        public double WidthRatio { get; }
+
         /// <summary>The master switch FIRST, then the system's switch: every AI formation that counts.</summary>
         public bool On => ModEnabled && Enabled;
 
@@ -108,7 +115,7 @@ namespace TraxCombat.Core
         public bool Same(in LineDisciplineRules o) =>
             ModEnabled == o.ModEnabled && Enabled == o.Enabled && ForPlayer == o.ForPlayer && T0 == o.T0 && T1 == o.T1 && T2 == o.T2 && T3 == o.T3
             && T4 == o.T4 && T5 == o.T5 && T6 == o.T6 && HeroTier == o.HeroTier && RangedToo == o.RangedToo && InSieges == o.InSieges
-            && PreviewCap == o.PreviewCap && ShowMessage == o.ShowMessage && PollSeconds == o.PollSeconds;
+            && PreviewCap == o.PreviewCap && ShowMessage == o.ShowMessage && PollSeconds == o.PollSeconds && WidthRatio == o.WidthRatio;
 
         public string MapText()
         {
@@ -126,13 +133,18 @@ namespace TraxCombat.Core
             string what = "line discipline by tier (step 73): an infantry" + (RangedToo ? ", archer or skirmisher" : "")
                           + " formation in a line, shield wall, loose or scatter arrangement holds no thinner than its men's mean minimum ranks ("
                           + MapText() + "; heroes as T" + HeroTier + ") - at most ceil(men / depth) files wide; cavalry, horse archers, squares, circles, "
-                          + "columns and wedges untouched; " + (InSieges ? "sieges too" : "not in sieges") + ", never naval battles";
+                          + "columns and wedges untouched; " + WidthText() + "; " + (InSieges ? "sieges too" : "not in sieges") + ", never naval battles";
             if (!On) return what + " - OFF (" + OffBecause + "): the game's own widths";
             return what + " - ON for the AI; your own formations " + (ForPlayer
                 ? "too (" + (PreviewCap ? "the order drag's preview stops at the cap" : "capped on the order, the preview not capped - LineDisciplinePreviewCap off")
                   + (ShowMessage ? ", a line on screen when you ask wider" : "") + ")"
                 : "NOT (LineDisciplineForPlayer off)");
         }
+
+        /// <summary>Step 83: the small-unit cap in words.</summary>
+        public string WidthText() => WidthRatio > 0
+            ? "a small unit's line at least " + LineDisciplineMath.F(WidthRatio) + " times as wide as deep (step 83: the depth at most floor(√(men / " + LineDisciplineMath.F(WidthRatio) + ")))"
+            : "no small-unit width cap (step 83: LineMinWidthToDepthRatio 0)";
 
         private static double Ranks(double v) =>
             double.IsNaN(v) ? 1 : v < LineDisciplineMath.MinRanks ? LineDisciplineMath.MinRanks : v > LineDisciplineMath.MaxRanks ? LineDisciplineMath.MaxRanks : v;
@@ -225,6 +237,10 @@ namespace TraxCombat.Core
         /// <summary>Added to a cap's width so the game's own floor ((w − d) ÷ (i + d) + 1e-5, + 1) gives exactly F files, not F − 1.</summary>
         public const double WidthSlackMetres = 0.05;
 
+        /// <summary>Step 83: LineMinWidthToDepthRatio's range (0 = off).</summary>
+        public const double MinWidthRatio = 0;
+        public const double MaxWidthRatio = 5;
+
         public static int ClampTier(int tier) => tier < 0 ? 0 : tier > MaxTier ? MaxTier : tier;
 
         /// <summary>The tier a man counts as: a hero = LineDisciplineHeroTier, else his battle tier clamped to 0-6.</summary>
@@ -232,6 +248,20 @@ namespace TraxCombat.Core
 
         /// <summary>D = the mean of the men's ranks (1 for no men).</summary>
         public static double MinDepth(double sumRanks, int men) => men <= 0 ? 1 : Math.Max(MinRanks, sumRanks / men);
+
+        /// <summary>
+        /// Step 83 (Toni 2026-10-23: 20 T1 recruits at 6 deep stood 3-4 files wide - "a column"): the depth a formation is HELD to - its tier
+        /// minimum D capped so the line is at least <paramref name="ratio"/> times as wide as deep: max(1, min(D, floor(√(men ÷ ratio)))).
+        /// With d = that cap the line is F = ceil(men ÷ d) ≥ ratio × d files and ceil(men ÷ F) ≤ d ranks, so F ≥ ratio × ranks with the
+        /// remainder too (a single man is one rank of one). Ratio 0 (or no men) = D unchanged - step 73.
+        /// </summary>
+        public static double HeldDepth(double tierDepth, int men, double ratio)
+        {
+            if (double.IsNaN(tierDepth) || tierDepth < MinRanks) tierDepth = MinRanks;
+            if (!(ratio > 0) || men <= 0) return tierDepth;
+            double cap = Math.Max(MinRanks, Math.Floor(Math.Sqrt(men / ratio) + 1e-9));
+            return Math.Min(tierDepth, cap);
+        }
 
         /// <summary>ceil(men ÷ D), at least 1 (a hair under a whole number counts as it: 120 ÷ 5 = 24, not 25).</summary>
         public static int MaxFiles(int men, double depth)
