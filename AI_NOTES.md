@@ -8176,3 +8176,5 @@ the bash's wrong row; a read push raises the guard UP and meets it). The step-81
 2. How it looks - a shove with the haft taking the place of a swing.
 3. The guard-up meets happen: the PUSHES rows' "guard up" counts above 0 (does the AI ever hold a shield or weapon UP when a push lands, beyond our read?).
 4. A one-hander without a shield: act_1h_bash needs the left hand EMPTY - a man holding something else in the off hand would kick instead.
+
+**DEPLOY**: `tools\deploy.ps1` ran normally: the build, the AssemblyGuard, the offline smoke (all passed - 204), installed as Modules\TraxCombatEnhancements.Dev; the game and the launcher were not running. `tools\SmartAppControl\loadcheck.ps1`: both DLLs LOADED (`1.3.2+eb6b3777...`). Not uploaded.
