@@ -8029,3 +8029,60 @@ switch). Settings 512. Smoke 201: `SprintBarNamesItsKey` - through the real view
 set, a PlayStation pad re-pushed, back to (Ctrl), "(L3)" with no sprite, RB / None / Shift live, the switch off / on, the master switch first,
 0 bytes over 600 unchanged frames with 0 rebuilds. What only the game can show: the glyph drawn on screen and Input.IsGamepadActive flipping
 with a real pad (PLAYTEST D51).
+
+## Step 87 — who blocks the strike path, a diagnostic (built 2026-10-24; dev build only, not uploaded)
+
+**Toni (2026-10-24, his 5 battles of 15:05-15:44)**: of 752 rolled kicks / bashes refused, 511 were "behind a friend - rear rank (step 80)", bashes about
+twice as often as kicks; 56% of the bashes that passed the path still LANDED ON A FRIEND (kicks 27%). Suspicion: `AiKickPathProbe`'s rear-rank test (a
+friend with 0 < along < the enemy's along, side ≤ the half-width - kick 0.6, bash 0.75 -, the nearest within `AiKickRearRankMetres` 1.2) also catches
+SHOULDER NEIGHBOURS in the same rank who stand a little forward, or sit in the path when he faces his target diagonally. MEASUREMENT ONLY - no behaviour
+change, no new setting.
+
+**87.1 THE PROBE (Core `AiKicks.cs`)**: `AiKickPathProbe.Add(fx, fy, index)` (the old `Add(fx, fy)` = index −1) keeps the nearest friend's
+`NearestFriendSide` and `NearestFriendIndex` beside `NearestFriend` (his along) - the caller's own index (the module: his place in the reused `MBList`;
+the smoke: the agent index). No allocation.
+
+**87.2 THE BINS (Core `AiKickBlocks.cs`)**: `AiKickBlocker` (a struct: Valid, Along, Side, FriendIndex, Relation, both men's File / Rank), `AiKickRelation`
+(ShoulderNeighbour - same formation, same rank; RankInFront - his rank − 1, rank 0 the front; OtherRank; OtherFormation - another or none; Unknown - the
+arrangement not a `LineFormation` (a column) or a detached man), `AiKickBlockCase` (BehindFriend, FriendFirst, TargetOffPath - no friend: the ENEMY's along /
+side from d cos / d sin -, FriendHit), `AiKickBlockMath` (AlongBin ≤0 / 0-0.2 / 0.2-0.4 / 0.4-0.8 / 0.8-1.2 / >1.2; SideBin 0-0.3 / 0.3-0.6 / 0.6-0.75 / >0.75 -
+a hit may lie wider; AngleBin 0-10 / 10-20 / 20-30 / 30-40 / >40; Locate; RelationOf; the names), `AiKickBlockStats` (fixed arrays by case × kind × bin, the
+relation's mean along / side, `ShoulderShare`, `Line`). `AiKickStats.Blocks`; `SummaryLines` adds `Blocks.Line()` as the 7th line, after step 80's.
+
+**87.3 THE MODULE**: `IAiKickBody.StrikePath(…, out looked, out AiKickBlocker blocker)` - `GameAiKickBody` feeds the probe with the list index, maps the
+nearest back to the agent (`_allies[ni]`) before clearing, `Relate`: the same `Formation` reference, its `Arrangement is LineFormation` (a line, a shield
+wall, a square / circle - rings, rank 0 the outer -, a wedge, a skein; NOT a column), then `Agent.GetFormationFileAndRankInfo` for both (not for a detached
+man). `IAiKickBody.Locate(st, friend)` - the friend in his frame at the HIT (his position, `GetMovementDirection`) + `Relate`. `DecideAiMove`: after
+`StrikePathOf(…, out blocker)` with the check on, `Blocks.NoteRefusal(path, kind, blocker, distance, off)` (the angle = `off`, the same facing as the probe -
+`GameImpactInputs.AngleFrom` uses `GetMovementDirection`); `TrackedAgent.AiKickAngle` = `off` at `BeginAiKick`; `AiKickHit`: a friend victim (body or shield)
+→ `FriendHitBlock` (Locate in a try, `NoteFriendHit(kind, b, st.AiKickAngle)`). First-time lines: `_aiKickFirst` 8 → 12 - 7 / 8 the first refusal by a friend
+(a kick / a bash) `first AI … REFUSED by a friend - who blocks the path (step 87 diagnostic)`, 9 / 10 the first friend hit `first AI … on a FRIEND - where he
+stood (step 87 diagnostic)`; names via `GetByIndex` / `Get`.
+
+**The line**: `[summary] ai kicks - who blocks the path (step 87 diagnostic): shoulder neighbours are N% of the 'behind a friend' refusals and M% of the friends
+hit (…) | REFUSED behind a friend (rear rank) - kicks n: ahead …; to the side …; his SHOULDER NEIGHBOUR (same rank) x (along a / side s), the rank in front …,
+another rank …, another formation / none …, unknown (no line ranks) …; angle …; bashes … | REFUSED a friend first … | REFUSED the enemy off his path (the
+ENEMY's place) … | LANDED ON A FRIEND (his place at the hit, the angle at the decision) … [| friends hit not located (angle only) k]`.
+
+**Measured offline**: tests 1273 → 1279 (Step87Tests 6: the probe's nearest friend - along / side / index, a turned facing, none, the old Add; the bin edges
+and Locate; the relation rule; the stats by case / kind / relation, an unlocated hit, the shoulder share; the summary line's text as the 7th line; 0 bytes over
+10 000 notes); Step65Tests' line count 6 → 7. Smoke 201 → 201 (folded into step 80's `KicksLandOnEnemiesNotFriends` - `Program.Step87.cs`
+`Step87WhoBlocks`; the stand-in body's `Ranks` table - each side one formation, rank 0 the front): every 'behind a friend' / off-path refusal binned exactly as
+the path line counts it, every friend hit of the path-OFF run located. **THE FINDING in the stand-in** (two two-deep lines, 0.9 m files, the enemy half a
+file over, 1.3 m between the fronts): 'behind a friend' 126 (kicks 30, bashes 96) - **all 126 shoulder neighbours, the rank in front 0**: since step 81 a
+rear-rank man's enemy stands beyond kick reach, so he rolls nothing - the refused men are FRONT-rank men turned toward an enemy half a file over. Bashes:
+along mostly 0.4-0.8 (54) and 0-0.4 (35), side 0.6-0.75 (66) - just inside the bash's 0.75; angles 0-30°. Kicks: side 0.3-0.6 (30), along 0.4-0.8 (21), angle
+20-30° (22). The friends hit (path ON 10, OFF 80) - also 100% shoulder neighbours (bashes along 0.35-0.49, side 0.61-0.63). The enemy off the path: kicks 45
+at 20-30°, the enemy 0.6-0.75 m to the side (just beyond a kick's 0.6).
+
+**What it means (for Toni's next log and the next step - not built)**: if the real line agrees, the "rear rank" test refuses front-rank men because a bash's
+0.75 m half-width (and a kick's 0.6 at 20-30°) reaches the shoulder neighbour 0.5-0.7 m over. Options for the fix step: (a) the rear-rank refusal only for a
+friend in the rank in front (the relation read is cheap - one call per probe); (b) a path that narrows near the body (a friend at along < 0.4 m counts only
+within ~0.4 m of the line); (c) the bash's half-width 0.75 → ~0.55. The friend HITS being shoulder neighbours too says the engine's bash sweep really
+reaches them - so (a) alone would raise friend hits; (b) / (c) cut both.
+
+**Gotchas**: the probe's `Add` overload kept (Step68Tests / Step80Tests use the two-argument one); `AiKickBody.cs` is LF in the working copy (kept);
+`Unknown` covers a column and a detached man - a large Unknown in a line battle = the rank read failed (PLAYTEST D52 says so).
+
+**UNVERIFIED — only the game can tell (PLAYTEST D52)**: the real shares - shoulder neighbours vs the rank in front in Toni's shield-infantry battles;
+`GetFormationFileAndRankInfo` in a shield wall gives the ranks we expect (rank 0 the front).
