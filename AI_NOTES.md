@@ -8360,4 +8360,4 @@ Write tool (`s91_docs.py`); the Edit tool wrote `SettingsSchema.cs` back LF (rew
    (then the next lever: a friend tight on his shield side = kick instead - step 90's neighbour counts already measure it).
 2. Kicks rising where the bashes were (the shares line), and that the extra kicks do not land on friends instead.
 
-**DEPLOY**: see below.
+**DEPLOY**: `tools\deploy.ps1` ran normally: the build, the AssemblyGuard, the offline smoke (all passed - 207), installed as Modules\TraxCombatEnhancements.Dev; the game and the launcher were not running. `tools\SmartAppControl\loadcheck.ps1`: both DLLs LOADED (`1.3.2+a2e80b42...`). Not uploaded.
