@@ -14,6 +14,10 @@ namespace TraxCombat.Core
         /// <summary>Step 33: a keyboard / mouse key by NAME (<see cref="KeyNames"/>) - stored as its index in that
         /// list (a whole number like an Int), written and read as the name ("LeftControl").</summary>
         Key,
+
+        /// <summary>Step 84: a short TEXT - an item id ("adarga") - stored as its index in <see cref="TextValues"/> (a whole number like an
+        /// Int, the same text always the same index), written and read as the text itself. "" = none.</summary>
+        Text,
     }
 
     /// <summary>
@@ -193,6 +197,7 @@ namespace TraxCombat.Core
                     break;
                 case ParamType.Int:
                 case ParamType.Key:
+                case ParamType.Text:
                     v = Math.Round(v, MidpointRounding.AwayFromZero);
                     rounded = Math.Abs(v - value) > 1e-9;
                     break;
@@ -217,6 +222,8 @@ namespace TraxCombat.Core
                     return ((long)Math.Round(value, MidpointRounding.AwayFromZero)).ToString(CultureInfo.InvariantCulture);
                 case ParamType.Key:
                     return KeyNames.Name(value);
+                case ParamType.Text:
+                    return TextValues.Get(value);
                 default:
                     return value.ToString("0.0###", CultureInfo.InvariantCulture);
             }
@@ -224,7 +231,10 @@ namespace TraxCombat.Core
 
         /// <summary>The value as a JSON value in the config file and defaults.json: <see cref="Format"/>, a key's name in
         /// quotes ("LeftControl").</summary>
-        public string FormatJson(double value) => Type == ParamType.Key ? "\"" + Format(value) + "\"" : Format(value);
+        public string FormatJson(double value) =>
+            Type == ParamType.Key ? "\"" + Format(value) + "\""
+            : Type == ParamType.Text ? Newtonsoft.Json.JsonConvert.ToString(Format(value)) // step 84: the text, quoted and escaped
+            : Format(value);
 
         /// <summary>"default 50, range 0 to 100" - the tail of the config-file comment.</summary>
         public string DefaultAndRangeText =>
@@ -232,7 +242,9 @@ namespace TraxCombat.Core
                 ? "default " + Format(Default)
                 : Type == ParamType.Key
                     ? "default " + Format(Default) + ", one of " + KeyNames.ListText
-                    : "default " + Format(Default) + ", range " + Format(Min) + " to " + Format(Max);
+                    : Type == ParamType.Text
+                        ? "default " + Format(Default) + ", " + TextValues.RuleText
+                        : "default " + Format(Default) + ", range " + Format(Min) + " to " + Format(Max);
 
         /// <summary>The MCM hint: the description, when a change applies, the default. (The config
         /// file's comment says only "Applies from the next battle." for such a setting: a hand edit

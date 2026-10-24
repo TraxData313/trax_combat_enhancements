@@ -744,6 +744,15 @@ namespace TraxCombat.Core
                 return true;
             }
 
+            if (p.Type == ParamType.Text)
+            {
+                // step 84: a short text (an item id, "adarga"; "" = none)
+                why = TextValues.RuleText;
+                if (token.Type != JTokenType.String || !TextValues.TryIndex(token.Value<string>(), out int textIndex)) return false;
+                value = textIndex;
+                return true;
+            }
+
             why = p.Type == ParamType.Int ? "a whole number" : "a number";
             if (!TryNumber(token, out value)) return false;
             if (double.IsNaN(value) || double.IsInfinity(value)) return false;

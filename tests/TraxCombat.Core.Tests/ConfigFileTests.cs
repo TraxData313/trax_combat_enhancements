@@ -190,7 +190,7 @@ public class ConfigFileTests
         int last = -1;
         foreach (var g in SettingsSchema.Groups)
         {
-            int at = text.IndexOf("==================== " + g.Title + " ====================", StringComparison.Ordinal);
+            int at = text.IndexOf("==================== " + g.Title + " ====================", last + 1, StringComparison.Ordinal); // step 84: "Unit changes" on both pages - each after the one before
             Assert.True(at > last, "section " + g.Title + " missing or out of order");
             last = at;
         }

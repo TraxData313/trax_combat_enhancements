@@ -713,6 +713,19 @@ namespace TraxCombat.Core
         public float LineBlockLeadMetres => GetFloat(SettingsSchema.LineBlockLeadMetres);
         public float LineBlockMopUpWinPercent => GetFloat(SettingsSchema.LineBlockMopUpWinPercent);
 
+        // step 84: unit changes - the shields switch and each culture's item ids (TextValues)
+        public bool GiveTier1Shields => GetBool(SettingsSchema.GiveTier1Shields);
+        public string UnitShieldEmpire => TextValues.Get(Get(SettingsSchema.UnitShieldEmpire));
+        public string UnitShieldAserai => TextValues.Get(Get(SettingsSchema.UnitShieldAserai));
+        public string UnitShieldBattania => TextValues.Get(Get(SettingsSchema.UnitShieldBattania));
+        public string UnitShieldKhuzait => TextValues.Get(Get(SettingsSchema.UnitShieldKhuzait));
+        public string UnitShieldSturgia => TextValues.Get(Get(SettingsSchema.UnitShieldSturgia));
+        public string UnitShieldVlandia => TextValues.Get(Get(SettingsSchema.UnitShieldVlandia));
+        public string UnitSpearEmpire => TextValues.Get(Get(SettingsSchema.UnitSpearEmpire));
+        public string UnitSpearBattania => TextValues.Get(Get(SettingsSchema.UnitSpearBattania));
+        public string UnitSpearKhuzait => TextValues.Get(Get(SettingsSchema.UnitSpearKhuzait));
+        public string UnitSpearVlandia => TextValues.Get(Get(SettingsSchema.UnitSpearVlandia));
+
         public float HudRefreshSeconds => GetFloat(SettingsSchema.HudRefreshSeconds);
         public int PlayerBarWidth => GetInt(SettingsSchema.PlayerBarWidth);
         public int PlayerBarHeight => GetInt(SettingsSchema.PlayerBarHeight);

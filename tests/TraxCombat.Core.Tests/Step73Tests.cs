@@ -60,7 +60,7 @@ public class Step73Tests
             Assert.DoesNotContain(Advanced[i], SettingsSchema.PlayerPage);
         }
         var groups = SettingsSchema.Groups.ToList();
-        Assert.Equal(groups.Count - 2, groups.IndexOf(SettingsSchema.LineDisciplineGroup)); // right before "Advanced"
+        Assert.Equal(groups.Count - 3, groups.IndexOf(SettingsSchema.LineDisciplineGroup)); // right before step 84's "Unit changes", then "Advanced"
 
         var r = Rules();
         Assert.True(r.On);

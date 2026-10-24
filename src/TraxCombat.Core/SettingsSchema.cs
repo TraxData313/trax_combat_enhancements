@@ -42,24 +42,26 @@ namespace TraxCombat.Core
         public static readonly ParamGroup PlayerImpactGroup = new ParamGroup(4, "Staggers and knockdowns", SettingsPage.Player);
         public static readonly ParamGroup PlayerSprintGroup = new ParamGroup(5, "Sprinting", SettingsPage.Player);
         public static readonly ParamGroup PlayerScreenGroup = new ParamGroup(6, "On screen", SettingsPage.Player);
-        public static readonly ParamGroup DamageGroup = new ParamGroup(7, "Damage");
-        public static readonly ParamGroup AthleticsGroup = new ParamGroup(8, "Athletics");
-        public static readonly ParamGroup TiredGroup = new ParamGroup(9, "Tired fighters");
-        public static readonly ParamGroup StepBackGroup = new ParamGroup(10, "Tired fighters step back");
-        public static readonly ParamGroup BattlePaceGroup = new ParamGroup(11, "Battle pace (AI)");
-        public static readonly ParamGroup BraceGroup = new ParamGroup(12, "Brace by orders (AI)");
-        public static readonly ParamGroup SprintGroup = new ParamGroup(13, "Sprint");
-        public static readonly ParamGroup FeverGroup = new ParamGroup(14, "Aggression and fever (AI)"); // step 43
-        public static readonly ParamGroup CourageGroup = new ParamGroup(15, "Courage and cohesion (AI)"); // step 49 - after the fever (the AI's behaviour groups together)
-        public static readonly ParamGroup CavalryFlockGroup = new ParamGroup(16, "Cavalry flocking (AI)"); // step 55 - after courage (the AI's behaviour groups together)
-        public static readonly ParamGroup ImpactGroup = new ParamGroup(17, "Impact: staggers, shield drops, knockdowns"); // step 48 (IMPACT I2) - after the combat behaviour groups
-        public static readonly ParamGroup RefillGroup = new ParamGroup(18, "Refill");
-        public static readonly ParamGroup PlayerBarGroup = new ParamGroup(19, "Your Athletics bar");
-        public static readonly ParamGroup OrderStripGroup = new ParamGroup(20, "Orders menu strip");
-        public static readonly ParamGroup AltMarkersGroup = new ParamGroup(21, "Hold ALT: formation markers, Athletics and fever bars"); // step 44 renamed it (was "Formation markers (hold ALT)"), step 46 again (was "... and fever marks")
-        public static readonly ParamGroup OrderClickGroup = new ParamGroup(22, "Orders: no accidental charges"); // step 72 - before "Advanced"
-        public static readonly ParamGroup LineDisciplineGroup = new ParamGroup(23, "Line discipline by tier"); // step 73 - before "Advanced"
-        public static readonly ParamGroup AdvancedGroup = new ParamGroup(24, "Advanced"); // the logging and test tools (the spike) - last
+        public static readonly ParamGroup PlayerUnitsGroup = new ParamGroup(7, "Unit changes", SettingsPage.Player); // step 84 - the shields switch (its items: Advanced "Unit changes")
+        public static readonly ParamGroup DamageGroup = new ParamGroup(8, "Damage");
+        public static readonly ParamGroup AthleticsGroup = new ParamGroup(9, "Athletics");
+        public static readonly ParamGroup TiredGroup = new ParamGroup(10, "Tired fighters");
+        public static readonly ParamGroup StepBackGroup = new ParamGroup(11, "Tired fighters step back");
+        public static readonly ParamGroup BattlePaceGroup = new ParamGroup(12, "Battle pace (AI)");
+        public static readonly ParamGroup BraceGroup = new ParamGroup(13, "Brace by orders (AI)");
+        public static readonly ParamGroup SprintGroup = new ParamGroup(14, "Sprint");
+        public static readonly ParamGroup FeverGroup = new ParamGroup(15, "Aggression and fever (AI)"); // step 43
+        public static readonly ParamGroup CourageGroup = new ParamGroup(16, "Courage and cohesion (AI)"); // step 49 - after the fever (the AI's behaviour groups together)
+        public static readonly ParamGroup CavalryFlockGroup = new ParamGroup(17, "Cavalry flocking (AI)"); // step 55 - after courage (the AI's behaviour groups together)
+        public static readonly ParamGroup ImpactGroup = new ParamGroup(18, "Impact: staggers, shield drops, knockdowns"); // step 48 (IMPACT I2) - after the combat behaviour groups
+        public static readonly ParamGroup RefillGroup = new ParamGroup(19, "Refill");
+        public static readonly ParamGroup PlayerBarGroup = new ParamGroup(20, "Your Athletics bar");
+        public static readonly ParamGroup OrderStripGroup = new ParamGroup(21, "Orders menu strip");
+        public static readonly ParamGroup AltMarkersGroup = new ParamGroup(22, "Hold ALT: formation markers, Athletics and fever bars"); // step 44 renamed it (was "Formation markers (hold ALT)"), step 46 again (was "... and fever marks")
+        public static readonly ParamGroup OrderClickGroup = new ParamGroup(23, "Orders: no accidental charges"); // step 72 - before "Advanced"
+        public static readonly ParamGroup LineDisciplineGroup = new ParamGroup(24, "Line discipline by tier"); // step 73 - before "Advanced"
+        public static readonly ParamGroup UnitsGroup = new ParamGroup(25, "Unit changes"); // step 84 - the culture shields and spears, before "Advanced"
+        public static readonly ParamGroup AdvancedGroup = new ParamGroup(26, "Advanced"); // the logging and test tools (the spike) - last
 
         // ------------------------------------------------------------------ master switch
 
@@ -208,6 +210,12 @@ namespace TraxCombat.Core
         public static readonly ParamDef ImpactShowMessages = Bool("ImpactShowMessages", PlayerScreenGroup,
             "On-screen lines: knocked down, shield lost",
             "A short line in the game's message feed when YOU are knocked down, knocked off your horse, lose your shield or reel from a riposte - and when you knock someone down, off his horse, break his guard or knock his shield away. At most one line every few seconds, several things at once merged into one. Never in shadow mode (nothing really happens there).");
+
+        // Step 84 (Toni 2026-10-24: "one small touch to make the combat longer ... they all should be able to afford a piece of wood"): UnitKit,
+        // AI_NOTES "Step 84", DESIGN decision 80.
+        public static readonly ParamDef GiveTier1Shields = Bool("GiveTier1Shields", PlayerUnitsGroup,
+            "Give Tier 1 units shields",
+            "Every tier-1 soldier (a recruit, a volunteer, a nomad) who spawns in a battle, siege or hideout without a shield is given his culture's cheap shield - \"a piece of wood\" - so fights between green troops last longer. A recruit who carries a weapon he can only swing with both hands (a scythe, a maul) gets his culture's cheap spear in its place, so he fights one-handed behind the shield. Both sides; never riders, heroes, companions or you; tournaments and arenas keep their fixed gear. Nothing is saved: it is given at each spawn. Off: the game's own gear from the next spawn. Which shield and spear each culture gets: Advanced page, Unit changes.");
 
         // ------------------------------------------------------------------ damage randomness (the Advanced page from here on)
 
@@ -2150,6 +2158,52 @@ namespace TraxCombat.Core
             "Block: let go when winning (%)",
             "The block lets its men go when they win this much (the fear flock's win: 100% = 2 : 1 local odds or a broken enemy) - they chase the beaten.");
 
+        // ------------------------------------------------------------------ unit changes (step 84)
+
+        // Step 84 (Toni 2026-10-24: "one small touch to make the combat longer ... they all should be able to afford a piece of wood"): each
+        // main culture's shield and the spear that replaces a two-hander - Core UnitKit, AI_NOTES "Step 84", DESIGN decision 80. A culture
+        // without settings (a mod's) takes its own cheapest merchandise shield / spear.
+
+        public static readonly ParamDef UnitShieldEmpire = Text("UnitShieldEmpire", UnitsGroup,
+            "Empire shield",
+            "The shield a tier-1 Imperial soldier without one is given when he spawns (with \"Give Tier 1 units shields\" on - the player page). An item id of the game: a shield; the Simple Kite Shield (2.6 kg, 220 hit points) - what the Imperial Infantryman carries. Empty = none: that culture's tier-1 men are left as they are. An unknown id or an item that is not a shield is said once in the log at the battle's start and that culture is skipped.");
+
+        public static readonly ParamDef UnitShieldAserai = Text("UnitShieldAserai", UnitsGroup,
+            "Aserai shield",
+            "The shield a tier-1 Aserai soldier without one is given when he spawns (with \"Give Tier 1 units shields\" on - the player page). An item id of the game: a shield; the Adarga (1.3 kg, 160 hit points). Empty = none: that culture's tier-1 men are left as they are. An unknown id or an item that is not a shield is said once in the log at the battle's start and that culture is skipped.");
+
+        public static readonly ParamDef UnitShieldBattania = Text("UnitShieldBattania", UnitsGroup,
+            "Battania shield",
+            "The shield a tier-1 Battanian soldier without one is given when he spawns (with \"Give Tier 1 units shields\" on - the player page). An item id of the game: a shield; the Targe (1.6 kg, 215 hit points). Empty = none: that culture's tier-1 men are left as they are. An unknown id or an item that is not a shield is said once in the log at the battle's start and that culture is skipped.");
+
+        public static readonly ParamDef UnitShieldKhuzait = Text("UnitShieldKhuzait", UnitsGroup,
+            "Khuzait shield",
+            "The shield a tier-1 Khuzait soldier without one is given when he spawns (with \"Give Tier 1 units shields\" on - the player page). An item id of the game: a shield; the Wicker Square Shield (2.7 kg, 260 hit points). Empty = none: that culture's tier-1 men are left as they are. An unknown id or an item that is not a shield is said once in the log at the battle's start and that culture is skipped.");
+
+        public static readonly ParamDef UnitShieldSturgia = Text("UnitShieldSturgia", UnitsGroup,
+            "Sturgia shield",
+            "The shield a tier-1 Sturgian soldier without one is given when he spawns (with \"Give Tier 1 units shields\" on - the player page). An item id of the game: a shield; the Round Shield (3.0 kg, 300 hit points). Empty = none: that culture's tier-1 men are left as they are. An unknown id or an item that is not a shield is said once in the log at the battle's start and that culture is skipped.");
+
+        public static readonly ParamDef UnitShieldVlandia = Text("UnitShieldVlandia", UnitsGroup,
+            "Vlandia shield",
+            "The shield a tier-1 Vlandian soldier without one is given when he spawns (with \"Give Tier 1 units shields\" on - the player page). An item id of the game: a shield; the Heater Shield with Cutout (2.1 kg, 220 hit points). Empty = none: that culture's tier-1 men are left as they are. An unknown id or an item that is not a shield is said once in the log at the battle's start and that culture is skipped.");
+
+        public static readonly ParamDef UnitSpearEmpire = Text("UnitSpearEmpire", UnitsGroup,
+            "Empire spear",
+            "The spear a tier-1 Imperial soldier gets IN PLACE of a weapon he can only use with two hands (the recruit's scythe), so he can fight one-handed behind his new shield. An item id of the game with a one-handed use: the Short Militia Spear - the Imperial militia spearman's. Empty = none: he keeps his two-hander (the shield goes on his back when he swings it). An unknown id or an item without a one-handed use is said once in the log and the two-hander is kept.");
+
+        public static readonly ParamDef UnitSpearBattania = Text("UnitSpearBattania", UnitsGroup,
+            "Battania spear",
+            "The spear a tier-1 Battanian soldier gets IN PLACE of a weapon he can only use with two hands (the volunteer's maul), so he can fight one-handed behind his new shield. An item id of the game with a one-handed use: the Simple Short Spear - the Battanian clan warrior's, the cheapest one-handed spear the Battanian tier-2 men carry. Empty = none: he keeps his two-hander (the shield goes on his back when he swings it). An unknown id or an item without a one-handed use is said once in the log and the two-hander is kept.");
+
+        public static readonly ParamDef UnitSpearKhuzait = Text("UnitSpearKhuzait", UnitsGroup,
+            "Khuzait spear",
+            "The spear a tier-1 Khuzait soldier gets IN PLACE of a weapon he can only use with two hands (the nomad's scythe), so he can fight one-handed behind his new shield. An item id of the game with a one-handed use: the Jagged Spear - what the Khuzait tribal warrior and militia spearman carry (the game files it as an Aserai item; the Khuzait-made spears are dearer tier-3 ones). Empty = none: he keeps his two-hander (the shield goes on his back when he swings it). An unknown id or an item without a one-handed use is said once in the log and the two-hander is kept.");
+
+        public static readonly ParamDef UnitSpearVlandia = Text("UnitSpearVlandia", UnitsGroup,
+            "Vlandia spear",
+            "The spear a tier-1 Vlandian soldier gets IN PLACE of a weapon he can only use with two hands (a two-hander a mod gives him - the recruit's pitchfork has a one-handed use and is kept), so he can fight one-handed behind his new shield. An item id of the game with a one-handed use: the Simple Short Spear - the Vlandian footman's, the cheaper of the two Vlandian tier-2 spears. Empty = none: he keeps his two-hander (the shield goes on his back when he swings it). An unknown id or an item without a one-handed use is said once in the log and the two-hander is kept.");
+
         // ------------------------------------------------------------------ advanced
 
         public static readonly ParamDef HudRefreshSeconds = Float("HudRefreshSeconds", 0.02, 1, AdvancedGroup,
@@ -2302,6 +2356,7 @@ namespace TraxCombat.Core
             ImpactEnabled, ImpactOnPlayerPercent, ImpactMeetRulesEnabled,
             SprintEnabled, SprintKey,
             ShowPlayerBar, AltMarksEveryone, ImpactShowMessages,
+            GiveTier1Shields,
             // the Advanced page
             DamageRandomEnabled, DamageRandomMelee, DamageRandomRanged,
             DamageRandomOnMounts, DamageRandomOnShields, SprintFullCritical,
@@ -2392,6 +2447,8 @@ namespace TraxCombat.Core
             LineDisciplineRanksT6, LineDisciplineHeroTier, LineDisciplineRangedToo, LineDisciplineInSieges, LineDisciplinePreviewCap, LineDisciplineShowMessage, LineDisciplinePollSeconds,
             LineMinWidthToDepthRatio,
             LineBlockHoldEnabled, LineBlockSlackMetres, LineBlockFullAtDepth, LineBlockLooseMetres, LineBlockRankMetres, LineBlockAheadMetres, LineBlockStrikeReachMetres, LineBlockStrikeLeashMetres, LineBlockNearMetres, LineBlockLeadMetres, LineBlockMopUpWinPercent,
+            UnitShieldEmpire, UnitShieldAserai, UnitShieldBattania, UnitShieldKhuzait, UnitShieldSturgia, UnitShieldVlandia,
+            UnitSpearEmpire, UnitSpearBattania, UnitSpearKhuzait, UnitSpearVlandia,
             HudRefreshSeconds, PlayerBarWidth, PlayerBarHeight, PlayerBarOffsetRight, PlayerBarOffsetBottom,
             RecoveryBarWidth, RecoveryBarHeight, RecoveryBarOffsetAbove, SprintBarOffsetAbove,
             OrderStripTextSize, OrderStripTextOffset, OrderStripBarOffset, OrderStripBarHeight, OrderStripReadyOffset, OrderStripSideMargin,
@@ -2404,8 +2461,8 @@ namespace TraxCombat.Core
         /// <summary>The groups in order - the player page's first (step 59), then the Advanced page's.</summary>
         public static readonly IReadOnlyList<ParamGroup> Groups = new[]
         {
-            MasterGroup, PlayerDamageGroup, PlayerTiredGroup, PlayerAiGroup, PlayerImpactGroup, PlayerSprintGroup, PlayerScreenGroup,
-            DamageGroup, AthleticsGroup, TiredGroup, StepBackGroup, BattlePaceGroup, BraceGroup, SprintGroup, FeverGroup, CourageGroup, CavalryFlockGroup, ImpactGroup, RefillGroup, PlayerBarGroup, OrderStripGroup, AltMarkersGroup, OrderClickGroup, LineDisciplineGroup, AdvancedGroup,
+            MasterGroup, PlayerDamageGroup, PlayerTiredGroup, PlayerAiGroup, PlayerImpactGroup, PlayerSprintGroup, PlayerScreenGroup, PlayerUnitsGroup,
+            DamageGroup, AthleticsGroup, TiredGroup, StepBackGroup, BattlePaceGroup, BraceGroup, SprintGroup, FeverGroup, CourageGroup, CavalryFlockGroup, ImpactGroup, RefillGroup, PlayerBarGroup, OrderStripGroup, AltMarkersGroup, OrderClickGroup, LineDisciplineGroup, UnitsGroup, AdvancedGroup,
         };
 
         /// <summary>Step 59: the groups of one MCM page, in order.</summary>
@@ -2483,6 +2540,11 @@ namespace TraxCombat.Core
         private static ParamDef Key(string key, ParamGroup group, string label, string description,
             ApplyTiming timing = ApplyTiming.Live)
             => new ParamDef(_next++, key, ParamType.Key, 0, KeyNames.All.Length - 1, group, label, description, timing);
+
+        /// <summary>Step 84: a short text (an item id) - its index in <see cref="TextValues"/> (0 = "").</summary>
+        private static ParamDef Text(string key, ParamGroup group, string label, string description,
+            ApplyTiming timing = ApplyTiming.Live)
+            => new ParamDef(_next++, key, ParamType.Text, 0, TextValues.MaxIndex, group, label, description, timing);
 
         private static ParamDef Float(string key, double min, double max, ParamGroup group, string label,
             string description, ApplyTiming timing = ApplyTiming.Live)

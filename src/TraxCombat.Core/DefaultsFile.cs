@@ -291,6 +291,15 @@ namespace TraxCombat.Core
                     }
                     value = keyIndex;
                     return true;
+                case ParamType.Text:
+                    // step 84: a short text (an item id) - its index in TextValues
+                    if (token.Type != JTokenType.String || !TextValues.TryIndex(token.Value<string>(), out int textIndex))
+                    {
+                        problem = raw + " is not " + TextValues.RuleText;
+                        return false;
+                    }
+                    value = textIndex;
+                    return true;
                 case ParamType.Int:
                     if (token.Type != JTokenType.Integer)
                     {
@@ -330,6 +339,7 @@ namespace TraxCombat.Core
         private static string Show(ParamType type, double v) =>
             type == ParamType.Bool ? (v != 0 ? "true" : "false")
             : type == ParamType.Key ? KeyNames.Name(v)
+            : type == ParamType.Text ? TextValues.Get(v)
             : type == ParamType.Int ? ((long)Math.Round(v)).ToString(CultureInfo.InvariantCulture)
             : v.ToString("0.0###", CultureInfo.InvariantCulture);
 
@@ -377,6 +387,7 @@ namespace TraxCombat.Core
         public static string RangeText(ParamDef p) =>
             p.Type == ParamType.Bool ? "true or false"
             : p.Type == ParamType.Key ? "one of " + KeyNames.ListText
+            : p.Type == ParamType.Text ? TextValues.RuleText
             : "range " + p.Format(p.Min) + " to " + p.Format(p.Max);
 
         // ------------------------------------------------------------------ check

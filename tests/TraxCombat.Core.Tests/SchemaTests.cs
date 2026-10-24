@@ -53,6 +53,9 @@ public class SchemaTests
                 case ParamType.Key:
                     Assert.True(KeyNames.TryIndex(text, out _), key + " is a key - DESIGN's value must be a key name, not " + text);
                     break;
+                case ParamType.Text:
+                    Assert.True(TextValues.TryIndex(text, out _) && !isNumber && !isBool, key + " is a text - DESIGN's value must be an item id, not " + text);
+                    break;
                 default:
                     Assert.True(isNumber && !isBool, key + " is a number - DESIGN's value must be one, not " + text);
                     break;
@@ -70,7 +73,8 @@ public class SchemaTests
             SettingsSchema.TryGet(key, out var p);
             var token = DesignTable.ToToken(text);
             double expected = token.Type == Newtonsoft.Json.Linq.JTokenType.Boolean ? ((bool)token ? 1 : 0)
-                : token.Type == Newtonsoft.Json.Linq.JTokenType.String ? (KeyNames.TryIndex((string?)token, out int k) ? k : -1)
+                : token.Type == Newtonsoft.Json.Linq.JTokenType.String
+                    ? (p.Type == ParamType.Text ? (TextValues.TryIndex((string?)token, out int t) ? t : -1) : (KeyNames.TryIndex((string?)token, out int k) ? k : -1))
                 : (double)token;
             Assert.True(Math.Abs(expected - p.Default) < 1e-9, key + ": test default " + p.Format(p.Default) + " vs DESIGN " + text);
         }
@@ -130,16 +134,20 @@ public class SchemaTests
                 ParamType.Bool => typeof(bool),
                 ParamType.Int => typeof(int),
                 ParamType.Key => typeof(string), // step 33: the key's name
+                ParamType.Text => typeof(string), // step 84: the item id
                 _ => typeof(float),
             };
             Assert.Equal(expectedType, prop!.PropertyType);
 
             // Move the value to a non-default spot and read it back through the property.
-            double target = p.Type == ParamType.Bool ? 1 - p.Default : (p.Default == p.Max ? p.Min : p.Max);
+            double target = p.Type == ParamType.Bool ? 1 - p.Default
+                : p.Type == ParamType.Text ? (TextValues.TryIndex("schema_test_" + p.Key, out int ti) ? ti : -1) // step 84: a fresh text
+                : (p.Default == p.Max ? p.Min : p.Max);
             settings.Set(p, target, "test");
             var got = prop.GetValue(settings);
             double read = p.Type == ParamType.Key
                 ? (KeyNames.TryIndex((string?)got, out int keyIndex) ? keyIndex : -1)
+                : p.Type == ParamType.Text ? (TextValues.TryIndex((string?)got, out int textIndex) ? textIndex : -1)
                 : Convert.ToDouble(got, CultureInfo.InvariantCulture);
             Assert.True(Math.Abs(read - target) < 1e-4, p.Key + " property reads the wrong slot");
         }

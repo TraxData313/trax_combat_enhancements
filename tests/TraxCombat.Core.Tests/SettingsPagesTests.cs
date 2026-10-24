@@ -41,6 +41,7 @@ public class SettingsPagesTests
         ("On screen", "ShowPlayerBar", "Your Athletics bar"),
         ("On screen", "AltMarksEveryone", "Hold ALT: bars on every man"),
         ("On screen", "ImpactShowMessages", "On-screen lines: knocked down, shield lost"),
+        ("Unit changes", "GiveTier1Shields", "Give Tier 1 units shields"), // step 84 - a new system's switch, its own section (DESIGN decision 80)
     };
 
     [Fact]
@@ -48,7 +49,7 @@ public class SettingsPagesTests
     {
         var player = SettingsSchema.OnPage(SettingsPage.Player);
         var advanced = SettingsSchema.OnPage(SettingsPage.Advanced);
-        Assert.Equal(499, SettingsSchema.All.Count); // step 83: + 1 (LineMinWidthToDepthRatio, Advanced "Line discipline by tier"); step 82: + 20 (the meet rules - ImpactMeetRulesEnabled on the player page, 16 ceilings and 3 for the AI's read Advanced in the Impact group); step 81: - 14 (the AI kick rate, its factors, the bar gate, the wait, the bash credit and cooldown) + 3 (the shares - AiShieldmanKickPercent, AiShieldmanBashPercent, AiNoShieldKickPercent, Advanced in the Impact group); step 80: + 2 (the strike path - AiBashPathHalfWidthMetres, AiKickRearRankMetres, Advanced in the Impact group); step 79: + 11 (war cries - WarCriesEnabled on the player page, 10 WarCry* Advanced in "Courage and cohesion (AI)"); step 78c: - 29 (the lull's: 2 on the player page, 27 Advanced) + 16 (each man's rest - RestEnabled on the player page, 15 Advanced in "Courage and cohesion (AI)"); step 78b: + 16 (the breather clock and the gap - 14 Lull*, the wrap's switch and the wing's bend, all Advanced in "Courage and cohesion (AI)"); step 78: + 27 (the battle's rhythm - 3 on the player page, 24 Advanced in "Courage and cohesion (AI)"); step 77: + 16 (press, don't pass - 1 on the player page, 15 Advanced in "Courage and cohesion (AI)"); step 76: + 21 (the spear preference - 1 on the player page, 17 Advanced - and thrusts past a friend, 3 Advanced); step 75: + 6 (a standing wall stands firm - 1 on the player page, 5 Advanced); step 74: + 11 (the block hold, Advanced "Line discipline by tier"); step 73: + 15 (line discipline by tier - 1 on the player page); step 72: + 3 (no accidental charge orders); step 70: + 9 (the band, the strike) + 2 (the lone runner); step 69: + 6 (winning calms, the threat line, the mop-up); step 68: + 4 (the wall advances as one, the walk back after a kick) + 1 (no kick through a friend); step 67: + 25 (the fear flock) + 4 (the morale eyes); step 66: + 5 (the wait for reach, the bashes per swing); step 65: + 14 (the AI kicks) + 7 (the brace); step 64: + 2 (the shield front arc) + 3 (the charge sprint into contact); step 63: + 2 (the rear / flank pressure) + 1 (the wall's walk back); step 62: + 2 (the lost falls) + 2 (toughness, a ranged man in melee) + 4 (direction) + 4 (the charge) + 1 (the critical) + 1 (the cap)
+        Assert.Equal(510, SettingsSchema.All.Count); // step 84: + 11 (GiveTier1Shields on the player page in its own "Unit changes", 6 UnitShield* + 4 UnitSpear* Advanced in "Unit changes"); step 83: + 1 (LineMinWidthToDepthRatio, Advanced "Line discipline by tier"); step 82: + 20 (the meet rules - ImpactMeetRulesEnabled on the player page, 16 ceilings and 3 for the AI's read Advanced in the Impact group); step 81: - 14 (the AI kick rate, its factors, the bar gate, the wait, the bash credit and cooldown) + 3 (the shares - AiShieldmanKickPercent, AiShieldmanBashPercent, AiNoShieldKickPercent, Advanced in the Impact group); step 80: + 2 (the strike path - AiBashPathHalfWidthMetres, AiKickRearRankMetres, Advanced in the Impact group); step 79: + 11 (war cries - WarCriesEnabled on the player page, 10 WarCry* Advanced in "Courage and cohesion (AI)"); step 78c: - 29 (the lull's: 2 on the player page, 27 Advanced) + 16 (each man's rest - RestEnabled on the player page, 15 Advanced in "Courage and cohesion (AI)"); step 78b: + 16 (the breather clock and the gap - 14 Lull*, the wrap's switch and the wing's bend, all Advanced in "Courage and cohesion (AI)"); step 78: + 27 (the battle's rhythm - 3 on the player page, 24 Advanced in "Courage and cohesion (AI)"); step 77: + 16 (press, don't pass - 1 on the player page, 15 Advanced in "Courage and cohesion (AI)"); step 76: + 21 (the spear preference - 1 on the player page, 17 Advanced - and thrusts past a friend, 3 Advanced); step 75: + 6 (a standing wall stands firm - 1 on the player page, 5 Advanced); step 74: + 11 (the block hold, Advanced "Line discipline by tier"); step 73: + 15 (line discipline by tier - 1 on the player page); step 72: + 3 (no accidental charge orders); step 70: + 9 (the band, the strike) + 2 (the lone runner); step 69: + 6 (winning calms, the threat line, the mop-up); step 68: + 4 (the wall advances as one, the walk back after a kick) + 1 (no kick through a friend); step 67: + 25 (the fear flock) + 4 (the morale eyes); step 66: + 5 (the wait for reach, the bashes per swing); step 65: + 14 (the AI kicks) + 7 (the brace); step 64: + 2 (the shield front arc) + 3 (the charge sprint into contact); step 63: + 2 (the rear / flank pressure) + 1 (the wall's walk back); step 62: + 2 (the lost falls) + 2 (toughness, a ranged man in melee) + 4 (direction) + 4 (the charge) + 1 (the critical) + 1 (the cap)
         Assert.Equal(SettingsSchema.All.Count, player.Count + advanced.Count);
         Assert.Empty(player.Intersect(advanced));
         Assert.Equal(SettingsSchema.All.OrderBy(p => p.Key), player.Concat(advanced).OrderBy(p => p.Key));
@@ -63,7 +64,7 @@ public class SettingsPagesTests
     public void The_player_page_is_short_and_exactly_this_list_in_this_order()
     {
         var page = SettingsSchema.PlayerPage;
-        Assert.InRange(page.Count, 12, 28);                                      // Anton: "a few options" - not a wall (step 73: 20 → 21 on purpose, the line discipline's switch for your units; step 75: 22, the stand-firm switch Toni tests on and off; step 76: 23, the spear preference - a new AI system's switch; step 77: 24, press, don't pass; step 78: 27, the rotation, the lull and your units in it; step 78c: 26, the lull's two out, the rest's switch in; step 79: 27, war cries; step 82: 28, meeting kicks and bashes)
+        Assert.InRange(page.Count, 12, 29);                                      // Anton: "a few options" - not a wall (step 73: 20 → 21 on purpose, the line discipline's switch for your units; step 75: 22, the stand-firm switch Toni tests on and off; step 76: 23, the spear preference - a new AI system's switch; step 77: 24, press, don't pass; step 78: 27, the rotation, the lull and your units in it; step 78c: 26, the lull's two out, the rest's switch in; step 79: 27, war cries; step 82: 28, meeting kicks and bashes; step 84: 29, the tier-1 shields)
         Assert.Equal(PlayerPage.Select(r => r.Key), page.Select(p => p.Key));
         Assert.Equal(PlayerPage.Select(r => r.Label), page.Select(p => p.Label));
         Assert.Equal(PlayerPage.Select(r => r.Group), page.Select(p => p.Group.Title));
@@ -78,8 +79,8 @@ public class SettingsPagesTests
         Assert.Equal(Enumerable.Range(0, groups.Count), groups.Select(g => g.Order));   // the order = the list's, no gaps
         var players = SettingsSchema.GroupsOn(SettingsPage.Player);
         var advanced = SettingsSchema.GroupsOn(SettingsPage.Advanced);
-        Assert.Equal(7, players.Count);
-        Assert.Equal(18, advanced.Count);                                         // every group of before step 59 but the master switch, + step 72's orders group, + step 73's line discipline
+        Assert.Equal(8, players.Count);                                           // step 84: + "Unit changes"
+        Assert.Equal(19, advanced.Count);                                         // step 84: + "Unit changes"                                         // every group of before step 59 but the master switch, + step 72's orders group, + step 73's line discipline
         Assert.Equal(groups.Take(players.Count), players);
         Assert.Equal(groups.Skip(players.Count), advanced);
         Assert.Same(SettingsSchema.MasterGroup, groups[0]);
@@ -87,8 +88,11 @@ public class SettingsPagesTests
         Assert.Same(SettingsSchema.AdvancedGroup, advanced[advanced.Count - 1]); // the logging and test tools (the spike) last
         Assert.Contains(SettingsSchema.ImpactSpike, SettingsSchema.InGroup(SettingsSchema.AdvancedGroup));
         Assert.Contains(SettingsSchema.VerboseLogging, SettingsSchema.InGroup(SettingsSchema.AdvancedGroup));
-        // One file, so every section heading must be unique - a player group never shares an Advanced group's title.
-        Assert.Equal(groups.Count, groups.Select(g => g.Title).Distinct().Count());
+        // Unique titles on each page (MCM keys a page's groups by title); step 84's "Unit changes" is on both pages (Toni: the switch on the
+        // player page, the items on Advanced) - the file's sections sit under a banner per page, so the two headings never mix.
+        Assert.Equal(players.Count, players.Select(g => g.Title).Distinct().Count());
+        Assert.Equal(advanced.Count, advanced.Select(g => g.Title).Distinct().Count());
+        Assert.Equal(SettingsSchema.PlayerUnitsGroup.Title, SettingsSchema.UnitsGroup.Title);
         foreach (var g in groups)
             Assert.NotEmpty(SettingsSchema.InGroup(g));
     }

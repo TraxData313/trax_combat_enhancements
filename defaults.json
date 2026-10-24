@@ -272,6 +272,18 @@
   // (true or false)
   "ImpactShowMessages": true,
 
+  // ==================== Unit changes ====================
+  // Every tier-1 soldier (a recruit, a volunteer, a nomad) who spawns in a battle, siege or
+  // hideout without a shield is given his culture's cheap shield - "a piece of wood" - so
+  // fights between green troops last longer. A recruit who carries a weapon he can only swing
+  // with both hands (a scythe, a maul) gets his culture's cheap spear in its place, so he
+  // fights one-handed behind the shield. Both sides; never riders, heroes, companions or you;
+  // tournaments and arenas keep their fixed gear. Nothing is saved: it is given at each spawn.
+  // Off: the game's own gear from the next spawn. Which shield and spear each culture gets:
+  // Advanced page, Unit changes.
+  // (true or false)
+  "GiveTier1Shields": true,
+
   // ######## ADVANCED - for tuning: MCM page "Trax Combat Enhancements - Advanced" ########
 
   // ==================== Damage ====================
@@ -2779,6 +2791,93 @@
   // odds or a broken enemy) - they chase the beaten.
   // (range 0.0 to 100.0)
   "LineBlockMopUpWinPercent": 50.0,
+
+  // ==================== Unit changes ====================
+  // The shield a tier-1 Imperial soldier without one is given when he spawns (with "Give Tier 1
+  // units shields" on - the player page). An item id of the game: a shield; the Simple Kite
+  // Shield (2.6 kg, 220 hit points) - what the Imperial Infantryman carries. Empty = none: that
+  // culture's tier-1 men are left as they are. An unknown id or an item that is not a shield is
+  // said once in the log at the battle's start and that culture is skipped.
+  // (an item id (letters, digits, _ . -; empty = none))
+  "UnitShieldEmpire": "battered_kite_shield",
+
+  // The shield a tier-1 Aserai soldier without one is given when he spawns (with "Give Tier 1
+  // units shields" on - the player page). An item id of the game: a shield; the Adarga (1.3 kg,
+  // 160 hit points). Empty = none: that culture's tier-1 men are left as they are. An unknown
+  // id or an item that is not a shield is said once in the log at the battle's start and that
+  // culture is skipped.
+  // (an item id (letters, digits, _ . -; empty = none))
+  "UnitShieldAserai": "adarga",
+
+  // The shield a tier-1 Battanian soldier without one is given when he spawns (with "Give Tier
+  // 1 units shields" on - the player page). An item id of the game: a shield; the Targe (1.6
+  // kg, 215 hit points). Empty = none: that culture's tier-1 men are left as they are. An
+  // unknown id or an item that is not a shield is said once in the log at the battle's start
+  // and that culture is skipped.
+  // (an item id (letters, digits, _ . -; empty = none))
+  "UnitShieldBattania": "battania_targe_b",
+
+  // The shield a tier-1 Khuzait soldier without one is given when he spawns (with "Give Tier 1
+  // units shields" on - the player page). An item id of the game: a shield; the Wicker Square
+  // Shield (2.7 kg, 260 hit points). Empty = none: that culture's tier-1 men are left as they
+  // are. An unknown id or an item that is not a shield is said once in the log at the battle's
+  // start and that culture is skipped.
+  // (an item id (letters, digits, _ . -; empty = none))
+  "UnitShieldKhuzait": "eastern_wicker_shield",
+
+  // The shield a tier-1 Sturgian soldier without one is given when he spawns (with "Give Tier 1
+  // units shields" on - the player page). An item id of the game: a shield; the Round Shield
+  // (3.0 kg, 300 hit points). Empty = none: that culture's tier-1 men are left as they are. An
+  // unknown id or an item that is not a shield is said once in the log at the battle's start
+  // and that culture is skipped.
+  // (an item id (letters, digits, _ . -; empty = none))
+  "UnitShieldSturgia": "northern_round_shield",
+
+  // The shield a tier-1 Vlandian soldier without one is given when he spawns (with "Give Tier 1
+  // units shields" on - the player page). An item id of the game: a shield; the Heater Shield
+  // with Cutout (2.1 kg, 220 hit points). Empty = none: that culture's tier-1 men are left as
+  // they are. An unknown id or an item that is not a shield is said once in the log at the
+  // battle's start and that culture is skipped.
+  // (an item id (letters, digits, _ . -; empty = none))
+  "UnitShieldVlandia": "heater_shield_with_cutout",
+
+  // The spear a tier-1 Imperial soldier gets IN PLACE of a weapon he can only use with two
+  // hands (the recruit's scythe), so he can fight one-handed behind his new shield. An item id
+  // of the game with a one-handed use: the Short Militia Spear - the Imperial militia
+  // spearman's. Empty = none: he keeps his two-hander (the shield goes on his back when he
+  // swings it). An unknown id or an item without a one-handed use is said once in the log and
+  // the two-hander is kept.
+  // (an item id (letters, digits, _ . -; empty = none))
+  "UnitSpearEmpire": "imperial_spear_t2",
+
+  // The spear a tier-1 Battanian soldier gets IN PLACE of a weapon he can only use with two
+  // hands (the volunteer's maul), so he can fight one-handed behind his new shield. An item id
+  // of the game with a one-handed use: the Simple Short Spear - the Battanian clan warrior's,
+  // the cheapest one-handed spear the Battanian tier-2 men carry. Empty = none: he keeps his
+  // two-hander (the shield goes on his back when he swings it). An unknown id or an item
+  // without a one-handed use is said once in the log and the two-hander is kept.
+  // (an item id (letters, digits, _ . -; empty = none))
+  "UnitSpearBattania": "western_spear_2_t2",
+
+  // The spear a tier-1 Khuzait soldier gets IN PLACE of a weapon he can only use with two hands
+  // (the nomad's scythe), so he can fight one-handed behind his new shield. An item id of the
+  // game with a one-handed use: the Jagged Spear - what the Khuzait tribal warrior and militia
+  // spearman carry (the game files it as an Aserai item; the Khuzait-made spears are dearer
+  // tier-3 ones). Empty = none: he keeps his two-hander (the shield goes on his back when he
+  // swings it). An unknown id or an item without a one-handed use is said once in the log and
+  // the two-hander is kept.
+  // (an item id (letters, digits, _ . -; empty = none))
+  "UnitSpearKhuzait": "eastern_spear_1_t2",
+
+  // The spear a tier-1 Vlandian soldier gets IN PLACE of a weapon he can only use with two
+  // hands (a two-hander a mod gives him - the recruit's pitchfork has a one-handed use and is
+  // kept), so he can fight one-handed behind his new shield. An item id of the game with a
+  // one-handed use: the Simple Short Spear - the Vlandian footman's, the cheaper of the two
+  // Vlandian tier-2 spears. Empty = none: he keeps his two-hander (the shield goes on his back
+  // when he swings it). An unknown id or an item without a one-handed use is said once in the
+  // log and the two-hander is kept.
+  // (an item id (letters, digits, _ . -; empty = none))
+  "UnitSpearVlandia": "western_spear_2_t2",
 
   // ==================== Advanced ====================
   // How often your Athletics bar, the orders-menu strip and the numbers under the formation

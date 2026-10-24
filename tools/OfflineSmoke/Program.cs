@@ -808,6 +808,7 @@ namespace TraxCombat.Tools
                         ParamType.Bool => MCM.Abstractions.SettingType.Bool,
                         ParamType.Int => MCM.Abstractions.SettingType.Int,
                         ParamType.Key => MCM.Abstractions.SettingType.String, // step 33: a text box holding the key's name
+                        ParamType.Text => MCM.Abstractions.SettingType.String, // step 84: a text box holding the item id
                         _ => MCM.Abstractions.SettingType.Float,
                     };
                     Check(d.SettingType == expected, p.Key + ": MCM type " + d.SettingType);
@@ -815,7 +816,7 @@ namespace TraxCombat.Tools
                     Check(d.HintText == p.HintText, p.Key + ": hint differs");
                     Check(!d.RequireRestart, p.Key + ": marked require-restart");
                     Check(d.GroupName == p.Group.Title, p.Key + ": group " + d.GroupName);
-                    if (p.Type == ParamType.Key)
+                    if (p.Type == ParamType.Key || p.Type == ParamType.Text)
                     {
                         Check(d.PropertyReference.Value as string == p.Format(TraxSettings.Shared.Get(p)), p.Key + ": getter does not read the live key name");
                         continue;
