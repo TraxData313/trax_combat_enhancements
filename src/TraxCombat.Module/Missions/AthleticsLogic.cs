@@ -88,6 +88,8 @@ namespace TraxCombat.Missions
             }
             // Step 73: the line discipline - its rules in one [lines] sentence (its own try inside).
             StartLines();
+            // Step 84: the tier-1 shields - each culture's shield and spear resolved and said once (its own try inside).
+            StartUnitKit();
         }
 
         public override void OnMissionTick(float dt)
@@ -205,6 +207,15 @@ namespace TraxCombat.Missions
             catch (Exception e)
             {
                 TraxLog.Error("mission.OnAgentBuild", e);
+            }
+            try
+            {
+                // Step 84: a tier-1 man's culture shield (and spear) - after the game's build, before anything of ours reads his kit.
+                if (agent != null && agent.IsHuman) GiveUnitKit(agent, banner);
+            }
+            catch (Exception e)
+            {
+                Failed("units.agent-build", e);
             }
             try
             {
@@ -429,6 +440,15 @@ namespace TraxCombat.Missions
             catch (Exception e)
             {
                 Failed("spears.summary", e);
+            }
+            // Step 84: the tier-1 shields - given and swapped by culture, skips by reason. Own try.
+            try
+            {
+                WriteUnitKitSummary();
+            }
+            catch (Exception e)
+            {
+                Failed("units.summary", e);
             }
             TraxLog.Info("summary", "errors logged during this mission: " + (TraxLog.ErrorCount - _errorsAtStart));
             TraxLog.FlushSuppressedCounts();

@@ -1204,6 +1204,7 @@ namespace TraxCombat.Tools
             PressFollowsTheMasterSwitch(); // step 77
             RhythmFollowsTheMasterSwitch(); // step 78
             RestFollowsTheMasterSwitch(); // step 78c
+            UnitKitFollowsTheMasterSwitch(); // step 84: off = no tier-1 shield given, no engine read; on = given
 
             // --- the HUD (step 6): the Athletics bar goes the moment the switch goes, and comes back
             HudFollowsTheMasterSwitch(a.Agent);
