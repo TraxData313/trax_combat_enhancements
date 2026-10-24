@@ -8086,3 +8086,6 @@ reaches them - so (a) alone would raise friend hits; (b) / (c) cut both.
 
 **UNVERIFIED — only the game can tell (PLAYTEST D52)**: the real shares - shoulder neighbours vs the rank in front in Toni's shield-infantry battles;
 `GetFormationFileAndRankInfo` in a shield wall gives the ranks we expect (rank 0 the front).
+
+**DEPLOY**: `tools\deploy.ps1` ran normally: the build, the AssemblyGuard, the offline smoke (all passed - 201), installed as Modules\TraxCombatEnhancements.Dev; the
+game and the launcher were not running. `tools\SmartAppControl\loadcheck.ps1`: both DLLs LOADED (`1.3.2+0d1e9fa6…`). Not uploaded.
