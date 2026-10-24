@@ -130,7 +130,7 @@ namespace TraxCombat.Hud
                 TraxLog.Limited("hud", "sprint bar: first values pushed at " + S1(f.Now) + " s - \"" + r.LabelText + "\" of " + F2(r.Capacity) + " s ("
                     + (r.Active ? "sprinting" : r.Ready ? "ready" : "below the start mark") + "), the mark at " + s.SprintMinStartPercent + "%; bar " + s.RecoveryBarWidth
                     + " x " + s.RecoveryBarHeight + " px, " + s.PlayerBarOffsetRight + " px from the right edge and " + (s.PlayerBarOffsetBottom + s.SprintBarOffsetAbove)
-                    + " px from the bottom (your Athletics bar's row " + s.PlayerBarOffsetBottom + " + " + s.SprintBarOffsetAbove + "; UI pixels); key " + s.SprintKey, "hud-sprint");
+                    + " px from the bottom (your Athletics bar's row " + s.PlayerBarOffsetBottom + " + " + s.SprintBarOffsetAbove + "; UI pixels); key " + s.SprintKeysText, "hud-sprint");
             }
             return true;
         }

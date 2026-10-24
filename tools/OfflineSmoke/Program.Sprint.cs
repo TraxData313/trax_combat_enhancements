@@ -84,6 +84,18 @@ namespace TraxCombat.Tools
                 return Key;
             }
 
+            /// <summary>Step 85: the gamepad button held (any chosen button; the logic never asks for None).</summary>
+            public bool ControllerKey;
+            public int LastControllerIndex = -1;
+            public int ControllerReads;
+
+            public bool ControllerKeyDown(int controllerIndex)
+            {
+                LastControllerIndex = controllerIndex;
+                ControllerReads++;
+                return ControllerKey;
+            }
+
             public bool PlayerCanSprint() => CanSprint;
         }
 
@@ -110,6 +122,7 @@ namespace TraxCombat.Tools
             S.Set(SettingsSchema.SprintTopSpeedReachSeconds, 0, SettingSources.File);
             S.Set(SettingsSchema.SprintEnabled, on, SettingSources.File);
             S.Set(SettingsSchema.SprintKey, 0, SettingSources.File);
+            S.Set(SettingsSchema.SprintControllerKey, SprintKeys.NoController, SettingSources.File); // step 85: the keyboard alone for step 33's checks
             S.Set(SettingsSchema.SprintPointsPerSecond, 20, SettingSources.File);
             S.Set(SettingsSchema.SprintMinStartPercent, 20, SettingSources.File);
             S.Set(SettingsSchema.SprintMaxMultiplier, 1.6, SettingSources.File);

@@ -11,7 +11,8 @@ namespace TraxCombat.Missions
     /// <see cref="RegenStepSeconds"/> while he is not sprinting (Core <see cref="SprintMath.RefillPerSecond"/>: 7 s standing at full
     /// strength, × the moving factor above a walk, × the tiredness line).
     ///
-    /// YOU: holding <c>SprintKey</c> (read every tick through <see cref="ISprintBody.KeyDown"/> - a fight mode, the order menu
+    /// YOU: holding <c>SprintKey</c> or (step 85) <c>SprintControllerKey</c> - either one (read every tick through <see cref="ISprintBody.KeyDown"/> /
+    /// <see cref="ISprintBody.ControllerKeyDown"/>, Core <see cref="SprintKeys"/> - a fight mode, the order menu
     /// closed, your own hands) STARTS a sprint on the press when at least SprintMinStartPercent is stored; letting go ends it,
     /// the rest stays stored. THE AI: every <see cref="SprintMath.OrderPollSeconds"/> every formation's order kind is read (step
     /// 23's read); a kind that differs from the last look is a NEW order - each AI man on foot in that formation sprints once for
@@ -55,7 +56,7 @@ namespace TraxCombat.Missions
         /// <summary>Men sprinting right now.</summary>
         internal int SprintingNow => _sprintingNow;
 
-        private static string SprintText(TraxSettings s) => SprintRules.From(s).Describe(s.SprintKey);
+        private static string SprintText(TraxSettings s) => SprintRules.From(s).Describe(s.SprintKeysText);
 
         /// <summary>Mission start: the settings line, read live from now on.</summary>
         private void StartSprint()
@@ -105,7 +106,7 @@ namespace TraxCombat.Missions
             }
             try
             {
-                TickPlayerSprint(now, in s, in r, settings.SprintKeyIndex);
+                TickPlayerSprint(now, in s, in r, settings.SprintKeyIndex, settings.SprintControllerKeyIndex);
             }
             catch (Exception e)
             {
@@ -133,7 +134,7 @@ namespace TraxCombat.Missions
 
         private TrackedAgent? PlayerRecord() => SmokePlayer != null ? Get(SmokePlayer) : _player;
 
-        private void TickPlayerSprint(double now, in SprintRules s, in AthleticsRules r, int keyIndex)
+        private void TickPlayerSprint(double now, in SprintRules s, in AthleticsRules r, int keyIndex, int controllerIndex)
         {
             var st = PlayerRecord();
             var body = SprintBody;
@@ -145,7 +146,8 @@ namespace TraxCombat.Missions
             var sp = st.Sprint;
             bool you = YouDrive(st);
             bool can = you && body.PlayerCanSprint();
-            bool key = can && body.KeyDown(keyIndex);
+            // step 85: either key - the gamepad button read only when one is chosen (no allocation either way)
+            bool key = can && (body.KeyDown(keyIndex) || (SprintKeys.HasController(controllerIndex) && body.ControllerKeyDown(controllerIndex)));
             if (sp.Active && sp.ByKey)
             {
                 if (!key) EndSprint(st, can ? SprintEnd.Released : SprintEnd.ControlChanged, now);
@@ -801,7 +803,7 @@ namespace TraxCombat.Missions
         {
             var settings = TraxSettings.Shared;
             var lines = new List<string>(4);
-            _sprintStats.AddSummaryLines(lines, SprintRules.From(settings), settings.SprintKey);
+            _sprintStats.AddSummaryLines(lines, SprintRules.From(settings), settings.SprintKeysText);
             foreach (var line in lines) TraxLog.Info("summary", line);
         }
 

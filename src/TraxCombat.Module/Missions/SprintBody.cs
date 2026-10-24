@@ -51,6 +51,11 @@ namespace TraxCombat.Missions
         /// answers false while a menu holds the keys.</summary>
         bool KeyDown(int keyIndex);
 
+        /// <summary>Step 85: the gamepad button <paramref name="controllerIndex"/> (<see cref="KeyNames.Controller"/>; 0 = None, never down) is held -
+        /// like vanilla's own game keys read a controller key: the scene's input context must allow keys (false while a menu holds them),
+        /// then the global input's key state.</summary>
+        bool ControllerKeyDown(int controllerIndex);
+
         /// <summary>The player may sprint now: a fight mode (battle, duel, tournament, stealth), the order menu closed.</summary>
         bool PlayerCanSprint();
     }
@@ -59,7 +64,9 @@ namespace TraxCombat.Missions
     /// The engine side (AI_NOTES "Step 33", RESEARCH §N). The order from step 23's <see cref="GameBraceBody.KindOf"/>; the formations
     /// from <c>Mission.Teams</c> → <c>FormationsIncludingEmpty</c> (index loops - no enumerator); motion as the regen pass reads it;
     /// "in melee" = <c>Mission.GetNearbyEnemyAgentCount</c> (native, the proximity map, no allocation); the key =
-    /// <c>Mission.InputManager.IsKeyDown(InputKey)</c>. Main thread (the logic's tick).
+    /// <c>Mission.InputManager.IsKeyDown(InputKey)</c>; step 85's gamepad button = the context's <c>IsControllerAllowed</c>, then
+    /// <c>Input.IsKeyDown(InputKey)</c> - vanilla's GameKey path (<c>InputContext.IsKeyDown</c> never reports the stick presses: its
+    /// <c>CanUse</c> list leaves ControllerLThumb / RThumb out). Main thread (the logic's tick).
     /// </summary>
     internal sealed class GameSprintBody : ISprintBody
     {
@@ -82,6 +89,22 @@ namespace TraxCombat.Missions
 
         /// <summary>The game key behind a <see cref="KeyNames"/> index (the smoke checks every name).</summary>
         internal static InputKey KeyFor(int keyIndex) => keyIndex >= 0 && keyIndex < Keys.Length ? Keys[keyIndex] : InputKey.Invalid;
+
+        /// <summary>Step 85: <see cref="KeyNames.Controller"/> as the game's keys (index 0 "None" = Invalid, never down).</summary>
+        private static readonly InputKey[] ControllerKeys = BuildControllerKeys();
+
+        private static InputKey[] BuildControllerKeys()
+        {
+            var names = KeyNames.Controller.All;
+            var keys = new InputKey[names.Length];
+            for (int i = 0; i < keys.Length; i++)
+                keys[i] = i != SprintKeys.NoController && Enum.TryParse(names[i], false, out InputKey k) ? k : InputKey.Invalid;
+            return keys;
+        }
+
+        /// <summary>Step 85: the game key behind a <see cref="KeyNames.Controller"/> index (the smoke checks every name).</summary>
+        internal static InputKey ControllerKeyFor(int controllerIndex) =>
+            controllerIndex >= 0 && controllerIndex < ControllerKeys.Length ? ControllerKeys[controllerIndex] : InputKey.Invalid;
 
         public bool IsActive(TrackedAgent st) => st.Agent.IsActive();
 
@@ -151,6 +174,15 @@ namespace TraxCombat.Missions
             if (key == InputKey.Invalid) return false;
             var input = Mission.Current?.InputManager;
             return input != null && input.IsKeyDown(key);
+        }
+
+        public bool ControllerKeyDown(int controllerIndex)
+        {
+            var key = ControllerKeyFor(controllerIndex);
+            if (key == InputKey.Invalid) return false;
+            // vanilla's GameKey.IsDown(…, isControllerAllowed) → Key.IsDown → Input.IsKeyDown; the context's own IsKeyDown answers false for
+            // the stick presses (InputContext.CanUse has no case for them), so the gate is read here and the key from the global input
+            return Mission.Current?.InputManager is InputContext context && context.IsControllerAllowed && Input.IsKeyDown(key);
         }
 
         public bool PlayerCanSprint()
