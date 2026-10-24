@@ -55,6 +55,14 @@ namespace TraxCombat.Hud
         /// outside-a-battle rule.</summary>
         public bool PlayerWeaponDrawn;
 
+        /// <summary>Step 86: the player plays on a pad right now - the game's own <c>Input.IsGamepadActive</c> (a controller connected and
+        /// the mouse not in use; the game updates it every frame in <c>Input.Update</c> and vanilla's HUD switches its key hints on it).</summary>
+        public bool GamepadActive;
+
+        /// <summary>Step 86: <c>(int)Input.ControllerType</c> (Xbox 1, DualShock 2, DualSense 4) - a change re-asks the glyph (the game's
+        /// widget picks the PlayStation picture only when its key is set).</summary>
+        public int ControllerType;
+
         /// <summary>The fight modes DESIGN §3 shows bars in: battle, duel, tournament - and stealth
         /// (a stealth mission's fights cost Athletics too; step 6's call).</summary>
         public static bool IsFightMode(int mode) =>

@@ -24,8 +24,12 @@ namespace TraxCombat.Hud
         private Color _fillColor = ReadyColor;
         private float _markOffset;
         private bool _markShown = true;
-        private string _labelText = SprintMath.LabelWord;
+        private string _secondsText = string.Empty;
         private int _labelTenths = -1;
+        private string _keyText = string.Empty;
+        private bool _keyTextShown;
+        private string _keyGlyph = string.Empty;
+        private bool _keyGlyphShown;
 
         /// <summary>The live layout: as long and thick as the Attack recovery bar, lined up with your Athletics bar's right end,
         /// SprintBarOffsetAbove over its row (UI pixels; the game's UI scale applies).</summary>
@@ -54,20 +58,87 @@ namespace TraxCombat.Hud
             if (tenths != _labelTenths)
             {
                 _labelTenths = tenths;
-                LabelText = r.LabelText;
+                SecondsText = SprintMath.SecondsText(r.Stored);
             }
         }
 
-        /// <summary>"Sprint 6.2 s".</summary>
-        [DataSourceProperty]
-        public string LabelText
+        /// <summary>Step 86: the key hint - "(Ctrl)" as text, or the game's glyph by its InputKey name ("" = none drawn: the game's widget
+        /// shows no sprite). The view calls it only when the key, the device or the switch changed.</summary>
+        internal void SetKeyHint(in SprintKeyHint hint, bool glyphNow)
         {
-            get => _labelText;
+            KeyText = hint.Kind == SprintHintKind.Text ? hint.Text : string.Empty;
+            KeyTextShown = hint.Kind == SprintHintKind.Text;
+            KeyGlyph = hint.Kind == SprintHintKind.Glyph && glyphNow ? hint.GlyphKey : string.Empty;
+            KeyGlyphShown = hint.Kind == SprintHintKind.Glyph && glyphNow;
+        }
+
+        /// <summary>"Sprint 6.2 s" - the words as before step 86 (the log and the smoke read it; built only when read).</summary>
+        internal string LabelText => WordText + " " + _secondsText;
+
+        /// <summary>The bar's word, "Sprint".</summary>
+        [DataSourceProperty]
+        public string WordText => SprintMath.LabelWord;
+
+        /// <summary>"6.2 s" - after the key hint (step 86 split the label: the word, the hint, the seconds).</summary>
+        [DataSourceProperty]
+        public string SecondsText
+        {
+            get => _secondsText;
             set
             {
-                if (value == _labelText) return;
-                _labelText = value;
-                OnPropertyChangedWithValue(value, nameof(LabelText));
+                if (value == _secondsText) return;
+                _secondsText = value;
+                OnPropertyChangedWithValue(value, nameof(SecondsText));
+            }
+        }
+
+        /// <summary>Step 86: "(Ctrl)" - the keyboard key, or the controller button's short name when its glyph cannot be drawn.</summary>
+        [DataSourceProperty]
+        public string KeyText
+        {
+            get => _keyText;
+            set
+            {
+                if (value == _keyText) return;
+                _keyText = value;
+                OnPropertyChangedWithValue(value, nameof(KeyText));
+            }
+        }
+
+        [DataSourceProperty]
+        public bool KeyTextShown
+        {
+            get => _keyTextShown;
+            set
+            {
+                if (value == _keyTextShown) return;
+                _keyTextShown = value;
+                OnPropertyChangedWithValue(value, nameof(KeyTextShown));
+            }
+        }
+
+        /// <summary>Step 86: the controller button's InputKey name for the game's InputKeyVisualWidget ("ControllerLThumb"), "" = none.</summary>
+        [DataSourceProperty]
+        public string KeyGlyph
+        {
+            get => _keyGlyph;
+            set
+            {
+                if (value == _keyGlyph) return;
+                _keyGlyph = value;
+                OnPropertyChangedWithValue(value, nameof(KeyGlyph));
+            }
+        }
+
+        [DataSourceProperty]
+        public bool KeyGlyphShown
+        {
+            get => _keyGlyphShown;
+            set
+            {
+                if (value == _keyGlyphShown) return;
+                _keyGlyphShown = value;
+                OnPropertyChangedWithValue(value, nameof(KeyGlyphShown));
             }
         }
 

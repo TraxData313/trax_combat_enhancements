@@ -1,5 +1,7 @@
+using System;
 using System.Collections.Generic;
 using System.Globalization;
+using TaleWorlds.Engine.GauntletUI;
 using TaleWorlds.Library;
 using TraxCombat.Core;
 using TraxCombat.Missions;
@@ -31,6 +33,35 @@ namespace TraxCombat.Hud
         private double _sprintingSeconds;
         private double _belowMarkSeconds;
         private bool _firstSprintLogged;
+
+        // Step 86: the key hint's inputs at its last build - rebuilt only when one of them changes (never per frame).
+        private bool _hintBuilt;
+        private bool _hintMod;
+        private bool _hintShow;
+        private bool _hintPad;
+        private int _hintPadType;
+        private int _hintKey;
+        private int _hintPadKey;
+        private SprintKeyHint _hint = SprintKeyHint.Nothing;
+        private bool _glyphPending;
+        private int _hintBuilds;
+        private bool _firstHintLogged;
+        private bool _firstPadHintLogged;
+
+        /// <summary>Step 86: does the game have this controller key's glyph sprite? The smoke swaps it (no sprite data offline); the default
+        /// asks the game's sprite data once per change (General\InputKeys\… sits in ui_group1, always loaded).</summary>
+        internal static Func<string, bool>? GlyphProbe = GameGlyphProbe;
+
+        private static bool GameGlyphProbe(string inputKeyName)
+        {
+            var data = UIResourceManager.SpriteData;
+            return data != null && data.GetSprite(SprintKeyHints.GlyphSprite(inputKeyName)) != null;
+        }
+
+        /// <summary>How many times the hint was rebuilt (the smoke checks it stays put frame to frame).</summary>
+        internal int HintBuilds => _hintBuilds;
+
+        internal SprintKeyHint CurrentHint => _hint;
 
         public SprintBarView()
             : base("sprint bar", Movie, SettingsSchema.ShowSprintBar)
@@ -72,6 +103,9 @@ namespace TraxCombat.Hud
         {
             _vm = new SprintBarVM();
             _vm.SetLayout(TraxSettings.Shared, TraxSettings.Shared.SprintMinStartPercent / 100.0);
+            _hintBuilt = false; // a new layer: the hint pushed again
+            _glyphPending = false;
+            UpdateKeyHint(in f, _vm);
             return _vm;
         }
 
@@ -91,6 +125,7 @@ namespace TraxCombat.Hud
                 return;
             }
             vm.SetReading(in r);
+            UpdateKeyHint(in f, vm);
             vm.IsShown = true;
             if (r.Active)
             {
@@ -111,6 +146,56 @@ namespace TraxCombat.Hud
                 _belowMarkSeconds += f.Dt;
             }
             _wasActive = r.Active;
+        }
+
+        /// <summary>
+        /// Step 86 - THE KEY HINT: "Sprint (Ctrl) 6.2 s" on mouse and keyboard, the game's own glyph for the controller button on a pad
+        /// (<see cref="HudFrame.GamepadActive"/> = the game's Input.IsGamepadActive). The master switch first, then SprintShowKeyHint. Its
+        /// inputs (both switches, the device, the pad's type, both keys) are compared every frame - plain reads, nothing allocated - and the
+        /// hint is rebuilt only when one changed. A glyph is pushed EMPTY first and set the next frame: the game's InputKeyVisualWidget
+        /// picks its sprite (and the PlayStation twin) only when its KeyID changes.
+        /// </summary>
+        private void UpdateKeyHint(in HudFrame f, SprintBarVM vm)
+        {
+            var s = TraxSettings.Shared;
+            bool mod = s.ModEnabled;
+            bool show = mod && s.SprintShowKeyHint;
+            int key = s.SprintKeyIndex;
+            int padKey = s.SprintControllerKeyIndex;
+            bool pad = f.GamepadActive;
+            int padType = f.ControllerType;
+            if (_hintBuilt && mod == _hintMod && show == _hintShow && pad == _hintPad && padType == _hintPadType && key == _hintKey && padKey == _hintPadKey)
+            {
+                if (_glyphPending)
+                {
+                    _glyphPending = false;
+                    vm.SetKeyHint(in _hint, true);
+                }
+                return;
+            }
+            bool wasBuilt = _hintBuilt;
+            _hintBuilt = true;
+            _hintMod = mod;
+            _hintShow = show;
+            _hintPad = pad;
+            _hintPadType = padType;
+            _hintKey = key;
+            _hintPadKey = padKey;
+            _hint = SprintKeyHints.Decide(mod, show, pad, key, padKey, GlyphProbe);
+            _hintBuilds++;
+            _glyphPending = _hint.Kind == SprintHintKind.Glyph;
+            vm.SetKeyHint(in _hint, false);
+            if (!_firstHintLogged || (pad && !_firstPadHintLogged))
+            {
+                _firstHintLogged = true;
+                if (pad) _firstPadHintLogged = true;
+                TraxLog.Limited("hud", "sprint bar: key hint " + _hint.Describe() + " at " + S1(f.Now) + " s - " + (pad ? "on a pad (the game's Input.IsGamepadActive)" : "on mouse and keyboard")
+                    + ", " + s.SprintKeysText + (show ? string.Empty : mod ? " (SprintShowKeyHint off)" : " (the mod is off)"), "hud-sprint");
+            }
+            else if (wasBuilt && TraxLog.VerboseWants("hud-sprint"))
+            {
+                TraxLog.Verbose("hud", "sprint bar: key hint now " + _hint.Describe() + (pad ? " (pad)" : " (keyboard)"), "hud-sprint");
+            }
         }
 
         protected override bool Refresh(in HudFrame f, bool first)

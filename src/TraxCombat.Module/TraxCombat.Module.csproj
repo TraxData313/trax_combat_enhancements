@@ -91,6 +91,11 @@
       <HintPath>$(GameFolder)\bin\Win64_Shipping_Client\TaleWorlds.Engine.GauntletUI.dll</HintPath>
       <Private>false</Private>
     </Reference>
+    <!-- Step 86: SpriteData.GetSprite - does the game have the controller glyph's sprite (the sprint bar's key hint)? -->
+    <Reference Include="TaleWorlds.TwoDimension">
+      <HintPath>$(GameFolder)\bin\Win64_Shipping_Client\TaleWorlds.TwoDimension.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
     <!-- WidgetFactory.IsCustomType: is our prefab known to the game (step 6)? -->
     <Reference Include="TaleWorlds.GauntletUI.PrefabSystem">
       <HintPath>$(GameFolder)\bin\Win64_Shipping_Client\TaleWorlds.GauntletUI.PrefabSystem.dll</HintPath>

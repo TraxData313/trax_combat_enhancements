@@ -11,6 +11,11 @@
     settings (RecoveryBarWidth / RecoveryBarHeight, PlayerBarOffsetRight, PlayerBarOffsetBottom + SprintBarOffsetAbove), in UI
     pixels of the 1080p layout - the game's UI scale multiplies them. A passive overlay: no widget takes mouse events. The
     offline smoke parses this file like the other bars'.
+    Step 86: the words split in three - the word (@WordText "Sprint"), the KEY HINT and the seconds (@SecondsText "6.2 s") - so the
+    hint sits right after the word: "Sprint (Ctrl) 6.2 s" on mouse and keyboard (@KeyText / @KeyTextShown, a size smaller, the label's
+    colour), the game's own controller glyph on a pad (vanilla's InputKeyVisualWidget, @KeyGlyph = the InputKey name, @KeyGlyphShown -
+    the sprite General\InputKeys\..., ui_group1, always loaded). The row is anchored right, so the bar never moves; a hidden hint takes
+    no room.
   -->
   <Window>
     <Widget Id="TraxSprint" WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" DoNotAcceptEvents="true" DoNotPassEventsToChildren="true">
@@ -19,7 +24,13 @@
         <ListPanel Id="Row" WidthSizePolicy="CoverChildren" HeightSizePolicy="CoverChildren" HorizontalAlignment="Right" VerticalAlignment="Bottom" MarginRight="@OffsetRight" MarginBottom="@OffsetBottom" StackLayout.LayoutMethod="HorizontalLeftToRight" IsVisible="@IsShown" DoNotAcceptEvents="true">
           <Children>
 
-            <TextWidget Id="Label" WidthSizePolicy="CoverChildren" HeightSizePolicy="CoverChildren" VerticalAlignment="Center" MarginRight="8" Brush="AgentHUD.Interaction.Text" Brush.FontSize="15" Brush.FontColor="#BDBDBDFF" Text="@LabelText" DoNotAcceptEvents="true" />
+            <TextWidget Id="Label" WidthSizePolicy="CoverChildren" HeightSizePolicy="CoverChildren" VerticalAlignment="Center" MarginRight="4" Brush="AgentHUD.Interaction.Text" Brush.FontSize="15" Brush.FontColor="#BDBDBDFF" Text="@WordText" DoNotAcceptEvents="true" />
+
+            <!-- step 86: the key hint - "(Ctrl)" as text, or the game's controller glyph -->
+            <TextWidget Id="KeyHint" WidthSizePolicy="CoverChildren" HeightSizePolicy="CoverChildren" VerticalAlignment="Center" MarginRight="4" Brush="AgentHUD.Interaction.Text" Brush.FontSize="13" Brush.FontColor="#BDBDBDFF" Text="@KeyText" IsVisible="@KeyTextShown" DoNotAcceptEvents="true" />
+            <InputKeyVisualWidget Id="KeyGlyph" WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="20" SuggestedHeight="20" VerticalAlignment="Center" MarginRight="4" KeyID="@KeyGlyph" IsVisible="@KeyGlyphShown" DoNotAcceptEvents="true" />
+
+            <TextWidget Id="Seconds" WidthSizePolicy="CoverChildren" HeightSizePolicy="CoverChildren" VerticalAlignment="Center" MarginRight="8" Brush="AgentHUD.Interaction.Text" Brush.FontSize="15" Brush.FontColor="#BDBDBDFF" Text="@SecondsText" DoNotAcceptEvents="true" />
 
             <!-- the bar: a thin light frame -->
             <Widget Id="Bar" WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="@BarWidth" SuggestedHeight="@BarHeight" VerticalAlignment="Center" Sprite="BlankWhiteSquare_9" Color="#C8C8C8B4" DoNotAcceptEvents="true">

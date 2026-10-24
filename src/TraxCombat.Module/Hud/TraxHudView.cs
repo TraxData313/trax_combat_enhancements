@@ -273,6 +273,8 @@ namespace TraxCombat.Hud
                 OrderMenuOpen = m.IsOrderMenuOpen,
                 PlayerWeaponDrawn = OutsideToggle != null && main != null && !HudFrame.IsFightMode((int)m.Mode) && HudFrame.HandsFull(main),
                 ShowIndicatorsKey = ReadsIndicatorKey && screen?.SceneLayer?.Input != null && screen.SceneLayer.Input.IsGameKeyDown(HudFrame.ShowIndicatorsGameKey),
+                GamepadActive = TaleWorlds.InputSystem.Input.IsGamepadActive,
+                ControllerType = (int)TaleWorlds.InputSystem.Input.ControllerType,
             };
         }
 
