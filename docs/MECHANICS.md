@@ -1402,7 +1402,7 @@ rolled by default (still reduced). A hit never drops below 1.
 
 ## 14. The sprint
 
-Hold **Left Ctrl** to sprint: a short burst of speed, on foot, in a fight or walking about a town or village (so street fights have it too). Think of it as a dodge — out of a
+Hold **Left Ctrl** - or, on a gamepad, press the **left stick** in (step 85) - to sprint: a short burst of speed, on foot, in a fight or walking about a town or village (so street fights have it too). Think of it as a dodge — out of a
 bad spot, onto a fleeing archer, round a shield wall's flank. The AI uses it too: when a formation gets a
 **new** charge or advance order, its men sprint off together, so charges hit harder and sooner.
 
@@ -1502,7 +1502,10 @@ still have most of their store and hit the enemy's back at a sprint. Men advance
 
 <sub>Settings: `SprintEnabled` on, `SprintKey` LeftControl (a key name: LeftControl, RightControl, LeftAlt,
 RightAlt, LeftShift, RightShift, CapsLock, Tab, Q, T, Y, H, J, K, L, B, N, M, C, MiddleMouseButton,
-X1MouseButton, X2MouseButton), `SprintPointsPerSecond` 20, `SprintMinSeconds` 2, `SprintMinStartPercent` 20,
+X1MouseButton, X2MouseButton), `SprintControllerKey` ControllerLThumb (step 85: a gamepad button held sprints exactly like the key, either one;
+None, ControllerLThumb, ControllerRThumb, ControllerLBumper, ControllerRBumper, ControllerLTrigger, ControllerRTrigger, ControllerRUp / RDown /
+RLeft / RRight - the face buttons Y / A / X / B -, ControllerLUp / LDown / LLeft / LRight - the d-pad; with the game's default controls the left
+stick press is also "Camera toggle": move that in the game's Controls options), `SprintPointsPerSecond` 20, `SprintMinSeconds` 2, `SprintMinStartPercent` 20,
 `SprintMaxMultiplier` 2.0, `SprintMinMultiplier` 1.1, `SprintFullSpeedSharePercent` 30,
 `SprintTopSpeedReachSeconds` 1, `SprintRefillSeconds` 7, `SprintRefillMovingFactor` 0.5,
 `SprintRefillExhaustedFactor` 0.5, `SprintAiEnabled` on, `SprintAiChargeKeepPercent` 0,
@@ -1897,7 +1900,7 @@ MCM shows **two pages** (Mod Options):
   | Tiredness (Athletics) | Athletics (stamina) on / off, Cost per swing — how fast men tire, Heroes' cost (x) |
   | How the AI fights | AI aggression when fresh / when exhausted (%), Fever on a charge or advance order, Shield walls hold their slots + a step out to strike (m), Courage and cohesion, Cavalry flocking, Line discipline: your units too |
   | Staggers and knockdowns | Staggers, shield drops, knockdowns on / off, Against you (%) |
-  | Sprinting | Sprint on / off, Sprint key |
+  | Sprinting | Sprint on / off, Sprint key, Sprint button (controller) |
   | On screen | Your Athletics bar, Hold ALT: bars on every man, On-screen lines (knocked down, shield lost) |
   | Defaults | **Revert all to defaults** — every setting of both pages |
 

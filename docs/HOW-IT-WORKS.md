@@ -329,6 +329,11 @@ Hold **Left Ctrl** for a short burst of speed on foot — a dodge out of a bad s
 a shield wall's flank. It reaches full speed in a second and fades back to your run. A tired man has a shorter
 sprint, but even an empty bar keeps a two-second dodge. While you sprint your Athletics bar does not refill.
 
+**On a gamepad**, press the **left stick** in and hold it: it sprints exactly like Left Ctrl (either one works). Any
+other button can be chosen in Mod Options (Sprinting → *Sprint button (controller)*), or None. With the game's default
+controls the left stick press also switches the camera view, so move **Camera toggle** to another button in the game's
+Controls options first (for example to the right stick press, unbinding *Lock target* there).
+
 **The AI sprints too**, once per new order: on a charge everything they have, on an advance all but half a full store,
 on a move only a little — so men moved into position still have their sprint for the real charge. A **charge** runs
 all the way **into** the enemy and its first blow lands at speed; a man with only a little sprint (a looter) keeps it

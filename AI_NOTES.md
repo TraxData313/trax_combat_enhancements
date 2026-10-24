@@ -7936,3 +7936,53 @@ originals, the switch / the master switch, an item setting re-applies (never twi
 rider / shield / hero-template left alone, a slot changed by something else left, the hero copy undone and the troop left alone). Unit tests 1202.
 Smoke 199: `TroopGearInMemory` (the real TroopGear + GameTroopKitWorld on real Equipment objects; a spawn from an edited set given nothing). Not
 checkable offline: MBObjectManager's real characters, the encyclopedia's redraw (PLAYTEST D49b).
+
+## Step 85 — sprint on a controller button (built 2026-10-24; dev build only, not uploaded)
+
+**Toni (2026-10-24)**: "When pressing left thumbstick using controller it acts like pressing the CTRL activating the sprint." PLAYTEST D50.
+
+**THE INPUT CHECK (TaleWorlds.InputSystem decompiled fresh into `%TEMP%\trax_decomp\InputSystem`, v1.4.8). VERDICT: read it like vanilla's game
+keys, NOT through the context's IsKeyDown.**
+- `InputKey`: ControllerLStick 222, RStick 223, LOptionTap 231, LStickUp/Down/Left/Right 232-235, RStick* 236-239, the d-pad ControllerLUp/LDown/LLeft/
+  LRight 240-243, the face buttons ControllerRUp (Y) / RDown (A) / RLeft (X) / RRight (B) 244-247, LBumper 248, RBumper 249, LOption 250, ROption 251,
+  **ControllerLThumb 252**, RThumb 253, LTrigger 254, RTrigger 255. `Key.GetInputType` files all of them as `InputType.Controller`.
+- THE TRAP: `InputContext.IsKeyDown(key)` (what `Mission.InputManager` is - MissionScreen sets it to `SceneLayer.Input`) first asks `CanUse(key)`, whose
+  switch has a controller case for every button EXCEPT ControllerLThumb / ControllerRThumb (and LOptionTap) - `default: return false`. So
+  `Mission.InputManager.IsKeyDown(InputKey.ControllerLThumb)` is ALWAYS false; SprintKey's path cannot read the stick press.
+- VANILLA'S PATH: a `GameKey` (CameraToggle = R / ControllerLThumb, LockTarget = MiddleMouse / ControllerRThumb - CombatHotKeyCategory ids 27 / 26) is read
+  by `InputContext.IsGameKeyDown` → `GameKey.IsDown(IsKeysAllowed, …, IsControllerAllowed)` → `IsKeyAllowed` (a controller key needs isControllerAllowed)
+  → `Key.IsDown()` → `Input.IsKeyDown(InputKey)` → the native `InputManager.IsKeyDown`. `InputContext.IsControllerAllowed => IsKeysAllowed` (false while a
+  menu / another layer holds the keys). The triggers are digital keys on this path too (Attack / Defend are bound to ControllerRTrigger / LTrigger).
+- So `GameSprintBody.ControllerKeyDown` = `Mission.Current?.InputManager is InputContext c && c.IsControllerAllowed && Input.IsKeyDown(key)` - the same
+  gate and the same read as a game key; allocation-free (a type test, a bool, a native call). EmptyInputContext (no screen) = never down.
+- What only the game can confirm: the native side reporting a held stick press as down every frame (vanilla's CameraToggle relies on its press edge;
+  hold = down is how every other controller GameKey - Attack, Defend - behaves). PLAYTEST D50.
+- Toni's `BannerlordGameKeys.xml` (read, not touched): CombatHotKeyCategory CameraToggle = R / **ControllerRThumb**, LockTarget = MiddleMouse / **None** -
+  the left stick press is free in a fight. Still bound there elsewhere: the map's MapCameraFollowMode, the scoreboard's ShowMouse, photo mode's ToggleMouse,
+  the party screen's OpenUpgradePopup, the port's ToggleCameraMovement and War Sails' ship controls **SelectShip** (NavalShipControlsHotKeyCategory) -
+  none in a foot fight except at sea: a man on a ship's deck pressing L3 while his ship controls are up may also select a ship (the sprint is on foot only;
+  harmless, noted). With the game's DEFAULT controls L3 is CameraToggle: the setting's hint, HOW-IT-WORKS and MECHANICS tell the player to move it.
+
+**The setting**: `SprintControllerKey` (Key type, player page "Sprinting", right after SprintKey), default **ControllerLThumb** (defaults.json); the
+list `KeyNames.Controller` = None (0), ControllerLThumb, ControllerRThumb, ControllerLBumper, ControllerRBumper, ControllerLTrigger, ControllerRTrigger,
+ControllerRUp, ControllerRDown, ControllerRLeft, ControllerRRight, ControllerLUp, ControllerLDown, ControllerLLeft, ControllerLRight (the stick directions
+and the option buttons left out - they move you / open menus). Typed loosely like SprintKey: "Controller" optional, L3 / R3 / LB / RB / L1 / R1 / LT /
+RT / L2 / R2, A / B / X / Y and cross / circle / square / triangle, DpadUp…, "off" = None. New key, no migration (an old config.json without it gets
+the default; the file rewrite adds it).
+
+**Code**: Core `ParamDef.cs` - `KeyList` (All, Name, TryIndex - the keyboard aliases or the controller ones, ListText) and `ParamDef.Keys` (the
+keyboard's unless given); `KeyNames.Keyboard` / `KeyNames.Controller`, the old static members = the keyboard's; every ParamType.Key site reads
+`p.Keys` (Format, DefaultAndRangeText, ConfigFile's reader, DefaultsFile's TryValue / Show / RangeText / Check / Resolve - a `KeyList? keys`
+overload, null = keyboard -, McmBridge's SetKey). `SettingsSchema.ControllerKey(...)` declares it. Core `Sprint.cs` - `SprintKeys` (NoController,
+HasController, Held = key || (chosen && pad), Text = "LeftControl or ControllerLThumb"). `TraxSettings.SprintControllerKey` / `SprintControllerKeyIndex`
+/ `SprintKeysText`. Module: `ISprintBody.ControllerKeyDown` + `GameSprintBody.ControllerKeyFor` (the list parsed once into InputKeys; None =
+Invalid); `TickPlayerSprint(…, keyIndex, controllerIndex)`: key = can && (KeyDown(key) || (HasController && ControllerKeyDown(pad))) - every gate
+(the master switch first via SprintRules.Enabled, YouDrive, PlayerCanSprint - a fight / walk mode, the order menu closed -, the horse, the 20%
+start) untouched; a press of either starts, letting go of BOTH ends, switching from one to the other mid-sprint keeps it. The `[sprint]` start /
+change / summary lines and the HUD's first sprint-bar line say `SprintKeysText`.
+
+**Tests**: Step85Tests (33 - the setting's place / list / default, the choices, 18 loose names, the two lists apart, the config file and defaults.json on
+its own list, either key (8 cases), the text, the master switch); SchemaTests / SettingsPagesTests read each key setting's own list, the player page 30
+(the range 12-30), 511 settings. Smoke 200: `SprintOnAControllerButton` - every controller name a game InputKey (ControllerLThumb = 252, None = no key),
+through the real logic with the stand-in body: the pad held sprints, pad → key keeps one sprint, both let go ends, the menu holds it, None never reads
+the pad, a live change to RB, the master switch.
