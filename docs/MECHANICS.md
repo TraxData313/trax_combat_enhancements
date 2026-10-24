@@ -1148,19 +1148,24 @@ decision 0.144):
 
 He still decides himself — the opening makes him eager, not certain. Riders keep the game's own timing.
 
-### The AI kicks and bashes (steps 65, 81)
+### The AI kicks, bashes and pushes (steps 65, 81, 88)
 
 The game's AI never kicks; now it does. Since step 81 (Toni 2026-10-22: "since they add good disturbance to the battle and also dont do
 much damage I want to try increase them") a kick or a shield bash is one of the **moves** an AI soldier makes, not an extra: each time he
 starts a melee attack (his wind-up) with the enemy he fights **within 1.6 m and in front of him** (40°), the move is rolled:
 
-| He has | Kick | Shield bash | Swing (his own attack goes on) |
+| He has | Kick | Shield bash / weapon push | Swing (his own attack goes on) |
 |---|---:|---:|---:|
-| a shield in hand | **20%** | **35%** | 45% |
-| no shield (a two-hander, a polearm, a sword alone) | **35%** | — | 65% |
+| a shield in hand | **25%** | **40%** (a shield bash) | 35% |
+| no shield (a two-hander, a polearm, a sword alone) | **35%** | **20%** (a weapon push) | 45% |
 
-A rolled kick or bash **takes the place of that swing**: his raised guard cancels the wind-up (0.4 s for a bash, 0.15 s for a kick), then
-the kick key. A shieldman whose enemy holds a **raised shield** toward him kicks instead of bashing (a raised shield stops a bash, not a
+(Step 81 shipped 20 / 35 / 45 and 35 / — / 65; step 88 - Toni 2026-10-24: "with my two handed axe guarding and pressing shield bash it pushes
+with the axe" - gave the man without a shield the WEAPON PUSH: the game's own weapon bash, his guard up and the kick key, as yours.)
+<sub>Settings (Advanced, the Impact group): `AiShieldmanKickPercent` 25 (20 until step 88), `AiShieldmanBashPercent` 40 (35 until step 88),
+`AiNoShieldKickPercent` 35, `AiNoShieldPushPercent` 20 (step 88); kick + bash / kick + push never over 100.</sub>
+
+A rolled kick, bash or push **takes the place of that swing**: his raised guard cancels the wind-up (0.4 s for a bash or a push, 0.15 s for a
+kick), then the kick key (a bash and a push with the guard held up - with no shield in his hand the game plays his weapon's bash). A shieldman whose enemy holds a **raised shield** toward him kicks instead of bashing (a raised shield stops a bash, not a
 kick). With the enemy **beyond kick reach** nothing is rolled — a spearman keeps his ground and thrusts with his spear (section 10's
 preference), and the shares start only once the enemy is close.
 
@@ -1178,12 +1183,14 @@ two-deep lines of 12 files grinding 3 minutes, every man swinging on his own rhy
 
 | | Rolled (kick / bash / swing) | Done | What took them |
 |---|---|---|---|
-| shieldmen, kept fresh | 21.0 / 33.4 / 45.6% | **17.3 / 20.8 / 61.9%** | the strike path 134 (mostly rear-rank bashes), the cooldown 17 |
+| step 88's shares, shieldmen kept fresh | 25.7 / 38.8 / 35.4% | **20.8 / 25.3 / 53.9%** | the strike path 152, the cooldown 17 |
+| step 88's shares, no shield (kick / PUSH / swing) | 36.4 / 18.4 / 45.1% | **30.7 / 12.1 / 57.2%** | the strike path 110 (pushes: 112 asked, 103 played as the game's weapon bash, 101 on an enemy, 2 on a friend) |
+| step 81's shares, shieldmen kept fresh | 21.0 / 33.4 / 45.6% | **17.3 / 20.8 / 61.9%** | the strike path 134 (mostly rear-rank bashes), the cooldown 17 |
 | no shield, kept fresh | 34.0 / — / 66.0% | **28.1 / — / 71.9%** | the strike path 56 |
 | shieldmen, tiring (no refill) | 20.8 / 36.7 / 42.5% | 4.3 / 5.3 / 90.4% | no Athletics for it 235 |
 | no shield, tiring | 34.0 / — / 66.0% | 7.8 / — / 92.2% | no Athletics for it 136 |
 
-Fresh, that is **4.3 kicks and bashes a man-minute in contact** (the 17:18 battle under the old rate: 0.39). The swing stack never refused
+With step 88's shares that is **5.6 kicks, bashes and pushes a man-minute in contact** (step 81's: 4.3; the 17:18 battle under the old rate: 0.39). The swing stack never refused
 one there: an AI man at 0 is held by it (he does not wind up), so it brakes ALL his moves together and leaves the shares alone. As his bar
 empties, the 8-point price takes them: an empty man only swings.
 
@@ -1276,6 +1283,15 @@ who threw it (Toni: "if met properly the initiator should be caught off balance"
 | a kick - a shield, guard **down** | the **kicker** | 60% | 25% | — |
 | a kick - a weapon, guard **down** | the **kicker** | 50% | 30% | — |
 | a kick - any other guard, or none | the kicked man | as "The kicked man braces" above | | |
+| a **weapon push** (step 88) - a shield, guard **up** | the **pusher** | 70% | 30% | — |
+| a weapon push - a weapon, guard **up** | the **pusher** | 45% | 15% | — |
+| a weapon push - a shield, any other guard (right too) | the blocker | 85% | 40% | 35% |
+| a weapon push - a weapon, any other guard | the blocker | 95% | 50% | — |
+| a weapon push - no guard, or mid-swing | the man | 98% | 60% | 45% (with a shield) |
+
+A weapon push (a man with no shield bashing with his weapon - step 88, Toni: "make them as the shield bash, but make shield up the correct block
+for them") is judged by the bash's rows with the same ceilings, but its correct meet is a guard held **up**, not right; its weight is the
+weapon's (a two-handed axe presses harder than a sword), its skill the weapon's. The AI reads a coming push like a bash and raises its guard up.
 
 These are ceilings - each chance rises along the same pressure as everything else. A correct meet leaves the defender standing (no knock-back);
 the **attacker's** chance follows **his own** tiredness and how outmatched his blow is against the guard (body, skill, the guard's weight -

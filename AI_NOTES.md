@@ -8089,3 +8089,90 @@ reaches them - so (a) alone would raise friend hits; (b) / (c) cut both.
 
 **DEPLOY**: `tools\deploy.ps1` ran normally: the build, the AssemblyGuard, the offline smoke (all passed - 201), installed as Modules\TraxCombatEnhancements.Dev; the
 game and the launcher were not running. `tools\SmartAppControl\loadcheck.ps1`: both DLLs LOADED (`1.3.2+0d1e9fa6…`). Not uploaded.
+
+## Step 88 — a weapon push for men without a shield + new shares (built 2026-10-24; dev build only, not uploaded)
+
+**Toni (2026-10-24)**: "with my two handed axe guarding and pressing shield bash it pushes with the axe" - give the AI man without a shield that
+push; the shares SHIELDMAN kick 25 / bash 40 / swing 35 (was 20 / 35 / 45), NO SHIELD kick 35 / push 20 / swing 45 (was 35 / 65); the meet "make
+them as the shield bash, but make shield up the correct block for them".
+
+**88.0 THE ENGINE (the decompile at `%TEMP%\trax_decomp` + the game's own ModuleData, v1.4.8)**
+- The kick vs bash decision is NATIVE: no managed code chooses. `Agent.ActionCodeType` has Kick 28 / KickContinue 29 / KickHit 30 / WeaponBash 31;
+  `Agent.GuardMode` lists ShieldBash / WeaponBash / Kick; `Mission.CreateMeleeBlow` 5503: `AttackType = attackerWeapon.IsEmpty ? Kick : Bash`.
+- What it plays is DATA: `Modules\Native\ModuleData\item_usage_sets.xml` gives every usage set a `<kick_usages>` list - `no_weapon` the leg kicks
+  (act_kick_right_leg / left_leg), `shield` act_shield_bash, `hand_shield` act_hand_shield_bash, `onehanded_shield_swing` act_1h_bash with
+  `left_hand_empty="True"` (only WITHOUT a shield), `twohanded_block_swing` / `twohanded_block_swing_thrust` act_2h_bash, `polearm_block` /
+  `twohanded_widegrip_axe` act_staff_bash; the other sets inherit (`base_set`). `action_types.xml`: act_shield_bash, act_1h_bash, act_2h_bash,
+  act_staff_bash (and their left-stance / hit variants) are ALL `actt_weapon_bash` = ActionCodeType.WeaponBash 31.
+- So the kick key with the guard up = the wielded set's kick usage: a shield's bash, else the weapon's own bash (Toni's axe push); the guard down
+  (or none) = a leg kick. An AI agent through step 16's hook with the bash's phases (DefendUp 0.4 s, then the Kick event bit with DefendUp held -
+  `AiKickMath.Frame`) is exactly what steps 65 / 81 already do for shield bashes ("PLAYED" in Toni's logs) - with no shield in his off hand the engine
+  has only the weapon's bash to play. Nothing new for step 18's `KickBashTracker`: the push is WeaponBash 31 = `KickBashKind.Bash` - charged
+  (`CostPerKickOrBash`, a stored swing) and counted like a bash. UNVERIFIED in game (PLAYTEST D53): that the injected input plays the weapon bash for
+  an AI man (the smoke's stand-in engine cannot tell; `played as the other kind` in the summary would show a leg kick instead).
+
+**88.1 THE SHARES (Core `AiKicks.cs`)**: `AiKickKind.Push` (appended - `AiKickMath.KindCount` 4; every stats array `[KindCount, ...]`); `AiKickRules`
+gains `noShieldPushPercent` (an optional last constructor parameter - old callers = 0), `NoShieldPush`, `NoShieldSharesCut` (kick + push over 100 =
+the push cut to 100 − kick, like the shieldman's bash), `SwingShare(false)` = 1 − kick − push, `Enabled` / `OffBecause` with the push. `Roll`: no shield
+u < kick = Kick, < kick + push = Push, else a swing; push 0 = step 81 exactly. `GuardUp(kind)` (Bash or Push) drives `Frame` (the guard held through the
+press), `PhaseEnd` (the 0.4 s lead), `PathHalfWidth` (the bash's `AiBashPathHalfWidthMetres`); `Shown(kind)` (what step 18 sees - a push = Bash),
+`PluralName`, `KindName` "weapon push". New setting `AiNoShieldPushPercent` 20 (Int 0-100, Advanced, the Impact group after `AiNoShieldKickPercent`,
+live; 512 → 513). defaults.json: `AiShieldmanKickPercent` 20 → **25**, `AiShieldmanBashPercent` 35 → **40**. **Config format 20**
+(`ConfigFile.Migrate`, `from == 19` - the keys exist since 19): `MoveOrKeepIfMoved` for both, a tuned value kept and said; the push key is new (a
+missing key takes the default). The older format tests → 20 (mechanical "→ 19" → "→ 20").
+
+**88.2 THE MODULE (`AthleticsLogic.AiKicks.cs`)**: `DecideAiMove` unchanged in shape - the roll gives Push for a no-shield man; the refusals as a bash's;
+step 81's raised-shield swap stays a BASH's only (a push's correct meet is up - no swap rule asked for). `AdvanceAiKicks`: the press re-read for
+`GuardUp` kinds (a push's path read again after its guard); `PlayedOtherKind` = shown ≠ `Shown(kind)`. `BeginAiKick`: `MeetReadStart(..., bash: GuardUp,
+push)`; the first-time lines 12-15 (a push's refusal by a friend, its friend hit, its end after the guard, the first push asked - "(no shield: the
+engine plays his weapon's bash - step 88)").
+
+**88.3 THE MEET (Core `ImpactMeet.cs`, `Impact.cs`; Module `ImpactInputs.cs`, `AthleticsLogic.ImpactMeet.cs`)**
+- Five rows APPENDED to `ImpactMeet` (MeetCount 9 → 14 - old indices kept): `PushShieldUp`, `PushWeaponUp` (the CORRECT meet - a raised shield or a
+  weapon guarding UP; `AttackerAtRisk`), `PushShieldWrong`, `PushWeaponWrong`, `PushOpen`. `Classify(bash, blocked, kind, dir, push)`: a push the shield
+  stopped = a shield meet (up correct, else wrong); a shield / weapon guard up = correct; any other direction = wrong; none / mid-swing = open. The old
+  4-argument `Classify` = push false.
+- THE CEILINGS (Claude's call): SHARED with the bash rows - `ImpactMeetMath.CeilingRow` maps each push row to its bash row (up ↔ right) and `Row` reads
+  through it: the pusher 70 / 30 (shield up), 45 / 15 (weapon up); the defender 85 / 40 / drop 35, 95 / 50, 98 / 60 / 45 - Toni's numbers ARE the bash's,
+  so ten new settings would only be ten ways to drift apart; the rows stay separate so the summary counts pushes apart. If Toni wants pushes tuned on
+  their own later, ten `MeetPush*` keys defaulting to the bash values drop into `Row` without touching anything else.
+- THE AI READ: `GuardFlag(bash, push)` = DefendUp against a push; `TrackedAgent.MeetReadPush`; `MeetReadStart(..., push)` (the 4-argument overload =
+  push false - the step-82 smoke's calls); `MeetKickSeen` (your bash seen by the poll): no shield in your off hand (`IAiKickBody.Hands`) = a push.
+- THE IMPACT: `ImpactFacts.Push`; `GameImpactInputs.Fill`'s bash path: push = the collision slot's item is not a shield (no slot: no shield in his off
+  hand); the weight = the slot's item (it already was - for a push that is the weapon), the skill = the weapon's relevant skill (a shield bash keeps
+  one-handed), `TwoHanded` from the usage. `FillMeet` passes `f.Push`; the decision (`DecideMeet`) needs nothing else - a push row's ceilings come
+  through `Row`. The player's own push: the same collision, the same facts.
+- `_meetFirst` 24 → 48 and its indices moved apart (the reads 1-3, the first meet per row 16 + row, its first outcome 30 + row): step 82 shared index 1
+  between "the first READ" and "the first meet bash - shield, guard right" (a quiet pre-existing collision - one of the two first-time lines could be
+  swallowed).
+
+**88.4 THE SUMMARY**: the asked line `(kicks a, bashes b, pushes p)`; the man-type line sums all kinds; the shares line - no shield `rolled kick / push /
+swing (target ...) → DONE kick / push / swing`, `kicks K, bashes B and pushes P asked`; step 80's line `| pushes: on an ENEMY ...` and the path verdicts
+per kind (`pushes clear ...`), "a bash's / push's path again after its guard"; step 87's line `pushes n` per case; the meets line `impact meets (step 82 /
+88) - each kick / bash / push ...` with a `PUSHES (step 88 - the bash's ceilings, a guard UP the correct meet):` row group.
+
+**Measured offline**: tests 1279 → 1287 (Step88Tests 8: the push share placed / live / shipped and the shipped 25 / 40 / 35, the master switch first;
+the cut over 100; the roll's boundaries and 100 000 seeded rolls 25 / 40 / 35 and 35 / 20 / 45 within ±0.5 (push 0 = 35 / 65); a push's frame / lead /
+path / tracker kind; format 20 move / keep / untouched; the push's correct meet = a guard up and every other row, the read's UP flag; the push rows =
+the bash's ceilings, a decision equal to the bash's on the shared row, the weapon's weight raising x; the summary text). Step81Tests pin the push 0
+(step 81's rules) and read the new shipped values; Step65 / 80 / 82 / 87 / Impact / SettingsPages / Sprint tests follow the texts and counts. Smoke 201
+→ 204 (Program.Step88.cs): THE CODES (WeaponBash 31, DefendUp, the game's action_types.xml / item_usage_sets.xml read from the game folder); A PUSH IN A
+GRIND (step 80's two lines, the shipped shares, the stack on, 3 minutes): shieldmen 917 moves rolled 25.7 / 38.8 / 35.4 % → done 20.8 / 25.3 / 53.9 %,
+no shield 922 rolled 36.4 / 18.4 / 45.1 % → done 30.7 / 12.1 / 57.2 %, 5.63 asked a man-minute; pushes 112 asked → 103 played (WeaponBash, 0 as the other
+kind) → 101 on an enemy, 2 on a friend; 0 at an empty stack; THE PUSH'S MEET through the real seams (a spent pusher into a shield guarding up staggered
+70 % from the tick; into a shield guarding right the exhausted blocker 85 %; a weapon guard up with the brace off held; a shield BASH into a guard up =
+the bash's wrong row; a read push raises the guard UP and meets it). The step-81 cost check now runs the shipped shares: 1000 men, 0.006 ms a tick,
+0 bytes, 304 of 1341 asks pushes. `AiKickDefaults` pins step 81's shares (20 / 35, push 0) for the older smokes; `Step88Shares` sets the shipped ones.
+
+**Gotchas**
+- The smoke's defaults are the EMBEDDED defaults.json (25 / 40 / 20), the tests' are DESIGN's initial values (20 / 35 / 20) - the step-81 tests had to
+  pin push 0 themselves, the smoke's older steps through `AiKickDefaults`.
+- The step-82 smoke's `FakeMeetBody` mapped a read guard's flag to Right / Down only - Up added.
+- Mixed line endings: CLAUDE.md and TASKS_TODO.md edited as bytes, single-line anchors only; a long Bash heredoc broke again (step 82's gotcha) -
+  this section went through the Write tool.
+
+**UNVERIFIED — only the game can tell (PLAYTEST D53)**
+1. The AI's injected guard-up + kick key plays the WEAPON bash for a man with no shield (`pushes ... PLAYED` near asked, `played as the other kind` small).
+2. How it looks - a shove with the haft taking the place of a swing.
+3. The guard-up meets happen: the PUSHES rows' "guard up" counts above 0 (does the AI ever hold a shield or weapon UP when a push lands, beyond our read?).
+4. A one-hander without a shield: act_1h_bash needs the left hand EMPTY - a man holding something else in the off hand would kick instead.

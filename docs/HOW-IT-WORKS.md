@@ -267,10 +267,11 @@ knockdown or stagger decided for that blow now plays anyway, the moment it lands
 start, the man is put on the ground a fifth of a second later. A friend's blow — a man in the second rank swinging
 into his own front man — never knocks anyone down.
 
-**Kicks and shield bashes.** The AI now kicks and shield-bashes — they shove, disturb and break up a fight more than
+**Kicks, shield bashes and weapon pushes.** The AI now kicks and shield-bashes — they shove, disturb and break up a fight more than
 they hurt. Once his enemy is close enough to kick, an AI soldier picks each move he makes: a man with a shield kicks about
-one move in five, bashes about one in three and swings the rest; a man without one kicks about one move in three — shock
-troops with big two-handers throw people around. A kick or a bash is one of his moves, never an extra, and it uses one of
+one move in four, bashes about two in five and swings the rest; a man without one kicks about one move in three and shoves
+with his weapon (guard up, then the kick key - the push you get yourself with a two-hander) about one in five — shock
+troops with big two-handers throw people around. A kick, a bash or a push is one of his moves, never an extra, and it uses one of
 his stored swings. A spearman keeps his enemy at the spear's length and thrusts; only when the enemy gets close does he
 kick and bash too. They are not free: a kick or a bash costs 8 Athletics points (a swing 10), so a man who has run dry
 only swings — and so do you if you kick a lot. And a kick is no longer a free push: a fresh, well-armoured veteran **braces** and barely moves — a looter's kick staggers a fresh legionary for a moment
@@ -281,7 +282,7 @@ from his enemy, or with a mate stepping across, swings instead.
 
 
 **Meet a kick or a bash the right way.** A shield bash comes at you from the basher's left hand - at your **right** side; a kick comes **low**.
-Guard to the right against a bash, or down against a kick, and you take it standing - and the man who threw it is caught off balance: the more
+Guard to the right against a bash, down against a kick, or up against a weapon push, and you take it standing - and the man who threw it is caught off balance: the more
 tired he is, the likelier he reels or goes down. Guard the wrong way, or get caught mid-swing, and you are the one thrown about - especially when
 you are tired. The AI reads a coming kick or bash about as well as it blocks a swing (a fresh veteran often, a tired one or a recruit seldom) and
 raises the right guard; so do you, with your own guard.

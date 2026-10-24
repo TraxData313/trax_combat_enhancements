@@ -1619,7 +1619,7 @@ row goes to the Advanced page unless a player needs it to set up his game (CLAUD
 | `AiShieldmanKickPercent` | 20 | Step 81 (decision 77): of the melee moves an AI man WITH a shield makes with the enemy in kick reach in front of him, this share are KICKS (`AiKickMath.Roll`: the die below it). With `AiShieldmanBashPercent` never over 100 - set over, the bash share is cut to 100 − this (`AiKickRules.ShieldSharesCut`, said in the describe line). Range 0-100. Live. |
 | `AiShieldmanBashPercent` | 35 | Step 81 (decision 77): of those moves of an AI man WITH a shield, this share are SHIELD BASHES (the die from the kick share to kick + bash); he swings the rest (45 by default). A rolled bash into a raised shield facing him is a kick (`AiKickKicksARaisedShield`). Range 0-100. Live. |
 | `AiNoShieldKickPercent` | 35 | Step 81 (decision 77): of the melee moves an AI man WITHOUT a shield makes with the enemy in kick reach in front of him, this share are KICKS; he swings the rest (Toni: "this will make shockers throw people around more"). Range 0-100. Live. |
-| `AiNoShieldPushPercent` | 20 | Step 88 (Toni 2026-10-24: "with my two handed axe guarding and pressing shield bash it pushes with the axe"): of those moves of an AI man WITHOUT a shield, this share are WEAPON PUSHES - the bash's phases (the guard up 0.4 s, then the kick key with it held) and the engine plays his weapon's own bash (the die from the kick share to kick + push); he swings the rest. With `AiNoShieldKickPercent` never over 100 - set over, the push share is cut to 100 − the kick (`AiKickRules.NoShieldSharesCut`). Spends a stored swing and costs `CostPerKickOrBash` like a bash; its strike path a bash's (`AiBashPathHalfWidthMetres`); its meet the bash rows with a guard UP the correct one (step 82's ceilings shared). Shipped with the shieldman's 25 / 40 (config format 20). Range 0-100. Live. |
+| `AiNoShieldPushPercent` | 20 | Step 88 (decision 81, Toni 2026-10-24: "with my two handed axe guarding and pressing shield bash it pushes with the axe"): of those moves of an AI man WITHOUT a shield, this share are WEAPON PUSHES - the bash's phases (the guard up 0.4 s, then the kick key with it held) and the engine plays his weapon's own bash (the die from the kick share to kick + push); he swings the rest. With `AiNoShieldKickPercent` never over 100 - set over, the push share is cut to 100 − the kick (`AiKickRules.NoShieldSharesCut`). Spends a stored swing and costs `CostPerKickOrBash` like a bash; its strike path a bash's (`AiBashPathHalfWidthMetres`); its meet the bash rows with a guard UP the correct one (step 82's ceilings shared). Shipped with the shieldman's 25 / 40 (config format 20). Range 0-100. Live. |
 | `AiKickReachMetres` | 1.6 | Step 65: the enemy he fights within this many metres (a kick reaches about a pace; RBM 1.4). Range 0.5-4. Live. |
 | `AiKickFacingDegrees` | 40 | Step 65: the enemy within this many degrees of his facing (step 62's angle). Range 0-180. Live. |
 | `AiKickCooldownSeconds` | 10.0 | Step 65: at least this long between two attempts of one man (from the ask). Range 0-60. Live. Step 66: 8 in defaults.json (config format 13 moves a file's 10 once); after a KICK only - a bash has `AiBashCooldownSeconds`. Step 81: THE minimum between two kicks OR bashes of one man (from the ask) - step 66's separate `AiBashCooldownSeconds` retired; 2 in defaults.json (config format 19 moves a format 13-18 file's 8 once) - a safety, not the frequency (the shares are). |
@@ -3225,6 +3225,31 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     LOGGED: `[units] troop gear (step 84b, why): N tier-1 troops, M battle sets edited IN MEMORY (nothing saved) - ...; skipped: ...; by culture:
     ...` at each apply, `[units] troop gear (step 84b): restored ...` at each restore, the hero line. No new setting; `GiveTier1Shields`' hint says
     it (PLAYTEST D49b).
+81. **A weapon push for men without a shield + new shares** (step 88, Toni 2026-10-24: "with my two handed axe guarding and pressing shield
+    bash it pushes with the axe"; the shares "shieldman kick 25 / bash 40 / swing 35, no shield kick 35 / push 20 / swing 45"; the meet "make them
+    as the shield bash, but make shield up the correct block for them"). (a) THE ENGINE (verified in the game's own data, v1.4.8): the kick key with
+    the guard up plays the wielded item usage set's KICK USAGE (`Native/ModuleData/item_usage_sets.xml` `<kick_usages>`): the shield's
+    `act_shield_bash`, a one-hander's `act_1h_bash` only with the left hand empty (`left_hand_empty="True"` - no shield), a two-hander's
+    `act_2h_bash`, a polearm's `act_staff_bash`; the empty hand's is the leg kick. All four bashes are `actt_weapon_bash` (`action_types.xml`) = the
+    engine's `ActionCodeType.WeaponBash` 31 - one action type for a shield bash and a weapon push; `Mission.CreateMeleeBlow` makes either an
+    `AgentAttackType.Bash` (a weapon in the collision's slot). The decision itself is native (no managed code picks kick vs bash), so the AI is
+    driven exactly like step 65 / 81's bash: the guard (DefendUp) 0.4 s, then the Kick event bit with the guard held - with no shield in his off
+    hand the engine has only the weapon's kick usage to play. UNVERIFIED in game: that the AI's injected input plays it (PLAYTEST D53). (b) THE
+    ROLL: `AiKickKind.Push` - a man without a shield, u below the kick share = a kick, below kick + `AiNoShieldPushPercent` **20** = a PUSH, else a
+    swing; kick + push never over 100 (the push cut - `NoShieldSharesCut`); push 0 = step 81 exactly. A push uses the bash's phases
+    (`AiKickMath.GuardUp`), the bash's strike-path half-width `AiBashPathHalfWidthMetres` and its re-read after the guard; it spends a stored swing
+    and costs `CostPerKickOrBash` through step 18's tracker (WeaponBash = a bash - nothing new to recognise); the cooldown and the refusals as a
+    bash's. Step 81's raised-shield swap stays a bash's only. (c) THE SHARES: shieldman `AiShieldmanKickPercent` 20 → **25**, `AiShieldmanBashPercent`
+    35 → **40** (swing 35); no shield kick 35 kept, push 20, swing 45; config format 20 moves a format-19 file's untouched 20 / 35 (a tuned value kept
+    and said). (d) THE MEET (Core `ImpactMeetMath.Classify(..., push)`): five push rows appended - `PushShieldUp` / `PushWeaponUp` (the CORRECT meet:
+    a raised shield or a weapon guarding UP - the PUSHER at risk on the bash-right ceilings 70 / 30 and 45 / 15), `PushShieldWrong` (85 / 40 / drop 35),
+    `PushWeaponWrong` (95 / 50), `PushOpen` (98 / 60 / 45); a push the shield stopped = a shield meet (up correct, else wrong). Claude's call: the
+    bash's ceilings shared (`ImpactMeetMath.CeilingRow`) rather than ten new settings - Toni's numbers are the bash's exactly; the rows are separate
+    so the summary counts pushes apart. The AI's read raises DefendUp against a push (`GuardFlag(bash, push)`; the player's bash with no shield in his
+    off hand is read as a push too). (e) THE IMPACT: `ImpactFacts.Push` = the collision's item is not a shield (no slot: no shield in his off hand);
+    the blow's impact from the weapon's weight (the bash path's `WeaponWeight` = the slot's item) and the weapon's own skill (not one-handed); the
+    player's own push decided the same way (the collision tells). (f) MEASURED: the [summary] "ai kicks" lines count pushes apart (asked, the shares
+    rolled / done per man type, whom they hit, the strike path, who blocks it); the "impact meets" line gains a PUSHES row group.
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),
 `HudRefreshSeconds`, `FormationStatsRefreshSeconds` came out of step 2's research
