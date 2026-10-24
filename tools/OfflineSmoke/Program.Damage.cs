@@ -51,6 +51,8 @@ namespace TraxCombat.Tools
             S.Set(SettingsSchema.VerboseLogging, false, SettingSources.File);
             // Step 25 has its own step (DamageReductionThroughDecorator): the older checks see the roll alone, to the bit.
             S.Set(SettingsSchema.DamageReductionPercent, 0, SettingSources.File);
+            // Step 89 has its own step (TiredMenHitSofterThroughTheDecorator): the older checks see the roll (and step 25) alone.
+            S.Set(SettingsSchema.TiredDamageAtEmptyPercent, 100, SettingSources.File);
         }
 
         private static void DamageRollsThroughDecorator()
