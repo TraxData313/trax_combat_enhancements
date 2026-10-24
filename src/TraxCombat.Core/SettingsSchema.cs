@@ -88,6 +88,12 @@ namespace TraxCombat.Core
             "Damage reduction (%)",
             "Every hit deals this much less damage, after the random roll - on people, horses and shields alike, from any weapon, arrow, kick or horse charge, and whether the roll is on or off. 25: an average 100-damage hit lands for 75, so it takes about a third more hits to bring a man down. A hit never drops below 1. Falls and hits on doors and siege engines keep the game's damage. 0 = the game's damage.");
 
+        // Step 89 (Toni 2026-10-24: "as the units get more tired their damage output to decrease further"): a damage multiplier by the
+        // attacker's f, after the roll, before the reduction - TiredDamage. 100 = off.
+        public static readonly ParamDef TiredDamageAtEmptyPercent = Int("TiredDamageAtEmptyPercent", 0, 100, PlayerDamageGroup,
+            "Tired men's damage at an empty bar (%)",
+            "How hard a tired man still hits. Above his peak line (the white mark on his Athletics bar) he hits as hard as ever; below it his damage falls in a straight line, down to this share of it when his bar is empty. 60: a man halfway down hits at 80%, an empty one at 60% - on top of the random roll and the damage reduction. A man charging into the enemy (sprinting, or his first blow after a sprint) hits at full strength however tired he is. 100 = tiredness only takes away the lucky top of the roll. Needs Athletics on (this page, Tiredness).");
+
         public static readonly ParamDef AthleticsEnabled = Bool("AthleticsEnabled", PlayerTiredGroup,
             "Athletics (stamina)",
             "On: every fighter has an Athletics bar - his stamina, as big as his Athletics skill - that his attacks and blocks drain and rest refills. At or above the peak line (the white mark) he fights at full strength; below it the top of his damage roll, his attack speed and his run speed fall - down to long pauses between attacks and a slow run when it is empty - and tired AI fighters step back. Off: no Athletics at all - no costs, no slowing, no step backs, no bars (and no sprint, aggression by tiredness or staggers).");
@@ -2367,7 +2373,7 @@ namespace TraxCombat.Core
         {
             ModEnabled,
             // the player page's six groups (step 59)
-            DamageRandomPercent, DamageReductionPercent,
+            DamageRandomPercent, DamageReductionPercent, TiredDamageAtEmptyPercent,
             AthleticsEnabled, CostPerBlow, HeroCostMultiplier,
             AiAggressionFreshPercent, AiAggressionExhaustedPercent, FeverEnabled, ShieldWallHoldsSlots, ShieldWallStepOutMetres, ShieldWallStandFirm, SpearPreferenceEnabled, PressDontPass, RotationEnabled, RestEnabled, WarCriesEnabled, CourageEnabled, CavalryFlockEnabled, LineDisciplineForPlayer,
             ImpactEnabled, ImpactOnPlayerPercent, ImpactMeetRulesEnabled,

@@ -107,8 +107,11 @@ namespace TraxCombat.Core
     public readonly struct DamageRules
     {
         public DamageRules(bool enabled, int percent, bool melee, bool ranged, bool onMounts, bool onShields, bool modEnabled = true,
-            bool upsideFollowsAthletics = false, int reductionPercent = 0, bool sprintFullCritical = false)
+            bool upsideFollowsAthletics = false, int reductionPercent = 0, bool sprintFullCritical = false,
+            int tiredAtEmptyPercent = 100, bool athleticsEnabled = true)
         {
+            TiredAtEmptyPercent = tiredAtEmptyPercent;
+            AthleticsEnabled = athleticsEnabled;
             SprintFullCritical = sprintFullCritical;
             Enabled = enabled;
             Percent = percent;
@@ -124,6 +127,13 @@ namespace TraxCombat.Core
         /// <summary>DamageReductionPercent (step 25): every hit on a person or a horse is reduced by
         /// this %, AFTER the roll - whether or not it rolled (see <see cref="DamageReduction"/>).</summary>
         public int ReductionPercent { get; }
+
+        /// <summary>Step 89, TiredDamageAtEmptyPercent: a tired attacker's damage is multiplied by E + (1 − E) × f, E = this % / 100,
+        /// AFTER the roll and BEFORE the reduction - see <see cref="TiredDamage"/>. 100 = off (the roll's upside alone, as before step 89).</summary>
+        public int TiredAtEmptyPercent { get; }
+
+        /// <summary>AthleticsEnabled - step 89's multiplier is an Athletics effect: off = no multiplier.</summary>
+        public bool AthleticsEnabled { get; }
 
         /// <summary>DamageBonusFollowsAthletics (DESIGN §2): the upside of the roll shrinks with the
         /// attacker's f - see <see cref="DamageRoll.Upside"/>.</summary>
@@ -153,7 +163,8 @@ namespace TraxCombat.Core
         /// <summary>The live values, read now.</summary>
         public static DamageRules From(TraxSettings s) => new DamageRules(
             s.DamageRandomEnabled, s.DamageRandomPercent, s.DamageRandomMelee, s.DamageRandomRanged,
-            s.DamageRandomOnMounts, s.DamageRandomOnShields, s.ModEnabled, s.DamageBonusFollowsAthletics, s.DamageReductionPercent, s.SprintFullCritical);
+            s.DamageRandomOnMounts, s.DamageRandomOnShields, s.ModEnabled, s.DamageBonusFollowsAthletics, s.DamageReductionPercent, s.SprintFullCritical,
+            s.TiredDamageAtEmptyPercent, s.AthleticsEnabled);
     }
 
     /// <summary>One roll: the game's value, ours, and the dice.</summary>

@@ -60,6 +60,19 @@ namespace TraxCombat.Core
         private int _reduceMaxPercent;
         private readonly int[] _reduceSkips = new int[ReductionReasonCount];
 
+        // Step 89: tired men hit softer - hits multiplied by the attacker's f band (0-3 = AthleticsMath.PeakBin): count, sum of m, the landed
+        // damage (rounded, after the reduction); the charging hits exempted; skips by reason; the setting's percents used.
+        private static readonly int TiredReasonCount = Enum.GetValues(typeof(TiredSkipReason)).Length;
+        private readonly int[] _tiredCount = new int[AthleticsMath.PeakBins];
+        private readonly double[] _tiredMSum = new double[AthleticsMath.PeakBins];
+        private readonly long[] _tiredLanded = new long[AthleticsMath.PeakBins];
+        private int _tiredCharge;
+        private long _tiredChargeLanded;
+        private readonly int[] _tiredSkips = new int[TiredReasonCount];
+        private int _tiredMinPercent;
+        private int _tiredMaxPercent;
+        private int _tiredAll;
+
         public DamageStats()
         {
             _categories = new Bucket[CategoryCount];
@@ -131,8 +144,131 @@ namespace TraxCombat.Core
                 _reduceGame = _reduceBefore = _reduceAfter = 0;
                 _reduceMinPercent = _reduceMaxPercent = 0;
                 Array.Clear(_reduceSkips, 0, _reduceSkips.Length);
+                Array.Clear(_tiredCount, 0, _tiredCount.Length);
+                Array.Clear(_tiredMSum, 0, _tiredMSum.Length);
+                Array.Clear(_tiredLanded, 0, _tiredLanded.Length);
+                Array.Clear(_tiredSkips, 0, _tiredSkips.Length);
+                _tiredCharge = _tiredAll = _tiredMinPercent = _tiredMaxPercent = 0;
+                _tiredChargeLanded = 0;
             }
         }
+
+        /// <summary>Step 89: one hit the tired-damage multiplier applied to (m may be 1 at the peak), by the attacker's f; <paramref name="landed"/>
+        /// = what finally landed (after the reduction), <paramref name="percent"/> = TiredDamageAtEmptyPercent in force.</summary>
+        public void AddTired(double attackerPeakShare, double multiplier, float landed, int percent)
+        {
+            int bin = AthleticsMath.PeakBin(attackerPeakShare);
+            int shown = DamageRoll.GameRound(landed);
+            lock (_gate)
+            {
+                bool first = _tiredAll == 0;
+                _tiredAll++;
+                _tiredCount[bin]++;
+                _tiredMSum[bin] += multiplier;
+                _tiredLanded[bin] += shown;
+                if (first || percent < _tiredMinPercent) _tiredMinPercent = percent;
+                if (first || percent > _tiredMaxPercent) _tiredMaxPercent = percent;
+            }
+        }
+
+        /// <summary>Step 89: a CHARGING attacker's hit - exempt, counted as fresh (m 1).</summary>
+        public void AddTiredCharge(float landed)
+        {
+            int shown = DamageRoll.GameRound(landed);
+            lock (_gate)
+            {
+                _tiredCharge++;
+                _tiredChargeLanded += shown;
+            }
+        }
+
+        /// <summary>Step 89: a hit the multiplier left alone, by reason.</summary>
+        public void AddTiredSkip(TiredSkipReason reason)
+        {
+            if (reason == TiredSkipReason.None) return;
+            lock (_gate) _tiredSkips[(int)reason]++;
+        }
+
+        /// <summary>Step 89: hits multiplied in one f band (0 peak, 1 f 0.5-1, 2 below 0.5, 3 empty), their mean m and mean landed damage.</summary>
+        public int TiredCount(int bin, out double meanMultiplier, out double meanLanded)
+        {
+            lock (_gate)
+            {
+                int n = _tiredCount[bin];
+                meanMultiplier = n > 0 ? _tiredMSum[bin] / n : double.NaN;
+                meanLanded = n > 0 ? (double)_tiredLanded[bin] / n : double.NaN;
+                return n;
+            }
+        }
+
+        /// <summary>Step 89: the charging hits exempted.</summary>
+        public int TiredCharges
+        {
+            get { lock (_gate) return _tiredCharge; }
+        }
+
+        public int TiredSkips(TiredSkipReason reason)
+        {
+            lock (_gate) return _tiredSkips[(int)reason];
+        }
+
+        /// <summary>Step 89's [summary] line (inside the lock).</summary>
+        private string TiredLine()
+        {
+            var c = CultureInfo.InvariantCulture;
+            var sb = new StringBuilder("damage by tiredness (step 89 - TiredDamageAtEmptyPercent");
+            if (_tiredAll == 0 && _tiredCharge == 0)
+            {
+                sb.Append("): no hit multiplied this mission");
+            }
+            else
+            {
+                if (_tiredAll > 0)
+                    sb.Append(' ').Append(_tiredMinPercent == _tiredMaxPercent
+                        ? _tiredMinPercent.ToString(c) + "%"
+                        : _tiredMinPercent.ToString(c) + "-" + _tiredMaxPercent.ToString(c) + "% (changed mid-battle)");
+                sb.Append(": the attacker's damage x E + (1 - E) x f after the roll, before the reduction):");
+                bool first = true;
+                for (int b = 0; b < AthleticsMath.PeakBins; b++)
+                {
+                    int n = _tiredCount[b];
+                    if (n == 0) continue;
+                    sb.Append(first ? " " : " | ");
+                    first = false;
+                    sb.Append(AthleticsMath.PeakBinName(b)).Append(' ').Append(n).Append(" hits avg x").Append(F3(_tiredMSum[b] / n))
+                      .Append(", landed avg ").Append(F1((double)_tiredLanded[b] / n));
+                }
+                if (first) sb.Append(" none");
+                sb.Append("; charging hits exempt (counted fresh, x1) ").Append(_tiredCharge);
+                if (_tiredCharge > 0) sb.Append(", landed avg ").Append(F1((double)_tiredChargeLanded / _tiredCharge));
+            }
+            sb.Append("; not multiplied:");
+            bool any = false;
+            for (int r = 1; r < _tiredSkips.Length; r++)
+            {
+                if (_tiredSkips[r] == 0) continue;
+                sb.Append(any ? ", " : " ");
+                any = true;
+                sb.Append(TiredSkipName((TiredSkipReason)r)).Append(' ').Append(_tiredSkips[r]);
+            }
+            if (!any) sb.Append(" 0 hits");
+            return sb.ToString();
+        }
+
+        /// <summary>Plain words for a tired-damage skip (step 89), naming the setting when one caused it.</summary>
+        public static string TiredSkipName(TiredSkipReason r) => r switch
+        {
+            TiredSkipReason.NotAnAgent => "objects (doors, siege engines, ships)",
+            TiredSkipReason.NoVictim => "no victim",
+            TiredSkipReason.FallDamage => "fall damage",
+            TiredSkipReason.ShieldBlock => "shield blocks",
+            TiredSkipReason.ZeroDamage => "0-damage hits",
+            TiredSkipReason.ModOff => "mod OFF (ModEnabled)",
+            TiredSkipReason.AthleticsOff => "Athletics off (AthleticsEnabled)",
+            TiredSkipReason.SettingOff => "off (TiredDamageAtEmptyPercent 100)",
+            TiredSkipReason.NoPool => "attacker not tracked (no pool)",
+            _ => r.ToString(),
+        };
 
         /// <summary>Step 25: one hit the overall reduction lowered.</summary>
         public void AddReduction(DamageCategory category, in ReductionOutcome r)
@@ -494,6 +630,7 @@ namespace TraxCombat.Core
                     lines.Add("damage avg per hit: rolled (mod ON) " + F1((double)total.After / total.Count) + " (the game's "
                         + F1((double)total.Before / total.Count) + " before the roll) | mod OFF " + F1((double)vanillaDamage / vanilla));
 
+                lines.Add(TiredLine()); // step 89
                 lines.Add(ReductionLine());
 
                 int skipped = 0;

@@ -25,6 +25,8 @@ A 50-damage hit lands for anything from 25 to 75, rolled anew on every hit.
   decided before damage and is unaffected.
 - A tired attacker loses the lucky side of the roll (§2, `DamageBonusFollowsAthletics`): his
   range is `[1 − p, 1 + p × f]`, f = his share of the peak line left.
+- A tired attacker also hits SOFTER (step 89, §2, `TiredDamageAtEmptyPercent`): after the roll his damage is multiplied
+  by m = E + (1 − E) × f - 1 at the peak line, E (60 %) when empty; a charging man's melee blow counts fresh.
 
 ### Overall damage reduction (step 25)
 
@@ -33,7 +35,7 @@ swing on average -> 75 dmg. This will further slow down the combat."
 
 - Every hit that lands on a person or a horse — melee, arrows, bolts, thrown weapons, siege-engine shots, kicks,
   shield bashes, horse-charge bumps, friendly fire — deals `DamageReductionPercent` (25) % less, AFTER the roll:
-  the game's models (armor included) → the ±p roll → × (1 − r/100) → the game rounds. A 100 hit rolls 50–150 and
+  the game's models (armor included) → the ±p roll → step 89's tired multiplier → × (1 − r/100) → the game rounds. A 100 hit rolls 50–150 and
   lands 38–113, 75 on average.
 - Shield blocks are reduced too (the shield wears down a quarter slower), whatever `DamageRandomOnShields` says.
 - It does NOT follow the roll's switches: with `DamageRandomEnabled` off, or a hit the roll's toggles skip, the
@@ -149,6 +151,15 @@ regen.)
     `[1 − p, 1 + p × f]` with f from the ATTACKER (the rider's for a horse charge; an attacker
     Athletics does not follow keeps the full upside). In the peak zone +50%; halfway down to
     0, +25%; at 0 no upside at all — only the −50% side. The downside never changes.
+  - **Damage output** (step 89, Toni 2026-10-24: "as the units get more tired their damage output to decrease further";
+    `TiredDamageAtEmptyPercent` E, 60): on top of the roll, the attacker's damage × m = E + (1 − E) × f - x1 at the peak,
+    x0.8 at f 0.5 (a roll of 0.40-1.00, avg 0.70), x0.6 empty (0.30-0.60, avg 0.45 - an empty man's average 100 hit lands
+    34 after step 25's reduction, a fresh man's 75). The SAME f the upside reads (the rider's for a horse charge). After the
+    roll, before step 25's reduction; melee and ranged blows on people and horses, never falls, objects or blows a shield
+    stopped; a positive hit never below 1, 0 stays 0. It is an Athletics effect: it follows the master switch FIRST, then
+    `AthleticsEnabled` - NOT the roll's switches (a hit the roll skips is still multiplied). A CHARGING attacker's melee blow
+    (step 62's `SprintFullCritical` path) counts as fresh: m = 1. An attacker Athletics does not track: m = 1. The player as
+    everyone. 100 = off (the upside alone, as before step 89).
   - **Attack speed** = m = S + (1 − S) × f, S = `ExhaustedAttackSpeedPercent` (20%): full in the
     peak zone, 20% at 0 — a straight line, no cliff. **Exhausted** means E = 0 (for logs and
     bars). **What "attack speed" means (Anton, 2026-09-27): the RATE of attacking** — at m 0.5 a
@@ -1265,7 +1276,7 @@ The Default column is the INITIAL value; the shipped default is whatever `defaul
 says (§2c).
 
 **MCM pages (step 59, decision 51).** The PLAYER page ("Trax Combat Enhancements" - the file's first sections) holds exactly these
-20, in this order: `ModEnabled`; *How hard hits land* `DamageRandomPercent`, `DamageReductionPercent`; *Tiredness (Athletics)*
+20, in this order: `ModEnabled`; *How hard hits land* `DamageRandomPercent`, `DamageReductionPercent`, `TiredDamageAtEmptyPercent` (step 89); *Tiredness (Athletics)*
 `AthleticsEnabled`, `CostPerBlow`, `HeroCostMultiplier`; *How the AI fights* `AiAggressionFreshPercent`, `AiAggressionExhaustedPercent`,
 `FeverEnabled`, `ShieldWallHoldsSlots`, `ShieldWallStepOutMetres`, `CourageEnabled`, `CavalryFlockEnabled`; *Staggers and knockdowns*
 `ImpactEnabled`, `ImpactOnPlayerPercent`; *Sprinting* `SprintEnabled`, `SprintKey`, `SprintControllerKey` (step 85); *On screen* `ShowPlayerBar`, `AltMarksEveryone`,
@@ -1283,6 +1294,7 @@ row goes to the Advanced page unless a player needs it to set up his game (CLAUD
 | `DamageRandomOnShields` | false | Randomize the damage a shield takes when it blocks. |
 | `SprintFullCritical` | true | Step 62 (decision 52), THE UNCAPPED CRITICAL: a CHARGING attacker's MELEE blow on foot (the impact model's charge - sprinting, or his first blow within `ImpactChargeCarrySeconds` after a sprint; read, never spent, by the damage decorator) rolls the ±p roll's FULL upside whatever his f (`DamageBonusFollowsAthletics` does not shrink it). Missiles and riders never. Live. |
 | `DamageReductionPercent` | 25 | Step 25 (Anton): every hit on a person, a horse or a shield deals this % less, AFTER the roll (an average 100 hit lands 75) - melee, ranged, kicks, bashes, charges, whether the roll is on or off; falls and objects never. A positive hit never below 1. 0 = the game's damage; range 0-90. |
+| `TiredDamageAtEmptyPercent` | 60 | Step 89 (decision 82, Toni 2026-10-24: "as the units get more tired their damage output to decrease further"): THE PLAYER PAGE, "How hard hits land". A tired attacker's damage × m = E + (1 − E) × f, E = this % / 100, f = his share of the peak line left (the roll's upside's f; the rider's for a horse charge) - x1 at the peak, x0.8 at f 0.5, x0.6 empty. After the roll, before `DamageReductionPercent`; melee and ranged blows on people and horses (falls, objects, shield blocks never); the master switch first, then `AthleticsEnabled` - not the roll's switches. A charging man's melee blow (`SprintFullCritical`'s path) counts fresh. A positive hit never below 1, 0 stays 0. 100 = off; range 0-100. Live. |
 | `AthleticsEnabled` | true | Switch for Athletics (the stamina bar). |
 | `AthleticsPoolFloor` | 50 | Smallest possible Athletics pool (for anyone with a low Athletics skill; 0 = none, never below 1 point). |
 | `AthleticsPoolPerSkill` | 1.0 | Pool per point of Athletics skill (1.0 → the bar tops at the skill). |
@@ -3250,6 +3262,16 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     the blow's impact from the weapon's weight (the bash path's `WeaponWeight` = the slot's item) and the weapon's own skill (not one-handed); the
     player's own push decided the same way (the collision tells). (f) MEASURED: the [summary] "ai kicks" lines count pushes apart (asked, the shares
     rolled / done per man type, whom they hit, the strike path, who blocks it); the "impact meets" line gains a PUSHES row group.
+82. **Tired men hit softer** (step 89, Toni 2026-10-24: "as the units get more tired their damage output to decrease further ... are we lowering
+    the base damage?" - we were not: tiredness only took the roll's upside, an empty man still averaged x0.75): a MULTIPLIER on the attacker's
+    damage by his f, m = E + (1 − E) × f, `TiredDamageAtEmptyPercent` E **60** on the PLAYER page ("How hard hits land" - one number that changes
+    how the game feels). Core `TiredDamage` (Decide / Exempt / Multiplier / Apply), wired in the damage decorator after the roll and before step
+    25's reduction, on the rolled value or the game's when the roll was skipped. Claude's calls: (a) it follows the master switch first, then
+    `AthleticsEnabled` - not the roll's switches, an Athletics effect like the upside's source; (b) blows a SHIELD stopped are left alone (the
+    multiplier is for blows that land on people and horses - a shield's wear stays step 25's); (c) the charge's exemption follows step 62's own
+    path exactly (`SprintFullCritical` on, a man on foot charging, a melee blow on a person) - with `SprintFullCritical` off a charging man is
+    multiplied like anyone; (d) an untracked attacker keeps x1. MEASURED: the [summary] "damage by tiredness" line (hits by f band with the mean
+    m and the mean landed damage, the charging hits exempted, skips by reason) and the first tired hit of a mission in full.
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),
 `HudRefreshSeconds`, `FormationStatsRefreshSeconds` came out of step 2's research

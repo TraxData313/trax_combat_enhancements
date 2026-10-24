@@ -43,6 +43,7 @@ namespace TraxCombat.Models
         private static int _mainThreadId;
         private static int _firstRollLogged;
         private static int _firstReductionLogged;
+        private static int _firstTiredLogged;
 
         /// <summary>Mission start (AthleticsLogic.AfterStart, main thread): zero the stats, note
         /// the main thread, log the damage settings in effect.</summary>
@@ -52,6 +53,7 @@ namespace TraxCombat.Models
             _mainThreadId = Environment.CurrentManagedThreadId;
             Interlocked.Exchange(ref _firstRollLogged, 0);
             Interlocked.Exchange(ref _firstReductionLogged, 0);
+            Interlocked.Exchange(ref _firstTiredLogged, 0);
             var r = DamageRules.From(TraxSettings.Shared);
             TraxLog.Info("damage", "mission start: "
                 + (r.ModEnabled ? string.Empty : "mod OFF (ModEnabled) - no hit is rolled, the game's own numbers are recorded for comparison; with the mod on: ")
@@ -65,7 +67,20 @@ namespace TraxCombat.Models
                 + (DamageReduction.Clamp(r.ReductionPercent) <= 0 ? "0% - off, the game's damage"
                     : DamageReduction.Clamp(r.ReductionPercent).ToString(CultureInfo.InvariantCulture) + "% after the roll, rolled or not ("
                       + DamageReduction.Example(r.ReductionPercent) + "; falls and objects never)")
+                + "; tired men hit softer (TiredDamageAtEmptyPercent) " + TiredText(in r)
                 + (r.ModEnabled ? string.Empty : " - not while the mod is OFF"));
+        }
+
+        /// <summary>Step 89's clause of the mission-start line.</summary>
+        private static string TiredText(in DamageRules r)
+        {
+            var c = CultureInfo.InvariantCulture;
+            if (r.TiredAtEmptyPercent >= 100) return "100% - off, tiredness only takes the roll's upside";
+            return r.TiredAtEmptyPercent.ToString(c) + "% at an empty bar - the attacker's damage x E + (1 - E) x f after the roll, before the reduction (f 0.5 x"
+                + TiredDamage.Multiplier(r.TiredAtEmptyPercent, 0.5).ToString("0.00", c) + ", empty x" + TiredDamage.Multiplier(r.TiredAtEmptyPercent, 0).ToString("0.00", c)
+                + "; " + TiredDamage.Example(r.TiredAtEmptyPercent, r.Percent) + "; a charging man's melee blow counts fresh"
+                + (r.SprintFullCritical ? string.Empty : " - not while SprintFullCritical is off") + "; falls, objects and shield blocks never)"
+                + (r.AthleticsEnabled ? string.Empty : " - not while Athletics is off");
         }
 
         /// <summary>The per-hit work. Returns the damage to hand back to the game. Throws only on
@@ -89,8 +104,15 @@ namespace TraxCombat.Models
                 // comparison (the summary's "while the mod was OFF" line).
                 if (reason == DamageSkipReason.ModOff) Stats.AddVanilla(facts.Category, damage);
                 else Stats.AddSkip(reason);
+                // Step 89: not rolled, but a tired attacker still hits softer (an Athletics effect - its own rules); the f and the charge read only
+                // when the multiplier could apply.
+                bool wants = TiredMayApply(in facts, in rules);
+                double f = wants ? AttackerPeakShare(in ai) : double.NaN;
+                bool chargingSkip = wants && facts.Category == DamageCategory.Melee && rules.SprintFullCritical && AttackerCharging(in ai);
+                float tiredSkip = Tire(in facts, in rules, damage, f, chargingSkip, out double mSkip, out bool exemptSkip);
                 // Step 25: not rolled, but still reduced (the reduction has its own rules).
-                float landed = Reduce(in ai, in cd, in facts, in rules, damage, damage);
+                float landed = Reduce(in ai, in cd, in facts, in rules, damage, tiredSkip);
+                NoteTired(in ai, in cd, in facts, in rules, damage, tiredSkip, landed, f, mSkip, exemptSkip);
                 if (TraxLog.VerboseWants("damage-skip")) LogSkip(in ai, in cd, in facts, reason, damage, landed);
                 return landed;
             }
@@ -104,11 +126,70 @@ namespace TraxCombat.Models
             bool offMain = _mainThreadId != 0 && thread != _mainThreadId;
             Stats.AddRoll(facts.Category, in roll, offMain, attackerF);
             if (melee) Stats.AddMeleeCharge(in roll, charging, DamageRoll.Upside(in rules, attackerF));
-            float final = Reduce(in ai, in cd, in facts, in rules, damage, roll.After); // step 25: AFTER the roll
+            float tired = Tire(in facts, in rules, roll.After, attackerF, charging, out double m, out bool exempt); // step 89: AFTER the roll
+            float final = Reduce(in ai, in cd, in facts, in rules, damage, tired); // step 25: AFTER the roll (and step 89's multiplier)
+            NoteTired(in ai, in cd, in facts, in rules, roll.After, tired, final, attackerF, m, exempt);
 
             bool first = Volatile.Read(ref _firstRollLogged) == 0 && Interlocked.CompareExchange(ref _firstRollLogged, 1, 0) == 0;
-            if (first || TraxLog.VerboseWants("damage")) LogRoll(in ai, in cd, in facts, in roll, first, thread, attackerF, final);
+            if (first || TraxLog.VerboseWants("damage")) LogRoll(in ai, in cd, in facts, in roll, first, thread, attackerF, final, m);
             return final;
+        }
+
+        /// <summary>Step 89: could the tired-damage multiplier apply to this hit at all (before the attacker's f is read)?</summary>
+        private static bool TiredMayApply(in HitFacts facts, in DamageRules rules) =>
+            rules.ModEnabled && rules.AthleticsEnabled && rules.TiredAtEmptyPercent < 100
+            && facts.VictimIsAgent && !facts.VictimMissing && !facts.Fall && !facts.ShieldBlocked;
+
+        /// <summary>
+        /// Step 89, TIRED MEN HIT SOFTER: <paramref name="value"/> (after the roll, or the game's value when it was skipped) x m = E + (1 - E) x f by
+        /// <see cref="TiredDamage"/>'s rules - a skip counted by reason; a CHARGING attacker's melee blow exempt (m 1, <paramref name="exempt"/>).
+        /// <paramref name="m"/> is NaN when the multiplier did not apply. Allocation-free.
+        /// </summary>
+        private static float Tire(in HitFacts facts, in DamageRules rules, float value, double attackerF, bool charging, out double m, out bool exempt)
+        {
+            m = double.NaN;
+            exempt = false;
+            var why = TiredDamage.Decide(in facts, value, in rules, attackerF);
+            if (why != TiredSkipReason.None)
+            {
+                Stats.AddTiredSkip(why);
+                return value;
+            }
+            if (TiredDamage.Exempt(in rules, charging, facts.Missile))
+            {
+                exempt = true;
+                return value;
+            }
+            m = TiredDamage.Multiplier(rules.TiredAtEmptyPercent, attackerF);
+            return TiredDamage.Apply(value, m);
+        }
+
+        /// <summary>Step 89: the hit into the stats by the attacker's f band (or the charges exempted); the first softer hit of a mission in full.</summary>
+        private static void NoteTired(in AttackInformation ai, in AttackCollisionData cd, in HitFacts facts, in DamageRules rules, float before, float tired,
+            float landed, double attackerF, double m, bool exempt)
+        {
+            if (exempt)
+            {
+                Stats.AddTiredCharge(landed);
+                return;
+            }
+            if (double.IsNaN(m)) return;
+            Stats.AddTired(attackerF, m, landed, rules.TiredAtEmptyPercent);
+            if (m < 1 && Volatile.Read(ref _firstTiredLogged) == 0 && Interlocked.CompareExchange(ref _firstTiredLogged, 1, 0) == 0)
+            {
+                try
+                {
+                    var c = CultureInfo.InvariantCulture;
+                    TraxLog.Info("damage", "first tired hit this mission (step 89 - TiredDamageAtEmptyPercent " + rules.TiredAtEmptyPercent.ToString(c) + ") - "
+                        + Describe(in ai, in cd, in facts) + ": attacker f " + attackerF.ToString("0.00", c) + " → x" + m.ToString("0.00", c)
+                        + ": after the roll " + DamageRoll.GameRound(before).ToString(c) + " → tired " + DamageRoll.GameRound(tired).ToString(c)
+                        + " → lands " + DamageRoll.GameRound(landed).ToString(c) + (landed == tired ? string.Empty : " (after the reduction)"));
+                }
+                catch (Exception e)
+                {
+                    Failed("damage.log", e);
+                }
+            }
         }
 
         /// <summary>
@@ -181,7 +262,7 @@ namespace TraxCombat.Models
         // ------------------------------------------------------------------ log lines
 
         private static void LogRoll(in AttackInformation ai, in AttackCollisionData cd, in HitFacts facts, in RollOutcome roll, bool first, int thread,
-            double attackerF, float final)
+            double attackerF, float final, double tiredM)
         {
             try
             {
@@ -191,6 +272,7 @@ namespace TraxCombat.Models
                     + (double.IsNaN(attackerF) ? ", attacker without a pool: full upside"
                         : ", attacker f " + attackerF.ToString("0.00", CultureInfo.InvariantCulture) + " → up to x"
                           + roll.Ceiling.ToString("0.00", CultureInfo.InvariantCulture)) + ")"
+                    + (double.IsNaN(tiredM) || tiredM >= 1 ? string.Empty : ", tired x" + tiredM.ToString("0.00", CultureInfo.InvariantCulture))
                     + ReducedText(roll.After, final);
                 if (first)
                 {

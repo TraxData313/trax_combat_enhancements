@@ -41,6 +41,16 @@
   // (range 0 to 90)
   "DamageReductionPercent": 25,
 
+  // How hard a tired man still hits. Above his peak line (the white mark on his Athletics bar)
+  // he hits as hard as ever; below it his damage falls in a straight line, down to this share
+  // of it when his bar is empty. 60: a man halfway down hits at 80%, an empty one at 60% - on
+  // top of the random roll and the damage reduction. A man charging into the enemy (sprinting,
+  // or his first blow after a sprint) hits at full strength however tired he is. 100 =
+  // tiredness only takes away the lucky top of the roll. Needs Athletics on (this page,
+  // Tiredness).
+  // (range 0 to 100)
+  "TiredDamageAtEmptyPercent": 60,
+
   // ==================== Tiredness (Athletics) ====================
   // On: every fighter has an Athletics bar - his stamina, as big as his Athletics skill - that
   // his attacks and blocks drain and rest refills. At or above the peak line (the white mark)
