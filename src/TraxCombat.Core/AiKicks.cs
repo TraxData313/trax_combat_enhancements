@@ -158,6 +158,13 @@ namespace TraxCombat.Core
         /// <summary>The nearest friend in the path closer than the enemy (along, m); NaN = none.</summary>
         public double NearestFriend { get; private set; }
 
+        /// <summary>Step 87: that nearest friend's distance off the line of his facing (m, ≥ 0); NaN = none.</summary>
+        public double NearestFriendSide { get; private set; }
+
+        /// <summary>Step 87: the index the caller gave that nearest friend in <see cref="Add(double, double, int)"/> (its place in the caller's
+        /// list - the module maps it back to the agent); −1 = none or not given.</summary>
+        public int NearestFriendIndex { get; private set; }
+
         /// <summary>Friends looked at / found in the path.</summary>
         public int Looked { get; private set; }
         public int InPath { get; private set; }
@@ -173,6 +180,8 @@ namespace TraxCombat.Core
                 _half = double.IsNaN(halfWidth) || halfWidth < 0 ? 0 : halfWidth,
                 _rear = double.IsNaN(rearRank) || rearRank < 0 ? 0 : rearRank,
                 NearestFriend = double.NaN,
+                NearestFriendSide = double.NaN,
+                NearestFriendIndex = -1,
             };
             p._off = !(p._half > 0);
             double fl = Math.Sqrt(faceX * faceX + faceY * faceY);
@@ -198,7 +207,11 @@ namespace TraxCombat.Core
         }
 
         /// <summary>One friend at (<paramref name="fx"/>, <paramref name="fy"/>): in the path closer than the enemy = noted (the nearest kept).</summary>
-        public void Add(double fx, double fy)
+        public void Add(double fx, double fy) => Add(fx, fy, -1);
+
+        /// <summary>Step 87: as <see cref="Add(double, double)"/>, remembering <paramref name="index"/> (the caller's own) for the nearest friend in the
+        /// path - with his along and side (<see cref="NearestFriendIndex"/>, <see cref="NearestFriendSide"/>). No allocation.</summary>
+        public void Add(double fx, double fy, int index)
         {
             if (_off || !TargetIn) return;
             Looked++;
@@ -207,7 +220,12 @@ namespace TraxCombat.Core
             double side = Math.Abs(-(fx - _ax) * _uy + (fy - _ay) * _ux);
             if (!(side <= _half + 1e-9)) return;
             InPath++;
-            if (double.IsNaN(NearestFriend) || along < NearestFriend) NearestFriend = along;
+            if (double.IsNaN(NearestFriend) || along < NearestFriend)
+            {
+                NearestFriend = along;
+                NearestFriendSide = side;
+                NearestFriendIndex = index;
+            }
         }
 
         /// <summary>The verdict: off = Clear; the enemy not in the path; a friend first (within the rear-rank distance = behind a friend); clear.</summary>
@@ -675,6 +693,9 @@ namespace TraxCombat.Core
         private readonly int[,] _paths = new int[3, (int)AiKickPath.Count];
         private readonly int[] _pressPaths = new int[(int)AiKickPath.Count];
 
+        /// <summary>Step 87 (a diagnostic): who blocks the strike path at a refusal, whom a kick / bash on a friend hit - the 7th [summary] line.</summary>
+        public readonly AiKickBlockStats Blocks = new AiKickBlockStats();
+
         /// <summary>Step 80: friends looked at by the probe, the probes made.</summary>
         public long PathFriendsLooked;
         public int PathProbes;
@@ -872,6 +893,7 @@ namespace TraxCombat.Core
             lines.Add(sb.ToString());
             lines.Add(SharesLine(in r));
             lines.Add(PathLine(in r));
+            lines.Add(Blocks.Line());
             return lines;
         }
     }

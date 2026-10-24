@@ -35,8 +35,14 @@ namespace TraxCombat.Missions
         /// <summary>Step 80 (step 68's friend check, rebuilt): his STRIKE PATH - along his facing, <paramref name="reach"/> m long,
         /// <paramref name="halfWidth"/> m either side (<see cref="TraxCombat.Core.AiKickPathProbe"/>): is <paramref name="target"/> in it and the first
         /// body there, or does a man of his own side stand in it closer (within <paramref name="rearRank"/> m = a rear-rank man)?
-        /// <paramref name="looked"/> = the friends the probe looked at.</summary>
-        TraxCombat.Core.AiKickPath StrikePath(TrackedAgent st, Agent target, double reach, double halfWidth, double rearRank, out int looked);
+        /// <paramref name="looked"/> = the friends the probe looked at; step 87: <paramref name="blocker"/> = the nearest friend in the path (his along /
+        /// side, his agent index, his place in the formation against <paramref name="st"/>) - not Valid when none.</summary>
+        TraxCombat.Core.AiKickPath StrikePath(TrackedAgent st, Agent target, double reach, double halfWidth, double rearRank, out int looked,
+            out TraxCombat.Core.AiKickBlocker blocker);
+
+        /// <summary>Step 87: <paramref name="friend"/> in <paramref name="st"/>'s frame NOW (along / off his facing) and his place in the formation
+        /// against him - asked once per kick / bash that landed on a friend.</summary>
+        TraxCombat.Core.AiKickBlocker Locate(TrackedAgent st, Agent friend);
 
         /// <summary>Step 68: is <paramref name="other"/> an enemy of <paramref name="st"/> (whom a landed kick hit)?</summary>
         bool IsEnemy(TrackedAgent st, TrackedAgent other);
@@ -88,9 +94,11 @@ namespace TraxCombat.Missions
         /// game's proximity search for his side within the path's reach (<c>Mission.GetNearbyAllyAgents</c>, the list reused), each one fed to
         /// the Core probe - horses of his side too (a friend's horse in the way is a friend's body). Main thread; asked only in reach, in front
         /// and with the target in the path (a handful of reads a second). No mission / team = the path refused (no kick - vanilla's own way).</summary>
-        public TraxCombat.Core.AiKickPath StrikePath(TrackedAgent st, Agent target, double reach, double halfWidth, double rearRank, out int looked)
+        public TraxCombat.Core.AiKickPath StrikePath(TrackedAgent st, Agent target, double reach, double halfWidth, double rearRank, out int looked,
+            out TraxCombat.Core.AiKickBlocker blocker)
         {
             looked = 0;
+            blocker = TraxCombat.Core.AiKickBlocker.None;
             var a = st.Agent;
             var m = Mission.Current;
             if (m == null || a.Team == null || target == null) return TraxCombat.Core.AiKickPath.TargetOffPath;
@@ -107,7 +115,18 @@ namespace TraxCombat.Missions
                     var f = _allies[i];
                     if (f == null || f == a || f == a.MountAgent || !f.IsActive()) continue;
                     var q = f.Position.AsVec2;
-                    probe.Add(q.x, q.y);
+                    probe.Add(q.x, q.y, i);
+                }
+                int ni = probe.NearestFriendIndex;
+                if (ni >= 0 && ni < _allies.Count)
+                {
+                    // step 87: the blocking friend - his place in the probe's frame, his agent, his rank against ours (allocation-free)
+                    var f = _allies[ni];
+                    blocker.Valid = true;
+                    blocker.Along = probe.NearestFriend;
+                    blocker.Side = probe.NearestFriendSide;
+                    blocker.FriendIndex = f.Index;
+                    Relate(a, f, ref blocker);
                 }
                 _allies.Clear();
             }
@@ -116,6 +135,49 @@ namespace TraxCombat.Missions
         }
 
         public bool IsEnemy(TrackedAgent st, TrackedAgent other) => st.Agent.IsEnemyOf(other.Agent);
+
+        /// <summary>Step 87: the friend in his frame now (his position and <c>GetMovementDirection</c> - the probe's facing) and his formation place.</summary>
+        public TraxCombat.Core.AiKickBlocker Locate(TrackedAgent st, Agent friend)
+        {
+            var b = TraxCombat.Core.AiKickBlocker.None;
+            var a = st.Agent;
+            if (friend == null || !friend.IsActive()) return b;
+            var p = a.Position.AsVec2;
+            var q = friend.Position.AsVec2;
+            var face = a.GetMovementDirection();
+            TraxCombat.Core.AiKickBlockMath.Locate(p.x, p.y, face.x, face.y, q.x, q.y, out double along, out double side);
+            b.Valid = true;
+            b.Along = along;
+            b.Side = side;
+            b.FriendIndex = friend.Index;
+            Relate(a, friend, ref b);
+            return b;
+        }
+
+        /// <summary>Step 87: the same formation? Its arrangement the game's LineFormation (a line, a shield wall, a square / circle - rings, a
+        /// wedge; not a column)? Then both men's rank (<c>Agent.GetFormationFileAndRankInfo</c> - rank 0 the front; a detached man none).</summary>
+        private static void Relate(Agent a, Agent f, ref TraxCombat.Core.AiKickBlocker b)
+        {
+            var fa = a.Formation;
+            bool same = fa != null && ReferenceEquals(fa, f.Formation);
+            bool line = same && fa!.Arrangement is LineFormation;
+            if (line)
+            {
+                if (!a.IsDetachedFromFormation)
+                {
+                    a.GetFormationFileAndRankInfo(out int file, out int rank);
+                    b.File = file;
+                    b.Rank = rank;
+                }
+                if (!f.IsDetachedFromFormation)
+                {
+                    f.GetFormationFileAndRankInfo(out int ffile, out int frank);
+                    b.FriendFile = ffile;
+                    b.FriendRank = frank;
+                }
+            }
+            b.Relation = TraxCombat.Core.AiKickBlockMath.RelationOf(same, line, b.Rank, b.FriendRank);
+        }
 
         private static bool IsEnemyOnFoot(Agent a, Agent? e) => e != null && e.IsActive() && e.IsHuman && e.MountAgent == null && a.IsEnemyOf(e);
     }

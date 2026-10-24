@@ -367,6 +367,7 @@ namespace TraxCombat.Missions
         public TrackedAgent? AiKickTarget;
         public double AiKickNext = double.NegativeInfinity;
         public double AiKickLastLook = double.NaN;
+        public double AiKickAngle = double.NaN; // step 87: the facing-to-target angle at the decision
         public bool AiMoveQueued;
 
         /// <summary>Step 82: his READ of an incoming kick / bash - reading (rolled yes, in the readers' pool), the kind (a bash = guard right),

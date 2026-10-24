@@ -80,6 +80,7 @@ namespace TraxCombat.Tools
                 Check(on.EnemyHits >= 30, "the strike path ON: only " + on.EnemyHits + " hits on an enemy in 3 minutes - the kicks stopped");
                 Check(on.Refused > 0, "the strike path refused nothing");
                 Check(on.EnemyPerManMinute > 0.5 * off.EnemyPerManMinute, "the strike path ON lost more than half the enemy hits: " + on.EnemyPerManMinute + " vs " + off.EnemyPerManMinute);
+                Step87WhoBlocks(on, off);
             }
             finally
             {
@@ -143,6 +144,7 @@ namespace TraxCombat.Tools
                 m.PrevAction = m.PrevLowerAction = 35;
                 m.FeverContact = true;
                 if (shield[i]) body.Shield.Add(baseIndex + i);
+                body.Ranks[baseIndex + i] = (s, file, rank); // step 87: each side one formation, rank 0 the front
                 men[i] = m;
                 hitAt[i] = endAt[i] = double.NaN;
                 nextReady[i] = t + rnd.NextDouble() * 1.5;

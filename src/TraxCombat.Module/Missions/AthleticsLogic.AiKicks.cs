@@ -45,7 +45,7 @@ namespace TraxCombat.Missions
         private double _aiKickCarry;
         private double _aiKickLastTick = double.NaN;
         private string _seenAiKickText = string.Empty;
-        private readonly bool[] _aiKickFirst = new bool[8];
+        private readonly bool[] _aiKickFirst = new bool[12]; // 7 / 8: step 87's first refusal by a friend - a kick / a bash; 9 / 10: its first friend hit
 
         /// <summary>This mission's AI kick numbers (the smoke reads them).</summary>
         internal AiKickStats AiKickStats => _aiKickStats;
@@ -253,8 +253,13 @@ namespace TraxCombat.Missions
                 return;
             }
             // step 80: the strike path along his facing - the enemy in it and the first body there
-            var path = StrikePathOf(st, targetAgent!, kind, distance, off, in r);
-            if (r.PathHalfWidth(kind) > 0) _aiKickStats.NotePath(kind, path);
+            var path = StrikePathOf(st, targetAgent!, kind, distance, off, in r, out var blocker);
+            if (r.PathHalfWidth(kind) > 0)
+            {
+                _aiKickStats.NotePath(kind, path);
+                _aiKickStats.Blocks.NoteRefusal(path, kind, in blocker, distance, off); // step 87 (a diagnostic): who blocks it
+                if (path == AiKickPath.BehindFriend || path == AiKickPath.FriendFirst) BlockFirstLine(st, target, kind, path, in blocker, distance, off, now);
+            }
             if (path != AiKickPath.Clear)
             {
                 bool rear = path == AiKickPath.BehindFriend;
@@ -268,8 +273,24 @@ namespace TraxCombat.Missions
                 return;
             }
             if (r.PathHalfWidth(kind) > 0) _aiKickStats.FriendChecksClear++;
-            BeginAiKick(st, target, kind, type, now, r.Cooldown);
+            BeginAiKick(st, target, kind, type, now, r.Cooldown, off);
         }
+
+        /// <summary>Step 87: the first strike-path refusal by a friend of each kind, in full - who blocked and where he stood.</summary>
+        private void BlockFirstLine(TrackedAgent st, TrackedAgent target, AiKickKind kind, AiKickPath path, in AiKickBlocker b, float distance, float off, double now)
+        {
+            if (!AiKickFirst(kind == AiKickKind.Bash ? 8 : 7)) return;
+            var friend = b.FriendIndex >= 0 ? GetByIndex(b.FriendIndex) : null;
+            TraxLog.Info("impact", "first AI " + AiKickMath.KindName(kind) + " REFUSED by a friend - who blocks the path (step 87 diagnostic) at " + Sec(now) + " s: "
+                + Name(st) + BlockRanks(b.File, b.Rank) + " at " + Name(target) + " " + F2(distance) + " m off, " + F1(off) + "° off his facing - " + AiKickMath.PathName(path)
+                + (b.Valid
+                    ? ": " + (friend != null ? Name(friend) : "a friend (untracked)") + BlockRanks(b.FriendFile, b.FriendRank) + " " + F2(b.Along) + " m ahead along his facing, "
+                      + F2(b.Side) + " m to the side - " + AiKickBlockMath.RelationName(b.Relation)
+                    : " (the blocking friend not named by the probe)")
+                + " - the [summary] \"who blocks the path\" line bins every one");
+        }
+
+        private static string BlockRanks(int file, int rank) => rank >= 0 ? " (file " + file + ", rank " + rank + ")" : string.Empty;
 
         /// <summary>Step 81: a rolled kick / bash refused - he swings instead (counted by reason and by group).</summary>
         private void Refuse(int type, AiKickSkip why)
@@ -293,13 +314,14 @@ namespace TraxCombat.Missions
         /// <summary>Step 80: the strike path for a <paramref name="kind"/> at the enemy <paramref name="distance"/> m / <paramref name="off"/>° off his
         /// facing - off = Clear; the cheap gate on the reads he has (the enemy in the path at all), then the engine's positions and his side's men
         /// near (<see cref="IAiKickBody.StrikePath"/>).</summary>
-        private AiKickPath StrikePathOf(TrackedAgent st, Agent target, AiKickKind kind, float distance, float off, in AiKickRules r)
+        private AiKickPath StrikePathOf(TrackedAgent st, Agent target, AiKickKind kind, float distance, float off, in AiKickRules r, out AiKickBlocker blocker)
         {
+            blocker = AiKickBlocker.None;
             double half = r.PathHalfWidth(kind);
             if (!(half > 0)) return AiKickPath.Clear;
             if (!AiKickMath.TargetInPath(distance, off, r.Reach, half)) return AiKickPath.TargetOffPath;
             _aiKickStats.PathProbes++;
-            var v = AiKickBody.StrikePath(st, target, r.Reach, half, r.RearRank, out int looked);
+            var v = AiKickBody.StrikePath(st, target, r.Reach, half, r.RearRank, out int looked, out blocker);
             _aiKickStats.PathFriendsLooked += looked;
             return v;
         }
@@ -311,11 +333,12 @@ namespace TraxCombat.Missions
             if (!(r.PathHalfWidth(st.AiKickKind) > 0)) return AiKickPath.Clear;
             var targetAgent = AiKickBody.Target(st, out float distance, out float off);
             if (targetAgent == null || !(distance <= r.Reach) || !(off <= r.Facing)) return AiKickPath.TargetOffPath;
-            return StrikePathOf(st, targetAgent, st.AiKickKind, distance, off, in r);
+            return StrikePathOf(st, targetAgent, st.AiKickKind, distance, off, in r, out _);
         }
 
-        private void BeginAiKick(TrackedAgent st, TrackedAgent target, AiKickKind kind, int type, double now, double cooldown)
+        private void BeginAiKick(TrackedAgent st, TrackedAgent target, AiKickKind kind, int type, double now, double cooldown, double angle)
         {
+            st.AiKickAngle = angle; // step 87: the facing-to-target angle of the decision (a friend hit is binned by it)
             st.AiKickKind = kind;
             st.AiKickPhase = AiKickMath.FirstPhase(kind);
             st.AiKickStart = now;
@@ -472,6 +495,7 @@ namespace TraxCombat.Missions
             _aiKickStats.Landed(st.AiKickKind, st.AiKickReason, intoShield);
             var who = victim != null ? AiKickVictimOf(st, victim) : AiKickVictim.Untracked;
             if (!intoShield && victim != null) _aiKickStats.NoteVictim(who);
+            if (who == AiKickVictim.Friend && victim != null) FriendHitBlock(st, victim, intoShield); // step 87
             // step 80: whom it hit first - an enemy (his body / his shield), a friend (body / shield), a horse / untracked
             _aiKickStats.NoteOutcome(st.AiKickKind, who == AiKickVictim.Untracked ? AiKickOutcome.Untracked
                 : who == AiKickVictim.Friend ? (intoShield ? AiKickOutcome.FriendShield : AiKickOutcome.FriendBody)
@@ -479,6 +503,28 @@ namespace TraxCombat.Missions
             if (!intoShield && AiKickFirst(3))
                 TraxLog.Info("impact", "first AI " + AiKickMath.KindName(st.AiKickKind) + " LANDED at " + Sec(SafeNow()) + " s - " + Name(st)
                     + (st.AiKickTarget != null ? " on " + Name(st.AiKickTarget) : string.Empty) + " (the impact model and the brace decide what it does)");
+        }
+
+        /// <summary>Step 87 (a diagnostic): a kick / bash whose first collision was a friend - his place in the kicker's frame at the hit and in
+        /// the formation, the decision's angle; the first of each kind in full.</summary>
+        private void FriendHitBlock(TrackedAgent st, Agent victim, bool intoShield)
+        {
+            var b = AiKickBlocker.None;
+            try
+            {
+                b = AiKickBody.Locate(st, victim);
+            }
+            catch (Exception e)
+            {
+                Failed("aikick.locate", e);
+            }
+            _aiKickStats.Blocks.NoteFriendHit(st.AiKickKind, in b, st.AiKickAngle);
+            if (!AiKickFirst(st.AiKickKind == AiKickKind.Bash ? 10 : 9)) return;
+            var friend = Get(victim);
+            TraxLog.Info("impact", "first AI " + AiKickMath.KindName(st.AiKickKind) + " on a FRIEND - where he stood (step 87 diagnostic) at " + Sec(SafeNow()) + " s: "
+                + Name(st) + BlockRanks(b.File, b.Rank) + (intoShield ? " hit the shield of " : " hit ") + (friend != null ? Name(friend) : "a friend") + BlockRanks(b.FriendFile, b.FriendRank)
+                + (b.Valid ? " " + F2(b.Along) + " m ahead along his facing, " + F2(b.Side) + " m to the side - " + AiKickBlockMath.RelationName(b.Relation) : " (not located)")
+                + "; at the decision his target stood " + F1(st.AiKickAngle) + "° off his facing");
         }
 
         /// <summary>Step 68: whom a landed kick / bash hit - the victim against the kicker (a native IsEnemyOf, once per landed kick).</summary>

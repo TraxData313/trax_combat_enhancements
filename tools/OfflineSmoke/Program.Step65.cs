@@ -80,18 +80,55 @@ namespace TraxCombat.Tools
 
             /// <summary>Step 68's stand-in (FriendBlocks = a friend first), step 80's on <see cref="Bodies"/>: the real Core probe over every man of
             /// his side placed there.</summary>
-            public AiKickPath StrikePath(TrackedAgent st, Agent target, double reach, double halfWidth, double rearRank, out int looked)
+            public AiKickPath StrikePath(TrackedAgent st, Agent target, double reach, double halfWidth, double rearRank, out int looked, out AiKickBlocker blocker)
             {
                 FriendReads++;
                 looked = 0;
+                blocker = AiKickBlocker.None;
                 if (FriendBlocks.Contains(st.AgentIndex)) return AiKickPath.FriendFirst;
                 if (!Bodies.TryGetValue(st.AgentIndex, out var me) || !Bodies.TryGetValue(target.Index, out var t)) return AiKickPath.Clear;
                 var p = AiKickPathProbe.Begin(me.X, me.Y, me.FX, me.FY, t.X, t.Y, reach, halfWidth, rearRank);
                 foreach (var kv in Bodies)
                     if (kv.Key != st.AgentIndex && kv.Value.Side == me.Side && Math.Abs(kv.Value.X - me.X) < reach + halfWidth + 1 && Math.Abs(kv.Value.Y - me.Y) < reach + halfWidth + 1)
-                        p.Add(kv.Value.X, kv.Value.Y);
+                        p.Add(kv.Value.X, kv.Value.Y, kv.Key); // step 87: the agent index as the probe's own index
                 looked = p.Looked;
+                if (p.NearestFriendIndex >= 0)
+                {
+                    blocker.Valid = true;
+                    blocker.Along = p.NearestFriend;
+                    blocker.Side = p.NearestFriendSide;
+                    blocker.FriendIndex = p.NearestFriendIndex;
+                    Relate(st.AgentIndex, p.NearestFriendIndex, ref blocker);
+                }
                 return p.Verdict;
+            }
+
+            /// <summary>Step 87: each placed man's formation, file and rank (none = another formation / none).</summary>
+            public readonly Dictionary<int, (int Formation, int File, int Rank)> Ranks = new Dictionary<int, (int, int, int)>();
+
+            public AiKickBlocker Locate(TrackedAgent st, Agent friend)
+            {
+                var b = AiKickBlocker.None;
+                if (!Bodies.TryGetValue(st.AgentIndex, out var me) || !Bodies.TryGetValue(friend.Index, out var f)) return b;
+                AiKickBlockMath.Locate(me.X, me.Y, me.FX, me.FY, f.X, f.Y, out b.Along, out b.Side);
+                b.Valid = true;
+                b.FriendIndex = friend.Index;
+                Relate(st.AgentIndex, friend.Index, ref b);
+                return b;
+            }
+
+            private void Relate(int me, int friend, ref AiKickBlocker b)
+            {
+                bool same = Ranks.TryGetValue(me, out var a) && Ranks.TryGetValue(friend, out var f) && a.Formation == f.Formation;
+                if (same)
+                {
+                    var fr = Ranks[friend];
+                    b.File = a.File;
+                    b.Rank = a.Rank;
+                    b.FriendFile = fr.File;
+                    b.FriendRank = fr.Rank;
+                }
+                b.Relation = AiKickBlockMath.RelationOf(same, true, b.Rank, b.FriendRank);
             }
 
             public bool IsEnemy(TrackedAgent st, TrackedAgent other)
