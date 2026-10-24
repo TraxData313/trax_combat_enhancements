@@ -51,7 +51,7 @@ public class SchemaTests
                     Assert.True(isWhole, key + " is a whole number - DESIGN's value must be one, not " + text);
                     break;
                 case ParamType.Key:
-                    Assert.True(KeyNames.TryIndex(text, out _), key + " is a key - DESIGN's value must be a key name, not " + text);
+                    Assert.True(p.Keys.TryIndex(text, out _), key + " is a key - DESIGN's value must be a key name, not " + text);
                     break;
                 case ParamType.Text:
                     Assert.True(TextValues.TryIndex(text, out _) && !isNumber && !isBool, key + " is a text - DESIGN's value must be an item id, not " + text);
@@ -74,7 +74,7 @@ public class SchemaTests
             var token = DesignTable.ToToken(text);
             double expected = token.Type == Newtonsoft.Json.Linq.JTokenType.Boolean ? ((bool)token ? 1 : 0)
                 : token.Type == Newtonsoft.Json.Linq.JTokenType.String
-                    ? (p.Type == ParamType.Text ? (TextValues.TryIndex((string?)token, out int t) ? t : -1) : (KeyNames.TryIndex((string?)token, out int k) ? k : -1))
+                    ? (p.Type == ParamType.Text ? (TextValues.TryIndex((string?)token, out int t) ? t : -1) : (p.Keys.TryIndex((string?)token, out int k) ? k : -1))
                 : (double)token;
             Assert.True(Math.Abs(expected - p.Default) < 1e-9, key + ": test default " + p.Format(p.Default) + " vs DESIGN " + text);
         }
@@ -146,7 +146,7 @@ public class SchemaTests
             settings.Set(p, target, "test");
             var got = prop.GetValue(settings);
             double read = p.Type == ParamType.Key
-                ? (KeyNames.TryIndex((string?)got, out int keyIndex) ? keyIndex : -1)
+                ? (p.Keys.TryIndex((string?)got, out int keyIndex) ? keyIndex : -1)
                 : p.Type == ParamType.Text ? (TextValues.TryIndex((string?)got, out int textIndex) ? textIndex : -1)
                 : Convert.ToDouble(got, CultureInfo.InvariantCulture);
             Assert.True(Math.Abs(read - target) < 1e-4, p.Key + " property reads the wrong slot");

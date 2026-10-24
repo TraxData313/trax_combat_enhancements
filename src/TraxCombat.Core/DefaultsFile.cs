@@ -171,13 +171,13 @@ namespace TraxCombat.Core
 
         /// <summary>One setting's default, called by the <see cref="ParamDef"/> constructor while the
         /// schema is built. Never throws; a problem is recorded and a safe value used.</summary>
-        internal static double DefaultFor(string key, ParamType type, double min, double max)
+        internal static double DefaultFor(string key, ParamType type, double min, double max, KeyList? keys = null)
         {
             var src = Current;
             lock (Gate)
             {
                 _used = true;
-                return Resolve(src, key, type, min, max);
+                return Resolve(src, key, type, min, max, keys);
             }
         }
 
@@ -192,7 +192,7 @@ namespace TraxCombat.Core
             var src = LoadSource("the text", text);
             var values = new Dictionary<string, double>(StringComparer.Ordinal);
             foreach (var p in SettingsSchema.All)
-                values[p.Key] = Resolve(src, p.Key, p.Type, p.Min, p.Max);
+                values[p.Key] = Resolve(src, p.Key, p.Type, p.Min, p.Max, p.Keys);
             problems = new List<string>(src.Problems);
             foreach (var key in src.Tokens.Keys)
                 if (!SettingsSchema.All.Any(p => p.Key == key))
@@ -200,21 +200,21 @@ namespace TraxCombat.Core
             return values;
         }
 
-        private static double Resolve(Source src, string key, ParamType type, double min, double max)
+        private static double Resolve(Source src, string key, ParamType type, double min, double max, KeyList? keys)
         {
             if (!src.Tokens.TryGetValue(key, out var token))
             {
                 double fallback = Fallback(type, min);
-                src.Problems.Add("\"" + key + "\" is missing from " + src.Name + " - using " + Show(type, fallback));
+                src.Problems.Add("\"" + key + "\" is missing from " + src.Name + " - using " + Show(type, fallback, keys));
                 return fallback;
             }
-            if (!TryValue(token, type, min, max, out double value, out string? problem))
+            if (!TryValue(token, type, min, max, out double value, out string? problem, keys))
             {
                 double fallback = Fallback(type, min);
-                src.Problems.Add(key + ": " + problem + " - using " + Show(type, fallback));
+                src.Problems.Add(key + ": " + problem + " - using " + Show(type, fallback, keys));
                 return fallback;
             }
-            if (problem != null) src.Problems.Add(key + ": " + problem + " - using " + Show(type, value));
+            if (problem != null) src.Problems.Add(key + ": " + problem + " - using " + Show(type, value, keys));
             return value;
         }
 
@@ -268,7 +268,13 @@ namespace TraxCombat.Core
         /// adjusted: clamped into [min, max], or rounded to <see cref="ParamDef.FloatDecimals"/>.
         /// </summary>
         public static bool TryValue(JToken token, ParamType type, double min, double max, out double value, out string? problem)
+            => TryValue(token, type, min, max, out value, out problem, null);
+
+        /// <summary>Step 85: <see cref="TryValue(JToken, ParamType, double, double, out double, out string?)"/> for a key setting on
+        /// its own list (<paramref name="keys"/> - null = the keyboard's).</summary>
+        public static bool TryValue(JToken token, ParamType type, double min, double max, out double value, out string? problem, KeyList? keys)
         {
+            var keyList = keys ?? KeyNames.Keyboard;
             value = 0;
             problem = null;
             string raw = token.ToString(Formatting.None);
@@ -283,10 +289,10 @@ namespace TraxCombat.Core
                     value = token.Value<bool>() ? 1 : 0;
                     return true;
                 case ParamType.Key:
-                    // step 33: a key by name ("LeftControl") - its index in KeyNames
-                    if (token.Type != JTokenType.String || !KeyNames.TryIndex(token.Value<string>(), out int keyIndex))
+                    // step 33: a key by name ("LeftControl") - its index in its list (step 85: the keyboard's or the controller's)
+                    if (token.Type != JTokenType.String || !keyList.TryIndex(token.Value<string>(), out int keyIndex))
                     {
-                        problem = raw + " is not a key name (one of " + KeyNames.ListText + ")";
+                        problem = raw + " is not a key name (one of " + keyList.ListText + ")";
                         return false;
                     }
                     value = keyIndex;
@@ -330,15 +336,15 @@ namespace TraxCombat.Core
             }
             if (value < min || value > max)
             {
-                problem = raw + " is outside its range " + Show(type, min) + " to " + Show(type, max);
+                problem = raw + " is outside its range " + Show(type, min, keys) + " to " + Show(type, max, keys);
                 value = value < min ? min : max;
             }
             return true;
         }
 
-        private static string Show(ParamType type, double v) =>
+        private static string Show(ParamType type, double v, KeyList? keys = null) =>
             type == ParamType.Bool ? (v != 0 ? "true" : "false")
-            : type == ParamType.Key ? KeyNames.Name(v)
+            : type == ParamType.Key ? (keys ?? KeyNames.Keyboard).Name(v)
             : type == ParamType.Text ? TextValues.Get(v)
             : type == ParamType.Int ? ((long)Math.Round(v)).ToString(CultureInfo.InvariantCulture)
             : v.ToString("0.0###", CultureInfo.InvariantCulture);
@@ -386,7 +392,7 @@ namespace TraxCombat.Core
         /// <summary>"(range 0 to 100)" / "(true or false)" - the last // line above a key.</summary>
         public static string RangeText(ParamDef p) =>
             p.Type == ParamType.Bool ? "true or false"
-            : p.Type == ParamType.Key ? "one of " + KeyNames.ListText
+            : p.Type == ParamType.Key ? "one of " + p.Keys.ListText
             : p.Type == ParamType.Text ? TextValues.RuleText
             : "range " + p.Format(p.Min) + " to " + p.Format(p.Max);
 
@@ -433,7 +439,7 @@ namespace TraxCombat.Core
                     continue;
                 }
                 present.Add(p.Key);
-                if (!TryValue(prop.Value, p.Type, p.Min, p.Max, out double v, out string? problem) || problem != null)
+                if (!TryValue(prop.Value, p.Type, p.Min, p.Max, out double v, out string? problem, p.Keys) || problem != null)
                 {
                     result.Problems.Add(p.Key + ": " + problem);
                     continue;

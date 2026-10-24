@@ -738,8 +738,8 @@ namespace TraxCombat.Core
             if (p.Type == ParamType.Key)
             {
                 // step 33: a key by name ("LeftControl", "left ctrl")
-                why = "a key name (one of " + KeyNames.ListText + ")";
-                if (token.Type != JTokenType.String || !KeyNames.TryIndex(token.Value<string>(), out int keyIndex)) return false;
+                why = "a key name (one of " + p.Keys.ListText + ")";
+                if (token.Type != JTokenType.String || !p.Keys.TryIndex(token.Value<string>(), out int keyIndex)) return false;
                 value = keyIndex;
                 return true;
             }

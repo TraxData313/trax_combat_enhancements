@@ -249,6 +249,17 @@
   // (one of LeftControl, RightControl, LeftAlt, RightAlt, LeftShift, RightShift, CapsLock, Tab, Q, T, Y, H, J, K, L, B, N, M, C, MiddleMouseButton, X1MouseButton, X2MouseButton)
   "SprintKey": "LeftControl",
 
+  // Hold this gamepad button to sprint, exactly like the sprint key above - either one works.
+  // Type its name: None, ControllerLThumb, ControllerRThumb, ControllerLBumper,
+  // ControllerRBumper, ControllerLTrigger, ControllerRTrigger, ControllerRUp, ControllerRDown,
+  // ControllerRLeft, ControllerRRight, ControllerLUp, ControllerLDown, ControllerLLeft,
+  // ControllerLRight (L3 / R3, LB / RB, LT / RT, A / B / X / Y and DpadUp... work too).
+  // ControllerLThumb is pressing the left stick in. In the game's default controls the left
+  // stick press also toggles the camera - move "Camera toggle" to another button in the game's
+  // Controls options. None = no controller button.
+  // (one of None, ControllerLThumb, ControllerRThumb, ControllerLBumper, ControllerRBumper, ControllerLTrigger, ControllerRTrigger, ControllerRUp, ControllerRDown, ControllerRLeft, ControllerRRight, ControllerLUp, ControllerLDown, ControllerLLeft, ControllerLRight)
+  "SprintControllerKey": "ControllerLThumb",
+
   // ==================== On screen ====================
   // Your Athletics bar, bottom right under your health bar: the Athletics you have left and
   // your whole bar ("132 / 180"), a white mark at the peak line, the fill in the colour of your

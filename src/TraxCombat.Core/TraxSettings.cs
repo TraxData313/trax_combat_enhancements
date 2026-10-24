@@ -323,6 +323,12 @@ namespace TraxCombat.Core
         /// <summary>The key's NAME ("LeftControl" - KeyNames); <see cref="SprintKeyIndex"/> is its index.</summary>
         public string SprintKey => KeyNames.Name(Get(SettingsSchema.SprintKey));
         public int SprintKeyIndex => GetInt(SettingsSchema.SprintKey);
+        /// <summary>Step 85: the gamepad button's NAME ("ControllerLThumb", "None" - KeyNames.Controller); <see cref="SprintControllerKeyIndex"/> is
+        /// its index (0 = None).</summary>
+        public string SprintControllerKey => KeyNames.Controller.Name(Get(SettingsSchema.SprintControllerKey));
+        public int SprintControllerKeyIndex => GetInt(SettingsSchema.SprintControllerKey);
+        /// <summary>Step 85: both sprint keys as the log and the HUD line say them ("LeftControl or ControllerLThumb"; the key alone with None).</summary>
+        public string SprintKeysText => SprintKeys.Text(SprintKey, SprintControllerKeyIndex);
         public float SprintPointsPerSecond => GetFloat(SettingsSchema.SprintPointsPerSecond);
         public float SprintMinSeconds => GetFloat(SettingsSchema.SprintMinSeconds);
         public int SprintMinStartPercent => GetInt(SettingsSchema.SprintMinStartPercent);

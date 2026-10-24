@@ -199,6 +199,12 @@ namespace TraxCombat.Core
             "Sprint key",
             "Hold this key to sprint (on foot, in a fight). Type its name: " + KeyNames.ListText + ". Left Control is free in the game's default keys (Left Shift is zoom, Z crouch, Caps Lock walk, Left Alt the formation markers).");
 
+        // Step 85 (Toni 2026-10-24: "when pressing left thumbstick using controller it acts like pressing the CTRL activating the
+        // sprint"): a gamepad button held sprints exactly like the sprint key - either one. AI_NOTES "Step 85".
+        public static readonly ParamDef SprintControllerKey = ControllerKey("SprintControllerKey", PlayerSprintGroup,
+            "Sprint button (controller)",
+            "Hold this gamepad button to sprint, exactly like the sprint key above - either one works. Type its name: " + KeyNames.Controller.ListText + " (L3 / R3, LB / RB, LT / RT, A / B / X / Y and DpadUp... work too). ControllerLThumb is pressing the left stick in. In the game's default controls the left stick press also toggles the camera - move \"Camera toggle\" to another button in the game's Controls options. None = no controller button.");
+
         public static readonly ParamDef ShowPlayerBar = Bool("ShowPlayerBar", PlayerScreenGroup,
             "Your Athletics bar",
             "Your Athletics bar, bottom right under your health bar: the Athletics you have left and your whole bar (\"132 / 180\"), a white mark at the peak line, the fill in the colour of your strength (green at full strength, then blue, yellow, orange, red) and the part your wounds hold shown dark. The attack recovery and sprint bars above it show with it.");
@@ -2354,7 +2360,7 @@ namespace TraxCombat.Core
             AthleticsEnabled, CostPerBlow, HeroCostMultiplier,
             AiAggressionFreshPercent, AiAggressionExhaustedPercent, FeverEnabled, ShieldWallHoldsSlots, ShieldWallStepOutMetres, ShieldWallStandFirm, SpearPreferenceEnabled, PressDontPass, RotationEnabled, RestEnabled, WarCriesEnabled, CourageEnabled, CavalryFlockEnabled, LineDisciplineForPlayer,
             ImpactEnabled, ImpactOnPlayerPercent, ImpactMeetRulesEnabled,
-            SprintEnabled, SprintKey,
+            SprintEnabled, SprintKey, SprintControllerKey,
             ShowPlayerBar, AltMarksEveryone, ImpactShowMessages,
             GiveTier1Shields,
             // the Advanced page
@@ -2540,6 +2546,12 @@ namespace TraxCombat.Core
         private static ParamDef Key(string key, ParamGroup group, string label, string description,
             ApplyTiming timing = ApplyTiming.Live)
             => new ParamDef(_next++, key, ParamType.Key, 0, KeyNames.All.Length - 1, group, label, description, timing);
+
+        /// <summary>Step 85: a gamepad button by name - its index in <see cref="KeyNames.Controller"/> (0 = "None").</summary>
+        private static ParamDef ControllerKey(string key, ParamGroup group, string label, string description,
+            ApplyTiming timing = ApplyTiming.Live)
+            => new ParamDef(_next++, key, ParamType.Key, 0, KeyNames.Controller.All.Length - 1, group, label, description, timing,
+                KeyNames.Controller);
 
         /// <summary>Step 84: a short text (an item id) - its index in <see cref="TextValues"/> (0 = "").</summary>
         private static ParamDef Text(string key, ParamGroup group, string label, string description,

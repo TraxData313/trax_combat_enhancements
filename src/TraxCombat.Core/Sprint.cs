@@ -112,6 +112,28 @@ namespace TraxCombat.Core
     /// The sprint's settings for one decision (step 33, Anton 2026-10-12 - DESIGN §2 "The sprint"), read live from
     /// <see cref="TraxSettings"/>. A struct, built where needed.
     /// </summary>
+    /// <summary>
+    /// Step 85 (Toni 2026-10-24: "when pressing left thumbstick using controller it acts like pressing the CTRL activating the sprint"): YOUR two
+    /// sprint keys - the keyboard's SprintKey and the gamepad's SprintControllerKey (<see cref="KeyNames.Controller"/>, 0 = None). Holding EITHER
+    /// is holding the sprint key: the same press starts, the same letting go (of both) ends, every gate the same.
+    /// </summary>
+    public static class SprintKeys
+    {
+        /// <summary>The controller list's "None".</summary>
+        public const int NoController = 0;
+
+        /// <summary>A controller button is chosen (not None, inside the list).</summary>
+        public static bool HasController(int controllerIndex) => controllerIndex > NoController && controllerIndex < KeyNames.Controller.All.Length;
+
+        /// <summary>The sprint key is held: either key. The controller is asked only when one is chosen (<paramref name="controllerDown"/> is
+        /// then the read).</summary>
+        public static bool Held(bool keyDown, int controllerIndex, bool controllerDown) => keyDown || (HasController(controllerIndex) && controllerDown);
+
+        /// <summary>"LeftControl or ControllerLThumb" - the key alone with None.</summary>
+        public static string Text(string keyName, int controllerIndex) =>
+            HasController(controllerIndex) ? keyName + " or " + KeyNames.Controller.Name(controllerIndex) : keyName;
+    }
+
     public readonly struct SprintRules
     {
         public SprintRules(bool modEnabled, bool athleticsEnabled, bool sprintEnabled, bool aiEnabled, double pointsPerSecond, int minStartPercent,

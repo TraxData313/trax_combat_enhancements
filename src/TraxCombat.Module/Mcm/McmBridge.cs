@@ -464,12 +464,12 @@ namespace TraxCombat.Mcm
             /// old key stays).</summary>
             public void SetKey(string value)
             {
-                if (KeyNames.TryIndex(value, out int index))
+                if (_p.Keys.TryIndex(value, out int index))
                 {
                     Set(index);
                     return;
                 }
-                TraxLog.Info("mcm", _p.Key + ": \"" + value + "\" is not a key name - kept " + GetKey() + " (one of " + KeyNames.ListText + ")");
+                TraxLog.Info("mcm", _p.Key + ": \"" + value + "\" is not a key name - kept " + GetKey() + " (one of " + _p.Keys.ListText + ")");
             }
 
             /// <summary>Step 84: the text (an item id) as MCM's text box shows it.</summary>
