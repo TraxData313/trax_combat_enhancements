@@ -44,7 +44,7 @@ public class Step80Tests
         Assert.Equal(Bash, r.PathHalfWidth(AiKickKind.Bash), 6);
         Assert.Equal(Rear, r.RearRank, 6);
         Assert.Contains("a kick's path 0.60 m, a bash's 0.75 m either side", r.Describe(), StringComparison.Ordinal);
-        Assert.Contains("a friend in it within 1.2 m = a rear-rank man", r.Describe(), StringComparison.Ordinal);
+        Assert.Contains("; within 1.2 m = a friend in front of him, farther = beyond the rear-rank reach - both refuse", r.Describe(), StringComparison.Ordinal); // step 90's words
         // the master switch still comes first - the path never turns the kicks on
         s.Set(SettingsSchema.ModEnabled, false, "test");
         Assert.False(AiKickRules.From(s).Enabled);
@@ -206,27 +206,27 @@ public class Step80Tests
         Assert.StartsWith("ai kicks - whom they hit and the strike path (step 80): kicks: on an ENEMY 7 (his target 6, another 1, into his shield 0), on a FRIEND 1 (the man 1, his shield 0), a horse / untracked 0, MISSED 1 - friends 12.5% of the hits", line, StringComparison.Ordinal);
         Assert.Contains("| bashes: on an ENEMY 1 (his target 0, another 0, into his shield 1), on a FRIEND 1 (the man 0, his shield 1)", line, StringComparison.Ordinal);
         Assert.Contains("; enemy hits a man-minute in contact 0.800", line, StringComparison.Ordinal);
-        Assert.Contains("kicks clear 1, the enemy off his strike path 0, a friend first in his strike path 0, behind a friend (rear rank) 1; bashes clear 0, the enemy off his strike path 1, a friend first in his strike path 1", line, StringComparison.Ordinal);
-        Assert.Contains(" - REFUSED 3; a bash's / push's path again after its guard: clear 0, the enemy off his strike path 0, a friend first in his strike path 1", line, StringComparison.Ordinal);
+        Assert.Contains("kicks clear 1, the enemy off his strike path 0, a friend in front, beyond the rear-rank reach 0, a friend in front of him 1; bashes clear 0, the enemy off his strike path 1, a friend in front, beyond the rear-rank reach 1", line, StringComparison.Ordinal);
+        Assert.Contains(" - REFUSED 3; a bash's / push's path again after its guard: clear 0, the enemy off his strike path 0, a friend in front, beyond the rear-rank reach 1", line, StringComparison.Ordinal);
         Assert.Equal("path no longer clear after a bash's guard (step 80)", AiKickMath.EndName(AiKickEnd.PathBlocked));
-        Assert.Equal("behind a friend - rear rank (step 80)", AiKickMath.SkipName(AiKickSkip.BehindFriend));
+        Assert.Equal("a friend in front of him (step 90)", AiKickMath.SkipName(AiKickSkip.BehindFriend)); // step 90 renamed step 80's "behind a friend - rear rank"
     }
 
     [Fact]
     public void Format_18_moves_the_kicks_untouched_half_width_once_and_keeps_a_tuned_one()
     {
         static double Shipped(ParamDef p) => p == SettingsSchema.AiKickFriendClearMetres ? 0.6 : p.Default;
-        Assert.Equal(20, ConfigFile.FormatVersion);
+        Assert.Equal(21, ConfigFile.FormatVersion);
         var read = ConfigFile.Read("{ \"ConfigVersion\": 17, \"AiKickFriendClearMetres\": 0.5 }");
         var notes = ConfigFile.Migrate(read, Shipped);
         Assert.Single(notes);
-        Assert.StartsWith("AiKickFriendClearMetres: 0.5 → 0.6 (format 17 → 20, the old default; step 80", notes[0], StringComparison.Ordinal);
+        Assert.StartsWith("AiKickFriendClearMetres: 0.5 → 0.6 (format 17 → 21, the old default; step 80", notes[0], StringComparison.Ordinal);
         Assert.Equal(0.6, read.Values["AiKickFriendClearMetres"], 6);
         Assert.Single(ConfigFile.Migrate(read, Shipped)); // idempotent: the value moved, no new note
         var tuned = ConfigFile.Read("{ \"ConfigVersion\": 14, \"AiKickFriendClearMetres\": 0.8 }");
         var kept = ConfigFile.Migrate(tuned, Shipped);
         Assert.Single(kept);
-        Assert.StartsWith("AiKickFriendClearMetres: 0.8 kept - your own value (format 14 → 20; the new default 0.6", kept[0], StringComparison.Ordinal);
+        Assert.StartsWith("AiKickFriendClearMetres: 0.8 kept - your own value (format 14 → 21; the new default 0.6", kept[0], StringComparison.Ordinal);
         Assert.Equal(0.8, tuned.Values["AiKickFriendClearMetres"], 6);
         var now = ConfigFile.Read("{ \"ConfigVersion\": 18, \"AiKickFriendClearMetres\": 0.5 }");
         Assert.Empty(ConfigFile.Migrate(now, Shipped));

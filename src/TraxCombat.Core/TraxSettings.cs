@@ -621,6 +621,8 @@ namespace TraxCombat.Core
         public float AiKickFriendClearMetres => GetFloat(SettingsSchema.AiKickFriendClearMetres); // step 68: no kick through a friend; step 80: the kick's strike path half-width
         public float AiBashPathHalfWidthMetres => GetFloat(SettingsSchema.AiBashPathHalfWidthMetres); // step 80
         public float AiKickRearRankMetres => GetFloat(SettingsSchema.AiKickRearRankMetres); // step 80
+        public float AiKickBlockAheadMetres => GetFloat(SettingsSchema.AiKickBlockAheadMetres); // step 90: a friend blocks only this far ahead
+        public float AiKickBlockSideMetres => GetFloat(SettingsSchema.AiKickBlockSideMetres); // step 90: ... and this close to the line
         public float ImpactMismatchWeight => GetFloat(SettingsSchema.ImpactMismatchWeight);
         public float ImpactEvenBandDoublings => GetFloat(SettingsSchema.ImpactEvenBandDoublings);
         public float ImpactBodyExponent => GetFloat(SettingsSchema.ImpactBodyExponent);

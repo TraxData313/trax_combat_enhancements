@@ -203,17 +203,17 @@ public class Step81Tests
     [Fact]
     public void Format_19_moves_the_untouched_stack_minimum_cost_and_cooldown_keeps_hand_set_ones_and_drops_the_retired_keys()
     {
-        Assert.Equal(20, ConfigFile.FormatVersion);
+        Assert.Equal(21, ConfigFile.FormatVersion);
         var read = ConfigFile.Read("{ \"ConfigVersion\": 18, \"SwingStackMinimum\": 2, \"CostPerKickOrBash\": 6.0, \"AiKickCooldownSeconds\": 8.0, \"AiKicksPerMinute\": 1.2, "
                                    + "\"AiBashShareOfSwingsPercent\": 100, \"AiKickMinBarPercent\": 35 }");
         var notes = ConfigFile.Migrate(read, Shipped);
         Assert.Equal(6, notes.Count);
-        Assert.StartsWith("SwingStackMinimum: 2 → 3 (format 18 → 20, the old default; step 81, Toni: kicks and bashes as a share of the melee moves - the swing stack holds at least 3", notes[0], StringComparison.Ordinal);
-        Assert.StartsWith("CostPerKickOrBash: 6.0 → 8.0 (format 18 → 20, the old default; step 81", notes[1], StringComparison.Ordinal);
-        Assert.StartsWith("AiKickCooldownSeconds: 8.0 → 2.0 (format 18 → 20, the old default; step 81", notes[2], StringComparison.Ordinal);
-        Assert.Contains(notes, n => n.StartsWith("AiKicksPerMinute 1.2 dropped (format 18 → 20; step 81", StringComparison.Ordinal));
-        Assert.Contains(notes, n => n.StartsWith("AiBashShareOfSwingsPercent 100 dropped (format 18 → 20; step 81", StringComparison.Ordinal));
-        Assert.Contains(notes, n => n.StartsWith("AiKickMinBarPercent 35 dropped (format 18 → 20; step 81", StringComparison.Ordinal));
+        Assert.StartsWith("SwingStackMinimum: 2 → 3 (format 18 → 21, the old default; step 81, Toni: kicks and bashes as a share of the melee moves - the swing stack holds at least 3", notes[0], StringComparison.Ordinal);
+        Assert.StartsWith("CostPerKickOrBash: 6.0 → 8.0 (format 18 → 21, the old default; step 81", notes[1], StringComparison.Ordinal);
+        Assert.StartsWith("AiKickCooldownSeconds: 8.0 → 2.0 (format 18 → 21, the old default; step 81", notes[2], StringComparison.Ordinal);
+        Assert.Contains(notes, n => n.StartsWith("AiKicksPerMinute 1.2 dropped (format 18 → 21; step 81", StringComparison.Ordinal));
+        Assert.Contains(notes, n => n.StartsWith("AiBashShareOfSwingsPercent 100 dropped (format 18 → 21; step 81", StringComparison.Ordinal));
+        Assert.Contains(notes, n => n.StartsWith("AiKickMinBarPercent 35 dropped (format 18 → 21; step 81", StringComparison.Ordinal));
         Assert.Equal(3, read.Values["SwingStackMinimum"], 9);
         Assert.Equal(8, read.Values["CostPerKickOrBash"], 9);
         Assert.Equal(2, read.Values["AiKickCooldownSeconds"], 9);
@@ -222,9 +222,9 @@ public class Step81Tests
         var mine = ConfigFile.Read("{ \"ConfigVersion\": 18, \"SwingStackMinimum\": 5, \"CostPerKickOrBash\": 4.0, \"AiKickCooldownSeconds\": 6.0 }");
         var kept = ConfigFile.Migrate(mine, Shipped);
         Assert.Equal(3, kept.Count);
-        Assert.StartsWith("SwingStackMinimum: 5 kept - your own value (format 18 → 20; the new default 3", kept[0], StringComparison.Ordinal);
-        Assert.StartsWith("CostPerKickOrBash: 4.0 kept - your own value (format 18 → 20; the new default 8.0", kept[1], StringComparison.Ordinal);
-        Assert.StartsWith("AiKickCooldownSeconds: 6.0 kept - your own value (format 18 → 20; the new default 2.0", kept[2], StringComparison.Ordinal);
+        Assert.StartsWith("SwingStackMinimum: 5 kept - your own value (format 18 → 21; the new default 3", kept[0], StringComparison.Ordinal);
+        Assert.StartsWith("CostPerKickOrBash: 4.0 kept - your own value (format 18 → 21; the new default 8.0", kept[1], StringComparison.Ordinal);
+        Assert.StartsWith("AiKickCooldownSeconds: 6.0 kept - your own value (format 18 → 21; the new default 2.0", kept[2], StringComparison.Ordinal);
         Assert.Equal(5, mine.Values["SwingStackMinimum"], 9);
         // a format-19 file is never touched (but a retired key pasted in is still dropped); a file without the keys gets the defaults (no note)
         Assert.Empty(ConfigFile.Migrate(ConfigFile.Read("{ \"ConfigVersion\": 19, \"SwingStackMinimum\": 2, \"CostPerKickOrBash\": 6.0 }"), Shipped));
@@ -265,7 +265,7 @@ public class Step81Tests
         Assert.Equal("ai kicks - shares of the melee moves in kick reach (step 81): shieldmen 100 moves - rolled kick 20.0% / bash 35.0% / swing 45.0% (target 20% / 35% / 45%) "
                      + "→ DONE kick 20.0% / bash 30.0% / swing 50.0%; refused safety 0, stack empty 3, cooldown 0, path 2 | no shield 20 moves - rolled kick 35.0% / push 0.0% / swing 65.0% "
                      + "(target 35% / 0% / 65%) → DONE kick 30.0% / push 0.0% / swing 70.0%; refused safety 0, stack empty 0, cooldown 1, path 0 | kicks 26, bashes 30 and pushes 0 asked = 5.60 a man-minute "
-                     + "in contact (10.0 man-minutes); a raised shield kicked instead of bashed 2; refused by reason: no stored swing 3, cooldown 1, a friend first in his strike path (step 80) 2; "
+                     + "in contact (10.0 man-minutes); a raised shield kicked instead of bashed 2; refused by reason: no stored swing 3, cooldown 1, a friend in front, beyond the rear-rank reach (step 90) 2; "
                      + "Athletics spent on them 448", line);
         Assert.Equal(line, st.SummaryLines(in r).ToList()[4]);
     }

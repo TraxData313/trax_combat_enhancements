@@ -120,8 +120,11 @@ namespace TraxCombat.Core
         /// the rate, its factors, the bar gate, the wait for reach, the bash credit and the bash's own cooldown - dropped from any file by
         /// <c>DropRetiredKickKeys</c>, one note each), 20 = step 88 (Toni 2026-10-24 - a weapon push for men without a shield and new shares:
         /// AiShieldmanKickPercent 20 → 25, AiShieldmanBashPercent 35 → 40 in a format-19 file still holding them; a tuned value kept and noted; the
-        /// new AiNoShieldPushPercent (20) is a new key - a file without it gets the default like any missing key).</summary>
-        public const int FormatVersion = 20;
+        /// new AiNoShieldPushPercent (20) is a new key - a file without it gets the default like any missing key), 21 = step 90 (Toni's 17:39
+        /// battle of 2026-10-24 - only a man really in front blocks a kick / bash / push, and the strike path narrows: AiBashPathHalfWidthMetres
+        /// 0.75 → 0.5 (bashes and pushes), AiKickFriendClearMetres 0.6 → 0.45 in a format 18-20 file still holding them; a tuned value kept and
+        /// noted; AiKickBlockAheadMetres / AiKickBlockSideMetres are new keys).</summary>
+        public const int FormatVersion = 21;
 
         /// <summary>The meta key holding <see cref="FormatVersion"/> - not a setting.</summary>
         public const string VersionKey = "ConfigVersion";
@@ -529,7 +532,7 @@ namespace TraxCombat.Core
                 // step 80: AiKickFriendClearMetres (step 68's key, since format 14) is now the KICK's strike path half-width, measured from the line
                 // of his facing - 0.5 → 0.6 (a body centre 0.6 m off his foot's line is still touched); a hand-set value is kept and said once
                 MoveOrKeepIfMoved(read, SettingsSchema.AiKickFriendClearMetres, 0.5,
-                    "step 80, Toni: AI kicks land on enemies, not friends - the kick's strike path along his facing is 0.6 m either side", from, defaultOf);
+                    "step 80, Toni: AI kicks land on enemies, not friends - the kick's strike path along his facing (0.6 m either side; 0.45 since step 90)", from, defaultOf);
             }
             if (from < 19)
             {
@@ -548,6 +551,15 @@ namespace TraxCombat.Core
                 const string push = "step 88, Toni: a weapon push for men without a shield and new shares";
                 MoveOrKeepIfMoved(read, SettingsSchema.AiShieldmanKickPercent, 20, push + " - a shieldman kicks 25% of his moves in kick reach", from, defaultOf);
                 MoveOrKeepIfMoved(read, SettingsSchema.AiShieldmanBashPercent, 35, push + " - a shieldman bashes 40% of his moves in kick reach (he swings 35%)", from, defaultOf);
+            }
+            if (from < 21 && from >= 18)
+            {
+                // step 90 (Toni 2026-10-24): the strike path narrows - a bash's / push's half-width (step 80's key, since format 18) 0.75 → 0.5, a kick's
+                // (step 68's key; 0.6 since format 18 - an older file's 0.5 went through step 80's block above straight to today's value) 0.6 → 0.45;
+                // only a man really in front blocks now (two new keys); a hand-set value is kept and said once
+                const string front = "step 90, Toni: only a man really in front blocks a kick, bash or push";
+                MoveOrKeepIfMoved(read, SettingsSchema.AiBashPathHalfWidthMetres, 0.75, front + " - a bash's / push's strike path is 0.5 m either side", from, defaultOf);
+                MoveOrKeepIfMoved(read, SettingsSchema.AiKickFriendClearMetres, 0.6, front + " - a kick's strike path is 0.45 m either side", from, defaultOf);
             }
             // format 17 (step 78b) moved the lull's LullRecover*Percent 10 / 15 / 20 → 20 / 25 / 30; step 78c removed the lull and its keys, so a
             // format 16 file's are dropped below with the rest of them - nothing to move any more (78c kept format 17; step 80 made it 18)

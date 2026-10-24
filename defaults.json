@@ -2211,13 +2211,13 @@
   // side of that line (a body whose centre is that close is touched). The enemy must be in the
   // path and no man of his own side may stand in it closer - else he waits. 0 = no check.
   // (range 0.0 to 2.0)
-  "AiKickFriendClearMetres": 0.6,
+  "AiKickFriendClearMetres": 0.45,
 
   // The same for a shield bash: the bash's path is this many metres either side of the line of
   // his facing (wider than a kick's - the shield). The enemy must be the first body in it; read
   // again after the bash's raised guard, just before the bash. 0 = no check.
   // (range 0.0 to 2.0)
-  "AiBashPathHalfWidthMetres": 0.75,
+  "AiBashPathHalfWidthMetres": 0.5,
 
   // An AI soldier with one of his own side in his kick / bash path within this many metres of
   // him is a rear-rank man: he never kicks or bashes from there (no waiting for the line to
@@ -2225,6 +2225,19 @@
   // wait. 0 = always wait.
   // (range 0.0 to 3.0)
   "AiKickRearRankMetres": 1.2,
+
+  // A man of his own side stops an AI soldier's kick, bash or push only when he stands at least
+  // this many metres ahead along the kicker's facing (and closer than the enemy) - a shoulder
+  // neighbour half a step forward beside him no longer stops it. 0 = anyone ahead of his
+  // shoulders in the path blocks (as before).
+  // (range 0.0 to 2.0)
+  "AiKickBlockAheadMetres": 0.5,
+
+  // ... and only when he stands within this many metres either side of the line of the kicker's
+  // facing (never wider than the strike path itself) - a friend really IN FRONT of him. 0 = the
+  // strike path's own half-width (as before).
+  // (range 0.0 to 2.0)
+  "AiKickBlockSideMetres": 0.4,
 
   // A shield bash met by a raised shield guarding RIGHT (the side a bash comes from - the
   // correct meet): at most this chance the BASHER staggers, rising with his tiredness and how

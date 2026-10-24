@@ -368,6 +368,7 @@ namespace TraxCombat.Missions
         public double AiKickNext = double.NegativeInfinity;
         public double AiKickLastLook = double.NaN;
         public double AiKickAngle = double.NaN; // step 87: the facing-to-target angle at the decision
+        public int AiKickLeftNear = -1, AiKickRightNear = -1; // step 90: friends within 0.9 m on his left / right at the decision (-1 = not counted)
         public bool AiMoveQueued;
 
         /// <summary>Step 82: his READ of an incoming kick / bash - reading (rolled yes, in the readers' pool), the kind (a bash = guard right),

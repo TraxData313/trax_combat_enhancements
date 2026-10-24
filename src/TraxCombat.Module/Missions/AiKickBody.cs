@@ -36,9 +36,12 @@ namespace TraxCombat.Missions
         /// <paramref name="halfWidth"/> m either side (<see cref="TraxCombat.Core.AiKickPathProbe"/>): is <paramref name="target"/> in it and the first
         /// body there, or does a man of his own side stand in it closer (within <paramref name="rearRank"/> m = a rear-rank man)?
         /// <paramref name="looked"/> = the friends the probe looked at; step 87: <paramref name="blocker"/> = the nearest friend in the path (his along /
-        /// side, his agent index, his place in the formation against <paramref name="st"/>) - not Valid when none.</summary>
-        TraxCombat.Core.AiKickPath StrikePath(TrackedAgent st, Agent target, double reach, double halfWidth, double rearRank, out int looked,
-            out TraxCombat.Core.AiKickBlocker blocker);
+        /// side, his agent index, his place in the formation against <paramref name="st"/>) - not Valid when none. Step 90: a friend blocks only
+        /// <paramref name="blockAhead"/> m+ ahead and within <paramref name="blockSide"/> m of the line (0 = step 80's rule); the blocker carries the
+        /// friends tight on his left / right (<c>LeftNear</c> / <c>RightNear</c>) and the blocking friend's signed side; <paramref name="letThrough"/> =
+        /// the friends in the path who did not block.</summary>
+        TraxCombat.Core.AiKickPath StrikePath(TrackedAgent st, Agent target, double reach, double halfWidth, double rearRank, double blockAhead, double blockSide,
+            out int looked, out int letThrough, out TraxCombat.Core.AiKickBlocker blocker);
 
         /// <summary>Step 87: <paramref name="friend"/> in <paramref name="st"/>'s frame NOW (along / off his facing) and his place in the formation
         /// against him - asked once per kick / bash that landed on a friend.</summary>
@@ -94,10 +97,11 @@ namespace TraxCombat.Missions
         /// game's proximity search for his side within the path's reach (<c>Mission.GetNearbyAllyAgents</c>, the list reused), each one fed to
         /// the Core probe - horses of his side too (a friend's horse in the way is a friend's body). Main thread; asked only in reach, in front
         /// and with the target in the path (a handful of reads a second). No mission / team = the path refused (no kick - vanilla's own way).</summary>
-        public TraxCombat.Core.AiKickPath StrikePath(TrackedAgent st, Agent target, double reach, double halfWidth, double rearRank, out int looked,
-            out TraxCombat.Core.AiKickBlocker blocker)
+        public TraxCombat.Core.AiKickPath StrikePath(TrackedAgent st, Agent target, double reach, double halfWidth, double rearRank, double blockAhead, double blockSide,
+            out int looked, out int letThrough, out TraxCombat.Core.AiKickBlocker blocker)
         {
             looked = 0;
+            letThrough = 0;
             blocker = TraxCombat.Core.AiKickBlocker.None;
             var a = st.Agent;
             var m = Mission.Current;
@@ -105,10 +109,11 @@ namespace TraxCombat.Missions
             var p = a.Position.AsVec2;
             var t = target.Position.AsVec2;
             var face = a.GetMovementDirection();
-            var probe = TraxCombat.Core.AiKickPathProbe.Begin(p.x, p.y, face.x, face.y, t.x, t.y, reach, halfWidth, rearRank);
+            var probe = TraxCombat.Core.AiKickPathProbe.Begin(p.x, p.y, face.x, face.y, t.x, t.y, reach, halfWidth, rearRank, blockAhead, blockSide);
             if (probe.TargetIn && halfWidth > 0)
             {
-                float radius = (float)(System.Math.Min(reach, probe.TargetAlong) + halfWidth);
+                // step 90: at least the neighbour radius - the friends tight beside him are counted from the same search
+                float radius = (float)System.Math.Max(System.Math.Min(reach, probe.TargetAlong) + halfWidth, TraxCombat.Core.AiKickMath.NeighbourMetres);
                 m.GetNearbyAllyAgents(p, radius, a.Team, _allies);
                 for (int i = 0; i < _allies.Count; i++)
                 {
@@ -125,12 +130,16 @@ namespace TraxCombat.Missions
                     blocker.Valid = true;
                     blocker.Along = probe.NearestFriend;
                     blocker.Side = probe.NearestFriendSide;
+                    blocker.Lateral = probe.NearestFriendLateral;
                     blocker.FriendIndex = f.Index;
                     Relate(a, f, ref blocker);
                 }
+                blocker.LeftNear = probe.LeftNear;
+                blocker.RightNear = probe.RightNear;
                 _allies.Clear();
             }
             looked = probe.Looked;
+            letThrough = probe.LetThrough;
             return probe.Verdict;
         }
 
@@ -145,10 +154,11 @@ namespace TraxCombat.Missions
             var p = a.Position.AsVec2;
             var q = friend.Position.AsVec2;
             var face = a.GetMovementDirection();
-            TraxCombat.Core.AiKickBlockMath.Locate(p.x, p.y, face.x, face.y, q.x, q.y, out double along, out double side);
+            TraxCombat.Core.AiKickBlockMath.Locate(p.x, p.y, face.x, face.y, q.x, q.y, out double along, out double side, out double lateral);
             b.Valid = true;
             b.Along = along;
             b.Side = side;
+            b.Lateral = lateral; // step 90: + = his left (his shield side)
             b.FriendIndex = friend.Index;
             Relate(a, friend, ref b);
             return b;

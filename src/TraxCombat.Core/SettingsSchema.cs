@@ -1682,6 +1682,16 @@ namespace TraxCombat.Core
             "AI kicks: a friend this close ahead = rear rank (m)",
             "An AI soldier with one of his own side in his kick / bash path within this many metres of him is a rear-rank man: he never kicks or bashes from there (no waiting for the line to clear). A friend in the path farther off than this but closer than the enemy only makes him wait. 0 = always wait.");
 
+        // Step 90 (Toni's 17:39 battle of 2026-10-24: of 95 'behind a friend' refusals only 10 were the rank in front - 53 were the SHOULDER
+        // NEIGHBOUR ~0.35 m ahead / 0.64 m aside, inside the bash's 0.75 m path): a friend refuses the move only when he is REALLY in front.
+        public static readonly ParamDef AiKickBlockAheadMetres = Float("AiKickBlockAheadMetres", 0, 2, ImpactGroup,
+            "AI kicks: a friend blocks only this far ahead (m)",
+            "A man of his own side stops an AI soldier's kick, bash or push only when he stands at least this many metres ahead along the kicker's facing (and closer than the enemy) - a shoulder neighbour half a step forward beside him no longer stops it. 0 = anyone ahead of his shoulders in the path blocks (as before).");
+
+        public static readonly ParamDef AiKickBlockSideMetres = Float("AiKickBlockSideMetres", 0, 2, ImpactGroup,
+            "AI kicks: a friend blocks only this close to the line (m)",
+            "... and only when he stands within this many metres either side of the line of the kicker's facing (never wider than the strike path itself) - a friend really IN FRONT of him. 0 = the strike path's own half-width (as before).");
+
         // Step 82: the meet table's ceilings (IMPACT §3.5's meet rows) and the AI's read - all live.
         public static readonly ParamDef MeetBashShieldRightStaggerPercent = Int("MeetBashShieldRightStaggerPercent", 0, 100, ImpactGroup,
             "Meet: bash on a shield guarding right - the BASHER staggers (%)",
@@ -2448,7 +2458,7 @@ namespace TraxCombat.Core
             ImpactChargeCarrySeconds, RiposteKnockdownMaxPercent, RiposteKnockdownFrom, RiposteMomentumPercent, ImpactMultiplierCapPercent,
             AiKicksEnabled, AiShieldmanKickPercent, AiShieldmanBashPercent, AiNoShieldKickPercent, AiNoShieldPushPercent, AiKickReachMetres, AiKickFacingDegrees, AiKickCooldownSeconds,
             AiKickKicksARaisedShield, KickBraceEnabled, KickBraceFromPressure, KickBraceToPressure, KickBraceMinBarPercent, KickBraceReelPercent,
-            KickShortReelPercent, KickBraceRefusesKnockBack, AiKickFriendClearMetres, AiBashPathHalfWidthMetres, AiKickRearRankMetres,
+            KickShortReelPercent, KickBraceRefusesKnockBack, AiKickFriendClearMetres, AiBashPathHalfWidthMetres, AiKickRearRankMetres, AiKickBlockAheadMetres, AiKickBlockSideMetres,
             MeetBashShieldRightStaggerPercent, MeetBashShieldRightFallPercent, MeetBashWeaponRightStaggerPercent, MeetBashWeaponRightFallPercent, MeetBashShieldWrongStaggerPercent, MeetBashShieldWrongFallPercent,
             MeetBashShieldWrongShieldDropPercent, MeetBashWeaponWrongStaggerPercent, MeetBashWeaponWrongFallPercent, MeetBashOpenStaggerPercent, MeetBashOpenFallPercent, MeetBashOpenShieldDropPercent,
             MeetKickShieldDownStaggerPercent, MeetKickShieldDownFallPercent, MeetKickWeaponDownStaggerPercent, MeetKickWeaponDownFallPercent, MeetAiReadScalePercent, MeetAiReadReactionSeconds,

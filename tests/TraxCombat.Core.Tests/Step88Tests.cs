@@ -168,27 +168,27 @@ public class Step88Tests
     [Fact]
     public void Format_20_moves_the_shieldmans_old_shares_keeps_a_tuned_one_and_leaves_format_20_alone()
     {
-        Assert.Equal(20, ConfigFile.FormatVersion);
+        Assert.Equal(21, ConfigFile.FormatVersion);
         var read = ConfigFile.Read("{ \"ConfigVersion\": 19, \"AiShieldmanKickPercent\": 20, \"AiShieldmanBashPercent\": 35, \"AiNoShieldKickPercent\": 35 }");
         var notes = ConfigFile.Migrate(read, ShippedDefault);
         Assert.Equal(25, read.Values["AiShieldmanKickPercent"], 9);
         Assert.Equal(40, read.Values["AiShieldmanBashPercent"], 9);
         Assert.Equal(35, read.Values["AiNoShieldKickPercent"], 9);
         Assert.False(read.Values.ContainsKey("AiNoShieldPushPercent")); // a new key: the default fills it like any missing key
-        Assert.Contains(notes, n => n.StartsWith("AiShieldmanKickPercent: 20 → 25 (format 19 → 20, the old default; step 88", StringComparison.Ordinal));
-        Assert.Contains(notes, n => n.StartsWith("AiShieldmanBashPercent: 35 → 40 (format 19 → 20, the old default; step 88", StringComparison.Ordinal));
+        Assert.Contains(notes, n => n.StartsWith("AiShieldmanKickPercent: 20 → 25 (format 19 → 21, the old default; step 88", StringComparison.Ordinal));
+        Assert.Contains(notes, n => n.StartsWith("AiShieldmanBashPercent: 35 → 40 (format 19 → 21, the old default; step 88", StringComparison.Ordinal));
         var tuned = ConfigFile.Read("{ \"ConfigVersion\": 19, \"AiShieldmanKickPercent\": 10, \"AiShieldmanBashPercent\": 35 }");
         var tn = ConfigFile.Migrate(tuned, ShippedDefault);
         Assert.Equal(10, tuned.Values["AiShieldmanKickPercent"], 9);
         Assert.Equal(40, tuned.Values["AiShieldmanBashPercent"], 9);
-        Assert.Contains(tn, n => n.StartsWith("AiShieldmanKickPercent: 10 kept - your own value (format 19 → 20; the new default 25", StringComparison.Ordinal));
+        Assert.Contains(tn, n => n.StartsWith("AiShieldmanKickPercent: 10 kept - your own value (format 19 → 21; the new default 25", StringComparison.Ordinal));
         Assert.Empty(ConfigFile.Migrate(ConfigFile.Read("{ \"ConfigVersion\": 20, \"AiShieldmanKickPercent\": 20, \"AiShieldmanBashPercent\": 35 }"), ShippedDefault));
         // a format-18 file has no shares yet (step 81's keys) - nothing to move here; on DESIGN's initial values the move is silent
         Assert.Empty(ConfigFile.Migrate(ConfigFile.Read("{ \"ConfigVersion\": 19, \"AiShieldmanKickPercent\": 20, \"AiShieldmanBashPercent\": 35 }"), p => p.Default));
-        // the rewritten file is format 20 and carries the push share
+        // the rewritten file is format 21 (step 90) and carries the push share
         var s = new TraxSettings();
         string written = ConfigFile.Write(s.Snapshot());
-        Assert.Contains("\"ConfigVersion\": 20", written, StringComparison.Ordinal);
+        Assert.Contains("\"ConfigVersion\": 21", written, StringComparison.Ordinal);
         Assert.Contains("\"AiNoShieldPushPercent\": 20", written, StringComparison.Ordinal);
     }
 
@@ -347,7 +347,7 @@ public class Step88Tests
             lines[4], StringComparison.Ordinal);
         Assert.Contains("kicks 7, bashes 0 and pushes 3 asked = 10.00 a man-minute in contact", lines[4], StringComparison.Ordinal);
         Assert.Contains("| pushes: on an ENEMY 1 (his target 1, another 0, into his shield 0), on a FRIEND 1 (the man 1, his shield 0), a horse / untracked 0, MISSED 0 - friends 50.0% of the hits", lines[5], StringComparison.Ordinal);
-        Assert.Contains("; pushes clear 0, the enemy off his strike path 0, a friend first in his strike path 1, behind a friend (rear rank) 0 - REFUSED 1", lines[5], StringComparison.Ordinal);
+        Assert.Contains("; pushes clear 0, the enemy off his strike path 0, a friend in front, beyond the rear-rank reach 1, a friend in front of him 0 - REFUSED 1", lines[5], StringComparison.Ordinal);
         Assert.Contains("LANDED ON A FRIEND (his place at the hit, the angle at the decision) - kicks 0; bashes 0; pushes 1:", lines[6], StringComparison.Ordinal);
 
         var meets = new ImpactMeetStats();

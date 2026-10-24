@@ -88,7 +88,7 @@ public class Step82Tests
             SettingsSchema.MeetKickShieldDownStaggerPercent, SettingsSchema.MeetKickShieldDownFallPercent, SettingsSchema.MeetKickWeaponDownStaggerPercent,
             SettingsSchema.MeetKickWeaponDownFallPercent, SettingsSchema.MeetAiReadScalePercent, SettingsSchema.MeetAiReadReactionSeconds, SettingsSchema.MeetAiReadMaxHoldSeconds,
         };
-        int after = all.IndexOf(SettingsSchema.AiKickRearRankMetres);
+        int after = all.IndexOf(SettingsSchema.AiKickBlockSideMetres); // step 90's two after AiKickRearRankMetres
         for (int i = 0; i < adv.Length; i++)
         {
             Assert.Equal(after + 1 + i, all.IndexOf(adv[i]));

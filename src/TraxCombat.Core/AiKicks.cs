@@ -78,10 +78,14 @@ namespace TraxCombat.Core
         /// <summary>Refused (step 80's path): the enemy in reach and in front but not in his strike path.</summary>
         TargetOffPath,
 
-        /// <summary>Refused (step 80's path): a friend first in his strike path.</summary>
+        /// <summary>Refused (step 80's path; step 90: only a friend really IN FRONT counts): a friend in front of him in his strike path,
+        /// farther than <c>AiKickRearRankMetres</c> but closer than the enemy.</summary>
         FriendInTheWay,
 
-        /// <summary>Refused (step 80's path): a REAR-RANK man - a friend in his strike path within <c>AiKickRearRankMetres</c>.</summary>
+        /// <summary>Refused (step 80's path; step 90's words "a friend in front of him" - the enum name kept): a friend really IN FRONT of him
+        /// (at least <c>AiKickBlockAheadMetres</c> ahead along his facing, within <c>AiKickBlockSideMetres</c> of its line) within
+        /// <c>AiKickRearRankMetres</c>. Step 80 called it "behind a friend - rear rank"; Toni's 17:39 log showed most of those were shoulder
+        /// neighbours, which no longer block.</summary>
         BehindFriend,
 
         /// <summary>His wind-up was over (released, cancelled) before the tick looked - nothing to replace (not a move).</summary>
@@ -97,10 +101,11 @@ namespace TraxCombat.Core
         /// <summary>The enemy is not in his strike path at all (off the line of his facing, behind him, beyond the reach).</summary>
         TargetOffPath,
 
-        /// <summary>A friend is in his strike path closer than the enemy (beyond the rear-rank distance) - the decision waits.</summary>
+        /// <summary>A friend really in front of him (step 90's blocker test) closer than the enemy, beyond the rear-rank distance - refused.</summary>
         FriendFirst,
 
-        /// <summary>A friend is in his strike path closer than the enemy AND within the rear-rank distance - a rear-rank man: no kick.</summary>
+        /// <summary>A friend really in front of him (step 90: along ≥ <c>AiKickBlockAheadMetres</c>, |side| ≤ min(<c>AiKickBlockSideMetres</c>, the
+        /// half-width)) closer than the enemy AND within the rear-rank distance - "a friend in front of him": refused (the name kept from step 80).</summary>
         BehindFriend,
 
         Count,
@@ -141,10 +146,16 @@ namespace TraxCombat.Core
     /// own frame: the enemy must stand IN the path (0 &lt; along ≤ reach, |side| ≤ the half-width - a body centre that close to the line is
     /// touched), and no friend may stand in it closer (along &gt; <see cref="AiKickMath.FriendPathMinAlong"/>, along &lt; the enemy's, |side| ≤ the
     /// half-width); the nearest such friend within the rear-rank distance = a rear-rank man. Allocation-free: a struct fed one friend at a time.
+    /// Step 90 (Toni's 17:39 battle of 2026-10-24: 53 of 95 'rear rank' refusals were the SHOULDER NEIGHBOUR ~0.35 m ahead / 0.64 m aside): a
+    /// friend BLOCKS only when he is really in front - along ≥ the block-ahead distance and |side| ≤ min(the block-side distance, the half-width)
+    /// (0 = step 80's rule for each); he also counts the friends within <see cref="AiKickMath.NeighbourMetres"/> of him on his LEFT (his shield
+    /// side) and his RIGHT (a measurement - the step-87 diagnostic). SIGN: lateral = u × (q − p) = u.x dy − u.y dx, + = his LEFT - the game's
+    /// <c>Vec2.LeftVec()</c> = (−y, x) (z up, x / y the ground; v1.4.8's CampaignVec2.LeftVec builds new Vec2(−Y, X)); a soldier holds his
+    /// shield on his left arm.
     /// </summary>
     public struct AiKickPathProbe
     {
-        private double _ax, _ay, _ux, _uy, _half, _rear;
+        private double _ax, _ay, _ux, _uy, _half, _rear, _ahead, _blockSide;
         private bool _off;
 
         /// <summary>His facing's unit vector after <see cref="Begin"/> (a zero facing = the line to the target).</summary>
@@ -164,6 +175,18 @@ namespace TraxCombat.Core
         /// <summary>Step 87: that nearest friend's distance off the line of his facing (m, ≥ 0); NaN = none.</summary>
         public double NearestFriendSide { get; private set; }
 
+        /// <summary>Step 90: that nearest friend's SIGNED distance off the line (+ = his left - his shield side); NaN = none.</summary>
+        public double NearestFriendLateral { get; private set; }
+
+        /// <summary>Step 90 (a measurement): friends fed within <see cref="AiKickMath.NeighbourMetres"/> of him on his left (shield side) / right
+        /// (weapon side) - every one fed, in the path or not; one exactly on the line counts on neither.</summary>
+        public int LeftNear { get; private set; }
+        public int RightNear { get; private set; }
+
+        /// <summary>Step 90: friends in the strike path (|side| ≤ the half-width, 0 &lt; along &lt; the enemy's) who did NOT block - not really in
+        /// front (a shoulder neighbour) - step 80 would have refused for them.</summary>
+        public int LetThrough { get; private set; }
+
         /// <summary>Step 87: the index the caller gave that nearest friend in <see cref="Add(double, double, int)"/> (its place in the caller's
         /// list - the module maps it back to the agent); −1 = none or not given.</summary>
         public int NearestFriendIndex { get; private set; }
@@ -173,8 +196,11 @@ namespace TraxCombat.Core
         public int InPath { get; private set; }
 
         /// <summary>Starts a probe for the man at (<paramref name="ax"/>, <paramref name="ay"/>) facing (<paramref name="faceX"/>, <paramref name="faceY"/>)
-        /// (any length) at the enemy at (<paramref name="tx"/>, <paramref name="ty"/>). <paramref name="halfWidth"/> 0 = the check off (always Clear).</summary>
-        public static AiKickPathProbe Begin(double ax, double ay, double faceX, double faceY, double tx, double ty, double reach, double halfWidth, double rearRank)
+        /// (any length) at the enemy at (<paramref name="tx"/>, <paramref name="ty"/>). <paramref name="halfWidth"/> 0 = the check off (always Clear).
+        /// Step 90: <paramref name="blockAhead"/> / <paramref name="blockSide"/> - a friend blocks only that far ahead and that close to the line
+        /// (0 = step 80's rule: anyone ahead of his shoulders / the half-width).</summary>
+        public static AiKickPathProbe Begin(double ax, double ay, double faceX, double faceY, double tx, double ty, double reach, double halfWidth, double rearRank,
+            double blockAhead = 0, double blockSide = 0)
         {
             var p = new AiKickPathProbe
             {
@@ -184,9 +210,13 @@ namespace TraxCombat.Core
                 _rear = double.IsNaN(rearRank) || rearRank < 0 ? 0 : rearRank,
                 NearestFriend = double.NaN,
                 NearestFriendSide = double.NaN,
+                NearestFriendLateral = double.NaN,
                 NearestFriendIndex = -1,
             };
             p._off = !(p._half > 0);
+            p._ahead = double.IsNaN(blockAhead) || blockAhead < 0 ? 0 : blockAhead;
+            double bs = double.IsNaN(blockSide) || blockSide < 0 ? 0 : blockSide;
+            p._blockSide = bs > 0 ? Math.Min(bs, p._half) : p._half;
             double fl = Math.Sqrt(faceX * faceX + faceY * faceY);
             if (!(fl > 1e-6))
             {
@@ -216,22 +246,37 @@ namespace TraxCombat.Core
         /// path - with his along and side (<see cref="NearestFriendIndex"/>, <see cref="NearestFriendSide"/>). No allocation.</summary>
         public void Add(double fx, double fy, int index)
         {
+            double dx = fx - _ax, dy = fy - _ay;
+            double lateral = _ux * dy - _uy * dx; // step 90: + = his left (his shield side)
+            if (dx * dx + dy * dy <= AiKickMath.NeighbourMetres * AiKickMath.NeighbourMetres + 1e-9)
+            {
+                if (lateral > 0) LeftNear++;
+                else if (lateral < 0) RightNear++;
+            }
             if (_off || !TargetIn) return;
             Looked++;
-            double along = (fx - _ax) * _ux + (fy - _ay) * _uy;
+            double along = dx * _ux + dy * _uy;
             if (!(along > AiKickMath.FriendPathMinAlong) || !(along < TargetAlong)) return;
-            double side = Math.Abs(-(fx - _ax) * _uy + (fy - _ay) * _ux);
+            double side = Math.Abs(lateral);
             if (!(side <= _half + 1e-9)) return;
+            // step 90: in the path, but only a friend really IN FRONT of him blocks (a shoulder neighbour half a step forward does not)
+            if (!(along >= _ahead - 1e-9) || !(side <= _blockSide + 1e-9))
+            {
+                LetThrough++;
+                return;
+            }
             InPath++;
             if (double.IsNaN(NearestFriend) || along < NearestFriend)
             {
                 NearestFriend = along;
                 NearestFriendSide = side;
+                NearestFriendLateral = lateral;
                 NearestFriendIndex = index;
             }
         }
 
-        /// <summary>The verdict: off = Clear; the enemy not in the path; a friend first (within the rear-rank distance = behind a friend); clear.</summary>
+        /// <summary>The verdict: off = Clear; the enemy not in the path; a friend really in front (within the rear-rank distance = BehindFriend,
+        /// "a friend in front of him"; farther = FriendFirst); clear.</summary>
         public AiKickPath Verdict
         {
             get
@@ -300,8 +345,10 @@ namespace TraxCombat.Core
     {
         public AiKickRules(bool modEnabled, bool athleticsEnabled, bool enabled, double reachMetres, double facingDegrees, double cooldownSeconds,
             bool kicksARaisedShield, int shieldKickPercent, int shieldBashPercent, int noShieldKickPercent, double friendClearMetres = 0,
-            double bashPathHalfWidthMetres = 0, double rearRankMetres = 0, int noShieldPushPercent = 0)
+            double bashPathHalfWidthMetres = 0, double rearRankMetres = 0, int noShieldPushPercent = 0, double blockAheadMetres = 0, double blockSideMetres = 0)
         {
+            BlockAhead = Pos(blockAheadMetres);
+            BlockSide = Pos(blockSideMetres);
             FriendClear = Pos(friendClearMetres);
             BashPathHalfWidth = Pos(bashPathHalfWidthMetres);
             RearRank = Pos(rearRankMetres);
@@ -328,7 +375,7 @@ namespace TraxCombat.Core
 
         public static AiKickRules From(TraxSettings s) => new AiKickRules(s.ModEnabled, s.AthleticsEnabled, s.AiKicksEnabled, s.AiKickReachMetres, s.AiKickFacingDegrees,
             s.AiKickCooldownSeconds, s.AiKickKicksARaisedShield, s.AiShieldmanKickPercent, s.AiShieldmanBashPercent, s.AiNoShieldKickPercent, s.AiKickFriendClearMetres,
-            s.AiBashPathHalfWidthMetres, s.AiKickRearRankMetres, s.AiNoShieldPushPercent);
+            s.AiBashPathHalfWidthMetres, s.AiKickRearRankMetres, s.AiNoShieldPushPercent, s.AiKickBlockAheadMetres, s.AiKickBlockSideMetres);
 
         public bool ModEnabled { get; }
         public bool AthleticsEnabled { get; }
@@ -377,6 +424,12 @@ namespace TraxCombat.Core
         /// (<c>AiKickRearRankMetres</c>; 0 = a friend first only refuses).</summary>
         public double RearRank { get; }
 
+        /// <summary>Step 90: a friend blocks only this far ahead along his facing (<c>AiKickBlockAheadMetres</c>; 0 = anyone ahead of his shoulders).</summary>
+        public double BlockAhead { get; }
+
+        /// <summary>Step 90: ... and only this close to the line of his facing, at most the kind's half-width (<c>AiKickBlockSideMetres</c>; 0 = the half-width).</summary>
+        public double BlockSide { get; }
+
         /// <summary>Step 80: the strike path's half-width for this kind (0 = no check).</summary>
         public double PathHalfWidth(AiKickKind kind) => AiKickMath.GuardUp(kind) ? BashPathHalfWidth : FriendClear;
 
@@ -401,7 +454,8 @@ namespace TraxCombat.Core
                    + (FriendClear > 0 || BashPathHalfWidth > 0
                        ? "; only when the enemy is the FIRST body in his strike path along his facing (step 80: a kick's path " + AiKickMath.F2(FriendClear)
                          + " m, a bash's " + AiKickMath.F2(BashPathHalfWidth) + " m either side, 0 = no check; the enemy in it, no friend in it closer"
-                         + (RearRank > 0 ? "; a friend in it within " + AiKickMath.F1(RearRank) + " m = a rear-rank man" : string.Empty)
+                         + "; step 90: a friend blocks only when really in front - " + AiKickMath.F2(BlockAhead) + " m+ ahead and within " + AiKickMath.F2(BlockSide) + " m of the line (0 = step 80's rule)"
+                         + (RearRank > 0 ? "; within " + AiKickMath.F1(RearRank) + " m = a friend in front of him, farther = beyond the rear-rank reach - both refuse" : string.Empty)
                          + "; a bash's path read again after its guard)"
                        : string.Empty)
                    + "; never you, a rider, a routing man or one with a ranged weapon - through the AI's own input (the engine's kick key; a bash = the kick key with the guard up)";
@@ -464,6 +518,10 @@ namespace TraxCombat.Core
         /// step forward beside him - his body (0.4 m round) reaches into a bash's sweep: step 80's smoke saw front-rank shieldmen bash their
         /// neighbours there. 0 = anyone ahead of his shoulders within the half-width. Plumbing.</summary>
         public const double FriendPathMinAlong = 0.0;
+
+        /// <summary>Step 90 (a measurement only - the step-87 diagnostic): a friend within this many metres of the kicker counts as TIGHT on his left
+        /// (shield side) or right (weapon side) at the decision - a body (0.4 m) and a file's spacing (~0.9 m in a line). Plumbing.</summary>
+        public const double NeighbourMetres = 0.9;
 
         /// <summary>
         /// Step 81 (Toni 2026-10-22): ONE melee move of an AI man on foot with the enemy in kick reach, rolled by his shares on the die
@@ -590,8 +648,8 @@ namespace TraxCombat.Core
             AiKickSkip.NoSwing => "no stored swing",
             AiKickSkip.Cooldown => "cooldown",
             AiKickSkip.TargetOffPath => "target off his strike path (step 80)",
-            AiKickSkip.FriendInTheWay => "a friend first in his strike path (step 80)",
-            AiKickSkip.BehindFriend => "behind a friend - rear rank (step 80)",
+            AiKickSkip.FriendInTheWay => "a friend in front, beyond the rear-rank reach (step 90)",
+            AiKickSkip.BehindFriend => "a friend in front of him (step 90)",
             _ => "his wind-up already over",
         };
 
@@ -610,8 +668,8 @@ namespace TraxCombat.Core
         {
             AiKickPath.Clear => "clear",
             AiKickPath.TargetOffPath => "the enemy off his strike path",
-            AiKickPath.FriendFirst => "a friend first in his strike path",
-            _ => "behind a friend (rear rank)",
+            AiKickPath.FriendFirst => "a friend in front, beyond the rear-rank reach",
+            _ => "a friend in front of him",
         };
 
         public static string OutcomeName(AiKickOutcome o) => o switch
@@ -728,6 +786,9 @@ namespace TraxCombat.Core
 
         /// <summary>Step 80: friends looked at by the probe, the probes made.</summary>
         public long PathFriendsLooked;
+
+        /// <summary>Step 90: friends in a strike path who did not block - not really in front (shoulder neighbours) - summed over the probes.</summary>
+        public long PathFriendsLetThrough;
         public int PathProbes;
 
         public void NoteOutcome(AiKickKind k, AiKickOutcome o) => _outcomes[(int)k, (int)o]++;
@@ -769,7 +830,8 @@ namespace TraxCombat.Core
             sb.Append(OutcomeText(AiKickKind.Kick)).Append(" | ").Append(OutcomeText(AiKickKind.Bash)).Append(" | ").Append(OutcomeText(AiKickKind.Push)); // step 88: pushes apart
             sb.Append("; enemy hits a man-minute in contact ").Append(minutes > 0 ? (enemy / minutes).ToString("0.000", c) : "n/a");
             sb.Append(" | the strike path at the look (in reach and in front; kicks ").Append(AiKickMath.F2(r.FriendClear)).Append(" m, bashes ")
-              .Append(AiKickMath.F2(r.BashPathHalfWidth)).Append(" m (pushes too) either side, rear rank ").Append(AiKickMath.F1(r.RearRank)).Append(" m): ");
+              .Append(AiKickMath.F2(r.BashPathHalfWidth)).Append(" m (pushes too) either side, rear rank ").Append(AiKickMath.F1(r.RearRank)).Append(" m; step 90: a friend blocks only ")
+              .Append(AiKickMath.F2(r.BlockAhead)).Append(" m+ ahead and within ").Append(AiKickMath.F2(r.BlockSide)).Append(" m of the line): ");
             for (int k = 1; k < AiKickMath.KindCount; k++)
             {
                 if (k > 1) sb.Append("; ");
@@ -783,7 +845,8 @@ namespace TraxCombat.Core
             sb.Append(" - REFUSED ").Append(refused).Append("; a bash's / push's path again after its guard: ");
             for (int p = 0; p < (int)AiKickPath.Count; p++)
                 sb.Append(p == 0 ? string.Empty : ", ").Append(AiKickMath.PathName((AiKickPath)p)).Append(' ').Append(_pressPaths[p]);
-            sb.Append("; probes ").Append(PathProbes).Append(", friends looked at ").Append(PathFriendsLooked);
+            sb.Append("; probes ").Append(PathProbes).Append(", friends looked at ").Append(PathFriendsLooked)
+              .Append(", in his path but not in front - let through (step 90) ").Append(PathFriendsLetThrough);
             return sb.ToString();
         }
 

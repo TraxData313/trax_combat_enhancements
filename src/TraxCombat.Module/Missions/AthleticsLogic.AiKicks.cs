@@ -273,12 +273,16 @@ namespace TraxCombat.Missions
                 Refuse(type, path == AiKickPath.TargetOffPath ? AiKickSkip.TargetOffPath : rear ? AiKickSkip.BehindFriend : AiKickSkip.FriendInTheWay);
                 if (path != AiKickPath.TargetOffPath && AiKickFirst(rear ? 5 : 4))
                     TraxLog.Info("impact", "first AI " + AiKickMath.KindName(kind) + " REFUSED - " + AiKickMath.PathName(path) + " at " + Sec(now) + " s (step 80) - " + Name(st)
-                        + " at " + Name(target) + " " + F2(distance) + " m off, " + F1(off) + "° off his facing: one of his own side stands in his strike path (along his facing, "
-                        + F2(r.PathHalfWidth(kind)) + " m either side) closer than the enemy" + (rear ? " - within " + F1(r.RearRank) + " m of him (AiKickRearRankMetres): a rear-rank man" : string.Empty)
+                        + " at " + Name(target) + " " + F2(distance) + " m off, " + F1(off) + "° off his facing: one of his own side stands IN FRONT of him in his strike path ("
+                        + F2(r.BlockAhead) + " m+ ahead along his facing, within " + F2(r.BlockSide) + " m of its line - step 90; the path " + F2(r.PathHalfWidth(kind))
+                        + " m either side) closer than the enemy" + (rear ? " - within " + F1(r.RearRank) + " m of him (AiKickRearRankMetres)" : " - beyond " + F1(r.RearRank) + " m")
                         + " - he swings instead (step 81)");
                 return;
             }
             if (r.PathHalfWidth(kind) > 0) _aiKickStats.FriendChecksClear++;
+            st.AiKickLeftNear = blocker.LeftNear; // step 90 (a measurement): the friends tight beside him now, for a friend hit later
+            st.AiKickRightNear = blocker.RightNear;
+            _aiKickStats.Blocks.NoteAsked(kind, blocker.LeftNear, blocker.RightNear);
             BeginAiKick(st, target, kind, type, now, r.Cooldown, off);
         }
 
@@ -291,12 +295,19 @@ namespace TraxCombat.Missions
                 + Name(st) + BlockRanks(b.File, b.Rank) + " at " + Name(target) + " " + F2(distance) + " m off, " + F1(off) + "° off his facing - " + AiKickMath.PathName(path)
                 + (b.Valid
                     ? ": " + (friend != null ? Name(friend) : "a friend (untracked)") + BlockRanks(b.FriendFile, b.FriendRank) + " " + F2(b.Along) + " m ahead along his facing, "
-                      + F2(b.Side) + " m to the side - " + AiKickBlockMath.RelationName(b.Relation)
+                      + F2(b.Side) + " m to the side - " + AiKickBlockMath.RelationName(b.Relation) + ", on " + SideWords(b.Lateral)
                     : " (the blocking friend not named by the probe)")
                 + " - the [summary] \"who blocks the path\" line bins every one");
         }
 
         private static string BlockRanks(int file, int rank) => rank >= 0 ? " (file " + file + ", rank " + rank + ")" : string.Empty;
+
+        /// <summary>Step 90: the side of the attacker a friend stands on (+ lateral = his left, his shield side).</summary>
+        private static string SideWords(double lateral)
+        {
+            int s = AiKickBlockMath.SideOf(lateral);
+            return s < 0 ? "an unknown side" : AiKickBlockMath.SideOfName(s);
+        }
 
         /// <summary>Step 81: a rolled kick / bash refused - he swings instead (counted by reason and by group).</summary>
         private void Refuse(int type, AiKickSkip why)
@@ -327,8 +338,9 @@ namespace TraxCombat.Missions
             if (!(half > 0)) return AiKickPath.Clear;
             if (!AiKickMath.TargetInPath(distance, off, r.Reach, half)) return AiKickPath.TargetOffPath;
             _aiKickStats.PathProbes++;
-            var v = AiKickBody.StrikePath(st, target, r.Reach, half, r.RearRank, out int looked, out blocker);
+            var v = AiKickBody.StrikePath(st, target, r.Reach, half, r.RearRank, r.BlockAhead, r.BlockSide, out int looked, out int letThrough, out blocker);
             _aiKickStats.PathFriendsLooked += looked;
+            _aiKickStats.PathFriendsLetThrough += letThrough;
             return v;
         }
 
@@ -524,12 +536,13 @@ namespace TraxCombat.Missions
             {
                 Failed("aikick.locate", e);
             }
-            _aiKickStats.Blocks.NoteFriendHit(st.AiKickKind, in b, st.AiKickAngle);
+            _aiKickStats.Blocks.NoteFriendHit(st.AiKickKind, in b, st.AiKickAngle, st.AiKickLeftNear, st.AiKickRightNear); // step 90: the side + the neighbours
             if (!AiKickFirst(st.AiKickKind == AiKickKind.Push ? 13 : st.AiKickKind == AiKickKind.Bash ? 10 : 9)) return;
             var friend = Get(victim);
             TraxLog.Info("impact", "first AI " + AiKickMath.KindName(st.AiKickKind) + " on a FRIEND - where he stood (step 87 diagnostic) at " + Sec(SafeNow()) + " s: "
                 + Name(st) + BlockRanks(b.File, b.Rank) + (intoShield ? " hit the shield of " : " hit ") + (friend != null ? Name(friend) : "a friend") + BlockRanks(b.FriendFile, b.FriendRank)
-                + (b.Valid ? " " + F2(b.Along) + " m ahead along his facing, " + F2(b.Side) + " m to the side - " + AiKickBlockMath.RelationName(b.Relation) : " (not located)")
+                + (b.Valid ? " " + F2(b.Along) + " m ahead along his facing, " + F2(b.Side) + " m to the side on " + SideWords(b.Lateral) + " - " + AiKickBlockMath.RelationName(b.Relation) : " (not located)")
+                + (st.AiKickLeftNear >= 0 ? "; friends within 0.9 m at the decision: " + st.AiKickLeftNear + " on his left, " + st.AiKickRightNear + " on his right (step 90)" : string.Empty)
                 + "; at the decision his target stood " + F1(st.AiKickAngle) + "° off his facing");
         }
 
