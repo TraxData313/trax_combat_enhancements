@@ -1628,9 +1628,10 @@ namespace TraxCombat.Core
 
         // step 91 (Toni's 19:56 battle of 2026-10-24: 114 of 150 bash hits on a FRIEND - the bash rolled at the kick's reach sweeps past the enemy
         // into the neighbour): a shield bash's own, shorter reach; AiKickMath.Roll(…, distance) - beyond it a shieldman's bash share goes to kick / swing.
+        // Step 91b (Toni's 20:26 battle: with 1.1 the enemy stood within it in only 3 of 792 shieldman moves - no bash at all): shipped 0 (off) again.
         public static readonly ParamDef AiBashReachMetres = Float("AiBashReachMetres", 0, 4, ImpactGroup,
             "AI shield bashes: reach (m)",
-            "An AI soldier with a shield bashes only an enemy within this many metres - a shield bash reaches less than a kick. Farther off (but within the kick reach above) he only kicks or swings, the bash's share split between the two in their own proportion. 0 = bashes at the kick reach.");
+            "An AI soldier with a shield bashes only an enemy within this many metres - a shield bash reaches less than a kick. Farther off (but within the kick reach above) he only kicks or swings, the bash's share split between the two in their own proportion. 0 (the default) = off - he bashes anywhere in the kick reach.");
 
         public static readonly ParamDef AiKickFacingDegrees = Int("AiKickFacingDegrees", 0, 180, ImpactGroup,
             "AI kicks: the enemy in front within (degrees)",

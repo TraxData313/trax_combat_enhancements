@@ -349,12 +349,12 @@ public class FeverTests
     [Fact]
     public void A_format_7_file_at_the_old_blow_and_wrong_side_costs_gets_3_and_2_once_tuned_values_kept()
     {
-        Assert.Equal(21, ConfigFile.FormatVersion);
+        Assert.Equal(22, ConfigFile.FormatVersion);
         var read = ConfigFile.Read("{ \"ConfigVersion\": 7, \"CostPerBlow\": 10.0, \"CostPerWrongSideShieldBlock\": 5.0, \"CostPerShieldBlock\": 1.0, \"CostPerWeaponParry\": 2.0 }");
         var notes = ConfigFile.Migrate(read, Shipped43);
         Assert.Equal(2, notes.Count);
-        Assert.Contains(notes, n => n.StartsWith("CostPerBlow: 10.0 → 3.0 (format 7 → 21, the old default; steps 43 / 46, Anton: a swing or shot costs less", StringComparison.Ordinal));
-        Assert.Contains(notes, n => n.StartsWith("CostPerWrongSideShieldBlock: 5.0 → 2.0 (format 7 → 21, the old default; step 43", StringComparison.Ordinal));
+        Assert.Contains(notes, n => n.StartsWith("CostPerBlow: 10.0 → 3.0 (format 7 → 22, the old default; steps 43 / 46, Anton: a swing or shot costs less", StringComparison.Ordinal));
+        Assert.Contains(notes, n => n.StartsWith("CostPerWrongSideShieldBlock: 5.0 → 2.0 (format 7 → 22, the old default; step 43", StringComparison.Ordinal));
         Assert.Equal(3, read.Values["CostPerBlow"], 9);
         Assert.Equal(2, read.Values["CostPerWrongSideShieldBlock"], 9);
         Assert.Equal(1, read.Values["CostPerShieldBlock"], 9);        // the others stay
@@ -370,7 +370,7 @@ public class FeverTests
         // (step 68's own notes apart: on this lambda's step-43 default 2 a format-8 file's 5 reads as his own - Step68Tests runs step 68's)
         var eightNotes = ConfigFile.Migrate(eight, Shipped43).Where(n => !n.Contains("step 68", StringComparison.Ordinal)).ToList();
         Assert.Single(eightNotes);
-        Assert.StartsWith("CostPerBlow: 10.0 kept - your own value (format 8 → 21;", eightNotes[0], StringComparison.Ordinal);
+        Assert.StartsWith("CostPerBlow: 10.0 kept - your own value (format 8 → 22;", eightNotes[0], StringComparison.Ordinal);
         Assert.Equal(10, eight.Values["CostPerBlow"], 9);
         // an older file moves too (both defaults go back to steps 5c / 22)
         var five = ConfigFile.Read("{ \"ConfigVersion\": 5, \"CostPerBlow\": 10.0, \"CostPerWrongSideShieldBlock\": 5.0 }");
@@ -386,19 +386,19 @@ public class FeverTests
     [Fact]
     public void Step46_a_format_8_file_at_step_43s_blow_cost_gets_7_once_and_older_files_end_at_7_too()
     {
-        Assert.Equal(21, ConfigFile.FormatVersion);
+        Assert.Equal(22, ConfigFile.FormatVersion);
         // a format-8 file still holding step 43's 3: → 7, once
         var eight = ConfigFile.Read("{ \"ConfigVersion\": 8, \"CostPerBlow\": 3.0, \"CostPerWrongSideShieldBlock\": 2.0 }");
         var notes = ConfigFile.Migrate(eight, Shipped46);
         Assert.Single(notes);
-        Assert.StartsWith("CostPerBlow: 3.0 → 7.0 (format 8 → 21, the old default; step 46, Anton's playtest: a swing or shot costs 7 Athletics", notes[0], StringComparison.Ordinal);
+        Assert.StartsWith("CostPerBlow: 3.0 → 7.0 (format 8 → 22, the old default; step 46, Anton's playtest: a swing or shot costs 7 Athletics", notes[0], StringComparison.Ordinal);
         Assert.Equal(7, eight.Values["CostPerBlow"], 9);
         Assert.Equal(2, eight.Values["CostPerWrongSideShieldBlock"], 9);
         Assert.Single(ConfigFile.Migrate(eight, Shipped46));                                // idempotent (the notes list is the read's own)
         // a tuned format-8 value is kept - and logged
         var tuned = ConfigFile.Read("{ \"ConfigVersion\": 8, \"CostPerBlow\": 5.0 }");
         var kept = ConfigFile.Migrate(tuned, Shipped46);
-        Assert.Equal(new[] { "CostPerBlow: 5.0 kept - your own value (format 8 → 21; the new default 7.0 is not pushed over it; step 46, Anton's playtest: a swing or shot costs 7 Athletics (step 43's 3 was too cheap))" }, kept);
+        Assert.Equal(new[] { "CostPerBlow: 5.0 kept - your own value (format 8 → 22; the new default 7.0 is not pushed over it; step 46, Anton's playtest: a swing or shot costs 7 Athletics (step 43's 3 was too cheap))" }, kept);
         Assert.Equal(5, tuned.Values["CostPerBlow"], 9);
         // already 7, or no key: nothing to say
         Assert.Empty(ConfigFile.Migrate(ConfigFile.Read("{ \"ConfigVersion\": 8, \"CostPerBlow\": 7.0 }"), Shipped46));
@@ -410,7 +410,7 @@ public class FeverTests
             var chain = ConfigFile.Migrate(old, Shipped46);
             Assert.Equal(7, old.Values["CostPerBlow"], 9);
             Assert.Equal(2, old.Values["CostPerWrongSideShieldBlock"], 9);
-            Assert.Contains(chain, n => n.StartsWith("CostPerBlow: 10.0 → 7.0 (format " + format + " → 21, the old default; steps 43 / 46", StringComparison.Ordinal));
+            Assert.Contains(chain, n => n.StartsWith("CostPerBlow: 10.0 → 7.0 (format " + format + " → 22, the old default; steps 43 / 46", StringComparison.Ordinal));
             Assert.Equal(2, chain.Count);
         }
         // an older file's 3 was his own (3 was never the default before format 8): kept, no note

@@ -15,8 +15,11 @@ namespace TraxCombat.Tools
     /// </summary>
     internal static partial class Program
     {
-        /// <summary>Step 91: the shipped bash reach (defaults.json).</summary>
-        private static void Step91Reach() => S.Set(SettingsSchema.AiBashReachMetres, SettingsSchema.AiBashReachMetres.Default, SettingSources.File);
+        /// <summary>Step 91: the bash reach step 91 shipped and this check measures - 1.1 m, set explicitly (step 91b shipped 0 = off again).</summary>
+        private static void Step91Reach() => S.Set(SettingsSchema.AiBashReachMetres, 1.1, SettingSources.File);
+
+        /// <summary>Step 91b: the shipped bash reach (defaults.json - 0, off).</summary>
+        private static void ShippedBashReach() => S.Set(SettingsSchema.AiBashReachMetres, SettingsSchema.AiBashReachMetres.Default, SettingSources.File);
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         private static void BashesOnlyWithinTheirReach()
@@ -33,11 +36,13 @@ namespace TraxCombat.Tools
                 S.Set(SettingsSchema.KickBraceEnabled, false, SettingSources.File);
                 Step90PathDefaults();
                 Step91Reach();
-                Check(Math.Abs(S.AiBashReachMetres - 1.1) < 1e-6, "the shipped AiBashReachMetres is not 1.1: " + S.AiBashReachMetres);
+                Check(Math.Abs(S.AiBashReachMetres - 1.1) < 1e-6, "step 91's AiBashReachMetres is not 1.1: " + S.AiBashReachMetres);
+                Check(Math.Abs(SettingsSchema.AiBashReachMetres.Default) < 1e-9, "step 91b: the shipped AiBashReachMetres is not 0: " + SettingsSchema.AiBashReachMetres.Default);
                 var after = FightTwoLines(91, 9200, frontGap: front, bashEngineReach: bashEngine);
                 LogHas("[summary] ai kicks - the shield bash's reach (step 91): a shieldman bashes only within 1.10 m (AiBashReachMetres");
-                S.Set(SettingsSchema.AiBashReachMetres, 0.0, SettingSources.File);
+                ShippedBashReach(); // step 91b: the shipped 0 - off
                 var before = FightTwoLines(91, 9300, frontGap: front, bashEngineReach: bashEngine);
+                LogHas("[summary] ai kicks - the shield bash's reach (step 91): the bash reach is OFF - a shieldman bashes at the kick reach, anywhere within 1.6 m");
                 var a = after.Stats.BashReach;
                 var b = before.Stats.BashReach;
                 var r = new AiKickRules(true, true, true, 1.6, 40, 2, true, 25, 40, 35, 0.45, 0.5, 1.2, 20, 0.5, 0.4, 1.1);
@@ -97,7 +102,7 @@ namespace TraxCombat.Tools
                 AiKickDefaults();
                 S.Set(SettingsSchema.AiKicksEnabled, false, SettingSources.File);
                 Step90PathDefaults();
-                Step91Reach();
+                ShippedBashReach();
                 Step65CleanUp(keep);
             }
         }

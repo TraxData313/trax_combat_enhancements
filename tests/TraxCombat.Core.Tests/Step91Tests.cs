@@ -19,7 +19,7 @@ public class Step91Tests
         new AiKickRules(true, true, true, Reach, 40, 2, true, 25, 40, 35, 0.45, 0.5, 1.2, 20, 0.5, 0.4, bashReach);
 
     [Fact]
-    public void The_setting_sits_after_the_kick_reach_on_the_Advanced_page_live_and_ships_at_1_1()
+    public void The_setting_sits_after_the_kick_reach_on_the_Advanced_page_live_and_ships_off_since_step_91b()
     {
         var all = SettingsSchema.All.ToList();
         var p = SettingsSchema.AiBashReachMetres;
@@ -30,8 +30,8 @@ public class Step91Tests
         Assert.Equal(ParamType.Float, p.Type);
         Assert.Equal(0, p.Min, 9);
         Assert.Equal(4, p.Max, 9);
-        Assert.Equal(1.1, p.Default, 9);
-        Assert.Contains("\"AiBashReachMetres\": 1.1,", DefaultsFile.ReadEmbeddedText(), StringComparison.Ordinal);
+        Assert.Equal(1.1, p.Default, 9); // DESIGN's initial value (the tests' defaults)
+        Assert.Contains("\"AiBashReachMetres\": 0.0,", DefaultsFile.ReadEmbeddedText(), StringComparison.Ordinal); // step 91b: shipped 0 (off)
         // live: read at use time through the rules
         var s = new TraxSettings();
         Assert.Equal(1.1, AiKickRules.From(s).BashReach, 6);
@@ -146,7 +146,7 @@ public class Step91Tests
         Assert.Contains("bashes by the enemy's distance at the decision - rolled, asked → on an ENEMY / into his shield / on a FRIEND / missed / horse or untracked / not played: ≤0.8 m 0, 1 → 1 / 0 / 0 / 0 / 0 / 0 (friends 0% of the hits); 0.8-1.0 m 1, 1 → 0 / 0 / 1 / 0 / 0 / 0 (friends 100% of the hits)", line, StringComparison.Ordinal);
         Assert.EndsWith(" | asked beyond the bash reach 0; a bash's re-read after its guard found the enemy beyond the bash reach 2 (ended, no bash)", line, StringComparison.Ordinal);
         // off: said plainly
-        Assert.StartsWith("ai kicks - the shield bash's reach (step 91): OFF - a shieldman bashes anywhere in the 1.6 m kick reach (AiBashReachMetres 0)", new AiKickStats().BashReach.Line(Shipped(0)), StringComparison.Ordinal);
+        Assert.StartsWith("ai kicks - the shield bash's reach (step 91): the bash reach is OFF - a shieldman bashes at the kick reach, anywhere within 1.6 m (AiBashReachMetres 0; the bins below still say where his bashes land)", new AiKickStats().BashReach.Line(Shipped(0)), StringComparison.Ordinal);
         Assert.Contains("bashes by the enemy's distance at the decision - rolled, asked → on an ENEMY / into his shield / on a FRIEND / missed / horse or untracked / not played: none", new AiKickStats().BashReach.Line(Shipped(0)), StringComparison.Ordinal);
     }
 

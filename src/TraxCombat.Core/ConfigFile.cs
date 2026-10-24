@@ -123,8 +123,11 @@ namespace TraxCombat.Core
         /// new AiNoShieldPushPercent (20) is a new key - a file without it gets the default like any missing key), 21 = step 90 (Toni's 17:39
         /// battle of 2026-10-24 - only a man really in front blocks a kick / bash / push, and the strike path narrows: AiBashPathHalfWidthMetres
         /// 0.75 → 0.5 (bashes and pushes), AiKickFriendClearMetres 0.6 → 0.45 in a format 18-20 file still holding them; a tuned value kept and
-        /// noted; AiKickBlockAheadMetres / AiKickBlockSideMetres are new keys).</summary>
-        public const int FormatVersion = 21;
+        /// noted; AiKickBlockAheadMetres / AiKickBlockSideMetres are new keys), 22 = step 91b (Toni's 20:26 battle of 2026-10-24 - with step 91's
+        /// AiBashReachMetres 1.1 the enemy stood within it in only 3 of 792 shieldman moves, the AI fights at 1.1-1.6 m, so no bash at all:
+        /// AiBashReachMetres 1.1 → 0 - off, a bash anywhere in the kick reach as step 90 - in a format-21 file still holding it; a tuned value kept
+        /// and noted).</summary>
+        public const int FormatVersion = 22;
 
         /// <summary>The meta key holding <see cref="FormatVersion"/> - not a setting.</summary>
         public const string VersionKey = "ConfigVersion";
@@ -560,6 +563,13 @@ namespace TraxCombat.Core
                 const string front = "step 90, Toni: only a man really in front blocks a kick, bash or push";
                 MoveOrKeepIfMoved(read, SettingsSchema.AiBashPathHalfWidthMetres, 0.75, front + " - a bash's / push's strike path is 0.5 m either side", from, defaultOf);
                 MoveOrKeepIfMoved(read, SettingsSchema.AiKickFriendClearMetres, 0.6, front + " - a kick's strike path is 0.45 m either side", from, defaultOf);
+            }
+            if (from < 22 && from >= 21)
+            {
+                // step 91b (Toni 2026-10-24, his 20:26 battle): step 91's AiBashReachMetres (a new key in format 21, shipped 1.1) back to 0 - off, a bash
+                // anywhere in the kick reach (step 90); the AI fights at 1.1-1.6 m, so 1.1 left no bash at all; a hand-set value is kept and said once
+                MoveOrKeepIfMoved(read, SettingsSchema.AiBashReachMetres, 1.1,
+                    "step 91b, Toni: with 1.1 m the enemy stood that close in only 3 of 792 shieldman moves - no bash at all; 0 = off, a shieldman bashes anywhere in the kick reach again", from, defaultOf);
             }
             // format 17 (step 78b) moved the lull's LullRecover*Percent 10 / 15 / 20 → 20 / 25 / 30; step 78c removed the lull and its keys, so a
             // format 16 file's are dropped below with the rest of them - nothing to move any more (78c kept format 17; step 80 made it 18)

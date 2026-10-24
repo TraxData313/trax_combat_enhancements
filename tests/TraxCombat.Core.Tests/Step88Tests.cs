@@ -168,27 +168,27 @@ public class Step88Tests
     [Fact]
     public void Format_20_moves_the_shieldmans_old_shares_keeps_a_tuned_one_and_leaves_format_20_alone()
     {
-        Assert.Equal(21, ConfigFile.FormatVersion);
+        Assert.Equal(22, ConfigFile.FormatVersion);
         var read = ConfigFile.Read("{ \"ConfigVersion\": 19, \"AiShieldmanKickPercent\": 20, \"AiShieldmanBashPercent\": 35, \"AiNoShieldKickPercent\": 35 }");
         var notes = ConfigFile.Migrate(read, ShippedDefault);
         Assert.Equal(25, read.Values["AiShieldmanKickPercent"], 9);
         Assert.Equal(40, read.Values["AiShieldmanBashPercent"], 9);
         Assert.Equal(35, read.Values["AiNoShieldKickPercent"], 9);
         Assert.False(read.Values.ContainsKey("AiNoShieldPushPercent")); // a new key: the default fills it like any missing key
-        Assert.Contains(notes, n => n.StartsWith("AiShieldmanKickPercent: 20 → 25 (format 19 → 21, the old default; step 88", StringComparison.Ordinal));
-        Assert.Contains(notes, n => n.StartsWith("AiShieldmanBashPercent: 35 → 40 (format 19 → 21, the old default; step 88", StringComparison.Ordinal));
+        Assert.Contains(notes, n => n.StartsWith("AiShieldmanKickPercent: 20 → 25 (format 19 → 22, the old default; step 88", StringComparison.Ordinal));
+        Assert.Contains(notes, n => n.StartsWith("AiShieldmanBashPercent: 35 → 40 (format 19 → 22, the old default; step 88", StringComparison.Ordinal));
         var tuned = ConfigFile.Read("{ \"ConfigVersion\": 19, \"AiShieldmanKickPercent\": 10, \"AiShieldmanBashPercent\": 35 }");
         var tn = ConfigFile.Migrate(tuned, ShippedDefault);
         Assert.Equal(10, tuned.Values["AiShieldmanKickPercent"], 9);
         Assert.Equal(40, tuned.Values["AiShieldmanBashPercent"], 9);
-        Assert.Contains(tn, n => n.StartsWith("AiShieldmanKickPercent: 10 kept - your own value (format 19 → 21; the new default 25", StringComparison.Ordinal));
+        Assert.Contains(tn, n => n.StartsWith("AiShieldmanKickPercent: 10 kept - your own value (format 19 → 22; the new default 25", StringComparison.Ordinal));
         Assert.Empty(ConfigFile.Migrate(ConfigFile.Read("{ \"ConfigVersion\": 20, \"AiShieldmanKickPercent\": 20, \"AiShieldmanBashPercent\": 35 }"), ShippedDefault));
         // a format-18 file has no shares yet (step 81's keys) - nothing to move here; on DESIGN's initial values the move is silent
         Assert.Empty(ConfigFile.Migrate(ConfigFile.Read("{ \"ConfigVersion\": 19, \"AiShieldmanKickPercent\": 20, \"AiShieldmanBashPercent\": 35 }"), p => p.Default));
         // the rewritten file is format 21 (step 90) and carries the push share
         var s = new TraxSettings();
         string written = ConfigFile.Write(s.Snapshot());
-        Assert.Contains("\"ConfigVersion\": 21", written, StringComparison.Ordinal);
+        Assert.Contains("\"ConfigVersion\": 22", written, StringComparison.Ordinal);
         Assert.Contains("\"AiNoShieldPushPercent\": 20", written, StringComparison.Ordinal);
     }
 

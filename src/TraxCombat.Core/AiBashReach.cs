@@ -130,12 +130,14 @@ namespace TraxCombat.Core
                   .Append(AiKickMath.F1(r.Reach)).Append(" m kick reach) - farther off he kicks ").Append(AiKickMath.P0(r.ShieldKickBeyondBashReach)).Append(" / swings ")
                   .Append(AiKickMath.P0(1 - r.ShieldKickBeyondBashReach));
             else
-                sb.Append("OFF - a shieldman bashes anywhere in the ").Append(AiKickMath.F1(r.Reach)).Append(" m kick reach (AiBashReachMetres 0)");
+                sb.Append("the bash reach is OFF - a shieldman bashes at the kick reach, anywhere within ").Append(AiKickMath.F1(r.Reach))
+                  .Append(" m (AiBashReachMetres 0; the bins below still say where his bashes land)");
             for (int i = 0; i < 2; i++)
             {
                 bool beyond = i == 1;
                 int n = Moves(beyond);
-                sb.Append(beyond ? " | beyond it " : " | shieldmen's moves within it ").Append(n).Append(" - rolled kick ").Append(P(Rolled(beyond, AiKickKind.Kick), n))
+                if (beyond && !r.BashReachOn && n == 0) continue; // step 91b: off - nothing is beyond a reach that is not there
+                sb.Append(beyond ? " | beyond it " : r.BashReachOn ? " | shieldmen's moves within it " : " | shieldmen's moves in the kick reach ").Append(n).Append(" - rolled kick ").Append(P(Rolled(beyond, AiKickKind.Kick), n))
                   .Append(" / bash ").Append(P(Rolled(beyond, AiKickKind.Bash), n)).Append(" / swing ").Append(P(Rolled(beyond, AiKickKind.None), n));
                 if (beyond)
                     sb.Append(" (target ").Append(r.BashReachOn ? AiKickMath.P0(r.ShieldKickBeyondBashReach) + " / 0% / " + AiKickMath.P0(1 - r.ShieldKickBeyondBashReach) : "-").Append(')');
@@ -157,6 +159,7 @@ namespace TraxCombat.Core
                 if (!double.IsNaN(fs)) sb.Append(" (friends ").Append((100 * fs).ToString("0", c)).Append("% of the hits)");
             }
             if (first) sb.Append("none");
+            if (!r.BashReachOn && AskedBeyond == 0 && PressBeyond == 0) return sb.ToString(); // step 91b: off - no reach to be beyond
             sb.Append(" | asked beyond the bash reach ").Append(AskedBeyond).Append("; a bash's re-read after its guard found the enemy beyond the bash reach ")
               .Append(PressBeyond).Append(" (ended, no bash)");
             return sb.ToString();
