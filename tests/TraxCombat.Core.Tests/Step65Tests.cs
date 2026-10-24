@@ -26,7 +26,8 @@ public class AiKickTests
         var keys = new[]
         {
             SettingsSchema.AiKicksEnabled, SettingsSchema.AiShieldmanKickPercent, SettingsSchema.AiShieldmanBashPercent, SettingsSchema.AiNoShieldKickPercent,
-            SettingsSchema.AiNoShieldPushPercent, SettingsSchema.AiKickReachMetres, SettingsSchema.AiKickFacingDegrees, SettingsSchema.AiKickCooldownSeconds, SettingsSchema.AiKickKicksARaisedShield,
+            SettingsSchema.AiNoShieldPushPercent, SettingsSchema.AiKickReachMetres, SettingsSchema.AiBashReachMetres, SettingsSchema.AiKickFacingDegrees, SettingsSchema.AiKickCooldownSeconds,
+            SettingsSchema.AiKickKicksARaisedShield, // step 91: AiBashReachMetres after the kick reach
         };
         for (int i = 0; i < keys.Length; i++)
         {
@@ -138,7 +139,7 @@ public class AiKickTests
         st.ContactManSeconds = 120;
         st.PointsSpent = 9;
         var lines = st.SummaryLines(Rules()).ToList();
-        Assert.Equal(7, lines.Count); // step 80: + whom they hit and the strike path; step 81: the shares line in place of step 66's; step 87: + who blocks the path
+        Assert.Equal(8, lines.Count); // step 91: + the shield bash's reach; step 80: + whom they hit and the strike path; step 81: the shares line in place of step 66's; step 87: + who blocks the path
         Assert.StartsWith("ai kicks (step 65 / 81): ON", lines[0], StringComparison.Ordinal);
         Assert.Contains("ai kicks: asked 3 (kicks 2, bashes 1, pushes 0) → PLAYED 2 (67%), seen 0.30 s after the ask → landed on the man 1, into a shield 1", lines[1], StringComparison.Ordinal);
         Assert.Contains("1.50 asked a man-minute in contact (2.0 man-minutes)", lines[1], StringComparison.Ordinal);

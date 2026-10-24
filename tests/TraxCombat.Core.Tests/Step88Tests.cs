@@ -341,7 +341,7 @@ public class Step88Tests
         st.Blocks.NoteFriendHit(AiKickKind.Push, AiKickBlocker.None, 15);
         st.ContactManSeconds = 60;
         var lines = st.SummaryLines(in r).ToList();
-        Assert.Equal(7, lines.Count);
+        Assert.Equal(8, lines.Count); // step 91: + the shield bash's reach (the 8th)
         Assert.Contains("ai kicks: asked 10 (kicks 7, bashes 0, pushes 3) → PLAYED 1", lines[1], StringComparison.Ordinal);
         Assert.Contains("no shield 20 moves - rolled kick 35.0% / push 20.0% / swing 45.0% (target 35% / 20% / 45%) → DONE kick 35.0% / push 15.0% / swing 50.0%; refused safety 0, stack empty 0, cooldown 0, path 1",
             lines[4], StringComparison.Ordinal);

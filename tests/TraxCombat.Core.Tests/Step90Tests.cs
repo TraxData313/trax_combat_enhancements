@@ -265,7 +265,7 @@ public class Step90Tests
         Assert.Equal(0, b.HitNearCounted(AiKickKind.Kick));
         var s = new TraxSettings();
         var lines = st.SummaryLines(AiKickRules.From(s)).ToList();
-        Assert.Equal(7, lines.Count);
+        Assert.Equal(8, lines.Count); // step 91: + the shield bash's reach (the 8th)
         string line = lines[6];
         Assert.StartsWith("ai kicks - who blocks the path (step 87 diagnostic): friend hits by bashes: 75% on his shield side (left; pushes 0%, kicks 100%) | shoulder neighbours are ", line, StringComparison.Ordinal);
         Assert.Contains("| REFUSED a friend in front of him (step 90; step 80's 'behind a friend') - kicks 0; bashes 3: ahead", line, StringComparison.Ordinal);

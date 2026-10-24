@@ -368,6 +368,7 @@ namespace TraxCombat.Missions
         public double AiKickNext = double.NegativeInfinity;
         public double AiKickLastLook = double.NaN;
         public double AiKickAngle = double.NaN; // step 87: the facing-to-target angle at the decision
+        public double AiKickDistance = double.NaN; // step 91: the enemy's distance at the decision (a bash's result is binned by it)
         public int AiKickLeftNear = -1, AiKickRightNear = -1; // step 90: friends within 0.9 m on his left / right at the decision (-1 = not counted)
         public bool AiMoveQueued;
 

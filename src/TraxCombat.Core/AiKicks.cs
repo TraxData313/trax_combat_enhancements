@@ -345,8 +345,10 @@ namespace TraxCombat.Core
     {
         public AiKickRules(bool modEnabled, bool athleticsEnabled, bool enabled, double reachMetres, double facingDegrees, double cooldownSeconds,
             bool kicksARaisedShield, int shieldKickPercent, int shieldBashPercent, int noShieldKickPercent, double friendClearMetres = 0,
-            double bashPathHalfWidthMetres = 0, double rearRankMetres = 0, int noShieldPushPercent = 0, double blockAheadMetres = 0, double blockSideMetres = 0)
+            double bashPathHalfWidthMetres = 0, double rearRankMetres = 0, int noShieldPushPercent = 0, double blockAheadMetres = 0, double blockSideMetres = 0,
+            double bashReachMetres = 0)
         {
+            BashReachSetting = Pos(bashReachMetres);
             BlockAhead = Pos(blockAheadMetres);
             BlockSide = Pos(blockSideMetres);
             FriendClear = Pos(friendClearMetres);
@@ -375,7 +377,8 @@ namespace TraxCombat.Core
 
         public static AiKickRules From(TraxSettings s) => new AiKickRules(s.ModEnabled, s.AthleticsEnabled, s.AiKicksEnabled, s.AiKickReachMetres, s.AiKickFacingDegrees,
             s.AiKickCooldownSeconds, s.AiKickKicksARaisedShield, s.AiShieldmanKickPercent, s.AiShieldmanBashPercent, s.AiNoShieldKickPercent, s.AiKickFriendClearMetres,
-            s.AiBashPathHalfWidthMetres, s.AiKickRearRankMetres, s.AiNoShieldPushPercent, s.AiKickBlockAheadMetres, s.AiKickBlockSideMetres);
+            s.AiBashPathHalfWidthMetres, s.AiKickRearRankMetres, s.AiNoShieldPushPercent, s.AiKickBlockAheadMetres, s.AiKickBlockSideMetres,
+            s.AiBashReachMetres);
 
         public bool ModEnabled { get; }
         public bool AthleticsEnabled { get; }
@@ -430,6 +433,29 @@ namespace TraxCombat.Core
         /// <summary>Step 90: ... and only this close to the line of his facing, at most the kind's half-width (<c>AiKickBlockSideMetres</c>; 0 = the half-width).</summary>
         public double BlockSide { get; }
 
+        /// <summary>Step 91: <c>AiBashReachMetres</c> as set (0 = off - a bash at the kick reach, step 81).</summary>
+        public double BashReachSetting { get; }
+
+        /// <summary>Step 91: the shield bash's own reach is on - set above 0 and shorter than the kick reach.</summary>
+        public bool BashReachOn => BashReachSetting > 0 && BashReachSetting < Reach;
+
+        /// <summary>Step 91: the reach a shield bash is rolled within (the kick reach while off).</summary>
+        public double BashReach => BashReachOn ? BashReachSetting : Reach;
+
+        /// <summary>Step 91: is the enemy at <paramref name="distance"/> m beyond the shield bash's reach (always false while off)?</summary>
+        public bool BeyondBashReach(double distance) => BashReachOn && distance > BashReachSetting + 1e-9;
+
+        /// <summary>Step 91: a shieldman's KICK share with the enemy beyond the bash reach - the bash's share split between the kick and the
+        /// swing in their own proportion: kick ÷ (kick + swing) (shipped 25 / 35 → 41.7%); kick + swing 0 (a 100% bash) = 0 - he swings.</summary>
+        public double ShieldKickBeyondBashReach
+        {
+            get
+            {
+                double ks = ShieldKick + SwingShare(true);
+                return ks > 0 ? ShieldKick / ks : 0;
+            }
+        }
+
         /// <summary>Step 80: the strike path's half-width for this kind (0 = no check).</summary>
         public double PathHalfWidth(AiKickKind kind) => AiKickMath.GuardUp(kind) ? BashPathHalfWidth : FriendClear;
 
@@ -448,6 +474,10 @@ namespace TraxCombat.Core
                    + " / swing " + AiKickMath.P0(SwingShare(true)) + (ShieldSharesCut ? " (kick + bash set over 100% - the bash cut to what is left)" : string.Empty)
                    + ", a man with NO shield kick " + AiKickMath.P0(NoShieldKick) + " / weapon push " + AiKickMath.P0(NoShieldPush) + " / swing " + AiKickMath.P0(SwingShare(false))
                    + (NoShieldSharesCut ? " (kick + push set over 100% - the push cut to what is left)" : string.Empty)
+                   + (BashReachOn
+                       ? "; step 91: a shield bash only within " + AiKickMath.F2(BashReach) + " m (AiBashReachMetres) - farther off, to the kick reach, a shieldman kicks "
+                         + AiKickMath.P0(ShieldKickBeyondBashReach) + " / swings " + AiKickMath.P0(1 - ShieldKickBeyondBashReach) + " (the bash's share split between them)"
+                       : "; step 91: the shield bash at the kick reach (AiBashReachMetres off)")
                    + "; a rolled kick / bash / push (step 88: his weapon's bash - the guard up, then the kick key) takes the place of that swing (his wind-up cancelled by the guard); farther off he swings or thrusts as the game wants (a spearman keeps his ground)"
                    + "; refused - he swings - when staggered, down, without the Athletics or a stored swing for it, within " + AiKickMath.F1(Cooldown) + " s of his last kick or bash"
                    + (KicksARaisedShield ? "; a shieldman KICKS a raised shield facing him (a rolled bash becomes a kick)" : string.Empty)
@@ -536,6 +566,19 @@ namespace TraxCombat.Core
             if (shield && u < kick + r.ShieldBash) return AiKickKind.Bash;
             if (!shield && u < kick + r.NoShieldPush) return AiKickKind.Push; // step 88: his weapon's push
             return AiKickKind.None;
+        }
+
+        /// <summary>
+        /// Step 91 (Toni's 19:56 battle of 2026-10-24: 114 of 150 bash hits on a FRIEND): the roll with the enemy's <paramref name="distance"/> - a
+        /// SHIELDMAN whose enemy stands beyond <c>AiBashReachMetres</c> (but within the kick reach) rolls only kick / swing, the bash's share split
+        /// between them in their own proportion (<see cref="AiKickRules.ShieldKickBeyondBashReach"/>); within it - and every man with no shield -
+        /// the step-81 / 88 roll exactly (the same die).
+        /// </summary>
+        public static AiKickKind Roll(in AiKickRules r, bool shield, double u, double distance)
+        {
+            if (!shield || !r.BeyondBashReach(distance)) return Roll(in r, shield, u);
+            if (double.IsNaN(u)) return AiKickKind.None;
+            return u < r.ShieldKickBeyondBashReach ? AiKickKind.Kick : AiKickKind.None;
         }
 
         /// <summary>Step 88: the kinds (None, Kick, Bash, Push) - the stats' array size.</summary>
@@ -784,6 +827,10 @@ namespace TraxCombat.Core
         /// <summary>Step 87 (a diagnostic): who blocks the strike path at a refusal, whom a kick / bash on a friend hit - the 7th [summary] line.</summary>
         public readonly AiKickBlockStats Blocks = new AiKickBlockStats();
 
+        /// <summary>Step 91: the shield bash's own reach - the shieldmen's rolls in / beyond it, each bash by the enemy's distance at its decision
+        /// against what it hit - the 8th [summary] line.</summary>
+        public readonly AiBashReachStats BashReach = new AiBashReachStats();
+
         /// <summary>Step 80: friends looked at by the probe, the probes made.</summary>
         public long PathFriendsLooked;
 
@@ -996,6 +1043,7 @@ namespace TraxCombat.Core
             lines.Add(SharesLine(in r));
             lines.Add(PathLine(in r));
             lines.Add(Blocks.Line());
+            lines.Add(BashReach.Line(in r));
             return lines;
         }
     }

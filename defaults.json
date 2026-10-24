@@ -2148,6 +2148,13 @@
   // (range 0.5 to 4.0)
   "AiKickReachMetres": 1.6,
 
+  // An AI soldier with a shield bashes only an enemy within this many metres - a shield bash
+  // reaches less than a kick. Farther off (but within the kick reach above) he only kicks or
+  // swings, the bash's share split between the two in their own proportion. 0 = bashes at the
+  // kick reach.
+  // (range 0.0 to 4.0)
+  "AiBashReachMetres": 1.1,
+
   // The enemy must stand within this many degrees of where the AI soldier faces - a kick goes
   // forward.
   // (range 0 to 180)

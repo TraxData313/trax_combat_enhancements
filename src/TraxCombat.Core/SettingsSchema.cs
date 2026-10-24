@@ -1626,6 +1626,12 @@ namespace TraxCombat.Core
             "AI kicks: reach (m)",
             "An AI soldier kicks or bashes only the enemy he fights, and only within this many metres (a kick reaches about a pace).");
 
+        // step 91 (Toni's 19:56 battle of 2026-10-24: 114 of 150 bash hits on a FRIEND - the bash rolled at the kick's reach sweeps past the enemy
+        // into the neighbour): a shield bash's own, shorter reach; AiKickMath.Roll(…, distance) - beyond it a shieldman's bash share goes to kick / swing.
+        public static readonly ParamDef AiBashReachMetres = Float("AiBashReachMetres", 0, 4, ImpactGroup,
+            "AI shield bashes: reach (m)",
+            "An AI soldier with a shield bashes only an enemy within this many metres - a shield bash reaches less than a kick. Farther off (but within the kick reach above) he only kicks or swings, the bash's share split between the two in their own proportion. 0 = bashes at the kick reach.");
+
         public static readonly ParamDef AiKickFacingDegrees = Int("AiKickFacingDegrees", 0, 180, ImpactGroup,
             "AI kicks: the enemy in front within (degrees)",
             "The enemy must stand within this many degrees of where the AI soldier faces - a kick goes forward.");
@@ -2456,7 +2462,7 @@ namespace TraxCombat.Core
             ImpactShrugOffYieldsToImpact, ImpactFallBackupSeconds, ImpactToughnessWeight, ImpactRangedInHandPercent,
             ImpactRearPercent, ImpactFlankPercent, ImpactRearDegrees, ImpactFlankDegrees, ImpactRearPressure, ImpactFlankPressure,
             ImpactChargeCarrySeconds, RiposteKnockdownMaxPercent, RiposteKnockdownFrom, RiposteMomentumPercent, ImpactMultiplierCapPercent,
-            AiKicksEnabled, AiShieldmanKickPercent, AiShieldmanBashPercent, AiNoShieldKickPercent, AiNoShieldPushPercent, AiKickReachMetres, AiKickFacingDegrees, AiKickCooldownSeconds,
+            AiKicksEnabled, AiShieldmanKickPercent, AiShieldmanBashPercent, AiNoShieldKickPercent, AiNoShieldPushPercent, AiKickReachMetres, AiBashReachMetres, AiKickFacingDegrees, AiKickCooldownSeconds,
             AiKickKicksARaisedShield, KickBraceEnabled, KickBraceFromPressure, KickBraceToPressure, KickBraceMinBarPercent, KickBraceReelPercent,
             KickShortReelPercent, KickBraceRefusesKnockBack, AiKickFriendClearMetres, AiBashPathHalfWidthMetres, AiKickRearRankMetres, AiKickBlockAheadMetres, AiKickBlockSideMetres,
             MeetBashShieldRightStaggerPercent, MeetBashShieldRightFallPercent, MeetBashWeaponRightStaggerPercent, MeetBashWeaponRightFallPercent, MeetBashShieldWrongStaggerPercent, MeetBashShieldWrongFallPercent,
