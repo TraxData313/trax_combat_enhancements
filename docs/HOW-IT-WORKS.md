@@ -362,6 +362,17 @@ of the block is walked back into it, while its front still hits you at full spee
 
 Numbers: [MECHANICS §14c](MECHANICS.md#14c-line-discipline-green-troops-cannot-hold-a-thin-line).
 
+## Green troops carry a piece of wood
+
+Every tier-1 soldier - a recruit, a volunteer, a nomad - who comes onto the field without a shield is handed his culture's cheap one: an Imperial
+kite shield, an Aserai adarga, a Battanian targe, a Khuzait wicker shield, a Sturgian round shield, a Vlandian heater. A recruit who carries a
+weapon he can only swing with both hands - a scythe, a maul - gets a short spear of his people instead, so he fights one-handed behind the shield
+(pitchforks stay: they work one-handed). Fights between green troops last longer, and a few volleys no longer melt them. Both sides; never riders,
+heroes, companions or you, and tournaments keep their fixed gear. Nothing is saved - it is handed out at each spawn, so you can switch it off any
+time on the main page (*Unit changes*); which shield and spear each culture gets is on the Advanced page (*Unit changes*).
+
+Numbers: [MECHANICS §14d](MECHANICS.md#14d-tier-1-men-carry-a-cheap-culture-shield).
+
 ## What you see on screen
 
 - **Your Athletics bar**, under your health, with the white mark at three quarters. Green at full strength,

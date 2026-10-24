@@ -533,7 +533,7 @@ die at any moment (tokens run out) and the next one loses nothing.
   file, capped at `LogMaxMegabytes` (8); a trim cuts ONLY the oldest verbose lines (marked `~`
   before the tag) and keeps every other line - summaries, first-time lines, settings, errors
   (step 10b, Core `LogTrim`). Timestamped lines tagged by area (`[config]`, `[mcm]`, `[mission]`,
-  `[damage]`, `[athletics]`, `[speed]`, `[rate]`, `[stepback]`, `[brace]`, `[guard]`, `[sprint]`, `[wall]`, `[fever]`, `[courage]`, `[fear]`, `[cavalry]`, `[impact]`, `[orders]`, `[spears]`, `[hud]`, `[error]`). Always logged: mod/game version
+  `[damage]`, `[athletics]`, `[speed]`, `[rate]`, `[stepback]`, `[brace]`, `[guard]`, `[sprint]`, `[wall]`, `[fever]`, `[courage]`, `[fear]`, `[cavalry]`, `[impact]`, `[orders]`, `[spears]`, `[units]`, `[hud]`, `[error]`). Always logged: mod/game version
   at load, every parameter value on load and on change, each mission start/end (type,
   scene, agent counts), which behaviors/views attached, and every caught exception with its
   stack. Per-battle SUMMARY at mission end (damage rolls: count, min/avg/max factor;
@@ -1201,6 +1201,12 @@ src/TraxCombat.Core/          netstandard2.0 — pure logic, no game refs, unit-
                               Condition, Step - the timers, Favors, HeldOf, NextLook - the jitter, WieldRewrite), SpearStats (the 2 [summary] "spears"
                               lines); ThrustVerdict / ThrustFacts / ThrustPassRules / ThrustPassMath (Decide in gate order, StunWanted, the vanilla 0.4)
                               / ThrustPassStats (the [summary] "thrusts past friends" line)
+  UnitKit.cs                  step 84 (DESIGN decision 80) - TIER-1 MEN CARRY A CHEAP CULTURE SHIELD: KitSkip (gate order, ModOff FIRST), KitSlot /
+                              KitAgent / KitOrder / KitItemFacts, IKitItems (the game's item table - the module plays it), UnitKitMath (Gate, Plan - the
+                              first free slot, the first two-handed-only melee weapon -, TwoHandedOnly, CultureIndex, the per-culture settings), UnitKit
+                              (Start - each culture's items said with the cheapest merchandise one; Decide - the settings re-resolved live, a culture
+                              without settings its cheapest merchandise shield / spear; Done; SummaryLine)
+  TextValues.cs               step 84: ParamType.Text's table - a short text (an item id) stored as its index (append-only, ordinal, 0 = "")
   WarCry.cs                   step 79 (DESIGN decision 75) - WAR CRIES, SOUND ONLY: WarCryRules (ModEnabled FIRST, WarCriesEnabled, 10 numbers;
                               Describe), WarCryCause (back in / answer / charge), WarCryGate (ok / man / unit / battle / gone / switched off / queue),
                               WarCryMath (Chance, Rolls, Delay, ManReady / NextAllowed, ChargeRoars - the unit's cooldown, ChargeShoutersPerUnit - the
@@ -1657,6 +1663,10 @@ src/TraxCombat.Module/        net472 — the Bannerlord module, TraxCombatEnhanc
                               Missions/BlockBody.cs: IBlockBody (Cap via LineDiscipline.TryCap, Formation - the order / behaviour / arrangement names, cached
                               -, Name), GameBlockBody, BlockBodyDefault; LineDiscipline.TryCap (the last look's cap per slot); AiInputHook.cs: AiInputState
                               .Block (BlockX / Y), SetBlock, ApplyBlock, BlockOn - the last wish; TrackedAgent.BlockHold (Core BlockMind)
+  Missions/AthleticsLogic.UnitKit.cs  step 84: StartUnitKit (AfterStart), GiveUnitKit (OnAgentBuild, before Track - after Agent.Build, never in it),
+                              the [units] lines and the [summary] "unit changes" line; Missions/UnitKitBody.cs: IUnitKitBody (FixedEquipment - civilian /
+                              not Combat / a Tournament or Arena behaviour by name; Read; Give - EquipWeaponWithNewEntity + the agent's own SpawnEquipment
+                              so the game's WieldInitialWeapons picks the spear and the shield), GameUnitKitBody, GameKitItems (MBObjectManager's items)
   Missions/AthleticsLogic.WarCry.cs  step 79: StartWarCries / NoteWarCrySettings, WarCryEvent (from GoIn: back in by his own mark; from the
                               contagion: an answer), NoteChargeOrder / ChargeRoars (from PollOrders - a kind newly a charge; the poll runs while the
                               war cries are on too), Enqueue, TickWarCries (from TickAthletics after TickSprint: off = every waiting cry dropped; each

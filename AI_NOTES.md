@@ -7815,3 +7815,60 @@ the REAL `DisciplinedLineFormation` over 20 men floors the capped width to 7; th
 **DEPLOY**: `tools\deploy.ps1` ran through (build, AssemblyGuard, the smoke 197 passed, installed as Modules\TraxCombatEnhancements.Dev);
 `loadcheck.ps1`: both DLLs LOADED (`1.3.0+ba2c8820…`): TraxCombatEnhancements.dll SHA-256 6CDE3948…0B33, TraxCombat.Core.dll 834A9A01…5FBD. The
 game and the launcher were not running. Not uploaded; SubModule.xml stays v1.3.0.
+
+## Step 84 — tier-1 men carry a cheap culture shield (built 2026-10-24; dev build only, not uploaded)
+
+**Toni (2026-10-24)**: "one small touch to make the combat longer ... they all should be able to afford a piece of wood"; "replace the two handers
+with cheap spears" (the Battanian maul too). A new MCM section "Unit changes" on the PLAYER page with `GiveTier1Shields` ("Give Tier 1 units
+shields", on); the per-culture items in an Advanced group "Unit changes". DESIGN decision 80.
+
+**Game data (v1.4.8, SandBoxCore spnpccharacters.xml + items, Native weapon_descriptions.xml / crafting_templates.xml / crafting_pieces.xml)**:
+the six recruits are level 6 = `GetBattleTier()` 1 (ceil((level − 5) ÷ 5)); each has 4 battle rosters with only Item0. `GetRandomEquipmentElements`
+takes slots 0-1 from one random roster and 2-3 from another (a fresh `Equipment` per agent). A CRAFTED item gets a usage for every weapon
+description of its template whose `AvailablePieces` contain ALL its pieces (`Crafting.GenerateCraftedItem`), the first one = its primary weapon. So:
+- `peasant_pitchfork_1_t1` / `_2_t1` (TwoHandedPolearm template, spear_blade_32 / 29 + spear_handle_1): **OneHandedPolearm + TwoHandedPolearm** - one-hand
+  usable, they STAY (the brief and the board listed them as two-handers; the data says no).
+- `peasant_polearm_1_t1` (the Scythe, spear_blade_31): TwoHandedPolearm ONLY. `peasant_maul_t1_2` (TwoHandedMace template): TwoHandedMace only.
+- every candidate spear has OneHandedPolearm + TwoHandedPolearm: `imperial_spear_t2` (Culture.empire - the only Empire tier-2 spear),
+  `western_spear_1_t2` / `western_spear_2_t2` (Culture.vlandia), `northern_spear_1_t2` (Culture.sturgia), `eastern_spear_1_t2` (**Culture.aserai** -
+  but every Khuzait tier-2 spear carrier has it; the Khuzait-culture spears `eastern_spear_2_t3` / `_3_t3` are tier 3).
+- PRICES: `DefaultItemValueModel` - value = 100 × 2.75^tier, a crafted weapon's tier = 0.6 × the melee tier (damage × speed^1.5 × length, computed by
+  the crafting stats at load) + 0.4 × the pieces' tier / materials. The melee half cannot be computed offline, so the pieces' half was compared:
+  `western_spear_2_t2` 0.94 (blade 9 tier 1) vs 1.20 for `western_spear_1_t2` / `northern_spear_1_t2` / `imperial_spear_t2`, `eastern_spear_1_t2` 2.42.
+  → Vlandia and Battania (whose clan warrior carries both western spears) get `western_spear_2_t2`; the Battanian-culture spears (`highland_spear_t2`
+  4.09 …) are dearer. THE PROOF IN GAME: each mission start logs every chosen item's `Value` and the cheapest merchandise one of that culture.
+- shields as agreed (weights / hit points read from shields.xml): the brief's table.
+
+**The engine path (decompile `Mission.SpawnAgent`)**: CreateAgent → ... → `InitializeSpawnEquipment(equipment)` (the agent's own copy) →
+`InitializeMissionEquipment` (the stat model's perks on the weapons) → `BuildAgent` (`Agent.Build`, `EquipItemsFromSpawnEquipment` - WeaponEquipped
+per slot, `UpdateAgentProperties`) → **every behaviour's `OnAgentBuild(agent, banner)`** → (deployment finished) `InitializeAgentStatsAfterDeploymentFinished`
+/ `InitializeMissionEquipmentAfterDeploymentFinished`. The caller (`Mission.SpawnTroop(..., wieldInitialWeapons)`, the hideout controllers, ...) calls
+`WieldInitialWeapons` AFTER SpawnAgent, and it picks the main / off hand from `SpawnEquipment.GetInitialWeaponIndicesToEquip` (first non-off-hand item =
+main, first `HeldInOffHand` item = off hand) - NOT from the mission equipment. Hence `Give`: `EquipWeaponWithNewEntity(slot, new MissionWeapon(item,
+null, banner))` (it calls WeaponEquipped + UpdateAgentProperties - our stat decorator, outside Agent.Build) AND `agent.SpawnEquipment[slot] = new
+EquipmentElement(item)` (agent-local, never the troop's), then `WieldInitialWeapons(InstantAfterPickUp)` only if he already held something. Done in
+OnAgentBuild BEFORE our `Track` (nothing of ours has read his kit yet; step 76's spear looks read the slots later). `Agent.IsHuman` is a native read -
+OnAgentBuild asks it, `GiveUnitKit` does not (the smoke calls it on uninitialized agents).
+
+**Code**: Core `TextValues.cs` (step 84's `ParamType.Text` - a text stored as its index in an append-only ordinal intern table, 0 = ""; the config
+file / defaults.json / MCM text box read and write the text; ParamDef.Normalize rounds it like an Int; `FormatJson` quotes + escapes); Core
+`UnitKit.cs` (KitSkip in gate order, KitSlot / KitAgent / KitOrder / KitItemFacts, IKitItems, UnitKitMath - Gate, Plan, TwoHandedOnly, CultureIndex,
+the settings per culture -, UnitKit - Start (the per-culture lines), Decide (live re-resolve when a setting's index changed), Done (counts, first lines),
+SummaryLine); Module `Missions/UnitKitBody.cs` (IUnitKitBody, GameUnitKitBody - FixedEquipment: civilian / CombatType ≠ Combat / a Tournament or Arena
+behaviour by NAME; Read; Give -, GameKitItems - MBObjectManager's ItemObjects, the cheapest per culture cached), `Missions/AthleticsLogic.UnitKit.cs`
+(StartUnitKit from AfterStart, GiveUnitKit from OnAgentBuild, the summary). Two-handed only = a melee usage exists and none lacks
+`WeaponFlags.NotUsableWithOneHand`; a fallback spear = `ItemTypeEnum.Polearm`, one-hand melee, nothing consumable / ranged (no throwing spears).
+
+**Gotchas**: (1) "Unit changes" is a group title on BOTH pages - the schema test now checks unique titles per page, the file tests find each section
+after the previous one (`IndexOf(…, last + 1)`). (2) No `HasAnyFlag` for `WeaponFlags` in our references - a plain `&`. (3) A tier-1 man with no free
+slot (all four full) is skipped, never stripped. (4) Shield perks from `InitializeMissionEquipment` do not reach the new shield (it ran before us).
+
+**Settings (11, Live; 499 → 510)**: `GiveTier1Shields` (player page 28 → 29, its own group "Unit changes", Order 7), `UnitShield{Empire,Aserai,
+Battania,Khuzait,Sturgia,Vlandia}`, `UnitSpear{Empire,Battania,Khuzait,Vlandia}` (Advanced "Unit changes", Order 25, "Advanced" 26). New keys - no
+migration (FormatVersion 19). The Aserai and Sturgians have no spear setting (no two-hander among their recruits) - a mod's two-hander takes the
+culture's cheapest one-handed spear.
+
+**Tests**: Step84Tests (19 - the places, the text type and the files, the gates, the two-hander test, the plan, the cultures, a recruit of each culture
+and variant, the start lines, unknown / wrong ids and live changes, the fallback culture, the switches, the summary). Smoke 198: `TierOneShields` (24
+recruits by variant, men left alone, the fallback, the switch, an unknown id mid-battle, a tournament, the summary, 988 spawns 0 bytes) and the
+master-switch part.

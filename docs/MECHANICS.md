@@ -1752,6 +1752,33 @@ on YOUR charge orders (each man morale x 0.33%, 1.5-2.5 s later, once per 30 s) 
 `WarCryChargeMaxMen` 12 (0-60), `WarCryChargeStaggerSeconds` 1.5 (0-5), `WarCryChargeUnitCooldownSeconds` 15 (0-120), `WarCryManCooldownSeconds` 8
 (0-60), `WarCryUnitPerSecond` 8 (1-30), `WarCryBattlePerSecond` 16 (1-60).</sub>
 
+## 14d. Tier-1 men carry a cheap culture shield
+
+Toni (2026-10-24): "one small touch to make the combat longer ... they all should be able to afford a piece of wood". Since step 84 every tier-1
+soldier (battle tier 1 = level 6) on foot who spawns without a shield - both sides, never riders, heroes, companions or you, never in a tournament
+or arena - is given his culture's shield in his first free weapon slot; a weapon with no one-handed use is replaced by his culture's spear. Given at
+each spawn, never saved.
+
+| Culture | Recruit | Shield | Weight | Hit points | Variants (vanilla) | Spear for a two-hander |
+|---|---|---|---|---|---|---|
+| Empire | imperial_recruit | Simple Kite Shield | 2.6 kg | 220 | pitchfork (kept), **scythe → spear**, sickle, sword | Short Militia Spear (`imperial_spear_t2`) |
+| Aserai | aserai_recruit | Adarga | 1.3 kg | 160 | sword, two hammers, hatchet | - |
+| Battania | battanian_volunteer | Targe | 1.6 kg | 215 | **maul → spear**, hatchet, mace, pickaxe | Simple Short Spear (`western_spear_2_t2`) |
+| Khuzait | khuzait_nomad | Wicker Square Shield | 2.7 kg | 260 | mace, pitchfork (kept), **scythe → spear**, sickle | Jagged Spear (`eastern_spear_1_t2`) |
+| Sturgia | sturgian_recruit | Round Shield | 3.0 kg | 300 | axe, two hammers, sickle | - |
+| Vlandia | vlandian_recruit | Heater Shield with Cutout | 2.1 kg | 220 | mace, pitchfork (kept), hammer, pickaxe | Simple Short Spear (`western_spear_2_t2`) - for a mod's two-hander |
+
+A weapon counts as two-handed only when none of its melee usages can be used with one hand (the game's own usages): the scythe and the maul;
+the pitchforks have a one-handed polearm usage, so they stay and go with the shield. All the spears have a one-handed and a two-handed usage. A
+culture without its own settings (a mod's) takes its cheapest merchandise shield and one-handed spear; a culture with no merchandise shield is left
+alone. The Nords' youngling already carries a shield.
+
+<sub>Settings: *Give Tier 1 units shields* = `GiveTier1Shields` (player page, Unit changes; on; live - the next spawn); Advanced page, *Unit changes*,
+live, item ids (empty = none): `UnitShieldEmpire` battered_kite_shield, `UnitShieldAserai` adarga, `UnitShieldBattania` battania_targe_b,
+`UnitShieldKhuzait` eastern_wicker_shield, `UnitShieldSturgia` northern_round_shield, `UnitShieldVlandia` heater_shield_with_cutout,
+`UnitSpearEmpire` imperial_spear_t2, `UnitSpearBattania` western_spear_2_t2, `UnitSpearKhuzait` eastern_spear_1_t2, `UnitSpearVlandia`
+western_spear_2_t2.</sub>
+
 ## 15. What you see on screen
 
 **Your Athletics bar** sits under your health, with the white peak line at 75%. Its colour:

@@ -3159,6 +3159,38 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     `[lines] first SMALL UNIT` line (the tier's shape vs the held one) and "(a small unit: held … deep)" in the first-counted line. Unit tests: the
     table, r 0, a unit shrinking 100 → 20, every count 1-200 at every tier at least 2 : 1 (and any r 0.5-5 with fractional D); smoke: 20 T1 → 7 files
     x 3 ranks, the preview cap the same 7 files, r 0 live = 4 files. UNVERIFIED in game (PLAYTEST D48): how a small unit looks in the field.
+80. **Tier-1 men carry a cheap culture shield** (step 84, Toni 2026-10-24: "one small touch to make the combat longer ... they all should be able
+    to afford a piece of wood"; "replace the two handers with cheap spears"). (a) WHO: every agent that spawns in a mission whose gear is a fight's
+    (not a tournament / arena - `Mission.CombatType` Combat, no Tournament / Arena behaviour by type NAME, not a civilian scene) and is a non-hero
+    soldier of battle tier 1 (`GetBattleTier`, the same read step 73 uses - level 6 = tier 1) on foot (no mount, no horse in his spawn equipment),
+    not the player, with no shield in weapon slots 0-3; both sides. The vanilla six: imperial_recruit, aserai_recruit, battanian_volunteer,
+    khuzait_nomad, sturgian_recruit, vlandian_recruit (`nord_youngling` already carries `nord_shield_tier_2_d` - skipped as "has a shield").
+    (b) WHAT: his culture's shield (`UnitShield*`) in his FIRST FREE weapon slot (a recruit's slot 1); a melee weapon with NO usage for one hand
+    (the game's `NotUsableWithOneHand` on every melee usage - verified in weapon_descriptions.xml + the crafted pieces: the scythe
+    `peasant_polearm_1_t1` and the maul `peasant_maul_t1_2` are two-handed only) is replaced by the culture spear (`UnitSpear*`, which must have a
+    one-handed melee usage). THE PITCHFORKS STAY: `peasant_pitchfork_1_t1` / `_2_t1` are crafted from pieces listed under `OneHandedPolearm` too, so
+    they have a one-handed usage and work with a shield (the board line listed them as two-handers - the data says otherwise). Swapped variants:
+    the Imperial and Khuzait scythe, the Battanian maul; the Vlandian recruit has none. (c) THE ITEMS: Empire `battered_kite_shield` / Aserai `adarga`
+    / Battania `battania_targe_b` / Khuzait `eastern_wicker_shield` / Sturgia `northern_round_shield` / Vlandia `heater_shield_with_cutout`; spears
+    Empire `imperial_spear_t2` (the only Empire-culture tier-2 spear), Khuzait `eastern_spear_1_t2` (Culture.aserai in the files but what the Khuzait
+    tier-2 men carry; the Khuzait-culture spears are tier 3), Battania and Vlandia `western_spear_2_t2` (the Simple Short Spear - the lowest crafted
+    tier of the tier-2 spears those cultures' men carry: blade tier 1 vs 2 for `western_spear_1_t2` / `northern_spear_1_t2`). Crafted items' prices are
+    computed by the game at load (a melee tier from damage / speed / length), so "cheapest" could not be computed offline: every mission start logs
+    each chosen item's value beside the cheapest merchandise one of that culture. (d) A CULTURE WITHOUT SETTINGS (a mod's): its cheapest merchandise
+    shield and one-handed polearm (not thrown) by its own culture attribute, resolved once a mission; none = its men skipped, said once. An unknown id,
+    an item that is not a shield / has no one-handed use = said once (at the start or when changed) and that culture's shield / spear skipped (a
+    missing spear keeps the two-hander). Empty = none. (e) HOW: in `OnAgentBuild` - after `Mission.SpawnAgent`'s `Agent.Build` and
+    `EquipItemsFromSpawnEquipment`, before our own tracking reads his kit, never inside Agent.Build or the stat model (RBM's deadlock) - with
+    `Agent.EquipWeaponWithNewEntity(slot, new MissionWeapon(item, null, banner))` and the same item written into his OWN spawn equipment (a fresh copy
+    per agent - `GetRandomEquipmentElements` / `Clone`), because the game's `WieldInitialWeapons` (called after the spawn by most missions) picks the
+    main and off hand from the SPAWN equipment: it now picks the spear (or his one-hander) and raises the shield; a man already holding something is
+    re-wielded at once. Nothing touches the troop or the save. Shield perks applied in `InitializeMissionEquipment` (before our call) do not reach
+    the new shield; `InitializeMissionEquipmentAfterDeploymentFinished` (reinforcements) does. (f) NO HARMONY, no model change; allocation-free per
+    spawn after a culture's first man (smoke: 988 spawns 0 bytes). (g) Switch `GiveTier1Shields` (player page, its own "Unit changes"; on), the ten
+    ids in the Advanced "Unit changes" (string settings - `ParamType.Text`, the index of the text in Core `TextValues`), all live (the next spawn); new
+    keys, no migration. The tier is fixed at 1 - the switch's own words. (h) LOGGED: the start line, one line per culture (the items, the cheapest),
+    the first man of each culture and the first swap in full, a culture skipped once, the [summary] "unit changes" line. UNVERIFIED in game
+    (PLAYTEST D49): the AI raising the new shield and fighting one-handed.
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),
 `HudRefreshSeconds`, `FormationStatsRefreshSeconds` came out of step 2's research
