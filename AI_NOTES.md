@@ -7872,3 +7872,67 @@ culture's cheapest one-handed spear.
 and variant, the start lines, unknown / wrong ids and live changes, the fallback culture, the switches, the summary). Smoke 198: `TierOneShields` (24
 recruits by variant, men left alone, the fallback, the switch, an unknown id mid-battle, a tournament, the summary, 988 spawns 0 bytes) and the
 master-switch part.
+
+## Step 84b — the tier-1 shields show in the troops' own gear (built 2026-10-24; dev build only, not uploaded)
+
+**Toni (2026-10-24)**, his F12 of the Sturgian Recruit in the encyclopedia (Set 4/4, no shield): "make the troops' gear show the shields ... as
+long as nothing goes into the save". DESIGN decision 80b, PLAYTEST D49b.
+
+**THE SPIKE - the gate (decompile v1.4.8; CampaignSystem / ObjectSystem / SaveSystem / SandBox / StoryMode / NavalDLC decompiled fresh into
+`%TEMP%\trax_decomp\full_*` - the old folder had only 3 CampaignSystem files). VERDICT: SAFE.**
+- `TaleWorlds.Core/BasicCharacterObject.cs`: NO `[SaveableField]` / `[SaveableProperty]` at all; the gear lives in `private MBEquipmentRoster
+  _equipmentRoster` (plain). `SaveableCoreTypeDefiner` defines the class (id 5) but nothing of it is saved.
+- `CampaignSystem/CharacterObject.cs`: saveable only `[SaveableField(101)] Hero _heroObject` and `[SaveableField(103)] CharacterObject
+  _originCharacter`; `_battleEquipmentTemplate` / `_civilianEquipmentTemplate` are plain. `ObjectSystem/MBObjectBase.cs`: `[SaveableProperty(1/2/3)]`
+  StringId, Id, IsRegistered - a troop goes into a save as its id; on load the XML is read again (`Campaign` → `LoadBasicFiles`).
+- `MBEquipmentRoster` (TaleWorlds.Core, an MBObjectBase): in NO type definer (grep of every `*Definer*.cs`: absent) - not a save type at all.
+- `Equipment` (core type 16, `[SaveableField(1)] _equipmentType`, `[SaveableField(2)] _itemSlots`) is saved only where a saveable field holds one: a
+  grep of every `[Saveable*]` over CampaignSystem, Core, SandBox, StoryMode, NavalDLC finds only `Hero._battleEquipment` / `_civilianEquipment` /
+  `_stealthEquipment` (and `GangLeaderNeedsWeaponsIssue`'s `Dictionary<EquipmentElement,int>` - items, not a troop's set).
+- Party rosters (`TroopRoster`) hold `CharacterObject` REFERENCES; no behaviour copies a non-hero troop's set into saved state.
+- THE COPY PATH - heroes from templates: `HeroCreator.CreateHero(template, useCharacterAsTemplate)` → `CharacterObject.CreateFrom` (shares the
+  template's `_equipmentRoster` OBJECT via `FillFrom`) → `new Hero` → `Hero.SetInitialValuesFromCharacter` clones a random battle set
+  (`_battleEquipment = list.GetRandomElement().Clone()`), saved with the hero. `Hero.ResetEquipments` (RemoveCompanionAction) clones
+  `Template.FirstBattleEquipment` again. `CampaignEventDispatcher.OnHeroCreated` fires at the end of `InitializeHeroFromSettings`. Every vanilla
+  `CreateSpecialHero` caller passes a lord / wanderer / notable / gangster / townsman / a hero's own character (CampaignSystem, SandBox, StoryMode
+  - `DefeatTheConspiracyQuestBehavior` a hero's), never a soldier; `BasicCharacterObject.IsSoldier` = the XML occupation contains "Soldier" (the
+  templates' occupations are Wanderer / Lord / notables). So: in vanilla no leak; a mod making heroes from soldiers could leak → the backstop.
+- Hence the rules: only `IsSoldier` non-hero tier-1 troops; a troop some hero of the campaign came from (`Hero.CharacterObject.OriginalCharacter` over
+  `AllAliveHeroes` + `DeadOrDisabledHeroes`) is left alone; `CampaignEvents.HeroCreated.AddNonSerializedListener` (non-serialized: nothing saved)
+  undoes the copy and drops the troop for the game.
+
+**Shared rosters**: an `<EquipmentRoster>` inline in the troop's XML is parsed by `MBEquipmentRoster.InitEquipment` → `new Equipment` (the troop's
+own); an `<EquipmentSet id=…>` (the recruits' `*_troop_civilian_template_t1`, civilian) ADDS THE TEMPLATE'S OBJECTS by reference
+(`AddEquipmentRoster`: `_equipments.Add(item)`) - shared. `GameTroopKitWorld` counts, per Equipment object (by reference), the registered
+`MBEquipmentRoster`s holding it and the non-hero characters holding it (`BattleEquipments` + `CivilianEquipments` - `AllEquipments` is PROTECTED);
+a battle set held by more than one roster or character = "shared" and the WHOLE troop is left alone (step 84 still gives its men a shield at spawn).
+Only battle sets are touched; civilian / stealth never. The vanilla recruits' four battle sets are their own.
+
+**The spawn mix (why one slot)**: `Mission.SpawnAgent` → `Equipment.GetRandomEquipmentElements` takes slots 0-1 from one random battle set and 2-3 from
+another (a fresh Equipment per agent). A shield in slot 1 of one set and slot 2 of another could give a man two. So the shield goes into the first
+slot free in EVERY battle set (a recruit's slot 1), no set may hold a shield already, a horse in any set = a rider = left alone.
+
+**Code**: Core `TroopKit.cs` (TroopSkip in gate order - ModOff first; KitSet / KitTroop / ITroopKitWorld / IKitCopy / TroopEdit; TroopKitMath.Signature
+("off (mod off)" / "off (GiveTier1Shields)" / "on|…" the 10 item values), Plan, SwapSlot; TroopKit.Sync (same signature = nothing; else RestoreAll then
+Apply), Restore (forgets the signature and the excluded troops), UndoCopy (the matching set's originals into the hero's copy, else every slot still
+holding our item; the troop restored and excluded)); Core `UnitKit.ItemsFor` / `Describe` (the same resolution as the spawn, logging off); Module
+`TroopGear.cs` (TroopGear - Initialize subscribes `TraxSettings.Shared.Changed`, GameReady / Attach / Detach, Relevant keys, HeroMade;
+TroopGearCampaign - Hook / Unhook the HeroCreated listener, HeroTemplates, HeroCopy over `Hero.BattleEquipment` (`IsEquipmentEqualTo`);
+GameTroopKitWorld - ReadTroops over `MBObjectManager.GetObjectTypeList<BasicCharacterObject>()` / `<MBEquipmentRoster>()`, Write =
+`Equipment[slot] = new EquipmentElement(item)` or the kept element, Holds); `SubModule` - `OnAfterGameInitializationFinished` → GameReady,
+`OnGameEnd` / `OnSubModuleUnloaded` → Detach, `OnMissionBehaviorInitialize` → GameReady (a no-op when in sync), `OnSubModuleLoad` → Initialize.
+
+**Custom battles**: the same `BasicCharacterObject`s from the same XML (IsSoldier from the occupation) - applied there too (consistency; the custom
+battle's troop picker shows them); `Campaign.Current` is null there, so no hero hook / templates.
+
+**Gotchas**: (1) `AllEquipments` is protected - use `BattleEquipments` / `CivilianEquipments` (a hero's are his own, so heroes are skipped in the
+count and caught by HeroTemplate). (2) `MBObjectBase` overrides GetHashCode (Id) but not Equals - reference comparers for the maps anyway. (3) The
+smoke needed TaleWorlds.ObjectSystem referenced (ItemObject's base type) and uses uninitialized ItemObjects (`Equipment`'s setter ignores
+`IsItemFitsToSlot`'s answer). (4) A python `'...\bin...'` in a csproj edit became a backspace - write paths with `chr(92)` or the Edit tool.
+(5) Step 84's summary now counts the recruits as "has a shield" (they spawn with it) - by design.
+
+**Tests**: Step84bTests (10 - the culture shield into the same slot of every set + the scythe swap, apply twice = once, restore = the exact
+originals, the switch / the master switch, an item setting re-applies (never twice), the gates in order, the common slot / none, shared / hero /
+rider / shield / hero-template left alone, a slot changed by something else left, the hero copy undone and the troop left alone). Unit tests 1202.
+Smoke 199: `TroopGearInMemory` (the real TroopGear + GameTroopKitWorld on real Equipment objects; a spawn from an edited set given nothing). Not
+checkable offline: MBObjectManager's real characters, the encyclopedia's redraw (PLAYTEST D49b).
