@@ -8387,3 +8387,37 @@ migration test hands in the shipped value (`Shipped(p)`) as Step 88 / 90's do. G
 
 **UNVERIFIED (PLAYTEST D56, amended)**: the bins' friends' share near (≤1.1 m) vs far (1.1-1.6 m) with the bash back at the kick reach - the input
 for the real fix.
+
+## Step 92 (proposed, NOT built) — the rest's two "should be 0" counters: what they really measure (investigated 2026-10-24)
+
+Toni's 20:26 battle (shield wall → engage → hold → charge, many orders) showed in `rest (step 78c)`: WALL men resting in their slots more than
+0.5 m out 1298 of 2472 looks (farthest 8.29 m), and resting men TURNED AWAY 1488 of 14854 facing samples. Toni suspected the order mess.
+The same counters across today's battles - so it is NOT the order mess, it is steady:
+
+| battle | wall-slot looks out > 0.5 m | turned away |
+|---|---|---|
+| 17:39 | 272 of 880 (31%), max 13.5 m | 1295 of 13996 (9.3%) |
+| 19:56 | 1595 of 2811 (57%), max 12.5 m | 1556 of 12570 (12.4%) |
+| 20:26 | 1298 of 2472 (53%), max 8.3 m | 1488 of 14854 (10.0%) |
+
+**Wall men out of their slots - most likely a MEASUREMENT artifact, not men leaving the wall.** `WallSlotLook` (AthleticsLogic.Rest.cs) measures
+the distance to `GetCurrentGlobalPositionOfUnit(agent, true)` on every rest look of a held man, whatever the wall is doing. In the 20:26 log the
+first case came 0.17 s after step 68's first "moving wall sent AS ONE LINE" (an ADVANCE order: the game's order slot 3.89 m ahead, the man walked
+1 m toward it) - the Champion had been resting in the open, became held when his unit formed the advancing wall (RelookWall), and stood 3.20 m
+from his brand-new slot. So the count includes (a) walls ADVANCING (step 68 moves the slot ahead and the men follow - by design), (b) men who
+just joined / were re-slotted (an order change, a rotation swap - `SwitchUnitLocations` gives him the fresh man's place behind), (c) men knocked
+back by kicks / falls. None of these is "the rest moved a wall man" (the rest never steers a wall man - SteerRest returns at once for RestWall).
+Proposed measurement fix (small, measurement only): count a wall look only under a STANDING order (stop / stand firm) and only after he has been
+held 3 s+ in the same slot, and split the rest by cause (just slotted / advancing / after an impact). If a standing wall still shows men out, THEN
+it is real.
+
+**Turned away ~10% in every battle - NOT sure; needs a measurement before any change.** `FacingLook` compares his LookDirection with the
+direction to the nearest enemy seen at the rest's last look (`m.EnemyX`), on every rest look of a man resting in the open. The first case
+(20:26, 84.4 s, Varyag) was 179.8° off - exactly turned round. Two hypotheses, both possibly innocent:
+1. The rest only steers him while he is near (walking back within the limit, or standing within reach + 1 m and less than 4.5 m behind his
+   front); farther off "his own AI keeps him up with his unit" - and the game's AI walks a man to his slot / his moving line facing the WALK
+   direction, i.e. often with his back to the enemy. The sample still counts. (157 of 381 rests went more than 5 m behind the front at 20:26.)
+2. The nearest enemy is not the man he fights (an enemy on the flank / behind in a meshed fight) - he looks at his target, not at the nearest.
+Proposed measurement: tag each facing sample by who steers him (the rest walking back / the rest holding him / his own AI) and by the enemy's
+distance; if the turned-away samples sit in "his own AI, far off", it is (1) and harmless (or we keep the rest steering him facing the enemy
+farther out); if they sit in "the rest walking back", the backpedal is broken and that is a real bug.
