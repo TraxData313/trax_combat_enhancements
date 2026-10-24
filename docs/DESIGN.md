@@ -3191,6 +3191,37 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     keys, no migration. The tier is fixed at 1 - the switch's own words. (h) LOGGED: the start line, one line per culture (the items, the cheapest),
     the first man of each culture and the first swap in full, a culture skipped once, the [summary] "unit changes" line. UNVERIFIED in game
     (PLAYTEST D49): the AI raising the new shield and fighting one-handed.
+80b. **The tier-1 shields show in the troops' own gear** (step 84b, Toni 2026-10-24, his F12 of the Sturgian Recruit in the encyclopedia with
+    no shield: "make the troops' gear show the shields ... as long as nothing goes into the save"). (a) THE SPIKE (decompile v1.4.8 -
+    TaleWorlds.Core / CampaignSystem / ObjectSystem / SaveSystem, SandBox, StoryMode, NavalDLC): a NON-HERO troop's equipment is never written
+    into a save - `BasicCharacterObject` has no saveable member (its `_equipmentRoster` is plain); `CharacterObject` saves only `_heroObject` (101)
+    and `_originCharacter` (103), plus `MBObjectBase`'s StringId / Id / IsRegistered; `MBEquipmentRoster` is no save type at all (in no type
+    definer); `Equipment` (core type 16) is saved only inside a Hero (`_battleEquipment` / `_civilianEquipment` / `_stealthEquipment`); party
+    rosters hold `CharacterObject` references (saved by id, the gear re-read from the XML). THE ONE COPY PATH: a hero made from a template
+    (`HeroCreator.CreateHero` → `CharacterObject.CreateFrom`, which shares the template's roster object) clones a random battle set of the template
+    into the hero (`Hero.SetInitialValuesFromCharacter`), and `Hero.ResetEquipments` clones `Template.FirstBattleEquipment` again (a companion
+    removed) - a hero's copy IS saved. Vanilla's templates are lords, wanderers, notables, gangsters, townsmen - never a soldier (`IsSoldier` =
+    the occupation "Soldier"); a mod could use one. (b) WHAT: every non-hero soldier of battle tier 1 (not the player, not obsolete) whose battle
+    sets all belong to him alone gets step 84's culture shield (`UnitKit.ItemsFor` - the same settings and fallback) in the FIRST WEAPON SLOT FREE
+    IN EVERY SET (the game mixes slots 0-1 of one set with 2-3 of another at spawn - `Equipment.GetRandomEquipmentElements` - so the shield sits
+    in the same slot everywhere and any mix carries exactly one), and a set's two-handed-only weapon becomes the culture spear. Through public API:
+    `Equipment[slot] = new EquipmentElement(item)`; the game's own `EquipmentElement` kept per changed slot. (c) LEFT ALONE, the whole troop: a rider
+    (a horse in a set), a set already holding a shield, no slot free in every set, a set SHARED - an `Equipment` object held by another registered
+    `MBEquipmentRoster` or another non-hero character (templates such as `*_troop_civilian_template_t1` are named by `EquipmentSet` and shared; the
+    recruits' inline `EquipmentRoster` sets are their own `new Equipment`) - and a troop some hero of this campaign was made from (its
+    `OriginalCharacter`). Civilian and stealth sets are never touched. (d) WHEN: `OnAfterGameInitializationFinished` (a campaign new or loaded, a
+    custom battle - the same characters: done there too, for consistency), every change of `ModEnabled`, `GiveTier1Shields` or a `UnitShield*` /
+    `UnitSpear*` (live, the settings' Changed event), and each mission start (a safety net). The signature of those values: the same = nothing
+    (apply twice = once), another = restore everything, then apply. (e) RESTORE: switched off (the switch or the master switch), the game's end
+    (`OnGameEnd` - back to the main menu, another save, the custom battle left) and the mod's unload put back each changed slot, only where it
+    still holds what we put (else left and counted). (f) THE HERO BACKSTOP: `CampaignEvents.HeroCreated` (a NON-serialized listener - nothing in
+    the save): a hero made from an edited troop gets the game's elements back in his copy (the set it matches, else every slot still holding
+    our item), and the troop is restored and left alone this game (so `ResetEquipments` copies the game's gear). (g) STEP 84 STAYS the safety net:
+    a man spawned from an edited set already has a shield (skipped "has a shield"), so never two; men of troops left alone still get one at spawn.
+    (h) No Harmony; Core `TroopKit` (pure bookkeeping, tested), Module `TroopGear` (`GameTroopKitWorld` over MBObjectManager, `TroopGearCampaign`).
+    LOGGED: `[units] troop gear (step 84b, why): N tier-1 troops, M battle sets edited IN MEMORY (nothing saved) - ...; skipped: ...; by culture:
+    ...` at each apply, `[units] troop gear (step 84b): restored ...` at each restore, the hero line. No new setting; `GiveTier1Shields`' hint says
+    it (PLAYTEST D49b).
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),
 `HudRefreshSeconds`, `FormationStatsRefreshSeconds` came out of step 2's research

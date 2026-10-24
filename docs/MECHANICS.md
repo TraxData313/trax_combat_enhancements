@@ -1779,6 +1779,13 @@ live, item ids (empty = none): `UnitShieldEmpire` battered_kite_shield, `UnitShi
 `UnitSpearEmpire` imperial_spear_t2, `UnitSpearBattania` western_spear_2_t2, `UnitSpearKhuzait` eastern_spear_1_t2, `UnitSpearVlandia`
 western_spear_2_t2.</sub>
 
+**The troops' own gear (step 84b).** While a game runs, the same shield (and spear swap) is also put into each tier-1 troop's OWN battle sets in
+memory, so the encyclopedia, the party screen and the recruit screen show it. The shield goes into the first weapon slot free in all four sets
+(slot 1 for every vanilla recruit) - the game builds a spawning man from slots 0-1 of one set and 2-3 of another, so the same slot everywhere gives
+exactly one shield. Left alone: riders, a troop with a shield in any set, sets shared with another character or template, a troop a hero was made
+from. Never saved: a troop's gear is not in the save (only heroes' gear is); everything is put back when the switch (or the mod) is turned off, the
+game is left or the mod unloads. A man spawned from an edited set already has his shield - step 84 gives nothing more.
+
 ## 15. What you see on screen
 
 **Your Athletics bar** sits under your health, with the white peak line at 75%. Its colour:

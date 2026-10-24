@@ -371,6 +371,9 @@ weapon he can only swing with both hands - a scythe, a maul - gets a short spear
 heroes, companions or you, and tournaments keep their fixed gear. Nothing is saved - it is handed out at each spawn, so you can switch it off any
 time on the main page (*Unit changes*); which shield and spear each culture gets is on the Advanced page (*Unit changes*).
 
+The troops' own gear shows it too: the encyclopedia, the party screen and the recruit screen draw your recruits with their shield while the game
+runs. That is changed in memory only and put back when you switch it off or leave the game - nothing goes into your save.
+
 Numbers: [MECHANICS §14d](MECHANICS.md#14d-tier-1-men-carry-a-cheap-culture-shield).
 
 ## What you see on screen
