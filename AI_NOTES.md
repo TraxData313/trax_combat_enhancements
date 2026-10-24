@@ -8361,3 +8361,29 @@ Write tool (`s91_docs.py`); the Edit tool wrote `SettingsSchema.cs` back LF (rew
 2. Kicks rising where the bashes were (the shares line), and that the extra kicks do not land on friends instead.
 
 **DEPLOY**: `tools\deploy.ps1` ran normally: the build, the AssemblyGuard, the offline smoke (all passed - 207), installed as Modules\TraxCombatEnhancements.Dev; the game and the launcher were not running. `tools\SmartAppControl\loadcheck.ps1`: both DLLs LOADED (`1.3.2+a2e80b42...`). Not uploaded.
+
+## Step 91b — the bash reach ships off again (built 2026-10-24; dev build only, not uploaded)
+
+**Toni (2026-10-24, his 20:26 battle)**: with `AiBashReachMetres` 1.1 the enemy stood within 1.1 m in only 3 of 792 shieldman moves in kick reach -
+the AI fights at 1.1-1.6 m - so no shieldman bashed. Until a real fix: the default 1.1 → **0** (off - a bash anywhere in the kick reach, step 90's
+behaviour exactly; `AiKickRules.BashReachOn` false, the roll identical to step 81 / 88's).
+
+- `defaults.json` only (DESIGN's Default column stays 1.1 - the initial value; the tests run on it, so Step91Tests still sees 1.1 and checks
+  defaults.json's text for 0.0). The hint: "0 (the default) = off - he bashes anywhere in the kick reach."
+- Config **format 21 → 22** (`ConfigFile.Migrate`, `from == 21` only - the key was born in format 21): `MoveOrKeepIfMoved(AiBashReachMetres, 1.1)` -
+  an untouched 1.1 → 0 (Toni's config.json has the game-written 1.1: it moves at the next game start, one `[config]` note), a tuned value kept and
+  said once, a hand-set 0 silent; older files never held the key; a format-22 file's 1.1 is the player's own.
+- The step-91 summary line while OFF: "the bash reach is OFF - a shieldman bashes at the kick reach, anywhere within 1.6 m (AiBashReachMetres 0; the
+  bins below still say where his bashes land) | shieldmen's moves in the kick reach N ... | bashes by the enemy's distance ..." - no "beyond it" part
+  (always 0 while off) and no "asked beyond" tail (both 0) - never "only within 0.00 m". The bins measure every bash by its distance as before.
+- Smoke: `Step91Reach()` now sets 1.1 EXPLICITLY (it read the schema default - it would have become 0); the OFF run uses `ShippedBashReach()` (the
+  default, 0) and checks the OFF line in the log; the finally restores the shipped 0. Step 65's `AiKickDefaults` still pins 0 for the older smokes.
+- Tests 1322 → 1324 (Step91bTests 2: the format-22 migration - untouched 1.1 → 0, tuned 1.4 kept and said, 0 silent, format 20 / 22 untouched,
+  rewritten as 22 and idempotent; the OFF wording with bashes binned at 0.9 / 1.3 / 1.5 m); 17 test files' format-21 expectations → 22.
+  Smoke 207 (all passed; the step-91 numbers unchanged: OFF 342 bashes / 86 on a friend, 1.1 m 233 / 47).
+
+**Gotcha**: the test assembly's `ParamDef.Default` is DESIGN's column (DesignTable.cs → `DefaultsFile.UseValuesForTests`), not defaults.json - a
+migration test hands in the shipped value (`Shipped(p)`) as Step 88 / 90's do. Git-bash `sed -i` on a file with `→` silently matched nothing.
+
+**UNVERIFIED (PLAYTEST D56, amended)**: the bins' friends' share near (≤1.1 m) vs far (1.1-1.6 m) with the bash back at the kick reach - the input
+for the real fix.

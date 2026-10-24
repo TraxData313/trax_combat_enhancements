@@ -1178,7 +1178,11 @@ own proportion (a kick and a push keep the 1.6 m):
 A bash whose enemy steps back beyond 1.1 m during its 0.4 s guard ends with no bash (counted). The game's own data gives no reach in metres
 for a shield bash - it is a 0.2 m sphere on the shield arm during 38-48% of the animation - so 1.1 m is a body (0.4 m) + an arm and a shield
 (~0.6 m) + the sphere, a little under a kick's foot.
-<sub>Setting (Advanced, the Impact group): `AiBashReachMetres` 1.1 (step 91; 0 = a bash anywhere in the kick reach, as steps 81-90).</sub>
+**Step 91b - the reach ships OFF again.** Toni's 20:26 battle (2026-10-24): with 1.1 m the enemy stood that close in only 3 of 792 shieldman
+moves - the AI fights at 1.1-1.6 m - so nobody bashed at all. Until a real fix the default is 0: a shieldman bashes anywhere in the kick's 1.6 m
+(25 / 40 / 35, as step 90), and the summary's bins keep saying at which distance his bashes hit an enemy or a friend. The table above is what
+1.1 (or any reach you set) does. A config.json still holding the game-written 1.1 moves to 0 once (config format 22); a value you set yourself is kept.
+<sub>Setting (Advanced, the Impact group): `AiBashReachMetres` 0 = off - a bash anywhere in the kick reach (1.1 in step 91; 0 since step 91b).</sub>
 
 A rolled kick, bash or push **takes the place of that swing**: his raised guard cancels the wind-up (0.4 s for a bash or a push, 0.15 s for a
 kick), then the kick key (a bash and a push with the guard held up - with no shield in his hand the game plays his weapon's bash). A shieldman whose enemy holds a **raised shield** toward him kicks instead of bashing (a raised shield stops a bash, not a
