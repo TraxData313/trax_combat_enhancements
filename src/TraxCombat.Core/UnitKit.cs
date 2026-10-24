@@ -400,6 +400,41 @@ namespace TraxCombat.Core
             return KitSkip.Given;
         }
 
+        /// <summary>Step 84b: a culture's shield and spear as <see cref="Decide"/> would give them (the same settings, the same fallback for a
+        /// culture without settings), for the troops' own gear. False = no shield for that culture (<paramref name="why"/> says why); the spear
+        /// may still be null (none set / usable - a two-hander is then kept).</summary>
+        public bool ItemsFor(TraxSettings s, string culture, out object? shield, out object? spear, out string? why)
+        {
+            shield = null;
+            spear = null;
+            why = null;
+            if (string.IsNullOrEmpty(culture))
+            {
+                why = UnitKitMath.SkipName(KitSkip.NoCulture);
+                return false;
+            }
+            var c = CultureOf(culture, out int index);
+            var sh = index >= 0 ? ResolveMain(c, index, s, shield: true, log: false) : c.Shield;
+            if (sh.Item == null)
+            {
+                why = sh.Why ?? UnitKitMath.SkipName(KitSkip.NoShieldForCulture);
+                return false;
+            }
+            shield = sh.Item;
+            var sp = index >= 0 ? ResolveMain(c, index, s, shield: false, log: false) : c.Spear;
+            spear = sp.Item;
+            return true;
+        }
+
+        /// <summary>Step 84b: the resolved item's description (the log), "?" when unknown.</summary>
+        public string Describe(string culture, bool shield)
+        {
+            var c = Find(culture);
+            if (c == null) return "?";
+            var p = shield ? c.Shield : c.Spear;
+            return p.Item != null ? p.Facts.Describe() : "none (" + (p.Why ?? "?") + ")";
+        }
+
         private KitSkip Skip(KitSkip why)
         {
             _skips[(int)why]++;
