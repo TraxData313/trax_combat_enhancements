@@ -2489,6 +2489,14 @@
   // (true or false)
   "ShowSprintBar": true,
 
+  // A small hint after the sprint bar's word naming the key that starts a sprint: the keyboard
+  // key while you play on mouse and keyboard ("Sprint (Ctrl) 6.2 s"), the game's own button
+  // picture for the controller button while you play on a pad - it switches with the device you
+  // are using. Nothing on a pad when the controller button is None. The keys: player page,
+  // Sprinting.
+  // (true or false)
+  "SprintShowKeyHint": true,
+
   // The colours of your bar, of the orders-menu strip and of the numbers under the formation
   // markers: green at or above the peak line, blue just below it, and yellow once the Athletics
   // left is at or below this percent of the peak line. With the line at 75% of the bar, 75

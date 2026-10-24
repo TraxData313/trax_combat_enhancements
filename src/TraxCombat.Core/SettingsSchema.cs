@@ -1901,6 +1901,11 @@ namespace TraxCombat.Core
             "Sprint bar",
             "A slim bar above the Attack recovery bar, shown with your Athletics bar: the seconds of sprint you have stored (\"Sprint 6.2 s\"), a mark at the least you need to start one, grey below it, blue when ready and bright while you sprint. Hidden while the sprint is off.");
 
+        // Step 86 (Toni 2026-10-24, his HUD screenshot: "(Cntr)" beside "Sprint 2.6 s"): the sprint bar names its key. AI_NOTES "Step 86".
+        public static readonly ParamDef SprintShowKeyHint = Bool("SprintShowKeyHint", PlayerBarGroup,
+            "Sprint bar: show its key",
+            "A small hint after the sprint bar's word naming the key that starts a sprint: the keyboard key while you play on mouse and keyboard (\"Sprint (Ctrl) 6.2 s\"), the game's own button picture for the controller button while you play on a pad - it switches with the device you are using. Nothing on a pad when the controller button is None. The keys: player page, Sprinting.");
+
         // The looked-at fighter's bar (ShowTargetBar, TargetBarMaxDistance, TargetBarLingerSeconds) is
         // LATER (step 7): its settings left the schema in step 10b - no switch that does nothing
         // (review R21). DESIGN's "Planned parameters" keeps the rows.
@@ -2443,7 +2448,7 @@ namespace TraxCombat.Core
             ImpactStaggerFrom, ImpactShieldDropFrom, ImpactKnockdownFrom,
             RegenDelayBlowTimes, BlowTimeSeconds, FullRegenSecondsStanding, RegenRateNearFullPercent, RegenMultiplierAtFullRun,
             WalkEffortFraction, HideoutBossFightRefill,
-            ShowPlayerBarOutsideBattles, ShowAttackRecoveryBar, FlashBarOnEarlyAttack, ShowSprintBar,
+            ShowPlayerBarOutsideBattles, ShowAttackRecoveryBar, FlashBarOnEarlyAttack, ShowSprintBar, SprintShowKeyHint,
             BarYellowBelowPercent, BarOrangeBelowPercent, BarRedBelowPercent,
             ShowInOrderMenu, ShowFormationHealth, ShowFormationSpread, FormationSpreadStdDevs, ShowReadyCount, ReadyYellowBelowPercent, ReadyRedBelowPercent, OrderStripUnderCards,
             ShowAltMarkerStats, AltMarkersShowEnemy, ShowFeverOnLabels, ShowFeverMarks, FeverMarksShowEnemy, ShowAthleticsMarks, AthleticsMarksShowEnemy,

@@ -656,6 +656,7 @@ namespace TraxCombat.Core
         public bool ShowPlayerBarOutsideBattles => GetBool(SettingsSchema.ShowPlayerBarOutsideBattles);
         public bool ShowAttackRecoveryBar => GetBool(SettingsSchema.ShowAttackRecoveryBar);
         public bool ShowSprintBar => GetBool(SettingsSchema.ShowSprintBar); // step 33
+        public bool SprintShowKeyHint => GetBool(SettingsSchema.SprintShowKeyHint); // step 86
         public bool FlashBarOnEarlyAttack => GetBool(SettingsSchema.FlashBarOnEarlyAttack);
         public int BarYellowBelowPercent => GetInt(SettingsSchema.BarYellowBelowPercent);
         public int BarOrangeBelowPercent => GetInt(SettingsSchema.BarOrangeBelowPercent);
