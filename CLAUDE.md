@@ -2577,7 +2577,7 @@ line.
 
 ## Release
 
-Live: Workshop item **3817259431** (v1.3.1 uploaded 2026-10-23 ("Uploading done!"), v1.3.0 2026-10-22, v1.2.0 2026-10-18, v1.1.1 2026-10-14, v1.1.0 2026-10-12, v1.0.0 2026-10-10; on 2026-10-22 the page said "awaiting approval by moderators" - hidden from others until Valve approves the latest version; the YouTube video attached to its gallery), Nexus Mods **mods/14198** (v1.3.1 since 2026-10-23 - the main file updated in place, 1.3.0 archived; v1.3.0 published 2026-10-22 with tools/NEXUS-DESCRIPTION.bbcode, the gallery and the YouTube video), GitHub releases v1.0.0 to v1.3.1 with the zips.
+Live: Workshop item **3817259431** (v1.3.2 uploaded 2026-10-24 ("Uploading done!"), v1.3.1 uploaded 2026-10-23 ("Uploading done!"), v1.3.0 2026-10-22, v1.2.0 2026-10-18, v1.1.1 2026-10-14, v1.1.0 2026-10-12, v1.0.0 2026-10-10; on 2026-10-22 the page said "awaiting approval by moderators" - hidden from others until Valve approves the latest version; the YouTube video attached to its gallery), Nexus Mods **mods/14198** (v1.3.1 since 2026-10-23 - the main file updated in place, 1.3.0 archived; v1.3.0 published 2026-10-22 with tools/NEXUS-DESCRIPTION.bbcode, the gallery and the YouTube video), GitHub releases v1.0.0 to v1.3.1 with the zips.
 The whole loop is **`tools/WORKSHOP-UPLOAD.md`** — read it before any release. **Publishing is
 Anton's decision, after his playtest**: Claude never runs the uploader, and never posts or
 uploads anything, without his yes for that release. **The release rhythm** (the sibling's, Anton
