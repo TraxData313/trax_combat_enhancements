@@ -37,6 +37,7 @@ namespace TraxCombat.Tools
                              SettingsSchema.SwingStackMinimum, SettingsSchema.SwingStackPointsPerSwing, SettingsSchema.KicksUseSwings, SettingsSchema.CostPerKickOrBash, SettingsSchema.CostPerBlow,
                          })
                     S.Set(p, p.Default, SettingSources.File);
+                Step80PathDefaults(); // step 90 narrowed the shipped path - these numbers are step 80's path
                 Check(S.SwingStackEnabled && S.SwingStackMinimum == 3 && S.KicksUseSwings && Math.Abs(S.CostPerKickOrBash - 8) < 1e-6 && Math.Abs(S.CostPerBlow - 10) < 1e-6
                       && Math.Abs(S.AiKickCooldownSeconds - 2) < 1e-6,
                     "the step-81 defaults are not the stack on at least 3 / kicks use swings / a kick 8, a swing 10 / 2 s between two: " + S.SwingStackMinimum + " / " + S.CostPerKickOrBash
@@ -83,8 +84,7 @@ namespace TraxCombat.Tools
             finally
             {
                 S.Set(SettingsSchema.AiKicksEnabled, false, SettingSources.File);
-                foreach (var p in new[] { SettingsSchema.AiKickFriendClearMetres, SettingsSchema.AiBashPathHalfWidthMetres, SettingsSchema.AiKickRearRankMetres })
-                    S.Set(p, p.Default, SettingSources.File);
+                Step90PathDefaults();
                 Step65CleanUp(keep);
             }
         }

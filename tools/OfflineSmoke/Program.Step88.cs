@@ -80,6 +80,7 @@ namespace TraxCombat.Tools
                              SettingsSchema.SwingStackMinimum, SettingsSchema.SwingStackPointsPerSwing, SettingsSchema.KicksUseSwings, SettingsSchema.CostPerKickOrBash, SettingsSchema.CostPerBlow,
                          })
                     S.Set(p, p.Default, SettingSources.File);
+                Step80PathDefaults(); // step 90 narrowed the shipped path - these numbers are step 80's path
                 Check(S.AiShieldmanKickPercent == 25 && S.AiShieldmanBashPercent == 40 && S.AiNoShieldKickPercent == 35 && S.AiNoShieldPushPercent == 20,
                     "the shipped step-88 shares are not 25 / 40 and 35 / 20: " + S.AiShieldmanKickPercent + " / " + S.AiShieldmanBashPercent + ", " + S.AiNoShieldKickPercent + " / " + S.AiNoShieldPushPercent);
                 var g = FightTwoLines(88, 8800, stack: true);
@@ -122,8 +123,7 @@ namespace TraxCombat.Tools
                 S.Set(SettingsSchema.AiKicksEnabled, false, SettingSources.File);
                 AiKickDefaults();
                 S.Set(SettingsSchema.AiKicksEnabled, false, SettingSources.File);
-                foreach (var p in new[] { SettingsSchema.AiKickFriendClearMetres, SettingsSchema.AiBashPathHalfWidthMetres, SettingsSchema.AiKickRearRankMetres })
-                    S.Set(p, p.Default, SettingSources.File);
+                Step90PathDefaults();
                 Step65CleanUp(keep);
             }
         }

@@ -14,7 +14,8 @@ namespace TraxCombat.Tools
         private static void Step87WhoBlocks(LineFightResult on, LineFightResult off)
         {
             var c = CultureInfo.InvariantCulture;
-            LogHas("[summary] ai kicks - who blocks the path (step 87 diagnostic): shoulder neighbours are ");
+            LogHas("[summary] ai kicks - who blocks the path (step 87 diagnostic): friend hits by bashes: "); // step 90: the side's answer first
+            LogHas(" | shoulder neighbours are ");
             LogHas("[impact] first AI shield bash REFUSED by a friend - who blocks the path (step 87 diagnostic)");
             var b = on.Stats.Blocks;
             int behind = 0, rel = 0, front = 0, shoulder = 0;

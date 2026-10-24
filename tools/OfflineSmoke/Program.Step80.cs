@@ -58,10 +58,9 @@ namespace TraxCombat.Tools
                 ImpactModelDefaults();
                 AiKickDefaults();
                 S.Set(SettingsSchema.KickBraceEnabled, false, SettingSources.File);
-                foreach (var p in new[] { SettingsSchema.AiKickFriendClearMetres, SettingsSchema.AiBashPathHalfWidthMetres, SettingsSchema.AiKickRearRankMetres })
-                    S.Set(p, p.Default, SettingSources.File);
+                Step80PathDefaults(); // step 90 narrowed the shipped path - this check measures step 80's
                 Check(Math.Abs(S.AiKickFriendClearMetres - 0.6) < 1e-6 && Math.Abs(S.AiBashPathHalfWidthMetres - 0.75) < 1e-6 && Math.Abs(S.AiKickRearRankMetres - 1.2) < 1e-6,
-                    "the step-80 defaults are not 0.6 / 0.75 / 1.2: " + S.AiKickFriendClearMetres + " / " + S.AiBashPathHalfWidthMetres + " / " + S.AiKickRearRankMetres);
+                    "the step-80 path is not 0.6 / 0.75 / 1.2: " + S.AiKickFriendClearMetres + " / " + S.AiBashPathHalfWidthMetres + " / " + S.AiKickRearRankMetres);
 
                 var on = FightTwoLines(80, 8000);
                 LogHas("[summary] ai kicks - whom they hit and the strike path (step 80): kicks: on an ENEMY ");
@@ -85,8 +84,7 @@ namespace TraxCombat.Tools
             finally
             {
                 S.Set(SettingsSchema.AiKicksEnabled, false, SettingSources.File);
-                foreach (var p in new[] { SettingsSchema.AiKickFriendClearMetres, SettingsSchema.AiBashPathHalfWidthMetres, SettingsSchema.AiKickRearRankMetres })
-                    S.Set(p, p.Default, SettingSources.File);
+                Step90PathDefaults();
                 Step65CleanUp(keep);
             }
         }

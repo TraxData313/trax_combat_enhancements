@@ -321,8 +321,8 @@ namespace TraxCombat.Tools
                 ImpactModelDefaults();
                 AiKickDefaults();
                 S.Set(SettingsSchema.KickBraceEnabled, false, SettingSources.File);
-                S.Set(SettingsSchema.AiKickFriendClearMetres, SettingsSchema.AiKickFriendClearMetres.Default, SettingSources.File);
-                Check(Math.Abs(S.AiKickFriendClearMetres - 0.6) < 1e-6, "AiKickFriendClearMetres is not 0.6 by default (step 80)");
+                Step80PathDefaults(); // step 90 narrowed the shipped path (0.45) - this check reads step 80's 0.6
+                Check(Math.Abs(S.AiKickFriendClearMetres - 0.6) < 1e-6, "AiKickFriendClearMetres is not step 80's 0.6");
                 var body = new FakeAiKickBody();
                 var logic = NewPaceLogic(new FakePaceBody(), new FakeWeaponFacts());
                 logic.AiKickBody = body;
@@ -349,7 +349,7 @@ namespace TraxCombat.Tools
                 Look(rear);
                 Check(rear.AiKickPhase == AiKickPhase.None && st.Skips[(int)AiKickSkip.FriendInTheWay] == 1 && st.FriendChecksBlocked == 1 && st.Done(1, AiKickKind.None) == 1,
                     "a kick through his mate was not refused: phase " + rear.AiKickPhase + ", skips " + st.Skips[(int)AiKickSkip.FriendInTheWay]);
-                LogHas("[impact] first AI kick REFUSED - a friend first in his strike path at 68000.0 s (step 80) - (agent 6860) at (agent 6862) 1.40 m off, 5.0° off his facing: one of his own side stands in his strike path (along his facing, 0.60 m either side) closer than the enemy - he swings instead (step 81)");
+                LogHas("[impact] first AI kick REFUSED - a friend in front, beyond the rear-rank reach at 68000.0 s (step 80) - (agent 6860) at (agent 6862) 1.40 m off, 5.0° off his facing: one of his own side stands IN FRONT of him in his strike path (0.00 m+ ahead along his facing, within 0.00 m of its line - step 90; the path 0.60 m either side) closer than the enemy - beyond 1.2 m - he swings instead (step 81)");
                 t += 0.25;
                 Look(rear);
                 Check(rear.AiKickPhase == AiKickPhase.None && st.Skips[(int)AiKickSkip.FriendInTheWay] == 2, "still blocked: kicked anyway");
@@ -377,16 +377,17 @@ namespace TraxCombat.Tools
                 int reads = body.FriendReads;
                 Look(third);
                 Check(third.AiKickPhase != AiKickPhase.None && body.FriendReads == reads, "AiKickFriendClearMetres 0: the check still ran / held the kick");
-                S.Set(SettingsSchema.AiKickFriendClearMetres, SettingsSchema.AiKickFriendClearMetres.Default, SettingSources.Mcm);
+                S.Set(SettingsSchema.AiKickFriendClearMetres, 0.6, SettingSources.Mcm);
 
                 logic.WriteAiKickSummary();
                 LogHas(" → landed on the man 2 (step 68: on his target 1, on another enemy 0, on a FRIEND (the game cancels it - never decided) 1, on a horse / a man not tracked 0)");
-                LogHas("a friend first in his strike path (step 80) 2");
+                LogHas("a friend in front, beyond the rear-rank reach (step 90) 2");
                 LogHas("; step 68 / 80 - a friend first in the strike path (a kick's 0.6 m either side): held 2, clear ");
             }
             finally
             {
                 S.Set(SettingsSchema.AiKicksEnabled, false, SettingSources.File);
+                Step90PathDefaults();
                 Step65CleanUp(keep);
             }
         }
