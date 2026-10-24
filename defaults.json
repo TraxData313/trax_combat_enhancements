@@ -278,9 +278,12 @@
   // fights between green troops last longer. A recruit who carries a weapon he can only swing
   // with both hands (a scythe, a maul) gets his culture's cheap spear in its place, so he
   // fights one-handed behind the shield. Both sides; never riders, heroes, companions or you;
-  // tournaments and arenas keep their fixed gear. Nothing is saved: it is given at each spawn.
-  // Off: the game's own gear from the next spawn. Which shield and spear each culture gets:
-  // Advanced page, Unit changes.
+  // tournaments and arenas keep their fixed gear. Nothing is saved: it is given at each spawn,
+  // and while the game runs the troops' own gear carries it too, so the encyclopedia, the party
+  // and the recruit screens show the shield (changed in memory only, put back when this is
+  // switched off or the game is left). Off: the game's own gear at once in those screens and
+  // from the next spawn in battle. Which shield and spear each culture gets: Advanced page,
+  // Unit changes.
   // (true or false)
   "GiveTier1Shields": true,
 

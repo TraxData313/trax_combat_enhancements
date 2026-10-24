@@ -66,6 +66,7 @@ namespace TraxCombat
                 }
                 LogLoad();
                 ConfigStore.Initialize();
+                TroopGear.Initialize(); // step 84b: a relevant setting change syncs the troops' gear live
             }
             catch (Exception e)
             {
@@ -82,6 +83,7 @@ namespace TraxCombat
             }
             try
             {
+                TroopGear.Detach("the game closing");
                 TraxLog.Info("load", "unloaded (game closing)");
                 TraxLog.Release();
             }
@@ -157,6 +159,7 @@ namespace TraxCombat
             {
                 if (mission == null || GameNetwork.IsMultiplayer) return;
                 ConfigStore.Reload("mission start");
+                if (Game.Current != null) TroopGear.GameReady(Game.Current, "mission start"); // step 84b's safety net: nothing when already in sync
                 var logic = new AthleticsLogic();
                 mission.AddMissionBehavior(logic);
                 TraxLog.Info("mission", "attached: AthleticsLogic (its HUD views join the mission screen on its first tick - [hud] attached: lines)");
@@ -175,6 +178,39 @@ namespace TraxCombat
             {
                 TraxLog.Error("mission.OnMissionBehaviorInitialize", e);
             }
+        }
+
+        /// <summary>Step 84b: the game's objects are loaded (a campaign new or loaded, a custom battle) - the tier-1 troops' own gear edited in
+        /// memory (TroopGear).</summary>
+        public override void OnAfterGameInitializationFinished(Game game, object starterObject)
+        {
+            base.OnAfterGameInitializationFinished(game, starterObject);
+            if (_inert) return;
+            try
+            {
+                if (game != null && !GameNetwork.IsMultiplayer) TroopGear.GameReady(game, "game ready: " + (game.GameType?.GetType().Name ?? "?"));
+            }
+            catch (Exception e)
+            {
+                TraxLog.Error("units.OnAfterGameInitializationFinished", e);
+            }
+        }
+
+        /// <summary>Step 84b: the game ends (back to the main menu, another save loaded, the custom battle left) - every changed slot put back.</summary>
+        public override void OnGameEnd(Game game)
+        {
+            if (!_inert)
+            {
+                try
+                {
+                    TroopGear.Detach("the game ended");
+                }
+                catch (Exception e)
+                {
+                    TraxLog.Error("units.OnGameEnd", e);
+                }
+            }
+            base.OnGameEnd(game);
         }
 
         // ------------------------------------------------------------------ models
