@@ -1810,7 +1810,17 @@ the press is swallowed; hold the button and the attack fires the moment a swing 
 
 **The sprint bar** sits above that: **"Sprint 6.2 s"** — the seconds of sprint you have stored — and a bar
 with a white mark at the 20% a sprint needs to start. Grey below the mark, blue when you can sprint,
-yellow while you sprint.
+yellow while you sprint. Right after the word it names the key that starts a sprint (step 86): **"Sprint (Ctrl) 6.2 s"**
+on mouse and keyboard, the game's own button picture (the left stick press) while you play on a gamepad - it switches
+with the device you are using this moment (the game's own "gamepad active": a pad connected and the mouse untouched).
+
+| Your sprint keys | On mouse and keyboard | On a gamepad |
+|---|---|---|
+| LeftControl / ControllerLThumb (the defaults) | (Ctrl) | the game's left-stick-press glyph |
+| LeftShift / LeftAlt / a letter | (Shift) / (Alt) / (Q) | - |
+| the mouse's middle / side buttons | (Mouse 3) / (Mouse 4) / (Mouse 5) | - |
+| a pad button with no picture in the game | - | its short name: (L3), (RB), (A) |
+| the controller button None | the keyboard key as above | nothing |
 
 **The orders menu** shows, under each formation card: the men's average Athletics with its ± spread,
 their average health, and **"ready 34/50"** — how many are ready to fight (not bracing).
@@ -1873,7 +1883,7 @@ far ones are a little smaller, and in a huge battle only the 200 nearest men on 
 shield or reel from a riposte; purple when you knock a man down or off his horse, break his guard or knock his
 shield away — the colours the game uses for its own couched-lance lines. At most one every 1.5 s, merged.
 
-<sub>Settings: `ShowPlayerBar`, `ShowAttackRecoveryBar`, `ShowSprintBar`, `ShowInOrderMenu`, `ShowAltMarkerStats`,
+<sub>Settings: `ShowPlayerBar`, `ShowAttackRecoveryBar`, `ShowSprintBar`, `SprintShowKeyHint`, `ShowInOrderMenu`, `ShowAltMarkerStats`,
 `AltMarkersShowEnemy`, `ShowReadyCount`, `Bar*BelowPercent`, `Ready*BelowPercent`, `ShowAthleticsMarks`, `AthleticsMarksShowEnemy`,
 `ShowFeverMarks`, `FeverMarksShowEnemy`, `ShowFeverOnLabels`, `ShowMoraleMarks`, `ShowMoraleOnLabels`, `MoraleLabelMetres` 60, `MoraleLabelMax` 4, `AltMarksEveryone` off, `AltNearMarksMax` 5, `AltNearMarksMetres` 15,
 `FeverMarkMax` 200 (men marked, both bars - the every-man view's cap and the ceiling), `ImpactShowMessages`, `ImpactMessagesIncludeYourMen`,

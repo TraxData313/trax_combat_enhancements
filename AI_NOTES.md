@@ -7986,3 +7986,46 @@ its own list, either key (8 cases), the text, the master switch); SchemaTests / 
 (the range 12-30), 511 settings. Smoke 200: `SprintOnAControllerButton` - every controller name a game InputKey (ControllerLThumb = 252, None = no key),
 through the real logic with the stand-in body: the pad held sprints, pad → key keeps one sprint, both let go ends, the menu holds it, None never reads
 the pad, a live change to RB, the master switch.
+
+## Step 86 — the sprint bar names its key (built 2026-10-24; dev build only, not uploaded)
+
+**Toni (2026-10-24)**, his HUD screenshot with "(Cntr)" drawn beside "Sprint 2.6 s": a small hint naming the key that starts the sprint - the
+keyboard key on mouse and keyboard, the controller button (ideally the game's own glyph) on a pad, switching with the device in use. PLAYTEST D51.
+
+**THE DEVICE (TaleWorlds.InputSystem, v1.4.8, `%TEMP%\trax_decomp\InputSystem\...\Input.cs`)**: `Input.IsGamepadActive` - set in `Input.Update()`
+every frame as `IsControllerConnected && !IsMouseActive` (the native input manager's "mouse active" = the mouse was used last), with
+`OnGamepadActiveStateChanged` raised on a flip. Vanilla's HUD switches its hints on it (GauntletOrderUIHandler, MainAgentEquipDrop's
+`OnGamepadActiveChanged(Input.IsGamepadActive)`). `Input.ControllerType` (Xbox 1, DualShock 2, DualSense 4; `IsPlaystation()`) likewise. Both read
+into `HudFrame.GamepadActive` / `ControllerType` by `TraxHudView.ReadFrame` (two static reads a frame, no allocation; the smoke sets them).
+
+**THE GLYPH**: vanilla draws key glyphs two ways - `HyperlinkTexts.GetKeyHyperlinkText(keyId)` (TaleWorlds.Core) gives rich text
+`<img src="General\InputKeys\controllerlthumb" extend="12">` for RichTextWidget, and the widget **`InputKeyVisualWidget`**
+(TaleWorlds.GauntletUI.ExtraWidgets; `KeyID="@KeyID"` in MainAgentControllerEquipDrop.xml, CheerBark, BannerBuilder) which maps the InputKey
+name to `General\InputKeys\<lower name>` and, while `Input.IsGamepadActive` and the pad is a PlayStation, its `_ps` twin. Chosen: the widget
+(no rich text to build, the PlayStation picture for free). Every SprintControllerKey choice has both sprites in NativeSpriteData.xml, category
+**ui_group1 - AlwaysLoad**, so they exist in a mission. THE TRAP: the widget resolves its sprite ONLY in the KeyID setter (and IconsPath's) - a
+pad-type change, or a KeyID set while the keyboard was active, keeps the wrong picture. So the view pushes KeyID "" on a rebuild and the real id
+the NEXT frame (`_glyphPending`). "" = "None" = no sprite. The text fallback "(L3)" when `UIResourceManager.SpriteData.GetSprite(...)` says the
+sprite is missing (`SprintBarView.GlyphProbe`, asked once per change; the smoke swaps it - no sprite data offline). Module now references
+TaleWorlds.TwoDimension (SpriteData.GetSprite's types).
+
+**The setting**: `SprintShowKeyHint` (Bool, on) - Advanced, "Your Athletics bar", right after ShowSprintBar (a HUD detail, not a player-page
+switch). New key, no migration.
+
+**Code**: Core `SprintKeyHint.cs` - `SprintKeyHints.KeyboardShort` (LeftControl/RightControl Ctrl, Alt, Shift, CapsLock Caps, Tab, the letter,
+Mouse 3 / 4 / 5), `ControllerShort` (step 85's short forms: L3 R3 LB RB LT RT Y A X B, "D-pad up"...), `GlyphSprite`, `Decide(mod, show,
+gamepad, keyIndex, controllerIndex, glyphAvailable)` - the master switch first, then the switch; pad: None / out of list = nothing, glyph if
+available else "(L3)" (a throwing probe = text); keyboard: "(Ctrl)", out of list = nothing. Module: `SprintBarVM` - the label split into
+`WordText` "Sprint", the hint (`KeyText` / `KeyTextShown`, `KeyGlyph` / `KeyGlyphShown`) and `SecondsText` "6.2 s" (`LabelText` kept internal for
+the log and the smoke, built only when read); `SprintBarView.UpdateKeyHint` every frame on screen compares seven plain values (both switches,
+the device, the pad type, both keys) and calls Decide only on a change (`HintBuilds`); the first hint and the first pad hint logged in full
+(`[hud] sprint bar: key hint ...`), later changes verbose. Prefab: Label @WordText, KeyHint TextWidget (font 13, #BDBDBD - the label's
+colour), KeyGlyph InputKeyVisualWidget 20 x 20, Seconds @SecondsText; the row is right-anchored and the bar its last child, so the bar never
+moves; a hidden child takes no room in the ListPanel.
+
+**Tests**: Step86Tests (38 - the setting's place, every keyboard short name, every controller short name read back by the setting's own
+aliases, the sprite name, the hint by device, the text fallback and a throwing probe, nothing when off / None / out of the list, the device
+switch). Settings 512. Smoke 201: `SprintBarNamesItsKey` - through the real view: "(Ctrl)" on the keyboard, the pad's glyph pushed empty then
+set, a PlayStation pad re-pushed, back to (Ctrl), "(L3)" with no sprite, RB / None / Shift live, the switch off / on, the master switch first,
+0 bytes over 600 unchanged frames with 0 rebuilds. What only the game can show: the glyph drawn on screen and Input.IsGamepadActive flipping
+with a real pad (PLAYTEST D51).

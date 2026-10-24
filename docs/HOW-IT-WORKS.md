@@ -387,7 +387,8 @@ Numbers: [MECHANICS §14d](MECHANICS.md#14d-tier-1-men-carry-a-cheap-culture-shi
   then blue, yellow, orange, red as you tire.
 - **The Attack recovery bar** above it: **"Swings 4/8"** — your stored swings — filling toward the next. Press
   attack with none stored and it flashes.
-- **The sprint bar** above that: the seconds of sprint you hold.
+- **The sprint bar** above that: the seconds of sprint you hold, and right after its word the key that starts a
+  sprint - "(Ctrl)" on mouse and keyboard, the game's own button picture on a gamepad, switching with the device you use.
 - **The orders menu**: under each formation card, the men's average Athletics and health, and **"ready 34/50"** —
   how many are ready to fight rather than bracing.
 - **Hold ALT**: the same numbers under the game's own formation markers, **yours and the enemy's**, plus how many
