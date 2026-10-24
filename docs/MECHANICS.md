@@ -1213,22 +1213,34 @@ the AI's landed kicks and bashes still hit a friend (427 of 668 at 16:17, 314 of
 stood straight ahead while their enemy stood half a file aside, and men turned up to 40° off their enemy. Now the man's strike
 path is a strip along his facing, as long as his reach, and:
 
-| Rule | Kick | Shield bash |
+| Rule | Kick | Shield bash / weapon push |
 |---|---:|---:|
-| the path's half-width either side of his facing line (a body centre that close is touched) | **0.6 m** | **0.75 m** |
+| the path's half-width either side of his facing line (a body centre that close is touched) | **0.45 m** (0.6 in step 80) | **0.5 m** (0.75 in step 80) |
 | its length | 1.6 m | 1.6 m |
 | the enemy he fights must stand IN it | yes — else refused (he swings; step 80 waited up to 3 s) | yes |
-| a man of his side in it, closer than the enemy | refused (he swings) | refused |
-| … within **1.2 m** of him (a rear-rank man behind his front mate) | **never** | never |
-| read again just before the key | (the kick's key comes at once) | after its 0.4 s raised guard — not clear = no bash |
+| a man of his side REALLY IN FRONT of him — at least **0.5 m** ahead along his facing and within **0.4 m** of its line — closer than the enemy (step 90) | refused (he swings) | refused |
+| … within **1.2 m** of him ("a friend in front of him" — the rank ahead) | **never** | never |
+| a friend in the path but not really in front — a shoulder neighbour half a step forward (step 90) | **does not stop it** | does not stop it |
+| read again just before the key | (the kick's key comes at once) | after its 0.4 s raised guard — not clear = no bash / push |
 
 Step 80 left the rates unchanged; fewer kicks and bashes STARTED (a man turned away from his enemy waits, a rear-rank man never kicks).
 In the smoke's two two-deep lines the friends' share of the hits fell from 27% to 4%, the enemy hits a man-minute from 1.62 to 1.12
 (−31%). The [summary] line "ai kicks - whom they hit and the strike path" splits every played kick and bash into enemy / friend /
 missed and counts what the path refused.
 
-<sub>Settings: `AiKickFriendClearMetres` 0.6 (the kick's half-width since step 80; 0.5 before - config format 18 moves an untouched one),
-`AiBashPathHalfWidthMetres` 0.75, `AiKickRearRankMetres` 1.2 (Advanced, impact group; 0 = no check / always wait; live).</sub>
+**Only a man really in front stops it** (step 90). Toni's 17:39 battle of 2026-10-24: of 95 "behind a friend" refusals only 10 were the
+rank in front; 53 were the man's own SHOULDER NEIGHBOUR (a bash's: 0.35 m ahead, 0.64 m aside — inside the old 0.75 m path), so a shieldman
+in the front rank swung instead of bashing whenever his neighbour leaned half a step forward. Now the path is narrower and a friend refuses
+the move only when he stands in the box in front of the man (the table above). In the smoke's two grinding lines the refusals for shoulder
+neighbours fell from 237 to 1; the trade the stand-in shows: the narrower path misses less (34 → 7) but a bash's sweep still reaches some
+of the neighbours it no longer waits for (friends 1.4% → 9.8% of the hits there). The step-87 diagnostic line now opens with the answer
+"friend hits by bashes: N% on his shield side" and splits every refusal and friend hit by the SIDE the friend stood on (his shield side =
+his left, his weapon side = his right) and every ask by the friends within 0.9 m on either side — so Toni's next log tells whether a man with
+a friend tight on his shield side should kick instead.
+
+<sub>Settings: `AiKickFriendClearMetres` 0.45 (the kick's half-width since step 80; 0.5 before step 80, 0.6 before step 90 - config formats 18 / 21 move
+an untouched one), `AiBashPathHalfWidthMetres` 0.5 (0.75 before step 90 - format 21; a push uses it too), `AiKickRearRankMetres` 1.2, `AiKickBlockAheadMetres`
+0.5, `AiKickBlockSideMetres` 0.4 (step 90; 0 = step 80's rule) (Advanced, impact group; 0 = no check / always wait; live).</sub>
 
 ### The kicked man braces (step 65)
 

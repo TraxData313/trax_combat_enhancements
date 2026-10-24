@@ -8209,3 +8209,88 @@ hit lands fresh 75 / half 52.5 / empty 33.75 after the reduction.
   avg ~33.8, f 0.5 ~52.3, fresh ~75.0, an empty man CHARGING ~74.9, the setting at 100 ~56.3; the roll off exact 45 / 60 / 75.
 - Gotcha for later agents: the scratchpad holds many old helper scripts from earlier steps (design.py, docs.py ...) - give new ones a step
   prefix (s89_*.py); a Write onto an existing name is refused and running the old one edits the repo.
+
+## Step 90 — only a man really in front blocks a kick / bash / push + which side bashes hit friends (built 2026-10-24; dev build only, not uploaded)
+
+**Toni (2026-10-24, his 17:39 battle - 555 s, 212 men - the step-87 summary line)**: of 95 "behind a friend - rear rank" refusals only 10 were the
+formation rank in front; 53 were the same-rank SHOULDER NEIGHBOUR (bashes: mean 0.35 m ahead along his facing, 0.64 m aside - 49 of 73 at 0.6-0.75 m,
+inside the bash's 0.75 m half-width; kicks 0.50 / 0.53), the rest staggered ranks / other formations; 68 of 95 faced the target within 10°. 45 of 66
+bash hits landed on a FRIEND, 39 with the friend beside or behind his shoulders (along ≤ 0), half on the friend's shield - the bash sweeps sideways;
+kicks' friend hits were ahead (0.4-0.8 m). DESIGN decision 83.
+
+**90.1 THE BLOCKER (Core `AiKicks.cs` `AiKickPathProbe`)**
+- `Begin(…, rearRank, blockAhead = 0, blockSide = 0)`: a friend in the path (0 < along < the enemy's, |side| ≤ the half-width) BLOCKS only when
+  along ≥ blockAhead and |side| ≤ min(blockSide, the half-width) (0 = step 80's rule for each - the old callers / tests unchanged). The others in the
+  path are LET THROUGH (`LetThrough`, summed into `AiKickStats.PathFriendsLetThrough` - the step-80 line's "let through (step 90)").
+- Verdicts unchanged in shape: the nearest BLOCKING friend within `AiKickRearRankMetres` = `BehindFriend`, farther = `FriendFirst`. FriendFirst stays a
+  refusal (Claude's call - since step 81 nothing waits, so both refuse; the rear-rank reach only names it). The ENUM NAMES are kept (`AiKickPath`,
+  `AiKickSkip.BehindFriend` / `FriendInTheWay`, `AiKickBlockCase`) - every stats array and test indexes them; the WORDS changed: "a friend in front of
+  him" (was "behind a friend (rear rank)" / "behind a friend - rear rank (step 80)"), "a friend in front, beyond the rear-rank reach" (was "a friend
+  first in his strike path"); the step-87 case names "REFUSED a friend in front of him (step 90; step 80's 'behind a friend')" / "REFUSED a friend in
+  front beyond the rear-rank reach"; step 68's own clause in the ends line kept its words.
+- `AiKickRules` gains `BlockAhead` / `BlockSide` (optional last constructor args - old callers = 0 = step 80), `From` reads the two new settings;
+  `Describe` says the rule. The module's `StrikePathOf` passes them, so the bash's / push's re-read after its guard (`PressPath`) uses the same rule.
+- New settings (Advanced, the Impact group right after `AiKickRearRankMetres`, live, 514 → 516): `AiKickBlockAheadMetres` 0.5, `AiKickBlockSideMetres`
+  0.4 (Float 0-2).
+
+**90.2 THE PATH NARROWS + CONFIG FORMAT 21**: defaults.json `AiBashPathHalfWidthMetres` 0.75 → **0.5** (bashes and step 88's pushes - `PathHalfWidth`
+of a GuardUp kind), `AiKickFriendClearMetres` 0.6 → **0.45**. `ConfigFile.Migrate`, `from < 21 && from >= 18` (both keys exist since format 18):
+`MoveOrKeepIfMoved` 0.75 → 0.5, 0.6 → 0.45, a tuned value kept and said once. A format 14-17 file's kick 0.5 goes through step 80's block straight to
+today's 0.45 (step 80's note text now says "0.6 m either side; 0.45 since step 90"). The older format tests → 21 (mechanical "→ 20" → "→ 21",
+`FormatVersion` 21, the two `"ConfigVersion": 21` rewrites).
+
+**90.3 THE SIDE (measurement - Core `AiKickBlocks.cs`)**
+- SIGN: lateral = u × (q − p) = u.x dy − u.y dx with u his facing (`GetMovementDirection`, the probe's facing) - **+ = his LEFT**. Checked against the
+  game: v1.4.8's `CampaignVec2.LeftVec()` builds `new Vec2(−Y, X)` (the decompile at `%TEMP%\trax_decomp`), i.e. Vec2.LeftVec = (−y, x) with z up; a
+  soldier's shield is on his left arm, so + = his SHIELD side, − = his WEAPON side. Step 62's `AngleFrom` is unsigned (acos) - no convention to clash.
+  On the line exactly (0) is filed on the weapon side; NaN = unknown.
+- `AiKickBlocker` gains `Lateral` (signed; NaN in `None`) and `LeftNear` / `RightNear` (−1 = not counted). The probe keeps the nearest blocker's
+  `NearestFriendLateral` and counts EVERY friend fed within `AiKickMath.NeighbourMetres` **0.9** (plumbing - a body + a file's spacing) by the sign
+  (`LeftNear` / `RightNear`) - BEFORE its own gates, so a fed friend counts whether or not he is in the path. The module's search radius is now
+  max(min(reach, the enemy's along) + the half-width, 0.9) so the neighbours are always in the list. `AiKickBlockMath.Locate(…, out lateral)` (the old
+  overload kept), `SideOf` / `SideOfName`, `NearCase` (0 none, 1 his shield side only, 2 his weapon side only, 3 both) / `NearName`.
+- `AiKickBlockStats`: `_bySide[case, kind, side]` (every located refusal and friend hit - `BySide`), `NoteAsked(kind, left, right)` (every kick / bash
+  / push ASKED - called in `DecideAiMove` right before `BeginAiKick`; `TrackedAgent.AiKickLeftNear / RightNear` keep the counts for the hit),
+  `NoteFriendHit(kind, b, angle, left, right)` (the old 3-argument overload = not counted) - `_hitNear[kind, nearCase, hitSide]`, the mean neighbours
+  of the men who hit a friend; `ShieldSideShare(kind)`.
+- THE LINE (the 7th "ai kicks" line, prefix kept): `ai kicks - who blocks the path (step 87 diagnostic): friend hits by bashes: N% on his shield side
+  (left; pushes M%, kicks K%) | shoulder neighbours are ..% of the 'a friend in front of him' refusals and ..% of the friends hit (...)`, every case's
+  block `...; to the side ...; his shield side (left) a, his weapon side (right) b; his SHOULDER NEIGHBOUR ...`, and at the end `| step 90 - friends
+  within 0.9 m of him at the decision (the sign: + = his left, Vec2.LeftVec): bashes asked / hit a friend (on his shield side - weapon side) none A / H
+  (l - r) x%, on his shield side only ..., on his weapon side only ..., on both sides ...; the men who hit a friend had on average .. left / .. right;
+  pushes ...`. The first-time lines name the side ("on his shield side (left)") and the neighbours at the decision.
+
+**Measured offline**: tests 1308 → 1316 (Step90Tests 8: the settings placed / shipped / live / the master switch first / the old constructor = step 80;
+format 21 move / keep / a format-17 chain / untouched / idempotent; the shoulder neighbour 0.35 / 0.64 (and 0.50 / 0.53, and 0.35 / 0.3 inside the path -
+let through) clears a kick, a bash and a push while step 80's rule refused it; a man 0.8 m straight ahead blocks, 1.3 m = FriendFirst, the nearest
+BLOCKER decides, the block side never wider than the path, 0 / 0 = step 80; the narrower paths and TargetInPath; the sign (+ = left for a +y and a +x
+facing, the probe and Locate agree, the neighbour counts); the side split, the near cases, the summary text; 0 bytes over 10 000 probes + notes).
+Older tests follow the words / format / count (Step68 / 80 / 81 / 82 / 87 / 88, ImpactTests' Impact list 131, SettingsPages 516). Smoke 205 → 206
+(`Program.Step90.cs` `OnlyAManInFrontBlocks`): step 80 / 87's two grinding lines (12 files a side, two deep, 0.9 m apart, shuffling and turning), the
+SHIPPED shares, the same dice twice:
+- step 80's path (0.6 / 0.75, anyone in it): asked 832, enemy hits 752, friends 11 (1.4%), missed 34; refusals by a friend 237 - **all 237 shoulder
+  neighbours**.
+- the shipped step-90 path: asked 824, enemy hits 712 (−5%), friends 77 (**9.8%**), missed 7; refusals by a friend **1**; let through 9.
+- THE TRADE the stand-in shows: the narrower path refuses an enemy standing to the side instead (about as many moves), misses much less, but the
+  stand-in engine's bash sweep (0.7 m either side - its own number, not the game's) still reaches the neighbour the man no longer waits for. Of the
+  shipped run's 49 bash friend hits 61% were on his shield side; the neighbour split: bashes asked with nobody within 0.9 m hit a friend 7%, with a
+  friend on his shield side only 23% (20 of 21 hits on that side), weapon side only 16% (12 of 14 on that side), both 19%. In Toni's real log the
+  numbers decide whether "a friend tight on his shield side = kick instead" is the next step.
+- The older smokes (steps 68 / 80 / 81 / 88) assert step-80 numbers: `Step80PathDefaults()` pins 0.6 / 0.75 / 1.2 / 0 / 0; their finally blocks put
+  the shipped path back (`Step90PathDefaults`). Step 68's first-refusal line and summary clause follow the new words; step 87's LogHas prefix is the
+  answer-first line.
+
+**Claude's calls**: FriendFirst kept as a refusal (above); the block box is Toni's 0.5 / 0.4, the block side capped by the path; the neighbour radius a
+constant (a diagnostic, like step 87's bins); the enum names kept, the words honest; no change to who may kick (rates, shares, reach) - only who blocks.
+
+**Gotchas**
+- A long Bash heredoc broke again (the third time) - every edit this step went through small Python scripts in the scratchpad (`s90_*.py`, a shared
+  `s90_lib.F` that keeps each file's line endings).
+- `sed -i` on a CRLF file rewrites it LF (AiKickBlocks.cs) - harmless for git (the index is LF) but avoid it.
+- `AiKickBlockStats` already had a `SideCount` (the side BINS) - the side split's accessor is `BySide`.
+
+**UNVERIFIED — only the game can tell (PLAYTEST D55)**
+1. The refusals by shoulder neighbours near 0 in a real line (were 53 of 95), "a friend in front of him" mostly the rank in front.
+2. The friends' share of the bash hits (was 45 of 66) - the stand-in says it may RISE (the sweep, not the waiting, reaches the neighbour).
+3. The side split and the neighbour rates - Toni's decision on "kick instead of bashing with a friend tight on his shield side".
+4. The sign in game: the step-87 first-time lines name the side - one look with a known neighbour confirms + = left.
