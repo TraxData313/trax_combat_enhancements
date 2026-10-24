@@ -97,12 +97,14 @@ namespace TraxCombat.Tools
         /// 0.1 s): swings and kicks / bashes spend from it. <paramref name="keepFresh"/> off = no refill at all (every swing 10, every kick / bash 8 drain
         /// the bar to empty - a tired line).
         /// </summary>
-        private static LineFightResult FightTwoLines(int seed, int baseIndex, bool stack = false, bool keepFresh = true)
+        private static LineFightResult FightTwoLines(int seed, int baseIndex, bool stack = false, bool keepFresh = true, double frontGap = 1.3, double bashEngineReach = double.NaN)
         {
             const int files = 12;
-            const double spacing = 0.9, rankGap = 1.0, frontGap = 1.3, seconds = 180, dt = 1.0 / 30;
+            const double spacing = 0.9, rankGap = 1.0, seconds = 180, dt = 1.0 / 30;
             // the stand-in ENGINE's kick / bash: a foot 1.25 m out + a body's 0.4; 0.12 m (a foot) / 0.3 m (a shield) either side + a body's 0.4
             const double engineReach = 1.25 + 0.4, engineKickSide = 0.12 + 0.4, engineBashSide = 0.3 + 0.4;
+            // step 91: a SHIELD BASH's own reach in the stand-in engine (NaN = the kick's, as steps 80-90 ran) - a push keeps the kick's
+            double bashReachEngine = double.IsNaN(bashEngineReach) ? engineReach : bashEngineReach;
             var body = new FakeAiKickBody();
             var logic = NewPaceLogic(new FakePaceBody(), new FakeWeaponFacts());
             logic.AiKickBody = body;
@@ -256,6 +258,7 @@ namespace TraxCombat.Tools
                     {
                         hitAt[i] = double.NaN;
                         double sideLimit = AiKickMath.GuardUp(m.AiKickKind) ? engineBashSide : engineKickSide; // step 88: a push sweeps like a bash
+                        double reachLimit = m.AiKickKind == AiKickKind.Bash ? bashReachEngine : engineReach; // step 91
                         int first = -1;
                         double fa = double.MaxValue;
                         for (int j = 0; j < n; j++)
@@ -263,7 +266,7 @@ namespace TraxCombat.Tools
                             if (j == i) continue;
                             double dx = x[j] - x[i], dy = y[j] - y[i];
                             double along = dx * fx[i] + dy * fy[i], across = Math.Abs(-dx * fy[i] + dy * fx[i]);
-                            if (along > 0 && along <= engineReach && across <= sideLimit && along < fa)
+                            if (along > 0 && along <= reachLimit && across <= sideLimit && along < fa)
                             {
                                 fa = along;
                                 first = j;

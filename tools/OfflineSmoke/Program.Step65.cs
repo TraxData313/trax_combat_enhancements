@@ -178,6 +178,8 @@ namespace TraxCombat.Tools
             S.Set(SettingsSchema.AiShieldmanKickPercent, 20, SettingSources.File);
             S.Set(SettingsSchema.AiShieldmanBashPercent, 35, SettingSources.File);
             S.Set(SettingsSchema.AiNoShieldPushPercent, 0, SettingSources.File);
+            // step 91: the older steps assert numbers with the bash rolled anywhere in the kick reach - the bash reach off (Step91Reach sets the shipped one)
+            S.Set(SettingsSchema.AiBashReachMetres, 0.0, SettingSources.File);
         }
 
         /// <summary>Step 88: the shipped shares (the embedded defaults.json - shieldman 25 / 40 / 35, no shield 35 / 20 / 45).</summary>
