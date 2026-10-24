@@ -8178,3 +8178,34 @@ the bash's wrong row; a read push raises the guard UP and meets it). The step-81
 4. A one-hander without a shield: act_1h_bash needs the left hand EMPTY - a man holding something else in the off hand would kick instead.
 
 **DEPLOY**: `tools\deploy.ps1` ran normally: the build, the AssemblyGuard, the offline smoke (all passed - 204), installed as Modules\TraxCombatEnhancements.Dev; the game and the launcher were not running. `tools\SmartAppControl\loadcheck.ps1`: both DLLs LOADED (`1.3.2+eb6b3777...`). Not uploaded.
+
+## Step 89 — tired men hit softer (built 2026-10-24; dev build only, not uploaded)
+
+**Toni (2026-10-24)**: "as the units get more tired their damage output to decrease further ... are we lowering the base damage?" - we were
+not. Before: the roll's factor U[1 − p, 1 + p × f) (p 0.5, f = the attacker's share of his peak line left, `DamageBonusFollowsAthletics`), so
+tiredness only took the top: fresh avg 1.00, f 0.5 avg 0.875, empty 0.75 (0.5-1.0); then step 25's 25 % off.
+
+**Built**: a MULTIPLIER m = E + (1 − E) × f, E = `TiredDamageAtEmptyPercent` / 100 (**60**, range 0-100, 100 = off = before step 89), on
+the PLAYER page in "How hard hits land" right after `DamageReductionPercent` (one number that changes how the game feels; SettingsPagesTests
+and the smoke's page-size cap moved to 31). f 0.5 → x0.8 (a roll of 0.40-1.00, avg 0.70), empty → x0.6 (0.30-0.60, avg 0.45); an average 100
+hit lands fresh 75 / half 52.5 / empty 33.75 after the reduction.
+- Core `TiredDamage.cs`: `TiredSkipReason`, `Decide` (objects, no victim, falls, SHIELD BLOCKS, a 0 hit; then ModEnabled FIRST of the
+  switches, AthleticsEnabled, the setting at 100, an untracked attacker = NoPool), `Exempt` (SprintFullCritical && charging && !missile),
+  `Multiplier` (f clamped, NaN = 1), `Apply` (0 stays as it was, positive never below 1, m ≥ 1 = untouched to the bit), `Example`.
+  `DamageRules` gains `TiredAtEmptyPercent` / `AthleticsEnabled` (optional constructor args at the end - every old call site unchanged).
+- The decorator (`Models/DamageRandomizer.cs`): the game's models → the roll → `Tire` → step 25's `Reduce` → the game rounds. On the ROLLED
+  value, or on the game's value when the roll was skipped (`TiredMayApply` gates the f / charge reads there, so a skipped hit reads nothing
+  extra while the setting is 100). f = `AttackerPeakShare` - the same read the upside uses (the RIDER's for a horse charge). The charge =
+  step 62's `AttackerCharging` only for a melee hit on a person with SprintFullCritical on (exactly the roll's charge path) - a horse-charge
+  bump is never "charging" (its attacker is the mount) and is multiplied by the rider's f.
+- Claude's calls (DESIGN decision 82): not on shield blocks (the brief said "people and horses"; a shield's wear stays step 25's alone);
+  the master switch then Athletics, never the roll's switches; with SprintFullCritical off a charging man is multiplied like anyone (the
+  exemption IS step 62's path); the player as everyone.
+- Stats (`DamageStats`): per f band (AthleticsMath.PeakBin) count, Σm, Σ landed (rounded, after the reduction); the charges exempted with
+  their landed sum; skips by reason; the percents used - the [summary] "damage by tiredness" line, written before the reduction line. The
+  first hit with m < 1 per mission logged in full; the verbose roll line gains ", tired x0.72". Allocation-free (no strings on the hot path).
+- No config migration: a NEW key (format stays 20). The older smokes pin it at 100 in `DamageDefaults` (they assert the roll / step 25 alone).
+- Tests: Step89Tests (21). Smoke: "TIRED MEN HIT SOFTER (step 89)" through the real decorator and the real logic's men - an empty man's 100
+  avg ~33.8, f 0.5 ~52.3, fresh ~75.0, an empty man CHARGING ~74.9, the setting at 100 ~56.3; the roll off exact 45 / 60 / 75.
+- Gotcha for later agents: the scratchpad holds many old helper scripts from earlier steps (design.py, docs.py ...) - give new ones a step
+  prefix (s89_*.py); a Write onto an existing name is refused and running the old one edits the repo.

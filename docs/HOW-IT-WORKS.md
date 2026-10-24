@@ -303,9 +303,10 @@ shield wall, the cavalry charge, riders, how long.
 ## Damage
 
 Every landed hit rolls its damage — anywhere from half to one and a half times the game's — so no two blows
-are the same; a tired attacker loses the top of that range — unless he **charges**: a sprinting blow (or the first
-blow just after a sprint) rolls the whole range, however tired he is. Then every hit lands **a quarter lighter**,
-so fights last longer.
+are the same; a tired attacker loses the top of that range, and below his peak line he also **hits softer** — down
+to 60% of his damage when his bar is empty, so a worn-out line hurts far less than a fresh one — unless he **charges**:
+a sprinting blow (or the first blow just after a sprint) rolls the whole range at full strength, however tired he is.
+Then every hit lands **a quarter lighter**, so fights last longer.
 
 Numbers: [MECHANICS §12](MECHANICS.md#12-damage).
 

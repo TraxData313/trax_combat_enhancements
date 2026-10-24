@@ -82,15 +82,15 @@ seven.
 Everything below is measured against the peak line: at 75% or more, nothing changes. Under it, every
 effect slides in a straight line down to its worst at an empty bar.
 
-| Bar | Pause after a swing ¹ | Swing animation speed | Attacks per minute ² | Run speed | Best damage roll ³ | Chance a tired AI picks his block at random ⁴ |
-|---:|---:|---:|---:|---:|---:|---:|
-| 100% | none | 100% | 100% | 100% | +50% | 0% |
-| 75% (the line) | none | 100% | 100% | 100% | +50% | 0% |
-| 60% | 0.15 s | 97% | 84% | 86% | +40% | 20% |
-| 50% | 0.29 s | 95% | 73% | 77% | +33% | 33% |
-| 30% | 0.74 s | 91% | 52% | 58% | +20% | 60% |
-| 15% | 1.42 s | 88% | 36% | 44% | +10% | 80% |
-| 0% (empty) | 3.20 s | 85% | 20% | 30% | +0% | 100% |
+| Bar | Pause after a swing ¹ | Swing animation speed | Attacks per minute ² | Run speed | Best damage roll ³ | Damage dealt ³ | Chance a tired AI picks his block at random ⁴ |
+|---:|---:|---:|---:|---:|---:|---:|---:|
+| 100% | none | 100% | 100% | 100% | +50% | 100% | 0% |
+| 75% (the line) | none | 100% | 100% | 100% | +50% | 100% | 0% |
+| 60% | 0.15 s | 97% | 84% | 86% | +40% | 92% | 20% |
+| 50% | 0.29 s | 95% | 73% | 77% | +33% | 87% | 33% |
+| 30% | 0.74 s | 91% | 52% | 58% | +20% | 76% | 60% |
+| 15% | 1.42 s | 88% | 36% | 44% | +10% | 68% | 80% |
+| 0% (empty) | 3.20 s | 85% | 20% | 30% | +0% | 60% | 100% |
 
 1. After a typical 0.8 s swing (Anton's battle logs average about that). With the swing stack
    (section 4) it is the wait only when no stored swing is left — and the time each one takes to come
@@ -99,14 +99,15 @@ effect slides in a straight line down to its worst at an empty bar.
 2. Roughly, compared with the same man fresh — the rate the pause aims at. Empty, he attacks once
    where he used to attack five times.
 3. Every hit rolls its damage (section 12). A tired man still rolls as low as a fresh one, but his
-   lucky high rolls shrink.
+   lucky high rolls shrink — and since step 89 whatever he rolls is then multiplied by "damage dealt"
+   (a straight line from 100% at the peak line to 60% empty). A man charging into his blow hits fresh.
 4. Only AI men, never you. See section 7 for what that means for his blocks.
 
 Horses are not slowed by their rider's bar by default.
 
 <sub>Settings: `ExhaustedAttackSpeedPercent` 20 (attacks at empty), `AttackAnimationMinPercent` 85,
 `MinMoveSpeedMultiplier` 0.3, `MountMinSpeedMultiplier` 1.0 (horses off), `DamageBonusFollowsAthletics` on,
-`TiredBlockRandomPercent` 100.</sub>
+`TiredDamageAtEmptyPercent` 60, `TiredBlockRandomPercent` 100.</sub>
 
 ## 4. The swing stack
 
@@ -1382,11 +1383,14 @@ before), `ImpactRearDegrees` 120, `ImpactFlankDegrees` 60, step 63 `ImpactRearPr
 
 ## 12. Damage
 
-Two things, in this order:
+Three things, in this order:
 
 1. **The roll.** Every landed hit is multiplied by a random 50%–150%, so no two blows are the same.
    A tired attacker loses the top of that range (section 3).
-2. **The reduction.** Then every hit — on people, horses and shields — lands **25% lighter**, so
+2. **Tired men hit softer** (step 89). Then a tired attacker's hit is multiplied by his "damage dealt" —
+   100% at or above the peak line, a straight line down to **60%** when his bar is empty (section 3). His
+   arrows and his blows on horses too; blows a shield stops are left alone.
+3. **The reduction.** Then every hit — on people, horses and shields — lands **25% lighter**, so
    fights last longer. Falls and objects are never touched.
 
 What an average 100-damage hit actually lands:
@@ -1394,15 +1398,18 @@ What an average 100-damage hit actually lands:
 | Attacker | Lowest | Highest | Average |
 |---|---:|---:|---:|
 | Fresh (at or above the peak line) | 38 | 113 | 75 |
-| Half way to empty (bar 38%) | 38 | 94 | 66 |
-| Empty | 38 | 75 | 56 |
+| Half way to empty (bar 38%) | 30 | 75 | 53 |
+| Empty | 23 | 45 | 34 |
 | Empty, but **charging** (step 62) | 38 | 113 | 75 |
 
+Before step 89 the half-way man landed 38–94 (66 on average) and the empty man 38–75 (56): tiredness only took
+the lucky top of the roll.
+
 A **charging** man — sprinting into his melee blow, or striking the first blow within 3 s after a sprint, or the blow
-of an attack begun in the charge (section 11c) — rolls the whole range however tired he is: the sprint's critical is never capped. Hits on a shield are not
+of an attack begun in the charge (section 11c) — rolls the whole range however tired he is and hits at full strength: the sprint's critical is never capped. Hits on a shield are not
 rolled by default (still reduced). A hit never drops below 1.
 
-<sub>Settings: `DamageRandomPercent` 50, `DamageReductionPercent` 25, `DamageRandomOnShields` off,
+<sub>Settings: `DamageRandomPercent` 50, `TiredDamageAtEmptyPercent` 60 (100 = off), `DamageReductionPercent` 25, `DamageRandomOnShields` off,
 `DamageRandomMelee` / `Ranged` / `OnMounts` on, `SprintFullCritical` on.</sub>
 
 ## 13. Heroes, and the hideout boss
@@ -1922,7 +1929,7 @@ MCM shows **two pages** (Mod Options):
   | Group | Settings |
   |---|---|
   | Master switch | Mod enabled |
-  | How hard hits land | Damage roll (± %), Damage reduction (%) |
+  | How hard hits land | Damage roll (± %), Damage reduction (%), Tired men's damage at an empty bar (%) |
   | Tiredness (Athletics) | Athletics (stamina) on / off, Cost per swing — how fast men tire, Heroes' cost (x) |
   | How the AI fights | AI aggression when fresh / when exhausted (%), Fever on a charge or advance order, Shield walls hold their slots + a step out to strike (m), Courage and cohesion, Cavalry flocking, Line discipline: your units too |
   | Staggers and knockdowns | Staggers, shield drops, knockdowns on / off, Against you (%) |
