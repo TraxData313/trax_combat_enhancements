@@ -3298,6 +3298,25 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     bash sweep reaches the neighbour it no longer waits for - Toni's next log says what the real engine does). (f) SETTINGS: 2 Advanced in the Impact
     group after `AiKickRearRankMetres` (514 → 516), live. (g) UNVERIFIED in game (PLAYTEST D55): the refusals by shoulder neighbours near 0; the
     friend share of the bash hits (was 45 of 66); the side split and the neighbour rates.
+84. **Shield bashes get their own shorter reach** (step 91, Toni 2026-10-24 from his 19:56 battle: 114 of 150 AI bash hits on a FRIEND (76%),
+    100 on the basher's shield side (left), 89 with the friend beside / behind his shoulders, 34% even with no friend within 0.9 m; kicks 25%,
+    pushes 23% - fine). (a) THE CAUSE (the hypothesis the smoke models): step 81 rolls a bash whenever the enemy is within `AiKickReachMetres` 1.6,
+    but the engine's shield bash is a 0.2 m sphere (`kick_shieldbash_radius`) on the shield arm's bone during 38-48% of act_shield_bash
+    (combat_parameters.xml `shield_bash_params`, scaled by native_parameters.xml `shield_bash_collision_check_scale_multiplier` 0.9) - far shorter
+    than a kick's foot (bone 7, 55-100% of the kick); the game's data names no reach in metres. (b) THE RULE: `AiBashReachMetres` **1.1** (Advanced,
+    the Impact group after `AiKickReachMetres`, Float 0-4, live; a body 0.4 + an arm and a shield ~0.6 + the sphere, under a kick's ~1.6): a
+    SHIELDMAN whose enemy is in kick reach but beyond it rolls only kick / swing - the bash's share split between them in their own proportion
+    (`AiKickRules.ShieldKickBeyondBashReach` = kick ÷ (kick + swing); 25 / 35 → 41.7 / 58.3%; a 100% bash → he swings); within it the normal 25 /
+    40 / 35 (the same die - `AiKickMath.Roll(…, distance)`). A bash's re-read after its 0.4 s guard ends it (`AiKickEnd.PathBlocked`) when the
+    enemy has stepped beyond the bash reach - counted apart. Kicks and step 88's pushes keep the 1.6 m. Step 81's raised-shield swap unchanged
+    (a rolled bash into a shield guarding right = a kick). 0 (or ≥ the kick reach) = off = steps 81-90. A new key: no migration. (c) MEASUREMENT
+    (Core `AiBashReach.cs`, `AiKickStats.BashReach`): the shieldmen's rolls within / beyond; every bash by the enemy's distance at its decision
+    (≤0.8, 0.8-1.0, 1.0-1.1, 1.1-1.2, 1.2-1.4, 1.4-1.6, >1.6 m - 1.1 an edge) - rolled, asked → on an enemy / into his shield / on a friend /
+    missed / untracked / not played (each asked bash exactly once); the 8th [summary] "ai kicks - the shield bash's reach (step 91)" line.
+    (d) SMOKE: step 80 / 90's grind with the fronts 1.0 m apart and the stand-in bash reaching 1.15 m, the same dice: OFF 342 bashes, 86 on a
+    friend (27.8% of the bash hits, 52% in the 1.2-1.4 m bin); 1.1 m: 233 bashes, none past 1.1 m, 47 on a friend (22.9%), kicks 491 → 548, the
+    rolls beyond 43.8 / 0 / 56.2. (e) UNVERIFIED in game (PLAYTEST D56): the real friends' share by distance bin - whether 1.1 m is short enough or
+    the sweep still reaches the shield-side neighbour from closer in.
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),
 `HudRefreshSeconds`, `FormationStatsRefreshSeconds` came out of step 2's research

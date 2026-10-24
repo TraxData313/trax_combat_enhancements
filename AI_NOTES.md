@@ -8294,3 +8294,70 @@ constant (a diagnostic, like step 87's bins); the enum names kept, the words hon
 2. The friends' share of the bash hits (was 45 of 66) - the stand-in says it may RISE (the sweep, not the waiting, reaches the neighbour).
 3. The side split and the neighbour rates - Toni's decision on "kick instead of bashing with a friend tight on his shield side".
 4. The sign in game: the step-87 first-time lines name the side - one look with a known neighbour confirms + = left.
+
+
+## Step 91 — shield bashes get their own shorter reach (built 2026-10-24; dev build only, not uploaded)
+
+**Toni (2026-10-24, his 19:56 battle - the step-87 / 90 summary lines)**: shield bashes - 36 hits on an enemy (16 into his shield), 114 on a FRIEND (76%),
+100 of those on the basher's shield side (left), 89 with the friend beside / behind his shoulders; even with no friend within 0.9 m 34% hit a friend.
+Kicks (25% friends) and weapon pushes (23%) fine. Hypothesis: step 81 rolls a bash whenever the enemy is within `AiKickReachMetres` 1.6 m, but the
+shield bash's own reach is much shorter, so the sweep misses the enemy and lands on the neighbour. DESIGN decision 84.
+
+**91.0 THE ENGINE'S BASH REACH (the game's ModuleData, v1.4.8 - the decompile has no managed range)**: `combat_parameters.xml` - `shield_bash_params`
+(and `hand_shield_bash_params`): collision checked 38-48% of the animation, `collision_radius="kick_shieldbash_radius"` = **0.2 m**, `hit_bone_index`
+19 (the shield arm), `shoulder_hit_bone_index` 14; `native_parameters.xml` `shield_bash_collision_check_scale_multiplier` 0.9; the kicks
+(`human_r_kick_params` / `l`) 55-100% on the foot's bone (7 / 3), the same 0.2 m. So the bash is a 0.2 m sphere riding the shield arm through a
+short window - no reach in metres anywhere in the data (it is whatever the animation's arm reaches). 1.1 m chosen: a body (0.4 m) + an arm and a
+shield (~0.6 m) + the sphere ≈ 1.1-1.2 m centre to centre, a little under the foot's ~1.6 m. Toni can tune it live; the summary's bins say where.
+
+**91.1 THE RULE (Core `AiKicks.cs`)**: `AiKickRules` gains `bashReachMetres` (an optional last constructor parameter - old callers = 0 = off),
+`BashReachSetting`, `BashReachOn` (> 0 and < the kick reach), `BashReach` (the kick reach while off), `BeyondBashReach(distance)`,
+`ShieldKickBeyondBashReach` = kick ÷ (kick + swing) (0 when both are 0 - a 100% bash beyond the reach = a swing). `AiKickMath.Roll(r, shield, u,
+distance)`: a shieldman beyond = u < that share → Kick, else a swing; otherwise the step-81 / 88 roll on the SAME die (no extra draw - the dice
+streams of the older smokes unchanged). `Describe` adds "step 91: a shield bash only within X m ..." / "... at the kick reach (AiBashReachMetres off)".
+New setting `AiBashReachMetres` 1.1 (Float 0-4, Advanced, the Impact group right after `AiKickReachMetres`, live; 516 → 517). A new key - no
+config format change.
+
+**91.2 THE MODULE (`AthleticsLogic.AiKicks.cs`)**: `DecideAiMove` rolls with the distance it already read (`body.Target`) and notes every
+shieldman's roll (within / beyond). `BeginAiKick(…, distance)` keeps `TrackedAgent.AiKickDistance`; a bash asked = `BashReach.NoteAsked`.
+`PressPath(…, out beyondBashReach)`: for a Bash with the reach on, the target read first and beyond the bash reach = ended `PathBlocked`,
+counted in `BashReach.PressBeyond` (not in step 80's press verdicts), first-time line 16 (`_aiKickFirst` 16 → 17). `AiKickHit` files the bash's
+result by its decision distance (enemy / his shield / friend / untracked), `EndAiKick` a bash that never landed (seen = missed, never seen = not
+played) - each asked bash exactly once. Pushes and kicks untouched (the 1.6 m). Step 81's raised-shield swap untouched (a rolled bash → a kick).
+
+**91.3 THE SUMMARY (Core `AiBashReach.cs`)**: `AiBashResult`, `AiBashReachStats` (fixed arrays: rolls [within / beyond, kind], bashes rolled /
+asked / results by bin - ≤0.8, 0.8-1.0, 1.0-1.1, 1.1-1.2, 1.2-1.4, 1.4-1.6, >1.6 m; 1.1 an edge so no bin straddles the default - `AskedBeyond`,
+`PressBeyond`, `Line`). `AiKickStats.BashReach`; `SummaryLines` adds it as the 8th "ai kicks" line, after step 87's: `ai kicks - the shield bash's
+reach (step 91): a shieldman bashes only within 1.10 m (...) - farther off he kicks 42% / swings 58% | shieldmen's moves within it N - rolled ...
+(target 25% / 40% / 35%) | beyond it M - rolled ... (target 42% / 0% / 58%) | bashes by the enemy's distance at the decision - rolled, asked →
+on an ENEMY / into his shield / on a FRIEND / missed / horse or untracked / not played: ≤0.8 m r, a → e / s / f / m / u / n (friends x% of the
+hits); ... | asked beyond the bash reach 0; a bash's re-read after its guard found the enemy beyond the bash reach k (ended, no bash)`.
+
+**Measured offline**: tests 1316 → 1322 (Step91Tests 6: the setting placed / shipped 1.1 / live / the master switch first; 0, NaN, negative and ≥ the
+kick reach = off and the roll identical to step 81's for every u; the split 25 / 60, the boundaries, a 100% bash, a man without a shield unchanged;
+100 000 seeded rolls beyond 41.7 / 0 / 58.3 and within 25 / 40 / 35 ±0.5; the bins, the stats and the 8th line's text, OFF in plain words; 0 bytes
+over 10 000 rolls + notes). Older tests: the line count 7 → 8 (Step65 / 87 / 88 / 90), the settings 517, the Impact list 132, step 65's order.
+Smoke 206 → 207 (`Program.Step91.cs` `BashesOnlyWithinTheirReach`): step 80 / 90's grind with `FightTwoLines(…, frontGap: 1.0, bashEngineReach:
+1.15)` (new optional parameters - the old calls unchanged: 1.3 m, the kick's 1.65 m), the shipped shares and path, the same dice twice:
+- the bash reach OFF: bashes asked 342, on a FRIEND 86 of 309 bash hits (27.8%); by bin friends 39% (≤0.8, few), 19% (0.8-1.0), 25% (1.0-1.1),
+  33% (1.1-1.2), **52% (1.2-1.4 - 22 of 47 also missed)**.
+- 1.1 m: bashes asked 233, **none rolled or asked past 1.1 m**, on a FRIEND 47 of 205 (22.9%); kicks asked 491 → 548; the shieldman's rolls within
+  26.6 / 41.4 / 32.0, beyond 43.8 / 0 / 56.2 (target 41.7 / 58.3); 22 bashes ended after their guard because the enemy stepped beyond 1.1 m.
+- the stand-in's own sweep (0.7 m either side) still reaches the neighbour from close in (~20% of the near bashes' hits) - the real engine's
+  answer is Toni's log by bin.
+- `AiKickDefaults` pins `AiBashReachMetres` 0 for the older smokes (steps 65 / 68 / 80 / 81 / 82 / 88 / 90 assert step-81 numbers);
+  `Step91Reach` sets the shipped value back.
+
+**Claude's calls**: 1.1 m (above - the data has no reach); the bins with an edge at 1.1; the press re-read beyond the reach ends as `PathBlocked`
+(no new `AiKickEnd` - every stats array and test indexes them) but is counted apart; the roll on the same die (one draw a move as before); a bash
+reach ≥ the kick reach = off.
+
+**Gotchas**: a long Bash heredoc broke again (a fourth time - "unexpected EOF while looking for matching `''") - the docs script went through the
+Write tool (`s91_docs.py`); the Edit tool wrote `SettingsSchema.cs` back LF (rewritten CRLF by `s91_crlf.py`; harmless for git with autocrlf).
+
+**UNVERIFIED — only the game can tell (PLAYTEST D56)**
+1. The friends' share of the bash hits by distance bin - whether 1.1 m is short enough, or the shield-side neighbour is still caught from 0.8-1.1 m
+   (then the next lever: a friend tight on his shield side = kick instead - step 90's neighbour counts already measure it).
+2. Kicks rising where the bashes were (the shares line), and that the extra kicks do not land on friends instead.
+
+**DEPLOY**: see below.

@@ -1165,6 +1165,21 @@ with the axe" - gave the man without a shield the WEAPON PUSH: the game's own we
 <sub>Settings (Advanced, the Impact group): `AiShieldmanKickPercent` 25 (20 until step 88), `AiShieldmanBashPercent` 40 (35 until step 88),
 `AiNoShieldKickPercent` 35, `AiNoShieldPushPercent` 20 (step 88); kick + bash / kick + push never over 100.</sub>
 
+**A shield bash reaches less than a kick (step 91).** Toni's 19:56 battle (2026-10-24): 114 of 150 AI bash hits landed on a FRIEND - the bash
+was rolled with the enemy anywhere in the kick's 1.6 m, but the shield's short sweep passed him and caught the neighbour on the basher's shield
+side. So a shieldman bashes only with the enemy within **1.1 m**; between 1.1 and 1.6 m the bash's share goes to the kick and the swing in their
+own proportion (a kick and a push keep the 1.6 m):
+
+| A shieldman, the enemy he fights at | Kick | Shield bash | Swing |
+|---|---:|---:|---:|
+| within 1.1 m | 25% | 40% | 35% |
+| 1.1 - 1.6 m | **41.7%** (25 ÷ 60) | — | **58.3%** (35 ÷ 60) |
+
+A bash whose enemy steps back beyond 1.1 m during its 0.4 s guard ends with no bash (counted). The game's own data gives no reach in metres
+for a shield bash - it is a 0.2 m sphere on the shield arm during 38-48% of the animation - so 1.1 m is a body (0.4 m) + an arm and a shield
+(~0.6 m) + the sphere, a little under a kick's foot.
+<sub>Setting (Advanced, the Impact group): `AiBashReachMetres` 1.1 (step 91; 0 = a bash anywhere in the kick reach, as steps 81-90).</sub>
+
 A rolled kick, bash or push **takes the place of that swing**: his raised guard cancels the wind-up (0.4 s for a bash or a push, 0.15 s for a
 kick), then the kick key (a bash and a push with the guard held up - with no shield in his hand the game plays his weapon's bash). A shieldman whose enemy holds a **raised shield** toward him kicks instead of bashing (a raised shield stops a bash, not a
 kick). With the enemy **beyond kick reach** nothing is rolled — a spearman keeps his ground and thrusts with his spear (section 10's
@@ -1216,7 +1231,7 @@ path is a strip along his facing, as long as his reach, and:
 | Rule | Kick | Shield bash / weapon push |
 |---|---:|---:|
 | the path's half-width either side of his facing line (a body centre that close is touched) | **0.45 m** (0.6 in step 80) | **0.5 m** (0.75 in step 80) |
-| its length | 1.6 m | 1.6 m |
+| its length | 1.6 m | 1.6 m (a bash rolled only within 1.1 m since step 91; a push 1.6 m) |
 | the enemy he fights must stand IN it | yes — else refused (he swings; step 80 waited up to 3 s) | yes |
 | a man of his side REALLY IN FRONT of him — at least **0.5 m** ahead along his facing and within **0.4 m** of its line — closer than the enemy (step 90) | refused (he swings) | refused |
 | … within **1.2 m** of him ("a friend in front of him" — the rank ahead) | **never** | never |
