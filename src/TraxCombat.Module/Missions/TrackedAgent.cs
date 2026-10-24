@@ -374,6 +374,9 @@ namespace TraxCombat.Missions
         /// when it began, the guard up, the man it comes from; MeetReadRolledFor = the attacker whose start he already rolled for (once).</summary>
         public bool MeetReading;
         public bool MeetReadBash;
+
+        /// <summary>Step 88: the read kick / bash is a weapon PUSH - the read guard is UP.</summary>
+        public bool MeetReadPush;
         public bool MeetGuardUp;
         public double MeetReadStart = double.NaN;
         public TrackedAgent? MeetReadBy;

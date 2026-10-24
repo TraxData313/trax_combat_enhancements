@@ -221,7 +221,7 @@ namespace TraxCombat.Missions
                 if (bev == ImpactEvent.Bash) _meet.BlockedBashes++;
                 else _meet.BlockedKicks++;
                 bool decided = ImpactDecideEvent(ba, bv, bev, attacker, victim, in cd, SpikeNow, false, out var bd, out _, altBlocked: true);
-                _meet.NoteEngineSide(cd.CorrectSideShieldBlock, decided && (bd.Meet == ImpactMeet.BashShieldRight || bd.Meet == ImpactMeet.KickShieldDown), (int)cd.AttackDirection);
+                _meet.NoteEngineSide(cd.CorrectSideShieldBlock, decided && (bd.Meet == ImpactMeet.BashShieldRight || bd.Meet == ImpactMeet.KickShieldDown || bd.Meet == ImpactMeet.PushShieldUp), (int)cd.AttackDirection);
                 return;
             }
             if (!ImpactEventOf(in cd, BlockKindOf(attacker, victim, in cd), out var ev)) return; // step 64: our block verdict

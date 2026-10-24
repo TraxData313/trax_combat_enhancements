@@ -400,7 +400,7 @@ public class Step82Tests
         st.NoteEngineSide(true, true, 2);
         var lines = st.SummaryLines(ImpactMeetRules.From(new TraxSettings()));
         Assert.Equal(3, lines.Length);
-        Assert.StartsWith("impact meets (step 82) - each kick / bash by how it was met (ON)", lines[0]);
+        Assert.StartsWith("impact meets (step 82 / 88) - each kick / bash / push by how it was met (ON)", lines[0]);
         Assert.Contains("bash - shield, guard right 1 → the ATTACKER staggered 1 (100%)", lines[0]);
         Assert.Contains("(an AI read it: 1)", lines[0]);
         Assert.Contains("bash - no guard or mid-swing 1 → the defender staggered 1 (100%)", lines[0]);

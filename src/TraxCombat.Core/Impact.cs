@@ -169,6 +169,10 @@ namespace TraxCombat.Core
 
         /// <summary>Step 82: on a CORRECT meet, the guarding item's skill (shield: one-handed; a weapon: its skill) - the riposte's K_D.</summary>
         public double MeetGuardSkill;
+
+        /// <summary>Step 88: the bash is a weapon PUSH - a man with no shield bashing with his weapon (the collision's item is not a shield):
+        /// its impact from the weapon (its weight, the weapon's skill - the module fills them), its meet judged with the guard UP as the correct one.</summary>
+        public bool Push;
     }
 
     /// <summary>
@@ -1644,7 +1648,7 @@ namespace TraxCombat.Core
             return f.Event switch
             {
                 ImpactEvent.Kick => " (a kick)",
-                ImpactEvent.Bash => " (a bash, the shield " + f.WeaponWeight.ToString("0.0", c) + " kg)",
+                ImpactEvent.Bash => f.Push ? " (a weapon push, the weapon " + f.WeaponWeight.ToString("0.0", c) + " kg)" : " (a bash, the shield " + f.WeaponWeight.ToString("0.0", c) + " kg)",
                 _ => " (" + f.WeaponWeight.ToString("0.0", c) + " kg, speed " + f.SwingSpeed.ToString("0", c) + " x" + (f.AttackerAnimation > 0 ? f.AttackerAnimation : 1).ToString("0.00", c) + ", " + f.DamageType.ToString().ToLowerInvariant() + ")",
             };
         }

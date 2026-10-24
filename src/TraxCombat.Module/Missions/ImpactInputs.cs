@@ -36,7 +36,8 @@ namespace TraxCombat.Missions
     /// Step 48: the game's reads - all managed (the wielded indices are pointer reads, the items and their usages managed objects, the
     /// collision a struct): the weapon in the collision's slot (<c>AffectorWeaponSlotOrMissileIndex</c>) - its item weight, the modified
     /// swing or thrust speed for the strike type (the collision's <c>StrikeType</c>), the collision's damage type (Cut / Pierce / Blunt), the
-    /// attacker's skill in its relevant skill; a bash = the shield in that slot and one-handed; the defender's off-hand shield (right / wrong
+    /// attacker's skill in its relevant skill; a bash = the shield in that slot and one-handed (step 88: a weapon PUSH = the weapon in that slot and its
+    /// own skill); the defender's off-hand shield (right / wrong
     /// side, one-handed) or main-hand weapon (a parry, its relevant skill); <c>MountAgent</c>; <c>HealthLimit</c>; the collision's
     /// <c>InflictedDamage</c>. Step 52: the attacker's speed into the blow (<see cref="SpeedInto"/> - engine reads of both men's position and
     /// his velocity, main thread) and a two-handed grip. Nothing allocates.
@@ -62,8 +63,17 @@ namespace TraxCombat.Missions
             int slot = cd.AffectorWeaponSlotOrMissileIndex;
             if (f.Event == ImpactEvent.Bash)
             {
-                if (slot >= 0) f.WeaponWeight = WeightOf(attacker.Equipment[slot]);
-                f.AttackerSkill = Skill(attacker, DefaultSkills.OneHanded);
+                // step 88: a WEAPON PUSH = a bash whose item is not a shield (a man with no shield bashes with his weapon - the usage set's own
+                // kick usage); unknown slot = no shield in his off hand. Its impact from the weapon: its weight (the slot's item) and its skill
+                var item = slot >= 0 ? attacker.Equipment[slot] : MissionWeapon.Invalid;
+                var iu = slot >= 0 ? item.CurrentUsageItem : null;
+                var aoff = attacker.WieldedOffhandWeapon.CurrentUsageItem;
+                f.Push = iu != null ? !iu.IsShield : !(aoff != null && aoff.IsShield);
+                if (slot >= 0) f.WeaponWeight = WeightOf(item);
+                else if (f.Push) f.WeaponWeight = WeightOf(attacker.WieldedWeapon);
+                var ps = f.Push ? (iu ?? attacker.WieldedWeapon.CurrentUsageItem)?.RelevantSkill : null;
+                f.AttackerSkill = Skill(attacker, ps ?? DefaultSkills.OneHanded);
+                if (f.Push && iu != null) f.TwoHanded = iu.IsTwoHanded || iu.IsPolearm;
             }
             else if (f.Event != ImpactEvent.Kick && slot >= 0)
             {

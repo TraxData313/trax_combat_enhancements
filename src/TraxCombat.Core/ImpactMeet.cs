@@ -62,6 +62,22 @@ namespace TraxCombat.Core
 
         /// <summary>A kick met any other way - the kicked man as before (step 65's brace, then the reel / fall / shield drop).</summary>
         KickOther,
+
+        /// <summary>Step 88: a weapon PUSH (a man without a shield, his guard up and the kick key) met by a raised shield guarding UP - the
+        /// correct meet: the PUSHER is at risk (the ceilings of a bash met by a shield guarding right).</summary>
+        PushShieldUp,
+
+        /// <summary>Step 88: a push met by a weapon guard UP - the correct meet: the pusher is at risk (a bash's weapon-right ceilings).</summary>
+        PushWeaponUp,
+
+        /// <summary>Step 88: a push met by a raised shield in any other direction - the blocker is at risk (a bash's shield-wrong row).</summary>
+        PushShieldWrong,
+
+        /// <summary>Step 88: a push met by a weapon guard in any other direction - the blocker is at risk (a bash's weapon-wrong row).</summary>
+        PushWeaponWrong,
+
+        /// <summary>Step 88: a push on a man with no guard up, or caught mid-swing - he is at risk (a bash's open row).</summary>
+        PushOpen,
     }
 
     /// <summary>
@@ -149,7 +165,7 @@ namespace TraxCombat.Core
                    + ImpactMeetMath.P0(BashWeaponWrongStagger) + " / " + ImpactMeetMath.P0(BashWeaponWrongFall) + "); no guard or mid-swing " + ImpactMeetMath.P0(BashOpenStagger) + " / "
                    + ImpactMeetMath.P0(BashOpenFall) + " / drop " + ImpactMeetMath.P0(BashOpenDrop) + "; a kick met by a DOWN guard staggers / fells the KICKER (shield "
                    + ImpactMeetMath.P0(KickShieldDownStagger) + " / " + ImpactMeetMath.P0(KickShieldDownFall) + ", weapon " + ImpactMeetMath.P0(KickWeaponDownStagger) + " / "
-                   + ImpactMeetMath.P0(KickWeaponDownFall) + "), any other guard as step 65 - the ceilings x the S-curve of the pressure (the attacker's like the riposte's); "
+                   + ImpactMeetMath.P0(KickWeaponDownFall) + "); a weapon PUSH (step 88) as a bash, but met correctly by a guard UP (the pusher at risk on the right-guard ceilings), any other guard - a kick's - as step 65 - the ceilings x the S-curve of the pressure (the attacker's like the riposte's); "
                    + "the AI " + (AiReads ? "READS an incoming kick / bash at " + ImpactMeetMath.P0(ReadScale) + " of the chance he blocks a swing with, the guard up "
                                          + ImpactMeetMath.F2(ReactionSeconds) + " s after it began (sooner = too late), held at most " + ImpactMeetMath.F2(HoldSeconds) + " s"
                                          : "never reads it (MeetAiReadScalePercent 0)");
@@ -160,7 +176,7 @@ namespace TraxCombat.Core
     public static class ImpactMeetMath
     {
         /// <summary>The rows (<see cref="ImpactMeet"/> values, NotJudged included).</summary>
-        public const int MeetCount = 9;
+        public const int MeetCount = 14; // step 88: + the five push rows
 
         // the engine's ActionCodeType values (v1.4.8 - the smoke checks them against the game's enum)
         public const int ActDefendFist = 1;
@@ -234,8 +250,21 @@ namespace TraxCombat.Core
         /// (right = correct, anything else = wrong); a bash otherwise by the read (a raised shield / a weapon to the right = correct, any other
         /// direction = wrong, no guard / mid-swing / unknown = open). A kick: a shield / a weapon guard DOWN = correct, anything else = as before.
         /// </summary>
-        public static ImpactMeet Classify(bool bash, bool blockedWithShield, MeetGuardKind kind, MeetDir dir)
+        public static ImpactMeet Classify(bool bash, bool blockedWithShield, MeetGuardKind kind, MeetDir dir) => Classify(bash, blockedWithShield, kind, dir, push: false);
+
+        /// <summary>
+        /// Step 88 (Toni 2026-10-24: "make them as the shield bash, but make shield up the correct block for them"): a weapon PUSH
+        /// (<paramref name="push"/>, with <paramref name="bash"/>) is judged by the bash's rows, but its CORRECT meet is a guard UP (a raised shield
+        /// or a weapon guarding up), not right; a push the shield stopped = a shield meet (up = correct, else wrong) like a bash's.
+        /// </summary>
+        public static ImpactMeet Classify(bool bash, bool blockedWithShield, MeetGuardKind kind, MeetDir dir, bool push)
         {
+            if (bash && push)
+            {
+                if (blockedWithShield || kind == MeetGuardKind.Shield) return dir == MeetDir.Up ? ImpactMeet.PushShieldUp : ImpactMeet.PushShieldWrong;
+                if (kind == MeetGuardKind.Weapon) return dir == MeetDir.Up ? ImpactMeet.PushWeaponUp : ImpactMeet.PushWeaponWrong;
+                return ImpactMeet.PushOpen;
+            }
             if (bash)
             {
                 if (blockedWithShield || kind == MeetGuardKind.Shield) return dir == MeetDir.Right ? ImpactMeet.BashShieldRight : ImpactMeet.BashShieldWrong;
@@ -252,19 +281,36 @@ namespace TraxCombat.Core
 
         /// <summary>The correct meets - the ATTACKER is at risk, the defender takes nothing from the blow.</summary>
         public static bool AttackerAtRisk(ImpactMeet m) =>
-            m == ImpactMeet.BashShieldRight || m == ImpactMeet.BashWeaponRight || m == ImpactMeet.KickShieldDown || m == ImpactMeet.KickWeaponDown;
+            m == ImpactMeet.BashShieldRight || m == ImpactMeet.BashWeaponRight || m == ImpactMeet.KickShieldDown || m == ImpactMeet.KickWeaponDown
+            || m == ImpactMeet.PushShieldUp || m == ImpactMeet.PushWeaponUp;
+
+        /// <summary>Step 88: a push's row.</summary>
+        public static bool IsPush(ImpactMeet m) => m >= ImpactMeet.PushShieldUp && m <= ImpactMeet.PushOpen;
 
         /// <summary>A row with its own ceilings (every bash row and the two correct kick rows; a kick met any other way keeps step 65's row).</summary>
         public static bool HasRow(ImpactMeet m) => m != ImpactMeet.NotJudged && m != ImpactMeet.KickOther;
 
         /// <summary>The meet's guard by a shield (else a weapon).</summary>
-        public static bool ByShield(ImpactMeet m) => m == ImpactMeet.BashShieldRight || m == ImpactMeet.BashShieldWrong || m == ImpactMeet.KickShieldDown;
+        public static bool ByShield(ImpactMeet m) => m == ImpactMeet.BashShieldRight || m == ImpactMeet.BashShieldWrong || m == ImpactMeet.KickShieldDown
+            || m == ImpactMeet.PushShieldUp || m == ImpactMeet.PushShieldWrong;
+
+        /// <summary>Step 88: the bash row whose ceilings a push's row uses (a push = a bash with the guard UP as its correct meet; Claude's call:
+        /// the bash's ceilings shared, not ten new settings); any other row itself.</summary>
+        public static ImpactMeet CeilingRow(ImpactMeet m) => m switch
+        {
+            ImpactMeet.PushShieldUp => ImpactMeet.BashShieldRight,
+            ImpactMeet.PushWeaponUp => ImpactMeet.BashWeaponRight,
+            ImpactMeet.PushShieldWrong => ImpactMeet.BashShieldWrong,
+            ImpactMeet.PushWeaponWrong => ImpactMeet.BashWeaponWrong,
+            ImpactMeet.PushOpen => ImpactMeet.BashOpen,
+            _ => m,
+        };
 
         /// <summary>The row's ceilings (0-1): the stagger, the fall, the shield drop (0 = the row has none).</summary>
         public static void Row(in ImpactMeetRules r, ImpactMeet m, out double stagger, out double fall, out double drop)
         {
             drop = 0;
-            switch (m)
+            switch (CeilingRow(m))
             {
                 case ImpactMeet.BashShieldRight: stagger = r.BashShieldRightStagger; fall = r.BashShieldRightFall; return;
                 case ImpactMeet.BashWeaponRight: stagger = r.BashWeaponRightStagger; fall = r.BashWeaponRightFall; return;
@@ -307,6 +353,9 @@ namespace TraxCombat.Core
         /// <summary>The guard a reader raises: RIGHT against a bash, DOWN against a kick (the movement flag bit).</summary>
         public static uint GuardFlag(bool bash) => bash ? FlagDefendRight : FlagDefendDown;
 
+        /// <summary>Step 88: ... and UP against a weapon push.</summary>
+        public static uint GuardFlag(bool bash, bool push) => bash && push ? FlagDefendUp : GuardFlag(bash);
+
         /// <summary>One frame of a reader's input: his attack bits and his own guard out, the read guard in.</summary>
         public static uint GuardFrame(uint flags, uint guard) => (flags & ~(AiInputMath.AttackMask | AiInputMath.DefendMask)) | guard;
 
@@ -326,6 +375,11 @@ namespace TraxCombat.Core
             ImpactMeet.KickShieldDown => "kick - shield, guard down",
             ImpactMeet.KickWeaponDown => "kick - weapon, guard down",
             ImpactMeet.KickOther => "kick - any other guard",
+            ImpactMeet.PushShieldUp => "push - shield, guard up",
+            ImpactMeet.PushWeaponUp => "push - weapon, guard up",
+            ImpactMeet.PushShieldWrong => "push - shield, wrong guard",
+            ImpactMeet.PushWeaponWrong => "push - weapon, wrong guard",
+            ImpactMeet.PushOpen => "push - no guard or mid-swing",
             _ => "not judged",
         };
 
@@ -452,11 +506,12 @@ namespace TraxCombat.Core
         {
             var c = CultureInfo.InvariantCulture;
             var t = new StringBuilder();
-            t.Append("impact meets (step 82) - each kick / bash by how it was met (").Append(r.Enabled ? "ON" : "OFF (" + r.OffBecause + ")").Append("): ");
+            t.Append("impact meets (step 82 / 88) - each kick / bash / push by how it was met (").Append(r.Enabled ? "ON" : "OFF (" + r.OffBecause + ")").Append("): ");
             for (int i = 1; i < M; i++)
             {
                 var m = (ImpactMeet)i;
                 if (i > 1) t.Append(" | ");
+                if (m == ImpactMeet.PushShieldUp) t.Append("PUSHES (step 88 - the bash's ceilings, a guard UP the correct meet): ");
                 t.Append(ImpactMeetMath.MeetName(m)).Append(' ').Append(Decided[i].ToString(c));
                 if (Decided[i] == 0) continue;
                 if (ImpactMeetMath.AttackerAtRisk(m))

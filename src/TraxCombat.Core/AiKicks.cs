@@ -4,12 +4,15 @@ using System.Globalization;
 
 namespace TraxCombat.Core
 {
-    /// <summary>Step 65: a kick or a shield bash (what the AI is asked to do).</summary>
+    /// <summary>Step 65: a kick or a shield bash (what the AI is asked to do); step 88: a weapon PUSH - a man without a shield, his guard up then
+    /// the kick key: the engine plays his weapon's own bash (the item usage set's kick usage - act_1h_bash / act_2h_bash / act_staff_bash, all
+    /// <c>actt_weapon_bash</c>, the same <c>ActionCodeType.WeaponBash</c> 31 as a shield bash).</summary>
     public enum AiKickKind : byte
     {
         None,
         Kick,
         Bash,
+        Push,
     }
 
     /// <summary>Step 65: where one AI man's kick attempt is (the input wish the hook writes).</summary>
@@ -297,7 +300,7 @@ namespace TraxCombat.Core
     {
         public AiKickRules(bool modEnabled, bool athleticsEnabled, bool enabled, double reachMetres, double facingDegrees, double cooldownSeconds,
             bool kicksARaisedShield, int shieldKickPercent, int shieldBashPercent, int noShieldKickPercent, double friendClearMetres = 0,
-            double bashPathHalfWidthMetres = 0, double rearRankMetres = 0)
+            double bashPathHalfWidthMetres = 0, double rearRankMetres = 0, int noShieldPushPercent = 0)
         {
             FriendClear = Pos(friendClearMetres);
             BashPathHalfWidth = Pos(bashPathHalfWidthMetres);
@@ -315,19 +318,24 @@ namespace TraxCombat.Core
             if (ShieldSharesCut) b = 100 - k;
             ShieldKick = k / 100.0;
             ShieldBash = b / 100.0;
-            NoShieldKick = Math.Max(0, Math.Min(100, noShieldKickPercent)) / 100.0;
+            // step 88: a man without a shield's kick + push never over 100 - the push gives way, like the shieldman's bash
+            int nk = Math.Max(0, Math.Min(100, noShieldKickPercent)), np = Math.Max(0, Math.Min(100, noShieldPushPercent));
+            NoShieldSharesCut = nk + np > 100;
+            if (NoShieldSharesCut) np = 100 - nk;
+            NoShieldKick = nk / 100.0;
+            NoShieldPush = np / 100.0;
         }
 
         public static AiKickRules From(TraxSettings s) => new AiKickRules(s.ModEnabled, s.AthleticsEnabled, s.AiKicksEnabled, s.AiKickReachMetres, s.AiKickFacingDegrees,
             s.AiKickCooldownSeconds, s.AiKickKicksARaisedShield, s.AiShieldmanKickPercent, s.AiShieldmanBashPercent, s.AiNoShieldKickPercent, s.AiKickFriendClearMetres,
-            s.AiBashPathHalfWidthMetres, s.AiKickRearRankMetres);
+            s.AiBashPathHalfWidthMetres, s.AiKickRearRankMetres, s.AiNoShieldPushPercent);
 
         public bool ModEnabled { get; }
         public bool AthleticsEnabled { get; }
         public bool KicksEnabled { get; }
 
         /// <summary>The AI kicks: the master switch FIRST, Athletics, AiKicksEnabled, and a share above 0 (step 81).</summary>
-        public bool Enabled => ModEnabled && AthleticsEnabled && KicksEnabled && (ShieldKick > 0 || ShieldBash > 0 || NoShieldKick > 0);
+        public bool Enabled => ModEnabled && AthleticsEnabled && KicksEnabled && (ShieldKick > 0 || ShieldBash > 0 || NoShieldKick > 0 || NoShieldPush > 0);
 
         public double Reach { get; }
         public double Facing { get; }
@@ -345,11 +353,17 @@ namespace TraxCombat.Core
         /// <summary>Step 81: a man WITHOUT a shield's kick share (0-1); the swing = 1 − it.</summary>
         public double NoShieldKick { get; }
 
+        /// <summary>Step 88: a man WITHOUT a shield's weapon PUSH share (0-1 - <c>AiNoShieldPushPercent</c>); his kick + push never over 1.</summary>
+        public double NoShieldPush { get; }
+
         /// <summary>Step 81: the shieldman's kick + bash were set over 100 - the bash was cut to 100 − the kick (the describe line says it).</summary>
         public bool ShieldSharesCut { get; }
 
+        /// <summary>Step 88: the no-shield kick + push were set over 100 - the push was cut to 100 − the kick.</summary>
+        public bool NoShieldSharesCut { get; }
+
         /// <summary>The swing's share for a man with / without a shield.</summary>
-        public double SwingShare(bool shield) => shield ? Math.Max(0, 1 - ShieldKick - ShieldBash) : Math.Max(0, 1 - NoShieldKick);
+        public double SwingShare(bool shield) => shield ? Math.Max(0, 1 - ShieldKick - ShieldBash) : Math.Max(0, 1 - NoShieldKick - NoShieldPush);
 
         /// <summary>Step 68: no kick / bash while a man of his own side stands within this many metres of the line to the enemy, between them
         /// (<c>AiKickFriendClearMetres</c>; 0 = no check).</summary>
@@ -364,10 +378,11 @@ namespace TraxCombat.Core
         public double RearRank { get; }
 
         /// <summary>Step 80: the strike path's half-width for this kind (0 = no check).</summary>
-        public double PathHalfWidth(AiKickKind kind) => kind == AiKickKind.Bash ? BashPathHalfWidth : FriendClear;
+        public double PathHalfWidth(AiKickKind kind) => AiKickMath.GuardUp(kind) ? BashPathHalfWidth : FriendClear;
 
         public string? OffBecause => !ModEnabled ? "ModEnabled" : !AthleticsEnabled ? "AthleticsEnabled" : !KicksEnabled ? "AiKicksEnabled"
-            : !(ShieldKick > 0) && !(ShieldBash > 0) && !(NoShieldKick > 0) ? "AiShieldmanKickPercent, AiShieldmanBashPercent and AiNoShieldKickPercent all 0" : null;
+            : !(ShieldKick > 0) && !(ShieldBash > 0) && !(NoShieldKick > 0) && !(NoShieldPush > 0)
+                ? "AiShieldmanKickPercent, AiShieldmanBashPercent, AiNoShieldKickPercent and AiNoShieldPushPercent all 0" : null;
 
         private static double Pos(double v) => double.IsNaN(v) || v < 0 ? 0 : v;
 
@@ -378,8 +393,9 @@ namespace TraxCombat.Core
             return "ON - each melee move an AI man on foot is about to make (his wind-up) with the enemy he fights within " + AiKickMath.F1(Reach) + " m and "
                    + AiKickMath.F0(Facing) + "° of his facing is ROLLED (step 81): a SHIELDMAN kick " + AiKickMath.P0(ShieldKick) + " / shield bash " + AiKickMath.P0(ShieldBash)
                    + " / swing " + AiKickMath.P0(SwingShare(true)) + (ShieldSharesCut ? " (kick + bash set over 100% - the bash cut to what is left)" : string.Empty)
-                   + ", a man with NO shield kick " + AiKickMath.P0(NoShieldKick) + " / swing " + AiKickMath.P0(SwingShare(false))
-                   + "; a rolled kick / bash takes the place of that swing (his wind-up cancelled by the guard); farther off he swings or thrusts as the game wants (a spearman keeps his ground)"
+                   + ", a man with NO shield kick " + AiKickMath.P0(NoShieldKick) + " / weapon push " + AiKickMath.P0(NoShieldPush) + " / swing " + AiKickMath.P0(SwingShare(false))
+                   + (NoShieldSharesCut ? " (kick + push set over 100% - the push cut to what is left)" : string.Empty)
+                   + "; a rolled kick / bash / push (step 88: his weapon's bash - the guard up, then the kick key) takes the place of that swing (his wind-up cancelled by the guard); farther off he swings or thrusts as the game wants (a spearman keeps his ground)"
                    + "; refused - he swings - when staggered, down, without the Athletics or a stored swing for it, within " + AiKickMath.F1(Cooldown) + " s of his last kick or bash"
                    + (KicksARaisedShield ? "; a shieldman KICKS a raised shield facing him (a rolled bash becomes a kick)" : string.Empty)
                    + (FriendClear > 0 || BashPathHalfWidth > 0
@@ -460,8 +476,22 @@ namespace TraxCombat.Core
             double kick = shield ? r.ShieldKick : r.NoShieldKick;
             if (u < kick) return AiKickKind.Kick;
             if (shield && u < kick + r.ShieldBash) return AiKickKind.Bash;
+            if (!shield && u < kick + r.NoShieldPush) return AiKickKind.Push; // step 88: his weapon's push
             return AiKickKind.None;
         }
+
+        /// <summary>Step 88: the kinds (None, Kick, Bash, Push) - the stats' array size.</summary>
+        public const int KindCount = 4;
+
+        /// <summary>Step 88: a kind played from a raised guard - a shield bash or a weapon push (the guard's lead 0.4 s, the guard held through the
+        /// press, the bash's wider strike path and its path read again after the guard). A kick only leads with a short guard.</summary>
+        public static bool GuardUp(AiKickKind kind) => kind == AiKickKind.Bash || kind == AiKickKind.Push;
+
+        /// <summary>Step 88: what step 18's tracker shows for a kind - a shield bash and a weapon push are both the engine's WeaponBash.</summary>
+        public static KickBashKind Shown(AiKickKind kind) => kind == AiKickKind.Kick ? KickBashKind.Kick : kind == AiKickKind.None ? KickBashKind.None : KickBashKind.Bash;
+
+        /// <summary>Step 88: "kicks" / "bashes" / "pushes".</summary>
+        public static string PluralName(AiKickKind k) => k == AiKickKind.Kick ? "kicks" : k == AiKickKind.Bash ? "bashes" : k == AiKickKind.Push ? "pushes" : "swings";
 
         /// <summary>Step 81: is his move rolled at all - the enemy he fights within <c>AiKickReachMetres</c> and <c>AiKickFacingDegrees</c> of his
         /// facing? Beyond the reach nothing is rolled: he swings or thrusts as the game wants (a spearman keeps his ground with the spear - step 76's
@@ -506,7 +536,7 @@ namespace TraxCombat.Core
         /// <summary>The end of a phase begun at <paramref name="start"/> (a kick's guard is shorter than a bash's).</summary>
         public static double PhaseEnd(AiKickPhase phase, double start, AiKickKind kind = AiKickKind.Bash) => phase switch
         {
-            AiKickPhase.Guard => start + (kind == AiKickKind.Bash ? BashLeadSeconds : KickLeadSeconds),
+            AiKickPhase.Guard => start + (GuardUp(kind) ? BashLeadSeconds : KickLeadSeconds),
             AiKickPhase.Press => start + PressSeconds,
             AiKickPhase.Commit => start + WatchSeconds,
             _ => start,
@@ -533,7 +563,7 @@ namespace TraxCombat.Core
             if (phase == AiKickPhase.None) return movementFlags;
             uint f = movementFlags & ~(AiInputMath.AttackMask | AiInputMath.DefendMask);
             eventFlags = 0;
-            bool bash = kind == AiKickKind.Bash;
+            bool bash = GuardUp(kind); // step 88: a push as a bash - the guard held up through the press (the engine plays his weapon's bash)
             if (phase == AiKickPhase.Guard || (bash && phase == AiKickPhase.Press)) f |= DefendUp;
             if (phase == AiKickPhase.Press) eventFlags = KickEventBit;
             return f;
@@ -595,7 +625,7 @@ namespace TraxCombat.Core
             _ => "missed",
         };
 
-        public static string KindName(AiKickKind k) => k == AiKickKind.Bash ? "shield bash" : k == AiKickKind.Kick ? "kick" : "swing";
+        public static string KindName(AiKickKind k) => k == AiKickKind.Bash ? "shield bash" : k == AiKickKind.Kick ? "kick" : k == AiKickKind.Push ? "weapon push" : "swing";
 
         public static string VictimName(AiKickVictim v) => v switch
         {
@@ -625,10 +655,10 @@ namespace TraxCombat.Core
         /// <summary>Step 81: the man types - 0 a shieldman, 1 no shield (step 65's turtle / fever reasons are gone with the rate).</summary>
         public const int ReasonCount = 2;
 
-        private readonly int[,] _asked = new int[3, ReasonCount];
-        private readonly int[,] _played = new int[3, ReasonCount];
-        private readonly int[,] _landed = new int[3, ReasonCount];
-        private readonly int[,] _blocked = new int[3, ReasonCount];
+        private readonly int[,] _asked = new int[AiKickMath.KindCount, ReasonCount];
+        private readonly int[,] _played = new int[AiKickMath.KindCount, ReasonCount];
+        private readonly int[,] _landed = new int[AiKickMath.KindCount, ReasonCount];
+        private readonly int[,] _blocked = new int[AiKickMath.KindCount, ReasonCount];
         public readonly int[] Skips = new int[AiKickMath.SkipCount];
         public readonly int[] Ends = new int[AiKickMath.EndCount];
 
@@ -640,7 +670,7 @@ namespace TraxCombat.Core
         /// <summary>Step 81: the moves in kick reach by man type, what the die rolled for them and what was DONE (kind 0 = a swing, 1 kick, 2 bash);
         /// a refused kick / bash is a swing done; the refusals by man type and group (<see cref="AiKickMath.GroupOf"/>).</summary>
         private readonly int[] _moves = new int[ReasonCount];
-        private readonly int[,] _rolled = new int[ReasonCount, 3];
+        private readonly int[,] _rolled = new int[ReasonCount, AiKickMath.KindCount];
         private readonly int[,] _refused = new int[ReasonCount, AiKickMath.GroupCount];
 
         /// <summary>Step 81: a shieldman's rolled bash turned into a kick by a raised shield facing him (<c>AiKickKicksARaisedShield</c>).</summary>
@@ -671,7 +701,7 @@ namespace TraxCombat.Core
         public int Done(int type, AiKickKind k)
         {
             if (k != AiKickKind.None) return _asked[(int)k, type];
-            return _moves[type] - _asked[1, type] - _asked[2, type];
+            return _moves[type] - _asked[1, type] - _asked[2, type] - _asked[3, type];
         }
 
         /// <summary>Played as the other kind (asked a bash, the engine kicked - or the other way round).</summary>
@@ -687,10 +717,10 @@ namespace TraxCombat.Core
         public int FriendChecksClear;
 
         /// <summary>Step 80: whom each PLAYED kick / bash hit first, by kind (<see cref="AiKickOutcome"/>; a miss = played, no collision).</summary>
-        private readonly int[,] _outcomes = new int[3, (int)AiKickOutcome.Count];
+        private readonly int[,] _outcomes = new int[AiKickMath.KindCount, (int)AiKickOutcome.Count];
 
         /// <summary>Step 80: the strike path's verdicts at the look (in reach and in front) by kind, and at a bash's press (after its guard).</summary>
-        private readonly int[,] _paths = new int[3, (int)AiKickPath.Count];
+        private readonly int[,] _paths = new int[AiKickMath.KindCount, (int)AiKickPath.Count];
         private readonly int[] _pressPaths = new int[(int)AiKickPath.Count];
 
         /// <summary>Step 87 (a diagnostic): who blocks the strike path at a refusal, whom a kick / bash on a friend hit - the 7th [summary] line.</summary>
@@ -723,7 +753,7 @@ namespace TraxCombat.Core
             var c = CultureInfo.InvariantCulture;
             int e = EnemyHits(k), f = FriendHits(k), u = OutcomeCount(k, AiKickOutcome.Untracked), m = OutcomeCount(k, AiKickOutcome.Miss);
             int hits = e + f + u;
-            return (k == AiKickKind.Kick ? "kicks" : "bashes") + ": on an ENEMY " + e + " (his target " + OutcomeCount(k, AiKickOutcome.EnemyTarget) + ", another "
+            return AiKickMath.PluralName(k) + ": on an ENEMY " + e + " (his target " + OutcomeCount(k, AiKickOutcome.EnemyTarget) + ", another "
                    + OutcomeCount(k, AiKickOutcome.EnemyOther) + ", into his shield " + OutcomeCount(k, AiKickOutcome.EnemyShield) + "), on a FRIEND " + f + " (the man "
                    + OutcomeCount(k, AiKickOutcome.FriendBody) + ", his shield " + OutcomeCount(k, AiKickOutcome.FriendShield) + "), a horse / untracked " + u + ", MISSED " + m
                    + (hits > 0 ? " - friends " + (100.0 * f / hits).ToString("0.0", c) + "% of the hits" : string.Empty);
@@ -734,23 +764,23 @@ namespace TraxCombat.Core
         {
             var c = CultureInfo.InvariantCulture;
             double minutes = ContactManSeconds / 60.0;
-            int enemy = EnemyHits(AiKickKind.Kick) + EnemyHits(AiKickKind.Bash);
+            int enemy = EnemyHits(AiKickKind.Kick) + EnemyHits(AiKickKind.Bash) + EnemyHits(AiKickKind.Push);
             var sb = new System.Text.StringBuilder("ai kicks - whom they hit and the strike path (step 80): ");
-            sb.Append(OutcomeText(AiKickKind.Kick)).Append(" | ").Append(OutcomeText(AiKickKind.Bash));
+            sb.Append(OutcomeText(AiKickKind.Kick)).Append(" | ").Append(OutcomeText(AiKickKind.Bash)).Append(" | ").Append(OutcomeText(AiKickKind.Push)); // step 88: pushes apart
             sb.Append("; enemy hits a man-minute in contact ").Append(minutes > 0 ? (enemy / minutes).ToString("0.000", c) : "n/a");
             sb.Append(" | the strike path at the look (in reach and in front; kicks ").Append(AiKickMath.F2(r.FriendClear)).Append(" m, bashes ")
-              .Append(AiKickMath.F2(r.BashPathHalfWidth)).Append(" m either side, rear rank ").Append(AiKickMath.F1(r.RearRank)).Append(" m): ");
-            for (int k = 1; k <= 2; k++)
+              .Append(AiKickMath.F2(r.BashPathHalfWidth)).Append(" m (pushes too) either side, rear rank ").Append(AiKickMath.F1(r.RearRank)).Append(" m): ");
+            for (int k = 1; k < AiKickMath.KindCount; k++)
             {
                 if (k > 1) sb.Append("; ");
-                sb.Append(k == 1 ? "kicks" : "bashes");
+                sb.Append(AiKickMath.PluralName((AiKickKind)k));
                 for (int p = 0; p < (int)AiKickPath.Count; p++)
                     sb.Append(p == 0 ? " " : ", ").Append(AiKickMath.PathName((AiKickPath)p)).Append(' ').Append(_paths[k, p]);
             }
             int refused = 0;
-            for (int k = 1; k <= 2; k++)
+            for (int k = 1; k < AiKickMath.KindCount; k++)
                 for (int p = 1; p < (int)AiKickPath.Count; p++) refused += _paths[k, p];
-            sb.Append(" - REFUSED ").Append(refused).Append("; a bash's path again after its guard: ");
+            sb.Append(" - REFUSED ").Append(refused).Append("; a bash's / push's path again after its guard: ");
             for (int p = 0; p < (int)AiKickPath.Count; p++)
                 sb.Append(p == 0 ? string.Empty : ", ").Append(AiKickMath.PathName((AiKickPath)p)).Append(' ').Append(_pressPaths[p]);
             sb.Append("; probes ").Append(PathProbes).Append(", friends looked at ").Append(PathFriendsLooked);
@@ -788,7 +818,7 @@ namespace TraxCombat.Core
         public int PlayedCount(AiKickKind k) => Sum(_played, k);
         public int LandedCount(AiKickKind k) => Sum(_landed, k);
         public int BlockedCount(AiKickKind k) => Sum(_blocked, k);
-        public int AskedFor(int reason) => _asked[1, reason] + _asked[2, reason];
+        public int AskedFor(int reason) => _asked[1, reason] + _asked[2, reason] + _asked[3, reason];
 
         private static int Sum(int[,] a, AiKickKind k)
         {
@@ -822,17 +852,19 @@ namespace TraxCombat.Core
                 bool shield = t == 0;
                 sb.Append(TypeName(t)).Append(' ').Append(n).Append(" moves - rolled kick ").Append(P(_rolled[t, 1], n));
                 if (shield) sb.Append(" / bash ").Append(P(_rolled[t, 2], n));
+                else sb.Append(" / push ").Append(P(_rolled[t, 3], n)); // step 88
                 sb.Append(" / swing ").Append(P(_rolled[t, 0], n)).Append(" (target ").Append(AiKickMath.P0(shield ? r.ShieldKick : r.NoShieldKick));
-                if (shield) sb.Append(" / ").Append(AiKickMath.P0(r.ShieldBash));
+                sb.Append(" / ").Append(AiKickMath.P0(shield ? r.ShieldBash : r.NoShieldPush));
                 sb.Append(" / ").Append(AiKickMath.P0(r.SwingShare(shield))).Append(") → DONE kick ").Append(P(Done(t, AiKickKind.Kick), n));
                 if (shield) sb.Append(" / bash ").Append(P(Done(t, AiKickKind.Bash), n));
+                else sb.Append(" / push ").Append(P(Done(t, AiKickKind.Push), n));
                 sb.Append(" / swing ").Append(P(Done(t, AiKickKind.None), n)).Append("; refused ");
                 for (int g = 1; g < AiKickMath.GroupCount; g++) sb.Append(g > 1 ? ", " : string.Empty).Append(AiKickMath.GroupName(g)).Append(' ').Append(_refused[t, g]);
             }
             double minutes = ContactManSeconds / 60.0;
-            int kicks = AskedCount(AiKickKind.Kick), bashes = AskedCount(AiKickKind.Bash);
-            sb.Append(" | kicks ").Append(kicks).Append(" and bashes ").Append(bashes).Append(" asked = ")
-              .Append(minutes > 0 ? ((kicks + bashes) / minutes).ToString("0.00", c) + " a man-minute in contact (" + minutes.ToString("0.0", c) + " man-minutes)" : "n/a a man-minute (no contact measured)");
+            int kicks = AskedCount(AiKickKind.Kick), bashes = AskedCount(AiKickKind.Bash), pushes = AskedCount(AiKickKind.Push);
+            sb.Append(" | kicks ").Append(kicks).Append(", bashes ").Append(bashes).Append(" and pushes ").Append(pushes).Append(" asked = ")
+              .Append(minutes > 0 ? ((kicks + bashes + pushes) / minutes).ToString("0.00", c) + " a man-minute in contact (" + minutes.ToString("0.0", c) + " man-minutes)" : "n/a a man-minute (no contact measured)");
             sb.Append("; a raised shield kicked instead of bashed ").Append(RaisedShieldKicks);
             sb.Append("; refused by reason: ");
             bool first = true;
@@ -851,13 +883,13 @@ namespace TraxCombat.Core
         {
             var lines = new List<string>();
             var c = CultureInfo.InvariantCulture;
-            int asked = AskedCount(AiKickKind.Kick) + AskedCount(AiKickKind.Bash);
-            int played = PlayedCount(AiKickKind.Kick) + PlayedCount(AiKickKind.Bash);
-            int landed = LandedCount(AiKickKind.Kick) + LandedCount(AiKickKind.Bash);
-            int blocked = BlockedCount(AiKickKind.Kick) + BlockedCount(AiKickKind.Bash);
+            int asked = AskedCount(AiKickKind.Kick) + AskedCount(AiKickKind.Bash) + AskedCount(AiKickKind.Push);
+            int played = PlayedCount(AiKickKind.Kick) + PlayedCount(AiKickKind.Bash) + PlayedCount(AiKickKind.Push);
+            int landed = LandedCount(AiKickKind.Kick) + LandedCount(AiKickKind.Bash) + LandedCount(AiKickKind.Push);
+            int blocked = BlockedCount(AiKickKind.Kick) + BlockedCount(AiKickKind.Bash) + BlockedCount(AiKickKind.Push);
             double minutes = ContactManSeconds / 60.0;
             lines.Add("ai kicks (step 65 / 81): " + r.Describe());
-            lines.Add("ai kicks: asked " + asked + " (kicks " + AskedCount(AiKickKind.Kick) + ", bashes " + AskedCount(AiKickKind.Bash) + ") → PLAYED " + played
+            lines.Add("ai kicks: asked " + asked + " (kicks " + AskedCount(AiKickKind.Kick) + ", bashes " + AskedCount(AiKickKind.Bash) + ", pushes " + AskedCount(AiKickKind.Push) + ") → PLAYED " + played
                       + (asked > 0 ? " (" + (100.0 * played / asked).ToString("0", c) + "%)" : string.Empty) + (PlayedDelayCount > 0 ? ", seen " + (PlayedDelay / PlayedDelayCount).ToString("0.00", c) + " s after the ask" : string.Empty)
                       + " → landed on the man " + landed + VictimsText() + ", into a shield " + blocked + (PlayedOtherKind > 0 ? "; played as the other kind " + PlayedOtherKind : string.Empty)
                       + "; " + (minutes > 0 ? (asked / minutes).ToString("0.00", c) + " asked a man-minute in contact (" + minutes.ToString("0.0", c) + " man-minutes)" : "no man-minute in contact measured (the fever's look off)")
@@ -866,7 +898,14 @@ namespace TraxCombat.Core
             for (int k = 0; k < ReasonCount; k++)
             {
                 if (k > 0) sb.Append(" | ");
-                int a = _asked[1, k] + _asked[2, k], p = _played[1, k] + _played[2, k], l = _landed[1, k] + _landed[2, k], b = _blocked[1, k] + _blocked[2, k];
+                int a = 0, p = 0, l = 0, b = 0;
+                for (int kk = 1; kk < AiKickMath.KindCount; kk++)
+                {
+                    a += _asked[kk, k];
+                    p += _played[kk, k];
+                    l += _landed[kk, k];
+                    b += _blocked[kk, k];
+                }
                 sb.Append(ReasonName(k)).Append(' ').Append(a).Append(" → ").Append(p).Append(" → ").Append(l).Append(" / ").Append(b);
             }
             lines.Add(sb.ToString());

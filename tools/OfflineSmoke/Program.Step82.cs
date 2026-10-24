@@ -39,7 +39,7 @@ namespace TraxCombat.Tools
                     return new MeetGuardRead
                     {
                         Kind = Shields.Contains(i) ? MeetGuardKind.Shield : MeetGuardKind.Weapon,
-                        Dir = st.Input.MeetGuardFlag == ImpactMeetMath.FlagDefendRight ? MeetDir.Right : MeetDir.Down,
+                        Dir = st.Input.MeetGuardFlag == ImpactMeetMath.FlagDefendRight ? MeetDir.Right : st.Input.MeetGuardFlag == ImpactMeetMath.FlagDefendUp ? MeetDir.Up : MeetDir.Down, // step 88: UP against a push
                         ActionType = Shields.Contains(i) ? 2 : 9, ActionDirection = -1, DefendFlag = st.Input.MeetGuardFlag,
                         GuardKg = Shields.Contains(i) ? 4.0 : 1.2, GuardSkill = Guards.TryGetValue(i, out var own) ? own.GuardSkill : 130,
                     };
@@ -296,7 +296,7 @@ namespace TraxCombat.Tools
                 S.Set(SettingsSchema.ModEnabled, true, SettingSources.Mcm);
 
                 logic.WriteImpactSummary();
-                LogHas("[summary] impact meets (step 82) - each kick / bash by how it was met (ON): bash - shield, guard right 2 → the ATTACKER staggered 1");
+                LogHas("[summary] impact meets (step 82 / 88) - each kick / bash / push by how it was met (ON): bash - shield, guard right 2 → the ATTACKER staggered 1");
                 LogHas("[summary] impact meets - the guard read at contact (step 82; PLAYTEST D47 - does the engine tell the direction?)");
                 LogHas("[summary] impact meets - the AI reads an incoming kick / bash (step 82)");
             }

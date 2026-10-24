@@ -2100,9 +2100,10 @@
   // (range 100 to 2000)
   "ImpactMultiplierCapPercent": 800,
 
-  // On: an AI soldier on foot whose enemy is within kick reach in front of him kicks him or
-  // bashes him with his shield instead of some of his swings - by the shares below. Each costs
-  // Athletics and a stored swing, like yours. Off: the game's AI, which never kicks.
+  // On: an AI soldier on foot whose enemy is within kick reach in front of him kicks him,
+  // bashes him with his shield or (with no shield) pushes him with his weapon instead of some
+  // of his swings - by the shares below. Each costs Athletics and a stored swing, like yours.
+  // Off: the game's AI, which never kicks.
   // (true or false)
   "AiKicksEnabled": true,
 
@@ -2110,20 +2111,27 @@
   // kick reach in front of him, this share are kicks (they take the place of a swing). With the
   // bash share below it never goes over 100 - if it does, the bash share is cut.
   // (range 0 to 100)
-  "AiShieldmanKickPercent": 20,
+  "AiShieldmanKickPercent": 25,
 
   // Of those moves of an AI soldier WITH a shield, this share are shield bashes; he swings the
   // rest (100 minus the kick and bash shares). A raised enemy shield facing him is kicked
   // instead.
   // (range 0 to 100)
-  "AiShieldmanBashPercent": 35,
+  "AiShieldmanBashPercent": 40,
 
   // Of the melee moves an AI soldier WITHOUT a shield makes while the enemy he fights is within
-  // kick reach in front of him, this share are kicks; he swings the rest. Shock troops with
-  // two-handers throw people around more. A spearman with the enemy beyond kick reach keeps
-  // thrusting.
+  // kick reach in front of him, this share are kicks; with the push share below he swings the
+  // rest. Shock troops with two-handers throw people around more. A spearman with the enemy
+  // beyond kick reach keeps thrusting.
   // (range 0 to 100)
   "AiNoShieldKickPercent": 35,
+
+  // Of those moves of an AI soldier WITHOUT a shield, this share are pushes with his weapon
+  // (guard up, then the kick key - the game's weapon bash); he swings the rest (100 minus the
+  // kick and push shares). With the kick share above it never goes over 100 - if it does, the
+  // push share is cut. A push met by a guard held UP throws the pusher off balance.
+  // (range 0 to 100)
+  "AiNoShieldPushPercent": 20,
 
   // An AI soldier kicks or bashes only the enemy he fights, and only within this many metres (a
   // kick reaches about a pace).

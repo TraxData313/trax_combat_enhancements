@@ -8,7 +8,9 @@ namespace TraxCombat.Core
         /// <summary>A kick (the kick key) - the engine's Kick, KickContinue, KickHit actions.</summary>
         Kick = 1,
 
-        /// <summary>A shield bash (attack while blocking; staff and two-hander bashes too) - WeaponBash.</summary>
+        /// <summary>A shield bash (attack while blocking; staff and two-hander bashes too) - WeaponBash. Step 88: a man WITHOUT a shield's weapon
+        /// PUSH is the same action type (the item usage sets' kick usages act_1h_bash / act_2h_bash / act_staff_bash are all actt_weapon_bash, as is
+        /// act_shield_bash) - charged and counted as a bash here; the AI's ask and the impact model's collision tell the push apart.</summary>
         Bash = 2,
     }
 

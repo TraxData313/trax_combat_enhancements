@@ -249,7 +249,7 @@ namespace TraxCombat.Tools
                     var m = men[i];
                     if (m.AiKickPhase == AiKickPhase.Commit && double.IsNaN(hitAt[i]) && double.IsNaN(endAt[i]))
                     {
-                        if (m.AiKickKind == AiKickKind.Bash) logic.ObserveAction(m, KickBashTracker.ActionWeaponBash, t, ar);
+                        if (AiKickMath.GuardUp(m.AiKickKind)) logic.ObserveAction(m, KickBashTracker.ActionWeaponBash, t, ar); // a shield bash / a weapon push (step 88): the engine's WeaponBash
                         else logic.ObserveLowerAction(m, KickBashTracker.ActionKick, t, ar);
                         hitAt[i] = t + 0.25;
                         endAt[i] = t + 0.6;
@@ -257,7 +257,7 @@ namespace TraxCombat.Tools
                     if (!double.IsNaN(hitAt[i]) && t >= hitAt[i])
                     {
                         hitAt[i] = double.NaN;
-                        double sideLimit = m.AiKickKind == AiKickKind.Bash ? engineBashSide : engineKickSide;
+                        double sideLimit = AiKickMath.GuardUp(m.AiKickKind) ? engineBashSide : engineKickSide; // step 88: a push sweeps like a bash
                         int first = -1;
                         double fa = double.MaxValue;
                         for (int j = 0; j < n; j++)
@@ -276,7 +276,7 @@ namespace TraxCombat.Tools
                     if (!double.IsNaN(endAt[i]) && t >= endAt[i])
                     {
                         endAt[i] = double.NaN;
-                        if (m.AiKickKind == AiKickKind.Bash) logic.ObserveAction(m, 35, t, ar);
+                        if (AiKickMath.GuardUp(m.AiKickKind)) logic.ObserveAction(m, 35, t, ar);
                         else logic.ObserveLowerAction(m, 35, t, ar);
                     }
                 }
@@ -284,12 +284,16 @@ namespace TraxCombat.Tools
             for (int s = 0; s < 3; s++) logic.TickAiKicks(t += 0.5);
             var st = logic.AiKickStats;
             res.Stats = st;
-            res.Asked = st.AskedCount(AiKickKind.Kick) + st.AskedCount(AiKickKind.Bash);
-            res.Played = st.PlayedCount(AiKickKind.Kick) + st.PlayedCount(AiKickKind.Bash);
-            res.EnemyHits = st.EnemyHits(AiKickKind.Kick) + st.EnemyHits(AiKickKind.Bash);
-            res.FriendHits = st.FriendHits(AiKickKind.Kick) + st.FriendHits(AiKickKind.Bash);
-            res.Misses = st.OutcomeCount(AiKickKind.Kick, AiKickOutcome.Miss) + st.OutcomeCount(AiKickKind.Bash, AiKickOutcome.Miss);
-            for (int kd = 1; kd <= 2; kd++)
+            for (int kd = 1; kd < AiKickMath.KindCount; kd++) // step 88: the pushes too
+            {
+                var kk = (AiKickKind)kd;
+                res.Asked += st.AskedCount(kk);
+                res.Played += st.PlayedCount(kk);
+                res.EnemyHits += st.EnemyHits(kk);
+                res.FriendHits += st.FriendHits(kk);
+                res.Misses += st.OutcomeCount(kk, AiKickOutcome.Miss);
+            }
+            for (int kd = 1; kd < AiKickMath.KindCount; kd++)
                 for (int p = 1; p < (int)AiKickPath.Count; p++) res.Refused += st.PathCount((AiKickKind)kd, (AiKickPath)p);
             res.PressBlocked = st.Ends[(int)AiKickEnd.PathBlocked];
             res.ContactMinutes = st.ContactManSeconds / 60.0;

@@ -603,6 +603,7 @@ namespace TraxCombat.Core
         public float MeetAiReadReactionSeconds => GetFloat(SettingsSchema.MeetAiReadReactionSeconds); // step 82
         public float MeetAiReadMaxHoldSeconds => GetFloat(SettingsSchema.MeetAiReadMaxHoldSeconds); // step 82
         public int AiNoShieldKickPercent => GetInt(SettingsSchema.AiNoShieldKickPercent); // step 81
+        public int AiNoShieldPushPercent => GetInt(SettingsSchema.AiNoShieldPushPercent); // step 88
         public float AiKickReachMetres => GetFloat(SettingsSchema.AiKickReachMetres);
         public int AiKickFacingDegrees => GetInt(SettingsSchema.AiKickFacingDegrees);
         public float AiKickCooldownSeconds => GetFloat(SettingsSchema.AiKickCooldownSeconds);

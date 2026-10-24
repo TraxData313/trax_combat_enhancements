@@ -27,6 +27,11 @@ namespace TraxCombat.Missions
     /// (safety), with no stored swing (step 32's stack - KicksUseSwings), within the cooldown of his last, or when the enemy is not the first body in
     /// his strike path (step 80). The rate, its factors, the bar gate, the wait for reach and the bash credit (steps 65 / 66) are gone.
     ///
+    /// THE PUSH (step 88, Toni 2026-10-24: "with my two handed axe guarding and pressing shield bash it pushes with the axe"; AI_NOTES "Step 88"): a
+    /// man WITHOUT a shield rolls a third move, a WEAPON PUSH (<c>AiNoShieldPushPercent</c>) - the bash's phases (the guard up 0.4 s, the kick key
+    /// with it held): the engine plays his weapon's own kick usage (act_1h_bash / act_2h_bash / act_staff_bash - the same WeaponBash action as a
+    /// shield bash), its strike path a bash's and read again after the guard; it spends a stored swing and costs <c>CostPerKickOrBash</c> like one.
+    ///
     /// THE COST: the kick / bash is SEEN by step 18's action poll like yours and charged there - <c>CostPerKickOrBash</c> and a stored swing
     /// (step 32) - nothing of our own.
     ///
@@ -45,7 +50,8 @@ namespace TraxCombat.Missions
         private double _aiKickCarry;
         private double _aiKickLastTick = double.NaN;
         private string _seenAiKickText = string.Empty;
-        private readonly bool[] _aiKickFirst = new bool[12]; // 7 / 8: step 87's first refusal by a friend - a kick / a bash; 9 / 10: its first friend hit
+        private readonly bool[] _aiKickFirst = new bool[16]; // 7 / 8: step 87's first refusal by a friend - a kick / a bash; 9 / 10: its first friend hit;
+                                                             // step 88: 12 / 13 the same for a push, 14 the first push ENDED after its guard, 15 the first push asked
 
         /// <summary>This mission's AI kick numbers (the smoke reads them).</summary>
         internal AiKickStats AiKickStats => _aiKickStats;
@@ -279,7 +285,7 @@ namespace TraxCombat.Missions
         /// <summary>Step 87: the first strike-path refusal by a friend of each kind, in full - who blocked and where he stood.</summary>
         private void BlockFirstLine(TrackedAgent st, TrackedAgent target, AiKickKind kind, AiKickPath path, in AiKickBlocker b, float distance, float off, double now)
         {
-            if (!AiKickFirst(kind == AiKickKind.Bash ? 8 : 7)) return;
+            if (!AiKickFirst(kind == AiKickKind.Push ? 12 : kind == AiKickKind.Bash ? 8 : 7)) return;
             var friend = b.FriendIndex >= 0 ? GetByIndex(b.FriendIndex) : null;
             TraxLog.Info("impact", "first AI " + AiKickMath.KindName(kind) + " REFUSED by a friend - who blocks the path (step 87 diagnostic) at " + Sec(now) + " s: "
                 + Name(st) + BlockRanks(b.File, b.Rank) + " at " + Name(target) + " " + F2(distance) + " m off, " + F1(off) + "° off his facing - " + AiKickMath.PathName(path)
@@ -353,12 +359,12 @@ namespace TraxCombat.Missions
             AiInputHook.SetKick(st, st.AiKickPhase, kind, now);
             NoteHooked(st, AiKickBody.Hook(st));
             _aiKickStats.Asked(kind, type);
-            MeetReadStart(st, target, kind == AiKickKind.Bash, now); // step 82: the target may read it from its start
-            if (AiKickFirst(0))
+            MeetReadStart(st, target, AiKickMath.GuardUp(kind), now, kind == AiKickKind.Push); // step 82: the target may read it from its start (step 88: a push with the guard UP)
+            if (AiKickFirst(0) | (kind == AiKickKind.Push && AiKickFirst(15))) // step 88: the first push in full too
                 TraxLog.Info("impact", "first AI " + AiKickMath.KindName(kind) + " asked at " + Sec(now) + " s - " + Name(st) + " (bar " + Pct0(st.Fraction) + ", "
                     + AiKickStats.TypeName(type) + ") on " + Name(target) + " in place of the swing he was winding up (step 81) - through his own input: the guard up "
-                    + F2(kind == AiKickKind.Bash ? AiKickMath.BashLeadSeconds : AiKickMath.KickLeadSeconds) + " s (his wind-up cancelled), then the kick key "
-                    + F2(AiKickMath.PressSeconds) + " s" + (kind == AiKickKind.Bash ? " with the guard up" : string.Empty) + ", then his own input held off until it plays out ("
+                    + F2(AiKickMath.GuardUp(kind) ? AiKickMath.BashLeadSeconds : AiKickMath.KickLeadSeconds) + " s (his wind-up cancelled), then the kick key "
+                    + F2(AiKickMath.PressSeconds) + " s" + (AiKickMath.GuardUp(kind) ? " with the guard up" + (kind == AiKickKind.Push ? " (no shield: the engine plays his weapon's bash - step 88)" : string.Empty) : string.Empty) + ", then his own input held off until it plays out ("
                     + F1(AiKickMath.WatchSeconds) + " s at most)");
         }
 
@@ -383,7 +389,7 @@ namespace TraxCombat.Missions
                         st.AiKickSeen = true;
                         _aiKickStats.Played(st.AiKickKind, st.AiKickReason, now - st.AiKickStart);
                         var shown = kb.Upper != KickBashKind.None ? kb.Upper : kb.Lower;
-                        if (shown != KickBashKind.None && (shown == KickBashKind.Bash) != (st.AiKickKind == AiKickKind.Bash)) _aiKickStats.PlayedOtherKind++;
+                        if (shown != KickBashKind.None && shown != AiKickMath.Shown(st.AiKickKind)) _aiKickStats.PlayedOtherKind++; // step 88: a push shows as the engine's WeaponBash
                         if (AiKickFirst(1))
                             TraxLog.Info("impact", "first AI " + AiKickMath.KindName(st.AiKickKind) + " PLAYED at " + Sec(now) + " s - " + Name(st) + "'s action showed "
                                 + F2(now - st.AiKickStart) + " s after the ask (" + (shown == KickBashKind.Bash ? "a bash" : shown == KickBashKind.Kick ? "a kick" : "seen at its hit")
@@ -407,15 +413,15 @@ namespace TraxCombat.Missions
                             EndAiKick(i--, st.AiKickSeen ? AiKickEnd.Played : AiKickEnd.NotPlayed, now);
                             continue;
                         }
-                        if (next == AiKickPhase.Press && st.AiKickKind == AiKickKind.Bash)
+                        if (next == AiKickPhase.Press && AiKickMath.GuardUp(st.AiKickKind))
                         {
-                            // step 80: the bash's guard is over - its path read again before the key
+                            // step 80: the bash's guard is over - its path read again before the key (step 88: a push's too)
                             var pv = PressPath(st, in r);
-                            if (r.PathHalfWidth(AiKickKind.Bash) > 0) _aiKickStats.NotePressPath(pv);
+                            if (r.PathHalfWidth(st.AiKickKind) > 0) _aiKickStats.NotePressPath(pv);
                             if (pv != AiKickPath.Clear)
                             {
-                                if (AiKickFirst(6))
-                                    TraxLog.Info("impact", "first AI shield bash ENDED before its key at " + Sec(now) + " s (step 80) - " + Name(st) + ": after the "
+                                if (AiKickFirst(st.AiKickKind == AiKickKind.Push ? 14 : 6))
+                                    TraxLog.Info("impact", "first AI " + AiKickMath.KindName(st.AiKickKind) + " ENDED before its key at " + Sec(now) + " s (step 80) - " + Name(st) + ": after the "
                                         + F2(AiKickMath.BashLeadSeconds) + " s guard his strike path is no longer clear (" + AiKickMath.PathName(pv) + ") - no bash");
                                 EndAiKick(i--, AiKickEnd.PathBlocked, now);
                                 continue;
@@ -519,7 +525,7 @@ namespace TraxCombat.Missions
                 Failed("aikick.locate", e);
             }
             _aiKickStats.Blocks.NoteFriendHit(st.AiKickKind, in b, st.AiKickAngle);
-            if (!AiKickFirst(st.AiKickKind == AiKickKind.Bash ? 10 : 9)) return;
+            if (!AiKickFirst(st.AiKickKind == AiKickKind.Push ? 13 : st.AiKickKind == AiKickKind.Bash ? 10 : 9)) return;
             var friend = Get(victim);
             TraxLog.Info("impact", "first AI " + AiKickMath.KindName(st.AiKickKind) + " on a FRIEND - where he stood (step 87 diagnostic) at " + Sec(SafeNow()) + " s: "
                 + Name(st) + BlockRanks(b.File, b.Rank) + (intoShield ? " hit the shield of " : " hit ") + (friend != null ? Name(friend) : "a friend") + BlockRanks(b.FriendFile, b.FriendRank)

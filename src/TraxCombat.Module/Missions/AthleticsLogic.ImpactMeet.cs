@@ -29,7 +29,7 @@ namespace TraxCombat.Missions
         private readonly ImpactMeetStats _meet = new ImpactMeetStats();
         private readonly TrackedAgent?[] _meetReaders = new TrackedAgent?[MeetMaxReaders];
         private int _meetReaderCount;
-        private readonly bool[] _meetFirst = new bool[24];
+        private readonly bool[] _meetFirst = new bool[48]; // 1-3 the reads (3 a push's), 16 + row the first meet per row, 30 + row its first outcome
 
         /// <summary>This mission's meet numbers (the smoke reads them).</summary>
         internal ImpactMeetStats ImpactMeetStats => _meet;
@@ -74,7 +74,7 @@ namespace TraxCombat.Missions
                 return;
             }
             _meet.NoteGuard(g.Kind, g.Dir);
-            f.Meet = ImpactMeetMath.Classify(f.Event == ImpactEvent.Bash, blocked, g.Kind, g.Dir);
+            f.Meet = ImpactMeetMath.Classify(f.Event == ImpactEvent.Bash, blocked, g.Kind, g.Dir, f.Push); // step 88: a push's correct meet = a guard UP
             f.AltBlocked = blocked;
             if (ImpactMeetMath.AttackerAtRisk(f.Meet))
             {
@@ -82,10 +82,10 @@ namespace TraxCombat.Missions
                 f.MeetGuardSkill = g.GuardSkill;
             }
             int k = (int)f.Meet;
-            if (k > 0 && k < ImpactMeetMath.MeetCount && MeetFirst(k))
+            if (k > 0 && k < ImpactMeetMath.MeetCount && MeetFirst(16 + k))
                 TraxLog.Info("impact", "first meet " + ImpactMeetMath.MeetName(f.Meet) + " at " + Sec(SpikeNow) + " s (step 82) - the guard read at contact: "
                     + ImpactMeetMath.GuardName(g.Kind, g.Dir) + " (channel 1 action " + g.ActionType + ", its direction " + g.ActionDirection + ", the defend flag 0x"
-                    + g.DefendFlag.ToString("X") + (blocked ? ", the shield STOPPED the bash" : ", it landed") + ")");
+                    + g.DefendFlag.ToString("X") + (blocked ? ", the shield STOPPED the " + (f.Push ? "push" : "bash") : ", it landed") + ")");
         }
 
         // ------------------------------------------------------------------ the decision applied (from ImpactDecide)
@@ -133,7 +133,7 @@ namespace TraxCombat.Missions
                     }
                 }
             }
-            int k = 10 + (int)d.Meet;
+            int k = 30 + (int)d.Meet;
             bool any = d.Riposte.Happens || d.ThrownBack.Happens || d.Knockdown.Happens || d.Stagger.Happens || d.ShieldDrop.Happens;
             if (any && k < _meetFirst.Length && MeetFirst(k))
                 TraxLog.Info("impact", "first meet outcome - " + ImpactMeetMath.MeetName(d.Meet) + " at " + Sec(now) + " s: " + Name(a) + " (bar " + Pct0(a.Fraction) + ") on "
@@ -161,7 +161,10 @@ namespace TraxCombat.Missions
         /// poll sees its action - you): an AI target rolls ONCE whether he reads it. Never you, a rider, a man down / reeling, in his own kick, or
         /// reading already. Main thread; no engine call but the two property reads (only when he may read).
         /// </summary>
-        internal void MeetReadStart(TrackedAgent attacker, TrackedAgent? target, bool bash, double now)
+        internal void MeetReadStart(TrackedAgent attacker, TrackedAgent? target, bool bash, double now) => MeetReadStart(attacker, target, bash, now, push: false);
+
+        /// <summary>Step 88: ... a weapon PUSH (<paramref name="push"/>, with <paramref name="bash"/>) is read with the guard UP - its correct meet.</summary>
+        internal void MeetReadStart(TrackedAgent attacker, TrackedAgent? target, bool bash, double now, bool push)
         {
             var m = ImpactMeetRules.From(TraxSettings.Shared);
             if (!m.AiReads) return; // the master switch first (inside)
@@ -189,14 +192,15 @@ namespace TraxCombat.Missions
             }
             target.MeetReading = true;
             target.MeetReadBash = bash;
+            target.MeetReadPush = bash && push;
             target.MeetGuardUp = false;
             target.MeetReadStart = now;
             target.MeetReadBy = attacker;
             _meetReaders[_meetReaderCount++] = target;
-            if (MeetFirst(1))
-                TraxLog.Info("impact", "first AI READ of a " + (bash ? "bash" : "kick") + " at " + Sec(now) + " s (step 82) - " + Name(target) + " (bar " + Pct0(target.Fraction)
+            if (MeetFirst(bash && push ? 3 : 1))
+                TraxLog.Info("impact", "first AI READ of a " + (bash && push ? "weapon push" : bash ? "bash" : "kick") + " at " + Sec(now) + " s (step 82) - " + Name(target) + " (bar " + Pct0(target.Fraction)
                     + ") reads " + Name(attacker) + "'s " + (bash ? "shield bash" : "kick") + ": chance " + Pct0(chance) + " (block decision " + F2(block) + " x the right direction "
-                    + Pct0(TiredBlockMath.RightShare(random)) + " x " + Pct0(m.ReadScale) + ") - the guard " + (bash ? "RIGHT" : "DOWN") + " from " + F2(m.ReactionSeconds) + " s on");
+                    + Pct0(TiredBlockMath.RightShare(random)) + " x " + Pct0(m.ReadScale) + ") - the guard " + (bash && push ? "UP" : bash ? "RIGHT" : "DOWN") + " from " + F2(m.ReactionSeconds) + " s on");
         }
 
         /// <summary>Every tick (from TickAthletics, own try there): off = every read let go; a reader's guard raised once the reaction time has
@@ -233,7 +237,7 @@ namespace TraxCombat.Missions
                         st.MeetGuardUp = true;
                         _meet.ReadGuardsRaised++;
                         EnsureInput(st);
-                        AiInputHook.SetMeetGuard(st, true, ImpactMeetMath.GuardFlag(st.MeetReadBash), now);
+                        AiInputHook.SetMeetGuard(st, true, ImpactMeetMath.GuardFlag(st.MeetReadBash, st.MeetReadPush), now); // step 88: UP against a push
                         NoteHooked(st, body.Hook(st));
                     }
                 }
@@ -255,7 +259,7 @@ namespace TraxCombat.Missions
             _meet.NoteReadHit(ImpactMath.BarBand(v.Fraction), late, met);
             if (late && MeetFirst(2))
                 TraxLog.Info("impact", "first AI read TOO LATE at " + Sec(now) + " s (step 82) - " + Name(v) + "'s guard was due " + F2(m.ReactionSeconds) + " s after "
-                    + Name(a) + "'s " + (v.MeetReadBash ? "bash" : "kick") + " began; it hit after " + F2(now - v.MeetReadStart) + " s");
+                    + Name(a) + "'s " + (v.MeetReadPush ? "push" : v.MeetReadBash ? "bash" : "kick") + " began; it hit after " + F2(now - v.MeetReadStart) + " s");
             for (int i = 0; i < _meetReaderCount; i++)
                 if (ReferenceEquals(_meetReaders[i], v))
                 {
@@ -319,7 +323,14 @@ namespace TraxCombat.Missions
                 var s = TraxSettings.Shared;
                 var aim = MeetBody.Aim(st, s.AiKickReachMetres, s.AiKickFacingDegrees);
                 if (aim == null) return;
-                MeetReadStart(st, Get(aim), kind == KickBashKind.Bash, now);
+                bool push = false;
+                if (kind == KickBashKind.Bash)
+                {
+                    // step 88: your bash with no shield in your off hand is a WEAPON PUSH - the man it is aimed at reads it with the guard UP
+                    AiKickBody.Hands(st, out _, out _, out _, out bool shield);
+                    push = !shield;
+                }
+                MeetReadStart(st, Get(aim), kind == KickBashKind.Bash, now, push);
             }
             catch (Exception e)
             {

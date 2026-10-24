@@ -118,8 +118,10 @@ namespace TraxCombat.Core
         /// SwingStackMinimum 2 → 3, CostPerKickOrBash 6 → 8 (a format 15-18 file), AiKickCooldownSeconds 8 → 2 - now the one minimum between two
         /// kicks or bashes (a format 13-18 file) in a file still holding them; a tuned value kept and noted; the 14 retired AI-kick keys -
         /// the rate, its factors, the bar gate, the wait for reach, the bash credit and the bash's own cooldown - dropped from any file by
-        /// <c>DropRetiredKickKeys</c>, one note each).</summary>
-        public const int FormatVersion = 19;
+        /// <c>DropRetiredKickKeys</c>, one note each), 20 = step 88 (Toni 2026-10-24 - a weapon push for men without a shield and new shares:
+        /// AiShieldmanKickPercent 20 → 25, AiShieldmanBashPercent 35 → 40 in a format-19 file still holding them; a tuned value kept and noted; the
+        /// new AiNoShieldPushPercent (20) is a new key - a file without it gets the default like any missing key).</summary>
+        public const int FormatVersion = 20;
 
         /// <summary>The meta key holding <see cref="FormatVersion"/> - not a setting.</summary>
         public const string VersionKey = "ConfigVersion";
@@ -538,6 +540,14 @@ namespace TraxCombat.Core
                 MoveOrKeepIfMoved(read, SettingsSchema.SwingStackMinimum, 2, shares + " - the swing stack holds at least 3, and kicks / bashes spend from it", from, defaultOf);
                 if (from >= 15) MoveOrKeepIfMoved(read, SettingsSchema.CostPerKickOrBash, 6, shares + " - a kick or a shield bash costs 8", from, defaultOf);
                 if (from >= 13) MoveOrKeepIfMoved(read, SettingsSchema.AiKickCooldownSeconds, 8, shares + " - at least 2 s between two kicks or bashes (the shares are the frequency now)", from, defaultOf);
+            }
+            if (from < 20 && from >= 19)
+            {
+                // step 88 (Toni 2026-10-24): the shieldman's shares (step 81's keys, since format 19) kick 20 → 25, bash 35 → 40 - he swings 35 % of his
+                // moves in kick reach; a man without a shield keeps his kick 35 and gets the new push share (a new key); a hand-set value is kept and said once
+                const string push = "step 88, Toni: a weapon push for men without a shield and new shares";
+                MoveOrKeepIfMoved(read, SettingsSchema.AiShieldmanKickPercent, 20, push + " - a shieldman kicks 25% of his moves in kick reach", from, defaultOf);
+                MoveOrKeepIfMoved(read, SettingsSchema.AiShieldmanBashPercent, 35, push + " - a shieldman bashes 40% of his moves in kick reach (he swings 35%)", from, defaultOf);
             }
             // format 17 (step 78b) moved the lull's LullRecover*Percent 10 / 15 / 20 → 20 / 25 / 30; step 78c removed the lull and its keys, so a
             // format 16 file's are dropped below with the rest of them - nothing to move any more (78c kept format 17; step 80 made it 18)

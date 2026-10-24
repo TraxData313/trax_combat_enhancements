@@ -152,7 +152,7 @@ public class Step87Tests
         Assert.Contains("| REFUSED behind a friend (rear rank) - kicks 1: ahead ≤0 (beside / behind his shoulders) 0, 0-0.2 0, 0.2-0.4 0, 0.4-0.8 0, 0.8-1.2 1, >1.2 0; to the side 0-0.3 1, 0.3-0.6 0, 0.6-0.75 0, >0.75 0; "
             + "his SHOULDER NEIGHBOUR (same rank) 0, the rank in front 1 (along 1.00 / side 0.20), another rank 0, another formation / none 0, unknown (no line ranks) 0; angle 0-10° 1, 10-20° 0, 20-30° 0, 30-40° 0, >40° 0; bashes 1: ahead", line, StringComparison.Ordinal);
         Assert.Contains("his SHOULDER NEIGHBOUR (same rank) 1 (along 0.10 / side 0.55)", line, StringComparison.Ordinal);
-        Assert.Contains("| REFUSED a friend first - kicks 0; bashes 0 | REFUSED the enemy off his path (the ENEMY's place) - kicks 0; bashes 0 | LANDED ON A FRIEND (his place at the hit, the angle at the decision) - kicks 0; bashes 1: ahead", line, StringComparison.Ordinal);
+        Assert.Contains("| REFUSED a friend first - kicks 0; bashes 0; pushes 0 | REFUSED the enemy off his path (the ENEMY's place) - kicks 0; bashes 0; pushes 0 | LANDED ON A FRIEND (his place at the hit, the angle at the decision) - kicks 0; bashes 1: ahead", line, StringComparison.Ordinal);
         Assert.DoesNotContain("not located", line, StringComparison.Ordinal);
         Assert.StartsWith("ai kicks - who blocks the path (step 87 diagnostic): shoulder neighbours are n/a of the 'behind a friend' refusals and n/a of the friends hit", new AiKickBlockStats().Line(), StringComparison.Ordinal);
     }

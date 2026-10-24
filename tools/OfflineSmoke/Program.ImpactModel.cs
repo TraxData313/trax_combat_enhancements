@@ -34,6 +34,7 @@ namespace TraxCombat.Tools
             public readonly Dictionary<int, double> Speeds = new Dictionary<int, double>(); // step 52: the attacker's speed into the blow (m/s)
             public readonly HashSet<int> TwoHanded = new HashSet<int>(); // step 52: a two-handed grip
             public readonly HashSet<int> Couched = new HashSet<int>(); // step 53: a couched lance (a passive attack)
+            public readonly HashSet<int> Pushers = new HashSet<int>(); // step 88: his bash is a WEAPON PUSH (no shield - the collision's item his weapon)
             public double Damage { get; set; }
             public bool Throw;
             public int Calls;
@@ -82,6 +83,7 @@ namespace TraxCombat.Tools
                 f.AttackerSpeed = Speeds.TryGetValue(attacker.Index, out var v) ? v : 0; // step 53: a rider's = his horse's
                 f.AttackerPassive = f.AttackerMounted && Couched.Contains(attacker.Index);
                 f.TwoHanded = TwoHanded.Contains(attacker.Index);
+                f.Push = f.Event == ImpactEvent.Bash && Pushers.Contains(attacker.Index); // step 88
                 f.Fatal = Fatal && ImpactMath.IsLanded(f.Event);
                 f.NotEnemies = NotEnemies;
                 f.DefenderRangedInHand = ImpactMath.IsLanded(f.Event) && RangedInHand.Contains(victim.Index);

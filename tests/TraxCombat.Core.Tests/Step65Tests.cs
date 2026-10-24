@@ -26,7 +26,7 @@ public class AiKickTests
         var keys = new[]
         {
             SettingsSchema.AiKicksEnabled, SettingsSchema.AiShieldmanKickPercent, SettingsSchema.AiShieldmanBashPercent, SettingsSchema.AiNoShieldKickPercent,
-            SettingsSchema.AiKickReachMetres, SettingsSchema.AiKickFacingDegrees, SettingsSchema.AiKickCooldownSeconds, SettingsSchema.AiKickKicksARaisedShield,
+            SettingsSchema.AiNoShieldPushPercent, SettingsSchema.AiKickReachMetres, SettingsSchema.AiKickFacingDegrees, SettingsSchema.AiKickCooldownSeconds, SettingsSchema.AiKickKicksARaisedShield,
         };
         for (int i = 0; i < keys.Length; i++)
         {
@@ -49,8 +49,8 @@ public class AiKickTests
         Assert.Equal("AthleticsEnabled", Rules(s => { s.Set(SettingsSchema.AthleticsEnabled, false, "t"); s.Set(SettingsSchema.AiKicksEnabled, false, "t"); }).OffBecause);
         Assert.Equal("AiKicksEnabled", Rules(s => s.Set(SettingsSchema.AiKicksEnabled, false, "t")).OffBecause);
         Assert.Null(Rules(s => s.Set(SettingsSchema.AiNoShieldKickPercent, 0, "t")).OffBecause); // the shieldmen still kick and bash
-        Assert.Equal("AiShieldmanKickPercent, AiShieldmanBashPercent and AiNoShieldKickPercent all 0",
-            Rules(s => { s.Set(SettingsSchema.AiShieldmanKickPercent, 0, "t"); s.Set(SettingsSchema.AiShieldmanBashPercent, 0, "t"); s.Set(SettingsSchema.AiNoShieldKickPercent, 0, "t"); }).OffBecause);
+        Assert.Equal("AiShieldmanKickPercent, AiShieldmanBashPercent, AiNoShieldKickPercent and AiNoShieldPushPercent all 0",
+            Rules(s => { s.Set(SettingsSchema.AiShieldmanKickPercent, 0, "t"); s.Set(SettingsSchema.AiShieldmanBashPercent, 0, "t"); s.Set(SettingsSchema.AiNoShieldKickPercent, 0, "t"); s.Set(SettingsSchema.AiNoShieldPushPercent, 0, "t"); }).OffBecause);
         Assert.Null(Rules().OffBecause);
         Assert.StartsWith("OFF (ModEnabled)", Rules(s => s.Set(SettingsSchema.ModEnabled, false, "t")).Describe(), StringComparison.Ordinal);
         Assert.Contains("the engine's kick key; a bash = the kick key with the guard up", Rules().Describe(), StringComparison.Ordinal);
@@ -140,7 +140,7 @@ public class AiKickTests
         var lines = st.SummaryLines(Rules()).ToList();
         Assert.Equal(7, lines.Count); // step 80: + whom they hit and the strike path; step 81: the shares line in place of step 66's; step 87: + who blocks the path
         Assert.StartsWith("ai kicks (step 65 / 81): ON", lines[0], StringComparison.Ordinal);
-        Assert.Contains("ai kicks: asked 3 (kicks 2, bashes 1) → PLAYED 2 (67%), seen 0.30 s after the ask → landed on the man 1, into a shield 1", lines[1], StringComparison.Ordinal);
+        Assert.Contains("ai kicks: asked 3 (kicks 2, bashes 1, pushes 0) → PLAYED 2 (67%), seen 0.30 s after the ask → landed on the man 1, into a shield 1", lines[1], StringComparison.Ordinal);
         Assert.Contains("1.50 asked a man-minute in contact (2.0 man-minutes)", lines[1], StringComparison.Ordinal);
         Assert.Contains("Athletics spent on them 9", lines[1], StringComparison.Ordinal);
         Assert.Contains("shieldmen 2 → 2 → 1 / 1 | no shield 1 → 0 → 0 / 0", lines[2], StringComparison.Ordinal);

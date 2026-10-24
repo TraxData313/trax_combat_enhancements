@@ -167,6 +167,18 @@ namespace TraxCombat.Tools
                          SettingsSchema.KickBraceReelPercent, SettingsSchema.KickShortReelPercent, SettingsSchema.KickBraceRefusesKnockBack,
                      })
                 S.Set(p, p.Default, SettingSources.File);
+            // step 88 moved the shieldman's shipped shares to 25 / 40 and added the no-shield PUSH (20): the older steps keep step 81's shares
+            // (20 / 35, no push) - step 88's own checks set the shipped ones (Step88Shares)
+            S.Set(SettingsSchema.AiShieldmanKickPercent, 20, SettingSources.File);
+            S.Set(SettingsSchema.AiShieldmanBashPercent, 35, SettingSources.File);
+            S.Set(SettingsSchema.AiNoShieldPushPercent, 0, SettingSources.File);
+        }
+
+        /// <summary>Step 88: the shipped shares (the embedded defaults.json - shieldman 25 / 40 / 35, no shield 35 / 20 / 45).</summary>
+        private static void Step88Shares()
+        {
+            foreach (var p in new[] { SettingsSchema.AiShieldmanKickPercent, SettingsSchema.AiShieldmanBashPercent, SettingsSchema.AiNoShieldKickPercent, SettingsSchema.AiNoShieldPushPercent })
+                S.Set(p, p.Default, SettingSources.File);
         }
 
         /// <summary>Step 81: the engine's melee wind-up code (step 13's phases see it) - a man about to swing, the decision point.</summary>
@@ -445,6 +457,7 @@ namespace TraxCombat.Tools
                 AthleticsDefaults();
                 ImpactModelDefaults();
                 AiKickDefaults();
+                Step88Shares(); // step 88: the shipped shares - the men without a shield push too
                 S.Set(SettingsSchema.KickBraceEnabled, false, SettingSources.File);
                 const int many = 1000;
                 var logic2 = NewPaceLogic(new FakePaceBody(), new FakeWeaponFacts());
@@ -489,8 +502,9 @@ namespace TraxCombat.Tools
                 var st = logic2.AiKickStats;
                 Console.WriteLine("        step 81 cost: " + many + " men winding up ~8 swings a tick, the AI kicks' tick " + ms.ToString("0.000", CultureInfo.InvariantCulture) + " ms, " + allocated
                                   + " bytes over " + ticks + " ticks; " + logic2.AiKicksRunning + " attempts running, moves " + (st.Moves(0) + st.Moves(1)) + ", asked "
-                                  + (st.AskedCount(AiKickKind.Kick) + st.AskedCount(AiKickKind.Bash)) + ", " + body2.Reads + " engine reads");
-                Check(st.Moves(0) + st.Moves(1) > 1000 && st.AskedCount(AiKickKind.Kick) > 0 && st.AskedCount(AiKickKind.Bash) > 0, "cost: the wind-ups were not rolled into kicks and bashes");
+                                  + (st.AskedCount(AiKickKind.Kick) + st.AskedCount(AiKickKind.Bash) + st.AskedCount(AiKickKind.Push)) + " (pushes " + st.AskedCount(AiKickKind.Push) + "), " + body2.Reads + " engine reads");
+                Check(st.Moves(0) + st.Moves(1) > 1000 && st.AskedCount(AiKickKind.Kick) > 0 && st.AskedCount(AiKickKind.Bash) > 0 && st.AskedCount(AiKickKind.Push) > 0,
+                    "cost: the wind-ups were not rolled into kicks, bashes and pushes");
                 Check(ms < 0.5, "cost: the AI kicks' tick took " + ms + " ms (budget 0.5)");
                 Check(allocated < 16 * 1024, "cost: the AI kicks' tick allocates - " + allocated + " bytes");
             }

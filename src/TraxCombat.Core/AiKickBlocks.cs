@@ -184,13 +184,13 @@ namespace TraxCombat.Core
         private const int Cases = (int)AiKickBlockCase.Count;
         private const int Rel = (int)AiKickRelation.Count;
 
-        private readonly int[,] _n = new int[Cases, 3];
-        private readonly int[,,] _along = new int[Cases, 3, AiKickBlockMath.AlongBins];
-        private readonly int[,,] _side = new int[Cases, 3, AiKickBlockMath.SideBins];
-        private readonly int[,,] _angle = new int[Cases, 3, AiKickBlockMath.AngleBins];
-        private readonly int[,,] _rel = new int[Cases, 3, Rel];
-        private readonly double[,,] _relAlong = new double[Cases, 3, Rel];
-        private readonly double[,,] _relSide = new double[Cases, 3, Rel];
+        private readonly int[,] _n = new int[Cases, AiKickMath.KindCount];
+        private readonly int[,,] _along = new int[Cases, AiKickMath.KindCount, AiKickBlockMath.AlongBins];
+        private readonly int[,,] _side = new int[Cases, AiKickMath.KindCount, AiKickBlockMath.SideBins];
+        private readonly int[,,] _angle = new int[Cases, AiKickMath.KindCount, AiKickBlockMath.AngleBins];
+        private readonly int[,,] _rel = new int[Cases, AiKickMath.KindCount, Rel];
+        private readonly double[,,] _relAlong = new double[Cases, AiKickMath.KindCount, Rel];
+        private readonly double[,,] _relSide = new double[Cases, AiKickMath.KindCount, Rel];
 
         /// <summary>Friend hits whose friend could not be located (no engine read) - binned by the angle only.</summary>
         public int HitsNotLocated;
@@ -253,7 +253,7 @@ namespace TraxCombat.Core
         public double ShoulderShare(AiKickBlockCase c)
         {
             int n = 0, s = 0;
-            for (int k = 1; k <= 2; k++)
+            for (int k = 1; k < AiKickMath.KindCount; k++)
             {
                 for (int r = 0; r < Rel; r++) n += _rel[(int)c, k, r];
                 s += _rel[(int)c, k, (int)AiKickRelation.ShoulderNeighbour];
@@ -273,7 +273,7 @@ namespace TraxCombat.Core
             for (int ci = 0; ci < Cases; ci++)
             {
                 sb.Append(" | ").Append(AiKickBlockMath.CaseName((AiKickBlockCase)ci)).Append(" - ");
-                for (int k = 1; k <= 2; k++)
+                for (int k = 1; k < AiKickMath.KindCount; k++)
                 {
                     if (k > 1) sb.Append("; ");
                     Block(sb, ci, k, c);
@@ -286,7 +286,7 @@ namespace TraxCombat.Core
         private void Block(StringBuilder sb, int ci, int k, CultureInfo c)
         {
             int n = _n[ci, k];
-            sb.Append(k == 1 ? "kicks " : "bashes ").Append(n);
+            sb.Append(AiKickMath.PluralName((AiKickKind)k)).Append(' ').Append(n);
             if (n == 0) return;
             bool enemy = ci == (int)AiKickBlockCase.TargetOffPath;
             sb.Append(": ahead ");

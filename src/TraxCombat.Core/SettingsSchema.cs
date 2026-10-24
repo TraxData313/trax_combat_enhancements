@@ -1593,7 +1593,7 @@ namespace TraxCombat.Core
         // AI kicks and bashes through step 16's input hook; the kicked man BRACES (the impact model's pressure decides it).
         public static readonly ParamDef AiKicksEnabled = Bool("AiKicksEnabled", ImpactGroup,
             "AI soldiers kick and shield-bash",
-            "On: an AI soldier on foot whose enemy is within kick reach in front of him kicks him or bashes him with his shield instead of some of his swings - by the shares below. Each costs Athletics and a stored swing, like yours. Off: the game's AI, which never kicks.");
+            "On: an AI soldier on foot whose enemy is within kick reach in front of him kicks him, bashes him with his shield or (with no shield) pushes him with his weapon instead of some of his swings - by the shares below. Each costs Athletics and a stored swing, like yours. Off: the game's AI, which never kicks.");
 
         // Step 81 (Toni 2026-10-22: "since they add good disturbance to the battle and also dont do much damage I want to try increase them: shielded
         // men kick 20% of the time, shield bash 35% and swing the rest ... Unshielded - 35% kick and the rest swing"): each melee move of an AI man on
@@ -1608,7 +1608,13 @@ namespace TraxCombat.Core
 
         public static readonly ParamDef AiNoShieldKickPercent = Int("AiNoShieldKickPercent", 0, 100, ImpactGroup,
             "AI kicks: a man without a shield kicks (% of his moves)",
-            "Of the melee moves an AI soldier WITHOUT a shield makes while the enemy he fights is within kick reach in front of him, this share are kicks; he swings the rest. Shock troops with two-handers throw people around more. A spearman with the enemy beyond kick reach keeps thrusting.");
+            "Of the melee moves an AI soldier WITHOUT a shield makes while the enemy he fights is within kick reach in front of him, this share are kicks; with the push share below he swings the rest. Shock troops with two-handers throw people around more. A spearman with the enemy beyond kick reach keeps thrusting.");
+
+        // Step 88 (Toni 2026-10-24: "with my two handed axe guarding and pressing shield bash it pushes with the axe"): a man without a shield gets
+        // a third move in kick reach - a PUSH with his weapon (the guard up, then the kick key, like the player's); AiKickMath.Roll.
+        public static readonly ParamDef AiNoShieldPushPercent = Int("AiNoShieldPushPercent", 0, 100, ImpactGroup,
+            "AI pushes: a man without a shield pushes with his weapon (% of his moves)",
+            "Of those moves of an AI soldier WITHOUT a shield, this share are pushes with his weapon (guard up, then the kick key - the game's weapon bash); he swings the rest (100 minus the kick and push shares). With the kick share above it never goes over 100 - if it does, the push share is cut. A push met by a guard held UP throws the pusher off balance.");
 
         public static readonly ParamDef AiKickReachMetres = Float("AiKickReachMetres", 0.5, 4, ImpactGroup,
             "AI kicks: reach (m)",
@@ -2434,7 +2440,7 @@ namespace TraxCombat.Core
             ImpactShrugOffYieldsToImpact, ImpactFallBackupSeconds, ImpactToughnessWeight, ImpactRangedInHandPercent,
             ImpactRearPercent, ImpactFlankPercent, ImpactRearDegrees, ImpactFlankDegrees, ImpactRearPressure, ImpactFlankPressure,
             ImpactChargeCarrySeconds, RiposteKnockdownMaxPercent, RiposteKnockdownFrom, RiposteMomentumPercent, ImpactMultiplierCapPercent,
-            AiKicksEnabled, AiShieldmanKickPercent, AiShieldmanBashPercent, AiNoShieldKickPercent, AiKickReachMetres, AiKickFacingDegrees, AiKickCooldownSeconds,
+            AiKicksEnabled, AiShieldmanKickPercent, AiShieldmanBashPercent, AiNoShieldKickPercent, AiNoShieldPushPercent, AiKickReachMetres, AiKickFacingDegrees, AiKickCooldownSeconds,
             AiKickKicksARaisedShield, KickBraceEnabled, KickBraceFromPressure, KickBraceToPressure, KickBraceMinBarPercent, KickBraceReelPercent,
             KickShortReelPercent, KickBraceRefusesKnockBack, AiKickFriendClearMetres, AiBashPathHalfWidthMetres, AiKickRearRankMetres,
             MeetBashShieldRightStaggerPercent, MeetBashShieldRightFallPercent, MeetBashWeaponRightStaggerPercent, MeetBashWeaponRightFallPercent, MeetBashShieldWrongStaggerPercent, MeetBashShieldWrongFallPercent,
