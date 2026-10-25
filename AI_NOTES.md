@@ -8610,3 +8610,77 @@ locals initialised before (CS0165).
 3. That a held wall man's step and step 68's walk back after his bash do not make the wall ripple.
 
 **DEPLOY**: `tools\deploy.ps1` ran whole (the build, the AssemblyGuard, the offline smoke - all passed, 211), installed as Modules\TraxCombatEnhancements.Dev; `tools\SmartAppControl\loadcheck.ps1`: both installed DLLs LOADED (`1.3.2+87a39fb5...`). The game and the launcher were not running. Not uploaded.
+
+## Step 96 — more defensive, less lethal: the AI guards better (built 2026-10-25; dev build only, not uploaded)
+
+**Toni (2026-10-25)**: "more active ... but not so lethal, more defencive - bump up the defencive stuff, reduce the swings". Steps 94 / 95 made men
+busier (bigger pools, swing 7, kicks / bashes / pushes 70% of the moves in kick reach); this step takes the edge off the swings. DESIGN decision 88.
+
+**96.1 / 96.2 THE NUMBERS** (defaults.json): `AiAggressionFreshPercent` 60 → **45**, `AiAggressionExhaustedPercent` 20 → **15** (a charge's 0.144 →
+0.065 fresh, 0.022 empty); `ShieldInfantrySwingsLessPercent` 30 → **40**, `FootMeleeSwingsLessPercent` 15 → **25** (a fresh man after a 0.8 s swing:
++1.20 s / +0.60 s, ~20 / ~25 swings a minute instead of 33). The player-page hints for the two aggression percents and the pace hint say the new
+examples.
+
+**96.3 THE RESEARCH (v1.4.8, %TEMP%\trax_decomp)** - what the three values are and who reads them:
+- `DrivenProperty.AIBlockOnDecideAbility` = 5, `AIParryOnDecideAbility` = 6 (BOTH exist), `AiRandomizedDefendDirectionChance` = 40.
+- All three are written ONLY by `AgentStatCalculateModel.SetAiRelatedProperties` (Sandbox / custom battle / MP models call it on every
+  `UpdateAgentStats`), assigned with `=`: block = `MBMath.Lerp(0.5, 0.99, clamp01(num^0.5))`, parry = `Lerp(0.5, 0.95, clamp01(num))`, guess =
+  `1 − num³`; num = clamp01(melee skill / 300 × 0.1 / 0.32 / 0.96 by difficulty) × `_AILevelMultiplier`. So the game's valid ranges are block 0.5-0.99,
+  parry 0.5-0.95 (the tournament multiplier is clamped inside both - never above), guess ≤ 1 (negative in a tournament's late rounds).
+  A recruit (skill 20, realistic): num 0.064 → block 0.62, parry 0.53, guess ≈ 1.00. A 200-skill veteran: num 0.64 → 0.89 / 0.79 / 0.74.
+- NO managed code reads any of the three (grep of the whole decompile: only the enum, the property accessors, the setter). `Agent.UpdateAgentProperties`
+  hands the whole float array to the engine (`AgentDrivenProperties.UpdateDrivenProperties` → `UpdateDrivenProperties(values)` → native). So their
+  effect is NATIVE and cannot be verified offline. By name: the block / parry ability = how readily the AI's per-attack defence decision picks a block /
+  a parry; the guess chance = step 30's lever (its own effect is PLAYTEST D8's question). `Formation.IsDefenseRelatedAIDrivenComponent` lists other
+  properties (attack decisions, shield use), not these. Wired as asked; if a lever turns out dead in a battle, PLAYTEST D60 says how to tell.
+- Side effect worth knowing: step 82's AI read (`IMeetBody.Ability` - `AIBlockOnDecideAbility` × the right-direction share from the guess chance) reads
+  the properties AFTER our write, so the AI now also reads kicks / bashes more often (its read chance rises with both levers). Not changed; noted.
+
+**96.4 THE BUILD (Claude's calls)**
+- WHO: every tracked AI man ON FOOT AND MOUNTED (step 30's reach; riders block too and the brief said "on foot at least"); never the player (the
+  re-target gives `IsPlayer` 1 / 1 and the decorator checks `IsMainAgent` again). Gate: `ModEnabled` first, then `AthleticsEnabled` (it rides on the
+  decorator's `SpeedFactorsFor` gate like steps 30 / 43 - the hints say "Needs Athletics on"), then each percent ≠ 100.
+- Core `AiGuard.cs`: `AiGuardRules` (GuessOn / DecideOn / Enabled, GuessFactor / DecideFactor, OffBecause, Describe), `AiGuardMath` (`Factors`;
+  `Guess(game, g)` = clamp01(game) × g - a game value ≤ 0 or NaN left alone, g 1 = untouched; `Block` / `Parry` = game × b clamped to 0 ..
+  max(0.99 / 0.95, game) - a higher value another mod wrote is never cut by a raise, b 1 = untouched), `AiGuardStats` (by f band: the three game
+  values and ours, men, recomputes, the [summary] line). Settings `AiGuardGuessPercent` (Int 0-100, **60**) and `AiBlockDecidePercent` (Int 0-200,
+  **120**) - Advanced, "Tired fighters", right after `TiredBlockRandomPercent` (the two guess settings side by side - they compose), live. 529 settings.
+- THE ORDER in the decorator (`TraxAgentStatModel.UpdateAgentStats`): base model → … → step 96 (guess × g, block / parry × b; `NoteGuard`) → step 30
+  (reads the value just written as "the game's" and raises it: own' + (1 − own') × w). So a recruit: fresh 0.60, f 0.52 0.79, empty 1.00 (vanilla +
+  step 30: 1 / 1 / 1); a veteran 0.44 / 0.62 at f 0.52 / 1. Step 30's first-time line's "the game's chance" is now the guarded value (wording kept).
+- LIVE / RECOMPUTE: `TrackedAgent.GuardGuess` / `GuardDecide` (1 = none), `RetargetGuard` (exact compare → `SpeedDirty`) called at TRACKING (so a
+  fresh man gets it at his first budgeted recompute - nothing else would re-target a fresh, unhit man) and from `RetargetSpeed` (every settings change
+  re-targets everyone there, every charge / refill step too). `SpeedFactorsFor` gained an overload with `out guess, out decide` and returns true when
+  either ≠ 1. No allocation per recompute (struct rules, float math, array sums).
+- LOGS: `[guard] mission start: AI guard (step 96): …`, `[guard] settings changed mid-mission …` (NoteGuardSettings from NoteTiredBlockSettings),
+  `[guard] first AI guard this mission (step 96): <man> at T s, f F - the game's block-direction guess chance 1.00 → 0.60 (x0.60, …; before step 30's
+  tired raise), the block-decide ability 0.62 → 0.74 and the parry-decide ability 0.53 → 0.64 (x1.20, …; at most 0.99 / 0.95) …`, and the
+  [summary] line right after step 30's four (from `WriteTiredBlockSummary`): `AI guard factors (step 96 - AiGuardGuessPercent 60, AiBlockDecidePercent
+  120; AI men on foot and riders, never you): written for N AI men (M recomputes); the game's → ours, avg by f band - the block-direction guess chance
+  (before step 30's tired raise) / the block-decide ability / the parry-decide ability: peak (f 1) 1.00 → 0.60 / 0.62 → 0.74 / 0.53 → 0.64 (n …); …`.
+
+**96.5 CONFIG FORMAT 25** (`ConfigFile.Migrate` `from < 25`, `MoveOrKeepIfMoved`): the four (keys since steps 21 / 43, never moved before - any older
+format) 60 → 45, 20 → 15, 30 → 40, 15 → 25; a tuned value kept and said. The two guard keys are new (missing = the default). On DESIGN's values (the
+tests' defaultOf: 60 / 20 / 30 / 15 = the old ones) nothing moves, as with steps 88 / 94 / 95. Older format tests "→ 24" → "→ 25", `ConfigVersion` 25.
+
+**Measured offline**: tests 1363 → 1370 (Step96Tests 7: settings placed / shipped / live with the master switch first; the guess cut before step 30 at
+f 1 / 0.5 / 0 for own 1.0 / 0.74 / 0.2; the decide clamp (recruit, veteran 0.89 → 0.99, a higher foreign value kept, 0 floor, NaN); never the player and
+100 = off; format 25 move / keep / an old file / untouched / idempotent; the summary text ON and OFF; 0 bytes over 10 000). Smoke 211 → 212:
+`AiGuardThroughTheDecorator` (Program.Step96.cs) through the REAL decorator and logic - DrivenProperty 5 / 6, a fresh man marked at tracking and
+written 1.00 → 0.60, 0.62 / 0.53 → 0.744 / 0.636, no compounding; f 0.52 → 0.792 (own 0.5 → 0.636); empty 1; a veteran 0.90 / 0.79 → 0.99 / 0.948;
+you untouched; live 80 → 0.80, 100 / 100 → the game's values with no write; ModEnabled off / AthleticsEnabled off → the game's values; the [guard]
+and [summary] lines. `FreshStatsModel` assigns `BlockDecide` / `ParryDecide` fresh; `AthleticsDefaults` pins both guard settings 100 for the older
+steps (they count recomputes and chances). The older aggression / pace smokes already pin their values (`FeverDefaults` 60 / 20, `BattlePaceOn`
+30 / 15) - nothing else moved.
+
+**Docs**: MECHANICS §7 (the guard: the recruit / veteran guess table by bar with the tired raise, the decide abilities), §10 (the pace rows 40 / 25:
++1.20 s / +0.60 s), §11 (the eagerness table 45 → 15 in 0.05 steps, the fever's fade table, the settings line); HOW-IT-WORKS (one bullet); DESIGN rows
++ decision 88; PLAYTEST D60.
+
+**UNVERIFIED — only the game can tell (PLAYTEST D60)**
+1. That the engine's AI uses `AIBlockOnDecideAbility` / `AIParryOnDecideAbility` as their names say (more blocks / parries chosen) - native.
+2. That the cut guess chance shows as a higher "AI guard by f" blocked % in the peak band (step 30's lever; D8).
+3. The feel: longer exchanges, fewer men falling a minute, kicks / bashes still busy.
+4. The first start logs `[config] migrated config.json …` once (format 24 → 25) with the four moves.
+
+**DEPLOY**: `tools\deploy.ps1` ran whole (the build, the AssemblyGuard, the offline smoke - all passed, 212), installed as Modules\TraxCombatEnhancements.Dev; `tools\SmartAppControl\loadcheck.ps1`: both installed DLLs LOADED (`1.3.2+6bff3824...`). The game and the launcher were not running. Not uploaded.
