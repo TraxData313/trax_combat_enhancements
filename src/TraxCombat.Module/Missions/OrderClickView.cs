@@ -5,6 +5,7 @@ using TaleWorlds.InputSystem;
 using TaleWorlds.Library;
 using TaleWorlds.MountAndBlade;
 using TaleWorlds.MountAndBlade.View.MissionViews;
+using TaleWorlds.ScreenSystem;
 using TraxCombat.Core;
 
 namespace TraxCombat.Missions
@@ -27,6 +28,7 @@ namespace TraxCombat.Missions
         private readonly bool[] _behind = new bool[MaxFormations];
         private readonly double[] _sx = new double[MaxFormations];
         private readonly double[] _sy = new double[MaxFormations];
+        private readonly double[] _sw = new double[MaxFormations];
         private MissionFormationTargetSelectionHandler? _handler;
         private OrderController? _controller;
         private Vec3 _pressPoint;
@@ -145,16 +147,21 @@ namespace TraxCombat.Missions
 
         public double ScreenHeight => Screen.RealScreenResolutionHeight;
 
-        public void Look(bool press, out bool hasTarget, out double iconPixels, out double dragPixels)
+        public void Look(bool press, out OrderClickLook look)
         {
-            hasTarget = false;
-            iconPixels = double.NaN;
-            dragPixels = 0;
+            look = new OrderClickLook { IconPixels = double.NaN };
             var screen = MissionScreen;
             var m = Mission;
             var camera = screen?.CustomCamera ?? screen?.CombatCamera;
             if (screen == null || m == null || camera == null) return;
             double w = Screen.RealScreenResolutionWidth, h = Screen.RealScreenResolutionHeight;
+            // step 98: the usable area's pixels - WorldToScreenInsideUsableArea's coordinates are measured from its corner
+            double uw = w * ScreenManager.UsableArea.X, uh = h * ScreenManager.UsableArea.Y;
+            if (!(uw > 0) || !(uh > 0))
+            {
+                uw = w;
+                uh = h;
+            }
             double cx = w / 2, cy = h / 2;
             double mx = cx, my = cy;
             if (screen.MouseVisible)
@@ -181,7 +188,7 @@ namespace TraxCombat.Missions
                     double d = median.AsVec2.Distance(camPos.AsVec2);
                     _camMetres[n] = d;
                     _behind[n] = true;
-                    _sx[n] = _sy[n] = double.NaN;
+                    _sx[n] = _sy[n] = _sw[n] = double.NaN;
                     if (d < OrderClickMath.FarMetres)
                     {
                         float x = 0, y = 0, ww = 0;
@@ -189,15 +196,27 @@ namespace TraxCombat.Missions
                         _behind[n] = ww <= 0f;
                         _sx[n] = x;
                         _sy[n] = y;
+                        _sw[n] = ww;
                     }
                     n++;
                 }
             }
             int pick = OrderClickMath.VanillaPick(n, _camMetres, _behind, _sx, _sy, cx, cy, h);
+            look.CursorX = mx;
+            look.CursorY = my;
+            look.ScreenWidth = uw;
+            look.ScreenHeight = uh;
             if (pick >= 0)
             {
-                hasTarget = true;
-                iconPixels = OrderClickMath.Distance(_sx[pick], _sy[pick], mx, my);
+                look.HasTarget = true;
+                look.IconPixels = OrderClickMath.Distance(_sx[pick], _sy[pick], mx, my);
+                look.CameraMetres = _camMetres[pick];
+                look.NearCamera = _camMetres[pick] <= OrderClickMath.NearCameraMetres;
+                look.ScreenX = _sx[pick];
+                look.ScreenY = _sy[pick];
+                look.W = _sw[pick];
+                // step 98: vanilla's 10 m rule focuses a unit wherever its banner projects - is it really on the screen?
+                look.OnScreen = OrderClickMath.OnScreen(_sx[pick], _sy[pick], _behind[pick], uw, uh);
             }
 
             // the press point: the order flag's ground point at the press, followed on the screen as the camera turns / the mouse moves
@@ -213,10 +232,10 @@ namespace TraxCombat.Missions
                 {
                     _pressOffsetX = _pressOffsetY = 0;
                 }
-                dragPixels = 0;
+                look.DragPixels = 0;
                 return;
             }
-            dragPixels = Project(camera, _pressPoint, out double qx, out double qy)
+            look.DragPixels = Project(camera, _pressPoint, out double qx, out double qy)
                 ? OrderClickMath.Distance(qx - mx, qy - my, _pressOffsetX, _pressOffsetY)
                 : double.PositiveInfinity; // behind the camera: certainly a drag
         }

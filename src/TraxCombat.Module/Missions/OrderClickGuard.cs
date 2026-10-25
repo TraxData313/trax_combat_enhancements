@@ -21,10 +21,11 @@ namespace TraxCombat.Missions
         double ScreenHeight { get; }
 
         /// <summary>
-        /// The game's own pick (the unit a release now would charge) and the distances in screen pixels: the cursor → that unit's banner
-        /// icon (NaN = no unit) and the cursor → the press point (<paramref name="press"/>: remember the point now, return 0).
+        /// The game's own pick (the unit a release now would charge), whether its banner is really on the screen (step 98) and the distances
+        /// in screen pixels: the cursor → that unit's banner icon (NaN = no unit) and the cursor → the press point (<paramref name="press"/>:
+        /// remember the point now, 0). Called every frame the orders menu is open (step 98 - the idle hold of an off-screen focus).
         /// </summary>
-        void Look(bool press, out bool hasTarget, out double iconPixels, out double dragPixels);
+        void Look(bool press, out OrderClickLook look);
 
         /// <summary>The game's formation targeting off (true) or the game's own again (false).</summary>
         void SetTargetingDisabled(bool disabled);
@@ -51,6 +52,12 @@ namespace TraxCombat.Missions
         private bool _firstDrag;
         private bool _firstOffIcon;
         private bool _firstLeak;
+        private bool _firstOffScreenIdle;
+        private bool _firstOffScreenClick;
+        private bool _firstOutsideCharge;
+        private bool _wasIdleOffScreen;
+        private bool _lastDown;
+        private OrderClickLook _lastLook = new OrderClickLook { IconPixels = double.NaN };
         private string _seenRules = string.Empty;
 
         public OrderClickGuard(IOrderClickWorld world)
@@ -87,17 +94,21 @@ namespace TraxCombat.Missions
                 NoteRules(rules, now);
                 bool active = rules.On && _world.OrderModeActive;
                 bool down = active && _world.ButtonDown;
-                bool hasTarget = false;
-                double icon = double.NaN, drag = 0;
-                if (down)
+                bool press = down && !_lastDown;
+                _lastDown = down;
+                var look = new OrderClickLook { IconPixels = double.NaN };
+                if (active)
                 {
-                    bool press = _tracker.Phase == ClickPhase.Idle;
-                    _world.Look(press, out hasTarget, out icon, out drag);
+                    // step 98: every frame in the orders menu - an off-screen focus is held off with no button down too
+                    _world.Look(press, out look);
+                    if (_tracker.Phase != ClickPhase.Released) _lastLook = look; // the release frame keeps the hold's last look for the log
                 }
                 bool moveSeen = _tracker.MoveSeen;
                 double maxDrag = _tracker.MaxDragPixels; // the click's, before a finishing frame resets it
-                var outcome = _tracker.Frame(in rules, active, down, hasTarget, icon, drag, _world.ScreenHeight);
+                var outcome = _tracker.Frame(in rules, active, down, look.HasTarget, look.OnScreen, look.IconPixels, down ? look.DragPixels : 0,
+                    _world.ScreenHeight);
                 if (outcome != ClickOutcome.None) Count(outcome, moveSeen, maxDrag, now);
+                NoteIdleOffScreen(now);
                 Apply(_tracker.Disable, now);
             }
             catch (Exception e)
@@ -114,6 +125,18 @@ namespace TraxCombat.Missions
             try
             {
                 if (targetedCharge) _stats.TargetedChargesSeen++;
+                if (targetedCharge && _tracker.Phase == ClickPhase.Idle)
+                {
+                    // step 98: a targeted charge with no click in progress - an F key, or a release whose press the guard never saw
+                    _stats.ChargesOutsideClick++;
+                    if (!_firstOutsideCharge)
+                    {
+                        _firstOutsideCharge = true;
+                        TraxLog.Info("orders", "first targeted charge with NO click in progress at " + Sec(now) + " s (step 98): an F key, or a release whose press the"
+                            + " guard never saw - the targeting " + (_applied ? "held OFF (tell Claude)" : "the game's") + "; the game's focus at the last look: "
+                            + _lastLook.Describe());
+                    }
+                }
                 _tracker.NoteOrder(targetedCharge, move);
             }
             catch (Exception e)
@@ -133,7 +156,7 @@ namespace TraxCombat.Missions
             if (disable)
             {
                 _stats.DisabledFrames++;
-                if (!_firstHoldOff)
+                if (!_firstHoldOff && _tracker.Phase != ClickPhase.Idle)
                 {
                     _firstHoldOff = true;
                     TraxLog.Info("orders", "first time the game's unit targeting was held OFF during a click at " + Sec(now) + " s (step 72): "
@@ -144,6 +167,24 @@ namespace TraxCombat.Missions
             if (disable == _applied) return;
             _world.SetTargetingDisabled(disable);
             _applied = disable;
+        }
+
+        /// <summary>Step 98: the idle hold of an off-screen focus - counted per spell and per frame, its first time in full.</summary>
+        private void NoteIdleOffScreen(double now)
+        {
+            bool on = _tracker.IdleOffScreen;
+            if (on)
+            {
+                _stats.OffScreenHoldFrames++;
+                if (!_wasIdleOffScreen) _stats.OffScreenHolds++;
+                if (!_firstOffScreenIdle)
+                {
+                    _firstOffScreenIdle = true;
+                    TraxLog.Info("orders", "first time an off-screen / behind-the-camera unit had the focus - targeting held off at " + Sec(now) + " s (step 98): "
+                        + _lastLook.Describe() + " - a click now would have charged it; held off (no highlight, no charge) until the game focuses a unit on the screen");
+                }
+            }
+            _wasIdleOffScreen = on;
         }
 
         private void SafeRelease()
@@ -168,7 +209,8 @@ namespace TraxCombat.Missions
                 case ClickOutcome.ChargeKept:
                     if (_firstKept) return;
                     _firstKept = true;
-                    TraxLog.Info("orders", "first deliberate charge KEPT at " + Sec(now) + " s (step 72): a click on the unit's banner icon - the game's own targeted charge");
+                    TraxLog.Info("orders", "first deliberate charge KEPT at " + Sec(now) + " s (step 72): a click on the unit's banner icon - the game's own targeted charge; "
+                        + _lastLook.Describe());
                     return;
                 case ClickOutcome.ConvertedDrag:
                     if (_firstDrag) return;
@@ -183,11 +225,17 @@ namespace TraxCombat.Missions
                     TraxLog.Info("orders", "first accidental charge turned into a MOVE at " + Sec(now) + " s (step 72): a click near a unit but not on its banner icon"
                         + " - the game's targeting held off, its troop placer's move " + (moveSeen ? "went out" : "NOT seen (a move order was expected - tell Claude)"));
                     return;
+                case ClickOutcome.ConvertedOffScreen:
+                    if (_firstOffScreenClick) return;
+                    _firstOffScreenClick = true;
+                    TraxLog.Info("orders", "first click while an off-screen / behind-the-camera unit had the focus at " + Sec(now) + " s (step 98): " + _lastLook.Describe()
+                        + " - the game's targeting held off, its troop placer's move " + (moveSeen ? "went out" : "NOT seen (a move order was expected - tell Claude)"));
+                    return;
                 case ClickOutcome.Leak:
                     if (_firstLeak) return;
                     _firstLeak = true;
                     TraxLog.Info("orders", "FAILURE at " + Sec(now) + " s (step 72): a targeted charge went out although the click was being turned into a move"
-                        + " - the game's targeting was off; something else issued it (tell Claude)");
+                        + " - the game's targeting was off; something else issued it (tell Claude); the game's focus at the last look: " + _lastLook.Describe());
                     return;
             }
         }

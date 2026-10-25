@@ -99,6 +99,55 @@ namespace TraxCombat.Core
 
         /// <summary>The click was cut short (the menu closed, the switch went off) - not counted.</summary>
         Aborted,
+
+        /// <summary>Step 98: the game would have charged a unit whose banner was OFF the screen (vanilla's 10 m rule) - its targeting was off, a move.</summary>
+        ConvertedOffScreen,
+    }
+
+    /// <summary>
+    /// Step 98: one look at what the game focuses (the replica of its pick) - the unit a release now would charge, whether its banner point is
+    /// really ON the screen (in front of the camera, inside the screen), the cursor → its icon and → the press point, and the numbers the log
+    /// prints when a click or an idle frame goes wrong.
+    /// </summary>
+    public struct OrderClickLook
+    {
+        /// <summary>The game would charge a unit if the button came up now.</summary>
+        public bool HasTarget;
+
+        /// <summary>That unit's banner point is in front of the camera and inside the screen (false = off the screen / behind the camera).</summary>
+        public bool OnScreen;
+
+        /// <summary>That unit was picked by vanilla's "within 10 m of the camera" rule (focused wherever it is on the screen).</summary>
+        public bool NearCamera;
+
+        /// <summary>The cursor → that unit's banner icon (screen px; NaN = no unit).</summary>
+        public double IconPixels;
+
+        /// <summary>The cursor → the press point (screen px; 0 at the press, infinity = the press point behind the camera).</summary>
+        public double DragPixels;
+
+        /// <summary>That unit's median → the camera on the ground plane (m).</summary>
+        public double CameraMetres;
+
+        /// <summary>That unit's banner point on the screen (px; may lie outside it) and the projection's w (≤ 0 = behind the camera).</summary>
+        public double ScreenX, ScreenY, W;
+
+        /// <summary>The cursor (px) and the screen's size (px).</summary>
+        public double CursorX, CursorY, ScreenWidth, ScreenHeight;
+
+        /// <summary>The log's words for this focus.</summary>
+        public string Describe()
+        {
+            if (!HasTarget) return "no unit focused";
+            var c = CultureInfo.InvariantCulture;
+            return "the unit " + CameraMetres.ToString("0.0", c) + " m from the camera"
+                   + (NearCamera ? " (the game's 10 m rule focuses it wherever it is on the screen)" : "")
+                   + ", its banner at (" + ScreenX.ToString("0", c) + ", " + ScreenY.ToString("0", c) + ") px, w " + W.ToString("0.###", c)
+                   + (OnScreen ? " - on the screen" : W <= 0 ? " - BEHIND the camera" : " - OFF the screen")
+                   + " (" + ScreenWidth.ToString("0", c) + " x " + ScreenHeight.ToString("0", c) + "), the cursor at ("
+                   + CursorX.ToString("0", c) + ", " + CursorY.ToString("0", c) + "), "
+                   + (double.IsNaN(IconPixels) || double.IsInfinity(IconPixels) ? "?" : IconPixels.ToString("0", c)) + " px from its icon";
+        }
     }
 
     /// <summary>
@@ -145,6 +194,19 @@ namespace TraxCombat.Core
             !double.IsNaN(pixelsFromIcon) && pixelsFromIcon <= radiusPixels;
 
         /// <summary>
+        /// Step 98: a banner point really ON the screen - in front of the camera (w &gt; 0, not behind) and inside the screen's
+        /// <paramref name="width"/> × <paramref name="height"/> (the usable area's pixels). NaN / infinity = not on it. Vanilla's 10 m rule focuses a
+        /// unit wherever its point projects (only "behind the camera" is refused), so a click can charge a unit the player cannot see.
+        /// </summary>
+        public static bool OnScreen(double x, double y, bool behind, double width, double height)
+        {
+            if (behind) return false;
+            if (double.IsNaN(x) || double.IsNaN(y) || double.IsInfinity(x) || double.IsInfinity(y)) return false;
+            if (!(width > 0) || !(height > 0)) return false;
+            return x >= 0 && x <= width && y >= 0 && y <= height;
+        }
+
+        /// <summary>
         /// Vanilla's pick: the index (in iteration order) of the formation the click's charge would go to, or -1. <paramref name="cameraMetres"/>:
         /// each enemy formation's median → camera distance on the ground plane; <paramref name="behind"/>: its focus point behind the camera;
         /// <paramref name="screenX"/> / <paramref name="screenY"/>: its focus point on the screen (pixels).
@@ -184,6 +246,7 @@ namespace TraxCombat.Core
                 case ClickOutcome.PlainMove: return "a plain move (no unit under the cursor)";
                 case ClickOutcome.Leak: return "a charge that SLIPPED THROUGH a conversion";
                 case ClickOutcome.Aborted: return "a click cut short";
+                case ClickOutcome.ConvertedOffScreen: return "a charge turned into a move (a unit OFF the screen had the focus)";
                 default: return "none";
             }
         }
@@ -224,12 +287,26 @@ namespace TraxCombat.Core
         /// <paramref name="iconPixels"/>: the cursor → that unit's icon (screen px, NaN = none); <paramref name="dragPixels"/>: the cursor →
         /// the press point (screen px; 0 at the press). Returns how a click ended this frame (<see cref="ClickOutcome.None"/> mostly).
         /// </summary>
-        public ClickOutcome Frame(in OrderClickRules rules, bool active, bool down, bool hasTarget, double iconPixels, double dragPixels, double screenHeight)
+        public ClickOutcome Frame(in OrderClickRules rules, bool active, bool down, bool hasTarget, double iconPixels, double dragPixels, double screenHeight) =>
+            Frame(in rules, active, down, hasTarget, hasTarget, iconPixels, dragPixels, screenHeight);
+
+        /// <summary>
+        /// Step 98: one frame with <paramref name="targetOnScreen"/> - the focused unit's banner really on the screen. A unit OFF the screen (or
+        /// behind the camera) is never "under the cursor": a press can keep a charge only on an on-screen icon, and while no button is down the
+        /// game's targeting is held off as long as its focus is off the screen (<see cref="IdleOffScreen"/>) - so even a release the guard never
+        /// saw pressed cannot charge a unit the player cannot see. Visible units: step 72 exactly (the F keys and the highlight as vanilla).
+        /// </summary>
+        public ClickOutcome Frame(in OrderClickRules rules, bool active, bool down, bool hasTarget, bool targetOnScreen, double iconPixels, double dragPixels,
+            double screenHeight)
         {
             var outcome = ClickOutcome.None;
             if (!rules.On || !active)
             {
-                if (Phase != ClickPhase.Idle) outcome = ClickOutcome.Aborted;
+                // step 98: the release frame's order (a charge, or the placer's move) usually closes the orders menu - the click is FINISHED,
+                // not cut short (step 72 counted every such click "cut short", so its kept charges and its leaks never showed); a hold that
+                // already saw the release's order (the screen read the release before this tick) is finished too
+                if (Phase == ClickPhase.Released || (Phase == ClickPhase.Holding && (ChargeSeen || MoveSeen))) outcome = Finish();
+                else if (Phase != ClickPhase.Idle) outcome = ClickOutcome.Aborted;
                 Reset();
                 _prevDown = down;
                 return outcome;
@@ -247,22 +324,36 @@ namespace TraxCombat.Core
                 {
                     // the press
                     Phase = ClickPhase.Holding;
-                    PressOnIcon = hasTarget && OrderClickMath.OnIcon(iconPixels, icon);
+                    PressOnIcon = hasTarget && targetOnScreen && OrderClickMath.OnIcon(iconPixels, icon);
                     Dragged = false;
                     MaxDragPixels = 0;
                     ChargeSeen = false;
                     MoveSeen = false;
-                    Hold(hasTarget, iconPixels, dragPixels, icon, drag);
+                    TargetOffScreen = false;
+                    IdleOffScreen = false;
+                    Hold(hasTarget, targetOnScreen, iconPixels, dragPixels, icon, drag);
+                }
+                else
+                {
+                    // step 98: no click - the game's targeting untouched unless its focus is a unit off the screen
+                    IdleOffScreen = hasTarget && !targetOnScreen;
+                    Disable = IdleOffScreen;
                 }
             }
             else if (Phase == ClickPhase.Holding)
             {
-                if (down) Hold(hasTarget, iconPixels, dragPixels, icon, drag);
+                if (down) Hold(hasTarget, targetOnScreen, iconPixels, dragPixels, icon, drag);
                 else Phase = ClickPhase.Released; // the decision of the hold stands this frame
             }
             _prevDown = down;
             return outcome;
         }
+
+        /// <summary>Step 98: no button down, and the game's focus is a unit OFF the screen / behind the camera - its targeting held off.</summary>
+        public bool IdleOffScreen { get; private set; }
+
+        /// <summary>Step 98: during this click the game's focus was (at the last held frame) a unit off the screen.</summary>
+        public bool TargetOffScreen { get; private set; }
 
         /// <summary>An order the game issued for the player's formations: counted against the click in progress (if any).</summary>
         public void NoteOrder(bool targetedCharge, bool move)
@@ -272,20 +363,22 @@ namespace TraxCombat.Core
             if (move) MoveSeen = true;
         }
 
-        private void Hold(bool hasTarget, double iconPixels, double dragPixels, double icon, double drag)
+        private void Hold(bool hasTarget, bool targetOnScreen, double iconPixels, double dragPixels, double icon, double drag)
         {
             TargetSeen = hasTarget;
+            TargetOffScreen = hasTarget && !targetOnScreen;
             double d = double.IsNaN(dragPixels) ? double.PositiveInfinity : dragPixels;
             if (d > MaxDragPixels) MaxDragPixels = d;
             if (OrderClickMath.IsDrag(dragPixels, drag)) Dragged = true;
-            bool onNow = hasTarget && OrderClickMath.OnIcon(iconPixels, icon);
+            bool onNow = hasTarget && targetOnScreen && OrderClickMath.OnIcon(iconPixels, icon);
             Disable = Dragged || !PressOnIcon || !onNow;
         }
 
         private ClickOutcome Finish()
         {
             if (ChargeSeen) return Disable ? ClickOutcome.Leak : ClickOutcome.ChargeKept;
-            if (Disable && TargetSeen) return Dragged ? ClickOutcome.ConvertedDrag : ClickOutcome.ConvertedOffIcon;
+            if (Disable && TargetSeen)
+                return Dragged ? ClickOutcome.ConvertedDrag : TargetOffScreen ? ClickOutcome.ConvertedOffScreen : ClickOutcome.ConvertedOffIcon;
             return ClickOutcome.PlainMove;
         }
 
@@ -296,6 +389,8 @@ namespace TraxCombat.Core
             PressOnIcon = false;
             Dragged = false;
             TargetSeen = false;
+            TargetOffScreen = false;
+            IdleOffScreen = false;
             ChargeSeen = false;
             MoveSeen = false;
             MaxDragPixels = 0;
@@ -316,6 +411,16 @@ namespace TraxCombat.Core
         public int TargetedChargesSeen;
         public int Errors;
 
+        /// <summary>Step 98: clicks whose charge would have gone to a unit OFF the screen - turned into moves.</summary>
+        public int ConvertedOffScreen;
+
+        /// <summary>Step 98: times (and frames) the targeting was held off with no button down because the game focused a unit off the screen.</summary>
+        public int OffScreenHolds;
+        public int OffScreenHoldFrames;
+
+        /// <summary>Step 98: targeted charges the game issued with no click in progress (an F key, or a press the guard never saw).</summary>
+        public int ChargesOutsideClick;
+
         /// <summary>Frames the guard held the game's targeting off.</summary>
         public int DisabledFrames;
 
@@ -330,13 +435,14 @@ namespace TraxCombat.Core
                 case ClickOutcome.ChargeKept: ChargesKept++; break;
                 case ClickOutcome.ConvertedDrag: ConvertedDrag++; if (moveSeen) MovesAfterConversion++; break;
                 case ClickOutcome.ConvertedOffIcon: ConvertedOffIcon++; if (moveSeen) MovesAfterConversion++; break;
+                case ClickOutcome.ConvertedOffScreen: ConvertedOffScreen++; if (moveSeen) MovesAfterConversion++; break;
                 case ClickOutcome.PlainMove: PlainMoves++; break;
                 case ClickOutcome.Leak: Leaks++; break;
             }
             Clicks++;
         }
 
-        public int Converted => ConvertedDrag + ConvertedOffIcon;
+        public int Converted => ConvertedDrag + ConvertedOffIcon + ConvertedOffScreen;
 
         public IList<string> SummaryLines(in OrderClickRules rules)
         {
@@ -351,7 +457,9 @@ namespace TraxCombat.Core
                       + Converted + " charges turned into moves (" + ConvertedDrag + " drags, " + ConvertedOffIcon + " clicks off the icon; the placer's move seen after "
                       + MovesAfterConversion + " of them), " + PlainMoves + " plain moves (no unit under the cursor), " + Leaks + " charges SLIPPED THROUGH, "
                       + Aborted + " cut short, " + Errors + " errors; targeted charges the game issued " + TargetedChargesSeen + "; targeting held off "
-                      + DisabledFrames + " frames; switch " + state);
+                      + DisabledFrames + " frames; step 98 - a unit OFF the screen had the focus: " + ConvertedOffScreen + " clicks on it turned into moves, "
+                      + OffScreenHolds + " times held off with no button down (" + OffScreenHoldFrames + " frames); targeted charges with no click in progress (an F key, "
+                      + "or a press never seen) " + ChargesOutsideClick + "; switch " + state);
             return lines;
         }
     }

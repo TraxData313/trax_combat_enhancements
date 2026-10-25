@@ -24,16 +24,35 @@ namespace TraxCombat.Tools
             public int Switches;
             public int Presses;
 
+            /// <summary>Step 98: the guard cannot see the button (a press it never saw) - the game's release still reads it.</summary>
+            public bool Blind;
+
             public bool OrderModeActive => Active;
-            public bool ButtonDown => Down;
+            public bool ButtonDown => Down && !Blind;
             public double ScreenHeight => 1080;
 
-            public void Look(bool press, out bool hasTarget, out double iconPixels, out double dragPixels)
+            /// <summary>Step 98: the focused unit's banner on the screen (false = vanilla's 10 m rule focusing a unit off it).</summary>
+            public bool OnScreen = true;
+
+            public void Look(bool press, out OrderClickLook look)
             {
                 if (press) Presses++;
-                hasTarget = Target;
-                iconPixels = Target ? Icon : double.NaN;
-                dragPixels = press ? 0 : Drag;
+                look = new OrderClickLook
+                {
+                    HasTarget = Target,
+                    OnScreen = Target && OnScreen,
+                    IconPixels = Target ? Icon : double.NaN,
+                    DragPixels = press ? 0 : Drag,
+                    NearCamera = Target && !OnScreen,
+                    CameraMetres = Target ? (OnScreen ? 60 : 7.5) : 0,
+                    ScreenX = OnScreen ? 960 : -420,
+                    ScreenY = 560,
+                    W = 1,
+                    CursorX = 960,
+                    CursorY = 540,
+                    ScreenWidth = 1920,
+                    ScreenHeight = 1080,
+                };
             }
 
             public void SetTargetingDisabled(bool disabled)
@@ -50,6 +69,9 @@ namespace TraxCombat.Tools
             public readonly OrderClickGuard Guard;
             public int Charges;
             public int Moves;
+
+            /// <summary>Step 98: the release's order closes the orders menu (vanilla's TryCloseToggleOrder when not holding the order key).</summary>
+            public bool CloseOnRelease;
             private bool _uiPrevDown;
             private double _t = 100;
 
@@ -87,6 +109,7 @@ namespace TraxCombat.Tools
                     Moves++;
                     Guard.OnOrder(false, true, _t);
                 }
+                if (CloseOnRelease) World.Active = false;
             }
 
             public void Idle(int frames, bool uiFirst)
