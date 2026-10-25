@@ -48,7 +48,8 @@ Nothing is slow motion. A tired man's swing looks almost normal; he just waits l
 ## Your Athletics bar
 
 A fighter's bar is as big as his **Athletics skill** — the one on the character screen — and never smaller
-than 50 points. Every attack costs a little of it, missed or not; so do kicks, shield bashes and blocks.
+than 50 points. Common soldiers also get a smallest bar by their tier, so elite riders - who train Riding,
+not Athletics - still outlast recruits: a tier-6 knight's bar is at least 150 points. Every attack costs a little of it, missed or not; so do kicks, shield bashes and blocks.
 **Heroes pay a quarter less**, and a hero who leads a party a quarter less again — with a hero's big
 Athletics skill on top, your heroes outlast their men.
 

@@ -62,6 +62,23 @@ step 71: Toni, "they need to tire faster still").
 | 300 | 300 | 30 | 40 | 53 |
 
 (Bar ÷ cost, rounded - a recruit's 50 points are gone at his 5th swing, a legionary's 130 at his 13th.)
+
+**A floor by tier for common soldiers (step 93).** The game gives riders Riding instead of Athletics, so its
+best cavalry has small Athletics skills: the T6 Vlandian Banner Knight, Imperial Elite Cataphract and Khuzait
+Khan's Guard have 60 - below a T4 infantryman's 100. So a soldier's bar (never a hero's or yours) is also at
+least his tier's floor - the bar = the biggest of the skill, the 50 above and this:
+
+| Tier | Bar at least | Mounted median skill → bar | Foot median skill → bar | Example |
+|---:|---:|---:|---:|---|
+| T0-T1 | 50 | - | 20 → 50 | a recruit, a looter |
+| T2 | 50 | 20 → 50 | 40 → 50 | |
+| T3 | 70 | 40 → 70 | 70 → 70 | |
+| T4 | 90 | 60 → 90 | 100 → 100 | Vlandian Cavalry 60 → **90** |
+| T5 | 120 | 80 → 120 | 130 → 130 | |
+| T6 | 150 | 60 → 150 | - | Vlandian Banner Knight 60 → **150** (15 swings, not 6) |
+
+(Medians from the game's own troop data, SandBoxCore spnpccharacters.xml. Lords, companions, wanderers and you keep
+the bar of your real skill. Changed mid-battle, every soldier keeps his share of the bar.)
 Heroes (lords, companions, you) pay a quarter less per attack; a hero who leads a party pays a quarter
 less again (10 → 7.5 → 5.6 points). Attacks are cheap because the AI is careful (section 11): it decides
 to swing far less often than the base game's AI, so each swing need not cost much for a long fight to wear men down.
@@ -73,7 +90,7 @@ seven.
 
 **Wounds cap the bar.** A man at half health can only refill to half his bar.
 
-<sub>Settings: `AthleticsPoolPerSkill` 1.0, `AthleticsPoolFloor` 50, `CostPerBlow` 10 (7 until step 68, 8 until step 71), `CostOnMiss` on,
+<sub>Settings: `AthleticsPoolPerSkill` 1.0, `AthleticsPoolFloor` 50, `AthleticsFloorT1`-`T6` 50 / 50 / 70 / 90 / 120 / 150 (step 93), `CostPerBlow` 10 (7 until step 68, 8 until step 71), `CostOnMiss` on,
 `HeroCostMultiplier` 0.75, `PartyLeaderCostMultiplier` 0.75, `AthleticsPeakPercent` 75,
 `HealthCapsAthletics` on.</sub>
 

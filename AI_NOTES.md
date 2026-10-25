@@ -8421,3 +8421,39 @@ direction to the nearest enemy seen at the rest's last look (`m.EnemyX`), on eve
 Proposed measurement: tag each facing sample by who steers him (the rest walking back / the rest holding him / his own AI) and by the enemy's
 distance; if the turned-away samples sit in "his own AI, far off", it is (1) and harmless (or we keep the rest steering him facing the enemy
 farther out); if they sit in "the rest walking back", the backpedal is broken and that is a real bug.
+
+## Step 93 — an Athletics floor by tier for every non-hero troop (built 2026-10-25; dev build only, not uploaded)
+
+**Toni (2026-10-25, his Vlandia playthrough)**: the game gives cavalry Riding instead of Athletics - the T6 Vlandian Banner Knight, Imperial Elite
+Cataphract and Khuzait Khan's Guard have Athletics 60, below a T4 infantryman's median 100 (SandBoxCore/ModuleData/spnpccharacters.xml: mounted
+medians T2-T6 20 / 40 / 60 / 80 / 60, foot T2-T5 40 / 70 / 100 / 130). So an elite knight had a 60-point bar (6 swings) - less than a legionary's
+130. Toni's numbers: "lets not go too crazy".
+
+**The rule** (DESIGN decision 85): pool = max(`AthleticsPoolPerSkill` × skill, `AthleticsPoolFloor`, his tier's floor), never below 1. Six new Advanced
+settings `AthleticsFloorT1` .. `T6` in the Athletics group right after `AthleticsPoolFloor` - shipped 50 / 50 / 70 / 90 / 120 / 150, range 0-1000,
+0 = no floor for that tier. New keys, no migration (config format stays 22).
+- THE TIER: `BasicCharacterObject.GetBattleTier()` clamped 0-6, exactly step 73's read (7 for a hero, else ceil((level − 5) ÷ 5)). **T0** (level 5
+  and below: looters, villagers) takes **T1's** floor (`AthleticsRules.TierFloorSetting`); above 6 → T6's. Read ONCE at spawn in `ReadSkill`
+  (`TierForFloor`, its own try - a throw = no tier floor + one [error] `athletics.tier`) into `Fighter.Tier`.
+- NEVER HEROES: `Fighter.Tier` is −1 for a character that `IsHero` (lords, companions, wanderers), the main agent, or no character; and
+  `AthleticsMath.FloorTier(f)` gives −1 for any `Fighter.IsHero` anyway. Riders and foot alike, both sides, bandits and mercenaries are troops.
+- LIVE: nothing new to re-pool - the bar is a FRACTION of the pool and every read computes `PoolPoints` from the cached skill + tier with the rules
+  read now, so a floor change re-pools everyone on the field at once and each keeps his share (as `AthleticsPoolPerSkill` / `AthleticsPoolFloor` always
+  did). `AthleticsRules.TierFloorsKey` (10 bits a floor) joins the existing "pool settings now" check in `ApplySettingsChange`, whose line now carries
+  the tier part.
+- MASTER SWITCH FIRST: `AthleticsMath.TierFloor` returns 0 while `ModEnabled` is off (before the tier is looked at). Allocation-free.
+
+**Measurement**: `AthleticsStats` keeps the non-heroes' skills by tier (`_tierSkills`, 7 × 1024 ints, once a mission) apart from the heroes' /
+unknown histogram; `Pools` sums both with `PoolPointsFor(skill, tier)`; "at the floor" now means the "at least" floor made the pool (a man the tier
+lifted is counted apart); `TierLift(r, tier, …)` / `TierLiftText` - the [summary] pools line gains `tier floors (non-heroes) T1-T6 50/50/70/90/120/150,
+lifted by the tier floor: T4 n (skill 60.0 → pool 90.0) / T6 n (skill 60.0 → pool 150.0)` (or `nobody lifted by the tier floor` / ` - off`); the
+first lifted man of a mission: `[athletics] first man lifted by the tier floor: <name>, tier T6, Athletics skill 60 → pool 150 (the skill alone 60 with
+at least 50; T6's floor 150) - non-hero troops only, heroes and you keep the real skill`; the verbose pool-at-spawn line says `(T6's floor)`.
+
+**Gotcha (the smoke)**: the skill read `c.GetSkillValue(DefaultSkills.Athletics)` needs `Game.Current` (DefaultSkills.Instance = Game.Current.DefaultSkills);
+the offline smoke has none, so the read now waits for `Game.Current != null` (in a battle it is always there). The smoke's men carry a stand-in
+subclass of the REAL `BasicCharacterObject` (Level → the game's own `GetBattleTier`, IsHero overridden), set with a DynamicMethod field setter -
+`FieldInfo.SetValue` on `Agent._character` runs Agent's static constructor (ActionIndexCache → the engine) and throws. Their skill is set after Track,
+so the smoke's spawn-time lines and summary see skill 0.
+
+Tests: Step93Tests (17). Smoke: `TierFloorsThroughTheLogic` (208 steps). PLAYTEST D57.

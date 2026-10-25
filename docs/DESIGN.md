@@ -3325,6 +3325,16 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     friend (27.8% of the bash hits, 52% in the 1.2-1.4 m bin); 1.1 m: 233 bashes, none past 1.1 m, 47 on a friend (22.9%), kicks 491 → 548, the
     rolls beyond 43.8 / 0 / 56.2. (e) UNVERIFIED in game (PLAYTEST D56): the real friends' share by distance bin - whether 1.1 m is short enough or
     the sweep still reaches the shield-side neighbour from closer in.
+85. **An Athletics floor by tier for every non-hero troop** (step 93, Toni 2026-10-25, his Vlandia playthrough: the T6 Vlandian Banner Knight,
+    Imperial Elite Cataphract and Khuzait Khan's Guard have Athletics 60 - the game gives riders Riding instead - below a T4 infantryman's median 100;
+    mounted medians T2-T6 20 / 40 / 60 / 80 / 60, foot T2-T5 40 / 70 / 100 / 130, SandBoxCore spnpccharacters.xml). (a) THE RULE: pool = max(the
+    skill × `AthleticsPoolPerSkill`, `AthleticsPoolFloor`, his tier's floor), never below 1; `AthleticsFloorT1`..`T6` (Advanced, the Athletics group
+    after `AthleticsPoolFloor`, Int 0-1000, live) shipped 50 / 50 / 70 / 90 / 120 / 150 (Toni: "lets not go too crazy"); 0 = no floor for that tier.
+    (b) THE TIER: `GetBattleTier()` clamped 0-6 (step 73's read), read at spawn; T0 (level 5 and below) takes T1's floor. (c) NEVER HEROES: lords,
+    companions, wanderers and the player keep their real skill (no tier); soldiers, mercenaries and bandits of both sides, riders and foot. (d) LIVE:
+    the bar is a fraction of the pool, so a floor change re-pools the men on the field at once and each keeps his share. The master switch first (no
+    tier floor while it is off). New keys: no migration. (e) MEASUREMENT: the [summary] pools line's "lifted by the tier floor: T3 n / T4 n / ..." with
+    the mean skill before and pool after; the first lifted man of a mission in full.
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),
 `HudRefreshSeconds`, `FormationStatsRefreshSeconds` came out of step 2's research
