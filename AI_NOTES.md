@@ -8457,3 +8457,59 @@ subclass of the REAL `BasicCharacterObject` (Level → the game's own `GetBattle
 so the smoke's spawn-time lines and summary see skill 0.
 
 Tests: Step93Tests (17). Smoke: `TierFloorsThroughTheLogic` (208 steps). PLAYTEST D57.
+
+## Step 94 — a bigger base pool, cheaper swings (built 2026-10-25; dev build only, not uploaded)
+
+**Toni (2026-10-25)**: "no action at all for T1 troops in the early stages ... swings a few times then waits and waits". The cause: the refill
+takes `FullRegenSecondsStanding` 60 s for ANY pool, so a recruit's 50-point bar fitted 1-2 swings of 10 between ~32 s rests (~1.7 swings a
+minute, ~6 for a T6 at 150). Toni: tiredness is not the way to slow the combat - armour is (next).
+
+**The rule** (DESIGN decision 86): pool = max(`AthleticsPoolBase` + `AthleticsPoolPerSkill` × skill, `AthleticsPoolFloor`, his tier floor), never
+below 1. New Advanced setting `AthleticsPoolBase` (Int 0-1000, the Athletics group right before `AthleticsPoolPerSkill`, live, 100; 0 = steps 5c-93's
+formula); `AthleticsPoolPerSkill` 1.0 → 0.5 in defaults.json. A recruit (20) 110, a 100 skill 150, the Banner Knight (60) 130 → 150 by T6's floor, a
+Druzhinnik Champion (140) 170, a 233 hero 216.5. EVERYONE - heroes, party leaders, the player (the tier floors still never for heroes).
+`CostPerBlow` 10 → 7, `CostPerKickOrBash` 8 → 6 (kicks, bashes, step 88's pushes); blocks unchanged (3 / 6 / 3); the hero / leader x 0.75 kept.
+- CORE: `AthleticsRules.PoolBase` (a new LAST optional constructor parameter `poolBase = 0`, so every older `new AthleticsRules(...)` keeps the old
+  formula) and `EffectiveBase` (0 while `ModEnabled` is off - the master switch first, like step 93's tier floor); `AthleticsMath.SkillPart` = base +
+  per-skill × skill feeds `PoolPointsForSkill` and `IsAtFloor`; `FormulaText` = the log's words - "100 + the Athletics skill x0.50, at least 50", and
+  with no base exactly the old "the Athletics skill x1.00, at least 50" (so the older smokes' LogHas lines stand).
+- THE WORDS: `DescribeRules` (mission start + the summary's settings line), the summary's pools line, the YOU line, the "pool settings now" line and
+  step 93's first-lifted line ("(the skill alone 110 from 100 + the Athletics skill x0.50, at least 50; T6's floor 150)" - was "with at least 50")
+  all go through `FormulaText`. Hints: AthleticsEnabled ("100 points plus half his Athletics skill by default"), CostPerBlow ("At 7 a recruit (a
+  110-point bar) is empty after 16 blows, a legionary (165) after 24"), CostPerKickOrBash ("6 costs a hero 4.5 and a party leader 3.4. Weapon pushes
+  cost the same"), AthleticsPoolFloor and AthleticsPoolPerSkill rewritten for the base.
+- LIVE: the bar is a fraction of the pool, so nothing new to re-pool; the "pool settings now" check in `ApplySettingsChange` adds
+  `_seenPoolBase` (the effective base).
+
+**CONFIG FORMAT 23** (`ConfigFile.Migrate` `from < 23`, `MoveOrKeepIfMoved`): AthleticsPoolPerSkill 1.0 (any format), CostPerBlow 10 (`from >= 15` -
+10 since step 71's format 15; a format-14 file's 8 goes straight to 7 through step 71's block, its wording), CostPerKickOrBash 8 (`from >= 19` - step
+81's format 19; older files' values went through steps 71 / 81). On DESIGN's initial values (the older tests' defaultOf) nothing moves, because
+today's default equals the old one - that is why IfMoved. Known edge: a format 15-18 file with a hand-set kick 8 stays 8 silently (step 81's
+IfMoved is a no-op now that 6 is today's default again).
+
+**DESIGN's Default column**: `AthleticsPoolBase` is born **100** (its real initial value), so DESIGN-valued settings pool a man at 100 + 1.0 ×
+skill. The older tests that count pools / stores / stacks (Step93Tests, AthleticsStatsTests, SprintTests, SwingStackTests) build their settings
+from `OldPool.Settings()` (DesignTable.cs: DESIGN's values with the base pinned 0) - deliberately; the format tests' "→ 22" became "→ 23"; Step71's
+hint check and Step81's shipped-costs check follow the new text / values; SettingsPagesTests 524.
+
+**Measured offline**: tests 1341 → 1355 (Step94Tests.cs, 14). Smoke 208 → 209 steps, all passed: `BiggerBasePoolThroughTheLogic` (Program.Step94.cs) -
+a recruit 20 → 110 points, 15 swings at 7 leave 5, the 16th empties him; a 233 lord 216.5 (the smoke's lord is a hero AND a party leader: 3.94 a
+swing, 54 fit, the 55th empties him); a T6 rider 130 → 150, a hero with 60 keeps 130; base 0 live → the lord's 130 → 50 at his 60%, back to 100;
+ModEnabled off = no base (and no tier floor). `AthleticsDefaults` pins `AthleticsPoolBase` 0; the step 81 / 88 grinds pin step 81's 10 / 8
+(`Step81Costs`) - they read `p.Default` for the costs.
+
+**Docs**: MECHANICS §2 (the bar table 0-300 skill → 100-250 points, 15-64 attacks; the tier table - only T6 riders still lifted; the peak line's free
+quarter - a recruit's 4th swing, a 150-skill party-leading hero ~11), §4 (stack caps for bars 110-250; the example 175 points / 5.25 / 38% / ~0.5 s),
+§6 (the kick row 6 / 4.5 / 3.38; the parry-climb table for 110-200 bars), §11 (fever store 55-250 points), §11c (the AI kick's 6-point price; a note
+that the impact examples name explicit points worked with the old bars), §14 (sprint store for bars 110 / 150 / 200); HOW-IT-WORKS (the bar
+sentence, its table 110 / 150 / 200 → 16 / 22 / 29 and 28 / 39 / 51, the kick 6 / swing 7); DESIGN §2, decision 86, the rows; PLAYTEST D58.
+
+**Worth Toni's eye**: the impact model weighs both men's CURRENT points (body = points^0.5). With the base, a looter (~115) and a legionary (165)
+differ by 1.4x instead of 2.6x, so a fresh legionary's Athletics edge over a fresh looter is much smaller (toughness - armour and level - still
+counts apart). The MECHANICS impact tables were NOT recomputed (they name their men's points); if the impact feel drifts, that is where to look.
+
+**UNVERIFIED — only the game can tell (PLAYTEST D58)**
+1. Early battles: recruits keep swinging ~15 times before resting instead of 1-2.
+2. The first start logs `[config] migrated config.json …` once (format 22 → 23) with the three moves.
+
+**DEPLOY**: `tools\deploy.ps1` ran whole (build, the AssemblyGuard, the offline smoke - all passed), installed as Modules\TraxCombatEnhancements.Dev; `tools\SmartAppControl\loadcheck.ps1`: both installed DLLs LOADED (`1.3.2+20bbf462...`). The game and the launcher were not running. Windows security untouched.
