@@ -80,6 +80,7 @@ namespace TraxCombat.Tools
                              SettingsSchema.SwingStackMinimum, SettingsSchema.SwingStackPointsPerSwing, SettingsSchema.KicksUseSwings, SettingsSchema.CostPerKickOrBash, SettingsSchema.CostPerBlow,
                          })
                     S.Set(p, p.Default, SettingSources.File);
+                Step81Costs(); // step 94 made the swing 7 and the kick 6 - these numbers are step 81's costs
                 Step80PathDefaults(); // step 90 narrowed the shipped path - these numbers are step 80's path
                 Check(S.AiShieldmanKickPercent == 25 && S.AiShieldmanBashPercent == 40 && S.AiNoShieldKickPercent == 35 && S.AiNoShieldPushPercent == 20,
                     "the shipped step-88 shares are not 25 / 40 and 35 / 20: " + S.AiShieldmanKickPercent + " / " + S.AiShieldmanBashPercent + ", " + S.AiNoShieldKickPercent + " / " + S.AiNoShieldPushPercent);

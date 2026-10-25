@@ -151,6 +151,7 @@ namespace TraxCombat.Tools
             S.Set(SettingsSchema.WarCriesEnabled, false, SettingSources.File); // step 79: the older steps run without war cries (their order poll forgets while the sprint and the fever are off)
             S.Set(SettingsSchema.AthleticsEnabled, true, SettingSources.File);
             S.Set(SettingsSchema.AthleticsPoolFloor, 50, SettingSources.File);
+            S.Set(SettingsSchema.AthleticsPoolBase, 0, SettingSources.File); // step 94: the older steps count pools and blows on steps 5c-93's formula (the skill, at least 50) - Program.Step94.cs has its own
             S.Set(SettingsSchema.AthleticsPoolPerSkill, 1.0, SettingSources.File);
             S.Set(SettingsSchema.AthleticsPeakPercent, 75, SettingSources.File);
             S.Set(SettingsSchema.HealthCapsAthletics, true, SettingSources.File);

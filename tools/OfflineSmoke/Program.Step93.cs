@@ -80,7 +80,7 @@ namespace TraxCombat.Tools
                 Check(PoolOf(cavalry) == 90, "a T4 rider with skill 60 did not get 90: " + PoolOf(cavalry));
                 Check(PoolOf(looter) == 50 && PoolOf(plain) == 60, "T0 / no character: " + PoolOf(looter) + " / " + PoolOf(plain));
                 LogHas("[athletics] first man lifted by the tier floor: ");
-                LogHas(", tier T6, Athletics skill 0 → pool 150 (the skill alone 50 with at least 50; T6's floor 150) - non-hero troops only, heroes and you keep the real skill");
+                LogHas(", tier T6, Athletics skill 0 → pool 150 (the skill alone 50 from the Athletics skill x1.00, at least 50; T6's floor 150) - non-hero troops only, heroes and you keep the real skill");
 
                 // a live change re-pools the men already on the field - each keeps his share
                 SetBar(knight, 0.6);
