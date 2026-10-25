@@ -36,9 +36,11 @@ namespace TraxCombat.Core
             float walkEffortFraction, int regenRateNearFullPercent, bool modEnabled = true,
             float costPerShieldBlock = 0, float costPerWrongSideShieldBlock = 0, float costPerWeaponParry = 0,
             bool onlyWrongSideBlocksStopRefill = false,
-            int tierFloorT1 = 0, int tierFloorT2 = 0, int tierFloorT3 = 0, int tierFloorT4 = 0, int tierFloorT5 = 0, int tierFloorT6 = 0)
+            int tierFloorT1 = 0, int tierFloorT2 = 0, int tierFloorT3 = 0, int tierFloorT4 = 0, int tierFloorT5 = 0, int tierFloorT6 = 0,
+            int poolBase = 0)
         {
             ModEnabled = modEnabled;
+            PoolBase = poolBase;
             TierFloorT1 = tierFloorT1;
             TierFloorT2 = tierFloorT2;
             TierFloorT3 = tierFloorT3;
@@ -90,6 +92,15 @@ namespace TraxCombat.Core
 
         /// <summary>AthleticsPoolPerSkill - pool points per Athletics skill point.</summary>
         public float PoolPerSkill { get; }
+
+        /// <summary>Step 94 (Toni 2026-10-25): AthleticsPoolBase - points under every pool before the skill adds to it: pool =
+        /// max(base + per-skill × skill, the floor, his tier's floor). 0 = steps 5c-93's formula. Everyone - heroes and the player too.
+        /// The constructor's default is 0 for the older tests; <see cref="From"/> reads the setting. The master switch off = no base
+        /// (<see cref="EffectiveBase"/>).</summary>
+        public int PoolBase { get; }
+
+        /// <summary>The base in effect now: 0 while the master switch is off (checked FIRST) or below 0.</summary>
+        public int EffectiveBase => !ModEnabled || PoolBase < 0 ? 0 : PoolBase;
 
         /// <summary>Step 93 (Toni 2026-10-25): AthleticsFloorT1 .. T6 - the smallest pool of a NON-HERO troop of that battle tier
         /// (the game gives riders Riding instead of Athletics: a T6 Banner Knight has skill 60). 0 = no floor for that tier. Heroes
@@ -218,7 +229,8 @@ namespace TraxCombat.Core
             s.RegenDelayBlowTimes, s.BlowTimeSeconds, s.FullRegenSecondsStanding, s.RegenMultiplierAtFullRun,
             s.WalkEffortFraction, s.RegenRateNearFullPercent, s.ModEnabled,
             s.CostPerShieldBlock, s.CostPerWrongSideShieldBlock, s.CostPerWeaponParry, s.OnlyWrongSideBlocksStopRefill,
-            s.AthleticsFloorT1, s.AthleticsFloorT2, s.AthleticsFloorT3, s.AthleticsFloorT4, s.AthleticsFloorT5, s.AthleticsFloorT6);
+            s.AthleticsFloorT1, s.AthleticsFloorT2, s.AthleticsFloorT3, s.AthleticsFloorT4, s.AthleticsFloorT5, s.AthleticsFloorT6,
+            s.AthleticsPoolBase);
     }
 
     /// <summary>
@@ -580,7 +592,7 @@ namespace TraxCombat.Core
 
     /// <summary>
     /// DESIGN §2 as pure functions. EACH RULE IS ONE FUNCTION of (fighter, live rules):
-    ///   <see cref="PoolPoints"/>          pool = max(floor, per-skill × Athletics skill, his tier's floor - step 93, never a hero), never below 1
+    ///   <see cref="PoolPoints"/>          pool = max(base + per-skill × Athletics skill - step 94, floor, his tier's floor - step 93, never a hero), never below 1
     ///   <see cref="UsableFraction"/>      the health cap (health left, or 1)
     ///   <see cref="PeakShare"/>           f = min(E / (peak% × FULL pool), 1)
     ///   <see cref="BlowCostPoints"/>      cost of one blow in POINTS (CostPerBlow × hero × leader)
@@ -618,9 +630,20 @@ namespace TraxCombat.Core
 
         // ------------------------------------------------------------------ the pool
 
-        /// <summary>Pool in points for an Athletics skill: max(floor, per-skill × skill), never below 1.</summary>
+        /// <summary>Step 94: the pool the skill gives before any floor - base + per-skill × skill (base 0 = the skill alone).</summary>
+        public static double SkillPart(in AthleticsRules r, int skill) => r.EffectiveBase + (double)r.PoolPerSkill * Math.Max(0, skill);
+
+        /// <summary>Pool in points for an Athletics skill: max(base + per-skill × skill, floor), never below 1 (step 94: the base).</summary>
         public static double PoolPointsForSkill(in AthleticsRules r, int skill) =>
-            Math.Max(1.0, Math.Max(r.PoolFloor, (double)r.PoolPerSkill * Math.Max(0, skill)));
+            Math.Max(1.0, Math.Max(r.PoolFloor, SkillPart(in r, skill)));
+
+        /// <summary>Step 94: the pool formula in words for the log - "the Athletics skill x1.00, at least 50" with no base (steps 5c-93's
+        /// words, unchanged), "100 + the Athletics skill x0.50, at least 50" with one.</summary>
+        public static string FormulaText(in AthleticsRules r)
+        {
+            string perSkill = r.PoolPerSkill.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
+            return (r.EffectiveBase > 0 ? r.EffectiveBase + " + " : "") + "the Athletics skill x" + perSkill + ", at least " + r.PoolFloor;
+        }
 
         /// <summary>Step 93: the tier floor in points for a battle tier - 0 while the master switch is off (checked FIRST) or for
         /// tier −1 (a hero, the player, unknown); T0 (level 5 and below: looters, villagers) takes T1's floor; above 6 → T6's.</summary>
@@ -638,7 +661,7 @@ namespace TraxCombat.Core
         public static double PoolPoints(in AthleticsRules r, Fighter f) => PoolPointsFor(in r, f.AthleticsSkill, FloorTier(f));
 
         /// <summary>The pool of this skill comes from the floor (the skill alone would give less).</summary>
-        public static bool IsAtFloor(in AthleticsRules r, int skill) => (double)r.PoolPerSkill * Math.Max(0, skill) < r.PoolFloor;
+        public static bool IsAtFloor(in AthleticsRules r, int skill) => SkillPart(in r, skill) < r.PoolFloor;
 
         /// <summary>Step 93: the pool comes from the "at least" floor, not from the skill nor the tier floor.</summary>
         public static bool IsAtFloor(in AthleticsRules r, int skill, int tier) => IsAtFloor(in r, skill) && !IsLiftedByTier(in r, skill, tier);

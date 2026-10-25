@@ -106,6 +106,9 @@ namespace TraxCombat.Missions
         private long _seenTierFloors; // step 93
         private bool _tierLiftLogged; // step 93: the first lifted man logged in full, once a mission
         private float _seenPoolPerSkill;
+
+        /// <summary>Step 94: the pool base last seen (its effective value - 0 while the mod is off).</summary>
+        private int _seenPoolBase;
         private double _regenAccum;
         private bool _speedsSampled;
 
@@ -146,6 +149,7 @@ namespace TraxCombat.Missions
             _seenPoolFloor = r.PoolFloor;
             _seenPoolPerSkill = r.PoolPerSkill;
             _seenTierFloors = r.TierFloorsKey; // step 93
+            _seenPoolBase = r.EffectiveBase; // step 94
             _tierLiftLogged = false;
             TraxLog.Info("athletics", "mission start: " + AthleticsStats.DescribeRules(in r) + " - read live");
             TraxLog.Info("athletics", Campaign.Current != null
@@ -333,7 +337,7 @@ namespace TraxCombat.Missions
                     _tierLiftLogged = true;
                     TraxLog.Info("athletics", "first man lifted by the tier floor: " + Name(st) + ", tier T" + tier + ", Athletics skill " + st.AthleticsSkill
                         + " → pool " + F0(AthleticsMath.PoolPoints(in r, st)) + " (the skill alone " + F0(AthleticsMath.PoolPointsForSkill(in r, st.AthleticsSkill))
-                        + " with at least " + r.PoolFloor + "; T" + tier + "'s floor " + AthleticsMath.TierFloor(in r, tier)
+                        + " from " + AthleticsMath.FormulaText(in r) + "; T" + tier + "'s floor " + AthleticsMath.TierFloor(in r, tier)
                         + ") - non-hero troops only, heroes and you keep the real skill");
                 }
             }
@@ -675,8 +679,8 @@ namespace TraxCombat.Missions
             {
                 _playerPoolLogged = true;
                 double pool = AthleticsMath.PoolPoints(in r, _player);
-                TraxLog.Limited("athletics", "YOU: Athletics skill " + _player.AthleticsSkill + " → pool " + F0(pool) + " (the skill x" + F2(r.PoolPerSkill)
-                    + ", at least " + r.PoolFloor + "); full strength down to " + F0(pool * r.PeakFraction) + " (" + r.PeakPercent + "%); a blow costs you "
+                TraxLog.Limited("athletics", "YOU: Athletics skill " + _player.AthleticsSkill + " → pool " + F0(pool) + " (" + AthleticsMath.FormulaText(in r)
+                    + "); full strength down to " + F0(pool * r.PeakFraction) + " (" + r.PeakPercent + "%); a blow costs you "
                     + F1(AthleticsMath.BlowCostPoints(in r, _player)) + " - about " + BlowsAtFullStrength(in r, _player) + " blows at full strength, "
                     + BlowsToEmpty(in r, _player) + " to empty", "athletics-player");
             }
@@ -1189,15 +1193,16 @@ namespace TraxCombat.Missions
                 NoteAiKickSettings(settings);     // step 65: the AI kicks and bashes
                 NoteWarCrySettings(settings);     // step 79: war cries
 
-                if (r.PoolFloor != _seenPoolFloor || r.PoolPerSkill != _seenPoolPerSkill || r.TierFloorsKey != _seenTierFloors)
+                if (r.PoolFloor != _seenPoolFloor || r.PoolPerSkill != _seenPoolPerSkill || r.TierFloorsKey != _seenTierFloors || r.EffectiveBase != _seenPoolBase)
                 {
+                    _seenPoolBase = r.EffectiveBase; // step 94: the base re-pools everyone the same way
                     _seenPoolFloor = r.PoolFloor;
                     _seenPoolPerSkill = r.PoolPerSkill;
                     _seenTierFloors = r.TierFloorsKey; // step 93: the tier floors re-pool the men on the field the same way
                     string dist = _stats.Pools(in r, out double min, out double mean, out double max, out int atFloor)
                         ? "pools now min " + F0(min) + " / avg " + F1(mean) + " / max " + F0(max) + ", " + atFloor + " at the floor; " + _stats.TierLiftText(in r)
                         : "nobody tracked yet";
-                    TraxLog.Info("athletics", "pool settings now: the Athletics skill x" + F2(r.PoolPerSkill) + ", at least " + r.PoolFloor + " - "
+                    TraxLog.Info("athletics", "pool settings now: " + AthleticsMath.FormulaText(in r) + " - "
                         + dist + "; everyone keeps his share (a fighter at 60% stays at 60%)");
                 }
 

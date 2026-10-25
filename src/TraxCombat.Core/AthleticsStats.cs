@@ -665,7 +665,7 @@ namespace TraxCombat.Core
         {
             if (!Pools(in r, out double min, out double mean, out double max, out int atFloor))
                 return "Athletics pools (the Athletics skill, settings at the end): no fighters tracked";
-            var sb = new StringBuilder("Athletics pools (the Athletics skill x").Append(N2(r.PoolPerSkill)).Append(", at least ").Append(r.PoolFloor)
+            var sb = new StringBuilder("Athletics pools (").Append(AthleticsMath.FormulaText(in r))
                 .Append("; settings at the end): ").Append(FightersTracked).Append(" fighters - min ").Append(N0(min)).Append(" / avg ").Append(N1(mean))
                 .Append(" / max ").Append(N0(max)).Append("; ").Append(atFloor).Append(" at the floor");
             if (SkillsUnknown > 0) sb.Append(", ").Append(SkillsUnknown).Append(" whose skill could not be read (the floor)");
@@ -697,7 +697,7 @@ namespace TraxCombat.Core
             + ", WRONG side " + (Blocks(BlockKind.ShieldWrongSide) - BlocksRestarted(BlockKind.ShieldWrongSide)) + ", parries "
             + (Blocks(BlockKind.WeaponParry) - BlocksRestarted(BlockKind.WeaponParry)) + ") - OnlyWrongSideBlocksStopRefill (step 29)";
 
-        /// <summary><c>ON - pool = the Athletics skill x1.00, at least 50; …</c> or <c>OFF …</c> - the
+        /// <summary><c>ON - pool = 100 + the Athletics skill x0.50, at least 50; …</c> (step 94; no base: <c>the Athletics skill x1.00, at least 50</c>) or <c>OFF …</c> - the
         /// settings sentence of the mission-start line and the summary.</summary>
         public static string DescribeRules(in AthleticsRules r)
         {
@@ -706,7 +706,7 @@ namespace TraxCombat.Core
             var soldier = new Fighter();
             var hero = new Fighter { IsHero = true };
             var leader = new Fighter { IsHero = true, IsLeader = true };
-            return "ON - pool = the Athletics skill x" + N2(r.PoolPerSkill) + ", at least " + r.PoolFloor
+            return "ON - pool = " + AthleticsMath.FormulaText(in r)
                 + "; full strength at " + r.PeakPercent + "% of the pool and above"
                 + "; cost per blow " + N1(AthleticsMath.BlowCostPoints(in r, soldier))
                 + " / hero " + N1(AthleticsMath.BlowCostPoints(in r, hero))

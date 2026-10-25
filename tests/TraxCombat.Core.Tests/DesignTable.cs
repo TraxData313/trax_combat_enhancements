@@ -72,3 +72,18 @@ internal static class TestDefaults
         DefaultsFile.UseValuesForTests(values, SourceName);
     }
 }
+
+/// <summary>
+/// Step 94: AthleticsPoolBase's INITIAL value is 100 (DESIGN's Default column), so a settings object built on DESIGN's values pools a man at
+/// 100 + 1.0 × skill. The older tests that count pools, stores and stacks were written on the steps 5c-93 formula (the pool = the skill, at
+/// least 50): they build their settings here - DESIGN's values with the base pinned at 0 - on purpose.
+/// </summary>
+internal static class OldPool
+{
+    public static TraxSettings Settings()
+    {
+        var s = new TraxSettings();
+        s.Set(SettingsSchema.AthleticsPoolBase, 0, SettingSources.File);
+        return s;
+    }
+}

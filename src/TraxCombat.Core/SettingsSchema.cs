@@ -96,11 +96,11 @@ namespace TraxCombat.Core
 
         public static readonly ParamDef AthleticsEnabled = Bool("AthleticsEnabled", PlayerTiredGroup,
             "Athletics (stamina)",
-            "On: every fighter has an Athletics bar - his stamina, as big as his Athletics skill - that his attacks and blocks drain and rest refills. At or above the peak line (the white mark) he fights at full strength; below it the top of his damage roll, his attack speed and his run speed fall - down to long pauses between attacks and a slow run when it is empty - and tired AI fighters step back. Off: no Athletics at all - no costs, no slowing, no step backs, no bars (and no sprint, aggression by tiredness or staggers).");
+            "On: every fighter has an Athletics bar - his stamina, 100 points plus half his Athletics skill by default - that his attacks and blocks drain and rest refills. At or above the peak line (the white mark) he fights at full strength; below it the top of his damage roll, his attack speed and his run speed fall - down to long pauses between attacks and a slow run when it is empty - and tired AI fighters step back. Off: no Athletics at all - no costs, no slowing, no step backs, no bars (and no sprint, aggression by tiredness or staggers).");
 
         public static readonly ParamDef CostPerBlow = Float("CostPerBlow", 0, 100, PlayerTiredGroup,
             "Cost per swing (points)",
-            "How fast men tire: the Athletics points one attack costs a common soldier, whatever the size of his bar - so a bigger Athletics skill means more blows. At 10 a recruit (a 50-point bar) is empty after 5 blows, a legionary (130) after 13. Higher = everyone tires sooner. 0 = attacks are free. Kicks, bashes and blocks have their own costs: Advanced page, Athletics.");
+            "How fast men tire: the Athletics points one attack costs a common soldier, whatever the size of his bar - so a bigger Athletics skill means more blows. At 7 a recruit (a 110-point bar) is empty after 16 blows, a legionary (165) after 24. Higher = everyone tires sooner. 0 = attacks are free. Kicks, bashes and blocks have their own costs: Advanced page, Athletics.");
 
         public static readonly ParamDef HeroCostMultiplier = Float("HeroCostMultiplier", 0, 2, PlayerTiredGroup,
             "Heroes' cost (x)",
@@ -259,7 +259,7 @@ namespace TraxCombat.Core
 
         public static readonly ParamDef AthleticsPoolFloor = Int("AthleticsPoolFloor", 0, 1000, AthleticsGroup,
             "Smallest bar (points)",
-            "No fighter's Athletics bar is smaller than this, whatever his Athletics skill - so a recruit with Athletics skill 20 still gets a 50-point bar (5 blows). 0 = no floor: the bar is exactly the skill (never below 1 point). Changed mid-battle, everyone keeps his share: a fighter at 60% stays at 60%.");
+            "No fighter's Athletics bar is smaller than this, whatever his Athletics skill. The bar is the base plus the skill times the points per skill point (both below); this floor only matters when those give less. 0 = no floor (never below 1 point). Changed mid-battle, everyone keeps his share: a fighter at 60% stays at 60%.");
 
         // Step 93 (Toni 2026-10-25): a floor by the troop's tier - the game gives riders Riding instead of Athletics (a T6 Banner Knight has 60).
         public static readonly ParamDef AthleticsFloorT1 = Int("AthleticsFloorT1", 0, 1000, AthleticsGroup,
@@ -286,9 +286,14 @@ namespace TraxCombat.Core
             "Smallest bar of a tier 6 soldier",
             "No tier 6 soldier's Athletics bar is smaller than this: a Vlandian Banner Knight (T6) with Athletics skill 60 gets a 150-point bar - the game gives riders Riding instead of Athletics. Only common soldiers, mercenaries and bandits - lords, companions, wanderers and you keep the bar of your real skill. The bar is the biggest of the skill, the smallest bar above and this. 0 = no floor for this tier. Changed mid-battle, everyone keeps his share: a soldier at 60% stays at 60%.");
 
+        // Step 94 (Toni 2026-10-25): a base under everyone's bar - recruits got 1-2 swings between long rests.
+        public static readonly ParamDef AthleticsPoolBase = Int("AthleticsPoolBase", 0, 1000, AthleticsGroup,
+            "Bar base (points)",
+            "Every fighter's Athletics bar starts at this many points and his Athletics skill adds to it (times the points per skill point, below): at 100 and 0.5 a recruit with skill 20 gets a 110-point bar, a skill of 100 a 150-point bar. Heroes and you too. The smallest bar and the tier floors above still hold it up. 0 = the bar is the skill alone. Changed mid-battle, everyone keeps his share: a fighter at 60% stays at 60%.");
+
         public static readonly ParamDef AthleticsPoolPerSkill = Float("AthleticsPoolPerSkill", 0.1, 5, AthleticsGroup,
             "Bar points per skill point",
-            "Athletics points per point of Athletics skill. 1.0: the bar tops at the skill - skill 180, a 180-point bar. Changed mid-battle, everyone keeps his share.");
+            "Athletics points each point of Athletics skill adds to the bar base (above). 0.5 with a base of 100: skill 100, a 150-point bar; skill 180, a 190-point bar. With the base at 0 and 1.0, the bar is the skill. Changed mid-battle, everyone keeps his share.");
 
         public static readonly ParamDef AthleticsPeakPercent = Int("AthleticsPeakPercent", 10, 100, AthleticsGroup,
             "Peak line (% of the bar)",
@@ -301,7 +306,7 @@ namespace TraxCombat.Core
         // Step 18 (Anton, 2026-09-28): kicks and shield bashes cost too - their own price, the blow's multipliers.
         public static readonly ParamDef CostPerKickOrBash = Float("CostPerKickOrBash", 0, 20, AthleticsGroup,
             "Cost per kick or shield bash (points)",
-            "Athletics points one kick or one shield bash costs a common soldier - yours and the AI's alike. Heroes pay it times the hero cost and party leaders times both, just like a blow: 8 costs a hero 6 and a party leader 4.5. Paid once, when the kick or bash starts, landed or not. It never starts the pause between attacks. 0 = kicks and bashes are free.");
+            "Athletics points one kick or one shield bash costs a common soldier - yours and the AI's alike. Heroes pay it times the hero cost and party leaders times both, just like a blow: 6 costs a hero 4.5 and a party leader 3.4. Weapon pushes cost the same. Paid once, when the kick or bash starts, landed or not. It never starts the pause between attacks. 0 = kicks and bashes are free.");
 
         // Step 22 (Anton, 2026-09-29): defending costs too - the DEFENDER pays for every melee blow he blocks, by how.
         public static readonly ParamDef CostPerShieldBlock = Float("CostPerShieldBlock", 0, 20, AthleticsGroup,
@@ -2426,7 +2431,7 @@ namespace TraxCombat.Core
             DamageRandomEnabled, DamageRandomMelee, DamageRandomRanged,
             DamageRandomOnMounts, DamageRandomOnShields, SprintFullCritical,
             AthleticsPoolFloor, AthleticsFloorT1, AthleticsFloorT2, AthleticsFloorT3, AthleticsFloorT4, AthleticsFloorT5, AthleticsFloorT6,
-            AthleticsPoolPerSkill, AthleticsPeakPercent, HealthCapsAthletics,
+            AthleticsPoolBase, AthleticsPoolPerSkill, AthleticsPeakPercent, HealthCapsAthletics,
             CostPerKickOrBash, CostPerShieldBlock, CostPerWrongSideShieldBlock, CostPerWeaponParry, OnlyWrongSideBlocksStopRefill,
             ShieldFrontArcIsCorrect, ShieldFrontArcDegrees, CostOnMiss, PartyLeaderCostMultiplier,
             ExhaustedAttackSpeedPercent, AttackRatePlayerTimer, AttackRatePaceHold, AttackRatePaceByInput, AiHoldRaiseGuard, AttackRateAiDecisions, AttackAnimationMinPercent,

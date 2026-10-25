@@ -10,7 +10,7 @@ public class SwingStackTests
     private static SwingStackRules Stack(bool on = true, double per = 20, int min = 2, bool kicks = true, bool mod = true, bool athletics = true) =>
         new(mod, athletics, on, per, min, kicks);
 
-    private static AthleticsRules Athletics() => AthleticsRules.From(new TraxSettings());
+    private static AthleticsRules Athletics() => AthleticsRules.From(OldPool.Settings()); // step 94: the base pinned 0
 
     // ------------------------------------------------------------------ the cap
 

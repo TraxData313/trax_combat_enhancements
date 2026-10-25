@@ -126,8 +126,10 @@ namespace TraxCombat.Core
         /// noted; AiKickBlockAheadMetres / AiKickBlockSideMetres are new keys), 22 = step 91b (Toni's 20:26 battle of 2026-10-24 - with step 91's
         /// AiBashReachMetres 1.1 the enemy stood within it in only 3 of 792 shieldman moves, the AI fights at 1.1-1.6 m, so no bash at all:
         /// AiBashReachMetres 1.1 → 0 - off, a bash anywhere in the kick reach as step 90 - in a format-21 file still holding it; a tuned value kept
-        /// and noted).</summary>
-        public const int FormatVersion = 22;
+        /// and noted), 23 = step 94 (Toni 2026-10-25 - a bigger base pool, cheaper swings: AthleticsPoolPerSkill 1.0 → 0.5 (any format) under the
+        /// new AthleticsPoolBase 100 (a new key), CostPerBlow 10 → 7 (a format 15-22 file), CostPerKickOrBash 8 → 6 (a format 19-22 file); a tuned
+        /// value kept and noted; an older file's cost went through steps 71 / 81 above straight to today's value).</summary>
+        public const int FormatVersion = 23;
 
         /// <summary>The meta key holding <see cref="FormatVersion"/> - not a setting.</summary>
         public const string VersionKey = "ConfigVersion";
@@ -570,6 +572,17 @@ namespace TraxCombat.Core
                 // anywhere in the kick reach (step 90); the AI fights at 1.1-1.6 m, so 1.1 left no bash at all; a hand-set value is kept and said once
                 MoveOrKeepIfMoved(read, SettingsSchema.AiBashReachMetres, 1.1,
                     "step 91b, Toni: with 1.1 m the enemy stood that close in only 3 of 792 shieldman moves - no bash at all; 0 = off, a shieldman bashes anywhere in the kick reach again", from, defaultOf);
+            }
+            if (from < 23)
+            {
+                // step 94 (Toni 2026-10-25: "no action at all for T1 troops in the early stages"): the pool = AthleticsPoolBase (a new key, 100) +
+                // AthleticsPoolPerSkill × skill - the per-skill 1.0 → 0.5 (1.0 since step 5c, any format); CostPerBlow 10 → 7 (10 since format 15 - an
+                // older file's 8 went through step 71's block above straight to today's value), CostPerKickOrBash 8 → 6 (8 since format 19 - an older
+                // file's went through step 81's block); the block costs untouched; a hand-set value is kept and said once
+                const string pool = "step 94, Toni: a bigger base pool, cheaper swings - the bar is 100 + half the Athletics skill";
+                MoveOrKeepIfMoved(read, SettingsSchema.AthleticsPoolPerSkill, 1.0, pool + " - each skill point adds 0.5 to the base", from, defaultOf);
+                if (from >= 15) MoveOrKeepIfMoved(read, SettingsSchema.CostPerBlow, 10, pool + " - a swing or shot costs 7", from, defaultOf);
+                if (from >= 19) MoveOrKeepIfMoved(read, SettingsSchema.CostPerKickOrBash, 8, pool + " - a kick, a shield bash or a push costs 6", from, defaultOf);
             }
             // format 17 (step 78b) moved the lull's LullRecover*Percent 10 / 15 / 20 → 20 / 25 / 30; step 78c removed the lull and its keys, so a
             // format 16 file's are dropped below with the rest of them - nothing to move any more (78c kept format 17; step 80 made it 18)

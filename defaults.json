@@ -52,22 +52,22 @@
   "TiredDamageAtEmptyPercent": 60,
 
   // ==================== Tiredness (Athletics) ====================
-  // On: every fighter has an Athletics bar - his stamina, as big as his Athletics skill - that
-  // his attacks and blocks drain and rest refills. At or above the peak line (the white mark)
-  // he fights at full strength; below it the top of his damage roll, his attack speed and his
-  // run speed fall - down to long pauses between attacks and a slow run when it is empty - and
-  // tired AI fighters step back. Off: no Athletics at all - no costs, no slowing, no step
-  // backs, no bars (and no sprint, aggression by tiredness or staggers).
+  // On: every fighter has an Athletics bar - his stamina, 100 points plus half his Athletics
+  // skill by default - that his attacks and blocks drain and rest refills. At or above the peak
+  // line (the white mark) he fights at full strength; below it the top of his damage roll, his
+  // attack speed and his run speed fall - down to long pauses between attacks and a slow run
+  // when it is empty - and tired AI fighters step back. Off: no Athletics at all - no costs, no
+  // slowing, no step backs, no bars (and no sprint, aggression by tiredness or staggers).
   // (true or false)
   "AthleticsEnabled": true,
 
   // How fast men tire: the Athletics points one attack costs a common soldier, whatever the
-  // size of his bar - so a bigger Athletics skill means more blows. At 10 a recruit (a 50-point
-  // bar) is empty after 5 blows, a legionary (130) after 13. Higher = everyone tires sooner. 0
+  // size of his bar - so a bigger Athletics skill means more blows. At 7 a recruit (a 110-point
+  // bar) is empty after 16 blows, a legionary (165) after 24. Higher = everyone tires sooner. 0
   // = attacks are free. Kicks, bashes and blocks have their own costs: Advanced page,
   // Athletics.
   // (range 0.0 to 100.0)
-  "CostPerBlow": 10.0,
+  "CostPerBlow": 7.0,
 
   // Heroes (lords, companions and you) pay every Athletics cost - blows, kicks, bashes, blocks
   // - times this, so they last longer than common soldiers. 0.75 = a quarter less. 1 = the same
@@ -341,10 +341,10 @@
   "SprintFullCritical": true,
 
   // ==================== Athletics ====================
-  // No fighter's Athletics bar is smaller than this, whatever his Athletics skill - so a
-  // recruit with Athletics skill 20 still gets a 50-point bar (5 blows). 0 = no floor: the bar
-  // is exactly the skill (never below 1 point). Changed mid-battle, everyone keeps his share: a
-  // fighter at 60% stays at 60%.
+  // No fighter's Athletics bar is smaller than this, whatever his Athletics skill. The bar is
+  // the base plus the skill times the points per skill point (both below); this floor only
+  // matters when those give less. 0 = no floor (never below 1 point). Changed mid-battle,
+  // everyone keeps his share: a fighter at 60% stays at 60%.
   // (range 0 to 1000)
   "AthleticsPoolFloor": 50,
 
@@ -394,10 +394,19 @@
   // (range 0 to 1000)
   "AthleticsFloorT6": 150,
 
-  // Athletics points per point of Athletics skill. 1.0: the bar tops at the skill - skill 180,
-  // a 180-point bar. Changed mid-battle, everyone keeps his share.
+  // Every fighter's Athletics bar starts at this many points and his Athletics skill adds to it
+  // (times the points per skill point, below): at 100 and 0.5 a recruit with skill 20 gets a
+  // 110-point bar, a skill of 100 a 150-point bar. Heroes and you too. The smallest bar and the
+  // tier floors above still hold it up. 0 = the bar is the skill alone. Changed mid-battle,
+  // everyone keeps his share: a fighter at 60% stays at 60%.
+  // (range 0 to 1000)
+  "AthleticsPoolBase": 100,
+
+  // Athletics points each point of Athletics skill adds to the bar base (above). 0.5 with a
+  // base of 100: skill 100, a 150-point bar; skill 180, a 190-point bar. With the base at 0 and
+  // 1.0, the bar is the skill. Changed mid-battle, everyone keeps his share.
   // (range 0.1 to 5.0)
-  "AthleticsPoolPerSkill": 1.0,
+  "AthleticsPoolPerSkill": 0.5,
 
   // Where the peak line sits - the white mark on the bar - in percent of each fighter's own
   // bar. At or above it he is at full strength: full damage upside, attack speed and run speed.
@@ -414,11 +423,12 @@
   "HealthCapsAthletics": true,
 
   // Athletics points one kick or one shield bash costs a common soldier - yours and the AI's
-  // alike. Heroes pay it times the hero cost and party leaders times both, just like a blow: 8
-  // costs a hero 6 and a party leader 4.5. Paid once, when the kick or bash starts, landed or
-  // not. It never starts the pause between attacks. 0 = kicks and bashes are free.
+  // alike. Heroes pay it times the hero cost and party leaders times both, just like a blow: 6
+  // costs a hero 4.5 and a party leader 3.4. Weapon pushes cost the same. Paid once, when the
+  // kick or bash starts, landed or not. It never starts the pause between attacks. 0 = kicks
+  // and bashes are free.
   // (range 0.0 to 20.0)
-  "CostPerKickOrBash": 8.0,
+  "CostPerKickOrBash": 6.0,
 
   // Athletics points a common soldier pays for each melee blow he blocks with his shield held
   // on the right side - yours and the AI's alike, on foot or mounted. Heroes pay it times the

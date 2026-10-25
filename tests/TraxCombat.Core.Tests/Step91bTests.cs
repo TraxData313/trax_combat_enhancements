@@ -17,7 +17,7 @@ public class Step91bTests
     [Fact]
     public void Format_22_moves_an_untouched_1_1_to_0_keeps_a_tuned_reach_and_leaves_older_files_alone()
     {
-        Assert.Equal(22, ConfigFile.FormatVersion);
+        Assert.Equal(23, ConfigFile.FormatVersion);
         Assert.Contains("\"AiBashReachMetres\": 0.0,", DefaultsFile.ReadEmbeddedText(), StringComparison.Ordinal);
         // a format-21 file written by the game (step 91's shipped 1.1) moves to 0
         var read = ConfigFile.Read("{ \"ConfigVersion\": 21, \"AiBashReachMetres\": 1.1, \"AiKickReachMetres\": 1.6 }");
@@ -25,12 +25,12 @@ public class Step91bTests
         Assert.Equal(0, read.Values["AiBashReachMetres"], 9);
         Assert.Equal(1.6, read.Values["AiKickReachMetres"], 9);
         var note = Assert.Single(notes);
-        Assert.StartsWith("AiBashReachMetres: 1.1 → 0.0 (format 21 → 22, the old default; step 91b, Toni: with 1.1 m the enemy stood that close in only 3 of 792 shieldman moves", note, StringComparison.Ordinal);
+        Assert.StartsWith("AiBashReachMetres: 1.1 → 0.0 (format 21 → 23, the old default; step 91b, Toni: with 1.1 m the enemy stood that close in only 3 of 792 shieldman moves", note, StringComparison.Ordinal);
         // a tuned reach is kept and said once
         var tuned = ConfigFile.Read("{ \"ConfigVersion\": 21, \"AiBashReachMetres\": 1.4 }");
         var tn = ConfigFile.Migrate(tuned, Shipped);
         Assert.Equal(1.4, tuned.Values["AiBashReachMetres"], 9);
-        Assert.StartsWith("AiBashReachMetres: 1.4 kept - your own value (format 21 → 22; the new default 0.0 is not pushed over it; step 91b", Assert.Single(tn), StringComparison.Ordinal);
+        Assert.StartsWith("AiBashReachMetres: 1.4 kept - your own value (format 21 → 23; the new default 0.0 is not pushed over it; step 91b", Assert.Single(tn), StringComparison.Ordinal);
         // a hand-set 0 is already today's: nothing to say
         Assert.Empty(ConfigFile.Migrate(ConfigFile.Read("{ \"ConfigVersion\": 21, \"AiBashReachMetres\": 0 }"), Shipped));
         // an older file never had the key (step 91 added it in format 21); a format-22 file is not touched - a 1.1 there is the player's own
@@ -40,7 +40,7 @@ public class Step91bTests
         Assert.Equal(1.1, mine.Values["AiBashReachMetres"], 9);
         // the rewritten file is format 22 and idempotent
         string written = ConfigFile.Write(read.Values, read.Unknown);
-        Assert.Contains("\"ConfigVersion\": 22", written, StringComparison.Ordinal);
+        Assert.Contains("\"ConfigVersion\": 23", written, StringComparison.Ordinal);
         Assert.Empty(ConfigFile.Migrate(ConfigFile.Read(written), Shipped));
     }
 

@@ -4,7 +4,7 @@ namespace TraxCombat.Core.Tests;
 
 public class AthleticsStatsTests
 {
-    private static readonly AthleticsRules Defaults = AthleticsRules.From(new TraxSettings());
+    private static readonly AthleticsRules Defaults = AthleticsRules.From(OldPool.Settings()); // step 94: the base pinned 0
 
     private static string Action(int code) => "action" + code;
 
@@ -66,7 +66,7 @@ public class AthleticsStatsTests
         Assert.Contains("Athletics pools (the Athletics skill x1.00, at least 50; settings at the end): 6 fighters - min 50 / avg 83.3 / max 170; "
             + "4 at the floor, 1 whose skill could not be read (the floor); tier floors (non-heroes) T1-T6 50/50/70/90/120/150, nobody lifted by the tier floor; you 180 (skill 180); party leaders: Derthert 250, you 180", Lines(s));
 
-        var s2 = new TraxSettings();
+        var s2 = OldPool.Settings(); // step 94: the base pinned 0
         s2.Set(SettingsSchema.AthleticsPoolFloor, 0, SettingSources.Mcm);
         Assert.True(s.Pools(AthleticsRules.From(s2), out min, out _, out _, out atFloor));
         Assert.Equal(1, min);      // the unknown skill: never below 1 point

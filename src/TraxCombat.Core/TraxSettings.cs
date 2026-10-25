@@ -216,6 +216,7 @@ namespace TraxCombat.Core
         public int AthleticsFloorT4 => GetInt(SettingsSchema.AthleticsFloorT4);
         public int AthleticsFloorT5 => GetInt(SettingsSchema.AthleticsFloorT5);
         public int AthleticsFloorT6 => GetInt(SettingsSchema.AthleticsFloorT6);
+        public int AthleticsPoolBase => GetInt(SettingsSchema.AthleticsPoolBase);
         public float AthleticsPoolPerSkill => GetFloat(SettingsSchema.AthleticsPoolPerSkill);
         public int AthleticsPeakPercent => GetInt(SettingsSchema.AthleticsPeakPercent);
         public bool HealthCapsAthletics => GetBool(SettingsSchema.HealthCapsAthletics);

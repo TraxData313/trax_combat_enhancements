@@ -20,7 +20,7 @@ public class Step93Tests
 
     private static readonly int[] Shipped = { 50, 50, 70, 90, 120, 150 };
 
-    private static AthleticsRules Shipping() => AthleticsRules.From(new TraxSettings());
+    private static AthleticsRules Shipping() => AthleticsRules.From(OldPool.Settings());
 
     private static Fighter Troop(int skill, int tier, bool hero = false) => new() { AthleticsSkill = skill, Tier = tier, IsHero = hero };
 
@@ -45,10 +45,11 @@ public class Step93Tests
             Assert.Contains("\"AthleticsFloorT" + (t + 1) + "\": " + Shipped[t] + ",", defaults, StringComparison.Ordinal);
             Assert.Contains("keep the bar of your real skill", p.Description, StringComparison.Ordinal);
         }
-        Assert.Equal(SettingsSchema.AthleticsPoolPerSkill, all[at + 7]);
-        Assert.Equal(22, ConfigFile.FormatVersion); // new keys: no migration
+        Assert.Equal(SettingsSchema.AthleticsPoolBase, all[at + 7]);     // step 94 sits between them
+        Assert.Equal(SettingsSchema.AthleticsPoolPerSkill, all[at + 8]);
+        Assert.Equal(23, ConfigFile.FormatVersion); // new keys: no migration
 
-        var s = new TraxSettings();
+        var s = OldPool.Settings();
         var r = AthleticsRules.From(s);
         for (int t = 1; t <= 6; t++) Assert.Equal(Shipped[t - 1], AthleticsMath.TierFloor(in r, t));
         s.Set(SettingsSchema.AthleticsFloorT6, 200, SettingSources.Mcm);
@@ -78,7 +79,7 @@ public class Step93Tests
     [Fact]
     public void Each_of_the_three_wins_where_it_is_biggest()
     {
-        var s = new TraxSettings();
+        var s = OldPool.Settings();
         s.Set(SettingsSchema.AthleticsPoolPerSkill, 2.0, SettingSources.Mcm);
         s.Set(SettingsSchema.AthleticsPoolFloor, 100, SettingSources.Mcm);
         var r = AthleticsRules.From(s);
@@ -107,7 +108,7 @@ public class Step93Tests
     [Fact]
     public void Zero_is_no_floor_for_that_tier_and_the_master_switch_comes_first()
     {
-        var s = new TraxSettings();
+        var s = OldPool.Settings();
         s.Set(SettingsSchema.AthleticsFloorT6, 0, SettingSources.Mcm);
         var r = AthleticsRules.From(s);
         Assert.Equal(0, AthleticsMath.TierFloor(in r, 6));
@@ -119,7 +120,7 @@ public class Step93Tests
         s.Set(SettingsSchema.AthleticsPoolFloor, 0, SettingSources.Mcm);
         Assert.Equal(5.0, AthleticsMath.PoolPoints(AthleticsRules.From(s), Troop(5, 0)), 9); // T0 = T1's: off too
 
-        var off = new TraxSettings();
+        var off = OldPool.Settings();
         off.Set(SettingsSchema.ModEnabled, false, SettingSources.Mcm);
         var ro = AthleticsRules.From(off);
         Assert.Equal(0, AthleticsMath.TierFloor(in ro, 6));
@@ -134,7 +135,7 @@ public class Step93Tests
     [Fact]
     public void A_live_change_re_pools_him_and_he_keeps_his_share()
     {
-        var s = new TraxSettings();
+        var s = OldPool.Settings();
         var knight = Troop(60, 6);
         var r = AthleticsRules.From(s);
         AthleticsMath.Charge(knight, in r, 0); // 10 of 150
@@ -174,7 +175,7 @@ public class Step93Tests
             .Single(l => l.StartsWith("Athletics pools", StringComparison.Ordinal));
         Assert.Contains("7 fighters - min 50 / avg 107.1 / max 150; 1 at the floor; tier floors (non-heroes) T1-T6 50/50/70/90/120/150, lifted by the tier floor: T4 1", line);
 
-        var s = new TraxSettings();
+        var s = OldPool.Settings();
         foreach (var p in Floors) s.Set(p, 0, SettingSources.Mcm);
         Assert.Equal("tier floors (non-heroes) T1-T6 0/0/0/0/0/0 - off", stats.TierLiftText(AthleticsRules.From(s)));
         Assert.Equal("tier floors (non-heroes) T1-T6 50/50/70/90/120/150, nobody lifted by the tier floor", new AthleticsStats().TierLiftText(in r));
