@@ -174,7 +174,7 @@ public class Step78cTests
     [Fact]
     public void The_lulls_keys_in_an_old_config_load_and_are_dropped_once_without_a_new_format()
     {
-        Assert.Equal(24, ConfigFile.FormatVersion);          // 78c added no format (step 80 made it 18)
+        Assert.Equal(25, ConfigFile.FormatVersion);          // 78c added no format (step 80 made it 18)
         Assert.Equal(29, ConfigFile.RetiredLullKeys.Length);
         foreach (int v in new[] { 16, 17 })
         {
@@ -184,7 +184,7 @@ public class Step78cTests
             Assert.Equal(4, read.Unknown.Count);
             var notes = ConfigFile.Migrate(read, p => p.Default);
             Assert.Equal(4, notes.Count);
-            Assert.All(notes, n => Assert.Contains("dropped (format " + v + " → 24; step 78c", n));
+            Assert.All(notes, n => Assert.Contains("dropped (format " + v + " → 25; step 78c", n));
             Assert.Empty(read.Unknown);
             Assert.Equal(0, read.Values["RotationEnabled"], 9);   // the rest of the file untouched
             Assert.Equal(6, read.Values["PressWrapMarginMetres"], 9);

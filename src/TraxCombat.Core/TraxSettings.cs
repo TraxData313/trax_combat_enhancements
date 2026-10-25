@@ -259,6 +259,8 @@ namespace TraxCombat.Core
 
         /// <summary>Step 30: 0-100, the share of a tired AI man's block directions left to chance at empty (x (1 - f)); 0 = off.</summary>
         public int TiredBlockRandomPercent => GetInt(SettingsSchema.TiredBlockRandomPercent);
+        public int AiGuardGuessPercent => GetInt(SettingsSchema.AiGuardGuessPercent); // step 96
+        public int AiBlockDecidePercent => GetInt(SettingsSchema.AiBlockDecidePercent); // step 96
 
         public bool StepBackEnabled => GetBool(SettingsSchema.StepBackEnabled);
         public bool StepBackBackpedal => GetBool(SettingsSchema.StepBackBackpedal);

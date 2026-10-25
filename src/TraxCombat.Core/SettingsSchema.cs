@@ -108,11 +108,11 @@ namespace TraxCombat.Core
 
         public static readonly ParamDef AiAggressionFreshPercent = Int("AiAggressionFreshPercent", 0, FeverMath.MaxPercent, PlayerAiGroup,
             "AI aggression when fresh (%)",
-            "How eagerly an AI soldier on foot with a FULL Athletics bar decides to start an attack (and to strike back after a parry), in percent of the game's own AI. It slides in a straight line to the next setting as his bar empties - the more tired he is, the less he swings. 60: a charging man's 14% chance becomes 8.6%. Tournaments and duels too. Never you, never riders (their swings come with each pass), never archers' shooting. 100 with the next at 100 = the game's own AI.");
+            "How eagerly an AI soldier on foot with a FULL Athletics bar decides to start an attack (and to strike back after a parry), in percent of the game's own AI. It slides in a straight line to the next setting as his bar empties - the more tired he is, the less he swings. 45: a charging man's 14% chance becomes 6.5%. Tournaments and duels too. Never you, never riders (their swings come with each pass), never archers' shooting. 100 with the next at 100 = the game's own AI.");
 
         public static readonly ParamDef AiAggressionExhaustedPercent = Int("AiAggressionExhaustedPercent", 0, FeverMath.MaxPercent, PlayerAiGroup,
             "AI aggression when exhausted (%)",
-            "The same at an EMPTY bar: 20 = a fifth of the game's eagerness (a charging man's 14% becomes 2.9%). A wounded man's bar is capped by his wounds, so he is less eager too. On top of the pause after each attack - a tired man has both brakes.");
+            "The same at an EMPTY bar: 15 = about a seventh of the game's eagerness (a charging man's 14% becomes 2.2%). A wounded man's bar is capped by his wounds, so he is less eager too. On top of the pause after each attack - a tired man has both brakes.");
 
         public static readonly ParamDef FeverEnabled = Bool("FeverEnabled", PlayerAiGroup,
             "Fever on a charge or advance order",
@@ -416,6 +416,16 @@ namespace TraxCombat.Core
             "Tired AI blocks in a random direction (%)",
             "How much a tired AI fighter's block direction is left to chance. At or above the peak line his own AI picks it. Below it, this share times how far down he is becomes a random pick instead: at 100, halfway down half his blocks go in a random direction, and an empty man guesses every block - right only one time in four, by luck. A wrong guess with a shield is a wrong-side block (it costs more and stops his refill); with a weapon the blow lands. It raises the game's own chance for clumsy fighters, never lowers it. On foot and mounted; never you. 0 = off: the game's own blocking.");
 
+        // Step 96 (Toni 2026-10-25: "more defencive - bump up the defencive stuff"): THE AI GUARDS BETTER - the game's own guess chance cut
+        // (before step 30's tired raise) and its block- / parry-decide abilities raised. Core AiGuard, AI_NOTES "Step 96".
+        public static readonly ParamDef AiGuardGuessPercent = Int("AiGuardGuessPercent", 0, 100, TiredGroup,
+            "AI guesses its block direction (%)",
+            "How often an AI fighter leaves the direction of his block to a guess, in percent of the game's own AI. The game makes most soldiers guess nearly every block (a recruit almost always, a veteran about three times in four) and a guess is right only one time in four. 60 = 40% fewer guesses, so more blocks go the right way. Applied before the tired guessing above, so a tired man still guesses more than a fresh one. On foot and mounted; never you. Needs Athletics on. 100 = off: the game's own.");
+
+        public static readonly ParamDef AiBlockDecidePercent = Int("AiBlockDecidePercent", 0, 200, TiredGroup,
+            "AI decides to block (%)",
+            "How readily an AI fighter decides to block or parry an attack coming at him, in percent of the game's own AI (its 'block on decide' and 'parry on decide' abilities: about 0.6 for a recruit, 0.9 for a veteran). 120 = a fifth more readily, never above the game's own best (0.99 for a block, 0.95 for a parry). The engine reads these values itself - how much they change a fight only a battle shows. On foot and mounted; never you. Needs Athletics on. 100 = off: the game's own.");
+
         // ------------------------------------------------------------------ tired fighters step back (step 5d)
 
         public static readonly ParamDef StepBackEnabled = Bool("StepBackEnabled", StepBackGroup,
@@ -458,7 +468,7 @@ namespace TraxCombat.Core
         // tiredness (BattlePaceMath, AI_NOTES "Step 21"). The class is read at each attack from what the fighter really holds.
         public static readonly ParamDef ShieldInfantrySwingsLessPercent = Int("ShieldInfantrySwingsLessPercent", 0, BattlePaceMath.MaxSwingsLessPercent, BattlePaceGroup,
             "Shield infantry swing less (%)",
-            "AI soldiers on foot fighting with a shield in their other hand swing this many percent less often than they otherwise would, fresh or tired: after each swing they wait a little longer, guard up, before the next. 30 = 7 swings where they made 10. Read at every swing from what he really holds - heroes and lords too; never you, never riders. Rides on \"Tired AI wait out the pause\" (off there = no AI pause at all). 0 = off. A change applies at each fighter's next swing.");
+            "AI soldiers on foot fighting with a shield in their other hand swing this many percent less often than they otherwise would, fresh or tired: after each swing they wait a little longer, guard up, before the next. 40 = 6 swings where they made 10. Read at every swing from what he really holds - heroes and lords too; never you, never riders. Rides on \"Tired AI wait out the pause\" (off there = no AI pause at all). 0 = off. A change applies at each fighter's next swing.");
 
         public static readonly ParamDef FootMeleeSwingsLessPercent = Int("FootMeleeSwingsLessPercent", 0, BattlePaceMath.MaxSwingsLessPercent, BattlePaceGroup,
             "Other infantry swing less (%)",
@@ -2451,7 +2461,7 @@ namespace TraxCombat.Core
             ShieldFrontArcIsCorrect, ShieldFrontArcDegrees, CostOnMiss, PartyLeaderCostMultiplier,
             ExhaustedAttackSpeedPercent, AttackRatePlayerTimer, AttackRatePaceHold, AttackRatePaceByInput, AiHoldRaiseGuard, AttackRateAiDecisions, AttackAnimationMinPercent,
             SwingStackEnabled, SwingStackPointsPerSwing, SwingStackMinimum, KicksUseSwings,
-            MinMoveSpeedMultiplier, MountMinSpeedMultiplier, DamageBonusFollowsAthletics, TiredBlockRandomPercent,
+            MinMoveSpeedMultiplier, MountMinSpeedMultiplier, DamageBonusFollowsAthletics, TiredBlockRandomPercent, AiGuardGuessPercent, AiBlockDecidePercent,
             StepBackEnabled, StepBackBackpedal, StepBackMaxChancePercent, StepBackDistance, StepBackSeconds, StepBackEnemyRange,
             StepBackHoldAttacks, StepBackMaxAtOnce,
             ShieldInfantrySwingsLessPercent, FootMeleeSwingsLessPercent, AiMeleeGapSeconds, ExtraPauseAfterBowShotSeconds, ExtraPauseAfterCrossbowShotSeconds,

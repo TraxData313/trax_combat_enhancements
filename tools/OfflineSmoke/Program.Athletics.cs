@@ -50,6 +50,9 @@ namespace TraxCombat.Tools
             /// <summary>Step 30: the game's AiRandomizedDefendDirectionChance, assigned fresh like SetAiRelatedProperties.</summary>
             public float BlockChance = 0.2f;
 
+            /// <summary>Step 96: the game's AIBlockOnDecideAbility / AIParryOnDecideAbility, assigned fresh like SetAiRelatedProperties (a recruit's).</summary>
+            public float BlockDecide = 0.62f, ParryDecide = 0.53f;
+
             public override void InitializeAgentStats(Agent agent, Equipment spawnEquipment, AgentDrivenProperties agentDrivenProperties, AgentBuildData agentBuildData)
             {
             }
@@ -72,6 +75,8 @@ namespace TraxCombat.Tools
                 p.AIDecideOnAttackChance = 0.5f;
                 p.AIHoldingReadyMaxDuration = 0.25f;
                 p.AiRandomizedDefendDirectionChance = BlockChance;
+                p.AIBlockOnDecideAbility = BlockDecide; // step 96
+                p.AIParryOnDecideAbility = ParryDecide;
                 p.TopSpeedReachDuration = 2.6f; // step 35: the game's foot acceleration, assigned fresh like UpdateHumanStats
                 p.AiWeaponFavorMultiplierMelee = p.AiWeaponFavorMultiplierRanged = p.AiWeaponFavorMultiplierPolearm = 1f; // step 76: SetAiRelatedProperties assigns 1 / 1 / 1
             }
@@ -196,6 +201,8 @@ namespace TraxCombat.Tools
             S.Set(SettingsSchema.WalkEffortFraction, 0.4, SettingSources.File);
             S.Set(SettingsSchema.VerboseLogging, false, SettingSources.File);
             BattlePaceOff(); // step 21: the older steps check steps 13-20 to the bit (Program.BattlePace.cs has its own)
+            S.Set(SettingsSchema.AiGuardGuessPercent, 100, SettingSources.File); // step 96: the older steps count recomputes and chances without the guard (Program.Step96.cs has its own)
+            S.Set(SettingsSchema.AiBlockDecidePercent, 100, SettingSources.File);
             S.Set(SettingsSchema.TiredBlockRandomPercent, 0, SettingSources.File); // step 30: the older steps count recomputes without it (Program.TiredBlock.cs has its own)
             SwingStackOff(); // step 32: the older steps check one pause after EVERY attack (Program.SwingStack.cs has its own)
             SprintOff(); // step 33: the older steps predate the sprint (Program.Sprint.cs has its own)

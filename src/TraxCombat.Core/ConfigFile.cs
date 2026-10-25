@@ -131,8 +131,10 @@ namespace TraxCombat.Core
         /// value kept and noted; an older file's cost went through steps 71 / 81 above straight to today's value), 24 = step 95 (Toni 2026-10-25 -
         /// "swing 30% of the time": AiShieldmanKickPercent 25 → 27, AiShieldmanBashPercent 40 → 43 (a format 20-23 file - a format-19 file's
         /// 20 / 35 went through step 88's block straight to today's value), AiNoShieldKickPercent 35 → 45 (19-23), AiNoShieldPushPercent 20 → 25
-        /// (20-23); a tuned value kept and noted; the step-in bash's three keys are new).</summary>
-        public const int FormatVersion = 24;
+        /// (20-23); a tuned value kept and noted; the step-in bash's three keys are new), 25 = step 96 (Toni 2026-10-25 -
+        /// "more defencive ... reduce the swings": AiAggressionFreshPercent 60 → 45, AiAggressionExhaustedPercent 20 → 15, ShieldInfantrySwingsLessPercent
+        /// 30 → 40, FootMeleeSwingsLessPercent 15 → 25 (any older file - the four never moved before); a tuned value kept and noted; the guard's two keys are new).</summary>
+        public const int FormatVersion = 25;
 
         /// <summary>The meta key holding <see cref="FormatVersion"/> - not a setting.</summary>
         public const string VersionKey = "ConfigVersion";
@@ -597,6 +599,16 @@ namespace TraxCombat.Core
                 if (from >= 20) MoveOrKeepIfMoved(read, SettingsSchema.AiShieldmanBashPercent, 40, shares + " - a shieldman bashes 43% of his moves in kick reach (he swings 30%)", from, defaultOf);
                 MoveOrKeepIfMoved(read, SettingsSchema.AiNoShieldKickPercent, 35, shares + " - a man without a shield kicks 45% of his moves in kick reach", from, defaultOf);
                 if (from >= 20) MoveOrKeepIfMoved(read, SettingsSchema.AiNoShieldPushPercent, 20, shares + " - a man without a shield pushes 25% of his moves in kick reach (he swings 30%)", from, defaultOf);
+            }
+            if (from < 25)
+            {
+                // step 96 (Toni 2026-10-25: "more active ... but not so lethal, more defencive"): fewer attack decisions and longer pauses after a swing -
+                // the four defaults since steps 21 / 43, never moved before; a hand-set value is kept and said once
+                const string calmer = "step 96, Toni: more defensive, less lethal";
+                MoveOrKeepIfMoved(read, SettingsSchema.AiAggressionFreshPercent, 60, calmer + " - a fresh AI man decides to attack at 45% of the game's rate", from, defaultOf);
+                MoveOrKeepIfMoved(read, SettingsSchema.AiAggressionExhaustedPercent, 20, calmer + " - an exhausted one at 15%", from, defaultOf);
+                MoveOrKeepIfMoved(read, SettingsSchema.ShieldInfantrySwingsLessPercent, 30, calmer + " - shield infantry swing 40% less", from, defaultOf);
+                MoveOrKeepIfMoved(read, SettingsSchema.FootMeleeSwingsLessPercent, 15, calmer + " - other foot melee swing 25% less", from, defaultOf);
             }
             // format 17 (step 78b) moved the lull's LullRecover*Percent 10 / 15 / 20 → 20 / 25 / 30; step 78c removed the lull and its keys, so a
             // format 16 file's are dropped below with the rest of them - nothing to move any more (78c kept format 17; step 80 made it 18)

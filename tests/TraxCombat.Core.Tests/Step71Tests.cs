@@ -56,16 +56,16 @@ public class Step71Tests
     [Fact]
     public void Format_15_moves_the_untouched_values_once_and_keeps_a_tuned_one()
     {
-        Assert.Equal(24, ConfigFile.FormatVersion);
+        Assert.Equal(25, ConfigFile.FormatVersion);
         var read = ConfigFile.Read("{ \"ConfigVersion\": 14, \"CostPerBlow\": 8.0, \"CostPerWrongSideShieldBlock\": 5.0, \"CostPerShieldBlock\": 2.0, "
                                    + "\"CostPerKickOrBash\": 5.0, \"CostPerWeaponParry\": 2.0, \"FullRegenSecondsStanding\": 60.0 }");
         var notes = ConfigFile.Migrate(read, Shipped);
         Assert.Equal(5, notes.Count);
-        Assert.Equal("CostPerBlow: 8.0 → 10.0 (format 14 → 24, the old default; step 71, Toni: the men tire faster still - a swing or shot costs 10)", notes[0]);
-        Assert.StartsWith("CostPerWrongSideShieldBlock: 5.0 → 6.0 (format 14 → 24, the old default; step 71", notes[1], StringComparison.Ordinal);
-        Assert.StartsWith("CostPerShieldBlock: 2.0 → 3.0 (format 14 → 24, the old default; step 71", notes[2], StringComparison.Ordinal);
-        Assert.StartsWith("CostPerKickOrBash: 5.0 → 6.0 (format 14 → 24, the old default; step 71", notes[3], StringComparison.Ordinal);
-        Assert.StartsWith("CostPerWeaponParry: 2.0 → 3.0 (format 14 → 24, the old default; step 71", notes[4], StringComparison.Ordinal);
+        Assert.Equal("CostPerBlow: 8.0 → 10.0 (format 14 → 25, the old default; step 71, Toni: the men tire faster still - a swing or shot costs 10)", notes[0]);
+        Assert.StartsWith("CostPerWrongSideShieldBlock: 5.0 → 6.0 (format 14 → 25, the old default; step 71", notes[1], StringComparison.Ordinal);
+        Assert.StartsWith("CostPerShieldBlock: 2.0 → 3.0 (format 14 → 25, the old default; step 71", notes[2], StringComparison.Ordinal);
+        Assert.StartsWith("CostPerKickOrBash: 5.0 → 6.0 (format 14 → 25, the old default; step 71", notes[3], StringComparison.Ordinal);
+        Assert.StartsWith("CostPerWeaponParry: 2.0 → 3.0 (format 14 → 25, the old default; step 71", notes[4], StringComparison.Ordinal);
         Assert.Equal(10, read.Values["CostPerBlow"], 9);
         Assert.Equal(6, read.Values["CostPerWrongSideShieldBlock"], 9);
         Assert.Equal(3, read.Values["CostPerShieldBlock"], 9);
@@ -78,8 +78,8 @@ public class Step71Tests
         var mine = ConfigFile.Read("{ \"ConfigVersion\": 14, \"CostPerBlow\": 9.0, \"CostPerWeaponParry\": 0.0, \"CostPerKickOrBash\": 4.0 }");
         var kept = ConfigFile.Migrate(mine, Shipped);
         Assert.Equal(3, kept.Count);
-        Assert.StartsWith("CostPerBlow: 9.0 kept - your own value (format 14 → 24; the new default 10.0 is not pushed over it; step 71", kept[0], StringComparison.Ordinal);
-        Assert.StartsWith("CostPerKickOrBash: 4.0 kept - your own value (format 14 → 24; the new default 6.0", kept[1], StringComparison.Ordinal);
+        Assert.StartsWith("CostPerBlow: 9.0 kept - your own value (format 14 → 25; the new default 10.0 is not pushed over it; step 71", kept[0], StringComparison.Ordinal);
+        Assert.StartsWith("CostPerKickOrBash: 4.0 kept - your own value (format 14 → 25; the new default 6.0", kept[1], StringComparison.Ordinal);
         Assert.Equal(9, mine.Values["CostPerBlow"], 9);
         Assert.Equal(0, mine.Values["CostPerWeaponParry"], 9);
         Assert.Equal(4, mine.Values["CostPerKickOrBash"], 9);
@@ -98,8 +98,8 @@ public class Step71Tests
                                        + "\"CostPerKickOrBash\": 5.0, \"CostPerWeaponParry\": 2.0, \"FullRegenSecondsStanding\": 60.0 }");
         var notes = ConfigFile.Migrate(thirteen, Shipped);
         Assert.Equal(5, notes.Count);
-        Assert.Single(notes, n => n.StartsWith("CostPerBlow: 7.0 → 10.0 (format 13 → 24, the old default; step 68", StringComparison.Ordinal));
-        Assert.Single(notes, n => n.StartsWith("CostPerKickOrBash: 5.0 → 6.0 (format 13 → 24, the old default; step 71", StringComparison.Ordinal));
+        Assert.Single(notes, n => n.StartsWith("CostPerBlow: 7.0 → 10.0 (format 13 → 25, the old default; step 68", StringComparison.Ordinal));
+        Assert.Single(notes, n => n.StartsWith("CostPerKickOrBash: 5.0 → 6.0 (format 13 → 25, the old default; step 71", StringComparison.Ordinal));
         Assert.Equal(10, thirteen.Values["CostPerBlow"], 9);
         Assert.Equal(6, thirteen.Values["CostPerWrongSideShieldBlock"], 9);
         Assert.Equal(3, thirteen.Values["CostPerShieldBlock"], 9);
@@ -110,11 +110,11 @@ public class Step71Tests
         var twelve = ConfigFile.Read("{ \"ConfigVersion\": 12, \"CostPerKickOrBash\": 3.0 }");
         var kick = ConfigFile.Migrate(twelve, Shipped);
         Assert.Single(kick);
-        Assert.StartsWith("CostPerKickOrBash: 3.0 → 6.0 (format 12 → 24, the old default; step 66", kick[0], StringComparison.Ordinal);
+        Assert.StartsWith("CostPerKickOrBash: 3.0 → 6.0 (format 12 → 25, the old default; step 66", kick[0], StringComparison.Ordinal);
         // format 13 with a hand-set 8 a swing (his own then): said once by step 68, not again by step 71
         var own = ConfigFile.Migrate(ConfigFile.Read("{ \"ConfigVersion\": 13, \"CostPerBlow\": 8.0 }"), Shipped);
         Assert.Single(own);
-        Assert.StartsWith("CostPerBlow: 8.0 kept - your own value (format 13 → 24; the new default 10.0", own[0], StringComparison.Ordinal);
+        Assert.StartsWith("CostPerBlow: 8.0 kept - your own value (format 13 → 25; the new default 10.0", own[0], StringComparison.Ordinal);
         // a default that never moved says nothing about a hand-set value (step 71's MoveOrKeepIfMoved)
         Assert.Empty(ConfigFile.Migrate(ConfigFile.Read("{ \"ConfigVersion\": 14, \"CostPerWeaponParry\": 4.0 }"), p => p.Default));
     }

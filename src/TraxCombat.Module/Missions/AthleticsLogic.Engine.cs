@@ -293,6 +293,7 @@ namespace TraxCombat.Missions
             if (_count == _dense.Length) Array.Resize(ref _dense, _dense.Length * 2);
             st.DenseSlot = _count;
             _dense[_count++] = st;
+            RetargetGuard(st); // step 96: the AI guards better from his first recompute
             if (!st.IsHero && !st.IsLeader && TraxLog.VerboseWants("athletics-pool")) LogPoolAtSpawn(st);
             return st;
         }
@@ -931,6 +932,7 @@ namespace TraxCombat.Missions
             bool human = false, horse = false;
             // step 43: the aggression share (bar + fever) on the AI's two attack-decision chances rides on the same recompute
             if (RetargetDecision(st)) human = true;
+            if (RetargetGuard(st)) human = true; // step 96: the guard factors (exact - they only move with the settings or who drives him)
             // step 30: the tired-block weight w rides on the same recompute (the decorator writes the game's chance from it)
             float block = TiredBlockWeight(st, in r);
             if (exact ? block != st.BlockRandomWeight : AthleticsMath.SpeedUpdateNeeded(st.BlockRandomWeight, block, 0f))
@@ -1726,9 +1728,15 @@ namespace TraxCombat.Missions
 
         /// <summary>Step 43: <paramref name="decision"/> = his aggression share (bar + fever, 0.05 steps) on the AI's two attack-decision chances (1 = the game's).</summary>
         internal static bool SpeedFactorsFor(Agent agent, float gameReach, out float attack, out float run, out float mount, out float blockRandom, out float reach,
-            out float decision)
+            out float decision) => SpeedFactorsFor(agent, gameReach, out attack, out run, out mount, out blockRandom, out reach, out decision, out _, out _);
+
+        /// <summary>Step 96: <paramref name="guess"/> / <paramref name="decide"/> = his guard factors on the game's block-direction guess chance and its
+        /// block- / parry-decide abilities (1 = the game's; the player and everyone while the mod or Athletics is off).</summary>
+        internal static bool SpeedFactorsFor(Agent agent, float gameReach, out float attack, out float run, out float mount, out float blockRandom, out float reach,
+            out float decision, out float guess, out float decide)
         {
             decision = 1f;
+            guess = decide = 1f;
             attack = run = mount = 1f;
             blockRandom = 0f;
             reach = 0f;
@@ -1749,7 +1757,9 @@ namespace TraxCombat.Missions
                 }
                 blockRandom = st.BlockRandomWeight; // step 30
                 decision = st.DecisionFactor; // step 43
-                return attack != 1f || run != 1f || blockRandom > 0f || reach > 0f || decision != 1f;
+                guess = st.GuardGuess; // step 96
+                decide = st.GuardDecide;
+                return attack != 1f || run != 1f || blockRandom > 0f || reach > 0f || decision != 1f || guess != 1f || decide != 1f;
             }
             var owner = logic.MountOwner(agent);
             if (owner == null) return false;

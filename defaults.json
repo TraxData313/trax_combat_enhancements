@@ -78,18 +78,18 @@
   // ==================== How the AI fights ====================
   // How eagerly an AI soldier on foot with a FULL Athletics bar decides to start an attack (and
   // to strike back after a parry), in percent of the game's own AI. It slides in a straight
-  // line to the next setting as his bar empties - the more tired he is, the less he swings. 60:
-  // a charging man's 14% chance becomes 8.6%. Tournaments and duels too. Never you, never
+  // line to the next setting as his bar empties - the more tired he is, the less he swings. 45:
+  // a charging man's 14% chance becomes 6.5%. Tournaments and duels too. Never you, never
   // riders (their swings come with each pass), never archers' shooting. 100 with the next at
   // 100 = the game's own AI.
   // (range 0 to 200)
-  "AiAggressionFreshPercent": 60,
+  "AiAggressionFreshPercent": 45,
 
-  // The same at an EMPTY bar: 20 = a fifth of the game's eagerness (a charging man's 14%
-  // becomes 2.9%). A wounded man's bar is capped by his wounds, so he is less eager too. On top
-  // of the pause after each attack - a tired man has both brakes.
+  // The same at an EMPTY bar: 15 = about a seventh of the game's eagerness (a charging man's
+  // 14% becomes 2.2%). A wounded man's bar is capped by his wounds, so he is less eager too. On
+  // top of the pause after each attack - a tired man has both brakes.
   // (range 0 to 200)
-  "AiAggressionExhaustedPercent": 20,
+  "AiAggressionExhaustedPercent": 15,
 
   // When an AI formation gets a NEW charge or advance order - yours or its own general's - each
   // of its soldiers on foot gets a FEVER: for a while he attacks with a surge of eagerness,
@@ -594,6 +594,24 @@
   // (range 0 to 100)
   "TiredBlockRandomPercent": 100,
 
+  // How often an AI fighter leaves the direction of his block to a guess, in percent of the
+  // game's own AI. The game makes most soldiers guess nearly every block (a recruit almost
+  // always, a veteran about three times in four) and a guess is right only one time in four. 60
+  // = 40% fewer guesses, so more blocks go the right way. Applied before the tired guessing
+  // above, so a tired man still guesses more than a fresh one. On foot and mounted; never you.
+  // Needs Athletics on. 100 = off: the game's own.
+  // (range 0 to 100)
+  "AiGuardGuessPercent": 60,
+
+  // How readily an AI fighter decides to block or parry an attack coming at him, in percent of
+  // the game's own AI (its 'block on decide' and 'parry on decide' abilities: about 0.6 for a
+  // recruit, 0.9 for a veteran). 120 = a fifth more readily, never above the game's own best
+  // (0.99 for a block, 0.95 for a parry). The engine reads these values itself - how much they
+  // change a fight only a battle shows. On foot and mounted; never you. Needs Athletics on. 100
+  // = off: the game's own.
+  // (range 0 to 200)
+  "AiBlockDecidePercent": 120,
+
   // ==================== Tired fighters step back ====================
   // On: after a melee swing, a tired AI fighter on foot may step back a little, facing his
   // enemy with his guard up, then return to his place in the formation - so the tired fall back
@@ -645,18 +663,18 @@
   // ==================== Battle pace (AI) ====================
   // AI soldiers on foot fighting with a shield in their other hand swing this many percent less
   // often than they otherwise would, fresh or tired: after each swing they wait a little
-  // longer, guard up, before the next. 30 = 7 swings where they made 10. Read at every swing
+  // longer, guard up, before the next. 40 = 6 swings where they made 10. Read at every swing
   // from what he really holds - heroes and lords too; never you, never riders. Rides on "Tired
   // AI wait out the pause" (off there = no AI pause at all). 0 = off. A change applies at each
   // fighter's next swing.
   // (range 0 to 90)
-  "ShieldInfantrySwingsLessPercent": 30,
+  "ShieldInfantrySwingsLessPercent": 40,
 
   // The same for AI soldiers on foot fighting WITHOUT a shield - two-handed swords and axes,
   // polearms, a one-hander alone: this many percent fewer swings, fresh or tired. 0 = off. A
   // change applies at each fighter's next swing.
   // (range 0 to 90)
-  "FootMeleeSwingsLessPercent": 15,
+  "FootMeleeSwingsLessPercent": 25,
 
   // How long an AI soldier on foot at full strength waits on his own between the end of one
   // swing and the start of the next - about 1 second in the playtests. The two settings above

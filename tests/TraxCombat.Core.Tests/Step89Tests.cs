@@ -40,7 +40,7 @@ public class Step89Tests
         Assert.Equal(100, DamageRules.From(s).TiredAtEmptyPercent); // live: read at the hit
         s.Set(SettingsSchema.AthleticsEnabled, false, SettingSources.Mcm);
         Assert.False(DamageRules.From(s).AthleticsEnabled);
-        Assert.Equal(24, ConfigFile.FormatVersion); // a NEW setting needs no migration
+        Assert.Equal(25, ConfigFile.FormatVersion); // a NEW setting needs no migration
     }
 
     [Theory]

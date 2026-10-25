@@ -1348,6 +1348,8 @@ row goes to the Advanced page unless a player needs it to set up his game (CLAUD
 | `MountMinSpeedMultiplier` | 1.0 | Horse top speed at the rider's 0 Athletics (1.0 = horses never slow). |
 | `DamageBonusFollowsAthletics` | true | The damage upside shrinks with the attacker's Athletics below the peak. |
 | `TiredBlockRandomPercent` | 100 | Step 30 (Anton, 2026-10-12): a tired AI man's block DIRECTION is partly left to chance - weight w = this % × (1 − f); the game's own `AiRandomizedDefendDirectionChance` (clamped to 0-1) becomes own + (1 − own) × w (f 1 untouched, f 0.5 at 100 = half his picks random, empty = all). AI only, riders too, never the player. 0 = off (the game's blocking). Live. |
+| `AiGuardGuessPercent` | 60 | Step 96 (decision 88, Toni 2026-10-25: "more defencive - bump up the defencive stuff, reduce the swings"): THE AI GUARDS BETTER - the game's own per-agent `AiRandomizedDefendDirectionChance` (the base model's 1 − num³: a recruit ≈ 1, a 200-skill veteran on realistic ≈ 0.74) × this % for every tracked AI man on foot or mounted (never the player), written by the stat decorator after the base model and BEFORE step 30's tired raise (own' = clamp01(own) × g, then own' + (1 − own') × w) so a tired man still guesses more; a game value ≤ 0 (a final-round tournament fighter) left as it is. Read natively by the AI only. 100 = off (not written). Range 0-100. Live (a change marks everyone for a recompute). Needs Athletics on (the decorator's gate). |
+| `AiBlockDecidePercent` | 120 | Step 96: the game's `AIBlockOnDecideAbility` (the base model: lerp(0.5, 0.99, √num)) and `AIParryOnDecideAbility` (lerp(0.5, 0.95, num)) × this %, clamped to the game's own range 0 .. 0.99 / 0.95 (a higher value another mod wrote is never cut by a raise); the same men, the same write. Read natively by the AI only (no managed reader in v1.4.8 - the effect shows only in a battle). 100 = off. Range 0-200. Live. |
 | `StepBackEnabled` | true | Tired AI fighters on foot step back after melee swings (§2). Off mid-battle: everyone stepping back returns to his formation at once. |
 | `StepBackBackpedal` | true | Step 16: the step back is a backpedal through the AI's own input (a backwards movement, facing his enemy) until `StepBackDistance` is covered or `StepBackSeconds` run out. Off = step 5d's scripted walk (80% turned their backs). A/B switch; a running step finishes the way it began. |
 | `StepBackMaxChancePercent` | 100 | Chance to step back at 0 Athletics (0 at the peak, straight line between). |
@@ -3382,6 +3384,14 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     45); config format 24 moves untouched values once, a tuned one kept and said. `AiBashReachMetres` stays 0 (off). (f) MEASURED: step 91's bash
     bins keep the decision's distance; a 9th "ai kicks" line - each bash's step (arrived / the time ran out / cut short / not needed / refused by a
     friend / by the wall), the gap closed, the guards held longer, and every bash's result by the enemy's distance AT THE BASH.
+88. **More defensive, less lethal** (step 96, Toni 2026-10-25: "more active ... but not so lethal, more defencive - bump up the defencive stuff,
+    reduce the swings"). (a) FEWER ATTACK DECISIONS: `AiAggressionFreshPercent` 60 → 45, `AiAggressionExhaustedPercent` 20 → 15. (b) LONGER PAUSES
+    AFTER A SWING: `ShieldInfantrySwingsLessPercent` 30 → 40, `FootMeleeSwingsLessPercent` 15 → 25. (c) THE AI GUARDS BETTER - a new lever in the stat
+    decorator, after the base model: the game's block-direction guess chance × `AiGuardGuessPercent` 60 BEFORE step 30's tired raise, the block- and
+    parry-decide abilities × `AiBlockDecidePercent` 120 clamped to the game's 0.99 / 0.95; every tracked AI man on foot AND mounted (Claude's call -
+    step 30's reach; riders block too), never the player; gated ModEnabled → AthleticsEnabled like steps 30 / 43; live. All three values are read by the
+    native AI only - the decompile has no managed reader (UNVERIFIED in effect until a battle). (d) Config format 25 moves the four untouched values once,
+    a tuned one kept and said. (e) MEASURED: a [summary] "AI guard factors" line beside step 30's guard lines - the game's → ours by f band.
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),
 `HudRefreshSeconds`, `FormationStatsRefreshSeconds` came out of step 2's research

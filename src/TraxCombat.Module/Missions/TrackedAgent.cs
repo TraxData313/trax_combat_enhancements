@@ -252,6 +252,13 @@ namespace TraxCombat.Missions
         /// stat decorator writes it on every recompute; a change marks him for one.</summary>
         public float DecisionFactor = 1f;
 
+        /// <summary>Step 96: the factors the stat decorator applies on the game's block-direction guess chance and its block- / parry-decide abilities
+        /// (1 = the game's; the player 1) - re-targeted at tracking and with the speeds (a settings change marks him for a recompute).</summary>
+        public float GuardGuess = 1f, GuardDecide = 1f;
+
+        /// <summary>Step 96: the guard was written for him at least once (the summary's men).</summary>
+        public bool GuardSeen;
+
         /// <summary>Step 43: an enemy was within FeverContactMetres at his last fever look (the summary's "in contact"), and when.</summary>
         public bool FeverContact;
 

@@ -127,7 +127,8 @@ namespace TraxCombat.Models
             try
             {
                 float gameReach = agentDrivenProperties.TopSpeedReachDuration; // step 35: the base model's own (assigned fresh every recompute)
-                if (AthleticsLogic.SpeedFactorsFor(agent, gameReach, out float attack, out float run, out float mount, out float blockRandom, out float reach, out float decision))
+                if (AthleticsLogic.SpeedFactorsFor(agent, gameReach, out float attack, out float run, out float mount, out float blockRandom, out float reach, out float decision,
+                        out float guardGuess, out float guardDecide))
                 {
                     bool ai = false;
                     var s = TraxSettings.Shared;
@@ -157,6 +158,22 @@ namespace TraxCombat.Models
                     // step 35: a sprinter reaches his top speed sooner - min(the game's, SprintTopSpeedReachSeconds); not sprinting = the
                     // base model's value stands (the sprint's start and end each recompute him)
                     if (reach > 0f) SpeedPenalty.CapTopSpeedReach(agentDrivenProperties, reach);
+                    // step 96: THE AI GUARDS BETTER - the game's own guess chance × g (BEFORE step 30's tired raise below, which reads the value written
+                    // here as his own) and its block- / parry-decide abilities × b clamped to the game's 0.99 / 0.95; the base model assigns all three with
+                    // = on every recompute (no compounding). Never the player (the logic gives him 1 / 1 too); riders yes.
+                    if ((guardGuess != 1f || guardDecide != 1f) && !agent.IsMainAgent)
+                    {
+                        float gameGuess = agentDrivenProperties.AiRandomizedDefendDirectionChance;
+                        float gameBlock = agentDrivenProperties.AIBlockOnDecideAbility, gameParry = agentDrivenProperties.AIParryOnDecideAbility;
+                        if (guardGuess != 1f) agentDrivenProperties.AiRandomizedDefendDirectionChance = AiGuardMath.Guess(gameGuess, guardGuess);
+                        if (guardDecide != 1f)
+                        {
+                            agentDrivenProperties.AIBlockOnDecideAbility = AiGuardMath.Block(gameBlock, guardDecide);
+                            agentDrivenProperties.AIParryOnDecideAbility = AiGuardMath.Parry(gameParry, guardDecide);
+                        }
+                        AthleticsLogic.NoteGuard(agent, gameGuess, agentDrivenProperties.AiRandomizedDefendDirectionChance, gameBlock, agentDrivenProperties.AIBlockOnDecideAbility,
+                            gameParry, agentDrivenProperties.AIParryOnDecideAbility, guardGuess, guardDecide);
+                    }
                     // step 30: a tired AI man's block direction partly random - the game's own chance raised by w (never the
                     // player: his mouse picks; the logic gives him w 0 too). The base model recomputes the chance every time.
                     if (blockRandom > 0f && !agent.IsMainAgent)

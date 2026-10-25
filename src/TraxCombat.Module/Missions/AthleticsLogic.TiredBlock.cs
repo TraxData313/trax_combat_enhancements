@@ -29,6 +29,7 @@ namespace TraxCombat.Missions
             TraxLog.Info("guard", "mission start: " + _seenTiredBlock.Describe() + " - read live; the [summary] \"tired block direction\" and"
                 + " \"AI guard by f\" lines say how much it was raised and how well the AI blocked by f band");
             StartShieldArc(); // step 64
+            StartGuard(); // step 96
         }
 
         /// <summary>The setting or a switch changed (from ApplySettingsChange): one line; everyone is re-targeted by the same
@@ -36,6 +37,7 @@ namespace TraxCombat.Missions
         private void NoteTiredBlockSettings(TraxSettings s)
         {
             NoteShieldArcSettings(s); // step 64
+            NoteGuardSettings(s); // step 96
             var now = TiredBlockRules.From(s);
             if (now.Percent == _seenTiredBlock.Percent && now.Enabled == _seenTiredBlock.Enabled) return;
             _seenTiredBlock = now;
@@ -132,6 +134,7 @@ namespace TraxCombat.Missions
         {
             foreach (var line in _tiredBlockStats.SummaryLines(TiredBlockRules.From(TraxSettings.Shared)))
                 TraxLog.Info("summary", line);
+            WriteGuardSummary(); // step 96: what the guard wrote, beside the guard lines
             WriteShieldArcSummary(); // step 64: the game's block verdict against ours
         }
     }

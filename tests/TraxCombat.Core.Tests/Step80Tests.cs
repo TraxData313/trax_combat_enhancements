@@ -216,17 +216,17 @@ public class Step80Tests
     public void Format_18_moves_the_kicks_untouched_half_width_once_and_keeps_a_tuned_one()
     {
         static double Shipped(ParamDef p) => p == SettingsSchema.AiKickFriendClearMetres ? 0.6 : p.Default;
-        Assert.Equal(24, ConfigFile.FormatVersion);
+        Assert.Equal(25, ConfigFile.FormatVersion);
         var read = ConfigFile.Read("{ \"ConfigVersion\": 17, \"AiKickFriendClearMetres\": 0.5 }");
         var notes = ConfigFile.Migrate(read, Shipped);
         Assert.Single(notes);
-        Assert.StartsWith("AiKickFriendClearMetres: 0.5 → 0.6 (format 17 → 24, the old default; step 80", notes[0], StringComparison.Ordinal);
+        Assert.StartsWith("AiKickFriendClearMetres: 0.5 → 0.6 (format 17 → 25, the old default; step 80", notes[0], StringComparison.Ordinal);
         Assert.Equal(0.6, read.Values["AiKickFriendClearMetres"], 6);
         Assert.Single(ConfigFile.Migrate(read, Shipped)); // idempotent: the value moved, no new note
         var tuned = ConfigFile.Read("{ \"ConfigVersion\": 14, \"AiKickFriendClearMetres\": 0.8 }");
         var kept = ConfigFile.Migrate(tuned, Shipped);
         Assert.Single(kept);
-        Assert.StartsWith("AiKickFriendClearMetres: 0.8 kept - your own value (format 14 → 24; the new default 0.6", kept[0], StringComparison.Ordinal);
+        Assert.StartsWith("AiKickFriendClearMetres: 0.8 kept - your own value (format 14 → 25; the new default 0.6", kept[0], StringComparison.Ordinal);
         Assert.Equal(0.8, tuned.Values["AiKickFriendClearMetres"], 6);
         var now = ConfigFile.Read("{ \"ConfigVersion\": 18, \"AiKickFriendClearMetres\": 0.5 }");
         Assert.Empty(ConfigFile.Migrate(now, Shipped));
