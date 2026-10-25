@@ -103,6 +103,8 @@ namespace TraxCombat.Missions
         private float _seenMountFloor;
         private int _seenPeakPercent;
         private int _seenPoolFloor;
+        private long _seenTierFloors; // step 93
+        private bool _tierLiftLogged; // step 93: the first lifted man logged in full, once a mission
         private float _seenPoolPerSkill;
         private double _regenAccum;
         private bool _speedsSampled;
@@ -143,6 +145,8 @@ namespace TraxCombat.Missions
             RememberSpeedSettings(in r);
             _seenPoolFloor = r.PoolFloor;
             _seenPoolPerSkill = r.PoolPerSkill;
+            _seenTierFloors = r.TierFloorsKey; // step 93
+            _tierLiftLogged = false;
             TraxLog.Info("athletics", "mission start: " + AthleticsStats.DescribeRules(in r) + " - read live");
             TraxLog.Info("athletics", Campaign.Current != null
                 ? "party-leader rule: campaign - the hero who leads the fighter's own party (you for yours)"
@@ -295,6 +299,7 @@ namespace TraxCombat.Missions
         {
             int skill = 0;
             bool known = false;
+            int tier = -1;
             try
             {
                 var c = st.Agent.Character;
@@ -308,9 +313,42 @@ namespace TraxCombat.Missions
             {
                 Failed("athletics.skill", e);
             }
+            try
+            {
+                tier = TierForFloor(st.Agent); // step 93
+            }
+            catch (Exception e)
+            {
+                Failed("athletics.tier", e); // no tier floor for him: the skill and the "at least" floor
+            }
             st.AthleticsSkill = Math.Max(0, skill);
             st.SkillKnown = known;
-            _stats.AddFighter(st.AthleticsSkill, known);
+            st.Tier = tier;
+            _stats.AddFighter(st.AthleticsSkill, known, tier);
+            if (tier >= 0 && !_tierLiftLogged)
+            {
+                var r = Rules;
+                if (AthleticsMath.IsLiftedByTier(in r, st.AthleticsSkill, tier))
+                {
+                    _tierLiftLogged = true;
+                    TraxLog.Info("athletics", "first man lifted by the tier floor: " + Name(st) + ", tier T" + tier + ", Athletics skill " + st.AthleticsSkill
+                        + " → pool " + F0(AthleticsMath.PoolPoints(in r, st)) + " (the skill alone " + F0(AthleticsMath.PoolPointsForSkill(in r, st.AthleticsSkill))
+                        + " with at least " + r.PoolFloor + "; T" + tier + "'s floor " + AthleticsMath.TierFloor(in r, tier)
+                        + ") - non-hero troops only, heroes and you keep the real skill");
+                }
+            }
+        }
+
+        /// <summary>Step 93: the battle tier whose Athletics floor a man gets - the game's <c>GetBattleTier()</c> (step 73's read)
+        /// clamped to 0..6 for a NON-HERO troop; −1 (no tier floor) for a hero (lords, companions, wanderers), the player, or no
+        /// character.</summary>
+        private static int TierForFloor(Agent a)
+        {
+            if (a.IsHero || a.IsMainAgent) return -1;
+            var ch = a.Character;
+            if (ch == null || ch.IsHero) return -1;
+            int t = ch.GetBattleTier();
+            return t < 0 ? 0 : t > 6 ? 6 : t;
         }
 
         private void Untrack(Agent agent)
@@ -1152,12 +1190,13 @@ namespace TraxCombat.Missions
                 NoteAiKickSettings(settings);     // step 65: the AI kicks and bashes
                 NoteWarCrySettings(settings);     // step 79: war cries
 
-                if (r.PoolFloor != _seenPoolFloor || r.PoolPerSkill != _seenPoolPerSkill)
+                if (r.PoolFloor != _seenPoolFloor || r.PoolPerSkill != _seenPoolPerSkill || r.TierFloorsKey != _seenTierFloors)
                 {
                     _seenPoolFloor = r.PoolFloor;
                     _seenPoolPerSkill = r.PoolPerSkill;
+                    _seenTierFloors = r.TierFloorsKey; // step 93: the tier floors re-pool the men on the field the same way
                     string dist = _stats.Pools(in r, out double min, out double mean, out double max, out int atFloor)
-                        ? "pools now min " + F0(min) + " / avg " + F1(mean) + " / max " + F0(max) + ", " + atFloor + " at the floor"
+                        ? "pools now min " + F0(min) + " / avg " + F1(mean) + " / max " + F0(max) + ", " + atFloor + " at the floor; " + _stats.TierLiftText(in r)
                         : "nobody tracked yet";
                     TraxLog.Info("athletics", "pool settings now: the Athletics skill x" + F2(r.PoolPerSkill) + ", at least " + r.PoolFloor + " - "
                         + dist + "; everyone keeps his share (a fighter at 60% stays at 60%)");

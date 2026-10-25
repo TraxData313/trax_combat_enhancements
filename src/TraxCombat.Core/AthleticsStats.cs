@@ -33,6 +33,14 @@ namespace TraxCombat.Core
         private readonly int[] _outsideActions = new int[ActionSlots];
         private readonly double[] _effortSeconds = new double[EffortBins];
         private readonly int[] _skills = new int[SkillSlots];
+
+        /// <summary>Step 93: the NON-HERO troops' skills by battle tier (0..6) - tier t, skill s at t × SkillSlots + s; heroes,
+        /// the player and men of no known tier are in <see cref="_skills"/>. The pools (and who the tier floor lifts) are computed
+        /// at the end with the settings then.</summary>
+        private readonly int[] _tierSkills = new int[TierSlots * SkillSlots];
+
+        /// <summary>Step 93: battle tiers 0..6.</summary>
+        public const int TierSlots = 7;
         private readonly double[] _peakTime = new double[AthleticsMath.PeakBins];
         private readonly Dictionary<string, int> _errors = new Dictionary<string, int>(StringComparer.Ordinal);
         private int _decoratorAttack;
@@ -199,12 +207,17 @@ namespace TraxCombat.Core
         // ------------------------------------------------------------------ counting
 
         /// <summary>A fighter starts being tracked, with his Athletics skill (0 = unknown / none).</summary>
-        public void AddFighter(int skill, bool skillKnown)
+        public void AddFighter(int skill, bool skillKnown) => AddFighter(skill, skillKnown, -1);
+
+        /// <summary>Step 93: …with his battle tier (0..6, above 6 counted as 6) for a NON-HERO troop; −1 = a hero, the player or
+        /// unknown (no tier floor).</summary>
+        public void AddFighter(int skill, bool skillKnown, int tier)
         {
             FightersTracked++;
             if (!skillKnown) SkillsUnknown++;
             int s = skill < 0 ? 0 : skill >= SkillSlots ? SkillSlots - 1 : skill;
-            _skills[s]++;
+            if (tier < 0) _skills[s]++;
+            else _tierSkills[(tier >= TierSlots ? TierSlots - 1 : tier) * SkillSlots + s]++;
         }
 
         /// <summary>One charged blow; <paramref name="points"/> = what it really drained (0 for a swing
@@ -406,16 +419,21 @@ namespace TraxCombat.Core
             atFloor = 0;
             int n = 0;
             double sum = 0;
-            for (int s = 0; s < SkillSlots; s++)
+            for (int t = -1; t < TierSlots; t++)
             {
-                int c = _skills[s];
-                if (c == 0) continue;
-                double pool = AthleticsMath.PoolPointsForSkill(in r, s);
-                n += c;
-                sum += pool * c;
-                if (pool < min) min = pool;
-                if (pool > max) max = pool;
-                if (AthleticsMath.IsAtFloor(in r, s)) atFloor += c;
+                var counts = t < 0 ? _skills : _tierSkills;
+                int at = t < 0 ? 0 : t * SkillSlots;
+                for (int s = 0; s < SkillSlots; s++)
+                {
+                    int c = counts[at + s];
+                    if (c == 0) continue;
+                    double pool = AthleticsMath.PoolPointsFor(in r, s, t);
+                    n += c;
+                    sum += pool * c;
+                    if (pool < min) min = pool;
+                    if (pool > max) max = pool;
+                    if (AthleticsMath.IsAtFloor(in r, s, t)) atFloor += c;
+                }
             }
             if (n == 0)
             {
@@ -424,6 +442,48 @@ namespace TraxCombat.Core
             }
             mean = sum / n;
             return true;
+        }
+
+        /// <summary>Step 93: the non-hero troops of battle tier <paramref name="tier"/> (0..6) whose pool the tier floor made, with the
+        /// given (live) rules: how many, their mean Athletics skill and their mean pool. False when nobody of that tier was lifted.</summary>
+        public bool TierLift(in AthleticsRules r, int tier, out int men, out double meanSkill, out double meanPool)
+        {
+            men = 0;
+            meanSkill = meanPool = double.NaN;
+            if (tier < 0 || tier >= TierSlots) return false;
+            double skills = 0, pools = 0;
+            int at = tier * SkillSlots;
+            for (int s = 0; s < SkillSlots; s++)
+            {
+                int c = _tierSkills[at + s];
+                if (c == 0 || !AthleticsMath.IsLiftedByTier(in r, s, tier)) continue;
+                men += c;
+                skills += (double)s * c;
+                pools += AthleticsMath.PoolPointsFor(in r, s, tier) * c;
+            }
+            if (men == 0) return false;
+            meanSkill = skills / men;
+            meanPool = pools / men;
+            return true;
+        }
+
+        /// <summary>Step 93: the pools line's tier part - "tier floors off" / "nobody lifted by the tier floor" / "lifted by the tier
+        /// floor: T4 12 (skill 60 → pool 90) / T6 30 (skill 60 → pool 150)".</summary>
+        public string TierLiftText(in AthleticsRules r)
+        {
+            var sb = new StringBuilder("tier floors (non-heroes) T1-T6 ");
+            for (int t = 1; t < TierSlots; t++) sb.Append(t == 1 ? "" : "/").Append(AthleticsMath.TierFloor(in r, t));
+            if (!r.AnyTierFloor || !r.ModEnabled) return sb.Append(" - off").ToString();
+            bool any = false;
+            for (int t = 0; t < TierSlots; t++)
+            {
+                if (!TierLift(in r, t, out int men, out double skill, out double pool)) continue;
+                sb.Append(any ? " / T" : ", lifted by the tier floor: T").Append(t).Append(' ').Append(men)
+                    .Append(" (skill ").Append(N1(skill)).Append(" → pool ").Append(N1(pool)).Append(')');
+                any = true;
+            }
+            if (!any) sb.Append(", nobody lifted by the tier floor");
+            return sb.ToString();
         }
 
         // ------------------------------------------------------------------ the summary text
@@ -609,6 +669,7 @@ namespace TraxCombat.Core
                 .Append("; settings at the end): ").Append(FightersTracked).Append(" fighters - min ").Append(N0(min)).Append(" / avg ").Append(N1(mean))
                 .Append(" / max ").Append(N0(max)).Append("; ").Append(atFloor).Append(" at the floor");
             if (SkillsUnknown > 0) sb.Append(", ").Append(SkillsUnknown).Append(" whose skill could not be read (the floor)");
+            sb.Append("; ").Append(TierLiftText(in r)); // step 93
             if (PlayerSeen) sb.Append("; you ").Append(N0(AthleticsMath.PoolPointsForSkill(in r, PlayerSkill))).Append(" (skill ").Append(PlayerSkill).Append(')');
             if (LeaderSkills.Count > 0)
             {

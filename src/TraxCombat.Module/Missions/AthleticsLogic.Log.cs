@@ -66,7 +66,7 @@ namespace TraxCombat.Missions
             {
                 var r = AthleticsRules.From(TraxSettings.Shared);
                 TraxLog.Verbose("athletics", "pool at spawn: " + Name(st) + " - Athletics skill " + st.AthleticsSkill + (st.SkillKnown ? "" : " (not readable)")
-                    + " → pool " + F0(AthleticsMath.PoolPoints(in r, st)) + (AthleticsMath.IsAtFloor(in r, st.AthleticsSkill) ? " (the floor)" : "")
+                    + " → pool " + F0(AthleticsMath.PoolPoints(in r, st)) + (AthleticsMath.IsLiftedByTier(in r, st.AthleticsSkill, AthleticsMath.FloorTier(st)) ? " (T" + st.Tier + "'s floor)" : AthleticsMath.IsAtFloor(in r, st.AthleticsSkill) ? " (the floor)" : "")
                     + "; " + BlowsAtFullStrength(in r, st) + " blows at full strength, " + BlowsToEmpty(in r, st) + " to empty", "athletics-pool");
             }
             catch (Exception e)

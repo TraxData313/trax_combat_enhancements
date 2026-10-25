@@ -261,6 +261,31 @@ namespace TraxCombat.Core
             "Smallest bar (points)",
             "No fighter's Athletics bar is smaller than this, whatever his Athletics skill - so a recruit with Athletics skill 20 still gets a 50-point bar (5 blows). 0 = no floor: the bar is exactly the skill (never below 1 point). Changed mid-battle, everyone keeps his share: a fighter at 60% stays at 60%.");
 
+        // Step 93 (Toni 2026-10-25): a floor by the troop's tier - the game gives riders Riding instead of Athletics (a T6 Banner Knight has 60).
+        public static readonly ParamDef AthleticsFloorT1 = Int("AthleticsFloorT1", 0, 1000, AthleticsGroup,
+            "Smallest bar of a tier 1 soldier",
+            "No tier 1 soldier's Athletics bar is smaller than this - tier 0 too (looters, villagers). Only common soldiers, mercenaries and bandits - lords, companions, wanderers and you keep the bar of your real skill. The bar is the biggest of the skill, the smallest bar above and this. 0 = no floor for this tier. Changed mid-battle, everyone keeps his share: a soldier at 60% stays at 60%.");
+
+        public static readonly ParamDef AthleticsFloorT2 = Int("AthleticsFloorT2", 0, 1000, AthleticsGroup,
+            "Smallest bar of a tier 2 soldier",
+            "No tier 2 soldier's Athletics bar is smaller than this. Only common soldiers, mercenaries and bandits - lords, companions, wanderers and you keep the bar of your real skill. The bar is the biggest of the skill, the smallest bar above and this. 0 = no floor for this tier. Changed mid-battle, everyone keeps his share: a soldier at 60% stays at 60%.");
+
+        public static readonly ParamDef AthleticsFloorT3 = Int("AthleticsFloorT3", 0, 1000, AthleticsGroup,
+            "Smallest bar of a tier 3 soldier",
+            "No tier 3 soldier's Athletics bar is smaller than this. Only common soldiers, mercenaries and bandits - lords, companions, wanderers and you keep the bar of your real skill. The bar is the biggest of the skill, the smallest bar above and this. 0 = no floor for this tier. Changed mid-battle, everyone keeps his share: a soldier at 60% stays at 60%.");
+
+        public static readonly ParamDef AthleticsFloorT4 = Int("AthleticsFloorT4", 0, 1000, AthleticsGroup,
+            "Smallest bar of a tier 4 soldier",
+            "No tier 4 soldier's Athletics bar is smaller than this: a Vlandian Cavalry (T4) with Athletics skill 60 gets a 90-point bar. Only common soldiers, mercenaries and bandits - lords, companions, wanderers and you keep the bar of your real skill. The bar is the biggest of the skill, the smallest bar above and this. 0 = no floor for this tier. Changed mid-battle, everyone keeps his share: a soldier at 60% stays at 60%.");
+
+        public static readonly ParamDef AthleticsFloorT5 = Int("AthleticsFloorT5", 0, 1000, AthleticsGroup,
+            "Smallest bar of a tier 5 soldier",
+            "No tier 5 soldier's Athletics bar is smaller than this. Only common soldiers, mercenaries and bandits - lords, companions, wanderers and you keep the bar of your real skill. The bar is the biggest of the skill, the smallest bar above and this. 0 = no floor for this tier. Changed mid-battle, everyone keeps his share: a soldier at 60% stays at 60%.");
+
+        public static readonly ParamDef AthleticsFloorT6 = Int("AthleticsFloorT6", 0, 1000, AthleticsGroup,
+            "Smallest bar of a tier 6 soldier",
+            "No tier 6 soldier's Athletics bar is smaller than this: a Vlandian Banner Knight (T6) with Athletics skill 60 gets a 150-point bar - the game gives riders Riding instead of Athletics. Only common soldiers, mercenaries and bandits - lords, companions, wanderers and you keep the bar of your real skill. The bar is the biggest of the skill, the smallest bar above and this. 0 = no floor for this tier. Changed mid-battle, everyone keeps his share: a soldier at 60% stays at 60%.");
+
         public static readonly ParamDef AthleticsPoolPerSkill = Float("AthleticsPoolPerSkill", 0.1, 5, AthleticsGroup,
             "Bar points per skill point",
             "Athletics points per point of Athletics skill. 1.0: the bar tops at the skill - skill 180, a 180-point bar. Changed mid-battle, everyone keeps his share.");
@@ -2400,7 +2425,8 @@ namespace TraxCombat.Core
             // the Advanced page
             DamageRandomEnabled, DamageRandomMelee, DamageRandomRanged,
             DamageRandomOnMounts, DamageRandomOnShields, SprintFullCritical,
-            AthleticsPoolFloor, AthleticsPoolPerSkill, AthleticsPeakPercent, HealthCapsAthletics,
+            AthleticsPoolFloor, AthleticsFloorT1, AthleticsFloorT2, AthleticsFloorT3, AthleticsFloorT4, AthleticsFloorT5, AthleticsFloorT6,
+            AthleticsPoolPerSkill, AthleticsPeakPercent, HealthCapsAthletics,
             CostPerKickOrBash, CostPerShieldBlock, CostPerWrongSideShieldBlock, CostPerWeaponParry, OnlyWrongSideBlocksStopRefill,
             ShieldFrontArcIsCorrect, ShieldFrontArcDegrees, CostOnMiss, PartyLeaderCostMultiplier,
             ExhaustedAttackSpeedPercent, AttackRatePlayerTimer, AttackRatePaceHold, AttackRatePaceByInput, AiHoldRaiseGuard, AttackRateAiDecisions, AttackAnimationMinPercent,

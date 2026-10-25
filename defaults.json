@@ -348,6 +348,52 @@
   // (range 0 to 1000)
   "AthleticsPoolFloor": 50,
 
+  // No tier 1 soldier's Athletics bar is smaller than this - tier 0 too (looters, villagers).
+  // Only common soldiers, mercenaries and bandits - lords, companions, wanderers and you keep
+  // the bar of your real skill. The bar is the biggest of the skill, the smallest bar above and
+  // this. 0 = no floor for this tier. Changed mid-battle, everyone keeps his share: a soldier
+  // at 60% stays at 60%.
+  // (range 0 to 1000)
+  "AthleticsFloorT1": 50,
+
+  // No tier 2 soldier's Athletics bar is smaller than this. Only common soldiers, mercenaries
+  // and bandits - lords, companions, wanderers and you keep the bar of your real skill. The bar
+  // is the biggest of the skill, the smallest bar above and this. 0 = no floor for this tier.
+  // Changed mid-battle, everyone keeps his share: a soldier at 60% stays at 60%.
+  // (range 0 to 1000)
+  "AthleticsFloorT2": 50,
+
+  // No tier 3 soldier's Athletics bar is smaller than this. Only common soldiers, mercenaries
+  // and bandits - lords, companions, wanderers and you keep the bar of your real skill. The bar
+  // is the biggest of the skill, the smallest bar above and this. 0 = no floor for this tier.
+  // Changed mid-battle, everyone keeps his share: a soldier at 60% stays at 60%.
+  // (range 0 to 1000)
+  "AthleticsFloorT3": 70,
+
+  // No tier 4 soldier's Athletics bar is smaller than this: a Vlandian Cavalry (T4) with
+  // Athletics skill 60 gets a 90-point bar. Only common soldiers, mercenaries and bandits -
+  // lords, companions, wanderers and you keep the bar of your real skill. The bar is the
+  // biggest of the skill, the smallest bar above and this. 0 = no floor for this tier. Changed
+  // mid-battle, everyone keeps his share: a soldier at 60% stays at 60%.
+  // (range 0 to 1000)
+  "AthleticsFloorT4": 90,
+
+  // No tier 5 soldier's Athletics bar is smaller than this. Only common soldiers, mercenaries
+  // and bandits - lords, companions, wanderers and you keep the bar of your real skill. The bar
+  // is the biggest of the skill, the smallest bar above and this. 0 = no floor for this tier.
+  // Changed mid-battle, everyone keeps his share: a soldier at 60% stays at 60%.
+  // (range 0 to 1000)
+  "AthleticsFloorT5": 120,
+
+  // No tier 6 soldier's Athletics bar is smaller than this: a Vlandian Banner Knight (T6) with
+  // Athletics skill 60 gets a 150-point bar - the game gives riders Riding instead of
+  // Athletics. Only common soldiers, mercenaries and bandits - lords, companions, wanderers and
+  // you keep the bar of your real skill. The bar is the biggest of the skill, the smallest bar
+  // above and this. 0 = no floor for this tier. Changed mid-battle, everyone keeps his share: a
+  // soldier at 60% stays at 60%.
+  // (range 0 to 1000)
+  "AthleticsFloorT6": 150,
+
   // Athletics points per point of Athletics skill. 1.0: the bar tops at the skill - skill 180,
   // a 180-point bar. Changed mid-battle, everyone keeps his share.
   // (range 0.1 to 5.0)

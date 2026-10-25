@@ -35,9 +35,16 @@ namespace TraxCombat.Core
             float regenDelayBlowTimes, float blowTimeSeconds, float fullRegenSecondsStanding, float regenMultiplierAtFullRun,
             float walkEffortFraction, int regenRateNearFullPercent, bool modEnabled = true,
             float costPerShieldBlock = 0, float costPerWrongSideShieldBlock = 0, float costPerWeaponParry = 0,
-            bool onlyWrongSideBlocksStopRefill = false)
+            bool onlyWrongSideBlocksStopRefill = false,
+            int tierFloorT1 = 0, int tierFloorT2 = 0, int tierFloorT3 = 0, int tierFloorT4 = 0, int tierFloorT5 = 0, int tierFloorT6 = 0)
         {
             ModEnabled = modEnabled;
+            TierFloorT1 = tierFloorT1;
+            TierFloorT2 = tierFloorT2;
+            TierFloorT3 = tierFloorT3;
+            TierFloorT4 = tierFloorT4;
+            TierFloorT5 = tierFloorT5;
+            TierFloorT6 = tierFloorT6;
             OnlyWrongSideBlocksStopRefill = onlyWrongSideBlocksStopRefill;
             CostPerShieldBlock = costPerShieldBlock;
             CostPerWrongSideShieldBlock = costPerWrongSideShieldBlock;
@@ -83,6 +90,35 @@ namespace TraxCombat.Core
 
         /// <summary>AthleticsPoolPerSkill - pool points per Athletics skill point.</summary>
         public float PoolPerSkill { get; }
+
+        /// <summary>Step 93 (Toni 2026-10-25): AthleticsFloorT1 .. T6 - the smallest pool of a NON-HERO troop of that battle tier
+        /// (the game gives riders Riding instead of Athletics: a T6 Banner Knight has skill 60). 0 = no floor for that tier. Heroes
+        /// and the player never (<see cref="AthleticsMath.TierFloor"/>). The constructor's default is 0 (no tier floors) for the older
+        /// tests; <see cref="From"/> reads the settings.</summary>
+        public int TierFloorT1 { get; }
+
+        public int TierFloorT2 { get; }
+
+        public int TierFloorT3 { get; }
+
+        public int TierFloorT4 { get; }
+
+        public int TierFloorT5 { get; }
+
+        public int TierFloorT6 { get; }
+
+        /// <summary>The floor setting of a battle tier 1..6 (T0 → T1's, above 6 → T6's, below 0 → 0); the master switch is
+        /// <see cref="AthleticsMath.TierFloor"/>'s business.</summary>
+        public int TierFloorSetting(int tier) => tier < 0 ? 0 : tier <= 1 ? TierFloorT1 : tier == 2 ? TierFloorT2 : tier == 3 ? TierFloorT3
+            : tier == 4 ? TierFloorT4 : tier == 5 ? TierFloorT5 : TierFloorT6;
+
+        /// <summary>Any tier floor above 0.</summary>
+        public bool AnyTierFloor => TierFloorT1 > 0 || TierFloorT2 > 0 || TierFloorT3 > 0 || TierFloorT4 > 0 || TierFloorT5 > 0 || TierFloorT6 > 0;
+
+        /// <summary>The six floors packed in one number (10 bits each, kept inside 0..1023) - a settings-changed check compares it.</summary>
+        public long TierFloorsKey => Pack(TierFloorT1, 0) | Pack(TierFloorT2, 1) | Pack(TierFloorT3, 2) | Pack(TierFloorT4, 3) | Pack(TierFloorT5, 4) | Pack(TierFloorT6, 5);
+
+        private static long Pack(int v, int i) => (long)(v < 0 ? 0 : v > 1023 ? 1023 : v) << (10 * i);
 
         /// <summary>AthleticsPeakPercent - the full-strength line, % of the FULL pool.</summary>
         public int PeakPercent { get; }
@@ -181,7 +217,8 @@ namespace TraxCombat.Core
             s.ExhaustedAttackSpeedPercent, s.MinMoveSpeedMultiplier, s.MountMinSpeedMultiplier, s.DamageBonusFollowsAthletics,
             s.RegenDelayBlowTimes, s.BlowTimeSeconds, s.FullRegenSecondsStanding, s.RegenMultiplierAtFullRun,
             s.WalkEffortFraction, s.RegenRateNearFullPercent, s.ModEnabled,
-            s.CostPerShieldBlock, s.CostPerWrongSideShieldBlock, s.CostPerWeaponParry, s.OnlyWrongSideBlocksStopRefill);
+            s.CostPerShieldBlock, s.CostPerWrongSideShieldBlock, s.CostPerWeaponParry, s.OnlyWrongSideBlocksStopRefill,
+            s.AthleticsFloorT1, s.AthleticsFloorT2, s.AthleticsFloorT3, s.AthleticsFloorT4, s.AthleticsFloorT5, s.AthleticsFloorT6);
     }
 
     /// <summary>
@@ -215,6 +252,11 @@ namespace TraxCombat.Core
 
         /// <summary>A hero (lord, companion, the player) - cached at spawn, the multiplier is read live.</summary>
         public bool IsHero { get; set; }
+
+        /// <summary>Step 93: his battle tier 0..6 (the game's <c>GetBattleTier()</c>, step 73's read) for a NON-HERO troop - the tier
+        /// floor of his pool (<see cref="AthleticsMath.PoolPoints"/>); −1 = a hero, the player or unknown: no tier floor. Cached at spawn,
+        /// the floors are read live.</summary>
+        public int Tier { get; set; } = -1;
 
         /// <summary>Leads the fighter's own party (custom battle: the side's general, or every hero
         /// of a side without one) - cached at spawn, the multiplier is read live.</summary>
@@ -538,7 +580,7 @@ namespace TraxCombat.Core
 
     /// <summary>
     /// DESIGN §2 as pure functions. EACH RULE IS ONE FUNCTION of (fighter, live rules):
-    ///   <see cref="PoolPoints"/>          pool = max(floor, per-skill × Athletics skill), never below 1
+    ///   <see cref="PoolPoints"/>          pool = max(floor, per-skill × Athletics skill, his tier's floor - step 93, never a hero), never below 1
     ///   <see cref="UsableFraction"/>      the health cap (health left, or 1)
     ///   <see cref="PeakShare"/>           f = min(E / (peak% × FULL pool), 1)
     ///   <see cref="BlowCostPoints"/>      cost of one blow in POINTS (CostPerBlow × hero × leader)
@@ -580,11 +622,33 @@ namespace TraxCombat.Core
         public static double PoolPointsForSkill(in AthleticsRules r, int skill) =>
             Math.Max(1.0, Math.Max(r.PoolFloor, (double)r.PoolPerSkill * Math.Max(0, skill)));
 
-        /// <summary>This fighter's FULL pool in points (from his cached Athletics skill, live settings).</summary>
-        public static double PoolPoints(in AthleticsRules r, Fighter f) => PoolPointsForSkill(in r, f.AthleticsSkill);
+        /// <summary>Step 93: the tier floor in points for a battle tier - 0 while the master switch is off (checked FIRST) or for
+        /// tier −1 (a hero, the player, unknown); T0 (level 5 and below: looters, villagers) takes T1's floor; above 6 → T6's.</summary>
+        public static int TierFloor(in AthleticsRules r, int tier) => !r.ModEnabled || tier < 0 ? 0 : Math.Max(0, r.TierFloorSetting(tier));
+
+        /// <summary>Step 93: the pool for a skill AND a tier (−1 = no tier floor): max(floor, per-skill × skill, the tier's floor), never below 1.</summary>
+        public static double PoolPointsFor(in AthleticsRules r, int skill, int tier) =>
+            Math.Max(PoolPointsForSkill(in r, skill), TierFloor(in r, tier));
+
+        /// <summary>The tier this fighter's pool is floored by: his <see cref="Fighter.Tier"/>, −1 for a hero (never lifted).</summary>
+        public static int FloorTier(Fighter f) => f.IsHero ? -1 : f.Tier;
+
+        /// <summary>This fighter's FULL pool in points (from his cached Athletics skill and tier, live settings - a change of
+        /// the floors re-pools him at once and his FRACTION stays: he keeps his share).</summary>
+        public static double PoolPoints(in AthleticsRules r, Fighter f) => PoolPointsFor(in r, f.AthleticsSkill, FloorTier(f));
 
         /// <summary>The pool of this skill comes from the floor (the skill alone would give less).</summary>
         public static bool IsAtFloor(in AthleticsRules r, int skill) => (double)r.PoolPerSkill * Math.Max(0, skill) < r.PoolFloor;
+
+        /// <summary>Step 93: the pool comes from the "at least" floor, not from the skill nor the tier floor.</summary>
+        public static bool IsAtFloor(in AthleticsRules r, int skill, int tier) => IsAtFloor(in r, skill) && !IsLiftedByTier(in r, skill, tier);
+
+        /// <summary>Step 93: his tier's floor is above both the skill's pool and the "at least" floor - the tier floor made his pool.</summary>
+        public static bool IsLiftedByTier(in AthleticsRules r, int skill, int tier)
+        {
+            int floor = TierFloor(in r, tier);
+            return floor > 0 && floor > PoolPointsForSkill(in r, skill);
+        }
 
         /// <summary>The health cap: the share of the pool he can use - his health left while
         /// HealthCapsAthletics is on, else 1.</summary>

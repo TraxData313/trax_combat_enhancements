@@ -64,7 +64,7 @@ public class AthleticsStatsTests
         Assert.Equal((50 + 50 + 50 + 130 + 170 + 50) / 6.0, mean, 9);
         Assert.Equal(4, atFloor);
         Assert.Contains("Athletics pools (the Athletics skill x1.00, at least 50; settings at the end): 6 fighters - min 50 / avg 83.3 / max 170; "
-            + "4 at the floor, 1 whose skill could not be read (the floor); you 180 (skill 180); party leaders: Derthert 250, you 180", Lines(s));
+            + "4 at the floor, 1 whose skill could not be read (the floor); tier floors (non-heroes) T1-T6 50/50/70/90/120/150, nobody lifted by the tier floor; you 180 (skill 180); party leaders: Derthert 250, you 180", Lines(s));
 
         var s2 = new TraxSettings();
         s2.Set(SettingsSchema.AthleticsPoolFloor, 0, SettingSources.Mcm);
