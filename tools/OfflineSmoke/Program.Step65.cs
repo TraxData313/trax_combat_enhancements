@@ -141,11 +141,12 @@ namespace TraxCombat.Tools
             /// target's stand-in distance and a straight forward walk.</summary>
             public int StepInReads, StepInClearReads;
 
-            public bool StepIn(TrackedAgent st, TrackedAgent target, out float distance, out float localX, out float localY)
+            public bool StepIn(TrackedAgent st, TrackedAgent target, out float distance, out float localX, out float localY, out float px, out float py, out float ex, out float ey)
             {
                 StepInReads++;
                 distance = float.NaN;
                 localX = localY = 0f;
+                px = py = ex = ey = float.NaN;
                 if (Gone.Contains(target.AgentIndex)) return false;
                 if (!Bodies.TryGetValue(st.AgentIndex, out var me) || !Bodies.TryGetValue(target.AgentIndex, out var t))
                 {
@@ -156,6 +157,10 @@ namespace TraxCombat.Tools
                 }
                 double dx = t.X - me.X, dy = t.Y - me.Y;
                 distance = (float)Math.Sqrt(dx * dx + dy * dy);
+                px = (float)me.X;
+                py = (float)me.Y;
+                ex = (float)t.X;
+                ey = (float)t.Y;
                 if (!AiBashStepInMath.Vector(dx, dy, me.FY, -me.FX, me.FX, me.FY, out double x, out double y)) return false;
                 localX = (float)x;
                 localY = (float)y;
@@ -218,6 +223,8 @@ namespace TraxCombat.Tools
             S.Set(SettingsSchema.AiBashReachMetres, 0.0, SettingSources.File);
             // step 95: the older steps bash from where the man stands - the step-in off (Step95StepIn sets the shipped one)
             S.Set(SettingsSchema.AiBashStepIn, false, SettingSources.File);
+            // step 97: the shipped cooldown is 1 s - the older steps assert step 81's 2 s between two kicks / bashes (Step97Cooldown sets the shipped one)
+            S.Set(SettingsSchema.AiKickCooldownSeconds, 2.0, SettingSources.File);
         }
 
         /// <summary>Step 88: the shipped shares (the embedded defaults.json - shieldman 25 / 40 / 35, no shield 35 / 20 / 45).</summary>

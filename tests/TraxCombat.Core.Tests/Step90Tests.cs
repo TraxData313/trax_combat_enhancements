@@ -76,7 +76,7 @@ public class Step90Tests
     [Fact]
     public void Format_21_narrows_an_untouched_path_keeps_a_tuned_one_and_leaves_format_21_alone()
     {
-        Assert.Equal(25, ConfigFile.FormatVersion);
+        Assert.Equal(26, ConfigFile.FormatVersion);
         var read = ConfigFile.Read("{ \"ConfigVersion\": 20, \"AiKickFriendClearMetres\": 0.6, \"AiBashPathHalfWidthMetres\": 0.75, \"AiKickRearRankMetres\": 1.2 }");
         var notes = ConfigFile.Migrate(read, ShippedDefault);
         Assert.Equal(0.45, read.Values["AiKickFriendClearMetres"], 9);
@@ -84,14 +84,14 @@ public class Step90Tests
         Assert.Equal(1.2, read.Values["AiKickRearRankMetres"], 9);
         Assert.False(read.Values.ContainsKey("AiKickBlockAheadMetres")); // new keys: the defaults fill them like any missing key
         Assert.Equal(2, notes.Count);
-        Assert.Contains(notes, n => n.StartsWith("AiBashPathHalfWidthMetres: 0.75 → 0.5 (format 20 → 25, the old default; step 90, Toni: only a man really in front blocks", StringComparison.Ordinal));
-        Assert.Contains(notes, n => n.StartsWith("AiKickFriendClearMetres: 0.6 → 0.45 (format 20 → 25, the old default; step 90", StringComparison.Ordinal));
+        Assert.Contains(notes, n => n.StartsWith("AiBashPathHalfWidthMetres: 0.75 → 0.5 (format 20 → 26, the old default; step 90, Toni: only a man really in front blocks", StringComparison.Ordinal));
+        Assert.Contains(notes, n => n.StartsWith("AiKickFriendClearMetres: 0.6 → 0.45 (format 20 → 26, the old default; step 90", StringComparison.Ordinal));
         // a tuned value is kept and said once
         var tuned = ConfigFile.Read("{ \"ConfigVersion\": 18, \"AiKickFriendClearMetres\": 0.6, \"AiBashPathHalfWidthMetres\": 0.9 }");
         var tn = ConfigFile.Migrate(tuned, ShippedDefault);
         Assert.Equal(0.9, tuned.Values["AiBashPathHalfWidthMetres"], 9);
         Assert.Equal(0.45, tuned.Values["AiKickFriendClearMetres"], 9);
-        Assert.Contains(tn, n => n.StartsWith("AiBashPathHalfWidthMetres: 0.9 kept - your own value (format 18 → 25; the new default 0.5", StringComparison.Ordinal));
+        Assert.Contains(tn, n => n.StartsWith("AiBashPathHalfWidthMetres: 0.9 kept - your own value (format 18 → 26; the new default 0.5", StringComparison.Ordinal));
         // a format-17 file's 0.5 goes through step 80's block straight to today's 0.45; the bash key did not exist yet
         var old = ConfigFile.Read("{ \"ConfigVersion\": 17, \"AiKickFriendClearMetres\": 0.5 }");
         ConfigFile.Migrate(old, ShippedDefault);
@@ -99,7 +99,7 @@ public class Step90Tests
         // format 21 untouched; the rewritten file is format 21 and idempotent
         Assert.Empty(ConfigFile.Migrate(ConfigFile.Read("{ \"ConfigVersion\": 21, \"AiKickFriendClearMetres\": 0.6, \"AiBashPathHalfWidthMetres\": 0.75 }"), ShippedDefault));
         string written = ConfigFile.Write(read.Values, read.Unknown);
-        Assert.Contains("\"ConfigVersion\": 25", written, StringComparison.Ordinal);
+        Assert.Contains("\"ConfigVersion\": 26", written, StringComparison.Ordinal);
         Assert.Empty(ConfigFile.Migrate(ConfigFile.Read(written), ShippedDefault));
         // on DESIGN's initial values (0.5 / 0.75) the move is silent for the bash; nothing pushed over a value that is already today's
         Assert.Empty(ConfigFile.Migrate(ConfigFile.Read("{ \"ConfigVersion\": 20, \"AiBashPathHalfWidthMetres\": 0.75 }"), p => p.Default));

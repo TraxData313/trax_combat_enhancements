@@ -176,7 +176,7 @@ public class Step95Tests
     [Fact]
     public void Format_24_moves_the_untouched_shares_once_keeps_a_tuned_one_and_chains_older_files()
     {
-        Assert.Equal(25, ConfigFile.FormatVersion);
+        Assert.Equal(26, ConfigFile.FormatVersion);
         var read = ConfigFile.Read("{ \"ConfigVersion\": 23, \"AiShieldmanKickPercent\": 25, \"AiShieldmanBashPercent\": 40, \"AiNoShieldKickPercent\": 35, \"AiNoShieldPushPercent\": 20 }");
         var notes = ConfigFile.Migrate(read, ShippedDefault);
         Assert.Equal(4, notes.Count);
@@ -184,17 +184,17 @@ public class Step95Tests
         Assert.Equal(43, read.Values["AiShieldmanBashPercent"], 9);
         Assert.Equal(45, read.Values["AiNoShieldKickPercent"], 9);
         Assert.Equal(25, read.Values["AiNoShieldPushPercent"], 9);
-        Assert.Equal("AiShieldmanKickPercent: 25 → 27 (format 23 → 25, the old default; step 95, Toni: swing 30% of the time - more kicks, bashes and pushes - a shieldman kicks 27% of his moves in kick reach)", notes[0]);
-        Assert.StartsWith("AiShieldmanBashPercent: 40 → 43 (format 23 → 25, the old default; step 95", notes[1], StringComparison.Ordinal);
-        Assert.StartsWith("AiNoShieldKickPercent: 35 → 45 (format 23 → 25, the old default; step 95", notes[2], StringComparison.Ordinal);
-        Assert.StartsWith("AiNoShieldPushPercent: 20 → 25 (format 23 → 25, the old default; step 95", notes[3], StringComparison.Ordinal);
+        Assert.Equal("AiShieldmanKickPercent: 25 → 27 (format 23 → 26, the old default; step 95, Toni: swing 30% of the time - more kicks, bashes and pushes - a shieldman kicks 27% of his moves in kick reach)", notes[0]);
+        Assert.StartsWith("AiShieldmanBashPercent: 40 → 43 (format 23 → 26, the old default; step 95", notes[1], StringComparison.Ordinal);
+        Assert.StartsWith("AiNoShieldKickPercent: 35 → 45 (format 23 → 26, the old default; step 95", notes[2], StringComparison.Ordinal);
+        Assert.StartsWith("AiNoShieldPushPercent: 20 → 25 (format 23 → 26, the old default; step 95", notes[3], StringComparison.Ordinal);
         // a tuned value is kept and said once
         var tuned = ConfigFile.Read("{ \"ConfigVersion\": 23, \"AiShieldmanKickPercent\": 30, \"AiShieldmanBashPercent\": 40 }");
         var tn = ConfigFile.Migrate(tuned, ShippedDefault);
         Assert.Equal(30, tuned.Values["AiShieldmanKickPercent"], 9);
         Assert.Equal(43, tuned.Values["AiShieldmanBashPercent"], 9);
         Assert.Equal(2, tn.Count);
-        Assert.StartsWith("AiShieldmanKickPercent: 30 kept - your own value (format 23 → 25; the new default 27 is not pushed over it; step 95", tn[0], StringComparison.Ordinal);
+        Assert.StartsWith("AiShieldmanKickPercent: 30 kept - your own value (format 23 → 26; the new default 27 is not pushed over it; step 95", tn[0], StringComparison.Ordinal);
         // a format-19 file's step-81 shares go through step 88's block straight to today's (one note each); its no-shield kick 35 → 45; no push key = nothing
         var old = ConfigFile.Read("{ \"ConfigVersion\": 19, \"AiShieldmanKickPercent\": 20, \"AiShieldmanBashPercent\": 35, \"AiNoShieldKickPercent\": 35 }");
         var on = ConfigFile.Migrate(old, ShippedDefault);

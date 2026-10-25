@@ -133,8 +133,10 @@ namespace TraxCombat.Core
         /// 20 / 35 went through step 88's block straight to today's value), AiNoShieldKickPercent 35 → 45 (19-23), AiNoShieldPushPercent 20 → 25
         /// (20-23); a tuned value kept and noted; the step-in bash's three keys are new), 25 = step 96 (Toni 2026-10-25 -
         /// "more defencive ... reduce the swings": AiAggressionFreshPercent 60 → 45, AiAggressionExhaustedPercent 20 → 15, ShieldInfantrySwingsLessPercent
-        /// 30 → 40, FootMeleeSwingsLessPercent 15 → 25 (any older file - the four never moved before); a tuned value kept and noted; the guard's two keys are new).</summary>
-        public const int FormatVersion = 25;
+        /// 30 → 40, FootMeleeSwingsLessPercent 15 → 25 (any older file - the four never moved before); a tuned value kept and noted; the guard's two keys are new), 26 = step 97 (Toni's T5 battle of 2026-10-25 13:24 - the 2 s cooldown refused 145 kicks / bashes:
+        /// AiKickCooldownSeconds 2 → 1 for kicks, bashes and pushes (a format 19-25 file - an older file's 8 went through step 81's block straight to today's
+        /// value); a tuned value kept and noted).</summary>
+        public const int FormatVersion = 26;
 
         /// <summary>The meta key holding <see cref="FormatVersion"/> - not a setting.</summary>
         public const string VersionKey = "ConfigVersion";
@@ -609,6 +611,14 @@ namespace TraxCombat.Core
                 MoveOrKeepIfMoved(read, SettingsSchema.AiAggressionExhaustedPercent, 20, calmer + " - an exhausted one at 15%", from, defaultOf);
                 MoveOrKeepIfMoved(read, SettingsSchema.ShieldInfantrySwingsLessPercent, 30, calmer + " - shield infantry swing 40% less", from, defaultOf);
                 MoveOrKeepIfMoved(read, SettingsSchema.FootMeleeSwingsLessPercent, 15, calmer + " - other foot melee swing 25% less", from, defaultOf);
+            }
+            if (from < 26 && from >= 19)
+            {
+                // step 97 (Toni's T5 battle 2026-10-25 13:24: the cooldown refused 145 kicks / bashes, the biggest refusal): AiKickCooldownSeconds (2 since
+                // format 19 - step 81) → 1 for kicks, bashes and pushes; an older file's 8 went through step 81's block above straight to today's value;
+                // a hand-set value is kept and said once
+                MoveOrKeepIfMoved(read, SettingsSchema.AiKickCooldownSeconds, 2,
+                    "step 97, Toni: a shorter kick cooldown - at least 1 s between two kicks, bashes or pushes of one man", from, defaultOf);
             }
             // format 17 (step 78b) moved the lull's LullRecover*Percent 10 / 15 / 20 → 20 / 25 / 30; step 78c removed the lull and its keys, so a
             // format 16 file's are dropped below with the rest of them - nothing to move any more (78c kept format 17; step 80 made it 18)

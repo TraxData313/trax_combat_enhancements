@@ -157,7 +157,7 @@ public class Step96Tests
     [Fact]
     public void Format_25_moves_the_four_untouched_values_once_keeps_a_tuned_one_and_leaves_format_25_alone()
     {
-        Assert.Equal(25, ConfigFile.FormatVersion);
+        Assert.Equal(26, ConfigFile.FormatVersion);
         var read = ConfigFile.Read("{ \"ConfigVersion\": 24, \"AiAggressionFreshPercent\": 60, \"AiAggressionExhaustedPercent\": 20, \"ShieldInfantrySwingsLessPercent\": 30, \"FootMeleeSwingsLessPercent\": 15 }");
         var notes = ConfigFile.Migrate(read, ShippedDefault);
         Assert.Equal(4, notes.Count);
@@ -165,17 +165,17 @@ public class Step96Tests
         Assert.Equal(15, read.Values["AiAggressionExhaustedPercent"], 9);
         Assert.Equal(40, read.Values["ShieldInfantrySwingsLessPercent"], 9);
         Assert.Equal(25, read.Values["FootMeleeSwingsLessPercent"], 9);
-        Assert.Equal("AiAggressionFreshPercent: 60 → 45 (format 24 → 25, the old default; step 96, Toni: more defensive, less lethal - a fresh AI man decides to attack at 45% of the game's rate)", notes[0]);
-        Assert.StartsWith("AiAggressionExhaustedPercent: 20 → 15 (format 24 → 25, the old default; step 96", notes[1], StringComparison.Ordinal);
-        Assert.StartsWith("ShieldInfantrySwingsLessPercent: 30 → 40 (format 24 → 25, the old default; step 96", notes[2], StringComparison.Ordinal);
-        Assert.StartsWith("FootMeleeSwingsLessPercent: 15 → 25 (format 24 → 25, the old default; step 96", notes[3], StringComparison.Ordinal);
+        Assert.Equal("AiAggressionFreshPercent: 60 → 45 (format 24 → 26, the old default; step 96, Toni: more defensive, less lethal - a fresh AI man decides to attack at 45% of the game's rate)", notes[0]);
+        Assert.StartsWith("AiAggressionExhaustedPercent: 20 → 15 (format 24 → 26, the old default; step 96", notes[1], StringComparison.Ordinal);
+        Assert.StartsWith("ShieldInfantrySwingsLessPercent: 30 → 40 (format 24 → 26, the old default; step 96", notes[2], StringComparison.Ordinal);
+        Assert.StartsWith("FootMeleeSwingsLessPercent: 15 → 25 (format 24 → 26, the old default; step 96", notes[3], StringComparison.Ordinal);
         // a tuned value is kept and said once
         var tuned = ConfigFile.Read("{ \"ConfigVersion\": 24, \"AiAggressionFreshPercent\": 70, \"FootMeleeSwingsLessPercent\": 15 }");
         var tn = ConfigFile.Migrate(tuned, ShippedDefault);
         Assert.Equal(70, tuned.Values["AiAggressionFreshPercent"], 9);
         Assert.Equal(25, tuned.Values["FootMeleeSwingsLessPercent"], 9);
         Assert.Equal(2, tn.Count);
-        Assert.StartsWith("AiAggressionFreshPercent: 70 kept - your own value (format 24 → 25; the new default 45 is not pushed over it; step 96", tn[0], StringComparison.Ordinal);
+        Assert.StartsWith("AiAggressionFreshPercent: 70 kept - your own value (format 24 → 26; the new default 45 is not pushed over it; step 96", tn[0], StringComparison.Ordinal);
         // an old file (format 8) gets them too, in one note each
         var old = ConfigFile.Read("{ \"ConfigVersion\": 8, \"AiAggressionFreshPercent\": 60, \"ShieldInfantrySwingsLessPercent\": 30 }");
         var on = ConfigFile.Migrate(old, ShippedDefault);

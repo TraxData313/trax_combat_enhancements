@@ -153,6 +153,9 @@ namespace TraxCombat.Core
         /// <summary>Bashes that never reached their key (no distance at the bash) - their results are step 91's only.</summary>
         public int EndedBeforeKey;
 
+        /// <summary>Step 97: what held each step-in frame back and each step-in's walk measured from his positions - its clause ends the line.</summary>
+        public readonly AiStepInHoldStats Hold = new AiStepInHoldStats();
+
         public void Note(AiStepIn s) => _outcomes[(int)s]++;
 
         public int Count(AiStepIn s) => _outcomes[(int)s];
@@ -240,6 +243,7 @@ namespace TraxCombat.Core
             }
             if (first) sb.Append("none");
             sb.Append("; ended before the key ").Append(EndedBeforeKey);
+            if (r.StepInOn || Hold.Started > 0 || Hold.TotalFrames > 0) sb.Append(" | ").Append(Hold.Clause()); // step 97
             return sb.ToString();
         }
     }

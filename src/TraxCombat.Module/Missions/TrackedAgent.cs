@@ -382,6 +382,7 @@ namespace TraxCombat.Missions
         public bool AiStepping; // step 95: walking in now (the guard phase)
         public double AiStepStop = double.NaN; // step 95: the enemy's distance he walks in to
         public double AiKickPressDistance = double.NaN; // step 95: the enemy's distance at the bash's key (NaN = never got there)
+        public double AiStepT0 = double.NaN, AiStepX0, AiStepY0, AiStepUX, AiStepUY, AiStepLastT = double.NaN, AiStepLastX, AiStepLastY, AiStepPeak; // step 97: the step's walk from his positions
 
         /// <summary>Step 82: his READ of an incoming kick / bash - reading (rolled yes, in the readers' pool), the kind (a bash = guard right),
         /// when it began, the guard up, the man it comes from; MeetReadRolledFor = the attacker whose start he already rolled for (once).</summary>

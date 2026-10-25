@@ -255,14 +255,14 @@ public class RightBlocksTests
     [Fact]
     public void A_format_9_file_at_the_old_block_defaults_gets_the_new_ones_once_tuned_values_kept_and_said()
     {
-        Assert.Equal(25, ConfigFile.FormatVersion);
+        Assert.Equal(26, ConfigFile.FormatVersion);
         var read = ConfigFile.Read("{ \"ConfigVersion\": 9, \"RightBlockStaggerMaxPercent\": 80, \"RightBlockKnockdownMaxPercent\": 40, \"ParryStaggerMaxPercent\": 80,"
                                    + " \"ParryKnockdownMaxPercent\": 40, \"RiposteStaggerMaxPercent\": 50, \"BlockStunTiredExtraPercent\": 100, \"WrongBlockStaggerMaxPercent\": 90 }");
         var notes = ConfigFile.Migrate(read, Shipped);
         Assert.Equal(6, notes.Count);
-        Assert.Contains(notes, n => n.StartsWith("RightBlockStaggerMaxPercent: 80 → 30 (format 9 → 25, the old default; step 56, Anton's tournament", StringComparison.Ordinal));
-        Assert.Contains(notes, n => n.StartsWith("RiposteStaggerMaxPercent: 50 → 70 (format 9 → 25, the old default; step 56", StringComparison.Ordinal));
-        Assert.Contains(notes, n => n.StartsWith("BlockStunTiredExtraPercent: 100 → 0 (format 9 → 25, the old default; step 56: the impact spike's lever 2 FAILED", StringComparison.Ordinal));
+        Assert.Contains(notes, n => n.StartsWith("RightBlockStaggerMaxPercent: 80 → 30 (format 9 → 26, the old default; step 56, Anton's tournament", StringComparison.Ordinal));
+        Assert.Contains(notes, n => n.StartsWith("RiposteStaggerMaxPercent: 50 → 70 (format 9 → 26, the old default; step 56", StringComparison.Ordinal));
+        Assert.Contains(notes, n => n.StartsWith("BlockStunTiredExtraPercent: 100 → 0 (format 9 → 26, the old default; step 56: the impact spike's lever 2 FAILED", StringComparison.Ordinal));
         Assert.Equal(30, read.Values["RightBlockStaggerMaxPercent"], 9);
         Assert.Equal(10, read.Values["RightBlockKnockdownMaxPercent"], 9);
         Assert.Equal(30, read.Values["ParryStaggerMaxPercent"], 9);
@@ -275,8 +275,8 @@ public class RightBlocksTests
         var mine = ConfigFile.Read("{ \"ConfigVersion\": 9, \"RightBlockStaggerMaxPercent\": 60, \"RiposteStaggerMaxPercent\": 30, \"ParryKnockdownMaxPercent\": 10 }");
         var kept = ConfigFile.Migrate(mine, Shipped);
         Assert.Equal(2, kept.Count); // 10 is the new default already: nothing to say
-        Assert.StartsWith("RightBlockStaggerMaxPercent: 60 kept - your own value (format 9 → 25; the new default 30 is not pushed over it; step 56", kept[0], StringComparison.Ordinal);
-        Assert.StartsWith("RiposteStaggerMaxPercent: 30 kept - your own value (format 9 → 25;", kept[1], StringComparison.Ordinal);
+        Assert.StartsWith("RightBlockStaggerMaxPercent: 60 kept - your own value (format 9 → 26; the new default 30 is not pushed over it; step 56", kept[0], StringComparison.Ordinal);
+        Assert.StartsWith("RiposteStaggerMaxPercent: 30 kept - your own value (format 9 → 26;", kept[1], StringComparison.Ordinal);
         Assert.Equal(60, mine.Values["RightBlockStaggerMaxPercent"], 9);
         // a format-10 file is never touched; an older file without the keys gets nothing to say
         Assert.Empty(ConfigFile.Migrate(ConfigFile.Read("{ \"ConfigVersion\": 10, \"RightBlockStaggerMaxPercent\": 80 }"), Shipped));

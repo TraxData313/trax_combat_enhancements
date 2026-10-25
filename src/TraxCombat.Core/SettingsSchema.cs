@@ -1694,7 +1694,7 @@ namespace TraxCombat.Core
 
         public static readonly ParamDef AiKickCooldownSeconds = Float("AiKickCooldownSeconds", 0, 60, ImpactGroup,
             "AI kicks / bashes: at least this long between two (s)",
-            "After a kick or a shield bash an AI soldier waits at least this many seconds before his next kick or bash (he swings meanwhile).");
+            "After a kick, a shield bash or a weapon push an AI soldier waits at least this many seconds before his next one (he swings meanwhile). A safety between two, not how often - the shares above set that. 1 s since step 97 (2 s before).");
 
         public static readonly ParamDef AiKickKicksARaisedShield = Bool("AiKickKicksARaisedShield", ImpactGroup,
             "AI kicks: a raised shield is kicked, not bashed",

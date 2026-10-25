@@ -113,6 +113,11 @@ namespace TraxCombat.Missions
         public float StepInX, StepInY;
         public long StepInFrames;
 
+        /// <summary>Step 97: step 77's distance in front of the enemy line's front (SteerPresser, while the front clamp is set; NaN = none) and the
+        /// step-in's own record (<see cref="StepInRecord"/> - allocated at his first step-in, once per man; a man never stepping carries nothing more).</summary>
+        public float PressFrontDistance = float.NaN;
+        public StepInRecord? StepRec;
+
         /// <summary>Step 82: he READ an incoming kick / bash - the guard to raise (DefendRight against a bash, DefendDown against a kick) and
         /// whether it is up now (the reaction time passed - the tick turns it on); the frames written.</summary>
         public bool MeetGuard;
@@ -175,6 +180,17 @@ namespace TraxCombat.Missions
         public uint AttackBefore;
         public uint AttackAfter;
         public InputEdit AttackEdit;
+    }
+
+    /// <summary>Step 97: one man's running step-in as the hook sees it - the enemy's distance and his stop (the tick writes them with the vector; NaN =
+    /// none: the press clamp lets the step through by <see cref="AiStepInHoldMath.PressLetsThrough"/>), its frames by what reduced their forward input
+    /// (indexed by <see cref="StepInHold"/>), the frames and the forward stick out of the filter summed - the tick reads them when the step ends.</summary>
+    internal sealed class StepInRecord
+    {
+        public float EnemyDistance = float.NaN, Stop = float.NaN;
+        public readonly int[] Frames = new int[(int)StepInHold.Count];
+        public int FrameCount;
+        public double ForwardSum;
     }
 
     /// <summary>
@@ -517,6 +533,7 @@ namespace TraxCombat.Missions
             {
                 s.PressFront = s.PressSide = s.PressMove = false;
                 s.PressX = s.PressY = 0f;
+                s.PressFrontDistance = float.NaN; // step 97
             }
             Account(s, was, now);
         }
@@ -536,12 +553,24 @@ namespace TraxCombat.Missions
 
         /// <summary>Step 77: THE CLAMP - the part of his final movement toward the enemy line (and a rear-rank man's outward sideways part past its end)
         /// taken out, whoever wrote the vector; his move bits out when it bit. True when it bit. Managed - the smoke drives it.</summary>
-        internal static bool ApplyPressClamp(AiInputState s, ref uint flags, ref float vx, ref float vy)
+        internal static bool ApplyPressClamp(AiInputState s, ref uint flags, ref float vx, ref float vy) => ApplyPressClamp(s, ref flags, ref vx, ref vy, false, out _);
+
+        /// <summary>Step 97: ... with <paramref name="letStepIn"/> (a step-in wrote this frame and still has room - <see cref="StepInPassesPress"/>) the FRONT
+        /// clamp lets the step's forward part through (<paramref name="letThrough"/> = it would have cut); the rear-rank side clamp as always.</summary>
+        internal static bool ApplyPressClamp(AiInputState s, ref uint flags, ref float vx, ref float vy, bool letStepIn, out bool letThrough)
         {
+            letThrough = false;
             if (!s.Press || (!s.PressFront && !s.PressSide)) return false;
             if (!PressOn(TraxSettings.Shared)) return false;
             bool did = false;
-            if (s.PressFront && PressMath.ClampVector(ref vx, ref vy, s.PressNX, s.PressNY))
+            if (s.PressFront && letStepIn)
+            {
+                if (vx * s.PressNX + vy * s.PressNY > 1e-4f)
+                {
+                    letThrough = true;
+                }
+            }
+            else if (s.PressFront && PressMath.ClampVector(ref vx, ref vy, s.PressNX, s.PressNY))
             {
                 s.PressClampFrames++;
                 did = true;
@@ -698,14 +727,37 @@ namespace TraxCombat.Missions
         }
 
         /// <summary>Step 95: the step-in's walk on (with its vector in his own frame) or off (the other wishes are left as they are).</summary>
-        internal static void SetStepIn(TrackedAgent st, bool on, float x, float y, double now)
+        internal static void SetStepIn(TrackedAgent st, bool on, float x, float y, double now) => SetStepIn(st, on, x, y, now, float.NaN, float.NaN);
+
+        /// <summary>Step 97: ... with the enemy's distance and his stop (the press clamp's exemption reads them in the frames).</summary>
+        internal static void SetStepIn(TrackedAgent st, bool on, float x, float y, double now, float enemyDistance, float stop)
         {
             var s = st.Input ??= new AiInputState();
             bool was = s.Active;
             s.StepIn = on;
             s.StepInX = on ? x : 0f;
             s.StepInY = on ? y : 0f;
+            if (s.StepRec != null)
+            {
+                s.StepRec.EnemyDistance = on ? enemyDistance : float.NaN;
+                s.StepRec.Stop = on ? stop : float.NaN;
+            }
             Account(s, was, now);
+        }
+
+        /// <summary>Step 97: the running step-in's switches - the master switch FIRST, the AI kicks, the step-in.</summary>
+        internal static bool StepInOn(TraxSettings settings) => settings.ModEnabled && settings.AiKicksEnabled && settings.AiBashStepIn;
+
+        /// <summary>Step 97: the press clamp lets this step-in through - his enemy beyond his stop, the enemy line's front more than the margin ahead.</summary>
+        internal static bool StepInPassesPress(AiInputState s) => s.StepRec != null && AiStepInHoldMath.PressLetsThrough(s.StepRec.EnemyDistance, s.StepRec.Stop, s.PressFrontDistance);
+
+        /// <summary>Step 97: the running step-in's per-step record cleared (the tick, at its start and after reading it at its end).</summary>
+        internal static void ResetStepInRecord(AiInputState s)
+        {
+            var r = s.StepRec ??= new StepInRecord();
+            Array.Clear(r.Frames, 0, r.Frames.Length);
+            r.FrameCount = 0;
+            r.ForwardSum = 0;
         }
 
         /// <summary>Step 95: one frame of the step-in's walk (managed - the smoke drives it): only in a bash's guard, only while no other movement wish
@@ -754,6 +806,8 @@ namespace TraxCombat.Missions
             s.KickPhase = AiKickPhase.None; // step 65
             s.KickKind = AiKickKind.None;
             s.StepIn = false; // step 95
+            s.PressFrontDistance = float.NaN; // step 97
+            if (s.StepRec != null) s.StepRec.EnemyDistance = s.StepRec.Stop = float.NaN;
             Account(s, was, now);
         }
 
@@ -815,35 +869,39 @@ namespace TraxCombat.Missions
                 flags = AiInputMath.RaiseShield(flags, out bool raised);
                 if (raised) s.BraceShieldRaised++;
             }
+            // the movement wishes in priority order (step 97: which one wrote is kept for the step-in's record)
+            var won = StepInHold.None;
+            bool stepWrote = false;
             if (s.Backpedal)
             {
                 flags = AiInputMath.Backpedal(flags); // his own move bits out: only the backwards vector moves him
                 vx = s.BackX;
                 vy = s.BackY;
                 s.BackpedalFrames++;
+                won = StepInHold.Backpedal;
             }
-            else if (!ApplyWallPull(s, ref flags, ref vx, ref vy)) // step 63: a wall man out of place walked back
+            else if (ApplyWallPull(s, ref flags, ref vx, ref vy)) won = StepInHold.WallPull; // step 63: a wall man out of place walked back
+            else if (ApplyRestMove(s, ref flags, ref vx, ref vy)) won = StepInHold.RestWalk; // step 78c: a resting man backs out of reach (yields to the flock - fear wins)
+            else if (ApplyPressMove(s, ref flags, ref vx, ref vy)) won = StepInHold.PressWalk; // step 77: walked back out of an enemy line / round its end
+            else if (ApplyRhythmMove(s, ref flags, ref vx, ref vy)) won = StepInHold.Swap; // step 78: a swap's walk
+            else if (ApplyRegroup(s, ref flags, ref vx, ref vy)) won = StepInHold.Regroup; // step 49: the walk back (a step back's backpedal wins while it runs)
+            else if (ApplyFlock(s, ref flags, ref vx, ref vy)) won = StepInHold.Flock; // step 67: the fear flock - courage's walk back goes first
+            else if (ApplyBlock(s, ref flags, ref vx, ref vy)) won = StepInHold.Block; // step 74: the block hold
+            else stepWrote = ApplyStepIn(s, ref flags, ref vx, ref vy); // step 95: the step-in bash's walk - the last movement wish
+            bool stepLive = s.StepIn && s.KickPhase == AiKickPhase.Guard && StepInOn(TraxSettings.Shared);
+            // step 77: the clamp LAST - never past an enemy line's front, whoever moves him; step 97: a step-in with room toward HIS enemy is let through
+            bool pressBit = ApplyPressClamp(s, ref flags, ref vx, ref vy, stepWrote && StepInPassesPress(s), out bool letThrough);
+            double fwdPress = stepLive ? AiStepInHoldMath.Forward(vx, vy, s.StepInX, s.StepInY) : 0;
+            bool restBit = ApplyRhythmClamp(s, ref flags, ref vx, ref vy); // step 78: a rested man's place / step 78c: a resting man held back - after the press's clamp
+            if (stepLive && (stepWrote || won != StepInHold.None) && s.StepRec != null)
             {
-                if (!ApplyRestMove(s, ref flags, ref vx, ref vy)) // step 78c: a resting man backs out of reach (yields to the flock - fear wins)
-                {
-                    if (!ApplyPressMove(s, ref flags, ref vx, ref vy)) // step 77: walked back out of an enemy line / round its end
-                    {
-                        if (!ApplyRhythmMove(s, ref flags, ref vx, ref vy)) // step 78: a swap's walk
-                        {
-                            if (!ApplyRegroup(s, ref flags, ref vx, ref vy)) // step 49: the walk back (a step back's backpedal wins while it runs)
-                            {
-                                if (!ApplyFlock(s, ref flags, ref vx, ref vy)) // step 67: the fear flock - courage's walk back goes first
-                                {
-                                    if (!ApplyBlock(s, ref flags, ref vx, ref vy)) // step 74: the block hold
-                                        ApplyStepIn(s, ref flags, ref vx, ref vy); // step 95: the step-in bash's walk - the last movement wish
-                                }
-                            }
-                        }
-                    }
-                }
+                // step 97: what reduced this step-in frame's forward input, and the forward stick that leaves the filter
+                double fwd = AiStepInHoldMath.Forward(vx, vy, s.StepInX, s.StepInY);
+                var why = AiStepInHoldMath.Classify(won, pressBit, fwdPress, restBit, fwd, letThrough);
+                s.StepRec.Frames[(int)why]++;
+                s.StepRec.FrameCount++;
+                s.StepRec.ForwardSum += fwd;
             }
-            ApplyPressClamp(s, ref flags, ref vx, ref vy); // step 77: the clamp LAST - never past an enemy line's front, whoever moves him
-            ApplyRhythmClamp(s, ref flags, ref vx, ref vy); // step 78: a rested man's place / step 78c: a resting man held back - after the press's clamp
             if (s.Capture && !s.CapturedAttack && (edit & InputEdit.AttackCleared) != 0)
             {
                 s.CapturedAttack = true;

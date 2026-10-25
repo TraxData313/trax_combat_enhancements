@@ -52,8 +52,8 @@ namespace TraxCombat.Missions
 
         /// <summary>Step 95: the step-in's read, every tick of a stepping bash's guard - the distance to <paramref name="target"/> (m) and the walk toward
         /// him in <paramref name="st"/>'s own input frame (<see cref="TraxCombat.Core.AiBashStepInMath.Vector"/>). False = no read (the target gone,
-        /// degenerate) - he stops walking.</summary>
-        bool StepIn(TrackedAgent st, TrackedAgent target, out float distance, out float localX, out float localY);
+        /// degenerate) - he stops walking. Step 97: his own and the target's positions on the ground plane too (the step's walk measured).</summary>
+        bool StepIn(TrackedAgent st, TrackedAgent target, out float distance, out float localX, out float localY, out float x, out float y, out float ex, out float ey);
 
         /// <summary>Step 95: is the walk's corridor - <paramref name="step"/> m toward <paramref name="target"/> - free of his own side
         /// (<see cref="TraxCombat.Core.AiBashStepInMath.InCorridor"/>)? Asked once, when a bash would step.</summary>
@@ -155,15 +155,20 @@ namespace TraxCombat.Missions
         public bool IsEnemy(TrackedAgent st, TrackedAgent other) => st.Agent.IsEnemyOf(other.Agent);
 
         /// <summary>Step 95: the positions on the ground plane and his body frame (<c>Agent.Frame.rotation</c> - step 16's backpedal does the same).</summary>
-        public bool StepIn(TrackedAgent st, TrackedAgent target, out float distance, out float localX, out float localY)
+        public bool StepIn(TrackedAgent st, TrackedAgent target, out float distance, out float localX, out float localY, out float x0, out float y0, out float ex, out float ey)
         {
             distance = float.NaN;
             localX = localY = 0f;
+            x0 = y0 = ex = ey = float.NaN;
             var a = st.Agent;
             var e = target.Agent;
             if (e == null || target.Removed || !e.IsActive()) return false;
             var p = a.Position.AsVec2;
             var q = e.Position.AsVec2;
+            x0 = p.x;
+            y0 = p.y;
+            ex = q.x;
+            ey = q.y;
             double dx = q.x - p.x, dy = q.y - p.y;
             distance = (float)System.Math.Sqrt(dx * dx + dy * dy);
             var rot = a.Frame.rotation;

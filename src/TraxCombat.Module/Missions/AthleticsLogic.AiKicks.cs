@@ -50,7 +50,7 @@ namespace TraxCombat.Missions
         private double _aiKickCarry;
         private double _aiKickLastTick = double.NaN;
         private string _seenAiKickText = string.Empty;
-        private readonly bool[] _aiKickFirst = new bool[19]; // step 95: 17 the first step-in, 18 the first step-in refused by a friend; 16: step 91's first bash ended beyond its reach; 7 / 8: step 87's first refusal by a friend - a kick / a bash; 9 / 10: its first friend hit;
+        private readonly bool[] _aiKickFirst = new bool[20]; // step 97: 19 the first step-in measured (what held it back, his walk); step 95: 17 the first step-in, 18 the first step-in refused by a friend; 16: step 91's first bash ended beyond its reach; 7 / 8: step 87's first refusal by a friend - a kick / a bash; 9 / 10: its first friend hit;
                                                              // step 88: 12 / 13 the same for a push, 14 the first push ENDED after its guard, 15 the first push asked
 
         /// <summary>This mission's AI kick numbers (the smoke reads them).</summary>
@@ -412,6 +412,11 @@ namespace TraxCombat.Missions
             MeetReadStart(st, target, AiKickMath.GuardUp(kind), now, kind == AiKickKind.Push); // step 82: the target may read it from its start (step 88: a push with the guard UP)
             if (st.AiStepping)
             {
+                // step 97: the step's record - what holds each frame back, his walk from his positions (the first read sets the start)
+                st.AiStepT0 = st.AiStepLastT = double.NaN;
+                st.AiStepPeak = 0;
+                if (st.Input != null) AiInputHook.ResetStepInRecord(st.Input);
+                _aiKickStats.StepIn.Hold.NoteStart(stopAt > TraxSettings.Shared.AiBashStepInToMetres + 1e-6);
                 SteerStepIn(st, now, AiKickRules.From(TraxSettings.Shared));
                 if (st.AiStepping && AiKickFirst(17))
                     TraxLog.Info("impact", "first AI shield bash STEPS IN at " + Sec(now) + " s (step 95) - " + Name(st) + " at " + Name(target) + " " + F2(distance)
@@ -579,10 +584,10 @@ namespace TraxCombat.Missions
             }
             var target = st.AiKickTarget;
             bool read;
-            float d = float.NaN, lx = 0f, ly = 0f;
+            float d = float.NaN, lx = 0f, ly = 0f, px = float.NaN, py = float.NaN, ex = float.NaN, ey = float.NaN;
             try
             {
-                read = target != null && AiKickBody.StepIn(st, target, out d, out lx, out ly);
+                read = target != null && AiKickBody.StepIn(st, target, out d, out lx, out ly, out px, out py, out ex, out ey);
                 if (!read) d = lx = ly = float.NaN;
             }
             catch (Exception e)
@@ -596,13 +601,41 @@ namespace TraxCombat.Missions
                 StopStepIn(st, AiStepIn.CutShort, now);
                 return;
             }
+            NoteStepWalk(st, now, px, py, ex, ey); // step 97
             if (AiBashStepInMath.Arrived(d, st.AiStepStop))
             {
                 StopStepIn(st, AiStepIn.Arrived, now);
                 st.AiKickPhaseEnd = Math.Max(now, st.AiKickStart + AiKickMath.BashLeadSeconds); // arrived: the bash's own lead, never longer
                 return;
             }
-            AiInputHook.SetStepIn(st, true, lx, ly, now);
+            AiInputHook.SetStepIn(st, true, lx, ly, now, d, (float)Math.Max(st.AiStepStop, TraxSettings.Shared.AiBashStepInToMetres)); // step 97: the press clamp's exemption reads the distance / stop
+        }
+
+        /// <summary>Step 97: one position read of a stepping man - the first sets the start and the line to his enemy, each later one his speed along it
+        /// since the last read (the peak kept).</summary>
+        private static void NoteStepWalk(TrackedAgent st, double now, float px, float py, float ex, float ey)
+        {
+            if (float.IsNaN(px) || float.IsNaN(py)) return;
+            if (double.IsNaN(st.AiStepT0))
+            {
+                double ux = ex - px, uy = ey - py, len = Math.Sqrt(ux * ux + uy * uy);
+                if (!(len > 1e-6)) return;
+                st.AiStepT0 = st.AiStepLastT = now;
+                st.AiStepX0 = st.AiStepLastX = px;
+                st.AiStepY0 = st.AiStepLastY = py;
+                st.AiStepUX = ux / len;
+                st.AiStepUY = uy / len;
+                return;
+            }
+            double dt = now - st.AiStepLastT;
+            if (dt > 1e-6)
+            {
+                double v = ((px - st.AiStepLastX) * st.AiStepUX + (py - st.AiStepLastY) * st.AiStepUY) / dt;
+                if (v > st.AiStepPeak) st.AiStepPeak = v;
+            }
+            st.AiStepLastT = now;
+            st.AiStepLastX = px;
+            st.AiStepLastY = py;
         }
 
         /// <summary>Step 95: the walk over - counted once (arrived / the time ran out / cut short), the wish off (the attempt's own end releases the callback).</summary>
@@ -612,7 +645,41 @@ namespace TraxCombat.Missions
             st.AiStepping = false;
             st.AiStepIn = why;
             _aiKickStats.StepIn.Note(why);
+            NoteStepRecord(st, why, now); // step 97
             AiInputHook.SetStepIn(st, false, 0f, 0f, now);
+        }
+
+        /// <summary>Step 97: a step-in over - its frames by what held them back and its walk (from the first to the last position read) into the
+        /// stats; the first one in full.</summary>
+        private void NoteStepRecord(TrackedAgent st, AiStepIn why, double now)
+        {
+            var rec = st.Input?.StepRec;
+            if (rec == null) return;
+            double seconds = double.IsNaN(st.AiStepT0) ? 0 : st.AiStepLastT - st.AiStepT0;
+            double covered = seconds > 0 ? (st.AiStepLastX - st.AiStepX0) * st.AiStepUX + (st.AiStepLastY - st.AiStepY0) * st.AiStepUY : double.NaN;
+            var hold = _aiKickStats.StepIn.Hold;
+            if (seconds > 0 && AiKickFirst(19))
+            {
+                bool clear = rec.FrameCount > 0;
+                for (int i = 0; i < rec.Frames.Length; i++)
+                    if (rec.Frames[i] > 0 && !AiStepInHoldMath.Clear((StepInHold)i)) clear = false;
+                var sb = new System.Text.StringBuilder();
+                for (int i = 0; i < rec.Frames.Length; i++)
+                {
+                    if (rec.Frames[i] == 0) continue;
+                    if (sb.Length > 0) sb.Append(", ");
+                    sb.Append(AiStepInHoldMath.Name((StepInHold)i)).Append(' ').Append(rec.Frames[i]);
+                }
+                TraxLog.Info("impact", "first AI step-in MEASURED at " + Sec(now) + " s (step 97) - " + Name(st) + " (" + AiBashStepInMath.Name(why) + "): "
+                    + rec.FrameCount + " input frames - what held them back: " + (sb.Length > 0 ? sb.ToString() : "no frame written") + "; he walked "
+                    + F2(covered) + " m toward his enemy in " + F2(seconds) + " s (" + F2(covered / seconds) + " m/s, peak " + F2(st.AiStepPeak) + " m/s) with the stick "
+                    + F2(AiBashStepInMath.Stick) + " asked, " + F2(rec.FrameCount > 0 ? rec.ForwardSum / rec.FrameCount : 0) + " out of our filter"
+                    + (clear ? " - nothing of ours held this step back: what he walked is the engine's answer" : string.Empty)
+                    + " - the [summary] step-in line sums every step");
+            }
+            hold.NoteStep(rec.Frames, rec.FrameCount, rec.ForwardSum, seconds, covered, st.AiStepPeak);
+            AiInputHook.ResetStepInRecord(st.Input!);
+            st.AiStepT0 = st.AiStepLastT = double.NaN;
         }
 
         /// <summary>Step 95: a bash reaches its key - the enemy's distance now (the bash's moment, after any step); a stepping one's gap closed and its

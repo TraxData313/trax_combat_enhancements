@@ -2254,10 +2254,11 @@
   // (range 0 to 180)
   "AiKickFacingDegrees": 40,
 
-  // After a kick or a shield bash an AI soldier waits at least this many seconds before his
-  // next kick or bash (he swings meanwhile).
+  // After a kick, a shield bash or a weapon push an AI soldier waits at least this many seconds
+  // before his next one (he swings meanwhile). A safety between two, not how often - the shares
+  // above set that. 1 s since step 97 (2 s before).
   // (range 0.0 to 60.0)
-  "AiKickCooldownSeconds": 2.0,
+  "AiKickCooldownSeconds": 1.0,
 
   // On: an AI shieldman whose enemy holds his own shield up toward him KICKS instead of bashing
   // (a raised shield stops a bash, not a kick). Off: a man with a shield always bashes.

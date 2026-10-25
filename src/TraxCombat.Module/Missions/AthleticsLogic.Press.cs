@@ -516,6 +516,7 @@ namespace TraxCombat.Missions
                     }
                     double dx = tx - px, dy = ty - py, dist = Math.Sqrt(dx * dx + dy * dy);
                     s.PressFront = s.PressSide = false;
+                    s.PressFrontDistance = float.NaN; // step 97
                     if (pm.Moving && dist <= FearMath.ArriveMetres) pm.Moving = false;
                     else if (!pm.Moving && dist > FearMath.MoveAgainMetres) pm.Moving = true;
                     if (pm.Moving && dist > 1e-6)
@@ -564,8 +565,13 @@ namespace TraxCombat.Missions
                 s.PressFront = true;
                 s.PressNX = fx;
                 s.PressNY = fy;
+                s.PressFrontDistance = (float)fd; // step 97: a step-in walks toward the front only while it is more than the margin ahead
             }
-            else s.PressFront = false;
+            else
+            {
+                s.PressFront = false;
+                s.PressFrontDistance = float.NaN;
+            }
             int side = 0;
             if (pm.Side != 0 && !pm.Ring)
             {
