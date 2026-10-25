@@ -47,8 +47,8 @@ Nothing is slow motion. A tired man's swing looks almost normal; he just waits l
 
 ## Your Athletics bar
 
-A fighter's bar is as big as his **Athletics skill** — the one on the character screen — and never smaller
-than 50 points. Common soldiers also get a smallest bar by their tier, so elite riders - who train Riding,
+A fighter's bar is **100 points plus half his Athletics skill** — the one on the character screen: a recruit
+gets about 110, a skill of 100 gives 150, a 230-skill hero over 200. Common soldiers also get a smallest bar by their tier, so elite riders - who train Riding,
 not Athletics - still outlast recruits: a tier-6 knight's bar is at least 150 points. Every attack costs a little of it, missed or not; so do kicks, shield bashes and blocks.
 **Heroes pay a quarter less**, and a hero who leads a party a quarter less again — with a hero's big
 Athletics skill on top, your heroes outlast their men.
@@ -58,9 +58,9 @@ effects begin. **Wounds cap the bar**: a man at half health can only refill to h
 
 | A bar of… | Attacks from full to empty: a soldier | a hero who leads his party |
 |---:|---:|---:|
-| 50 (a recruit) | 5 | 9 |
-| 100 | 10 | 18 |
-| 200 (a veteran hero) | 20 | 36 |
+| 110 (a recruit) | 16 | 28 |
+| 150 | 22 | 39 |
+| 200 (a veteran hero) | 29 | 51 |
 
 Numbers: [MECHANICS §2](MECHANICS.md#2-the-athletics-bar).
 
@@ -274,7 +274,7 @@ one move in four, bashes about two in five and swings the rest; a man without on
 with his weapon (guard up, then the kick key - the push you get yourself with a two-hander) about one in five — shock
 troops with big two-handers throw people around. A kick, a bash or a push is one of his moves, never an extra, and it uses one of
 his stored swings. A spearman keeps his enemy at the spear's length and thrusts; only when the enemy gets close does he
-kick and bash too. They are not free: a kick or a bash costs 8 Athletics points (a swing 10), so a man who has run dry
+kick and bash too. They are not free: a kick or a bash costs 6 Athletics points (a swing 7), so a man who has run dry
 only swings — and so do you if you kick a lot. And a kick is no longer a free push: a fresh, well-armoured veteran **braces** and barely moves — a looter's kick staggers a fresh legionary for a moment
 perhaps one time in eight, and never knocks him down. Tire him first: a spent man cannot brace, and then kicks and bashes
 throw him about. The same goes for you, both ways. A man kicks or bashes only when the enemy is the first man straight in

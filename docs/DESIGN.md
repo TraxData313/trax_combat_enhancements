@@ -73,6 +73,14 @@ regen.)
   experiment slider: real troops (v1.4.8 data) have Athletics 20 (recruits), 40 (tier 2),
   60 (elite cataphract), 130 (legionary), 170 (Fian champion) — without the floor a recruit
   would be empty after two swings.
+  Step 94 (decision 86, Toni 2026-10-25): a BASE under every pool - pool = max(`AthleticsPoolBase` + `AthleticsPoolPerSkill` × Athletics
+  skill, `AthleticsPoolFloor`, his tier's floor), never below 1. `AthleticsPoolBase` is born 100 (DESIGN's initial value) and
+  defaults.json ships `AthleticsPoolPerSkill` **0.5** (config format 23 moves a file's 1.0 once): a recruit (20) 110, a 100 skill 150,
+  the T6 Banner Knight (60) 130 → 150 by his tier floor, a Druzhinnik Champion (140) 170, a 233-skill hero 216.5. Everyone - heroes,
+  party leaders and the player too (the tier floors still never apply to heroes). Base 0 = the formula above. The refill still takes
+  60 s for any pool, so a bigger pool is more swings per rest: a recruit's 1-2 swings between rests became ~15 from full. Live like the
+  other pool settings (the bar a share); the master switch off = no base. The worked examples in this section keep the INITIAL
+  formula (base 0, 1.0 a skill point - the unit tests pin it).
 - **Cost, in points**: every blow costs `CostPerBlow` (10) POINTS × multipliers, whatever the
   pool — so a bigger Athletics pool = more blows = heroes stronger:
   - heroes (lords, companions, the player): × `HeroCostMultiplier` (0.75)
@@ -92,6 +100,9 @@ regen.)
     decision 65): defaults.json ships `CostPerBlow` **10** again (10 / 7.5 / 5.63 - a recruit's 50-point bar empty after 5
     blows, a legionary's 130 after 13). Config format 15 moves a file still holding 8 once (a tuned value is kept and noted); an
     older file's 7 goes straight to 10. The refill is unchanged.
+  - Step 94 (Toni, 2026-10-25, with the bigger base pool; decision 86): defaults.json ships `CostPerBlow` **7** (7 / 5.25 / 3.94 - a
+    recruit's 110-point bar empty after 16 blows, a legionary's 165 after 24). Config format 23 moves a format 15-22 file still holding
+    10 once (a tuned value is kept and noted); an older file's 8 goes straight to 7 through step 71's move.
 - **What is a blow**: a melee swing or thrust, a shot, a throw. A couched lance or braced
   spear hit has no swing, so it costs one blow when it LANDS. Siege engines (ballista, onager)
   cost nothing.
@@ -100,6 +111,8 @@ regen.)
   soldier, 2.25 for a hero, about 1.7 (1.69) for a party leader; 0 = free, as they were until step 18.
   Step 66 (Anton: "a bit more taking of the energy, say 5 pts each"): 5 in defaults.json - 5 / 3.75 / 2.81 (decision 59).
   Step 71 (Toni: "they need to tire faster still"): 6 - 6 / 4.5 / 3.38 (decision 65; config format 15 moves a file's 5 once).
+  Step 81 (Toni): 8 - 8 / 6 / 4.5 (decision 77; config format 19). Step 94 (Toni, decision 86): **6** again - 6 / 4.5 / 3.38, kicks,
+  bashes and step 88's pushes alike (config format 23 moves a format 19-22 file's 8 once); the block costs unchanged (3 / 6 / 3).
   Charged ONCE per kick or bash, the moment it starts, landed or not (`CostOnMiss` is for blows);
   the AI's and yours alike. Otherwise it is paid like a blow: the curves follow, it can take a
   fighter below his peak line or empty him, and it restarts the refill delay. It is **not a blow**:
@@ -1309,8 +1322,8 @@ row goes to the Advanced page unless a player needs it to set up his game (CLAUD
 | `AthleticsPoolPerSkill` | 1.0 | Pool per point of Athletics skill (1.0 → the bar tops at the skill). defaults.json 0.5 since step 94 (Toni, decision 86: with `AthleticsPoolBase` 100 the bar is 100 + half the skill; config format 23 moves a file's 1.0 once, a tuned value kept and said). |
 | `AthleticsPeakPercent` | 75 | At or above this % of their own pool a fighter is at full strength (green); below it they weaken in a straight line to 0. |
 | `HealthCapsAthletics` | true | Health left caps the usable pool. |
-| `CostPerBlow` | 10 | Athletics points one blow costs before multipliers (points, whatever the pool). defaults.json 3 since step 43 (Anton: the AI's eagerness now follows its bar; config format 8 moves a file's old 10 once), 7 since step 46 (Anton's playtest; config format 9 moves a format-8 file's 3 once), 8 since step 68 (Toni's 100 v 100 of 2026-10-19: "tire the men more to slow down the combat again a bit after the first impact" - a recruit's 50-point bar empty after 7 blows, a legionary's 130 after 17; hero 6 / party leader 4.5; config format 14 moves a file's 7 once, a tuned value kept and said; decision 61), 10 again since step 71 (Toni 2026-10-19: "back to 10 for the swings ... they need to tire faster still" - a recruit's 50-point bar empty after 5 blows, a legionary's 130 after 13; hero 7.5 / party leader 5.63; config format 15 moves a file's 8 once, a tuned value kept and said; decision 65). |
-| `CostPerKickOrBash` | 3 | Step 18 (Anton): Athletics points one kick or shield bash costs before the hero and party-leader multipliers (3 / 2.25 / 1.7), once, when it starts, landed or not; never starts the attack pause. 0 = free (steps 5-17). Step 66 (Anton 2026-10-19: "make the kick/bash also a bit more taking of the energy, say 5 pts each"): 5 in defaults.json (5 / 3.75 / 2.8 - you and the AI alike; config format 13 moves a file's 3 once). Step 71 (Toni, decision 65): 6 (6 / 4.5 / 3.38; config format 15 moves a file's 5 once). Step 81 (Toni 2026-10-22: "make all those moves take 8 athletics each"): 8 in defaults.json (8 / 6 / 4.5; config format 19 moves a format 15-18 file's 6 once); swings stay 10. |
+| `CostPerBlow` | 10 | Athletics points one blow costs before multipliers (points, whatever the pool). defaults.json 3 since step 43 (Anton: the AI's eagerness now follows its bar; config format 8 moves a file's old 10 once), 7 since step 46 (Anton's playtest; config format 9 moves a format-8 file's 3 once), 8 since step 68 (Toni's 100 v 100 of 2026-10-19: "tire the men more to slow down the combat again a bit after the first impact" - a recruit's 50-point bar empty after 7 blows, a legionary's 130 after 17; hero 6 / party leader 4.5; config format 14 moves a file's 7 once, a tuned value kept and said; decision 61), 10 again since step 71 (Toni 2026-10-19: "back to 10 for the swings ... they need to tire faster still" - a recruit's 50-point bar empty after 5 blows, a legionary's 130 after 13; hero 7.5 / party leader 5.63; config format 15 moves a file's 8 once, a tuned value kept and said; decision 65), 7 since step 94 (Toni 2026-10-25, with `AthleticsPoolBase` 100 and 0.5 a skill point - a recruit's 110-point bar empty after 16 blows, a legionary's 165 after 24; hero 5.25 / party leader 3.94; config format 23 moves a format 15-22 file's 10 once, a tuned value kept and said; decision 86). |
+| `CostPerKickOrBash` | 3 | Step 18 (Anton): Athletics points one kick or shield bash costs before the hero and party-leader multipliers (3 / 2.25 / 1.7), once, when it starts, landed or not; never starts the attack pause. 0 = free (steps 5-17). Step 66 (Anton 2026-10-19: "make the kick/bash also a bit more taking of the energy, say 5 pts each"): 5 in defaults.json (5 / 3.75 / 2.8 - you and the AI alike; config format 13 moves a file's 3 once). Step 71 (Toni, decision 65): 6 (6 / 4.5 / 3.38; config format 15 moves a file's 5 once). Step 81 (Toni 2026-10-22: "make all those moves take 8 athletics each"): 8 in defaults.json (8 / 6 / 4.5; config format 19 moves a format 15-18 file's 6 once); swings stay 10. Step 94 (Toni 2026-10-25, decision 86): 6 in defaults.json (6 / 4.5 / 3.38 - kicks, bashes and pushes; config format 23 moves a format 19-22 file's 8 once); swings 7. |
 | `CostPerShieldBlock` | 1 | Step 22 (Anton): Athletics points the DEFENDER pays for a melee blow he blocks with his shield on the correct side, before the hero and party-leader multipliers (1 / 0.75 / 0.56); once per blocked blow; does not restart the refill delay while `OnlyWrongSideBlocksStopRefill` is on (step 29); never an attack pause or a step back. 0 = free (steps 5-21). Step 68 (Toni, decision 61): 2 in defaults.json (2 / 1.5 / 1.13; config format 14 moves a file's 1 once). Step 71 (Toni, decision 65): 3 (3 / 2.25 / 1.69; config format 15 moves a file's 2 once). |
 | `CostPerWrongSideShieldBlock` | 5 | Step 22 (Anton): the same for a blow his shield stops on the WRONG side (the engine's `CorrectSideShieldBlock` false) - 5 / 3.75 / 2.81. 0 = free. defaults.json 2 since step 43 (Anton; config format 8 moves a file's old 5 once), 5 again since step 68 (Toni, decision 61: a clumsy block tires - 5 / 3.75 / 2.81; config format 14 moves a file's 2 once), 6 since step 71 (Toni, decision 65: 6 / 4.5 / 3.38; config format 15 moves a file's 5 once). |
 | `CostPerWeaponParry` | 2 | Step 22 (Anton): the same for a blow he blocks or parries with a weapon, no shield (a chamber block too) - 2 / 1.5 / 1.13. 0 = free. Step 71 (Toni, decision 65): 3 in defaults.json (3 / 2.25 / 1.69; config format 15 moves a file's 2 once). |
@@ -3336,6 +3349,18 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     the bar is a fraction of the pool, so a floor change re-pools the men on the field at once and each keeps his share. The master switch first (no
     tier floor while it is off). New keys: no migration. (e) MEASUREMENT: the [summary] pools line's "lifted by the tier floor: T3 n / T4 n / ..." with
     the mean skill before and pool after; the first lifted man of a mission in full.
+86. **A bigger base pool, cheaper swings** (step 94, Toni 2026-10-25: "no action at all for T1 troops in the early stages ... swings a few times
+    then waits and waits"; "tiredness is not the way to slow the combat - armour is"). The refill takes `FullRegenSecondsStanding` 60 s for ANY pool,
+    so a recruit's 50-point bar fitted 1-2 swings of 10 between ~32 s rests (~1.7 swings a minute, a T6 at 150 ~6). (a) THE POOL: pool =
+    max(`AthleticsPoolBase` + `AthleticsPoolPerSkill` × skill, `AthleticsPoolFloor`, his tier's floor) - a new Advanced setting `AthleticsPoolBase`
+    (Int 0-1000, the Athletics group beside the per-skill multiplier, live, 100; 0 = steps 5c-93's formula), `AthleticsPoolPerSkill` 1.0 → 0.5: a
+    100 skill = 150, a recruit (20) 110, the Banner Knight (60) 130 → 150 by T6's floor, a Druzhinnik Champion (140) 170, a 233 hero 216.5.
+    EVERYONE - heroes, party leaders and the player too; the tier floors still never for heroes. The master switch off = no base. (b) THE COSTS:
+    `CostPerBlow` 10 → 7, `CostPerKickOrBash` 8 → 6 (kicks, bashes, pushes); the blocks unchanged (3 / 6 / 3); heroes / party leaders x 0.75 each
+    kept. (c) MIGRATION: config format 23 - `AthleticsPoolPerSkill` 1.0 (any format), `CostPerBlow` 10 (a format 15-22 file), `CostPerKickOrBash`
+    8 (a format 19-22 file) moved once when untouched, a tuned value kept and said (`MoveOrKeepIfMoved`). (d) THE WORDS: the log's pool sentence
+    reads "100 + the Athletics skill x0.50, at least 50" (base 0: steps 5c-93's "the Athletics skill x1.00, at least 50"); the player page's swing
+    and kick hints say the new numbers. MECHANICS' pool, blow, stack, sprint and fever tables recomputed from defaults.json.
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),
 `HudRefreshSeconds`, `FormationStatsRefreshSeconds` came out of step 2's research

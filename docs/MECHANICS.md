@@ -49,48 +49,52 @@ Want the formulas and every parameter with its range? [DESIGN.md](DESIGN.md) is 
 
 ## 2. The Athletics bar
 
-A fighter's bar is as big as his **Athletics skill** (the one on the character screen), never smaller
-than 50 points. One attack — a swing, thrust, shot or throw — costs 10 points, missed or not (7 until step 68, 8 until
-step 71: Toni, "they need to tire faster still").
+A fighter's bar is **100 points plus half his Athletics skill** (the one on the character screen), never smaller
+than 50 points - everyone's, heroes' and yours too. One attack — a swing, thrust, shot or throw — costs 7 points, missed or
+not. (Step 94, Toni 2026-10-25: the bar used to be the skill itself and a swing 10 - the refill takes a minute for ANY bar, so a
+recruit's 50 points fitted one or two swings between long rests. A swing cost 7 until step 68, 8 until step 71 and 10 until step 94.)
 
 | Athletics skill | Bar (points) | Attacks from full to empty: soldier | hero | hero who leads his party |
 |---:|---:|---:|---:|---:|
-| 0–50 | 50 | 5 | 7 | 9 |
-| 100 | 100 | 10 | 13 | 18 |
-| 150 | 150 | 15 | 20 | 27 |
-| 200 | 200 | 20 | 27 | 36 |
-| 300 | 300 | 30 | 40 | 53 |
+| 0 | 100 | 15 | 20 | 26 |
+| 20 (a recruit) | 110 | 16 | 21 | 28 |
+| 60 | 130 | 19 | 25 | 34 |
+| 100 | 150 | 22 | 29 | 39 |
+| 150 | 175 | 25 | 34 | 45 |
+| 200 | 200 | 29 | 39 | 51 |
+| 300 | 250 | 36 | 48 | 64 |
 
-(Bar ÷ cost, rounded - a recruit's 50 points are gone at his 5th swing, a legionary's 130 at his 13th.)
+(Bar ÷ cost, rounded up - a recruit's 110 points are gone at his 16th swing (15 whole ones fit), a legionary's 165 at his 24th.)
 
 **A floor by tier for common soldiers (step 93).** The game gives riders Riding instead of Athletics, so its
 best cavalry has small Athletics skills: the T6 Vlandian Banner Knight, Imperial Elite Cataphract and Khuzait
 Khan's Guard have 60 - below a T4 infantryman's 100. So a soldier's bar (never a hero's or yours) is also at
-least his tier's floor - the bar = the biggest of the skill, the 50 above and this:
+least his tier's floor - the bar = the biggest of 100 + half the skill, the 50 above and this. With the base of 100
+(step 94) only the T6 riders still need it:
 
 | Tier | Bar at least | Mounted median skill → bar | Foot median skill → bar | Example |
 |---:|---:|---:|---:|---|
-| T0-T1 | 50 | - | 20 → 50 | a recruit, a looter |
-| T2 | 50 | 20 → 50 | 40 → 50 | |
-| T3 | 70 | 40 → 70 | 70 → 70 | |
-| T4 | 90 | 60 → 90 | 100 → 100 | Vlandian Cavalry 60 → **90** |
-| T5 | 120 | 80 → 120 | 130 → 130 | |
-| T6 | 150 | 60 → 150 | - | Vlandian Banner Knight 60 → **150** (15 swings, not 6) |
+| T0-T1 | 50 | - | 20 → 110 | a recruit, a looter |
+| T2 | 50 | 20 → 110 | 40 → 120 | |
+| T3 | 70 | 40 → 120 | 70 → 135 | |
+| T4 | 90 | 60 → 130 | 100 → 150 | Vlandian Cavalry 60 → 130 |
+| T5 | 120 | 80 → 140 | 130 → 165 | |
+| T6 | 150 | 60 → **150** (130 lifted) | - | Vlandian Banner Knight 60 → **150** (22 swings) |
 
 (Medians from the game's own troop data, SandBoxCore spnpccharacters.xml. Lords, companions, wanderers and you keep
 the bar of your real skill. Changed mid-battle, every soldier keeps his share of the bar.)
 Heroes (lords, companions, you) pay a quarter less per attack; a hero who leads a party pays a quarter
-less again (10 → 7.5 → 5.6 points). Attacks are cheap because the AI is careful (section 11): it decides
+less again (7 → 5.25 → 3.9 points). Attacks are cheap because the AI is careful (section 11): it decides
 to swing far less often than the base game's AI, so each swing need not cost much for a long fight to wear men down.
 
 **The peak line.** The white mark on the bar sits at **75%**. Above it a man is at full strength;
-the first quarter of his bar is "free". Below it the effects in the next section start. A 50-point
-recruit spends his free quarter in his second swing; a 150-skill hero who leads his party gets about
-seven.
+the first quarter of his bar is "free". Below it the effects in the next section start. A 110-point
+recruit spends his free quarter in his fourth swing; a 150-skill hero who leads his party (175 points) gets about
+eleven.
 
 **Wounds cap the bar.** A man at half health can only refill to half his bar.
 
-<sub>Settings: `AthleticsPoolPerSkill` 1.0, `AthleticsPoolFloor` 50, `AthleticsFloorT1`-`T6` 50 / 50 / 70 / 90 / 120 / 150 (step 93), `CostPerBlow` 10 (7 until step 68, 8 until step 71), `CostOnMiss` on,
+<sub>Settings: `AthleticsPoolBase` 100 (step 94; 0 = the bar is the skill), `AthleticsPoolPerSkill` 0.5 (1.0 until step 94), `AthleticsPoolFloor` 50, `AthleticsFloorT1`-`T6` 50 / 50 / 70 / 90 / 120 / 150 (step 93), `CostPerBlow` 7 (step 94; 7 from step 46, 8 from step 68, 10 from step 71), `CostOnMiss` on,
 `HeroCostMultiplier` 0.75, `PartyLeaderCostMultiplier` 0.75, `AthleticsPeakPercent` 75,
 `HealthCapsAthletics` on.</sub>
 
@@ -142,16 +146,16 @@ Stored swings at most (his points ÷ 20, rounded half up, at least 3 - step 81, 
 
 | Bar size | Full (100%) | 75% | 50% | 25% | Empty |
 |---:|---:|---:|---:|---:|---:|
-| 50 | 3 | 3 | 3 | 3 | 3 |
-| 100 | 5 | 4 | 3 | 3 | 3 |
-| 150 | 8 | 6 | 4 | 3 | 3 |
-| 200 | 10 | 8 | 5 | 3 | 3 |
-| 300 | 15 | 11 | 8 | 4 | 3 |
+| 110 (a recruit) | 6 | 4 | 3 | 3 | 3 |
+| 150 (skill 100) | 8 | 6 | 4 | 3 | 3 |
+| 175 (skill 150) | 9 | 7 | 4 | 3 | 3 |
+| 200 (skill 200) | 10 | 8 | 5 | 3 | 3 |
+| 250 (skill 300) | 13 | 9 | 6 | 3 | 3 |
 
 The count follows his points as they fall: each attack also costs Athletics, so a burst shrinks the
-stack's size too. *Example:* a 150-skill hero at half his bar holds 4 — he can strike 4 times back to
-back (7.5 points each) — and by then his bar is at 30% and he holds 3 at most (the minimum), so each next one takes
-about 0.75 s to come back.
+stack's size too. *Example:* a 150-skill hero (175 points) at half his bar holds 4 — he can strike 4 times back to
+back (5.25 points each) — and by then his bar is at 38% and he holds 3 at most (the minimum), so each next one takes
+about 0.5 s to come back.
 
 How long the swings take to come back, after a 0.8 s swing, standing back from the fight:
 
@@ -205,24 +209,25 @@ Every melee blow a man **blocks** costs him a little. Missiles into a shield are
 | Shield, on the right side | 3 | 2.25 | 1.69 | No — the refill keeps running |
 | Weapon parry | 3 | 2.25 | 1.69 | No — the refill keeps running |
 | Shield, held on the **wrong** side | 6 | 4.5 | 3.38 | **Yes** — the 3 s wait starts again |
-| A kick or shield bash he makes | 8 | 6 | 4.5 | Yes (it is an attack) |
+| A kick, shield bash or push he makes | 6 | 4.5 | 3.38 | Yes (it is an attack) |
 
 (Step 68, Toni: "tire the men more ... after the first impact" — a right-side block 1 → 2, a wrong-side block 2 → 5. Step 71,
 Toni: "they need to tire faster still" — a right-side block and a parry 2 → 3, a wrong-side block and a kick or bash 5 → 6. Step 81, Toni:
-"make all those moves take 8 athletics each" — a kick or bash 6 → 8; a swing stays 10.) So a skilful defender can catch his breath **while** defending. Can a man who is already empty
+"make all those moves take 8 athletics each" — a kick or bash 6 → 8; a swing stays 10. Step 94, Toni, with the bigger bars — a kick, bash
+or push 8 → 6, a swing 10 → 7; the blocks unchanged.) So a skilful defender can catch his breath **while** defending. Can a man who is already empty
 climb back while blocking a blow every 1.5 seconds (a steady duel), standing still?
 
 | Bar size | Soldier, parrying or a right-side shield block | Hero | Hero party leader |
 |---:|---|---|---|
-| 50 | sinks (−70 a minute) | sinks (−40) | sinks (−18) |
-| 80 | sinks (−40) | sinks slowly (−10) | climbs slowly (+13) |
-| 100 | sinks (−20) | climbs slowly (+10) | climbs (+33) |
-| 150 | climbs (+30) | climbs (+60) | climbs (+83) |
-| 200 | climbs (+80) | climbs (+110) | climbs (+133) |
+| 110 (a recruit) | sinks slowly (−10 a minute) | climbs (+20) | climbs (+43) |
+| 130 | climbs slowly (+10) | climbs (+40) | climbs (+63) |
+| 150 (skill 100) | climbs (+30) | climbs (+60) | climbs (+83) |
+| 175 (skill 150) | climbs (+55) | climbs (+85) | climbs (+108) |
+| 200 (skill 200) | climbs (+80) | climbs (+110) | climbs (+133) |
 
 Points per minute, net (the refill: his bar a minute; 40 blocks a minute × the price). A right-side shield block costs
 what a parry does — before step 68 it always climbed; since step 71 (3 a block) a soldier holds even only on a 120-point
-bar. Moving fast while fighting refills slower (section 5), and a wrong-side block every 1.5 s holds anyone at the
+bar - since step 94 nearly every soldier's bar (100 + half his skill), so only a recruit still sinks, slowly. Moving fast while fighting refills slower (section 5), and a wrong-side block every 1.5 s holds anyone at the
 bottom — by its price (6 points) and because each one stops the refill.
 
 **What counts as the right side (step 64).** A raised shield facing the blow covers it: a shield block whose
@@ -241,7 +246,7 @@ A **tired** AI man still misjudges his share (section 7): that share of his fron
 | a tired AI man's guessed share (section 7's table: 33% at half a bar, all of them when empty) | wrong | wrong |
 
 <sub>Settings: `CostPerShieldBlock` 3 (1 until step 68, 2 until step 71), `CostPerWeaponParry` 3 (2 until step 71), `CostPerWrongSideShieldBlock` 6
-(2 from step 43 to step 68, 5 until step 71), `CostPerKickOrBash` 8 (3 until step 66, 5 until step 71, 6 until step 81), `OnlyWrongSideBlocksStopRefill` on, `ShieldFrontArcIsCorrect` on, `ShieldFrontArcDegrees` 60.</sub>
+(2 from step 43 to step 68, 5 until step 71), `CostPerKickOrBash` 6 (3 until step 66, 5 until step 71, 6 until step 81, 8 until step 94), `OnlyWrongSideBlocksStopRefill` on, `ShieldFrontArcIsCorrect` on, `ShieldFrontArcDegrees` 60.</sub>
 
 ## 7. Tired AI guess their blocks
 
@@ -491,11 +496,11 @@ ordered from afar is not spent on the walk.
 
 | His Athletics now | Fever | With a shield in hand |
 |---:|---:|---:|
-| 50 points | 5 s | 3.5 s |
-| 80 | 8 s | 5.6 s |
-| 100 | 10 s | 7 s |
-| 150 | 15 s | 10.5 s |
-| 200 | 20 s | 14 s |
+| 55 points (a recruit at half his bar) | 5.5 s | 3.9 s |
+| 110 (a fresh recruit) | 11 s | 7.7 s |
+| 150 (fresh, skill 100) | 15 s | 10.5 s |
+| 200 (fresh, skill 200) | 20 s | 14 s |
+| 250 (a fresh 300-skill hero) | 25 s | 17.5 s |
 
 A man with a **shield in his hand** burns his fever faster (it lasts 70% as long) — he fights from behind
 it. It is read live: take the shield off your back, or put it away for a two-handed axe, and the rate
@@ -808,6 +813,12 @@ blocked swing bounces off, and he is guarding again before you can swing twice. 
 **break** a man — **stagger** him (a real window for the next blow), knock his **shield** out of his hand,
 **knock him down** (he gets up slower), or knock a **rider off his horse**. On a fresh man of your size
 nothing changes.
+
+**The bars in these examples (step 94).** Every example below names each man's Athletics in points - they were
+worked out with the bars of steps 5c-93 (the bar = the skill: a looter about 50, a legionary 130). Since step 94 a bar is
+100 + half the skill (a looter about 115, a legionary 165), so between common soldiers the bars differ much less: the
+Athletics part of a mismatch is smaller and tiredness (how full the bar is) counts for more of it. The numbers stand for
+men with the points they name.
 
 ### The idea: impact against stability
 
@@ -1210,7 +1221,7 @@ A rolled kick or bash is **refused — he swings instead** — when:
 
 | Refused because | Group |
 |---|---|
-| he is staggered or down, his last kick still plays, he lacks the Athletics for it (8 points × his multipliers), the attempts are full | safety |
+| he is staggered or down, his last kick still plays, he lacks the Athletics for it (6 points × his multipliers), the attempts are full | safety |
 | he has **no stored swing** (section 4 - a kick or bash spends one, like yours) | stack empty |
 | his last kick or bash was less than **2 s** ago | cooldown |
 | the enemy is not the first body in his strike path (below) | path |
@@ -1229,7 +1240,7 @@ two-deep lines of 12 files grinding 3 minutes, every man swinging on his own rhy
 
 With step 88's shares that is **5.6 kicks, bashes and pushes a man-minute in contact** (step 81's: 4.3; the 17:18 battle under the old rate: 0.39). The swing stack never refused
 one there: an AI man at 0 is held by it (he does not wind up), so it brakes ALL his moves together and leaves the shares alone. As his bar
-empties, the 8-point price takes them: an empty man only swings.
+empties, the 6-point price takes them (8 until step 94): an empty man only swings.
 
 (Steps 65-66 had a rate instead - `AiKicksPerMinute` 1.2 a minute × his skill, bar, a turtle and the fever, 8 s apart, a shieldman's bash
 earned by each swing, none below 35% of his bar, a decision waiting up to 3 s for reach; Toni's 17:18 log showed 5407 swings and 458 bashes
@@ -1315,7 +1326,7 @@ staggers you for a moment"; **purple** "X braces against your kick" / "A lucky k
 `AiKickFeverMultiplier` 2, `AiKickSkillLowPercent` 50, `AiKickSkillHighPercent` 200, `AiKickMinBarPercent` 35, `AiKickFullBarPercent` 75,
 `AiKickKicksARaisedShield` on; `KickBraceEnabled` on, `KickBraceFromPressure` −0.7, `KickBraceToPressure` 1.0, `KickBraceMinBarPercent` 20,
 `KickBraceReelPercent` 20, `KickShortReelPercent` 40, `KickBraceRefusesKnockBack` on; step 66: `AiKickWaitSeconds` 3, `AiKickWaitMetres` 5,
-`AiBashShareOfSwingsPercent` 100, `AiBashDelaySeconds` 1.5, `AiBashCooldownSeconds` 2, `CostPerKickOrBash` 6 (5 until step 71).</sub>
+`AiBashShareOfSwingsPercent` 100, `AiBashDelaySeconds` 1.5, `AiBashCooldownSeconds` 2, `CostPerKickOrBash` 6 (5 until step 71, 8 from step 81 to step 94).</sub>
 
 ### Meeting a kick or a bash (step 82)
 
@@ -1481,12 +1492,12 @@ bad spot, onto a fleeing archer, round a shield wall's flank. The AI uses it too
 2 seconds**. A tired man has a shorter sprint; even an empty bar still holds a 2 s dodge (it just refills
 slowly).
 
-| Your Athletics bar | Pool 50 | Pool 100 | Pool 150 |
+| Your Athletics bar | Bar 110 (a recruit) | Bar 150 (skill 100) | Bar 200 (skill 200) |
 |---|---:|---:|---:|
-| 100% (full) | 2.5 s | 5 s | 7.5 s |
-| 75% (the peak line) | 2 s (floor) | 3.75 s | 5.6 s |
-| 50% | 2 s (floor) | 2.5 s | 3.75 s |
-| 25% | 2 s (floor) | 2 s (floor) | 2 s (floor) |
+| 100% (full) | 5.5 s | 7.5 s | 10 s |
+| 75% (the peak line) | 4.1 s | 5.6 s | 7.5 s |
+| 50% | 2.75 s | 3.75 s | 5 s |
+| 25% | 2 s (floor) | 2 s (floor) | 2.5 s |
 | 10% | 2 s (floor) | 2 s (floor) | 2 s (floor) |
 | 0% (empty) | 2 s (floor) | 2 s (floor) | 2 s (floor) |
 
@@ -1509,7 +1520,7 @@ his run, an exhausted one ends back at his tired jog. While sprinting you also *
 A sprint is as long as what you had stored when it began, and even a part-full store starts at full speed.
 The clock only runs while you actually move; let go of the key and the rest stays stored.
 
-| Into the sprint | Fresh: a full 7.5 s sprint | Empty bar: the 2 s floor |
+| Into the sprint | Fresh, a 150 bar: a full 7.5 s sprint | Empty bar: the 2 s floor |
 |---|---:|---:|
 | the start | × 2.00 | × 2.00 |
 | 0.6 s | × 2.00 | × 2.00 (end of full speed) |
