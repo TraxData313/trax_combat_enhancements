@@ -1185,13 +1185,37 @@ starts a melee attack (his wind-up) with the enemy he fights **within 1.6 m and 
 
 | He has | Kick | Shield bash / weapon push | Swing (his own attack goes on) |
 |---|---:|---:|---:|
-| a shield in hand | **25%** | **40%** (a shield bash) | 35% |
-| no shield (a two-hander, a polearm, a sword alone) | **35%** | **20%** (a weapon push) | 45% |
+| a shield in hand | **27%** | **43%** (a shield bash) | 30% |
+| no shield (a two-hander, a polearm, a sword alone) | **45%** | **25%** (a weapon push) | 30% |
 
 (Step 81 shipped 20 / 35 / 45 and 35 / — / 65; step 88 - Toni 2026-10-24: "with my two handed axe guarding and pressing shield bash it pushes
-with the axe" - gave the man without a shield the WEAPON PUSH: the game's own weapon bash, his guard up and the kick key, as yours.)
-<sub>Settings (Advanced, the Impact group): `AiShieldmanKickPercent` 25 (20 until step 88), `AiShieldmanBashPercent` 40 (35 until step 88),
-`AiNoShieldKickPercent` 35, `AiNoShieldPushPercent` 20 (step 88); kick + bash / kick + push never over 100.</sub>
+with the axe" - gave the man without a shield the WEAPON PUSH: the game's own weapon bash, his guard up and the kick key, as yours - 25 / 40 / 35
+and 35 / 20 / 45; step 95 - Toni 2026-10-25: "swing 30% of the time" - 27 / 43 / 30 and 45 / 25 / 30. A config.json still holding step 88's
+values moves once (config format 24); a value you set yourself is kept.)
+<sub>Settings (Advanced, the Impact group): `AiShieldmanKickPercent` 27 (20 until step 88, 25 until step 95), `AiShieldmanBashPercent` 43 (35 until
+step 88, 40 until step 95), `AiNoShieldKickPercent` 45 (35 until step 95), `AiNoShieldPushPercent` 25 (step 88's 20 until step 95); kick + bash /
+kick + push never over 100.</sub>
+
+**The step-in bash (step 95).** Toni's battles of 2026-10-24 20:26 and 2026-10-25 09:53: the AI never stands within 1.1 m of the enemy it
+fights (3 of 792 shieldman moves), and a bash asked from 1.1-1.2 m hit an ENEMY 2 times in 13 (7 friends, 3 nothing) - the shield's real reach
+is short. So while a shieldman raises his shield for a bash he **steps in** toward his enemy - a forward walk, his facing kept - until the enemy
+is within **0.95 m**, then bashes:
+
+| The enemy he bashes stands at | What he does |
+|---|---|
+| 0.95 m or closer | bashes at once (the guard's 0.4 s, as before) |
+| farther (the usual 1.1-1.6 m) | walks in during the guard; there by 0.4 s = the bash at 0.4 s; still walking = the guard held up to **0.6 s**, then the bash from where he got to |
+| a man of his own side in the walk (ahead along the line to the enemy, within 0.4 m of it) | no step - the bash from where he stands |
+| he holds a shield-wall slot | at most the wall's step out (1 m) closer; standing firm (a halted wall) - no step |
+
+Why 0.95 m: the bash is a 0.2 m sphere on the shield arm reaching ~1.1-1.15 m centre to centre (step 91), so a little inside that lands it on
+the body, not grazing its edge, as both men shuffle - and still outside two bodies pressed together (~0.7 m). A guarded walk covers ~0.3-0.5 m in
+0.4 s, so most step-ins arrive in time. Kicks and weapon pushes never step (a kick reaches 1.6 m). Any other walk of his own - a step back, the
+wall pulling him back, a rest, the press, a rotation, courage, the fear flock, the block hold - goes first, and the press's / rest's limits still
+apply. The summary's "the step-in bash" line counts the steps (arrived / the time ran out / cut short / not needed / refused by a friend or the
+wall), the gap they closed, and where each bash landed by the enemy's distance AT THE BASH.
+<sub>Settings (Advanced, the Impact group): `AiBashStepIn` on, `AiBashStepInToMetres` 0.95 (0 = no step), `AiBashStepInMaxSeconds` 0.6 (0.4 or
+less = never held longer).</sub>
 
 **A shield bash reaches less than a kick (step 91).** Toni's 19:56 battle (2026-10-24): 114 of 150 AI bash hits landed on a FRIEND - the bash
 was rolled with the enemy anywhere in the kick's 1.6 m, but the shield's short sweep passed him and caught the neighbour on the basher's shield
@@ -1200,15 +1224,17 @@ own proportion (a kick and a push keep the 1.6 m):
 
 | A shieldman, the enemy he fights at | Kick | Shield bash | Swing |
 |---|---:|---:|---:|
-| within 1.1 m | 25% | 40% | 35% |
-| 1.1 - 1.6 m | **41.7%** (25 ÷ 60) | — | **58.3%** (35 ÷ 60) |
+| within 1.1 m | 27% | 43% | 30% |
+| 1.1 - 1.6 m | **47.4%** (27 ÷ 57) | — | **52.6%** (30 ÷ 57) |
+
+(Step 91 shipped this with 25 / 40 / 35 - 41.7 / 58.3 beyond; the numbers above are step 95's shares.)
 
 A bash whose enemy steps back beyond 1.1 m during its 0.4 s guard ends with no bash (counted). The game's own data gives no reach in metres
 for a shield bash - it is a 0.2 m sphere on the shield arm during 38-48% of the animation - so 1.1 m is a body (0.4 m) + an arm and a shield
 (~0.6 m) + the sphere, a little under a kick's foot.
 **Step 91b - the reach ships OFF again.** Toni's 20:26 battle (2026-10-24): with 1.1 m the enemy stood that close in only 3 of 792 shieldman
 moves - the AI fights at 1.1-1.6 m - so nobody bashed at all. Until a real fix the default is 0: a shieldman bashes anywhere in the kick's 1.6 m
-(25 / 40 / 35, as step 90), and the summary's bins keep saying at which distance his bashes hit an enemy or a friend. The table above is what
+(27 / 43 / 30 since step 95), and the summary's bins keep saying at which distance his bashes hit an enemy or a friend. The table above is what
 1.1 (or any reach you set) does. A config.json still holding the game-written 1.1 moves to 0 once (config format 22); a value you set yourself is kept.
 <sub>Setting (Advanced, the Impact group): `AiBashReachMetres` 0 = off - a bash anywhere in the kick reach (1.1 in step 91; 0 since step 91b).</sub>
 
