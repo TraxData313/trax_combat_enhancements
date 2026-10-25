@@ -1234,8 +1234,20 @@ Why 0.95 m: the bash is a 0.2 m sphere on the shield arm reaching ~1.1-1.15 m ce
 the body, not grazing its edge, as both men shuffle - and still outside two bodies pressed together (~0.7 m). A guarded walk covers ~0.3-0.5 m in
 0.4 s, so most step-ins arrive in time. Kicks and weapon pushes never step (a kick reaches 1.6 m). Any other walk of his own - a step back, the
 wall pulling him back, a rest, the press, a rotation, courage, the fear flock, the block hold - goes first, and the press's / rest's limits still
-apply. The summary's "the step-in bash" line counts the steps (arrived / the time ran out / cut short / not needed / refused by a friend or the
-wall), the gap they closed, and where each bash landed by the enemy's distance AT THE BASH.
+apply. **Step 97:** the press's limit no longer eats the step - near an enemy line (within 0.6 m of its front) the press takes out a man's
+movement toward the line, but a man stepping in for his bash is let through toward HIS OWN enemy while that enemy is farther than 0.95 m and the
+line's front is still more than 0.15 m ahead of him - so he reaches his man, and never walks past the line's front:
+
+| The enemy he bashes | The press (within 0.6 m of the enemy line's front) |
+|---|---|
+| farther than 0.95 m, the line's front more than 0.15 m ahead | the step goes through (step 97) |
+| 0.95 m or closer | the step is over anyway (arrived) |
+| the line's front within 0.15 m of him (his enemy stands deeper) | the press holds him at the front - the bash from there |
+
+The summary's "the step-in bash" line counts the steps (arrived / the time ran out / cut short / not needed / refused by a friend or the
+wall), the gap they closed, and where each bash landed by the enemy's distance AT THE BASH; since step 97 it ends with **what held each step
+back** (nothing, the press - let through or still cutting -, the rest, another walk of his by name) and how far and fast he really walked - if
+nothing of ours held him and he still barely moved, the line says it is the engine.
 <sub>Settings (Advanced, the Impact group): `AiBashStepIn` on, `AiBashStepInToMetres` 0.95 (0 = no step), `AiBashStepInMaxSeconds` 0.6 (0.4 or
 less = never held longer).</sub>
 
@@ -1271,7 +1283,7 @@ A rolled kick or bash is **refused — he swings instead** — when:
 |---|---|
 | he is staggered or down, his last kick still plays, he lacks the Athletics for it (6 points × his multipliers), the attempts are full | safety |
 | he has **no stored swing** (section 4 - a kick or bash spends one, like yours) | stack empty |
-| his last kick or bash was less than **2 s** ago | cooldown |
+| his last kick, bash or push was less than **1 s** ago (2 s until step 97) | cooldown |
 | the enemy is not the first body in his strike path (below) | path |
 
 Never you (your E key is yours), never a rider, a routing man or one with a bow in hand. What the limits leave (the offline smoke - two
