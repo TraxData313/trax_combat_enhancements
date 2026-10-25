@@ -77,6 +77,8 @@ Under the white mark every effect slides in a straight line to its worst at an e
 - **His lucky hits shrink.** A tired man still rolls as low as a fresh one, but his best blows are gone.
 - **Tired AI guess their blocks.** A tired AI fighter starts picking his block direction at random — even a
   tournament champion who never misses in the base game. You are never affected: your block is your mouse.
+- **The AI guards well even fresh.** AI soldiers guess their block direction less often than the base game's AI and decide to
+  block or parry more readily, so fights last longer and fewer blows land - but a tired man still guesses more.
 
 Numbers: [MECHANICS §3](MECHANICS.md#3-what-tiredness-does), the stored swings
 [§4](MECHANICS.md#4-the-swing-stack), the block guesses [§7](MECHANICS.md#7-tired-ai-guess-their-blocks).

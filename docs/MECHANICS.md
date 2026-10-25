@@ -272,13 +272,33 @@ man doesn't just take the hit; he stops recovering. Since step 64 a shield block
 right side (section 6) — except this table's guessed share: a tired man's guesses stay wrong-side blocks even
 from the front, so a worn-out wall still breaks (section 11c).
 
-Low-skill troops (recruits, levies) already guess a lot in the vanilla game; for them the mod changes
-little. It matters most for the elite: veterans, lords and tournament opponents. You are never
+Low-skill troops (recruits, levies) already guess a lot in the vanilla game; for them the tired guessing
+changes little. It matters most for the elite: veterans, lords and tournament opponents. You are never
 affected — your block is your mouse.
+
+**The AI guards better** (step 96, Toni: "more defencive"). The game's own AI guesses most block directions
+(its chance is 1 − level³: a recruit about 100%, a 200-skill veteran on realistic about 74%). The mod cuts that
+guess chance to **60%** of the game's for every AI man, on foot or mounted — BEFORE the tired guessing above, which
+then adds its share on top, so a tired man still guesses more than a fresh one:
+
+| AI man's bar | Recruit: guessed (vanilla 100%) | wrong-way parry | Veteran: guessed (vanilla 74%) | wrong-way parry |
+|---:|---:|---:|---:|---:|
+| 75–100% | 60% | 45% | 44% | 33% |
+| 60% | 68% | 51% | 56% | 42% |
+| 50% | 73% | 55% | 63% | 47% |
+| 30% | 84% | 63% | 78% | 58% |
+| 15% | 92% | 69% | 89% | 67% |
+| 0% | 100% | 75% | 100% | 75% |
+
+He also **decides to block more readily**: the game's "block on decide" and "parry on decide" abilities (about
+0.62 / 0.53 for a recruit, 0.89 / 0.79 for a veteran) × 1.2, never above the game's own best 0.99 / 0.95 — a recruit
+0.74 / 0.64, a veteran 0.99 / 0.95. The engine reads these values itself; how much they change a fight shows only in
+a battle.
 
 <sub>Setting: `TiredBlockRandomPercent` 100 (50 = half as many guesses at every level; 0 = off). It
 works through the game's own "randomised defend direction" value, so it is the game's AI doing the
-guessing.</sub>
+guessing. Step 96: `AiGuardGuessPercent` 60 (100 = the game's guesses), `AiBlockDecidePercent` 120 (100 = the game's
+block decisions), Advanced, Tired fighters.</sub>
 
 ## 8. Brace by orders
 
@@ -330,15 +350,15 @@ On top of tiredness, AI soldiers simply fight at a steadier pace. Shield infantr
 
 | AI fighter | Effect | Fresh man, after a 0.8 s swing |
 |---|---|---|
-| Foot, with a shield | 30% fewer swings | +0.77 s wait (about 23 swings a minute instead of 33) |
-| Foot, no shield | 15% fewer swings | +0.32 s wait |
+| Foot, with a shield | 40% fewer swings | +1.20 s wait (about 20 swings a minute instead of 33) |
+| Foot, no shield | 25% fewer swings | +0.60 s wait (about 25 swings a minute instead of 33) |
 | Bowman | +2.0 s after each shot | |
 | Crossbowman | +2.5 s after each shot | |
 | Riders, throwers, slingers, and you | unchanged | |
 
 A tired man's own pause comes on top, and the "fewer" still holds at every bar level.
 
-<sub>Settings: `ShieldInfantrySwingsLessPercent` 30, `FootMeleeSwingsLessPercent` 15, `AiMeleeGapSeconds` 1.0,
+<sub>Settings: `ShieldInfantrySwingsLessPercent` 40, `FootMeleeSwingsLessPercent` 25 (30 / 15 before step 96), `AiMeleeGapSeconds` 1.0,
 `ExtraPauseAfterBowShotSeconds` 2.0, `ExtraPauseAfterCrossbowShotSeconds` 2.5.</sub>
 
 **Shield walls hold their slots.** In the base game a man in a shield wall walks a few steps out of it to
@@ -468,18 +488,20 @@ friend is **0.1 s** (one value for every friendly touch; the game's own comes ba
 
 Men don't want to throw their lives away, and a man at work doesn't hold a pace until he drops. In the
 base game AI soldiers trade blows until they drop. With this mod an AI soldier on foot decides to start an
-attack **less often than the base game's AI — and less still the more tired he is**: 60% as often with a
-full Athletics bar, sliding in a straight line to 20% at an empty one. He holds his place, blocks, parries
+attack **less often than the base game's AI — and less still the more tired he is**: 45% as often with a
+full Athletics bar, sliding in a straight line to 15% at an empty one (60% / 20% before step 96). He holds his place, blocks, parries
 and waits for an opening. Tournaments and duels too.
 
 | His Athletics bar | Eagerness (× the base game) | Chance to attack at each decision: on a charge | other orders | shield wall, square, circle |
 |---:|---:|---:|---:|---:|
 | Base game (any bar) | 100% | 14.4% | 9.6% | 5% |
-| 100% (full) | 60% | 8.6% | 5.8% | 3.0% |
-| 75% | 50% | 7.2% | 4.8% | 2.5% |
-| 50% | 40% | 5.8% | 3.8% | 2.0% |
-| 25% | 30% | 4.3% | 2.9% | 1.5% |
-| 0% (empty) | 20% | 2.9% | 1.9% | 1.0% |
+| 100% (full) | 45% | 6.5% | 4.3% | 2.3% |
+| 75% | 40% | 5.8% | 3.8% | 2.0% |
+| 50% | 30% | 4.3% | 2.9% | 1.5% |
+| 25% | 25% | 3.6% | 2.4% | 1.3% |
+| 0% (empty) | 15% | 2.2% | 1.4% | 0.8% |
+
+(The share moves in 0.05 steps, so 75% of a bar reads 40% and 25% reads 25%.)
 
 His counter-strike right after a parry (8% / 6% / 4% in the base game) shrinks the same way. This is on
 top of the pause after each attack (section 3): a tired man has **two brakes** — he decides to attack less
@@ -489,7 +511,7 @@ shots and you.
 
 **The fever.** When a formation gets a **new charge or advance order** — yours or its own general's —
 every soldier on foot in it gets a **fever**: he attacks at **80%** of the base game's eagerness, whatever
-his bar (a fresh man rises from 60% to 80%, an exhausted one from 20% to 80%). The fever lasts his Athletics
+his bar (a fresh man rises from 45% to 80%, an exhausted one from 15% to 80%). The fever lasts his Athletics
 points **right now** ÷ 10, in seconds — so veterans with big bars surge longer, and men already tired from a
 long fight surge shorter. Its clock starts only when he first comes within **5 m** of an enemy, so a charge
 ordered from afar is not spent on the walk.
@@ -512,10 +534,10 @@ his tired eagerness itself keeps sinking as he fights:
 | Fever left | A man still at a full bar | A man at a half bar |
 |---:|---:|---:|
 | 100% (and before he reaches the enemy) | 80% (11.5% on a charge) | 80% (11.5%) |
-| 75% | 75% | 70% |
-| 50% | 70% | 60% |
-| 25% | 65% | 50% |
-| 0% — back to his bar | 60% (8.6%) | 40% (5.8%) |
+| 75% | 70% | 70% |
+| 50% | 65% | 55% |
+| 25% | 55% | 45% |
+| 0% — back to his bar | 45% (6.5%) | 30% (4.3%) |
 
 A hold, move or retreat order ends the fever at once (the general called them back). A second charge or
 advance while it runs does not start it over — unless a fresh fever would be longer than what is left.
@@ -531,7 +553,7 @@ A bracing man (section 8) still does not attack, fever or not.
 to you) get a small bar above their heads: **bright orange** and full while he runs at the enemy, shrinking
 and turning **yellow** as the fever burns after the clash, gone when it is spent (section 15).
 
-<sub>Settings: `AiAggressionFreshPercent` 60, `AiAggressionExhaustedPercent` 20 (both 100 = the base game's AI),
+<sub>Settings: `AiAggressionFreshPercent` 45, `AiAggressionExhaustedPercent` 15 (both 100 = the base game's AI; 60 / 20 before step 96),
 `FeverEnabled` on, `FeverPointsPerSecond` 10, `FeverAggressionPercent` 80, `FeverContactMetres` 5,
 `FeverShieldDurationMultiplier` 0.7, `FeverSprintToClose` on, `FeverSprintMinMetres` 4, `FeverSprintMaxMetres` 8 (step 64; 3 / 12 before),
 `FeverSprintCheckSeconds` 1, `FeverSprintChancePercent` 50.</sub>
