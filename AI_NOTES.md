@@ -8513,3 +8513,100 @@ counts apart). The MECHANICS impact tables were NOT recomputed (they name their 
 2. The first start logs `[config] migrated config.json …` once (format 22 → 23) with the three moves.
 
 **DEPLOY**: `tools\deploy.ps1` ran whole (build, the AssemblyGuard, the offline smoke - all passed), installed as Modules\TraxCombatEnhancements.Dev; `tools\SmartAppControl\loadcheck.ps1`: both installed DLLs LOADED (`1.3.2+20bbf462...`). The game and the launcher were not running. Windows security untouched.
+
+## Step 95 — the step-in shield bash + swing 30% of the time (built 2026-10-25; dev build only, not uploaded)
+
+**Toni (2026-10-25)**: "try making them step in for the bash, but ... swing 30% of the time". His battles 2026-10-24 20:26 and 2026-10-25 09:53
+(step 91's bins): the AI never stands within 1.1 m of the enemy it fights (3 of 792 shieldman moves in kick reach); bashes asked at 1.1-1.6 m hit an
+ENEMY rarely (09:53, 1.1-1.2 m: 13 asked → 2 enemy / 7 friend / 3 missed). The shield bash's real reach is short (step 91: a 0.2 m sphere on the shield
+arm's bone 19, checked 38-48% of act_shield_bash; ~1.1 m centre to centre), so it sweeps into the neighbour. DESIGN decision 87.
+
+**95.1 THE STEP (Core `AiBashStepIn.cs`, `AiKicks.cs`)**
+- `AiKickRules` gains `bashStepIn` / `stepInToMetres` / `stepInMaxSeconds` (optional LAST constructor args - every older caller = no step-in),
+  `StepInSwitch`, `StepInTo`, `StepInMaxSeconds`, `StepInOn` (= `Enabled` - the master switch first - && the switch && To > 0), `StepInOffBecause`;
+  `Describe` adds "step 95: a shieldman STEPS IN ..." / "step 95: no step-in (...)".
+- `AiBashStepInMath`: `Decide(r, distance, wallHeld, wallFirm, wallLeash, out stopAt)` → Off / NotNeeded / RefusedWall / Arrived (= "he steps";
+  resolved later to Arrived / TimeRanOut / CutShort); `Arrived(d, stopAt)`; `StepGuardSeconds(max)` = max(0.4, max); `GuardDone` (documentation of
+  the clock; the module keeps its phase-end time); `Vector` = step 16's `BackpedalVector` with the direction TOWARD the enemy, stick 1.0 - his own
+  input frame (x right, y forward), facing him = (0, 1), turned = still the line to the enemy; `InCorridor` - the friend check (plumbing: ahead along
+  the line to the ENEMY past 0.05 m and within the step + 0.4 m, 0.4 m either side = two half bodies).
+- THE STOP DISTANCE **0.95 m** (Claude's call): inside the ~1.1-1.15 m reach (a body 0.4 + arm and shield ~0.6 + the 0.2 m sphere) so the sphere meets
+  the body instead of grazing its edge while both men shuffle ±0.2 m, and outside two bodies pressed together (~0.7 m - closer the AI's own spacing
+  pushes back and the bash animation has no room).
+- THE GUARD (Claude's call): a stepping bash's guard phase ends at start + `StepGuardSeconds(AiBashStepInMaxSeconds)` (**0.6 s**); arriving earlier
+  sets it to max(now, start + 0.4) - the bash never comes before its own 0.4 s lead (the wind-up cancel / the bash context). A guarded walk covers
+  ~0.3-0.5 m in 0.4 s; the AI's 1.1-1.6 m needs 0.15-0.65 m - 0.6 s lets almost every step arrive (the stand-in at 1.2 m/s: 322 of 323).
+- THE WALL (Claude's call): a held shield-wall man (`WallState.Held`) under stand firm (`WallState.Firm`) or with `ShieldWallStepOutMetres` 0 does
+  NOT step (`RefusedWall`, the bash from his slot - step 75: a standing wall keeps its slots); otherwise his stop is max(0.95, distance - the leash)
+  - at most the wall's own step-out closer than now (measured from where he stood, not his slot - a cheap read; step 68's kick return walks him back
+  after the bash as it does for any held man's own kick / bash).
+- NEVER THROUGH A FRIEND: the step-90 strike path is probed before the bash as always (a friend in front = the refusal as today, no bash); then, for
+  a bash that would step, `IAiKickBody.StepInClear` - the game's ally search (the reused list) against the corridor; a friend there = `RefusedFriend`,
+  the bash goes on from where he stands (step 90's shoulder neighbour 0.35 ahead / 0.64 aside is clear; a man 0.4 ahead / 0.1 aside - let through by
+  step 90's rule - refuses the step).
+
+**95.2 THE INPUT ORDER (Module `AiInputHook.cs`)**: `AiInputState.StepIn / StepInX / StepInY / StepInFrames`, `SetStepIn`, `ApplyStepIn` - only in a
+bash's Guard phase, only with the master switch, `AiKicksEnabled` and `AiBashStepIn` on, and only while NO other movement wish moves him. In `Apply`
+it is the LAST movement wish: backpedal > wall pull > rest's walk > press's walk > swap > courage's walk back > fear flock > block hold > the step-in;
+then the press's clamp and the rest's clamp filter it (a resting man never steps toward the enemy; nobody walks past an enemy line's front). The
+component's `moved` includes `StepIn` so the vector is written; `ApplyKick` writes the guard / key bits after as before (the guard phase does not stop
+movement). `Clear` drops it. Kicks and pushes never set it.
+
+**95.3 THE MODULE (`AthleticsLogic.AiKicks.cs`, `AiKickBody.cs`, `TrackedAgent.cs`)**: `DecideAiMove` - after the path is clear, for a BASH:
+`Decide` + `StepInClear` → `BeginAiKick(…, step, stopAt, maxSeconds)` (`TrackedAgent.AiStepIn / AiStepping / AiStepStop / AiKickPressDistance`), a
+stepping bash's guard end = start + the step guard, `SteerStepIn` at once. `AdvanceAiKicks`: every tick of a stepping guard `SteerStepIn` (switched off
+= cut short; the read - `IAiKickBody.StepIn`: the distance from the positions and the vector through `Agent.Frame.rotation` - failed = cut short;
+within the stop = ARRIVED, the guard end moved to max(now, start + 0.4); else `SetStepIn` with the fresh vector); the guard running out while
+stepping = TimeRanOut. `PressPath` now always reads a bash's target and returns `pressDistance` (the bash's moment) → `NoteBashKey` (the stepping
+bash's gap closed - the decision's distance minus the key's, his walk and the enemy's own together - and the guard held past 0.4 s). `EndAiKick`
+while stepping = CutShort. Every asked bash gets exactly one outcome (non-stepping ones noted at the ask, stepping ones at their resolution).
+First-time lines 17 (the first step-in, with its first frame's vector) and 18 (the first step refused by a friend) - `_aiKickFirst` 17 → 19.
+
+**95.4 THE SHARES + CONFIG FORMAT 24**: defaults.json `AiShieldmanKickPercent` 25 → **27**, `AiShieldmanBashPercent` 40 → **43**,
+`AiNoShieldKickPercent` 35 → **45**, `AiNoShieldPushPercent` 20 → **25** (both swing 30%). `ConfigFile.Migrate` `from < 24 && from >= 19`:
+`MoveOrKeepIfMoved` - the shieldman's and the push (keys / values since format 20), the no-shield kick (since 19); a format-19 file's 20 / 35 go
+through step 88's block straight to today's 27 / 43 (one note each). `AiBashReachMetres` stays 0 (off). The older format tests "→ 23" → "→ 24".
+
+**95.5 THE MEASUREMENT (Core `AiBashStepInStats`)**: `AiKickStats.StepIn` - outcomes (off / not needed / arrived / the time ran out / cut short / refused
+by a friend / by the wall), `NotePress` (the gap closed), `Extended` / `ExtendedSeconds`, `NoteResult(atBash, result)` - every bash's result by the
+enemy's distance AT THE KEY (step 91's bins; NaN = ended before the key, counted apart); step 91's `BashReach` bins keep the decision's distance. The
+9th [summary] line: `ai kicks - the step-in bash (step 95): a shieldman steps in during his bash's guard until his enemy is within 0.95 m (...) |
+bashes asked N: stepped in a (arrived b, the time ran out c, cut short d), not needed - already close e, refused - a friend in the way f, refused -
+held in the shield wall g; the gap closed by a step 0.33 m on average (the enemy 1.27 m off at the decision → 0.94 m at the bash); the guard held
+longer while walking in ... | bashes by the enemy's distance AT THE BASH (after the step) → on an ENEMY / into his shield / on a FRIEND / missed /
+horse or untracked / not played: ...; ended before the key k`; OFF: "the step-in is OFF (AiBashStepIn off) - a shieldman bashes from where he stands".
+
+**95.6 SETTINGS**: `AiBashStepIn` (Bool, true), `AiBashStepInToMetres` (Float 0-2, 0.95), `AiBashStepInMaxSeconds` (Float 0-2, 0.6) - Advanced, the
+Impact group right after `AiBashReachMetres`, live, read at use time (527 settings). DESIGN rows + decision 87; defaults.json + DefaultsTool refresh.
+
+**Measured offline**: tests 1355 → 1363 (Step95Tests 8: settings placed / shipped / live / the master switch first / the old constructor = off; the
+vector in his frame (straight, turned 90°, ahead-left, degenerate) and the stop distance, the wall's rule; the guard's clock; the corridor (in front,
+0.35 aside, the shoulder neighbour clear, behind, himself, beyond the step + 0.4, the line to the ENEMY not his facing); 100 000 seeded rolls 27 / 43 /
+30 and 45 / 25 / 30 ±0.5; format 24 move / keep / a format-19 chain / untouched / idempotent; the 9th line's text ON and OFF; 0 bytes over 10 000
+reads + notes). Older tests: the line count 8 → 9 (Step65 / 87 / 88 / 90 / 91), the settings 527, the Impact list 135, step 65's order, the shipped
+shares in Step81 / 88's defaults.json checks, Step91b's untouched format-20 sample (a share key would move now). Smoke 209 → 211:
+- `StepInBashThroughTheLogic` (Program.Step95.cs): through the real logic and the REAL `AiInputHook.Apply` - a bash at 1.3 m steps, the frame (0, 1),
+  turned 90° (-1, 0); arrived at 0.9 m → the key at 0.4 s, the distance at the key 0.9; never arriving → the guard held, the key at 0.6 s (the time ran
+  out); a friend 0.4 ahead / 0.1 aside → no step, the bash goes on; a firm wall → no step; 0.9 m → not needed; a push never steps; AiBashStepIn off /
+  the master switch off mid-walk end it (cut short; the filter writes nothing); one outcome per bash; the first-time and [summary] lines.
+- `StepInBashesInAGrind`: step 91's grind (`FightTwoLines(…, frontGap 1.3, bashEngineReach 1.15, stepWalkSpeed 1.2)` - the new optional parameter: the
+  stand-in walks each stepping man along the vector the real filter writes, he drifts back at half speed after) with the shipped shares, the same
+  dice: step-in OFF - bashes asked 276, on a FRIEND 40 of 91 hits (44.0%), on an ENEMY 51, missed many (by the bash's distance: 1.2-1.4 m friends 68%,
+  1.4-1.6 m 100%); ON - bashes asked 343, stepped 323 (arrived 322), the gap closed 0.33 m (1.27 → 0.94 m), on a FRIEND 25 of 332 (7.5%), on an ENEMY
+  307; 2803 step frames, all toward the enemy he bashes; the farthest out 0.76 m; the shares rolled 27.3 / 47.0 / 25.7 and 41.2 / 24.6 / 34.2.
+- The older smokes: `AiKickDefaults` pins `AiBashStepIn` off and `AiNoShieldKickPercent` 35; `Step88Shares` sets step 88's 25 / 40 / 35 / 20
+  explicitly (it read the defaults); `Step95Shares` / `Step95StepIn` set the shipped ones.
+
+**Gotchas**: the classifier-gated Bash tool failed transiently several times (no verdict) - the Edit tool and later retries got through. The
+test-side `ParamDef.Default` is DESIGN's column (20 / 35 / 35 / 20), so a migration test hands in the shipped values (`ShippedDefault`); a share
+migration on DESIGN's values moves a 25 to 20 (the same quirk as steps 88 / 94) - not a bug of the shipped path. A C# `out` inside `try` needs its
+locals initialised before (CS0165).
+
+**UNVERIFIED — only the game can tell (PLAYTEST D59)**
+1. That the AI's guarded forward walk through `OnAIInputSet` moves him as fast as the stand-in's 1.2 m/s (most step-ins "arrived", few "the time ran
+   out"); the game's formation / collision avoidance may hold a front-rank man back.
+2. The friends' share of the bash hits by the distance AT THE BASH - near the stand-in's ~8% from ≤1.0 m, or does the real sweep still catch the
+   shield-side neighbour (then step 90's neighbour rule: kick instead with a friend tight on the shield side).
+3. That a held wall man's step and step 68's walk back after his bash do not make the wall ripple.
+
+**DEPLOY**: `tools\deploy.ps1` ran whole (the build, the AssemblyGuard, the offline smoke - all passed, 211), installed as Modules\TraxCombatEnhancements.Dev; `tools\SmartAppControl\loadcheck.ps1`: both installed DLLs LOADED (`1.3.2+87a39fb5...`). The game and the launcher were not running. Not uploaded.
