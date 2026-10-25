@@ -145,6 +145,7 @@ PLAYTEST RESULTS (200v200 infantry, 2026-09-28 morning, step 16 in game — 0 er
 - [ ] Game hangs on "shutting down" in Steam after exit (Anton) — NOT our mod by its log (it logged "unloaded (game closing)" 4 s after the mission, it runs no threads); suspects: another mod's helper process/thread, the game's Watchdog.exe; next time it hangs, tell Claude while it hangs — the process tree shows who is still alive (see AI_NOTES step 12)
 
 NOT DECIDED (defaults in place, Anton can flip):
+- IDEA, parked until more play (Toni 2026-10-25): a STANDING shield wall's bash by distance - an enemy within ~1.1 m (the bash's real reach) gets a normal bash, no step (he came in close for his own swing / bash); farther (1.1-1.6 m) a rolled bash becomes a kick, so the sweep never catches the neighbour; men in the open keep step 95's step-in. Why: in the 19:07 / 19:24 battles 21 of 22 bashes came from held wall men (no step by design) and hit friends; in the 17:35 tournament (no neighbours) the step-in bashes hit the enemy / his shield 21 of 22
 - [ ] Hero multiplier: 0.75 (default now) or 0.5? (see DESIGN interpretations)
 - [x] Kicks / shield bashes cost Athletics? → yes, 3 (Anton, 2026-09-28) → step 18
 - [x] RTS Camera's AI driving your hero: no attack pause for him → leave it (Anton, 2026-09-28; REVIEW R-"For Anton")
