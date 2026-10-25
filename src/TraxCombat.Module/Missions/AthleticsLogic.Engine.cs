@@ -303,7 +303,7 @@ namespace TraxCombat.Missions
             try
             {
                 var c = st.Agent.Character;
-                if (c != null)
+                if (c != null && Game.Current != null) // step 93: DefaultSkills needs the game (the offline smoke's men carry a character, no game)
                 {
                     skill = c.GetSkillValue(DefaultSkills.Athletics);
                     known = true;
@@ -344,9 +344,8 @@ namespace TraxCombat.Missions
         /// character.</summary>
         private static int TierForFloor(Agent a)
         {
-            if (a.IsHero || a.IsMainAgent) return -1;
             var ch = a.Character;
-            if (ch == null || ch.IsHero) return -1;
+            if (ch == null || ch.IsHero || a.IsMainAgent) return -1; // Agent.IsHero = Character.IsHero
             int t = ch.GetBattleTier();
             return t < 0 ? 0 : t > 6 ? 6 : t;
         }
