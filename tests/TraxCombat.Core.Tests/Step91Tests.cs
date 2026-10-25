@@ -138,7 +138,7 @@ public class Step91Tests
         Assert.Equal(1.0, b.FriendShare(1), 9);
         Assert.Equal(2, b.AskedTotal());
         var lines = st.SummaryLines(Shipped()).ToList();
-        Assert.Equal(8, lines.Count);
+        Assert.Equal(9, lines.Count); // step 95: + the step-in bash (the 9th)
         string line = lines[7];
         Assert.StartsWith("ai kicks - the shield bash's reach (step 91): a shieldman bashes only within 1.10 m (AiBashReachMetres; kicks and pushes keep the 1.6 m kick reach) - farther off he kicks 42% / swings 58%", line, StringComparison.Ordinal);
         Assert.Contains(" | shieldmen's moves within it 2 - rolled kick 50.0% / bash 50.0% / swing 0.0% (target 25% / 40% / 35%)", line, StringComparison.Ordinal);

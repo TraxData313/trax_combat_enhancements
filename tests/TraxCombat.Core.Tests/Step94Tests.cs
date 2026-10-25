@@ -59,7 +59,7 @@ public class Step94Tests
         foreach (var line in new[] { "\"AthleticsPoolBase\": 100,", "\"AthleticsPoolPerSkill\": 0.5,", "\"CostPerBlow\": 7.0,", "\"CostPerKickOrBash\": 6.0,",
                      "\"CostPerShieldBlock\": 3.0,", "\"CostPerWrongSideShieldBlock\": 6.0,", "\"CostPerWeaponParry\": 3.0," })
             Assert.Contains(line, defaults, StringComparison.Ordinal);
-        Assert.Equal(23, ConfigFile.FormatVersion);
+        Assert.Equal(24, ConfigFile.FormatVersion);
 
         var s = ShippedSettings();
         Assert.Equal(110.0, AthleticsMath.PoolPoints(AthleticsRules.From(s), Man(20)), 9);
@@ -183,9 +183,9 @@ public class Step94Tests
         var read = ConfigFile.Read("{ \"ConfigVersion\": 22, \"AthleticsPoolPerSkill\": 1.0, \"CostPerBlow\": 10.0, \"CostPerKickOrBash\": 8.0, \"CostPerShieldBlock\": 3.0 }");
         var notes = ConfigFile.Migrate(read, Shipped);
         Assert.Equal(3, notes.Count);
-        Assert.Equal("AthleticsPoolPerSkill: 1.0 → 0.5 (format 22 → 23, the old default; step 94, Toni: a bigger base pool, cheaper swings - the bar is 100 + half the Athletics skill - each skill point adds 0.5 to the base)", notes[0]);
-        Assert.StartsWith("CostPerBlow: 10.0 → 7.0 (format 22 → 23, the old default; step 94", notes[1], StringComparison.Ordinal);
-        Assert.StartsWith("CostPerKickOrBash: 8.0 → 6.0 (format 22 → 23, the old default; step 94", notes[2], StringComparison.Ordinal);
+        Assert.Equal("AthleticsPoolPerSkill: 1.0 → 0.5 (format 22 → 24, the old default; step 94, Toni: a bigger base pool, cheaper swings - the bar is 100 + half the Athletics skill - each skill point adds 0.5 to the base)", notes[0]);
+        Assert.StartsWith("CostPerBlow: 10.0 → 7.0 (format 22 → 24, the old default; step 94", notes[1], StringComparison.Ordinal);
+        Assert.StartsWith("CostPerKickOrBash: 8.0 → 6.0 (format 22 → 24, the old default; step 94", notes[2], StringComparison.Ordinal);
         Assert.Equal(0.5, read.Values["AthleticsPoolPerSkill"], 9);
         Assert.Equal(7, read.Values["CostPerBlow"], 9);
         Assert.Equal(6, read.Values["CostPerKickOrBash"], 9);
@@ -197,9 +197,9 @@ public class Step94Tests
         var mine = ConfigFile.Read("{ \"ConfigVersion\": 22, \"AthleticsPoolPerSkill\": 0.8, \"CostPerBlow\": 12.0, \"CostPerKickOrBash\": 5.0 }");
         var kept = ConfigFile.Migrate(mine, Shipped);
         Assert.Equal(3, kept.Count);
-        Assert.StartsWith("AthleticsPoolPerSkill: 0.8 kept - your own value (format 22 → 23; the new default 0.5 is not pushed over it; step 94", kept[0], StringComparison.Ordinal);
-        Assert.StartsWith("CostPerBlow: 12.0 kept - your own value (format 22 → 23; the new default 7.0", kept[1], StringComparison.Ordinal);
-        Assert.StartsWith("CostPerKickOrBash: 5.0 kept - your own value (format 22 → 23; the new default 6.0", kept[2], StringComparison.Ordinal);
+        Assert.StartsWith("AthleticsPoolPerSkill: 0.8 kept - your own value (format 22 → 24; the new default 0.5 is not pushed over it; step 94", kept[0], StringComparison.Ordinal);
+        Assert.StartsWith("CostPerBlow: 12.0 kept - your own value (format 22 → 24; the new default 7.0", kept[1], StringComparison.Ordinal);
+        Assert.StartsWith("CostPerKickOrBash: 5.0 kept - your own value (format 22 → 24; the new default 6.0", kept[2], StringComparison.Ordinal);
         Assert.Equal(12, mine.Values["CostPerBlow"], 9);
 
         // a format-23 file is never touched; a file without the keys gets nothing to say
@@ -215,19 +215,19 @@ public class Step94Tests
         // format 15-18: CostPerBlow 10 (step 71's) → 7 by step 94; the kick's 6 (step 71's) is today's default already - nothing to move
         var f18 = ConfigFile.Read("{ \"ConfigVersion\": 18, \"CostPerBlow\": 10.0, \"CostPerKickOrBash\": 6.0 }");
         var n18 = ConfigFile.Migrate(f18, Shipped);
-        Assert.Single(n18, n => n.StartsWith("CostPerBlow: 10.0 → 7.0 (format 18 → 23, the old default; step 94", StringComparison.Ordinal));
+        Assert.Single(n18, n => n.StartsWith("CostPerBlow: 10.0 → 7.0 (format 18 → 24, the old default; step 94", StringComparison.Ordinal));
         Assert.DoesNotContain(n18, n => n.StartsWith("CostPerKickOrBash", StringComparison.Ordinal));
         Assert.Equal(7, f18.Values["CostPerBlow"], 9);
         Assert.Equal(6, f18.Values["CostPerKickOrBash"], 9);
         // format 14: CostPerBlow 8 → straight to 7 through step 71's block (its wording), never touched again by step 94
         var f14 = ConfigFile.Read("{ \"ConfigVersion\": 14, \"CostPerBlow\": 8.0, \"CostPerKickOrBash\": 5.0 }");
         var n14 = ConfigFile.Migrate(f14, Shipped);
-        Assert.Single(n14, n => n.StartsWith("CostPerBlow: 8.0 → 7.0 (format 14 → 23, the old default; step 71", StringComparison.Ordinal));
-        Assert.Single(n14, n => n.StartsWith("CostPerKickOrBash: 5.0 → 6.0 (format 14 → 23, the old default; step 71", StringComparison.Ordinal));
+        Assert.Single(n14, n => n.StartsWith("CostPerBlow: 8.0 → 7.0 (format 14 → 24, the old default; step 71", StringComparison.Ordinal));
+        Assert.Single(n14, n => n.StartsWith("CostPerKickOrBash: 5.0 → 6.0 (format 14 → 24, the old default; step 71", StringComparison.Ordinal));
         Assert.Equal(7, f14.Values["CostPerBlow"], 9);
         Assert.Equal(6, f14.Values["CostPerKickOrBash"], 9);
         // a format-5 file's per-skill 1.0 moves too (the key since step 5c)
         var f5 = ConfigFile.Read("{ \"ConfigVersion\": 5, \"AthleticsPoolPerSkill\": 1.0 }");
-        Assert.Single(ConfigFile.Migrate(f5, Shipped), n => n.StartsWith("AthleticsPoolPerSkill: 1.0 → 0.5 (format 5 → 23", StringComparison.Ordinal));
+        Assert.Single(ConfigFile.Migrate(f5, Shipped), n => n.StartsWith("AthleticsPoolPerSkill: 1.0 → 0.5 (format 5 → 24", StringComparison.Ordinal));
     }
 }

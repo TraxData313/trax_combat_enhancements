@@ -18,13 +18,13 @@ public class Step66Tests
     [Fact]
     public void Format_13_moves_the_old_kick_cost_and_cooldown_once_keeps_a_tuned_value_and_drops_the_retired_rate()
     {
-        Assert.Equal(23, ConfigFile.FormatVersion);
+        Assert.Equal(24, ConfigFile.FormatVersion);
         var read = ConfigFile.Read("{ \"ConfigVersion\": 12, \"CostPerKickOrBash\": 3.0, \"AiKicksPerMinute\": 0.1, \"AiKickCooldownSeconds\": 10.0 }");
         var notes = ConfigFile.Migrate(read, Shipped);
         Assert.Equal(3, notes.Count);
-        Assert.StartsWith("CostPerKickOrBash: 3.0 → 8.0 (format 12 → 23, the old default; step 66, Anton: a kick or a shield bash takes more of the energy", notes[0], StringComparison.Ordinal);
-        Assert.StartsWith("AiKickCooldownSeconds: 10.0 → 2.0 (format 12 → 23, the old default; step 66", notes[1], StringComparison.Ordinal);
-        Assert.StartsWith("AiKicksPerMinute 0.1 dropped (format 12 → 23; step 81, Toni: AI kicks and bashes are a share of the melee moves now", notes[2], StringComparison.Ordinal);
+        Assert.StartsWith("CostPerKickOrBash: 3.0 → 8.0 (format 12 → 24, the old default; step 66, Anton: a kick or a shield bash takes more of the energy", notes[0], StringComparison.Ordinal);
+        Assert.StartsWith("AiKickCooldownSeconds: 10.0 → 2.0 (format 12 → 24, the old default; step 66", notes[1], StringComparison.Ordinal);
+        Assert.StartsWith("AiKicksPerMinute 0.1 dropped (format 12 → 24; step 81, Toni: AI kicks and bashes are a share of the melee moves now", notes[2], StringComparison.Ordinal);
         Assert.Equal(8, read.Values["CostPerKickOrBash"], 9);
         Assert.Equal(2, read.Values["AiKickCooldownSeconds"], 9);
         Assert.False(read.Values.ContainsKey("AiKicksPerMinute"));
@@ -32,10 +32,10 @@ public class Step66Tests
         var mine = ConfigFile.Read("{ \"ConfigVersion\": 12, \"CostPerKickOrBash\": 4.0 }");
         var kept = ConfigFile.Migrate(mine, Shipped);
         Assert.Single(kept);
-        Assert.StartsWith("CostPerKickOrBash: 4.0 kept - your own value (format 12 → 23; the new default 8.0", kept[0], StringComparison.Ordinal);
+        Assert.StartsWith("CostPerKickOrBash: 4.0 kept - your own value (format 12 → 24; the new default 8.0", kept[0], StringComparison.Ordinal);
         Assert.Equal(4, mine.Values["CostPerKickOrBash"], 9);
         var old = ConfigFile.Read("{ \"ConfigVersion\": 5, \"CostPerKickOrBash\": 3.0 }");
-        Assert.Contains(ConfigFile.Migrate(old, Shipped), n => n.StartsWith("CostPerKickOrBash: 3.0 → 8.0 (format 5 → 23", StringComparison.Ordinal));
+        Assert.Contains(ConfigFile.Migrate(old, Shipped), n => n.StartsWith("CostPerKickOrBash: 3.0 → 8.0 (format 5 → 24", StringComparison.Ordinal));
         // a file without the keys gets the defaults (no note)
         Assert.Empty(ConfigFile.Migrate(ConfigFile.Read("{ \"ConfigVersion\": 12 }"), Shipped));
     }

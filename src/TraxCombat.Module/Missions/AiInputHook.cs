@@ -106,6 +106,13 @@ namespace TraxCombat.Missions
         public AiKickKind KickKind;
         public long KickFrames, KickPresses, KickHeldNoSwing;
 
+        /// <summary>Step 95: THE STEP-IN BASH - during a shield bash's guard he walks in toward his enemy: <see cref="StepInX"/>, <see cref="StepInY"/>
+        /// (his own frame, refreshed every tick) replace the AI's movement - the LAST movement wish (a step back's backpedal, the wall's pull, a rest's
+        /// walk, the press's walk, a swap, courage's walk back, the flock and the block win while they run), the press's / rest's clamps after it.</summary>
+        public bool StepIn;
+        public float StepInX, StepInY;
+        public long StepInFrames;
+
         /// <summary>Step 82: he READ an incoming kick / bash - the guard to raise (DefendRight against a bash, DefendDown against a kick) and
         /// whether it is up now (the reaction time passed - the tick turns it on); the frames written.</summary>
         public bool MeetGuard;
@@ -232,7 +239,7 @@ namespace TraxCombat.Missions
                 }
                 float vx = inputVector.x, vy = inputVector.y;
                 AiInputHook.Apply(_st, s, settings.AiHoldRaiseGuard, ref flags, ref vx, ref vy, settings.BraceRaiseShield);
-                bool moved = s.Backpedal || (s.Regroup && settings.CourageEnabled) || (s.WallPull && settings.ShieldWallHoldsSlots) || (s.Flock && settings.FearFlockEnabled) || (s.Block && AiInputHook.BlockOn(settings))
+                bool moved = s.Backpedal || s.StepIn || (s.Regroup && settings.CourageEnabled) || (s.WallPull && settings.ShieldWallHoldsSlots) || (s.Flock && settings.FearFlockEnabled) || (s.Block && AiInputHook.BlockOn(settings))
                              || (s.Press && AiInputHook.PressOn(settings)) // step 77: the press's walk or clamp
                              || (s.Rhythm && AiInputHook.RhythmOn(settings)); // step 78: a swap's walk or clamp, step 78c: a rest's walk or clamp
                 if (s.MeetGuard && settings.ImpactMeetRulesEnabled && s.KickPhase == AiKickPhase.None) // step 82: the read guard over every other wish's guard
@@ -690,6 +697,37 @@ namespace TraxCombat.Missions
             return true;
         }
 
+        /// <summary>Step 95: the step-in's walk on (with its vector in his own frame) or off (the other wishes are left as they are).</summary>
+        internal static void SetStepIn(TrackedAgent st, bool on, float x, float y, double now)
+        {
+            var s = st.Input ??= new AiInputState();
+            bool was = s.Active;
+            s.StepIn = on;
+            s.StepInX = on ? x : 0f;
+            s.StepInY = on ? y : 0f;
+            Account(s, was, now);
+        }
+
+        /// <summary>Step 95: one frame of the step-in's walk (managed - the smoke drives it): only in a bash's guard, only while no other movement wish
+        /// moves him (they win), never with the master switch, the AI kicks or the step-in off; his own move bits out, the forward vector in. True when it
+        /// wrote.</summary>
+        internal static bool ApplyStepIn(AiInputState s, ref uint flags, ref float vx, ref float vy)
+        {
+            if (!s.StepIn || s.KickPhase != AiKickPhase.Guard || s.Backpedal || s.WallPull) return false;
+            var settings = TraxSettings.Shared;
+            if (!settings.ModEnabled || !settings.AiKicksEnabled || !settings.AiBashStepIn) return false;
+            if (s.Regroup && settings.CourageEnabled) return false;
+            if (s.Flock && settings.FearFlockEnabled) return false;
+            if (s.Block && BlockOn(settings)) return false;
+            if (s.Press && s.PressMove && PressOn(settings)) return false;
+            if (s.Rhythm && (s.RhythmMove || s.RestMove) && RhythmOn(settings)) return false;
+            flags = AiInputMath.Backpedal(flags);
+            vx = s.StepInX;
+            vy = s.StepInY;
+            s.StepInFrames++;
+            return true;
+        }
+
         /// <summary>The engine's kick event bit (<c>Agent.EventControlFlag.Kick</c>; the smoke checks it).</summary>
         internal const uint KickEventBit = (uint)Agent.EventControlFlag.Kick;
 
@@ -715,6 +753,7 @@ namespace TraxCombat.Missions
             s.RestMove = s.RestHoldAttacks = false; // step 78c
             s.KickPhase = AiKickPhase.None; // step 65
             s.KickKind = AiKickKind.None;
+            s.StepIn = false; // step 95
             Account(s, was, now);
         }
 
@@ -794,7 +833,10 @@ namespace TraxCombat.Missions
                             if (!ApplyRegroup(s, ref flags, ref vx, ref vy)) // step 49: the walk back (a step back's backpedal wins while it runs)
                             {
                                 if (!ApplyFlock(s, ref flags, ref vx, ref vy)) // step 67: the fear flock - courage's walk back goes first
-                                    ApplyBlock(s, ref flags, ref vx, ref vy); // step 74: the block hold - the last movement wish
+                                {
+                                    if (!ApplyBlock(s, ref flags, ref vx, ref vy)) // step 74: the block hold
+                                        ApplyStepIn(s, ref flags, ref vx, ref vy); // step 95: the step-in bash's walk - the last movement wish
+                                }
                             }
                         }
                     }

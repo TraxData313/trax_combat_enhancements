@@ -2177,27 +2177,27 @@
   // kick reach in front of him, this share are kicks (they take the place of a swing). With the
   // bash share below it never goes over 100 - if it does, the bash share is cut.
   // (range 0 to 100)
-  "AiShieldmanKickPercent": 25,
+  "AiShieldmanKickPercent": 27,
 
   // Of those moves of an AI soldier WITH a shield, this share are shield bashes; he swings the
   // rest (100 minus the kick and bash shares). A raised enemy shield facing him is kicked
   // instead.
   // (range 0 to 100)
-  "AiShieldmanBashPercent": 40,
+  "AiShieldmanBashPercent": 43,
 
   // Of the melee moves an AI soldier WITHOUT a shield makes while the enemy he fights is within
   // kick reach in front of him, this share are kicks; with the push share below he swings the
   // rest. Shock troops with two-handers throw people around more. A spearman with the enemy
   // beyond kick reach keeps thrusting.
   // (range 0 to 100)
-  "AiNoShieldKickPercent": 35,
+  "AiNoShieldKickPercent": 45,
 
   // Of those moves of an AI soldier WITHOUT a shield, this share are pushes with his weapon
   // (guard up, then the kick key - the game's weapon bash); he swings the rest (100 minus the
   // kick and push shares). With the kick share above it never goes over 100 - if it does, the
   // push share is cut. A push met by a guard held UP throws the pusher off balance.
   // (range 0 to 100)
-  "AiNoShieldPushPercent": 20,
+  "AiNoShieldPushPercent": 25,
 
   // An AI soldier kicks or bashes only the enemy he fights, and only within this many metres (a
   // kick reaches about a pace).
@@ -2210,6 +2210,26 @@
   // off - he bashes anywhere in the kick reach.
   // (range 0.0 to 4.0)
   "AiBashReachMetres": 0.0,
+
+  // On: while an AI soldier raises his shield for a bash he steps in toward the enemy he fights
+  // until that enemy is close enough for the shield to reach (the distance below), then bashes
+  // - the AI otherwise fights a little too far off for a shield bash, which then sweeps into
+  // his neighbour. Never through a man of his own side; a shield wall standing firm never steps
+  // out. Kicks and weapon pushes do not step. Off: he bashes from where he stands.
+  // (true or false)
+  "AiBashStepIn": true,
+
+  // The bashing soldier walks in until the enemy he fights is within this many metres (centre
+  // to centre) - a shield bash really reaches about 1.1 m, so a little less lands it on the man
+  // rather than the edge. Already closer: no step. 0 = no step.
+  // (range 0.0 to 2.0)
+  "AiBashStepInToMetres": 0.95,
+
+  // A shield bash raises the shield for 0.4 s before it strikes; while the soldier is still
+  // walking in, the guard is held up to this many seconds so he arrives before the bash. 0.4 or
+  // less = never held longer - he bashes from where the 0.4 s left him.
+  // (range 0.0 to 2.0)
+  "AiBashStepInMaxSeconds": 0.6,
 
   // The enemy must stand within this many degrees of where the AI soldier faces - a kick goes
   // forward.

@@ -128,8 +128,11 @@ namespace TraxCombat.Core
         /// AiBashReachMetres 1.1 → 0 - off, a bash anywhere in the kick reach as step 90 - in a format-21 file still holding it; a tuned value kept
         /// and noted), 23 = step 94 (Toni 2026-10-25 - a bigger base pool, cheaper swings: AthleticsPoolPerSkill 1.0 → 0.5 (any format) under the
         /// new AthleticsPoolBase 100 (a new key), CostPerBlow 10 → 7 (a format 15-22 file), CostPerKickOrBash 8 → 6 (a format 19-22 file); a tuned
-        /// value kept and noted; an older file's cost went through steps 71 / 81 above straight to today's value).</summary>
-        public const int FormatVersion = 23;
+        /// value kept and noted; an older file's cost went through steps 71 / 81 above straight to today's value), 24 = step 95 (Toni 2026-10-25 -
+        /// "swing 30% of the time": AiShieldmanKickPercent 25 → 27, AiShieldmanBashPercent 40 → 43 (a format 20-23 file - a format-19 file's
+        /// 20 / 35 went through step 88's block straight to today's value), AiNoShieldKickPercent 35 → 45 (19-23), AiNoShieldPushPercent 20 → 25
+        /// (20-23); a tuned value kept and noted; the step-in bash's three keys are new).</summary>
+        public const int FormatVersion = 24;
 
         /// <summary>The meta key holding <see cref="FormatVersion"/> - not a setting.</summary>
         public const string VersionKey = "ConfigVersion";
@@ -583,6 +586,17 @@ namespace TraxCombat.Core
                 MoveOrKeepIfMoved(read, SettingsSchema.AthleticsPoolPerSkill, 1.0, pool + " - each skill point adds 0.5 to the base", from, defaultOf);
                 if (from >= 15) MoveOrKeepIfMoved(read, SettingsSchema.CostPerBlow, 10, pool + " - a swing or shot costs 7", from, defaultOf);
                 if (from >= 19) MoveOrKeepIfMoved(read, SettingsSchema.CostPerKickOrBash, 8, pool + " - a kick, a shield bash or a push costs 6", from, defaultOf);
+            }
+            if (from < 24 && from >= 19)
+            {
+                // step 95 (Toni 2026-10-25: "swing 30% of the time"): the shares of the melee moves in kick reach - a shieldman kick 25 → 27, bash 40 → 43
+                // (25 / 40 since format 20; a format-19 file's 20 / 35 went through step 88's block above straight to today's value), a man without a shield
+                // kick 35 → 45 (since format 19), push 20 → 25 (a new key in format 20); both swing 30%; a hand-set value is kept and said once
+                const string shares = "step 95, Toni: swing 30% of the time - more kicks, bashes and pushes";
+                if (from >= 20) MoveOrKeepIfMoved(read, SettingsSchema.AiShieldmanKickPercent, 25, shares + " - a shieldman kicks 27% of his moves in kick reach", from, defaultOf);
+                if (from >= 20) MoveOrKeepIfMoved(read, SettingsSchema.AiShieldmanBashPercent, 40, shares + " - a shieldman bashes 43% of his moves in kick reach (he swings 30%)", from, defaultOf);
+                MoveOrKeepIfMoved(read, SettingsSchema.AiNoShieldKickPercent, 35, shares + " - a man without a shield kicks 45% of his moves in kick reach", from, defaultOf);
+                if (from >= 20) MoveOrKeepIfMoved(read, SettingsSchema.AiNoShieldPushPercent, 20, shares + " - a man without a shield pushes 25% of his moves in kick reach (he swings 30%)", from, defaultOf);
             }
             // format 17 (step 78b) moved the lull's LullRecover*Percent 10 / 15 / 20 → 20 / 25 / 30; step 78c removed the lull and its keys, so a
             // format 16 file's are dropped below with the rest of them - nothing to move any more (78c kept format 17; step 80 made it 18)

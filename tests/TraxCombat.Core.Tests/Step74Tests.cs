@@ -32,7 +32,7 @@ public class Step74MapTests
     [Fact]
     public void The_shipped_map_is_one_rank_deeper_below_T6()
     {
-        Assert.Equal(23, ConfigFile.FormatVersion);
+        Assert.Equal(24, ConfigFile.FormatVersion);
         var r = ShippedRules();
         Assert.Equal(NewMap, Enumerable.Range(0, 7).Select(t => r.RanksOf(t)));
         Assert.Equal("T0 7.0 / T1 6.0 / T2 5.0 / T3 4.0 / T4 3.0 / T5 2.0 / T6 1.0", r.MapText());
@@ -72,7 +72,7 @@ public class Step74MapTests
                                    + "\"LineDisciplineRanksT3\": 3.0, \"LineDisciplineRanksT4\": 2.0, \"LineDisciplineRanksT5\": 1.0, \"LineDisciplineRanksT6\": 1.0 }");
         var notes = ConfigFile.Migrate(read, Shipped);
         Assert.Equal(6, notes.Count);
-        Assert.Equal("LineDisciplineRanksT1: 5.0 → 6.0 (format 15 → 23, the old default; step 74, Toni: the tier map one rank deeper (T6 stays 1) - a recruit holds 6 ranks (120 recruits: at most 20 files))", notes[1]);
+        Assert.Equal("LineDisciplineRanksT1: 5.0 → 6.0 (format 15 → 24, the old default; step 74, Toni: the tier map one rank deeper (T6 stays 1) - a recruit holds 6 ranks (120 recruits: at most 20 files))", notes[1]);
         for (int t = 0; t < 7; t++) Assert.Equal(NewMap[t], read.Values[Keys[t].Key], 9);
         Assert.Equal(6, ConfigFile.Migrate(read, Shipped).Count); // idempotent (the notes list is the read's own)
 
@@ -80,8 +80,8 @@ public class Step74MapTests
         var mine = ConfigFile.Read("{ \"ConfigVersion\": 15, \"LineDisciplineRanksT1\": 4.0, \"LineDisciplineRanksT5\": 1.0, \"LineDisciplineRanksT6\": 2.0 }");
         var kept = ConfigFile.Migrate(mine, Shipped);
         Assert.Equal(2, kept.Count);
-        Assert.StartsWith("LineDisciplineRanksT1: 4.0 kept - your own value (format 15 → 23; the new default 6.0 is not pushed over it; step 74", kept[0], StringComparison.Ordinal);
-        Assert.StartsWith("LineDisciplineRanksT5: 1.0 → 2.0 (format 15 → 23, the old default; step 74", kept[1], StringComparison.Ordinal);
+        Assert.StartsWith("LineDisciplineRanksT1: 4.0 kept - your own value (format 15 → 24; the new default 6.0 is not pushed over it; step 74", kept[0], StringComparison.Ordinal);
+        Assert.StartsWith("LineDisciplineRanksT5: 1.0 → 2.0 (format 15 → 24, the old default; step 74", kept[1], StringComparison.Ordinal);
         Assert.Equal(4, mine.Values["LineDisciplineRanksT1"], 9);
         Assert.Equal(2, mine.Values["LineDisciplineRanksT6"], 9);
 

@@ -346,8 +346,11 @@ namespace TraxCombat.Core
         public AiKickRules(bool modEnabled, bool athleticsEnabled, bool enabled, double reachMetres, double facingDegrees, double cooldownSeconds,
             bool kicksARaisedShield, int shieldKickPercent, int shieldBashPercent, int noShieldKickPercent, double friendClearMetres = 0,
             double bashPathHalfWidthMetres = 0, double rearRankMetres = 0, int noShieldPushPercent = 0, double blockAheadMetres = 0, double blockSideMetres = 0,
-            double bashReachMetres = 0)
+            double bashReachMetres = 0, bool bashStepIn = false, double stepInToMetres = 0, double stepInMaxSeconds = 0)
         {
+            StepInSwitch = bashStepIn;
+            StepInTo = Pos(stepInToMetres);
+            StepInMaxSeconds = Pos(stepInMaxSeconds);
             BashReachSetting = Pos(bashReachMetres);
             BlockAhead = Pos(blockAheadMetres);
             BlockSide = Pos(blockSideMetres);
@@ -378,7 +381,22 @@ namespace TraxCombat.Core
         public static AiKickRules From(TraxSettings s) => new AiKickRules(s.ModEnabled, s.AthleticsEnabled, s.AiKicksEnabled, s.AiKickReachMetres, s.AiKickFacingDegrees,
             s.AiKickCooldownSeconds, s.AiKickKicksARaisedShield, s.AiShieldmanKickPercent, s.AiShieldmanBashPercent, s.AiNoShieldKickPercent, s.AiKickFriendClearMetres,
             s.AiBashPathHalfWidthMetres, s.AiKickRearRankMetres, s.AiNoShieldPushPercent, s.AiKickBlockAheadMetres, s.AiKickBlockSideMetres,
-            s.AiBashReachMetres);
+            s.AiBashReachMetres, s.AiBashStepIn, s.AiBashStepInToMetres, s.AiBashStepInMaxSeconds);
+
+        /// <summary>Step 95: <c>AiBashStepIn</c> as set.</summary>
+        public bool StepInSwitch { get; }
+
+        /// <summary>Step 95: the shieldman walks in during his bash's guard until his enemy is within this (m - <c>AiBashStepInToMetres</c>; 0 = off).</summary>
+        public double StepInTo { get; }
+
+        /// <summary>Step 95: the bash's guard held at most this long while he walks in (s - <c>AiBashStepInMaxSeconds</c>; at least the 0.4 s lead).</summary>
+        public double StepInMaxSeconds { get; }
+
+        /// <summary>Step 95: the step-in bash is on - the AI kicks on (the master switch FIRST), <c>AiBashStepIn</c>, a stop distance above 0.</summary>
+        public bool StepInOn => Enabled && StepInSwitch && StepInTo > 0;
+
+        /// <summary>Step 95: why the step-in is off (null when on).</summary>
+        public string? StepInOffBecause => !Enabled ? OffBecause : !StepInSwitch ? "AiBashStepIn off" : !(StepInTo > 0) ? "AiBashStepInToMetres 0" : null;
 
         public bool ModEnabled { get; }
         public bool AthleticsEnabled { get; }
@@ -478,6 +496,10 @@ namespace TraxCombat.Core
                        ? "; step 91: a shield bash only within " + AiKickMath.F2(BashReach) + " m (AiBashReachMetres) - farther off, to the kick reach, a shieldman kicks "
                          + AiKickMath.P0(ShieldKickBeyondBashReach) + " / swings " + AiKickMath.P0(1 - ShieldKickBeyondBashReach) + " (the bash's share split between them)"
                        : "; step 91: the shield bash at the kick reach (AiBashReachMetres off)")
+                   + (StepInOn
+                       ? "; step 95: a shieldman STEPS IN during his bash's guard until the enemy is within " + AiKickMath.F2(StepInTo) + " m (AiBashStepInToMetres; the guard held up to "
+                         + AiKickMath.F2(AiBashStepInMath.StepGuardSeconds(StepInMaxSeconds)) + " s while he walks; never through a friend, a standing shield wall never)"
+                       : "; step 95: no step-in (" + StepInOffBecause + ")")
                    + "; a rolled kick / bash / push (step 88: his weapon's bash - the guard up, then the kick key) takes the place of that swing (his wind-up cancelled by the guard); farther off he swings or thrusts as the game wants (a spearman keeps his ground)"
                    + "; refused - he swings - when staggered, down, without the Athletics or a stored swing for it, within " + AiKickMath.F1(Cooldown) + " s of his last kick or bash"
                    + (KicksARaisedShield ? "; a shieldman KICKS a raised shield facing him (a rolled bash becomes a kick)" : string.Empty)
@@ -831,6 +853,9 @@ namespace TraxCombat.Core
         /// against what it hit - the 8th [summary] line.</summary>
         public readonly AiBashReachStats BashReach = new AiBashReachStats();
 
+        /// <summary>Step 95: the step-in bash - each asked bash's step and its result by the enemy's distance at the bash - the 9th [summary] line.</summary>
+        public readonly AiBashStepInStats StepIn = new AiBashStepInStats();
+
         /// <summary>Step 80: friends looked at by the probe, the probes made.</summary>
         public long PathFriendsLooked;
 
@@ -1044,6 +1069,7 @@ namespace TraxCombat.Core
             lines.Add(PathLine(in r));
             lines.Add(Blocks.Line());
             lines.Add(BashReach.Line(in r));
+            lines.Add(StepIn.Line(in r));
             return lines;
         }
     }

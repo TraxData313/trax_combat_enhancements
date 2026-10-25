@@ -54,7 +54,8 @@ public class Step88Tests
         Assert.Equal(100, p.Max, 9);
         Assert.Equal(20, p.Default, 9); // DESIGN's initial value
         string text = DefaultsFile.ReadEmbeddedText();
-        foreach (var line in new[] { "\"AiShieldmanKickPercent\": 25,", "\"AiShieldmanBashPercent\": 40,", "\"AiNoShieldKickPercent\": 35,", "\"AiNoShieldPushPercent\": 20," })
+        // step 95 moved the shipped shares on: 27 / 43 / 30 and 45 / 25 / 30 (Step95Tests)
+        foreach (var line in new[] { "\"AiShieldmanKickPercent\": 27,", "\"AiShieldmanBashPercent\": 43,", "\"AiNoShieldKickPercent\": 45,", "\"AiNoShieldPushPercent\": 25," })
             Assert.Contains(line, text, StringComparison.Ordinal);
         var s = new TraxSettings();
         Assert.Equal(0.20, AiKickRules.From(s).NoShieldPush, 9);
@@ -168,27 +169,27 @@ public class Step88Tests
     [Fact]
     public void Format_20_moves_the_shieldmans_old_shares_keeps_a_tuned_one_and_leaves_format_20_alone()
     {
-        Assert.Equal(23, ConfigFile.FormatVersion);
+        Assert.Equal(24, ConfigFile.FormatVersion);
         var read = ConfigFile.Read("{ \"ConfigVersion\": 19, \"AiShieldmanKickPercent\": 20, \"AiShieldmanBashPercent\": 35, \"AiNoShieldKickPercent\": 35 }");
         var notes = ConfigFile.Migrate(read, ShippedDefault);
         Assert.Equal(25, read.Values["AiShieldmanKickPercent"], 9);
         Assert.Equal(40, read.Values["AiShieldmanBashPercent"], 9);
         Assert.Equal(35, read.Values["AiNoShieldKickPercent"], 9);
         Assert.False(read.Values.ContainsKey("AiNoShieldPushPercent")); // a new key: the default fills it like any missing key
-        Assert.Contains(notes, n => n.StartsWith("AiShieldmanKickPercent: 20 → 25 (format 19 → 23, the old default; step 88", StringComparison.Ordinal));
-        Assert.Contains(notes, n => n.StartsWith("AiShieldmanBashPercent: 35 → 40 (format 19 → 23, the old default; step 88", StringComparison.Ordinal));
+        Assert.Contains(notes, n => n.StartsWith("AiShieldmanKickPercent: 20 → 25 (format 19 → 24, the old default; step 88", StringComparison.Ordinal));
+        Assert.Contains(notes, n => n.StartsWith("AiShieldmanBashPercent: 35 → 40 (format 19 → 24, the old default; step 88", StringComparison.Ordinal));
         var tuned = ConfigFile.Read("{ \"ConfigVersion\": 19, \"AiShieldmanKickPercent\": 10, \"AiShieldmanBashPercent\": 35 }");
         var tn = ConfigFile.Migrate(tuned, ShippedDefault);
         Assert.Equal(10, tuned.Values["AiShieldmanKickPercent"], 9);
         Assert.Equal(40, tuned.Values["AiShieldmanBashPercent"], 9);
-        Assert.Contains(tn, n => n.StartsWith("AiShieldmanKickPercent: 10 kept - your own value (format 19 → 23; the new default 25", StringComparison.Ordinal));
+        Assert.Contains(tn, n => n.StartsWith("AiShieldmanKickPercent: 10 kept - your own value (format 19 → 24; the new default 25", StringComparison.Ordinal));
         Assert.Empty(ConfigFile.Migrate(ConfigFile.Read("{ \"ConfigVersion\": 20, \"AiShieldmanKickPercent\": 20, \"AiShieldmanBashPercent\": 35 }"), ShippedDefault));
         // a format-18 file has no shares yet (step 81's keys) - nothing to move here; on DESIGN's initial values the move is silent
         Assert.Empty(ConfigFile.Migrate(ConfigFile.Read("{ \"ConfigVersion\": 19, \"AiShieldmanKickPercent\": 20, \"AiShieldmanBashPercent\": 35 }"), p => p.Default));
         // the rewritten file is format 21 (step 90) and carries the push share
         var s = new TraxSettings();
         string written = ConfigFile.Write(s.Snapshot());
-        Assert.Contains("\"ConfigVersion\": 23", written, StringComparison.Ordinal);
+        Assert.Contains("\"ConfigVersion\": 24", written, StringComparison.Ordinal);
         Assert.Contains("\"AiNoShieldPushPercent\": 20", written, StringComparison.Ordinal);
     }
 
@@ -341,7 +342,7 @@ public class Step88Tests
         st.Blocks.NoteFriendHit(AiKickKind.Push, AiKickBlocker.None, 15);
         st.ContactManSeconds = 60;
         var lines = st.SummaryLines(in r).ToList();
-        Assert.Equal(8, lines.Count); // step 91: + the shield bash's reach (the 8th)
+        Assert.Equal(9, lines.Count); // step 95: + the step-in bash (the 9th); step 91: + the shield bash's reach (the 8th)
         Assert.Contains("ai kicks: asked 10 (kicks 7, bashes 0, pushes 3) → PLAYED 1", lines[1], StringComparison.Ordinal);
         Assert.Contains("no shield 20 moves - rolled kick 35.0% / push 20.0% / swing 45.0% (target 35% / 20% / 45%) → DONE kick 35.0% / push 15.0% / swing 50.0%; refused safety 0, stack empty 0, cooldown 0, path 1",
             lines[4], StringComparison.Ordinal);

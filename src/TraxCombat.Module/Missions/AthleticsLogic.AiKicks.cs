@@ -50,7 +50,7 @@ namespace TraxCombat.Missions
         private double _aiKickCarry;
         private double _aiKickLastTick = double.NaN;
         private string _seenAiKickText = string.Empty;
-        private readonly bool[] _aiKickFirst = new bool[17]; // 16: step 91's first bash ended beyond its reach; 7 / 8: step 87's first refusal by a friend - a kick / a bash; 9 / 10: its first friend hit;
+        private readonly bool[] _aiKickFirst = new bool[19]; // step 95: 17 the first step-in, 18 the first step-in refused by a friend; 16: step 91's first bash ended beyond its reach; 7 / 8: step 87's first refusal by a friend - a kick / a bash; 9 / 10: its first friend hit;
                                                              // step 88: 12 / 13 the same for a push, 14 the first push ENDED after its guard, 15 the first push asked
 
         /// <summary>This mission's AI kick numbers (the smoke reads them).</summary>
@@ -285,7 +285,24 @@ namespace TraxCombat.Missions
             st.AiKickLeftNear = blocker.LeftNear; // step 90 (a measurement): the friends tight beside him now, for a friend hit later
             st.AiKickRightNear = blocker.RightNear;
             _aiKickStats.Blocks.NoteAsked(kind, blocker.LeftNear, blocker.RightNear);
-            BeginAiKick(st, target, kind, type, now, r.Cooldown, off, distance);
+            // step 95: a shield bash steps in during its guard (kicks and pushes never) - not needed / refused by the wall / by a friend in the walk
+            var step = AiStepIn.Off;
+            double stopAt = double.NaN;
+            if (kind == AiKickKind.Bash)
+            {
+                var ws = st.Wall;
+                bool held = ws != null && ws.Held;
+                step = AiBashStepInMath.Decide(in r, distance, held, held && ws!.Firm, TraxSettings.Shared.ShieldWallStepOutMetres, out stopAt);
+                if (step == AiStepIn.Arrived && !AiKickBody.StepInClear(st, targetAgent!, distance - stopAt))
+                {
+                    step = AiStepIn.RefusedFriend;
+                    if (AiKickFirst(18))
+                        TraxLog.Info("impact", "first AI shield bash's STEP-IN refused at " + Sec(now) + " s (step 95) - " + Name(st) + " at " + Name(target) + " " + F2(distance)
+                            + " m off: a man of his own side stands in the walk (within " + F2(distance - stopAt + AiBashStepInMath.CorridorAhead) + " m ahead along the line, "
+                            + F2(AiBashStepInMath.CorridorHalfWidth) + " m either side) - no step, he bashes from where he stands");
+                }
+            }
+            BeginAiKick(st, target, kind, type, now, r.Cooldown, off, distance, step, stopAt, r.StepInMaxSeconds);
             if (kind == AiKickKind.Bash) _aiKickStats.BashReach.NoteAsked(distance, r.BeyondBashReach(distance)); // step 91
         }
 
@@ -349,12 +366,15 @@ namespace TraxCombat.Missions
 
         /// <summary>Step 80: a bash's guard is over - its strike path read again just before the key (the enemy he fights now, in reach, in front,
         /// in the path, no friend first): anything but clear ends the attempt with no key.</summary>
-        private AiKickPath PressPath(TrackedAgent st, in AiKickRules r, out bool beyondBashReach)
+        private AiKickPath PressPath(TrackedAgent st, in AiKickRules r, out bool beyondBashReach, out float pressDistance)
         {
             beyondBashReach = false;
-            bool bashReach = st.AiKickKind == AiKickKind.Bash && r.BashReachOn; // step 91: a bash re-reads its own reach too
-            if (!(r.PathHalfWidth(st.AiKickKind) > 0) && !bashReach) return AiKickPath.Clear;
+            pressDistance = float.NaN;
+            bool bash = st.AiKickKind == AiKickKind.Bash;
+            bool bashReach = bash && r.BashReachOn; // step 91: a bash re-reads its own reach too
+            if (!(r.PathHalfWidth(st.AiKickKind) > 0) && !bash) return AiKickPath.Clear; // step 95: a bash always reads its enemy's distance at the key
             var targetAgent = AiKickBody.Target(st, out float distance, out float off);
+            if (targetAgent != null) pressDistance = distance;
             if (bashReach && targetAgent != null && r.BeyondBashReach(distance))
             {
                 beyondBashReach = true;
@@ -365,14 +385,20 @@ namespace TraxCombat.Missions
             return StrikePathOf(st, targetAgent, st.AiKickKind, distance, off, in r, out _);
         }
 
-        private void BeginAiKick(TrackedAgent st, TrackedAgent target, AiKickKind kind, int type, double now, double cooldown, double angle, double distance = double.NaN)
+        private void BeginAiKick(TrackedAgent st, TrackedAgent target, AiKickKind kind, int type, double now, double cooldown, double angle, double distance = double.NaN,
+            AiStepIn step = AiStepIn.Off, double stopAt = double.NaN, double stepMaxSeconds = 0)
         {
+            st.AiKickPressDistance = double.NaN; // step 95
+            st.AiStepIn = step;
+            st.AiStepping = step == AiStepIn.Arrived; // "he steps" - resolved to arrived / the time ran out / cut short later
+            st.AiStepStop = stopAt;
+            if (kind == AiKickKind.Bash && !st.AiStepping) _aiKickStats.StepIn.Note(step);
             st.AiKickDistance = distance; // step 91: the enemy's distance at the decision (the bash's result binned by it)
             st.AiKickAngle = angle; // step 87: the facing-to-target angle of the decision (a friend hit is binned by it)
             st.AiKickKind = kind;
             st.AiKickPhase = AiKickMath.FirstPhase(kind);
             st.AiKickStart = now;
-            st.AiKickPhaseEnd = AiKickMath.PhaseEnd(st.AiKickPhase, now, kind);
+            st.AiKickPhaseEnd = st.AiStepping ? now + AiBashStepInMath.StepGuardSeconds(stepMaxSeconds) : AiKickMath.PhaseEnd(st.AiKickPhase, now, kind); // step 95: the guard held while he walks in
             st.AiKickReason = type;
             st.AiKickSeen = false;
             st.AiKickLanded = false;
@@ -384,6 +410,15 @@ namespace TraxCombat.Missions
             NoteHooked(st, AiKickBody.Hook(st));
             _aiKickStats.Asked(kind, type);
             MeetReadStart(st, target, AiKickMath.GuardUp(kind), now, kind == AiKickKind.Push); // step 82: the target may read it from its start (step 88: a push with the guard UP)
+            if (st.AiStepping)
+            {
+                SteerStepIn(st, now, AiKickRules.From(TraxSettings.Shared));
+                if (st.AiStepping && AiKickFirst(17))
+                    TraxLog.Info("impact", "first AI shield bash STEPS IN at " + Sec(now) + " s (step 95) - " + Name(st) + " at " + Name(target) + " " + F2(distance)
+                        + " m off: during the bash's guard he walks in through his own input (forward toward his enemy, his facing kept) until the enemy is within "
+                        + F2(stopAt) + " m, the guard held up to " + F2(AiBashStepInMath.StepGuardSeconds(stepMaxSeconds)) + " s - then the bash"
+                        + (st.Input != null ? "; the first frame's walk in his own frame (" + F2(st.Input.StepInX) + ", " + F2(st.Input.StepInY) + ")" : string.Empty));
+            }
             if (AiKickFirst(0) | (kind == AiKickKind.Push && AiKickFirst(15))) // step 88: the first push in full too
                 TraxLog.Info("impact", "first AI " + AiKickMath.KindName(kind) + " asked at " + Sec(now) + " s - " + Name(st) + " (bar " + Pct0(st.Fraction) + ", "
                     + AiKickStats.TypeName(type) + ") on " + Name(target) + " in place of the swing he was winding up (step 81) - through his own input: the guard up "
@@ -429,9 +464,11 @@ namespace TraxCombat.Missions
                         EndAiKick(i--, AiKickEnd.Played, now);
                         continue;
                     }
+                    if (st.AiStepping && st.AiKickPhase == AiKickPhase.Guard) SteerStepIn(st, now, in r); // step 95: the walk in, every tick of the guard
                     if (now >= st.AiKickPhaseEnd)
                     {
                         var next = AiKickMath.Next(st.AiKickPhase);
+                        if (next == AiKickPhase.Press && st.AiStepping) StopStepIn(st, AiStepIn.TimeRanOut, now); // step 95: the guard ran out before he arrived
                         if (next == AiKickPhase.None)
                         {
                             EndAiKick(i--, st.AiKickSeen ? AiKickEnd.Played : AiKickEnd.NotPlayed, now);
@@ -440,7 +477,8 @@ namespace TraxCombat.Missions
                         if (next == AiKickPhase.Press && AiKickMath.GuardUp(st.AiKickKind))
                         {
                             // step 80: the bash's guard is over - its path read again before the key (step 88: a push's too)
-                            var pv = PressPath(st, in r, out bool beyondBashReach);
+                            var pv = PressPath(st, in r, out bool beyondBashReach, out float pressDistance);
+                            if (st.AiKickKind == AiKickKind.Bash) NoteBashKey(st, pressDistance, now); // step 95: the enemy's distance at the bash's moment
                             if (beyondBashReach)
                             {
                                 _aiKickStats.BashReach.PressBeyond++; // step 91: the enemy stepped beyond the bash's reach during its guard
@@ -478,9 +516,13 @@ namespace TraxCombat.Missions
         {
             var st = _aiKickers[i]!;
             _aiKickStats.Ends[(int)why]++;
+            if (st.AiStepping) StopStepIn(st, AiStepIn.CutShort, now); // step 95
             if (why == AiKickEnd.Played && st.AiKickSeen && !st.AiKickLanded) _aiKickStats.NoteOutcome(st.AiKickKind, AiKickOutcome.Miss); // step 80
             if (st.AiKickKind == AiKickKind.Bash && !st.AiKickLanded) // step 91: what the bash came to, by its decision's distance
+            {
                 _aiKickStats.BashReach.NoteResult(st.AiKickDistance, st.AiKickSeen ? AiBashResult.Missed : AiBashResult.NotPlayed);
+                _aiKickStats.StepIn.NoteResult(st.AiKickPressDistance, st.AiKickSeen ? AiBashResult.Missed : AiBashResult.NotPlayed); // step 95: by the distance at the key
+            }
             if (why == AiKickEnd.NotPlayed && AiKickFirst(2))
                 TraxLog.Info("impact", "first AI " + AiKickMath.KindName(st.AiKickKind) + " NOT played at " + Sec(now) + " s - " + Name(st) + ": no kick / bash showed within "
                     + F1(AiKickMath.WatchSeconds) + " s of the press (his channel 1 " + ImpactActions.Name(st.PrevAction) + ", channel 0 " + ImpactActions.Name(st.PrevLowerAction)
@@ -523,6 +565,74 @@ namespace TraxCombat.Missions
                 }
         }
 
+        // ------------------------------------------------------------------ step 95: the step-in bash
+
+        /// <summary>Step 95: one tick of a stepping bash's guard - switched off = cut short; the read (the distance, the walk in his own frame) failed =
+        /// cut short; the enemy within the stop distance = ARRIVED (the guard ends at the bash's own 0.4 s, or now if later); else the walk written
+        /// into his input wish (the hook writes it in the next frames).</summary>
+        private void SteerStepIn(TrackedAgent st, double now, in AiKickRules r)
+        {
+            if (!r.StepInOn)
+            {
+                StopStepIn(st, AiStepIn.CutShort, now);
+                return;
+            }
+            var target = st.AiKickTarget;
+            bool read;
+            float d = float.NaN, lx = 0f, ly = 0f;
+            try
+            {
+                read = target != null && AiKickBody.StepIn(st, target, out d, out lx, out ly);
+                if (!read) d = lx = ly = float.NaN;
+            }
+            catch (Exception e)
+            {
+                Failed("aikick.stepin", e);
+                read = false;
+                d = lx = ly = float.NaN;
+            }
+            if (!read)
+            {
+                StopStepIn(st, AiStepIn.CutShort, now);
+                return;
+            }
+            if (AiBashStepInMath.Arrived(d, st.AiStepStop))
+            {
+                StopStepIn(st, AiStepIn.Arrived, now);
+                st.AiKickPhaseEnd = Math.Max(now, st.AiKickStart + AiKickMath.BashLeadSeconds); // arrived: the bash's own lead, never longer
+                return;
+            }
+            AiInputHook.SetStepIn(st, true, lx, ly, now);
+        }
+
+        /// <summary>Step 95: the walk over - counted once (arrived / the time ran out / cut short), the wish off (the attempt's own end releases the callback).</summary>
+        private void StopStepIn(TrackedAgent st, AiStepIn why, double now)
+        {
+            if (!st.AiStepping) return;
+            st.AiStepping = false;
+            st.AiStepIn = why;
+            _aiKickStats.StepIn.Note(why);
+            AiInputHook.SetStepIn(st, false, 0f, 0f, now);
+        }
+
+        /// <summary>Step 95: a bash reaches its key - the enemy's distance now (the bash's moment, after any step); a stepping one's gap closed and its
+        /// guard held past the 0.4 s lead.</summary>
+        private void NoteBashKey(TrackedAgent st, float pressDistance, double now)
+        {
+            st.AiKickPressDistance = pressDistance;
+            var si = _aiKickStats.StepIn;
+            if (st.AiStepIn == AiStepIn.Arrived || st.AiStepIn == AiStepIn.TimeRanOut)
+            {
+                si.NotePress(st.AiKickDistance, pressDistance);
+                double extra = now - st.AiKickStart - AiKickMath.BashLeadSeconds;
+                if (extra > 0.02)
+                {
+                    si.Extended++;
+                    si.ExtendedSeconds += extra;
+                }
+            }
+        }
+
         // ------------------------------------------------------------------ the hits (OnMeleeHit)
 
         /// <summary>A kick / bash of his LANDED or hit a shield (OnMeleeHit's attacker part): counted once per attempt.</summary>
@@ -538,9 +648,12 @@ namespace TraxCombat.Missions
             if (!intoShield && victim != null) _aiKickStats.NoteVictim(who);
             if (who == AiKickVictim.Friend && victim != null) FriendHitBlock(st, victim, intoShield); // step 87
             // step 80: whom it hit first - an enemy (his body / his shield), a friend (body / shield), a horse / untracked
-            if (st.AiKickKind == AiKickKind.Bash) // step 91: what the bash hit, by the enemy's distance at its decision
-                _aiKickStats.BashReach.NoteResult(st.AiKickDistance, who == AiKickVictim.Untracked ? AiBashResult.Untracked : who == AiKickVictim.Friend ? AiBashResult.Friend
-                    : intoShield ? AiBashResult.EnemyShield : AiBashResult.Enemy);
+            if (st.AiKickKind == AiKickKind.Bash) // step 91: what the bash hit, by the enemy's distance at its decision; step 95: and at its key
+            {
+                var res = who == AiKickVictim.Untracked ? AiBashResult.Untracked : who == AiKickVictim.Friend ? AiBashResult.Friend : intoShield ? AiBashResult.EnemyShield : AiBashResult.Enemy;
+                _aiKickStats.BashReach.NoteResult(st.AiKickDistance, res);
+                _aiKickStats.StepIn.NoteResult(st.AiKickPressDistance, res);
+            }
             _aiKickStats.NoteOutcome(st.AiKickKind, who == AiKickVictim.Untracked ? AiKickOutcome.Untracked
                 : who == AiKickVictim.Friend ? (intoShield ? AiKickOutcome.FriendShield : AiKickOutcome.FriendBody)
                 : intoShield ? AiKickOutcome.EnemyShield : who == AiKickVictim.Target ? AiKickOutcome.EnemyTarget : AiKickOutcome.EnemyOther);

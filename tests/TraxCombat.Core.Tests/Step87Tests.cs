@@ -147,7 +147,7 @@ public class Step87Tests
         var lines = st.SummaryLines(AiKickRules.From(s)).ToList();
         Assert.StartsWith("ai kicks - whom they hit and the strike path (step 80)", lines[5], StringComparison.Ordinal);
         string line = lines[6];
-        Assert.Equal(8, lines.Count); // step 91: + the shield bash's reach (the 8th)
+        Assert.Equal(9, lines.Count); // step 95: + the step-in bash (the 9th); step 91: + the shield bash's reach (the 8th)
         // step 90: the answer first (B() leaves Lateral 0 - on the line counts as his weapon side), the refusal renamed, the side split after the side bins
         Assert.StartsWith("ai kicks - who blocks the path (step 87 diagnostic): friend hits by bashes: 0% on his shield side (left; pushes n/a, kicks n/a) | "
             + "shoulder neighbours are 50% of the 'a friend in front of him' refusals and 100% of the friends hit", line, StringComparison.Ordinal);

@@ -614,6 +614,9 @@ namespace TraxCombat.Core
         public int AiNoShieldPushPercent => GetInt(SettingsSchema.AiNoShieldPushPercent); // step 88
         public float AiKickReachMetres => GetFloat(SettingsSchema.AiKickReachMetres);
         public float AiBashReachMetres => GetFloat(SettingsSchema.AiBashReachMetres); // step 91: a shield bash's own reach (0 = the kick reach)
+        public bool AiBashStepIn => GetBool(SettingsSchema.AiBashStepIn); // step 95: the step-in bash
+        public float AiBashStepInToMetres => GetFloat(SettingsSchema.AiBashStepInToMetres); // step 95
+        public float AiBashStepInMaxSeconds => GetFloat(SettingsSchema.AiBashStepInMaxSeconds); // step 95
         public int AiKickFacingDegrees => GetInt(SettingsSchema.AiKickFacingDegrees);
         public float AiKickCooldownSeconds => GetFloat(SettingsSchema.AiKickCooldownSeconds);
         public bool AiKickKicksARaisedShield => GetBool(SettingsSchema.AiKickKicksARaisedShield);

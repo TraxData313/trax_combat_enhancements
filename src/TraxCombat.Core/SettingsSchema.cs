@@ -1663,6 +1663,21 @@ namespace TraxCombat.Core
             "AI shield bashes: reach (m)",
             "An AI soldier with a shield bashes only an enemy within this many metres - a shield bash reaches less than a kick. Farther off (but within the kick reach above) he only kicks or swings, the bash's share split between the two in their own proportion. 0 (the default) = off - he bashes anywhere in the kick reach.");
 
+        // Step 95 (Toni 2026-10-25: "try making them step in for the bash"; his bins: the AI never stands within 1.1 m of the enemy it fights, and a
+        // bash asked from 1.1-1.6 m mostly hits a friend or nothing): during a shield bash's guard the shieldman WALKS IN toward his enemy (a forward
+        // movement in his own AI input - step 16's hook) until the enemy is within AiBashStepInToMetres, then bashes; AiBashStepInMath.
+        public static readonly ParamDef AiBashStepIn = Bool("AiBashStepIn", ImpactGroup,
+            "AI shield bashes: step in first",
+            "On: while an AI soldier raises his shield for a bash he steps in toward the enemy he fights until that enemy is close enough for the shield to reach (the distance below), then bashes - the AI otherwise fights a little too far off for a shield bash, which then sweeps into his neighbour. Never through a man of his own side; a shield wall standing firm never steps out. Kicks and weapon pushes do not step. Off: he bashes from where he stands.");
+
+        public static readonly ParamDef AiBashStepInToMetres = Float("AiBashStepInToMetres", 0, 2, ImpactGroup,
+            "AI shield bashes: step in until the enemy is within (m)",
+            "The bashing soldier walks in until the enemy he fights is within this many metres (centre to centre) - a shield bash really reaches about 1.1 m, so a little less lands it on the man rather than the edge. Already closer: no step. 0 = no step.");
+
+        public static readonly ParamDef AiBashStepInMaxSeconds = Float("AiBashStepInMaxSeconds", 0, 2, ImpactGroup,
+            "AI shield bashes: the step's longest guard (s)",
+            "A shield bash raises the shield for 0.4 s before it strikes; while the soldier is still walking in, the guard is held up to this many seconds so he arrives before the bash. 0.4 or less = never held longer - he bashes from where the 0.4 s left him.");
+
         public static readonly ParamDef AiKickFacingDegrees = Int("AiKickFacingDegrees", 0, 180, ImpactGroup,
             "AI kicks: the enemy in front within (degrees)",
             "The enemy must stand within this many degrees of where the AI soldier faces - a kick goes forward.");
@@ -2494,7 +2509,7 @@ namespace TraxCombat.Core
             ImpactShrugOffYieldsToImpact, ImpactFallBackupSeconds, ImpactToughnessWeight, ImpactRangedInHandPercent,
             ImpactRearPercent, ImpactFlankPercent, ImpactRearDegrees, ImpactFlankDegrees, ImpactRearPressure, ImpactFlankPressure,
             ImpactChargeCarrySeconds, RiposteKnockdownMaxPercent, RiposteKnockdownFrom, RiposteMomentumPercent, ImpactMultiplierCapPercent,
-            AiKicksEnabled, AiShieldmanKickPercent, AiShieldmanBashPercent, AiNoShieldKickPercent, AiNoShieldPushPercent, AiKickReachMetres, AiBashReachMetres, AiKickFacingDegrees, AiKickCooldownSeconds,
+            AiKicksEnabled, AiShieldmanKickPercent, AiShieldmanBashPercent, AiNoShieldKickPercent, AiNoShieldPushPercent, AiKickReachMetres, AiBashReachMetres, AiBashStepIn, AiBashStepInToMetres, AiBashStepInMaxSeconds, AiKickFacingDegrees, AiKickCooldownSeconds,
             AiKickKicksARaisedShield, KickBraceEnabled, KickBraceFromPressure, KickBraceToPressure, KickBraceMinBarPercent, KickBraceReelPercent,
             KickShortReelPercent, KickBraceRefusesKnockBack, AiKickFriendClearMetres, AiBashPathHalfWidthMetres, AiKickRearRankMetres, AiKickBlockAheadMetres, AiKickBlockSideMetres,
             MeetBashShieldRightStaggerPercent, MeetBashShieldRightFallPercent, MeetBashWeaponRightStaggerPercent, MeetBashWeaponRightFallPercent, MeetBashShieldWrongStaggerPercent, MeetBashShieldWrongFallPercent,

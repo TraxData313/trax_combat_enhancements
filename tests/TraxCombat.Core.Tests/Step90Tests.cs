@@ -76,7 +76,7 @@ public class Step90Tests
     [Fact]
     public void Format_21_narrows_an_untouched_path_keeps_a_tuned_one_and_leaves_format_21_alone()
     {
-        Assert.Equal(23, ConfigFile.FormatVersion);
+        Assert.Equal(24, ConfigFile.FormatVersion);
         var read = ConfigFile.Read("{ \"ConfigVersion\": 20, \"AiKickFriendClearMetres\": 0.6, \"AiBashPathHalfWidthMetres\": 0.75, \"AiKickRearRankMetres\": 1.2 }");
         var notes = ConfigFile.Migrate(read, ShippedDefault);
         Assert.Equal(0.45, read.Values["AiKickFriendClearMetres"], 9);
@@ -84,14 +84,14 @@ public class Step90Tests
         Assert.Equal(1.2, read.Values["AiKickRearRankMetres"], 9);
         Assert.False(read.Values.ContainsKey("AiKickBlockAheadMetres")); // new keys: the defaults fill them like any missing key
         Assert.Equal(2, notes.Count);
-        Assert.Contains(notes, n => n.StartsWith("AiBashPathHalfWidthMetres: 0.75 → 0.5 (format 20 → 23, the old default; step 90, Toni: only a man really in front blocks", StringComparison.Ordinal));
-        Assert.Contains(notes, n => n.StartsWith("AiKickFriendClearMetres: 0.6 → 0.45 (format 20 → 23, the old default; step 90", StringComparison.Ordinal));
+        Assert.Contains(notes, n => n.StartsWith("AiBashPathHalfWidthMetres: 0.75 → 0.5 (format 20 → 24, the old default; step 90, Toni: only a man really in front blocks", StringComparison.Ordinal));
+        Assert.Contains(notes, n => n.StartsWith("AiKickFriendClearMetres: 0.6 → 0.45 (format 20 → 24, the old default; step 90", StringComparison.Ordinal));
         // a tuned value is kept and said once
         var tuned = ConfigFile.Read("{ \"ConfigVersion\": 18, \"AiKickFriendClearMetres\": 0.6, \"AiBashPathHalfWidthMetres\": 0.9 }");
         var tn = ConfigFile.Migrate(tuned, ShippedDefault);
         Assert.Equal(0.9, tuned.Values["AiBashPathHalfWidthMetres"], 9);
         Assert.Equal(0.45, tuned.Values["AiKickFriendClearMetres"], 9);
-        Assert.Contains(tn, n => n.StartsWith("AiBashPathHalfWidthMetres: 0.9 kept - your own value (format 18 → 23; the new default 0.5", StringComparison.Ordinal));
+        Assert.Contains(tn, n => n.StartsWith("AiBashPathHalfWidthMetres: 0.9 kept - your own value (format 18 → 24; the new default 0.5", StringComparison.Ordinal));
         // a format-17 file's 0.5 goes through step 80's block straight to today's 0.45; the bash key did not exist yet
         var old = ConfigFile.Read("{ \"ConfigVersion\": 17, \"AiKickFriendClearMetres\": 0.5 }");
         ConfigFile.Migrate(old, ShippedDefault);
@@ -99,7 +99,7 @@ public class Step90Tests
         // format 21 untouched; the rewritten file is format 21 and idempotent
         Assert.Empty(ConfigFile.Migrate(ConfigFile.Read("{ \"ConfigVersion\": 21, \"AiKickFriendClearMetres\": 0.6, \"AiBashPathHalfWidthMetres\": 0.75 }"), ShippedDefault));
         string written = ConfigFile.Write(read.Values, read.Unknown);
-        Assert.Contains("\"ConfigVersion\": 23", written, StringComparison.Ordinal);
+        Assert.Contains("\"ConfigVersion\": 24", written, StringComparison.Ordinal);
         Assert.Empty(ConfigFile.Migrate(ConfigFile.Read(written), ShippedDefault));
         // on DESIGN's initial values (0.5 / 0.75) the move is silent for the bash; nothing pushed over a value that is already today's
         Assert.Empty(ConfigFile.Migrate(ConfigFile.Read("{ \"ConfigVersion\": 20, \"AiBashPathHalfWidthMetres\": 0.75 }"), p => p.Default));
@@ -265,7 +265,7 @@ public class Step90Tests
         Assert.Equal(0, b.HitNearCounted(AiKickKind.Kick));
         var s = new TraxSettings();
         var lines = st.SummaryLines(AiKickRules.From(s)).ToList();
-        Assert.Equal(8, lines.Count); // step 91: + the shield bash's reach (the 8th)
+        Assert.Equal(9, lines.Count); // step 95: + the step-in bash (the 9th); step 91: + the shield bash's reach (the 8th)
         string line = lines[6];
         Assert.StartsWith("ai kicks - who blocks the path (step 87 diagnostic): friend hits by bashes: 75% on his shield side (left; pushes 0%, kicks 100%) | shoulder neighbours are ", line, StringComparison.Ordinal);
         Assert.Contains("| REFUSED a friend in front of him (step 90; step 80's 'behind a friend') - kicks 0; bashes 3: ahead", line, StringComparison.Ordinal);

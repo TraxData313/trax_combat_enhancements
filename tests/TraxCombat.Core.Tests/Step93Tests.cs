@@ -47,7 +47,7 @@ public class Step93Tests
         }
         Assert.Equal(SettingsSchema.AthleticsPoolBase, all[at + 7]);     // step 94 sits between them
         Assert.Equal(SettingsSchema.AthleticsPoolPerSkill, all[at + 8]);
-        Assert.Equal(23, ConfigFile.FormatVersion); // new keys: no migration
+        Assert.Equal(24, ConfigFile.FormatVersion); // new keys: no migration
 
         var s = OldPool.Settings();
         var r = AthleticsRules.From(s);

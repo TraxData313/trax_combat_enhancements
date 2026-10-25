@@ -49,6 +49,15 @@ namespace TraxCombat.Missions
 
         /// <summary>Step 68: is <paramref name="other"/> an enemy of <paramref name="st"/> (whom a landed kick hit)?</summary>
         bool IsEnemy(TrackedAgent st, TrackedAgent other);
+
+        /// <summary>Step 95: the step-in's read, every tick of a stepping bash's guard - the distance to <paramref name="target"/> (m) and the walk toward
+        /// him in <paramref name="st"/>'s own input frame (<see cref="TraxCombat.Core.AiBashStepInMath.Vector"/>). False = no read (the target gone,
+        /// degenerate) - he stops walking.</summary>
+        bool StepIn(TrackedAgent st, TrackedAgent target, out float distance, out float localX, out float localY);
+
+        /// <summary>Step 95: is the walk's corridor - <paramref name="step"/> m toward <paramref name="target"/> - free of his own side
+        /// (<see cref="TraxCombat.Core.AiBashStepInMath.InCorridor"/>)? Asked once, when a bash would step.</summary>
+        bool StepInClear(TrackedAgent st, Agent target, double step);
     }
 
     /// <summary>The game's side: native reads (the AI's own target, positions, the facing), managed equipment reads; main thread.</summary>
@@ -144,6 +153,47 @@ namespace TraxCombat.Missions
         }
 
         public bool IsEnemy(TrackedAgent st, TrackedAgent other) => st.Agent.IsEnemyOf(other.Agent);
+
+        /// <summary>Step 95: the positions on the ground plane and his body frame (<c>Agent.Frame.rotation</c> - step 16's backpedal does the same).</summary>
+        public bool StepIn(TrackedAgent st, TrackedAgent target, out float distance, out float localX, out float localY)
+        {
+            distance = float.NaN;
+            localX = localY = 0f;
+            var a = st.Agent;
+            var e = target.Agent;
+            if (e == null || target.Removed || !e.IsActive()) return false;
+            var p = a.Position.AsVec2;
+            var q = e.Position.AsVec2;
+            double dx = q.x - p.x, dy = q.y - p.y;
+            distance = (float)System.Math.Sqrt(dx * dx + dy * dy);
+            var rot = a.Frame.rotation;
+            if (!TraxCombat.Core.AiBashStepInMath.Vector(dx, dy, rot.s.x, rot.s.y, rot.f.x, rot.f.y, out double x, out double y)) return false;
+            localX = (float)x;
+            localY = (float)y;
+            return true;
+        }
+
+        /// <summary>Step 95: the game's proximity search for his side (the list reused), each one against the corridor; horses of his side too.</summary>
+        public bool StepInClear(TrackedAgent st, Agent target, double step)
+        {
+            var a = st.Agent;
+            var m = Mission.Current;
+            if (m == null || a.Team == null || target == null) return false;
+            var p = a.Position.AsVec2;
+            var t = target.Position.AsVec2;
+            float radius = (float)(System.Math.Max(0, step) + TraxCombat.Core.AiBashStepInMath.CorridorAhead + TraxCombat.Core.AiBashStepInMath.CorridorHalfWidth);
+            m.GetNearbyAllyAgents(p, radius, a.Team, _allies);
+            bool clear = true;
+            for (int i = 0; i < _allies.Count && clear; i++)
+            {
+                var f = _allies[i];
+                if (f == null || f == a || f == a.MountAgent || !f.IsActive()) continue;
+                var q = f.Position.AsVec2;
+                if (TraxCombat.Core.AiBashStepInMath.InCorridor(p.x, p.y, t.x, t.y, q.x, q.y, step)) clear = false;
+            }
+            _allies.Clear();
+            return clear;
+        }
 
         /// <summary>Step 87: the friend in his frame now (his position and <c>GetMovementDirection</c> - the probe's facing) and his formation place.</summary>
         public TraxCombat.Core.AiKickBlocker Locate(TrackedAgent st, Agent friend)

@@ -17,16 +17,16 @@ public class FallsOnTheHitTests
     [Fact]
     public void A_format_10_file_at_step_62s_backup_gets_0_2_once_a_tuned_one_is_kept_and_said()
     {
-        Assert.Equal(23, ConfigFile.FormatVersion);
+        Assert.Equal(24, ConfigFile.FormatVersion);
         var read = ConfigFile.Read("{ \"ConfigVersion\": 10, \"ImpactFallBackupSeconds\": 0.5 }");
         var notes = ConfigFile.Migrate(read, Shipped);
         Assert.Single(notes);
-        Assert.StartsWith("ImpactFallBackupSeconds: 0.5 → 0.2 (format 10 → 23, the old default; step 63, Anton's battle", notes[0], StringComparison.Ordinal);
+        Assert.StartsWith("ImpactFallBackupSeconds: 0.5 → 0.2 (format 10 → 24, the old default; step 63, Anton's battle", notes[0], StringComparison.Ordinal);
         Assert.Equal(0.2, read.Values["ImpactFallBackupSeconds"], 9);
         var mine = ConfigFile.Read("{ \"ConfigVersion\": 10, \"ImpactFallBackupSeconds\": 1.0 }");
         var kept = ConfigFile.Migrate(mine, Shipped);
         Assert.Single(kept);
-        Assert.StartsWith("ImpactFallBackupSeconds: 1.0 kept - your own value (format 10 → 23; the new default 0.2", kept[0], StringComparison.Ordinal);
+        Assert.StartsWith("ImpactFallBackupSeconds: 1.0 kept - your own value (format 10 → 24; the new default 0.2", kept[0], StringComparison.Ordinal);
         Assert.Equal(1.0, mine.Values["ImpactFallBackupSeconds"], 9);
         // a format-11 file is never touched; a file without the key gets nothing to say; on DESIGN's initial 0.5 nothing moves
         Assert.Empty(ConfigFile.Migrate(ConfigFile.Read("{ \"ConfigVersion\": 11, \"ImpactFallBackupSeconds\": 0.5 }"), Shipped));
@@ -251,14 +251,14 @@ public class RearBlowTests
         var read = ConfigFile.Read("{ \"ConfigVersion\": 10, \"ImpactRearPercent\": 200, \"ImpactFlankPercent\": 140, \"ImpactRearDegrees\": 120 }");
         var notes = ConfigFile.Migrate(read, Shipped63);
         Assert.Equal(2, notes.Count);
-        Assert.StartsWith("ImpactRearPercent: 200 → 100 (format 10 → 23, the old default; step 63, Anton's battle: a blow from behind now adds PRESSURE", notes[0], StringComparison.Ordinal);
-        Assert.StartsWith("ImpactFlankPercent: 140 → 100 (format 10 → 23, the old default; step 63", notes[1], StringComparison.Ordinal);
+        Assert.StartsWith("ImpactRearPercent: 200 → 100 (format 10 → 24, the old default; step 63, Anton's battle: a blow from behind now adds PRESSURE", notes[0], StringComparison.Ordinal);
+        Assert.StartsWith("ImpactFlankPercent: 140 → 100 (format 10 → 24, the old default; step 63", notes[1], StringComparison.Ordinal);
         Assert.Equal(100, read.Values["ImpactRearPercent"], 9);
         Assert.Equal(100, read.Values["ImpactFlankPercent"], 9);
         var mine = ConfigFile.Read("{ \"ConfigVersion\": 10, \"ImpactRearPercent\": 300 }");
         var kept = ConfigFile.Migrate(mine, Shipped63);
         Assert.Single(kept);
-        Assert.StartsWith("ImpactRearPercent: 300 kept - your own value (format 10 → 23; the new default 100", kept[0], StringComparison.Ordinal);
+        Assert.StartsWith("ImpactRearPercent: 300 kept - your own value (format 10 → 24; the new default 100", kept[0], StringComparison.Ordinal);
         Assert.Empty(ConfigFile.Migrate(ConfigFile.Read("{ \"ConfigVersion\": 11, \"ImpactRearPercent\": 200 }"), Shipped63));
     }
 }
