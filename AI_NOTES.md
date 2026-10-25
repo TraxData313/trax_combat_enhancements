@@ -8684,3 +8684,95 @@ steps (they count recomputes and chances). The older aggression / pace smokes al
 4. The first start logs `[config] migrated config.json …` once (format 24 → 25) with the four moves.
 
 **DEPLOY**: `tools\deploy.ps1` ran whole (the build, the AssemblyGuard, the offline smoke - all passed, 212), installed as Modules\TraxCombatEnhancements.Dev; `tools\SmartAppControl\loadcheck.ps1`: both installed DLLs LOADED (`1.3.2+6bff3824...`). The game and the launcher were not running. Not uploaded.
+
+## Step 97 — the step-in through the press clamp + a shorter kick cooldown (built 2026-10-25; dev build only, not uploaded)
+
+**Toni's T5 battle (2026-10-25 13:24, the step-95 line)**: bashes asked 246 - stepped in 172 (arrived 0, the time ran out 167, cut short 5), refused in
+the shield wall 74; the gap closed 0.05 m (1.31 → 1.26 m); 1.1-1.2 m at the bash 18 enemy / 13 his shield / 102 FRIEND / 10 missed. Step 81's refusals:
+cooldown 145 (the biggest), path 79; shieldmen kick 18.6 / bash 29.4 / swing 52 vs 27 / 43 / 30. The manager's hypothesis: step 77's press clamp (last in
+`AiInputHook.Apply`) eats the step-in. DESIGN decision 89.
+
+**97.0 WAS THE PRESS CLAMP REALLY IN THE WAY? (from the code)** Only partly. `SteerPresser` sets `PressFront` only while the man stands within
+`PressMath.LookaheadMetres` 0.6 m of the enemy line's FRONT (the median of each man-wide bin's front-most man); the clamp then removes the positive
+component along the line's inward normal of the FINAL vector - the step-in's included. So it eats a step only where his enemy stands behind the front's
+median (a ragged front: an enemy 1.3 m off, 0.7 m behind the front = the clamp on from the start). It cannot explain 0 of 172 arrivals by itself: men
+fighting a non-line (a crowd, a broken line) or an enemy standing on the median have no front clamp at all. The rest (step 78's rest clamp, the block
+hold, the wall's pull and every other wish) can only replace / clamp a step for men who are resting / out of their block / out of their slot. So the
+likelier rest is the ENGINE - see 97.5. Both are now measured per frame.
+
+**97.1 THE EXEMPTION (Core `AiBashStepInHold.cs` - `AiStepInHoldMath`; Module `AiInputHook.cs`)**
+- The rule: while a step-in runs, the FRONT clamp lets the step's forward part through iff `PressRoomMetres` = min(the enemy's distance − his stop,
+  his distance to the enemy line's front − `PressFrontMarginMetres` 0.15) > 0 (`PressLetsThrough`; any NaN = the clamp as always). His stop =
+  max(`AiBashStepInToMetres` 0.95, a held wall man's leash stop). In words: toward his own enemy (the step's vector points at him), cut at 0.95 m,
+  never past the line's front. The 0.15 m margin (plumbing) = a guarded walk in one 0.1 s steer interval - the front distance is SteerPresser's, written
+  every 0.1 s into `AiInputState.PressFrontDistance` (NaN when the front clamp is off / the man is walked out / SetPress off / Clear).
+- `ApplyPressClamp(s, …, letStepIn, out letThrough)`: letStepIn = the step-in WROTE this frame (no other wish moved him) && `StepInPassesPress`; then the
+  front clamp is skipped (letThrough = it would have cut); the rear-rank SIDE clamp, the press's walk, the rest clamp and the old 4-argument overload
+  (the Athletics-off path, the smokes) unchanged.
+- The step-in's own state moved to a lazily allocated `StepInRecord` (`AiInputState.StepRec` - the enemy's distance and his stop written by
+  `SetStepIn(…, enemyDistance, stop)` every tick from `SteerStepIn`, the frames by reason, the frame count, the forward sum). Allocated at a man's first
+  step-in only: the first draft put the fields / the array on every `AiInputState` and step 75's cost smoke (428 men getting a state over 600 ticks,
+  budget 256 KB) crossed 256 KB (212992 → 262144 bytes); with the record it reads 221184.
+- Kept narrow (decided): no new setting - the step-in's own switch covers it; a stronger wish still replaces the step (a step back, the wall's pull, a
+  rest's walk, the press's walk, a swap, courage's walk back, the flock, the block hold - each by design).
+
+**97.2 WHAT HOLDS IT BACK (Core `StepInHold`, `AiStepInHoldStats`; Module `AiInputHook.Apply`, `AthleticsLogic.AiKicks.cs`)**
+- `Apply`'s nested wishes are now one else-if chain that remembers which wish wrote (`won`). For every frame of a LIVE step-in (StepIn, the Guard phase,
+  `StepInOn` = ModEnabled → AiKicksEnabled → AiBashStepIn) where the step-in or a stronger wish wrote: `Classify(won, pressBit, forward after the press
+  clamp, restBit, forward after the rest clamp, letThrough)` → a stronger wish by name / PressCut (only if the forward part really fell below 0.999) /
+  RestClamp / PressLetThrough / None; the forward stick out of the filter (`Forward` - along the step's direction, clamped -1..1) summed.
+- Per step-in from his positions: `IAiKickBody.StepIn` now also returns his and the target's positions; `NoteStepWalk` (every SteerStepIn read) keeps
+  the start, the unit line to the enemy at the start, the last read and the peak speed along that line between reads (`TrackedAgent.AiStep*`);
+  `NoteStepRecord` at every `StopStepIn` (arrived / the time ran out / cut short): seconds = last read − first, covered = his walk along the first line
+  → `AiStepInHoldStats.NoteStep(frames, frameCount, forwardSum, seconds, covered, peak)` (a step with every frame None / let through = CLEAR).
+  `NoteStart(leashShortened)` at each step's start (the wall leash stop beyond 0.95).
+- The engine verdict (`EngineVerdict`): ≥ `VerdictMinSteps` 3 clear step-ins; their speed below `EngineStuckMetresPerSecond` 0.25 m/s = "IT'S THE ENGINE:
+  … nothing of ours held them, the engine itself barely moves a guarding AI man forward (its acceleration from a stand …)", else "the engine moves him".
+- Logs: the first-time line 19 (`_aiKickFirst` 19 → 20) `[impact] first AI step-in MEASURED at T s (step 97) - <man> (<outcome>): N input frames - what
+  held them back: …; he walked X m toward his enemy in Y s (V m/s, peak P m/s) with the stick 1.00 asked, O out of our filter[ - nothing of ours held this
+  step back: what he walked is the engine's answer]`; step 95's [summary] line gains (while the step-in is on, or anything was recorded) `| what held the
+  step back (step 97 - each step-in frame's forward stick toward his enemy): frames N - nothing n (p%), the press clamp LET THROUGH (it would have cut -
+  step 97) a, the press clamp still cut (his enemy within his stop / at the enemy line's front) b, the rest clamp c, a stronger wish d (names); the wall's
+  leash shortened the stop of L of S step-ins | per step-in from his positions: he walked X m toward his enemy in Y s (V m/s, peak P m/s) with the stick
+  asked 1.00, out of our filter O (n K); <verdict>`. The OFF line is unchanged.
+
+**97.3 THE COOLDOWN + CONFIG FORMAT 26**: defaults.json `AiKickCooldownSeconds` 2 → **1** (one cooldown for kicks, bashes and pushes - it always was);
+the hint says so ("a kick, a shield bash or a weapon push … 1 s since step 97 (2 s before)"). `ConfigFile.Migrate` `from < 26 && from >= 19`:
+`MoveOrKeepIfMoved(AiKickCooldownSeconds, 2)` - a format 13-18 file's 8 goes through step 81's block straight to today's 1 (one note, step 81's
+words). Older format tests "→ 25" → "→ 26" and `"ConfigVersion": 26`; Step81Tests' defaults.json check 2.0 → 1.0.
+
+**97.4 MEASURED OFFLINE**: tests 1370 → 1376 (Step97Tests 6: the exemption rule - through beyond 0.95, cut at 0.95, the front's margin, past the front,
+a leash stop, NaN; the filing - a stronger wish first, the cut only when the forward part fell, the rest clamp, let through, none; the measurement and
+both verdicts, the clause text; the clause on step 95's line ON and the OFF line unchanged; the cooldown shipped 1 and format 26 move / keep / 19 / 18
+chain / untouched / idempotent; 0 bytes). Smoke 212 → 213 (`StepInThroughThePressClamp`, Program.Step97.cs - through the real logic and the REAL
+`AiInputHook.Apply` with a stand-in SteerPresser (the front clamp into the line, the front distance every 0.1 s) and a stand-in engine walking him at
+1.2 m/s along the filter's vector: the clamp alone (no front read) = 0.00 m, the time ran out, 30 press-cut frames; with step 97 = walked 0.36 m, the
+enemy 0.94 m off at the bash (ARRIVED), 15 let-through frames, the walk measured from his positions 0.36; the enemy 1 m behind the front (front 0.3 m
+ahead) = walked 0.24 m, never past it, 20 press-cut frames; a step back's backpedal filed 30 frames; a stand-in engine that never moves him = 3 clear
+step-ins, 0.00 m in 0.62 s, IT'S THE ENGINE; the first-time and [summary] lines). Step 95's grind now reads "the engine moves him: 323 step-ins … 0.35 m
+in 0.29 s (1.20 m/s)" - the stand-in's speed, as it should. `AiKickDefaults` pins the 2 s cooldown for the older smokes (Step81's check asserts it).
+
+**97.5 THE ENGINE AND A GUARDING AI MAN (the v1.4.8 decompile, %TEMP%\trax_decomp)**
+- Nothing MANAGED ignores or scales a defending AI agent's movement input: `OnAIInputSet` hands us the AI's input before use and our vector is what the
+  engine gets (step 16's backpedal, step 63's wall pull prove the vector moves men). Movement itself is native.
+- His speed in a fight: `AgentDrivenProperties.CombatMaxSpeedMultiplier` (DrivenProperty 88) - the Sandbox model: min(Lerp(BipedalCombatSpeedMinMultiplier
+  0.74, …Max 0.84, weight / gear), 1) (managed_core_parameters.xml) - a man in combat stance moves at ~74-84% of his top speed; no "zero while
+  defending" anywhere managed.
+- His ACCELERATION: `TopSpeedReachDuration` (86) = 2.5 + max(5 − (1 + skill × 0.01), 1) / 3.5 − min(weight / (weight + gear), 0.8) - **2.3-2.8 s from a
+  stand to top speed on foot** (step 35's finding). A fighting AI man stands (or shuffles back); our 0.6 s guard then covers a few cm before the time runs
+  out - exactly the 0.05 m Toni saw. Also `AiCheckApplyMovementInterval` ~0.1 s / `AiMovementDelayFactor` (the AI applies its movement at intervals -
+  native) and the engine's own crowd / collision avoidance may hold a man pressed against his enemy's shield.
+- The formation integrity flag (step 41's "keep with the formation") steers the native AI's own movement target; it should not filter an input vector we
+  write after the AI decided - not verifiable offline.
+- THE SAFE FIX IF THE BATTLE SAYS "IT'S THE ENGINE" (not built - asked first): step 35's seam - while a step-in runs, the stat decorator caps
+  `TopSpeedReachDuration` (like `SprintTopSpeedReachSeconds` for a sprint; `SpeedFactorsFor`'s `out reach`, a recompute at the step's start and end via
+  `SpeedDirty`). Caveat: a recompute rides the ≤ 50-a-tick budget, so the cap may land a tick or two late; a 0.6 s guard may also need to be longer.
+
+**UNVERIFIED — only the game can tell (PLAYTEST D61)**
+1. The verdict in a real battle: "the engine moves him" (arrivals rise) or "IT'S THE ENGINE" (then the acceleration fix above).
+2. How much of the T5 battle's step-ins the press clamp ate (the let-through count against the clear frames).
+3. The cooldown at 1 s: the shares near 27 / 43 / 30, the cooldown refusals well below 145.
+
+**DEPLOY**: `tools\deploy.ps1` built, guarded and ran the offline smoke (213 - all passed) but could NOT install: the Bannerlord launcher
+(TaleWorlds.MountAndBlade.Launcher) holds Modules\TraxCombatEnhancements.Dev's DLL - nothing was killed; run the deploy again with the launcher closed.
+`tools\SmartAppControl\loadcheck.ps1`: both installed DLLs LOADED - still step 96's build (`1.3.2+6bff3824...`), a consistent pair. Not uploaded.
