@@ -137,6 +137,41 @@ namespace TraxCombat.Tools
                 b.Relation = AiKickBlockMath.RelationOf(same, true, b.Rank, b.FriendRank);
             }
 
+            /// <summary>Step 95: the step-in's reads on <see cref="Bodies"/> (his frame: forward = his facing, right = (FY, -FX)); without bodies the
+            /// target's stand-in distance and a straight forward walk.</summary>
+            public int StepInReads, StepInClearReads;
+
+            public bool StepIn(TrackedAgent st, TrackedAgent target, out float distance, out float localX, out float localY)
+            {
+                StepInReads++;
+                distance = float.NaN;
+                localX = localY = 0f;
+                if (Gone.Contains(target.AgentIndex)) return false;
+                if (!Bodies.TryGetValue(st.AgentIndex, out var me) || !Bodies.TryGetValue(target.AgentIndex, out var t))
+                {
+                    if (!Targets.TryGetValue(st.AgentIndex, out var tg) || !ReferenceEquals(tg.Target, target)) return false;
+                    distance = tg.Distance;
+                    localY = 1f;
+                    return true;
+                }
+                double dx = t.X - me.X, dy = t.Y - me.Y;
+                distance = (float)Math.Sqrt(dx * dx + dy * dy);
+                if (!AiBashStepInMath.Vector(dx, dy, me.FY, -me.FX, me.FX, me.FY, out double x, out double y)) return false;
+                localX = (float)x;
+                localY = (float)y;
+                return true;
+            }
+
+            /// <summary>Step 95: the walk's corridor against every man of his side on <see cref="Bodies"/> (none placed: <see cref="FriendBlocks"/>).</summary>
+            public bool StepInClear(TrackedAgent st, Agent target, double step)
+            {
+                StepInClearReads++;
+                if (!Bodies.TryGetValue(st.AgentIndex, out var me) || !Bodies.TryGetValue(target.Index, out var t)) return !FriendBlocks.Contains(st.AgentIndex);
+                foreach (var kv in Bodies)
+                    if (kv.Key != st.AgentIndex && kv.Value.Side == me.Side && AiBashStepInMath.InCorridor(me.X, me.Y, t.X, t.Y, kv.Value.X, kv.Value.Y, step)) return false;
+                return true;
+            }
+
             public bool IsEnemy(TrackedAgent st, TrackedAgent other)
             {
                 if (Bodies.TryGetValue(st.AgentIndex, out var a) && Bodies.TryGetValue(other.AgentIndex, out var b)) return a.Side != b.Side;
@@ -178,12 +213,25 @@ namespace TraxCombat.Tools
             S.Set(SettingsSchema.AiShieldmanKickPercent, 20, SettingSources.File);
             S.Set(SettingsSchema.AiShieldmanBashPercent, 35, SettingSources.File);
             S.Set(SettingsSchema.AiNoShieldPushPercent, 0, SettingSources.File);
+            S.Set(SettingsSchema.AiNoShieldKickPercent, 35, SettingSources.File); // step 95 shipped 45 - the older steps keep step 81's 35
             // step 91: the older steps assert numbers with the bash rolled anywhere in the kick reach - the bash reach off (Step91Reach sets the shipped one)
             S.Set(SettingsSchema.AiBashReachMetres, 0.0, SettingSources.File);
+            // step 95: the older steps bash from where the man stands - the step-in off (Step95StepIn sets the shipped one)
+            S.Set(SettingsSchema.AiBashStepIn, false, SettingSources.File);
         }
 
         /// <summary>Step 88: the shipped shares (the embedded defaults.json - shieldman 25 / 40 / 35, no shield 35 / 20 / 45).</summary>
         private static void Step88Shares()
+        {
+            // step 95 moved the shipped shares on (27 / 43, 45 / 25): steps 88-91's checks assert step 88's - 25 / 40, 35 / 20 (Step95Shares the shipped ones)
+            S.Set(SettingsSchema.AiShieldmanKickPercent, 25, SettingSources.File);
+            S.Set(SettingsSchema.AiShieldmanBashPercent, 40, SettingSources.File);
+            S.Set(SettingsSchema.AiNoShieldKickPercent, 35, SettingSources.File);
+            S.Set(SettingsSchema.AiNoShieldPushPercent, 20, SettingSources.File);
+        }
+
+        /// <summary>Step 95: the shipped shares (defaults.json - 27 / 43 / 30, 45 / 25 / 30).</summary>
+        private static void Step95Shares()
         {
             foreach (var p in new[] { SettingsSchema.AiShieldmanKickPercent, SettingsSchema.AiShieldmanBashPercent, SettingsSchema.AiNoShieldKickPercent, SettingsSchema.AiNoShieldPushPercent })
                 S.Set(p, p.Default, SettingSources.File);

@@ -32,6 +32,11 @@ namespace TraxCombat.Tools
             public int KicksAtEmpty, KicksSpent, FewestAtWindUp = int.MaxValue;
             public string SharesLine = string.Empty;
 
+            /// <summary>Step 95: the input frames the real filter wrote a step-in walk in - toward his enemy (the line to him within ~18°), away; the
+            /// farthest a man walked out of his line.</summary>
+            public int StepFrames, StepFramesToward, StepFramesAway;
+            public double FarthestStep;
+
             public double FriendShare => EnemyHits + FriendHits > 0 ? (double)FriendHits / (EnemyHits + FriendHits) : 0;
             public double EnemyPerManMinute => ContactMinutes > 0 ? EnemyHits / ContactMinutes : 0;
             public double AskedPerManMinute => ContactMinutes > 0 ? Asked / ContactMinutes : 0;
@@ -97,8 +102,11 @@ namespace TraxCombat.Tools
         /// 0.1 s): swings and kicks / bashes spend from it. <paramref name="keepFresh"/> off = no refill at all (every swing 10, every kick / bash 8 drain
         /// the bar to empty - a tired line).
         /// </summary>
-        private static LineFightResult FightTwoLines(int seed, int baseIndex, bool stack = false, bool keepFresh = true, double frontGap = 1.3, double bashEngineReach = double.NaN)
+        private static LineFightResult FightTwoLines(int seed, int baseIndex, bool stack = false, bool keepFresh = true, double frontGap = 1.3, double bashEngineReach = double.NaN,
+            double stepWalkSpeed = 0)
         {
+            // step 95: stepWalkSpeed > 0 = the stand-in engine walks a man along the vector the REAL input filter (AiInputHook.Apply) writes for his
+            // step-in, at that speed (m/s), and lets him drift back to his place in the line at half of it afterwards; 0 = nobody moves by input (80-91)
             const int files = 12;
             const double spacing = 0.9, rankGap = 1.0, seconds = 180, dt = 1.0 / 30;
             // the stand-in ENGINE's kick / bash: a foot 1.25 m out + a body's 0.4; 0.12 m (a foot) / 0.3 m (a shield) either side + a body's 0.4
@@ -130,6 +138,8 @@ namespace TraxCombat.Tools
             var phaseEnd = new double[n];
             var nextReady = new double[n];
             var inAttempt = new bool[n];
+            var ex = new double[n];   // step 95: how far his step-in walked him out of his place
+            var ey = new double[n];
             double t = 80000 + baseIndex;
             for (int i = 0; i < n; i++)
             {
@@ -162,8 +172,8 @@ namespace TraxCombat.Tools
                     ox[i] = Math.Max(-0.15, Math.Min(0.15, ox[i] + (rnd.NextDouble() - 0.5) * 0.04)); // never closer than 0.6 m to a neighbour (two bodies)
                     oy[i] = Math.Max(-0.2, Math.Min(0.2, oy[i] + (rnd.NextDouble() - 0.5) * 0.04));
                     turn[i] = Math.Max(-30, Math.Min(30, turn[i] + (rnd.NextDouble() - 0.5) * 3));
-                    x[i] = bx[i] + ox[i];
-                    y[i] = by[i] + oy[i];
+                    x[i] = bx[i] + ox[i] + ex[i];
+                    y[i] = by[i] + oy[i] + ey[i];
                 }
                 for (int i = 0; i < n; i++)
                 {
@@ -227,6 +237,46 @@ namespace TraxCombat.Tools
                     }
                 }
                 logic.TickAiKicks(t);
+                if (stepWalkSpeed > 0)
+                {
+                    // step 95: the real input filter on every stepping man's frame (his own AI asks for no move); the walk in the world = x right + y forward
+                    for (int i = 0; i < n; i++)
+                    {
+                        var m = men[i];
+                        var inp = m.Input;
+                        if (inp != null && inp.StepIn && m.AiKickPhase == AiKickPhase.Guard)
+                        {
+                            uint flags = 0;
+                            float vx = 0f, vy = 0f;
+                            AiInputHook.Apply(m, inp, true, ref flags, ref vx, ref vy);
+                            double wx = vx * fy[i] + vy * fx[i], wy = -vx * fx[i] + vy * fy[i];
+                            double len = Math.Sqrt(wx * wx + wy * wy);
+                            if (len > 1e-6)
+                            {
+                                res.StepFrames++;
+                                int tg = Array.IndexOf(men, m.AiKickTarget); // the man his bash is aimed at (the nearest enemy may have changed)
+                                if (tg < 0) tg = target[i];
+                                double tx = x[tg] - x[i], ty = y[tg] - y[i], tl = Math.Sqrt(tx * tx + ty * ty);
+                                double cos = tl > 1e-6 ? (wx * tx + wy * ty) / (len * tl) : 0;
+                                if (cos > 0.95) res.StepFramesToward++;
+                                else if (cos < 0) res.StepFramesAway++;
+                                ex[i] += stepWalkSpeed * dt * wx / len;
+                                ey[i] += stepWalkSpeed * dt * wy / len;
+                            }
+                        }
+                        else if (m.AiKickPhase == AiKickPhase.None)
+                        {
+                            double el = Math.Sqrt(ex[i] * ex[i] + ey[i] * ey[i]), back = 0.5 * stepWalkSpeed * dt;
+                            if (el <= back) ex[i] = ey[i] = 0;
+                            else
+                            {
+                                ex[i] -= back * ex[i] / el;
+                                ey[i] -= back * ey[i] / el;
+                            }
+                        }
+                        res.FarthestStep = Math.Max(res.FarthestStep, Math.Sqrt(ex[i] * ex[i] + ey[i] * ey[i]));
+                    }
+                }
                 for (int i = 0; i < n; i++)
                 {
                     var m = men[i];
