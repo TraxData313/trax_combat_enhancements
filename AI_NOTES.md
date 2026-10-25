@@ -8776,3 +8776,70 @@ in 0.29 s (1.20 m/s)" - the stand-in's speed, as it should. `AiKickDefaults` pin
 **DEPLOY**: `tools\deploy.ps1` built, guarded and ran the offline smoke (213 - all passed) but could NOT install: the Bannerlord launcher
 (TaleWorlds.MountAndBlade.Launcher) holds Modules\TraxCombatEnhancements.Dev's DLL - nothing was killed; run the deploy again with the launcher closed.
 `tools\SmartAppControl\loadcheck.ps1`: both installed DLLs LOADED - still step 96's build (`1.3.2+6bff3824...`), a consistent pair. Not uploaded.
+
+## Step 98 — an off-screen unit never takes the charge (built 2026-10-25; dev build only, not uploaded)
+
+**Toni (2026-10-25, again)**: "I have selected my archers and I am pointing there and instead for some reason the bandits far on the left outside the
+screen are highlighted and I click on them and I'm ordering a charge". An enemy unit OFF the screen had vanilla's focus (its marker highlighted) and the
+click became a targeted charge; step 72's guard did not turn it into a move.
+
+**Root cause, from the decompile (`%TEMP%\trax_decomp\View\TaleWorlds.MountAndBlade.View.MissionViews\MissionFormationTargetSelectionHandler.cs`,
+`TryGetFormationDistanceToCenter`)**:
+
+```
+MBWindowManager.WorldToScreenInsideUsableArea(ActiveCamera, median.GetGroundVec3() + new Vec3(0, 0, 3), ref x, ref y, ref w);
+bool flag = w <= 0f;                                  // behind the camera
+if (num >= 1000f)      { not focusable }
+else if (num <= 10f)   { isFormationFocusable = !flag; distanceToScreenCenter = 0f; }   // <- no screen test at all
+else if (flag)         { not focusable }
+else                   { distance = |(x, y) - screen centre| }   // the 70 px rule
+```
+
+`num` = the formation's median → the camera on the ground plane. A unit within **10 m of the camera** is focused (distance 0, first in the list
+`GauntletOrderUIHandler.GetVisualOrderExecutionParameters` takes `[0]` of) whenever its banner point is merely IN FRONT of the camera plane (w > 0) -
+anywhere left / right / below the screen. `MBWindowManager.WorldToScreenInsideUsableArea` (TaleWorlds.MountAndBlade\MBWindowManager.cs) does NOT clamp: it
+is the native `WorldToScreen` minus the usable area's margins, so an off-screen point keeps off-screen coordinates; only the 10 m rule can focus an
+unseen unit (the 70 px rule needs the point near the screen centre). `GauntletOrderUIHandler.TickInput` charges `_focusedFormationsCache[0]` on ANY
+`IsKeyReleased(LeftMouseButton)` in cursor state 0, and `MissionGauntletFormationMarker` highlights every unit in the same list - Toni's highlight.
+A scattered bandit / looter group's MEDIAN can sit within 10 m of the order camera while the men Toni sees are off to the side.
+
+**Why step 72 did not stop it - what the log could and could not say.** Step 72's replica picks the same unit (`VanillaPick` returns the first ≤ 10 m
+unit in front) and keeps a charge only for a press within `OrderChargeIconPixels` of its projected point - an off-screen point with the cursor on the
+screen should fail that, so a SEEN press should already have been converted. The log could not tell which way it went: every click whose release
+closed the orders menu (vanilla's `TryCloseToggleOrder` after the charge or the placer's move, unless the order key is held) reached the guard's next
+tick with `IsOrderMenuOpen` false and was filed **"cut short"** - Toni's 19:07 / 19:24 battles: "0 clicks ... 5 / 4 cut short ... targeted charges the game
+issued 1 / 2". Kept charges and LEAKS both vanished into "cut short". Two holes remain possible and are both closed now regardless: (a) the native
+projection of a point near the camera plane (w small, the unit beside the camera) landing within 30 px of the cursor while off the screen (the native
+`WorldToScreen` is not decompilable - unknown); (b) a release whose press the guard never saw (the guard only acted between its own press and release).
+
+**The fix (Core `OrderClick.cs`, Module `OrderClickGuard.cs` / `OrderClickView.cs`)**:
+- `OrderClickMath.OnScreen(x, y, behind, width, height)` - in front of the camera (w > 0) and inside the usable area (`ScreenManager.UsableArea` ×
+  `Screen.RealScreenResolution*`); NaN / infinity = not on it.
+- The view's `Look` fills an `OrderClickLook` (the pick, OnScreen, NearCamera, the icon / drag distances, the camera distance, the screen point and w,
+  the cursor, the screen size - `Describe()` for the log) and is called EVERY frame the orders menu is open (was: only with the button down).
+- `OrderClickTracker.Frame(…, targetOnScreen, …)`: a press keeps a charge only ON an on-screen icon (`PressOnIcon` and each held frame need
+  `targetOnScreen`); with NO button down the game's targeting is held off while its focus is off the screen (`IdleOffScreen`) - so even a press the
+  guard never saw finds no unit at its release, and the off-screen unit is not highlighted. A visible focus with no button = step 72 exactly (the F keys
+  and the highlight vanilla). The old 7-argument `Frame` = targetOnScreen = hasTarget (step 72's tests unchanged).
+- Counting: a click whose release closed the menu (`Released`, or `Holding` with the release's order already seen - the screen read the release first)
+  is FINISHED (kept / converted / leak), not "cut short"; `ClickOutcome.ConvertedOffScreen` (a click converted because the focus was off the screen).
+- Log: `[orders] first time an off-screen / behind-the-camera unit had the focus - targeting held off ...` (the focus in full), `first click while an
+  off-screen / behind-the-camera unit had the focus ...`, `first targeted charge with NO click in progress ...` (an F key or an unseen press - with the
+  focus at the last look), the kept / FAILURE lines now carry the focus too; the [summary] "order clicks (step 72)" line ends `step 98 - a unit OFF the
+  screen had the focus: N clicks on it turned into moves, M times held off with no button down (F frames); targeted charges with no click in progress
+  (an F key, or a press never seen) K; switch ON`. Step 72's "first time ... held OFF during a click" line fires only during a click now.
+- No new setting (rides `OrderNoAccidentalCharge`, the master switch first); no config change.
+
+**Measured offline**: tests 1376 → 1384 (Step98Tests.cs: on the screen, vanilla's 10 m pick off the screen, an off-screen focus never keeps a charge even
+with its projection 5 px from the cursor, an on-screen icon click still charges and the old overload, the idle hold and the switches, a release that
+closes the menu counted / a leak shows / a mid-hold close still cut short, the summary, the look's words). Smoke 213 → 214 (Program.Step98.cs: the real
+OrderClickGuard with step 72's stand-in world - `Blind` = a press the guard never sees, `CloseOnRelease` = vanilla closing the menu - in both frame
+orders: held off idle, a click on it = a move, an unseen press = a move, on the screen again = a charge on its icon, the close counted, ModEnabled off =
+vanilla, the lines).
+
+**UNVERIFIED - only the game can tell (PLAYTEST D62)**: that the near group Toni saw is the 10 m rule's (the first-time line prints its camera distance
+and screen point - `NearCamera` should be true); the native projection of such a point (the line's `w` and pixels); that the cursor coordinates
+(`GetMousePositionRanged` × the full resolution) and the usable-area coordinates agree closely enough on his screen (UsableArea 1 × 1 normally).
+
+**DEPLOY**: `tools\deploy.ps1` ran whole (build, AssemblyGuard, the offline smoke - all passed), installed as Modules\TraxCombatEnhancements.Dev;
+`tools\SmartAppControl\loadcheck.ps1`: both installed DLLs LOADED. The game and the launcher were not running.
