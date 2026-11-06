@@ -353,7 +353,9 @@ namespace TraxCombat.Tools
                 // a sibling folder of MCM's in the Workshop tree.
                 string harmonyBin = Path.Combine(Path.GetDirectoryName(Path.GetDirectoryName(Path.GetDirectoryName(_mcmBin)!)!)!,
                     "2859188632", "bin", "Win64_Shipping_Client");
-                foreach (var dir in new[] { _mcmBin, harmonyBin })
+                // since 2026-11-04 Toni's mods load from the game's Modules\ (the Workshop copy of Harmony may be gone): its module folder too
+                string modulesHarmonyBin = Path.Combine(_gameFolder, "Modules", "Bannerlord.Harmony", "bin", "Win64_Shipping_Client");
+                foreach (var dir in new[] { _mcmBin, harmonyBin, modulesHarmonyBin })
                 {
                     string candidate = Path.Combine(dir, name + ".dll");
                     if (File.Exists(candidate)) return Assembly.LoadFrom(candidate);
