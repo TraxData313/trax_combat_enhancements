@@ -8843,3 +8843,124 @@ and screen point - `NearCamera` should be true); the native projection of such a
 
 **DEPLOY**: `tools\deploy.ps1` ran whole (build, AssemblyGuard, the offline smoke - all passed), installed as Modules\TraxCombatEnhancements.Dev;
 `tools\SmartAppControl\loadcheck.ps1`: both installed DLLs LOADED. The game and the launcher were not running.
+
+## Step 99 — shield wall ends face the flanks (research)
+
+Toni 2026-11-06: "can you make it so that troops on the two sides of the shield wall are facing the flanks not forward?" - in a shield
+wall the men at the two ENDS of the line turn outward (the left end faces left, the right end right) to guard the flanks. Research only,
+no code; verified in the v1.4.8 decompile `%TEMP%\trax_decomp\TaleWorlds.MountAndBlade\TaleWorlds.MountAndBlade\` 2026-11-06.
+
+### 1. How vanilla lays out a shield wall and sets each man's facing
+
+- **The arrangement.** `ArrangementOrder.GetArrangement` (~118-122): Circle → `CircularFormation`, Square → `RectilinearSchiltronFormation`
+  (: `SquareFormation` : `LineFormation`), Column, Skein; **ShieldWall falls to the default `new LineFormation(formation)`** - the same class as
+  a plain line (`TransposedLineFormation` is only a transient re-arrangement, ~235). Men sit in `_units2D[file, rank]` (`FileCount` =
+  `_units2D.Count1`, `RankCount` = `Count2`); `GetLocalPositionOfUnit(file, rank)` (LineFormation ~958): x = file × (interval + diameter) −
+  half the width, y = −rank × (distance + diameter) - **file 0 is the LEFT end (local −x), rank 0 the FRONT**. Shielded men are preferred in
+  front (`PreferShieldedUnitsOnFront`, ~2650).
+- **Facing per man = the formation FRAME's direction, per unit.** `HumanAIComponent.ParallelUpdateFormationMovement` (~666, the ~0.5 s per-man
+  update of RESEARCH §O) → `GetFormationFrame` (~587) → `Agent.GetBaseFormationFrame` (Agent ~2052) → `formationDirection =
+  Formation.GetDirectionOfUnit(this)` (Formation ~1200: detached → his movement direction; else `Direction.TransformToParentUnitF(
+  Arrangement.GetLocalDirectionOfUnitOrDefault(unit))`) → `Agent.TrySetFormationFrame(pos, dir)` (Agent ~3892) →
+  `SetFormationFrameEnabled(pos, dir, the order's target velocity, Formation.CalculateFormationDirectionEnforcingFactorForRank(rank))`
+  (Agent ~2316, PUBLIC, native). Then, when it returned true, `Agent.UpdateDirectionChangeTendency()` (~3767).
+- **`LineFormation.GetLocalDirectionOfUnit` / `...OrDefault` return `Vec2.Forward` for every man** (~989, ~1012) - so in a shield wall
+  everybody's frame direction is the formation's `Direction`.
+- **How the circle and the square face men OUTWARD - the mechanism to reuse.** They only override that one method: `CircularFormation
+  .GetLocalDirectionOfUnit` (~125) = a rotation by the man's file round the ring; `SquareFormation.GetLocalDirectionOfUnit` (~193) = by the
+  side his file lies on: Front → `Vec2.Forward`, Right → `Vec2.Side`, Rear → `-Vec2.Forward`, **Left → `-Vec2.Side`**. Nothing else - the
+  same `TrySetFormationFrame` carries it to the engine, and the engine keeps them looking out while idle and turns them to fight what comes
+  (what every player sees in a square / circle). So "face the flank" = pass `Direction.TransformToParentUnitF(∓Vec2.Side)` as HIS frame
+  direction instead of the forward one - exactly the square's left / right side, per man.
+- **The enforcing factor** (`ArrangementOrder.CalculateFormationDirectionEnforcingFactorForRank` ~500): for ShieldWall / Circle / Square
+  `1 − clamp((rank + 1) / (2 × RankCount))` - front rank of 4: 0.875, rear: 0.5 (a line: × 0.5 instead of × 2, so it fades by mid-depth).
+  How strongly the engine holds the frame facing; native, not visible.
+- **The direction-change tendency** (`Agent.UpdateDirectionChangeTendency` ~3767): ONLY for a ShieldWall, not detached:
+  `LineFormation.GetDirectionChangeTendencyOfUnit` (~2629) = rank ÷ (RankCount − 1) - **front rank 0, rear rank 1**; every other
+  arrangement (circle and square included) gets 1. `Agent.SetDirectionChangeTendency(float)` is PUBLIC (~2516, native). Its meaning is not
+  visible; the likely reading - how readily he turns off his frame facing toward a threat - says the wall's FRONT RANK is the one held
+  rigidly to its facing (see risks).
+- **Vanilla already guards the flanks - with the SHIELD, not the body.** `ArrangementOrder.GetShieldDirectionOfUnit` (~163), ShieldWall:
+  rank 0 → `DefendDown` (the low front wall pose); else no left neighbour in his rank (`Arrangement.GetNeighborUnitOfLeftSide == null`) →
+  `DefendLeft`; no right neighbour → `DefendRight`; else `AttackEnd` (the shield up over the rank ahead). Written by
+  `Agent.EnforceShieldUsage` (~3919, PUBLIC, native) from `ArrangementOrder.OnApply` (~140) and from `Agent.UpdateFormationOrders` (~3645,
+  every `ApplyFormationValuesPostUpdate` - the same ~0.5 s timer, main thread, Agent.Tick after the parallel job). So the end men of ranks
+  2+ already raise the shield to their open side while their BODY faces forward. **If we turn the body 90° outward, `DefendLeft` / `Right`
+  would point the shield to his rear** - the turned men need `DefendDown` (the front pose, now toward the flank) written too.
+- `SetLookAgent`, `SetScriptedPositionAndDirection`, `HumanAIComponent.SetScriptedPositionAndDirectionTimed` (~810): scripted frames take the
+  man off his formation AI (a scripted target) - wrong tool for a man who must still fight; `FacingOrder` (LookAtEnemy / LookAtDirection)
+  turns the WHOLE formation's `Direction`. Neither is needed.
+
+### 2. Finding the end men
+
+- `Agent.GetFormationFileAndRankInfo(out file, out rank, out fileCount, out rankCount)` (~3036, PUBLIC) - the explicit `IFormationUnit`
+  indices; −1 = unpositioned (skip). `FileCount` alone is NOT the end: a rank may be short (the last rank is centred, dead men leave gaps), so
+  use **vanilla's own test**: `formation.Arrangement.GetNeighborUnitOfLeftSide(agent) == null` = the leftmost man of his rank
+  (`LineFormation` ~2105, scans the rank outward; PUBLIC on `IFormationArrangement` ~86; `Formation.Arrangement` public). For N files from
+  each end: walk the neighbour N − 1 times (N ≤ 3, cheap), or count from the rank's first / last occupied file. Left end → `−Vec2.Side`,
+  right → `+Vec2.Side` (the square's mapping). A man who is both (a rank of one) is skipped.
+- Recompute at each of our looks (men die, rotate - step 47's swaps -, re-slot); never cache file indices across an update.
+
+### 3. Proposed design (step 99b)
+
+**Mechanism (no Harmony):** step 68's own path. Right after vanilla's per-man update (the timer stamp of RESEARCH §O, read in
+`OnPreMissionTick`) and at each wall look, for a TURNED man: `Agent.TrySetFormationFrame(his game position, outward)` with outward =
+`formation.Direction.TransformToParentUnitF(∓Vec2.Side)` (the square's math), then `Agent.SetDirectionChangeTendency(1f)` (what a circle /
+square man has - free to turn to a threat) and `Agent.EnforceShieldUsage(DefendDown)` (the front-wall pose, now toward the flank). Release =
+the game's frame back (`WallBody.Unpace` - `GetBaseFormationFrame` → `TrySetFormationFrame`), vanilla's tendency (rank ÷ (ranks − 1)) and
+vanilla's shield direction (`ArrangementOrder.GetShieldDirectionOfUnit`, public static) written back at once. **One direction source**:
+`WallBody.Pace` (step 68) and step 75's pin (`FirmFrameLook` → `Pace`) currently take `GetBaseFormationFrame`'s direction - both must ask a
+single "his frame direction" function, or a pin / pace write turns the end man forward again within 0.1 s.
+
+**Which men:** the `ShieldWallFlankFiles` outermost files at each end (default 1), every rank from the 2nd back; the FRONT-rank corner man
+turns `ShieldWallFlankFrontCornerDegrees` (default 45 - half-way, so the front line stays closed to the front and he still covers the
+corner; 0 = forward, 90 = full flank). Only when the formation has at least 2 × files + 3 files (a narrow wall keeps its front).
+
+**When:** a man step 41 HOLDS (verdict Hold - so never you, riders, a siege's attackers, naval, detached, fleeing, a charge or a retreat),
+arrangement = ShieldWall ONLY (the square / circle already face out; a plain line - open question), and the wall STANDS
+(`StandFirmMath.Conditions` = Stands: a Stop, or a Move that arrived and is still - the test exists and works without the StandFirm switch).
+Advance / move-in-progress / follow / fall back = everybody forward (a wall marching sideways looks wrong and step 68 paces it).
+
+**Turning back to fight:** (a) the engine's own - the circle's men face out yet fight a man from any side; with tendency 1 the turned man
+should too. (b) Ours, belt and braces: an enemy (his `GetTargetAgent()`, else `ImmediateEnemy`, the leash's read) within
+`ShieldWallFlankReleaseMetres` (default 4) of his slot and in FRONT of the wall (forward component > the side one) → released (forward
+frame) until no such enemy for 2 s; an enemy on his flank keeps him turned (he is facing it). A man the leash frees (step 42) is released
+the same way. Both sides, your formations and the AI's alike (the wall code does not tell them apart).
+
+**Proposed settings** (SettingsSchema style; Core `WallFlankMath` + `WallFlankRules`; no migration - new keys):
+- `ShieldWallFlanksFaceOut` - Bool, `PlayerAiGroup`, default **true** - "Shield walls: the ends face the flanks" - "With "Shield walls hold
+  their slots" on: in a shield wall that stands (stopped, or arrived where it was sent) the men at the two ends of each rank behind the
+  front turn to face outward, shields to the flank, and the front corner men half-way; they turn back to the front when an enemy comes at
+  them from there. Both sides, never you. Off: everybody faces forward (the game's own)."
+- `ShieldWallFlankFiles` - Int 1..3, `BattlePaceGroup` (Advanced), default **1**.
+- `ShieldWallFlankFrontCornerDegrees` - Float 0..90, Advanced, default **45**.
+- `ShieldWallFlankReleaseMetres` - Float 0..10, Advanced, default **4** (0 = never released by us - the engine alone).
+- Summary line "wall flanks": men turned, man-seconds turned, releases by cause (front enemy / leash / order / arrangement), the median
+  angle between his look and his outward direction while turned (proves the engine obeys), blows taken from the front while turned.
+
+### 4. Risks
+
+1. **Vanilla rewrites the facing ~2 x a second per man** (its `TrySetFormationFrame` with `Vec2.Forward`, its tendency, its shield
+   direction) and on every order (`ForceUpdateCachedAndFormationValues`). The step-41 timer stamp catches each one in the next
+   `OnPreMissionTick` - the same one-frame window as the hold (~3% of frames); a forced update is caught by the 0.25 s look. Acceptable.
+2. **Our own writers fight it**: step 68 `Pace`, step 75's pin, `Unpace` all re-send `GetBaseFormationFrame`'s FORWARD direction - must
+   share the one direction function (above). Step 41's flag (`SetFormationIntegrityData` with `form.CurrentDirection`) is a different
+   channel (the keep-with-formation data) - no conflict expected, but its direction argument is forward; watch it in the playtest.
+3. **The front rank's tendency 0** - if the native reads it as "never turn off the frame facing", a front-rank man turned 90° would be
+   locked sideways while hit from the front. Hence: tendency 1 for turned men, the corner only 45°, and the release rule. NOT verifiable in
+   the managed source - first playtest item.
+4. **The engine may not hold a per-man direction in a LineFormation** the way it does in a square (the native may read the arrangement's
+   `SetFormationInfo` - file, rank, `GetWallDirectionOfRelativeFormationLocation` - for the wall AI). The summary's angle line proves it
+   either way; if it fails, fall back to the shield direction alone (vanilla's DefendLeft / Right for the front rank's ends too).
+5. **Siege**: a siege's attackers are already excluded (step 41); defenders on a wall walk in a shield wall rarely, and turning a rampart's
+   end men outward is harmless (they face along the wall). **Naval**: excluded with the wall. Deployment: `TrySetFormationFrame` projects to
+   the deployment area itself (~3901); turning in deployment is cosmetic - allow it, or skip `MissionMode.Deployment` (cheap).
+6. **The rotation (step 47) / rest / fear flock** steer men through other channels (input, scripted slot swaps); a man swapped into an end
+   file turns at the next look - fine. The fear flock releases a man from the wall first (verdict not Hold) → released here too.
+
+### Open questions for Toni
+
+1. The FRONT rank's corner man: half-way (45°, proposed), fully to the flank, or keep him facing the front?
+2. One file at each end (proposed), or more?
+3. Only while the wall STANDS (proposed), or also while it advances?
+4. Shield wall only (proposed), or also a plain line / loose order?
