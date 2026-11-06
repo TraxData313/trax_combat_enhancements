@@ -38,7 +38,7 @@ the fever burns. A rested line hits hard and long; a tired one surges briefly. T
 choose, not a standing order.
 
 **Holding the line.** A shield wall stays a wall: each man keeps his place and fights what reaches him, with one
-short step out to strike. Men weigh the odds around them. The looter who wanders round your flank alone looks
+short step out to strike; when it stands, the men at its two ends turn to guard the flanks. Men weigh the odds around them. The looter who wanders round your flank alone looks
 at your wall, thinks better of it, and walks back to his mates; a crowd wraps round your wall only when it truly
 outnumbers you there. Shaken men pack together; hopeless ones panic and run, and a routing man spends his whole
 sprint on the get-away. Tired cavalry stops trickling in one by one: riders gather with their own kind and come

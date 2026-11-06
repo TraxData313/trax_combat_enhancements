@@ -8844,7 +8844,7 @@ and screen point - `NearCamera` should be true); the native projection of such a
 **DEPLOY**: `tools\deploy.ps1` ran whole (build, AssemblyGuard, the offline smoke - all passed), installed as Modules\TraxCombatEnhancements.Dev;
 `tools\SmartAppControl\loadcheck.ps1`: both installed DLLs LOADED. The game and the launcher were not running.
 
-## Step 99 — shield wall ends face the flanks (research)
+## Step 99 — shield wall ends face the flanks (research, then built)
 
 Toni 2026-11-06: "can you make it so that troops on the two sides of the shield wall are facing the flanks not forward?" - in a shield
 wall the men at the two ENDS of the line turn outward (the left end faces left, the right end right) to guard the flanks. Research only,
@@ -8964,3 +8964,28 @@ the same way. Both sides, your formations and the AI's alike (the wall code does
 2. One file at each end (proposed), or more?
 3. Only while the wall STANDS (proposed), or also while it advances?
 4. Shield wall only (proposed), or also a plain line / loose order?
+
+### Step 99b - built (2026-11-06)
+
+Toni's calls (2026-11-06, all as recommended): the outer file 1 deep in every rank, the front corner 45 degrees; only while the wall STANDS;
+the ShieldWall arrangement only. Built as section 3 proposed, with these details and findings:
+
+- **The one facing function**: `GameWallBody.FacingOf(st, agent, gameDir)` - the game's `GetBaseFormationFrame` direction unless `WallState.Flank.Turned`,
+  then `formation.Direction` turned by `WallFlankMath.Outward` (the decompile's `Vec2.TransformToParentUnitF`: (y·a.x + x·a.y, −x·a.x + y·a.y);
+  local +x = `Vec2.Side` = the formation's RIGHT, verified in TaleWorlds.Library Vec2.cs ~260). `Pace` (step 68, step 75's pin, step 78's swap)
+  and `Unpace` both send it. A turned man none of those wrote this look gets `Unpace` (the game's place + his facing) from `FlankFrame`.
+- **Order inside `LookWall`'s hold path**: the flag (step 41) → `FlankLook` (the verdict, the state, `Turn(on)`) → the frame look (75 / 78 / 68)
+  → `FlankFrame`. A release inside `FlankLook` writes `Turn(off)` at once (`Agent.UpdateDirectionChangeTendency()` and
+  `Agent.UpdateFormationOrders()` - both PUBLIC, vanilla's own: rank / (ranks − 1) for a wall, `GetShieldDirectionOfUnit`); the frame follows in
+  `FlankFrame` or the pace / pin that runs after it (with the game's direction by then).
+- **Every let-go path** (`LookWall`'s not-held branch, step 42's Freed branch, `ReleaseAllWalls`, `WallFailed`) calls `FlankLetGo` (Turn(off)
+  + the game's frame unless a paced man's `Unpace` follows); `WallLeftField` / `CloseWalls` clear the state with no engine call.
+- **"Stands"** = `WallState.FirmCond` (step 75's `StandFirmMath.Conditions`, computed in `StandFirmLook` whether the stand-firm switch is on or not).
+  With stand firm ON (shipped) a standing wall's men are pinned (`ShieldWallStandFirmPinFrame`), so the turn rides on the pin's `Pace` every look;
+  with it OFF nothing paces a Stop, so `FlankFrame` writes the frame itself.
+- **Cheap**: `WallFlankMath.MayTurn` (the switches, held, a shield wall, standing) gates every native read; only those men get
+  `GetFormationFileAndRankInfo` + up to `files` neighbour walks each way; the enemy read (`TryEnemy`) only for an actual end man with the release on.
+- **Measured**: the summary's angle uses `Agent.Frame.rotation.f` (the body) against the asked direction and against `formation.Direction`, sampled
+  at step 41's 0.5 s samples once he has been turned `SettleSeconds` 1.5 s. Still UNVERIFIED in game (risk 4) - the line is built to answer it.
+- **Smoke environment fix**: the offline smoke's MCM phase looked for 0Harmony only in the Workshop folder 2859188632, gone from this PC since the
+  mods moved into `Modules\` (2026-11-04) - six MCM checks failed for that alone. It now also looks in `Modules\Bannerlord.Harmony\bin`.

@@ -442,6 +442,20 @@ Not while the wall advances, charges, follows, falls back or retreats.
 `ShieldWallStandFirmSlackMetres` 0.3 (0.1-1.5), `ShieldWallStandFirmArrivedMetres` 2.0 (0.5-20), `ShieldWallStandFirmStillMetresPerSecond`
 0.5 (0-3), `ShieldWallStandFirmPinFrame` on, `ShieldWallStandFirmTightTolerance` on.</sub>
 
+**The ends face the flanks** (step 99, Toni 2026-11-06). In a shield wall that stands (as above - a stop, or a move at its place; with or
+without "stand firm"), held men only, a wall at least 5 files wide (2 x files + 3):
+
+| Who | Faces |
+|---|---|
+| The end man of the front rank (the corner) | **45 degrees** outward from the front |
+| The end man of every rank behind it | **90 degrees** - straight at the flank, the shield to it |
+| Everyone else | the front, as before |
+| An end man with an enemy within **4 m** of his place, in front of the wall | the front again (until 2 s after it is gone) |
+| Advancing, charging, following, falling back; a line, square or circle | the front (the game's own) |
+
+<sub>Settings: `ShieldWallFlanksFaceOut` on (player page; live); Advanced, "Battle pace (AI)", live: `ShieldWallFlankFiles` 1 (1-3),
+`ShieldWallFlankFrontCornerDegrees` 45 (0-90), `ShieldWallFlankReleaseMetres` 4 (0-10; 0 = only the game's own turning to fight).</sub>
+
 **Spearmen keep their spears** (step 76, Toni 2026-10-22: "my shield wall-ers have spears but they keep using their swords, even though
 the spear has a longer reach"). Every AI man (both sides, never you) who carries a spear (any melee polearm) AND a sword, axe or mace
 (javelins and throwing weapons count as neither) is looked at every ~0.5 s. The game weighs which weapon he wields by three favors,
