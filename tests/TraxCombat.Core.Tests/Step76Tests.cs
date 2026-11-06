@@ -50,7 +50,7 @@ public class Step76Tests
     {
         var all = SettingsSchema.All.ToList();
         var sw = SettingsSchema.SpearPreferenceEnabled;
-        Assert.Equal(all.IndexOf(SettingsSchema.ShieldWallStandFirm) + 1, all.IndexOf(sw));
+        Assert.Equal(all.IndexOf(SettingsSchema.ShieldWallFlanksFaceOut) + 1, all.IndexOf(sw)); // step 99 put its switch between
         Assert.Contains(sw, SettingsSchema.PlayerPage);
         Assert.Equal(SettingsPage.Player, sw.Group.Page);
         Assert.Equal(ParamType.Bool, sw.Type);
@@ -58,7 +58,7 @@ public class Step76Tests
         Assert.Equal(1, sw.Default, 9);
         Assert.DoesNotMatch(@"[Ss]tep \d", sw.Description);
         Assert.DoesNotContain("RBM", sw.Description);
-        int first = all.IndexOf(SettingsSchema.ShieldWallStandFirmTightTolerance) + 1;
+        int first = all.IndexOf(SettingsSchema.ShieldWallFlankReleaseMetres) + 1; // step 99 put its three between
         for (int i = 0; i < Advanced.Length; i++)
         {
             Assert.Equal(first + i, all.IndexOf(Advanced[i]));

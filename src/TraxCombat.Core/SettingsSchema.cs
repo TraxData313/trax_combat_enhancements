@@ -137,6 +137,12 @@ namespace TraxCombat.Core
             "Shield walls stand firm on a hold order",
             "With \"Shield walls hold their slots\" on: a shield wall, square or circle you (or the enemy's general) ordered to STOP - or moved to a place it has reached and stands on - never leaves its ground. Each soldier keeps his place whatever happens: no step out to strike, no sprint; if a kick, a shove or a blow carries him a little forward he backs straight into his place, facing the enemy. He still blocks and strikes - and kicks or bashes - whatever comes within his reach, so an enemy who pushes at the wall tires himself on it. Not while the wall advances, charges, follows or falls back; a wall whose courage breaks still breaks. Both sides, never you. Off: the step out above and the game's own small steps.");
 
+        // Step 99 (Toni 2026-11-06: "can you make it so that troops on the two sides of the shield wall are facing the flanks not forward?"): the
+        // ends of a standing shield wall face outward - WallFlankMath, AI_NOTES "Step 99".
+        public static readonly ParamDef ShieldWallFlanksFaceOut = Bool("ShieldWallFlanksFaceOut", PlayerAiGroup,
+            "Shield walls: the ends face the flanks",
+            "With \"Shield walls hold their slots\" on: in a shield wall that stands (ordered to stop, or moved to a place it has reached) the soldiers at the two ends of every rank turn outward to guard the flanks - the left end faces left, the right end right, the front corner man only half-way so the front stays closed. They turn back to the front when an enemy comes at them from there, when they step out to strike, or when the wall moves. Shield walls only (a square or a circle already faces out). Both sides, never you. Off: everybody faces forward (the game's own).");
+
         // Step 76 (Toni 2026-10-22: "my shield wall-ers have spears but they keep using their swords, even though the spear has a longer reach"):
         // RBM's weapon preference + the close radius from the spear's length, the back rank, a man facing a polearm - SpearMath, AI_NOTES "Step 76",
         // DESIGN decision 70.
@@ -533,6 +539,19 @@ namespace TraxCombat.Core
         public static readonly ParamDef ShieldWallStandFirmTightTolerance = Bool("ShieldWallStandFirmTightTolerance", BattlePaceGroup,
             "Stand firm: a tight tolerance for the game",
             "On: the game is told the standing wall's men may be no more than \"walked back beyond\" (above) away from their places, instead of the formation's own looser spread. Off: the formation's own.");
+
+        // Step 99 (Toni 2026-11-06): the turned ends' numbers - WallFlankMath, AI_NOTES "Step 99".
+        public static readonly ParamDef ShieldWallFlankFiles = Int("ShieldWallFlankFiles", WallFlankMath.MinFiles, WallFlankMath.MaxFiles, BattlePaceGroup,
+            "Wall flanks: files turned at each end",
+            "With \"Shield walls: the ends face the flanks\" on (player page, How the AI fights): how many of the outermost soldiers of each rank, at each end of a standing shield wall, turn outward. 1 = only the man at the very end. A wall narrower than twice this plus 3 soldiers keeps everyone facing forward.");
+
+        public static readonly ParamDef ShieldWallFlankFrontCornerDegrees = Float("ShieldWallFlankFrontCornerDegrees", 0, 90, BattlePaceGroup,
+            "Wall flanks: the front corner turns (degrees)",
+            "How far the end soldier of the FRONT rank turns from the front: 0 = he faces forward like the rest of the front, 90 = fully to the flank like the ranks behind him. 45 = half-way, so he still shields the front corner.");
+
+        public static readonly ParamDef ShieldWallFlankReleaseMetres = Float("ShieldWallFlankReleaseMetres", 0, WallFlankMath.MaxReleaseMetres, BattlePaceGroup,
+            "Wall flanks: face the front again within (m)",
+            "A turned end soldier faces the front again while an enemy stands within this many metres of his place in front of the wall (and 2 seconds after); an enemy on his flank keeps him turned. 0 = never by this rule - only the game's own turning to fight.");
 
         // Step 76 (Toni 2026-10-22): the spear preference's numbers (RBM's, as parameters) and its three additions; thrusts that pass a friend - SpearMath,
         // ThrustPassMath, AI_NOTES "Step 76", DESIGN decision 70.
@@ -2447,7 +2466,7 @@ namespace TraxCombat.Core
             // the player page's six groups (step 59)
             DamageRandomPercent, DamageReductionPercent, TiredDamageAtEmptyPercent,
             AthleticsEnabled, CostPerBlow, HeroCostMultiplier,
-            AiAggressionFreshPercent, AiAggressionExhaustedPercent, FeverEnabled, ShieldWallHoldsSlots, ShieldWallStepOutMetres, ShieldWallStandFirm, SpearPreferenceEnabled, PressDontPass, RotationEnabled, RestEnabled, WarCriesEnabled, CourageEnabled, CavalryFlockEnabled, LineDisciplineForPlayer,
+            AiAggressionFreshPercent, AiAggressionExhaustedPercent, FeverEnabled, ShieldWallHoldsSlots, ShieldWallStepOutMetres, ShieldWallStandFirm, ShieldWallFlanksFaceOut, SpearPreferenceEnabled, PressDontPass, RotationEnabled, RestEnabled, WarCriesEnabled, CourageEnabled, CavalryFlockEnabled, LineDisciplineForPlayer,
             ImpactEnabled, ImpactOnPlayerPercent, ImpactMeetRulesEnabled,
             SprintEnabled, SprintKey, SprintControllerKey,
             ShowPlayerBar, AltMarksEveryone, ImpactShowMessages,
@@ -2467,6 +2486,7 @@ namespace TraxCombat.Core
             ShieldInfantrySwingsLessPercent, FootMeleeSwingsLessPercent, AiMeleeGapSeconds, ExtraPauseAfterBowShotSeconds, ExtraPauseAfterCrossbowShotSeconds,
             ShieldWallPullBackSeconds, ShieldWallAdvanceAsOne, ShieldWallAdvanceStepMetres, ShieldWallAdvanceNearMetres, ShieldWallKickReturnMetres,
             ShieldWallStandFirmSlackMetres, ShieldWallStandFirmArrivedMetres, ShieldWallStandFirmStillMetresPerSecond, ShieldWallStandFirmPinFrame, ShieldWallStandFirmTightTolerance,
+            ShieldWallFlankFiles, ShieldWallFlankFrontCornerDegrees, ShieldWallFlankReleaseMetres,
             SpearPolearmFavor, SpearSidearmFavor, SpearSidearmAfterSeconds, SpearPolearmBackAfterSeconds, SpearPolearmBackMountedSeconds, SpearRidingFastMetresPerSecond,
             SpearCloseFromLength, SpearCloseBaseMetres, SpearCloseLengthPercent, SpearCloseMinMetres, SpearCloseMaxMetres, SpearCloseFallbackMetres,
             SpearBackRankKeeps, SpearBackRankInStandingLine, SpearKeepVsPolearm, SpearLookSeconds, SpearWieldOverride, ThrustsPassFriends, ThrustsPassPolearmsOnly, FriendlyHitStunSeconds,

@@ -64,6 +64,10 @@ namespace TraxCombat.Missions
         public WallLeash FirmLeash;
         public double FirmOut = double.NaN;
         public bool FirmPaceRefused;
+
+        /// <summary>Step 99: his turn to the flank (an end man of a standing shield wall) - read by <see cref="GameWallBody.FacingOf"/>, the one
+        /// direction every frame write of ours sends.</summary>
+        public WallFlankState Flank;
     }
 
     /// <summary>
@@ -108,8 +112,20 @@ namespace TraxCombat.Missions
         /// direction (instead of the game's order slot); false = the game gave no frame (nothing written).</summary>
         bool Pace(TrackedAgent st, double x, double y);
 
-        /// <summary>Step 68: the game's own frame given back now (its order slot - what its next ~0.5 s update writes anyway).</summary>
+        /// <summary>Step 68: the game's own frame given back now (its order slot - what its next ~0.5 s update writes anyway). Step 99: with HIS
+        /// facing (<see cref="GameWallBody.FacingOf"/>) - the game's direction unless he is turned to the flank.</summary>
         void Unpace(TrackedAgent st);
+
+        /// <summary>Step 99: his rank, the wall's files and how many men of his rank stand to his left / right (each counted up to
+        /// <paramref name="files"/>); false = the game has no file / rank for him.</summary>
+        bool ReadFlank(TrackedAgent st, int files, out int rank, out int fileCount, out int left, out int right);
+
+        /// <summary>Step 99: turned (<paramref name="on"/>) - the direction-change tendency 1 and the front shield pose (now toward the flank); off -
+        /// vanilla's own tendency and shield direction written back.</summary>
+        void Turn(TrackedAgent st, bool on);
+
+        /// <summary>Step 99: his body's facing and the wall's direction (the scene's x / y); false = not readable.</summary>
+        bool TryLook(TrackedAgent st, out double faceX, out double faceY, out double wallX, out double wallY);
     }
 
     /// <summary>
@@ -334,15 +350,90 @@ namespace TraxCombat.Missions
             if (st.Removed || !a.IsActive() || !a.GetBaseFormationFrame(out _, out var dir)) return false;
             var wp = a.GetWorldPosition();
             wp.SetVec2(new Vec2((float)x, (float)y));
-            return a.TrySetFormationFrame(in wp, in dir);
+            var face = FacingOf(st, a, dir); // step 99: one direction for every writer
+            return a.TrySetFormationFrame(in wp, in face);
         }
 
         public void Unpace(TrackedAgent st)
         {
             var a = st.Agent;
             if (st.Removed || !a.IsActive()) return;
-            if (a.GetBaseFormationFrame(out var pos, out var dir)) a.TrySetFormationFrame(in pos, in dir);
+            if (a.GetBaseFormationFrame(out var pos, out var dir))
+            {
+                var face = FacingOf(st, a, dir); // step 99
+                a.TrySetFormationFrame(in pos, in face);
+            }
             else a.SetFormationFrameDisabled();
+        }
+
+        /// <summary>
+        /// Step 99 - HIS FACING, the one direction every frame write of ours sends (step 68's pace, step 75's pin, step 78's swap, the frame given back):
+        /// the game's (<paramref name="gameDir"/>, <c>GetBaseFormationFrame</c>'s) unless he is turned to the flank - then the formation's
+        /// <c>Direction</c> turned outward (<see cref="WallFlankMath.Outward"/> = the square's <c>Direction.TransformToParentUnitF(∓Vec2.Side)</c>).
+        /// </summary>
+        internal static Vec2 FacingOf(TrackedAgent st, Agent a, Vec2 gameDir)
+        {
+            var ws = st.Wall;
+            if (ws == null || !ws.Flank.Turned) return gameDir;
+            var form = a.Formation;
+            if (form == null) return gameDir;
+            var d = form.Direction;
+            WallFlankMath.Outward(d.x, d.y, ws.Flank.Side, ws.Flank.Degrees, out double x, out double y);
+            return new Vec2((float)x, (float)y);
+        }
+
+        /// <summary>Step 99: <c>Agent.GetFormationFileAndRankInfo</c> (−1 = unplaced) and the game's own end test walked
+        /// (<c>Formation.Arrangement.GetNeighborUnitOfLeftSide / RightSide</c> - vanilla's shield-direction rule).</summary>
+        public bool ReadFlank(TrackedAgent st, int files, out int rank, out int fileCount, out int left, out int right)
+        {
+            var a = st.Agent;
+            left = right = 0;
+            rank = fileCount = -1;
+            var form = a.Formation;
+            if (form == null || st.Removed || !a.IsActive()) return false;
+            a.GetFormationFileAndRankInfo(out int file, out rank, out fileCount, out _);
+            if (file < 0 || rank < 0) return false;
+            var arr = form.Arrangement;
+            if (arr == null) return false;
+            IFormationUnit? u = a;
+            while (left < files && (u = arr.GetNeighborUnitOfLeftSide(u)) != null) left++;
+            u = a;
+            while (right < files && (u = arr.GetNeighborUnitOfRightSide(u)) != null) right++;
+            return true;
+        }
+
+        /// <summary>Step 99: <c>Agent.SetDirectionChangeTendency(1)</c> (a square's / circle's man) + <c>Agent.EnforceShieldUsage(DefendDown)</c> (the
+        /// front wall pose - now toward the flank: vanilla's DefendLeft / Right would point behind a man turned 90 degrees); off = vanilla's own
+        /// <c>Agent.UpdateDirectionChangeTendency()</c> + <c>Agent.UpdateFormationOrders()</c> (its shield direction). Main thread.</summary>
+        public void Turn(TrackedAgent st, bool on)
+        {
+            var a = st.Agent;
+            if (st.Removed || !a.IsActive() || a.Formation == null) return;
+            if (on)
+            {
+                a.SetDirectionChangeTendency(1f);
+                a.EnforceShieldUsage(Agent.UsageDirection.DefendDown);
+            }
+            else
+            {
+                a.UpdateDirectionChangeTendency();
+                a.UpdateFormationOrders();
+            }
+        }
+
+        public bool TryLook(TrackedAgent st, out double faceX, out double faceY, out double wallX, out double wallY)
+        {
+            var a = st.Agent;
+            faceX = faceY = wallX = wallY = 0;
+            var form = a.Formation;
+            if (form == null || st.Removed || !a.IsActive()) return false;
+            var f = a.Frame.rotation.f;
+            var d = form.Direction;
+            faceX = f.x;
+            faceY = f.y;
+            wallX = d.x;
+            wallY = d.y;
+            return true;
         }
     }
 

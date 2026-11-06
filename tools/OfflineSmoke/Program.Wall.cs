@@ -119,6 +119,7 @@ namespace TraxCombat.Tools
             {
                 if (PaceRefused) return false;
                 PaceCalls++;
+                if (st.Wall != null && st.Wall.Flank.Turned) FramesTurned++; // step 99: the real body sends HIS facing here
                 if (Record) Paced[st.AgentIndex] = (x, y);
                 return true;
             }
@@ -126,7 +127,55 @@ namespace TraxCombat.Tools
             public void Unpace(TrackedAgent st)
             {
                 UnpaceCalls++;
+                if (st.Wall != null && st.Wall.Flank.Turned) FramesTurned++; // step 99
                 if (Record) Paced.Remove(st.AgentIndex);
+            }
+
+            /// <summary>Step 99: each man's place in his rank (rank, the wall's files, men to his left / right); none = unplaced. The turns written
+            /// (the last per man), the frames written while he was turned, his body's facing (none = the wall's front).</summary>
+            public readonly Dictionary<int, (int Rank, int Files, int Left, int Right)> Ranks = new Dictionary<int, (int Rank, int Files, int Left, int Right)>();
+            public readonly Dictionary<int, bool> Turned = new Dictionary<int, bool>();
+            public readonly Dictionary<int, (double X, double Y)> Looks = new Dictionary<int, (double X, double Y)>();
+            public int TurnOnCalls, TurnOffCalls, FramesTurned, FlankReads;
+
+            public bool ReadFlank(TrackedAgent st, int files, out int rank, out int fileCount, out int left, out int right)
+            {
+                FlankReads++;
+                if (Ranks.TryGetValue(st.AgentIndex, out var r))
+                {
+                    rank = r.Rank;
+                    fileCount = r.Files;
+                    left = Math.Min(r.Left, files);
+                    right = Math.Min(r.Right, files);
+                    return true;
+                }
+                rank = fileCount = -1;
+                left = right = 0;
+                return false;
+            }
+
+            public void Turn(TrackedAgent st, bool on)
+            {
+                if (on) TurnOnCalls++;
+                else TurnOffCalls++;
+                if (Record) Turned[st.AgentIndex] = on;
+            }
+
+            public bool TryLook(TrackedAgent st, out double faceX, out double faceY, out double wallX, out double wallY)
+            {
+                wallX = 0;
+                wallY = 1;
+                if (Looks.TryGetValue(st.AgentIndex, out var l))
+                {
+                    faceX = l.X;
+                    faceY = l.Y;
+                }
+                else
+                {
+                    faceX = 0;
+                    faceY = 1;
+                }
+                return true;
             }
         }
 
@@ -167,6 +216,7 @@ namespace TraxCombat.Tools
             S.Set(SettingsSchema.ShieldWallKickReturnMetres, 0.0, SettingSources.File); // step 68 off: the walk back after a kick (its 0.1 s looks too)
             S.Set(SettingsSchema.ShieldWallAdvanceAsOne, false, SettingSources.File);   // step 68 off: the game's own frames (Program.Step68.cs runs them)
             S.Set(SettingsSchema.ShieldWallStandFirm, false, SettingSources.File);      // step 75 off: a halted wall keeps steps 41-68 (Program.Step75.cs runs it)
+            S.Set(SettingsSchema.ShieldWallFlanksFaceOut, true, SettingSources.File);   // step 99 on (its shipped value): no man here has a rank, so nobody turns (Program.Step99.cs runs it)
         }
 
         /// <summary>

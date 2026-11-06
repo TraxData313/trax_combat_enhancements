@@ -128,6 +128,16 @@
   // (true or false)
   "ShieldWallStandFirm": true,
 
+  // With "Shield walls hold their slots" on: in a shield wall that stands (ordered to stop, or
+  // moved to a place it has reached) the soldiers at the two ends of every rank turn outward to
+  // guard the flanks - the left end faces left, the right end right, the front corner man only
+  // half-way so the front stays closed. They turn back to the front when an enemy comes at them
+  // from there, when they step out to strike, or when the wall moves. Shield walls only (a
+  // square or a circle already faces out). Both sides, never you. Off: everybody faces forward
+  // (the game's own).
+  // (true or false)
+  "ShieldWallFlanksFaceOut": true,
+
   // AI soldiers who carry a spear (or another polearm) AND a sword, axe or mace fight with the
   // spear while no enemy is close, and draw the sidearm only once an enemy has stood within the
   // spear's reach for a moment (how close depends on how long the spear is); a few seconds
@@ -764,6 +774,25 @@
   // formation's own.
   // (true or false)
   "ShieldWallStandFirmTightTolerance": true,
+
+  // With "Shield walls: the ends face the flanks" on (player page, How the AI fights): how many
+  // of the outermost soldiers of each rank, at each end of a standing shield wall, turn
+  // outward. 1 = only the man at the very end. A wall narrower than twice this plus 3 soldiers
+  // keeps everyone facing forward.
+  // (range 1 to 3)
+  "ShieldWallFlankFiles": 1,
+
+  // How far the end soldier of the FRONT rank turns from the front: 0 = he faces forward like
+  // the rest of the front, 90 = fully to the flank like the ranks behind him. 45 = half-way, so
+  // he still shields the front corner.
+  // (range 0.0 to 90.0)
+  "ShieldWallFlankFrontCornerDegrees": 45.0,
+
+  // A turned end soldier faces the front again while an enemy stands within this many metres of
+  // his place in front of the wall (and 2 seconds after); an enemy on his flank keeps him
+  // turned. 0 = never by this rule - only the game's own turning to fight.
+  // (range 0.0 to 10.0)
+  "ShieldWallFlankReleaseMetres": 4.0,
 
   // With "Spearmen keep their spears" on (player page, How the AI fights): how strongly an AI
   // soldier with a spear and a sidearm prefers the spear while no enemy is close - the game's

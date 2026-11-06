@@ -59,6 +59,7 @@ namespace TraxCombat.Missions
             _seenKickReturn = KickReturn(in _seenWall);
             if (_seenWallPace.Enabled) _wallStats.Pace.EverOn = true;
             StartStandFirm(); // step 75
+            StartFlanks(); // step 99
             TraxLog.Info("wall", "mission start: " + _seenWall.Describe() + "; step 63: " + WallPullMath.Describe(PullSeconds(in _seenWall), _seenWall.StepOutMetres)
                 + "; step 68: " + _seenWallPace.Describe() + "; " + KickReturnText(_seenKickReturn)
                 + " - read live; written right after vanilla's own update of each man (his ~0.5 s timer) and at a look every "
@@ -139,6 +140,7 @@ namespace TraxCombat.Missions
             }
 
             TickStandFirmSettings(now); // step 75
+            TickFlankSettings(now); // step 99
 
             double dt = double.IsNaN(_wallLastTick) || now < _wallLastTick ? WallMath.PollSeconds : now - _wallLastTick;
             _wallLastTick = now;
@@ -261,6 +263,7 @@ namespace TraxCombat.Missions
                         if (move == LeashMove.Freed && ws.Held) body.Release(st);
                         if (move == LeashMove.Freed) EndOutOfPlace(st, ws, WallOutEnd.LetGo, now, engine: true); // step 63: the leash has him now
                         if (!ws.Held) Manage(st, ws);
+                        FlankLetGo(st, ws, WallFlankVerdict.SteppingOut, now, engine: true); // step 99: he steps out facing forward
                         PaceLook(st, ws, in f, now); // step 68: a man stepping out of a moving wall keeps the paced frame (the game's would send him on)
                         goto Sample;
                     }
@@ -277,9 +280,12 @@ namespace TraxCombat.Missions
                     body.Hold(st, in f);
                 }
                 _wallStats.AddWrite(kind);
+                _flankReleasedThisLook = false;
+                FlankLook(st, ws, in f, now); // step 99: an end man of a standing shield wall faces the flank (the frame writes below send his facing)
                 if (firm) FirmFrameLook(st, ws, in f, now); // step 75: the engine's walk target = his slot
                 else if (rhythm) RhythmFrameLook(st, ws, in f); // step 78: the engine's walk target = the rhythm's slot
                 else PaceLook(st, ws, in f, now); // step 68: a moving wall walks as one
+                FlankFrame(st, ws, _flankReleasedThisLook); // step 99: his frame when none of the above wrote it
                 OutOfPlaceLook(st, ws, in f, outNow, now, in r, firm ? _seenFirm.SlackMetres : 0); // step 63 (step 75: from the slack, at once)
                 if (body.TryStamp(st, ws, out float stamp))
                 {
@@ -308,6 +314,7 @@ namespace TraxCombat.Missions
                 EndOutOfPlace(st, ws, WallOutEnd.LetGo, now, engine: true); // step 63
                 ws.Leash = default;
                 Unwall(st, ws);
+                FlankLetGo(st, ws, WallFlankVerdict.NotHeld, now, engine: true); // step 99: forward again
                 body.Release(st);
                 if (ws.Paced) Unpace(st, ws); // step 68: the game's own frame back (a charge order: the game's charge)
                 _wallStats.AddRelease(v);
@@ -319,6 +326,7 @@ namespace TraxCombat.Missions
             Sample:
             if (!sample || now < ws.NextSample) return;
             ws.NextSample = now + WallMath.SampleSeconds - 0.5 * WallMath.PollSeconds; // every second look (a look comes every ~0.25 s, a hair early or late)
+            FlankSample(st, ws, now); // step 99: the engine's answer
             if (!f.HasPositions || WallMath.Eligible(in f) != WallVerdict.Hold) return;
             bool contact = body.EnemyWithin(st, WallMath.ContactMetres);
             double ahead = WallMath.Ahead(in f);
@@ -445,6 +453,7 @@ namespace TraxCombat.Missions
                 {
                     if (!st.Removed && WallBody.IsActive(st))
                     {
+                        FlankLetGo(st, ws, why == WallVerdict.ModOff ? WallFlankVerdict.ModOff : WallFlankVerdict.HoldOff, now, engine: true); // step 99
                         WallBody.Release(st);
                         if (ws.Paced) Unpace(st, ws); // step 68
                         released++;
@@ -456,6 +465,7 @@ namespace TraxCombat.Missions
                     _wallStats.Errors++;
                     Failed("wall.release", e);
                 }
+                ws.Flank.Turned = false; // step 99 (a man gone: no engine call)
                 _wallStats.AddRelease(why);
             }
             _walled.Clear();
@@ -471,6 +481,7 @@ namespace TraxCombat.Missions
             ws.Leash = default;
             EndOutOfPlace(st, ws, WallOutEnd.LeftField, _wallLastTick, engine: false); // step 63: no engine call for a man gone
             ws.Paced = false; // step 68: no engine call either
+            ws.Flank.Turned = false; // step 99: no engine call either
             FirmForget(ws); // step 75
             Unwall(st, ws);
             _wallStats.LeftFieldHeld++;
@@ -496,6 +507,7 @@ namespace TraxCombat.Missions
             Unwall(st, ws);
             try
             {
+                FlankLetGo(st, ws, WallFlankVerdict.NotHeld, now, engine: !st.Removed); // step 99
                 if (!st.Removed) WallBody.Release(st);
                 if (!st.Removed && ws.Paced) WallBody.Unpace(st); // step 68
             }
@@ -528,6 +540,7 @@ namespace TraxCombat.Missions
                     st.Wall.Held = false;
                     st.Wall.ListIndex = -1;
                     st.Wall.Paced = false; // step 68: no engine call - the agents go with the mission
+                    st.Wall.Flank.Turned = false; // step 99
                     FirmForget(st.Wall); // step 75
                 }
             _walled.Clear();
@@ -541,6 +554,7 @@ namespace TraxCombat.Missions
             TraxLog.Info("summary", _wallStats.Pace.ByOrderLine()); // step 68: the in-contact leak by order
             TraxLog.Info("summary", _wallStats.Pace.PaceLine(WallPaceRules.From(TraxSettings.Shared)));
             WriteStandFirmSummary(); // step 75
+            WriteFlankSummary(); // step 99
         }
 
         // ------------------------------------------------------------------ step 68: the wall pushes as one

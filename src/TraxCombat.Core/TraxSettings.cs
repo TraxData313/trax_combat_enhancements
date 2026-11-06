@@ -292,6 +292,10 @@ namespace TraxCombat.Core
         public float ShieldWallStandFirmStillMetresPerSecond => GetFloat(SettingsSchema.ShieldWallStandFirmStillMetresPerSecond);
         public bool ShieldWallStandFirmPinFrame => GetBool(SettingsSchema.ShieldWallStandFirmPinFrame);
         public bool ShieldWallStandFirmTightTolerance => GetBool(SettingsSchema.ShieldWallStandFirmTightTolerance);
+        public bool ShieldWallFlanksFaceOut => GetBool(SettingsSchema.ShieldWallFlanksFaceOut);                // step 99: a standing wall's ends face the flanks
+        public int ShieldWallFlankFiles => GetInt(SettingsSchema.ShieldWallFlankFiles);
+        public float ShieldWallFlankFrontCornerDegrees => GetFloat(SettingsSchema.ShieldWallFlankFrontCornerDegrees);
+        public float ShieldWallFlankReleaseMetres => GetFloat(SettingsSchema.ShieldWallFlankReleaseMetres);
 
         // step 76: the AI prefers the spear; thrusts pass a friend
         public bool SpearPreferenceEnabled => GetBool(SettingsSchema.SpearPreferenceEnabled);
