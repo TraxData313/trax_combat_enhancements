@@ -8989,3 +8989,289 @@ the ShieldWall arrangement only. Built as section 3 proposed, with these details
   at step 41's 0.5 s samples once he has been turned `SettleSeconds` 1.5 s. Still UNVERIFIED in game (risk 4) - the line is built to answer it.
 - **Smoke environment fix**: the offline smoke's MCM phase looked for 0Harmony only in the Workshop folder 2859188632, gone from this PC since the
   mods moved into `Modules\` (2026-11-04) - six MCM checks failed for that alone. It now also looks in `Modules\Bannerlord.Harmony\bin`.
+
+## Step 100 — timed blocks (research 100a, 2026-11-08; build 100b-100f to come)
+
+Toni 2026-11-08: "add a mechanic that increases the correct way shield block to stagger, but make it so that as I block just as the attack
+is landing to trigger the stagger up to 2 sec long in a nicely timed block, making the blocking mechanic more skill based. Same with blocking
+with weapons. When being charged with a horse and blocking in the correct way just as the blow is about to hit be able to even bring down the
+attacker. Think if you can add an animation where the blocker shield or weapon goes out as the attack lands making the attacker stagger cause
+it looks strange now - the blocker just sits while the attacker gets staggered. Maybe even try a slow mo when the player does it nicely".
+Research only, no code. Verified 2026-11-08 in the v1.4.8 decompile `%TEMP%\trax_decomp\` (TaleWorlds.MountAndBlade, View, GUI, full_SandBox)
+and the shipped XML of the install `C:\Program Files (x86)\Steam\steamapps\common\Mount & Blade II Bannerlord` (Version.xml `v1.4.8`; NOT the
+D:\ path of Directory.Build.props - Directory.Build.props.user points here). Line numbers are the decompile's ("~").
+
+### 0. What exists today (the riposte of steps 51 / 56 / 62, read in the code)
+
+- **Decided** in Core `ImpactMath.Decide` (Impact.cs ~1258-1282): a correct block (`CanRiposte` = right-side shield or parry, step 64's
+  front arc included) rolls `d.Riposte` = `RiposteStaggerMaxPercent` 70 x S(x_r) x (1 − `RiposteBlockerTiredPercent` 0 x T_D), halved by HIS
+  recent outcomes, x `ImpactOnPlayerPercent` when he is you; refused for `f.AttackerMounted` (`ImpactRefusal.Rider`), his stagger immunity, a
+  blocker's own outcome (Replaced). x_r = T_A + 0.25 x band(log2 R_r) - so a FRESH attacker into a fresh guard is ~0-1 %: ripostes are rare.
+  Toni's log 2026-11-07 / 08: 0-2 ripostes a battle; one battle had "ripostes refused on a mounted attacker 31".
+- **Length** (Impact.cs ~1314-1322): `RiposteStunMaxSeconds` 1.0 x (0.5 + 0.5 x max(T_A, x_r)) x the T-spread, capped at `ImpactStunCapSeconds`
+  2.0 → today 0.5-1.0 s (+ the spread). The meet rows (step 82, ~1389) use §3.7's `StaggerBaseSeconds` length instead.
+- **Played** from the TICK: `AthleticsLogic.ImpactBlocks.ApplyBlock` → `QueueBlock(ImpactBlockAction.Riposte, attacker, blocker, d,
+  d.RiposteStunSeconds)` → `RunBlockPending` → `RunStagger` → `IImpactBody.ForceStagger(st, Backward, speed)` =
+  `Agent.SetActionChannel(0, act_stagger_backward, ignorePriority (second try), 0, 0f, speed)` (ImpactBody.cs ~101-115), speed =
+  `ImpactBlockMath.StaggerSpeed(asked, natural)` = natural ÷ asked within 0.25-2.0. The natural length is MEASURED by `ReactionWatch`:
+  1.01-1.02 s in Toni's log ("the animation's own length 1.01 s - measured"), asked vs measured agree (0.82 → 0.83 s, 0.67 → 0.76 s). **A 2 s
+  stagger = speed ~0.5 - inside the proven range; no new lever is needed for the length.** Then `ImpactState.Reel` (+ `ImpactStaggerImmunity`
+  2 s from the END), the YOU line, the on-screen message, step 54's punish window.
+- **The blocker** gets nothing visible from us - the engine plays its own `act_defend_*_parry_light / _parry_heavy` reaction on channel 1
+  (item_usage_sets.xml `defend_parry_light_action`), which is a small recoil INTO the guard. Hence "the blocker just sits".
+
+### 1. TIMING - how late the guard went up
+
+**What the engine has (and what it does not).**
+- Every defend action exists in an `_active` and a `_passive` form, per guard and weapon class - action_types.xml: `act_defend_up_1h_active`
+  (`action_stage="as_defend_parry"`), `act_defend_up_1h_passive` (`as_defend`), `act_defend_up_1h_parry_light / _heavy` (as_defend_parry); the
+  same for `forward / right / left`, `_2h`, `_staff`, `_pike`, `_fist`, and the shields `act_defend_shield_{right|left|up|down}_{1h|spear|pike|0h}_
+  {passive|active|parry_light|parry_heavy}_{down|up}`. item_usage_sets.xml wires them: `defend_action="act_defend_up_1h_passive"`,
+  `defend_active_action="act_defend_up_1h_active"`, `defend_parry_light_action=...`. `Agent.ActionStage` (Agent.cs ~149): `Defend` 5 (passive),
+  `DefendParry` 6 (active and the parry reactions).
+- **The engine already rewards the ACTIVE guard**: `MissionCombatMechanicsHelper.GetDefendCollisionResults` (~289-299) - `CombatCollisionResult
+  .Parried` adds `StunDefendWeaponWeightBonusActiveBlocked` (0.1, managed_core_parameters.xml) to the guard's stability and gives the attacker
+  +min(0.15, 0.12 x w) s recoil; `ChamberBlocked` +min(0.25, 0.25 w) and the chamber bonus 0.4; `Blocked` nothing. The collision result is
+  decided NATIVELY (no managed reader of the defend stage); both a shield and a weapon can be `Parried` (the case reads the defender's item, shield
+  or not). Our `AthleticsLogic.BlockKindOf` ignores it today (shield flag first, then Blocked / Parried / Chamber = "parry").
+- **Hypothesis H (to prove first in 100b, not assumed):** pressing block plays the `_active` defend (stage DefendParry) for a short time,
+  then the guard settles into `_passive` (stage Defend); a blow on an `_active` guard comes out `Parried`, on a `_passive` one `Blocked`. If H
+  holds, the engine itself marks a FRESH guard - but only with the resolution of the active animation's length (unknown: the clips live in
+  AssetPackages\animation_clips.tpac; read them in game with `MBActionSet.GetActionAnimationDuration(agent.ActionSet, act)`,
+  `GetActionAnimationContinueToAction` (does active continue to passive?) and `GetActionAnimationFlags` (anf_cyclic?) - all public static).
+  The alternative reading H' - "active" = the guard while a threat is incoming, whenever it was raised - would make held and fresh guards
+  INDISTINGUISHABLE in the engine's state, so the engine's verdict cannot be the timing; our own clock must.
+- Reads at contact (main thread, OnMeleeHit, cheap - step 82's `MeetBody` already reads the first and third): `GetCurrentActionType(1)`
+  (`ActionCodeType.DefendShield` 2, `DefendForward1h` 7 ... 14), `GetCurrentActionStage(1)` (Agent ~2758), `GetCurrentAction(1).Index` (which
+  defend: active / passive / parry reaction - index sets built once from the names via `ActionIndexCache.Create(name)`, ~439),
+  `GetCurrentActionProgress(1)` (~2773), `GetDefendMovementFlag()` (~2913: DefendLeft 0x400 / Right 0x800 / Up 0x1000 / Down 0x2000),
+  `CurrentGuardMode` (~702). Caveat C1: by OnMeleeHit the engine may already have switched channel 1 to the `_parry_light/_heavy` reaction -
+  then the action read says "a parry reaction" and nothing about the age (100b's diagnostic counts how often).
+
+**The proposal: our own GUARD CLOCK, plus the engine's verdict as a cross-check.**
+- `GuardClock` (Core struct on `TrackedAgent`, pure): `Note(guardKey, now)` where guardKey = 0 (no guard) or the defend direction flag; it
+  keeps `RaisedAt` = the time the key went from 0 to a guard OR (manual direction only) changed to another direction. Guard age at contact =
+  `now − RaisedAt`.
+- **The player** (one agent): every tick `GetDefendMovementFlag()` + `GetCurrentActionStage(1)` ∈ {Defend, DefendParry} → `Note`. Exact to a
+  frame (~7-16 ms). Catch: `BannerlordConfig.DefendDirectionControl` (0 = by look, 1 = by movement, 2 = AUTOMATIC - BannerlordConfig.cs ~276;
+  TrainingFieldMissionController ~2465): in AUTOMATIC the game turns a held guard to the attack on its own at the last moment - a direction
+  change must NOT re-start the clock there (only the press counts), or a held auto-guard would read "perfect" on every blow. In the two manual
+  modes a late switch to the right side IS the skill - it re-starts the clock.
+- **The AI** (hundreds of men - no per-tick native reads): at contact only, from channel 1: an `_active` defend (index set) → age ≈
+  progress x its duration (the duration read once per mission per action set from `MBActionSet.GetActionAnimationDuration`); a `_passive` one →
+  "held" (age ≥ the active length → score 0); a parry reaction (C1) or anything else → unknown → score 0. If 100b shows C1 dominates, the
+  fallback is the AI input hook (step 16's `AiInputComponent.OnAIInputSet` sees his defend bits each AI decision) switched on for men within ~3 m
+  of an enemy - a managed callback per decision, no native read; second choice only.
+- **Chamber** (`CollisionResult.ChamberBlocked` - an attack into the attack, the engine's own timed counter): score 1, always.
+- **The score** (Core `TimedBlockMath.Score(age, perfect, window)`): 1 for age ≤ P = `TimedBlockPerfectSeconds` 0.15, 0 for age ≥ W =
+  `TimedBlockWindowSeconds` 0.5, between a smoothstep 1 − smooth((age − P) ÷ (W − P)); NaN / negative age → 0. Then x `TimedBlockAiPercent` 50 %
+  for an AI blocker (the engine's reflexes raise AI guards late often - H or not, a plain AI share keeps duels from turning into 2 s stun locks;
+  the summary measures the AI's real score spread so the share can be tuned), x `TimedBlockParryPercent` 100 % for a weapon parry.
+- **Held vs fresh indistinguishable**: (1) a guard held through a whole exchange (shield walls, step 23's brace, `EnforceShieldUsage`) - never
+  re-raised → 0, correct; (2) AUTOMATIC block direction - handled above; (3) for the AI under H' or C1 - unknown → 0 (no timed blocks for the AI
+  rather than random ones); (4) a quick release-and-press while holding - counts as fresh (that is the skill: a re-timed guard); (5) a guard
+  raised mid-own-attack-cancel - the engine's own business, it reads as a raise.
+- **Diagnostic first (100b part 1)**: per block, log (rate-limited, `~` verbose) and summarise: CollisionResult (Blocked / Parried / Chamber)
+  x the channel-1 read at contact (active / passive / parry reaction / other) x our clock's age band (player) - the answer to H, H' and C1, and
+  the active animations' durations / continue-to / cyclic flag once per mission.
+
+### 2. STAGGER - the timed riposte up to 2 s
+
+- **Where**: Core `ImpactMath.Decide`'s riposte block (Impact.cs ~1258-1282) and its length (~1314-1322) - nothing changes in the module's
+  queue / play / watch path (`RunStagger` already plays any asked length at speed natural ÷ asked, measured).
+- **Chance**: p = p56 + (`TimedBlockRiposteMaxPercent` 85 % − p56) x s, where p56 = step 56's chance (70 x S(x_r) x ...); the HALVING by his
+  recent outcomes, his stagger immunity, `ImpactOnPlayerPercent` and the Replaced / Down refusals all still apply AFTER the blend (anti-abuse
+  intact). s 0 → exactly step 56 (an untimed block is unchanged).
+- **Length**: L = L56 + (`TimedBlockStaggerMaxSeconds` 2.0 − L56) x s, L56 = today's length; cap `ImpactStunCapSeconds` (2.0 - already the
+  stun cap, so the same ceiling) and, when the staggered ATTACKER is YOU, `TimedBlockAgainstYouMaxSeconds` 1.2 (a 2 s stagger plus step 54's
+  punish window is a death sentence in a crowd; the AI timing YOU is the rarer, gentler case).
+- Shield blocks and weapon parries alike (`TimedBlockParryPercent` 100 - Toni: "Same with blocking with weapons"); the wrong side never (no
+  riposte there today, none timed). Kicks / bashes (step 82's meet rows) - untouched in step 100.
+- **Not changed**: step 56's untimed behaviour, the blocker's own rows (a timed correct block could lower his OWN stagger chance - not asked;
+  left out), step 62's thrown-back roll (stays on the charge share).
+
+### 3. MOUNTED - bringing the rider down
+
+- **Today**: a correct block against a rider rolls the riposte and REFUSES it (`f.AttackerMounted` → `ImpactRefusal.Rider`; "ripostes refused
+  on a mounted attacker 31" in Toni's 2026-11-08 10:38 battle). Riders never get `act_stagger_*` (the horse shares channel 0 - RBM crashed with
+  it; IMPACT §3.8, `CanForce` → `Mounted`).
+- **The proven lever**: `IImpactBody.OwnDismountBlow` (ImpactBody.cs ~160 - the drowning-blow recipe with `BlowFlags.CanDismount`, 1 damage, owned
+  by the blocker), step 53's "a blocking rider" path, followed until SEEN off the horse (2 s). Toni's log 2026-11-08 10:38: "APPLIED ... 1 by our
+  own blow (blocks) → SEEN off the horse within 2.0 s ... 1, still mounted 0" - it works. The engine's own rider fall plays
+  (`act_rider_only_fall_*` / `act_fall_rider_*` exist in action_types.xml); the vanilla path is `Mission.CreateMeleeBlow` ~5562-5567
+  (`DecideAgentDismountedByBlow` → `CanDismount`).
+- **The horse rears** (a second, unproven lever): `BlowFlags.MakesRear` (0x200) on a blow REGISTERED ON THE MOUNT (Mission.cs ~5581-5584;
+  vanilla gives it only to a braced long spear's thrust into a running horse's face, `MissionCombatMechanicsHelper.DecideMountRearedByBlow`
+  ~95-103, needs `AgentFlag.CanRear`); the action `act_horse_rear` exists; `Agent.Mount` refuses while the horse rears (Agent ~4789, type
+  `ActionCodeType.Rear` 47). A rear stops the charge without unhorsing.
+- **Proposed rule** (Core `TimedBlockMath.RiderDown`): only a FOOT blocker's correct block of a rider's MELEE blow (never a couched lance -
+  `IsDoingPassiveAttack`; never a horse's bump), with s ≥ `TimedBlockDismountMinScore` 0.5:
+  chance = `TimedBlockDismountMaxPercent` 40 % x s² x (shield 1 / weapon `TimedBlockDismountWeaponPercent` 50 %) x speed x skill, where
+  speed = 0.25 + 0.75 x clamp((v − 3) ÷ (10 − 3)) (v = the rider's horse speed toward the blocker - step 53's rider momentum band, `ImpactFacts.
+  AttackerSpeed`: a standing horse still 25 %, a full gallop 100 %: his own momentum throws him) and skill = min(1, 0.5 + S(x_r)) (the
+  riposte pressure x_r already holds the rider's tiredness, both skills and both bodies: a good blocker against a poor rider - the full chance,
+  a fresh even pair - half); halved by his recent outcomes; his knockdown immunity; x `ImpactOnPlayerPercent` when the rider is you. Hit → `OwnDismountBlow` from the
+  tick (lever `Dismount`, step 53's follow + record + "You knocked X off his horse" message). Missed but s ≥ 0.5 → the horse rears at
+  `TimedBlockRearPercent` 50 % x s (our 1-damage `MakesRear` blow on `MountAgent`, own lever `Rear`, followed: `GetCurrentActionType(0) ==
+  Rear` within 1 s = SEEN). Both sides (AI infantry can unhorse your riders - through the AI share and s², rare).
+- The blocker's own risk is unchanged (step 53 / 62: his block stun, his rows).
+
+### 4. BLOCKER ANIMATION - the shield / weapon goes OUT
+
+- **Candidates that really exist** (action_types.xml + as_human_warrior in action_sets.xml):
+  - shield: `act_shield_bash` (animation `hand_shield_bash`, type `actt_weapon_bash`), `act_shield_bash_left_stance`, `act_hand_shield_bash`
+    (+ `_left_stance`); the guard's own `act_defend_shield_{dir}_{1h|spear}_parry_heavy_{down|up}` (type actt_defend_shield, as_defend_parry).
+  - weapon: `act_1h_bash` (`1h_bash`), `act_2h_bash`, `act_staff_bash` (+ `_left_stance`) - the item usage sets' kick usage, the same push step
+    88 / 95 use through the kick input; the guard's own `act_defend_{forward|up|right|left}_{1h|2h|staff|pike}_parry_heavy`.
+  - (not useful: `act_hit_*_bash` = a bash being blocked; `act_*_parried` / `act_blocked_*` = the ATTACKER's recoil, already played by the engine.)
+- **How**: `Agent.SetActionChannel(1, act, ignorePriority: true, additionalFlags: 0, blendWithNextActionFactor 0, actionSpeed ~1.4,
+  blendInPeriod ~0.05, blendOutPeriodToNoAnim ~0.15, startProgress ~0.3)` (Agent ~2368 - every argument public) from the TICK one frame after the
+  riposte's stagger was accepted - CHANNEL 1 ONLY (the upper body; channel 0 = the legs keep the stance - the bash's own step forward stays out),
+  the windup skipped by startProgress, sped up so the push is ~0.25 s; then nothing - his defend input re-raises the guard on its own (player:
+  the held key; AI: the next decision). Priority: the defend actions are `amf_priority_defend(_parry)` 0x0E / 0x0F; a bash is kick-class 0x21 -
+  above them, so it is taken even without ignorePriority while he is only guarding.
+- **Pick**: SHIELD → `act_shield_bash` (a real outward shield punch; `_left_stance` when `GetIsLeftStance()`). WEAPON → his weapon class's bash
+  (`act_1h_bash` / `act_2h_bash` / `act_staff_bash`, the same choice as the item's kick usage) - a beat-away with the hilt / haft. Fallback for
+  both (if the bash misbehaves, below): his guard's own `_parry_heavy` defend action replayed at speed ~1.5 - stays a DEFEND action (guard never
+  down, no collision) but reads as a recoil, not a push. 100d starts with a TEST TOOL (Advanced, off, like the spike): a key that plays each
+  candidate on the player with the chosen startProgress / speed, so Toni picks by eye.
+- **Risks**: (1) a played `actt_weapon_bash` may make the native bash COLLISION (a real bash blow on the reeling attacker - knock-back, our
+  step 82 meet decision, step 18's bash cost via `KickBash`'s action-type count, step 32's swing spent): a per-man `PushOutUntil` (now + 0.5 s)
+  makes OnMeleeHit / the charge / the meet ignore HIS bash in that window, and the summary counts any such collision; (2) his guard is DOWN for
+  ~0.25 s - the staggered attacker cannot use it (≥ 0.6 s reeling), a second enemy could: only on s ≥ `TimedBlockPushOutMinScore` 0.5 and only
+  when the riposte stagger was accepted; for YOU behind `TimedBlockPushOutForYou` (a player may hate losing the guard); (3) never mounted
+  (a rider's channel 1 is his weapon arm on a horse set - skip), never in a shield wall's front rank held by step 41 (the wall's pose), never
+  while he is attacking / reloading (`GetCurrentActionType(1)` must be a defend type); (4) the engine may refuse it (false) - counted.
+
+### 5. SLOW MO - only for the player
+
+- **API** (Mission.cs ~370-2140, all public): `Mission.AddTimeSpeedRequest(new Mission.TimeSpeedRequest(speed, id))`,
+  `RemoveTimeSpeedRequest(id)` (THROWS - `RemoveAt(-1)` - when the id is absent: always `GetRequestedTimeSpeed(id, out _)` first),
+  `GetRequestedTimeSpeed(id, out float)`. Each frame `Mission.UpdateSceneTimeSpeed` (~2068) sets `Scene.TimeSpeed` = the LOWEST request (1 when
+  none); `MissionState` (~150-163) multiplies the mission's dt by it - only when `!GameNetwork.IsSessionActive` (single player).
+- **Vanilla users**: the order menu's slow-down 0.25 (id 864, `BannerlordConfig.SlowDownOnOrder`), the radial menu (813), the equip / drop
+  view 0.25 (624), the developer slow-mo hotkey (MissionScreen ~3310-3340, id 1121) - which RAMPS by Remove + Add each frame with a new value:
+  the pattern to copy. The lowest wins: inside the order menu our slow-mo is simply hidden by 0.25.
+- **Real time**: our tick's dt is already scaled - the ramp must run on `TaleWorlds.Engine.Time.ApplicationTime` (Time.cs ~5; also
+  `MBCommon.GetApplicationTime`). Everything of ours keyed on mission time (stagger lengths, watches, refills) stays consistent - only the
+  wall clock slows.
+- **Profile** (Core `TimedBlockMath.SlowMoSpeed(realT)`): ease in 0.05 s real to `TimedBlockSlowMoSpeed` 0.3, hold, smoothstep back to 1 by
+  `TimedBlockSlowMoRealSeconds` 0.5 s real (≈ 0.25 s of mission time). Request id 31100 (ours; vanilla's 624 / 813 / 864 / 1121 avoided).
+- **When**: the defender is the main agent, s ≥ `TimedBlockSlowMoMinScore` 0.8, the riposte (or the dismount / rear) was ACCEPTED by the engine
+  (not merely decided), no slow-mo within `TimedBlockSlowMoCooldownSeconds` 4 (real), the game not paused, `!GameNetwork.IsMultiplayer`.
+- **Always given back**: at the end of the ramp, when the switch / master switch / ImpactEnabled goes off, at mission end
+  (`OnEndMissionInternal` / `OnRemoveBehavior`), on a caught error (and the lever disabled) - `GetRequestedTimeSpeed` → `Remove`. A stuck
+  request = a stuck slow battle, so the summary checks "restored".
+- **Side effects**: no managed sound path reads `TimeSpeed` (the decompile has none) - the native sound engine probably keeps real time
+  (sounds already playing are not pitched; new ones start on schedule), so the slow-mo is visual only; UNVERIFIED - a playtest item. The
+  camera runs on real time (the developer slow-mo keeps the camera free). Other mods' requests (e.g. RTS Camera's slow-mo) combine by "lowest wins".
+
+### 6. Settings (proposal), the summary, the tests
+
+New keys only - **no config format bump** (ConfigFile.FormatVersion stays 26; a bump is for changed meanings / pushed defaults). Defaults in
+defaults.json + `dotnet run --project tools/DefaultsTool -- refresh`; DESIGN's table rows in the same commit; every value read at use time.
+
+PLAYER page, "Staggers and knockdowns" (`PlayerImpactGroup`; SettingsPagesTests' list grows by 2):
+- `TimedBlocksEnabled` Bool **true** - "Timed blocks": "A right block or parry made just as the blow lands (within about half a second)
+  can stagger the attacker - the later your guard went up, the likelier and the longer, up to 2 s; against a rider it can bring him or his horse
+  down. A guard held up the whole time counts as an ordinary block. The AI times its blocks too, less sharply. Off: ordinary blocks only. The
+  numbers: Advanced page, Impact."
+- `TimedBlockSlowMo` Bool **true** - "Slow motion on your best blocks": "A brief slow motion (half a second) when YOU make a nicely timed
+  block that staggers or unhorses the attacker. Off: no slow motion."
+
+ADVANCED page, "Impact: staggers, shield drops, knockdowns" (`ImpactGroup`):
+| Key | Default | Range | Step |
+|---|---|---|---|
+| `TimedBlockPerfectSeconds` | 0.15 | 0-0.5 | 100b - guard raised this close to the hit = a perfect timing |
+| `TimedBlockWindowSeconds` | 0.5 | 0.1-1.5 | 100b - raised earlier than this = no timing at all |
+| `TimedBlockRiposteMaxPercent` | 85 | 0-100 | 100b - the riposte chance a perfect block lifts to |
+| `TimedBlockStaggerMaxSeconds` | 2.0 | 0.5-3 | 100b - the attacker's stagger after a perfect block |
+| `TimedBlockAgainstYouMaxSeconds` | 1.2 | 0.5-3 | 100b - the longest timed stagger the AI can put on YOU |
+| `TimedBlockParryPercent` | 100 | 0-100 | 100b - a weapon parry's share of the timing |
+| `TimedBlockAiPercent` | 50 | 0-100 | 100b - an AI blocker's timing counts this much |
+| `TimedBlockDismountMinScore` | 0.5 | 0-1 | 100c - the timing a block needs to bring a rider down |
+| `TimedBlockDismountMaxPercent` | 40 | 0-100 | 100c - the chance a perfect shield block knocks a galloping rider off |
+| `TimedBlockDismountWeaponPercent` | 50 | 0-100 | 100c - a weapon parry's share of that chance |
+| `TimedBlockRearPercent` | 50 | 0-100 | 100c - a timed block that did not unhorse him rears his horse (x the timing) |
+| `TimedBlockPushOut` | true | - | 100d - the blocker's shield / weapon pushes out on a timed riposte |
+| `TimedBlockPushOutForYou` | true | - | 100d - also on you (your guard drops for a quarter second) |
+| `TimedBlockPushOutMinScore` | 0.5 | 0-1 | 100d |
+| `TimedBlockPushOutSpeed` / `TimedBlockPushOutStartProgress` | 1.4 / 0.3 | 0.5-3 / 0-0.9 | 100d - tuned by eye with the test tool |
+| `TimedBlockSlowMoMinScore` | 0.8 | 0-1 | 100e |
+| `TimedBlockSlowMoSpeed` | 0.3 | 0.1-1 | 100e |
+| `TimedBlockSlowMoRealSeconds` | 0.5 | 0.2-2 | 100e - real seconds, ease-out included |
+| `TimedBlockSlowMoCooldownSeconds` | 4 | 0-30 | 100e - real seconds |
+| `TimedBlockAnimTest` | false | - | 100d - TEST TOOL (Advanced, "Advanced" group with the spike): a key plays each push-out candidate on you |
+
+Gates: `ModEnabled` FIRST → `ImpactEnabled` (+ AthleticsEnabled, as the impact system) → `TimedBlocksEnabled` → each part's own switch; the
+riposte family must be live (`r.Applies(ImpactFamily.Riposte)`); shadow mode = decide and log only. The smoke's master-switch step: off = no
+clock reads, no push-out, the slow-mo request removed.
+
+**[summary] lines** (one block, `[summary] timed blocks ...`):
+- `timed blocks (step 100): correct blocks by timing 0 / 0-0.25 / 0.25-0.5 / 0.5-0.8 / 0.8-1 - shield a/b/c/d/e, parry ..., chamber n; the
+  source (your clock / the action at contact / unknown); YOU: n blocks, median guard age N ms, best M ms`
+- `timed blocks - the engine's verdict: Blocked / Parried / Chamber x the channel-1 read at contact (active / passive / parry reaction /
+  other) x your clock's age band; the active defend's length L s (continue-to X, cyclic yes/no)` - the H / H' / C1 answer.
+- `timed ripostes: decided / applied / seen by timing band; stagger asked → measured by band (1.2 / 2.0 s targets); refused (immune / halved /
+  down); against YOU capped n`
+- `timed blocks on riders: timed correct blocks on riders n (shield / parry) by the horse's speed band; dismounts decided → applied → SEEN off;
+  rears decided → applied → seen rearing; refused (lance / immunity / lever)`
+- `timed push-out: played / refused by the engine / skipped (score, mounted, attacking, wall) / bash collisions suppressed n`
+- `timed slow-mo: triggered n, skipped by the cooldown / a lower request (order menu) / pause, mean real seconds, every request given back yes/no`.
+- YOU lines: "your timed block (0.08 s, perfect): X reels 1.9 s" / "X timed his block on you (0.12 s): you reel 1.2 s".
+
+**Unit tests (Core, `tests/TraxCombat.Core.Tests/TimedBlockTests.cs`)**: `Score` - 1 at/below P, 0 at/above W, monotone, smooth at both ends,
+NaN / negative → 0, P ≥ W degenerate → a step; the AI / parry shares; `RiposteChance(p56, s)` - s 0 = p56 exactly (step 56 unchanged), s 1 =
+the max, never below p56; `Length(L56, s, toYou)` - the caps; `GuardClock` sequences - raise / hold / re-raise, direction change counts in
+manual, not in automatic; `RiderDown` - s below the floor 0, s², shield vs weapon, the speed band ends, the cap 1; `SlowMoSpeed(t)` -
+1 at 0⁻ and after the end, the floor during the hold, continuous, never below the floor; plus `ImpactTests` / `RightBlocksTests` through
+`ImpactMath.Decide` with `ImpactFacts.TimingScore` (s 0 reproduces every step-56 number; the Rider refusal stays for the riposte, the dismount is
+its own roll) and `SettingsPagesTests` (the 2 player keys). The offline smoke: a timed-block block on its fake agents (the clock fed by a
+stand-in `IImpactBody` read), the slow-mo request added and removed (a fake mission time-speed sink), the master switch.
+
+### 7. The build steps (the manager's split, confirmed with one change of order)
+
+- **100b - the guard clock + the timed riposte (shield + parry)** - the DIAGNOSTIC lines first, then the effect. Files: Core
+  `src/TraxCombat.Core/TimedBlock.cs` (new: `TimedBlockMath`, `GuardClock`, `TimedBlockStats`), `Impact.cs` (`ImpactFacts.TimingScore` /
+  `GuardAge` / `TimingSource`, `ImpactRules` from settings, the riposte blend + length in `Decide`, `ImpactDecision.Timing`), `ImpactBlocks.cs`
+  (stats + summary), `SettingsSchema.cs`, `TraxSettings.cs`, `defaults.json`; Module `Missions/TrackedAgent.cs` (the clock),
+  `Missions/ImpactInputs.cs` (fill the facts at contact), `Missions/ImpactBody.cs` (`ReadGuard` - stage / index / progress / defend flag;
+  durations once per mission via `MBActionSet`), `Missions/AthleticsLogic.Impact.cs` or `.ImpactLive.cs` (the player's clock each tick),
+  `Missions/AthleticsLogic.ImpactBlocks.cs` (YOU lines), `Missions/AthleticsLogic.Engine.cs` / `.ShieldArc.cs` (`BlockKindOf` keeps the
+  CollisionResult for the verdict line); tests `TimedBlockTests.cs`, `ImpactTests.cs`, `RightBlocksTests.cs`, `SettingsPagesTests.cs`; the
+  smoke; docs DESIGN (decision 91 → built, the rows), IMPACT §3.6, HOW-IT-WORKS §11c, PLAYTEST D64, TASKS_DONE.
+- **100c - riders down** - Core `TimedBlock.cs` (`RiderDown`), `Impact.cs` (a `TimedDismount` / `TimedRear` roll beside the Rider-refused
+  riposte), `ImpactRiders.cs` (stats); Module `Missions/ImpactBody.cs` (`OwnRearBlow` on the mount - the drowning recipe with `MakesRear`),
+  `Missions/AthleticsLogic.ImpactRiders.cs` (queue / follow / seen), `Missions/AthleticsLogic.ImpactBlocks.cs` (the queue action), settings,
+  tests `ImpactRidersTests.cs`, PLAYTEST D65.
+- **100e - the player's slow-mo** (moved BEFORE the animation: small, independent, no risk to the AI) - Core `TimedBlock.cs`
+  (`SlowMoSpeed`, `SlowMoState`), Module new `Missions/SlowMoBody.cs` (`ISlowMoBody`: Add / Remove / Has over `Mission`, `Time.ApplicationTime`),
+  `Missions/AthleticsLogic.ImpactLive.cs` (start on an accepted timed outcome, ramp each tick, give back on every exit path), settings, tests,
+  smoke, PLAYTEST D66.
+- **100d - the push-out animation** (last: the only unproven engine behaviour) - the test tool first (`TimedBlockAnimTest`), then Module
+  `Missions/ImpactBody.cs` (`PushOut(st, kind, speed, start)`), `Missions/AthleticsLogic.ImpactBlocks.cs` (after `RunStagger` accepted a timed
+  riposte; `PushOutUntil` on `TrackedAgent`), the bash-collision guard in `AthleticsLogic.Engine.cs` / `.AiKicks.cs` / `.ImpactMeet.cs`
+  (`KickBash` charge, the meet decision, the swing stack), settings, tests (the gates as pure Core rules), PLAYTEST D67.
+- **100f - independent review + fixes, close step 100** (as the board says).
+
+### Risks
+
+1. **H fails and C1 is common**: the AI's timing at contact is then unknowable → the AI gets no timed blocks (score 0), or 100b turns on the
+   input-hook fallback for men in contact (a managed callback per AI decision - measure the cost in the smoke). The player's clock does not
+   depend on H.
+2. **Balance**: ripostes go from ~1 a battle to many; a 2 s stagger + step 54's punish = a kill. Mitigations: the AI share 50, the against-you
+   cap 1.2 s, the halving / immunity unchanged, the summary by band. Watch the player's AND the AI's riposte rate per minute in D64.
+3. **Auto block direction** (DefendDirectionControl 2) could farm perfect blocks if a direction change counted - only the press counts there.
+4. **The push-out bash** may collide natively and trigger our own bash systems - the `PushOutUntil` guard; fallback `_parry_heavy`.
+5. **Slow-mo stuck** if a request is never removed - every exit path removes it; `RemoveTimeSpeedRequest` throws when absent - always ask first.
+   Audio unverified.
+6. **Riders**: unhorsing riders by infantry is a big cavalry nerf if the AI times often - s² and the AI share keep it rare; the rear is an
+   unproven lever (its own `Rear` lever, disabled alone on an error).
+
+### Open questions for Toni (each with Claude's recommendation)
+
+1. Does the AI get timed blocks too? - **Yes, at half strength** (`TimedBlockAiPercent` 50) and at most 1.2 s against you.
+2. How sharp is "nicely timed"? - **perfect within 0.15 s, nothing after 0.5 s** (both settings).
+3. Against a rider: knock him off, or also rear the horse when he stays on? - **both**: off at up to 40 % for a perfect shield block at a gallop
+   (half with a weapon), else the horse rears.
+4. The push-out drops YOUR guard for ~0.25 s - **on for you too** (switchable), only on a well-timed block whose stagger landed.

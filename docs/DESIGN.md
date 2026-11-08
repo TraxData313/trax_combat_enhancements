@@ -1873,6 +1873,29 @@ Item 3 is built (step 20, hold ALT); what is left of it is an always-on form abo
 | `TargetBarLingerSeconds` | 2 | Seconds the bar stays after your aim leaves the fighter. | LATER (step 7) |
 | `FormationBarsAlways` | false | true: the formation numbers always shown above the formations (our own projection - step 20's fallback), not only while vanilla shows its markers. | LATER (an always-on form of step 20) |
 | `FormationBarHeight` | 3.0 | Metres above the formation's centre for those always-on numbers (vanilla's markers use 3). | LATER (an always-on form of step 20) |
+| `TimedBlocksEnabled` | true | Step 100 (decision 91, PROPOSED): timed blocks on / off - player page, "Staggers and knockdowns". | step 100b |
+| `TimedBlockPerfectSeconds` | 0.15 | Guard raised this close to the hit = a perfect timing (score 1). Advanced, Impact. | step 100b |
+| `TimedBlockWindowSeconds` | 0.5 | Guard raised earlier than this before the hit = no timing (score 0). | step 100b |
+| `TimedBlockRiposteMaxPercent` | 85 | The riposte chance a perfect correct block lifts to (from step 56's, by the score). | step 100b |
+| `TimedBlockStaggerMaxSeconds` | 2.0 | The attacker's stagger after a perfect correct block (from step 56's length, by the score). | step 100b |
+| `TimedBlockAgainstYouMaxSeconds` | 1.2 | The longest timed stagger the AI can put on you. | step 100b |
+| `TimedBlockParryPercent` | 100 | A weapon parry's share of the timing score. | step 100b |
+| `TimedBlockAiPercent` | 50 | An AI blocker's share of the timing score. | step 100b |
+| `TimedBlockDismountMinScore` | 0.5 | The timing a correct block needs to bring a rider down. | step 100c |
+| `TimedBlockDismountMaxPercent` | 40 | The chance a perfect shield block knocks a galloping rider off (x score², x the horse's speed band, x the mismatch). | step 100c |
+| `TimedBlockDismountWeaponPercent` | 50 | A weapon parry's share of that chance. | step 100c |
+| `TimedBlockRearPercent` | 50 | A timed block that did not unhorse the rider rears his horse (x the score). | step 100c |
+| `TimedBlockSlowMo` | true | Slow motion on your best blocks - player page, "Staggers and knockdowns". | step 100e |
+| `TimedBlockSlowMoMinScore` | 0.8 | The timing your block needs for the slow motion. | step 100e |
+| `TimedBlockSlowMoSpeed` | 0.3 | The game speed at the slow motion's deepest. | step 100e |
+| `TimedBlockSlowMoRealSeconds` | 0.5 | How long the slow motion lasts, in real seconds, the ease back included. | step 100e |
+| `TimedBlockSlowMoCooldownSeconds` | 4 | Real seconds before the next slow motion. | step 100e |
+| `TimedBlockPushOut` | true | The blocker's shield / weapon pushes out on a timed riposte. | step 100d |
+| `TimedBlockPushOutForYou` | true | Also on you (your guard drops for about a quarter second). | step 100d |
+| `TimedBlockPushOutMinScore` | 0.5 | The timing a block needs for the push-out. | step 100d |
+| `TimedBlockPushOutSpeed` | 1.4 | The push-out animation's speed. | step 100d |
+| `TimedBlockPushOutStartProgress` | 0.3 | Where in the bash animation the push-out starts (the windup skipped). | step 100d |
+| `TimedBlockAnimTest` | false | TEST TOOL: a key plays each push-out candidate on you, to pick by eye. Advanced, "Advanced". | step 100d |
 
 `ShowFormationSpread`, `FormationSpreadStdDevs` and `ShowFormationHealth` stay in the table
 above: the orders-menu strip and the numbers under the formation markers (step 20) use them.
@@ -3435,6 +3458,23 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     by an enemy within `ShieldWallFlankReleaseMetres` 4 in front (2 s hold), step 42's step out, no longer an end man, the wall moving / let go, the
     switch - the game's frame, tendency and shield written back at once. (f) MEASURED: the [summary] "wall flanks" line - the angle between each
     settled turned man's real facing and the asked one (UNVERIFIED that the engine honours a per-man facing in a line formation until a playtest).
+91. **Timed blocks** (step 100, PROPOSED - research 100a done 2026-11-08, not built; Toni 2026-11-08: "as I block just as the attack is landing to
+    trigger the stagger up to 2 sec long in a nicely timed block, making the blocking mechanic more skill based. Same with blocking with weapons";
+    AI_NOTES "Step 100"). (a) TIMING: a GUARD CLOCK per man - the time his guard went up (the press; in a manual block-direction mode also a switch
+    to another side, never in the game's automatic mode); the player's read every tick (`GetDefendMovementFlag` + the channel-1 stage), the AI's
+    at contact from his channel-1 defend action (`_active` = progress x its length, `_passive` = held); a chamber = perfect. Score s = 1 within
+    `TimedBlockPerfectSeconds` 0.15 of the hit, a smooth fall to 0 at `TimedBlockWindowSeconds` 0.5; the AI's x `TimedBlockAiPercent` 50, a parry's x
+    `TimedBlockParryPercent` 100. (b) THE TIMED RIPOSTE: on a correct block the riposte chance blends from step 56's toward `TimedBlockRiposteMaxPercent`
+    85 by s and its length toward `TimedBlockStaggerMaxSeconds` 2.0 (the proven `act_stagger_backward` at speed ~0.5), at most
+    `TimedBlockAgainstYouMaxSeconds` 1.2 on YOU; s 0 = step 56 exactly; halving, immunity and `ImpactOnPlayerPercent` unchanged. (c) RIDERS: a foot
+    blocker's timed correct block (s ≥ 0.5) of a rider's melee blow (never a couched lance) knocks him off - step 53's own `CanDismount` blow - at
+    `TimedBlockDismountMaxPercent` 40 x s² x (a weapon 50 %) x the horse's speed band (0.25 standing → 1 at a gallop) x the mismatch, else his horse
+    rears (`MakesRear` on the mount) at `TimedBlockRearPercent` 50 x s. (d) THE PUSH-OUT: the blocker's channel 1 plays `act_shield_bash` /
+    his weapon's `act_1h_bash` / `act_2h_bash` / `act_staff_bash` from a later start, sped up (~0.25 s), once the attacker's stagger was accepted;
+    his own bash collision ignored for 0.5 s; picked by eye with a test tool; fallback the guard's own `_parry_heavy`. (e) SLOW-MO: only YOUR timed
+    block with s ≥ 0.8 whose outcome landed - a `Mission.TimeSpeedRequest` of 0.3 eased back to 1 over 0.5 s REAL time, a 4 s cooldown, always
+    removed. (f) Two player-page switches (`TimedBlocksEnabled`, `TimedBlockSlowMo`), the rest Advanced / Impact; new keys only - no config format
+    bump. Build order 100b (clock + riposte, the diagnostic first), 100c (riders), 100e (slow-mo), 100d (push-out), 100f (review).
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),
 `HudRefreshSeconds`, `FormationStatsRefreshSeconds` came out of step 2's research
