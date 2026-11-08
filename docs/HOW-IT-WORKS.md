@@ -305,6 +305,12 @@ than about a second. Switch: *Timed blocks* (Staggers and knockdowns).
 and eases back to normal over half a second - at most one every few seconds, never for the AI's blocks, never while the orders menu's own
 slow-down is on. Switch: *Slow motion on your best blocks* (Staggers and knockdowns).
 
+**The block you can see.** On a timed block that staggers the attacker, the blocker's shield (or weapon) punches out as the blow lands -
+it hurts nobody and costs nothing, and the guard is back a quarter second later. The attacker first bounces back the way he swung - an
+overhead jerks up, a side swing flies back to its side - then staggers backward. The AI's timed blocks look the same. Switches and the
+animations themselves: Advanced page, Impact ("Timed blocks: the blocker pushes out", "direction-matched recoil", and a test tool to pick
+the animations by eye).
+
 **The enemy goes for the opening.** When a man reels or lies on the ground — you included — the men fighting
 him press it at once.
 

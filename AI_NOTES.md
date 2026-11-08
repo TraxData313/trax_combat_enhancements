@@ -8990,7 +8990,7 @@ the ShieldWall arrangement only. Built as section 3 proposed, with these details
 - **Smoke environment fix**: the offline smoke's MCM phase looked for 0Harmony only in the Workshop folder 2859188632, gone from this PC since the
   mods moved into `Modules\` (2026-11-04) - six MCM checks failed for that alone. It now also looks in `Modules\Bannerlord.Harmony\bin`.
 
-## Step 100 — timed blocks (research 100a, 2026-11-08; 100b + 100e built, 100c DROPPED by Toni, 100d / 100f to come)
+## Step 100 — timed blocks (research 100a, 2026-11-08; 100b + 100d + 100e built, 100c DROPPED by Toni, 100f to come)
 
 Toni 2026-11-08: "add a mechanic that increases the correct way shield block to stagger, but make it so that as I block just as the attack
 is landing to trigger the stagger up to 2 sec long in a nicely timed block, making the blocking mechanic more skill based. Same with blocking
@@ -9333,3 +9333,37 @@ stand-in `IImpactBody` read), the slow-mo request added and removed (a fake miss
   conflict (the slow-mo touches only the time-speed request). Riders: none (dropped).
 - **Unverified until D66**: the feel (0.3 / 0.5 s), whether the sound pitches (§5 says the native sound probably keeps real time), and that
   the vanilla order menu's slow-down (`SlowDownOnOrder`) never meets ours in practice.
+
+### 100d - built (2026-11-08)
+
+Toni 2026-11-08: the push-out (his words in §0) and, asked whether the attacker's stagger should match the blocked direction: "Yes". The mounted
+part stays dropped - no rider code (the push-out skips a mounted blocker; RunStagger never reaches a rider - CanForce).
+
+- **Verified in v1.4.8** (Native ModuleData + the decompile): the recoils are wired per item usage set and style - `blocked_action` /
+  `quick_blocked_action` of each `<usage style="attack_up|attack_down|attack_left|attack_right" is_left_stance=... require_free_left_hand=...>`
+  (attack_down = the thrust; a dagger's attack_up = the backstab); all `actt_blocked_melee`. On foot: onehanded_* → `overswing / thrust /
+  slashleft / slashright _1h`; onehanded_shield_dagger → `backstab_1h`, `slash{left,right}_dagger` (left stance spelled `_leftstance`); flail →
+  `*_flail`; twohanded_* → `*_2h`; polearm swing sets → `*_staff`; polearm_block_thrust / polearm_pike → `overswing_spear`, `thrust_staff`; with a
+  shield (rows `require_free_left_hand=False`) a polearm thrusts as `thrust_1h_lance` / `upperthrust_1h_lance`; no_weapon → `direct / uppercut /
+  swingleft / swingright _fist[_shield]`; polearm_bracing / couch have one `*_parried` action (no direction → the single stagger). The `_balanced`
+  forms exist in action_types.xml but no usage set wires them (variant 2 / 3 are guesses for the test tool). `Agent.UsageDirection` AttackUp 0 /
+  Down 1 / Left 2 / Right 3 (= Core). `act_stagger_backward` is actt_strike_light in action_types.xml. `MBActionSet.CheckActionAnimationClipExists`
+  + `GetActionAnimationDuration` per (set, action) - the game body caches both; `ActionIndexCache.Create(name)` is a native name lookup (cached).
+- **The bash collision**: `Mission.MeleeHitCallback` → `GetAttackCollisionResults` → `AgentApplyDamageModel.CalculateDamage`, which returns 0 when
+  `IsDamageIgnored` - our decorator now answers TRUE for an alternative attack owned by a man inside his push-out window, and refuses its
+  knock-back / knockdown / dismount and its reaction (shrug-off TRUE - asked by the blow's `OwnerId`); every behaviour's OnMeleeHit still runs -
+  ours returns first for it (counted). Step 18's kick-and-bash start (the action poll) skips him too (no cost, no swing, no meet read). NOT VERIFIED:
+  whether the engine makes a bash collision at all from an action we set (the summary's three "ignored" counts answer it - all 0 = none happened).
+- **Choices** (the brief left them open): `TimedBlockPushOutMinScore` 0 (every timed riposte - "applies to every blocker whose timed riposte was
+  accepted"; AI_NOTES §6 proposed 0.5, which at the AI's 50 % share would leave out nearly every AI block); the push from `PushStart` 0.3 at the speed
+  that fits `PushSeconds` 0.25 (not a fixed 1.4 - the bash lengths differ by kind); a heavy parry plays from 0 (a short recoil already); a missing
+  bash falls back to the heavy parry; the recoil on CHANNEL 1 (where the engine plays its own blocked recoil - an already-playing one is slowed in
+  place, not restarted), the backward stagger from the tick after it (`TickTimedAnims`, a fixed pool of 32), its watch / measured end exactly as
+  RunStagger's but with asked = the rest; the master switch off between the two = no stagger (FixState). Untimed ripostes unchanged (step 56's
+  exactly - "purely visual and clearly better" cannot be shown without Toni's eyes). The test tool's candidate list is fixed in Core
+  (`TimedPushOutMath.Candidates`, the 4 x 4 recoils): a Text setting holds ONE id (letters, digits, _ . -; 100 chars), so the CHOSEN actions are
+  settings and the list is code - a deviation from the brief, said here and in DESIGN 91 (i).
+- **What 100f should look at**: the three "ignored" counts (a real bash blow from the push?), "cleared" vs "guards back" (does the guard come back on
+  its own?), the recoil on channel 1 vs the AI's legs (does he walk during the bounce?), the in-place slowing (does the engine's own recoil take a new
+  speed?), the push on YOU in a slow motion (3x slower - Toni said fine), the `_left_stance` push forms, and whether the AI ever pushes out while
+  "not guarding" dominates (the stage read one tick after the block).

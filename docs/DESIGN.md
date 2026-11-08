@@ -3468,7 +3468,7 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     by an enemy within `ShieldWallFlankReleaseMetres` 4 in front (2 s hold), step 42's step out, no longer an end man, the wall moving / let go, the
     switch - the game's frame, tendency and shield written back at once. (f) MEASURED: the [summary] "wall flanks" line - the angle between each
     settled turned man's real facing and the asked one (UNVERIFIED that the engine honours a per-man facing in a line formation until a playtest).
-91. **Timed blocks** (step 100, DECIDED 2026-11-08 - Toni: "go" with the recommended answers (the AI at half strength, 1.2 s on you, 0.15 / 0.5 s); (a) + (b) BUILT in step 100b 2026-11-08, (e) BUILT in step 100e 2026-11-08, (c) DROPPED by Toni 2026-11-08 ("skip the mounted part" - riders keep 100b's refused riposte), (d) to come; Toni 2026-11-08: "as I block just as the attack is landing to
+91. **Timed blocks** (step 100, DECIDED 2026-11-08 - Toni: "go" with the recommended answers (the AI at half strength, 1.2 s on you, 0.15 / 0.5 s); (a) + (b) BUILT in step 100b 2026-11-08, (e) BUILT in step 100e 2026-11-08, (c) DROPPED by Toni 2026-11-08 ("skip the mounted part" - riders keep 100b's refused riposte), (d) BUILT in step 100d 2026-11-08 (+ the direction-matched recoil, Toni: "Yes"); Toni 2026-11-08: "as I block just as the attack is landing to
     trigger the stagger up to 2 sec long in a nicely timed block, making the blocking mechanic more skill based. Same with blocking with weapons";
     AI_NOTES "Step 100"). (a) TIMING: a GUARD CLOCK per man - the time his guard went up (the press; in a manual block-direction mode also a switch
     to another side, never in the game's automatic mode); the player's read every tick (`GetDefendMovementFlag` + the channel-1 stage), the AI's
@@ -3498,6 +3498,25 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     a pause or a 0.25 s real-time stall, another request coming in under ours, you off the field, the mission end / the behaviour's removal (before
     the summary, which checks nothing of ours is left - "must be 0"), a caught error (disabled for the battle); the [summary] "timed slow-mo" line
     (PLAYTEST D66).
+    (i) AS BUILT in 100d (Toni 2026-11-08: "add an animation where the blocker shield or weapon goes out as the attack lands"; asked whether the
+    attacker's stagger should match the blocked direction: "Yes"): THE PUSH-OUT from `TimedRiposteAccepted` (beside the slow motion) for EVERY
+    blocker whose timed riposte the engine took (`TimedBlockPushOutMinScore` 0 - not AI_NOTES' proposed 0.5, which would have left out nearly every
+    AI block at its 50 % share), you behind `TimedBlockPushOutForYou`; his kind = a right-side shield block → the shield, a parry → his weapon's
+    usage set (one-handed / two-handed / polearm); its action a setting per kind (a name, "_left_stance" first in a left stance, or `parry_heavy` = his
+    guard's own `_parry_heavy` - also the fallback when the bash is missing from his set); channel 1, from `TimedBlockPushOutStartProgress` 0.3, sped
+    up to `TimedBlockPushOutSeconds` 0.25 from the animation's own length; never a rider, never a man whose channel 1 is out of a defend stage. Its
+    bash collision is NO BLOW for max(`TimedBlockPushOutGuardSeconds` 0.5, the push + 0.1 s): the damage decorator ignores its damage and refuses its
+    knock-back / knockdown / dismount and its reaction, our OnMeleeHit and step 18's kick-and-bash start skip it (no cost, no swing, no meet read, no
+    impact decision); at the window's end a push still playing is cleared (channel 1 act_none) - the window is battle time like the animation, so a
+    slow motion only lengthens both in real time. THE RECOIL: a TIMED riposte (score > 0) starts with the game's own blocked recoil of the
+    attacker's swing (`TimedRecoilMath` - the engine's attack direction read at contact, his usage set's class - 1h / dagger / flail / 2h / staff / spear /
+    lance / fists / fists + shield -, his stance; `TimedBlockRecoilVariant` 0 blocked, 1 quick, 2 / 3 balanced) on channel 1 at the speed that plays it in
+    min(`TimedBlockRecoilSeconds` 0.45, `TimedBlockRecoilMaxPercent` 50 % of the whole), the engine's own already-playing recoil slowed in place; the
+    backward stagger follows from the tick for the rest (at least 0.25 s) - the asked length unchanged; no direction / no class / not in his set / too
+    short / refused = the old single stagger; an UNTIMED riposte keeps step 56's single stagger exactly (chosen over "purely visual and clearly
+    better" - not provable without Toni's eyes). THE TEST TOOL (`TimedBlockAnimTest`, off; `TimedBlockAnimTestKey` J): the candidates - fixed in Core,
+    a Text setting holds one id only - on the nearest man within 8 m (else you): the 6 push-outs, 16 recoils (4 directions x 4 variants), 4 full timed
+    ripostes; Left Shift + the key = back. The [summary] "timed push-out" / "timed recoils" lines (PLAYTEST D67).
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),
 `HudRefreshSeconds`, `FormationStatsRefreshSeconds` came out of step 2's research
