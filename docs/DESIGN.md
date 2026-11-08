@@ -3555,6 +3555,27 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     0.30 s / 0.15)" / "Your parry - X holds (guard >1 s / 0.15)". THE AI'S TIMING: the playtest read no `_active` defend at contact (23 AI blocks, all
     held - (a)'s AI read gives 0, H fails, C1); Toni wants the AI timed at 50 % - its own clock from step 16's input hook is the OPEN follow-up (AI_NOTES
     "100f - review"). The engine's Parried / Blocked is not a timing signal (fast and held guards both "Parried").
+    (l) STEP 101 - Toni after the playtest: "make the perfect blocks stagger 100% of the time and bump up all probs by 15% in the table". AMENDS (b):
+    a TIMED block (s > 0) rolls min(`TimedBlockRiposteCapPercent` 100, the blend + `TimedBlockRiposteBonusPoints` 15) - never below the blend; s 0 =
+    step 56 exactly (unchanged). Fresh even men (step 56 ~1.4 %): guard 0.15 s 100 %, 0.20 95, 0.25 83, 0.30 67, 0.35 49, 0.40 33, 0.45 21, at
+    0.5 s+ / held 1.4 % (a step of +15 just inside the window's edge - the table Toni asked for). A PERFECT block (s ≥ 0.999) skips the
+    attacker's recent-outcome halving (`TimedBlockPerfectSkipsHalving`) and his stagger immunity AFTER his last stagger
+    (`TimedBlockPerfectSkipsImmunity`) - never while he still reels (`ImpactState.Reeling`: a new stagger over a running one would tangle the
+    animation; a perfect block the moment his stagger ends is fine - skill wins). Refusals a perfect block still meets: the attacker down, a rider
+    (the mounted part stays dropped), replaced (the blow staggered / knocked down the blocker, or a thrown-back charge), still reeling, the riposte /
+    timed blocks / impact switches, `ImpactOnPlayerPercent` when the attacker is you (an AI block - not perfect at its 50 % share anyway), and in the
+    module: the man gone / inactive, CanForce (a horse / rider), the engine refusing the stagger both ways, a lever disabled by an error, shadow
+    mode. THE SLOW MOTION REDONE (amends (e)): Toni saw none - step 100e eased in over 0.05 s and straight back out over 0.45 s, the floor touched for
+    an instant (~0.17 s of battle time lost). Dismemberment Plus (his installed mod) uses the same `Mission.AddTimeSpeedRequest`, 0.25 held flat 2
+    real s. Now: `TimedBlockSlowMoSpeed` 0.25 AT ONCE, held `TimedBlockSlowMoHoldSeconds` 1.5 real s, a smoothstep back over
+    `TimedBlockSlowMoEaseOutSeconds` 0.3 (~0.56 s of battle time over 1.8 real s); `TimedBlockSlowMoRealSeconds` retired; the cooldown, the id
+    31100 and every give-back path unchanged. Config format 28 (0.3 → 0.25 in a format 26-27 file, the retired key dropped).
+    (m) STEP 101 - "Make skill matter some too ... giving more time overall for the more skillful": the perfect window follows the BLOCKER's skill
+    in the weapon he holds (One Handed / Two Handed / Polearm - One Handed for a shield alone or anything unclear): `TimedBlockPerfectAtSkill0` 0.10,
+    `...100` 0.15, `...200` 0.20, `...300` 0.25 s, linear between, held beyond; the no-timing point = `TimedBlockWindowSeconds` × perfect ÷
+    `TimedBlockPerfectSeconds` (0.333 / 0.5 / 0.667 / 0.833) - the same smoothstep, stretched. `TimedBlockSkillScales` (on); off = the flat pair.
+    Every blocker (the AI's score stays 0 until its clock is built). Read in the hit (two managed reads per correct block, no cache needed). YOUR
+    on-screen line shows YOUR window ("guard 0.30 s / 0.20").
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),
 `HudRefreshSeconds`, `FormationStatsRefreshSeconds` came out of step 2's research

@@ -9486,3 +9486,63 @@ decorator's dismount line is the push-out guard only).
 **Only Toni's playtest can confirm:** the riposte with the recoil OFF looks clean (D67); the push-out reads as a push (and your guard comes back);
 the timing line's words and how often it speaks in a shield-wall fight (the merge queue); the slow-mo's feel and the sound; PERFECT STRIKE on a played
 swing (D68 - not in the first playtest's build); `AddQuickInformation` showing promptly; the 0.15 s grace.
+
+## Step 101 — timed-block tuning after Toni's first playtest (built 2026-11-08)
+
+Toni 2026-11-08 (after the 17:33-17:41 tournament): "make the perfect blocks stagger 100% of the time and bump up all probs by 15% in the table";
+"I didn't see any slow-mo ... check how the dismemberment mod I have does it"; and, added while it ran: "Make skill matter some too - ... at 100 pts
+relevant blocker one/two handed/polearm skill at 0.15, on 200 0.2, 300 0.25 moving all the numbers, giving more time overall for the more skillful"
+(skill 0 = 0.10, the coordinator's correction). DESIGN decision 91 (l) / (m).
+
+**A. The riposte chance** (Core `TimedBlockMath.TimedChance`, `ImpactMath.Decide`): s > 0 → max(blend, min(`TimedBlockRiposteCapPercent` 100,
+blend + `TimedBlockRiposteBonusPoints` 15)); s 0 returns p56 untouched (no die added - `Step101Tests.A_score_of_0_is_still_step_56_exactly_with_step_101_on`
+and 100b's own test both green). The real table for fresh even men at skill 100 (step 56 = 1.4 %): 0.15 s 100.0, 0.20 95.4, 0.25 83.4, 0.30 67.1,
+0.35 49.3, 0.40 33.0, 0.45 21.0, held / 0.5 s+ 1.4 % - a +15 step just inside the window's edge, as Toni's table asks.
+- **Perfect always staggers**: `TimedBlockMath.IsPerfect` = s ≥ 0.999 (`PerfectScore`; `TimingWords` uses it too). For a perfect block `Decide` passes
+  halvings 0 / factor 1 (`TimedBlockPerfectSkipsHalving`, only flagged when there WAS a recent outcome) and does not refuse `StaggerImmune` when the
+  immunity is the tail after his stagger (`TimedBlockPerfectSkipsImmunity`) - `attacker.Reeling(now)` still refuses (reported as StaggerImmune): a new
+  `ForceStagger` over our running one would restart / tangle the animation. A perfect block the moment the measured stagger ends is allowed
+  (stun-lock by skill is what Toni wants). `ImpactDecision.TimedSkippedHalving` / `TimedSkippedImmunity`; the decision line says "PERFECT - ...";
+  the 3rd "timed ripostes" summary line counts "perfect blocks N rolled → n ripostes (the halving skipped h, the immunity skipped i)".
+- **Refusals a perfect block still meets** (Core): the attacker down; replaced (the same blow knocked down / staggered the BLOCKER, or a charge
+  thrown back); a rider (100c stays dropped); still reeling; the switches (ImpactEnabled / ImpactRiposteEnabled / RiposteStaggerMaxPercent 0 /
+  TimedBlocksEnabled / ModEnabled); x `ImpactOnPlayerPercent` when the attacker is YOU (an AI blocker - which cannot reach s 1 at its 50 % share).
+  (Module, after Decide): the man gone / inactive before the tick, `CanForce` (a horse / rider), the engine refusing `ForceStagger` with and over
+  its priority, the forced-stagger lever disabled by an error, shadow mode.
+- The 100b unit tests pin the bonus 0 and the bypasses off in their own helper (they are 100b's numbers); Step101Tests runs the design values.
+
+**B. The slow motion** - research (the manager's): Dismemberment Plus (`Modules\DismembermentPlus`, `DismembermentPlusMissionLogic.cs`) uses the same
+`Mission.AddTimeSpeedRequest(new TimeSpeedRequest(0.25f, id))`, removed after 0.5 s of MISSION time (= 2.0 real s), flat, snapped back. Ours ran (the
+log: finished 15) but 100e's profile eased in over 0.05 s and immediately smoothstepped back over 0.45 s: ~0.17 s of battle time lost - invisible.
+Now `TimedSlowMoMath.Speed(t, floor, hold, easeOut)`: the floor from t = 0 (the first request is already the floor), held to `hold`, a smoothstep back
+to 1 over `easeOut` (0 = a snap), 1 after; `MissionSeconds(floor, hold, ease)` = 0.5625 s for 0.25 / 1.5 / 0.3 (1.8 real s). Rules: `HoldSeconds`
+(min 0.1), `EaseOutSeconds`, `RealSeconds` = their sum. The request id 31100, the 4 s cooldown, the skips and every give-back path (finished, the
+switches, pause / a 0.25 s real-time stall, another request, you gone, the mission end, an error) unchanged. Note: a frame hitch over 0.25 real s
+during the 1.8 s still ends it as a "stall" (counted "paused") - watch the summary's ended line. MCM (generated from the schema, Advanced / Impact,
+every label "Slow motion: ..."): MinScore 0.8, Speed 0.25 (0.1-0.9), held for 1.5 (0.2-4), ease back over 0.3 (0-1), at most one every 4 (0-30); the
+on/off on the player page. **Config format 28**: `TimedBlockSlowMoSpeed` 0.3 → 0.25 in a format 26-27 file (MoveOrKeepIfMoved - a tuned value
+kept and said), `TimedBlockSlowMoRealSeconds` retired (`DropRetiredSlowMoKeys`, one note, any format). DESIGN keeps 0.3 as the INITIAL value
+(the tests' schema), defaults.json ships 0.25 (100f's pattern). Every older format test's "→ 27" became "→ 28".
+
+**C. The window by skill** (Core `TimedBlockMath.PerfectFor` / `WindowFor`, `ScoreOf(..., perfect, window)`): linear through
+`TimedBlockPerfectAtSkill0/100/200/300` 0.10 / 0.15 / 0.20 / 0.25, held beyond; window = `TimedBlockWindowSeconds` x perfect ÷
+`TimedBlockPerfectSeconds` (both rounded to 5 decimals - float settings); `TimedBlockSkillScales` off or the skill unknown = the flat pair. The skill:
+`GameImpactInputs.Fill` for a correct block - `victim.WieldedWeapon.CurrentUsageItem?.RelevantSkill` → Two Handed / Polearm as is, anything else
+(a shield alone, a one-hander, a throwing weapon, none) One Handed (`GuardSkillOf`), `Character.GetSkillValue` - two managed reads per correct block,
+no cache, no allocation. `ImpactFacts.GuardSkill` + `HasGuardSkill` (default false = flat, so every older test / smoke fact is unchanged);
+`ImpactDecision.TimedPerfect` / `TimedWindow`; `TimedBlockResult.Perfect` and `ImpactBlockPending.Perfect` carry it to YOUR on-screen line
+("guard 0.30 s / 0.20"). The mission's "the guard clock runs" line states the curve (`TimedBlockRules.Describe`). Toni's table (fresh even men, +15):
+
+| skill | perfect | no timing after | guard 0.1 s | 0.2 s | 0.3 s | 0.5 s |
+|---|---|---|---|---|---|---|
+| 50 | 0.125 | 0.417 | 100 % | 86 % | 46 % | 1 % |
+| 100 | 0.150 | 0.500 | 100 % | 95 % | 67 % | 1 % |
+| 150 | 0.175 | 0.583 | 100 % | 99 % | 81 % | 25 % |
+| 200 | 0.200 | 0.667 | 100 % | 100 % | 90 % | 41 % |
+| 250 | 0.225 | 0.750 | 100 % | 100 % | 95 % | 55 % |
+| 300 | 0.250 | 0.833 | 100 % | 100 % | 98 % | 67 % |
+
+- Not in the offline smoke (its stand-in inputs leave `HasGuardSkill` false - the flat window, the 100b checks unchanged but for 85 → 100 %);
+  the curve, the stretch, the decision and the on-screen text are unit-tested (Step101Tests).
+- **Unverified until D69**: the slow motion's feel and the sound over 1.8 s; that frame hitches do not end it early; the skill read on a real agent
+  (a spear + shield man = Polearm); whether 100 % perfect ripostes make duels too easy.
