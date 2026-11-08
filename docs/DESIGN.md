@@ -3574,8 +3574,22 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     in the weapon he holds (One Handed / Two Handed / Polearm - One Handed for a shield alone or anything unclear): `TimedBlockPerfectAtSkill0` 0.10,
     `...100` 0.15, `...200` 0.20, `...300` 0.25 s, linear between, held beyond; the no-timing point = `TimedBlockWindowSeconds` × perfect ÷
     `TimedBlockPerfectSeconds` (0.333 / 0.5 / 0.667 / 0.833) - the same smoothstep, stretched. `TimedBlockSkillScales` (on); off = the flat pair.
-    Every blocker (the AI's score stays 0 until its clock is built). Read in the hit (two managed reads per correct block, no cache needed). YOUR
+    Every blocker (the AI's score stays 0 until its clock is built - built in (n)). Read in the hit (two managed reads per correct block, no cache needed). YOUR
     on-screen line shows YOUR window ("guard 0.30 s / 0.20").
+    (n) STEP 102 - THE AI TIMES ITS BLOCKS (Toni 2026-11-08: the AI does NOT change how it fights; a guard it HAPPENS to raise just before the blow
+    counts at `TimedBlockAiPercent` 50 % with the player's skill window). AMENDS (a) / (k) for the AI: its own GUARD CLOCK from step 16's input hook -
+    the engine calls `AgentComponent.OnAIInputSet` every frame (~110-130 a second a man, Toni's logs) with the input the AI decided, BEFORE it is used;
+    the clock READS the final movement flags' defend bits (DefendLeft / Right / Up / Down / DefendAuto, after every edit of ours - the guard that is
+    really asked) and never writes. Up = any defend bit; a rise seen from the frame before starts it; a change of direction while up is NOT a new
+    guard (the AI turns its guard to the blow itself - the player's automatic-mode rule); a guard back up within 0.1 s of going down is the same
+    guard (a flicker of the bits - his or our hold's); the first frame after a gap of more than 0.25 s (the callback was off) does not know when the
+    guard went up. THE WATCH: every AI man with an enemy within 5 m (a staggered look, each man every 0.25 s - one native proximity count) keeps his
+    callback on (`AiInputState.GuardWatch` - NOT a wish: his input is never changed for it, the hold counts unchanged; `UnhookIfIdle` leaves a
+    watched man's callback on); let go when no enemy is near, at the switches (the master switch first), on removal (no engine call), at the
+    mission's end. AT CONTACT a known age = `TimingSource.AiClock`; otherwise (a)'s channel-1 read stays the FALLBACK (never timed in Toni's log - a
+    held defend = 0). Chamber blocks stay perfect. The [summary] "timed blocks - the AI's guard clock" line: AI correct blocks by score band, the share
+    with a known age and why not (up before his clock saw it / no guard in his input / not watched), the median AI guard age, the watch's cost
+    (PLAYTEST D70). No new setting (5 m / 0.25 s / 0.1 s plumbing).
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),
 `HudRefreshSeconds`, `FormationStatsRefreshSeconds` came out of step 2's research

@@ -9431,7 +9431,7 @@ not 100g).
   fast AND held guards of yours (≤0.15 s 8, >1 s 2), "Blocked + passive" had 3 fast ones. The engine's Parried / Blocked is NOT a timing signal, and
   channel 1 shows a passive defend (or a parry reaction) by the time OnMeleeHit runs - **C1 dominates**.
 - **The AI never times a block**: 23 AI correct blocks, all source "a held (passive) defend", score 0. As built, the AI's timing is unreadable. Toni
-  (2026-11-08) wants the AI timed at 50 % when it happens to time a block. NOT built in 100f - the open follow-up (TASKS_TODO BUGS): give the AI the
+  (2026-11-08) wants the AI timed at 50 % when it happens to time a block. NOT built in 100f (BUILT in step 102 - see "Step 102") - the open follow-up (TASKS_TODO BUGS): give the AI the
   same `GuardClock` from step 16's `AiInputComponent.OnAIInputSet` (its decided movement flag's DefendLeft / Right / Up / Down bits →
   `Guard.Note(key, now, automatic: false)` - a struct write, no allocation), read at contact as a new `TimingSource.AiClock` in `FillTiming`, x
   `TimedBlockAiPercent`. Why not now: the hook is only ON for men with a wish (`AiInputState.Active` - lazily hooked, unhooked when idle; RTS
@@ -9546,3 +9546,73 @@ no cache, no allocation. `ImpactFacts.GuardSkill` + `HasGuardSkill` (default fal
   the curve, the stretch, the decision and the on-screen text are unit-tested (Step101Tests).
 - **Unverified until D69**: the slow motion's feel and the sound over 1.8 s; that frame hitches do not end it early; the skill read on a real agent
   (a spear + shield man = Polearm); whether 100 % perfect ripostes make duels too easy.
+
+## Step 102 — the AI times its blocks: an AI guard clock from its own input (built 2026-11-08)
+
+Toni 2026-11-08 (after the tournament where all 23 AI correct blocks scored 0 - "100f - review", C1): the AI does NOT change how it fights; if an
+AI man happens to raise his guard just before a blow lands, his timed block counts at `TimedBlockAiPercent` 50 % with the player's skill-scaled
+window (step 101). DESIGN decision 91 (n).
+
+**The source, verified in the v1.4.8 decompile (`%TEMP%\trax_decomp\TaleWorlds.MountAndBlade\TaleWorlds.MountAndBlade\`).**
+- `Agent.OnAIInputSet(ref EventControlFlag, ref MovementControlFlag, ref Vec2)` (Agent.cs ~1626) is an `[MBCallback(null, false)]` (main thread,
+  not multi-thread callable) that loops `_components` and calls each `AgentComponent.OnAIInputSet` - only while the native flag
+  `SetHasOnAiInputSetCallback(true)` is on (Agent.cs ~1615-1623, IMBAgent.cs 39 / 42). The input it hands over is the AI's own decision for the
+  frame, used AFTER the callback (step 16's whole technique rests on that).
+- The RATE: Toni's 2026-11-08 log, step 16's "calls while held ... about 108-132 a second per held man" - every frame. A rise of the defend bits
+  is seen to ~8 ms.
+- The AI's input DOES carry its guard: the same log's "his own guard kept in 241 / 115" = frames where the AI itself set attack AND defend bits
+  (`AiInputMath.HoldAttacks`' OwnGuardKept); RTS Camera Command System cancels an AI attack with "clear AttackMask, set DefendDown" - the engine
+  executes the guard from those bits.
+- The mission time in the callback: `Mission.CurrentTime => _cachedMissionTime` (Mission.cs ~1185) - a managed field, no native call.
+
+**Options weighed.**
+- (a) CHOSEN - read the input's defend bits in step 16's component. One managed callback per watched man per frame, no native read, the exact
+  moment the AI ASKED for the guard. Read only: `AiGuardClockHook.Note(st, s, (uint)movementFlag)` takes the final flags BY VALUE after the old
+  filter (moved, unchanged, into `Filter`) - nothing can be written back.
+- (b) a per-tick `GetDefendMovementFlag` / channel-1 type read for near men: two native calls a man a tick, staggering would blur a 0.1-0.25 s
+  window, and what `GetDefendMovementFlag` returns for an AI agent is native and unproven (only the player's use is). Rejected.
+- The old channel-1 read at contact: dead in practice (100f: never an `_active` defend at contact). KEPT as the fallback (a man whose clock cannot
+  answer) and as the verdict diagnostic's read - it costs one read per correct block.
+
+**The clock (Core `AiGuardClock`, a struct on `TrackedAgent.AiGuard`).** Up = any of `DefendMask` 0x7C00 (Left / Right / Up / Down / DefendAuto).
+A rise seen from the frame before starts it. A direction change while up is NOT a new guard (the automatic-mode rule - the AI turns its guard to the
+blow by itself; counting it would read "perfect" on every blow). A guard back up within `DropSeconds` 0.1 of going down is the same guard (a flicker -
+step 16's hold turns a wanted attack into DefendDown frame by frame, the AI's own bits may blink). A frame more than `MaxGapSeconds` 0.25 after the
+last one (the callback was off) knows nothing: up then = `UnseenStart` (score 0 through the fallback). At contact (`Read`): stale (> 0.25 s from his
+last frame either way) = `NotWatched`; no defend bit (and not within 0.1 s of dropping) = `NoGuardInInput`; else the age. The guard the clock sees is
+the guard REALLY asked - after our edits: a man held by step 16 whose wanted swing became our DefendDown has his guard rise then (it did rise).
+
+**The watch (`AthleticsLogic.AiGuardClock.cs`).** From `TickTimedBlocks` (timed blocks + impact on, the master switch first): every man looked at
+every `AiGuardWatchLookSeconds` 0.25 s, staggered (the fever's carry pattern); an AI man (not the player's, AI-controlled, active) with
+`GetNearbyEnemyAgentCount(team, pos, AiGuardWatchMetres 5) > 0` gets `AiInputState.GuardWatch` and step 16's `Hook` (the component added once, the
+callback on); none near = `GuardWatch` off and `UnhookIfIdle` (which now also keeps a WATCHED man's callback on). `GuardWatch` is NOT in `Active`:
+the hold path, its counts and its calls-per-second figure are untouched (only the AI holds line's "turned on by us" also counts watch hooks).
+`AiGuardClockHook.On` / `Stats` (static, main thread) - set by the running logic's tick, cleared at the switch (`StopAiGuardWatch` lets every watch
+go), at `OnEndMissionInternal` and `StopAthletics` (`CloseAiGuardClock`). Removal (`Forget` → `AiGuardLeftField`): the watch flag and the clock
+dropped, no engine call.
+
+**Cost.** Offline smoke (1000 men, 600 near): the watch 0.001 ms a tick with the stand-in proximity, an input frame's managed part ~8 ns, 0 bytes
+over 600 ticks; `AiGuardClock.Note` ~2 ns (Step102Tests). In game, added per second for a 1000-man battle with ~400 men within 5 m of an enemy:
+4000 native proximity counts (the fever's poll does the same) + ~400 x 60-120 = 24-48k native→managed callbacks for men not already hooked (many
+in contact already are - step 16's holds; with RTS Camera every agent is). At an estimated 0.2-0.5 µs a transition that is ~5-24 ms a second,
+~0.1-0.2 ms a frame. Unmeasured in game - the summary line logs the looks' own cost.
+
+**Expected share.** Unmeasured offline (the smoke's frames are scripted). By reasoning: the vanilla AI decides to defend when it sees the attack
+(`AIBlockOnDecideAbility`, its reaction time) - a wind-up is ~0.3-0.6 s, so a FRESH guard is 0.1-0.5 s old at the hit and scores 0-1 x 50 %;
+but in a press the AI often keeps its defend up between blows (then 0). Guess: a known age for most watched blocks, a score > 0 for perhaps
+20-50 % of AI correct blocks, mostly in the low bands (an AI block reaches at most 0.5 - the 0.5-0.8 band at best). The new line answers it.
+
+**Diagnostic.** [summary] `timed blocks - the AI's guard clock (step 102; ...) - AI correct blocks by timing 0 / 0-0.25 / 0.25-0.5 / 0.5-0.8 /
+0.8-1: a/b/c/d/e (mean score); a known guard age K of N (P%) - the rest: up before his clock saw it, no guard in his input at contact, not watched;
+median AI guard age M ms (bands); the watch: men watched at most, started, ended, input callbacks turned on for it, looks (ms in all); input frames
+read F (guard rises, flickers kept as one guard, up when first seen)`. The first summary line's sources gain "the AI's guard clock N".
+
+**Tests.** Step102Tests (10): the rise, the held guard and the direction change, the flicker vs a real drop, the gap, the contact reads, the AI share
+with the skill window, Decide with `AiClock` (an AI's riposte on you ≤ 1.2 s), the stats line, no allocation, the cost. Offline smoke (2 steps,
+`Program.Step102.cs`): through the real logic and the REAL `AiInputComponent` - 280 random frames of a watched man (events, vectors, bits) come out
+UNCHANGED; 0.05 s → AiClock 0.5; held / a flicker → 0; 0.3 s → ~0.3; the enemy gone → let go, stale, the channel-1 fallback (held); removal; the
+switch and the master switch; the line; the 1000-man cost.
+
+**Unverified until D70:** the callback's real cost with many more men hooked; whether the AI's defend bits rise per blow or stay up (the line's
+known-age share and median say it); whether our hold's guard frames inflate AI scores (compare the bands with step 16's holds on / off); that no
+AI behaviour changed (the input is provably untouched - only the callback's being on is new for men no wish held).
