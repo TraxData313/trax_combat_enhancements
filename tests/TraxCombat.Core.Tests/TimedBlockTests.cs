@@ -41,6 +41,10 @@ public class TimedBlockTests
         s.Set(SettingsSchema.TimedBlockAgainstYouMaxSeconds, 1.2, "test");
         s.Set(SettingsSchema.TimedBlockParryPercent, 100, "test");
         s.Set(SettingsSchema.TimedBlockAiPercent, 50, "test");
+        // step 101's bonus and perfect-block bypasses OFF here: these are step 100b's numbers (Step101Tests runs them on)
+        s.Set(SettingsSchema.TimedBlockRiposteBonusPoints, 0, "test");
+        s.Set(SettingsSchema.TimedBlockPerfectSkipsHalving, 0, "test");
+        s.Set(SettingsSchema.TimedBlockPerfectSkipsImmunity, 0, "test");
         tune?.Invoke(s);
         return s;
     }

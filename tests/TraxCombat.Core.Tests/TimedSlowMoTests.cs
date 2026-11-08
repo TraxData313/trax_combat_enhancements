@@ -20,8 +20,9 @@ public class TimedSlowMoTests
         s.Set(SettingsSchema.TimedBlocksEnabled, 1, "test");
         s.Set(SettingsSchema.TimedBlockSlowMo, 1, "test");
         s.Set(SettingsSchema.TimedBlockSlowMoMinScore, 0.8, "test");
-        s.Set(SettingsSchema.TimedBlockSlowMoSpeed, 0.3, "test");
-        s.Set(SettingsSchema.TimedBlockSlowMoRealSeconds, 0.5, "test");
+        s.Set(SettingsSchema.TimedBlockSlowMoSpeed, 0.25, "test");
+        s.Set(SettingsSchema.TimedBlockSlowMoHoldSeconds, 1.5, "test");
+        s.Set(SettingsSchema.TimedBlockSlowMoEaseOutSeconds, 0.3, "test");
         s.Set(SettingsSchema.TimedBlockSlowMoCooldownSeconds, 4, "test");
         tune?.Invoke(s);
         return s;
@@ -29,60 +30,60 @@ public class TimedSlowMoTests
 
     private static TimedSlowMoRules Rules(Action<TraxSettings>? tune = null) => TimedSlowMoRules.From(Settings(tune));
 
-    // ------------------------------------------------------------------ the profile
+    // ------------------------------------------------------------------ the profile (step 101: the floor at once, held, eased back)
 
     [Fact]
-    public void The_speed_is_1_outside_the_slow_motion_and_never_below_the_floor_inside()
+    public void The_floor_comes_at_once_and_is_held_for_the_whole_hold()
     {
-        Assert.Equal(1, TimedSlowMoMath.Speed(-0.1, 0.3, 0.5));
-        Assert.Equal(1, TimedSlowMoMath.Speed(0, 0.3, 0.5));
-        Assert.Equal(1, TimedSlowMoMath.Speed(0.5, 0.3, 0.5));
-        Assert.Equal(1, TimedSlowMoMath.Speed(3, 0.3, 0.5));
-        Assert.Equal(1, TimedSlowMoMath.Speed(double.NaN, 0.3, 0.5));
-        Assert.Equal(0.3, TimedSlowMoMath.Speed(0.05, 0.3, 0.5), 9); // the floor reached at the end of the ease in
-        for (double t = 0.001; t < 0.5; t += 0.001)
-        {
-            double v = TimedSlowMoMath.Speed(t, 0.3, 0.5);
-            Assert.InRange(v, 0.3 - 1e-12, 1);
-        }
+        Assert.Equal(0.25, TimedSlowMoMath.Speed(0, 0.25, 1.5, 0.3), 12); // no ease in - the first frame is already at the floor
+        Assert.Equal(0.25, TimedSlowMoMath.Speed(0.001, 0.25, 1.5, 0.3), 12);
+        Assert.Equal(0.25, TimedSlowMoMath.Speed(0.75, 0.25, 1.5, 0.3), 12);
+        Assert.Equal(0.25, TimedSlowMoMath.Speed(1.4999, 0.25, 1.5, 0.3), 12);
+        for (double t = 0; t < 1.5; t += 0.01) Assert.Equal(0.25, TimedSlowMoMath.Speed(t, 0.25, 1.5, 0.3), 12);
     }
 
     [Fact]
-    public void The_speed_is_continuous_down_then_up()
+    public void After_the_hold_it_eases_back_to_1_never_below_the_floor_never_above_1()
     {
-        double prev = 1;
-        bool rising = false;
-        for (double t = 0; t <= 0.6; t += 0.0005)
+        Assert.Equal(1, TimedSlowMoMath.Speed(-0.1, 0.25, 1.5, 0.3));
+        Assert.Equal(1, TimedSlowMoMath.Speed(double.NaN, 0.25, 1.5, 0.3));
+        Assert.Equal(0.625, TimedSlowMoMath.Speed(1.65, 0.25, 1.5, 0.3), 9); // halfway through the ease: smoothstep 0.5
+        Assert.Equal(1, TimedSlowMoMath.Speed(1.8, 0.25, 1.5, 0.3));
+        Assert.Equal(1, TimedSlowMoMath.Speed(5, 0.25, 1.5, 0.3));
+        double prev = 0.25;
+        for (double t = 0; t <= 2.0; t += 0.0005)
         {
-            double v = TimedSlowMoMath.Speed(t, 0.3, 0.5);
-            Assert.True(Math.Abs(v - prev) < 0.03, "a jump at " + t + ": " + prev + " -> " + v);
-            if (v > prev + 1e-12) rising = true;
-            if (rising) Assert.True(v >= prev - 1e-12, "falls again after rising at " + t);
+            double v = TimedSlowMoMath.Speed(t, 0.25, 1.5, 0.3);
+            Assert.InRange(v, 0.25 - 1e-12, 1);
+            Assert.True(v >= prev - 1e-12, "falls again at " + t);
+            Assert.True(Math.Abs(v - prev) < 0.01, "a jump at " + t + ": " + prev + " -> " + v); // the ease is continuous
             prev = v;
         }
         Assert.Equal(1, prev);
     }
 
     [Fact]
-    public void The_ease_back_is_gentle_and_the_battle_time_about_a_third_of_a_second()
+    public void The_slow_motion_lasts_1_8_real_seconds_and_costs_over_half_a_second_of_battle_time()
     {
-        // flat at the floor just after the ease in, flat at 1 just before the end (smoothstep)
-        Assert.True(TimedSlowMoMath.Speed(0.051, 0.3, 0.5) - 0.3 < 1e-4);
-        Assert.True(1 - TimedSlowMoMath.Speed(0.499, 0.3, 0.5) < 1e-4);
-        double mission = TimedSlowMoMath.MissionSeconds(0.3, 0.5);
-        Assert.InRange(mission, 0.30, 0.35);
-        Assert.Equal(0.5, TimedSlowMoMath.MissionSeconds(1, 0.5), 6); // speed 1 = no slow motion
+        var r = Rules();
+        Assert.Equal(1.8, r.RealSeconds, 9);
+        double mission = TimedSlowMoMath.MissionSeconds(0.25, 1.5, 0.3);
+        Assert.InRange(mission, 0.562, 0.563); // the hold 1.5 x 0.25 + the ease 0.3 x 0.625 (the smoothstep's mean is a half)
+        Assert.True(1.8 - mission > 1.2, "the battle loses over 1.2 s against the real clock - visible (step 100e lost ~0.17 s)");
+        Assert.Equal(0.375, TimedSlowMoMath.MissionSeconds(0.25, 1.5, 0), 3); // a snap back
+        Assert.Equal(1.8, TimedSlowMoMath.MissionSeconds(1, 1.5, 0.3), 6); // speed 1 = no slow motion
     }
 
     [Fact]
-    public void A_short_slow_motion_eases_in_over_a_tenth_and_bad_inputs_give_1()
+    public void A_snap_back_and_bad_inputs()
     {
-        Assert.Equal(0.3, TimedSlowMoMath.Speed(0.02, 0.3, 0.2), 9); // ease in = min(0.05, 0.2 / 10) = 0.02
-        Assert.Equal(1, TimedSlowMoMath.Speed(0.1, 0.3, 0));
-        Assert.Equal(1, TimedSlowMoMath.Speed(0.1, 0.3, double.NaN));
-        Assert.Equal(1, TimedSlowMoMath.Speed(0.1, double.NaN, 0.5));
-        Assert.True(TimedSlowMoMath.Done(0.5, 0.5));
-        Assert.False(TimedSlowMoMath.Done(0.49, 0.5));
+        Assert.Equal(0.25, TimedSlowMoMath.Speed(1.49, 0.25, 1.5, 0), 12);
+        Assert.Equal(1, TimedSlowMoMath.Speed(1.5, 0.25, 1.5, 0));
+        Assert.Equal(1, TimedSlowMoMath.Speed(0.1, 0.25, 0, 0.3));
+        Assert.Equal(1, TimedSlowMoMath.Speed(0.1, 0.25, double.NaN, 0.3));
+        Assert.Equal(1, TimedSlowMoMath.Speed(0.1, double.NaN, 1.5, 0.3));
+        Assert.True(TimedSlowMoMath.Done(1.8, 1.8));
+        Assert.False(TimedSlowMoMath.Done(1.79, 1.8));
     }
 
     // ------------------------------------------------------------------ the trigger
@@ -164,10 +165,12 @@ public class TimedSlowMoTests
         m.Start(100, 0.95);
         Assert.True(m.Playing);
         Assert.Equal(100, m.LastStartReal);
-        Assert.Equal(0.3, m.Step(100.05, in r), 9);
+        Assert.Equal(0.25, m.Step(100.05, in r), 9);
         Assert.False(m.Stalled(100.1));
         Assert.True(m.Stalled(100.05 + TimedSlowMoMath.StallSeconds + 0.01));
-        Assert.True(double.IsNaN(m.Step(100.5, in r)));
+        Assert.Equal(0.25, m.Step(101.4, in r), 9); // still held
+        Assert.InRange(m.Step(101.65, in r), 0.26, 0.99); // easing back
+        Assert.True(double.IsNaN(m.Step(101.81, in r)));
         m.Stop();
         Assert.False(m.Playing);
         Assert.Equal(100, m.LastStartReal); // the cooldown remembers
@@ -179,9 +182,9 @@ public class TimedSlowMoTests
     {
         var m = new TimedSlowMo();
         m.Start(0, 1);
-        var longer = Rules(s => s.Set(SettingsSchema.TimedBlockSlowMoRealSeconds, 2, "test"));
-        Assert.False(double.IsNaN(m.Step(1.0, in longer)));
-        Assert.True(double.IsNaN(m.Step(1.0, Rules())));
+        var longer = Rules(s => s.Set(SettingsSchema.TimedBlockSlowMoHoldSeconds, 3, "test"));
+        Assert.Equal(0.25, m.Step(2.5, in longer), 9);
+        Assert.True(double.IsNaN(m.Step(2.5, Rules())));
     }
 
     // ------------------------------------------------------------------ the summary + the settings
@@ -217,10 +220,10 @@ public class TimedSlowMoTests
         Assert.DoesNotMatch(@"[Ss]tep \d", SettingsSchema.TimedBlockSlowMo.Description);
         var advanced = new[]
         {
-            SettingsSchema.TimedBlockSlowMoMinScore, SettingsSchema.TimedBlockSlowMoSpeed, SettingsSchema.TimedBlockSlowMoRealSeconds,
-            SettingsSchema.TimedBlockSlowMoCooldownSeconds,
+            SettingsSchema.TimedBlockSlowMoMinScore, SettingsSchema.TimedBlockSlowMoSpeed, SettingsSchema.TimedBlockSlowMoHoldSeconds,
+            SettingsSchema.TimedBlockSlowMoEaseOutSeconds, SettingsSchema.TimedBlockSlowMoCooldownSeconds,
         };
-        int first = all.IndexOf(SettingsSchema.TimedBlockAiPercent) + 1;
+        int first = all.IndexOf(SettingsSchema.TimedBlockPerfectAtSkill300) + 1; // step 101: after the riposte bonus and skill-window keys
         for (int i = 0; i < advanced.Length; i++)
         {
             Assert.Equal(first + i, all.IndexOf(advanced[i]));
@@ -228,8 +231,10 @@ public class TimedSlowMoTests
         }
         Assert.Equal(1, SettingsSchema.TimedBlockSlowMo.Default, 5);
         Assert.Equal(0.8, SettingsSchema.TimedBlockSlowMoMinScore.Default, 5);
-        Assert.Equal(0.3, SettingsSchema.TimedBlockSlowMoSpeed.Default, 5);
-        Assert.Equal(0.5, SettingsSchema.TimedBlockSlowMoRealSeconds.Default, 5);
+        Assert.Equal(0.3, SettingsSchema.TimedBlockSlowMoSpeed.Default, 5); // DESIGN's initial value (defaults.json 0.25 since step 101)
+        Assert.Equal(0.9, SettingsSchema.TimedBlockSlowMoSpeed.Max, 5);
+        Assert.Equal(1.5, SettingsSchema.TimedBlockSlowMoHoldSeconds.Default, 5);
+        Assert.Equal(0.3, SettingsSchema.TimedBlockSlowMoEaseOutSeconds.Default, 5);
         Assert.Equal(4, SettingsSchema.TimedBlockSlowMoCooldownSeconds.Default, 5);
         Assert.Equal(50, SettingsSchema.TimedBlockAiPercent.Default, 5); // 100b's AI share untouched
     }

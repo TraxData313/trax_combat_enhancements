@@ -142,7 +142,10 @@ public class ImpactTests
             "MeetAiReadScalePercent", "MeetAiReadReactionSeconds", "MeetAiReadMaxHoldSeconds",
             "TimedBlockPerfectSeconds", "TimedBlockWindowSeconds", "TimedBlockRiposteMaxPercent", "TimedBlockStaggerMaxSeconds", // step 100b
             "TimedBlockAgainstYouMaxSeconds", "TimedBlockParryPercent", "TimedBlockAiPercent",
-            "TimedBlockSlowMoMinScore", "TimedBlockSlowMoSpeed", "TimedBlockSlowMoRealSeconds", "TimedBlockSlowMoCooldownSeconds", // step 100e
+            "TimedBlockRiposteBonusPoints", "TimedBlockRiposteCapPercent", "TimedBlockPerfectSkipsHalving", "TimedBlockPerfectSkipsImmunity", // step 101
+            "TimedBlockSkillScales", "TimedBlockPerfectAtSkill0", "TimedBlockPerfectAtSkill100", "TimedBlockPerfectAtSkill200", "TimedBlockPerfectAtSkill300",
+            "TimedBlockSlowMoMinScore", "TimedBlockSlowMoSpeed", "TimedBlockSlowMoHoldSeconds", "TimedBlockSlowMoEaseOutSeconds", // step 100e / 101
+            "TimedBlockSlowMoCooldownSeconds",
             "TimedBlockPushOut", "TimedBlockPushOutForYou", "TimedBlockPushOutMinScore", "TimedBlockPushOutSeconds", "TimedBlockPushOutStartProgress", // step 100d
             "TimedBlockPushOutGuardSeconds", "TimedBlockPushOutShieldAction", "TimedBlockPushOutOneHandedAction", "TimedBlockPushOutTwoHandedAction",
             "TimedBlockPushOutPolearmAction", "TimedBlockRecoil", "TimedBlockRecoilSeconds", "TimedBlockRecoilMaxPercent", "TimedBlockRecoilVariant",
@@ -155,7 +158,7 @@ public class ImpactTests
             "ImpactSkillMinFactor", "ImpactSkillMaxFactor", "ImpactGuardShieldRight", "ImpactGuardParry", "ImpactGuardShieldWrong", "ImpactGuardNone",
             "ImpactStaggerFrom", "ImpactShieldDropFrom", "ImpactKnockdownFrom",
         };
-        Assert.Equal(167, keys.Length); // step 100f: + 1 (TimedBlockShowTiming); step 100g: + 4 (the perfect strike's numbers; its switch is on the player page); step 100d: + 16 (the push-out's 10, the recoil's 4, the test tool's 2); step 100e: + 4 (the slow motion's numbers; its switch is on the player page); step 100b: + 7 (the timed block's numbers; its switch is on the player page, not in this list); step 95: + 3 (AiBashStepIn, AiBashStepInToMetres, AiBashStepInMaxSeconds); step 91: + 1 (AiBashReachMetres); step 90: + 2 (AiKickBlockAheadMetres / AiKickBlockSideMetres); step 88: + 1 (AiNoShieldPushPercent); step 82: + 19 (the meet rows and the AI's read; the switch is on the player page, not in this list); step 81: - 14 + 3 (the shares); step 80's 2; step 68's 1; step 66's 5; step 65's 21; step 63's 2 + step 48's 60 + step 52's momentum 4 + step 53's rider momentum 3 and on-screen lines 3 + step 54's punish 4 + step 56's 2 + step 62's
+        Assert.Equal(177, keys.Length); // step 101: + 10 (the riposte bonus 4, the skill window 5, the slow motion's hold / ease for its whole-ramp key); step 100f: + 1 (TimedBlockShowTiming); step 100g: + 4 (the perfect strike's numbers; its switch is on the player page); step 100d: + 16 (the push-out's 10, the recoil's 4, the test tool's 2); step 100e: + 4 (the slow motion's numbers; its switch is on the player page); step 100b: + 7 (the timed block's numbers; its switch is on the player page, not in this list); step 95: + 3 (AiBashStepIn, AiBashStepInToMetres, AiBashStepInMaxSeconds); step 91: + 1 (AiBashReachMetres); step 90: + 2 (AiKickBlockAheadMetres / AiKickBlockSideMetres); step 88: + 1 (AiNoShieldPushPercent); step 82: + 19 (the meet rows and the AI's read; the switch is on the player page, not in this list); step 81: - 14 + 3 (the shares); step 80's 2; step 68's 1; step 66's 5; step 65's 21; step 63's 2 + step 48's 60 + step 52's momentum 4 + step 53's rider momentum 3 and on-screen lines 3 + step 54's punish 4 + step 56's 2 + step 62's
         // Step 59: three of them on the player page - the switch and "against you" ("Staggers and knockdowns"), the on-screen lines
         // ("On screen"); the other 73 stay in this group in order.
         var player = new[] { "ImpactEnabled", "ImpactOnPlayerPercent", "ImpactShowMessages" };

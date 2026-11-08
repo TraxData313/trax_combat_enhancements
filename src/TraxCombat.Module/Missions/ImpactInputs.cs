@@ -112,7 +112,17 @@ namespace TraxCombat.Missions
                     }
                     break;
             }
+            if (ImpactMath.CanRiposte(f.Event)) // step 101: the timed window by the blocker's skill in the weapon he holds (two reads, per block)
+            {
+                f.GuardSkill = Skill(victim, GuardSkillOf(victim.WieldedWeapon.CurrentUsageItem?.RelevantSkill));
+                f.HasGuardSkill = true;
+            }
         }
+
+        /// <summary>Step 101: the skill a block is timed by - One Handed, Two Handed or Polearm as the held weapon says; One Handed for a shield
+        /// alone, no weapon or anything else (Toni: "relevant blocker one / two handed / polearm skill").</summary>
+        internal static SkillObject GuardSkillOf(SkillObject? relevant)
+            => relevant == DefaultSkills.TwoHanded || relevant == DefaultSkills.Polearm ? relevant! : DefaultSkills.OneHanded;
 
         public void Kit(Agent a, out double armour, out int level) => GameCourageBody.ArmourAndLevel(a, out armour, out level);
 

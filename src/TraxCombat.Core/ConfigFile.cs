@@ -137,8 +137,11 @@ namespace TraxCombat.Core
         /// AiKickCooldownSeconds 2 → 1 for kicks, bashes and pushes (a format 19-25 file - an older file's 8 went through step 81's block straight to today's
         /// value); a tuned value kept and noted), 27 = step 100f (Toni's first timed-block playtest 2026-11-08 17:41 - the direction-matched recoil read
         /// as a tangle and a fresh wind-up: TimedBlockRecoil true → false (a format-26 file - step 100d's key, no older file has it); a hand-set
-        /// value is not told apart from the old default for a switch, so a format-26 file's true is moved once).</summary>
-        public const int FormatVersion = 27;
+        /// value is not told apart from the old default for a switch, so a format-26 file's true is moved once), 28 = step 101 (Toni: "I didn't see
+        /// any slow-mo" - the slow motion redone the Dismemberment Plus way: TimedBlockSlowMoSpeed 0.3 → 0.25 in a format 26-27 file still holding it,
+        /// a tuned value kept and noted; TimedBlockSlowMoRealSeconds - the whole ramp - retired for TimedBlockSlowMoHoldSeconds 1.5 and
+        /// TimedBlockSlowMoEaseOutSeconds 0.3, new keys; the old key dropped from any file by <c>DropRetiredSlowMoKeys</c>, one note).</summary>
+        public const int FormatVersion = 28;
 
         /// <summary>The meta key holding <see cref="FormatVersion"/> - not a setting.</summary>
         public const string VersionKey = "ConfigVersion";
@@ -630,6 +633,13 @@ namespace TraxCombat.Core
                 MoveOrKeepIfMoved(read, SettingsSchema.TimedBlockRecoil, 1,
                     "step 100f, Toni's playtest: the direction-matched recoil is off - a timed riposte goes straight into the backward stagger", from, defaultOf);
             }
+            if (from < 28 && from >= 26)
+            {
+                // step 101 (Toni's first playtest, 2026-11-08: "I didn't see any slow-mo"): step 100e's TimedBlockSlowMoSpeed (a new key in format 26)
+                // 0.3 → 0.25 - the floor now reached at once and held (TimedBlockSlowMoHoldSeconds, new); a hand-set value is kept and said once
+                MoveOrKeepIfMoved(read, SettingsSchema.TimedBlockSlowMoSpeed, 0.3,
+                    "step 101, Toni's playtest: the slow motion you could not see - now a quarter speed at once, held 1.5 real s, eased back over 0.3 s", from, defaultOf);
+            }
             // format 17 (step 78b) moved the lull's LullRecover*Percent 10 / 15 / 20 → 20 / 25 / 30; step 78c removed the lull and its keys, so a
             // format 16 file's are dropped below with the rest of them - nothing to move any more (78c kept format 17; step 80 made it 18)
             // steps 36 / 37: the retired AI sprint keys - in ANY format (they are only ever steps 33-36's, and a hand-pasted one
@@ -639,7 +649,26 @@ namespace TraxCombat.Core
             DropRetiredLullKeys(read, from);
             // step 81: the AI kicks' retired keys (steps 65 / 66) - in ANY format (a hand-pasted one goes the same way)
             DropRetiredKickKeys(read, from);
+            // step 101: the slow motion's whole-ramp length (step 100e) - in ANY format
+            DropRetiredSlowMoKeys(read, from);
             return read.Migrated;
+        }
+
+        /// <summary>Step 100e's key, retired by step 101: the whole slow motion's length (now a hold + an ease back).</summary>
+        public const string RetiredSlowMoRealSecondsKey = "TimedBlockSlowMoRealSeconds";
+
+        /// <summary>Step 101: the retired slow-motion key leaves <see cref="ConfigReadResult.Unknown"/> - one note - so the rewrite does not carry
+        /// it under "Not recognised" forever (78c's pattern). Idempotent.</summary>
+        private static void DropRetiredSlowMoKeys(ConfigReadResult read, int from)
+        {
+            for (int i = read.Unknown.Count - 1; i >= 0; i--)
+            {
+                var pair = read.Unknown[i];
+                if (!string.Equals(pair.Key, RetiredSlowMoRealSecondsKey, StringComparison.OrdinalIgnoreCase)) continue;
+                read.Unknown.RemoveAt(i);
+                read.Migrated.Add(pair.Key + " " + pair.Value + " dropped (format " + from + " → " + FormatVersion
+                                  + "; step 101, Toni: the slow motion is a hold and an ease back now - TimedBlockSlowMoHoldSeconds and TimedBlockSlowMoEaseOutSeconds)");
+            }
         }
 
         /// <summary>Step 33's key - renamed by step 36 to SprintAiChargeUsePercent, which step 37 dropped.</summary>

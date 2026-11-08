@@ -46,6 +46,9 @@ namespace TraxCombat.Missions
         /// <summary>Step 100f: the riposte's timing source and the blocker's guard age (s) - YOUR on-screen line's numbers.</summary>
         public TimingSource Source;
         public double GuardAge;
+
+        /// <summary>Step 101: the blocker's own perfect window (s; NaN = the flat setting).</summary>
+        public double Perfect;
     }
 
     /// <summary>
@@ -321,6 +324,7 @@ namespace TraxCombat.Missions
                 Timed = action == ImpactBlockAction.Riposte ? d.TimedScore : 0,
                 Source = action == ImpactBlockAction.Riposte ? d.TimedSource : TimingSource.None,
                 GuardAge = action == ImpactBlockAction.Riposte ? d.TimedAge : double.NaN,
+                Perfect = action == ImpactBlockAction.Riposte ? d.TimedPerfect : double.NaN,
             };
         }
 

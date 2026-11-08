@@ -209,7 +209,7 @@ namespace TraxCombat.Core
         // Step 100e (Toni 2026-11-08: "Maybe even try a slow mo when the player does it nicely"): the slow motion's switch - DESIGN decision 91 (e).
         public static readonly ParamDef TimedBlockSlowMo = Bool("TimedBlockSlowMo", PlayerImpactGroup,
             "Slow motion on your best blocks",
-            "A brief slow motion (about half a second) when YOU make a nicely timed block that staggers the attacker. Never on the AI's blocks, never while another slow-down (the orders menu) is on, at most one every few seconds. Off: no slow motion. The numbers: Advanced page, Impact.");
+            "A slow motion (about 2 seconds: the game drops to a quarter speed, holds, then eases back) when YOU make a nicely timed block that staggers the attacker. Never on the AI's blocks, never while another slow-down (the orders menu) is on, at most one every few seconds. Off: no slow motion. The numbers: Advanced page, Impact.");
 
         // Step 100g (Toni 2026-11-08: "after I blocked him and he is staggered I do 2-3x damage against him and I see some notification like PERFECT STRIKE"): DESIGN decision 91 (j).
         public static readonly ParamDef PerfectStrikeEnabled = Bool("PerfectStrikeEnabled", PlayerImpactGroup,
@@ -1869,7 +1869,7 @@ namespace TraxCombat.Core
         // block"): the timed block's numbers - Core TimedBlockMath, AI_NOTES "Step 100", DESIGN decision 91.
         public static readonly ParamDef TimedBlockPerfectSeconds = Float("TimedBlockPerfectSeconds", 0, 0.5, ImpactGroup,
             "Timed blocks: perfect within (s)",
-            "A guard raised this close before the blow lands counts as a perfect timing (the full timed riposte). Between this and the window below the timing fades smoothly.");
+            "A guard raised this close before the blow lands counts as a perfect timing (the full timed riposte). Between this and the window below the timing fades smoothly. With 'skill widens the window' on, each blocker's own window comes from his skill instead, and the window below stretches by his window divided by this.");
 
         public static readonly ParamDef TimedBlockWindowSeconds = Float("TimedBlockWindowSeconds", 0.1, 1.5, ImpactGroup,
             "Timed blocks: no timing after (s)",
@@ -1877,7 +1877,7 @@ namespace TraxCombat.Core
 
         public static readonly ParamDef TimedBlockRiposteMaxPercent = Int("TimedBlockRiposteMaxPercent", 0, 100, ImpactGroup,
             "Timed blocks: riposte chance of a perfect block (%)",
-            "The chance that a perfectly timed correct block (right-side shield or parry) staggers the attacker. A less sharp timing lifts the ordinary riposte chance part of the way here; an untimed block keeps the ordinary chance. Halved on a man staggered often, never on a man still immune, x 'Against you' for you.");
+            "The chance that a perfectly timed correct block (right-side shield or parry) staggers the attacker, before the bonus below. A less sharp timing lifts the ordinary riposte chance part of the way here; an untimed block keeps the ordinary chance. Halved on a man staggered often, never on a man still immune (a perfect block skips both - see below), x 'Against you' for you.");
 
         public static readonly ParamDef TimedBlockStaggerMaxSeconds = Float("TimedBlockStaggerMaxSeconds", 0.5, 3, ImpactGroup,
             "Timed blocks: stagger after a perfect block (s)",
@@ -1895,18 +1895,63 @@ namespace TraxCombat.Core
             "Timed blocks: an AI soldier's timing counts (%)",
             "An AI soldier's block timing counts this much of yours (the game raises AI guards late on its own, so a full share would turn duels into long stun locks). 0 = only you can time a block.");
 
-        // Step 100e: the slow motion's numbers - Core TimedSlowMoMath, AI_NOTES "Step 100" §5, DESIGN decision 91 (e).
+        // Step 101 (Toni's first playtest 2026-11-08: "make the perfect blocks stagger 100% of the time and bump up all probs by 15%"): Core
+        // TimedBlockMath.TimedChance, ImpactMath.Decide - AI_NOTES "Step 101", DESIGN decision 91 (l).
+        public static readonly ParamDef TimedBlockRiposteBonusPoints = Int("TimedBlockRiposteBonusPoints", 0, 50, ImpactGroup,
+            "Timed blocks: riposte bonus (points)",
+            "Every timed block's riposte chance gets this many percentage points on top, up to the cap below - with 85% and 15 a perfect block always staggers the attacker. A block that is not timed at all keeps the ordinary chance.");
+
+        public static readonly ParamDef TimedBlockRiposteCapPercent = Int("TimedBlockRiposteCapPercent", 0, 100, ImpactGroup,
+            "Timed blocks: riposte chance at most (%)",
+            "The bonus above never lifts a timed block's riposte chance beyond this.");
+
+        public static readonly ParamDef TimedBlockPerfectSkipsHalving = Bool("TimedBlockPerfectSkipsHalving", ImpactGroup,
+            "Timed blocks: a perfect block ignores his recent staggers",
+            "A perfectly timed block's riposte is not halved for the attacker's recent staggers (the halving that stops one man being staggered over and over). Off: a perfect block is halved like any other.");
+
+        public static readonly ParamDef TimedBlockPerfectSkipsImmunity = Bool("TimedBlockPerfectSkipsImmunity", ImpactGroup,
+            "Timed blocks: a perfect block ignores his stagger immunity",
+            "A perfectly timed block can stagger the attacker again right after his last stagger ended (the short immunity after a stagger is skipped) - never while he still reels. Off: the immunity refuses it like any other.");
+
+        // Step 101 (Toni 2026-11-08: "Make skill matter some too ... giving more time overall for the more skillful"): the perfect window by the
+        // blocker's weapon skill - Core TimedBlockMath.WindowFor, DESIGN decision 91 (m).
+        public static readonly ParamDef TimedBlockSkillScales = Bool("TimedBlockSkillScales", ImpactGroup,
+            "Timed blocks: skill widens the window",
+            "The perfect window follows the blocker's skill in the weapon he holds (One Handed, Two Handed or Polearm; One Handed for a shield alone) - the four points below, in between in a straight line - and the 'no timing after' point moves with it in proportion. Off: the flat 'perfect within' and 'no timing after' above for everyone.");
+
+        public static readonly ParamDef TimedBlockPerfectAtSkill0 = Float("TimedBlockPerfectAtSkill0", 0, 0.5, ImpactGroup,
+            "Timed blocks: perfect window at skill 0 (s)",
+            "The perfect window of a blocker with 0 in his weapon's skill.");
+
+        public static readonly ParamDef TimedBlockPerfectAtSkill100 = Float("TimedBlockPerfectAtSkill100", 0, 0.5, ImpactGroup,
+            "Timed blocks: perfect window at skill 100 (s)",
+            "The perfect window of a blocker with 100 in his weapon's skill.");
+
+        public static readonly ParamDef TimedBlockPerfectAtSkill200 = Float("TimedBlockPerfectAtSkill200", 0, 0.5, ImpactGroup,
+            "Timed blocks: perfect window at skill 200 (s)",
+            "The perfect window of a blocker with 200 in his weapon's skill.");
+
+        public static readonly ParamDef TimedBlockPerfectAtSkill300 = Float("TimedBlockPerfectAtSkill300", 0, 0.5, ImpactGroup,
+            "Timed blocks: perfect window at skill 300 (s)",
+            "The perfect window of a blocker with 300 or more in his weapon's skill.");
+
+        // Step 100e: the slow motion's numbers - Core TimedSlowMoMath, AI_NOTES "Step 100" §5, DESIGN decision 91 (e); step 101 (Toni: "I didn't
+        // see any slow-mo"): the floor at once, held, then eased back - Dismemberment Plus's way.
         public static readonly ParamDef TimedBlockSlowMoMinScore = Float("TimedBlockSlowMoMinScore", 0, 1, ImpactGroup,
             "Slow motion: the timing it needs (0-1)",
             "Your timed block's timing score (1 = perfect, 0 = untimed) must reach this for the slow motion - and the attacker's stagger must have landed.");
 
-        public static readonly ParamDef TimedBlockSlowMoSpeed = Float("TimedBlockSlowMoSpeed", 0.1, 1, ImpactGroup,
-            "Slow motion: the game's speed at its deepest",
-            "How slow the game runs at the slow motion's deepest (1 = normal speed). It eases back to normal over the time below.");
+        public static readonly ParamDef TimedBlockSlowMoSpeed = Float("TimedBlockSlowMoSpeed", 0.1, 0.9, ImpactGroup,
+            "Slow motion: the game's speed",
+            "How slow the game runs during the slow motion (1 would be normal speed). It drops there at once, holds, then eases back to normal.");
 
-        public static readonly ParamDef TimedBlockSlowMoRealSeconds = Float("TimedBlockSlowMoRealSeconds", 0.2, 2, ImpactGroup,
-            "Slow motion: how long (real s)",
-            "How long the whole slow motion lasts in real seconds, the ease back to normal speed included.");
+        public static readonly ParamDef TimedBlockSlowMoHoldSeconds = Float("TimedBlockSlowMoHoldSeconds", 0.2, 4, ImpactGroup,
+            "Slow motion: held for (real s)",
+            "How long the slow speed is held, in real seconds (a clock that never slows).");
+
+        public static readonly ParamDef TimedBlockSlowMoEaseOutSeconds = Float("TimedBlockSlowMoEaseOutSeconds", 0, 1, ImpactGroup,
+            "Slow motion: ease back over (real s)",
+            "After the hold, the game speeds back up to normal over this many real seconds. 0 = snaps back at once.");
 
         public static readonly ParamDef TimedBlockSlowMoCooldownSeconds = Float("TimedBlockSlowMoCooldownSeconds", 0, 30, ImpactGroup,
             "Slow motion: at most one every (real s)",
@@ -2697,7 +2742,9 @@ namespace TraxCombat.Core
             MeetAiReadMaxHoldSeconds,
             TimedBlockPerfectSeconds, TimedBlockWindowSeconds, TimedBlockRiposteMaxPercent, TimedBlockStaggerMaxSeconds, TimedBlockAgainstYouMaxSeconds,
             TimedBlockParryPercent, TimedBlockAiPercent,
-            TimedBlockSlowMoMinScore, TimedBlockSlowMoSpeed, TimedBlockSlowMoRealSeconds, TimedBlockSlowMoCooldownSeconds,
+            TimedBlockRiposteBonusPoints, TimedBlockRiposteCapPercent, TimedBlockPerfectSkipsHalving, TimedBlockPerfectSkipsImmunity,
+            TimedBlockSkillScales, TimedBlockPerfectAtSkill0, TimedBlockPerfectAtSkill100, TimedBlockPerfectAtSkill200, TimedBlockPerfectAtSkill300,
+            TimedBlockSlowMoMinScore, TimedBlockSlowMoSpeed, TimedBlockSlowMoHoldSeconds, TimedBlockSlowMoEaseOutSeconds, TimedBlockSlowMoCooldownSeconds,
             TimedBlockPushOut, TimedBlockPushOutForYou, TimedBlockPushOutMinScore, TimedBlockPushOutSeconds, TimedBlockPushOutStartProgress,
             TimedBlockPushOutGuardSeconds, TimedBlockPushOutShieldAction, TimedBlockPushOutOneHandedAction, TimedBlockPushOutTwoHandedAction,
             TimedBlockPushOutPolearmAction, TimedBlockRecoil, TimedBlockRecoilSeconds, TimedBlockRecoilMaxPercent, TimedBlockRecoilVariant,

@@ -124,7 +124,7 @@ namespace TraxCombat.Tools
                 logic.SmokePlayerAiControlled = false;
                 guard.Contacts[you.Agent.Index] = (GuardRead.Active, double.NaN); // the engine's read at contact (the diagnostic's)
 
-                // ---- 1. YOUR perfect press: the guard up 0.05 s before a fresh attacker's blow - 85 %, 2 s, made from the tick
+                // ---- 1. YOUR perfect press: the guard up 0.05 s before a fresh attacker's blow - 100 % since step 101 (85 + 15 points), 2 s, made from the tick
                 Tick(0.5);
                 int reads = guard.KeyReads;
                 Check(reads > 0, "your clock is not read every tick");
@@ -132,7 +132,7 @@ namespace TraxCombat.Tools
                 Tick(0.05);
                 var a1 = Man(1.0, false);
                 var d = Hit(a1, you, RightBlock());
-                Check(d.TimedSource == TimingSource.PlayerClock && Close(d.TimedScore, 1, 1e-9) && Close(d.Riposte.Chance, 0.85, 1e-6) && d.Riposte.Happens
+                Check(d.TimedSource == TimingSource.PlayerClock && Close(d.TimedScore, 1, 1e-9) && Close(d.Riposte.Chance, 1.0, 1e-6) && d.Riposte.Happens
                       && Close(d.RiposteStunSeconds, 2.0, 1e-6) && d.RiposteChance56 < 0.05,
                     "your perfect block: source " + d.TimedSource + ", age " + d.TimedAge + ", score " + d.TimedScore + ", riposte " + d.Riposte.Chance + " (untimed " + d.RiposteChance56 + "), " + d.RiposteStunSeconds + " s");
                 Check(logic.LastTimedBlock.Timed && logic.LastTimedBlock.Band == 4 && logic.LastTimedBlock.BlockerIsPlayer, "the timed block's result (the seam) not written");
@@ -161,7 +161,7 @@ namespace TraxCombat.Tools
                 guard.Keys[you.Agent.Index] = 0x800;
                 Tick(0.05);
                 d = Hit(Man(1.0, false), you, Parried());
-                Check(Close(d.TimedScore, 1, 1e-9) && d.Event == ImpactEvent.Parry && Close(d.Riposte.Chance, 0.85, 1e-6),
+                Check(Close(d.TimedScore, 1, 1e-9) && d.Event == ImpactEvent.Parry && Close(d.Riposte.Chance, 1.0, 1e-6),
                     "a manual switch to the right side 0.05 s before a parry: score " + d.TimedScore + ", riposte " + d.Riposte.Chance);
 
                 // ---- 4. the AI at contact: an active defend 0.05 s old at half strength; a held one 0; a parry reaction unknown
@@ -169,7 +169,7 @@ namespace TraxCombat.Tools
                 guard.Contacts[ai.Agent.Index] = (GuardRead.Active, 0.05);
                 d = Hit(Man(1.0, false), ai, RightBlock());
                 Check(d.TimedSource == TimingSource.AiActive && Close(d.TimedScore, 0.5, 1e-6)
-                      && Close(d.Riposte.Chance, d.RiposteChance56 + (0.85 - d.RiposteChance56) * 0.5, 1e-6),
+                      && Close(d.Riposte.Chance, Math.Min(1, d.RiposteChance56 + (0.85 - d.RiposteChance56) * 0.5 + 0.15), 1e-6),
                     "the AI's active defend: source " + d.TimedSource + ", score " + d.TimedScore + ", riposte " + d.Riposte.Chance);
                 guard.Contacts[ai.Agent.Index] = (GuardRead.Passive, double.NaN);
                 d = Hit(Man(1.0, false), ai, RightBlock());
@@ -215,7 +215,7 @@ namespace TraxCombat.Tools
                 Check(lines.Length == 3 && lines[0].StartsWith("timed blocks (step 100b; ON)", StringComparison.Ordinal) && lines[1].Contains("Blocked + active")
                       && lines[1].Contains("Parried + active") && lines[2].StartsWith("timed ripostes", StringComparison.Ordinal),
                     "the [summary] timed blocks lines: " + string.Join(" || ", lines));
-                Console.WriteLine("        step 100b: your perfect block (0.05 s) - the riposte " + (100 * 0.85).ToString("0", CultureInfo.InvariantCulture) + "% for 2.0 s; held = step 56; the AI's at half; on you at most 1.2 s");
+                Console.WriteLine("        step 100b: your perfect block (0.05 s) - the riposte " + (100 * 1.0).ToString("0", CultureInfo.InvariantCulture) + "% for 2.0 s (step 101: 85 + 15 points); held = step 56; the AI's at half; on you at most 1.2 s");
                 foreach (var l in lines) Console.WriteLine("        " + l);
             }
             finally

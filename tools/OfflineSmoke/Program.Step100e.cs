@@ -79,13 +79,13 @@ namespace TraxCombat.Tools
                 foreach (var p in new[] { SettingsSchema.TimedBlocksEnabled, SettingsSchema.TimedBlockPerfectSeconds, SettingsSchema.TimedBlockWindowSeconds,
                              SettingsSchema.TimedBlockRiposteMaxPercent, SettingsSchema.TimedBlockStaggerMaxSeconds, SettingsSchema.TimedBlockAgainstYouMaxSeconds,
                              SettingsSchema.TimedBlockParryPercent, SettingsSchema.TimedBlockAiPercent, SettingsSchema.TimedBlockSlowMo,
-                             SettingsSchema.TimedBlockSlowMoMinScore, SettingsSchema.TimedBlockSlowMoSpeed, SettingsSchema.TimedBlockSlowMoRealSeconds,
-                             SettingsSchema.TimedBlockSlowMoCooldownSeconds })
+                             SettingsSchema.TimedBlockSlowMoMinScore, SettingsSchema.TimedBlockSlowMoSpeed, SettingsSchema.TimedBlockSlowMoHoldSeconds,
+                             SettingsSchema.TimedBlockSlowMoEaseOutSeconds, SettingsSchema.TimedBlockSlowMoCooldownSeconds })
                     S.Set(p, p.Default, SettingSources.File);
                 Check(SettingsSchema.TimedBlockSlowMo.Default == 1 && Near((float)SettingsSchema.TimedBlockSlowMoMinScore.Default, 0.8f)
-                      && Near((float)SettingsSchema.TimedBlockSlowMoSpeed.Default, 0.3f) && Near((float)SettingsSchema.TimedBlockSlowMoRealSeconds.Default, 0.5f)
-                      && Near((float)SettingsSchema.TimedBlockSlowMoCooldownSeconds.Default, 4f),
-                    "the embedded slow-mo defaults are not the design's");
+                      && Near((float)SettingsSchema.TimedBlockSlowMoSpeed.Default, 0.25f) && Near((float)SettingsSchema.TimedBlockSlowMoHoldSeconds.Default, 1.5f)
+                      && Near((float)SettingsSchema.TimedBlockSlowMoEaseOutSeconds.Default, 0.3f) && Near((float)SettingsSchema.TimedBlockSlowMoCooldownSeconds.Default, 4f),
+                    "the embedded slow-mo defaults are not step 101's");
                 S.Set(SettingsSchema.RiposteStunMaxSeconds, 1.0, SettingSources.File);
                 var inputs = new FakeImpactInputs();
                 var body = new FakeImpactBody();
@@ -143,10 +143,13 @@ namespace TraxCombat.Tools
                 // ---- 1. your perfect block: started, the floor reached on the REAL clock, given back at the end
                 Block(0.05);
                 Check(stats.Played == 1 && logic.SlowMo.Playing && slow.Ours, "your perfect block's riposte did not start the slow motion: played " + stats.Played);
-                Real(0.06);
-                Check(Math.Abs(slow.OursSpeed - 0.3f) < 0.02f, "the slow motion's floor after the ease in: " + slow.OursSpeed);
-                Real(0.5);
-                Check(!slow.Ours && !logic.SlowMo.Playing && stats.Ended[(int)SlowMoEnd.Finished] == 1 && Math.Abs(slow.LowestOurs - 0.3f) < 1e-3,
+                Check(Math.Abs(slow.OursSpeed - 0.25f) < 1e-3, "step 101: the slow motion's floor at once (no ease in): " + slow.OursSpeed);
+                Real(1.4);
+                Check(slow.Ours && Math.Abs(slow.OursSpeed - 0.25f) < 1e-3, "step 101: the floor held 1.5 real s: " + slow.OursSpeed);
+                Real(0.25);
+                Check(slow.Ours && slow.OursSpeed > 0.26f && slow.OursSpeed < 1f, "step 101: easing back after the hold: " + slow.OursSpeed);
+                Real(0.2);
+                Check(!slow.Ours && !logic.SlowMo.Playing && stats.Ended[(int)SlowMoEnd.Finished] == 1 && Math.Abs(slow.LowestOurs - 0.25f) < 1e-3,
                     "the slow motion's end: request left " + slow.Ours + ", finished " + stats.Ended[(int)SlowMoEnd.Finished] + ", lowest " + slow.LowestOurs);
 
                 // ---- 2. the cooldown (4 real s from the start), another request present, a low timing, the AI's block
@@ -221,7 +224,7 @@ namespace TraxCombat.Tools
                 Check(line.StartsWith("timed slow-mo (step 100e; ON): played 8", StringComparison.Ordinal) && line.Contains("requests left over at the mission end 0 (must be 0)")
                       && line.Contains("finished 1") && line.Contains("the cooldown 1"),
                     "the [summary] timed slow-mo line: " + line);
-                Console.WriteLine("        step 100e: your perfect block - the game at 0.30, back to 1 over 0.5 real s; " + slow.Sets + " request writes, " + slow.Removes + " give-backs");
+                Console.WriteLine("        step 100e: your perfect block - the game at 0.25 at once, held 1.5 real s, back to 1 over 0.3 s (step 101); " + slow.Sets + " request writes, " + slow.Removes + " give-backs");
                 Console.WriteLine("        " + line);
             }
             finally

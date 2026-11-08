@@ -134,7 +134,8 @@ namespace TraxCombat.Missions
         {
             if (!live || !t.BlockerIsPlayer || t.RiposteHappens || !TraxSettings.Shared.TimedBlockShowTiming) return;
             var tr = TimedBlockRules.From(TraxSettings.Shared);
-            string? text = TimedBlockMath.YourBlockLine(MessageName(a), t.Event, false, double.NaN, tr.StaggerMax, t.Source, t.Age, tr.Perfect);
+            string? text = TimedBlockMath.YourBlockLine(MessageName(a), t.Event, false, double.NaN, tr.StaggerMax, t.Source, t.Age,
+                double.IsNaN(t.Perfect) ? tr.Perfect : t.Perfect); // step 101: YOUR window by your weapon skill
             if (text != null) ImpactMessage(ImpactMessageKind.BlockHeld, v, a, text);
         }
 
@@ -145,7 +146,8 @@ namespace TraxCombat.Missions
             if (p.Other == null || p.Other.Removed || !IsPlayer(p.Other) || !TraxSettings.Shared.TimedBlockShowTiming) return null;
             var tr = TimedBlockRules.From(TraxSettings.Shared);
             if (!tr.Enabled) return null;
-            return TimedBlockMath.YourBlockLine(MessageName(p.St), p.Event, true, p.Asked, tr.StaggerMax, p.Source, p.GuardAge, tr.Perfect);
+            return TimedBlockMath.YourBlockLine(MessageName(p.St), p.Event, true, p.Asked, tr.StaggerMax, p.Source, p.GuardAge,
+                double.IsNaN(p.Perfect) ? tr.Perfect : p.Perfect); // step 101: YOUR window by your weapon skill
         }
 
         /// <summary>THE SEAM (the tick): the engine took a riposte stagger this block decided - counted by its timing band. 100d's push-out and

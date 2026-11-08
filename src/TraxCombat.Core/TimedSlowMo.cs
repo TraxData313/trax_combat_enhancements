@@ -19,7 +19,8 @@ namespace TraxCombat.Core
             Switch = s.TimedBlockSlowMo;
             MinScore = Clamp01(F(s.TimedBlockSlowMoMinScore));
             Speed = Math.Max(TimedSlowMoMath.MinSpeed, Math.Min(1, Nan0(F(s.TimedBlockSlowMoSpeed))));
-            RealSeconds = Math.Max(TimedSlowMoMath.MinRealSeconds, Nan0(F(s.TimedBlockSlowMoRealSeconds)));
+            HoldSeconds = Math.Max(TimedSlowMoMath.MinHoldSeconds, Nan0(F(s.TimedBlockSlowMoHoldSeconds)));
+            EaseOutSeconds = Math.Max(0, Nan0(F(s.TimedBlockSlowMoEaseOutSeconds)));
             Cooldown = Math.Max(0, Nan0(F(s.TimedBlockSlowMoCooldownSeconds)));
         }
 
@@ -34,11 +35,17 @@ namespace TraxCombat.Core
         /// <summary>The timing score your block needs (0-1).</summary>
         public double MinScore { get; }
 
-        /// <summary>The game speed at the slow motion's deepest (0.05-1).</summary>
+        /// <summary>The game speed during the hold (0.05-1).</summary>
         public double Speed { get; }
 
-        /// <summary>The whole slow motion in REAL seconds, the ease back included.</summary>
-        public double RealSeconds { get; }
+        /// <summary>Step 101: REAL seconds the floor is held, from the start.</summary>
+        public double HoldSeconds { get; }
+
+        /// <summary>Step 101: REAL seconds of the ease back to 1 after the hold (0 = a snap).</summary>
+        public double EaseOutSeconds { get; }
+
+        /// <summary>The whole slow motion in REAL seconds: the hold + the ease back.</summary>
+        public double RealSeconds => HoldSeconds + EaseOutSeconds;
 
         /// <summary>REAL seconds from one slow motion's start to the next.</summary>
         public double Cooldown { get; }
@@ -50,8 +57,8 @@ namespace TraxCombat.Core
             var c = CultureInfo.InvariantCulture;
             if (!Enabled) return "slow motion OFF (" + OffBecause + ")";
             return "slow motion ON: your timed block scoring " + MinScore.ToString("0.00", c) + "+ whose riposte the engine took - the game at "
-                   + Speed.ToString("0.00", c) + " speed, back to 1 over " + RealSeconds.ToString("0.00", c) + " real s, at most one every "
-                   + Cooldown.ToString("0.0", c) + " real s";
+                   + Speed.ToString("0.00", c) + " speed at once, held " + HoldSeconds.ToString("0.00", c) + " real s, back to 1 over " + EaseOutSeconds.ToString("0.00", c)
+                   + " real s, at most one every " + Cooldown.ToString("0.0", c) + " real s";
         }
 
         private static double Clamp01(double v) => double.IsNaN(v) ? 0 : Math.Max(0, Math.Min(1, v));
@@ -129,11 +136,8 @@ namespace TraxCombat.Core
         /// <summary>The vanilla request ids we know of - any of them present = someone else is slowing the game.</summary>
         public static readonly int[] VanillaRequestIds = { 624, 813, 864, 1121 };
 
-        /// <summary>The ease IN to the floor, real seconds (at most a tenth of the whole).</summary>
-        public const double EaseInSeconds = 0.05;
-
         public const double MinSpeed = 0.05;
-        public const double MinRealSeconds = 0.1;
+        public const double MinHoldSeconds = 0.1;
 
         /// <summary>A real-time gap between two of our ticks this long = the game was paused / stalled: the slow motion ends.</summary>
         public const double StallSeconds = 0.25;
@@ -142,29 +146,31 @@ namespace TraxCombat.Core
         public const double SpeedTolerance = 0.01;
 
         /// <summary>
-        /// The game speed <paramref name="t"/> real seconds after the start: 1 before 0; a smoothstep down to <paramref name="floor"/> over the ease in
-        /// (min(0.05, total / 10)); then a smoothstep back up to 1 at <paramref name="total"/> - flat at both ends, so the floor is held a while and the
-        /// return is gentle; 1 from <paramref name="total"/> on. Never below the floor, never above 1, continuous.
+        /// Step 101 (Toni: "I didn't see any slow-mo"; Dismemberment Plus holds 0.25 flat for 2 real s): the game speed <paramref name="t"/> real
+        /// seconds after the start - 1 before 0; <paramref name="floor"/> AT ONCE from 0 and held to <paramref name="hold"/>; then a smoothstep back
+        /// up to 1 over <paramref name="easeOut"/> (0 = a snap); 1 from hold + ease on. Never below the floor, never above 1. (Step 100e eased in over
+        /// 0.05 s and straight back out over 0.45 s - the floor touched for an instant, ~0.17 s of battle time lost: invisible.)
         /// </summary>
-        public static double Speed(double t, double floor, double total)
+        public static double Speed(double t, double floor, double hold, double easeOut)
         {
-            if (double.IsNaN(t) || t <= 0) return 1;
+            if (double.IsNaN(t) || t < 0) return 1;
             floor = double.IsNaN(floor) ? 1 : Math.Max(0, Math.Min(1, floor));
-            if (!(total > 0) || t >= total) return 1;
-            double ein = Math.Min(EaseInSeconds, total / 10);
-            if (t < ein) return 1 - (1 - floor) * TimedBlockMath.Smooth(t / ein);
-            return floor + (1 - floor) * TimedBlockMath.Smooth((t - ein) / (total - ein));
+            if (!(hold > 0)) return 1;
+            if (t < hold) return floor;
+            if (!(easeOut > 0) || t >= hold + easeOut) return 1;
+            return floor + (1 - floor) * TimedBlockMath.Smooth((t - hold) / easeOut);
         }
 
-        /// <summary>The slow motion is over at <paramref name="t"/> real seconds.</summary>
+        /// <summary>The slow motion is over at <paramref name="t"/> real seconds (the hold + the ease back).</summary>
         public static bool Done(double t, double total) => !(t < total);
 
         /// <summary>The mission time a whole slow motion lasts (the integral of <see cref="Speed"/> - for the log and the tests).</summary>
-        public static double MissionSeconds(double floor, double total, int steps = 400)
+        public static double MissionSeconds(double floor, double hold, double easeOut, int steps = 800)
         {
-            if (!(total > 0)) return 0;
+            double total = Math.Max(0, hold) + Math.Max(0, easeOut);
+            if (!(total > 0) || !(hold > 0)) return total;
             double h = total / steps, sum = 0;
-            for (int i = 0; i < steps; i++) sum += Speed((i + 0.5) * h, floor, total) * h;
+            for (int i = 0; i < steps; i++) sum += Speed((i + 0.5) * h, floor, hold, easeOut) * h;
             return sum;
         }
 
@@ -255,7 +261,7 @@ namespace TraxCombat.Core
             LastTickReal = nowReal;
             double t = nowReal - StartReal;
             if (TimedSlowMoMath.Done(t, r.RealSeconds)) return double.NaN;
-            return TimedSlowMoMath.Speed(t, r.Speed, r.RealSeconds);
+            return TimedSlowMoMath.Speed(t, r.Speed, r.HoldSeconds, r.EaseOutSeconds);
         }
 
         /// <summary>The real gap since our last tick of this slow motion is a stall / pause.</summary>

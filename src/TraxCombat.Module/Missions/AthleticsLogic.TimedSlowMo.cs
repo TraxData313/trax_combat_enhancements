@@ -59,7 +59,7 @@ namespace TraxCombat.Missions
                 }
                 _slowMo.Start(now, score);
                 _slowMoStats.NoteStart(score);
-                double speed = TimedSlowMoMath.Speed(1e-9, r.Speed, r.RealSeconds);
+                double speed = TimedSlowMoMath.Speed(0, r.Speed, r.HoldSeconds, r.EaseOutSeconds); // step 101: the floor at once
                 body.Set(m, TimedSlowMoMath.RequestId, (float)speed);
                 _slowMo.NoteAsked(speed);
                 _slowMoStats.NoteAsked(speed);
@@ -67,7 +67,8 @@ namespace TraxCombat.Missions
                 {
                     _slowMoFirstLine = true;
                     TraxLog.Info("impact", "live: first SLOW MOTION - your timed block (timing " + F2(score) + "); " + r.Describe() + "; about "
-                        + TimedSlowMoMath.MissionSeconds(r.Speed, r.RealSeconds).ToString("0.00", CultureInfo.InvariantCulture) + " s of battle time");
+                        + TimedSlowMoMath.MissionSeconds(r.Speed, r.HoldSeconds, r.EaseOutSeconds).ToString("0.00", CultureInfo.InvariantCulture) + " s of battle time in "
+                        + r.RealSeconds.ToString("0.00", CultureInfo.InvariantCulture) + " real s");
                 }
             }
             catch (Exception e)

@@ -178,6 +178,12 @@ namespace TraxCombat.Core
         /// block, step 56 exactly) and his guard's age at contact (s; NaN / infinite = held or unknown) - <see cref="TimedBlockMath.ScoreOf"/>.</summary>
         public TimingSource TimingSource;
         public double GuardAge;
+
+        /// <summary>Step 101 (Toni: "giving more time overall for the more skillful"): the blocker's skill in the weapon he holds (One Handed /
+        /// Two Handed / Polearm; One Handed for a shield alone or anything unclear) - read only when <see cref="HasGuardSkill"/> (else the flat
+        /// <c>TimedBlockPerfectSeconds</c> / <c>TimedBlockWindowSeconds</c>).</summary>
+        public double GuardSkill;
+        public bool HasGuardSkill;
     }
 
     /// <summary>
@@ -387,6 +393,14 @@ namespace TraxCombat.Core
         public double TimedScore, TimedAge, RiposteChance56, RiposteStun56;
         public TimingSource TimedSource;
         public bool TimedCappedForYou, AttackerMounted;
+
+        /// <summary>Step 101: a PERFECT block's riposte roll - the attacker's recent-stagger halving skipped (it would have cut the chance),
+        /// his immunity after the last stagger skipped (it would have refused the roll).</summary>
+        public bool TimedSkippedHalving, TimedSkippedImmunity;
+
+        /// <summary>Step 101: the blocker's own perfect window and no-timing point (s) the score was read against (by his weapon skill when
+        /// <c>TimedBlockSkillScales</c>; else the flat settings). NaN = not a correct block.</summary>
+        public double TimedPerfect, TimedWindow;
 
         /// <summary>Anything happens (a rolled outcome came up).</summary>
         public bool AnyOutcome => Knockdown.Happens || ShieldDrop.Happens || Stagger.Happens || Riposte.Happens || ThrownBack.Happens;
@@ -1233,6 +1247,8 @@ namespace TraxCombat.Core
                 BraceCut = double.NaN,
                 DefenderToughness = f.DefenderToughness,
                 TimedAge = double.NaN,
+                TimedPerfect = double.NaN,
+                TimedWindow = double.NaN,
                 RiposteChance56 = double.NaN,
                 RiposteStun56 = double.NaN,
                 AttackerMounted = f.AttackerMounted,
@@ -1281,7 +1297,8 @@ namespace TraxCombat.Core
             {
                 d.TimedSource = f.TimingSource;
                 d.TimedAge = f.TimingSource == TimingSource.None ? double.NaN : f.GuardAge;
-                d.TimedScore = TimedBlockMath.ScoreOf(r.Timed, f.Event, f.TimingSource, f.GuardAge, f.DefenderIsPlayer);
+                TimedBlockMath.WindowFor(r.Timed, f.HasGuardSkill ? f.GuardSkill : double.NaN, out d.TimedPerfect, out d.TimedWindow); // step 101: by his skill
+                d.TimedScore = TimedBlockMath.ScoreOf(r.Timed, f.Event, f.TimingSource, f.GuardAge, f.DefenderIsPlayer, d.TimedPerfect, d.TimedWindow);
             }
             bool throwBack = f.Event == ImpactEvent.RightBlock && r.RiposteKnockdownMax > 0 && d.ChargeShare > 0; // step 62: a shield, never a parry
             if (CanRiposte(f.Event) && r.RiposteOn && (r.RiposteMax > 0 || throwBack) && !down)
@@ -1303,15 +1320,26 @@ namespace TraxCombat.Core
                         : ImpactRefusal.None, dice);
                 // step 100b, THE TIMED BLOCK: the raw chance blended from step 56's toward TimedBlockRiposteMaxPercent by the score s - the
                 // halving, the immunity, ImpactOnPlayerPercent and the refusals all still apply after it; s 0 = step 56 exactly (no die added)
+                // step 101 (Toni's first playtest): a timed block (s > 0) adds TimedBlockRiposteBonusPoints after the blend, held at
+                // TimedBlockRiposteCapPercent (85 + 15 = 100 % for a perfect one); a PERFECT block (s 1) skips his recent-stagger halving and his
+                // immunity AFTER his last stagger - never while he still reels (a new stagger on top of a running one would tangle the animation)
                 double raw56 = RawChance(r.RiposteMax, xr, r.StaggerFrom) * d.RiposteBlockerFactor;
                 if (r.RiposteMax > 0) d.RiposteChance56 = Math.Max(0, Math.Min(1, raw56 * (dimA * scaleA))); // the roll's own product (Roll: raw × factor)
                 if (r.RiposteMax > 0)
-                    d.Riposte = Roll(r.RiposteMax, TimedBlockMath.Chance(raw56, r.Timed.RiposteMax, d.TimedScore), na, dimA * scaleA,
+                {
+                    bool perfect = TimedBlockMath.IsPerfect(d.TimedScore);
+                    bool skipHalving = perfect && r.Timed.PerfectSkipsHalving && na > 0;
+                    bool skipImmunity = perfect && r.Timed.PerfectSkipsImmunity && attacker.StaggerImmune(now) && !attacker.Reeling(now);
+                    d.TimedSkippedHalving = skipHalving;
+                    d.TimedSkippedImmunity = skipImmunity;
+                    d.Riposte = Roll(r.RiposteMax, TimedBlockMath.TimedChance(raw56, r.Timed.RiposteMax, d.TimedScore, r.Timed.RiposteBonus, r.Timed.RiposteCap),
+                        skipHalving ? 0 : na, (skipHalving ? 1 : dimA) * scaleA,
                         attacker.Down(now) ? ImpactRefusal.Down
                         : d.Knockdown.Happens || d.Stagger.Happens || d.ThrownBack.Happens ? ImpactRefusal.Replaced
                         : f.AttackerMounted ? ImpactRefusal.Rider
-                        : attacker.StaggerImmune(now) ? ImpactRefusal.StaggerImmune
+                        : attacker.StaggerImmune(now) && !skipImmunity ? ImpactRefusal.StaggerImmune
                         : ImpactRefusal.None, dice);
+                }
             }
 
             // lengths (the randomness grows with T) and the state
@@ -1649,8 +1677,10 @@ namespace TraxCombat.Core
             }
             if (d.TimedScore > 0) // step 100b: the timed block
                 s += " TIMED block (" + TimedBlockMath.SourceName(d.TimedSource) + (double.IsNaN(d.TimedAge) || double.IsInfinity(d.TimedAge) ? string.Empty : ", guard up " + d.TimedAge.ToString("0.00", c) + " s")
+                     + (double.IsNaN(d.TimedPerfect) ? string.Empty : ", his window " + d.TimedPerfect.ToString("0.00", c) + " / " + d.TimedWindow.ToString("0.00", c) + " s")
                      + ", score " + d.TimedScore.ToString("0.00", c) + ": the riposte " + (double.IsNaN(d.RiposteChance56) ? "-" : (100 * d.RiposteChance56).ToString("0.0", c) + "%") + " untimed"
-                     + (double.IsNaN(d.RiposteStun56) ? string.Empty : ", " + d.RiposteStun56.ToString("0.00", c) + " s untimed") + (d.TimedCappedForYou ? ", held at the you-cap" : string.Empty) + ");";
+                     + (double.IsNaN(d.RiposteStun56) ? string.Empty : ", " + d.RiposteStun56.ToString("0.00", c) + " s untimed") + (d.TimedCappedForYou ? ", held at the you-cap" : string.Empty)
+                     + (d.TimedSkippedHalving ? ", PERFECT - his recent staggers not counted" : string.Empty) + (d.TimedSkippedImmunity ? ", PERFECT - his stagger immunity skipped" : string.Empty) + ");";
             if (!double.IsNaN(d.ThrownBackGetUpFactor)) s += " the attacker gets up x" + d.ThrownBackGetUpFactor.ToString("0.00", c) + " slower;";
             if (d.Brace != KickBraceOutcome.NotAsked)
                 s += " BRACE (step 65): " + (d.BraceSpent ? "none - a spent man (below the brace's bar)"

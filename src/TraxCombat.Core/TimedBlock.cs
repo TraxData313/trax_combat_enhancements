@@ -111,7 +111,19 @@ namespace TraxCombat.Core
             AgainstYouMax = Math.Max(0, (double)s.TimedBlockAgainstYouMaxSeconds);
             ParryShare = Clamp01(s.TimedBlockParryPercent / 100.0);
             AiShare = Clamp01(s.TimedBlockAiPercent / 100.0);
+            RiposteBonus = Clamp01(s.TimedBlockRiposteBonusPoints / 100.0);
+            RiposteCap = Clamp01(s.TimedBlockRiposteCapPercent / 100.0);
+            PerfectSkipsHalving = s.TimedBlockPerfectSkipsHalving;
+            PerfectSkipsImmunity = s.TimedBlockPerfectSkipsImmunity;
+            SkillScales = s.TimedBlockSkillScales;
+            PerfectAt0 = Math.Max(0, R(s.TimedBlockPerfectAtSkill0));
+            PerfectAt100 = Math.Max(0, R(s.TimedBlockPerfectAtSkill100));
+            PerfectAt200 = Math.Max(0, R(s.TimedBlockPerfectAtSkill200));
+            PerfectAt300 = Math.Max(0, R(s.TimedBlockPerfectAtSkill300));
         }
+
+        /// <summary>A float setting as the decimal it was written as (0.15f is 0.15000000596).</summary>
+        private static double R(float v) => float.IsNaN(v) ? 0 : Math.Round((double)v, 5);
 
         public static TimedBlockRules From(TraxSettings s) => new TimedBlockRules(s);
 
@@ -126,14 +138,43 @@ namespace TraxCombat.Core
         public double ParryShare { get; }
         public double AiShare { get; }
 
+        /// <summary>Step 101 (Toni's first playtest): points (0-1) added to a TIMED block's riposte chance (score above 0) after the blend, held
+        /// at <see cref="RiposteCap"/> - 0.15 + 0.85 = 1 for a perfect block.</summary>
+        public double RiposteBonus { get; }
+
+        /// <summary>Step 101: the most a timed block's riposte chance reaches with the bonus (0-1).</summary>
+        public double RiposteCap { get; }
+
+        /// <summary>Step 101: a PERFECT block (score 1) ignores the attacker's recent-stagger halving.</summary>
+        public bool PerfectSkipsHalving { get; }
+
+        /// <summary>Step 101: a PERFECT block ignores the attacker's stagger immunity AFTER his last stagger (never while he still reels).</summary>
+        public bool PerfectSkipsImmunity { get; }
+
+        /// <summary>Step 101 (Toni: "giving more time overall for the more skillful"): the perfect window follows the blocker's weapon skill
+        /// (the four points below, linear between, held beyond 0 and 300); the no-timing point scales with it (× perfect ÷ <see cref="Perfect"/>).
+        /// Off = the flat <see cref="Perfect"/> / <see cref="Window"/>.</summary>
+        public bool SkillScales { get; }
+
+        public double PerfectAt0 { get; }
+        public double PerfectAt100 { get; }
+        public double PerfectAt200 { get; }
+        public double PerfectAt300 { get; }
+
         public string? OffBecause => !ModEnabled ? "ModEnabled" : !Switch ? "TimedBlocksEnabled" : null;
 
         public string Describe()
         {
             var c = CultureInfo.InvariantCulture;
             if (!Enabled) return "timed blocks OFF (" + OffBecause + ")";
-            return "timed blocks ON: perfect within " + Perfect.ToString("0.00", c) + " s, none after " + Window.ToString("0.00", c) + " s; a perfect block's riposte "
-                   + (100 * RiposteMax).ToString("0", c) + "%, " + StaggerMax.ToString("0.0", c) + " s (on you at most " + AgainstYouMax.ToString("0.0", c) + " s); a parry counts "
+            string window = SkillScales
+                ? "perfect within the blocker's weapon skill 0 / 100 / 200 / 300 → " + PerfectAt0.ToString("0.00", c) + " / " + PerfectAt100.ToString("0.00", c) + " / "
+                  + PerfectAt200.ToString("0.00", c) + " / " + PerfectAt300.ToString("0.00", c) + " s (held beyond), none after x" + (Window / Math.Max(1e-9, Perfect)).ToString("0.00", c)
+                  + " that (" + Window.ToString("0.00", c) + " ÷ " + Perfect.ToString("0.00", c) + ")"
+                : "perfect within " + Perfect.ToString("0.00", c) + " s, none after " + Window.ToString("0.00", c) + " s (not by skill)";
+            return "timed blocks ON: " + window + "; a perfect block's riposte "
+                   + (100 * RiposteMax).ToString("0", c) + "% + " + (100 * RiposteBonus).ToString("0", c) + " points (at most " + (100 * RiposteCap).ToString("0", c) + "%; a perfect one "
+                   + (PerfectSkipsHalving ? "ignores" : "keeps") + " the halving, " + (PerfectSkipsImmunity ? "ignores" : "keeps") + " the immunity), " + StaggerMax.ToString("0.0", c) + " s (on you at most " + AgainstYouMax.ToString("0.0", c) + " s); a parry counts "
                    + (100 * ParryShare).ToString("0", c) + "%, the AI's timing " + (100 * AiShare).ToString("0", c) + "%";
         }
 
@@ -163,7 +204,11 @@ namespace TraxCombat.Core
             Seconds56 = d.RiposteStun56;
             Seconds = d.RiposteStunSeconds;
             CappedForYou = d.TimedCappedForYou;
+            Perfect = d.TimedPerfect;
         }
+
+        /// <summary>Step 101: the blocker's own perfect window (s) - by his weapon skill (NaN = not read).</summary>
+        public double Perfect { get; }
 
         public ImpactEvent Event { get; }
         public double Score { get; }
@@ -246,9 +291,19 @@ namespace TraxCombat.Core
         /// for a parry.
         /// </summary>
         public static double ScoreOf(in TimedBlockRules r, ImpactEvent e, TimingSource source, double age, bool blockerIsPlayer)
+            => ScoreOf(in r, e, source, age, blockerIsPlayer, r.Perfect, r.Window);
+
+        /// <summary>Step 101: <see cref="ScoreOf(in TimedBlockRules, ImpactEvent, TimingSource, double, bool)"/> against the blocker's own
+        /// window (<see cref="WindowFor"/>).</summary>
+        public static double ScoreOf(in TimedBlockRules r, ImpactEvent e, TimingSource source, double age, bool blockerIsPlayer, double perfect, double window)
         {
             if (!r.Enabled || !ImpactMath.CanRiposte(e) || source == TimingSource.None) return 0;
-            double s = source == TimingSource.Chamber ? 1 : source == TimingSource.AiHeld ? 0 : Score(age, r.Perfect, r.Window);
+            if (double.IsNaN(perfect) || double.IsNaN(window))
+            {
+                perfect = r.Perfect;
+                window = r.Window;
+            }
+            double s = source == TimingSource.Chamber ? 1 : source == TimingSource.AiHeld ? 0 : Score(age, perfect, window);
             if (!blockerIsPlayer) s *= r.AiShare;
             if (e == ImpactEvent.Parry) s *= r.ParryShare;
             return Math.Max(0, Math.Min(1, s));
@@ -261,6 +316,53 @@ namespace TraxCombat.Core
             if (!(s > 0)) return p56;
             s = Math.Min(1, s);
             return p56 + Math.Max(0, max - p56) * s;
+        }
+
+        /// <summary>
+        /// Step 101 (Toni: "skill 100 → 0.15, 200 → 0.2, 300 → 0.25 ... giving more time overall for the more skillful"): the perfect window for a
+        /// blocker of <paramref name="skill"/> - linear through the four points (0 / 100 / 200 / 300), held at the end points beyond; NaN = the flat
+        /// <see cref="TimedBlockRules.Perfect"/>.
+        /// </summary>
+        public static double PerfectFor(in TimedBlockRules r, double skill)
+        {
+            if (double.IsNaN(skill)) return r.Perfect;
+            if (skill <= 0) return r.PerfectAt0;
+            if (skill <= 100) return r.PerfectAt0 + (r.PerfectAt100 - r.PerfectAt0) * (skill / 100);
+            if (skill <= 200) return r.PerfectAt100 + (r.PerfectAt200 - r.PerfectAt100) * ((skill - 100) / 100);
+            if (skill <= 300) return r.PerfectAt200 + (r.PerfectAt300 - r.PerfectAt200) * ((skill - 200) / 100);
+            return r.PerfectAt300;
+        }
+
+        /// <summary>
+        /// Step 101: the blocker's own perfect window and no-timing point. <c>TimedBlockSkillScales</c> on and his skill known: the perfect by
+        /// <see cref="PerfectFor"/>, the no-timing point = <c>TimedBlockWindowSeconds</c> × perfect ÷ <c>TimedBlockPerfectSeconds</c> ("moving all
+        /// the numbers" - the same smoothstep between them, stretched); else the flat pair.
+        /// </summary>
+        public static void WindowFor(in TimedBlockRules r, double skill, out double perfect, out double window)
+        {
+            perfect = r.Perfect;
+            window = r.Window;
+            if (!r.SkillScales || double.IsNaN(skill) || double.IsInfinity(skill)) return;
+            double flat = Math.Round(r.Perfect, 5);
+            perfect = PerfectFor(in r, skill);
+            window = flat > 0 ? Math.Round(r.Window, 5) * perfect / flat : r.Window;
+        }
+
+        /// <summary>Step 101: a score at or above this is a PERFECT block (the guard raised within <c>TimedBlockPerfectSeconds</c>).</summary>
+        public const double PerfectScore = 0.999;
+
+        public static bool IsPerfect(double s) => s >= PerfectScore;
+
+        /// <summary>
+        /// Step 101 (Toni's first playtest: "make the perfect blocks stagger 100% of the time and bump up all probs by 15%"): THE timed riposte
+        /// chance - s 0 (or less) = <paramref name="p56"/> EXACTLY (step 56); above 0 the blend <see cref="Chance"/> + <paramref name="bonus"/>, held
+        /// at <paramref name="cap"/> but never below the blend. With 85 % / +15 / 100 % a perfect block is 100 %.
+        /// </summary>
+        public static double TimedChance(double p56, double max, double s, double bonus, double cap)
+        {
+            if (!(s > 0)) return p56;
+            double blend = Chance(p56, max, s);
+            return Math.Max(blend, Math.Min(cap, blend + Math.Max(0, bonus)));
         }
 
         /// <summary>
@@ -408,7 +510,7 @@ namespace TraxCombat.Core
         public static string TimingWords(in TimedBlockResult t)
         {
             var c = CultureInfo.InvariantCulture;
-            string sharp = t.Score >= 0.999 ? "perfect" : t.Score >= 0.8 ? "sharp" : t.Score >= 0.5 ? "good" : t.Score > 0 ? "late" : "untimed";
+            string sharp = IsPerfect(t.Score) ? "perfect" : t.Score >= 0.8 ? "sharp" : t.Score >= 0.5 ? "good" : t.Score > 0 ? "late" : "untimed";
             if (t.Source == TimingSource.Chamber) return "a chamber, " + sharp;
             return (double.IsNaN(t.Age) || double.IsInfinity(t.Age) ? "held" : t.Age.ToString("0.00", c) + " s") + ", " + sharp + ", score " + t.Score.ToString("0.00", c);
         }
@@ -458,6 +560,9 @@ namespace TraxCombat.Core
         public int TimedRolls;
         public int RefusedImmune, RefusedDown, RefusedReplaced, RefusedRider, Halved, CappedForYou;
 
+        /// <summary>Step 101: perfect blocks' riposte rolls, how many came up, the halvings and immunities they skipped.</summary>
+        public int PerfectRolls, PerfectRipostes, PerfectSkippedHalving, PerfectSkippedImmunity;
+
         /// <summary>One CORRECT block decided (the module's seam, after <see cref="ImpactMath.Decide"/>).</summary>
         public void Note(in TimedBlockResult t, in ImpactDecision d)
         {
@@ -494,6 +599,13 @@ namespace TraxCombat.Core
                 if (!double.IsNaN(t.Chance56)) ChanceSum56 += t.Chance56;
                 ChanceSumTimed += d.Riposte.Chance;
                 if (d.Riposte.Halvings > 0) Halved++;
+                if (TimedBlockMath.IsPerfect(t.Score))
+                {
+                    PerfectRolls++;
+                    if (d.Riposte.Happens) PerfectRipostes++;
+                    if (d.TimedSkippedHalving) PerfectSkippedHalving++;
+                    if (d.TimedSkippedImmunity) PerfectSkippedImmunity++;
+                }
                 switch (d.Riposte.Refusal)
                 {
                     case ImpactRefusal.StaggerImmune: RefusedImmune++; break;
@@ -621,7 +733,9 @@ namespace TraxCombat.Core
             p.Append(" (targets ").Append(r.StaggerMax.ToString("0.0", c)).Append(" s, ").Append(r.AgainstYouMax.ToString("0.0", c)).Append(" s on you); timed rolls ")
              .Append(TimedRolls.ToString(c)).Append(" - mean chance ").Append(TimedRolls > 0 ? Pct(ChanceSum56 / TimedRolls) + " untimed → " + Pct(ChanceSumTimed / TimedRolls) + " timed" : "-")
              .Append(", halved ").Append(Halved.ToString(c)).Append(", refused: immune ").Append(RefusedImmune.ToString(c)).Append(", down ").Append(RefusedDown.ToString(c))
-             .Append(", replaced ").Append(RefusedReplaced.ToString(c)).Append(", a rider ").Append(RefusedRider.ToString(c)).Append(" (riders keep it - the mounted part dropped); held at the you-cap ")
+             .Append(", replaced ").Append(RefusedReplaced.ToString(c)).Append(", a rider ").Append(RefusedRider.ToString(c)).Append(" (riders keep it - the mounted part dropped); perfect blocks ").Append(PerfectRolls.ToString(c)).Append(" rolled → ")
+             .Append(PerfectRipostes.ToString(c)).Append(" ripostes (the halving skipped ").Append(PerfectSkippedHalving.ToString(c)).Append(", the immunity skipped ")
+             .Append(PerfectSkippedImmunity.ToString(c)).Append("); held at the you-cap ")
              .Append(CappedForYou.ToString(c)).Append("; ripostes by YOUR blocks ").Append(RipostesBy[0].ToString(c)).Append(" (mean ")
              .Append(RipostesBy[0] > 0 ? (RiposteSecondsBy[0] / RipostesBy[0]).ToString("0.00", c) + " s" : "-").Append("), by the AI's ").Append(RipostesBy[1].ToString(c))
              .Append(" (mean ").Append(RipostesBy[1] > 0 ? (RiposteSecondsBy[1] / RipostesBy[1]).ToString("0.00", c) + " s" : "-").Append(')');

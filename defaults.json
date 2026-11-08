@@ -261,9 +261,10 @@
   // (true or false)
   "TimedBlocksEnabled": true,
 
-  // A brief slow motion (about half a second) when YOU make a nicely timed block that staggers
-  // the attacker. Never on the AI's blocks, never while another slow-down (the orders menu) is
-  // on, at most one every few seconds. Off: no slow motion. The numbers: Advanced page, Impact.
+  // A slow motion (about 2 seconds: the game drops to a quarter speed, holds, then eases back)
+  // when YOU make a nicely timed block that staggers the attacker. Never on the AI's blocks,
+  // never while another slow-down (the orders menu) is on, at most one every few seconds. Off:
+  // no slow motion. The numbers: Advanced page, Impact.
   // (true or false)
   "TimedBlockSlowMo": true,
 
@@ -2485,7 +2486,9 @@
   "MeetAiReadMaxHoldSeconds": 1.5,
 
   // A guard raised this close before the blow lands counts as a perfect timing (the full timed
-  // riposte). Between this and the window below the timing fades smoothly.
+  // riposte). Between this and the window below the timing fades smoothly. With 'skill widens
+  // the window' on, each blocker's own window comes from his skill instead, and the window
+  // below stretches by his window divided by this.
   // (range 0.0 to 0.5)
   "TimedBlockPerfectSeconds": 0.15,
 
@@ -2495,9 +2498,10 @@
   "TimedBlockWindowSeconds": 0.5,
 
   // The chance that a perfectly timed correct block (right-side shield or parry) staggers the
-  // attacker. A less sharp timing lifts the ordinary riposte chance part of the way here; an
-  // untimed block keeps the ordinary chance. Halved on a man staggered often, never on a man
-  // still immune, x 'Against you' for you.
+  // attacker, before the bonus below. A less sharp timing lifts the ordinary riposte chance
+  // part of the way here; an untimed block keeps the ordinary chance. Halved on a man staggered
+  // often, never on a man still immune (a perfect block skips both - see below), x 'Against
+  // you' for you.
   // (range 0 to 100)
   "TimedBlockRiposteMaxPercent": 85,
 
@@ -2524,20 +2528,69 @@
   // (range 0 to 100)
   "TimedBlockAiPercent": 50,
 
+  // Every timed block's riposte chance gets this many percentage points on top, up to the cap
+  // below - with 85% and 15 a perfect block always staggers the attacker. A block that is not
+  // timed at all keeps the ordinary chance.
+  // (range 0 to 50)
+  "TimedBlockRiposteBonusPoints": 15,
+
+  // The bonus above never lifts a timed block's riposte chance beyond this.
+  // (range 0 to 100)
+  "TimedBlockRiposteCapPercent": 100,
+
+  // A perfectly timed block's riposte is not halved for the attacker's recent staggers (the
+  // halving that stops one man being staggered over and over). Off: a perfect block is halved
+  // like any other.
+  // (true or false)
+  "TimedBlockPerfectSkipsHalving": true,
+
+  // A perfectly timed block can stagger the attacker again right after his last stagger ended
+  // (the short immunity after a stagger is skipped) - never while he still reels. Off: the
+  // immunity refuses it like any other.
+  // (true or false)
+  "TimedBlockPerfectSkipsImmunity": true,
+
+  // The perfect window follows the blocker's skill in the weapon he holds (One Handed, Two
+  // Handed or Polearm; One Handed for a shield alone) - the four points below, in between in a
+  // straight line - and the 'no timing after' point moves with it in proportion. Off: the flat
+  // 'perfect within' and 'no timing after' above for everyone.
+  // (true or false)
+  "TimedBlockSkillScales": true,
+
+  // The perfect window of a blocker with 0 in his weapon's skill.
+  // (range 0.0 to 0.5)
+  "TimedBlockPerfectAtSkill0": 0.1,
+
+  // The perfect window of a blocker with 100 in his weapon's skill.
+  // (range 0.0 to 0.5)
+  "TimedBlockPerfectAtSkill100": 0.15,
+
+  // The perfect window of a blocker with 200 in his weapon's skill.
+  // (range 0.0 to 0.5)
+  "TimedBlockPerfectAtSkill200": 0.2,
+
+  // The perfect window of a blocker with 300 or more in his weapon's skill.
+  // (range 0.0 to 0.5)
+  "TimedBlockPerfectAtSkill300": 0.25,
+
   // Your timed block's timing score (1 = perfect, 0 = untimed) must reach this for the slow
   // motion - and the attacker's stagger must have landed.
   // (range 0.0 to 1.0)
   "TimedBlockSlowMoMinScore": 0.8,
 
-  // How slow the game runs at the slow motion's deepest (1 = normal speed). It eases back to
-  // normal over the time below.
-  // (range 0.1 to 1.0)
-  "TimedBlockSlowMoSpeed": 0.3,
+  // How slow the game runs during the slow motion (1 would be normal speed). It drops there at
+  // once, holds, then eases back to normal.
+  // (range 0.1 to 0.9)
+  "TimedBlockSlowMoSpeed": 0.25,
 
-  // How long the whole slow motion lasts in real seconds, the ease back to normal speed
-  // included.
-  // (range 0.2 to 2.0)
-  "TimedBlockSlowMoRealSeconds": 0.5,
+  // How long the slow speed is held, in real seconds (a clock that never slows).
+  // (range 0.2 to 4.0)
+  "TimedBlockSlowMoHoldSeconds": 1.5,
+
+  // After the hold, the game speeds back up to normal over this many real seconds. 0 = snaps
+  // back at once.
+  // (range 0.0 to 1.0)
+  "TimedBlockSlowMoEaseOutSeconds": 0.3,
 
   // Real seconds from one slow motion's start to the next - a quick run of good blocks plays
   // only the first.
