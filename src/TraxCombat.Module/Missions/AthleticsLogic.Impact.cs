@@ -130,6 +130,7 @@ namespace TraxCombat.Missions
             ImpactHooks.ShrugOff = this; // step 52: tired men always flinch
             ImpactHooks.Dismount = this; // step 53: a rider knocked off his horse
             ImpactHooks.KnockBack = this; // step 65: the kicked man braces
+            ImpactHooks.PushOut = this; // step 100d: a pushing blocker's own bash is no blow
             if (_seenSpike.Enabled) SpikeSwitchedOn(Mission != null ? Mission.CurrentTime : 0, atStart: true);
             else TraxLog.Info("impact", "mission start: spike " + _seenSpike.Describe() + " - read live");
             StartImpactModel(); // step 48: the model (its own line)
@@ -144,6 +145,7 @@ namespace TraxCombat.Missions
             if (ReferenceEquals(ImpactHooks.ShrugOff, this)) ImpactHooks.ShrugOff = null;
             if (ReferenceEquals(ImpactHooks.Dismount, this)) ImpactHooks.Dismount = null;
             if (ReferenceEquals(ImpactHooks.KnockBack, this)) ImpactHooks.KnockBack = null;
+            if (ReferenceEquals(ImpactHooks.PushOut, this)) ImpactHooks.PushOut = null;
             if (_spikeStarted && ImpactHooks.RestoreStunCap()) _spike.CapRestores++;
         }
 
@@ -268,6 +270,14 @@ namespace TraxCombat.Missions
             catch (Exception e)
             {
                 Failed("impact.timed-clock", e);
+            }
+            try
+            {
+                TickTimedAnims(now); // step 100d: the recoils' backward staggers, the push-outs' ends, the test tool
+            }
+            catch (Exception e)
+            {
+                Failed("impact.timed-anims", e);
             }
             try
             {

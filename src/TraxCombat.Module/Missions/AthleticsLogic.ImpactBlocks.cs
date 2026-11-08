@@ -440,6 +440,7 @@ namespace TraxCombat.Missions
         {
             bool riposte = p.Action == ImpactBlockAction.Riposte;
             var outcome = riposte ? ImpactOutcome.Riposte : ImpactOutcome.Stagger;
+            if (riposte && p.Timed > 0 && TryStartRecoil(in p, now, ref calls)) return; // step 100d: a TIMED riposte starts with the direction-matched recoil
             float speed = ImpactBlockMath.StaggerSpeed(p.Asked, _staggerNatural.Seconds);
             calls++;
             bool over = false;
@@ -461,7 +462,7 @@ namespace TraxCombat.Missions
             if (riposte)
             {
                 _blocks.NoteRiposteApplied(p.AttackerBand);
-                TimedRiposteAccepted(p.St, p.Other, p.Timed, now); // step 100b: THE SEAM - the engine took it
+                TimedRiposteAccepted(p.St, p.Other, p.Timed, p.Event, now); // step 100b: THE SEAM - the engine took it
             }
             else _blocks.NoteApplied(p.Event, ImpactOutcome.Stagger, p.Bar);
             ImpactMessage(riposte ? ImpactMessageKind.Riposte : ImpactMessageKind.GuardBroken, p.Other != null && !p.Other.Removed ? p.Other : null, p.St); // step 53

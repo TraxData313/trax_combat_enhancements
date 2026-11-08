@@ -72,6 +72,17 @@ namespace TraxCombat.Models
     }
 
     /// <summary>
+    /// Step 100d: THE PUSH-OUT'S BASH GUARD - a blocker pushing out on a timed riposte plays his own bash action (actt_weapon_bash), which the
+    /// engine may turn into a real bash collision. While his push-out window runs, every alternative-attack collision OWNED BY HIM is no blow:
+    /// the damage decorator ignores its damage (<c>IsDamageIgnored</c>), refuses its knock-back / knockdown / dismount and lets it be shrugged
+    /// off (no reaction). MAIN thread (inside the engine's <c>MeleeHitCallback</c>). <paramref name="count"/> = count it once (the damage question).
+    /// </summary>
+    internal interface IPushOutGuard
+    {
+        bool PushOutBash(int attackerIndex, bool count);
+    }
+
+    /// <summary>
     /// Step 47: the impact system's MODEL seams, shared by the two decorators and the running mission logic. The logic plugs its deciders
     /// in at mission start (and takes them out at its end); the decorators ask them and stay vanilla when none is plugged or one throws.
     /// The game's stun cap is raised / restored here - <c>ManagedParameters</c> is one global array, so a raised cap is put back at the
@@ -183,6 +194,36 @@ namespace TraxCombat.Models
             {
                 TraxCombat.Missions.AthleticsLogic.Failed("impact.knockback-hook", e);
                 return gameSays;
+            }
+        }
+
+        private static volatile IPushOutGuard? _pushOut;
+
+        /// <summary>Step 100d: the running logic while it runs (the damage decorator's push-out bash guard asks it).</summary>
+        internal static IPushOutGuard? PushOut
+        {
+            get => _pushOut;
+            set => _pushOut = value;
+        }
+
+        /// <summary>Step 100d: is this collision a pushing blocker's own bash (an alternative attack by a man inside his push-out window)? A
+        /// throwing guard = no (the game's answer), logged by the logic's fail-safe.</summary>
+        internal static bool PushOutBlow(Agent? attacker, in AttackCollisionData collision, bool count = false)
+            => attacker != null && PushOutBlow(attacker.Index, in collision, count);
+
+        /// <summary>The same by the blow owner's agent index (the shrug-off question has only the blow).</summary>
+        internal static bool PushOutBlow(int attackerIndex, in AttackCollisionData collision, bool count = false)
+        {
+            var g = _pushOut;
+            if (g == null || attackerIndex < 0 || !collision.IsAlternativeAttack) return false;
+            try
+            {
+                return g.PushOutBash(attackerIndex, count);
+            }
+            catch (Exception e)
+            {
+                TraxCombat.Missions.AthleticsLogic.Failed("impact.pushout-guard", e);
+                return false;
             }
         }
 

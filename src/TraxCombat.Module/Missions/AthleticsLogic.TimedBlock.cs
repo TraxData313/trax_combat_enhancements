@@ -126,10 +126,11 @@ namespace TraxCombat.Missions
 
         /// <summary>THE SEAM (the tick): the engine took a riposte stagger this block decided - counted by its timing band. 100d's push-out and
         /// 100e's slow-mo start from here (a timed one, the score in <paramref name="score"/>).</summary>
-        private void TimedRiposteAccepted(TrackedAgent attacker, TrackedAgent? blocker, double score, double now)
+        private void TimedRiposteAccepted(TrackedAgent attacker, TrackedAgent? blocker, double score, ImpactEvent ev, double now)
         {
             _timed.NoteApplied(score);
             MaybeStartSlowMo(blocker, score); // step 100e: the slow motion on your best blocks (its own try)
+            MaybePushOut(blocker, ev, score, now); // step 100d: the blocker's shield / weapon goes out (its own try)
             if (score > 0 && LiveFirst(LiveFirstTimedRiposte))
                 TraxLog.Info("impact", "live: first TIMED riposte at " + Sec(now) + " s - " + Name(attacker) + " staggered after " + (blocker != null ? Name(blocker) : "(someone)")
                     + "'s block, timing score " + F2(score));

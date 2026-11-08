@@ -757,6 +757,7 @@ namespace TraxCombat.Missions
         /// <summary>Step 18: a new kick or shield bash starts - seen on one channel, charged once.</summary>
         private void KickOrBashStarted(TrackedAgent st, KickBashKind kind, bool lowerChannel, double now, in AthleticsRules r)
         {
+            if (PushOutStartSkipped(st, now)) return; // step 100d: his push-out is not his bash - no cost, no meet read
             _stats.AddKickOrBashSeen(kind, lowerChannel);
             ChargeKickOrBash(st, kind, now, in r, st.Agent.MountAgent != null);
             MeetKickSeen(st, kind, now); // step 82: the man it is aimed at may read it (an AI attempt of ours rolled at its start)
@@ -1482,6 +1483,14 @@ namespace TraxCombat.Missions
         /// poll); landed-only mode charges the first hit of each swing on an agent.</summary>
         public override void OnMeleeHit(Agent attacker, Agent victim, bool isCanceled, AttackCollisionData collisionData)
         {
+            try
+            {
+                if (PushOutHitSkipped(attacker, in collisionData)) return; // step 100d: a pushing blocker's own bash - no hit system of ours sees it
+            }
+            catch (Exception e)
+            {
+                Failed("impact.pushout-hit", e);
+            }
             try
             {
                 ShieldArcHitTaken(attacker, victim, in collisionData); // step 64: the game's block verdict against ours, counted once

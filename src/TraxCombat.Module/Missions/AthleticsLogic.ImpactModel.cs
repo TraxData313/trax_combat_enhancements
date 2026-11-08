@@ -124,6 +124,7 @@ namespace TraxCombat.Missions
             TraxLog.Info("summary", _impact.KickCoverageLine()); // step 68: every landed kick / bash against the decisions
             WriteTimedBlockSummary(); // step 100b
             WriteSlowMoSummary(); // step 100e
+            WriteTimedAnimSummary(); // step 100d
             WriteImpactMeetSummary(); // step 82
         }
 
@@ -275,6 +276,11 @@ namespace TraxCombat.Missions
             try
             {
                 FillTiming(v, victim, in cd, now, ref f); // step 100b: the block's timing (a correct block only) and the diagnostic
+                if (a != null && ImpactMath.CanRiposte(ev)) // step 100d: the attacker's swing direction for a timed riposte's recoil
+                {
+                    a.RecoilDirection = TimedRecoilMath.DirectionOf((int)cd.AttackDirection);
+                    a.RecoilDirectionAt = now;
+                }
             }
             catch (Exception e)
             {

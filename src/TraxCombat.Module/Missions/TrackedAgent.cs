@@ -62,6 +62,12 @@ namespace TraxCombat.Missions
         /// timing is read at contact from his defend action).</summary>
         public GuardClock Guard;
 
+        /// <summary>Step 100d: the engine's attack direction (Core <see cref="TimedRecoilMath"/>: 0 overhead, 1 thrust, 2 left, 3 right; -1 none) of
+        /// his last blow met by a CORRECT block, and when (mission s) - the direction-matched recoil of a timed riposte reads it.</summary>
+        public int RecoilDirection = -1;
+
+        public double RecoilDirectionAt = double.NaN;
+
         /// <summary>Step 50: when a LIVE kick / bash last made his shield leave his hand (mission seconds; NaN = never) - the AI pickup lock
         /// (<c>ShieldPickupLockSeconds</c>) reads it.</summary>
         public double ShieldDroppedAt = double.NaN;

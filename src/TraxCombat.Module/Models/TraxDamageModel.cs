@@ -26,8 +26,9 @@ namespace TraxCombat.Models
         /// <summary>The model we wrap, for the load log.</summary>
         internal string BaseModelName => BaseModel?.GetType().FullName ?? "(none)";
 
+        /// <summary>Step 100d: a pushing blocker's own bash collision is no blow (its damage ignored); else the base model's answer.</summary>
         public override bool IsDamageIgnored(in AttackInformation attackInformation, in AttackCollisionData collisionData)
-            => BaseModel.IsDamageIgnored(in attackInformation, in collisionData);
+            => ImpactHooks.PushOutBlow(attackInformation.AttackerAgent, in collisionData, count: true) || BaseModel.IsDamageIgnored(in attackInformation, in collisionData);
 
         public override float ApplyDamageAmplifications(in AttackInformation attackInformation, in AttackCollisionData collisionData, float baseDamage)
             => BaseModel.ApplyDamageAmplifications(in attackInformation, in collisionData, baseDamage);
@@ -133,6 +134,7 @@ namespace TraxCombat.Models
         /// (<c>ImpactTiredNeverShrugsOff</c> - a tired man's threshold × f: he flinches) - main thread; a throwing decider = vanilla's answer.</summary>
         public override bool DecideAgentShrugOffBlow(Agent victimAgent, in AttackCollisionData collisionData, in Blow blow)
         {
+            if (ImpactHooks.PushOutBlow(blow.OwnerId, in collisionData)) return true; // step 100d: no reaction to a push-out's bash
             bool game = BaseModel.DecideAgentShrugOffBlow(victimAgent, in collisionData, in blow);
             return game && ImpactHooks.ShrugOffKept(victimAgent, in collisionData, in blow, BaseModel);
         }
@@ -141,6 +143,7 @@ namespace TraxCombat.Models
         /// model's dismount) - main thread (Mission.CreateMeleeBlow); a throwing decider = vanilla's answer.</summary>
         public override bool DecideAgentDismountedByBlow(Agent attackerAgent, Agent victimAgent, in AttackCollisionData collisionData, WeaponComponentData attackerWeapon, in Blow blow)
         {
+            if (ImpactHooks.PushOutBlow(attackerAgent, in collisionData)) return false; // step 100d
             bool game = BaseModel.DecideAgentDismountedByBlow(attackerAgent, victimAgent, in collisionData, attackerWeapon, in blow);
             return ImpactHooks.DismountOnBlow(attackerAgent, victimAgent, in collisionData, in blow, game);
         }
@@ -149,6 +152,7 @@ namespace TraxCombat.Models
         /// against a kick / bash is not knocked back) - main thread (Mission.CreateMeleeBlow); a throwing decider = vanilla's answer.</summary>
         public override bool DecideAgentKnockedBackByBlow(Agent attackerAgent, Agent victimAgent, in AttackCollisionData collisionData, WeaponComponentData attackerWeapon, in Blow blow)
         {
+            if (ImpactHooks.PushOutBlow(attackerAgent, in collisionData)) return false; // step 100d
             bool game = BaseModel.DecideAgentKnockedBackByBlow(attackerAgent, victimAgent, in collisionData, attackerWeapon, in blow);
             return ImpactHooks.KnockBackOnBlow(attackerAgent, victimAgent, in collisionData, in blow, game);
         }
@@ -157,6 +161,7 @@ namespace TraxCombat.Models
         /// model) - main thread; a throwing decider = vanilla's answer.</summary>
         public override bool DecideAgentKnockedDownByBlow(Agent attackerAgent, Agent victimAgent, in AttackCollisionData collisionData, WeaponComponentData attackerWeapon, in Blow blow)
         {
+            if (ImpactHooks.PushOutBlow(attackerAgent, in collisionData)) return false; // step 100d: never decided, never down
             bool game = BaseModel.DecideAgentKnockedDownByBlow(attackerAgent, victimAgent, in collisionData, attackerWeapon, in blow);
             return ImpactHooks.KnockDownOnBlow(attackerAgent, victimAgent, in collisionData, in blow, game);
         }
