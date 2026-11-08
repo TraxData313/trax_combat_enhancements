@@ -3473,7 +3473,7 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     by an enemy within `ShieldWallFlankReleaseMetres` 4 in front (2 s hold), step 42's step out, no longer an end man, the wall moving / let go, the
     switch - the game's frame, tendency and shield written back at once. (f) MEASURED: the [summary] "wall flanks" line - the angle between each
     settled turned man's real facing and the asked one (UNVERIFIED that the engine honours a per-man facing in a line formation until a playtest).
-91. **Timed blocks** (step 100, DECIDED 2026-11-08 - Toni: "go" with the recommended answers (the AI at half strength, 1.2 s on you, 0.15 / 0.5 s); (a) + (b) BUILT in step 100b 2026-11-08, (e) BUILT in step 100e 2026-11-08, (c) DROPPED by Toni 2026-11-08 ("skip the mounted part" - riders keep 100b's refused riposte), (d) BUILT in step 100d 2026-11-08 (+ the direction-matched recoil, Toni: "Yes"); Toni 2026-11-08: "as I block just as the attack is landing to
+91. **Timed blocks** (step 100, DECIDED 2026-11-08 - Toni: "go" with the recommended answers (the AI at half strength, 1.2 s on you, 0.15 / 0.5 s); (a) + (b) BUILT in step 100b 2026-11-08, (e) BUILT in step 100e 2026-11-08, (c) DROPPED by Toni 2026-11-08 ("skip the mounted part" - riders keep 100b's refused riposte), (d) BUILT in step 100d 2026-11-08 (+ the direction-matched recoil, Toni: "Yes"); (j) the PERFECT STRIKE BUILT in step 100g 2026-11-08; Toni 2026-11-08: "as I block just as the attack is landing to
     trigger the stagger up to 2 sec long in a nicely timed block, making the blocking mechanic more skill based. Same with blocking with weapons";
     AI_NOTES "Step 100"). (a) TIMING: a GUARD CLOCK per man - the time his guard went up (the press; in a manual block-direction mode also a switch
     to another side, never in the game's automatic mode); the player's read every tick (`GetDefendMovementFlag` + the channel-1 stage), the AI's
@@ -3522,6 +3522,20 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     better" - not provable without Toni's eyes). THE TEST TOOL (`TimedBlockAnimTest`, off; `TimedBlockAnimTestKey` J): the candidates - fixed in Core,
     a Text setting holds one id only - on the nearest man within 8 m (else you): the 6 push-outs, 16 recoils (4 directions x 4 variants), 4 full timed
     ripostes; Left Shift + the key = back. The [summary] "timed push-out" / "timed recoils" lines (PLAYTEST D67).
+    (j) THE PERFECT STRIKE, BUILT in step 100g 2026-11-08 (Toni: "if I attack in the opposite way (say I blocked his right attack, coming from my
+    left and then swing from my right to left) after I blocked him and he is staggered I do 2-3x damage against him and I see some notification like
+    PERFECT STRIKE"): PLAYER only. A window opens on the man whose timed riposte stagger the engine took from YOUR block (score > 0); it stays open while
+    he reels (`ImpactState.ReelingUntil`, re-timed by the measured stagger) + `PerfectStrikeGraceSeconds` 0.15. THE DIRECTIONS: the engine's
+    `Agent.UsageDirection` is the attacker's own (AttackRight = wound up on his right; it comes at the defender's LEFT - the game's training field
+    meets the trainer's AttackRight with "Defend from left"), so Toni's swing from his right to left after a blocked right attack is HIS AttackRight:
+    a blocked side swing is answered by the SAME engine value (the opposite side in the blocker's frame); a blocked overhead by either side swing; a
+    blocked thrust (or an unknown direction) by any swing but a thrust; your thrust never counts (Core `PerfectStrikeMath.Verdict`). Your first melee
+    swing that lands on his BODY (not blocked, not a shield, not a kick / bash, you on foot) with a Perfect verdict lands x `PerfectStrikeMinMultiplier`
+    2 at timing 0 rising linearly to x `PerfectStrikeMaxMultiplier` 3 at timing 1, applied LAST in the damage decorator (after the step 25 roll, step
+    89's tiredness and the reduction - all multiplications, so the hit lands exactly 2-3x what it would have; the game rounds after us; no cap of ours
+    touches it). One per stagger; a wrong-side hit is counted and does NOT end the window. A gold "PERFECT STRIKE x2.8" in the feed and, behind
+    `PerfectStrikeCentreMessage`, the middle of the screen (the game's quick information), from the next tick. The 100e slow-mo seam not reused. The
+    [summary] "perfect strike" line (PLAYTEST D68). `PerfectStrikeEnabled` on the player page.
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),
 `HudRefreshSeconds`, `FormationStatsRefreshSeconds` came out of step 2's research

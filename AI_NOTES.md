@@ -8990,7 +8990,7 @@ the ShieldWall arrangement only. Built as section 3 proposed, with these details
 - **Smoke environment fix**: the offline smoke's MCM phase looked for 0Harmony only in the Workshop folder 2859188632, gone from this PC since the
   mods moved into `Modules\` (2026-11-04) - six MCM checks failed for that alone. It now also looks in `Modules\Bannerlord.Harmony\bin`.
 
-## Step 100 — timed blocks (research 100a, 2026-11-08; 100b + 100d + 100e built, 100c DROPPED by Toni, 100f to come)
+## Step 100 — timed blocks (research 100a, 2026-11-08; 100b + 100d + 100e + 100g built, 100c DROPPED by Toni, 100f to come)
 
 Toni 2026-11-08: "add a mechanic that increases the correct way shield block to stagger, but make it so that as I block just as the attack
 is landing to trigger the stagger up to 2 sec long in a nicely timed block, making the blocking mechanic more skill based. Same with blocking
@@ -9367,3 +9367,53 @@ part stays dropped - no rider code (the push-out skips a mounted blocker; RunSta
   its own?), the recoil on channel 1 vs the AI's legs (does he walk during the bounce?), the in-place slowing (does the engine's own recoil take a new
   speed?), the push on YOU in a slow motion (3x slower - Toni said fine), the `_left_stance` push forms, and whether the AI ever pushes out while
   "not guarding" dominates (the stage read one tick after the block).
+
+### 100g - built (2026-11-08)
+
+Toni 2026-11-08 (while 100d ran): "if I attack in the opposite way (say I blocked his right attack, coming from my left and then swing from my right to
+left) after I blocked him and he is staggered I do 2-3x damage against him and I see some notification like PERFECT STRIKE or something like that".
+Manager's defaults: PLAYER only; while the attacker's timed riposte stagger from YOUR timed block runs; the opposite side; 2x at score 0 → 3x at
+score 1; one per stagger; melee swings / thrusts landing on his body. No rider code (the mounted part stays dropped).
+
+- **The direction mapping (verified in the v1.4.8 decompile, `%TEMP%\trax_decomp\`)**: `Agent.UsageDirection` AttackUp 0 / AttackDown 1 (the thrust) /
+  AttackLeft 2 / AttackRight 3 (= `TimedRecoilMath`'s, the smoke checks) is the ATTACKER's own point of view: AttackRight = wound up on HIS right,
+  sweeping right → left. Proof: `full_StoryMode/Storymode.Missions/TrainingFieldMissionController.cs` ~2137-2160 - the parry tutorial's "Defend from
+  left" objective (`MouseObjectives.DefendLeft`, the player's action direction 6 = DefendLeft) has the trainer attacking with `MovementFlags = 128` =
+  `MovementControlFlag.AttackRight` (0x80); "Defend from right" with 64 = AttackLeft. So his right swing comes at the defender's LEFT (two men facing
+  each other have mirrored sides). **Toni's example**: he blocked the enemy's RIGHT attack (AttackRight 3, coming at Toni's left), then swings from HIS
+  right to his left - that is Toni's own AttackRight 3. "The opposite way" is the opposite side of Toni's body (left vs right) and the opposite way
+  through the space between them - and the SAME engine value. Core spells it out as body sides (`ArrivesAtDefenderSide` - mirrored, `FromOwnSide`)
+  so the rule reads as Toni said it: perfect = your swing starts from the side of your body opposite to where his came in.
+- **Overhead / thrust (decided)**: a blocked OVERHEAD is answered by either side swing (an overhead back down the same line or a thrust is not "the
+  opposite way"); a blocked THRUST by any swing - left, right or overhead (a thrust has no side, every swing comes from somewhere else); an UNKNOWN
+  blocked direction (older than `TimedRecoilMath.DirectionMaxAge` 1 s, or unreadable) the same as a thrust. YOUR thrust never counts (no side to come
+  from). Your overhead only after a blocked thrust / unknown. No switches for these - fixed in `PerfectStrikeMath.Verdict`, tested.
+- **The window**: opened in `TimedRiposteAccepted` (the engine took the stagger - the recoil chain's start or the single stagger) for the PLAYER's block
+  with score > 0 (an untimed riposte opens none). Open while `ImpactState.ReelingUntil` (written by `ImpactMath.Decide` as now + the asked length and
+  re-timed by the stagger's watch to the MEASURED end - `EndReel`; the recoil + the backward stagger are one reel) + `PerfectStrikeGraceSeconds` 0.15
+  (a counter released in the last frames of his stagger still counts - its blow registers mid-swing). A knockdown ends the reel → the window. Closed
+  at the tick when it runs out (expired unused) or the rules go off (closed by a switch); checked again at the hit. A second stagger of the same man
+  before you struck replaces the window (counted expired + replaced). At most 8 at once (`PerfectStrikeBook`, the oldest replaced).
+- **Wrong-side hits do NOT end the window (decided, the brief's recommendation)**: a wrong guess already costs the tempo (one of his ~1.5-2 s spent);
+  ending it would punish a fast double swing. Counted per direction.
+- **Where the multiplier sits**: `DamageRandomizer.Apply` → `PerfectStrikeLast` on BOTH returns (rolled and skipped), AFTER the roll, step 89's
+  tiredness and step 25's reduction - each of those is a multiplication (their "never below 1" floors aside), so x k last = exactly k x the hit it
+  would have been; the game rounds what we return. Our caps are impact-model ones (`ImpactMultiplierCapPercent` - pressure, not damage) and the
+  damage roll's own range - none sees the strike. A bigger hit can kill (the impact model's fatal skip handles it) and makes the engine's own
+  knockdown / stagger likelier - natural. The decorator filters missiles, falls, horse charges and a horse on either end (`IsAttackerAgentMount`,
+  `IsVictimAgentMount`); the logic: you (IsPlayer + you drive), the window, on foot (`DoesAttackerHaveMountAgent`), `CollisionResult.StrikeAgent`, not
+  `AttackBlockedWithShield`, not `IsAlternativeAttack` (kick / bash), damage > 0 - else counted "not on his body", the window kept. Main thread
+  checked (RESEARCH: the hit callbacks are `[MBCallback(null, false)]`).
+- **The line**: queued in the hit, shown from the next tick (`TickPerfectStrike`, own try in `TickImpact`) - `IImpactMessageSink.Show(text, #FFD700FF)`
+  (gold, the feed, bypassing the 1.5 s merge queue and `ImpactShowMessages` - Toni asked for it) and, behind `PerfectStrikeCentreMessage` (on), the new
+  `IImpactMessageSink.Centre` = `MBInformationManager.AddQuickInformation(new TextObject(text))` - the game's middle-of-screen line. Text
+  "PERFECT STRIKE x2.8" (one decimal). The log: a YOU line per strike (both directions, how far into his stagger, the timing, damage before → after),
+  first-time lines for the first window and the first wrong-side hit.
+- **Slow-mo**: NOT reused - 100e's seam is built around a block (score gate, its cooldown, `TimedRiposteAccepted`); a strike-triggered slow motion
+  would need its own trigger and cooldown. Skipped as the brief allowed.
+- **Tests**: Core `PerfectStrikeTests` (14) - Toni's exact example first. Smoke `PerfectStrikeThroughTheLogic` (the real logic, the hook called with
+  the engine's own `AttackCollisionData`; the decorator's two-line call into the hook is not driven - building an `AttackInformation` offline is not
+  done anywhere in the smoke). Flaky Step91 / Step95 no-allocation tests: green in all 3 runs here.
+- **Unverified until D68**: the feel of the side rule in a real fight (the mapping rests on the training field's code, not on a played swing), that
+  `AddQuickInformation` shows promptly in battle (it is a queue - it may wait behind another quick line), whether the 0.15 s grace is enough for a
+  swing begun late in the stagger, and how often AI men's reels are re-timed short by the watch (the window closes with it).
