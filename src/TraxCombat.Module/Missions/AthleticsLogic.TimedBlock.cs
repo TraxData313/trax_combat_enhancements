@@ -15,8 +15,8 @@ namespace TraxCombat.Missions
     ///   - THE DIAGNOSTIC (part 1 of 100b, never a gate): every correct block's engine verdict (Blocked / Parried / Chamber) × the channel-1
     ///     read × your clock's age band, the active defends' lengths - the [summary] "timed blocks - the engine's verdict" line.
     ///   - THE SEAM: every decided correct block becomes a <see cref="TimedBlockResult"/> (<see cref="TimedBlockDecided"/>) and a timed
-    ///     riposte the engine took calls <see cref="TimedRiposteAccepted"/> - 100c (riders), 100d (the push-out) and 100e (the slow-mo) hook
-    ///     there.
+    ///     riposte the engine took calls <see cref="TimedRiposteAccepted"/> - 100d (the push-out) and 100e (the slow-mo, built) hook there;
+    ///     100c (riders) was dropped by Toni 2026-11-08 - riders keep the refused riposte.
     /// Master switch first (through <see cref="ImpactRules.Enabled"/> and <see cref="TimedBlockRules.Enabled"/>): off = no clock reads, the
     /// clock forgotten, every block untimed (step 56 exactly). Main thread; no allocation per tick or event.
     /// </summary>
@@ -129,6 +129,7 @@ namespace TraxCombat.Missions
         private void TimedRiposteAccepted(TrackedAgent attacker, TrackedAgent? blocker, double score, double now)
         {
             _timed.NoteApplied(score);
+            MaybeStartSlowMo(blocker, score); // step 100e: the slow motion on your best blocks (its own try)
             if (score > 0 && LiveFirst(LiveFirstTimedRiposte))
                 TraxLog.Info("impact", "live: first TIMED riposte at " + Sec(now) + " s - " + Name(attacker) + " staggered after " + (blocker != null ? Name(blocker) : "(someone)")
                     + "'s block, timing score " + F2(score));

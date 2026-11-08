@@ -123,6 +123,7 @@ namespace TraxCombat.Missions
             foreach (var line in _impact.SummaryLines(ImpactRules.From(TraxSettings.Shared))) TraxLog.Info("summary", line);
             TraxLog.Info("summary", _impact.KickCoverageLine()); // step 68: every landed kick / bash against the decisions
             WriteTimedBlockSummary(); // step 100b
+            WriteSlowMoSummary(); // step 100e
             WriteImpactMeetSummary(); // step 82
         }
 

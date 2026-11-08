@@ -146,6 +146,7 @@ namespace TraxCombat.Missions
             {
                 Failed("impact.tick", e);
             }
+            TickSlowMo(); // step 100e: the slow motion's ramp on the real clock (its own try; whatever the switches - off gives it back)
         }
 
         /// <summary>
@@ -270,6 +271,7 @@ namespace TraxCombat.Missions
 
         public override void OnEndMissionInternal()
         {
+            GiveBackSlowMo("the mission end"); // step 100e: before the summary, which checks nothing of ours is left (its own try)
             try
             {
                 WriteSummary("mission end");
@@ -284,6 +286,7 @@ namespace TraxCombat.Missions
         /// Also the moment we stop being the running Athletics logic.</summary>
         public override void OnRemoveBehavior()
         {
+            GiveBackSlowMo("the behaviour's removal"); // step 100e (its own try)
             try
             {
                 WriteSummary("behaviour removed");
