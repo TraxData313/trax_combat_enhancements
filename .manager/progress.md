@@ -13,6 +13,7 @@ Board = TASKS_TODO.md BUILD ORDER step 100 (manager protocol in CLAUDE.md).
 - [-] 100c. Mounted charge - SKIPPED (Toni 2026-11-08: 'skip the mounted part'); the half-done local work was dropped, never pushed
 - [x] 100e. Player slow-mo on a well-timed block (moved ahead of the animation)
 - [ ] 100d. Blocker push-out animation on a timed block
+- [ ] 100g. PERFECT STRIKE (Toni 2026-11-08, added while 100d ran): after the player's timed block staggers the attacker, the player's counter-swing from the OPPOSITE side (blocked his right attack coming from my left -> I swing from my right to left) landing while he is still staggered does 2-3x damage + an on-screen 'PERFECT STRIKE'. Manager defaults: player only; 2x at score 0 rising to 3x at score 1 (the block's timing score); one perfect strike per stagger; only while the riposte stagger runs. Add the TASKS_TODO line when building (not added yet, to avoid clashing with the 100d agent).
 - [ ] 100f. Independent review + fixes, PLAYTEST entry, close step 100
 
 ## Notes
