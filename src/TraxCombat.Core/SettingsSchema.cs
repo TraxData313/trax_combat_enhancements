@@ -1956,7 +1956,7 @@ namespace TraxCombat.Core
 
         public static readonly ParamDef TimedBlockRecoil = Bool("TimedBlockRecoil", ImpactGroup,
             "Timed blocks: direction-matched recoil",
-            "A timed block's stagger starts with the game's own 'blocked' recoil of the attacker's swing - overhead, thrust, left or right, for his weapon and stance - slowed so it reads, then the backward stagger for the rest. The stagger's whole length is unchanged. Untimed ripostes keep the plain backward stagger.");
+            "A timed block's stagger starts with the game's own 'blocked' recoil of the attacker's swing - overhead, thrust, left or right, for his weapon and stance - then the backward stagger for the rest. The stagger's whole length is unchanged. OFF by default since Toni's first playtest: the recoil bounces the weapon back to the ready pose, so it reads as a tangle and a fresh wind-up before the stagger - off, a timed riposte goes straight into the backward stagger. The animation test tool still plays the recoils. Untimed ripostes keep the plain backward stagger.");
 
         public static readonly ParamDef TimedBlockRecoilSeconds = Float("TimedBlockRecoilSeconds", 0.1, 1.5, ImpactGroup,
             "Timed blocks: recoil part (s)",

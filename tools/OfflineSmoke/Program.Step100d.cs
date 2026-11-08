@@ -117,10 +117,13 @@ namespace TraxCombat.Tools
                 foreach (var p in SettingsSchema.All.Where(p => p.Key.StartsWith("TimedBlock", StringComparison.Ordinal)))
                     S.Set(p, p.Default, SettingSources.File);
                 S.Set(SettingsSchema.TimedBlockSlowMo, false, SettingSources.File);
-                Check(SettingsSchema.TimedBlockPushOut.Default == 1 && SettingsSchema.TimedBlockRecoil.Default == 1 && SettingsSchema.TimedBlockAnimTest.Default == 0
+                // step 100f: the direction-matched recoil ships OFF (Toni's playtest - it read as a tangle and a fresh wind-up); this check
+                // runs its path with the switch on, and the switch-off case below is the shipped behaviour
+                Check(SettingsSchema.TimedBlockPushOut.Default == 1 && SettingsSchema.TimedBlockRecoil.Default == 0 && SettingsSchema.TimedBlockAnimTest.Default == 0
                       && TraxSettings.Shared.TimedBlockPushOutShieldAction == "act_shield_bash" && TraxSettings.Shared.TimedBlockPushOutTwoHandedAction == "act_2h_bash"
                       && TraxSettings.Shared.TimedBlockAnimTestKey == "J",
                     "the embedded push-out / recoil defaults are not the design's");
+                S.Set(SettingsSchema.TimedBlockRecoil, true, SettingSources.File);
                 S.Set(SettingsSchema.RiposteStunMaxSeconds, 1.0, SettingSources.File);
                 var inputs = new FakeImpactInputs();
                 var impact = new FakeImpactBody();

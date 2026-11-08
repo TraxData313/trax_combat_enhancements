@@ -135,8 +135,10 @@ namespace TraxCombat.Core
         /// "more defencive ... reduce the swings": AiAggressionFreshPercent 60 → 45, AiAggressionExhaustedPercent 20 → 15, ShieldInfantrySwingsLessPercent
         /// 30 → 40, FootMeleeSwingsLessPercent 15 → 25 (any older file - the four never moved before); a tuned value kept and noted; the guard's two keys are new), 26 = step 97 (Toni's T5 battle of 2026-10-25 13:24 - the 2 s cooldown refused 145 kicks / bashes:
         /// AiKickCooldownSeconds 2 → 1 for kicks, bashes and pushes (a format 19-25 file - an older file's 8 went through step 81's block straight to today's
-        /// value); a tuned value kept and noted).</summary>
-        public const int FormatVersion = 26;
+        /// value); a tuned value kept and noted), 27 = step 100f (Toni's first timed-block playtest 2026-11-08 17:41 - the direction-matched recoil read
+        /// as a tangle and a fresh wind-up: TimedBlockRecoil true → false (a format-26 file - step 100d's key, no older file has it); a hand-set
+        /// value is not told apart from the old default for a switch, so a format-26 file's true is moved once).</summary>
+        public const int FormatVersion = 27;
 
         /// <summary>The meta key holding <see cref="FormatVersion"/> - not a setting.</summary>
         public const string VersionKey = "ConfigVersion";
@@ -619,6 +621,14 @@ namespace TraxCombat.Core
                 // a hand-set value is kept and said once
                 MoveOrKeepIfMoved(read, SettingsSchema.AiKickCooldownSeconds, 2,
                     "step 97, Toni: a shorter kick cooldown - at least 1 s between two kicks, bashes or pushes of one man", from, defaultOf);
+            }
+            if (from == 26)
+            {
+                // step 100f (Toni's first timed-block playtest, 2026-11-08 17:41): the direction-matched recoil (step 100d, shipped on inside format 26)
+                // bounced the attacker's weapon back to the ready pose before the backward stagger - a tangle and a fresh wind-up; off now (a timed
+                // riposte goes straight into the backward stagger); the test tool still plays it
+                MoveOrKeepIfMoved(read, SettingsSchema.TimedBlockRecoil, 1,
+                    "step 100f, Toni's playtest: the direction-matched recoil is off - a timed riposte goes straight into the backward stagger", from, defaultOf);
             }
             // format 17 (step 78b) moved the lull's LullRecover*Percent 10 / 15 / 20 → 20 / 25 / 30; step 78c removed the lull and its keys, so a
             // format 16 file's are dropped below with the rest of them - nothing to move any more (78c kept format 17; step 80 made it 18)
