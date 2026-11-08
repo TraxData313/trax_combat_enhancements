@@ -3474,7 +3474,7 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     by an enemy within `ShieldWallFlankReleaseMetres` 4 in front (2 s hold), step 42's step out, no longer an end man, the wall moving / let go, the
     switch - the game's frame, tendency and shield written back at once. (f) MEASURED: the [summary] "wall flanks" line - the angle between each
     settled turned man's real facing and the asked one (UNVERIFIED that the engine honours a per-man facing in a line formation until a playtest).
-91. **Timed blocks** (step 100, DECIDED 2026-11-08 - Toni: "go" with the recommended answers (the AI at half strength, 1.2 s on you, 0.15 / 0.5 s); (a) + (b) BUILT in step 100b 2026-11-08, (e) BUILT in step 100e 2026-11-08, (c) DROPPED by Toni 2026-11-08 ("skip the mounted part" - riders keep 100b's refused riposte), (d) BUILT in step 100d 2026-11-08 (+ the direction-matched recoil, Toni: "Yes"); (j) the PERFECT STRIKE BUILT in step 100g 2026-11-08; Toni 2026-11-08: "as I block just as the attack is landing to
+91. **Timed blocks** (step 100, BUILT 2026-11-08 - reviewed and closed in step 100f; DECIDED 2026-11-08 - Toni: "go" with the recommended answers (the AI at half strength, 1.2 s on you, 0.15 / 0.5 s); (a) + (b) BUILT in step 100b 2026-11-08, (e) BUILT in step 100e 2026-11-08, (c) DROPPED by Toni 2026-11-08 ("skip the mounted part" - riders keep 100b's refused riposte), (d) BUILT in step 100d 2026-11-08 (+ the direction-matched recoil, Toni: "Yes"); (j) the PERFECT STRIKE BUILT in step 100g 2026-11-08; Toni 2026-11-08: "as I block just as the attack is landing to
     trigger the stagger up to 2 sec long in a nicely timed block, making the blocking mechanic more skill based. Same with blocking with weapons";
     AI_NOTES "Step 100"). (a) TIMING: a GUARD CLOCK per man - the time his guard went up (the press; in a manual block-direction mode also a switch
     to another side, never in the game's automatic mode); the player's read every tick (`GetDefendMovementFlag` + the channel-1 stage), the AI's
@@ -3537,6 +3537,14 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     touches it). One per stagger; a wrong-side hit is counted and does NOT end the window. A gold "PERFECT STRIKE x2.8" in the feed and, behind
     `PerfectStrikeCentreMessage`, the middle of the screen (the game's quick information), from the next tick. The 100e slow-mo seam not reused. The
     [summary] "perfect strike" line (PLAYTEST D68). `PerfectStrikeEnabled` on the player page.
+    (k) STEP 100f - the review and Toni's first timed-block playtest (2026-11-08 17:41, a tournament): THE RECOIL OFF - (i)'s direction-matched
+    recoil bounced the attacker's weapon back to the ready pose before the backward stagger (a tangle, then what looked like a fresh wind-up):
+    `TimedBlockRecoil` ships false, a timed riposte goes straight into the backward stagger (100b's way); the switch and the test tool keep the
+    recoil; config format 27 moves a format-26 file's true once (the "no config format bump" of (f) ends here). YOUR TIMING ON SCREEN
+    (`TimedBlockShowTiming`, Advanced, on): every correct block of yours speaks through step 53's lines - "Your riposte - X reels 1.46 s / 2.00 (guard
+    0.30 s / 0.15)" / "Your parry - X holds (guard >1 s / 0.15)". THE AI'S TIMING: the playtest read no `_active` defend at contact (23 AI blocks, all
+    held - (a)'s AI read gives 0, H fails, C1); Toni wants the AI timed at 50 % - its own clock from step 16's input hook is the OPEN follow-up (AI_NOTES
+    "100f - review"). The engine's Parried / Blocked is not a timing signal (fast and held guards both "Parried").
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),
 `HudRefreshSeconds`, `FormationStatsRefreshSeconds` came out of step 2's research

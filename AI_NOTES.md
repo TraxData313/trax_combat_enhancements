@@ -8990,7 +8990,7 @@ the ShieldWall arrangement only. Built as section 3 proposed, with these details
 - **Smoke environment fix**: the offline smoke's MCM phase looked for 0Harmony only in the Workshop folder 2859188632, gone from this PC since the
   mods moved into `Modules\` (2026-11-04) - six MCM checks failed for that alone. It now also looks in `Modules\Bannerlord.Harmony\bin`.
 
-## Step 100 — timed blocks (research 100a, 2026-11-08; 100b + 100d + 100e + 100g built, 100c DROPPED by Toni, 100f to come)
+## Step 100 — timed blocks (research 100a, 2026-11-08; 100b + 100d + 100e + 100g built, 100c DROPPED by Toni, 100f reviewed - step closed)
 
 Toni 2026-11-08: "add a mechanic that increases the correct way shield block to stagger, but make it so that as I block just as the attack
 is landing to trigger the stagger up to 2 sec long in a nicely timed block, making the blocking mechanic more skill based. Same with blocking
@@ -9417,3 +9417,72 @@ score 1; one per stagger; melee swings / thrusts landing on his body. No rider c
 - **Unverified until D68**: the feel of the side rule in a real fight (the mapping rests on the training field's code, not on a played swing), that
   `AddQuickInformation` shows promptly in battle (it is a queue - it may wait behind another quick line), whether the 0.15 s grace is enough for a
   swing begun late in the stagger, and how often AI men's reels are re-timed short by the watch (the window closes with it).
+
+### 100f - review (2026-11-08)
+
+An independent read of everything since 0bfa741 (src, tests, tools, defaults.json) against the v1.4.8 decompile (`%TEMP%\trax_decomp\`), plus Toni's
+first timed-block playtest (trax_combat.log 17:33:48-17:41:54, a Vlandian arena tournament, block direction MANUAL; the build had 100b / 100d / 100e,
+not 100g).
+
+**What Toni's log says (D64 / D66 / D67 in part answered):**
+- YOUR guard clock works: 35 correct blocks, median guard age 176 ms, best 8 ms, scores spread sensibly; 17 ripostes by your blocks (mean 1.86 s);
+  asked → measured matches (top band 1.54 → 1.53 s).
+- **Hypothesis H FAILS** (§1): no guard was ever read as `_active` at contact (the active defends' length "not read"); "Parried + passive" 42 covered
+  fast AND held guards of yours (≤0.15 s 8, >1 s 2), "Blocked + passive" had 3 fast ones. The engine's Parried / Blocked is NOT a timing signal, and
+  channel 1 shows a passive defend (or a parry reaction) by the time OnMeleeHit runs - **C1 dominates**.
+- **The AI never times a block**: 23 AI correct blocks, all source "a held (passive) defend", score 0. As built, the AI's timing is unreadable. Toni
+  (2026-11-08) wants the AI timed at 50 % when it happens to time a block. NOT built in 100f - the open follow-up (TASKS_TODO BUGS): give the AI the
+  same `GuardClock` from step 16's `AiInputComponent.OnAIInputSet` (its decided movement flag's DefendLeft / Right / Up / Down bits →
+  `Guard.Note(key, now, automatic: false)` - a struct write, no allocation), read at contact as a new `TimingSource.AiClock` in `FillTiming`, x
+  `TimedBlockAiPercent`. Why not now: the hook is only ON for men with a wish (`AiInputState.Active` - lazily hooked, unhooked when idle; RTS
+  Camera's component shares it) - every man in contact would need it on (a new "guard watch" wish turned on at courage's look for men within ~3 m
+  of an enemy), the callback's rate (each AI decision or each frame?) and whether the AI's defend bits rise when its guard does (or the engine raises
+  the guard from its own decision before / without them) are unverified, and the hook is the hottest shared path of the mod (16 systems write into
+  it). A contained step of its own with a diagnostic first (the AI clock's ages beside the engine's verdict), not a review fix.
+- **Top-band blocks without a riposte** (25 of yours scored 0.8-1, 15 ripostes): every "he holds" line shows the chance rolled - 42 % / 39 % / 21 % =
+  85 % halved once or twice by HIS recent outcomes (step 56's anti-abuse: "halved 9"), 3 refused by his 2 s stagger immunity, two plain misses at
+  85 %. Intended (the same man - Polmarc - was riposted again and again); not changed.
+- Slow-mo: played 15, ended "finished" 15, left over 0. Push-out: 16 played, 16 own bash STARTS skipped, 0 bash blows / 0 hits ignored - the engine
+  made no bash collision from our action (risk §4 (1) did not happen). Recoils: 16 played, 3 slowed in place.
+
+**Defects found and fixed:**
+1. (Medium, Toni's video 17.41) **The direction-matched recoil looked wrong**: after "Your riposte - Polmarc reels" he twisted into a tangle, half
+   recovered, seemed to wind up again from the same side, and only then staggered back. That is 100d's `act_blocked_*` recoil: the clip BOUNCES the
+   weapon back to the ready pose, so the second half reads as a fresh wind-up (the first riposte's line: `act_blocked_thrust_1h_left_stance` x2.22 for
+   0.45 s, then the backward stagger 1.53 s; all 16 had 0.45 s + ~1.48 s). Playing it at its native speed for its own length would still end in the
+   ready pose - no better by reasoning, not offered. → `TimedBlockRecoil` ships **false** (a timed riposte goes straight into the backward stagger, as
+   before 100d); the switch and the J test tool keep it; config **format 27** moves a format-26 file's true once (deef1b0). Whether the ENGINE's own
+   blocked reaction plus our forced stagger alone makes a tangle: before 100d every riposte (steps 51-56) played the engine's own channel-1 recoil and
+   then our `act_stagger_backward` from the next tick, and no tangle was ever reported; frames 3-4 (the re-wind-up) need our replayed / slowed clip.
+   Frame 2's twist may partly be the engine's own recoil blending into our channel-1 restart (3 of 16 were slowed in place, 13 restarted) - with the
+   recoil off only the old path remains. Unverified - D67.
+2. (Wish, Toni) **Your timing on screen**: every correct block of yours now says it - "Your riposte - Polmarc reels 1.46 s / 2.00 (guard 0.30 s /
+   0.15)", "Your parry - Polmarc holds (guard >1 s / 0.15)" (a guard older than 1 s capped, a chamber "a chamber"); step 53's message path
+   (`ImpactShowMessages`, merged by `ImpactMessageMinSeconds` 1.5 s); new Advanced switch `TimedBlockShowTiming` (on); `ImpactMessageKind.BlockHeld`.
+   A riposte decided but refused by the engine shows nothing (as before). (2dc9ad4)
+3. (Low) **Per-riposte animations unlogged**: only each mission's first push-out / recoil was named. Now every one in YOUR fights is an [impact]
+   line ("push-out: ...", "recoil: ..."), the AI's behind verbose bucket "timed-anim". (2dc9ad4)
+4. (Low, test harness) **The flaky no-allocation tests** (Step87 / 91 / 95 / 97 failed once each in ~15 full runs; the same test alone never):
+   NOT step 100's code - none of the six checks touches it, and step 100's tick paths allocate nothing (rules are readonly structs, the key name a static
+   string, fixed pools). `GC.GetAllocatedBytesForCurrentThread` is thrown off by a collection another test thread starts between the two reads.
+   `NoAllocation.Bytes` keeps the fewest bytes of three runs (a real allocation shows every run); 12 full runs green after (1886992).
+
+**Checked and sound (no change):** the guard clock - manual: a switch between two real directions restarts it, automatic: only the press (an
+`UpNoDirection` frame between two directions hides a manual switch - harmless); score 0 = step 56 exactly (TimedBlockTests' 400-decision dice
+test); the AI's 50 % share in `ScoreOf` (it keys on `DefenderIsPlayer`, so YOUR man under the game's AI control would score at full - not reachable
+in practice); the 1.2 s you-cap in `Length` (the recoil chain splits the capped total); **PERFECT STRIKE's mapping** re-verified in the decompile -
+`MovementControlFlag.AttackRight` 0x80 / `UsageDirection.AttackRight` 3, the training field asks "Defend from left" (`DefendLeft` 6) against the
+trainer's 128: his right swing arrives at your left, your swing from your right is your own AttackRight = the same engine value → Perfect; the
+multiplier once and only on the intended hit - `AgentApplyDamageModel.CalculateDamage` is called ONCE per collision (`Mission.GetAttackCollisionResults`
+~6475, only when the inflicted damage > 0), the window removed on the first perfect hit, blocked / shield / kick / bash / horseback / 0 damage
+excluded; the slow-mo request removed on every exit (ask-first Remove; the tick runs whatever the switches, OnEndMissionInternal before the summary,
+OnRemoveBehavior, an error); the push-out's collision guard (damage ignored, no knock-back / knockdown / dismount, shrug-off) and the guard cleared at
+the window's end; removal mid-window (push-outs, recoil chains, strike windows dropped at the next tick); no per-agent dictionaries (state on
+`TrackedAgent`, fixed pools in the per-mission logic, the hooks unplugged at the mission end; the game bodies' caches are keyed by action / set -
+bounded); every hook in its own try; the master switch / each part's switch off mid-battle (clock reset, no new push-outs / recoils / windows, the
+slow-mo given back, chains in flight end at the master switch); no rider code (the push-out skips riders, RunStagger never reaches one, the
+decorator's dismount line is the push-out guard only).
+
+**Only Toni's playtest can confirm:** the riposte with the recoil OFF looks clean (D67); the push-out reads as a push (and your guard comes back);
+the timing line's words and how often it speaks in a shield-wall fight (the merge queue); the slow-mo's feel and the sound; PERFECT STRIKE on a played
+swing (D68 - not in the first playtest's build); `AddQuickInformation` showing promptly; the 0.15 s grace.
