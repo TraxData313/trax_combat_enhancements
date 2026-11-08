@@ -1746,6 +1746,7 @@ row goes to the Advanced page unless a player needs it to set up his game (CLAUD
 | `PerfectStrikeMaxMultiplier` | 3.0 | Step 100g: the multiplier after a perfectly timed block (score 1); a straight line between. Range 1-5. Live. |
 | `PerfectStrikeGraceSeconds` | 0.15 | Step 100g: battle seconds the window stays open after his stagger's end (a counter already on its way). Range 0-1. Live. |
 | `PerfectStrikeCentreMessage` | true | Step 100g: PERFECT STRIKE also in the middle of the screen (`MBInformationManager.AddQuickInformation`), not only the gold feed line. Live. |
+| `TimedBlockShowTiming` | true | Step 100f (Toni's first timed-block playtest 2026-11-08: "show how early I raised the guard against the perfect window and how long the stagger is"): every correct block of YOURS on screen with its numbers - "Your riposte - X reels 1.46 s / 2.00 (guard 0.30 s / 0.15)" (his stagger / `TimedBlockStaggerMaxSeconds`, your guard's age / `TimedBlockPerfectSeconds`; older than 1 s "guard >1 s"; a chamber "a chamber"), "Your parry - X holds (guard ...)" when no riposte came; step 53's message path (`ImpactShowMessages`, merged by `ImpactMessageMinSeconds`); timed blocks off = the plain line. Live. |
 | `ImpactMismatchWeight` | 0.25 | Step 48: x per doubling of the mismatch R beyond the even band. Range 0-2. |
 | `ImpactEvenBandDoublings` | 0.5 | Step 48: a mismatch within ± this many doublings (×1.41) = an even match (adds 0). Range 0-3. |
 | `ImpactBodyExponent` | 0.5 | Step 48: the body = his CURRENT points to this power. Range 0-2. |

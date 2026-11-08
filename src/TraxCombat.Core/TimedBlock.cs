@@ -369,6 +369,41 @@ namespace TraxCombat.Core
             _ => "not read",
         };
 
+        /// <summary>Step 100f: a guard older than this shows as "&gt;1 s" on screen (a held guard - its exact age says nothing).</summary>
+        public const double GuardShownMaxSeconds = 1;
+
+        /// <summary>
+        /// Step 100f (Toni's playtest: "show how early I raised the guard against the perfect window and how long the stagger is against the
+        /// perfect length"): the guard part of YOUR on-screen line - "guard 0.30 s / 0.15" (your guard's age / the perfect window), "guard &gt;1 s
+        /// / 0.15" for a held guard, "a chamber"; null = no timing read (timed blocks off) - the plain line then.
+        /// </summary>
+        public static string? GuardText(TimingSource source, double age, double perfect)
+        {
+            var c = CultureInfo.InvariantCulture;
+            if (source == TimingSource.None) return null;
+            if (source == TimingSource.Chamber) return "a chamber";
+            string p = " / " + Math.Max(0, perfect).ToString("0.00", c);
+            if (double.IsNaN(age) || double.IsInfinity(age) || age > GuardShownMaxSeconds) return "guard >1 s" + p;
+            return "guard " + Math.Max(0, age).ToString("0.00", c) + " s" + p;
+        }
+
+        /// <summary>
+        /// Step 100f: YOUR correct block on screen with its numbers - "Your riposte - Polmarc reels 1.46 s / 2.00 (guard 0.30 s / 0.15)" (his
+        /// stagger / the perfect block's length) or, when he holds, "Your parry - Polmarc holds (guard 0.30 s / 0.15)"; null = no timing read
+        /// (the plain line).
+        /// </summary>
+        public static string? YourBlockLine(string? victim, ImpactEvent ev, bool reels, double seconds, double maxSeconds, TimingSource source, double age, double perfect)
+        {
+            string? guard = GuardText(source, age, perfect);
+            if (guard == null) return null;
+            var c = CultureInfo.InvariantCulture;
+            string v = string.IsNullOrEmpty(victim) ? "someone" : victim!;
+            if (reels)
+                return "Your riposte - " + v + " reels " + (double.IsNaN(seconds) ? "-" : seconds.ToString("0.00", c)) + " s / " + Math.Max(0, maxSeconds).ToString("0.00", c)
+                       + " (" + guard + ")";
+            return "Your " + (ev == ImpactEvent.Parry ? "parry" : "block") + " - " + v + " holds (" + guard + ")";
+        }
+
         /// <summary>The timing in words for a YOU line ("0.08 s, perfect").</summary>
         public static string TimingWords(in TimedBlockResult t)
         {

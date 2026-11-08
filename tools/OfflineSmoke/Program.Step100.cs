@@ -145,6 +145,11 @@ namespace TraxCombat.Tools
                 var a2 = Man(1.0, false);
                 d = Hit(a2, you, RightBlock());
                 Check(d.TimedScore == 0 && d.Riposte.Chance == d.RiposteChance56 && !d.Riposte.Happens, "a HELD guard: score " + d.TimedScore + ", riposte " + d.Riposte.Chance);
+                // step 100f: both on screen with their numbers (the riposte's from step 1, this held block's) - the message path, merged by its gap
+                S.Set(SettingsSchema.ImpactShowMessages, true, SettingSources.File);
+                Tick(2.0);
+                LogHas(" reels 2.00 s / 2.00 (guard 0.05 s / 0.15)");
+                LogHas(" holds (guard >1 s / 0.15)");
 
                 // ---- 3. a late switch to another side: a new guard in a manual mode, never in the automatic one
                 guard.Automatic = true;

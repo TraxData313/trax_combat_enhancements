@@ -237,6 +237,9 @@ namespace TraxCombat.Core
         /// <summary>Step 65: the same two for a shield BASH.</summary>
         BashBraced,
         BashShortReel,
+
+        /// <summary>Step 100f: YOUR correct block that brought no riposte - shown only with its timing (<c>TimedBlockShowTiming</c>).</summary>
+        BlockHeld,
     }
 
     /// <summary>Step 53: whose line it is - done to you, done by you, or a notable moment of your men's (the game's colours differ).</summary>
@@ -299,6 +302,7 @@ namespace TraxCombat.Core
                         ImpactMessageKind.ShortReel => "A lucky kick - " + v + " staggers for a moment",
                         ImpactMessageKind.BashBraced => v + " braces against your shield bash",
                         ImpactMessageKind.BashShortReel => "A lucky bash - " + v + " staggers for a moment",
+                        ImpactMessageKind.BlockHeld => "Your block - " + v + " holds",
                         _ => "Your riposte - " + v + " reels",
                     };
                 default:
@@ -361,7 +365,7 @@ namespace TraxCombat.Core
         public readonly int[] ByRole = new int[3];
 
         /// <summary>Parts offered by kind.</summary>
-        public readonly int[] ByKind = new int[10]; // step 65: + Braced, ShortReel, BashBraced, BashShortReel
+        public readonly int[] ByKind = new int[11]; // step 65: + Braced, ShortReel, BashBraced, BashShortReel; step 100f: + BlockHeld
 
         public int Waiting => _count + _extra;
 
@@ -431,6 +435,7 @@ namespace TraxCombat.Core
                    + ", at most one every " + minGap.ToString("0.0", c) + " s): offered " + Offered + " (to you " + ByRole[0] + ", by you " + ByRole[1] + ", your men " + ByRole[2]
                    + "; knocked down " + ByKind[0] + ", knocked off a horse " + ByKind[1] + ", shields " + ByKind[2] + ", guards broken " + ByKind[3] + ", ripostes " + ByKind[4] + ", thrown back " + ByKind[5]
                    + (ByKind[6] + ByKind[7] + ByKind[8] + ByKind[9] > 0 ? ", braced " + (ByKind[6] + ByKind[8]) + ", short reels " + (ByKind[7] + ByKind[9]) : string.Empty) // step 65
+                   + (ByKind[10] > 0 ? ", your timed blocks he held " + ByKind[10] : string.Empty) // step 100f
                    + ") → lines SHOWN " + Shown + ", parts MERGED into a line " + Merged + " (beyond " + ImpactMessageMath.MaxParts + " a line: " + Overflow + "), the same part twice " + Duplicates
                    + ", unshown at the end / switched off " + Discarded;
         }

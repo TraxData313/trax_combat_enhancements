@@ -2656,6 +2656,13 @@
   // (true or false)
   "PerfectStrikeCentreMessage": true,
 
+  // On: every right block or parry of yours shows how early your guard went up against the
+  // perfect window, and a riposte how long he reels against a perfect block's stagger - 'Your
+  // riposte - X reels 1.46 s / 2.00 (guard 0.30 s / 0.15)', 'Your parry - X holds (guard >1 s /
+  // 0.15)'. Needs the on-screen impact lines on. Off: the plain 'Your riposte - X reels' only.
+  // (true or false)
+  "TimedBlockShowTiming": true,
+
   // How much an outmatched man suffers: every doubling of the mismatch beyond the even band
   // adds this to the pressure on him (0.25: an enemy four times stronger counts as much as
   // being about a third tired). 0 = only tiredness counts.

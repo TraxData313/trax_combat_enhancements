@@ -107,6 +107,7 @@ namespace TraxCombat.Missions
             var t = new TimedBlockResult(in d);
             LastTimedBlock = t;
             _timed.Note(in t, in d);
+            YourBlockHeldMessage(a, v, in t, live); // step 100f: your block's timing on screen, even when he holds
             if (!t.Timed || !(t.BlockerIsPlayer || t.AttackerIsPlayer)) return;
             var c = CultureInfo.InvariantCulture;
             string words = TimedBlockMath.TimingWords(in t);
@@ -122,6 +123,29 @@ namespace TraxCombat.Missions
             if (!live) s += " (shadow - nothing applied)";
             _timedYouLines++;
             TraxLog.Info("impact", "YOU: " + s);
+        }
+
+        /// <summary>
+        /// Step 100f (Toni's playtest: learn the timing from the screen): YOUR correct block that brought no riposte - its own on-screen line
+        /// with the numbers ("Your parry - X holds (guard 0.30 s / 0.15)"), behind <c>TimedBlockShowTiming</c> and step 53's
+        /// <c>ImpactShowMessages</c>; a riposte speaks when the engine takes it (<see cref="RiposteTimingText"/>). Live blocks only.
+        /// </summary>
+        private void YourBlockHeldMessage(TrackedAgent a, TrackedAgent v, in TimedBlockResult t, bool live)
+        {
+            if (!live || !t.BlockerIsPlayer || t.RiposteHappens || !TraxSettings.Shared.TimedBlockShowTiming) return;
+            var tr = TimedBlockRules.From(TraxSettings.Shared);
+            string? text = TimedBlockMath.YourBlockLine(MessageName(a), t.Event, false, double.NaN, tr.StaggerMax, t.Source, t.Age, tr.Perfect);
+            if (text != null) ImpactMessage(ImpactMessageKind.BlockHeld, v, a, text);
+        }
+
+        /// <summary>Step 100f: the words of YOUR riposte the engine took, with its numbers ("Your riposte - X reels 1.46 s / 2.00 (guard 0.30 s /
+        /// 0.15)"); null = the plain line (not yours, the switch off, no timing read).</summary>
+        private string? RiposteTimingText(in ImpactBlockPending p)
+        {
+            if (p.Other == null || p.Other.Removed || !IsPlayer(p.Other) || !TraxSettings.Shared.TimedBlockShowTiming) return null;
+            var tr = TimedBlockRules.From(TraxSettings.Shared);
+            if (!tr.Enabled) return null;
+            return TimedBlockMath.YourBlockLine(MessageName(p.St), p.Event, true, p.Asked, tr.StaggerMax, p.Source, p.GuardAge, tr.Perfect);
         }
 
         /// <summary>THE SEAM (the tick): the engine took a riposte stagger this block decided - counted by its timing band. 100d's push-out and

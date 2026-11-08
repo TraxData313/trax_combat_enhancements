@@ -91,6 +91,12 @@ namespace TraxCombat.Missions
                 var kind = TimedPushOutMath.KindOf(ev == ImpactEvent.RightBlock, ev == ImpactEvent.RightBlock ? null : body.UsageOf(st));
                 if (!PlayPushOut(st, kind, TimedPushOutMath.ActionFor(kind, in r), in r, now, yours, out string played, out float speed, out double seconds))
                     return;
+                if (_pushFirstLine && (yours || TraxLog.VerboseWants("timed-anim"))) // step 100f: every push-out after the first, checkable in a playtest
+                {
+                    string line = "push-out: " + Name(st) + " (" + TimedPushOutMath.KindName(kind) + ", timing " + F2(score) + ") - " + played + " x" + F2(speed) + " for " + F2(seconds) + " s";
+                    if (yours) TraxLog.Info("impact", line);
+                    else TraxLog.Verbose("impact", line, "timed-anim");
+                }
                 if (!_pushFirstLine)
                 {
                     _pushFirstLine = true;
@@ -271,7 +277,16 @@ namespace TraxCombat.Missions
                 _blocks.StaggerAcceptedWithPriority++;
                 _blocks.NoteRiposteApplied(p.AttackerBand);
                 TimedRiposteAccepted(p.St, p.Other, p.Timed, p.Event, now); // step 100b: THE SEAM - the engine took it (the recoil is the riposte's start)
-                ImpactMessage(ImpactMessageKind.Riposte, p.Other != null && !p.Other.Removed ? p.Other : null, p.St);
+                ImpactMessage(ImpactMessageKind.Riposte, p.Other != null && !p.Other.Removed ? p.Other : null, p.St, RiposteTimingText(in p));
+                bool yourFight = IsPlayer(st) || p.Other != null && IsPlayer(p.Other);
+                if (_recoilFirstLine && (yourFight || TraxLog.VerboseWants("timed-anim"))) // step 100f: every recoil after the first, checkable in a playtest
+                {
+                    string line = "recoil: " + Name(st) + "'s " + TimedRecoilMath.DirectionName(dir) + " (timing " + F2(p.Timed) + ") - " + name
+                                  + (inPlace ? " (slowed in place)" : string.Empty) + " x" + F2(plan.RecoilSpeed) + " for " + F2(plan.RecoilSeconds) + " s, then the backward stagger "
+                                  + F2(plan.StaggerSeconds) + " s (" + F2(p.Asked) + " s asked)";
+                    if (yourFight) TraxLog.Info("impact", line);
+                    else TraxLog.Verbose("impact", line, "timed-anim");
+                }
                 if (!_recoilFirstLine)
                 {
                     _recoilFirstLine = true;

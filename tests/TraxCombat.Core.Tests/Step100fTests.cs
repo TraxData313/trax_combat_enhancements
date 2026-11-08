@@ -33,6 +33,44 @@ public class Step100fTests
     }
 
     [Fact]
+    public void Your_block_on_screen_carries_the_guard_against_the_perfect_and_the_stagger_against_the_perfect_length()
+    {
+        // Toni's two forms: a riposte and a block he held
+        Assert.Equal("Your riposte - Polmarc reels 1.46 s / 2.00 (guard 0.30 s / 0.15)",
+            TimedBlockMath.YourBlockLine("Polmarc", ImpactEvent.Parry, true, 1.46, 2.0, TimingSource.PlayerClock, 0.30, 0.15));
+        Assert.Equal("Your parry - Polmarc holds (guard 0.05 s / 0.15)",
+            TimedBlockMath.YourBlockLine("Polmarc", ImpactEvent.Parry, false, double.NaN, 2.0, TimingSource.PlayerClock, 0.05, 0.15));
+        Assert.Equal("Your block - Polmarc holds (guard 0.70 s / 0.15)",
+            TimedBlockMath.YourBlockLine("Polmarc", ImpactEvent.RightBlock, false, double.NaN, 2.0, TimingSource.PlayerClock, 0.70, 0.15));
+        // a held guard: capped, the ordinary (untimed) length
+        Assert.Equal("Your riposte - Polmarc reels 0.81 s / 2.00 (guard >1 s / 0.15)",
+            TimedBlockMath.YourBlockLine("Polmarc", ImpactEvent.RightBlock, true, 0.81, 2.0, TimingSource.PlayerClock, 3.7, 0.15));
+        Assert.Equal("guard >1 s / 0.15", TimedBlockMath.GuardText(TimingSource.AiHeld, double.PositiveInfinity, 0.15));
+        Assert.Equal("guard 1.00 s / 0.15", TimedBlockMath.GuardText(TimingSource.PlayerClock, 1.0, 0.15));
+        Assert.Equal("a chamber", TimedBlockMath.GuardText(TimingSource.Chamber, 0, 0.15));
+        // no timing read (timed blocks off): the plain line
+        Assert.Null(TimedBlockMath.YourBlockLine("Polmarc", ImpactEvent.Parry, true, 1.0, 2.0, TimingSource.None, double.NaN, 0.15));
+        // the plain held line exists for the merge queue's words
+        Assert.Equal("Your block - X holds", ImpactMessageMath.Text(ImpactMessageKind.BlockHeld, ImpactMessageRole.ByYou, "you", "X"));
+    }
+
+    [Fact]
+    public void The_timing_switch_is_an_advanced_impact_setting_shipped_on_and_read_live()
+    {
+        var p = SettingsSchema.TimedBlockShowTiming;
+        Assert.Equal(SettingsPage.Advanced, p.Group.Page);
+        Assert.Equal(SettingsSchema.ImpactGroup, p.Group);
+        var all = SettingsSchema.All.ToList();
+        Assert.Equal(all.IndexOf(SettingsSchema.PerfectStrikeCentreMessage) + 1, all.IndexOf(p));
+        Assert.Contains("\"TimedBlockShowTiming\": true,", DefaultsFile.ReadEmbeddedText(), StringComparison.Ordinal);
+        var s = new TraxSettings();
+        s.Set(p, 0, "test");
+        Assert.False(s.TimedBlockShowTiming);
+        s.Set(p, 1, "test");
+        Assert.True(s.TimedBlockShowTiming);
+    }
+
+    [Fact]
     public void The_recoil_switch_off_leaves_the_push_out_and_the_test_tool_alone()
     {
         var s = new TraxSettings();

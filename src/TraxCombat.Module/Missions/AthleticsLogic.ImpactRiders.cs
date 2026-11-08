@@ -362,7 +362,7 @@ namespace TraxCombat.Missions
         /// <c>ImpactMessagesIncludeYourMen</c> - your side's notable moments with a hero (<see cref="ImpactMessageMath.NotableForYourMen"/>).
         /// The line's strings are built only then. Own try: an error = one [error], no line.
         /// </summary>
-        private void ImpactMessage(ImpactMessageKind kind, TrackedAgent? by, TrackedAgent to)
+        private void ImpactMessage(ImpactMessageKind kind, TrackedAgent? by, TrackedAgent to, string? text = null)
         {
             try
             {
@@ -382,7 +382,9 @@ namespace TraxCombat.Missions
                     if (!ImpactMessageMath.NotableForYourMen(kind, ImpactBody.OnPlayerSide(by), ImpactBody.OnPlayerSide(to), true)) return;
                     role = ImpactMessageRole.YourMen;
                 }
-                _messages.Add(kind, role, ImpactMessageMath.Text(kind, role, by != null ? MessageName(by) : null, MessageName(to)));
+                // step 100f: your timed block's own words (its numbers) when given - only ever for a line BY you
+                _messages.Add(kind, role, text != null && role == ImpactMessageRole.ByYou ? text
+                    : ImpactMessageMath.Text(kind, role, by != null ? MessageName(by) : null, MessageName(to)));
             }
             catch (Exception e)
             {

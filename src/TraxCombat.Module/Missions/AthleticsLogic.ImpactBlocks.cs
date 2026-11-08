@@ -42,6 +42,10 @@ namespace TraxCombat.Missions
 
         /// <summary>Step 100b: a riposte's timing score (0 = untimed).</summary>
         public double Timed;
+
+        /// <summary>Step 100f: the riposte's timing source and the blocker's guard age (s) - YOUR on-screen line's numbers.</summary>
+        public TimingSource Source;
+        public double GuardAge;
     }
 
     /// <summary>
@@ -315,6 +319,8 @@ namespace TraxCombat.Missions
             {
                 Action = action, St = st, Other = other, Event = d.Event, At = now, Asked = asked, Bar = d.Bar, AttackerBand = attackerBand,
                 Timed = action == ImpactBlockAction.Riposte ? d.TimedScore : 0,
+                Source = action == ImpactBlockAction.Riposte ? d.TimedSource : TimingSource.None,
+                GuardAge = action == ImpactBlockAction.Riposte ? d.TimedAge : double.NaN,
             };
         }
 
@@ -465,7 +471,8 @@ namespace TraxCombat.Missions
                 TimedRiposteAccepted(p.St, p.Other, p.Timed, p.Event, now); // step 100b: THE SEAM - the engine took it
             }
             else _blocks.NoteApplied(p.Event, ImpactOutcome.Stagger, p.Bar);
-            ImpactMessage(riposte ? ImpactMessageKind.Riposte : ImpactMessageKind.GuardBroken, p.Other != null && !p.Other.Removed ? p.Other : null, p.St); // step 53
+            ImpactMessage(riposte ? ImpactMessageKind.Riposte : ImpactMessageKind.GuardBroken, p.Other != null && !p.Other.Removed ? p.Other : null, p.St,
+                riposte ? RiposteTimingText(in p) : null); // step 53; step 100f: your riposte's numbers
             AddLiveWatch(p.St, riposte ? ImpactWatchPurpose.Riposte : ImpactWatchPurpose.Stagger, WatchKind.Stagger, now, ImpactBlockMath.StaggerAppearSeconds, 1,
                 expectIndex: index, ev: p.Event, asked: p.Asked, speed: speed, timed: p.Timed);
             if (LiveFirst(riposte ? 11 : 12))

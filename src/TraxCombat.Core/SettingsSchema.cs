@@ -1995,6 +1995,10 @@ namespace TraxCombat.Core
             "Perfect strike: big line in the middle",
             "On: PERFECT STRIKE also shows in the middle of the screen, not only as a gold line in the message feed. Off: the gold line only.");
 
+        public static readonly ParamDef TimedBlockShowTiming = Bool("TimedBlockShowTiming", ImpactGroup,
+            "Timed blocks: your timing on screen",
+            "On: every right block or parry of yours shows how early your guard went up against the perfect window, and a riposte how long he reels against a perfect block's stagger - 'Your riposte - X reels 1.46 s / 2.00 (guard 0.30 s / 0.15)', 'Your parry - X holds (guard >1 s / 0.15)'. Needs the on-screen impact lines on. Off: the plain 'Your riposte - X reels' only.");
+
         public static readonly ParamDef ImpactMismatchWeight = Float("ImpactMismatchWeight", 0, 2, ImpactGroup,
             "Mismatch weight (pressure per doubling)",
             "How much an outmatched man suffers: every doubling of the mismatch beyond the even band adds this to the pressure on him (0.25: an enemy four times stronger counts as much as being about a third tired). 0 = only tiredness counts.");
@@ -2699,6 +2703,7 @@ namespace TraxCombat.Core
             TimedBlockPushOutPolearmAction, TimedBlockRecoil, TimedBlockRecoilSeconds, TimedBlockRecoilMaxPercent, TimedBlockRecoilVariant,
             TimedBlockAnimTest, TimedBlockAnimTestKey,
             PerfectStrikeMinMultiplier, PerfectStrikeMaxMultiplier, PerfectStrikeGraceSeconds, PerfectStrikeCentreMessage,
+            TimedBlockShowTiming,
             ImpactMismatchWeight, ImpactEvenBandDoublings, ImpactBodyExponent, ImpactBodyFloorPoints, ImpactStaggeredBonus, ImpactDamageWeight,
             ImpactRefWeightKg, ImpactWeightExponent, ImpactRefSwingSpeed, ImpactSpeedExponent, ImpactBluntFactor, ImpactCutFactor, ImpactPierceFactor,
             ImpactKickFactor, ImpactBashFactor, ImpactSkillMinFactor, ImpactSkillMaxFactor,
