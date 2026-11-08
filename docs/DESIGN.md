@@ -1725,6 +1725,22 @@ row goes to the Advanced page unless a player needs it to set up his game (CLAUD
 | `TimedBlockSlowMoSpeed` | 0.3 | Step 100e: the game speed at the slow motion's deepest (eased in over min(0.05, total ÷ 10) real s, a smoothstep back to 1). Range 0.1-1. Live. |
 | `TimedBlockSlowMoRealSeconds` | 0.5 | Step 100e: the whole slow motion in REAL seconds (the engine's application clock), the ease back included - about 0.3 s of mission time at the defaults. Range 0.2-2. Live. |
 | `TimedBlockSlowMoCooldownSeconds` | 4 | Step 100e: real seconds from one slow motion's start to the next. Range 0-30. Live. |
+| `TimedBlockPushOut` | true | Step 100d (decision 91 (d), Toni 2026-11-08: "the blocker shield or weapon goes out as the attack lands"): THE PUSH-OUT - when the engine takes a TIMED riposte stagger (`TimedRiposteAccepted`), the blocker's channel 1 (upper body) plays his kind's action (`TimedBlockPushOut*Action`; "_left_stance" first in a left stance) from `TimedBlockPushOutStartProgress`, sped up to `TimedBlockPushOutSeconds` (`TimedPushOutMath.Speed`); never a rider, never while he no longer guards; his own bash collision ignored for `TimedBlockPushOutGuardSeconds` (the engine's blow: damage ignored, no knock-back / knockdown, shrugged off; our hit / kick-cost / meet systems skip it), then his channel 1 cleared if our push still plays. Live. |
+| `TimedBlockPushOutForYou` | true | Step 100d: the push-out also on YOUR timed blocks (your guard drops for its length and comes back while you hold block). Live. |
+| `TimedBlockPushOutMinScore` | 0 | Step 100d: the timing score the push-out needs (0 = every timed riposte - Toni: every blocker whose timed riposte was accepted; an untimed one never). Range 0-1. Live. |
+| `TimedBlockPushOutSeconds` | 0.25 | Step 100d: the push-out's length in battle seconds; speed = the animation's length x (1 − start) ÷ this, within 0.25-4. Range 0.05-1. Live. |
+| `TimedBlockPushOutStartProgress` | 0.3 | Step 100d: where in the animation the push-out starts (the windup skipped). Range 0-0.9. Live. |
+| `TimedBlockPushOutGuardSeconds` | 0.5 | Step 100d: the window his own bash collision is ignored and his upper body checked back, never shorter than the push + 0.1 s. Range 0-2. Live. |
+| `TimedBlockPushOutShieldAction` | act_shield_bash | Step 100d: a shield block's push-out action (an action name, or parry_heavy = the guard's own `_parry_heavy` defend; empty = none). Live. |
+| `TimedBlockPushOutOneHandedAction` | act_1h_bash | Step 100d: a one-handed parry's push-out action (as above). Live. |
+| `TimedBlockPushOutTwoHandedAction` | act_2h_bash | Step 100d: a two-handed parry's push-out action (as above). Live. |
+| `TimedBlockPushOutPolearmAction` | act_staff_bash | Step 100d: a polearm parry's push-out action (as above). Live. |
+| `TimedBlockRecoil` | true | Step 100d (Toni: the attacker's stagger matches the blocked direction - "Yes"): a TIMED riposte starts with the game's own `act_[quick_]blocked_<direction>_<weapon>[_balanced][_left_stance]` recoil of the attacker's swing (Core `TimedRecoilMath` - the names item_usage_sets.xml wires for a man on foot; the direction read at contact) on channel 1 slowed to `TimedBlockRecoilSeconds`, then the backward stagger for the rest - the whole length unchanged; no matching recoil / too short / refused = the old single stagger; untimed ripostes = step 56 exactly. Live. |
+| `TimedBlockRecoilSeconds` | 0.45 | Step 100d: the recoil's part of the timed stagger (battle s; its speed within 0.2-2.5). Range 0.1-1.5. Live. |
+| `TimedBlockRecoilMaxPercent` | 50 | Step 100d: the recoil takes at most this share of the whole stagger; the rest must be 0.25 s+. Range 10-90. Live. |
+| `TimedBlockRecoilVariant` | 0 | Step 100d: 0 blocked, 1 quick blocked, 2 blocked balanced, 3 quick blocked balanced (a missing form falls back to the plain blocked one). Range 0-3. Live. |
+| `TimedBlockAnimTest` | false | Step 100d TEST TOOL: in a battle `TimedBlockAnimTestKey` plays the next candidate (the push-outs, then every recoil by direction and variant, then the full timed riposte by direction) on the nearest man within 8 m (else you); Left Shift + the key = back. Live. |
+| `TimedBlockAnimTestKey` | J | Step 100d: the test tool's key (a key name). Live. |
 | `ImpactMismatchWeight` | 0.25 | Step 48: x per doubling of the mismatch R beyond the even band. Range 0-2. |
 | `ImpactEvenBandDoublings` | 0.5 | Step 48: a mismatch within ± this many doublings (×1.41) = an even match (adds 0). Range 0-3. |
 | `ImpactBodyExponent` | 0.5 | Step 48: the body = his CURRENT points to this power. Range 0-2. |
@@ -1890,12 +1906,6 @@ Item 3 is built (step 20, hold ALT); what is left of it is an always-on form abo
 | `TimedBlockDismountMaxPercent` | 40 | The chance a perfect shield block knocks a galloping rider off (x score², x the horse's speed band, x the mismatch). | DROPPED (Toni 2026-11-08: "skip the mounted part") |
 | `TimedBlockDismountWeaponPercent` | 50 | A weapon parry's share of that chance. | DROPPED (Toni 2026-11-08: "skip the mounted part") |
 | `TimedBlockRearPercent` | 50 | A timed block that did not unhorse the rider rears his horse (x the score). | DROPPED (Toni 2026-11-08: "skip the mounted part") |
-| `TimedBlockPushOut` | true | The blocker's shield / weapon pushes out on a timed riposte. | step 100d |
-| `TimedBlockPushOutForYou` | true | Also on you (your guard drops for about a quarter second). | step 100d |
-| `TimedBlockPushOutMinScore` | 0.5 | The timing a block needs for the push-out. | step 100d |
-| `TimedBlockPushOutSpeed` | 1.4 | The push-out animation's speed. | step 100d |
-| `TimedBlockPushOutStartProgress` | 0.3 | Where in the bash animation the push-out starts (the windup skipped). | step 100d |
-| `TimedBlockAnimTest` | false | TEST TOOL: a key plays each push-out candidate on you, to pick by eye. Advanced, "Advanced". | step 100d |
 
 `ShowFormationSpread`, `FormationSpreadStdDevs` and `ShowFormationHealth` stay in the table
 above: the orders-menu strip and the numbers under the formation markers (step 20) use them.

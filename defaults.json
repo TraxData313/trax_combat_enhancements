@@ -2535,6 +2535,94 @@
   // (range 0.0 to 30.0)
   "TimedBlockSlowMoCooldownSeconds": 4.0,
 
+  // When a timed block staggers the attacker, the blocker's shield (or weapon) punches out as
+  // the blow lands - his own bash, the windup skipped, on the upper body only. It deals no blow
+  // and costs nothing. His guard is down for that moment (about a quarter second).
+  // (true or false)
+  "TimedBlockPushOut": true,
+
+  // The push-out also plays on YOUR timed blocks - your guard drops for about a quarter second
+  // and comes back by itself while you hold block. Off: only the AI's blockers push out.
+  // (true or false)
+  "TimedBlockPushOutForYou": true,
+
+  // The block's timing score (1 = perfect) the push-out needs; 0 = every timed riposte. An
+  // untimed block never pushes out.
+  // (range 0.0 to 1.0)
+  "TimedBlockPushOutMinScore": 0.0,
+
+  // How long the push-out plays, in battle seconds (in a slow motion it looks longer). Its
+  // speed is worked out from the animation's own length.
+  // (range 0.05 to 1.0)
+  "TimedBlockPushOutSeconds": 0.25,
+
+  // Where in the bash animation the push-out starts - 0.3 skips the first 30% (the windup), so
+  // the shield goes straight out.
+  // (range 0.0 to 0.9)
+  "TimedBlockPushOutStartProgress": 0.3,
+
+  // For this long (never shorter than the push itself) any bash collision of the pushing man is
+  // ignored - no damage, no knock-back, no Athletics cost - and then his upper body is checked
+  // back to normal.
+  // (range 0.0 to 2.0)
+  "TimedBlockPushOutGuardSeconds": 0.5,
+
+  // The game action a shield block pushes out with: act_shield_bash, act_hand_shield_bash, or
+  // parry_heavy (the guard's own heavy parry - no bash at all). In a left stance the
+  // _left_stance form is used when it exists. Empty = no push-out.
+  // (an item id (letters, digits, _ . -; empty = none))
+  "TimedBlockPushOutShieldAction": "act_shield_bash",
+
+  // The game action a one-handed weapon's parry pushes out with: act_1h_bash, or parry_heavy
+  // (the guard's own heavy parry). Empty = no push-out.
+  // (an item id (letters, digits, _ . -; empty = none))
+  "TimedBlockPushOutOneHandedAction": "act_1h_bash",
+
+  // The game action a two-handed weapon's parry pushes out with: act_2h_bash, or parry_heavy
+  // (the guard's own heavy parry). Empty = no push-out.
+  // (an item id (letters, digits, _ . -; empty = none))
+  "TimedBlockPushOutTwoHandedAction": "act_2h_bash",
+
+  // The game action a polearm's parry pushes out with: act_staff_bash, or parry_heavy (the
+  // guard's own heavy parry). Empty = no push-out.
+  // (an item id (letters, digits, _ . -; empty = none))
+  "TimedBlockPushOutPolearmAction": "act_staff_bash",
+
+  // A timed block's stagger starts with the game's own 'blocked' recoil of the attacker's swing
+  // - overhead, thrust, left or right, for his weapon and stance - slowed so it reads, then the
+  // backward stagger for the rest. The stagger's whole length is unchanged. Untimed ripostes
+  // keep the plain backward stagger.
+  // (true or false)
+  "TimedBlockRecoil": true,
+
+  // How much of the timed stagger the direction-matched recoil takes, in battle seconds; the
+  // backward stagger plays the rest.
+  // (range 0.1 to 1.5)
+  "TimedBlockRecoilSeconds": 0.45,
+
+  // The recoil never takes more than this share of the whole stagger, so a short stagger still
+  // ends staggering backward.
+  // (range 10 to 90)
+  "TimedBlockRecoilMaxPercent": 50,
+
+  // Which of the game's recoils: 0 the 'blocked' one (a full bounce), 1 the 'quick blocked'
+  // one, 2 / 3 their 'balanced' forms. A weapon without that form uses the plain 'blocked' one.
+  // (range 0 to 3)
+  "TimedBlockRecoilVariant": 0,
+
+  // TEST TOOL, off for play. In a battle, the key below plays the next push-out / recoil
+  // candidate on the nearest man (within 8 m; else on you); hold Left Shift with it to go back.
+  // Each one's name is shown on screen and logged - pick the one you like and type it in the
+  // settings above.
+  // (true or false)
+  "TimedBlockAnimTest": false,
+
+  // The test tool's key (only while the test tool is on). Type its name: LeftControl,
+  // RightControl, LeftAlt, RightAlt, LeftShift, RightShift, CapsLock, Tab, Q, T, Y, H, J, K, L,
+  // B, N, M, C, MiddleMouseButton, X1MouseButton, X2MouseButton.
+  // (one of LeftControl, RightControl, LeftAlt, RightAlt, LeftShift, RightShift, CapsLock, Tab, Q, T, Y, H, J, K, L, B, N, M, C, MiddleMouseButton, X1MouseButton, X2MouseButton)
+  "TimedBlockAnimTestKey": "J",
+
   // How much an outmatched man suffers: every doubling of the mismatch beyond the even band
   // adds this to the pressure on him (0.25: an enemy four times stronger counts as much as
   // being about a third tired). 0 = only tiredness counts.

@@ -1907,6 +1907,72 @@ namespace TraxCombat.Core
             "Slow motion: at most one every (real s)",
             "Real seconds from one slow motion's start to the next - a quick run of good blocks plays only the first.");
 
+        // Step 100d (Toni 2026-11-08: "add an animation where the blocker shield or weapon goes out as the attack lands"; and the
+        // attacker's stagger matching the blocked direction): Core TimedAnim.cs, AI_NOTES "Step 100", DESIGN decision 91 (d).
+        public static readonly ParamDef TimedBlockPushOut = Bool("TimedBlockPushOut", ImpactGroup,
+            "Timed blocks: the blocker pushes out",
+            "When a timed block staggers the attacker, the blocker's shield (or weapon) punches out as the blow lands - his own bash, the windup skipped, on the upper body only. It deals no blow and costs nothing. His guard is down for that moment (about a quarter second).");
+
+        public static readonly ParamDef TimedBlockPushOutForYou = Bool("TimedBlockPushOutForYou", ImpactGroup,
+            "Timed blocks: push-out on your blocks too",
+            "The push-out also plays on YOUR timed blocks - your guard drops for about a quarter second and comes back by itself while you hold block. Off: only the AI's blockers push out.");
+
+        public static readonly ParamDef TimedBlockPushOutMinScore = Float("TimedBlockPushOutMinScore", 0, 1, ImpactGroup,
+            "Timed blocks: push-out needs a timing of (0-1)",
+            "The block's timing score (1 = perfect) the push-out needs; 0 = every timed riposte. An untimed block never pushes out.");
+
+        public static readonly ParamDef TimedBlockPushOutSeconds = Float("TimedBlockPushOutSeconds", 0.05, 1, ImpactGroup,
+            "Timed blocks: push-out length (s)",
+            "How long the push-out plays, in battle seconds (in a slow motion it looks longer). Its speed is worked out from the animation's own length.");
+
+        public static readonly ParamDef TimedBlockPushOutStartProgress = Float("TimedBlockPushOutStartProgress", 0, 0.9, ImpactGroup,
+            "Timed blocks: push-out starts at (0-0.9)",
+            "Where in the bash animation the push-out starts - 0.3 skips the first 30% (the windup), so the shield goes straight out.");
+
+        public static readonly ParamDef TimedBlockPushOutGuardSeconds = Float("TimedBlockPushOutGuardSeconds", 0, 2, ImpactGroup,
+            "Timed blocks: push-out safety window (s)",
+            "For this long (never shorter than the push itself) any bash collision of the pushing man is ignored - no damage, no knock-back, no Athletics cost - and then his upper body is checked back to normal.");
+
+        public static readonly ParamDef TimedBlockPushOutShieldAction = Text("TimedBlockPushOutShieldAction", ImpactGroup,
+            "Timed blocks: push-out with a shield",
+            "The game action a shield block pushes out with: act_shield_bash, act_hand_shield_bash, or parry_heavy (the guard's own heavy parry - no bash at all). In a left stance the _left_stance form is used when it exists. Empty = no push-out.");
+
+        public static readonly ParamDef TimedBlockPushOutOneHandedAction = Text("TimedBlockPushOutOneHandedAction", ImpactGroup,
+            "Timed blocks: push-out with a one-handed weapon",
+            "The game action a one-handed weapon's parry pushes out with: act_1h_bash, or parry_heavy (the guard's own heavy parry). Empty = no push-out.");
+
+        public static readonly ParamDef TimedBlockPushOutTwoHandedAction = Text("TimedBlockPushOutTwoHandedAction", ImpactGroup,
+            "Timed blocks: push-out with a two-handed weapon",
+            "The game action a two-handed weapon's parry pushes out with: act_2h_bash, or parry_heavy (the guard's own heavy parry). Empty = no push-out.");
+
+        public static readonly ParamDef TimedBlockPushOutPolearmAction = Text("TimedBlockPushOutPolearmAction", ImpactGroup,
+            "Timed blocks: push-out with a polearm",
+            "The game action a polearm's parry pushes out with: act_staff_bash, or parry_heavy (the guard's own heavy parry). Empty = no push-out.");
+
+        public static readonly ParamDef TimedBlockRecoil = Bool("TimedBlockRecoil", ImpactGroup,
+            "Timed blocks: direction-matched recoil",
+            "A timed block's stagger starts with the game's own 'blocked' recoil of the attacker's swing - overhead, thrust, left or right, for his weapon and stance - slowed so it reads, then the backward stagger for the rest. The stagger's whole length is unchanged. Untimed ripostes keep the plain backward stagger.");
+
+        public static readonly ParamDef TimedBlockRecoilSeconds = Float("TimedBlockRecoilSeconds", 0.1, 1.5, ImpactGroup,
+            "Timed blocks: recoil part (s)",
+            "How much of the timed stagger the direction-matched recoil takes, in battle seconds; the backward stagger plays the rest.");
+
+        public static readonly ParamDef TimedBlockRecoilMaxPercent = Int("TimedBlockRecoilMaxPercent", 10, 90, ImpactGroup,
+            "Timed blocks: recoil at most (% of the stagger)",
+            "The recoil never takes more than this share of the whole stagger, so a short stagger still ends staggering backward.");
+
+        public static readonly ParamDef TimedBlockRecoilVariant = Int("TimedBlockRecoilVariant", 0, 3, ImpactGroup,
+            "Timed blocks: recoil animation (0-3)",
+            "Which of the game's recoils: 0 the 'blocked' one (a full bounce), 1 the 'quick blocked' one, 2 / 3 their 'balanced' forms. A weapon without that form uses the plain 'blocked' one.");
+
+        public static readonly ParamDef TimedBlockAnimTest = Bool("TimedBlockAnimTest", ImpactGroup,
+            "Timed blocks: animation test tool",
+            "TEST TOOL, off for play. In a battle, the key below plays the next push-out / recoil candidate on the nearest man (within 8 m; else on you); hold Left Shift with it to go back. Each one's name is shown on screen and logged - pick the one you like and type it in the settings above.");
+
+        public static readonly ParamDef TimedBlockAnimTestKey = Key("TimedBlockAnimTestKey", ImpactGroup,
+            "Timed blocks: animation test key",
+            "The test tool's key (only while the test tool is on). Type its name: " + KeyNames.ListText + ".");
+
         public static readonly ParamDef ImpactMismatchWeight = Float("ImpactMismatchWeight", 0, 2, ImpactGroup,
             "Mismatch weight (pressure per doubling)",
             "How much an outmatched man suffers: every doubling of the mismatch beyond the even band adds this to the pressure on him (0.25: an enemy four times stronger counts as much as being about a third tired). 0 = only tiredness counts.");
@@ -2606,6 +2672,10 @@ namespace TraxCombat.Core
             TimedBlockPerfectSeconds, TimedBlockWindowSeconds, TimedBlockRiposteMaxPercent, TimedBlockStaggerMaxSeconds, TimedBlockAgainstYouMaxSeconds,
             TimedBlockParryPercent, TimedBlockAiPercent,
             TimedBlockSlowMoMinScore, TimedBlockSlowMoSpeed, TimedBlockSlowMoRealSeconds, TimedBlockSlowMoCooldownSeconds,
+            TimedBlockPushOut, TimedBlockPushOutForYou, TimedBlockPushOutMinScore, TimedBlockPushOutSeconds, TimedBlockPushOutStartProgress,
+            TimedBlockPushOutGuardSeconds, TimedBlockPushOutShieldAction, TimedBlockPushOutOneHandedAction, TimedBlockPushOutTwoHandedAction,
+            TimedBlockPushOutPolearmAction, TimedBlockRecoil, TimedBlockRecoilSeconds, TimedBlockRecoilMaxPercent, TimedBlockRecoilVariant,
+            TimedBlockAnimTest, TimedBlockAnimTestKey,
             ImpactMismatchWeight, ImpactEvenBandDoublings, ImpactBodyExponent, ImpactBodyFloorPoints, ImpactStaggeredBonus, ImpactDamageWeight,
             ImpactRefWeightKg, ImpactWeightExponent, ImpactRefSwingSpeed, ImpactSpeedExponent, ImpactBluntFactor, ImpactCutFactor, ImpactPierceFactor,
             ImpactKickFactor, ImpactBashFactor, ImpactSkillMinFactor, ImpactSkillMaxFactor,
