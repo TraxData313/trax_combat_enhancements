@@ -114,7 +114,7 @@ namespace TraxCombat.Models
                 float landed = Reduce(in ai, in cd, in facts, in rules, damage, tiredSkip);
                 NoteTired(in ai, in cd, in facts, in rules, damage, tiredSkip, landed, f, mSkip, exemptSkip);
                 if (TraxLog.VerboseWants("damage-skip")) LogSkip(in ai, in cd, in facts, reason, damage, landed);
-                return landed;
+                return PerfectStrikeLast(in ai, in cd, in facts, landed); // step 100g: LAST, after the reduction
             }
 
             double attackerF = AttackerPeakShare(in ai);
@@ -132,7 +132,20 @@ namespace TraxCombat.Models
 
             bool first = Volatile.Read(ref _firstRollLogged) == 0 && Interlocked.CompareExchange(ref _firstRollLogged, 1, 0) == 0;
             if (first || TraxLog.VerboseWants("damage")) LogRoll(in ai, in cd, in facts, in roll, first, thread, attackerF, final, m);
-            return final;
+            return PerfectStrikeLast(in ai, in cd, in facts, final); // step 100g: LAST, after the roll, tiredness and the reduction
+        }
+
+        /// <summary>
+        /// Step 100g, THE PERFECT STRIKE: asked LAST so the hit lands exactly k times what it would have (every step before is a
+        /// multiplication; the game rounds after us). Only a man's melee blow on a man - missiles, falls, horse charges, a horse on either
+        /// end and objects never reach the logic; the rest (blocked, shield, kick / bash, your direction, the window) is the logic's call.
+        /// The master switch off = the logic's rules say no (the window book is empty anyway).
+        /// </summary>
+        private static float PerfectStrikeLast(in AttackInformation ai, in AttackCollisionData cd, in HitFacts facts, float damage)
+        {
+            if (ai.IsAttackerAgentNull || ai.IsVictimAgentNull || ai.IsAttackerAgentMount || ai.IsVictimAgentMount || !facts.VictimIsAgent || facts.Missile
+                || facts.Fall || cd.IsHorseCharge) return damage;
+            return Models.ImpactHooks.PerfectStrike(ai.AttackerAgent, ai.VictimAgent, ai.DoesAttackerHaveMountAgent, in cd, damage);
         }
 
         /// <summary>Step 89: could the tired-damage multiplier apply to this hit at all (before the attacker's f is read)?</summary>

@@ -125,6 +125,7 @@ namespace TraxCombat.Missions
             WriteTimedBlockSummary(); // step 100b
             WriteSlowMoSummary(); // step 100e
             WriteTimedAnimSummary(); // step 100d
+            WritePerfectStrikeSummary(); // step 100g
             WriteImpactMeetSummary(); // step 82
         }
 

@@ -27,12 +27,17 @@ namespace TraxCombat.Missions
     internal interface IImpactMessageSink
     {
         void Show(string text, string hex);
+
+        /// <summary>Step 100g: a big line in the middle of the screen (the game's quick information) - the perfect strike's.</summary>
+        void Centre(string text);
     }
 
     /// <summary>The game's message feed (InformationManager - the line the game shows for a couched lance's hit, in its colours).</summary>
     internal sealed class GameImpactMessageSink : IImpactMessageSink
     {
         public void Show(string text, string hex) => InformationManager.DisplayMessage(new InformationMessage(text, Color.ConvertStringToColor(hex)));
+
+        public void Centre(string text) => TaleWorlds.Core.MBInformationManager.AddQuickInformation(new TaleWorlds.Localization.TextObject(text));
     }
 
     /// <summary>The sink every new logic starts with (the smoke swaps in its own once, before any logic is built).</summary>

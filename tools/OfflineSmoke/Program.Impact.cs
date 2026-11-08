@@ -142,6 +142,10 @@ namespace TraxCombat.Tools
             public readonly List<(string Text, string Hex)> Lines = new List<(string, string)>();
 
             public void Show(string text, string hex) => Lines.Add((text, hex));
+
+            public readonly List<string> Centred = new List<string>();
+
+            public void Centre(string text) => Centred.Add(text); // step 100g
         }
 
         /// <summary>Step 47: every logic built from here on plays the impact levers' engine side through the stand-in (the game's calls the

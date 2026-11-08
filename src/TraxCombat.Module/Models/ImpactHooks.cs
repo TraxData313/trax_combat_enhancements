@@ -83,6 +83,17 @@ namespace TraxCombat.Models
     }
 
     /// <summary>
+    /// Step 100g: THE PERFECT STRIKE - asked by the damage decorator LAST, after the roll, tiredness and the reduction
+    /// (<see cref="DamageRandomizer.Apply"/>), for every melee hit of a man on a man (no missile, fall, horse charge, no horse on either end).
+    /// Returns the damage to land: x2-x3 for YOUR first swing from the opposite side on a man your timed block staggered, else unchanged.
+    /// MAIN thread (inside the engine's <c>MeleeHitCallback</c>).
+    /// </summary>
+    internal interface IPerfectStrike
+    {
+        float PerfectStrike(Agent attacker, Agent victim, bool attackerMounted, in AttackCollisionData collision, float damage);
+    }
+
+    /// <summary>
     /// Step 47: the impact system's MODEL seams, shared by the two decorators and the running mission logic. The logic plugs its deciders
     /// in at mission start (and takes them out at its end); the decorators ask them and stay vanilla when none is plugged or one throws.
     /// The game's stun cap is raised / restored here - <c>ManagedParameters</c> is one global array, so a raised cap is put back at the
@@ -224,6 +235,31 @@ namespace TraxCombat.Models
             {
                 TraxCombat.Missions.AthleticsLogic.Failed("impact.pushout-guard", e);
                 return false;
+            }
+        }
+
+        private static volatile IPerfectStrike? _perfect;
+
+        /// <summary>Step 100g: the running logic while it runs (the damage decorator asks it last).</summary>
+        internal static IPerfectStrike? Perfect
+        {
+            get => _perfect;
+            set => _perfect = value;
+        }
+
+        /// <summary>Step 100g: the damage to land after the perfect strike's question; a throwing logic = unchanged (logged by its fail-safe).</summary>
+        internal static float PerfectStrike(Agent? attacker, Agent? victim, bool attackerMounted, in AttackCollisionData collision, float damage)
+        {
+            var g = _perfect;
+            if (g == null || attacker == null || victim == null) return damage;
+            try
+            {
+                return g.PerfectStrike(attacker, victim, attackerMounted, in collision, damage);
+            }
+            catch (Exception e)
+            {
+                TraxCombat.Missions.AthleticsLogic.Failed("impact.perfect-strike-hook", e);
+                return damage;
             }
         }
 

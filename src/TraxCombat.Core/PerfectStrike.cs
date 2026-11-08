@@ -329,7 +329,7 @@ namespace TraxCombat.Core
              .Append(", right ").Append(WrongSide[PerfectStrikeMath.Right].ToString(c))
              .Append(", overhead ").Append(WrongSide[PerfectStrikeMath.Up].ToString(c))
              .Append(", thrust ").Append(WrongSide[PerfectStrikeMath.Down].ToString(c)).Append(" - the window stays open)");
-            if (NotOnBody > 0) t.Append("; your hits on a window man that did not land on his body (blocked, shield, kick / bash) ").Append(NotOnBody.ToString(c));
+            if (NotOnBody > 0) t.Append("; your hits on a window man that did not land on his body (blocked, shield, kick / bash, 0 damage) ").Append(NotOnBody.ToString(c));
             if (Mounted > 0) t.Append("; hits from horseback (never counted) ").Append(Mounted.ToString(c));
             if (UnknownDirection > 0) t.Append("; your direction unreadable ").Append(UnknownDirection.ToString(c));
             if (OffMainThread > 0) t.Append("; asked off the main thread (skipped) ").Append(OffMainThread.ToString(c));

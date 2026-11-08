@@ -131,6 +131,7 @@ namespace TraxCombat.Missions
             ImpactHooks.Dismount = this; // step 53: a rider knocked off his horse
             ImpactHooks.KnockBack = this; // step 65: the kicked man braces
             ImpactHooks.PushOut = this; // step 100d: a pushing blocker's own bash is no blow
+            ImpactHooks.Perfect = this; // step 100g: the perfect strike's multiplier, asked last by the damage decorator
             if (_seenSpike.Enabled) SpikeSwitchedOn(Mission != null ? Mission.CurrentTime : 0, atStart: true);
             else TraxLog.Info("impact", "mission start: spike " + _seenSpike.Describe() + " - read live");
             StartImpactModel(); // step 48: the model (its own line)
@@ -146,6 +147,7 @@ namespace TraxCombat.Missions
             if (ReferenceEquals(ImpactHooks.Dismount, this)) ImpactHooks.Dismount = null;
             if (ReferenceEquals(ImpactHooks.KnockBack, this)) ImpactHooks.KnockBack = null;
             if (ReferenceEquals(ImpactHooks.PushOut, this)) ImpactHooks.PushOut = null;
+            if (ReferenceEquals(ImpactHooks.Perfect, this)) ImpactHooks.Perfect = null;
             if (_spikeStarted && ImpactHooks.RestoreStunCap()) _spike.CapRestores++;
         }
 
@@ -278,6 +280,14 @@ namespace TraxCombat.Missions
             catch (Exception e)
             {
                 Failed("impact.timed-anims", e);
+            }
+            try
+            {
+                TickPerfectStrike(now); // step 100g: the perfect strike's line, the windows closed
+            }
+            catch (Exception e)
+            {
+                Failed("impact.perfect-tick", e);
             }
             try
             {

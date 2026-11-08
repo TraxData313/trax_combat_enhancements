@@ -131,6 +131,7 @@ namespace TraxCombat.Missions
             _timed.NoteApplied(score);
             MaybeStartSlowMo(blocker, score); // step 100e: the slow motion on your best blocks (its own try)
             MaybePushOut(blocker, ev, score, now); // step 100d: the blocker's shield / weapon goes out (its own try)
+            MaybeOpenPerfectStrike(attacker, blocker, score, now); // step 100g: YOUR timed block opens a perfect-strike window on him (its own try)
             if (score > 0 && LiveFirst(LiveFirstTimedRiposte))
                 TraxLog.Info("impact", "live: first TIMED riposte at " + Sec(now) + " s - " + Name(attacker) + " staggered after " + (blocker != null ? Name(blocker) : "(someone)")
                     + "'s block, timing score " + F2(score));
