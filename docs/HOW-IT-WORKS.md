@@ -295,6 +295,12 @@ tired he is, the likelier he reels or goes down. Guard the wrong way, or get cau
 you are tired. The AI reads a coming kick or bash about as well as it blocks a swing (a fresh veteran often, a tired one or a recruit seldom) and
 raises the right guard; so do you, with your own guard.
 
+**Time your block.** Raise your guard - the right side, or a parry - just as the blow lands, and the man who swung reels far more often
+and for longer: up to about 2 seconds for a block made in the last moment (within about a sixth of a second), less the earlier you raised it,
+and a guard held up the whole time is an ordinary block. With the game's automatic block direction only the moment you press block counts; with
+a manual direction a late switch to the right side counts too. The AI times its blocks as well, less sharply, and never staggers you for more
+than about a second. Switch: *Timed blocks* (Staggers and knockdowns).
+
 **The enemy goes for the opening.** When a man reels or lies on the ground — you included — the men fighting
 him press it at once.
 

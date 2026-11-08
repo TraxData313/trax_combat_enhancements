@@ -9275,3 +9275,29 @@ stand-in `IImpactBody` read), the slow-mo request added and removed (a fake miss
 3. Against a rider: knock him off, or also rear the horse when he stays on? - **both**: off at up to 40 % for a perfect shield block at a gallop
    (half with a weapon), else the horse rears.
 4. The push-out drops YOUR guard for ~0.25 s - **on for you too** (switchable), only on a well-timed block whose stagger landed.
+
+### 100b - built (2026-11-08)
+
+- **Core** `src/TraxCombat.Core/TimedBlock.cs`: `GuardClock` (Key, RaisedAt, Presses / Redirects; `Note(key, now, automatic)` - 0 → a guard starts
+  it, a manual change between two REAL directions restarts it, `UpNoDirection` (stage Defend / DefendParry with the flag 0) never counts as a switch),
+  `TimedBlockMath` (Score / GuardKey / ScoreOf / Chance / Length / ClassifyDefendName / VerdictOf / bands), `TimedBlockRules`, `TimedBlockResult`,
+  `TimedBlockStats`. `ImpactMath.Decide`: for every correct block `d.TimedScore` is set BEFORE the riposte branch (so it is counted even when the
+  riposte is refused); inside the branch `raw56 = RawChance(...) x RiposteBlockerFactor`, the roll gets `Chance(raw56, 85 %, s)` (the halving /
+  `ImpactOnPlayerPercent` are the Roll's factor - after the blend), `RiposteChance56 = clamp(raw56 x (dimA x scaleA))` - the roll's own product, so
+  an untimed block's two are bit-equal; the length: step 56's (with its die) first, then `Length(...)`. **No die is ever added**: score 0 draws
+  exactly step 56's dice (`TimedBlockTests.A_score_of_0_is_step_56_exactly` - 400 decisions, seeded dice, the next die compared).
+- **Module**: `Missions/GuardBody.cs` (`IGuardBody`; the game's: `TimedBlockMath.GuardKey((int)GetDefendMovementFlag(), (int)GetCurrentActionStage(1))`,
+  `BannerlordConfig.DefendDirectionControl == 2`, `ReadContact` - `GetCurrentAction(1)`, `ActionIndexCache.GetName()` ONCE per index (a
+  Dictionary), for an active one `MBActionSet.GetActionAnimationDuration / Flags (anf_cyclic) / ContinueToAction` once per (action set, action)
+  - the set's `GetHashCode()` is its index - and `GetCurrentActionProgress(1)` x the length = the age). `AthleticsLogic.TimedBlock.cs`:
+  `TickTimedBlocks` (TickImpact's own try), `FillTiming` (ImpactDecideEvent, its own try - an error = untimed), `TimedBlockDecided` (ImpactDecide,
+  after the riders' note), `TimedRiposteAccepted` (RunStagger's accepted riposte), `WriteTimedBlockSummary` (after the kick coverage line). The
+  smoke drives `ImpactDecide` with facts directly too - those blocks stay untimed (TimingSource None).
+- **What 100c needs**: `TimedBlockResult` has `Score`, `Source`, `AttackerMounted`, `Event`; a rider's correct block is SCORED (TimedScore set) and the
+  riposte still refused `Rider` - 100c adds its own roll beside it (the `d.TimedScore` is ready in Decide; the dismount roll needs `d.AttackerSpeed`,
+  `d.XRiposte` - both computed in the same branch). The rider's guard: the AI blocker's read is the same `FillTiming`; YOUR clock runs mounted too.
+  Summary: the `refused: ... a rider n (100c)` clause on the "timed ripostes" line counts the timed rolls refused on riders today.
+- **What 100d / 100e need**: `TimedRiposteAccepted(attacker, blocker, score, now)` is called from the tick the moment the engine took the riposte
+  stagger (the score carried by `ImpactBlockPending.Timed`); `ImpactLiveWatch.Timed` carries it to the seen / measured notes.
+- **Unverified until D64**: H / H' / C1 (the diagnostic line), the active defend's length (logged), whether the engine's `GetDefendMovementFlag` is the
+  player's held direction or the guard the engine shows (both give a press edge; the manual re-direction depends on it).

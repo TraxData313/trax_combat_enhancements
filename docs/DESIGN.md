@@ -3458,7 +3458,7 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     by an enemy within `ShieldWallFlankReleaseMetres` 4 in front (2 s hold), step 42's step out, no longer an end man, the wall moving / let go, the
     switch - the game's frame, tendency and shield written back at once. (f) MEASURED: the [summary] "wall flanks" line - the angle between each
     settled turned man's real facing and the asked one (UNVERIFIED that the engine honours a per-man facing in a line formation until a playtest).
-91. **Timed blocks** (step 100, PROPOSED - research 100a done 2026-11-08, not built; Toni 2026-11-08: "as I block just as the attack is landing to
+91. **Timed blocks** (step 100, DECIDED 2026-11-08 - Toni: "go" with the recommended answers (the AI at half strength, 1.2 s on you, 0.15 / 0.5 s); (a) + (b) BUILT in step 100b 2026-11-08, (c)-(e) to come; Toni 2026-11-08: "as I block just as the attack is landing to
     trigger the stagger up to 2 sec long in a nicely timed block, making the blocking mechanic more skill based. Same with blocking with weapons";
     AI_NOTES "Step 100"). (a) TIMING: a GUARD CLOCK per man - the time his guard went up (the press; in a manual block-direction mode also a switch
     to another side, never in the game's automatic mode); the player's read every tick (`GetDefendMovementFlag` + the channel-1 stage), the AI's
@@ -3475,6 +3475,10 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     block with s ≥ 0.8 whose outcome landed - a `Mission.TimeSpeedRequest` of 0.3 eased back to 1 over 0.5 s REAL time, a 4 s cooldown, always
     removed. (f) Two player-page switches (`TimedBlocksEnabled`, `TimedBlockSlowMo`), the rest Advanced / Impact; new keys only - no config format
     bump. Build order 100b (clock + riposte, the diagnostic first), 100c (riders), 100e (slow-mo), 100d (push-out), 100f (review).
+    (g) AS BUILT in 100b: the AI's channel-1 action is classified by its NAME (`act_defend_*_active` / `_passive` / `_parry_*`, once per action
+    index); a failing read = untimed; the timed blend lives inside step 56's riposte row - `RiposteStaggerMaxPercent` 0 = no ripostes, timed or not; a
+    correct block on a rider is SCORED (the `TimedBlockResult` seam for 100c) but its riposte stays refused (`Rider`); the engine's verdict x the
+    channel-1 read x your clock's age band is logged, never a gate (the [summary] "timed blocks - the engine's verdict" line, PLAYTEST D64).
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),
 `HudRefreshSeconds`, `FormationStatsRefreshSeconds` came out of step 2's research

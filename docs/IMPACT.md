@@ -237,6 +237,12 @@ a 4 kg shield). Made since step 51 by a forced stagger of the attacker (`act_sta
 fresh 28%, a fresh man parrying an equal at 20% 66%, the veteran himself at 50% still 70%; the attacker at 50% / 25% / 0% into a FRESH guard
 41% / 70% / 70%, into a guard as tired as he is 28% / 62% / 70%, into an EMPTY guard 18% / 52% / 70%.
 
+**Step 100b - the TIMED riposte** (DESIGN decision 91, AI_NOTES "Step 100"): a correct block's timing score s (1 = the guard went up within
+`TimedBlockPerfectSeconds` 0.15 s of the hit, 0 from `TimedBlockWindowSeconds` 0.5 s; the AI's x 0.5) lifts the riposte's raw chance to
+p56 + (`TimedBlockRiposteMaxPercent` 85 % − p56) × s and its length to L56 + (`TimedBlockStaggerMaxSeconds` 2.0 − L56) × s (on you at most 1.2 s);
+the halving, immunity and `ImpactOnPlayerPercent` act after it; s 0 = this section exactly. Two fresh even men: ~1 % untimed, 85 % / 2.0 s for a
+perfect block, 43 % / ~1.3 s at s 0.5.
+
 ### 3.7 How long (the randomness grows with tiredness — points 2, 3, 4)
 
 Every length = base × (1 + extra × T) × a roll in [1 − r, 1 + r], r = `ImpactRandomPercent` 30% × T (a fresh man's stagger is
