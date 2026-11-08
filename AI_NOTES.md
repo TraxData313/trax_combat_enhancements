@@ -8990,7 +8990,7 @@ the ShieldWall arrangement only. Built as section 3 proposed, with these details
 - **Smoke environment fix**: the offline smoke's MCM phase looked for 0Harmony only in the Workshop folder 2859188632, gone from this PC since the
   mods moved into `Modules\` (2026-11-04) - six MCM checks failed for that alone. It now also looks in `Modules\Bannerlord.Harmony\bin`.
 
-## Step 100 — timed blocks (research 100a, 2026-11-08; build 100b-100f to come)
+## Step 100 — timed blocks (research 100a, 2026-11-08; 100b + 100e built, 100c DROPPED by Toni, 100d / 100f to come)
 
 Toni 2026-11-08: "add a mechanic that increases the correct way shield block to stagger, but make it so that as I block just as the attack
 is landing to trigger the stagger up to 2 sec long in a nicely timed block, making the blocking mechanic more skill based. Same with blocking
@@ -9091,6 +9091,11 @@ D:\ path of Directory.Build.props - Directory.Build.props.user points here). Lin
   left out), step 62's thrown-back roll (stays on the charge share).
 
 ### 3. MOUNTED - bringing the rider down
+
+**DROPPED by Toni 2026-11-08 ("skip the mounted part").** Riders keep 100b's behaviour: a correct block on a rider is scored but its riposte
+stays refused (`ImpactRefusal.Rider`); no dismount / rear roll was built (a half-done local 100c was discarded, never pushed). The research below
+is kept for the record only.
+
 
 - **Today**: a correct block against a rider rolls the riposte and REFUSES it (`f.AttackerMounted` → `ImpactRefusal.Rider`; "ripostes refused
   on a mounted attacker 31" in Toni's 2026-11-08 10:38 battle). Riders never get `act_stagger_*` (the horse shares channel 0 - RBM crashed with
@@ -9240,7 +9245,7 @@ stand-in `IImpactBody` read), the slow-mo request added and removed (a fake miss
   `Missions/AthleticsLogic.ImpactBlocks.cs` (YOU lines), `Missions/AthleticsLogic.Engine.cs` / `.ShieldArc.cs` (`BlockKindOf` keeps the
   CollisionResult for the verdict line); tests `TimedBlockTests.cs`, `ImpactTests.cs`, `RightBlocksTests.cs`, `SettingsPagesTests.cs`; the
   smoke; docs DESIGN (decision 91 → built, the rows), IMPACT §3.6, HOW-IT-WORKS §11c, PLAYTEST D64, TASKS_DONE.
-- **100c - riders down** - Core `TimedBlock.cs` (`RiderDown`), `Impact.cs` (a `TimedDismount` / `TimedRear` roll beside the Rider-refused
+- **100c - riders down** - DROPPED by Toni 2026-11-08 (see §3); kept for the record: Core `TimedBlock.cs` (`RiderDown`), `Impact.cs` (a `TimedDismount` / `TimedRear` roll beside the Rider-refused
   riposte), `ImpactRiders.cs` (stats); Module `Missions/ImpactBody.cs` (`OwnRearBlow` on the mount - the drowning recipe with `MakesRear`),
   `Missions/AthleticsLogic.ImpactRiders.cs` (queue / follow / seen), `Missions/AthleticsLogic.ImpactBlocks.cs` (the queue action), settings,
   tests `ImpactRidersTests.cs`, PLAYTEST D65.
@@ -9301,3 +9306,30 @@ stand-in `IImpactBody` read), the slow-mo request added and removed (a fake miss
   stagger (the score carried by `ImpactBlockPending.Timed`); `ImpactLiveWatch.Timed` carries it to the seen / measured notes.
 - **Unverified until D64**: H / H' / C1 (the diagnostic line), the active defend's length (logged), whether the engine's `GetDefendMovementFlag` is the
   player's held direction or the guard the engine shows (both give a press edge; the manual re-direction depends on it).
+
+### 100e - built (2026-11-08)
+
+- **Core** `src/TraxCombat.Core/TimedSlowMo.cs`: `TimedSlowMoRules` (ModEnabled FIRST, Athletics + ImpactEnabled, TimedBlocksEnabled,
+  `TimedBlockSlowMo`; the float settings rounded to 5 decimals - 0.8f is 0.80000001, and a score of exactly 0.8 must pass), `TimedSlowMoMath`
+  (`Speed(t, floor, total)` - a smoothstep DOWN over min(0.05, total ÷ 10) real s, then ONE smoothstep back up to 1 at `total`: flat at both ends,
+  so the floor is effectively held a while; ~0.33 s of battle time at 0.3 / 0.5 s; `Decide` - Off / NotYou / LowScore / Multiplayer / Paused /
+  Playing / Cooldown / OtherRequest in that order; `OtherSlowing` - a vanilla id present or the scene slower than our ask by 0.01+),
+  `TimedSlowMo` (the state: Start / Step / Stalled - a 0.25 s real gap between our ticks = a pause / stall), `TimedSlowMoStats` (the line).
+- **Module** `Missions/SlowMoBody.cs` (`ISlowMoBody`; the game's: `Mission.Add/Remove/GetRequestedTimeSpeed`, `Scene.TimeSpeed`,
+  `TaleWorlds.Engine.Time.ApplicationTime`, `MBCommon.IsPaused || MissionState.Current.Paused`, `GameNetwork.IsSessionActive`), `Missions/
+  AthleticsLogic.TimedSlowMo.cs` (`MaybeStartSlowMo` from `TimedRiposteAccepted`; `TickSlowMo` in `OnMissionTick` after `TickImpact`, its own try,
+  run whatever the switches; `EndSlowMo`; `GiveBackSlowMo` from `OnEndMissionInternal` BEFORE `WriteSummary` and from `OnRemoveBehavior`;
+  `SlowMoFailed` disables it for the battle).
+- **Verified in the decompile (v1.4.8)**: `MissionState.OnTick` - `UpdateSceneTimeSpeed` runs BEFORE the mission tick, the dt x `Scene.TimeSpeed`
+  only when `!GameNetwork.IsSessionActive`; while paused the dt is 0 but the mission still ticks (so our tick sees the pause and gives back);
+  `RemoveTimeSpeedRequest` = `RemoveAt(-1)` on a missing id (throws) - we always ask first. The scene speed our tick reads = the lowest request
+  as of the frame's start = our previous ask unless someone else is lower.
+- **Choices**: the trigger threshold is AI_NOTES §5's 0.8 (the brief said "e.g. >= 0.7 - pick per AI_NOTES"); a request present at the start
+  (the order menu at 0.25, another mod) = SKIP, and one coming in during ours = we YIELD (remove ours) rather than combine; the AI's ripostes and
+  a switched-off slow-mo are not counted as skips (they are not candidates); riders untouched (100c dropped).
+- **What 100d needs**: `TimedRiposteAccepted(attacker, blocker, score, now)` now also calls `MaybeStartSlowMo(blocker, score)` - put the push-out
+  call beside it (its own try, like the slow-mo's). The push-out plays on the BLOCKER's channel 1 while the slow-mo may be running for YOUR
+  blocks: animation speeds are in mission time, so a 0.25 s push-out lasts ~0.75 real s during the floor - it will look slower on you; no code
+  conflict (the slow-mo touches only the time-speed request). Riders: none (dropped).
+- **Unverified until D66**: the feel (0.3 / 0.5 s), whether the sound pitches (§5 says the native sound probably keeps real time), and that
+  the vanilla order menu's slow-down (`SlowDownOnOrder`) never meets ours in practice.

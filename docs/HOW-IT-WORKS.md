@@ -301,6 +301,10 @@ and a guard held up the whole time is an ordinary block. With the game's automat
 a manual direction a late switch to the right side counts too. The AI times its blocks as well, less sharply, and never staggers you for more
 than about a second. Switch: *Timed blocks* (Staggers and knockdowns).
 
+**Slow motion on your best blocks.** When one of YOUR blocks is timed sharply and the attacker really reels, the game slows for a moment
+and eases back to normal over half a second - at most one every few seconds, never for the AI's blocks, never while the orders menu's own
+slow-down is on. Switch: *Slow motion on your best blocks* (Staggers and knockdowns).
+
 **The enemy goes for the opening.** When a man reels or lies on the ground — you included — the men fighting
 him press it at once.
 

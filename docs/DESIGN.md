@@ -3458,7 +3458,7 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     by an enemy within `ShieldWallFlankReleaseMetres` 4 in front (2 s hold), step 42's step out, no longer an end man, the wall moving / let go, the
     switch - the game's frame, tendency and shield written back at once. (f) MEASURED: the [summary] "wall flanks" line - the angle between each
     settled turned man's real facing and the asked one (UNVERIFIED that the engine honours a per-man facing in a line formation until a playtest).
-91. **Timed blocks** (step 100, DECIDED 2026-11-08 - Toni: "go" with the recommended answers (the AI at half strength, 1.2 s on you, 0.15 / 0.5 s); (a) + (b) BUILT in step 100b 2026-11-08, (c)-(e) to come; Toni 2026-11-08: "as I block just as the attack is landing to
+91. **Timed blocks** (step 100, DECIDED 2026-11-08 - Toni: "go" with the recommended answers (the AI at half strength, 1.2 s on you, 0.15 / 0.5 s); (a) + (b) BUILT in step 100b 2026-11-08, (e) BUILT in step 100e 2026-11-08, (c) DROPPED by Toni 2026-11-08 ("skip the mounted part" - riders keep 100b's refused riposte), (d) to come; Toni 2026-11-08: "as I block just as the attack is landing to
     trigger the stagger up to 2 sec long in a nicely timed block, making the blocking mechanic more skill based. Same with blocking with weapons";
     AI_NOTES "Step 100"). (a) TIMING: a GUARD CLOCK per man - the time his guard went up (the press; in a manual block-direction mode also a switch
     to another side, never in the game's automatic mode); the player's read every tick (`GetDefendMovementFlag` + the channel-1 stage), the AI's
@@ -3466,7 +3466,7 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     `TimedBlockPerfectSeconds` 0.15 of the hit, a smooth fall to 0 at `TimedBlockWindowSeconds` 0.5; the AI's x `TimedBlockAiPercent` 50, a parry's x
     `TimedBlockParryPercent` 100. (b) THE TIMED RIPOSTE: on a correct block the riposte chance blends from step 56's toward `TimedBlockRiposteMaxPercent`
     85 by s and its length toward `TimedBlockStaggerMaxSeconds` 2.0 (the proven `act_stagger_backward` at speed ~0.5), at most
-    `TimedBlockAgainstYouMaxSeconds` 1.2 on YOU; s 0 = step 56 exactly; halving, immunity and `ImpactOnPlayerPercent` unchanged. (c) RIDERS: a foot
+    `TimedBlockAgainstYouMaxSeconds` 1.2 on YOU; s 0 = step 56 exactly; halving, immunity and `ImpactOnPlayerPercent` unchanged. (c) RIDERS - DROPPED (Toni 2026-11-08: "skip the mounted part"; the design kept for the record, nothing built): a foot
     blocker's timed correct block (s ≥ 0.5) of a rider's melee blow (never a couched lance) knocks him off - step 53's own `CanDismount` blow - at
     `TimedBlockDismountMaxPercent` 40 x s² x (a weapon 50 %) x the horse's speed band (0.25 standing → 1 at a gallop) x the mismatch, else his horse
     rears (`MakesRear` on the mount) at `TimedBlockRearPercent` 50 x s. (d) THE PUSH-OUT: the blocker's channel 1 plays `act_shield_bash` /
@@ -3479,6 +3479,15 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     index); a failing read = untimed; the timed blend lives inside step 56's riposte row - `RiposteStaggerMaxPercent` 0 = no ripostes, timed or not; a
     correct block on a rider is SCORED (the `TimedBlockResult` seam for 100c) but its riposte stays refused (`Rider`); the engine's verdict x the
     channel-1 read x your clock's age band is logged, never a gate (the [summary] "timed blocks - the engine's verdict" line, PLAYTEST D64).
+    (h) AS BUILT in 100e: started from `TimedRiposteAccepted` (the engine took the stagger - "whose outcome landed") for YOUR block with s ≥
+    `TimedBlockSlowMoMinScore` 0.8 (Core `TimedSlowMoMath.Decide`: single player, not paused, none playing, past `TimedBlockSlowMoCooldownSeconds`
+    4 real s from the last start, and NO other time-speed request - a vanilla id 624 / 813 / 864 / 1121 present or the scene slower than our ask
+    = skipped, never fought); our request id 31100 replaced every tick with `TimedSlowMoMath.Speed(t)` on the REAL clock (`Engine.Time.ApplicationTime`):
+    a smoothstep down to `TimedBlockSlowMoSpeed` 0.3 over min(0.05, total ÷ 10) s, a smoothstep back to 1 at `TimedBlockSlowMoRealSeconds` 0.5 (~0.33 s
+    of battle time); given back (asked first - `RemoveTimeSpeedRequest` throws on a missing id) at the ramp's end, a switch / the master switch off,
+    a pause or a 0.25 s real-time stall, another request coming in under ours, you off the field, the mission end / the behaviour's removal (before
+    the summary, which checks nothing of ours is left - "must be 0"), a caught error (disabled for the battle); the [summary] "timed slow-mo" line
+    (PLAYTEST D66).
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),
 `HudRefreshSeconds`, `FormationStatsRefreshSeconds` came out of step 2's research
