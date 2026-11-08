@@ -173,6 +173,11 @@ namespace TraxCombat.Core
         /// <summary>Step 88: the bash is a weapon PUSH - a man with no shield bashing with his weapon (the collision's item is not a shield):
         /// its impact from the weapon (its weight, the weapon's skill - the module fills them), its meet judged with the guard UP as the correct one.</summary>
         public bool Push;
+
+        /// <summary>Step 100b, THE TIMED BLOCK: where the blocker's timing came from (<see cref="TimingSource.None"/> - the default - = an untimed
+        /// block, step 56 exactly) and his guard's age at contact (s; NaN / infinite = held or unknown) - <see cref="TimedBlockMath.ScoreOf"/>.</summary>
+        public TimingSource TimingSource;
+        public double GuardAge;
     }
 
     /// <summary>
@@ -376,6 +381,13 @@ namespace TraxCombat.Core
         public ImpactMeet Meet;
         public bool MeetAttacker, MeetBlocked;
 
+        /// <summary>Step 100b, THE TIMED BLOCK (a correct block only): the score s 0-1 (0 = untimed), its source and the guard's age; step 56's
+        /// riposte chance (before the blend, the limits applied - NaN = no row) and length (NaN = no riposte); the timed length held at the
+        /// you-cap; the attacker rides (100c's seam).</summary>
+        public double TimedScore, TimedAge, RiposteChance56, RiposteStun56;
+        public TimingSource TimedSource;
+        public bool TimedCappedForYou, AttackerMounted;
+
         /// <summary>Anything happens (a rolled outcome came up).</summary>
         public bool AnyOutcome => Knockdown.Happens || ShieldDrop.Happens || Stagger.Happens || Riposte.Happens || ThrownBack.Happens;
 
@@ -487,7 +499,11 @@ namespace TraxCombat.Core
             MultiplierCap = Math.Max(1, s.ImpactMultiplierCapPercent / 100.0);
             Brace = KickBraceRules.From(s);
             Meet = ImpactMeetRules.From(s);
+            Timed = TimedBlockRules.From(s);
         }
+
+        /// <summary>Step 100b: the timed block's rules (the master switch first, then TimedBlocksEnabled).</summary>
+        public TimedBlockRules Timed { get; }
 
         /// <summary>Step 82: the meet rules (the master switch first, then ImpactMeetRulesEnabled).</summary>
         public ImpactMeetRules Meet { get; }
@@ -1216,6 +1232,10 @@ namespace TraxCombat.Core
                 BraceDie = double.NaN,
                 BraceCut = double.NaN,
                 DefenderToughness = f.DefenderToughness,
+                TimedAge = double.NaN,
+                RiposteChance56 = double.NaN,
+                RiposteStun56 = double.NaN,
+                AttackerMounted = f.AttackerMounted,
             };
             if (IsAlternative(f.Event) && r.Meet.Enabled && !f.DefenderMounted && f.Meet != ImpactMeet.NotJudged)
             {
@@ -1256,6 +1276,13 @@ namespace TraxCombat.Core
 
             // the riposte: a right-side block or a parry, the roles turned (x_r = T_A + the mismatch turned), × (1 − k T_D) - step 56: k 0 by
             // default, so a tired man flailing into a good guard reels whoever holds it (step 48 was × f_D, k = 1)
+            // step 100b: a correct block's timing score (0 = untimed; NaN-free) - recorded for every correct block, used by the riposte below
+            if (CanRiposte(f.Event))
+            {
+                d.TimedSource = f.TimingSource;
+                d.TimedAge = f.TimingSource == TimingSource.None ? double.NaN : f.GuardAge;
+                d.TimedScore = TimedBlockMath.ScoreOf(r.Timed, f.Event, f.TimingSource, f.GuardAge, f.DefenderIsPlayer);
+            }
             bool throwBack = f.Event == ImpactEvent.RightBlock && r.RiposteKnockdownMax > 0 && d.ChargeShare > 0; // step 62: a shield, never a parry
             if (CanRiposte(f.Event) && r.RiposteOn && (r.RiposteMax > 0 || throwBack) && !down)
             {
@@ -1274,8 +1301,12 @@ namespace TraxCombat.Core
                         : f.AttackerMounted ? ImpactRefusal.Rider
                         : attacker.KnockdownImmune(now) ? ImpactRefusal.KnockdownImmune
                         : ImpactRefusal.None, dice);
+                // step 100b, THE TIMED BLOCK: the raw chance blended from step 56's toward TimedBlockRiposteMaxPercent by the score s - the
+                // halving, the immunity, ImpactOnPlayerPercent and the refusals all still apply after it; s 0 = step 56 exactly (no die added)
+                double raw56 = RawChance(r.RiposteMax, xr, r.StaggerFrom) * d.RiposteBlockerFactor;
+                if (r.RiposteMax > 0) d.RiposteChance56 = Math.Max(0, Math.Min(1, raw56 * dimA * scaleA));
                 if (r.RiposteMax > 0)
-                    d.Riposte = Roll(r.RiposteMax, RawChance(r.RiposteMax, xr, r.StaggerFrom) * d.RiposteBlockerFactor, na, dimA * scaleA,
+                    d.Riposte = Roll(r.RiposteMax, TimedBlockMath.Chance(raw56, r.Timed.RiposteMax, d.TimedScore), na, dimA * scaleA,
                         attacker.Down(now) ? ImpactRefusal.Down
                         : d.Knockdown.Happens || d.Stagger.Happens || d.ThrownBack.Happens ? ImpactRefusal.Replaced
                         : f.AttackerMounted ? ImpactRefusal.Rider
@@ -1318,6 +1349,11 @@ namespace TraxCombat.Core
                 double weight = Math.Max(0, Math.Min(1, Math.Max(ta, double.IsNaN(d.XRiposte) ? 0 : d.XRiposte)));
                 double s = r.RiposteStunMax * (0.5 + 0.5 * weight) * Spread(r.Random, ta, dice.NextDouble());
                 d.RiposteStunSeconds = Math.Max(0, Math.Min(Math.Max(0, r.StunCap), s));
+                // step 100b: the timed length - from step 56's toward TimedBlockStaggerMaxSeconds by s (the stun cap; on YOU at most
+                // TimedBlockAgainstYouMaxSeconds, never shorter than step 56's); s 0 = step 56's length exactly
+                d.RiposteStun56 = d.RiposteStunSeconds;
+                d.RiposteStunSeconds = TimedBlockMath.Length(d.RiposteStunSeconds, d.TimedScore, r.Timed.StaggerMax, r.StunCap, f.AttackerIsPlayer, r.Timed.AgainstYouMax,
+                    out d.TimedCappedForYou);
                 attacker.Reel(now + d.RiposteStunSeconds, r.StaggerImmunity);
                 attacker.NoteOutcome(now);
             }
@@ -1611,6 +1647,10 @@ namespace TraxCombat.Core
                 s += RollText(" THROWN BACK" + why, in d.ThrownBack);
                 s += RollText(" riposte" + why, in d.Riposte);
             }
+            if (d.TimedScore > 0) // step 100b: the timed block
+                s += " TIMED block (" + TimedBlockMath.SourceName(d.TimedSource) + (double.IsNaN(d.TimedAge) || double.IsInfinity(d.TimedAge) ? string.Empty : ", guard up " + d.TimedAge.ToString("0.00", c) + " s")
+                     + ", score " + d.TimedScore.ToString("0.00", c) + ": the riposte " + (double.IsNaN(d.RiposteChance56) ? "-" : (100 * d.RiposteChance56).ToString("0.0", c) + "%") + " untimed"
+                     + (double.IsNaN(d.RiposteStun56) ? string.Empty : ", " + d.RiposteStun56.ToString("0.00", c) + " s untimed") + (d.TimedCappedForYou ? ", held at the you-cap" : string.Empty) + ");";
             if (!double.IsNaN(d.ThrownBackGetUpFactor)) s += " the attacker gets up x" + d.ThrownBackGetUpFactor.ToString("0.00", c) + " slower;";
             if (d.Brace != KickBraceOutcome.NotAsked)
                 s += " BRACE (step 65): " + (d.BraceSpent ? "none - a spent man (below the brace's bar)"

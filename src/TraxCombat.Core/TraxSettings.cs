@@ -616,6 +616,14 @@ namespace TraxCombat.Core
         public int MeetAiReadScalePercent => GetInt(SettingsSchema.MeetAiReadScalePercent); // step 82
         public float MeetAiReadReactionSeconds => GetFloat(SettingsSchema.MeetAiReadReactionSeconds); // step 82
         public float MeetAiReadMaxHoldSeconds => GetFloat(SettingsSchema.MeetAiReadMaxHoldSeconds); // step 82
+        public bool TimedBlocksEnabled => GetBool(SettingsSchema.TimedBlocksEnabled); // step 100b
+        public float TimedBlockPerfectSeconds => GetFloat(SettingsSchema.TimedBlockPerfectSeconds); // step 100b
+        public float TimedBlockWindowSeconds => GetFloat(SettingsSchema.TimedBlockWindowSeconds); // step 100b
+        public int TimedBlockRiposteMaxPercent => GetInt(SettingsSchema.TimedBlockRiposteMaxPercent); // step 100b
+        public float TimedBlockStaggerMaxSeconds => GetFloat(SettingsSchema.TimedBlockStaggerMaxSeconds); // step 100b
+        public float TimedBlockAgainstYouMaxSeconds => GetFloat(SettingsSchema.TimedBlockAgainstYouMaxSeconds); // step 100b
+        public int TimedBlockParryPercent => GetInt(SettingsSchema.TimedBlockParryPercent); // step 100b
+        public int TimedBlockAiPercent => GetInt(SettingsSchema.TimedBlockAiPercent); // step 100b
         public int AiNoShieldKickPercent => GetInt(SettingsSchema.AiNoShieldKickPercent); // step 81
         public int AiNoShieldPushPercent => GetInt(SettingsSchema.AiNoShieldPushPercent); // step 88
         public float AiKickReachMetres => GetFloat(SettingsSchema.AiKickReachMetres);

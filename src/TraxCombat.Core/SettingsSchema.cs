@@ -201,6 +201,11 @@ namespace TraxCombat.Core
             "Meeting kicks and bashes",
             "On: a shield bash met with a guard to the RIGHT (the side it comes from) or a kick met with a guard DOWN throws the attacker off balance - he may stagger or fall, the defender holds. Met with the wrong guard, no guard or mid-swing, the man hit is at risk instead. The AI reads an incoming kick or bash about as well as it blocks a swing, worse when tired. Off: kicks and bashes as before. The chances: Advanced page, Impact.");
 
+        // Step 100b (Toni 2026-11-08: "making the blocking mechanic more skill based"): the timed block's switch - DESIGN decision 91.
+        public static readonly ParamDef TimedBlocksEnabled = Bool("TimedBlocksEnabled", PlayerImpactGroup,
+            "Timed blocks",
+            "A right block or parry made just as the blow lands (the guard raised within about half a second before it) makes the attacker likelier to stagger, and for longer - up to 2 s for a nicely timed one. A guard held up the whole time counts as an ordinary block. The AI times its blocks too, less sharply, and never staggers you longer than 1.2 s. Off: ordinary blocks only. The numbers: Advanced page, Impact.");
+
         // Step 33 (Anton, 2026-10-12: "a short burst of speed, meant to feel a little like a dodge, and for the AI to make charges
         // sharper"): Core SprintMath, AI_NOTES "Step 33".
         public static readonly ParamDef SprintEnabled = Bool("SprintEnabled", PlayerSprintGroup,
@@ -1850,6 +1855,36 @@ namespace TraxCombat.Core
             "Meet: the AI holds the read guard at most (s)",
             "The read guard is let go after this long if no hit came (a miss, a kick that never played).");
 
+        // Step 100b (Toni 2026-11-08: "as I block just as the attack is landing to trigger the stagger up to 2 sec long in a nicely timed
+        // block"): the timed block's numbers - Core TimedBlockMath, AI_NOTES "Step 100", DESIGN decision 91.
+        public static readonly ParamDef TimedBlockPerfectSeconds = Float("TimedBlockPerfectSeconds", 0, 0.5, ImpactGroup,
+            "Timed blocks: perfect within (s)",
+            "A guard raised this close before the blow lands counts as a perfect timing (the full timed riposte). Between this and the window below the timing fades smoothly.");
+
+        public static readonly ParamDef TimedBlockWindowSeconds = Float("TimedBlockWindowSeconds", 0.1, 1.5, ImpactGroup,
+            "Timed blocks: no timing after (s)",
+            "A guard raised earlier than this before the blow lands counts as an ordinary block (no timing at all) - a guard held up the whole time is never a timed block.");
+
+        public static readonly ParamDef TimedBlockRiposteMaxPercent = Int("TimedBlockRiposteMaxPercent", 0, 100, ImpactGroup,
+            "Timed blocks: riposte chance of a perfect block (%)",
+            "The chance that a perfectly timed correct block (right-side shield or parry) staggers the attacker. A less sharp timing lifts the ordinary riposte chance part of the way here; an untimed block keeps the ordinary chance. Halved on a man staggered often, never on a man still immune, x 'Against you' for you.");
+
+        public static readonly ParamDef TimedBlockStaggerMaxSeconds = Float("TimedBlockStaggerMaxSeconds", 0.5, 3, ImpactGroup,
+            "Timed blocks: stagger after a perfect block (s)",
+            "How long the attacker reels after a perfectly timed correct block; a less sharp timing lengthens the ordinary riposte stagger part of the way here. Never beyond the stun cap ('Impact: stun cap').");
+
+        public static readonly ParamDef TimedBlockAgainstYouMaxSeconds = Float("TimedBlockAgainstYouMaxSeconds", 0.5, 3, ImpactGroup,
+            "Timed blocks: longest timed stagger on you (s)",
+            "When an AI soldier times his block on YOUR blow, your stagger is lengthened at most to this - a long stagger in a crowd is a death sentence. Never shorter than the ordinary riposte stagger.");
+
+        public static readonly ParamDef TimedBlockParryPercent = Int("TimedBlockParryPercent", 0, 100, ImpactGroup,
+            "Timed blocks: a weapon parry counts (%)",
+            "A weapon parry's timing counts this much of a shield block's. 100 = the same; 0 = only shield blocks can be timed.");
+
+        public static readonly ParamDef TimedBlockAiPercent = Int("TimedBlockAiPercent", 0, 100, ImpactGroup,
+            "Timed blocks: an AI soldier's timing counts (%)",
+            "An AI soldier's block timing counts this much of yours (the game raises AI guards late on its own, so a full share would turn duels into long stun locks). 0 = only you can time a block.");
+
         public static readonly ParamDef ImpactMismatchWeight = Float("ImpactMismatchWeight", 0, 2, ImpactGroup,
             "Mismatch weight (pressure per doubling)",
             "How much an outmatched man suffers: every doubling of the mismatch beyond the even band adds this to the pressure on him (0.25: an enemy four times stronger counts as much as being about a third tired). 0 = only tiredness counts.");
@@ -2467,7 +2502,7 @@ namespace TraxCombat.Core
             DamageRandomPercent, DamageReductionPercent, TiredDamageAtEmptyPercent,
             AthleticsEnabled, CostPerBlow, HeroCostMultiplier,
             AiAggressionFreshPercent, AiAggressionExhaustedPercent, FeverEnabled, ShieldWallHoldsSlots, ShieldWallStepOutMetres, ShieldWallStandFirm, ShieldWallFlanksFaceOut, SpearPreferenceEnabled, PressDontPass, RotationEnabled, RestEnabled, WarCriesEnabled, CourageEnabled, CavalryFlockEnabled, LineDisciplineForPlayer,
-            ImpactEnabled, ImpactOnPlayerPercent, ImpactMeetRulesEnabled,
+            ImpactEnabled, ImpactOnPlayerPercent, ImpactMeetRulesEnabled, TimedBlocksEnabled,
             SprintEnabled, SprintKey, SprintControllerKey,
             ShowPlayerBar, AltMarksEveryone, ImpactShowMessages,
             GiveTier1Shields,
@@ -2546,6 +2581,8 @@ namespace TraxCombat.Core
             MeetBashShieldWrongShieldDropPercent, MeetBashWeaponWrongStaggerPercent, MeetBashWeaponWrongFallPercent, MeetBashOpenStaggerPercent, MeetBashOpenFallPercent, MeetBashOpenShieldDropPercent,
             MeetKickShieldDownStaggerPercent, MeetKickShieldDownFallPercent, MeetKickWeaponDownStaggerPercent, MeetKickWeaponDownFallPercent, MeetAiReadScalePercent, MeetAiReadReactionSeconds,
             MeetAiReadMaxHoldSeconds,
+            TimedBlockPerfectSeconds, TimedBlockWindowSeconds, TimedBlockRiposteMaxPercent, TimedBlockStaggerMaxSeconds, TimedBlockAgainstYouMaxSeconds,
+            TimedBlockParryPercent, TimedBlockAiPercent,
             ImpactMismatchWeight, ImpactEvenBandDoublings, ImpactBodyExponent, ImpactBodyFloorPoints, ImpactStaggeredBonus, ImpactDamageWeight,
             ImpactRefWeightKg, ImpactWeightExponent, ImpactRefSwingSpeed, ImpactSpeedExponent, ImpactBluntFactor, ImpactCutFactor, ImpactPierceFactor,
             ImpactKickFactor, ImpactBashFactor, ImpactSkillMinFactor, ImpactSkillMaxFactor,

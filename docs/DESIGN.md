@@ -1636,6 +1636,7 @@ row goes to the Advanced page unless a player needs it to set up his game (CLAUD
 | `ShieldPickupLockSeconds` | 0.0 | Step 48: a dropped shield cannot be picked up for this long; 0 = vanilla's pickup (IMPACT §8 q3). Step 50: applied to the AI through a decorator of the game's `ItemPickupModel` (the player's use key is never locked). Range 0-120. |
 | `ImpactOnPlayerPercent` | 100 | Step 48: every chance against YOU × this % (IMPACT §8 q5). Range 0-100. |
 | `ImpactMeetRulesEnabled` | true | Step 82 (decision 78, Toni 2026-10-22): THE MEET RULES - a kick / bash is judged by the guard that met it at contact (`ImpactMeetMath.Classify`): a bash met by a guard RIGHT or a kick met by a guard DOWN = the ATTACKER at risk (the rows below, the riposte's pressure), the defender holds; any other guard = the defender's rows; the AI reads an incoming kick / bash. The PLAYER page ("Staggers and knockdowns"). Off = step 65 exactly (a bash into a raised shield decides nothing). Live. |
+| `TimedBlocksEnabled` | true | Step 100b (decision 91, Toni 2026-11-08): TIMED BLOCKS - a CORRECT block (right-side shield, parry) whose guard went up just before the blow lands lifts the attacker's riposte from step 56's chance / length toward `TimedBlockRiposteMaxPercent` / `TimedBlockStaggerMaxSeconds` by the timing score (`TimedBlockMath.ScoreOf`); score 0 = step 56 exactly. The PLAYER page ("Staggers and knockdowns"). Off = step 56. Live. |
 | `ImpactRiderDismountPercent` | 50 | Step 48: a rider's "knockdown" = knocked off at this % of the knockdown chance; never a stagger on a rider (IMPACT §3.8, §8 q4). Range 0-100. |
 | `ImpactTiredNeverShrugsOff` | true | Step 48: a tired man's flinch threshold × f - he shrugs off less (I5). Step 52: applied in the damage decorator's `DecideAgentShrugOffBlow` (main thread) to a clean hit on a man on foot while clean hits are live - the game's threshold × (1 − T), T × `ImpactOnPlayerPercent` for you. Live. |
 | `ImpactMomentumEnabled` | true | Step 52, MOMENTUM (Anton 2026-10-17: a fresh shock unit charging a tired line must be devastating): the attacker's own speed into the blow adds impact - kicks, bashes and weapon blows, blocked or not; a rider's = his horse's speed at the rider settings (step 53, below). Live. |
@@ -1712,6 +1713,13 @@ row goes to the Advanced page unless a player needs it to set up his game (CLAUD
 | `MeetAiReadScalePercent` | 100 | Step 82 (decision 78): THE AI READS IT - an AI man targeted by a kick / bash that is starting rolls once at this % × the chance he blocks a swing correctly (`ImpactMeetMath.ReadChance` = the game's `AIBlockOnDecideAbility` × (1 − 3/4 × `AiRandomizedDefendDirectionChance`) - step 30's tired guess inside); read = the correct guard (DefendRight / DefendDown) through step 16's input hook. 0 = never. Range 0-200. Live. |
 | `MeetAiReadReactionSeconds` | 0.15 | Step 82 (decision 78): a reader raises the guard this long after the kick / bash began; a hit sooner = a read too late (counted). Range 0-1. Live. |
 | `MeetAiReadMaxHoldSeconds` | 1.5 | Step 82 (decision 78): the read guard is let go after this long without the hit (a miss, a kick never played). Range 0.2-3. Live. |
+| `TimedBlockPerfectSeconds` | 0.15 | Step 100b (decision 91): a guard raised this close before the hit = a perfect timing (score 1). Range 0-0.5. Live. |
+| `TimedBlockWindowSeconds` | 0.5 | Step 100b: a guard raised earlier than this before the hit = no timing (score 0); between, a smoothstep fall from the perfect. Range 0.1-1.5. Live. |
+| `TimedBlockRiposteMaxPercent` | 85 | Step 100b: the riposte chance a perfect correct block lifts to: p = p56 + (this − p56) × s; the halving, immunity and `ImpactOnPlayerPercent` after it. Range 0-100. Live. |
+| `TimedBlockStaggerMaxSeconds` | 2.0 | Step 100b: the attacker's stagger after a perfect correct block: L = L56 + (this − L56) × s, at most `ImpactStunCapSeconds`. Range 0.5-3. Live. |
+| `TimedBlockAgainstYouMaxSeconds` | 1.2 | Step 100b: the longest timed stagger the AI can put on YOU (never shorter than step 56's length). Range 0.5-3. Live. |
+| `TimedBlockParryPercent` | 100 | Step 100b: a weapon parry's share of the timing score. Range 0-100. Live. |
+| `TimedBlockAiPercent` | 50 | Step 100b: an AI blocker's share of the timing score (Toni: the AI times blocks too, at half strength). Range 0-100. Live. |
 | `ImpactMismatchWeight` | 0.25 | Step 48: x per doubling of the mismatch R beyond the even band. Range 0-2. |
 | `ImpactEvenBandDoublings` | 0.5 | Step 48: a mismatch within ± this many doublings (×1.41) = an even match (adds 0). Range 0-3. |
 | `ImpactBodyExponent` | 0.5 | Step 48: the body = his CURRENT points to this power. Range 0-2. |
@@ -1873,14 +1881,6 @@ Item 3 is built (step 20, hold ALT); what is left of it is an always-on form abo
 | `TargetBarLingerSeconds` | 2 | Seconds the bar stays after your aim leaves the fighter. | LATER (step 7) |
 | `FormationBarsAlways` | false | true: the formation numbers always shown above the formations (our own projection - step 20's fallback), not only while vanilla shows its markers. | LATER (an always-on form of step 20) |
 | `FormationBarHeight` | 3.0 | Metres above the formation's centre for those always-on numbers (vanilla's markers use 3). | LATER (an always-on form of step 20) |
-| `TimedBlocksEnabled` | true | Step 100 (decision 91, PROPOSED): timed blocks on / off - player page, "Staggers and knockdowns". | step 100b |
-| `TimedBlockPerfectSeconds` | 0.15 | Guard raised this close to the hit = a perfect timing (score 1). Advanced, Impact. | step 100b |
-| `TimedBlockWindowSeconds` | 0.5 | Guard raised earlier than this before the hit = no timing (score 0). | step 100b |
-| `TimedBlockRiposteMaxPercent` | 85 | The riposte chance a perfect correct block lifts to (from step 56's, by the score). | step 100b |
-| `TimedBlockStaggerMaxSeconds` | 2.0 | The attacker's stagger after a perfect correct block (from step 56's length, by the score). | step 100b |
-| `TimedBlockAgainstYouMaxSeconds` | 1.2 | The longest timed stagger the AI can put on you. | step 100b |
-| `TimedBlockParryPercent` | 100 | A weapon parry's share of the timing score. | step 100b |
-| `TimedBlockAiPercent` | 50 | An AI blocker's share of the timing score. | step 100b |
 | `TimedBlockDismountMinScore` | 0.5 | The timing a correct block needs to bring a rider down. | step 100c |
 | `TimedBlockDismountMaxPercent` | 40 | The chance a perfect shield block knocks a galloping rider off (x score², x the horse's speed band, x the mismatch). | step 100c |
 | `TimedBlockDismountWeaponPercent` | 50 | A weapon parry's share of that chance. | step 100c |

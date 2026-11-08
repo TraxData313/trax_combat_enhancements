@@ -140,13 +140,15 @@ public class ImpactTests
             "MeetBashWeaponWrongFallPercent", "MeetBashOpenStaggerPercent", "MeetBashOpenFallPercent", "MeetBashOpenShieldDropPercent",
             "MeetKickShieldDownStaggerPercent", "MeetKickShieldDownFallPercent", "MeetKickWeaponDownStaggerPercent", "MeetKickWeaponDownFallPercent",
             "MeetAiReadScalePercent", "MeetAiReadReactionSeconds", "MeetAiReadMaxHoldSeconds",
+            "TimedBlockPerfectSeconds", "TimedBlockWindowSeconds", "TimedBlockRiposteMaxPercent", "TimedBlockStaggerMaxSeconds", // step 100b
+            "TimedBlockAgainstYouMaxSeconds", "TimedBlockParryPercent", "TimedBlockAiPercent",
             "ImpactMismatchWeight", "ImpactEvenBandDoublings",
             "ImpactBodyExponent", "ImpactBodyFloorPoints", "ImpactStaggeredBonus", "ImpactDamageWeight", "ImpactRefWeightKg", "ImpactWeightExponent",
             "ImpactRefSwingSpeed", "ImpactSpeedExponent", "ImpactBluntFactor", "ImpactCutFactor", "ImpactPierceFactor", "ImpactKickFactor", "ImpactBashFactor",
             "ImpactSkillMinFactor", "ImpactSkillMaxFactor", "ImpactGuardShieldRight", "ImpactGuardParry", "ImpactGuardShieldWrong", "ImpactGuardNone",
             "ImpactStaggerFrom", "ImpactShieldDropFrom", "ImpactKnockdownFrom",
         };
-        Assert.Equal(135, keys.Length); // step 95: + 3 (AiBashStepIn, AiBashStepInToMetres, AiBashStepInMaxSeconds); step 91: + 1 (AiBashReachMetres); step 90: + 2 (AiKickBlockAheadMetres / AiKickBlockSideMetres); step 88: + 1 (AiNoShieldPushPercent); step 82: + 19 (the meet rows and the AI's read; the switch is on the player page, not in this list); step 81: - 14 + 3 (the shares); step 80's 2; step 68's 1; step 66's 5; step 65's 21; step 63's 2 + step 48's 60 + step 52's momentum 4 + step 53's rider momentum 3 and on-screen lines 3 + step 54's punish 4 + step 56's 2 + step 62's
+        Assert.Equal(142, keys.Length); // step 100b: + 7 (the timed block's numbers; its switch is on the player page, not in this list); step 95: + 3 (AiBashStepIn, AiBashStepInToMetres, AiBashStepInMaxSeconds); step 91: + 1 (AiBashReachMetres); step 90: + 2 (AiKickBlockAheadMetres / AiKickBlockSideMetres); step 88: + 1 (AiNoShieldPushPercent); step 82: + 19 (the meet rows and the AI's read; the switch is on the player page, not in this list); step 81: - 14 + 3 (the shares); step 80's 2; step 68's 1; step 66's 5; step 65's 21; step 63's 2 + step 48's 60 + step 52's momentum 4 + step 53's rider momentum 3 and on-screen lines 3 + step 54's punish 4 + step 56's 2 + step 62's
         // Step 59: three of them on the player page - the switch and "against you" ("Staggers and knockdowns"), the on-screen lines
         // ("On screen"); the other 73 stay in this group in order.
         var player = new[] { "ImpactEnabled", "ImpactOnPlayerPercent", "ImpactShowMessages" };

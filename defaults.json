@@ -253,6 +253,14 @@
   // (true or false)
   "ImpactMeetRulesEnabled": true,
 
+  // A right block or parry made just as the blow lands (the guard raised within about half a
+  // second before it) makes the attacker likelier to stagger, and for longer - up to 2 s for a
+  // nicely timed one. A guard held up the whole time counts as an ordinary block. The AI times
+  // its blocks too, less sharply, and never staggers you longer than 1.2 s. Off: ordinary
+  // blocks only. The numbers: Advanced page, Impact.
+  // (true or false)
+  "TimedBlocksEnabled": true,
+
   // ==================== Sprinting ====================
   // Every fighter on foot has a sprint: a short burst of speed stored in seconds - the more
   // Athletics he has left, the longer (150 points = 7.5 s; empty = none). Hold the sprint key
@@ -2460,6 +2468,46 @@
   // The read guard is let go after this long if no hit came (a miss, a kick that never played).
   // (range 0.2 to 3.0)
   "MeetAiReadMaxHoldSeconds": 1.5,
+
+  // A guard raised this close before the blow lands counts as a perfect timing (the full timed
+  // riposte). Between this and the window below the timing fades smoothly.
+  // (range 0.0 to 0.5)
+  "TimedBlockPerfectSeconds": 0.15,
+
+  // A guard raised earlier than this before the blow lands counts as an ordinary block (no
+  // timing at all) - a guard held up the whole time is never a timed block.
+  // (range 0.1 to 1.5)
+  "TimedBlockWindowSeconds": 0.5,
+
+  // The chance that a perfectly timed correct block (right-side shield or parry) staggers the
+  // attacker. A less sharp timing lifts the ordinary riposte chance part of the way here; an
+  // untimed block keeps the ordinary chance. Halved on a man staggered often, never on a man
+  // still immune, x 'Against you' for you.
+  // (range 0 to 100)
+  "TimedBlockRiposteMaxPercent": 85,
+
+  // How long the attacker reels after a perfectly timed correct block; a less sharp timing
+  // lengthens the ordinary riposte stagger part of the way here. Never beyond the stun cap
+  // ('Impact: stun cap').
+  // (range 0.5 to 3.0)
+  "TimedBlockStaggerMaxSeconds": 2.0,
+
+  // When an AI soldier times his block on YOUR blow, your stagger is lengthened at most to this
+  // - a long stagger in a crowd is a death sentence. Never shorter than the ordinary riposte
+  // stagger.
+  // (range 0.5 to 3.0)
+  "TimedBlockAgainstYouMaxSeconds": 1.2,
+
+  // A weapon parry's timing counts this much of a shield block's. 100 = the same; 0 = only
+  // shield blocks can be timed.
+  // (range 0 to 100)
+  "TimedBlockParryPercent": 100,
+
+  // An AI soldier's block timing counts this much of yours (the game raises AI guards late on
+  // its own, so a full share would turn duels into long stun locks). 0 = only you can time a
+  // block.
+  // (range 0 to 100)
+  "TimedBlockAiPercent": 50,
 
   // How much an outmatched man suffers: every doubling of the mismatch beyond the even band
   // adds this to the pressure on him (0.25: an enemy four times stronger counts as much as
