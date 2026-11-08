@@ -11,7 +11,7 @@ Board = TASKS_TODO.md BUILD ORDER step 100 (manager protocol in CLAUDE.md).
 - [x] 100a. Research + design (AI_NOTES "Step 100"), no code: how to measure block timing; how it plugs into the existing Impact / riposte stagger (step 56); 2 s stagger; mounted attacker down; blocker push animation; slow-mo API; settings proposal
 - [x] 100b. Core: timed-block window + longer riposte stagger (shield + parry), settings, tests, build, deploy, commit, push
 - [-] 100c. Mounted charge - SKIPPED (Toni 2026-11-08: 'skip the mounted part'); the half-done local work was dropped, never pushed
-- [ ] 100e. Player slow-mo on a well-timed block (moved ahead of the animation)
+- [x] 100e. Player slow-mo on a well-timed block (moved ahead of the animation)
 - [ ] 100d. Blocker push-out animation on a timed block
 - [ ] 100f. Independent review + fixes, PLAYTEST entry, close step 100
 
@@ -26,3 +26,7 @@ Board = TASKS_TODO.md BUILD ORDER step 100 (manager protocol in CLAUDE.md).
   For 100c: a correct block vs a rider has TimedScore + TimedBlockResult.AttackerMounted but riposte still refused as Rider - add dismount/rear roll next to it in Decide (d.AttackerSpeed, d.XRiposte in the same branch). 100d/100e hook TimedRiposteAccepted(attacker, blocker, score, now) called from the tick when the engine takes the stagger.
   Unverified: Parried vs Blocked mapping (D64 summary line), 2 s stagger in game.
 - 100c SKIPPED by Toni. Riders keep 100b behaviour (riposte refused as Rider). 100d/100e must not touch riders.
+- AI timing: Toni first asked it off, then back on after hearing 100b doesn't change AI behaviour -> TimedBlockAiPercent stays 50 (nothing committed for it).
+- 100e done (80d1d2a, d7af0d0, d44ab4d): Core TimedSlowMo.cs, Module SlowMoBody.cs + AthleticsLogic.TimedSlowMo.cs; player score >= 0.8, request id 31100, 0.3 -> 1 over 0.5 s real (ApplicationTime), 4 s cooldown; removed on every exit; 1420 tests, smoke 219; deployed (no rider code); PLAYTEST D66. Rider part marked DROPPED in DESIGN 91 / AI_NOTES.
+  For 100d: call the push-out beside MaybeStartSlowMo in TimedRiposteAccepted, own try. Animations run on battle time: during the 0.3 floor a push-out looks ~3x slower.
+- OPEN for 100d: asked Toni whether to add direction-matched attacker recoils (game has act_blocked_<slashleft|slashright|overswing|thrust>_<1h|2h|staff|lance|fist>[_left_stance], quick_ variants) before the backward stagger. Currently one act_stagger_backward. Wait for his answer.
