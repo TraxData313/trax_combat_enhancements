@@ -158,19 +158,21 @@ public class Step91Tests
         var dice = new SeededRandom(7);
         AiKickMath.Roll(in r, true, 0.5, 1.3);
         b.NoteShieldRoll(true, AiKickKind.Kick, 1.3);
-        long before = GC.GetAllocatedBytesForCurrentThread();
-        for (int i = 0; i < 10000; i++)
+        long allocated = NoAllocation.Bytes(() =>
         {
-            double d = 0.6 + (i % 11) * 0.1;
-            var k = AiKickMath.Roll(in r, true, dice.NextDouble(), d);
-            b.NoteShieldRoll(r.BeyondBashReach(d), k, d);
-            if (k == AiKickKind.Bash)
+            for (int i = 0; i < 10000; i++)
             {
-                b.NoteAsked(d, r.BeyondBashReach(d));
-                b.NoteResult(d, AiBashResult.Enemy);
+                double d = 0.6 + (i % 11) * 0.1;
+                var k = AiKickMath.Roll(in r, true, dice.NextDouble(), d);
+                b.NoteShieldRoll(r.BeyondBashReach(d), k, d);
+                if (k == AiKickKind.Bash)
+                {
+                    b.NoteAsked(d, r.BeyondBashReach(d));
+                    b.NoteResult(d, AiBashResult.Enemy);
+                }
             }
-        }
-        Assert.Equal(0, GC.GetAllocatedBytesForCurrentThread() - before);
+        });
+        Assert.Equal(0, allocated);
         Assert.Equal(0, b.AskedBeyond);
     }
 }

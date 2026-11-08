@@ -263,18 +263,20 @@ public class Step95Tests
         // warm up
         AiBashStepInMath.Decide(in r, 1.3, false, false, 1, out _);
         AiBashStepInMath.Vector(0, 1, 1, 0, 0, 1, out _, out _);
-        long before = GC.GetAllocatedBytesForCurrentThread();
-        for (int i = 0; i < 10000; i++)
+        long allocated = NoAllocation.Bytes(() =>
         {
-            double d = 0.8 + (i % 80) * 0.01;
-            var s = AiBashStepInMath.Decide(in r, d, i % 7 == 0, i % 14 == 0, 1.0, out double stop);
-            AiBashStepInMath.Vector(0.1, d, 1, 0, 0, 1, out _, out _);
-            AiBashStepInMath.InCorridor(0, 0, 0, d, 0.2, 0.3, d - 0.95);
-            AiBashStepInMath.Arrived(d, stop);
-            si.Note(s);
-            si.NotePress(d, 0.95);
-            si.NoteResult(d, AiBashResult.Enemy);
-        }
-        Assert.Equal(0, GC.GetAllocatedBytesForCurrentThread() - before);
+            for (int i = 0; i < 10000; i++)
+            {
+                double d = 0.8 + (i % 80) * 0.01;
+                var s = AiBashStepInMath.Decide(in r, d, i % 7 == 0, i % 14 == 0, 1.0, out double stop);
+                AiBashStepInMath.Vector(0.1, d, 1, 0, 0, 1, out _, out _);
+                AiBashStepInMath.InCorridor(0, 0, 0, d, 0.2, 0.3, d - 0.95);
+                AiBashStepInMath.Arrived(d, stop);
+                si.Note(s);
+                si.NotePress(d, 0.95);
+                si.NoteResult(d, AiBashResult.Enemy);
+            }
+        });
+        Assert.Equal(0, allocated);
     }
 }

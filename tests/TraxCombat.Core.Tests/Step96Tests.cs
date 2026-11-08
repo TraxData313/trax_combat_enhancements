@@ -218,16 +218,18 @@ public class Step96Tests
         var st = new AiGuardStats();
         AiGuardMath.Factors(in r, false, out float g, out float b);
         st.Add(0, 1, AiGuardMath.Guess(1, g), 0.6f, AiGuardMath.Block(0.6f, b), 0.5f, AiGuardMath.Parry(0.5f, b));
-        long before = GC.GetAllocatedBytesForCurrentThread();
-        for (int i = 0; i < 10000; i++)
+        long allocated = NoAllocation.Bytes(() =>
         {
-            float game = 0.5f + (i % 50) * 0.01f;
-            AiGuardMath.Factors(in r, i % 9 == 0, out g, out b);
-            float guess = AiGuardMath.Guess(game, g);
-            float block = AiGuardMath.Block(game, b);
-            float parry = AiGuardMath.Parry(game, b);
-            st.Add(i % AthleticsMath.PeakBins, game, guess, game, block, game, parry);
-        }
-        Assert.Equal(0, GC.GetAllocatedBytesForCurrentThread() - before);
+            for (int i = 0; i < 10000; i++)
+            {
+                float game = 0.5f + (i % 50) * 0.01f;
+                AiGuardMath.Factors(in r, i % 9 == 0, out g, out b);
+                float guess = AiGuardMath.Guess(game, g);
+                float block = AiGuardMath.Block(game, b);
+                float parry = AiGuardMath.Parry(game, b);
+                st.Add(i % AthleticsMath.PeakBins, game, guess, game, block, game, parry);
+            }
+        });
+        Assert.Equal(0, allocated);
     }
 }

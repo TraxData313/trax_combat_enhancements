@@ -284,20 +284,22 @@ public class Step90Tests
         var blk = B(0.6, 0.2);
         b.NoteFriendHit(AiKickKind.Bash, blk, 10, 1, 1); // warm up
         b.NoteAsked(AiKickKind.Bash, 1, 1);
-        long before = GC.GetAllocatedBytesForCurrentThread();
         double sum = 0;
-        for (int i = 0; i < 10000; i++)
+        long allocated = NoAllocation.Bytes(() =>
         {
-            var p = AiKickPathProbe.Begin(0, 0, 0, 1, 0, 1.5, Reach, 0.5, Rear, 0.5, 0.4);
-            p.Add(0.64, 0.35, 1);
-            p.Add(-0.64, 0.35, 2);
-            p.Add(0.0, 0.8, 3);
-            sum += p.LeftNear + p.RightNear + p.NearestFriendLateral;
-            b.NoteRefusal(p.Verdict, AiKickKind.Bash, blk, 1.5, 10);
-            b.NoteAsked(AiKickKind.Bash, p.LeftNear, p.RightNear);
-            b.NoteFriendHit(AiKickKind.Bash, blk, 10, p.LeftNear, p.RightNear);
-        }
-        long bytes = GC.GetAllocatedBytesForCurrentThread() - before;
+            for (int i = 0; i < 10000; i++)
+            {
+                var p = AiKickPathProbe.Begin(0, 0, 0, 1, 0, 1.5, Reach, 0.5, Rear, 0.5, 0.4);
+                p.Add(0.64, 0.35, 1);
+                p.Add(-0.64, 0.35, 2);
+                p.Add(0.0, 0.8, 3);
+                sum += p.LeftNear + p.RightNear + p.NearestFriendLateral;
+                b.NoteRefusal(p.Verdict, AiKickKind.Bash, blk, 1.5, 10);
+                b.NoteAsked(AiKickKind.Bash, p.LeftNear, p.RightNear);
+                b.NoteFriendHit(AiKickKind.Bash, blk, 10, p.LeftNear, p.RightNear);
+            }
+        });
+        long bytes = allocated;
         Assert.Equal(0, bytes);
         Assert.True(sum > 0);
     }

@@ -167,15 +167,17 @@ public class Step87Tests
         var b = B(0.3, 0.4, AiKickRelation.ShoulderNeighbour);
         s.NoteRefusal(AiKickPath.BehindFriend, AiKickKind.Bash, b, 1.2, 20); // warm up
         s.NoteFriendHit(AiKickKind.Kick, b, 10);
-        long before = GC.GetAllocatedBytesForCurrentThread();
-        for (int i = 0; i < 10000; i++)
+        long allocated = NoAllocation.Bytes(() =>
         {
-            var p = AiKickPathProbe.Begin(0, 0, 0, 1, 0, 1.5, Reach, Bash, Rear);
-            p.Add(0.3, 0.4, i);
-            p.Add(0.0, 0.9, i + 1);
-            s.NoteRefusal(p.Verdict, AiKickKind.Bash, b, 1.2, 20);
-            s.NoteFriendHit(AiKickKind.Kick, b, 10);
-        }
-        Assert.Equal(0, GC.GetAllocatedBytesForCurrentThread() - before);
+            for (int i = 0; i < 10000; i++)
+            {
+                var p = AiKickPathProbe.Begin(0, 0, 0, 1, 0, 1.5, Reach, Bash, Rear);
+                p.Add(0.3, 0.4, i);
+                p.Add(0.0, 0.9, i + 1);
+                s.NoteRefusal(p.Verdict, AiKickKind.Bash, b, 1.2, 20);
+                s.NoteFriendHit(AiKickKind.Kick, b, 10);
+            }
+        });
+        Assert.Equal(0, allocated);
     }
 }

@@ -188,21 +188,23 @@ public class Step97Tests
         var frames = new int[(int)StepInHold.Count];
         AiStepInHoldMath.PressLetsThrough(1.3, 0.95, 0.5);
         h.NoteStep(frames, 1, 1, 0.1, 0.1, 1);
-        long before = GC.GetAllocatedBytesForCurrentThread();
-        for (int i = 0; i < 10000; i++)
+        long allocated = NoAllocation.Bytes(() =>
         {
-            double d = 0.8 + (i % 80) * 0.01;
-            bool pass = AiStepInHoldMath.PressLetsThrough(d, 0.95, 0.6 - (i % 9) * 0.1);
-            double f = AiStepInHoldMath.Forward(0.1, d - 0.8, 0, 1);
-            var why = AiStepInHoldMath.Classify((StepInHold)(i % (int)StepInHold.Count), i % 3 == 0, f, i % 5 == 0, f, pass);
-            frames[(int)why]++;
-            if (i % 30 == 29)
+            for (int i = 0; i < 10000; i++)
             {
-                h.NoteStart(i % 60 == 59);
-                h.NoteStep(frames, 30, 25, 0.6, 0.1, 0.4);
-                Array.Clear(frames, 0, frames.Length);
+                double d = 0.8 + (i % 80) * 0.01;
+                bool pass = AiStepInHoldMath.PressLetsThrough(d, 0.95, 0.6 - (i % 9) * 0.1);
+                double f = AiStepInHoldMath.Forward(0.1, d - 0.8, 0, 1);
+                var why = AiStepInHoldMath.Classify((StepInHold)(i % (int)StepInHold.Count), i % 3 == 0, f, i % 5 == 0, f, pass);
+                frames[(int)why]++;
+                if (i % 30 == 29)
+                {
+                    h.NoteStart(i % 60 == 59);
+                    h.NoteStep(frames, 30, 25, 0.6, 0.1, 0.4);
+                    Array.Clear(frames, 0, frames.Length);
+                }
             }
-        }
-        Assert.Equal(0, GC.GetAllocatedBytesForCurrentThread() - before);
+        });
+        Assert.Equal(0, allocated);
     }
 }
