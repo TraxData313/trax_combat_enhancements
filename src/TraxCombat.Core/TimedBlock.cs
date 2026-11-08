@@ -327,6 +327,20 @@ namespace TraxCombat.Core
             _ => ">1 s",
         };
 
+        /// <summary>
+        /// A channel-1 action by its NAME (action_types.xml, v1.4.8): <c>act_defend_*</c> with <c>_parry_</c> = the engine's parry reaction
+        /// (light / heavy), <c>_active</c> = the fresh guard, <c>_passive</c> = the held guard, any other <c>act_defend_*</c> = another defend;
+        /// anything else (null too) = not a defend.
+        /// </summary>
+        public static GuardRead ClassifyDefendName(string? name)
+        {
+            if (name == null || !name.StartsWith("act_defend_", StringComparison.Ordinal)) return GuardRead.NotDefend;
+            if (name.IndexOf("_parry_", StringComparison.Ordinal) >= 0) return GuardRead.ParryReaction;
+            if (name.IndexOf("_active", StringComparison.Ordinal) >= 0) return GuardRead.Active;
+            if (name.IndexOf("_passive", StringComparison.Ordinal) >= 0) return GuardRead.Passive;
+            return GuardRead.OtherDefend;
+        }
+
         /// <summary>The engine's collision verdict (<see cref="BlockMath.ResultBlocked"/> / Parried / ChamberBlocked).</summary>
         public static BlockVerdict VerdictOf(int collisionResult) => collisionResult switch
         {
@@ -557,7 +571,7 @@ namespace TraxCombat.Core
             if (!anyV) v.Append("no correct block read");
             v.Append("; the active defends' animation length ").Append(ActiveLengths > 0
                 ? (ActiveSum / ActiveLengths).ToString("0.00", c) + " s mean (" + ActiveMin.ToString("0.00", c) + "-" + ActiveMax.ToString("0.00", c) + ", " + ActiveLengths.ToString(c)
-                  + " actions; cyclic " + ActiveCyclic.ToString(c) + ", continue to another action " + ActiveContinues.ToString(c) + ")"
+                  + " reads; cyclic " + ActiveCyclic.ToString(c) + ", continuing to another action " + ActiveContinues.ToString(c) + ")"
                 : "not read");
             lines.Add(v.ToString());
 

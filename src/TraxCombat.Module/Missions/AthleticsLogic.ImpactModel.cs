@@ -122,6 +122,7 @@ namespace TraxCombat.Missions
         {
             foreach (var line in _impact.SummaryLines(ImpactRules.From(TraxSettings.Shared))) TraxLog.Info("summary", line);
             TraxLog.Info("summary", _impact.KickCoverageLine()); // step 68: every landed kick / bash against the decisions
+            WriteTimedBlockSummary(); // step 100b
             WriteImpactMeetSummary(); // step 82
         }
 
@@ -272,6 +273,15 @@ namespace TraxCombat.Missions
             }
             try
             {
+                FillTiming(v, victim, in cd, now, ref f); // step 100b: the block's timing (a correct block only) and the diagnostic
+            }
+            catch (Exception e)
+            {
+                Failed("impact.timed-read", e); // the block stays untimed
+                f.TimingSource = TimingSource.None;
+            }
+            try
+            {
                 return ImpactDecide(a, v, ref f, now, inSeam, out d, out knockDown);
             }
             finally
@@ -370,6 +380,7 @@ namespace TraxCombat.Missions
                 a.ChargeAttack = false;
             }
             if (block && (applied || riderLive)) _riders.NoteRiposteOnRider(in d);
+            if (block) TimedBlockDecided(a, v, in d, riposteLive); // step 100b: THE SEAM - every correct block's timing, counted
             LastImpact = d;
             NoteImpactLines(a, v, in d, in f, in r, !(applied || riposteLive || riderLive));
             if (applied && family == ImpactFamily.Kicks)

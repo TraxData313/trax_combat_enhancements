@@ -58,6 +58,10 @@ namespace TraxCombat.Missions
         /// immunities, his recent outcomes; in shadow mode what WOULD have happened.</summary>
         public ImpactState Impact;
 
+        /// <summary>Step 100b: his guard clock (Core <see cref="GuardClock"/>) - when his guard went up. Fed every tick for YOU only (the AI's
+        /// timing is read at contact from his defend action).</summary>
+        public GuardClock Guard;
+
         /// <summary>Step 50: when a LIVE kick / bash last made his shield leave his hand (mission seconds; NaN = never) - the AI pickup lock
         /// (<c>ShieldPickupLockSeconds</c>) reads it.</summary>
         public double ShieldDroppedAt = double.NaN;

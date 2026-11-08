@@ -30,6 +30,9 @@ namespace TraxCombat.Missions
 
         /// <summary>Step 65: a cut reaction's watch (<see cref="ImpactWatchPurpose.Brace"/>) - he BRACED (else a lucky kick's short reel).</summary>
         public bool Braced;
+
+        /// <summary>Step 100b: a riposte stagger's timing score (0 = untimed).</summary>
+        public double Timed;
     }
 
     /// <summary>Step 50: a shield drop decided in a hit callback, made from the tick (step 51: a wrong-side block's too - <see cref="Block"/>).</summary>
@@ -177,7 +180,7 @@ namespace TraxCombat.Missions
         /// guard timing, which never takes a running measurement's place). Step 51: <paramref name="expectIndex"/> = the forced stagger's own
         /// action index. False = not watched (the watch lever off, the pool full, or he is watched already and it may not replace).</summary>
         private bool AddLiveWatch(TrackedAgent st, ImpactWatchPurpose purpose, WatchKind kind, double now, double appearWithin, double factor,
-            int expectIndex = -1, bool replace = true, ImpactEvent ev = ImpactEvent.Kick, double asked = double.NaN, float speed = 1f)
+            int expectIndex = -1, bool replace = true, ImpactEvent ev = ImpactEvent.Kick, double asked = double.NaN, float speed = 1f, double timed = 0)
         {
             if (_live.Disabled(ImpactLever.Watch)) return false;
             int i = 0;
@@ -213,6 +216,7 @@ namespace TraxCombat.Missions
                      || purpose == ImpactWatchPurpose.Brace && ImpactLiveMath.NeedsFast(factor) && !_live.Disabled(ImpactLever.SlowReaction); // step 65: FASTER
             w.Asked = asked;
             w.Speed = speed;
+            w.Timed = timed;
             w.Event = ev;
             w.W.Begin(kind, now, appearWithin, expectIndex);
             CountWatch(purpose, +1);

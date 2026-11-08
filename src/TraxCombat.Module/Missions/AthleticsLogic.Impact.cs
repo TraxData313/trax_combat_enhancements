@@ -263,6 +263,14 @@ namespace TraxCombat.Missions
             }
             try
             {
+                TickTimedBlocks(now); // step 100b: your guard clock
+            }
+            catch (Exception e)
+            {
+                Failed("impact.timed-clock", e);
+            }
+            try
+            {
                 TickImpactMessages(now); // step 53: the next on-screen line, rate-limited and merged
             }
             catch (Exception e)

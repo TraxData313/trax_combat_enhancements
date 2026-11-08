@@ -1304,7 +1304,7 @@ namespace TraxCombat.Core
                 // step 100b, THE TIMED BLOCK: the raw chance blended from step 56's toward TimedBlockRiposteMaxPercent by the score s - the
                 // halving, the immunity, ImpactOnPlayerPercent and the refusals all still apply after it; s 0 = step 56 exactly (no die added)
                 double raw56 = RawChance(r.RiposteMax, xr, r.StaggerFrom) * d.RiposteBlockerFactor;
-                if (r.RiposteMax > 0) d.RiposteChance56 = Math.Max(0, Math.Min(1, raw56 * dimA * scaleA));
+                if (r.RiposteMax > 0) d.RiposteChance56 = Math.Max(0, Math.Min(1, raw56 * (dimA * scaleA))); // the roll's own product (Roll: raw × factor)
                 if (r.RiposteMax > 0)
                     d.Riposte = Roll(r.RiposteMax, TimedBlockMath.Chance(raw56, r.Timed.RiposteMax, d.TimedScore), na, dimA * scaleA,
                         attacker.Down(now) ? ImpactRefusal.Down

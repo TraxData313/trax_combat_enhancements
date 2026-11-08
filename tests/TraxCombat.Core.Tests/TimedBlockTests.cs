@@ -183,6 +183,19 @@ public class TimedBlockTests
         Assert.Equal(0.5, flicker.Age(1.5), 5);
     }
 
+    [Fact]
+    public void A_defend_action_is_classified_by_its_name()
+    {
+        Assert.Equal(GuardRead.Active, TimedBlockMath.ClassifyDefendName("act_defend_up_1h_active"));
+        Assert.Equal(GuardRead.Active, TimedBlockMath.ClassifyDefendName("act_defend_shield_right_1h_active_down_left_stance"));
+        Assert.Equal(GuardRead.Passive, TimedBlockMath.ClassifyDefendName("act_defend_forward_2h_passive"));
+        Assert.Equal(GuardRead.ParryReaction, TimedBlockMath.ClassifyDefendName("act_defend_up_1h_parry_heavy"));
+        Assert.Equal(GuardRead.ParryReaction, TimedBlockMath.ClassifyDefendName("act_defend_shield_up_spear_parry_light_up"));
+        Assert.Equal(GuardRead.OtherDefend, TimedBlockMath.ClassifyDefendName("act_defend_forward_1h"));
+        Assert.Equal(GuardRead.NotDefend, TimedBlockMath.ClassifyDefendName("act_stagger_backward"));
+        Assert.Equal(GuardRead.NotDefend, TimedBlockMath.ClassifyDefendName(null));
+    }
+
     // ------------------------------------------------------------------ the shares
 
     [Fact]

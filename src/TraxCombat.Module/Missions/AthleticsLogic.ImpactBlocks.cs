@@ -39,6 +39,9 @@ namespace TraxCombat.Missions
         /// <summary>The blocker's bar (the summary's band) and the attacker's band (the riposte's).</summary>
         public double Bar;
         public int AttackerBand;
+
+        /// <summary>Step 100b: a riposte's timing score (0 = untimed).</summary>
+        public double Timed;
     }
 
     /// <summary>
@@ -311,6 +314,7 @@ namespace TraxCombat.Missions
             _blockPending[_blockPendingCount++] = new ImpactBlockPending
             {
                 Action = action, St = st, Other = other, Event = d.Event, At = now, Asked = asked, Bar = d.Bar, AttackerBand = attackerBand,
+                Timed = action == ImpactBlockAction.Riposte ? d.TimedScore : 0,
             };
         }
 
@@ -454,11 +458,15 @@ namespace TraxCombat.Missions
             }
             if (over) _blocks.StaggerAcceptedOverPriority++;
             else _blocks.StaggerAcceptedWithPriority++;
-            if (riposte) _blocks.NoteRiposteApplied(p.AttackerBand);
+            if (riposte)
+            {
+                _blocks.NoteRiposteApplied(p.AttackerBand);
+                TimedRiposteAccepted(p.St, p.Other, p.Timed, now); // step 100b: THE SEAM - the engine took it
+            }
             else _blocks.NoteApplied(p.Event, ImpactOutcome.Stagger, p.Bar);
             ImpactMessage(riposte ? ImpactMessageKind.Riposte : ImpactMessageKind.GuardBroken, p.Other != null && !p.Other.Removed ? p.Other : null, p.St); // step 53
             AddLiveWatch(p.St, riposte ? ImpactWatchPurpose.Riposte : ImpactWatchPurpose.Stagger, WatchKind.Stagger, now, ImpactBlockMath.StaggerAppearSeconds, 1,
-                expectIndex: index, ev: p.Event, asked: p.Asked, speed: speed);
+                expectIndex: index, ev: p.Event, asked: p.Asked, speed: speed, timed: p.Timed);
             if (LiveFirst(riposte ? 11 : 12))
                 TraxLog.Info("impact", "live: first " + (riposte ? "RIPOSTE - the attacker " + Name(p.St) + " staggered after " + (p.Other != null ? Name(p.Other) : "(someone)") + "'s " + ImpactMath.EventName(p.Event)
                         : "block stagger - " + Name(p.St) + " after his " + ImpactMath.EventName(p.Event)) + " - act_stagger_backward from the tick at " + Sec(now) + " s ("
@@ -523,6 +531,7 @@ namespace TraxCombat.Missions
                     break;
                 case ImpactWatchPurpose.Riposte:
                     _blocks.RiposteSeen++;
+                    _timed.NoteSeen(w.Timed); // step 100b
                     break;
                 case ImpactWatchPurpose.ThrownBack: // step 62
                     _charge.ThrownSeen++;
@@ -543,7 +552,11 @@ namespace TraxCombat.Missions
                 case ImpactWatchPurpose.Stagger:
                 case ImpactWatchPurpose.Riposte:
                     if (w.Purpose == ImpactWatchPurpose.Stagger) _blocks.NoteStagger(w.Asked, length, w.Speed);
-                    else _blocks.NoteRiposteLength(w.Asked, length);
+                    else
+                    {
+                        _blocks.NoteRiposteLength(w.Asked, length);
+                        _timed.NoteMeasured(w.Timed, w.Asked, length); // step 100b: asked → measured by the timing band
+                    }
                     _staggerNatural.Add(length, w.Speed);
                     w.St.Impact.EndReel(now, r.StaggerImmunity); // the 2 s immunity from what the engine really played
                     if (LiveFirst(w.Purpose == ImpactWatchPurpose.Stagger ? 16 : 17))
