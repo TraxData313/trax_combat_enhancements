@@ -181,6 +181,7 @@ namespace TraxCombat.Missions
         private void StopAthletics()
         {
             if (ReferenceEquals(_current, this)) _current = null;
+            CloseAiGuardClock(); // step 102: the input hook's notes stop with the logic
             ReleaseImpactHooks(); // step 47: our deciders out of the decorators, the game's stun cap back - always
             CloseSpears(); // step 76: the game's friendly-hit stun back - always
         }
@@ -398,6 +399,7 @@ namespace TraxCombat.Missions
             MeetLeftField(st); // step 82
             SpearLeftField(st); // step 76
             ImpactLeftField(st); // step 47
+            AiGuardLeftField(st); // step 102
             RemoveFromLoop(st);
         }
 

@@ -272,6 +272,7 @@ namespace TraxCombat.Missions
         public override void OnEndMissionInternal()
         {
             GiveBackSlowMo("the mission end"); // step 100e: before the summary, which checks nothing of ours is left (its own try)
+            CloseAiGuardClock(); // step 102: the input hook's notes stop
             try
             {
                 WriteSummary("mission end");

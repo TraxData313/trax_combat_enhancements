@@ -45,6 +45,7 @@ namespace TraxCombat.Missions
                 if (_timedClockOn && you != null) you.Guard.Reset();
                 if (_timedClockOn) TraxLog.Info("impact", "timed blocks: the guard clock stopped at " + Sec(now) + " s (" + (ir.Enabled ? ir.Timed.OffBecause : "the impact system off") + ")");
                 _timedClockOn = false;
+                StopAiGuardWatch(now, (ir.Enabled ? ir.Timed.OffBecause : "the impact system off") ?? "off"); // step 102
                 return;
             }
             if (!_timedClockOn)
@@ -53,6 +54,7 @@ namespace TraxCombat.Missions
                 TraxLog.Info("impact", "timed blocks: the guard clock runs from " + Sec(now) + " s - " + ir.Timed.Describe() + "; block direction "
                     + (GuardBody.AutomaticDirection ? "AUTOMATIC (only the press counts)" : "manual (a switch to another side counts as a new guard)"));
             }
+            TickAiGuardWatch(now); // step 102: the AI guard clock's watch (its own try per man)
             if (you == null || you.Removed || !YouDrive(you)) return;
             you.Guard.Note(GuardBody.GuardKey(you.Agent), now, GuardBody.AutomaticDirection);
         }
@@ -87,7 +89,11 @@ namespace TraxCombat.Missions
                 f.TimingSource = double.IsNaN(yourAge) ? TimingSource.None : TimingSource.PlayerClock;
                 f.GuardAge = yourAge;
             }
-            else if (read == GuardRead.Active && !double.IsNaN(activeAge))
+            else if (AiClockTiming(v, now, ref f))
+            {
+                // step 102: the AI's own guard clock knew when his guard went up
+            }
+            else if (read == GuardRead.Active && !double.IsNaN(activeAge)) // the old channel-1 read - the fallback (never timed in Toni's 2026-11-08 log)
             {
                 f.TimingSource = TimingSource.AiActive;
                 f.GuardAge = activeAge;
@@ -97,6 +103,17 @@ namespace TraxCombat.Missions
                 f.TimingSource = TimingSource.AiHeld;
                 f.GuardAge = double.PositiveInfinity;
             }
+        }
+
+        /// <summary>Step 102: an AI blocker's own guard clock at contact - counted always; true (and the timing written) when its age is known.</summary>
+        private bool AiClockTiming(TrackedAgent v, double now, ref ImpactFacts f)
+        {
+            var read = v.AiGuard.Read(now, out double age);
+            _aiClock.NoteContact(read, age);
+            if (read != AiClockRead.Known) return false;
+            f.TimingSource = TimingSource.AiClock;
+            f.GuardAge = age;
+            return true;
         }
 
         /// <summary>THE SEAM: one decided correct block (after <see cref="ImpactMath.Decide"/>) - counted, your lines; 100c / 100d / 100e hook
@@ -167,6 +184,7 @@ namespace TraxCombat.Missions
         private void WriteTimedBlockSummary()
         {
             foreach (var line in _timed.SummaryLines(TimedBlockRules.From(TraxSettings.Shared))) TraxLog.Info("summary", line);
+            TraxLog.Info("summary", AiGuardClockLine()); // step 102
         }
 
         private static string PctOrDash(double c) => double.IsNaN(c) ? "-" : Pct0(c);

@@ -48,6 +48,24 @@ namespace TraxCombat.Tools
                 }
                 return c.Read;
             }
+
+            // step 102: the AI guard clock's watch - who has an enemy near, the hooks and releases asked
+            public readonly HashSet<int> Near = new HashSet<int>();
+            public int Hooks, Releases, WatchReads;
+
+            public bool WatchWanted(TrackedAgent st, float metres)
+            {
+                WatchReads++;
+                return Near.Contains(st.Agent.Index);
+            }
+
+            public AiInputHook.HookResult Hook(TrackedAgent st)
+            {
+                Hooks++;
+                return AiInputHook.HookResult.FirstHookTurnedOn;
+            }
+
+            public void Release(TrackedAgent st) => Releases++;
         }
 
         /// <summary>Step 100b: every logic built from here on reads the guard through the stand-in (the game's reads native agents).</summary>

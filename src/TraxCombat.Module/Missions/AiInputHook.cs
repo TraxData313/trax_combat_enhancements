@@ -131,6 +131,11 @@ namespace TraxCombat.Missions
         public int SpearPolearmSlot = -1, SpearSidearmMask;
         public long SpearRewrites;
 
+        /// <summary>Step 102: THE GUARD WATCH - an enemy is near him, so his input callback stays on for the AI guard clock (<see cref="AiGuardClockHook"/>).
+        /// NOT a wish: it never changes his input and is not part of <see cref="Active"/> (the hold counts stay the holds'); it only keeps the
+        /// callback on (<see cref="AiInputHook.UnhookIfIdle"/>).</summary>
+        public bool GuardWatch;
+
         /// <summary>Any wish at all - a man is held while ANY of them wants him held (one ending never lifts another).</summary>
         public bool Active => HoldAttacks || StepHoldAttacks || Backpedal || BraceHoldAttacks || Regroup || WallPull || Flock || Block || SpearWield || Press || Rhythm || KickPhase != AiKickPhase.None || MeetGuard;
 
@@ -216,7 +221,15 @@ namespace TraxCombat.Missions
         public override void OnAIInputSet(ref Agent.EventControlFlag eventFlag, ref Agent.MovementControlFlag movementFlag, ref Vec2 inputVector)
         {
             var s = _st.Input;
-            if (s == null || !s.Active) return;
+            if (s == null) return;
+            if (s.Active) Filter(s, ref eventFlag, ref movementFlag, ref inputVector);
+            // step 102: the AI guard clock READS the final flags (by value - nothing written back), after every edit of ours
+            if (AiGuardClockHook.On) AiGuardClockHook.Note(_st, s, (uint)movementFlag);
+        }
+
+        /// <summary>Steps 16-97: an ACTIVE man's input filtered (the wishes) - unchanged by step 102.</summary>
+        private void Filter(AiInputState s, ref Agent.EventControlFlag eventFlag, ref Agent.MovementControlFlag movementFlag, ref Vec2 inputVector)
+        {
             try
             {
                 s.Calls++;
@@ -345,7 +358,7 @@ namespace TraxCombat.Missions
         internal static bool UnhookIfIdle(TrackedAgent st)
         {
             var s = st.Input;
-            if (s == null || s.Active || !s.CallbackOurs) return false;
+            if (s == null || s.Active || s.GuardWatch || !s.CallbackOurs) return false; // step 102: a watched man keeps it
             var a = st.Agent;
             s.CallbackOurs = false;
             if (st.Removed || !a.IsActive()) return false;

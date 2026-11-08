@@ -22,6 +22,16 @@ namespace TraxCombat.Missions
         /// <summary>Channel 1 at contact: what it shows and, for an ACTIVE defend, its age (s; NaN otherwise) and its animation's length /
         /// cyclic flag / whether it continues to another action (NaN / false when not read).</summary>
         GuardRead ReadContact(Agent victim, out double activeAge, out double length, out bool cyclic, out bool continues);
+
+        /// <summary>Step 102: he is an AI man on the field (not the player's, not one the player took over) with an enemy within
+        /// <paramref name="metres"/> - his guard clock should be fed (one native proximity count, no allocation).</summary>
+        bool WatchWanted(TrackedAgent st, float metres);
+
+        /// <summary>Step 102: his input callback on (step 16's hook - our component added once).</summary>
+        AiInputHook.HookResult Hook(TrackedAgent st);
+
+        /// <summary>Step 102: his callback off again if nothing else wants it (step 16's <see cref="AiInputHook.UnhookIfIdle"/>); never on a removed man.</summary>
+        void Release(TrackedAgent st);
     }
 
     /// <summary>The game's reads: native flag / stage / progress reads, the action's name once per index (<c>ActionIndexCache.GetName</c>),
@@ -32,6 +42,21 @@ namespace TraxCombat.Missions
         private readonly Dictionary<long, (double Length, bool Cyclic, bool Continues)> _lengths = new Dictionary<long, (double, bool, bool)>();
 
         public int GuardKey(Agent a) => TimedBlockMath.GuardKey((int)a.GetDefendMovementFlag(), (int)a.GetCurrentActionStage(1));
+
+        public bool WatchWanted(TrackedAgent st, float metres)
+        {
+            var a = st.Agent;
+            if (!a.IsActive() || a.IsMainAgent || !a.IsAIControlled || a.Team == null) return false;
+            var m = Mission.Current;
+            return m != null && m.GetNearbyEnemyAgentCount(a.Team, a.Position.AsVec2, metres) > 0;
+        }
+
+        public AiInputHook.HookResult Hook(TrackedAgent st) => AiInputHook.Hook(st);
+
+        public void Release(TrackedAgent st)
+        {
+            if (!st.Removed) AiInputHook.UnhookIfIdle(st);
+        }
 
         public bool AutomaticDirection => BannerlordConfig.DefendDirectionControl == TimedBlockMath.DefendDirectionAutomatic;
 

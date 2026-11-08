@@ -62,6 +62,10 @@ namespace TraxCombat.Missions
         /// timing is read at contact from his defend action).</summary>
         public GuardClock Guard;
 
+        /// <summary>Step 102: an AI man's own guard clock (Core <see cref="AiGuardClock"/>) - fed with the defend bits of his input in step 16's
+        /// input hook (read, never changed) while he is watched (an enemy near) or hooked for another wish; read at contact.</summary>
+        public AiGuardClock AiGuard;
+
         /// <summary>Step 100d: the engine's attack direction (Core <see cref="TimedRecoilMath"/>: 0 overhead, 1 thrust, 2 left, 3 right; -1 none) of
         /// his last blow met by a CORRECT block, and when (mission s) - the direction-matched recoil of a timed riposte reads it.</summary>
         public int RecoilDirection = -1;

@@ -25,6 +25,10 @@ namespace TraxCombat.Core
 
         /// <summary>The engine's chamber block (an attack into the attack - its own timed counter): always perfect.</summary>
         Chamber,
+
+        /// <summary>Step 102: an AI man's own guard clock (<see cref="AiGuardClock"/> - the defend bits of his input, read every frame): the age
+        /// since his guard went up.</summary>
+        AiClock,
     }
 
     /// <summary>Step 100b: what channel 1 showed at contact (the diagnostic's answer to AI_NOTES "Step 100" H / H' / C1).</summary>
@@ -458,6 +462,7 @@ namespace TraxCombat.Core
             TimingSource.AiActive => "an active defend at contact",
             TimingSource.AiHeld => "a passive (held) defend",
             TimingSource.Chamber => "a chamber",
+            TimingSource.AiClock => "the AI's guard clock",
             _ => "unknown",
         };
 
@@ -534,7 +539,7 @@ namespace TraxCombat.Core
         public readonly double[] ScoreSum = new double[Who];
         public readonly int[] Scored = new int[Who];
         public int Chambers;
-        public readonly int[] BySource = new int[5];
+        public readonly int[] BySource = new int[6];
 
         private readonly double[] _ages = new double[MaxAges];
         private int _ageCount;
@@ -689,6 +694,7 @@ namespace TraxCombat.Core
             t.Append("; chambers ").Append(Chambers.ToString(c)).Append("; the timing's source: your clock ").Append(BySource[(int)TimingSource.PlayerClock].ToString(c))
              .Append(", an active defend at contact ").Append(BySource[(int)TimingSource.AiActive].ToString(c)).Append(", a held (passive) defend ")
              .Append(BySource[(int)TimingSource.AiHeld].ToString(c)).Append(", a chamber ").Append(BySource[(int)TimingSource.Chamber].ToString(c))
+             .Append(", the AI's guard clock ").Append(BySource[(int)TimingSource.AiClock].ToString(c))
              .Append(", unknown ").Append(BySource[(int)TimingSource.None].ToString(c));
             double med = YourMedian();
             t.Append("; YOU: ").Append(YourBlocks.ToString(c)).Append(" blocks on your clock, median guard age ")
