@@ -206,6 +206,11 @@ namespace TraxCombat.Core
             "Timed blocks",
             "A right block or parry made just as the blow lands (the guard raised within about half a second before it) makes the attacker likelier to stagger, and for longer - up to 2 s for a nicely timed one. A guard held up the whole time counts as an ordinary block. The AI times its blocks too, less sharply, and never staggers you longer than 1.2 s. Off: ordinary blocks only. The numbers: Advanced page, Impact.");
 
+        // Step 100e (Toni 2026-11-08: "Maybe even try a slow mo when the player does it nicely"): the slow motion's switch - DESIGN decision 91 (e).
+        public static readonly ParamDef TimedBlockSlowMo = Bool("TimedBlockSlowMo", PlayerImpactGroup,
+            "Slow motion on your best blocks",
+            "A brief slow motion (about half a second) when YOU make a nicely timed block that staggers the attacker. Never on the AI's blocks, never while another slow-down (the orders menu) is on, at most one every few seconds. Off: no slow motion. The numbers: Advanced page, Impact.");
+
         // Step 33 (Anton, 2026-10-12: "a short burst of speed, meant to feel a little like a dodge, and for the AI to make charges
         // sharper"): Core SprintMath, AI_NOTES "Step 33".
         public static readonly ParamDef SprintEnabled = Bool("SprintEnabled", PlayerSprintGroup,
@@ -1885,6 +1890,23 @@ namespace TraxCombat.Core
             "Timed blocks: an AI soldier's timing counts (%)",
             "An AI soldier's block timing counts this much of yours (the game raises AI guards late on its own, so a full share would turn duels into long stun locks). 0 = only you can time a block.");
 
+        // Step 100e: the slow motion's numbers - Core TimedSlowMoMath, AI_NOTES "Step 100" §5, DESIGN decision 91 (e).
+        public static readonly ParamDef TimedBlockSlowMoMinScore = Float("TimedBlockSlowMoMinScore", 0, 1, ImpactGroup,
+            "Slow motion: the timing it needs (0-1)",
+            "Your timed block's timing score (1 = perfect, 0 = untimed) must reach this for the slow motion - and the attacker's stagger must have landed.");
+
+        public static readonly ParamDef TimedBlockSlowMoSpeed = Float("TimedBlockSlowMoSpeed", 0.1, 1, ImpactGroup,
+            "Slow motion: the game's speed at its deepest",
+            "How slow the game runs at the slow motion's deepest (1 = normal speed). It eases back to normal over the time below.");
+
+        public static readonly ParamDef TimedBlockSlowMoRealSeconds = Float("TimedBlockSlowMoRealSeconds", 0.2, 2, ImpactGroup,
+            "Slow motion: how long (real s)",
+            "How long the whole slow motion lasts in real seconds, the ease back to normal speed included.");
+
+        public static readonly ParamDef TimedBlockSlowMoCooldownSeconds = Float("TimedBlockSlowMoCooldownSeconds", 0, 30, ImpactGroup,
+            "Slow motion: at most one every (real s)",
+            "Real seconds from one slow motion's start to the next - a quick run of good blocks plays only the first.");
+
         public static readonly ParamDef ImpactMismatchWeight = Float("ImpactMismatchWeight", 0, 2, ImpactGroup,
             "Mismatch weight (pressure per doubling)",
             "How much an outmatched man suffers: every doubling of the mismatch beyond the even band adds this to the pressure on him (0.25: an enemy four times stronger counts as much as being about a third tired). 0 = only tiredness counts.");
@@ -2502,7 +2524,7 @@ namespace TraxCombat.Core
             DamageRandomPercent, DamageReductionPercent, TiredDamageAtEmptyPercent,
             AthleticsEnabled, CostPerBlow, HeroCostMultiplier,
             AiAggressionFreshPercent, AiAggressionExhaustedPercent, FeverEnabled, ShieldWallHoldsSlots, ShieldWallStepOutMetres, ShieldWallStandFirm, ShieldWallFlanksFaceOut, SpearPreferenceEnabled, PressDontPass, RotationEnabled, RestEnabled, WarCriesEnabled, CourageEnabled, CavalryFlockEnabled, LineDisciplineForPlayer,
-            ImpactEnabled, ImpactOnPlayerPercent, ImpactMeetRulesEnabled, TimedBlocksEnabled,
+            ImpactEnabled, ImpactOnPlayerPercent, ImpactMeetRulesEnabled, TimedBlocksEnabled, TimedBlockSlowMo,
             SprintEnabled, SprintKey, SprintControllerKey,
             ShowPlayerBar, AltMarksEveryone, ImpactShowMessages,
             GiveTier1Shields,
@@ -2583,6 +2605,7 @@ namespace TraxCombat.Core
             MeetAiReadMaxHoldSeconds,
             TimedBlockPerfectSeconds, TimedBlockWindowSeconds, TimedBlockRiposteMaxPercent, TimedBlockStaggerMaxSeconds, TimedBlockAgainstYouMaxSeconds,
             TimedBlockParryPercent, TimedBlockAiPercent,
+            TimedBlockSlowMoMinScore, TimedBlockSlowMoSpeed, TimedBlockSlowMoRealSeconds, TimedBlockSlowMoCooldownSeconds,
             ImpactMismatchWeight, ImpactEvenBandDoublings, ImpactBodyExponent, ImpactBodyFloorPoints, ImpactStaggeredBonus, ImpactDamageWeight,
             ImpactRefWeightKg, ImpactWeightExponent, ImpactRefSwingSpeed, ImpactSpeedExponent, ImpactBluntFactor, ImpactCutFactor, ImpactPierceFactor,
             ImpactKickFactor, ImpactBashFactor, ImpactSkillMinFactor, ImpactSkillMaxFactor,

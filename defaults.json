@@ -261,6 +261,12 @@
   // (true or false)
   "TimedBlocksEnabled": true,
 
+  // A brief slow motion (about half a second) when YOU make a nicely timed block that staggers
+  // the attacker. Never on the AI's blocks, never while another slow-down (the orders menu) is
+  // on, at most one every few seconds. Off: no slow motion. The numbers: Advanced page, Impact.
+  // (true or false)
+  "TimedBlockSlowMo": true,
+
   // ==================== Sprinting ====================
   // Every fighter on foot has a sprint: a short burst of speed stored in seconds - the more
   // Athletics he has left, the longer (150 points = 7.5 s; empty = none). Hold the sprint key
@@ -2508,6 +2514,26 @@
   // block.
   // (range 0 to 100)
   "TimedBlockAiPercent": 50,
+
+  // Your timed block's timing score (1 = perfect, 0 = untimed) must reach this for the slow
+  // motion - and the attacker's stagger must have landed.
+  // (range 0.0 to 1.0)
+  "TimedBlockSlowMoMinScore": 0.8,
+
+  // How slow the game runs at the slow motion's deepest (1 = normal speed). It eases back to
+  // normal over the time below.
+  // (range 0.1 to 1.0)
+  "TimedBlockSlowMoSpeed": 0.3,
+
+  // How long the whole slow motion lasts in real seconds, the ease back to normal speed
+  // included.
+  // (range 0.2 to 2.0)
+  "TimedBlockSlowMoRealSeconds": 0.5,
+
+  // Real seconds from one slow motion's start to the next - a quick run of good blocks plays
+  // only the first.
+  // (range 0.0 to 30.0)
+  "TimedBlockSlowMoCooldownSeconds": 4.0,
 
   // How much an outmatched man suffers: every doubling of the mismatch beyond the even band
   // adds this to the pressure on him (0.25: an enemy four times stronger counts as much as

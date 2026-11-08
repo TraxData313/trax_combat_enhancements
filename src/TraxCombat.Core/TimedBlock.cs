@@ -586,7 +586,7 @@ namespace TraxCombat.Core
             p.Append(" (targets ").Append(r.StaggerMax.ToString("0.0", c)).Append(" s, ").Append(r.AgainstYouMax.ToString("0.0", c)).Append(" s on you); timed rolls ")
              .Append(TimedRolls.ToString(c)).Append(" - mean chance ").Append(TimedRolls > 0 ? Pct(ChanceSum56 / TimedRolls) + " untimed → " + Pct(ChanceSumTimed / TimedRolls) + " timed" : "-")
              .Append(", halved ").Append(Halved.ToString(c)).Append(", refused: immune ").Append(RefusedImmune.ToString(c)).Append(", down ").Append(RefusedDown.ToString(c))
-             .Append(", replaced ").Append(RefusedReplaced.ToString(c)).Append(", a rider ").Append(RefusedRider.ToString(c)).Append(" (100c); held at the you-cap ")
+             .Append(", replaced ").Append(RefusedReplaced.ToString(c)).Append(", a rider ").Append(RefusedRider.ToString(c)).Append(" (riders keep it - the mounted part dropped); held at the you-cap ")
              .Append(CappedForYou.ToString(c)).Append("; ripostes by YOUR blocks ").Append(RipostesBy[0].ToString(c)).Append(" (mean ")
              .Append(RipostesBy[0] > 0 ? (RiposteSecondsBy[0] / RipostesBy[0]).ToString("0.00", c) + " s" : "-").Append("), by the AI's ").Append(RipostesBy[1].ToString(c))
              .Append(" (mean ").Append(RipostesBy[1] > 0 ? (RiposteSecondsBy[1] / RipostesBy[1]).ToString("0.00", c) + " s" : "-").Append(')');

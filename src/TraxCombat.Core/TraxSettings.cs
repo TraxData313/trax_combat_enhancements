@@ -624,6 +624,11 @@ namespace TraxCombat.Core
         public float TimedBlockAgainstYouMaxSeconds => GetFloat(SettingsSchema.TimedBlockAgainstYouMaxSeconds); // step 100b
         public int TimedBlockParryPercent => GetInt(SettingsSchema.TimedBlockParryPercent); // step 100b
         public int TimedBlockAiPercent => GetInt(SettingsSchema.TimedBlockAiPercent); // step 100b
+        public bool TimedBlockSlowMo => GetBool(SettingsSchema.TimedBlockSlowMo); // step 100e
+        public float TimedBlockSlowMoMinScore => GetFloat(SettingsSchema.TimedBlockSlowMoMinScore); // step 100e
+        public float TimedBlockSlowMoSpeed => GetFloat(SettingsSchema.TimedBlockSlowMoSpeed); // step 100e
+        public float TimedBlockSlowMoRealSeconds => GetFloat(SettingsSchema.TimedBlockSlowMoRealSeconds); // step 100e
+        public float TimedBlockSlowMoCooldownSeconds => GetFloat(SettingsSchema.TimedBlockSlowMoCooldownSeconds); // step 100e
         public int AiNoShieldKickPercent => GetInt(SettingsSchema.AiNoShieldKickPercent); // step 81
         public int AiNoShieldPushPercent => GetInt(SettingsSchema.AiNoShieldPushPercent); // step 88
         public float AiKickReachMetres => GetFloat(SettingsSchema.AiKickReachMetres);

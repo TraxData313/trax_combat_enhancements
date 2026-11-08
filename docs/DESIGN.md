@@ -1637,6 +1637,7 @@ row goes to the Advanced page unless a player needs it to set up his game (CLAUD
 | `ImpactOnPlayerPercent` | 100 | Step 48: every chance against YOU × this % (IMPACT §8 q5). Range 0-100. |
 | `ImpactMeetRulesEnabled` | true | Step 82 (decision 78, Toni 2026-10-22): THE MEET RULES - a kick / bash is judged by the guard that met it at contact (`ImpactMeetMath.Classify`): a bash met by a guard RIGHT or a kick met by a guard DOWN = the ATTACKER at risk (the rows below, the riposte's pressure), the defender holds; any other guard = the defender's rows; the AI reads an incoming kick / bash. The PLAYER page ("Staggers and knockdowns"). Off = step 65 exactly (a bash into a raised shield decides nothing). Live. |
 | `TimedBlocksEnabled` | true | Step 100b (decision 91, Toni 2026-11-08): TIMED BLOCKS - a CORRECT block (right-side shield, parry) whose guard went up just before the blow lands lifts the attacker's riposte from step 56's chance / length toward `TimedBlockRiposteMaxPercent` / `TimedBlockStaggerMaxSeconds` by the timing score (`TimedBlockMath.ScoreOf`); score 0 = step 56 exactly. The PLAYER page ("Staggers and knockdowns"). Off = step 56. Live. |
+| `TimedBlockSlowMo` | true | Step 100e (decision 91 (e), Toni 2026-11-08: "Maybe even try a slow mo when the player does it nicely"): THE SLOW MOTION - when the engine takes the riposte stagger of YOUR correct block scoring at least `TimedBlockSlowMoMinScore`, the game asks its own time-speed request (`Mission.AddTimeSpeedRequest`, id 31100) down to `TimedBlockSlowMoSpeed` and eases it back to 1 over `TimedBlockSlowMoRealSeconds` REAL seconds (`TimedSlowMoMath.Speed`), at most one per `TimedBlockSlowMoCooldownSeconds`; never the AI's blocks, never in multiplayer / paused / with another request active (the order menu's 0.25, the radial / equip menus, another mod - we skip, and yield when one comes in); the request is given back on every exit (the end of the ramp, the switches off, a pause or a frame stall, you off the field, the mission end / the behaviour removed, an error). The PLAYER page ("Staggers and knockdowns"). Live. |
 | `ImpactRiderDismountPercent` | 50 | Step 48: a rider's "knockdown" = knocked off at this % of the knockdown chance; never a stagger on a rider (IMPACT §3.8, §8 q4). Range 0-100. |
 | `ImpactTiredNeverShrugsOff` | true | Step 48: a tired man's flinch threshold × f - he shrugs off less (I5). Step 52: applied in the damage decorator's `DecideAgentShrugOffBlow` (main thread) to a clean hit on a man on foot while clean hits are live - the game's threshold × (1 − T), T × `ImpactOnPlayerPercent` for you. Live. |
 | `ImpactMomentumEnabled` | true | Step 52, MOMENTUM (Anton 2026-10-17: a fresh shock unit charging a tired line must be devastating): the attacker's own speed into the blow adds impact - kicks, bashes and weapon blows, blocked or not; a rider's = his horse's speed at the rider settings (step 53, below). Live. |
@@ -1720,6 +1721,10 @@ row goes to the Advanced page unless a player needs it to set up his game (CLAUD
 | `TimedBlockAgainstYouMaxSeconds` | 1.2 | Step 100b: the longest timed stagger the AI can put on YOU (never shorter than step 56's length). Range 0.5-3. Live. |
 | `TimedBlockParryPercent` | 100 | Step 100b: a weapon parry's share of the timing score. Range 0-100. Live. |
 | `TimedBlockAiPercent` | 50 | Step 100b: an AI blocker's share of the timing score (Toni: the AI times blocks too, at half strength). Range 0-100. Live. |
+| `TimedBlockSlowMoMinScore` | 0.8 | Step 100e: the timing score your block needs for the slow motion (the riposte must have been taken by the engine too). Range 0-1. Live. |
+| `TimedBlockSlowMoSpeed` | 0.3 | Step 100e: the game speed at the slow motion's deepest (eased in over min(0.05, total ÷ 10) real s, a smoothstep back to 1). Range 0.1-1. Live. |
+| `TimedBlockSlowMoRealSeconds` | 0.5 | Step 100e: the whole slow motion in REAL seconds (the engine's application clock), the ease back included - about 0.3 s of mission time at the defaults. Range 0.2-2. Live. |
+| `TimedBlockSlowMoCooldownSeconds` | 4 | Step 100e: real seconds from one slow motion's start to the next. Range 0-30. Live. |
 | `ImpactMismatchWeight` | 0.25 | Step 48: x per doubling of the mismatch R beyond the even band. Range 0-2. |
 | `ImpactEvenBandDoublings` | 0.5 | Step 48: a mismatch within ± this many doublings (×1.41) = an even match (adds 0). Range 0-3. |
 | `ImpactBodyExponent` | 0.5 | Step 48: the body = his CURRENT points to this power. Range 0-2. |
@@ -1881,15 +1886,10 @@ Item 3 is built (step 20, hold ALT); what is left of it is an always-on form abo
 | `TargetBarLingerSeconds` | 2 | Seconds the bar stays after your aim leaves the fighter. | LATER (step 7) |
 | `FormationBarsAlways` | false | true: the formation numbers always shown above the formations (our own projection - step 20's fallback), not only while vanilla shows its markers. | LATER (an always-on form of step 20) |
 | `FormationBarHeight` | 3.0 | Metres above the formation's centre for those always-on numbers (vanilla's markers use 3). | LATER (an always-on form of step 20) |
-| `TimedBlockDismountMinScore` | 0.5 | The timing a correct block needs to bring a rider down. | step 100c |
-| `TimedBlockDismountMaxPercent` | 40 | The chance a perfect shield block knocks a galloping rider off (x score², x the horse's speed band, x the mismatch). | step 100c |
-| `TimedBlockDismountWeaponPercent` | 50 | A weapon parry's share of that chance. | step 100c |
-| `TimedBlockRearPercent` | 50 | A timed block that did not unhorse the rider rears his horse (x the score). | step 100c |
-| `TimedBlockSlowMo` | true | Slow motion on your best blocks - player page, "Staggers and knockdowns". | step 100e |
-| `TimedBlockSlowMoMinScore` | 0.8 | The timing your block needs for the slow motion. | step 100e |
-| `TimedBlockSlowMoSpeed` | 0.3 | The game speed at the slow motion's deepest. | step 100e |
-| `TimedBlockSlowMoRealSeconds` | 0.5 | How long the slow motion lasts, in real seconds, the ease back included. | step 100e |
-| `TimedBlockSlowMoCooldownSeconds` | 4 | Real seconds before the next slow motion. | step 100e |
+| `TimedBlockDismountMinScore` | 0.5 | The timing a correct block needs to bring a rider down. | DROPPED (Toni 2026-11-08: "skip the mounted part") |
+| `TimedBlockDismountMaxPercent` | 40 | The chance a perfect shield block knocks a galloping rider off (x score², x the horse's speed band, x the mismatch). | DROPPED (Toni 2026-11-08: "skip the mounted part") |
+| `TimedBlockDismountWeaponPercent` | 50 | A weapon parry's share of that chance. | DROPPED (Toni 2026-11-08: "skip the mounted part") |
+| `TimedBlockRearPercent` | 50 | A timed block that did not unhorse the rider rears his horse (x the score). | DROPPED (Toni 2026-11-08: "skip the mounted part") |
 | `TimedBlockPushOut` | true | The blocker's shield / weapon pushes out on a timed riposte. | step 100d |
 | `TimedBlockPushOutForYou` | true | Also on you (your guard drops for about a quarter second). | step 100d |
 | `TimedBlockPushOutMinScore` | 0.5 | The timing a block needs for the push-out. | step 100d |
