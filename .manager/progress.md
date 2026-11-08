@@ -1,13 +1,18 @@
-# Manager progress — 2026-11-06
+# Manager progress — 2026-11-08
 
-Task (Toni): in a shield wall, the men on the two ends of the line should face the flanks (outward), not forward.
-Board = TASKS_TODO.md BUILD ORDER step 99 (manager protocol in CLAUDE.md).
+Task (Toni): timed blocks. A correct shield block / weapon parry made just as the blow lands
+staggers the attacker longer - up to 2 s for a nicely timed one - so blocking becomes a skill.
+Against a mounted charge, a correct, well-timed block can bring the attacker down. The blocker
+should visibly push the shield / weapon out as it lands (now he just sits there while the attacker
+reels). A short slow-mo when the PLAYER times one nicely.
+Board = TASKS_TODO.md BUILD ORDER step 100 (manager protocol in CLAUDE.md).
 
 ## Steps
-- [x] 99a. Research: how vanilla's shield wall lays out men and sets facing; how to turn the end files outward per agent; design + settings proposal (AI_NOTES "Step 99"), no code
-- [x] 99b. Implement + tests + docs, build, deploy, commit, push
+- [ ] 100a. Research + design (AI_NOTES "Step 100"), no code: how to measure block timing; how it plugs into the existing Impact / riposte stagger (step 56); 2 s stagger; mounted attacker down; blocker push animation; slow-mo API; settings proposal
+- [ ] 100b. Core: timed-block window + longer riposte stagger (shield + parry), settings, tests, build, deploy, commit, push
+- [ ] 100c. Mounted charge: a timed correct block can unhorse / knock down the rider
+- [ ] 100d. Blocker push-out animation on a timed block
+- [ ] 100e. Player slow-mo on a well-timed block
+- [ ] 100f. Independent review + fixes, PLAYTEST entry, close step 100
 
 ## Notes
-- 99a done: AI_NOTES "Step 99" research section; TASKS_TODO 99 marked [~]. Mechanism: per-man Agent.TrySetFormationFrame with direction formation.Direction.TransformToParentUnitF(-/+Vec2.Side) right after vanilla's ~0.5 s update (step 41 timer), SetDirectionChangeTendency(1) like square/circle men, EnforceShieldUsage(DefendDown). End men = Arrangement.GetNeighborUnitOfLeftSide/RightSide == null. Only held men, shield wall, wall standing (step 75 test). Release forward when enemy within 4 m in front or step 42 frees him. MUST share one "his facing" function with step 68 pace + step 75 pin, else they snap forward. Settings proposed: ShieldWallFlanksFaceOut true, ShieldWallFlankFiles 1, ShieldWallFlankFrontCornerDegrees 45, ShieldWallFlankReleaseMetres 4, + "wall flanks" summary line with angle check.
-- Toni decided 2026-11-06 (all recommended): outer file 1 deep, front corner 45 deg; only while the wall stands; shield wall only. Was waiting on: corner man 45/90/forward, files per end, standing only or advancing too, shield wall only or line too.
-- 99b done (3c09905..f2ba284): ShieldWallFlanks Core + AthleticsLogic.Flanks + shared GameWallBody.FacingOf; 1391 tests, smoke 215. Deploy FAILED (game running) - rerun deploy line after closing the game. PLAYTEST D63: [summary] wall flanks "off the asked" near 0 deg = works. Walls narrower than 5 files keep everyone forward.
