@@ -9,7 +9,7 @@ Board = TASKS_TODO.md BUILD ORDER step 100 (manager protocol in CLAUDE.md).
 
 ## Steps
 - [x] 100a. Research + design (AI_NOTES "Step 100"), no code: how to measure block timing; how it plugs into the existing Impact / riposte stagger (step 56); 2 s stagger; mounted attacker down; blocker push animation; slow-mo API; settings proposal
-- [ ] 100b. Core: timed-block window + longer riposte stagger (shield + parry), settings, tests, build, deploy, commit, push
+- [x] 100b. Core: timed-block window + longer riposte stagger (shield + parry), settings, tests, build, deploy, commit, push
 - [ ] 100c. Mounted charge: a timed correct block can unhorse / knock down the rider
 - [ ] 100e. Player slow-mo on a well-timed block (moved ahead of the animation)
 - [ ] 100d. Blocker push-out animation on a timed block
@@ -22,3 +22,6 @@ Board = TASKS_TODO.md BUILD ORDER step 100 (manager protocol in CLAUDE.md).
   Slow-mo: game time-speed request 0.3, eased back over 0.5 s real, 4 s cooldown, player only, always removed on every exit.
   Animation: act_shield_bash / act_1h|2h|staff_bash upper body, skip windup, ~0.25 s; fallback the guard's _parry_heavy; test tool first.
   Open questions answered by the manager with the recommended defaults (Toni said 'go'): AI times blocks at half strength (cap 1.2 s vs Toni); 0.15 s perfect / 0.5 s none; horse rears if rider stays on; push-out on with a switch. Tell Toni in the final summary.
+- 100b done (043c896, f6311b1, 4bbe346): Core TimedBlock.cs (GuardClock, TimedBlockMath, TimedBlockResult, TimedBlockStats); ImpactMath.Decide blend; Module GuardBody.cs, AthleticsLogic.TimedBlock.cs; 1408 tests, smoke 217; deployed; PLAYTEST D64. TimedBlocksEnabled + 7 Advanced keys.
+  For 100c: a correct block vs a rider has TimedScore + TimedBlockResult.AttackerMounted but riposte still refused as Rider - add dismount/rear roll next to it in Decide (d.AttackerSpeed, d.XRiposte in the same branch). 100d/100e hook TimedRiposteAccepted(attacker, blocker, score, now) called from the tick when the engine takes the stagger.
+  Unverified: Parried vs Blocked mapping (D64 summary line), 2 s stagger in game.
