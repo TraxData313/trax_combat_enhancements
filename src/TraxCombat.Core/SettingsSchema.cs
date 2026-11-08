@@ -211,6 +211,11 @@ namespace TraxCombat.Core
             "Slow motion on your best blocks",
             "A brief slow motion (about half a second) when YOU make a nicely timed block that staggers the attacker. Never on the AI's blocks, never while another slow-down (the orders menu) is on, at most one every few seconds. Off: no slow motion. The numbers: Advanced page, Impact.");
 
+        // Step 100g (Toni 2026-11-08: "after I blocked him and he is staggered I do 2-3x damage against him and I see some notification like PERFECT STRIKE"): DESIGN decision 91 (j).
+        public static readonly ParamDef PerfectStrikeEnabled = Bool("PerfectStrikeEnabled", PlayerImpactGroup,
+            "Perfect strike after your timed block",
+            "When YOUR timed block staggers the attacker, your first swing from the opposite side (you blocked his attack coming at your left - swing from your right) that lands on him while he still reels does 2 to 3 times the damage (more for a better-timed block), and PERFECT STRIKE shows on screen. A blocked overhead: either side swing counts; a blocked thrust: any swing. A hit from the wrong side does not use it up. Off: no perfect strikes. The numbers: Advanced page, Impact.");
+
         // Step 33 (Anton, 2026-10-12: "a short burst of speed, meant to feel a little like a dodge, and for the AI to make charges
         // sharper"): Core SprintMath, AI_NOTES "Step 33".
         public static readonly ParamDef SprintEnabled = Bool("SprintEnabled", PlayerSprintGroup,
@@ -1973,6 +1978,23 @@ namespace TraxCombat.Core
             "Timed blocks: animation test key",
             "The test tool's key (only while the test tool is on). Type its name: " + KeyNames.ListText + ".");
 
+        // Step 100g: the perfect strike's numbers (DESIGN decision 91 (j)).
+        public static readonly ParamDef PerfectStrikeMinMultiplier = Float("PerfectStrikeMinMultiplier", 1, 5, ImpactGroup,
+            "Perfect strike: damage multiplier (least timed block)",
+            "The perfect strike's damage multiplier after a block timed at the edge of the window (timing 0). It rises in a straight line to the one below for a perfectly timed block. Applied last, after the damage roll, tiredness and the overall reduction, so the hit lands exactly this many times what it would have.");
+
+        public static readonly ParamDef PerfectStrikeMaxMultiplier = Float("PerfectStrikeMaxMultiplier", 1, 5, ImpactGroup,
+            "Perfect strike: damage multiplier (perfect block)",
+            "The perfect strike's damage multiplier after a perfectly timed block (timing 1).");
+
+        public static readonly ParamDef PerfectStrikeGraceSeconds = Float("PerfectStrikeGraceSeconds", 0, 1, ImpactGroup,
+            "Perfect strike: seconds after the stagger",
+            "How long after the staggered man's stagger ends your counter still counts (a swing already on its way). 0 = only while he still reels.");
+
+        public static readonly ParamDef PerfectStrikeCentreMessage = Bool("PerfectStrikeCentreMessage", ImpactGroup,
+            "Perfect strike: big line in the middle",
+            "On: PERFECT STRIKE also shows in the middle of the screen, not only as a gold line in the message feed. Off: the gold line only.");
+
         public static readonly ParamDef ImpactMismatchWeight = Float("ImpactMismatchWeight", 0, 2, ImpactGroup,
             "Mismatch weight (pressure per doubling)",
             "How much an outmatched man suffers: every doubling of the mismatch beyond the even band adds this to the pressure on him (0.25: an enemy four times stronger counts as much as being about a third tired). 0 = only tiredness counts.");
@@ -2590,7 +2612,7 @@ namespace TraxCombat.Core
             DamageRandomPercent, DamageReductionPercent, TiredDamageAtEmptyPercent,
             AthleticsEnabled, CostPerBlow, HeroCostMultiplier,
             AiAggressionFreshPercent, AiAggressionExhaustedPercent, FeverEnabled, ShieldWallHoldsSlots, ShieldWallStepOutMetres, ShieldWallStandFirm, ShieldWallFlanksFaceOut, SpearPreferenceEnabled, PressDontPass, RotationEnabled, RestEnabled, WarCriesEnabled, CourageEnabled, CavalryFlockEnabled, LineDisciplineForPlayer,
-            ImpactEnabled, ImpactOnPlayerPercent, ImpactMeetRulesEnabled, TimedBlocksEnabled, TimedBlockSlowMo,
+            ImpactEnabled, ImpactOnPlayerPercent, ImpactMeetRulesEnabled, TimedBlocksEnabled, TimedBlockSlowMo, PerfectStrikeEnabled,
             SprintEnabled, SprintKey, SprintControllerKey,
             ShowPlayerBar, AltMarksEveryone, ImpactShowMessages,
             GiveTier1Shields,
@@ -2676,6 +2698,7 @@ namespace TraxCombat.Core
             TimedBlockPushOutGuardSeconds, TimedBlockPushOutShieldAction, TimedBlockPushOutOneHandedAction, TimedBlockPushOutTwoHandedAction,
             TimedBlockPushOutPolearmAction, TimedBlockRecoil, TimedBlockRecoilSeconds, TimedBlockRecoilMaxPercent, TimedBlockRecoilVariant,
             TimedBlockAnimTest, TimedBlockAnimTestKey,
+            PerfectStrikeMinMultiplier, PerfectStrikeMaxMultiplier, PerfectStrikeGraceSeconds, PerfectStrikeCentreMessage,
             ImpactMismatchWeight, ImpactEvenBandDoublings, ImpactBodyExponent, ImpactBodyFloorPoints, ImpactStaggeredBonus, ImpactDamageWeight,
             ImpactRefWeightKg, ImpactWeightExponent, ImpactRefSwingSpeed, ImpactSpeedExponent, ImpactBluntFactor, ImpactCutFactor, ImpactPierceFactor,
             ImpactKickFactor, ImpactBashFactor, ImpactSkillMinFactor, ImpactSkillMaxFactor,

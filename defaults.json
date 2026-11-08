@@ -267,6 +267,15 @@
   // (true or false)
   "TimedBlockSlowMo": true,
 
+  // When YOUR timed block staggers the attacker, your first swing from the opposite side (you
+  // blocked his attack coming at your left - swing from your right) that lands on him while he
+  // still reels does 2 to 3 times the damage (more for a better-timed block), and PERFECT
+  // STRIKE shows on screen. A blocked overhead: either side swing counts; a blocked thrust: any
+  // swing. A hit from the wrong side does not use it up. Off: no perfect strikes. The numbers:
+  // Advanced page, Impact.
+  // (true or false)
+  "PerfectStrikeEnabled": true,
+
   // ==================== Sprinting ====================
   // Every fighter on foot has a sprint: a short burst of speed stored in seconds - the more
   // Athletics he has left, the longer (150 points = 7.5 s; empty = none). Hold the sprint key
@@ -2622,6 +2631,27 @@
   // B, N, M, C, MiddleMouseButton, X1MouseButton, X2MouseButton.
   // (one of LeftControl, RightControl, LeftAlt, RightAlt, LeftShift, RightShift, CapsLock, Tab, Q, T, Y, H, J, K, L, B, N, M, C, MiddleMouseButton, X1MouseButton, X2MouseButton)
   "TimedBlockAnimTestKey": "J",
+
+  // The perfect strike's damage multiplier after a block timed at the edge of the window
+  // (timing 0). It rises in a straight line to the one below for a perfectly timed block.
+  // Applied last, after the damage roll, tiredness and the overall reduction, so the hit lands
+  // exactly this many times what it would have.
+  // (range 1.0 to 5.0)
+  "PerfectStrikeMinMultiplier": 2.0,
+
+  // The perfect strike's damage multiplier after a perfectly timed block (timing 1).
+  // (range 1.0 to 5.0)
+  "PerfectStrikeMaxMultiplier": 3.0,
+
+  // How long after the staggered man's stagger ends your counter still counts (a swing already
+  // on its way). 0 = only while he still reels.
+  // (range 0.0 to 1.0)
+  "PerfectStrikeGraceSeconds": 0.15,
+
+  // On: PERFECT STRIKE also shows in the middle of the screen, not only as a gold line in the
+  // message feed. Off: the gold line only.
+  // (true or false)
+  "PerfectStrikeCentreMessage": true,
 
   // How much an outmatched man suffers: every doubling of the mismatch beyond the even band
   // adds this to the pressure on him (0.25: an enemy four times stronger counts as much as

@@ -645,6 +645,11 @@ namespace TraxCombat.Core
         public int TimedBlockRecoilVariant => GetInt(SettingsSchema.TimedBlockRecoilVariant); // step 100d
         public bool TimedBlockAnimTest => GetBool(SettingsSchema.TimedBlockAnimTest); // step 100d
         public string TimedBlockAnimTestKey => KeyNames.Name(Get(SettingsSchema.TimedBlockAnimTestKey)); // step 100d
+        public bool PerfectStrikeEnabled => GetBool(SettingsSchema.PerfectStrikeEnabled); // step 100g
+        public float PerfectStrikeMinMultiplier => GetFloat(SettingsSchema.PerfectStrikeMinMultiplier); // step 100g
+        public float PerfectStrikeMaxMultiplier => GetFloat(SettingsSchema.PerfectStrikeMaxMultiplier); // step 100g
+        public float PerfectStrikeGraceSeconds => GetFloat(SettingsSchema.PerfectStrikeGraceSeconds); // step 100g
+        public bool PerfectStrikeCentreMessage => GetBool(SettingsSchema.PerfectStrikeCentreMessage); // step 100g
         public int AiNoShieldKickPercent => GetInt(SettingsSchema.AiNoShieldKickPercent); // step 81
         public int AiNoShieldPushPercent => GetInt(SettingsSchema.AiNoShieldPushPercent); // step 88
         public float AiKickReachMetres => GetFloat(SettingsSchema.AiKickReachMetres);
