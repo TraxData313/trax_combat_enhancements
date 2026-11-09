@@ -43,7 +43,7 @@ namespace TraxCombat.Tools
                 S.Set(SettingsSchema.DamageReductionPercent, 25, SettingSources.File);
                 S.Set(SettingsSchema.SprintFullCritical, true, SettingSources.File);
                 S.Set(SettingsSchema.TiredDamageAtEmptyPercent, 60, SettingSources.File);
-                DamageRandomizer.Rng = ThreadSafeRandom.Shared;
+                DamageRandomizer.Rng = new SeededRandom(89); // step 104e: seeded - the averages below are ~3-sigma checks; the unseeded dice failed one run in ~100 (seen once in 104d)
                 DamageRandomizer.OnMissionStart();
                 LogHas("; tired men hit softer (TiredDamageAtEmptyPercent) 60% at an empty bar - the attacker's damage x E + (1 - E) x f after the roll, before the reduction (f 0.5 x0.80, empty x0.60; an empty man's average 100 hit lands 45 before the reduction (75 without it); a charging man's melee blow counts fresh; falls, objects and shield blocks never)");
 
