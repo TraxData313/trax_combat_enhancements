@@ -9678,7 +9678,7 @@ steps green.
 **Unverified until D71:** that `CrouchMode` reads true while Toni is crouched in a battle (the bar's "Resting" and the [athletics] "first crouch"
 line prove it); which direction the engine reports for his "from below" attack with each weapon (the YOU lines name it).
 
-## Step 104 (APPROVED by Toni 2026-11-09 "as suggested" - all 5 recommendations below; built after step 105) — timed blocks on horseback: the rider reels in the saddle (research 2026-11-09, no code)
+## Step 104 (APPROVED by Toni 2026-11-09 "as suggested" - all 5 recommendations below; built after step 105; 104a + 104b built) — timed blocks on horseback: the rider reels in the saddle (research 2026-11-09)
 
 Toni 2026-11-09, after the v1.5.0 release: "can you add the reel vs mounted troops as well somehow, like that 3rd round, we were on horsebacks
 fighting, I blocked, can you implement a similar system there?" His tournament round 3/4: both he and his opponent MOUNTED, 13 shield blocks of
@@ -9968,6 +9968,74 @@ The eyes first - nothing of step 104 is applied yet. Commits 8a0d193 (settings),
   the horse check in `ApplyMountSpeed` (min(tired m, `HorseCheck`)), the watch + release on every exit (lock stuck = risk 5), `TimedRiderReelAccepted` -> the
   slow-mo, the YOU lines ("X reels in the saddle 1.45 s / 1.50"), the `TimedBlocksOnHorseback` default true + a config format bump (MoveOrKeepIfMoved), the
   shadow kept as the "would" half of a live summary or retired. Toni's D73 answer (which reel) first.
+
+### 104b - built (2026-11-09)
+
+The reel in the saddle LIVE. Toni (through the manager): start without his J-tool pick - the default reel is 104a's "reel as set",
+`act_stagger_backward` x1.0 on the rider's channel 1; his later pick is a SETTING (`TimedRiderReelAction` + `TimedRiderReelAnimSpeed`, Advanced,
+Impact; live - the next reel uses it; the hint says how: the J tool's first rider candidate plays exactly that setting). Commits e628950 (settings),
+a50b28d (code).
+
+- **Where the decision lives (a change from §6's plan)**: NOT a new branch in `ImpactMath.Decide` - the riposte on a rider stays refused "a rider"
+  there (s 0 = today exactly; Step104aTests' real-decision test still pins it). The live reel IS the ladder's own decision right after it
+  (`TimedRiderMath.Decide`, already gated and rolled by 104a - the rider dice `RiderShadowDice`, never the impact dice), applied by
+  `QueueRiderReel` (AthleticsLogic.RiderReel.cs) when `TimedRiderRules.Live` (the master switch first ... `TimedBlocksOnHorseback`) AND
+  `ImpactRules.Applies(Riposte)` (not shadow mode). One decision, one set of dice for the shadow line and the live reel - the [impact] "rider
+  shadow" line now says "REELS (live) 1.50 s ... the reel LIVE; the rear / knock-off shadow only (step 104c)".
+- **ReelingUntil on a rider - safe**: `a.Impact.Reel(now + L, StaggerImmunity, ReelCause.RiderReel)` + `NoteOutcome` (the halving / courage as a
+  riposte). Every reader checked: step 105 (`ReelingHitMath.Decide`) gets the REAL reeling and refuses him `Mounted` ("a rider") - never the 80 %;
+  the usual model's REELING BONUS (+0.75 on x, `Pressure`) is now given only on foot (`reeling = reelingNow && !f.DefenderMounted` in
+  `ImpactMath.Decide`) - otherwise a hit on a reeling rider would have raised step 53's knock-off roll (the rider's knockdown = his dismount) -
+  so a rider's knock-off odds are exactly as before until 104c (test + smoke). The perfect strike window opens only from `TimedRiposteAccepted`
+  (never for a rider - 104d); step 54's punish window is opened only from the decision's kept states (not this); AI kicks / meet reads /
+  rhythm read it only for men on foot. `TimedRiderMath.Gate`'s "already reeling" / "stagger-immune" now see the live reel (no reel on a reel).
+- **From the tick, never in the hit callback** (`TickRiderReels` from `TickImpact`, its own try; nothing to do with no reel running): a fixed pool
+  of 64 `RiderReelRec` (`TrackedAgent.RiderReelSlot`), re-timed from the real start. THE LOCK: Core `AiInputMath.ReelLock` - attack bits out,
+  guard bits out with `TimedRiderNoGuard`, in a READY the guard bit CANCELS it (bits vanishing mid-ready would release the blow - step 16's rule),
+  the move / turn bits and the vector never even passed; an AI rider: `AiInputState.Reel` (+ `ReelNoGuard`, in `Active`), `AiInputHook.ApplyReel`
+  written LAST in the filter (over every other wish), counted per frame; YOU: `GatePlayerInput` calls `GateYourReel` first (before the timer's
+  early return) - `YourReelFrame` on `Agent.MovementFlags`, counted. THE ANIMATION: `AnimBody.Play(st, TimedRiderAnimMath.RiderChannel = 1, ...)`
+  at `TimedRiderReelAnimSpeed`, cleared at `AnimSeconds` (`TimedRiderReelAnimMaxSeconds` 1.0) only if channel 1 still holds our index - the lock
+  alone after it. THE HORSE: `TrackedAgent.ReelHorseCheck` = the ladder's min(tired, 50 %); `RetargetSpeed` takes min(mount, it) and marks the
+  horse - the existing `ApplyMountSpeed` / stat decorator path (budgeted recompute); back to 1 + an exact retarget at the end. THE SEAM
+  `TimedRiderReelAccepted`: `MaybeStartSlowMo(blocker, score)` (step 101's gates / cooldown / give-back unchanged) and the on-screen line
+  (`TimedRiderLines.YourReel`: "Your block - X reels in the saddle 1.45 s / 1.50 (guard 0.20 s / 0.15)"; on you the plain riposte line); 104d's
+  strike / push-out hook here. `TimedBlockDecided` no longer shows "X holds" for a block that reels a rider.
+- **Every exit gives every lock back** (`ReleaseRiderReel`, Core `RiderReelEnd`): its end; death / removal (`Forget` → `RiderReelLeftField`, NO
+  engine call); not riding (`IRiderReelBody.Riding` - dismounted / horse dead: the animation not touched, the engine's fall plays); a switch
+  (rr.Live or the riposte family - the master switch first) - all let go at once; the mission end / the behaviour's removal (`CloseRiderReels`,
+  BEFORE the summary); an error (`RiderReelFailed`: all let go with no engine call, the reel off for the battle). Released = the AI wish off +
+  `UnhookIfIdle`, your gate slot cleared, the horse check 1 + retarget, his reel ended on the record (immunity only after a whole reel), an
+  animation cut early cleared if still ours. `AiInputHook.Clear` clears the wish too.
+- **Engine side** `IRiderReelBody` (RiderReelBody.cs): Riding (active + an active mount), AiDriven, HorseSpeed (the mount's velocity - the summary's
+  measure of the half-speed lever at the start / 0.5 s / the end), Hook / Release; the smoke plays a stand-in.
+- **Settings**: `TimedBlocksOnHorseback` ON in defaults.json; CONFIG FORMAT 29 moves a format-28 file's untouched false to true once (Toni's file:
+  104a wrote false, he never set it); DESIGN's Default column keeps the initial false - so the TESTS' default (DESIGN's values) is still OFF and the
+  104b tests set it on. The player hint now describes what is live; `TimedRiderReelAction`'s hint says how to pick by eye. No new key.
+- **[summary]** `timed blocks on horseback (step 104b): the reel LIVE - reels decided N by timing band [...] (your blocks, on you, pool full);
+  started, gone before the tick; in the saddle (whole reels) asked → measured; the animation ... taken / refused / not in his set / none / cut at its
+  part; the lock: the AI n (frames - attacks out, guards out, readies cancelled), you n (presses swallowed), not locked; locks released: at its end /
+  death / removal / dismounted / a switch off / the mission end / an error - left over at the mission end 0; horses checked (mean x; his speed at the
+  start → 0.5 s → the end); slow motions asked` - written before the shadow's line (whose header now says the reel is live).
+- **Tests**: Step104bTests (8): the lock frame (attack + guard out, every other bit kept, NoGuard off, a ready cancelled not released), a reeling
+  rider refused by step 105 with no reeling bonus (x and the knock-off chance identical to a calm rider; a foot man unchanged), the cause, the switch
+  + format 29 (moved once, a format-29 false kept, older files untouched), the on-screen words, the summary line, no allocation. Step104aTests
+  adjusted (the switch's initial OFF; ON = live). 1531 tests. The config format bumped to 29 in every pinning test.
+- **Smoke**: "THE REEL IN THE SADDLE, LIVE (step 104b)" (Program.Step104b.cs) + a `UseFakeRiderReelBody` step: Toni's case through the real logic
+  (the record reels, the AI lock from the tick through the real `ApplyReel`, act_stagger_backward x1.0 on channel 1 only, no stagger / rear /
+  dismount, cut at 1.0 s, the horse x0.5, the slow motion), your hit on the reeling rider refused "a rider", a second block refused "already
+  reeling", the end at ~1.5 s with every lock back; the AI's block of your mounted blow (≤ 1.0 s, your gate frame); every exit (dismounted,
+  removed with no engine call, the switch, the master switch, the mission end, an error - then no more reels); a held block reels nobody; the
+  summary line (left over 0). 229 steps, all passed. The 104a smoke pins the switch OFF.
+- **Not verified in game** (PLAYTEST D74): how act_stagger_backward reads on a seated upper body at x1.0; whether the AI's lock bites at once
+  (its frames counted); how much a GALLOPING horse slows from a lower `MountSpeed` within 1.5 s (the summary's speeds answer); the AI-vs-AI reel
+  rate in a cavalry battle (risk 4).
+- **What 104c needs**: the ladder already rolls the knock-off (perfect, never on you) then the rear (sharp) after a taken reel and logs them
+  "shadow only" - apply them from the reel's start in the tick: the knock-off via step 53's `OwnDismountBlow` (followed until SEEN off; the reel's
+  locks then end "dismounted" by themselves), else the rear via `IImpactBody.OwnRearBlow` (104a's preview - SEEN rearing within 1.5 s; the
+  channel-1 animation SKIPPED when he rears, the lock kept); 4 settings already in (`TimedRiderRearMinScore` / `RearPercent` / `DismountPercent` /
+  `DismountWeaponPercent`); a `Rear` lever disabled alone on its error; the summary's rears / knock-offs decided → applied → seen; decide whether a
+  reeling rider's knock-off by a HIT (step 105's "a rider" refusal, the no-bonus rule above) changes - Toni's call.
 
 ## Step 105 (BUILT 2026-11-09) — a landed hit on a reeling man knocks him down (80 %)
 
