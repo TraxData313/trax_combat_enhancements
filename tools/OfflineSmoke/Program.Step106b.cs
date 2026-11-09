@@ -217,6 +217,23 @@ namespace TraxCombat.Tools
                 Tick(2.5);
                 Check(logic.OpeningForced == null && !ai.Input!.Opening, "the force outlived the off-balance time");
 
+                // ---- 5b. step 106 follow-up: SPAMMING into his guard - the attack lock at most 1 s a run, then he is free until 1 s free
+                Tick(3);
+                int capped = fs.LockCapped, spent = fs.LockSpent;
+                Parried(you, ai, Agent.UsageDirection.AttackRight);
+                Check(logic.OpeningForceKind == OpeningForceKind.Balance && fs.LockCapped == capped + 1, "the first off-balance force was not capped at 1 s");
+                Tick(0.6);
+                Parried(you, ai, Agent.UsageDirection.AttackRight);
+                Check(logic.OpeningForceKind == OpeningForceKind.Balance && ReferenceEquals(logic.OpeningForced, ai), "the re-armed force (same run) did not hold");
+                Tick(0.5);
+                Check(logic.OpeningForced == null && !ai.Input!.Opening, "the re-armed force outlived the run's 1 s - spamming still freezes him");
+                Parried(you, ai, Agent.UsageDirection.AttackRight);
+                Check(logic.OpeningForced == null && fs.LockSpent == spent + 1 && Frame(ai, his) == his, "a block inside the spent run forced him again");
+                Tick(1.1);
+                Parried(you, ai, Agent.UsageDirection.AttackRight);
+                Check(logic.OpeningForceKind == OpeningForceKind.Balance && ReferenceEquals(logic.OpeningForced, ai), "after 1 s free a new run did not force him");
+                Tick(3);
+
                 // ---- 6. never a man you drive
                 Tick(3);
                 body.You.Add(ai.AgentIndex);

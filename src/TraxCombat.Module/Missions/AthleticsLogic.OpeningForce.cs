@@ -24,6 +24,7 @@ namespace TraxCombat.Missions
         private readonly OpeningForceStats _force = new OpeningForceStats();
         private TrackedAgent? _forceSt;
         private OpeningForceKind _forceKind;
+        private OpeningAttackLock _attackLock; // step 106 follow-up: the off-balance attack lock, at most 1 s a run
         private double _forceUntil, _forceStart;
         private uint _forceFlag;
         private bool _forceLower, _forceFlagOff, _forceRead1, _openLiveRolled, _openLiveThrough;
@@ -58,7 +59,20 @@ namespace TraxCombat.Missions
                 if (!plan.Opens || !OpeningsLive(in r)) return;
                 if (_forceKind == OpeningForceKind.Test && ReferenceEquals(_forceSt, v)) return; // the test tool has him
                 _openLiveRolled = false;
-                if (!StartForce(v, OpeningForceKind.Balance, plan.Guard, false, now + r.ChainReset, now)) return;
+                // step 106 follow-up (Toni 2026-11-09): the attack lock at most 1 s a run - spamming swings into his guard no longer freezes him
+                if (_forceSt != null && !ReferenceEquals(_forceSt, v)) EndForce(OpeningForceEnd.ChainEnded, now, true); // the old man's run ends first
+                if (!_attackLock.Begin(v.AgentIndex, now, r.ChainReset, out double until))
+                {
+                    _force.LockSpent++;
+                    if (ReferenceEquals(_forceSt, v) && _forceKind == OpeningForceKind.Balance) EndForce(OpeningForceEnd.Timeout, now, true);
+                    return;
+                }
+                if (until < now + r.ChainReset - 1e-9) _force.LockCapped++;
+                if (!StartForce(v, OpeningForceKind.Balance, plan.Guard, false, until, now))
+                {
+                    _attackLock.End(now);
+                    return;
+                }
                 _force.Balance++;
             }
             catch (Exception e)
@@ -177,6 +191,7 @@ namespace TraxCombat.Missions
             _forceSt = null;
             var kind = _forceKind;
             _forceKind = OpeningForceKind.None;
+            if (kind != OpeningForceKind.Test) _attackLock.End(now); // step 106 follow-up: his free time counts from here
             _force.NoteEnd(why);
             try
             {

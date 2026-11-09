@@ -187,6 +187,63 @@ namespace TraxCombat.Core
     }
 
     /// <summary>
+    /// Step 106 follow-up (Toni 2026-11-09, DESIGN 95 (n)): THE OFF-BALANCE ATTACK LOCK IS CAPPED AT <see cref="MaxSeconds"/> (1 s). Before, an off-balance
+    /// man's attack bits stayed out until your next wind-up or <c>OpeningChainResetSeconds</c> (2 s), and each correct block re-armed it - a player
+    /// who kept swinging into his guard froze him. Now one RUN of forces on the same man (back-to-back off-balance states and the held follow-ups
+    /// between them) locks him at most 1 s from its first frame; after that no new off-balance force starts on him until he has been free
+    /// <see cref="MaxSeconds"/> (his own AI may attack again even if you keep swinging). The chain, the arrow and the stagger on a hit are untouched -
+    /// only the forced guard (and so its attack lock) is skipped. A struct the logic keeps; pure; no allocation.
+    /// </summary>
+    public struct OpeningAttackLock
+    {
+        /// <summary>The cap on one run's attack lock (s), and the free time that starts a new run. A constant, not a setting (Toni's decision).</summary>
+        public const double MaxSeconds = 1.0;
+
+        private bool _has;
+
+        /// <summary>The man of the current run (valid while <see cref="Has"/>), when it began, when its last force ended.</summary>
+        public int Target;
+        public double RunStart, LastEnd;
+
+        /// <summary>A force of the run is on now.</summary>
+        public bool Active;
+
+        public bool Has => _has;
+
+        /// <summary>
+        /// A new OFF-BALANCE force on <paramref name="target"/> at <paramref name="now"/> that would last <paramref name="wanted"/> s: true with
+        /// <paramref name="until"/> = min(now + wanted, the run's start + 1 s); false (spent - no force) when the run's second is used up. The same
+        /// run = the same man while a force is on or within 1 s of the last one's end; anything else starts a new run.
+        /// </summary>
+        public bool Begin(int target, double now, double wanted, out double until)
+        {
+            bool same = _has && target == Target && (Active || now - LastEnd < MaxSeconds - 1e-9);
+            if (!same)
+            {
+                _has = true;
+                Target = target;
+                RunStart = now;
+                Active = false;
+            }
+            until = Math.Min(now + Math.Max(0, wanted), RunStart + MaxSeconds);
+            if (until <= now + 1e-9) return false;
+            Active = true;
+            return true;
+        }
+
+        /// <summary>The run's force let go at <paramref name="now"/> (the free time counts from here).</summary>
+        public void End(double now)
+        {
+            if (!Active) return;
+            Active = false;
+            LastEnd = now;
+        }
+
+        /// <summary>A fresh start (the mission's start / end).</summary>
+        public void Reset() => this = default;
+    }
+
+    /// <summary>
     /// Step 106b: what the forced guard did in one battle - the [summary] line "openings - the forced guard". Counters only, no allocation per
     /// event.
     /// </summary>
@@ -206,6 +263,9 @@ namespace TraxCombat.Core
 
         /// <summary>A held follow-up that landed.</summary>
         public int HeldLanded;
+
+        /// <summary>Step 106 follow-up: off-balance forces cut short by the 1 s attack lock / not started because the run's second was spent.</summary>
+        public int LockCapped, LockSpent;
 
         /// <summary>Not forced: you / a man you drive, a rider.</summary>
         public int NotAi;
@@ -254,6 +314,8 @@ namespace TraxCombat.Core
             t.Append("; the block roll at your wind-up: he blocks ").Append(RollsBlocked.ToString(c)).Append(", through ").Append(RollsThrough.ToString(c))
              .Append(" (landed ").Append(HeldLanded.ToString(c)).Append(", BLOCKED ANYWAY ").Append(BlockedAnyway.ToString(c)).Append("), another side ")
              .Append(WrongSide.ToString(c));
+            t.Append("; the attack lock (at most ").Append(OpeningAttackLock.MaxSeconds.ToString("0.0", c)).Append(" s a run): cut short ")
+             .Append(LockCapped.ToString(c)).Append(", spent - not forced ").Append(LockSpent.ToString(c));
             t.Append("; frames written ").Append(Frames.ToString(c)).Append(" (attack out ").Append(AttacksOut.ToString(c)).Append(", his guard replaced ")
              .Append(GuardsWritten.ToString(c)).Append(", taken out ").Append(GuardsCleared.ToString(c)).Append(", lowered ").Append(LoweredFrames.ToString(c)).Append(')');
             t.Append("; poses read back ").Append(PosesRead.ToString(c)).Append(" (as wanted ").Append(PosesMatched.ToString(c)).Append(", changed ")
