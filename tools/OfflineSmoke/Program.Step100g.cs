@@ -32,8 +32,8 @@ namespace TraxCombat.Tools
                 foreach (var p in SettingsSchema.All.Where(p => p.Key.StartsWith("TimedBlock", StringComparison.Ordinal) || p.Key.StartsWith("PerfectStrike", StringComparison.Ordinal)))
                     S.Set(p, p.Default, SettingSources.File);
                 S.Set(SettingsSchema.TimedBlockSlowMo, false, SettingSources.File);
-                Check(SettingsSchema.PerfectStrikeEnabled.Default == 1 && Near((float)SettingsSchema.PerfectStrikeMinMultiplier.Default, 2f)
-                      && Near((float)SettingsSchema.PerfectStrikeMaxMultiplier.Default, 3f) && Near((float)SettingsSchema.PerfectStrikeGraceSeconds.Default, 0.15f)
+                Check(SettingsSchema.PerfectStrikeEnabled.Default == 1 && Near((float)SettingsSchema.PerfectStrikeFourWayMin.Default, 2f)
+                      && Near((float)SettingsSchema.PerfectStrikeFourWayMax.Default, 4f) && Near((float)SettingsSchema.PerfectStrikeGraceSeconds.Default, 0.15f)
                       && SettingsSchema.PerfectStrikeCentreMessage.Default == 1,
                     "the embedded perfect-strike defaults are not the design's");
                 S.Set(SettingsSchema.RiposteStunMaxSeconds, 1.0, SettingSources.File);
@@ -47,6 +47,7 @@ namespace TraxCombat.Tools
                 logic.SlowMoBody = new FakeSlowMoBody();
                 logic.MessageSink = sink;
                 logic.ImpactDice = new ScriptDice { Rest = 0.5 };
+                logic.OpeningWeaponRead = a => OpeningMath.AllAttacks; // step 106d: a sword (4 directions) - x2 at timing 0 to x4 at 1, strict opposites
                 double t = 95000;
                 logic.TickImpact(t);
                 Check(ReferenceEquals(ImpactHooks.Perfect, logic), "the logic is not the decorator's perfect-strike hook");
@@ -96,16 +97,16 @@ namespace TraxCombat.Tools
                 Check(Near(Hit(a1, Agent.UsageDirection.AttackLeft), 20f) && st.WrongSideTotal == 1 && logic.PerfectStrikeWindowsOpen == 1,
                     "your LEFT swing after his blocked right swing was not a wrong-side hit that keeps the window: wrong " + st.WrongSideTotal + ", open " + logic.PerfectStrikeWindowsOpen);
                 LogHas("[impact] perfect strike: first WRONG-SIDE hit at ");
-                Check(Near(Hit(a1, Agent.UsageDirection.AttackRight), 60f) && st.LandedTotal == 1 && st.Landed[PerfectStrikeMath.Right] == 1
+                Check(Near(Hit(a1, Agent.UsageDirection.AttackRight), 80f) && st.LandedTotal == 1 && st.Landed[PerfectStrikeMath.Right] == 1
                       && logic.PerfectStrikeWindowsOpen == 0,
-                    "your RIGHT swing (from your right to left) after his blocked right swing did not land x3: landed " + st.LandedTotal);
+                    "your RIGHT swing (from your right to left) after his blocked right swing did not land x4 (a sword): landed " + st.LandedTotal);
                 LogHas("[impact] YOU: PERFECT STRIKE on ");
                 LogHas("your right swing after his blocked right swing");
-                LogHas("timing 1.00 → x3.00: 20 → 60 damage (after 1 wrong-side hit(s))");
-                Check(sink.Lines.Count(l => l.Text == "PERFECT STRIKE x3.0") == 0, "the line was shown inside the hit callback, not from the tick");
+                LogHas("timing 1.00, 4-direction weapon → x4.00: 20 → 80 damage (after 1 wrong-side hit(s))");
+                Check(sink.Lines.Count(l => l.Text == "PERFECT STRIKE x4.0") == 0, "the line was shown inside the hit callback, not from the tick");
                 Tick();
-                Check(sink.Lines.Any(l => l.Text == "PERFECT STRIKE x3.0" && l.Hex == PerfectStrikeMath.GoldHex) && sink.Centred.Contains("PERFECT STRIKE x3.0"),
-                    "the gold PERFECT STRIKE x3.0 line / the centre line was not shown: " + string.Join(" | ", sink.Lines.Select(l => l.Text)));
+                Check(sink.Lines.Any(l => l.Text == "PERFECT STRIKE x4.0" && l.Hex == PerfectStrikeMath.GoldHex) && sink.Centred.Contains("PERFECT STRIKE x4.0"),
+                    "the gold PERFECT STRIKE x4.0 line / the centre line was not shown: " + string.Join(" | ", sink.Lines.Select(l => l.Text)));
                 Check(Near(Hit(a1, Agent.UsageDirection.AttackRight), 20f) && st.LandedTotal == 1, "a second strike in the same stagger was perfect too");
 
                 // ---- 2. a blocked LEFT swing: your left swing (from your left) is the perfect one; the multiplier follows the timing (a later guard)
@@ -120,7 +121,7 @@ namespace TraxCombat.Tools
                 S.Set(SettingsSchema.PerfectStrikeOnHorseback, false, SettingSources.File); // step 104d: a strike from horseback counts only with its switch (step 104d's own smoke)
                 Check(Near(Hit(a2, Agent.UsageDirection.AttackLeft, 10f, mounted: true), 10f) && st.Mounted == 1, "a strike from horseback counted with PerfectStrikeOnHorseback off");
                 S.Set(SettingsSchema.PerfectStrikeOnHorseback, true, SettingSources.File);
-                float k2 = (float)PerfectStrikeMath.Multiplier(score2, 2, 3);
+                float k2 = (float)PerfectStrikeMath.Multiplier(score2, 2, 4);
                 Check(Math.Abs(Hit(a2, Agent.UsageDirection.AttackLeft, 10f) - 10f * k2) < 1e-3 && st.Landed[PerfectStrikeMath.Left] == 1,
                     "your left swing after his blocked left swing did not land x" + k2);
 
@@ -132,7 +133,7 @@ namespace TraxCombat.Tools
                     "your side swing / overhead after his blocked overhead counted (step 103: only your thrust from below)");
                 LogHas("[impact] perfect strike: WRONG-SIDE hit at ");
                 LogHas("after his blocked overhead (it came from above - answer from BELOW: YOUR thrust / stab)");
-                Check(Near(Hit(a3, Agent.UsageDirection.AttackDown), 60f) && st.Landed[PerfectStrikeMath.Down] == 1, "your thrust from below after his blocked overhead was not perfect (Toni's case)");
+                Check(Near(Hit(a3, Agent.UsageDirection.AttackDown), 80f) && st.Landed[PerfectStrikeMath.Down] == 1, "your thrust from below after his blocked overhead was not perfect (Toni's case)");
                 LogHas("your thrust after his blocked overhead");
 
                 // ---- 4. a blocked thrust: only your overhead counts
@@ -140,7 +141,7 @@ namespace TraxCombat.Tools
                 var a4 = YourBlock(0.05, Agent.UsageDirection.AttackDown);
                 Check(Near(Hit(a4, Agent.UsageDirection.AttackLeft), 20f) && st.WrongSideAfter[PerfectStrikeMath.Down * 4 + PerfectStrikeMath.Left] == 1,
                     "your side swing after his blocked thrust counted (step 103: only your overhead)");
-                Check(Near(Hit(a4, Agent.UsageDirection.AttackUp), 60f) && st.Landed[PerfectStrikeMath.Up] == 1, "your overhead after his blocked thrust was not perfect");
+                Check(Near(Hit(a4, Agent.UsageDirection.AttackUp), 80f) && st.Landed[PerfectStrikeMath.Up] == 1, "your overhead after his blocked thrust was not perfect");
 
                 // ---- 5. the window closes when he stops reeling (+ the grace) - expired unused
                 Tick(3);
@@ -185,8 +186,9 @@ namespace TraxCombat.Tools
 
                 // ---- 7. the [summary] line
                 string line = st.SummaryLine(PerfectStrikeRules.From(S));
-                Check(line.StartsWith("perfect strike (step 100g; ON): windows opened by your timed blocks ", StringComparison.Ordinal)
-                      && line.Contains("PERFECT STRIKES landed 4 (your left swing 1, right swing 1, overhead 1, thrust from below 1")
+                Check(line.StartsWith("perfect strike (step 100g / 106d; ON, openings ", StringComparison.Ordinal)
+                      && line.Contains("PERFECT STRIKES landed 4 (after an opening 0; by your weapon's directions 2 / 3 / 4: 0 / 0 / 4") // step 106d
+                      && line.Contains("(your left swing 1, right swing 1, overhead 1, thrust from below 1")
                       && line.Contains("windows expired unused 1") && line.Contains("wrong-side hits 5") && line.Contains("after his blocked overhead (wanted your thrust): your left 1 / right 1 / overhead 1 / thrust 0"),
                     "the [summary] line: " + line);
                 Console.WriteLine("        step 100g: " + st.Opened + " windows, " + st.LandedTotal + " perfect strikes, " + st.WrongSideTotal + " wrong-side hits");

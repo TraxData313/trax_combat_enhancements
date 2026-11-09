@@ -92,7 +92,11 @@ namespace TraxCombat.Missions
                 bool lower = OpeningForceMath.Lowers(shield, in _openPlan);
                 if (!StartForce(v, OpeningForceKind.Held, _openPlan.Guard, lower, OpeningMath.HoldEnds(in r, now), now)) return string.Empty;
                 _force.Held++;
-                if (lower) _force.ShieldLowerings++;
+                if (lower)
+                {
+                    _force.ShieldLowerings++;
+                    if (shield) NoteGuardBroken(); // step 106d: "GUARD BROKEN" on screen - his shield comes down for your follow-up
+                }
                 return " - LIVE: he FAILS the block roll (" + Pct0(chance) + "): his guard held at the " + OpeningMath.GuardName(_openPlan.Guard)
                        + (lower ? " with his " + (shield ? "shield" : "guard") + " LOWERED" : string.Empty) + " until the blow (at most " + F2(r.HoldMax) + " s)";
             }

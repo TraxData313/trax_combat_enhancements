@@ -36,8 +36,9 @@ namespace TraxCombat.Tools
                     S.Set(p, p.Default, SettingSources.File);
                 S.Set(SettingsSchema.TimedBlockSlowMo, false, SettingSources.File);
                 S.Set(SettingsSchema.ImpactMeetRulesEnabled, false, SettingSources.File);
-                Check(SettingsSchema.OpeningsEnabled.Default == 0 && SettingsSchema.OpeningsShadowLog.Default == 1,
-                    "the embedded openings defaults are not the design's (live OFF, the shadow ON)");
+                Check(SettingsSchema.OpeningsEnabled.Default == 1 && SettingsSchema.OpeningsShadowLog.Default == 1,
+                    "the embedded openings defaults are not the design's (live ON since step 106d, the shadow ON)");
+                S.Set(SettingsSchema.OpeningsEnabled, false, SettingSources.File); // this step is the SHADOW: the live switch off (step 106b-106d's steps run it on)
                 var inputs = new FakeImpactInputs { Damage = 20 };
                 var guard = new FakeGuardBody();
                 var logic = NewPaceLogic(new FakePaceBody(), new FakeWeaponFacts());
@@ -271,13 +272,13 @@ namespace TraxCombat.Tools
                 S.Set(SettingsSchema.ModEnabled, true, SettingSources.File);
                 Tick();
 
-                // ---- 10. nothing applied (the live switch ships off); no errors
-                Check(!OpeningRules.From(S).Enabled, "the live openings are on by default (106a2 is a shadow)");
+                // ---- 10. nothing applied (the live switch off for this step); no errors
+                Check(!OpeningRules.From(S).Enabled, "the shadow step ran with the live openings on");
                 Check(st.Errors == 0, "the openings logged errors: " + st.Errors);
 
                 // ---- 11. the [summary] line
                 string line = st.SummaryLine(OpeningRules.From(S));
-                Check(line.StartsWith("openings (step 106a2 SHADOW, the revised design - nothing applied; live OFF (OpeningsEnabled), the shadow log ON): ", StringComparison.Ordinal)
+                Check(line.StartsWith("openings (step 106d; live OFF (OpeningsEnabled) - counted only, the shadow log ON): ", StringComparison.Ordinal)
                       && line.Contains("WOULD have got through 1") && line.Contains("PERFECT STRIKE 2") && line.Contains("from behind 1")
                       && line.Contains("AI vs AI correct blocks on foot 1"), "the [summary] line: " + line);
                 Console.WriteLine("        step 106a2: " + st.BlocksTotal + " blocked attacks, " + st.StatesTotal + " off-balance states, " + st.FinishPerfect + " perfect strikes");

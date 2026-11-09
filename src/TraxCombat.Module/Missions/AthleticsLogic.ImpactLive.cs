@@ -285,7 +285,7 @@ namespace TraxCombat.Missions
         private void CountWatch(ImpactWatchPurpose purpose, int delta)
         {
             if (purpose == ImpactWatchPurpose.Guard) _guardWatches += delta;
-            else if (purpose == ImpactWatchPurpose.Stagger || purpose == ImpactWatchPurpose.Riposte) _liveStaggers += delta;
+            else if (purpose == ImpactWatchPurpose.Stagger || purpose == ImpactWatchPurpose.Riposte || purpose == ImpactWatchPurpose.Opening) _liveStaggers += delta;
             else if (purpose == ImpactWatchPurpose.HitControl) _hitControls += delta; // step 52
             if (purpose == ImpactWatchPurpose.HitControl && delta > 0) _hits.Controls++;
         }

@@ -20,6 +20,10 @@ namespace TraxCombat.Missions
 
         /// <summary>Step 62, the reflected charge: the charging ATTACKER thrown back - a blow of our own on him (lever 6), owned by the blocker.</summary>
         ThrownBack,
+
+        /// <summary>Step 106d: an OPENING's stagger - YOUR landed hit on a man off balance (or from behind): his forced stagger, the riposte's path
+        /// (its family's switch, the ForcedStagger lever), watched as <see cref="ImpactWatchPurpose.Opening"/>.</summary>
+        Opening,
     }
 
     /// <summary>Step 51: a block's outcome decided in the hit callback, made from the next tick - a struct in the logic's fixed pool.</summary>
@@ -431,6 +435,7 @@ namespace TraxCombat.Missions
                     }
                     if (p.Action == ImpactBlockAction.OwnBlow) RunOwnBlow(in p, now, ref calls);
                     else if (p.Action == ImpactBlockAction.ThrownBack) RunThrownBack(in p, now, ref calls); // step 62
+                    else if (p.Action == ImpactBlockAction.Opening) RunOpeningStagger(in p, now, ref calls); // step 106d
                     else RunStagger(in p, now, ref calls);
                 }
                 catch (Exception e)
@@ -548,6 +553,9 @@ namespace TraxCombat.Missions
                 case ImpactWatchPurpose.ThrownBack: // step 62
                     _charge.ThrownSeen++;
                     break;
+                case ImpactWatchPurpose.Opening: // step 106d
+                    _open.LiveSeen++;
+                    break;
                 case ImpactWatchPurpose.BlockGetUp:
                     _blocks.NoteSeen(w.Event, ImpactOutcome.Knockdown);
                     if (LiveFirst(15))
@@ -583,6 +591,11 @@ namespace TraxCombat.Missions
                 case ImpactWatchPurpose.ThrownBack: // step 62: up again - the 5 s immunity from it
                     w.St.Impact.GotUp(now, r.KnockdownImmunity);
                     break;
+                case ImpactWatchPurpose.Opening: // step 106d: the opening's reel measured - its real end into his state (the perfect-strike window follows it)
+                    _open.NoteLiveMeasured(w.Asked, length);
+                    _staggerNatural.Add(length, w.Speed);
+                    if (w.St.Impact.ReelCause == ReelCause.Opening) w.St.Impact.EndReel(now, r.StaggerImmunity);
+                    break;
                 case ImpactWatchPurpose.Guard:
                     _blocks.NoteGuard(w.Factor, length);
                     break;
@@ -612,6 +625,10 @@ namespace TraxCombat.Missions
                     _charge.ThrownNotSeen++;
                     w.St.Impact.GotUp(now, 0);
                     break;
+                case ImpactWatchPurpose.Opening: // step 106d: never showed - no reel, no window (the tick closes it)
+                    _open.LiveNotSeen++;
+                    if (w.St.Impact.ReelCause == ReelCause.Opening && w.St.Impact.Reeling(now)) w.St.Impact.EndReel(now, 0);
+                    break;
                 case ImpactWatchPurpose.Guard:
                     _blocks.GuardNotSeen++;
                     break;
@@ -624,7 +641,7 @@ namespace TraxCombat.Missions
             for (int i = 0; i < _liveWatchCount; i++)
             {
                 ref var w = ref _liveWatches[i];
-                if ((w.Purpose != ImpactWatchPurpose.Stagger && w.Purpose != ImpactWatchPurpose.Riposte) || !ReferenceEquals(w.St, man) || !w.W.Appeared) continue;
+                if ((w.Purpose != ImpactWatchPurpose.Stagger && w.Purpose != ImpactWatchPurpose.Riposte && w.Purpose != ImpactWatchPurpose.Opening) || !ReferenceEquals(w.St, man) || !w.W.Appeared) continue;
                 if (blocked) _blocks.BlocksFromInside++;
                 else _blocks.HitsFromInside++;
                 return;
@@ -642,7 +659,7 @@ namespace TraxCombat.Missions
             for (int i = 0; i < _blockPendingCount; i++)
             {
                 var p = _blockPending[i];
-                bool live = p.Action == ImpactBlockAction.Riposte || p.Action == ImpactBlockAction.ThrownBack ? riposte : blocks;
+                bool live = p.Action == ImpactBlockAction.Riposte || p.Action == ImpactBlockAction.ThrownBack || p.Action == ImpactBlockAction.Opening ? riposte : blocks;
                 if (live)
                 {
                     _blockPending[keep++] = p;
@@ -660,7 +677,7 @@ namespace TraxCombat.Missions
             {
                 var pu = _liveWatches[i].Purpose;
                 bool block = pu == ImpactWatchPurpose.Stagger || pu == ImpactWatchPurpose.BlockGetUp || pu == ImpactWatchPurpose.Guard;
-                bool rip = pu == ImpactWatchPurpose.Riposte || pu == ImpactWatchPurpose.ThrownBack;
+                bool rip = pu == ImpactWatchPurpose.Riposte || pu == ImpactWatchPurpose.ThrownBack || pu == ImpactWatchPurpose.Opening; // step 106d: the opening's with the riposte
                 if ((block && !blocks) || (rip && !riposte))
                 {
                     RemoveLiveWatch(i--);

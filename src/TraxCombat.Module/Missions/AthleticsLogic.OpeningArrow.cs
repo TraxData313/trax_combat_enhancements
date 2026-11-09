@@ -85,21 +85,17 @@ namespace TraxCombat.Missions
         /// <summary>The finishing sides of the one reeling man you can finish now, else 0.</summary>
         private int FinishMaskNow(Agent? player, double now, in OpeningRules r)
         {
-            if (r.Enabled && _openChain.Reeling(now))
-            {
-                var t = GetByIndex(_openChain.Target);
-                if (t != null && !t.Removed && _openChain.FinishMask != 0) return _openChain.FinishMask;
-            }
+            // step 106d: an opening's reel is a window in the book like the defensive game's (the damage reads the same mask) - one source
             if (_strikeDisabled || _strikeBook.Count == 0) return 0;
             var pr = PerfectStrikeRules.From(TraxSettings.Shared);
-            if (!pr.Enabled) return 0;
             int best = -1;
             double bestAt = double.NegativeInfinity;
             for (int i = 0; i < _strikeBook.Count; i++)
             {
                 ref var w = ref _strikeBook[i];
+                if (w.Opening ? !pr.OpeningOn || w.FinishMask == 0 : !pr.Enabled) continue;
                 if (w.Rider && !pr.MountedOn) continue;
-                if (!PerfectStrikeMath.IsAttack(w.Blocked) || w.OpenedAt < bestAt) continue;
+                if ((!w.Opening && !PerfectStrikeMath.IsAttack(w.Blocked)) || w.OpenedAt < bestAt) continue;
                 var v = GetByIndex(w.Victim);
                 if (v == null || v.Removed || !PerfectStrikeMath.Open(now, v.Impact.ReelingUntil, pr.GraceSeconds)) continue;
                 best = i;
@@ -107,6 +103,7 @@ namespace TraxCombat.Missions
             }
             if (best < 0) return 0;
             ref var b = ref _strikeBook[best];
+            if (b.Opening) return b.FinishMask;
             int weapon = player != null ? ReadWeaponMask(player) : OpeningMath.AllAttacks;
             return OpeningArrowMath.WindowFinishMask(b.Rider, pr.HorsebackAnySide, b.Blocked, weapon, r.WeaponFinishes);
         }

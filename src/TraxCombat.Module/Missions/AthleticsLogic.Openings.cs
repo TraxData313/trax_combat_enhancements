@@ -97,7 +97,7 @@ namespace TraxCombat.Missions
             _openChain = OpeningChain.None;
             _openPending = false;
             TraxLog.Info("impact", "mission start: " + OpeningRules.From(TraxSettings.Shared).Describe()
-                                   + " - step 106b: with the live switch the off-balance man's guard is FORCED to the balance side and rolled at your follow-up's wind-up (a shield LOWERED from its 2nd block); the stagger and the perfect strike still shadow; the [summary] \"openings\" lines (PLAYTEST D77 / D78)");
+                                   + " - step 106d: with the live switch the off-balance man's guard is FORCED to the balance side and rolled at your follow-up's wind-up (a shield LOWERED from its 2nd block), your landed hit STAGGERS him (ReelCause.Opening) and opens the PERFECT STRIKE side for the reel; the [summary] \"openings\" lines (PLAYTEST D77 - D80)");
         }
 
         private int ReadWeaponMask(Agent a)
@@ -407,12 +407,14 @@ namespace TraxCombat.Missions
                         _openStaggerMask = mask;
                         _open.NoteStagger(_openChain.Entry, modStagger);
                         OpeningMath.MultiplierRange(in r, OpeningMath.DirectionCount(mask), out double lo, out double hi);
-                        OpeningLine("openings (shadow): your " + OpeningMath.AttackName(swing) + " LANDED on " + Name(v) + (behind ? " from behind" : string.Empty)
-                                    + " (" + OpeningMath.EntryName(_openChain.Entry) + ", link " + _openChain.K.ToString(CultureInfo.InvariantCulture) + ", timing " + F2(score)
-                                    + ") -> he WOULD stagger " + F2(_openChain.ReelUntil - now) + " s" + (modStagger ? " (the mod's own stagger too - the arrow would just show on it)" : string.Empty)
-                                    + "; PERFECT STRIKE side: " + OpeningMath.MaskName(_openChain.FinishMask) + " (arrow " + OpeningMath.ArrowName(OpeningMath.FinishArrow(_openChain.FinishMask))
-                                    + ") for x" + F2(OpeningMath.StrikeMultiplier(in r, mask, _openChain.Score)) + " (range x" + F2(lo) + "-" + F2(hi) + ", "
-                                    + OpeningMath.DirectionCount(mask).ToString(CultureInfo.InvariantCulture) + " directions)");
+                        string head = "openings (shadow): your " + OpeningMath.AttackName(swing) + " LANDED on " + Name(v) + (behind ? " from behind" : string.Empty)
+                                      + " (" + OpeningMath.EntryName(_openChain.Entry) + ", link " + _openChain.K.ToString(CultureInfo.InvariantCulture) + ", timing " + F2(score)
+                                      + ") -> he " + (r.Enabled ? "staggers " : "WOULD stagger ") + F2(Math.Max(0, _openChain.ReelUntil - now)) + " s" + (modStagger ? " (the mod's own stagger too - the arrow just shows on it)" : string.Empty)
+                                      + "; PERFECT STRIKE side: " + OpeningMath.MaskName(_openChain.FinishMask) + " (arrow " + OpeningMath.ArrowName(OpeningMath.FinishArrow(_openChain.FinishMask))
+                                      + ") for x" + F2(OpeningMath.StrikeMultiplier(in r, mask, _openChain.Score)) + " (range x" + F2(lo) + "-" + F2(hi) + ", "
+                                      + OpeningMath.DirectionCount(mask).ToString(CultureInfo.InvariantCulture) + " directions)";
+                        string live = OpeningPayoff(a, v, d.Stagger.Happens, d.Knockdown.Happens, now); // step 106d: the reel, the window, the notice (may end the chain)
+                        OpeningLine(head + live);
                         break;
                     case OpeningHit.OffBalance:
                     {
@@ -437,7 +439,8 @@ namespace TraxCombat.Missions
                         LastOpeningMultiplier = k;
                         _open.NoteFinish(true, k, _openStaggerMask, relaxed);
                         OpeningLine("openings (shadow): your " + OpeningMath.AttackName(swing) + " on the reeling " + Name(v) + " from the shown side ("
-                                    + OpeningMath.MaskName(finishMask) + (relaxed ? " - the weapon's relaxed side" : string.Empty) + ") -> WOULD be a PERFECT STRIKE x" + F2(k));
+                                    + OpeningMath.MaskName(finishMask) + (relaxed ? " - the weapon's relaxed side" : string.Empty) + ") -> " + (r.Enabled ? "a PERFECT STRIKE x" : "WOULD be a PERFECT STRIKE x") + F2(k)
+                                    + (r.Enabled ? " (applied by the damage's last question - the [impact] PERFECT STRIKE line)" : string.Empty));
                         break;
                     }
                     case OpeningHit.FinishOther:
@@ -477,6 +480,7 @@ namespace TraxCombat.Missions
         /// that never came (the off-balance time), a reel that ran out unused, the chain's man gone.</summary>
         private void TickOpenings(double now)
         {
+            TickOpeningPayoff(now); // step 106d: the notices; the chain's reel follows his record's
             TickOpeningForce(now); // step 106b: the forced guard and the test tool (whatever the chain)
             if (!_openPending && !_openChain.Active) return;
             var r = OpeningRules.From(TraxSettings.Shared);

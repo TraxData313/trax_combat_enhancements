@@ -40,7 +40,8 @@ namespace TraxCombat.Tools
                     S.Set(p, p.Default, SettingSources.File);
                 S.Set(SettingsSchema.TimedBlockSlowMo, false, SettingSources.File);
                 S.Set(SettingsSchema.ImpactMeetRulesEnabled, false, SettingSources.File);
-                Check(SettingsSchema.OpeningArrowShow.Default == 1 && SettingsSchema.OpeningsEnabled.Default == 0, "the embedded arrow defaults are not ON / openings OFF");
+                Check(SettingsSchema.OpeningArrowShow.Default == 1 && SettingsSchema.OpeningsEnabled.Default == 1, "the embedded arrow defaults are not ON / openings ON (step 106d)");
+                S.Set(SettingsSchema.OpeningsEnabled, false, SettingSources.File); // the step starts with the openings OFF (the arrow's own gates)
                 var inputs = new FakeImpactInputs { Damage = 20 };
                 var anim = new FakeAnimBody();
                 var body = new FakeOpeningBody();

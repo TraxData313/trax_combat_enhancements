@@ -61,8 +61,9 @@ namespace TraxCombat.Missions
                 {
                     _strikeFirstOpen = true;
                     TraxLog.Info("impact", "perfect strike: first window at " + Sec(now) + " s - " + Name(attacker) + " reels after your timed block (timing " + F2(score)
-                        + ") of his " + PerfectStrikeMath.Name(dir) + StrikeWanted(dir) + "; open until his stagger ends + " + F2(r.GraceSeconds) + " s, x"
-                        + PerfectStrikeMath.Multiplier(score, in r).ToString("0.00", CultureInfo.InvariantCulture) + " - " + r.Describe());
+                        + ") of his " + PerfectStrikeMath.Name(dir) + StrikeWanted(dir) + "; your weapon finishes with your "
+                        + OpeningMath.MaskName(OpeningArrowMath.DefensiveFinishMask(dir, ReadWeaponMask(blocker.Agent), r.WeaponFinishes)) + "; open until his stagger ends + " + F2(r.GraceSeconds) + " s, x"
+                        + PerfectStrikeMath.Multiplier(score, in r, ReadWeaponMask(blocker.Agent)).ToString("0.00", CultureInfo.InvariantCulture) + " - " + r.Describe());
                 }
             }
             catch (Exception e)
@@ -109,7 +110,7 @@ namespace TraxCombat.Missions
                     TraxLog.Info("impact", "perfect strike: first window on a RIDER at " + Sec(now) + " s - " + Name(a) + " reels in the saddle after your timed block (timing " + F2(p.Score)
                         + ") of his " + PerfectStrikeMath.Name(dir) + (r.HorsebackAnySide ? " - ANY landed hit on his body counts (never his horse)" : StrikeWanted(dir))
                         + "; open until his reel ends (" + F2(p.Until - now) + " s) + " + F2(r.GraceSeconds) + " s, x"
-                        + PerfectStrikeMath.Multiplier(p.Score, in r).ToString("0.00", CultureInfo.InvariantCulture) + " - " + r.Describe());
+                        + PerfectStrikeMath.Multiplier(p.Score, in r, ReadWeaponMask(blocker.Agent)).ToString("0.00", CultureInfo.InvariantCulture) + " - " + r.Describe());
                 }
             }
             catch (Exception e)
@@ -182,10 +183,10 @@ namespace TraxCombat.Missions
                     return damage;
                 }
                 var r = PerfectStrikeRules.From(TraxSettings.Shared);
-                if (!r.Enabled) return damage; // the tick closes the windows
+                ref var w = ref _strikeBook[i];
+                if (w.Opening ? !r.OpeningOn : !r.Enabled) return damage; // the tick closes the windows (step 106d: an opening's by its own switches)
                 double now = SpikeNow;
                 var v = GetByIndex(victim.Index);
-                ref var w = ref _strikeBook[i];
                 if (v == null || v.Removed || !PerfectStrikeMath.Open(now, v.Impact.ReelingUntil, r.GraceSeconds))
                 {
                     StrikeExpired(w.Rider);
@@ -211,12 +212,16 @@ namespace TraxCombat.Missions
                     return damage;
                 }
                 int strike = (int)cd.AttackDirection;
-                var verdict = PerfectStrikeMath.Verdict(w.Rider, r.HorsebackAnySide, w.Blocked, strike); // step 104d: a reeling rider - any side
+                int weapon = ReadWeaponMask(attacker); // step 106d: the side and the multiplier follow YOUR weapon (the red arrow reads the same)
+                var verdict = w.Opening
+                    ? PerfectStrikeMath.OpeningVerdict(w.FinishMask, strike) // step 106d: the opening's sides, noted at his stagger
+                    : PerfectStrikeMath.Verdict(w.Rider, r.HorsebackAnySide, w.Blocked, strike, weapon, r.WeaponFinishes); // step 104d: a reeling rider - any side
                 if (verdict == StrikeVerdict.Unknown)
                 {
                     _strike.UnknownDirection++;
                     return damage;
                 }
+                if (verdict == StrikeVerdict.BlockedUnknown && w.Opening) return damage; // step 106d: an opening with no side (never opened so)
                 if (verdict == StrikeVerdict.BlockedUnknown) // step 103: his direction unknown - nothing counts, said once
                 {
                     _strike.BlockedUnknown++;
@@ -232,26 +237,36 @@ namespace TraxCombat.Missions
                 {
                     _strike.NoteWrongSide(strike, w.Blocked);
                     w.WrongSide++;
+                    if (w.Opening) _strike.OpeningWrongSide++;
                     if (w.Rider) _strike.RiderWrongSide++;
                     else if (attackerMounted) _strike.FootWrongSideFromHorseback++;
                     // step 103: every mismatch of yours is logged (yours only, inside a ~2 s window - a handful a battle), so a playtest shows what you hit
                     {
                         string head = _strikeFirstWrong ? "perfect strike: WRONG-SIDE hit at " : "perfect strike: first WRONG-SIDE hit at ";
                         _strikeFirstWrong = true;
-                        TraxLog.Info("impact", head + Sec(now) + " s - your " + PerfectStrikeMath.Name(strike) + " on " + Name(v) + " after his blocked "
-                            + PerfectStrikeMath.Name(w.Blocked) + StrikeWanted(w.Blocked) + " - normal damage, the window stays open");
+                        TraxLog.Info("impact", head + Sec(now) + " s - your " + PerfectStrikeMath.Name(strike) + " on " + Name(v)
+                            + (w.Opening ? " reeling from your OPENING (the shown side: your " + OpeningMath.MaskName(w.FinishMask) + ")"
+                                         : " after his blocked " + PerfectStrikeMath.Name(w.Blocked) + StrikeWanted(w.Blocked) + " (your weapon: "
+                                           + OpeningMath.MaskName(OpeningArrowMath.WindowFinishMask(w.Rider, r.HorsebackAnySide, w.Blocked, weapon, r.WeaponFinishes)) + ")")
+                            + " - normal damage, the window stays open");
                     }
                     return damage;
                 }
-                double k = PerfectStrikeMath.Multiplier(w.Score, in r);
+                double k = PerfectStrikeMath.Multiplier(w.Score, in r, weapon); // step 106d: x by your weapon's attack directions
                 float after = PerfectStrikeMath.Apply(damage, k);
+                bool relaxed = w.Opening ? OpeningMath.DirectionCount(w.FinishMask) > 1
+                    : !w.Rider && PerfectStrikeMath.IsAttack(w.Blocked) && strike != PerfectStrikeMath.Opposite(w.Blocked);
                 _strike.NoteLanded(strike, w.Blocked, w.Score, k, damage, after);
+                _strike.NoteWeapon(weapon, relaxed);
+                if (w.Opening) _strike.OpeningLanded++;
                 if (w.Rider) _strike.NoteRiderLanded(w.Score, k, damage, after, attackerMounted);
                 else if (attackerMounted) _strike.FootLandedFromHorseback++;
                 var c = CultureInfo.InvariantCulture;
                 TraxLog.Info("impact", "YOU: PERFECT STRIKE on " + Name(v) + " at " + Sec(now) + " s - your " + PerfectStrikeMath.Name(strike) + (attackerMounted ? " from horseback" : string.Empty)
-                    + (w.Rider ? " on him reeling in the saddle" + (r.HorsebackAnySide ? " (any side)" : string.Empty) : string.Empty) + " after his blocked "
-                    + PerfectStrikeMath.Name(w.Blocked) + ", " + F2(now - w.OpenedAt) + " s into his stagger, timing " + F2(w.Score) + " → x" + k.ToString("0.00", c) + ": "
+                    + (w.Rider ? " on him reeling in the saddle" + (r.HorsebackAnySide ? " (any side)" : string.Empty) : string.Empty)
+                    + (w.Opening ? " after your OPENING (the shown side: your " + OpeningMath.MaskName(w.FinishMask) + ")" : " after his blocked " + PerfectStrikeMath.Name(w.Blocked))
+                    + (relaxed ? " - the weapon's relaxed side" : string.Empty) + ", " + F2(now - w.OpenedAt) + " s into his stagger, timing " + F2(w.Score) + ", "
+                    + OpeningMath.DirectionCount(weapon).ToString(c) + "-direction weapon → x" + k.ToString("0.00", c) + ": "
                     + damage.ToString("0.#", c) + " → " + after.ToString("0.#", c) + " damage" + (w.WrongSide > 0 ? " (after " + w.WrongSide.ToString(c) + " wrong-side hit(s))" : string.Empty));
                 _strikeBook.RemoveAt(i);
                 _strikeShow = PerfectStrikeMath.Text(k);
@@ -282,7 +297,8 @@ namespace TraxCombat.Missions
             for (int i = _strikeBook.Count - 1; i >= 0; i--)
             {
                 bool rider = _strikeBook[i].Rider;
-                if (!r.Enabled || _strikeDisabled || (rider && !r.MountedOn)) // step 104d: a rider's window also closes with its switch
+                bool on = _strikeBook[i].Opening ? r.OpeningOn : r.Enabled; // step 106d: an opening's window by its own switches
+                if (!on || _strikeDisabled || (rider && !r.MountedOn)) // step 104d: a rider's window also closes with its switch
                 {
                     _strikeBook.RemoveAt(i);
                     _strike.ClosedBySwitch++;

@@ -59,6 +59,7 @@ namespace TraxCombat.Tools
                 logic.RiderReelBody = rb;
                 logic.MessageSink = sink;
                 logic.ImpactDice = new ScriptDice { Rest = 0.99 };
+                logic.OpeningWeaponRead = a => OpeningMath.WeaponMask(true, false); // step 106d: a no-thrust weapon (3 directions) - the old x2-x3
                 var dice = new ScriptDice { Rest = 0.99 };
                 logic.RiderShadowDice = dice;
                 anim.Known["act_stagger_backward"] = (801, 1.02);
