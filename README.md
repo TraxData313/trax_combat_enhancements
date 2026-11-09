@@ -7,6 +7,16 @@
 A combat mod for Mount & Blade II: Bannerlord (v1.4.8): slower battles, where timing, rest and defence decide
 the fight — and heroes matter.
 
+**Counter Strike** — block just in time and the attacker staggers while the game slows down; strike him back
+from the opposite side (blocked from the left, swing from the right; an overhead answered by a thrust from
+below) for a PERFECT STRIKE at 2-3x damage.
+
+[![Counter Strike Mechanic in Trax Combat Enhancements](https://img.youtube.com/vi/PJdyuyFNTPw/maxresdefault.jpg)](https://www.youtube.com/watch?v=PJdyuyFNTPw)
+
+**Battle showcase** — a full battle with the mod.
+
+[![A battle with Trax Combat Enhancements](https://img.youtube.com/vi/jYq9nJX9dok/maxresdefault.jpg)](https://www.youtube.com/watch?v=jYq9nJX9dok)
+
 ## The idea
 
 - **Men tire.** Every swing, kick and block costs stamina. A spent soldier attacks once where a fresh one
