@@ -2818,9 +2818,10 @@
   // (true or false)
   "PerfectStrikeOnHorseback": true,
 
-  // On: on horseback any swing or thrust that lands on his body while he reels counts (riders
-  // pass side by side - the opposite side is rarely possible). Off: the strict opposites, as on
-  // foot.
+  // On: any swing or thrust that lands on a RIDER's body while he reels in the saddle counts,
+  // whether you ride or stand (riders pass side by side - the opposite side is rarely
+  // possible); never a hit on his horse. A man on foot keeps the strict opposites. Off: the
+  // strict opposites on riders too.
   // (true or false)
   "PerfectStrikeHorsebackAnySide": true,
 

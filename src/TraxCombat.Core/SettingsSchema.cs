@@ -2113,7 +2113,7 @@ namespace TraxCombat.Core
             "On: a rider reeling from your timed block opens a perfect strike window too, and you may strike it from horseback.");
         public static readonly ParamDef PerfectStrikeHorsebackAnySide = Bool("PerfectStrikeHorsebackAnySide", ImpactGroup,
             "Horseback: perfect strike from any side",
-            "On: on horseback any swing or thrust that lands on his body while he reels counts (riders pass side by side - the opposite side is rarely possible). Off: the strict opposites, as on foot.");
+            "On: any swing or thrust that lands on a RIDER's body while he reels in the saddle counts, whether you ride or stand (riders pass side by side - the opposite side is rarely possible); never a hit on his horse. A man on foot keeps the strict opposites. Off: the strict opposites on riders too.");
         public static readonly ParamDef TimedBlockPushOutMounted = Bool("TimedBlockPushOutMounted", ImpactGroup,
             "Horseback: a mounted blocker's push-out",
             "On: a mounted blocker's shield or weapon snaps out on a timed block (his guard's own heavy parry - the game has no bash on horseback).");
