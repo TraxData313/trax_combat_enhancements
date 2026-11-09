@@ -43,6 +43,11 @@ namespace TraxCombat.Missions
 
         // ------------------------------------------------------------------ the live route
 
+        /// <summary>Step 106e: the openings are LIVE - their switch (the master switch first) AND the impact system can carry the stagger
+        /// (<see cref="OpeningMath.ImpactCarries"/>, the ForcedStagger lever not lost to an error). Else shadow: nothing forced, nothing flashed.</summary>
+        private bool OpeningsLive(in OpeningRules r) =>
+            r.Enabled && OpeningMath.ImpactCarries(ImpactRules.From(TraxSettings.Shared)) && !_live.Disabled(ImpactLever.ForcedStagger);
+
         /// <summary>From <see cref="BeginFollowUp"/>: he is OFF BALANCE - with the live switch on, his guard goes to the balance side until your
         /// wind-up (at most the off-balance time). Its own try.</summary>
         private void ForceBalance(TrackedAgent v, in OpeningPlan plan, double now)
@@ -50,7 +55,7 @@ namespace TraxCombat.Missions
             try
             {
                 var r = OpeningRules.From(TraxSettings.Shared);
-                if (!r.Enabled || !plan.Opens) return;
+                if (!plan.Opens || !OpeningsLive(in r)) return;
                 if (_forceKind == OpeningForceKind.Test && ReferenceEquals(_forceSt, v)) return; // the test tool has him
                 _openLiveRolled = false;
                 if (!StartForce(v, OpeningForceKind.Balance, plan.Guard, false, now + r.ChainReset, now)) return;
@@ -69,7 +74,7 @@ namespace TraxCombat.Missions
             try
             {
                 var r = OpeningRules.From(TraxSettings.Shared);
-                if (!r.Enabled || _forceKind != OpeningForceKind.Balance || _forceSt == null || _forceSt.AgentIndex != _openTarget) return string.Empty;
+                if (_forceKind != OpeningForceKind.Balance || _forceSt == null || _forceSt.AgentIndex != _openTarget || !OpeningsLive(in r)) return string.Empty;
                 var v = _forceSt;
                 if (_openVerdict != OpeningVerdict.Opened)
                 {
@@ -217,7 +222,7 @@ namespace TraxCombat.Missions
                 EndForce(OpeningForceEnd.Off, now, false);
                 return;
             }
-            bool on = _forceKind == OpeningForceKind.Test ? r.ModEnabled && TraxSettings.Shared.OpeningGuardTest : r.Enabled;
+            bool on = _forceKind == OpeningForceKind.Test ? r.ModEnabled && TraxSettings.Shared.OpeningGuardTest : OpeningsLive(in r); // step 106e: the impact system too
             if (!on)
             {
                 EndForce(OpeningForceEnd.Off, now, true);

@@ -239,6 +239,57 @@ namespace TraxCombat.Tools
                     S.Set(sw, true, SettingSources.File);
                     Tick(3);
                 }
+                // ---- 7b. step 106e (the review): (1) back hits cannot keep a man reeling - a back hit staggers, the next ones while he reels or is
+                //          stagger-immune open nothing, after the immunity a back hit staggers again; (2) the chain reads the COLLISION's direction
+                //          (the damage's) - your channel 1 saying otherwise changes nothing; (3) the impact system in shadow = the openings shadow too
+                {
+                    var bk = Man(false);
+                    inputs.Angles[bk.Agent.Index] = 170;
+                    int asked0 = st.LiveAsked;
+                    Lands(you, bk, Agent.UsageDirection.AttackRight);
+                    Check(logic.LastOpeningHit == OpeningHit.Staggers && st.LiveAsked == asked0 + 1, "106e: the first back hit did not stagger");
+                    Tick();
+                    impactBody.Actions[bk.Agent.Index] = Ch0(ImpactActions.StrikeLight, impactBody.StaggerIndex); // the engine plays our stagger
+                    Tick(0.2);
+                    float perfectDamage = ImpactHooks.PerfectStrike(you.Agent, bk.Agent, false, Swing(Agent.UsageDirection.AttackLeft, false, false, CombatCollisionResult.StrikeAgent), 20f);
+                    swingDir = OpeningMath.AttackRight; // channel 1 disagrees with the collision
+                    logic.ImpactModelHitTaken(you.Agent, bk.Agent, Swing(Agent.UsageDirection.AttackLeft, false, false, CombatCollisionResult.StrikeAgent));
+                    Check(perfectDamage > 20f && logic.LastOpeningHit == OpeningHit.FinishPerfect,
+                        "106e: the damage's PERFECT STRIKE and the chain's verdict disagree (the chain read channel 1): " + perfectDamage + " " + logic.LastOpeningHit);
+                    int refused0 = st.ImmuneRefused;
+                    Tick(0.3);
+                    Lands(you, bk, Agent.UsageDirection.AttackRight); // still reeling
+                    Tick(0.2);
+                    impactBody.Actions.Remove(bk.Agent.Index); // the stagger ends - measured, the immunity from its end
+                    Tick();
+                    Check(!bk.Impact.Reeling(Now()) && bk.Impact.StaggerImmune(Now() + 1.5), "106e: the measured reel gave no stagger immunity");
+                    for (int i = 0; i < 2; i++)
+                    {
+                        Tick(0.5);
+                        Lands(you, bk, Agent.UsageDirection.AttackRight); // inside the immunity
+                    }
+                    Check(st.LiveAsked == asked0 + 1 && st.ImmuneRefused == refused0 + 3 && logic.LastOpeningHit == OpeningHit.Immune,
+                        "106e: back hits on a reeling / stagger-immune man still re-staggered him: asked " + (st.LiveAsked - asked0) + ", refused " + (st.ImmuneRefused - refused0));
+                    Tick(3);
+                    Lands(you, bk, Agent.UsageDirection.AttackRight);
+                    Check(logic.LastOpeningHit == OpeningHit.Staggers && st.LiveAsked == asked0 + 2, "106e: a back hit after the immunity did not stagger again");
+                    inputs.Angles.Remove(bk.Agent.Index);
+                    Tick(3);
+
+                    S.Set(SettingsSchema.ImpactShadowMode, true, SettingSources.File);
+                    Tick();
+                    var sd = Man(false);
+                    guards[sd.Agent.Index] = OpeningMath.GuardLeft;
+                    Parried(you, sd, Agent.UsageDirection.AttackRight);
+                    Check(logic.OpeningChain.Active && logic.OpeningForced == null && sd.Input?.Opening != true,
+                        "106e: with the impact system in SHADOW the openings still forced his guard");
+                    Tick(0.3);
+                    Check(!AthleticsLogic.TryGetOpeningArrow(you.Agent, Now(), out var shadowArrow) || shadowArrow.Cue != ArrowCue.Flash,
+                        "106e: the red arrow flashed while the openings are shadow");
+                    S.Set(SettingsSchema.ImpactShadowMode, false, SettingSources.File);
+                    Tick(3);
+                }
+
                 int askedBefore = st.LiveAsked;
                 var a1 = Man(false);
                 var a2 = Man(false);
@@ -252,7 +303,7 @@ namespace TraxCombat.Tools
                 Check(line.StartsWith("openings (step 106d; live ON", StringComparison.Ordinal) && line.Contains("LIVE STAGGERS asked " + st.LiveAsked.ToString())
                       && line.Contains("GUARD BROKEN shown 1"), "the [summary] openings line: " + line);
                 string pline = ps.SummaryLine(PerfectStrikeRules.From(S));
-                Check(pline.Contains("(by an opening's stagger ") && pline.Contains("after an opening 5"), "the [summary] perfect strike line: " + pline);
+                Check(pline.Contains("(by an opening's stagger ") && pline.Contains("after an opening 6") /* 5 + step 106e's */, "the [summary] perfect strike line: " + pline);
                 Console.WriteLine("        step 106d: " + st.LiveAsked + " opening staggers, " + st.LiveWindows + " windows, " + ps.OpeningLanded + " perfect strikes after an opening");
                 Console.WriteLine("        " + line);
                 Console.WriteLine("        " + pline);

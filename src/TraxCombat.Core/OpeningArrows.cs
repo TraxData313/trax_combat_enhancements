@@ -63,8 +63,10 @@ namespace TraxCombat.Core
         public static bool FlashOver(double now, double peakAt) => double.IsNaN(peakAt) || now > peakAt + FadeOutSeconds + 1e-9;
 
         /// <summary>The flash is shown: the master switch, <c>OpeningArrowShow</c>, and the live openings (<c>OpeningsEnabled</c>) - or the K test
-        /// tool forcing a guard (<paramref name="testTool"/>), so the arrow can be seen while testing with the openings off.</summary>
-        public static bool ShowsFlash(in OpeningRules r, bool testTool) => r.ModEnabled && r.ArrowShow && (r.Enabled || testTool);
+        /// tool forcing a guard (<paramref name="testTool"/>), so the arrow can be seen while testing with the openings off. Step 106e:
+        /// <paramref name="impactCarries"/> false (<see cref="OpeningMath.ImpactCarries"/> - the impact system in shadow, its riposte or hits off)
+        /// = the openings are shadow only, no flash.</summary>
+        public static bool ShowsFlash(in OpeningRules r, bool testTool, bool impactCarries = true) => r.ModEnabled && r.ArrowShow && ((r.Enabled && impactCarries) || testTool);
 
         /// <summary>The perfect-strike side is shown: the master switch and <c>OpeningArrowShow</c> (display only - the windows decide the rest).</summary>
         public static bool ShowsFinish(in OpeningRules r) => r.ModEnabled && r.ArrowShow;

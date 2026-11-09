@@ -36,6 +36,11 @@ namespace TraxCombat.Missions
         private bool _openPending, _openWound;
         private int _openTarget = -1, _openWindUpDir = OpeningMath.Unknown, _openLines, _openStaggerMask = OpeningMath.AllAttacks;
         private double _openBlockAt, _openWindUpAt, _openScore;
+
+        /// <summary>Step 106e: the landed hit being decided - its collision's direction (ImpactDecideEvent), the attacker, the time.</summary>
+        private int _hitSwing = OpeningMath.Unknown;
+        private TrackedAgent? _hitSwingBy;
+        private double _hitSwingAt = double.NaN;
         private OpeningVerdict _openVerdict;
 
         internal OpeningStats OpeningStats => _open;
@@ -96,6 +101,10 @@ namespace TraxCombat.Missions
         {
             _openChain = OpeningChain.None;
             _openPending = false;
+            var or = OpeningRules.From(TraxSettings.Shared);
+            if (or.Enabled && !OpeningsLive(in or)) // step 106e
+                TraxLog.Info("impact", "openings: SHADOW this battle although OpeningsEnabled is on - the impact system cannot carry the stagger ("
+                                       + ImpactRules.From(TraxSettings.Shared).ModeText() + "; it needs the riposte live and the hits decided): no forced guard, no flash, counted only");
             TraxLog.Info("impact", "mission start: " + OpeningRules.From(TraxSettings.Shared).Describe()
                                    + " - step 106d: with the live switch the off-balance man's guard is FORCED to the balance side and rolled at your follow-up's wind-up (a shield LOWERED from its 2nd block), your landed hit STAGGERS him (ReelCause.Opening) and opens the PERFECT STRIKE side for the reel; the [summary] \"openings\" lines (PLAYTEST D77 - D80)");
         }
@@ -369,7 +378,10 @@ namespace TraxCombat.Missions
                 var r = OpeningRules.From(TraxSettings.Shared);
                 if (!r.Runs) return;
                 if (!f.AttackerIsPlayer || f.DefenderIsPlayer || !YouDrive(a) || f.AttackerMounted || f.DefenderMounted) return;
-                int swing = ReadSwing(a.Agent);
+                // step 106e: the COLLISION's direction when this hit came with one (in game always - the decorator's perfect strike reads the same,
+                // so the chain's verdict and the damage agree); your channel 1 only without it (the smoke's direct decisions)
+                int swing = ReferenceEquals(_hitSwingBy, a) && Math.Abs(_hitSwingAt - now) < 1e-6 && OpeningMath.IsAttack(_hitSwing) ? _hitSwing : ReadSwing(a.Agent);
+                _hitSwingBy = null;
                 double score = 0;
                 _openLiveRolled = false; // step 106b: the follow-up landed - its live roll is spent
                 if (_openPending && _openTarget == v.AgentIndex)
@@ -392,12 +404,20 @@ namespace TraxCombat.Missions
                 bool wasReeling = _openChain.Reeling(now) && _openChain.Target == v.AgentIndex;
                 double chainScore = _openChain.Score;
                 int staggerSwing = _openChain.StaggerSwing, finishMask = _openChain.FinishMask;
-                var hit = _openChain.NoteLanded(v.AgentIndex, now, in r, behind, OpeningMath.IsGuard(guard), swing, mask, score, out var reset);
+                // step 106e: reeling / stagger-immune BEFORE this hit (the decision already wrote his record - a stagger it rolled means he was not:
+                // the impact model refuses a stagger inside the immunity)
+                bool immune = OpeningMath.ImmuneBeforeHit(v.Impact.StaggerImmune(now), d.Stagger.Happens);
+                var hit = _openChain.NoteLanded(v.AgentIndex, now, in r, behind, OpeningMath.IsGuard(guard), swing, mask, score, out var reset, immune);
                 LastOpeningHit = hit;
                 _open.NoteReset(reset);
                 bool modStagger = d.Stagger.Happens || d.Knockdown.Happens;
                 switch (hit)
                 {
+                    case OpeningHit.Immune:
+                        _open.ImmuneRefused++;
+                        OpeningLine("openings (shadow): your " + OpeningMath.AttackName(swing) + " LANDED on " + Name(v) + (behind ? " from behind" : " in front, not guarding")
+                                    + " - he is still reeling or inside the stagger immunity (" + F2(Math.Max(0, v.Impact.StaggerImmuneUntil - now)) + " s left): no new opening");
+                        break;
                     case OpeningHit.Staggers:
                         if (ReferenceEquals(_forceSt, v) && _forceKind != OpeningForceKind.Test) // step 106b: he reels - the force let go
                         {

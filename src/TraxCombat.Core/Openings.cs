@@ -80,6 +80,10 @@ namespace TraxCombat.Core
 
         /// <summary>A hit on the reeling man from another side: step 105's knockdown roll, no bonus.</summary>
         FinishOther,
+
+        /// <summary>Step 106e: a back hit / an unguarded front hit on a man still reeling or inside his stagger immunity - no new opening (the
+        /// chain untouched): what keeps a man from being re-staggered by every other hit.</summary>
+        Immune,
     }
 
     /// <summary>Step 106: what came of one off-balance state - the DIRECTION of your next swing (its timing is a score, <see cref="OpeningMath.TimingScore"/>).</summary>
@@ -296,6 +300,19 @@ namespace TraxCombat.Core
         public const int Unknown = -1;
         public const int AttackUp = 0, AttackDown = 1, AttackLeft = 2, AttackRight = 3;
         public const int GuardUp = 4, GuardDown = 5, GuardLeft = 6, GuardRight = 7;
+
+        /// <summary>Step 106e: was he reeling / stagger-immune BEFORE this landed hit? <paramref name="immuneNow"/> is read after the impact decision
+        /// wrote his record, so a stagger that decision rolled (<paramref name="decisionStaggered"/>) proves he was not (it refuses a stagger inside
+        /// the immunity).</summary>
+        public static bool ImmuneBeforeHit(bool immuneNow, bool decisionStaggered) => immuneNow && !decisionStaggered;
+
+        /// <summary>
+        /// Step 106e (decided in the review - AI_NOTES "106e - review"): can the impact system CARRY a live opening? The stagger is played through
+        /// its riposte path (the riposte family LIVE - not shadow, not the spike) and the landed hit is only seen when its hits are decided. When it
+        /// cannot, the openings run as a SHADOW even with <c>OpeningsEnabled</c> on - no forced guard, no lowered shield, no GUARD BROKEN, no flash -
+        /// rather than half of them live with a stagger that can never come.
+        /// </summary>
+        public static bool ImpactCarries(in ImpactRules ir) => ir.Applies(ImpactFamily.Riposte) && ir.Decides(ImpactFamily.Hits);
 
         /// <summary>The longest chain the settings may ask (the stats' arrays are this long + 1).</summary>
         public const int MaxChain = 8;
@@ -700,9 +717,14 @@ namespace TraxCombat.Core
         /// <paramref name="guarding"/> his guard up at contact; <paramref name="score"/> the follow-up's timing, 0 for none): the reel's finish, a
         /// stagger (off balance, or from behind), off balance (an unguarded front hit), else nothing (the chain on another man is left to the
         /// caller's target-switch reset). <paramref name="reset"/> names a chain this ended for another reason.
+        /// Step 106e: <paramref name="staggerImmune"/> = he was reeling or inside the impact system's stagger immunity BEFORE this hit
+        /// (<c>ImpactStaggerImmunitySeconds</c> after a reel). The entries the player did not EARN with a block - a back hit on a man who is not
+        /// off balance, an unguarded front hit - open nothing then: otherwise a reeling
+        /// man (who never guards) could be re-staggered by every other hit forever (<see cref="OpeningHit.Immune"/>, the chain untouched). A chain
+        /// earned with a block still staggers as designed.
         /// </summary>
         public OpeningHit NoteLanded(int target, double now, in OpeningRules r, bool fromBehind, bool guarding, int swing, int weaponMask, double score,
-            out OpeningReset reset)
+            out OpeningReset reset, bool staggerImmune = false)
         {
             reset = OpeningReset.None;
             if (Active && target == Target && Expired(now, in r))
@@ -718,6 +740,7 @@ namespace TraxCombat.Core
                 return perfect ? OpeningHit.FinishPerfect : OpeningHit.FinishOther;
             }
             bool offOnHim = Phase == OpeningPhase.OffBalance && target == Target;
+            if (staggerImmune && !offOnHim && (fromBehind ? r.BackHitStaggers : !guarding && r.UnguardedHitOpens)) return OpeningHit.Immune; // step 106e
             if (fromBehind && r.BackHitStaggers)
             {
                 if (Active && target != Target) reset = OpeningReset.TargetSwitch;
@@ -818,6 +841,9 @@ namespace TraxCombat.Core
         /// <summary>Landed hits: staggers by entry, the mod's own stagger on the same hit too, off balance from an unguarded front hit.</summary>
         public readonly int[] Staggers = new int[4];
         public int ModStaggerToo, UnguardedOffBalance;
+
+        /// <summary>Step 106e: back / unguarded hits on a man still reeling or stagger-immune - no new opening.</summary>
+        public int ImmuneRefused;
 
         /// <summary>Finishes during the reel: perfect / other side (step 105's roll); the reels that ended with no hit; the perfect multipliers'
         /// sum; perfects by the weapon's directions (2 / 3 / 4 → index 0 / 1 / 2); the no-thrust / spear relaxed finishes.</summary>
@@ -1019,7 +1045,8 @@ namespace TraxCombat.Core
             t.Append("; STAGGERS weapon-block chain ").Append(Staggers[(int)OpeningEntry.Blocked].ToString(c)).Append(", shield chain ")
              .Append(Staggers[(int)OpeningEntry.ShieldBlocked].ToString(c)).Append(", after an unguarded hit ").Append(Staggers[(int)OpeningEntry.FrontUnguarded].ToString(c))
              .Append(", from behind ").Append(Staggers[(int)OpeningEntry.Back].ToString(c)).Append(" (the mod's own stagger on the same hit ").Append(ModStaggerToo.ToString(c))
-             .Append("); unguarded front hits -> off balance ").Append(UnguardedOffBalance.ToString(c));
+             .Append("); unguarded front hits -> off balance ").Append(UnguardedOffBalance.ToString(c))
+             .Append("; back / unguarded hits on a man still reeling or stagger-immune (no new opening) ").Append(ImmuneRefused.ToString(c));
             t.Append("; during the reel: PERFECT STRIKE ").Append(FinishPerfect.ToString(c));
             if (FinishPerfect > 0)
                 t.Append(" (mean x").Append((MultiplierSum / FinishPerfect).ToString("0.00", c)).Append(", weapons with 2 / 3 / 4 directions ")

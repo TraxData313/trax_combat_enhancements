@@ -54,7 +54,7 @@ namespace TraxCombat.Missions
                 if (!double.IsNaN(_arrowFlashPeak))
                 {
                     if (OpeningArrowMath.FlashOver(now, _arrowFlashPeak)) _arrowFlashPeak = double.NaN;
-                    else if (OpeningArrowMath.ShowsFlash(in r, _arrowFlashTest))
+                    else if (OpeningArrowMath.ShowsFlash(in r, _arrowFlashTest, _arrowFlashTest || OpeningsLive(in r))) // step 106e: no flash while the openings are shadow
                     {
                         float alpha = OpeningArrowMath.FlashAlpha(now, _arrowFlashPeak);
                         if (alpha > 0)
