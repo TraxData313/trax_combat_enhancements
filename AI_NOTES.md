@@ -9911,3 +9911,58 @@ caps on you; an AI blocker can never reach the rear / dismount (s ≤ 0.5); a la
 4. PERFECT STRIKE from horseback - strict opposites or any side? - **Any side while he reels** (mounted swings are forced by the pass), x2 → x3 as on foot.
 5. Rear and knock-off: both? - **Yes**: rear at a sharp block (0.8+, 50 % x s), knocked off only at a perfect one (30 % x his speed x the mismatch -
    ~9 % at a canter, 30 % for a galloping poor rider).
+
+
+## Step 105 (BUILT 2026-11-09) — a landed hit on a reeling man knocks him down (80 %)
+
+Toni 2026-11-09 (built BEFORE step 104 at his request): "when I stagger him and PERFECT STRIKE lands the NPC doesn't react which looks strange,
+but sometimes I knock him down, which looks very good and natural, he is off balance and I hit him and he falls. Make it so that when hitting
+(swing/kick/bash) an opponent that is staggering has 80% chance to knock him down no matter what or who caused the stagger." DESIGN decision 94.
+
+### Why the perfect strike "did nothing" before
+The usual model already gives a reeling man the reeling BONUS (+0.75 on x - IMPACT §4 F: a fresh even man reeling falls 54 % to a kick, 34 % to a
+sword blow) - the "sometimes" Toni saw. And his STAGGER cannot be rolled again while he reels (`StaggerImmune`), so a hit that did not knock him
+down only played the engine's flinch on top of our slowed stagger - nothing visible.
+
+### What "staggering" is (the mod's state - nothing new read from the engine)
+`ImpactState.Reeling(now)` = now < `ReelingUntil`. Set by `ImpactState.Reel` from Core's decision and re-timed by the measured animation
+(`EndReel`, steps 50-52 / 100b): a clean hit's rolled stagger (`ReelCause.HitStagger`), a blocker's stagger (`BlockStagger`), an untimed / timed
+riposte (`Riposte` / `TimedRiposte` - the player's clock or the AI's, step 102), a kick / bash met correctly (`MeetRiposte`, step 82), a kick's /
+bash's lengthened reel (`Kick` / `Bash` - ReelFactor > 1) and a bash into his shield that staggered him. NOT seen: the engine's plain flinch on a
+hit the model did not stagger, vanilla's own block stun and knock-back with no reel of ours - indistinguishable from an ordinary hit from here.
+`ReelCause` is a byte on `ImpactState` (kept by `EndReel`, cleared with the state); `Reel(until, immunity)` = cause Unknown.
+
+### The decision (Core `ReelCause` / `ReelingHitMath` / `ReelingHitStats` in ReelingHit.cs)
+- In `ImpactMath.Decide` right after the usual knockdown roll (and in `DecideMeet`'s landed branch; a correct meet = `Guarded`, counted, never
+  rolled; a bash the shield stopped is not landed). Not reeling / a block = not asked: the decision is the old one exactly (test).
+- p = `ReelingHitKnockdownPercent` / 100 x (`ImpactOnPlayerPercent` when he is you). The usual roll STANDS when it came up or its chance >= p and it
+  was not refused; otherwise it is REPLACED by an `ImpactRoll` at p with one die (its refusal - KnockdownImmune / Braced - ignored). So the chance is
+  max(p, usual) - never lower than before step 105. A knockdown then replaces his stagger, `braced` / `held` are cleared (no braced reel, the
+  knock-back not refused), the get-up slowed by T as usual, `KnockedDown` writes Down / KnockdownImmune and ends his reel.
+- Hard refusals (`ReelingHitRefusal`): Off (switch / 0 %), Mounted (step 104's seam - riders do not reel yet), Down, Guarded, YouExempt
+  (ImpactOnPlayerPercent 0); the module adds Fatal (`ImpactDecideEvent`'s killing-blow skip - he just dies) and NotApplied (the family not live -
+  shadow / off -, decided outside the seam, the KnockDown lever off).
+
+### The module (AthleticsLogic.ReelingHit.cs, ImpactModel.cs)
+Nothing new reaches the engine: `ImpactDecide` → `ApplyKick` / `ApplyHit` answer the KnockDown seam as for every knockdown (the fall watched,
+our own blow as the backup - step 62; the YOU on-screen lines - step 53's `ImpactMessage`; the punish window). The damage is computed by the
+engine BEFORE `DecideAgentKnockedDownByBlow` (Mission.cs ~5555-5575, CreateMeleeBlow - damage first, then shrug-off / knock-back / knockdown),
+so the hit's damage and the perfect strike's multiplier land unchanged; the perfect-strike window survives the fall too (its grace 0.15 s after
+`ReelingUntil`, which the knockdown sets to now). `ImpactInputs.Fill` sets `ImpactFacts.Thrust` (the collision's StrikeType) for the summary's
+hit kind. Lines: the mission-start rules line, the first landed hit on a reeling man / the first REELING man knocked down / the first not
+applied, the rest verbose; the [summary] "hits on reeling men (step 105; ON, 80 %)" line.
+
+### Settings
+`ReelingHitKnockdownEnabled` (the player page, "Staggers and knockdowns", after PerfectStrikeEnabled - 37 player settings) and
+`ReelingHitKnockdownPercent` 80 (Advanced, Impact, after TimedBlockShowTiming); 583 settings; new keys only, no config format change. The
+existing tests of the usual model on a reeling man (IMPACT §4 F, ImpactHitsTests' reeling bonus) pin the switch OFF - they document the usual roll.
+
+### Tests / smoke
+Step105Tests: the pure roll and refusals, the usual roll standing / replaced, inside Decide for swing / thrust / kick / bash with the immunity
+and the halving set, not reeling = unchanged, a rider, you at 50 % / 0 %, 20000 rolls ~80 %, the reel causes, the settings, the summary line.
+Smoke "A HIT ON A REELING MAN KNOCKS HIM DOWN (step 105)" through the real logic and the decorator's KnockDown hook (Program.Step105.cs).
+
+### Not verified in game
+That the engine plays the fall cleanly ON TOP of our slowed `act_stagger_backward` (the KnockDown blow arrives while channel 0 plays our
+stagger - the engine's fall should take over; if not, step 62's backup blow fires after `ImpactFallBackupSeconds`); how 80 % feels against you
+in a melee where AI ripostes are frequent (`ImpactOnPlayerPercent` scales it).

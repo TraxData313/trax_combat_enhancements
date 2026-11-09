@@ -1307,7 +1307,7 @@ says (§2c).
 20, in this order: `ModEnabled`; *How hard hits land* `DamageRandomPercent`, `DamageReductionPercent`, `TiredDamageAtEmptyPercent` (step 89); *Tiredness (Athletics)*
 `AthleticsEnabled`, `CostPerBlow`, `HeroCostMultiplier`, `CrouchRefillForPlayer` (step 103); *How the AI fights* `AiAggressionFreshPercent`, `AiAggressionExhaustedPercent`,
 `FeverEnabled`, `ShieldWallHoldsSlots`, `ShieldWallStepOutMetres`, `CourageEnabled`, `CavalryFlockEnabled`; *Staggers and knockdowns*
-`ImpactEnabled`, `ImpactOnPlayerPercent`; *Sprinting* `SprintEnabled`, `SprintKey`, `SprintControllerKey` (step 85); *On screen* `ShowPlayerBar`, `AltMarksEveryone`,
+`ImpactEnabled`, `ImpactOnPlayerPercent`, `ReelingHitKnockdownEnabled` (step 105); *Sprinting* `SprintEnabled`, `SprintKey`, `SprintControllerKey` (step 85); *On screen* `ShowPlayerBar`, `AltMarksEveryone`,
 `ImpactShowMessages`. Every other key is on the ADVANCED page ("Trax Combat Enhancements - Advanced"), in its system's group. A new
 row goes to the Advanced page unless a player needs it to set up his game (CLAUDE.md).
 
@@ -3633,6 +3633,29 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     MOUNTED blocker = his guard's own heavy parry (no mounted bash exists in the game's usage sets). Settings proposed in AI_NOTES "Step 104" §5
     (1 on the player page - `TimedBlocksOnHorseback` -, ~13 Advanced), no config format change; build 104a (test tool + shadow) → 104b (the reel)
     → 104c (rear / unhorse) → 104d (strike, push-out) → 104e (review).
+94. **A hit on a reeling man knocks him down** (step 105, BUILT 2026-11-09 - Toni: "when I stagger him and PERFECT STRIKE lands the NPC doesn't
+    react which looks strange, but sometimes I knock him down, which looks very good and natural ... Make it so that when hitting (swing/kick/bash)
+    an opponent that is staggering has 80% chance to knock him down no matter what or who caused the stagger"; built BEFORE step 104 at his request;
+    AI_NOTES "Step 105"). (a) "STAGGERING" = the mod's own state `ImpactState.Reeling(now)` (now < `ReelingUntil`): every reel the impact system
+    sets - a clean hit's rolled stagger (the engine's flinch slowed), a blocker's stagger (right / wrong side, parry), a riposte (untimed or timed -
+    the player's or the AI's guard clock), a kick / bash met correctly (step 82), a kick's / bash's lengthened reel - re-timed by the measured
+    animation. NOT covered: the engine's plain flinch on a hit the model did not stagger, vanilla's own block stun / knock-back with no reel of ours
+    (the mod cannot tell them from a normal hit). The cause is kept on the record (`ImpactState.ReelCause`, Core `ReelCause`). (b) WHAT COUNTS: a
+    LANDED melee blow - a swing, a thrust, a kick, a shield bash / weapon push - by anyone (you or the AI) on a man on foot; a blow his shield or
+    weapon blocks, a kick / bash his guard MET (step 82's correct meet) or a bash his shield stopped never; the PERFECT STRIKE counts like any hit.
+    (c) THE ROLL (Core `ReelingHitMath.Decide`, inside `ImpactMath.Decide` right after the usual knockdown roll - both paths, the meet rows' landed
+    branch too): chance p = `ReelingHitKnockdownPercent` 80 x (`ImpactOnPlayerPercent` when he is YOU); "no matter what" = his tiredness, the
+    mismatch, the brace (step 65), the knockdown immunity after his last fall and the halving of recent outcomes are ignored; the usual roll stands
+    only when it came up or its chance was higher (never safer than before); else ONE die at p replaces it. A knockdown replaces his stagger (the
+    usual rule), his get-up slowed by tiredness as usual. (d) THE HARD REFUSALS: the switch off / 0 %, a RIDER (riders do not reel yet - step 104's
+    seam: `ReelingHitRefusal.Mounted`), already DOWN, YOU at `ImpactOnPlayerPercent` 0, a KILLING blow (never decided - he just dies; counted), and
+    in the module the usual ones: the impact system / the family not live (shadow, off), a blow decided outside the decorator's seam, the KnockDown
+    lever off after an error. (e) THE PATH: the same as every knockdown of the impact system - the damage decorator's KnockDown seam (step 50 / 52),
+    the fall watched and slowed, our own knockdown blow as the backup when no fall shows (step 62), the on-screen lines ("You knock X down" / "You
+    are knocked down" - step 53), the punish window (step 54). The damage is the engine's (computed before the KnockDown question in
+    `Mission.CreateMeleeBlow`), the perfect strike's x2-x3 on it unchanged. (f) `ReelingHitKnockdownEnabled` (the player page, on) +
+    `ReelingHitKnockdownPercent` 80 (Advanced, Impact); the [impact] first-time lines and the [summary] "hits on reeling men" line (landed / knocked
+    down by hit kind and by what made him reel, refusals by reason, on you / by you) (PLAYTEST D72). New keys only - no config format change.
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),
 `HudRefreshSeconds`, `FormationStatsRefreshSeconds` came out of step 2's research
