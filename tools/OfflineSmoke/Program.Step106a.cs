@@ -62,6 +62,7 @@ namespace TraxCombat.Tools
                     swingReads++;
                     return swingDir;
                 };
+                logic.OpeningCommitRead = a => swingDir; // step 106f: the swing already committed at its wind-up (judged there, as before)
                 logic.OpeningWeaponRead = a => weaponMask;
                 double t = 106000;
                 logic.TickImpact(t);

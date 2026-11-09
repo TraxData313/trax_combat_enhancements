@@ -33,8 +33,8 @@ namespace TraxCombat.Missions
         private readonly OpeningStats _open = new OpeningStats();
         private OpeningChain _openChain = OpeningChain.None;
         private OpeningPlan _openPlan;
-        private bool _openPending, _openWound;
-        private int _openTarget = -1, _openWindUpDir = OpeningMath.Unknown, _openLines, _openStaggerMask = OpeningMath.AllAttacks;
+        private bool _openPending, _openWound, _openJudged;
+        private int _openTarget = -1, _openWindUpDir = OpeningMath.Unknown, _openDir = OpeningMath.Unknown, _openLines, _openStaggerMask = OpeningMath.AllAttacks;
         private double _openBlockAt, _openWindUpAt, _openScore;
 
         /// <summary>Step 106e: the landed hit being decided - its collision's direction (ImpactDecideEvent), the attacker, the time.</summary>
@@ -79,7 +79,38 @@ namespace TraxCombat.Missions
         /// <summary>The attacks your wielded weapon can make (<see cref="OpeningMath.WeaponMask"/>). The smoke's stand-in.</summary>
         internal Func<Agent, int> OpeningWeaponRead { get; set; } = GameWeaponMask;
 
+        /// <summary>
+        /// Step 106f: the direction your swing is COMMITTED to - channel 1's direction while it is a melee RELEASE (the engine's ready can still
+        /// change: Toni's first playtest read the wind-up's direction wrong 14 times in 33), else <see cref="OpeningMath.Unknown"/> (not released
+        /// yet). The smoke's stand-in.
+        /// </summary>
+        internal Func<Agent, int> OpeningCommitRead { get; set; } = GameCommittedDirection;
+
         private static int GameActionDirection(Agent a) => (int)a.GetCurrentActionDirection(1);
+
+        private static int GameCommittedDirection(Agent a)
+        {
+            if (a.GetCurrentActionType(1) != Agent.ActionCodeType.ReleaseMelee) return OpeningMath.Unknown;
+            int d = (int)a.GetCurrentActionDirection(1);
+            return OpeningMath.IsAttack(d) ? d : (int)a.AttackDirection;
+        }
+
+        private int ReadCommitted(Agent a)
+        {
+            try
+            {
+                int d = OpeningCommitRead(a);
+                return OpeningMath.IsAttack(d) ? d : OpeningMath.Unknown;
+            }
+            catch (Exception)
+            {
+                return OpeningMath.Unknown;
+            }
+        }
+
+        /// <summary>Step 106f: this blow's collision direction when the impact decision just noted it for <paramref name="a"/>, else unknown.</summary>
+        private int ContactSwing(TrackedAgent a, double now) =>
+            ReferenceEquals(_hitSwingBy, a) && Math.Abs(_hitSwingAt - now) < 1e-6 && OpeningMath.IsAttack(_hitSwing) ? _hitSwing : OpeningMath.Unknown;
 
         private static int GameSwingDirection(Agent a)
         {
@@ -143,7 +174,22 @@ namespace TraxCombat.Missions
         /// </summary>
         private void OpeningShadowBlock(TrackedAgent a, TrackedAgent v, in ImpactFacts f, in ImpactDecision d, double now)
         {
-            if (!ImpactMath.CanRiposte(d.Event)) return;
+            if (!ImpactMath.CanRiposte(d.Event))
+            {
+                // step 106f: a held follow-up stopped by his shield on the WRONG side is blocked anyway too (the shield did not come down)
+                if (d.Event == ImpactEvent.WrongBlock && _openLiveRolled && f.AttackerIsPlayer && !f.DefenderIsPlayer && v.AgentIndex == _openTarget && YouDrive(a))
+                {
+                    try
+                    {
+                        OpeningLine("openings: your follow-up hit his shield on the wrong side" + ForceBlockedText(v, ContactSwing(a, now), true, ReadGuard(v.Agent), now));
+                    }
+                    catch (Exception e)
+                    {
+                        OpeningFailed(e);
+                    }
+                }
+                return;
+            }
             try
             {
                 var r = OpeningRules.From(TraxSettings.Shared);
@@ -156,8 +202,11 @@ namespace TraxCombat.Missions
                 }
                 if (f.DefenderIsPlayer) return;
                 string rolled = string.Empty;
-                if (_openLiveRolled) rolled = ForceBlockedText(now); // step 106b: the live roll at your wind-up decided it
-                else if (_openPending && _openWound && _openTarget == v.AgentIndex && _openVerdict == OpeningVerdict.Opened)
+                bool shield = d.Event == ImpactEvent.RightBlock;
+                int guardAtContact = ReadGuard(v.Agent);
+                int yourAttack = !double.IsNaN(a.RecoilDirectionAt) && Math.Abs(a.RecoilDirectionAt - now) < 1e-6 ? a.RecoilDirection : OpeningMath.Unknown;
+                if (_openLiveRolled) rolled = ForceBlockedText(v, yourAttack, shield, guardAtContact, now); // step 106b: the live roll at your follow-up decided it
+                else if (_openPending && _openJudged && _openTarget == v.AgentIndex && _openVerdict == OpeningVerdict.Opened)
                 {
                     // THE SHADOW BLOCK ROLL: he blocked your follow-up into the side - would the revised design have let it through?
                     double chance = OpeningMath.BlockChance(in r, _openScore, _openPlan.K, _openPlan.ShieldHolds);
@@ -168,11 +217,8 @@ namespace TraxCombat.Missions
                              + ": " + (through ? "WOULD have got through (his guard forced to the " + OpeningMath.GuardName(_openPlan.Guard) + ")" : "he would still block it");
                 }
                 CloseOpening(now);
-                bool shield = d.Event == ImpactEvent.RightBlock;
                 int k = _openChain.NoteBlock(v.AgentIndex, now, shield, in r, out var reset);
                 _open.NoteReset(reset);
-                int guardAtContact = ReadGuard(v.Agent);
-                int yourAttack = !double.IsNaN(a.RecoilDirectionAt) && Math.Abs(a.RecoilDirectionAt - now) < 1e-6 ? a.RecoilDirection : OpeningMath.Unknown;
                 _open.NotePair(yourAttack, guardAtContact);
                 int mask = ReadWeaponMask(a.Agent);
                 var plan = OpeningMath.Plan(in r, k, shield ? OpeningEntry.ShieldBlocked : OpeningEntry.Blocked, f.AttackerSkill, f.AttackerMounted || f.DefenderMounted,
@@ -206,6 +252,8 @@ namespace TraxCombat.Missions
             _openLiveRolled = false; // step 106b: a live roll belongs to one follow-up
             _openPending = true;
             _openWound = false;
+            _openJudged = false; // step 106f
+            _openDir = OpeningMath.Unknown;
             _openTarget = target;
             _openPlan = plan;
             _openBlockAt = now;
@@ -243,38 +291,66 @@ namespace TraxCombat.Missions
                     EndChain(_openChain.Phase == OpeningPhase.Reeling ? OpeningReset.ReelOver : OpeningReset.Gap);
                     return;
                 }
-                if (!_openPending || _openWound || !YouDrive(st)) return;
-                int dir = OpeningMath.Unknown;
-                try
-                {
-                    dir = OpeningSwingRead(st.Agent);
-                }
-                catch (Exception)
-                {
-                    dir = OpeningMath.Unknown;
-                }
-                if (!OpeningMath.IsAttack(dir)) dir = OpeningMath.Unknown;
+                // step 106f: a NEW wind-up before the last one was released (a feint, a re-ready) re-times the follow-up
+                if (!_openPending || _openJudged || !YouDrive(st)) return;
+                int dir = ReadSwing(st.Agent);
                 _openWound = true;
                 _openWindUpAt = now;
                 _openWindUpDir = dir;
                 double since = now - _openBlockAt;
-                _openVerdict = OpeningMath.Verdict(in _openPlan, since, dir);
                 _openScore = OpeningMath.TimingScore(in r, in _openPlan, since);
-                LastOpeningVerdict = _openVerdict;
                 LastOpeningScore = _openScore;
-                _open.NoteFollowUp(_openVerdict, _openPlan.K, since, _openScore);
-                string live = ForceAtWindUp(st, now); // step 106b: the LIVE block roll (its own try)
-                OpeningLine("openings (shadow): your follow-up - " + OpeningMath.AttackName(dir) + " started " + F2(since) + " s after the link (flash " + F2(_openPlan.Flash)
-                            + " s, perfect +/-" + F2(_openPlan.Perfect) + ", window to " + F2(_openPlan.Flash + _openPlan.Window) + " s; the side: "
-                            + OpeningMath.AttackName(_openPlan.Opening) + ", link " + _openPlan.K.ToString(CultureInfo.InvariantCulture) + "): "
-                            + OpeningMath.VerdictName(_openVerdict) + ", timing " + F2(_openScore)
-                            + (_openVerdict == OpeningVerdict.Opened ? " -> his block chance " + Pct0(OpeningMath.BlockChance(in r, _openScore, _openPlan.K, _openPlan.ShieldHolds)) : string.Empty)
-                            + live);
+                // step 106f: the direction is judged once the swing COMMITS (its release - TickOpenings), not from the ready's first read
+                int committed = ReadCommitted(st.Agent);
+                if (OpeningMath.IsAttack(committed)) JudgeFollowUp(st, committed, OpeningJudgedAt.WindUp, now);
             }
             catch (Exception e)
             {
                 OpeningFailed(e);
             }
+        }
+
+        /// <summary>
+        /// Step 106f: the awaited follow-up's DIRECTION judged - <paramref name="dir"/> the swing it committed to (its release; the wind-up when it was
+        /// already released there; the contact's collision when no release was seen first). The verdict, the follow-up's counts, then the LIVE
+        /// block roll (not at the contact - the blow has met him already). Main thread.
+        /// </summary>
+        private void JudgeFollowUp(TrackedAgent you, int dir, OpeningJudgedAt at, double now)
+        {
+            if (!_openPending || !_openWound || _openJudged) return;
+            var r = OpeningRules.From(TraxSettings.Shared);
+            _openJudged = true;
+            _openDir = dir;
+            double since = _openWindUpAt - _openBlockAt;
+            _openVerdict = OpeningMath.Verdict(in _openPlan, since, dir);
+            LastOpeningVerdict = _openVerdict;
+            _open.NoteFollowUp(_openVerdict, _openPlan.K, since, _openScore);
+            _open.NoteJudged(at, _openWindUpDir, dir);
+            string live = at == OpeningJudgedAt.Contact ? " - judged only at the contact (no release seen first): no live roll" : ForceAtCommit(you, now); // step 106b: the LIVE block roll (its own try)
+            OpeningLine("openings (shadow): your follow-up - " + OpeningMath.AttackName(dir) + " (judged at the " + JudgedWords(at) + (_openWindUpDir != dir ? "; the wind-up first read "
+                        + OpeningMath.AttackName(_openWindUpDir) : string.Empty) + ") started " + F2(since) + " s after the link (flash " + F2(_openPlan.Flash)
+                        + " s, perfect +/-" + F2(_openPlan.Perfect) + ", window to " + F2(_openPlan.Flash + _openPlan.Window) + " s; the side: "
+                        + OpeningMath.AttackName(_openPlan.Opening) + ", link " + _openPlan.K.ToString(CultureInfo.InvariantCulture) + "): "
+                        + OpeningMath.VerdictName(_openVerdict) + ", timing " + F2(_openScore)
+                        + (_openVerdict == OpeningVerdict.Opened ? " -> his block chance " + Pct0(OpeningMath.BlockChance(in r, _openScore, _openPlan.K, _openPlan.ShieldHolds)) : string.Empty)
+                        + live);
+        }
+
+        private static string JudgedWords(OpeningJudgedAt at) => at switch
+        {
+            OpeningJudgedAt.WindUp => "wind-up, already released",
+            OpeningJudgedAt.Release => "release",
+            _ => "contact",
+        };
+
+        /// <summary>Step 106f: from the tick - a wound-up follow-up not judged yet is judged the moment your swing commits (its release).</summary>
+        private void TickFollowUpCommit(double now)
+        {
+            if (!_openPending || !_openWound || _openJudged) return;
+            var you = PlayerRecord();
+            if (you == null || you.Removed || !YouDrive(you)) return;
+            int dir = ReadCommitted(you.Agent);
+            if (OpeningMath.IsAttack(dir)) JudgeFollowUp(you, dir, OpeningJudgedAt.Release, now);
         }
 
         /// <summary>Your melee release ended without a hit (step 13's phases): the awaited follow-up met nothing; a miss in a chain counted
@@ -338,7 +414,12 @@ namespace TraxCombat.Missions
                     return;
                 }
                 if (landed) return; // OpeningShadowHit's
-                if (_openPending && _openWound) _open.NoteDirection(_openWindUpDir, TimedRecoilMath.DirectionOf((int)cd.AttackDirection));
+                if (_openPending && _openWound)
+                {
+                    int contact = TimedRecoilMath.DirectionOf((int)cd.AttackDirection);
+                    if (!_openJudged && OpeningMath.IsAttack(contact)) JudgeFollowUp(a, contact, OpeningJudgedAt.Contact, now); // step 106f: no release seen first
+                    _open.NoteDirection(_openDir, contact);
+                }
                 else if (_openPending) // its wind-up unseen (Athletics' phases off): the direction unread
                 {
                     _openPending = false;
@@ -388,8 +469,9 @@ namespace TraxCombat.Missions
                 {
                     if (_openWound)
                     {
+                        if (!_openJudged && OpeningMath.IsAttack(swing)) JudgeFollowUp(a, swing, OpeningJudgedAt.Contact, now); // step 106f: no release seen first
                         score = _openScore;
-                        _open.NoteDirection(_openWindUpDir, swing);
+                        _open.NoteDirection(_openDir, swing);
                     }
                     else
                     {
@@ -481,7 +563,13 @@ namespace TraxCombat.Missions
         {
             if (!_openPending) return;
             _openPending = false;
-            if (_openWound) return;
+            if (_openWound && _openJudged) return;
+            if (_openWound) // step 106f: wound up but never committed (cancelled, or the release unseen) - the direction unread
+            {
+                LastOpeningVerdict = OpeningVerdict.UnknownDirection;
+                _open.NoteFollowUp(OpeningVerdict.UnknownDirection, _openPlan.K, _openWindUpAt - _openBlockAt, _openScore);
+                return;
+            }
             LastOpeningVerdict = OpeningVerdict.NoSwing;
             _open.NoteFollowUp(OpeningVerdict.NoSwing, _openPlan.K, double.NaN, 0);
         }
@@ -501,6 +589,7 @@ namespace TraxCombat.Missions
         private void TickOpenings(double now)
         {
             TickOpeningPayoff(now); // step 106d: the notices; the chain's reel follows his record's
+            if (_openPending && _openWound && !_openJudged && OpeningRules.From(TraxSettings.Shared).Runs) TickFollowUpCommit(now); // step 106f: judged at the release
             TickOpeningForce(now); // step 106b: the forced guard and the test tool (whatever the chain)
             if (!_openPending && !_openChain.Active) return;
             var r = OpeningRules.From(TraxSettings.Shared);
@@ -511,7 +600,7 @@ namespace TraxCombat.Missions
                 return;
             }
             if (_openPending && !_openWound && now - _openBlockAt > r.ChainReset + 1e-9) CloseOpening(now);
-            else if (_openPending && _openWound && now > OpeningMath.HoldEnds(in r, _openWindUpAt) + 0.5) _openPending = false;
+            else if (_openPending && _openWound && now > OpeningMath.HoldEnds(in r, _openWindUpAt) + 0.5) CloseOpening(now); // step 106f: an uncommitted one counted
             if (_openChain.Active)
             {
                 var t = GetByIndex(_openChain.Target);

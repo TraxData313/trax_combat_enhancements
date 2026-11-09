@@ -86,6 +86,20 @@ namespace TraxCombat.Core
         Immune,
     }
 
+    /// <summary>
+    /// Step 106f (Toni's first playtest: the wind-up's direction and the contact's differed 14 of 33): WHERE a follow-up's direction was judged.
+    /// The swing is only COMMITTED at its release - the engine's ready can still change direction (a re-ready, a late mouse flick) - so the
+    /// direction is read from the release; the wind-up only when the swing was already released when it was seen (one poll), the contact's
+    /// collision when no release was seen before it (then the live block roll is too late to matter).
+    /// </summary>
+    public enum OpeningJudgedAt : byte
+    {
+        WindUp,
+        Release,
+        Contact,
+        Count,
+    }
+
     /// <summary>Step 106: what came of one off-balance state - the DIRECTION of your next swing (its timing is a score, <see cref="OpeningMath.TimingScore"/>).</summary>
     public enum OpeningVerdict : byte
     {
@@ -829,8 +843,25 @@ namespace TraxCombat.Core
         public double DelaySum, DelayMin = double.PositiveInfinity, DelayMax;
         public int DelayCount;
 
-        /// <summary>Your wind-up's direction read vs the direction the contact reported: agree / differ / unread at the wind-up.</summary>
+        /// <summary>The follow-up's JUDGED direction (step 106f: the swing it committed to - its release, else the contact) vs the direction the
+        /// contact reported: agree / differ / unread.</summary>
         public int DirAgree, DirDiffer, DirUnread;
+
+        /// <summary>Step 106f: where the follow-up's direction was judged (<see cref="OpeningJudgedAt"/>), and the wind-up's first read vs the
+        /// committed direction (agree / differ / unread at the wind-up) - the 106e build judged at the wind-up and misread 14 of 33.</summary>
+        public readonly int[] JudgedAt = new int[(int)OpeningJudgedAt.Count];
+        public int WindUpAgree, WindUpDiffer, WindUpUnread;
+
+        /// <summary>Step 106f: one follow-up's direction judged <paramref name="at"/> - <paramref name="windUp"/> the wind-up's first read,
+        /// <paramref name="committed"/> the direction judged.</summary>
+        public void NoteJudged(OpeningJudgedAt at, int windUp, int committed)
+        {
+            if (at >= 0 && at < OpeningJudgedAt.Count) JudgedAt[(int)at]++;
+            if (!OpeningMath.IsAttack(committed)) return;
+            if (!OpeningMath.IsAttack(windUp)) WindUpUnread++;
+            else if (windUp == committed) WindUpAgree++;
+            else WindUpDiffer++;
+        }
 
         /// <summary>THE BLOCK ROLL (shadow dice): follow-ups into the side he blocked correctly anyway - rolled, WOULD have got through (his guard
         /// forced), the chance's sum; by link.</summary>
@@ -954,11 +985,11 @@ namespace TraxCombat.Core
             if (delay > DelayMax) DelayMax = delay;
         }
 
-        public void NoteDirection(int atWindUp, int atContact)
+        public void NoteDirection(int judged, int atContact)
         {
             if (!OpeningMath.IsAttack(atContact)) return;
-            if (!OpeningMath.IsAttack(atWindUp)) DirUnread++;
-            else if (atWindUp == atContact) DirAgree++;
+            if (!OpeningMath.IsAttack(judged)) DirUnread++;
+            else if (judged == atContact) DirAgree++;
             else DirDiffer++;
         }
 
@@ -1068,7 +1099,11 @@ namespace TraxCombat.Core
                 for (int g = 0; g < 5; g++) t.Append(g == 0 ? " " : "/").Append(Pairs[a * 5 + g].ToString(c));
             }
             t.Append(" (sides now ").Append(r.SidesCrossed ? "CROSSED - your left swing met by his RIGHT guard" : "same-named - your left swing met by his LEFT guard").Append(')');
-            t.Append("; your wind-up's direction vs the contact's: agree ").Append(DirAgree.ToString(c)).Append(", differ ").Append(DirDiffer.ToString(c))
+            t.Append("; your follow-up's direction judged (step 106f) at the release ").Append(JudgedAt[(int)OpeningJudgedAt.Release].ToString(c))
+             .Append(", already at the wind-up ").Append(JudgedAt[(int)OpeningJudgedAt.WindUp].ToString(c)).Append(", only at the contact ")
+             .Append(JudgedAt[(int)OpeningJudgedAt.Contact].ToString(c)).Append(" - the wind-up's first read vs the committed swing: agree ")
+             .Append(WindUpAgree.ToString(c)).Append(", differ ").Append(WindUpDiffer.ToString(c)).Append(", unread ").Append(WindUpUnread.ToString(c));
+            t.Append("; the judged direction vs the contact's: agree ").Append(DirAgree.ToString(c)).Append(", differ ").Append(DirDiffer.ToString(c))
              .Append(", unread ").Append(DirUnread.ToString(c));
             t.Append("; chain resets: reel over ").Append(Resets[(int)OpeningReset.ReelOver].ToString(c)).Append(", gap ").Append(Resets[(int)OpeningReset.Gap].ToString(c))
              .Append(", he hit you ").Append(Resets[(int)OpeningReset.HeHitYou].ToString(c)).Append(", another target ").Append(Resets[(int)OpeningReset.TargetSwitch].ToString(c))

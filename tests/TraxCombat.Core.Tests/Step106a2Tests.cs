@@ -405,8 +405,8 @@ public class Step106a2Tests
         var all = SettingsSchema.All.ToList();
         int first = all.IndexOf(SettingsSchema.OpeningsShadowLog);
         Assert.Equal(all.IndexOf(SettingsSchema.TimedBlockPushOutMounted) + 1, first);
-        Assert.Equal(first + 25, all.IndexOf(SettingsSchema.PerfectStrikeWeaponFinishes)); // step 106c: OpeningArrowShow moved to the player page
-        Assert.All(all.Skip(first).Take(26), p => Assert.Same(SettingsSchema.ImpactGroup, p.Group));
+        Assert.Equal(first + 26, all.IndexOf(SettingsSchema.PerfectStrikeWeaponFinishes)); // step 106f: + OpeningHoldTakesDefend; step 106c: OpeningArrowShow moved to the player page
+        Assert.All(all.Skip(first).Take(27), p => Assert.Same(SettingsSchema.ImpactGroup, p.Group));
         Assert.Equal(0, SettingsSchema.OpeningsEnabled.Default);
         Assert.Equal(1, SettingsSchema.OpeningsShadowLog.Default);
         foreach (var k in ConfigFile.RetiredOpeningKeys) Assert.DoesNotContain(all, p => p.Key == k);

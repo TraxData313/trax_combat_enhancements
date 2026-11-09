@@ -690,6 +690,7 @@ namespace TraxCombat.Core
         public float OpeningChainResetSeconds => GetFloat(SettingsSchema.OpeningChainResetSeconds); // step 106a2
         public bool OpeningMissKeepsChain => GetBool(SettingsSchema.OpeningMissKeepsChain); // step 106a2
         public float OpeningHoldMaxSeconds => GetFloat(SettingsSchema.OpeningHoldMaxSeconds); // step 106a2
+        public bool OpeningHoldTakesDefend => GetBool(SettingsSchema.OpeningHoldTakesDefend); // step 106f
         public bool OpeningSidesCrossed => GetBool(SettingsSchema.OpeningSidesCrossed); // step 106a2
         public float OpeningReelBaseSeconds => GetFloat(SettingsSchema.OpeningReelBaseSeconds); // step 106a2
         public float OpeningReelPerChainSeconds => GetFloat(SettingsSchema.OpeningReelPerChainSeconds); // step 106a2

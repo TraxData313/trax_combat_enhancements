@@ -48,6 +48,61 @@ namespace TraxCombat.Core
     }
 
     /// <summary>
+    /// Step 106f (Toni's first playtest: "poses read back 0" - the live force was never checked): what his upper body showed when a LIVE forced
+    /// guard was read back - at <see cref="OpeningForceMath.PoseFirstReadSeconds"/> after the force began and, when not yet, again at
+    /// <see cref="OpeningForceMath.PoseLastReadSeconds"/> (his parry's own reaction may still play at the first read).
+    /// </summary>
+    public enum OpeningPoseResult : byte
+    {
+        /// <summary>The wanted guard (or no guard at all for a lowered one) at the first read.</summary>
+        Shown,
+
+        /// <summary>Not yet at the first read, the wanted pose at the last one.</summary>
+        ShownLate,
+
+        /// <summary>He was defending, but another direction (his own guard or his parry's reaction) - the input not honoured.</summary>
+        OtherGuard,
+
+        /// <summary>No defend stage at all (an attack, a reaction, idle) - the wanted guard never came up.</summary>
+        NotDefending,
+
+        /// <summary>Lowered wanted, but a guard still up at the last read.</summary>
+        StillGuarding,
+
+        /// <summary>The force ended before the last read (and the first one did not show it).</summary>
+        EndedFirst,
+
+        Count,
+    }
+
+    /// <summary>
+    /// Step 106f (Toni's first playtest: "BLOCKED ANYWAY" 2 of 4 held follow-ups): WHY a held follow-up was blocked after all - read at the block
+    /// itself from the collision, his guard at contact and what was forced.
+    /// </summary>
+    public enum OpeningAnyway : byte
+    {
+        /// <summary>Your swing at contact was not the side the follow-up was judged into (the 106e build judged at the wind-up).</summary>
+        OtherDirection,
+
+        /// <summary>His shield stopped it while it was still meant to hold (not lowered).</summary>
+        ShieldHeld,
+
+        /// <summary>His shield stopped it although it was lowered - it did not come down in time.</summary>
+        ShieldNotDown,
+
+        /// <summary>A weapon guard, and his guard at contact WAS the forced one - the engine parried anyway.</summary>
+        ForcedGuardParried,
+
+        /// <summary>A weapon guard, his guard at contact another one - his own guard came back (the input not honoured in time).</summary>
+        OwnGuard,
+
+        /// <summary>His guard at contact unread.</summary>
+        Unread,
+
+        Count,
+    }
+
+    /// <summary>
     /// Step 106b: the test tool's guards, cycled by its key - the four directions (the engine's DefendDown / Up / Left / Right bits), the shield
     /// LOWERED by the input (every guard bit out of his frame) and the shield lowered by the game's own route (the agent's <c>CanDefend</c> flag
     /// taken off - what vanilla does to climbers; given back at the end) on top of the input.
@@ -173,6 +228,58 @@ namespace TraxCombat.Core
             return defending && direction == wantedGuard;
         }
 
+        /// <summary>Step 106f: the live forced guard's first read-back (s after the force began) - Toni's "e.g. 0.2 s".</summary>
+        public const double PoseFirstReadSeconds = 0.2;
+
+        /// <summary>Step 106f: the last read-back when the first did not show it (his parry's own reaction is over by then).</summary>
+        public const double PoseLastReadSeconds = 0.5;
+
+        /// <summary>
+        /// Step 106f: one live read-back's verdict; <paramref name="first"/> = the first read - a miss there returns null (wait for the last one).
+        /// </summary>
+        public static OpeningPoseResult? PoseVerdict(int wantedGuard, bool lowered, int direction, bool defending, bool first)
+        {
+            if (PoseMatches(wantedGuard, lowered, direction, defending)) return first ? OpeningPoseResult.Shown : OpeningPoseResult.ShownLate;
+            if (first) return null;
+            if (lowered) return OpeningPoseResult.StillGuarding;
+            return defending ? OpeningPoseResult.OtherGuard : OpeningPoseResult.NotDefending;
+        }
+
+        public static string PoseName(OpeningPoseResult r) => r switch
+        {
+            OpeningPoseResult.Shown => "shown at 0.2 s",
+            OpeningPoseResult.ShownLate => "shown by 0.5 s",
+            OpeningPoseResult.OtherGuard => "NOT shown - defending another way",
+            OpeningPoseResult.NotDefending => "NOT shown - not defending",
+            OpeningPoseResult.StillGuarding => "NOT lowered - a guard still up",
+            OpeningPoseResult.EndedFirst => "ended before the read",
+            _ => "?",
+        };
+
+        /// <summary>
+        /// Step 106f: why a held follow-up was blocked anyway. <paramref name="judged"/> = the side it was judged into, <paramref name="atContact"/>
+        /// = the collision's direction (unknown = not compared), <paramref name="shieldBlock"/> = his shield stopped it, <paramref name="lowered"/> =
+        /// the force lowered his guard, <paramref name="guardAtContact"/> / <paramref name="forcedGuard"/> = channel 1's guard then / the one forced.
+        /// </summary>
+        public static OpeningAnyway AnywayCause(int judged, int atContact, bool shieldBlock, bool lowered, int guardAtContact, int forcedGuard)
+        {
+            if (OpeningMath.IsAttack(judged) && OpeningMath.IsAttack(atContact) && judged != atContact) return OpeningAnyway.OtherDirection;
+            if (shieldBlock) return lowered ? OpeningAnyway.ShieldNotDown : OpeningAnyway.ShieldHeld;
+            if (!OpeningMath.IsGuard(guardAtContact)) return OpeningAnyway.Unread;
+            return guardAtContact == forcedGuard ? OpeningAnyway.ForcedGuardParried : OpeningAnyway.OwnGuard;
+        }
+
+        public static string AnywayName(OpeningAnyway a) => a switch
+        {
+            OpeningAnyway.OtherDirection => "your swing went another way at contact",
+            OpeningAnyway.ShieldHeld => "his shield still held (not lowered)",
+            OpeningAnyway.ShieldNotDown => "his shield did not come down in time",
+            OpeningAnyway.ForcedGuardParried => "his guard WAS the forced one - the engine parried anyway",
+            OpeningAnyway.OwnGuard => "his own guard came back (the input not honoured in time)",
+            OpeningAnyway.Unread => "his guard unread",
+            _ => "?",
+        };
+
         public static string EndName(OpeningForceEnd e) => e switch
         {
             OpeningForceEnd.HeBlocks => "he won the block roll",
@@ -279,6 +386,37 @@ namespace TraxCombat.Core
         /// <summary>The CanDefend flag taken off / given back (the test tool's 6th mode).</summary>
         public int FlagsOff, FlagsBack;
 
+        /// <summary>Step 106f: of <see cref="FlagsOff"/>, the held follow-ups' (<c>OpeningHoldTakesDefend</c>).</summary>
+        public int HoldFlagsOff;
+
+        /// <summary>Step 106f: the LIVE read-backs - the off-balance pose with a weapon / with a shield, a lowered hold - by <see cref="OpeningPoseResult"/>.</summary>
+        public readonly int[] PoseWeapon = new int[(int)OpeningPoseResult.Count];
+        public readonly int[] PoseShield = new int[(int)OpeningPoseResult.Count];
+        public readonly int[] PoseLowered = new int[(int)OpeningPoseResult.Count];
+
+        /// <summary>Step 106f: BLOCKED ANYWAY by cause.</summary>
+        public readonly int[] Anyway = new int[(int)OpeningAnyway.Count];
+
+        public void NoteLivePose(OpeningPoseResult r, bool shield, bool lowered)
+        {
+            if (r >= OpeningPoseResult.Count) return;
+            var a = lowered ? PoseLowered : shield ? PoseShield : PoseWeapon;
+            a[(int)r]++;
+        }
+
+        public void NoteAnyway(OpeningAnyway a)
+        {
+            BlockedAnyway++;
+            if (a < OpeningAnyway.Count) Anyway[(int)a]++;
+        }
+
+        private static void PoseText(StringBuilder t, string name, int[] a, CultureInfo c)
+        {
+            t.Append(name);
+            for (int i = 0; i < a.Length; i++)
+                t.Append(i == 0 ? " " : ", ").Append(OpeningForceMath.PoseName((OpeningPoseResult)i)).Append(' ').Append(a[i].ToString(c));
+        }
+
         public readonly int[] Ends = new int[(int)OpeningForceEnd.Count];
         public int Errors;
 
@@ -318,9 +456,19 @@ namespace TraxCombat.Core
              .Append(LockCapped.ToString(c)).Append(", spent - not forced ").Append(LockSpent.ToString(c));
             t.Append("; frames written ").Append(Frames.ToString(c)).Append(" (attack out ").Append(AttacksOut.ToString(c)).Append(", his guard replaced ")
              .Append(GuardsWritten.ToString(c)).Append(", taken out ").Append(GuardsCleared.ToString(c)).Append(", lowered ").Append(LoweredFrames.ToString(c)).Append(')');
-            t.Append("; poses read back ").Append(PosesRead.ToString(c)).Append(" (as wanted ").Append(PosesMatched.ToString(c)).Append(", changed ")
+            t.Append("; THE LIVE POSE read back (step 106f, ").Append(OpeningForceMath.PoseFirstReadSeconds.ToString("0.0", c)).Append(" s / ")
+             .Append(OpeningForceMath.PoseLastReadSeconds.ToString("0.0", c)).Append(" s after forcing): ");
+            PoseText(t, "the balance guard with a weapon -", PoseWeapon, c);
+            PoseText(t, "; with a shield -", PoseShield, c);
+            PoseText(t, "; lowered for a held follow-up -", PoseLowered, c);
+            t.Append("; BLOCKED ANYWAY by cause");
+            for (int i = 0; i < (int)OpeningAnyway.Count; i++)
+                t.Append(i == 0 ? " " : ", ").Append(OpeningForceMath.AnywayName((OpeningAnyway)i)).Append(' ').Append(Anyway[i].ToString(c));
+            t.Append("; the test tool's poses read back ").Append(PosesRead.ToString(c)).Append(" (as wanted ").Append(PosesMatched.ToString(c)).Append(", changed ")
              .Append(PosesChanged.ToString(c)).Append(')');
-            if (FlagsOff + FlagsBack > 0) t.Append("; CanDefend off / back ").Append(FlagsOff.ToString(c)).Append(" / ").Append(FlagsBack.ToString(c));
+            if (FlagsOff + FlagsBack > 0)
+                t.Append("; CanDefend off / back ").Append(FlagsOff.ToString(c)).Append(" / ").Append(FlagsBack.ToString(c)).Append(" (held follow-ups ")
+                 .Append(HoldFlagsOff.ToString(c)).Append(')');
             t.Append("; ended by");
             for (int i = 0; i < (int)OpeningForceEnd.Count; i++)
                 t.Append(i == 0 ? " " : ", ").Append(OpeningForceMath.EndName((OpeningForceEnd)i)).Append(' ').Append(Ends[i].ToString(c));

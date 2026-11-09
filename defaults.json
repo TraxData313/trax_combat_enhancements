@@ -2892,6 +2892,13 @@
   // (range 0.3 to 3.0)
   "OpeningHoldMaxSeconds": 1.5,
 
+  // On: while your follow-up is in the air after it beat his block, the game's own 'can defend'
+  // flag is also taken off him (what the game does to men on a siege ladder) and given back the
+  // moment the blow lands, misses or the hold ends - so his own reflexes cannot pull a block up
+  // in time. Off: only his input is changed.
+  // (true or false)
+  "OpeningHoldTakesDefend": true,
+
   // Which side guard opens which side swing. On: his left guard (the one that takes your right
   // swing) leaves your LEFT swing open, his right guard your right swing. Off: the other way
   // round. The battle summary's side pairing line shows which one the game really uses.

@@ -290,9 +290,10 @@ namespace TraxCombat.Missions
                     a.RecoilDirection = TimedRecoilMath.DirectionOf((int)cd.AttackDirection);
                     a.RecoilDirectionAt = now;
                 }
-                // step 106e: a landed hit's direction from THIS collision - the openings read the same value the damage decorator's perfect strike does
-                _hitSwing = ev == ImpactEvent.CleanHit ? TimedRecoilMath.DirectionOf((int)cd.AttackDirection) : OpeningMath.Unknown;
-                _hitSwingBy = ev == ImpactEvent.CleanHit ? a : null;
+                // step 106e: a landed hit's direction from THIS collision - the openings read the same value the damage decorator's perfect strike does;
+                // step 106f: a block's too (the openings judge a follow-up seen only at its contact, and explain a BLOCKED ANYWAY, with it)
+                _hitSwing = TimedRecoilMath.DirectionOf((int)cd.AttackDirection);
+                _hitSwingBy = a;
                 _hitSwingAt = now;
             }
             catch (Exception e)

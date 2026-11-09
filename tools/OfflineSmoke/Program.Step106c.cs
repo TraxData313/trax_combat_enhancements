@@ -60,6 +60,7 @@ namespace TraxCombat.Tools
                 int weapon = OpeningMath.AllAttacks;
                 logic.OpeningGuardRead = a => guards.TryGetValue(a.Index, out int g) ? g : -1;
                 logic.OpeningSwingRead = a => OpeningMath.Unknown;
+                logic.OpeningCommitRead = a => OpeningMath.Unknown; // step 106f
                 logic.OpeningWeaponRead = a => weapon;
                 double t = 106300;
                 logic.TickImpact(t);

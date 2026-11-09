@@ -157,7 +157,7 @@ namespace TraxCombat.Missions
             }
         }
 
-        /// <summary>From <see cref="ForceAtWindUp"/>: a won roll LOWERED his shield - "GUARD BROKEN" from the next tick.</summary>
+        /// <summary>From <see cref="ForceAtCommit"/>: a won roll LOWERED his shield - "GUARD BROKEN" from the next tick.</summary>
         private void NoteGuardBroken() => _openShowGuardBroken = true;
 
         /// <summary>From <see cref="TickOpenings"/> (before anything else): the queued notices; while he reels from an opening the chain's reel follows

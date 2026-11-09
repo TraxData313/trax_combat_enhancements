@@ -118,6 +118,10 @@ namespace TraxCombat.Hud
         /// <summary>Hidden while the player has no agent on the field (default).</summary>
         protected virtual bool NeedsPlayer => true;
 
+        /// <summary>Step 106f: the walk-about mode (the game's StartUp - the training field, a town) counts as a FIGHT for this view right now
+        /// (the red arrow while you fight a man there). Default never.</summary>
+        protected virtual bool FightsInWalkMode(in HudFrame f) => false;
+
         /// <summary>The view's own extra condition (steps 7-9: someone targeted, markers shown, the
         /// orders menu open…). Checked every frame after the common ones.</summary>
         protected virtual bool ViewConditionMet(in HudFrame f) => true;
@@ -299,7 +303,7 @@ namespace TraxCombat.Hud
             if (f.Paused) return;
             _mode = f.Mode;
             var s = TraxSettings.Shared;
-            bool fight = HudFrame.IsFightMode(f.Mode);
+            bool fight = HudFrame.IsFightMode(f.Mode) || (HudFrame.IsWalkMode(f.Mode) && FightsInWalkMode(in f)); // step 106f
             bool hasPlayer = f.Player != null && f.PlayerActive;
             var outside = fight ? default : ReadOutsideFacts(in f, s, hasPlayer);
             var input = new HudGateInput(s.ModEnabled, s.AthleticsEnabled, ToggleOn(s), f.HideBattleUI, f.PhotoMode,

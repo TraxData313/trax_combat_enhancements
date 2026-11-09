@@ -2168,6 +2168,11 @@ namespace TraxCombat.Core
             "Openings: guard held open at most (s)",
             "When your follow-up beats his block, his guard stays on the balance side until your blow lands or misses - at most this long after your swing started.");
 
+        // Step 106f (Toni's first playtest: "BLOCKED ANYWAY" 2 of 4): the game's own "cannot defend" flag on top of the input for that moment.
+        public static readonly ParamDef OpeningHoldTakesDefend = Bool("OpeningHoldTakesDefend", ImpactGroup,
+            "Openings: held guard also takes his 'can defend'",
+            "On: while your follow-up is in the air after it beat his block, the game's own 'can defend' flag is also taken off him (what the game does to men on a siege ladder) and given back the moment the blow lands, misses or the hold ends - so his own reflexes cannot pull a block up in time. Off: only his input is changed.");
+
         public static readonly ParamDef OpeningSidesCrossed = Bool("OpeningSidesCrossed", ImpactGroup,
             "Openings: side guards crossed",
             "Which side guard opens which side swing. On: his left guard (the one that takes your right swing) leaves your LEFT swing open, his right guard your right swing. Off: the other way round. The battle summary's side pairing line shows which one the game really uses.");
@@ -2963,7 +2968,7 @@ namespace TraxCombat.Core
             TimedRiderNoGuard, TimedRiderHorseCheckPercent, TimedRiderFromFoot, TimedRiderRearMinScore, TimedRiderRearPercent, TimedRiderDismountPercent,
             TimedRiderDismountWeaponPercent, PerfectStrikeOnHorseback, PerfectStrikeHorsebackAnySide, TimedBlockPushOutMounted,
             OpeningsShadowLog, OpeningFlashDelaySeconds, OpeningPerfectScalePercent, OpeningWindowSeconds, OpeningWindowPerLinkSeconds, OpeningUnguardedWindowPercent,
-            OpeningBlockPerLinkPercent, OpeningChainMax, OpeningChainResetSeconds, OpeningMissKeepsChain, OpeningHoldMaxSeconds, OpeningSidesCrossed,
+            OpeningBlockPerLinkPercent, OpeningChainMax, OpeningChainResetSeconds, OpeningMissKeepsChain, OpeningHoldMaxSeconds, OpeningHoldTakesDefend, OpeningSidesCrossed,
             OpeningReelBaseSeconds, OpeningReelPerChainSeconds, OpeningReelMaxSeconds, OpeningShieldMinChain, OpeningBackHitStaggers, OpeningUnguardedHitOpens,
             OpeningAiVsAi, PerfectStrikeFourWayMin, PerfectStrikeFourWayMax, PerfectStrikeThreeWayMin, PerfectStrikeThreeWayMax,
             PerfectStrikeTwoWayMin, PerfectStrikeTwoWayMax, PerfectStrikeWeaponFinishes, OpeningGuardTest, OpeningGuardTestKey, OpeningGuardTestSeconds,

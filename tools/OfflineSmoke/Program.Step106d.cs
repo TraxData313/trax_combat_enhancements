@@ -60,6 +60,7 @@ namespace TraxCombat.Tools
                 int swingDir = OpeningMath.Unknown, weapon = OpeningMath.AllAttacks;
                 logic.OpeningGuardRead = a => guards.TryGetValue(a.Index, out int g) ? g : -1;
                 logic.OpeningSwingRead = a => swingDir;
+                logic.OpeningCommitRead = a => swingDir; // step 106f: the swing already committed at its wind-up (judged there, as before)
                 logic.OpeningWeaponRead = a => weapon;
                 double t = 106400;
                 logic.TickImpact(t);

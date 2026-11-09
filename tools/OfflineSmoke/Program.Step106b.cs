@@ -108,6 +108,7 @@ namespace TraxCombat.Tools
                 int swingDir = OpeningMath.Unknown;
                 logic.OpeningGuardRead = a => guards.TryGetValue(a.Index, out int g) ? g : -1;
                 logic.OpeningSwingRead = a => swingDir;
+                logic.OpeningCommitRead = a => swingDir; // step 106f: the swing already committed at its wind-up (judged there, as before)
                 logic.OpeningWeaponRead = a => OpeningMath.AllAttacks;
                 double t = 106200;
                 logic.TickImpact(t);
@@ -171,11 +172,14 @@ namespace TraxCombat.Tools
                     "your perfect follow-up did not hold his guard: " + logic.OpeningForceKind + " / " + fs.RollsThrough);
                 LogHas("LIVE: he FAILS the block roll (0%)");
                 Check(Frame(ai, his) == (0x1u | 0x1000u), "the held frame is not the balance guard");
+                Check(body.NoDefend.Contains(ai.AgentIndex) && fs.HoldFlagsOff == 1, "step 106f: the held follow-up did not take his 'can defend' flag too");
                 Tick(0.3);
                 guards[ai.Agent.Index] = OpeningMath.GuardDown;
                 Parried(you, ai, Agent.UsageDirection.AttackDown);
                 Check(fs.BlockedAnyway == 1 && fs.Ends[(int)OpeningForceEnd.Resolved] == 1 && logic.OpeningForceKind == OpeningForceKind.Balance && logic.OpeningChain.K == 2,
                     "a held follow-up he parried anyway was not counted / the next link not forced: " + fs.BlockedAnyway);
+                Check(!body.NoDefend.Contains(ai.AgentIndex) && fs.Anyway[(int)OpeningAnyway.OwnGuard] == 1,
+                    "step 106f: the 'can defend' flag was not given back at the blow / a wrong cause");
                 LogHas("BLOCKED ANYWAY");
 
                 // ---- 3. a wrong side: his own guard back
@@ -281,9 +285,9 @@ namespace TraxCombat.Tools
                 body.Poses[ai.AgentIndex] = new OpeningPose { Action = "act_idle", Direction = -1, Stage = -1, Defending = false, Read = true };
                 anim.Presses = 1;
                 Tick();
-                Check(body.NoDefend.Contains(ai.AgentIndex) && fs.FlagsOff == 1, "the 6th press did not take the CanDefend flag off");
+                Check(body.NoDefend.Contains(ai.AgentIndex) && fs.FlagsOff - fs.HoldFlagsOff == 1, "the 6th press did not take the CanDefend flag off");
                 Tick(2.5);
-                Check(!body.NoDefend.Contains(ai.AgentIndex) && fs.FlagsBack == 1 && logic.OpeningForced == null, "the CanDefend flag was not given back");
+                Check(!body.NoDefend.Contains(ai.AgentIndex) && fs.FlagsBack == fs.FlagsOff && logic.OpeningForced == null, "the CanDefend flag was not given back");
                 anim.Shift = true;
                 anim.Presses = 1;
                 Tick();
@@ -302,7 +306,7 @@ namespace TraxCombat.Tools
                 // ---- 9. no errors; the [summary] line
                 Check(fs.Errors == 0 && logic.OpeningStats.Errors == 0, "the forced guard logged errors: " + fs.Errors);
                 string line = fs.SummaryLine(OpeningRules.From(S), false);
-                Check(line.Contains("held after a won roll 2 (shield / guard LOWERED 1)") && line.Contains("BLOCKED ANYWAY 1") && line.Contains("CanDefend off / back 1 / 1"),
+                Check(line.Contains("held after a won roll 2 (shield / guard LOWERED 1)") && line.Contains("BLOCKED ANYWAY 1") && line.Contains("CanDefend off / back 3 / 3 (held follow-ups 2)"),
                     "the [summary] line: " + line);
                 Console.WriteLine("        step 106b: " + fs.Balance + " forced off balance, " + fs.Held + " held, " + fs.Tests + " tests, " + fs.Frames + " frames summed");
                 Console.WriteLine("        " + line);

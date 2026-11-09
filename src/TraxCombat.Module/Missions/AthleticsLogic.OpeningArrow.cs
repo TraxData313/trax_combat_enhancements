@@ -36,6 +36,14 @@ namespace TraxCombat.Missions
             _arrowFlashTest = test;
         }
 
+        /// <summary>Step 106f: you are in melee with a man who is off balance or reeling - an opening pending, a chain, a flash noted, a perfect-strike
+        /// window open (the HUD's walk-about rule for the red arrow). Main thread.</summary>
+        internal static bool OpeningMeleeNow(double now)
+        {
+            var logic = _current;
+            return logic != null && (logic._openPending || logic._openChain.Active || !double.IsNaN(logic._arrowFlashPeak) || logic._strikeBook.Count > 0);
+        }
+
         /// <summary>The red arrow this frame for the HUD (main thread). False = nothing to show (or no logic running).</summary>
         internal static bool TryGetOpeningArrow(Agent? player, double now, out ArrowReading reading)
         {

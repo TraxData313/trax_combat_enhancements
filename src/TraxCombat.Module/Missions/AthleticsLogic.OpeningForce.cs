@@ -33,6 +33,16 @@ namespace TraxCombat.Missions
         private OpeningPose _forceBefore;
         private bool _forceTestFirstLine;
 
+        // step 106f: the LIVE pose read-back (one pending read at a time - the forced man's), and what a held follow-up forced (for a BLOCKED ANYWAY)
+        private bool _poseReading, _poseFirstDone, _poseShield, _poseLowered;
+        private int _poseGuard = OpeningMath.Unknown, _poseLines, _anywayLines;
+        private double _poseStart;
+        private int _heldDir = OpeningMath.Unknown, _heldGuard = OpeningMath.Unknown;
+        private bool _heldLowered;
+
+        /// <summary>Step 106f: live read-back / blocked-anyway lines at Info per mission (then verbose).</summary>
+        internal const int OpeningPoseLines = 20;
+
         internal IOpeningBody OpeningBody { get; set; } = OpeningBodyDefault.Current;
 
         internal OpeningForceStats OpeningForceStats => _force;
@@ -81,8 +91,9 @@ namespace TraxCombat.Missions
             }
         }
 
-        /// <summary>From <see cref="OpeningWindUp"/> after the verdict and the score: THE LIVE BLOCK ROLL. Its own try.</summary>
-        private string ForceAtWindUp(TrackedAgent you, double now)
+        /// <summary>From <see cref="JudgeFollowUp"/> once your follow-up's direction is COMMITTED (step 106f: its release, was its wind-up): THE
+        /// LIVE BLOCK ROLL. Until then his guard stays forced to the balance side (the pose shown). Its own try.</summary>
+        private string ForceAtCommit(TrackedAgent you, double now)
         {
             _openLiveRolled = false;
             try
@@ -111,13 +122,26 @@ namespace TraxCombat.Missions
                 bool lower = OpeningForceMath.Lowers(shield, in _openPlan);
                 if (!StartForce(v, OpeningForceKind.Held, _openPlan.Guard, lower, OpeningMath.HoldEnds(in r, now), now)) return string.Empty;
                 _force.Held++;
+                _heldDir = _openDir;
+                _heldGuard = _openPlan.Guard;
+                _heldLowered = lower;
+                // step 106f: the game's own "can defend" flag off too for the blow's flight (given back by EndForce on every path)
+                string flag = string.Empty;
+                if (TraxSettings.Shared.OpeningHoldTakesDefend && !_forceFlagOff && OpeningBody.CanDefend(v))
+                {
+                    OpeningBody.SetCanDefend(v, false);
+                    _forceFlagOff = true;
+                    _force.FlagsOff++;
+                    _force.HoldFlagsOff++;
+                    flag = ", his 'can defend' flag off until the blow";
+                }
                 if (lower)
                 {
                     _force.ShieldLowerings++;
                     if (shield) NoteGuardBroken(); // step 106d: "GUARD BROKEN" on screen - his shield comes down for your follow-up
                 }
                 return " - LIVE: he FAILS the block roll (" + Pct0(chance) + "): his guard held at the " + OpeningMath.GuardName(_openPlan.Guard)
-                       + (lower ? " with his " + (shield ? "shield" : "guard") + " LOWERED" : string.Empty) + " until the blow (at most " + F2(r.HoldMax) + " s)";
+                       + (lower ? " with his " + (shield ? "shield" : "guard") + " LOWERED" : string.Empty) + flag + " until the blow (at most " + F2(r.HoldMax) + " s)";
             }
             catch (Exception e)
             {
@@ -147,14 +171,75 @@ namespace TraxCombat.Missions
             EndForce(OpeningForceEnd.Resolved, now, true);
         }
 
-        /// <summary>From the block seam: he blocked your follow-up - after a LIVE roll he lost, that is "blocked ANYWAY" (the force did not hold him).</summary>
-        private string ForceBlockedText(double now)
+        /// <summary>From the block seam: he blocked your follow-up - after a LIVE roll he lost, that is "blocked ANYWAY" (the force did not hold him).
+        /// Step 106f: its CAUSE read at the block - <paramref name="contact"/> your swing's collision direction, <paramref name="shieldBlock"/> his
+        /// shield stopped it, <paramref name="guardAtContact"/> his channel-1 guard - counted and logged (Info, its own budget).</summary>
+        private string ForceBlockedText(TrackedAgent v, int contact, bool shieldBlock, int guardAtContact, double now)
         {
             if (!_openLiveRolled) return string.Empty;
             _openLiveRolled = false;
-            if (!_openLiveThrough) return " - the LIVE roll at your wind-up gave him the block";
-            _force.BlockedAnyway++;
-            return " - BLOCKED ANYWAY: the live roll at your wind-up said through and his guard was forced (an engine finding - PLAYTEST D78)";
+            if (!_openLiveThrough) return " - the LIVE roll at your follow-up gave him the block";
+            var cause = OpeningForceMath.AnywayCause(_heldDir, contact, shieldBlock, _heldLowered, guardAtContact, _heldGuard);
+            _force.NoteAnyway(cause);
+            string why = " - BLOCKED ANYWAY: the live roll said through and his guard was forced - cause: " + OpeningForceMath.AnywayName(cause) + " (judged "
+                         + OpeningMath.AttackName(_heldDir) + ", at contact " + OpeningMath.AttackName(contact) + "; forced the " + OpeningMath.GuardName(_heldGuard)
+                         + (_heldLowered ? " LOWERED" : string.Empty) + ", his guard at contact " + OpeningMath.GuardName(guardAtContact) + (shieldBlock ? ", his SHIELD" : ", a weapon")
+                         + ")";
+            ForceInfoLine(ref _anywayLines, "openings: " + Name(v) + why);
+            return why;
+        }
+
+        private static void ForceInfoLine(ref int budget, string text)
+        {
+            if (budget < OpeningPoseLines)
+            {
+                budget++;
+                TraxLog.Info("impact", text + (budget == OpeningPoseLines ? " (the last such line at Info this battle - the rest verbose)" : string.Empty));
+            }
+            else if (TraxLog.VerboseWants("openings")) TraxLog.Verbose("impact", text, "openings");
+        }
+
+        // ------------------------------------------------------------------ step 106f: the live pose read back
+
+        /// <summary>A live force began / changed: the pose to read back (a held guard that keeps the balance pose keeps the read already running).</summary>
+        private void BeginPoseRead(TrackedAgent st, OpeningForceKind kind, int guard, bool lower, double now)
+        {
+            if (kind == OpeningForceKind.Test) return;
+            if (_poseReading && !lower && !_poseLowered && guard == _poseGuard) return; // the same pose goes on
+            if (_poseReading) FinishPose(OpeningPoseResult.EndedFirst, st, null);
+            _poseReading = true;
+            _poseFirstDone = false;
+            _poseGuard = guard;
+            _poseLowered = lower;
+            _poseShield = SafeShield(st);
+            _poseStart = now;
+        }
+
+        /// <summary>From <see cref="TickOpeningForce"/>: the reads at 0.2 s and (when not shown yet) 0.5 s.</summary>
+        private void TickPoseRead(TrackedAgent st, double now)
+        {
+            if (!_poseReading) return;
+            bool first = !_poseFirstDone;
+            double at = _poseStart + (first ? OpeningForceMath.PoseFirstReadSeconds : OpeningForceMath.PoseLastReadSeconds);
+            if (now < at - 1e-9) return;
+            var p = OpeningBody.Pose(st);
+            _poseFirstDone = true;
+            if (!p.Read)
+            {
+                if (!first) FinishPose(OpeningPoseResult.EndedFirst, st, null);
+                return;
+            }
+            var verdict = OpeningForceMath.PoseVerdict(_poseGuard, _poseLowered, p.Direction, p.Defending, first);
+            if (verdict.HasValue) FinishPose(verdict.Value, st, p);
+        }
+
+        private void FinishPose(OpeningPoseResult result, TrackedAgent st, OpeningPose? p)
+        {
+            _poseReading = false;
+            _force.NoteLivePose(result, _poseShield, _poseLowered);
+            string what = _poseLowered ? "his guard LOWERED" : "his " + (_poseShield ? "shield" : "guard") + " to the " + OpeningMath.GuardName(_poseGuard);
+            ForceInfoLine(ref _poseLines, "openings: the balance pose read back - " + Name(st) + ": " + what + " -> " + OpeningForceMath.PoseName(result)
+                                          + (p.HasValue ? " (" + PoseText(p.Value) + ")" : string.Empty));
         }
 
         // ------------------------------------------------------------------ the record
@@ -179,6 +264,7 @@ namespace TraxCombat.Missions
             _forceLower = lower;
             _forceUntil = until;
             _forceStart = now;
+            BeginPoseRead(st, kind, guard, lower, now); // step 106f: read back at 0.2 s / 0.5 s
             return true;
         }
 
@@ -192,6 +278,7 @@ namespace TraxCombat.Missions
             var kind = _forceKind;
             _forceKind = OpeningForceKind.None;
             if (kind != OpeningForceKind.Test) _attackLock.End(now); // step 106 follow-up: his free time counts from here
+            if (_poseReading) FinishPose(OpeningPoseResult.EndedFirst, st, null); // step 106f: let go before the last read
             _force.NoteEnd(why);
             try
             {
@@ -248,6 +335,7 @@ namespace TraxCombat.Missions
                 EndForce(OpeningForceEnd.Off, now, true);
                 return;
             }
+            if (_forceKind != OpeningForceKind.Test) TickPoseRead(st, now); // step 106f: the live pose read back
             if (_forceKind == OpeningForceKind.Test)
             {
                 if (!_forceRead1 && now >= _forceStart + Math.Min(OpeningTestReadSeconds, (_forceUntil - _forceStart) * 0.5))
@@ -263,7 +351,8 @@ namespace TraxCombat.Missions
                 EndForce(OpeningForceEnd.Timeout, now, true);
                 return;
             }
-            if (_forceKind == OpeningForceKind.Balance && (!_openPending || _openWound || _openTarget != st.AgentIndex || !_openChain.Active))
+            // step 106f: the balance pose is held through your wind-up until your follow-up COMMITS (then the roll keeps it or gives his guard back)
+            if (_forceKind == OpeningForceKind.Balance && (!_openPending || _openJudged || _openTarget != st.AgentIndex || !_openChain.Active))
                 EndForce(_openChain.Phase == OpeningPhase.Reeling ? OpeningForceEnd.Reels : OpeningForceEnd.ChainEnded, now, true);
             else if (_forceKind == OpeningForceKind.Held && _openChain.Phase == OpeningPhase.Reeling) EndForce(OpeningForceEnd.Reels, now, true);
         }

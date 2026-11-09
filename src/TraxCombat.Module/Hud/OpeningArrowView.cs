@@ -36,6 +36,23 @@ namespace TraxCombat.Hud
 
         internal int FlashesShown => _flashes;
 
+        /// <summary>Step 106f: how long the layer stays up in the walk-about mode after the last opening / reel (s) - so it is not rebuilt between cues.</summary>
+        internal const double WalkLingerSeconds = 2.0;
+
+        private double _walkUntil = double.NegativeInfinity;
+
+        /// <summary>
+        /// Step 106f (Toni's training ground: "opening arrow: not shown ... not a fight (mission mode) - mode StartUp"): in the walk-about mode
+        /// (the training field, a town brawl) the arrow counts as a fight while you are in melee with a man who is off balance or reeling - an
+        /// opening pending, a chain on him, a flash noted, a perfect-strike window open - and <see cref="WalkLingerSeconds"/> after. Never in a
+        /// conversation, a menu or a film (not the walk mode), never without you on the field (the gate's NoPlayer).
+        /// </summary>
+        protected override bool FightsInWalkMode(in HudFrame f)
+        {
+            if (AthleticsLogic.OpeningMeleeNow(f.Now)) _walkUntil = f.Now + WalkLingerSeconds;
+            return f.Now < _walkUntil;
+        }
+
         internal int FinishesShown => _finishes;
 
         protected override ViewModel CreateDataSource(in HudFrame f)
