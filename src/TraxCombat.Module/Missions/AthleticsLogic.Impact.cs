@@ -275,6 +275,14 @@ namespace TraxCombat.Missions
             }
             try
             {
+                TickOpenings(now); // step 106a: the openings' shadow - a swing / contact that never came, the switches
+            }
+            catch (Exception e)
+            {
+                OpeningFailed(e);
+            }
+            try
+            {
                 TickRiderReels(now); // step 104b: the reels in the saddle started, followed, ended (every lock given back)
             }
             catch (Exception e)

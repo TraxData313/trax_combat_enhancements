@@ -92,6 +92,7 @@ namespace TraxCombat.Missions
             StartImpactMeet(); // step 82
             StartReelingHits(); // step 105
             StartRiderShadow(); // step 104a
+            StartOpenings(); // step 106a
         }
 
         /// <summary>From TickImpact (own try there): the switch and the mode read live - one [impact] line per change; the on / off time.</summary>
@@ -131,6 +132,7 @@ namespace TraxCombat.Missions
             WriteImpactMeetSummary(); // step 82
             TraxLog.Info("summary", _reelingHits.SummaryLine(ImpactRules.From(TraxSettings.Shared))); // step 105
             WriteRiderShadowSummary(); // step 104a
+            WriteOpeningSummary(); // step 106a
         }
 
         // ------------------------------------------------------------------ the events
@@ -207,6 +209,7 @@ namespace TraxCombat.Missions
         /// <summary>OnMeleeHit's part (its own try there): the event's decision - the decorator's for this blow if it made one, else made here.</summary>
         internal void ImpactModelHitTaken(Agent attacker, Agent victim, in AttackCollisionData cd)
         {
+            if (_spikeStarted && !_spikeClosed) OpeningContactSeen(attacker, victim, in cd); // step 106a: closes the last opening BEFORE this blow's block opens the next
             ImpactModelHitTakenCore(attacker, victim, in cd);
             if (cd.IsAlternativeAttack && _meetReaderCount > 0 && attacker != null && victim != null) MeetReadHitTaken(Get(attacker), Get(victim), SpikeNow); // step 82
         }
@@ -395,6 +398,7 @@ namespace TraxCombat.Missions
             // step 104a / 104b: the rider ladder - its reel APPLIED when TimedBlocksOnHorseback is on (the rear / knock-off still shadow)
             bool riderReel = block && ImpactMath.CanRiposte(f.Event) && (f.AttackerMounted || f.DefenderMounted) && RiderShadow(a, v, in f, in d, in r, ast, now);
             if (block) TimedBlockDecided(a, v, in d, riposteLive, riderReel); // step 100b: THE SEAM - every correct block's timing, counted
+            if (block) OpeningShadowBlock(a, v, in f, in d, now); // step 106a: your attack blocked correctly - the opening it would make (shadow)
             LastImpact = d;
             NoteImpactLines(a, v, in d, in f, in r, !(applied || riposteLive || riderLive));
             if (applied && family == ImpactFamily.Kicks)

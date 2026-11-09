@@ -194,6 +194,7 @@ namespace TraxCombat.Missions
                         case AttackPhase.Release:
                             _rateStats.AddPhase(k, player, st.PhaseBin, AttackPhase.Release, d, st.PhaseAsked);
                             if (k == AttackKind.Melee && !st.HitThisRelease) _rateStats.AddPhase(k, player, st.PhaseBin, AttackPhase.CleanRelease, d, st.PhaseAsked);
+                            if (player && k == AttackKind.Melee && !st.HitThisRelease) OpeningMiss(now); // step 106a: your swing met nothing (its own try)
                             st.AttackDuration += AttackTimerMath.AtFullSpeed(d, st.PhaseAnimation);
                             st.AttackPlayed += d;
                             // melee: the attack ends with its release (a block recoil plays inside the timer);
@@ -234,6 +235,7 @@ namespace TraxCombat.Missions
                     st.PauseFrom = -1;
                     AttackBegan(st, player, now, isReady: true);
                     if (!player && kind == AttackKind.Melee) NoteAiMeleeReady(st); // step 81: the decision point - his move rolled by the tick
+                    if (player && kind == AttackKind.Melee) OpeningWindUp(st, now); // step 106a: your next swing after an opening (its own try)
                 }
                 else if (next < 0)
                 {
