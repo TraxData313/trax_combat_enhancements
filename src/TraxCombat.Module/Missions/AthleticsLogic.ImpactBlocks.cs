@@ -408,6 +408,7 @@ namespace TraxCombat.Missions
                 {
                     _blocks.NoteNotApplied(outcome, ImpactNotApplied.LeverOff);
                     if (p.Action == ImpactBlockAction.ThrownBack) _charge.ThrownNotApplied++;
+                    if (p.Action == ImpactBlockAction.Opening) _open.LiveNotApplied++; // step 106e: on the openings' line too
                     if (p.St != null) FixState(p.Action, p.St, now);
                     continue;
                 }
@@ -422,6 +423,7 @@ namespace TraxCombat.Missions
                     _blocks.LeftField++;
                     _blocks.NoteNotApplied(outcome, ImpactNotApplied.LeftField);
                     if (p.Action == ImpactBlockAction.ThrownBack) _charge.ThrownNotApplied++;
+                    if (p.Action == ImpactBlockAction.Opening) _open.LiveNotApplied++; // step 106e
                     continue;
                 }
                 try
@@ -430,6 +432,7 @@ namespace TraxCombat.Missions
                     {
                         _blocks.NoteNotApplied(outcome, ImpactNotApplied.CannotForce); // never a rider / horse - no engine call
                         if (p.Action == ImpactBlockAction.ThrownBack) _charge.ThrownNotApplied++;
+                        if (p.Action == ImpactBlockAction.Opening) _open.LiveNotApplied++; // step 106e
                         FixState(p.Action, p.St, now);
                         continue;
                     }
