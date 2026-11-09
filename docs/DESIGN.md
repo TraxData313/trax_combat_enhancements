@@ -3828,7 +3828,19 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     then no forced guard on him until he has been free 1 s - he may counter-attack even if you keep swinging (before: until your next wind-up or
     `OpeningChainResetSeconds` 2 s, re-armed by every block, so spamming froze him). The chain, the flash and the stagger on a hit are unchanged;
     a held follow-up (a won roll) is not cut. (m)'s shadow rule is KEPT (openings quiet, log only, while the impact system cannot play the stagger),
-    and a wrong-side hit on an opening's reel KEEPS the perfect-strike window for a second try.
+    and a wrong-side hit on an opening's reel KEEPS the perfect-strike window for a second try. (o) STEP 106f - FIXES FROM TONI'S FIRST PLAYTEST
+    (2026-11-09, build b5ddaaf; AI_NOTES "106f"): AMENDS (i) / (j) - THE BALANCE POSE: his guard is forced to the balance side the moment his correct
+    block puts him off balance (as before - no delay) and is now HELD through your wind-up until your follow-up COMMITS (it used to be let go at the
+    wind-up, ~0.3-0.6 s after his parry, mostly still inside his parry's own reaction); the live pose is read back (channel 1, 0.2 s and 0.5 s after
+    forcing - shown / not shown, by weapon / shield / lowered, on the [summary] forced-guard line). THE FOLLOW-UP'S DIRECTION is judged from the swing
+    it COMMITS to - channel 1's direction while it is a melee RELEASE (the tick; the wind-up only when it is already released there; the contact's
+    collision when no release was seen first, then without a live roll); the LIVE BLOCK ROLL moves with it (from the wind-up to the release). The
+    timing score still counts from the wind-up's start; a new wind-up before the release (a feint / re-ready) re-times it. Why: the wind-up's first
+    read disagreed with the contact 14 of 33 times in Toni's tournament. THE HELD GUARD also takes the game's own `AgentFlag.CanDefend` off for the
+    blow's flight (`OpeningHoldTakesDefend`, on; given back at the blow, the hold's end, every exit) and every BLOCKED ANYWAY is explained at the block
+    (your swing went another way at contact / his shield held / did not come down / his guard was the forced one / his own guard came back), a
+    wrong-side shield block on a held follow-up counted too. THE RED ARROW (k) also shows in the walk-about mode (the training field, a town) while
+    you fight a man who is off balance or reeling (and 2 s after) - never in a conversation, menu or film, never without you on the field.
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),
 `HudRefreshSeconds`, `FormationStatsRefreshSeconds` came out of step 2's research

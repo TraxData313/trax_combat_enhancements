@@ -2220,6 +2220,27 @@ balance (no swing of his) for at most 1 s, however often he blocks again - then 
 last forced moment the next block puts him off balance again. **Log:** the [summary] "openings - the forced guard" line's `the attack lock (at
 most 1.0 s a run): cut short N, spent - not forced N`. **Tell Claude:** does he now hit back when you spam, and does 1 s feel right?
 
+**D81. OPENINGS - THE FIXES FROM YOUR FIRST PLAYTEST (step 106f, ~10 min - the training field first, then a tournament round or a 1 v 1 on foot).**
+*What changed:* (1) the moment he blocks your attack correctly his guard SWINGS to the balance side (opposite the arrow) and STAYS there through
+your wind-up until your next swing commits - you should SEE where his balance went; (2) your follow-up's direction is read from the swing it
+commits to (its release), not the first frame of the wind-up - "wrong direction" should now mean you really swung elsewhere; (3) when your follow-up
+beats his block roll, the game's own "can defend" flag is also taken off him for that blow (`OpeningHoldTakesDefend`, Advanced > Impact) - he
+should not pull a block up in time; (4) the red arrow now shows on the TRAINING FIELD (and in town brawls) while you fight a man off balance or reeling.
+**Try 1 - the training field:** spar a trainer / a recruit with a sword: after his parry, does the red arrow flash (it never showed there before)?
+**Try 2 - watch his guard:** right after his correct block, look at his weapon / shield - does it move to one side (low, high, left or right) and
+hold there until you swing? A shieldman (first block) shows the shield turned; his second block still lowers it for a follow-up into the side.
+**Try 3 - follow the arrow on the flash, a few times; then deliberately start one way and change your mind (feint with the block key, re-swing).**
+**Log:** `[impact] openings: the balance pose read back - X: his guard to the high guard -> shown at 0.2 s (...)` / `-> NOT shown - defending another
+way (...)` (the first 20 at Info); `YOU: openings (shadow): your follow-up - thrust (judged at the release; the wind-up first read left swing) ...`;
+`... - LIVE: he FAILS the block roll (0%): his guard held at the high guard, his 'can defend' flag off until the blow ...`; a blocked-anyway line
+`openings: X - BLOCKED ANYWAY: ... - cause: ...`. The [summary] "openings - the forced guard" line: `THE LIVE POSE read back (step 106f ...): the
+balance guard with a weapon - shown at 0.2 s N, shown by 0.5 s N, NOT shown ... N`, `BLOCKED ANYWAY by cause ...`, `CanDefend off / back N / N
+(held follow-ups N)`; the [summary] "openings" line: `your follow-up's direction judged (step 106f) at the release N ... the wind-up's first read
+vs the committed swing: agree N, differ N` and `the judged direction vs the contact's: agree N, differ N` (should be ~0 differ now); the [summary]
+"hud: opening arrow" line on the training field: flashes > 0. **Tell Claude:** do you SEE his guard go to the balance side? Do BLOCKED ANYWAY and
+"the judged direction vs the contact's: differ" stay near 0? If the pose read-back says "NOT shown" a lot, send the log - that is the engine
+refusing the forced guard and needs another route.
+
 ---
 
 ## E. Your Athletics bar, the orders-menu strip and the ALT markers (20 min)

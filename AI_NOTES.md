@@ -10651,3 +10651,59 @@ forces never touch the run. [summary] "the forced guard" line: `the attack lock 
 Step106FollowUpTests (7), smoke 106b part 5b (spamming: re-armed at 0.6 s still ends at 1.0 s, a block at 1.1 s forces nothing and his input is
 his own, after 1.1 s free a new run forces); tests 1647, smoke 237 green. **(b) kept:** openings stay shadow (log only) while the impact system
 cannot play the stagger. **(c) kept:** a wrong-side hit on an opening's reel keeps the perfect-strike window. PLAYTEST D80 Try 9.
+
+### 106f - fixes from Toni's first playtest (2026-11-09; log of the training field + 2 tournaments, build b5ddaaf)
+
+Toni approved four fixes. What the log and the code showed, and what was done (commits 6155a9d [~], 3d904fb code, 82b1c8f smoke, then the docs):
+
+**1. THE BALANCE POSE NOT SHOWN.** Finding: the brief's premise was half right. The guard WAS forced from his block on (the [summary] "forced off
+balance 11 / 36 / 24" equals the off-balance count; "his guard replaced" 1491 / 3198 / 2913 frames) - there is no 0.1 s delay anywhere. But
+`TickOpeningForce` and `ForceAtWindUp` let the balance force go at YOUR WIND-UP (27 of 34 follow-ups in tournament 1 read "another side" -> his own
+guard back), i.e. 0.3-0.6 s after his parry (the link -> wind-up mean 0.48-0.61 s), most of it while his own parry reaction still plays: the pose
+was hardly ever visible. And nothing checked it live (the read-back existed only in the K test tool - "poses read back 0"). Fix: the balance force
+is held until your follow-up COMMITS (`_openJudged`, below); the LIVE read-back (`BeginPoseRead` / `TickPoseRead` in
+`AthleticsLogic.OpeningForce.cs`, Core `OpeningForceMath.PoseVerdict`): channel 1 at 0.2 s after forcing (`PoseFirstReadSeconds`), if not yet the
+wanted guard again at 0.5 s (`PoseLastReadSeconds`) - shown / shown late / defending another way / not defending / (lowered) a guard still up / the
+force ended first, by weapon / shield / lowered hold, on the [summary] forced-guard line and 20 Info lines a battle. Shields follow their rules
+unchanged: the balance force turns the shield (its direction bit) from the first block, a won roll from link 2 lowers it. Sure: high that the pose
+is now held long enough to be seen; UNPROVEN that the engine shows a written guard direction on an AI man (step 82 proved DefendUp / DefendDown in
+game, left / right never) - D81's read-back answers it.
+
+**2. SWING DIRECTION MISREAD (wind-up vs contact: agree 19, differ 14).** Cause (most likely, from the YOU lines): the direction was read ONCE, at
+the first poll that saw ReadyMelee (`GameSwingDirection`: channel 1's direction, else `Agent.AttackDirection`). The ready is not committed - the
+player's direction can still change during it (a re-ready / feint never re-fired the hook: the phase poll keys on the action TYPE, and the old code
+ignored a second wind-up once `_openWound`), and at the ready's first frame the read may be the direction the crosshair showed, not the swing that
+is played. The differing cases show no single pattern (sometimes the previous swing's side, sometimes neither), so "read too early on an
+uncommitted ready" fits; not proven which sub-case. Fix: `OpeningCommitRead` (game: channel 1's direction while `GetCurrentActionType(1)` is
+`ReleaseMelee`) - the follow-up is JUDGED (`JudgeFollowUp`) when the swing commits: in the tick (`TickFollowUpCommit`, one native read a frame only
+while a wound-up follow-up waits), at the wind-up only if it is already a release, else at the CONTACT from the collision (no live roll then). The
+timing score still counts from the wind-up's start; a new wind-up before the release re-times. The live block roll moved with it (`ForceAtCommit`).
+Counted: where judged, the wind-up's first read vs the committed swing (the proof of the cause), the judged vs the contact's direction (should be
+~0 now). Sure: high that the release's direction is what lands (the damage reads the same collision); the release read is one frame later than the
+collision only if the poll misses the release - then the contact fallback.
+
+**3. FORCED GUARD LEAKED (through 4: landed 2, BLOCKED ANYWAY 2 in tournament 1).** The two lines were past the 40 Info lines (verbose off), so
+no direct record. Reasoned causes, most likely first: (a) the follow-up was judged into the side from the wind-up's misread (issue 2 - 14 of 33)
+while the real swing came from a side his forced guard covers: a correct parry; (b) a shield lowered by its guard bits that had not blended out
+(one of the 4 holds was a lowered shield); (c) his native defend reaction ignoring the input. Fixes: (a) the judgement at the release; (b)+(c) the
+game's own route for the blow's flight - `AgentFlag.CanDefend` off for a HELD force (`OpeningHoldTakesDefend`, new setting, on, Advanced/Impact
+after `OpeningHoldMaxSeconds`; 630 settings; no config-format change), given back by `EndForce` on every path (the blow, the hold's end, a switch,
+he leaves, the mission end - the test tool's give-back paths). The lock order in `Filter` was checked: the opening frame is after the read guard,
+before a kick, the reel lock last - nothing after it re-raises a guard (not a cause). And every BLOCKED ANYWAY now says WHY at the block
+(`OpeningForceMath.AnywayCause`: your swing went another way at contact / his shield held / did not come down / his guard WAS the forced one -
+the engine parried anyway / his own guard came back / unread), Info lines + [summary]; a held follow-up stopped by a WRONG-side shield block is
+counted too (before it was invisible - `CanRiposte` returned first). The collision's direction is now noted for every impact event (`_hitSwing`).
+Sure: medium - (a) is very likely one cause; whether CanDefend takes effect mid-defend is unproven (only the K tool's 6th mode used it) - D81's
+cause counts decide.
+
+**4. ARROW HIDDEN ON THE TRAINING GROUND ("not a fight (mission mode) - mode StartUp").** The openings ran there (11 off balance) but the HUD gate
+shows views only in the fight modes. Fix: `TraxHudView.FightsInWalkMode` (default false); `OpeningArrowView` says true in the walk-about mode
+(StartUp) while `AthleticsLogic.OpeningMeleeNow` (an opening pending, a chain, a flash not yet over, a perfect-strike window) and 2 s after
+(`WalkLingerSeconds`) - so not in a conversation / barter / film (other modes), not while paused (menus), not without you (NoPlayer). Sure: high.
+
+**Tests / smoke.** Step106fTests 6 (the read times, the pose verdict, the anyway causes, the stats + summaries, where judged, the setting's place);
+the 106a / 106b / 106c / 106d smokes set `OpeningCommitRead` (judged at the wind-up as before); 106b's CanDefend counts include the holds. New smoke
+"OPENINGS, THE FIXES FROM TONI'S FIRST PLAYTEST (step 106f)": the pose held through the wind-up and read back shown / not shown, a wind-up first
+read the other way still opens him at the release (held, flag off), a contact from another side = BLOCKED ANYWAY "another way" with the flag back,
+a wind-up read into the side that commits elsewhere = another side, the arrow on the training ground (not in a conversation, not without you, gone
+after). Tests 1653, the offline smoke all passed. PLAYTEST D81.
