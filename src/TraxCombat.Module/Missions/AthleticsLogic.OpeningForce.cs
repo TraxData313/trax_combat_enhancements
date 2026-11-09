@@ -294,6 +294,10 @@ namespace TraxCombat.Missions
                 if (!StartForce(st, OpeningForceKind.Test, guard, lower, now + secs, now)) return;
                 _forceRead1 = false;
                 _force.Tests++;
+                // step 106c: the red arrow flashes the side this guard leaves open, as an opening would (the tool shows it with the openings off)
+                var orules = OpeningRules.From(settings);
+                int flash = OpeningArrowMath.TestFlashAttack(guard, orules.SidesCrossed);
+                NoteArrowFlash(flash, now + orules.FlashDelay, true);
                 if (mode == OpeningTestMode.LoweredByFlag && OpeningBody.CanDefend(st))
                 {
                     OpeningBody.SetCanDefend(st, false);
@@ -301,7 +305,8 @@ namespace TraxCombat.Missions
                     _force.FlagsOff++;
                 }
                 string line = "[guard test " + ((int)mode + 1).ToString(CultureInfo.InvariantCulture) + "/" + ((int)OpeningTestMode.Count).ToString(CultureInfo.InvariantCulture) + "] "
-                              + Name(st) + " (" + (SafeShield(st) ? "shield" : "no shield") + ") - " + OpeningForceMath.TestName(mode) + " for " + F2(secs) + " s; before: " + PoseText(in _forceBefore);
+                              + Name(st) + " (" + (SafeShield(st) ? "shield" : "no shield") + ") - " + OpeningForceMath.TestName(mode) + " for " + F2(secs) + " s; before: " + PoseText(in _forceBefore)
+                              + (OpeningMath.IsAttack(flash) ? "; the red arrow flashes " + OpeningMath.ArrowName(OpeningMath.ArrowFor(flash)) + " at " + F2(orules.FlashDelay) + " s" : string.Empty);
                 AnimBody.Say(line);
                 TraxLog.Info("impact", "guard test: " + line);
             }

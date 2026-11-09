@@ -203,6 +203,7 @@ namespace TraxCombat.Missions
             _openWindUpAt = double.NaN;
             _openWindUpDir = OpeningMath.Unknown;
             _openScore = 0;
+            NoteArrowFlash(plan.Opening, now + plan.Flash, false); // step 106c: the red arrow flashes the side (shown with OpeningsEnabled)
         }
 
         private static string SkillText(double skill) => double.IsNaN(skill) ? "?" : skill.ToString("0", CultureInfo.InvariantCulture);
