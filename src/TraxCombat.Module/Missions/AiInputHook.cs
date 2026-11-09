@@ -143,8 +143,16 @@ namespace TraxCombat.Missions
         public bool ReelNoGuard;
         public long ReelFrames, ReelAttacksOut, ReelGuardsOut, ReelReadiesCancelled;
 
+        /// <summary>Step 106b: THE FORCED GUARD of the openings (off balance, the held follow-up, the test tool): his attack bits out and his guard
+        /// written to <see cref="OpeningGuardFlag"/> - or, with <see cref="OpeningLower"/>, every guard bit out (the shield lowered) - after step 82's
+        /// read guard, before a kick; the reel's lock still last (Core <see cref="OpeningForceMath.Frame"/>). The frames, summed by the logic.</summary>
+        public bool Opening;
+        public bool OpeningLower;
+        public uint OpeningGuardFlag;
+        public long OpeningFrames, OpeningAttacksOut, OpeningGuardsWritten, OpeningGuardsCleared, OpeningLoweredFrames;
+
         /// <summary>Any wish at all - a man is held while ANY of them wants him held (one ending never lifts another).</summary>
-        public bool Active => HoldAttacks || StepHoldAttacks || Backpedal || BraceHoldAttacks || Regroup || WallPull || Flock || Block || SpearWield || Press || Rhythm || KickPhase != AiKickPhase.None || MeetGuard || Reel;
+        public bool Active => HoldAttacks || StepHoldAttacks || Backpedal || BraceHoldAttacks || Regroup || WallPull || Flock || Block || SpearWield || Press || Rhythm || KickPhase != AiKickPhase.None || MeetGuard || Reel || Opening;
 
         /// <summary>Since when the state has been active (mission time), for the calls-per-second figure.</summary>
         public double ActiveSince = -1;
@@ -247,7 +255,7 @@ namespace TraxCombat.Missions
                     uint ev = (uint)eventFlag;
                     if (AiInputHook.ApplySpearWield(s, ref ev)) eventFlag = (Agent.EventControlFlag)ev;
                 }
-                if (!settings.AthleticsEnabled && !(s.Regroup && settings.CourageEnabled) && !(s.WallPull && settings.ShieldWallHoldsSlots) && !(s.Flock && settings.FearFlockEnabled) && !(s.Block && AiInputHook.BlockOn(settings)) && !(s.Press && AiInputHook.PressOn(settings))) return; // steps 49 / 63 / 67 / 74 / 77: courage, the wall, the flock, the block and the press work without Athletics
+                if (!settings.AthleticsEnabled && !(s.Regroup && settings.CourageEnabled) && !(s.WallPull && settings.ShieldWallHoldsSlots) && !(s.Flock && settings.FearFlockEnabled) && !(s.Block && AiInputHook.BlockOn(settings)) && !(s.Press && AiInputHook.PressOn(settings)) && !s.Opening) return; // step 106b: the forced guard works without Athletics (the test tool); steps 49 / 63 / 67 / 74 / 77: courage, the wall, the flock, the block and the press work without Athletics
                 if (Agent.IsMainAgent || !Agent.IsAIControlled)
                 {
                     s.NotAi++; // the player's agent, or a soldier the player took over (RTS Camera): never touched
@@ -260,6 +268,11 @@ namespace TraxCombat.Missions
                     bool wrote = AiInputHook.ApplyWallPull(s, ref only, ref ox, ref oy) || AiInputHook.ApplyPressMove(s, ref only, ref ox, ref oy)
                                  || AiInputHook.ApplyRegroup(s, ref only, ref ox, ref oy) || AiInputHook.ApplyFlock(s, ref only, ref ox, ref oy) || AiInputHook.ApplyBlock(s, ref only, ref ox, ref oy);
                     if (AiInputHook.ApplyPressClamp(s, ref only, ref ox, ref oy)) wrote = true; // step 77: the clamp LAST, on whatever moves him
+                    if (s.Opening) // step 106b: the forced guard (only his attack / guard bits change)
+                    {
+                        only = AiInputHook.ApplyOpening(s, only);
+                        movementFlag = (Agent.MovementControlFlag)only;
+                    }
                     if (wrote)
                     {
                         movementFlag = (Agent.MovementControlFlag)only;
@@ -283,6 +296,7 @@ namespace TraxCombat.Missions
                     flags = ImpactMeetMath.GuardFrame(flags, s.MeetGuardFlag);
                     s.MeetFrames++;
                 }
+                if (s.Opening) flags = AiInputHook.ApplyOpening(s, flags); // step 106b: the openings' forced guard - after the read guard, before a kick
                 if (s.KickPhase != AiKickPhase.None && settings.AiKicksEnabled) // step 65: the kick / bash written LAST (after a held man's kick-out)
                 {
                     uint ev = (uint)eventFlag;
@@ -733,6 +747,30 @@ namespace TraxCombat.Missions
             return f;
         }
 
+        /// <summary>Step 106b: the openings' forced guard on (<paramref name="guardFlag"/> a Defend* bit; <paramref name="lower"/> = every guard bit
+        /// out) or off (the other wishes are left as they are).</summary>
+        internal static void SetOpening(TrackedAgent st, bool on, uint guardFlag, bool lower, double now)
+        {
+            var s = st.Input ??= new AiInputState();
+            bool was = s.Active;
+            s.Opening = on;
+            s.OpeningLower = on && lower;
+            s.OpeningGuardFlag = on ? guardFlag : 0u;
+            Account(s, was, now);
+        }
+
+        /// <summary>Step 106b: one frame of the forced guard (managed - the smoke drives it): Core <see cref="OpeningForceMath.Frame"/>. Counted.</summary>
+        internal static uint ApplyOpening(AiInputState s, uint flags)
+        {
+            uint f = OpeningForceMath.Frame(flags, s.OpeningGuardFlag, s.OpeningLower, out var edit);
+            s.OpeningFrames++;
+            if ((edit & InputEdit.AttackCleared) != 0) s.OpeningAttacksOut++;
+            if ((edit & InputEdit.GuardRaised) != 0) s.OpeningGuardsWritten++;
+            if ((edit & InputEdit.GuardCleared) != 0) s.OpeningGuardsCleared++;
+            if (s.OpeningLower) s.OpeningLoweredFrames++;
+            return f;
+        }
+
         internal static void SetKick(TrackedAgent st, AiKickPhase phase, AiKickKind kind, double now)
         {
             var s = st.Input ??= new AiInputState();
@@ -851,6 +889,8 @@ namespace TraxCombat.Missions
             s.KickPhase = AiKickPhase.None; // step 65
             s.KickKind = AiKickKind.None;
             s.StepIn = false; // step 95
+            s.Opening = s.OpeningLower = false; // step 106b (the logic's force record is released by its own paths too)
+            s.OpeningGuardFlag = 0u;
             s.Reel = s.ReelNoGuard = false; // step 104b (the logic's reel record is released by its own paths too)
             s.PressFrontDistance = float.NaN; // step 97
             if (s.StepRec != null) s.StepRec.EnemyDistance = s.StepRec.Stop = float.NaN;

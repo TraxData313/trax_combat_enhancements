@@ -97,7 +97,7 @@ namespace TraxCombat.Missions
             _openChain = OpeningChain.None;
             _openPending = false;
             TraxLog.Info("impact", "mission start: " + OpeningRules.From(TraxSettings.Shared).Describe()
-                                   + " - step 106a2 is a SHADOW of the revised design: nothing is applied; the [summary] \"openings\" line (PLAYTEST D77)");
+                                   + " - step 106b: with the live switch the off-balance man's guard is FORCED to the balance side and rolled at your follow-up's wind-up (a shield LOWERED from its 2nd block); the stagger and the perfect strike still shadow; the [summary] \"openings\" lines (PLAYTEST D77 / D78)");
         }
 
         private int ReadWeaponMask(Agent a)
@@ -138,7 +138,7 @@ namespace TraxCombat.Missions
             try
             {
                 var r = OpeningRules.From(TraxSettings.Shared);
-                if (!r.ShadowOn) return;
+                if (!r.Runs) return;
                 bool you = f.AttackerIsPlayer && YouDrive(a);
                 if (!you)
                 {
@@ -147,7 +147,8 @@ namespace TraxCombat.Missions
                 }
                 if (f.DefenderIsPlayer) return;
                 string rolled = string.Empty;
-                if (_openPending && _openWound && _openTarget == v.AgentIndex && _openVerdict == OpeningVerdict.Opened)
+                if (_openLiveRolled) rolled = ForceBlockedText(now); // step 106b: the live roll at your wind-up decided it
+                else if (_openPending && _openWound && _openTarget == v.AgentIndex && _openVerdict == OpeningVerdict.Opened)
                 {
                     // THE SHADOW BLOCK ROLL: he blocked your follow-up into the side - would the revised design have let it through?
                     double chance = OpeningMath.BlockChance(in r, _openScore, _openPlan.K, _openPlan.ShieldHolds);
@@ -169,7 +170,11 @@ namespace TraxCombat.Missions
                     guardAtContact, yourAttack, mask, OpeningDice);
                 LastOpening = plan;
                 _open.NoteBlock(in plan);
-                if (plan.Opens) BeginFollowUp(v.AgentIndex, in plan, now);
+                if (plan.Opens)
+                {
+                    BeginFollowUp(v.AgentIndex, in plan, now);
+                    ForceBalance(v, in plan, now); // step 106b: live - his guard to the balance side (its own try)
+                }
                 OpeningLine("openings (shadow): YOUR " + OpeningMath.AttackName(yourAttack) + " blocked by " + Name(v) + " (" + (shield ? "shield" : "weapon") + ", his "
                             + OpeningMath.GuardName(guardAtContact) + " at contact) at " + Sec(now) + " s - link " + plan.K.ToString(CultureInfo.InvariantCulture)
                             + (reset != OpeningReset.None ? " (the chain restarted: " + OpeningMath.ResetName(reset) + ")" : string.Empty) + rolled + ": "
@@ -189,6 +194,7 @@ namespace TraxCombat.Missions
 
         private void BeginFollowUp(int target, in OpeningPlan plan, double now)
         {
+            _openLiveRolled = false; // step 106b: a live roll belongs to one follow-up
             _openPending = true;
             _openWound = false;
             _openTarget = target;
@@ -220,7 +226,7 @@ namespace TraxCombat.Missions
             try
             {
                 var r = OpeningRules.From(TraxSettings.Shared);
-                if (!r.ShadowOn) return;
+                if (!r.Runs) return;
                 if (_openChain.Expired(now, in r))
                 {
                     CloseOpening(now);
@@ -247,11 +253,13 @@ namespace TraxCombat.Missions
                 LastOpeningVerdict = _openVerdict;
                 LastOpeningScore = _openScore;
                 _open.NoteFollowUp(_openVerdict, _openPlan.K, since, _openScore);
+                string live = ForceAtWindUp(st, now); // step 106b: the LIVE block roll (its own try)
                 OpeningLine("openings (shadow): your follow-up - " + OpeningMath.AttackName(dir) + " started " + F2(since) + " s after the link (flash " + F2(_openPlan.Flash)
                             + " s, perfect +/-" + F2(_openPlan.Perfect) + ", window to " + F2(_openPlan.Flash + _openPlan.Window) + " s; the side: "
                             + OpeningMath.AttackName(_openPlan.Opening) + ", link " + _openPlan.K.ToString(CultureInfo.InvariantCulture) + "): "
                             + OpeningMath.VerdictName(_openVerdict) + ", timing " + F2(_openScore)
-                            + (_openVerdict == OpeningVerdict.Opened ? " -> his block chance " + Pct0(OpeningMath.BlockChance(in r, _openScore, _openPlan.K, _openPlan.ShieldHolds)) : string.Empty));
+                            + (_openVerdict == OpeningVerdict.Opened ? " -> his block chance " + Pct0(OpeningMath.BlockChance(in r, _openScore, _openPlan.K, _openPlan.ShieldHolds)) : string.Empty)
+                            + live);
             }
             catch (Exception e)
             {
@@ -267,8 +275,10 @@ namespace TraxCombat.Missions
             try
             {
                 var r = OpeningRules.From(TraxSettings.Shared);
-                if (!r.ShadowOn) return;
+                if (!r.Runs) return;
                 if (_openPending && _openWound) CloseOpening(now);
+                ForceBlowResolved(-1, false, now); // step 106b: the held guard let go - the blow resolved (a miss)
+                _openLiveRolled = false;
                 if (!_openChain.Active) return;
                 _open.Misses++;
                 if (!r.MissKeepsChain) EndChain(OpeningReset.Miss);
@@ -293,7 +303,7 @@ namespace TraxCombat.Missions
             try
             {
                 var r = OpeningRules.From(TraxSettings.Shared);
-                if (!r.ShadowOn) return;
+                if (!r.Runs) return;
                 var a = Get(attacker);
                 var v = Get(victim);
                 if (a == null || v == null) return;
@@ -309,6 +319,7 @@ namespace TraxCombat.Missions
                     return;
                 }
                 if (!IsPlayer(a) || !YouDrive(a)) return;
+                ForceBlowResolved(v.AgentIndex, landed, now); // step 106b: your blow met the held man - the blow resolved
                 bool onTarget = v.AgentIndex == (_openPending ? _openTarget : _openChain.Target);
                 if (!onTarget)
                 {
@@ -355,10 +366,11 @@ namespace TraxCombat.Missions
             try
             {
                 var r = OpeningRules.From(TraxSettings.Shared);
-                if (!r.ShadowOn) return;
+                if (!r.Runs) return;
                 if (!f.AttackerIsPlayer || f.DefenderIsPlayer || !YouDrive(a) || f.AttackerMounted || f.DefenderMounted) return;
                 int swing = ReadSwing(a.Agent);
                 double score = 0;
+                _openLiveRolled = false; // step 106b: the follow-up landed - its live roll is spent
                 if (_openPending && _openTarget == v.AgentIndex)
                 {
                     if (_openWound)
@@ -386,6 +398,11 @@ namespace TraxCombat.Missions
                 switch (hit)
                 {
                     case OpeningHit.Staggers:
+                        if (ReferenceEquals(_forceSt, v) && _forceKind != OpeningForceKind.Test) // step 106b: he reels - the force let go
+                        {
+                            if (_forceKind == OpeningForceKind.Held) _force.HeldLanded++;
+                            EndForce(OpeningForceEnd.Reels, now, true);
+                        }
                         _openStaggerMask = mask;
                         _open.NoteStagger(_openChain.Entry, modStagger);
                         OpeningMath.MultiplierRange(in r, OpeningMath.DirectionCount(mask), out double lo, out double hi);
@@ -402,7 +419,11 @@ namespace TraxCombat.Missions
                         var plan = OpeningMath.Plan(in r, 1, OpeningEntry.FrontUnguarded, f.AttackerSkill, false, OpeningMath.Unknown, swing, mask, OpeningDice);
                         LastOpening = plan;
                         _open.NoteState(in plan);
-                        if (plan.Opens) BeginFollowUp(v.AgentIndex, in plan, now);
+                        if (plan.Opens)
+                        {
+                            BeginFollowUp(v.AgentIndex, in plan, now);
+                            ForceBalance(v, in plan, now); // step 106b: live - his guard to the balance side (its own try)
+                        }
                         OpeningLine("openings (shadow): your " + OpeningMath.AttackName(swing) + " LANDED on " + Name(v) + " in front, NOT guarding -> OFF BALANCE"
                                     + (plan.Opens ? " to the " + OpeningMath.GuardName(plan.Guard) + " (the arrow " + OpeningMath.ArrowName(plan.Arrow) + "), the window to "
                                                     + F2(plan.Flash + plan.Window) + " s" : " - no side (" + SkipWords(plan.Skip) + ")"));
@@ -455,9 +476,10 @@ namespace TraxCombat.Missions
         /// that never came (the off-balance time), a reel that ran out unused, the chain's man gone.</summary>
         private void TickOpenings(double now)
         {
+            TickOpeningForce(now); // step 106b: the forced guard and the test tool (whatever the chain)
             if (!_openPending && !_openChain.Active) return;
             var r = OpeningRules.From(TraxSettings.Shared);
-            if (!r.ShadowOn)
+            if (!r.Runs)
             {
                 CloseOpening(now);
                 EndChain(OpeningReset.Off);
@@ -482,6 +504,7 @@ namespace TraxCombat.Missions
         {
             CloseOpening(now);
             _openChain.Reset();
+            CloseOpeningForce(now); // step 106b: every force let go, the CanDefend flag given back
         }
 
         /// <summary>The summary's turn (after step 104a's line).</summary>
@@ -489,6 +512,7 @@ namespace TraxCombat.Missions
         {
             CloseOpenings(SpikeNow);
             TraxLog.Info("summary", _open.SummaryLine(OpeningRules.From(TraxSettings.Shared)));
+            WriteOpeningForceSummary(); // step 106b
         }
 
         private void OpeningLine(string text)
