@@ -1281,7 +1281,8 @@ namespace TraxCombat.Core
             // step 104b: a RIDER can reel now (his reel in the saddle) - step 105 sees it (and refuses him "a rider"), but the usual model's
             // reeling bonus never reaches a rider's knock-off roll (the knock-off of a reeling rider is step 104c's): riders decide as before
             bool reelingNow = defender.Reeling(now);
-            bool reeling = reelingNow && !f.DefenderMounted;
+            // step 104e: nor a reel in the saddle on a man the engine just put on foot (his horse killed / thrown - the tick ends it next)
+            bool reeling = reelingNow && !f.DefenderMounted && defender.ReelCause != ReelCause.RiderReel;
             double x = Pressure(in r, in f, reeling, ref d);
             Ceilings(in r, f.Event, out double kdCeil, out double sdCeil, out double stCeil);
             bool braced = BraceRoll(in r, in f, ref d, defender.Down(now), dice); // step 65: before the knockdown / drop rolls

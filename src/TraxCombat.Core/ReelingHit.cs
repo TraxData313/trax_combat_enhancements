@@ -189,7 +189,9 @@ namespace TraxCombat.Core
             o.Asked = true;
             o.Kind = KindOf(e, thrust);
             o.Cause = cause;
-            o.Refusal = guarded ? ReelingHitRefusal.Guarded : Refusal(in r, mounted, down, isPlayer, onPlayer);
+            // step 104e: a reel IN THE SADDLE stays a rider's even in the moment after he left the saddle (his horse killed, thrown) and
+            // before the tick ends it "dismounted" - never step 105's 80 % on it
+            o.Refusal = guarded ? ReelingHitRefusal.Guarded : Refusal(in r, mounted || cause == ReelCause.RiderReel, down, isPlayer, onPlayer);
             if (o.Refusal != ReelingHitRefusal.None) return o;
             double p = ChanceOn(in r, isPlayer, onPlayer);
             o.Chance = p;
