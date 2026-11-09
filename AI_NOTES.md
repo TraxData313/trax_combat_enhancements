@@ -9678,7 +9678,7 @@ steps green.
 **Unverified until D71:** that `CrouchMode` reads true while Toni is crouched in a battle (the bar's "Resting" and the [athletics] "first crouch"
 line prove it); which direction the engine reports for his "from below" attack with each weapon (the YOU lines name it).
 
-## Step 104 (APPROVED by Toni 2026-11-09 "as suggested" - all 5 recommendations below; built after step 105; 104a + 104b + 104c + 104d built) — timed blocks on horseback: the rider reels in the saddle (research 2026-11-09)
+## Step 104 (APPROVED by Toni 2026-11-09 "as suggested" - all 5 recommendations below; built after step 105; BUILT 2026-11-09 - 104a-104d built, 104e reviewed) — timed blocks on horseback: the rider reels in the saddle (research 2026-11-09)
 
 Toni 2026-11-09, after the v1.5.0 release: "can you add the reel vs mounted troops as well somehow, like that 3rd round, we were on horsebacks
 fighting, I blocked, can you implement a similar system there?" His tournament round 3/4: both he and his opponent MOUNTED, 13 shield blocks of
@@ -10169,6 +10169,55 @@ then the docs / the AnySide hint. No new key - the 3 from 104a (`PerfectStrikeOn
   passing rider (expired unused vs landed); whether `horse.RiderAgent` is set for every mounted victim the decorator sees.
 - **Still NOT built**: a HIT knocking a reeling rider off (Toni's open question - step 105's `Mounted` refusal stays); a foot blocker's push-out
   against a rider. **104e next**: the independent review, close step 104.
+
+### 104e - review (2026-11-09)
+
+An independent review of everything since 6731161 (steps 105 and 104a-104d: src, tests, tools, defaults.json), read against the v1.4.8 decompile
+(`%TEMP%\trax_decomp`) where the engine matters. Step 104 is BUILT.
+
+**Fixed** (each its own commit, tests / smoke per fix):
+- **f75c882 (medium-low) - a saddle reel on a man just put on foot.** Between the engine dropping a reeling rider off his horse (horse killed,
+  thrown by someone else's blow) and the next tick releasing his reel "dismounted", his record still reeled with `ReelCause.RiderReel` while
+  `f.DefenderMounted` was already false - a landed hit in that frame could roll step 105's 80 % knockdown AND the usual model's reeling bonus on
+  top of the engine's own fall (the double-up 104c was built to avoid). `ReelingHitMath.Decide` now refuses the RiderReel cause as "a rider"
+  (all three call sites), `ImpactMath.Decide`'s bonus skips it. Step104eTests (2).
+- **d808144 (low, diagnostics) - the rear blow in the spike's own-blow count.** 104c's rear blow runs inside `ImpactHooks.BeginOwnBlow`, so
+  `OnAgentHit` counted it in "our blows registered N (seen by OnAgentHit M)" - M could exceed N. Counted only for a tracked man now (no test:
+  the line's two numbers; the smoke has no OnAgentHit stand-in).
+- **27a0042 (flake, not step 104's) - step 89's smoke.** Its averages are ~3-sigma checks on UNSEEDED dice (2000-4000 rolls each, four of
+  them): about one full smoke run in ~100 fails there - the one-off seen in 104d. Now `SeededRandom(89)`. The no-allocation unit tests all go
+  through `NoAllocation.Bytes` (fewest of 3) and did not flake in 10 full runs (the smoke 6 of 6); step 104's tests and smoke steps are not the source.
+
+**Checked and found right** (no change):
+- Never channel 0 on a rider / never an action on a horse: every `AnimBody.Play` call is channel 1; `IImpactBody.ForceStagger` (channel 0)
+  still refuses a mounted man; the rear is a BLOW on the horse (`RegisterOwnBlowOn`), never `SetActionChannel`.
+- The rear blow (Agent.HandleBlow 5413 read again): 1 damage, `DamageCalculated` - no damage model runs; refused below 2 health so `Die` cannot
+  follow; health written back; owner = the horse (no `_lastHitInfo`, no Character - no credit / XP / tournament score); our `OnAgentHit` finds no
+  tracked man (`Get(horse)` null), courage skips `InOwnBlow`; fired only after `Riding` and with `rider.MountAgent` active (never riderless);
+  never after a knock-off (else-branch), never on you.
+- Every lock released: the reel's end, removal (`Forget`, no engine call), dismounted / horse killed / a horse switch (`Riding` false at the next
+  tick), every switch (master first), the mission end and the behaviour's removal before the summary, an error (all let go, managed only). The
+  horse check: `ReelHorseCheck` 1 + an exact retarget; a dismounted rider's old horse released by `ApplyMountSpeed` (`SlowedMount`), a dead
+  rider's by `_horsesToRelease`. Your reel: the gate runs from `PlayerAttackGate.OnPreMissionTick`; a paused mission (Esc / MCM) stops mission
+  time, so the reel cannot outlive its seconds; a player who is AI-driven / a taken-over soldier is simply not locked.
+- Correctness: the ladder pins (100 / 95 / 67 / 33 %, 1.50 / 1.45 / 1.15 / 0.78 s, rear 50 / 47 / 0 / 0 %, ~9.4 % knock-off at a canter);
+  the 1.0 s cap on you; the AI never rears / unhorses you (the ladder skips both on you, and `RiderFall` refuses `p.You` again); step 105
+  refuses riders; a knock-off marks him down at the blow (no 80 % in the gap); PERFECT STRIKE any side only on a RIDER window, strict on foot
+  (also from the saddle), one multiplier per window (removed on landing).
+- Performance: decisions only on blocks with a rider (hit callback, struct facts, cached clip lookups); the tick costs only the reeling riders
+  (pool 64, 32 watches); AI frames O(1) in step 16's filter. Nothing per tick allocates (lines only for yours / verbose / first-time).
+- Settings: all 17 keys in defaults.json, schema and MCM (SettingsPagesTests); config format 29 moves a format-28 OFF once, a missing key takes
+  the default; switches read live (the reel's length / horse share / no-guard are fixed at the reel's start - a reel lasts ≤ 1.5 s).
+
+**Open for Toni** (TASKS_TODO "NOT DECIDED"): a COUCHED LANCE landing on a rider in your window counts as a perfect strike (any side, x2-x3) -
+the window does not tell a couch from a swing; easy to exclude (`AttackInformation.IsAttackerAgentDoingPassiveAttack` in the decorator) if he
+wants only swings / thrusts. And 104c's question: a HIT knocking a reeling rider off.
+
+**Only Toni's playtest can confirm** (PLAYTEST D73-D76): how `act_stagger_backward` reads on a seated upper body and whether his own input cuts
+it; whether the AI's lock bites at once; how much a galloping horse slows from a lower `MountSpeed` in 1.5 s (the summary's speeds); whether our
+1-damage `MakesRear` blow really rears a horse that is not charging a braced pike (SEEN vs not seen); the knock-off rate at real speeds; whether
+every rider guard has a heavy parry on horseback (the push-out's "no heavy parry" count); whether 1.65 s is enough to turn and land the strike;
+the AI-vs-AI reel rate in a big cavalry battle (risk 4); other mods' OnAgentHit hooks seeing a horse-owned 1-damage blow.
 
 ## Step 105 (BUILT 2026-11-09) — a landed hit on a reeling man knocks him down (80 %)
 

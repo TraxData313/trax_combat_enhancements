@@ -3630,7 +3630,7 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     Refill: Toni's "let this be there"; the game's AI never crouches in a battle - only scripted scenes - and while off its crouch is not even read);
     never mounted. Your bar's label reads "Resting" while it refills crouched; the [athletics] first-crouch line and the [summary] "crouch rest" line
     (PLAYTEST D71). No existing default changed - no config format bump.
-93. **Timed blocks on horseback** (step 104, PROPOSED 2026-11-09; APPROVED by Toni 2026-11-09 "as suggested" - all 5 recommended answers of AI_NOTES "Step 104"; built after step 105; 104a-104d built - (f)-(i) below; at the proposal nothing built yet, no parameter rows yet - they join the
+93. **Timed blocks on horseback** (step 104, PROPOSED 2026-11-09; APPROVED by Toni 2026-11-09 "as suggested" - all 5 recommended answers of AI_NOTES "Step 104"; built after step 105; BUILT 2026-11-09 - 104a-104d (f)-(i) below, reviewed in 104e (j); at the proposal nothing built yet, no parameter rows yet - they join the
     Parameters table with the step that builds them. Toni 2026-11-09: "can you add the reel vs mounted troops as well somehow, like that 3rd round,
     we were on horsebacks fighting, I blocked, can you implement a similar system there?" - his mounted tournament round: 13 shield blocks, 6
     perfect, every riposte refused "a rider"; AI_NOTES "Step 104"). Why riders were refused: decision 45 / IMPACT §3.8 - "never a forced stagger
@@ -3698,6 +3698,10 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     key, no config format change. The [summary] "perfect strike on horseback (step 104d)" line (rider windows, landed - riding / on foot -,
     multipliers, expired unused, closed by a switch, no window after a knock-off, hits on the horse ignored, your strikes from horseback on men
     on foot) and the push-out line's "mounted blockers" part (played, yours, skipped by reason). PLAYTEST D76.
+    (j) STEP 104e - THE REVIEW, STEP 104 BUILT 2026-11-09 (AI_NOTES "104e - review"): one fix to the contract - a reel IN THE SADDLE (cause
+    `RiderReel`) stays a rider's for step 105 and the reeling bonus even in the moment the engine has already put him on foot (his horse killed,
+    thrown) before the tick ends the reel "dismounted" - never the 80 % on top of that fall (decision 94 (d)). Everything else as (a)-(i). Open
+    for Toni: a couched lance landing in a rider window counts as a perfect strike today; a hit knocking a reeling rider off (not built).
 94. **A hit on a reeling man knocks him down** (step 105, BUILT 2026-11-09 - Toni: "when I stagger him and PERFECT STRIKE lands the NPC doesn't
     react which looks strange, but sometimes I knock him down, which looks very good and natural ... Make it so that when hitting (swing/kick/bash)
     an opponent that is staggering has 80% chance to knock him down no matter what or who caused the stagger"; built BEFORE step 104 at his request;
