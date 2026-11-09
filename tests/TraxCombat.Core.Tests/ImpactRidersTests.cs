@@ -329,7 +329,7 @@ public class ImpactRidersTests
         Assert.Contains("→ APPLIED 1 in the decorator's dismount seam + 1 by our own blow (blocks) → SEEN off the horse within 2.0 s 1 + 0, still mounted 0 + 1 (off after 0.10 s on average) (not applied: no horse under him by the tick 1)", lines[0]);
         Assert.StartsWith("impact riders' shields and limits: shields knocked from a rider's hand decided 1 (kicks / bashes 1, wrong-side blocks 0) → queued 1 → dropped 1", lines[1]);
         Assert.Contains("staggers REFUSED on riders (never on a horse) 1", lines[1]); // the wrong-side block's stagger had a chance
-        Assert.Equal(9, ImpactLiveMath.LeverCount);
+        Assert.Equal(10, ImpactLiveMath.LeverCount); // step 104c: + Rear
         Assert.Equal("a rider knocked off his horse", ImpactLiveMath.LeverName(ImpactLever.Dismount));
         Assert.Equal("no horse under him by the tick", ImpactLiveMath.NotAppliedName(ImpactNotApplied.NoHorse));
         Assert.Equal(1, ImpactRiderMath.FamilyIndex(ImpactEvent.Parry));

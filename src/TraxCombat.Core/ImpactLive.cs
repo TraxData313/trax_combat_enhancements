@@ -37,6 +37,10 @@ namespace TraxCombat.Core
         /// <summary>Step 53: a rider KNOCKED OFF his horse - the damage decorator's <c>DecideAgentDismountedByBlow</c> answer for a landed blow
         /// and, for a block, a blow of our own with <c>CanDismount</c> from the tick.</summary>
         Dismount,
+
+        /// <summary>Step 104c: a rider's horse REARED - our 1-damage blow flagged <c>MakesRear</c> on his horse from the tick (a sharp timed
+        /// block of his blow).</summary>
+        Rear,
     }
 
     /// <summary>Step 50: why a live outcome the dice gave was NOT carried out (the summary's "not applied").</summary>
@@ -119,7 +123,7 @@ namespace TraxCombat.Core
     /// </summary>
     public static class ImpactLiveMath
     {
-        public const int LeverCount = 9;
+        public const int LeverCount = 10;
         public const int NotAppliedCount = 10;
 
         /// <summary>Live watches (reels, falls) at once - 64, the spike's pool.</summary>
@@ -196,6 +200,7 @@ namespace TraxCombat.Core
             ImpactLever.OwnBlow => "the blocker's knockdown (our own blow)",
             ImpactLever.ShrugOff => "tired men always flinch (the shrug-off refused)",
             ImpactLever.Dismount => "a rider knocked off his horse",
+            ImpactLever.Rear => "a rider's horse reared (our blow)",
             _ => "the reaction watch",
         };
 

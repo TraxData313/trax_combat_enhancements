@@ -179,11 +179,11 @@ namespace TraxCombat.Missions
                 }
                 case RiderAnimKind.Rear:
                 {
-                    var other = ReferenceEquals(st, you) ? null : you;
-                    if (!ImpactBody.OwnRearBlow(st, other, out string why)) return "not asked - " + why;
+                    // step 104c: exactly the live rear's blow (owned by the horse itself, its 1 health given back)
+                    if (!ImpactBody.OwnRearBlow(st, out var why, out double lost)) return "not asked - " + TimedRiderFallMath.RefusalName(why);
                     _rearWatch = st;
                     _rearWatchUntil = now + RearWatchSeconds;
-                    return "our 1-damage blow flagged MakesRear registered on his horse - watching for the rear (" + F2(RearWatchSeconds) + " s)";
+                    return "our 1-damage blow flagged MakesRear registered on his horse (its health back - lost " + F2(lost) + ") - watching for the rear (" + F2(RearWatchSeconds) + " s)";
                 }
                 default:
                     return "?";
@@ -227,6 +227,7 @@ namespace TraxCombat.Missions
         private void WriteRiderShadowSummary()
         {
             WriteRiderReelSummary(); // step 104b: the live reel's line first
+            WriteRiderFallSummary(); // step 104c: the rear and the knock-off
             TraxLog.Info("summary", _riderShadow.SummaryLine(TimedRiderRules.From(TraxSettings.Shared)));
         }
     }

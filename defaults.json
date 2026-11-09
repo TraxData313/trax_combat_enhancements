@@ -294,8 +294,9 @@
 
   // A well-timed block against a RIDER's blow makes him reel in the saddle - no attack and no
   // guard for up to 1.5 s (1 s when the AI does it to you), his horse slowed to half speed; he
-  // still steers. Works whether you ride or stand. Off: riders shrug off timed blocks as
-  // before. The numbers and the animation: Advanced page, Impact.
+  // still steers. A sharp block can make his horse rear, a perfect one can knock him off it
+  // (the AI's blocks only ever make YOU reel). Works whether you ride or stand. Off: riders
+  // shrug off timed blocks as before. The numbers and the animation: Advanced page, Impact.
   // (true or false)
   "TimedBlocksOnHorseback": true,
 

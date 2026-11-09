@@ -138,18 +138,39 @@ namespace TraxCombat.Tools
             // step 104a: the rear preview's blow on a rider's horse (only on a man in Mounted), and the horse's rear read
             public readonly List<(int Rider, int Attacker)> OwnRears = new List<(int, int)>();
             public readonly HashSet<int> Rearing = new HashSet<int>();
-            public bool RearTakes = true;
+            public bool RearTakes = true, ThrowOnRear;
 
-            public bool OwnRearBlow(TrackedAgent rider, TrackedAgent? attacker, out string why)
+            // step 104c: the horse's health (rider index → health; none = 100) - a horse below 2 is refused, the blow's 1 given back
+            public readonly Dictionary<int, double> HorseHealth = new Dictionary<int, double>();
+            public readonly HashSet<int> CannotRear = new HashSet<int>();
+
+            public bool OwnRearBlow(TrackedAgent rider, out RiderFallRefusal why, out double horseDamage)
             {
-                why = string.Empty;
+                why = RiderFallRefusal.None;
+                horseDamage = double.NaN;
+                if (ThrowOnRear) throw new InvalidOperationException("smoke: the rear blow failed");
                 int i = rider.AgentIndex;
                 if (rider.Removed || Gone.Contains(i) || !Mounted.Contains(i))
                 {
-                    why = "no horse under him";
+                    why = RiderFallRefusal.NotRiding;
                     return false;
                 }
-                if (Record) OwnRears.Add((i, attacker?.AgentIndex ?? -1));
+                if (CannotRear.Contains(i))
+                {
+                    why = RiderFallRefusal.CannotRear;
+                    return false;
+                }
+                double before = HorseHealth.TryGetValue(i, out double h) ? h : 100;
+                if (!TimedRiderFallMath.RearBlowSafe(before))
+                {
+                    why = RiderFallRefusal.HorseTooWeak;
+                    return false;
+                }
+                if (Record) OwnRears.Add((i, -1)); // owned by the horse itself
+                double after = before - 1;
+                double back = TimedRiderFallMath.Restored(before, after, 100);
+                HorseHealth[i] = back;
+                horseDamage = TimedRiderFallMath.NetDamage(before, back);
                 if (RearTakes) Rearing.Add(i);
                 return true;
             }

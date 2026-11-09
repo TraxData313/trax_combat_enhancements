@@ -398,6 +398,7 @@ namespace TraxCombat.Missions
             AiKickLeftField(st); // step 65
             MeetLeftField(st); // step 82
             RiderReelLeftField(st); // step 104b: his reel's locks given back (no engine call)
+            RiderFallLeftField(st); // step 104c: out of the followed knock-offs / rears
             SpearLeftField(st); // step 76
             ImpactLeftField(st); // step 47
             AiGuardLeftField(st); // step 102

@@ -11,6 +11,10 @@ namespace TraxCombat.Missions
         public TrackedAgent? Blocker;
         public ImpactEvent Event;
         public bool Started, You, AiLocked, NoGuard, AnimOurs, AnimCleared, HalfRead;
+
+        /// <summary>Step 104c: the ladder rolled a knock-off (a perfect block) / a rear (a sharp one) on top of the reel; applied at its start
+        /// (<see cref="Fell"/> / <see cref="Reared"/>).</summary>
+        public bool KnockOff, Rear, Fell, Reared;
         public double DecidedAt, Start, Until, Asked, AnimSeconds, AnimEnd, Horse, Score;
         public int AnimIndex;
 
@@ -102,9 +106,13 @@ namespace TraxCombat.Missions
                 Source = d.TimedSource,
                 GuardAge = d.TimedAge,
                 Perfect = d.TimedPerfect,
+                KnockOff = o.Dismount, // step 104c: applied from the tick at the reel's start
+                Rear = o.Rear,
             };
             a.RiderReelSlot = i;
             _riderReel.NoteDecided(o.Score, IsPlayer(v), IsPlayer(a));
+            if (o.Dismount) _riderFall.NoteDecided(RiderFallKind.KnockOff);
+            if (o.Rear) _riderFall.NoteDecided(RiderFallKind.Rear);
             return true;
         }
 
@@ -196,9 +204,17 @@ namespace TraxCombat.Missions
                 _riderReel.LockNone++;
                 lockWords = "not locked (nobody's hands to hold)";
             }
+            // STEP 104c - THE KNOCK-OFF (a perfect block) or, if he stayed on, THE REAR (a sharp one) - before the animation: never a fighting
+            // animation on top of the engine's own fall / rear pose (the lock above stays)
+            string fallWords = (p.KnockOff || p.Rear) ? ApplyRiderFall(ref p, now) : string.Empty;
             // THE ANIMATION - his upper body only
             string animWords;
-            if (TimedRiderMath.IsNone(rr.ReelAction) || !(p.AnimSeconds > 0))
+            if (TimedRiderFallMath.SkipsReelAnimation(p.Fell, p.Reared))
+            {
+                _riderFall.AnimSkipped++;
+                animWords = "no reel animation - " + (p.Fell ? "he falls (the engine's own)" : "his horse rears (the engine's own rear and his pose)");
+            }
+            else if (TimedRiderMath.IsNone(rr.ReelAction) || !(p.AnimSeconds > 0))
             {
                 _riderReel.AnimNone++;
                 animWords = "no animation (the lock only)";
@@ -234,7 +250,7 @@ namespace TraxCombat.Missions
             bool yours = p.You || (p.Blocker != null && IsPlayer(p.Blocker));
             string line = Name(st) + " reels in the saddle " + F2(p.Asked) + " s from " + Sec(now) + " s (" + F2(now - p.DecidedAt) + " s after "
                           + (p.Blocker != null ? Name(p.Blocker) : "(someone)") + "'s block, timing " + F2(p.Score) + "): " + lockWords + ", " + animWords
-                          + ", his horse x" + F2(st.ReelHorseCheck < 1f ? st.ReelHorseCheck : 1f) + " top speed";
+                          + ", his horse x" + F2(st.ReelHorseCheck < 1f ? st.ReelHorseCheck : 1f) + " top speed" + fallWords;
             if (!_riderReelFirstStart)
             {
                 _riderReelFirstStart = true;
@@ -255,7 +271,9 @@ namespace TraxCombat.Missions
             if (blocker != null && IsPlayer(blocker) && TraxSettings.Shared.TimedBlockShowTiming)
                 text = TimedRiderLines.YourReel(MessageName(p.St), p.Event, p.Asked, rr.ReelMax, p.Source, p.GuardAge,
                     double.IsNaN(p.Perfect) ? TimedBlockRules.From(TraxSettings.Shared).Perfect : p.Perfect);
-            ImpactMessage(ImpactMessageKind.Riposte, blocker, p.St, text); // its own try; on you: the plain "you reel" line
+            if (text != null) text += TimedRiderLines.FallSuffix(p.Fell, p.Reared); // step 104c
+            // its own try; on you: the plain "you reel" line; knocked off = step 53's own "knocked off his horse" line when no timing is read
+            ImpactMessage(p.Fell ? ImpactMessageKind.KnockedOff : ImpactMessageKind.Riposte, blocker, p.St, text);
         }
 
         /// <summary>One reel ended: every lock given back - his input (or your gate), the animation still ours when cut early, his horse, his

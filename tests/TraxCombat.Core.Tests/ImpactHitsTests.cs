@@ -304,7 +304,7 @@ public class ImpactHitsTests
         Assert.Equal(3, ImpactHitMath.ClassOf(Facts(ImpactEvent.CleanHit, 1, type: ImpactDamageType.Blunt, twoHanded: true)));
         Assert.Equal("two-handed", ImpactHitMath.ClassName(3));
         Assert.Equal("blunt", ImpactHitMath.ClassName(2));
-        Assert.Equal(9, ImpactLiveMath.LeverCount); // step 53: + Dismount
+        Assert.Equal(10, ImpactLiveMath.LeverCount); // step 53: + Dismount; step 104c: + Rear
         Assert.Equal("tired men always flinch (the shrug-off refused)", ImpactLiveMath.LeverName(ImpactLever.ShrugOff));
     }
 

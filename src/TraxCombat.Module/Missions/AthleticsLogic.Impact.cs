@@ -283,6 +283,15 @@ namespace TraxCombat.Missions
             }
             try
             {
+                TickRiderFalls(now); // step 104c: the knock-offs / rears followed until seen (reads only)
+            }
+            catch (Exception e)
+            {
+                Failed("impact.rider-fall-watch", e);
+                CloseRiderFalls();
+            }
+            try
+            {
                 TickTimedAnims(now); // step 100d: the recoils' backward staggers, the push-outs' ends, the test tool
             }
             catch (Exception e)

@@ -228,11 +228,11 @@ namespace TraxCombat.Core
             "On: any swing, thrust, kick or shield bash that lands on a man on foot while he still staggers from a stagger of this mod (your timed block, a kick, a bash, a hit's stagger - whoever caused it) knocks him down 80% of the time, however fresh, skilled or armoured he is. It works on you too (times 'Against you'). A hit his shield or weapon blocks does not count; a blow that kills him just kills him. Off: the usual knockdown chances only. The chance: Advanced page, Impact.");
 
         // Step 104 (Toni 2026-11-09: "can you add the reel vs mounted troops as well somehow, like that 3rd round, we were on horsebacks fighting,
-        // I blocked, can you implement a similar system there?"): TimedRiderMath, DESIGN decision 93. Ships OFF until step 104b builds the reel -
-        // step 104a only measures it (the [impact] "rider shadow" lines, the [summary] "timed blocks on horseback (shadow)" line).
+        // I blocked, can you implement a similar system there?"): TimedRiderMath, DESIGN decision 93. Shipped OFF in step 104a (the shadow), ON since
+        // step 104b (the reel, config format 29); step 104c adds the rear and the knock-off under it (no new key).
         public static readonly ParamDef TimedBlocksOnHorseback = Bool("TimedBlocksOnHorseback", PlayerImpactGroup,
             "Timed blocks on horseback",
-            "A well-timed block against a RIDER's blow makes him reel in the saddle - no attack and no guard for up to 1.5 s (1 s when the AI does it to you), his horse slowed to half speed; he still steers. Works whether you ride or stand. Off: riders shrug off timed blocks as before. The numbers and the animation: Advanced page, Impact.");
+            "A well-timed block against a RIDER's blow makes him reel in the saddle - no attack and no guard for up to 1.5 s (1 s when the AI does it to you), his horse slowed to half speed; he still steers. A sharp block can make his horse rear, a perfect one can knock him off it (the AI's blocks only ever make YOU reel). Works whether you ride or stand. Off: riders shrug off timed blocks as before. The numbers and the animation: Advanced page, Impact.");
 
         // Step 33 (Anton, 2026-10-12: "a short burst of speed, meant to feel a little like a dodge, and for the AI to make charges
         // sharper"): Core SprintMath, AI_NOTES "Step 33".
@@ -2068,7 +2068,7 @@ namespace TraxCombat.Core
             "With 'Hit a staggering man: he falls' on (the player page): the chance that a swing, thrust, kick or bash landing on a man on foot who still staggers knocks him down - whatever caused the stagger, ignoring his tiredness, skill, armour, his brace and the usual immunity after a fall. Against you times 'Against you (%)'. If the usual knockdown chance is higher, the usual one stands. 0 = only the usual chances.");
 
         // Step 104 (DESIGN decision 93, AI_NOTES "Step 104" §5): timed blocks on horseback - the reel in the saddle (104b), the rear and the knock-off
-        // (104c), the perfect strike and the push-out from horseback (104d). Step 104a reads them for its shadow lines only.
+        // (104c - live), the perfect strike and the push-out from horseback (104d). Step 104a's shadow lines read them too.
         public static readonly ParamDef TimedRiderReelMaxSeconds = Float("TimedRiderReelMaxSeconds", 0.5, 3, ImpactGroup,
             "Horseback: the longest reel (s)",
             "With 'Timed blocks on horseback' on: how long a rider reels in the saddle after a PERFECT block of his blow - no attack, no guard, his horse checked. A less sharp block gives less, down to the untimed riposte's length.");

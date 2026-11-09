@@ -171,7 +171,7 @@ public class Step104bTests
         string live = TimedRiderMath.Describe(in o, "Rider", "you", true);
         _out.WriteLine(live);
         Assert.Contains("REELS (live) 1.50 s", live);
-        Assert.Contains("the reel LIVE; the rear / knock-off shadow only (step 104c)", live);
+        Assert.Contains("the reel LIVE; a knock-off / rear above applied from the tick (step 104c)", live);
         Assert.Contains("WOULD reel 1.50 s", TimedRiderMath.Describe(in o, "Rider", "you", false));
     }
 

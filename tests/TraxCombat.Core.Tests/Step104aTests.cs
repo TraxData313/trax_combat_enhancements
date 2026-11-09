@@ -353,7 +353,7 @@ public class Step104aTests
         Assert.Equal(0.5, r.DismountWeaponShare, 9);
         Assert.True(r.ReelOnYou && r.NoGuard && r.FromFoot && r.StrikeOnHorseback && r.StrikeAnySide && r.PushOutMounted);
         Assert.Contains("SHADOW only", r.Describe());
-        Assert.Contains("the reel in the saddle LIVE", Rules(s => s.Set(SettingsSchema.TimedBlocksOnHorseback, true, "test")).Describe());
+        Assert.Contains("the reel in the saddle, the rear and the knock-off LIVE", Rules(s => s.Set(SettingsSchema.TimedBlocksOnHorseback, true, "test")).Describe());
     }
 
     [Fact]

@@ -9,7 +9,7 @@ namespace TraxCombat.Core
     /// blocked, can you implement a similar system there?"; DESIGN decision 93, AI_NOTES "Step 104"): TIMED BLOCKS ON HORSEBACK, read live.
     /// <see cref="ShadowOn"/> = the master switch FIRST, then Athletics and the impact system, then <c>TimedBlocksEnabled</c> - the step-104a
     /// shadow decides on every correct block of a rider's blow whatever <c>TimedBlocksOnHorseback</c> says; <see cref="Live"/> adds that switch:
-    /// step 104b's reel in the saddle is APPLIED (the rear and the knock-off stay shadow until 104c, the strike / push-out until 104d).
+    /// step 104b's reel in the saddle is APPLIED, step 104c's knock-off / rear on top of it (the strike / push-out stay shadow until 104d).
     /// </summary>
     public readonly struct TimedRiderRules
     {
@@ -101,7 +101,7 @@ namespace TraxCombat.Core
         {
             var c = CultureInfo.InvariantCulture;
             if (!ShadowOn) return "timed blocks on horseback: shadow OFF (" + OffBecause + ")";
-            return "timed blocks on horseback: " + (Switch ? "the switch ON - the reel in the saddle LIVE (step 104b; the rear / knock-off / strike / push-out still shadow)" : "the switch OFF - SHADOW only, nothing applied")
+            return "timed blocks on horseback: " + (Switch ? "the switch ON - the reel in the saddle, the rear and the knock-off LIVE (steps 104b / 104c; the strike / push-out still shadow)" : "the switch OFF - SHADOW only, nothing applied")
                    + "; the reel up to " + ReelMax.ToString("0.00", c) + " s (on you " + ReelYouMax.ToString("0.00", c) + (ReelOnYou ? "" : ", off") + "), "
                    + (string.IsNullOrEmpty(ReelAction) ? "none" : ReelAction) + " x" + AnimSpeed.ToString("0.00", c) + " for at most " + AnimMax.ToString("0.00", c)
                    + " s then the lock" + (NoGuard ? " (no attack, no guard)" : " (no attack)") + ", his horse at " + (100 * HorseCheck).ToString("0", c) + "%; "
@@ -431,7 +431,7 @@ namespace TraxCombat.Core
         public static string Describe(in TimedRiderShadow o, string attacker, string blocker, bool reelLive)
         {
             if (reelLive && o.Reel && o.Combo != TimedRiderCombo.RiderVsFoot)
-                return DescribeShadow(in o, attacker, blocker).Replace("WOULD reel ", "REELS (live) ").Replace(" - nothing applied", " - the reel LIVE; the rear / knock-off shadow only (step 104c)");
+                return DescribeShadow(in o, attacker, blocker).Replace("WOULD reel ", "REELS (live) ").Replace(" - nothing applied", " - the reel LIVE; a knock-off / rear above applied from the tick (step 104c)");
             return DescribeShadow(in o, attacker, blocker);
         }
 
@@ -537,7 +537,7 @@ namespace TraxCombat.Core
             var sb = new StringBuilder(400);
             sb.Append("timed blocks on horseback (shadow, step 104a): ");
             if (!r.ShadowOn) sb.Append("shadow OFF (").Append(r.OffBecause).Append(") - ");
-            else sb.Append(r.Switch ? "the switch ON - the reel LIVE (its own line, step 104b), the rest below NOT APPLIED; " : "the switch OFF - NOTHING APPLIED; ");
+            else sb.Append(r.Switch ? "the switch ON - the reel, the knock-off and the rear LIVE (their own lines, steps 104b / 104c), the strike / push-out below NOT APPLIED; " : "the switch OFF - NOTHING APPLIED; ");
             int riders = ByCombo[(int)TimedRiderCombo.RiderVsRider] + ByCombo[(int)TimedRiderCombo.FootVsRider];
             sb.Append("correct blocks of a rider's blow ").Append(riders.ToString(c)).Append(" (rider vs rider ").Append(ByCombo[(int)TimedRiderCombo.RiderVsRider].ToString(c))
               .Append(" / foot vs rider ").Append(ByCombo[(int)TimedRiderCombo.FootVsRider].ToString(c)).Append("; yours ").Append(Yours.ToString(c))
@@ -753,9 +753,230 @@ namespace TraxCombat.Core
         private static string Mean(double sum, int n, CultureInfo c) => n > 0 ? (sum / n).ToString("0.0", c) : "-";
     }
 
+    /// <summary>Step 104c: what the ladder put on top of a reel - knocked off his horse (a perfect block) or his horse rears (a sharp one).</summary>
+    public enum RiderFallKind : byte
+    {
+        KnockOff,
+        Rear,
+    }
+
+    /// <summary>Step 104c: why a knock-off / a rear the ladder rolled was NOT applied at the reel's start (<see cref="None"/> = applied).</summary>
+    public enum RiderFallRefusal : byte
+    {
+        None,
+
+        /// <summary>Its lever was disabled by an error this battle (the dismount / our own blow / the rear).</summary>
+        LeverOff,
+
+        /// <summary>He was no longer on a horse by the tick.</summary>
+        NotRiding,
+
+        /// <summary>He (or his horse) left the field / is not active.</summary>
+        Gone,
+
+        /// <summary>His mount has no <c>AgentFlag.CanRear</c> (read, never assumed).</summary>
+        CannotRear,
+
+        /// <summary>His horse rears already.</summary>
+        AlreadyRearing,
+
+        /// <summary>His horse has less than <see cref="TimedRiderFallMath.MinHorseHealthForRear"/> health - the 1-damage blow could kill it.</summary>
+        HorseTooWeak,
+
+        /// <summary>His mount has no head bone (the blow's bone).</summary>
+        NoHeadBone,
+
+        /// <summary>The engine refused the blow (or it threw - the lever then off for the battle).</summary>
+        EngineRefused,
+
+        /// <summary>The fixed pool of followed falls / rears was full (applied, but not followed).</summary>
+        WatchFull,
+
+        /// <summary>He is you - the AI's blocks never rear your horse or knock you off (a guard; the ladder never rolls it on you).</summary>
+        OnYou,
+    }
+
+    /// <summary>
+    /// Step 104c - THE REAR AND THE KNOCK-OFF, LIVE (DESIGN decision 93 (b) / (c), AI_NOTES "104c - built"). The ladder (<see cref="TimedRiderMath.Decide"/>)
+    /// already rolls them; the module applies them at the reel's start from the tick - the knock-off through step 53's own dismount blow, else
+    /// the rear through our 1-damage blow flagged <c>MakesRear</c> on his HORSE (owned by the horse itself - vanilla's drowning recipe), its 1
+    /// health given back at once. While he falls or rears, the reel's channel-1 animation is NOT played on top (the lock stays). Pure.
+    /// </summary>
+    public static class TimedRiderFallMath
+    {
+        /// <summary>The horse must have at least this much health for our 1-damage rear blow - it can never kill it (the blow's health is given
+        /// back right after; a horse at 1 is refused <see cref="RiderFallRefusal.HorseTooWeak"/>).</summary>
+        public const double MinHorseHealthForRear = 2;
+
+        /// <summary>A knock-off is followed this long for the SEEN (step 53's <see cref="ImpactRiderMath.SeenWithinSeconds"/>).</summary>
+        public static double WatchSeconds(RiderFallKind k) => k == RiderFallKind.KnockOff ? ImpactRiderMath.SeenWithinSeconds : RearWatchSeconds;
+
+        /// <summary>A rear is SEEN when his horse's channel 0 shows the Rear type within this (s).</summary>
+        public const double RearWatchSeconds = 1.5;
+
+        /// <summary>The followed falls / rears at once (a fixed pool).</summary>
+        public const int MaxWatches = 32;
+
+        public const int RefusalCount = 11;
+
+        /// <summary>The rear blow may be registered on a horse of <paramref name="horseHealth"/> (NaN = unknown = refused).</summary>
+        public static bool RearBlowSafe(double horseHealth) => horseHealth >= MinHorseHealthForRear;
+
+        /// <summary>What the horse lost to our rear blow after its health was given back (≥ 0; NaN in = NaN).</summary>
+        public static double NetDamage(double before, double after)
+        {
+            if (double.IsNaN(before) || double.IsNaN(after)) return double.NaN;
+            return Math.Max(0, before - after);
+        }
+
+        /// <summary>The health to write back after the blow: what it had, never above its limit; the blow's own result when that is higher.</summary>
+        public static double Restored(double before, double after, double limit)
+        {
+            if (double.IsNaN(before) || double.IsNaN(after)) return after;
+            double target = double.IsNaN(limit) || limit <= 0 ? before : Math.Min(before, limit);
+            return Math.Max(after, target);
+        }
+
+        /// <summary>The reel's channel-1 animation is skipped when he is knocked off or his horse rears (the engine's own fall / rear pose -
+        /// never a fighting animation on top).</summary>
+        public static bool SkipsReelAnimation(bool knockedOff, bool reared) => knockedOff || reared;
+
+        public static string KindName(RiderFallKind k) => k == RiderFallKind.KnockOff ? "knocked off" : "his horse rears";
+
+        public static string RefusalName(RiderFallRefusal x) => x switch
+        {
+            RiderFallRefusal.None => "none",
+            RiderFallRefusal.LeverOff => "its lever off after an error",
+            RiderFallRefusal.NotRiding => "no horse under him by the tick",
+            RiderFallRefusal.Gone => "he is gone",
+            RiderFallRefusal.CannotRear => "his mount cannot rear (no CanRear flag)",
+            RiderFallRefusal.AlreadyRearing => "his horse rears already",
+            RiderFallRefusal.HorseTooWeak => "his horse too weak (health below 2 - the blow could kill it)",
+            RiderFallRefusal.NoHeadBone => "his mount has no head bone",
+            RiderFallRefusal.EngineRefused => "the engine refused the blow",
+            RiderFallRefusal.WatchFull => "applied, not followed (the pool full)",
+            RiderFallRefusal.OnYou => "on you (never)",
+            _ => "?",
+        };
+    }
+
+    /// <summary>Step 104c: the [summary] "timed blocks on horseback - rear and knock-off (step 104c)" line. Main thread.</summary>
+    public sealed class TimedRiderFallStats
+    {
+        public readonly int[] KnockOffRefused = new int[TimedRiderFallMath.RefusalCount];
+        public readonly int[] RearRefused = new int[TimedRiderFallMath.RefusalCount];
+        public int KnockOffsDecided, KnockOffsApplied, KnockOffsSeen, KnockOffsNotSeen, KnockOffsYours;
+        public int RearsDecided, RearsApplied, RearsSeen, RearsNotSeen, RearsYours;
+        public double KnockOffSeenSecondsSum, RearSeenSecondsSum;
+        public int AnimSkipped, WatchesGone, WatchesOpenAtEnd;
+
+        /// <summary>The horses' health lost to our rear blows after the give-back (should be ~0), and the most one horse lost.</summary>
+        public double HorseDamageSum, HorseDamageMax;
+        public int HorseDamageN;
+
+        public void NoteDecided(RiderFallKind k)
+        {
+            if (k == RiderFallKind.KnockOff) KnockOffsDecided++;
+            else RearsDecided++;
+        }
+
+        public void NoteRefused(RiderFallKind k, RiderFallRefusal why)
+        {
+            int i = (int)why;
+            if (i <= 0 || i >= TimedRiderFallMath.RefusalCount) return;
+            if (k == RiderFallKind.KnockOff) KnockOffRefused[i]++;
+            else RearRefused[i]++;
+        }
+
+        public void NoteApplied(RiderFallKind k, bool yours)
+        {
+            if (k == RiderFallKind.KnockOff)
+            {
+                KnockOffsApplied++;
+                if (yours) KnockOffsYours++;
+            }
+            else
+            {
+                RearsApplied++;
+                if (yours) RearsYours++;
+            }
+        }
+
+        public void NoteHorseDamage(double net)
+        {
+            if (double.IsNaN(net) || double.IsInfinity(net)) return;
+            HorseDamageN++;
+            HorseDamageSum += net;
+            if (net > HorseDamageMax) HorseDamageMax = net;
+        }
+
+        public void NoteSeen(RiderFallKind k, double seconds)
+        {
+            if (k == RiderFallKind.KnockOff)
+            {
+                KnockOffsSeen++;
+                if (!double.IsNaN(seconds)) KnockOffSeenSecondsSum += seconds;
+            }
+            else
+            {
+                RearsSeen++;
+                if (!double.IsNaN(seconds)) RearSeenSecondsSum += seconds;
+            }
+        }
+
+        public void NoteNotSeen(RiderFallKind k)
+        {
+            if (k == RiderFallKind.KnockOff) KnockOffsNotSeen++;
+            else RearsNotSeen++;
+        }
+
+        public string SummaryLine(in TimedRiderRules r, bool reelLive)
+        {
+            var c = CultureInfo.InvariantCulture;
+            var sb = new StringBuilder(500);
+            sb.Append("timed blocks on horseback - rear and knock-off (step 104c): ");
+            if (!r.ShadowOn) sb.Append("OFF (").Append(r.OffBecause).Append(") - ");
+            else if (!r.Switch) sb.Append("OFF (TimedBlocksOnHorseback) - ");
+            else if (!reelLive) sb.Append("OFF (the riposte not live - shadow mode / the family off) - ");
+            else sb.Append("LIVE (a perfect block ").Append((100 * r.DismountShare).ToString("0", c)).Append("% x the speed band x the match knocks off; a sharp one from ")
+                   .Append(r.RearMinScore.ToString("0.00", c)).Append(' ').Append((100 * r.RearShare).ToString("0", c)).Append("% x the timing rears; never on you) - ");
+            sb.Append("knock-offs decided ").Append(KnockOffsDecided.ToString(c)).Append(" → applied ").Append(KnockOffsApplied.ToString(c)).Append(" (yours ").Append(KnockOffsYours.ToString(c))
+              .Append(") → SEEN off within ").Append(ImpactRiderMath.SeenWithinSeconds.ToString("0.0", c)).Append(" s ").Append(KnockOffsSeen.ToString(c)).Append(" (mean ")
+              .Append(KnockOffsSeen > 0 ? (KnockOffSeenSecondsSum / KnockOffsSeen).ToString("0.00", c) : "-").Append(" s), not seen ").Append(KnockOffsNotSeen.ToString(c));
+            Refusals(sb, KnockOffRefused, c);
+            sb.Append("; rears decided ").Append(RearsDecided.ToString(c)).Append(" → applied ").Append(RearsApplied.ToString(c)).Append(" (yours ").Append(RearsYours.ToString(c))
+              .Append(") → SEEN rearing within ").Append(TimedRiderFallMath.RearWatchSeconds.ToString("0.0", c)).Append(" s ").Append(RearsSeen.ToString(c)).Append(" (mean ")
+              .Append(RearsSeen > 0 ? (RearSeenSecondsSum / RearsSeen).ToString("0.00", c) : "-").Append(" s), not seen ").Append(RearsNotSeen.ToString(c));
+            Refusals(sb, RearRefused, c);
+            sb.Append("; the horses' health lost to our rear blows (after the give-back) ").Append(HorseDamageSum.ToString("0.##", c)).Append(" in ").Append(HorseDamageN.ToString(c))
+              .Append(" (the most one horse ").Append(HorseDamageMax.ToString("0.##", c)).Append(")")
+              .Append("; the reel's animation skipped under a fall / rear ").Append(AnimSkipped.ToString(c))
+              .Append("; followed men gone ").Append(WatchesGone.ToString(c)).Append(", still followed at the mission end ").Append(WatchesOpenAtEnd.ToString(c));
+            return sb.ToString();
+        }
+
+        private static void Refusals(StringBuilder sb, int[] refused, CultureInfo c)
+        {
+            sb.Append(", refused: ");
+            bool any = false;
+            for (int i = 1; i < refused.Length; i++)
+            {
+                if (refused[i] == 0) continue;
+                if (any) sb.Append(", ");
+                sb.Append(TimedRiderFallMath.RefusalName((RiderFallRefusal)i)).Append(' ').Append(refused[i].ToString(c));
+                any = true;
+            }
+            if (!any) sb.Append("none");
+        }
+    }
+
     /// <summary>Step 104b: the on-screen words of a reel in the saddle.</summary>
     public static class TimedRiderLines
     {
+        /// <summary>Step 104c: the words added to your reel line when your block also knocked him off / reared his horse ("" = neither).</summary>
+        public static string FallSuffix(bool knockedOff, bool reared)
+            => knockedOff ? " - knocked off his horse!" : reared ? " - his horse rears!" : string.Empty;
+
         /// <summary>YOUR timed block reeled a rider: "Your block - X reels in the saddle 1.45 s / 1.50 (guard 0.20 s / 0.15)"; null with no
         /// timing read (the plain line then).</summary>
         public static string? YourReel(string? victim, ImpactEvent ev, double seconds, double maxSeconds, TimingSource source, double age, double perfect)

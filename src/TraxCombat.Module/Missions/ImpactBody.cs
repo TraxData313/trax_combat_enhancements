@@ -63,11 +63,14 @@ namespace TraxCombat.Missions
         /// <summary>Step 53: he fights on the player's side (the on-screen lines of your men - <c>Team.IsPlayerAlly</c>).</summary>
         bool OnPlayerSide(TrackedAgent st);
 
-        /// <summary>Step 104a (the J test tool's rear preview - 104c's lever): our own 1-damage blow flagged <c>MakesRear</c> registered on the
-        /// RIDER's HORSE - the engine plays the horse's rear and the rider's pose itself (vanilla's braced-pike rear: Mission.CreateMeleeBlow
-        /// 5581-5584). NO action of ours on the horse. Refused (false, <paramref name="why"/>) without a horse, a horse that cannot rear
-        /// (<c>AgentFlag.CanRear</c>), one already rearing. True = registered.</summary>
-        bool OwnRearBlow(TrackedAgent rider, TrackedAgent? attacker, out string why);
+        /// <summary>Step 104a (the J test tool's rear preview) / step 104c (THE LIVE REAR): our own 1-damage blow flagged <c>MakesRear</c>
+        /// registered on the RIDER's HORSE - the engine plays the horse's rear and the rider's pose itself (vanilla's braced-pike rear:
+        /// Mission.CreateMeleeBlow 5581-5584). NO action of ours on the horse. The blow is OWNED BY THE HORSE ITSELF (vanilla's drowning blow -
+        /// Mission.cs 3668: nobody's attack, no kill credit, no hit reward - a horse has no Character); refused on a horse below
+        /// <see cref="TimedRiderFallMath.MinHorseHealthForRear"/> health (the blow can never kill it) and its 1 health WRITTEN BACK right after
+        /// (<paramref name="horseDamage"/> = what it lost after that - 0). Refused (false, <paramref name="why"/>) without a horse, a horse that
+        /// cannot rear (<c>AgentFlag.CanRear</c>), one already rearing. True = registered.</summary>
+        bool OwnRearBlow(TrackedAgent rider, out RiderFallRefusal why, out double horseDamage);
 
         /// <summary>Step 104a: his horse plays the rear now (its channel 0's action type - a read only).</summary>
         bool MountRearing(TrackedAgent rider);
@@ -173,38 +176,55 @@ namespace TraxCombat.Missions
             return RegisterOwnBlow(victim, attacker, damage, BlowFlags.CanDismount); // vanilla's flag for a rider (Mission.CreateMeleeBlow 5566)
         }
 
-        public bool OwnRearBlow(TrackedAgent rider, TrackedAgent? attacker, out string why)
+        public bool OwnRearBlow(TrackedAgent rider, out RiderFallRefusal why, out double horseDamage)
         {
-            why = string.Empty;
+            why = RiderFallRefusal.None;
+            horseDamage = double.NaN;
             var a = rider.Agent;
             if (rider.Removed || !a.IsActive() || !a.IsHuman)
             {
-                why = "he is gone";
+                why = RiderFallRefusal.Gone;
                 return false;
             }
             var horse = a.MountAgent;
             if (horse == null || !horse.IsActive() || !horse.IsMount)
             {
-                why = "no horse under him";
+                why = RiderFallRefusal.NotRiding;
                 return false;
             }
             if (!horse.GetAgentFlags().HasAnyFlag(AgentFlag.CanRear))
             {
-                why = "his mount cannot rear (no CanRear flag)";
+                why = RiderFallRefusal.CannotRear;
                 return false;
             }
             if (horse.GetCurrentActionType(0) == Agent.ActionCodeType.Rear)
             {
-                why = "his horse rears already";
+                why = RiderFallRefusal.AlreadyRearing;
                 return false;
             }
             if (horse.Monster.HeadLookDirectionBoneIndex < 0)
             {
-                why = "his mount has no head bone";
+                why = RiderFallRefusal.NoHeadBone;
                 return false;
             }
-            var by = attacker != null && !attacker.Removed && attacker.Agent.IsActive() ? attacker.Agent : null;
-            return RegisterOwnBlowOn(horse, by, 1, BlowFlags.MakesRear); // the engine decides and plays the rear - never SetActionChannel on a horse
+            double before = horse.Health;
+            if (!TimedRiderFallMath.RearBlowSafe(before))
+            {
+                why = RiderFallRefusal.HorseTooWeak; // the 1-damage blow could kill it (Agent.HandleBlow: Health < 1 -> Die)
+                return false;
+            }
+            // the engine decides and plays the rear - never SetActionChannel on a horse; owned by the horse itself (vanilla's drowning blow):
+            // nobody's attack - no kill credit, no hit reward (BattleAgentLogic / TournamentFightMissionController need a Character - a horse has
+            // none), and its RiderAgent is set, so CommonAIComponent.OnHit never panics it (that needs a riderless horse)
+            RegisterOwnBlowOn(horse, null, 1, BlowFlags.MakesRear);
+            if (horse.IsActive())
+            {
+                double after = horse.Health;
+                double back = TimedRiderFallMath.Restored(before, after, horse.HealthLimit);
+                if (back > after) horse.Health = (float)back; // its 1 health given back at once
+                horseDamage = TimedRiderFallMath.NetDamage(before, horse.Health);
+            }
+            return true;
         }
 
         public bool MountRearing(TrackedAgent rider)
