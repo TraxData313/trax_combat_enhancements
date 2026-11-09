@@ -301,10 +301,10 @@
   "TimedBlocksOnHorseback": true,
 
   // BEING BUILT - nothing changes in battle yet (the log records what it would do). When a man
-  // blocks your attack correctly, his guard jumps to one of the other three and a red arrow
-  // shows the opening for a moment; swing into it in time and he reels like after your timed
-  // block. Every attack of yours he blocks in a row widens the window, up to the 4th; your
-  // weapon skill helps a little; shields only from the 2nd and they can break. The numbers:
+  // blocks your attack correctly he is thrown off balance: a red arrow flashes the side to hit
+  // - start your swing on the flash and he cannot block it; your hit staggers him and the arrow
+  // shows the side for a PERFECT STRIKE. Missing the moment makes the next try easier, up to
+  // the 4th. Shields need one block more. Hits from behind always stagger. The numbers:
   // Advanced page, Impact.
   // (true or false)
   "OpeningsEnabled": false,
@@ -2839,41 +2839,51 @@
   // (true or false)
   "TimedBlockPushOutMounted": true,
 
-  // On: every attack of yours an AI man blocks correctly is written to the log with the opening
-  // it would make (the guard forced, your next swing's start and direction, in time or not) and
-  // counted in the battle summary - even while 'Openings after your blocked attacks' is off.
-  // Nothing changes in battle.
+  // On: every attack of yours an AI man blocks correctly, and every hit of yours that would
+  // stagger him, is written to the log with what openings would do (where his balance went,
+  // your follow-up's side and timing, the stagger, the perfect strike) and counted in the
+  // battle summary - even while 'Openings after your blocked attacks' is off. Nothing changes
+  // in battle.
   // (true or false)
   "OpeningsShadowLog": true,
 
-  // How long after his block his guard jumps to the new position and the arrow shows. A swing
-  // you start before that is too early.
-  // (range 0.0 to 0.5)
-  "OpeningForceDelaySeconds": 0.1,
-
-  // After his guard jumps, how long you have to START your swing in the arrow's direction, on
-  // the first attack of a chain.
-  // (range 0.1 to 2.0)
-  "OpeningWindowBaseSeconds": 0.45,
-
-  // Added to the window for every earlier attack of yours he blocked in a row (the 4th: 3 times
-  // this).
+  // How long after his block the red arrow flashes - the perfect moment to START your follow-up
+  // swing.
   // (range 0.0 to 1.0)
-  "OpeningWindowPerChainSeconds": 0.15,
+  "OpeningFlashDelaySeconds": 0.3,
 
-  // Your weapon skill widens the window by this times what it adds to your timed block's
-  // perfect window (skill 300: 0.15 s more there, 0.30 s more here at 2). 0 = skill does not
-  // help.
-  // (range 0.0 to 5.0)
-  "OpeningWindowSkillWeight": 2.0,
+  // How close to the flash your swing must start to count as perfect: this share of your timed
+  // block's perfect window at your weapon skill (0.10 s at skill 0 up to 0.25 s at 300 at the
+  // defaults).
+  // (range 25 to 400)
+  "OpeningPerfectScalePercent": 100,
 
-  // How many attacks blocked in a row still widen the window - after this many it stays the
-  // same.
+  // After the flash, how long your follow-up still beats his guard at all - its timing fades
+  // from perfect to nothing here, on the first link of a chain.
+  // (range 0.2 to 3.0)
+  "OpeningWindowSeconds": 1.0,
+
+  // Added to the follow-up window for every earlier link of the chain (the 4th: 3 times this).
+  // (range 0.0 to 1.0)
+  "OpeningWindowPerLinkSeconds": 0.25,
+
+  // Your hit lands in front on a man who was not guarding: he is off balance with this much of
+  // the usual window.
+  // (range 100 to 300)
+  "OpeningUnguardedWindowPercent": 150,
+
+  // His chance to still block a well-timed follow-up shrinks by this share for every earlier
+  // link (20: x1 / 0.8 / 0.6 / 0.4 on links 1-4).
+  // (range 0 to 50)
+  "OpeningBlockPerLinkPercent": 20,
+
+  // How many links a chain grows to - after this many it gets no easier.
   // (range 1 to 8)
   "OpeningChainMax": 4,
 
-  // More than this between your attacks on him and the chain starts over. It also starts over
-  // when your hit lands on him, when he hits you, or when you strike someone else.
+  // He stays off balance this long after the last link (your blocked attack, or your unguarded
+  // hit): any hit of yours in that time staggers him. Longer and the chain starts over; it also
+  // does when he hits you or you strike someone else.
   // (range 0.5 to 6.0)
   "OpeningChainResetSeconds": 2.0,
 
@@ -2882,8 +2892,8 @@
   // (true or false)
   "OpeningMissKeepsChain": true,
 
-  // Once you swing into the opening, his guard stays where it was forced until your blow lands
-  // or misses - at most this long after your swing started.
+  // When your follow-up beats his block, his guard stays on the balance side until your blow
+  // lands or misses - at most this long after your swing started.
   // (range 0.3 to 3.0)
   "OpeningHoldMaxSeconds": 1.5,
 
@@ -2893,11 +2903,12 @@
   // (true or false)
   "OpeningSidesCrossed": true,
 
-  // How long he reels when your swing hits the opening, on the first attack of a chain.
+  // How long he reels when your hit lands while he is off balance (or from behind), on the
+  // first link of a chain. The perfect-strike arrow shows all that time.
   // (range 0.2 to 3.0)
   "OpeningReelBaseSeconds": 0.8,
 
-  // Added to his reel for every earlier attack of yours he blocked in a row.
+  // Added to his reel for every earlier link of the chain.
   // (range 0.0 to 1.0)
   "OpeningReelPerChainSeconds": 0.3,
 
@@ -2905,51 +2916,62 @@
   // (range 0.2 to 3.0)
   "OpeningReelMaxSeconds": 2.0,
 
-  // A shield opens only from this attack of a chain on (2: the first shield block opens
-  // nothing).
+  // Against a shield the balance side is shown from the first block, but his shield can still
+  // block it until this link of the chain (2: the second block opens him for real).
   // (range 1 to 8)
   "OpeningShieldMinChain": 2,
 
-  // Against a shield the window to start your swing is this share of the usual one.
-  // (range 10 to 100)
-  "OpeningShieldWindowPercent": 75,
-
-  // When your swing into the opening still meets his shield: the chance his guard breaks (he
-  // staggers), on the first link a shield opens at.
-  // (range 0 to 100)
-  "OpeningGuardBreakBasePercent": 35,
-
-  // Added to the guard-break chance for every further attack he blocked in a row (35 / 50 / 65
-  // % on the 2nd / 3rd / 4th).
-  // (range 0 to 100)
-  "OpeningGuardBreakPerChainPercent": 15,
-
-  // How long a man whose guard broke staggers, on the first link a shield opens at.
-  // (range 0.1 to 2.0)
-  "OpeningGuardBreakStaggerMinSeconds": 0.6,
-
-  // ... and on the chain's last link (linear between).
-  // (range 0.1 to 3.0)
-  "OpeningGuardBreakStaggerMaxSeconds": 1.0,
-
-  // On: a man reeling from an opening can also be hit for a PERFECT STRIKE (2-3x damage). Off:
-  // the reel alone (and the knockdown chance on the next hit).
+  // On: your hit landing on a man from behind always staggers him and opens the perfect strike.
   // (true or false)
-  "OpeningGivesPerfectStrike": false,
+  "OpeningBackHitStaggers": true,
 
-  // On: a red arrow shows where the opening is while it lasts. Off: read his guard yourself.
+  // On: your hit landing in front on a man who was not guarding puts him off balance, with the
+  // longer window.
+  // (true or false)
+  "OpeningUnguardedHitOpens": true,
+
+  // On: a red arrow at your crosshair flashes the side to hit, and shows the perfect-strike
+  // side while he reels. Off: read him yourself.
   // (true or false)
   "OpeningArrowShow": true,
-
-  // On: the arrow shows at your crosshair, where the game's own attack-direction arrow is. Off:
-  // above his head.
-  // (true or false)
-  "OpeningArrowAtCrosshair": true,
 
   // On: the AI's attacks that the AI blocks make openings too. Off: only your attacks (the AI's
   // are only counted).
   // (true or false)
   "OpeningAiVsAi": false,
+
+  // The perfect strike's damage multiplier with a weapon that attacks from all four directions
+  // (swords) at the weakest timing.
+  // (range 1.0 to 5.0)
+  "PerfectStrikeFourWayMin": 2.0,
+
+  // ... and at perfect timing.
+  // (range 1.0 to 5.0)
+  "PerfectStrikeFourWayMax": 4.0,
+
+  // The multiplier with a weapon that cannot thrust (axes, maces - three directions) at the
+  // weakest timing.
+  // (range 1.0 to 5.0)
+  "PerfectStrikeThreeWayMin": 2.0,
+
+  // ... and at perfect timing.
+  // (range 1.0 to 5.0)
+  "PerfectStrikeThreeWayMax": 3.0,
+
+  // The multiplier with a two-direction weapon (spears: the overhead stab and the thrust) at
+  // the weakest timing.
+  // (range 1.0 to 5.0)
+  "PerfectStrikeTwoWayMin": 1.5,
+
+  // ... and at perfect timing.
+  // (range 1.0 to 5.0)
+  "PerfectStrikeTwoWayMax": 2.0,
+
+  // On: when your weapon cannot make the opposite attack, any of its other attacks finishes -
+  // an axe or mace answers an overhead with its left OR right swing, a spear answers a side
+  // swing with either stab. Off: strict opposites only.
+  // (true or false)
+  "PerfectStrikeWeaponFinishes": true,
 
   // How much an outmatched man suffers: every doubling of the mismatch beyond the even band
   // adds this to the pressure on him (0.25: an enemy four times stronger counts as much as

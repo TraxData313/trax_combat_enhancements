@@ -7,18 +7,23 @@ using TraxCombat.Core;
 namespace TraxCombat.Missions
 {
     /// <summary>
-    /// Step 106a - OPENINGS, THE SHADOW (Toni 2026-11-09; AI_NOTES "Step 106", DESIGN decision 95). NOTHING is applied: every correct block
-    /// (right-side shield / parry) of YOUR melee attack by an AI man on foot - seen at the impact decision's block seam, next to
-    /// <see cref="TimedBlockDecided"/> - is planned by Core <see cref="OpeningMath.Plan"/> (the chain's link, the guard that WOULD be forced, the
-    /// window) and followed:
-    ///   - your next melee WIND-UP (step 13's phases - <see cref="OpeningWindUp"/>): its delay from the block and its direction (channel 1's action
-    ///     direction, read once) → <see cref="OpeningMath.Verdict"/> (into the opening / wrong direction / too early / too late);
-    ///   - its CONTACT (OnMeleeHit, before the impact decision - <see cref="OpeningContact"/>): the time from the wind-up, what it met, and whether the
-    ///     wind-up's direction agreed with the contact's (an engine fact for 106b);
-    ///   - the chain's resets (your hit landed on him, the gap, his hit on you, another target, a miss by the setting).
+    /// Step 106a / 106a2 - OPENINGS, THE SHADOW of Toni's REVISED design (2026-11-09; AI_NOTES "Step 106", DESIGN decision 95). NOTHING is
+    /// applied. Core <see cref="OpeningChain"/> runs on YOUR fights with AI men on foot:
+    ///   - a correct block (right-side shield / parry) of your melee attack - the impact decision's block seam, beside
+    ///     <see cref="TimedBlockDecided"/> - is the chain's next link: OFF BALANCE, the balance guard planned by <see cref="OpeningMath.Plan"/>
+    ///     (a shield below <c>OpeningShieldMinChain</c> still holds the side);
+    ///   - your next melee WIND-UP (step 13's phases - <see cref="OpeningWindUp"/>) is judged: its direction (into the balance side or not) and its
+    ///     TIMING SCORE around the flash (<see cref="OpeningMath.TimingScore"/>);
+    ///   - a follow-up into the side that he blocks correctly anyway gets the SHADOW BLOCK ROLL (<see cref="OpeningMath.BlockChance"/> by its score,
+    ///     its link, the shield) - "would it have got through" - and the chain grows;
+    ///   - your LANDED hit (the impact decision's clean hit - <see cref="OpeningShadowHit"/>): off balance or from behind = the would-be STAGGER (the
+    ///     reel by link, the PERFECT STRIKE side = the opposite of that swing, by the weapon), a front hit on a man not guarding = off balance (the
+    ///     longer window), a hit on the reeling man = the would-be PERFECT STRIKE (x by the weapon's directions and the follow-up's score) or step
+    ///     105's other side; the mod's own stagger on the same hit counted (it would just show the arrow);
+    ///   - the chain's resets (the reel over, the gap, his hit on you, another target, a miss by the setting).
     /// Also counted: your attack's direction × his guard read at contact - the engine's SIDE PAIRING (<c>OpeningSidesCrossed</c>), and AI vs AI
-    /// correct blocks on foot. Master switch first (through <see cref="OpeningRules.ShadowOn"/>): off = the chain and the follow-up dropped at the
-    /// next tick. Main thread; one record, no allocation per tick (lines only for your blocks, the first <see cref="OpeningFullLines"/> at Info).
+    /// correct blocks on foot. Master switch first (through <see cref="OpeningRules.ShadowOn"/>): off = the chain dropped at the next tick. Main
+    /// thread; one record, no allocation per tick (lines only for your fights, the first <see cref="OpeningFullLines"/> at Info).
     /// </summary>
     public sealed partial class AthleticsLogic
     {
@@ -29,8 +34,8 @@ namespace TraxCombat.Missions
         private OpeningChain _openChain = OpeningChain.None;
         private OpeningPlan _openPlan;
         private bool _openPending, _openWound;
-        private int _openTarget = -1, _openWindUpDir = OpeningMath.Unknown, _openLines;
-        private double _openBlockAt, _openWindUpAt;
+        private int _openTarget = -1, _openWindUpDir = OpeningMath.Unknown, _openLines, _openStaggerMask = OpeningMath.AllAttacks;
+        private double _openBlockAt, _openWindUpAt, _openScore;
         private OpeningVerdict _openVerdict;
 
         internal OpeningStats OpeningStats => _open;
@@ -38,19 +43,28 @@ namespace TraxCombat.Missions
         /// <summary>The chain as it stands (the smoke reads it).</summary>
         internal OpeningChain OpeningChain => _openChain;
 
-        /// <summary>The last opening planned (the smoke reads it).</summary>
+        /// <summary>The last off-balance state planned (the smoke reads it).</summary>
         internal OpeningPlan LastOpening { get; private set; }
 
-        /// <summary>The last verdict on a swing after an opening (the smoke reads it).</summary>
+        /// <summary>The last direction verdict on a follow-up (the smoke reads it).</summary>
         internal OpeningVerdict LastOpeningVerdict { get; private set; }
 
-        /// <summary>An opening waits for your swing or its contact (the smoke reads it).</summary>
+        /// <summary>The last follow-up's timing score (the smoke reads it).</summary>
+        internal double LastOpeningScore { get; private set; }
+
+        /// <summary>The last landed hit's verdict (the smoke reads it).</summary>
+        internal OpeningHit LastOpeningHit { get; private set; }
+
+        /// <summary>The last would-be perfect strike's multiplier (the smoke reads it; NaN = none yet).</summary>
+        internal double LastOpeningMultiplier { get; private set; } = double.NaN;
+
+        /// <summary>A follow-up is awaited for the off-balance state (the smoke reads it).</summary>
         internal bool OpeningPending => _openPending;
 
-        /// <summary>The openings' dice (the guard picked); the smoke seeds its own.</summary>
+        /// <summary>The openings' dice (the balance guard, the shadow block roll); the smoke seeds its own.</summary>
         internal IRandomSource OpeningDice { get; set; } = ThreadSafeRandom.Shared;
 
-        /// <summary>His guard at contact - channel 1's action direction (DefendUp 4 .. DefendRight 7; anything else = unread). The smoke's stand-in.</summary>
+        /// <summary>His guard at contact - channel 1's action direction (DefendUp 4 .. DefendRight 7; anything else = unread / not guarding). The smoke's stand-in.</summary>
         internal Func<Agent, int> OpeningGuardRead { get; set; } = GameActionDirection;
 
         /// <summary>Your swing's direction at its wind-up - channel 1's action direction (AttackUp 0 .. AttackRight 3), the engine's
@@ -83,14 +97,40 @@ namespace TraxCombat.Missions
             _openChain = OpeningChain.None;
             _openPending = false;
             TraxLog.Info("impact", "mission start: " + OpeningRules.From(TraxSettings.Shared).Describe()
-                                   + " - step 106a is a SHADOW: nothing is applied; the [summary] \"openings\" line (PLAYTEST D77)");
+                                   + " - step 106a2 is a SHADOW of the revised design: nothing is applied; the [summary] \"openings\" line (PLAYTEST D77)");
+        }
+
+        private int ReadWeaponMask(Agent a)
+        {
+            try
+            {
+                return OpeningWeaponRead(a);
+            }
+            catch (Exception)
+            {
+                return OpeningMath.AllAttacks;
+            }
+        }
+
+        private int ReadGuard(Agent v)
+        {
+            int g = OpeningMath.Unknown;
+            try
+            {
+                g = OpeningGuardRead(v);
+            }
+            catch (Exception)
+            {
+                _open.GuardReadFailed++;
+            }
+            return OpeningMath.IsGuard(g) ? g : OpeningMath.Unknown;
         }
 
         // ------------------------------------------------------------------ the block (the impact decision's seam)
 
         /// <summary>
         /// From <see cref="ImpactDecide"/> right after <see cref="TimedBlockDecided"/>: a decided block. A correct block of YOUR attack by an AI man =
-        /// the chain's next link and an opening planned; AI vs AI on foot counted. Its own try.
+        /// the shadow block roll for a follow-up into the side, then the chain's next link (off balance); AI vs AI on foot counted. Its own try.
         /// </summary>
         private void OpeningShadowBlock(TrackedAgent a, TrackedAgent v, in ImpactFacts f, in ImpactDecision d, double now)
         {
@@ -106,53 +146,40 @@ namespace TraxCombat.Missions
                     return;
                 }
                 if (f.DefenderIsPlayer) return;
-                CloseOpening(now, Core.OpeningContact.None); // a block before the last opening's swing was seen - judged now
-                int k = _openChain.NoteBlock(v.AgentIndex, now, in r, out var reset);
+                string rolled = string.Empty;
+                if (_openPending && _openWound && _openTarget == v.AgentIndex && _openVerdict == OpeningVerdict.Opened)
+                {
+                    // THE SHADOW BLOCK ROLL: he blocked your follow-up into the side - would the revised design have let it through?
+                    double chance = OpeningMath.BlockChance(in r, _openScore, _openPlan.K, _openPlan.ShieldHolds);
+                    double die = OpeningDice.NextDouble();
+                    bool through = die >= chance;
+                    _open.NoteBlockRoll(chance, through, _openPlan.K);
+                    rolled = " - your follow-up (timing " + F2(_openScore) + ") vs his block chance " + Pct0(chance) + (_openPlan.ShieldHolds ? " (his shield still holds)" : string.Empty)
+                             + ": " + (through ? "WOULD have got through (his guard forced to the " + OpeningMath.GuardName(_openPlan.Guard) + ")" : "he would still block it");
+                }
+                CloseOpening(now);
+                bool shield = d.Event == ImpactEvent.RightBlock;
+                int k = _openChain.NoteBlock(v.AgentIndex, now, shield, in r, out var reset);
                 _open.NoteReset(reset);
-                int guardAtContact = OpeningMath.Unknown;
-                try
-                {
-                    guardAtContact = OpeningGuardRead(v.Agent);
-                }
-                catch (Exception)
-                {
-                    _open.GuardReadFailed++;
-                }
-                if (!OpeningMath.IsGuard(guardAtContact)) guardAtContact = OpeningMath.Unknown;
+                int guardAtContact = ReadGuard(v.Agent);
                 int yourAttack = !double.IsNaN(a.RecoilDirectionAt) && Math.Abs(a.RecoilDirectionAt - now) < 1e-6 ? a.RecoilDirection : OpeningMath.Unknown;
                 _open.NotePair(yourAttack, guardAtContact);
-                int mask = OpeningMath.AllAttacks;
-                try
-                {
-                    mask = OpeningWeaponRead(a.Agent);
-                }
-                catch (Exception)
-                {
-                    mask = OpeningMath.AllAttacks;
-                }
-                bool shield = d.Event == ImpactEvent.RightBlock;
-                var plan = OpeningMath.Plan(in r, k, f.AttackerSkill, shield, f.AttackerMounted || f.DefenderMounted, guardAtContact, yourAttack, mask, OpeningDice);
+                int mask = ReadWeaponMask(a.Agent);
+                var plan = OpeningMath.Plan(in r, k, shield ? OpeningEntry.ShieldBlocked : OpeningEntry.Blocked, f.AttackerSkill, f.AttackerMounted || f.DefenderMounted,
+                    guardAtContact, yourAttack, mask, OpeningDice);
                 LastOpening = plan;
                 _open.NoteBlock(in plan);
-                if (plan.Opens)
-                {
-                    _openPending = true;
-                    _openWound = false;
-                    _openTarget = v.AgentIndex;
-                    _openPlan = plan;
-                    _openBlockAt = now;
-                    _openWindUpAt = double.NaN;
-                    _openWindUpDir = OpeningMath.Unknown;
-                }
+                if (plan.Opens) BeginFollowUp(v.AgentIndex, in plan, now);
                 OpeningLine("openings (shadow): YOUR " + OpeningMath.AttackName(yourAttack) + " blocked by " + Name(v) + " (" + (shield ? "shield" : "weapon") + ", his "
                             + OpeningMath.GuardName(guardAtContact) + " at contact) at " + Sec(now) + " s - link " + plan.K.ToString(CultureInfo.InvariantCulture)
-                            + (reset != OpeningReset.None ? " (the chain restarted: " + OpeningMath.ResetName(reset) + ")" : string.Empty) + ": "
+                            + (reset != OpeningReset.None ? " (the chain restarted: " + OpeningMath.ResetName(reset) + ")" : string.Empty) + rolled + ": "
                             + (plan.Opens
-                                ? "his guard WOULD go to the " + OpeningMath.GuardName(plan.Guard) + " (of " + plan.Candidates.ToString(CultureInfo.InvariantCulture) + ") -> opening: your "
-                                  + OpeningMath.AttackName(plan.Opening) + ", arrow " + OpeningMath.ArrowName(plan.Arrow) + "; start it " + F2(r.ForceDelay) + "-" + F2(r.ForceDelay + plan.Window)
-                                  + " s after the block (skill " + SkillText(f.AttackerSkill) + "); a hit would reel him " + F2(plan.Reel) + " s"
-                                  + (shield ? ", guard break " + Pct0(plan.BreakChance) : string.Empty)
-                                : "no opening (" + SkipWords(plan.Skip, in r) + ")"));
+                                ? "OFF BALANCE to the " + OpeningMath.GuardName(plan.Guard) + " (of " + plan.Candidates.ToString(CultureInfo.InvariantCulture) + ") -> the arrow would flash "
+                                  + OpeningMath.ArrowName(plan.Arrow) + " (your " + OpeningMath.AttackName(plan.Opening) + ") at " + F2(plan.Flash) + " s, perfect +/-" + F2(plan.Perfect)
+                                  + " s (skill " + SkillText(f.AttackerSkill) + "), the window to " + F2(plan.Flash + plan.Window) + " s"
+                                  + (plan.ShieldHolds ? "; his shield still holds that side at link " + plan.K.ToString(CultureInfo.InvariantCulture) : string.Empty)
+                                  + "; a landed hit would reel him " + F2(plan.Reel) + " s"
+                                : "no balance side (" + SkipWords(plan.Skip) + ")"));
             }
             catch (Exception e)
             {
@@ -160,12 +187,23 @@ namespace TraxCombat.Missions
             }
         }
 
+        private void BeginFollowUp(int target, in OpeningPlan plan, double now)
+        {
+            _openPending = true;
+            _openWound = false;
+            _openTarget = target;
+            _openPlan = plan;
+            _openBlockAt = now;
+            _openWindUpAt = double.NaN;
+            _openWindUpDir = OpeningMath.Unknown;
+            _openScore = 0;
+        }
+
         private static string SkillText(double skill) => double.IsNaN(skill) ? "?" : skill.ToString("0", CultureInfo.InvariantCulture);
 
-        private static string SkipWords(OpeningSkip s, in OpeningRules r) => s switch
+        private static string SkipWords(OpeningSkip s) => s switch
         {
             OpeningSkip.Mounted => "a rider - on foot only",
-            OpeningSkip.ShieldTooEarly => "a shield opens from link " + r.ShieldMinChain.ToString(CultureInfo.InvariantCulture),
             OpeningSkip.NoOpeningForWeapon => "no other guard opens an attack your weapon can make",
             _ => "-",
         };
@@ -173,8 +211,8 @@ namespace TraxCombat.Missions
         // ------------------------------------------------------------------ your next swing
 
         /// <summary>
-        /// Your melee WIND-UP began (step 13's phases, the tick's poll or the hit callback): the chain's gap checked, and the waiting opening judged
-        /// by this swing's start and direction (one read). Its own try.
+        /// Your melee WIND-UP began (step 13's phases): the chain's gap checked, and the awaited follow-up judged - its direction and its timing
+        /// score around the flash (one read). Its own try.
         /// </summary>
         internal void OpeningWindUp(TrackedAgent st, double now)
         {
@@ -185,8 +223,8 @@ namespace TraxCombat.Missions
                 if (!r.ShadowOn) return;
                 if (_openChain.Expired(now, in r))
                 {
-                    CloseOpening(now, Core.OpeningContact.None);
-                    ResetOpeningChain(OpeningReset.Gap);
+                    CloseOpening(now);
+                    EndChain(_openChain.Phase == OpeningPhase.Reeling ? OpeningReset.ReelOver : OpeningReset.Gap);
                     return;
                 }
                 if (!_openPending || _openWound || !YouDrive(st)) return;
@@ -204,12 +242,16 @@ namespace TraxCombat.Missions
                 _openWindUpAt = now;
                 _openWindUpDir = dir;
                 double since = now - _openBlockAt;
-                _openVerdict = OpeningMath.Verdict(in r, in _openPlan, since, dir);
+                _openVerdict = OpeningMath.Verdict(in _openPlan, since, dir);
+                _openScore = OpeningMath.TimingScore(in r, in _openPlan, since);
                 LastOpeningVerdict = _openVerdict;
-                _open.NoteVerdict(_openVerdict, _openPlan.K, since);
-                OpeningLine("openings (shadow): your next swing - " + OpeningMath.AttackName(dir) + " started " + F2(since) + " s after the block (window "
-                            + F2(r.ForceDelay) + "-" + F2(r.ForceDelay + _openPlan.Window) + " s, opening: " + OpeningMath.AttackName(_openPlan.Opening) + ", link "
-                            + _openPlan.K.ToString(CultureInfo.InvariantCulture) + "): " + OpeningMath.VerdictName(_openVerdict));
+                LastOpeningScore = _openScore;
+                _open.NoteFollowUp(_openVerdict, _openPlan.K, since, _openScore);
+                OpeningLine("openings (shadow): your follow-up - " + OpeningMath.AttackName(dir) + " started " + F2(since) + " s after the link (flash " + F2(_openPlan.Flash)
+                            + " s, perfect +/-" + F2(_openPlan.Perfect) + ", window to " + F2(_openPlan.Flash + _openPlan.Window) + " s; the side: "
+                            + OpeningMath.AttackName(_openPlan.Opening) + ", link " + _openPlan.K.ToString(CultureInfo.InvariantCulture) + "): "
+                            + OpeningMath.VerdictName(_openVerdict) + ", timing " + F2(_openScore)
+                            + (_openVerdict == OpeningVerdict.Opened ? " -> his block chance " + Pct0(OpeningMath.BlockChance(in r, _openScore, _openPlan.K, _openPlan.ShieldHolds)) : string.Empty));
             }
             catch (Exception e)
             {
@@ -217,7 +259,7 @@ namespace TraxCombat.Missions
             }
         }
 
-        /// <summary>Your melee release ended without a hit (step 13's phases): the swing after an opening met nothing; a miss in a chain counted
+        /// <summary>Your melee release ended without a hit (step 13's phases): the awaited follow-up met nothing; a miss in a chain counted
         /// (and with <c>OpeningMissKeepsChain</c> off the chain starts over).</summary>
         internal void OpeningMiss(double now)
         {
@@ -226,10 +268,10 @@ namespace TraxCombat.Missions
             {
                 var r = OpeningRules.From(TraxSettings.Shared);
                 if (!r.ShadowOn) return;
-                if (_openPending && _openWound) CloseOpening(now, Core.OpeningContact.None);
+                if (_openPending && _openWound) CloseOpening(now);
                 if (!_openChain.Active) return;
                 _open.Misses++;
-                if (!r.MissKeepsChain) ResetOpeningChain(OpeningReset.Miss);
+                if (!r.MissKeepsChain) EndChain(OpeningReset.Miss);
             }
             catch (Exception e)
             {
@@ -238,9 +280,11 @@ namespace TraxCombat.Missions
         }
 
         /// <summary>
-        /// OnMeleeHit (before the impact decision - its block makes the NEXT opening): your blow's contact closes the waiting opening (what it met,
-        /// the time from its wind-up, the wind-up's direction against the contact's); the chain's resets - your hit landed on him, your blow on
-        /// another man, his hit on you. Kicks / bashes, missiles and horse charges are not attacks here. Its own try.
+        /// OnMeleeHit: your blow's contact - on ANOTHER man it closes the awaited follow-up and resets the chain (a target switch); a block of him
+        /// leaves the follow-up for the block seam's shadow roll (the wind-up's direction against the contact's counted); a LANDED hit on him is
+        /// <see cref="OpeningShadowHit"/>'s (the impact decision runs in the damage decorator's seam BEFORE OnMeleeHit for a landed blow, after it
+        /// otherwise - so nothing here depends on the order); his hit on you resets. Kicks / bashes, missiles and horse charges are not attacks
+        /// here. Its own try.
         /// </summary>
         internal void OpeningContactSeen(Agent attacker, Agent victim, in AttackCollisionData cd)
         {
@@ -259,30 +303,27 @@ namespace TraxCombat.Missions
                 {
                     if (landed && _openChain.Active && a.AgentIndex == _openChain.Target)
                     {
-                        CloseOpening(now, Core.OpeningContact.None);
-                        ResetOpeningChain(OpeningReset.HeHitYou);
+                        CloseOpening(now);
+                        EndChain(OpeningReset.HeHitYou);
                     }
                     return;
                 }
                 if (!IsPlayer(a) || !YouDrive(a)) return;
-                bool onTarget = _openChain.Active ? v.AgentIndex == _openChain.Target : v.AgentIndex == _openTarget;
-                if (_openPending && _openWound)
+                bool onTarget = v.AgentIndex == (_openPending ? _openTarget : _openChain.Target);
+                if (!onTarget)
                 {
-                    var c = v.AgentIndex != _openTarget ? Core.OpeningContact.OtherTarget
-                        : landed ? Core.OpeningContact.Landed
-                        : cd.AttackBlockedWithShield && !cd.CorrectSideShieldBlock ? Core.OpeningContact.WrongBlock
-                        : Core.OpeningContact.BlockedAgain;
-                    _open.NoteDirection(_openWindUpDir, TimedRecoilMath.DirectionOf((int)cd.AttackDirection));
-                    CloseOpening(now, c);
+                    CloseOpening(now);
+                    if (_openChain.Active && v.AgentIndex != _openChain.Target) EndChain(OpeningReset.TargetSwitch);
+                    return;
                 }
-                else if (_openPending) // its wind-up unseen (Athletics' phases off, or a release no ready was seen for): the direction unread
+                if (landed) return; // OpeningShadowHit's
+                if (_openPending && _openWound) _open.NoteDirection(_openWindUpDir, TimedRecoilMath.DirectionOf((int)cd.AttackDirection));
+                else if (_openPending) // its wind-up unseen (Athletics' phases off): the direction unread
                 {
                     _openPending = false;
                     LastOpeningVerdict = OpeningVerdict.UnknownDirection;
-                    _open.NoteVerdict(OpeningVerdict.UnknownDirection, _openPlan.K, double.NaN);
+                    _open.NoteFollowUp(OpeningVerdict.UnknownDirection, _openPlan.K, double.NaN, 0);
                 }
-                if (_openChain.Active && !onTarget) ResetOpeningChain(OpeningReset.TargetSwitch);
-                else if (_openChain.Active && landed) ResetOpeningChain(OpeningReset.HitLanded);
             }
             catch (Exception e)
             {
@@ -290,69 +331,160 @@ namespace TraxCombat.Missions
             }
         }
 
-        /// <summary>The waiting opening ends: its verdict (no swing seen = <see cref="OpeningVerdict.NoSwing"/>), the contact counted for a judged swing.</summary>
-        private void CloseOpening(double now, OpeningContact contact)
+        private int ReadSwing(Agent a)
+        {
+            try
+            {
+                int d = OpeningSwingRead(a);
+                return OpeningMath.IsAttack(d) ? d : OpeningMath.Unknown;
+            }
+            catch (Exception)
+            {
+                return OpeningMath.Unknown;
+            }
+        }
+
+        /// <summary>
+        /// From <see cref="ImpactDecide"/>: a decided CLEAN HIT. Yours on an AI man on foot drives the chain (<see cref="OpeningChain.NoteLanded"/>):
+        /// the would-be stagger, off balance after an unguarded front hit, the would-be perfect strike on the reeling man. Your swing's direction is
+        /// read from you at the hit (channel 1 - the release's direction); a follow-up landing on him brings its timing score. Its own try.
+        /// </summary>
+        private void OpeningShadowHit(TrackedAgent a, TrackedAgent v, in ImpactFacts f, in ImpactDecision d, double now)
+        {
+            if (d.Event != ImpactEvent.CleanHit) return;
+            try
+            {
+                var r = OpeningRules.From(TraxSettings.Shared);
+                if (!r.ShadowOn) return;
+                if (!f.AttackerIsPlayer || f.DefenderIsPlayer || !YouDrive(a) || f.AttackerMounted || f.DefenderMounted) return;
+                int swing = ReadSwing(a.Agent);
+                double score = 0;
+                if (_openPending && _openTarget == v.AgentIndex)
+                {
+                    if (_openWound)
+                    {
+                        score = _openScore;
+                        _open.NoteDirection(_openWindUpDir, swing);
+                    }
+                    else
+                    {
+                        LastOpeningVerdict = OpeningVerdict.UnknownDirection;
+                        _open.NoteFollowUp(OpeningVerdict.UnknownDirection, _openPlan.K, double.NaN, 0);
+                    }
+                    _openPending = false;
+                }
+                int guard = ReadGuard(v.Agent);
+                bool behind = d.Direction == 2;
+                int mask = ReadWeaponMask(a.Agent);
+                bool wasReeling = _openChain.Reeling(now) && _openChain.Target == v.AgentIndex;
+                double chainScore = _openChain.Score;
+                int staggerSwing = _openChain.StaggerSwing, finishMask = _openChain.FinishMask;
+                var hit = _openChain.NoteLanded(v.AgentIndex, now, in r, behind, OpeningMath.IsGuard(guard), swing, mask, score, out var reset);
+                LastOpeningHit = hit;
+                _open.NoteReset(reset);
+                bool modStagger = d.Stagger.Happens || d.Knockdown.Happens;
+                switch (hit)
+                {
+                    case OpeningHit.Staggers:
+                        _openStaggerMask = mask;
+                        _open.NoteStagger(_openChain.Entry, modStagger);
+                        OpeningMath.MultiplierRange(in r, OpeningMath.DirectionCount(mask), out double lo, out double hi);
+                        OpeningLine("openings (shadow): your " + OpeningMath.AttackName(swing) + " LANDED on " + Name(v) + (behind ? " from behind" : string.Empty)
+                                    + " (" + OpeningMath.EntryName(_openChain.Entry) + ", link " + _openChain.K.ToString(CultureInfo.InvariantCulture) + ", timing " + F2(score)
+                                    + ") -> he WOULD stagger " + F2(_openChain.ReelUntil - now) + " s" + (modStagger ? " (the mod's own stagger too - the arrow would just show on it)" : string.Empty)
+                                    + "; PERFECT STRIKE side: " + OpeningMath.MaskName(_openChain.FinishMask) + " (arrow " + OpeningMath.ArrowName(OpeningMath.FinishArrow(_openChain.FinishMask))
+                                    + ") for x" + F2(OpeningMath.StrikeMultiplier(in r, mask, _openChain.Score)) + " (range x" + F2(lo) + "-" + F2(hi) + ", "
+                                    + OpeningMath.DirectionCount(mask).ToString(CultureInfo.InvariantCulture) + " directions)");
+                        break;
+                    case OpeningHit.OffBalance:
+                    {
+                        _open.UnguardedOffBalance++;
+                        var plan = OpeningMath.Plan(in r, 1, OpeningEntry.FrontUnguarded, f.AttackerSkill, false, OpeningMath.Unknown, swing, mask, OpeningDice);
+                        LastOpening = plan;
+                        _open.NoteState(in plan);
+                        if (plan.Opens) BeginFollowUp(v.AgentIndex, in plan, now);
+                        OpeningLine("openings (shadow): your " + OpeningMath.AttackName(swing) + " LANDED on " + Name(v) + " in front, NOT guarding -> OFF BALANCE"
+                                    + (plan.Opens ? " to the " + OpeningMath.GuardName(plan.Guard) + " (the arrow " + OpeningMath.ArrowName(plan.Arrow) + "), the window to "
+                                                    + F2(plan.Flash + plan.Window) + " s" : " - no side (" + SkipWords(plan.Skip) + ")"));
+                        break;
+                    }
+                    case OpeningHit.FinishPerfect:
+                    {
+                        double k = OpeningMath.StrikeMultiplier(in r, _openStaggerMask, chainScore);
+                        bool relaxed = swing != OpeningMath.Opposite(staggerSwing);
+                        LastOpeningMultiplier = k;
+                        _open.NoteFinish(true, k, _openStaggerMask, relaxed);
+                        OpeningLine("openings (shadow): your " + OpeningMath.AttackName(swing) + " on the reeling " + Name(v) + " from the shown side ("
+                                    + OpeningMath.MaskName(finishMask) + (relaxed ? " - the weapon's relaxed side" : string.Empty) + ") -> WOULD be a PERFECT STRIKE x" + F2(k));
+                        break;
+                    }
+                    case OpeningHit.FinishOther:
+                        _open.NoteFinish(false, 0, _openStaggerMask, false);
+                        OpeningLine("openings (shadow): your " + OpeningMath.AttackName(swing) + " on the reeling " + Name(v) + " from another side (the shown: "
+                                    + OpeningMath.MaskName(finishMask) + ") -> no bonus, step 105's knockdown roll" + (wasReeling ? string.Empty : " (?)"));
+                        break;
+                }
+            }
+            catch (Exception e)
+            {
+                OpeningFailed(e);
+            }
+        }
+
+        /// <summary>The awaited follow-up ends: no swing seen = <see cref="OpeningVerdict.NoSwing"/>.</summary>
+        private void CloseOpening(double now)
         {
             if (!_openPending) return;
             _openPending = false;
-            if (!_openWound)
-            {
-                LastOpeningVerdict = OpeningVerdict.NoSwing;
-                _open.NoteVerdict(OpeningVerdict.NoSwing, _openPlan.K, double.NaN);
-                return;
-            }
-            _open.NoteContact(contact, contact == Core.OpeningContact.None ? double.NaN : now - _openWindUpAt, _openVerdict == OpeningVerdict.Opened);
-            if (contact != Core.OpeningContact.None && _openLines < OpeningFullLines)
-                OpeningLine("openings (shadow): that swing met " + OpeningMath.ContactName(contact) + " " + F2(now - _openWindUpAt) + " s after its start");
+            if (_openWound) return;
+            LastOpeningVerdict = OpeningVerdict.NoSwing;
+            _open.NoteFollowUp(OpeningVerdict.NoSwing, _openPlan.K, double.NaN, 0);
         }
 
-        private void ResetOpeningChain(OpeningReset why)
+        private void EndChain(OpeningReset why)
         {
             if (!_openChain.Active) return;
+            if (why == OpeningReset.ReelOver) _open.ReelsUnused++;
             _open.NoteReset(why);
             _openChain.Reset();
         }
 
         // ------------------------------------------------------------------ the tick
 
-        /// <summary>From <see cref="TickImpact"/> (own try there): the switches (the master switch first) - off = everything dropped; a swing that
-        /// never came (the chain's gap) and a contact that never came (the hold's time + 0.5 s) closed; the chain's man gone.</summary>
+        /// <summary>From <see cref="TickImpact"/> (own try there): the switches (the master switch first) - off = everything dropped; a follow-up
+        /// that never came (the off-balance time), a reel that ran out unused, the chain's man gone.</summary>
         private void TickOpenings(double now)
         {
             if (!_openPending && !_openChain.Active) return;
             var r = OpeningRules.From(TraxSettings.Shared);
             if (!r.ShadowOn)
             {
-                CloseOpening(now, Core.OpeningContact.None);
-                ResetOpeningChain(OpeningReset.Off);
+                CloseOpening(now);
+                EndChain(OpeningReset.Off);
                 return;
             }
-            if (_openPending && !_openWound && now - _openBlockAt > r.ChainReset + 1e-9)
-            {
-                CloseOpening(now, Core.OpeningContact.None);
-                ResetOpeningChain(OpeningReset.Gap);
-            }
-            else if (_openPending && _openWound && now > OpeningMath.HoldEnds(in r, _openWindUpAt) + 0.5) CloseOpening(now, Core.OpeningContact.None);
+            if (_openPending && !_openWound && now - _openBlockAt > r.ChainReset + 1e-9) CloseOpening(now);
+            else if (_openPending && _openWound && now > OpeningMath.HoldEnds(in r, _openWindUpAt) + 0.5) _openPending = false;
             if (_openChain.Active)
             {
                 var t = GetByIndex(_openChain.Target);
                 if (t == null || t.Removed)
                 {
-                    CloseOpening(now, Core.OpeningContact.None);
-                    ResetOpeningChain(OpeningReset.Off);
+                    CloseOpening(now);
+                    EndChain(OpeningReset.Off);
                 }
-                else if (!_openPending && _openChain.Expired(now, in r)) ResetOpeningChain(OpeningReset.Gap);
+                else if (_openChain.Expired(now, in r)) EndChain(_openChain.Phase == OpeningPhase.Reeling ? OpeningReset.ReelOver : OpeningReset.Gap);
             }
         }
 
-        /// <summary>The mission's end (before the summary): a waiting opening closed.</summary>
+        /// <summary>The mission's end (before the summary): an awaited follow-up closed.</summary>
         private void CloseOpenings(double now)
         {
-            CloseOpening(now, Core.OpeningContact.None);
+            CloseOpening(now);
             _openChain.Reset();
         }
 
-        /// <summary>The summary's turn (after step 105's line).</summary>
+        /// <summary>The summary's turn (after step 104a's line).</summary>
         private void WriteOpeningSummary()
         {
             CloseOpenings(SpikeNow);

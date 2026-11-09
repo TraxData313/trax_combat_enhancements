@@ -398,7 +398,8 @@ namespace TraxCombat.Missions
             // step 104a / 104b: the rider ladder - its reel APPLIED when TimedBlocksOnHorseback is on (the rear / knock-off still shadow)
             bool riderReel = block && ImpactMath.CanRiposte(f.Event) && (f.AttackerMounted || f.DefenderMounted) && RiderShadow(a, v, in f, in d, in r, ast, now);
             if (block) TimedBlockDecided(a, v, in d, riposteLive, riderReel); // step 100b: THE SEAM - every correct block's timing, counted
-            if (block) OpeningShadowBlock(a, v, in f, in d, now); // step 106a: your attack blocked correctly - the opening it would make (shadow)
+            if (block) OpeningShadowBlock(a, v, in f, in d, now); // step 106a / 106a2: your attack blocked correctly - off balance (shadow)
+            else OpeningShadowHit(a, v, in f, in d, now); // step 106a2: your landed hit - the would-be stagger / off balance / perfect strike (shadow)
             LastImpact = d;
             NoteImpactLines(a, v, in d, in f, in r, !(applied || riposteLive || riderLive));
             if (applied && family == ImpactFamily.Kicks)

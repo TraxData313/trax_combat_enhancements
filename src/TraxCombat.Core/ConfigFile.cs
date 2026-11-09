@@ -660,7 +660,31 @@ namespace TraxCombat.Core
             DropRetiredKickKeys(read, from);
             // step 101: the slow motion's whole-ramp length (step 100e) - in ANY format
             DropRetiredSlowMoKeys(read, from);
+            // step 106a2: the openings' first-design keys (step 106a, Toni replaced the design the same day) - in ANY format
+            DropRetiredOpeningKeys(read, from);
             return read.Migrated;
+        }
+
+        /// <summary>Step 106a's first-design openings keys, retired by step 106a2 (Toni's revised design, 2026-11-09).</summary>
+        public static readonly string[] RetiredOpeningKeys =
+        {
+            "OpeningForceDelaySeconds", "OpeningWindowBaseSeconds", "OpeningWindowPerChainSeconds", "OpeningWindowSkillWeight", "OpeningShieldWindowPercent",
+            "OpeningGuardBreakBasePercent", "OpeningGuardBreakPerChainPercent", "OpeningGuardBreakStaggerMinSeconds", "OpeningGuardBreakStaggerMaxSeconds",
+            "OpeningGivesPerfectStrike", "OpeningArrowAtCrosshair",
+        };
+
+        /// <summary>Step 106a2: the retired openings keys leave <see cref="ConfigReadResult.Unknown"/> - one note each (78c's pattern; no format
+        /// change - they only ever lived in a dev build's format-29 file). Idempotent.</summary>
+        private static void DropRetiredOpeningKeys(ConfigReadResult read, int from)
+        {
+            for (int i = read.Unknown.Count - 1; i >= 0; i--)
+            {
+                var pair = read.Unknown[i];
+                if (Array.FindIndex(RetiredOpeningKeys, k => string.Equals(k, pair.Key, StringComparison.OrdinalIgnoreCase)) < 0) continue;
+                read.Unknown.RemoveAt(i);
+                read.Migrated.Add(pair.Key + " " + pair.Value + " dropped (format " + from + " → " + FormatVersion
+                                  + "; step 106a2, Toni's revised openings: off balance, a timed follow-up, the stagger and the perfect strike - see the Opening* keys)");
+            }
         }
 
         /// <summary>Step 100e's key, retired by step 101: the whole slow motion's length (now a hold + an ease back).</summary>

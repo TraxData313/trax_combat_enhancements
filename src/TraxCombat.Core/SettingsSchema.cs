@@ -234,10 +234,10 @@ namespace TraxCombat.Core
             "Timed blocks on horseback",
             "A well-timed block against a RIDER's blow makes him reel in the saddle - no attack and no guard for up to 1.5 s (1 s when the AI does it to you), his horse slowed to half speed; he still steers. A sharp block can make his horse rear, a perfect one can knock him off it (the AI's blocks only ever make YOU reel). Works whether you ride or stand. Off: riders shrug off timed blocks as before. The numbers and the animation: Advanced page, Impact.");
 
-        // Step 106 (Toni 2026-11-09 - OPENINGS, the offensive twin of the timed block): OpeningMath, DESIGN decision 95. Ships OFF until 106d.
+        // Step 106 (Toni 2026-11-09 - OPENINGS, the offensive twin of the timed block; revised design 106a2): OpeningMath, DESIGN decision 95. Ships OFF until 106d.
         public static readonly ParamDef OpeningsEnabled = Bool("OpeningsEnabled", PlayerImpactGroup,
             "Openings after your blocked attacks",
-            "BEING BUILT - nothing changes in battle yet (the log records what it would do). When a man blocks your attack correctly, his guard jumps to one of the other three and a red arrow shows the opening for a moment; swing into it in time and he reels like after your timed block. Every attack of yours he blocks in a row widens the window, up to the 4th; your weapon skill helps a little; shields only from the 2nd and they can break. The numbers: Advanced page, Impact.");
+            "BEING BUILT - nothing changes in battle yet (the log records what it would do). When a man blocks your attack correctly he is thrown off balance: a red arrow flashes the side to hit - start your swing on the flash and he cannot block it; your hit staggers him and the arrow shows the side for a PERFECT STRIKE. Missing the moment makes the next try easier, up to the 4th. Shields need one block more. Hits from behind always stagger. The numbers: Advanced page, Impact.");
 
         // Step 33 (Anton, 2026-10-12: "a short burst of speed, meant to feel a little like a dodge, and for the AI to make charges
         // sharper"): Core SprintMath, AI_NOTES "Step 33".
@@ -2123,34 +2123,43 @@ namespace TraxCombat.Core
             "Horseback: a mounted blocker's push-out",
             "On: a mounted blocker's shield or weapon snaps out on a timed block (his guard's own heavy parry - the game has no bash on horseback).");
 
-        // Step 106a - OPENINGS (DESIGN decision 95, AI_NOTES "Step 106"): every number of the feature; the live parts come in 106b-106d.
+        // Step 106 - OPENINGS (DESIGN decision 95, AI_NOTES "Step 106" - Toni's REVISED design, step 106a2): every number of the feature; the live
+        // parts come in 106b-106d. Step 106a's first-design keys are retired (ConfigFile.DropRetiredOpeningKeys).
         public static readonly ParamDef OpeningsShadowLog = Bool("OpeningsShadowLog", ImpactGroup,
             "Openings: the shadow log",
-            "On: every attack of yours an AI man blocks correctly is written to the log with the opening it would make (the guard forced, your next swing's start and direction, in time or not) and counted in the battle summary - even while 'Openings after your blocked attacks' is off. Nothing changes in battle.");
+            "On: every attack of yours an AI man blocks correctly, and every hit of yours that would stagger him, is written to the log with what openings would do (where his balance went, your follow-up's side and timing, the stagger, the perfect strike) and counted in the battle summary - even while 'Openings after your blocked attacks' is off. Nothing changes in battle.");
 
-        public static readonly ParamDef OpeningForceDelaySeconds = Float("OpeningForceDelaySeconds", 0, 0.5, ImpactGroup,
-            "Openings: guard switch after the block (s)",
-            "How long after his block his guard jumps to the new position and the arrow shows. A swing you start before that is too early.");
+        public static readonly ParamDef OpeningFlashDelaySeconds = Float("OpeningFlashDelaySeconds", 0, 1, ImpactGroup,
+            "Openings: the arrow flashes after (s)",
+            "How long after his block the red arrow flashes - the perfect moment to START your follow-up swing.");
 
-        public static readonly ParamDef OpeningWindowBaseSeconds = Float("OpeningWindowBaseSeconds", 0.1, 2, ImpactGroup,
-            "Openings: window to start your swing (s)",
-            "After his guard jumps, how long you have to START your swing in the arrow's direction, on the first attack of a chain.");
+        public static readonly ParamDef OpeningPerfectScalePercent = Int("OpeningPerfectScalePercent", 25, 400, ImpactGroup,
+            "Openings: perfect timing width (%)",
+            "How close to the flash your swing must start to count as perfect: this share of your timed block's perfect window at your weapon skill (0.10 s at skill 0 up to 0.25 s at 300 at the defaults).");
 
-        public static readonly ParamDef OpeningWindowPerChainSeconds = Float("OpeningWindowPerChainSeconds", 0, 1, ImpactGroup,
-            "Openings: window added per blocked attack (s)",
-            "Added to the window for every earlier attack of yours he blocked in a row (the 4th: 3 times this).");
+        public static readonly ParamDef OpeningWindowSeconds = Float("OpeningWindowSeconds", 0.2, 3, ImpactGroup,
+            "Openings: follow-up window (s)",
+            "After the flash, how long your follow-up still beats his guard at all - its timing fades from perfect to nothing here, on the first link of a chain.");
 
-        public static readonly ParamDef OpeningWindowSkillWeight = Float("OpeningWindowSkillWeight", 0, 5, ImpactGroup,
-            "Openings: weapon skill's help (x)",
-            "Your weapon skill widens the window by this times what it adds to your timed block's perfect window (skill 300: 0.15 s more there, 0.30 s more here at 2). 0 = skill does not help.");
+        public static readonly ParamDef OpeningWindowPerLinkSeconds = Float("OpeningWindowPerLinkSeconds", 0, 1, ImpactGroup,
+            "Openings: window added per link (s)",
+            "Added to the follow-up window for every earlier link of the chain (the 4th: 3 times this).");
+
+        public static readonly ParamDef OpeningUnguardedWindowPercent = Int("OpeningUnguardedWindowPercent", 100, 300, ImpactGroup,
+            "Openings: window after an unguarded hit (%)",
+            "Your hit lands in front on a man who was not guarding: he is off balance with this much of the usual window.");
+
+        public static readonly ParamDef OpeningBlockPerLinkPercent = Int("OpeningBlockPerLinkPercent", 0, 50, ImpactGroup,
+            "Openings: his block chance cut per link (%)",
+            "His chance to still block a well-timed follow-up shrinks by this share for every earlier link (20: x1 / 0.8 / 0.6 / 0.4 on links 1-4).");
 
         public static readonly ParamDef OpeningChainMax = Int("OpeningChainMax", 1, 8, ImpactGroup,
             "Openings: longest chain",
-            "How many attacks blocked in a row still widen the window - after this many it stays the same.");
+            "How many links a chain grows to - after this many it gets no easier.");
 
         public static readonly ParamDef OpeningChainResetSeconds = Float("OpeningChainResetSeconds", 0.5, 6, ImpactGroup,
-            "Openings: chain breaks after (s)",
-            "More than this between your attacks on him and the chain starts over. It also starts over when your hit lands on him, when he hits you, or when you strike someone else.");
+            "Openings: off balance lasts (s)",
+            "He stays off balance this long after the last link (your blocked attack, or your unguarded hit): any hit of yours in that time staggers him. Longer and the chain starts over; it also does when he hits you or you strike someone else.");
 
         public static readonly ParamDef OpeningMissKeepsChain = Bool("OpeningMissKeepsChain", ImpactGroup,
             "Openings: a missed swing keeps the chain",
@@ -2158,63 +2167,71 @@ namespace TraxCombat.Core
 
         public static readonly ParamDef OpeningHoldMaxSeconds = Float("OpeningHoldMaxSeconds", 0.3, 3, ImpactGroup,
             "Openings: guard held open at most (s)",
-            "Once you swing into the opening, his guard stays where it was forced until your blow lands or misses - at most this long after your swing started.");
+            "When your follow-up beats his block, his guard stays on the balance side until your blow lands or misses - at most this long after your swing started.");
 
         public static readonly ParamDef OpeningSidesCrossed = Bool("OpeningSidesCrossed", ImpactGroup,
             "Openings: side guards crossed",
             "Which side guard opens which side swing. On: his left guard (the one that takes your right swing) leaves your LEFT swing open, his right guard your right swing. Off: the other way round. The battle summary's side pairing line shows which one the game really uses.");
 
         public static readonly ParamDef OpeningReelBaseSeconds = Float("OpeningReelBaseSeconds", 0.2, 3, ImpactGroup,
-            "Openings: his reel (s)",
-            "How long he reels when your swing hits the opening, on the first attack of a chain.");
+            "Openings: his stagger (s)",
+            "How long he reels when your hit lands while he is off balance (or from behind), on the first link of a chain. The perfect-strike arrow shows all that time.");
 
         public static readonly ParamDef OpeningReelPerChainSeconds = Float("OpeningReelPerChainSeconds", 0, 1, ImpactGroup,
-            "Openings: reel added per blocked attack (s)",
-            "Added to his reel for every earlier attack of yours he blocked in a row.");
+            "Openings: stagger added per link (s)",
+            "Added to his reel for every earlier link of the chain.");
 
         public static readonly ParamDef OpeningReelMaxSeconds = Float("OpeningReelMaxSeconds", 0.2, 3, ImpactGroup,
-            "Openings: longest reel (s)",
+            "Openings: longest stagger (s)",
             "His reel from an opening never lasts longer than this.");
 
         public static readonly ParamDef OpeningShieldMinChain = Int("OpeningShieldMinChain", 1, 8, ImpactGroup,
-            "Openings: shields from the Nth blocked attack",
-            "A shield opens only from this attack of a chain on (2: the first shield block opens nothing).");
+            "Openings: a shield gives way from link",
+            "Against a shield the balance side is shown from the first block, but his shield can still block it until this link of the chain (2: the second block opens him for real).");
 
-        public static readonly ParamDef OpeningShieldWindowPercent = Int("OpeningShieldWindowPercent", 10, 100, ImpactGroup,
-            "Openings: shield window (%)",
-            "Against a shield the window to start your swing is this share of the usual one.");
+        public static readonly ParamDef OpeningBackHitStaggers = Bool("OpeningBackHitStaggers", ImpactGroup,
+            "Openings: hits from behind stagger",
+            "On: your hit landing on a man from behind always staggers him and opens the perfect strike.");
 
-        public static readonly ParamDef OpeningGuardBreakBasePercent = Int("OpeningGuardBreakBasePercent", 0, 100, ImpactGroup,
-            "Openings: GUARD BROKEN chance (%)",
-            "When your swing into the opening still meets his shield: the chance his guard breaks (he staggers), on the first link a shield opens at.");
-
-        public static readonly ParamDef OpeningGuardBreakPerChainPercent = Int("OpeningGuardBreakPerChainPercent", 0, 100, ImpactGroup,
-            "Openings: GUARD BROKEN added per link (%)",
-            "Added to the guard-break chance for every further attack he blocked in a row (35 / 50 / 65 % on the 2nd / 3rd / 4th).");
-
-        public static readonly ParamDef OpeningGuardBreakStaggerMinSeconds = Float("OpeningGuardBreakStaggerMinSeconds", 0.1, 2, ImpactGroup,
-            "Openings: broken guard's stagger, first (s)",
-            "How long a man whose guard broke staggers, on the first link a shield opens at.");
-
-        public static readonly ParamDef OpeningGuardBreakStaggerMaxSeconds = Float("OpeningGuardBreakStaggerMaxSeconds", 0.1, 3, ImpactGroup,
-            "Openings: broken guard's stagger, last (s)",
-            "... and on the chain's last link (linear between).");
-
-        public static readonly ParamDef OpeningGivesPerfectStrike = Bool("OpeningGivesPerfectStrike", ImpactGroup,
-            "Openings: also a perfect strike",
-            "On: a man reeling from an opening can also be hit for a PERFECT STRIKE (2-3x damage). Off: the reel alone (and the knockdown chance on the next hit).");
+        public static readonly ParamDef OpeningUnguardedHitOpens = Bool("OpeningUnguardedHitOpens", ImpactGroup,
+            "Openings: unguarded hits put him off balance",
+            "On: your hit landing in front on a man who was not guarding puts him off balance, with the longer window.");
 
         public static readonly ParamDef OpeningArrowShow = Bool("OpeningArrowShow", ImpactGroup,
             "Openings: the red arrow",
-            "On: a red arrow shows where the opening is while it lasts. Off: read his guard yourself.");
-
-        public static readonly ParamDef OpeningArrowAtCrosshair = Bool("OpeningArrowAtCrosshair", ImpactGroup,
-            "Openings: arrow at the crosshair",
-            "On: the arrow shows at your crosshair, where the game's own attack-direction arrow is. Off: above his head.");
+            "On: a red arrow at your crosshair flashes the side to hit, and shows the perfect-strike side while he reels. Off: read him yourself.");
 
         public static readonly ParamDef OpeningAiVsAi = Bool("OpeningAiVsAi", ImpactGroup,
             "Openings: AI against AI too",
             "On: the AI's attacks that the AI blocks make openings too. Off: only your attacks (the AI's are only counted).");
+
+        public static readonly ParamDef PerfectStrikeFourWayMin = Float("PerfectStrikeFourWayMin", 1, 5, ImpactGroup,
+            "Perfect strike: x with a 4-direction weapon, lowest",
+            "The perfect strike's damage multiplier with a weapon that attacks from all four directions (swords) at the weakest timing.");
+
+        public static readonly ParamDef PerfectStrikeFourWayMax = Float("PerfectStrikeFourWayMax", 1, 5, ImpactGroup,
+            "Perfect strike: x with a 4-direction weapon, highest",
+            "... and at perfect timing.");
+
+        public static readonly ParamDef PerfectStrikeThreeWayMin = Float("PerfectStrikeThreeWayMin", 1, 5, ImpactGroup,
+            "Perfect strike: x with a no-thrust weapon, lowest",
+            "The multiplier with a weapon that cannot thrust (axes, maces - three directions) at the weakest timing.");
+
+        public static readonly ParamDef PerfectStrikeThreeWayMax = Float("PerfectStrikeThreeWayMax", 1, 5, ImpactGroup,
+            "Perfect strike: x with a no-thrust weapon, highest",
+            "... and at perfect timing.");
+
+        public static readonly ParamDef PerfectStrikeTwoWayMin = Float("PerfectStrikeTwoWayMin", 1, 5, ImpactGroup,
+            "Perfect strike: x with a spear, lowest",
+            "The multiplier with a two-direction weapon (spears: the overhead stab and the thrust) at the weakest timing.");
+
+        public static readonly ParamDef PerfectStrikeTwoWayMax = Float("PerfectStrikeTwoWayMax", 1, 5, ImpactGroup,
+            "Perfect strike: x with a spear, highest",
+            "... and at perfect timing.");
+
+        public static readonly ParamDef PerfectStrikeWeaponFinishes = Bool("PerfectStrikeWeaponFinishes", ImpactGroup,
+            "Perfect strike: the side follows your weapon",
+            "On: when your weapon cannot make the opposite attack, any of its other attacks finishes - an axe or mace answers an overhead with its left OR right swing, a spear answers a side swing with either stab. Off: strict opposites only.");
 
         public static readonly ParamDef ImpactMismatchWeight = Float("ImpactMismatchWeight", 0, 2, ImpactGroup,
             "Mismatch weight (pressure per doubling)",
@@ -2936,10 +2953,11 @@ namespace TraxCombat.Core
             TimedRiderReelMaxSeconds, TimedRiderReelAgainstYouMaxSeconds, TimedRiderReelOnYou, TimedRiderReelAction, TimedRiderReelAnimSpeed, TimedRiderReelAnimMaxSeconds,
             TimedRiderNoGuard, TimedRiderHorseCheckPercent, TimedRiderFromFoot, TimedRiderRearMinScore, TimedRiderRearPercent, TimedRiderDismountPercent,
             TimedRiderDismountWeaponPercent, PerfectStrikeOnHorseback, PerfectStrikeHorsebackAnySide, TimedBlockPushOutMounted,
-            OpeningsShadowLog, OpeningForceDelaySeconds, OpeningWindowBaseSeconds, OpeningWindowPerChainSeconds, OpeningWindowSkillWeight, OpeningChainMax,
-            OpeningChainResetSeconds, OpeningMissKeepsChain, OpeningHoldMaxSeconds, OpeningSidesCrossed, OpeningReelBaseSeconds, OpeningReelPerChainSeconds,
-            OpeningReelMaxSeconds, OpeningShieldMinChain, OpeningShieldWindowPercent, OpeningGuardBreakBasePercent, OpeningGuardBreakPerChainPercent,
-            OpeningGuardBreakStaggerMinSeconds, OpeningGuardBreakStaggerMaxSeconds, OpeningGivesPerfectStrike, OpeningArrowShow, OpeningArrowAtCrosshair, OpeningAiVsAi,
+            OpeningsShadowLog, OpeningFlashDelaySeconds, OpeningPerfectScalePercent, OpeningWindowSeconds, OpeningWindowPerLinkSeconds, OpeningUnguardedWindowPercent,
+            OpeningBlockPerLinkPercent, OpeningChainMax, OpeningChainResetSeconds, OpeningMissKeepsChain, OpeningHoldMaxSeconds, OpeningSidesCrossed,
+            OpeningReelBaseSeconds, OpeningReelPerChainSeconds, OpeningReelMaxSeconds, OpeningShieldMinChain, OpeningBackHitStaggers, OpeningUnguardedHitOpens,
+            OpeningArrowShow, OpeningAiVsAi, PerfectStrikeFourWayMin, PerfectStrikeFourWayMax, PerfectStrikeThreeWayMin, PerfectStrikeThreeWayMax,
+            PerfectStrikeTwoWayMin, PerfectStrikeTwoWayMax, PerfectStrikeWeaponFinishes,
             ImpactMismatchWeight, ImpactEvenBandDoublings, ImpactBodyExponent, ImpactBodyFloorPoints, ImpactStaggeredBonus, ImpactDamageWeight,
             ImpactRefWeightKg, ImpactWeightExponent, ImpactRefSwingSpeed, ImpactSpeedExponent, ImpactBluntFactor, ImpactCutFactor, ImpactPierceFactor,
             ImpactKickFactor, ImpactBashFactor, ImpactSkillMinFactor, ImpactSkillMaxFactor,
