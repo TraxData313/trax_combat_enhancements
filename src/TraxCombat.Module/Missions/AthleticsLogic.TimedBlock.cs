@@ -118,26 +118,26 @@ namespace TraxCombat.Missions
 
         /// <summary>THE SEAM: one decided correct block (after <see cref="ImpactMath.Decide"/>) - counted, your lines; 100c / 100d / 100e hook
         /// here. <paramref name="live"/> = the riposte really applies (not shadow).</summary>
-        private void TimedBlockDecided(TrackedAgent a, TrackedAgent v, in ImpactDecision d, bool live)
+        private void TimedBlockDecided(TrackedAgent a, TrackedAgent v, in ImpactDecision d, bool live, bool riderReel = false)
         {
             if (!ImpactMath.CanRiposte(d.Event)) return;
             var t = new TimedBlockResult(in d);
             LastTimedBlock = t;
             _timed.Note(in t, in d);
-            YourBlockHeldMessage(a, v, in t, live); // step 100f: your block's timing on screen, even when he holds
+            if (!riderReel) YourBlockHeldMessage(a, v, in t, live); // step 100f: your block's timing on screen, even when he holds (step 104b: a reel in the saddle speaks from the tick)
             if (!t.Timed || !(t.BlockerIsPlayer || t.AttackerIsPlayer)) return;
             var c = CultureInfo.InvariantCulture;
             string words = TimedBlockMath.TimingWords(in t);
             string s;
             if (t.BlockerIsPlayer)
                 s = "your timed " + ImpactMath.EventName(d.Event) + " (" + words + ") of " + Name(a) + ": "
-                    + (t.RiposteHappens ? "he reels " + t.Seconds.ToString("0.00", c) + " s (untimed " + F2(t.Seconds56) + " s)" : "he holds")
+                    + (t.RiposteHappens ? "he reels " + t.Seconds.ToString("0.00", c) + " s (untimed " + F2(t.Seconds56) + " s)" : riderReel ? "he reels in the saddle (step 104b - the rider shadow line has its length)" : "he holds")
                     + " - the riposte " + PctOrDash(t.Chance) + " (untimed " + PctOrDash(t.Chance56) + ")";
             else
                 s = Name(v) + " timed his " + ImpactMath.EventName(d.Event) + " on you (" + words + "): "
-                    + (t.RiposteHappens ? "you reel " + t.Seconds.ToString("0.00", c) + " s" + (t.CappedForYou ? " (held at the you-cap)" : string.Empty) : "you hold")
+                    + (t.RiposteHappens ? "you reel " + t.Seconds.ToString("0.00", c) + " s" + (t.CappedForYou ? " (held at the you-cap)" : string.Empty) : riderReel ? "you reel in the saddle (step 104b)" : "you hold")
                     + " - the riposte " + PctOrDash(t.Chance) + " (untimed " + PctOrDash(t.Chance56) + ")";
-            if (!live) s += " (shadow - nothing applied)";
+            if (!live && !riderReel) s += " (shadow - nothing applied)";
             _timedYouLines++;
             TraxLog.Info("impact", "YOU: " + s);
         }

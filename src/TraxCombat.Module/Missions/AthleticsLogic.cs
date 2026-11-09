@@ -272,6 +272,7 @@ namespace TraxCombat.Missions
         public override void OnEndMissionInternal()
         {
             GiveBackSlowMo("the mission end"); // step 100e: before the summary, which checks nothing of ours is left (its own try)
+            CloseRiderReels("the mission end"); // step 104b: every reel's locks given back before the summary (its own try)
             CloseAiGuardClock(); // step 102: the input hook's notes stop
             try
             {
@@ -288,6 +289,7 @@ namespace TraxCombat.Missions
         public override void OnRemoveBehavior()
         {
             GiveBackSlowMo("the behaviour's removal"); // step 100e (its own try)
+            CloseRiderReels("the behaviour's removal"); // step 104b (its own try)
             try
             {
                 WriteSummary("behaviour removed");

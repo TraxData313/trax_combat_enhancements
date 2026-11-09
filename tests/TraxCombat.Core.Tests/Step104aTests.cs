@@ -230,10 +230,13 @@ public class Step104aTests
         Assert.Equal(TimedRiderRefusal.NoRow, Why(f));
         Assert.Equal(TimedRiderRefusal.Off, Why(Facts(1), Rules(s => s.Set(SettingsSchema.ModEnabled, false, "test"))));
         Assert.Equal(TimedRiderRefusal.Off, Why(Facts(1), Rules(s => s.Set(SettingsSchema.TimedBlocksEnabled, false, "test"))));
-        // the switch OFF (as shipped in 104a) does not stop the shadow
+        // the switch OFF (DESIGN's initial value - the tests' default; shipped ON since step 104b) does not stop the shadow; ON = live
         Assert.False(r.Switch);
         Assert.False(r.Live);
         Assert.True(r.ShadowOn);
+        var on = Rules(s => s.Set(SettingsSchema.TimedBlocksOnHorseback, true, "test"));
+        Assert.Equal(TimedRiderRefusal.None, Why(Facts(1), on));
+        Assert.True(on.Switch && on.Live && on.ShadowOn);
     }
 
     [Fact]
@@ -317,13 +320,13 @@ public class Step104aTests
     // ------------------------------------------------------------------ D. the settings, the summary, the J tool's candidates
 
     [Fact]
-    public void The_settings_are_where_the_design_says_and_the_live_switch_ships_off()
+    public void The_settings_are_where_the_design_says_and_the_live_switch_starts_off_in_design()
     {
         var all = SettingsSchema.All.ToList();
         Assert.Equal(all.IndexOf(SettingsSchema.ReelingHitKnockdownEnabled) + 1, all.IndexOf(SettingsSchema.TimedBlocksOnHorseback));
         Assert.Contains(SettingsSchema.TimedBlocksOnHorseback, SettingsSchema.PlayerPage);
         Assert.DoesNotMatch(@"[Ss]tep \d", SettingsSchema.TimedBlocksOnHorseback.Description);
-        Assert.Equal(0, SettingsSchema.TimedBlocksOnHorseback.Default, 5); // OFF until step 104b
+        Assert.Equal(0, SettingsSchema.TimedBlocksOnHorseback.Default, 5); // DESIGN's INITIAL value (104a: off) - shipped ON since 104b in defaults.json (Step104bTests)
         var adv = new[]
         {
             SettingsSchema.TimedRiderReelMaxSeconds, SettingsSchema.TimedRiderReelAgainstYouMaxSeconds, SettingsSchema.TimedRiderReelOnYou, SettingsSchema.TimedRiderReelAction,
@@ -350,12 +353,13 @@ public class Step104aTests
         Assert.Equal(0.5, r.DismountWeaponShare, 9);
         Assert.True(r.ReelOnYou && r.NoGuard && r.FromFoot && r.StrikeOnHorseback && r.StrikeAnySide && r.PushOutMounted);
         Assert.Contains("SHADOW only", r.Describe());
+        Assert.Contains("the reel in the saddle LIVE", Rules(s => s.Set(SettingsSchema.TimedBlocksOnHorseback, true, "test")).Describe());
     }
 
     [Fact]
     public void The_summary_line()
     {
-        var r = Rules();
+        var r = Rules(s => s.Set(SettingsSchema.TimedBlocksOnHorseback, false, "test")); // the shadow's own words with the switch off (as in 104a)
         var st = new TimedRiderStats();
         st.Note(TimedRiderMath.Decide(in r, Facts(1), double.NaN, new Script(0.5, 0.5, 0.2)), true, false);
         st.Note(TimedRiderMath.Decide(in r, Facts(0), double.NaN, new Script()), true, false);

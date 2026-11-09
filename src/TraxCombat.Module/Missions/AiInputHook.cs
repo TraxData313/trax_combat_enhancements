@@ -136,8 +136,15 @@ namespace TraxCombat.Missions
         /// callback on (<see cref="AiInputHook.UnhookIfIdle"/>).</summary>
         public bool GuardWatch;
 
+        /// <summary>Step 104b: THE REEL'S LOCK - a rider reeling in the saddle after a timed block: his attack bits (and with
+        /// <see cref="ReelNoGuard"/> his guard bits) out of every frame, written LAST (over every other wish); his steering never touched
+        /// (Core <see cref="AiInputMath.ReelLock"/>). The frames and what they took out, summed by the logic at the reel's end.</summary>
+        public bool Reel;
+        public bool ReelNoGuard;
+        public long ReelFrames, ReelAttacksOut, ReelGuardsOut, ReelReadiesCancelled;
+
         /// <summary>Any wish at all - a man is held while ANY of them wants him held (one ending never lifts another).</summary>
-        public bool Active => HoldAttacks || StepHoldAttacks || Backpedal || BraceHoldAttacks || Regroup || WallPull || Flock || Block || SpearWield || Press || Rhythm || KickPhase != AiKickPhase.None || MeetGuard;
+        public bool Active => HoldAttacks || StepHoldAttacks || Backpedal || BraceHoldAttacks || Regroup || WallPull || Flock || Block || SpearWield || Press || Rhythm || KickPhase != AiKickPhase.None || MeetGuard || Reel;
 
         /// <summary>Since when the state has been active (mission time), for the calls-per-second figure.</summary>
         public double ActiveSince = -1;
@@ -282,6 +289,7 @@ namespace TraxCombat.Missions
                     if (AiInputHook.ApplyKick(s, ref ev, ref flags, ref vx, ref vy)) moved = true;
                     eventFlag = (Agent.EventControlFlag)ev;
                 }
+                if (s.Reel) flags = AiInputHook.ApplyReel(_st, s, flags); // step 104b: the reel's lock LAST - no attack, no guard; steering his
                 movementFlag = (Agent.MovementControlFlag)flags;
                 if (moved) inputVector = new Vec2(vx, vy);
             }
@@ -701,6 +709,30 @@ namespace TraxCombat.Missions
             Account(s, was, now);
         }
 
+        /// <summary>Step 104b: the reel's lock on or off (the other wishes are left as they are).</summary>
+        internal static void SetReel(TrackedAgent st, bool on, bool noGuard, double now)
+        {
+            var s = st.Input ??= new AiInputState();
+            bool was = s.Active;
+            s.Reel = on;
+            s.ReelNoGuard = on && noGuard;
+            Account(s, was, now);
+        }
+
+        /// <summary>Step 104b: one frame of a reeling rider's lock (managed - the smoke drives it): Core <see cref="AiInputMath.ReelLock"/> - his
+        /// attack bits out, his guard bits out with <see cref="AiInputState.ReelNoGuard"/>, a ready cancelled (never released); the move bits and
+        /// the vector are not even passed in. Counted.</summary>
+        internal static uint ApplyReel(TrackedAgent st, AiInputState s, uint flags)
+        {
+            int action = st.PrevAction;
+            uint f = AiInputMath.ReelLock(flags, s.ReelNoGuard, action == ActReadyMelee || action == ActReadyRanged, out var edit);
+            s.ReelFrames++;
+            if ((edit & InputEdit.AttackCleared) != 0) s.ReelAttacksOut++;
+            if ((edit & InputEdit.GuardCleared) != 0) s.ReelGuardsOut++;
+            if ((edit & InputEdit.ReadyCancelled) != 0) s.ReelReadiesCancelled++;
+            return f;
+        }
+
         internal static void SetKick(TrackedAgent st, AiKickPhase phase, AiKickKind kind, double now)
         {
             var s = st.Input ??= new AiInputState();
@@ -819,6 +851,7 @@ namespace TraxCombat.Missions
             s.KickPhase = AiKickPhase.None; // step 65
             s.KickKind = AiKickKind.None;
             s.StepIn = false; // step 95
+            s.Reel = s.ReelNoGuard = false; // step 104b (the logic's reel record is released by its own paths too)
             s.PressFrontDistance = float.NaN; // step 97
             if (s.StepRec != null) s.StepRec.EnemyDistance = s.StepRec.Stop = float.NaN;
             Account(s, was, now);

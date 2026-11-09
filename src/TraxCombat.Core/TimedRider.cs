@@ -8,8 +8,8 @@ namespace TraxCombat.Core
     /// Step 104 (Toni 2026-11-09: "can you add the reel vs mounted troops as well somehow, like that 3rd round, we were on horsebacks fighting, I
     /// blocked, can you implement a similar system there?"; DESIGN decision 93, AI_NOTES "Step 104"): TIMED BLOCKS ON HORSEBACK, read live.
     /// <see cref="ShadowOn"/> = the master switch FIRST, then Athletics and the impact system, then <c>TimedBlocksEnabled</c> - the step-104a
-    /// shadow decides on every correct block of a rider's blow whatever <c>TimedBlocksOnHorseback</c> says; <see cref="Live"/> adds that switch
-    /// (step 104b - nothing reads it yet).
+    /// shadow decides on every correct block of a rider's blow whatever <c>TimedBlocksOnHorseback</c> says; <see cref="Live"/> adds that switch:
+    /// step 104b's reel in the saddle is APPLIED (the rear and the knock-off stay shadow until 104c, the strike / push-out until 104d).
     /// </summary>
     public readonly struct TimedRiderRules
     {
@@ -50,18 +50,23 @@ namespace TraxCombat.Core
         public bool ImpactOn { get; }
         public bool TimedOn { get; }
 
-        /// <summary><c>TimedBlocksOnHorseback</c> (the player page) - OFF until step 104b builds the reel.</summary>
+        /// <summary><c>TimedBlocksOnHorseback</c> (the player page) - ON by default since step 104b (config format 29 moved 104a's OFF).</summary>
         public bool Switch { get; }
 
         /// <summary>The step-104a shadow decides (and logs) - the switch not needed: it says what the switch WOULD do.</summary>
         public bool ShadowOn => ModEnabled && ImpactOn && TimedOn;
 
-        /// <summary>Step 104b's gate (nothing applies it in 104a).</summary>
+        /// <summary>Step 104b: the reel in the saddle is APPLIED (the module also asks the impact system's riposte family to be live - not
+        /// shadow mode).</summary>
         public bool Live => ShadowOn && Switch;
 
         public double ReelMax { get; }
         public double ReelYouMax { get; }
         public bool ReelOnYou { get; }
+
+        /// <summary><c>TimedRiderReelAction</c> - THE REEL'S ANIMATION, played on the rider's channel 1 (upper body) only. Default
+        /// <c>act_stagger_backward</c> (at <see cref="AnimSpeed"/> 1.0 - RBM's mounted stagger); Toni picks another by eye with the J test tool
+        /// (its first rider candidate plays exactly this setting) and writes its name here - a setting change, no code; "none" = the lock only.</summary>
         public string ReelAction { get; }
         public double AnimSpeed { get; }
         public double AnimMax { get; }
@@ -96,7 +101,7 @@ namespace TraxCombat.Core
         {
             var c = CultureInfo.InvariantCulture;
             if (!ShadowOn) return "timed blocks on horseback: shadow OFF (" + OffBecause + ")";
-            return "timed blocks on horseback: " + (Switch ? "the switch ON (step 104b not built - shadow only)" : "the switch OFF - SHADOW only, nothing applied")
+            return "timed blocks on horseback: " + (Switch ? "the switch ON - the reel in the saddle LIVE (step 104b; the rear / knock-off / strike / push-out still shadow)" : "the switch OFF - SHADOW only, nothing applied")
                    + "; the reel up to " + ReelMax.ToString("0.00", c) + " s (on you " + ReelYouMax.ToString("0.00", c) + (ReelOnYou ? "" : ", off") + "), "
                    + (string.IsNullOrEmpty(ReelAction) ? "none" : ReelAction) + " x" + AnimSpeed.ToString("0.00", c) + " for at most " + AnimMax.ToString("0.00", c)
                    + " s then the lock" + (NoGuard ? " (no attack, no guard)" : " (no attack)") + ", his horse at " + (100 * HorseCheck).ToString("0", c) + "%; "
@@ -419,7 +424,18 @@ namespace TraxCombat.Core
         };
 
         /// <summary>The [impact] "rider shadow" line's body (after "rider shadow: ").</summary>
-        public static string Describe(in TimedRiderShadow o, string attacker, string blocker)
+        public static string Describe(in TimedRiderShadow o, string attacker, string blocker) => Describe(in o, attacker, blocker, false);
+
+        /// <summary>Step 104b: the same line; <paramref name="reelLive"/> = the reel it rolled is APPLIED ("REELS" - the rear / knock-off after it
+        /// still shadow).</summary>
+        public static string Describe(in TimedRiderShadow o, string attacker, string blocker, bool reelLive)
+        {
+            if (reelLive && o.Reel && o.Combo != TimedRiderCombo.RiderVsFoot)
+                return DescribeShadow(in o, attacker, blocker).Replace("WOULD reel ", "REELS (live) ").Replace(" - nothing applied", " - the reel LIVE; the rear / knock-off shadow only (step 104c)");
+            return DescribeShadow(in o, attacker, blocker);
+        }
+
+        private static string DescribeShadow(in TimedRiderShadow o, string attacker, string blocker)
         {
             var c = CultureInfo.InvariantCulture;
             var sb = new StringBuilder(160);
@@ -521,7 +537,7 @@ namespace TraxCombat.Core
             var sb = new StringBuilder(400);
             sb.Append("timed blocks on horseback (shadow, step 104a): ");
             if (!r.ShadowOn) sb.Append("shadow OFF (").Append(r.OffBecause).Append(") - ");
-            else sb.Append(r.Switch ? "the switch ON but nothing built yet" : "the switch OFF").Append(" - NOTHING APPLIED; ");
+            else sb.Append(r.Switch ? "the switch ON - the reel LIVE (its own line, step 104b), the rest below NOT APPLIED; " : "the switch OFF - NOTHING APPLIED; ");
             int riders = ByCombo[(int)TimedRiderCombo.RiderVsRider] + ByCombo[(int)TimedRiderCombo.FootVsRider];
             sb.Append("correct blocks of a rider's blow ").Append(riders.ToString(c)).Append(" (rider vs rider ").Append(ByCombo[(int)TimedRiderCombo.RiderVsRider].ToString(c))
               .Append(" / foot vs rider ").Append(ByCombo[(int)TimedRiderCombo.FootVsRider].ToString(c)).Append("; yours ").Append(Yours.ToString(c))
@@ -562,6 +578,194 @@ namespace TraxCombat.Core
                 sb.Append(bands[i].ToString(c));
             }
             sb.Append(']');
+        }
+    }
+
+    /// <summary>Step 104b: why a live reel in the saddle ended - every lock it set (his input, your gate, his horse) given back.</summary>
+    public enum RiderReelEnd : byte
+    {
+        /// <summary>Its length ran out (the normal end).</summary>
+        Ended,
+
+        /// <summary>He died or left the field (no engine call on him).</summary>
+        Removed,
+
+        /// <summary>He is no longer on a horse (knocked off, his horse killed).</summary>
+        Dismounted,
+
+        /// <summary>A switch went off mid-reel (the master switch first, the impact system, timed blocks, <c>TimedBlocksOnHorseback</c>,
+        /// the riposte family not live).</summary>
+        SwitchedOff,
+
+        /// <summary>The mission ended (before the summary) or the behaviour was removed.</summary>
+        MissionEnd,
+
+        /// <summary>An error - every reel let go at once, the reel off for the battle.</summary>
+        Error,
+    }
+
+    /// <summary>
+    /// Step 104b - THE REEL IN THE SADDLE, LIVE (DESIGN decision 93, AI_NOTES "104b - built"): the [summary] "timed blocks on horseback (step
+    /// 104b)" line - reels decided by score band, taken / not started, the animation, the lock (the AI's frames edited, your presses
+    /// swallowed), lengths asked → measured, every lock released by reason (LEFT OVER AT THE MISSION END must read 0), the horse checked and
+    /// its speed (at the reel's start → 0.5 s later → its end - the engine's answer to the MountSpeed lever). Main thread.
+    /// </summary>
+    public sealed class TimedRiderReelStats
+    {
+        public const int EndCount = 6;
+
+        public readonly int[] DecidedByBand = new int[TimedBlockMath.Bands];
+        public readonly int[] EndedBy = new int[EndCount];
+        public int Decided, Yours, OnYou, PoolFull, Started, NotStarted;
+        public int AnimTaken, AnimRefused, AnimMissing, AnimNone, AnimCleared;
+        public int LockAi, LockYou, LockNone;
+        public long AiFrames, AiAttacksOut, AiGuardsOut, AiReadiesCancelled;
+        public long YourFrames, YourAttacksSwallowed, YourGuardsSwallowed, YourReadiesCancelled;
+        public int Measured;
+        public double AskedSum, MeasuredSum;
+        public int HorsesChecked;
+        public double HorseCheckSum;
+        public int SpeedStartN, SpeedHalfN, SpeedEndN;
+        public double SpeedStartSum, SpeedHalfSum, SpeedEndSum;
+        public int SlowMoAsked;
+
+        /// <summary>Reels still holding a lock when the summary is written (the mission end released them first - must be 0).</summary>
+        public int LeftOver;
+
+        public void NoteDecided(double score, bool blockerIsPlayer, bool attackerIsPlayer)
+        {
+            Decided++;
+            int b = TimedBlockMath.Band(score);
+            if (b >= 0 && b < DecidedByBand.Length) DecidedByBand[b]++;
+            if (blockerIsPlayer) Yours++;
+            if (attackerIsPlayer) OnYou++;
+        }
+
+        public void NoteEnded(RiderReelEnd why, bool started, double asked, double measured)
+        {
+            int i = (int)why;
+            if (i >= 0 && i < EndedBy.Length) EndedBy[i]++;
+            if (!started)
+            {
+                NotStarted++;
+                return;
+            }
+            // asked → measured: the reels that ran their whole length (an early end is counted by its reason only)
+            if (why != RiderReelEnd.Ended || double.IsNaN(measured) || double.IsNaN(asked) || measured < 0) return;
+            Measured++;
+            AskedSum += asked;
+            MeasuredSum += measured;
+        }
+
+        public void NoteSpeed(int when, double speed)
+        {
+            if (double.IsNaN(speed) || double.IsInfinity(speed)) return;
+            if (when == 0)
+            {
+                SpeedStartN++;
+                SpeedStartSum += speed;
+            }
+            else if (when == 1)
+            {
+                SpeedHalfN++;
+                SpeedHalfSum += speed;
+            }
+            else
+            {
+                SpeedEndN++;
+                SpeedEndSum += speed;
+            }
+        }
+
+        /// <summary>One frame of the lock: the AI's (<paramref name="you"/> false) or yours - counted by what it took out.</summary>
+        public void NoteFrame(bool you, InputEdit edit)
+        {
+            if (you) YourFrames++;
+            else AiFrames++;
+            if ((edit & InputEdit.AttackCleared) != 0)
+            {
+                if (you) YourAttacksSwallowed++;
+                else AiAttacksOut++;
+            }
+            if ((edit & InputEdit.GuardCleared) != 0)
+            {
+                if (you) YourGuardsSwallowed++;
+                else AiGuardsOut++;
+            }
+            if ((edit & InputEdit.ReadyCancelled) != 0)
+            {
+                if (you) YourReadiesCancelled++;
+                else AiReadiesCancelled++;
+            }
+        }
+
+        public static string EndName(RiderReelEnd e) => e switch
+        {
+            RiderReelEnd.Ended => "at its end",
+            RiderReelEnd.Removed => "death / removal",
+            RiderReelEnd.Dismounted => "dismounted",
+            RiderReelEnd.SwitchedOff => "a switch off",
+            RiderReelEnd.MissionEnd => "the mission end",
+            RiderReelEnd.Error => "an error",
+            _ => "?",
+        };
+
+        public string SummaryLine(in TimedRiderRules r, bool riposteLive)
+        {
+            var c = CultureInfo.InvariantCulture;
+            var sb = new StringBuilder(500);
+            sb.Append("timed blocks on horseback (step 104b): ");
+            if (!r.ShadowOn) sb.Append("OFF (").Append(r.OffBecause).Append(") - ");
+            else if (!r.Switch) sb.Append("OFF (TimedBlocksOnHorseback) - ");
+            else if (!riposteLive) sb.Append("OFF (the riposte not live - shadow mode / the family off) - ");
+            else sb.Append("the reel LIVE - ");
+            sb.Append("reels decided ").Append(Decided.ToString(c)).Append(" by timing band [none / <0.25 / <0.5 / <0.8 / 0.8+] [");
+            for (int i = 0; i < DecidedByBand.Length; i++)
+            {
+                if (i > 0) sb.Append(" / ");
+                sb.Append(DecidedByBand[i].ToString(c));
+            }
+            sb.Append("] (your blocks ").Append(Yours.ToString(c)).Append(", on you ").Append(OnYou.ToString(c)).Append(", pool full ").Append(PoolFull.ToString(c))
+              .Append("); started ").Append(Started.ToString(c)).Append(", gone before the tick ").Append(NotStarted.ToString(c))
+              .Append("; in the saddle (whole reels) asked mean ").Append(Measured > 0 ? (AskedSum / Measured).ToString("0.00", c) : "-").Append(" s → measured mean ")
+              .Append(Measured > 0 ? (MeasuredSum / Measured).ToString("0.00", c) : "-").Append(" s (").Append(Measured.ToString(c)).Append(")")
+              .Append("; the animation ").Append(TimedRiderMath.IsNone(r.ReelAction) ? "none" : r.ReelAction).Append(" x").Append(r.AnimSpeed.ToString("0.00", c))
+              .Append(" on channel 1: taken ").Append(AnimTaken.ToString(c)).Append(", refused ").Append(AnimRefused.ToString(c)).Append(", not in his set ")
+              .Append(AnimMissing.ToString(c)).Append(", none ").Append(AnimNone.ToString(c)).Append(", cut at its part ").Append(AnimCleared.ToString(c))
+              .Append("; the lock (no attack").Append(r.NoGuard ? ", no guard" : string.Empty).Append(", steering free): the AI ").Append(LockAi.ToString(c))
+              .Append(" (frames ").Append(AiFrames.ToString(c)).Append(" - attacks out ").Append(AiAttacksOut.ToString(c)).Append(", guards out ").Append(AiGuardsOut.ToString(c))
+              .Append(", readies cancelled ").Append(AiReadiesCancelled.ToString(c)).Append("), you ").Append(LockYou.ToString(c)).Append(" (presses swallowed - attacks ")
+              .Append(YourAttacksSwallowed.ToString(c)).Append(", guards ").Append(YourGuardsSwallowed.ToString(c)).Append("), not locked ").Append(LockNone.ToString(c))
+              .Append("; locks released: ");
+            for (int i = 0; i < EndedBy.Length; i++)
+            {
+                if (i > 0) sb.Append(", ");
+                sb.Append(EndName((RiderReelEnd)i)).Append(' ').Append(EndedBy[i].ToString(c));
+            }
+            sb.Append(" - left over at the mission end ").Append(LeftOver.ToString(c))
+              .Append("; horses checked ").Append(HorsesChecked.ToString(c)).Append(" (mean x").Append(HorsesChecked > 0 ? (HorseCheckSum / HorsesChecked).ToString("0.00", c) : "-")
+              .Append("; his speed at the start ").Append(Mean(SpeedStartSum, SpeedStartN, c)).Append(" → 0.5 s ").Append(Mean(SpeedHalfSum, SpeedHalfN, c))
+              .Append(" → the end ").Append(Mean(SpeedEndSum, SpeedEndN, c)).Append(" m/s)")
+              .Append("; slow motions asked ").Append(SlowMoAsked.ToString(c));
+            return sb.ToString();
+        }
+
+        private static string Mean(double sum, int n, CultureInfo c) => n > 0 ? (sum / n).ToString("0.0", c) : "-";
+    }
+
+    /// <summary>Step 104b: the on-screen words of a reel in the saddle.</summary>
+    public static class TimedRiderLines
+    {
+        /// <summary>YOUR timed block reeled a rider: "Your block - X reels in the saddle 1.45 s / 1.50 (guard 0.20 s / 0.15)"; null with no
+        /// timing read (the plain line then).</summary>
+        public static string? YourReel(string? victim, ImpactEvent ev, double seconds, double maxSeconds, TimingSource source, double age, double perfect)
+        {
+            string? guard = TimedBlockMath.GuardText(source, age, perfect);
+            if (guard == null) return null;
+            var c = CultureInfo.InvariantCulture;
+            string v = string.IsNullOrEmpty(victim) ? "someone" : victim!;
+            return "Your " + (ev == ImpactEvent.Parry ? "parry" : "block") + " - " + v + " reels in the saddle " + (double.IsNaN(seconds) ? "-" : seconds.ToString("0.00", c))
+                   + " s / " + Math.Max(0, maxSeconds).ToString("0.00", c) + " (" + guard + ")";
         }
     }
 

@@ -1278,7 +1278,10 @@ namespace TraxCombat.Core
                 d.Meet = f.Meet; // step 82: recorded for every judged meet; its own rows unless "a kick met any other way" (as before)
                 if (ImpactMeetMath.HasRow(f.Meet)) return DecideMeet(in r, in f, ref defender, ref attacker, now, dice, d);
             }
-            bool reeling = defender.Reeling(now);
+            // step 104b: a RIDER can reel now (his reel in the saddle) - step 105 sees it (and refuses him "a rider"), but the usual model's
+            // reeling bonus never reaches a rider's knock-off roll (the knock-off of a reeling rider is step 104c's): riders decide as before
+            bool reelingNow = defender.Reeling(now);
+            bool reeling = reelingNow && !f.DefenderMounted;
             double x = Pressure(in r, in f, reeling, ref d);
             Ceilings(in r, f.Event, out double kdCeil, out double sdCeil, out double stCeil);
             bool braced = BraceRoll(in r, in f, ref d, defender.Down(now), dice); // step 65: before the knockdown / drop rolls
@@ -1299,7 +1302,7 @@ namespace TraxCombat.Core
             }
             // step 105: a LANDED hit on a man who reels - knocked down at ReelingHitKnockdownPercent whatever his tiredness, the brace, the
             // immunity or the halving (the usual roll stands only when it came up / was higher); never a rider (step 104's seam), never down
-            d.ReelingHit = ReelingHitMath.Decide(r.ReelingHit, f.Event, f.Thrust, IsLanded(f.Event), false, reeling, defender.ReelCause, f.DefenderMounted, down,
+            d.ReelingHit = ReelingHitMath.Decide(r.ReelingHit, f.Event, f.Thrust, IsLanded(f.Event), false, reelingNow, defender.ReelCause, f.DefenderMounted, down,
                 f.DefenderIsPlayer, r.OnPlayer, ref d.Knockdown, dice);
             if (d.ReelingHit.Happens && !d.ReelingHit.UsualStood) braced = false; // he fell: no brace (the knock-back not refused, no braced reel)
             // shield dropped (needs a shield in his hand; step 65: never a braced man)

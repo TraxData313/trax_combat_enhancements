@@ -275,6 +275,14 @@ namespace TraxCombat.Missions
             }
             try
             {
+                TickRiderReels(now); // step 104b: the reels in the saddle started, followed, ended (every lock given back)
+            }
+            catch (Exception e)
+            {
+                RiderReelFailed(e, now);
+            }
+            try
+            {
                 TickTimedAnims(now); // step 100d: the recoils' backward staggers, the push-outs' ends, the test tool
             }
             catch (Exception e)

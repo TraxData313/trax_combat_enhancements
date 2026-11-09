@@ -397,6 +397,7 @@ namespace TraxCombat.Missions
             FlockLeftField(st); // step 55
             AiKickLeftField(st); // step 65
             MeetLeftField(st); // step 82
+            RiderReelLeftField(st); // step 104b: his reel's locks given back (no engine call)
             SpearLeftField(st); // step 76
             ImpactLeftField(st); // step 47
             AiGuardLeftField(st); // step 102
@@ -957,6 +958,7 @@ namespace TraxCombat.Missions
                 human = true;
             }
             float mount = AthleticsMath.MountSpeedMultiplier(in r, st);
+            if (st.ReelHorseCheck < 1f) mount = Math.Min(mount, st.ReelHorseCheck); // step 104b: his horse checked while he reels in the saddle
             if (exact ? mount != st.MountSpeedMultiplier : AthleticsMath.SpeedUpdateNeeded(st.MountSpeedMultiplier, mount, r.MountSpeedFloor))
             {
                 st.MountSpeedMultiplier = mount;

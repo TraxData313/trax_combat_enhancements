@@ -34,6 +34,10 @@ namespace TraxCombat.Core
 
         /// <summary>His kick / bash MET correctly (step 82 - the guard right / down / up): the kicker staggers.</summary>
         MeetRiposte,
+
+        /// <summary>Step 104b: a RIDER reels in the saddle after a timed block of his blow (DESIGN decision 93). Step 105's knockdown never
+        /// applies to him - refused "a rider" (the knock-off of a rider is step 104c's).</summary>
+        RiderReel,
     }
 
     /// <summary>Step 105: what LANDED on the reeling man.</summary>
@@ -138,7 +142,7 @@ namespace TraxCombat.Core
     public static class ReelingHitMath
     {
         public const int KindCount = 4;
-        public const int CauseCount = 8;
+        public const int CauseCount = 9;
         public const int RefusalCount = 8;
 
         public static double ClampChance(double p) => double.IsNaN(p) ? 0 : Math.Max(0, Math.Min(1, p));
@@ -227,6 +231,7 @@ namespace TraxCombat.Core
             ReelCause.Riposte => "a riposte",
             ReelCause.TimedRiposte => "a timed riposte",
             ReelCause.MeetRiposte => "a met kick / bash",
+            ReelCause.RiderReel => "a reel in the saddle",
             _ => "unknown",
         };
 

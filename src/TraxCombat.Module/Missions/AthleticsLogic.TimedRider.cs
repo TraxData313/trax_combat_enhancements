@@ -35,14 +35,17 @@ namespace TraxCombat.Missions
         }
 
         /// <summary>From ImpactDecide, after the decision, for a correct block with a rider on either end. <paramref name="attacker"/> = his
-        /// impact state as the decision left it (a rider's riposte is refused, so it is the state before).</summary>
-        private void RiderShadow(TrackedAgent a, TrackedAgent v, in ImpactFacts f, in ImpactDecision d, in ImpactRules r, ImpactState attacker, double now)
+        /// impact state as the decision left it (a rider's riposte is refused, so it is the state before). Step 104b: returns true when the
+        /// reel it rolled is APPLIED (<see cref="QueueRiderReel"/> - <c>TimedBlocksOnHorseback</c> on, the riposte live); the rear / knock-off
+        /// it rolls after the reel stay shadow (104c).</summary>
+        private bool RiderShadow(TrackedAgent a, TrackedAgent v, in ImpactFacts f, in ImpactDecision d, in ImpactRules r, ImpactState attacker, double now)
         {
-            if (_riderShadowDisabled) return;
+            if (_riderShadowDisabled) return false;
+            bool live = false;
             try
             {
                 var rr = TimedRiderRules.From(TraxSettings.Shared);
-                if (!rr.ShadowOn) return;
+                if (!rr.ShadowOn) return false;
                 var dice = RiderShadowDice;
                 var tf = new TimedRiderFacts
                 {
@@ -74,22 +77,24 @@ namespace TraxCombat.Missions
                 var o = TimedRiderMath.Decide(in rr, in tf, natural, dice);
                 LastRiderShadow = o;
                 _riderShadow.Note(in o, f.DefenderIsPlayer, f.AttackerIsPlayer);
-                if (!o.Asked) return;
+                if (!o.Asked) return false;
+                live = QueueRiderReel(a, v, in o, in rr, in r, in d, now); // step 104b: the reel APPLIED (the tick starts it)
                 bool yours = f.DefenderIsPlayer || f.AttackerIsPlayer;
                 if (!_riderShadowFirstLine)
                 {
                     _riderShadowFirstLine = true;
-                    TraxLog.Info("impact", "first rider shadow at " + Sec(now) + " s (step 104a): " + TimedRiderMath.Describe(in o, Name(a), Name(v)) + "; " + rr.Describe());
+                    TraxLog.Info("impact", "first rider shadow at " + Sec(now) + " s (step 104a): " + TimedRiderMath.Describe(in o, Name(a), Name(v), live) + "; " + rr.Describe());
                 }
-                else if (yours) TraxLog.Info("impact", "rider shadow: " + TimedRiderMath.Describe(in o, Name(a), Name(v)));
-                else if (TraxLog.VerboseWants("rider-shadow")) TraxLog.Verbose("impact", "rider shadow: " + TimedRiderMath.Describe(in o, Name(a), Name(v)), "rider-shadow");
+                else if (yours) TraxLog.Info("impact", "rider shadow: " + TimedRiderMath.Describe(in o, Name(a), Name(v), live));
+                else if (TraxLog.VerboseWants("rider-shadow")) TraxLog.Verbose("impact", "rider shadow: " + TimedRiderMath.Describe(in o, Name(a), Name(v), live), "rider-shadow");
             }
             catch (Exception e)
             {
                 _riderShadowDisabled = true;
                 Failed("impact.rider-shadow", e);
-                TraxLog.Info("impact", "the rider shadow (step 104a) is OFF for this battle after an error - nothing of it was ever applied");
+                TraxLog.Info("impact", "the rider shadow (step 104a) is OFF for this battle after an error" + (live ? " - the reel already queued runs on (the tick gives every lock back)" : " - nothing of it was applied"));
             }
+            return live;
         }
 
         // ------------------------------------------------------------------ the J test tool's rider candidates (step 104a)
@@ -221,6 +226,7 @@ namespace TraxCombat.Missions
 
         private void WriteRiderShadowSummary()
         {
+            WriteRiderReelSummary(); // step 104b: the live reel's line first
             TraxLog.Info("summary", _riderShadow.SummaryLine(TimedRiderRules.From(TraxSettings.Shared)));
         }
     }

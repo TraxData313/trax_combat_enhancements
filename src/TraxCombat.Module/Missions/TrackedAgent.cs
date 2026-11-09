@@ -110,6 +110,13 @@ namespace TraxCombat.Missions
         /// recompute the horse(s) on the next pass of the tick loop.</summary>
         public bool MountDirty;
 
+        /// <summary>Step 104b: his horse's top-speed share while he reels in the saddle (<c>TimedRiderHorseCheckPercent</c> - min with his tired
+        /// multiplier in <c>RetargetSpeed</c>); 1 = none. Given back (1 + a recompute) on every exit of the reel.</summary>
+        public float ReelHorseCheck = 1f;
+
+        /// <summary>Step 104b: his reel in the saddle's slot in the logic's pool (-1 = none) - his removal finds it at once.</summary>
+        public int RiderReelSlot = -1;
+
         /// <summary>The peak-zone state last logged for the player (his "below the line" lines).</summary>
         public bool PlayerBelowPeakLogged;
 

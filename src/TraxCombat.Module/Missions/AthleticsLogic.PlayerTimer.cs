@@ -230,6 +230,7 @@ namespace TraxCombat.Missions
         /// </summary>
         internal void GatePlayerInput()
         {
+            if (_youReelSlot >= 0) GateYourReel(); // step 104b: you reel in the saddle - no attack, no guard (its own try)
             if (!_playerTimer.Holding) return;
             try
             {

@@ -382,8 +382,7 @@ namespace TraxCombat.Missions
             if (keepAttacker) a.Impact = ast;
             double ms = (Stopwatch.GetTimestamp() - t0) * 1000.0 / Stopwatch.Frequency;
             int attackerBand = ImpactMath.BarBand(a.Fraction);
-            _impact.Note(in d, r.ShadowNow, applied || riposteLive || riderLive, ms, attackerBand);
-            // step 52: every decided blow by the attacker's speed into it; step 53: a rider's by his horse's, a couched lance apart
+            _impact.Note(in d, r.ShadowNow, applied || riposteLive || riderLive, ms, attackerBand);            // step 52: every decided blow by the attacker's speed into it; step 53: a rider's by his horse's, a couched lance apart
             _hits.NoteMomentum(in d, f.AttackerMounted ? ImpactMath.RiderSpeedBand(in r, d.AttackerSpeed) : ImpactMath.SpeedBand(in r, d.AttackerSpeed), f.AttackerMounted, f.AttackerPassive);
             _charge.NoteDecision(in d); // step 62: by direction, by toughness
             _charge.NoteCharge(in d, sprintingNow, byAttack); // step 62: the charges
@@ -393,8 +392,9 @@ namespace TraxCombat.Missions
                 a.ChargeAttack = false;
             }
             if (block && (applied || riderLive)) _riders.NoteRiposteOnRider(in d);
-            if (block) TimedBlockDecided(a, v, in d, riposteLive); // step 100b: THE SEAM - every correct block's timing, counted
-            if (block && ImpactMath.CanRiposte(f.Event) && (f.AttackerMounted || f.DefenderMounted)) RiderShadow(a, v, in f, in d, in r, ast, now); // step 104a: what 104b-d WOULD do - nothing applied
+            // step 104a / 104b: the rider ladder - its reel APPLIED when TimedBlocksOnHorseback is on (the rear / knock-off still shadow)
+            bool riderReel = block && ImpactMath.CanRiposte(f.Event) && (f.AttackerMounted || f.DefenderMounted) && RiderShadow(a, v, in f, in d, in r, ast, now);
+            if (block) TimedBlockDecided(a, v, in d, riposteLive, riderReel); // step 100b: THE SEAM - every correct block's timing, counted
             LastImpact = d;
             NoteImpactLines(a, v, in d, in f, in r, !(applied || riposteLive || riderLive));
             if (applied && family == ImpactFamily.Kicks)

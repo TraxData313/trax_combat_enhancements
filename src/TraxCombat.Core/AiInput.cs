@@ -19,6 +19,9 @@ namespace TraxCombat.Core
 
         /// <summary>…and he was in a ready: the guard bit CANCELS the ready (clearing the bits alone would release it).</summary>
         ReadyCancelled = 8,
+
+        /// <summary>Step 104b: a reeling rider's guard bits taken out (<see cref="AiInputMath.ReelLock"/>).</summary>
+        GuardCleared = 16,
     }
 
     /// <summary>
@@ -90,6 +93,35 @@ namespace TraxCombat.Core
             {
                 edit |= InputEdit.GuardRaised;
                 return f | DefendDown;
+            }
+            return f;
+        }
+
+        /// <summary>
+        /// Step 104b - THE REEL'S LOCK (a rider reeling in the saddle after a timed block - DESIGN decision 93): the attack bits out and, with
+        /// <paramref name="noGuard"/> (<c>TimedRiderNoGuard</c>), the guard bits out too; the move bits, the turn bits and the input vector are
+        /// NEVER touched - he keeps steering and riding. In a ready (<paramref name="inReady"/>) the attack bits vanishing would RELEASE the blow,
+        /// so the ready is cancelled with the guard bit instead (step 16's rule) - the only frame a guard is written. One frame, pure: the AI's
+        /// input hook and your input gate both call it.
+        /// </summary>
+        public static uint ReelLock(uint flags, bool noGuard, bool inReady, out InputEdit edit)
+        {
+            edit = InputEdit.None;
+            uint f = flags;
+            if ((f & AttackMask) != 0)
+            {
+                f &= ~AttackMask;
+                edit |= InputEdit.AttackCleared;
+            }
+            if (inReady)
+            {
+                edit |= InputEdit.ReadyCancelled;
+                return (f & ~DefendMask) | DefendDown;
+            }
+            if (noGuard && (f & DefendMask) != 0)
+            {
+                f &= ~DefendMask;
+                edit |= InputEdit.GuardCleared;
             }
             return f;
         }
