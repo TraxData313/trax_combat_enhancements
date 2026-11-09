@@ -9913,6 +9913,62 @@ caps on you; an AI blocker can never reach the rear / dismount (s ≤ 0.5); a la
    ~9 % at a canter, 30 % for a galloping poor rider).
 
 
+### 104a - built (2026-11-09)
+
+The eyes first - nothing of step 104 is applied yet. Commits 8a0d193 (settings), d1d8637 (code).
+
+- **Settings (new keys only, no config format change; 600 settings)**: `TimedBlocksOnHorseback` (the player page, "Staggers and knockdowns", after
+  `ReelingHitKnockdownEnabled` - 38 player settings) ships **false** - THE ONLY LIVE SWITCH, and it is OFF until 104b builds the reel (104b flips the
+  default to true; a config file written by 104a holds `false`, so 104b needs a format bump - MoveOrKeepIfMoved false -> true). 16 Advanced keys in the
+  Impact group after `ReelingHitKnockdownPercent`, DESIGN 93's defaults: `TimedRiderReelMaxSeconds` 1.5, `TimedRiderReelAgainstYouMaxSeconds` 1.0,
+  `TimedRiderReelOnYou` on, `TimedRiderReelAction` act_stagger_backward, `TimedRiderReelAnimSpeed` 1.0, `TimedRiderReelAnimMaxSeconds` 1.0, `TimedRiderNoGuard`
+  on, `TimedRiderHorseCheckPercent` 50, `TimedRiderFromFoot` on, `TimedRiderRearMinScore` 0.8, `TimedRiderRearPercent` 50, `TimedRiderDismountPercent` 30,
+  `TimedRiderDismountWeaponPercent` 50, `PerfectStrikeOnHorseback` on, `PerfectStrikeHorsebackAnySide` on, `TimedBlockPushOutMounted` on - sub-switches under the
+  OFF player switch; 104a's shadow reads them. The speed band's 0.25 floor and the match's 0.5 base are Core constants (`TimedRiderMath.StandingBand` /
+  `MatchBase`); the band's walk / gallop are step 53's `ImpactMomentumRider*` references (3 / 10 m/s).
+- **Core `TimedRider.cs`**: `TimedRiderRules` (`ShadowOn` = ModEnabled -> Athletics + impact -> TimedBlocksEnabled; `Live` adds the switch - unused);
+  `TimedRiderMath` - `ReelLength` (= `TimedBlockMath.Length` with the rider's max / you-cap), `AnimSeconds` (min(the reel, the anim max, the clip at its
+  speed); "none" = 0), `HorseCheck` (min(tired m, share)), `RearChance` (share x s from the min score), `SpeedBand`, `MatchFactor` (min(1, 0.5 + S(x_r))),
+  `DismountChance` (perfect only; a parry x the weapon share), `Gate` (off, untimed - today's refusal, no row, a couched lance, from-foot off, on-you off,
+  down, replaced, already reeling, immune - a perfect block skips the immunity as on foot), `Decide` (the reel's die at the decision's OWN riposte chance -
+  `d.Riposte.Chance`, i.e. step 101's timed chance with the halving / skip already applied; taken -> the length, the animation, the horse; NOT on you -> the
+  knock-off (perfect) then, if he stayed on, the rear (sharp) - one die each; your strike window = the reel + `PerfectStrikeGraceSeconds`; the slow-mo flag;
+  a rider blocking a man on foot = no die, only 104d's notes), `Describe`; `TimedRiderStats` + the line; `TimedRiderAnimMath` - the 16 J candidates and
+  `MountedRecoilNames` from item_usage_sets.xml's `is_mounted` usages (one-handed `overswing_horseback` / `thrust_1h_horseback` / `slash_horseback_left|right`;
+  two-handed `*_2h_horseback`; staff `*_staff_horseback` - a wide-grip axe too; spear `overswing_spear_horseback` + `thrust_staff_horseback`; lance / flail /
+  fists = the foot names; a couched lance none). `ImpactMath.RiposteStun56` = step 56 / 62's length, factored out of `Decide` (the same arithmetic).
+- **Module**: `AthleticsLogic.TimedRider.cs` - `RiderShadow` from `ImpactDecide` right after `TimedBlockDecided`, for every correct block with a rider on
+  either end; its OWN dice (`RiderShadowDice`, a ThreadSafeRandom - the live `ImpactDice` never moves); step 56's L56 for the rider from one of its dice;
+  the clip's length read once (`AnimBody.Find`). Lines: the mission-start rules line, the first shadow in full, every one in YOUR fight (`[impact] rider
+  shadow: ...`), the AI's verbose (bucket "rider-shadow"); `[summary] timed blocks on horseback (shadow, step 104a)` after step 105's line. An error turns
+  the shadow off for the battle (nothing was ever applied). THE J TOOL: `IAnimBody.Nearest(you, 8, 15)` now returns the nearest man of ANY kind within 8 m,
+  else the nearest rider within 15 m; a mounted target (or you mounted alone) gets `RiderAnimTest` - its own step counter, every action through
+  `AnimBody.Play(st, TimedRiderAnimMath.RiderChannel = 1, ...)`, the push-outs through step 100d's `PlayPushOut` (channel 1; the bash guard armed), the
+  rear through `IImpactBody.OwnRearBlow` (GameImpactBody: the rider human and active, his `MountAgent` active, `IsMount`, `AgentFlag.CanRear`, not already
+  rearing (`ActionCodeType.Rear`), a head bone; then step 53's drowning-blow recipe - `RegisterOwnBlowOn(horse, you, 1, BlowFlags.MakesRear)`; NO
+  SetActionChannel on a horse) followed by `TickRearWatch` (`MountRearing` within 1.5 s -> "SEEN rearing" / "NOT seen").
+- **The rear preview - the risk said plainly**: a blow on a HORSE agent is new to us (vanilla does exactly this for a braced pike, Mission.CreateMeleeBlow
+  5581-5584, but with real collision data; ours is the drowning recipe's debug collision with the horse's bones). It is only reachable from the opt-in test
+  tool's 16th candidate. Vanilla's own rear needs the horse moving > 5 m/s (DecideMountRearedByBlow); whether the native `HandleBlowAux` honours
+  `MakesRear` on a standing horse is exactly what the preview answers. 1 damage to the horse.
+- **Tests**: Step104aTests (18): the design table at skill 100 (s 1.00 / 0.94 / 0.61 / 0.20; reel 100 / 95 / 67 / 33 %; 1.50 / 1.45 / 1.15 / 0.78 s; rear
+  50 / 47 / 0 / 0 %; knock-off 9.4 % at a canter), a galloping weak rider 30 % / a parry half / standing a quarter, held = refused with no die, the AI's
+  half strength (never a rear / knock-off) and never on you whatever the share (1.0 s cap), the die order, 20000 seeded rolls, monotone, the refusals in
+  order, a rider blocking a man on foot (no die), the animation part / horse check, a REAL `ImpactMath.Decide` of a mounted attacker still refused
+  `Rider` live, `RiposteStun56`, the settings' places and defaults, the summary line, the candidates and the mounted recoil names. 1523 tests.
+- **Smoke**: "TIMED BLOCKS ON HORSEBACK - THE SHADOW AND THE RIDER TEST TOOL (step 104a)" (Program.Step104a.cs): nothing applied (no stagger / action /
+  rear / dismount / reel on his record) while the shadow reels him 1.5 s; foot vs rider on / off; held = no die; the AI on you capped 1.0 s, never a rear /
+  knock-off; rider vs foot noted; the master switch; the J tool's 16 rider candidates on channel 1 only, the rear SEEN; you mounted alone; the summary line.
+  The smoke's `ScriptDice` gained `Calls`.
+- **PLAYTEST D73** (not D72 - step 105 took it; 104b-d shift to D74-D76).
+- **What 104b needs**: Core `Impact.cs` - the timed rider branch beside the Rider refusal (`d.RiderReel`; keep `ImpactRefusal.Rider` for s 0 - Step104aTests'
+  real-decision test pins today's refusal; reuse `TimedRiderMath.Gate` / `ReelLength` and `ImpactMath.RiposteStun56`), the module's `riposteLive || riderReelLive`,
+  the INPUT LOCK (`AiInputMath.ReelLock` - attack + defend bits out, move bits / vector untouched - a new `AiInputState` wish in step 16's hook; yours in
+  `GatePlayerInput`), the channel-1 action from the tick (the action Toni picks in D73 -> `TimedRiderReelAction`; `AnimBody.Play(st, 1, ...)` like the tool),
+  the horse check in `ApplyMountSpeed` (min(tired m, `HorseCheck`)), the watch + release on every exit (lock stuck = risk 5), `TimedRiderReelAccepted` -> the
+  slow-mo, the YOU lines ("X reels in the saddle 1.45 s / 1.50"), the `TimedBlocksOnHorseback` default true + a config format bump (MoveOrKeepIfMoved), the
+  shadow kept as the "would" half of a live summary or retired. Toni's D73 answer (which reel) first.
+
 ## Step 105 (BUILT 2026-11-09) — a landed hit on a reeling man knocks him down (80 %)
 
 Toni 2026-11-09 (built BEFORE step 104 at his request): "when I stagger him and PERFECT STRIKE lands the NPC doesn't react which looks strange,

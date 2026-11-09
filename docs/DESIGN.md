@@ -3649,7 +3649,11 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     taken - any side on horseback (proposed; strict opposites stay on foot - decision 91 (o)); the slow motion as on foot; the push-out of a
     MOUNTED blocker = his guard's own heavy parry (no mounted bash exists in the game's usage sets). Settings proposed in AI_NOTES "Step 104" §5
     (1 on the player page - `TimedBlocksOnHorseback` -, ~13 Advanced), no config format change; build 104a (test tool + shadow) → 104b (the reel)
-    → 104c (rear / unhorse) → 104d (strike, push-out) → 104e (review).
+    → 104c (rear / unhorse) → 104d (strike, push-out) → 104e (review). (f) STEP 104a BUILT 2026-11-09 (AI_NOTES "104a - built"): the parameter rows are in (17 - `TimedBlocksOnHorseback` on the player
+    page ships OFF until 104b, 16 Advanced); the J test tool's 16 RIDER candidates on a rider (channel 1 only; the rear previewed through our blow with the game's
+    own `MakesRear` flag on his horse - no action on the horse); the SHADOW - every correct block with a rider on either end decided by Core `TimedRiderMath`
+    with its own dice and logged (`[impact] rider shadow`, the [summary] "timed blocks on horseback (shadow)" line), NOTHING applied - the live riposte
+    still refused "a rider". PLAYTEST D73.
 94. **A hit on a reeling man knocks him down** (step 105, BUILT 2026-11-09 - Toni: "when I stagger him and PERFECT STRIKE lands the NPC doesn't
     react which looks strange, but sometimes I knock him down, which looks very good and natural ... Make it so that when hitting (swing/kick/bash)
     an opponent that is staggering has 80% chance to knock him down no matter what or who caused the stagger"; built BEFORE step 104 at his request;
