@@ -1283,11 +1283,13 @@ namespace TraxCombat.Missions
             if (!r.Enabled) return;
             var sr = SwingStackRules.From(TraxSettings.Shared); // step 32
             var bp = BattlePaceRules.From(TraxSettings.Shared);
+            var cr = CrouchRestRules.From(TraxSettings.Shared); // step 103
             for (int i = 0; i < _count; i++)
             {
                 var st = _dense[i];
                 try
                 {
+                    st.CrouchResting = false; // step 103: set again below while he refills crouched
                     CheckHealth(st, in r, now);
                     if (sr.Enabled) StackRegenSample(st, now, step, in r, in sr, in bp); // step 32: the clock + the fill by f (managed)
                     if (st.Sprint.Active) continue; // step 33: no Athletics refill while sprinting (the step's time is simply not refilled)
@@ -1301,7 +1303,9 @@ namespace TraxCombat.Missions
                     float topSpeed = body.GetMaximumForwardUnlimitedSpeed();
                     SampleRunSpeed(st, mount, speed, topSpeed, in r);
 
-                    var o = AthleticsMath.Regen(st, in r, now, step, speed, topSpeed);
+                    double crouch = CrouchMultiplierFor(st, mount != null, in cr, now); // step 103: x CrouchRefillMultiplier while crouched (1 = none)
+                    var o = AthleticsMath.Regen(st, in r, now, step, speed, topSpeed, crouch);
+                    NoteCrouchRefill(st, crouch, step, in o, in r);
                     if (o.Seconds > 0)
                     {
                         _stats.AddEffort(o.Effort, o.Seconds);

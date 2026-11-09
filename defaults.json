@@ -75,6 +75,12 @@
   // (range 0.0 to 2.0)
   "HeroCostMultiplier": 0.75,
 
+  // On: while you crouch (Z) your Athletics refills twice as fast (the speed: Advanced page,
+  // Refill). The rest after a blow and your wounds still hold it back. Off: crouching does
+  // nothing for your Athletics.
+  // (true or false)
+  "CrouchRefillForPlayer": true,
+
   // ==================== How the AI fights ====================
   // How eagerly an AI soldier on foot with a FULL Athletics bar decides to start an attack (and
   // to strike back after a parry), in percent of the game's own AI. It slides in a straight
@@ -2879,6 +2885,17 @@
   // the first fight left you.
   // (true or false)
   "HideoutBossFightRefill": true,
+
+  // While a fighter crouches (Z) his Athletics refills this many times faster. The rest after a
+  // blow, the wounds' cap and the slower refill when moving still apply. 1 = crouching changes
+  // nothing. Who it is for: the player page (Tiredness) for you, the next setting for the AI.
+  // (range 1.0 to 5.0)
+  "CrouchRefillMultiplier": 2.0,
+
+  // The faster refill while crouched for AI fighters too. The game's AI does not crouch in
+  // battles (only in scripted scenes), so this rarely matters.
+  // (true or false)
+  "CrouchRefillForAi": false,
 
   // ==================== Your Athletics bar ====================
   // Outside a battle - the training field, a town, a village - your bar shows while you hold a

@@ -1008,12 +1008,14 @@ namespace TraxCombat.Core
         /// only the part after <c>last blow + RegenDelaySeconds</c> refills, along the refill curve
         /// (<see cref="RefillFrom"/> - exact; the effort sampled once per step), never above the top -
         /// the full pool, or the health left under the cap. Then the "left 0" check. Off → nothing.
+        /// Step 103: <paramref name="extraMultiplier"/> (the crouch rest, <see cref="CrouchRestMath.Multiplier"/>; 1 = none) multiplies the
+        /// effort's rate - the delay after a blow, the top (wounds) and the curve's shape are untouched.
         /// </summary>
-        public static RegenOutcome Regen(Fighter f, in AthleticsRules r, double now, double dt, float speed, float topSpeed)
+        public static RegenOutcome Regen(Fighter f, in AthleticsRules r, double now, double dt, float speed, float topSpeed, double extraMultiplier = 1.0)
         {
             if (!r.Enabled || dt <= 0) return default;
             double effort = Effort(speed, topSpeed);
-            double mult = RegenRateMultiplier(in r, effort);
+            double mult = RegenRateMultiplier(in r, effort) * (extraMultiplier > 1.0 ? extraMultiplier : 1.0);
             bool walking = IsWalking(in r, effort);
             double top = UsableFraction(in r, f);
             double gained = 0, used = 0, emptyToPeak = 0;

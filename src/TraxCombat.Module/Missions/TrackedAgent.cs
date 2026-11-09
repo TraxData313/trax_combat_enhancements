@@ -37,6 +37,9 @@ namespace TraxCombat.Missions
         /// <summary>Out of the tick loop (removed from the field); a hero's record is kept for the summary.</summary>
         public bool Removed;
 
+        /// <summary>Step 103: his Athletics refilled crouched in the last regen pass (your bar's "Resting").</summary>
+        public bool CrouchResting;
+
         /// <summary>The Athletics skill was read from his character at spawn (false: none - the floor).</summary>
         public bool SkillKnown;
 

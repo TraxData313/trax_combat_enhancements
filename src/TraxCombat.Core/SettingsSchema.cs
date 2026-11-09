@@ -106,6 +106,11 @@ namespace TraxCombat.Core
             "Heroes' cost (x)",
             "Heroes (lords, companions and you) pay every Athletics cost - blows, kicks, bashes, blocks - times this, so they last longer than common soldiers. 0.75 = a quarter less. 1 = the same as anyone.");
 
+        // Step 103 (Toni 2026-11-09): crouch (Z) to rest faster - CrouchRestMath, DESIGN decision 92.
+        public static readonly ParamDef CrouchRefillForPlayer = Bool("CrouchRefillForPlayer", PlayerTiredGroup,
+            "Crouch (Z) to rest faster",
+            "On: while you crouch (Z) your Athletics refills twice as fast (the speed: Advanced page, Refill). The rest after a blow and your wounds still hold it back. Off: crouching does nothing for your Athletics.");
+
         public static readonly ParamDef AiAggressionFreshPercent = Int("AiAggressionFreshPercent", 0, FeverMath.MaxPercent, PlayerAiGroup,
             "AI aggression when fresh (%)",
             "How eagerly an AI soldier on foot with a FULL Athletics bar decides to start an attack (and to strike back after a parry), in percent of the game's own AI. It slides in a straight line to the next setting as his bar empties - the more tired he is, the less he swings. 45: a charging man's 14% chance becomes 6.5%. Tournaments and duels too. Never you, never riders (their swings come with each pass), never archers' shooting. 100 with the next at 100 = the game's own AI.");
@@ -2175,6 +2180,16 @@ namespace TraxCombat.Core
             "Hideout boss fight: your side starts fresh",
             "In a hideout, the moment the fight with the boss begins - the duel or all against all - you and every man of yours still standing refill to a full Athletics bar (wounds still cap it) and any pause or step back running on you ends: the boss and his men come fresh, and so do you. In a duel your men stand aside, so only you refill. Off: you face the boss as tired as the first fight left you.");
 
+        // Step 103 (Toni 2026-11-09: "when I crouch (Z) increase the Athletics regeneration x2 (player only, but let this be there)"):
+        // CrouchRestMath, AI_NOTES "Step 103", DESIGN decision 92. Its player switch: CrouchRefillForPlayer (the player page).
+        public static readonly ParamDef CrouchRefillMultiplier = Float("CrouchRefillMultiplier", 1, 5, RefillGroup,
+            "Crouched: refill speed (x)",
+            "While a fighter crouches (Z) his Athletics refills this many times faster. The rest after a blow, the wounds' cap and the slower refill when moving still apply. 1 = crouching changes nothing. Who it is for: the player page (Tiredness) for you, the next setting for the AI.");
+
+        public static readonly ParamDef CrouchRefillForAi = Bool("CrouchRefillForAi", RefillGroup,
+            "Crouched: the AI refills faster too",
+            "The faster refill while crouched for AI fighters too. The game's AI does not crouch in battles (only in scripted scenes), so this rarely matters.");
+
         // ------------------------------------------------------------------ your Athletics bar (step 6; its switch ShowPlayerBar on the player page since step 59)
 
         // Step 12 (Anton's playtest: no bar in the training field - it runs in the game's walk-about
@@ -2659,7 +2674,7 @@ namespace TraxCombat.Core
             ModEnabled,
             // the player page's six groups (step 59)
             DamageRandomPercent, DamageReductionPercent, TiredDamageAtEmptyPercent,
-            AthleticsEnabled, CostPerBlow, HeroCostMultiplier,
+            AthleticsEnabled, CostPerBlow, HeroCostMultiplier, CrouchRefillForPlayer,
             AiAggressionFreshPercent, AiAggressionExhaustedPercent, FeverEnabled, ShieldWallHoldsSlots, ShieldWallStepOutMetres, ShieldWallStandFirm, ShieldWallFlanksFaceOut, SpearPreferenceEnabled, PressDontPass, RotationEnabled, RestEnabled, WarCriesEnabled, CourageEnabled, CavalryFlockEnabled, LineDisciplineForPlayer,
             ImpactEnabled, ImpactOnPlayerPercent, ImpactMeetRulesEnabled, TimedBlocksEnabled, TimedBlockSlowMo, PerfectStrikeEnabled,
             SprintEnabled, SprintKey, SprintControllerKey,
@@ -2757,7 +2772,7 @@ namespace TraxCombat.Core
             ImpactGuardShieldRight, ImpactGuardParry, ImpactGuardShieldWrong, ImpactGuardNone,
             ImpactStaggerFrom, ImpactShieldDropFrom, ImpactKnockdownFrom,
             RegenDelayBlowTimes, BlowTimeSeconds, FullRegenSecondsStanding, RegenRateNearFullPercent, RegenMultiplierAtFullRun,
-            WalkEffortFraction, HideoutBossFightRefill,
+            WalkEffortFraction, HideoutBossFightRefill, CrouchRefillMultiplier, CrouchRefillForAi,
             ShowPlayerBarOutsideBattles, ShowAttackRecoveryBar, FlashBarOnEarlyAttack, ShowSprintBar, SprintShowKeyHint,
             BarYellowBelowPercent, BarOrangeBelowPercent, BarRedBelowPercent,
             ShowInOrderMenu, ShowFormationHealth, ShowFormationSpread, FormationSpreadStdDevs, ShowReadyCount, ReadyYellowBelowPercent, ReadyRedBelowPercent, OrderStripUnderCards,

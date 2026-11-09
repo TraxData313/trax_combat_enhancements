@@ -718,6 +718,11 @@ namespace TraxCombat.Core
         public float WalkEffortFraction => GetFloat(SettingsSchema.WalkEffortFraction);
         public bool HideoutBossFightRefill => GetBool(SettingsSchema.HideoutBossFightRefill);
 
+        /// <summary>Step 103: the crouch rest - the refill rate x this while crouched (Core <see cref="CrouchRestMath"/>).</summary>
+        public float CrouchRefillMultiplier => GetFloat(SettingsSchema.CrouchRefillMultiplier);
+        public bool CrouchRefillForPlayer => GetBool(SettingsSchema.CrouchRefillForPlayer);
+        public bool CrouchRefillForAi => GetBool(SettingsSchema.CrouchRefillForAi);
+
         public bool ShowPlayerBar => GetBool(SettingsSchema.ShowPlayerBar);
         public bool ShowPlayerBarOutsideBattles => GetBool(SettingsSchema.ShowPlayerBarOutsideBattles);
         public bool ShowAttackRecoveryBar => GetBool(SettingsSchema.ShowAttackRecoveryBar);

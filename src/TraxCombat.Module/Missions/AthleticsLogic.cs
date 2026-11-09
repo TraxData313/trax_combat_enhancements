@@ -399,6 +399,15 @@ namespace TraxCombat.Missions
             {
                 Failed("hideout.summary", e);
             }
+            // Step 103: the crouch rest. Own try.
+            try
+            {
+                WriteCrouchRestSummary();
+            }
+            catch (Exception e)
+            {
+                Failed("crouch.summary", e);
+            }
             // Step 47: the impact spike - every lever's verdict (the deciders out, the game's stun cap back first). Own try.
             try
             {

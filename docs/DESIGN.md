@@ -1305,7 +1305,7 @@ says (§2c).
 
 **MCM pages (step 59, decision 51).** The PLAYER page ("Trax Combat Enhancements" - the file's first sections) holds exactly these
 20, in this order: `ModEnabled`; *How hard hits land* `DamageRandomPercent`, `DamageReductionPercent`, `TiredDamageAtEmptyPercent` (step 89); *Tiredness (Athletics)*
-`AthleticsEnabled`, `CostPerBlow`, `HeroCostMultiplier`; *How the AI fights* `AiAggressionFreshPercent`, `AiAggressionExhaustedPercent`,
+`AthleticsEnabled`, `CostPerBlow`, `HeroCostMultiplier`, `CrouchRefillForPlayer` (step 103); *How the AI fights* `AiAggressionFreshPercent`, `AiAggressionExhaustedPercent`,
 `FeverEnabled`, `ShieldWallHoldsSlots`, `ShieldWallStepOutMetres`, `CourageEnabled`, `CavalryFlockEnabled`; *Staggers and knockdowns*
 `ImpactEnabled`, `ImpactOnPlayerPercent`; *Sprinting* `SprintEnabled`, `SprintKey`, `SprintControllerKey` (step 85); *On screen* `ShowPlayerBar`, `AltMarksEveryone`,
 `ImpactShowMessages`. Every other key is on the ADVANCED page ("Trax Combat Enhancements - Advanced"), in its system's group. A new
@@ -1345,6 +1345,7 @@ row goes to the Advanced page unless a player needs it to set up his game (CLAUD
 | `ShieldFrontArcDegrees` | 60 | Step 64: the front arc's half-angle - the attacker within this many degrees left or right of the blocker's facing. Range 0-180. Live. |
 | `CostOnMiss` | true | true: every attack costs, landed or not. false: only blows that land. |
 | `HeroCostMultiplier` | 0.75 | Cost multiplier for heroes. |
+| `CrouchRefillForPlayer` | true | Step 103 (decision 92, Toni 2026-11-09: "when I crouch (Z) increase the Athletics regeneration x2"): while YOU crouch (`Agent.CrouchMode` - the Z toggle) your refill rate x `CrouchRefillMultiplier`; the delay after a blow, the wounds' cap, the pace rule and no refill while sprinting still apply. The player page. |
 | `PartyLeaderCostMultiplier` | 0.75 | Extra multiplier for a party's leading hero, on top of the hero one. |
 | `ExhaustedAttackSpeedPercent` | 20 | Attack speed (the attack RATE) at 0 Athletics, percent of normal (a straight line up to 100% at the peak line) - since step 13 delivered by the no-attack timer D × (1/m − 1) after each attack. |
 | `AttackRatePlayerTimer` | true | Step 13: your own no-attack timer - after each of your attacks below the peak line the attack button does nothing until it ends (held, it attacks the moment it ends); blocking, kicks, moving, weapon switches always work. Off: your attacks are never held. |
@@ -1788,6 +1789,8 @@ row goes to the Advanced page unless a player needs it to set up his game (CLAUD
 | `RegenMultiplierAtFullRun` | 0.5 | Regen rate at top speed, relative to standing or walking. |
 | `WalkEffortFraction` | 0.4 | Up to this share of top speed counts as walking (full regen). |
 | `HideoutBossFightRefill` | true | Step 19 (Anton): in a hideout, the moment the boss fight begins - the duel or the battle - every living fighter on the player's side (the player alone in a duel) refills to full Athletics (up to the health cap), and any attack pause, hold or step back on them ends (§2 "A fresh start"). Off: they face the boss as tired as the first fight left them. |
+| `CrouchRefillMultiplier` | 2.0 | Step 103 (decision 92): the refill rate x this while a fighter the rule applies to crouches (1-5; 1 = nothing). Multiplies the effort's rate inside `AthleticsMath.Regen` - the delay, the cap and the curve's shape untouched. Advanced, Refill. |
+| `CrouchRefillForAi` | false | Step 103 (decision 92, Toni: "player only, but let this be there"): the crouch rest for AI fighters too. The game's AI never crouches in a battle (only scripted stealth / prison scenes - `Agent.SetCrouchMode`), so it rarely matters; their crouch is not even read while off. Advanced, Refill. |
 | `ShowPlayerBar` | true | Player Athletics bar. |
 | `ShowPlayerBarOutsideBattles` | true | Outside the fight modes (the training field, towns, villages - the game's walk-about mode) the player bar shows too, while you hold a weapon or a shield or your Athletics is below full; never in a conversation, barter, deployment or cutscene (§3, step 12). Off: fights only. |
 | `ShowAttackRecoveryBar` | true | Step 13 (Anton): the Attack recovery bar just above your Athletics bar, shown with it - empties when you attack below the peak line, fills back over your no-attack timer (you cannot attack until it is full), the seconds left inside it ("1.3 s"); full and quiet at full strength. Hidden while `AttackRatePlayerTimer` is off. |

@@ -57,7 +57,7 @@ namespace TraxCombat.Hud
         }
 
         /// <summary>One reading, already turned into what the bar shows (Core's BarMath).</summary>
-        internal void SetValues(BarBand band, float fill, float usable, float peakLine, int shownPoints, int shownPool, bool exhausted)
+        internal void SetValues(BarBand band, float fill, float usable, float peakLine, int shownPoints, int shownPool, bool exhausted, bool resting = false)
         {
             Fill = fill;
             Usable = usable;
@@ -72,7 +72,7 @@ namespace TraxCombat.Hud
             NumberColor = exhausted ? AlarmColor : TextColor;
             LabelColor = exhausted ? AlarmColor : QuietColor;
             FrameColor = exhausted ? AlarmColor : FrameNormal;
-            LabelText = exhausted ? BarMath.ExhaustedLabelText : BarMath.LabelText;
+            LabelText = BarMath.Label(exhausted, resting); // step 103: "Resting" while you refill crouched
         }
 
         /// <summary>The row is drawn (false until the first reading, or when the player has none).</summary>
@@ -236,7 +236,7 @@ namespace TraxCombat.Hud
             }
         }
 
-        /// <summary>"Athletics", or "Exhausted" while the bar is empty.</summary>
+        /// <summary>"Athletics", "Exhausted" while the bar is empty, "Resting" while it refills crouched (step 103).</summary>
         [DataSourceProperty]
         public string LabelText
         {

@@ -90,6 +90,12 @@ namespace TraxCombat.Core
         public const string LabelText = "Athletics";
         public const string ExhaustedLabelText = "Exhausted";
 
+        /// <summary>Step 103: the label while your bar refills crouched (the crouch rest).</summary>
+        public const string RestingLabelText = "Resting";
+
+        /// <summary>The bar's label: "Exhausted" while empty, "Resting" while it refills crouched (step 103), else "Athletics".</summary>
+        public static string Label(bool exhausted, bool resting) => exhausted ? ExhaustedLabelText : resting ? RestingLabelText : LabelText;
+
         /// <summary>
         /// The colour for f (0..1, 1 = at or above the peak line): green at 1; else red / orange /
         /// yellow at or below their percent of the line (the most alarming band that applies wins,

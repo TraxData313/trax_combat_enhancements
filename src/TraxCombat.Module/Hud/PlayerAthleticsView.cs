@@ -95,7 +95,7 @@ namespace TraxCombat.Hud
             float fill = BarMath.Fill(r.Fraction);
             float usable = BarMath.Usable(r.UsableFraction);
             float peak = BarMath.PeakLine(r.PeakFraction);
-            vm.SetValues(band, fill, usable, peak, shown, pool, r.Exhausted);
+            vm.SetValues(band, fill, usable, peak, shown, pool, r.Exhausted, AthleticsLogic.IsCrouchResting(f.Player));
             vm.IsShown = true;
             _band = band;
             _exhausted = r.Exhausted;

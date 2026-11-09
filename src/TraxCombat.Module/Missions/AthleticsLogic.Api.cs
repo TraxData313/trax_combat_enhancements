@@ -73,6 +73,15 @@ namespace TraxCombat.Missions
             return true;
         }
 
+        /// <summary>Step 103: his Athletics refilled crouched in the last regen pass (the crouch rest) - your bar reads "Resting".</summary>
+        public static bool IsCrouchResting(Agent agent)
+        {
+            var logic = _current;
+            if (logic == null || agent == null) return false;
+            var st = logic.Get(agent);
+            return st != null && st.CrouchResting;
+        }
+
         /// <summary>f of one fighter (DESIGN §2: the share of his peak line left, 0..1; 1 while Athletics
         /// or the mod is off). False for an agent we do not track (a horse - pass its rider -, or
         /// none running): the caller treats that as "no pool" (the damage roll keeps its full upside).
