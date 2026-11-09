@@ -118,7 +118,13 @@ namespace TraxCombat.Tools
                 foreach (var v in values) _q.Enqueue(v);
             }
 
-            public double NextDouble() => _q.Count > 0 ? _q.Dequeue() : Rest;
+            public int Calls; // step 104a: the dice asked
+
+            public double NextDouble()
+            {
+                Calls++;
+                return _q.Count > 0 ? _q.Dequeue() : Rest;
+            }
         }
 
         /// <summary>Step 48: every logic built from here on reads the impact model's engine inputs through the stand-in (the game's reads the

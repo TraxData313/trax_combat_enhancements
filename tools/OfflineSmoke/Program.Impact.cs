@@ -134,6 +134,27 @@ namespace TraxCombat.Tools
             }
 
             public bool OnPlayerSide(TrackedAgent st) => Yours.Contains(st.AgentIndex);
+
+            // step 104a: the rear preview's blow on a rider's horse (only on a man in Mounted), and the horse's rear read
+            public readonly List<(int Rider, int Attacker)> OwnRears = new List<(int, int)>();
+            public readonly HashSet<int> Rearing = new HashSet<int>();
+            public bool RearTakes = true;
+
+            public bool OwnRearBlow(TrackedAgent rider, TrackedAgent? attacker, out string why)
+            {
+                why = string.Empty;
+                int i = rider.AgentIndex;
+                if (rider.Removed || Gone.Contains(i) || !Mounted.Contains(i))
+                {
+                    why = "no horse under him";
+                    return false;
+                }
+                if (Record) OwnRears.Add((i, attacker?.AgentIndex ?? -1));
+                if (RearTakes) Rearing.Add(i);
+                return true;
+            }
+
+            public bool MountRearing(TrackedAgent rider) => Rearing.Contains(rider.AgentIndex);
         }
 
         /// <summary>Step 53: the smoke's on-screen lines - collected, never the game's message feed.</summary>

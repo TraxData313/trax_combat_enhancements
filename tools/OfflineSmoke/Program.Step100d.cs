@@ -83,7 +83,7 @@ namespace TraxCombat.Tools
                 return true;
             }
 
-            public Agent? Nearest(Agent you, float metres) => Near;
+            public Agent? Nearest(Agent you, float metres, float riderMetres) => Near;
             public void Say(string text) => Said.Add(text);
         }
 

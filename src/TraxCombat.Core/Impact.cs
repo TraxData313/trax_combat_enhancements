@@ -1397,11 +1397,7 @@ namespace TraxCombat.Core
             }
             if (d.Riposte.Happens)
             {
-                double ta = d.TAttacker;
-                // step 62: longer with the comparison - half the most for a fresh even man, all of it from x_r 1 (his tiredness or the mismatch)
-                double weight = Math.Max(0, Math.Min(1, Math.Max(ta, double.IsNaN(d.XRiposte) ? 0 : d.XRiposte)));
-                double s = r.RiposteStunMax * (0.5 + 0.5 * weight) * Spread(r.Random, ta, dice.NextDouble());
-                d.RiposteStunSeconds = Math.Max(0, Math.Min(Math.Max(0, r.StunCap), s));
+                d.RiposteStunSeconds = RiposteStun56(in r, in d, dice.NextDouble());
                 // step 100b: the timed length - from step 56's toward TimedBlockStaggerMaxSeconds by s (the stun cap; on YOU at most
                 // TimedBlockAgainstYouMaxSeconds, never shorter than step 56's); s 0 = step 56's length exactly
                 d.RiposteStun56 = d.RiposteStunSeconds;
@@ -1604,6 +1600,19 @@ namespace TraxCombat.Core
             }
             if (!braced) d.BraceCut = KickBraceMath.ReelCut(in b, d.T);
             return braced;
+        }
+
+        /// <summary>
+        /// Step 56 / 62's riposte length (s) from the decision's riposte pressure and the attacker's tiredness, with the spread's die
+        /// <paramref name="u"/> - longer with the comparison: half the most for a fresh even man, all of it from x_r 1 (his tiredness or the
+        /// mismatch); held at the stun cap. Step 104a: shared with the rider shadow (<see cref="TimedRiderMath"/>), the arithmetic unchanged.
+        /// </summary>
+        public static double RiposteStun56(in ImpactRules r, in ImpactDecision d, double u)
+        {
+            double ta = d.TAttacker;
+            double weight = Math.Max(0, Math.Min(1, Math.Max(double.IsNaN(ta) ? 0 : ta, double.IsNaN(d.XRiposte) ? 0 : d.XRiposte)));
+            double s = r.RiposteStunMax * (0.5 + 0.5 * weight) * Spread(r.Random, ta, u);
+            return Math.Max(0, Math.Min(Math.Max(0, r.StunCap), s));
         }
 
         private static ImpactRoll Roll(double ceiling, double raw, int halvings, double factor, ImpactRefusal refusal, IRandomSource dice)

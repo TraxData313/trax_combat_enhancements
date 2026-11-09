@@ -50,8 +50,9 @@ namespace TraxCombat.Missions
         /// <summary>The test tool: the key with that name went down this frame (and whether Left Shift is held).</summary>
         bool KeyPressed(string keyName, out bool shift);
 
-        /// <summary>The test tool: the nearest active human on foot (not <paramref name="you"/>) within <paramref name="metres"/>, or null.</summary>
-        Agent? Nearest(Agent you, float metres);
+        /// <summary>The test tool: the nearest active human (not <paramref name="you"/>) - on foot or riding - within <paramref name="metres"/>;
+        /// none = the nearest RIDER within <paramref name="riderMetres"/> (step 104a: riders come and go fast); or null.</summary>
+        Agent? Nearest(Agent you, float metres, float riderMetres);
 
         /// <summary>The test tool's on-screen line.</summary>
         void Say(string text);
@@ -152,26 +153,32 @@ namespace TraxCombat.Missions
             return true;
         }
 
-        public Agent? Nearest(Agent you, float metres)
+        public Agent? Nearest(Agent you, float metres, float riderMetres)
         {
             var m = Mission.Current;
             if (m == null || you == null) return null;
             _near.Clear();
-            m.GetNearbyAgents(you.Position.AsVec2, metres, _near);
-            Agent? best = null;
-            float bestD = float.MaxValue;
+            m.GetNearbyAgents(you.Position.AsVec2, Math.Max(metres, riderMetres), _near);
+            Agent? best = null, bestRider = null;
+            float bestD = float.MaxValue, bestRiderD = float.MaxValue;
+            float near2 = metres * metres;
             foreach (var a in _near)
             {
-                if (a == you || !a.IsActive() || !a.IsHuman || a.MountAgent != null) continue;
+                if (a == you || !a.IsActive() || !a.IsHuman) continue;
                 float d = a.Position.DistanceSquared(you.Position);
-                if (d < bestD)
+                if (d <= near2 && d < bestD)
                 {
                     bestD = d;
                     best = a;
                 }
+                if (a.MountAgent != null && d < bestRiderD)
+                {
+                    bestRiderD = d;
+                    bestRider = a;
+                }
             }
             _near.Clear();
-            return best;
+            return best ?? bestRider;
         }
 
         public void Say(string text) => InformationManager.DisplayMessage(new InformationMessage(text, Color.ConvertStringToColor("#9FD8E8FF")));

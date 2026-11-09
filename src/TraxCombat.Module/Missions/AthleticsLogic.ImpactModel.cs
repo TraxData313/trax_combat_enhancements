@@ -91,6 +91,7 @@ namespace TraxCombat.Missions
             TraxLog.Info("impact", "mission start: the model (step 48 - IMPACT I2, docs/IMPACT.md) " + r.Describe() + " - read live; the [summary] \"impact\" lines count every decision by event and bar band (PLAYTEST D17)");
             StartImpactMeet(); // step 82
             StartReelingHits(); // step 105
+            StartRiderShadow(); // step 104a
         }
 
         /// <summary>From TickImpact (own try there): the switch and the mode read live - one [impact] line per change; the on / off time.</summary>
@@ -129,6 +130,7 @@ namespace TraxCombat.Missions
             WritePerfectStrikeSummary(); // step 100g
             WriteImpactMeetSummary(); // step 82
             TraxLog.Info("summary", _reelingHits.SummaryLine(ImpactRules.From(TraxSettings.Shared))); // step 105
+            WriteRiderShadowSummary(); // step 104a
         }
 
         // ------------------------------------------------------------------ the events
@@ -392,6 +394,7 @@ namespace TraxCombat.Missions
             }
             if (block && (applied || riderLive)) _riders.NoteRiposteOnRider(in d);
             if (block) TimedBlockDecided(a, v, in d, riposteLive); // step 100b: THE SEAM - every correct block's timing, counted
+            if (block && ImpactMath.CanRiposte(f.Event) && (f.AttackerMounted || f.DefenderMounted)) RiderShadow(a, v, in f, in d, in r, ast, now); // step 104a: what 104b-d WOULD do - nothing applied
             LastImpact = d;
             NoteImpactLines(a, v, in d, in f, in r, !(applied || riposteLive || riderLive));
             if (applied && family == ImpactFamily.Kicks)

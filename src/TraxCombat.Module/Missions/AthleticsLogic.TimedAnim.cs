@@ -46,6 +46,7 @@ namespace TraxCombat.Missions
         private const int MaxPushOuts = 32;
         private const int MaxRecoilChains = 32;
         private const float TestNearestMetres = 8f;
+        private const float TestRiderMetres = 15f; // step 104a: a rider within this when nobody is within 8 m
 
         private readonly TimedAnimStats _anim = new TimedAnimStats();
         private readonly PushOutEntry[] _pushOuts = new PushOutEntry[MaxPushOuts];
@@ -349,6 +350,7 @@ namespace TraxCombat.Missions
         {
             if (_recoilChainCount > 0) TickRecoilChains(now);
             if (_pushOutCount > 0) TickPushOuts(now);
+            if (_rearWatch != null) TickRearWatch(now); // step 104a: the test tool's rear preview, followed
             TickAnimTest(now);
         }
 
@@ -445,7 +447,8 @@ namespace TraxCombat.Missions
 
         private const int TestPushCount = 6, TestRecoilCount = 16, TestRiposteCount = 4;
 
-        /// <summary>The test tool: the key plays the next candidate (Left Shift: the one before) on the nearest man within 8 m, else on you.</summary>
+        /// <summary>The test tool: the key plays the next candidate (Left Shift: the one before) on the nearest man within 8 m (step 104a: else the
+        /// nearest rider within 15 m), else on you; a RIDER gets the rider candidates (<see cref="RiderAnimTest"/>).</summary>
         private void TickAnimTest(double now)
         {
             var r = TimedAnimRules.From(TraxSettings.Shared);
@@ -456,9 +459,14 @@ namespace TraxCombat.Missions
             {
                 var you = PlayerRecord();
                 if (you == null || you.Removed) return;
-                var near = body.Nearest(you.Agent, TestNearestMetres);
+                var near = body.Nearest(you.Agent, TestNearestMetres, TestRiderMetres);
                 var st = (near != null ? Get(near) : null) ?? you;
                 if (st.Removed || !ImpactBody.IsActive(st)) return;
+                if (body.Mounted(st)) // step 104a: a RIDER (you mounted with nobody near, or the nearest man rides) - the rider candidates
+                {
+                    RiderAnimTest(st, you, back, now, in r);
+                    return;
+                }
                 int count = TestPushCount + TestRecoilCount + TestRiposteCount;
                 _animTestStep = back ? (_animTestStep <= 0 ? count - 1 : _animTestStep - 1) : (_animTestStep + 1) % count;
                 int k = _animTestStep;
