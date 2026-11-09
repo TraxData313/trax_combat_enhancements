@@ -309,6 +309,13 @@
   // (true or false)
   "OpeningsEnabled": false,
 
+  // A red arrow at your crosshair, where the game shows your attack direction. It shows the
+  // side for a PERFECT STRIKE while a man you can finish reels (after your well-timed block,
+  // for example), and - with Openings on - flashes the side to hit at the moment to start your
+  // swing when a man is thrown off balance. Off: read him yourself.
+  // (true or false)
+  "OpeningArrowShow": true,
+
   // ==================== Sprinting ====================
   // Every fighter on foot has a sprint: a short burst of speed stored in seconds - the more
   // Athletics he has left, the longer (150 points = 7.5 s; empty = none). Hold the sprint key
@@ -2929,11 +2936,6 @@
   // longer window.
   // (true or false)
   "OpeningUnguardedHitOpens": true,
-
-  // On: a red arrow at your crosshair flashes the side to hit, and shows the perfect-strike
-  // side while he reels. Off: read him yourself.
-  // (true or false)
-  "OpeningArrowShow": true,
 
   // On: the AI's attacks that the AI blocks make openings too. Off: only your attacks (the AI's
   // are only counted).

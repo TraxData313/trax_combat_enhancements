@@ -239,6 +239,11 @@ namespace TraxCombat.Core
             "Openings after your blocked attacks",
             "BEING BUILT - nothing changes in battle yet (the log records what it would do). When a man blocks your attack correctly he is thrown off balance: a red arrow flashes the side to hit - start your swing on the flash and he cannot block it; your hit staggers him and the arrow shows the side for a PERFECT STRIKE. Missing the moment makes the next try easier, up to the 4th. Shields need one block more. Hits from behind always stagger. The numbers: Advanced page, Impact.");
 
+        // Step 106c: the red arrow at the crosshair - the player page (a switch a player sets up his game with). Display only.
+        public static readonly ParamDef OpeningArrowShow = Bool("OpeningArrowShow", PlayerImpactGroup,
+            "Red arrow: the side to strike",
+            "A red arrow at your crosshair, where the game shows your attack direction. It shows the side for a PERFECT STRIKE while a man you can finish reels (after your well-timed block, for example), and - with Openings on - flashes the side to hit at the moment to start your swing when a man is thrown off balance. Off: read him yourself.");
+
         // Step 33 (Anton, 2026-10-12: "a short burst of speed, meant to feel a little like a dodge, and for the AI to make charges
         // sharper"): Core SprintMath, AI_NOTES "Step 33".
         public static readonly ParamDef SprintEnabled = Bool("SprintEnabled", PlayerSprintGroup,
@@ -2197,10 +2202,6 @@ namespace TraxCombat.Core
             "Openings: unguarded hits put him off balance",
             "On: your hit landing in front on a man who was not guarding puts him off balance, with the longer window.");
 
-        public static readonly ParamDef OpeningArrowShow = Bool("OpeningArrowShow", ImpactGroup,
-            "Openings: the red arrow",
-            "On: a red arrow at your crosshair flashes the side to hit, and shows the perfect-strike side while he reels. Off: read him yourself.");
-
         public static readonly ParamDef OpeningAiVsAi = Bool("OpeningAiVsAi", ImpactGroup,
             "Openings: AI against AI too",
             "On: the AI's attacks that the AI blocks make openings too. Off: only your attacks (the AI's are only counted).");
@@ -2874,7 +2875,7 @@ namespace TraxCombat.Core
             DamageRandomPercent, DamageReductionPercent, TiredDamageAtEmptyPercent,
             AthleticsEnabled, CostPerBlow, HeroCostMultiplier, CrouchRefillForPlayer,
             AiAggressionFreshPercent, AiAggressionExhaustedPercent, FeverEnabled, ShieldWallHoldsSlots, ShieldWallStepOutMetres, ShieldWallStandFirm, ShieldWallFlanksFaceOut, SpearPreferenceEnabled, PressDontPass, RotationEnabled, RestEnabled, WarCriesEnabled, CourageEnabled, CavalryFlockEnabled, LineDisciplineForPlayer,
-            ImpactEnabled, ImpactOnPlayerPercent, ImpactMeetRulesEnabled, TimedBlocksEnabled, TimedBlockSlowMo, PerfectStrikeEnabled, ReelingHitKnockdownEnabled, TimedBlocksOnHorseback, OpeningsEnabled,
+            ImpactEnabled, ImpactOnPlayerPercent, ImpactMeetRulesEnabled, TimedBlocksEnabled, TimedBlockSlowMo, PerfectStrikeEnabled, ReelingHitKnockdownEnabled, TimedBlocksOnHorseback, OpeningsEnabled, OpeningArrowShow,
             SprintEnabled, SprintKey, SprintControllerKey,
             ShowPlayerBar, AltMarksEveryone, ImpactShowMessages,
             GiveTier1Shields,
@@ -2970,7 +2971,7 @@ namespace TraxCombat.Core
             OpeningsShadowLog, OpeningFlashDelaySeconds, OpeningPerfectScalePercent, OpeningWindowSeconds, OpeningWindowPerLinkSeconds, OpeningUnguardedWindowPercent,
             OpeningBlockPerLinkPercent, OpeningChainMax, OpeningChainResetSeconds, OpeningMissKeepsChain, OpeningHoldMaxSeconds, OpeningSidesCrossed,
             OpeningReelBaseSeconds, OpeningReelPerChainSeconds, OpeningReelMaxSeconds, OpeningShieldMinChain, OpeningBackHitStaggers, OpeningUnguardedHitOpens,
-            OpeningArrowShow, OpeningAiVsAi, PerfectStrikeFourWayMin, PerfectStrikeFourWayMax, PerfectStrikeThreeWayMin, PerfectStrikeThreeWayMax,
+            OpeningAiVsAi, PerfectStrikeFourWayMin, PerfectStrikeFourWayMax, PerfectStrikeThreeWayMin, PerfectStrikeThreeWayMax,
             PerfectStrikeTwoWayMin, PerfectStrikeTwoWayMax, PerfectStrikeWeaponFinishes, OpeningGuardTest, OpeningGuardTestKey, OpeningGuardTestSeconds,
             ImpactMismatchWeight, ImpactEvenBandDoublings, ImpactBodyExponent, ImpactBodyFloorPoints, ImpactStaggeredBonus, ImpactDamageWeight,
             ImpactRefWeightKg, ImpactWeightExponent, ImpactRefSwingSpeed, ImpactSpeedExponent, ImpactBluntFactor, ImpactCutFactor, ImpactPierceFactor,
