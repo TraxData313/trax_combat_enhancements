@@ -292,6 +292,14 @@
   // (true or false)
   "ReelingHitKnockdownEnabled": true,
 
+  // A well-timed block against a RIDER's blow makes him reel in the saddle - no attack and no
+  // guard for up to 1.5 s, his horse checked; a sharp one can rear his horse, a perfect one can
+  // knock him off. Works whether you ride or stand. Off: riders shrug off timed blocks as
+  // before. Not built yet - this build only measures what it would do (the log); leave it off.
+  // The numbers: Advanced page, Impact.
+  // (true or false)
+  "TimedBlocksOnHorseback": false,
+
   // ==================== Sprinting ====================
   // Every fighter on foot has a sprint: a short burst of speed stored in seconds - the more
   // Athletics he has left, the longer (150 points = 7.5 s; empty = none). Hold the sprint key
@@ -2738,6 +2746,87 @@
   // the usual one stands. 0 = only the usual chances.
   // (range 0 to 100)
   "ReelingHitKnockdownPercent": 80,
+
+  // With 'Timed blocks on horseback' on: how long a rider reels in the saddle after a PERFECT
+  // block of his blow - no attack, no guard, his horse checked. A less sharp block gives less,
+  // down to the untimed riposte's length.
+  // (range 0.5 to 3.0)
+  "TimedRiderReelMaxSeconds": 1.5,
+
+  // The longest the AI's timed block can make YOU reel in the saddle. Your steering is never
+  // locked.
+  // (range 0.3 to 3.0)
+  "TimedRiderReelAgainstYouMaxSeconds": 1.0,
+
+  // On: an AI man's timed block of your mounted blow can make you reel in the saddle (at most
+  // the reel on you above; never a rear, never knocked off). Off: only riders of the AI reel.
+  // (true or false)
+  "TimedRiderReelOnYou": true,
+
+  // The game action the reeling rider's upper body plays (never his legs, never the horse):
+  // act_stagger_backward, or a name picked with the animation test tool; none = no animation,
+  // only the lock.
+  // (an item id (letters, digits, _ . -; empty = none))
+  "TimedRiderReelAction": "act_stagger_backward",
+
+  // The speed of the reel's animation (1 = the game's own; below 1 slower).
+  // (range 0.5 to 2.0)
+  "TimedRiderReelAnimSpeed": 1.0,
+
+  // The animation plays at most this long; the rest of the reel is the lock only (no attack, no
+  // guard). 0 = no animation.
+  // (range 0.0 to 2.0)
+  "TimedRiderReelAnimMaxSeconds": 1.0,
+
+  // On: a reeling rider cannot raise his guard either. Off: he only cannot attack.
+  // (true or false)
+  "TimedRiderNoGuard": true,
+
+  // A reeling rider's horse is checked to this share of its top speed (or less if the rider is
+  // tired). 100 = never checked.
+  // (range 10 to 100)
+  "TimedRiderHorseCheckPercent": 50,
+
+  // On: a timed block by a man ON FOOT of a rider's blow reels the rider as well (the AI's
+  // half-strength timing can only reel him - only your own sharp and perfect blocks can rear
+  // his horse or knock him off). Off: only rider against rider.
+  // (true or false)
+  "TimedRiderFromFoot": true,
+
+  // A block timed at least this well (1 = perfect) can rear the reeling rider's horse.
+  // (range 0.0 to 1.0)
+  "TimedRiderRearMinScore": 0.8,
+
+  // The chance a sharp block rears his horse, times the timing (a perfect block the full
+  // chance). 0 = never.
+  // (range 0 to 100)
+  "TimedRiderRearPercent": 50,
+
+  // The most a PERFECT block's chance to knock the rider off his horse can be: times his
+  // horse's speed (a quarter standing, all of it at a gallop) and the skill and tiredness match
+  // (half for even fresh men, all of it against a weak or tired rider).
+  // (range 0 to 100)
+  "TimedRiderDismountPercent": 30,
+
+  // A parry with a weapon knocks a rider off at this share of a shield block's chance.
+  // (range 0 to 100)
+  "TimedRiderDismountWeaponPercent": 50,
+
+  // On: a rider reeling from your timed block opens a perfect strike window too, and you may
+  // strike it from horseback.
+  // (true or false)
+  "PerfectStrikeOnHorseback": true,
+
+  // On: on horseback any swing or thrust that lands on his body while he reels counts (riders
+  // pass side by side - the opposite side is rarely possible). Off: the strict opposites, as on
+  // foot.
+  // (true or false)
+  "PerfectStrikeHorsebackAnySide": true,
+
+  // On: a mounted blocker's shield or weapon snaps out on a timed block (his guard's own heavy
+  // parry - the game has no bash on horseback).
+  // (true or false)
+  "TimedBlockPushOutMounted": true,
 
   // How much an outmatched man suffers: every doubling of the mismatch beyond the even band
   // adds this to the pressure on him (0.25: an enemy four times stronger counts as much as

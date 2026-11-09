@@ -227,6 +227,13 @@ namespace TraxCombat.Core
             "Hit a staggering man: he falls",
             "On: any swing, thrust, kick or shield bash that lands on a man on foot while he still staggers from a stagger of this mod (your timed block, a kick, a bash, a hit's stagger - whoever caused it) knocks him down 80% of the time, however fresh, skilled or armoured he is. It works on you too (times 'Against you'). A hit his shield or weapon blocks does not count; a blow that kills him just kills him. Off: the usual knockdown chances only. The chance: Advanced page, Impact.");
 
+        // Step 104 (Toni 2026-11-09: "can you add the reel vs mounted troops as well somehow, like that 3rd round, we were on horsebacks fighting,
+        // I blocked, can you implement a similar system there?"): TimedRiderMath, DESIGN decision 93. Ships OFF until step 104b builds the reel -
+        // step 104a only measures it (the [impact] "rider shadow" lines, the [summary] "timed blocks on horseback (shadow)" line).
+        public static readonly ParamDef TimedBlocksOnHorseback = Bool("TimedBlocksOnHorseback", PlayerImpactGroup,
+            "Timed blocks on horseback",
+            "A well-timed block against a RIDER's blow makes him reel in the saddle - no attack and no guard for up to 1.5 s, his horse checked; a sharp one can rear his horse, a perfect one can knock him off. Works whether you ride or stand. Off: riders shrug off timed blocks as before. Not built yet - this build only measures what it would do (the log); leave it off. The numbers: Advanced page, Impact.");
+
         // Step 33 (Anton, 2026-10-12: "a short burst of speed, meant to feel a little like a dodge, and for the AI to make charges
         // sharper"): Core SprintMath, AI_NOTES "Step 33".
         public static readonly ParamDef SprintEnabled = Bool("SprintEnabled", PlayerSprintGroup,
@@ -2060,6 +2067,57 @@ namespace TraxCombat.Core
             "Hit on a staggering man: knockdown chance (%)",
             "With 'Hit a staggering man: he falls' on (the player page): the chance that a swing, thrust, kick or bash landing on a man on foot who still staggers knocks him down - whatever caused the stagger, ignoring his tiredness, skill, armour, his brace and the usual immunity after a fall. Against you times 'Against you (%)'. If the usual knockdown chance is higher, the usual one stands. 0 = only the usual chances.");
 
+        // Step 104 (DESIGN decision 93, AI_NOTES "Step 104" §5): timed blocks on horseback - the reel in the saddle (104b), the rear and the knock-off
+        // (104c), the perfect strike and the push-out from horseback (104d). Step 104a reads them for its shadow lines only.
+        public static readonly ParamDef TimedRiderReelMaxSeconds = Float("TimedRiderReelMaxSeconds", 0.5, 3, ImpactGroup,
+            "Horseback: the longest reel (s)",
+            "With 'Timed blocks on horseback' on: how long a rider reels in the saddle after a PERFECT block of his blow - no attack, no guard, his horse checked. A less sharp block gives less, down to the untimed riposte's length.");
+        public static readonly ParamDef TimedRiderReelAgainstYouMaxSeconds = Float("TimedRiderReelAgainstYouMaxSeconds", 0.3, 3, ImpactGroup,
+            "Horseback: the longest reel on you (s)",
+            "The longest the AI's timed block can make YOU reel in the saddle. Your steering is never locked.");
+        public static readonly ParamDef TimedRiderReelOnYou = Bool("TimedRiderReelOnYou", ImpactGroup,
+            "Horseback: the AI's timed blocks reel you too",
+            "On: an AI man's timed block of your mounted blow can make you reel in the saddle (at most the reel on you above; never a rear, never knocked off). Off: only riders of the AI reel.");
+        public static readonly ParamDef TimedRiderReelAction = Text("TimedRiderReelAction", ImpactGroup,
+            "Horseback: the reel's animation",
+            "The game action the reeling rider's upper body plays (never his legs, never the horse): act_stagger_backward, or a name picked with the animation test tool; none = no animation, only the lock.");
+        public static readonly ParamDef TimedRiderReelAnimSpeed = Float("TimedRiderReelAnimSpeed", 0.5, 2, ImpactGroup,
+            "Horseback: the reel animation's speed",
+            "The speed of the reel's animation (1 = the game's own; below 1 slower).");
+        public static readonly ParamDef TimedRiderReelAnimMaxSeconds = Float("TimedRiderReelAnimMaxSeconds", 0, 2, ImpactGroup,
+            "Horseback: the reel animation's longest part (s)",
+            "The animation plays at most this long; the rest of the reel is the lock only (no attack, no guard). 0 = no animation.");
+        public static readonly ParamDef TimedRiderNoGuard = Bool("TimedRiderNoGuard", ImpactGroup,
+            "Horseback: no guard while he reels",
+            "On: a reeling rider cannot raise his guard either. Off: he only cannot attack.");
+        public static readonly ParamDef TimedRiderHorseCheckPercent = Int("TimedRiderHorseCheckPercent", 10, 100, ImpactGroup,
+            "Horseback: his horse's top speed while he reels (%)",
+            "A reeling rider's horse is checked to this share of its top speed (or less if the rider is tired). 100 = never checked.");
+        public static readonly ParamDef TimedRiderFromFoot = Bool("TimedRiderFromFoot", ImpactGroup,
+            "Horseback: a man on foot reels a rider too",
+            "On: a timed block by a man ON FOOT of a rider's blow reels the rider as well (the AI's half-strength timing can only reel him - only your own sharp and perfect blocks can rear his horse or knock him off). Off: only rider against rider.");
+        public static readonly ParamDef TimedRiderRearMinScore = Float("TimedRiderRearMinScore", 0, 1, ImpactGroup,
+            "Horseback: the timing that can rear his horse",
+            "A block timed at least this well (1 = perfect) can rear the reeling rider's horse.");
+        public static readonly ParamDef TimedRiderRearPercent = Int("TimedRiderRearPercent", 0, 100, ImpactGroup,
+            "Horseback: rear chance (%)",
+            "The chance a sharp block rears his horse, times the timing (a perfect block the full chance). 0 = never.");
+        public static readonly ParamDef TimedRiderDismountPercent = Int("TimedRiderDismountPercent", 0, 100, ImpactGroup,
+            "Horseback: knocked-off chance (%)",
+            "The most a PERFECT block's chance to knock the rider off his horse can be: times his horse's speed (a quarter standing, all of it at a gallop) and the skill and tiredness match (half for even fresh men, all of it against a weak or tired rider).");
+        public static readonly ParamDef TimedRiderDismountWeaponPercent = Int("TimedRiderDismountWeaponPercent", 0, 100, ImpactGroup,
+            "Horseback: knocked off by a parry (%)",
+            "A parry with a weapon knocks a rider off at this share of a shield block's chance.");
+        public static readonly ParamDef PerfectStrikeOnHorseback = Bool("PerfectStrikeOnHorseback", ImpactGroup,
+            "Horseback: perfect strike",
+            "On: a rider reeling from your timed block opens a perfect strike window too, and you may strike it from horseback.");
+        public static readonly ParamDef PerfectStrikeHorsebackAnySide = Bool("PerfectStrikeHorsebackAnySide", ImpactGroup,
+            "Horseback: perfect strike from any side",
+            "On: on horseback any swing or thrust that lands on his body while he reels counts (riders pass side by side - the opposite side is rarely possible). Off: the strict opposites, as on foot.");
+        public static readonly ParamDef TimedBlockPushOutMounted = Bool("TimedBlockPushOutMounted", ImpactGroup,
+            "Horseback: a mounted blocker's push-out",
+            "On: a mounted blocker's shield or weapon snaps out on a timed block (his guard's own heavy parry - the game has no bash on horseback).");
+
         public static readonly ParamDef ImpactMismatchWeight = Float("ImpactMismatchWeight", 0, 2, ImpactGroup,
             "Mismatch weight (pressure per doubling)",
             "How much an outmatched man suffers: every doubling of the mismatch beyond the even band adds this to the pressure on him (0.25: an enemy four times stronger counts as much as being about a third tired). 0 = only tiredness counts.");
@@ -2687,7 +2745,7 @@ namespace TraxCombat.Core
             DamageRandomPercent, DamageReductionPercent, TiredDamageAtEmptyPercent,
             AthleticsEnabled, CostPerBlow, HeroCostMultiplier, CrouchRefillForPlayer,
             AiAggressionFreshPercent, AiAggressionExhaustedPercent, FeverEnabled, ShieldWallHoldsSlots, ShieldWallStepOutMetres, ShieldWallStandFirm, ShieldWallFlanksFaceOut, SpearPreferenceEnabled, PressDontPass, RotationEnabled, RestEnabled, WarCriesEnabled, CourageEnabled, CavalryFlockEnabled, LineDisciplineForPlayer,
-            ImpactEnabled, ImpactOnPlayerPercent, ImpactMeetRulesEnabled, TimedBlocksEnabled, TimedBlockSlowMo, PerfectStrikeEnabled, ReelingHitKnockdownEnabled,
+            ImpactEnabled, ImpactOnPlayerPercent, ImpactMeetRulesEnabled, TimedBlocksEnabled, TimedBlockSlowMo, PerfectStrikeEnabled, ReelingHitKnockdownEnabled, TimedBlocksOnHorseback,
             SprintEnabled, SprintKey, SprintControllerKey,
             ShowPlayerBar, AltMarksEveryone, ImpactShowMessages,
             GiveTier1Shields,
@@ -2777,6 +2835,9 @@ namespace TraxCombat.Core
             TimedBlockAnimTest, TimedBlockAnimTestKey,
             PerfectStrikeMinMultiplier, PerfectStrikeMaxMultiplier, PerfectStrikeGraceSeconds, PerfectStrikeCentreMessage,
             TimedBlockShowTiming, ReelingHitKnockdownPercent,
+            TimedRiderReelMaxSeconds, TimedRiderReelAgainstYouMaxSeconds, TimedRiderReelOnYou, TimedRiderReelAction, TimedRiderReelAnimSpeed, TimedRiderReelAnimMaxSeconds,
+            TimedRiderNoGuard, TimedRiderHorseCheckPercent, TimedRiderFromFoot, TimedRiderRearMinScore, TimedRiderRearPercent, TimedRiderDismountPercent,
+            TimedRiderDismountWeaponPercent, PerfectStrikeOnHorseback, PerfectStrikeHorsebackAnySide, TimedBlockPushOutMounted,
             ImpactMismatchWeight, ImpactEvenBandDoublings, ImpactBodyExponent, ImpactBodyFloorPoints, ImpactStaggeredBonus, ImpactDamageWeight,
             ImpactRefWeightKg, ImpactWeightExponent, ImpactRefSwingSpeed, ImpactSpeedExponent, ImpactBluntFactor, ImpactCutFactor, ImpactPierceFactor,
             ImpactKickFactor, ImpactBashFactor, ImpactSkillMinFactor, ImpactSkillMaxFactor,
