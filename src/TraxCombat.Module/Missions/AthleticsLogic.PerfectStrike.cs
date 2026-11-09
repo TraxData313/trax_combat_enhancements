@@ -29,7 +29,7 @@ namespace TraxCombat.Missions
     {
         private readonly PerfectStrikeBook _strikeBook = new PerfectStrikeBook();
         private readonly PerfectStrikeStats _strike = new PerfectStrikeStats();
-        private bool _strikeDisabled, _strikeFirstOpen, _strikeFirstWrong, _strikeFirstBlockedUnknown;
+        private bool _strikeDisabled, _strikeFirstOpen, _strikeFirstWrong, _strikeFirstBlockedUnknown, _strikeFirstRider, _strikeFirstHorse;
         private string? _strikeShow;
         private bool _strikeShowCentre;
 
@@ -49,12 +49,13 @@ namespace TraxCombat.Missions
                 var r = PerfectStrikeRules.From(TraxSettings.Shared);
                 if (!r.Enabled || !IsPlayer(blocker) || !YouDrive(blocker) || attacker.Removed) return;
                 int dir = !double.IsNaN(attacker.RecoilDirectionAt) && now - attacker.RecoilDirectionAt <= TimedRecoilMath.DirectionMaxAge + 1e-9 ? attacker.RecoilDirection : -1;
-                _strikeBook.Open(attacker.AgentIndex, dir, score, now, out bool dropped);
+                _strikeBook.Open(attacker.AgentIndex, dir, score, now, false, out bool dropped, out bool droppedRider);
                 _strike.Opened++;
                 if (dropped)
                 {
-                    _strike.ExpiredUnused++;
+                    StrikeExpired(droppedRider);
                     _strike.Replaced++;
+                    if (droppedRider) _strike.RiderReplaced++;
                 }
                 if (!_strikeFirstOpen)
                 {
@@ -67,6 +68,91 @@ namespace TraxCombat.Missions
             catch (Exception e)
             {
                 StrikeFailed("impact.perfect-open", e);
+            }
+        }
+
+        /// <summary>
+        /// Step 104d - from <see cref="TimedRiderReelAccepted"/> (the tick took a rider's REEL IN THE SADDLE): YOUR timed block (score > 0, you
+        /// riding or on foot) opens a window on the reeling RIDER - <see cref="PerfectStrikeRules.MountedOn"/> (the master switch first ...
+        /// <c>TimedBlocksOnHorseback</c>, <c>PerfectStrikeOnHorseback</c>). Open while he reels (his record's <see cref="ImpactState.ReelingUntil"/>,
+        /// the reel's own end) + the grace, like on foot. Knocked off his horse (step 104c) = no window (he is down - step 54's punish covers him).
+        /// Never on you (the AI's block of your blow opens nothing). Its own try.
+        /// </summary>
+        private void MaybeOpenRiderStrike(in RiderReelRec p, double now)
+        {
+            if (_strikeDisabled || !(p.Score > 0) || p.You) return;
+            try
+            {
+                var blocker = p.Blocker;
+                var a = p.St;
+                if (blocker == null || blocker.Removed || a.Removed || !IsPlayer(blocker) || !YouDrive(blocker)) return;
+                var r = PerfectStrikeRules.From(TraxSettings.Shared);
+                if (!r.MountedOn) return;
+                if (p.Fell)
+                {
+                    _strike.RiderKnockedOffNoWindow++;
+                    return;
+                }
+                int dir = !double.IsNaN(a.RecoilDirectionAt) && now - a.RecoilDirectionAt <= TimedRecoilMath.DirectionMaxAge + 1e-9 ? a.RecoilDirection : -1;
+                _strikeBook.Open(a.AgentIndex, dir, p.Score, now, true, out bool dropped, out bool droppedRider);
+                _strike.Opened++;
+                _strike.RiderOpened++;
+                if (dropped)
+                {
+                    StrikeExpired(droppedRider);
+                    _strike.Replaced++;
+                    if (droppedRider) _strike.RiderReplaced++;
+                }
+                if (!_strikeFirstRider)
+                {
+                    _strikeFirstRider = true;
+                    TraxLog.Info("impact", "perfect strike: first window on a RIDER at " + Sec(now) + " s - " + Name(a) + " reels in the saddle after your timed block (timing " + F2(p.Score)
+                        + ") of his " + PerfectStrikeMath.Name(dir) + (r.HorsebackAnySide ? " - ANY landed hit on his body counts (never his horse)" : StrikeWanted(dir))
+                        + "; open until his reel ends (" + F2(p.Until - now) + " s) + " + F2(r.GraceSeconds) + " s, x"
+                        + PerfectStrikeMath.Multiplier(p.Score, in r).ToString("0.00", CultureInfo.InvariantCulture) + " - " + r.Describe());
+                }
+            }
+            catch (Exception e)
+            {
+                StrikeFailed("impact.perfect-open-rider", e);
+            }
+        }
+
+        /// <summary>A window gone unused (expired, replaced, still open at the end) - counted, a rider's apart.</summary>
+        private void StrikeExpired(bool rider)
+        {
+            _strike.ExpiredUnused++;
+            if (rider) _strike.RiderExpiredUnused++;
+        }
+
+        /// <summary>Step 104d - the decorator's question for a hit on a HORSE (main thread): YOUR hit on the horse of a rider in an open window
+        /// is counted and ignored - the window stays open (only his body counts).</summary>
+        void IPerfectStrike.HorseHit(int attackerIndex, int riderIndex)
+        {
+            if (_strikeDisabled || _strikeBook.Count == 0 || riderIndex < 0) return;
+            try
+            {
+                int i = _strikeBook.IndexOf(riderIndex);
+                if (i < 0 || !_strikeBook[i].Rider) return;
+                var you = GetByIndex(attackerIndex);
+                if (you == null || !IsPlayer(you) || !YouDrive(you)) return;
+                if (_mainThreadId != -1 && Thread.CurrentThread.ManagedThreadId != _mainThreadId)
+                {
+                    _strike.OffMainThread++;
+                    return;
+                }
+                _strike.HorseHits++;
+                if (!_strikeFirstHorse)
+                {
+                    _strikeFirstHorse = true;
+                    var v = GetByIndex(riderIndex);
+                    TraxLog.Info("impact", "perfect strike: first hit on a reeling rider's HORSE at " + Sec(SpikeNow) + " s - " + (v != null ? Name(v) : "(a rider)")
+                        + "'s horse: normal damage, the window stays open (only his body counts)");
+                }
+            }
+            catch (Exception e)
+            {
+                StrikeFailed("impact.perfect-horse", e);
             }
         }
 
@@ -99,13 +185,15 @@ namespace TraxCombat.Missions
                 if (!r.Enabled) return damage; // the tick closes the windows
                 double now = SpikeNow;
                 var v = GetByIndex(victim.Index);
+                ref var w = ref _strikeBook[i];
                 if (v == null || v.Removed || !PerfectStrikeMath.Open(now, v.Impact.ReelingUntil, r.GraceSeconds))
                 {
+                    StrikeExpired(w.Rider);
                     _strikeBook.RemoveAt(i);
-                    _strike.ExpiredUnused++;
                     return damage;
                 }
-                if (attackerMounted)
+                if (w.Rider && !r.MountedOn) return damage; // step 104d's switch off: the tick closes it
+                if (attackerMounted && !r.MountedOn) // step 104d: from horseback only with its switch
                 {
                     _strike.Mounted++;
                     return damage;
@@ -116,8 +204,7 @@ namespace TraxCombat.Missions
                     return damage;
                 }
                 int strike = (int)cd.AttackDirection;
-                ref var w = ref _strikeBook[i];
-                var verdict = PerfectStrikeMath.Verdict(w.Blocked, strike);
+                var verdict = PerfectStrikeMath.Verdict(w.Rider, r.HorsebackAnySide, w.Blocked, strike); // step 104d: a reeling rider - any side
                 if (verdict == StrikeVerdict.Unknown)
                 {
                     _strike.UnknownDirection++;
@@ -138,6 +225,8 @@ namespace TraxCombat.Missions
                 {
                     _strike.NoteWrongSide(strike, w.Blocked);
                     w.WrongSide++;
+                    if (w.Rider) _strike.RiderWrongSide++;
+                    else if (attackerMounted) _strike.FootWrongSideFromHorseback++;
                     // step 103: every mismatch of yours is logged (yours only, inside a ~2 s window - a handful a battle), so a playtest shows what you hit
                     {
                         string head = _strikeFirstWrong ? "perfect strike: WRONG-SIDE hit at " : "perfect strike: first WRONG-SIDE hit at ";
@@ -150,8 +239,11 @@ namespace TraxCombat.Missions
                 double k = PerfectStrikeMath.Multiplier(w.Score, in r);
                 float after = PerfectStrikeMath.Apply(damage, k);
                 _strike.NoteLanded(strike, w.Blocked, w.Score, k, damage, after);
+                if (w.Rider) _strike.NoteRiderLanded(w.Score, k, damage, after, attackerMounted);
+                else if (attackerMounted) _strike.FootLandedFromHorseback++;
                 var c = CultureInfo.InvariantCulture;
-                TraxLog.Info("impact", "YOU: PERFECT STRIKE on " + Name(v) + " at " + Sec(now) + " s - your " + PerfectStrikeMath.Name(strike) + " after his blocked "
+                TraxLog.Info("impact", "YOU: PERFECT STRIKE on " + Name(v) + " at " + Sec(now) + " s - your " + PerfectStrikeMath.Name(strike) + (attackerMounted ? " from horseback" : string.Empty)
+                    + (w.Rider ? " on him reeling in the saddle" + (r.HorsebackAnySide ? " (any side)" : string.Empty) : string.Empty) + " after his blocked "
                     + PerfectStrikeMath.Name(w.Blocked) + ", " + F2(now - w.OpenedAt) + " s into his stagger, timing " + F2(w.Score) + " → x" + k.ToString("0.00", c) + ": "
                     + damage.ToString("0.#", c) + " → " + after.ToString("0.#", c) + " damage" + (w.WrongSide > 0 ? " (after " + w.WrongSide.ToString(c) + " wrong-side hit(s))" : string.Empty));
                 _strikeBook.RemoveAt(i);
@@ -182,17 +274,19 @@ namespace TraxCombat.Missions
             var r = PerfectStrikeRules.From(TraxSettings.Shared);
             for (int i = _strikeBook.Count - 1; i >= 0; i--)
             {
-                if (!r.Enabled || _strikeDisabled)
+                bool rider = _strikeBook[i].Rider;
+                if (!r.Enabled || _strikeDisabled || (rider && !r.MountedOn)) // step 104d: a rider's window also closes with its switch
                 {
                     _strikeBook.RemoveAt(i);
                     _strike.ClosedBySwitch++;
+                    if (rider) _strike.RiderClosedBySwitch++;
                     continue;
                 }
                 var v = GetByIndex(_strikeBook[i].Victim);
                 if (v == null || v.Removed || !PerfectStrikeMath.Open(now, v.Impact.ReelingUntil, r.GraceSeconds))
                 {
                     _strikeBook.RemoveAt(i);
-                    _strike.ExpiredUnused++;
+                    StrikeExpired(rider);
                 }
             }
         }
@@ -208,9 +302,11 @@ namespace TraxCombat.Missions
         /// <summary>The summary's turn (after the timed animations' lines): a window still open at the end counts as expired unused.</summary>
         private void WritePerfectStrikeSummary()
         {
-            _strike.ExpiredUnused += _strikeBook.Count;
+            for (int i = 0; i < _strikeBook.Count; i++) StrikeExpired(_strikeBook[i].Rider);
             _strikeBook.Clear();
-            TraxLog.Info("summary", _strike.SummaryLine(PerfectStrikeRules.From(TraxSettings.Shared)));
+            var r = PerfectStrikeRules.From(TraxSettings.Shared);
+            TraxLog.Info("summary", _strike.SummaryLine(in r));
+            TraxLog.Info("summary", _strike.MountedSummaryLine(in r)); // step 104d
         }
     }
 }

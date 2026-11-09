@@ -9,7 +9,7 @@ namespace TraxCombat.Core
     /// blocked, can you implement a similar system there?"; DESIGN decision 93, AI_NOTES "Step 104"): TIMED BLOCKS ON HORSEBACK, read live.
     /// <see cref="ShadowOn"/> = the master switch FIRST, then Athletics and the impact system, then <c>TimedBlocksEnabled</c> - the step-104a
     /// shadow decides on every correct block of a rider's blow whatever <c>TimedBlocksOnHorseback</c> says; <see cref="Live"/> adds that switch:
-    /// step 104b's reel in the saddle is APPLIED, step 104c's knock-off / rear on top of it (the strike / push-out stay shadow until 104d).
+    /// step 104b's reel in the saddle is APPLIED, step 104c's knock-off / rear on top of it, step 104d's perfect strike window and mounted push-out at its start.
     /// </summary>
     public readonly struct TimedRiderRules
     {
@@ -101,7 +101,7 @@ namespace TraxCombat.Core
         {
             var c = CultureInfo.InvariantCulture;
             if (!ShadowOn) return "timed blocks on horseback: shadow OFF (" + OffBecause + ")";
-            return "timed blocks on horseback: " + (Switch ? "the switch ON - the reel in the saddle, the rear and the knock-off LIVE (steps 104b / 104c; the strike / push-out still shadow)" : "the switch OFF - SHADOW only, nothing applied")
+            return "timed blocks on horseback: " + (Switch ? "the switch ON - the reel in the saddle, the rear and the knock-off LIVE (steps 104b / 104c), the perfect strike and the mounted push-out LIVE (step 104d)" : "the switch OFF - SHADOW only, nothing applied")
                    + "; the reel up to " + ReelMax.ToString("0.00", c) + " s (on you " + ReelYouMax.ToString("0.00", c) + (ReelOnYou ? "" : ", off") + "), "
                    + (string.IsNullOrEmpty(ReelAction) ? "none" : ReelAction) + " x" + AnimSpeed.ToString("0.00", c) + " for at most " + AnimMax.ToString("0.00", c)
                    + " s then the lock" + (NoGuard ? " (no attack, no guard)" : " (no attack)") + ", his horse at " + (100 * HorseCheck).ToString("0", c) + "%; "
@@ -443,8 +443,8 @@ namespace TraxCombat.Core
             if (o.Combo == TimedRiderCombo.RiderVsFoot)
             {
                 sb.Append(": the foot attacker's riposte as today");
-                if (o.PushOutMounted) sb.Append("; 104d WOULD push out (his heavy parry)");
-                if (o.StrikeFromHorseback) sb.Append("; 104d WOULD let your strike from horseback count");
+                if (o.PushOutMounted) sb.Append("; the mounted push-out (his heavy parry, step 104d - its own line)");
+                if (o.StrikeFromHorseback) sb.Append("; your strike from horseback may count (step 104d - strict opposites on a man on foot)");
                 if (o.Refusal == TimedRiderRefusal.NotTimed) sb.Append(" (untimed)");
                 return sb.Append(" - nothing applied").ToString();
             }
@@ -537,7 +537,7 @@ namespace TraxCombat.Core
             var sb = new StringBuilder(400);
             sb.Append("timed blocks on horseback (shadow, step 104a): ");
             if (!r.ShadowOn) sb.Append("shadow OFF (").Append(r.OffBecause).Append(") - ");
-            else sb.Append(r.Switch ? "the switch ON - the reel, the knock-off and the rear LIVE (their own lines, steps 104b / 104c), the strike / push-out below NOT APPLIED; " : "the switch OFF - NOTHING APPLIED; ");
+            else sb.Append(r.Switch ? "the switch ON - the reel, the knock-off, the rear, the perfect strike and the mounted push-out LIVE (their own lines, steps 104b-104d); " : "the switch OFF - NOTHING APPLIED; ");
             int riders = ByCombo[(int)TimedRiderCombo.RiderVsRider] + ByCombo[(int)TimedRiderCombo.FootVsRider];
             sb.Append("correct blocks of a rider's blow ").Append(riders.ToString(c)).Append(" (rider vs rider ").Append(ByCombo[(int)TimedRiderCombo.RiderVsRider].ToString(c))
               .Append(" / foot vs rider ").Append(ByCombo[(int)TimedRiderCombo.FootVsRider].ToString(c)).Append("; yours ").Append(Yours.ToString(c))
@@ -564,7 +564,7 @@ namespace TraxCombat.Core
             }
             if (!any) sb.Append("none");
             sb.Append("; a rider blocking a man on foot ").Append(ByCombo[(int)TimedRiderCombo.RiderVsFoot].ToString(c)).Append(" (timed ").Append(FootRipostes.ToString(c))
-              .Append(", untimed ").Append(FootUntimed.ToString(c)).Append("; 104d would add the mounted push-out ").Append(FootPushOuts.ToString(c))
+              .Append(", untimed ").Append(FootUntimed.ToString(c)).Append("; with the mounted push-out (step 104d) ").Append(FootPushOuts.ToString(c))
               .Append(", your strike from horseback ").Append(FootStrikes.ToString(c)).Append(')');
             return sb.ToString();
         }

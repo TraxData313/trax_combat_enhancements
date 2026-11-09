@@ -91,6 +91,10 @@ namespace TraxCombat.Models
     internal interface IPerfectStrike
     {
         float PerfectStrike(Agent attacker, Agent victim, bool attackerMounted, in AttackCollisionData collision, float damage);
+
+        /// <summary>Step 104d: a man's melee hit on a HORSE whose rider is <paramref name="riderIndex"/> - counted when he is in YOUR open rider
+        /// window; never uses it, never changes the damage.</summary>
+        void HorseHit(int attackerIndex, int riderIndex);
     }
 
     /// <summary>
@@ -260,6 +264,23 @@ namespace TraxCombat.Models
             {
                 TraxCombat.Missions.AthleticsLogic.Failed("impact.perfect-strike-hook", e);
                 return damage;
+            }
+        }
+
+        /// <summary>Step 104d: a man's melee hit landed on a horse - its rider's perfect-strike window is told (counted, kept open). Nothing to do
+        /// with no hook / no rider; a throw is logged, the hit unchanged.</summary>
+        internal static void PerfectStrikeHorseHit(Agent? attacker, Agent? horse)
+        {
+            var g = _perfect;
+            if (g == null || attacker == null || horse == null) return;
+            try
+            {
+                var rider = horse.RiderAgent;
+                if (rider != null) g.HorseHit(attacker.Index, rider.Index);
+            }
+            catch (Exception e)
+            {
+                TraxCombat.Missions.AthleticsLogic.Failed("impact.perfect-horse-hook", e);
             }
         }
 

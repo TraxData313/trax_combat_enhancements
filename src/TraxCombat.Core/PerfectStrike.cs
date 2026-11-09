@@ -23,6 +23,9 @@ namespace TraxCombat.Core
             MaxMultiplier = PerfectStrikeMath.ClampMultiplier(F(s.PerfectStrikeMaxMultiplier));
             GraceSeconds = Math.Max(0, Math.Min(PerfectStrikeMath.MaxGraceSeconds, Nan0(F(s.PerfectStrikeGraceSeconds))));
             CentreMessage = s.PerfectStrikeCentreMessage;
+            HorsebackSwitch = s.TimedBlocksOnHorseback;
+            OnHorsebackSwitch = s.PerfectStrikeOnHorseback;
+            HorsebackAnySide = s.PerfectStrikeHorsebackAnySide;
         }
 
         public static PerfectStrikeRules From(TraxSettings s) => new PerfectStrikeRules(s);
@@ -45,6 +48,24 @@ namespace TraxCombat.Core
         /// <summary>Also the big line in the middle of the screen (the game's quick information), not only the gold line in the feed.</summary>
         public bool CentreMessage { get; }
 
+        /// <summary>Step 104d: <c>TimedBlocksOnHorseback</c> (the player page).</summary>
+        public bool HorsebackSwitch { get; }
+
+        /// <summary>Step 104d: <c>PerfectStrikeOnHorseback</c> (Advanced).</summary>
+        public bool OnHorsebackSwitch { get; }
+
+        /// <summary>Step 104d: <c>PerfectStrikeHorsebackAnySide</c> (Advanced) - on a reeling RIDER any landed hit on his body counts.</summary>
+        public bool HorsebackAnySide { get; }
+
+        /// <summary>
+        /// Step 104d - THE PERFECT STRIKE ON HORSEBACK: a rider's reel in the saddle taken after YOUR timed block opens a window on him, and your
+        /// strike may come from horseback (on a rider or a man on foot). The perfect strike's chain first (the master switch FIRST), then
+        /// <c>TimedBlocksOnHorseback</c>, then <c>PerfectStrikeOnHorseback</c>. Off = no rider window, a strike from horseback never counts.
+        /// </summary>
+        public bool MountedOn => Enabled && HorsebackSwitch && OnHorsebackSwitch;
+
+        public string? MountedOffBecause => !Enabled ? OffBecause : !HorsebackSwitch ? "TimedBlocksOnHorseback" : !OnHorsebackSwitch ? "PerfectStrikeOnHorseback" : null;
+
         public string? OffBecause => !ModEnabled ? "ModEnabled" : !ImpactOn ? "the impact system off" : !TimedOn ? "TimedBlocksEnabled" : !Switch ? "PerfectStrikeEnabled" : null;
 
         public string Describe()
@@ -53,7 +74,10 @@ namespace TraxCombat.Core
             if (!Enabled) return "perfect strike OFF (" + OffBecause + ")";
             return "perfect strike ON: after YOUR timed block staggers him, your first attack from the strict opposite (his right ↔ your right swing, left ↔ left, his overhead ↔ your thrust from below, his thrust ↔ your overhead) that lands on his body while he reels (+"
                    + GraceSeconds.ToString("0.00", c) + " s) does x" + MinMultiplier.ToString("0.0#", c) + " (timing 0) to x" + MaxMultiplier.ToString("0.0#", c)
-                   + " (timing 1) damage; the line in the middle of the screen " + (CentreMessage ? "on" : "off");
+                   + " (timing 1) damage; the line in the middle of the screen " + (CentreMessage ? "on" : "off")
+                   + "; on horseback (step 104d) " + (MountedOn ? "ON - a rider reeling in the saddle after your timed block: " + (HorsebackAnySide ? "ANY side" : "strict opposites")
+                                                                  + " on his body (never his horse); your strike may come from horseback (strict opposites on a man on foot)"
+                                                                : "OFF (" + MountedOffBecause + ")");
         }
 
         private static double Nan0(double v) => double.IsNaN(v) ? 0 : v;
@@ -155,6 +179,15 @@ namespace TraxCombat.Core
             return strike == Opposite(blocked) ? StrikeVerdict.Perfect : StrikeVerdict.WrongSide;
         }
 
+        /// <summary>
+        /// Step 104d: the verdict for a window's kind. A window on a reeling RIDER (<paramref name="riderWindow"/>) with
+        /// <c>PerfectStrikeHorsebackAnySide</c> (<paramref name="anySide"/>): ANY landed hit on his body is perfect, whatever its direction - a
+        /// mounted swing is dictated by which side you pass him (Toni's answer 4). Otherwise (a man on foot, or any-side off) step 103's strict
+        /// opposites, <see cref="Verdict(int, int)"/>.
+        /// </summary>
+        public static StrikeVerdict Verdict(bool riderWindow, bool anySide, int blocked, int strike) =>
+            riderWindow && anySide ? StrikeVerdict.Perfect : Verdict(blocked, strike);
+
         public static double ClampMultiplier(double v) =>
             double.IsNaN(v) ? MinAllowedMultiplier : Math.Max(MinAllowedMultiplier, Math.Min(MaxAllowedMultiplier, v));
 
@@ -208,6 +241,9 @@ namespace TraxCombat.Core
 
         /// <summary>Wrong-side hits of yours on him in this window.</summary>
         public int WrongSide;
+
+        /// <summary>Step 104d: opened by his REEL IN THE SADDLE (a rider), not a riposte stagger on foot.</summary>
+        public bool Rider;
     }
 
     /// <summary>Step 100g: the open windows (a fixed array, no allocation after construction). Main thread.</summary>
@@ -228,8 +264,13 @@ namespace TraxCombat.Core
 
         /// <summary>A new window on <paramref name="victim"/>. <paramref name="dropped"/> = an unused window it replaced (the same man staggered
         /// again, or the oldest when full) - the caller counts it as expired unused.</summary>
-        public void Open(int victim, int blocked, double score, double now, out bool dropped)
+        public void Open(int victim, int blocked, double score, double now, out bool dropped) => Open(victim, blocked, score, now, false, out dropped, out _);
+
+        /// <summary>The same; <paramref name="rider"/> = a rider's reel in the saddle (step 104d); <paramref name="droppedRider"/> = the dropped
+        /// window was a rider's.</summary>
+        public void Open(int victim, int blocked, double score, double now, bool rider, out bool dropped, out bool droppedRider)
         {
+            droppedRider = false;
             dropped = false;
             int i = IndexOf(victim);
             if (i >= 0) dropped = true;
@@ -241,7 +282,8 @@ namespace TraxCombat.Core
                     if (_w[j].OpenedAt < _w[i].OpenedAt) i = j;
                 dropped = true;
             }
-            _w[i] = new PerfectStrikeWindow { Victim = victim, Blocked = PerfectStrikeMath.IsAttack(blocked) ? blocked : -1, Score = score, OpenedAt = now };
+            if (dropped) droppedRider = _w[i].Rider;
+            _w[i] = new PerfectStrikeWindow { Victim = victim, Blocked = PerfectStrikeMath.IsAttack(blocked) ? blocked : -1, Score = score, OpenedAt = now, Rider = rider };
         }
 
         public void RemoveAt(int i)
@@ -280,6 +322,52 @@ namespace TraxCombat.Core
         public int Opened, Replaced, ExpiredUnused, ClosedBySwitch, NotOnBody, Mounted, OffMainThread, UnknownDirection, Errors;
         public double MultiplierSum, MultiplierMin = double.NaN, MultiplierMax = double.NaN, ScoreSum;
         public double DamageBeforeSum, DamageAfterSum;
+
+        /// <summary>Step 104d - THE PERFECT STRIKE ON HORSEBACK: windows on reeling riders (opened / replaced / expired unused / closed by a
+        /// switch; none - he was knocked off), landed on them (from horseback / on foot), wrong side (any side off), your hits on such a rider's
+        /// HORSE (ignored - the window kept), your strikes from horseback on men on foot (landed / wrong side).</summary>
+        public int RiderOpened, RiderReplaced, RiderExpiredUnused, RiderClosedBySwitch, RiderKnockedOffNoWindow;
+        public int RiderLanded, RiderLandedFromHorseback, RiderWrongSide, HorseHits, FootLandedFromHorseback, FootWrongSideFromHorseback;
+        public double RiderMultiplierSum, RiderMultiplierMin = double.NaN, RiderMultiplierMax = double.NaN, RiderScoreSum, RiderDamageBeforeSum, RiderDamageAfterSum;
+
+        /// <summary>Step 104d: one perfect strike on a reeling rider (also counted in <see cref="NoteLanded"/>).</summary>
+        public void NoteRiderLanded(double score, double k, float before, float after, bool fromHorseback)
+        {
+            RiderLanded++;
+            if (fromHorseback) RiderLandedFromHorseback++;
+            RiderMultiplierSum += k;
+            RiderScoreSum += score;
+            if (double.IsNaN(RiderMultiplierMin) || k < RiderMultiplierMin) RiderMultiplierMin = k;
+            if (double.IsNaN(RiderMultiplierMax) || k > RiderMultiplierMax) RiderMultiplierMax = k;
+            RiderDamageBeforeSum += before;
+            RiderDamageAfterSum += after;
+        }
+
+        /// <summary>Step 104d: the [summary] "perfect strike on horseback" line.</summary>
+        public string MountedSummaryLine(in PerfectStrikeRules r)
+        {
+            var c = CultureInfo.InvariantCulture;
+            var t = new StringBuilder();
+            t.Append("perfect strike on horseback (step 104d; ").Append(r.MountedOn ? (r.HorsebackAnySide ? "ON, any side on a rider" : "ON, strict opposites on a rider too") : "OFF (" + r.MountedOffBecause + ")")
+             .Append("): windows on riders reeling in the saddle after your timed block ").Append(RiderOpened.ToString(c))
+             .Append(" (none - knocked off his horse ").Append(RiderKnockedOffNoWindow.ToString(c)).Append("), PERFECT STRIKES on them ").Append(RiderLanded.ToString(c))
+             .Append(" (you riding ").Append(RiderLandedFromHorseback.ToString(c)).Append(", on foot ").Append((RiderLanded - RiderLandedFromHorseback).ToString(c)).Append(')');
+            if (RiderLanded > 0)
+                t.Append(", mean multiplier x").Append((RiderMultiplierSum / RiderLanded).ToString("0.00", c))
+                 .Append(" (x").Append(RiderMultiplierMin.ToString("0.00", c)).Append("-x").Append(RiderMultiplierMax.ToString("0.00", c))
+                 .Append(", mean timing ").Append((RiderScoreSum / RiderLanded).ToString("0.00", c))
+                 .Append("), damage ").Append(RiderDamageBeforeSum.ToString("0", c)).Append(" → ").Append(RiderDamageAfterSum.ToString("0", c));
+            else t.Append(", mean multiplier -");
+            t.Append("; rider windows expired unused ").Append(RiderExpiredUnused.ToString(c));
+            if (RiderReplaced > 0) t.Append(" (").Append(RiderReplaced.ToString(c)).Append(" replaced)");
+            if (RiderClosedBySwitch > 0) t.Append(", closed by a switch ").Append(RiderClosedBySwitch.ToString(c));
+            if (RiderWrongSide > 0) t.Append("; wrong side on a rider (any side off) ").Append(RiderWrongSide.ToString(c));
+            t.Append("; your hits on such a rider's HORSE (ignored, the window kept) ").Append(HorseHits.ToString(c))
+             .Append("; your strikes from horseback on men on foot (strict opposites): landed ").Append(FootLandedFromHorseback.ToString(c))
+             .Append(", wrong side ").Append(FootWrongSideFromHorseback.ToString(c));
+            if (Mounted > 0) t.Append("; hits from horseback not counted (switch off) ").Append(Mounted.ToString(c));
+            return t.ToString();
+        }
 
         public int LandedTotal
         {
@@ -369,7 +457,7 @@ namespace TraxCombat.Core
             t.Append(" - strict opposites since step 103; the window stays open)");
             if (BlockedUnknown > 0) t.Append("; your hits after a blocked attack of unknown direction (nothing counts) ").Append(BlockedUnknown.ToString(c));
             if (NotOnBody > 0) t.Append("; your hits on a window man that did not land on his body (blocked, shield, kick / bash, 0 damage) ").Append(NotOnBody.ToString(c));
-            if (Mounted > 0) t.Append("; hits from horseback (never counted) ").Append(Mounted.ToString(c));
+            if (Mounted > 0) t.Append("; hits from horseback not counted (step 104d's switch off) ").Append(Mounted.ToString(c));
             if (UnknownDirection > 0) t.Append("; your direction unreadable ").Append(UnknownDirection.ToString(c));
             if (OffMainThread > 0) t.Append("; asked off the main thread (skipped) ").Append(OffMainThread.ToString(c));
             if (Errors > 0) t.Append("; ERRORS ").Append(Errors.ToString(c)).Append(" (disabled for the battle)");

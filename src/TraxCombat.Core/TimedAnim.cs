@@ -35,6 +35,8 @@ namespace TraxCombat.Core
             RecoilVariant = Math.Max(0, Math.Min(TimedRecoilMath.VariantCount - 1, s.TimedBlockRecoilVariant));
             TestSwitch = s.TimedBlockAnimTest;
             TestKey = s.TimedBlockAnimTestKey;
+            HorsebackSwitch = s.TimedBlocksOnHorseback;
+            PushMountedSwitch = s.TimedBlockPushOutMounted;
         }
 
         public static TimedAnimRules From(TraxSettings s) => new TimedAnimRules(s);
@@ -44,6 +46,17 @@ namespace TraxCombat.Core
         public bool TimedOn { get; }
         public bool PushSwitch { get; }
         public bool PushEnabled => ModEnabled && ImpactOn && TimedOn && PushSwitch;
+
+        /// <summary>Step 104d: <c>TimedBlocksOnHorseback</c> (the player page).</summary>
+        public bool HorsebackSwitch { get; }
+
+        /// <summary>Step 104d: <c>TimedBlockPushOutMounted</c> (Advanced).</summary>
+        public bool PushMountedSwitch { get; }
+
+        /// <summary>Step 104d - THE MOUNTED PUSH-OUT: a RIDING blocker's push-out is played - his guard's own heavy parry on channel 1 (no mounted
+        /// bash exists in the game's usage sets). The push-out's chain first (the master switch FIRST), then <c>TimedBlocksOnHorseback</c>, then
+        /// <c>TimedBlockPushOutMounted</c>.</summary>
+        public bool PushMountedOn => PushEnabled && HorsebackSwitch && PushMountedSwitch;
 
         /// <summary>The push-out also on YOUR timed blocks (your guard drops for its length).</summary>
         public bool PushForYou { get; }
@@ -93,7 +106,8 @@ namespace TraxCombat.Core
             string push = PushEnabled
                 ? "push-out ON (" + (PushForYou ? "you too" : "not on you") + ", timing " + PushMinScore.ToString("0.00", c) + "+): shield " + Show(ShieldAction) + ", one-handed "
                   + Show(OneHandedAction) + ", two-handed " + Show(TwoHandedAction) + ", polearm " + Show(PolearmAction) + " - " + PushSeconds.ToString("0.00", c) + " s from "
-                  + PushStart.ToString("0.00", c) + ", his own bash ignored " + PushGuardSeconds.ToString("0.00", c) + " s"
+                  + PushStart.ToString("0.00", c) + ", his own bash ignored " + PushGuardSeconds.ToString("0.00", c) + " s; a mounted blocker "
+                  + (PushMountedOn ? "his guard's heavy parry (step 104d)" : "none (" + (!HorsebackSwitch ? "TimedBlocksOnHorseback" : "TimedBlockPushOutMounted") + " off)")
                 : "push-out OFF (" + PushOffBecause + ")";
             string recoil = RecoilEnabled
                 ? "recoil ON: the " + TimedRecoilMath.VariantName(RecoilVariant) + " recoil for " + RecoilSeconds.ToString("0.00", c) + " s (at most "
@@ -139,7 +153,7 @@ namespace TraxCombat.Core
         /// <summary>Your block and <c>TimedBlockPushOutForYou</c> off.</summary>
         NotForYou,
 
-        /// <summary>He rides (never touched - a rider's channel 1 is his weapon arm on a horse set).</summary>
+        /// <summary>He rides and the mounted push-out is off (<c>TimedBlocksOnHorseback</c> / <c>TimedBlockPushOutMounted</c>) - never touched.</summary>
         Mounted,
 
         /// <summary>His upper body is not guarding any more (he attacks / reloads already).</summary>
@@ -153,6 +167,10 @@ namespace TraxCombat.Core
 
         /// <summary>The engine refused the action.</summary>
         Refused,
+
+        /// <summary>Step 104d: he rides and his guard has no heavy parry in his action set (or no defend action is on his upper body to take it
+        /// from) - skipped, counted apart. Never a bash on a rider.</summary>
+        MountedNoParry,
     }
 
     /// <summary>
@@ -243,18 +261,27 @@ namespace TraxCombat.Core
         /// shorter than <c>TimedBlockPushOutGuardSeconds</c>.</summary>
         public static double GuardWindow(in TimedAnimRules r, double playSeconds) => Math.Max(r.PushGuardSeconds, (double.IsNaN(playSeconds) ? 0 : playSeconds) + GuardMargin);
 
-        /// <summary>The gates in order (the engine reads - guarding, busy - asked only when the cheap ones pass).</summary>
+        /// <summary>The gates in order (the engine reads - guarding, busy - asked only when the cheap ones pass). A RIDING blocker plays only
+        /// with <see cref="TimedAnimRules.PushMountedOn"/> (step 104d - then always his guard's heavy parry, <see cref="MountedAction"/>).</summary>
         public static PushOutSkip Decide(in TimedAnimRules r, double score, bool blockerOnField, bool yours, bool mounted, bool guarding, bool busy)
         {
             if (!r.PushEnabled) return PushOutSkip.Off;
             if (!(score > 0) || score + 1e-9 < r.PushMinScore) return PushOutSkip.LowScore;
             if (!blockerOnField) return PushOutSkip.Gone;
             if (yours && !r.PushForYou) return PushOutSkip.NotForYou;
-            if (mounted) return PushOutSkip.Mounted;
+            if (mounted && !r.PushMountedOn) return PushOutSkip.Mounted;
             if (busy) return PushOutSkip.Busy;
             if (!guarding) return PushOutSkip.NotGuarding;
             return PushOutSkip.Play;
         }
+
+        /// <summary>Step 104d: a RIDING blocker's push-out is always his guard's own heavy parry (a defend action the engine plays on riders -
+        /// <c>act_defend_shield_*_parry_heavy*</c>, <c>act_defend_*_staff_parry_heavy_horseback</c>, the 1h / 2h ones), whatever his kind's
+        /// setting says (the bashes are foot usages only).</summary>
+        public static string MountedAction => ParryHeavy;
+
+        /// <summary>The action a blocker pushes out with: a rider's heavy parry (step 104d), else his kind's setting.</summary>
+        public static string ActionFor(PushOutKind kind, in TimedAnimRules r, bool mounted) => mounted ? MountedAction : ActionFor(kind, in r);
 
         public static string KindName(PushOutKind k) => k switch
         {
@@ -272,11 +299,12 @@ namespace TraxCombat.Core
             PushOutSkip.LowScore => "timing too low",
             PushOutSkip.Gone => "blocker gone",
             PushOutSkip.NotForYou => "not on you (switch)",
-            PushOutSkip.Mounted => "mounted",
+            PushOutSkip.Mounted => "mounted (the mounted push-out off)",
             PushOutSkip.NotGuarding => "not guarding any more",
             PushOutSkip.Busy => "already pushing",
             PushOutSkip.NoAction => "no action for his kind",
             PushOutSkip.Refused => "refused by the engine",
+            PushOutSkip.MountedNoParry => "mounted - no heavy parry for his guard",
             _ => "?",
         };
     }
@@ -528,7 +556,14 @@ namespace TraxCombat.Core
     public sealed class TimedAnimStats
     {
         public readonly int[] PushPlayed = new int[5];          // by PushOutKind
-        public readonly int[] PushSkipped = new int[10];        // by PushOutSkip
+        public readonly int[] PushSkipped = new int[SkipCount];  // by PushOutSkip
+
+        /// <summary>Step 104d: the push-outs of RIDING blockers - played (yours), skipped by <see cref="PushOutSkip"/>.</summary>
+        public readonly int[] MountedSkipped = new int[SkipCount];
+        public int MountedPlayed, MountedYou;
+
+        /// <summary>The <see cref="PushOutSkip"/> values (the arrays' length).</summary>
+        public const int SkipCount = (int)PushOutSkip.MountedNoParry + 1;
         public int PushYou, PushParryHeavy, PushLeftStance, PushFellBackToParryHeavy;
         public int BashBlowsIgnored, BashHitsSkipped, BashStartsSkipped;
         public int GuardsBack, Unstuck, PoolFull;
@@ -538,8 +573,13 @@ namespace TraxCombat.Core
         public double RecoilSecondsSum, RecoilStaggerSecondsSum;
         public int TestPlays, TestMissing;
 
-        public void NotePush(PushOutKind kind, bool you, bool parryHeavy, bool leftStance, bool fellBack)
+        public void NotePush(PushOutKind kind, bool you, bool parryHeavy, bool leftStance, bool fellBack, bool mounted = false)
         {
+            if (mounted)
+            {
+                MountedPlayed++;
+                if (you) MountedYou++;
+            }
             PushPlayed[(int)kind]++;
             if (you) PushYou++;
             if (parryHeavy) PushParryHeavy++;
@@ -547,10 +587,30 @@ namespace TraxCombat.Core
             if (fellBack) PushFellBackToParryHeavy++;
         }
 
-        public void NoteSkip(PushOutSkip s)
+        public void NoteSkip(PushOutSkip s, bool mounted = false)
         {
             int i = (int)s;
-            if (i >= 0 && i < PushSkipped.Length) PushSkipped[i]++;
+            if (i < 0 || i >= PushSkipped.Length) return;
+            PushSkipped[i]++;
+            if (mounted) MountedSkipped[i]++;
+        }
+
+        /// <summary>Step 104d: the mounted part of the push-out line ("; mounted blockers (step 104d, his guard's heavy parry - on): played 2
+        /// (yours 1), skipped: ...").</summary>
+        public void AppendMounted(StringBuilder sb, in TimedAnimRules r)
+        {
+            var c = CultureInfo.InvariantCulture;
+            sb.Append("; mounted blockers (step 104d, his guard's heavy parry - ").Append(r.PushMountedOn ? "on" : "off").Append("): played ")
+              .Append(MountedPlayed.ToString(c)).Append(" (yours ").Append(MountedYou.ToString(c)).Append("), skipped: ");
+            bool any = false;
+            for (int i = 1; i < MountedSkipped.Length; i++)
+            {
+                if (MountedSkipped[i] == 0) continue;
+                if (any) sb.Append(", ");
+                sb.Append(TimedPushOutMath.SkipName((PushOutSkip)i)).Append(' ').Append(MountedSkipped[i].ToString(c));
+                any = true;
+            }
+            if (!any) sb.Append("none");
         }
 
         public void NoteRecoil(int direction, double recoilSeconds, double staggerSeconds, bool inPlace)
@@ -614,6 +674,7 @@ namespace TraxCombat.Core
               .Append(" (our hit systems) / ").Append(BashStartsSkipped.ToString(c)).Append(" (our kick-and-bash start: no cost, no meet read) - want 0 blows landing")
               .Append("; guards back ").Append(GuardsBack.ToString(c)).Append(", a push still playing at its window's end cleared ").Append(Unstuck.ToString(c))
               .Append(", pool full ").Append(PoolFull.ToString(c));
+            AppendMounted(sb, in r);
             lines[0] = sb.ToString();
 
             sb.Clear();

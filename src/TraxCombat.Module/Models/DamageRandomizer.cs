@@ -143,6 +143,10 @@ namespace TraxCombat.Models
         /// </summary>
         private static float PerfectStrikeLast(in AttackInformation ai, in AttackCollisionData cd, in HitFacts facts, float damage)
         {
+            // step 104d: a man's melee hit on a HORSE never counts (only the rider's body) - its rider's window is only told, and stays open
+            if (ai.IsVictimAgentMount && !ai.IsVictimAgentNull && !ai.IsAttackerAgentNull && !ai.IsAttackerAgentMount && facts.VictimIsAgent && !facts.Missile
+                && !facts.Fall && !cd.IsHorseCharge && Models.ImpactHooks.Perfect != null)
+                Models.ImpactHooks.PerfectStrikeHorseHit(ai.AttackerAgent, ai.VictimAgent);
             if (ai.IsAttackerAgentNull || ai.IsVictimAgentNull || ai.IsAttackerAgentMount || ai.IsVictimAgentMount || !facts.VictimIsAgent || facts.Missile
                 || facts.Fall || cd.IsHorseCharge) return damage;
             return Models.ImpactHooks.PerfectStrike(ai.AttackerAgent, ai.VictimAgent, ai.DoesAttackerHaveMountAgent, in cd, damage);

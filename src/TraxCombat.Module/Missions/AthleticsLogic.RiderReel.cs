@@ -32,7 +32,7 @@ namespace TraxCombat.Missions
     ///     to <c>TimedRiderReelMaxSeconds</c> 1.5 by s (on you at most 1.0). With <c>TimedBlocksOnHorseback</c> ON (and the riposte family live) a
     ///     taken reel is APPLIED: his record reels (<see cref="ImpactState.ReelingUntil"/>, cause <see cref="ReelCause.RiderReel"/> - step 105 refuses
     ///     him "a rider", the usual model gives a rider no reeling bonus) and the reel is queued for the tick. The rear and the knock-off stay
-    ///     SHADOW (104c), the strike / push-out (104d).
+    ///     applied from the tick since step 104c; the perfect strike window / the mounted push-out from <see cref="TimedRiderReelAccepted"/> since 104d.
     ///   - THE TICK STARTS IT (never in the hit callback): THE LOCK - an AI rider's attack AND guard bits out of every frame through step 16's hook
     ///     (<see cref="AiInputHook.ApplyReel"/>), yours through your input gate (<see cref="GatePlayerInput"/>), his steering NEVER locked; THE
     ///     ANIMATION - <c>TimedRiderReelAction</c> (act_stagger_backward x1.0 by default - Toni's J-tool pick later is a setting change) on his
@@ -260,13 +260,16 @@ namespace TraxCombat.Missions
             else if (TraxLog.VerboseWants("rider-reel")) TraxLog.Verbose("impact", "rider reel: " + line, "rider-reel");
         }
 
-        /// <summary>THE SEAM (104b; 104d's strike / push-out hook here): the reel started - the slow motion on YOUR best blocks (step 101's - its
-        /// own gates, cooldown and give-back paths), the on-screen line with its timing.</summary>
+        /// <summary>THE SEAM (104b): the reel started - the slow motion on YOUR best blocks (step 101's - its own gates, cooldown and give-back
+        /// paths); step 104d: a RIDING blocker's push-out (his guard's heavy parry) and YOUR perfect-strike window on the reeling rider (any side,
+        /// never after a knock-off); the on-screen line with its timing.</summary>
         private void TimedRiderReelAccepted(ref RiderReelRec p, in TimedRiderRules rr, double now)
         {
             var blocker = p.Blocker != null && !p.Blocker.Removed ? p.Blocker : null;
             if (blocker != null && IsPlayer(blocker) && rr.SlowMoOn && p.Score + 1e-9 >= rr.SlowMoMinScore) _riderReel.SlowMoAsked++;
             MaybeStartSlowMo(blocker, p.Score); // its own try
+            MaybePushOut(blocker, p.Event, p.Score, now, riderReel: true); // step 104d: a RIDING blocker's guard snaps out (his heavy parry) - its own try
+            MaybeOpenRiderStrike(in p, now); // step 104d: YOUR timed block opens a perfect-strike window on the reeling rider - its own try
             string? text = null;
             if (blocker != null && IsPlayer(blocker) && TraxSettings.Shared.TimedBlockShowTiming)
                 text = TimedRiderLines.YourReel(MessageName(p.St), p.Event, p.Asked, rr.ReelMax, p.Source, p.GuardAge,

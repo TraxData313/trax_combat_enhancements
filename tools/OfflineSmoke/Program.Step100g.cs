@@ -117,7 +117,9 @@ namespace TraxCombat.Tools
                 Check(Near(ImpactHooks.PerfectStrike(you.Agent, a2.Agent, false, Swing(Agent.UsageDirection.AttackLeft, true, true, CombatCollisionResult.Blocked), 5f), 5f)
                       && Near(ImpactHooks.PerfectStrike(you.Agent, a2.Agent, false, KickLands(), 5f), 5f) && st.NotOnBody == 2 && logic.PerfectStrikeWindowsOpen == 1,
                     "a blocked swing / a kick used the window: not on body " + st.NotOnBody);
-                Check(Near(Hit(a2, Agent.UsageDirection.AttackLeft, 10f, mounted: true), 10f) && st.Mounted == 1, "a strike from horseback counted");
+                S.Set(SettingsSchema.PerfectStrikeOnHorseback, false, SettingSources.File); // step 104d: a strike from horseback counts only with its switch (step 104d's own smoke)
+                Check(Near(Hit(a2, Agent.UsageDirection.AttackLeft, 10f, mounted: true), 10f) && st.Mounted == 1, "a strike from horseback counted with PerfectStrikeOnHorseback off");
+                S.Set(SettingsSchema.PerfectStrikeOnHorseback, true, SettingSources.File);
                 float k2 = (float)PerfectStrikeMath.Multiplier(score2, 2, 3);
                 Check(Math.Abs(Hit(a2, Agent.UsageDirection.AttackLeft, 10f) - 10f * k2) < 1e-3 && st.Landed[PerfectStrikeMath.Left] == 1,
                     "your left swing after his blocked left swing did not land x" + k2);

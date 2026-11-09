@@ -52,7 +52,7 @@ namespace TraxCombat.Missions
         private readonly PushOutEntry[] _pushOuts = new PushOutEntry[MaxPushOuts];
         private readonly RecoilChain[] _recoilChains = new RecoilChain[MaxRecoilChains];
         private int _pushOutCount, _recoilChainCount;
-        private bool _animDisabled, _pushFirstLine, _recoilFirstLine, _animTestFirstLine;
+        private bool _animDisabled, _pushFirstLine, _recoilFirstLine, _animTestFirstLine, _pushFirstMounted;
         private int _animTestStep = -1;
 
         /// <summary>Step 100d: the animation calls (the smoke swaps in its stand-in).</summary>
@@ -68,7 +68,7 @@ namespace TraxCombat.Missions
 
         /// <summary>From <see cref="TimedRiposteAccepted"/>: the engine took a timed riposte's stagger - the blocker pushes out. Its own try: an
         /// error disables the animations for the battle, never the riposte.</summary>
-        private void MaybePushOut(TrackedAgent? blocker, ImpactEvent ev, double score, double now)
+        private void MaybePushOut(TrackedAgent? blocker, ImpactEvent ev, double score, double now, bool riderReel = false)
         {
             if (_animDisabled || !(score > 0)) return;
             try
@@ -77,24 +77,33 @@ namespace TraxCombat.Missions
                 if (!r.PushEnabled) return; // not a candidate - not counted
                 var body = AnimBody;
                 bool onField = blocker != null && !blocker.Removed && ImpactBody.IsActive(blocker);
-                bool yours = onField && IsPlayer(blocker!);
                 bool mounted = onField && body.Mounted(blocker!);
+                if (riderReel && !mounted) return; // step 104d: a rider's reel pushes out only a RIDING blocker (a man on foot vs a rider: not built)
+                bool yours = onField && IsPlayer(blocker!);
                 bool busy = onField && (PushOutSlot(blocker!) >= 0 || _pushOutCount >= MaxPushOuts);
-                bool guarding = onField && !mounted && !busy && body.Guarding(blocker!);
+                bool guarding = onField && (!mounted || r.PushMountedOn) && !busy && body.Guarding(blocker!);
                 var skip = TimedPushOutMath.Decide(in r, score, onField, yours, mounted, guarding, busy);
                 if (skip == PushOutSkip.Busy && onField && PushOutSlot(blocker!) < 0) _anim.PoolFull++;
                 if (skip != PushOutSkip.Play)
                 {
-                    _anim.NoteSkip(skip);
+                    _anim.NoteSkip(skip, mounted);
                     return;
                 }
                 var st = blocker!;
                 var kind = TimedPushOutMath.KindOf(ev == ImpactEvent.RightBlock, ev == ImpactEvent.RightBlock ? null : body.UsageOf(st));
-                if (!PlayPushOut(st, kind, TimedPushOutMath.ActionFor(kind, in r), in r, now, yours, out string played, out float speed, out double seconds))
+                // step 104d: a RIDING blocker always plays his guard's own heavy parry (channel 1, short) - never a bash on a rider
+                if (!PlayPushOut(st, kind, TimedPushOutMath.ActionFor(kind, in r, mounted), in r, now, yours, out string played, out float speed, out double seconds, mounted))
                     return;
+                if (mounted && !_pushFirstMounted)
+                {
+                    _pushFirstMounted = true;
+                    TraxLog.Info("impact", "live: first MOUNTED PUSH-OUT (step 104d) at " + Sec(now) + " s - " + Name(st) + " on horseback (" + TimedPushOutMath.KindName(kind) + ", timing " + F2(score)
+                        + (riderReel ? ", a rider's reel in the saddle" : ", a riposte on a man on foot") + ") plays his guard's heavy parry " + played + " on channel 1 at x" + F2(speed)
+                        + " for " + F2(seconds) + " s; no blow, his guard checked back after " + F2(TimedPushOutMath.GuardWindow(in r, seconds)) + " s");
+                }
                 if (_pushFirstLine && (yours || TraxLog.VerboseWants("timed-anim"))) // step 100f: every push-out after the first, checkable in a playtest
                 {
-                    string line = "push-out: " + Name(st) + " (" + TimedPushOutMath.KindName(kind) + ", timing " + F2(score) + ") - " + played + " x" + F2(speed) + " for " + F2(seconds) + " s";
+                    string line = "push-out: " + Name(st) + (mounted ? " on horseback" : string.Empty) + " (" + TimedPushOutMath.KindName(kind) + ", timing " + F2(score) + ") - " + played + " x" + F2(speed) + " for " + F2(seconds) + " s";
                     if (yours) TraxLog.Info("impact", line);
                     else TraxLog.Verbose("impact", line, "timed-anim");
                 }
@@ -115,13 +124,14 @@ namespace TraxCombat.Missions
         /// <summary>The push itself (live and the test tool): the action resolved in his set (his left stance first; "parry_heavy" = his guard's
         /// own heavy parry; a bash missing = that fallback), played on channel 1, his window armed. False = skipped (counted).</summary>
         private bool PlayPushOut(TrackedAgent st, PushOutKind kind, string action, in TimedAnimRules r, double now, bool yours, out string played, out float speed,
-            out double seconds)
+            out double seconds, bool mounted = false)
         {
             var body = AnimBody;
             played = string.Empty;
             speed = 1;
             seconds = 0;
             bool left = body.LeftStance(st);
+            if (mounted) action = TimedPushOutMath.MountedAction; // step 104d: never a bash on a rider
             bool parryHeavy = action == TimedPushOutMath.ParryHeavy;
             bool fellBack = false, leftUsed = false;
             int index = -1;
@@ -161,19 +171,19 @@ namespace TraxCombat.Missions
             }
             if (!found)
             {
-                _anim.NoteSkip(PushOutSkip.NoAction);
+                _anim.NoteSkip(mounted ? PushOutSkip.MountedNoParry : PushOutSkip.NoAction, mounted); // step 104d: no heavy parry on horseback - skipped, counted
                 return false;
             }
             float start = parryHeavy ? 0f : (float)r.PushStart; // a heavy parry is a short recoil already - played whole, sped up
             speed = TimedPushOutMath.Speed(len, start, r.PushSeconds);
             if (!body.Play(st, 1, index, speed, start, 0.05f, 0.15f))
             {
-                _anim.NoteSkip(PushOutSkip.Refused);
+                _anim.NoteSkip(PushOutSkip.Refused, mounted);
                 return false;
             }
             seconds = TimedPushOutMath.PlaySeconds(len, start, speed);
             ArmPushOut(st, now + TimedPushOutMath.GuardWindow(in r, seconds), index);
-            _anim.NotePush(kind, yours, parryHeavy, leftUsed, fellBack && parryHeavy);
+            _anim.NotePush(kind, yours, parryHeavy, leftUsed, fellBack && parryHeavy, mounted);
             return true;
         }
 
