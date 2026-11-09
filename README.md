@@ -38,7 +38,7 @@ below) for a PERFECT STRIKE at 2-3x damage.
 **Tiredness and rest.** Every fighter carries an Athletics bar — his stamina, as big as his Athletics skill.
 Fresh, he fights as in the base game. Spent, he waits between attacks, runs at a jog, his lucky hits are
 gone, and the AI starts guessing which way to block. Anyone can save a few swings and strike them back to
-back. A minute of rest refills him — and a skilful defender recovers *while* he defends: clean blocks and
+back. A minute of rest refills him (crouch with Z and you rest twice as fast) — and a skilful defender recovers *while* he defends: clean blocks and
 parries let the bar climb, a block on the wrong side stops it.
 
 **Your orders and the fever of a charge.** Your order sets how hard your men fight: holding men stop swinging
@@ -59,9 +59,19 @@ back as waves — small and often when fresh, the whole squadron at once late in
 **Blows that count.** On a fresh man nothing changes. On a tired one a kick can knock his shield away or put him
 on the ground, a hit can stagger him, a rider can be knocked from his saddle — and a man still reeling is easy
 prey. A correct block punishes the attacker: swing tired into a good guard and *you* reel. A wrong-side block
-punishes the defender. A man running into his blow hits harder, so hold a fresh shock unit back, wait until the
+punishes the defender. A tired man also hits softer — down to 60% at an empty bar. A man running into his blow hits harder, so hold a fresh shock unit back, wait until the
 enemy line has fought for two minutes, and charge it into their flank at a run: men go down, shields fly, the
 line folds. Into a fresh line the same charge only trades blows.
+
+**Timed blocks and the counter strike.** Raise your guard — the right side, or a parry — just as the blow lands
+and the attacker reels, up to 2 seconds; a guard held up the whole time is an ordinary block. A perfect block
+always staggers a man on foot (riders not yet), and the perfect moment grows with your skill in the weapon you
+hold: a tenth of a second at skill 0, a quarter at 300. Your best blocks drop the game to a quarter speed for
+about 2 seconds, and your shield or weapon punches out as the blow lands. While he reels, hit him from the
+**opposite side** for a **PERFECT STRIKE** at 2-3x damage, more for a sharper block: blocked at your left, swing
+from your right (and the other way round); a blocked overhead is answered by a thrust from below, a blocked thrust
+by an overhead. Perfect strikes are yours alone; the AI times its blocks too, at half strength, and never staggers
+you for longer than 1.2 s.
 
 **Duels and tournaments.** A long bout is won by stamina and timing. The tournament champion who never misses a
 block starts guessing when he is spent; your kick that bounces off a fresh king floors an empty one. Tire him
@@ -70,7 +80,8 @@ first, then break him. The hideout boss fight starts you both fresh.
 **What you see.** Your Athletics bar under your health, your stored swings and your sprint above it. Hold ALT and
 every formation — yours and the enemy's — shows its men's Athletics, health and how many are still *ready* to
 fight; "ready 12/48" in red under an enemy marker is an invitation. The few men you look at get a small bar over
-their heads. Hold Left Ctrl to sprint — a short dodge, paid from your stamina.
+their heads. Every block of yours names its timing, and a perfect strike flashes **PERFECT STRIKE x2.8** in gold.
+Hold Left Ctrl to sprint — a short dodge, paid from your stamina.
 
 **Read more:** [the player guide](docs/HOW-IT-WORKS.md) — every system in plain words, with tactics — and
 [the mechanics reference](docs/MECHANICS.md) — every table and number, and the setting behind each.
@@ -78,8 +89,9 @@ their heads. Hold Left Ctrl to sprint — a short dodge, paid from your stamina.
 ## Settings
 
 It works out of the box. With the [Mod Configuration Menu](https://steamcommunity.com/sharedfiles/filedetails/?id=2859238197)
-(**optional**) you get a short page — the master switch, how hard hits land, how fast men tire, each AI system's
-own switch, staggers, the sprint and its key, what the screen shows — and an **Advanced** page with every other
+(**optional**) you get a short page — the master switch, how hard hits land, how fast men tire (and *Crouch (Z) to
+rest faster*), each AI system's own switch, staggers with *Timed blocks*, *Slow motion on your best blocks* and
+*Perfect strike after your timed block*, the sprint and its key, what the screen shows, the tier-1 shields — and an **Advanced** page with every other
 number, for tuning. Without MCM the same settings sit in a commented config file
 (`Documents\Mount and Blade II Bannerlord\Configs\TraxCombatEnhancements\config.json`). Every change applies at
 once, even mid-battle; the master switch turns the whole mod off mid-fight, so you can play the same battle both
@@ -88,7 +100,8 @@ ways.
 ## Good to know
 
 - **Not an overhaul.** Vanilla troops, weapons and AI — it changes how a fight feels, not what is in it. Nothing
-  in your save: add or remove it mid-campaign.
+  in your save: add or remove it mid-campaign. The one change to troops: tier-1 recruits are handed a cheap
+  shield of their culture, so green troops last longer (*Give Tier 1 units shields* on the short page).
 - Game v1.4.8, singleplayer. No requirements, no Harmony. Works beside RTS Camera and War Sails.
 - **Not with Realistic Battle Mod (RBM)** — the deep, much-loved overhaul with its own stamina. This is the light
   road on vanilla's troops; use one or the other (the mod warns at the main menu if it sees RBM).
