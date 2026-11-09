@@ -10637,3 +10637,17 @@ damage keeps the window open (like the defensive game - a second try still score
 **Only Toni's playtest can confirm** (PLAYTEST D80, D78): the forced wrong-side weapon guard letting the blow through (BLOCKED ANYWAY), the
 shield lowered by its guard bits, the side pairing, how often a back hit now finds a man still immune in a real melee (the [summary] "stagger-immune
 (no new opening)" count against the staggers from behind).
+
+### 106 follow-up - Toni's decisions on the 106e questions (2026-11-09)
+
+All three as recommended (DESIGN 95 (n)). **(a) BUILT - the attack lock capped at 1 s.** The lock was the off-balance FORCED GUARD itself
+(`OpeningForceMath.Frame` takes his attack bits; `ForceBalance` ran it until `now + OpeningChainResetSeconds`), and every correct block re-armed it.
+The 2 s setting is the CHAIN's reset (it also decides when any hit still staggers him), so it stays; the 1 s is a Core constant,
+`OpeningAttackLock.MaxSeconds` (struct `OpeningAttackLock` in `OpeningForce.cs`, kept as `_attackLock` in `AthleticsLogic.OpeningForce.cs`): a RUN =
+off-balance forces on the same man while one is on or within 1 s of the last one's end (a held follow-up in between counts - not cut, the blow is
+in the air); a Balance force lasts min(the chain time, the run's start + 1 s); once spent, no Balance force on him until 1 s free (`LockSpent`; the
+chain, the flash, the stagger on a hit unchanged - only the forced guard and its live block roll are skipped, his own AI guards). The test tool's
+forces never touch the run. [summary] "the forced guard" line: `the attack lock (at most 1.0 s a run): cut short N, spent - not forced N`.
+Step106FollowUpTests (7), smoke 106b part 5b (spamming: re-armed at 0.6 s still ends at 1.0 s, a block at 1.1 s forces nothing and his input is
+his own, after 1.1 s free a new run forces); tests 1647, smoke 237 green. **(b) kept:** openings stay shadow (log only) while the impact system
+cannot play the stagger. **(c) kept:** a wrong-side hit on an opening's reel keeps the perfect-strike window. PLAYTEST D80 Try 9.

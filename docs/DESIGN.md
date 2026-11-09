@@ -3821,7 +3821,13 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     the impact system can carry the stagger (its riposte family live - not shadow, not the spike - and its clean hits decided): otherwise the
     openings run as a SHADOW (no forced guard, no lowered shield, no GUARD BROKEN, no flash; a mission-start line says why) - Claude's choice as the
     least surprising: "shadow" means nothing applied, and half the openings live with a stagger that can never come would look broken. The chain's
-    stagger / finish verdict reads the hit's COLLISION direction, the same value as the damage.
+    stagger / finish verdict reads the hit's COLLISION direction, the same value as the damage. (n) TONI'S DECISIONS ON THE 106e QUESTIONS
+    (2026-11-09, all as recommended; AI_NOTES "106 follow-up"): AMENDS (i) - an off-balance man's ATTACK LOCK is capped at 1 s a run (Core
+    `OpeningAttackLock.MaxSeconds`, a constant): back-to-back off-balance states on one man (each correct block re-arming it) share that one second,
+    then no forced guard on him until he has been free 1 s - he may counter-attack even if you keep swinging (before: until your next wind-up or
+    `OpeningChainResetSeconds` 2 s, re-armed by every block, so spamming froze him). The chain, the flash and the stagger on a hit are unchanged;
+    a held follow-up (a won roll) is not cut. (m)'s shadow rule is KEPT (openings quiet, log only, while the impact system cannot play the stagger),
+    and a wrong-side hit on an opening's reel KEEPS the perfect-strike window for a second try.
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),
 `HudRefreshSeconds`, `FormationStatsRefreshSeconds` came out of step 2's research

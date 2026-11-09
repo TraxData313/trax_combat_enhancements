@@ -2215,6 +2215,10 @@ reeling or inside the stagger immunity (... s left): no new opening`; the [summa
 or stagger-immune (no new opening) N`; `[impact] openings: SHADOW this battle although OpeningsEnabled is on ...` (only in shadow). **Tell Claude:**
 does a man hit from behind now get back into the fight, or does the 2 s feel too long / too short? Does a man you keep attacking ever get a swing
 in while he is off balance (Claude's open question)?
+*Step 106 follow-up (Toni's decision 2026-11-09):* **Try 9 - keep swinging into one man's guard, fast, for 5 s:** after his first block he is off
+balance (no swing of his) for at most 1 s, however often he blocks again - then he can counter-attack while you keep swinging; ~1 s after his
+last forced moment the next block puts him off balance again. **Log:** the [summary] "openings - the forced guard" line's `the attack lock (at
+most 1.0 s a run): cut short N, spent - not forced N`. **Tell Claude:** does he now hit back when you spam, and does 1 s feel right?
 
 ---
 
