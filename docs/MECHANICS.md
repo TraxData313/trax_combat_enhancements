@@ -1532,7 +1532,7 @@ stagger; not on his shield, not with a kick or bash, not from a horse.
 `TimedBlockPerfectSkipsHalving` / `...Immunity` on, `TimedBlockShowTiming` on; `TimedBlockSlowMoMinScore` 0.8, `TimedBlockSlowMoSpeed` 0.25,
 `TimedBlockSlowMoHoldSeconds` 1.5, `TimedBlockSlowMoEaseOutSeconds` 0.3, `TimedBlockSlowMoCooldownSeconds` 4; `TimedBlockPushOut` on,
 `TimedBlockPushOutForYou` on, `TimedBlockPushOutSeconds` 0.25, `TimedBlockRecoil` off, `TimedBlockAnimTest` off, `TimedBlockAnimTestKey` J;
-`PerfectStrikeMinMultiplier` 2, `PerfectStrikeMaxMultiplier` 3, `PerfectStrikeGraceSeconds` 0.15, `PerfectStrikeCentreMessage` on.</sub>
+`PerfectStrikeFourWayMin` / `Max` 2 / 4, `PerfectStrikeThreeWayMin` / `Max` 2 / 3, `PerfectStrikeTwoWayMin` / `Max` 1.5 / 2 (by your weapon's attack directions - step 106d), `PerfectStrikeGraceSeconds` 0.15, `PerfectStrikeCentreMessage` on.</sub>
 
 ### You
 

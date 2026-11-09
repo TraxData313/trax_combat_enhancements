@@ -10286,7 +10286,7 @@ That the engine plays the fall cleanly ON TOP of our slowed `act_stagger_backwar
 stagger - the engine's fall should take over; if not, step 62's backup blow fires after `ImpactFallBackupSeconds`); how 80 % feels against you
 in a melee where AI ripostes are frequent (`ImpactOnPlayerPercent` scales it).
 
-## Step 106 — OPENINGS: the offensive twin of the timed block (Toni's REVISED design 2026-11-09; 106a + 106a2 built - shadow only; 106b built - the forced guard, live behind the switch)
+## Step 106 — OPENINGS: the offensive twin of the timed block (Toni's REVISED design 2026-11-09; 106a + 106a2 built - shadow only; 106b built - the forced guard; 106c the red arrow; 106d built - THE PAYOFF LIVE, the switch ON)
 
 **The first design was replaced the same day.** Toni's first brief ("his guard goes to 1 of the other 3 at random, a red arrow shows the opening,
 swing into it in time and he reels") was built as 106a: a FORCED guard, a commit-to-swing window (0.45 s + 0.15 / link + skill), a separate
@@ -10509,3 +10509,64 @@ spear / off / unknown / rider, the gates, the page, no allocation); tests 1615. 
 the game (5 widgets, 8 bindings), the openings off / on flash (bottom: half way in / full / half way out / gone), the K tool's top flash with the
 openings off, the defensive window's right arrow steady and gone with the window, an axe's left + right, a sword's bottom, the switch, the
 [summary] "hud: opening arrow" line. Deployed as the dev build. PLAYTEST D79.
+
+### 106d - built (2026-11-09)
+Commits 57736f1 (Core + settings + format 30 + tests), d6e40d1 (module + smoke). THE PAYOFF IS LIVE - `OpeningsEnabled` ON in defaults.json;
+config format 30 moves a format-29 file's untouched OFF once (104b's pattern; a format-30 file's OFF stays).
+
+**The stagger (module `AthleticsLogic.OpeningPayoff.cs`).** `OpeningShadowHit`'s `Staggers` case (your landed hit on a man off balance, or from
+behind - the impact decision's clean hit, i.e. the damage decorator's KnockDown seam in game) → `OpeningPayoff`: (1) the same hit's impact
+knockdown (hits family live) = no stagger, the chain ends ("knocked down by the same hit"); a man already down = none; (2) the impact system's
+RIPOSTE family not live / the ForcedStagger lever off = not played, the chain ends (counted "not live"); (3) the impact system's own stagger on
+the same hit (hits live, he reels) CARRIES it - no second stagger; (4) else his record reels `ImpactState.Reel(now + reel, immunity,
+ReelCause.Opening)` (0.8 + 0.3 a link, ≤ 2 s) and `ImpactBlockAction.Opening` is queued in step 51's block queue - the tick plays
+`act_stagger_backward` at the speed for the length (with the engine's priority, then over it - the riposte's exact path, `RunOpeningStagger`),
+watched as `ImpactWatchPurpose.Opening` (seen / measured - the end written back with `EndReel` only while the cause is still Opening / never
+seen = the reel ended). The queue / watch go with the RIPOSTE family's switch (`LetGoBlockItems`), the lever's error, the man leaving
+(`BlockPendingLeftField`). STAGGER IMMUNITY IS NOT CHECKED (the player earned it; a man staggered < 2 s ago reels again) - 106e may want it.
+106b's forced guard ends as he reels (`OpeningForceEnd.Reels`, already in the Staggers case; a held guard is let go at the contact first in the
+smoke's order, by "he reels" in game).
+
+**The window (one source for the damage and the arrow).** `OpenOpeningWindow` puts an OPENING window into step 100g's book
+(`PerfectStrikeBook.OpenOpening`: `Opening`, `FinishMask` = the chain's finishing sides - the opposite of the staggering swing by the weapon -,
+the follow-up's timing; 0 for a back hit / an unguarded chain). Gate: `PerfectStrikeRules.OpeningOn` = the master switch, Athletics + impact,
+`PerfectStrikeEnabled`, `OpeningsEnabled` (NOT `TimedBlocksEnabled`). Open while `ImpactState.ReelingUntil` + the grace (re-timed by the watch),
+like the defensive windows; the tick closes it with its switches. The decorator: an opening window's verdict = `PerfectStrikeMath.OpeningVerdict`
+(the noted mask); the arrow's `FinishMaskNow` now reads ONLY the book (the chain's own mask branch removed), an opening window returns its mask.
+`TickOpeningPayoff` keeps the chain's `ReelUntil` = his record's + the grace, so the chain and the window end together.
+
+**The multiplier by the weapon, everywhere.** `PerfectStrikeMath.Multiplier(score, rules, weaponMask)` - the STRIKER's wielded weapon at the
+hit (`ReadWeaponMask` = `OpeningWeaponRead`): 4 directions x2-x4, 3 x2-x3, ≤ 2 x1.5-x2 (`PerfectStrikeFourWay*`, `ThreeWay*`, `TwoWay*`). The
+defensive game (on foot and riders) uses it too; `PerfectStrikeMinMultiplier` / `MaxMultiplier` RETIRED (schema 629, `ConfigFile
+.RetiredPerfectStrikeKeys` - dropped from a file with a note, any format). **The defensive verdict = the arrow**: `PerfectStrikeMath.Verdict
+(blocked, strike, weaponMask, weaponFinishes)` = `OpeningMath.FinishMask(Opposite(blocked), weapon, ...)` - exactly
+`OpeningArrowMath.DefensiveFinishMask` (Step106dTests checks every blocked x strike x sword / axe / spear x on / off). An axe after his blocked
+overhead: your left OR right; a spear after his side swing: either stab; a sword keeps step 103's strict opposites. Riders with any side: any
+hit. The couched-lance / braced-spear gate is unchanged (`StrikeGate.Couched` first).
+
+**Notices.** "OPENING!" (`AthleticsLogic.OpeningText`) gold in the feed + the centre (`PerfectStrikeCentreMessage`) from the next tick, once per
+opening stagger; "GUARD BROKEN" (orange, feed only) when a won roll LOWERS a shield (106b's route - the shield path). The YOU lines say "staggers"
+/ "a PERFECT STRIKE" when live, "WOULD" in the shadow; "openings: first LIVE stagger" / "first opening stagger PLAYED" first-time lines.
+
+**Summary.** The [summary] "openings" line now opens "openings (step 106d; live ON - ..." and adds LIVE STAGGERS (asked / played / seen /
+never seen / not applied, asked → measured seconds), carried by the mod's own stagger, none (knocked down by the same hit / already down /
+the riposte not live), windows, OPENING! / GUARD BROKEN shown. The [summary] "perfect strike" line: the weapon ranges, windows by an
+opening's stagger, strikes after an opening, by the weapon's directions 2 / 3 / 4, by the relaxed sides, wrong-side hits on an opening's man.
+
+**Kept as designed / not proven (D78 / D80 decide).** `OpeningSidesCrossed` stays on; the shield is still lowered by stripping its guard bits
+(the CanDefend route stays the test tool's); whether the forced wrong-side weapon guard really lets the blow through (BLOCKED ANYWAY counts it).
+
+**Tests / smoke.** Step106dTests 11 (16 cases): the multiplier by the weapon, the ranges, the defensive verdict = the arrow over every case,
+the axe / spear / sword sides, an opening's verdict and the book's opening window, the switches (no TimedBlocksEnabled needed), the reel cause
+and step 105 on it, format 30 + the dropped keys, the summary lines, no allocation; tests 1631. Smoke "OPENINGS, THE PAYOFF LIVE (step 106d)"
+(236 green): sword / axe / spear chains (x4 / x3 / x2, the stagger from the tick, OPENING! feed + centre), the shield's 4 moves (GUARD BROKEN,
+1.1 s reel at link 2, x4), a back hit (x2 at timing 0), another side first (normal damage, step 105 asked with cause Opening), the defensive
+game with an axe (left after his overhead, x3), the live switch / master switch closing the window, AI vs AI untouched. 100g / 104d smoke
+updated for the weapon multiplier (a sword x4; 104d with an axe keeps x3). PLAYTEST D80.
+
+**For 106e (review).** (1) Stagger immunity ignored for an opening reel - repeated back hits can chain-stagger a man. (2) The decorator's
+verdict uses `cd.AttackDirection`, the chain's `NoteLanded` uses `OpeningSwingRead` (channel 1) - if they disagree in game the chain may say
+FinishOther while the damage was perfect (only the shadow counts differ). (3) The opening's stagger lengths share `_staggerNatural` with
+blocks / ripostes (fine - the same animation) but its not-applied counts land in `_blocks` too for the generic queue paths (LeftField,
+LeverOff). (4) When the impact system's own HitStagger carries the reel, its slowed flinch (not our backward stagger) is what plays.
+(5) `OpeningPayoff` requires the RIPOSTE family live - with impact in shadow mode the openings fall back to counting only.

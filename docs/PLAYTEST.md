@@ -2185,6 +2185,29 @@ holding a recruit's shield (tell Claude). The save itself never holds the shield
 
 **D79. THE RED ARROW AT THE CROSSHAIR (step 106c, ~5 min - a 1 v 1 custom battle on foot).** A red arrow, in the same four places as the game's own attack-direction arrows (top / bottom / left / right of the crosshair, a little way out), tells you where to strike. `Red arrow: the side to strike` is ON (player page). **Try 1 - the defensive game (works now):** with a SWORD, block his attack just in time (a timed block - he reels, maybe the slow motion): a RED arrow should appear and STAY while he reels, then vanish - his RIGHT swing blocked → the arrow on YOUR RIGHT (swing from your right), his overhead → the BOTTOM arrow (your thrust), his thrust → the TOP (your overhead). Strike that way: PERFECT STRIKE. With a two-handed AXE (no thrust) after his blocked overhead: BOTH side arrows (they will only count as a perfect strike from step 106d). **Try 2 - the flash with the K tool (the openings still off):** Advanced → Impact → `Openings: forced-guard test tool` ON; stand 1-3 m in front of an enemy and press K: his LOW guard → a quick red flash at the TOP ~0.3 s after the key (the on-screen line ends "the red arrow flashes top at 0.30 s"); K again (HIGH guard) → the BOTTOM flashes; LEFT / RIGHT guard → the left / right arrow (by `Openings: side guards crossed` - tell Claude if it points at his guard instead of past it); the lowered modes flash nothing. **Optional:** `Openings after your blocked attacks` ON - each parry / block of your attack flashes the side to hit 0.3 s later. **Look for:** is the arrow clearly RED (not dark or brown), the right size, exactly where the game's own arrows sit, pointing the same way? Is the flash long enough to notice (0.05 s in, 0.15 s out)? **Log:** `[hud] opening arrow: layer up`, `first FLASH at ... - top`, `first PERFECT STRIKE side at ... - right, steady while he reels`; `[summary] hud: opening arrow (step 106c) - flashes N, perfect-strike sides shown M`. **Tell Claude:** the colour / size / place, and any arrow that pointed the wrong way (which block or guard, which arrow).
 
+**D80. OPENINGS, LIVE (step 106d, ~10 min - a 1 v 1 custom battle on foot, then a small fight).** *How to play it:* attack a man on foot;
+when he BLOCKS you correctly (a parry, or his shield on the right side) he is thrown OFF BALANCE - a red arrow FLASHES at your crosshair ~0.3 s
+later: START your next swing on that flash, from the side it shows. Timed well he cannot block it; when it lands he REELS (a backward stagger,
+"OPENING!" in gold in the feed and the middle of the screen) and a STEADY red arrow shows the side to finish him: strike from there = PERFECT
+STRIKE (x2-x4 with a sword, x2-x3 with an axe or mace, x1.5-x2 with a spear - more the better your follow-up's timing was). Any other hit or a
+kick on the reeling man may knock him down (80 %). Missing the flash makes the next block of yours easier (up to the 4th). A SHIELDMAN needs one
+block more: his first block only shows the side (he still blocks it); after his second "GUARD BROKEN" - his shield comes down for your follow-up.
+A hit from BEHIND always staggers (the steady arrow at once). **Try 1 - a swordsman, your sword:** swing right, he parries; on the flash thrust
+(the BOTTOM arrow usually) - it lands, he reels, "OPENING!"; the TOP arrow steady - overhead = "PERFECT STRIKE x3.x-4.0". **Try 2 - the same
+with a two-handed AXE:** after an overhead stagger BOTH side arrows light - either side swing finishes (x2-3). **Try 3 - a spear:** the arrows
+are only top / bottom (its two stabs), x1.5-2. **Try 4 - a shieldman:** block, block again - "GUARD BROKEN" - your swing lands through, he
+reels, finish. **Try 5 - the defensive game with an axe:** timed-block his OVERHEAD - both side arrows; a left or right swing is now a PERFECT
+STRIKE (it used to need a thrust an axe does not have). **Try 6 - get round one man in a melee and hit his back:** a reel + the arrow.
+**Look for:** does the reel look natural (a step back, not a twitch)? Is the flash early enough to start your swing on? Does the steady arrow
+always point at a side that scores (never a "wrong side" line when you followed it)? Does a man blocked by his shield really let the 2nd
+follow-up through? **Log:** `[impact] openings: first LIVE stagger at ...`, `first opening stagger PLAYED at ...`, `YOU: openings (shadow): your
+... LANDED on X ... -> he staggers 0.80 s ... - LIVE: he reels 0.80 s`, `YOU: PERFECT STRIKE on X ... after your OPENING (the shown side: your
+overhead) ..., 4-direction weapon → x4.00`; `[summary] openings (step 106d; live ON ...` - LIVE STAGGERS asked / played / SEEN / never seen
+(never seen > 0 = tell Claude), asked → measured seconds, OPENING! / GUARD BROKEN shown, BLOCKED ANYWAY in the forced-guard line (> 0 = the
+forced guard does not hold - tell Claude); `[summary] perfect strike (step 100g / 106d ...` - strikes after an opening, by the weapon's
+directions 2 / 3 / 4. **Tell Claude:** how the timing felt (too tight / loose), whether the shield path works, any arrow that pointed at a side
+that did not score, and whether the x4 feels too strong. To turn it off: `Openings after your blocked attacks` (player page, Staggers and knockdowns).
+
 ---
 
 ## E. Your Athletics bar, the orders-menu strip and the ALT markers (20 min)

@@ -3804,7 +3804,17 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     (top = your overhead, bottom = your thrust, left / right as vanilla lights them). The FLASH (fade in 0.05 s to full at the flash, out 0.15 s)
     when he goes off balance - with `OpeningsEnabled`, or for the K test tool's forced guard; the PERFECT STRIKE side steady while the man you can
     finish reels - an opening's reel, or step 100g's newest window (the defensive game's timed-block reel), his blocked attack's answer by your
-    weapon (106a2's no-thrust / spear sides, every side lit). One cue, one man. `OpeningArrowShow` on the player page (PLAYTEST D79).
+    weapon (106a2's no-thrust / spear sides, every side lit). One cue, one man. `OpeningArrowShow` on the player page (PLAYTEST D79). (l) STEP 106d
+    BUILT 2026-11-09 (AI_NOTES "106d - built") - THE PAYOFF LIVE, `OpeningsEnabled` ON (config format 30 turns a format-29 file's OFF on once): your
+    landed hit on a man off balance (or from behind) makes him REEL - his record (`ReelCause.Opening`, so step 105's 80 % meets any other hit / kick)
+    and our forced backward stagger from the tick (the riposte's path - its family's switch, the ForcedStagger lever; the impact system's own
+    stagger on the same hit carries it instead; a knockdown on the same hit or a man already down gets none); 106b's forced guard is let go as he
+    reels; the reel opens a PERFECT STRIKE window in step 100g's book with the chain's finishing sides - the damage and the red arrow read the SAME
+    mask; "OPENING!" gold in the feed + the centre; "GUARD BROKEN" when a won roll lowers a shield. THE MULTIPLIER BY THE STRIKER'S WEAPON EVERYWHERE
+    (x2-x4 / x2-x3 / x1.5-x2 by 4 / 3 / 2 directions; the flat `PerfectStrikeMin/MaxMultiplier` retired) and THE DEFENSIVE VERDICT BY THE WEAPON
+    (= the arrow: an axe answers his overhead with left or right, a spear his side swing with either stab; the couched-lance / braced exclusion
+    stays). Only your hits, AI men on foot, you on foot; AI vs AI and riders unchanged. Kept as designed until D78 / D80: `OpeningSidesCrossed`,
+    the shield lowered by stripping its guard bits (PLAYTEST D80).
 Decisions 7–10 and the new parameters `DamageRandomOnShields`, `ExhaustedRecoverPercent`
 (retired in 5c), `TargetBarMaxDistance` and `TargetBarLingerSeconds` (LATER, step 7), `FormationBarsAlways` (LATER, step 8),
 `HudRefreshSeconds`, `FormationStatsRefreshSeconds` came out of step 2's research
