@@ -10286,102 +10286,129 @@ That the engine plays the fall cleanly ON TOP of our slowed `act_stagger_backwar
 stagger - the engine's fall should take over; if not, step 62's backup blow fires after `ImpactFallBackupSeconds`); how 80 % feels against you
 in a melee where AI ripostes are frequent (`ImpactOnPlayerPercent` scales it).
 
-## Step 106 — OPENINGS: the offensive twin of the timed block (PROPOSED 2026-11-09; 106a in flight)
+## Step 106 — OPENINGS: the offensive twin of the timed block (Toni's REVISED design 2026-11-09; 106a + 106a2 built - shadow only)
 
-Toni 2026-11-09: "when I attack someone and he blocks correctly, his guard immediately goes to 1 of the other 3 positions at random, and a red
-arrow like the vanilla attack-direction arrow briefly shows the opening (e.g. he drops to a low guard -> arrow at the top pointing down -> my
-overhead into it staggers him the same way a timed block does). Shields too but harder to break. Consecutive attacks he blocks give a bigger
-window each time, up to the 4th. Small skill-based help like the defensive game." DESIGN decision 95 (decision 94 is step 105's).
+**The first design was replaced the same day.** Toni's first brief ("his guard goes to 1 of the other 3 at random, a red arrow shows the opening,
+swing into it in time and he reels") was built as 106a: a FORCED guard, a commit-to-swing window (0.45 s + 0.15 / link + skill), a separate
+GUARD BROKEN roll for shields, no perfect strike from an opening. Toni then walked the fight through again and replaced it: one chain with three
+entries that all end in the same stagger + PERFECT STRIKE, a TIMED follow-up scored like the defensive game (not a window you start in), the
+block decided by that score, shields as one more move, back / unguarded hits as entries, the multiplier by the weapon. 106a2 re-cut the Core,
+the shadow, the settings and the records to it (11 keys retired - `ConfigFile.RetiredOpeningKeys`, dropped from a config file with one note
+each, no format change). DESIGN decision 95.
 
-### 1. The engine route (researched; nothing new applied in 106a)
-- FORCING HIS GUARD: step 82's path - `AiInputComponent.Filter` (AiInputHook.cs ~280) writes `ImpactMeetMath.GuardFrame(flags, guard)` (his
-  attack bits and his own guard out, ours in) every input frame - PROVEN in game (the meet's "read guard" frames). The opening's guard goes in
-  the same place: after the MeetGuard line, before the kick (step 65 writes last but one); step 104b's reel lock stays LAST. Never
-  `Agent.Main`, never a player-controlled agent (the filter already returns for them). Single player only.
-- THE TRIGGER: the player's melee attack blocked CORRECTLY by an AI man on foot = `ImpactEvent.RightBlock` or `Parry` in the impact
-  decision (`ImpactEventOf`, AthleticsLogic.ImpactModel.cs ~139 - step 64's block kind), i.e. the same seam `TimedBlockDecided` uses.
+### 1. The revised design (Toni-confirmed 2026-11-09)
+Player vs AI, on foot only; only the PLAYER's attacks open anything. One chain on one man, Core `OpeningChain` (a state machine:
+None → OFF BALANCE → REELING → None):
+- **A. OFF BALANCE (an unshielded man blocks your attack correctly - a parry / right-side block, the impact decision's RightBlock / Parry).**
+  His balance goes to 1 of his other 3 guard directions at random (`OpeningMath.ChooseGuard` - only guards whose opening your weapon can make);
+  the red arrow at the crosshair FLASHES the side to hit (the attack opposite to what that guard blocks: a low guard → the top / your overhead,
+  a high guard → the bottom / your thrust, the sides by `OpeningSidesCrossed`) `OpeningFlashDelaySeconds` 0.3 s after his block = the PERFECT
+  moment to START your follow-up. THE TIMING SCORE (`OpeningMath.TimingScore`) = the timed block's shape (`TimedBlockMath.Score`) around the
+  flash: 1 within the perfect half-width = `TimedBlockMath.PerfectFor`(your wielded weapon's skill) x `OpeningPerfectScalePercent` (0.10 /
+  0.15 / 0.20 / 0.25 s at skill 0 / 100 / 200 / 300), a smoothstep to 0 at the block itself (too early) and at `OpeningWindowSeconds` 1.0 s after
+  the flash (+ `OpeningWindowPerLinkSeconds` 0.25 a link). HIS BLOCK CHANCE when the AI would block your follow-up into the side correctly
+  (`OpeningMath.BlockChance`) = (1 − score) x (1 − `OpeningBlockPerLinkPercent` 20 % x (k − 1)) - 0 at perfect, his normal behaviour at the
+  window's end, x1 / 0.8 / 0.6 / 0.4 on links 1-4. A failed roll = his guard forced to the balance side (106b), held ≤ `OpeningHoldMaxSeconds`.
+- **B. THE STAGGER.** Your hit LANDS on him while he is off balance - in the opening, any hit, or after the window as long as the off-balance
+  time `OpeningChainResetSeconds` 2 s from the last link lasts - → normal damage + a stagger (106d: `ReelCause.Opening` through `ImpactState`)
+  of `OpeningReelBaseSeconds` 0.8 + `OpeningReelPerChainSeconds` 0.3 x (k − 1), ≤ `OpeningReelMaxSeconds` 2.0; the arrow shows the PERFECT
+  STRIKE side for the WHOLE reel, no timing needed: the opposite of the staggering swing (`OpeningMath.Opposite` - YOUR swing, so left ↔ right,
+  overhead ↔ thrust; step 103's strict opposites), by the weapon (§2). Strike that side → bonus damage + "PERFECT STRIKE"; any other side or a
+  kick → step 105's 80 % knockdown, unchanged. If the mod's own impact stagger reels him from that same hit, that reel just shows the arrow
+  (any mod stagger chains in - the shadow counts "the mod's own stagger on the same hit").
+- **C. FAILING GROWS THE CHAIN.** Each correct block of your attack is the next link k (≤ `OpeningChainMax` 4), a new balance side; each link is
+  easier (a longer window, a lower block chance). A miss keeps it (`OpeningMissKeepsChain`). Unshielded best case = 3 moves (blocked, a hit →
+  the stagger, the perfect strike).
+- **SHIELDS = 4 moves.** The first correct shield block shows the balance side, but the shield still blocks it as usual (`OpeningPlan.ShieldHolds`
+  below `OpeningShieldMinChain` 2 - block chance 1, no roll); from the 2nd he cannot block the unbalanced side (the roll as above). Engine route
+  (106b, to be PROVEN with the test key): a raised shield stops a blow from ANY side (the engine's wrong-side shield block still blocks - step 64),
+  so forcing a shield guard direction is not enough - his shield guard is LOWERED (the guard bits out) for that moment.
+- **UNGUARDED / BACK hits (yours only).** A landed hit from BEHIND (step 62's rear band, `ImpactDecision.Direction` 2) always staggers and opens the
+  perfect strike (`OpeningBackHitStaggers`). A FRONT hit on a man not guarding (his guard read at contact is no DefendUp..Right) → OFF BALANCE
+  like A with the window x `OpeningUnguardedWindowPercent` 150 (`OpeningUnguardedHitOpens`); a guarded front hit on a man in no chain = nothing.
+- **THE DEFENSIVE GAME** (step 100's timed block) also shows the red arrow on the PERFECT STRIKE side during its reel - 106c builds it.
+
+### 2. The weapon (106a2 - Core `OpeningMath.WeaponMask` / `FinishMask` / `MultiplierRange`)
+- Directions from the wielded usage: a swing → overhead + left + right, a thrust → the thrust; swing AND thrust = 4 (swords); swing only = 3
+  (axes, maces - no thrust); THRUST ONLY = 2 - a spear's overhead stab (AttackUp) and its thrust (AttackDown) (UNVERIFIED that every spear usage
+  reports its overhead stab as AttackUp - D77 shows it in the side pairing / the "relaxed" counts).
+- THE MULTIPLIER (Toni: by the striker's weapon's directions), replacing the old x2-x3 EVERYWHERE from 106d, the defensive game's too:
+  4 → `PerfectStrikeFourWayMin` 2 - `...Max` 4; 3 → `PerfectStrikeThreeWayMin` 2 - `...Max` 3; 2 (or fewer) → `PerfectStrikeTwoWayMin` 1.5 -
+  `...Max` 2; min at timing 0, a line to max at timing 1 (step 100g's shape). The timing = the follow-up's score that staggered him (0 for a back
+  hit, an unguarded hit's chain or a hit after the window); the defensive game keeps its block's score.
+- THE FINISHING SIDES (`PerfectStrikeWeaponFinishes`, on): the strict opposite when the weapon can make it, else ANY of the weapon's directions
+  but the one opposite to the wanted one. No-thrust weapons: an OVERHEAD stagger (wanted: the thrust) is finished by LEFT or RIGHT - Toni's
+  rule, relaxing step 103 for no-thrust weapons only (in the defensive game too: his blocked overhead → your left or right). **SPEARS (Claude's
+  choice, the analogous rule):** a vertical stagger is finished by the OTHER stab (overhead stab ↔ thrust - the strict opposite, which a spear can
+  make); a SIDE stagger (wanted: a side swing a spear lacks) is finished by EITHER stab. Why: a spear's two stabs are its whole vocabulary - asking
+  for "the opposite" when it has none would make the defensive game's side ripostes unanswerable with a spear, which is exactly the axe problem
+  Toni fixed. Off = strict opposites. The arrow for two sides shows the first of top / bottom / left / right (106c may draw both).
+
+### 3. The engine route (unchanged from 106a's research; nothing applied in 106a2)
+- FORCING HIS GUARD: step 82's path - `AiInputComponent.Filter` (AiInputHook.cs ~280) writes `ImpactMeetMath.GuardFrame` every input frame
+  (PROVEN in game); the balance guard goes after the MeetGuard line, before the kick; step 104b's reel lock stays LAST. Never a player-controlled
+  agent. The roll happens at YOUR follow-up's WIND-UP (the engine decides his block at contact - natively - so it must be pre-empted, not judged
+  there); 106a2's shadow can only roll at a contact he blocked (that is what "WOULD have got through" counts).
+- THE TRIGGER: the impact decision's block seam (`OpeningShadowBlock`, next to `TimedBlockDecided`) and its CLEAN HIT (`OpeningShadowHit`).
+  **Engine fact (106a2):** a LANDED blow is decided in the damage decorator's KnockDown seam, i.e. BEFORE OnMeleeHit; a block at OnMeleeHit - so
+  the shadow reads your swing's direction from you at the hit (`OpeningSwingRead`) instead of the collision, and nothing depends on the order.
 - THE ARROW (106c): a Gauntlet prefab of ours at the crosshair with vanilla's `crosshair_arrow` / `crosshair_arrow_vertical` sprites
-  (Native/GUI/Prefabs/Mission/Crosshair.xml) tinted red; the mod's `HudLayer.cs` hosts it.
+  (Native/GUI/Prefabs/Mission/Crosshair.xml) tinted red; flashing for A, steady for the reel; the mod's `HudLayer.cs` hosts it.
 
-### 2. The proposed rules (every number a setting - §4)
-- THE CHAIN k = 1..`OpeningChainMax` 4: consecutive player attacks the SAME man blocks correctly. Reset by: a hit of yours landing on him, more
-  than `OpeningChainResetSeconds` 2.0 s between your attacks (block to the next block, or to a wind-up), him hitting you, a blow of yours on
-  someone else (a target switch), a MISSED swing only with `OpeningMissKeepsChain` off. A wrong-direction swing keeps it.
-- THE OPENING: `OpeningForceDelaySeconds` 0.1 s after the block his guard is forced to one of the 3 OTHER guards at random - only guards
-  whose opening your weapon can make (step 103's rule: no thrust - e.g. a two-handed axe - = no high-guard opening). Guard → opening
-  (attacker-relative): DefendDown → your AttackUp (overhead), arrow at the TOP; DefendUp → your AttackDown (thrust), arrow at the BOTTOM;
-  DefendLeft → your AttackLeft, arrow LEFT; DefendRight → your AttackRight, arrow RIGHT. Formally: the guard opens the attack OPPOSITE to the
-  one it blocks; the vertical pairs are certain, the side pairing (does DefendLeft block AttackRight - "crossed" - or AttackLeft?) is the
-  engine's (native `CheckBlock`), NOT readable in the decompile - `OpeningSidesCrossed` (on = the brief's mapping) and 106a's shadow MEASURES
-  it (your attack's direction × his guard at contact).
-- THE WINDOW W to START your swing in the arrow's direction, from the force: `OpeningWindowBaseSeconds` 0.45 + `OpeningWindowPerChainSeconds`
-  0.15 x (k − 1) + `OpeningWindowSkillWeight` 2 x (`TimedBlockMath.PerfectFor`(your wielded weapon's skill) − the skill-0 perfect 0.10) -
-  skill 100: 0.55 / 0.70 / 0.85 / 1.00 s; skill 300: 0.75 ... 1.20 s. Once committed his guard stays forced until the blow resolves, at most
-  `OpeningHoldMaxSeconds` 1.5 s. A wrong direction = the force released, the chain kept; too early (before the force) / too late = nothing.
-- THE PAYOFF (106d): a hit INTO the opening reels him - a new `ReelCause.Opening` through `ImpactState.Reel` / the usual RunStagger, length
-  `OpeningReelBaseSeconds` 0.8 + `OpeningReelPerChainSeconds` 0.3 x (k − 1) (0.8 / 1.1 / 1.4 / 1.7 s, capped at `OpeningReelMaxSeconds` 2.0);
-  step 105's 80 % knockdown then chains on the next hit; on-screen "OPENING!". No PERFECT STRIKE window from it (`OpeningGivesPerfectStrike` off).
-- SHIELDS: an opening only from k = `OpeningShieldMinChain` 2, W x `OpeningShieldWindowPercent` 75 %; when your blow into the opening still
-  meets his shield: "GUARD BROKEN" at `OpeningGuardBreakBasePercent` 35 + `OpeningGuardBreakPerChainPercent` 15 x (k − 2) = 35 / 50 / 65 %
-  (k = 2 / 3 / 4), the blocker staggered `OpeningGuardBreakStaggerMinSeconds` 0.6 → `...MaxSeconds` 1.0 s across the chain.
-- WHO: you vs an AI man on FOOT only (horseback skipped in v1 - both ends); AI vs AI shadow-counted only (`OpeningAiVsAi` off).
+### 4. Build order
+106a (built) Core + settings + the first shadow → **106a2 (built) the revised design: records, Core, shadow, settings** → 106b the forced
+guard + the shield LOWERED for the moment (both proven with a test key first) + the block roll at your wind-up → 106c the red arrow (flash +
+the perfect-strike side for the whole reel, the defensive game's reel too) → 106d the payoff live (`ReelCause.Opening`, the stagger, the perfect
+strike with the weapon-direction multipliers everywhere - the old `PerfectStrikeMin/MaxMultiplier` retired, the no-thrust / spear finishing
+sides in step 100g's verdict, back / unguarded hits, the switch ON - config format 30) → 106e review.
 
-### 3. Build order
-106a Core `OpeningMath` / `OpeningRules` / `OpeningChain` / `OpeningStats` + tests, every setting (the live switch `OpeningsEnabled` OFF on
-the player page, `OpeningsShadowLog` ON), the SHADOW log - nothing applied → 106b the forced guard (+ a test key to force one on demand) →
-106c the red arrow → 106d the payoff live, the switch ON → 106e review.
+### 5. Settings (106a2; all in defaults.json, the schema, MCM - the Advanced page's Impact group after `TimedBlockPushOutMounted`)
+`OpeningsEnabled` false (player page, ships OFF until 106d); `OpeningsShadowLog` true, `OpeningFlashDelaySeconds` 0.3, `OpeningPerfectScalePercent`
+100, `OpeningWindowSeconds` 1.0, `OpeningWindowPerLinkSeconds` 0.25, `OpeningUnguardedWindowPercent` 150, `OpeningBlockPerLinkPercent` 20,
+`OpeningChainMax` 4, `OpeningChainResetSeconds` 2 (now: how long he stays off balance), `OpeningMissKeepsChain` true, `OpeningHoldMaxSeconds` 1.5,
+`OpeningSidesCrossed` true, `OpeningReelBaseSeconds` 0.8, `OpeningReelPerChainSeconds` 0.3, `OpeningReelMaxSeconds` 2, `OpeningShieldMinChain` 2
+(now: the link from which a shield gives way), `OpeningBackHitStaggers` true, `OpeningUnguardedHitOpens` true, `OpeningArrowShow` true,
+`OpeningAiVsAi` false, `PerfectStrikeFourWayMin/Max` 2 / 4, `PerfectStrikeThreeWayMin/Max` 2 / 3, `PerfectStrikeTwoWayMin/Max` 1.5 / 2,
+`PerfectStrikeWeaponFinishes` true. Retired (106a's): `OpeningForceDelaySeconds`, `OpeningWindowBaseSeconds`, `OpeningWindowPerChainSeconds`,
+`OpeningWindowSkillWeight`, `OpeningShieldWindowPercent`, `OpeningGuardBreakBasePercent`, `OpeningGuardBreakPerChainPercent`,
+`OpeningGuardBreakStaggerMinSeconds`, `OpeningGuardBreakStaggerMaxSeconds`, `OpeningGivesPerfectStrike`, `OpeningArrowAtCrosshair`. Toni's 5
+questions to the first design are answered by the revised design (a miss keeps the chain; the stagger DOES open a perfect strike; the arrow at
+the crosshair; shields = one more block, no guard-break roll; player only).
 
-### 4. Settings (106a - all in defaults.json, the schema, MCM; new keys only, no config format change)
-Player page, "Staggers and knockdowns": `OpeningsEnabled` false (ships OFF until 106d). Advanced, Impact (after `TimedBlockPushOutMounted`):
-`OpeningsShadowLog` true, `OpeningForceDelaySeconds` 0.1, `OpeningWindowBaseSeconds` 0.45, `OpeningWindowPerChainSeconds` 0.15,
-`OpeningWindowSkillWeight` 2, `OpeningChainMax` 4, `OpeningChainResetSeconds` 2, `OpeningMissKeepsChain` true, `OpeningHoldMaxSeconds` 1.5,
-`OpeningSidesCrossed` true, `OpeningReelBaseSeconds` 0.8, `OpeningReelPerChainSeconds` 0.3, `OpeningReelMaxSeconds` 2,
-`OpeningShieldMinChain` 2, `OpeningShieldWindowPercent` 75, `OpeningGuardBreakBasePercent` 35, `OpeningGuardBreakPerChainPercent` 15,
-`OpeningGuardBreakStaggerMinSeconds` 0.6, `OpeningGuardBreakStaggerMaxSeconds` 1, `OpeningGivesPerfectStrike` false, `OpeningArrowShow` true,
-`OpeningArrowAtCrosshair` true, `OpeningAiVsAi` false.
+### 106a - built (2026-11-09; the first design - its Core replaced by 106a2)
+Commits aa53403 (Core + settings), c2c4a6c (the module's shadow + smoke). What still stands: the hooks (`OpeningWindUp` in step 13's
+`PhasesOnAction` at YOUR melee ready - so the follow-up is only judged with Athletics on; `OpeningMiss` at a melee release with no hit;
+`OpeningContactSeen` at the top of `ImpactModelHitTaken`; `TickOpenings` in `TickImpact`), the engine reads behind seams the smoke replaces (his
+guard at contact `GetCurrentActionDirection(1)` 4..7; your swing `GetCurrentActionDirection(1)` else `Agent.AttackDirection`; your weapon
+`CurrentUsageItem` SwingDamage / ThrustDamage > 0), the side-pairing table, the line budget (40 at Info, then verbose "openings").
 
-### 5. Open questions for Toni (each already a setting; the recommended answer is the default)
-1. A MISSED swing (it hits nothing) - does it keep the chain like a blocked one? Recommended YES (`OpeningMissKeepsChain`): a miss neither
-   breaks nor grows the chain - only blocks grow it.
-2. A hit into the opening - also a PERFECT STRIKE window (x2-x3)? Recommended NO (`OpeningGivesPerfectStrike`): the reel + step 105's 80 %
-   knockdown already pay; x3 on top would make openings the best attack in the game.
-3. The arrow at the CROSSHAIR or over his head? Recommended the crosshair (`OpeningArrowAtCrosshair`) - where vanilla's own direction
-   arrow is and your eyes already are.
-4. Shields: openings only from the 2nd blocked attack, a 75 % window, GUARD BROKEN 35 / 50 / 65 %? Recommended YES (the four settings).
-5. Player only (never AI vs AI)? Recommended YES (`OpeningAiVsAi` off) - AI vs AI only counted.
+### 106a2 - built (2026-11-09)
+Commit 19cd755 (Core + module shadow + smoke). NOTHING is applied in game.
 
-### 106a - built (2026-11-09)
+**Core (`Openings.cs`).** `OpeningRules` (the revised numbers + the 7 perfect-strike keys + the timed block's rules); `OpeningEntry` (weapon block
+/ shield block / unguarded front hit / back hit), `OpeningPhase`, `OpeningHit` (nothing / staggers / off balance / finish perfect / finish other);
+`OpeningMath` - the mapping and the guard choice kept from 106a, `WeaponMask` (thrust only = the spear's two stabs), `DirectionCount`,
+`Perfect`, `Window`, `TimingScore`, `LinkFactor`, `BlockChance`, `ReelSeconds`, `FinishMask` / `FinishAfterYourSwing` / `FinishArrow`,
+`MultiplierRange` / `StrikeMultiplier`, `Plan` (skips: Mounted, NoOpeningForWeapon; `ShieldHolds`), `Verdict` (direction only); `OpeningChain` -
+`NoteBlock`, `NoteLanded`, `Expired`, `Reeling`; `OpeningStats` - entries, balance guards, follow-ups by direction and timing band, the shadow
+block rolls ("WOULD have got through" by link), staggers by entry (+ the mod's own on the same hit), finishes (perfect with the mean multiplier
+by the weapon's directions and the relaxed sides / other side / reels unused), the side pairing, resets; the [summary] line. No allocation (tested).
 
-Commits aa53403 (Core + settings), c2c4a6c (the module's shadow + smoke). NOTHING is applied in game.
+**Module (`AthleticsLogic.Openings.cs`).** `OpeningShadowBlock` (the block seam): a follow-up into the side that he blocked anyway gets the SHADOW
+BLOCK ROLL with the openings' dice, then `NoteBlock` + `Plan` + the awaited follow-up; `OpeningWindUp`: the direction verdict + the timing score;
+`OpeningShadowHit` (new, the impact decision's CLEAN HIT - `ImpactDecide`'s else branch beside the block hook): his guard read, the rear band, your
+weapon, `NoteLanded` → the would-be stagger / off balance / perfect strike (x by the weapon) / other side; `OpeningContactSeen`: a target switch,
+his hit on you, the follow-up's direction vs the contact's on a block; the tick ends a reel nobody finished ("no hit before the reel ended").
+Lines: "YOU: openings (shadow): ... OFF BALANCE to the high guard ... the arrow would flash bottom (your thrust) at 0.30 s, perfect +/-0.15 s ...",
+"your follow-up - thrust started 0.31 s after the link ...: INTO the balance side, timing 1.00 -> his block chance 0%", "... LANDED on X ... -> he
+WOULD stagger 0.80 s; PERFECT STRIKE side: overhead (arrow top) for x4.00 (range x2.00-4.00, 4 directions)", "... WOULD be a PERFECT STRIKE x4.00".
 
-**Core (`Openings.cs`).** `OpeningRules` (Enabled = ModEnabled FIRST, `OpeningsEnabled`; ShadowOn = ModEnabled, `OpeningsShadowLog`; the
-timed block's rules inside for the skill help). `OpeningMath` in the engine's `UsageDirection` numbers: `GuardBlocking` / `AttackBlockedBy`
-(vertical by name, sides by `OpeningSidesCrossed`), `OpeningFor` = `Opposite(AttackBlockedBy(guard))` - crossed gives exactly the brief's
-mapping; `ArrowFor`; `WeaponMask(swing, thrust)` (neither known = all); `Candidate` / `CandidateCount` / `ChooseGuard` (uniform by one die over
-the other guards whose opening the weapon can make - a two-handed axe never gets the high-guard opening; a pure thrust weapon against a high
-guard has none); `Window`, `SkillBonus` (weight x (PerfectFor(skill) − PerfectAt0)), `ReelSeconds`, `GuardBreakChance` / `GuardBreakStagger`,
-`HoldEnds`; `Plan` (skips: Mounted, ShieldTooEarly, NoOpeningForWeapon - no die drawn for a skip or a single candidate); `Verdict` (TooEarly
-before the force, TooLate after force + W, else the direction). `OpeningChain` (NoteBlock → the link, reset by another man / the gap).
-`OpeningStats` - fixed arrays, the [summary] line. No allocation (tested).
+**Tests / smoke.** Step106a2Tests (26, replacing Step106aTests' 21): defaults / gates, the weapon's directions, the mapping both ways, the
+choice's uniformity and the weapon, the score around the flash (skill 100 and 300), the windows, the block chance, the shield's first link, the
+skips, the verdict, the chain (3 moves unshielded, the growing shielded chain and another side, back / unguarded / guarded hits, the resets),
+the finishing sides (sword / axe / spear / off), the multipliers, the summary, no allocation, the settings' places, the retired keys dropped.
+Tests 1598. Smoke "OPENINGS, THE SHADOW (steps 106a / 106a2)" through the real logic (232 steps green); deployed as the dev build. PLAYTEST D77.
 
-**Module (`AthleticsLogic.Openings.cs`).** Hooks: `OpeningShadowBlock` right after `TimedBlockDecided` in `ImpactDecide` (so ONLY when the
-impact system decides blocks - with `ImpactEnabled` off nothing is seen); `OpeningContactSeen` at the top of `ImpactModelHitTaken` (BEFORE the
-decision, so a blocked swing closes the old opening and then opens the next); `OpeningWindUp` in step 13's `PhasesOnAction` at YOUR melee ready
-(so only with Athletics on - else the verdict is "direction unread" at contact); `OpeningMiss` at a melee release with no hit; `TickOpenings`
-in `TickImpact`. Your attack's direction = `TrackedAgent.RecoilDirection` (set at contact for every correct block, step 100d). Engine reads,
-each behind a seam the smoke replaces: his guard at contact `GetCurrentActionDirection(1)` (DefendUp..DefendRight = 4..7, else unread); your
-swing at its wind-up `GetCurrentActionDirection(1)`, falling back to `Agent.AttackDirection` (native `GetAttackDirectionUsage`) when that is
-not an attack; your weapon `WieldedWeapon.CurrentUsageItem` SwingDamage / ThrustDamage > 0 (an approximation of the usage set's directions - a
-one-handed spear's overhead stab counts as no swing). Lines: the first 40 of yours per battle at Info ("YOU: openings (shadow): ..."), the
-rest verbose (bucket "openings").
-
-**Engine facts still UNVERIFIED (D77 answers them):** (1) the SIDE pairing - whether the engine's correct block of your AttackLeft is his
-DefendRight (crossed) - the summary's side-pairing table counts your attack × his guard at contact; (2) whether channel 1's action direction
-during your ready is the attack's direction (the "agree / differ / unread" counts against the contact's `AttackDirection`); (3) whether an AI
-man's defend action on channel 1 at contact reports DefendUp..Right at all (else every guard reads "unread" and the previous guard is derived
-from your attack by the assumed pairing). Not added yet: `ReelCause.Opening` (106d - adding it now would shift step 105's by-cause arrays).
-
-**Tests / smoke.** Step106aTests (21 cases): defaults / gates, the mapping both ways, the choice's uniformity (30000 draws) and the weapon
-mask, the window / reel / guard-break numbers, the plan and its skips, the verdict's borders, the chain, the summary, no allocation, the
-settings' places; SettingsPagesTests 624 / player page 39; ImpactTests' group list + 23. Smoke "OPENINGS, THE SHADOW (step 106a)" through the
-real logic (232 steps green); deployed as the dev build. PLAYTEST D77.
+**Unverified (D77 answers them):** the SIDE pairing (`OpeningSidesCrossed`); whether channel 1's direction at your wind-up is the swing's; his
+guard at contact as DefendUp..Right (else every front hit reads "not guarding" - watch the "unguarded front hit" count against duels where he
+clearly guarded); the spear's overhead stab as AttackUp; how often the impact system's own stagger lands on the same hit.
