@@ -187,8 +187,10 @@ public class Step106bTests
                 st.NoteEnd((OpeningForceEnd)(i % (int)OpeningForceEnd.Count));
                 st.NotePose(i % 2 == 0, i % 3 == 0);
             }
-            GC.KeepAlive(acc);
+            _sink = acc; // step 106e: was GC.KeepAlive(acc) - it BOXED the uint (24 bytes every run, the test failed on its own allocation)
         });
         Assert.Equal(0, bytes);
     }
+
+    private static uint _sink;
 }
