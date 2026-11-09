@@ -3611,7 +3611,7 @@ Retired in step 5c (Athletics v2): `MaxAthletics` (→ the pool is the Athletics
     Refill: Toni's "let this be there"; the game's AI never crouches in a battle - only scripted scenes - and while off its crouch is not even read);
     never mounted. Your bar's label reads "Resting" while it refills crouched; the [athletics] first-crouch line and the [summary] "crouch rest" line
     (PLAYTEST D71). No existing default changed - no config format bump.
-93. **Timed blocks on horseback** (step 104, PROPOSED 2026-11-09 - waiting for Toni; nothing built, no parameter rows yet - they join the
+93. **Timed blocks on horseback** (step 104, PROPOSED 2026-11-09; APPROVED by Toni 2026-11-09 "as suggested" - all 5 recommended answers of AI_NOTES "Step 104"; built after step 105; nothing built yet, no parameter rows yet - they join the
     Parameters table with the step that builds them. Toni 2026-11-09: "can you add the reel vs mounted troops as well somehow, like that 3rd round,
     we were on horsebacks fighting, I blocked, can you implement a similar system there?" - his mounted tournament round: 13 shield blocks, 6
     perfect, every riposte refused "a rider"; AI_NOTES "Step 104"). Why riders were refused: decision 45 / IMPACT §3.8 - "never a forced stagger

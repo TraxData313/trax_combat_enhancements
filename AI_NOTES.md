@@ -9678,7 +9678,7 @@ steps green.
 **Unverified until D71:** that `CrouchMode` reads true while Toni is crouched in a battle (the bar's "Resting" and the [athletics] "first crouch"
 line prove it); which direction the engine reports for his "from below" attack with each weapon (the YOU lines name it).
 
-## Step 104 (PROPOSED - waiting for Toni) — timed blocks on horseback: the rider reels in the saddle (research 2026-11-09, no code)
+## Step 104 (APPROVED by Toni 2026-11-09 "as suggested" - all 5 recommendations below; built after step 105) — timed blocks on horseback: the rider reels in the saddle (research 2026-11-09, no code)
 
 Toni 2026-11-09, after the v1.5.0 release: "can you add the reel vs mounted troops as well somehow, like that 3rd round, we were on horsebacks
 fighting, I blocked, can you implement a similar system there?" His tournament round 3/4: both he and his opponent MOUNTED, 13 shield blocks of
