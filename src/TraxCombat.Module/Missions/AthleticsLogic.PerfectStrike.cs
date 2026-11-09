@@ -167,7 +167,7 @@ namespace TraxCombat.Missions
         };
 
         /// <summary>THE DECORATOR'S LAST QUESTION (main thread): the damage this hit lands.</summary>
-        float IPerfectStrike.PerfectStrike(Agent attacker, Agent victim, bool attackerMounted, in AttackCollisionData cd, float damage)
+        float IPerfectStrike.PerfectStrike(Agent attacker, Agent victim, bool attackerMounted, in AttackCollisionData cd, float damage, bool passiveAttack)
         {
             if (_strikeDisabled || _strikeBook.Count == 0) return damage;
             try
@@ -198,7 +198,14 @@ namespace TraxCombat.Missions
                     _strike.Mounted++;
                     return damage;
                 }
-                if (cd.IsAlternativeAttack || cd.AttackBlockedWithShield || cd.CollisionResult != CombatCollisionResult.StrikeAgent || !(damage > 0))
+                // step 104 follow-up (Toni 2026-11-09): a couched lance is never a perfect strike, on foot or mounted - the window stays open
+                var gate = PerfectStrikeMath.Gate(passiveAttack, cd.IsAlternativeAttack, cd.AttackBlockedWithShield, cd.CollisionResult == CombatCollisionResult.StrikeAgent, damage);
+                if (gate == StrikeGate.Couched)
+                {
+                    _strike.Couched++;
+                    return damage;
+                }
+                if (gate == StrikeGate.NotOnBody)
                 {
                     _strike.NotOnBody++;
                     return damage;

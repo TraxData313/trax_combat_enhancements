@@ -102,6 +102,19 @@ namespace TraxCombat.Core
         BlockedUnknown,
     }
 
+    /// <summary>Step 104 follow-up (Toni 2026-11-09): may this landed melee hit of yours be a perfect strike at all, before its direction is read?</summary>
+    public enum StrikeGate : byte
+    {
+        /// <summary>A swing or thrust that landed on his body - its direction decides.</summary>
+        Counts,
+
+        /// <summary>A COUCHED LANCE (or a braced spear - the engine's passive attack): never a perfect strike, on foot or mounted; the window stays open.</summary>
+        Couched,
+
+        /// <summary>Blocked, into a shield, a kick / bash, or 0 damage - not on his body; the window stays open.</summary>
+        NotOnBody,
+    }
+
     /// <summary>A side as seen from one man's own body.</summary>
     public enum BodySide : byte
     {
@@ -187,6 +200,19 @@ namespace TraxCombat.Core
         /// </summary>
         public static StrikeVerdict Verdict(bool riderWindow, bool anySide, int blocked, int strike) =>
             riderWindow && anySide ? StrikeVerdict.Perfect : Verdict(blocked, strike);
+
+        /// <summary>
+        /// Step 104 follow-up (Toni 2026-11-09: a couched lance is no perfect strike): the hit's kind before its direction. A passive attack
+        /// (<paramref name="passiveAttack"/> - a couched lance, or a braced spear) = <see cref="StrikeGate.Couched"/> first, whatever else;
+        /// then an alternative attack (kick / bash), a shield or a block, a collision that did not strike him, or no damage =
+        /// <see cref="StrikeGate.NotOnBody"/>; else <see cref="StrikeGate.Counts"/>.
+        /// </summary>
+        public static StrikeGate Gate(bool passiveAttack, bool alternativeAttack, bool shieldBlocked, bool struckAgent, float damage)
+        {
+            if (passiveAttack) return StrikeGate.Couched;
+            if (alternativeAttack || shieldBlocked || !struckAgent || !(damage > 0)) return StrikeGate.NotOnBody;
+            return StrikeGate.Counts;
+        }
 
         public static double ClampMultiplier(double v) =>
             double.IsNaN(v) ? MinAllowedMultiplier : Math.Max(MinAllowedMultiplier, Math.Min(MaxAllowedMultiplier, v));
@@ -320,6 +346,9 @@ namespace TraxCombat.Core
         public int BlockedUnknown;
 
         public int Opened, Replaced, ExpiredUnused, ClosedBySwitch, NotOnBody, Mounted, OffMainThread, UnknownDirection, Errors;
+
+        /// <summary>Step 104 follow-up: your couched-lance / braced-spear hits on a window man (never a perfect strike, the window kept).</summary>
+        public int Couched;
         public double MultiplierSum, MultiplierMin = double.NaN, MultiplierMax = double.NaN, ScoreSum;
         public double DamageBeforeSum, DamageAfterSum;
 
@@ -457,6 +486,7 @@ namespace TraxCombat.Core
             t.Append(" - strict opposites since step 103; the window stays open)");
             if (BlockedUnknown > 0) t.Append("; your hits after a blocked attack of unknown direction (nothing counts) ").Append(BlockedUnknown.ToString(c));
             if (NotOnBody > 0) t.Append("; your hits on a window man that did not land on his body (blocked, shield, kick / bash, 0 damage) ").Append(NotOnBody.ToString(c));
+            if (Couched > 0) t.Append("; your couched-lance hits on a window man (never a perfect strike, the window kept) ").Append(Couched.ToString(c));
             if (Mounted > 0) t.Append("; hits from horseback not counted (step 104d's switch off) ").Append(Mounted.ToString(c));
             if (UnknownDirection > 0) t.Append("; your direction unreadable ").Append(UnknownDirection.ToString(c));
             if (OffMainThread > 0) t.Append("; asked off the main thread (skipped) ").Append(OffMainThread.ToString(c));

@@ -148,6 +148,9 @@ namespace TraxCombat.Tools
                 // into his shield: not on his body - the window kept
                 Check(Near(ImpactHooks.PerfectStrike(you.Agent, r1.Agent, true, Swing(Agent.UsageDirection.AttackLeft, true, true, CombatCollisionResult.Blocked), 5f), 5f)
                       && logic.PerfectStrikeWindowsOpen == 1, "a hit into his shield used the window");
+                // step 104 follow-up (Toni 2026-11-09): a COUCHED LANCE on his body is never a perfect strike - normal damage, counted, the window kept
+                Check(Near(ImpactHooks.PerfectStrike(you.Agent, r1.Agent, true, Swing(Agent.UsageDirection.AttackLeft, false, false, CombatCollisionResult.StrikeAgent), 20f, passiveAttack: true), 20f)
+                      && ps.Couched == 1 && ps.RiderLanded == 0 && logic.PerfectStrikeWindowsOpen == 1, "a couched lance on the reeling rider counted as a perfect strike / used the window");
                 // your LEFT swing from horseback (his blocked attack was a RIGHT swing - on foot a wrong side): ANY side on a rider - x3
                 Tick(0.3);
                 Check(Near(Hit(you, r1, Agent.UsageDirection.AttackLeft, mounted: true), 60f) && ps.RiderLanded == 1 && ps.RiderLandedFromHorseback == 1

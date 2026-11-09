@@ -90,7 +90,8 @@ namespace TraxCombat.Models
     /// </summary>
     internal interface IPerfectStrike
     {
-        float PerfectStrike(Agent attacker, Agent victim, bool attackerMounted, in AttackCollisionData collision, float damage);
+        /// <param name="passiveAttack">Step 104 follow-up: the attacker's passive attack at the hit (a couched lance / braced spear) - never a perfect strike.</param>
+        float PerfectStrike(Agent attacker, Agent victim, bool attackerMounted, in AttackCollisionData collision, float damage, bool passiveAttack);
 
         /// <summary>Step 104d: a man's melee hit on a HORSE whose rider is <paramref name="riderIndex"/> - counted when he is in YOUR open rider
         /// window; never uses it, never changes the damage.</summary>
@@ -252,13 +253,13 @@ namespace TraxCombat.Models
         }
 
         /// <summary>Step 100g: the damage to land after the perfect strike's question; a throwing logic = unchanged (logged by its fail-safe).</summary>
-        internal static float PerfectStrike(Agent? attacker, Agent? victim, bool attackerMounted, in AttackCollisionData collision, float damage)
+        internal static float PerfectStrike(Agent? attacker, Agent? victim, bool attackerMounted, in AttackCollisionData collision, float damage, bool passiveAttack = false)
         {
             var g = _perfect;
             if (g == null || attacker == null || victim == null) return damage;
             try
             {
-                return g.PerfectStrike(attacker, victim, attackerMounted, in collision, damage);
+                return g.PerfectStrike(attacker, victim, attackerMounted, in collision, damage, passiveAttack);
             }
             catch (Exception e)
             {

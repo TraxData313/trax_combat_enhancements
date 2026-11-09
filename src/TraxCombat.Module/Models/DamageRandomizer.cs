@@ -149,7 +149,7 @@ namespace TraxCombat.Models
                 Models.ImpactHooks.PerfectStrikeHorseHit(ai.AttackerAgent, ai.VictimAgent);
             if (ai.IsAttackerAgentNull || ai.IsVictimAgentNull || ai.IsAttackerAgentMount || ai.IsVictimAgentMount || !facts.VictimIsAgent || facts.Missile
                 || facts.Fall || cd.IsHorseCharge) return damage;
-            return Models.ImpactHooks.PerfectStrike(ai.AttackerAgent, ai.VictimAgent, ai.DoesAttackerHaveMountAgent, in cd, damage);
+            return Models.ImpactHooks.PerfectStrike(ai.AttackerAgent, ai.VictimAgent, ai.DoesAttackerHaveMountAgent, in cd, damage, ai.IsAttackerAgentDoingPassiveAttack);
         }
 
         /// <summary>Step 89: could the tired-damage multiplier apply to this hit at all (before the attacker's f is read)?</summary>
