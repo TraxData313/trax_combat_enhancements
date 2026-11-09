@@ -32,6 +32,8 @@ Want the formulas and every parameter with its range? [DESIGN.md](DESIGN.md) is 
 13. [Heroes, and the hideout boss](#13-heroes-and-the-hideout-boss)
 14. [The sprint](#14-the-sprint)
 14b. [Your orders: a click charges, a drag never does](#14b-your-orders-a-click-charges-a-drag-never-does)
+14c. [Line discipline: green troops cannot hold a thin line](#14c-line-discipline-green-troops-cannot-hold-a-thin-line)
+14d. [Tier-1 men carry a cheap culture shield](#14d-tier-1-men-carry-a-cheap-culture-shield)
 15. [What you see on screen](#15-what-you-see-on-screen)
 16. [Where the settings live](#16-where-the-settings-live)
 
@@ -199,6 +201,11 @@ A wounded man refills only to his health share (at 60% health, to 60% of the bar
 
 <sub>Settings: `RegenDelayBlowTimes` 2 × `BlowTimeSeconds` 1.5 (the 3 s), `FullRegenSecondsStanding` 60,
 `RegenMultiplierAtFullRun` 0.5, `WalkEffortFraction` 0.4, `RegenRateNearFullPercent` 100 (a straight line).</sub>
+
+**Crouch to rest** (step 103): while you crouch (Z) your refill runs **2x** - the 3 s wait after a blow, the wounds' cap and the slower
+refill when moving still apply; never on a horse. Your bar's word reads "Resting". The AI's crouch is left alone by default.
+
+<sub>Settings: `CrouchRefillForPlayer` on (the player page), `CrouchRefillMultiplier` 2, `CrouchRefillForAi` off.</sub>
 
 ## 6. Defending costs too
 
@@ -1476,6 +1483,57 @@ moment of the hit - the AI never steers you.
 `MeetKickShieldDownStaggerPercent` 60, `MeetKickShieldDownFallPercent` 25, `MeetKickWeaponDownStaggerPercent` 50, `MeetKickWeaponDownFallPercent` 30,
 `MeetAiReadScalePercent` 100, `MeetAiReadReactionSeconds` 0.15, `MeetAiReadMaxHoldSeconds` 1.5.</sub>
 
+### Timed blocks and the perfect strike
+
+(steps 100-103.) Every correct block - the right side, or a parry - gets a **timing score** from how long the blocker's guard was up
+when the blow landed: **1** within his perfect window, sliding (a smooth curve) to **0** at the end of the whole window; a guard held
+longer is an ordinary block, exactly as before. With the game's automatic block direction only the press counts; with a manual direction a
+switch to another direction starts the clock again.
+
+**The window by skill** - the blocker's skill in the weapon he holds (One Handed for a shield alone), a straight line between the points:
+
+| Skill | 0 | 100 | 200 | 300 |
+|---|---:|---:|---:|---:|
+| Perfect window (score 1) | 0.10 s | 0.15 s | 0.20 s | 0.25 s |
+| No timing left (score 0) | 0.33 s | 0.50 s | 0.67 s | 0.83 s |
+
+**What the score does to the riposte** (the attacker's stagger, above): its chance is blended toward 85% by the score, then +15 points
+for any timed block, at most 100%; its length toward 2 s. A **perfect** block (score 1) is a sure stagger - it also skips the attacker's
+recent-stagger halving and his short immunity, but never lands while he still reels, never on a rider and never on a man who is down.
+Two fresh, even men at skill 100:
+
+| Your guard was up for… | 0.15 s | 0.20 s | 0.25 s | 0.30 s | 0.35 s | 0.40 s | 0.45 s | held |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| He reels | 100% | 95% | 83% | 67% | 49% | 33% | 21% | 1.4% |
+
+The same 0.30 s guard by skill 50 / 100 / 150 / 200 / 250 / 300: 46 / 67 / 81 / 90 / 95 / 98%.
+
+**The AI** times its blocks by the same rule (its guard is read from its own input; it does not fight any differently) at **half** the
+score, and a riposte of his on you lasts at most **1.2 s**.
+
+**The slow motion** (yours only): a block of yours scoring at least **0.8** whose stagger the game took drops the game to **0.25** speed at
+once, holds **1.5** real seconds and eases back over **0.3** - about half a second of battle time. At most one every **4** real seconds;
+skipped while the orders menu's slow-down or another mod's time request is on, and given back on a pause, the switch, or the battle's end.
+
+**The push-out.** On every timed block that staggers the attacker the blocker's shield or weapon punches out (a bash animation, sped up to
+**0.25 s**) - no blow, no cost - and the attacker staggers backward. The direction-matched recoil (he first bounces back the way he swung)
+is in the game but ships **off**; a test tool (key **J**) plays every candidate animation on the nearest man.
+
+**The perfect strike** (yours only, on foot). While the man your timed block staggered still reels (+ **0.15 s**), your first melee swing
+that lands on his body from the **opposite side** does **2x to 3x** damage - 2 + the score - applied last, after the roll, the tiredness and
+the damage reduction, and shows **PERFECT STRIKE x2.8** in gold. Opposite: his attack at your left -> your swing from the right, at your
+right -> from the left, an overhead -> your thrust, a thrust -> your overhead. A wrong-side hit lands as usual and keeps the chance; one per
+stagger; not on his shield, not with a kick or bash, not from a horse.
+
+<sub>Settings (Impact; the switches on the player page): `TimedBlocksEnabled` on, `TimedBlockSlowMo` on, `PerfectStrikeEnabled` on;
+`TimedBlockPerfectSeconds` 0.15, `TimedBlockWindowSeconds` 0.5, `TimedBlockSkillScales` on, `TimedBlockPerfectAtSkill0` / `100` / `200` /
+`300` 0.10 / 0.15 / 0.20 / 0.25, `TimedBlockRiposteMaxPercent` 85, `TimedBlockRiposteBonusPoints` 15, `TimedBlockRiposteCapPercent` 100,
+`TimedBlockStaggerMaxSeconds` 2, `TimedBlockAgainstYouMaxSeconds` 1.2, `TimedBlockParryPercent` 100, `TimedBlockAiPercent` 50,
+`TimedBlockPerfectSkipsHalving` / `...Immunity` on, `TimedBlockShowTiming` on; `TimedBlockSlowMoMinScore` 0.8, `TimedBlockSlowMoSpeed` 0.25,
+`TimedBlockSlowMoHoldSeconds` 1.5, `TimedBlockSlowMoEaseOutSeconds` 0.3, `TimedBlockSlowMoCooldownSeconds` 4; `TimedBlockPushOut` on,
+`TimedBlockPushOutForYou` on, `TimedBlockPushOutSeconds` 0.25, `TimedBlockRecoil` off, `TimedBlockAnimTest` off, `TimedBlockAnimTestKey` J;
+`PerfectStrikeMinMultiplier` 2, `PerfectStrikeMaxMultiplier` 3, `PerfectStrikeGraceSeconds` 0.15, `PerfectStrikeCentreMessage` on.</sub>
+
 ### You
 
 The same rules apply to you — every chance against you × `ImpactOnPlayerPercent` (100%). A short line in the
@@ -2038,6 +2096,8 @@ far ones are a little smaller, and in a huge battle only the 200 nearest men on 
 **Lines in the message feed** (section 11c): red when you are knocked down, knocked off your horse, lose your
 shield or reel from a riposte; purple when you knock a man down or off his horse, break his guard or knock his
 shield away — the colours the game uses for its own couched-lance lines. At most one every 1.5 s, merged.
+Every correct block of yours also names its timing - "Your riposte - Aldric reels 1.46 s / 2.00 (guard 0.30 s / 0.15)" - and a
+perfect strike shows **PERFECT STRIKE x2.8** in gold, in the feed and in the middle of the screen (section 11c, Timed blocks).
 
 <sub>Settings: `ShowPlayerBar`, `ShowAttackRecoveryBar`, `ShowSprintBar`, `SprintShowKeyHint`, `ShowInOrderMenu`, `ShowAltMarkerStats`,
 `AltMarkersShowEnemy`, `ShowReadyCount`, `Bar*BelowPercent`, `Ready*BelowPercent`, `ShowAthleticsMarks`, `AthleticsMarksShowEnemy`,
@@ -2057,17 +2117,18 @@ and a **master switch** turns the whole mod off mid-battle, so you can play the 
 
 MCM shows **two pages** (Mod Options):
 
-- **Trax Combat Enhancements** — the short page, the 21 settings most players want:
+- **Trax Combat Enhancements** — the short page, the 36 settings most players want:
 
   | Group | Settings |
   |---|---|
   | Master switch | Mod enabled |
   | How hard hits land | Damage roll (± %), Damage reduction (%), Tired men's damage at an empty bar (%) |
-  | Tiredness (Athletics) | Athletics (stamina) on / off, Cost per swing — how fast men tire, Heroes' cost (x) |
-  | How the AI fights | AI aggression when fresh / when exhausted (%), Fever on a charge or advance order, Shield walls hold their slots + a step out to strike (m), Courage and cohesion, Cavalry flocking, Line discipline: your units too |
-  | Staggers and knockdowns | Staggers, shield drops, knockdowns on / off, Against you (%) |
+  | Tiredness (Athletics) | Athletics (stamina) on / off, Cost per swing (points), Heroes' cost (x), Crouch (Z) to rest faster |
+  | How the AI fights | AI aggression when fresh / when exhausted (%), Fever on a charge or advance order, Shield walls hold their slots, Shield walls: a step out to strike (m), Shield walls stand firm on a hold order, Shield walls: the ends face the flanks, Spearmen keep their spears, Press, don't pass, Tired front men swap with fresh ones, Tired men step back and rest, War cries, Courage and cohesion, Cavalry flocking, Line discipline: your units too |
+  | Staggers and knockdowns | Staggers, shield drops, knockdowns on / off, Against you (%), Meeting kicks and bashes, Timed blocks, Slow motion on your best blocks, Perfect strike after your timed block |
   | Sprinting | Sprint on / off, Sprint key, Sprint button (controller) |
-  | On screen | Your Athletics bar, Hold ALT: bars on every man, On-screen lines (knocked down, shield lost) |
+  | On screen | Your Athletics bar, Hold ALT: bars on every man, On-screen lines: knocked down, shield lost |
+  | Unit changes | Give Tier 1 units shields |
   | Defaults | **Revert all to defaults** — every setting of both pages |
 
 - **Trax Combat Enhancements - Advanced** — everything else, for tuning: every system's own group
